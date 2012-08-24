@@ -1,0 +1,55 @@
+/*
+if (1)
+    1 + -2 * a + ++b + c;
+else
+    c + d;
+*/
+
+//c = a + b.f(bar);
+//foo = (fun(x) x + y;);
+
+/*
+if (x)
+{
+    y;
+    z;
+}
+else
+    q;
+*/
+
+/*
+foo = fun(x)
+{
+    //var y;
+    //y += 1;
+    //z = f[2] + 3;
+    //3.0;
+
+    //for (var i = 0; i < 10; i += 1)
+    //    print("foobar");
+
+    //1? 2:3 + 4;
+
+    //do
+    //    x += 1;
+    //while (1)
+
+
+
+
+
+
+    return x;
+};
+*/
+
+
+//++a.b;
+
+
+//try foo(); catch (e) e;
+
+
+
+
