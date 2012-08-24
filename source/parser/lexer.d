@@ -604,7 +604,7 @@ Token getToken(StrStream stream)
     }
 
     // String constant
-    else if (ch == '"')
+    if (ch == '"')
     {
         stream.readCh();
 
@@ -657,8 +657,24 @@ Token getToken(StrStream stream)
         return Token(Token.STRING, str, pos);
     }
 
+    // End of file
+    if (ch == '\0')
+    {
+        return Token(Token.EOF, pos);
+    }
+
+    // Try matching all separators    
+    foreach (sep; separators)
+        if (stream.match(sep))
+            return Token(Token.SEP, sep, pos);
+
+    // Try matching all operators
+    foreach (op; operators)
+        if (stream.match(op.str))
+            return Token(Token.OP, op.str, pos);
+
     // Identifier or keyword
-    else if (identStart(ch))
+    if (identStart(ch))
     {
         stream.readCh();
         string identStr = "" ~ ch;
@@ -681,22 +697,6 @@ Token getToken(StrStream stream)
             return Token(Token.IDENT, identStr, pos);
         }
     }
-
-    // End of file
-    else if (ch == '\0')
-    {
-        return Token(Token.EOF, pos);
-    }
-
-    // Try matching all separators    
-    foreach (sep; separators)
-        if (stream.match(sep))
-            return Token(Token.SEP, sep, pos);
-
-    // Try matching all operators
-    foreach (op; operators)
-        if (stream.match(op.str))
-            return Token(Token.OP, op.str, pos);
 
     // Invalid character
     stream.readCh();

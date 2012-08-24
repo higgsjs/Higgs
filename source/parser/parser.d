@@ -367,6 +367,8 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 1)
         if (op.prec < minPrec)
             break;
 
+        //writefln("binary op: %s", cur.stringVal);
+
         // Compute the minimal precedence for the recursive call (if any)
         int nextMinPrec = (op.assoc == 'l')? (op.prec + 1):op.prec;
 
@@ -470,6 +472,21 @@ ASTExpr parseAtom(TokenStream input)
         return new ArrayExpr(exprs, pos);
     }
 
+    // New expression
+    else if (t.type == Token.OP && t.stringVal == "new")
+    {
+        // Consume the "new" token
+        input.read();
+
+        // Parse the base expression
+        auto op = findOperator(t.stringVal, 1, 'r');
+        auto baseExpr = parseExpr(input, op.prec);
+
+        // Parse the argument list and create the new expression
+        auto argExprs = parseExprList(input, "(", ")");
+        return new NewExpr(baseExpr, argExprs, t.pos);
+    }
+
     // Function expression
     // fun (params) body
     else if (input.matchKw("fun"))
@@ -534,6 +551,8 @@ ASTExpr parseAtom(TokenStream input)
     // Unary expressions
     else if (t.type == Token.OP)
     {
+        //writefln("unary op: %s", t.stringVal);
+
         auto op = findOperator(t.stringVal, 1, 'r');
         if (!op)
         {

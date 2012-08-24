@@ -566,6 +566,28 @@ class CallExpr : ASTExpr
 }
 
 /**
+New/constructor expression
+*/
+class NewExpr : ASTExpr
+{
+    ASTExpr base;
+
+    ASTExpr[] args;
+
+    this(ASTExpr base, ASTExpr[] args, SrcPos pos = null)
+    {
+        super(pos);
+        this.base = base;
+        this.args = args;
+    }
+
+    string toString()
+    {
+        return xformat("new %s(%(%s, %))", base, args);
+    }
+}
+
+/**
 Array/object indexing (subscript) expression
 */
 class IndexExpr : ASTExpr

@@ -271,6 +271,17 @@ unittest
         )
     );
 
+    testExprAST("new a.b();",
+        new NewExpr(
+            new BinOpExpr(
+                ".",
+                new IdentExpr("a"),
+                new IdentExpr("b")
+            ),
+            []
+        )
+    );
+
     testExprAST("-a++;",
         new UnOpExpr(
             "-", 'r',

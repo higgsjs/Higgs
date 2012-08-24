@@ -230,6 +230,13 @@ void resolveVars(ASTExpr expr, Scope s)
             resolveVars(e, s);
     }
 
+    else if (auto newExpr = cast(NewExpr)expr)
+    {
+        resolveVars(newExpr.base, s);
+        foreach (e; newExpr.args)
+            resolveVars(e, s);
+    }
+
     else if (auto indexExpr = cast(IndexExpr)expr)
     {
         resolveVars(indexExpr.base, s);
