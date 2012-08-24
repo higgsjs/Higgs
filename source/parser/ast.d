@@ -461,7 +461,8 @@ class BinOpExpr : ASTExpr
 
     this(Operator op, ASTExpr lExpr, ASTExpr rExpr, SrcPos pos = null)
     {
-        assert (op !is null && op.arity == 2);
+        assert (op !is null, "operator is null");
+        assert (op.arity == 2, "invalid arity");
 
         super(pos);
         this.op = op;

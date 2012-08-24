@@ -2,16 +2,17 @@ DC = dmd
 BIN_NAME = higgs
 
 # Source files
-SRC =           \
-util/id.d       \
-util/string.d   \
-parser/lexer.d  \
-parser/ast.d    \
-parser/vars.d   \
-parser/parser.d \
-ir/ir.d         \
-ir/ast.d        \
-repl.d          \
+SRC =               \
+util/id.d           \
+util/string.d       \
+parser/lexer.d      \
+parser/ast.d        \
+parser/vars.d       \
+parser/parser.d     \
+parser/tests.d      \
+ir/ir.d             \
+ir/ast.d            \
+repl.d              \
 main.d
 
 all:

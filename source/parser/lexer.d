@@ -58,73 +58,93 @@ struct OpInfo
 
 alias const(OpInfo)* Operator;
 
+/// Maximum operator precedence
+immutable int OP_MAX_PREC = 17;
+
 /**
 Operator table
 */
 OpInfo[] operators = [
-    { "="   , 2, 1, 'r' },
-    { "+="  , 2, 1, 'r' },
-    { "-="  , 2, 1, 'r' },
-    { "*="  , 2, 1, 'r' },
-    { "/="  , 2, 1, 'r' },
-    { "%="  , 2, 1, 'r' },
-    { "&="  , 2, 1, 'r' },
-    { "|="  , 2, 1, 'r' },
-    { "^="  , 2, 1, 'r' },
-    { "<<=" , 2, 1, 'r' },
-    { ">>=" , 2, 1, 'r' },
-    { ">>>=", 2, 1, 'r' },
-
-    // Ternary conditional
-    { "?", 3, 2, 'r' },
-
-    { "||", 2, 2, 'l' },
-    { "&&", 2, 2, 'l' },
-
-    // Comparison operators
-    { "<" , 2, 3, 'l' },
-    { "<=", 2, 3, 'l' },
-    { ">" , 2, 3, 'l' },
-    { ">=", 2, 3, 'l' },
-    { "==", 2, 3, 'l' },
-    { "!=", 2, 3, 'l' },
-
-    // String concatenation
-    { "~" , 2, 4, 'l' },
-
-    { "&", 2, 5, 'l' },
-    { "|", 2, 5, 'l' },
-    { "^", 2, 5, 'l' },
-
-    { "<<" , 2, 6, 'l' },
-    { ">>" , 2, 6, 'l' },
-    { ">>>", 2, 6, 'l' },
-
-    { "+", 2, 7, 'l' },
-    { "-", 2, 7, 'l' },
-
-    { "*", 2, 8, 'l' },
-    { "/", 2, 8, 'l' },
-    { "%", 2, 8, 'l' },
-
-    // Prefix unary operators
-    { "+" , 1, 9, 'r' },
-    { "-" , 1, 9, 'r' },
-    { "!" , 1, 9, 'r' },
-    { "~" , 1, 9, 'r' },
-    { "++", 1, 9, 'r' },
-    { "--", 1, 9, 'r' },
-
-    // Postfix unary operators
-    { "++", 1, 10, 'l' },
-    { "--", 1, 10, 'l' },
-
-    // Function call and array indexing
-    { "(", 1, 10, 'l' },
-    { "[", 1, 10, 'l' },
 
     // Member operator
-    { ".", 2, 10, 'l' },
+    { ".", 2, 1, 'l' },
+
+    // Array indexing
+    { "[", 1, 1, 'l' },
+
+    // New/constructor operator
+    { "new", 1, 1, 'r' },
+
+    // Function call
+    { "(", 1, 2, 'l' },
+
+    // Postfix unary operators
+    { "++", 1, 3, 'l' },
+    { "--", 1, 3, 'l' },
+
+    // Prefix unary operators
+    { "+" , 1, 4, 'r' },
+    { "-" , 1, 4, 'r' },
+    { "!" , 1, 4, 'r' },
+    { "~" , 1, 4, 'r' },
+    { "++", 1, 4, 'r' },
+    { "--", 1, 4, 'r' },
+    { "typeof", 1, 4, 'r' },
+    { "delete", 1, 4, 'r' },
+
+    // Multiplication/division/modulus
+    { "*", 2, 5, 'l' },
+    { "/", 2, 5, 'l' },
+    { "%", 2, 5, 'l' },
+
+    // Addition/subtraction
+    { "+", 2, 6, 'l' },
+    { "-", 2, 6, 'l' },
+
+    // Bitwise shift
+    { "<<" , 2, 7, 'l' },
+    { ">>" , 2, 7, 'l' },
+    { ">>>", 2, 7, 'l' },
+
+    // Relational operators
+    { "<"         , 2, 8, 'l' },
+    { "<="        , 2, 8, 'l' },
+    { ">"         , 2, 8, 'l' },
+    { ">="        , 2, 8, 'l' },
+    { "in"        , 2, 8, 'l' },
+    { "instanceof", 2, 8, 'l' },
+
+    // Equality comparison
+    { "==" , 2, 9, 'l' },
+    { "!=" , 2, 9, 'l' },
+    { "===", 2, 9, 'l' },
+    { "!==", 2, 9, 'l' },
+
+    // Bitwise operators
+    { "&", 2, 10, 'l' },
+    { "^", 2, 11, 'l' },
+    { "|", 2, 12, 'l' },
+
+    // Logical operators
+    { "&&", 2, 13, 'l' },
+    { "||", 2, 14, 'l' },
+
+    // Ternary conditional
+    { "?", 3, 15, 'r' },
+
+    // Assignment
+    { "="   , 2, 16, 'r' },
+    { "+="  , 2, 16, 'r' },
+    { "-="  , 2, 16, 'r' },
+    { "*="  , 2, 16, 'r' },
+    { "/="  , 2, 16, 'r' },
+    { "%="  , 2, 16, 'r' },
+    { "&="  , 2, 16, 'r' },
+    { "|="  , 2, 16, 'r' },
+    { "^="  , 2, 16, 'r' },
+    { "<<=" , 2, 16, 'r' },
+    { ">>=" , 2, 16, 'r' },
+    { ">>>=", 2, 16, 'r' },
 ];
 
 /**
@@ -164,11 +184,15 @@ string [] keywords = [
 ];
 
 /**
-Static module constructor to initialize the separator,
-keyword and operator tables
+Static module constructor to initialize the
+separator, keyword and operator tables
 */
 static this()
 {
+    // Flip the operator precedence values
+    for (size_t i = 0; i < operators.length; ++i)
+        operators[i].prec = OP_MAX_PREC - operators[i].prec;
+
     // Sort the tables by decreasing string length
     sort!("a.str.length > b.str.length")(operators);
     sort!("a.length > b.length")(separators);
