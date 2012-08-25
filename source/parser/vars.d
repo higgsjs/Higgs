@@ -37,6 +37,7 @@
 
 module parser.vars;
 
+import std.stdio;
 import parser.ast;
 
 /**
@@ -246,6 +247,12 @@ void resolveVars(ASTExpr expr, Scope s)
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         foreach (e; arrayExpr.exprs)
+            resolveVars(e, s);
+    }
+
+    else if (auto objectExpr = cast(ObjectExpr)expr)
+    {
+        foreach (e; objectExpr.values)
             resolveVars(e, s);
     }
 

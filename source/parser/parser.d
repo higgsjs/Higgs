@@ -472,6 +472,39 @@ ASTExpr parseAtom(TokenStream input)
         return new ArrayExpr(exprs, pos);
     }
 
+    // Object literal
+    else if (input.matchSep("{"))
+    {
+        IdentExpr[] names = [];
+        ASTExpr[] values = [];
+
+        for (;;)
+        {
+            if (input.matchSep("}"))
+                break;
+
+            if (values.length > 0 && input.matchSep(",") == false)
+                throw new ParseError("expected comma", input.getPos());
+
+            auto nameExpr = parseAtom(input);
+            auto identExpr = cast(IdentExpr)nameExpr;
+            auto stringExpr = cast(StringExpr)nameExpr;
+            if (stringExpr)
+                identExpr = new IdentExpr(stringExpr.val, stringExpr.pos);
+            if (!identExpr)
+                throw new ParseError("invalid property name", nameExpr.pos);
+            names ~= [identExpr];
+
+            readSep(input, ":");
+
+            // TODO: priority above comma op?
+            auto valueExpr = parseExpr(input);
+            values ~= [valueExpr];
+        }
+
+        return new ObjectExpr(names, values, pos);
+    }
+
     // New expression
     else if (t.type == Token.OP && t.stringVal == "new")
     {
@@ -489,17 +522,19 @@ ASTExpr parseAtom(TokenStream input)
 
     // Function expression
     // fun (params) body
-    else if (input.matchKw("fun"))
+    else if (input.matchKw("function"))
     {
+        auto nextTok = input.peek();
+        auto nameExpr = (nextTok.type != Token.SEP)? parseAtom(input):null;
+        auto funcName = cast(IdentExpr)nameExpr;
+        if (nameExpr && !funcName)
+            throw new ParseError("invalid function name", nameExpr.pos);
+
         auto params = parseParamList(input);
+
         auto bodyStmt = parseStmt(input);
 
-        // If the body is an expression statement,
-        // replace it by a return statement
-        if (auto exprStmt = cast(ExprStmt)bodyStmt)
-            bodyStmt = new ReturnStmt(exprStmt.expr, exprStmt.pos);
-
-        return new FunExpr(params, bodyStmt, pos);
+        return new FunExpr(funcName, params, bodyStmt, pos);
     }
 
     // Identifier/symbol literal

@@ -37,6 +37,7 @@
 
 module parser.tests;
 
+import core.exception;
 import std.stdio;
 import parser.ast;
 import parser.parser;
@@ -135,6 +136,11 @@ unittest
     testParse("1? 2:3 + 4;");
 
     testParse("[x + y, 2, \"foo\"];");
+
+    testParse("{ a:1, b:2 };", false);
+    testParse("a = { a:1, b:2 };");
+    testParse("a = { a:1, \"b\":2 };");
+    testParse("a = { a:1, b:2+3*4 };");
 }
 
 /// Test expression ASTs
@@ -371,22 +377,27 @@ unittest
 /// Test function parsing and ASTs
 unittest
 {
-    testParse("fun () { return 1; };");
-    testParse("fun () { return; };");
-    testParse("fun (x) {};");
-    testParse("fun (x,y) {};");
-    testParse("fun (x,) {};", false);
-    testParse("fun (x) { if (x) return 1; else return 2; };",);
+    testParse("function () { return 1; };");
+    testParse("function () { return; };");
+    testParse("function (x) {};");
+    testParse("function (x,y) {};");
+    testParse("function (x,) {};", false);
+    testParse("function (x) { if (x) return 1; else return 2; };",);
 
-    testExprAST("fun () { return 1; };",
+    testExprAST("function () { return 1; };",
         new FunExpr(
+            null,
             [], 
             new BlockStmt([new ReturnStmt(new IntExpr(1))])
         )
     );
 
-    testExprAST("fun () 1;;",
-        new FunExpr([], new ReturnStmt(new IntExpr(1)))
+    testExprAST("function foo() {};",
+        new FunExpr(
+            new IdentExpr("foo"),
+            [],
+            new BlockStmt([])
+        )
     );
 }
 

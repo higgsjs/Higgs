@@ -167,7 +167,7 @@ Keyword tokens
 */
 string [] keywords = [
     "var",
-    "fun",
+    "function",
     "if",
     "else",
     "do",

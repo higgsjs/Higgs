@@ -39,6 +39,7 @@ module parser.ast;
 
 import std.stdio;
 import std.string;
+import std.array;
 import std.conv;
 import std.algorithm;
 import std.math;
@@ -64,7 +65,7 @@ class ASTProgram : FunExpr
 {
     this(ASTStmt[] stmts, SrcPos pos = null)
     {
-        super([], new BlockStmt(stmts), pos);
+        super(null, [], new BlockStmt(stmts), pos);
     }
 
     string toString()
@@ -421,6 +422,9 @@ Function declaration expression
 */
 class FunExpr : ASTExpr
 {
+    /// Function name identifier
+    IdentExpr name;
+
     /// Function parameters
     IdentExpr[] params;
 
@@ -430,20 +434,33 @@ class FunExpr : ASTExpr
     /// List of local variables declarations
     ASTNode[] locals;
 
-    this(IdentExpr[] params, ASTStmt bodyStmt, SrcPos pos = null)
+    this(IdentExpr name, IdentExpr[] params, ASTStmt bodyStmt, SrcPos pos = null)
     {
         super(pos);
+        this.name = name;
         this.params = params;
         this.bodyStmt = bodyStmt;
     }
 
     string toString()
     {
-        return xformat(
-            "(fun (%(%s,%)) %s)",
-            params,
-            bodyStmt
-        );
+        if (name)
+        {
+            return xformat(
+                "(fun %s (%(%s,%)) %s)",
+                name,
+                params,
+                bodyStmt
+            );
+        }
+        else
+        {
+            return xformat(
+                "(fun (%(%s,%)) %s)",
+                params,
+                bodyStmt
+            );
+        }
     }
 }
 
@@ -625,6 +642,45 @@ class ArrayExpr : ASTExpr
     string toString()
     {
         return xformat("[%(%s, %)]", exprs);
+    }
+}
+
+/**
+Object literal expression
+*/
+class ObjectExpr : ASTExpr
+{
+    IdentExpr[] names;
+
+    ASTExpr[] values;
+
+    this(IdentExpr[] names, ASTExpr[] values, SrcPos pos = null)
+    {
+        assert (names.length == values.length);
+
+        super(pos);
+        this.names = names;
+        this.values = values;
+    }
+
+    string toString()
+    {
+        auto output = appender!(string)();
+
+        output.put("{");
+
+        for (size_t i = 0; i < names.length; ++i)
+        {
+            output.put(names[i].toString());
+            output.put(":");
+            output.put(values[i].toString());
+            if (i != names.length - 1)
+                output.put(", ");
+        }
+
+        output.put("}");
+
+        return output.data;
     }
 }
 
