@@ -107,13 +107,19 @@ ASTProgram testExprAST(string input, ASTExpr exprAst)
 unittest
 {
     testParse("");
+
     testParse(";");
     testParse("+", false);
     testParse(":", false);
+
     testParse("1", false);
     testParse("1;");
     testParse("3.0;");
+
     testParse("\"foobar\";");
+    testParse("'foobar';");
+    testParse("\"foobar';", false);
+
     testParse("[1, 2, 3];");
     testParse("true;");
     testParse("false;");

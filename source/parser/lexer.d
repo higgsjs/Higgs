@@ -604,9 +604,9 @@ Token getToken(StrStream stream)
     }
 
     // String constant
-    if (ch == '"')
+    if (ch == '"' || ch == '\'')
     {
-        stream.readCh();
+        auto openChar = stream.readCh();
 
         string str = "";
 
@@ -615,7 +615,7 @@ Token getToken(StrStream stream)
         {
             ch = stream.readCh();
 
-            if (ch == '"')
+            if (ch == openChar)
                 break;
 
             if (ch == '\0')
