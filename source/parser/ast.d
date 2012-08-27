@@ -487,7 +487,7 @@ class BinOpExpr : ASTExpr
         this.rExpr = rExpr;
     }
 
-    this(string opStr, ASTExpr lExpr, ASTExpr rExpr, SrcPos pos = null)
+    this(wstring opStr, ASTExpr lExpr, ASTExpr rExpr, SrcPos pos = null)
     {
         auto op = findOperator(opStr, 2);
         this(op, lExpr, rExpr, pos);
@@ -522,7 +522,7 @@ class UnOpExpr : ASTExpr
         this.expr = expr;
     }
 
-    this(string opStr, char assoc, ASTExpr expr, SrcPos pos = null)
+    this(wstring opStr, char assoc, ASTExpr expr, SrcPos pos = null)
     {
         auto op = findOperator(opStr, 1, assoc);
         this(op, expr, pos);
@@ -690,12 +690,12 @@ Identifier/symbol expression
 class IdentExpr : ASTExpr
 {
     /// Identifier name string
-    string name;
+    wstring name;
 
     /// AST node where this variable was declared, if applicable
     ASTNode declNode = null;
 
-    this(string name, SrcPos pos = null)
+    this(wstring name, SrcPos pos = null)
     {
         super(pos);
         this.name = name;
@@ -703,7 +703,7 @@ class IdentExpr : ASTExpr
 
     string toString()
     {
-        return name;
+        return to!string(name);
     }
 }
 
@@ -753,9 +753,9 @@ String-constant expression
 */
 class StringExpr : ASTExpr
 {
-    string val;
+    wstring val;
 
-    this(string val, SrcPos pos = null)
+    this(wstring val, SrcPos pos = null)
     {
         super(pos);
         this.val = val;
@@ -763,7 +763,7 @@ class StringExpr : ASTExpr
 
     string toString()
     {
-        return "\"" ~ val ~ "\"";
+        return "\"" ~ to!string(val) ~ "\"";
     }
 }
 

@@ -40,6 +40,7 @@ module parser.lexer;
 import std.stdio;
 import std.file;
 import std.string;
+import std.format;
 import std.regex;
 import std.conv;
 import std.algorithm;
@@ -50,7 +51,7 @@ Operator information structure
 */
 struct OpInfo
 {
-    string str;
+    wstring str;
     int arity;
     int prec;
     char assoc;
@@ -67,120 +68,120 @@ Operator table
 OpInfo[] operators = [
 
     // Member operator
-    { ".", 2, 1, 'l' },
+    { "."w, 2, 1, 'l' },
 
     // Array indexing
-    { "[", 1, 1, 'l' },
+    { "["w, 1, 1, 'l' },
 
     // New/constructor operator
-    { "new", 1, 1, 'r' },
+    { "new"w, 1, 1, 'r' },
 
     // Function call
-    { "(", 1, 2, 'l' },
+    { "("w, 1, 2, 'l' },
 
     // Postfix unary operators
-    { "++", 1, 3, 'l' },
-    { "--", 1, 3, 'l' },
+    { "++"w, 1, 3, 'l' },
+    { "--"w, 1, 3, 'l' },
 
     // Prefix unary operators
-    { "+" , 1, 4, 'r' },
-    { "-" , 1, 4, 'r' },
-    { "!" , 1, 4, 'r' },
-    { "~" , 1, 4, 'r' },
-    { "++", 1, 4, 'r' },
-    { "--", 1, 4, 'r' },
-    { "typeof", 1, 4, 'r' },
-    { "delete", 1, 4, 'r' },
+    { "+"w , 1, 4, 'r' },
+    { "-"w , 1, 4, 'r' },
+    { "!"w , 1, 4, 'r' },
+    { "~"w , 1, 4, 'r' },
+    { "++"w, 1, 4, 'r' },
+    { "--"w, 1, 4, 'r' },
+    { "typeof"w, 1, 4, 'r' },
+    { "delete"w, 1, 4, 'r' },
 
     // Multiplication/division/modulus
-    { "*", 2, 5, 'l' },
-    { "/", 2, 5, 'l' },
-    { "%", 2, 5, 'l' },
+    { "*"w, 2, 5, 'l' },
+    { "/"w, 2, 5, 'l' },
+    { "%"w, 2, 5, 'l' },
 
     // Addition/subtraction
-    { "+", 2, 6, 'l' },
-    { "-", 2, 6, 'l' },
+    { "+"w, 2, 6, 'l' },
+    { "-"w, 2, 6, 'l' },
 
     // Bitwise shift
-    { "<<" , 2, 7, 'l' },
-    { ">>" , 2, 7, 'l' },
-    { ">>>", 2, 7, 'l' },
+    { "<<"w , 2, 7, 'l' },
+    { ">>"w , 2, 7, 'l' },
+    { ">>>"w, 2, 7, 'l' },
 
     // Relational operators
-    { "<"         , 2, 8, 'l' },
-    { "<="        , 2, 8, 'l' },
-    { ">"         , 2, 8, 'l' },
-    { ">="        , 2, 8, 'l' },
-    { "in"        , 2, 8, 'l' },
-    { "instanceof", 2, 8, 'l' },
+    { "<"w         , 2, 8, 'l' },
+    { "<="w        , 2, 8, 'l' },
+    { ">"w         , 2, 8, 'l' },
+    { ">="w        , 2, 8, 'l' },
+    { "in"w        , 2, 8, 'l' },
+    { "instanceof"w, 2, 8, 'l' },
 
     // Equality comparison
-    { "==" , 2, 9, 'l' },
-    { "!=" , 2, 9, 'l' },
-    { "===", 2, 9, 'l' },
-    { "!==", 2, 9, 'l' },
+    { "=="w , 2, 9, 'l' },
+    { "!="w , 2, 9, 'l' },
+    { "==="w, 2, 9, 'l' },
+    { "!=="w, 2, 9, 'l' },
 
     // Bitwise operators
-    { "&", 2, 10, 'l' },
-    { "^", 2, 11, 'l' },
-    { "|", 2, 12, 'l' },
+    { "&"w, 2, 10, 'l' },
+    { "^"w, 2, 11, 'l' },
+    { "|"w, 2, 12, 'l' },
 
     // Logical operators
-    { "&&", 2, 13, 'l' },
-    { "||", 2, 14, 'l' },
+    { "&&"w, 2, 13, 'l' },
+    { "||"w, 2, 14, 'l' },
 
     // Ternary conditional
-    { "?", 3, 15, 'r' },
+    { "?"w, 3, 15, 'r' },
 
     // Assignment
-    { "="   , 2, 16, 'r' },
-    { "+="  , 2, 16, 'r' },
-    { "-="  , 2, 16, 'r' },
-    { "*="  , 2, 16, 'r' },
-    { "/="  , 2, 16, 'r' },
-    { "%="  , 2, 16, 'r' },
-    { "&="  , 2, 16, 'r' },
-    { "|="  , 2, 16, 'r' },
-    { "^="  , 2, 16, 'r' },
-    { "<<=" , 2, 16, 'r' },
-    { ">>=" , 2, 16, 'r' },
-    { ">>>=", 2, 16, 'r' },
+    { "="w   , 2, 16, 'r' },
+    { "+="w  , 2, 16, 'r' },
+    { "-="w  , 2, 16, 'r' },
+    { "*="w  , 2, 16, 'r' },
+    { "/="w  , 2, 16, 'r' },
+    { "%="w  , 2, 16, 'r' },
+    { "&="w  , 2, 16, 'r' },
+    { "|="w  , 2, 16, 'r' },
+    { "^="w  , 2, 16, 'r' },
+    { "<<="w , 2, 16, 'r' },
+    { ">>="w , 2, 16, 'r' },
+    { ">>>="w, 2, 16, 'r' },
 ];
 
 /**
 Separator tokens
 */
-string[] separators = [
-    ",",
-    ":",
-    ";",
-    "(",
-    ")",
-    "[",
-    "]",
-    "{",
-    "}"
+wstring[] separators = [
+    ","w,
+    ":"w,
+    ";"w,
+    "("w,
+    ")"w,
+    "["w,
+    "]"w,
+    "{"w,
+    "}"w
 ];
 
 /**
 Keyword tokens
 */
-string [] keywords = [
-    "var",
-    "function",
-    "if",
-    "else",
-    "do",
-    "while",
-    "for",
-    "return",
-    "throw",
-    "try",
-    "catch",
-    "finally",
-    "true",
-    "false",
-    "null"
+wstring [] keywords = [
+    "var"w,
+    "function"w,
+    "if"w,
+    "else"w,
+    "do"w,
+    "while"w,
+    "for"w,
+    "return"w,
+    "throw"w,
+    "try"w,
+    "catch"w,
+    "finally"w,
+    "true"w,
+    "false"w,
+    "null"w
 ];
 
 /**
@@ -202,7 +203,7 @@ static this()
 /**
 Find an operator by string, arity and associativity
 */
-Operator findOperator(string op, int arity = 0, char assoc = '\0')
+Operator findOperator(wstring op, int arity = 0, char assoc = '\0')
 {
     for (size_t i = 0; i < operators.length; ++i)
     {
@@ -256,7 +257,7 @@ String stream, used to lex from strings
 class StrStream
 {
     /// Input string
-    string str;
+    wstring str;
 
     /// File name
     string file;
@@ -270,16 +271,16 @@ class StrStream
     /// Current column
     int col = 1;
 
-    this(string str, string file)
+    this(wstring str, string file)
     {
         this.str = str;
         this.file = file;
     }
 
     /// Read a character and advance the current index
-    char readCh()
+    auto readCh()
     {
-        auto ch = (index < str.length)? str[index]:'\0';
+        wchar ch = (index < str.length)? str[index]:'\0';
 
         index++;
 
@@ -297,14 +298,14 @@ class StrStream
     }
 
     /// Read a character without advancing the index
-    char peekCh()
+    auto peekCh()
     {
-        auto ch = (index < str.length)? str[index]:'\0';
+        wchar ch = (index < str.length)? str[index]:'\0';
         return ch;
     }
 
     /// Test for a match with a given string, the string is consumed if matched
-    bool match(string str)
+    bool match(wstring str)
     {
         if (index + str.length > this.str.length)
             return false;
@@ -321,7 +322,7 @@ class StrStream
     }
 
     /// Test for a match with a regupar expression
-    auto match(StaticRegex!(char) re)
+    auto match(StaticRegex!(wchar) re)
     {
         auto m = std.regex.match(str[index .. str.length], re);
 
@@ -339,27 +340,27 @@ class StrStream
     }
 }
 
-bool whitespace(char ch)
+bool whitespace(wchar ch)
 {
     return (ch == '\r' || ch == '\n' || ch == ' ');
 }
 
-bool alpha(char ch)
+bool alpha(wchar ch)
 {
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
 }
 
-bool digit(char ch)
+bool digit(wchar ch)
 {
     return (ch >= '0' && ch <= '9');
 }
 
-bool identStart(char ch)
+bool identStart(wchar ch)
 {
     return alpha(ch) || ch == '_';
 }
 
-bool identPart(char ch)
+bool identPart(wchar ch)
 {
     return identStart(ch) || digit(ch);
 }
@@ -391,7 +392,7 @@ struct Token
     {
         long intVal;
         double floatVal;
-        string stringVal;
+        wstring stringVal;
     }
 
     /// Source position
@@ -415,7 +416,7 @@ struct Token
         this.pos = pos;
     }
 
-    this(Type type, string val, SrcPos pos)
+    this(Type type, wstring val, SrcPos pos)
     {
         assert (
             type == OP      ||
@@ -489,7 +490,7 @@ class TokenStream
         return t;
     }
 
-    bool matchKw(string keyword)
+    bool matchKw(wstring keyword)
     {
         Token t = tokens.front;
         if (t.type != Token.KEYWORD || t.stringVal != keyword)
@@ -499,7 +500,7 @@ class TokenStream
         return true;
     }
 
-    bool matchSep(string sep)
+    bool matchSep(wstring sep)
     {
         Token t = tokens.front;
         if (t.type != Token.SEP || t.stringVal != sep)
@@ -525,7 +526,7 @@ Get the first token from a stream
 */
 Token getToken(StrStream stream)
 {
-    char ch;
+    wchar ch;
 
     // Consume whitespace and comments
     for (;;)
@@ -579,8 +580,7 @@ Token getToken(StrStream stream)
     // Number
     if (digit(ch))
     {
-        //enum intRegex = ctRegex!(`^[0-9]+`);
-        enum fpRegex = ctRegex!(`^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?`);
+        enum fpRegex = ctRegex!(`^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?`w);
     
         auto m = stream.match(fpRegex);
         assert (m.empty == false);
@@ -608,7 +608,7 @@ Token getToken(StrStream stream)
     {
         auto openChar = stream.readCh();
 
-        string str = "";
+        wstring str = "";
 
         // Until the end of the string
         for (;;)
@@ -627,10 +627,30 @@ Token getToken(StrStream stream)
                 );
             }
 
-            // If this is an escape sequence
-            if (ch == '\\')
+            // Hexadecimal escape sequence regular expressions
+            enum hexRegex = ctRegex!(`^x([0-9|a-f|A-F]{2})`w);
+            enum uniRegex = ctRegex!(`^u([0-9|a-f|A-F]{4})`w);
+
+            // Try to match hexadecimal escape sequences
+            auto m = stream.match(hexRegex);
+            if (m.empty == true)
+                m = stream.match(uniRegex);
+
+            // Unicode escape sequence
+            if (m.empty == false)
             {
-                char code = stream.readCh();
+                auto hexStr = m.captures[1].toLower();
+
+                int charCode;
+                formattedRead(hexStr, "%x", &charCode);
+
+                str ~= cast(char)charCode;
+            }
+
+            // Character escape sequence
+            else if (ch == '\\')
+            {
+                auto code = stream.readCh();
 
                 switch (code)
                 {
@@ -648,6 +668,8 @@ Token getToken(StrStream stream)
                     );
                 }
             }
+
+            // Normal character
             else
             {
                 str ~= ch;
@@ -677,7 +699,7 @@ Token getToken(StrStream stream)
     if (identStart(ch))
     {
         stream.readCh();
-        string identStr = "" ~ ch;
+        wstring identStr = ""w ~ ch;
 
         for (;;)
         {
@@ -720,7 +742,7 @@ TokenStream lexStream(StrStream input)
     return new TokenStream(app.data);
 }
 
-TokenStream lexString(string input, string file)
+TokenStream lexString(wstring input, string file)
 {
     return lexStream(new StrStream(input, file));
 }

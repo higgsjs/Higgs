@@ -119,6 +119,8 @@ unittest
     testParse("\"foobar\";");
     testParse("'foobar';");
     testParse("\"foobar';", false);
+    testParse("'foo\\x55bar';");
+    testParse("'foo\\uABCDbar';");
 
     testParse("[1, 2, 3];");
     testParse("true;");
@@ -157,6 +159,11 @@ unittest
     testExprAST("true;", new TrueExpr());
     testExprAST("false;", new FalseExpr());
     testExprAST("null;", new NullExpr());
+
+    // String escape sequences
+    testExprAST("'foo\\nbar';", new StringExpr("foo\nbar"));
+    testExprAST("'foo\\x55bar';", new StringExpr("foo\x55bar"));
+    testExprAST("'foo\\u0055bar';", new StringExpr("foo\u0055bar"w));
 
     testExprAST("1 + b;", 
         new BinOpExpr("+", new IntExpr(1), new IdentExpr("b"))

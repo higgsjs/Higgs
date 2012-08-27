@@ -52,7 +52,7 @@ class Scope
     ASTNode node;
 
     /// Declarations in this scope, indexed by name
-    ASTNode[string] decls;
+    ASTNode[wstring] decls;
 
     this(ASTNode node, Scope parent = null)
     {
@@ -63,7 +63,7 @@ class Scope
     /**
     Add a declaration to this scope
     */
-    void addDecl(ASTNode node, string name)
+    void addDecl(ASTNode node, wstring name)
     {
         // If this variable was already declared, do nothing
         if (name in decls)
@@ -88,7 +88,7 @@ class Scope
     /**
     Resolve an variable's declaration by name
     */
-    ASTNode resolve(string name)
+    ASTNode resolve(wstring name)
     {
         if (name in decls)
             return decls[name];

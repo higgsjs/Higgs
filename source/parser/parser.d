@@ -39,7 +39,9 @@ module parser.parser;
 
 import std.stdio;
 import std.file;
+import std.utf;
 import std.array;
+import std.conv;
 import parser.lexer;
 import parser.ast;
 import parser.vars;
@@ -69,10 +71,10 @@ class ParseError : Error
 Read and consume a separator token. A parse error
 is thrown is the separator is missing.
 */
-void readSep(TokenStream input, string sep)
+void readSep(TokenStream input, wstring sep)
 {
     if (input.matchSep(sep) == false)
-        throw new ParseError("expected \"" ~ sep ~ "\"", input.getPos);
+        throw new ParseError("expected \"" ~ to!string(sep) ~ "\"", input.getPos);
 }
 
 /**
@@ -89,7 +91,11 @@ Parse a source string
 */
 ASTProgram parseString(string src, string fileName = "")
 {
-    TokenStream input = lexString(src, fileName);
+    // Convert the string to UTF-16
+    wstring wSrc = toUTF16(src);
+
+    TokenStream input = lexString(wSrc, fileName);
+
     return parseProgram(input);
 }
 
@@ -592,7 +598,7 @@ ASTExpr parseAtom(TokenStream input)
         if (!op)
         {
             throw new ParseError(
-                "invalid unary operator \"" ~ t.stringVal ~ "\"", 
+                "invalid unary operator \"" ~ to!string(t.stringVal) ~ "\"", 
                 pos
             );
         }
@@ -612,7 +618,7 @@ ASTExpr parseAtom(TokenStream input)
 /**
 Parse a list of expressions
 */
-ASTExpr[] parseExprList(TokenStream input, string openSep, string closeSep)
+ASTExpr[] parseExprList(TokenStream input, wstring openSep, wstring closeSep)
 {
     readSep(input, openSep);
 
