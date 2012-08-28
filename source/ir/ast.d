@@ -269,6 +269,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
     else if (auto varStmt = cast(VarStmt)stmt)
     {
+        // TODO
+        /*
         if (varStmt.initExpr)
         {
             assgToIR(
@@ -280,6 +282,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
                 ctx
             );
         }
+        */
     }
 
     else if (auto ifStmt = cast(IfStmt)stmt)

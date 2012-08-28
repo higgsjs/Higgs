@@ -42,6 +42,10 @@ import std.stdio;
 import parser.ast;
 import parser.parser;
 
+
+// TODO: testParseFile
+
+
 ASTProgram testParse(string input, bool valid = true)
 {
     //writefln("input: %s", input);
@@ -348,6 +352,9 @@ unittest
     testParse("var x;");
     testParse("var x; var y; var z = 1 + 1;");
     testParse("var x += 2;", false);
+    testParse("var x, y, z;");
+    testParse("var x, y, z;", false);
+    testParse("var x = 1, y, z;");
 
     testParse("if (x) f();");
     testParse("if (x) f(); else g();");
@@ -385,7 +392,9 @@ unittest
 
     testAST(
         "var x = 1;",
-        new ASTProgram([new VarStmt(new IdentExpr("x"), new IntExpr(1))])
+        new ASTProgram([
+            new VarStmt([new IdentExpr("x")], [new IntExpr(1)])
+        ])
     );
 }
 

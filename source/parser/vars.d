@@ -142,12 +142,18 @@ void resolveVars(ASTStmt stmt, Scope s)
 
     else if (auto varStmt = cast(VarStmt)stmt)
     {
-        s.addDecl(varStmt, varStmt.identExpr.name);
+        for (size_t i = 0; i < varStmt.identExprs.length; ++i)
+        {
+            auto ident = varStmt.identExprs[i];
+            auto init = varStmt.initExprs[i];
 
-        resolveVars(varStmt.identExpr, s);
+            s.addDecl(ident, ident.name);
 
-        if (varStmt.initExpr)
-            resolveVars(varStmt.initExpr, s);
+            resolveVars(ident, s);
+
+            if (init)
+                resolveVars(init, s);
+        }
     }
 
     else if (auto ifStmt = cast(IfStmt)stmt)
@@ -171,9 +177,6 @@ void resolveVars(ASTStmt stmt, Scope s)
 
     else if (auto forStmt = cast(ForStmt)stmt)
     {
-        if (auto varStmt = cast(VarStmt)forStmt.initStmt)
-            s.addDecl(varStmt, varStmt.identExpr.name);
-
         resolveVars(forStmt.initStmt, s);
         resolveVars(forStmt.testExpr, s);
         resolveVars(forStmt.incrExpr, s);

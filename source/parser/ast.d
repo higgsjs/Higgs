@@ -134,25 +134,44 @@ Variable declaration/initialization statement
 */
 class VarStmt : ASTStmt
 {
-    /// Identifier expression
-    IdentExpr identExpr;
+    /// Identifier expressions
+    IdentExpr[] identExprs;
 
-    /// Initializer expression
-    ASTExpr initExpr;
+    /// Initializer expressions
+    ASTExpr[] initExprs;
 
-    this(IdentExpr identExpr, ASTExpr initExpr, SrcPos pos = null)
+    this(IdentExpr[] identExprs, ASTExpr[] initExprs, SrcPos pos = null)
     {
+        assert (identExprs.length == initExprs.length);
+
         super(pos);
-        this.identExpr = identExpr;
-        this.initExpr = initExpr;
+        this.identExprs = identExprs;
+        this.initExprs = initExprs;
     }
 
     string toString()
     {
-        if (this.initExpr)
-            return format("var %s = %s;", identExpr, initExpr);
-        else
-            return format("var %s;", identExpr);
+        auto output = appender!(string)();
+
+        output.put("var ");
+
+        for (size_t i = 0; i < identExprs.length; ++i)
+        {
+            output.put(identExprs[i].toString());
+
+            if (initExprs[i])
+            {
+                output.put(" = ");
+                output.put(initExprs[i].toString());
+            }
+
+            if (i < identExprs.length - 1)
+                output.put(", ");
+        }
+
+        output.put(";");
+
+        return output.data;
     }
 }
 

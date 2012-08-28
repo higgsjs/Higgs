@@ -165,27 +165,41 @@ ASTStmt parseStmt(TokenStream input)
     // Variable declaration/initialization statement
     else if (input.matchKw("var"))
     {
-        auto name = input.read();
-        if (name.type != Token.IDENT)
-        {
-            throw new ParseError(
-                "expected identifier in variable declaration",
-                name.pos
-            );
-        }
-        IdentExpr identExpr = new IdentExpr(name.stringVal, name.pos);
+        IdentExpr[] identExprs = [];
+        ASTExpr[] initExprs = [];
 
-        ASTExpr initExpr = null;
-        if (input.matchSep(";") == false)
+        for (;;)
         {
-            auto op = input.read();
-            if (op.type != Token.OP || op.stringVal != "=")
-                throw new ParseError("expected =", op.pos);
-            initExpr = parseExpr(input);
-            readSep(input, ";");
+            if (identExprs.length > 0 && input.matchSep(",") == false)
+                throw new ParseError("expected ,", input.getPos());
+
+            auto name = input.read();
+            if (name.type != Token.IDENT)
+            {
+                throw new ParseError(
+                    "expected identifier in variable declaration",
+                    name.pos
+                );
+            }
+            IdentExpr identExpr = new IdentExpr(name.stringVal, name.pos);
+
+            ASTExpr initExpr = null;
+            auto op = input.peek();
+
+            if (op.type == Token.OP && op.stringVal == "=")
+            {
+                input.read(); 
+                initExpr = parseExpr(input);
+            }
+    
+            identExprs ~= [identExpr];
+            initExprs ~= [initExpr];
+
+            if (input.matchSep(";"))
+                break;
         }
 
-        return new VarStmt(identExpr, initExpr, pos);
+        return new VarStmt(identExprs, initExprs, pos);
     }
 
     // If statement
@@ -314,7 +328,7 @@ ASTStmt parseStmt(TokenStream input)
         return new TryStmt(
             tryStmt, 
             catchIdent, 
-            catchStmt, 
+            catchStmt,
             finallyStmt
         );
     }
