@@ -467,7 +467,16 @@ Token stream, to simplify parsing
 class TokenStream
 {
     /// Internal token array
-    Token[] tokens;
+    private Token[] tokens;
+
+    /// Flag indicating a newline occurs before the current token
+    private bool nlPresent;
+
+    this(Token[] tokens)
+    {
+        this.tokens = tokens;
+        this.nlPresent = false;
+    }
 
     SrcPos getPos()
     {
@@ -482,30 +491,42 @@ class TokenStream
     Token read()
     {
         // Cannot read the last (EOF) token
-        assert (tokens.length > 1);
+        assert (tokens.length > 1, "cannot read final EOF token");
 
-        Token t = tokens.front;
+        auto t = tokens.front;
         tokens.popFront();
+
+        // Test if a newline occurs before the new front token
+        nlPresent = (tokens.front.pos.line > t.pos.line);
+
+        //writefln("read: %s", t);
+        //writefln("  next: %s", peek());
+        //writefln("  nlPresent: %s", nlPresent);
 
         return t;
     }
 
+    bool newline()
+    {
+        return nlPresent;
+    }
+
     bool matchKw(wstring keyword)
     {
-        Token t = tokens.front;
+        auto t = peek();
         if (t.type != Token.KEYWORD || t.stringVal != keyword)
             return false;
-        tokens.popFront();
+        read();
 
         return true;
     }
 
     bool matchSep(wstring sep)
     {
-        Token t = tokens.front;
+        auto t = peek();
         if (t.type != Token.SEP || t.stringVal != sep)
             return false;
-        tokens.popFront();
+        read();
 
         return true;
     }
@@ -513,11 +534,6 @@ class TokenStream
     bool eof()
     {
         return tokens.front.type == Token.EOF;
-    }
-
-    this(Token[] tokens)
-    {
-        this.tokens = tokens;
     }
 }
 

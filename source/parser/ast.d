@@ -469,7 +469,7 @@ class FunExpr : ASTExpr
         if (name)
         {
             return xformat(
-                "(fun %s (%(%s,%)) %s)",
+                "(function %s (%(%s,%)) %s)",
                 name,
                 params,
                 bodyStmt
@@ -478,7 +478,7 @@ class FunExpr : ASTExpr
         else
         {
             return xformat(
-                "(fun (%(%s,%)) %s)",
+                "(function (%(%s,%)) %s)",
                 params,
                 bodyStmt
             );

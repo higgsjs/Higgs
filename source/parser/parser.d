@@ -333,11 +333,42 @@ ASTStmt parseStmt(TokenStream input)
         );
     }
 
+    // Peek at the token at the start of the expression
+    auto startTok = input.peek();
+
     // Parse as an expression statement
     ASTExpr expr = parseExpr(input);
 
-    // Consume trailing semicolon
-    readSep(input, ";");
+    //writefln("Parsed expr: %s", expr);
+
+    // If there is no semicolon
+    if (input.matchSep(";") == false)
+    {
+        //writeln("auto semi");
+
+        // Peek at the token after the expression
+        auto endTok = input.peek();
+
+        // If the statement is empty
+        if (endTok == startTok)
+        {
+            throw new ParseError(
+                "empty statements must be terminated by semicolons",
+                endTok.pos
+            );
+        }
+
+        // If automatic semicolon insertion cannot occur here
+        if ((endTok.type == Token.SEP && endTok.stringVal == "}") == false &&
+            input.newline() == false &&
+            input.eof() == false)
+        {
+            throw new ParseError(
+                "expected semicolon",
+                endTok.pos
+            );
+        }       
+    }
 
     return new ExprStmt(expr, pos);
 }
@@ -371,6 +402,10 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 1)
     {
         // Peek at the current token
         Token cur = input.peek();
+
+        // If the token is not an operator or separator, break out
+        if (cur.type != Token.OP && cur.type != Token.SEP)
+            break;
 
         // Attempt to find a corresponding operator
         auto op = findOperator(cur.stringVal, 2);
@@ -459,6 +494,8 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 1)
             assert (false, "unhandled operator");
         }
     }
+
+    //writeln("leaving parseExpr");
 
     // Return the parsed expression
     return lhsExpr;

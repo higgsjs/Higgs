@@ -39,31 +39,36 @@ module parser.tests;
 
 import core.exception;
 import std.stdio;
+import std.file;
 import parser.ast;
 import parser.parser;
 
+ASTProgram testParseFile(string fileName)
+{
+    try
+    {
+        auto ast = parseFile(fileName);
+        return ast;
+    }
 
-// TODO: testParseFile
-
+    catch (Throwable e)
+    {
+        writeln("parse failed on file:\n" ~ fileName);
+        throw e;
+    }
+}
 
 ASTProgram testParse(string input, bool valid = true)
 {
     //writefln("input: %s", input);
+    //if (valid == false)
+    //    writeln("  not valid");
+
+    ASTProgram ast;
 
     try
     {
-        auto ast = parseString(input);
-
-        if (valid == false)
-        {
-            assert (
-                false,
-                "parse succeeded on invalid input:\n" ~
-                input         
-           );
-        }
-
-        return ast;
+        ast = parseString(input);
     }
 
     catch (Throwable e)
@@ -76,6 +81,17 @@ ASTProgram testParse(string input, bool valid = true)
 
         return null;
     }
+
+    if (valid == false)
+    {
+        assert (
+            false,
+            "parse succeeded on invalid input:\n" ~
+            input         
+        );
+    }
+
+    return ast;
 }
 
 ASTProgram testAST(string input, ASTNode inAst)
@@ -116,7 +132,7 @@ unittest
     testParse("+", false);
     testParse(":", false);
 
-    testParse("1", false);
+    testParse("1");
     testParse("1;");
     testParse("3.0;");
     testParse("0x09ABCD;");
@@ -348,12 +364,12 @@ unittest
     testParse("{}");
     testParse("{ 1; }");
     testParse("{ 1; 2; }");
+    testParse("{} {}");
 
     testParse("var x;");
     testParse("var x; var y; var z = 1 + 1;");
     testParse("var x += 2;", false);
     testParse("var x, y, z;");
-    testParse("var x, y, z;", false);
     testParse("var x = 1, y, z;");
 
     testParse("if (x) f();");
@@ -380,6 +396,12 @@ unittest
 
     testParse("try foo(); catch (e) e;");
     testParse("try foo(); catch (e) e; finally bar();");
+
+    // Automatic semicolon insertion
+    testParse("{ 1; 2 }");
+    testParse("1\n2");
+    testParse("if (x) y");
+    testParse("if (x) y\nelse\nz");
 }
 
 /// Test program-level ASTs
@@ -423,5 +445,15 @@ unittest
             new BlockStmt([])
         )
     );
+}
+
+/// Test parsing of source files
+unittest
+{
+    testParseFile("programs/sunspider/bitops-bits-in-byte.js");
+
+    // TODO: test on more source files
+
+
 }
 
