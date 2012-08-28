@@ -48,15 +48,18 @@ class Scope
     /// Parent scope
     Scope parent;
 
-    /// Associated AST node
-    ASTNode node;
+    /// Associated function
+    FunExpr fun;
 
     /// Declarations in this scope, indexed by name
     ASTNode[wstring] decls;
 
-    this(ASTNode node, Scope parent = null)
+    /// Variable references in this scope
+    IdentExpr[] refs;
+
+    this(FunExpr fun, Scope parent = null)
     {
-        this.node = node;
+        this.fun = fun;
         this.parent = parent;
     }
 
@@ -72,23 +75,44 @@ class Scope
         // Add the declaraction to this scope
         decls[name] = node;
 
-        // Find the function scope encompassing this declaration, if any
-        Scope funScope = this;
-        while (funScope !is null && cast(FunExpr)funScope.node is null)
-            funScope = funScope.parent;
+        // Add the local to the function
+        fun.locals ~= [node];
+    }
 
-        // Add the declaration to the function node
-        if (funScope !is null)
+    /**
+    Add a nested function declaration
+    */
+    void addFunDecl(FunExpr node)
+    {
+        fun.funDecls ~= [node];
+    }
+
+    /**
+    Add a variable reference to this scope
+    */
+    void addRef(IdentExpr node)
+    {
+        refs ~= [node];
+    }
+
+    /**
+    Resolve variable references in this scope
+    */
+    void resolveRefs()
+    {
+        foreach (ident; refs)
         {
-            auto funNode = cast(FunExpr)funScope.node;
-            funNode.locals ~= [node];
+            auto decl = resolve(ident.name);
+
+            // Store the resolved node on the identifier
+            ident.declNode = decl;
         }
     }
 
     /**
-    Resolve an variable's declaration by name
+    Resolve a variable's declaration by name
     */
-    ASTNode resolve(wstring name)
+    private ASTNode resolve(wstring name)
     {
         if (name in decls)
             return decls[name];
@@ -112,19 +136,14 @@ void resolveVars(ASTStmt stmt, Scope s)
 {
     if (auto blockStmt = cast(BlockStmt)stmt)
     {
-        s = new Scope(stmt, s);
-
-        // Parse variable declarations in this scope
-        foreach (subStmt; blockStmt.stmts)
-            if (auto varStmt = cast(VarStmt)subStmt)
-                s.addDecl(varStmt, varStmt.identExpr.name);
-
         foreach (subStmt; blockStmt.stmts)
             resolveVars(subStmt, s);
     }
 
     else if (auto varStmt = cast(VarStmt)stmt)
     {
+        s.addDecl(varStmt, varStmt.identExpr.name);
+
         resolveVars(varStmt.identExpr, s);
 
         if (varStmt.initExpr)
@@ -152,7 +171,6 @@ void resolveVars(ASTStmt stmt, Scope s)
 
     else if (auto forStmt = cast(ForStmt)stmt)
     {
-        s = new Scope(forStmt, s);
         if (auto varStmt = cast(VarStmt)forStmt.initStmt)
             s.addDecl(varStmt, varStmt.identExpr.name);
 
@@ -174,17 +192,18 @@ void resolveVars(ASTStmt stmt, Scope s)
 
     else if (auto tryStmt = cast(TryStmt)stmt)
     {
+        s.addDecl(tryStmt.catchIdent, tryStmt.catchIdent.name);
+
         resolveVars(tryStmt.tryStmt, s);
-
-        auto ss = new Scope(tryStmt.catchIdent, s);
-        ss.addDecl(tryStmt.catchIdent, tryStmt.catchIdent.name);
-        resolveVars(tryStmt.catchStmt, ss);
-
+        resolveVars(tryStmt.catchStmt, s);
         resolveVars(tryStmt.finallyStmt, s);
     }
 
     else if (auto exprStmt = cast(ExprStmt)stmt)
     {
+        if (auto funExpr = cast(FunExpr)exprStmt.expr)
+            s.addFunDecl(funExpr);
+
         resolveVars(exprStmt.expr, s);
     }
 
@@ -204,6 +223,9 @@ void resolveVars(ASTExpr expr, Scope s)
             s.addDecl(ident, ident.name);
 
         resolveVars(funExpr.bodyStmt, s);
+
+        // Resolve the references in this scope
+        s.resolveRefs();
     }
 
     else if (auto binExpr = cast(BinOpExpr)expr)
@@ -258,11 +280,8 @@ void resolveVars(ASTExpr expr, Scope s)
 
     else if (auto identExpr = cast(IdentExpr)expr)
     {
-        // Resolve the variable
-        ASTNode decl = s.resolve(identExpr.name);
-
-        // Store the resolved node on the identifier
-        identExpr.declNode = decl;
+        // Add the variable reference to the scope
+        s.addRef(identExpr);
     }
 
     else if (

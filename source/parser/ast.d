@@ -434,6 +434,9 @@ class FunExpr : ASTExpr
     /// List of local variables declarations
     ASTNode[] locals;
 
+    /// List of nested function declarations
+    FunExpr[] funDecls;
+
     this(IdentExpr name, IdentExpr[] params, ASTStmt bodyStmt, SrcPos pos = null)
     {
         super(pos);

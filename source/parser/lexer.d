@@ -577,8 +577,30 @@ Token getToken(StrStream stream)
     // Get the position at the start of the token
     SrcPos pos = stream.getPos();
 
+    // Hexadecimal number
+    if (stream.match("0x"))
+    {
+        enum hexRegex = ctRegex!(`^[0-9|a-f|A-F]+`w);
+        auto m = stream.match(hexRegex);
+
+        if (m.empty)
+        {
+            return Token(
+                Token.ERROR,
+                "invalid hex number", 
+                pos
+            );
+        }
+
+        auto hexStr = m.captures[0];
+        long val;
+        formattedRead(hexStr, "%x", &val);
+
+        return Token(Token.INT, val, pos);
+    }
+
     // Number
-    if (digit(ch))
+    else if (digit(ch))
     {
         enum fpRegex = ctRegex!(`^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?`w);
     
