@@ -59,12 +59,17 @@ ASTProgram testParseFile(string fileName)
 
     try
     {
-        auto str = ast.toString();
-        auto ast2 = parseString(str);
+        auto str1 = ast.toString();
+        auto ast2 = parseString(str1);
         auto str2 = ast2.toString();
 
-        if (str != str2)
+        if (str1 != str2)
+        {
+            std.file.write("err_str1.txt", str1);
+            std.file.write("err_str2.txt", str2);
+
             throw new Error("second parse gave different result");
+        }
     }
     catch (Throwable e)
     {
@@ -203,6 +208,7 @@ unittest
     testExprAST("'foo\\nbar';", new StringExpr("foo\nbar"));
     testExprAST("'foo\\x55bar';", new StringExpr("foo\x55bar"));
     testExprAST("'foo\\u0055bar';", new StringExpr("foo\u0055bar"w));
+    testExprAST("'foo\\055bar';", new StringExpr("foo-bar"w));
 
     testExprAST("1 + b;", 
         new BinOpExpr("+", new IntExpr(1), new IdentExpr("b"))
@@ -488,6 +494,7 @@ unittest
     testParseFile("programs/v8bench/navier-stokes.js");
     testParseFile("programs/v8bench/splay.js");
     testParseFile("programs/v8bench/richards.js");
+    testParseFile("programs/v8bench/crypto.js");
 
     // FIXME: requires for-in
     //testParseFile("programs/v8bench/raytrace.js");
@@ -495,7 +502,7 @@ unittest
     // FIXME: requires switch
     //testParseFile("programs/v8bench/deltablue.js");
 
-    // FIXME: second parse produces different result
-    //testParseFile("programs/v8bench/crypto.js");
+    // FIXME: requires comma expression
+    //testParseFile("programs/v8bench/earley-boyer.js");
 }
 

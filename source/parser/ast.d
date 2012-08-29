@@ -785,7 +785,7 @@ class StringExpr : ASTExpr
 
     string toString()
     {
-        return "\"" ~ to!string(val) ~ "\"";
+        return "\"" ~ to!string(escapeJSString(val)) ~ "\"";
     }
 }
 

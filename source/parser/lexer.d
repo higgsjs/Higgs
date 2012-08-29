@@ -649,13 +649,14 @@ Token getToken(StrStream stream)
         wstring str = "";
 
         // Until the end of the string
-        for (;;)
+        CHAR_LOOP: for (;;)
         {
             ch = stream.readCh();
 
             if (ch == openChar)
                 break;
 
+            // End of file
             if (ch == '\0')
             {
                 return Token(
@@ -665,38 +666,57 @@ Token getToken(StrStream stream)
                 );
             }
 
-            // Hexadecimal escape sequence regular expressions
-            enum hexRegex = ctRegex!(`^x([0-9|a-f|A-F]{2})`w);
-            enum uniRegex = ctRegex!(`^u([0-9|a-f|A-F]{4})`w);
-
-            // Try to match hexadecimal escape sequences
-            auto m = stream.match(hexRegex);
-            if (m.empty == true)
-                m = stream.match(uniRegex);
-
-            // Unicode escape sequence
-            if (m.empty == false)
+            // Escape sequence
+            if (ch == '\\')
             {
-                auto hexStr = m.captures[1].toLower();
+                // Hexadecimal escape sequence regular expressions
+                enum hexRegex = ctRegex!(`^x([0-9|a-f|A-F]{2})`w);
+                enum uniRegex = ctRegex!(`^u([0-9|a-f|A-F]{4})`w);
 
-                int charCode;
-                formattedRead(hexStr, "%x", &charCode);
+                // Try to match a hexadecimal escape sequence
+                auto m = stream.match(hexRegex);
+                if (m.empty == true)
+                    m = stream.match(uniRegex);
+                if (m.empty == false)
+                {
+                    auto hexStr = m.captures[1].toLower();
 
-                str ~= cast(char)charCode;
-            }
+                    int charCode;
+                    formattedRead(hexStr, "%x", &charCode);
 
-            // Character escape sequence
-            else if (ch == '\\')
-            {
+                    str ~= cast(char)charCode;
+
+                    continue CHAR_LOOP;
+                }
+
+                // Octal escape sequence regular expression
+                enum octRegex = ctRegex!(`^([0-7][0-7]?[0-7]?)`w);
+
+                // Try to match an octal escape sequence
+                m = stream.match(octRegex);
+                if (m.empty == false)
+                {
+                    auto octStr = m.captures[1].toLower();
+
+                    int charCode;
+                    formattedRead(octStr, "%o", &charCode);
+
+                    str ~= cast(char)charCode;
+
+                    continue CHAR_LOOP;
+                }
+
                 auto code = stream.readCh();
 
                 switch (code)
                 {
-                    case 'r': str ~= '\r'; break;
-                    case 'n': str ~= '\n'; break;
-                    case 'v': str ~= '\v'; break;
-                    case 't': str ~= '\t'; break;
-                    case 'b': str ~= '\b'; break;
+                    case 'r' : str ~= '\r'; break;
+                    case 'n' : str ~= '\n'; break;
+                    case 'v' : str ~= '\v'; break;
+                    case 't' : str ~= '\t'; break;
+                    case 'f' : str ~= '\f'; break;
+                    case 'b' : str ~= '\b'; break;
+                    case '\\': str ~= '\\'; break;
 
                     // Multiline string continuation
                     case '\n': break;
@@ -705,7 +725,7 @@ Token getToken(StrStream stream)
                     return Token(
                         Token.ERROR, 
                         "unknown escape sequence",
-                        pos
+                        stream.getPos()
                     );
                 }
             }
