@@ -183,6 +183,21 @@ void resolveVars(ASTStmt stmt, Scope s)
         resolveVars(forStmt.bodyStmt, s);
     }
 
+    else if (auto switchStmt = cast(SwitchStmt)stmt)
+    {
+        resolveVars(switchStmt.switchExpr, s);
+
+        foreach (expr; switchStmt.caseExprs)
+            resolveVars(expr, s);
+
+        foreach (caseStmts; switchStmt.caseStmts)
+            foreach (caseStmt; caseStmts)
+                resolveVars(caseStmt, s);
+
+        foreach (defaultStmt; switchStmt.defaultStmts)
+            resolveVars(defaultStmt, s);
+    }
+
     else if (auto retStmt = cast(ReturnStmt)stmt)
     {
         resolveVars(retStmt.expr, s);
@@ -208,6 +223,13 @@ void resolveVars(ASTStmt stmt, Scope s)
             s.addFunDecl(funExpr);
 
         resolveVars(exprStmt.expr, s);
+    }
+
+    else if (
+        cast(BreakStmt)stmt ||
+        cast(ContStmt)stmt)
+    {
+        // Do nothing
     }
 
     else

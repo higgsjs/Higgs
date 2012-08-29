@@ -495,12 +495,10 @@ unittest
     testParseFile("programs/v8bench/splay.js");
     testParseFile("programs/v8bench/richards.js");
     testParseFile("programs/v8bench/crypto.js");
+    testParseFile("programs/v8bench/deltablue.js");
 
     // FIXME: requires for-in
     //testParseFile("programs/v8bench/raytrace.js");
-
-    // FIXME: requires switch
-    //testParseFile("programs/v8bench/deltablue.js");
 
     // FIXME: requires comma expression
     //testParseFile("programs/v8bench/earley-boyer.js");

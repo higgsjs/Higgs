@@ -281,6 +281,82 @@ ASTStmt parseStmt(TokenStream input)
         return new ForStmt(initStmt, testExpr, incrExpr, bodyStmt, pos);
     }
 
+    // Switch statement
+    else if (input.matchKw("switch"))
+    {
+        readSep(input, "(");
+        auto switchExpr = parseExpr(input);
+        readSep(input, ")");
+        readSep(input, "{");
+
+        ASTExpr[] caseExprs = [];
+        ASTStmt[][] caseStmts = [];
+
+        bool defaultSeen = false;
+        ASTStmt[] defaultStmts = [];
+
+        ASTStmt[]* curStmts = null;
+
+        // For each case
+        for (;;)
+        {
+            if (input.matchSep("}"))
+            {
+                break;
+            }
+
+            else if (input.matchKw("case"))
+            {
+                caseExprs ~= [parseExpr(input)];
+                readSep(input, ":");
+
+                caseStmts ~= [[]];
+                curStmts = &caseStmts[caseStmts.length-1];
+            }
+
+            else if (input.matchKw("default"))
+            {
+                readSep(input, ":");
+                if (defaultSeen is true)
+                    throw new ParseError("duplicate default label", input.getPos());
+
+                defaultSeen = true;
+                curStmts = &defaultStmts;
+            }
+
+            else
+            {
+                if (curStmts is null)
+                    throw new ParseError("statement before label", input.getPos());
+
+                curStmts.length += 1;
+                (*curStmts)[curStmts.length-1] = parseStmt(input);
+            }
+        }
+
+        return new SwitchStmt(
+            switchExpr, 
+            caseExprs,
+            caseStmts,
+            defaultStmts,
+            pos
+        );
+    }
+
+    // Break statement
+    else if (input.matchKw("break"))
+    {
+        readSemiAuto(input);
+        return new BreakStmt(pos);
+    }
+
+    // Continue statement
+    else if (input.matchKw("continue"))
+    {
+        readSemiAuto(input);
+        return new BreakStmt(pos);
+    }
+
     // Return statement
     else if (input.matchKw("return"))
     {

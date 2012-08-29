@@ -320,6 +320,109 @@ class DoWhileStmt : ASTStmt
 }
 
 /**
+Switch statement
+*/
+class SwitchStmt : ASTStmt
+{
+    ASTExpr switchExpr;
+
+    ASTExpr[] caseExprs;
+
+    ASTStmt[][] caseStmts;
+
+    ASTStmt[] defaultStmts;
+
+    this(
+        ASTExpr switchExpr,
+        ASTExpr[] caseExprs,
+        ASTStmt[][] caseStmts,
+        ASTStmt[] defaultStmts,
+        SrcPos pos = null
+    )
+    {
+        assert (caseExprs.length == caseStmts.length);
+
+        super(pos);
+        this.switchExpr = switchExpr;
+        this.caseExprs = caseExprs;
+        this.caseStmts = caseStmts;
+        this.defaultStmts = defaultStmts;
+    }
+
+    string toString()
+    {
+        auto output = appender!(string)();
+
+        output.put("switch (");
+        output.put(switchExpr.toString());
+        output.put(")\n{\n");
+
+        auto bodyApp = appender!(string)();
+
+        for (size_t i = 0; i < caseExprs.length; ++i)
+        {
+            bodyApp.put("case ");
+            bodyApp.put(caseExprs[i].toString());
+            bodyApp.put(":\n");
+            auto stmts = caseStmts[i];
+            foreach (stmt; stmts)
+            {
+                bodyApp.put(stmt.toString());
+                bodyApp.put("\n");
+            }
+        }
+
+        bodyApp.put("default:\n");
+        if (defaultStmts !is null)
+        {
+            foreach (stmt; defaultStmts)
+            {
+                bodyApp.put(stmt.toString());
+                bodyApp.put("\n");
+            }
+        }
+
+        output.put(indent(bodyApp.data));
+
+        output.put("}");
+
+        return output.data;
+    }
+}
+
+/**
+Break statement
+*/
+class BreakStmt : ASTStmt
+{
+    this(SrcPos pos = null)
+    {
+        super(pos);
+    }
+
+    string toString()
+    {
+        return format("break;");
+    }
+}
+
+/**
+Continue statement
+*/
+class ContStmt : ASTStmt
+{
+    this(SrcPos pos = null)
+    {
+        super(pos);
+    }
+
+    string toString()
+    {
+        return format("continue;");
+    }
+}
+
+/**
 Return statement
 */
 class ReturnStmt : ASTStmt
