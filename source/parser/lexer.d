@@ -342,7 +342,7 @@ class StrStream
 
 bool whitespace(wchar ch)
 {
-    return (ch == '\r' || ch == '\n' || ch == ' ');
+    return (ch == '\r' || ch == '\n' || ch == ' ' || ch == '\t');
 }
 
 bool alpha(wchar ch)
@@ -445,14 +445,14 @@ struct Token
         switch (type)
         {
 
-            case OP:        return format("op:%s"       , stringVal);
-            case SEP:       return format("sep:%s"      , stringVal);
-            case IDENT:     return format("ident:%s"    , stringVal);
-            case KEYWORD:   return format("keyword:%s"  , stringVal);
-            case INT:       return format("int:%s"      , intVal);
-            case FLOAT:     return format("float:%f"    , floatVal);
-            case STRING:    return format("string:%s"   , stringVal);
-            case ERROR:     return format("error:%s"    , stringVal);
+            case OP:        return format("operator:%s"  , stringVal);
+            case SEP:       return format("separator:%s" , stringVal);
+            case IDENT:     return format("identifier:%s", stringVal);
+            case KEYWORD:   return format("keyword:%s"   , stringVal);
+            case INT:       return format("int:%s"       , intVal);
+            case FLOAT:     return format("float:%f"     , floatVal);
+            case STRING:    return format("string:%s"    , stringVal);
+            case ERROR:     return format("error:%s"     , stringVal);
             case EOF:       return "EOF";
 
             default:
@@ -698,6 +698,9 @@ Token getToken(StrStream stream)
                     case 't': str ~= '\t'; break;
                     case 'b': str ~= '\b'; break;
 
+                    // Multiline string continuation
+                    case '\n': break;
+
                     default:
                     return Token(
                         Token.ERROR, 
@@ -723,16 +726,6 @@ Token getToken(StrStream stream)
         return Token(Token.EOF, pos);
     }
 
-    // Try matching all separators    
-    foreach (sep; separators)
-        if (stream.match(sep))
-            return Token(Token.SEP, sep, pos);
-
-    // Try matching all operators
-    foreach (op; operators)
-        if (stream.match(op.str))
-            return Token(Token.OP, op.str, pos);
-
     // Identifier or keyword
     if (identStart(ch))
     {
@@ -748,19 +741,36 @@ Token getToken(StrStream stream)
             identStr ~= ch;
         }
 
+        // Try matching all keywords
         if (countUntil(keywords, identStr) != -1)
-        {
             return Token(Token.KEYWORD, identStr, pos);
-        }
-        else
-        {
-            return Token(Token.IDENT, identStr, pos);
-        }
+
+        // Try matching all operators
+        foreach (op; operators)
+            if (identStr == op.str)
+                return Token(Token.OP, identStr, pos);
+
+        return Token(Token.IDENT, identStr, pos);
     }
 
+    // Try matching all separators    
+    foreach (sep; separators)
+        if (stream.match(sep))
+            return Token(Token.SEP, sep, pos);
+
+    // Try matching all operators
+    foreach (op; operators)
+        if (stream.match(op.str))
+            return Token(Token.OP, op.str, pos);
+
     // Invalid character
-    stream.readCh();
-    return Token(Token.ERROR, "unexpected character", pos);
+    int charVal = stream.readCh();
+    auto charStr = to!wstring(format("0x%04x", charVal));
+    return Token(
+        Token.ERROR,
+        "unexpected character ("w ~ charStr ~ ")"w, 
+        pos
+    );
 }
 
 TokenStream lexStream(StrStream input)

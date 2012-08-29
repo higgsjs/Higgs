@@ -45,17 +45,34 @@ import parser.parser;
 
 ASTProgram testParseFile(string fileName)
 {
+    ASTProgram ast;
+
     try
     {
-        auto ast = parseFile(fileName);
-        return ast;
+        ast = parseFile(fileName);
     }
-
     catch (Throwable e)
     {
         writeln("parse failed on file:\n" ~ fileName);
         throw e;
     }
+
+    try
+    {
+        auto str = ast.toString();
+        auto ast2 = parseString(str);
+        auto str2 = ast2.toString();
+
+        if (str != str2)
+            throw new Error("second parse gave different result");
+    }
+    catch (Throwable e)
+    {
+        writeln("second parse failed on file:\n" ~ fileName);
+        throw e;
+    }
+
+    return ast;
 }
 
 ASTProgram testParse(string input, bool valid = true)
@@ -371,6 +388,8 @@ unittest
     testParse("var x += 2;", false);
     testParse("var x, y, z;");
     testParse("var x = 1, y, z;");
+    testParse("var x = \"foobar\";");
+    testParse("var x = \"foo\\\nbar\";");
 
     testParse("if (x) f();");
     testParse("if (x) f(); else g();");
@@ -402,6 +421,9 @@ unittest
     testParse("1\n2");
     testParse("if (x) y");
     testParse("if (x) y\nelse\nz");
+    testParse("var x\n2");
+    testParse("return x");
+    testParse("throw x");
 }
 
 /// Test program-level ASTs
@@ -450,10 +472,30 @@ unittest
 /// Test parsing of source files
 unittest
 {
+    testParseFile("programs/sunspider/controlflow-recursive.js");
     testParseFile("programs/sunspider/bitops-bits-in-byte.js");
+    testParseFile("programs/sunspider/bitops-nsieve-bits.js");
+    testParseFile("programs/sunspider/3d-morph.js");
+    testParseFile("programs/sunspider/access-nsieve.js");
+    testParseFile("programs/sunspider/access-fannkuch.js");
+    testParseFile("programs/sunspider/access-binary-trees.js");
+    testParseFile("programs/sunspider/access-nbody.js");
+    testParseFile("programs/sunspider/math-cordic.js");
+    testParseFile("programs/sunspider/string-base64.js");
+    testParseFile("programs/sunspider/crypto-sha1.js");
+    testParseFile("programs/sunspider/3d-cube.js");
+    testParseFile("programs/sunspider/crypto-md5.js");
+    testParseFile("programs/v8bench/navier-stokes.js");
+    testParseFile("programs/v8bench/splay.js");
+    testParseFile("programs/v8bench/richards.js");
 
-    // TODO: test on more source files
+    // FIXME: requires for-in
+    //testParseFile("programs/v8bench/raytrace.js");
 
+    // FIXME: requires switch
+    //testParseFile("programs/v8bench/deltablue.js");
 
+    // FIXME: second parse produces different result
+    //testParseFile("programs/v8bench/crypto.js");
 }
 

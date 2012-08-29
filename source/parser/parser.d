@@ -74,7 +74,43 @@ is thrown is the separator is missing.
 void readSep(TokenStream input, wstring sep)
 {
     if (input.matchSep(sep) == false)
-        throw new ParseError("expected \"" ~ to!string(sep) ~ "\"", input.getPos);
+    {
+        throw new ParseError(
+            "expected \"" ~ to!string(sep) ~ "\"",
+            input.getPos()
+        );
+    }
+}
+
+/**
+Test if a semicolon could be automatically inserted at the current position
+*/
+bool autoSemicolon(TokenStream input)
+{
+    auto curTok = input.peek();
+
+    return (
+        (curTok.type == Token.SEP && curTok.stringVal == "}") ||
+        input.newline() == true ||
+        input.eof() == true
+    );
+}
+
+/**
+Read and consume a semicolon or an automatically inserted semicolon
+*/
+void readSemiAuto(TokenStream input)
+{
+    if (input.matchSep(";") == false)
+    {
+        if (autoSemicolon(input) == false)
+        {
+            throw new ParseError(
+                "expected semicolon or end of statement",
+                input.getPos()
+            );
+        }
+    }
 }
 
 /**
@@ -160,46 +196,6 @@ ASTStmt parseStmt(TokenStream input)
         }
 
         return new BlockStmt(stmts, pos);
-    }
-
-    // Variable declaration/initialization statement
-    else if (input.matchKw("var"))
-    {
-        IdentExpr[] identExprs = [];
-        ASTExpr[] initExprs = [];
-
-        for (;;)
-        {
-            if (identExprs.length > 0 && input.matchSep(",") == false)
-                throw new ParseError("expected ,", input.getPos());
-
-            auto name = input.read();
-            if (name.type != Token.IDENT)
-            {
-                throw new ParseError(
-                    "expected identifier in variable declaration",
-                    name.pos
-                );
-            }
-            IdentExpr identExpr = new IdentExpr(name.stringVal, name.pos);
-
-            ASTExpr initExpr = null;
-            auto op = input.peek();
-
-            if (op.type == Token.OP && op.stringVal == "=")
-            {
-                input.read(); 
-                initExpr = parseExpr(input);
-            }
-    
-            identExprs ~= [identExpr];
-            initExprs ~= [initExpr];
-
-            if (input.matchSep(";"))
-                break;
-        }
-
-        return new VarStmt(identExprs, initExprs, pos);
     }
 
     // If statement
@@ -292,7 +288,7 @@ ASTStmt parseStmt(TokenStream input)
             return new ReturnStmt(new NullExpr(), pos);
 
         ASTExpr expr = parseExpr(input);
-        readSep(input, ";");
+        readSemiAuto(input);
         return new ReturnStmt(expr, pos);
     }
 
@@ -300,7 +296,7 @@ ASTStmt parseStmt(TokenStream input)
     else if (input.matchKw("throw"))
     {
         ASTExpr expr = parseExpr(input);
-        readSep(input, ";");
+        readSemiAuto(input);
         return new ThrowStmt(expr, pos);
     }
 
@@ -333,42 +329,68 @@ ASTStmt parseStmt(TokenStream input)
         );
     }
 
+    // Variable declaration/initialization statement
+    else if (input.matchKw("var"))
+    {
+        IdentExpr[] identExprs = [];
+        ASTExpr[] initExprs = [];
+
+        // For each declaration
+        for (;;)
+        {
+            // If this is not the first declaration and there is no comma
+            if (identExprs.length > 0 && input.matchSep(",") == false)
+            {
+                readSemiAuto(input);
+                break;
+            }
+
+            auto name = input.read();
+            if (name.type != Token.IDENT)
+            {
+                throw new ParseError(
+                    "expected identifier in variable declaration",
+                    name.pos
+                );
+            }
+            IdentExpr identExpr = new IdentExpr(name.stringVal, name.pos);
+
+            ASTExpr initExpr = null;
+            auto op = input.peek();
+
+            if (op.type == Token.OP && op.stringVal == "=")
+            {
+                input.read(); 
+                initExpr = parseExpr(input);
+            }
+    
+            identExprs ~= [identExpr];
+            initExprs ~= [initExpr];
+        }
+
+        return new VarStmt(identExprs, initExprs, pos);
+    }
+
     // Peek at the token at the start of the expression
     auto startTok = input.peek();
 
     // Parse as an expression statement
     ASTExpr expr = parseExpr(input);
 
-    //writefln("Parsed expr: %s", expr);
+    // Peek at the token after the expression
+    auto endTok = input.peek();
 
-    // If there is no semicolon
-    if (input.matchSep(";") == false)
+    // If the statement is empty
+    if (endTok == startTok)
     {
-        //writeln("auto semi");
-
-        // Peek at the token after the expression
-        auto endTok = input.peek();
-
-        // If the statement is empty
-        if (endTok == startTok)
-        {
-            throw new ParseError(
-                "empty statements must be terminated by semicolons",
-                endTok.pos
-            );
-        }
-
-        // If automatic semicolon insertion cannot occur here
-        if ((endTok.type == Token.SEP && endTok.stringVal == "}") == false &&
-            input.newline() == false &&
-            input.eof() == false)
-        {
-            throw new ParseError(
-                "expected semicolon",
-                endTok.pos
-            );
-        }       
+        throw new ParseError(
+            "empty statements must be terminated by semicolons",
+            endTok.pos
+        );
     }
+
+    // Read the terminating semicolon
+    readSemiAuto(input);
 
     return new ExprStmt(expr, pos);
 }
@@ -663,7 +685,7 @@ ASTExpr parseAtom(TokenStream input)
         return new UnOpExpr(op, expr, pos);
     }
 
-    throw new ParseError("unexpected token", pos);
+    throw new ParseError("unexpected token: " ~ t.toString(), pos);
 }
 
 /**
