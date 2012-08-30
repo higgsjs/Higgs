@@ -310,6 +310,7 @@ class IRInstr : IdObject
     Type CMP_LE     = { "cmp_le", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_GT     = { "cmp_gt", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_GE     = { "cmp_ge", true, [Arg.LOCAL, Arg.LOCAL] };
+    //TODO: SE, NS
 
     // Type test instructions
     Type IS_FUNC    = { "is_func" , true, [Arg.LOCAL] };

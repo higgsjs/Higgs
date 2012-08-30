@@ -59,8 +59,8 @@ struct OpInfo
 
 alias const(OpInfo)* Operator;
 
-/// Maximum operator precedence
-immutable int OP_MAX_PREC = 17;
+// Comma operator precedence (least precedence)
+const int COMMA_PREC = 0;
 
 /**
 Operator table
@@ -68,84 +68,87 @@ Operator table
 OpInfo[] operators = [
 
     // Member operator
-    { "."w, 2, 1, 'l' },
+    { "."w, 2, 16, 'l' },
 
     // Array indexing
-    { "["w, 1, 1, 'l' },
+    { "["w, 1, 16, 'l' },
 
     // New/constructor operator
-    { "new"w, 1, 1, 'r' },
+    { "new"w, 1, 16, 'r' },
 
     // Function call
-    { "("w, 1, 2, 'l' },
+    { "("w, 1, 15, 'l' },
 
     // Postfix unary operators
-    { "++"w, 1, 3, 'l' },
-    { "--"w, 1, 3, 'l' },
+    { "++"w, 1, 14, 'l' },
+    { "--"w, 1, 14, 'l' },
 
     // Prefix unary operators
-    { "+"w , 1, 4, 'r' },
-    { "-"w , 1, 4, 'r' },
-    { "!"w , 1, 4, 'r' },
-    { "~"w , 1, 4, 'r' },
-    { "++"w, 1, 4, 'r' },
-    { "--"w, 1, 4, 'r' },
-    { "typeof"w, 1, 4, 'r' },
-    { "delete"w, 1, 4, 'r' },
+    { "+"w , 1, 13, 'r' },
+    { "-"w , 1, 13, 'r' },
+    { "!"w , 1, 13, 'r' },
+    { "~"w , 1, 13, 'r' },
+    { "++"w, 1, 13, 'r' },
+    { "--"w, 1, 13, 'r' },
+    { "typeof"w, 1, 13, 'r' },
+    { "delete"w, 1, 13, 'r' },
 
     // Multiplication/division/modulus
-    { "*"w, 2, 5, 'l' },
-    { "/"w, 2, 5, 'l' },
-    { "%"w, 2, 5, 'l' },
+    { "*"w, 2, 12, 'l' },
+    { "/"w, 2, 12, 'l' },
+    { "%"w, 2, 12, 'l' },
 
     // Addition/subtraction
-    { "+"w, 2, 6, 'l' },
-    { "-"w, 2, 6, 'l' },
+    { "+"w, 2, 11, 'l' },
+    { "-"w, 2, 11, 'l' },
 
     // Bitwise shift
-    { "<<"w , 2, 7, 'l' },
-    { ">>"w , 2, 7, 'l' },
-    { ">>>"w, 2, 7, 'l' },
+    { "<<"w , 2, 10, 'l' },
+    { ">>"w , 2, 10, 'l' },
+    { ">>>"w, 2, 10, 'l' },
 
     // Relational operators
-    { "<"w         , 2, 8, 'l' },
-    { "<="w        , 2, 8, 'l' },
-    { ">"w         , 2, 8, 'l' },
-    { ">="w        , 2, 8, 'l' },
-    { "in"w        , 2, 8, 'l' },
-    { "instanceof"w, 2, 8, 'l' },
+    { "<"w         , 2, 9, 'l' },
+    { "<="w        , 2, 9, 'l' },
+    { ">"w         , 2, 9, 'l' },
+    { ">="w        , 2, 9, 'l' },
+    { "in"w        , 2, 9, 'l' },
+    { "instanceof"w, 2, 9, 'l' },
 
     // Equality comparison
-    { "=="w , 2, 9, 'l' },
-    { "!="w , 2, 9, 'l' },
-    { "==="w, 2, 9, 'l' },
-    { "!=="w, 2, 9, 'l' },
+    { "=="w , 2, 8, 'l' },
+    { "!="w , 2, 8, 'l' },
+    { "==="w, 2, 8, 'l' },
+    { "!=="w, 2, 8, 'l' },
 
     // Bitwise operators
-    { "&"w, 2, 10, 'l' },
-    { "^"w, 2, 11, 'l' },
-    { "|"w, 2, 12, 'l' },
+    { "&"w, 2, 7, 'l' },
+    { "^"w, 2, 6, 'l' },
+    { "|"w, 2, 5, 'l' },
 
     // Logical operators
-    { "&&"w, 2, 13, 'l' },
-    { "||"w, 2, 14, 'l' },
+    { "&&"w, 2, 4, 'l' },
+    { "||"w, 2, 3, 'l' },
 
     // Ternary conditional
-    { "?"w, 3, 15, 'r' },
+    { "?"w, 3, 2, 'r' },
 
     // Assignment
-    { "="w   , 2, 16, 'r' },
-    { "+="w  , 2, 16, 'r' },
-    { "-="w  , 2, 16, 'r' },
-    { "*="w  , 2, 16, 'r' },
-    { "/="w  , 2, 16, 'r' },
-    { "%="w  , 2, 16, 'r' },
-    { "&="w  , 2, 16, 'r' },
-    { "|="w  , 2, 16, 'r' },
-    { "^="w  , 2, 16, 'r' },
-    { "<<="w , 2, 16, 'r' },
-    { ">>="w , 2, 16, 'r' },
-    { ">>>="w, 2, 16, 'r' },
+    { "="w   , 2, 1, 'r' },
+    { "+="w  , 2, 1, 'r' },
+    { "-="w  , 2, 1, 'r' },
+    { "*="w  , 2, 1, 'r' },
+    { "/="w  , 2, 1, 'r' },
+    { "%="w  , 2, 1, 'r' },
+    { "&="w  , 2, 1, 'r' },
+    { "|="w  , 2, 1, 'r' },
+    { "^="w  , 2, 1, 'r' },
+    { "<<="w , 2, 1, 'r' },
+    { ">>="w , 2, 1, 'r' },
+    { ">>>="w, 2, 1, 'r' },
+
+    // Comma (sequencing), least precedence
+    { ","w, 2, COMMA_PREC, 'l' },
 ];
 
 /**
@@ -195,10 +198,6 @@ separator, keyword and operator tables
 */
 static this()
 {
-    // Flip the operator precedence values
-    for (size_t i = 0; i < operators.length; ++i)
-        operators[i].prec = OP_MAX_PREC - operators[i].prec;
-
     // Sort the tables by decreasing string length
     sort!("a.str.length > b.str.length")(operators);
     sort!("a.length > b.length")(separators);

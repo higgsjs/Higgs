@@ -497,10 +497,10 @@ unittest
     testParseFile("programs/v8bench/crypto.js");
     testParseFile("programs/v8bench/deltablue.js");
 
-    // FIXME: requires for-in
-    //testParseFile("programs/v8bench/raytrace.js");
-
     // FIXME: requires comma expression
     //testParseFile("programs/v8bench/earley-boyer.js");
+
+    // FIXME: requires for-in
+    //testParseFile("programs/v8bench/raytrace.js");
 }
 
