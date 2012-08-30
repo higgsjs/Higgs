@@ -1,4 +1,6 @@
 DC = dmd
+COPTS = -m64 -O
+
 BIN_NAME = higgs
 
 # Source files
@@ -16,10 +18,10 @@ repl.d              \
 main.d
 
 all:
-	$(DC) $(SRC) -of$(BIN_NAME)
+	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
 
 test:
-	$(DC) $(SRC) -unittest -of$(BIN_NAME)
+	$(DC) $(COPTS) -unittest -of$(BIN_NAME) $(SRC)
 	time ./$(BIN_NAME) --test
 
 clean:

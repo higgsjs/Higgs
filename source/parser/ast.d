@@ -55,7 +55,10 @@ class ASTNode : IdObject
     SrcPos pos;
 
     // Force subclasses to set the position
-    this(SrcPos) { this.pos = pos; }
+    this(SrcPos pos)
+    { 
+        this.pos = pos; 
+    }
 }
 
 /**

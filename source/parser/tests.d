@@ -91,6 +91,8 @@ ASTProgram testParse(string input, bool valid = true)
     try
     {
         ast = parseString(input);
+
+        assert (ast.pos !is null, "null source position");
     }
 
     catch (Throwable e)
@@ -192,6 +194,10 @@ unittest
     testParse("a = { a:1, b:2 };");
     testParse("a = { a:1, \"b\":2 };");
     testParse("a = { a:1, b:2+3*4 };");
+
+    // Comma operator
+    testParse("1, 2");
+    testParse("x = y, z");
 }
 
 /// Test expression ASTs
@@ -497,7 +503,7 @@ unittest
     testParseFile("programs/v8bench/crypto.js");
     testParseFile("programs/v8bench/deltablue.js");
 
-    // FIXME: requires comma expression
+    // FIXME: optional catch clause
     //testParseFile("programs/v8bench/earley-boyer.js");
 
     // FIXME: requires for-in

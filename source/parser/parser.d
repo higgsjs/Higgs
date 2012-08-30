@@ -56,8 +56,9 @@ class ParseError : Error
 
     this(string msg, SrcPos pos)
     {
-        super(msg);
+        assert (pos !is null, "source position is null");
 
+        super(msg);
         this.pos = pos;
     }
 
@@ -474,11 +475,11 @@ ASTStmt parseStmt(TokenStream input)
 /**
 Parse an expression
 */
-ASTExpr parseExpr(TokenStream input, int minPrec = 1)
+ASTExpr parseExpr(TokenStream input, int minPrec = 0)
 {
     // Expression parsing using the precedence climbing algorithm
     //    
-    // The first call has min precedence 1
+    // The first call has min precedence 0
     //
     // Each call loops to grab everything of the current precedence or
     // greater and builds a left-sided subtree out of it, associating
@@ -504,6 +505,8 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 1)
         // If the token is not an operator or separator, break out
         if (cur.type != Token.OP && cur.type != Token.SEP)
             break;
+
+        //writefln("op str: %s", cur.stringVal);
 
         // Attempt to find a corresponding operator
         auto op = findOperator(cur.stringVal, 2);
@@ -572,6 +575,9 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 1)
                 rhsExpr = new BinOpExpr(rhsOp, lhsExpr, rhsExpr, rhsExpr.pos);
                 op = eqOp;
             }
+
+            if (lhsExpr.pos is null)
+                writeln("lhsExpr pos is null********");
 
             // Update lhs with the new value
             lhsExpr = new BinOpExpr(op, lhsExpr, rhsExpr, lhsExpr.pos);
@@ -652,8 +658,8 @@ ASTExpr parseAtom(TokenStream input)
 
             readSep(input, ":");
 
-            // TODO: priority above comma op?
-            auto valueExpr = parseExpr(input);
+            // Parse an expression with priority above the comma operator
+            auto valueExpr = parseExpr(input, COMMA_PREC+1);
             values ~= [valueExpr];
         }
 
@@ -676,7 +682,7 @@ ASTExpr parseAtom(TokenStream input)
     }
 
     // Function expression
-    // fun (params) body
+    // function (params) body
     else if (input.matchKw("function"))
     {
         auto nextTok = input.peek();
@@ -781,7 +787,7 @@ ASTExpr[] parseExprList(TokenStream input, wstring openSep, wstring closeSep)
         if (exprs.length > 0 && input.matchSep(",") == false)
             throw new ParseError("expected comma", input.getPos());
 
-        exprs ~= [parseExpr(input)];
+        exprs ~= [parseExpr(input, COMMA_PREC+1)];
     }
 
     return exprs;
@@ -804,11 +810,10 @@ IdentExpr[] parseParamList(TokenStream input)
         if (exprs.length > 0 && input.matchSep(",") == false)
             throw new ParseError("expected comma", input.getPos());
 
-        auto expr = parseExpr(input);
-
+        auto expr = parseAtom(input);
         auto ident = cast(IdentExpr)expr;
         if (ident is null)
-            throw new ParseError("invalid list item type", expr.pos);
+            throw new ParseError("invalid parameter", expr.pos);
 
         exprs ~= [ident];
     }

@@ -244,6 +244,9 @@ class SrcPos
 
     this(string file, int line, int col)
     {
+        if (file is null)
+            file = "";
+
         this.file = file;
         this.line = line;
         this.col = col;
