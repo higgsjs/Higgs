@@ -57,22 +57,23 @@ ASTProgram testParseFile(string fileName)
         throw e;
     }
 
+    string str1;
+    string str2;
+
     try
     {
-        auto str1 = ast.toString();
+        str1 = ast.toString();
         auto ast2 = parseString(str1);
-        auto str2 = ast2.toString();
+        str2 = ast2.toString();
 
         if (str1 != str2)
-        {
-            std.file.write("err_str1.txt", str1);
-            std.file.write("err_str2.txt", str2);
-
             throw new Error("second parse gave different result");
-        }
     }
     catch (Throwable e)
     {
+        std.file.write("pass1_str.txt", str1);
+        std.file.write("pass2_str.txt", str2);
+
         writeln("second parse failed on file:\n" ~ fileName);
         throw e;
     }
@@ -484,26 +485,35 @@ unittest
 /// Test parsing of source files
 unittest
 {
+    // Sunspider benchmarks
     testParseFile("programs/sunspider/controlflow-recursive.js");
     testParseFile("programs/sunspider/bitops-bits-in-byte.js");
     testParseFile("programs/sunspider/bitops-nsieve-bits.js");
+    testParseFile("programs/sunspider/3d-cube.js");    
     testParseFile("programs/sunspider/3d-morph.js");
+    testParseFile("programs/sunspider/3d-raytrace.js");
     testParseFile("programs/sunspider/access-nsieve.js");
     testParseFile("programs/sunspider/access-fannkuch.js");
     testParseFile("programs/sunspider/access-binary-trees.js");
     testParseFile("programs/sunspider/access-nbody.js");
     testParseFile("programs/sunspider/math-cordic.js");
+
+    // FIXME: requires for-in
+    //testParseFile("programs/sunspider/string-fasta.js");
+
     testParseFile("programs/sunspider/string-base64.js");
     testParseFile("programs/sunspider/crypto-sha1.js");
     testParseFile("programs/sunspider/3d-cube.js");
     testParseFile("programs/sunspider/crypto-md5.js");
+
+    // V8 benchmarks
     testParseFile("programs/v8bench/navier-stokes.js");
     testParseFile("programs/v8bench/splay.js");
     testParseFile("programs/v8bench/richards.js");
     testParseFile("programs/v8bench/crypto.js");
     testParseFile("programs/v8bench/deltablue.js");
 
-    // FIXME: optional catch clause
+    // FIXME: requires optional catch clause
     //testParseFile("programs/v8bench/earley-boyer.js");
 
     // FIXME: requires for-in

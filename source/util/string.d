@@ -83,6 +83,8 @@ wstring escapeJSString(wstring input)
             case '\v': output.put("\\v"); break;
             case '\f': output.put("\\f"); break;
             case '\\': output.put("\\\\"); break;
+            case '"': output.put("\\\""); break;
+            case '\'': output.put("\\\'"); break;
 
             default:
             if (ch < 32 || ch > 126)

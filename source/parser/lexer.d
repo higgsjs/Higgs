@@ -724,6 +724,8 @@ Token getToken(StrStream stream)
                     case 'f' : str ~= '\f'; break;
                     case 'b' : str ~= '\b'; break;
                     case '\\': str ~= '\\'; break;
+                    case '\"': str ~= '\"'; break;
+                    case '\'': str ~= '\''; break;
 
                     // Multiline string continuation
                     case '\n': break;
