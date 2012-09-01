@@ -210,11 +210,16 @@ void resolveVars(ASTStmt stmt, Scope s)
 
     else if (auto tryStmt = cast(TryStmt)stmt)
     {
-        s.addDecl(tryStmt.catchIdent, tryStmt.catchIdent.name);
-
         resolveVars(tryStmt.tryStmt, s);
-        resolveVars(tryStmt.catchStmt, s);
-        resolveVars(tryStmt.finallyStmt, s);
+        if (tryStmt.catchStmt)
+        {
+            s.addDecl(tryStmt.catchIdent, tryStmt.catchIdent.name);
+            resolveVars(tryStmt.catchStmt, s);
+        }
+        if (tryStmt.finallyStmt)
+        {
+            resolveVars(tryStmt.finallyStmt, s);
+        }
     }
 
     else if (auto exprStmt = cast(ExprStmt)stmt)

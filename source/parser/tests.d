@@ -428,6 +428,8 @@ unittest
 
     testParse("try foo(); catch (e) e;");
     testParse("try foo(); catch (e) e; finally bar();");
+    testParse("try foo(); finally bar();");
+    testParse("try foo();", false);
 
     // Automatic semicolon insertion
     testParse("{ 1; 2 }");
@@ -513,10 +515,22 @@ unittest
     testParseFile("programs/v8bench/crypto.js");
     testParseFile("programs/v8bench/deltablue.js");
 
-    // FIXME: requires optional catch clause
+    // FIXME: requires for-in
     //testParseFile("programs/v8bench/earley-boyer.js");
 
     // FIXME: requires for-in
     //testParseFile("programs/v8bench/raytrace.js");
+
+    // Bones benchmark
+    testParseFile("programs/bones/bones.js");
+
+    // Standard library
+    testParseFile("stdlib/math.js");
+    testParseFile("stdlib/array.js");
+    testParseFile("stdlib/string.js");
+    testParseFile("stdlib/number.js");
+
+    // FIXME: requires for-in
+    //testParseFile("stdlib/object.js");
 }
 

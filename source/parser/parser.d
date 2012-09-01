@@ -382,21 +382,26 @@ ASTStmt parseStmt(TokenStream input)
     {
         auto tryStmt = parseStmt(input);
 
-        if (input.matchKw("catch") == false)
-            throw new ParseError("expected catch keyword", input.getPos());
-        readSep(input, "(");
-        auto catchIdent = cast(IdentExpr)parseExpr(input);
-        if (catchIdent is null)
-            throw new ParseError("invalid catch identifier", catchIdent.pos);
-        readSep(input, ")");
+        IdentExpr catchIdent = null;
+        ASTStmt catchStmt = null;
+        if (input.matchKw("catch"))
+        {
+            readSep(input, "(");
+            catchIdent = cast(IdentExpr)parseExpr(input);
+            if (catchIdent is null)
+                throw new ParseError("invalid catch identifier", catchIdent.pos);
+            readSep(input, ")");
+            catchStmt = parseStmt(input);
+        }
 
-        auto catchStmt = parseStmt(input);
-
-        ASTStmt finallyStmt;
+        ASTStmt finallyStmt = null;
         if (input.matchKw("finally"))
+        {
             finallyStmt = parseStmt(input);
-        else
-            finallyStmt = new ExprStmt(new TrueExpr());
+        }
+
+        if (!catchStmt && !finallyStmt)
+            throw new ParseError("no catch or finally block", input.getPos());
 
         return new TryStmt(
             tryStmt, 

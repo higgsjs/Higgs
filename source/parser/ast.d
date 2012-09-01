@@ -490,25 +490,26 @@ class TryStmt : ASTStmt
 
     string toString()
     {
+        auto output = appender!string();
+
+        output.put("try\n");
+        output.put(tryStmt.indentStr());
+
+        if (this.catchStmt)
+        {
+            output.put("\ncatch (");
+            output.put(catchIdent.toString());
+            output.put(")\n");
+            output.put(catchStmt.indentStr());
+        }
+
         if (this.finallyStmt)
         {
-            return xformat(
-                "try\n%s\ncatch (%s)\n%s\nfinally\n%s", 
-                tryStmt.indentStr(),
-                catchIdent,
-                catchStmt.indentStr(),
-                finallyStmt.indentStr()
-            );
+            output.put("\nfinally\n");
+            output.put(finallyStmt.indentStr());
         }
-        else
-        {
-            return xformat(
-                "try\n%s\ncatch (%s)\n%s", 
-                tryStmt.indentStr(),
-                catchIdent,
-                catchStmt.indentStr()
-            );
-        }
+
+        return output.data;
     }
 }
 
