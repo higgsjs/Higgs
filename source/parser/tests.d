@@ -419,9 +419,18 @@ unittest
     testParse("do; while ()", false);
 
     testParse("for (var i = 0; i < 10; i += 1) println(\"foobar\");");
+    testParse("for (var a = 0, b = 0; a < 10; a += 1);");
     testParse("for (;;) {}");
     testParse("for (;;);");
     testParse("for (;);", false);
+
+    // For-in loop statement
+    testParse("for (var a in b) {}");
+    testParse("for (var a in 0,[0,1,2]) print(a);");
+    testParse("for (a in [0,1,2]) {}");
+    testParse("for (a.b in [0, 1, 2]) print(a.b);");
+    testParse("for (a.b in c);");
+    testParse("for (var a.b in c);", false);
 
     testParse("throw 1;");
     testParse("throw;", false);
@@ -499,10 +508,7 @@ unittest
     testParseFile("programs/sunspider/access-binary-trees.js");
     testParseFile("programs/sunspider/access-nbody.js");
     testParseFile("programs/sunspider/math-cordic.js");
-
-    // FIXME: requires for-in
-    //testParseFile("programs/sunspider/string-fasta.js");
-
+    testParseFile("programs/sunspider/string-fasta.js");
     testParseFile("programs/sunspider/string-base64.js");
     testParseFile("programs/sunspider/crypto-sha1.js");
     testParseFile("programs/sunspider/3d-cube.js");
@@ -514,12 +520,8 @@ unittest
     testParseFile("programs/v8bench/richards.js");
     testParseFile("programs/v8bench/crypto.js");
     testParseFile("programs/v8bench/deltablue.js");
-
-    // FIXME: requires for-in
-    //testParseFile("programs/v8bench/earley-boyer.js");
-
-    // FIXME: requires for-in
-    //testParseFile("programs/v8bench/raytrace.js");
+    testParseFile("programs/v8bench/raytrace.js");
+    testParseFile("programs/v8bench/earley-boyer.js");
 
     // Bones benchmark
     testParseFile("programs/bones/bones.js");
@@ -529,8 +531,6 @@ unittest
     testParseFile("stdlib/array.js");
     testParseFile("stdlib/string.js");
     testParseFile("stdlib/number.js");
-
-    // FIXME: requires for-in
-    //testParseFile("stdlib/object.js");
+    testParseFile("stdlib/object.js");
 }
 

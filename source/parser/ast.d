@@ -223,6 +223,35 @@ class IfStmt : ASTStmt
 }
 
 /**
+While loop statement
+*/
+class WhileStmt : ASTStmt
+{
+    ASTExpr testExpr;
+    ASTStmt bodyStmt;
+
+    this(
+        ASTExpr testExpr, 
+        ASTStmt bodyStmt,
+        SrcPos pos = null
+    )
+    {
+        super(pos);
+        this.testExpr = testExpr;
+        this.bodyStmt = bodyStmt;
+    }
+
+    string toString()
+    {
+        return format(
+            "while (%s)\n%s", 
+            testExpr,
+            bodyStmt.indentStr()
+        );
+    }
+}
+
+/**
 For loop statement
 */
 class ForStmt : ASTStmt
@@ -265,29 +294,52 @@ class ForStmt : ASTStmt
 }
 
 /**
-While loop statement
+For-in loop statement
+
+Grammar:
+for (LeftHandSideExpression in Expression)
+for (var VariableDeclarationNoIn in Expression)
+
+Examples:
+for (a in [0, 1, 2]) print(a);
+for (a.b in [0, 1, 2]) print(a.b);
+for (var a in b) print(a);
+for (var a in 0,[0,1,2]) print(a);
 */
-class WhileStmt : ASTStmt
+class ForInStmt : ASTStmt
 {
-    ASTExpr testExpr;
+    /// Flag indicating there is a variable declaration
+    bool hasDecl;
+
+    /// If this has a variable declaration, this must be an IdentExpr
+    ASTExpr varExpr;
+
+    ASTExpr inExpr;
+
     ASTStmt bodyStmt;
 
     this(
-        ASTExpr testExpr, 
+        bool hasDecl,
+        ASTExpr varExpr,
+        ASTExpr inExpr,
         ASTStmt bodyStmt,
         SrcPos pos = null
     )
     {
         super(pos);
-        this.testExpr = testExpr;
+        this.hasDecl = hasDecl;
+        this.varExpr = varExpr;
+        this.inExpr = inExpr;
         this.bodyStmt = bodyStmt;
     }
 
     string toString()
     {
         return format(
-            "while (%s)\n%s", 
-            testExpr,
+            "for (%s%s in %s)\n%s", 
+            hasDecl? "var ":"",
+            varExpr,
+            inExpr,
             bodyStmt.indentStr()
         );
     }
@@ -779,11 +831,11 @@ Object literal expression
 */
 class ObjectExpr : ASTExpr
 {
-    IdentExpr[] names;
+    StringExpr[] names;
 
     ASTExpr[] values;
 
-    this(IdentExpr[] names, ASTExpr[] values, SrcPos pos = null)
+    this(StringExpr[] names, ASTExpr[] values, SrcPos pos = null)
     {
         assert (names.length == values.length);
 

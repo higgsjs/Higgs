@@ -304,13 +304,14 @@ class IRInstr : IdObject
     Type BOOL_NOT    = { "bool_not", true, [Arg.LOCAL] };
 
     // Comparison operations
+    Type CMP_SE     = { "cmp_se", true, [Arg.LOCAL, Arg.LOCAL] };
+    Type CMP_NS     = { "cmp_ns", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_EQ     = { "cmp_eq", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_NE     = { "cmp_ne", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_LT     = { "cmp_lt", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_LE     = { "cmp_le", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_GT     = { "cmp_gt", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_GE     = { "cmp_ge", true, [Arg.LOCAL, Arg.LOCAL] };
-    //TODO: SE, NS
 
     // Type test instructions
     Type IS_FUNC    = { "is_func" , true, [Arg.LOCAL] };

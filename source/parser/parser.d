@@ -84,14 +84,27 @@ void readSep(TokenStream input, wstring sep)
 }
 
 /**
+Read and consume a keyword token. A parse error
+is thrown is the keyword is missing.
+*/
+void readKw(TokenStream input, wstring keyword)
+{
+    if (input.matchKw(keyword) == false)
+    {
+        throw new ParseError(
+            "expected \"" ~ to!string(keyword) ~ "\"",
+            input.getPos()
+        );
+    }
+}
+
+/**
 Test if a semicolon could be automatically inserted at the current position
 */
 bool autoSemicolon(TokenStream input)
 {
-    auto curTok = input.peek();
-
     return (
-        (curTok.type == Token.SEP && curTok.stringVal == "}") ||
+        input.peekSep("}") == true ||
         input.newline() == true ||
         input.eof() == true
     );
@@ -202,9 +215,9 @@ ASTStmt parseStmt(TokenStream input)
     // If statement
     else if (input.matchKw("if"))
     {
-        readSep(input, "(");
+        input.readSep("(");
         ASTExpr testExpr = parseExpr(input);
-        readSep(input, ")");
+        input.readSep(")");
 
         auto trueStmt = parseStmt(input);
 
@@ -220,9 +233,9 @@ ASTStmt parseStmt(TokenStream input)
     // While loop
     else if (input.matchKw("while"))
     {
-        readSep(input, "(");
+        input.readSep("(");
         auto testExpr = parseExpr(input);
-        readSep(input, ")");
+        input.readSep(")");
         auto bodyStmt = parseStmt(input);
 
         return new WhileStmt(testExpr, bodyStmt, pos);
@@ -234,61 +247,26 @@ ASTStmt parseStmt(TokenStream input)
         auto bodyStmt = parseStmt(input);
         if (input.matchKw("while") == false)
             throw new ParseError("expected while", input.getPos());
-        readSep(input, "(");
+        input.readSep("(");
         auto testExpr = parseExpr(input);
-        readSep(input, ")");
+        input.readSep(")");
 
         return new DoWhileStmt(bodyStmt, testExpr, pos);
     }
 
-    // For loop
-    else if (input.matchKw("for"))
+    // For or for-in loop
+    else if (input.peekKw("for"))
     {
-        // Parse the init statement
-        readSep(input, "(");
-        auto initStmt = parseStmt(input);
-        if (cast(VarStmt)initStmt is null && cast(ExprStmt)initStmt is null)
-            throw new ParseError("invalid for-loop init statement", initStmt.pos);
-
-        // Parse the test expression
-        pos = input.getPos();
-        ASTExpr testExpr;
-        if (input.matchSep(";"))
-        {
-            testExpr = new TrueExpr(pos);
-        }
-        else
-        {
-            testExpr = parseExpr(input);
-            readSep(input, ";");
-        }
-
-        // Parse the inccrement expression
-        pos = input.getPos();
-        ASTExpr incrExpr;
-        if (input.matchSep(")"))
-        {
-            incrExpr = new TrueExpr(pos);
-        }
-        else
-        {
-            incrExpr = parseExpr(input);
-            readSep(input, ")");
-        }
-
-        // Parse the loop body
-        auto bodyStmt = parseStmt(input);
-
-        return new ForStmt(initStmt, testExpr, incrExpr, bodyStmt, pos);
+        return parseForStmt(input);
     }
 
     // Switch statement
     else if (input.matchKw("switch"))
     {
-        readSep(input, "(");
+        input.readSep("(");
         auto switchExpr = parseExpr(input);
-        readSep(input, ")");
-        readSep(input, "{");
+        input.readSep(")");
+        input.readSep("{");
 
         ASTExpr[] caseExprs = [];
         ASTStmt[][] caseStmts = [];
@@ -309,7 +287,7 @@ ASTStmt parseStmt(TokenStream input)
             else if (input.matchKw("case"))
             {
                 caseExprs ~= [parseExpr(input)];
-                readSep(input, ":");
+                input.readSep(":");
 
                 caseStmts ~= [[]];
                 curStmts = &caseStmts[caseStmts.length-1];
@@ -317,7 +295,7 @@ ASTStmt parseStmt(TokenStream input)
 
             else if (input.matchKw("default"))
             {
-                readSep(input, ":");
+                input.readSep(":");
                 if (defaultSeen is true)
                     throw new ParseError("duplicate default label", input.getPos());
 
@@ -386,11 +364,11 @@ ASTStmt parseStmt(TokenStream input)
         ASTStmt catchStmt = null;
         if (input.matchKw("catch"))
         {
-            readSep(input, "(");
+            input.readSep("(");
             catchIdent = cast(IdentExpr)parseExpr(input);
             if (catchIdent is null)
                 throw new ParseError("invalid catch identifier", catchIdent.pos);
-            readSep(input, ")");
+            input.readSep(")");
             catchStmt = parseStmt(input);
         }
 
@@ -478,6 +456,111 @@ ASTStmt parseStmt(TokenStream input)
 }
 
 /**
+Parse a for or for-in loop statement
+*/
+ASTStmt parseForStmt(TokenStream input)
+{
+    /// Test if this is a for-in statement and backtrack
+    bool isForIn(TokenStream input)
+    {
+        // Copy the starting input to allow backtracking
+        auto startInput = new TokenStream(input);
+
+        // On return, backtrack to the start
+        scope(exit)
+            input.backtrack(startInput);
+
+        // Test if there is a variable declaration
+        auto hasDecl = input.matchKw("var");
+
+        if (input.peekSep(";"))
+            return false;
+
+        // Parse the first expression, stop at comma if there is a declaration
+        auto firstExpr = parseExpr(input, hasDecl? (COMMA_PREC+1):COMMA_PREC);
+
+        if (input.peekSep(";"))
+            return false;
+
+        if (auto binExpr = cast(BinOpExpr)firstExpr)
+            if (binExpr.op.str == "in")
+                return true;
+
+        return false;
+    }
+
+    // Get the current position
+    auto pos = input.getPos();
+
+    // Read the for keyword and the opening parenthesis
+    input.readKw("for");
+    input.readSep("(");
+
+    // If this is a regular for-loop statement
+    if (isForIn(input) == false)
+    {
+        // Parse the init statement
+        auto initStmt = parseStmt(input);
+        if (cast(VarStmt)initStmt is null && cast(ExprStmt)initStmt is null)
+            throw new ParseError("invalid for-loop init statement", initStmt.pos);
+
+        // Parse the test expression
+        pos = input.getPos();
+        ASTExpr testExpr;
+        if (input.matchSep(";"))
+        {
+            testExpr = new TrueExpr(pos);
+        }
+        else
+        {
+            testExpr = parseExpr(input);
+            input.readSep(";");
+        }
+
+        // Parse the inccrement expression
+        pos = input.getPos();
+        ASTExpr incrExpr;
+        if (input.matchSep(")"))
+        {
+            incrExpr = new TrueExpr(pos);
+        }
+        else
+        {
+            incrExpr = parseExpr(input);
+            input.readSep(")");
+        }
+
+        // Parse the loop body
+        auto bodyStmt = parseStmt(input);
+
+        return new ForStmt(initStmt, testExpr, incrExpr, bodyStmt, pos);
+    }
+
+    // This is a for-in statement
+    else
+    {
+        auto hasDecl = input.matchKw("var");
+        auto varExpr = parseExpr(input, IN_PREC+1);
+        if (hasDecl && cast(IdentExpr)varExpr is null)
+            throw new ParseError("invalid variable expression in for-in loop", pos);
+
+        auto inTok = input.peek();
+        if (inTok.type != Token.OP || inTok.stringVal != "in")
+            throw new ParseError("expected \"in\" keyword", input.getPos());
+        input.read();
+
+        auto inExpr = parseExpr(input);
+
+        input.readSep(")");
+
+        // Parse the loop body
+        auto bodyStmt = parseStmt(input);
+
+        return new ForInStmt(hasDecl, varExpr, inExpr, bodyStmt, pos);
+    }
+}
+
+/**
 Parse an expression
 */
 ASTExpr parseExpr(TokenStream input, int minPrec = 0)
@@ -545,7 +628,7 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
         else if (input.matchSep("["))
         {
             auto indexExpr = parseExpr(input);
-            readSep(input, "]");
+            input.readSep("]");
             lhsExpr = new IndexExpr(lhsExpr, indexExpr, lhsExpr.pos);
         }
 
@@ -556,7 +639,7 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
             input.read();
 
             auto trueExpr = parseExpr(input);
-            readSep(input, ":");
+            input.readSep(":");
             auto falseExpr = parseExpr(input, nextMinPrec);
 
             lhsExpr = new CondExpr(lhsExpr, trueExpr, falseExpr, lhsExpr.pos);
@@ -610,6 +693,9 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
     return lhsExpr;
 }
 
+/**
+Parse an atomic expression
+*/
 ASTExpr parseAtom(TokenStream input)
 {
     //writeln("parseAtom");
@@ -627,7 +713,7 @@ ASTExpr parseAtom(TokenStream input)
     else if (input.matchSep("("))
     {
         ASTExpr expr = parseExpr(input);
-        readSep(input, ")");
+        input.readSep(")");
         return expr;
     }
 
@@ -641,7 +727,7 @@ ASTExpr parseAtom(TokenStream input)
     // Object literal
     else if (input.matchSep("{"))
     {
-        IdentExpr[] names = [];
+        StringExpr[] names = [];
         ASTExpr[] values = [];
 
         for (;;)
@@ -655,13 +741,13 @@ ASTExpr parseAtom(TokenStream input)
             auto nameExpr = parseAtom(input);
             auto identExpr = cast(IdentExpr)nameExpr;
             auto stringExpr = cast(StringExpr)nameExpr;
-            if (stringExpr)
-                identExpr = new IdentExpr(stringExpr.val, stringExpr.pos);
-            if (!identExpr)
+            if (identExpr)
+                stringExpr = new StringExpr(identExpr.name, identExpr.pos);
+            if (!stringExpr)
                 throw new ParseError("invalid property name", nameExpr.pos);
-            names ~= [identExpr];
+            names ~= [stringExpr];
 
-            readSep(input, ":");
+            input.readSep(":");
 
             // Parse an expression with priority above the comma operator
             auto valueExpr = parseExpr(input, COMMA_PREC+1);
@@ -780,7 +866,7 @@ Parse a list of expressions
 */
 ASTExpr[] parseExprList(TokenStream input, wstring openSep, wstring closeSep)
 {
-    readSep(input, openSep);
+    input.readSep(openSep);
 
     ASTExpr[] exprs = [];
 
@@ -803,7 +889,7 @@ Parse a function declaration's parameter list
 */
 IdentExpr[] parseParamList(TokenStream input)
 {
-    readSep(input, "(");
+    input.readSep("(");
 
     IdentExpr[] exprs = [];
 

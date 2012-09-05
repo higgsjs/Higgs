@@ -76,7 +76,7 @@ wstring escapeJSString(wstring input)
 
         switch (ch)
         {
-            case '\0': output.put("\0"); break;
+            case '\0': output.put("\\0"); break;
             case '\r': output.put("\\r"); break;
             case '\n': output.put("\\n"); break;
             case '\t': output.put("\\t"); break;

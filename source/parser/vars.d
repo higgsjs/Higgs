@@ -183,6 +183,18 @@ void resolveVars(ASTStmt stmt, Scope s)
         resolveVars(forStmt.bodyStmt, s);
     }
 
+    else if (auto forInStmt = cast(ForInStmt)stmt)
+    {
+        if (forInStmt.hasDecl)
+        {
+            auto ident = cast(IdentExpr)forInStmt.varExpr;
+            s.addDecl(ident, ident.name);
+        }
+
+        resolveVars(forInStmt.inExpr, s);
+        resolveVars(forInStmt.bodyStmt, s);
+    }
+
     else if (auto switchStmt = cast(SwitchStmt)stmt)
     {
         resolveVars(switchStmt.switchExpr, s);

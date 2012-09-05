@@ -399,6 +399,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == "~")
             genBinOp(&IRInstr.CAT);
 
+        // TODO: SE, NS
+
         // Comparison operators
         else if (op.str == "==")
             genBinOp(&IRInstr.CMP_EQ);

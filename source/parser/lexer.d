@@ -62,6 +62,9 @@ alias const(OpInfo)* Operator;
 // Comma operator precedence (least precedence)
 const int COMMA_PREC = 0;
 
+// In operator precedence
+const int IN_PREC = 9;
+
 /**
 Operator table
 */
@@ -108,12 +111,12 @@ OpInfo[] operators = [
     { ">>>"w, 2, 10, 'l' },
 
     // Relational operators
-    { "<"w         , 2, 9, 'l' },
-    { "<="w        , 2, 9, 'l' },
-    { ">"w         , 2, 9, 'l' },
-    { ">="w        , 2, 9, 'l' },
-    { "in"w        , 2, 9, 'l' },
-    { "instanceof"w, 2, 9, 'l' },
+    { "<"w         , 2, IN_PREC, 'l' },
+    { "<="w        , 2, IN_PREC, 'l' },
+    { ">"w         , 2, IN_PREC, 'l' },
+    { ">="w        , 2, IN_PREC, 'l' },
+    { "in"w        , 2, IN_PREC, 'l' },
+    { "instanceof"w, 2, IN_PREC, 'l' },
 
     // Equality comparison
     { "=="w , 2, 8, 'l' },
@@ -485,6 +488,29 @@ class TokenStream
         this.nlPresent = false;
     }
 
+    /**
+    Copy constructor for this token stream. Allows for backtracking
+    */
+    this(TokenStream that)
+    {
+        this.tokens = that.tokens[];
+        this.nlPresent = that.nlPresent;
+    }
+
+    /**
+    Method to backtrack to a previous state
+    */
+    void backtrack(TokenStream that)
+    {
+        assert (
+            that.tokens.length >= this.tokens.length, 
+            "past state has less tokens"
+        );
+
+        this.tokens = that.tokens[];
+        this.nlPresent = that.nlPresent;
+    }
+
     SrcPos getPos()
     {
         return tokens.front.pos;
@@ -518,10 +544,21 @@ class TokenStream
         return nlPresent;
     }
 
-    bool matchKw(wstring keyword)
+    bool peekKw(wstring keyword)
     {
         auto t = peek();
-        if (t.type != Token.KEYWORD || t.stringVal != keyword)
+        return (t.type == Token.KEYWORD && t.stringVal == keyword);
+    }
+
+    bool peekSep(wstring sep)
+    {
+        auto t = peek();
+        return (t.type == Token.SEP && t.stringVal == sep);
+    }
+
+    bool matchKw(wstring keyword)
+    {
+        if (peekKw(keyword) == false)
             return false;
         read();
 
@@ -530,8 +567,7 @@ class TokenStream
 
     bool matchSep(wstring sep)
     {
-        auto t = peek();
-        if (t.type != Token.SEP || t.stringVal != sep)
+        if (peekSep(sep) == false)
             return false;
         read();
 
@@ -723,6 +759,7 @@ Token getToken(StrStream stream)
                     case 't' : str ~= '\t'; break;
                     case 'f' : str ~= '\f'; break;
                     case 'b' : str ~= '\b'; break;
+                    case 'a' : str ~= '\a'; break;
                     case '\\': str ~= '\\'; break;
                     case '\"': str ~= '\"'; break;
                     case '\'': str ~= '\''; break;
