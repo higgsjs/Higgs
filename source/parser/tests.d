@@ -260,10 +260,9 @@ unittest
     testExprAST("-a.b;", 
         new UnOpExpr(
             "-", 'r', 
-            new BinOpExpr(
-                ".", 
+            new IndexExpr(
                 new IdentExpr("a"),
-                new IdentExpr("b")
+                new StringExpr("b")
             )
         )
     );
@@ -276,35 +275,42 @@ unittest
         )
     );
 
-    testExprAST("a.b.c;",
-        new BinOpExpr(
-            ".", 
+    testExprAST("a[b + c];",
+        new IndexExpr(
+            new IdentExpr("a"),
             new BinOpExpr(
-                ".", 
+                "+",
+                new IdentExpr("b"),
+                new IdentExpr("c")
+            )
+        )
+    );
+
+    testExprAST("a.b.c;",
+        new IndexExpr(
+            new IndexExpr(
                 new IdentExpr("a"),
-                new IdentExpr("b")
+                new StringExpr("b")
             ),
-            new IdentExpr("c")
+            new StringExpr("c")
         )
     );
 
     testExprAST("++a.b;", 
         new UnOpExpr(
             "++", 'r', 
-            new BinOpExpr(
-                ".", 
+            new IndexExpr(
                 new IdentExpr("a"),
-                new IdentExpr("b")
+                new StringExpr("b")
             )
         )
     );
 
     testExprAST("a.b();",
         new CallExpr(
-            new BinOpExpr(
-                ".", 
+            new IndexExpr(
                 new IdentExpr("a"),
-                new IdentExpr("b")
+                new StringExpr("b")
             ),
             []
         )
@@ -332,10 +338,9 @@ unittest
         new UnOpExpr(
             "++", 'r', 
             new CallExpr(
-                new BinOpExpr(
-                    ".", 
+                new IndexExpr(
                     new IdentExpr("a"),
-                    new IdentExpr("b")
+                    new StringExpr("b")
                 ),
                 []
             )
@@ -344,10 +349,9 @@ unittest
 
     testExprAST("new a.b();",
         new NewExpr(
-            new BinOpExpr(
-                ".",
+            new IndexExpr(
                 new IdentExpr("a"),
-                new IdentExpr("b")
+                new StringExpr("b")
             ),
             []
         )

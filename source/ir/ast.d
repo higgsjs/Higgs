@@ -273,30 +273,23 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
     else if (auto varStmt = cast(VarStmt)stmt)
     {
-        // TODO: assign initializer, if any
-
-        /*
-        if (varStmt.initExpr)
+        for (size_t i = 0; i < varStmt.identExprs.length; ++i)
         {
+            auto ident = varStmt.identExprs[i];
+            auto init = varStmt.initExprs[i];
+
+            if (init is null)
+                continue;
+
             assgToIR(
-                varStmt.identExpr, 
+                ident, 
                 delegate void(IRGenCtx ctx)
                 {
-                    exprToIR(varStmt.initExpr, ctx);
+                    exprToIR(init, ctx);
                 },
                 ctx
             );
         }
-        */
-
-
-
-
-
-
-
-
-
     }
 
     else if (auto ifStmt = cast(IfStmt)stmt)

@@ -632,6 +632,19 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
             lhsExpr = new IndexExpr(lhsExpr, indexExpr, lhsExpr.pos);
         }
 
+        // If this is a member expression
+        else if (op.str == ".")
+        {
+            // Convert it into an indexing expression
+            input.read();
+            auto indexExpr = parseExpr(input, nextMinPrec);
+            auto identExpr = cast(IdentExpr)indexExpr;
+            if (identExpr is null)
+                throw new ParseError("invalid member identifier " ~ indexExpr.toString(), indexExpr.pos);
+            auto stringExpr = new StringExpr(identExpr.name, identExpr.pos);
+            lhsExpr = new IndexExpr(lhsExpr, stringExpr, lhsExpr.pos);
+        }
+
         // If this is the ternary conditional operator
         else if (cur.stringVal == "?")
         {
