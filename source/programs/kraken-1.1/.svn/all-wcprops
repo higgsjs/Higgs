@@ -1,0 +1,179 @@
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1
+END
+stanford-crypto-aes.js
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/stanford-crypto-aes.js
+END
+stanford-crypto-pbkdf2.js
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/stanford-crypto-pbkdf2.js
+END
+stanford-crypto-sha256-iterative-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/stanford-crypto-sha256-iterative-data.js
+END
+stanford-crypto-ccm-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/stanford-crypto-ccm-data.js
+END
+ai-astar-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/ai-astar-data.js
+END
+imaging-desaturate.js
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/imaging-desaturate.js
+END
+audio-oscillator.js
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/audio-oscillator.js
+END
+json-parse-financial-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/json-parse-financial-data.js
+END
+stanford-crypto-aes-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/stanford-crypto-aes-data.js
+END
+stanford-crypto-pbkdf2-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/stanford-crypto-pbkdf2-data.js
+END
+audio-dft.js
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/audio-dft.js
+END
+audio-fft.js
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/audio-fft.js
+END
+imaging-desaturate-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/imaging-desaturate-data.js
+END
+json-stringify-tinderbox.js
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/json-stringify-tinderbox.js
+END
+audio-oscillator-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/audio-oscillator-data.js
+END
+audio-dft-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/audio-dft-data.js
+END
+audio-fft-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/audio-fft-data.js
+END
+imaging-gaussian-blur.js
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/imaging-gaussian-blur.js
+END
+audio-beat-detection.js
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/audio-beat-detection.js
+END
+imaging-darkroom.js
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/imaging-darkroom.js
+END
+json-stringify-tinderbox-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/json-stringify-tinderbox-data.js
+END
+imaging-gaussian-blur-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/imaging-gaussian-blur-data.js
+END
+audio-beat-detection-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/audio-beat-detection-data.js
+END
+stanford-crypto-ccm.js
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/stanford-crypto-ccm.js
+END
+imaging-darkroom-data.js
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/imaging-darkroom-data.js
+END
+stanford-crypto-sha256-iterative.js
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/stanford-crypto-sha256-iterative.js
+END
+LIST
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/LIST
+END
+ai-astar.js
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/ai-astar.js
+END
+json-parse-financial.js
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/3/trunk/kraken/tests/kraken-1.1/json-parse-financial.js
+END

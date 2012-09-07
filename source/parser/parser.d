@@ -664,9 +664,6 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
                 op = eqOp;
             }
 
-            if (lhsExpr.pos is null)
-                writeln("lhsExpr pos is null********");
-
             // Update lhs with the new value
             lhsExpr = new BinOpExpr(op, lhsExpr, rhsExpr, lhsExpr.pos);
         }

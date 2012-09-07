@@ -103,7 +103,7 @@ class IRGenCtx
     }
 
     /**
-    Allocate a temporary slot
+    Allocate a temporary slot in this context
     */
     LocalIdx allocTemp()
     {
@@ -131,6 +131,7 @@ class IRGenCtx
         if (outSlot != NULL_LOCAL)
             return outSlot;
 
+        // Allocate a slot in the parent context
         outSlot = parent.allocTemp();
 
         return outSlot;
@@ -144,16 +145,24 @@ class IRGenCtx
         if (outSlot == localIdx)
             return;
 
-        // If there is already an output slot
+        // If there is already a prescribed output slot
         if (outSlot != NULL_LOCAL)
         {
             // Move the value from the new slot to the current output slot
             auto moveInstr = addInstr(new IRInstr(&IRInstr.MOVE));
             moveInstr.args[0].localIdx = localIdx;
-            moveInstr.outIdx = outSlot;
+            moveInstr.outSlot = outSlot;
         }
 
         outSlot = localIdx;
+    }
+
+    /**
+    Merge and continue insertion in a specific block
+    */
+    void merge(IRBlock block)
+    {
+        curBlock = block;
     }
 
     /**
@@ -162,8 +171,7 @@ class IRGenCtx
     void merge(IRGenCtx subCtx)
     {
         assert (subCtx.parent == this);
-
-        curBlock = subCtx.curBlock;
+        merge(subCtx.curBlock);
     }
 
     /**
@@ -244,12 +252,8 @@ IRFunction astToIR(FunExpr ast)
     if (lastInstr is null || lastInstr.type != &IRInstr.RET)
     {
         auto temp = bodyCtx.allocTemp();
-
-        auto cstInstr = bodyCtx.addInstr(new IRInstr(&IRInstr.SET_NULL));
-        cstInstr.outIdx = temp;
-
-        auto retInstr = bodyCtx.addInstr(new IRInstr(&IRInstr.RET));
-        retInstr.args[0].localIdx = temp;
+        auto cstInstr = bodyCtx.addInstr(new IRInstr(&IRInstr.SET_UNDEF, temp));
+        auto retInstr = bodyCtx.addInstr(new IRInstr(&IRInstr.RET, NULL_LOCAL, temp));
     }
 
     return func;
@@ -269,7 +273,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
     else if (auto varStmt = cast(VarStmt)stmt)
     {
-        // TODO
+        // TODO: assign initializer, if any
+
         /*
         if (varStmt.initExpr)
         {
@@ -283,20 +288,74 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
             );
         }
         */
+
+
+
+
+
+
+
+
+
     }
 
     else if (auto ifStmt = cast(IfStmt)stmt)
     {
-        // TODO
+        // Compile the true statement
+        auto trueBlock = ctx.func.newBlock("if_true");
+        auto trueCtx = ctx.subCtx(trueBlock);
+        stmtToIR(ifStmt.trueStmt, trueCtx);
 
-        assert (false);
+        // Compile the false statement
+        auto falseBlock = ctx.func.newBlock("if_false");
+        auto falseCtx = ctx.subCtx(falseBlock);
+        stmtToIR(ifStmt.falseStmt, falseCtx);
+
+        // Evaluate the test expression
+        auto exprCtx = ctx.subCtx();
+        exprToIR(ifStmt.testExpr, exprCtx);
+        ctx.merge(exprCtx);
+
+        // Create the join block and patch jumps to it
+        auto joinBlock = ctx.func.newBlock("if_join");
+        trueCtx.addInstr(IRInstr.jump(joinBlock));
+        falseCtx.addInstr(IRInstr.jump(joinBlock));
+
+        // Convert the expression value to a boolean
+        auto boolInstr = ctx.addInstr(new IRInstr(
+            &IRInstr.BOOL_VAL,
+            ctx.allocTemp(),
+            exprCtx.getOutSlot(),           
+        ));
+
+        // If the expresson is true, jump
+        ctx.addInstr(new IRInstr(
+            &IRInstr.JUMP_TRUE,
+            boolInstr.outSlot,
+            trueBlock
+        ));
+
+        // Jump to the false statement
+        ctx.addInstr(IRInstr.jump(falseBlock));
+
+        // Continue code generation in the join block
+        ctx.merge(joinBlock);
     }
-
-    /*  
+  
     else if (auto whileStmt = cast(WhileStmt)stmt)
     {
+        // TODO
+        assert (false, "while statement unsupported");
+
+
+
+
+
+
+
     }
 
+    /*
     else if (auto doStmt = cast(DoWhileStmt)stmt)
     {
     }
@@ -313,8 +372,11 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(retStmt.expr, subCtx);
         ctx.merge(subCtx);
 
-        auto retInstr = ctx.addInstr(new IRInstr(&IRInstr.RET));
-        retInstr.args[0].localIdx = subCtx.getOutSlot();
+        auto retInstr = ctx.addInstr(new IRInstr(
+            &IRInstr.RET, 
+            NULL_LOCAL,
+            subCtx.getOutSlot()
+        ));
     }
 
     /*
@@ -399,9 +461,11 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == "~")
             genBinOp(&IRInstr.CAT);
 
-        // TODO: SE, NS
-
         // Comparison operators
+        else if (op.str == "===")
+            genBinOp(&IRInstr.CMP_SE);
+        else if (op.str == "!==")
+            genBinOp(&IRInstr.CMP_NS);
         else if (op.str == "==")
             genBinOp(&IRInstr.CMP_EQ);
         else if (op.str == "!=")
@@ -439,18 +503,32 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto op = unExpr.op;
 
         /*
-        if (op.str == '+')
+        if (op.str == "+")
         {
             // TODO: 0 + x;
         }
+        */
 
-        else if (op.str == '-')
+        /*else*/ if (op.str == "-")
         {
-            // TODO: 0 - x
+            auto outSlot = ctx.getOutSlot();
+
+            auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 0));
+
+            auto subCtx = ctx.subCtx();       
+            exprToIR(unExpr.expr, subCtx);
+            ctx.merge(subCtx);
+
+            ctx.addInstr(new IRInstr(
+                &IRInstr.SUB,
+                outSlot, 
+                cst.outSlot,
+                subCtx.getOutSlot()
+            ));
         }
 
         // Bitwise negation
-        else*/ if (op.str == "~")
+        else if (op.str == "~")
         {
             auto lCtx = ctx.subCtx();
             exprToIR(unExpr.expr, lCtx);
@@ -492,7 +570,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                         &IRInstr.ADD,
                         ctx.getOutSlot(), 
                         ctx.getOutSlot(),
-                        cst.outIdx
+                        cst.outSlot
                     ));
                 },
                 ctx
@@ -527,7 +605,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                         &IRInstr.ADD,
                         ctx.getOutSlot(), 
                         ctx.getOutSlot(),
-                        cst.outIdx
+                        cst.outSlot
                     ));
                 },
                 aCtx
@@ -581,11 +659,13 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
     else if (auto intExpr = cast(IntExpr)expr)
     {
-        auto instr = ctx.addInstr(new IRInstr(&IRInstr.SET_INT));
-        instr.args[0].intVal = intExpr.val;
-        instr.outIdx = ctx.getOutSlot();
+        ctx.addInstr(IRInstr.intCst(
+            ctx.getOutSlot(),
+            intExpr.val
+        ));
     }
 
+    // TODO
     /*
         cast(FloatExpr)expr     ||
         cast(StringExpr)expr    ||
@@ -593,20 +673,17 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
     else if (cast(TrueExpr)expr)
     {
-        auto instr = ctx.addInstr(new IRInstr(&IRInstr.SET_TRUE));
-        instr.outIdx = ctx.getOutSlot();
+        ctx.addInstr(new IRInstr(&IRInstr.SET_TRUE, ctx.getOutSlot()));
     }
 
     else if (cast(FalseExpr)expr)
     {
-        auto instr = ctx.addInstr(new IRInstr(&IRInstr.SET_FALSE));
-        instr.outIdx = ctx.getOutSlot();
+        ctx.addInstr(new IRInstr(&IRInstr.SET_FALSE, ctx.getOutSlot()));
     }
 
     else if (cast(NullExpr)expr)
     {
-        auto instr = ctx.addInstr(new IRInstr(&IRInstr.SET_NULL));
-        instr.outIdx = ctx.getOutSlot();
+        ctx.addInstr(new IRInstr(&IRInstr.SET_NULL, ctx.getOutSlot()));
     }
 
     else
@@ -627,7 +704,7 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
     if (auto identExpr = cast(IdentExpr)lhsExpr)
     {
         // TODO: if id undeclared, must be global variable
-        assert (identExpr.declNode !is null);
+        assert (identExpr.declNode !is null, "global vars unimplemented");
 
         LocalIdx varIdx = ctx.localMap[identExpr.declNode];
 
@@ -646,6 +723,15 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
     {
         // TODO
         assert (false, "not yet supported");
+
+        // TODO: array indexing
+
+
+
+
+
+
+
     }
 
     else

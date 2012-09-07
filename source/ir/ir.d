@@ -274,6 +274,7 @@ class IRInstr : IdObject
     Type SET_TRUE   = { "set_true"  , true, [] };
     Type SET_FALSE  = { "set_false" , true, [] };
     Type SET_NULL   = { "set_null"  , true, [] };
+    Type SET_UNDEF  = { "set_undef" , true, [] };
 
     // Move a value from one local to another
     Type MOVE       = { "move", true, [Arg.LOCAL] };
@@ -298,7 +299,7 @@ class IRInstr : IdObject
     Type CAT        = { "cat", true, [Arg.LOCAL, Arg.LOCAL] };
 
     // Boolean value conversion
-    Type BOOL       = { "bool", true, [Arg.LOCAL] };
+    Type BOOL_VAL    = { "bool_val", true, [Arg.LOCAL] };
 
     // Boolean (logical) negation
     Type BOOL_NOT    = { "bool_not", true, [Arg.LOCAL] };
@@ -313,6 +314,7 @@ class IRInstr : IdObject
     Type CMP_GT     = { "cmp_gt", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_GE     = { "cmp_ge", true, [Arg.LOCAL, Arg.LOCAL] };
 
+    /* TODO: these may not be necessary in interpreter IR
     // Type test instructions
     Type IS_FUNC    = { "is_func" , true, [Arg.LOCAL] };
     Type IS_OBJ     = { "is_obj"  , true, [Arg.LOCAL] };
@@ -322,6 +324,8 @@ class IRInstr : IdObject
     Type IS_TRUE    = { "is_true" , true, [Arg.LOCAL] };
     Type IS_FALSE   = { "is_false", true, [Arg.LOCAL] };
     Type IS_NULL    = { "is_null" , true, [Arg.LOCAL] };
+    Type IS_UNDEF   = { "is_undef", true, [Arg.LOCAL] };
+    */
 
     // Branching and conditional branching
     Type JUMP       = { "jump"      , false, [Arg.BLOCK] };
@@ -373,8 +377,8 @@ class IRInstr : IdObject
     /// Instruction arguments
     Arg[MAX_ARGS] args;
 
-    /// Output local index
-    LocalIdx outIdx = NULL_LOCAL;
+    /// Output local slot
+    LocalIdx outSlot = NULL_LOCAL;
     
     /// Previous and next instructions
     IRInstr prev;
@@ -385,7 +389,8 @@ class IRInstr : IdObject
         this.type = type;
     }
 
-    this(Type* type, LocalIdx outIdx, LocalIdx arg0, LocalIdx arg1)
+    /// Binary constructor
+    this(Type* type, LocalIdx outSlot, LocalIdx arg0, LocalIdx arg1)
     {
         assert (
             type.output == true &&
@@ -395,31 +400,72 @@ class IRInstr : IdObject
         );
 
         this.type = type;
-        this.outIdx = outIdx;
+        this.outSlot = outSlot;
         this.args[0].localIdx = arg0;
         this.args[1].localIdx = arg1;
     }
 
-    this(Type* type, LocalIdx outIdx, LocalIdx arg0)
+    /// Unary constructor
+    this(Type* type, LocalIdx outSlot, LocalIdx arg0)
     {
         assert (
-            type.output == true &&
+            (type.output == true || outSlot == NULL_LOCAL) &&
             type.argTypes.length == 1 &&
-            type.argTypes[0] == Arg.LOCAL
+            type.argTypes[0] == Arg.LOCAL,
+            "invalid instruction for ctor: " ~ type.mnem
         );
 
         this.type = type;
-        this.outIdx = outIdx;
+        this.outSlot = outSlot;
         this.args[0].localIdx = arg0;
     }
 
-    static intCst(LocalIdx outIdx, long intVal)
+    /// No argument constructor
+    this(Type* type, LocalIdx outSlot)
+    {
+        assert (
+            type.output == true &&
+            type.argTypes.length == 0,
+            "invalid instruction for ctor: " ~ type.mnem
+        );
+
+        this.type = type;
+        this.outSlot = outSlot;
+    }
+
+    /// Conditional branching constructor
+    this(Type* type, LocalIdx arg0, IRBlock block)
+    {
+        assert (
+            type.output == false &&
+            type.argTypes.length == 2 &&
+            type.argTypes[0] == Arg.LOCAL &&
+            type.argTypes[1] == Arg.BLOCK,
+            "invalid instruction for ctor: " ~ type.mnem
+        );
+
+        this.type = type;
+        this.args[0].localIdx = arg0;
+        this.args[1].block = block;
+    }
+
+    /// Integer constant
+    static intCst(LocalIdx outSlot, long intVal)
     {
         auto cst = new this(&SET_INT);
         cst.args[0].intVal = intVal;
-        cst.outIdx = outIdx;
+        cst.outSlot = outSlot;
 
         return cst;
+    }
+
+    /// Jump instruction
+    static jump(IRBlock block)
+    {
+        auto jump = new this(&JUMP);
+        jump.args[0].block = block;
+
+        return jump;
     }
 
     final string toString()
@@ -427,7 +473,7 @@ class IRInstr : IdObject
         string output;
 
         if (type.output)
-            output ~= "$" ~ to!string(outIdx) ~ " = ";
+            output ~= "$" ~ to!string(outSlot) ~ " = ";
 
         output ~= type.mnem;
 

@@ -45,9 +45,6 @@ Evaluate a string of source code
 */
 void evalString(string input)
 {
-    // Add a semicolon to the input
-    input ~= ";\n";
-
     auto ast = parseString(input, "repl");
 
     writeln(ast);
