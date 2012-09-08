@@ -593,6 +593,22 @@ class ASTExpr : ASTNode
     {
         super(pos); 
     }
+
+    /// Get the operator precedence for this expression
+    int getPrec()
+    {
+        // By default, maximum precedence (atomic)
+        return MAX_PREC;
+    }
+
+    /// Parenthesize this expression as appropriate
+    string parenString(ASTExpr parent)
+    {
+        if (parent.getPrec() > this.getPrec())
+            return "(" ~ this.toString() ~ ")";
+        else
+            return this.toString();
+    }
 }
 
 /**
@@ -625,23 +641,12 @@ class FunExpr : ASTExpr
 
     string toString()
     {
-        if (name)
-        {
-            return xformat(
-                "(function %s (%(%s,%)) %s)",
-                name,
-                params,
-                bodyStmt
-            );
-        }
-        else
-        {
-            return xformat(
-                "(function (%(%s,%)) %s)",
-                params,
-                bodyStmt
-            );
-        }
+        return xformat(
+            "function %s(%(%s,%)) %s",
+            name? name.toString():"",
+            params,
+            bodyStmt
+        );
     }
 }
 
@@ -674,12 +679,28 @@ class BinOpExpr : ASTExpr
         this(op, lExpr, rExpr, pos);
     }
 
+    int getPrec()
+    {
+        return op.prec;
+    }
+
     string toString()
     {
+        string opStr;
+
         if (op.str == ".")
-            return format("(%s.%s)", lExpr, rExpr);
+            opStr = ".";
+        else if (op.str == ",")
+            opStr = ", ";
         else
-            return format("(%s %s %s)", lExpr, op.str, rExpr);
+            opStr = " " ~ to!string(op.str) ~ " ";
+
+        return format(
+            "%s%s%s",
+            lExpr.parenString(this),
+            opStr,
+            rExpr.parenString(this)
+        );
     }
 }
 
@@ -709,12 +730,17 @@ class UnOpExpr : ASTExpr
         this(op, expr, pos);
     }
 
+    int getPrec()
+    {
+        return op.prec;
+    }
+
     string toString()
     {
         if (op.assoc == 'r')
-            return format("%s(%s)", op.str, expr);
+            return format("%s%s", op.str, expr.parenString(this));
         else
-            return format("(%s)%s", expr, op.str);
+            return format("%s%s", expr.parenString(this), op.str);
     }
 }
 
@@ -737,7 +763,7 @@ class CondExpr : ASTExpr
 
     string toString()
     {
-        return format("(%s? %s:%s)", testExpr, trueExpr, falseExpr);
+        return format("%s? %s:%s", testExpr, trueExpr, falseExpr);
     }
 }
 

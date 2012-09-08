@@ -225,14 +225,36 @@ IRFunction astToIR(FunExpr ast)
         }
     }
 
-    writefln("local map len: %s", localMap.length);
-
-    // Set the initial number of locals
-    func.numLocals = cast(uint)localMap.length;
-
     // Create the function entry block
     auto entry = func.newBlock("entry");
     func.entryBlock = entry;
+
+    writefln("local map len: %s", localMap.length);
+
+    // Initialize local variables to undefined 
+    for (LocalIdx local = 0; local < localMap.length; ++local)
+        entry.addInstr(new IRInstr(&IRInstr.SET_UNDEF, local));
+
+
+
+
+
+    // TODO: create closures for function declarations
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Set the initial number of locals
+    func.numLocals = cast(uint)localMap.length;
 
     // Create a context for the function body
     auto bodyCtx = new IRGenCtx(
@@ -304,15 +326,15 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto falseCtx = ctx.subCtx(falseBlock);
         stmtToIR(ifStmt.falseStmt, falseCtx);
 
-        // Evaluate the test expression
-        auto exprCtx = ctx.subCtx();
-        exprToIR(ifStmt.testExpr, exprCtx);
-        ctx.merge(exprCtx);
-
         // Create the join block and patch jumps to it
         auto joinBlock = ctx.func.newBlock("if_join");
         trueCtx.addInstr(IRInstr.jump(joinBlock));
         falseCtx.addInstr(IRInstr.jump(joinBlock));
+
+        // Evaluate the test expression
+        auto exprCtx = ctx.subCtx();
+        exprToIR(ifStmt.testExpr, exprCtx);
+        ctx.merge(exprCtx);
 
         // Convert the expression value to a boolean
         auto boolInstr = ctx.addInstr(new IRInstr(
@@ -337,15 +359,42 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
   
     else if (auto whileStmt = cast(WhileStmt)stmt)
     {
-        // TODO
-        assert (false, "while statement unsupported");
+        // Create the loop test, body and exit blocks
+        auto testBlock = ctx.func.newBlock("while_test");
+        auto bodyBlock = ctx.func.newBlock("while_body");
+        auto exitBlock = ctx.func.newBlock("while_exit");
 
+        // Jump to the test block
+        ctx.addInstr(IRInstr.jump(testBlock));
 
+        // Evaluate the test expression
+        auto exprCtx = ctx.subCtx(testBlock);
+        exprToIR(whileStmt.testExpr, exprCtx);
 
+        // Convert the expression value to a boolean
+        auto boolInstr = exprCtx.addInstr(new IRInstr(
+            &IRInstr.BOOL_VAL,
+            exprCtx.allocTemp(),
+            exprCtx.getOutSlot(),           
+        ));
 
+        // If the expresson is true, jump to the loop body
+        exprCtx.addInstr(new IRInstr(
+            &IRInstr.JUMP_TRUE,
+            boolInstr.outSlot,
+            bodyBlock
+        ));
+        exprCtx.addInstr(IRInstr.jump(exitBlock));
 
+        // Compile the loop body statement
+        auto bodyCtx = ctx.subCtx(bodyBlock);
+        stmtToIR(whileStmt.bodyStmt, bodyCtx);
 
+        // Jump to the loop test
+        bodyCtx.addInstr(IRInstr.jump(testBlock));
 
+        // Continue code generation in the exit block
+        ctx.merge(exitBlock);
     }
 
     /*
@@ -397,9 +446,27 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
 void exprToIR(ASTExpr expr, IRGenCtx ctx)
 {
+    // Function expression
     if (auto funExpr = cast(FunExpr)expr)
     {
-        // TODO
+        // TODO: if this is a function declaration, don't create the closure here
+        // could check in list of fn decls of the parent ****
+
+
+
+
+        // TODO: create a closure of this function
+        // NEW_CLOS
+
+
+
+
+
+
+
+
+
+
     }
 
     else if (auto binExpr = cast(BinOpExpr)expr)
@@ -495,14 +562,25 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     {
         auto op = unExpr.op;
 
-        /*
         if (op.str == "+")
         {
-            // TODO: 0 + x;
-        }
-        */
+            auto outSlot = ctx.getOutSlot();
 
-        /*else*/ if (op.str == "-")
+            auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 0));
+
+            auto subCtx = ctx.subCtx();       
+            exprToIR(unExpr.expr, subCtx);
+            ctx.merge(subCtx);
+
+            ctx.addInstr(new IRInstr(
+                &IRInstr.ADD,
+                outSlot, 
+                cst.outSlot,
+                subCtx.getOutSlot()
+            ));
+        }
+
+        else if (op.str == "-")
         {
             auto outSlot = ctx.getOutSlot();
 
@@ -623,10 +701,20 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     }
     */
 
+    // Function call expression
     else if (auto callExpr = cast(CallExpr)expr)
     {
         // TODO
+        // TODO
+        // TODO
         assert (false, "call unimplemented");
+
+
+
+
+
+
+
     }
 
     /*
@@ -639,15 +727,23 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     }
     */
 
+    // Identifier/variable reference
     else if (auto identExpr = cast(IdentExpr)expr)
     {
-        // TODO: if id undeclared, must be global variable
-        assert (identExpr.declNode !is null);
+        // If the variable is global
+        if (identExpr.declNode is null)
+        {
+            // TODO: if id undeclared, must be global variable
+            assert (identExpr.declNode !is null);
+        }
 
-        LocalIdx varIdx = ctx.localMap[identExpr.declNode];
-
-         // Set the variable as our output
-        ctx.setOutSlot(varIdx);
+        // The variable is local
+        else
+        {
+            // Set the variable as our output
+            LocalIdx varIdx = ctx.localMap[identExpr.declNode];
+            ctx.setOutSlot(varIdx);
+        }
     }
 
     else if (auto intExpr = cast(IntExpr)expr)
@@ -658,11 +754,18 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         ));
     }
 
+    else if (auto floatExpr = cast(FloatExpr)expr)
+    {
+        ctx.addInstr(IRInstr.floatCst(
+            ctx.getOutSlot(),
+            floatExpr.val
+        ));
+    }
+
     // TODO
-    /*
-        cast(FloatExpr)expr     ||
-        cast(StringExpr)expr    ||
-    */
+    // TODO: string expression
+    // TODO
+    //cast(StringExpr)expr
 
     else if (cast(TrueExpr)expr)
     {
@@ -696,28 +799,37 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
     // If the lhs is an identifier
     if (auto identExpr = cast(IdentExpr)lhsExpr)
     {
-        // TODO: if id undeclared, must be global variable
-        assert (identExpr.declNode !is null, "global vars unimplemented");
+        // If the variable is global
+        if (identExpr.declNode is null)
+        {
+            // TODO: if id undeclared, must be global variable
+            assert (identExpr.declNode !is null, "global vars unimplemented");
+        }
 
-        LocalIdx varIdx = ctx.localMap[identExpr.declNode];
+        // The variable is local
+        else
+        {
+            LocalIdx varIdx = ctx.localMap[identExpr.declNode];
 
-        writefln("var idx: %s", varIdx);
+            // Compute the right expression and assign it into the variable
+            auto rCtx = ctx.subCtx(null, varIdx);
+            rhsExprFn(rCtx);
+            ctx.merge(rCtx);
 
-        auto rCtx = ctx.subCtx(null, varIdx);
-        rhsExprFn(rCtx);
-        ctx.merge(rCtx);
-
-        // The local variable is our output
-        ctx.setOutSlot(varIdx);
+            // The local variable is our output
+            ctx.setOutSlot(varIdx);
+        }
     }
 
-    // If the lhs is a binary expression
-    else if (auto binOpExpr = cast(BinOpExpr)lhsExpr)
+    // If the lhs is an array indexing expression (e.g.: a[b])
+    else if (auto indexExpr = cast(IndexExpr)lhsExpr)
     {
         // TODO
         assert (false, "not yet supported");
 
         // TODO: array indexing
+
+
 
 
 

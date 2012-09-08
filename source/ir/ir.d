@@ -79,7 +79,7 @@ class IRFunction : IdObject
     {
         auto output = appender!string();
 
-        output.put("fun (");
+        output.put("function (");
 
         for (size_t i = 0; i < params.length; ++i)
         {
@@ -459,6 +459,16 @@ class IRInstr : IdObject
         return cst;
     }
 
+    /// Floating-point constant
+    static floatCst(LocalIdx outSlot, double floatVal)
+    {
+        auto cst = new this(&SET_FLOAT);
+        cst.args[0].floatVal = floatVal;
+        cst.outSlot = outSlot;
+
+        return cst;
+    }
+
     /// Jump instruction
     static jump(IRBlock block)
     {
@@ -493,7 +503,7 @@ class IRInstr : IdObject
                 case Arg.FLOAT  : output ~= to!string(arg.floatVal); break;
                 case Arg.STRING : output ~= arg.stringVal; break;
                 case Arg.LOCAL : output ~= "$" ~ to!string(arg.localIdx); break;
-                case Arg.BLOCK : output ~= "$" ~ arg.block.getName(); break;
+                case Arg.BLOCK : output ~= arg.block.getName(); break;
                 default: assert (false, "unhandled arg type");
             }
         }

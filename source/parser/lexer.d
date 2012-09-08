@@ -59,6 +59,9 @@ struct OpInfo
 
 alias const(OpInfo)* Operator;
 
+// Maximum operator precedence
+const int MAX_PREC = 16;
+
 // Comma operator precedence (least precedence)
 const int COMMA_PREC = 0;
 
