@@ -39,6 +39,7 @@ module ir.ast;
 
 import std.stdio;
 import std.array;
+import std.algorithm;
 import parser.ast;
 import parser.parser;
 import ir.ir;
@@ -52,7 +53,7 @@ class IRGenCtx
     IRGenCtx parent;
 
     /// IR function object
-    IRFunction func;
+    IRFunction fun;
 
     /// Block into which to insert
     IRBlock curBlock;
@@ -68,7 +69,7 @@ class IRGenCtx
 
     this(
         IRGenCtx parent,
-        IRFunction func, 
+        IRFunction fun, 
         IRBlock block,
         LocalIdx[ASTNode] localMap,
         LocalIdx nextTemp,
@@ -76,7 +77,7 @@ class IRGenCtx
     )
     {
         this.parent = parent;
-        this.func = func;
+        this.fun = fun;
         this.curBlock = block;
         this.localMap = localMap;
         this.nextTemp = nextTemp;
@@ -94,7 +95,7 @@ class IRGenCtx
 
         return new IRGenCtx(
             this,
-            func,
+            fun,
             startBlock,
             localMap,
             nextTemp,
@@ -107,10 +108,10 @@ class IRGenCtx
     */
     LocalIdx allocTemp()
     {
-        if (nextTemp == func.numLocals)
-            func.numLocals++;
+        if (nextTemp == fun.numLocals)
+            fun.numLocals++;
 
-        assert (nextTemp < func.numLocals);
+        assert (nextTemp < fun.numLocals);
 
         return nextTemp++;
     }
@@ -204,7 +205,7 @@ IRFunction astToIR(FunExpr ast)
     auto vars = ast.locals;
 
     // Create a function object
-    auto func = new IRFunction(ast, params);
+    auto fun = new IRFunction(ast, params);
 
     LocalIdx[ASTNode] localMap;
 
@@ -226,8 +227,8 @@ IRFunction astToIR(FunExpr ast)
     }
 
     // Create the function entry block
-    auto entry = func.newBlock("entry");
-    func.entryBlock = entry;
+    auto entry = fun.newBlock("entry");
+    fun.entryBlock = entry;
 
     writefln("local map len: %s", localMap.length);
 
@@ -254,15 +255,15 @@ IRFunction astToIR(FunExpr ast)
 
 
     // Set the initial number of locals
-    func.numLocals = cast(uint)localMap.length;
+    fun.numLocals = cast(uint)localMap.length;
 
     // Create a context for the function body
     auto bodyCtx = new IRGenCtx(
         null,
-        func, 
+        fun, 
         entry,
         localMap,
-        func.numLocals,
+        fun.numLocals,
         0
     );
 
@@ -278,7 +279,7 @@ IRFunction astToIR(FunExpr ast)
         auto retInstr = bodyCtx.addInstr(new IRInstr(&IRInstr.RET, NULL_LOCAL, temp));
     }
 
-    return func;
+    return fun;
 }
 
 void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
@@ -317,17 +318,17 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     else if (auto ifStmt = cast(IfStmt)stmt)
     {
         // Compile the true statement
-        auto trueBlock = ctx.func.newBlock("if_true");
+        auto trueBlock = ctx.fun.newBlock("if_true");
         auto trueCtx = ctx.subCtx(trueBlock);
         stmtToIR(ifStmt.trueStmt, trueCtx);
 
         // Compile the false statement
-        auto falseBlock = ctx.func.newBlock("if_false");
+        auto falseBlock = ctx.fun.newBlock("if_false");
         auto falseCtx = ctx.subCtx(falseBlock);
         stmtToIR(ifStmt.falseStmt, falseCtx);
 
         // Create the join block and patch jumps to it
-        auto joinBlock = ctx.func.newBlock("if_join");
+        auto joinBlock = ctx.fun.newBlock("if_join");
         trueCtx.addInstr(IRInstr.jump(joinBlock));
         falseCtx.addInstr(IRInstr.jump(joinBlock));
 
@@ -360,9 +361,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     else if (auto whileStmt = cast(WhileStmt)stmt)
     {
         // Create the loop test, body and exit blocks
-        auto testBlock = ctx.func.newBlock("while_test");
-        auto bodyBlock = ctx.func.newBlock("while_body");
-        auto exitBlock = ctx.func.newBlock("while_exit");
+        auto testBlock = ctx.fun.newBlock("while_test");
+        auto bodyBlock = ctx.fun.newBlock("while_body");
+        auto exitBlock = ctx.fun.newBlock("while_exit");
 
         // Jump to the test block
         ctx.addInstr(IRInstr.jump(testBlock));
@@ -449,24 +450,14 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     // Function expression
     if (auto funExpr = cast(FunExpr)expr)
     {
-        // TODO: if this is a function declaration, don't create the closure here
-        // could check in list of fn decls of the parent ****
-
-
-
-
-        // TODO: create a closure of this function
-        // NEW_CLOS
-
-
-
-
-
-
-
-
-
-
+        // If this is not a function declaration
+        if (countUntil(ctx.fun.ast.funDecls, funExpr) == -1)
+        {
+            // Create a closure of this function
+            auto newClos = ctx.addInstr(new IRInstr(&IRInstr.NEW_CLOS));
+            newClos.outSlot = ctx.getOutSlot();
+            newClos.args[0].fun = funExpr;
+        }
     }
 
     else if (auto binExpr = cast(BinOpExpr)expr)
@@ -516,10 +507,6 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             genBinOp(&IRInstr.RSHIFT);
         else if (op.str == ">>>")
             genBinOp(&IRInstr.URSHIFT);
-
-        // String concatenation
-        else if (op.str == "~")
-            genBinOp(&IRInstr.CAT);
 
         // Comparison operators
         else if (op.str == "===")
@@ -704,17 +691,59 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     // Function call expression
     else if (auto callExpr = cast(CallExpr)expr)
     {
-        // TODO
-        // TODO
-        // TODO
-        assert (false, "call unimplemented");
+        auto baseExpr = callExpr.base;
+        auto argExprs = callExpr.args;
 
+        LocalIdx thisSlot;
 
+        // If the base expression is a member expression
+        if (auto indexExpr = cast(IndexExpr)baseExpr)
+        {
+            // TODO
+            // this value is the index expression base
+            assert (false, "member call unimplemented");
+        }
 
+        else
+        {
+            // TODO: global object
+            // The this value is the global object
+            thisSlot = ctx.allocTemp();
+            ctx.addInstr(new IRInstr(&IRInstr.SET_UNDEF, thisSlot));
+        }
 
+        // Evaluate the base expression
+        auto baseCtx = ctx.subCtx();       
+        exprToIR(baseExpr, baseCtx);
+        ctx.merge(baseCtx);
 
+        // Evaluate the arguments
+        auto argSlots = new LocalIdx[argExprs.length];
+        for (size_t i = 0; i < argExprs.length; ++i)
+        {
+            auto argCtx = ctx.subCtx();       
+            exprToIR(argExprs[i], argCtx);
+            ctx.merge(argCtx);
+            argSlots ~= argCtx.outSlot;
+        }
 
+        // Set the call arguments
+        for (size_t i = 0; i < argSlots.length; ++i)
+        {
+            auto argInstr = ctx.addInstr(new IRInstr(&IRInstr.SET_ARG));
+            argInstr.args[0].localIdx = argSlots[i];
+            argInstr.args[1].intVal = i;
+        }
 
+        // Add the call instruction
+        // CALL <fnLocal> <thisArg> <numArgs>
+        auto callInstr = ctx.addInstr(new IRInstr(&IRInstr.CALL));
+        callInstr.args[0].localIdx = baseCtx.outSlot;
+        callInstr.args[1].localIdx = thisSlot;
+        callInstr.args[2].intVal = argExprs.length;
+
+        // Get the return value from this call
+        ctx.addInstr(new IRInstr(&IRInstr.GET_RET, ctx.getOutSlot()));
     }
 
     /*

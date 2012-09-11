@@ -50,7 +50,7 @@ IR function
 class IRFunction : IdObject
 {
     /// Corresponding AST node
-    ASTNode ast;
+    FunExpr ast;
 
     // Function parameters
     IdentExpr[] params;
@@ -68,7 +68,7 @@ class IRFunction : IdObject
     IRBlock firstBlock = null;
     IRBlock lastBlock = null;
 
-    this(ASTNode ast, IdentExpr[] params, string name = "")
+    this(FunExpr ast, IdentExpr[] params, string name = "")
     {
         this.ast = ast;
         this.params = params;
@@ -245,7 +245,8 @@ class IRInstr : IdObject
             FLOAT,
             STRING,
             LOCAL,
-            BLOCK
+            BLOCK,
+            FUN
         }
 
         long intVal;
@@ -253,6 +254,7 @@ class IRInstr : IdObject
         string stringVal;
         LocalIdx localIdx;
         IRBlock block;
+        FunExpr fun;
     }
 
     /// Instruction type information
@@ -295,9 +297,6 @@ class IRInstr : IdObject
     Type RSHIFT     = { "rshift" , true, [Arg.LOCAL, Arg.LOCAL] };
     Type URSHIFT    = { "urshift", true, [Arg.LOCAL, Arg.LOCAL] };
 
-    // String concatenation
-    Type CAT        = { "cat", true, [Arg.LOCAL, Arg.LOCAL] };
-
     // Boolean value conversion
     Type BOOL_VAL    = { "bool_val", true, [Arg.LOCAL] };
 
@@ -314,36 +313,23 @@ class IRInstr : IdObject
     Type CMP_GT     = { "cmp_gt", true, [Arg.LOCAL, Arg.LOCAL] };
     Type CMP_GE     = { "cmp_ge", true, [Arg.LOCAL, Arg.LOCAL] };
 
-    /* TODO: these may not be necessary in interpreter IR
-    // Type test instructions
-    Type IS_FUNC    = { "is_func" , true, [Arg.LOCAL] };
-    Type IS_OBJ     = { "is_obj"  , true, [Arg.LOCAL] };
-    Type IS_STR     = { "is_str"  , true, [Arg.LOCAL] };
-    Type IS_INT     = { "is_int"  , true, [Arg.LOCAL] };
-    Type IS_FLOAT   = { "is_float", true, [Arg.LOCAL] };
-    Type IS_TRUE    = { "is_true" , true, [Arg.LOCAL] };
-    Type IS_FALSE   = { "is_false", true, [Arg.LOCAL] };
-    Type IS_NULL    = { "is_null" , true, [Arg.LOCAL] };
-    Type IS_UNDEF   = { "is_undef", true, [Arg.LOCAL] };
-    */
-
     // Branching and conditional branching
     Type JUMP       = { "jump"      , false, [Arg.BLOCK] };
     Type JUMP_TRUE  = { "jump_true" , false, [Arg.LOCAL, Arg.BLOCK] };
     Type JUMP_FALSE = { "jump_false", false, [Arg.LOCAL, Arg.BLOCK] };
 
-    // PUSH_FRAME <fnLocal>
-    // Pushes new whole frame for the callee
-    Type PUSH_FRAME = { "push_frame", false, [Arg.LOCAL] };
-
     // SET_ARG <srcLocal> <argIdx>
-    Type SET_ARG    = { "ret", false, [Arg.LOCAL, Arg.LOCAL] };
+    Type SET_ARG    = { "ret", false, [Arg.LOCAL, Arg.INT] };
 
-    // CALL <fnLocal>
+    // CALL <fnLocal> <thisArg> <numArgs>
     // Makes the execution go to the callee entry
     // Sets the frame pointer to the new frame's base
     // Pushes the return address word
-    Type CALL       = { "ret", false, [Arg.LOCAL] };
+    Type CALL       = { "ret", false, [Arg.LOCAL, Arg.LOCAL, Arg.INT] };
+
+    // PUSH_FRAME <numArgs> <numLocals>
+    // On function entry, allocates/adjusts the callee's stack frame
+    Type PUSH_FRAME = { "push_frame", false, [Arg.INT, Arg.INT] };
 
     // <retLocal> = GET_RET
     // After return, extracts the return value
@@ -354,12 +340,12 @@ class IRInstr : IdObject
     // Pops the callee frame (size known by context)
     Type RET        = { "ret", false, [Arg.LOCAL] };
 
-    /* TODO
+    // <dstLocal> = NEW_CLOS <funExpr>
+    // Create a new closure from a function's AST node
+    Type NEW_CLOS = { "new_clos", true, [Arg.FUN] };
+
     // Create new object
     //NEW_OBJ,
-
-    // Create new closure
-    //NEW_CLOS,
 
     //SET_GLOBAL,
     //GET_GLOBAL,
@@ -369,7 +355,6 @@ class IRInstr : IdObject
 
     // <dst_local> = GET_FIELD <obj_local> <name_local>
     //GET_FIELD,
-    */
 
     /// Instruction type
     Type* type;
@@ -502,8 +487,10 @@ class IRInstr : IdObject
                 case Arg.INT    : output ~= to!string(arg.intVal); break;
                 case Arg.FLOAT  : output ~= to!string(arg.floatVal); break;
                 case Arg.STRING : output ~= arg.stringVal; break;
-                case Arg.LOCAL : output ~= "$" ~ to!string(arg.localIdx); break;
-                case Arg.BLOCK : output ~= arg.block.getName(); break;
+                case Arg.LOCAL  : output ~= "$" ~ to!string(arg.localIdx); break;
+                case Arg.BLOCK  : output ~= arg.block.getName(); break;
+                case Arg.FUN    : output ~= arg.fun.getName(); break;
+
                 default: assert (false, "unhandled arg type");
             }
         }

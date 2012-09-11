@@ -639,11 +639,16 @@ class FunExpr : ASTExpr
         this.bodyStmt = bodyStmt;
     }
 
+    string getName()
+    {
+        return name? name.toString():"";
+    }
+
     string toString()
     {
         return xformat(
             "function %s(%(%s,%)) %s",
-            name? name.toString():"",
+            getName(),
             params,
             bodyStmt
         );
