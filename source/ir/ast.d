@@ -196,66 +196,32 @@ class IRGenCtx
 /**
 Compile an AST program or function into an IR function
 */
-IRFunction astToIR(FunExpr ast)
+IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 {
-    assert (cast(FunExpr)ast || cast(ASTProgram)ast);
+    assert (
+        cast(FunExpr)ast || cast(ASTProgram)ast,
+        "invalid AST function"
+    );
 
-    // Get the function parameters and variables, if any
-    auto params = ast.params;
-    auto vars = ast.locals;
+    // If no IR function object was passed, create one
+    if (fun is null)
+        fun = new IRFunction(ast);
 
-    // Create a function object
-    auto fun = new IRFunction(ast, params);
-
-    LocalIdx[ASTNode] localMap;
-
-    // Allocate the first local slots to parameters
-    foreach (ident; params)
-    {
-        auto localIdx = cast(LocalIdx)localMap.length;
-        localMap[ident] = localIdx;
-    }
-
-    // Allocate local slots to remaining local variables
-    foreach (node; vars)
-    {
-        if (node !in localMap)
-        {
-            auto localIdx = cast(LocalIdx)localMap.length;
-            localMap[node] = localIdx;
-        }
-    }
+    assert (
+        fun.entryBlock is null,
+        "function already has an entry block"
+    );
 
     // Create the function entry block
     auto entry = fun.newBlock("entry");
     fun.entryBlock = entry;
 
-    writefln("local map len: %s", localMap.length);
+    // Get the function parameters and variables, if any
+    auto params = ast.params;
+    auto vars = ast.locals;
 
-    // Initialize local variables to undefined 
-    for (LocalIdx local = 0; local < localMap.length; ++local)
-        entry.addInstr(new IRInstr(&IRInstr.SET_UNDEF, local));
-
-
-
-
-
-    // TODO: create closures for function declarations
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // Set the initial number of locals
-    fun.numLocals = cast(uint)localMap.length;
+    // Map of ast nodes to local slots
+    LocalIdx[ASTNode] localMap;
 
     // Create a context for the function body
     auto bodyCtx = new IRGenCtx(
@@ -263,9 +229,45 @@ IRFunction astToIR(FunExpr ast)
         fun, 
         entry,
         localMap,
-        fun.numLocals,
+        0,
         0
     );
+
+    // Allocate the first local slots to parameters
+    foreach (ident; params)
+        localMap[ident] = bodyCtx.allocTemp();
+
+    // Map temp slots for the hidden arguments
+    fun.closSlot = bodyCtx.allocTemp();
+    fun.thisSlot = bodyCtx.allocTemp();
+    fun.argcSlot = bodyCtx.allocTemp();
+    fun.raSlot   = bodyCtx.allocTemp();
+
+    // Allocate local slots to remaining local variables
+    foreach (node; vars)
+        if (node !in localMap)
+            localMap[node] = bodyCtx.allocTemp();
+
+    // Initialize local variables to undefined 
+    for (LocalIdx local = 0; local < localMap.length; ++local)
+        entry.addInstr(new IRInstr(&IRInstr.SET_UNDEF, local));
+
+    // Create closures for nested function declarations
+    foreach (funDecl; ast.funDecls)
+    {
+        // Create an IR function object for the function
+        auto subFun = new IRFunction(funDecl);
+
+        // Create a closure of this function
+        auto newClos = bodyCtx.addInstr(new IRInstr(&IRInstr.NEW_CLOS));
+        newClos.outSlot = bodyCtx.allocTemp();
+        newClos.args[0].fun = fun;
+
+        // Store the closure temp in the local map
+        localMap[funDecl.name] = newClos.outSlot;
+    }
+
+    writefln("num locals: %s", fun.numLocals);
 
     // Compile the function body
     stmtToIR(ast.bodyStmt, bodyCtx);
@@ -279,6 +281,32 @@ IRFunction astToIR(FunExpr ast)
         auto retInstr = bodyCtx.addInstr(new IRInstr(&IRInstr.RET, NULL_LOCAL, temp));
     }
 
+    /// Function to translate (reverse) local indices
+    void translLocal(ref LocalIdx localIdx)
+    {
+        localIdx = fun.numLocals - 1 - localIdx;
+    }
+
+    // Reverse the stack frame slot indices in the IR
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+            // Translate the local argument indices
+            auto argTypes = instr.type.argTypes;
+            for (size_t i = 0; i < argTypes.length; ++i)
+            {
+                if (argTypes[i] == IRInstr.Arg.LOCAL)
+                    translLocal(instr.args[i].localIdx);
+            }
+
+            // Translate the output index
+            if (instr.type.output)
+                translLocal(instr.outSlot);
+        }
+    }
+
+    // Return the IR function object
     return fun;
 }
 
@@ -453,10 +481,13 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // If this is not a function declaration
         if (countUntil(ctx.fun.ast.funDecls, funExpr) == -1)
         {
+            // Create an IR function object for the function
+            auto fun = new IRFunction(funExpr);
+
             // Create a closure of this function
             auto newClos = ctx.addInstr(new IRInstr(&IRInstr.NEW_CLOS));
             newClos.outSlot = ctx.getOutSlot();
-            newClos.args[0].fun = funExpr;
+            newClos.args[0].fun = fun;
         }
     }
 

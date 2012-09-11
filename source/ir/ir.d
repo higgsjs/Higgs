@@ -37,9 +37,11 @@
 
 module ir.ir;
 
+import std.stdio;
 import std.array;
 import std.string;
 import std.conv;
+import std.regex;
 import util.id;
 import util.string;
 import parser.ast;
@@ -52,14 +54,11 @@ class IRFunction : IdObject
     /// Corresponding AST node
     FunExpr ast;
 
+    /// Function name
+    string name = "";
+
     // Function parameters
     IdentExpr[] params;
-
-    // Number of local variables
-    uint numLocals = 0;
-
-    /// Function name
-    string name;
 
     /// Entry block
     IRBlock entryBlock = null;
@@ -68,18 +67,51 @@ class IRFunction : IdObject
     IRBlock firstBlock = null;
     IRBlock lastBlock = null;
 
-    this(FunExpr ast, IdentExpr[] params, string name = "")
+    // Number of local variables
+    uint numLocals = 0;
+
+    // Hidden argument slots
+    LocalIdx closSlot;
+    LocalIdx thisSlot;
+    LocalIdx argcSlot;
+    LocalIdx raSlot;
+
+    /// Constructor
+    this(FunExpr ast)
     {
         this.ast = ast;
-        this.params = params;
-        this.name = name;
+        this.params = ast.params;
+
+        this.name = ast.getName();
+
+        // If the function is anonymous
+        if (this.name == "")
+        {
+            if (cast(ASTProgram)ast)
+            {
+                this.name = ast.pos.file? ast.pos.file:"";
+                enum notAlnum = ctRegex!(`[^0-9|a-z|A-Z]`, "g");
+                this.name = this.name.replace(notAlnum, "_");
+            }
+            else
+            {
+                this.name = "anon";
+            }
+        }
+    }
+
+    string getName()
+    {
+        return this.name ~ "(" ~ idString() ~ ")";
     }
 
     string toString()
     {
         auto output = appender!string();
 
-        output.put("function (");
+        output.put("function ");
+        output.put(getName());
+        output.put("(");
 
         for (size_t i = 0; i < params.length; ++i)
         {
@@ -254,7 +286,7 @@ class IRInstr : IdObject
         string stringVal;
         LocalIdx localIdx;
         IRBlock block;
-        FunExpr fun;
+        IRFunction fun;
     }
 
     /// Instruction type information
@@ -325,7 +357,7 @@ class IRInstr : IdObject
     // Makes the execution go to the callee entry
     // Sets the frame pointer to the new frame's base
     // Pushes the return address word
-    Type CALL       = { "ret", false, [Arg.LOCAL, Arg.LOCAL, Arg.INT] };
+    Type CALL       = { "call", false, [Arg.LOCAL, Arg.LOCAL, Arg.INT] };
 
     // PUSH_FRAME <numArgs> <numLocals>
     // On function entry, allocates/adjusts the callee's stack frame
@@ -333,7 +365,7 @@ class IRInstr : IdObject
 
     // <retLocal> = GET_RET
     // After return, extracts the return value
-    Type GET_RET    = { "ret", true, [] };
+    Type GET_RET    = { "get_ret", true, [] };
 
     // RET <retLocal>
     // Stores return value in special registers
@@ -489,7 +521,7 @@ class IRInstr : IdObject
                 case Arg.STRING : output ~= arg.stringVal; break;
                 case Arg.LOCAL  : output ~= "$" ~ to!string(arg.localIdx); break;
                 case Arg.BLOCK  : output ~= arg.block.getName(); break;
-                case Arg.FUN    : output ~= arg.fun.getName(); break;
+                case Arg.FUN    : output ~= "<fun:" ~ arg.fun.getName() ~ ">"; break;
 
                 default: assert (false, "unhandled arg type");
             }

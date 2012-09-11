@@ -35,7 +35,28 @@
 *
 *****************************************************************************/
 
-// TODO: basic interpreter tests, global return constants, global return expr
+module interp.tests;
+
+import std.stdio;
+import parser.parser;
+import ir.ast;
+
+
+
+// TODO: basic interpreter tests
+// return global exprs
+// return global call
+// parameter passing
+
+
+
+
+
+
+// TODO
+/// Global expression tests
+unittest
+{
 
 
 
@@ -44,7 +65,5 @@
 
 
 
-
-
-
+}
 
