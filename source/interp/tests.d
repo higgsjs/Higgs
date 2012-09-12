@@ -96,6 +96,10 @@ unittest
 
     assertInt("return 1 + 2", 3);
 
+    assertInt("return 5 - 1", 4);
+
+    assertInt("return -3", -3);
+
     assertInt("return 2 + 3 * 4", 14);
 }
 

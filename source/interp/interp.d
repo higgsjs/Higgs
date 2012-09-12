@@ -259,9 +259,23 @@ class Interp
             // Get the instruction's type
             auto type = instr.type;
 
-            writefln("mnem: %s", type.mnem);
+            //writefln("mnem: %s", type.mnem);
 
-            if (type is &IRInstr.CALL)
+            // Closure creation
+            if (type is &IRInstr.NEW_CLOS)
+            {
+                // TODO
+                assert (false);
+
+
+
+
+
+
+
+            }
+
+            else if (type is &IRInstr.CALL)
             {
                 // TODO
                 assert (false);
@@ -312,6 +326,22 @@ class Interp
                 );
             }
 
+            else if (type is &IRInstr.SUB)
+            {
+                // TODO: support for other types
+                auto idx0 = instr.args[0].localIdx;
+                auto idx1 = instr.args[1].localIdx;
+
+                auto w0 = state.getWord(idx0);
+                auto w1 = state.getWord(idx1);
+
+                state.setSlot(
+                    instr.outSlot, 
+                    Word.intg(w0.intVal - w1.intVal),
+                    Type.INT
+                );
+            }
+
             else if (type is &IRInstr.MUL)
             {
                 // TODO: support for other types
@@ -330,21 +360,18 @@ class Interp
 
             else if (type is &IRInstr.RET)
             {
-                auto retSlot = instr.args[0].localIdx;
-                auto numLocals = instr.args[1].intVal;
+                auto retSlot   = instr.args[0].localIdx;
+                auto raSlot    = instr.args[1].localIdx;
+                auto numLocals = instr.args[2].intVal;
 
                 // Get the return value
                 auto retW = state.wsp[retSlot];
                 auto retT = state.tsp[retSlot];
 
-                // TODO: add RA slot to ret instr
+                // Get the return address
+                auto retAddr = state.getWord(raSlot).ptrVal;
 
-                // TODO: get return address, set instruction pointer
-                //auto retAddr = state.wsp[raSlot].ptrVal;
-
-                //state.ip = *cast(IRInstr*)retAddr;
-
-                writefln("popping num locals: %s", numLocals);
+                //writefln("popping num locals: %s", numLocals);
 
                 // Pop all local stack slots
                 state.pop(numLocals);
@@ -352,9 +379,12 @@ class Interp
                 // Leave the return value on top of the stack
                 state.push(retW, retT);
 
-                // If the instruction pointer is null, stop the execution
-                if (state.ip is null)
+                // If the return address is null, stop the execution
+                if (retAddr is null)
                     break;
+
+                // Set the instruction pointer
+                state.ip = *cast(IRInstr*)retAddr;
             }
 
             else
@@ -383,7 +413,7 @@ class Interp
         state.push(Word.intg(0), Type.INT);         // Argument count
         state.push(Word.ptr(null), Type.RAWPTR);    // Return address
 
-        writefln("stack size before entry: %s", state.stackSize());
+        //writefln("stack size before entry: %s", state.stackSize());
 
         // Set the instruction pointer
         state.ip = fun.entryBlock.firstInstr;
