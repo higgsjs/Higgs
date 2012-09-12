@@ -42,6 +42,7 @@ import std.string;
 import std.typecons;
 import parser.parser;
 import ir.ir;
+import ir.ast;
 
 /**
 Memory word union
@@ -76,6 +77,30 @@ enum Type : ubyte
 
 /// Word and type pair
 alias Tuple!(Word, "word", Type, "type") ValuePair;
+
+/**
+Produce a string representation of a value pair
+*/
+string toString(ValuePair value)
+{
+    // Switch on the type tag
+    switch (value.type)
+    {
+        // TODO
+    
+
+
+
+
+
+
+
+
+
+        default:
+        assert (false, "unsupported value type");
+    }
+}
 
 /// Stack size, 256K words
 immutable size_t STACK_SIZE = 2^^18;
@@ -228,6 +253,7 @@ class Interp
     /// Interpreter state
     State state;
 
+    /// Constructor
     this()
     {
     }
@@ -264,21 +290,66 @@ class Interp
             // Closure creation
             if (type is &IRInstr.NEW_CLOS)
             {
-                // TODO
-                assert (false);
+                auto fun = instr.args[0].fun;
 
-
-
-
-
-
-
+                // TODO: create a proper closure
+                state.setSlot(
+                    instr.outSlot,
+                    Word.ptr(cast(void*)&fun),
+                    Type.RAWPTR
+                );
             }
 
+            // Set argument value
+            else if (type is &IRInstr.SET_ARG)
+            {
+                auto srcIdx = instr.args[0].localIdx;
+                auto dstIdx = -(instr.args[1].intVal + 1);
+
+                auto wArg = state.getWord(srcIdx);
+                auto tArg = state.getType(srcIdx);
+
+                state.wsp[dstIdx] = wArg;
+                state.tsp[dstIdx] = tArg;
+            }
+
+            // Function call
             else if (type is &IRInstr.CALL)
             {
-                // TODO
-                assert (false);
+                auto closIdx = instr.args[0].localIdx;
+                auto thisIdx = instr.args[1].localIdx;
+                auto numArgs = instr.args[2].intVal;
+
+                // TODO: proper closure object
+                // Get the function object
+                auto fun = *cast(IRFunction*)state.getWord(closIdx).ptrVal;
+
+                // If the function is not yet compiled, compile it now
+                if (fun.entryBlock is null)
+                {
+                    astToIR(fun.ast, fun);
+                    writeln(fun.toString);
+                }
+
+                // Get the return address
+                auto retAddr = cast(void*)&instr.next;
+
+                assert (
+                    retAddr !is null, 
+                    "next instruction is null"
+                );
+
+                // Push stack space for the arguments
+                state.push(numArgs);
+
+                // Push the hidden call arguments
+                state.push(UNDEF, Type.CST);                    // FIXME:Closure argument
+                state.push(UNDEF, Type.CST);                    // FIXME:This argument
+                state.push(Word.intg(numArgs), Type.INT);       // Argument count
+                state.push(Word.ptr(retAddr), Type.RAWPTR);     // Return address
+
+                // Set the instruction pointer
+                state.ip = fun.entryBlock.firstInstr;
             }
 
             else if (type is &IRInstr.PUSH_FRAME)
@@ -387,9 +458,29 @@ class Interp
                 state.ip = *cast(IRInstr*)retAddr;
             }
 
+            // Get the callee's return value after a call
+            else if (type is &IRInstr.GET_RET)
+            {
+                // Read and pop the value
+                auto wRet = state.getWord(0);
+                auto tRet = state.getType(0);
+                state.pop(1);
+
+                state.setSlot(
+                    instr.outSlot, 
+                    wRet,
+                    tRet
+                );
+            }
+
             else
             {
-                assert (false, "unsupported instruction");
+                throw new Error(
+                    format(
+                        "unsupported instruction: %s",
+                        type.mnem
+                    )
+                );
             }
         }
     }
@@ -403,6 +494,8 @@ class Interp
             fun.entryBlock !is null,
             "function has no entry block"
         );
+
+        writeln(fun.toString);
 
         // Initialize the interpreter state
         state.init();

@@ -354,9 +354,9 @@ class IRInstr : IdObject
     Type JUMP_FALSE = { "jump_false", false, [Arg.LOCAL, Arg.BLOCK] };
 
     // SET_ARG <srcLocal> <argIdx>
-    Type SET_ARG    = { "ret", false, [Arg.LOCAL, Arg.INT] };
+    Type SET_ARG    = { "set_arg", false, [Arg.LOCAL, Arg.INT] };
 
-    // CALL <fnLocal> <thisArg> <numArgs>
+    // CALL <closLocal> <thisArg> <numArgs>
     // Makes the execution go to the callee entry
     // Sets the frame pointer to the new frame's base
     // Pushes the return address word

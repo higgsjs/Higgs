@@ -103,8 +103,21 @@ unittest
     assertInt("return 2 + 3 * 4", 14);
 }
 
-// TODO: basic interpreter tests
-// return global exprs
-// return global call
-// parameter passing
+/// Global function call
+unittest
+{
+    assertInt("return function () { return 9; } ()", 9);
+
+    assertInt("return function () { return 2 * 3; } ()", 6);
+}
+
+/// Argument passing test
+unittest
+{
+    assertInt("return function (x) { return x + 3; } (5)", 8);
+
+    assertInt("return function (x, y) { return x - y; } (5, 2)", 3);
+}
+
+// TODO: Local variable assignment
 

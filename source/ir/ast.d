@@ -59,7 +59,7 @@ class IRGenCtx
     IRBlock curBlock;
 
     /// Map of AST nodes to local variables
-    LocalIdx[ASTNode] localMap;
+    LocalIdx[ASTNode]* localMap;
 
     /// Next temporary index to allocate
     private LocalIdx nextTemp;
@@ -71,7 +71,7 @@ class IRGenCtx
         IRGenCtx parent,
         IRFunction fun, 
         IRBlock block,
-        LocalIdx[ASTNode] localMap,
+        LocalIdx[ASTNode]* localMap,
         LocalIdx nextTemp,
         LocalIdx outSlot
     )
@@ -228,7 +228,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         null,
         fun, 
         entry,
-        localMap,
+        &localMap,
         0,
         0
     );
@@ -239,7 +239,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
     // Allocate the first local slots to parameters
     foreach (ident; params)
+    {
         localMap[ident] = bodyCtx.allocTemp();
+    }
 
     // Map temp slots for the hidden arguments
     fun.closSlot = bodyCtx.allocTemp();
@@ -247,14 +249,16 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     fun.argcSlot = bodyCtx.allocTemp();
     fun.raSlot   = bodyCtx.allocTemp();
 
-    // Allocate local slots to remaining local variables
+    // Allocate slots for local variables and initialize them to undefined
     foreach (node; vars)
+    {
         if (node !in localMap)
-            localMap[node] = bodyCtx.allocTemp();
-
-    // Initialize local variables to undefined 
-    for (LocalIdx local = 0; local < localMap.length; ++local)
-        entry.addInstr(new IRInstr(&IRInstr.SET_UNDEF, local));
+        {
+            auto localSlot = bodyCtx.allocTemp();
+            localMap[node] = localSlot;
+            bodyCtx.addInstr(new IRInstr(&IRInstr.SET_UNDEF, localSlot));
+        }
+    }
 
     // Create closures for nested function declarations
     foreach (funDecl; ast.funDecls)
@@ -775,7 +779,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto argCtx = ctx.subCtx();       
             exprToIR(argExprs[i], argCtx);
             ctx.merge(argCtx);
-            argSlots ~= argCtx.outSlot;
+            argSlots[i] = argCtx.outSlot;
         }
 
         // Set the call arguments
@@ -820,8 +824,13 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // The variable is local
         else
         {
-            // Set the variable as our output
-            LocalIdx varIdx = ctx.localMap[identExpr.declNode];
+            assert (
+                identExpr.declNode in *ctx.localMap,
+                "variable declaration not in local map"
+            );
+
+            // Set the variable's local slot as our output
+            LocalIdx varIdx = (*ctx.localMap)[identExpr.declNode];
             ctx.setOutSlot(varIdx);
         }
     }
@@ -889,7 +898,7 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
         // The variable is local
         else
         {
-            LocalIdx varIdx = ctx.localMap[identExpr.declNode];
+            LocalIdx varIdx = (*ctx.localMap)[identExpr.declNode];
 
             // Compute the right expression and assign it into the variable
             auto rCtx = ctx.subCtx(null, varIdx);
