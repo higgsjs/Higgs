@@ -38,6 +38,8 @@
 module interp.interp;
 
 import std.stdio;
+import std.string;
+import std.typecons;
 import parser.parser;
 import ir.ir;
 
@@ -72,6 +74,9 @@ enum Type : ubyte
     CST
 }
 
+/// Word and type pair
+alias Tuple!(Word, "word", Type, "type") ValuePair;
+
 /// Stack size, 256K words
 immutable size_t STACK_SIZE = 2^^18;
 
@@ -80,21 +85,33 @@ Interpreter state structure
 */
 struct State
 {
-    // Word stack
+    /// Word stack
     Word wStack[STACK_SIZE];
 
-    // Type stack
+    /// Type stack
     Type tStack[STACK_SIZE];
 
-    // Word stack pointer (stack top)
+    /// Word and type stack pointers (stack top)
     Word* wsp;
 
-    // Type stack pointer (stack top)
+    /// Type stack pointer (stack top)
     Type* tsp;
+
+    /// Word stack lower limit
+    Word* wLowerLimit;
+
+    /// Word stack upper limit
+    Word* wUpperLimit;
+
+    /// Type stack lower limit
+    Type* tLowerLimit;
+
+    /// Type stack upper limit
+    Type* tUpperLimit;
 
     // TODO: heapPtr, heapLimit, allocPtr
 
-    // Instruction pointer
+    /// Instruction pointer
     IRInstr ip;
 
     /**
@@ -102,9 +119,22 @@ struct State
     */
     void init()
     {
-        wsp = &wStack[wStack.length-1];
-        tsp = &tStack[tStack.length-1];
+        assert (
+            wStack.length == tStack.length,
+            "stack lengths do not match"
+        );
 
+        // Initialize the stack limit pointers
+        wLowerLimit = &wStack[0];
+        wUpperLimit = &wStack[0] + wStack.length;
+        tLowerLimit = &tStack[0];
+        tUpperLimit = &tStack[0] + tStack.length;
+
+        // Initialize the stack pointers just past the end of the stack
+        wsp = wUpperLimit;
+        tsp = tUpperLimit;
+
+        // Initialize the IP to null
         ip = null;
     }
 
@@ -114,12 +144,38 @@ struct State
     void setSlot(LocalIdx idx, Word w, Type t)
     {
         assert (
-            idx >= 0 && idx < wStack.length,
+            &wsp[idx] >= wLowerLimit && &wsp[idx] < wUpperLimit,
             "invalid stack slot index"
         );
 
         wsp[idx] = w;
         tsp[idx] = t;
+    }
+
+    /**
+    Get a word from the word stack
+    */
+    Word getWord(LocalIdx idx)
+    {
+        assert (
+            &wsp[idx] >= wLowerLimit && &wsp[idx] < wUpperLimit,
+            "invalid stack slot index"
+        );
+
+        return wsp[idx];
+    }
+
+    /**
+    Get a type from the type stack
+    */
+    Type getType(LocalIdx idx)
+    {
+        assert (
+            &tsp[idx] >= tLowerLimit && &tsp[idx] < tUpperLimit,
+            "invalid stack slot index"
+        );
+
+        return tsp[idx];
     }
 
     /**
@@ -139,10 +195,29 @@ struct State
         wsp -= numWords;
         tsp -= numWords;
 
-        if (wsp >= &wStack[0])
+        if (wsp < wLowerLimit)
             throw new Error("stack overflow");
     }
 
+    /**
+    Free space on the stack
+    */
+    void pop(size_t numWords)
+    {
+        wsp += numWords;
+        tsp += numWords;
+
+        if (wsp > wUpperLimit)
+            throw new Error("stack underflow");
+    }
+
+    /**
+    Get the number of stack slots
+    */
+    size_t stackSize()
+    {
+        return wUpperLimit - wsp;
+    }
 }
 
 /**
@@ -170,6 +245,11 @@ class Interp
         // Repeat for each instruction
         for (;;)
         {
+            assert (
+                state.ip !is null,
+                "ip is null"
+            );
+
             // Get the current instruction
             IRInstr instr = state.ip;
 
@@ -179,15 +259,23 @@ class Interp
             // Get the instruction's type
             auto type = instr.type;
 
-            // TODO: call instr
+            writefln("mnem: %s", type.mnem);
 
-            if (type is &IRInstr.PUSH_FRAME)
+            if (type is &IRInstr.CALL)
+            {
+                // TODO
+                assert (false);
+            }
+
+            else if (type is &IRInstr.PUSH_FRAME)
             {
                 auto numArgs = instr.args[0].intVal;
                 auto numLocals = instr.args[1].intVal;
 
                 // TODO: handle incorrect argument counts
-                state.push(numLocals - numArgs);
+                auto delta = numLocals - (numArgs + NUM_HIDDEN_ARGS);
+                //writefln("push_frame adding %s slot", delta);
+                state.push(delta);
             }
 
             else if (type is &IRInstr.SET_INT)
@@ -211,29 +299,62 @@ class Interp
             else if (type is &IRInstr.ADD)
             {
                 // TODO: support for other types
+                auto idx0 = instr.args[0].localIdx;
+                auto idx1 = instr.args[1].localIdx;
 
-                assert (false);
+                auto w0 = state.getWord(idx0);
+                auto w1 = state.getWord(idx1);
+
+                state.setSlot(
+                    instr.outSlot, 
+                    Word.intg(w0.intVal + w1.intVal),
+                    Type.INT
+                );
+            }
+
+            else if (type is &IRInstr.MUL)
+            {
+                // TODO: support for other types
+                auto idx0 = instr.args[0].localIdx;
+                auto idx1 = instr.args[1].localIdx;
+
+                auto w0 = state.getWord(idx0);
+                auto w1 = state.getWord(idx1);
+
+                state.setSlot(
+                    instr.outSlot, 
+                    Word.intg(w0.intVal * w1.intVal),
+                    Type.INT
+                );
             }
 
             else if (type is &IRInstr.RET)
             {
-                // TODO: ret
-                // TODO: ret
-                // TODO: ret
-
-                assert (false);
-
                 auto retSlot = instr.args[0].localIdx;
                 auto numLocals = instr.args[1].intVal;
 
-                // TODO: pop all locals
+                // Get the return value
+                auto retW = state.wsp[retSlot];
+                auto retT = state.tsp[retSlot];
 
-                // TODO: leave return value on top of stack
+                // TODO: add RA slot to ret instr
 
+                // TODO: get return address, set instruction pointer
+                //auto retAddr = state.wsp[raSlot].ptrVal;
 
+                //state.ip = *cast(IRInstr*)retAddr;
 
+                writefln("popping num locals: %s", numLocals);
 
+                // Pop all local stack slots
+                state.pop(numLocals);
 
+                // Leave the return value on top of the stack
+                state.push(retW, retT);
+
+                // If the instruction pointer is null, stop the execution
+                if (state.ip is null)
+                    break;
             }
 
             else
@@ -262,6 +383,8 @@ class Interp
         state.push(Word.intg(0), Type.INT);         // Argument count
         state.push(Word.ptr(null), Type.RAWPTR);    // Return address
 
+        writefln("stack size before entry: %s", state.stackSize());
+
         // Set the instruction pointer
         state.ip = fun.entryBlock.firstInstr;
 
@@ -272,14 +395,14 @@ class Interp
     /**
     Get the return value from the top of the stack
     */
-    Word getRet()
+    ValuePair getRet()
     {
         assert (
-            state.wsp == &state.wStack[0],
-            "the stack does not contain one value"
+            state.stackSize() == 1,
+            format("the stack contains %s values", (state.wUpperLimit - state.wsp))
         );
 
-        return state.wStack[0];
+        return ValuePair(*state.wsp, *state.tsp);
     }
 }
 

@@ -38,9 +38,48 @@
 module interp.tests;
 
 import std.stdio;
+import std.string;
 import parser.parser;
 import ir.ast;
 import interp.interp;
+
+Interp evalString(string input)
+{
+    auto ast = parseString(input);
+    auto ir = astToIR(ast);
+
+    Interp interp = new Interp();
+
+    //writeln(ir.toString());
+    //writeln("executing");
+
+    interp.exec(ir);
+
+    return interp;
+}
+
+void assertInt(string input, long intVal)
+{
+    auto interp = evalString(input);
+
+    //writeln("getting ret val");
+
+    auto ret = interp.getRet();
+
+    assert (
+        ret.type == Type.INT,
+        "non-integer type"
+    );
+
+    assert (
+        ret.word.intVal == intVal,
+        format(
+            "incorrect integer value: %s, expected: %s",
+            ret.word.intVal, 
+            intVal
+        )
+    );
+}
 
 unittest
 {
@@ -50,18 +89,14 @@ unittest
     assert (w0.intVal != w1.intVal);
 }
 
-// TODO
 /// Global expression tests
 unittest
 {
+    assertInt("return 7", 7);
 
+    assertInt("return 1 + 2", 3);
 
-
-
-
-
-
-
+    assertInt("return 2 + 3 * 4", 14);
 }
 
 // TODO: basic interpreter tests

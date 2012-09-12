@@ -46,6 +46,15 @@ import util.id;
 import util.string;
 import parser.ast;
 
+/// Local variable index type
+alias uint LocalIdx;
+
+/// Null local constant
+immutable LocalIdx NULL_LOCAL = LocalIdx.max;
+
+/// Number of hidden function arguments
+immutable size_t NUM_HIDDEN_ARGS = 4;
+
 /***
 IR function
 */
@@ -251,12 +260,6 @@ class IRBlock : IdObject
         instr.next = null;
     }
 }
-
-/// Local variable index type
-alias uint LocalIdx;
-
-/// Null local constant
-immutable LocalIdx NULL_LOCAL = LocalIdx.max;
 
 /**
 IR instruction
