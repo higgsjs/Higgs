@@ -233,6 +233,10 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         0
     );
 
+    // Add the frame allocation instruction
+    auto pushFrame = bodyCtx.addInstr(new IRInstr(&IRInstr.PUSH_FRAME));
+    pushFrame.args[0].intVal = params.length;
+
     // Allocate the first local slots to parameters
     foreach (ident; params)
         localMap[ident] = bodyCtx.allocTemp();
@@ -278,8 +282,12 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     {
         auto temp = bodyCtx.allocTemp();
         auto cstInstr = bodyCtx.addInstr(new IRInstr(&IRInstr.SET_UNDEF, temp));
-        auto retInstr = bodyCtx.addInstr(new IRInstr(&IRInstr.RET, NULL_LOCAL, temp));
+        auto retInstr = bodyCtx.addInstr(new IRInstr(&IRInstr.RET));
+        retInstr.args[0].localIdx = temp;
     }
+
+    // Set the local count in the frame allocation instruction
+    pushFrame.args[1].intVal = fun.numLocals;
 
     /// Function to translate (reverse) local indices
     void translLocal(ref LocalIdx localIdx)
@@ -287,22 +295,24 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         localIdx = fun.numLocals - 1 - localIdx;
     }
 
-    // Reverse the stack frame slot indices in the IR
+    // For each instruction
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            // Translate the local argument indices
-            auto argTypes = instr.type.argTypes;
-            for (size_t i = 0; i < argTypes.length; ++i)
-            {
-                if (argTypes[i] == IRInstr.Arg.LOCAL)
-                    translLocal(instr.args[i].localIdx);
-            }
+            // Set the local count in return instructions
+            if (instr.type == &IRInstr.RET)
+                instr.args[1].intVal = fun.numLocals;
 
             // Translate the output index
             if (instr.type.output)
                 translLocal(instr.outSlot);
+
+            // Translate the local argument indices
+            auto argTypes = instr.type.argTypes;
+            for (size_t i = 0; i < argTypes.length; ++i)
+                if (argTypes[i] == IRInstr.Arg.LOCAL)
+                    translLocal(instr.args[i].localIdx);
         }
     }
 
@@ -443,11 +453,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(retStmt.expr, subCtx);
         ctx.merge(subCtx);
 
-        auto retInstr = ctx.addInstr(new IRInstr(
-            &IRInstr.RET, 
-            NULL_LOCAL,
-            subCtx.getOutSlot()
-        ));
+        auto retInstr = ctx.addInstr(new IRInstr(&IRInstr.RET));
+        retInstr.args[0].localIdx = subCtx.getOutSlot();
     }
 
     /*

@@ -40,18 +40,15 @@ module interp.tests;
 import std.stdio;
 import parser.parser;
 import ir.ast;
+import interp.interp;
 
+unittest
+{
+    Word w0 = Word.intg(0);
+    Word w1 = Word.intg(1);
 
-
-// TODO: basic interpreter tests
-// return global exprs
-// return global call
-// parameter passing
-
-
-
-
-
+    assert (w0.intVal != w1.intVal);
+}
 
 // TODO
 /// Global expression tests
@@ -66,4 +63,9 @@ unittest
 
 
 }
+
+// TODO: basic interpreter tests
+// return global exprs
+// return global call
+// parameter passing
 

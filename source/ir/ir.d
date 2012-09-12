@@ -364,13 +364,13 @@ class IRInstr : IdObject
     Type PUSH_FRAME = { "push_frame", false, [Arg.INT, Arg.INT] };
 
     // <retLocal> = GET_RET
-    // After return, extracts the return value
+    // After call, extracts the callee's return value
     Type GET_RET    = { "get_ret", true, [] };
 
-    // RET <retLocal>
+    // RET <retLocal> <numLocals>
     // Stores return value in special registers
     // Pops the callee frame (size known by context)
-    Type RET        = { "ret", false, [Arg.LOCAL] };
+    Type RET        = { "ret", false, [Arg.LOCAL, Arg.INT] };
 
     // <dstLocal> = NEW_CLOS <funExpr>
     // Create a new closure from a function's AST node
