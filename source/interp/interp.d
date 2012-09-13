@@ -39,6 +39,7 @@ module interp.interp;
 
 import std.stdio;
 import std.string;
+import std.conv;
 import std.typecons;
 import parser.parser;
 import ir.ir;
@@ -83,19 +84,34 @@ Produce a string representation of a value pair
 */
 string toString(ValuePair value)
 {
+    auto w = value.word;
+
     // Switch on the type tag
     switch (value.type)
     {
-        // TODO
-    
+        case Type.INT:
+        return to!string(w.intVal);
 
+        case Type.FLOAT:
+        return to!string(w.floatVal);
 
+        case Type.RAWPTR:
+        return to!string(w.ptrVal);
 
+        case Type.REF:
+        return "ref";
 
-
-
-
-
+        case Type.CST:
+        if (w == TRUE)
+            return "true";
+        else if (w == FALSE)
+            return "false";
+        else if (w == NULL)
+            return "null";
+        else if (w == UNDEF)
+            return "undefined";
+        else
+            assert (false, "unsupported constant");
 
         default:
         assert (false, "unsupported value type");
@@ -372,6 +388,24 @@ class Interp
                 );
             }
 
+            else if (type is &IRInstr.SET_TRUE)
+            {
+                state.setSlot(
+                    instr.outSlot,
+                    TRUE,
+                    Type.CST
+                );
+            }
+
+            else if (type is &IRInstr.SET_FALSE)
+            {
+                state.setSlot(
+                    instr.outSlot,
+                    FALSE,
+                    Type.CST
+                );
+            }
+
             else if (type is &IRInstr.SET_UNDEF)
             {
                 state.setSlot(
@@ -427,6 +461,70 @@ class Interp
                     Word.intg(w0.intVal * w1.intVal),
                     Type.INT
                 );
+            }
+
+            else if (type is &IRInstr.BOOL_VAL)
+            {
+                auto idx = instr.args[0].localIdx;
+
+                auto w = state.getWord(idx);
+                auto t = state.getType(idx);
+
+                bool output;
+                switch (t)
+                {
+                    case Type.CST:
+                    output = (w == TRUE);
+                    break;
+
+                    case Type.INT:
+                    output = (w.intVal != 0);
+                    break;
+
+                    default:
+                    assert (false, "unsupported type in comparison");
+                }
+
+                state.setSlot(
+                    instr.outSlot, 
+                    output? TRUE:FALSE,
+                    Type.CST
+                );
+            }
+
+            else if (type is &IRInstr.CMP_LT)
+            {
+                // TODO: support for other types
+                auto idx0 = instr.args[0].localIdx;
+                auto idx1 = instr.args[1].localIdx;
+
+                auto w0 = state.getWord(idx0);
+                auto w1 = state.getWord(idx1);
+
+                bool output = (w0.intVal < w1.intVal);
+
+                state.setSlot(
+                    instr.outSlot, 
+                    output? TRUE:FALSE,
+                    Type.CST
+                );
+            }
+
+            else if (type is &IRInstr.JUMP)
+            {
+                auto block = instr.args[0].block;
+                state.ip = block.firstInstr;
+            }
+
+            else if (type is &IRInstr.JUMP_TRUE)
+            {
+                auto valIdx = instr.args[0].localIdx;
+                auto block = instr.args[1].block;
+
+                auto wVal = state.getWord(valIdx);
+
+                if (wVal == TRUE)
+                    state.ip = block.firstInstr;
             }
 
             else if (type is &IRInstr.RET)

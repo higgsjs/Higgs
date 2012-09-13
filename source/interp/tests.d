@@ -93,21 +93,16 @@ unittest
 unittest
 {
     assertInt("return 7", 7);
-
     assertInt("return 1 + 2", 3);
-
     assertInt("return 5 - 1", 4);
-
     assertInt("return -3", -3);
-
     assertInt("return 2 + 3 * 4", 14);
 }
 
-/// Global function call
+/// Global function calls
 unittest
 {
     assertInt("return function () { return 9; } ()", 9);
-
     assertInt("return function () { return 2 * 3; } ()", 6);
 }
 
@@ -115,9 +110,21 @@ unittest
 unittest
 {
     assertInt("return function (x) { return x + 3; } (5)", 8);
-
     assertInt("return function (x, y) { return x - y; } (5, 2)", 3);
 }
 
-// TODO: Local variable assignment
+/// Local variable assignment
+unittest
+{
+    assertInt("return function () { var x = 4; return x; } ()", 4);
+}
+
+/// Comparison and branching
+unittest
+{
+    assertInt("if (true) return 1; else return 0;", 1);
+    assertInt("if (false) return 1; else return 0;", 0);
+    assertInt("if (3 < 7) return 1; else return 0;", 1);
+    assertInt("if (5 < 2) return 1; else return 0;", 0);
+}
 
