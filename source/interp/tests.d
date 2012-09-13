@@ -111,6 +111,12 @@ unittest
 {
     assertInt("return function (x) { return x + 3; } (5)", 8);
     assertInt("return function (x, y) { return x - y; } (5, 2)", 3);
+
+    // Too many arguments
+    assertInt("return function (x) { return x + 1; } (5, 9)", 6);
+
+    // Too few arguments
+    assertInt("return function (x, y) { return x - 1; } (4)", 3);
 }
 
 /// Local variable assignment
@@ -126,5 +132,45 @@ unittest
     assertInt("if (false) return 1; else return 0;", 0);
     assertInt("if (3 < 7) return 1; else return 0;", 1);
     assertInt("if (5 < 2) return 1; else return 0;", 0);
+}
+
+/// Recursion
+unittest
+{
+    assertInt(
+        "
+        return function (n)
+        {
+            var fact = function (fact, n)
+            {
+                if (n < 1)
+                    return 1;
+                else   
+                    return n * fact(fact, n-1);
+            };
+                              
+            return fact(fact, n);
+        } (4);
+        ",
+        24
+    );
+
+    assertInt(
+        "
+        return function (n)
+        {
+            var fib = function (fib, n)
+            {
+                if (n < 2)
+                    return n;
+                else   
+                    return fib(fib, n-1) + fib(fib, n-2);
+            };
+                              
+            return fib(fib, n);
+        } (6);
+        ",
+        8
+    );
 }
 

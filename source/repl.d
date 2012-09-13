@@ -37,37 +37,59 @@
 
 import std.stdio;
 import std.string;
+import parser.ast;
 import parser.parser;
 import ir.ast;
+import interp.interp;
 
 /**
 Evaluate a string of source code
 */
-void evalString(string input)
+ValuePair evalString(Interp interp, string input)
 {
     auto ast = parseString(input, "repl");
+
+    // If the AST contains only an expression statement,
+    // turn it into a return statement
+    if (auto blockStmt = cast(BlockStmt)ast.bodyStmt)
+    {
+        if (blockStmt.stmts.length == 1)
+        {
+            if (auto exprStmt = cast(ExprStmt)blockStmt.stmts[$-1])
+            {
+                blockStmt.stmts[$-1] = new ReturnStmt(
+                    exprStmt.expr,
+                    exprStmt.pos
+                );
+            }
+        }
+    }
 
     writeln(ast);
 
     auto ir = astToIR(ast);
+    
+    //writeln(ir);
 
-    writeln(ir);
+    interp.exec(ir);
 
+    // Get the final output
+    auto output = interp.getRet();
 
-
-
-    // TODO: produce/return string output?
+    return output;
 }
 
 void repl()
 {
+    auto interp = new Interp();
+
     writeln("Entering read-eval-print loop");
     writeln("To exit, press ctrl+D (end-of-file) or type \"exit\" at the prompt");
 
     for (;;)
     {
         write("w> ");
-        string input = readln();
+        string input = readln().stripRight();
         
         if (input.length == 0 || input.toLower() == "exit\n")
         {
@@ -77,21 +99,24 @@ void repl()
             break;
         }
 
+        try 
+        {
+            // Evaluate the input
+            auto output = evalString(interp, input);
 
+            // Print the output
+            writeln(ValueToString(output));
+        }
 
-        // TODO: try/catch block?
-
-        evalString(input);
-
-
-
+        catch (ParseError e)
+        {
+            writeln("parse error: " ~ e.toString());
+        }
     }
 }
 
 unittest
 {
-    // TODO
-    //evalString("");
-
+    evalString(new Interp(), "1");
 }
 

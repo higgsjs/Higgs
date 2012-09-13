@@ -82,7 +82,7 @@ alias Tuple!(Word, "word", Type, "type") ValuePair;
 /**
 Produce a string representation of a value pair
 */
-string toString(ValuePair value)
+string ValueToString(ValuePair value)
 {
     auto w = value.word;
 
@@ -217,6 +217,25 @@ struct State
         );
 
         return tsp[idx];
+    }
+
+    /**
+    Copy a value from one stack slot to another
+    */
+    void move(LocalIdx src, LocalIdx dst)
+    {
+        assert (
+            &wsp[src] >= wLowerLimit && &wsp[src] < wUpperLimit,
+            "invalid src index"
+        );
+
+        assert (
+            &wsp[dst] >= wLowerLimit && &wsp[dst] < wUpperLimit,
+            "invalid dst index"
+        );
+
+        wsp[dst] = wsp[src];
+        tsp[dst] = tsp[src];
     }
 
     /**
@@ -368,13 +387,47 @@ class Interp
                 state.ip = fun.entryBlock.firstInstr;
             }
 
+            // Allocate/adjust the stack frame on function entry
             else if (type is &IRInstr.PUSH_FRAME)
             {
-                auto numArgs = instr.args[0].intVal;
+                auto numParams = instr.args[0].intVal;
                 auto numLocals = instr.args[1].intVal;
 
-                // TODO: handle incorrect argument counts
-                auto delta = numLocals - (numArgs + NUM_HIDDEN_ARGS);
+                // Get the number of arguments passed
+                auto numArgs = state.getWord(1).intVal;
+
+                // If there are not enough arguments
+                if (numArgs < numParams)
+                {
+                    auto deltaArgs = numParams - numArgs;
+
+                    // Allocate new stack slots for the missing arguments
+                    state.push(deltaArgs);
+
+                    // Move the hidden arguments to the top of the stack
+                    for (size_t i = 0; i < NUM_HIDDEN_ARGS; ++i)
+                        state.move(deltaArgs + i, i);
+
+                    // Initialize the missing arguments to undefined
+                    for (size_t i = 0; i < deltaArgs; ++i)
+                        state.setSlot(NUM_HIDDEN_ARGS + i, UNDEF, Type.CST);
+                }
+
+                // If there are too many arguments
+                else if (numArgs > numParams)
+                {
+                    auto deltaArgs = numArgs - numParams;
+
+                    // Move the hidden arguments down
+                    for (size_t i = 0; i < NUM_HIDDEN_ARGS; ++i)
+                        state.move(i, deltaArgs + i);
+
+                    // Remove superfluous argument slots
+                    state.pop(deltaArgs);
+                }
+
+                // Allocate slots for the local variables
+                auto delta = numLocals - (numParams + NUM_HIDDEN_ARGS);
                 //writefln("push_frame adding %s slot", delta);
                 state.push(delta);
             }

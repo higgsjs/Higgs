@@ -47,7 +47,7 @@ import util.string;
 import parser.ast;
 
 /// Local variable index type
-alias uint LocalIdx;
+alias size_t LocalIdx;
 
 /// Null local constant
 immutable LocalIdx NULL_LOCAL = LocalIdx.max;
@@ -124,9 +124,9 @@ class IRFunction : IdObject
 
         for (size_t i = 0; i < params.length; ++i)
         {
+            output.put(params[i].toString());
             if (i != params.length - 1)
                 output.put(", ");
-            output.put(params[i].toString());
         }
 
         output.put(")\n");
@@ -362,7 +362,7 @@ class IRInstr : IdObject
     // Pushes the return address word
     Type CALL       = { "call", false, [Arg.LOCAL, Arg.LOCAL, Arg.INT] };
 
-    // PUSH_FRAME <numArgs> <numLocals>
+    // PUSH_FRAME <numParams> <numLocals>
     // On function entry, allocates/adjusts the callee's stack frame
     Type PUSH_FRAME = { "push_frame", false, [Arg.INT, Arg.INT] };
 
