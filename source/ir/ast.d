@@ -424,23 +424,23 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.addInstr(IRInstr.jump(testBlock));
 
         // Evaluate the test expression
-        auto exprCtx = ctx.subCtx(testBlock);
-        exprToIR(whileStmt.testExpr, exprCtx);
+        auto testCtx = ctx.subCtx(testBlock);
+        exprToIR(whileStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
-        auto boolInstr = exprCtx.addInstr(new IRInstr(
+        auto boolInstr = testCtx.addInstr(new IRInstr(
             &IRInstr.BOOL_VAL,
-            exprCtx.allocTemp(),
-            exprCtx.getOutSlot(),           
+            testCtx.allocTemp(),
+            testCtx.getOutSlot(),           
         ));
 
         // If the expresson is true, jump to the loop body
-        exprCtx.addInstr(new IRInstr(
+        testCtx.addInstr(new IRInstr(
             &IRInstr.JUMP_TRUE,
             boolInstr.outSlot,
             bodyBlock
         ));
-        exprCtx.addInstr(IRInstr.jump(exitBlock));
+        testCtx.addInstr(IRInstr.jump(exitBlock));
 
         // Compile the loop body statement
         auto bodyCtx = ctx.subCtx(bodyBlock);
@@ -453,15 +453,98 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.merge(exitBlock);
     }
 
-    /*
     else if (auto doStmt = cast(DoWhileStmt)stmt)
     {
+        // Create the loop test, body and exit blocks
+        auto bodyBlock = ctx.fun.newBlock("do_body");
+        auto testBlock = ctx.fun.newBlock("do_test");
+        auto exitBlock = ctx.fun.newBlock("do_exit");
+
+        // Jump to the body block
+        ctx.addInstr(IRInstr.jump(bodyBlock));
+
+        // Compile the loop body statement
+        auto bodyCtx = ctx.subCtx(bodyBlock);
+        stmtToIR(doStmt.bodyStmt, bodyCtx);
+
+        // Jump to the loop test
+        bodyCtx.addInstr(IRInstr.jump(testBlock));
+
+        // Evaluate the test expression
+        auto testCtx = ctx.subCtx(testBlock);
+        exprToIR(doStmt.testExpr, testCtx);
+
+        // Convert the expression value to a boolean
+        auto boolInstr = testCtx.addInstr(new IRInstr(
+            &IRInstr.BOOL_VAL,
+            testCtx.allocTemp(),
+            testCtx.getOutSlot(),           
+        ));
+
+        // If the expresson is true, jump to the loop body
+        testCtx.addInstr(new IRInstr(
+            &IRInstr.JUMP_TRUE,
+            boolInstr.outSlot,
+            bodyBlock
+        ));
+        testCtx.addInstr(IRInstr.jump(exitBlock));
+
+        // Continue code generation in the exit block
+        ctx.merge(exitBlock);
     }
 
     else if (auto forStmt = cast(ForStmt)stmt)
     {
+        // Create the loop test, body and exit blocks
+        auto testBlock = ctx.fun.newBlock("for_test");
+        auto bodyBlock = ctx.fun.newBlock("for_body");
+        auto incrBlock = ctx.fun.newBlock("for_incr");
+        auto exitBlock = ctx.fun.newBlock("for_exit");
+
+        // Compile the init statement
+        auto initCtx = ctx.subCtx();
+        stmtToIR(forStmt.initStmt, initCtx);
+        ctx.merge(initCtx);
+
+        // Jump to the test block
+        ctx.addInstr(IRInstr.jump(testBlock));
+
+        // Evaluate the test expression
+        auto testCtx = ctx.subCtx(testBlock);
+        exprToIR(forStmt.testExpr, testCtx);
+
+        // Convert the expression value to a boolean
+        auto boolInstr = testCtx.addInstr(new IRInstr(
+            &IRInstr.BOOL_VAL,
+            testCtx.allocTemp(),
+            testCtx.getOutSlot(),           
+        ));
+
+        // If the expresson is true, jump to the loop body
+        testCtx.addInstr(new IRInstr(
+            &IRInstr.JUMP_TRUE,
+            boolInstr.outSlot,
+            bodyBlock
+        ));
+        testCtx.addInstr(IRInstr.jump(exitBlock));
+
+        // Compile the loop body statement
+        auto bodyCtx = ctx.subCtx(bodyBlock);
+        stmtToIR(forStmt.bodyStmt, bodyCtx);
+
+        // Jump to the increment block
+        bodyCtx.addInstr(IRInstr.jump(incrBlock));
+
+        // Compile the increment expression
+        auto incrCtx = ctx.subCtx(incrBlock);
+        exprToIR(forStmt.incrExpr, incrCtx);
+
+        // Jump to the loop test
+        incrCtx.addInstr(IRInstr.jump(testBlock));
+
+        // Continue code generation in the exit block
+        ctx.merge(exitBlock);
     }
-    */
 
     // Return statement
     else if (auto retStmt = cast(ReturnStmt)stmt)
@@ -668,8 +751,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ));
         }
 
-        // Pre-incrementation (++x)
-        else if (op.str == "++" && op.assoc == 'r')
+        // Pre-incrementation and pre-decrementation (++x, --x)
+        else if ((op.str == "++" || op.str == "--") && op.assoc == 'r')
         {
             assgToIR(
                 unExpr.expr, 
@@ -680,7 +763,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                     auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 1));
 
                     ctx.addInstr(new IRInstr(
-                        &IRInstr.ADD,
+                        (op.str == "++")? &IRInstr.ADD:&IRInstr.SUB,
                         ctx.getOutSlot(), 
                         ctx.getOutSlot(),
                         cst.outSlot
@@ -690,8 +773,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
         }
         
-        // Post-incrementation (x++)
-        else if (op.str == "++" && op.assoc == 'l')
+        // Post-incrementation and post-decrementation (x++, x--)
+        else if ((op.str == "++" || op.str == "--") && op.assoc == 'l')
         {
             auto outSlot = ctx.allocTemp();
 
@@ -715,7 +798,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                     auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 1));
 
                     ctx.addInstr(new IRInstr(
-                        &IRInstr.ADD,
+                        (op.str == "++")? &IRInstr.ADD:&IRInstr.SUB,
                         ctx.getOutSlot(), 
                         ctx.getOutSlot(),
                         cst.outSlot
@@ -724,12 +807,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                 aCtx
             );
             ctx.merge(aCtx);
-
         }
-
-        // TODO: Pre --
-
-        // TODO: Post --
 
         else
         {
@@ -737,11 +815,49 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         }
     }
 
-    /*
     else if (auto condExpr = cast(CondExpr)expr)
     {
+        // Create the true, false and join blocks
+        auto trueBlock  = ctx.fun.newBlock("cond_true");
+        auto falseBlock = ctx.fun.newBlock("cond_false");
+        auto joinBlock  = ctx.fun.newBlock("cond_join");
+
+        // Get the output slot
+        auto outSlot = ctx.getOutSlot();
+
+        // Evaluate the test expression
+        auto exprCtx = ctx.subCtx();
+        exprToIR(condExpr.testExpr, exprCtx);
+        ctx.merge(exprCtx);
+
+        // Convert the expression value to a boolean
+        auto boolInstr = ctx.addInstr(new IRInstr(
+            &IRInstr.BOOL_VAL,
+            ctx.allocTemp(),
+            exprCtx.getOutSlot(),           
+        ));
+
+        // If the expresson is true, jump
+        ctx.addInstr(new IRInstr(
+            &IRInstr.JUMP_TRUE,
+            boolInstr.outSlot,
+            trueBlock
+        ));
+        ctx.addInstr(IRInstr.jump(falseBlock));
+
+        // Compile the true expression and assign into the output slot
+        auto trueCtx = ctx.subCtx(trueBlock, outSlot);
+        exprToIR(condExpr.trueExpr, trueCtx);
+        trueCtx.addInstr(IRInstr.jump(joinBlock));
+
+        // Compile the false expression and assign into the output slot
+        auto falseCtx = ctx.subCtx(falseBlock, outSlot);
+        exprToIR(condExpr.falseExpr, falseCtx);
+        falseCtx.addInstr(IRInstr.jump(joinBlock));
+
+        // Continue code generation in the join block
+        ctx.merge(joinBlock);
     }
-    */
 
     // Function call expression
     else if (auto callExpr = cast(CallExpr)expr)

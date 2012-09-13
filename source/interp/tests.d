@@ -123,6 +123,10 @@ unittest
 unittest
 {
     assertInt("return function () { var x = 4; return x; } ()", 4);
+    assertInt("return function () { var x = 0; return x++; } ()", 0);
+    assertInt("return function () { var x = 0; return ++x; } ()", 1);
+    assertInt("return function () { var x = 0; return x--; } ()", 0);
+    assertInt("return function () { var x = 0; return --x; } ()", -1);
 }
 
 /// Comparison and branching
@@ -132,6 +136,8 @@ unittest
     assertInt("if (false) return 1; else return 0;", 0);
     assertInt("if (3 < 7) return 1; else return 0;", 1);
     assertInt("if (5 < 2) return 1; else return 0;", 0);
+    assertInt("return true? 1:0", 1);
+    assertInt("return false? 1:0", 0);
 }
 
 /// Recursion
@@ -171,6 +177,45 @@ unittest
         } (6);
         ",
         8
+    );
+}
+
+/// Loops
+unittest
+{
+    assertInt(
+        "
+        return function ()
+        {
+            var i = 0;
+            while (i < 10) ++i;
+            return i;
+        } ();
+        ",
+        10
+    );
+
+    assertInt(
+        "
+        return function ()
+        {
+            var i = 0;
+            do { i++; } while (i < 9)
+            return i;
+        } ();
+        ",
+        9
+    );
+
+    assertInt(
+        "
+        return function ()
+        {
+            for (var i = 0; i < 10; ++i);
+            return i;
+        } ();
+        ",
+        10
     );
 }
 

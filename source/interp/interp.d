@@ -459,12 +459,29 @@ class Interp
                 );
             }
 
+            else if (type is &IRInstr.SET_NULL)
+            {
+                state.setSlot(
+                    instr.outSlot,
+                    NULL,
+                    Type.CST
+                );
+            }
+
             else if (type is &IRInstr.SET_UNDEF)
             {
                 state.setSlot(
                     instr.outSlot,
                     UNDEF,
                     Type.CST
+                );
+            }
+
+            else if (type is &IRInstr.MOVE)
+            {
+                state.move(
+                    instr.args[0].localIdx,
+                    instr.outSlot
                 );
             }
 
