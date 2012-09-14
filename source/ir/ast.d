@@ -40,6 +40,7 @@ module ir.ast;
 import std.stdio;
 import std.array;
 import std.algorithm;
+import std.typecons;
 import parser.ast;
 import parser.parser;
 import ir.ir;
@@ -66,6 +67,15 @@ class IRGenCtx
 
     /// Slot to store the output into, if applicable
     private LocalIdx outSlot;
+
+    alias Tuple!(
+        wstring, "name", 
+        IRBlock, "breakBlock", 
+        IRBlock, "contBlock"
+    ) LabelTargets;
+
+    /// Target blocks for named statement labels
+    LabelTargets[] labelTargets;
 
     this(
         IRGenCtx parent,
@@ -117,14 +127,6 @@ class IRGenCtx
     }
 
     /**
-    Test if an output temp was set
-    */
-    bool outSet()
-    {
-        return outSlot != NULL_LOCAL;
-    }
-
-    /**
     Get a temporary slot to store output into
     */
     LocalIdx getOutSlot()
@@ -173,6 +175,50 @@ class IRGenCtx
     {
         assert (subCtx.parent == this);
         merge(subCtx.curBlock);
+    }
+
+    /**
+    Method to register labels in the current context
+    */
+    void regLabels(IdentExpr[] labels, IRBlock breakBlock, IRBlock contBlock)
+    {
+        foreach (label; labels)
+            labelTargets ~= LabelTargets(label.name, breakBlock, contBlock);
+
+        // Implicit null label
+        labelTargets ~= LabelTargets(null, breakBlock, contBlock);
+    }
+
+    /**
+    Find the target block for a break statement
+    */
+    IRBlock getBreakTarget(IdentExpr ident)
+    {
+        foreach (target; labelTargets)
+            if ((target.name is null && ident is null) || 
+                target.name == ident.name)
+                return target.breakBlock;
+
+        if (parent is null)
+            return null;
+
+        return parent.getBreakTarget(ident);
+    }
+
+    /**
+    Find the target block for a continue statement
+    */
+    IRBlock getContTarget(IdentExpr ident)
+    {
+        foreach (target; labelTargets)
+            if ((target.name is null && ident is null) || 
+                target.name == ident.name)
+                return target.contBlock;
+
+        if (parent is null)
+            return null;
+
+        return parent.getContTarget(ident);
     }
 
     /**
@@ -420,6 +466,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto bodyBlock = ctx.fun.newBlock("while_body");
         auto exitBlock = ctx.fun.newBlock("while_exit");
 
+        // Register the loop labels, if any
+        ctx.regLabels(stmt.labels, exitBlock, testBlock);
+
         // Jump to the test block
         ctx.addInstr(IRInstr.jump(testBlock));
 
@@ -459,6 +508,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto bodyBlock = ctx.fun.newBlock("do_body");
         auto testBlock = ctx.fun.newBlock("do_test");
         auto exitBlock = ctx.fun.newBlock("do_exit");
+
+        // Register the loop labels, if any
+        ctx.regLabels(stmt.labels, exitBlock, testBlock);
 
         // Jump to the body block
         ctx.addInstr(IRInstr.jump(bodyBlock));
@@ -500,6 +552,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto bodyBlock = ctx.fun.newBlock("for_body");
         auto incrBlock = ctx.fun.newBlock("for_incr");
         auto exitBlock = ctx.fun.newBlock("for_exit");
+
+        // Register the loop labels, if any
+        ctx.regLabels(stmt.labels, exitBlock, incrBlock);
 
         // Compile the init statement
         auto initCtx = ctx.subCtx();
@@ -544,6 +599,28 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Continue code generation in the exit block
         ctx.merge(exitBlock);
+    }
+
+    // Break statement
+    else if (auto breakStmt = cast(BreakStmt)stmt)
+    {
+        auto block = ctx.getBreakTarget(breakStmt.label);
+
+        if (block is null)
+            throw new ParseError("break statement with no target", stmt.pos);
+
+        ctx.addInstr(IRInstr.jump(block));
+    }
+
+    // Continue statement
+    else if (auto contStmt = cast(ContStmt)stmt)
+    {
+        auto block = ctx.getContTarget(contStmt.label);
+
+        if (block is null)
+            throw new ParseError("continue statement with no target", stmt.pos);
+
+        ctx.addInstr(IRInstr.jump(block));
     }
 
     // Return statement
@@ -776,20 +853,20 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Post-incrementation and post-decrementation (x++, x--)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'l')
         {
-            auto outSlot = ctx.allocTemp();
-
+            // Evaluate the subexpression
             auto vCtx = ctx.subCtx();
             exprToIR(unExpr.expr, vCtx);
             ctx.merge(vCtx);
 
+            // Save the current value of the subexpression
+            auto valTemp = ctx.allocTemp();
             ctx.addInstr(new IRInstr(
                 &IRInstr.MOVE,
-                outSlot,
+                valTemp,
                 vCtx.getOutSlot()
             ));
 
-            ctx.setOutSlot(outSlot);
-
+            // Perform the incrementation/decrementation and assignment
             auto aCtx = ctx.subCtx();
             assgToIR(
                 unExpr.expr, 
@@ -807,6 +884,13 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                 aCtx
             );
             ctx.merge(aCtx);
+
+            // Move the saved value into our output slot
+            ctx.addInstr(new IRInstr(
+                &IRInstr.MOVE,
+                ctx.getOutSlot(),
+                valTemp
+            ));
         }
 
         else

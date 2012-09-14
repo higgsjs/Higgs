@@ -95,6 +95,9 @@ Base class for AST statement nodes
 */
 class ASTStmt : ASTNode
 {
+    /// Labels preceding this statement
+    IdentExpr[] labels = [];
+
     this(SrcPos pos)
     {
         super(pos);
@@ -450,14 +453,20 @@ Break statement
 */
 class BreakStmt : ASTStmt
 {
-    this(SrcPos pos = null)
+    IdentExpr label;
+
+    this(IdentExpr label, SrcPos pos = null)
     {
         super(pos);
+        this.label = label;
     }
 
     string toString()
     {
-        return format("break;");
+        if (label)
+            return format("break %s;", label);
+        else
+            return format("break;");
     }
 }
 
@@ -466,14 +475,25 @@ Continue statement
 */
 class ContStmt : ASTStmt
 {
+    IdentExpr label;
+
     this(SrcPos pos = null)
     {
         super(pos);
     }
 
+    this(IdentExpr label, SrcPos pos = null)
+    {
+        super(pos);
+        this.label = label;
+    }
+
     string toString()
     {
-        return format("continue;");
+        if (label)
+            return format("continue %s;", label);
+        else
+            return format("continue;");
     }
 }
 

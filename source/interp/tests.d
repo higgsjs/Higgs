@@ -74,6 +74,8 @@ void assertInt(string input, long intVal)
     assert (
         ret.word.intVal == intVal,
         format(
+            "Test failed:\n" ~
+            input ~ "\n" ~
             "incorrect integer value: %s, expected: %s",
             ret.word.intVal, 
             intVal
@@ -95,6 +97,7 @@ unittest
     assertInt("return 7", 7);
     assertInt("return 1 + 2", 3);
     assertInt("return 5 - 1", 4);
+    assertInt("return 8 % 5", 3);
     assertInt("return -3", -3);
     assertInt("return 2 + 3 * 4", 14);
 }
@@ -127,6 +130,7 @@ unittest
     assertInt("return function () { var x = 0; return ++x; } ()", 1);
     assertInt("return function () { var x = 0; return x--; } ()", 0);
     assertInt("return function () { var x = 0; return --x; } ()", -1);
+    assertInt("return function () { var x = 0; return x++ + 1; } ()", 1);
 }
 
 /// Comparison and branching
@@ -193,6 +197,44 @@ unittest
         } ();
         ",
         10
+    );
+
+    assertInt(
+        "
+        return function ()
+        {
+            var i = 0;
+            while (true)
+            {
+                if (i === 5)
+                    break;
+                ++i;
+            }
+
+            return i;
+        } ();
+        ",
+        5
+    );
+
+    assertInt(
+        "
+        return function ()
+        {
+            var sum = 0;
+            var i = 0;
+            while (i < 10)
+            {
+                if ((i++ % 2) === 0)
+                    continue;
+
+                sum += i;
+            }
+
+            return sum;
+        } ();
+        ",
+        30
     );
 
     assertInt(

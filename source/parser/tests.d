@@ -427,6 +427,8 @@ unittest
     testParse("for (;;) {}");
     testParse("for (;;);");
     testParse("for (;);", false);
+    testParse("FOO: for (;;);");
+    testParse("FOO: BAR: for (;;);");
 
     // For-in loop statement
     testParse("for (var a in b) {}");
@@ -435,6 +437,12 @@ unittest
     testParse("for (a.b in [0, 1, 2]) print(a.b);");
     testParse("for (a.b in c);");
     testParse("for (var a.b in c);", false);
+
+    // Break and continue
+    testParse("for (;;) break;");
+    testParse("for (;;) continue;");
+    testParse("FOO: for (;;) break FOO;");
+    testParse("FOO: for (;;) continue FOO;");
 
     testParse("throw 1;");
     testParse("throw;", false);

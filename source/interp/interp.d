@@ -533,6 +533,46 @@ class Interp
                 );
             }
 
+            else if (type is &IRInstr.DIV)
+            {
+                // TODO: support for other types
+                auto idx0 = instr.args[0].localIdx;
+                auto idx1 = instr.args[1].localIdx;
+
+                auto w0 = state.getWord(idx0);
+                auto w1 = state.getWord(idx1);
+
+                // TODO: produce NaN or Inf on 0
+                if (w1.intVal == 0)
+                    throw new Error("division by 0");
+
+                state.setSlot(
+                    instr.outSlot, 
+                    Word.intg(w0.intVal / w1.intVal),
+                    Type.INT
+                );
+            }
+
+            else if (type is &IRInstr.MOD)
+            {
+                // TODO: support for other types
+                auto idx0 = instr.args[0].localIdx;
+                auto idx1 = instr.args[1].localIdx;
+
+                auto w0 = state.getWord(idx0);
+                auto w1 = state.getWord(idx1);
+
+                // TODO: produce NaN or Inf on 0
+                if (w1.intVal == 0)
+                    throw new Error("modulo with 0 divisor");
+
+                state.setSlot(
+                    instr.outSlot, 
+                    Word.intg(w0.intVal % w1.intVal),
+                    Type.INT
+                );
+            }
+
             else if (type is &IRInstr.BOOL_VAL)
             {
                 auto idx = instr.args[0].localIdx;
@@ -554,6 +594,24 @@ class Interp
                     default:
                     assert (false, "unsupported type in comparison");
                 }
+
+                state.setSlot(
+                    instr.outSlot, 
+                    output? TRUE:FALSE,
+                    Type.CST
+                );
+            }
+
+            else if (type is &IRInstr.CMP_SE)
+            {
+                // TODO: support for other types
+                auto idx0 = instr.args[0].localIdx;
+                auto idx1 = instr.args[1].localIdx;
+
+                auto w0 = state.getWord(idx0);
+                auto w1 = state.getWord(idx1);
+
+                bool output = (w0.intVal == w1.intVal);
 
                 state.setSlot(
                     instr.outSlot, 

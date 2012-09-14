@@ -99,11 +99,13 @@ void readKw(TokenStream input, wstring keyword)
 }
 
 /**
-Test if a semicolon could be automatically inserted at the current position
+Test if a semicolon is present or one could be automatically inserted
+at the current position
 */
-bool autoSemicolon(TokenStream input)
+bool peekSemiAuto(TokenStream input)
 {
     return (
+        input.peekSep(";") == true ||
         input.peekSep("}") == true ||
         input.newline() == true ||
         input.eof() == true
@@ -115,16 +117,26 @@ Read and consume a semicolon or an automatically inserted semicolon
 */
 void readSemiAuto(TokenStream input)
 {
-    if (input.matchSep(";") == false)
+    if (input.matchSep(";") == false && peekSemiAuto(input) == false)
     {
-        if (autoSemicolon(input) == false)
-        {
-            throw new ParseError(
-                "expected semicolon or end of statement",
-                input.getPos()
-            );
-        }
+        throw new ParseError(
+            "expected semicolon or end of statement",
+            input.getPos()
+        );
     }
+}
+
+/**
+Read an identifier token from the input
+*/
+IdentExpr readIdent(TokenStream input)
+{
+    auto t = input.read();
+
+    if (t.type != Token.IDENT)
+        throw new ParseError("expected identifier", t.pos);
+
+    return new IdentExpr(t.stringVal, t.pos);
 }
 
 /**
@@ -180,6 +192,25 @@ ASTStmt parseStmt(TokenStream input)
 {
     //writeln("parseStmt");
 
+    /// Test if this is a label statement and backtrack
+    bool isLabel(TokenStream input)
+    {
+        // Copy the starting input to allow backtracking
+        auto startInput = new TokenStream(input);
+
+        // On return, backtrack to the start
+        scope(exit)
+            input.backtrack(startInput);
+
+        auto t = input.peek();
+        if (t.type != Token.IDENT)
+            return false;
+        input.read();
+
+        return input.matchSep(":");
+    }
+
+    // Get the current source position
     SrcPos pos = input.getPos();
 
     // Empty statement
@@ -325,15 +356,17 @@ ASTStmt parseStmt(TokenStream input)
     // Break statement
     else if (input.matchKw("break"))
     {
+        auto label = input.peekSemiAuto()? null:input.readIdent();
         readSemiAuto(input);
-        return new BreakStmt(pos);
+        return new BreakStmt(label, pos);
     }
 
     // Continue statement
     else if (input.matchKw("continue"))
     {
+        auto label = input.peekSemiAuto()? null:input.readIdent();
         readSemiAuto(input);
-        return new BreakStmt(pos);
+        return new ContStmt(label, pos);
     }
 
     // Return statement
@@ -429,6 +462,17 @@ ASTStmt parseStmt(TokenStream input)
         }
 
         return new VarStmt(identExprs, initExprs, pos);
+    }
+
+    // If this is a labelled statement
+    else if (isLabel(input))
+    {
+        auto label = cast(IdentExpr)parseAtom(input);
+        input.readSep(":");
+        auto stmt = parseStmt(input);
+        stmt.labels ~= label;
+
+        return stmt;
     }
 
     // Peek at the token at the start of the expression
