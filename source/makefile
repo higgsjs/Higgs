@@ -7,6 +7,7 @@ BIN_NAME = higgs
 SRC =               \
 util/id.d           \
 util/string.d       \
+util/misc.d         \
 parser/lexer.d      \
 parser/ast.d        \
 parser/vars.d       \

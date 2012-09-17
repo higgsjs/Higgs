@@ -37,10 +37,14 @@
 
 module interp.interp;
 
+import core.sys.posix.unistd;
+import core.sys.posix.sys.mman;
+import core.memory;
 import std.stdio;
 import std.string;
 import std.conv;
 import std.typecons;
+import util.misc;
 import parser.parser;
 import ir.ir;
 import ir.ast;
@@ -121,6 +125,9 @@ string ValueToString(ValuePair value)
 /// Stack size, 256K words
 immutable size_t STACK_SIZE = 2^^18;
 
+/// Initial heap size, 16M bytes
+immutable size_t HEAP_INIT_SIZE = 2^^24;
+
 /**
 Interpreter state structure
 */
@@ -150,7 +157,17 @@ struct State
     /// Type stack upper limit
     Type* tUpperLimit;
 
-    // TODO: heapPtr, heapLimit, allocPtr
+    /// Heap start pointer
+    ubyte* heapPtr;
+
+    /// Heap size
+    size_t heapSize;
+
+    /// Heap upper limit
+    ubyte* heapLimit;
+
+    /// Allocation pointer
+    ubyte* allocPtr;
 
     /// Instruction pointer
     IRInstr ip;
@@ -174,6 +191,32 @@ struct State
         // Initialize the stack pointers just past the end of the stack
         wsp = wUpperLimit;
         tsp = tUpperLimit;
+
+        // Allocate a block of immovable memory for the heap
+        heapSize = HEAP_INIT_SIZE;
+        heapPtr = cast(ubyte*)GC.malloc(heapSize);
+        heapLimit = heapPtr + heapSize;
+
+        // Check that the allocation was successful
+        if (heapPtr is null)
+            throw new Error("heap allocation failed");
+
+        // Map the memory as executable
+        auto pa = mmap(
+            cast(void*)heapPtr,
+            heapSize,
+            PROT_READ | PROT_WRITE | PROT_EXEC,
+            MAP_PRIVATE | MAP_ANON,
+            -1,
+            0
+        );
+
+        // Check that the memory mapping was successful
+        if (pa == MAP_FAILED)
+            throw new Error("mmap call failed");
+
+        // Initialize the allocation pointer
+        allocPtr = alignPtr(heapPtr);
 
         // Initialize the IP to null
         ip = null;
