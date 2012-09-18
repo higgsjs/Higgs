@@ -55,6 +55,9 @@ alias ushort    uint16;
 alias uint      uint32;
 alias ulong     uint64;
 
+/**
+Layout field descriptor
+*/
 struct Field
 {
     string name;
@@ -64,6 +67,8 @@ struct Field
     string szFieldName = "";
 
     Field* szField = null;
+
+    bool isSzField = false;
 
     size_t size = 0;
 
@@ -81,12 +86,6 @@ Generates:
 - layout_ofs_field(ptr[,idx])
 - layout_get_field(ptr[,idx])
 - layout_set_field(ptr[,idx])
-
-Fields have:
-- names
-- types (int/uint*, ref, ptr)
-- size field name (var size fields)
-
 */
 string genLayout(string name, Field[] fields)
 {
@@ -100,7 +99,7 @@ string genLayout(string name, Field[] fields)
     // For each field
     for (size_t i = 0; i < fields.length; ++i)
     {
-        Field* field = &fields[i];
+        auto field = &fields[i];
 
         // Get the field size
         if (field.type == "int8" || field.type == "uint8")
@@ -121,8 +120,15 @@ string genLayout(string name, Field[] fields)
         if (field.szFieldName != "")
         {
             for (size_t j = 0; j < i; ++j)
-                if (fields[j].name == field.szFieldName)
-                    field.szField = &fields[j];
+            {
+                auto prev = &fields[j];
+
+                if (prev.name == field.szFieldName)
+                {
+                    field.szField = prev;
+                    prev.isSzField = true;
+                }
+            }
 
             assert (
                 field.szField !is null, 
@@ -132,11 +138,12 @@ string genLayout(string name, Field[] fields)
     }
 
     // Generate offset methods
-    for (size_t i = 0; i < fields.length; ++i)
+    foreach (i, field; fields)
     {
-        auto field = fields[i];
-
-        output.put("size_t " ~ ofsPref ~ field.name ~ "(ref o)\n");
+        output.put("size_t " ~ ofsPref ~ field.name ~ "(ref o");
+        if (field.szField)
+            output.put(", size_t i");
+        output.put(")\n");
         output.put("{\n");
         output.put("    return 0");
 
@@ -146,13 +153,78 @@ string genLayout(string name, Field[] fields)
             output.put(" + ");
             output.put(prev.sizeStr);
             if (prev.szField !is null)
-                output.put(" * " ~getPref ~ prev.szField.name ~ "(o)");
+                output.put(" * " ~ getPref ~ prev.szField.name ~ "(o)");
         }
+
+        if (field.szField)
+            output.put(" + " ~ field.sizeStr ~ " * i");
 
         output.put(";\n");
         output.put("}\n\n");
     }
 
+    // Generate getter methods
+    foreach (i, field; fields)
+    {
+        output.put(field.type ~ " " ~ getPref ~ field.name ~ "(ref o");
+        if (field.szField)
+            output.put(", size_t i");
+        output.put(")\n");
+        output.put("{\n");
+        output.put("    return *cast(" ~ field.type ~ "*)(");
+        output.put("(o + " ~ ofsPref ~ field.name ~ "(o");
+        if (field.szField)
+            output.put(", i");
+        output.put("));\n");
+        output.put("}\n\n");
+    }
+
+    // Generate setter methods
+    foreach (i, field; fields)
+    {
+        output.put("void " ~ setPref ~ field.name ~ "(ref o, " ~ field.type ~ " v");
+        if (field.szField)
+            output.put(", size_t i");
+        output.put(")\n");
+        output.put("{\n");
+        output.put("    *cast(" ~ field.type ~ "*)");
+        output.put("(o + " ~ ofsPref ~ field.name ~ "(o");
+        if (field.szField)
+            output.put(", i");
+        output.put("))");
+        output.put(" = v;\n");
+        output.put("}\n\n");
+    }
+
+    // Generate the layout size computation function
+    output.put("size_t " ~ name ~ "_comp_size(");
+    Field[] szFields = [];
+    foreach (field; fields)
+        if (field.isSzField)
+            szFields ~= field;
+    foreach (i, field; szFields)
+    {
+        if (i > 0)
+            output.put(", ");
+        output.put("size_t " ~ field.name);
+    }
+    output.put(")\n");
+    output.put("{\n");
+    output.put("    return 0");
+    foreach (i, field; fields)
+    {
+        output.put(" + ");
+        output.put(field.sizeStr);
+        if (field.szField)
+            output.put(" * " ~ field.szField.name);
+    }
+    output.put(";\n");
+    output.put("}\n\n");
+
+
+
+    // TODO
+    //- layout_sizeof(ptr)
 
 
 
@@ -162,8 +234,6 @@ string genLayout(string name, Field[] fields)
 
     return output.data;
 }
-
-
 
 // String layout
 /*mixin(*/pragma(msg, genLayout(
@@ -176,55 +246,31 @@ string genLayout(string name, Field[] fields)
     ]
 ));
 
-
 // Object layout
 /*mixin(*/pragma(msg, genLayout(
     "obj",
     [
+        // Layout type
         Field("type", "uint32"),
+
+        // Number of fields
         Field("len" , "uint32"),
-        //Field("hash", "uint64"),
+
+        // Class reference
+        Field("class", "ref"),
+
+        // Next object reference
+        Field("next", "ref"),
+
+        // Property words
         Field("words", "uint64", "len"),
+
+        // Property types
         Field("types", "uint8", "len")
     ]
 ));
 
-
 /*
-Object Layout:
--------------------------
-Type id (32 bits)
--------------------------
-Num fields (32 bits)
--------------------------
-Class pointer (64 bits)
--------------------------
-Next pointer (64 bits)
--------------------------
-* Field values (64 bits)
--------------------------
-* Field types (8 bits)
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-Strings:
-- Immutable, length + hash + UTF-16 data
-- Hash useful for comparisons
-- String table? Maybe not so useful, don't use one at first!
-
 Objects:
 - Allocation sites correspond to equivalence classes
 - Can have multiple layouts for objects of a given class
