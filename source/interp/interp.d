@@ -65,6 +65,7 @@ union Word
     void* ptrVal;
 }
 
+// TODO: set high bit instead for 8 bit immediate comparison?
 Word UNDEF  = { intVal: 0xFFFFFFFFFFFFFF01 };
 Word NULL   = { intVal: 0xFFFFFFFFFFFFFF02 };
 Word TRUE   = { intVal: 0xFFFFFFFFFFFFFF03 };
@@ -406,7 +407,7 @@ class Interp
                 if (fun.entryBlock is null)
                 {
                     astToIR(fun.ast, fun);
-                    writeln(fun.toString);
+                    //writeln(fun.toString);
                 }
 
                 // Get the return address
@@ -764,7 +765,7 @@ class Interp
             "function has no entry block"
         );
 
-        writeln(fun.toString);
+        //writeln(fun.toString);
 
         // Initialize the interpreter state
         state.init();

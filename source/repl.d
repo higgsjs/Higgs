@@ -65,7 +65,7 @@ ValuePair evalString(Interp interp, string input)
         }
     }
 
-    writeln(ast);
+    //writeln(ast);
 
     auto ir = astToIR(ast);
     
