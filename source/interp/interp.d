@@ -65,18 +65,18 @@ union Word
     void* ptrVal;
 }
 
-// TODO: set high bit instead for 8 bit immediate comparison?
-Word UNDEF  = { intVal: 0xFFFFFFFFFFFFFF01 };
-Word NULL   = { intVal: 0xFFFFFFFFFFFFFF02 };
-Word TRUE   = { intVal: 0xFFFFFFFFFFFFFF03 };
-Word FALSE  = { intVal: 0xFFFFFFFFFFFFFF04 };
+// Note: high byte is set to allow for one byte immediate comparison
+Word UNDEF  = { intVal: 0xF1FFFFFFFFFFFFFF };
+Word NULL   = { intVal: 0xF2FFFFFFFFFFFFFF };
+Word TRUE   = { intVal: 0xF3FFFFFFFFFFFFFF };
+Word FALSE  = { intVal: 0xF4FFFFFFFFFFFFFF };
 
 /// Word type values
 enum Type : ubyte
 {
     INT,
     FLOAT,
-    REF,
+    REFPTR,
     RAWPTR,
     CST
 }
@@ -103,8 +103,8 @@ string ValueToString(ValuePair value)
         case Type.RAWPTR:
         return to!string(w.ptrVal);
 
-        case Type.REF:
-        return "ref";
+        case Type.REFPTR:
+        return "refptr";
 
         case Type.CST:
         if (w == TRUE)

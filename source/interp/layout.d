@@ -42,8 +42,8 @@ import std.string;
 import std.array;
 import std.conv;
 
-//alias ubyte* ptr;
-//alias ubyte* ref;
+alias ubyte*    rawptr;
+alias ubyte*    refptr;
 
 alias byte      int8;
 alias short     int16;
@@ -110,7 +110,7 @@ string genLayout(string name, Field[] fields)
             field.size = 32;
         else if (field.type == "int64" || field.type == "uint64")
             field.size = 64;
-        else if (field.type == "ref" || field.type == "ptr")
+        else if (field.type == "refptr" || field.type == "rawptr")
             field.size = 64;
         else
             assert (false, "unsupported field type");
@@ -140,7 +140,7 @@ string genLayout(string name, Field[] fields)
     // Generate offset methods
     foreach (i, field; fields)
     {
-        output.put("size_t " ~ ofsPref ~ field.name ~ "(ref o");
+        output.put("size_t " ~ ofsPref ~ field.name ~ "(refptr o");
         if (field.szField)
             output.put(", size_t i");
         output.put(")\n");
@@ -166,12 +166,12 @@ string genLayout(string name, Field[] fields)
     // Generate getter methods
     foreach (i, field; fields)
     {
-        output.put(field.type ~ " " ~ getPref ~ field.name ~ "(ref o");
+        output.put(field.type ~ " " ~ getPref ~ field.name ~ "(refptr o");
         if (field.szField)
             output.put(", size_t i");
         output.put(")\n");
         output.put("{\n");
-        output.put("    return *cast(" ~ field.type ~ "*)(");
+        output.put("    return *cast(" ~ field.type ~ "*)");
         output.put("(o + " ~ ofsPref ~ field.name ~ "(o");
         if (field.szField)
             output.put(", i");
@@ -182,7 +182,7 @@ string genLayout(string name, Field[] fields)
     // Generate setter methods
     foreach (i, field; fields)
     {
-        output.put("void " ~ setPref ~ field.name ~ "(ref o, " ~ field.type ~ " v");
+        output.put("void " ~ setPref ~ field.name ~ "(refptr o, " ~ field.type ~ " v");
         if (field.szField)
             output.put(", size_t i");
         output.put(")\n");
@@ -223,20 +223,33 @@ string genLayout(string name, Field[] fields)
 
 
 
-    // TODO
-    //- layout_sizeof(ptr)
+    // FIXME
+
+    // Generate the sizeof method
+    output.put("size_t " ~ name ~ "_sizeof(refptr o)\n");
+    output.put("{\n");
+    output.put("    return " ~ name ~ "_comp_size(");
+    foreach (i, field; szFields)
+    {
+        if (i > 0)
+            output.put(", ");
+        output.put(getPref ~ field.name ~ "(o)");
+    }
+    output.put(");\n");
+    output.put("}\n\n");
 
 
 
 
 
-
-
+    // Return the generated code
     return output.data;
 }
 
 // String layout
-/*mixin(*/pragma(msg, genLayout(
+mixin(
+//pragma(msg,
+genLayout(
     "str",
     [
         Field("type", "uint32"),
@@ -247,7 +260,9 @@ string genLayout(string name, Field[] fields)
 ));
 
 // Object layout
-/*mixin(*/pragma(msg, genLayout(
+mixin(
+//pragma(msg, 
+genLayout(
     "obj",
     [
         // Layout type
@@ -257,10 +272,10 @@ string genLayout(string name, Field[] fields)
         Field("len" , "uint32"),
 
         // Class reference
-        Field("class", "ref"),
+        Field("class", "refptr"),
 
         // Next object reference
-        Field("next", "ref"),
+        Field("next", "refptr"),
 
         // Property words
         Field("words", "uint64", "len"),
@@ -269,6 +284,26 @@ string genLayout(string name, Field[] fields)
         Field("types", "uint8", "len")
     ]
 ));
+
+/* TODO
+Need layouts for:
+- string
+- class desc
+- object
+- array
+- function? probably same as object?
+- closure cell
+*/
+
+
+
+
+
+
+
+
+
+
 
 /*
 Objects:
@@ -287,23 +322,7 @@ Arrays, functions as objects?
 - Could have extended separate payload section
 
 
-
-Need layouts for:
-- string
-- class desc
-- object
-- array
-- function? probably same as object?
-- closure cell
-
-
-
-TODO: Object header is 3 words... Should try shrinking down to 1 word.
-- Num fields may be redundant. Same for next pointer.
-- Have object format descriptor with its own num fields, next pointer
-  - All objects of a given format can get promoted to the next format?
-
-
+TODO: class needs next pointer too... Otherwise can't add new fields?
 
 Class Descriptor Layout:
 -------------------------
@@ -318,19 +337,6 @@ array type | woffset | toffset (4+ words)
 * Field name | type desc | woffset | toffset (4+ words)
 
 
-Object Layout:
--------------------------
-Type id (32 bits)
--------------------------
-Num fields (32 bits)
--------------------------
-Class pointer (64 bits)
--------------------------
-Next pointer (64 bits)
--------------------------
-* Field values (64 bits)
--------------------------
-* Field types (8 bits)
 
 Object prototype (__proto__) can be slot 0
 - Has associated type info in class desc
