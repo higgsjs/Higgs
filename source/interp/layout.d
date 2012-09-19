@@ -221,10 +221,6 @@ string genLayout(string name, Field[] fields)
     output.put(";\n");
     output.put("}\n\n");
 
-
-
-    // FIXME
-
     // Generate the sizeof method
     output.put("size_t " ~ name ~ "_sizeof(refptr o)\n");
     output.put("{\n");
@@ -237,10 +233,6 @@ string genLayout(string name, Field[] fields)
     }
     output.put(");\n");
     output.put("}\n\n");
-
-
-
-
 
     // Return the generated code
     return output.data;
@@ -287,10 +279,8 @@ genLayout(
 
 /* TODO
 Need layouts for:
-- string
 - class desc
-- object
-- array
+- array table
 - function? probably same as object?
 - closure cell
 */

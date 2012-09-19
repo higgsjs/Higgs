@@ -45,6 +45,7 @@ import std.regex;
 import util.id;
 import util.string;
 import parser.ast;
+import interp.interp;
 
 /// Local variable index type
 alias size_t LocalIdx;
@@ -272,127 +273,17 @@ class IRInstr : IdObject
     /// Instruction argument
     union Arg
     {
-        /// Instruction argument type
-        alias uint Type;
-        enum : Type
-        {
-            INT,
-            FLOAT,
-            STRING,
-            LOCAL,
-            BLOCK,
-            FUN
-        }
-
         long intVal;
         double floatVal;
-        string stringVal;
+        ubyte* ptrVal;
+        wstring stringVal;
         LocalIdx localIdx;
         IRBlock block;
         IRFunction fun;
     }
 
-    /// Instruction type information
-    struct TypeInfo
-    {
-        string mnem;
-        bool output;
-        Arg.Type[] argTypes;
-    }
-
-    /// Instruction type (opcode) alias
-    alias static immutable(TypeInfo) Type;
-
-    // Set a local slot to a constant value    
-    Type SET_INT    = { "set_int"   , true, [Arg.INT] };
-    Type SET_FLOAT  = { "set_float" , true, [Arg.FLOAT] };
-    //FIXME: need string table
-    //Type SET_STR    = { "set_str"   , true, [Arg.STRING] };
-    Type SET_TRUE   = { "set_true"  , true, [] };
-    Type SET_FALSE  = { "set_false" , true, [] };
-    Type SET_NULL   = { "set_null"  , true, [] };
-    Type SET_UNDEF  = { "set_undef" , true, [] };
-
-    // Move a value from one local to another
-    Type MOVE       = { "move", true, [Arg.LOCAL] };
-
-    // Arithmetic operations
-    Type ADD        = { "add", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type SUB        = { "sub", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type MUL        = { "mul", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type DIV        = { "div", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type MOD        = { "mod", true, [Arg.LOCAL, Arg.LOCAL] };
-
-    // Bitwise operations
-    Type NOT        = { "xor"    , true, [Arg.LOCAL] };
-    Type AND        = { "and"    , true, [Arg.LOCAL, Arg.LOCAL] };
-    Type OR         = { "or"     , true, [Arg.LOCAL, Arg.LOCAL] };
-    Type XOR        = { "xor"    , true, [Arg.LOCAL, Arg.LOCAL] };
-    Type LSHIFT     = { "lshift" , true, [Arg.LOCAL, Arg.LOCAL] };
-    Type RSHIFT     = { "rshift" , true, [Arg.LOCAL, Arg.LOCAL] };
-    Type URSHIFT    = { "urshift", true, [Arg.LOCAL, Arg.LOCAL] };
-
-    // Boolean value conversion
-    Type BOOL_VAL    = { "bool_val", true, [Arg.LOCAL] };
-
-    // Boolean (logical) negation
-    Type BOOL_NOT    = { "bool_not", true, [Arg.LOCAL] };
-
-    // Comparison operations
-    Type CMP_SE     = { "cmp_se", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type CMP_NS     = { "cmp_ns", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type CMP_EQ     = { "cmp_eq", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type CMP_NE     = { "cmp_ne", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type CMP_LT     = { "cmp_lt", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type CMP_LE     = { "cmp_le", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type CMP_GT     = { "cmp_gt", true, [Arg.LOCAL, Arg.LOCAL] };
-    Type CMP_GE     = { "cmp_ge", true, [Arg.LOCAL, Arg.LOCAL] };
-
-    // Branching and conditional branching
-    Type JUMP       = { "jump"      , false, [Arg.BLOCK] };
-    Type JUMP_TRUE  = { "jump_true" , false, [Arg.LOCAL, Arg.BLOCK] };
-    Type JUMP_FALSE = { "jump_false", false, [Arg.LOCAL, Arg.BLOCK] };
-
-    // SET_ARG <srcLocal> <argIdx>
-    Type SET_ARG    = { "set_arg", false, [Arg.LOCAL, Arg.INT] };
-
-    // CALL <closLocal> <thisArg> <numArgs>
-    // Makes the execution go to the callee entry
-    // Sets the frame pointer to the new frame's base
-    // Pushes the return address word
-    Type CALL       = { "call", false, [Arg.LOCAL, Arg.LOCAL, Arg.INT] };
-
-    // PUSH_FRAME <numParams> <numLocals>
-    // On function entry, allocates/adjusts the callee's stack frame
-    Type PUSH_FRAME = { "push_frame", false, [Arg.INT, Arg.INT] };
-
-    // <retLocal> = GET_RET
-    // After call, extracts the callee's return value
-    Type GET_RET    = { "get_ret", true, [] };
-
-    // RET <retLocal> <raSlot> <numLocals>
-    // Stores return value in special registers
-    // Pops the callee frame (size known by context)
-    Type RET        = { "ret", false, [Arg.LOCAL, Arg.LOCAL, Arg.INT] };
-
-    // <dstLocal> = NEW_CLOS <funExpr>
-    // Create a new closure from a function's AST node
-    Type NEW_CLOS = { "new_clos", true, [Arg.FUN] };
-
-    // Create new object
-    //NEW_OBJ,
-
-    //SET_GLOBAL,
-    //GET_GLOBAL,
-
-    // SET_FIELD <obj_local> <name_local> <src_local>
-    //SET_FIELD,
-
-    // <dst_local> = GET_FIELD <obj_local> <name_local>
-    //GET_FIELD,
-
-    /// Instruction type
-    Type* type;
+    /// Opcode
+    Opcode* opcode;
 
     /// Instruction arguments
     Arg[MAX_ARGS] args;
@@ -404,67 +295,67 @@ class IRInstr : IdObject
     IRInstr prev;
     IRInstr next;
 
-    this(Type* type)
+    this(Opcode* opcode)
     {
-        this.type = type;
+        this.opcode = opcode;
     }
 
     /// Binary constructor
-    this(Type* type, LocalIdx outSlot, LocalIdx arg0, LocalIdx arg1)
+    this(Opcode* opcode, LocalIdx outSlot, LocalIdx arg0, LocalIdx arg1)
     {
         assert (
-            type.output == true &&
-            type.argTypes.length == 2 &&
-            type.argTypes[0] == Arg.LOCAL &&
-            type.argTypes[1] == Arg.LOCAL
+            opcode.output == true &&
+            opcode.argTypes.length == 2 &&
+            opcode.argTypes[0] == OpArg.LOCAL &&
+            opcode.argTypes[1] == OpArg.LOCAL
         );
 
-        this.type = type;
+        this.opcode = opcode;
         this.outSlot = outSlot;
         this.args[0].localIdx = arg0;
         this.args[1].localIdx = arg1;
     }
 
     /// Unary constructor
-    this(Type* type, LocalIdx outSlot, LocalIdx arg0)
+    this(Opcode* opcode, LocalIdx outSlot, LocalIdx arg0)
     {
         assert (
-            (type.output == true || outSlot == NULL_LOCAL) &&
-            type.argTypes.length == 1 &&
-            type.argTypes[0] == Arg.LOCAL,
-            "invalid instruction for ctor: " ~ type.mnem
+            (opcode.output == true || outSlot == NULL_LOCAL) &&
+            opcode.argTypes.length == 1 &&
+            opcode.argTypes[0] == OpArg.LOCAL,
+            "invalid instruction for ctor: " ~ opcode.mnem
         );
 
-        this.type = type;
+        this.opcode = opcode;
         this.outSlot = outSlot;
         this.args[0].localIdx = arg0;
     }
 
     /// No argument constructor
-    this(Type* type, LocalIdx outSlot)
+    this(Opcode* opcode, LocalIdx outSlot)
     {
         assert (
-            type.output == true &&
-            type.argTypes.length == 0,
-            "invalid instruction for ctor: " ~ type.mnem
+            opcode.output == true &&
+            opcode.argTypes.length == 0,
+            "invalid instruction for ctor: " ~ opcode.mnem
         );
 
-        this.type = type;
+        this.opcode = opcode;
         this.outSlot = outSlot;
     }
 
     /// Conditional branching constructor
-    this(Type* type, LocalIdx arg0, IRBlock block)
+    this(Opcode* opcode, LocalIdx arg0, IRBlock block)
     {
         assert (
-            type.output == false &&
-            type.argTypes.length == 2 &&
-            type.argTypes[0] == Arg.LOCAL &&
-            type.argTypes[1] == Arg.BLOCK,
-            "invalid instruction for ctor: " ~ type.mnem
+            opcode.output == false &&
+            opcode.argTypes.length == 2 &&
+            opcode.argTypes[0] == OpArg.LOCAL &&
+            opcode.argTypes[1] == OpArg.BLOCK,
+            "invalid instruction for ctor: " ~ opcode.mnem
         );
 
-        this.type = type;
+        this.opcode = opcode;
         this.args[0].localIdx = arg0;
         this.args[1].block = block;
     }
@@ -489,6 +380,17 @@ class IRInstr : IdObject
         return cst;
     }
 
+    /// String constant
+    static strCst(LocalIdx outSlot, wstring stringVal)
+    {
+        auto cst = new this(&SET_STR);
+        cst.args[0].stringVal = stringVal;
+        cst.args[1].ptrVal = null;
+        cst.outSlot = outSlot;
+
+        return cst;
+    }
+
     /// Jump instruction
     static jump(IRBlock block)
     {
@@ -502,29 +404,29 @@ class IRInstr : IdObject
     {
         string output;
 
-        if (type.output)
+        if (opcode.output)
             output ~= "$" ~ to!string(outSlot) ~ " = ";
 
-        output ~= type.mnem;
+        output ~= opcode.mnem;
 
-        if (type.argTypes.length > 0)
+        if (opcode.argTypes.length > 0)
             output ~= " ";
 
-        for (size_t i = 0; i < type.argTypes.length; ++i)
+        for (size_t i = 0; i < opcode.argTypes.length; ++i)
         {
             auto arg = args[i];
 
             if (i > 0)
                 output ~= ", ";
 
-            switch (type.argTypes[i])
+            switch (opcode.argTypes[i])
             {
-                case Arg.INT    : output ~= to!string(arg.intVal); break;
-                case Arg.FLOAT  : output ~= to!string(arg.floatVal); break;
-                case Arg.STRING : output ~= arg.stringVal; break;
-                case Arg.LOCAL  : output ~= "$" ~ to!string(arg.localIdx); break;
-                case Arg.BLOCK  : output ~= arg.block.getName(); break;
-                case Arg.FUN    : output ~= "<fun:" ~ arg.fun.getName() ~ ">"; break;
+                case OpArg.INT    : output ~= to!string(arg.intVal); break;
+                case OpArg.FLOAT  : output ~= to!string(arg.floatVal); break;
+                case OpArg.STRING : output ~= to!string(arg.stringVal); break;
+                case OpArg.LOCAL  : output ~= "$" ~ to!string(arg.localIdx); break;
+                case OpArg.BLOCK  : output ~= arg.block.getName(); break;
+                case OpArg.FUN    : output ~= "<fun:" ~ arg.fun.getName() ~ ">"; break;
 
                 default: assert (false, "unhandled arg type");
             }
@@ -533,4 +435,122 @@ class IRInstr : IdObject
         return output;
     }
 }
+
+/**
+Opcode argument type
+*/
+enum OpArg
+{
+    INT,
+    FLOAT,
+    REFPTR,
+    STRING,
+    LOCAL,
+    BLOCK,
+    FUN
+}
+
+/// Opcode implementation function
+alias void function(Interp interp, IRInstr instr) OpFun;
+
+/**
+Opcode information
+*/
+struct OpInfo
+{
+    string mnem;
+    bool output;
+    OpArg[] argTypes;
+    OpFun opFun = null;
+}
+
+/// Instruction type (opcode) alias
+alias static immutable(OpInfo) Opcode;
+
+// Set a local slot to a constant value    
+Opcode SET_INT    = { "set_int"   , true, [OpArg.INT], &Interp.opSetInt };
+Opcode SET_FLOAT  = { "set_float" , true, [OpArg.FLOAT]/*, &Interp.opSetFloat*/ };
+Opcode SET_STR    = { "set_str"   , true, [OpArg.STRING, OpArg.REFPTR], &Interp.opSetStr };
+Opcode SET_TRUE   = { "set_true"  , true, [], &Interp.opSetTrue };
+Opcode SET_FALSE  = { "set_false" , true, [], &Interp.opSetFalse };
+Opcode SET_NULL   = { "set_null"  , true, [], &Interp.opSetNull };
+Opcode SET_UNDEF  = { "set_undef" , true, [], &Interp.opSetUndef };
+
+// Move a value from one local to another
+Opcode MOVE       = { "move", true, [OpArg.LOCAL], &Interp.opMove };
+
+// Arithmetic operations
+Opcode ADD        = { "add", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opAdd };
+Opcode SUB        = { "sub", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opSub };
+Opcode MUL        = { "mul", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opMul };
+Opcode DIV        = { "div", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opDiv };
+Opcode MOD        = { "mod", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opMod };
+
+// Bitwise operations
+Opcode NOT        = { "xor"    , true, [OpArg.LOCAL] };
+Opcode AND        = { "and"    , true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode OR         = { "or"     , true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode XOR        = { "xor"    , true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode LSHIFT     = { "lshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode RSHIFT     = { "rshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode URSHIFT    = { "urshift", true, [OpArg.LOCAL, OpArg.LOCAL] };
+
+// Boolean value conversion
+Opcode BOOL_VAL    = { "bool_val", true, [OpArg.LOCAL], &Interp.opBoolVal };
+
+// Boolean (logical) negation
+Opcode BOOL_NOT    = { "bool_not", true, [OpArg.LOCAL] };
+
+// Comparison operations
+Opcode CMP_SE     = { "cmp_se", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opCmpSe };
+Opcode CMP_NS     = { "cmp_ns", true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode CMP_EQ     = { "cmp_eq", true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode CMP_NE     = { "cmp_ne", true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode CMP_LT     = { "cmp_lt", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opCmpLt };
+Opcode CMP_LE     = { "cmp_le", true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode CMP_GT     = { "cmp_gt", true, [OpArg.LOCAL, OpArg.LOCAL] };
+Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
+
+// Branching and conditional branching
+Opcode JUMP       = { "jump"      , false, [OpArg.BLOCK], &Interp.opJump };
+Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL, OpArg.BLOCK], &Interp.opJumpTrue };
+Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL, OpArg.BLOCK] };
+
+// SET_ARG <srcLocal> <argIdx>
+Opcode SET_ARG    = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &Interp.opSetArg };
+
+// CALL <closLocal> <thisArg> <numArgs>
+// Makes the execution go to the callee entry
+// Sets the frame pointer to the new frame's base
+// Pushes the return address word
+Opcode CALL       = { "call", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &Interp.opCall };
+
+// PUSH_FRAME <numParams> <numLocals>
+// On function entry, allocates/adjusts the callee's stack frame
+Opcode PUSH_FRAME = { "push_frame", false, [OpArg.INT, OpArg.INT], &Interp.opPushFrame };
+
+// RET <retLocal> <raSlot> <numLocals>
+// Stores return value in special registers
+// Pops the callee frame (size known by context)
+Opcode RET        = { "ret", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &Interp.opRet };
+
+// <retLocal> = GET_RET
+// After call, extracts the callee's return value
+Opcode GET_RET    = { "get_ret", true, [], &Interp.opGetRet };
+
+// <dstLocal> = NEW_CLOS <funExpr>
+// Create a new closure from a function's AST node
+Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN], &Interp.opNewClos };
+
+// Create new object
+//NEW_OBJ,
+
+//SET_GLOBAL,
+//GET_GLOBAL,
+
+// SET_FIELD <obj_local> <name_local> <src_local>
+//SET_FIELD,
+
+// <dst_local> = GET_FIELD <obj_local> <name_local>
+//GET_FIELD,
 
