@@ -57,6 +57,7 @@ union Word
 {
     static Word intv(long i) { Word w; w.intVal = i; return w; }
     static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
+    static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
     static Word cstv(rawptr c) { Word w; w.ptrVal = c; return w; }
 
     uint64  uintVal;
@@ -85,6 +86,25 @@ enum Type : ubyte
 
 /// Word and type pair
 alias Tuple!(Word, "word", Type, "type") ValuePair;
+
+/**
+Produce a string representation of a type tag
+*/
+string TypeToString(Type type)
+{
+    // Switch on the type tag
+    switch (type)
+    {
+        case Type.INT:      return "int";
+        case Type.FLOAT:    return "float";
+        case Type.STRING:   return "string";
+        case Type.RAWPTR:   return "raw pointer";
+        case Type.REFPTR:   return "ref pointer";
+        case Type.CONST:    return "const";
+        default:
+        assert (false, "unsupported type");
+    }
+}
 
 /**
 Produce a string representation of a value pair
@@ -430,6 +450,45 @@ class Interp
         return ValuePair(*wsp, *tsp);
     }
 
+    /**
+    Allocate and initialize a string with a given value
+    */
+    ValuePair makeString(wstring str)
+    {
+        auto objPtr = this.alloc(str_comp_size(str.length));
+
+        str_set_len(objPtr, cast(uint32)str.length);
+
+        // TODO: hash code
+
+        for (size_t i = 0; i < str.length; ++i)
+            str_set_data(objPtr, i, str[i]);
+
+        return ValuePair(Word.refv(objPtr), Type.STRING);
+    }
+
+    //
+    // TODO: boolVal
+    //
+
+    /**
+    Produce the string representation of a value
+    */
+    ValuePair stringVal(Word w, Type t)
+    {
+        switch (t)
+        {
+            case Type.STRING:
+            return ValuePair(w, t);
+
+            case Type.INT:
+            return makeString(to!wstring(w.intVal));
+
+            default:
+            assert (false, "unsupported type in stringVal");
+        }
+    }
+
     static void opSetInt(Interp interp, IRInstr instr)
     {
         interp.setSlot(
@@ -443,16 +502,11 @@ class Interp
     {
         auto objPtr = instr.args[1].ptrVal;
 
+        // If the string is null, allocate it
         if (objPtr is null)
         {
-            auto str = instr.args[0].stringVal;
-
-            objPtr = interp.alloc(str_comp_size(str.length));
-
-            str_set_len(objPtr, cast(uint32)str.length);
-
-            for (size_t i = 0; i < str.length; ++i)
-                str_set_data(objPtr, i, str[i]);
+            auto strVal = interp.makeString(instr.args[0].stringVal);
+            objPtr = strVal.word.ptrVal;
         }
 
         interp.setSlot(
@@ -508,18 +562,52 @@ class Interp
 
     static void opAdd(Interp interp, IRInstr instr)
     {
-        // TODO: support for other types
         auto idx0 = instr.args[0].localIdx;
         auto idx1 = instr.args[1].localIdx;
-
         auto w0 = interp.getWord(idx0);
         auto w1 = interp.getWord(idx1);
+        auto t0 = interp.getType(idx0);
+        auto t1 = interp.getType(idx1);
 
-        interp.setSlot(
-            instr.outSlot, 
-            Word.intv(w0.intVal + w1.intVal),
-            Type.INT
-        );
+        // If both values are integer
+        if (t0 == Type.INT && t1 == Type.INT)
+        {
+            interp.setSlot(
+                instr.outSlot, 
+                Word.intv(w0.intVal + w1.intVal),
+                Type.INT
+            );
+        }
+
+        // If either value is a string
+        else if (t0 == Type.STRING || t1 == Type.STRING)
+        {
+            // Evaluate the string value of both arguments
+            auto s0 = interp.stringVal(w0, t0);
+            auto s1 = interp.stringVal(w1, t1);
+
+            auto l0 = str_get_len(s0.word.ptrVal);
+            auto l1 = str_get_len(s1.word.ptrVal);
+
+            auto sO = interp.alloc(str_comp_size(l0+l1));
+            str_set_len(sO, l0+l1);
+
+            for (size_t i = 0; i < l0; ++i)
+                str_set_data(sO, i, str_get_data(s0.word.ptrVal, i));
+            for (size_t i = 0; i < l1; ++i)
+                str_set_data(sO, l0+i, str_get_data(s1.word.ptrVal, i));
+
+            interp.setSlot(
+                instr.outSlot, 
+                Word.ptrv(sO),
+                Type.STRING
+            );
+        }
+
+        else
+        {
+            assert (false, "unsupported types in add");
+        }
     }
 
     static void opSub(Interp interp, IRInstr instr)
@@ -724,10 +812,10 @@ class Interp
         interp.push(numArgs);
 
         // Push the hidden call arguments
-        interp.push(UNDEF, Type.CONST);                    // FIXME:Closure argument
-        interp.push(UNDEF, Type.CONST);                    // FIXME:This argument
-        interp.push(Word.intv(numArgs), Type.INT);       // Argument count
-        interp.push(Word.ptrv(retAddr), Type.RAWPTR);     // Return address
+        interp.push(UNDEF, Type.CONST);                     // FIXME:Closure argument
+        interp.push(UNDEF, Type.CONST);                     // FIXME:This argument
+        interp.push(Word.intv(numArgs), Type.INT);          // Argument count
+        interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
 
         // Set the instruction pointer
         interp.ip = fun.entryBlock.firstInstr;

@@ -292,5 +292,14 @@ unittest
 unittest
 {
     assertStr("return 'foo'", "foo");
+    assertStr("return 'foo' + 'bar'", "foobar");
+    assertStr("return 'foo' + 1", "foo1");
+
+
+    // TODO: loop concatenating integers?
+
+
+
+
 }
 
