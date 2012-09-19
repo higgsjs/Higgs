@@ -83,10 +83,37 @@ void assertInt(string input, long intVal)
     );
 }
 
+void assertStr(string input, string strVal)
+{
+    auto interp = evalString(input);
+
+    //writeln("getting ret val");
+
+    auto ret = interp.getRet();
+
+    assert (
+        ret.type == Type.STRING,
+        "non-string type"
+    );
+
+    auto outStr = ValueToString(ret);
+
+    assert (
+        outStr == strVal,
+        format(
+            "Test failed:\n" ~
+            input ~ "\n" ~
+            "incorrect string value: %s, expected: %s",
+            outStr, 
+            strVal
+        )
+    );
+}
+
 unittest
 {
-    Word w0 = Word.intg(0);
-    Word w1 = Word.intg(1);
+    Word w0 = Word.intv(0);
+    Word w1 = Word.intv(1);
 
     assert (w0.intVal != w1.intVal);
 }
@@ -259,5 +286,11 @@ unittest
         ",
         10
     );
+}
+
+/// Strings
+unittest
+{
+    assertStr("return 'foo'", "foo");
 }
 

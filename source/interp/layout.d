@@ -55,6 +55,8 @@ alias ushort    uint16;
 alias uint      uint32;
 alias ulong     uint64;
 
+alias double    float64;
+
 /**
 Layout field descriptor
 */
@@ -182,10 +184,10 @@ string genLayout(string name, Field[] fields)
     // Generate setter methods
     foreach (i, field; fields)
     {
-        output.put("void " ~ setPref ~ field.name ~ "(refptr o, " ~ field.type ~ " v");
+        output.put("void " ~ setPref ~ field.name ~ "(refptr o");
         if (field.szField)
             output.put(", size_t i");
-        output.put(")\n");
+        output.put(", " ~ field.type ~ " v)\n");
         output.put("{\n");
         output.put("    *cast(" ~ field.type ~ "*)");
         output.put("(o + " ~ ofsPref ~ field.name ~ "(o");

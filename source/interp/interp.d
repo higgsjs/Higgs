@@ -55,15 +55,15 @@ Memory word union
 */
 union Word
 {
-    static Word intg(long i) { Word w; w.intVal = i; return w; }
-    static Word ptr(void* p) { Word w; w.ptrVal = p; return w; }
-    static Word cst(void* c) { Word w; w.ptrVal = c; return w; }
+    static Word intv(long i) { Word w; w.intVal = i; return w; }
+    static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
+    static Word cstv(rawptr c) { Word w; w.ptrVal = c; return w; }
 
-    ulong uintVal;
-    long intVal;
-    double floatVal;
-    void* refVal;
-    void* ptrVal;
+    uint64  uintVal;
+    int64   intVal;
+    float64 floatVal;
+    refptr  refVal;
+    rawptr  ptrVal;
 }
 
 // Note: high byte is set to allow for one byte immediate comparison
@@ -77,9 +77,10 @@ enum Type : ubyte
 {
     INT,
     FLOAT,
+    STRING,
     REFPTR,
     RAWPTR,
-    CST
+    CONST
 }
 
 /// Word and type pair
@@ -101,13 +102,20 @@ string ValueToString(ValuePair value)
         case Type.FLOAT:
         return to!string(w.floatVal);
 
+        case Type.STRING:
+        auto len = str_get_len(w.ptrVal);
+        wchar[] str = new wchar[len];
+        for (size_t i = 0; i < len; ++i)
+            str[i] = str_get_data(w.ptrVal, i);
+        return to!string(str);
+
         case Type.RAWPTR:
         return to!string(w.ptrVal);
 
         case Type.REFPTR:
         return "refptr";
 
-        case Type.CST:
+        case Type.CONST:
         if (w == TRUE)
             return "true";
         else if (w == FALSE)
@@ -325,6 +333,24 @@ class Interp
     }
 
     /**
+    Allocate an object on the stack
+    */
+    rawptr alloc(size_t size)
+    {
+        ubyte* ptr = allocPtr;
+
+        allocPtr += size;
+
+        if (allocPtr > heapLimit)
+            throw new Error("heap space exhausted");
+
+        // Align the allocation pointer
+        allocPtr = alignPtr(allocPtr);
+
+        return ptr;
+    }
+
+    /**
     Execute the interpreter loop
     */
     void loop()
@@ -377,10 +403,10 @@ class Interp
         init();
 
         // Push the hidden call arguments
-        push(UNDEF, Type.CST);                // FIXME:Closure argument
-        push(UNDEF, Type.CST);                // FIXME:This argument
-        push(Word.intg(0), Type.INT);         // Argument count
-        push(Word.ptr(null), Type.RAWPTR);    // Return address
+        push(UNDEF, Type.CONST);                // FIXME:Closure argument
+        push(UNDEF, Type.CONST);                // FIXME:This argument
+        push(Word.intv(0), Type.INT);         // Argument count
+        push(Word.ptrv(null), Type.RAWPTR);    // Return address
 
         //writefln("stack size before entry: %s", stackSize());
 
@@ -408,19 +434,32 @@ class Interp
     {
         interp.setSlot(
             instr.outSlot,
-            Word.intg(instr.args[0].intVal),
+            Word.intv(instr.args[0].intVal),
             Type.INT
         );
     }
 
     static void opSetStr(Interp interp, IRInstr instr)
     {
-        // TODO
-        assert (false);
+        auto objPtr = instr.args[1].ptrVal;
 
+        if (objPtr is null)
+        {
+            auto str = instr.args[0].stringVal;
 
+            objPtr = interp.alloc(str_comp_size(str.length));
 
+            str_set_len(objPtr, cast(uint32)str.length);
 
+            for (size_t i = 0; i < str.length; ++i)
+                str_set_data(objPtr, i, str[i]);
+        }
+
+        interp.setSlot(
+            instr.outSlot,
+            Word.ptrv(objPtr),
+            Type.STRING
+        );
     }
 
     static void opSetTrue(Interp interp, IRInstr instr)
@@ -428,7 +467,7 @@ class Interp
         interp.setSlot(
             instr.outSlot,
             TRUE,
-            Type.CST
+            Type.CONST
         );
     }
 
@@ -437,7 +476,7 @@ class Interp
         interp.setSlot(
             instr.outSlot,
             FALSE,
-            Type.CST
+            Type.CONST
         );
     }
 
@@ -446,7 +485,7 @@ class Interp
         interp.setSlot(
             instr.outSlot,
             NULL,
-            Type.CST
+            Type.CONST
         );
     }
 
@@ -455,7 +494,7 @@ class Interp
         interp.setSlot(
             instr.outSlot,
             UNDEF,
-            Type.CST
+            Type.CONST
         );
     }
 
@@ -478,7 +517,7 @@ class Interp
 
         interp.setSlot(
             instr.outSlot, 
-            Word.intg(w0.intVal + w1.intVal),
+            Word.intv(w0.intVal + w1.intVal),
             Type.INT
         );
     }
@@ -494,7 +533,7 @@ class Interp
 
         interp.setSlot(
             instr.outSlot, 
-            Word.intg(w0.intVal - w1.intVal),
+            Word.intv(w0.intVal - w1.intVal),
             Type.INT
         );
     }
@@ -510,7 +549,7 @@ class Interp
 
         interp.setSlot(
             instr.outSlot, 
-            Word.intg(w0.intVal * w1.intVal),
+            Word.intv(w0.intVal * w1.intVal),
             Type.INT
         );
     }
@@ -530,7 +569,7 @@ class Interp
 
         interp.setSlot(
             instr.outSlot, 
-            Word.intg(w0.intVal / w1.intVal),
+            Word.intv(w0.intVal / w1.intVal),
             Type.INT
         );
     }
@@ -550,7 +589,7 @@ class Interp
 
         interp.setSlot(
             instr.outSlot, 
-            Word.intg(w0.intVal % w1.intVal),
+            Word.intv(w0.intVal % w1.intVal),
             Type.INT
         );
     }
@@ -565,7 +604,7 @@ class Interp
         bool output;
         switch (t)
         {
-            case Type.CST:
+            case Type.CONST:
             output = (w == TRUE);
             break;
 
@@ -580,7 +619,7 @@ class Interp
         interp.setSlot(
             instr.outSlot, 
             output? TRUE:FALSE,
-            Type.CST
+            Type.CONST
         );
     }
 
@@ -598,7 +637,7 @@ class Interp
         interp.setSlot(
             instr.outSlot, 
             output? TRUE:FALSE,
-            Type.CST
+            Type.CONST
         );
     }
 
@@ -616,7 +655,7 @@ class Interp
         interp.setSlot(
             instr.outSlot, 
             output? TRUE:FALSE,
-            Type.CST
+            Type.CONST
         );
     }
 
@@ -674,7 +713,7 @@ class Interp
         }
 
         // Get the return address
-        auto retAddr = cast(void*)instr.next;
+        auto retAddr = cast(rawptr)instr.next;
 
         assert (
             retAddr !is null, 
@@ -685,10 +724,10 @@ class Interp
         interp.push(numArgs);
 
         // Push the hidden call arguments
-        interp.push(UNDEF, Type.CST);                    // FIXME:Closure argument
-        interp.push(UNDEF, Type.CST);                    // FIXME:This argument
-        interp.push(Word.intg(numArgs), Type.INT);       // Argument count
-        interp.push(Word.ptr(retAddr), Type.RAWPTR);     // Return address
+        interp.push(UNDEF, Type.CONST);                    // FIXME:Closure argument
+        interp.push(UNDEF, Type.CONST);                    // FIXME:This argument
+        interp.push(Word.intv(numArgs), Type.INT);       // Argument count
+        interp.push(Word.ptrv(retAddr), Type.RAWPTR);     // Return address
 
         // Set the instruction pointer
         interp.ip = fun.entryBlock.firstInstr;
@@ -717,7 +756,7 @@ class Interp
 
             // Initialize the missing arguments to undefined
             for (size_t i = 0; i < deltaArgs; ++i)
-                interp.setSlot(NUM_HIDDEN_ARGS + i, UNDEF, Type.CST);
+                interp.setSlot(NUM_HIDDEN_ARGS + i, UNDEF, Type.CONST);
         }
 
         // If there are too many arguments
@@ -786,7 +825,7 @@ class Interp
         // TODO: create a proper closure
         interp.setSlot(
             instr.outSlot,
-            Word.ptr(cast(void*)fun),
+            Word.ptrv(cast(rawptr)fun),
             Type.RAWPTR
         );
     }
