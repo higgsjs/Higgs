@@ -294,12 +294,23 @@ unittest
     assertStr("return 'foo'", "foo");
     assertStr("return 'foo' + 'bar'", "foobar");
     assertStr("return 'foo' + 1", "foo1");
+    assertStr("return 'foo' + true", "footrue");
+    assertInt("return 'foo'? 1:0", 1);
+    assertInt("return ''? 1:0", 0);
 
+    assertStr(
+        "
+        return function ()
+        {
+            var s = '';
 
-    // TODO: loop concatenating integers?
+            for (var i = 0; i < 5; ++i)
+                s += i;
 
-
-
-
+            return s;
+        } ();
+        ",
+        "01234"
+    );
 }
 

@@ -484,6 +484,18 @@ class Interp
             case Type.INT:
             return makeString(to!wstring(w.intVal));
 
+            case Type.CONST:
+            if (w == TRUE)
+                return makeString("true");
+            else if (w == FALSE)
+                return makeString("false");
+            else if (w == NULL)
+                return makeString("null");
+            else if (w == UNDEF)
+                return makeString("undefined");
+            else
+                assert (false, "unsupported constant");
+
             default:
             assert (false, "unsupported type in stringVal");
         }
@@ -698,6 +710,10 @@ class Interp
 
             case Type.INT:
             output = (w.intVal != 0);
+            break;
+
+            case Type.STRING:
+            output = (str_get_len(w.ptrVal) != 0);
             break;
 
             default:

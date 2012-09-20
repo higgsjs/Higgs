@@ -697,6 +697,14 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         auto op = binExpr.op;
 
+
+        // TODO: ||
+
+
+        // TODO: &&
+
+
+
         // Arithmetic operators
         if (op.str == "+")
             genBinOp(&ADD);
