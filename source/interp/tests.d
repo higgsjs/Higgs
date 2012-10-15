@@ -167,8 +167,24 @@ unittest
     assertInt("if (false) return 1; else return 0;", 0);
     assertInt("if (3 < 7) return 1; else return 0;", 1);
     assertInt("if (5 < 2) return 1; else return 0;", 0);
+
     assertInt("return true? 1:0", 1);
     assertInt("return false? 1:0", 0);
+
+    assertInt("return 0 || 2", 2);
+    assertInt("return 1 || 2", 1);
+    assertInt("return 0 || 0 || 3", 3);
+    assertInt("return 0 || 2 || 3", 2);
+    assertInt("if (0 || 2) return 1; else return 0;", 1);
+    assertInt("if (1 || 2) return 1; else return 0;", 1);
+    assertInt("if (0 || 0) return 1; else return 0;", 0);
+
+    assertInt("return 0 && 2", 0);
+    assertInt("return 1 && 2", 2);
+    assertInt("return 1 && 2 && 3", 3);
+    assertInt("return 1 && 0 && 3", 0);
+    assertInt("if (0 && 2) return 1; else return 0;", 0);
+    assertInt("if (1 && 2) return 1; else return 0;", 1);
 }
 
 /// Recursion

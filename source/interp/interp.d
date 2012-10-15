@@ -773,10 +773,19 @@ class Interp
     {
         auto valIdx = instr.args[0].localIdx;
         auto block = instr.args[1].block;
-
         auto wVal = interp.getWord(valIdx);
 
         if (wVal == TRUE)
+            interp.ip = block.firstInstr;
+    }
+
+    static void opJumpFalse(Interp interp, IRInstr instr)
+    {
+        auto valIdx = instr.args[0].localIdx;
+        auto block = instr.args[1].block;
+        auto wVal = interp.getWord(valIdx);
+
+        if (wVal == FALSE)
             interp.ip = block.firstInstr;
     }
 

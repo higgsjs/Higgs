@@ -697,14 +697,6 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         auto op = binExpr.op;
 
-
-        // TODO: ||
-
-
-        // TODO: &&
-
-
-
         // Arithmetic operators
         if (op.str == "+")
             genBinOp(&ADD);
@@ -748,6 +740,50 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             genBinOp(&CMP_GT);
         else if (op.str == ">=")
             genBinOp(&CMP_GE);
+
+        // Logical OR and logical AND
+        else if (op.str == "||" || op.str == "&&")
+        {
+            // Create the right expression and exit blocks
+            auto secnBlock = ctx.fun.newBlock("or_sec");
+            auto exitBlock = ctx.fun.newBlock("or_exit");
+
+            // Allocate a slot for the output
+            auto outTemp = ctx.allocTemp();
+
+            // Evaluate the left expression
+            auto lCtx = ctx.subCtx(null, outTemp);
+            exprToIR(binExpr.lExpr, lCtx);
+            ctx.merge(lCtx); 
+
+            // Convert the expression value to a boolean
+            auto boolInstr = ctx.addInstr(new IRInstr(
+                &BOOL_VAL,
+                ctx.allocTemp(),
+                outTemp,     
+            ));
+
+            // Evaluate the second expression, if necessary
+            ctx.addInstr(new IRInstr(
+                (op.str == "||")? &JUMP_TRUE:&JUMP_FALSE,
+                boolInstr.outSlot,
+                exitBlock
+            ));
+            ctx.addInstr(IRInstr.jump(secnBlock));
+
+            // Evaluate the right expression
+            auto rCtx = ctx.subCtx(secnBlock, outTemp);
+            exprToIR(binExpr.rExpr, rCtx);
+
+            // Jump to the exit block
+            rCtx.addInstr(IRInstr.jump(exitBlock));
+
+            // Continue code generation in the exit block
+            ctx.merge(exitBlock);
+
+            // Set the output slot
+            ctx.setOutSlot(outTemp);
+        }
 
         // Assignment expression
         else if (binExpr.op.str == "=")

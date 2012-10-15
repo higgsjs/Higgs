@@ -514,7 +514,7 @@ Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
 // Branching and conditional branching
 Opcode JUMP       = { "jump"      , false, [OpArg.BLOCK], &Interp.opJump };
 Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL, OpArg.BLOCK], &Interp.opJumpTrue };
-Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL, OpArg.BLOCK] };
+Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL, OpArg.BLOCK], &Interp.opJumpFalse };
 
 // SET_ARG <srcLocal> <argIdx>
 Opcode SET_ARG    = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &Interp.opSetArg };
