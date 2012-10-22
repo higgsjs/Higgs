@@ -423,11 +423,11 @@ class IRInstr : IdObject
             {
                 case OpArg.INT    : output ~= to!string(arg.intVal); break;
                 case OpArg.FLOAT  : output ~= to!string(arg.floatVal); break;
-                case OpArg.STRING : output ~= to!string(arg.stringVal); break;
+                case OpArg.STRING : output ~= "\"" ~ to!string(arg.stringVal) ~ "\""; break;
                 case OpArg.LOCAL  : output ~= "$" ~ to!string(arg.localIdx); break;
                 case OpArg.BLOCK  : output ~= arg.block.getName(); break;
                 case OpArg.FUN    : output ~= "<fun:" ~ arg.fun.getName() ~ ">"; break;
-
+                case OpArg.REFPTR : output ~= "<ref:" ~ to!string(arg.ptrVal) ~ ">"; break;
                 default: assert (false, "unhandled arg type");
             }
         }
@@ -542,11 +542,14 @@ Opcode GET_RET    = { "get_ret", true, [], &Interp.opGetRet };
 // Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN], &Interp.opNewClos };
 
+// SET_GLOBAL <prop_name> <value>
+Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opSetGlobal };
+
+// GET_GLOBAL <prop_name>
+Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &Interp.opGetGlobal };
+
 // Create new object
 //NEW_OBJ,
-
-//SET_GLOBAL,
-//GET_GLOBAL,
 
 // SET_FIELD <obj_local> <name_local> <src_local>
 //SET_FIELD,

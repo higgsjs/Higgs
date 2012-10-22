@@ -279,25 +279,51 @@ genLayout(
     ]
 ));
 
-/* TODO
+// Class descriptor layout
+mixin(
+//pragma(msg, 
+genLayout(
+    "class",
+    [
+        // Layout type
+        Field("type", "uint32"),
+
+        // Class id / source origin location
+        Field("id" , "uint32"),
+
+        // Number of fields in class
+        Field("len" , "uint32"),
+
+        // Capacity, supported number of fields
+        Field("cap" , "uint32"),
+
+        // Next class version reference
+        // Used if class is reallocated
+        Field("next", "refptr"),
+
+        // TODO
+        //array type | woffset | toffset (4+ words)
+
+        // Property names
+        Field("prop_names", "refptr", "len"),
+
+        // Property names
+        Field("prop_types", "uint64", "len"),
+
+        // Property names
+        Field("prop_woffs", "uint32", "len"),
+
+        // Property names
+        Field("prop_toffs", "uint32", "len"),
+    ]
+));
+
+/*
 Need layouts for:
 - class desc
 - array table
-- function? probably same as object?
 - closure cell
-*/
 
-
-
-
-
-
-
-
-
-
-
-/*
 Objects:
 - Allocation sites correspond to equivalence classes
 - Can have multiple layouts for objects of a given class
@@ -313,9 +339,6 @@ Arrays, functions as objects?
 - Different header bits?
 - Could have extended separate payload section
 
-
-TODO: class needs next pointer too... Otherwise can't add new fields?
-
 Class Descriptor Layout:
 -------------------------
 Type id (32 bits)
@@ -327,8 +350,6 @@ Class id / origin location (64 bits)
 array type | woffset | toffset (4+ words)
 -------------------------
 * Field name | type desc | woffset | toffset (4+ words)
-
-
 
 Object prototype (__proto__) can be slot 0
 - Has associated type info in class desc

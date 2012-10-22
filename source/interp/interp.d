@@ -158,6 +158,9 @@ immutable size_t STACK_SIZE = 2^^18;
 /// Initial heap size, 16M bytes
 immutable size_t HEAP_INIT_SIZE = 2^^24;
 
+/// Initial global object size
+immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
+
 /**
 Interpreter
 */
@@ -201,6 +204,9 @@ class Interp
 
     /// Instruction pointer
     IRInstr ip;
+
+    /// Global object reference
+    refptr globalObj;
 
     /**
     Initialize/reset the interpreter state
@@ -250,6 +256,22 @@ class Interp
 
         // Initialize the IP to null
         ip = null;
+
+        // Allocate and initialize the global object class
+        auto globalClass = this.alloc(class_comp_size(GLOBAL_OBJ_INIT_SIZE));
+        class_set_type(globalClass, 0);
+        class_set_id(globalClass, 0);
+        class_set_len(globalClass, 0);
+        class_set_cap(globalClass, GLOBAL_OBJ_INIT_SIZE);
+        class_set_next(globalClass, null);
+
+        // Allocate and initialize the global object
+        auto globalObj = this.alloc(obj_comp_size(GLOBAL_OBJ_INIT_SIZE));
+        this.globalObj = globalObj;
+        obj_set_type(globalClass, 0);
+        obj_set_len(globalClass, 0);
+        obj_set_class(globalClass, globalClass);
+        obj_set_next(globalClass, null);
     }
 
     /**
@@ -469,6 +491,7 @@ class Interp
 
     //
     // TODO: boolVal
+    // Evaluate the boolean value of a value
     //
 
     /**
@@ -846,7 +869,7 @@ class Interp
         interp.ip = fun.entryBlock.firstInstr;
     }
 
-    // Allocate/adjust the stack frame on function entry
+    /// Allocate/adjust the stack frame on function entry
     static void opPushFrame(Interp interp, IRInstr instr)
     {
         auto numParams = instr.args[0].intVal;
@@ -916,7 +939,7 @@ class Interp
         interp.ip = retAddr? (cast(IRInstr)retAddr):null;
     }
 
-    // Get the callee's return value after a call
+    /// Get the callee's return value after a call
     static void opGetRet(Interp interp, IRInstr instr)
     {
         // Read and pop the value
@@ -941,5 +964,17 @@ class Interp
             Word.ptrv(cast(rawptr)fun),
             Type.RAWPTR
         );
+    }
+
+    /// Set a global variable
+    static void opSetGlobal(Interp interp, IRInstr instr)
+    {
+        assert (false, "set global");
+    }
+
+    /// Get the value of a global variable
+    static void opGetGlobal(Interp interp, IRInstr instr)
+    {
+        assert (false, "get global");
     }
 }

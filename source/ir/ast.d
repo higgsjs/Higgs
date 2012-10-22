@@ -1061,8 +1061,18 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // If the variable is global
         if (identExpr.declNode is null)
         {
-            // TODO: if id undeclared, must be global variable
-            assert (identExpr.declNode !is null);
+            // Create a constant for the property name
+            auto strInstr = ctx.addInstr(IRInstr.strCst(
+                ctx.allocTemp(),
+                identExpr.name
+            ));
+
+            // Get the global value
+            auto setInstr = ctx.addInstr(new IRInstr(
+                &GET_GLOBAL,
+                strInstr.outSlot,
+                ctx.getOutSlot()
+            ));
         }
 
         // The variable is local
@@ -1135,11 +1145,27 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
     // If the lhs is an identifier
     if (auto identExpr = cast(IdentExpr)lhsExpr)
     {
-        // If the variable is global
+        // If the variable is global (unresolved)
         if (identExpr.declNode is null)
         {
-            // TODO: if id undeclared, must be global variable
-            assert (identExpr.declNode !is null, "global vars unimplemented");
+            // Compute the right expression
+            auto rCtx = ctx.subCtx();
+            rhsExprFn(rCtx);
+            ctx.merge(rCtx);
+
+            // Create a constant for the property name
+            auto strInstr = ctx.addInstr(IRInstr.strCst(
+                ctx.allocTemp(),
+                identExpr.name
+            ));
+
+            // Set the global value
+            auto setInstr = ctx.addInstr(new IRInstr(&SET_GLOBAL));
+            setInstr.args[0].localIdx = strInstr.outSlot;
+            setInstr.args[1].localIdx = rCtx.getOutSlot();
+
+            // Our output slot is the rhs value
+            ctx.setOutSlot(rCtx.getOutSlot());
         }
 
         // The variable is local
