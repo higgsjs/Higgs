@@ -302,19 +302,16 @@ genLayout(
         Field("next", "refptr"),
 
         // TODO
-        //array type | woffset | toffset (4+ words)
+        // array element type
 
         // Property names
         Field("prop_name", "refptr", "len"),
 
-        // Property names
+        // Property types
         Field("prop_type", "uint64", "len"),
 
-        // Property names
-        Field("prop_woff", "uint32", "len"),
-
-        // Property names
-        Field("prop_toff", "uint32", "len"),
+        // Property indices
+        Field("prop_idx", "uint32", "len"),
     ]
 ));
 

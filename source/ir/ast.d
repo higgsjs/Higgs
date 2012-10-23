@@ -713,6 +713,20 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ));
         }
 
+        // Issue: += operator,
+        // don't want to evaluate indices twice
+        // e.g.: a[f()] += 1
+        void genInPlace(Opcode* opcode)
+        {
+            // TODO
+
+
+
+
+
+
+        }
+
         auto op = binExpr.op;
 
         // Arithmetic operators
@@ -759,6 +773,35 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == ">=")
             genBinOp(&CMP_GE);
 
+        // TODO: in-place operators
+        /*
+        { "="w   , 2, 1, 'r' },
+        { "+="w  , 2, 1, 'r' },
+        { "-="w  , 2, 1, 'r' },
+        { "*="w  , 2, 1, 'r' },
+        { "/="w  , 2, 1, 'r' },
+        { "%="w  , 2, 1, 'r' },
+        { "&="w  , 2, 1, 'r' },
+        { "|="w  , 2, 1, 'r' },
+        { "^="w  , 2, 1, 'r' },
+        { "<<="w , 2, 1, 'r' },
+        { ">>="w , 2, 1, 'r' },
+        { ">>>="w, 2, 1, 'r' },
+        */
+
+        // Assignment expression
+        else if (binExpr.op.str == "=")
+        {
+            assgToIR(
+                binExpr.lExpr, 
+                delegate void(IRGenCtx ctx)
+                {
+                    exprToIR(binExpr.rExpr, ctx);
+                },
+                ctx
+            );
+        }
+
         // Logical OR and logical AND
         else if (op.str == "||" || op.str == "&&")
         {
@@ -801,19 +844,6 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
             // Set the output slot
             ctx.setOutSlot(outTemp);
-        }
-
-        // Assignment expression
-        else if (binExpr.op.str == "=")
-        {
-            assgToIR(
-                binExpr.lExpr, 
-                delegate void(IRGenCtx ctx)
-                {
-                    exprToIR(binExpr.rExpr, ctx);
-                },
-                ctx
-            );
         }
 
         else
@@ -1212,8 +1242,7 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
 
         // TODO: array indexing
 
-
-
+        // TODO: pass base local, indx local to expr fn
 
 
 
