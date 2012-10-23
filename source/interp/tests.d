@@ -330,3 +330,11 @@ unittest
     );
 }
 
+/// Global scope, global object
+unittest
+{
+    assertInt("a = 1; return a;", 1);
+    assertInt("a = 1; b = 2; return a+b;", 3);
+    assertInt("f = function() { return 7; }; return f();", 7);
+}
+

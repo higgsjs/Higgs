@@ -272,10 +272,10 @@ genLayout(
         Field("next", "refptr"),
 
         // Property words
-        Field("words", "uint64", "len"),
+        Field("word", "uint64", "len"),
 
         // Property types
-        Field("types", "uint8", "len")
+        Field("type", "uint8", "len")
     ]
 ));
 
@@ -291,11 +291,11 @@ genLayout(
         // Class id / source origin location
         Field("id" , "uint32"),
 
-        // Number of fields in class
-        Field("len" , "uint32"),
+        // Number of properties in class
+        Field("num_props" , "uint32"),
 
         // Capacity, supported number of fields
-        Field("cap" , "uint32"),
+        Field("len" , "uint32"),
 
         // Next class version reference
         // Used if class is reallocated
@@ -305,16 +305,16 @@ genLayout(
         //array type | woffset | toffset (4+ words)
 
         // Property names
-        Field("prop_names", "refptr", "len"),
+        Field("prop_name", "refptr", "len"),
 
         // Property names
-        Field("prop_types", "uint64", "len"),
+        Field("prop_type", "uint64", "len"),
 
         // Property names
-        Field("prop_woffs", "uint32", "len"),
+        Field("prop_woff", "uint32", "len"),
 
         // Property names
-        Field("prop_toffs", "uint32", "len"),
+        Field("prop_toff", "uint32", "len"),
     ]
 ));
 

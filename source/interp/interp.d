@@ -205,13 +205,16 @@ class Interp
     /// Instruction pointer
     IRInstr ip;
 
+    /// Global object class descriptor
+    refptr globalClass;
+
     /// Global object reference
     refptr globalObj;
 
     /**
-    Initialize/reset the interpreter state
+    Constructor, initializes/resets the interpreter state
     */
-    void init()
+    this()
     {
         assert (
             wStack.length == tStack.length,
@@ -258,20 +261,19 @@ class Interp
         ip = null;
 
         // Allocate and initialize the global object class
-        auto globalClass = this.alloc(class_comp_size(GLOBAL_OBJ_INIT_SIZE));
+        globalClass = this.alloc(class_comp_size(GLOBAL_OBJ_INIT_SIZE));
         class_set_type(globalClass, 0);
         class_set_id(globalClass, 0);
-        class_set_len(globalClass, 0);
-        class_set_cap(globalClass, GLOBAL_OBJ_INIT_SIZE);
+        class_set_num_props(globalClass, 0);
+        class_set_len(globalClass, GLOBAL_OBJ_INIT_SIZE);
         class_set_next(globalClass, null);
 
         // Allocate and initialize the global object
-        auto globalObj = this.alloc(obj_comp_size(GLOBAL_OBJ_INIT_SIZE));
-        this.globalObj = globalObj;
-        obj_set_type(globalClass, 0);
-        obj_set_len(globalClass, 0);
-        obj_set_class(globalClass, globalClass);
-        obj_set_next(globalClass, null);
+        globalObj = this.alloc(obj_comp_size(GLOBAL_OBJ_INIT_SIZE));
+        obj_set_type(globalObj, 0);
+        obj_set_len(globalObj, GLOBAL_OBJ_INIT_SIZE);
+        obj_set_class(globalObj, globalClass);
+        obj_set_next(globalObj, null);
     }
 
     /**
@@ -441,9 +443,6 @@ class Interp
 
         //writeln(fun.toString);
 
-        // Initialize the interpreter state
-        init();
-
         // Push the hidden call arguments
         push(UNDEF, Type.CONST);                // FIXME:Closure argument
         push(UNDEF, Type.CONST);                // FIXME:This argument
@@ -469,7 +468,13 @@ class Interp
             format("the stack contains %s values", (wUpperLimit - wsp))
         );
 
-        return ValuePair(*wsp, *tsp);
+        // Get the return value
+        auto retVal = ValuePair(*wsp, *tsp); 
+
+        // Pop the return value off the stack
+        pop(1);
+
+        return retVal;
     }
 
     /**
@@ -969,12 +974,127 @@ class Interp
     /// Set a global variable
     static void opSetGlobal(Interp interp, IRInstr instr)
     {
-        assert (false, "set global");
+        auto strSlot = instr.args[0].localIdx;
+        auto valSlot = instr.args[1].localIdx;
+
+        auto wStr = interp.getWord(strSlot);
+        auto tStr = interp.getType(strSlot);
+
+        auto wVal = interp.getWord(valSlot);
+        auto tVal = interp.getType(valSlot);
+
+        assert (tStr == Type.STRING, "string type should be string");
+        auto propStr = wStr.ptrVal;
+        auto propStrLen = str_get_len(propStr);
+
+        // Get the number of global properties
+        auto numProps = class_get_num_props(interp.globalClass);
+
+        // Look for the property in the global class
+        size_t propIdx;
+        PROP_LOOP:
+        for (propIdx = 0; propIdx < numProps; ++propIdx)
+        {
+            auto nameStr = class_get_prop_name(interp.globalClass, propIdx);
+
+            // Compare the property name
+            auto nameLen = str_get_len(nameStr);
+            if (nameLen != propStrLen)
+                continue;
+            for (size_t i = 0; i < propStrLen; ++i)
+            {
+                if (str_get_data(propStr, i) != str_get_data(nameStr, i))
+                    continue PROP_LOOP;
+            }
+
+            // The property was found, break out of the loop
+            break;
+        }
+
+        // If this is a new property
+        if (propIdx == numProps)
+        {
+            //writefln("new property");
+
+            // TODO: implement class expansion
+            auto capGlobal = class_get_len(interp.globalClass);
+            assert (propIdx < capGlobal, "global capacity exceeded");
+
+            // Set the property name
+            class_set_prop_name(interp.globalClass, propIdx, propStr);
+
+            // Increment the number of properties in this class
+            class_set_num_props(interp.globalClass, numProps + 1);
+        }
+
+        //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
+        //writefln("prop idx: %s", propIdx);
+        //writefln("intval: %s", wVal.intVal);
+
+        // Set the value and its type in the object
+        obj_set_word(interp.globalObj, propIdx, wVal.intVal);
+        obj_set_type(interp.globalObj, propIdx, tVal);
     }
 
     /// Get the value of a global variable
     static void opGetGlobal(Interp interp, IRInstr instr)
     {
-        assert (false, "get global");
+        auto strSlot = instr.args[0].localIdx;
+        auto wStr = interp.getWord(strSlot);
+        auto tStr = interp.getType(strSlot);
+
+        assert (tStr == Type.STRING, "string type should be string");
+        auto propStr = wStr.ptrVal;
+        auto propStrLen = str_get_len(propStr);
+
+        // Get the number of global properties
+        auto numProps = class_get_num_props(interp.globalClass);
+
+        // Look for the property in the global class
+        size_t propIdx;
+        PROP_LOOP:
+        for (propIdx = 0; propIdx < numProps; ++propIdx)
+        {
+            auto nameStr = class_get_prop_name(interp.globalClass, propIdx);
+
+            // Compare the property name
+            auto nameLen = str_get_len(nameStr);
+            if (nameLen != propStrLen)
+                continue;
+            for (size_t i = 0; i < propStrLen; ++i)
+            {
+                if (str_get_data(propStr, i) != str_get_data(nameStr, i))
+                    continue PROP_LOOP;
+            }
+
+            // The property was found, break out of the loop
+            break;
+        }
+
+        // If the property was not found, produce undefined
+        if (propIdx == numProps)
+        {
+            interp.setSlot(
+                instr.outSlot,
+                UNDEF,
+                Type.CONST
+            );
+
+            return;
+        }
+
+        //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
+        //writefln("prop idx: %s", propIdx);
+
+        auto pWord = obj_get_word(interp.globalObj, propIdx);
+        auto pType = obj_get_type(interp.globalObj, propIdx);
+
+        //writefln("pWord: %s", pWord);
+
+        interp.setSlot(
+            instr.outSlot,
+            Word.intv(pWord),
+            cast(Type)pType
+        );
     }
 }
