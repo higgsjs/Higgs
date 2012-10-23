@@ -315,10 +315,28 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         // Create a closure of this function
         auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
         newClos.outSlot = bodyCtx.allocTemp();
-        newClos.args[0].fun = fun;
+        newClos.args[0].fun = subFun;
 
-        // Store the closure temp in the local map
-        localMap[funDecl.name] = newClos.outSlot;
+        // If this is a global function
+        if (cast(ASTProgram)ast)
+        {
+            // Store the global binding for the function
+            auto subCtx = bodyCtx.subCtx();
+            assgToIR(
+                funDecl.name, 
+                delegate void(IRGenCtx ctx)
+                {
+                    ctx.setOutSlot(newClos.outSlot);
+                },
+                subCtx
+            );
+            bodyCtx.merge(subCtx);
+        }
+        else
+        {
+            // Store the closure temp in the local map
+            localMap[funDecl.name] = newClos.outSlot;
+        }
     }
 
     //writefln("num locals: %s", fun.numLocals);
@@ -1160,9 +1178,12 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
             ));
 
             // Set the global value
-            auto setInstr = ctx.addInstr(new IRInstr(&SET_GLOBAL));
-            setInstr.args[0].localIdx = strInstr.outSlot;
-            setInstr.args[1].localIdx = rCtx.getOutSlot();
+            auto setInstr = ctx.addInstr(new IRInstr(
+                &SET_GLOBAL,
+                NULL_LOCAL,
+                strInstr.outSlot,
+                rCtx.getOutSlot()
+            ));
 
             // Our output slot is the rhs value
             ctx.setOutSlot(rCtx.getOutSlot());

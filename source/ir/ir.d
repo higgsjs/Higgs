@@ -304,7 +304,7 @@ class IRInstr : IdObject
     this(Opcode* opcode, LocalIdx outSlot, LocalIdx arg0, LocalIdx arg1)
     {
         assert (
-            opcode.output == true &&
+            (opcode.output == true || outSlot == NULL_LOCAL) &&
             opcode.argTypes.length == 2 &&
             opcode.argTypes[0] == OpArg.LOCAL &&
             opcode.argTypes[1] == OpArg.LOCAL
