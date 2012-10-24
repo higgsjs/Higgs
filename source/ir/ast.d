@@ -323,7 +323,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             // Store the global binding for the function
             auto subCtx = bodyCtx.subCtx();
             assgToIR(
-                funDecl.name, 
+                funDecl.name,
+                null,
                 delegate void(IRGenCtx ctx)
                 {
                     ctx.setOutSlot(newClos.outSlot);
@@ -397,6 +398,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         }
     }
 
+    writeln(fun.toString());
+
     // Return the IR function object
     return fun;
 }
@@ -424,7 +427,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
                 continue;
 
             assgToIR(
-                ident, 
+                ident,
+                null,
                 delegate void(IRGenCtx ctx)
                 {
                     exprToIR(init, ctx);
@@ -713,18 +717,17 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ));
         }
 
-        // Issue: += operator,
-        // don't want to evaluate indices twice
-        // e.g.: a[f()] += 1
-        void genInPlace(Opcode* opcode)
+        void genAssign(Opcode* opcode)
         {
-            // TODO
-
-
-
-
-
-
+            assgToIR(
+                binExpr.lExpr,
+                opcode,
+                delegate void(IRGenCtx ctx)
+                {
+                    exprToIR(binExpr.rExpr, ctx);
+                },
+                ctx
+            );
         }
 
         auto op = binExpr.op;
@@ -773,34 +776,31 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == ">=")
             genBinOp(&CMP_GE);
 
-        // TODO: in-place operators
-        /*
-        { "="w   , 2, 1, 'r' },
-        { "+="w  , 2, 1, 'r' },
-        { "-="w  , 2, 1, 'r' },
-        { "*="w  , 2, 1, 'r' },
-        { "/="w  , 2, 1, 'r' },
-        { "%="w  , 2, 1, 'r' },
-        { "&="w  , 2, 1, 'r' },
-        { "|="w  , 2, 1, 'r' },
-        { "^="w  , 2, 1, 'r' },
-        { "<<="w , 2, 1, 'r' },
-        { ">>="w , 2, 1, 'r' },
-        { ">>>="w, 2, 1, 'r' },
-        */
-
-        // Assignment expression
-        else if (binExpr.op.str == "=")
-        {
-            assgToIR(
-                binExpr.lExpr, 
-                delegate void(IRGenCtx ctx)
-                {
-                    exprToIR(binExpr.rExpr, ctx);
-                },
-                ctx
-            );
-        }
+        // In-place assignment operators
+        else if (op.str == "=")
+            genAssign(null);
+        else if (op.str == "+=")
+            genAssign(&ADD);
+        else if (op.str == "-=")
+            genAssign(&SUB);
+        else if (op.str == "*=")
+            genAssign(&MUL);
+        else if (op.str == "/=")
+            genAssign(&DIV);
+        else if (op.str == "&=")
+            genAssign(&MOD);
+        else if (op.str == "&=")
+            genAssign(&AND);
+        else if (op.str == "|=")
+            genAssign(&OR);
+        else if (op.str == "^=")
+            genAssign(&XOR);
+        else if (op.str == "<<=")
+            genAssign(&LSHIFT);
+        else if (op.str == ">>=")
+            genAssign(&RSHIFT);
+        else if (op.str == ">>>=")
+            genAssign(&URSHIFT);
 
         // Logical OR and logical AND
         else if (op.str == "||" || op.str == "&&")
@@ -923,12 +923,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Pre-incrementation and pre-decrementation (++x, --x)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'r')
         {
+            // TODO: use in-place op
             assgToIR(
-                unExpr.expr, 
+                unExpr.expr,
+                null,
                 delegate void(IRGenCtx ctx)
                 {
-                    exprToIR(unExpr.expr, ctx);
-
                     auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 1));
 
                     ctx.addInstr(new IRInstr(
@@ -961,7 +961,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             // Perform the incrementation/decrementation and assignment
             auto aCtx = ctx.subCtx();
             assgToIR(
-                unExpr.expr, 
+                unExpr.expr,
+                null,
                 delegate void(IRGenCtx ctx)
                 {
                     auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 1));
@@ -1116,10 +1117,10 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ));
 
             // Get the global value
-            auto setInstr = ctx.addInstr(new IRInstr(
+            ctx.addInstr(new IRInstr(
                 &GET_GLOBAL,
-                strInstr.outSlot,
-                ctx.getOutSlot()
+                ctx.getOutSlot(),
+                strInstr.outSlot
             ));
         }
 
@@ -1188,8 +1189,68 @@ alias void delegate(IRGenCtx ctx) ExprEvalFn;
 /**
 Generate IR for an assignment expression
 */
-void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
+void assgToIR(
+    ASTExpr lhsExpr, 
+    Opcode* inPlaceOp,
+    ExprEvalFn rhsExprFn, 
+    IRGenCtx ctx
+)
 {
+
+
+
+
+
+    // FIXME
+    LocalIdx genRhs(
+        LocalIdx output = NULL_LOCAL, 
+        LocalIdx base   = NULL_LOCAL, 
+        LocalIdx index  = NULL_LOCAL
+    )
+    {
+        // If there is no in-place operation
+        if (inPlaceOp is null)
+        {
+            // Compute the right expression
+            auto rCtx = ctx.subCtx(null, output);
+            rhsExprFn(rCtx);
+            ctx.merge(rCtx);
+
+            return rCtx.getOutSlot();
+        }
+        else
+        {
+            // TODO: handle base/index
+
+            // Compute the right expression
+            auto rCtx = ctx.subCtx(null, ctx.allocTemp);
+            rhsExprFn(rCtx);
+            ctx.merge(rCtx);
+
+            auto lCtx = ctx.subCtx(null, ctx.allocTemp());
+
+            // Evaluate the lhs value
+            exprToIR(lhsExpr, lCtx);
+
+            // Generate the in-place operation
+            lCtx.addInstr(new IRInstr(
+                inPlaceOp,
+                rCtx.getOutSlot(),
+                rCtx.getOutSlot(),
+                lCtx.getOutSlot()
+            ));
+
+            ctx.merge(lCtx);
+
+            return rCtx.getOutSlot();
+        }
+    }
+
+
+
+
+
+
     // If the lhs is an identifier
     if (auto identExpr = cast(IdentExpr)lhsExpr)
     {
@@ -1197,9 +1258,12 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
         if (identExpr.declNode is null)
         {
             // Compute the right expression
+            /*
             auto rCtx = ctx.subCtx();
             rhsExprFn(rCtx);
             ctx.merge(rCtx);
+            */
+            LocalIdx rhsOut = genRhs();
 
             // Create a constant for the property name
             auto strInstr = ctx.addInstr(IRInstr.strCst(
@@ -1212,11 +1276,11 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
                 &SET_GLOBAL,
                 NULL_LOCAL,
                 strInstr.outSlot,
-                rCtx.getOutSlot()
+                /*rCtx.getOutSlot()*/rhsOut
             ));
 
             // Our output slot is the rhs value
-            ctx.setOutSlot(rCtx.getOutSlot());
+            ctx.setOutSlot(/*rCtx.getOutSlot()*/rhsOut);
         }
 
         // The variable is local
@@ -1225,9 +1289,12 @@ void assgToIR(ASTExpr lhsExpr, ExprEvalFn rhsExprFn, IRGenCtx ctx)
             LocalIdx varIdx = (*ctx.localMap)[identExpr.declNode];
 
             // Compute the right expression and assign it into the variable
+            /*
             auto rCtx = ctx.subCtx(null, varIdx);
             rhsExprFn(rCtx);
             ctx.merge(rCtx);
+            */
+            genRhs(varIdx);
 
             // The local variable is our output
             ctx.setOutSlot(varIdx);

@@ -46,14 +46,13 @@ import repl;
 
 void main(string[] args)
 {
-    // Test option, disables repl
+    /// Test mode, disables repl
     bool test;
 
     // TODO: --e, string to execute
-
     getopt(
         args,
-        "test", &test
+        "test", &test,
     );
 
     // Non-options are left in args? Need passthrough option to getopt?

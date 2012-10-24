@@ -69,7 +69,7 @@ ValuePair evalString(Interp interp, string input)
 
     auto ir = astToIR(ast);
     
-    writeln(ir);
+    //writeln(ir);
 
     interp.exec(ir);
 

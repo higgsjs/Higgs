@@ -341,3 +341,14 @@ unittest
     assertInt("function f() { return 9; }; return f();", 9);
 }
 
+/// In-place operators
+unittest
+{
+    assertInt("a = 1; a += 2; return a;", 3);
+    assertInt("a = 1; a += 4; a -= 3; return a;", 2);
+    assertInt("a = 1; b = 3; a += b; return a;", 4);
+    assertInt("a = 1; b = 3; return a += b;", 4);
+    assertInt("function f() { var a = 0; a += 1; a += 1; return a; }; return f();", 2);
+    assertInt("function f() { var a = 0; a += 2; a *= 3; return a; }; return f();", 6);
+}
+

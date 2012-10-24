@@ -848,9 +848,7 @@ class Interp
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
         {
-            //writeln("compiling");
             astToIR(fun.ast, fun);
-            //writeln(fun.toString);
         }
 
         // Get the return address
