@@ -41,6 +41,7 @@ import std.stdio;
 import std.array;
 import std.algorithm;
 import std.typecons;
+import std.conv;
 import parser.ast;
 import parser.parser;
 import ir.ir;
@@ -98,10 +99,16 @@ class IRGenCtx
     Create a context to compile a sub-expression into.
     This context will have its own temporary variables.
     */    
-    IRGenCtx subCtx(IRBlock startBlock = null, LocalIdx outSlot = NULL_LOCAL)
+    IRGenCtx subCtx(
+        bool hasOutput, 
+        /*LocalIdx outSlot = NULL_LOCAL,*/
+        IRBlock startBlock = null
+    )
     {
         if (startBlock is null)
             startBlock = curBlock;
+
+        auto outSlot = hasOutput? allocTemp():NULL_LOCAL;
 
         return new IRGenCtx(
             this,
@@ -131,33 +138,12 @@ class IRGenCtx
     */
     LocalIdx getOutSlot()
     {
-        if (outSlot != NULL_LOCAL)
-            return outSlot;
-
-        // Allocate a slot in the parent context
-        outSlot = parent.allocTemp();
+        assert (
+            outSlot != NULL_LOCAL,
+            "out slot requested but none allocated"
+        );
 
         return outSlot;
-    }
-
-    /**
-    Set the output local slot
-    */
-    void setOutSlot(LocalIdx localIdx)
-    {
-        if (outSlot == localIdx)
-            return;
-
-        // If there is already a prescribed output slot
-        if (outSlot != NULL_LOCAL)
-        {
-            // Move the value from the new slot to the current output slot
-            auto moveInstr = addInstr(new IRInstr(&MOVE));
-            moveInstr.args[0].localIdx = localIdx;
-            moveInstr.outSlot = outSlot;
-        }
-
-        outSlot = localIdx;
     }
 
     /**
@@ -312,22 +298,20 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         // Create an IR function object for the function
         auto subFun = new IRFunction(funDecl);
 
-        // Create a closure of this function
-        auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
-        newClos.outSlot = bodyCtx.allocTemp();
-        newClos.args[0].fun = subFun;
-
         // If this is a global function
         if (cast(ASTProgram)ast)
         {
             // Store the global binding for the function
-            auto subCtx = bodyCtx.subCtx();
+            auto subCtx = bodyCtx.subCtx(true);
             assgToIR(
                 funDecl.name,
                 null,
                 delegate void(IRGenCtx ctx)
                 {
-                    ctx.setOutSlot(newClos.outSlot);
+                    // Create a closure of this function
+                    auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
+                    newClos.outSlot = ctx.getOutSlot();
+                    newClos.args[0].fun = subFun;
                 },
                 subCtx
             );
@@ -335,6 +319,11 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         }
         else
         {
+            // Create a closure of this function
+            auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
+            newClos.outSlot = bodyCtx.allocTemp();
+            newClos.args[0].fun = subFun;
+
             // Store the closure temp in the local map
             localMap[funDecl.name] = newClos.outSlot;
         }
@@ -410,7 +399,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     {
         foreach (s; blockStmt.stmts)
         {
-            auto subCtx = ctx.subCtx();
+            auto subCtx = ctx.subCtx(false);
             stmtToIR(s, subCtx);
             ctx.merge(subCtx);
         }
@@ -426,6 +415,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
             if (init is null)
                 continue;
 
+            auto subCtx = ctx.subCtx(true);
             assgToIR(
                 ident,
                 null,
@@ -433,8 +423,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
                 {
                     exprToIR(init, ctx);
                 },
-                ctx
+                subCtx
             );
+            ctx.merge(subCtx);
         }
     }
 
@@ -442,12 +433,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     {
         // Compile the true statement
         auto trueBlock = ctx.fun.newBlock("if_true");
-        auto trueCtx = ctx.subCtx(trueBlock);
+        auto trueCtx = ctx.subCtx(false, trueBlock);
         stmtToIR(ifStmt.trueStmt, trueCtx);
 
         // Compile the false statement
         auto falseBlock = ctx.fun.newBlock("if_false");
-        auto falseCtx = ctx.subCtx(falseBlock);
+        auto falseCtx = ctx.subCtx(false, falseBlock);
         stmtToIR(ifStmt.falseStmt, falseCtx);
 
         // Create the join block and patch jumps to it
@@ -456,7 +447,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         falseCtx.addInstr(IRInstr.jump(joinBlock));
 
         // Evaluate the test expression
-        auto exprCtx = ctx.subCtx();
+        auto exprCtx = ctx.subCtx(true);
         exprToIR(ifStmt.testExpr, exprCtx);
         ctx.merge(exprCtx);
 
@@ -464,7 +455,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto boolInstr = ctx.addInstr(new IRInstr(
             &BOOL_VAL,
             ctx.allocTemp(),
-            exprCtx.getOutSlot(),           
+            exprCtx.getOutSlot(),      
         ));
 
         // If the expresson is true, jump
@@ -495,7 +486,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.addInstr(IRInstr.jump(testBlock));
 
         // Evaluate the test expression
-        auto testCtx = ctx.subCtx(testBlock);
+        auto testCtx = ctx.subCtx(true, testBlock);
         exprToIR(whileStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
@@ -514,7 +505,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         testCtx.addInstr(IRInstr.jump(exitBlock));
 
         // Compile the loop body statement
-        auto bodyCtx = ctx.subCtx(bodyBlock);
+        auto bodyCtx = ctx.subCtx(false, bodyBlock);
         stmtToIR(whileStmt.bodyStmt, bodyCtx);
 
         // Jump to the loop test
@@ -538,14 +529,14 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.addInstr(IRInstr.jump(bodyBlock));
 
         // Compile the loop body statement
-        auto bodyCtx = ctx.subCtx(bodyBlock);
+        auto bodyCtx = ctx.subCtx(false, bodyBlock);
         stmtToIR(doStmt.bodyStmt, bodyCtx);
 
         // Jump to the loop test
         bodyCtx.addInstr(IRInstr.jump(testBlock));
 
         // Evaluate the test expression
-        auto testCtx = ctx.subCtx(testBlock);
+        auto testCtx = ctx.subCtx(true, testBlock);
         exprToIR(doStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
@@ -579,7 +570,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.regLabels(stmt.labels, exitBlock, incrBlock);
 
         // Compile the init statement
-        auto initCtx = ctx.subCtx();
+        auto initCtx = ctx.subCtx(false);
         stmtToIR(forStmt.initStmt, initCtx);
         ctx.merge(initCtx);
 
@@ -587,7 +578,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.addInstr(IRInstr.jump(testBlock));
 
         // Evaluate the test expression
-        auto testCtx = ctx.subCtx(testBlock);
+        auto testCtx = ctx.subCtx(true, testBlock);
         exprToIR(forStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
@@ -606,14 +597,14 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         testCtx.addInstr(IRInstr.jump(exitBlock));
 
         // Compile the loop body statement
-        auto bodyCtx = ctx.subCtx(bodyBlock);
+        auto bodyCtx = ctx.subCtx(false, bodyBlock);
         stmtToIR(forStmt.bodyStmt, bodyCtx);
 
         // Jump to the increment block
         bodyCtx.addInstr(IRInstr.jump(incrBlock));
 
         // Compile the increment expression
-        auto incrCtx = ctx.subCtx(incrBlock);
+        auto incrCtx = ctx.subCtx(true, incrBlock);
         exprToIR(forStmt.incrExpr, incrCtx);
 
         // Jump to the loop test
@@ -648,7 +639,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     // Return statement
     else if (auto retStmt = cast(ReturnStmt)stmt)
     {
-        auto subCtx = ctx.subCtx();
+        auto subCtx = ctx.subCtx(true);
         exprToIR(retStmt.expr, subCtx);
         ctx.merge(subCtx);
 
@@ -668,7 +659,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
     else if (auto exprStmt = cast(ExprStmt)stmt)
     {
-        auto subCtx = ctx.subCtx();
+        auto subCtx = ctx.subCtx(true);
         exprToIR(exprStmt.expr, subCtx);
         ctx.merge(subCtx);
     }
@@ -701,11 +692,11 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     {
         void genBinOp(Opcode* opcode)
         {
-            auto lCtx = ctx.subCtx();
+            auto lCtx = ctx.subCtx(true);
             exprToIR(binExpr.lExpr, lCtx);
             ctx.merge(lCtx);
 
-            auto rCtx = ctx.subCtx();       
+            auto rCtx = ctx.subCtx(true);     
             exprToIR(binExpr.rExpr, rCtx);
             ctx.merge(rCtx);
 
@@ -809,11 +800,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto secnBlock = ctx.fun.newBlock("or_sec");
             auto exitBlock = ctx.fun.newBlock("or_exit");
 
-            // Allocate a slot for the output
-            auto outTemp = ctx.allocTemp();
-
             // Evaluate the left expression
-            auto lCtx = ctx.subCtx(null, outTemp);
+            auto lCtx = ctx.subCtx(true);
             exprToIR(binExpr.lExpr, lCtx);
             ctx.merge(lCtx); 
 
@@ -821,7 +809,13 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto boolInstr = ctx.addInstr(new IRInstr(
                 &BOOL_VAL,
                 ctx.allocTemp(),
-                outTemp,     
+                lCtx.getOutSlot(),     
+            ));
+
+            ctx.addInstr(new IRInstr(
+                &MOVE,
+                ctx.getOutSlot(),
+                lCtx.getOutSlot()
             ));
 
             // Evaluate the second expression, if necessary
@@ -833,17 +827,20 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ctx.addInstr(IRInstr.jump(secnBlock));
 
             // Evaluate the right expression
-            auto rCtx = ctx.subCtx(secnBlock, outTemp);
+            auto rCtx = ctx.subCtx(true, secnBlock);
             exprToIR(binExpr.rExpr, rCtx);
+
+            rCtx.addInstr(new IRInstr(
+                &MOVE,
+                ctx.getOutSlot(),
+                rCtx.getOutSlot()
+            ));           
 
             // Jump to the exit block
             rCtx.addInstr(IRInstr.jump(exitBlock));
 
             // Continue code generation in the exit block
             ctx.merge(exitBlock);
-
-            // Set the output slot
-            ctx.setOutSlot(outTemp);
         }
 
         else
@@ -858,17 +855,15 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         if (op.str == "+")
         {
-            auto outSlot = ctx.getOutSlot();
-
             auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 0));
 
-            auto subCtx = ctx.subCtx();       
+            auto subCtx = ctx.subCtx(true);       
             exprToIR(unExpr.expr, subCtx);
             ctx.merge(subCtx);
 
             ctx.addInstr(new IRInstr(
                 &ADD,
-                outSlot, 
+                ctx.getOutSlot(), 
                 cst.outSlot,
                 subCtx.getOutSlot()
             ));
@@ -876,17 +871,15 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         else if (op.str == "-")
         {
-            auto outSlot = ctx.getOutSlot();
-
             auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 0));
 
-            auto subCtx = ctx.subCtx();       
+            auto subCtx = ctx.subCtx(true);
             exprToIR(unExpr.expr, subCtx);
             ctx.merge(subCtx);
 
             ctx.addInstr(new IRInstr(
                 &SUB,
-                outSlot, 
+                ctx.getOutSlot(), 
                 cst.outSlot,
                 subCtx.getOutSlot()
             ));
@@ -895,7 +888,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Bitwise negation
         else if (op.str == "~")
         {
-            auto lCtx = ctx.subCtx();
+            auto lCtx = ctx.subCtx(true);
             exprToIR(unExpr.expr, lCtx);
             ctx.merge(lCtx);
 
@@ -909,7 +902,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Boolean (logical) negation
         else if (op.str == "!")
         {
-            auto lCtx = ctx.subCtx();
+            auto lCtx = ctx.subCtx(true);
             exprToIR(unExpr.expr, lCtx);
             ctx.merge(lCtx);
 
@@ -923,20 +916,13 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Pre-incrementation and pre-decrementation (++x, --x)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'r')
         {
-            // TODO: use in-place op
+            // Perform the incrementation/decrementation and assignment
             assgToIR(
                 unExpr.expr,
-                null,
+                (op.str == "++")? &ADD:&SUB,
                 delegate void(IRGenCtx ctx)
                 {
-                    auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 1));
-
-                    ctx.addInstr(new IRInstr(
-                        (op.str == "++")? &ADD:&SUB,
-                        ctx.getOutSlot(), 
-                        ctx.getOutSlot(),
-                        cst.outSlot
-                    ));
+                    ctx.addInstr(IRInstr.intCst(ctx.getOutSlot(), 1));
                 },
                 ctx
             );
@@ -946,49 +932,38 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'l')
         {
             // Evaluate the subexpression
-            auto vCtx = ctx.subCtx();
+            auto vCtx = ctx.subCtx(true);
             exprToIR(unExpr.expr, vCtx);
             ctx.merge(vCtx);
 
             // Save the current value of the subexpression
-            auto valTemp = ctx.allocTemp();
             ctx.addInstr(new IRInstr(
                 &MOVE,
-                valTemp,
+                ctx.getOutSlot(),
                 vCtx.getOutSlot()
             ));
 
             // Perform the incrementation/decrementation and assignment
-            auto aCtx = ctx.subCtx();
+            auto aCtx = ctx.subCtx(true);
             assgToIR(
                 unExpr.expr,
-                null,
+                (op.str == "++")? &ADD:&SUB,
                 delegate void(IRGenCtx ctx)
                 {
-                    auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 1));
-
-                    ctx.addInstr(new IRInstr(
-                        (op.str == "++")? &ADD:&SUB,
-                        ctx.getOutSlot(), 
-                        ctx.getOutSlot(),
-                        cst.outSlot
-                    ));
+                    ctx.addInstr(IRInstr.intCst(ctx.getOutSlot(), 1));
                 },
                 aCtx
             );
             ctx.merge(aCtx);
-
-            // Move the saved value into our output slot
-            ctx.addInstr(new IRInstr(
-                &MOVE,
-                ctx.getOutSlot(),
-                valTemp
-            ));
         }
 
         else
         {
-            assert (false, "unhandled unary operator");
+            assert (
+                false, 
+                "unhandled unary operator " ~ to!string(op.str) ~ 
+                " / " ~ to!string(op.assoc)
+            );
         }
     }
 
@@ -1003,7 +978,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto outSlot = ctx.getOutSlot();
 
         // Evaluate the test expression
-        auto exprCtx = ctx.subCtx();
+        auto exprCtx = ctx.subCtx(true);
         exprToIR(condExpr.testExpr, exprCtx);
         ctx.merge(exprCtx);
 
@@ -1023,13 +998,23 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         ctx.addInstr(IRInstr.jump(falseBlock));
 
         // Compile the true expression and assign into the output slot
-        auto trueCtx = ctx.subCtx(trueBlock, outSlot);
+        auto trueCtx = ctx.subCtx(true, trueBlock);
         exprToIR(condExpr.trueExpr, trueCtx);
+        trueCtx.addInstr(new IRInstr(
+            &MOVE,
+            ctx.getOutSlot(),
+            trueCtx.getOutSlot()
+        ));
         trueCtx.addInstr(IRInstr.jump(joinBlock));
 
         // Compile the false expression and assign into the output slot
-        auto falseCtx = ctx.subCtx(falseBlock, outSlot);
+        auto falseCtx = ctx.subCtx(true, falseBlock);
         exprToIR(condExpr.falseExpr, falseCtx);
+        falseCtx.addInstr(new IRInstr(
+            &MOVE,
+            ctx.getOutSlot(),
+            falseCtx.getOutSlot()
+        ));
         falseCtx.addInstr(IRInstr.jump(joinBlock));
 
         // Continue code generation in the join block
@@ -1061,7 +1046,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         }
 
         // Evaluate the base expression
-        auto baseCtx = ctx.subCtx();       
+        auto baseCtx = ctx.subCtx(true);       
         exprToIR(baseExpr, baseCtx);
         ctx.merge(baseCtx);
 
@@ -1069,7 +1054,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto argSlots = new LocalIdx[argExprs.length];
         for (size_t i = 0; i < argExprs.length; ++i)
         {
-            auto argCtx = ctx.subCtx();       
+            auto argCtx = ctx.subCtx(true);       
             exprToIR(argExprs[i], argCtx);
             ctx.merge(argCtx);
             argSlots[i] = argCtx.outSlot;
@@ -1132,9 +1117,15 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                 "variable declaration not in local map"
             );
 
-            // Set the variable's local slot as our output
+            // Get the variable's local slot
             LocalIdx varIdx = (*ctx.localMap)[identExpr.declNode];
-            ctx.setOutSlot(varIdx);
+
+            // Move the value into the output slot
+            ctx.addInstr(new IRInstr(
+                &MOVE,
+                ctx.getOutSlot(),
+                varIdx
+            ));
         }
     }
 
@@ -1196,23 +1187,13 @@ void assgToIR(
     IRGenCtx ctx
 )
 {
-
-
-
-
-
-    // FIXME
-    LocalIdx genRhs(
-        LocalIdx output = NULL_LOCAL, 
-        LocalIdx base   = NULL_LOCAL, 
-        LocalIdx index  = NULL_LOCAL
-    )
+    LocalIdx genRhs(LocalIdx base = NULL_LOCAL, LocalIdx index = NULL_LOCAL)
     {
         // If there is no in-place operation
         if (inPlaceOp is null)
         {
             // Compute the right expression
-            auto rCtx = ctx.subCtx(null, output);
+            auto rCtx = ctx.subCtx(true);
             rhsExprFn(rCtx);
             ctx.merge(rCtx);
 
@@ -1223,11 +1204,11 @@ void assgToIR(
             // TODO: handle base/index
 
             // Compute the right expression
-            auto rCtx = ctx.subCtx(null, ctx.allocTemp);
+            auto rCtx = ctx.subCtx(true);
             rhsExprFn(rCtx);
             ctx.merge(rCtx);
 
-            auto lCtx = ctx.subCtx(null, ctx.allocTemp());
+            auto lCtx = ctx.subCtx(true);
 
             // Evaluate the lhs value
             exprToIR(lhsExpr, lCtx);
@@ -1236,8 +1217,8 @@ void assgToIR(
             lCtx.addInstr(new IRInstr(
                 inPlaceOp,
                 rCtx.getOutSlot(),
-                rCtx.getOutSlot(),
-                lCtx.getOutSlot()
+                lCtx.getOutSlot(),
+                rCtx.getOutSlot()
             ));
 
             ctx.merge(lCtx);
@@ -1246,11 +1227,6 @@ void assgToIR(
         }
     }
 
-
-
-
-
-
     // If the lhs is an identifier
     if (auto identExpr = cast(IdentExpr)lhsExpr)
     {
@@ -1258,12 +1234,7 @@ void assgToIR(
         if (identExpr.declNode is null)
         {
             // Compute the right expression
-            /*
-            auto rCtx = ctx.subCtx();
-            rhsExprFn(rCtx);
-            ctx.merge(rCtx);
-            */
-            LocalIdx rhsOut = genRhs();
+            auto rhsOut = genRhs();
 
             // Create a constant for the property name
             auto strInstr = ctx.addInstr(IRInstr.strCst(
@@ -1276,11 +1247,15 @@ void assgToIR(
                 &SET_GLOBAL,
                 NULL_LOCAL,
                 strInstr.outSlot,
-                /*rCtx.getOutSlot()*/rhsOut
+                rhsOut
             ));
 
-            // Our output slot is the rhs value
-            ctx.setOutSlot(/*rCtx.getOutSlot()*/rhsOut);
+            // Move the value into the output slot
+            ctx.addInstr(new IRInstr(
+                &MOVE,
+                ctx.getOutSlot(),
+                rhsOut
+            ));
         }
 
         // The variable is local
@@ -1288,16 +1263,22 @@ void assgToIR(
         {
             LocalIdx varIdx = (*ctx.localMap)[identExpr.declNode];
 
-            // Compute the right expression and assign it into the variable
-            /*
-            auto rCtx = ctx.subCtx(null, varIdx);
-            rhsExprFn(rCtx);
-            ctx.merge(rCtx);
-            */
-            genRhs(varIdx);
+            // Compute the right expression
+            auto rhsOut = genRhs();
 
-            // The local variable is our output
-            ctx.setOutSlot(varIdx);
+            // Move the value into the variable
+            ctx.addInstr(new IRInstr(
+                &MOVE,
+                varIdx,
+                rhsOut
+            ));
+
+            // Move the value into the output slot
+            ctx.addInstr(new IRInstr(
+                &MOVE,
+                ctx.getOutSlot(),
+                rhsOut
+            ));
         }
     }
 

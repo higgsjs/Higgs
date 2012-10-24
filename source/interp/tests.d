@@ -126,6 +126,7 @@ unittest
     assertInt("return 5 - 1", 4);
     assertInt("return 8 % 5", 3);
     assertInt("return -3", -3);
+    assertInt("return +7", 7);
     assertInt("return 2 + 3 * 4", 14);
 }
 
@@ -157,6 +158,7 @@ unittest
     assertInt("return function () { var x = 0; return ++x; } ()", 1);
     assertInt("return function () { var x = 0; return x--; } ()", 0);
     assertInt("return function () { var x = 0; return --x; } ()", -1);
+    assertInt("return function () { var x = 0; ++x; return ++x; } ()", 2);
     assertInt("return function () { var x = 0; return x++ + 1; } ()", 1);
 }
 
