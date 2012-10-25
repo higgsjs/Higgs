@@ -16,7 +16,9 @@ parser/tests.d      \
 ir/ir.d             \
 ir/ast.d            \
 interp/interp.d     \
+interp/ops.d        \
 interp/layout.d     \
+interp/string.d     \
 interp/tests.d      \
 repl.d              \
 main.d

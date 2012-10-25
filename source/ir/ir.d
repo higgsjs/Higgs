@@ -46,6 +46,7 @@ import util.id;
 import util.string;
 import parser.ast;
 import interp.interp;
+import interp.ops;
 
 /// Local variable index type
 alias size_t LocalIdx;
@@ -468,23 +469,23 @@ struct OpInfo
 alias static immutable(OpInfo) Opcode;
 
 // Set a local slot to a constant value    
-Opcode SET_INT    = { "set_int"   , true, [OpArg.INT], &Interp.opSetInt };
-Opcode SET_FLOAT  = { "set_float" , true, [OpArg.FLOAT]/*, &Interp.opSetFloat*/ };
-Opcode SET_STR    = { "set_str"   , true, [OpArg.STRING, OpArg.REFPTR], &Interp.opSetStr };
-Opcode SET_TRUE   = { "set_true"  , true, [], &Interp.opSetTrue };
-Opcode SET_FALSE  = { "set_false" , true, [], &Interp.opSetFalse };
-Opcode SET_NULL   = { "set_null"  , true, [], &Interp.opSetNull };
-Opcode SET_UNDEF  = { "set_undef" , true, [], &Interp.opSetUndef };
+Opcode SET_INT    = { "set_int"   , true, [OpArg.INT], &opSetInt };
+Opcode SET_FLOAT  = { "set_float" , true, [OpArg.FLOAT]/*, &opSetFloat*/ };
+Opcode SET_STR    = { "set_str"   , true, [OpArg.STRING, OpArg.REFPTR], &opSetStr };
+Opcode SET_TRUE   = { "set_true"  , true, [], &opSetTrue };
+Opcode SET_FALSE  = { "set_false" , true, [], &opSetFalse };
+Opcode SET_NULL   = { "set_null"  , true, [], &opSetNull };
+Opcode SET_UNDEF  = { "set_undef" , true, [], &opSetUndef };
 
 // Move a value from one local to another
-Opcode MOVE       = { "move", true, [OpArg.LOCAL], &Interp.opMove };
+Opcode MOVE       = { "move", true, [OpArg.LOCAL], &opMove };
 
 // Arithmetic operations
-Opcode ADD        = { "add", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opAdd };
-Opcode SUB        = { "sub", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opSub };
-Opcode MUL        = { "mul", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opMul };
-Opcode DIV        = { "div", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opDiv };
-Opcode MOD        = { "mod", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opMod };
+Opcode ADD        = { "add", true, [OpArg.LOCAL, OpArg.LOCAL], &opAdd };
+Opcode SUB        = { "sub", true, [OpArg.LOCAL, OpArg.LOCAL], &opSub };
+Opcode MUL        = { "mul", true, [OpArg.LOCAL, OpArg.LOCAL], &opMul };
+Opcode DIV        = { "div", true, [OpArg.LOCAL, OpArg.LOCAL], &opDiv };
+Opcode MOD        = { "mod", true, [OpArg.LOCAL, OpArg.LOCAL], &opMod };
 
 // Bitwise operations
 Opcode NOT        = { "xor"    , true, [OpArg.LOCAL] };
@@ -496,57 +497,57 @@ Opcode RSHIFT     = { "rshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode URSHIFT    = { "urshift", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
 // Boolean value conversion
-Opcode BOOL_VAL    = { "bool_val", true, [OpArg.LOCAL], &Interp.opBoolVal };
+Opcode BOOL_VAL    = { "bool_val", true, [OpArg.LOCAL], &opBoolVal };
 
 // Boolean (logical) negation
 Opcode BOOL_NOT    = { "bool_not", true, [OpArg.LOCAL] };
 
 // Comparison operations
-Opcode CMP_SE     = { "cmp_se", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opCmpSe };
+Opcode CMP_SE     = { "cmp_se", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpSe };
 Opcode CMP_NS     = { "cmp_ns", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_EQ     = { "cmp_eq", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_NE     = { "cmp_ne", true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode CMP_LT     = { "cmp_lt", true, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opCmpLt };
+Opcode CMP_LT     = { "cmp_lt", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpLt };
 Opcode CMP_LE     = { "cmp_le", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_GT     = { "cmp_gt", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
 // Branching and conditional branching
-Opcode JUMP       = { "jump"      , false, [OpArg.BLOCK], &Interp.opJump };
-Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL, OpArg.BLOCK], &Interp.opJumpTrue };
-Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL, OpArg.BLOCK], &Interp.opJumpFalse };
+Opcode JUMP       = { "jump"      , false, [OpArg.BLOCK], &opJump };
+Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL, OpArg.BLOCK], &opJumpTrue };
+Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL, OpArg.BLOCK], &opJumpFalse };
 
 // SET_ARG <srcLocal> <argIdx>
-Opcode SET_ARG    = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &Interp.opSetArg };
+Opcode SET_ARG    = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &opSetArg };
 
 // CALL <closLocal> <thisArg> <numArgs>
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL       = { "call", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &Interp.opCall };
+Opcode CALL       = { "call", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall };
 
 // PUSH_FRAME <numParams> <numLocals>
 // On function entry, allocates/adjusts the callee's stack frame
-Opcode PUSH_FRAME = { "push_frame", false, [OpArg.INT, OpArg.INT], &Interp.opPushFrame };
+Opcode PUSH_FRAME = { "push_frame", false, [OpArg.INT, OpArg.INT], &opPushFrame };
 
 // RET <retLocal> <raSlot> <numLocals>
 // Stores return value in special registers
 // Pops the callee frame (size known by context)
-Opcode RET        = { "ret", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &Interp.opRet };
+Opcode RET        = { "ret", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opRet };
 
 // <retLocal> = GET_RET
 // After call, extracts the callee's return value
-Opcode GET_RET    = { "get_ret", true, [], &Interp.opGetRet };
+Opcode GET_RET    = { "get_ret", true, [], &opGetRet };
 
 // <dstLocal> = NEW_CLOS <funExpr>
 // Create a new closure from a function's AST node
-Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN], &Interp.opNewClos };
+Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN], &opNewClos };
 
 // SET_GLOBAL <prop_name> <value>
-Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &Interp.opSetGlobal };
+Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlobal };
 
 // GET_GLOBAL <prop_name>
-Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &Interp.opGetGlobal };
+Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 
 // Create new object
 //NEW_OBJ,

@@ -253,6 +253,26 @@ genLayout(
     ]
 ));
 
+// String table layout
+mixin(
+//pragma(msg, 
+genLayout(
+    "strtbl",
+    [
+        // Layout type
+        Field("type", "uint32"),
+
+        // Capacity
+        Field("len" , "uint32"),
+
+        // Number of strings
+        Field("num_strs" , "uint32"),
+
+        // Array of strings
+        Field("str", "refptr", "len"),
+    ]
+));
+
 // Object layout
 mixin(
 //pragma(msg, 
