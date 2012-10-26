@@ -49,6 +49,7 @@ import parser.parser;
 import ir.ir;
 import ir.ast;
 import interp.layout;
+import interp.string;
 
 /**
 Memory word union
@@ -211,6 +212,9 @@ class Interp
     /// Global object reference
     refptr globalObj;
 
+    /// String table reference
+    refptr strTbl;
+
     /**
     Constructor, initializes/resets the interpreter state
     */
@@ -274,6 +278,9 @@ class Interp
         obj_set_len(globalObj, GLOBAL_OBJ_INIT_SIZE);
         obj_set_class(globalObj, globalClass);
         obj_set_next(globalObj, null);
+
+        // Allocate and initialize the string table
+        allocStrTable(this);
     }
 
     /**
@@ -477,23 +484,6 @@ class Interp
         return retVal;
     }
 
-    /**
-    Allocate and initialize a string with a given value
-    */
-    ValuePair makeString(wstring str)
-    {
-        auto objPtr = this.alloc(str_comp_size(str.length));
-
-        str_set_len(objPtr, cast(uint32)str.length);
-
-        // TODO: hash code
-
-        for (size_t i = 0; i < str.length; ++i)
-            str_set_data(objPtr, i, str[i]);
-
-        return ValuePair(Word.refv(objPtr), Type.STRING);
-    }
-
     //
     // TODO: boolVal
     // Evaluate the boolean value of a value
@@ -510,17 +500,17 @@ class Interp
             return ValuePair(w, t);
 
             case Type.INT:
-            return makeString(to!wstring(w.intVal));
+            return getString(this, to!wstring(w.intVal));
 
             case Type.CONST:
             if (w == TRUE)
-                return makeString("true");
+                return getString(this, "true");
             else if (w == FALSE)
-                return makeString("false");
+                return getString(this, "false");
             else if (w == NULL)
-                return makeString("null");
+                return getString(this, "null");
             else if (w == UNDEF)
-                return makeString("undefined");
+                return getString(this, "undefined");
             else
                 assert (false, "unsupported constant");
 

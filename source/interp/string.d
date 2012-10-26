@@ -46,43 +46,218 @@ immutable size_t STR_TBL_INIT_SIZE = 101;
 immutable size_t STR_TBL_MAX_LOAD_NUM = 3;
 immutable size_t STR_TBL_MAX_LOAD_DENOM = 5;
 
-int compStrHash(wstring str)
+/**
+Allocate and initialize the string table
+*/
+void allocStrTable(Interp interp)
 {
-    /*
+    auto strTbl = interp.alloc(strtbl_comp_size(STR_TBL_INIT_SIZE));
+
+    strtbl_set_type(strTbl, 0);
+    strtbl_set_num_strs(strTbl, 0);
+    strtbl_set_len(strTbl, STR_TBL_INIT_SIZE);
+
+    // Initialize the string array
+    for (size_t i = 0; i < STR_TBL_INIT_SIZE; ++i)
+        strtbl_set_str(strTbl, i, null);
+
+    interp.strTbl = strTbl;
+}
+
+/**
+Compute the hash value for a given string object
+*/
+uint32 compStrHash(refptr str)
+{
     // TODO: operate on multiple characters at a time, look at Murmur hash
 
-    var hashCode = 0;
+    auto len = str_get_len(str);
 
-    for (var i = 0; i < val.length; ++i)
+    uint32 hashCode = 0;
+
+    for (size_t i = 0; i < len; ++i)
     {
-        var ch = val.charCodeAt(i);
+        auto ch = str_get_data(str, i);
         hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
     }
 
+    // Store the hash code on the string object
+    str_set_hash(str, hashCode);
+
     return hashCode;
-    */
-
-    return 0;
 }
 
-void allocStrTable(Interp* interp)
+/**
+Compare two string objects for equality by comparing their contents
+*/
+bool streq(refptr strA, refptr strB)
 {
-    // TODO
+    auto lenA = str_get_len(strA);
+    auto lenB = str_get_len(strB);
+
+    if (lenA != lenB)
+        return false;
+
+    for (size_t i = 0; i < lenA; ++i)
+        if (str_get_data(strA, i) != str_get_data(strB, i))
+            return false;
+
+    return true;
 }
 
-void extStrTable(/*curTbl, curSize, numStrings*/)
+/**
+Find a string in the string table if duplicate, or add it to the string table
+*/
+refptr getTableStr(Interp interp, refptr str)
 {
-    // TODO
+    auto strTbl = interp.strTbl;
+
+    // Get the size of the string table
+    auto tblSize = strtbl_get_len(strTbl);
+
+    // Get the hash code from the string object
+    auto hashCode = str_get_hash(str);
+
+    // Get the hash table index for this hash value
+    auto hashIndex = hashCode % tblSize;
+
+    // Until the key is found, or a free slot is encountered
+    while (true)
+    {
+        // Get the string value at this hash slot
+        auto strVal = strtbl_get_str(strTbl, hashIndex);
+
+        // If we have reached an empty slot
+        if (strVal == null)
+        {
+            // Break out of the loop
+            break;
+        }
+
+        // Otherwise, if this is the string we want
+        else if (streq(strVal, str) == true)
+        {
+            // Return a reference to the string we found in the table
+            return strVal;
+        }
+
+        // Move to the next hash table slot
+        hashIndex = (hashIndex + 1) % tblSize;
+    }
+
+    //
+    // Hash table updating
+    //
+
+    // Set the corresponding key and value in the slot
+    strtbl_set_str(strTbl, hashIndex, str);
+
+    // Get the number of strings and increment it
+    auto numStrings = strtbl_get_num_strs(strTbl);
+    numStrings++;
+    strtbl_set_num_strs(strTbl, numStrings);
+
+    // Test if resizing of the string table is needed
+    // numStrings > ratio * tblSize
+    // numStrings > num/denom * tblSize
+    // numStrings * denom > tblSize * num
+    if (numStrings * STR_TBL_MAX_LOAD_DENOM >
+        tblSize * STR_TBL_MAX_LOAD_NUM)
+    {
+        // Extend the string table
+        extStrTable(interp, strTbl, tblSize, numStrings);
+    }
+
+    // Return a reference to the string object passed as argument
+    return str;
 }
 
-void streq(/*str1, str2*/)
+/**
+Extend the string table's capacity
+*/
+void extStrTable(Interp interp, refptr curTbl, uint32 curSize, uint32 numStrings)
 {
-    // TODO
+    writeln("extending string table");
+
+    // Compute the new table size
+    auto newSize = curSize * 2 + 1;
+
+    //printInt(curSize);
+    //printInt(newSize);
+
+    // Allocate a new, larger hash table
+    auto newTbl = interp.alloc(strtbl_comp_size(newSize));
+    strtbl_set_len(newTbl, newSize);
+
+    // Set the number of strings stored
+    strtbl_set_num_strs(newTbl, numStrings);
+
+    // For each entry in the current table
+    for (uint32 curIdx = 0; curIdx < curSize; curIdx++)
+    {
+        // Get the value at this hash slot
+        auto slotVal = strtbl_get_str(curTbl, curIdx);
+
+        // If this slot is empty, skip it
+        if (slotVal == null)
+            continue;
+
+        // Get the hash code for the value
+        auto valHash = str_get_hash(slotVal);
+
+        // Get the hash table index for this hash value in the new table
+        auto startHashIndex = valHash % newSize;
+        auto hashIndex = startHashIndex;
+
+        // Until a free slot is encountered
+        while (true)
+        {
+            // Get the value at this hash slot
+            auto slotVal2 = strtbl_get_str(newTbl, hashIndex);
+
+            // If we have reached an empty slot
+            if (slotVal2 == null)
+            {
+                // Set the corresponding key and value in the slot
+                strtbl_set_str(newTbl, hashIndex, slotVal);
+
+                // Break out of the loop
+                break;
+            }
+
+            // Move to the next hash table slot
+            hashIndex = (hashIndex + 1) % newSize;
+
+            // Ensure that a free slot was found for this key
+            assert (
+                hashIndex != startHashIndex,
+                "no free slots found in extended hash table"
+            );
+        }
+    }
+
+    // Update the string table reference
+    interp.strTbl = newTbl;
 }
 
-refptr getString(Interp*, wchar* buffer, size_t len)
+/**
+Get the string object for a given string
+*/
+ValuePair getString(Interp interp, wstring str)
 {
-    // TODO
-    return null;
+    auto objPtr = interp.alloc(str_comp_size(str.length));
+
+    str_set_len(objPtr, cast(uint32)str.length);
+
+    for (size_t i = 0; i < str.length; ++i)
+        str_set_data(objPtr, i, str[i]);
+
+    // Compute the hash code for the string
+    compStrHash(objPtr);
+
+    // Find/add the string in the string table
+    objPtr = getTableStr(interp, objPtr);
+
+    return ValuePair(Word.refv(objPtr), Type.STRING);
 }
 

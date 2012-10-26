@@ -37,10 +37,12 @@
 
 module interp.ops;
 
+import std.stdio;
 import ir.ir;
 import ir.ast;
 import interp.interp;
 import interp.layout;
+import interp.string;
 
 void opSetInt(Interp interp, IRInstr instr)
 {
@@ -58,7 +60,7 @@ void opSetStr(Interp interp, IRInstr instr)
     // If the string is null, allocate it
     if (objPtr is null)
     {
-        auto strVal = interp.makeString(instr.args[0].stringVal);
+        auto strVal = getString(interp, instr.args[0].stringVal);
         objPtr = strVal.word.ptrVal;
     }
 
@@ -279,6 +281,8 @@ void opCmpSe(Interp interp, IRInstr instr)
 
     bool output = (w0.intVal == w1.intVal);
 
+    writefln("output: %s", output);
+
     interp.setSlot(
         instr.outSlot, 
         output? TRUE:FALSE,
@@ -496,30 +500,17 @@ void opSetGlobal(Interp interp, IRInstr instr)
 
     assert (tStr == Type.STRING, "string type should be string");
     auto propStr = wStr.ptrVal;
-    auto propStrLen = str_get_len(propStr);
 
     // Get the number of global properties
     auto numProps = class_get_num_props(interp.globalClass);
 
     // Look for the property in the global class
     size_t propIdx;
-    PROP_LOOP:
     for (propIdx = 0; propIdx < numProps; ++propIdx)
     {
         auto nameStr = class_get_prop_name(interp.globalClass, propIdx);
-
-        // Compare the property name
-        auto nameLen = str_get_len(nameStr);
-        if (nameLen != propStrLen)
-            continue;
-        for (size_t i = 0; i < propStrLen; ++i)
-        {
-            if (str_get_data(propStr, i) != str_get_data(nameStr, i))
-                continue PROP_LOOP;
-        }
-
-        // The property was found, break out of the loop
-        break;
+        if (propStr == nameStr)
+            break;
     }
 
     // If this is a new property
@@ -556,30 +547,17 @@ void opGetGlobal(Interp interp, IRInstr instr)
 
     assert (tStr == Type.STRING, "string type should be string");
     auto propStr = wStr.ptrVal;
-    auto propStrLen = str_get_len(propStr);
 
     // Get the number of global properties
     auto numProps = class_get_num_props(interp.globalClass);
 
     // Look for the property in the global class
     size_t propIdx;
-    PROP_LOOP:
     for (propIdx = 0; propIdx < numProps; ++propIdx)
     {
         auto nameStr = class_get_prop_name(interp.globalClass, propIdx);
-
-        // Compare the property name
-        auto nameLen = str_get_len(nameStr);
-        if (nameLen != propStrLen)
-            continue;
-        for (size_t i = 0; i < propStrLen; ++i)
-        {
-            if (str_get_data(propStr, i) != str_get_data(nameStr, i))
-                continue PROP_LOOP;
-        }
-
-        // The property was found, break out of the loop
-        break;
+        if (propStr == nameStr)
+            break;
     }
 
     // If the property was not found, produce undefined

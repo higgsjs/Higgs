@@ -248,7 +248,7 @@ genLayout(
     [
         Field("type", "uint32"),
         Field("len" , "uint32"),
-        Field("hash", "uint64"),
+        Field("hash", "uint32"),
         Field("data", "uint16", "len")
     ]
 ));
