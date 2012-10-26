@@ -152,6 +152,9 @@ void opAdd(Interp interp, IRInstr instr)
         for (size_t i = 0; i < l1; ++i)
             str_set_data(sO, l0+i, str_get_data(s1.word.ptrVal, i));
 
+        compStrHash(sO);
+        sO = getTableStr(interp, sO);
+
         interp.setSlot(
             instr.outSlot, 
             Word.ptrv(sO),

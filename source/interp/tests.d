@@ -318,6 +318,7 @@ unittest
     assertInt("return 'foo'? 1:0", 1);
     assertInt("return ''? 1:0", 0);
     assertInt("return ('foo' === 'foo')? 1:0", 1);
+    assertInt("return ('foo' === 'f' + 'oo')? 1:0", 1);
 
     assertStr(
         "
