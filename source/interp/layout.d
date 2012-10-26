@@ -41,6 +41,7 @@ import std.stdio;
 import std.string;
 import std.array;
 import std.conv;
+import interp.interp;
 
 alias ubyte*    rawptr;
 alias ubyte*    refptr;
@@ -208,7 +209,7 @@ string genLayout(string name, Field[] fields)
     {
         if (i > 0)
             output.put(", ");
-        output.put("size_t " ~ field.name);
+        output.put(field.type ~ " " ~ field.name);
     }
     output.put(")\n");
     output.put("{\n");
@@ -234,6 +235,30 @@ string genLayout(string name, Field[] fields)
         output.put(getPref ~ field.name ~ "(o)");
     }
     output.put(");\n");
+    output.put("}\n\n");
+
+    // Generate the allocation function
+    output.put("auto " ~ name ~ "_alloc(Interp interp");
+    foreach (i, field; szFields)
+    {
+        output.put(", ");
+        output.put(field.type ~ " " ~ field.name);
+    }
+    output.put(")\n");
+    output.put("{\n");
+    output.put("    auto obj = interp.alloc(" ~ name ~ "_comp_size(");
+    foreach (i, field; szFields)
+    {
+        if (i > 0)
+            output.put(", ");
+        output.put(field.name);
+    }
+    output.put("));\n");
+    foreach (i, field; szFields)
+    {
+        output.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj," ~ field.name ~ ");\n");
+    }
+    output.put("    return obj;\n");
     output.put("}\n\n");
 
     // Return the generated code

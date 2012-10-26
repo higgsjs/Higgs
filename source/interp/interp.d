@@ -162,6 +162,9 @@ immutable size_t HEAP_INIT_SIZE = 2^^24;
 /// Initial global object size
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
 
+/// Initial object class size
+immutable size_t CLASS_INIT_SIZE = 16;
+
 /**
 Interpreter
 */
@@ -265,17 +268,15 @@ class Interp
         ip = null;
 
         // Allocate and initialize the global object class
-        globalClass = this.alloc(class_comp_size(GLOBAL_OBJ_INIT_SIZE));
+        globalClass = class_alloc(this, GLOBAL_OBJ_INIT_SIZE);
         class_set_type(globalClass, 0);
         class_set_id(globalClass, 0);
         class_set_num_props(globalClass, 0);
-        class_set_len(globalClass, GLOBAL_OBJ_INIT_SIZE);
         class_set_next(globalClass, null);
 
         // Allocate and initialize the global object
-        globalObj = this.alloc(obj_comp_size(GLOBAL_OBJ_INIT_SIZE));
+        globalObj = obj_alloc(this, GLOBAL_OBJ_INIT_SIZE);
         obj_set_type(globalObj, 0);
-        obj_set_len(globalObj, GLOBAL_OBJ_INIT_SIZE);
         obj_set_class(globalObj, globalClass);
         obj_set_next(globalObj, null);
 

@@ -301,6 +301,24 @@ class IRInstr : IdObject
         this.opcode = opcode;
     }
 
+    /// Trinary constructor
+    this(Opcode* opcode, LocalIdx outSlot, LocalIdx arg0, LocalIdx arg1, LocalIdx arg2)
+    {
+        assert (
+            (opcode.output == true || outSlot == NULL_LOCAL) &&
+            opcode.argTypes.length == 3 &&
+            opcode.argTypes[0] == OpArg.LOCAL &&
+            opcode.argTypes[1] == OpArg.LOCAL &&
+            opcode.argTypes[2] == OpArg.LOCAL
+        );
+
+        this.opcode = opcode;
+        this.outSlot = outSlot;
+        this.args[0].localIdx = arg0;
+        this.args[1].localIdx = arg1;
+        this.args[2].localIdx = arg2;
+    }
+
     /// Binary constructor
     this(Opcode* opcode, LocalIdx outSlot, LocalIdx arg0, LocalIdx arg1)
     {
@@ -552,14 +570,17 @@ Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlo
 // GET_GLOBAL <prop_name>
 Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 
-// Create new object
-//NEW_OBJ,
+// Create new empty object
+// <dst_local> = NEW_OBJECT <proto_local> <num_props>
+Opcode NEW_OBJECT = { "new_object", true, [OpArg.LOCAL, OpArg.INT, OpArg.REFPTR], &opNewObj };
 
-// SET_PROP <obj_local> <name_local> <src_local>
-//SET_PROP,
+//NEW_ARRAY
 
-// <dst_local> = GET_PROP <obj_local> <name_local>
-//GET_PROP,
+// SET_PROP <obj_local> <prop_local> <src_local>
+Opcode SET_PROP = { "set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &opSetProp };
+
+// <dst_local> = GET_PROP <obj_local> <prop_local>
+Opcode GET_PROP = { "get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &opGetProp };
 
 //DEL_PROP
 

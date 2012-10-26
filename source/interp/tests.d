@@ -68,7 +68,7 @@ void assertInt(string input, long intVal)
 
     assert (
         ret.type == Type.INT,
-        "non-integer type"
+        "non-integer value: " ~ ValueToString(ret)
     );
 
     assert (
@@ -94,7 +94,7 @@ void assertStr(string input, string strVal)
 
     assert (
         ret.type == Type.STRING,
-        "non-string type"
+        "non-string value: " ~ ValueToString(ret)
     );
 
     auto outStr = ValueToString(ret);
@@ -356,6 +356,21 @@ unittest
     assertInt("a = 1; b = 2; return a+b;", 3);
     assertInt("f = function() { return 7; }; return f();", 7);
     assertInt("function f() { return 9; }; return f();", 9);
+
+    assertInt(
+        "
+        function fib(n)
+        {
+            if (n < 2)
+                return n;
+            else   
+                return fib(n-1) + fib(n-2);
+        }
+                          
+        return fib(6);
+        ",
+        8
+    );
 }
 
 /// In-place operators
@@ -367,5 +382,16 @@ unittest
     assertInt("a = 1; b = 3; return a += b;", 4);
     assertInt("function f() { var a = 0; a += 1; a += 1; return a; }; return f();", 2);
     assertInt("function f() { var a = 0; a += 2; a *= 3; return a; }; return f();", 6);
+}
+
+/// Object literals, property access
+unittest
+{
+    assertInt("{}; return 1;", 1);
+    assertInt("{x: 7}; return 1;", 1);
+    assertInt("o = {}; o.x = 7; return 1;", 1);
+    assertInt("o = {}; o.x = 7; return o.x;", 7);
+    assertInt("o = {x: 9}; return o.x;", 9);
+    assertInt("o = {x: 9}; o.y = 1; return o.x + o.y;", 10);
 }
 

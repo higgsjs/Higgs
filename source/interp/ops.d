@@ -38,6 +38,7 @@
 module interp.ops;
 
 import std.stdio;
+import std.algorithm;
 import ir.ir;
 import ir.ast;
 import interp.interp;
@@ -143,8 +144,7 @@ void opAdd(Interp interp, IRInstr instr)
         auto l0 = str_get_len(s0);
         auto l1 = str_get_len(s1);
 
-        auto sO = interp.alloc(str_comp_size(l0+l1));
-        str_set_len(sO, l0+l1);
+        auto sO = str_alloc(interp, l0+l1);
 
         for (size_t i = 0; i < l0; ++i)
             str_set_data(sO, i, str_get_data(s0, i));
@@ -532,29 +532,26 @@ void opNewClos(Interp interp, IRInstr instr)
     );
 }
 
-/// Set a global variable
-void opSetGlobal(Interp interp, IRInstr instr)
+void setProp(Interp interp, refptr objPtr, ValuePair prop, ValuePair val)
 {
-    auto strSlot = instr.args[0].localIdx;
-    auto valSlot = instr.args[1].localIdx;
+    // TODO: use ValuePair for object (base) as well
 
-    auto wStr = interp.getWord(strSlot);
-    auto tStr = interp.getType(strSlot);
+    // TODO: toObject?
 
-    auto wVal = interp.getWord(valSlot);
-    auto tVal = interp.getType(valSlot);
+    // Get the number of class properties
+    auto classPtr = obj_get_class(objPtr);
+    auto numProps = class_get_num_props(classPtr);
 
-    assert (tStr == Type.STRING, "string type should be string");
-    auto propStr = wStr.ptrVal;
+    // TODO: get string value for name?
 
-    // Get the number of global properties
-    auto numProps = class_get_num_props(interp.globalClass);
+    assert (prop.type == Type.STRING, "propert name should be string");
+    auto propStr = prop.word.ptrVal;
 
-    // Look for the property in the global class
+    // Look for the property in the class
     size_t propIdx;
     for (propIdx = 0; propIdx < numProps; ++propIdx)
     {
-        auto nameStr = class_get_prop_name(interp.globalClass, propIdx);
+        auto nameStr = class_get_prop_name(classPtr, propIdx);
         if (propStr == nameStr)
             break;
     }
@@ -564,15 +561,15 @@ void opSetGlobal(Interp interp, IRInstr instr)
     {
         //writefln("new property");
 
-        // TODO: implement class expansion
-        auto capGlobal = class_get_len(interp.globalClass);
-        assert (propIdx < capGlobal, "global capacity exceeded");
+        // TODO: implement class extension
+        auto classLen = class_get_len(classPtr);
+        assert (propIdx < classLen, "class capacity exceeded");
 
         // Set the property name
-        class_set_prop_name(interp.globalClass, propIdx, propStr);
+        class_set_prop_name(classPtr, propIdx, propStr);
 
         // Increment the number of properties in this class
-        class_set_num_props(interp.globalClass, numProps + 1);
+        class_set_num_props(classPtr, numProps + 1);
     }
 
     //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
@@ -580,28 +577,26 @@ void opSetGlobal(Interp interp, IRInstr instr)
     //writefln("intval: %s", wVal.intVal);
 
     // Set the value and its type in the object
-    obj_set_word(interp.globalObj, propIdx, wVal.intVal);
-    obj_set_type(interp.globalObj, propIdx, tVal);
+    obj_set_word(objPtr, propIdx, val.word.intVal);
+    obj_set_type(objPtr, propIdx, val.type);
 }
 
-/// Get the value of a global variable
-void opGetGlobal(Interp interp, IRInstr instr)
+ValuePair getProp(Interp interp, refptr objPtr, ValuePair prop)
 {
-    auto strSlot = instr.args[0].localIdx;
-    auto wStr = interp.getWord(strSlot);
-    auto tStr = interp.getType(strSlot);
+    // TODO: use ValuePair for object (base) as well
 
-    assert (tStr == Type.STRING, "string type should be string");
-    auto propStr = wStr.ptrVal;
+    assert (prop.type == Type.STRING, "string type should be string");
+    auto propStr = prop.word.ptrVal;
 
-    // Get the number of global properties
-    auto numProps = class_get_num_props(interp.globalClass);
+    // Get the number of class properties
+    auto classPtr = obj_get_class(objPtr);
+    auto numProps = class_get_num_props(classPtr);
 
     // Look for the property in the global class
     size_t propIdx;
     for (propIdx = 0; propIdx < numProps; ++propIdx)
     {
-        auto nameStr = class_get_prop_name(interp.globalClass, propIdx);
+        auto nameStr = class_get_prop_name(classPtr, propIdx);
         if (propStr == nameStr)
             break;
     }
@@ -609,27 +604,148 @@ void opGetGlobal(Interp interp, IRInstr instr)
     // If the property was not found, produce undefined
     if (propIdx == numProps)
     {
-        interp.setSlot(
-            instr.outSlot,
-            UNDEF,
-            Type.CONST
-        );
-
-        return;
+        return ValuePair(UNDEF, Type.CONST);
     }
 
     //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
     //writefln("prop idx: %s", propIdx);
 
-    auto pWord = obj_get_word(interp.globalObj, propIdx);
-    auto pType = obj_get_type(interp.globalObj, propIdx);
+    auto pWord = obj_get_word(objPtr, propIdx);
+    auto pType = cast(Type)obj_get_type(objPtr, propIdx);
 
-    //writefln("pWord: %s", pWord);
+    return ValuePair(Word.intv(pWord), pType);
+}
+
+/// Set a global variable
+void opSetGlobal(Interp interp, IRInstr instr)
+{
+    auto strSlot = instr.args[0].localIdx;
+    auto valSlot = instr.args[1].localIdx;
+
+    auto wProp = interp.getWord(strSlot);
+    auto tProp = interp.getType(strSlot);
+
+    auto wVal = interp.getWord(valSlot);
+    auto tVal = interp.getType(valSlot);
+
+    setProp(
+        interp, 
+        interp.globalObj, 
+        ValuePair(wProp, tProp), 
+        ValuePair(wVal, tVal)
+    );
+}
+
+/// Get the value of a global variable
+void opGetGlobal(Interp interp, IRInstr instr)
+{
+    auto propSlot = instr.args[0].localIdx;
+    auto wProp = interp.getWord(propSlot);
+    auto tProp = interp.getType(propSlot);
+
+    ValuePair val = getProp(
+        interp,
+        interp.globalObj,
+        ValuePair(wProp, tProp)
+    );
 
     interp.setSlot(
         instr.outSlot,
-        Word.intv(pWord),
-        cast(Type)pType
+        val.word,
+        val.type
+    );
+}
+
+/// Create a new blank object
+void opNewObj(Interp interp, IRInstr instr)
+{
+    auto protoSlot = instr.args[0].localIdx;
+    auto numProps  = max(instr.args[1].intVal, 2);
+    auto classPtr  = instr.args[2].ptrVal;
+
+    auto wProto = interp.getWord(protoSlot);
+    auto tProto = interp.getType(protoSlot);
+
+    // If the class is not yet allocated
+    if (classPtr is null)
+    {
+        // Lazily allocate the class
+        classPtr = class_alloc(interp, CLASS_INIT_SIZE);
+        class_set_type(classPtr, 0);
+        class_set_id(classPtr, 0);
+        class_set_num_props(classPtr, 0);
+        class_set_next(classPtr, null);
+
+        // Update the instruction's class pointer
+        instr.args[2].ptrVal = classPtr;
+    }    
+    else
+    {
+        // Get the number of properties to allocate from the class
+        numProps = max(class_get_num_props(classPtr), numProps);
+    }
+
+    // Allocate the object
+    auto objPtr = obj_alloc(interp, cast(uint32)numProps);
+    obj_set_type(objPtr, 0);
+    obj_set_class(objPtr, classPtr);
+    obj_set_next(objPtr, null);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(objPtr),
+        Type.REFPTR
+    );
+}
+
+/// Set an object property value
+void opSetProp(Interp interp, IRInstr instr)
+{
+    auto baseSlot = instr.args[0].localIdx;
+    auto propSlot = instr.args[1].localIdx;
+    auto valSlot  = instr.args[2].localIdx;
+
+    auto wBase = interp.getWord(baseSlot);
+    auto tBase = interp.getType(baseSlot);
+
+    auto wProp = interp.getWord(propSlot);
+    auto tProp = interp.getType(propSlot);
+
+    auto wVal = interp.getWord(valSlot);
+    auto tVal = interp.getType(valSlot);
+
+    setProp(
+        interp,
+        wBase.ptrVal, 
+        ValuePair(wProp, tProp), 
+        ValuePair(wVal, tVal)
+    );
+}
+
+/// Get an object property value
+void opGetProp(Interp interp, IRInstr instr)
+{
+    // TODO: implement/use simplified slot access methods
+
+    auto baseSlot = instr.args[0].localIdx;
+    auto propSlot = instr.args[1].localIdx;
+
+    auto wBase = interp.getWord(baseSlot);
+    auto tBase = interp.getType(baseSlot);
+
+    auto wProp = interp.getWord(propSlot);
+    auto tProp = interp.getType(propSlot);
+
+    ValuePair val = getProp(
+        interp,
+        wBase.ptrVal,
+        ValuePair(wProp, tProp)
+    );
+
+    interp.setSlot(
+        instr.outSlot,
+        val.word,
+        val.type
     );
 }
 

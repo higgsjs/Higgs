@@ -1104,15 +1104,76 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         ctx.addInstr(new IRInstr(&GET_RET, ctx.getOutSlot()));
     }
 
-    /*
     else if (auto indexExpr = cast(IndexExpr)expr)
     {
+        // Evaluate the base expression
+        auto baseCtx = ctx.subCtx(true);       
+        exprToIR(indexExpr.base, baseCtx);
+        ctx.merge(baseCtx);
+
+        // Evaluate the index expression
+        auto idxCtx = ctx.subCtx(true);       
+        exprToIR(indexExpr.index, idxCtx);
+        ctx.merge(idxCtx);
+
+        // Set the property on the object
+        ctx.addInstr(new IRInstr(
+            &GET_PROP,
+            ctx.getOutSlot(),
+            baseCtx.getOutSlot(),
+            idxCtx.getOutSlot()
+        ));
     }
 
+    /*
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
+        // TODO
     }
     */
+
+    else if (auto objExpr = cast(ObjectExpr)expr)
+    {
+        // TODO: use the object prototype
+        auto nullInstr = ctx.addInstr(new IRInstr(
+            &SET_NULL, 
+            ctx.allocTemp()
+        ));
+
+        // Create the object
+        auto objInstr = ctx.addInstr(new IRInstr(&NEW_OBJECT));
+        objInstr.outSlot = ctx.getOutSlot();
+        objInstr.args[0].localIdx = nullInstr.outSlot;
+        objInstr.args[1].intVal = objExpr.names.length;
+        objInstr.args[2].ptrVal = null;
+
+        auto strTmp = ctx.allocTemp();
+        auto valTmp = ctx.allocTemp();
+
+        // Evaluate the property values
+        for (size_t i = 0; i < objExpr.names.length; ++i)
+        {
+            auto strExpr = objExpr.names[i];
+            auto valExpr = objExpr.values[i];
+
+            auto strCtx = ctx.subCtx(true, strTmp);
+            exprToIR(strExpr, strCtx);
+            ctx.merge(strCtx);
+
+            auto valCtx = ctx.subCtx(true, valTmp);
+            exprToIR(valExpr, valCtx);
+            ctx.merge(valCtx);
+
+            // Set the property on the object
+            ctx.addInstr(new IRInstr(
+                &SET_PROP,
+                NULL_LOCAL,
+                objInstr.outSlot,
+                strCtx.getOutSlot(),
+                valCtx.getOutSlot()
+            ));
+        }
+    }
 
     // Identifier/variable reference
     else if (auto identExpr = cast(IdentExpr)expr)
@@ -1222,23 +1283,37 @@ void assgToIR(
         }
         else
         {
-            // TODO: handle base/index
-
             // Compute the right expression
             auto rCtx = ctx.subCtx(true);
             rhsExprFn(rCtx);
             ctx.merge(rCtx);
 
-            // Evaluate the lhs value
-            auto lCtx = ctx.subCtx(true);
-            exprToIR(lhsExpr, lCtx);
-            ctx.merge(lCtx);
+            auto lhsTemp = ctx.allocTemp();
+
+            // If this is an indexed property access
+            if (base !is NULL_LOCAL)
+            {
+                // Set the property on the object
+                ctx.addInstr(new IRInstr(
+                    &GET_PROP,
+                    lhsTemp,
+                    base,
+                    index
+                ));
+            }
+            else
+            {
+                // Evaluate the lhs value
+                auto lCtx = ctx.subCtx(true, lhsTemp);
+                exprToIR(lhsExpr, lCtx);
+                ctx.merge(lCtx);
+            }
 
             // Generate the in-place operation
             auto opInstr = ctx.addInstr(new IRInstr(
                 inPlaceOp,
                 ctx.getOutSlot(),
-                lCtx.getOutSlot(),
+                lhsTemp,
                 rCtx.getOutSlot()
             ));
         }
@@ -1288,18 +1363,33 @@ void assgToIR(
     // If the lhs is an array indexing expression (e.g.: a[b])
     else if (auto indexExpr = cast(IndexExpr)lhsExpr)
     {
-        // TODO
-        assert (false, "not yet supported");
+        // Evaluate the base expression
+        auto baseCtx = ctx.subCtx(true);       
+        exprToIR(indexExpr.base, baseCtx);
+        ctx.merge(baseCtx);
 
-        // TODO: array indexing
+        // Evaluate the index expression
+        auto idxCtx = ctx.subCtx(true);       
+        exprToIR(indexExpr.index, idxCtx);
+        ctx.merge(idxCtx);
 
-        // TODO: pass base local, indx local to expr fn
+        // Compute the right expression
+        auto subCtx = ctx.subCtx(true, ctx.getOutSlot());
+        genRhs(
+            subCtx,
+            baseCtx.getOutSlot(),
+            idxCtx.getOutSlot()
+        );
+        ctx.merge(subCtx);
 
-
-
-
-
-
+        // Set the property on the object
+        ctx.addInstr(new IRInstr(
+            &SET_PROP,
+            NULL_LOCAL,
+            baseCtx.getOutSlot(),
+            idxCtx.getOutSlot(),
+            subCtx.getOutSlot()
+        ));
     }
 
     else

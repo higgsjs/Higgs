@@ -42,20 +42,19 @@ import std.string;
 import interp.interp;
 import interp.layout;
 
-immutable size_t STR_TBL_INIT_SIZE = 101;
-immutable size_t STR_TBL_MAX_LOAD_NUM = 3;
-immutable size_t STR_TBL_MAX_LOAD_DENOM = 5;
+immutable uint32 STR_TBL_INIT_SIZE = 101;
+immutable uint32 STR_TBL_MAX_LOAD_NUM = 3;
+immutable uint32 STR_TBL_MAX_LOAD_DENOM = 5;
 
 /**
 Allocate and initialize the string table
 */
 void allocStrTable(Interp interp)
 {
-    auto strTbl = interp.alloc(strtbl_comp_size(STR_TBL_INIT_SIZE));
+    auto strTbl = strtbl_alloc(interp, STR_TBL_INIT_SIZE);
 
     strtbl_set_type(strTbl, 0);
     strtbl_set_num_strs(strTbl, 0);
-    strtbl_set_len(strTbl, STR_TBL_INIT_SIZE);
 
     // Initialize the string array
     for (size_t i = 0; i < STR_TBL_INIT_SIZE; ++i)
@@ -186,11 +185,14 @@ void extStrTable(Interp interp, refptr curTbl, uint32 curSize, uint32 numStrings
     //printInt(newSize);
 
     // Allocate a new, larger hash table
-    auto newTbl = interp.alloc(strtbl_comp_size(newSize));
-    strtbl_set_len(newTbl, newSize);
+    auto newTbl = strtbl_alloc(interp, newSize);
 
     // Set the number of strings stored
     strtbl_set_num_strs(newTbl, numStrings);
+
+    // Initialize the string array
+    for (size_t i = 0; i < newSize; ++i)
+        strtbl_set_str(newTbl, i, null);
 
     // For each entry in the current table
     for (uint32 curIdx = 0; curIdx < curSize; curIdx++)
@@ -245,9 +247,7 @@ Get the string object for a given string
 */
 refptr getString(Interp interp, wstring str)
 {
-    auto objPtr = interp.alloc(str_comp_size(str.length));
-
-    str_set_len(objPtr, cast(uint32)str.length);
+    auto objPtr = str_alloc(interp, cast(uint32)str.length);
 
     for (size_t i = 0; i < str.length; ++i)
         str_set_data(objPtr, i, str[i]);
