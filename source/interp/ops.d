@@ -60,8 +60,7 @@ void opSetStr(Interp interp, IRInstr instr)
     // If the string is null, allocate it
     if (objPtr is null)
     {
-        auto strVal = getString(interp, instr.args[0].stringVal);
-        objPtr = strVal.word.ptrVal;
+        objPtr = getString(interp, instr.args[0].stringVal);
     }
 
     interp.setSlot(
@@ -141,16 +140,16 @@ void opAdd(Interp interp, IRInstr instr)
         auto s0 = interp.stringVal(w0, t0);
         auto s1 = interp.stringVal(w1, t1);
 
-        auto l0 = str_get_len(s0.word.ptrVal);
-        auto l1 = str_get_len(s1.word.ptrVal);
+        auto l0 = str_get_len(s0);
+        auto l1 = str_get_len(s1);
 
         auto sO = interp.alloc(str_comp_size(l0+l1));
         str_set_len(sO, l0+l1);
 
         for (size_t i = 0; i < l0; ++i)
-            str_set_data(sO, i, str_get_data(s0.word.ptrVal, i));
+            str_set_data(sO, i, str_get_data(s0, i));
         for (size_t i = 0; i < l1; ++i)
-            str_set_data(sO, l0+i, str_get_data(s1.word.ptrVal, i));
+            str_set_data(sO, l0+i, str_get_data(s1, i));
 
         compStrHash(sO);
         sO = getTableStr(interp, sO);
@@ -237,6 +236,50 @@ void opMod(Interp interp, IRInstr instr)
         instr.outSlot, 
         Word.intv(w0.intVal % w1.intVal),
         Type.INT
+    );
+}
+
+void opTypeOf(Interp interp, IRInstr instr)
+{
+    auto idx = instr.args[0].localIdx;
+
+    auto w = interp.getWord(idx);
+    auto t = interp.getType(idx);
+
+    refptr output;
+
+    switch (t)
+    {
+        case Type.STRING:
+        output = getString(interp, "string");
+        break;
+
+        case Type.INT:
+        case Type.FLOAT:
+        output = getString(interp, "number");
+        break;
+
+        case Type.CONST:
+        if (w == TRUE)
+            output = getString(interp, "boolean");
+        else if (w == FALSE)
+            output = getString(interp, "boolean");
+        else if (w == NULL)
+            output = getString(interp, "object");
+        else if (w == UNDEF)
+            output = getString(interp, "undefined");
+        else
+            assert (false, "unsupported constant");
+        break;
+
+        default:
+        assert (false, "unsupported type in typeof");
+    }
+
+    interp.setSlot(
+        instr.outSlot, 
+        Word.ptrv(output),
+        Type.STRING
     );
 }
 

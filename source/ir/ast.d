@@ -909,6 +909,20 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ));
         }
 
+        // Typeof operator
+        else if (op.str == "typeof")
+        {
+            auto lCtx = ctx.subCtx(true);
+            exprToIR(unExpr.expr, lCtx);
+            ctx.merge(lCtx);
+
+            ctx.addInstr(new IRInstr(
+                &TYPE_OF,
+                ctx.getOutSlot(), 
+                lCtx.getOutSlot()
+            ));
+        }
+
         // Bitwise negation
         else if (op.str == "~")
         {

@@ -336,6 +336,17 @@ unittest
     );
 }
 
+// Typeof operator
+unittest
+{
+    assertStr("return typeof 'foo'", "string");
+    assertStr("return typeof 1", "number");
+    assertStr("return typeof true", "boolean");
+    assertStr("return typeof false", "boolean");
+    assertStr("return typeof null", "object");
+    assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
+}
+
 /// Global scope, global object
 unittest
 {

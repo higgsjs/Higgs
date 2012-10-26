@@ -496,11 +496,14 @@ Opcode LSHIFT     = { "lshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode RSHIFT     = { "rshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode URSHIFT    = { "urshift", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
+// Typeof operator
+Opcode TYPE_OF    = { "type_of", true, [OpArg.LOCAL], &opTypeOf };
+
 // Boolean value conversion
-Opcode BOOL_VAL    = { "bool_val", true, [OpArg.LOCAL], &opBoolVal };
+Opcode BOOL_VAL   = { "bool_val", true, [OpArg.LOCAL], &opBoolVal };
 
 // Boolean (logical) negation
-Opcode BOOL_NOT    = { "bool_not", true, [OpArg.LOCAL] };
+Opcode BOOL_NOT   = { "bool_not", true, [OpArg.LOCAL] };
 
 // Comparison operations
 Opcode CMP_SE     = { "cmp_se", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpSe };
@@ -552,9 +555,11 @@ Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 // Create new object
 //NEW_OBJ,
 
-// SET_FIELD <obj_local> <name_local> <src_local>
-//SET_FIELD,
+// SET_PROP <obj_local> <name_local> <src_local>
+//SET_PROP,
 
-// <dst_local> = GET_FIELD <obj_local> <name_local>
-//GET_FIELD,
+// <dst_local> = GET_PROP <obj_local> <name_local>
+//GET_PROP,
+
+//DEL_PROP
 

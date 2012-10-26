@@ -243,7 +243,7 @@ void extStrTable(Interp interp, refptr curTbl, uint32 curSize, uint32 numStrings
 /**
 Get the string object for a given string
 */
-ValuePair getString(Interp interp, wstring str)
+refptr getString(Interp interp, wstring str)
 {
     auto objPtr = interp.alloc(str_comp_size(str.length));
 
@@ -258,6 +258,6 @@ ValuePair getString(Interp interp, wstring str)
     // Find/add the string in the string table
     objPtr = getTableStr(interp, objPtr);
 
-    return ValuePair(Word.refv(objPtr), Type.STRING);
+    return objPtr;
 }
 

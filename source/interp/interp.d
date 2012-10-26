@@ -492,12 +492,12 @@ class Interp
     /**
     Produce the string representation of a value
     */
-    ValuePair stringVal(Word w, Type t)
+    refptr stringVal(Word w, Type t)
     {
         switch (t)
         {
             case Type.STRING:
-            return ValuePair(w, t);
+            return w.ptrVal;
 
             case Type.INT:
             return getString(this, to!wstring(w.intVal));
