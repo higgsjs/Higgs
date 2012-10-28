@@ -163,7 +163,7 @@ immutable size_t HEAP_INIT_SIZE = 2^^24;
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
 
 /// Initial object class size
-immutable size_t CLASS_INIT_SIZE = 16;
+immutable size_t CLASS_INIT_SIZE = 32;
 
 /**
 Interpreter
@@ -299,6 +299,14 @@ class Interp
     }
 
     /**
+    Set the value and type of a stack slot from a value/type pair
+    */
+    void setSlot(LocalIdx idx, ValuePair val)
+    {
+        setSlot(idx, val.word, val.type);
+    }
+
+    /**
     Get a word from the word stack
     */
     Word getWord(LocalIdx idx)
@@ -322,6 +330,14 @@ class Interp
         );
 
         return tsp[idx];
+    }
+
+    /**
+    Get a value/type pair from the stack
+    */
+    ValuePair getSlot(LocalIdx idx)
+    {
+        return ValuePair(getWord(idx), getType(idx));
     }
 
     /**

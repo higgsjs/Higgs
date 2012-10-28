@@ -564,12 +564,6 @@ Opcode GET_RET    = { "get_ret", true, [], &opGetRet };
 // Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN], &opNewClos };
 
-// SET_GLOBAL <prop_name> <value>
-Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlobal };
-
-// GET_GLOBAL <prop_name>
-Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
-
 // Create new empty object
 // <dst_local> = NEW_OBJECT <proto_local> <num_props>
 Opcode NEW_OBJECT = { "new_object", true, [OpArg.LOCAL, OpArg.INT, OpArg.REFPTR], &opNewObj };
@@ -583,4 +577,10 @@ Opcode SET_PROP = { "set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], 
 Opcode GET_PROP = { "get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &opGetProp };
 
 //DEL_PROP
+
+// SET_GLOBAL <prop_name> <value>
+Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlobal };
+
+// GET_GLOBAL <prop_name>
+Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 
