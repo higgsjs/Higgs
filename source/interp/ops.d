@@ -54,6 +54,15 @@ void opSetInt(Interp interp, IRInstr instr)
     );
 }
 
+void opSetFloat(Interp interp, IRInstr instr)
+{
+    interp.setSlot(
+        instr.outSlot,
+        Word.floatv(instr.args[0].floatVal),
+        Type.FLOAT
+    );
+}
+
 void opSetStr(Interp interp, IRInstr instr)
 {
     auto objPtr = instr.args[1].ptrVal;
@@ -129,8 +138,21 @@ void opAdd(Interp interp, IRInstr instr)
     {
         interp.setSlot(
             instr.outSlot, 
-            Word.intv(w0.intVal + w1.intVal),
-            Type.INT
+            w0.intVal + w1.intVal
+        );
+    }
+
+    // If either value is floating-point or integer
+    else if (
+        (t0 == Type.FLOAT || t0 == Type.INT) &&
+        (t1 == Type.FLOAT || t1 == Type.INT))
+    {
+        auto f0 = (t0 == Type.FLOAT)? w0.floatVal:cast(float64)w0.intVal;
+        auto f1 = (t1 == Type.FLOAT)? w1.floatVal:cast(float64)w1.intVal;
+
+        interp.setSlot(
+            instr.outSlot,
+            f0 + f1
         );
     }
 
@@ -169,53 +191,105 @@ void opAdd(Interp interp, IRInstr instr)
 
 void opSub(Interp interp, IRInstr instr)
 {
-    // TODO: support for other types
     auto idx0 = instr.args[0].localIdx;
     auto idx1 = instr.args[1].localIdx;
-
     auto w0 = interp.getWord(idx0);
     auto w1 = interp.getWord(idx1);
+    auto t0 = interp.getType(idx0);
+    auto t1 = interp.getType(idx1);
 
-    interp.setSlot(
-        instr.outSlot, 
-        Word.intv(w0.intVal - w1.intVal),
-        Type.INT
-    );
+    // If both values are integer
+    if (t0 == Type.INT && t1 == Type.INT)
+    {
+        interp.setSlot(
+            instr.outSlot,
+            w0.intVal - w1.intVal
+        );
+    }
+
+    // If either value is floating-point or integer
+    else if (
+        (t0 == Type.FLOAT || t0 == Type.INT) &&
+        (t1 == Type.FLOAT || t1 == Type.INT))
+    {
+        auto f0 = (t0 == Type.FLOAT)? w0.floatVal:cast(float64)w0.intVal;
+        auto f1 = (t1 == Type.FLOAT)? w1.floatVal:cast(float64)w1.intVal;
+
+        interp.setSlot(
+            instr.outSlot, 
+            f0 - f1
+        );
+    }
+
+    else
+    {
+        assert (false, "unsupported types in sub");
+    }
 }
 
 void opMul(Interp interp, IRInstr instr)
 {
-    // TODO: support for other types
     auto idx0 = instr.args[0].localIdx;
     auto idx1 = instr.args[1].localIdx;
-
     auto w0 = interp.getWord(idx0);
     auto w1 = interp.getWord(idx1);
+    auto t0 = interp.getType(idx0);
+    auto t1 = interp.getType(idx1);
 
-    interp.setSlot(
-        instr.outSlot, 
-        Word.intv(w0.intVal * w1.intVal),
-        Type.INT
-    );
+    // If both values are integer
+    if (t0 == Type.INT && t1 == Type.INT)
+    {
+        interp.setSlot(
+            instr.outSlot,
+            w0.intVal * w1.intVal
+        );
+    }
+
+    // If either value is floating-point or integer
+    else if (
+        (t0 == Type.FLOAT || t0 == Type.INT) &&
+        (t1 == Type.FLOAT || t1 == Type.INT))
+    {
+        auto f0 = (t0 == Type.FLOAT)? w0.floatVal:cast(float64)w0.intVal;
+        auto f1 = (t1 == Type.FLOAT)? w1.floatVal:cast(float64)w1.intVal;
+
+        interp.setSlot(
+            instr.outSlot, 
+            f0 * f1
+        );
+    }
+
+    else
+    {
+        assert (false, "unsupported types in mul");
+    }
 }
 
 void opDiv(Interp interp, IRInstr instr)
 {
-    // TODO: support for other types
     auto idx0 = instr.args[0].localIdx;
     auto idx1 = instr.args[1].localIdx;
-
     auto w0 = interp.getWord(idx0);
     auto w1 = interp.getWord(idx1);
+    auto t0 = interp.getType(idx0);
+    auto t1 = interp.getType(idx1);
+
+    auto f0 = (t0 == Type.FLOAT)? w0.floatVal:cast(float64)w0.intVal;
+    auto f1 = (t1 == Type.FLOAT)? w1.floatVal:cast(float64)w1.intVal;
+
+    assert (
+        (t0 == Type.INT || t0 == Type.FLOAT) ||
+        (t1 == Type.INT || t1 == Type.FLOAT),
+        "unsupported type in div"
+    );
 
     // TODO: produce NaN or Inf on 0
-    if (w1.intVal == 0)
+    if (f1 == 0)
         throw new Error("division by 0");
 
     interp.setSlot(
         instr.outSlot, 
-        Word.intv(w0.intVal / w1.intVal),
-        Type.INT
+        f0 / f1
     );
 }
 

@@ -39,6 +39,7 @@ module interp.tests;
 
 import std.stdio;
 import std.string;
+import std.math;
 import parser.parser;
 import ir.ast;
 import interp.interp;
@@ -80,6 +81,35 @@ void assertInt(string input, long intVal)
             input,
             ret.word.intVal, 
             intVal
+        )
+    );
+}
+
+void assertFloat(string input, double floatVal, double eps = 1E-4)
+{
+    auto interp = evalString(input);
+
+    //writeln("getting ret val");
+
+    auto ret = interp.getRet();
+
+    assert (
+        ret.type == Type.INT ||
+        ret.type == Type.FLOAT,
+        "non-numeric value: " ~ ValueToString(ret)
+    );
+
+    auto fRet = (ret.type == Type.FLOAT)? ret.word.floatVal:ret.word.intVal;
+
+    assert (
+        abs(fRet - floatVal) <= eps,
+        format(
+            "Test failed:\n" ~
+            "%s" ~ "\n" ~
+            "incorrect float value: %s, expected: %s",
+            input,
+            fRet, 
+            floatVal
         )
     );
 }
@@ -129,6 +159,13 @@ unittest
     assertInt("return -3", -3);
     assertInt("return +7", 7);
     assertInt("return 2 + 3 * 4", 14);
+
+    assertFloat("return 3.5", 3.5);
+    assertFloat("return 2.5 + 2", 4.5);
+    assertFloat("return 2.5 + 2.5", 5);
+    assertFloat("return 2.5 - 1", 1.5);
+    assertFloat("return 2 * 1.5", 3);
+    assertFloat("return 6 / 2.5", 2.4);
 }
 
 /// Global function calls

@@ -488,7 +488,7 @@ alias static immutable(OpInfo) Opcode;
 
 // Set a local slot to a constant value    
 Opcode SET_INT    = { "set_int"   , true, [OpArg.INT], &opSetInt };
-Opcode SET_FLOAT  = { "set_float" , true, [OpArg.FLOAT]/*, &opSetFloat*/ };
+Opcode SET_FLOAT  = { "set_float" , true, [OpArg.FLOAT], &opSetFloat };
 Opcode SET_STR    = { "set_str"   , true, [OpArg.STRING, OpArg.REFPTR], &opSetStr };
 Opcode SET_TRUE   = { "set_true"  , true, [], &opSetTrue };
 Opcode SET_FALSE  = { "set_false" , true, [], &opSetFalse };

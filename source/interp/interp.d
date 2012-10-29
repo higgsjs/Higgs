@@ -56,7 +56,8 @@ Memory word union
 */
 union Word
 {
-    static Word intv(long i) { Word w; w.intVal = i; return w; }
+    static Word intv(uint64 i) { Word w; w.intVal = i; return w; }
+    static Word floatv(float64 f) { Word w; w.floatVal = f; return w; }
     static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
     static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
     static Word cstv(rawptr c) { Word w; w.ptrVal = c; return w; }
@@ -307,6 +308,22 @@ class Interp
     }
 
     /**
+    Set the value of a slot to an integer value
+    */
+    void setSlot(LocalIdx idx, uint64 val)
+    {
+        setSlot(idx, Word.intv(val), Type.INT);
+    }
+
+    /**
+    Set the value of a slot to a float value
+    */
+    void setSlot(LocalIdx idx, float64 val)
+    {
+        setSlot(idx, Word.floatv(val), Type.FLOAT);
+    }
+
+    /**
     Get a word from the word stack
     */
     Word getWord(LocalIdx idx)
@@ -518,6 +535,9 @@ class Interp
 
             case Type.INT:
             return getString(this, to!wstring(w.intVal));
+
+            case Type.FLOAT:
+            return getString(this, to!wstring(w.floatVal));
 
             case Type.CONST:
             if (w == TRUE)
