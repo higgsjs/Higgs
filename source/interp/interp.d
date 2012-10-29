@@ -308,7 +308,15 @@ class Interp
     }
 
     /**
-    Set the value of a slot to an integer value
+    Set a stack slot to a boolean value
+    */
+    void setSlot(LocalIdx idx, bool val)
+    {
+        setSlot(idx, val? TRUE:FALSE, Type.CONST);
+    }
+
+    /**
+    Set a stack slot to an integer value
     */
     void setSlot(LocalIdx idx, uint64 val)
     {
@@ -316,7 +324,7 @@ class Interp
     }
 
     /**
-    Set the value of a slot to a float value
+    Set a stack slot to a float value
     */
     void setSlot(LocalIdx idx, float64 val)
     {

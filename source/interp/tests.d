@@ -208,6 +208,7 @@ unittest
     assertInt("if (false) return 1; else return 0;", 0);
     assertInt("if (3 < 7) return 1; else return 0;", 1);
     assertInt("if (5 < 2) return 1; else return 0;", 0);
+    assertInt("if (1 < 1.5) return 1; else return 0;", 1);
 
     assertInt("return true? 1:0", 1);
     assertInt("return false? 1:0", 0);

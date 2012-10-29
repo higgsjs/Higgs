@@ -412,20 +412,40 @@ void opCmpSe(Interp interp, IRInstr instr)
 
 void opCmpLt(Interp interp, IRInstr instr)
 {
-    // TODO: support for other types
     auto idx0 = instr.args[0].localIdx;
     auto idx1 = instr.args[1].localIdx;
-
     auto w0 = interp.getWord(idx0);
     auto w1 = interp.getWord(idx1);
+    auto t0 = interp.getType(idx0);
+    auto t1 = interp.getType(idx1);
 
-    bool output = (w0.intVal < w1.intVal);
+    // If both values are integer
+    if (t0 == Type.INT && t1 == Type.INT)
+    {
+        interp.setSlot(
+            instr.outSlot,
+            w0.intVal < w1.intVal
+        );
+    }
 
-    interp.setSlot(
-        instr.outSlot, 
-        output? TRUE:FALSE,
-        Type.CONST
-    );
+    // If either value is floating-point or integer
+    else if (
+        (t0 == Type.FLOAT || t0 == Type.INT) &&
+        (t1 == Type.FLOAT || t1 == Type.INT))
+    {
+        auto f0 = (t0 == Type.FLOAT)? w0.floatVal:cast(float64)w0.intVal;
+        auto f1 = (t1 == Type.FLOAT)? w1.floatVal:cast(float64)w1.intVal;
+
+        interp.setSlot(
+            instr.outSlot, 
+            f0 < f1
+        );
+    }
+
+    else
+    {
+        assert (false, "unsupported types in mul");
+    }
 }
 
 void opJump(Interp interp, IRInstr instr)
