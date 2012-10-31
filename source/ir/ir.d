@@ -46,6 +46,7 @@ import util.id;
 import util.string;
 import parser.ast;
 import interp.interp;
+import interp.layout;
 import interp.ops;
 
 /// Local variable index type
@@ -86,6 +87,9 @@ class IRFunction : IdObject
     LocalIdx thisSlot;
     LocalIdx argcSlot;
     LocalIdx raSlot;
+
+    /// Class pointer used when called using new operator
+    refptr classPtr = null;
 
     /// Constructor
     this(FunExpr ast)
@@ -539,13 +543,21 @@ Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL, OpArg.BLOCK], &opJumpTr
 Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL, OpArg.BLOCK], &opJumpFalse };
 
 // SET_ARG <srcLocal> <argIdx>
-Opcode SET_ARG    = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &opSetArg };
+Opcode SET_ARG = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &opSetArg };
 
 // CALL <closLocal> <thisArg> <numArgs>
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL       = { "call", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall };
+Opcode CALL = { "call", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall };
+
+// NEW <closLocal> <numArgs>
+// Implements the JavaScript new operator.
+// Creates the this object
+// Makes the execution go to the callee entry
+// Sets the frame pointer to the new frame's base
+// Pushes the return address word
+Opcode NEW = { "call", false, [OpArg.LOCAL, OpArg.INT], &opNew };
 
 // PUSH_FRAME <numParams> <numLocals>
 // On function entry, allocates/adjusts the callee's stack frame
@@ -554,11 +566,11 @@ Opcode PUSH_FRAME = { "push_frame", false, [OpArg.INT, OpArg.INT], &opPushFrame 
 // RET <retLocal> <raSlot> <numLocals>
 // Stores return value in special registers
 // Pops the callee frame (size known by context)
-Opcode RET        = { "ret", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opRet };
+Opcode RET = { "ret", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opRet };
 
 // <retLocal> = GET_RET
 // After call, extracts the callee's return value
-Opcode GET_RET    = { "get_ret", true, [], &opGetRet };
+Opcode GET_RET = { "get_ret", true, [], &opGetRet };
 
 // <dstLocal> = NEW_CLOS <funExpr>
 // Create a new closure from a function's AST node
@@ -576,6 +588,7 @@ Opcode SET_PROP = { "set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], 
 // <dst_local> = GET_PROP <obj_local> <prop_local>
 Opcode GET_PROP = { "get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &opGetProp };
 
+// TODO: implement when needed
 //DEL_PROP
 
 // SET_GLOBAL <prop_name> <value>

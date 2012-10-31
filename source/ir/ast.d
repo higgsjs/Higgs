@@ -1104,6 +1104,45 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         ctx.addInstr(new IRInstr(&GET_RET, ctx.getOutSlot()));
     }
 
+    // New operator call expression
+    else if (auto newExpr = cast(NewExpr)expr)
+    {
+        auto baseExpr = newExpr.base;
+        auto argExprs = newExpr.args;
+
+        // Evaluate the base expression
+        auto baseCtx = ctx.subCtx(true);       
+        exprToIR(baseExpr, baseCtx);
+        ctx.merge(baseCtx);
+
+        // Evaluate the arguments
+        auto argSlots = new LocalIdx[argExprs.length];
+        for (size_t i = 0; i < argExprs.length; ++i)
+        {
+            auto argCtx = ctx.subCtx(true);       
+            exprToIR(argExprs[i], argCtx);
+            ctx.merge(argCtx);
+            argSlots[i] = argCtx.outSlot;
+        }
+
+        // Set the call arguments
+        for (size_t i = 0; i < argSlots.length; ++i)
+        {
+            auto argInstr = ctx.addInstr(new IRInstr(&SET_ARG));
+            argInstr.args[0].localIdx = argSlots[i];
+            argInstr.args[1].intVal = i;
+        }
+
+        // Add the call instruction
+        // NEW <fnLocal> <numArgs>
+        auto callInstr = ctx.addInstr(new IRInstr(&NEW));
+        callInstr.args[0].localIdx = baseCtx.outSlot;
+        callInstr.args[1].intVal = argExprs.length;
+
+        // Get the return value from this call
+        ctx.addInstr(new IRInstr(&GET_RET, ctx.getOutSlot()));
+    }
+
     else if (auto indexExpr = cast(IndexExpr)expr)
     {
         // Evaluate the base expression

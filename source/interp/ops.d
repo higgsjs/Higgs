@@ -492,6 +492,9 @@ void opCall(Interp interp, IRInstr instr)
     auto thisIdx = instr.args[1].localIdx;
     auto numArgs = instr.args[2].intVal;
 
+    auto wThis = interp.getWord(thisIdx);
+    auto tThis = interp.getType(thisIdx);
+
     // TODO: proper closure object
     // Get the function object
     auto ptr = interp.getWord(closIdx).ptrVal;
@@ -521,7 +524,61 @@ void opCall(Interp interp, IRInstr instr)
 
     // Push the hidden call arguments
     interp.push(UNDEF, Type.CONST);                     // FIXME:Closure argument
-    interp.push(UNDEF, Type.CONST);                     // FIXME:This argument
+    interp.push(wThis, tThis);                          // This argument
+    interp.push(Word.intv(numArgs), Type.INT);          // Argument count
+    interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
+
+    // Set the instruction pointer
+    interp.ip = fun.entryBlock.firstInstr;
+}
+
+/// JavaScript new operator
+void opNew(Interp interp, IRInstr instr)
+{
+    auto closIdx = instr.args[0].localIdx;
+    auto numArgs = instr.args[1].intVal;
+
+    // TODO: proper closure object
+    // Get the function object
+    auto ptr = interp.getWord(closIdx).ptrVal;
+    auto fun = cast(IRFunction)ptr;
+
+    assert (
+        fun !is null, 
+        "null IRFunction pointer"
+    );
+
+    // TODO: clos.prototype lookup
+
+    // Allocate the "this" object
+    auto objPtr = newObj(
+        interp, 
+        &fun.classPtr, 
+        NULL.ptrVal,
+        CLASS_INIT_SIZE,
+        2
+    );
+
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+    {
+        astToIR(fun.ast, fun);
+    }
+
+    // Get the return address
+    auto retAddr = cast(rawptr)instr.next;
+
+    assert (
+        retAddr !is null, 
+        "next instruction is null"
+    );
+
+    // Push stack space for the arguments
+    interp.push(numArgs);
+
+    // Push the hidden call arguments
+    interp.push(UNDEF, Type.CONST);                     // FIXME:Closure argument
+    interp.push(Word.ptrv(objPtr), Type.REFPTR);        // This argument
     interp.push(Word.intv(numArgs), Type.INT);          // Argument count
     interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
 
@@ -626,6 +683,44 @@ void opNewClos(Interp interp, IRInstr instr)
     );
 }
 
+refptr newObj(
+    Interp interp, 
+    refptr* ppClass, 
+    refptr protoPtr, 
+    uint32 classInitSize, 
+    uint32 allocNumProps
+)
+{
+    auto classPtr = *ppClass;
+
+    // If the class is not yet allocated
+    if (classPtr is null)
+    {
+        // Lazily allocate the class
+        classPtr = class_alloc(interp, classInitSize);
+        class_set_type(classPtr, 0);
+        class_set_id(classPtr, 0);
+        class_set_num_props(classPtr, 0);
+        class_set_next(classPtr, null);
+
+        // Update the instruction's class pointer
+        *ppClass = classPtr;
+    }    
+    else
+    {
+        // Get the number of properties to allocate from the class
+        allocNumProps = max(class_get_num_props(classPtr), allocNumProps);
+    }
+
+    // Allocate the object
+    auto objPtr = obj_alloc(interp, allocNumProps);
+    obj_set_type(objPtr, 0);
+    obj_set_class(objPtr, classPtr);
+    obj_set_next(objPtr, null);
+
+    return objPtr;
+}
+
 void setProp(Interp interp, ValuePair obj, ValuePair prop, ValuePair val)
 {
     // TODO: use ValuePair for object (base) as well
@@ -719,35 +814,18 @@ void opNewObj(Interp interp, IRInstr instr)
 {
     auto protoSlot = instr.args[0].localIdx;
     auto numProps  = max(instr.args[1].intVal, 2);
-    auto classPtr  = instr.args[2].ptrVal;
+    auto ppClass   = &instr.args[2].ptrVal;
 
     auto wProto = interp.getWord(protoSlot);
-    auto tProto = interp.getType(protoSlot);
-
-    // If the class is not yet allocated
-    if (classPtr is null)
-    {
-        // Lazily allocate the class
-        classPtr = class_alloc(interp, CLASS_INIT_SIZE);
-        class_set_type(classPtr, 0);
-        class_set_id(classPtr, 0);
-        class_set_num_props(classPtr, 0);
-        class_set_next(classPtr, null);
-
-        // Update the instruction's class pointer
-        instr.args[2].ptrVal = classPtr;
-    }    
-    else
-    {
-        // Get the number of properties to allocate from the class
-        numProps = max(class_get_num_props(classPtr), numProps);
-    }
 
     // Allocate the object
-    auto objPtr = obj_alloc(interp, cast(uint32)numProps);
-    obj_set_type(objPtr, 0);
-    obj_set_class(objPtr, classPtr);
-    obj_set_next(objPtr, null);
+    auto objPtr = newObj(
+        interp, 
+        ppClass, 
+        wProto.ptrVal,
+        CLASS_INIT_SIZE,
+        2
+    );
 
     interp.setSlot(
         instr.outSlot,

@@ -268,18 +268,14 @@ class Interp
         // Initialize the IP to null
         ip = null;
 
-        // Allocate and initialize the global object class
-        globalClass = class_alloc(this, GLOBAL_OBJ_INIT_SIZE);
-        class_set_type(globalClass, 0);
-        class_set_id(globalClass, 0);
-        class_set_num_props(globalClass, 0);
-        class_set_next(globalClass, null);
-
         // Allocate and initialize the global object
-        globalObj = obj_alloc(this, GLOBAL_OBJ_INIT_SIZE);
-        obj_set_type(globalObj, 0);
-        obj_set_class(globalObj, globalClass);
-        obj_set_next(globalObj, null);
+        globalObj = interp.ops.newObj(
+            this, 
+            &globalClass, 
+            NULL.ptrVal, // FIXME
+            GLOBAL_OBJ_INIT_SIZE,
+            GLOBAL_OBJ_INIT_SIZE
+        );
 
         // Allocate and initialize the string table
         allocStrTable(this);
