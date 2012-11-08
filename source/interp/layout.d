@@ -316,6 +316,9 @@ genLayout(
         // Next object reference
         Field("next", "refptr"),
 
+        // Prototype reference
+        Field("proto", "refptr"),
+
         // Property words
         Field("word", "uint64", "len"),
 
@@ -341,6 +344,9 @@ genLayout(
 
         // Next object reference
         Field("next", "refptr"),
+
+        // Prototype reference
+        Field("proto", "refptr"),
 
         // Property words
         Field("word", "uint64", "len"),

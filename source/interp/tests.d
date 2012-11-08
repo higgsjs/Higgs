@@ -432,7 +432,33 @@ unittest
     assertInt("o = {x: 9}; return o.x;", 9);
     assertInt("o = {x: 9}; o.y = 1; return o.x + o.y;", 10);
     assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
+    assertInt("o = {x: 5}; return o.y? 1:0;", 0);
 
     assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
+}
+
+/// New operator, prototype chain
+unittest
+{
+    assertInt("function f() {}; o = new f(); return 0", 0);
+    assertInt("function f() {}; o = new f(); return o? 1:0", 1);
+    assertInt("function f() { g = this; }; o = new f(); return g? 1:0", 1);
+    assertInt("function f() { this.x = 3 }; o = new f(); return o.x", 3);
+    assertInt("function f() { return {y:7}; }; o = new f(); return o.y", 7);
+
+    assertInt("function f() {}; return f.prototype? 1:0", 1);
+    assertInt("function f() {}; f.prototype.x = 9; return f.prototype.x", 9);
+
+    assertInt(
+        "
+        function f()
+        {
+        }
+        f.prototype.x = 9;
+        o = new f();
+        return o.x;
+        ",
+        9
+    );
 }
 

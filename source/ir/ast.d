@@ -1143,11 +1143,16 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Add the call instruction
         // NEW <fnLocal> <numArgs>
         auto callInstr = ctx.addInstr(new IRInstr(&CALL_NEW));
+        callInstr.outSlot = ctx.allocTemp();
         callInstr.args[0].localIdx = baseCtx.outSlot;
         callInstr.args[1].intVal = argExprs.length;
 
         // Get the return value from this call
-        ctx.addInstr(new IRInstr(&GET_RET_NEW, ctx.getOutSlot()));
+        ctx.addInstr(new IRInstr(
+            &GET_RET_NEW, 
+            ctx.getOutSlot(), 
+            callInstr.outSlot
+        ));
     }
 
     else if (auto indexExpr = cast(IndexExpr)expr)
@@ -1224,8 +1229,15 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     // Identifier/variable reference
     else if (auto identExpr = cast(IdentExpr)expr)
     {
+        // If this is the "this" argument
+        if (identExpr.name == "this")
+        {
+            // Move the "this" argument slot to the output
+            ctx.moveToOutput(ctx.fun.thisSlot);
+        }
+
         // If the variable is global
-        if (identExpr.declNode is null)
+        else if (identExpr.declNode is null)
         {
             // Create a constant for the property name
             auto strInstr = ctx.addInstr(IRInstr.strCst(

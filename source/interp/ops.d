@@ -379,6 +379,10 @@ void opBoolVal(Interp interp, IRInstr instr)
         output = (str_get_len(w.ptrVal) != 0);
         break;
 
+        case Type.REFPTR:
+        output = true;
+        break;
+
         default:
         assert (false, "unsupported type in comparison");
     }
@@ -545,15 +549,27 @@ void opCallNew(Interp interp, IRInstr instr)
         "null IRFunction pointer"
     );
 
-    // TODO: clos.prototype lookup
+    // Lookup the "prototype" property on the closure
+    auto protoPtr = getProp(
+        interp, 
+        ValuePair(Word.ptrv(closPtr), Type.REFPTR),
+        ValuePair(Word.ptrv(getString(interp, "prototype")), Type.STRING)
+    );
 
     // Allocate the "this" object
-    auto objPtr = newObj(
+    auto thisPtr = newObj(
         interp, 
         &fun.classPtr, 
-        NULL.ptrVal,
+        protoPtr.word.ptrVal,
         CLASS_INIT_SIZE,
         2
+    );
+
+    // Set the this object pointer in the output slot
+    interp.setSlot(
+        instr.outSlot, 
+        Word.ptrv(thisPtr),
+        Type.REFPTR
     );
 
     // If the function is not yet compiled, compile it now
@@ -575,7 +591,7 @@ void opCallNew(Interp interp, IRInstr instr)
 
     // Push the hidden call arguments
     interp.push(UNDEF, Type.CONST);                     // FIXME:Closure argument
-    interp.push(Word.ptrv(objPtr), Type.REFPTR);        // This argument
+    interp.push(Word.ptrv(thisPtr), Type.REFPTR);       // This argument
     interp.push(Word.intv(numArgs), Type.INT);          // Argument count
     interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
 
@@ -671,17 +687,19 @@ void opGetRet(Interp interp, IRInstr instr)
 /// Get the callee's return value after a constructor call
 void opGetRetNew(Interp interp, IRInstr instr)
 {
-    // FIXME: test if ret value is undef
-
     // Read and pop the value
-    auto wRet = interp.getWord(0);
-    auto tRet = interp.getType(0);
+    auto retVal = interp.getSlot(0);
     interp.pop(1);
 
+    // Get the this value
+    auto thisVal = interp.getSlot(instr.args[0].localIdx);
+
+    // If the return value is undefined, output the this object
+    auto outVal = (retVal.word == UNDEF)? thisVal:retVal;
+
     interp.setSlot(
-        instr.outSlot, 
-        wRet,
-        tRet
+        instr.outSlot,
+        outVal
     );
 }
 
@@ -689,10 +707,9 @@ void opNewClos(Interp interp, IRInstr instr)
 {
     auto fun = instr.args[0].fun;
 
-
+    // TODO
     // TODO: num clos cells, can get this from fun object!
     // TODO
-
 
     // Allocate the prototype object
     auto objPtr = newObj(
@@ -700,7 +717,7 @@ void opNewClos(Interp interp, IRInstr instr)
         &instr.args[1].ptrVal, 
         NULL.ptrVal,        // TODO: object proto
         CLASS_INIT_SIZE,
-        0
+        2
     );
 
     // Allocate the closure object
@@ -709,7 +726,7 @@ void opNewClos(Interp interp, IRInstr instr)
         &instr.args[2].ptrVal, 
         NULL.ptrVal,        // TODO: function proto
         CLASS_INIT_SIZE,
-        1,
+        2,
         0,                  // TODO: num cells
         fun
     );
@@ -721,25 +738,13 @@ void opNewClos(Interp interp, IRInstr instr)
         ValuePair(Word.ptrv(getString(interp, "prototype")), Type.STRING),
         ValuePair(Word.ptrv(objPtr), Type.REFPTR)
     );
-
-
-    /*
-    // TODO: create a proper closure
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(cast(rawptr)fun),
-        Type.RAWPTR
-    );
-    */
-
-    
+   
     // Output a pointer to the closure
     interp.setSlot(
         instr.outSlot,
         Word.ptrv(closPtr),
         Type.REFPTR
-    );
-    
+    );    
 }
 
 /// Expression evaluation delegate function
@@ -779,8 +784,13 @@ refptr newExtObj(
         allocNumProps = max(class_get_num_props(classPtr), allocNumProps);
     }
 
-    // Allocate and initialize the object
+    // Allocate the object
     auto objPtr = objAllocFn(interp, classPtr, allocNumProps);
+
+    // Initialize the object
+    obj_set_class(objPtr, classPtr);
+    obj_set_next(objPtr, null);
+    obj_set_proto(objPtr, protoPtr);
 
     return objPtr;
 }
@@ -803,8 +813,6 @@ refptr newObj(
         {
             auto objPtr = obj_alloc(interp, allocNumProps);
             obj_set_type(objPtr, 0);
-            obj_set_class(objPtr, classPtr);
-            obj_set_next(objPtr, null);
             return objPtr;
         }
     );
@@ -830,8 +838,6 @@ refptr newClos(
         {
             auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
             obj_set_type(objPtr, 0);
-            obj_set_class(objPtr, classPtr);
-            obj_set_next(objPtr, null);
             clos_set_fptr(objPtr, cast(rawptr)fun);
             return objPtr;
         }
@@ -840,9 +846,9 @@ refptr newClos(
 
 void setProp(Interp interp, ValuePair obj, ValuePair prop, ValuePair val)
 {
-    // TODO: use ValuePair for object (base) as well
-    // TODO: toObject?
-    assert (obj.type == Type.REFPTR, "base should have object type");
+    if (obj.type != Type.REFPTR)
+        return;
+
     auto objPtr = obj.word.ptrVal;
 
     // Get the number of class properties
@@ -883,6 +889,20 @@ void setProp(Interp interp, ValuePair obj, ValuePair prop, ValuePair val)
     //writefln("prop idx: %s", propIdx);
     //writefln("intval: %s", wVal.intVal);
 
+    // Get the length of the object
+    auto objLen = obj_get_len(objPtr);
+
+    // If the object needs to be extended
+    if (propIdx >= objLen)
+    {
+        writefln("propIdx = %s, objLen = %s", propIdx, objLen);
+        assert (false, "object extension required");
+
+        // TODO: need to handle objects, closures and arrays
+
+        //objPtr = newObj
+    }
+
     // Set the value and its type in the object
     obj_set_word(objPtr, propIdx, val.word.intVal);
     obj_set_type(objPtr, propIdx, val.type);
@@ -890,7 +910,6 @@ void setProp(Interp interp, ValuePair obj, ValuePair prop, ValuePair val)
 
 ValuePair getProp(Interp interp, ValuePair obj, ValuePair prop)
 {
-    // TODO: use ValuePair for object (base) as well
     // TODO: toObject?
     assert (obj.type == Type.REFPTR, "base should have object type");
     auto objPtr = obj.word.ptrVal;
@@ -911,10 +930,21 @@ ValuePair getProp(Interp interp, ValuePair obj, ValuePair prop)
             break;
     }
 
-    // If the property was not found, produce undefined
+    // If the property was not found
     if (propIdx == numProps)
     {
-        return ValuePair(UNDEF, Type.CONST);
+        auto protoPtr = obj_get_proto(objPtr);
+
+        // If the prototype is null, produce undefined
+        if (protoPtr is NULL.ptrVal)
+            return ValuePair(UNDEF, Type.CONST);
+
+        // Do a recursive lookup on the prototype
+        return getProp(
+            interp,
+            ValuePair(Word.ptrv(protoPtr), Type.REFPTR),
+            prop
+        );
     }
 
     //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
