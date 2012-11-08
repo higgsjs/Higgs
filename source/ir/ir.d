@@ -557,7 +557,7 @@ Opcode CALL = { "call", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall };
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode NEW = { "call", false, [OpArg.LOCAL, OpArg.INT], &opNew };
+Opcode CALL_NEW = { "call_new", false, [OpArg.LOCAL, OpArg.INT], &opCallNew };
 
 // PUSH_FRAME <numParams> <numLocals>
 // On function entry, allocates/adjusts the callee's stack frame
@@ -572,9 +572,13 @@ Opcode RET = { "ret", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opRet };
 // After call, extracts the callee's return value
 Opcode GET_RET = { "get_ret", true, [], &opGetRet };
 
+// <retLocal> = GET_RET
+// After constructor call, extracts the callee's return value
+Opcode GET_RET_NEW = { "get_ret_new", true, [], &opGetRetNew };
+
 // <dstLocal> = NEW_CLOS <funExpr>
 // Create a new closure from a function's AST node
-Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN], &opNewClos };
+Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.REFPTR, OpArg.REFPTR], &opNewClos };
 
 // Create new empty object
 // <dst_local> = NEW_OBJECT <proto_local> <num_props>

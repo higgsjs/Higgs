@@ -348,6 +348,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                     auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
                     newClos.outSlot = ctx.getOutSlot();
                     newClos.args[0].fun = subFun;
+                    newClos.args[1].ptrVal = null;
+                    newClos.args[2].ptrVal = null;
+
                 },
                 subCtx
             );
@@ -359,6 +362,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
             newClos.outSlot = bodyCtx.allocTemp();
             newClos.args[0].fun = subFun;
+            newClos.args[1].ptrVal = null;
+            newClos.args[2].ptrVal = null;
 
             // Store the closure temp in the local map
             localMap[funDecl.name] = newClos.outSlot;
@@ -721,6 +726,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto newClos = ctx.addInstr(new IRInstr(&NEW_CLOS));
             newClos.outSlot = ctx.getOutSlot();
             newClos.args[0].fun = fun;
+            newClos.args[1].ptrVal = null;
+            newClos.args[2].ptrVal = null;
         }
     }
 
@@ -1135,12 +1142,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         // Add the call instruction
         // NEW <fnLocal> <numArgs>
-        auto callInstr = ctx.addInstr(new IRInstr(&NEW));
+        auto callInstr = ctx.addInstr(new IRInstr(&CALL_NEW));
         callInstr.args[0].localIdx = baseCtx.outSlot;
         callInstr.args[1].intVal = argExprs.length;
 
         // Get the return value from this call
-        ctx.addInstr(new IRInstr(&GET_RET, ctx.getOutSlot()));
+        ctx.addInstr(new IRInstr(&GET_RET_NEW, ctx.getOutSlot()));
     }
 
     else if (auto indexExpr = cast(IndexExpr)expr)

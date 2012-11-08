@@ -324,6 +324,41 @@ genLayout(
     ]
 ));
 
+// Closure layout (extends object)
+mixin(
+//pragma(msg, 
+genLayout(
+    "clos",
+    [
+        // Layout type
+        Field("type", "uint32"),
+
+        // Number of fields
+        Field("len" , "uint32"),
+
+        // Class reference
+        Field("class", "refptr"),
+
+        // Next object reference
+        Field("next", "refptr"),
+
+        // Property words
+        Field("word", "uint64", "len"),
+
+        // Property types
+        Field("type", "uint8", "len"),
+
+        // Function code pointer
+        Field("fptr", "rawptr"),
+
+        // Number of closure cells
+        Field("num_cells" , "uint32"),
+
+        // Closure cell pointers
+        Field("cell", "refptr", "num_cells"),
+    ]
+));
+
 // Class descriptor layout
 mixin(
 //pragma(msg, 

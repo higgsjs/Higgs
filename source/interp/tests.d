@@ -432,5 +432,7 @@ unittest
     assertInt("o = {x: 9}; return o.x;", 9);
     assertInt("o = {x: 9}; o.y = 1; return o.x + o.y;", 10);
     assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
+
+    assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
 }
 

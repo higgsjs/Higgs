@@ -495,10 +495,9 @@ void opCall(Interp interp, IRInstr instr)
     auto wThis = interp.getWord(thisIdx);
     auto tThis = interp.getType(thisIdx);
 
-    // TODO: proper closure object
-    // Get the function object
-    auto ptr = interp.getWord(closIdx).ptrVal;
-    auto fun = cast(IRFunction)ptr;
+    // Get the function object from the closure
+    auto closPtr = interp.getWord(closIdx).ptrVal;
+    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
 
     assert (
         fun !is null, 
@@ -532,17 +531,15 @@ void opCall(Interp interp, IRInstr instr)
     interp.ip = fun.entryBlock.firstInstr;
 }
 
-/// JavaScript new operator
-void opNew(Interp interp, IRInstr instr)
+/// JavaScript new operator (constructor call)
+void opCallNew(Interp interp, IRInstr instr)
 {
     auto closIdx = instr.args[0].localIdx;
     auto numArgs = instr.args[1].intVal;
 
-    // TODO: proper closure object
-    // Get the function object
-    auto ptr = interp.getWord(closIdx).ptrVal;
-    auto fun = cast(IRFunction)ptr;
-
+    // Get the function object from the closure
+    auto closPtr = interp.getWord(closIdx).ptrVal;
+    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
     assert (
         fun !is null, 
         "null IRFunction pointer"
@@ -671,24 +668,94 @@ void opGetRet(Interp interp, IRInstr instr)
     );
 }
 
+/// Get the callee's return value after a constructor call
+void opGetRetNew(Interp interp, IRInstr instr)
+{
+    // FIXME: test if ret value is undef
+
+    // Read and pop the value
+    auto wRet = interp.getWord(0);
+    auto tRet = interp.getType(0);
+    interp.pop(1);
+
+    interp.setSlot(
+        instr.outSlot, 
+        wRet,
+        tRet
+    );
+}
+
 void opNewClos(Interp interp, IRInstr instr)
 {
     auto fun = instr.args[0].fun;
 
+
+    // TODO: num clos cells, can get this from fun object!
+    // TODO
+
+
+    // Allocate the prototype object
+    auto objPtr = newObj(
+        interp, 
+        &instr.args[1].ptrVal, 
+        NULL.ptrVal,        // TODO: object proto
+        CLASS_INIT_SIZE,
+        0
+    );
+
+    // Allocate the closure object
+    auto closPtr = newClos(
+        interp, 
+        &instr.args[2].ptrVal, 
+        NULL.ptrVal,        // TODO: function proto
+        CLASS_INIT_SIZE,
+        1,
+        0,                  // TODO: num cells
+        fun
+    );
+
+    // Set the prototype property on the closure object
+    setProp(
+        interp, 
+        ValuePair(Word.ptrv(closPtr), Type.REFPTR),
+        ValuePair(Word.ptrv(getString(interp, "prototype")), Type.STRING),
+        ValuePair(Word.ptrv(objPtr), Type.REFPTR)
+    );
+
+
+    /*
     // TODO: create a proper closure
     interp.setSlot(
         instr.outSlot,
         Word.ptrv(cast(rawptr)fun),
         Type.RAWPTR
     );
+    */
+
+    
+    // Output a pointer to the closure
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(closPtr),
+        Type.REFPTR
+    );
+    
 }
 
-refptr newObj(
+/// Expression evaluation delegate function
+alias refptr delegate(
+    Interp interp, 
+    refptr classPtr, 
+    uint32 allocNumProps
+) ObjAllocFn;
+
+refptr newExtObj(
     Interp interp, 
     refptr* ppClass, 
     refptr protoPtr, 
-    uint32 classInitSize, 
-    uint32 allocNumProps
+    uint32 classInitSize,
+    uint32 allocNumProps,
+    ObjAllocFn objAllocFn
 )
 {
     auto classPtr = *ppClass;
@@ -712,13 +779,63 @@ refptr newObj(
         allocNumProps = max(class_get_num_props(classPtr), allocNumProps);
     }
 
-    // Allocate the object
-    auto objPtr = obj_alloc(interp, allocNumProps);
-    obj_set_type(objPtr, 0);
-    obj_set_class(objPtr, classPtr);
-    obj_set_next(objPtr, null);
+    // Allocate and initialize the object
+    auto objPtr = objAllocFn(interp, classPtr, allocNumProps);
 
     return objPtr;
+}
+
+refptr newObj(
+    Interp interp, 
+    refptr* ppClass, 
+    refptr protoPtr, 
+    uint32 classInitSize,
+    uint32 allocNumProps
+)
+{
+    return newExtObj(
+        interp, 
+        ppClass, 
+        protoPtr, 
+        classInitSize,
+        allocNumProps,
+        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
+        {
+            auto objPtr = obj_alloc(interp, allocNumProps);
+            obj_set_type(objPtr, 0);
+            obj_set_class(objPtr, classPtr);
+            obj_set_next(objPtr, null);
+            return objPtr;
+        }
+    );
+}
+
+refptr newClos(
+    Interp interp, 
+    refptr* ppClass, 
+    refptr protoPtr, 
+    uint32 classInitSize,
+    uint32 allocNumProps,
+    uint32 allocNumCells,
+    IRFunction fun
+)
+{
+    return newExtObj(
+        interp, 
+        ppClass, 
+        protoPtr, 
+        classInitSize,
+        allocNumProps,
+        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
+        {
+            auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
+            obj_set_type(objPtr, 0);
+            obj_set_class(objPtr, classPtr);
+            obj_set_next(objPtr, null);
+            clos_set_fptr(objPtr, cast(rawptr)fun);
+            return objPtr;
+        }
+    );
 }
 
 void setProp(Interp interp, ValuePair obj, ValuePair prop, ValuePair val)
