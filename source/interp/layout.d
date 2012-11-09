@@ -90,7 +90,7 @@ Generates:
 - layout_get_field(ptr[,idx])
 - layout_set_field(ptr[,idx])
 */
-string genLayout(string name, Field[] fields)
+string genLayout(string name, LayoutType type, Field[] fields)
 {
     auto output = appender!string();
 
@@ -258,6 +258,7 @@ string genLayout(string name, Field[] fields)
     {
         output.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj," ~ field.name ~ ");\n");
     }
+    output.put("    " ~ name ~ "_set_type(obj," ~ to!string(type) ~ ");\n");
     output.put("    return obj;\n");
     output.put("}\n\n");
 
@@ -265,11 +266,25 @@ string genLayout(string name, Field[] fields)
     return output.data;
 }
 
+/**
+Layout type id enumeration
+*/
+alias uint32 LayoutType;
+enum : LayoutType
+{
+    LAYOUT_STR,
+    LAYOUT_STRTBL,
+    LAYOUT_OBJ,
+    LAYOUT_CLOS,
+    LAYOUT_CLASS
+}
+
 // String layout
 mixin(
 //pragma(msg,
 genLayout(
     "str",
+    LAYOUT_STR,
     [
         Field("type", "uint32"),
         Field("len" , "uint32"),
@@ -283,6 +298,7 @@ mixin(
 //pragma(msg, 
 genLayout(
     "strtbl",
+    LAYOUT_STRTBL,
     [
         // Layout type
         Field("type", "uint32"),
@@ -303,6 +319,7 @@ mixin(
 //pragma(msg, 
 genLayout(
     "obj",
+    LAYOUT_OBJ,
     [
         // Layout type
         Field("type", "uint32"),
@@ -332,6 +349,7 @@ mixin(
 //pragma(msg, 
 genLayout(
     "clos",
+    LAYOUT_CLOS,
     [
         // Layout type
         Field("type", "uint32"),
@@ -370,6 +388,7 @@ mixin(
 //pragma(msg, 
 genLayout(
     "class",
+    LAYOUT_CLASS,
     [
         // Layout type
         Field("type", "uint32"),
@@ -400,54 +419,4 @@ genLayout(
         Field("prop_idx", "uint32", "len"),
     ]
 ));
-
-/*
-Need layouts for:
-- class desc
-- array table
-- closure cell
-
-Objects:
-- Allocation sites correspond to equivalence classes
-- Can have multiple layouts for objects of a given class
-  - Preferred layout used on allocation
-
-How will we modify objects? Only to add fields?
-- If so, objects only need a numFields value, next pointer
-  - Next points to reallocated layout, if any
-- Class descriptor can provide list of fields w/ types, offsets ***
-- If object has no slot for field, reallocate object, set next pointer
-
-Arrays, functions as objects?
-- Different header bits?
-- Could have extended separate payload section
-
-Class Descriptor Layout:
--------------------------
-Type id (32 bits)
--------------------------
-Num fields (32 bits)
--------------------------
-Class id / origin location (64 bits)
--------------------------
-array type | woffset | toffset (4+ words)
--------------------------
-* Field name | type desc | woffset | toffset (4+ words)
-
-Object prototype (__proto__) can be slot 0
-- Has associated type info in class desc
-
-Functions can use object slots for fn ptr, closure vars as well?
-- fn ptr slot (raw ptr)
-- fixed number of closure vars (can be named)
-
-Arrays?
-- ISSUE: layout needs to be able to compute its own size
-- ISSUE: need length, capacity values
-- ISSUE: need many array slots
-- Class desc needs:
-  array type
-  array offset
-- Array needs custom layout
-*/
 

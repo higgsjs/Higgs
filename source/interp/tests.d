@@ -451,14 +451,35 @@ unittest
 
     assertInt(
         "
-        function f()
-        {
-        }
+        function f() {}
         f.prototype.x = 9;
         o = new f();
         return o.x;
         ",
         9
+    );
+
+    assertInt(
+        "
+        function f() {}
+        f.prototype.x = 9;
+        f.prototype.y = 1;
+        o = new f();
+        return o.x;
+        ",
+        9
+    );
+
+    assertInt(
+        "
+        function f() {}
+        f.prototype.x = 9;
+        f.prototype.y = 1;
+        f.prototype.z = 2;
+        o = new f();
+        return o.x + o.y + o.z;
+        ",
+        12
     );
 }
 

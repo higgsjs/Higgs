@@ -717,7 +717,7 @@ void opNewClos(Interp interp, IRInstr instr)
         &instr.args[1].ptrVal, 
         NULL.ptrVal,        // TODO: object proto
         CLASS_INIT_SIZE,
-        2
+        0
     );
 
     // Allocate the closure object
@@ -726,7 +726,7 @@ void opNewClos(Interp interp, IRInstr instr)
         &instr.args[2].ptrVal, 
         NULL.ptrVal,        // TODO: function proto
         CLASS_INIT_SIZE,
-        2,
+        1,
         0,                  // TODO: num cells
         fun
     );
@@ -770,7 +770,6 @@ refptr newExtObj(
     {
         // Lazily allocate the class
         classPtr = class_alloc(interp, classInitSize);
-        class_set_type(classPtr, 0);
         class_set_id(classPtr, 0);
         class_set_num_props(classPtr, 0);
         class_set_next(classPtr, null);
@@ -812,7 +811,7 @@ refptr newObj(
         delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
         {
             auto objPtr = obj_alloc(interp, allocNumProps);
-            obj_set_type(objPtr, 0);
+            obj_set_next(objPtr, null);
             return objPtr;
         }
     );
@@ -837,7 +836,7 @@ refptr newClos(
         delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
         {
             auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
-            obj_set_type(objPtr, 0);
+            obj_set_next(objPtr, null);
             clos_set_fptr(objPtr, cast(rawptr)fun);
             return objPtr;
         }
@@ -846,10 +845,21 @@ refptr newClos(
 
 void setProp(Interp interp, ValuePair obj, ValuePair prop, ValuePair val)
 {
+    // TODO: handle null, undef as object
+
     if (obj.type != Type.REFPTR)
         return;
 
     auto objPtr = obj.word.ptrVal;
+
+    // Follow the next link chain
+    for (;;)
+    {
+        auto nextPtr = obj_get_next(objPtr);
+        if (nextPtr is null)
+            break;
+         objPtr = nextPtr;
+    }
 
     // Get the number of class properties
     auto classPtr = obj_get_class(objPtr);
@@ -895,12 +905,47 @@ void setProp(Interp interp, ValuePair obj, ValuePair prop, ValuePair val)
     // If the object needs to be extended
     if (propIdx >= objLen)
     {
-        writefln("propIdx = %s, objLen = %s", propIdx, objLen);
-        assert (false, "object extension required");
+        //writeln("*** extending object ***");
 
-        // TODO: need to handle objects, closures and arrays
+        auto objType = obj_get_type(objPtr);
 
-        //objPtr = newObj
+        refptr newObj;
+
+        // Switch on the layout type
+        switch (objType)
+        {
+            case LAYOUT_OBJ:
+            newObj = obj_alloc(interp, objLen+1);
+            break;
+
+            case LAYOUT_CLOS:
+            auto numCells = clos_get_num_cells(objPtr);
+            newObj = clos_alloc(interp, objLen+1, numCells);
+            clos_set_fptr(newObj, clos_get_fptr(objPtr));
+            for (size_t i = 0; i < numCells; ++i)
+                clos_set_cell(newObj, i, clos_get_cell(objPtr, i));
+            break;
+
+            default:
+            assert (false, "unhandled object type");
+        }
+
+        obj_set_class(newObj, classPtr);
+        obj_set_next (newObj, null);
+        obj_set_proto(newObj, obj_get_proto(objPtr));
+
+        // Copy over the property words and types
+        for (size_t i = 0; i < objLen; ++i)
+        {
+            obj_set_word(newObj, i, obj_get_word(objPtr, i));
+            obj_set_type(newObj, i, obj_get_type(objPtr, i));
+        }
+
+        // Set the next pointer in the old object
+        obj_set_next(objPtr, newObj);
+
+        // Update the object pointer
+        objPtr = newObj;
     }
 
     // Set the value and its type in the object
@@ -913,6 +958,15 @@ ValuePair getProp(Interp interp, ValuePair obj, ValuePair prop)
     // TODO: toObject?
     assert (obj.type == Type.REFPTR, "base should have object type");
     auto objPtr = obj.word.ptrVal;
+
+    // Follow the next link chain
+    for (;;)
+    {
+        auto nextPtr = obj_get_next(objPtr);
+        if (nextPtr is null)
+            break;
+         objPtr = nextPtr;
+    }
 
     assert (prop.type == Type.STRING, "string type should be string");
     auto propStr = prop.word.ptrVal;
