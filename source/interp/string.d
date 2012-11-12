@@ -47,23 +47,6 @@ immutable uint32 STR_TBL_MAX_LOAD_NUM = 3;
 immutable uint32 STR_TBL_MAX_LOAD_DENOM = 5;
 
 /**
-Allocate and initialize the string table
-*/
-void allocStrTable(Interp interp)
-{
-    auto strTbl = strtbl_alloc(interp, STR_TBL_INIT_SIZE);
-
-    strtbl_set_type(strTbl, 0);
-    strtbl_set_num_strs(strTbl, 0);
-
-    // Initialize the string array
-    for (size_t i = 0; i < STR_TBL_INIT_SIZE; ++i)
-        strtbl_set_str(strTbl, i, null);
-
-    interp.strTbl = strTbl;
-}
-
-/**
 Compute the hash value for a given string object
 */
 uint32 compStrHash(refptr str)

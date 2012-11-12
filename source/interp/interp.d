@@ -272,13 +272,13 @@ class Interp
         globalObj = interp.ops.newObj(
             this, 
             &globalClass, 
-            NULL.ptrVal, // FIXME
+            NULL.ptrVal, // FIXME: object prototype object
             GLOBAL_OBJ_INIT_SIZE,
             GLOBAL_OBJ_INIT_SIZE
         );
 
         // Allocate and initialize the string table
-        allocStrTable(this);
+        strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
     }
 
     /**

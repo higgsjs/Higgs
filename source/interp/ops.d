@@ -771,8 +771,6 @@ refptr newExtObj(
         // Lazily allocate the class
         classPtr = class_alloc(interp, classInitSize);
         class_set_id(classPtr, 0);
-        class_set_num_props(classPtr, 0);
-        class_set_next(classPtr, null);
 
         // Update the instruction's class pointer
         *ppClass = classPtr;
@@ -788,7 +786,6 @@ refptr newExtObj(
 
     // Initialize the object
     obj_set_class(objPtr, classPtr);
-    obj_set_next(objPtr, null);
     obj_set_proto(objPtr, protoPtr);
 
     return objPtr;
@@ -811,7 +808,6 @@ refptr newObj(
         delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
         {
             auto objPtr = obj_alloc(interp, allocNumProps);
-            obj_set_next(objPtr, null);
             return objPtr;
         }
     );
@@ -836,7 +832,6 @@ refptr newClos(
         delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
         {
             auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
-            obj_set_next(objPtr, null);
             clos_set_fptr(objPtr, cast(rawptr)fun);
             return objPtr;
         }
@@ -931,7 +926,6 @@ void setProp(Interp interp, ValuePair obj, ValuePair prop, ValuePair val)
         }
 
         obj_set_class(newObj, classPtr);
-        obj_set_next (newObj, null);
         obj_set_proto(newObj, obj_get_proto(objPtr));
 
         // Copy over the property words and types

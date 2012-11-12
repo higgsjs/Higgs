@@ -45,18 +45,20 @@ import interp.interp;
 
 alias ubyte*    rawptr;
 alias ubyte*    refptr;
-
 alias byte      int8;
 alias short     int16;
 alias int       int32;
 alias long      int64;
-
 alias ubyte     uint8;
 alias ushort    uint16;
 alias uint      uint32;
 alias ulong     uint64;
-
 alias double    float64;
+
+/**
+Layout type id
+*/
+alias uint32 LayoutType;
 
 /**
 Layout field descriptor
@@ -69,6 +71,8 @@ struct Field
 
     string szFieldName = "";
 
+    string initVal = "";
+
     Field* szField = null;
 
     bool isSzField = false;
@@ -76,6 +80,91 @@ struct Field
     size_t size = 0;
 
     string sizeStr = "";
+}
+
+/**
+Layout descriptor
+*/
+struct Layout
+{
+    string name;
+
+    string baseName;
+
+    Field[] fields;
+
+    LayoutType type;
+}
+
+/**
+Compile-time mixin function to generate code for all layouts at once
+*/
+string genLayouts(Layout[] layouts)
+{
+    // Find the base of a given layout
+    Layout findBase(Layout* layout, size_t curIdx)
+    {
+        for (size_t j = 0; j < curIdx; ++j)
+        {
+            if (layouts[j].name == layout.baseName)
+                return layouts[j];
+        }
+
+        assert (
+            false, 
+            "base layout not found: \"" ~ layout.baseName ~ "\""
+        );
+    }
+
+    // Next layout id to be allocated
+    LayoutType nextLayoutId = 1;
+
+    auto output = appender!string();
+
+    // For each layout to generate
+    for (size_t i = 0; i < layouts.length; ++i)
+    {
+        Layout* layout = &layouts[i];
+
+        // If this layout has a base
+        if (layout.baseName !is null)
+        {
+            auto baseLayout = findBase(layout, i);
+
+            // Copy the base layout fields, except the type field
+            Field[] baseFields = [];
+            for (size_t j = 1; j < baseLayout.fields.length; ++j)
+            {
+                auto field = baseLayout.fields[j];
+                baseFields ~= Field(
+                    field.name, 
+                    field.type, 
+                    field.szFieldName,
+                    field.initVal
+                );
+            }
+
+            // Prepend the base fields to this layout's fields
+            layout.fields = baseFields ~ layout.fields;
+        }
+
+        // Assign a type id to the layout
+        layout.type = nextLayoutId++;
+
+        // Add the type as the first field
+        auto typeField = Field(
+            "type",
+            "LayoutType",
+            "",
+            to!string(layout.type)
+        );
+        layout.fields = typeField ~ layout.fields;
+
+        // Generate code for this layout
+        output.put(genLayout(*layout));
+    }
+
+    return output.data;
 }
 
 /**
@@ -90,14 +179,23 @@ Generates:
 - layout_get_field(ptr[,idx])
 - layout_set_field(ptr[,idx])
 */
-string genLayout(string name, LayoutType type, Field[] fields)
+string genLayout(Layout layout)
 {
     auto output = appender!string();
+
+    auto name = layout.name;
+    auto fields = layout.fields;
 
     auto pref = name ~ "_";
     auto ofsPref = pref ~ "ofs_";
     auto getPref = pref ~ "get_";
     auto setPref = pref ~ "set_";
+
+    // Define the layout type constant
+    output.put(
+        "const LayoutType LAYOUT_" ~ toUpper(name) ~ " = " ~ 
+        to!string(layout.type) ~ ";\n\n"
+    );
 
     // For each field
     for (size_t i = 0; i < fields.length; ++i)
@@ -115,8 +213,10 @@ string genLayout(string name, LayoutType type, Field[] fields)
             field.size = 64;
         else if (field.type == "refptr" || field.type == "rawptr")
             field.size = 64;
+        else if (field.type == "LayoutType")
+            field.size = LayoutType.sizeof;
         else
-            assert (false, "unsupported field type");
+            assert (false, "unsupported field type " ~ field.type);
         field.sizeStr = to!string(field.size);
 
         // Find the size field
@@ -130,12 +230,19 @@ string genLayout(string name, LayoutType type, Field[] fields)
                 {
                     field.szField = prev;
                     prev.isSzField = true;
+
+                    // Ensure the size field has no init value
+                    assert (
+                        prev.initVal == "",
+                        "cannot specify init val for size fields"
+                    );
                 }
             }
 
             assert (
                 field.szField !is null, 
-                "size field not found for " ~ field.name
+                "size field \"" ~ field.szFieldName ~ "\" not found for \"" ~ 
+                field.name ~ "\""
             );
         }
     }
@@ -258,7 +365,21 @@ string genLayout(string name, LayoutType type, Field[] fields)
     {
         output.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj," ~ field.name ~ ");\n");
     }
-    output.put("    " ~ name ~ "_set_type(obj," ~ to!string(type) ~ ");\n");
+    foreach (i, field; fields)
+    {
+        if (field.initVal == "")
+            continue;
+
+        if (field.szField)
+        {
+            output.put("    for (size_t i = 0; i < " ~ field.szFieldName ~ "; ++i)\n");
+            output.put("        " ~ name ~ "_set_" ~ field.name ~ "(obj, i," ~ field.initVal ~");\n");
+        }
+        else
+        {
+            output.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj, " ~ field.initVal ~");\n");
+        }
+    }
     output.put("    return obj;\n");
     output.put("}\n\n");
 
@@ -266,157 +387,143 @@ string genLayout(string name, LayoutType type, Field[] fields)
     return output.data;
 }
 
-/**
-Layout type id enumeration
-*/
-alias uint32 LayoutType;
-enum : LayoutType
-{
-    LAYOUT_STR,
-    LAYOUT_STRTBL,
-    LAYOUT_OBJ,
-    LAYOUT_CLOS,
-    LAYOUT_CLASS
-}
-
-// String layout
 mixin(
 //pragma(msg,
-genLayout(
-    "str",
-    LAYOUT_STR,
-    [
-        Field("type", "uint32"),
-        Field("len" , "uint32"),
-        Field("hash", "uint32"),
-        Field("data", "uint16", "len")
-    ]
-));
+genLayouts([
 
-// String table layout
-mixin(
-//pragma(msg, 
-genLayout(
-    "strtbl",
-    LAYOUT_STRTBL,
-    [
-        // Layout type
-        Field("type", "uint32"),
+    // String layout
+    Layout(
+        "str",
+        null,
+        [
+            // String length
+            Field("len" , "uint32"),
 
-        // Capacity
-        Field("len" , "uint32"),
+            // Hash code
+            Field("hash", "uint32"),
 
-        // Number of strings
-        Field("num_strs" , "uint32"),
+            // UTF-16 character data
+            Field("data", "uint16", "len")
+        ]
+    ),
 
-        // Array of strings
-        Field("str", "refptr", "len"),
-    ]
-));
+    // String table layout (for hash consing)
+    Layout(
+        "strtbl",
+        null,
+        [
+            // Capacity
+            Field("len" , "uint32"),
 
-// Object layout
-mixin(
-//pragma(msg, 
-genLayout(
-    "obj",
-    LAYOUT_OBJ,
-    [
-        // Layout type
-        Field("type", "uint32"),
+            // Number of strings
+            Field("num_strs" , "uint32", "", "0"),
 
-        // Number of fields
-        Field("len" , "uint32"),
+            // Array of strings
+            Field("str", "refptr", "len", "null"),
+        ]
+    ),
 
-        // Class reference
-        Field("class", "refptr"),
+    // Object layout
+    Layout(
+        "obj",
+        null,
+        [
+            // Number of fields
+            Field("len" , "uint32"),
 
-        // Next object reference
-        Field("next", "refptr"),
+            // Class reference
+            Field("class", "refptr"),
 
-        // Prototype reference
-        Field("proto", "refptr"),
+            // Next object reference
+            Field("next", "refptr", "", "null"),
 
-        // Property words
-        Field("word", "uint64", "len"),
+            // Prototype reference
+            Field("proto", "refptr"),
 
-        // Property types
-        Field("type", "uint8", "len")
-    ]
-));
+            // Property words
+            Field("word", "uint64", "len"),
 
-// Closure layout (extends object)
-mixin(
-//pragma(msg, 
-genLayout(
-    "clos",
-    LAYOUT_CLOS,
-    [
-        // Layout type
-        Field("type", "uint32"),
+            // Property types
+            Field("type", "uint8", "len")
+        ]
+    ),
 
-        // Number of fields
-        Field("len" , "uint32"),
+    // Function/closure layout (extends object)
+    Layout(
+        "clos",
+        "obj",
+        [
+            // Function code pointer
+            Field("fptr", "rawptr"),
 
-        // Class reference
-        Field("class", "refptr"),
+            // Number of closure cells
+            Field("num_cells" , "uint32"),
 
-        // Next object reference
-        Field("next", "refptr"),
+            // Closure cell pointers
+            Field("cell", "refptr", "num_cells"),
+        ]
+    ),
 
-        // Prototype reference
-        Field("proto", "refptr"),
+    // Array layout (extends object)
+    Layout(
+        "arr",
+        "obj",
+        [
+            // Array table reference
+            Field("tbl" , "refptr"),
+        ]
+    ),
 
-        // Property words
-        Field("word", "uint64", "len"),
+    // Array table layout (contains array elements)
+    Layout(
+        "arrtbl",
+        null,
+        [
+            // Array capacity
+            Field("cap" , "uint32"),
 
-        // Property types
-        Field("type", "uint8", "len"),
+            // Number of elements contained
+            Field("len" , "uint32"),
 
-        // Function code pointer
-        Field("fptr", "rawptr"),
+            // Element words
+            Field("word", "uint64", "cap"),
 
-        // Number of closure cells
-        Field("num_cells" , "uint32"),
+            // Element types
+            Field("type", "uint8", "cap")
+        ]
+    ),
 
-        // Closure cell pointers
-        Field("cell", "refptr", "num_cells"),
-    ]
-));
+    // Class layout
+    Layout(
+        "class",
+        null,
+        [
+            // Class id / source origin location
+            Field("id" , "uint32"),
 
-// Class descriptor layout
-mixin(
-//pragma(msg, 
-genLayout(
-    "class",
-    LAYOUT_CLASS,
-    [
-        // Layout type
-        Field("type", "uint32"),
+            // Number of properties in class
+            Field("num_props" , "uint32", "", "0"),
 
-        // Class id / source origin location
-        Field("id" , "uint32"),
+            // Capacity, supported number of fields
+            Field("len" , "uint32"),
 
-        // Number of properties in class
-        Field("num_props" , "uint32"),
+            // Next class version reference
+            // Used if class is reallocated
+            Field("next", "refptr", "", "null"),
 
-        // Capacity, supported number of fields
-        Field("len" , "uint32"),
+            // TODO
+            // array element type
 
-        // Next class version reference
-        // Used if class is reallocated
-        Field("next", "refptr"),
+            // Property names
+            Field("prop_name", "refptr", "len"),
 
-        // TODO
-        // array element type
+            // Property types
+            Field("prop_type", "uint64", "len"),
 
-        // Property names
-        Field("prop_name", "refptr", "len"),
+            // Property indices
+            Field("prop_idx", "uint32", "len"),
+        ]
+    ),
 
-        // Property types
-        Field("prop_type", "uint64", "len"),
-
-        // Property indices
-        Field("prop_idx", "uint32", "len"),
-    ]
-));
+]));
 
