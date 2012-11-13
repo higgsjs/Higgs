@@ -581,10 +581,12 @@ Opcode GET_RET_NEW = { "get_ret_new", true, [OpArg.LOCAL], &opGetRetNew };
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.REFPTR, OpArg.REFPTR], &opNewClos };
 
 // Create new empty object
-// <dst_local> = NEW_OBJECT <proto_local> <num_props>
-Opcode NEW_OBJECT = { "new_object", true, [OpArg.LOCAL, OpArg.INT, OpArg.REFPTR], &opNewObj };
+// <dst_local> = NEW_OBJECT <num_props>
+Opcode NEW_OBJECT = { "new_object", true, [OpArg.INT, OpArg.REFPTR], &opNewObj };
 
-//NEW_ARRAY
+// Create new uninitialized array
+// <dst_local> = NEW_ARRAY <num_elems>
+Opcode NEW_ARRAY = { "new_array", true, [OpArg.INT, OpArg.REFPTR], &opNewArr };
 
 // SET_PROP <obj_local> <prop_local> <src_local>
 Opcode SET_PROP = { "set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &opSetProp };

@@ -95,7 +95,7 @@ refptr getTableStr(Interp interp, refptr str)
     auto strTbl = interp.strTbl;
 
     // Get the size of the string table
-    auto tblSize = strtbl_get_len(strTbl);
+    auto tblSize = strtbl_get_cap(strTbl);
 
     // Get the hash code from the string object
     auto hashCode = str_get_hash(str);

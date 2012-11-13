@@ -412,14 +412,14 @@ genLayouts([
         "strtbl",
         null,
         [
-            // Capacity
-            Field("len" , "uint32"),
+            // Capacity, total number of slots
+            Field("cap" , "uint32"),
 
             // Number of strings
             Field("num_strs" , "uint32", "", "0"),
 
             // Array of strings
-            Field("str", "refptr", "len", "null"),
+            Field("str", "refptr", "cap", "null"),
         ]
     ),
 
@@ -428,8 +428,8 @@ genLayouts([
         "obj",
         null,
         [
-            // Number of fields
-            Field("len" , "uint32"),
+            // Capacity, number of property slots
+            Field("cap" , "uint32"),
 
             // Class reference
             Field("class", "refptr"),
@@ -441,10 +441,10 @@ genLayouts([
             Field("proto", "refptr"),
 
             // Property words
-            Field("word", "uint64", "len"),
+            Field("word", "uint64", "cap"),
 
             // Property types
-            Field("type", "uint8", "len")
+            Field("type", "uint8", "cap")
         ]
     ),
 
@@ -471,6 +471,9 @@ genLayouts([
         [
             // Array table reference
             Field("tbl" , "refptr"),
+
+            // Number of elements contained
+            Field("len" , "uint32"),
         ]
     ),
 
@@ -481,9 +484,6 @@ genLayouts([
         [
             // Array capacity
             Field("cap" , "uint32"),
-
-            // Number of elements contained
-            Field("len" , "uint32"),
 
             // Element words
             Field("word", "uint64", "cap"),
@@ -501,27 +501,28 @@ genLayouts([
             // Class id / source origin location
             Field("id" , "uint32"),
 
+            // Capacity, total number of property slots
+            Field("cap" , "uint32"),
+
             // Number of properties in class
             Field("num_props" , "uint32", "", "0"),
-
-            // Capacity, supported number of fields
-            Field("len" , "uint32"),
 
             // Next class version reference
             // Used if class is reallocated
             Field("next", "refptr", "", "null"),
 
-            // TODO
-            // array element type
+            // Array element type
+            Field("arr_type", "rawptr", "", "null"),
 
             // Property names
-            Field("prop_name", "refptr", "len"),
+            Field("prop_name", "refptr", "cap", "null"),
 
             // Property types
-            Field("prop_type", "uint64", "len"),
+            // Pointers to host type descriptor objects
+            Field("prop_type", "rawptr", "cap", "null"),
 
             // Property indices
-            Field("prop_idx", "uint32", "len"),
+            Field("prop_idx", "uint32", "cap"),
         ]
     ),
 

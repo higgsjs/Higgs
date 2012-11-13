@@ -1176,27 +1176,49 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         ));
     }
 
-    /*
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
-        // TODO
+        // Create the array
+        auto arrInstr = ctx.addInstr(new IRInstr(&NEW_ARRAY));
+        arrInstr.outSlot = ctx.getOutSlot();
+        arrInstr.args[0].intVal = arrayExpr.exprs.length;
+        arrInstr.args[1].ptrVal = null;
+
+        auto idxTmp = ctx.allocTemp();
+        auto valTmp = ctx.allocTemp();
+
+        // Evaluate the property values
+        for (size_t i = 0; i < arrayExpr.exprs.length; ++i)
+        {
+            auto valExpr = arrayExpr.exprs[i];
+
+            ctx.addInstr(IRInstr.intCst(
+                idxTmp,
+                i
+            ));
+
+            auto valCtx = ctx.subCtx(true, valTmp);
+            exprToIR(valExpr, valCtx);
+            ctx.merge(valCtx);
+
+            // Set the property on the object
+            ctx.addInstr(new IRInstr(
+                &SET_PROP,
+                NULL_LOCAL,
+                arrInstr.outSlot,
+                idxTmp,
+                valCtx.getOutSlot()
+            ));
+        }
     }
-    */
 
     else if (auto objExpr = cast(ObjectExpr)expr)
     {
-        // TODO: use the object prototype
-        auto nullInstr = ctx.addInstr(new IRInstr(
-            &SET_NULL, 
-            ctx.allocTemp()
-        ));
-
         // Create the object
         auto objInstr = ctx.addInstr(new IRInstr(&NEW_OBJECT));
         objInstr.outSlot = ctx.getOutSlot();
-        objInstr.args[0].localIdx = nullInstr.outSlot;
-        objInstr.args[1].intVal = objExpr.names.length;
-        objInstr.args[2].ptrVal = null;
+        objInstr.args[0].intVal = objExpr.names.length;
+        objInstr.args[1].ptrVal = null;
 
         auto strTmp = ctx.allocTemp();
         auto valTmp = ctx.allocTemp();

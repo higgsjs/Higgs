@@ -483,3 +483,17 @@ unittest
     );
 }
 
+/// Array literals, array operations
+unittest
+{
+    
+    assertInt("a = []; return 0", 0);
+    assertInt("a = [1]; return 0", 0);
+    assertInt("a = [1,2]; return 0", 0);
+    assertInt("a = [1,2]; return a[0]", 1);
+    assertInt("a = [1,2]; a[0] = 3; return a[0]", 3);
+    assertInt("a = [1,2]; a[3] = 4; return a[1]", 2);
+    assertInt("a = [1,2]; a[3] = 4; return a[3]", 4);
+    assertInt("a = [1,2]; return a[3]? 1:0;", 0);
+}
+
