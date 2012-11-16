@@ -454,28 +454,25 @@ void opCmpLt(Interp interp, IRInstr instr)
 
 void opJump(Interp interp, IRInstr instr)
 {
-    auto block = instr.args[0].block;
-    interp.ip = block.firstInstr;
+    interp.ip = instr.target.firstInstr;
 }
 
 void opJumpTrue(Interp interp, IRInstr instr)
 {
     auto valIdx = instr.args[0].localIdx;
-    auto block = instr.args[1].block;
     auto wVal = interp.getWord(valIdx);
 
     if (wVal == TRUE)
-        interp.ip = block.firstInstr;
+        interp.ip = instr.target.firstInstr;
 }
 
 void opJumpFalse(Interp interp, IRInstr instr)
 {
     auto valIdx = instr.args[0].localIdx;
-    auto block = instr.args[1].block;
     auto wVal = interp.getWord(valIdx);
 
     if (wVal == FALSE)
-        interp.ip = block.firstInstr;
+        interp.ip = instr.target.firstInstr;
 }
 
 void opSetArg(Interp interp, IRInstr instr)

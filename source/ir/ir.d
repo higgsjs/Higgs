@@ -272,9 +272,6 @@ IR instruction
 */
 class IRInstr : IdObject
 {
-    /// Maximum number of instruction arguments
-    immutable int MAX_ARGS = 3;
-
     /// Instruction argument
     union Arg
     {
@@ -283,7 +280,6 @@ class IRInstr : IdObject
         ubyte* ptrVal;
         wstring stringVal;
         LocalIdx localIdx;
-        IRBlock block;
         IRFunction fun;
     }
 
@@ -291,17 +287,20 @@ class IRInstr : IdObject
     Opcode* opcode;
 
     /// Instruction arguments
-    Arg[MAX_ARGS] args;
+    Arg[] args;
 
     /// Output local slot
     LocalIdx outSlot = NULL_LOCAL;
-    
-    /// Previous and next instructions
-    IRInstr prev;
-    IRInstr next;
+
+    /// Branch target block (may be null)
+    IRBlock target;
 
     /// Parent function
     IRFunction fun;
+
+    /// Previous and next instructions (linked list)
+    IRInstr prev;
+    IRInstr next;
 
     this(Opcode* opcode)
     {
@@ -321,9 +320,7 @@ class IRInstr : IdObject
 
         this.opcode = opcode;
         this.outSlot = outSlot;
-        this.args[0].localIdx = arg0;
-        this.args[1].localIdx = arg1;
-        this.args[2].localIdx = arg2;
+        this.args = [Arg(arg0), Arg(arg1), Arg(arg2)];
     }
 
     /// Binary constructor
@@ -338,8 +335,7 @@ class IRInstr : IdObject
 
         this.opcode = opcode;
         this.outSlot = outSlot;
-        this.args[0].localIdx = arg0;
-        this.args[1].localIdx = arg1;
+        this.args = [Arg(arg0), Arg(arg1)];
     }
 
     /// Unary constructor
@@ -354,7 +350,7 @@ class IRInstr : IdObject
 
         this.opcode = opcode;
         this.outSlot = outSlot;
-        this.args[0].localIdx = arg0;
+        this.args = [Arg(arg0)];
     }
 
     /// No argument constructor
@@ -375,23 +371,23 @@ class IRInstr : IdObject
     {
         assert (
             opcode.output == false &&
-            opcode.argTypes.length == 2 &&
+            opcode.argTypes.length == 1 &&
             opcode.argTypes[0] == OpArg.LOCAL &&
-            opcode.argTypes[1] == OpArg.BLOCK,
+            opcode.isBranch == true,
             "invalid instruction for ctor: " ~ opcode.mnem
         );
 
         this.opcode = opcode;
-        this.args[0].localIdx = arg0;
-        this.args[1].block = block;
+        this.target = block;
+        this.args = [Arg(arg0)];
     }
 
     /// Integer constant
     static intCst(LocalIdx outSlot, long intVal)
     {
         auto cst = new this(&SET_INT);
-        cst.args[0].intVal = intVal;
         cst.outSlot = outSlot;
+        cst.args = [Arg(intVal)];
 
         return cst;
     }
@@ -400,8 +396,9 @@ class IRInstr : IdObject
     static floatCst(LocalIdx outSlot, double floatVal)
     {
         auto cst = new this(&SET_FLOAT);
-        cst.args[0].floatVal = floatVal;
         cst.outSlot = outSlot;
+        cst.args.length = 1;
+        cst.args[0].floatVal = floatVal;
 
         return cst;
     }
@@ -410,9 +407,10 @@ class IRInstr : IdObject
     static strCst(LocalIdx outSlot, wstring stringVal)
     {
         auto cst = new this(&SET_STR);
+        cst.outSlot = outSlot;
+        cst.args.length = 2;
         cst.args[0].stringVal = stringVal;
         cst.args[1].ptrVal = null;
-        cst.outSlot = outSlot;
 
         return cst;
     }
@@ -421,7 +419,7 @@ class IRInstr : IdObject
     static jump(IRBlock block)
     {
         auto jump = new this(&JUMP);
-        jump.args[0].block = block;
+        jump.target = block;
 
         return jump;
     }
@@ -445,18 +443,20 @@ class IRInstr : IdObject
             if (i > 0)
                 output ~= ", ";
 
-            switch (opcode.argTypes[i])
+            switch (opcode.getArgType(i))
             {
                 case OpArg.INT    : output ~= to!string(arg.intVal); break;
                 case OpArg.FLOAT  : output ~= to!string(arg.floatVal); break;
                 case OpArg.STRING : output ~= "\"" ~ to!string(arg.stringVal) ~ "\""; break;
                 case OpArg.LOCAL  : output ~= "$" ~ to!string(arg.localIdx); break;
-                case OpArg.BLOCK  : output ~= arg.block.getName(); break;
                 case OpArg.FUN    : output ~= "<fun:" ~ arg.fun.getName() ~ ">"; break;
                 case OpArg.REFPTR : output ~= "<ref:" ~ to!string(arg.ptrVal) ~ ">"; break;
                 default: assert (false, "unhandled arg type");
             }
         }
+
+        if (target !is null)
+            output ~= " " ~ target.getName();
 
         return output;
     }
@@ -472,7 +472,6 @@ enum OpArg
     REFPTR,
     STRING,
     LOCAL,
-    BLOCK,
     FUN
 }
 
@@ -488,6 +487,18 @@ struct OpInfo
     bool output;
     OpArg[] argTypes;
     OpFun opFun = null;
+    bool isVarArg = false;
+    bool isBranch = false;
+
+    OpArg getArgType(size_t i) immutable
+    {
+        if (i < argTypes.length)
+            return argTypes[i];
+        else if (isVarArg)
+            return OpArg.LOCAL;
+        else
+            assert (false, "invalid arg index");
+    }
 }
 
 /// Instruction type (opcode) alias
@@ -541,9 +552,9 @@ Opcode CMP_GT     = { "cmp_gt", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
 // Branching and conditional branching
-Opcode JUMP       = { "jump"      , false, [OpArg.BLOCK], &opJump };
-Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL, OpArg.BLOCK], &opJumpTrue };
-Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL, OpArg.BLOCK], &opJumpFalse };
+Opcode JUMP       = { "jump"      , false, [], &opJump, false, true };
+Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL], &opJumpTrue, false, true };
+Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL], &opJumpFalse, false, true };
 
 // SET_ARG <srcLocal> <argIdx>
 Opcode SET_ARG = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &opSetArg };
@@ -552,7 +563,7 @@ Opcode SET_ARG = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &opSetArg };
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall };
+Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall, true, true };
 
 // <dstLocal> = NEW <closLocal> <numArgs>
 // Implements the JavaScript new operator.
@@ -560,7 +571,7 @@ Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall };
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL, OpArg.INT], &opCallNew };
+Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL, OpArg.INT], &opCallNew, true, true };
 
 // PUSH_FRAME
 // On function entry, allocates/adjusts the callee's stack frame

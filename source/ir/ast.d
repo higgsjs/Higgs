@@ -349,6 +349,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                     // Create a closure of this function
                     auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
                     newClos.outSlot = ctx.getOutSlot();
+                    newClos.args.length = 3;
                     newClos.args[0].fun = subFun;
                     newClos.args[1].ptrVal = null;
                     newClos.args[2].ptrVal = null;
@@ -363,6 +364,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             // Create a closure of this function
             auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
             newClos.outSlot = bodyCtx.allocTemp();
+            newClos.args.length = 3;
             newClos.args[0].fun = subFun;
             newClos.args[1].ptrVal = null;
             newClos.args[2].ptrVal = null;
@@ -383,8 +385,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     {
         auto temp = bodyCtx.allocTemp();
         auto cstInstr = bodyCtx.addInstr(new IRInstr(&SET_UNDEF, temp));
-        auto retInstr = bodyCtx.addInstr(new IRInstr(&RET));
-        retInstr.args[0].localIdx = temp;
+        bodyCtx.addInstr(new IRInstr(&RET, NULL_LOCAL, temp));
     }
 
     /// Function to translate (reverse) local indices
@@ -676,8 +677,11 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(retStmt.expr, subCtx);
         ctx.merge(subCtx);
 
-        auto retInstr = ctx.addInstr(new IRInstr(&RET));
-        retInstr.args[0].localIdx = subCtx.getOutSlot();
+        ctx.addInstr(new IRInstr(
+            &RET,
+            NULL_LOCAL,
+            subCtx.getOutSlot()
+        ));
     }
 
     /*
@@ -717,6 +721,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             // Create a closure of this function
             auto newClos = ctx.addInstr(new IRInstr(&NEW_CLOS));
             newClos.outSlot = ctx.getOutSlot();
+            newClos.args.length = 3;
             newClos.args[0].fun = fun;
             newClos.args[1].ptrVal = null;
             newClos.args[2].ptrVal = null;
@@ -1088,6 +1093,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         for (size_t i = 0; i < argSlots.length; ++i)
         {
             auto argInstr = ctx.addInstr(new IRInstr(&SET_ARG));
+            argInstr.args.length = 2;
             argInstr.args[0].localIdx = argSlots[i];
             argInstr.args[1].intVal = i;
         }
@@ -1096,6 +1102,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // <dstLocal> = CALL <fnLocal> <thisArg> <numArgs>
         auto callInstr = ctx.addInstr(new IRInstr(&CALL));
         callInstr.outSlot = ctx.getOutSlot();
+        callInstr.args.length = 3;
         callInstr.args[0].localIdx = baseCtx.outSlot;
         callInstr.args[1].localIdx = thisSlot;
         callInstr.args[2].intVal = argExprs.length;
@@ -1126,6 +1133,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         for (size_t i = 0; i < argSlots.length; ++i)
         {
             auto argInstr = ctx.addInstr(new IRInstr(&SET_ARG));
+            argInstr.args.length = 2;
             argInstr.args[0].localIdx = argSlots[i];
             argInstr.args[1].intVal = i;
         }
@@ -1134,6 +1142,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // <dstLocal> = NEW <fnLocal> <numArgs>
         auto callInstr = ctx.addInstr(new IRInstr(&CALL_NEW));
         callInstr.outSlot = ctx.getOutSlot();
+        callInstr.args.length = 2;
         callInstr.args[0].localIdx = baseCtx.outSlot;
         callInstr.args[1].intVal = argExprs.length;
     }
@@ -1164,6 +1173,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Create the array
         auto arrInstr = ctx.addInstr(new IRInstr(&NEW_ARRAY));
         arrInstr.outSlot = ctx.getOutSlot();
+        arrInstr.args.length = 2;
         arrInstr.args[0].intVal = arrayExpr.exprs.length;
         arrInstr.args[1].ptrVal = null;
 
@@ -1200,6 +1210,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Create the object
         auto objInstr = ctx.addInstr(new IRInstr(&NEW_OBJECT));
         objInstr.outSlot = ctx.getOutSlot();
+        objInstr.args.length = 2;
         objInstr.args[0].intVal = objExpr.names.length;
         objInstr.args[1].ptrVal = null;
 
