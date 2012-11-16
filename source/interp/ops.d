@@ -475,23 +475,11 @@ void opJumpFalse(Interp interp, IRInstr instr)
         interp.ip = instr.target.firstInstr;
 }
 
-void opSetArg(Interp interp, IRInstr instr)
-{
-    auto srcIdx = instr.args[0].localIdx;
-    auto dstIdx = -(instr.args[1].intVal + 1);
-
-    auto wArg = interp.getWord(srcIdx);
-    auto tArg = interp.getType(srcIdx);
-
-    interp.wsp[dstIdx] = wArg;
-    interp.tsp[dstIdx] = tArg;
-}
-
 void opCall(Interp interp, IRInstr instr)
 {
     auto closIdx = instr.args[0].localIdx;
     auto thisIdx = instr.args[1].localIdx;
-    auto numArgs = instr.args[2].intVal;
+    //auto numArgs = instr.args[2].intVal;
 
     auto wThis = interp.getWord(thisIdx);
     auto tThis = interp.getType(thisIdx);
@@ -514,14 +502,24 @@ void opCall(Interp interp, IRInstr instr)
     // Set the caller instruction as the return address
     auto retAddr = cast(rawptr)instr;
 
-    // Push stack space for the arguments
-    interp.push(numArgs);
-
     // Push the hidden call arguments
-    interp.push(UNDEF, Type.CONST);                     // FIXME:Closure argument
-    interp.push(wThis, tThis);                          // This argument
-    interp.push(Word.intv(numArgs), Type.INT);          // Argument count
     interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
+    interp.push(Word.ptrv(closPtr), Type.REFPTR);       // Closure argument
+    interp.push(wThis, tThis);                          // This argument
+
+    auto numArgs = instr.args.length - 2;
+
+    // Push the non-hidden function arguments
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        auto argSlot = instr.args[2+i].localIdx + i + NUM_HIDDEN_ARGS;
+        auto wArg = interp.getWord(argSlot);
+        auto tArg = interp.getType(argSlot);
+        interp.push(wArg, tArg);
+    }
+
+    // Push the argument count
+    interp.push(Word.intv(numArgs), Type.INT);
 
     // Set the instruction pointer
     interp.ip = fun.entryBlock.firstInstr;
@@ -531,7 +529,6 @@ void opCall(Interp interp, IRInstr instr)
 void opCallNew(Interp interp, IRInstr instr)
 {
     auto closIdx = instr.args[0].localIdx;
-    auto numArgs = instr.args[1].intVal;
 
     // Get the function object from the closure
     auto closPtr = interp.getWord(closIdx).ptrVal;
@@ -573,14 +570,24 @@ void opCallNew(Interp interp, IRInstr instr)
     // Set the caller instruction as the return address
     auto retAddr = cast(rawptr)instr;
 
-    // Push stack space for the arguments
-    interp.push(numArgs);
-
     // Push the hidden call arguments
-    interp.push(UNDEF, Type.CONST);                     // FIXME:Closure argument
-    interp.push(Word.ptrv(thisPtr), Type.REFPTR);       // This argument
-    interp.push(Word.intv(numArgs), Type.INT);          // Argument count
     interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
+    interp.push(Word.ptrv(closPtr), Type.REFPTR);       // Closure argument
+    interp.push(Word.ptrv(thisPtr), Type.REFPTR);       // This argument
+
+    auto numArgs = instr.args.length - 1;
+
+    // Push the non-hidden function arguments
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        auto argSlot = instr.args[1+i].localIdx + i + NUM_HIDDEN_ARGS;
+        auto wArg = interp.getWord(argSlot);
+        auto tArg = interp.getType(argSlot);
+        interp.push(wArg, tArg);
+    }
+
+    // Push the argument count
+    interp.push(Word.intv(numArgs), Type.INT);
 
     // Set the instruction pointer
     interp.ip = fun.entryBlock.firstInstr;
@@ -593,7 +600,7 @@ void opPushFrame(Interp interp, IRInstr instr)
     auto numLocals = instr.fun.numLocals;
 
     // Get the number of arguments passed
-    auto numArgs = interp.getWord(1).intVal;
+    auto numArgs = interp.getWord(0).intVal;
 
     // If there are not enough arguments
     if (numArgs < numParams)
@@ -603,13 +610,12 @@ void opPushFrame(Interp interp, IRInstr instr)
         // Allocate new stack slots for the missing arguments
         interp.push(deltaArgs);
 
-        // Move the hidden arguments to the top of the stack
-        for (size_t i = 0; i < NUM_HIDDEN_ARGS; ++i)
-            interp.move(deltaArgs + i, i);
+        // Move the argument count to the top of the stack
+        interp.move(deltaArgs, 0);
 
         // Initialize the missing arguments to undefined
         for (size_t i = 0; i < deltaArgs; ++i)
-            interp.setSlot(NUM_HIDDEN_ARGS + i, UNDEF, Type.CONST);
+            interp.setSlot(1 + i, UNDEF, Type.CONST);
     }
 
     // If there are too many arguments
@@ -617,16 +623,15 @@ void opPushFrame(Interp interp, IRInstr instr)
     {
         auto deltaArgs = numArgs - numParams;
 
-        // Move the hidden arguments down
-        for (size_t i = 0; i < NUM_HIDDEN_ARGS; ++i)
-            interp.move(i, deltaArgs + i);
+        // Move the argument count down
+        interp.move(0, deltaArgs);
 
         // Remove superfluous argument slots
         interp.pop(deltaArgs);
     }
 
     // Allocate slots for the local variables
-    auto delta = numLocals - (numParams + NUM_HIDDEN_ARGS);
+    auto delta = numLocals - (numParams + NUM_HIDDEN_ARGS + 1);
     //writefln("push_frame adding %s slot", delta);
     interp.push(delta);
 }

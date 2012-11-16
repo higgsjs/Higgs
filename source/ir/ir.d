@@ -56,7 +56,7 @@ alias size_t LocalIdx;
 immutable LocalIdx NULL_LOCAL = LocalIdx.max;
 
 /// Number of hidden function arguments
-immutable size_t NUM_HIDDEN_ARGS = 4;
+immutable size_t NUM_HIDDEN_ARGS = 3;
 
 /***
 IR function
@@ -436,7 +436,7 @@ class IRInstr : IdObject
         if (opcode.argTypes.length > 0)
             output ~= " ";
 
-        for (size_t i = 0; i < opcode.argTypes.length; ++i)
+        for (size_t i = 0; i < args.length; ++i)
         {
             auto arg = args[i];
 
@@ -556,14 +556,11 @@ Opcode JUMP       = { "jump"      , false, [], &opJump, false, true };
 Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL], &opJumpTrue, false, true };
 Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL], &opJumpFalse, false, true };
 
-// SET_ARG <srcLocal> <argIdx>
-Opcode SET_ARG = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &opSetArg };
-
 // <dstLocal> = CALL <closLocal> <thisArg> <numArgs>
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall, true, true };
+Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &opCall, true, true };
 
 // <dstLocal> = NEW <closLocal> <numArgs>
 // Implements the JavaScript new operator.
@@ -571,7 +568,7 @@ Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall, tr
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL, OpArg.INT], &opCallNew, true, true };
+Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &opCallNew, true, true };
 
 // PUSH_FRAME
 // On function entry, allocates/adjusts the callee's stack frame
