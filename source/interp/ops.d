@@ -514,13 +514,8 @@ void opCall(Interp interp, IRInstr instr)
         astToIR(fun.ast, fun);
     }
 
-    // Get the return address
-    auto retAddr = cast(rawptr)instr.next;
-
-    assert (
-        retAddr !is null, 
-        "next instruction is null"
-    );
+    // Set the caller instruction as the return address
+    auto retAddr = cast(rawptr)instr;
 
     // Push stack space for the arguments
     interp.push(numArgs);
@@ -578,13 +573,8 @@ void opCallNew(Interp interp, IRInstr instr)
         astToIR(fun.ast, fun);
     }
 
-    // Get the return address
-    auto retAddr = cast(rawptr)instr.next;
-
-    assert (
-        retAddr !is null, 
-        "next instruction is null"
-    );
+    // Set the caller instruction as the return address
+    auto retAddr = cast(rawptr)instr;
 
     // Push stack space for the arguments
     interp.push(numArgs);
@@ -602,8 +592,8 @@ void opCallNew(Interp interp, IRInstr instr)
 /// Allocate/adjust the stack frame on function entry
 void opPushFrame(Interp interp, IRInstr instr)
 {
-    auto numParams = instr.args[0].intVal;
-    auto numLocals = instr.args[1].intVal;
+    auto numParams = instr.fun.params.length;
+    auto numLocals = instr.fun.numLocals;
 
     // Get the number of arguments passed
     auto numArgs = interp.getWord(1).intVal;
@@ -647,60 +637,51 @@ void opPushFrame(Interp interp, IRInstr instr)
 void opRet(Interp interp, IRInstr instr)
 {
     auto retSlot   = instr.args[0].localIdx;
-    auto raSlot    = instr.args[1].localIdx;
-    auto numLocals = instr.args[2].intVal;
+    auto raSlot    = instr.fun.raSlot;
+    auto numLocals = instr.fun.numLocals;
 
     // Get the return value
-    auto retW = interp.wsp[retSlot];
-    auto retT = interp.tsp[retSlot];
+    auto wRet = interp.wsp[retSlot];
+    auto tRet = interp.tsp[retSlot];
 
-    // Get the return address
-    auto retAddr = interp.getWord(raSlot).ptrVal;
+    // Get the calling instruction
+    auto callInstr = cast(IRInstr)interp.getWord(raSlot).ptrVal;
 
-    //writefln("popping num locals: %s", numLocals);
+    // If the call instruction is valid
+    if (callInstr !is null)
+    {
+        // If this is a new call and the return value is undefined
+        if (callInstr.opcode == &CALL_NEW && wRet == UNDEF)
+        {
+            // Use the this value as the return value
+            wRet = interp.getWord(instr.fun.thisSlot);
+            tRet = interp.getType(instr.fun.thisSlot);
+        }
 
-    // Pop all local stack slots
-    interp.pop(numLocals);
+        // Pop all local stack slots
+        interp.pop(numLocals);
 
-    // Leave the return value on top of the stack
-    interp.push(retW, retT);
+        // Set the instruction pointer to the post-call instruction
+        interp.ip = callInstr.next;
 
-    // Set the instruction pointer
-    interp.ip = retAddr? (cast(IRInstr)retAddr):null;
-}
+        // Leave the return value in the call's return slot
+        interp.setSlot(
+            callInstr.outSlot, 
+            wRet,
+            tRet
+        );
+    }
+    else
+    {
+        // Pop all local stack slots
+        interp.pop(numLocals);
 
-/// Get the callee's return value after a call
-void opGetRet(Interp interp, IRInstr instr)
-{
-    // Read and pop the value
-    auto wRet = interp.getWord(0);
-    auto tRet = interp.getType(0);
-    interp.pop(1);
+        // Terminate the execution
+        interp.ip = null;
 
-    interp.setSlot(
-        instr.outSlot, 
-        wRet,
-        tRet
-    );
-}
-
-/// Get the callee's return value after a constructor call
-void opGetRetNew(Interp interp, IRInstr instr)
-{
-    // Read and pop the value
-    auto retVal = interp.getSlot(0);
-    interp.pop(1);
-
-    // Get the this value
-    auto thisVal = interp.getSlot(instr.args[0].localIdx);
-
-    // If the return value is undefined, output the this object
-    auto outVal = (retVal.word == UNDEF)? thisVal:retVal;
-
-    interp.setSlot(
-        instr.outSlot,
-        outVal
-    );
+        // Leave the return value on top of the stack
+        interp.push(wRet, tRet);
+    }
 }
 
 void opNewClos(Interp interp, IRInstr instr)
@@ -1260,7 +1241,7 @@ void opSetGlobal(Interp interp, IRInstr instr)
     auto propStr = prop.word.ptrVal;
 
     setProp(
-        interp, 
+        interp,
         interp.globalObj,
         propStr,
         val

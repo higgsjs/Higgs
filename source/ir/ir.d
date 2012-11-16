@@ -300,6 +300,9 @@ class IRInstr : IdObject
     IRInstr prev;
     IRInstr next;
 
+    /// Parent function
+    IRFunction fun;
+
     this(Opcode* opcode)
     {
         this.opcode = opcode;
@@ -545,13 +548,13 @@ Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL, OpArg.BLOCK], &opJumpFa
 // SET_ARG <srcLocal> <argIdx>
 Opcode SET_ARG = { "set_arg", false, [OpArg.LOCAL, OpArg.INT], &opSetArg };
 
-// CALL <closLocal> <thisArg> <numArgs>
+// <dstLocal> = CALL <closLocal> <thisArg> <numArgs>
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL = { "call", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall };
+Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall };
 
-// NEW <closLocal> <numArgs>
+// <dstLocal> = NEW <closLocal> <numArgs>
 // Implements the JavaScript new operator.
 // Creates the this object
 // Makes the execution go to the callee entry
@@ -559,47 +562,39 @@ Opcode CALL = { "call", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opCall };
 // Pushes the return address word
 Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL, OpArg.INT], &opCallNew };
 
-// PUSH_FRAME <numParams> <numLocals>
+// PUSH_FRAME
 // On function entry, allocates/adjusts the callee's stack frame
-Opcode PUSH_FRAME = { "push_frame", false, [OpArg.INT, OpArg.INT], &opPushFrame };
+Opcode PUSH_FRAME = { "push_frame", false, [], &opPushFrame };
 
-// RET <retLocal> <raSlot> <numLocals>
+// RET <retLocal>
 // Stores return value in special registers
 // Pops the callee frame (size known by context)
-Opcode RET = { "ret", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.INT], &opRet };
-
-// <retLocal> = GET_RET
-// After call, extracts the callee's return value
-Opcode GET_RET = { "get_ret", true, [], &opGetRet };
-
-// <retLocal> = GET_RET
-// After constructor call, extracts the callee's return value
-Opcode GET_RET_NEW = { "get_ret_new", true, [OpArg.LOCAL], &opGetRetNew };
+Opcode RET = { "ret", false, [OpArg.LOCAL], &opRet };
 
 // <dstLocal> = NEW_CLOS <funExpr>
 // Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.REFPTR, OpArg.REFPTR], &opNewClos };
 
 // Create new empty object
-// <dst_local> = NEW_OBJECT <num_props>
+// <dstLocal> = NEW_OBJECT <numProps>
 Opcode NEW_OBJECT = { "new_object", true, [OpArg.INT, OpArg.REFPTR], &opNewObj };
 
 // Create new uninitialized array
-// <dst_local> = NEW_ARRAY <num_elems>
+// <dstLocal> = NEW_ARRAY <numElems>
 Opcode NEW_ARRAY = { "new_array", true, [OpArg.INT, OpArg.REFPTR], &opNewArr };
 
-// SET_PROP <obj_local> <prop_local> <src_local>
+// SET_PROP <objLocal> <propLocal> <srcLocal>
 Opcode SET_PROP = { "set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &opSetProp };
 
-// <dst_local> = GET_PROP <obj_local> <prop_local>
+// <dstLocal> = GET_PROP <objLocal> <propLocal>
 Opcode GET_PROP = { "get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &opGetProp };
 
 // TODO: implement when needed
 //DEL_PROP
 
-// SET_GLOBAL <prop_name> <value>
+// SET_GLOBAL <propName> <value>
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlobal };
 
-// GET_GLOBAL <prop_name>
+// GET_GLOBAL <propName>
 Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 

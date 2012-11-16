@@ -247,6 +247,9 @@ class IRGenCtx
     */
     IRInstr addInstr(IRInstr instr)
     {
+        // Set the parent function pointer
+        instr.fun = fun;
+
         curBlock.addInstr(instr);
         return instr;
     }
@@ -302,8 +305,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     );
 
     // Add the frame allocation instruction
-    auto pushFrame = bodyCtx.addInstr(new IRInstr(&PUSH_FRAME));
-    pushFrame.args[0].intVal = params.length;
+    bodyCtx.addInstr(new IRInstr(&PUSH_FRAME));
 
     // Allocate the first local slots to parameters
     foreach (ident; params)
@@ -385,9 +387,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         retInstr.args[0].localIdx = temp;
     }
 
-    // Set the local count in the frame allocation instruction
-    pushFrame.args[1].intVal = fun.numLocals;
-
     /// Function to translate (reverse) local indices
     void translLocal(ref LocalIdx localIdx)
     {
@@ -417,13 +416,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             {
                 if (argTypes[i] == OpArg.LOCAL)
                     translLocal(instr.args[i].localIdx);
-            }
-
-            // Set the local count and return address slot in return instructions
-            if (instr.opcode == &RET)
-            {
-                instr.args[1].localIdx = fun.raSlot;
-                instr.args[2].intVal = fun.numLocals;
             }
         }
     }
@@ -1101,14 +1093,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         }
 
         // Add the call instruction
-        // CALL <fnLocal> <thisArg> <numArgs>
+        // <dstLocal> = CALL <fnLocal> <thisArg> <numArgs>
         auto callInstr = ctx.addInstr(new IRInstr(&CALL));
+        callInstr.outSlot = ctx.getOutSlot();
         callInstr.args[0].localIdx = baseCtx.outSlot;
         callInstr.args[1].localIdx = thisSlot;
         callInstr.args[2].intVal = argExprs.length;
-
-        // Get the return value from this call
-        ctx.addInstr(new IRInstr(&GET_RET, ctx.getOutSlot()));
     }
 
     // New operator call expression
@@ -1141,18 +1131,11 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         }
 
         // Add the call instruction
-        // NEW <fnLocal> <numArgs>
+        // <dstLocal> = NEW <fnLocal> <numArgs>
         auto callInstr = ctx.addInstr(new IRInstr(&CALL_NEW));
-        callInstr.outSlot = ctx.allocTemp();
+        callInstr.outSlot = ctx.getOutSlot();
         callInstr.args[0].localIdx = baseCtx.outSlot;
         callInstr.args[1].intVal = argExprs.length;
-
-        // Get the return value from this call
-        ctx.addInstr(new IRInstr(
-            &GET_RET_NEW, 
-            ctx.getOutSlot(), 
-            callInstr.outSlot
-        ));
     }
 
     else if (auto indexExpr = cast(IndexExpr)expr)

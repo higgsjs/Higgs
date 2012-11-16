@@ -489,9 +489,9 @@ class Interp
         //writeln(fun.toString);
 
         // Push the hidden call arguments
-        push(UNDEF, Type.CONST);                // FIXME:Closure argument
-        push(UNDEF, Type.CONST);                // FIXME:This argument
-        push(Word.intv(0), Type.INT);         // Argument count
+        push(UNDEF, Type.CONST);               // FIXME:Closure argument
+        push(UNDEF, Type.CONST);               // FIXME:This argument
+        push(Word.intv(0), Type.INT);          // Argument count
         push(Word.ptrv(null), Type.RAWPTR);    // Return address
 
         //writefln("stack size before entry: %s", stackSize());
