@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -43,29 +43,13 @@ import std.math;
 import parser.parser;
 import ir.ast;
 import interp.interp;
-
-Interp evalString(string input)
-{
-    auto ast = parseString(input);
-    auto ir = astToIR(ast);
-
-    Interp interp = new Interp();
-
-    //writeln(ir.toString());
-    //writeln("executing");
-
-    interp.exec(ir);
-
-    return interp;
-}
+import repl;
 
 void assertInt(string input, long intVal)
 {
-    auto interp = evalString(input);
-
     //writeln("getting ret val");
 
-    auto ret = interp.getRet();
+    auto ret = evalString(new Interp(), input);
 
     assert (
         ret.type == Type.INT,
@@ -87,11 +71,7 @@ void assertInt(string input, long intVal)
 
 void assertFloat(string input, double floatVal, double eps = 1E-4)
 {
-    auto interp = evalString(input);
-
-    //writeln("getting ret val");
-
-    auto ret = interp.getRet();
+    auto ret = evalString(new Interp(), input);
 
     assert (
         ret.type == Type.INT ||
@@ -116,11 +96,7 @@ void assertFloat(string input, double floatVal, double eps = 1E-4)
 
 void assertStr(string input, string strVal)
 {
-    auto interp = evalString(input);
-
-    //writeln("getting ret val");
-
-    auto ret = interp.getRet();
+    auto ret = evalString(new Interp(), input);
 
     assert (
         ret.type == Type.STRING,

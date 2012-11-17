@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -35,81 +35,12 @@
 *
 *****************************************************************************/
 
-import std.stdio;
-import std.string;
-import parser.ast;
-import parser.parser;
-import ir.ast;
-import interp.interp;
+// TODO
+//var undefined;
 
-/**
-Evaluate a string of source code
-*/
-ValuePair evalString(Interp interp, string input)
-{
-    auto ast = parseString(input, "repl");
 
-    // If the AST contains only an expression statement,
-    // turn it into a return statement
-    if (auto blockStmt = cast(BlockStmt)ast.bodyStmt)
-    {
-        if (blockStmt.stmts.length == 1)
-        {
-            if (auto exprStmt = cast(ExprStmt)blockStmt.stmts[$-1])
-            {
-                blockStmt.stmts[$-1] = new ReturnStmt(
-                    exprStmt.expr,
-                    exprStmt.pos
-                );
-            }
-        }
-    }
 
-    //writeln(ast);
 
-    auto output = interp.exec(ast);
 
-    return output;
-}
 
-void repl()
-{
-    auto interp = new Interp();
-
-    writeln("Entering read-eval-print loop");
-    writeln("To exit, press ctrl+D (end-of-file) or type \"exit\" at the prompt");
-
-    for (;;)
-    {
-        write("w> ");
-        string input = readln().stripRight();
-        
-        if (input.length == 0 || input.toLower() == "exit\n")
-        {
-            if (input.length == 0)
-                writeln();
-
-            break;
-        }
-
-        try 
-        {
-            // Evaluate the input
-            auto output = evalString(interp, input);
-
-            // Print the output
-            writeln(ValueToString(output));
-        }
-
-        catch (ParseError e)
-        {
-            writeln("parse error: " ~ e.toString());
-        }
-    }
-}
-
-unittest
-{
-    evalString(new Interp(), "1");
-}
 

@@ -46,6 +46,7 @@ import std.conv;
 import std.typecons;
 import util.misc;
 import parser.parser;
+import parser.ast;
 import ir.ir;
 import ir.ast;
 import interp.layout;
@@ -279,6 +280,9 @@ class Interp
 
         // Allocate and initialize the string table
         strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
+
+        // Load the runtime library
+        load("interp/runtime.js");
     }
 
     /**
@@ -479,7 +483,7 @@ class Interp
     /**
     Execute a unit-level IR function
     */
-    void exec(IRFunction fun)
+    ValuePair exec(IRFunction fun)
     {
         assert (
             fun.entryBlock !is null,
@@ -501,13 +505,8 @@ class Interp
 
         // Run the interpreter loop
         loop();
-    }
 
-    /**
-    Get the return value from the top of the stack
-    */
-    ValuePair getRet()
-    {
+        // Ensure the stack contains one return value
         assert (
             stackSize() == 1,
             format("the stack contains %s values", (wUpperLimit - wsp))
@@ -522,10 +521,23 @@ class Interp
         return retVal;
     }
 
-    //
-    // TODO: boolVal
-    // Evaluate the boolean value of a value
-    //
+    /**
+    Execute a unit-level function
+    */
+    ValuePair exec(FunExpr fun)
+    {
+        auto ir = astToIR(fun);
+        return exec(ir);
+    }
+
+    /**
+    Parse and execute a source file
+    */
+    ValuePair load(string fileName)
+    {
+        auto ast = parseFile(fileName);
+        return exec(ast);
+    }
 
     /**
     Produce the string representation of a value
