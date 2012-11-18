@@ -370,7 +370,7 @@ bool digit(wchar ch)
 
 bool identStart(wchar ch)
 {
-    return alpha(ch) || ch == '_';
+    return alpha(ch) || ch == '_' || ch == '$';
 }
 
 bool identPart(wchar ch)
@@ -834,7 +834,10 @@ Token getToken(StrStream stream)
 
     // Invalid character
     int charVal = stream.readCh();
-    auto charStr = to!wstring(format("0x%04x", charVal));
+    wstring charStr;
+    if (charVal >= 33 && charVal <= 126)
+        charStr ~= "'"w ~ cast(wchar)charVal ~ "', "w;
+    charStr ~= to!wstring(format("0x%04x", charVal));
     return Token(
         Token.ERROR,
         "unexpected character ("w ~ charStr ~ ")"w, 

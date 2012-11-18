@@ -1057,6 +1057,101 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto baseExpr = callExpr.base;
         auto argExprs = callExpr.args;
 
+
+
+
+
+
+        if (auto identExpr = cast(IdentExpr)baseExpr)
+        {
+            // If this is an inline IR instruction
+            if (identExpr.name.startsWith(IIR_PREFIX))
+            {
+                auto instrName = to!string(identExpr.name[IIR_PREFIX.length..$]);
+
+                if (instrName !in iir)
+                {
+                    throw new ParseError(
+                        "wrong iir instruction name: \"" ~ instrName ~ "\"", 
+                        callExpr.pos
+                    );
+                }
+
+                auto opcode = iir[instrName];
+
+                if ((argExprs.length < opcode.argTypes.length) ||
+                    (argExprs.length > opcode.argTypes.length && !opcode.isVarArg))
+                {
+                    throw new ParseError(
+                        "wrong iir argument count",
+                        callExpr.pos
+                    );
+                }
+
+                // Create the IR instruction
+                auto instr = new IRInstr(opcode);
+                instr.args.length = argExprs.length;
+                instr.outSlot = ctx.getOutSlot();
+
+                // For each argument
+                for (size_t i = 0; i < argExprs.length; ++i)
+                {
+                    auto argExpr = argExprs[i];
+                    auto argType = opcode.getArgType(i);
+
+                    switch (argType)
+                    {
+                        // Local stack slot
+                        case OpArg.LOCAL:
+                        auto argCtx = ctx.subCtx(true);       
+                        exprToIR(argExpr, argCtx);
+                        ctx.merge(argCtx);
+                        instr.args[i].localIdx = argCtx.outSlot;
+                        break;
+
+                        // Integer argument
+                        case OpArg.INT:
+                        auto intExpr = cast(IntExpr)argExpr;
+                        if (intExpr is null)
+                        {
+                            throw new ParseError(
+                                "expected int argument", 
+                                argExpr.pos
+                            );
+                        }
+                        instr.args[i].intVal = intExpr.val;
+                        break;
+
+                        // String argument
+                        case OpArg.STRING:
+                        auto strExpr = cast(StringExpr)argExpr;
+                        if (strExpr is null)
+                        {
+                            throw new ParseError(
+                                "expected int argument", 
+                                argExpr.pos
+                            );
+                        }
+                        instr.args[i].stringVal = strExpr.val;
+                        break;
+
+                        default:
+                        assert (false, "unsupported argument type");
+                    }
+                }
+
+                // Add the instruction to the context
+                ctx.addInstr(instr);
+
+                return;
+            }
+        }
+
+
+
+
+
+
         LocalIdx thisSlot;
 
         // If the base expression is a member expression

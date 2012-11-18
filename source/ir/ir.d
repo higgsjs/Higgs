@@ -606,3 +606,24 @@ Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlo
 // GET_GLOBAL <propName>
 Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 
+/**
+Inline IR prefix string
+*/
+immutable string IIR_PREFIX = "$ir_";
+
+/**
+Table of inlinable IR instructions (usable in library code)
+*/
+Opcode*[string] iir;
+
+static this()
+{
+    iir["add"] = &ADD;
+    iir["sub"] = &SUB;
+
+
+    // TODO
+
+
+}
+

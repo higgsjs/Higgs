@@ -184,6 +184,7 @@ unittest
     testParse("foo !== \"bar\";");
 
     testParse("x = 1;");
+    testParse("$t = 1;");
     testParse("x += 1;");
 
     testParse("z = f[2] + 3; ++z;");
