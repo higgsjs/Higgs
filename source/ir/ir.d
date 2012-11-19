@@ -618,10 +618,10 @@ Opcode*[string] iir;
 
 static this()
 {
-    iir["jump_false"] = &JUMP_FALSE;
-
     iir["add"] = &ADD;
     iir["sub"] = &SUB;
+
+    iir["jump_false"] = &JUMP_FALSE;
 
 
     // TODO

@@ -405,8 +405,6 @@ void opCmpSe(Interp interp, IRInstr instr)
 
     bool output = (w0.intVal == w1.intVal);
 
-    writefln("output: %s", output);
-
     interp.setSlot(
         instr.outSlot, 
         output? TRUE:FALSE,

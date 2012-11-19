@@ -398,7 +398,7 @@ unittest
     assertInt("function f() { var a = 0; a += 2; a *= 3; return a; }; return f();", 6);
 }
 
-/// Object literals, property access
+/// Object literals, property access, method calls
 unittest
 {
     assertInt("{}; return 1;", 1);
@@ -410,7 +410,11 @@ unittest
     assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
     assertInt("o = {x: 5}; return o.y? 1:0;", 0);
 
+    // Function object property
     assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
+
+    // Method call
+    assertInt("o = {x:7, m:function() {return this.x;}}; return o.m();", 7);
 }
 
 /// New operator, prototype chain

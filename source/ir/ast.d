@@ -1088,28 +1088,49 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             return;
         }
 
+        // Local slots for the closure and "this" arguments
+        LocalIdx closSlot;
         LocalIdx thisSlot;
 
         // If the base expression is a member expression
         if (auto indexExpr = cast(IndexExpr)baseExpr)
         {
-            // TODO
-            // this value is the index expression base
-            assert (false, "member call unimplemented");
+            // Evaluate the base expression
+            auto baseCtx = ctx.subCtx(true);       
+            exprToIR(indexExpr.base, baseCtx);
+            ctx.merge(baseCtx);
+
+            // Evaluate the index expression
+            auto idxCtx = ctx.subCtx(true);       
+            exprToIR(indexExpr.index, idxCtx);
+            ctx.merge(idxCtx);
+
+            // Get the method property
+            closSlot = ctx.allocTemp();
+            ctx.addInstr(new IRInstr(
+                &GET_PROP,
+                closSlot,
+                baseCtx.getOutSlot(),
+                idxCtx.getOutSlot()
+            ));
+
+            thisSlot = baseCtx.getOutSlot();
         }
 
         else
         {
+            // Evaluate the base expression
+            auto baseCtx = ctx.subCtx(true);       
+            exprToIR(baseExpr, baseCtx);
+            ctx.merge(baseCtx);
+
+            closSlot = baseCtx.getOutSlot();
+
             // TODO: global object
             // The this value is the global object
             thisSlot = ctx.allocTemp();
             ctx.addInstr(new IRInstr(&SET_UNDEF, thisSlot));
         }
-
-        // Evaluate the base expression
-        auto baseCtx = ctx.subCtx(true);       
-        exprToIR(baseExpr, baseCtx);
-        ctx.merge(baseCtx);
 
         // Evaluate the arguments
         auto argSlots = new LocalIdx[argExprs.length];
@@ -1126,7 +1147,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto callInstr = ctx.addInstr(new IRInstr(&CALL));
         callInstr.outSlot = ctx.getOutSlot();
         callInstr.args.length = 2 + argSlots.length;
-        callInstr.args[0].localIdx = baseCtx.outSlot;
+        callInstr.args[0].localIdx = closSlot;
         callInstr.args[1].localIdx = thisSlot;
         for (size_t i = 0; i < argSlots.length; ++i)
             callInstr.args[2+i].localIdx = argSlots[i];
@@ -1175,7 +1196,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         exprToIR(indexExpr.index, idxCtx);
         ctx.merge(idxCtx);
 
-        // Set the property on the object
+        // Get the property from the object
         ctx.addInstr(new IRInstr(
             &GET_PROP,
             ctx.getOutSlot(),

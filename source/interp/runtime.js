@@ -35,12 +35,98 @@
 *
 *****************************************************************************/
 
-// TODO
-//var undefined;
+/**
+Get the string representation of a value
+*/
+function $rt_toString(v)
+{
+    var type = typeof v;
+
+    if (type === "undefined")
+        return "undefined";
+
+    if (type === "boolean")
+        return v? "true":"false";
+
+    if (type === "string")
+        return v;
+
+    if (type === "number")
+        return "number value, TODO!";
+
+    if (type === "object")
+        return v? v.toString():"null";
+
+    if (type === "function" || type === "array")
+        return v.toString();
+
+    return "unhandled type in toString";
+}
+
+/**
+JS addition operator
+*/
+function $rt_add(x, y)
+{
+    // TODO
+
+    /*
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Attempt an add with overflow check
+        var intResult;
+        if (intResult = iir.add_ovf(v1, v2))
+        {
+            // If there is no overflow, return the result
+            // No normalization necessary
+            return intResult;
+        }
+        else
+        {
+            // TODO: 
+            // Overflow handling: need to create FP objects
+            error('addition overflow');
+        }
+    }
+    
+    // If the left value is a string
+    if (boxIsString(v1))
+    {
+        // If the right value is not a string
+        if (boxIsString(v2) === false)
+        {
+            // Convert the right value to a string
+            v2 = boxToString(v2);
+        }
+
+        // Perform string concatenation
+        return strcat(v1, v2);
+    }
+
+    // If the right value is a string
+    else if (boxIsString(v2))
+    {
+        // Convert the left value to a string
+        v1 = boxToString(v1);
+
+        // Perform string concatenation
+        return strcat(v1, v2);
+    }
+
+    // Otherwise, both values are not strings
+    else
+    {
+        // Convert both values to strings
+        v1 = boxToString(v1);
+        v2 = boxToString(v2);
+
+        // Perform string concatenation
+        return strcat(v1, v2);
+    }
+    */
 
 
 
-
-
-
+}
 
