@@ -456,7 +456,7 @@ class IRInstr : IdObject
         }
 
         if (target !is null)
-            output ~= " " ~ target.getName();
+            output ~= " => " ~ target.getName();
 
         return output;
     }
@@ -618,6 +618,8 @@ Opcode*[string] iir;
 
 static this()
 {
+    iir["jump_false"] = &JUMP_FALSE;
+
     iir["add"] = &ADD;
     iir["sub"] = &SUB;
 

@@ -461,8 +461,7 @@ unittest
 
 /// Array literals, array operations
 unittest
-{
-    
+{   
     assertInt("a = []; return 0", 0);
     assertInt("a = [1]; return 0", 0);
     assertInt("a = [1,2]; return 0", 0);
@@ -471,5 +470,13 @@ unittest
     assertInt("a = [1,2]; a[3] = 4; return a[1]", 2);
     assertInt("a = [1,2]; a[3] = 4; return a[3]", 4);
     assertInt("a = [1,2]; return a[3]? 1:0;", 0);
+}
+
+/// Inline IR
+unittest
+{
+    assertInt("return $ir_add(1, 2)", 3);
+    assertInt("if ($ir_jump_false(true)) return 1; else return 2;", 1);
+    assertInt("if ($ir_jump_false(false)) return 1; else return 2;", 2);
 }
 

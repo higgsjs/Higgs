@@ -481,27 +481,51 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         trueCtx.addInstr(IRInstr.jump(joinBlock));
         falseCtx.addInstr(IRInstr.jump(joinBlock));
 
-        // Evaluate the test expression
-        auto exprCtx = ctx.subCtx(true);
-        exprToIR(ifStmt.testExpr, exprCtx);
-        ctx.merge(exprCtx);
+        // If this is an inline IR instruction
+        if (isInlineIR(ifStmt.testExpr))
+        {
+            auto iirCtx = ctx.subCtx(true);
+            auto instr = genInlineIR(ifStmt.testExpr, iirCtx);
+            ctx.merge(iirCtx);
 
-        // Convert the expression value to a boolean
-        auto boolInstr = ctx.addInstr(new IRInstr(
-            &BOOL_VAL,
-            ctx.allocTemp(),
-            exprCtx.getOutSlot(),      
-        ));
+            if (instr.opcode.isBranch == false)
+            {
+                throw new ParseError(
+                    "iir instruction cannot branch",
+                    ifStmt.testExpr.pos
+                );
+            }
 
-        // If the expresson is true, jump
-        ctx.addInstr(new IRInstr(
-            &JUMP_TRUE,
-            boolInstr.outSlot,
-            trueBlock
-        ));
+            // If the instruction branches, go to the false block
+            instr.target = falseBlock;
 
-        // Jump to the false statement
-        ctx.addInstr(IRInstr.jump(falseBlock));
+            // Jump to the true block
+            ctx.addInstr(IRInstr.jump(trueBlock));
+        }
+        else
+        {
+            // Evaluate the test expression
+            auto exprCtx = ctx.subCtx(true);
+            exprToIR(ifStmt.testExpr, exprCtx);
+            ctx.merge(exprCtx);
+
+            // Convert the expression value to a boolean
+            auto boolInstr = ctx.addInstr(new IRInstr(
+                &BOOL_VAL,
+                ctx.allocTemp(),
+                exprCtx.getOutSlot(),      
+            ));
+
+            // If the expresson is true, jump
+            ctx.addInstr(new IRInstr(
+                &JUMP_TRUE,
+                boolInstr.outSlot,
+                trueBlock
+            ));
+
+            // Jump to the false statement
+            ctx.addInstr(IRInstr.jump(falseBlock));
+        }
 
         // Continue code generation in the join block
         ctx.merge(joinBlock);
@@ -1057,100 +1081,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto baseExpr = callExpr.base;
         auto argExprs = callExpr.args;
 
-
-
-
-
-
-        if (auto identExpr = cast(IdentExpr)baseExpr)
+        // If this is an inline IR instruction
+        if (isInlineIR(callExpr))
         {
-            // If this is an inline IR instruction
-            if (identExpr.name.startsWith(IIR_PREFIX))
-            {
-                auto instrName = to!string(identExpr.name[IIR_PREFIX.length..$]);
-
-                if (instrName !in iir)
-                {
-                    throw new ParseError(
-                        "wrong iir instruction name: \"" ~ instrName ~ "\"", 
-                        callExpr.pos
-                    );
-                }
-
-                auto opcode = iir[instrName];
-
-                if ((argExprs.length < opcode.argTypes.length) ||
-                    (argExprs.length > opcode.argTypes.length && !opcode.isVarArg))
-                {
-                    throw new ParseError(
-                        "wrong iir argument count",
-                        callExpr.pos
-                    );
-                }
-
-                // Create the IR instruction
-                auto instr = new IRInstr(opcode);
-                instr.args.length = argExprs.length;
-                instr.outSlot = ctx.getOutSlot();
-
-                // For each argument
-                for (size_t i = 0; i < argExprs.length; ++i)
-                {
-                    auto argExpr = argExprs[i];
-                    auto argType = opcode.getArgType(i);
-
-                    switch (argType)
-                    {
-                        // Local stack slot
-                        case OpArg.LOCAL:
-                        auto argCtx = ctx.subCtx(true);       
-                        exprToIR(argExpr, argCtx);
-                        ctx.merge(argCtx);
-                        instr.args[i].localIdx = argCtx.outSlot;
-                        break;
-
-                        // Integer argument
-                        case OpArg.INT:
-                        auto intExpr = cast(IntExpr)argExpr;
-                        if (intExpr is null)
-                        {
-                            throw new ParseError(
-                                "expected int argument", 
-                                argExpr.pos
-                            );
-                        }
-                        instr.args[i].intVal = intExpr.val;
-                        break;
-
-                        // String argument
-                        case OpArg.STRING:
-                        auto strExpr = cast(StringExpr)argExpr;
-                        if (strExpr is null)
-                        {
-                            throw new ParseError(
-                                "expected int argument", 
-                                argExpr.pos
-                            );
-                        }
-                        instr.args[i].stringVal = strExpr.val;
-                        break;
-
-                        default:
-                        assert (false, "unsupported argument type");
-                    }
-                }
-
-                // Add the instruction to the context
-                ctx.addInstr(instr);
-
-                return;
-            }
+            genInlineIR(callExpr, ctx);
+            return;
         }
-
-
-
-
-
 
         LocalIdx thisSlot;
 
@@ -1550,5 +1486,110 @@ void assgToIR(
     {
         throw new ParseError("invalid lhs in assignment", lhsExpr.pos);
     }
+}
+
+/**
+Test if an expression is inline IR
+*/
+bool isInlineIR(ASTExpr expr)
+{
+    auto callExpr = cast(CallExpr)expr;
+    if (!callExpr)
+        return false;
+
+    auto identExpr = cast(IdentExpr)callExpr.base;
+    return (identExpr && identExpr.name.startsWith(IIR_PREFIX));
+}
+
+/**
+Generate an inline IR instruction
+*/
+IRInstr genInlineIR(ASTExpr expr, IRGenCtx ctx)
+{
+    assert (isInlineIR(expr), "invalid inline IR expr");
+
+    auto callExpr = cast(CallExpr)expr;
+    auto baseExpr = callExpr.base;
+    auto argExprs = callExpr.args;
+    IdentExpr identExpr = cast(IdentExpr)baseExpr;
+
+    // Get the instruction name
+    auto instrName = to!string(identExpr.name[IIR_PREFIX.length..$]);
+
+    if (instrName !in iir)
+    {
+        throw new ParseError(
+            "wrong iir instruction name: \"" ~ instrName ~ "\"", 
+            callExpr.pos
+        );
+    }
+
+    auto opcode = iir[instrName];
+
+    if ((argExprs.length < opcode.argTypes.length) ||
+        (argExprs.length > opcode.argTypes.length && !opcode.isVarArg))
+    {
+        throw new ParseError(
+            "wrong iir argument count",
+            callExpr.pos
+        );
+    }
+
+    // Create the IR instruction
+    auto instr = new IRInstr(opcode);
+    instr.args.length = argExprs.length;
+    instr.outSlot = ctx.getOutSlot();
+
+    // For each argument
+    for (size_t i = 0; i < argExprs.length; ++i)
+    {
+        auto argExpr = argExprs[i];
+        auto argType = opcode.getArgType(i);
+
+        switch (argType)
+        {
+            // Local stack slot
+            case OpArg.LOCAL:
+            auto argCtx = ctx.subCtx(true);       
+            exprToIR(argExpr, argCtx);
+            ctx.merge(argCtx);
+            instr.args[i].localIdx = argCtx.outSlot;
+            break;
+
+            // Integer argument
+            case OpArg.INT:
+            auto intExpr = cast(IntExpr)argExpr;
+            if (intExpr is null)
+            {
+                throw new ParseError(
+                    "expected int argument", 
+                    argExpr.pos
+                );
+            }
+            instr.args[i].intVal = intExpr.val;
+            break;
+
+            // String argument
+            case OpArg.STRING:
+            auto strExpr = cast(StringExpr)argExpr;
+            if (strExpr is null)
+            {
+                throw new ParseError(
+                    "expected int argument", 
+                    argExpr.pos
+                );
+            }
+            instr.args[i].stringVal = strExpr.val;
+            break;
+
+            default:
+            assert (false, "unsupported argument type");
+        }
+    }
+
+    // Add the instruction to the context
+    ctx.addInstr(instr);
+
+    return instr;
 }
 
