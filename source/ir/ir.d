@@ -516,6 +516,26 @@ Opcode SET_UNDEF  = { "set_undef" , true, [], &opSetUndef };
 // Move a value from one local to another
 Opcode MOVE       = { "move", true, [OpArg.LOCAL], &opMove };
 
+
+
+// Type tag test
+Opcode IS_INT     = { "is_int", true, [OpArg.LOCAL], &opIsInt };
+Opcode IS_FLOAT   = { "is_float", true, [OpArg.LOCAL], &opIsFloat };
+
+// Integer arithmetic
+Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &opAddI32Ovf, false, true };
+
+// Floating-point arithmetic
+Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &opAddF64 };
+
+// Type conversion
+Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &opI32ToF64 };
+
+
+
+
+
+
 // Arithmetic operations
 Opcode ADD        = { "add", true, [OpArg.LOCAL, OpArg.LOCAL], &opAdd };
 Opcode SUB        = { "sub", true, [OpArg.LOCAL, OpArg.LOCAL], &opSub };
@@ -550,6 +570,13 @@ Opcode CMP_LT     = { "cmp_lt", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpLt };
 Opcode CMP_LE     = { "cmp_le", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_GT     = { "cmp_gt", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
+
+
+
+
+
+
+
 
 // Branching and conditional branching
 Opcode JUMP       = { "jump"      , false, [], &opJump, false, true };
@@ -618,13 +645,26 @@ Opcode*[string] iir;
 
 static this()
 {
-    iir["add"] = &ADD;
-    iir["sub"] = &SUB;
+    void addOp(ref Opcode op) { iir[op.mnem] = &op; }
 
-    iir["jump_false"] = &JUMP_FALSE;
+    addOp(IS_INT);
+    addOp(IS_FLOAT);
 
+    addOp(ADD_I32_OVF);
+    addOp(ADD_F64);
+
+    addOp(I32_TO_F64);
+
+
+    addOp(ADD);
+    addOp(SUB);
+
+    addOp(JUMP_FALSE);
 
     // TODO
+
+
+
 
 
 }

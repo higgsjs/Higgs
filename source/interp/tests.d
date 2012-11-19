@@ -482,5 +482,50 @@ unittest
     assertInt("return $ir_add(1, 2)", 3);
     assertInt("if ($ir_jump_false(true)) return 1; else return 2;", 1);
     assertInt("if ($ir_jump_false(false)) return 1; else return 2;", 2);
+
+    assertInt(
+        "
+        function foo()
+        {
+            var o;
+            if (o = $ir_add_i32_ovf(1, 2))
+                return o;
+            else
+                return -1;
+        }
+        return foo();
+        ",
+        3
+    );
+
+    assertInt(
+        "
+        function foo()
+        {
+            var o;
+            if (o = $ir_add_i32_ovf(0x7FFFFFFF, 1))
+                return o;
+            else
+                return -1;
+        }
+        return foo();
+        ",
+        -1
+    );
+
+    assertInt(
+        "
+        function foo()
+        {
+            var o;
+            if (o = $ir_add_i32_ovf(-0x80000000, -0x80000000))
+                return o;
+            else
+                return -1;
+        }
+        return foo();
+        ",
+        -1
+    );
 }
 

@@ -481,11 +481,38 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         trueCtx.addInstr(IRInstr.jump(joinBlock));
         falseCtx.addInstr(IRInstr.jump(joinBlock));
 
-        // If this is an inline IR instruction
-        if (isInlineIR(ifStmt.testExpr))
+        LocalIdx idSlot = NULL_LOCAL;
+        ASTExpr irExpr = null;
+
+        // If the test is an inline IR assignment
+        auto binExpr = cast(BinOpExpr)ifStmt.testExpr;
+        if (binExpr && binExpr.op.str == "=" && isInlineIR(binExpr.rExpr))
         {
-            auto iirCtx = ctx.subCtx(true);
-            auto instr = genInlineIR(ifStmt.testExpr, iirCtx);
+            irExpr = binExpr.rExpr;
+            auto idExpr = cast(IdentExpr)binExpr.lExpr;            
+
+            if (idExpr is null || idExpr.declNode !in *ctx.localMap)
+            {
+                throw new ParseError(
+                    "invalid variable in branch IIR assignment",
+                    binExpr.pos
+                );
+            }
+
+            // Get the variable's local slot
+            idSlot = (*ctx.localMap)[idExpr.declNode];
+        }   
+
+        // If the test is an inline IR instruction
+        else if (isInlineIR(ifStmt.testExpr))
+        {
+            irExpr = ifStmt.testExpr;
+        }
+
+        if (irExpr !is null)
+        {
+            auto iirCtx = ctx.subCtx(true, idSlot);
+            auto instr = genInlineIR(irExpr, iirCtx);
             ctx.merge(iirCtx);
 
             if (instr.opcode.isBranch == false)

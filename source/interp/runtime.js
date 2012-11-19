@@ -64,69 +64,82 @@ function $rt_toString(v)
 }
 
 /**
+JS typeof operator
+*/
+function $rt_typeof(v)
+{
+    // TODO
+}
+
+/**
 JS addition operator
 */
 function $rt_add(x, y)
 {
-    // TODO
-
-    /*
-    // If both values are immediate integers
-    if (boxIsInt(v1) && boxIsInt(v2))
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
     {
-        // Attempt an add with overflow check
-        var intResult;
-        if (intResult = iir.add_ovf(v1, v2))
+        var r;
+        if (r = $ir_add_i32_ovf(x, y))
         {
-            // If there is no overflow, return the result
-            // No normalization necessary
-            return intResult;
+            return r;
         }
         else
         {
-            // TODO: 
-            // Overflow handling: need to create FP objects
-            error('addition overflow');
+            var fx = $ir_i32_to_f64(x);
+            var fy = $ir_i32_to_f64(y);
+            return $ir_add_f64(fx, fy);
         }
     }
-    
-    // If the left value is a string
-    if (boxIsString(v1))
-    {
-        // If the right value is not a string
-        if (boxIsString(v2) === false)
-        {
-            // Convert the right value to a string
-            v2 = boxToString(v2);
-        }
 
-        // Perform string concatenation
-        return strcat(v1, v2);
+    // If either value is floating-point or integer
+    else if (
+        ($ir_is_float(x) || $ir_is_int(x)) &&
+        ($ir_is_float(y) || $ir_is_int(y)))
+    {
+        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+
+        return $ir_add_f64(fx, fy);
     }
 
-    // If the right value is a string
-    else if (boxIsString(v2))
-    {
-        // Convert the left value to a string
-        v1 = boxToString(v1);
+    // Evaluate the string value of both arguments
+    var sx = $rt_toString(x);
+    var sy = $rt_toString(y);
 
-        // Perform string concatenation
-        return strcat(v1, v2);
-    }
 
-    // Otherwise, both values are not strings
-    else
-    {
-        // Convert both values to strings
-        v1 = boxToString(v1);
-        v2 = boxToString(v2);
+    // TODO: need $rt_strcat
 
-        // Perform string concatenation
-        return strcat(v1, v2);
-    }
+
+
+    /*
+    auto l0 = str_get_len(s0);
+    auto l1 = str_get_len(s1);
+
+    auto sO = str_alloc(interp, l0+l1);
+
+    for (size_t i = 0; i < l0; ++i)
+        str_set_data(sO, i, str_get_data(s0, i));
+    for (size_t i = 0; i < l1; ++i)
+        str_set_data(sO, l0+i, str_get_data(s1, i));
+
+    compStrHash(sO);
+    sO = getTableStr(interp, sO);
+
+    interp.setSlot(
+        instr.outSlot, 
+        Word.ptrv(sO),
+        Type.STRING
+    );
     */
+}
 
-
+/**
+JS subtraction operator
+*/
+function $rt_sub(x, y)
+{
+    // TODO
 
 }
 

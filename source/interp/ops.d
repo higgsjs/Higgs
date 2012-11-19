@@ -124,6 +124,82 @@ void opMove(Interp interp, IRInstr instr)
     );
 }
 
+void opIsInt(Interp interp, IRInstr instr)
+{
+    auto typeTag = interp.getType(instr.args[0].localIdx);
+
+    interp.setSlot(
+        instr.outSlot,
+        (typeTag == Type.INT)? TRUE:FALSE,
+        Type.CONST
+    );
+}
+
+void opIsFloat(Interp interp, IRInstr instr)
+{
+    auto typeTag = interp.getType(instr.args[0].localIdx);
+
+    interp.setSlot(
+        instr.outSlot,
+        (typeTag == Type.FLOAT)? TRUE:FALSE,
+        Type.CONST
+    );
+}
+
+void opAddI32Ovf(Interp interp, IRInstr instr)
+{
+    auto idx0 = instr.args[0].localIdx;
+    auto idx1 = instr.args[1].localIdx;
+    auto w0 = interp.getWord(idx0);
+    auto w1 = interp.getWord(idx1);
+    auto t0 = interp.getType(idx0);
+    auto t1 = interp.getType(idx1);
+
+    auto r = w0.intVal + w1.intVal;
+
+    if (r >= int32.min && r <= int32.max)
+    {
+        interp.setSlot(
+            instr.outSlot,
+            Word.intv(cast(int32)r),
+            Type.INT
+        );
+    }
+    else
+    {
+        interp.ip = instr.target.firstInstr;
+    }
+}
+
+void opAddF64(Interp interp, IRInstr instr)
+{
+    auto idx0 = instr.args[0].localIdx;
+    auto idx1 = instr.args[1].localIdx;
+    auto w0 = interp.getWord(idx0);
+    auto w1 = interp.getWord(idx1);
+    auto t0 = interp.getType(idx0);
+    auto t1 = interp.getType(idx1);
+
+    auto r = w0.floatVal + w1.floatVal;
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.floatv(r),
+        Type.FLOAT
+    );
+}
+
+void opI32ToF64(Interp interp, IRInstr instr)
+{
+    auto w0 = interp.getWord(instr.args[0].localIdx);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.floatv(cast(int32)w0.intVal),
+        Type.FLOAT
+    );
+}
+
 void opAdd(Interp interp, IRInstr instr)
 {
     auto idx0 = instr.args[0].localIdx;
