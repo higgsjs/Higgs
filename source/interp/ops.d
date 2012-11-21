@@ -137,6 +137,7 @@ void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
 
 alias TypeCheckOp!(Type.INT) op_is_int;
 alias TypeCheckOp!(Type.FLOAT) op_is_float;
+alias TypeCheckOp!(Type.STRING) op_is_string;
 alias TypeCheckOp!(Type.REFPTR) op_is_refptr;
 alias TypeCheckOp!(Type.RAWPTR) op_is_rawptr;
 alias TypeCheckOp!(Type.CONST) op_is_const;
@@ -152,14 +153,44 @@ void op_i32_to_f64(Interp interp, IRInstr instr)
     );
 }
 
+void op_add_i32(Interp interp, IRInstr instr)
+{
+    auto idx0 = instr.args[0].localIdx;
+    auto idx1 = instr.args[1].localIdx;
+    auto w0 = interp.getWord(idx0);
+    auto w1 = interp.getWord(idx1);
+
+    auto r = cast(int32)(w0.intVal + w1.intVal);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.intv(r),
+        Type.INT
+    );
+}
+
+void op_mul_i32(Interp interp, IRInstr instr)
+{
+    auto idx0 = instr.args[0].localIdx;
+    auto idx1 = instr.args[1].localIdx;
+    auto w0 = interp.getWord(idx0);
+    auto w1 = interp.getWord(idx1);
+
+    auto r = cast(int32)(w0.intVal * w1.intVal);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.intv(r),
+        Type.INT
+    );
+}
+
 void op_add_f64(Interp interp, IRInstr instr)
 {
     auto idx0 = instr.args[0].localIdx;
     auto idx1 = instr.args[1].localIdx;
     auto w0 = interp.getWord(idx0);
     auto w1 = interp.getWord(idx1);
-    auto t0 = interp.getType(idx0);
-    auto t1 = interp.getType(idx1);
 
     auto r = w0.floatVal + w1.floatVal;
 

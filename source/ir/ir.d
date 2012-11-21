@@ -519,6 +519,7 @@ Opcode MOVE       = { "move", true, [OpArg.LOCAL], &op_move };
 // Type tag test
 Opcode IS_INT    = { "is_int", true, [OpArg.LOCAL], &op_is_int };
 Opcode IS_FLOAT  = { "is_float", true, [OpArg.LOCAL], &op_is_float };
+Opcode IS_STRING  = { "is_string", true, [OpArg.LOCAL], &op_is_string };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &op_is_refptr };
 Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &op_is_rawptr };
 Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &op_is_const };
@@ -527,8 +528,9 @@ Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &op_is_const };
 Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &op_i32_to_f64 };
 
 // Integer arithmetic
-// TODO: ADD
+Opcode ADD_I32 = { "add_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32 };
 // TODO: SUB
+Opcode MUL_I32 = { "mul_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_i32 };
 // TODO: MUL
 // TODO: DIV
 // TODO: MOD
@@ -539,7 +541,7 @@ Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_f64 };
 // TODO: MUL
 // TODO: DIV
 
-// TODO: bitwise op instructions
+// TODO: Bitwise operations
 
 // Integer arithmetic with overflow handling
 Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32_ovf, false, true };
@@ -678,10 +680,15 @@ static this()
 
     addOp(IS_INT);
     addOp(IS_FLOAT);
+    addOp(IS_STRING);
     addOp(IS_REFPTR);
+    addOp(IS_RAWPTR);
     addOp(IS_CONST);
 
     addOp(I32_TO_F64);
+
+    addOp(ADD_I32);
+    addOp(MUL_I32);
 
     addOp(ADD_F64);
 

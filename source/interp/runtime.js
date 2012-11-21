@@ -68,7 +68,30 @@ JS typeof operator
 */
 function $rt_typeof(v)
 {
-    // TODO
+    if ($ir_is_int(v) || $ir_is_float(v))
+        return "number";
+
+    if ($ir_is_string(v) === true)
+        return "string";
+
+    if ($ir_is_const(v) === true)
+    {
+        if (v === true  || v === false)
+            return "boolean";
+
+        if (v === undefined)
+            return "undefined";
+    }
+
+    if ($ir_is_refptr(v) === true)
+    {
+        // TODO
+
+
+
+    }
+
+    return "unhandled type in typeof";
 }
 
 /**
@@ -140,6 +163,9 @@ JS subtraction operator
 function $rt_sub(x, y)
 {
     // TODO
+
+
+
 
 }
 

@@ -479,6 +479,9 @@ unittest
 /// Inline IR
 unittest
 {
+    assertInt("return $ir_add_i32(5,3);", 8);
+    assertInt("return $ir_mul_i32(5,3);", 15);
+
     assertInt(
         "
         function foo()
