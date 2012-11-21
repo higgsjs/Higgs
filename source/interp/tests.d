@@ -479,10 +479,6 @@ unittest
 /// Inline IR
 unittest
 {
-    assertInt("return $ir_add(1, 2)", 3);
-    assertInt("if ($ir_jump_false(true)) return 1; else return 2;", 1);
-    assertInt("if ($ir_jump_false(false)) return 1; else return 2;", 2);
-
     assertInt(
         "
         function foo()

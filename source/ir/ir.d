@@ -505,35 +505,97 @@ struct OpInfo
 alias static immutable(OpInfo) Opcode;
 
 // Set a local slot to a constant value    
-Opcode SET_INT    = { "set_int"   , true, [OpArg.INT], &opSetInt };
-Opcode SET_FLOAT  = { "set_float" , true, [OpArg.FLOAT], &opSetFloat };
-Opcode SET_STR    = { "set_str"   , true, [OpArg.STRING, OpArg.REFPTR], &opSetStr };
-Opcode SET_TRUE   = { "set_true"  , true, [], &opSetTrue };
-Opcode SET_FALSE  = { "set_false" , true, [], &opSetFalse };
-Opcode SET_NULL   = { "set_null"  , true, [], &opSetNull };
-Opcode SET_UNDEF  = { "set_undef" , true, [], &opSetUndef };
+Opcode SET_INT    = { "set_int"   , true, [OpArg.INT], &op_set_int };
+Opcode SET_FLOAT  = { "set_float" , true, [OpArg.FLOAT], &op_set_float };
+Opcode SET_STR    = { "set_str"   , true, [OpArg.STRING, OpArg.REFPTR], &op_set_str };
+Opcode SET_TRUE   = { "set_true"  , true, [], &op_set_true };
+Opcode SET_FALSE  = { "set_false" , true, [], &op_set_false };
+Opcode SET_NULL   = { "set_null"  , true, [], &op_set_null };
+Opcode SET_UNDEF  = { "set_undef" , true, [], &op_set_undef };
 
 // Move a value from one local to another
-Opcode MOVE       = { "move", true, [OpArg.LOCAL], &opMove };
-
-
+Opcode MOVE       = { "move", true, [OpArg.LOCAL], &op_move };
 
 // Type tag test
-Opcode IS_INT     = { "is_int", true, [OpArg.LOCAL], &opIsInt };
-Opcode IS_FLOAT   = { "is_float", true, [OpArg.LOCAL], &opIsFloat };
-
-// Integer arithmetic
-Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &opAddI32Ovf, false, true };
-
-// Floating-point arithmetic
-Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &opAddF64 };
+Opcode IS_INT    = { "is_int", true, [OpArg.LOCAL], &op_is_int };
+Opcode IS_FLOAT  = { "is_float", true, [OpArg.LOCAL], &op_is_float };
+Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &op_is_refptr };
+Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &op_is_rawptr };
+Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &op_is_const };
 
 // Type conversion
-Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &opI32ToF64 };
+Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &op_i32_to_f64 };
+
+// Integer arithmetic
+// TODO: ADD
+// TODO: SUB
+// TODO: MUL
+// TODO: DIV
+// TODO: MOD
+
+// Floating-point arithmetic
+Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_f64 };
+// TODO: SUB
+// TODO: MUL
+// TODO: DIV
+
+// TODO: bitwise op instructions
+
+// Integer arithmetic with overflow handling
+Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32_ovf, false, true };
+// TODO: SUB_I32_OVF
+// TODO: MUL_I32_OVF
+// TODO: LSFT_I32_OVF
+
+// Load instructions
+Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u8 };
+Opcode LOAD_U16 = { "load_u16", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u16 };
+Opcode LOAD_U32 = { "load_u32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u32 };
+Opcode LOAD_F64 = { "load_u32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_f64 };
+Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_refptr };
+Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_rawptr };
+
+// Store instructions
+Opcode STORE_U8 = { "store_u8", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8 };
+Opcode STORE_U16 = { "store_u16", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u16 };
+Opcode STORE_U32 = { "store_u32", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u32 };
+Opcode STORE_F64 = { "store_u32", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64 };
+Opcode STORE_REFPTR = { "store_refptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr };
+Opcode STORE_RAWPTR = { "store_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr };
+
+// TODO: comparison instructions
+
+// Branching and conditional branching
+Opcode JUMP       = { "jump"      , false, [], &op_jump, false, true };
+Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL], &op_jump_true, false, true };
+Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL], &op_jump_false, false, true };
+
+// <dstLocal> = CALL <closLocal> <thisArg> <numArgs>
+// Makes the execution go to the callee entry
+// Sets the frame pointer to the new frame's base
+// Pushes the return address word
+Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, true, true };
+
+// <dstLocal> = NEW <closLocal> <numArgs>
+// Implements the JavaScript new operator.
+// Creates the this object
+// Makes the execution go to the callee entry
+// Sets the frame pointer to the new frame's base
+// Pushes the return address word
+Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, true, true };
+
+// PUSH_FRAME
+// On function entry, allocates/adjusts the callee's stack frame
+Opcode PUSH_FRAME = { "push_frame", false, [], &op_push_frame };
+
+// RET <retLocal>
+// Stores return value in special registers
+// Pops the callee frame (size known by context)
+Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret };
 
 
-
-
+// ===========================================================================
+// TODO: translate to runtime functions
 
 
 // Arithmetic operations
@@ -571,41 +633,6 @@ Opcode CMP_LE     = { "cmp_le", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_GT     = { "cmp_gt", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
-
-
-
-
-
-
-
-// Branching and conditional branching
-Opcode JUMP       = { "jump"      , false, [], &opJump, false, true };
-Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL], &opJumpTrue, false, true };
-Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL], &opJumpFalse, false, true };
-
-// <dstLocal> = CALL <closLocal> <thisArg> <numArgs>
-// Makes the execution go to the callee entry
-// Sets the frame pointer to the new frame's base
-// Pushes the return address word
-Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &opCall, true, true };
-
-// <dstLocal> = NEW <closLocal> <numArgs>
-// Implements the JavaScript new operator.
-// Creates the this object
-// Makes the execution go to the callee entry
-// Sets the frame pointer to the new frame's base
-// Pushes the return address word
-Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &opCallNew, true, true };
-
-// PUSH_FRAME
-// On function entry, allocates/adjusts the callee's stack frame
-Opcode PUSH_FRAME = { "push_frame", false, [], &opPushFrame };
-
-// RET <retLocal>
-// Stores return value in special registers
-// Pops the callee frame (size known by context)
-Opcode RET = { "ret", false, [OpArg.LOCAL], &opRet };
-
 // <dstLocal> = NEW_CLOS <funExpr>
 // Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.REFPTR, OpArg.REFPTR], &opNewClos };
@@ -633,6 +660,7 @@ Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlo
 // GET_GLOBAL <propName>
 Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 
+
 /**
 Inline IR prefix string
 */
@@ -643,29 +671,34 @@ Table of inlinable IR instructions (usable in library code)
 */
 Opcode*[string] iir;
 
+/// Initialize the inline IR table
 static this()
 {
     void addOp(ref Opcode op) { iir[op.mnem] = &op; }
 
     addOp(IS_INT);
     addOp(IS_FLOAT);
-
-    addOp(ADD_I32_OVF);
-    addOp(ADD_F64);
+    addOp(IS_REFPTR);
+    addOp(IS_CONST);
 
     addOp(I32_TO_F64);
 
+    addOp(ADD_F64);
 
-    addOp(ADD);
-    addOp(SUB);
+    addOp(ADD_I32_OVF);
 
-    addOp(JUMP_FALSE);
+    addOp(LOAD_U8);
+    addOp(LOAD_U16);
+    addOp(LOAD_U32);
+    addOp(LOAD_F64);
+    addOp(LOAD_REFPTR);
+    addOp(LOAD_RAWPTR);
 
-    // TODO
-
-
-
-
-
+    addOp(STORE_U8);
+    addOp(STORE_U16);
+    addOp(STORE_U32);
+    addOp(STORE_F64);
+    addOp(STORE_REFPTR);
+    addOp(STORE_RAWPTR);
 }
 

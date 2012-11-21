@@ -45,7 +45,7 @@ import interp.interp;
 import interp.layout;
 import interp.string;
 
-void opSetInt(Interp interp, IRInstr instr)
+void op_set_int(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -54,7 +54,7 @@ void opSetInt(Interp interp, IRInstr instr)
     );
 }
 
-void opSetFloat(Interp interp, IRInstr instr)
+void op_set_float(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -63,7 +63,7 @@ void opSetFloat(Interp interp, IRInstr instr)
     );
 }
 
-void opSetStr(Interp interp, IRInstr instr)
+void op_set_str(Interp interp, IRInstr instr)
 {
     auto objPtr = instr.args[1].ptrVal;
 
@@ -80,7 +80,7 @@ void opSetStr(Interp interp, IRInstr instr)
     );
 }
 
-void opSetTrue(Interp interp, IRInstr instr)
+void op_set_true(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -89,7 +89,7 @@ void opSetTrue(Interp interp, IRInstr instr)
     );
 }
 
-void opSetFalse(Interp interp, IRInstr instr)
+void op_set_false(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -98,7 +98,7 @@ void opSetFalse(Interp interp, IRInstr instr)
     );
 }
 
-void opSetNull(Interp interp, IRInstr instr)
+void op_set_null(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -107,7 +107,7 @@ void opSetNull(Interp interp, IRInstr instr)
     );
 }
 
-void opSetUndef(Interp interp, IRInstr instr)
+void op_set_undef(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -116,7 +116,7 @@ void opSetUndef(Interp interp, IRInstr instr)
     );
 }
 
-void opMove(Interp interp, IRInstr instr)
+void op_move(Interp interp, IRInstr instr)
 {
     interp.move(
         instr.args[0].localIdx,
@@ -124,29 +124,53 @@ void opMove(Interp interp, IRInstr instr)
     );
 }
 
-void opIsInt(Interp interp, IRInstr instr)
+void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
 {
     auto typeTag = interp.getType(instr.args[0].localIdx);
 
     interp.setSlot(
         instr.outSlot,
-        (typeTag == Type.INT)? TRUE:FALSE,
+        (typeTag == type)? TRUE:FALSE,
         Type.CONST
     );
 }
 
-void opIsFloat(Interp interp, IRInstr instr)
+alias TypeCheckOp!(Type.INT) op_is_int;
+alias TypeCheckOp!(Type.FLOAT) op_is_float;
+alias TypeCheckOp!(Type.REFPTR) op_is_refptr;
+alias TypeCheckOp!(Type.RAWPTR) op_is_rawptr;
+alias TypeCheckOp!(Type.CONST) op_is_const;
+
+void op_i32_to_f64(Interp interp, IRInstr instr)
 {
-    auto typeTag = interp.getType(instr.args[0].localIdx);
+    auto w0 = interp.getWord(instr.args[0].localIdx);
 
     interp.setSlot(
         instr.outSlot,
-        (typeTag == Type.FLOAT)? TRUE:FALSE,
-        Type.CONST
+        Word.floatv(cast(int32)w0.intVal),
+        Type.FLOAT
     );
 }
 
-void opAddI32Ovf(Interp interp, IRInstr instr)
+void op_add_f64(Interp interp, IRInstr instr)
+{
+    auto idx0 = instr.args[0].localIdx;
+    auto idx1 = instr.args[1].localIdx;
+    auto w0 = interp.getWord(idx0);
+    auto w1 = interp.getWord(idx1);
+    auto t0 = interp.getType(idx0);
+    auto t1 = interp.getType(idx1);
+
+    auto r = w0.floatVal + w1.floatVal;
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.floatv(r),
+        Type.FLOAT
+    );
+}
+
+void op_add_i32_ovf(Interp interp, IRInstr instr)
 {
     auto idx0 = instr.args[0].localIdx;
     auto idx1 = instr.args[1].localIdx;
@@ -171,34 +195,333 @@ void opAddI32Ovf(Interp interp, IRInstr instr)
     }
 }
 
-void opAddF64(Interp interp, IRInstr instr)
+void LoadOp(DataType, Type typeTag, )(Interp interp, IRInstr instr)
 {
-    auto idx0 = instr.args[0].localIdx;
-    auto idx1 = instr.args[1].localIdx;
-    auto w0 = interp.getWord(idx0);
-    auto w1 = interp.getWord(idx1);
-    auto t0 = interp.getType(idx0);
-    auto t1 = interp.getType(idx1);
+    auto ptr = interp.getWord(instr.args[0].localIdx).ptrVal;
+    auto ofs = interp.getWord(instr.args[1].localIdx).intVal;
 
-    auto r = w0.floatVal + w1.floatVal;
+    // TODO: add type assertions
+
+    auto val = *cast(DataType*)(ptr + ofs);
+
+    Word word;
+
+    static if (
+        DataType.stringof == "int8"  ||
+        DataType.stringof == "int16" ||
+        DataType.stringof == "int32" ||
+        DataType.stringof == "int64")
+        word.intVal = val;
+
+    static if (
+        DataType.stringof == "uint8"  ||
+        DataType.stringof == "uint16" ||
+        DataType.stringof == "uint32" ||
+        DataType.stringof == "uint64")
+        word.uintVal = val;
+
+    static if (DataType.stringof == "float64")
+        word.floatVal = val;
+
+    static if (
+        DataType.stringof == "refptr" ||
+        DataType.stringof == "rawptr")
+        word.ptrVal = val;
 
     interp.setSlot(
         instr.outSlot,
-        Word.floatv(r),
-        Type.FLOAT
+        word,
+        typeTag
     );
 }
 
-void opI32ToF64(Interp interp, IRInstr instr)
+void StoreOp(DataType, Type typeTag, )(Interp interp, IRInstr instr)
 {
-    auto w0 = interp.getWord(instr.args[0].localIdx);
+    auto ptr = interp.getWord(instr.args[0].localIdx).ptrVal;
+    auto ofs = interp.getWord(instr.args[1].localIdx).intVal;
+    auto word = interp.getWord(instr.args[2].localIdx);
 
-    interp.setSlot(
-        instr.outSlot,
-        Word.floatv(cast(int32)w0.intVal),
-        Type.FLOAT
-    );
+    // TODO: add type assertions
+
+    DataType val;
+
+    static if (
+        DataType.stringof == "int8"  ||
+        DataType.stringof == "int16" ||
+        DataType.stringof == "int32" ||
+        DataType.stringof == "int64")
+        val = cast(DataType)word.intVal;
+
+    static if (
+        DataType.stringof == "uint8"  ||
+        DataType.stringof == "uint16" ||
+        DataType.stringof == "uint32" ||
+        DataType.stringof == "uint64")
+        val = cast(DataType)word.uintVal;
+
+    static if (DataType.stringof == "float64")
+        val = cast(DataType)word.floatVal;
+
+    static if (
+        DataType.stringof == "refptr" ||
+        DataType.stringof == "rawptr")
+        val = cast(DataType)word.ptrVal;
+
+    *cast(DataType*)(ptr + ofs) = val;
 }
+
+alias LoadOp!(uint8, Type.INT) op_load_u8;
+alias LoadOp!(uint16, Type.INT) op_load_u16;
+alias LoadOp!(uint32, Type.INT) op_load_u32;
+alias LoadOp!(float64, Type.FLOAT) op_load_f64;
+alias LoadOp!(refptr, Type.REFPTR) op_load_refptr;
+alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;
+
+alias StoreOp!(uint8, Type.INT) op_store_u8;
+alias StoreOp!(uint16, Type.INT) op_store_u16;
+alias StoreOp!(uint32, Type.INT) op_store_u32;
+alias StoreOp!(float64, Type.FLOAT) op_store_f64;
+alias StoreOp!(refptr, Type.REFPTR) op_store_refptr;
+alias StoreOp!(rawptr, Type.RAWPTR) op_store_rawptr;
+
+void op_jump(Interp interp, IRInstr instr)
+{
+    interp.ip = instr.target.firstInstr;
+}
+
+void op_jump_true(Interp interp, IRInstr instr)
+{
+    auto valIdx = instr.args[0].localIdx;
+    auto wVal = interp.getWord(valIdx);
+
+    if (wVal == TRUE)
+        interp.ip = instr.target.firstInstr;
+}
+
+void op_jump_false(Interp interp, IRInstr instr)
+{
+    auto valIdx = instr.args[0].localIdx;
+    auto wVal = interp.getWord(valIdx);
+
+    if (wVal == FALSE)
+        interp.ip = instr.target.firstInstr;
+}
+
+void op_call(Interp interp, IRInstr instr)
+{
+    auto closIdx = instr.args[0].localIdx;
+    auto thisIdx = instr.args[1].localIdx;
+    //auto numArgs = instr.args[2].intVal;
+
+    auto wThis = interp.getWord(thisIdx);
+    auto tThis = interp.getType(thisIdx);
+
+    // Get the function object from the closure
+    auto closPtr = interp.getWord(closIdx).ptrVal;
+    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
+
+    assert (
+        fun !is null, 
+        "null IRFunction pointer"
+    );
+
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+    {
+        astToIR(fun.ast, fun);
+    }
+
+    // Set the caller instruction as the return address
+    auto retAddr = cast(rawptr)instr;
+
+    // Push the hidden call arguments
+    interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
+    interp.push(Word.ptrv(closPtr), Type.REFPTR);       // Closure argument
+    interp.push(wThis, tThis);                          // This argument
+
+    auto numArgs = instr.args.length - 2;
+
+    // Push the non-hidden function arguments
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        auto argSlot = instr.args[2+i].localIdx + i + NUM_HIDDEN_ARGS;
+        auto wArg = interp.getWord(argSlot);
+        auto tArg = interp.getType(argSlot);
+        interp.push(wArg, tArg);
+    }
+
+    // Push the argument count
+    interp.push(Word.intv(numArgs), Type.INT);
+
+    // Set the instruction pointer
+    interp.ip = fun.entryBlock.firstInstr;
+}
+
+/// JavaScript new operator (constructor call)
+void op_call_new(Interp interp, IRInstr instr)
+{
+    auto closIdx = instr.args[0].localIdx;
+
+    // Get the function object from the closure
+    auto closPtr = interp.getWord(closIdx).ptrVal;
+    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
+    assert (
+        fun !is null, 
+        "null IRFunction pointer"
+    );
+
+    // Lookup the "prototype" property on the closure
+    auto protoPtr = getProp(
+        interp, 
+        closPtr,
+        getString(interp, "prototype")
+    );
+
+    // Allocate the "this" object
+    auto thisPtr = newObj(
+        interp, 
+        &fun.classPtr, 
+        protoPtr.word.ptrVal,
+        CLASS_INIT_SIZE,
+        2
+    );
+
+    // Set the this object pointer in the output slot
+    interp.setSlot(
+        instr.outSlot, 
+        Word.ptrv(thisPtr),
+        Type.REFPTR
+    );
+
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+    {
+        astToIR(fun.ast, fun);
+    }
+
+    // Set the caller instruction as the return address
+    auto retAddr = cast(rawptr)instr;
+
+    // Push the hidden call arguments
+    interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
+    interp.push(Word.ptrv(closPtr), Type.REFPTR);       // Closure argument
+    interp.push(Word.ptrv(thisPtr), Type.REFPTR);       // This argument
+
+    auto numArgs = instr.args.length - 1;
+
+    // Push the non-hidden function arguments
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        auto argSlot = instr.args[1+i].localIdx + i + NUM_HIDDEN_ARGS;
+        auto wArg = interp.getWord(argSlot);
+        auto tArg = interp.getType(argSlot);
+        interp.push(wArg, tArg);
+    }
+
+    // Push the argument count
+    interp.push(Word.intv(numArgs), Type.INT);
+
+    // Set the instruction pointer
+    interp.ip = fun.entryBlock.firstInstr;
+}
+
+/// Allocate/adjust the stack frame on function entry
+void op_push_frame(Interp interp, IRInstr instr)
+{
+    auto numParams = instr.fun.params.length;
+    auto numLocals = instr.fun.numLocals;
+
+    // Get the number of arguments passed
+    auto numArgs = interp.getWord(0).intVal;
+
+    // If there are not enough arguments
+    if (numArgs < numParams)
+    {
+        auto deltaArgs = numParams - numArgs;
+
+        // Allocate new stack slots for the missing arguments
+        interp.push(deltaArgs);
+
+        // Move the argument count to the top of the stack
+        interp.move(deltaArgs, 0);
+
+        // Initialize the missing arguments to undefined
+        for (size_t i = 0; i < deltaArgs; ++i)
+            interp.setSlot(1 + i, UNDEF, Type.CONST);
+    }
+
+    // If there are too many arguments
+    else if (numArgs > numParams)
+    {
+        auto deltaArgs = numArgs - numParams;
+
+        // Move the argument count down
+        interp.move(0, deltaArgs);
+
+        // Remove superfluous argument slots
+        interp.pop(deltaArgs);
+    }
+
+    // Allocate slots for the local variables
+    auto delta = numLocals - (numParams + NUM_HIDDEN_ARGS + 1);
+    //writefln("push_frame adding %s slot", delta);
+    interp.push(delta);
+}
+
+void op_ret(Interp interp, IRInstr instr)
+{
+    auto retSlot   = instr.args[0].localIdx;
+    auto raSlot    = instr.fun.raSlot;
+    auto numLocals = instr.fun.numLocals;
+
+    // Get the return value
+    auto wRet = interp.wsp[retSlot];
+    auto tRet = interp.tsp[retSlot];
+
+    // Get the calling instruction
+    auto callInstr = cast(IRInstr)interp.getWord(raSlot).ptrVal;
+
+    // If the call instruction is valid
+    if (callInstr !is null)
+    {
+        // If this is a new call and the return value is undefined
+        if (callInstr.opcode == &CALL_NEW && wRet == UNDEF)
+        {
+            // Use the this value as the return value
+            wRet = interp.getWord(instr.fun.thisSlot);
+            tRet = interp.getType(instr.fun.thisSlot);
+        }
+
+        // Pop all local stack slots
+        interp.pop(numLocals);
+
+        // Set the instruction pointer to the post-call instruction
+        interp.ip = callInstr.next;
+
+        // Leave the return value in the call's return slot
+        interp.setSlot(
+            callInstr.outSlot, 
+            wRet,
+            tRet
+        );
+    }
+    else
+    {
+        // Pop all local stack slots
+        interp.pop(numLocals);
+
+        // Terminate the execution
+        interp.ip = null;
+
+        // Leave the return value on top of the stack
+        interp.push(wRet, tRet);
+    }
+}
+
+
+// ===========================================================================
+// TODO: translate to runtime functions
+
 
 void opAdd(Interp interp, IRInstr instr)
 {
@@ -524,284 +847,6 @@ void opCmpLt(Interp interp, IRInstr instr)
     {
         assert (false, "unsupported types in mul");
     }
-}
-
-void opJump(Interp interp, IRInstr instr)
-{
-    interp.ip = instr.target.firstInstr;
-}
-
-void opJumpTrue(Interp interp, IRInstr instr)
-{
-    auto valIdx = instr.args[0].localIdx;
-    auto wVal = interp.getWord(valIdx);
-
-    if (wVal == TRUE)
-        interp.ip = instr.target.firstInstr;
-}
-
-void opJumpFalse(Interp interp, IRInstr instr)
-{
-    auto valIdx = instr.args[0].localIdx;
-    auto wVal = interp.getWord(valIdx);
-
-    if (wVal == FALSE)
-        interp.ip = instr.target.firstInstr;
-}
-
-void opCall(Interp interp, IRInstr instr)
-{
-    auto closIdx = instr.args[0].localIdx;
-    auto thisIdx = instr.args[1].localIdx;
-    //auto numArgs = instr.args[2].intVal;
-
-    auto wThis = interp.getWord(thisIdx);
-    auto tThis = interp.getType(thisIdx);
-
-    // Get the function object from the closure
-    auto closPtr = interp.getWord(closIdx).ptrVal;
-    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
-
-    assert (
-        fun !is null, 
-        "null IRFunction pointer"
-    );
-
-    // If the function is not yet compiled, compile it now
-    if (fun.entryBlock is null)
-    {
-        astToIR(fun.ast, fun);
-    }
-
-    // Set the caller instruction as the return address
-    auto retAddr = cast(rawptr)instr;
-
-    // Push the hidden call arguments
-    interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
-    interp.push(Word.ptrv(closPtr), Type.REFPTR);       // Closure argument
-    interp.push(wThis, tThis);                          // This argument
-
-    auto numArgs = instr.args.length - 2;
-
-    // Push the non-hidden function arguments
-    for (size_t i = 0; i < numArgs; ++i)
-    {
-        auto argSlot = instr.args[2+i].localIdx + i + NUM_HIDDEN_ARGS;
-        auto wArg = interp.getWord(argSlot);
-        auto tArg = interp.getType(argSlot);
-        interp.push(wArg, tArg);
-    }
-
-    // Push the argument count
-    interp.push(Word.intv(numArgs), Type.INT);
-
-    // Set the instruction pointer
-    interp.ip = fun.entryBlock.firstInstr;
-}
-
-/// JavaScript new operator (constructor call)
-void opCallNew(Interp interp, IRInstr instr)
-{
-    auto closIdx = instr.args[0].localIdx;
-
-    // Get the function object from the closure
-    auto closPtr = interp.getWord(closIdx).ptrVal;
-    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
-    assert (
-        fun !is null, 
-        "null IRFunction pointer"
-    );
-
-    // Lookup the "prototype" property on the closure
-    auto protoPtr = getProp(
-        interp, 
-        closPtr,
-        getString(interp, "prototype")
-    );
-
-    // Allocate the "this" object
-    auto thisPtr = newObj(
-        interp, 
-        &fun.classPtr, 
-        protoPtr.word.ptrVal,
-        CLASS_INIT_SIZE,
-        2
-    );
-
-    // Set the this object pointer in the output slot
-    interp.setSlot(
-        instr.outSlot, 
-        Word.ptrv(thisPtr),
-        Type.REFPTR
-    );
-
-    // If the function is not yet compiled, compile it now
-    if (fun.entryBlock is null)
-    {
-        astToIR(fun.ast, fun);
-    }
-
-    // Set the caller instruction as the return address
-    auto retAddr = cast(rawptr)instr;
-
-    // Push the hidden call arguments
-    interp.push(Word.ptrv(retAddr), Type.RAWPTR);       // Return address
-    interp.push(Word.ptrv(closPtr), Type.REFPTR);       // Closure argument
-    interp.push(Word.ptrv(thisPtr), Type.REFPTR);       // This argument
-
-    auto numArgs = instr.args.length - 1;
-
-    // Push the non-hidden function arguments
-    for (size_t i = 0; i < numArgs; ++i)
-    {
-        auto argSlot = instr.args[1+i].localIdx + i + NUM_HIDDEN_ARGS;
-        auto wArg = interp.getWord(argSlot);
-        auto tArg = interp.getType(argSlot);
-        interp.push(wArg, tArg);
-    }
-
-    // Push the argument count
-    interp.push(Word.intv(numArgs), Type.INT);
-
-    // Set the instruction pointer
-    interp.ip = fun.entryBlock.firstInstr;
-}
-
-/// Allocate/adjust the stack frame on function entry
-void opPushFrame(Interp interp, IRInstr instr)
-{
-    auto numParams = instr.fun.params.length;
-    auto numLocals = instr.fun.numLocals;
-
-    // Get the number of arguments passed
-    auto numArgs = interp.getWord(0).intVal;
-
-    // If there are not enough arguments
-    if (numArgs < numParams)
-    {
-        auto deltaArgs = numParams - numArgs;
-
-        // Allocate new stack slots for the missing arguments
-        interp.push(deltaArgs);
-
-        // Move the argument count to the top of the stack
-        interp.move(deltaArgs, 0);
-
-        // Initialize the missing arguments to undefined
-        for (size_t i = 0; i < deltaArgs; ++i)
-            interp.setSlot(1 + i, UNDEF, Type.CONST);
-    }
-
-    // If there are too many arguments
-    else if (numArgs > numParams)
-    {
-        auto deltaArgs = numArgs - numParams;
-
-        // Move the argument count down
-        interp.move(0, deltaArgs);
-
-        // Remove superfluous argument slots
-        interp.pop(deltaArgs);
-    }
-
-    // Allocate slots for the local variables
-    auto delta = numLocals - (numParams + NUM_HIDDEN_ARGS + 1);
-    //writefln("push_frame adding %s slot", delta);
-    interp.push(delta);
-}
-
-void opRet(Interp interp, IRInstr instr)
-{
-    auto retSlot   = instr.args[0].localIdx;
-    auto raSlot    = instr.fun.raSlot;
-    auto numLocals = instr.fun.numLocals;
-
-    // Get the return value
-    auto wRet = interp.wsp[retSlot];
-    auto tRet = interp.tsp[retSlot];
-
-    // Get the calling instruction
-    auto callInstr = cast(IRInstr)interp.getWord(raSlot).ptrVal;
-
-    // If the call instruction is valid
-    if (callInstr !is null)
-    {
-        // If this is a new call and the return value is undefined
-        if (callInstr.opcode == &CALL_NEW && wRet == UNDEF)
-        {
-            // Use the this value as the return value
-            wRet = interp.getWord(instr.fun.thisSlot);
-            tRet = interp.getType(instr.fun.thisSlot);
-        }
-
-        // Pop all local stack slots
-        interp.pop(numLocals);
-
-        // Set the instruction pointer to the post-call instruction
-        interp.ip = callInstr.next;
-
-        // Leave the return value in the call's return slot
-        interp.setSlot(
-            callInstr.outSlot, 
-            wRet,
-            tRet
-        );
-    }
-    else
-    {
-        // Pop all local stack slots
-        interp.pop(numLocals);
-
-        // Terminate the execution
-        interp.ip = null;
-
-        // Leave the return value on top of the stack
-        interp.push(wRet, tRet);
-    }
-}
-
-void opNewClos(Interp interp, IRInstr instr)
-{
-    auto fun = instr.args[0].fun;
-
-    // TODO
-    // TODO: num clos cells, can get this from fun object!
-    // TODO
-
-    // Allocate the prototype object
-    auto objPtr = newObj(
-        interp, 
-        &instr.args[1].ptrVal, 
-        NULL.ptrVal,        // TODO: object proto
-        CLASS_INIT_SIZE,
-        0
-    );
-
-    // Allocate the closure object
-    auto closPtr = newClos(
-        interp, 
-        &instr.args[2].ptrVal, 
-        NULL.ptrVal,        // TODO: function proto
-        CLASS_INIT_SIZE,
-        1,
-        0,                  // TODO: num cells
-        fun
-    );
-
-    // Set the prototype property on the closure object
-    setProp(
-        interp, 
-        closPtr,
-        getString(interp, "prototype"),
-        ValuePair(Word.ptrv(objPtr), Type.REFPTR)
-    );
-   
-    // Output a pointer to the closure
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(closPtr),
-        Type.REFPTR
-    );    
 }
 
 /// Expression evaluation delegate function
@@ -1207,6 +1252,50 @@ void opNewArr(Interp interp, IRInstr instr)
         Word.ptrv(arrPtr),
         Type.REFPTR
     );
+}
+
+void opNewClos(Interp interp, IRInstr instr)
+{
+    auto fun = instr.args[0].fun;
+
+    // TODO
+    // TODO: num clos cells, can get this from fun object!
+    // TODO
+
+    // Allocate the prototype object
+    auto objPtr = newObj(
+        interp, 
+        &instr.args[1].ptrVal, 
+        NULL.ptrVal,        // TODO: object proto
+        CLASS_INIT_SIZE,
+        0
+    );
+
+    // Allocate the closure object
+    auto closPtr = newClos(
+        interp, 
+        &instr.args[2].ptrVal, 
+        NULL.ptrVal,        // TODO: function proto
+        CLASS_INIT_SIZE,
+        1,
+        0,                  // TODO: num cells
+        fun
+    );
+
+    // Set the prototype property on the closure object
+    setProp(
+        interp, 
+        closPtr,
+        getString(interp, "prototype"),
+        ValuePair(Word.ptrv(objPtr), Type.REFPTR)
+    );
+   
+    // Output a pointer to the closure
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(closPtr),
+        Type.REFPTR
+    );    
 }
 
 /// Set an object property value
