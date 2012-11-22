@@ -70,11 +70,11 @@ union Word
     rawptr  ptrVal;
 }
 
-// Note: high byte is set to allow for one byte immediate comparison
-Word UNDEF  = { intVal: 0xF1FFFFFFFFFFFFFF };
-Word NULL   = { intVal: 0xF2FFFFFFFFFFFFFF };
-Word TRUE   = { intVal: 0xF3FFFFFFFFFFFFFF };
-Word FALSE  = { intVal: 0xF4FFFFFFFFFFFFFF };
+// Note: low byte is set to allow for one byte immediate comparison
+Word UNDEF  = { intVal: 0xFFFFFFFFFFFFFFF1 };
+Word NULL   = { intVal: 0xFFFFFFFFFFFFFFF2 };
+Word TRUE   = { intVal: 0xFFFFFFFFFFFFFFF3 };
+Word FALSE  = { intVal: 0xFFFFFFFFFFFFFFF4 };
 
 /// Word type values
 enum Type : ubyte
@@ -539,6 +539,36 @@ class Interp
         return exec(ast);
     }
 
+    /**
+    Parse and execute a source string
+    */
+    ValuePair evalString(string input, string fileName = "string")
+    {
+        auto ast = parseString(input, fileName);
+
+        // If the AST contains only an expression statement,
+        // turn it into a return statement
+        if (auto blockStmt = cast(BlockStmt)ast.bodyStmt)
+        {
+            if (blockStmt.stmts.length == 1)
+            {
+                if (auto exprStmt = cast(ExprStmt)blockStmt.stmts[$-1])
+                {
+                    blockStmt.stmts[$-1] = new ReturnStmt(
+                        exprStmt.expr,
+                        exprStmt.pos
+                    );
+                }
+            }
+        }
+
+        return exec(ast);
+    }
+
+    // TODO: replace by runtime function $rt_toString
+    // TODO: way to call $rt_toString with a specific value?
+    // - Probably want to call through exec?
+    // - callGlobal?
     /**
     Produce the string representation of a value
     */

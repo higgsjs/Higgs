@@ -169,6 +169,22 @@ void op_add_i32(Interp interp, IRInstr instr)
     );
 }
 
+void op_sub_i32(Interp interp, IRInstr instr)
+{
+    auto idx0 = instr.args[0].localIdx;
+    auto idx1 = instr.args[1].localIdx;
+    auto w0 = interp.getWord(idx0);
+    auto w1 = interp.getWord(idx1);
+
+    auto r = cast(int32)(w0.intVal - w1.intVal);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.intv(r),
+        Type.INT
+    );
+}
+
 void op_mul_i32(Interp interp, IRInstr instr)
 {
     auto idx0 = instr.args[0].localIdx;
@@ -224,6 +240,42 @@ void op_add_i32_ovf(Interp interp, IRInstr instr)
     {
         interp.ip = instr.target.firstInstr;
     }
+}
+
+void op_eq_i32(Interp interp, IRInstr instr)
+{
+    auto idx0 = instr.args[0].localIdx;
+    auto idx1 = instr.args[1].localIdx;
+    auto w0 = interp.getWord(idx0);
+    auto w1 = interp.getWord(idx1);
+    auto t0 = interp.getType(idx0);
+    auto t1 = interp.getType(idx1);
+
+    auto r = cast(int32)w0.intVal == cast(int32)w1.intVal;
+
+    interp.setSlot(
+        instr.outSlot,
+        r? TRUE:FALSE,
+        Type.CONST
+    );
+}
+
+void op_lt_i32(Interp interp, IRInstr instr)
+{
+    auto idx0 = instr.args[0].localIdx;
+    auto idx1 = instr.args[1].localIdx;
+    auto w0 = interp.getWord(idx0);
+    auto w1 = interp.getWord(idx1);
+    auto t0 = interp.getType(idx0);
+    auto t1 = interp.getType(idx1);
+
+    auto r = cast(int32)w0.intVal < cast(int32)w1.intVal;
+
+    interp.setSlot(
+        instr.outSlot,
+        r? TRUE:FALSE,
+        Type.CONST
+    );
 }
 
 void LoadOp(DataType, Type typeTag, )(Interp interp, IRInstr instr)

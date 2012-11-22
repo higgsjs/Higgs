@@ -49,7 +49,7 @@ void assertInt(string input, long intVal)
 {
     //writeln("getting ret val");
 
-    auto ret = evalString(new Interp(), input);
+    auto ret = (new Interp()).evalString(input);
 
     assert (
         ret.type == Type.INT,
@@ -71,7 +71,7 @@ void assertInt(string input, long intVal)
 
 void assertFloat(string input, double floatVal, double eps = 1E-4)
 {
-    auto ret = evalString(new Interp(), input);
+    auto ret = (new Interp()).evalString(input);
 
     assert (
         ret.type == Type.INT ||
@@ -96,7 +96,7 @@ void assertFloat(string input, double floatVal, double eps = 1E-4)
 
 void assertStr(string input, string strVal)
 {
-    auto ret = evalString(new Interp(), input);
+    auto ret = (new Interp()).evalString(input);
 
     assert (
         ret.type == Type.STRING,
@@ -121,8 +121,13 @@ unittest
 {
     Word w0 = Word.intv(0);
     Word w1 = Word.intv(1);
-
     assert (w0.intVal != w1.intVal);
+}
+
+unittest
+{
+    auto v = (new Interp()).evalString("1");
+    assert (v.word.intVal == 1);
 }
 
 /// Global expression tests
@@ -481,6 +486,8 @@ unittest
 {
     assertInt("return $ir_add_i32(5,3);", 8);
     assertInt("return $ir_mul_i32(5,3);", 15);
+    assertInt("return $ir_eq_i32(3,3)? 1:0;", 1);
+    assertInt("return $ir_lt_i32(3,5)? 1:0;", 1);
 
     assertInt(
         "

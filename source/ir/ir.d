@@ -505,20 +505,20 @@ struct OpInfo
 alias static immutable(OpInfo) Opcode;
 
 // Set a local slot to a constant value    
-Opcode SET_INT    = { "set_int"   , true, [OpArg.INT], &op_set_int };
-Opcode SET_FLOAT  = { "set_float" , true, [OpArg.FLOAT], &op_set_float };
-Opcode SET_STR    = { "set_str"   , true, [OpArg.STRING, OpArg.REFPTR], &op_set_str };
-Opcode SET_TRUE   = { "set_true"  , true, [], &op_set_true };
-Opcode SET_FALSE  = { "set_false" , true, [], &op_set_false };
-Opcode SET_NULL   = { "set_null"  , true, [], &op_set_null };
-Opcode SET_UNDEF  = { "set_undef" , true, [], &op_set_undef };
+Opcode SET_INT = { "set_int"   , true, [OpArg.INT], &op_set_int };
+Opcode SET_FLOAT = { "set_float" , true, [OpArg.FLOAT], &op_set_float };
+Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.REFPTR], &op_set_str };
+Opcode SET_TRUE = { "set_true"  , true, [], &op_set_true };
+Opcode SET_FALSE= { "set_false" , true, [], &op_set_false };
+Opcode SET_NULL = { "set_null"  , true, [], &op_set_null };
+Opcode SET_UNDEF = { "set_undef" , true, [], &op_set_undef };
 
 // Move a value from one local to another
-Opcode MOVE       = { "move", true, [OpArg.LOCAL], &op_move };
+Opcode MOVE = { "move", true, [OpArg.LOCAL], &op_move };
 
 // Type tag test
-Opcode IS_INT    = { "is_int", true, [OpArg.LOCAL], &op_is_int };
-Opcode IS_FLOAT  = { "is_float", true, [OpArg.LOCAL], &op_is_float };
+Opcode IS_INT = { "is_int", true, [OpArg.LOCAL], &op_is_int };
+Opcode IS_FLOAT = { "is_float", true, [OpArg.LOCAL], &op_is_float };
 Opcode IS_STRING  = { "is_string", true, [OpArg.LOCAL], &op_is_string };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &op_is_refptr };
 Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &op_is_rawptr };
@@ -529,7 +529,7 @@ Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &op_i32_to_f64 };
 
 // Integer arithmetic
 Opcode ADD_I32 = { "add_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32 };
-// TODO: SUB
+Opcode SUB_I32 = { "sub_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_i32 };
 Opcode MUL_I32 = { "mul_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_i32 };
 // TODO: MUL
 // TODO: DIV
@@ -549,6 +549,14 @@ Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_
 // TODO: MUL_I32_OVF
 // TODO: LSFT_I32_OVF
 
+// TODO: Comparison instructions
+Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_i32 };
+// TODO: NE
+Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lt_i32 };
+// TODO: GT
+// TODO: LE
+// TODO: GE
+
 // Load instructions
 Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u8 };
 Opcode LOAD_U16 = { "load_u16", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u16 };
@@ -565,11 +573,9 @@ Opcode STORE_F64 = { "store_u32", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL],
 Opcode STORE_REFPTR = { "store_refptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr };
 Opcode STORE_RAWPTR = { "store_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr };
 
-// TODO: comparison instructions
-
 // Branching and conditional branching
-Opcode JUMP       = { "jump"      , false, [], &op_jump, false, true };
-Opcode JUMP_TRUE  = { "jump_true" , false, [OpArg.LOCAL], &op_jump_true, false, true };
+Opcode JUMP = { "jump"      , false, [], &op_jump, false, true };
+Opcode JUMP_TRUE = { "jump_true" , false, [OpArg.LOCAL], &op_jump_true, false, true };
 Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL], &op_jump_false, false, true };
 
 // <dstLocal> = CALL <closLocal> <thisArg> <numArgs>
@@ -693,6 +699,9 @@ static this()
     addOp(ADD_F64);
 
     addOp(ADD_I32_OVF);
+
+    addOp(EQ_I32);
+    addOp(LT_I32);
 
     addOp(LOAD_U8);
     addOp(LOAD_U16);

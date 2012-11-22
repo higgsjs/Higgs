@@ -42,36 +42,6 @@ import parser.parser;
 import ir.ast;
 import interp.interp;
 
-/**
-Evaluate a string of source code
-*/
-ValuePair evalString(Interp interp, string input)
-{
-    auto ast = parseString(input, "repl");
-
-    // If the AST contains only an expression statement,
-    // turn it into a return statement
-    if (auto blockStmt = cast(BlockStmt)ast.bodyStmt)
-    {
-        if (blockStmt.stmts.length == 1)
-        {
-            if (auto exprStmt = cast(ExprStmt)blockStmt.stmts[$-1])
-            {
-                blockStmt.stmts[$-1] = new ReturnStmt(
-                    exprStmt.expr,
-                    exprStmt.pos
-                );
-            }
-        }
-    }
-
-    //writeln(ast);
-
-    auto output = interp.exec(ast);
-
-    return output;
-}
-
 void repl()
 {
     auto interp = new Interp();
@@ -95,7 +65,7 @@ void repl()
         try 
         {
             // Evaluate the input
-            auto output = evalString(interp, input);
+            auto output = interp.evalString(input, "repl");
 
             // Print the output
             writeln(ValueToString(output));
@@ -106,10 +76,5 @@ void repl()
             writeln("parse error: " ~ e.toString());
         }
     }
-}
-
-unittest
-{
-    evalString(new Interp(), "1");
 }
 
