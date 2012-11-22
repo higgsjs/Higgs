@@ -36,6 +36,148 @@
 *****************************************************************************/
 
 /**
+Perform an assertion test
+*/
+function assert(test, error)
+{
+    // TODO
+}
+
+/**
+Print a value to the console
+*/
+function print(val)
+{
+    // TODO
+
+    // Convert the value to a string
+    //var strVal = boxToString(val);
+       
+    // Print the string
+    //puts(strVal);
+}
+
+/**
+Concatenate the strings from two string objects
+*/
+function $rt_strcat(str1, str2)
+{
+    // TODO
+
+    /*
+    // Get the length of both strings
+    var len1 = iir.icast(IRType.pint, get_str_size(str1));
+    var len2 = iir.icast(IRType.pint, get_str_size(str2));
+
+    // Compute the length of the new string
+    var newLen = len1 + len2;
+
+    // Allocate a string object
+    var newStr = alloc_str(newLen);
+
+    // Copy the character data from the first string
+    for (var i = pint(0); i < len1; i++)
+    {
+        var ch = get_str_data(str1, i);
+        set_str_data(newStr, i, ch);
+    }
+
+    // Copy the character data from the second string
+    for (var i = pint(0); i < len2; i++)
+    {
+        var ch = get_str_data(str2, i);
+        set_str_data(newStr, len1 + i, ch);
+    }
+
+    // Compute the hash code for the new string
+    compStrHash(newStr);
+
+    // Find/add the concatenated string in the string table
+    var newStr = getTableStr(newStr);
+
+    return newStr;
+    */
+}
+
+/**
+Create a string representing an integer value
+*/
+function $rt_intToStr(intVal, radix)
+{
+    /*
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg intVal pint";
+    "tachyon:arg radix pint";
+
+    assert (
+        radix > pint(0) && radix <= pint(36),
+        'invalid radix'
+    );
+
+    var strLen;
+    var neg;
+
+    // If the integer is negative, adjust the string length for the minus sign
+    if (intVal < pint(0))
+    {
+        strLen = pint(1);
+        intVal *= pint(-1);
+        neg = true;
+    }
+    else
+    {
+        strLen = pint(0);
+        neg = false;
+    }
+    
+    // Compute the number of digits to add to the string length
+    var intVal2 = intVal;
+    do
+    {
+        strLen++;
+        intVal2 /= radix;
+
+    } while (intVal2 !== pint(0));
+
+    // Allocate a string object
+    var strObj = alloc_str(strLen);
+
+    // If the string is negative, write the minus sign
+    if (neg)
+    {
+        set_str_data(strObj, pint(0), u16(45));
+    }
+
+    var digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+
+    // Write the digits in the string
+    var i = strLen - pint(1);
+    do
+    {
+        var digit = intVal % radix;
+
+        var ch = get_str_data(digits, digit);
+
+        set_str_data(strObj, i, ch);
+
+        intVal /= radix; 
+
+        i--;
+
+    } while (intVal !== pint(0));
+
+    // Compute the hash code for the new string
+    compStrHash(strObj);
+
+    // Return the string object
+    return strObj;
+    */
+
+    // TODO: get table string
+}
+
+/**
 Get the string representation of a value
 */
 function $rt_toString(v)
