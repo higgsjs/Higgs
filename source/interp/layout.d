@@ -42,6 +42,7 @@ import std.string;
 import std.array;
 import std.conv;
 import interp.interp;
+import util.string;
 
 alias ubyte*    rawptr;
 alias ubyte*    refptr;
@@ -119,7 +120,8 @@ string genLayouts(Layout[] layouts)
     // Next layout id to be allocated
     LayoutType nextLayoutId = 1;
 
-    auto output = appender!string();
+    auto outD = appender!string();
+    auto outJS = appender!string();
 
     // For each layout to generate
     for (size_t i = 0; i < layouts.length; ++i)
@@ -161,10 +163,16 @@ string genLayouts(Layout[] layouts)
         layout.fields = typeField ~ layout.fields;
 
         // Generate code for this layout
-        output.put(genLayout(*layout));
+        genLayout(*layout, outD, outJS);
     }
 
-    return output.data;
+    // Define a global constant for the JS layout code string
+    outD.put(
+        "immutable string JS_LAYOUT_CODE = \"" ~ 
+        escapeDString(outJS.data)~ "\";\n"
+    );
+
+    return outD.data;
 }
 
 /**
@@ -179,10 +187,8 @@ Generates:
 - layout_get_field(ptr[,idx])
 - layout_set_field(ptr[,idx])
 */
-string genLayout(Layout layout)
+void genLayout(Layout layout, ref Appender!string outD, ref Appender!string outJS)
 {
-    auto output = appender!string();
-
     auto name = layout.name;
     auto fields = layout.fields;
 
@@ -192,7 +198,7 @@ string genLayout(Layout layout)
     auto setPref = pref ~ "set_";
 
     // Define the layout type constant
-    output.put(
+    outD.put(
         "const LayoutType LAYOUT_" ~ toUpper(name) ~ " = " ~ 
         to!string(layout.type) ~ ";\n\n"
     );
@@ -250,64 +256,65 @@ string genLayout(Layout layout)
     // Generate offset methods
     foreach (i, field; fields)
     {
-        output.put("size_t " ~ ofsPref ~ field.name ~ "(refptr o");
+        // D function
+        outD.put("size_t " ~ ofsPref ~ field.name ~ "(refptr o");
         if (field.szField)
-            output.put(", size_t i");
-        output.put(")\n");
-        output.put("{\n");
-        output.put("    return 0");
+            outD.put(", size_t i");
+        outD.put(")\n");
+        outD.put("{\n");
+        outD.put("    return 0");
 
         for (size_t j = 0; j < i; ++j)
         {
             auto prev = fields[j];
-            output.put(" + ");
-            output.put(prev.sizeStr);
+            outD.put(" + ");
+            outD.put(prev.sizeStr);
             if (prev.szField !is null)
-                output.put(" * " ~ getPref ~ prev.szField.name ~ "(o)");
+                outD.put(" * " ~ getPref ~ prev.szField.name ~ "(o)");
         }
 
         if (field.szField)
-            output.put(" + " ~ field.sizeStr ~ " * i");
+            outD.put(" + " ~ field.sizeStr ~ " * i");
 
-        output.put(";\n");
-        output.put("}\n\n");
+        outD.put(";\n");
+        outD.put("}\n\n");
     }
 
     // Generate getter methods
     foreach (i, field; fields)
     {
-        output.put(field.type ~ " " ~ getPref ~ field.name ~ "(refptr o");
+        outD.put(field.type ~ " " ~ getPref ~ field.name ~ "(refptr o");
         if (field.szField)
-            output.put(", size_t i");
-        output.put(")\n");
-        output.put("{\n");
-        output.put("    return *cast(" ~ field.type ~ "*)");
-        output.put("(o + " ~ ofsPref ~ field.name ~ "(o");
+            outD.put(", size_t i");
+        outD.put(")\n");
+        outD.put("{\n");
+        outD.put("    return *cast(" ~ field.type ~ "*)");
+        outD.put("(o + " ~ ofsPref ~ field.name ~ "(o");
         if (field.szField)
-            output.put(", i");
-        output.put("));\n");
-        output.put("}\n\n");
+            outD.put(", i");
+        outD.put("));\n");
+        outD.put("}\n\n");
     }
 
     // Generate setter methods
     foreach (i, field; fields)
     {
-        output.put("void " ~ setPref ~ field.name ~ "(refptr o");
+        outD.put("void " ~ setPref ~ field.name ~ "(refptr o");
         if (field.szField)
-            output.put(", size_t i");
-        output.put(", " ~ field.type ~ " v)\n");
-        output.put("{\n");
-        output.put("    *cast(" ~ field.type ~ "*)");
-        output.put("(o + " ~ ofsPref ~ field.name ~ "(o");
+            outD.put(", size_t i");
+        outD.put(", " ~ field.type ~ " v)\n");
+        outD.put("{\n");
+        outD.put("    *cast(" ~ field.type ~ "*)");
+        outD.put("(o + " ~ ofsPref ~ field.name ~ "(o");
         if (field.szField)
-            output.put(", i");
-        output.put("))");
-        output.put(" = v;\n");
-        output.put("}\n\n");
+            outD.put(", i");
+        outD.put("))");
+        outD.put(" = v;\n");
+        outD.put("}\n\n");
     }
 
     // Generate the layout size computation function
-    output.put("size_t " ~ name ~ "_comp_size(");
+    outD.put("size_t " ~ name ~ "_comp_size(");
     Field[] szFields = [];
     foreach (field; fields)
         if (field.isSzField)
@@ -315,55 +322,55 @@ string genLayout(Layout layout)
     foreach (i, field; szFields)
     {
         if (i > 0)
-            output.put(", ");
-        output.put(field.type ~ " " ~ field.name);
+            outD.put(", ");
+        outD.put(field.type ~ " " ~ field.name);
     }
-    output.put(")\n");
-    output.put("{\n");
-    output.put("    return 0");
+    outD.put(")\n");
+    outD.put("{\n");
+    outD.put("    return 0");
     foreach (i, field; fields)
     {
-        output.put(" + ");
-        output.put(field.sizeStr);
+        outD.put(" + ");
+        outD.put(field.sizeStr);
         if (field.szField)
-            output.put(" * " ~ field.szField.name);
+            outD.put(" * " ~ field.szField.name);
     }
-    output.put(";\n");
-    output.put("}\n\n");
+    outD.put(";\n");
+    outD.put("}\n\n");
 
     // Generate the sizeof method
-    output.put("size_t " ~ name ~ "_sizeof(refptr o)\n");
-    output.put("{\n");
-    output.put("    return " ~ name ~ "_comp_size(");
+    outD.put("size_t " ~ name ~ "_sizeof(refptr o)\n");
+    outD.put("{\n");
+    outD.put("    return " ~ name ~ "_comp_size(");
     foreach (i, field; szFields)
     {
         if (i > 0)
-            output.put(", ");
-        output.put(getPref ~ field.name ~ "(o)");
+            outD.put(", ");
+        outD.put(getPref ~ field.name ~ "(o)");
     }
-    output.put(");\n");
-    output.put("}\n\n");
+    outD.put(");\n");
+    outD.put("}\n\n");
 
     // Generate the allocation function
-    output.put("auto " ~ name ~ "_alloc(Interp interp");
+    outD.put("auto " ~ name ~ "_alloc(Interp interp");
     foreach (i, field; szFields)
     {
-        output.put(", ");
-        output.put(field.type ~ " " ~ field.name);
+        outD.put(", ");
+        outD.put(field.type ~ " " ~ field.name);
     }
-    output.put(")\n");
-    output.put("{\n");
-    output.put("    auto obj = interp.alloc(" ~ name ~ "_comp_size(");
+    outD.put(")\n");
+    outD.put("{\n");
+    outD.put("    auto obj = interp.alloc(" ~ name ~ "_comp_size(");
     foreach (i, field; szFields)
     {
         if (i > 0)
-            output.put(", ");
-        output.put(field.name);
+            outD.put(", ");
+        outD.put(field.name);
     }
-    output.put("));\n");
+    outD.put("));\n");
     foreach (i, field; szFields)
     {
-        output.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj," ~ field.name ~ ");\n");
+        outD.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj," ~ field.name ~ ");\n");
     }
     foreach (i, field; fields)
     {
@@ -372,19 +379,16 @@ string genLayout(Layout layout)
 
         if (field.szField)
         {
-            output.put("    for (size_t i = 0; i < " ~ field.szFieldName ~ "; ++i)\n");
-            output.put("        " ~ name ~ "_set_" ~ field.name ~ "(obj, i," ~ field.initVal ~");\n");
+            outD.put("    for (size_t i = 0; i < " ~ field.szFieldName ~ "; ++i)\n");
+            outD.put("        " ~ name ~ "_set_" ~ field.name ~ "(obj, i," ~ field.initVal ~");\n");
         }
         else
         {
-            output.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj, " ~ field.initVal ~");\n");
+            outD.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj, " ~ field.initVal ~");\n");
         }
     }
-    output.put("    return obj;\n");
-    output.put("}\n\n");
-
-    // Return the generated code
-    return output.data;
+    outD.put("    return obj;\n");
+    outD.put("}\n\n");
 }
 
 mixin(

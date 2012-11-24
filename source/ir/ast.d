@@ -1025,14 +1025,10 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Post-incrementation and post-decrementation (x++, x--)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'l')
         {
-            writefln("saving variable to %s", ctx.getOutSlot());
-
             // Evaluate the subexpression into the output slot
             auto vCtx = ctx.subCtx(true, ctx.getOutSlot());
             exprToIR(unExpr.expr, vCtx);
             ctx.merge(vCtx);
-
-            writefln("saved variable");
 
             // Perform the incrementation/decrementation and assignment
             auto aCtx = ctx.subCtx(true);

@@ -23,12 +23,15 @@ interp/tests.d      \
 repl.d              \
 main.d
 
-all:
+all: layout
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
 
-test:
+test: layout
 	$(DC) $(COPTS) -unittest -of$(BIN_NAME) $(SRC)
 	time ./$(BIN_NAME) --test
+
+layout:
+	python interp/layout.py
 
 clean:
 	rm $(BIN_NAME) *.o

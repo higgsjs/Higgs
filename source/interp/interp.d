@@ -281,6 +281,9 @@ class Interp
         // Allocate and initialize the string table
         strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
 
+        // Evaluate the layout code
+        evalString(JS_LAYOUT_CODE, "layout");
+
         // Load the runtime library
         load("interp/runtime.js");
     }

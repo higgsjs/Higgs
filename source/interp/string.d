@@ -42,7 +42,7 @@ import std.string;
 import interp.interp;
 import interp.layout;
 
-immutable uint32 STR_TBL_INIT_SIZE = 101;
+immutable uint32 STR_TBL_INIT_SIZE = 997;
 immutable uint32 STR_TBL_MAX_LOAD_NUM = 3;
 immutable uint32 STR_TBL_MAX_LOAD_DENOM = 5;
 

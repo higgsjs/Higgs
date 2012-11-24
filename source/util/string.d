@@ -97,3 +97,37 @@ wstring escapeJSString(wstring input)
     return output.data;
 }
 
+/**
+Escape a D string for output
+*/
+string escapeDString(string input)
+{
+    auto output = appender!string();
+
+    for (size_t i = 0; i < input.length; ++i)
+    {
+        auto ch = input[i];
+
+        switch (ch)
+        {
+            case '\0': output.put("\\0"); break;
+            case '\r': output.put("\\r"); break;
+            case '\n': output.put("\\n"); break;
+            case '\t': output.put("\\t"); break;
+            case '\v': output.put("\\v"); break;
+            case '\f': output.put("\\f"); break;
+            case '\\': output.put("\\\\"); break;
+            case '"': output.put("\\\""); break;
+            case '\'': output.put("\\\'"); break;
+
+            default:
+            if (ch < 32 || ch > 126)
+                output.put(format("\\u%04x", cast(int)ch));
+            else
+                output.put(ch);
+        }
+    }
+
+    return output.data;
+}
+
