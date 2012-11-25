@@ -500,7 +500,7 @@ for layout in layouts:
 
         sumExpr = Cst(0)
 
-        for prev in layout['fields']:
+        for prev in layout['fields'][:fieldIdx]:
 
             termExpr = Cst(typeSize[prev['type']])
 

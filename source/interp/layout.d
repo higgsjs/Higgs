@@ -21,22 +21,22 @@ const uint32 LAYOUT_STR = 0;
 
 uint32 str_ofs_type(refptr o)
 {    
-    return ((((0 + 4) + 4) + 4) + (2 * str_get_len(o)));
+    return 0;
 }
 
 uint32 str_ofs_len(refptr o)
 {    
-    return ((((0 + 4) + 4) + 4) + (2 * str_get_len(o)));
+    return (0 + 4);
 }
 
 uint32 str_ofs_hash(refptr o)
 {    
-    return ((((0 + 4) + 4) + 4) + (2 * str_get_len(o)));
+    return ((0 + 4) + 4);
 }
 
 uint32 str_ofs_data(refptr o, uint32 i)
 {    
-    return (((((0 + 4) + 4) + 4) + (2 * str_get_len(o))) + (2 * i));
+    return ((((0 + 4) + 4) + 4) + (2 * i));
 }
 
 uint32 str_get_type(refptr o)
@@ -101,22 +101,22 @@ const uint32 LAYOUT_STRTBL = 1;
 
 uint32 strtbl_ofs_type(refptr o)
 {    
-    return ((((0 + 4) + 4) + 4) + (8 * strtbl_get_cap(o)));
+    return 0;
 }
 
 uint32 strtbl_ofs_cap(refptr o)
 {    
-    return ((((0 + 4) + 4) + 4) + (8 * strtbl_get_cap(o)));
+    return (0 + 4);
 }
 
 uint32 strtbl_ofs_num_strs(refptr o)
 {    
-    return ((((0 + 4) + 4) + 4) + (8 * strtbl_get_cap(o)));
+    return ((0 + 4) + 4);
 }
 
 uint32 strtbl_ofs_str(refptr o, uint32 i)
 {    
-    return (((((0 + 4) + 4) + 4) + (8 * strtbl_get_cap(o))) + (8 * i));
+    return ((((0 + 4) + 4) + 4) + (8 * i));
 }
 
 uint32 strtbl_get_type(refptr o)
@@ -186,37 +186,37 @@ const uint32 LAYOUT_OBJ = 2;
 
 uint32 obj_ofs_type(refptr o)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+    return 0;
 }
 
 uint32 obj_ofs_cap(refptr o)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+    return (0 + 4);
 }
 
 uint32 obj_ofs_class(refptr o)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+    return ((0 + 4) + 4);
 }
 
 uint32 obj_ofs_next(refptr o)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+    return (((0 + 4) + 4) + 8);
 }
 
 uint32 obj_ofs_proto(refptr o)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+    return ((((0 + 4) + 4) + 8) + 8);
 }
 
 uint32 obj_ofs_word(refptr o, uint32 i)
 {    
-    return ((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o))) + (8 * i));
+    return ((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * i));
 }
 
 uint32 obj_ofs_type(refptr o, uint32 i)
 {    
-    return ((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o))) + (1 * i));
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * i));
 }
 
 uint32 obj_get_type(refptr o)
@@ -312,52 +312,52 @@ const uint32 LAYOUT_CLOS = 3;
 
 uint32 clos_ofs_type(refptr o)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+    return 0;
 }
 
 uint32 clos_ofs_cap(refptr o)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+    return (0 + 4);
 }
 
 uint32 clos_ofs_class(refptr o)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+    return ((0 + 4) + 4);
 }
 
 uint32 clos_ofs_next(refptr o)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+    return (((0 + 4) + 4) + 8);
 }
 
 uint32 clos_ofs_proto(refptr o)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+    return ((((0 + 4) + 4) + 8) + 8);
 }
 
 uint32 clos_ofs_word(refptr o, uint32 i)
 {    
-    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o))) + (8 * i));
+    return ((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * i));
 }
 
 uint32 clos_ofs_type(refptr o, uint32 i)
 {    
-    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o))) + (1 * i));
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * i));
 }
 
 uint32 clos_ofs_fptr(refptr o)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o)));
 }
 
 uint32 clos_ofs_num_cells(refptr o)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+    return ((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8);
 }
 
 uint32 clos_ofs_cell(refptr o, uint32 i)
 {    
-    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o))) + (8 * i));
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * i));
 }
 
 uint32 clos_get_type(refptr o)
@@ -484,47 +484,47 @@ const uint32 LAYOUT_ARR = 4;
 
 uint32 arr_ofs_type(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+    return 0;
 }
 
 uint32 arr_ofs_cap(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+    return (0 + 4);
 }
 
 uint32 arr_ofs_class(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+    return ((0 + 4) + 4);
 }
 
 uint32 arr_ofs_next(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+    return (((0 + 4) + 4) + 8);
 }
 
 uint32 arr_ofs_proto(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+    return ((((0 + 4) + 4) + 8) + 8);
 }
 
 uint32 arr_ofs_word(refptr o, uint32 i)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4) + (8 * i));
+    return ((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * i));
 }
 
 uint32 arr_ofs_type(refptr o, uint32 i)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4) + (1 * i));
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * i));
 }
 
 uint32 arr_ofs_tbl(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o)));
 }
 
 uint32 arr_ofs_len(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+    return ((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8);
 }
 
 uint32 arr_get_type(refptr o)
@@ -640,22 +640,22 @@ const uint32 LAYOUT_ARRTBL = 5;
 
 uint32 arrtbl_ofs_type(refptr o)
 {    
-    return ((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * arrtbl_get_cap(o)));
+    return 0;
 }
 
 uint32 arrtbl_ofs_cap(refptr o)
 {    
-    return ((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * arrtbl_get_cap(o)));
+    return (0 + 4);
 }
 
 uint32 arrtbl_ofs_word(refptr o, uint32 i)
 {    
-    return (((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * arrtbl_get_cap(o))) + (8 * i));
+    return (((0 + 4) + 4) + (8 * i));
 }
 
 uint32 arrtbl_ofs_type(refptr o, uint32 i)
 {    
-    return (((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * arrtbl_get_cap(o))) + (1 * i));
+    return ((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * i));
 }
 
 uint32 arrtbl_get_type(refptr o)
@@ -720,47 +720,47 @@ const uint32 LAYOUT_CLASS = 6;
 
 uint32 class_ofs_type(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+    return 0;
 }
 
 uint32 class_ofs_id(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+    return (0 + 4);
 }
 
 uint32 class_ofs_cap(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+    return ((0 + 4) + 4);
 }
 
 uint32 class_ofs_num_props(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+    return (((0 + 4) + 4) + 4);
 }
 
 uint32 class_ofs_next(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+    return ((((0 + 4) + 4) + 4) + 4);
 }
 
 uint32 class_ofs_arr_type(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+    return (((((0 + 4) + 4) + 4) + 4) + 8);
 }
 
 uint32 class_ofs_prop_name(refptr o, uint32 i)
 {    
-    return ((((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o))) + (8 * i));
+    return (((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * i));
 }
 
 uint32 class_ofs_prop_type(refptr o, uint32 i)
 {    
-    return ((((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o))) + (8 * i));
+    return ((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * i));
 }
 
 uint32 class_ofs_prop_idx(refptr o, uint32 i)
 {    
-    return ((((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o))) + (4 * i));
+    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * i));
 }
 
 uint32 class_get_type(refptr o)
