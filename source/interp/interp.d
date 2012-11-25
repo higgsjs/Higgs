@@ -128,7 +128,7 @@ string ValueToString(ValuePair value)
         case Type.STRING:
         auto len = str_get_len(w.ptrVal);
         wchar[] str = new wchar[len];
-        for (size_t i = 0; i < len; ++i)
+        for (uint32 i = 0; i < len; ++i)
             str[i] = str_get_data(w.ptrVal, i);
         return to!string(str);
 
@@ -281,8 +281,8 @@ class Interp
         // Allocate and initialize the string table
         strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
 
-        // Evaluate the layout code
-        evalString(JS_LAYOUT_CODE, "layout");
+        // Load the layout code
+        load("interp/layout.js");
 
         // Load the runtime library
         load("interp/runtime.js");

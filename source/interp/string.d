@@ -57,7 +57,7 @@ uint32 compStrHash(refptr str)
 
     uint32 hashCode = 0;
 
-    for (size_t i = 0; i < len; ++i)
+    for (uint32 i = 0; i < len; ++i)
     {
         auto ch = str_get_data(str, i);
         hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
@@ -80,7 +80,7 @@ bool streq(refptr strA, refptr strB)
     if (lenA != lenB)
         return false;
 
-    for (size_t i = 0; i < lenA; ++i)
+    for (uint32 i = 0; i < lenA; ++i)
         if (str_get_data(strA, i) != str_get_data(strB, i))
             return false;
 
@@ -174,7 +174,7 @@ void extStrTable(Interp interp, refptr curTbl, uint32 curSize, uint32 numStrings
     strtbl_set_num_strs(newTbl, numStrings);
 
     // Initialize the string array
-    for (size_t i = 0; i < newSize; ++i)
+    for (uint32 i = 0; i < newSize; ++i)
         strtbl_set_str(newTbl, i, null);
 
     // For each entry in the current table
@@ -232,7 +232,7 @@ refptr getString(Interp interp, wstring str)
 {
     auto objPtr = str_alloc(interp, cast(uint32)str.length);
 
-    for (size_t i = 0; i < str.length; ++i)
+    for (uint32 i = 0; i < str.length; ++i)
         str_set_data(objPtr, i, str[i]);
 
     // Compute the hash code for the string

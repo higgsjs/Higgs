@@ -650,9 +650,9 @@ void opAdd(Interp interp, IRInstr instr)
 
         auto sO = str_alloc(interp, l0+l1);
 
-        for (size_t i = 0; i < l0; ++i)
+        for (uint32 i = 0; i < l0; ++i)
             str_set_data(sO, i, str_get_data(s0, i));
-        for (size_t i = 0; i < l1; ++i)
+        for (uint32 i = 0; i < l1; ++i)
             str_set_data(sO, l0+i, str_get_data(s1, i));
 
         compStrHash(sO);
@@ -1064,7 +1064,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
     auto numProps = class_get_num_props(classPtr);
 
     // Look for the property in the class
-    size_t propIdx;
+    uint32 propIdx;
     for (propIdx = 0; propIdx < numProps; ++propIdx)
     {
         auto nameStr = class_get_prop_name(classPtr, propIdx);
@@ -1115,7 +1115,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
             auto numCells = clos_get_num_cells(objPtr);
             newObj = clos_alloc(interp, objCap+1, numCells);
             clos_set_fptr(newObj, clos_get_fptr(objPtr));
-            for (size_t i = 0; i < numCells; ++i)
+            for (uint32 i = 0; i < numCells; ++i)
                 clos_set_cell(newObj, i, clos_get_cell(objPtr, i));
             break;
 
@@ -1127,7 +1127,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
         obj_set_proto(newObj, obj_get_proto(objPtr));
 
         // Copy over the property words and types
-        for (size_t i = 0; i < objCap; ++i)
+        for (uint32 i = 0; i < objCap; ++i)
         {
             obj_set_word(newObj, i, obj_get_word(objPtr, i));
             obj_set_type(newObj, i, obj_get_type(objPtr, i));
@@ -1161,7 +1161,7 @@ ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
     auto numProps = class_get_num_props(classPtr);
 
     // Look for the property in the global class
-    size_t propIdx;
+    uint32 propIdx;
     for (propIdx = 0; propIdx < numProps; ++propIdx)
     {
         auto nameStr = class_get_prop_name(classPtr, propIdx);

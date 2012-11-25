@@ -1,8 +1,9 @@
+import sys
 import string
 from copy import deepcopy
 
 D_OUT_FILE = 'interp/layout.d'
-JS_OUT_FILE = 'interp/layout.py'
+JS_OUT_FILE = 'interp/layout.js'
 
 # Type sizes in bytes
 typeSize = {
@@ -174,22 +175,6 @@ layouts = [
     },
 ]
 
-
-
-
-# TODO: Generate functions....
-# Use some kind of AST? Does Python have instanceof?
-#   isinstance(obj, MyClass)
-# Can have methods, genJS, genD
-#
-# Function: params, stmts
-# ReturnStmt
-# AddExpr
-# MulExpr
-# CallExpr
-# ForLoop: idxVar
-
-
 # Indent a text string
 def indent(input, indentStr = '    '):
 
@@ -226,7 +211,7 @@ class Var:
     def genDeclD(self):
         return self.type + ' ' + self.name
 
-class IntCst:
+class Cst:
 
     def __init__(self, val):
         self.val = val
@@ -261,7 +246,10 @@ class Function:
     def genJS(self):
         out = ''
         out += 'function ' + self.name + '('
-        out += sepList(map(lambda v:v.genJS(), self.params))
+        params = self.params
+        if params[0].name == 'interp':
+            params = params[1:]
+        out += sepList(map(lambda v:v.genJS(), params))
         out += ')\n'
         out += '{'
         stmts = ''
@@ -293,6 +281,30 @@ class RetStmt:
 
     def genD(self):
         return 'return ' + self.expr.genD() + ';'
+
+class ExprStmt:
+
+    def __init__(self, expr):
+        self.expr = expr
+
+    def genJS(self):
+        return self.expr.genJS() + ';'
+
+    def genD(self):
+        return self.expr.genD() + ';'
+
+class DeclStmt:
+
+    def __init__(self, var, val):
+        self.type = type
+        self.var = var
+        self.val = val
+
+    def genJS(self):
+        return 'var ' + self.var.genJS() + ' = ' + self.val.genJS() + ';'
+
+    def genD(self):
+        return 'auto ' + self.var.genD() + ' = ' + self.val.genD() + ';'
 
 class AddExpr:
 
@@ -329,7 +341,7 @@ class LoadExpr:
         return '$ir_load_' + typeShortName[self.type] + '(' + self.ptr.genJS() + ', ' + self.ofs.genJS() + ')'
 
     def genD(self):
-        return '*cast(' + self.type + ')(' + self.ptr.genD() + ' + ' + self.ofs.genD() + ')'
+        return '*cast(' + self.type + '*)(' + self.ptr.genD() + ' + ' + self.ofs.genD() + ')'
 
 class StoreExpr:
 
@@ -343,7 +355,18 @@ class StoreExpr:
         return '$ir_store_' + typeShortName[self.type] + '(' + self.ptr.genJS() + ', ' + self.ofs.genJS() + ', ' + self.val.genJS() + ')'
 
     def genD(self):
-        return '*cast(' + self.type + ')(' + self.ptr.genD() + ' + ' + self.ofs.genD() + ') = ' + self.val.genD()
+        return '*cast(' + self.type + '*)(' + self.ptr.genD() + ' + ' + self.ofs.genD() + ') = ' + self.val.genD()
+
+class AllocExpr:
+
+    def __init__(self, size):
+        self.size = size
+
+    def genJS(self):
+        return '$ir_alloc(' + self.size.genJS() + ')'
+
+    def genD(self):
+        return 'interp.alloc(' + self.size.genD() + ')'
 
 class CallExpr:
 
@@ -360,14 +383,36 @@ class CallExpr:
     def genD(self):
         return self.genJS()
 
-# TODO
 class ForLoop:
-    pass
 
+    def __init__(self, loopVar, endVar, stmts):
+        self.loopVar = loopVar
+        self.endVar = endVar
+        self.stmts = stmts
 
+    def genJS(self):
+        out = ''
+        out += 'for (var ' + self.loopVar.genJS() + ' = 0; ' + self.loopVar.genJS() + ' < '
+        out += self.endVar.genJS() + '; ++' + self.loopVar.genJS() + ')\n'
+        out += '{'
+        stmts = ''
+        for stmt in self.stmts:
+            stmts += '\n' + stmt.genJS()
+        out += indent(stmts)
+        out += '\n}'
+        return out
 
-
-
+    def genD(self):
+        out = ''
+        out += 'for (' + self.loopVar.type + ' ' + self.loopVar.genD() + ' = 0; ' + self.loopVar.genD() + ' < '
+        out += self.endVar.genD() + '; ++' + self.loopVar.genD() + ')\n'
+        out += '{'
+        stmts = ''
+        for stmt in self.stmts:
+            stmts += '\n' + stmt.genD()
+        out += indent(stmts)
+        out += '\n}'
+        return out
 
 # Perform layout extensions
 for layoutIdx, layout in enumerate(layouts):
@@ -422,7 +467,7 @@ for layout in layouts:
                 field['szField'] = prev
                 # Add the field to the size field list
                 if prev not in layout['szFields']:
-                    layout['szFields'] += prev
+                    layout['szFields'] += [prev]
                 break
 
         # If the size field was not found, raise an exception
@@ -453,11 +498,11 @@ for layout in layouts:
         if 'szField' in field:
             fun.params += [Var('uint32', 'i')]
 
-        sumExpr = IntCst(0)
+        sumExpr = Cst(0)
 
         for prev in layout['fields']:
 
-            termExpr = IntCst(typeSize[prev['type']])
+            termExpr = Cst(typeSize[prev['type']])
 
             if 'szField' in prev:
                 szCall = CallExpr(getPref + prev['szField']['name'], [fun.params[0]])
@@ -466,7 +511,7 @@ for layout in layouts:
             sumExpr = AddExpr(sumExpr, termExpr)
 
         if 'szField' in field:
-            fieldSize = IntCst(typeSize[field['type']])
+            fieldSize = Cst(typeSize[field['type']])
             sumExpr = AddExpr(sumExpr, MulExpr(fieldSize , fun.params[1]))
 
         fun.stmts += [RetStmt(sumExpr)]
@@ -500,37 +545,108 @@ for layout in layouts:
         if 'szField' in field:
             ofsCall.args += [fun.params[1]]
 
-        # TODO: ExprStmt
-        #fun.stmts += [ExprStmt(StoreExpr(field['type'], fun.params[0], ofsCall))]
+        fun.stmts += [ExprStmt(StoreExpr(field['type'], fun.params[0], ofsCall, fun.params[-1]))]
 
         decls += [fun]
 
+    # Generate the layout size computation function
+    fun = Function('uint32', layout['name'] + '_comp_size', [])
+    szVars = {}
+    for szField in layout['szFields']:
+        szVar = Var(szField['type'], szField['name'])
+        szVars[szVar.name] = szVar
+        fun.params += [szVar]
 
+    szSum = Cst(0)
+    for field in layout['fields']:
+        szTerm = Cst(typeSize[field['type']])
+        if 'szField' in field:
+            szTerm = MulExpr(szTerm, szVars[field['szField']['name']])
+        szSum = AddExpr(szSum, szTerm)
 
+    fun.stmts += [RetStmt(szSum)]
+    decls += [fun]
 
+    # Generate the sizeof method
+    fun = Function('uint32', layout['name'] + '_sizeof', [Var('refptr', 'o')])
 
+    callExpr = CallExpr(layout['name'] + '_comp_size', [])
+    for szField in layout['szFields']:
+        getCall = CallExpr(getPref + szField['name'], [fun.params[0]])
+        callExpr.args += [getCall]
+    fun.stmts += [RetStmt(callExpr)]
 
+    decls += [fun]
 
-#TODO: auto-generated from sys.argv[0]
+    # Generate the allocation function
+    fun = Function('refptr', layout['name'] + '_alloc', [Var('Interp', 'interp')])
+    szVars = {}
+    for szField in layout['szFields']:
+        szVar = Var(szField['type'], szField['name'])
+        szVars[szVar.name] = szVar
+        fun.params += [szVar]
 
-#file = open("datafile.txt", "w")
-#file.write(newLine)
-#file.close()
+    szCall = CallExpr(layout['name'] + '_comp_size', [])
+    for szField in layout['szFields']:
+        szCall.args += [szVars[szField['name']]]
+    objVar = Var('refptr', 'o')
+    fun.stmts += [DeclStmt(objVar, AllocExpr(szCall))]
 
-#D_OUT_FILE
-#JS_OUT_FILE
+    for szField in layout['szFields']:
+        setCall = CallExpr(setPref + szField['name'], [objVar, szVars[szField['name']]])
+        fun.stmts += [ExprStmt(setCall)]
 
+    for field in layout['fields']:
 
+        if 'init' not in field:
+            continue
 
-# TODO: output D and JS code, write to file
+        if 'szField' in field:
+            loopVar = Var('uint32', 'i')
+            setCall = CallExpr(setPref + field['name'], [objVar, loopVar, Cst(field['init'])])
+            fun.stmts += [ForLoop(loopVar, szVars[szField['name']], [ExprStmt(setCall)])]
+        else:
+            setCall = CallExpr(setPref + field['name'], [objVar, Cst(field['init'])])
+            fun.stmts += [ExprStmt(setCall)]
+
+    fun.stmts += [RetStmt(objVar)]
+    decls += [fun]
+
+# Open the output files for writing
+DFile = open(D_OUT_FILE, 'w')
+JSFile = open(JS_OUT_FILE, 'w')
+
+comment =                                                               \
+'//\n' +                                                                \
+'// Code auto-generated from "' + sys.argv[0] + '". Do not modify.\n' + \
+'//\n\n'
+
+DFile.write(comment)
+JSFile.write(comment)
+
+DFile.write('module interp.layout;\n')
+DFile.write('import interp.interp;\n')
+DFile.write('\n');
+
+DFile.write('alias ubyte* rawptr;\n');
+DFile.write('alias ubyte* refptr;\n');
+DFile.write('alias byte   int8;\n');
+DFile.write('alias short  int16;\n');
+DFile.write('alias int    int32;\n');
+DFile.write('alias long   int64;\n');
+DFile.write('alias ubyte  uint8;\n');
+DFile.write('alias ushort uint16;\n');
+DFile.write('alias uint   uint32;\n');
+DFile.write('alias ulong  uint64;\n');
+DFile.write('alias double float64;\n');
+DFile.write('\n');
+
+# Output D and JS code, write to file
 for decl in decls:
 
-    print(decl.genJS())
+    JSFile.write(decl.genJS() + '\n\n')
+    DFile.write(decl.genD() + '\n\n')
 
-    print(decl.genD())
-
-
-
-
-
+DFile.close()
+JSFile.close()
 

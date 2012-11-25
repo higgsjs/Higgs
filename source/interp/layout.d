@@ -1,534 +1,884 @@
-/*****************************************************************************
-*
-*                      Higgs JavaScript Virtual Machine
-*
-*  This file is part of the Higgs project. The project is distributed at:
-*  https://github.com/maximecb/Higgs
-*
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
-*
-*  This software is licensed under the following license (Modified BSD
-*  License):
-*
-*  Redistribution and use in source and binary forms, with or without
-*  modification, are permitted provided that the following conditions are
-*  met:
-*   1. Redistributions of source code must retain the above copyright
-*      notice, this list of conditions and the following disclaimer.
-*   2. Redistributions in binary form must reproduce the above copyright
-*      notice, this list of conditions and the following disclaimer in the
-*      documentation and/or other materials provided with the distribution.
-*   3. The name of the author may not be used to endorse or promote
-*      products derived from this software without specific prior written
-*      permission.
-*
-*  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-*  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-*  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
-*  NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-*  NOT LIMITED TO PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-*  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-*  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-*  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-*  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*****************************************************************************/
+//
+// Code auto-generated from "interp/layout.py". Do not modify.
+//
 
 module interp.layout;
-
-import std.stdio;
-import std.string;
-import std.array;
-import std.conv;
 import interp.interp;
-import util.string;
 
-alias ubyte*    rawptr;
-alias ubyte*    refptr;
-alias byte      int8;
-alias short     int16;
-alias int       int32;
-alias long      int64;
-alias ubyte     uint8;
-alias ushort    uint16;
-alias uint      uint32;
-alias ulong     uint64;
-alias double    float64;
+alias ubyte* rawptr;
+alias ubyte* refptr;
+alias byte   int8;
+alias short  int16;
+alias int    int32;
+alias long   int64;
+alias ubyte  uint8;
+alias ushort uint16;
+alias uint   uint32;
+alias ulong  uint64;
+alias double float64;
 
-/**
-Layout type id
-*/
-alias uint32 LayoutType;
+const uint32 LAYOUT_STR = 0;
 
-/**
-Layout field descriptor
-*/
-struct Field
-{
-    string name;
-
-    string type;
-
-    string szFieldName = "";
-
-    string initVal = "";
-
-    Field* szField = null;
-
-    bool isSzField = false;
-
-    size_t size = 0;
-
-    string sizeStr = "";
+uint32 str_ofs_type(refptr o)
+{    
+    return ((((0 + 4) + 4) + 4) + (2 * str_get_len(o)));
 }
 
-/**
-Layout descriptor
-*/
-struct Layout
-{
-    string name;
-
-    string baseName;
-
-    Field[] fields;
-
-    LayoutType type;
+uint32 str_ofs_len(refptr o)
+{    
+    return ((((0 + 4) + 4) + 4) + (2 * str_get_len(o)));
 }
 
-/**
-Compile-time mixin function to generate code for all layouts at once
-*/
-string genLayouts(Layout[] layouts)
-{
-    // Find the base of a given layout
-    Layout findBase(Layout* layout, size_t curIdx)
-    {
-        for (size_t j = 0; j < curIdx; ++j)
-        {
-            if (layouts[j].name == layout.baseName)
-                return layouts[j];
-        }
-
-        assert (
-            false, 
-            "base layout not found: \"" ~ layout.baseName ~ "\""
-        );
-    }
-
-    // Next layout id to be allocated
-    LayoutType nextLayoutId = 1;
-
-    auto outD = appender!string();
-    auto outJS = appender!string();
-
-    // For each layout to generate
-    for (size_t i = 0; i < layouts.length; ++i)
-    {
-        Layout* layout = &layouts[i];
-
-        // If this layout has a base
-        if (layout.baseName !is null)
-        {
-            auto baseLayout = findBase(layout, i);
-
-            // Copy the base layout fields, except the type field
-            Field[] baseFields = [];
-            for (size_t j = 1; j < baseLayout.fields.length; ++j)
-            {
-                auto field = baseLayout.fields[j];
-                baseFields ~= Field(
-                    field.name, 
-                    field.type, 
-                    field.szFieldName,
-                    field.initVal
-                );
-            }
-
-            // Prepend the base fields to this layout's fields
-            layout.fields = baseFields ~ layout.fields;
-        }
-
-        // Assign a type id to the layout
-        layout.type = nextLayoutId++;
-
-        // Add the type as the first field
-        auto typeField = Field(
-            "type",
-            "LayoutType",
-            "",
-            to!string(layout.type)
-        );
-        layout.fields = typeField ~ layout.fields;
-
-        // Generate code for this layout
-        genLayout(*layout, outD, outJS);
-    }
-
-    // Define a global constant for the JS layout code string
-    outD.put(
-        "immutable string JS_LAYOUT_CODE = \"" ~ 
-        escapeDString(outJS.data)~ "\";\n"
-    );
-
-    return outD.data;
+uint32 str_ofs_hash(refptr o)
+{    
+    return ((((0 + 4) + 4) + 4) + (2 * str_get_len(o)));
 }
 
-/**
-Compile-time mixin function to generate code for object layouts
-from a specification.
-
-Generates:
-- layout_comp_size(size1, ..., sizeN)
-- layout_init(ptr)
-- layout_sizeof(ptr)
-- layout_ofs_field(ptr[,idx])
-- layout_get_field(ptr[,idx])
-- layout_set_field(ptr[,idx])
-*/
-void genLayout(Layout layout, ref Appender!string outD, ref Appender!string outJS)
-{
-    auto name = layout.name;
-    auto fields = layout.fields;
-
-    auto pref = name ~ "_";
-    auto ofsPref = pref ~ "ofs_";
-    auto getPref = pref ~ "get_";
-    auto setPref = pref ~ "set_";
-
-    // Define the layout type constant
-    outD.put(
-        "const LayoutType LAYOUT_" ~ toUpper(name) ~ " = " ~ 
-        to!string(layout.type) ~ ";\n\n"
-    );
-
-    // For each field
-    for (size_t i = 0; i < fields.length; ++i)
-    {
-        auto field = &fields[i];
-
-        // Get the field size
-        if (field.type == "int8" || field.type == "uint8")
-            field.size = 8;
-        else if (field.type == "int16" || field.type == "uint16")
-            field.size = 16;
-        else if (field.type == "int32" || field.type == "uint32")
-            field.size = 32;
-        else if (field.type == "int64" || field.type == "uint64")
-            field.size = 64;
-        else if (field.type == "refptr" || field.type == "rawptr")
-            field.size = 64;
-        else if (field.type == "LayoutType")
-            field.size = LayoutType.sizeof;
-        else
-            assert (false, "unsupported field type " ~ field.type);
-        field.sizeStr = to!string(field.size);
-
-        // Find the size field
-        if (field.szFieldName != "")
-        {
-            for (size_t j = 0; j < i; ++j)
-            {
-                auto prev = &fields[j];
-
-                if (prev.name == field.szFieldName)
-                {
-                    field.szField = prev;
-                    prev.isSzField = true;
-
-                    // Ensure the size field has no init value
-                    assert (
-                        prev.initVal == "",
-                        "cannot specify init val for size fields"
-                    );
-                }
-            }
-
-            assert (
-                field.szField !is null, 
-                "size field \"" ~ field.szFieldName ~ "\" not found for \"" ~ 
-                field.name ~ "\""
-            );
-        }
-    }
-
-    // Generate offset methods
-    foreach (i, field; fields)
-    {
-        // D function
-        outD.put("size_t " ~ ofsPref ~ field.name ~ "(refptr o");
-        if (field.szField)
-            outD.put(", size_t i");
-        outD.put(")\n");
-        outD.put("{\n");
-        outD.put("    return 0");
-
-        for (size_t j = 0; j < i; ++j)
-        {
-            auto prev = fields[j];
-            outD.put(" + ");
-            outD.put(prev.sizeStr);
-            if (prev.szField !is null)
-                outD.put(" * " ~ getPref ~ prev.szField.name ~ "(o)");
-        }
-
-        if (field.szField)
-            outD.put(" + " ~ field.sizeStr ~ " * i");
-
-        outD.put(";\n");
-        outD.put("}\n\n");
-    }
-
-    // Generate getter methods
-    foreach (i, field; fields)
-    {
-        outD.put(field.type ~ " " ~ getPref ~ field.name ~ "(refptr o");
-        if (field.szField)
-            outD.put(", size_t i");
-        outD.put(")\n");
-        outD.put("{\n");
-        outD.put("    return *cast(" ~ field.type ~ "*)");
-        outD.put("(o + " ~ ofsPref ~ field.name ~ "(o");
-        if (field.szField)
-            outD.put(", i");
-        outD.put("));\n");
-        outD.put("}\n\n");
-    }
-
-    // Generate setter methods
-    foreach (i, field; fields)
-    {
-        outD.put("void " ~ setPref ~ field.name ~ "(refptr o");
-        if (field.szField)
-            outD.put(", size_t i");
-        outD.put(", " ~ field.type ~ " v)\n");
-        outD.put("{\n");
-        outD.put("    *cast(" ~ field.type ~ "*)");
-        outD.put("(o + " ~ ofsPref ~ field.name ~ "(o");
-        if (field.szField)
-            outD.put(", i");
-        outD.put("))");
-        outD.put(" = v;\n");
-        outD.put("}\n\n");
-    }
-
-    // Generate the layout size computation function
-    outD.put("size_t " ~ name ~ "_comp_size(");
-    Field[] szFields = [];
-    foreach (field; fields)
-        if (field.isSzField)
-            szFields ~= field;
-    foreach (i, field; szFields)
-    {
-        if (i > 0)
-            outD.put(", ");
-        outD.put(field.type ~ " " ~ field.name);
-    }
-    outD.put(")\n");
-    outD.put("{\n");
-    outD.put("    return 0");
-    foreach (i, field; fields)
-    {
-        outD.put(" + ");
-        outD.put(field.sizeStr);
-        if (field.szField)
-            outD.put(" * " ~ field.szField.name);
-    }
-    outD.put(";\n");
-    outD.put("}\n\n");
-
-    // Generate the sizeof method
-    outD.put("size_t " ~ name ~ "_sizeof(refptr o)\n");
-    outD.put("{\n");
-    outD.put("    return " ~ name ~ "_comp_size(");
-    foreach (i, field; szFields)
-    {
-        if (i > 0)
-            outD.put(", ");
-        outD.put(getPref ~ field.name ~ "(o)");
-    }
-    outD.put(");\n");
-    outD.put("}\n\n");
-
-    // Generate the allocation function
-    outD.put("auto " ~ name ~ "_alloc(Interp interp");
-    foreach (i, field; szFields)
-    {
-        outD.put(", ");
-        outD.put(field.type ~ " " ~ field.name);
-    }
-    outD.put(")\n");
-    outD.put("{\n");
-    outD.put("    auto obj = interp.alloc(" ~ name ~ "_comp_size(");
-    foreach (i, field; szFields)
-    {
-        if (i > 0)
-            outD.put(", ");
-        outD.put(field.name);
-    }
-    outD.put("));\n");
-    foreach (i, field; szFields)
-    {
-        outD.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj," ~ field.name ~ ");\n");
-    }
-    foreach (i, field; fields)
-    {
-        if (field.initVal == "")
-            continue;
-
-        if (field.szField)
-        {
-            outD.put("    for (size_t i = 0; i < " ~ field.szFieldName ~ "; ++i)\n");
-            outD.put("        " ~ name ~ "_set_" ~ field.name ~ "(obj, i," ~ field.initVal ~");\n");
-        }
-        else
-        {
-            outD.put("    " ~ name ~ "_set_" ~ field.name ~ "(obj, " ~ field.initVal ~");\n");
-        }
-    }
-    outD.put("    return obj;\n");
-    outD.put("}\n\n");
+uint32 str_ofs_data(refptr o, uint32 i)
+{    
+    return (((((0 + 4) + 4) + 4) + (2 * str_get_len(o))) + (2 * i));
 }
 
-mixin(
-//pragma(msg,
-genLayouts([
+uint32 str_get_type(refptr o)
+{    
+    return *cast(uint32*)(o + str_ofs_type(o));
+}
 
-    // String layout
-    Layout(
-        "str",
-        null,
-        [
-            // String length
-            Field("len" , "uint32"),
+uint32 str_get_len(refptr o)
+{    
+    return *cast(uint32*)(o + str_ofs_len(o));
+}
 
-            // Hash code
-            Field("hash", "uint32"),
+uint32 str_get_hash(refptr o)
+{    
+    return *cast(uint32*)(o + str_ofs_hash(o));
+}
 
-            // UTF-16 character data
-            Field("data", "uint16", "len")
-        ]
-    ),
+uint16 str_get_data(refptr o, uint32 i)
+{    
+    return *cast(uint16*)(o + str_ofs_data(o, i));
+}
 
-    // String table layout (for hash consing)
-    Layout(
-        "strtbl",
-        null,
-        [
-            // Capacity, total number of slots
-            Field("cap" , "uint32"),
+void str_set_type(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + str_ofs_type(o)) = v;
+}
 
-            // Number of strings
-            Field("num_strs" , "uint32", "", "0"),
+void str_set_len(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + str_ofs_len(o)) = v;
+}
 
-            // Array of strings
-            Field("str", "refptr", "cap", "null"),
-        ]
-    ),
+void str_set_hash(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + str_ofs_hash(o)) = v;
+}
 
-    // Object layout
-    Layout(
-        "obj",
-        null,
-        [
-            // Capacity, number of property slots
-            Field("cap" , "uint32"),
+void str_set_data(refptr o, uint32 i, uint16 v)
+{    
+    *cast(uint16*)(o + str_ofs_data(o, i)) = v;
+}
 
-            // Class reference
-            Field("class", "refptr"),
+uint32 str_comp_size(uint32 len)
+{    
+    return ((((0 + 4) + 4) + 4) + (2 * len));
+}
 
-            // Next object reference
-            Field("next", "refptr", "", "null"),
+uint32 str_sizeof(refptr o)
+{    
+    return str_comp_size(str_get_len(o));
+}
 
-            // Prototype reference
-            Field("proto", "refptr"),
+refptr str_alloc(Interp interp, uint32 len)
+{    
+    auto o = interp.alloc(str_comp_size(len));
+    str_set_len(o, len);
+    str_set_type(o, 0);
+    return o;
+}
 
-            // Property words
-            Field("word", "uint64", "cap"),
+const uint32 LAYOUT_STRTBL = 1;
 
-            // Property types
-            Field("type", "uint8", "cap")
-        ]
-    ),
+uint32 strtbl_ofs_type(refptr o)
+{    
+    return ((((0 + 4) + 4) + 4) + (8 * strtbl_get_cap(o)));
+}
 
-    // Function/closure layout (extends object)
-    Layout(
-        "clos",
-        "obj",
-        [
-            // Function code pointer
-            Field("fptr", "rawptr"),
+uint32 strtbl_ofs_cap(refptr o)
+{    
+    return ((((0 + 4) + 4) + 4) + (8 * strtbl_get_cap(o)));
+}
 
-            // Number of closure cells
-            Field("num_cells" , "uint32"),
+uint32 strtbl_ofs_num_strs(refptr o)
+{    
+    return ((((0 + 4) + 4) + 4) + (8 * strtbl_get_cap(o)));
+}
 
-            // Closure cell pointers
-            Field("cell", "refptr", "num_cells"),
-        ]
-    ),
+uint32 strtbl_ofs_str(refptr o, uint32 i)
+{    
+    return (((((0 + 4) + 4) + 4) + (8 * strtbl_get_cap(o))) + (8 * i));
+}
 
-    // Array layout (extends object)
-    Layout(
-        "arr",
-        "obj",
-        [
-            // Array table reference
-            Field("tbl" , "refptr"),
+uint32 strtbl_get_type(refptr o)
+{    
+    return *cast(uint32*)(o + strtbl_ofs_type(o));
+}
 
-            // Number of elements contained
-            Field("len" , "uint32"),
-        ]
-    ),
+uint32 strtbl_get_cap(refptr o)
+{    
+    return *cast(uint32*)(o + strtbl_ofs_cap(o));
+}
 
-    // Array table layout (contains array elements)
-    Layout(
-        "arrtbl",
-        null,
-        [
-            // Array capacity
-            Field("cap" , "uint32"),
+uint32 strtbl_get_num_strs(refptr o)
+{    
+    return *cast(uint32*)(o + strtbl_ofs_num_strs(o));
+}
 
-            // Element words
-            Field("word", "uint64", "cap"),
+refptr strtbl_get_str(refptr o, uint32 i)
+{    
+    return *cast(refptr*)(o + strtbl_ofs_str(o, i));
+}
 
-            // Element types
-            Field("type", "uint8", "cap")
-        ]
-    ),
+void strtbl_set_type(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + strtbl_ofs_type(o)) = v;
+}
 
-    // Class layout
-    Layout(
-        "class",
-        null,
-        [
-            // Class id / source origin location
-            Field("id" , "uint32"),
+void strtbl_set_cap(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + strtbl_ofs_cap(o)) = v;
+}
 
-            // Capacity, total number of property slots
-            Field("cap" , "uint32"),
+void strtbl_set_num_strs(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + strtbl_ofs_num_strs(o)) = v;
+}
 
-            // Number of properties in class
-            Field("num_props" , "uint32", "", "0"),
+void strtbl_set_str(refptr o, uint32 i, refptr v)
+{    
+    *cast(refptr*)(o + strtbl_ofs_str(o, i)) = v;
+}
 
-            // Next class version reference
-            // Used if class is reallocated
-            Field("next", "refptr", "", "null"),
+uint32 strtbl_comp_size(uint32 cap)
+{    
+    return ((((0 + 4) + 4) + 4) + (8 * cap));
+}
 
-            // Array element type
-            Field("arr_type", "rawptr", "", "null"),
+uint32 strtbl_sizeof(refptr o)
+{    
+    return strtbl_comp_size(strtbl_get_cap(o));
+}
 
-            // Property names
-            Field("prop_name", "refptr", "cap", "null"),
+refptr strtbl_alloc(Interp interp, uint32 cap)
+{    
+    auto o = interp.alloc(strtbl_comp_size(cap));
+    strtbl_set_cap(o, cap);
+    strtbl_set_type(o, 1);
+    strtbl_set_num_strs(o, 0);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        strtbl_set_str(o, i, null);
+    }
+    return o;
+}
 
-            // Property types
-            // Pointers to host type descriptor objects
-            Field("prop_type", "rawptr", "cap", "null"),
+const uint32 LAYOUT_OBJ = 2;
 
-            // Property indices
-            Field("prop_idx", "uint32", "cap"),
-        ]
-    ),
+uint32 obj_ofs_type(refptr o)
+{    
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+}
 
-]));
+uint32 obj_ofs_cap(refptr o)
+{    
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+}
+
+uint32 obj_ofs_class(refptr o)
+{    
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+}
+
+uint32 obj_ofs_next(refptr o)
+{    
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+}
+
+uint32 obj_ofs_proto(refptr o)
+{    
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o)));
+}
+
+uint32 obj_ofs_word(refptr o, uint32 i)
+{    
+    return ((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o))) + (8 * i));
+}
+
+uint32 obj_ofs_type(refptr o, uint32 i)
+{    
+    return ((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * obj_get_cap(o))) + (1 * i));
+}
+
+uint32 obj_get_type(refptr o)
+{    
+    return *cast(uint32*)(o + obj_ofs_type(o));
+}
+
+uint32 obj_get_cap(refptr o)
+{    
+    return *cast(uint32*)(o + obj_ofs_cap(o));
+}
+
+refptr obj_get_class(refptr o)
+{    
+    return *cast(refptr*)(o + obj_ofs_class(o));
+}
+
+refptr obj_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + obj_ofs_next(o));
+}
+
+refptr obj_get_proto(refptr o)
+{    
+    return *cast(refptr*)(o + obj_ofs_proto(o));
+}
+
+uint64 obj_get_word(refptr o, uint32 i)
+{    
+    return *cast(uint64*)(o + obj_ofs_word(o, i));
+}
+
+uint8 obj_get_type(refptr o, uint32 i)
+{    
+    return *cast(uint8*)(o + obj_ofs_type(o, i));
+}
+
+void obj_set_type(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + obj_ofs_type(o)) = v;
+}
+
+void obj_set_cap(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + obj_ofs_cap(o)) = v;
+}
+
+void obj_set_class(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + obj_ofs_class(o)) = v;
+}
+
+void obj_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + obj_ofs_next(o)) = v;
+}
+
+void obj_set_proto(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + obj_ofs_proto(o)) = v;
+}
+
+void obj_set_word(refptr o, uint32 i, uint64 v)
+{    
+    *cast(uint64*)(o + obj_ofs_word(o, i)) = v;
+}
+
+void obj_set_type(refptr o, uint32 i, uint8 v)
+{    
+    *cast(uint8*)(o + obj_ofs_type(o, i)) = v;
+}
+
+uint32 obj_comp_size(uint32 cap)
+{    
+    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap));
+}
+
+uint32 obj_sizeof(refptr o)
+{    
+    return obj_comp_size(obj_get_cap(o));
+}
+
+refptr obj_alloc(Interp interp, uint32 cap)
+{    
+    auto o = interp.alloc(obj_comp_size(cap));
+    obj_set_cap(o, cap);
+    obj_set_type(o, 2);
+    obj_set_next(o, null);
+    return o;
+}
+
+const uint32 LAYOUT_CLOS = 3;
+
+uint32 clos_ofs_type(refptr o)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+}
+
+uint32 clos_ofs_cap(refptr o)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+}
+
+uint32 clos_ofs_class(refptr o)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+}
+
+uint32 clos_ofs_next(refptr o)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+}
+
+uint32 clos_ofs_proto(refptr o)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+}
+
+uint32 clos_ofs_word(refptr o, uint32 i)
+{    
+    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o))) + (8 * i));
+}
+
+uint32 clos_ofs_type(refptr o, uint32 i)
+{    
+    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o))) + (1 * i));
+}
+
+uint32 clos_ofs_fptr(refptr o)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+}
+
+uint32 clos_ofs_num_cells(refptr o)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o)));
+}
+
+uint32 clos_ofs_cell(refptr o, uint32 i)
+{    
+    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * clos_get_num_cells(o))) + (8 * i));
+}
+
+uint32 clos_get_type(refptr o)
+{    
+    return *cast(uint32*)(o + clos_ofs_type(o));
+}
+
+uint32 clos_get_cap(refptr o)
+{    
+    return *cast(uint32*)(o + clos_ofs_cap(o));
+}
+
+refptr clos_get_class(refptr o)
+{    
+    return *cast(refptr*)(o + clos_ofs_class(o));
+}
+
+refptr clos_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + clos_ofs_next(o));
+}
+
+refptr clos_get_proto(refptr o)
+{    
+    return *cast(refptr*)(o + clos_ofs_proto(o));
+}
+
+uint64 clos_get_word(refptr o, uint32 i)
+{    
+    return *cast(uint64*)(o + clos_ofs_word(o, i));
+}
+
+uint8 clos_get_type(refptr o, uint32 i)
+{    
+    return *cast(uint8*)(o + clos_ofs_type(o, i));
+}
+
+rawptr clos_get_fptr(refptr o)
+{    
+    return *cast(rawptr*)(o + clos_ofs_fptr(o));
+}
+
+uint32 clos_get_num_cells(refptr o)
+{    
+    return *cast(uint32*)(o + clos_ofs_num_cells(o));
+}
+
+refptr clos_get_cell(refptr o, uint32 i)
+{    
+    return *cast(refptr*)(o + clos_ofs_cell(o, i));
+}
+
+void clos_set_type(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + clos_ofs_type(o)) = v;
+}
+
+void clos_set_cap(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + clos_ofs_cap(o)) = v;
+}
+
+void clos_set_class(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + clos_ofs_class(o)) = v;
+}
+
+void clos_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + clos_ofs_next(o)) = v;
+}
+
+void clos_set_proto(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + clos_ofs_proto(o)) = v;
+}
+
+void clos_set_word(refptr o, uint32 i, uint64 v)
+{    
+    *cast(uint64*)(o + clos_ofs_word(o, i)) = v;
+}
+
+void clos_set_type(refptr o, uint32 i, uint8 v)
+{    
+    *cast(uint8*)(o + clos_ofs_type(o, i)) = v;
+}
+
+void clos_set_fptr(refptr o, rawptr v)
+{    
+    *cast(rawptr*)(o + clos_ofs_fptr(o)) = v;
+}
+
+void clos_set_num_cells(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + clos_ofs_num_cells(o)) = v;
+}
+
+void clos_set_cell(refptr o, uint32 i, refptr v)
+{    
+    *cast(refptr*)(o + clos_ofs_cell(o, i)) = v;
+}
+
+uint32 clos_comp_size(uint32 cap, uint32 num_cells)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 8) + 4) + (8 * num_cells));
+}
+
+uint32 clos_sizeof(refptr o)
+{    
+    return clos_comp_size(clos_get_cap(o), clos_get_num_cells(o));
+}
+
+refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
+{    
+    auto o = interp.alloc(clos_comp_size(cap, num_cells));
+    clos_set_cap(o, cap);
+    clos_set_num_cells(o, num_cells);
+    clos_set_type(o, 3);
+    clos_set_next(o, null);
+    return o;
+}
+
+const uint32 LAYOUT_ARR = 4;
+
+uint32 arr_ofs_type(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+}
+
+uint32 arr_ofs_cap(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+}
+
+uint32 arr_ofs_class(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+}
+
+uint32 arr_ofs_next(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+}
+
+uint32 arr_ofs_proto(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+}
+
+uint32 arr_ofs_word(refptr o, uint32 i)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4) + (8 * i));
+}
+
+uint32 arr_ofs_type(refptr o, uint32 i)
+{    
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4) + (1 * i));
+}
+
+uint32 arr_ofs_tbl(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+}
+
+uint32 arr_ofs_len(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8) + 4);
+}
+
+uint32 arr_get_type(refptr o)
+{    
+    return *cast(uint32*)(o + arr_ofs_type(o));
+}
+
+uint32 arr_get_cap(refptr o)
+{    
+    return *cast(uint32*)(o + arr_ofs_cap(o));
+}
+
+refptr arr_get_class(refptr o)
+{    
+    return *cast(refptr*)(o + arr_ofs_class(o));
+}
+
+refptr arr_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + arr_ofs_next(o));
+}
+
+refptr arr_get_proto(refptr o)
+{    
+    return *cast(refptr*)(o + arr_ofs_proto(o));
+}
+
+uint64 arr_get_word(refptr o, uint32 i)
+{    
+    return *cast(uint64*)(o + arr_ofs_word(o, i));
+}
+
+uint8 arr_get_type(refptr o, uint32 i)
+{    
+    return *cast(uint8*)(o + arr_ofs_type(o, i));
+}
+
+refptr arr_get_tbl(refptr o)
+{    
+    return *cast(refptr*)(o + arr_ofs_tbl(o));
+}
+
+uint32 arr_get_len(refptr o)
+{    
+    return *cast(uint32*)(o + arr_ofs_len(o));
+}
+
+void arr_set_type(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + arr_ofs_type(o)) = v;
+}
+
+void arr_set_cap(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + arr_ofs_cap(o)) = v;
+}
+
+void arr_set_class(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + arr_ofs_class(o)) = v;
+}
+
+void arr_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + arr_ofs_next(o)) = v;
+}
+
+void arr_set_proto(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + arr_ofs_proto(o)) = v;
+}
+
+void arr_set_word(refptr o, uint32 i, uint64 v)
+{    
+    *cast(uint64*)(o + arr_ofs_word(o, i)) = v;
+}
+
+void arr_set_type(refptr o, uint32 i, uint8 v)
+{    
+    *cast(uint8*)(o + arr_ofs_type(o, i)) = v;
+}
+
+void arr_set_tbl(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + arr_ofs_tbl(o)) = v;
+}
+
+void arr_set_len(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + arr_ofs_len(o)) = v;
+}
+
+uint32 arr_comp_size(uint32 cap)
+{    
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 8) + 4);
+}
+
+uint32 arr_sizeof(refptr o)
+{    
+    return arr_comp_size(arr_get_cap(o));
+}
+
+refptr arr_alloc(Interp interp, uint32 cap)
+{    
+    auto o = interp.alloc(arr_comp_size(cap));
+    arr_set_cap(o, cap);
+    arr_set_type(o, 4);
+    arr_set_next(o, null);
+    return o;
+}
+
+const uint32 LAYOUT_ARRTBL = 5;
+
+uint32 arrtbl_ofs_type(refptr o)
+{    
+    return ((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * arrtbl_get_cap(o)));
+}
+
+uint32 arrtbl_ofs_cap(refptr o)
+{    
+    return ((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * arrtbl_get_cap(o)));
+}
+
+uint32 arrtbl_ofs_word(refptr o, uint32 i)
+{    
+    return (((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * arrtbl_get_cap(o))) + (8 * i));
+}
+
+uint32 arrtbl_ofs_type(refptr o, uint32 i)
+{    
+    return (((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * arrtbl_get_cap(o))) + (1 * i));
+}
+
+uint32 arrtbl_get_type(refptr o)
+{    
+    return *cast(uint32*)(o + arrtbl_ofs_type(o));
+}
+
+uint32 arrtbl_get_cap(refptr o)
+{    
+    return *cast(uint32*)(o + arrtbl_ofs_cap(o));
+}
+
+uint64 arrtbl_get_word(refptr o, uint32 i)
+{    
+    return *cast(uint64*)(o + arrtbl_ofs_word(o, i));
+}
+
+uint8 arrtbl_get_type(refptr o, uint32 i)
+{    
+    return *cast(uint8*)(o + arrtbl_ofs_type(o, i));
+}
+
+void arrtbl_set_type(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + arrtbl_ofs_type(o)) = v;
+}
+
+void arrtbl_set_cap(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + arrtbl_ofs_cap(o)) = v;
+}
+
+void arrtbl_set_word(refptr o, uint32 i, uint64 v)
+{    
+    *cast(uint64*)(o + arrtbl_ofs_word(o, i)) = v;
+}
+
+void arrtbl_set_type(refptr o, uint32 i, uint8 v)
+{    
+    *cast(uint8*)(o + arrtbl_ofs_type(o, i)) = v;
+}
+
+uint32 arrtbl_comp_size(uint32 cap)
+{    
+    return ((((0 + 4) + 4) + (8 * cap)) + (1 * cap));
+}
+
+uint32 arrtbl_sizeof(refptr o)
+{    
+    return arrtbl_comp_size(arrtbl_get_cap(o));
+}
+
+refptr arrtbl_alloc(Interp interp, uint32 cap)
+{    
+    auto o = interp.alloc(arrtbl_comp_size(cap));
+    arrtbl_set_cap(o, cap);
+    arrtbl_set_type(o, 5);
+    return o;
+}
+
+const uint32 LAYOUT_CLASS = 6;
+
+uint32 class_ofs_type(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+}
+
+uint32 class_ofs_id(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+}
+
+uint32 class_ofs_cap(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+}
+
+uint32 class_ofs_num_props(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+}
+
+uint32 class_ofs_next(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+}
+
+uint32 class_ofs_arr_type(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o)));
+}
+
+uint32 class_ofs_prop_name(refptr o, uint32 i)
+{    
+    return ((((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o))) + (8 * i));
+}
+
+uint32 class_ofs_prop_type(refptr o, uint32 i)
+{    
+    return ((((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o))) + (8 * i));
+}
+
+uint32 class_ofs_prop_idx(refptr o, uint32 i)
+{    
+    return ((((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * class_get_cap(o))) + (4 * i));
+}
+
+uint32 class_get_type(refptr o)
+{    
+    return *cast(uint32*)(o + class_ofs_type(o));
+}
+
+uint32 class_get_id(refptr o)
+{    
+    return *cast(uint32*)(o + class_ofs_id(o));
+}
+
+uint32 class_get_cap(refptr o)
+{    
+    return *cast(uint32*)(o + class_ofs_cap(o));
+}
+
+uint32 class_get_num_props(refptr o)
+{    
+    return *cast(uint32*)(o + class_ofs_num_props(o));
+}
+
+refptr class_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + class_ofs_next(o));
+}
+
+rawptr class_get_arr_type(refptr o)
+{    
+    return *cast(rawptr*)(o + class_ofs_arr_type(o));
+}
+
+refptr class_get_prop_name(refptr o, uint32 i)
+{    
+    return *cast(refptr*)(o + class_ofs_prop_name(o, i));
+}
+
+rawptr class_get_prop_type(refptr o, uint32 i)
+{    
+    return *cast(rawptr*)(o + class_ofs_prop_type(o, i));
+}
+
+uint32 class_get_prop_idx(refptr o, uint32 i)
+{    
+    return *cast(uint32*)(o + class_ofs_prop_idx(o, i));
+}
+
+void class_set_type(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + class_ofs_type(o)) = v;
+}
+
+void class_set_id(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + class_ofs_id(o)) = v;
+}
+
+void class_set_cap(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + class_ofs_cap(o)) = v;
+}
+
+void class_set_num_props(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + class_ofs_num_props(o)) = v;
+}
+
+void class_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + class_ofs_next(o)) = v;
+}
+
+void class_set_arr_type(refptr o, rawptr v)
+{    
+    *cast(rawptr*)(o + class_ofs_arr_type(o)) = v;
+}
+
+void class_set_prop_name(refptr o, uint32 i, refptr v)
+{    
+    *cast(refptr*)(o + class_ofs_prop_name(o, i)) = v;
+}
+
+void class_set_prop_type(refptr o, uint32 i, rawptr v)
+{    
+    *cast(rawptr*)(o + class_ofs_prop_type(o, i)) = v;
+}
+
+void class_set_prop_idx(refptr o, uint32 i, uint32 v)
+{    
+    *cast(uint32*)(o + class_ofs_prop_idx(o, i)) = v;
+}
+
+uint32 class_comp_size(uint32 cap)
+{    
+    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * cap)) + (8 * cap)) + (4 * cap));
+}
+
+uint32 class_sizeof(refptr o)
+{    
+    return class_comp_size(class_get_cap(o));
+}
+
+refptr class_alloc(Interp interp, uint32 cap)
+{    
+    auto o = interp.alloc(class_comp_size(cap));
+    class_set_cap(o, cap);
+    class_set_type(o, 6);
+    class_set_num_props(o, 0);
+    class_set_next(o, null);
+    class_set_arr_type(o, null);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        class_set_prop_name(o, i, null);
+    }
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        class_set_prop_type(o, i, null);
+    }
+    return o;
+}
 
