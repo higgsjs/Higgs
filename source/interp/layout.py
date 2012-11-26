@@ -5,6 +5,8 @@ from copy import deepcopy
 D_OUT_FILE = 'interp/layout.d'
 JS_OUT_FILE = 'interp/layout.js'
 
+JS_DEF_PREFIX = '$rt_'
+
 # Type sizes in bytes
 typeSize = {
     'uint8':1,
@@ -230,7 +232,7 @@ class ConstDef:
         self.val = val
 
     def genJS(self):
-        return 'var ' + self.name + ' = ' + str(self.val) + ';'
+        return 'var ' + JS_DEF_PREFIX + self.name + ' = ' + str(self.val) + ';'
 
     def genD(self):
         return 'const ' + self.type + ' ' + self.name + ' = ' + str(self.val) + ';'
@@ -245,7 +247,7 @@ class Function:
 
     def genJS(self):
         out = ''
-        out += 'function ' + self.name + '('
+        out += 'function ' + JS_DEF_PREFIX + self.name + '('
         params = self.params
         if params[0].name == 'interp':
             params = params[1:]
@@ -375,13 +377,16 @@ class CallExpr:
         self.args = args
 
     def genJS(self):
-        out = self.fName + '('
+        out = JS_DEF_PREFIX + self.fName + '('
         out += sepList(map(lambda v:v.genJS(), self.args))
         out += ')'
         return out
 
     def genD(self):
-        return self.genJS()
+        out = self.fName + '('
+        out += sepList(map(lambda v:v.genD(), self.args))
+        out += ')'
+        return out
 
 class ForLoop:
 
@@ -414,6 +419,16 @@ class ForLoop:
         out += '\n}'
         return out
 
+# Perform basic validation
+for layout in layouts:
+
+    # Check for duplicate field names
+    for fieldIdx, field in enumerate(layout['fields']):
+        for prev in layout['fields'][:fieldIdx]:
+            if prev['name'] == field['name']:
+                raise Exception('duplicate field name ' + field['name'])
+
+
 # Perform layout extensions
 for layoutIdx, layout in enumerate(layouts):
 
@@ -436,7 +451,7 @@ for layoutIdx, layout in enumerate(layouts):
         fieldCopies += [deepcopy(field)]
     layout['fields'] = fieldCopies + layout['fields']
 
-# Assign layout ids and add the type field
+# Assign layout ids and add the header field
 nextLayoutId = 0
 for layout in layouts:
 
@@ -444,7 +459,7 @@ for layout in layouts:
     layout['typeId'] = layoutId
     nextLayoutId += 1
 
-    typeField = [{ 'name':'type', 'type':'uint32', 'init':str(layoutId) }]
+    typeField = [{ 'name':'header', 'type':'uint32', 'init':str(layoutId) }]
     layout['fields'] = typeField + layout['fields']
 
 # Find/resolve size fields

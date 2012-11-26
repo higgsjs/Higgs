@@ -561,7 +561,7 @@ Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lt_i32 };
 Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u8 };
 Opcode LOAD_U16 = { "load_u16", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u16 };
 Opcode LOAD_U32 = { "load_u32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u32 };
-Opcode LOAD_F64 = { "load_u32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_f64 };
+Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_f64 };
 Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_refptr };
 Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_rawptr };
 
@@ -569,7 +569,7 @@ Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load
 Opcode STORE_U8 = { "store_u8", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8 };
 Opcode STORE_U16 = { "store_u16", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u16 };
 Opcode STORE_U32 = { "store_u32", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u32 };
-Opcode STORE_F64 = { "store_u32", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64 };
+Opcode STORE_F64 = { "store_f64", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64 };
 Opcode STORE_REFPTR = { "store_refptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr };
 Opcode STORE_RAWPTR = { "store_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr };
 
@@ -682,7 +682,11 @@ Opcode*[string] iir;
 /// Initialize the inline IR table
 static this()
 {
-    void addOp(ref Opcode op) { iir[op.mnem] = &op; }
+    void addOp(ref Opcode op)
+    { 
+        assert (op.mnem !in iir, "duplicate op name " ~ op.mnem);
+        iir[op.mnem] = &op; 
+    }
 
     addOp(IS_INT);
     addOp(IS_FLOAT);

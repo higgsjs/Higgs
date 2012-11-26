@@ -104,14 +104,8 @@ Create a string representing an integer value
 */
 function $rt_intToStr(intVal, radix)
 {
-    /*
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg intVal pint";
-    "tachyon:arg radix pint";
-
     assert (
-        radix > pint(0) && radix <= pint(36),
+        radix > 0 && radix <= 36,
         'invalid radix'
     );
 
@@ -121,16 +115,16 @@ function $rt_intToStr(intVal, radix)
     // If the integer is negative, adjust the string length for the minus sign
     if (intVal < pint(0))
     {
-        strLen = pint(1);
-        intVal *= pint(-1);
+        strLen = 1;
+        intVal *= -1;
         neg = true;
     }
     else
     {
-        strLen = pint(0);
+        strLen = 0;
         neg = false;
     }
-    
+
     // Compute the number of digits to add to the string length
     var intVal2 = intVal;
     do
@@ -138,8 +132,10 @@ function $rt_intToStr(intVal, radix)
         strLen++;
         intVal2 /= radix;
 
-    } while (intVal2 !== pint(0));
+    } while (intVal2 !== 0);
 
+    /*
+    // TODO: alloc_str
     // Allocate a string object
     var strObj = alloc_str(strLen);
 
@@ -227,10 +223,13 @@ function $rt_typeof(v)
 
     if ($ir_is_refptr(v) === true)
     {
-        // TODO
+        var type = $rt_obj_get_header(v);
 
+        if (type === $rt_LAYOUT_OBJ || type === $rt_LAYOUT_ARR)
+            return "object";
 
-
+        if (type === $rt_LAYOUT_CLOS)
+            return "function";
     }
 
     return "unhandled type in typeof";

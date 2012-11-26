@@ -278,37 +278,51 @@ void op_lt_i32(Interp interp, IRInstr instr)
     );
 }
 
-void LoadOp(DataType, Type typeTag, )(Interp interp, IRInstr instr)
+void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {
-    auto ptr = interp.getWord(instr.args[0].localIdx).ptrVal;
-    auto ofs = interp.getWord(instr.args[1].localIdx).intVal;
+    auto wPtr = interp.getWord(instr.args[0].localIdx);
+    auto tPtr = interp.getType(instr.args[0].localIdx);
 
-    // TODO: add type assertions
+    auto wOfs = interp.getWord(instr.args[1].localIdx);
+    auto tOfs = interp.getType(instr.args[1].localIdx);
+
+    assert (
+        tPtr == Type.REFPTR || tPtr == Type.RAWPTR,
+        "pointer is not pointer type in load op"
+    );
+
+    assert (
+        tOfs == Type.INT,
+        "offset is not integer type in load op"
+    );
+
+    auto ptr = wPtr.ptrVal;
+    auto ofs = wOfs.intVal;
 
     auto val = *cast(DataType*)(ptr + ofs);
 
     Word word;
 
     static if (
-        DataType.stringof == "int8"  ||
-        DataType.stringof == "int16" ||
-        DataType.stringof == "int32" ||
-        DataType.stringof == "int64")
+        DataType.stringof == "byte"  ||
+        DataType.stringof == "short" ||
+        DataType.stringof == "int"   ||
+        DataType.stringof == "long")
         word.intVal = val;
 
     static if (
-        DataType.stringof == "uint8"  ||
-        DataType.stringof == "uint16" ||
-        DataType.stringof == "uint32" ||
-        DataType.stringof == "uint64")
+        DataType.stringof == "ubyte"  ||
+        DataType.stringof == "ushort" ||
+        DataType.stringof == "uint"   ||
+        DataType.stringof == "ulong")
         word.uintVal = val;
 
-    static if (DataType.stringof == "float64")
+    static if (DataType.stringof == "double")
         word.floatVal = val;
 
     static if (
-        DataType.stringof == "refptr" ||
-        DataType.stringof == "rawptr")
+        DataType.stringof == "void*" ||
+        DataType.stringof == "ubyte*")
         word.ptrVal = val;
 
     interp.setSlot(
@@ -320,34 +334,49 @@ void LoadOp(DataType, Type typeTag, )(Interp interp, IRInstr instr)
 
 void StoreOp(DataType, Type typeTag, )(Interp interp, IRInstr instr)
 {
-    auto ptr = interp.getWord(instr.args[0].localIdx).ptrVal;
-    auto ofs = interp.getWord(instr.args[1].localIdx).intVal;
-    auto word = interp.getWord(instr.args[2].localIdx);
+    auto wPtr = interp.getWord(instr.args[0].localIdx);
+    auto tPtr = interp.getType(instr.args[0].localIdx);
 
-    // TODO: add type assertions
+    auto wOfs = interp.getWord(instr.args[1].localIdx);
+    auto tOfs = interp.getType(instr.args[1].localIdx);
+
+    assert (
+        tPtr == Type.REFPTR || tPtr == Type.RAWPTR,
+        "pointer is not pointer type in store op"
+    );
+
+    assert (
+        tOfs == Type.INT,
+        "offset is not integer type in store op"
+    );
+
+    auto ptr = wPtr.ptrVal;
+    auto ofs = wOfs.intVal;
+
+    auto word = interp.getWord(instr.args[2].localIdx);
 
     DataType val;
 
     static if (
-        DataType.stringof == "int8"  ||
-        DataType.stringof == "int16" ||
-        DataType.stringof == "int32" ||
-        DataType.stringof == "int64")
+        DataType.stringof == "byte"  ||
+        DataType.stringof == "short" ||
+        DataType.stringof == "int"   ||
+        DataType.stringof == "long")
         val = cast(DataType)word.intVal;
 
     static if (
-        DataType.stringof == "uint8"  ||
-        DataType.stringof == "uint16" ||
-        DataType.stringof == "uint32" ||
-        DataType.stringof == "uint64")
+        DataType.stringof == "ubyte"  ||
+        DataType.stringof == "ushort" ||
+        DataType.stringof == "uint"   ||
+        DataType.stringof == "ulong")
         val = cast(DataType)word.uintVal;
 
-    static if (DataType.stringof == "float64")
+    static if (DataType.stringof == "double")
         val = cast(DataType)word.floatVal;
 
     static if (
-        DataType.stringof == "refptr" ||
-        DataType.stringof == "rawptr")
+        DataType.stringof == "void*" ||
+        DataType.stringof == "ubyte*")
         val = cast(DataType)word.ptrVal;
 
     *cast(DataType*)(ptr + ofs) = val;
@@ -394,10 +423,17 @@ void op_call(Interp interp, IRInstr instr)
 {
     auto closIdx = instr.args[0].localIdx;
     auto thisIdx = instr.args[1].localIdx;
-    //auto numArgs = instr.args[2].intVal;
+
+    auto wClos = interp.getWord(closIdx);
+    auto tClos = interp.getType(closIdx);
 
     auto wThis = interp.getWord(thisIdx);
     auto tThis = interp.getType(thisIdx);
+
+    assert (
+        tClos == Type.REFPTR,
+        "closure is not ref ptr"
+    );
 
     // Get the function object from the closure
     auto closPtr = interp.getWord(closIdx).ptrVal;
@@ -1100,7 +1136,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
     {
         //writeln("*** extending object ***");
 
-        auto objType = obj_get_type(objPtr);
+        auto objType = obj_get_header(objPtr);
 
         refptr newObj;
 
@@ -1391,7 +1427,7 @@ void opSetProp(Interp interp, IRInstr instr)
     if (base.type == Type.REFPTR)
     {
         auto objPtr = base.word.ptrVal;
-        auto type = obj_get_type(objPtr);
+        auto type = obj_get_header(objPtr);
 
         if (type == LAYOUT_ARR)
         {
@@ -1439,7 +1475,7 @@ void opGetProp(Interp interp, IRInstr instr)
     if (base.type == Type.REFPTR)
     {
         auto objPtr = base.word.ptrVal;
-        auto type = obj_get_type(objPtr);
+        auto type = obj_get_header(objPtr);
 
         if (type == LAYOUT_ARR)
         {
