@@ -153,86 +153,122 @@ void op_i32_to_f64(Interp interp, IRInstr instr)
     );
 }
 
-void op_add_i32(Interp interp, IRInstr instr)
+void op_f64_to_i32(Interp interp, IRInstr instr)
 {
-    auto idx0 = instr.args[0].localIdx;
-    auto idx1 = instr.args[1].localIdx;
-    auto w0 = interp.getWord(idx0);
-    auto w1 = interp.getWord(idx1);
-
-    auto r = cast(int32)(w0.intVal + w1.intVal);
+    auto w0 = interp.getWord(instr.args[0].localIdx);
 
     interp.setSlot(
         instr.outSlot,
-        Word.intv(r),
-        Type.INT
-    );
-}
-
-void op_sub_i32(Interp interp, IRInstr instr)
-{
-    auto idx0 = instr.args[0].localIdx;
-    auto idx1 = instr.args[1].localIdx;
-    auto w0 = interp.getWord(idx0);
-    auto w1 = interp.getWord(idx1);
-
-    auto r = cast(int32)(w0.intVal - w1.intVal);
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.intv(r),
-        Type.INT
-    );
-}
-
-void op_mul_i32(Interp interp, IRInstr instr)
-{
-    auto idx0 = instr.args[0].localIdx;
-    auto idx1 = instr.args[1].localIdx;
-    auto w0 = interp.getWord(idx0);
-    auto w1 = interp.getWord(idx1);
-
-    auto r = cast(int32)(w0.intVal * w1.intVal);
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.intv(r),
-        Type.INT
-    );
-}
-
-void op_add_f64(Interp interp, IRInstr instr)
-{
-    auto idx0 = instr.args[0].localIdx;
-    auto idx1 = instr.args[1].localIdx;
-    auto w0 = interp.getWord(idx0);
-    auto w1 = interp.getWord(idx1);
-
-    auto r = w0.floatVal + w1.floatVal;
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.floatv(r),
+        Word.intv(cast(int32)w0.floatVal),
         Type.FLOAT
     );
 }
 
-void op_add_i32_ovf(Interp interp, IRInstr instr)
+void ArithOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
 {
-    auto idx0 = instr.args[0].localIdx;
-    auto idx1 = instr.args[1].localIdx;
-    auto w0 = interp.getWord(idx0);
-    auto w1 = interp.getWord(idx1);
-    auto t0 = interp.getType(idx0);
-    auto t1 = interp.getType(idx1);
+    auto wX = interp.getWord(instr.args[0].localIdx);
+    auto tX = interp.getType(instr.args[0].localIdx);
+    auto wY = interp.getWord(instr.args[1].localIdx);
+    auto tY = interp.getType(instr.args[1].localIdx);
 
-    auto r = w0.intVal + w1.intVal;
+    Word output;
 
-    if (r >= int32.min && r <= int32.max)
+    static if (typeTag == Type.INT)
+    {
+        assert (
+            tX == Type.INT && tY == Type.INT,
+            "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+        );
+
+        auto x = cast(DataType)wX.intVal;
+        auto y = cast(DataType)wY.intVal;
+
+        mixin(op);        
+
+        output.intVal = r;
+    }
+
+    static if (typeTag == Type.FLOAT)
+    {
+        assert (
+            tX == Type.FLOAT && tY == Type.FLOAT,
+            "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+        );
+
+        auto x = cast(DataType)wX.floatVal;
+        auto y = cast(DataType)wY.floatVal;
+
+        mixin(op);        
+
+        output.floatVal = r;
+    }
+
+    interp.setSlot(
+        instr.outSlot,
+        output,
+        typeTag
+    );
+}
+
+alias ArithOp!(int32, Type.INT, "auto r = x + y;") op_add_i32;
+alias ArithOp!(int32, Type.INT, "auto r = x - y;") op_sub_i32;
+alias ArithOp!(int32, Type.INT, "auto r = x * y;") op_mul_i32;
+alias ArithOp!(int32, Type.INT, "auto r = x / y;") op_div_i32;
+alias ArithOp!(int32, Type.INT, "auto r = x % y;") op_mod_i32;
+
+alias ArithOp!(int32, Type.INT, "auto r = x & y;") op_and_i32;
+alias ArithOp!(int32, Type.INT, "auto r = x | y;") op_or_i32;
+alias ArithOp!(int32, Type.INT, "auto r = x ^ y;") op_xor_i32;
+alias ArithOp!(int32, Type.INT, "auto r = x << y;") op_lsft_i32;
+alias ArithOp!(int32, Type.INT, "auto r = x >> y;") op_rsft_i32;
+alias ArithOp!(int32, Type.INT, "auto r = cast(uint32)x >>> y;") op_ursft_i32;
+
+void op_not_i32(Interp interp, IRInstr instr)
+{
+    auto wX = interp.getWord(instr.args[0].localIdx);
+    auto tX = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        tX == Type.INT,
+        "invalid operand type in bitwise not"
+    );
+
+    auto r = ~cast(int32)wX.intVal;
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.intv(r),
+        Type.INT
+    );
+}
+
+alias ArithOp!(float64, Type.FLOAT, "auto r = x + y;") op_add_f64;
+alias ArithOp!(float64, Type.FLOAT, "auto r = x - y;") op_sub_f64;
+alias ArithOp!(float64, Type.FLOAT, "auto r = x * y;") op_mul_f64;
+alias ArithOp!(float64, Type.FLOAT, "auto r = x / y;") op_div_f64;
+
+void ArithOpOvf(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
+{
+    auto wX = interp.getWord(instr.args[0].localIdx);
+    auto tX = interp.getType(instr.args[0].localIdx);
+    auto wY = interp.getWord(instr.args[1].localIdx);
+    auto tY = interp.getType(instr.args[1].localIdx);
+
+    assert (
+        tX == Type.INT && tY == Type.INT,
+        "invalid operand types in ovf op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+    );
+
+    auto x = wX.intVal;
+    auto y = wY.intVal;
+
+    mixin(op);
+
+    if (r >= DataType.min && r <= DataType.max)
     {
         interp.setSlot(
             instr.outSlot,
-            Word.intv(cast(int32)r),
+            Word.intv(cast(DataType)r),
             Type.INT
         );
     }
@@ -242,16 +278,46 @@ void op_add_i32_ovf(Interp interp, IRInstr instr)
     }
 }
 
-void op_eq_i32(Interp interp, IRInstr instr)
-{
-    auto idx0 = instr.args[0].localIdx;
-    auto idx1 = instr.args[1].localIdx;
-    auto w0 = interp.getWord(idx0);
-    auto w1 = interp.getWord(idx1);
-    auto t0 = interp.getType(idx0);
-    auto t1 = interp.getType(idx1);
+alias ArithOpOvf!(int32, Type.INT, "auto r = x + y;") op_add_i32_ovf;
+alias ArithOpOvf!(int32, Type.INT, "auto r = x - y;") op_sub_i32_ovf;
+alias ArithOpOvf!(int32, Type.INT, "auto r = x * y;") op_mul_i32_ovf;
+alias ArithOpOvf!(int32, Type.INT, "auto r = x << y;") op_lsft_i32_ovf;
 
-    auto r = cast(int32)w0.intVal == cast(int32)w1.intVal;
+void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
+{
+    auto wX = interp.getWord(instr.args[0].localIdx);
+    auto tX = interp.getType(instr.args[0].localIdx);
+    auto wY = interp.getWord(instr.args[1].localIdx);
+    auto tY = interp.getType(instr.args[1].localIdx);
+
+    // Boolean result
+    bool r;
+
+    static if (typeTag == Type.INT)
+    {
+        assert (
+            tX == Type.INT && tY == Type.INT,
+            "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+        );
+
+        auto x = cast(DataType)wX.intVal;
+        auto y = cast(DataType)wY.intVal;
+
+        mixin(op);        
+    }
+
+    static if (typeTag == Type.FLOAT)
+    {
+        assert (
+            tX == Type.FLOAT && tY == Type.FLOAT,
+            "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+        );
+
+        auto x = cast(DataType)wX.floatVal;
+        auto y = cast(DataType)wY.floatVal;
+
+        mixin(op);        
+    }
 
     interp.setSlot(
         instr.outSlot,
@@ -260,23 +326,19 @@ void op_eq_i32(Interp interp, IRInstr instr)
     );
 }
 
-void op_lt_i32(Interp interp, IRInstr instr)
-{
-    auto idx0 = instr.args[0].localIdx;
-    auto idx1 = instr.args[1].localIdx;
-    auto w0 = interp.getWord(idx0);
-    auto w1 = interp.getWord(idx1);
-    auto t0 = interp.getType(idx0);
-    auto t1 = interp.getType(idx1);
+alias CompareOp!(int32, Type.INT, "r = (x == y);") op_eq_i32;
+alias CompareOp!(int32, Type.INT, "r = (x == y);") op_ne_i32;
+alias CompareOp!(int32, Type.INT, "r = (x < y);") op_lt_i32;
+alias CompareOp!(int32, Type.INT, "r = (x > y);") op_gt_i32;
+alias CompareOp!(int32, Type.INT, "r = (x <= y);") op_le_i32;
+alias CompareOp!(int32, Type.INT, "r = (x >= y);") op_ge_i32;
 
-    auto r = cast(int32)w0.intVal < cast(int32)w1.intVal;
-
-    interp.setSlot(
-        instr.outSlot,
-        r? TRUE:FALSE,
-        Type.CONST
-    );
-}
+alias CompareOp!(float64, Type.FLOAT, "r = (x == y);") op_eq_f64;
+alias CompareOp!(float64, Type.FLOAT, "r = (x == y);") op_ne_f64;
+alias CompareOp!(float64, Type.FLOAT, "r = (x < y);") op_lt_f64;
+alias CompareOp!(float64, Type.FLOAT, "r = (x > y);") op_gt_f64;
+alias CompareOp!(float64, Type.FLOAT, "r = (x <= y);") op_le_f64;
+alias CompareOp!(float64, Type.FLOAT, "r = (x >= y);") op_ge_f64;
 
 void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {

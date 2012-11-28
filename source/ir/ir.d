@@ -526,36 +526,51 @@ Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &op_is_const };
 
 // Type conversion
 Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &op_i32_to_f64 };
+Opcode F64_TO_I32 = { "f64_to_i32", true, [OpArg.LOCAL], &op_f64_to_i32 };
 
 // Integer arithmetic
 Opcode ADD_I32 = { "add_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32 };
 Opcode SUB_I32 = { "sub_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_i32 };
 Opcode MUL_I32 = { "mul_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_i32 };
-// TODO: MUL
-// TODO: DIV
-// TODO: MOD
+Opcode DIV_I32 = { "div_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_div_i32 };
+Opcode MOD_I32 = { "mod_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mod_i32 };
+
+// Bitwise operations
+Opcode AND_I32 = { "and_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_and_i32 };
+Opcode OR_I32 = { "or_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_or_i32 };
+Opcode XOR_I32 = { "xor_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_xor_i32 };
+Opcode LSFT_I32 = { "lsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lsft_i32 };
+Opcode RSFT_I32 = { "rsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_rsft_i32 };
+Opcode URSFT_I32 = { "ursft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ursft_i32 };
+Opcode NOT_I32 = { "not_i32", true, [OpArg.LOCAL], &op_not_i32 };
 
 // Floating-point arithmetic
 Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_f64 };
-// TODO: SUB
-// TODO: MUL
-// TODO: DIV
+Opcode SUB_F64 = { "sub_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_f64 };
+Opcode MUL_F64 = { "mul_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_f64 };
+Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_div_f64 };
 
-// TODO: Bitwise operations
-
-// Integer arithmetic with overflow handling
+// Integer operations with overflow handling
 Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32_ovf, false, true };
-// TODO: SUB_I32_OVF
-// TODO: MUL_I32_OVF
-// TODO: LSFT_I32_OVF
+Opcode SUB_I32_OVF = { "sub_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_i32_ovf, false, true };
+Opcode MUL_I32_OVF = { "mul_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_i32_ovf, false, true };
+Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lsft_i32_ovf, false, true };
 
-// TODO: Comparison instructions
+// Integer comparison instructions
 Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_i32 };
-// TODO: NE
+Opcode NE_I32 = { "ne_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_i32 };
 Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lt_i32 };
-// TODO: GT
-// TODO: LE
-// TODO: GE
+Opcode GT_I32 = { "gt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_gt_i32 };
+Opcode LE_I32 = { "le_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_le_i32 };
+Opcode GE_I32 = { "ge_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ge_i32 };
+
+// Floating-point comparison instructions
+Opcode EQ_F64 = { "eq_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_f64 };
+Opcode NE_F64 = { "ne_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_f64 };
+Opcode LT_F64 = { "lt_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lt_f64 };
+Opcode GT_F64 = { "gt_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_gt_f64 };
+Opcode LE_F64 = { "le_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_le_f64 };
+Opcode GE_F64 = { "ge_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ge_f64 };
 
 // Load instructions
 Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u8 };
@@ -574,8 +589,8 @@ Opcode STORE_REFPTR = { "store_refptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.L
 Opcode STORE_RAWPTR = { "store_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr };
 
 // Branching and conditional branching
-Opcode JUMP = { "jump"      , false, [], &op_jump, false, true };
-Opcode JUMP_TRUE = { "jump_true" , false, [OpArg.LOCAL], &op_jump_true, false, true };
+Opcode JUMP = { "jump", false, [], &op_jump, false, true };
+Opcode JUMP_TRUE = { "jump_true", false, [OpArg.LOCAL], &op_jump_true, false, true };
 Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL], &op_jump_false, false, true };
 
 // <dstLocal> = CALL <closLocal> <thisArg> <numArgs>
@@ -602,9 +617,9 @@ Opcode PUSH_FRAME = { "push_frame", false, [], &op_push_frame };
 Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret };
 
 
+
 // ===========================================================================
 // TODO: translate to runtime functions
-
 
 // Arithmetic operations
 Opcode ADD        = { "add", true, [OpArg.LOCAL, OpArg.LOCAL], &opAdd };
@@ -668,6 +683,12 @@ Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlo
 // GET_GLOBAL <propName>
 Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 
+// TODO: translate to runtime functions
+// ===========================================================================
+
+
+
+
 
 /**
 Inline IR prefix string
@@ -696,16 +717,45 @@ static this()
     addOp(IS_CONST);
 
     addOp(I32_TO_F64);
+    addOp(F64_TO_I32);
 
     addOp(ADD_I32);
+    addOp(SUB_I32);
     addOp(MUL_I32);
+    addOp(DIV_I32);
+    addOp(MOD_I32);
+
+    addOp(AND_I32);
+    addOp(OR_I32);
+    addOp(XOR_I32);
+    addOp(LSFT_I32);
+    addOp(RSFT_I32);
+    addOp(URSFT_I32);
+    addOp(NOT_I32);
 
     addOp(ADD_F64);
+    addOp(SUB_F64);
+    addOp(MUL_F64);
+    addOp(DIV_F64);
 
     addOp(ADD_I32_OVF);
+    addOp(SUB_I32_OVF);
+    addOp(MUL_I32_OVF);
+    addOp(LSFT_I32_OVF);
 
     addOp(EQ_I32);
+    addOp(NE_I32);
     addOp(LT_I32);
+    addOp(GT_I32);
+    addOp(LE_I32);
+    addOp(GE_I32);
+
+    addOp(EQ_F64);
+    addOp(NE_F64);
+    addOp(LT_F64);
+    addOp(GT_F64);
+    addOp(LE_F64);
+    addOp(GE_F64);
 
     addOp(LOAD_U8);
     addOp(LOAD_U16);

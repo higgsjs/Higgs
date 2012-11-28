@@ -485,9 +485,12 @@ unittest
 unittest
 {
     assertInt("return $ir_add_i32(5,3);", 8);
+    assertInt("return $ir_sub_i32(5,3);", 2);
     assertInt("return $ir_mul_i32(5,3);", 15);
+    assertInt("return $ir_mod_i32(5,3);", 2);
     assertInt("return $ir_eq_i32(3,3)? 1:0;", 1);
     assertInt("return $ir_lt_i32(3,5)? 1:0;", 1);
+    assertInt("return $ir_ge_i32(5,5)? 1:0;", 1);
 
     assertInt(
         "
