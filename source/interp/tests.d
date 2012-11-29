@@ -554,14 +554,27 @@ unittest
 /// Runtime functions
 unittest
 {
+    assertInt("$rt_toBool(0)? 1:0", 0);
+    assertInt("$rt_toBool(5)? 1:0", 1);
+    assertInt("$rt_toBool(true)? 1:0", 1);
+    assertInt("$rt_toBool(false)? 1:0", 0);
+    assertInt("$rt_toBool(null)? 1:0", 0);
+    assertInt("$rt_toBool('')? 1:0", 0);
+    assertInt("$rt_toBool('foo')? 1:0", 1);
+
     assertStr("$rt_toString(5)", "5");
     assertStr("$rt_toString('foo')", "foo");
 
     assertInt("$rt_add(5, 3)", 8);
+    assertFloat("$rt_add(5, 3.5)", 8.5);
     assertStr("$rt_add(5, 'bar')", "5bar");
     assertStr("$rt_add('foo', 'bar')", "foobar");
 
-    // TODO
+    assertInt("$rt_sub(5, 3)", 2);
+    assertFloat("$rt_sub(5, 3.5)", 1.5);
 
+    assertInt("isNaN(3)? 1:0", 0);
+    assertInt("isNaN(3.5)? 1:0", 0);
+    assertInt("isNaN(NaN)? 1:0", 1);
 }
 

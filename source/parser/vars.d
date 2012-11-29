@@ -147,7 +147,9 @@ void resolveVars(ASTStmt stmt, Scope s)
             auto ident = varStmt.identExprs[i];
             auto init = varStmt.initExprs[i];
 
-            s.addDecl(ident, ident.name);
+            // If we are not in a top-level (program) scope
+            if (cast(ASTProgram)s.fun is null)
+                s.addDecl(ident, ident.name);
 
             resolveVars(ident, s);
 

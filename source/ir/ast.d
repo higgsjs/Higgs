@@ -422,7 +422,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         }
     }
 
-    writeln(fun.toString());
+    //writeln(fun.toString());
 
     // Return the IR function object
     return fun;
@@ -1334,7 +1334,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         {
             assert (
                 identExpr.declNode in *ctx.localMap,
-                "variable declaration not in local map"
+                "variable declaration not in local map: \"" ~ 
+                to!string(identExpr.name) ~ "\""
             );
 
             // Get the variable's local slot

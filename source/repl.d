@@ -67,8 +67,9 @@ void repl()
             // Evaluate the input
             auto output = interp.evalString(input, "repl");
 
-            // Print the output
-            writeln(valueToString(output));
+            // Print the output if it isn't "undefined"
+            if (!(output.type == Type.CONST && output.word == UNDEF))
+                writeln(valueToString(output));
         }
 
         catch (ParseError e)

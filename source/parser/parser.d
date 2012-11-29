@@ -77,7 +77,7 @@ void readSep(TokenStream input, wstring sep)
     if (input.matchSep(sep) == false)
     {
         throw new ParseError(
-            "expected \"" ~ to!string(sep) ~ "\"",
+            "expected \"" ~ to!string(sep) ~ "\" separator",
             input.getPos()
         );
     }
@@ -92,7 +92,7 @@ void readKw(TokenStream input, wstring keyword)
     if (input.matchKw(keyword) == false)
     {
         throw new ParseError(
-            "expected \"" ~ to!string(keyword) ~ "\"",
+            "expected \"" ~ to!string(keyword) ~ "\" keyword",
             input.getPos()
         );
     }

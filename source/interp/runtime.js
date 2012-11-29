@@ -36,11 +36,31 @@
 *****************************************************************************/
 
 /**
+Not-a-number value
+*/
+var NaN = $ir_div_f64(0.0, 0.0);
+
+/**
+Test if a value is NaN
+*/
+function isNaN(v)
+{
+    return ($ir_is_float(v) && $ir_ne_f64(v, v));
+}
+
+/**
 Perform an assertion test
 */
 function assert(test, error)
 {
-    // TODO
+    if (test)
+        return;
+
+    // TODO: throw Error object
+    print(
+        'ASSERTION FAILED:\n' + 
+        error
+    );
 }
 
 /**
@@ -48,13 +68,20 @@ Print a value to the console
 */
 function print(val)
 {
-    // TODO
-
     // Convert the value to a string
-    //var strVal = boxToString(val);
+    var strVal = $rt_toString(val);
        
     // Print the string
-    //puts(strVal);
+    $ir_print_str(strVal);
+}
+
+/**
+Print a value followed by a newline
+*/
+function println(val)
+{
+    print(val);
+    print('\n');
 }
 
 /**
@@ -188,6 +215,35 @@ function $rt_toString(v)
 }
 
 /**
+Evaluate a value as a boolean
+*/
+function $rt_toBool(v)
+{
+    if ($ir_jump_false($ir_is_const(v)))
+        return (v === true);
+
+    if ($ir_jump_false($ir_is_int(v)))
+        return $ir_ne_i32(v, 0);
+
+    if ($ir_jump_false($ir_is_float(v)))
+        return $ir_ne_f64(v, 0.0);
+
+    if ($ir_jump_false($ir_is_refptr(v)))
+    {
+        var type = $rt_obj_get_header(v);
+
+        if ($ir_jump_false($ir_eq_i32(type, $rt_LAYOUT_STR)))
+            return $ir_gt_i32($rt_str_get_len(v), 0);
+
+        return true;
+    }
+
+    // TODO: raw ptr?
+
+    return false;
+}
+
+/**
 JS typeof operator
 */
 function $rt_typeof(v)
@@ -258,17 +314,41 @@ function $rt_add(x, y)
     var sy = $rt_toString(y);
 
     // Concatenate the strings
-    return $rt_strcat(sx, sy);}
+    return $rt_strcat(sx, sy);
+}
 
 /**
 JS subtraction operator
 */
 function $rt_sub(x, y)
 {
-    // TODO
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        var r;
+        if (r = $ir_sub_i32_ovf(x, y))
+        {
+            return r;
+        }
+        else
+        {
+            var fx = $ir_i32_to_f64(x);
+            var fy = $ir_i32_to_f64(y);
+            return $ir_sub_f64(fx, fy);
+        }
+    }
 
+    // If either value is floating-point or integer
+    else if (
+        ($ir_is_float(x) || $ir_is_int(x)) &&
+        ($ir_is_float(y) || $ir_is_int(y)))
+    {
+        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
 
+        return $ir_sub_f64(fx, fy);
+    }
 
-
+    return NaN; 
 }
 

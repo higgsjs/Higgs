@@ -622,6 +622,10 @@ Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
 // try to find the string in the string table
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str };
 
+// Print a string to standard output
+Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
+
+
 // ===========================================================================
 // TODO: translate to runtime functions
 
@@ -774,7 +778,11 @@ static this()
     addOp(STORE_REFPTR);
     addOp(STORE_RAWPTR);
 
+    addOp(JUMP_TRUE);
+    addOp(JUMP_FALSE);
+
     addOp(HEAP_ALLOC);
     addOp(GET_STR);
+    addOp(PRINT_STR);
 }
 

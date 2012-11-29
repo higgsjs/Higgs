@@ -39,6 +39,7 @@ module interp.ops;
 
 import std.stdio;
 import std.algorithm;
+import std.conv;
 import ir.ir;
 import ir.ast;
 import interp.interp;
@@ -746,6 +747,29 @@ void op_get_str(Interp interp, IRInstr instr)
         Word.ptrv(ptr),
         Type.REFPTR
     );
+}
+
+void op_print_str(Interp interp, IRInstr instr)
+{
+    auto wStr = interp.getWord(instr.args[0].localIdx);
+    auto tStr = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        valIsString(wStr, tStr),
+        "expected string in print_str"
+    );
+
+    auto ptr = wStr.ptrVal;
+
+    auto len = str_get_len(ptr);
+    wchar[] wchars = new wchar[len];
+    for (uint32 i = 0; i < len; ++i)
+        wchars[i] = str_get_data(ptr, i);
+
+    auto str = to!string(wchars);
+
+    // Print the string to standard output
+    write(str);
 }
 
 // ===========================================================================
