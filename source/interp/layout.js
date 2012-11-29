@@ -76,7 +76,7 @@ function $rt_str_sizeof(o)
 
 function $rt_str_alloc(len)
 {    
-    var o = $ir_alloc($rt_str_comp_size(len));
+    var o = $ir_heap_alloc($rt_str_comp_size(len));
     $rt_str_set_len(o, len);
     $rt_str_set_header(o, 0);
     return o;
@@ -156,7 +156,7 @@ function $rt_strtbl_sizeof(o)
 
 function $rt_strtbl_alloc(cap)
 {    
-    var o = $ir_alloc($rt_strtbl_comp_size(cap));
+    var o = $ir_heap_alloc($rt_strtbl_comp_size(cap));
     $rt_strtbl_set_cap(o, cap);
     $rt_strtbl_set_header(o, 1);
     $rt_strtbl_set_num_strs(o, 0);
@@ -286,7 +286,7 @@ function $rt_obj_sizeof(o)
 
 function $rt_obj_alloc(cap)
 {    
-    var o = $ir_alloc($rt_obj_comp_size(cap));
+    var o = $ir_heap_alloc($rt_obj_comp_size(cap));
     $rt_obj_set_cap(o, cap);
     $rt_obj_set_header(o, 2);
     $rt_obj_set_next(o, null);
@@ -457,7 +457,7 @@ function $rt_clos_sizeof(o)
 
 function $rt_clos_alloc(cap, num_cells)
 {    
-    var o = $ir_alloc($rt_clos_comp_size(cap, num_cells));
+    var o = $ir_heap_alloc($rt_clos_comp_size(cap, num_cells));
     $rt_clos_set_cap(o, cap);
     $rt_clos_set_num_cells(o, num_cells);
     $rt_clos_set_header(o, 3);
@@ -614,7 +614,7 @@ function $rt_arr_sizeof(o)
 
 function $rt_arr_alloc(cap)
 {    
-    var o = $ir_alloc($rt_arr_comp_size(cap));
+    var o = $ir_heap_alloc($rt_arr_comp_size(cap));
     $rt_arr_set_cap(o, cap);
     $rt_arr_set_header(o, 4);
     $rt_arr_set_next(o, null);
@@ -695,7 +695,7 @@ function $rt_arrtbl_sizeof(o)
 
 function $rt_arrtbl_alloc(cap)
 {    
-    var o = $ir_alloc($rt_arrtbl_comp_size(cap));
+    var o = $ir_heap_alloc($rt_arrtbl_comp_size(cap));
     $rt_arrtbl_set_cap(o, cap);
     $rt_arrtbl_set_header(o, 5);
     return o;
@@ -850,7 +850,7 @@ function $rt_class_sizeof(o)
 
 function $rt_class_alloc(cap)
 {    
-    var o = $ir_alloc($rt_class_comp_size(cap));
+    var o = $ir_heap_alloc($rt_class_comp_size(cap));
     $rt_class_set_cap(o, cap);
     $rt_class_set_header(o, 6);
     $rt_class_set_num_props(o, 0);

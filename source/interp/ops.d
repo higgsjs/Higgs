@@ -76,7 +76,7 @@ void op_set_str(Interp interp, IRInstr instr)
     interp.setSlot(
         instr.outSlot,
         Word.ptrv(objPtr),
-        Type.STRING
+        Type.REFPTR
     );
 }
 
@@ -137,7 +137,6 @@ void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
 
 alias TypeCheckOp!(Type.INT) op_is_int;
 alias TypeCheckOp!(Type.FLOAT) op_is_float;
-alias TypeCheckOp!(Type.STRING) op_is_string;
 alias TypeCheckOp!(Type.REFPTR) op_is_refptr;
 alias TypeCheckOp!(Type.RAWPTR) op_is_rawptr;
 alias TypeCheckOp!(Type.CONST) op_is_const;
@@ -327,14 +326,14 @@ void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
 }
 
 alias CompareOp!(int32, Type.INT, "r = (x == y);") op_eq_i32;
-alias CompareOp!(int32, Type.INT, "r = (x == y);") op_ne_i32;
+alias CompareOp!(int32, Type.INT, "r = (x != y);") op_ne_i32;
 alias CompareOp!(int32, Type.INT, "r = (x < y);") op_lt_i32;
 alias CompareOp!(int32, Type.INT, "r = (x > y);") op_gt_i32;
 alias CompareOp!(int32, Type.INT, "r = (x <= y);") op_le_i32;
 alias CompareOp!(int32, Type.INT, "r = (x >= y);") op_ge_i32;
 
 alias CompareOp!(float64, Type.FLOAT, "r = (x == y);") op_eq_f64;
-alias CompareOp!(float64, Type.FLOAT, "r = (x == y);") op_ne_f64;
+alias CompareOp!(float64, Type.FLOAT, "r = (x != y);") op_ne_f64;
 alias CompareOp!(float64, Type.FLOAT, "r = (x < y);") op_lt_f64;
 alias CompareOp!(float64, Type.FLOAT, "r = (x > y);") op_gt_f64;
 alias CompareOp!(float64, Type.FLOAT, "r = (x <= y);") op_le_f64;
@@ -699,6 +698,55 @@ void op_ret(Interp interp, IRInstr instr)
     }
 }
 
+void op_heap_alloc(Interp interp, IRInstr instr)
+{
+    auto wSize = interp.getWord(instr.args[0].localIdx);
+    auto tSize = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        tSize == Type.INT,
+        "invalid size type"
+    );
+
+    assert (
+        wSize.intVal > 0,
+        "size must be positive"
+    );
+
+    auto ptr = interp.alloc(wSize.intVal);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(ptr),
+        Type.REFPTR
+    );
+}
+
+void op_get_str(Interp interp, IRInstr instr)
+{
+    auto wStr = interp.getWord(instr.args[0].localIdx);
+    auto tStr = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        valIsString(wStr, tStr),
+        "expected string in get_str"
+    );
+
+    auto ptr = wStr.ptrVal;
+
+    // Compute and set the hash code for the string
+    auto hashCode = compStrHash(ptr);
+    str_set_hash(ptr, hashCode);
+
+    // Find the corresponding string in the string table
+    ptr = getTableStr(interp, ptr);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(ptr),
+        Type.REFPTR
+    );
+}
 
 // ===========================================================================
 // TODO: translate to runtime functions
@@ -737,7 +785,7 @@ void opAdd(Interp interp, IRInstr instr)
     }
 
     // If either value is a string
-    else if (t0 == Type.STRING || t1 == Type.STRING)
+    else if (valIsString(w0, t0) || valIsString(w1, t1))
     {
         // Evaluate the string value of both arguments
         auto s0 = interp.stringVal(w0, t0);
@@ -759,7 +807,7 @@ void opAdd(Interp interp, IRInstr instr)
         interp.setSlot(
             instr.outSlot, 
             Word.ptrv(sO),
-            Type.STRING
+            Type.REFPTR
         );
     }
 
@@ -904,8 +952,11 @@ void opTypeOf(Interp interp, IRInstr instr)
 
     switch (t)
     {
-        case Type.STRING:
-        output = getString(interp, "string");
+        case Type.REFPTR:
+        if (valIsString(w, t))
+            output = getString(interp, "string");
+        else
+            assert (false, "unsupported type in typeof");
         break;
 
         case Type.INT:
@@ -933,7 +984,7 @@ void opTypeOf(Interp interp, IRInstr instr)
     interp.setSlot(
         instr.outSlot, 
         Word.ptrv(output),
-        Type.STRING
+        Type.REFPTR
     );
 }
 
@@ -955,12 +1006,11 @@ void opBoolVal(Interp interp, IRInstr instr)
         output = (w.intVal != 0);
         break;
 
-        case Type.STRING:
-        output = (str_get_len(w.ptrVal) != 0);
-        break;
-
         case Type.REFPTR:
-        output = true;
+        if (valIsString(w, t))
+            output = (str_get_len(w.ptrVal) > 0);
+        else
+            output = true;
         break;
 
         default:
@@ -1507,7 +1557,7 @@ void opSetProp(Interp interp, IRInstr instr)
         else
         {
             // TODO: toString
-            assert (prop.type == Type.STRING, "prop type should be string");
+            assert (prop.type == Type.REFPTR, "prop type should be string");
             auto propStr = prop.word.ptrVal;
 
             setProp(
@@ -1554,7 +1604,7 @@ void opGetProp(Interp interp, IRInstr instr)
         else
         {
             // TODO: toString
-            assert (prop.type == Type.STRING, "prop type should be string");
+            assert (prop.type == Type.REFPTR, "prop type should be string");
             auto propStr = prop.word.ptrVal;
 
             val = getProp(
@@ -1583,7 +1633,7 @@ void opSetGlobal(Interp interp, IRInstr instr)
     auto prop = interp.getSlot(instr.args[0].localIdx);
     auto val  = interp.getSlot(instr.args[1].localIdx);
 
-    assert (prop.type == Type.STRING, "invalid global property");
+    assert (prop.type == Type.REFPTR, "invalid global property");
     auto propStr = prop.word.ptrVal;
 
     setProp(
@@ -1599,7 +1649,7 @@ void opGetGlobal(Interp interp, IRInstr instr)
 {
     auto prop = interp.getSlot(instr.args[0].localIdx);
 
-    assert (prop.type == Type.STRING, "invalid global property");
+    assert (prop.type == Type.REFPTR, "invalid global property");
     auto propStr = prop.word.ptrVal;
 
     ValuePair val = getProp(

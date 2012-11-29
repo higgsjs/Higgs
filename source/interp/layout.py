@@ -365,7 +365,7 @@ class AllocExpr:
         self.size = size
 
     def genJS(self):
-        return '$ir_alloc(' + self.size.genJS() + ')'
+        return '$ir_heap_alloc(' + self.size.genJS() + ')'
 
     def genD(self):
         return 'interp.alloc(' + self.size.genD() + ')'

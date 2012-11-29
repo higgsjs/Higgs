@@ -53,7 +53,7 @@ void assertInt(string input, long intVal)
 
     assert (
         ret.type == Type.INT,
-        "non-integer value: " ~ ValueToString(ret)
+        "non-integer value: " ~ valueToString(ret)
     );
 
     assert (
@@ -76,7 +76,7 @@ void assertFloat(string input, double floatVal, double eps = 1E-4)
     assert (
         ret.type == Type.INT ||
         ret.type == Type.FLOAT,
-        "non-numeric value: " ~ ValueToString(ret)
+        "non-numeric value: " ~ valueToString(ret)
     );
 
     auto fRet = (ret.type == Type.FLOAT)? ret.word.floatVal:ret.word.intVal;
@@ -99,11 +99,11 @@ void assertStr(string input, string strVal)
     auto ret = (new Interp()).evalString(input);
 
     assert (
-        ret.type == Type.STRING,
-        "non-string value: " ~ ValueToString(ret)
+        valIsString(ret.word, ret.type),
+        "non-string value: " ~ valueToString(ret)
     );
 
-    auto outStr = ValueToString(ret);
+    auto outStr = valueToString(ret);
 
     assert (
         outStr == strVal,
@@ -487,8 +487,12 @@ unittest
     assertInt("return $ir_add_i32(5,3);", 8);
     assertInt("return $ir_sub_i32(5,3);", 2);
     assertInt("return $ir_mul_i32(5,3);", 15);
+    assertInt("return $ir_div_i32(5,3);", 1);
     assertInt("return $ir_mod_i32(5,3);", 2);
     assertInt("return $ir_eq_i32(3,3)? 1:0;", 1);
+    assertInt("return $ir_eq_i32(3,2)? 1:0;", 0);
+    assertInt("return $ir_ne_i32(3,5)? 1:0;", 1);
+    assertInt("return $ir_ne_i32(3,3)? 1:0;", 0);
     assertInt("return $ir_lt_i32(3,5)? 1:0;", 1);
     assertInt("return $ir_ge_i32(5,5)? 1:0;", 1);
 
@@ -536,5 +540,28 @@ unittest
         ",
         -1
     );
+
+    assertInt(
+        "
+        var ptr = $ir_heap_alloc(16);
+        $ir_store_u8(ptr, 0, 77);
+        return $ir_load_u8(ptr, 0);
+        ",
+        77
+    );
+}
+
+/// Runtime functions
+unittest
+{
+    assertStr("$rt_toString(5)", "5");
+    assertStr("$rt_toString('foo')", "foo");
+
+    assertInt("$rt_add(5, 3)", 8);
+    assertStr("$rt_add(5, 'bar')", "5bar");
+    assertStr("$rt_add('foo', 'bar')", "foobar");
+
+    // TODO
+
 }
 

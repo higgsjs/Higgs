@@ -62,41 +62,32 @@ Concatenate the strings from two string objects
 */
 function $rt_strcat(str1, str2)
 {
-    // TODO
-
-    /*
     // Get the length of both strings
-    var len1 = iir.icast(IRType.pint, get_str_size(str1));
-    var len2 = iir.icast(IRType.pint, get_str_size(str2));
+    var len1 = $rt_str_get_len(str1);
+    var len2 = $rt_str_get_len(str2);
 
     // Compute the length of the new string
     var newLen = len1 + len2;
 
     // Allocate a string object
-    var newStr = alloc_str(newLen);
+    var newStr = $rt_str_alloc(newLen);
 
     // Copy the character data from the first string
-    for (var i = pint(0); i < len1; i++)
+    for (var i = 0; i < len1; i++)
     {
-        var ch = get_str_data(str1, i);
-        set_str_data(newStr, i, ch);
+        var ch = $rt_str_get_data(str1, i);
+        $rt_str_set_data(newStr, i, ch);
     }
 
     // Copy the character data from the second string
-    for (var i = pint(0); i < len2; i++)
+    for (var i = 0; i < len2; i++)
     {
-        var ch = get_str_data(str2, i);
-        set_str_data(newStr, len1 + i, ch);
+        var ch = $rt_str_get_data(str2, i);
+        $rt_str_set_data(newStr, len1 + i, ch);
     }
 
-    // Compute the hash code for the new string
-    compStrHash(newStr);
-
     // Find/add the concatenated string in the string table
-    var newStr = getTableStr(newStr);
-
-    return newStr;
-    */
+    return $ir_get_str(newStr);
 }
 
 /**
@@ -105,7 +96,9 @@ Create a string representing an integer value
 function $rt_intToStr(intVal, radix)
 {
     assert (
-        radix > 0 && radix <= 36,
+        $ir_is_int(radix)    &&
+        $ir_gt_i32(radix, 0) && 
+        $ir_le_i32(radix, 36),
         'invalid radix'
     );
 
@@ -113,7 +106,7 @@ function $rt_intToStr(intVal, radix)
     var neg;
 
     // If the integer is negative, adjust the string length for the minus sign
-    if (intVal < pint(0))
+    if (intVal < 0)
     {
         strLen = 1;
         intVal *= -1;
@@ -130,47 +123,39 @@ function $rt_intToStr(intVal, radix)
     do
     {
         strLen++;
-        intVal2 /= radix;
+        intVal2 = $ir_div_i32(intVal2, radix);
 
-    } while (intVal2 !== 0);
+    } while ($ir_ne_i32(intVal2, 0));
 
-    /*
-    // TODO: alloc_str
     // Allocate a string object
-    var strObj = alloc_str(strLen);
+    var strObj = $rt_str_alloc(strLen);
 
     // If the string is negative, write the minus sign
     if (neg)
     {
-        set_str_data(strObj, pint(0), u16(45));
+        $rt_str_set_data(strObj, 0, 45);
     }
 
     var digits = '0123456789abcdefghijklmnopqrstuvwxyz';
 
     // Write the digits in the string
-    var i = strLen - pint(1);
+    var i = strLen - 1;
     do
     {
-        var digit = intVal % radix;
+        var digit = $ir_mod_i32(intVal, radix);
 
-        var ch = get_str_data(digits, digit);
+        var ch = $rt_str_get_data(digits, digit);
 
-        set_str_data(strObj, i, ch);
+        $rt_str_set_data(strObj, i, ch);
 
-        intVal /= radix; 
+        intVal = $ir_div_i32(intVal, radix);
 
         i--;
 
-    } while (intVal !== pint(0));
+    } while ($ir_ne_i32(intVal, 0));
 
-    // Compute the hash code for the new string
-    compStrHash(strObj);
-
-    // Return the string object
-    return strObj;
-    */
-
-    // TODO: get table string
+    // Get the corresponding string from the string table
+    return $ir_get_str(strObj);
 }
 
 /**
@@ -189,8 +174,9 @@ function $rt_toString(v)
     if (type === "string")
         return v;
 
+    // TODO: floating-point toString
     if (type === "number")
-        return "number value, TODO!";
+        return $rt_intToStr(v, 10);
 
     if (type === "object")
         return v? v.toString():"null";
@@ -209,9 +195,6 @@ function $rt_typeof(v)
     if ($ir_is_int(v) || $ir_is_float(v))
         return "number";
 
-    if ($ir_is_string(v) === true)
-        return "string";
-
     if ($ir_is_const(v) === true)
     {
         if (v === true  || v === false)
@@ -224,6 +207,9 @@ function $rt_typeof(v)
     if ($ir_is_refptr(v) === true)
     {
         var type = $rt_obj_get_header(v);
+
+        if (type === $rt_LAYOUT_STR)
+            return "string";
 
         if (type === $rt_LAYOUT_OBJ || type === $rt_LAYOUT_ARR)
             return "object";
@@ -271,32 +257,8 @@ function $rt_add(x, y)
     var sx = $rt_toString(x);
     var sy = $rt_toString(y);
 
-
-    // TODO: need $rt_strcat
-
-
-
-    /*
-    auto l0 = str_get_len(s0);
-    auto l1 = str_get_len(s1);
-
-    auto sO = str_alloc(interp, l0+l1);
-
-    for (size_t i = 0; i < l0; ++i)
-        str_set_data(sO, i, str_get_data(s0, i));
-    for (size_t i = 0; i < l1; ++i)
-        str_set_data(sO, l0+i, str_get_data(s1, i));
-
-    compStrHash(sO);
-    sO = getTableStr(interp, sO);
-
-    interp.setSlot(
-        instr.outSlot, 
-        Word.ptrv(sO),
-        Type.STRING
-    );
-    */
-}
+    // Concatenate the strings
+    return $rt_strcat(sx, sy);}
 
 /**
 JS subtraction operator

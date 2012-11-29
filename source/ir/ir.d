@@ -519,7 +519,6 @@ Opcode MOVE = { "move", true, [OpArg.LOCAL], &op_move };
 // Type tag test
 Opcode IS_INT = { "is_int", true, [OpArg.LOCAL], &op_is_int };
 Opcode IS_FLOAT = { "is_float", true, [OpArg.LOCAL], &op_is_float };
-Opcode IS_STRING  = { "is_string", true, [OpArg.LOCAL], &op_is_string };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &op_is_refptr };
 Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &op_is_rawptr };
 Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &op_is_const };
@@ -616,7 +615,12 @@ Opcode PUSH_FRAME = { "push_frame", false, [], &op_push_frame };
 // Pops the callee frame (size known by context)
 Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret };
 
+// Allocate a block of memory on the heap
+Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
 
+// Compute the hash code for a string and
+// try to find the string in the string table
+Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str };
 
 // ===========================================================================
 // TODO: translate to runtime functions
@@ -711,7 +715,6 @@ static this()
 
     addOp(IS_INT);
     addOp(IS_FLOAT);
-    addOp(IS_STRING);
     addOp(IS_REFPTR);
     addOp(IS_RAWPTR);
     addOp(IS_CONST);
@@ -770,5 +773,8 @@ static this()
     addOp(STORE_F64);
     addOp(STORE_REFPTR);
     addOp(STORE_RAWPTR);
+
+    addOp(HEAP_ALLOC);
+    addOp(GET_STR);
 }
 

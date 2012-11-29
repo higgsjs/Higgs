@@ -81,7 +81,6 @@ enum Type : ubyte
 {
     INT,
     FLOAT,
-    STRING,
     REFPTR,
     RAWPTR,
     CONST
@@ -93,14 +92,13 @@ alias Tuple!(Word, "word", Type, "type") ValuePair;
 /**
 Produce a string representation of a type tag
 */
-string TypeToString(Type type)
+string typeToString(Type type)
 {
     // Switch on the type tag
     switch (type)
     {
         case Type.INT:      return "int";
         case Type.FLOAT:    return "float";
-        case Type.STRING:   return "string";
         case Type.RAWPTR:   return "raw pointer";
         case Type.REFPTR:   return "ref pointer";
         case Type.CONST:    return "const";
@@ -112,7 +110,7 @@ string TypeToString(Type type)
 /**
 Produce a string representation of a value pair
 */
-string ValueToString(ValuePair value)
+string valueToString(ValuePair value)
 {
     auto w = value.word;
 
@@ -125,18 +123,23 @@ string ValueToString(ValuePair value)
         case Type.FLOAT:
         return to!string(w.floatVal);
 
-        case Type.STRING:
-        auto len = str_get_len(w.ptrVal);
-        wchar[] str = new wchar[len];
-        for (uint32 i = 0; i < len; ++i)
-            str[i] = str_get_data(w.ptrVal, i);
-        return to!string(str);
-
         case Type.RAWPTR:
         return to!string(w.ptrVal);
 
         case Type.REFPTR:
-        return "refptr";
+        if (valIsString(w, value.type))
+        {
+            auto len = str_get_len(w.ptrVal);
+            wchar[] str = new wchar[len];
+            for (uint32 i = 0; i < len; ++i)
+                str[i] = str_get_data(w.ptrVal, i);
+            return to!string(str);
+        }
+        else
+        {
+            return "refptr";
+        }
+        break;
 
         case Type.CONST:
         if (w == TRUE)
@@ -153,6 +156,14 @@ string ValueToString(ValuePair value)
         default:
         assert (false, "unsupported value type");
     }
+}
+
+/**
+Test if a value is a string
+*/
+bool valIsString(Word w, Type t)
+{
+    return (t == Type.REFPTR && obj_get_header(w.ptrVal) == LAYOUT_STR);
 }
 
 /// Stack size, 256K words
@@ -579,8 +590,10 @@ class Interp
     {
         switch (t)
         {
-            case Type.STRING:
-            return w.ptrVal;
+            case Type.REFPTR:
+            if (valIsString(w, t))
+                return w.ptrVal;
+            assert(false, "unsupported ref ptr type in stringVal");
 
             case Type.INT:
             return getString(this, to!wstring(w.intVal));

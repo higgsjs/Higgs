@@ -68,7 +68,7 @@ void repl()
             auto output = interp.evalString(input, "repl");
 
             // Print the output
-            writeln(ValueToString(output));
+            writeln(valueToString(output));
         }
 
         catch (ParseError e)
