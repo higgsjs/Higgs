@@ -45,15 +45,18 @@ import ir.ast;
 import interp.interp;
 import repl;
 
-void assertInt(string input, long intVal)
+void assertInt(Interp interp, string input, long intVal)
 {
-    //writeln("getting ret val");
+    assert (
+        interp !is null,
+        "interp object is null"
+    );
 
-    auto ret = (new Interp()).evalString(input);
+    auto ret = interp.evalString(input);
 
     assert (
         ret.type == Type.INT,
-        "non-integer value: " ~ valueToString(ret)
+        "non-integer value: " ~ valToString(ret)
     );
 
     assert (
@@ -76,7 +79,7 @@ void assertFloat(string input, double floatVal, double eps = 1E-4)
     assert (
         ret.type == Type.INT ||
         ret.type == Type.FLOAT,
-        "non-numeric value: " ~ valueToString(ret)
+        "non-numeric value: " ~ valToString(ret)
     );
 
     auto fRet = (ret.type == Type.FLOAT)? ret.word.floatVal:ret.word.intVal;
@@ -94,16 +97,38 @@ void assertFloat(string input, double floatVal, double eps = 1E-4)
     );
 }
 
+void assertBool(Interp interp, string input, bool boolVal)
+{
+    auto ret = interp.evalString(input);
+
+    assert (
+        ret.type == Type.CONST,
+        "non-const value: " ~ valToString(ret)
+    );
+
+    assert (
+        ret.word == (boolVal? TRUE:FALSE),
+        format(
+            "Test failed:\n" ~
+            "%s" ~ "\n" ~
+            "incorrect boolan value: %s, expected: %s",
+            input,
+            valToString(ret), 
+            boolVal
+        )
+    );
+}
+
 void assertStr(string input, string strVal)
 {
     auto ret = (new Interp()).evalString(input);
 
     assert (
         valIsString(ret.word, ret.type),
-        "non-string value: " ~ valueToString(ret)
+        "non-string value: " ~ valToString(ret)
     );
 
-    auto outStr = valueToString(ret);
+    auto outStr = valToString(ret);
 
     assert (
         outStr == strVal,
@@ -115,6 +140,16 @@ void assertStr(string input, string strVal)
             strVal
         )
     );
+}
+
+void assertInt(string input, long intVal)
+{
+    assertInt(new Interp(), input, intVal);
+}
+
+void assertBool(string input, bool boolVal)
+{
+    assertBool(new Interp(), input, boolVal);
 }
 
 unittest
@@ -140,6 +175,7 @@ unittest
     assertInt("return -3", -3);
     assertInt("return +7", 7);
     assertInt("return 2 + 3 * 4", 14);
+    assertInt("return 5 % 3", 2);
 
     assertFloat("return 3.5", 3.5);
     assertFloat("return 2.5 + 2", 4.5);
@@ -190,7 +226,10 @@ unittest
     assertInt("if (3 < 7) return 1; else return 0;", 1);
     assertInt("if (5 < 2) return 1; else return 0;", 0);
     assertInt("if (1 < 1.5) return 1; else return 0;", 1);
-
+    assertBool("3 <= 5", true);
+    assertBool("5 <= 5", true);
+    assertBool("7 <= 5", false);
+ 
     assertInt("return true? 1:0", 1);
     assertInt("return false? 1:0", 0);
 
@@ -373,6 +412,11 @@ unittest
     assertInt("var a; a = 1; return a;", 1);
     assertInt("var a = 1; return a;", 1);
     assertInt("a = 1; b = 2; return a+b;", 3);
+
+    assertInt("return a = 1,2;", 2);
+    assertInt("a = 1,2; return a;", 1);
+    assertInt("a = (1,2); return a;", 2);
+
     assertInt("f = function() { return 7; }; return f();", 7);
     assertInt("function f() { return 9; }; return f();", 9);
 
@@ -543,6 +587,21 @@ unittest
 
     assertInt(
         "
+        function foo()
+        {
+            var o;
+            if (o = $ir_mul_i32_ovf(4, 4))
+                return o;
+            else
+                return -1;
+        }
+        return foo();
+        ",
+        16
+    );
+
+    assertInt(
+        "
         var ptr = $ir_heap_alloc(16);
         $ir_store_u8(ptr, 0, 77);
         return $ir_load_u8(ptr, 0);
@@ -564,6 +623,7 @@ unittest
 
     assertStr("$rt_toString(5)", "5");
     assertStr("$rt_toString('foo')", "foo");
+    assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     assertInt("$rt_add(5, 3)", 8);
     assertFloat("$rt_add(5, 3.5)", 8.5);
@@ -573,12 +633,20 @@ unittest
     assertInt("$rt_sub(5, 3)", 2);
     assertFloat("$rt_sub(5, 3.5)", 1.5);
 
+    assertInt("$rt_mul(3, 5)", 15);
+    assertFloat("$rt_mul(5, 1.5)", 7.5);
+    assertFloat("$rt_mul(0xFFFF, 0xFFFF)", 4294836225);
+
+    assertFloat("$rt_div(15, 3)", 5);
+    assertFloat("$rt_div(15, 1.5)", 10);
+
     assertInt("isNaN(3)? 1:0", 0);
     assertInt("isNaN(3.5)? 1:0", 0);
     assertInt("isNaN(NaN)? 1:0", 1);
+    assertStr("$rt_toString(NaN);", "NaN");
 }
 
-/// Math library
+/// Stdlib Math library
 unittest
 {
     assertFloat("Math.cos(0)", 1);
@@ -589,5 +657,32 @@ unittest
     assertFloat("Math.sin(Math.PI)", 0);
 
     assertFloat("Math.sqrt(4)", 2);
+
+    assertInt("Math.pow(2, 0)", 1);
+    assertInt("Math.pow(2, 4)", 16);
+    assertInt("Math.pow(2, 8)", 256);
+}
+
+/// Basic test programs
+unittest
+{
+    auto interp = new Interp();
+
+    interp.load("programs/fib/fib.js");
+    interp.assertInt("fib(8);", 21);
+
+    interp.load("programs/nested_loops/nested_loops.js");
+    interp.assertInt("foo(10);", 510);
+}
+
+/// SunSpider benchmarks
+unittest
+{
+    auto interp = new Interp();
+
+    // FIXME: unsupported opcode cmp_eq
+    //interp.load("programs/sunspider/controlflow-recursive.js");
+
+    //interp.load("programs/sunspider/math-partial-sums.js");
 }
 

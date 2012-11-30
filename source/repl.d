@@ -69,7 +69,7 @@ void repl()
 
             // Print the output if it isn't "undefined"
             if (!(output.type == Type.CONST && output.word == UNDEF))
-                writeln(valueToString(output));
+                writeln(valToString(output));
         }
 
         catch (ParseError e)

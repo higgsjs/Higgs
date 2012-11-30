@@ -108,9 +108,25 @@ string typeToString(Type type)
 }
 
 /**
+Test if a heap object has a given layout
+*/
+bool valIsLayout(Word w, uint32 layoutId)
+{
+    return (obj_get_header(w.ptrVal) == layoutId);
+}
+
+/**
+Test if a value is a string
+*/
+bool valIsString(Word w, Type t)
+{
+    return (t == Type.REFPTR && valIsLayout(w, LAYOUT_STR));
+}
+
+/**
 Produce a string representation of a value pair
 */
-string valueToString(ValuePair value)
+string valToString(ValuePair value)
 {
     auto w = value.word;
 
@@ -121,6 +137,12 @@ string valueToString(ValuePair value)
         return to!string(w.intVal);
 
         case Type.FLOAT:
+        if (w.floatVal != w.floatVal)
+            return "NaN";
+        if (w.floatVal == 1.0/0)
+            return "Infinity";
+        if (w.floatVal == -1.0/0)
+            return "-Infinity";
         return to!string(w.floatVal);
 
         case Type.RAWPTR:
@@ -135,35 +157,22 @@ string valueToString(ValuePair value)
                 str[i] = str_get_data(w.ptrVal, i);
             return to!string(str);
         }
-        else
-        {
-            return "refptr";
-        }
-        break;
+        return "refptr";
 
         case Type.CONST:
         if (w == TRUE)
             return "true";
-        else if (w == FALSE)
+        if (w == FALSE)
             return "false";
-        else if (w == NULL)
+        if (w == NULL)
             return "null";
-        else if (w == UNDEF)
+        if (w == UNDEF)
             return "undefined";
-        else
-            assert (false, "unsupported constant");
+        assert (false, "unsupported constant");
 
         default:
         assert (false, "unsupported value type");
     }
-}
-
-/**
-Test if a value is a string
-*/
-bool valIsString(Word w, Type t)
-{
-    return (t == Type.REFPTR && obj_get_header(w.ptrVal) == LAYOUT_STR);
 }
 
 /// Stack size, 256K words
@@ -230,6 +239,10 @@ class Interp
 
     /// String table reference
     refptr strTbl;
+
+    /// Set of weak references to functions referenced in the heap
+    /// To be cleaned up by the GC
+    IRFunction[void*] funRefs;
 
     /**
     Constructor, initializes/resets the interpreter state
@@ -485,7 +498,7 @@ class Interp
             ip = instr.next;
 
             //writefln("mnem: %s", instr.opcode.mnem);
-
+ 
             // Get the opcode's implementation function
             auto opFun = instr.opcode.opFun;
 
@@ -512,7 +525,10 @@ class Interp
             "function has no entry block"
         );
 
-        //writeln(fun.toString);
+        //writeln(fun.toString());
+
+        // Register this function in the function reference set
+        funRefs[cast(void*)fun] = fun;
 
         // Push the hidden call arguments
         push(Word.ptrv(null), Type.RAWPTR);    // Return address
@@ -584,7 +600,9 @@ class Interp
             }
         }
 
-        return exec(ast);
+        auto result = exec(ast);
+
+        return result;
     }
 
     // TODO: replace by runtime function $rt_toString

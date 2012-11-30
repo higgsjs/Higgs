@@ -782,6 +782,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
     else if (auto binExpr = cast(BinOpExpr)expr)
     {
+        // TODO: phase out
         void genBinOp(Opcode* opcode)
         {
             auto lCtx = ctx.subCtx(true);
@@ -800,6 +801,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ));
         }
 
+        // TODO: phase out
         void genAssign(Opcode* opcode)
         {
             assgToIR(
@@ -813,19 +815,57 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
         }
 
+        void genBinOpRt(string rtFunName)
+        {
+            auto lCtx = ctx.subCtx(true);
+            exprToIR(binExpr.lExpr, lCtx);
+            ctx.merge(lCtx);
+
+            auto rCtx = ctx.subCtx(true);     
+            exprToIR(binExpr.rExpr, rCtx);
+            ctx.merge(rCtx);
+
+            insertRtCall(
+                ctx, 
+                rtFunName, 
+                ctx.getOutSlot(),
+                [lCtx.getOutSlot(), rCtx.getOutSlot()]
+            );
+        }
+
+        /* FIXME: assgToIR takes opcode....
+        void genAssign(string rtFunName)
+        {
+            assgToIR(
+                binExpr.lExpr,
+                opcode,
+                delegate void(IRGenCtx ctx)
+                {
+                    exprToIR(binExpr.rExpr, ctx);
+                },
+                ctx
+            );
+        }
+        */
+
         auto op = binExpr.op;
 
         // Arithmetic operators
         if (op.str == "+")
-            genBinOp(&ADD);
+            //genBinOp(&ADD);
+            genBinOpRt("add");
         else if (op.str == "-")
-            genBinOp(&SUB);
+            //genBinOp(&SUB);
+            genBinOpRt("sub");
         else if (op.str == "*")
-            genBinOp(&MUL);
+            //genBinOp(&MUL);
+            genBinOpRt("mul");
         else if (op.str == "/")
-            genBinOp(&DIV);
+            //genBinOp(&DIV);
+            genBinOpRt("div");
         else if (op.str == "%")
-            genBinOp(&MOD);
+            //genBinOp(&MOD);
+            genBinOpRt("mod");
 
         // Bitwise operators
         else if (op.str == "&")
@@ -851,9 +891,11 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == "!=")
             genBinOp(&CMP_NE);
         else if (op.str == "<")
-            genBinOp(&CMP_LT);
+            //genBinOp(&CMP_LT);
+            genBinOpRt("lt");
         else if (op.str == "<=")
-            genBinOp(&CMP_LE);
+            //genBinOp(&CMP_LE);
+            genBinOpRt("le");
         else if (op.str == ">")
             genBinOp(&CMP_GT);
         else if (op.str == ">=")
@@ -884,6 +926,20 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             genAssign(&RSHIFT);
         else if (op.str == ">>>=")
             genAssign(&URSHIFT);
+
+        // Sequencing (comma) operator
+        else if (op.str == ",")
+        {
+            // Evaluate the left expression
+            auto lCtx = ctx.subCtx(true);
+            exprToIR(binExpr.lExpr, lCtx);
+            ctx.merge(lCtx);
+
+            // Evaluate the right expression into this context's output
+            auto rCtx = ctx.subCtx(true, ctx.getOutSlot());     
+            exprToIR(binExpr.rExpr, rCtx);
+            ctx.merge(rCtx);
+        }
 
         // Logical OR and logical AND
         else if (op.str == "||" || op.str == "&&")
@@ -925,7 +981,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         else
         {
-            assert (false, "unhandled binary operator");
+            assert (false, "unhandled binary operator: " ~ to!string(op.str));
         }
     }
 
@@ -993,6 +1049,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ));
         }
 
+        /*
         // Boolean (logical) negation
         else if (op.str == "!")
         {
@@ -1006,6 +1063,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                 lCtx.getOutSlot()
             ));
         }
+        */
 
         // Pre-incrementation and pre-decrementation (++x, --x)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'r')
@@ -1636,5 +1694,40 @@ IRInstr genInlineIR(ASTExpr expr, IRGenCtx ctx)
     ctx.addInstr(instr);
 
     return instr;
+}
+
+/**
+Insert a call to a runtime function
+*/
+IRInstr insertRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLocals)
+{
+    // TODO: use GET_GLOBAL or CALL_GLOBAL
+    // CALL_GLOBAL removes need for str const, get, undef ***
+
+    // Create a constant for the property name
+    auto strInstr = ctx.addInstr(IRInstr.strCst(
+        ctx.allocTemp(),
+        to!wstring("$rt_" ~ fName)
+    ));
+
+    // Get the global value
+    auto getInstr = ctx.addInstr(new IRInstr(
+        &GET_GLOBAL,
+        ctx.allocTemp(),
+        strInstr.outSlot
+    ));
+
+    auto undefInstr = ctx.addInstr(new IRInstr(&SET_UNDEF, ctx.allocTemp()));
+
+    // <dstLocal> = CALL <fnLocal> <thisArg> <numArgs>
+    auto callInstr = ctx.addInstr(new IRInstr(&CALL));
+    callInstr.outSlot = outSlot;
+    callInstr.args.length = 2 + argLocals.length;
+    callInstr.args[0].localIdx = getInstr.outSlot;
+    callInstr.args[1].localIdx = undefInstr.outSlot;
+    for (size_t i = 0; i < argLocals.length; ++i)
+        callInstr.args[2+i].localIdx = argLocals[i];
+
+    return callInstr;
 }
 

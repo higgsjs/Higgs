@@ -73,6 +73,7 @@ void op_set_str(Interp interp, IRInstr instr)
     if (objPtr is null)
     {
         objPtr = getString(interp, instr.args[0].stringVal);
+        instr.args[1].ptrVal = objPtr;
     }
 
     interp.setSlot(
@@ -478,6 +479,11 @@ void op_jump_false(Interp interp, IRInstr instr)
 
 void op_call(Interp interp, IRInstr instr)
 {
+    /*
+    write("performing call");
+    write("\n");
+    */
+
     auto closIdx = instr.args[0].localIdx;
     auto thisIdx = instr.args[1].localIdx;
 
@@ -496,6 +502,13 @@ void op_call(Interp interp, IRInstr instr)
     auto closPtr = interp.getWord(closIdx).ptrVal;
     auto fun = cast(IRFunction)clos_get_fptr(closPtr);
 
+    /*
+    write(core.memory.GC.addrOf(cast(void*)fun));
+    write("\n");
+    write(fun.name);
+    write("\n");
+    */
+
     assert (
         fun !is null, 
         "null IRFunction pointer"
@@ -504,6 +517,13 @@ void op_call(Interp interp, IRInstr instr)
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
     {
+        /*    
+        write("compiling");
+        write("\n");
+        write(core.memory.GC.addrOf(cast(void*)fun.ast));
+        write("\n");
+        */
+
         astToIR(fun.ast, fun);
     }
 
@@ -972,8 +992,10 @@ void opTypeOf(Interp interp, IRInstr instr)
     switch (t)
     {
         case Type.REFPTR:
-        if (valIsString(w, t))
+        if (valIsLayout(w, LAYOUT_STR))
             output = getString(interp, "string");
+        else if (valIsLayout(w, LAYOUT_OBJ))
+            output = getString(interp, "object");
         else
             assert (false, "unsupported type in typeof");
         break;
@@ -1200,6 +1222,12 @@ refptr newClos(
     IRFunction fun
 )
 {
+    // Register this function in the function reference set
+    interp.funRefs[cast(void*)fun] = fun;
+
+    //write(interp.funRefs.length);
+    //write("\n");
+
     return newExtObj(
         interp, 
         ppClass, 

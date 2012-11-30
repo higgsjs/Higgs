@@ -238,12 +238,83 @@ x to the power y.
 */
 Math.pow = function (x, y)
 {
-    var p = 1;
+    // If both values are non-negative integers
+    if ($ir_is_int(x) && $ir_is_int(y) && $ir_ge_i32(x, 0) && $ir_ge_i32(y, 0))
+    {
+        // If the power is 0, the result is 1
+        if ($ir_jump_false($ir_eq_i32(y, 0)))
+            return 1;
 
-    for (var i = 0; i < y; ++i)
-        p *= x;
+        var power = y;
+        var current = x;
+        var acc = 1;
 
-    return p;
+        for (;;)
+        {
+            /*
+            println('power  : ' + power);
+            println('cur: ' + current);
+            println('acc: ' + acc);
+            */
+
+            // Multiply the result by the current exponent
+            if ($ir_jump_false($ir_ne_i32($ir_and_i32(power, 1), 0)))
+            {
+                if (acc = $ir_mul_i32_ovf(acc, current))
+                {
+                }
+                else
+                {
+                    /*
+                    println('acc integer overflow in Math.pow');
+                    println('power  : ' + power);
+                    println('cur: ' + current);
+                    println('acc: ' + acc);
+                    */
+
+                    // Continue the calculation with floating-point numbers
+                    var accf = $ir_i32_to_f64(acc);
+                    var curf = $ir_i32_to_f64(current);
+                    var powf = $ir_i32_to_f64(power);
+                    return Math.pow(
+                        $ir_mul_f64(accf, curf),
+                        powf
+                    );
+                }
+            }
+
+            // Right shift the power by 1
+            power = $ir_rsft_i32(power, 1);
+
+            // If the power is now 0, we are done
+            if ($ir_jump_false($ir_eq_i32(power, 0)))
+                return acc;
+
+            // Multiply the current exponent by itself
+            if (current = $ir_mul_i32_ovf(current, current))
+            {
+            }
+            else
+            {
+                /*
+                println('current integer overflow in Math.pow');
+                println('power  : ' + power);
+                println('cur: ' + current);
+                println('acc: ' + acc);
+                */
+
+                // Continue the calculation with floating-point numbers
+                var xf = $ir_i32_to_f64(x);
+                var yf = $ir_i32_to_f64(y);
+                return Math.pow(
+                    xf,
+                    yf
+                );
+            }
+        }
+    }
+
+    assert(false, 'floating-point support unimplemented');
 };
 
 /*

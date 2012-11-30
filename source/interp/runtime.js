@@ -214,11 +214,15 @@ function $rt_toString(v)
         }
         else
         {
-            // TODO: floating-point toString
             if (isNaN(v))
                 return "NaN";
-            else
-                return "fp tostring unimplemented";
+            if (v === Infinity)
+                return "Infinity";
+            if (v === -Infinity)
+                return "-Infinity";
+
+            // TODO: $rt_floatToStr
+            return "fp tostring unimplemented";
         }
     }
 
@@ -367,5 +371,120 @@ function $rt_sub(x, y)
     }
 
     return NaN; 
+}
+
+/**
+JS multiplication operator
+*/
+function $rt_mul(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        var r;
+        if (r = $ir_mul_i32_ovf(x, y))
+        {
+            return r;
+        }
+        else
+        {
+            var fx = $ir_i32_to_f64(x);
+            var fy = $ir_i32_to_f64(y);
+            return $ir_mul_f64(fx, fy);
+        }
+    }
+
+    // If either value is floating-point or integer
+    else if (
+        ($ir_is_float(x) || $ir_is_int(x)) &&
+        ($ir_is_float(y) || $ir_is_int(y)))
+    {
+        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+
+        return $ir_mul_f64(fx, fy);
+    }
+
+    return NaN; 
+}
+
+/**
+JS division operator
+*/
+function $rt_div(x, y)
+{
+    // If either value is floating-point or integer
+    if (($ir_is_float(x) || $ir_is_int(x)) &&
+        ($ir_is_float(y) || $ir_is_int(y)))
+    {
+        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+
+        return $ir_div_f64(fx, fy);
+    }
+
+    return NaN; 
+}
+
+/**
+JS modulo operator
+*/
+function $rt_mod(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_mod_i32(x, y);
+    }
+
+    assert (false, "floating-point modulo unsupported");
+}
+
+/**
+JS less-than operator
+*/
+function $rt_lt(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_lt_i32(x, y);
+    }
+
+    // If either value is floating-point or integer
+    if (($ir_is_float(x) || $ir_is_int(x)) &&
+        ($ir_is_float(y) || $ir_is_int(y)))
+    {
+        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+
+        return $ir_lt_f64(fx, fy);
+    }
+
+    assert (false, "unsupported type in lt");
+}
+
+/**
+JS less-than or equal operator
+*/
+function $rt_le(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_le_i32(x, y);
+    }
+
+    // If either value is floating-point or integer
+    if (($ir_is_float(x) || $ir_is_int(x)) &&
+        ($ir_is_float(y) || $ir_is_int(y)))
+    {
+        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+
+        return $ir_le_f64(fx, fy);
+    }
+
+    assert (false, "unsupported type in le");
 }
 

@@ -658,16 +658,13 @@ Opcode TYPE_OF    = { "type_of", true, [OpArg.LOCAL], &opTypeOf };
 // Boolean value conversion
 Opcode BOOL_VAL   = { "bool_val", true, [OpArg.LOCAL], &opBoolVal };
 
-// Boolean (logical) negation
-Opcode BOOL_NOT   = { "bool_not", true, [OpArg.LOCAL] };
-
 // Comparison operations
 Opcode CMP_SE     = { "cmp_se", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpSe };
 Opcode CMP_NS     = { "cmp_ns", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_EQ     = { "cmp_eq", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_NE     = { "cmp_ne", true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode CMP_LT     = { "cmp_lt", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpLt };
-Opcode CMP_LE     = { "cmp_le", true, [OpArg.LOCAL, OpArg.LOCAL] };
+//Opcode CMP_LT     = { "cmp_lt", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpLt };
+//Opcode CMP_LE     = { "cmp_le", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_GT     = { "cmp_gt", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
@@ -688,9 +685,6 @@ Opcode SET_PROP = { "set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], 
 
 // <dstLocal> = GET_PROP <objLocal> <propLocal>
 Opcode GET_PROP = { "get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &opGetProp };
-
-// TODO: implement when needed
-//DEL_PROP
 
 // SET_GLOBAL <propName> <value>
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlobal };
