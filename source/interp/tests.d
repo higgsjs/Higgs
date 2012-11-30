@@ -578,3 +578,16 @@ unittest
     assertInt("isNaN(NaN)? 1:0", 1);
 }
 
+/// Math library
+unittest
+{
+    assertFloat("Math.cos(0)", 1);
+    assertFloat("Math.cos(Math.PI)", -1);
+    assertInt("isNaN(Math.cos('f'))? 1:0", 1);
+
+    assertFloat("Math.sin(0)", 0);
+    assertFloat("Math.sin(Math.PI)", 0);
+
+    assertFloat("Math.sqrt(4)", 2);
+}
+

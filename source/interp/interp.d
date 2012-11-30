@@ -234,7 +234,7 @@ class Interp
     /**
     Constructor, initializes/resets the interpreter state
     */
-    this()
+    this(bool loadStdLib = true)
     {
         assert (
             wStack.length == tStack.length,
@@ -297,6 +297,14 @@ class Interp
 
         // Load the runtime library
         load("interp/runtime.js");
+
+        // If the standard library should be loaded
+        if (loadStdLib)
+        {
+            load("stdlib/math.js");
+            //load("stdlib/string.js");
+            //load("stdlib/array.js");
+        }
     }
 
     /**

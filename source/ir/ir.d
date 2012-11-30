@@ -549,6 +549,11 @@ Opcode SUB_F64 = { "sub_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_f64 };
 Opcode MUL_F64 = { "mul_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_f64 };
 Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_div_f64 };
 
+// Floating-point functions
+Opcode SIN_F64 = { "sin_f64", true, [OpArg.LOCAL], &op_sin_f64 };
+Opcode COS_F64 = { "cos_f64", true, [OpArg.LOCAL], &op_cos_f64 };
+Opcode SQRT_F64 = { "sqrt_f64", true, [OpArg.LOCAL], &op_sqrt_f64 };
+
 // Integer operations with overflow handling
 Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32_ovf, false, true };
 Opcode SUB_I32_OVF = { "sub_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_i32_ovf, false, true };
@@ -624,6 +629,8 @@ Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str };
 
 // Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
+
+
 
 
 // ===========================================================================
@@ -744,6 +751,10 @@ static this()
     addOp(SUB_F64);
     addOp(MUL_F64);
     addOp(DIV_F64);
+
+    addOp(COS_F64);
+    addOp(SIN_F64);
+    addOp(SQRT_F64);
 
     addOp(ADD_I32_OVF);
     addOp(SUB_I32_OVF);

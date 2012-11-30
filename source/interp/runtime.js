@@ -41,6 +41,11 @@ Not-a-number value
 var NaN = $ir_div_f64(0.0, 0.0);
 
 /**
+Infinity value
+*/
+var Infinity = $ir_div_f64(1.0, 0.0);
+
+/**
 Test if a value is NaN
 */
 function isNaN(v)
@@ -201,9 +206,21 @@ function $rt_toString(v)
     if (type === "string")
         return v;
 
-    // TODO: floating-point toString
     if (type === "number")
-        return $rt_intToStr(v, 10);
+    {
+        if ($ir_is_int(v) === true)
+        {
+            return $rt_intToStr(v, 10);
+        }
+        else
+        {
+            // TODO: floating-point toString
+            if (isNaN(v))
+                return "NaN";
+            else
+                return "fp tostring unimplemented";
+        }
+    }
 
     if (type === "object")
         return v? v.toString():"null";

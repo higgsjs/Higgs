@@ -40,6 +40,7 @@ module interp.ops;
 import std.stdio;
 import std.algorithm;
 import std.conv;
+import std.math;
 import ir.ir;
 import ir.ast;
 import interp.interp;
@@ -164,44 +165,60 @@ void op_f64_to_i32(Interp interp, IRInstr instr)
     );
 }
 
-void ArithOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
+void ArithOp(DataType, Type typeTag, uint arity, string op)(Interp interp, IRInstr instr)
 {
-    auto wX = interp.getWord(instr.args[0].localIdx);
-    auto tX = interp.getType(instr.args[0].localIdx);
-    auto wY = interp.getWord(instr.args[1].localIdx);
-    auto tY = interp.getType(instr.args[1].localIdx);
+    static assert (
+        typeTag == Type.INT || typeTag == Type.FLOAT
+    );
+
+    static assert (
+        arity <= 2
+    );
+
+    static if (arity > 0)
+    {
+        auto wX = interp.getWord(instr.args[0].localIdx);
+        auto tX = interp.getType(instr.args[0].localIdx);
+
+        assert (
+            tX == typeTag,
+            "invalid operand 1 type in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+        );
+    }
+    static if (arity > 1)
+    {
+        auto wY = interp.getWord(instr.args[1].localIdx);
+        auto tY = interp.getType(instr.args[1].localIdx);
+
+        assert (
+            tY == typeTag,
+            "invalid operand 2 type in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+        );
+    }
 
     Word output;
 
     static if (typeTag == Type.INT)
     {
-        assert (
-            tX == Type.INT && tY == Type.INT,
-            "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
-        );
-
-        auto x = cast(DataType)wX.intVal;
-        auto y = cast(DataType)wY.intVal;
-
-        mixin(op);        
-
-        output.intVal = r;
+        static if (arity > 0)
+            auto x = cast(DataType)wX.intVal;
+        static if (arity > 1)
+            auto y = cast(DataType)wY.intVal;
     }
-
     static if (typeTag == Type.FLOAT)
     {
-        assert (
-            tX == Type.FLOAT && tY == Type.FLOAT,
-            "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
-        );
-
-        auto x = cast(DataType)wX.floatVal;
-        auto y = cast(DataType)wY.floatVal;
-
-        mixin(op);        
-
-        output.floatVal = r;
+        static if (arity > 0)
+            auto x = cast(DataType)wX.floatVal;
+        static if (arity > 1)
+            auto y = cast(DataType)wY.floatVal;
     }
+
+    mixin(op);
+
+    static if (typeTag == Type.INT)
+        output.intVal = r;
+    static if (typeTag == Type.FLOAT)
+        output.floatVal = r;
 
     interp.setSlot(
         instr.outSlot,
@@ -210,42 +227,28 @@ void ArithOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
     );
 }
 
-alias ArithOp!(int32, Type.INT, "auto r = x + y;") op_add_i32;
-alias ArithOp!(int32, Type.INT, "auto r = x - y;") op_sub_i32;
-alias ArithOp!(int32, Type.INT, "auto r = x * y;") op_mul_i32;
-alias ArithOp!(int32, Type.INT, "auto r = x / y;") op_div_i32;
-alias ArithOp!(int32, Type.INT, "auto r = x % y;") op_mod_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x + y;") op_add_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x - y;") op_sub_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x * y;") op_mul_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x / y;") op_div_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x % y;") op_mod_i32;
 
-alias ArithOp!(int32, Type.INT, "auto r = x & y;") op_and_i32;
-alias ArithOp!(int32, Type.INT, "auto r = x | y;") op_or_i32;
-alias ArithOp!(int32, Type.INT, "auto r = x ^ y;") op_xor_i32;
-alias ArithOp!(int32, Type.INT, "auto r = x << y;") op_lsft_i32;
-alias ArithOp!(int32, Type.INT, "auto r = x >> y;") op_rsft_i32;
-alias ArithOp!(int32, Type.INT, "auto r = cast(uint32)x >>> y;") op_ursft_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x & y;") op_and_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x | y;") op_or_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x ^ y;") op_xor_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x << y;") op_lsft_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = x >> y;") op_rsft_i32;
+alias ArithOp!(int32, Type.INT, 2, "auto r = cast(uint32)x >>> y;") op_ursft_i32;
+alias ArithOp!(int32, Type.INT, 1, "auto r = ~x;") op_not_i32;
 
-void op_not_i32(Interp interp, IRInstr instr)
-{
-    auto wX = interp.getWord(instr.args[0].localIdx);
-    auto tX = interp.getType(instr.args[0].localIdx);
+alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x + y;") op_add_f64;
+alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x - y;") op_sub_f64;
+alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x * y;") op_mul_f64;
+alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x / y;") op_div_f64;
 
-    assert (
-        tX == Type.INT,
-        "invalid operand type in bitwise not"
-    );
-
-    auto r = ~cast(int32)wX.intVal;
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.intv(r),
-        Type.INT
-    );
-}
-
-alias ArithOp!(float64, Type.FLOAT, "auto r = x + y;") op_add_f64;
-alias ArithOp!(float64, Type.FLOAT, "auto r = x - y;") op_sub_f64;
-alias ArithOp!(float64, Type.FLOAT, "auto r = x * y;") op_mul_f64;
-alias ArithOp!(float64, Type.FLOAT, "auto r = x / y;") op_div_f64;
+alias ArithOp!(float64, Type.FLOAT, 1, "auto r = sin(x);") op_sin_f64;
+alias ArithOp!(float64, Type.FLOAT, 1, "auto r = cos(x);") op_cos_f64;
+alias ArithOp!(float64, Type.FLOAT, 1, "auto r = sqrt(x);") op_sqrt_f64;
 
 void ArithOpOvf(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
 {
@@ -290,34 +293,26 @@ void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
     auto wY = interp.getWord(instr.args[1].localIdx);
     auto tY = interp.getType(instr.args[1].localIdx);
 
+    assert (
+        tX == typeTag && tY == typeTag,
+        "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+    );
+
     // Boolean result
     bool r;
 
     static if (typeTag == Type.INT)
     {
-        assert (
-            tX == Type.INT && tY == Type.INT,
-            "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
-        );
-
         auto x = cast(DataType)wX.intVal;
         auto y = cast(DataType)wY.intVal;
-
-        mixin(op);        
     }
-
     static if (typeTag == Type.FLOAT)
     {
-        assert (
-            tX == Type.FLOAT && tY == Type.FLOAT,
-            "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
-        );
-
         auto x = cast(DataType)wX.floatVal;
         auto y = cast(DataType)wY.floatVal;
-
-        mixin(op);        
     }
+
+    mixin(op);        
 
     interp.setSlot(
         instr.outSlot,

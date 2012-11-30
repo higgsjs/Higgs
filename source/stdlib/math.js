@@ -48,13 +48,53 @@ Implementation of ECMAScript 5 math library routines.
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
+Copyright (c) 2010-2012 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /**
 Math object (see ECMAScript 5 18.8)
 */
 var Math = {};
+
+/*
+15.8.1.1 E
+*/
+Math.E = 2.7182818284590452354;
+
+/**
+15.8.1.2 LN10
+*/
+Math.LN10 = 2.302585092994046;
+
+/**
+15.8.1.3 LN2
+*/
+Math.LN2 = 0.6931471805599453;
+
+/**
+15.8.1.4 LOG2E
+*/
+Math.LOG2E = 1.4426950408889634;
+
+/**
+15.8.1.5 LOG10E
+*/
+Math.LOG10E = 0.4342944819032518;
+
+/**
+15.8.1.6 PI
+*/
+Math.PI = 3.1415926535897932;
+
+/**
+15.8.1.7 SQRT1_2
+*/
+Math.SQRT1_2 = 0.7071067811865476;
+
+/**
+15.8.1.8 SQRT2
+*/
+Math.SQRT2 = 1.4142135623730951;
 
 /**
 15.8.2.1 abs (x)
@@ -90,6 +130,8 @@ The value of Math.ceil(x) is the same as the value of -Math.floor(-x).
 */
 Math.ceil = function (x)
 {
+    // TODO: requires F64 to/from I64 conversion for truncation
+
     // For integers, the value is unchanged
     return x;
 };
@@ -105,15 +147,13 @@ is x.
 • If x is −0, the result is −0.
 • If x is +∞, the result is +∞.
 • If x is −∞, the result is −∞.
-
 • If x is greater than 0 but less than 1, the result is +0.
 
-NOTE The value of Math.floor(x) is the same as the value of -Math.ceil(-x).
+NOTE: The value of Math.floor(x) is the same as the value of -Math.ceil(-x).
 */
 Math.floor = function (x)
 {
-    // For integers, the value is unchanged
-    return x;
+    return -Math.ceil(-x);
 };
 
 /**
@@ -130,6 +170,9 @@ The length property of the max method is 2.
 */
 Math.max = function ()
 {
+    // TODO: use -Infinity?
+    // Only return -Inf if no values present!
+
     var m = MIN_FIXNUM;
 
     for (var i = 0; i < arguments.length; ++i)
@@ -153,6 +196,8 @@ The length property of the min method is 2.
 */
 Math.min = function ()
 {
+    // TODO: use Infinity?
+
     var m = MAX_FIXNUM;
 
     for (var i = 0; i < arguments.length; ++i)
@@ -214,8 +259,12 @@ argument is expressed in radians.
 */
 Math.cos = function (x)
 {
-    // TODO: implement this function
-    return noFPSupport('Math.cos');
+    if ($ir_is_int(x) === true)
+        x = $ir_i32_to_f64(x);
+    else if ($ir_is_float(x) === false)
+        return NaN;
+
+    return $ir_cos_f64(x);
 };
 
 /*
@@ -230,8 +279,12 @@ argument is expressed in radians.
 */
 Math.sin = function (x)
 {
-    // TODO: implement this function
-    return noFPSupport('Math.sin');
+    if ($ir_is_int(x) === true)
+        x = $ir_i32_to_f64(x);
+    else if ($ir_is_float(x) === false)
+        return NaN;
+
+    return $ir_sin_f64(x);
 };
 
 /*
@@ -246,8 +299,12 @@ Returns an implementation-dependent approximation to the square root of x.
 */
 Math.sqrt = function (x)
 {
-    // TODO: implement this function
-    return noFPSupport('Math.sqrt');
+    if ($ir_is_int(x) === true)
+        x = $ir_i32_to_f64(x);
+    else if ($ir_is_float(x) === false)
+        return NaN;
+
+    return $ir_sqrt_f64(x);
 };
 
 /*
