@@ -640,6 +640,10 @@ unittest
     assertFloat("$rt_div(15, 3)", 5);
     assertFloat("$rt_div(15, 1.5)", 10);
 
+    assertBool("$rt_eq(3,3)", true);
+    assertBool("$rt_eq(3,5)", false);
+    assertBool("$rt_eq('foo','foo')", true);
+
     assertInt("isNaN(3)? 1:0", 0);
     assertInt("isNaN(3.5)? 1:0", 0);
     assertInt("isNaN(NaN)? 1:0", 1);
@@ -680,9 +684,10 @@ unittest
 {
     auto interp = new Interp();
 
-    // FIXME: unsupported opcode cmp_eq
-    //interp.load("programs/sunspider/controlflow-recursive.js");
+    //interp.load("programs/sunspider/bitops-bitwise-and.js");
+    interp.load("programs/sunspider/controlflow-recursive.js");
 
+    // FIXME: needs Math.pow on floats
     //interp.load("programs/sunspider/math-partial-sums.js");
 }
 

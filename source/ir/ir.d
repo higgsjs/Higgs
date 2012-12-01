@@ -568,6 +568,10 @@ Opcode GT_I32 = { "gt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_gt_i32 };
 Opcode LE_I32 = { "le_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_le_i32 };
 Opcode GE_I32 = { "ge_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ge_i32 };
 
+// Pointer comparison instructions
+Opcode EQ_REFPTR = { "eq_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_refptr };
+Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_refptr };
+
 // Floating-point comparison instructions
 Opcode EQ_F64 = { "eq_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_f64 };
 Opcode NE_F64 = { "ne_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_f64 };
@@ -661,12 +665,12 @@ Opcode BOOL_VAL   = { "bool_val", true, [OpArg.LOCAL], &opBoolVal };
 // Comparison operations
 Opcode CMP_SE     = { "cmp_se", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpSe };
 Opcode CMP_NS     = { "cmp_ns", true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode CMP_EQ     = { "cmp_eq", true, [OpArg.LOCAL, OpArg.LOCAL] };
+//Opcode CMP_EQ     = { "cmp_eq", true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode CMP_NE     = { "cmp_ne", true, [OpArg.LOCAL, OpArg.LOCAL] };
 //Opcode CMP_LT     = { "cmp_lt", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpLt };
 //Opcode CMP_LE     = { "cmp_le", true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode CMP_GT     = { "cmp_gt", true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
+//Opcode CMP_GT     = { "cmp_gt", true, [OpArg.LOCAL, OpArg.LOCAL] };
+//Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
 // <dstLocal> = NEW_CLOS <funExpr>
 // Create a new closure from a function's AST node
@@ -761,6 +765,9 @@ static this()
     addOp(GT_I32);
     addOp(LE_I32);
     addOp(GE_I32);
+
+    addOp(EQ_REFPTR);
+    addOp(NE_REFPTR);
 
     addOp(EQ_F64);
     addOp(NE_F64);

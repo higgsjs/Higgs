@@ -307,6 +307,11 @@ void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
         auto x = cast(DataType)wX.intVal;
         auto y = cast(DataType)wY.intVal;
     }
+    static if (typeTag == Type.REFPTR || typeTag == Type.RAWPTR)
+    {
+        auto x = cast(DataType)wX.ptrVal;
+        auto y = cast(DataType)wY.ptrVal;
+    }
     static if (typeTag == Type.FLOAT)
     {
         auto x = cast(DataType)wX.floatVal;
@@ -328,6 +333,9 @@ alias CompareOp!(int32, Type.INT, "r = (x < y);") op_lt_i32;
 alias CompareOp!(int32, Type.INT, "r = (x > y);") op_gt_i32;
 alias CompareOp!(int32, Type.INT, "r = (x <= y);") op_le_i32;
 alias CompareOp!(int32, Type.INT, "r = (x >= y);") op_ge_i32;
+
+alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_eq_refptr;
+alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_ne_refptr;
 
 alias CompareOp!(float64, Type.FLOAT, "r = (x == y);") op_eq_f64;
 alias CompareOp!(float64, Type.FLOAT, "r = (x != y);") op_ne_f64;

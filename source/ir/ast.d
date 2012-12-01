@@ -869,9 +869,11 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         // Bitwise operators
         else if (op.str == "&")
-            genBinOp(&AND);
+            //genBinOp(&AND);
+            genBinOpRt("and");
         else if (op.str == "|")
-            genBinOp(&OR);
+            //genBinOp(&OR);
+            genBinOpRt("or");
         else if (op.str == "^")
             genBinOp(&XOR);
         else if (op.str == "<<")
@@ -887,7 +889,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == "!==")
             genBinOp(&CMP_NS);
         else if (op.str == "==")
-            genBinOp(&CMP_EQ);
+            //genBinOp(&CMP_EQ);
+            genBinOpRt("eq");
         else if (op.str == "!=")
             genBinOp(&CMP_NE);
         else if (op.str == "<")
@@ -897,9 +900,11 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             //genBinOp(&CMP_LE);
             genBinOpRt("le");
         else if (op.str == ">")
-            genBinOp(&CMP_GT);
+            //genBinOp(&CMP_GT);
+            genBinOpRt("gt");
         else if (op.str == ">=")
-            genBinOp(&CMP_GE);
+            //genBinOp(&CMP_GE);
+            genBinOpRt("ge");
 
         // In-place assignment operators
         else if (op.str == "=")

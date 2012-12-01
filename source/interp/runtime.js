@@ -62,7 +62,7 @@ function assert(test, error)
         return;
 
     // TODO: throw Error object
-    print(
+    println(
         'ASSERTION FAILED:\n' + 
         error
     );
@@ -298,6 +298,10 @@ function $rt_typeof(v)
     return "unhandled type in typeof";
 }
 
+//=============================================================================
+// Arithmetic operators
+//=============================================================================
+
 /**
 JS addition operator
 */
@@ -440,6 +444,47 @@ function $rt_mod(x, y)
     assert (false, "floating-point modulo unsupported");
 }
 
+//=============================================================================
+// Bitwise operators
+//=============================================================================
+
+function $rt_and(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_and_i32(x, y);
+    }
+
+    assert (false, "unsupported type in bitwise and");
+}
+
+function $rt_or(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_or_i32(x, y);
+    }
+
+    assert (false, "unsupported type in bitwise or");
+}
+
+function $rt_xor(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_xor_i32(x, y);
+    }
+
+    assert (false, "unsupported type in bitwise xor");
+}
+
+//=============================================================================
+// Comparison operators
+//=============================================================================
+
 /**
 JS less-than operator
 */
@@ -486,5 +531,90 @@ function $rt_le(x, y)
     }
 
     assert (false, "unsupported type in le");
+}
+
+/**
+JS greater-than operator
+*/
+function $rt_ge(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_gt_i32(x, y);
+    }
+
+    // If either value is floating-point or integer
+    if (($ir_is_float(x) || $ir_is_int(x)) &&
+        ($ir_is_float(y) || $ir_is_int(y)))
+    {
+        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+
+        return $ir_gt_f64(fx, fy);
+    }
+
+    assert (false, "unsupported type in le");
+}
+
+/**
+JS greater-than or equal operator
+*/
+function $rt_ge(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_ge_i32(x, y);
+    }
+
+    // If either value is floating-point or integer
+    if (($ir_is_float(x) || $ir_is_int(x)) &&
+        ($ir_is_float(y) || $ir_is_int(y)))
+    {
+        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+
+        return $ir_ge_f64(fx, fy);
+    }
+
+    assert (false, "unsupported type in le");
+}
+
+/**
+JS equality (==) comparison operator
+*/
+function $rt_eq(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_eq_i32(x, y);
+    }
+
+    // If both values are references
+    else if ($ir_is_refptr(x) && $ir_is_refptr(y))
+    {
+        var tx = $rt_obj_get_header(x);
+        var ty = $rt_obj_get_header(y);
+
+        if (tx === $rt_LAYOUT_STR && ty === $rt_LAYOUT_STR)
+            return $ir_eq_refptr(x, y);
+    }
+
+    // If both values are constants
+    else if ($ir_is_const(x) && $ir_is_const(y))
+    {
+        // TODO
+        //return $ir_eq_i32(x,y);
+    }
+
+    // If both values are floating-point
+    else if ($ir_is_float(x) && $ir_is_float(y))
+    {
+        return $ir_eq_f64(x, y);
+    }
+
+    assert (false, "unsupported type in eq");
 }
 
