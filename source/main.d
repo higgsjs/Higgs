@@ -38,8 +38,7 @@
 import std.stdio;
 import std.regex;
 import std.getopt;
-import parser.ast;
-import parser.parser;
+import interp.interp;
 import ir.ir;
 import ir.ast;
 import repl;
@@ -49,15 +48,41 @@ void main(string[] args)
     /// Test mode, disables repl
     bool test;
 
-    // TODO: --e, string to execute
+    /// String of code to execute
+    string execString;
+
+    // Parse the command-line arguments
     getopt(
         args,
+        config.stopOnFirstNonOption,
+        config.passThrough,
         "test", &test,
+        "e", &execString
     );
 
-    // Non-options are left in args? Need passthrough option to getopt?
+    // If in (unit) test mode
+    if (test == true)
+        return;
 
-    if (test == false)
-        repl.repl();
+    // Get the names of files to execute
+    auto fileNames = args[1..$];
+
+    // If file arguments were passed or there is 
+    // a string of code to be executed
+    if (fileNames.length != 0 || execString != "")
+    {
+        auto interp = new Interp();
+
+        foreach (fileName; fileNames)
+            interp.load(fileName);
+
+        if (execString)
+            interp.evalString(execString);
+
+        return;
+    }
+
+    // Start the REPL
+    repl.repl();
 }
 

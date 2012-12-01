@@ -58,7 +58,7 @@ Perform an assertion test
 */
 function assert(test, error)
 {
-    if (test)
+    if ($ir_if_true(test))
         return;
 
     // TODO: throw Error object
@@ -240,26 +240,32 @@ Evaluate a value as a boolean
 */
 function $rt_toBool(v)
 {
-    if ($ir_jump_false($ir_is_const(v)))
-        return (v === true);
+    if ($ir_if_true($ir_is_const(v)))
+        return $ir_eq_const(v, true);
 
-    if ($ir_jump_false($ir_is_int(v)))
+    if ($ir_if_true($ir_is_int(v)))
         return $ir_ne_i32(v, 0);
 
-    if ($ir_jump_false($ir_is_float(v)))
+    if ($ir_if_true($ir_is_float(v)))
         return $ir_ne_f64(v, 0.0);
 
-    if ($ir_jump_false($ir_is_refptr(v)))
+    if ($ir_if_true($ir_is_refptr(v)))
     {
         var type = $rt_obj_get_header(v);
 
-        if ($ir_jump_false($ir_eq_i32(type, $rt_LAYOUT_STR)))
+        if ($ir_if_true($ir_eq_i32(type, $rt_LAYOUT_STR)))
             return $ir_gt_i32($rt_str_get_len(v), 0);
 
         return true;
     }
 
-    // TODO: raw ptr?
+    if ($ir_if_true($ir_is_rawptr(v)))
+    {
+        // TODO: raw ptr?
+
+
+
+    }
 
     return false;
 }
@@ -272,13 +278,16 @@ function $rt_typeof(v)
     if ($ir_is_int(v) || $ir_is_float(v))
         return "number";
 
-    if ($ir_is_const(v) === true)
+    if ($ir_if_true($ir_is_const(v)))
     {
         if (v === true  || v === false)
             return "boolean";
 
         if (v === undefined)
             return "undefined";
+
+        if (v === null)
+            return "object";
     }
 
     if ($ir_is_refptr(v) === true)
@@ -616,5 +625,112 @@ function $rt_eq(x, y)
     }
 
     assert (false, "unsupported type in eq");
+}
+
+/**
+JS inequality (!=) comparison operator
+*/
+function $rt_ne(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_ne_i32(x, y);
+    }
+
+    // If both values are references
+    else if ($ir_is_refptr(x) && $ir_is_refptr(y))
+    {
+        var tx = $rt_obj_get_header(x);
+        var ty = $rt_obj_get_header(y);
+
+        if (tx === $rt_LAYOUT_STR && ty === $rt_LAYOUT_STR)
+            return $ir_ne_refptr(x, y);
+    }
+
+    // If both values are constants
+    else if ($ir_is_const(x) && $ir_is_const(y))
+    {
+        // TODO
+        //return $ir_eq_i32(x,y);
+    }
+
+    // If both values are floating-point
+    else if ($ir_is_float(x) && $ir_is_float(y))
+    {
+        return $ir_ne_f64(x, y);
+    }
+
+    assert (false, "unsupported type in eq");
+}
+
+/**
+JS strict equality (===) comparison operator
+*/
+function $rt_se(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_eq_i32(x, y);
+    }
+
+    // If both values are references
+    else if ($ir_is_refptr(x) && $ir_is_refptr(y))
+    {
+        return $ir_eq_refptr(x, y);
+    }
+
+    // If both values are constants
+    else if ($ir_is_const(x) && $ir_is_const(y))
+    {
+        // TODO
+        //return $ir_eq_i32(x,y);
+
+        println("unsupported type");
+    }
+
+    // If both values are floating-point
+    else if ($ir_is_float(x) && $ir_is_float(y))
+    {
+        return $ir_eq_f64(x, y);
+    }
+
+    assert (false, "unsupported type in se");
+}
+
+/**
+JS strict inequality (!==) comparison operator
+*/
+function $rt_ne(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_ne_i32(x, y);
+    }
+
+    // If both values are references
+    else if ($ir_is_refptr(x) && $ir_is_refptr(y))
+    {
+        return $ir_ne_refptr(x, y);
+    }
+
+    // If both values are constants
+    else if ($ir_is_const(x) && $ir_is_const(y))
+    {
+        // TODO
+        //return $ir_eq_i32(x,y);
+
+        println("unsupported type");
+    }
+
+    // If both values are floating-point
+    else if ($ir_is_float(x) && $ir_is_float(y))
+    {
+        return $ir_ne_f64(x, y);
+    }
+
+    assert (false, "unsupported type in se");
 }
 

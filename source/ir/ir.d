@@ -572,6 +572,9 @@ Opcode GE_I32 = { "ge_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ge_i32 };
 Opcode EQ_REFPTR = { "eq_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_refptr };
 Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_refptr };
 
+// Constant comparison instructions
+Opcode EQ_CONST = { "eq_const", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_const };
+
 // Floating-point comparison instructions
 Opcode EQ_F64 = { "eq_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_f64 };
 Opcode NE_F64 = { "ne_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_f64 };
@@ -656,21 +659,10 @@ Opcode LSHIFT     = { "lshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode RSHIFT     = { "rshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode URSHIFT    = { "urshift", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
-// Typeof operator
-Opcode TYPE_OF    = { "type_of", true, [OpArg.LOCAL], &opTypeOf };
-
-// Boolean value conversion
-Opcode BOOL_VAL   = { "bool_val", true, [OpArg.LOCAL], &opBoolVal };
-
 // Comparison operations
 Opcode CMP_SE     = { "cmp_se", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpSe };
 Opcode CMP_NS     = { "cmp_ns", true, [OpArg.LOCAL, OpArg.LOCAL] };
-//Opcode CMP_EQ     = { "cmp_eq", true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode CMP_NE     = { "cmp_ne", true, [OpArg.LOCAL, OpArg.LOCAL] };
-//Opcode CMP_LT     = { "cmp_lt", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpLt };
-//Opcode CMP_LE     = { "cmp_le", true, [OpArg.LOCAL, OpArg.LOCAL] };
-//Opcode CMP_GT     = { "cmp_gt", true, [OpArg.LOCAL, OpArg.LOCAL] };
-//Opcode CMP_GE     = { "cmp_ge", true, [OpArg.LOCAL, OpArg.LOCAL] };
+//Opcode CMP_NE     = { "cmp_ne", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
 // <dstLocal> = NEW_CLOS <funExpr>
 // Create a new closure from a function's AST node
@@ -716,10 +708,17 @@ Opcode*[string] iir;
 /// Initialize the inline IR table
 static this()
 {
-    void addOp(ref Opcode op)
+    void addOp(ref Opcode op, string opName = null)
     { 
-        assert (op.mnem !in iir, "duplicate op name " ~ op.mnem);
-        iir[op.mnem] = &op; 
+        if (opName is null)
+            opName = op.mnem;
+
+        assert (
+            opName !in iir, 
+            "duplicate op name " ~ opName
+        );
+
+        iir[opName] = &op; 
     }
 
     addOp(IS_INT);
@@ -769,6 +768,8 @@ static this()
     addOp(EQ_REFPTR);
     addOp(NE_REFPTR);
 
+    addOp(EQ_CONST);
+
     addOp(EQ_F64);
     addOp(NE_F64);
     addOp(LT_F64);
@@ -790,8 +791,8 @@ static this()
     addOp(STORE_REFPTR);
     addOp(STORE_RAWPTR);
 
-    addOp(JUMP_TRUE);
-    addOp(JUMP_FALSE);
+    addOp(JUMP_TRUE, "if_false");
+    addOp(JUMP_FALSE, "if_true");
 
     addOp(HEAP_ALLOC);
     addOp(GET_STR);

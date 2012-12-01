@@ -302,7 +302,7 @@ void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
     // Boolean result
     bool r;
 
-    static if (typeTag == Type.INT)
+    static if (typeTag == Type.INT || typeTag == Type.CONST)
     {
         auto x = cast(DataType)wX.intVal;
         auto y = cast(DataType)wY.intVal;
@@ -336,6 +336,8 @@ alias CompareOp!(int32, Type.INT, "r = (x >= y);") op_ge_i32;
 
 alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_eq_refptr;
 alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_ne_refptr;
+
+alias CompareOp!(uint8, Type.CONST, "r = (x == y);") op_eq_const;
 
 alias CompareOp!(float64, Type.FLOAT, "r = (x == y);") op_eq_f64;
 alias CompareOp!(float64, Type.FLOAT, "r = (x != y);") op_ne_f64;
@@ -513,6 +515,9 @@ void op_call(Interp interp, IRInstr instr)
     /*
     write(core.memory.GC.addrOf(cast(void*)fun));
     write("\n");
+    */
+
+    /*
     write(fun.name);
     write("\n");
     */
@@ -985,55 +990,6 @@ void opMod(Interp interp, IRInstr instr)
         instr.outSlot, 
         Word.intv(w0.intVal % w1.intVal),
         Type.INT
-    );
-}
-
-void opTypeOf(Interp interp, IRInstr instr)
-{
-    auto idx = instr.args[0].localIdx;
-
-    auto w = interp.getWord(idx);
-    auto t = interp.getType(idx);
-
-    refptr output;
-
-    switch (t)
-    {
-        case Type.REFPTR:
-        if (valIsLayout(w, LAYOUT_STR))
-            output = getString(interp, "string");
-        else if (valIsLayout(w, LAYOUT_OBJ))
-            output = getString(interp, "object");
-        else
-            assert (false, "unsupported type in typeof");
-        break;
-
-        case Type.INT:
-        case Type.FLOAT:
-        output = getString(interp, "number");
-        break;
-
-        case Type.CONST:
-        if (w == TRUE)
-            output = getString(interp, "boolean");
-        else if (w == FALSE)
-            output = getString(interp, "boolean");
-        else if (w == NULL)
-            output = getString(interp, "object");
-        else if (w == UNDEF)
-            output = getString(interp, "undefined");
-        else
-            assert (false, "unsupported constant");
-        break;
-
-        default:
-        assert (false, "unsupported type in typeof");
-    }
-
-    interp.setSlot(
-        instr.outSlot, 
-        Word.ptrv(output),
-        Type.REFPTR
     );
 }
 

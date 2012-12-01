@@ -484,6 +484,10 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         LocalIdx idSlot = NULL_LOCAL;
         ASTExpr irExpr = null;
 
+
+
+
+
         // If the test is an inline IR assignment
         auto binExpr = cast(BinOpExpr)ifStmt.testExpr;
         if (binExpr && binExpr.op.str == "=" && isInlineIR(binExpr.rExpr))
@@ -522,7 +526,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
                     ifStmt.testExpr.pos
                 );
             }
-
+            
             // If the instruction branches, go to the false block
             instr.target = falseBlock;
 
@@ -537,11 +541,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
             ctx.merge(exprCtx);
 
             // Convert the expression value to a boolean
-            auto boolInstr = ctx.addInstr(new IRInstr(
-                &BOOL_VAL,
+            auto boolInstr = insertRtCall(
+                ctx, 
+                "toBool", 
                 ctx.allocTemp(),
-                exprCtx.getOutSlot(),      
-            ));
+                [exprCtx.getOutSlot()]
+            );
 
             // If the expresson is true, jump
             ctx.addInstr(new IRInstr(
@@ -553,6 +558,18 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
             // Jump to the false statement
             ctx.addInstr(IRInstr.jump(falseBlock));
         }
+
+
+
+
+
+
+
+
+
+
+
+
 
         // Continue code generation in the join block
         ctx.merge(joinBlock);
@@ -576,11 +593,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(whileStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
-        auto boolInstr = testCtx.addInstr(new IRInstr(
-            &BOOL_VAL,
+        auto boolInstr = insertRtCall(
+            testCtx, 
+            "toBool", 
             testCtx.allocTemp(),
-            testCtx.getOutSlot(),           
-        ));
+            [testCtx.getOutSlot()]
+        );
 
         // If the expresson is true, jump to the loop body
         testCtx.addInstr(new IRInstr(
@@ -626,11 +644,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(doStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
-        auto boolInstr = testCtx.addInstr(new IRInstr(
-            &BOOL_VAL,
+        auto boolInstr = insertRtCall(
+            testCtx, 
+            "toBool", 
             testCtx.allocTemp(),
-            testCtx.getOutSlot(),           
-        ));
+            [testCtx.getOutSlot()]
+        );
 
         // If the expresson is true, jump to the loop body
         testCtx.addInstr(new IRInstr(
@@ -668,11 +687,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(forStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
-        auto boolInstr = testCtx.addInstr(new IRInstr(
-            &BOOL_VAL,
+        auto boolInstr = insertRtCall(
+            testCtx, 
+            "toBool", 
             testCtx.allocTemp(),
-            testCtx.getOutSlot(),           
-        ));
+            [testCtx.getOutSlot()]
+        );
 
         // If the expresson is true, jump to the loop body
         testCtx.addInstr(new IRInstr(
@@ -852,30 +872,23 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         // Arithmetic operators
         if (op.str == "+")
-            //genBinOp(&ADD);
             genBinOpRt("add");
         else if (op.str == "-")
-            //genBinOp(&SUB);
             genBinOpRt("sub");
         else if (op.str == "*")
-            //genBinOp(&MUL);
             genBinOpRt("mul");
         else if (op.str == "/")
-            //genBinOp(&DIV);
             genBinOpRt("div");
         else if (op.str == "%")
-            //genBinOp(&MOD);
             genBinOpRt("mod");
 
         // Bitwise operators
         else if (op.str == "&")
-            //genBinOp(&AND);
             genBinOpRt("and");
         else if (op.str == "|")
-            //genBinOp(&OR);
             genBinOpRt("or");
         else if (op.str == "^")
-            genBinOp(&XOR);
+            genBinOpRt("xor");
         else if (op.str == "<<")
             genBinOp(&LSHIFT);
         else if (op.str == ">>")
@@ -886,24 +899,21 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Comparison operators
         else if (op.str == "===")
             genBinOp(&CMP_SE);
+            //genBinOpRt("se");
         else if (op.str == "!==")
             genBinOp(&CMP_NS);
+            //genBinOpRt("ne");
         else if (op.str == "==")
-            //genBinOp(&CMP_EQ);
             genBinOpRt("eq");
         else if (op.str == "!=")
-            genBinOp(&CMP_NE);
+            genBinOpRt("ne");
         else if (op.str == "<")
-            //genBinOp(&CMP_LT);
             genBinOpRt("lt");
         else if (op.str == "<=")
-            //genBinOp(&CMP_LE);
             genBinOpRt("le");
         else if (op.str == ">")
-            //genBinOp(&CMP_GT);
             genBinOpRt("gt");
         else if (op.str == ">=")
-            //genBinOp(&CMP_GE);
             genBinOpRt("ge");
 
         // In-place assignment operators
@@ -959,11 +969,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ctx.merge(lCtx); 
 
             // Convert the expression value to a boolean
-            auto boolInstr = ctx.addInstr(new IRInstr(
-                &BOOL_VAL,
+            auto boolInstr = insertRtCall(
+                ctx, 
+                "toBool", 
                 ctx.allocTemp(),
-                lCtx.getOutSlot(),     
-            ));
+                [lCtx.getOutSlot()]
+            );
 
             // Evaluate the second expression, if necessary
             ctx.addInstr(new IRInstr(
@@ -1033,11 +1044,20 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             exprToIR(unExpr.expr, lCtx);
             ctx.merge(lCtx);
 
+            /*
             ctx.addInstr(new IRInstr(
                 &TYPE_OF,
                 ctx.getOutSlot(), 
                 lCtx.getOutSlot()
             ));
+            */
+
+            insertRtCall(
+                ctx, 
+                "typeof", 
+                ctx.getOutSlot(),
+                [lCtx.getOutSlot()]
+            );
         }
 
         // Bitwise negation
@@ -1133,11 +1153,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         ctx.merge(exprCtx);
 
         // Convert the expression value to a boolean
-        auto boolInstr = ctx.addInstr(new IRInstr(
-            &BOOL_VAL,
+        auto boolInstr = insertRtCall(
+            ctx, 
+            "toBool", 
             ctx.allocTemp(),
-            exprCtx.getOutSlot(),           
-        ));
+            [exprCtx.getOutSlot()]
+        );
 
         // If the expresson is true, jump
         ctx.addInstr(new IRInstr(
