@@ -155,6 +155,17 @@ void op_i32_to_f64(Interp interp, IRInstr instr)
     );
 }
 
+void op_i64_to_f64(Interp interp, IRInstr instr)
+{
+    auto w0 = interp.getWord(instr.args[0].localIdx);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.floatv(w0.intVal),
+        Type.FLOAT
+    );
+}
+
 void op_f64_to_i32(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
@@ -162,6 +173,17 @@ void op_f64_to_i32(Interp interp, IRInstr instr)
     interp.setSlot(
         instr.outSlot,
         Word.intv(cast(int32)w0.floatVal),
+        Type.FLOAT
+    );
+}
+
+void op_f64_to_i64(Interp interp, IRInstr instr)
+{
+    auto w0 = interp.getWord(instr.args[0].localIdx);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.intv(cast(int64)w0.floatVal),
         Type.FLOAT
     );
 }
@@ -335,9 +357,10 @@ alias CompareOp!(int32, Type.INT, "r = (x <= y);") op_le_i32;
 alias CompareOp!(int32, Type.INT, "r = (x >= y);") op_ge_i32;
 
 alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_eq_refptr;
-alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_ne_refptr;
+alias CompareOp!(refptr, Type.REFPTR, "r = (x != y);") op_ne_refptr;
 
 alias CompareOp!(uint8, Type.CONST, "r = (x == y);") op_eq_const;
+alias CompareOp!(uint8, Type.CONST, "r = (x != y);") op_ne_const;
 
 alias CompareOp!(float64, Type.FLOAT, "r = (x == y);") op_eq_f64;
 alias CompareOp!(float64, Type.FLOAT, "r = (x != y);") op_ne_f64;

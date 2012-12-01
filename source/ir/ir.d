@@ -525,7 +525,9 @@ Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &op_is_const };
 
 // Type conversion
 Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &op_i32_to_f64 };
+Opcode I64_TO_F64 = { "i64_to_f64", true, [OpArg.LOCAL], &op_i64_to_f64 };
 Opcode F64_TO_I32 = { "f64_to_i32", true, [OpArg.LOCAL], &op_f64_to_i32 };
+Opcode F64_TO_I64 = { "f64_to_i64", true, [OpArg.LOCAL], &op_f64_to_i64 };
 
 // Integer arithmetic
 Opcode ADD_I32 = { "add_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32 };
@@ -574,6 +576,7 @@ Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_refpt
 
 // Constant comparison instructions
 Opcode EQ_CONST = { "eq_const", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_const };
+Opcode NE_CONST = { "ne_const", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_const };
 
 // Floating-point comparison instructions
 Opcode EQ_F64 = { "eq_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_f64 };
@@ -659,11 +662,6 @@ Opcode LSHIFT     = { "lshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode RSHIFT     = { "rshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
 Opcode URSHIFT    = { "urshift", true, [OpArg.LOCAL, OpArg.LOCAL] };
 
-// Comparison operations
-Opcode CMP_SE     = { "cmp_se", true, [OpArg.LOCAL, OpArg.LOCAL], &opCmpSe };
-Opcode CMP_NS     = { "cmp_ns", true, [OpArg.LOCAL, OpArg.LOCAL] };
-//Opcode CMP_NE     = { "cmp_ne", true, [OpArg.LOCAL, OpArg.LOCAL] };
-
 // <dstLocal> = NEW_CLOS <funExpr>
 // Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.REFPTR, OpArg.REFPTR], &opNewClos };
@@ -728,7 +726,9 @@ static this()
     addOp(IS_CONST);
 
     addOp(I32_TO_F64);
+    addOp(I64_TO_F64);
     addOp(F64_TO_I32);
+    addOp(F64_TO_I64);
 
     addOp(ADD_I32);
     addOp(SUB_I32);
@@ -769,6 +769,7 @@ static this()
     addOp(NE_REFPTR);
 
     addOp(EQ_CONST);
+    addOp(NE_CONST);
 
     addOp(EQ_F64);
     addOp(NE_F64);

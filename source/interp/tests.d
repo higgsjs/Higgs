@@ -177,6 +177,13 @@ unittest
     assertInt("return 2 + 3 * 4", 14);
     assertInt("return 5 % 3", 2);
 
+    assertInt("return 5 | 3", 7);
+    assertInt("return 5 & 3", 1);
+    assertInt("return 5 ^ 3", 6);
+    assertInt("return 5 << 2", 20);
+    assertInt("return 7 >> 1", 3);
+    assertInt("return 7 >>> 1", 3);
+
     assertFloat("return 3.5", 3.5);
     assertFloat("return 2.5 + 2", 4.5);
     assertFloat("return 2.5 + 2.5", 5);
@@ -229,7 +236,10 @@ unittest
     assertBool("3 <= 5", true);
     assertBool("5 <= 5", true);
     assertBool("7 <= 5", false);
- 
+    assertBool("true == false", false);
+    assertBool("true === true", true);
+    assertBool("true !== false", true);
+
     assertInt("return true? 1:0", 1);
     assertInt("return false? 1:0", 0);
 
@@ -375,8 +385,11 @@ unittest
     assertStr("return 'foo' + true", "footrue");
     assertInt("return 'foo'? 1:0", 1);
     assertInt("return ''? 1:0", 0);
-    assertInt("return ('foo' === 'foo')? 1:0", 1);
-    assertInt("return ('foo' === 'f' + 'oo')? 1:0", 1);
+    assertBool("return ('foo' === 'foo')", true);
+    assertBool("return ('foo' === 'f' + 'oo')", true);
+    assertBool("return ('bar' == 'bar')", true);
+    assertBool("return ('bar' != 'b')", true);
+    assertBool("return ('bar' != 'bar')", false);
 
     assertStr(
         "

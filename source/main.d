@@ -79,6 +79,8 @@ void main(string[] args)
         if (execString)
             interp.evalString(execString);
 
+        //writeln(interp.cycleCount);
+
         return;
     }
 

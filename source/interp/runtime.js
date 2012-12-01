@@ -240,26 +240,26 @@ Evaluate a value as a boolean
 */
 function $rt_toBool(v)
 {
-    if ($ir_if_true($ir_is_const(v)))
+    if ($ir_is_const(v))
         return $ir_eq_const(v, true);
 
-    if ($ir_if_true($ir_is_int(v)))
+    if ($ir_is_int(v))
         return $ir_ne_i32(v, 0);
 
-    if ($ir_if_true($ir_is_float(v)))
+    if ($ir_is_float(v))
         return $ir_ne_f64(v, 0.0);
 
-    if ($ir_if_true($ir_is_refptr(v)))
+    if ($ir_is_refptr(v))
     {
         var type = $rt_obj_get_header(v);
 
-        if ($ir_if_true($ir_eq_i32(type, $rt_LAYOUT_STR)))
+        if ($ir_eq_i32(type, $rt_LAYOUT_STR))
             return $ir_gt_i32($rt_str_get_len(v), 0);
 
         return true;
     }
 
-    if ($ir_if_true($ir_is_rawptr(v)))
+    if ($ir_is_rawptr(v))
     {
         // TODO: raw ptr?
 
@@ -278,29 +278,29 @@ function $rt_typeof(v)
     if ($ir_is_int(v) || $ir_is_float(v))
         return "number";
 
-    if ($ir_if_true($ir_is_const(v)))
+    if ($ir_is_const(v))
     {
-        if (v === true  || v === false)
+        if ($ir_eq_const(v, true) || $ir_eq_const(v, false))
             return "boolean";
 
-        if (v === undefined)
+        if ($ir_eq_const(v, undefined))
             return "undefined";
 
-        if (v === null)
+        if ($ir_eq_const(v, null))
             return "object";
     }
 
-    if ($ir_is_refptr(v) === true)
+    if ($ir_is_refptr(v))
     {
         var type = $rt_obj_get_header(v);
 
-        if (type === $rt_LAYOUT_STR)
+        if ($ir_eq_i32(type, $rt_LAYOUT_STR))
             return "string";
 
-        if (type === $rt_LAYOUT_OBJ || type === $rt_LAYOUT_ARR)
+        if ($ir_eq_i32(type, $rt_LAYOUT_OBJ) || $ir_eq_i32(type, $rt_LAYOUT_ARR))
             return "object";
 
-        if (type === $rt_LAYOUT_CLOS)
+        if ($ir_eq_i32(type, $rt_LAYOUT_CLOS))
             return "function";
     }
 
@@ -490,6 +490,39 @@ function $rt_xor(x, y)
     assert (false, "unsupported type in bitwise xor");
 }
 
+function $rt_lsft(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_lsft_i32(x, y);
+    }
+
+    assert (false, "unsupported type in bitwise xor");
+}
+
+function $rt_rsft(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_rsft_i32(x, y);
+    }
+
+    assert (false, "unsupported type in bitwise xor");
+}
+
+function $rt_ursft(x, y)
+{
+    // If both values are integer
+    if ($ir_is_int(x) && $ir_is_int(y))
+    {
+        return $ir_ursft_i32(x, y);
+    }
+
+    assert (false, "unsupported type in bitwise xor");
+}
+
 //=============================================================================
 // Comparison operators
 //=============================================================================
@@ -607,15 +640,14 @@ function $rt_eq(x, y)
         var tx = $rt_obj_get_header(x);
         var ty = $rt_obj_get_header(y);
 
-        if (tx === $rt_LAYOUT_STR && ty === $rt_LAYOUT_STR)
+        if ($ir_eq_i32(tx, $rt_LAYOUT_STR) && $ir_eq_i32(ty, $rt_LAYOUT_STR))
             return $ir_eq_refptr(x, y);
     }
 
     // If both values are constants
     else if ($ir_is_const(x) && $ir_is_const(y))
     {
-        // TODO
-        //return $ir_eq_i32(x,y);
+        return $ir_eq_const(x, y);
     }
 
     // If both values are floating-point
@@ -644,15 +676,14 @@ function $rt_ne(x, y)
         var tx = $rt_obj_get_header(x);
         var ty = $rt_obj_get_header(y);
 
-        if (tx === $rt_LAYOUT_STR && ty === $rt_LAYOUT_STR)
+        if ($ir_eq_i32(tx, $rt_LAYOUT_STR) && $ir_eq_i32(ty, $rt_LAYOUT_STR))
             return $ir_ne_refptr(x, y);
     }
 
     // If both values are constants
     else if ($ir_is_const(x) && $ir_is_const(y))
     {
-        // TODO
-        //return $ir_eq_i32(x,y);
+        return $ir_ne_const(x, y);
     }
 
     // If both values are floating-point
@@ -684,10 +715,7 @@ function $rt_se(x, y)
     // If both values are constants
     else if ($ir_is_const(x) && $ir_is_const(y))
     {
-        // TODO
-        //return $ir_eq_i32(x,y);
-
-        println("unsupported type");
+        return $ir_eq_const(x, y);
     }
 
     // If both values are floating-point
@@ -719,10 +747,7 @@ function $rt_ne(x, y)
     // If both values are constants
     else if ($ir_is_const(x) && $ir_is_const(y))
     {
-        // TODO
-        //return $ir_eq_i32(x,y);
-
-        println("unsupported type");
+        return $ir_ne_const(x, y);
     }
 
     // If both values are floating-point

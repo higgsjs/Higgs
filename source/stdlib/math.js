@@ -242,7 +242,7 @@ Math.pow = function (x, y)
     if ($ir_is_int(x) && $ir_is_int(y) && $ir_ge_i32(x, 0) && $ir_ge_i32(y, 0))
     {
         // If the power is 0, the result is 1
-        if ($ir_if_true($ir_eq_i32(y, 0)))
+        if ($ir_eq_i32(y, 0))
             return 1;
 
         var power = y;
@@ -258,7 +258,7 @@ Math.pow = function (x, y)
             */
 
             // Multiply the result by the current exponent
-            if ($ir_if_true($ir_ne_i32($ir_and_i32(power, 1), 0)))
+            if ($ir_ne_i32($ir_and_i32(power, 1), 0))
             {
                 if (acc = $ir_mul_i32_ovf(acc, current))
                 {
@@ -287,7 +287,7 @@ Math.pow = function (x, y)
             power = $ir_rsft_i32(power, 1);
 
             // If the power is now 0, we are done
-            if ($ir_if_true($ir_eq_i32(power, 0)))
+            if ($ir_eq_i32(power, 0))
                 return acc;
 
             // Multiply the current exponent by itself

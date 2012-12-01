@@ -481,95 +481,45 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         trueCtx.addInstr(IRInstr.jump(joinBlock));
         falseCtx.addInstr(IRInstr.jump(joinBlock));
 
-        LocalIdx idSlot = NULL_LOCAL;
-        ASTExpr irExpr = null;
+        // Evaluate the test expression
+        auto exprCtx = ctx.subCtx(true);
+        exprToIR(ifStmt.testExpr, exprCtx);
+        ctx.merge(exprCtx);
 
+        // Get the last instruction of the current block
+        auto lastInstr = ctx.curBlock.lastInstr;
 
-
-
-
-        // If the test is an inline IR assignment
-        auto binExpr = cast(BinOpExpr)ifStmt.testExpr;
-        if (binExpr && binExpr.op.str == "=" && isInlineIR(binExpr.rExpr))
+        // If this is a branch inline IR expression
+        if (isBranchIIR(ifStmt.testExpr) && lastInstr && lastInstr.opcode.isBranch)
         {
-            irExpr = binExpr.rExpr;
-            auto idExpr = cast(IdentExpr)binExpr.lExpr;            
-
-            if (idExpr is null || idExpr.declNode !in *ctx.localMap)
-            {
-                throw new ParseError(
-                    "invalid variable in branch IIR assignment",
-                    binExpr.pos
-                );
-            }
-
-            // Get the variable's local slot
-            idSlot = (*ctx.localMap)[idExpr.declNode];
-        }   
-
-        // If the test is an inline IR instruction
-        else if (isInlineIR(ifStmt.testExpr))
-        {
-            irExpr = ifStmt.testExpr;
-        }
-
-        if (irExpr !is null)
-        {
-            auto iirCtx = ctx.subCtx(true, idSlot);
-            auto instr = genInlineIR(irExpr, iirCtx);
-            ctx.merge(iirCtx);
-
-            if (instr.opcode.isBranch == false)
-            {
-                throw new ParseError(
-                    "iir instruction cannot branch",
-                    ifStmt.testExpr.pos
-                );
-            }
-            
-            // If the instruction branches, go to the false block
-            instr.target = falseBlock;
-
-            // Jump to the true block
-            ctx.addInstr(IRInstr.jump(trueBlock));
-        }
-        else
-        {
-            // Evaluate the test expression
-            auto exprCtx = ctx.subCtx(true);
-            exprToIR(ifStmt.testExpr, exprCtx);
-            ctx.merge(exprCtx);
-
-            // Convert the expression value to a boolean
-            auto boolInstr = insertRtCall(
-                ctx, 
-                "toBool", 
-                ctx.allocTemp(),
-                [exprCtx.getOutSlot()]
+            assert (
+                lastInstr.target is null,
+                "iir target already set"
             );
 
-            // If the expresson is true, jump
-            ctx.addInstr(new IRInstr(
-                &JUMP_TRUE,
-                boolInstr.outSlot,
-                trueBlock
-            ));
-
-            // Jump to the false statement
-            ctx.addInstr(IRInstr.jump(falseBlock));
+            // If the instruction branches, go to the false block
+            lastInstr.target = falseBlock;
         }
 
+        else
+        {
+            // Convert the expression value to a boolean
+            auto boolSlot = genBoolEval(
+                ctx, 
+                ifStmt.testExpr, 
+                exprCtx.getOutSlot
+            );
 
+            // If the expresson is false, jump
+            ctx.addInstr(new IRInstr(
+                &JUMP_FALSE,
+                boolSlot,
+                falseBlock
+            ));
+        }
 
-
-
-
-
-
-
-
-
-
+        // Jump to the true statement
+        ctx.addInstr(IRInstr.jump(trueBlock));
 
         // Continue code generation in the join block
         ctx.merge(joinBlock);
@@ -593,17 +543,16 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(whileStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
-        auto boolInstr = insertRtCall(
+        auto boolSlot = genBoolEval(
             testCtx, 
-            "toBool", 
-            testCtx.allocTemp(),
-            [testCtx.getOutSlot()]
+            whileStmt.testExpr, 
+            testCtx.getOutSlot()
         );
 
         // If the expresson is true, jump to the loop body
         testCtx.addInstr(new IRInstr(
             &JUMP_TRUE,
-            boolInstr.outSlot,
+            boolSlot,
             bodyBlock
         ));
         testCtx.addInstr(IRInstr.jump(exitBlock));
@@ -644,17 +593,16 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(doStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
-        auto boolInstr = insertRtCall(
+        auto boolSlot = genBoolEval(
             testCtx, 
-            "toBool", 
-            testCtx.allocTemp(),
-            [testCtx.getOutSlot()]
+            doStmt.testExpr, 
+            testCtx.getOutSlot()
         );
 
         // If the expresson is true, jump to the loop body
         testCtx.addInstr(new IRInstr(
             &JUMP_TRUE,
-            boolInstr.outSlot,
+            boolSlot,
             bodyBlock
         ));
         testCtx.addInstr(IRInstr.jump(exitBlock));
@@ -687,17 +635,16 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(forStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
-        auto boolInstr = insertRtCall(
+        auto boolSlot = genBoolEval(
             testCtx, 
-            "toBool", 
-            testCtx.allocTemp(),
-            [testCtx.getOutSlot()]
+            forStmt.testExpr, 
+            testCtx.getOutSlot()
         );
 
         // If the expresson is true, jump to the loop body
         testCtx.addInstr(new IRInstr(
             &JUMP_TRUE,
-            boolInstr.outSlot,
+            boolSlot,
             bodyBlock
         ));
         testCtx.addInstr(IRInstr.jump(exitBlock));
@@ -803,25 +750,6 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     else if (auto binExpr = cast(BinOpExpr)expr)
     {
         // TODO: phase out
-        void genBinOp(Opcode* opcode)
-        {
-            auto lCtx = ctx.subCtx(true);
-            exprToIR(binExpr.lExpr, lCtx);
-            ctx.merge(lCtx);
-
-            auto rCtx = ctx.subCtx(true);     
-            exprToIR(binExpr.rExpr, rCtx);
-            ctx.merge(rCtx);
-
-            ctx.addInstr(new IRInstr(
-                opcode,
-                ctx.getOutSlot(), 
-                lCtx.getOutSlot(),
-                rCtx.getOutSlot()
-            ));
-        }
-
-        // TODO: phase out
         void genAssign(Opcode* opcode)
         {
             assgToIR(
@@ -845,7 +773,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             exprToIR(binExpr.rExpr, rCtx);
             ctx.merge(rCtx);
 
-            insertRtCall(
+            genRtCall(
                 ctx, 
                 rtFunName, 
                 ctx.getOutSlot(),
@@ -890,19 +818,17 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == "^")
             genBinOpRt("xor");
         else if (op.str == "<<")
-            genBinOp(&LSHIFT);
+            genBinOpRt("lsft");
         else if (op.str == ">>")
-            genBinOp(&RSHIFT);
+            genBinOpRt("rsft");
         else if (op.str == ">>>")
-            genBinOp(&URSHIFT);
+            genBinOpRt("ursft");
 
         // Comparison operators
         else if (op.str == "===")
-            genBinOp(&CMP_SE);
-            //genBinOpRt("se");
+            genBinOpRt("se");
         else if (op.str == "!==")
-            genBinOp(&CMP_NS);
-            //genBinOpRt("ne");
+            genBinOpRt("ne");
         else if (op.str == "==")
             genBinOpRt("eq");
         else if (op.str == "!=")
@@ -969,17 +895,16 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ctx.merge(lCtx); 
 
             // Convert the expression value to a boolean
-            auto boolInstr = insertRtCall(
+            auto boolSlot = genBoolEval(
                 ctx, 
-                "toBool", 
-                ctx.allocTemp(),
-                [lCtx.getOutSlot()]
+                binExpr.lExpr, 
+                lCtx.getOutSlot()
             );
 
             // Evaluate the second expression, if necessary
             ctx.addInstr(new IRInstr(
                 (op.str == "||")? &JUMP_TRUE:&JUMP_FALSE,
-                boolInstr.outSlot,
+                boolSlot,
                 exitBlock
             ));
             ctx.addInstr(IRInstr.jump(secnBlock));
@@ -1044,15 +969,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             exprToIR(unExpr.expr, lCtx);
             ctx.merge(lCtx);
 
-            /*
-            ctx.addInstr(new IRInstr(
-                &TYPE_OF,
-                ctx.getOutSlot(), 
-                lCtx.getOutSlot()
-            ));
-            */
-
-            insertRtCall(
+            genRtCall(
                 ctx, 
                 "typeof", 
                 ctx.getOutSlot(),
@@ -1153,17 +1070,16 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         ctx.merge(exprCtx);
 
         // Convert the expression value to a boolean
-        auto boolInstr = insertRtCall(
+        auto boolSlot = genBoolEval(
             ctx, 
-            "toBool", 
-            ctx.allocTemp(),
-            [exprCtx.getOutSlot()]
+            condExpr.testExpr,
+            exprCtx.getOutSlot()
         );
 
         // If the expresson is true, jump
         ctx.addInstr(new IRInstr(
             &JUMP_TRUE,
-            boolInstr.outSlot,
+            boolSlot,
             trueBlock
         ));
         ctx.addInstr(IRInstr.jump(falseBlock));
@@ -1189,9 +1105,9 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto argExprs = callExpr.args;
 
         // If this is an inline IR instruction
-        if (isInlineIR(callExpr))
+        if (isIIR(callExpr))
         {
-            genInlineIR(callExpr, ctx);
+            genIIR(callExpr, ctx);
             return;
         }
 
@@ -1620,8 +1536,9 @@ void assgToIR(
 /**
 Test if an expression is inline IR
 */
-bool isInlineIR(ASTExpr expr)
+bool isIIR(ASTExpr expr)
 {
+
     auto callExpr = cast(CallExpr)expr;
     if (!callExpr)
         return false;
@@ -1631,11 +1548,27 @@ bool isInlineIR(ASTExpr expr)
 }
 
 /**
+Test if this is a branch-position inline IR expression
+*/
+bool isBranchIIR(ASTExpr expr)
+{
+    // If this is an assignment, check the right subexpression
+    auto binExpr = cast(BinOpExpr)expr;
+    if (binExpr && binExpr.op.str == "=")
+        expr = binExpr.rExpr;
+
+    return isIIR(expr);
+}
+
+/**
 Generate an inline IR instruction
 */
-IRInstr genInlineIR(ASTExpr expr, IRGenCtx ctx)
+IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
 {
-    assert (isInlineIR(expr), "invalid inline IR expr");
+    assert (
+        isIIR(expr), 
+        "invalid inline IR expr"
+    );
 
     auto callExpr = cast(CallExpr)expr;
     auto baseExpr = callExpr.base;
@@ -1723,9 +1656,47 @@ IRInstr genInlineIR(ASTExpr expr, IRGenCtx ctx)
 }
 
 /**
+Evaluate a value as a boolean
+*/
+LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
+{
+    bool isBoolExpr(ASTExpr expr)
+    {
+        if (isBranchIIR(expr))
+            return true;
+
+        auto binOp = cast(BinOpExpr)expr;
+        if (binOp !is null && 
+            (binOp.op.str == "&&" || binOp.op.str == "||") && 
+            isBoolExpr(binOp.lExpr) && 
+            isBoolExpr(binOp.rExpr))
+            return true;
+
+        return false;
+    }
+
+    if (isBoolExpr(testExpr))
+    {
+        return argSlot;
+    }
+    else
+    {
+        // Convert the value to a boolean
+        auto boolInstr = genRtCall(
+            ctx, 
+            "toBool",
+            ctx.allocTemp(),
+            [argSlot]
+        );
+
+        return boolInstr.outSlot;
+    }
+}
+
+/**
 Insert a call to a runtime function
 */
-IRInstr insertRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLocals)
+IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLocals)
 {
     // TODO: use GET_GLOBAL or CALL_GLOBAL
     // CALL_GLOBAL removes need for str const, get, undef ***
