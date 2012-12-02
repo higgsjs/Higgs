@@ -51,6 +51,7 @@ import ir.ir;
 import ir.ast;
 import interp.layout;
 import interp.string;
+import interp.object;
 
 /**
 Memory word union
@@ -297,7 +298,7 @@ class Interp
         ip = null;
 
         // Allocate and initialize the global object
-        globalObj = interp.ops.newObj(
+        globalObj = newObj(
             this, 
             &globalClass, 
             NULL.ptrVal, // FIXME: object prototype object

@@ -35,6 +35,11 @@
 *
 *****************************************************************************/
 
+/***
+Undefined value
+*/
+var undefined = $ir_set_undef();
+
 /**
 Not-a-number value
 */
@@ -578,7 +583,7 @@ function $rt_le(x, y)
 /**
 JS greater-than operator
 */
-function $rt_ge(x, y)
+function $rt_gt(x, y)
 {
     // If both values are integer
     if ($ir_is_int(x) && $ir_is_int(y))

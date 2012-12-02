@@ -640,6 +640,14 @@ Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str };
 // Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
 
+// GET_GLOBAL <propName>
+// Note: hidden parameter is cached global property index
+Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT], &op_get_global };
+
+// SET_GLOBAL <propName> <value>
+// Note: hidden parameter is cached global property index
+Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT], &op_set_global };
+
 
 
 
@@ -663,12 +671,6 @@ Opcode SET_PROP = { "set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], 
 
 // <dstLocal> = GET_PROP <objLocal> <propLocal>
 Opcode GET_PROP = { "get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &opGetProp };
-
-// SET_GLOBAL <propName> <value>
-Opcode SET_GLOBAL = { "set_global", false, [OpArg.LOCAL, OpArg.LOCAL], &opSetGlobal };
-
-// GET_GLOBAL <propName>
-Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 
 // TODO: translate to runtime functions
 // ===========================================================================
@@ -701,6 +703,8 @@ static this()
 
         iir[opName] = &op; 
     }
+
+    addOp(SET_UNDEF);
 
     addOp(IS_INT);
     addOp(IS_FLOAT);

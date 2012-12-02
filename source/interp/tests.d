@@ -238,6 +238,7 @@ unittest
     assertBool("3 <= 5", true);
     assertBool("5 <= 5", true);
     assertBool("7 <= 5", false);
+    assertBool("7 > 5", true);
     assertBool("true == false", false);
     assertBool("true === true", true);
     assertBool("true !== false", true);
@@ -247,6 +248,7 @@ unittest
 
     assertInt("return 0 || 2", 2);
     assertInt("return 1 || 2", 1);
+    assertInt("1 || 2; return 3", 3);
     assertInt("return 0 || 0 || 3", 3);
     assertInt("return 0 || 2 || 3", 2);
     assertInt("if (0 || 2) return 1; else return 0;", 1);
@@ -697,6 +699,9 @@ unittest
 
     interp.load("programs/nested_loops/nested_loops.js");
     interp.assertInt("foo(10);", 510);
+
+    interp.load("programs/bubble_sort/bubble_sort.js");
+    interp.assertInt("test();", 0);
 }
 
 /// SunSpider benchmarks
@@ -705,7 +710,10 @@ unittest
     auto interp = new Interp();
 
     //interp.load("programs/sunspider/bitops-bitwise-and.js");
+
     interp.load("programs/sunspider/controlflow-recursive.js");
+    interp.assertInt("ack(3,2);", 29);
+    interp.assertInt("tak(9,5,3);", 4);
 
     // FIXME: needs Math.pow on floats
     //interp.load("programs/sunspider/math-partial-sums.js");

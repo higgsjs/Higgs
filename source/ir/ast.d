@@ -1351,18 +1351,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // If the variable is global
         else if (identExpr.declNode is null)
         {
-            // Create a constant for the property name
-            auto strInstr = ctx.addInstr(IRInstr.strCst(
-                ctx.allocTemp(),
-                identExpr.name
-            ));
-
             // Get the global value
-            ctx.addInstr(new IRInstr(
-                &GET_GLOBAL,
-                ctx.getOutSlot(),
-                strInstr.outSlot
-            ));
+            auto getInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL));
+            getInstr.outSlot = ctx.getOutSlot();
+            getInstr.args.length = 2;
+            getInstr.args[0].stringVal = identExpr.name;
+            getInstr.args[1].intVal = -1;
         }
 
         // The variable is local
@@ -1503,19 +1497,13 @@ void assgToIR(
             genRhs(subCtx);
             ctx.merge(subCtx);
 
-            // Create a constant for the property name
-            auto strInstr = ctx.addInstr(IRInstr.strCst(
-                ctx.allocTemp(),
-                identExpr.name
-            ));
-
-            // Set the global value
-            auto setInstr = ctx.addInstr(new IRInstr(
-                &SET_GLOBAL,
-                NULL_LOCAL,
-                strInstr.outSlot,
-                subCtx.getOutSlot()
-            ));
+            // Get the global value
+            auto setInstr = ctx.addInstr(new IRInstr(&SET_GLOBAL));
+            setInstr.outSlot = NULL_LOCAL;
+            setInstr.args.length = 3;
+            setInstr.args[0].stringVal = identExpr.name;
+            setInstr.args[1].localIdx = subCtx.getOutSlot();
+            setInstr.args[2].intVal = -1;
         }
 
         // The variable is local
@@ -1710,11 +1698,21 @@ LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
             return true;
 
         auto binOp = cast(BinOpExpr)expr;
-        if (binOp !is null && 
-            (binOp.op.str == "&&" || binOp.op.str == "||") && 
-            isBoolExpr(binOp.lExpr) && 
-            isBoolExpr(binOp.rExpr))
-            return true;
+        if (binOp !is null)
+        {
+            auto op = binOp.op.str;
+ 
+            if (op == "=="  || op == "!=" ||
+                op == "===" || op == "!==" ||
+                op == "<"   || op == "<=" ||
+                op == ">"   || op == ">=")
+                return true;
+
+            if ((op == "&&" || op == "||") && 
+                isBoolExpr(binOp.lExpr) && 
+                isBoolExpr(binOp.rExpr))
+                return true;
+        }
 
         return false;
     }
@@ -1742,30 +1740,21 @@ Insert a call to a runtime function
 */
 IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLocals)
 {
-    // TODO: use GET_GLOBAL or CALL_GLOBAL
-    // CALL_GLOBAL removes need for str const, get, undef ***
-
-    // Create a constant for the property name
-    auto strInstr = ctx.addInstr(IRInstr.strCst(
-        ctx.allocTemp(),
-        to!wstring("$rt_" ~ fName)
-    ));
+    // TODO: use CALL_GLOBAL?
 
     // Get the global value
-    auto getInstr = ctx.addInstr(new IRInstr(
-        &GET_GLOBAL,
-        ctx.allocTemp(),
-        strInstr.outSlot
-    ));
-
-    auto undefInstr = ctx.addInstr(new IRInstr(&SET_UNDEF, ctx.allocTemp()));
+    auto getInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL));
+    getInstr.outSlot = ctx.allocTemp();
+    getInstr.args.length = 2;
+    getInstr.args[0].stringVal = to!wstring("$rt_" ~ fName);
+    getInstr.args[1].intVal = -1;
 
     // <dstLocal> = CALL <fnLocal> <thisArg> <numArgs>
     auto callInstr = ctx.addInstr(new IRInstr(&CALL));
     callInstr.outSlot = outSlot;
     callInstr.args.length = 2 + argLocals.length;
     callInstr.args[0].localIdx = getInstr.outSlot;
-    callInstr.args[1].localIdx = undefInstr.outSlot;
+    callInstr.args[1].localIdx = getInstr.outSlot;
     for (size_t i = 0; i < argLocals.length; ++i)
         callInstr.args[2+i].localIdx = argLocals[i];
 

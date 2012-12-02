@@ -46,6 +46,7 @@ import ir.ast;
 import interp.interp;
 import interp.layout;
 import interp.string;
+import interp.object;
 
 void op_set_int(Interp interp, IRInstr instr)
 {
@@ -823,375 +824,105 @@ void op_print_str(Interp interp, IRInstr instr)
     write(str);
 }
 
-// ===========================================================================
-// TODO: translate to runtime functions
-
-/// Expression evaluation delegate function
-alias refptr delegate(
-    Interp interp, 
-    refptr classPtr, 
-    uint32 allocNumProps
-) ObjAllocFn;
-
-refptr newExtObj(
-    Interp interp, 
-    refptr* ppClass, 
-    refptr protoPtr, 
-    uint32 classInitSize,
-    uint32 allocNumProps,
-    ObjAllocFn objAllocFn
-)
+/// Get the value of a global variable
+void op_get_global(Interp interp, IRInstr instr)
 {
-    auto classPtr = *ppClass;
+    // Name string (D string)
+    auto nameStr = instr.args[0].stringVal;
 
-    // If the class is not yet allocated
-    if (classPtr is null)
+    // Cached property index
+    auto propIdx = instr.args[1].intVal;
+
+    // If a property index was cached
+    if (propIdx >= 0)
     {
-        // Lazily allocate the class
-        classPtr = class_alloc(interp, classInitSize);
-        class_set_id(classPtr, 0);
+        auto wVal = obj_get_word(interp.globalObj, cast(uint32)propIdx);
+        auto tVal = obj_get_type(interp.globalObj, cast(uint32)propIdx);
 
-        // Update the instruction's class pointer
-        *ppClass = classPtr;
-    }    
+        interp.setSlot(
+            instr.outSlot,
+            Word.intv(wVal),
+            cast(Type)tVal
+        );
+
+        return;
+    }
+
+    auto propStr = getString(interp, nameStr);
+
+    // Lookup the property index in the class
+    propIdx = getPropIdx(interp.globalClass, propStr);
+
+    // If the property was found, cache it
+    if (propIdx != uint32.max)
+    {
+        // Cache the property index
+        instr.args[1].intVal = propIdx;
+    }
     else
     {
-        // Get the number of properties to allocate from the class
-        allocNumProps = max(class_get_num_props(classPtr), allocNumProps);
+        // TODO: remove, throw error when getProp fails to find
+        writefln("global prop unresolved %s", nameStr);
     }
 
-    // Allocate the object
-    auto objPtr = objAllocFn(interp, classPtr, allocNumProps);
+    // Lookup the property
+    ValuePair val = getProp(
+        interp,
+        interp.globalObj,
+        propStr
+    );
 
-    // Initialize the object
-    obj_set_class(objPtr, classPtr);
-    obj_set_proto(objPtr, protoPtr);
-
-    return objPtr;
-}
-
-refptr newObj(
-    Interp interp, 
-    refptr* ppClass, 
-    refptr protoPtr, 
-    uint32 classInitSize,
-    uint32 allocNumProps
-)
-{
-    return newExtObj(
-        interp, 
-        ppClass, 
-        protoPtr, 
-        classInitSize,
-        allocNumProps,
-        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
-        {
-            auto objPtr = obj_alloc(interp, allocNumProps);
-            return objPtr;
-        }
+    interp.setSlot(
+        instr.outSlot,
+        val
     );
 }
 
-refptr newArr(
-    Interp interp, 
-    refptr* ppClass, 
-    refptr protoPtr, 
-    uint32 classInitSize,
-    uint32 allocNumElems
-)
+/// Set the value of a global variable
+void op_set_global(Interp interp, IRInstr instr)
 {
-    return newExtObj(
-        interp, 
-        ppClass, 
-        protoPtr, 
-        classInitSize,
-        0,
-        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
-        {
-            auto objPtr = arr_alloc(interp, allocNumProps);
-            auto tblPtr = arrtbl_alloc(interp, allocNumElems);
-            arr_set_tbl(objPtr, tblPtr);
-            arr_set_len(objPtr, 0);
-            return objPtr;
-        }
+    // Name string (D string)
+    auto nameStr = instr.args[0].stringVal;
+
+    // Property value
+    auto wVal = interp.getWord(instr.args[1].localIdx);
+    auto tVal = interp.getType(instr.args[1].localIdx);
+
+    // Cached property index
+    auto propIdx = instr.args[2].intVal;
+
+    // If a property index was cached
+    if (propIdx >= 0)
+    {
+        obj_set_word(interp.globalObj, cast(uint32)propIdx, wVal.intVal);
+        obj_set_type(interp.globalObj, cast(uint32)propIdx, tVal);
+
+        return;
+    }
+
+    auto propStr = getString(interp, nameStr);
+
+    // Set the property value
+    setProp(
+        interp,
+        interp.globalObj,
+        propStr,
+        ValuePair(wVal, tVal)
     );
+
+    // Lookup the property index in the class
+    propIdx = getPropIdx(interp.globalClass, propStr);
+
+    // If the property was found, cache it
+    if (propIdx != uint32.max)
+    {
+        // Cache the property index
+        instr.args[2].intVal = propIdx;
+    }
 }
 
-refptr newClos(
-    Interp interp, 
-    refptr* ppClass, 
-    refptr protoPtr, 
-    uint32 classInitSize,
-    uint32 allocNumProps,
-    uint32 allocNumCells,
-    IRFunction fun
-)
-{
-    // Register this function in the function reference set
-    interp.funRefs[cast(void*)fun] = fun;
-
-    //write(interp.funRefs.length);
-    //write("\n");
-
-    return newExtObj(
-        interp, 
-        ppClass, 
-        protoPtr, 
-        classInitSize,
-        allocNumProps,
-        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
-        {
-            auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
-            clos_set_fptr(objPtr, cast(rawptr)fun);
-            return objPtr;
-        }
-    );
-}
-
-void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
-{
-    // Follow the next link chain
-    for (;;)
-    {
-        auto nextPtr = obj_get_next(objPtr);
-        if (nextPtr is null)
-            break;
-         objPtr = nextPtr;
-    }
-
-    // Get the number of class properties
-    auto classPtr = obj_get_class(objPtr);
-    auto numProps = class_get_num_props(classPtr);
-
-    // Look for the property in the class
-    uint32 propIdx;
-    for (propIdx = 0; propIdx < numProps; ++propIdx)
-    {
-        auto nameStr = class_get_prop_name(classPtr, propIdx);
-        if (propStr == nameStr)
-            break;
-    }
-
-    // If this is a new property
-    if (propIdx == numProps)
-    {
-        //writefln("new property");
-
-        // TODO: implement class extension
-        auto classCap = class_get_cap(classPtr);
-        assert (propIdx < classCap, "class capacity exceeded");
-
-        // Set the property name
-        class_set_prop_name(classPtr, propIdx, propStr);
-
-        // Increment the number of properties in this class
-        class_set_num_props(classPtr, numProps + 1);
-    }
-
-    //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
-    //writefln("prop idx: %s", propIdx);
-    //writefln("intval: %s", wVal.intVal);
-
-    // Get the length of the object
-    auto objCap = obj_get_cap(objPtr);
-
-    // If the object needs to be extended
-    if (propIdx >= objCap)
-    {
-        //writeln("*** extending object ***");
-
-        auto objType = obj_get_header(objPtr);
-
-        refptr newObj;
-
-        // Switch on the layout type
-        switch (objType)
-        {
-            case LAYOUT_OBJ:
-            newObj = obj_alloc(interp, objCap+1);
-            break;
-
-            case LAYOUT_CLOS:
-            auto numCells = clos_get_num_cells(objPtr);
-            newObj = clos_alloc(interp, objCap+1, numCells);
-            clos_set_fptr(newObj, clos_get_fptr(objPtr));
-            for (uint32 i = 0; i < numCells; ++i)
-                clos_set_cell(newObj, i, clos_get_cell(objPtr, i));
-            break;
-
-            default:
-            assert (false, "unhandled object type");
-        }
-
-        obj_set_class(newObj, classPtr);
-        obj_set_proto(newObj, obj_get_proto(objPtr));
-
-        // Copy over the property words and types
-        for (uint32 i = 0; i < objCap; ++i)
-        {
-            obj_set_word(newObj, i, obj_get_word(objPtr, i));
-            obj_set_type(newObj, i, obj_get_type(objPtr, i));
-        }
-
-        // Set the next pointer in the old object
-        obj_set_next(objPtr, newObj);
-
-        // Update the object pointer
-        objPtr = newObj;
-    }
-
-    // Set the value and its type in the object
-    obj_set_word(objPtr, propIdx, val.word.intVal);
-    obj_set_type(objPtr, propIdx, val.type);
-}
-
-ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
-{
-    // Follow the next link chain
-    for (;;)
-    {
-        auto nextPtr = obj_get_next(objPtr);
-        if (nextPtr is null)
-            break;
-         objPtr = nextPtr;
-    }
-
-    // Get the number of class properties
-    auto classPtr = obj_get_class(objPtr);
-    auto numProps = class_get_num_props(classPtr);
-
-    // Look for the property in the global class
-    uint32 propIdx;
-    for (propIdx = 0; propIdx < numProps; ++propIdx)
-    {
-        auto nameStr = class_get_prop_name(classPtr, propIdx);
-        if (propStr == nameStr)
-            break;
-    }
-
-    // If the property was not found
-    if (propIdx == numProps)
-    {
-        auto protoPtr = obj_get_proto(objPtr);
-
-        // If the prototype is null, produce undefined
-        if (protoPtr is NULL.ptrVal)
-            return ValuePair(UNDEF, Type.CONST);
-
-        // Do a recursive lookup on the prototype
-        return getProp(
-            interp,
-            protoPtr,
-            propStr
-        );
-    }
-
-    //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
-    //writefln("prop idx: %s", propIdx);
-
-    auto pWord = obj_get_word(objPtr, propIdx);
-    auto pType = cast(Type)obj_get_type(objPtr, propIdx);
-
-    return ValuePair(Word.intv(pWord), pType);
-}
-
-/**
-Set an element of an array
-*/
-void setArrElem(Interp interp, refptr arr, uint32 index, ValuePair val)
-{
-    // Get the array length
-    auto len = arr_get_len(arr);
-
-    // Get the array table
-    auto tbl = arr_get_tbl(arr);
-
-    // If the index is outside the current size of the array
-    if (index >= len)
-    {
-        // Compute the new length
-        auto newLen = index + 1;
-
-        //writefln("extending array to %s", newLen);
-
-        // Get the array capacity
-        auto cap = arrtbl_get_cap(tbl);
-
-        // If the new length would exceed the capacity
-        if (newLen > cap)
-        {
-            // Compute the new size to resize to
-            auto newSize = 2 * cap;
-            if (newLen > newSize)
-                newSize = newLen;
-
-            // Extend the internal table
-            tbl = extArrTable(interp, arr, tbl, len, cap, newSize);
-        }
-
-        // Update the array length
-        arr_set_len(arr, newLen);
-    }
-
-    // Set the element in the array
-    arrtbl_set_word(tbl, index, val.word.intVal);
-    arrtbl_set_type(tbl, index, val.type);
-}
-
-/**
-Extend the internal array table of an array
-*/
-refptr extArrTable(
-    Interp interp, 
-    refptr arr, 
-    refptr curTbl, 
-    uint32 curLen, 
-    uint32 curSize, 
-    uint32 newSize
-)
-{
-    // Allocate the new table without initializing it, for performance
-    auto newTbl = arrtbl_alloc(interp, newSize);
-
-    // Copy elements from the old table to the new
-    for (uint32 i = 0; i < curLen; i++)
-    {
-        arrtbl_set_word(newTbl, i, arrtbl_get_word(curTbl, i));
-        arrtbl_set_type(newTbl, i, arrtbl_get_type(curTbl, i));
-    }
-
-    // Initialize the remaining table entries to undefined
-    for (uint32 i = curLen; i < newSize; i++)
-    {
-        arrtbl_set_word(newTbl, i, UNDEF.intVal);
-        arrtbl_set_type(newTbl, i, Type.CONST);
-    }
-
-    // Update the table reference in the array
-    arr_set_tbl(arr, newTbl);
-
-    return newTbl;
-}
-
-/**
-Get an element from an array
-*/
-ValuePair getArrElem(Interp interp, refptr arr, uint32 index)
-{
-    auto len = arr_get_len(arr);
-
-    //writefln("cur len %s", len);
-
-    if (index >= len)
-        return ValuePair(UNDEF, Type.CONST);
-
-    auto tbl = arr_get_tbl(arr);
-
-    return ValuePair(
-        Word.intv(arrtbl_get_word(tbl, index)),
-        cast(Type)arrtbl_get_type(tbl, index),
-    );
-}
+// ===========================================================================
+// TODO: translate to runtime functions
 
 /// Create a new blank object
 void opNewObj(Interp interp, IRInstr instr)
@@ -1343,15 +1074,26 @@ void opGetProp(Interp interp, IRInstr instr)
 
         if (type == LAYOUT_ARR)
         {
-            // TODO: toUint32?
-            assert (prop.type == Type.INT, "prop type should be int");
-            auto index = prop.word.intVal;
+            if (valIsString(prop.word, prop.type))
+            {
+                // FIXME: assume this is the length property
+                val = ValuePair(
+                    Word.intv(arr_get_len(objPtr)),
+                    Type.INT
+                );
+            }
+            else
+            {
+                // TODO: toUint32?
+                assert (prop.type == Type.INT, "prop type should be int");
+                auto index = prop.word.intVal;
 
-            val = getArrElem(
-                interp,
-                objPtr,
-                cast(uint32)index
-            );
+                val = getArrElem(
+                    interp,
+                    objPtr,
+                    cast(uint32)index
+                );
+            }
         }
         else
         {
@@ -1372,43 +1114,6 @@ void opGetProp(Interp interp, IRInstr instr)
         // TODO: toObject
         assert (false, "invalid base in setProp");
     }
-
-    interp.setSlot(
-        instr.outSlot,
-        val
-    );
-}
-
-/// Set a global variable
-void opSetGlobal(Interp interp, IRInstr instr)
-{
-    auto prop = interp.getSlot(instr.args[0].localIdx);
-    auto val  = interp.getSlot(instr.args[1].localIdx);
-
-    assert (prop.type == Type.REFPTR, "invalid global property");
-    auto propStr = prop.word.ptrVal;
-
-    setProp(
-        interp,
-        interp.globalObj,
-        propStr,
-        val
-    );
-}
-
-/// Get the value of a global variable
-void opGetGlobal(Interp interp, IRInstr instr)
-{
-    auto prop = interp.getSlot(instr.args[0].localIdx);
-
-    assert (prop.type == Type.REFPTR, "invalid global property");
-    auto propStr = prop.word.ptrVal;
-
-    ValuePair val = getProp(
-        interp,
-        interp.globalObj,
-        propStr
-    );
 
     interp.setSlot(
         instr.outSlot,

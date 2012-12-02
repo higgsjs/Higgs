@@ -19,6 +19,7 @@ interp/interp.d     \
 interp/ops.d        \
 interp/layout.d     \
 interp/string.d     \
+interp/object.d     \
 interp/tests.d      \
 repl.d              \
 main.d
