@@ -47,6 +47,8 @@ import repl;
 
 void assertInt(Interp interp, string input, long intVal)
 {
+    //writeln(input);
+
     assert (
         interp !is null,
         "interp object is null"
@@ -390,6 +392,9 @@ unittest
     assertBool("return ('bar' == 'bar')", true);
     assertBool("return ('bar' != 'b')", true);
     assertBool("return ('bar' != 'bar')", false);
+    assertBool("!true", false);
+    assertBool("!false", true);
+    assertBool("!0", true);
 
     assertStr(
         "
@@ -456,6 +461,8 @@ unittest
     assertInt("a = 1; a += 4; a -= 3; return a;", 2);
     assertInt("a = 1; b = 3; a += b; return a;", 4);
     assertInt("a = 1; b = 3; return a += b;", 4);
+    assertInt("a = 3; a -= 2; return a", 1);
+    assertInt("a = 5; a %= 3; return a", 2);
     assertInt("function f() { var a = 0; a += 1; a += 1; return a; }; return f();", 2);
     assertInt("function f() { var a = 0; a += 2; a *= 3; return a; }; return f();", 6);
 }

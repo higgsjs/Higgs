@@ -499,8 +499,6 @@ class Interp
 
             // Update the IP
             ip = instr.next;
-
-            //writefln("mnem: %s", instr.opcode.mnem);
  
             // Get the opcode's implementation function
             auto opFun = instr.opcode.opFun;

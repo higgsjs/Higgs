@@ -646,22 +646,6 @@ Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
 // ===========================================================================
 // TODO: translate to runtime functions
 
-// Arithmetic operations
-Opcode ADD        = { "add", true, [OpArg.LOCAL, OpArg.LOCAL], &opAdd };
-Opcode SUB        = { "sub", true, [OpArg.LOCAL, OpArg.LOCAL], &opSub };
-Opcode MUL        = { "mul", true, [OpArg.LOCAL, OpArg.LOCAL], &opMul };
-Opcode DIV        = { "div", true, [OpArg.LOCAL, OpArg.LOCAL], &opDiv };
-Opcode MOD        = { "mod", true, [OpArg.LOCAL, OpArg.LOCAL], &opMod };
-
-// Bitwise operations
-Opcode NOT        = { "xor"    , true, [OpArg.LOCAL] };
-Opcode AND        = { "and"    , true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode OR         = { "or"     , true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode XOR        = { "xor"    , true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode LSHIFT     = { "lshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode RSHIFT     = { "rshift" , true, [OpArg.LOCAL, OpArg.LOCAL] };
-Opcode URSHIFT    = { "urshift", true, [OpArg.LOCAL, OpArg.LOCAL] };
-
 // <dstLocal> = NEW_CLOS <funExpr>
 // Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.REFPTR, OpArg.REFPTR], &opNewClos };
@@ -688,7 +672,6 @@ Opcode GET_GLOBAL = { "get_global", true, [OpArg.LOCAL], &opGetGlobal };
 
 // TODO: translate to runtime functions
 // ===========================================================================
-
 
 
 

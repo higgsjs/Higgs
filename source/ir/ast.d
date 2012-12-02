@@ -749,21 +749,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
     else if (auto binExpr = cast(BinOpExpr)expr)
     {
-        // TODO: phase out
-        void genAssign(Opcode* opcode)
-        {
-            assgToIR(
-                binExpr.lExpr,
-                opcode,
-                delegate void(IRGenCtx ctx)
-                {
-                    exprToIR(binExpr.rExpr, ctx);
-                },
-                ctx
-            );
-        }
-
-        void genBinOpRt(string rtFunName)
+        void genBinOp(string rtFunName)
         {
             auto lCtx = ctx.subCtx(true);
             exprToIR(binExpr.lExpr, lCtx);
@@ -781,12 +767,25 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
         }
 
-        /* FIXME: assgToIR takes opcode....
         void genAssign(string rtFunName)
         {
+            InPlaceOpFn opFn = null;
+            if (rtFunName !is null)
+            {
+                opFn = delegate void(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg)
+                {
+                    genRtCall(
+                        ctx, 
+                        rtFunName, 
+                        ctx.getOutSlot(),
+                        [lArg, rArg]
+                    );
+                };
+            }
+
             assgToIR(
                 binExpr.lExpr,
-                opcode,
+                opFn,
                 delegate void(IRGenCtx ctx)
                 {
                     exprToIR(binExpr.rExpr, ctx);
@@ -794,79 +793,78 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                 ctx
             );
         }
-        */
 
         auto op = binExpr.op;
 
         // Arithmetic operators
         if (op.str == "+")
-            genBinOpRt("add");
+            genBinOp("add");
         else if (op.str == "-")
-            genBinOpRt("sub");
+            genBinOp("sub");
         else if (op.str == "*")
-            genBinOpRt("mul");
+            genBinOp("mul");
         else if (op.str == "/")
-            genBinOpRt("div");
+            genBinOp("div");
         else if (op.str == "%")
-            genBinOpRt("mod");
+            genBinOp("mod");
 
         // Bitwise operators
         else if (op.str == "&")
-            genBinOpRt("and");
+            genBinOp("and");
         else if (op.str == "|")
-            genBinOpRt("or");
+            genBinOp("or");
         else if (op.str == "^")
-            genBinOpRt("xor");
+            genBinOp("xor");
         else if (op.str == "<<")
-            genBinOpRt("lsft");
+            genBinOp("lsft");
         else if (op.str == ">>")
-            genBinOpRt("rsft");
+            genBinOp("rsft");
         else if (op.str == ">>>")
-            genBinOpRt("ursft");
+            genBinOp("ursft");
 
         // Comparison operators
         else if (op.str == "===")
-            genBinOpRt("se");
+            genBinOp("se");
         else if (op.str == "!==")
-            genBinOpRt("ne");
+            genBinOp("ne");
         else if (op.str == "==")
-            genBinOpRt("eq");
+            genBinOp("eq");
         else if (op.str == "!=")
-            genBinOpRt("ne");
+            genBinOp("ne");
         else if (op.str == "<")
-            genBinOpRt("lt");
+            genBinOp("lt");
         else if (op.str == "<=")
-            genBinOpRt("le");
+            genBinOp("le");
         else if (op.str == ">")
-            genBinOpRt("gt");
+            genBinOp("gt");
         else if (op.str == ">=")
-            genBinOpRt("ge");
+            genBinOp("ge");
 
         // In-place assignment operators
         else if (op.str == "=")
             genAssign(null);
         else if (op.str == "+=")
-            genAssign(&ADD);
+            genAssign("add");
         else if (op.str == "-=")
-            genAssign(&SUB);
+            genAssign("sub");
         else if (op.str == "*=")
-            genAssign(&MUL);
+            genAssign("mul");
         else if (op.str == "/=")
-            genAssign(&DIV);
+            genAssign("div");
         else if (op.str == "&=")
-            genAssign(&MOD);
+            genAssign("mod");
         else if (op.str == "&=")
-            genAssign(&AND);
+            genAssign("and");
         else if (op.str == "|=")
-            genAssign(&OR);
+            genAssign("or");
         else if (op.str == "^=")
-            genAssign(&XOR);
+            genAssign("xor");
         else if (op.str == "<<=")
-            genAssign(&LSHIFT);
+            genAssign("lsft");
         else if (op.str == ">>=")
-            genAssign(&RSHIFT);
+            genAssign("rsft");
         else if (op.str == ">>>=")
-            genAssign(&URSHIFT);
+            genAssign("ursft");
 
         // Sequencing (comma) operator
         else if (op.str == ",")
@@ -938,12 +936,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             exprToIR(unExpr.expr, subCtx);
             ctx.merge(subCtx);
 
-            ctx.addInstr(new IRInstr(
-                &ADD,
-                ctx.getOutSlot(), 
-                cst.outSlot,
-                subCtx.getOutSlot()
-            ));
+            genRtCall(
+                ctx, 
+                "add", 
+                ctx.getOutSlot(),
+                [cst.outSlot, subCtx.getOutSlot()]
+            );
         }
 
         else if (op.str == "-")
@@ -954,12 +952,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             exprToIR(unExpr.expr, subCtx);
             ctx.merge(subCtx);
 
-            ctx.addInstr(new IRInstr(
-                &SUB,
-                ctx.getOutSlot(), 
-                cst.outSlot,
-                subCtx.getOutSlot()
-            ));
+            genRtCall(
+                ctx, 
+                "sub", 
+                ctx.getOutSlot(),
+                [cst.outSlot, subCtx.getOutSlot()]
+            );
         }
 
         // Typeof operator
@@ -984,28 +982,50 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             exprToIR(unExpr.expr, lCtx);
             ctx.merge(lCtx);
 
-            ctx.addInstr(new IRInstr(
-                &NOT,
-                ctx.getOutSlot(), 
-                lCtx.getOutSlot()
-            ));
+            genRtCall(
+                ctx, 
+                "not", 
+                ctx.getOutSlot(),
+                [lCtx.getOutSlot()]
+            );
         }
 
-        /*
         // Boolean (logical) negation
         else if (op.str == "!")
         {
+            // Create the right expression and exit blocks
+            auto trueBlock = ctx.fun.newBlock("not_true");
+            auto exitBlock = ctx.fun.newBlock("not_exit");
+
             auto lCtx = ctx.subCtx(true);
             exprToIR(unExpr.expr, lCtx);
             ctx.merge(lCtx);
 
-            ctx.addInstr(new IRInstr(
-                &BOOL_NOT,
-                ctx.getOutSlot(), 
+            // Convert the expression value to a boolean
+            auto boolSlot = genBoolEval(
+                ctx, 
+                unExpr.expr,
                 lCtx.getOutSlot()
+            );
+
+            // If the boolean is true, jump
+            ctx.addInstr(new IRInstr(
+               &JUMP_TRUE,
+                boolSlot,
+                trueBlock
             ));
+
+            // false => true
+            ctx.addInstr(new IRInstr(&SET_TRUE, ctx.getOutSlot()));
+            ctx.addInstr(IRInstr.jump(exitBlock));
+
+            // true => false
+            trueBlock.addInstr(new IRInstr(&SET_FALSE, ctx.getOutSlot()));
+            trueBlock.addInstr(IRInstr.jump(exitBlock));
+
+            // Continue code generation in the exit block
+            ctx.merge(exitBlock);
         }
-        */
 
         // Pre-incrementation and pre-decrementation (++x, --x)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'r')
@@ -1013,7 +1033,15 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             // Perform the incrementation/decrementation and assignment
             assgToIR(
                 unExpr.expr,
-                (op.str == "++")? &ADD:&SUB,
+                delegate void(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg)
+                {
+                    genRtCall(
+                        ctx, 
+                        (op.str == "++")? "add":"sub", 
+                        ctx.getOutSlot(),
+                        [lArg, rArg]
+                    );
+                },
                 delegate void(IRGenCtx ctx)
                 {
                     ctx.addInstr(IRInstr.intCst(ctx.getOutSlot(), 1));
@@ -1034,7 +1062,15 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto aCtx = ctx.subCtx(true);
             assgToIR(
                 unExpr.expr,
-                (op.str == "++")? &ADD:&SUB,
+                delegate void(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg)
+                {
+                    genRtCall(
+                        ctx, 
+                        (op.str == "++")? "add":"sub", 
+                        ctx.getOutSlot(),
+                        [lArg, rArg]
+                    );
+                },
                 delegate void(IRGenCtx ctx)
                 {
                     ctx.addInstr(IRInstr.intCst(ctx.getOutSlot(), 1));
@@ -1391,6 +1427,9 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     }
 }
 
+/// In-place operation delegate function
+alias void delegate(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg) InPlaceOpFn;
+
 /// Expression evaluation delegate function
 alias void delegate(IRGenCtx ctx) ExprEvalFn;
 
@@ -1399,7 +1438,7 @@ Generate IR for an assignment expression
 */
 void assgToIR(
     ASTExpr lhsExpr, 
-    Opcode* inPlaceOp,
+    InPlaceOpFn inPlaceOpFn,
     ExprEvalFn rhsExprFn, 
     IRGenCtx ctx
 )
@@ -1411,7 +1450,7 @@ void assgToIR(
     )
     {
         // If there is no in-place operation
-        if (inPlaceOp is null)
+        if (inPlaceOpFn is null)
         {
             // Compute the right expression
             rhsExprFn(ctx);
@@ -1445,12 +1484,11 @@ void assgToIR(
             }
 
             // Generate the in-place operation
-            auto opInstr = ctx.addInstr(new IRInstr(
-                inPlaceOp,
-                ctx.getOutSlot(),
+            inPlaceOpFn(
+                ctx,
                 lhsTemp,
                 rCtx.getOutSlot()
-            ));
+            );
         }
     }
 
@@ -1663,6 +1701,12 @@ LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
     bool isBoolExpr(ASTExpr expr)
     {
         if (isBranchIIR(expr))
+            return true;
+
+        auto unOp = cast(UnOpExpr)expr;
+        if (unOp !is null &&
+            unOp.op.str == "!" &&
+            isBoolExpr(unOp.expr))
             return true;
 
         auto binOp = cast(BinOpExpr)expr;
