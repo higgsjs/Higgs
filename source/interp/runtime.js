@@ -609,7 +609,7 @@ function $rt_gt(x, y)
         return $ir_gt_f64(fx, fy);
     }
 
-    assert (false, "unsupported type in le");
+    assert (false, "unsupported type in gt");
 }
 
 /**
@@ -633,7 +633,7 @@ function $rt_ge(x, y)
         return $ir_ge_f64(fx, fy);
     }
 
-    assert (false, "unsupported type in le");
+    assert (false, "unsupported type in ge");
 }
 
 /**
@@ -908,137 +908,113 @@ function $rt_getProp(base, prop)
 Extend the internal array table of an array
 */
 function $rt_extArrTbl(
-    /*
-    Interp interp, 
-    refptr arr, 
-    refptr curTbl, 
-    uint32 curLen, 
-    uint32 curSize, 
-    uint32 newSize
-    */
+    arr, 
+    curTbl, 
+    curLen, 
+    curSize, 
+    newSize
 )
 {
-    /*
     // Allocate the new table without initializing it, for performance
-    auto newTbl = arrtbl_alloc(interp, newSize);
+    var newTbl = $rt_arrtbl_alloc(newSize);
 
     // Copy elements from the old table to the new
-    for (uint32 i = 0; i < curLen; i++)
+    for (var i = 0; i < curLen; i++)
     {
-        arrtbl_set_word(newTbl, i, arrtbl_get_word(curTbl, i));
-        arrtbl_set_type(newTbl, i, arrtbl_get_type(curTbl, i));
+        $rt_arrtbl_set_word(newTbl, i, $rt_arrtbl_get_word(curTbl, i));
+        $rt_arrtbl_set_type(newTbl, i, $rt_arrtbl_get_type(curTbl, i));
     }
 
     // Initialize the remaining table entries to undefined
-    for (uint32 i = curLen; i < newSize; i++)
+    for (var i = curLen; i < newSize; i++)
     {
-        arrtbl_set_word(newTbl, i, UNDEF.intVal);
-        arrtbl_set_type(newTbl, i, Type.CONST);
+        $rt_arrtbl_set_word(newTbl, i, $ir_get_word(undefined));
+        $rt_arrtbl_set_type(newTbl, i, $ir_get_type(undefined));
     }
 
     // Update the table reference in the array
-    arr_set_tbl(arr, newTbl);
+    $rt_arr_set_tbl(arr, newTbl);
 
     return newTbl;
-    */
 }
 
 /**
 Set an element of an array
 */
-function $rt_setArrElem()
+function $rt_setArrElem(arr, index, val)
 {
-    // TODO
-
-    /*
     // Get the array length
-    auto len = arr_get_len(arr);
+    var len = $rt_arr_get_len(arr);
 
     // Get the array table
-    auto tbl = arr_get_tbl(arr);
+    var tbl = $rt_arr_get_tbl(arr);
 
     // If the index is outside the current size of the array
     if (index >= len)
     {
         // Compute the new length
-        auto newLen = index + 1;
-
-        //writefln("extending array to %s", newLen);
+        var newLen = index + 1;
 
         // Get the array capacity
-        auto cap = arrtbl_get_cap(tbl);
+        var cap = $rt_arrtbl_get_cap(tbl);
 
         // If the new length would exceed the capacity
         if (newLen > cap)
         {
             // Compute the new size to resize to
-            auto newSize = 2 * cap;
+            var newSize = 2 * cap;
             if (newLen > newSize)
                 newSize = newLen;
 
             // Extend the internal table
-            tbl = extArrTable(interp, arr, tbl, len, cap, newSize);
+            tbl = $rt_extArrTbl(arr, tbl, len, cap, newSize);
         }
 
         // Update the array length
-        arr_set_len(arr, newLen);
+        $rt_arr_set_len(arr, newLen);
     }
 
     // Set the element in the array
-    arrtbl_set_word(tbl, index, val.word.intVal);
-    arrtbl_set_type(tbl, index, val.type);
-    */
+    $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
+    $rt_arrtbl_set_type(tbl, index, $ir_get_type(val));
 }
 
 /**
-Set the length of an array
+Set/change the length of an array
 */
 function $rt_setArrLen(arr, newLen)
 {
-    // TODO
-
-    /*
-    assert (
-        boxIsArray(arr),
-        'setArrayLength on non-array'
-    );
-
-    assert (
-        newLen >= 0,
-        'invalid array length'
-    );
-
-    newLen = unboxInt(newLen);
-
     // Get the current array length
-    var len = iir.icast(IRType.pint, get_arr_len(arr));
+    var len = $rt_arr_get_len(arr);
 
     // Get a reference to the array table
-    var tbl = get_arr_arr(arr);
+    var tbl = $rt_arr_get_tbl(arr);
 
     // If the array length is increasing
     if (newLen > len)
     {
         // Get the array capacity
-        var cap = iir.icast(IRType.pint, get_arrtbl_size(tbl));
+        var cap = $rt_arrtbl_get_cap(tbl);
 
         // If the new length would exceed the capacity
         if (newLen > cap)
         {
             // Extend the internal table
-            extArrTable(arr, tbl, len, cap, newLen);
+            $rt_extArrTbl(arr, tbl, len, cap, newLen);
         }
     }
     else
     {
         // Initialize removed entries to undefined
         for (var i = newLen; i < len; i++)
-            set_arrtbl_tbl(tbl, i, UNDEFINED);
+        {
+            $rt_arrtbl_set_word(tbl, i, $ir_get_word(undefined));
+            $rt_arrtbl_set_type(tbl, i, $ir_get_type(undefined));
+        }
     }
 
     // Update the array length
-    set_arr_len(arr, iir.icast(IRType.u32, newLen));
-    */
+    $rt_arr_set_len(arr, newLen);
 }
 
 /**
@@ -1046,103 +1022,85 @@ Set a property on an object using a string as key
 */
 function $rt_setPropObj(obj, propStr)
 {
-    // TODO
-
-    /*
     // Follow the next link chain
     for (;;)
     {
-        auto nextPtr = obj_get_next(objPtr);
-        if (nextPtr is null)
+        var next = $rt_obj_get_next(obj);
+        if ($ir_eq_refptr(next, null))
             break;
-         objPtr = nextPtr;
+        obj = next;
     }
 
-    // Get the number of class properties
-    auto classPtr = obj_get_class(objPtr);
-    auto numProps = class_get_num_props(classPtr);
+    // Find the index for this property
+    var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr);
 
-    // Look for the property in the class
-    uint32 propIdx;
-    for (propIdx = 0; propIdx < numProps; ++propIdx)
+    // If the property was not found
+    if ($ir_is_const(propIdx))
     {
-        auto nameStr = class_get_prop_name(classPtr, propIdx);
-        if (propStr == nameStr)
-            break;
-    }
-
-    // If this is a new property
-    if (propIdx == numProps)
-    {
-        //writefln("new property");
-
         // TODO: implement class extension
-        auto classCap = class_get_cap(classPtr);
+        var classCap = $rt_class_get_cap(classPtr);
         assert (propIdx < classCap, "class capacity exceeded");
 
         // Set the property name
-        class_set_prop_name(classPtr, propIdx, propStr);
+        $rt_class_set_prop_name(classPtr, propIdx, propStr);
 
         // Increment the number of properties in this class
-        class_set_num_props(classPtr, numProps + 1);
+        $rt_class_set_num_props(classPtr, numProps + 1);
     }
 
-    //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
-    //writefln("prop idx: %s", propIdx);
-    //writefln("intval: %s", wVal.intVal);
-
-    // Get the length of the object
-    auto objCap = obj_get_cap(objPtr);
+    // Get the capacity of the object
+    var objCap = $rt_obj_get_cap(obj);
 
     // If the object needs to be extended
     if (propIdx >= objCap)
     {
         //writeln("*** extending object ***");
 
-        auto objType = obj_get_header(objPtr);
+        var objType = $rt_obj_get_header(obj);
 
-        refptr newObj;
+        var newObj;
+
+        // FIXME: change to if/else-if
 
         // Switch on the layout type
         switch (objType)
         {
             case LAYOUT_OBJ:
-            newObj = obj_alloc(interp, objCap+1);
+            newObj = $rt_obj_alloc(interp, objCap+1);
             break;
 
             case LAYOUT_CLOS:
-            auto numCells = clos_get_num_cells(objPtr);
-            newObj = clos_alloc(interp, objCap+1, numCells);
-            clos_set_fptr(newObj, clos_get_fptr(objPtr));
-            for (uint32 i = 0; i < numCells; ++i)
-                clos_set_cell(newObj, i, clos_get_cell(objPtr, i));
+            var numCells = $rt_clos_get_num_cells(obj);
+            newObj = $rt_clos_alloc(interp, objCap+1, numCells);
+            $rt_clos_set_fptr(newObj, $rt_clos_get_fptr(obj));
+            for (var i = 0; i < numCells; ++i)
+                $rt_clos_set_cell(newObj, i, $rt_clos_get_cell(obj, i));
             break;
 
             default:
             assert (false, "unhandled object type");
         }
 
-        obj_set_class(newObj, classPtr);
-        obj_set_proto(newObj, obj_get_proto(objPtr));
+        $rt_obj_set_class(newObj, classPtr);
+        $rt_obj_set_proto(newObj, $rt_obj_get_proto(obj));
 
         // Copy over the property words and types
-        for (uint32 i = 0; i < objCap; ++i)
+        for (var i = 0; i < objCap; ++i)
         {
-            obj_set_word(newObj, i, obj_get_word(objPtr, i));
-            obj_set_type(newObj, i, obj_get_type(objPtr, i));
+            $rt_obj_set_word(newObj, i, $rt_obj_get_word(obj, i));
+            $rt_obj_set_type(newObj, i, $rt_obj_get_type(obj, i));
         }
 
         // Set the next pointer in the old object
-        obj_set_next(objPtr, newObj);
+        $rt_obj_set_next(obj, newObj);
 
         // Update the object pointer
-        objPtr = newObj;
+        obj = newObj;
     }
 
     // Set the value and its type in the object
-    obj_set_word(objPtr, propIdx, val.word.intVal);
-    obj_set_type(objPtr, propIdx, val.type);
-    */
+    $rt_obj_set_word(obj, propIdx, $ir_get_word(val));
+    $rt_obj_set_type(obj, propIdx, $ir_get_type(val));
 }
 
 /**
@@ -1175,7 +1133,12 @@ function $rt_setProp(base, prop, val)
 
             // If this is the length property
             if (prop === 'length')
-                return $rt_setArrLen(base, prop);
+            {
+                if ($ir_is_int(val) && $ir_ge_i32(val, 0))
+                    return $rt_setArrLen(base, val);
+
+                assert (false, 'invalid array length');
+            }
 
             // If the property is a string
             if ($rt_isString(prop))

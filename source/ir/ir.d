@@ -515,8 +515,8 @@ Opcode SET_UNDEF = { "set_undef" , true, [], &op_set_undef };
 
 // Word/type manipulation primitives
 Opcode SET_VALUE = { "set_value", true, [OpArg.LOCAL, OpArg.LOCAL], &op_set_value };
-//Opcode GET_WORD = 
-//Opcode GET_TYPE =
+Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &op_get_word };
+Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &op_get_type };
 
 // Move a value from one stack slot to another
 Opcode MOVE = { "move", true, [OpArg.LOCAL], &op_move };
@@ -605,6 +605,7 @@ Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load
 Opcode STORE_U8 = { "store_u8", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8 };
 Opcode STORE_U16 = { "store_u16", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u16 };
 Opcode STORE_U32 = { "store_u32", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u32 };
+Opcode STORE_U64 = { "store_u64", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u64 };
 Opcode STORE_F64 = { "store_f64", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64 };
 Opcode STORE_REFPTR = { "store_refptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr };
 Opcode STORE_RAWPTR = { "store_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr };
@@ -717,6 +718,8 @@ static this()
     addOp(SET_UNDEF);
 
     addOp(SET_VALUE);
+    addOp(GET_WORD);
+    addOp(GET_TYPE);
 
     addOp(IS_INT);
     addOp(IS_FLOAT);
@@ -789,6 +792,7 @@ static this()
     addOp(STORE_U8);
     addOp(STORE_U16);
     addOp(STORE_U32);
+    addOp(STORE_U64);
     addOp(STORE_F64);
     addOp(STORE_REFPTR);
     addOp(STORE_RAWPTR);

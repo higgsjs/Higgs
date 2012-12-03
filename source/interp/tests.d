@@ -679,6 +679,9 @@ unittest
     assertInt("$rt_getProp([0,1], 'length')", 2);
     assertInt("$rt_getProp([3,4,5], 1)", 4);
     assertInt("$rt_getProp({v:7}, 'v')", 7);
+    assertInt("a = [0,0,0]; $rt_setProp(a,1,5); return $rt_getProp(a,1);", 5);
+    assertInt("a = [0,0,0]; $rt_setProp(a,9,7); return $rt_getProp(a,9);", 7);
+    assertInt("a = []; $rt_setProp(a,'length',5); return $rt_getProp(a,'length');", 5);
 }
 
 /// Stdlib Math library

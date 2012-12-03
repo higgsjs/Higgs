@@ -144,6 +144,28 @@ void op_set_value(Interp interp, IRInstr instr)
     );
 }
 
+void op_get_word(Interp interp, IRInstr instr)
+{
+    auto word = interp.getWord(instr.args[0].localIdx);
+
+    interp.setSlot(
+        instr.outSlot,
+        word,
+        Type.INT
+    );
+}
+
+void op_get_type(Interp interp, IRInstr instr)
+{
+    auto type = interp.getType(instr.args[0].localIdx);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.intv(cast(int)type),
+        Type.INT
+    );
+}
+
 void op_move(Interp interp, IRInstr instr)
 {
     interp.move(
@@ -510,6 +532,7 @@ alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;
 alias StoreOp!(uint8, Type.INT) op_store_u8;
 alias StoreOp!(uint16, Type.INT) op_store_u16;
 alias StoreOp!(uint32, Type.INT) op_store_u32;
+alias StoreOp!(uint64, Type.INT) op_store_u64;
 alias StoreOp!(float64, Type.FLOAT) op_store_f64;
 alias StoreOp!(refptr, Type.REFPTR) op_store_refptr;
 alias StoreOp!(rawptr, Type.RAWPTR) op_store_rawptr;

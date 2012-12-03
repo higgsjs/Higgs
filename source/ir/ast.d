@@ -666,6 +666,30 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.merge(exitBlock);
     }
 
+    // Switch statement
+    else if (auto switchStmt = cast(SwitchStmt)stmt)
+    {
+        // TODO
+        assert (false);
+
+
+        /*
+
+
+
+
+
+
+
+
+
+
+
+        */
+
+
+    }
+
     // Break statement
     else if (auto breakStmt = cast(BreakStmt)stmt)
     {
