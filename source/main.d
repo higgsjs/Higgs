@@ -69,7 +69,7 @@ void main(string[] args)
 
     // If file arguments were passed or there is 
     // a string of code to be executed
-    if (fileNames.length != 0 || execString != "")
+    if (fileNames.length != 0 || execString !is null)
     {
         auto interp = new Interp();
 
@@ -79,7 +79,7 @@ void main(string[] args)
         if (execString)
             interp.evalString(execString);
 
-        //writeln(interp.cycleCount);
+        //writefln("cycle count: %s", interp.cycleCount);
 
         return;
     }

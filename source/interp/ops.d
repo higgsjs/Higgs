@@ -107,7 +107,7 @@ void op_set_null(Interp interp, IRInstr instr)
     interp.setSlot(
         instr.outSlot,
         NULL,
-        Type.CONST
+        Type.REFPTR
     );
 }
 
@@ -117,6 +117,30 @@ void op_set_undef(Interp interp, IRInstr instr)
         instr.outSlot,
         UNDEF,
         Type.CONST
+    );
+}
+
+void op_set_value(Interp interp, IRInstr instr)
+{
+    auto wWord = interp.getWord(instr.args[0].localIdx);
+
+    auto wType = interp.getWord(instr.args[1].localIdx);
+    auto tType = interp.getType(instr.args[1].localIdx);
+
+    assert (
+        tType == Type.INT,
+        "type should be integer"
+    );
+
+    assert (
+        wType.intVal >= Type.min && wType.intVal <= Type.max,
+        "type value out of range: " ~ to!string(wType.intVal)
+    );
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.intv(wWord.intVal),
+        cast(Type)wType.intVal
     );
 }
 
@@ -356,6 +380,7 @@ alias CompareOp!(int32, Type.INT, "r = (x < y);") op_lt_i32;
 alias CompareOp!(int32, Type.INT, "r = (x > y);") op_gt_i32;
 alias CompareOp!(int32, Type.INT, "r = (x <= y);") op_le_i32;
 alias CompareOp!(int32, Type.INT, "r = (x >= y);") op_ge_i32;
+alias CompareOp!(int8, Type.INT, "r = (x == y);") op_eq_i8;
 
 alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_eq_refptr;
 alias CompareOp!(refptr, Type.REFPTR, "r = (x != y);") op_ne_refptr;
@@ -477,6 +502,7 @@ void StoreOp(DataType, Type typeTag, )(Interp interp, IRInstr instr)
 alias LoadOp!(uint8, Type.INT) op_load_u8;
 alias LoadOp!(uint16, Type.INT) op_load_u16;
 alias LoadOp!(uint32, Type.INT) op_load_u32;
+alias LoadOp!(uint64, Type.INT) op_load_u64;
 alias LoadOp!(float64, Type.FLOAT) op_load_f64;
 alias LoadOp!(refptr, Type.REFPTR) op_load_refptr;
 alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;

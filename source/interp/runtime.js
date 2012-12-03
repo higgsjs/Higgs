@@ -92,6 +92,14 @@ function println(val)
 }
 
 /**
+Test if a value is a string
+*/
+function $rt_isString(val)
+{
+    return $ir_is_refptr(val) && $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_STR);
+}
+
+/**
 Concatenate the strings from two string objects
 */
 function $rt_strcat(str1, str2)
@@ -253,9 +261,12 @@ function $rt_toBool(v)
 
     if ($ir_is_refptr(v))
     {
+        if ($ir_eq_refptr(v, null))
+            return false;
+
         var type = $rt_obj_get_header(v);
 
-        if ($ir_eq_i32(type, $rt_LAYOUT_STR))
+        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
             return $ir_gt_i32($rt_str_get_len(v), 0);
 
         return true;
@@ -287,22 +298,22 @@ function $rt_typeof(v)
 
         if ($ir_eq_const(v, undefined))
             return "undefined";
-
-        if ($ir_eq_const(v, null))
-            return "object";
     }
 
     if ($ir_is_refptr(v))
     {
-        var type = $rt_obj_get_header(v);
-
-        if ($ir_eq_i32(type, $rt_LAYOUT_STR))
-            return "string";
-
-        if ($ir_eq_i32(type, $rt_LAYOUT_OBJ) || $ir_eq_i32(type, $rt_LAYOUT_ARR))
+        if ($ir_eq_refptr(v, null))
             return "object";
 
-        if ($ir_eq_i32(type, $rt_LAYOUT_CLOS))
+        var type = $rt_obj_get_header(v);
+
+        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
+            return "string";
+
+        if ($ir_eq_i8(type, $rt_LAYOUT_OBJ) || $ir_eq_i8(type, $rt_LAYOUT_ARR))
+            return "object";
+
+        if ($ir_eq_i8(type, $rt_LAYOUT_CLOS))
             return "function";
     }
 
@@ -642,7 +653,7 @@ function $rt_eq(x, y)
         var tx = $rt_obj_get_header(x);
         var ty = $rt_obj_get_header(y);
 
-        if ($ir_eq_i32(tx, $rt_LAYOUT_STR) && $ir_eq_i32(ty, $rt_LAYOUT_STR))
+        if ($ir_eq_i8(tx, $rt_LAYOUT_STR) && $ir_eq_i8(ty, $rt_LAYOUT_STR))
             return $ir_eq_refptr(x, y);
     }
 
@@ -678,7 +689,7 @@ function $rt_ne(x, y)
         var tx = $rt_obj_get_header(x);
         var ty = $rt_obj_get_header(y);
 
-        if ($ir_eq_i32(tx, $rt_LAYOUT_STR) && $ir_eq_i32(ty, $rt_LAYOUT_STR))
+        if ($ir_eq_i8(tx, $rt_LAYOUT_STR) && $ir_eq_i8(ty, $rt_LAYOUT_STR))
             return $ir_ne_refptr(x, y);
     }
 
@@ -759,5 +770,421 @@ function $rt_ne(x, y)
     }
 
     assert (false, "unsupported type in se");
+}
+
+//=============================================================================
+// Property access
+//=============================================================================
+
+/**
+Get the index for a given property
+*/
+function $rt_getPropIdx(classPtr, propStr)
+{
+    // Get the number of class properties
+    var numProps = $rt_class_get_num_props(classPtr);
+
+    // Look for the property in the class
+    for (var propIdx = 0; propIdx < numProps; ++propIdx)
+    {
+        var nameStr = $rt_class_get_prop_name(classPtr, propIdx);
+        if ($ir_eq_refptr(propStr, nameStr))
+            return propIdx;
+    }
+
+    // Property not found
+    return false;
+}
+
+/**
+Get a property from an object using a string as key
+*/
+function $rt_getPropObj(obj, propStr)
+{
+    // Follow the next link chain
+    for (;;)
+    {
+        var next = $rt_obj_get_next(obj);
+        if ($ir_eq_refptr(next, null))
+            break;
+        obj = next;
+    }
+
+    // Find the index for this property
+    var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr);
+
+    // If the property was not found
+    if ($ir_is_const(propIdx))
+    {
+        var proto = $rt_obj_get_proto(obj);
+
+        // If the prototype is null, produce undefined
+        if ($ir_eq_refptr(proto, null))
+            return $ir_set_undef();
+
+        // Do a recursive lookup on the prototype
+        return $rt_getPropObj(
+            proto,
+            propStr
+        );
+    }
+
+    var word = $rt_obj_get_word(obj, propIdx);
+    var type = $rt_obj_get_type(obj, propIdx);
+    return $ir_set_value(word, type);
+}
+
+/**
+Get a property from a value using a value as a key
+*/
+function $rt_getProp(base, prop)
+{
+    // If the base is a reference
+    if ($ir_is_refptr(base) && $ir_ne_refptr(base, null))
+    {
+        var type = $rt_obj_get_header(base);
+
+        // If the base is an object or closure
+        if ($ir_eq_i8(type, $rt_LAYOUT_OBJ) ||
+            $ir_eq_i8(type, $rt_LAYOUT_CLOS))
+        {
+            // If the property is a string
+            if ($rt_isString(prop))
+                return $rt_getPropObj(base, prop);
+
+            return $rt_getPropObj(base, $rt_toString(prop));
+        }
+
+        // If the base is an array
+        if ($ir_eq_i8(type, $rt_LAYOUT_ARR))
+        {
+            // If the property is a non-negative integer
+            if ($ir_is_int(prop) && $ir_ge_i32(prop, 0) &&
+                $ir_lt_i32(prop, $rt_arr_get_len(base)))
+            {
+                var tbl = $rt_arr_get_tbl(base);
+                var word = $rt_arrtbl_get_word(tbl, prop);
+                var type = $rt_arrtbl_get_type(tbl, prop);
+                return $ir_set_value(word, type);
+            }
+
+            // If this is the length property
+            if (prop === 'length')
+                return $rt_arr_get_len(base);
+
+            // If the property is a string
+            if ($rt_isString(prop))
+                return $rt_getPropObj(base, prop);
+
+            return $rt_getPropObj(base, $rt_toString(prop));
+        }
+
+        // If the base is a string
+        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
+        {
+            // If the property is a non-negative integer
+            if ($ir_is_int(prop) && $ir_ge_i32(prop, 0) && 
+                $ir_lt_i32(prop, $rt_str_get_len(base)))
+            {
+                var ch = $rt_str_get_data(base, prop);
+                var str = $rt_str_alloc(1);
+                $rt_str_set_data(str, 0, ch);
+                return $ir_get_str(str);
+            }
+
+            // If this is the length property
+            if (prop === 'length')
+                return $rt_str_get_len(base);
+
+            // TODO: recurse on String.prototype
+            //return $rt_getProp(, prop);
+        }
+    }
+
+    assert (false, "unsupported base in getProp");
+}
+
+/**
+Extend the internal array table of an array
+*/
+function $rt_extArrTbl(
+    /*
+    Interp interp, 
+    refptr arr, 
+    refptr curTbl, 
+    uint32 curLen, 
+    uint32 curSize, 
+    uint32 newSize
+    */
+)
+{
+    /*
+    // Allocate the new table without initializing it, for performance
+    auto newTbl = arrtbl_alloc(interp, newSize);
+
+    // Copy elements from the old table to the new
+    for (uint32 i = 0; i < curLen; i++)
+    {
+        arrtbl_set_word(newTbl, i, arrtbl_get_word(curTbl, i));
+        arrtbl_set_type(newTbl, i, arrtbl_get_type(curTbl, i));
+    }
+
+    // Initialize the remaining table entries to undefined
+    for (uint32 i = curLen; i < newSize; i++)
+    {
+        arrtbl_set_word(newTbl, i, UNDEF.intVal);
+        arrtbl_set_type(newTbl, i, Type.CONST);
+    }
+
+    // Update the table reference in the array
+    arr_set_tbl(arr, newTbl);
+
+    return newTbl;
+    */
+}
+
+/**
+Set an element of an array
+*/
+function $rt_setArrElem()
+{
+    // TODO
+
+    /*
+    // Get the array length
+    auto len = arr_get_len(arr);
+
+    // Get the array table
+    auto tbl = arr_get_tbl(arr);
+
+    // If the index is outside the current size of the array
+    if (index >= len)
+    {
+        // Compute the new length
+        auto newLen = index + 1;
+
+        //writefln("extending array to %s", newLen);
+
+        // Get the array capacity
+        auto cap = arrtbl_get_cap(tbl);
+
+        // If the new length would exceed the capacity
+        if (newLen > cap)
+        {
+            // Compute the new size to resize to
+            auto newSize = 2 * cap;
+            if (newLen > newSize)
+                newSize = newLen;
+
+            // Extend the internal table
+            tbl = extArrTable(interp, arr, tbl, len, cap, newSize);
+        }
+
+        // Update the array length
+        arr_set_len(arr, newLen);
+    }
+
+    // Set the element in the array
+    arrtbl_set_word(tbl, index, val.word.intVal);
+    arrtbl_set_type(tbl, index, val.type);
+    */
+}
+
+/**
+Set the length of an array
+*/
+function $rt_setArrLen(arr, newLen)
+{
+    // TODO
+
+    /*
+    assert (
+        boxIsArray(arr),
+        'setArrayLength on non-array'
+    );
+
+    assert (
+        newLen >= 0,
+        'invalid array length'
+    );
+
+    newLen = unboxInt(newLen);
+
+    // Get the current array length
+    var len = iir.icast(IRType.pint, get_arr_len(arr));
+
+    // Get a reference to the array table
+    var tbl = get_arr_arr(arr);
+
+    // If the array length is increasing
+    if (newLen > len)
+    {
+        // Get the array capacity
+        var cap = iir.icast(IRType.pint, get_arrtbl_size(tbl));
+
+        // If the new length would exceed the capacity
+        if (newLen > cap)
+        {
+            // Extend the internal table
+            extArrTable(arr, tbl, len, cap, newLen);
+        }
+    }
+    else
+    {
+        // Initialize removed entries to undefined
+        for (var i = newLen; i < len; i++)
+            set_arrtbl_tbl(tbl, i, UNDEFINED);
+    }
+
+    // Update the array length
+    set_arr_len(arr, iir.icast(IRType.u32, newLen));
+    */
+}
+
+/**
+Set a property on an object using a string as key
+*/
+function $rt_setPropObj(obj, propStr)
+{
+    // TODO
+
+    /*
+    // Follow the next link chain
+    for (;;)
+    {
+        auto nextPtr = obj_get_next(objPtr);
+        if (nextPtr is null)
+            break;
+         objPtr = nextPtr;
+    }
+
+    // Get the number of class properties
+    auto classPtr = obj_get_class(objPtr);
+    auto numProps = class_get_num_props(classPtr);
+
+    // Look for the property in the class
+    uint32 propIdx;
+    for (propIdx = 0; propIdx < numProps; ++propIdx)
+    {
+        auto nameStr = class_get_prop_name(classPtr, propIdx);
+        if (propStr == nameStr)
+            break;
+    }
+
+    // If this is a new property
+    if (propIdx == numProps)
+    {
+        //writefln("new property");
+
+        // TODO: implement class extension
+        auto classCap = class_get_cap(classPtr);
+        assert (propIdx < classCap, "class capacity exceeded");
+
+        // Set the property name
+        class_set_prop_name(classPtr, propIdx, propStr);
+
+        // Increment the number of properties in this class
+        class_set_num_props(classPtr, numProps + 1);
+    }
+
+    //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
+    //writefln("prop idx: %s", propIdx);
+    //writefln("intval: %s", wVal.intVal);
+
+    // Get the length of the object
+    auto objCap = obj_get_cap(objPtr);
+
+    // If the object needs to be extended
+    if (propIdx >= objCap)
+    {
+        //writeln("*** extending object ***");
+
+        auto objType = obj_get_header(objPtr);
+
+        refptr newObj;
+
+        // Switch on the layout type
+        switch (objType)
+        {
+            case LAYOUT_OBJ:
+            newObj = obj_alloc(interp, objCap+1);
+            break;
+
+            case LAYOUT_CLOS:
+            auto numCells = clos_get_num_cells(objPtr);
+            newObj = clos_alloc(interp, objCap+1, numCells);
+            clos_set_fptr(newObj, clos_get_fptr(objPtr));
+            for (uint32 i = 0; i < numCells; ++i)
+                clos_set_cell(newObj, i, clos_get_cell(objPtr, i));
+            break;
+
+            default:
+            assert (false, "unhandled object type");
+        }
+
+        obj_set_class(newObj, classPtr);
+        obj_set_proto(newObj, obj_get_proto(objPtr));
+
+        // Copy over the property words and types
+        for (uint32 i = 0; i < objCap; ++i)
+        {
+            obj_set_word(newObj, i, obj_get_word(objPtr, i));
+            obj_set_type(newObj, i, obj_get_type(objPtr, i));
+        }
+
+        // Set the next pointer in the old object
+        obj_set_next(objPtr, newObj);
+
+        // Update the object pointer
+        objPtr = newObj;
+    }
+
+    // Set the value and its type in the object
+    obj_set_word(objPtr, propIdx, val.word.intVal);
+    obj_set_type(objPtr, propIdx, val.type);
+    */
+}
+
+/**
+Set a property on a value using a value as a key
+*/
+function $rt_setProp(base, prop, val)
+{
+    // If the base is a reference
+    if ($ir_is_refptr(base) && $ir_ne_refptr(base, null))
+    {
+        var type = $rt_obj_get_header(base);
+
+        // If the base is an object or closure
+        if ($ir_eq_i8(type, $rt_LAYOUT_OBJ) ||
+            $ir_eq_i8(type, $rt_LAYOUT_CLOS))
+        {
+            // If the property is a string
+            if ($rt_isString(prop))
+                return $rt_setPropObj(base, prop, val);
+
+            return $rt_setPropObj(base, $rt_toString(prop), val);
+        }
+
+        // If the base is an array
+        if ($ir_eq_i8(type, $rt_LAYOUT_ARR))
+        {
+            // If the property is a non-negative integer
+            if ($ir_is_int(prop) && $ir_ge_i32(prop, 0))
+                return $rt_setArrElem(base, prop, val);            
+
+            // If this is the length property
+            if (prop === 'length')
+                return $rt_setArrLen(base, prop);
+
+            // If the property is a string
+            if ($rt_isString(prop))
+                return $rt_setPropObj(base, prop, val);
+
+            return $rt_setPropObj(base, $rt_toString(prop), val);
+        }
+    }
+
+    assert (false, "unsupported base in setProp");
 }
 

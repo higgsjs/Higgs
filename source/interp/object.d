@@ -218,7 +218,7 @@ ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
         auto protoPtr = obj_get_proto(objPtr);
 
         // If the prototype is null, produce undefined
-        if (protoPtr is NULL.ptrVal)
+        if (protoPtr is null)
             return ValuePair(UNDEF, Type.CONST);
 
         // Do a recursive lookup on the prototype

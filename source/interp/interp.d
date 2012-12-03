@@ -72,8 +72,8 @@ union Word
 }
 
 // Note: low byte is set to allow for one byte immediate comparison
+Word NULL   = { intVal: 0x0000000000000000 };
 Word UNDEF  = { intVal: 0xFFFFFFFFFFFFFFF1 };
-Word NULL   = { intVal: 0xFFFFFFFFFFFFFFF2 };
 Word TRUE   = { intVal: 0xFFFFFFFFFFFFFFF3 };
 Word FALSE  = { intVal: 0xFFFFFFFFFFFFFFF4 };
 
@@ -158,6 +158,8 @@ string valToString(ValuePair value)
                 str[i] = str_get_data(w.ptrVal, i);
             return to!string(str);
         }
+        if (w == NULL)
+            return "null";
         return "refptr";
 
         case Type.CONST:
@@ -165,8 +167,6 @@ string valToString(ValuePair value)
             return "true";
         if (w == FALSE)
             return "false";
-        if (w == NULL)
-            return "null";
         if (w == UNDEF)
             return "undefined";
         assert (false, "unsupported constant");

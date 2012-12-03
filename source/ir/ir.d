@@ -513,7 +513,12 @@ Opcode SET_FALSE= { "set_false" , true, [], &op_set_false };
 Opcode SET_NULL = { "set_null"  , true, [], &op_set_null };
 Opcode SET_UNDEF = { "set_undef" , true, [], &op_set_undef };
 
-// Move a value from one local to another
+// Word/type manipulation primitives
+Opcode SET_VALUE = { "set_value", true, [OpArg.LOCAL, OpArg.LOCAL], &op_set_value };
+//Opcode GET_WORD = 
+//Opcode GET_TYPE =
+
+// Move a value from one stack slot to another
 Opcode MOVE = { "move", true, [OpArg.LOCAL], &op_move };
 
 // Type tag test
@@ -569,6 +574,7 @@ Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lt_i32 };
 Opcode GT_I32 = { "gt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_gt_i32 };
 Opcode LE_I32 = { "le_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_le_i32 };
 Opcode GE_I32 = { "ge_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ge_i32 };
+Opcode EQ_I8 = { "eq_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_i8 };
 
 // Pointer comparison instructions
 Opcode EQ_REFPTR = { "eq_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_refptr };
@@ -590,6 +596,7 @@ Opcode GE_F64 = { "ge_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ge_f64 };
 Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u8 };
 Opcode LOAD_U16 = { "load_u16", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u16 };
 Opcode LOAD_U32 = { "load_u32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u32 };
+Opcode LOAD_U64 = { "load_u64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u64 };
 Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_f64 };
 Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_refptr };
 Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_rawptr };
@@ -709,6 +716,8 @@ static this()
 
     addOp(SET_UNDEF);
 
+    addOp(SET_VALUE);
+
     addOp(IS_INT);
     addOp(IS_FLOAT);
     addOp(IS_REFPTR);
@@ -754,6 +763,7 @@ static this()
     addOp(GT_I32);
     addOp(LE_I32);
     addOp(GE_I32);
+    addOp(EQ_I8);
 
     addOp(EQ_REFPTR);
     addOp(NE_REFPTR);
@@ -771,6 +781,7 @@ static this()
     addOp(LOAD_U8);
     addOp(LOAD_U16);
     addOp(LOAD_U32);
+    addOp(LOAD_U64);
     addOp(LOAD_F64);
     addOp(LOAD_REFPTR);
     addOp(LOAD_RAWPTR);

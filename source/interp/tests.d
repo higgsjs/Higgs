@@ -646,6 +646,8 @@ unittest
 
     assertStr("$rt_toString(5)", "5");
     assertStr("$rt_toString('foo')", "foo");
+    assertStr("$rt_toString(null)", "null");
+
     assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     assertInt("$rt_add(5, 3)", 8);
@@ -671,6 +673,12 @@ unittest
     assertInt("isNaN(3.5)? 1:0", 0);
     assertInt("isNaN(NaN)? 1:0", 1);
     assertStr("$rt_toString(NaN);", "NaN");
+
+    assertInt("$rt_getProp('foo', 'length')", 3);
+    assertStr("$rt_getProp('foo', 0)", "f");
+    assertInt("$rt_getProp([0,1], 'length')", 2);
+    assertInt("$rt_getProp([3,4,5], 1)", 4);
+    assertInt("$rt_getProp({v:7}, 'v')", 7);
 }
 
 /// Stdlib Math library
