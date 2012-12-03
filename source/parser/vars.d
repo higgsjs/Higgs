@@ -238,8 +238,10 @@ void resolveVars(ASTStmt stmt, Scope s)
 
     else if (auto exprStmt = cast(ExprStmt)stmt)
     {
+        // If this is a named function
         if (auto funExpr = cast(FunExpr)exprStmt.expr)
-            s.addFunDecl(funExpr);
+            if (funExpr.name)
+                s.addFunDecl(funExpr);
 
         resolveVars(exprStmt.expr, s);
     }

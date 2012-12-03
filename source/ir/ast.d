@@ -355,7 +355,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                     newClos.args[0].fun = subFun;
                     newClos.args[1].ptrVal = null;
                     newClos.args[2].ptrVal = null;
-
                 },
                 subCtx
             );
