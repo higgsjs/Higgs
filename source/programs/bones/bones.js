@@ -99,7 +99,6 @@ Vec4.prototype.div = function(v) {
   return this;
 };
 
-
 Bones = {};
 
 Bones.applyBones_inlined = function(dstVertices, srcVertices, weights, bones) {
@@ -208,7 +207,6 @@ Bones.initBenchmark = function(count, boneCount) {
     }
   };
 };
-
 
 Bones.initBenchmark(1000000, 200);
 Bones.runBenchmark();

@@ -751,6 +751,20 @@ void op_ret(Interp interp, IRInstr instr)
     }
 }
 
+void op_throw(Interp interp, IRInstr instr)
+{
+    auto excSlot   = instr.args[0].localIdx;
+    auto raSlot    = instr.fun.raSlot;
+    auto numLocals = instr.fun.numLocals;
+
+    // Get the exception value
+    auto exc = interp.getSlot(excSlot);
+
+    throw new Exception(
+        "Exception thrown: " ~ valToString(exc)
+    );
+}
+
 void op_heap_alloc(Interp interp, IRInstr instr)
 {
     auto wSize = interp.getWord(instr.args[0].localIdx);

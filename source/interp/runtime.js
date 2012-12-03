@@ -67,10 +67,7 @@ function assert(test, error)
         return;
 
     // TODO: throw Error object
-    println(
-        'ASSERTION FAILED:\n' + 
-        error
-    );
+    throw 'ASSERTION FAILED:\n' + error
 }
 
 /**
@@ -227,7 +224,7 @@ function $rt_toString(v)
                 return "-Infinity";
 
             // TODO: $rt_floatToStr
-            return "fp tostring unimplemented";
+            assert (false, "fp tostring unimplemented");
         }
     }
 
@@ -237,7 +234,7 @@ function $rt_toString(v)
     if (type === "function" || type === "array")
         return v.toString();
 
-    return "unhandled type in toString";
+    assert (false, "unhandled type in toString");
 }
 
 /**

@@ -703,11 +703,22 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ));
     }
 
-    /*
     else if (auto throwStmt = cast(ThrowStmt)stmt)
     {
+        // TODO: special case if within try block
+
+        auto subCtx = ctx.subCtx(true);
+        exprToIR(throwStmt.expr, subCtx);
+        ctx.merge(subCtx);
+
+        ctx.addInstr(new IRInstr(
+            &THROW,
+            NULL_LOCAL,
+            subCtx.getOutSlot()
+        ));
     }
 
+    /*
     else if (auto tryStmt = cast(TryStmt)stmt)
     {
     }

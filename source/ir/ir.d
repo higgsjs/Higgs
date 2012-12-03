@@ -626,9 +626,12 @@ Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, true, true };
 Opcode PUSH_FRAME = { "push_frame", false, [], &op_push_frame };
 
 // RET <retLocal>
-// Stores return value in special registers
 // Pops the callee frame (size known by context)
 Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret };
+
+// THROW <excLocal>
+// Throws an exception, unwinds the stack
+Opcode THROW = { "throw", false, [OpArg.LOCAL], &op_throw };
 
 // Allocate a block of memory on the heap
 Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
