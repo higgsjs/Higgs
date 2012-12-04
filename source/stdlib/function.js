@@ -60,7 +60,7 @@ function Function()
 }
 
 // Set the function prototype object
-Function.prototype = get_ctx_funcproto(iir.get_ctx());
+Function.prototype = $ir_get_fun_proto();
 
 Function.prototype.length = 0;
 
@@ -71,8 +71,8 @@ Function.prototype.length = 0;
 */
 Function.prototype.toString = function ()
 {
-    // TODO: return the function source code
-    return "function";
+    // Return the function AST as a string
+    return $ir_get_ast_str(this);
 };
 
 /**

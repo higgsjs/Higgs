@@ -78,99 +78,61 @@ function String(value)
     }
 }
 
-// Set the string prototype object
-String.prototype = get_ctx_strproto(iir.get_ctx());
-
 //-----------------------------------------------------------------------------
 
 /**
 Internal string functions.
 */
 
-function string_internal_toString (
-    s
-)
+function string_internal_toString(s)
 {
-    if (s instanceof String)
-        return s.value;
+    // FIXME: need instanceof support
+    //if (s instanceof String)
+    //    return s.value;
 
     return s;
 }
 
-function string_internal_charCodeAt (
-    s,
-    pos
-)
+function string_internal_charCodeAt(s, pos)
 {
-    var idx = unboxInt(pos);
-
-    var ch = get_str_data(s, idx);
-
-    return boxInt(iir.icast(IRType.pint, ch));
+    return $rt_str_get_data(s, pos);
 }
 
-function string_internal_getLength (
-    s
-)
+function string_internal_getLength(s)
 {
-    "tachyon:noglobal";
-
-    var strLen = iir.icast(IRType.pint, get_str_size(s));
-
-    return boxInt(strLen);
+    return $rt_str_get_len(s)
 }
 
-function string_internal_toCharCodeArray (
-    x
-)
+function string_internal_toCharCodeArray(x)
 {
     var s = x.toString();
-    var a = new Array(s.length);
+    //var a = new Array(s.length);
+    var a = [];
+    a.length = s.length;
 
-    var i;
-    for (i = 0; i < s.length; i++)
-    {
-        a[i] = string_internal_charCodeAt(s, i);
-    }
+    for (var i = 0; i < s.length; i++)
+        a[i] = $rt_str_get_data(s, i);
 
     return a;
 }
 
-function string_internal_fromCharCodeArray (
-    a
-)
+function string_internal_fromCharCodeArray(a)
 {
-    "tachyon:noglobal";
-
     // Get the array length
-    var len = iir.icast(IRType.pint, get_arr_len(a));
+    var len = $rt_arr_get_len(a);
 
     // Allocate a string object
-    var strObj = alloc_str(len);
-
-    // Get a reference to the array table
-    var arrtbl = get_arr_arr(a);
+    var strObj = $rt_str_alloc(len);
 
     // Copy the data into the string
-    for (var i = pint(0); i < len; ++i)
-    {
-        var ch = get_arrtbl_tbl(arrtbl, i);
-
-        ch = iir.icast(IRType.u16, unboxInt(ch));
-
-        set_str_data(strObj, i, ch);
-    }
-
-    // Compute the hash code for the new string
-    compStrHash(strObj);
+    for (var i = 0; i < len; ++i)
+        $rt_str_set_data(strObj, i, a[i]);
 
     // Attempt to find the string in the string table
-    return getTableStr(strObj);
+    return $ir_get_str(strObj);
 }
 
-function string_internal_isWhiteSpace (
-    c
-)
+function string_internal_isWhiteSpace(c)
 {
     return (c >= 9 && c <= 13) || (c === 32) ||
            (c === 160) || (c >= 8192 && c <= 8202) || (c === 8232) ||
@@ -743,7 +705,7 @@ function string_toLocaleLowerCase ()
 /**
 15.5.4.18 String.prototype.toUpperCase()
 */
-function string_toUpperCase ()
+function string_toUpperCase()
 {
     var a = string_internal_toCharCodeArray(this);
 
@@ -751,14 +713,13 @@ function string_toUpperCase ()
     {
         var c = a[i];
         // FIXME: support full Unicode
-        if (c > 255) error("Only ASCII characters are currently supported");
+        if (c > 255)
+            error("Only ASCII characters are currently supported");
 
-        if ((c >= 97 && c <= 122)
-                || (c >= 224 && c <= 246)
-                || (c >= 248 && c <= 254))
-        {
+        if ((c >= 97 && c <= 122)  || 
+            (c >= 224 && c <= 246) || 
+            (c >= 248 && c <= 254))
             a[i] = c - 32;
-        }
     }
 
     return string_internal_fromCharCodeArray(a);

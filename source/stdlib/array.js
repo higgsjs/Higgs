@@ -82,7 +82,7 @@ function Array(len)
 }
 
 // Set the array prototype object
-Array.prototype = get_ctx_arrproto(iir.get_ctx());
+Array.prototype = $ir_get_arr_proto();
 
 //-----------------------------------------------------------------------------
 

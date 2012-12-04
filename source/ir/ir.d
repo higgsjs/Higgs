@@ -648,6 +648,12 @@ Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret };
 // Throws an exception, unwinds the stack
 Opcode THROW = { "throw", false, [OpArg.LOCAL], &op_throw };
 
+// Special implementation object access instructions
+Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &op_get_obj_proto };
+Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], &op_get_arr_proto };
+Opcode GET_FUN_PROTO = { "get_fun_proto", true, [], &op_get_fun_proto };
+Opcode GET_GLOBAL_OBJ = { "get_global_obj", true, [], &op_get_global_obj };
+
 // Allocate a block of memory on the heap
 Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
 
@@ -804,6 +810,11 @@ static this()
 
     addOp(JUMP_TRUE, "if_false");
     addOp(JUMP_FALSE, "if_true");
+
+    addOp(GET_OBJ_PROTO);
+    addOp(GET_ARR_PROTO);
+    addOp(GET_FUN_PROTO);
+    addOp(GET_GLOBAL_OBJ);
 
     addOp(HEAP_ALLOC);
     addOp(GET_STR);

@@ -186,7 +186,7 @@ immutable size_t HEAP_INIT_SIZE = 2^^24;
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
 
 /// Initial object class size
-immutable size_t CLASS_INIT_SIZE = 32;
+immutable size_t CLASS_INIT_SIZE = 64;
 
 /**
 Interpreter
@@ -232,14 +232,23 @@ class Interp
     /// Instruction pointer
     IRInstr ip;
 
+    /// String table reference
+    refptr strTbl;
+
+    /// Object prototype object
+    refptr objProto;
+
+    /// Array prototype object
+    refptr arrProto;
+
+    /// Function prototype object
+    refptr funProto;
+
     /// Global object class descriptor
     refptr globalClass;
 
     /// Global object reference
     refptr globalObj;
-
-    /// String table reference
-    refptr strTbl;
 
     /// Set of weak references to functions referenced in the heap
     /// To be cleaned up by the GC
@@ -297,17 +306,44 @@ class Interp
         // Initialize the IP to null
         ip = null;
 
-        // Allocate and initialize the global object
+        // Allocate and initialize the string table
+        strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
+
+        // Allocate the object prototype object
+        objProto = newObj(
+            this, 
+            null, 
+            NULL.ptrVal,
+            CLASS_INIT_SIZE,
+            CLASS_INIT_SIZE
+        );
+
+        // Allocate the array prototype object
+        arrProto = newObj(
+            this, 
+            null, 
+            objProto,
+            CLASS_INIT_SIZE,
+            CLASS_INIT_SIZE
+        );
+
+        // Allocate the function prototype object
+        funProto = newObj(
+            this, 
+            null, 
+            objProto,
+            CLASS_INIT_SIZE,
+            CLASS_INIT_SIZE
+        );
+
+        // Allocate the global object
         globalObj = newObj(
             this, 
             &globalClass, 
-            NULL.ptrVal, // FIXME: object prototype object
+            objProto,
             GLOBAL_OBJ_INIT_SIZE,
             GLOBAL_OBJ_INIT_SIZE
         );
-
-        // Allocate and initialize the string table
-        strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
 
         // Load the layout code
         load("interp/layout.js");
@@ -318,9 +354,13 @@ class Interp
         // If the standard library should be loaded
         if (loadStdLib)
         {
+            load("stdlib/object.js");
+            load("stdlib/function.js");
             load("stdlib/math.js");
-            //load("stdlib/string.js");
+            load("stdlib/string.js");
             //load("stdlib/array.js");
+            load("stdlib/number.js");
+            load("stdlib/boolean.js");
         }
     }
 

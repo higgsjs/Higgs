@@ -902,8 +902,8 @@ function $rt_getProp(base, prop)
             if (prop === 'length')
                 return $rt_str_get_len(base);
 
-            // TODO: recurse on String.prototype
-            //return $rt_getProp(, prop);
+            // Recurse on String.prototype
+            return $rt_getProp(String.prototype, prop);
         }
     }
 

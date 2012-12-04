@@ -76,9 +76,6 @@ function Number(value)
     }
 }
 
-// Set the number prototype object
-Number.prototype = get_ctx_numproto(iir.get_ctx());
-
 //-----------------------------------------------------------------------------
 
 // TODO

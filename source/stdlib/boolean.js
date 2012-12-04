@@ -76,9 +76,6 @@ function Boolean(value)
     }
 }
 
-// Set the boolean prototype object
-Boolean.prototype = get_ctx_boolproto(iir.get_ctx());
-
 //-----------------------------------------------------------------------------
 
 /**
@@ -99,7 +96,7 @@ Boolean.prototype.toString = function ()
 };
 
 /**
-15.6.4.3 Number.prototype.valueOf ( )
+15.6.4.3 Number.prototype.valueOf ()
 */
 Boolean.prototype.valueOf = function ()
 {

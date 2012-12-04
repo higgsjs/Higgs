@@ -60,7 +60,8 @@ refptr newExtObj(
     ObjAllocFn objAllocFn
 )
 {
-    auto classPtr = *ppClass;
+    // Get the class pointer
+    refptr classPtr = ppClass? *ppClass:null;
 
     // If the class is not yet allocated
     if (classPtr is null)
@@ -70,7 +71,8 @@ refptr newExtObj(
         class_set_id(classPtr, 0);
 
         // Update the instruction's class pointer
-        *ppClass = classPtr;
+        if (ppClass !is null)
+            *ppClass = classPtr;
     }    
     else
     {
@@ -229,7 +231,6 @@ ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
         );
     }
 
-    //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
     //writefln("prop idx: %s", propIdx);
 
     auto pWord = obj_get_word(objPtr, propIdx);
@@ -278,7 +279,6 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
         class_set_num_props(classPtr, numProps + 1);
     }
 
-    //writefln("num props after write: %s", class_get_num_props(interp.globalClass));
     //writefln("prop idx: %s", propIdx);
     //writefln("intval: %s", wVal.intVal);
 

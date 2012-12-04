@@ -471,7 +471,7 @@ void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     );
 }
 
-void StoreOp(DataType, Type typeTag, )(Interp interp, IRInstr instr)
+void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {
     auto wPtr = interp.getWord(instr.args[0].localIdx);
     auto tPtr = interp.getType(instr.args[0].localIdx);
@@ -814,6 +814,23 @@ void op_throw(Interp interp, IRInstr instr)
     );
 }
 
+void GetObjOp(string objMixin)(Interp interp, IRInstr instr)
+{
+    refptr ptr;
+    mixin(objMixin);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(ptr),
+        Type.REFPTR
+    );
+}
+
+alias GetObjOp!("ptr = interp.objProto;") op_get_obj_proto;
+alias GetObjOp!("ptr = interp.arrProto;") op_get_arr_proto;
+alias GetObjOp!("ptr = interp.funProto;") op_get_fun_proto;
+alias GetObjOp!("ptr = interp.globalObj;") op_get_global_obj;
+
 void op_heap_alloc(Interp interp, IRInstr instr)
 {
     auto wSize = interp.getWord(instr.args[0].localIdx);
@@ -1044,7 +1061,7 @@ void opNewObj(Interp interp, IRInstr instr)
     auto objPtr = newObj(
         interp, 
         ppClass, 
-        NULL.ptrVal,    // FIXME: object prototype
+        interp.objProto,
         CLASS_INIT_SIZE,
         cast(uint)numProps
     );
@@ -1066,7 +1083,7 @@ void opNewArr(Interp interp, IRInstr instr)
     auto arrPtr = newArr(
         interp, 
         ppClass, 
-        NULL.ptrVal,    // FIXME: array prototype
+        interp.arrProto,
         CLASS_INIT_SIZE,
         cast(uint)numElems
     );
@@ -1090,7 +1107,7 @@ void opNewClos(Interp interp, IRInstr instr)
     auto objPtr = newObj(
         interp, 
         &instr.args[1].ptrVal, 
-        NULL.ptrVal,        // TODO: object proto
+        interp.funProto,
         CLASS_INIT_SIZE,
         0
     );
@@ -1099,7 +1116,7 @@ void opNewClos(Interp interp, IRInstr instr)
     auto closPtr = newClos(
         interp, 
         &instr.args[2].ptrVal, 
-        NULL.ptrVal,        // TODO: function proto
+        interp.objProto,
         CLASS_INIT_SIZE,
         1,
         0,                  // TODO: num cells
