@@ -677,12 +677,6 @@ Opcode NEW_OBJECT = { "new_object", true, [OpArg.INT, OpArg.REFPTR], &opNewObj }
 // <dstLocal> = NEW_ARRAY <numElems>
 Opcode NEW_ARRAY = { "new_array", true, [OpArg.INT, OpArg.REFPTR], &opNewArr };
 
-// SET_PROP <objLocal> <propLocal> <srcLocal>
-Opcode SET_PROP = { "set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &opSetProp };
-
-// <dstLocal> = GET_PROP <objLocal> <propLocal>
-Opcode GET_PROP = { "get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &opGetProp };
-
 // TODO: translate to runtime functions
 // ===========================================================================
 

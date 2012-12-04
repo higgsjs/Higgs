@@ -123,6 +123,8 @@ void assertBool(Interp interp, string input, bool boolVal)
 
 void assertStr(string input, string strVal)
 {
+    //writeln(input);
+
     auto ret = (new Interp()).evalString(input);
 
     assert (
@@ -763,6 +765,17 @@ unittest
     assertInt("a = [0,0,0]; $rt_setProp(a,1,5); return $rt_getProp(a,1);", 5);
     assertInt("a = [0,0,0]; $rt_setProp(a,9,7); return $rt_getProp(a,9);", 7);
     assertInt("a = []; $rt_setProp(a,'length',5); return $rt_getProp(a,'length');", 5);
+
+    assertInt(
+        "
+        o = {};
+        $rt_setProp(o,'a',1);
+        $rt_setProp(o,'b',2);
+        $rt_setProp(o,'c',3);
+        return $rt_getProp(o,'c');
+        ",
+        3
+    );
 }
 
 /// Stdlib Math library

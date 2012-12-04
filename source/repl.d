@@ -54,11 +54,10 @@ void repl()
         write("w> ");
         string input = readln().stripRight();
         
-        if (input.length == 0 || input.toLower() == "exit\n")
+        if (input is null || input.toLower() == "exit\n")
         {
-            if (input.length == 0)
+            if (input is null)
                 writeln();
-
             break;
         }
 

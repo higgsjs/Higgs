@@ -1280,12 +1280,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
             // Get the method property
             closSlot = ctx.allocTemp();
-            ctx.addInstr(new IRInstr(
-                &GET_PROP,
+            genRtCall(
+                ctx, 
+                "getProp",
                 closSlot,
-                baseCtx.getOutSlot(),
-                idxCtx.getOutSlot()
-            ));
+                [baseCtx.getOutSlot(), idxCtx.getOutSlot()]
+            );
 
             thisSlot = baseCtx.getOutSlot();
         }
@@ -1370,12 +1370,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         ctx.merge(idxCtx);
 
         // Get the property from the object
-        ctx.addInstr(new IRInstr(
-            &GET_PROP,
+        genRtCall(
+            ctx, 
+            "getProp",
             ctx.getOutSlot(),
-            baseCtx.getOutSlot(),
-            idxCtx.getOutSlot()
-        ));
+            [baseCtx.getOutSlot(), idxCtx.getOutSlot()]
+        );
     }
 
     else if (auto arrayExpr = cast(ArrayExpr)expr)
@@ -1405,13 +1405,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ctx.merge(valCtx);
 
             // Set the property on the object
-            ctx.addInstr(new IRInstr(
-                &SET_PROP,
-                NULL_LOCAL,
-                arrInstr.outSlot,
-                idxTmp,
-                valCtx.getOutSlot()
-            ));
+            genRtCall(
+                ctx, 
+                "setProp",
+                ctx.allocTemp(),
+                [arrInstr.outSlot, idxTmp, valCtx.getOutSlot()]
+            );
         }
     }
 
@@ -1442,13 +1441,12 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ctx.merge(valCtx);
 
             // Set the property on the object
-            ctx.addInstr(new IRInstr(
-                &SET_PROP,
-                NULL_LOCAL,
-                objInstr.outSlot,
-                strCtx.getOutSlot(),
-                valCtx.getOutSlot()
-            ));
+            genRtCall(
+                ctx, 
+                "setProp",
+                ctx.allocTemp(),
+                [objInstr.outSlot, strCtx.getOutSlot(), valCtx.getOutSlot()]
+            );
         }
     }
 
@@ -1575,13 +1573,13 @@ void assgToIR(
             // If this is an indexed property access
             if (base !is NULL_LOCAL)
             {
-                // Set the property on the object
-                ctx.addInstr(new IRInstr(
-                    &GET_PROP,
+                // Get the property from the object
+                genRtCall(
+                    ctx, 
+                    "getProp",
                     lhsTemp,
-                    base,
-                    index
-                ));
+                    [base, index]
+                );
             }
             else
             {
@@ -1658,13 +1656,12 @@ void assgToIR(
         ctx.merge(subCtx);
 
         // Set the property on the object
-        ctx.addInstr(new IRInstr(
-            &SET_PROP,
-            NULL_LOCAL,
-            baseCtx.getOutSlot(),
-            idxCtx.getOutSlot(),
-            subCtx.getOutSlot()
-        ));
+        genRtCall(
+            ctx, 
+            "setProp",
+            ctx.allocTemp(),
+            [baseCtx.getOutSlot(), idxCtx.getOutSlot(), subCtx.getOutSlot()]
+        );
     }
 
     else

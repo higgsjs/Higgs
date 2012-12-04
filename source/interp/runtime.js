@@ -218,7 +218,7 @@ function $rt_toString(v)
 
     if (type === "number")
     {
-        if ($ir_is_int(v) === true)
+        if ($ir_is_int(v))
         {
             return $rt_intToStr(v, 10);
         }
@@ -713,10 +713,16 @@ JS strict equality (===) comparison operator
 */
 function $rt_se(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int(x) && $ir_is_int(y))
+    // If x is integer
+    if ($ir_is_int(x))
     {
-        return $ir_eq_i32(x, y);
+        if ($ir_is_int(y))
+            return $ir_eq_i32(x, y);
+
+        if ($ir_is_float(y))
+            return $ir_eq_f64($ir_i32_to_f64(x), y);
+
+        return false;
     }
 
     // If both values are references
@@ -1020,7 +1026,7 @@ function $rt_setArrLen(arr, newLen)
 /**
 Set a property on an object using a string as key
 */
-function $rt_setPropObj(obj, propStr)
+function $rt_setPropObj(obj, propStr, val)
 {
     // Follow the next link chain
     for (;;)
@@ -1034,9 +1040,13 @@ function $rt_setPropObj(obj, propStr)
     // Find the index for this property
     var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr);
 
+    var classPtr = $rt_obj_get_class(obj);
+
     // If the property was not found
     if ($ir_is_const(propIdx))
     {
+        var propIdx = $rt_class_get_num_props(classPtr);
+
         // TODO: implement class extension
         var classCap = $rt_class_get_cap(classPtr);
         assert (propIdx < classCap, "class capacity exceeded");
@@ -1045,7 +1055,7 @@ function $rt_setPropObj(obj, propStr)
         $rt_class_set_prop_name(classPtr, propIdx, propStr);
 
         // Increment the number of properties in this class
-        $rt_class_set_num_props(classPtr, numProps + 1);
+        $rt_class_set_num_props(classPtr, propIdx + 1);
     }
 
     // Get the capacity of the object
@@ -1060,18 +1070,16 @@ function $rt_setPropObj(obj, propStr)
 
         var newObj;
 
-        // FIXME: change to if/else-if
-
         // Switch on the layout type
         switch (objType)
         {
-            case LAYOUT_OBJ:
-            newObj = $rt_obj_alloc(interp, objCap+1);
+            case $rt_LAYOUT_OBJ:
+            newObj = $rt_obj_alloc(objCap+1);
             break;
 
-            case LAYOUT_CLOS:
+            case $rt_LAYOUT_CLOS:
             var numCells = $rt_clos_get_num_cells(obj);
-            newObj = $rt_clos_alloc(interp, objCap+1, numCells);
+            newObj = $rt_clos_alloc(objCap+1, numCells);
             $rt_clos_set_fptr(newObj, $rt_clos_get_fptr(obj));
             for (var i = 0; i < numCells; ++i)
                 $rt_clos_set_cell(newObj, i, $rt_clos_get_cell(obj, i));
@@ -1147,6 +1155,9 @@ function $rt_setProp(base, prop, val)
             return $rt_setPropObj(base, $rt_toString(prop), val);
         }
     }
+
+    println(typeof base);
+    println(base);
 
     assert (false, "unsupported base in setProp");
 }
