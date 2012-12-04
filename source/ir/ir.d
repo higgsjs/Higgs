@@ -79,7 +79,10 @@ class IRFunction : IdObject
     IRBlock firstBlock = null;
     IRBlock lastBlock = null;
 
-    // Number of local variables
+    // Map of ast nodes (variable declarations) to local slots
+    LocalIdx[ASTNode] localMap;
+
+    // Number of local variables, including temporaries
     uint numLocals = 0;
 
     // Hidden argument slots
@@ -128,12 +131,16 @@ class IRFunction : IdObject
         output.put(getName());
         output.put("(");
 
+        output.put("ra:$" ~ to!string(raSlot) ~ ", ");
+        output.put("clos:$" ~ to!string(closSlot) ~ ", ");
+        output.put("this:$" ~ to!string(thisSlot) ~ ", ");
         for (size_t i = 0; i < params.length; ++i)
         {
-            output.put(params[i].toString());
-            if (i != params.length - 1)
-                output.put(", ");
+            auto param = params[i];
+            auto localIdx = localMap[param];
+            output.put(param.toString() ~ ":$" ~ to!string(localIdx) ~ ", ");
         }
+        output.put("argc:$" ~ to!string(argcSlot));
 
         output.put(")\n");
         output.put("{\n");
@@ -648,9 +655,6 @@ Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
 // try to find the string in the string table
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str };
 
-// Print a string to standard output
-Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
-
 // GET_GLOBAL <propName>
 // Note: hidden parameter is cached global property index
 Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT], &op_get_global };
@@ -659,6 +663,14 @@ Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT], &op_get_glo
 // Note: hidden parameter is cached global property index
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT], &op_set_global };
 
+// Print a string to standard output
+Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
+
+// Get a string representation of a function's AST
+Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &op_get_ast_str };
+
+// Get a string representation of a function's IR
+Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &op_get_ir_str };
 
 
 
@@ -679,7 +691,6 @@ Opcode NEW_ARRAY = { "new_array", true, [OpArg.INT, OpArg.REFPTR], &opNewArr };
 
 // TODO: translate to runtime functions
 // ===========================================================================
-
 
 
 
@@ -796,6 +807,9 @@ static this()
 
     addOp(HEAP_ALLOC);
     addOp(GET_STR);
+
     addOp(PRINT_STR);
+    addOp(GET_AST_STR);
+    addOp(GET_IR_STR);
 }
 

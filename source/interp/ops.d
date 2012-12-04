@@ -864,29 +864,6 @@ void op_get_str(Interp interp, IRInstr instr)
     );
 }
 
-void op_print_str(Interp interp, IRInstr instr)
-{
-    auto wStr = interp.getWord(instr.args[0].localIdx);
-    auto tStr = interp.getType(instr.args[0].localIdx);
-
-    assert (
-        valIsString(wStr, tStr),
-        "expected string in print_str"
-    );
-
-    auto ptr = wStr.ptrVal;
-
-    auto len = str_get_len(ptr);
-    wchar[] wchars = new wchar[len];
-    for (uint32 i = 0; i < len; ++i)
-        wchars[i] = str_get_data(ptr, i);
-
-    auto str = to!string(wchars);
-
-    // Print the string to standard output
-    write(str);
-}
-
 /// Get the value of a global variable
 void op_get_global(Interp interp, IRInstr instr)
 {
@@ -984,6 +961,76 @@ void op_set_global(Interp interp, IRInstr instr)
     }
 }
 
+void op_print_str(Interp interp, IRInstr instr)
+{
+    auto wStr = interp.getWord(instr.args[0].localIdx);
+    auto tStr = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        valIsString(wStr, tStr),
+        "expected string in print_str"
+    );
+
+    auto ptr = wStr.ptrVal;
+
+    auto len = str_get_len(ptr);
+    wchar[] wchars = new wchar[len];
+    for (uint32 i = 0; i < len; ++i)
+        wchars[i] = str_get_data(ptr, i);
+
+    auto str = to!string(wchars);
+
+    // Print the string to standard output
+    write(str);
+}
+
+void op_get_ast_str(Interp interp, IRInstr instr)
+{
+    auto wFn = interp.getWord(instr.args[0].localIdx);
+    auto tFn = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        tFn == Type.REFPTR && valIsLayout(wFn, LAYOUT_CLOS),
+        "invalid closure object"
+    );
+
+    auto fun = cast(IRFunction)clos_get_fptr(wFn.ptrVal);
+    auto str = fun.ast.toString();
+    auto strObj = getString(interp, to!wstring(str));
+   
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(strObj),
+        Type.REFPTR
+    );
+}
+
+void op_get_ir_str(Interp interp, IRInstr instr)
+{
+    auto wFn = interp.getWord(instr.args[0].localIdx);
+    auto tFn = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        tFn == Type.REFPTR && valIsLayout(wFn, LAYOUT_CLOS),
+        "invalid closure object"
+    );
+
+    auto fun = cast(IRFunction)clos_get_fptr(wFn.ptrVal);
+
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+        astToIR(fun.ast, fun);
+
+    auto str = fun.toString();
+    auto strObj = getString(interp, to!wstring(str));
+   
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(strObj),
+        Type.REFPTR
+    );
+}
+
 // ===========================================================================
 // TODO: translate to runtime functions
 
@@ -1072,6 +1119,6 @@ void opNewClos(Interp interp, IRInstr instr)
         instr.outSlot,
         Word.ptrv(closPtr),
         Type.REFPTR
-    );    
+    );
 }
 
