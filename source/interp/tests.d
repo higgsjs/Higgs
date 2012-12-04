@@ -380,6 +380,87 @@ unittest
     );
 }
 
+/// Switch statement
+unittest
+{
+    assertInt(
+        "
+        switch (0)
+        {
+        }
+        return 0;
+        ",
+        0
+    );
+
+    assertInt(
+        "
+        switch (0)
+        {
+            case 0:
+            return 1;
+        }
+        return 0;
+        ",
+        1
+    );
+
+    assertInt(
+        "
+        switch (3)
+        {
+            case 0:
+            return 1;
+        }
+        return 0;
+        ",
+        0
+    );
+
+    assertInt(
+        "
+        var v;
+        switch (0)
+        {
+            case 0: v = 5;
+            case 1: v += 1; break;
+            case 2: v = 7; break;
+            default: v = 9;
+        }
+        return v;
+        ",
+        6
+    );
+
+    assertInt(
+        "
+        var v;
+        switch (3)
+        {
+            case 0: v = 5;
+            case 1: v += 1; break;
+            case 2: v = 7; beak;
+            default: v = 9;
+        }
+        return v;
+        ",
+        9
+    );
+
+    assertInt(
+        "
+        var v;
+        switch (2)
+        {
+            case 2: v = 7;
+            default: v += 1;
+        }
+        return v;
+        ",
+        8
+    );
+}
+
 /// Strings
 unittest
 {
