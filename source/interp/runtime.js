@@ -773,10 +773,16 @@ JS strict inequality (!==) comparison operator
 */
 function $rt_ne(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int(x) && $ir_is_int(y))
+    // If x is integer
+    if ($ir_is_int(x))
     {
-        return $ir_ne_i32(x, y);
+        if ($ir_is_int(y))
+            return $ir_ne_i32(x, y);
+
+        if ($ir_is_float(y))
+            return $ir_ne_f64($ir_i32_to_f64(x), y);
+
+        return true;
     }
 
     // If both values are references
@@ -785,10 +791,13 @@ function $rt_ne(x, y)
         return $ir_ne_refptr(x, y);
     }
 
-    // If both values are constants
-    else if ($ir_is_const(x) && $ir_is_const(y))
+    // If x is a constant
+    else if ($ir_is_const(x))
     {
-        return $ir_ne_const(x, y);
+        if ($ir_is_const(y))
+            return $ir_ne_const(x, y);
+        
+        return true;
     }
 
     // If both values are floating-point
@@ -797,7 +806,7 @@ function $rt_ne(x, y)
         return $ir_ne_f64(x, y);
     }
 
-    assert (false, "unsupported type in se");
+    assert (false, "unsupported type in ne");
 }
 
 //=============================================================================
@@ -1222,24 +1231,64 @@ function $rt_instanceof(obj, ctor)
 }
 
 /**
-Implementation of the "in" operator
+Check if an object has a given property
 */
-function $rt_in(obj, ctor)
+function $rt_hasOwnProp(base, prop)
 {
-    // TODO
-    /*
-    // If the value is not an object
-    if (boxIsExtObj(obj) === false)
+    // If the base is a reference
+    if ($ir_is_refptr(base) && $ir_ne_refptr(base, null))
     {
-        // Throw a TypeError exception
-        typeError('in operator expects object');
+        var type = $rt_obj_get_header(base);
+
+        // If the base is an object or closure
+        if ($ir_eq_i8(type, $rt_LAYOUT_OBJ) ||
+            $ir_eq_i8(type, $rt_LAYOUT_CLOS))
+        {
+            // If the property is a string
+            if ($rt_isString(prop))
+                return $rt_getPropIdx($rt_obj_get_class(base), prop) !== false;
+
+            return $rt_getPropObj(base, $rt_toString(prop));
+        }
+
+        // If the base is an array
+        if ($ir_eq_i8(type, $rt_LAYOUT_ARR))
+        {
+            // If the property is a non-negative integer
+            if ($ir_is_int(prop) && $ir_ge_i32(prop, 0) &&
+                $ir_lt_i32(prop, $rt_arr_get_len(base)))
+                return true;
+
+            // If this is the length property
+            if (prop === 'length')
+                return true;
+
+            // If the property is a string
+            if ($rt_isString(prop))
+                return $rt_getPropIdx($rt_obj_get_class(base), prop) !== false;
+
+            return $rt_getPropObj(base, $rt_toString(prop));
+        }
     }
 
-    return hasProp(obj, propName);
-    */
+    assert (false, "unsupported base in hasOwnProp");
+}
 
+/**
+Implementation of the "in" operator
+*/
+function $rt_in(prop, obj)
+{
+    // Until we went all the way through the prototype chain
+    do
+    {
+        if ($rt_hasOwnProp(obj, prop))
+            return true;
 
+        obj = $rt_obj_get_proto(obj);
 
+    } while ($ir_ne_refptr(obj, null));
 
+    return false;
 }
 

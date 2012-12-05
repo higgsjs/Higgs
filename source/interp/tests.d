@@ -566,6 +566,9 @@ unittest
     assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
     assertInt("o = {x: 5}; return o.y? 1:0;", 0);
 
+    assertBool("o = {x: 5}; return 'x' in o;", true);
+    assertBool("o = {x: 5}; return 'k' in o;", false);
+
     // Function object property
     assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
 
