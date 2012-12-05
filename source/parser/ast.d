@@ -103,12 +103,16 @@ class ASTStmt : ASTNode
         super(pos);
     }
 
-    string indentStr()
+    string blockStr()
     {
         if (cast(BlockStmt)this)
+        {
             return this.toString();
+        }
         else
-            return indent(this.toString());
+        {
+            return "{\n" ~ indent(this.toString()) ~ "\n}";
+        }
     }
 }
 
@@ -210,8 +214,8 @@ class IfStmt : ASTStmt
             return format(
                 "if (%s)\n%s\nelse\n%s", 
                 testExpr,
-                trueStmt.indentStr(),
-                falseStmt.indentStr()
+                trueStmt.blockStr(),
+                falseStmt.blockStr()
             );
         }
         else
@@ -219,7 +223,7 @@ class IfStmt : ASTStmt
             return format(
                 "if (%s)\n%s", 
                 testExpr,
-                trueStmt.indentStr()
+                trueStmt.blockStr()
             );
         }
     }
@@ -249,7 +253,7 @@ class WhileStmt : ASTStmt
         return format(
             "while (%s)\n%s", 
             testExpr,
-            bodyStmt.indentStr()
+            bodyStmt.blockStr()
         );
     }
 }
@@ -291,7 +295,7 @@ class ForStmt : ASTStmt
             initStmt,
             testExpr,
             incrExpr,
-            bodyStmt.indentStr()
+            bodyStmt.blockStr()
         );
     }
 }
@@ -343,7 +347,7 @@ class ForInStmt : ASTStmt
             hasDecl? "var ":"",
             varExpr,
             inExpr,
-            bodyStmt.indentStr()
+            bodyStmt.blockStr()
         );
     }
 }
@@ -371,7 +375,7 @@ class DoWhileStmt : ASTStmt
     {
         return format(
             "do\n%s\nwhile (%s)", 
-            bodyStmt.indentStr(),
+            bodyStmt.blockStr(),
             testExpr
         );
     }
@@ -565,20 +569,20 @@ class TryStmt : ASTStmt
         auto output = appender!string();
 
         output.put("try\n");
-        output.put(tryStmt.indentStr());
+        output.put(tryStmt.blockStr());
 
         if (this.catchStmt)
         {
             output.put("\ncatch (");
             output.put(catchIdent.toString());
             output.put(")\n");
-            output.put(catchStmt.indentStr());
+            output.put(catchStmt.blockStr());
         }
 
         if (this.finallyStmt)
         {
             output.put("\nfinally\n");
-            output.put(finallyStmt.indentStr());
+            output.put(finallyStmt.blockStr());
         }
 
         return output.data;
@@ -666,12 +670,22 @@ class FunExpr : ASTExpr
 
     string toString()
     {
-        return xformat(
-            "function %s(%(%s,%)) %s",
-            getName(),
-            params,
-            bodyStmt
-        );
+        auto output = appender!string();
+
+        output.put(xformat("function %s(%(%s, %))", getName(), params));
+
+        if (cast(ReturnStmt)bodyStmt || cast(ExprStmt)bodyStmt)
+        {
+            output.put(" ");
+            output.put(bodyStmt.toString());
+        }
+        else
+        {
+            output.put("\n");
+            output.put(bodyStmt.blockStr());
+        }
+
+        return output.data;
     }
 }
 

@@ -150,6 +150,14 @@ string valToString(ValuePair value)
         return to!string(w.ptrVal);
 
         case Type.REFPTR:
+        if (w == NULL)
+            return "null";
+        if (valIsLayout(w, LAYOUT_OBJ))
+            return "object";
+        if (valIsLayout(w, LAYOUT_CLOS))
+            return "function";
+        if (valIsLayout(w, LAYOUT_ARR))
+            return "array";
         if (valIsString(w, value.type))
         {
             auto len = str_get_len(w.ptrVal);
@@ -158,8 +166,6 @@ string valToString(ValuePair value)
                 str[i] = str_get_data(w.ptrVal, i);
             return to!string(str);
         }
-        if (w == NULL)
-            return "null";
         return "refptr";
 
         case Type.CONST:
