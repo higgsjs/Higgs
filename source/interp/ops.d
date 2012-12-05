@@ -1107,7 +1107,7 @@ void opNewClos(Interp interp, IRInstr instr)
     auto objPtr = newObj(
         interp, 
         &instr.args[1].ptrVal, 
-        interp.funProto,
+        interp.objProto,
         CLASS_INIT_SIZE,
         0
     );
@@ -1116,7 +1116,7 @@ void opNewClos(Interp interp, IRInstr instr)
     auto closPtr = newClos(
         interp, 
         &instr.args[2].ptrVal, 
-        interp.objProto,
+        interp.funProto,
         CLASS_INIT_SIZE,
         1,
         0,                  // TODO: num cells

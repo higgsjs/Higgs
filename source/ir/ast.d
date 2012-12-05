@@ -930,6 +930,14 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == ">>>")
             genBinOp("ursft");
 
+        // Instanceof operator
+        else if (op.str == "instanceof")
+            genBinOp("instanceof");
+
+        // In operator
+        else if (op.str == "in")
+            genBinOp("in");
+
         // Comparison operators
         else if (op.str == "===")
             genBinOp("se");
@@ -1293,10 +1301,9 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
             closSlot = baseCtx.getOutSlot();
 
-            // TODO: global object
             // The this value is the global object
             thisSlot = ctx.allocTemp();
-            ctx.addInstr(new IRInstr(&SET_UNDEF, thisSlot));
+            ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ, thisSlot));
         }
 
         // Evaluate the arguments

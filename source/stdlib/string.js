@@ -81,14 +81,13 @@ function String(value)
 //-----------------------------------------------------------------------------
 
 /**
-Internal string functions.
+Internal string functions
 */
 
 function string_internal_toString(s)
 {
-    // FIXME: need instanceof support
-    //if (s instanceof String)
-    //    return s.value;
+    if (s instanceof String)
+        return s.value;
 
     return s;
 }
@@ -154,7 +153,7 @@ function string_fromCharCode()
 /**
 15.5.4.2 String.prototype.toString()
 */
-function string_toString ()
+function string_toString()
 {
     return string_internal_toString(this);
 }
@@ -162,7 +161,7 @@ function string_toString ()
 /**
 15.5.4.3 String.prototype.valueOf()
 */
-function string_valueOf ()
+function string_valueOf()
 {
     return string_internal_toString(this);
 }
@@ -170,9 +169,7 @@ function string_valueOf ()
 /**
 15.5.4.4 String.prototype.charAt(pos)
 */
-function string_charAt (
-    pos
-)
+function string_charAt(pos)
 {
     if (pos < 0 || pos >= string_internal_getLength(this))
     {
@@ -186,9 +183,7 @@ function string_charAt (
 /**
 15.5.4.5 String.prototype.charCodeAt(pos)
 */
-function string_charCodeAt (
-    pos
-)
+function string_charCodeAt(pos)
 {
     var len = string_internal_getLength(this.toString());
 
@@ -197,8 +192,7 @@ function string_charCodeAt (
         return string_internal_charCodeAt(this.toString(), pos);
     }
 
-    // FIXME: return NaN when doubles are implemented
-    return null;
+    return NaN;
 }
 
 /**

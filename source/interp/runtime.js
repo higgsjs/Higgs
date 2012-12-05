@@ -92,11 +92,33 @@ function println(val)
 }
 
 /**
+Test if a value is of a given layout
+*/
+function $rt_valIsLayout(val, layoutId)
+{
+    return $ir_eq_i8($rt_obj_get_header(val), layoutId)
+}
+
+/**
 Test if a value is a string
 */
 function $rt_isString(val)
 {
-    return $ir_is_refptr(val) && $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_STR);
+    return $ir_is_refptr(val) && $rt_valIsLayout(val, $rt_LAYOUT_STR);
+}
+
+/**
+Test if a value is an object
+*/
+function $rt_valIsObj(val)
+{
+    return (
+        $ir_is_refptr(val) && (
+            $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_OBJ) ||
+            $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_ARR) ||
+            $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_CLOS)
+        )
+    );
 }
 
 /**
@@ -779,7 +801,7 @@ function $rt_ne(x, y)
 }
 
 //=============================================================================
-// Property access
+// Objects and property access
 //=============================================================================
 
 /**
@@ -1160,5 +1182,64 @@ function $rt_setProp(base, prop, val)
     println(base);
 
     assert (false, "unsupported base in setProp");
+}
+
+/**
+Implementation of the "instanceof" operator
+*/
+function $rt_instanceof(obj, ctor)
+{ 
+    // TODO: type error
+    assert (
+        $ir_is_refptr(ctor) &&
+        $rt_valIsLayout(ctor, $rt_LAYOUT_CLOS),
+        'constructor must be function'
+    );
+
+    // If the value is not an object
+    if ($rt_valIsObj(obj) === false)
+    {
+        // Return the false value
+        return false;
+    }
+
+    // Get the prototype for the constructor function
+    var ctorProto = ctor.prototype;
+
+    // Until we went all the way through the prototype chain
+    do
+    {
+        var objProto = $rt_obj_get_proto(obj);
+
+        if ($ir_eq_refptr(objProto, ctorProto))
+            return true;
+
+        obj = objProto;
+
+    } while ($ir_ne_refptr(obj, null));
+
+    return false;
+}
+
+/**
+Implementation of the "in" operator
+*/
+function $rt_in(obj, ctor)
+{
+    // TODO
+    /*
+    // If the value is not an object
+    if (boxIsExtObj(obj) === false)
+    {
+        // Throw a TypeError exception
+        typeError('in operator expects object');
+    }
+
+    return hasProp(obj, propName);
+    */
+
+
+
+
 }
 

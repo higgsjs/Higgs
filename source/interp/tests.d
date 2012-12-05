@@ -523,6 +523,7 @@ unittest
     assertInt("f = function() { return 7; }; return f();", 7);
     assertInt("function f() { return 9; }; return f();", 9);
     assertInt("(function () {}); return 0;", 0);
+    assertInt("a = 7; function f() { return this.a; }; return f();", 7);
 
     assertInt(
         "
