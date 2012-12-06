@@ -52,7 +52,7 @@ class Scope
     FunExpr fun;
 
     /// Declarations in this scope, indexed by name
-    ASTNode[wstring] decls;
+    IdentExpr[wstring] decls;
 
     /// Variable references in this scope
     IdentExpr[] refs;
@@ -66,17 +66,17 @@ class Scope
     /**
     Add a declaration to this scope
     */
-    void addDecl(ASTNode node, wstring name)
+    void addDecl(IdentExpr ident, wstring name)
     {
         // If this variable was already declared, do nothing
         if (name in decls)
             return;
 
         // Add the declaraction to this scope
-        decls[name] = node;
+        decls[name] = ident;
 
         // Add the local to the function
-        fun.locals ~= [node];
+        fun.locals ~= [ident];
     }
 
     /**
@@ -102,7 +102,7 @@ class Scope
     {
         foreach (ident; refs)
         {
-            auto decl = resolve(ident.name);
+            auto decl = resolve(ident.name, this.fun);
 
             // Store the resolved node on the identifier
             ident.declNode = decl;
@@ -112,13 +112,26 @@ class Scope
     /**
     Resolve a variable's declaration by name
     */
-    private ASTNode resolve(wstring name)
+    private IdentExpr resolve(wstring name, FunExpr from)
     {
+        // If the declaration was found
         if (name in decls)
-            return decls[name];
+        {
+            auto decl = decls[name];
 
-        if (parent)
-            return parent.resolve(name);
+            if (fun !is from)
+            {
+                fun.escpVars[decl] = true;
+                from.captVars ~= decl;
+            }
+
+            return decl;
+        }
+
+        if (parent !is null)
+        {
+            return parent.resolve(name, from);
+        }
 
         return null;
     }

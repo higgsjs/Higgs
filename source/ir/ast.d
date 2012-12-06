@@ -285,10 +285,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     auto entry = fun.newBlock("entry");
     fun.entryBlock = entry;
 
-    // Get the function parameters and variables, if any
-    auto params = ast.params;
-    auto vars = ast.locals;
-
     // Create a context for the function body
     auto bodyCtx = new IRGenCtx(
         null,
@@ -308,7 +304,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     fun.thisSlot = bodyCtx.allocTemp();
 
     // Allocate local slots to parameters
-    foreach (ident; params)
+    foreach (ident; ast.params)
     {
         fun.localMap[ident] = bodyCtx.allocTemp();
     }
@@ -317,7 +313,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     fun.argcSlot = bodyCtx.allocTemp();
 
     // Allocate slots for local variables and initialize them to undefined
-    foreach (node; vars)
+    foreach (node; ast.locals)
     {
         if (node !in fun.localMap)
         {

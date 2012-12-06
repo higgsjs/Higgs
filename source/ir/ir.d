@@ -69,8 +69,11 @@ class IRFunction : IdObject
     /// Function name
     string name = "";
 
-    // Function parameters
+    /// Function parameters
     IdentExpr[] params;
+
+    /// Captured closure variables
+    IdentExpr[] captVars;
 
     /// Entry block
     IRBlock entryBlock = null;
@@ -79,13 +82,17 @@ class IRFunction : IdObject
     IRBlock firstBlock = null;
     IRBlock lastBlock = null;
 
-    // Map of ast nodes (variable declarations) to local slots
-    LocalIdx[ASTNode] localMap;
+    /// Map of shared variable declarations (captured/escaping) to
+    /// local slots where their closure cells are stored
+    LocalIdx[IdentExpr] sharedMap;
 
-    // Number of local variables, including temporaries
+    /// Map of variable declarations to local slots
+    LocalIdx[IdentExpr] localMap;
+
+    /// Number of local variables, including temporaries
     uint numLocals = 0;
 
-    // Hidden argument slots
+    /// Hidden argument slots
     LocalIdx closSlot;
     LocalIdx thisSlot;
     LocalIdx argcSlot;
@@ -99,6 +106,7 @@ class IRFunction : IdObject
     {
         this.ast = ast;
         this.params = ast.params;
+        this.captVars = ast.captVars;
 
         this.name = ast.getName();
 
@@ -129,8 +137,9 @@ class IRFunction : IdObject
 
         output.put("function ");
         output.put(getName());
-        output.put("(");
 
+        // Parameters
+        output.put("(");
         output.put("ra:$" ~ to!string(raSlot) ~ ", ");
         output.put("clos:$" ~ to!string(closSlot) ~ ", ");
         output.put("this:$" ~ to!string(thisSlot) ~ ", ");
@@ -141,9 +150,21 @@ class IRFunction : IdObject
             output.put(param.toString() ~ ":$" ~ to!string(localIdx) ~ ", ");
         }
         output.put("argc:$" ~ to!string(argcSlot));
+        output.put(")");
 
-        output.put(")\n");
-        output.put("{\n");
+        // Captured variables
+        output.put(" [");
+        for (size_t i = 0; i < captVars.length; ++i)
+        {
+            auto var = captVars[i];
+            auto localIdx = sharedMap[var];
+            output.put(var.toString() ~ ":$" ~ to!string(localIdx) ~ ", ");
+            if (i < captVars.length - 1)
+                output.put(", ");
+        }
+        output.put("]");
+
+        output.put("\n{\n");
 
         for (IRBlock block = firstBlock; block !is null; block = block.next)
         {

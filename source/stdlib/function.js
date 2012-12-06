@@ -76,6 +76,15 @@ Function.prototype.toString = function ()
 };
 
 /**
+Get a string representation of the IR
+Note: this method is not part of standard JS
+*/
+Function.prototype.irString = function ()
+{
+    return $ir_get_ir_str(this);
+}
+
+/**
 15.3.4.3 Function.prototype.apply (thisArg, argArray)
 */
 Function.prototype.apply = function (thisArg, argArray)

@@ -650,7 +650,18 @@ class FunExpr : ASTExpr
     ASTStmt bodyStmt;
 
     /// List of local variables declarations
-    ASTNode[] locals;
+    IdentExpr[] locals;
+
+
+    /// Set of escaping variables (captured by closures)
+    bool[IdentExpr] escpVars;    
+
+    /// Captured closure variables
+    IdentExpr[] captVars;
+
+
+
+
 
     /// List of nested function declarations
     FunExpr[] funDecls;
@@ -938,8 +949,8 @@ class IdentExpr : ASTExpr
     /// Identifier name string
     wstring name;
 
-    /// AST node where this variable was declared, if applicable
-    ASTNode declNode = null;
+    /// Identifier node associated with this variable declaration, if applicable
+    IdentExpr declNode = null;
 
     this(wstring name, SrcPos pos = null)
     {

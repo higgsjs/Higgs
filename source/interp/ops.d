@@ -1099,10 +1099,6 @@ void opNewClos(Interp interp, IRInstr instr)
 {
     auto fun = instr.args[0].fun;
 
-    // TODO
-    // TODO: num clos cells, can get this from fun object!
-    // TODO
-
     // Allocate the prototype object
     auto objPtr = newObj(
         interp, 
@@ -1119,7 +1115,7 @@ void opNewClos(Interp interp, IRInstr instr)
         interp.funProto,
         CLASS_INIT_SIZE,
         1,
-        0,                  // TODO: num cells
+        cast(uint32)fun.captVars.length,
         fun
     );
 
