@@ -113,6 +113,19 @@ layouts = [
         ]
     },
 
+    # Closure cell
+    {
+        'name':'cell',
+        'fields':
+        [
+            # Value word
+            { 'name':"word", 'type':"uint64" },
+
+            # Value type
+            { 'name':"type", 'type':"uint8" },
+        ]
+    },
+
     # Array layout (extends object)
     {
         'name':'arr',
@@ -196,6 +209,8 @@ def indent(input, indentStr = '    '):
     return output
 
 def sepList(lst, sep = ', '):
+    if len(lst) == 0:
+        return ''
     return reduce(lambda x,y: x + sep + y, lst)
 
 class Var:
@@ -249,7 +264,7 @@ class Function:
         out = ''
         out += 'function ' + JS_DEF_PREFIX + self.name + '('
         params = self.params
-        if params[0].name == 'interp':
+        if len(params) >= 1 and params[0].name == 'interp':
             params = params[1:]
         out += sepList(map(lambda v:v.genJS(), params))
         out += ')\n'

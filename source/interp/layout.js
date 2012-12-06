@@ -465,7 +465,71 @@ function $rt_clos_alloc(cap, num_cells)
     return o;
 }
 
-var $rt_LAYOUT_ARR = 4;
+var $rt_LAYOUT_CELL = 4;
+
+function $rt_cell_ofs_header(o)
+{    
+    return 0;
+}
+
+function $rt_cell_ofs_word(o)
+{    
+    return $ir_add_i32(0, 4);
+}
+
+function $rt_cell_ofs_type(o)
+{    
+    return $ir_add_i32($ir_add_i32(0, 4), 8);
+}
+
+function $rt_cell_get_header(o)
+{    
+    return $ir_load_u32(o, $rt_cell_ofs_header(o));
+}
+
+function $rt_cell_get_word(o)
+{    
+    return $ir_load_u64(o, $rt_cell_ofs_word(o));
+}
+
+function $rt_cell_get_type(o)
+{    
+    return $ir_load_u8(o, $rt_cell_ofs_type(o));
+}
+
+function $rt_cell_set_header(o, v)
+{    
+    $ir_store_u32(o, $rt_cell_ofs_header(o), v);
+}
+
+function $rt_cell_set_word(o, v)
+{    
+    $ir_store_u64(o, $rt_cell_ofs_word(o), v);
+}
+
+function $rt_cell_set_type(o, v)
+{    
+    $ir_store_u8(o, $rt_cell_ofs_type(o), v);
+}
+
+function $rt_cell_comp_size()
+{    
+    return $ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 8), 1);
+}
+
+function $rt_cell_sizeof(o)
+{    
+    return $rt_cell_comp_size();
+}
+
+function $rt_cell_alloc()
+{    
+    var o = $ir_heap_alloc($rt_cell_comp_size());
+    $rt_cell_set_header(o, 4);
+    return o;
+}
+
+var $rt_LAYOUT_ARR = 5;
 
 function $rt_arr_ofs_header(o)
 {    
@@ -616,12 +680,12 @@ function $rt_arr_alloc(cap)
 {    
     var o = $ir_heap_alloc($rt_arr_comp_size(cap));
     $rt_arr_set_cap(o, cap);
-    $rt_arr_set_header(o, 4);
+    $rt_arr_set_header(o, 5);
     $rt_arr_set_next(o, null);
     return o;
 }
 
-var $rt_LAYOUT_ARRTBL = 5;
+var $rt_LAYOUT_ARRTBL = 6;
 
 function $rt_arrtbl_ofs_header(o)
 {    
@@ -697,11 +761,11 @@ function $rt_arrtbl_alloc(cap)
 {    
     var o = $ir_heap_alloc($rt_arrtbl_comp_size(cap));
     $rt_arrtbl_set_cap(o, cap);
-    $rt_arrtbl_set_header(o, 5);
+    $rt_arrtbl_set_header(o, 6);
     return o;
 }
 
-var $rt_LAYOUT_CLASS = 6;
+var $rt_LAYOUT_CLASS = 7;
 
 function $rt_class_ofs_header(o)
 {    
@@ -852,7 +916,7 @@ function $rt_class_alloc(cap)
 {    
     var o = $ir_heap_alloc($rt_class_comp_size(cap));
     $rt_class_set_cap(o, cap);
-    $rt_class_set_header(o, 6);
+    $rt_class_set_header(o, 7);
     $rt_class_set_num_props(o, 0);
     $rt_class_set_next(o, null);
     $rt_class_set_arr_type(o, null);

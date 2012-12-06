@@ -170,10 +170,7 @@ The length property of the max method is 2.
 */
 Math.max = function ()
 {
-    // TODO: use -Infinity?
-    // Only return -Inf if no values present!
-
-    var m = MIN_FIXNUM;
+    var m = -Infinity;
 
     for (var i = 0; i < arguments.length; ++i)
         if (arguments[i] > m)
@@ -196,9 +193,7 @@ The length property of the min method is 2.
 */
 Math.min = function ()
 {
-    // TODO: use Infinity?
-
-    var m = MAX_FIXNUM;
+    var m = Infinity;
 
     for (var i = 0; i < arguments.length; ++i)
         if (arguments[i] < m)
@@ -393,7 +388,7 @@ natural logarithms).
 Math.exp = function (x)
 {
     // TODO: implement this function
-    return noFPSupport('Math.exp');
+    assert (false, 'Math.exp unimplemented');
 };
 
 /*
@@ -410,7 +405,7 @@ logarithm of x.
 Math.log = function (x)
 {
     // TODO: implement this function
-    return noFPSupport('Math.log');
+    assert (false, 'Math.log unimplemented');
 };
 
 /*
@@ -423,6 +418,11 @@ algorithm or strategy. This function takes no arguments.
 Math.random = function ()
 {
     // TODO: implement this function
-    return noFPSupport('Math.random');
+
+    // TODO: use closure to hide seed
+
+    // rand_int / int_max
+
+    assert (false, 'Math.random unimplemented');
 };
 

@@ -480,7 +480,71 @@ refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
     return o;
 }
 
-const uint32 LAYOUT_ARR = 4;
+const uint32 LAYOUT_CELL = 4;
+
+uint32 cell_ofs_header(refptr o)
+{    
+    return 0;
+}
+
+uint32 cell_ofs_word(refptr o)
+{    
+    return (0 + 4);
+}
+
+uint32 cell_ofs_type(refptr o)
+{    
+    return ((0 + 4) + 8);
+}
+
+uint32 cell_get_header(refptr o)
+{    
+    return *cast(uint32*)(o + cell_ofs_header(o));
+}
+
+uint64 cell_get_word(refptr o)
+{    
+    return *cast(uint64*)(o + cell_ofs_word(o));
+}
+
+uint8 cell_get_type(refptr o)
+{    
+    return *cast(uint8*)(o + cell_ofs_type(o));
+}
+
+void cell_set_header(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + cell_ofs_header(o)) = v;
+}
+
+void cell_set_word(refptr o, uint64 v)
+{    
+    *cast(uint64*)(o + cell_ofs_word(o)) = v;
+}
+
+void cell_set_type(refptr o, uint8 v)
+{    
+    *cast(uint8*)(o + cell_ofs_type(o)) = v;
+}
+
+uint32 cell_comp_size()
+{    
+    return (((0 + 4) + 8) + 1);
+}
+
+uint32 cell_sizeof(refptr o)
+{    
+    return cell_comp_size();
+}
+
+refptr cell_alloc(Interp interp)
+{    
+    auto o = interp.alloc(cell_comp_size());
+    cell_set_header(o, 4);
+    return o;
+}
+
+const uint32 LAYOUT_ARR = 5;
 
 uint32 arr_ofs_header(refptr o)
 {    
@@ -631,12 +695,12 @@ refptr arr_alloc(Interp interp, uint32 cap)
 {    
     auto o = interp.alloc(arr_comp_size(cap));
     arr_set_cap(o, cap);
-    arr_set_header(o, 4);
+    arr_set_header(o, 5);
     arr_set_next(o, null);
     return o;
 }
 
-const uint32 LAYOUT_ARRTBL = 5;
+const uint32 LAYOUT_ARRTBL = 6;
 
 uint32 arrtbl_ofs_header(refptr o)
 {    
@@ -712,11 +776,11 @@ refptr arrtbl_alloc(Interp interp, uint32 cap)
 {    
     auto o = interp.alloc(arrtbl_comp_size(cap));
     arrtbl_set_cap(o, cap);
-    arrtbl_set_header(o, 5);
+    arrtbl_set_header(o, 6);
     return o;
 }
 
-const uint32 LAYOUT_CLASS = 6;
+const uint32 LAYOUT_CLASS = 7;
 
 uint32 class_ofs_header(refptr o)
 {    
@@ -867,7 +931,7 @@ refptr class_alloc(Interp interp, uint32 cap)
 {    
     auto o = interp.alloc(class_comp_size(cap));
     class_set_cap(o, cap);
-    class_set_header(o, 6);
+    class_set_header(o, 7);
     class_set_num_props(o, 0);
     class_set_next(o, null);
     class_set_arr_type(o, null);
