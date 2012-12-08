@@ -66,14 +66,14 @@ class Scope
     /**
     Add a declaration to this scope
     */
-    void addDecl(IdentExpr ident, wstring name)
+    void addDecl(IdentExpr ident)
     {
         // If this variable was already declared, do nothing
-        if (name in decls)
+        if (ident.name in decls)
             return;
 
         // Add the declaraction to this scope
-        decls[name] = ident;
+        decls[ident.name] = ident;
 
         // Add the local to the function
         fun.locals ~= [ident];
@@ -119,6 +119,7 @@ class Scope
         {
             auto decl = decls[name];
 
+            // If the reference is not from this function
             if (fun !is from)
             {
                 fun.escpVars[decl] = true;
@@ -128,9 +129,20 @@ class Scope
             return decl;
         }
 
+        // If there is a parent context
         if (parent !is null)
         {
-            return parent.resolve(name, from);
+            auto decl = parent.resolve(name, from);
+
+            // If this is a reference from a nested
+            // function to a variable in a parent function
+            if (decl !is null && from !is fun && decl !in fun.escpVars)
+            {
+                fun.escpVars[decl] = true;
+                fun.captVars ~= decl;
+            }
+
+            return decl;
         }
 
         return null;
@@ -162,7 +174,7 @@ void resolveVars(ASTStmt stmt, Scope s)
 
             // If we are not in a top-level (program) scope
             if (cast(ASTProgram)s.fun is null)
-                s.addDecl(ident, ident.name);
+                s.addDecl(ident);
 
             resolveVars(ident, s);
 
@@ -203,7 +215,7 @@ void resolveVars(ASTStmt stmt, Scope s)
         if (forInStmt.hasDecl)
         {
             auto ident = cast(IdentExpr)forInStmt.varExpr;
-            s.addDecl(ident, ident.name);
+            s.addDecl(ident);
         }
 
         resolveVars(forInStmt.inExpr, s);
@@ -240,7 +252,7 @@ void resolveVars(ASTStmt stmt, Scope s)
         resolveVars(tryStmt.tryStmt, s);
         if (tryStmt.catchStmt)
         {
-            s.addDecl(tryStmt.catchIdent, tryStmt.catchIdent.name);
+            s.addDecl(tryStmt.catchIdent);
             resolveVars(tryStmt.catchStmt, s);
         }
         if (tryStmt.finallyStmt)
@@ -253,8 +265,16 @@ void resolveVars(ASTStmt stmt, Scope s)
     {
         // If this is a named function
         if (auto funExpr = cast(FunExpr)exprStmt.expr)
-            if (funExpr.name)
+        {
+            if (funExpr.name !is null)
+            {
                 s.addFunDecl(funExpr);
+
+                // If we are not in a top-level (program) scope
+                if (cast(ASTProgram)s.fun is null)
+                    s.addDecl(funExpr.name);
+            }
+        }
 
         resolveVars(exprStmt.expr, s);
     }
@@ -279,7 +299,7 @@ void resolveVars(ASTExpr expr, Scope s)
         s = new Scope(funExpr, s);
 
         foreach (ident; funExpr.params)
-            s.addDecl(ident, ident.name);
+            s.addDecl(ident);
 
         resolveVars(funExpr.bodyStmt, s);
 

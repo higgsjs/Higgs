@@ -313,13 +313,57 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     fun.argcSlot = bodyCtx.allocTemp();
 
     // Allocate slots for local variables and initialize them to undefined
-    foreach (node; ast.locals)
+    foreach (ident; ast.locals)
     {
-        if (node !in fun.localMap)
+        // If this variable does not escape and is not a parameter
+        if (ident !in ast.escpVars && ident !in fun.localMap)
         {
             auto localSlot = bodyCtx.allocTemp();
-            fun.localMap[node] = localSlot;
+            fun.localMap[ident] = localSlot;
             bodyCtx.addInstr(new IRInstr(&SET_UNDEF, localSlot));
+        }
+    }
+
+    // Get the cell pointers for captured closure variables
+    foreach (idx, ident; ast.captVars)
+    {
+        auto idxInstr = bodyCtx.addInstr(IRInstr.intCst(bodyCtx.allocTemp(), idx));
+
+        auto getInstr = genRtCall(
+            bodyCtx, 
+            "clos_get_cell", 
+            bodyCtx.allocTemp(),
+            [fun.closSlot, idxInstr.outSlot]
+        );
+
+        fun.cellMap[ident] = getInstr.outSlot;
+    }
+
+    // Create closure cells for the escaping variables
+    foreach (ident, bval; ast.escpVars)
+    {
+        // If this variable is not captured from another function
+        if (ident !in fun.cellMap)
+        {
+            auto allocInstr = genRtCall(
+                bodyCtx, 
+                "makeClosCell", 
+                bodyCtx.allocTemp(),
+                []
+            );
+
+            fun.cellMap[ident] = allocInstr.outSlot;
+
+            // If this variable is a parameter
+            if (ident in fun.localMap)
+            {
+                genRtCall(
+                    bodyCtx, 
+                    "setCellVal", 
+                    NULL_LOCAL,
+                    [allocInstr.outSlot, fun.localMap[ident]]
+                );
+            }
         }
     }
 
@@ -353,13 +397,28 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         }
         else
         {
+            assert (funDecl.name in fun.localMap);
+
             // Create a closure of this function
             auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
-            newClos.outSlot = bodyCtx.allocTemp();
+            newClos.outSlot = fun.localMap[funDecl.name];
             newClos.args.length = 3;
             newClos.args[0].fun = subFun;
             newClos.args[1].ptrVal = null;
             newClos.args[2].ptrVal = null;
+
+            // Set the closure cells for the captured variables
+            foreach (idx, ident; subFun.captVars)
+            {
+                auto idxCst = bodyCtx.addInstr(IRInstr.intCst(bodyCtx.allocTemp(), idx));
+
+                genRtCall(
+                    bodyCtx, 
+                    "clos_set_cell",
+                    NULL_LOCAL,
+                    [newClos.outSlot, idxCst.outSlot, fun.cellMap[ident]]
+                );
+            }
 
             // Store the closure temp in the local map
             fun.localMap[funDecl.name] = newClos.outSlot;
@@ -848,6 +907,20 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             newClos.args[0].fun = fun;
             newClos.args[1].ptrVal = null;
             newClos.args[2].ptrVal = null;
+
+            // Set the closure cells for the captured variables
+            foreach (idx, ident; funExpr.captVars)
+            {
+                auto idxCst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), idx));
+
+                auto cellSlot = ctx.fun.cellMap[ident];
+                genRtCall(
+                    ctx, 
+                    "clos_set_cell",
+                    NULL_LOCAL,
+                    [newClos.outSlot, idxCst.outSlot, cellSlot]
+                );
+            }
         }
     }
 
@@ -1468,6 +1541,18 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             getInstr.args[1].intVal = -1;
         }
 
+        // If the variable is captured or escaping
+        else if (identExpr.declNode in ctx.fun.cellMap)
+        {
+            auto cellSlot = ctx.fun.cellMap[identExpr.declNode];
+            genRtCall(
+                ctx, 
+                "getCellVal",
+                ctx.getOutSlot(),
+                [cellSlot]
+            );
+        }
+
         // The variable is local
         else
         {
@@ -1613,6 +1698,24 @@ void assgToIR(
             setInstr.args[0].stringVal = identExpr.name;
             setInstr.args[1].localIdx = subCtx.getOutSlot();
             setInstr.args[2].intVal = -1;
+        }
+
+        // If the variable is captured or escaping
+        else if (identExpr.declNode in ctx.fun.cellMap)
+        {
+            // Compute the right expression
+            auto subCtx = ctx.subCtx(true, ctx.getOutSlot());
+            genRhs(subCtx);
+            ctx.merge(subCtx);
+
+            // Set the value in the mutable cell
+            auto cellSlot = ctx.fun.cellMap[identExpr.declNode];
+            genRtCall(
+                ctx, 
+                "setCellVal",
+                NULL_LOCAL,
+                [cellSlot, ctx.getOutSlot()]
+            );
         }
 
         // The variable is local

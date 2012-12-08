@@ -84,7 +84,7 @@ class IRFunction : IdObject
 
     /// Map of shared variable declarations (captured/escaping) to
     /// local slots where their closure cells are stored
-    LocalIdx[IdentExpr] sharedMap;
+    LocalIdx[IdentExpr] cellMap;
 
     /// Map of variable declarations to local slots
     LocalIdx[IdentExpr] localMap;
@@ -157,7 +157,7 @@ class IRFunction : IdObject
         for (size_t i = 0; i < captVars.length; ++i)
         {
             auto var = captVars[i];
-            auto localIdx = sharedMap[var];
+            auto localIdx = cellMap[var];
             output.put(var.toString() ~ ":$" ~ to!string(localIdx) ~ ", ");
             if (i < captVars.length - 1)
                 output.put(", ");

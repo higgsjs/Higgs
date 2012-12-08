@@ -633,6 +633,8 @@ class Interp
     */
     ValuePair evalString(string input, string fileName = "string")
     {
+        //writefln("input: %s", input);
+
         auto ast = parseString(input, fileName);
 
         // If the AST contains only an expression statement,

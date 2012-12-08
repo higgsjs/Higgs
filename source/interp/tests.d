@@ -782,6 +782,59 @@ unittest
     );
 }
 
+/// Closures, captured and escaping variables
+unittest
+{
+    assertInt(
+        "
+        function foo(x) { return function() { return x; } }
+        f = foo(5);
+        return f();
+        ",
+        5
+    );
+
+    assertInt(
+        "
+        function foo(x) { var y = x + 1; return function() { return y; } }
+        f = foo(5);
+        return f();
+        ",
+        6
+    );
+
+    assertInt(
+        "
+        function foo(x) { return function() { return x++; } }
+        f = foo(5);
+        f();
+        return f();
+        ",
+        6
+    );
+   
+    assertInt(
+        "
+        function foo(x)
+        {
+            function bar()
+            {
+                function bif()
+                {
+                    x += 1;
+                }
+                bif();
+            }
+            bar();
+            return x;
+        }
+        return foo(5);
+        ",
+        6
+    );
+    
+}
+
 /// Stdlib Math library
 unittest
 {

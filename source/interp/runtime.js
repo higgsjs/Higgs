@@ -122,6 +122,39 @@ function $rt_valIsObj(val)
 }
 
 /**
+Allocate and initialize a closure cell
+*/
+function $rt_makeClosCell()
+{
+    var cell = $rt_cell_alloc();
+    $rt_setCellVal(cell, $ir_set_undef());
+    return cell;
+}
+
+/**
+Set the value stored in a closure cell
+*/
+function $rt_setCellVal(cell, val)
+{
+    var word = $ir_get_word(val);
+    var type = $ir_get_type(val);
+
+    $rt_cell_set_word(cell, word);
+    $rt_cell_set_type(cell, type);
+}
+
+/**
+Get the value stored in a closure cell
+*/
+function $rt_getCellVal(cell)
+{
+    var word = $rt_cell_get_word(cell);
+    var type = $rt_cell_get_type(cell);
+
+    return $ir_set_value(word, type);
+}
+
+/**
 Concatenate the strings from two string objects
 */
 function $rt_strcat(str1, str2)

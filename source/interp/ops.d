@@ -780,12 +780,15 @@ void op_ret(Interp interp, IRInstr instr)
         // Set the instruction pointer to the post-call instruction
         interp.ip = callInstr.next;
 
-        // Leave the return value in the call's return slot
-        interp.setSlot(
-            callInstr.outSlot, 
-            wRet,
-            tRet
-        );
+        // Leave the return value in the call's return slot, if any
+        if (callInstr.outSlot !is NULL_LOCAL)
+        {
+            interp.setSlot(
+                callInstr.outSlot, 
+                wRet,
+                tRet
+            );
+        }
     }
     else
     {
