@@ -849,6 +849,9 @@ unittest
     assertInt("Math.pow(2, 0)", 1);
     assertInt("Math.pow(2, 4)", 16);
     assertInt("Math.pow(2, 8)", 256);
+
+    assertBool("r = Math.random(); return r >= 0 && r < 1;", true);
+    assertBool("r0 = Math.random(); r1 = Math.random(); return r0 !== r1;", true);
 }
 
 /// Basic test programs

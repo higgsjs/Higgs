@@ -77,7 +77,7 @@ Function.prototype.toString = function ()
 
 /**
 Get a string representation of the IR
-Note: this method is not part of standard JS
+Note: this method is not part of ECMAScript
 */
 Function.prototype.irString = function ()
 {

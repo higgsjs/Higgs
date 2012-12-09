@@ -364,7 +364,7 @@ class Interp
             load("stdlib/function.js");
             load("stdlib/math.js");
             load("stdlib/string.js");
-            //load("stdlib/array.js");
+            load("stdlib/array.js");
             load("stdlib/number.js");
             load("stdlib/boolean.js");
         }

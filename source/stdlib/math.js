@@ -51,12 +51,15 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010-2012 Tachyon Javascript Engine, All Rights Reserved
 */
 
-/**
-Math object (see ECMAScript 5 18.8)
-*/
-var Math = {};
+/// Private namespace for this module
+(function () {
 
-/*
+/**
+Global Math object (see ECMAScript 5 18.8)
+*/
+Math = {};
+
+/**
 15.8.1.1 E
 */
 Math.E = 2.7182818284590452354;
@@ -312,7 +315,7 @@ Math.pow = function (x, y)
     assert(false, 'floating-point support unimplemented');
 };
 
-/*
+/**
 15.8.2.7 cos (x)
 Returns an implementation-dependent approximation to the cosine of x. The
 argument is expressed in radians.
@@ -333,7 +336,7 @@ Math.cos = function (x)
     return $ir_cos_f64(x);
 };
 
-/*
+/**
 15.8.2.16 sin (x)
 Returns an implementation-dependent approximation to the sine of x. The
 argument is expressed in radians.
@@ -353,7 +356,7 @@ Math.sin = function (x)
     return $ir_sin_f64(x);
 };
 
-/*
+/**
 15.8.2.17 sqrt (x)
 Returns an implementation-dependent approximation to the square root of x.
 
@@ -373,7 +376,7 @@ Math.sqrt = function (x)
     return $ir_sqrt_f64(x);
 };
 
-/*
+/**
 15.8.2.8 exp (x)
 Returns an implementation-dependent approximation to the exponential
 function of x (e raised to the power of x, where e is the base of the
@@ -391,7 +394,7 @@ Math.exp = function (x)
     assert (false, 'Math.exp unimplemented');
 };
 
-/*
+/**
 15.8.2.10 log (x)
 Returns an implementation-dependent approximation to the natural
 logarithm of x.
@@ -408,7 +411,23 @@ Math.log = function (x)
     assert (false, 'Math.log unimplemented');
 };
 
-/*
+/// Next random seed
+var randSeed = 113378971;
+
+/**
+Generate a random unsigned 16-bit integer
+Note: this method is not part of ECMAScript
+*/
+Math.randomUInt16 = function ()
+{
+    // TODO: improve RNG
+
+    randSeed = $ir_and_i32($ir_mul_i32(1103515245, randSeed), 0x7FFFFFFF);
+
+    return $ir_and_i32($ir_rsft_i32(randSeed, 13), 0xFFFF);
+}
+
+/**
 15.8.2.14 random ()
 Returns a Number value with positive sign, greater than or equal to 0 but
 less than 1, chosen randomly or pseudo randomly with approximately
@@ -417,12 +436,12 @@ algorithm or strategy. This function takes no arguments.
 */
 Math.random = function ()
 {
-    // TODO: implement this function
+    var rH = Math.randomUInt16();
+    var rL = Math.randomUInt16();
+    var randInt = ((rH & 0x7FFF) << 16) + rL;
 
-    // TODO: use closure to hide seed
-
-    // rand_int / int_max
-
-    assert (false, 'Math.random unimplemented');
+    return randInt / 0x7FFFFFFF;
 };
+
+})();
 
