@@ -315,13 +315,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Allocate slots for local variables and initialize them to undefined
     foreach (ident; ast.locals)
     {
-        //writefln("local var: %s", ident);
-
         // If this variable does not escape and is not a parameter
         if (ident !in ast.escpVars && ident !in fun.localMap)
         {
-            //writefln("creating local slot");
-
             auto localSlot = bodyCtx.allocTemp();
             fun.localMap[ident] = localSlot;
             bodyCtx.addInstr(new IRInstr(&SET_UNDEF, localSlot));
@@ -331,45 +327,47 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Get the cell pointers for captured closure variables
     foreach (idx, ident; ast.captVars)
     {
-        auto idxInstr = bodyCtx.addInstr(IRInstr.intCst(bodyCtx.allocTemp(), idx));
-
+        auto subCtx = bodyCtx.subCtx(false);
+        auto idxInstr = bodyCtx.addInstr(IRInstr.intCst(subCtx.allocTemp(), idx));
         auto getInstr = genRtCall(
-            bodyCtx, 
+            subCtx, 
             "clos_get_cell", 
             bodyCtx.allocTemp(),
             [fun.closSlot, idxInstr.outSlot]
         );
-
+        bodyCtx.merge(subCtx);
         fun.cellMap[ident] = getInstr.outSlot;
     }
 
     // Create closure cells for the escaping variables
     foreach (ident, bval; ast.escpVars)
     {
-        //writefln("escaping var: %s", ident);
-
         // If this variable is not captured from another function
         if (ident !in fun.cellMap)
         {
+            auto subCtx = bodyCtx.subCtx(false);
+
+            // Allocate a closure cell for the variable
             auto allocInstr = genRtCall(
-                bodyCtx, 
+                subCtx, 
                 "makeClosCell", 
                 bodyCtx.allocTemp(),
                 []
             );
-
             fun.cellMap[ident] = allocInstr.outSlot;
 
             // If this variable is a parameter
             if (ident in fun.localMap)
             {
                 genRtCall(
-                    bodyCtx, 
+                    subCtx, 
                     "setCellVal", 
                     NULL_LOCAL,
                     [allocInstr.outSlot, fun.localMap[ident]]
                 );
             }
+
+            bodyCtx.merge(subCtx);
         }
     }
 
@@ -380,14 +378,15 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         auto subFun = new IRFunction(funDecl);
 
         // Store the binding for the function
-        auto subCtx = bodyCtx.subCtx(true);
+        auto subCtx = bodyCtx.subCtx(false);
+        auto assgCtx = subCtx.subCtx(true);
         assgToIR(
             funDecl.name,
             null,
             delegate void(IRGenCtx ctx)
             {
                 // Create a closure of this function
-                auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
+                auto newClos = ctx.addInstr(new IRInstr(&NEW_CLOS));
                 newClos.outSlot = ctx.getOutSlot();
                 newClos.args.length = 3;
                 newClos.args[0].fun = subFun;
@@ -407,73 +406,11 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                     );
                 }
             },
-            subCtx
+            assgCtx
         );
+        subCtx.merge(assgCtx);
         bodyCtx.merge(subCtx);
-
-
-
-
-
-        /*
-        // If we are in a global unit function
-        if (cast(ASTProgram)ast)
-        {
-            // Store the global binding for the function
-            auto subCtx = bodyCtx.subCtx(true);
-            assgToIR(
-                funDecl.name,
-                null,
-                delegate void(IRGenCtx ctx)
-                {
-                    // Create a closure of this function
-                    auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
-                    newClos.outSlot = ctx.getOutSlot();
-                    newClos.args.length = 3;
-                    newClos.args[0].fun = subFun;
-                    newClos.args[1].ptrVal = null;
-                    newClos.args[2].ptrVal = null;
-                },
-                subCtx
-            );
-            bodyCtx.merge(subCtx);
-        }
-        else
-        {
-            // FIXME: if fn is shared, not in local map...
-
-            // Create a closure of this function
-            auto newClos = bodyCtx.addInstr(new IRInstr(&NEW_CLOS));
-            newClos.outSlot = fun.localMap[funDecl.name];
-            newClos.args.length = 3;
-            newClos.args[0].fun = subFun;
-            newClos.args[1].ptrVal = null;
-            newClos.args[2].ptrVal = null;
-
-            // Set the closure cells for the captured variables
-            foreach (idx, ident; subFun.captVars)
-            {
-                auto idxCst = bodyCtx.addInstr(IRInstr.intCst(bodyCtx.allocTemp(), idx));
-
-                genRtCall(
-                    bodyCtx, 
-                    "clos_set_cell",
-                    NULL_LOCAL,
-                    [newClos.outSlot, idxCst.outSlot, fun.cellMap[ident]]
-                );
-            }
-
-            // Store the closure temp in the local map
-            fun.localMap[funDecl.name] = newClos.outSlot;
-        }
-        */
-
-
     }
-
-
-
-
 
     //writefln("num locals: %s", fun.numLocals);
 
