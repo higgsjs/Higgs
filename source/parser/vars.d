@@ -88,25 +88,17 @@ class Scope
     }
 
     /**
-    Add a variable reference to this scope
+    Resolve the declaration corresponding to an identifier
     */
-    void addRef(IdentExpr node)
+    IdentExpr resolve(IdentExpr ident)
     {
-        refs ~= [node];
-    }
+        auto decl = resolve(ident.name, fun);
 
-    /**
-    Resolve variable references in this scope
-    */
-    void resolveRefs()
-    {
-        foreach (ident; refs)
-        {
-            auto decl = resolve(ident.name, this.fun);
+        //writefln("unresolved: %s", ident);
 
-            // Store the resolved node on the identifier
-            ident.declNode = decl;
-        }
+        ident.declNode = decl;
+
+        return decl;
     }
 
     /**
@@ -149,20 +141,35 @@ class Scope
     }
 }
 
-void resolveVars(ASTProgram node)
+/**
+Resolve variable declarations and references in a function
+*/
+void resolveVars(FunExpr fun, Scope parentSc = null)
 {
-    // The top-level scope
-    auto s = new Scope(node);
+    //writefln("fun: %s", fun.toString());
 
-    resolveVars(node.bodyStmt, s);
+    auto s = new Scope(fun, parentSc);
+
+    // Add the parameter declarations to the scope
+    foreach (ident; fun.params)
+        s.addDecl(ident);
+
+    // Find all declarations in the function body
+    findDecls(fun.bodyStmt, s);
+
+    // Resolve references in the function body
+    resolveRefs(fun.bodyStmt, s);
 }
 
-void resolveVars(ASTStmt stmt, Scope s)
+/**
+Find all variable/function declarations in a given statement
+*/
+void findDecls(ASTStmt stmt, Scope s)
 {
     if (auto blockStmt = cast(BlockStmt)stmt)
     {
         foreach (subStmt; blockStmt.stmts)
-            resolveVars(subStmt, s);
+            findDecls(subStmt, s);
     }
 
     else if (auto varStmt = cast(VarStmt)stmt)
@@ -170,44 +177,34 @@ void resolveVars(ASTStmt stmt, Scope s)
         for (size_t i = 0; i < varStmt.identExprs.length; ++i)
         {
             auto ident = varStmt.identExprs[i];
-            auto init = varStmt.initExprs[i];
 
-            // If we are not in a top-level (program) scope
+            // If we are not in a top-level (program) scope,
+            // add a declaration for this variable
             if (cast(ASTProgram)s.fun is null)
                 s.addDecl(ident);
-
-            resolveVars(ident, s);
-
-            if (init)
-                resolveVars(init, s);
         }
     }
 
     else if (auto ifStmt = cast(IfStmt)stmt)
     {
-        resolveVars(ifStmt.testExpr, s);
-        resolveVars(ifStmt.trueStmt, s);
-        resolveVars(ifStmt.falseStmt, s);
+        findDecls(ifStmt.trueStmt, s);
+        findDecls(ifStmt.falseStmt, s);
     }
     
     else if (auto whileStmt = cast(WhileStmt)stmt)
     {
-        resolveVars(whileStmt.testExpr, s);
-        resolveVars(whileStmt.bodyStmt, s);
+        findDecls(whileStmt.bodyStmt, s);
     }
 
     else if (auto doStmt = cast(DoWhileStmt)stmt)
     {
-        resolveVars(doStmt.testExpr, s);
-        resolveVars(doStmt.bodyStmt, s);
+        findDecls(doStmt.bodyStmt, s);
     }
 
     else if (auto forStmt = cast(ForStmt)stmt)
     {
-        resolveVars(forStmt.initStmt, s);
-        resolveVars(forStmt.testExpr, s);
-        resolveVars(forStmt.incrExpr, s);
-        resolveVars(forStmt.bodyStmt, s);
+        findDecls(forStmt.initStmt, s);
+        findDecls(forStmt.bodyStmt, s);
     }
 
     else if (auto forInStmt = cast(ForInStmt)stmt)
@@ -218,65 +215,168 @@ void resolveVars(ASTStmt stmt, Scope s)
             s.addDecl(ident);
         }
 
-        resolveVars(forInStmt.inExpr, s);
-        resolveVars(forInStmt.bodyStmt, s);
+        findDecls(forInStmt.bodyStmt, s);
     }
 
     else if (auto switchStmt = cast(SwitchStmt)stmt)
     {
-        resolveVars(switchStmt.switchExpr, s);
-
-        foreach (expr; switchStmt.caseExprs)
-            resolveVars(expr, s);
-
         foreach (caseStmts; switchStmt.caseStmts)
             foreach (caseStmt; caseStmts)
-                resolveVars(caseStmt, s);
+                findDecls(caseStmt, s);
 
         foreach (defaultStmt; switchStmt.defaultStmts)
-            resolveVars(defaultStmt, s);
-    }
-
-    else if (auto retStmt = cast(ReturnStmt)stmt)
-    {
-        resolveVars(retStmt.expr, s);
-    }
-
-    else if (auto throwStmt = cast(ThrowStmt)stmt)
-    {
-        resolveVars(throwStmt.expr, s);
+            findDecls(defaultStmt, s);
     }
 
     else if (auto tryStmt = cast(TryStmt)stmt)
     {
-        resolveVars(tryStmt.tryStmt, s);
+        findDecls(tryStmt.tryStmt, s);
         if (tryStmt.catchStmt)
         {
             s.addDecl(tryStmt.catchIdent);
-            resolveVars(tryStmt.catchStmt, s);
+            findDecls(tryStmt.catchStmt, s);
         }
         if (tryStmt.finallyStmt)
         {
-            resolveVars(tryStmt.finallyStmt, s);
+            findDecls(tryStmt.finallyStmt, s);
         }
     }
 
     else if (auto exprStmt = cast(ExprStmt)stmt)
     {
-        // If this is a named function
+        // If this is a named function declaration
         if (auto funExpr = cast(FunExpr)exprStmt.expr)
         {
             if (funExpr.name !is null)
             {
                 s.addFunDecl(funExpr);
 
-                // If we are not in a top-level (program) scope
+                // If we are not in a top-level (program) scope,
+                // declare the function as a variable
                 if (cast(ASTProgram)s.fun is null)
+                {
                     s.addDecl(funExpr.name);
+                    resolveRefs(funExpr.name, s);
+                }
             }
         }
+    }
 
-        resolveVars(exprStmt.expr, s);
+    else if (
+        cast(ReturnStmt)stmt ||
+        cast(ThrowStmt)stmt  ||
+        cast(BreakStmt)stmt  ||
+        cast(ContStmt)stmt)
+    {
+        // Do nothing
+    }
+
+    else
+    {
+        assert (false, "unhandled statement type:\n" ~ stmt.toString());
+    }
+}
+
+/**
+Resolve variable references in a statement
+*/
+void resolveRefs(ASTStmt stmt, Scope s)
+{
+    if (auto blockStmt = cast(BlockStmt)stmt)
+    {
+        foreach (subStmt; blockStmt.stmts)
+            resolveRefs(subStmt, s);
+    }
+
+    else if (auto varStmt = cast(VarStmt)stmt)
+    {
+        for (size_t i = 0; i < varStmt.identExprs.length; ++i)
+        {
+            auto ident = varStmt.identExprs[i];
+            auto init = varStmt.initExprs[i];
+
+            resolveRefs(ident, s);
+
+            if (init)
+                resolveRefs(init, s);
+        }
+    }
+
+    else if (auto ifStmt = cast(IfStmt)stmt)
+    {
+        resolveRefs(ifStmt.testExpr, s);
+        resolveRefs(ifStmt.trueStmt, s);
+        resolveRefs(ifStmt.falseStmt, s);
+    }
+    
+    else if (auto whileStmt = cast(WhileStmt)stmt)
+    {
+        resolveRefs(whileStmt.testExpr, s);
+        resolveRefs(whileStmt.bodyStmt, s);
+    }
+
+    else if (auto doStmt = cast(DoWhileStmt)stmt)
+    {
+        resolveRefs(doStmt.testExpr, s);
+        resolveRefs(doStmt.bodyStmt, s);
+    }
+
+    else if (auto forStmt = cast(ForStmt)stmt)
+    {
+        resolveRefs(forStmt.initStmt, s);
+        resolveRefs(forStmt.testExpr, s);
+        resolveRefs(forStmt.incrExpr, s);
+        resolveRefs(forStmt.bodyStmt, s);
+    }
+
+    else if (auto forInStmt = cast(ForInStmt)stmt)
+    {
+        resolveRefs(forInStmt.inExpr, s);
+        resolveRefs(forInStmt.bodyStmt, s);
+    }
+
+    else if (auto switchStmt = cast(SwitchStmt)stmt)
+    {
+        resolveRefs(switchStmt.switchExpr, s);
+
+        foreach (expr; switchStmt.caseExprs)
+            resolveRefs(expr, s);
+
+        foreach (caseStmts; switchStmt.caseStmts)
+            foreach (caseStmt; caseStmts)
+                resolveRefs(caseStmt, s);
+
+        foreach (defaultStmt; switchStmt.defaultStmts)
+            resolveRefs(defaultStmt, s);
+    }
+
+    else if (auto retStmt = cast(ReturnStmt)stmt)
+    {
+        resolveRefs(retStmt.expr, s);
+    }
+
+    else if (auto throwStmt = cast(ThrowStmt)stmt)
+    {
+        resolveRefs(throwStmt.expr, s);
+    }
+
+    else if (auto tryStmt = cast(TryStmt)stmt)
+    {
+        resolveRefs(tryStmt.tryStmt, s);
+        if (tryStmt.catchStmt)
+        {
+            s.addDecl(tryStmt.catchIdent);
+            resolveRefs(tryStmt.catchStmt, s);
+        }
+        if (tryStmt.finallyStmt)
+        {
+            resolveRefs(tryStmt.finallyStmt, s);
+        }
+    }
+
+    else if (auto exprStmt = cast(ExprStmt)stmt)
+    {
+        resolveRefs(exprStmt.expr, s);
     }
 
     else if (
@@ -292,75 +392,75 @@ void resolveVars(ASTStmt stmt, Scope s)
     }
 }
 
-void resolveVars(ASTExpr expr, Scope s)
+/**
+Resolve variable references in an expression
+*/
+void resolveRefs(ASTExpr expr, Scope s)
 {
+    // Function (closure) as an expression
     if (auto funExpr = cast(FunExpr)expr)
     {
-        s = new Scope(funExpr, s);
-
-        foreach (ident; funExpr.params)
-            s.addDecl(ident);
-
-        resolveVars(funExpr.bodyStmt, s);
-
-        // Resolve the references in this scope
-        s.resolveRefs();
+        // Resolve variable declarations and
+        // references in the nested function
+        resolveVars(funExpr, s);
     }
 
     else if (auto binExpr = cast(BinOpExpr)expr)
     {
-        resolveVars(binExpr.lExpr, s);
-        resolveVars(binExpr.rExpr, s);
+        resolveRefs(binExpr.lExpr, s);
+        resolveRefs(binExpr.rExpr, s);
     }
 
     else if (auto unExpr = cast(UnOpExpr)expr)
     {
-        resolveVars(unExpr.expr, s);
+        resolveRefs(unExpr.expr, s);
     }
 
     else if (auto condExpr = cast(CondExpr)expr)
     {
-        resolveVars(condExpr.testExpr, s);
-        resolveVars(condExpr.trueExpr, s);
-        resolveVars(condExpr.falseExpr, s);
+        resolveRefs(condExpr.testExpr, s);
+        resolveRefs(condExpr.trueExpr, s);
+        resolveRefs(condExpr.falseExpr, s);
     }
 
     else if (auto callExpr = cast(CallExpr)expr)
     {
-        resolveVars(callExpr.base, s);
+        resolveRefs(callExpr.base, s);
         foreach (e; callExpr.args)
-            resolveVars(e, s);
+            resolveRefs(e, s);
     }
 
     else if (auto newExpr = cast(NewExpr)expr)
     {
-        resolveVars(newExpr.base, s);
+        resolveRefs(newExpr.base, s);
         foreach (e; newExpr.args)
-            resolveVars(e, s);
+            resolveRefs(e, s);
     }
 
     else if (auto indexExpr = cast(IndexExpr)expr)
     {
-        resolveVars(indexExpr.base, s);
-        resolveVars(indexExpr.index, s);
+        resolveRefs(indexExpr.base, s);
+        resolveRefs(indexExpr.index, s);
     }
 
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         foreach (e; arrayExpr.exprs)
-            resolveVars(e, s);
+            resolveRefs(e, s);
     }
 
     else if (auto objectExpr = cast(ObjectExpr)expr)
     {
         foreach (e; objectExpr.values)
-            resolveVars(e, s);
+            resolveRefs(e, s);
     }
 
     else if (auto identExpr = cast(IdentExpr)expr)
     {
-        // Add the variable reference to the scope
-        s.addRef(identExpr);
+        // Resolve this variable reference
+        s.resolve(identExpr);
+
+        //writefln("resolved ref: %s => %s", identExpr, identExpr.declNode);
     }
 
     else if (

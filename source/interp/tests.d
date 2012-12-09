@@ -812,7 +812,7 @@ unittest
         ",
         6
     );
-   
+
     assertInt(
         "
         function foo(x)
@@ -831,8 +831,7 @@ unittest
         return foo(5);
         ",
         6
-    );
-    
+    );    
 }
 
 /// Stdlib Math library
@@ -865,6 +864,16 @@ unittest
 
     interp.load("programs/bubble_sort/bubble_sort.js");
     interp.assertInt("test();", 0);
+
+    // Closures
+    interp.load("programs/clos_capt/clos_capt.js");
+    interp.assertInt("foo(5);", 8);
+    interp.load("programs/clos_access/clos_access.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/clos_globals/clos_globals.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/clos_xcall/clos_xcall.js");
+    interp.assertInt("test(5);", 5);
 }
 
 /// SunSpider benchmarks
