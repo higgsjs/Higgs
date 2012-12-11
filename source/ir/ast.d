@@ -1513,6 +1513,13 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ctx.moveToOutput(ctx.fun.thisSlot);
         }
 
+        // If this is the argument count argument
+        else if (identExpr.name == "$argc")
+        {
+            // Move the argument count slot to the output
+            ctx.moveToOutput(ctx.fun.argcSlot);
+        }
+
         // If the variable is global
         else if (identExpr.declNode is null)
         {

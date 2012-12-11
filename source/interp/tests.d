@@ -837,6 +837,10 @@ unittest
 /// Stdlib Math library
 unittest
 {
+    assertInt("Math.max(1,2);", 2);
+    assertInt("Math.max(5,1,2);", 5);
+    assertInt("Math.min(5,-1,2);", -1);
+
     assertFloat("Math.cos(0)", 1);
     assertFloat("Math.cos(Math.PI)", -1);
     assertInt("isNaN(Math.cos('f'))? 1:0", 1);

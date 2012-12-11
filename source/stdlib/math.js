@@ -173,11 +173,17 @@ The length property of the max method is 2.
 */
 Math.max = function ()
 {
-    var m = -Infinity;
+    if ($argc == 0)
+        return -Infinity;
 
-    for (var i = 0; i < arguments.length; ++i)
-        if (arguments[i] > m)
-            m = arguments[i];
+    var m = $ir_get_arg(0);
+
+    for (var i = 1; i < $argc; ++i)
+    {
+        var val = $ir_get_arg(i)
+        if (val > m)
+            m = val;
+    }
 
     return m;
 };
@@ -196,11 +202,17 @@ The length property of the min method is 2.
 */
 Math.min = function ()
 {
-    var m = Infinity;
+    if ($argc == 0)
+        return -Infinity;
 
-    for (var i = 0; i < arguments.length; ++i)
-        if (arguments[i] < m)
-            m = arguments[i];
+    var m = $ir_get_arg(0);
+
+    for (var i = 1; i < $argc; ++i)
+    {
+        var val = $ir_get_arg(i)
+        if (val < m)
+            m = val;
+    }
 
     return m;
 };

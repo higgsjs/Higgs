@@ -778,6 +778,28 @@ void op_throw(Interp interp, IRInstr instr)
     );
 }
 
+void op_get_arg(Interp interp, IRInstr instr)
+{
+    // Get the first argument slot
+    auto argSlot = instr.fun.argcSlot + 1;
+
+    // Get the argument index
+    auto idxVal = interp.getSlot(instr.args[0].localIdx);
+    auto idx = idxVal.word.intVal;
+
+    assert (
+        idx >= 0,
+        "negative argument index"
+    );
+    
+    auto argVal = interp.getSlot(argSlot + idx);
+
+    interp.setSlot(
+        instr.outSlot,
+        argVal
+    );
+}
+
 void GetObjOp(string objMixin)(Interp interp, IRInstr instr)
 {
     refptr ptr;

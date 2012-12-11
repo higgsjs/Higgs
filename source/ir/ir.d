@@ -665,6 +665,9 @@ Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret };
 // Throws an exception, unwinds the stack
 Opcode THROW = { "throw", false, [OpArg.LOCAL], &op_throw };
 
+// Access visible arguments by index
+Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &op_get_arg };
+
 // Special implementation object access instructions
 Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &op_get_obj_proto };
 Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], &op_get_arr_proto };
@@ -827,6 +830,8 @@ static this()
 
     addOp(JUMP_TRUE, "if_false");
     addOp(JUMP_FALSE, "if_true");
+
+    addOp(GET_ARG);
 
     addOp(GET_OBJ_PROTO);
     addOp(GET_ARR_PROTO);
