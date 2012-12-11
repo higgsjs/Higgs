@@ -67,7 +67,8 @@ function assert(test, error)
         return;
 
     // TODO: throw Error object
-    throw 'ASSERTION FAILED:\n' + error
+    throw error;
+    //throw 'ASSERTION FAILED:\n' + error
 }
 
 /**
@@ -1180,6 +1181,9 @@ Set a property on a value using a value as a key
 */
 function $rt_setProp(base, prop, val)
 {
+    //print(prop);
+    //print('\n');
+
     // If the base is a reference
     if ($ir_is_refptr(base) && $ir_ne_refptr(base, null))
     {

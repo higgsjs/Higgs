@@ -56,7 +56,7 @@ alias size_t LocalIdx;
 immutable LocalIdx NULL_LOCAL = LocalIdx.max;
 
 /// Number of hidden function arguments
-immutable size_t NUM_HIDDEN_ARGS = 3;
+immutable size_t NUM_HIDDEN_ARGS = 4;
 
 /***
 IR function
@@ -93,10 +93,10 @@ class IRFunction : IdObject
     uint numLocals = 0;
 
     /// Hidden argument slots
+    LocalIdx raSlot;
     LocalIdx closSlot;
     LocalIdx thisSlot;
     LocalIdx argcSlot;
-    LocalIdx raSlot;
 
     /// Class pointer used when called using new operator
     refptr classPtr = null;
@@ -143,13 +143,13 @@ class IRFunction : IdObject
         output.put("ra:$" ~ to!string(raSlot) ~ ", ");
         output.put("clos:$" ~ to!string(closSlot) ~ ", ");
         output.put("this:$" ~ to!string(thisSlot) ~ ", ");
+        output.put("argc:$" ~ to!string(argcSlot));
         for (size_t i = 0; i < params.length; ++i)
         {
             auto param = params[i];
             auto localIdx = localMap[param];
-            output.put(param.toString() ~ ":$" ~ to!string(localIdx) ~ ", ");
+            output.put(", " ~ param.toString() ~ ":$" ~ to!string(localIdx));
         }
-        output.put("argc:$" ~ to!string(argcSlot));
         output.put(")");
 
         // Captured variables
@@ -158,7 +158,7 @@ class IRFunction : IdObject
         {
             auto var = captVars[i];
             auto localIdx = cellMap[var];
-            output.put(var.toString() ~ ":$" ~ to!string(localIdx) ~ ", ");
+            output.put(var.toString() ~ ":$" ~ to!string(localIdx));
             if (i < captVars.length - 1)
                 output.put(", ");
         }
@@ -643,23 +643,19 @@ Opcode JUMP = { "jump", false, [], &op_jump, false, true };
 Opcode JUMP_TRUE = { "jump_true", false, [OpArg.LOCAL], &op_jump_true, false, true };
 Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL], &op_jump_false, false, true };
 
-// <dstLocal> = CALL <closLocal> <thisArg> <numArgs>
+// <dstLocal> = CALL <closLocal> <thisArg> ...
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
 Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, true, true };
 
-// <dstLocal> = NEW <closLocal> <numArgs>
+// <dstLocal> = NEW <closLocal> ...
 // Implements the JavaScript new operator.
 // Creates the this object
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
 Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, true, true };
-
-// PUSH_FRAME
-// On function entry, allocates/adjusts the callee's stack frame
-Opcode PUSH_FRAME = { "push_frame", false, [], &op_push_frame };
 
 // RET <retLocal>
 // Pops the callee frame (size known by context)

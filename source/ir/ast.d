@@ -295,22 +295,18 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         false
     );
 
-    // Add the frame allocation instruction
-    bodyCtx.addInstr(new IRInstr(&PUSH_FRAME));
-
-    // Map local slots for the return address, closure, and return address
-    fun.raSlot   = bodyCtx.allocTemp();
-    fun.closSlot = bodyCtx.allocTemp();
-    fun.thisSlot = bodyCtx.allocTemp();
-
-    // Allocate local slots to parameters
-    foreach (ident; ast.params)
+    // Allocate local slots for the visible function parameters
+    for (size_t i = 0; i < ast.params.length; ++i)
     {
+        auto ident = ast.params[$-(i+1)];
         fun.localMap[ident] = bodyCtx.allocTemp();
     }
 
-    // Map a local slot for the argument count
+    // Map local slots for the hidden function arguments
     fun.argcSlot = bodyCtx.allocTemp();
+    fun.thisSlot = bodyCtx.allocTemp();
+    fun.closSlot = bodyCtx.allocTemp();
+    fun.raSlot   = bodyCtx.allocTemp();
 
     // Allocate slots for local variables and initialize them to undefined
     foreach (ident; ast.locals)
@@ -433,9 +429,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     }
 
     // Translate the hidden argument slots
+    translLocal(fun.argcSlot);
     translLocal(fun.closSlot);
     translLocal(fun.thisSlot);
-    translLocal(fun.argcSlot);
     translLocal(fun.raSlot);
 
     // Translate the local variable mapping
@@ -1373,7 +1369,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         }
 
         // Add the call instruction
-        // <dstLocal> = CALL <fnLocal> <thisArg> <numArgs>
+        // <dstLocal> = CALL <fnLocal> <thisArg> ...
         auto callInstr = ctx.addInstr(new IRInstr(&CALL));
         callInstr.outSlot = ctx.getOutSlot();
         callInstr.args.length = 2 + argSlots.length;
@@ -1405,7 +1401,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         }
 
         // Add the call instruction
-        // <dstLocal> = NEW <fnLocal> <numArgs>
+        // <dstLocal> = NEW <fnLocal> ...
         auto callInstr = ctx.addInstr(new IRInstr(&CALL_NEW));
         callInstr.outSlot = ctx.getOutSlot();
         callInstr.args.length = 1 + argSlots.length;
@@ -1949,7 +1945,7 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLo
     getInstr.args[0].stringVal = to!wstring("$rt_" ~ fName);
     getInstr.args[1].intVal = -1;
 
-    // <dstLocal> = CALL <fnLocal> <thisArg> <numArgs>
+    // <dstLocal> = CALL <fnLocal> <thisArg> ...
     auto callInstr = ctx.addInstr(new IRInstr(&CALL));
     callInstr.outSlot = outSlot;
     callInstr.args.length = 2 + argLocals.length;

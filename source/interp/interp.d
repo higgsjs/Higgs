@@ -487,7 +487,7 @@ class Interp
         tsp -= numWords;
 
         if (wsp < wLowerLimit)
-            throw new Error("stack overflow");
+            throw new Error("interpreter stack overflow");
     }
 
     /**
@@ -499,7 +499,7 @@ class Interp
         tsp += numWords;
 
         if (wsp > wUpperLimit)
-            throw new Error("stack underflow");
+            throw new Error("interpreter stack underflow");
     }
 
     /**
@@ -581,16 +581,15 @@ class Interp
         // Register this function in the function reference set
         funRefs[cast(void*)fun] = fun;
 
-        // Push the hidden call arguments
-        push(Word.ptrv(null), Type.RAWPTR);    // Return address
-        push(UNDEF, Type.CONST);               // Closure argument
-        push(UNDEF, Type.CONST);               // This argument
-        push(Word.intv(0), Type.INT);          // Argument count
-
-        //writefln("stack size before entry: %s", stackSize());
-
-        // Set the instruction pointer
-        ip = fun.entryBlock.firstInstr;
+        // Setup the callee stack frame
+        interp.ops.callFun(
+            this,
+            fun,
+            null,   // Null return address
+            null,   // Null closure argument
+            null,   // Null this argument
+            []      // 0 arguments
+        );
 
         // Run the interpreter loop
         loop();
@@ -598,7 +597,7 @@ class Interp
         // Ensure the stack contains one return value
         assert (
             stackSize() == 1,
-            format("the stack contains %s values", (wUpperLimit - wsp))
+            format("expected 1 return value, %s values on stack", (wUpperLimit - wsp))
         );
 
         // Get the return value
