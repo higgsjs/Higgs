@@ -58,13 +58,11 @@ Array ([item0 [, item1 [, … ]]])
 */
 function Array(len)
 {
-    // Constructor call with length
-    if (isGlobalObj(this) === false &&
-        typeof len === 'number' &&
-        arguments.length === 1)
+    // Call with length
+    if (typeof len === 'number' && $argc === 1)
     {
         // Allocate an array of the desired capacity and set its length
-        var a = iir.blank_array(len);
+        var a = [];
         a.length = len;
 
         return a;
@@ -143,9 +141,7 @@ function array_concat()
     return a;
 }
 
-function array_join (
-    separator
-)
+function array_join(separator)
 {
     var o = array_toObject(this);
 
@@ -154,9 +150,8 @@ function array_join (
     else
         separator = separator.toString();
 
-
     var length = 0;
-    var strarray = new Array(o.length);
+    var strarray = Array(o.length);
 
     for (var i = 0; i < o.length; ++i)
     {
@@ -168,6 +163,7 @@ function array_join (
         length += str.length;
         strarray[i] = str;
     }
+
     length += (o.length - 1) * separator.length;
 
     if (length > 0)
@@ -186,6 +182,7 @@ function array_join (
         compStrHash(s);
         return getTableStr(s);
     }
+
     return "";
 }
 
@@ -199,8 +196,6 @@ function array_pop()
 
     var result = o[len-1];
 
-    delete o[len-1];
-
     o.length = len-1;
 
     return result;
@@ -211,8 +206,8 @@ function array_push()
     var o = array_toObject(this);
     var len = o.length;
 
-    for (var i=0; i<arguments.length; i++)
-        o[len+i] = arguments[i];
+    for (var i = 0; i < $argc; i++)
+        o[len+i] = $ir_get_arg(i);
 
     return o.length;
 }

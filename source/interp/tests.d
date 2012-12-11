@@ -872,6 +872,9 @@ unittest
     interp.load("programs/bubble_sort/bubble_sort.js");
     interp.assertInt("test();", 0);
 
+    interp.load("programs/nqueens/nqueens.js");
+    interp.assertInt("test();", 0);
+
     // Closures
     interp.load("programs/clos_capt/clos_capt.js");
     interp.assertInt("foo(5);", 8);

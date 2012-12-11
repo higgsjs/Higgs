@@ -123,6 +123,14 @@ function $rt_valIsObj(val)
 }
 
 /**
+Test if a value is the global object
+*/
+function $rt_isGlobalObj(val)
+{
+    return $ir_is_refptr(val) && $ir_eq_refptr(val, $ir_get_global_obj());
+}
+
+/**
 Allocate and initialize a closure cell
 */
 function $rt_makeClosCell()
