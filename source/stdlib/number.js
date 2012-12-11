@@ -56,7 +56,7 @@ Number([ value ])
 function Number(value)
 {
     // If this is a constructor call (new Number)
-    if (isGlobalObj(this) === false)
+    if ($rt_isGlobalObj(this) === false)
     {
         // Convert the value to a number
         var numVal = boxToNumber(value);
@@ -90,14 +90,10 @@ Internal function to get the number value of a number or number object
 */
 function getNumVal(num)
 {
-    if (boxIsInt(num))
-    {
-        return num;
-    }
-    else if (boxIsObj(num))
-    {
+    if (num instanceof Number)
         return num.value;
-    }
+
+    return num;
 }
 
 /**
@@ -109,7 +105,7 @@ Number.prototype.toString = function (radix)
 
     //FIXME: for now, ignoring the radix
 
-    return boxToString(num);
+    return $rt_toString(num);
 };
 
 /**

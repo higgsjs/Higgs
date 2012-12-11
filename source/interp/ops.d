@@ -562,11 +562,12 @@ void op_jump_false(Interp interp, IRInstr instr)
 
 void callFun(
     Interp interp,
-    IRFunction fun,        // Function to call
-    IRInstr callInstr,     // Return address
-    refptr closPtr,        // Closure pointer
-    refptr thisPtr,        // This pointer
-    IRInstr.Arg[] argSlots // Argument slots
+    IRFunction fun,         // Function to call
+    IRInstr callInstr,      // Return address
+    refptr closPtr,         // Closure pointer
+    Word thisWord,          // This value word
+    Type thisType,          // This value type
+    IRInstr.Arg[] argSlots  // Argument slots
 )
 {
     //writefln("call to %s", fun.name);
@@ -609,7 +610,7 @@ void callFun(
     interp.push(Word.intv(argSlots.length), Type.INT);
 
     // Push the "this" argument
-    interp.push(Word.ptrv(thisPtr), Type.REFPTR);
+    interp.push(thisWord, thisType);
 
     // Push the closure argument
     interp.push(Word.ptrv(closPtr), Type.REFPTR);
@@ -641,10 +642,8 @@ void op_call(Interp interp, IRInstr instr)
         "closure is not ref ptr"
     );
 
-    auto closPtr = interp.getWord(closIdx).ptrVal;
-    auto thisPtr = interp.getWord(thisIdx).ptrVal;
-
     // Get the function object from the closure
+    auto closPtr = interp.getWord(closIdx).ptrVal;
     auto fun = cast(IRFunction)clos_get_fptr(closPtr);
 
     /*
@@ -657,7 +656,8 @@ void op_call(Interp interp, IRInstr instr)
         fun,
         instr,
         closPtr,
-        thisPtr,
+        wThis,
+        tThis,
         instr.args[2..$]
     );
 }
@@ -696,7 +696,8 @@ void op_call_new(Interp interp, IRInstr instr)
         fun,
         instr,
         closPtr,
-        thisPtr,
+        Word.ptrv(thisPtr),
+        Type.REFPTR,
         instr.args[1..$]
     );
 }

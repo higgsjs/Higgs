@@ -59,10 +59,10 @@ String(value)
 function String(value)
 {
     // If this is a constructor call (new String)
-    if (isGlobalObj(this) === false)
+    if ($rt_isGlobalObj(this) === false)
     {
         // Convert the value to a string
-        var strVal = boxToString(value);
+        var strVal = $rt_toString(value);
 
         // Store the value in the new object
         // TODO: this should be a hidden/internal property
@@ -74,7 +74,7 @@ function String(value)
     else
     {
         // Convert the value to a string
-        return boxToString(value);
+        return $rt_toString(value);
     }
 }
 

@@ -69,12 +69,12 @@ function Array(len)
     }
 
     // Allocate an array of the desired capacity and set its length
-    var a = iir.blank_array(arguments.length);
-    a.length = arguments.length;
+    var a = [];
+    a.length = $argc;
 
     // Copy the arguments into the array
-    for (var i = 0; i < arguments.length; ++i)
-        a[i] = arguments[i];
+    for (var i = 0; i < $argc; ++i)
+        a[i] = $ir_get_arg(i);
 
     return a;
 }
@@ -152,7 +152,6 @@ function array_join(separator)
 
     var length = 0;
     var strarray = Array(o.length);
-
     for (var i = 0; i < o.length; ++i)
     {
         var str;
@@ -168,19 +167,21 @@ function array_join(separator)
 
     if (length > 0)
     {
-        var s = alloc_str(unboxInt(length));
+        var s = $rt_str_alloc(length);
 
-        for (var i = 0, k = pint(0); i < strarray.length; ++i)
+        for (var i = 0, k = 0; i < strarray.length; ++i)
         {
-            for (var j = 0; j < strarray[i].length; ++j, ++k)
-                set_str_data(s, k, iir.icast(IRType.u16, unboxInt( strarray[i].charCodeAt(j) )));
+            var str = strarray[i];
+
+            for (var j = 0; j < str.length; ++j, ++k)
+                $rt_str_set_data(s, k, $rt_str_get_data(str, j));
+
             if (i < strarray.length - 1)
                 for (var j = 0; j < separator.length; ++j, ++k)
-                    set_str_data(s, k, iir.icast(IRType.u16, unboxInt( separator.charCodeAt(j) )));
+                    $rt_str_set_data(s, k, $rt_str_get_data(separator, j));
         }
 
-        compStrHash(s);
-        return getTableStr(s);
+        return $ir_get_str(s);
     }
 
     return "";

@@ -56,10 +56,10 @@ Boolean([ value ])
 function Boolean(value)
 {
     // If this is a constructor call (new Boolean)
-    if (isGlobalObj(this) === false)
+    if ($rt_isGlobalObj(this) === false)
     {
         // Convert the value to a boolean
-        var boolVal = boxToBool(value);
+        var boolVal = $rt_toBool(value);
 
         // If the value is not a boolean, return it directly
         if (typeof boolVal !== 'boolean')
@@ -72,7 +72,7 @@ function Boolean(value)
     else
     {
         // Convert the value to a boolean
-        return boxToBool(value);
+        return $rt_toBool(value);
     }
 }
 
@@ -88,7 +88,7 @@ Boolean.prototype.toString = function ()
     if (typeof this === 'boolean')
         b = this;
     else if (this instanceof Boolean)
-        b =  this.value;
+        b = this.value;
     else
         throw new TypeError('expected boolean');
 

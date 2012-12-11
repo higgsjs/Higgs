@@ -858,6 +858,27 @@ unittest
     assertBool("r0 = Math.random(); r1 = Math.random(); return r0 !== r1;", true);
 }
 
+/// Stdlib Number library
+unittest
+{
+    assertStr("(10).toString()", "10");
+}
+
+/// Stdlib Array library
+unittest
+{
+    assertInt("a = Array(10); return a.length;", 10);
+    assertInt("a = Array(1,2,3); return a.length;", 3);
+    assertStr("([0,1,2]).toString()", "0,1,2");
+}
+
+/// Stdlib String library
+unittest
+{
+    assertStr("String(10)", "10");
+    assertStr("String([0,1,2])", "0,1,2");
+}
+
 /// Basic test programs
 unittest
 {
@@ -884,6 +905,14 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/clos_xcall/clos_xcall.js");
     interp.assertInt("test(5);", 5);
+
+    // Standard library
+    interp.load("programs/stdlib_boolean/stdlib_boolean.js");
+    interp.assertInt("test();", 0);
+
+    // FIXME
+    //interp.load("programs/stdlib_number/stdlib_number.js");
+    //interp.assertInt("test();", 0);
 }
 
 /// SunSpider benchmarks

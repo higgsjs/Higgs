@@ -585,10 +585,11 @@ class Interp
         interp.ops.callFun(
             this,
             fun,
-            null,   // Null return address
-            null,   // Null closure argument
-            null,   // Null this argument
-            []      // 0 arguments
+            null,       // Null return address
+            null,       // Null closure argument
+            NULL,       // Null this argument
+            Type.REFPTR,// This value is a reference
+            []          // 0 arguments
         );
 
         // Run the interpreter loop

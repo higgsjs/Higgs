@@ -789,16 +789,22 @@ function $rt_se(x, y)
         return false;
     }
 
-    // If both values are references
-    else if ($ir_is_refptr(x) && $ir_is_refptr(y))
+    // If x is a reference
+    else if ($ir_is_refptr(x))
     {
-        return $ir_eq_refptr(x, y);
+        if ($ir_is_refptr(y))
+            return $ir_eq_refptr(x, y);
+
+        return false;
     }
 
-    // If both values are constants
-    else if ($ir_is_const(x) && $ir_is_const(y))
+    // If x is a constant
+    else if ($ir_is_const(x))
     {
-        return $ir_eq_const(x, y);
+        if ($ir_is_const(y))
+            return $ir_eq_const(x, y);
+
+        return false;
     }
 
     // If both values are floating-point
@@ -979,6 +985,25 @@ function $rt_getProp(base, prop)
             return $rt_getProp(String.prototype, prop);
         }
     }
+
+    // If the base is a number
+    if ($ir_is_int(base) || $ir_is_float(base))
+    {
+        // Recurse on Number.prototype
+        return $rt_getProp(Number.prototype, prop);
+    }
+
+    // If the base is a boolean
+    if (base === true || base === false)
+    {
+        // Recurse on Boolean.prototype
+        return $rt_getProp(Boolean.prototype, prop);
+    }
+
+    // TODO: error on null, undefined
+
+    //println(base);
+    //println(prop);
 
     assert (false, "unsupported base in getProp");
 }
