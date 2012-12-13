@@ -74,9 +74,9 @@ void assertInt(Interp interp, string input, long intVal)
     );
 }
 
-void assertFloat(string input, double floatVal, double eps = 1E-4)
+void assertFloat(Interp interp, string input, double floatVal, double eps = 1E-4)
 {
-    auto ret = (new Interp()).evalString(input);
+    auto ret = interp.evalString(input);
 
     assert (
         ret.type == Type.INT ||
@@ -121,11 +121,9 @@ void assertBool(Interp interp, string input, bool boolVal)
     );
 }
 
-void assertStr(string input, string strVal)
+void assertStr(Interp interp, string input, string strVal)
 {
-    //writeln(input);
-
-    auto ret = (new Interp()).evalString(input);
+    auto ret = interp.evalString(input);
 
     assert (
         valIsString(ret.word, ret.type),
@@ -151,9 +149,19 @@ void assertInt(string input, long intVal)
     assertInt(new Interp(), input, intVal);
 }
 
+void assertFloat(string input, double floatVal, double eps = 1E-4)
+{
+    assertFloat(new Interp(), input, floatVal, eps);
+}
+
 void assertBool(string input, bool boolVal)
 {
     assertBool(new Interp(), input, boolVal);
+}
+
+void assertStr(string input, string strVal)
+{
+    assertStr(new Interp(), input, strVal);
 }
 
 unittest
@@ -905,6 +913,14 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/clos_xcall/clos_xcall.js");
     interp.assertInt("test(5);", 5);
+
+    // Exceptions
+    interp.load("programs/exceptions/throw_intra.js");
+    interp.assertStr("test();", "abc");
+
+    // TODO: more exception tests
+
+
 
     // Standard library
     interp.load("programs/stdlib_boolean/stdlib_boolean.js");

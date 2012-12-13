@@ -78,6 +78,12 @@ class IRGenCtx
     /// Target blocks for named statement labels
     LabelTargets[] labelTargets;
 
+    /// Catch statement block
+    IRBlock catchBlock;
+
+    /// Catch statement identifier
+    IdentExpr catchIdent;
+
     this(
         IRGenCtx parent,
         IRFunction fun, 
@@ -193,7 +199,27 @@ class IRGenCtx
     }
 
     /**
-    Method to register labels in the current context
+    Append a new instruction
+    */
+    IRInstr addInstr(IRInstr instr)
+    {
+        // Set the parent function pointer
+        instr.fun = fun;
+
+        curBlock.addInstr(instr);
+        return instr;
+    }
+
+    /**
+    Get the last instruction added
+    */
+    IRInstr getLastInstr()
+    {
+        return curBlock.lastInstr;
+    }
+
+    /**
+    Register labels in the current context
     */
     void regLabels(IdentExpr[] labels, IRBlock breakBlock, IRBlock contBlock)
     {
@@ -242,23 +268,19 @@ class IRGenCtx
     }
 
     /**
-    Append a new instruction
+    Get the englobing catch block and catch variable, if defined
     */
-    IRInstr addInstr(IRInstr instr)
+    auto getCatchInfo()
     {
-        // Set the parent function pointer
-        instr.fun = fun;
+        if (catchIdent !is null)
+        {
+            return new Tuple!(IdentExpr, "ident", IRBlock, "block")(catchIdent, catchBlock);
+        }
 
-        curBlock.addInstr(instr);
-        return instr;
-    }
+        if (parent)
+            return parent.getCatchInfo();
 
-    /**
-    Get the last instruction added
-    */
-    IRInstr getLastInstr()
-    {
-        return curBlock.lastInstr;
+        return null;
     }
 }
 
@@ -747,24 +769,90 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
     else if (auto throwStmt = cast(ThrowStmt)stmt)
     {
-        // TODO: special case if within try block
-
         auto subCtx = ctx.subCtx(true);
         exprToIR(throwStmt.expr, subCtx);
         ctx.merge(subCtx);
 
-        ctx.addInstr(new IRInstr(
-            &THROW,
-            NULL_LOCAL,
-            subCtx.getOutSlot()
-        ));
+        auto catchInfo = ctx.getCatchInfo();
+
+        // If there is an englobing try-catch block
+        if (catchInfo !is null)
+        {
+            auto assgBlock = ctx.fun.newBlock("throw_assg");
+            auto assgCtx = ctx.subCtx(true, NULL_LOCAL, assgBlock);
+
+            // Assign the exception value to the catch variable
+            assgToIR(
+                catchInfo.ident,
+                null,
+                delegate void(IRGenCtx ctx)
+                {
+                    ctx.moveToOutput(subCtx.getOutSlot());
+                },
+                assgCtx
+            );
+
+            // Jump to the catch block
+            assgBlock.addInstr(IRInstr.jump(catchInfo.block));
+
+            // Jump to the assignment block, no throw required
+            ctx.addInstr(IRInstr.jump(assgBlock));
+        }
+
+        // Otherwise, there is no englobing try-catch block
+        else
+        {
+            // Add an interprocedural throw instruction
+            ctx.addInstr(new IRInstr(
+                &THROW,
+                NULL_LOCAL,
+                subCtx.getOutSlot()
+            ));
+        }
     }
 
-    /*
     else if (auto tryStmt = cast(TryStmt)stmt)
     {
+        // Create a block for the catch statement
+        auto catchBlock = ctx.fun.newBlock("try_catch");
+
+        // Create a block for the finally statement
+        auto fnlBlock = ctx.fun.newBlock("try_finally");
+
+        // Create a context for the try block
+        auto tryCtx = ctx.subCtx(false);
+
+        // Setup the try context parameters
+        tryCtx.catchIdent = tryStmt.catchIdent;
+        tryCtx.catchBlock = catchBlock;
+
+
+        // TODO: set finally statement
+        // fnlStmt
+
+
+        // Compile the try statement
+        stmtToIR(tryStmt.tryStmt, tryCtx);
+
+        // After thr try statement, go to the finally block
+        tryCtx.addInstr(IRInstr.jump(fnlBlock));
+
+        // Compile the catch statement, if present
+        auto catchCtx = ctx.subCtx(false, NULL_LOCAL, catchBlock);
+        if (tryStmt.catchStmt !is null)
+            stmtToIR(tryStmt.catchStmt, catchCtx);
+
+        // After the catch statement, go to the finally block
+        catchCtx.addInstr(IRInstr.jump(fnlBlock));
+
+        // Compile the finally statement, if present
+        auto fnlCtx = ctx.subCtx(false,  NULL_LOCAL, fnlBlock);
+        if (tryStmt.finallyStmt !is null)
+            stmtToIR(tryStmt.finallyStmt, fnlCtx);
+
+        // Continue the code generation after the finally statement
+        ctx.merge(fnlCtx);
     }
-    */
 
     else if (auto exprStmt = cast(ExprStmt)stmt)
     {

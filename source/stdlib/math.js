@@ -324,6 +324,18 @@ Math.pow = function (x, y)
         }
     }
 
+
+
+    // TODO:
+    // pow(a,x) = exp(x * log(a))
+
+
+
+
+
+
+
+
     assert(false, 'floating-point support unimplemented');
 };
 
@@ -404,6 +416,22 @@ Math.exp = function (x)
 {
     // TODO: implement this function
     assert (false, 'Math.exp unimplemented');
+
+    //ex = 1 + x + x2/2! + x3/3! + x4/4! + x5/5! + ...
+
+    //exp(int + frac) = exp(int)*exp(frac)
+
+    // TODO: integer powers of e
+
+    // TODO: how do we extract the int/frac part of x?
+
+    // TODO: fractional powers of e
+    // How many Taylor series terms do we need?
+
+
+
+
+
 };
 
 /**
@@ -421,6 +449,18 @@ Math.log = function (x)
 {
     // TODO: implement this function
     assert (false, 'Math.log unimplemented');
+
+    // For x in the interval -1 < x < 1
+    // log(1+x) = x - x2/2 + x3/3 - x4/4 + ...
+
+    // log(pq) = log(p) + log(q)
+
+    // 4/e = 1.47151...
+    // log(4) = log(e*1.47151...) = 1 + log(1.47151...)
+
+
+
+
 };
 
 /// Next random seed

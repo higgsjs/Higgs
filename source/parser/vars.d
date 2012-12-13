@@ -233,7 +233,7 @@ void findDecls(ASTStmt stmt, Scope s)
         findDecls(tryStmt.tryStmt, s);
         if (tryStmt.catchStmt)
         {
-            s.addDecl(tryStmt.catchIdent);
+            //s.addDecl(tryStmt.catchIdent);
             findDecls(tryStmt.catchStmt, s);
         }
         if (tryStmt.finallyStmt)
@@ -365,8 +365,12 @@ void resolveRefs(ASTStmt stmt, Scope s)
         resolveRefs(tryStmt.tryStmt, s);
         if (tryStmt.catchStmt)
         {
-            s.addDecl(tryStmt.catchIdent);
-            resolveRefs(tryStmt.catchStmt, s);
+            // Create a new scope just for the catch variable
+            auto catchVarS = new Scope(s.fun, s);
+            catchVarS.addDecl(tryStmt.catchIdent);
+
+            resolveRefs(tryStmt.catchIdent, catchVarS);
+            resolveRefs(tryStmt.catchStmt, catchVarS);
         }
         if (tryStmt.finallyStmt)
         {
