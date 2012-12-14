@@ -84,6 +84,9 @@ class IRGenCtx
     /// Catch statement identifier
     IdentExpr catchIdent;
 
+    /// Finally statement
+    ASTStmt fnlStmt;
+
     this(
         IRGenCtx parent,
         IRFunction fun, 
@@ -265,6 +268,18 @@ class IRGenCtx
             return null;
 
         return parent.getContTarget(ident);
+    }
+
+    /**
+    Get all englobing finally statements
+    */
+    void getFnlStmts(ASTStmt[]* stmts)
+    {
+        if (fnlStmt)
+            *stmts ~= fnlStmt;
+
+        if (parent)
+            parent.getFnlStmts(stmts);   
     }
 
     /**
@@ -760,6 +775,19 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(retStmt.expr, subCtx);
         ctx.merge(subCtx);
 
+        // Get the englobing finally statements
+        ASTStmt[] fnlStmts;
+        ctx.getFnlStmts(&fnlStmts);
+
+        // Compile the finally statements in-line
+        foreach (fnlStmt; fnlStmts)
+        {
+            auto fnlCtx = ctx.subCtx(false);
+            stmtToIR(fnlStmt, fnlCtx);
+            ctx.merge(fnlCtx);
+        }
+
+        // Add the return instruction
         ctx.addInstr(new IRInstr(
             &RET,
             NULL_LOCAL,
@@ -819,26 +847,23 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Create a block for the finally statement
         auto fnlBlock = ctx.fun.newBlock("try_finally");
 
-        // Create a context for the try block
+        // Create a context for the try block and set its parameters
         auto tryCtx = ctx.subCtx(false);
-
-        // Setup the try context parameters
         tryCtx.catchIdent = tryStmt.catchIdent;
         tryCtx.catchBlock = catchBlock;
-
-
-        // TODO: set finally statement
-        // fnlStmt
-
+        tryCtx.fnlStmt = tryStmt.finallyStmt;
 
         // Compile the try statement
         stmtToIR(tryStmt.tryStmt, tryCtx);
 
-        // After thr try statement, go to the finally block
+        // After the try statement, go to the finally block
         tryCtx.addInstr(IRInstr.jump(fnlBlock));
 
-        // Compile the catch statement, if present
+        // Create a context for the catch block and set its parameters
         auto catchCtx = ctx.subCtx(false, NULL_LOCAL, catchBlock);
+        catchCtx.fnlStmt = tryStmt.finallyStmt;
+
+        // Compile the catch statement, if present
         if (tryStmt.catchStmt !is null)
             stmtToIR(tryStmt.catchStmt, catchCtx);
 

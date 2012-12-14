@@ -917,8 +917,15 @@ unittest
     // Exceptions
     interp.load("programs/exceptions/throw_intra.js");
     interp.assertStr("test();", "abc");
+    interp.load("programs/exceptions/finally_ret.js");
+    interp.assertStr("test();", "abcd");
+    interp.assertStr("str;", "abcdef");
 
     // TODO: more exception tests
+    //interp.load("programs/exceptions/finally_break.js");
+    //interp.load("programs/exceptions/finally_cont.js");
+    //interp.load("programs/exceptions/finally_throw.js");
+    //interp.load("programs/exceptions/throw_inter.js");
 
 
 

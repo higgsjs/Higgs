@@ -1,30 +1,42 @@
+var str = '';
+
 function test()
 {
+    str += 'a';
+
     try
     {
+        str += 'b';
+
         try
         {
-            print('inner try');
-            return;
+            str += 'c';
+            return (str += 'd');
         }
         catch (e)
         {
+            str = 'fail';
         }
         finally
         {
-            print('finally 1');
+            str += 'e';
         }
     }
 
     catch (e)
     {
+        str = 'fail';
     }
 
     finally
     {
-        print('finally 2');
+        str += 'f';
     }
 
-    print('after outer try');
+    str = 'fail';
 }
+
+// foo returns 'abcd'
+
+// str should be 'abcdef'
 
