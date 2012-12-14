@@ -920,12 +920,20 @@ unittest
     interp.load("programs/exceptions/finally_ret.js");
     interp.assertStr("test();", "abcd");
     interp.assertStr("str;", "abcdef");
+    interp.load("programs/exceptions/finally_break.js");
+    interp.assertStr("test(); return str;", "abcdefg");
+    interp.load("programs/exceptions/finally_cont.js");
+    interp.assertStr("test(); return str;", "abcdefbcdefg");
 
-    // TODO: more exception tests
-    //interp.load("programs/exceptions/finally_break.js");
-    //interp.load("programs/exceptions/finally_cont.js");
+
+    // TODO: test throw from within catch clause
     //interp.load("programs/exceptions/finally_throw.js");
+
+
+
     //interp.load("programs/exceptions/throw_inter.js");
+
+
 
 
 

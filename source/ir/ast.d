@@ -236,23 +236,26 @@ class IRGenCtx
     /**
     Find the target block for a break statement
     */
-    IRBlock getBreakTarget(IdentExpr ident)
+    IRBlock getBreakTarget(IdentExpr ident, ASTStmt[]* stmts)
     {
         foreach (target; labelTargets)
             if ((target.name is null && ident is null) || 
                 target.name == ident.name)
                 return target.breakBlock;
 
+        if (fnlStmt)
+            *stmts ~= fnlStmt;
+
         if (parent is null)
             return null;
 
-        return parent.getBreakTarget(ident);
+        return parent.getBreakTarget(ident, stmts);
     }
 
     /**
     Find the target block for a continue statement
     */
-    IRBlock getContTarget(IdentExpr ident)
+    IRBlock getContTarget(IdentExpr ident, ASTStmt[]* stmts)
     {
         foreach (target; labelTargets)
         {
@@ -264,10 +267,13 @@ class IRGenCtx
                 return target.contBlock;
         }
 
+        if (fnlStmt)
+            *stmts ~= fnlStmt;
+
         if (parent is null)
             return null;
 
-        return parent.getContTarget(ident);
+        return parent.getContTarget(ident, stmts);
     }
 
     /**
@@ -749,10 +755,19 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     // Break statement
     else if (auto breakStmt = cast(BreakStmt)stmt)
     {
-        auto block = ctx.getBreakTarget(breakStmt.label);
+        ASTStmt[] fnlStmts;
+        auto block = ctx.getBreakTarget(breakStmt.label, &fnlStmts);
 
         if (block is null)
             throw new ParseError("break statement with no target", stmt.pos);
+
+        // Compile the finally statements in-line
+        foreach (fnlStmt; fnlStmts)
+        {
+            auto fnlCtx = ctx.subCtx(false);
+            stmtToIR(fnlStmt, fnlCtx);
+            ctx.merge(fnlCtx);
+        }
 
         ctx.addInstr(IRInstr.jump(block));
     }
@@ -760,10 +775,19 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     // Continue statement
     else if (auto contStmt = cast(ContStmt)stmt)
     {
-        auto block = ctx.getContTarget(contStmt.label);
+        ASTStmt[] fnlStmts;
+        auto block = ctx.getContTarget(contStmt.label, &fnlStmts);
 
         if (block is null)
             throw new ParseError("continue statement with no target", stmt.pos);
+
+        // Compile the finally statements in-line
+        foreach (fnlStmt; fnlStmts)
+        {
+            auto fnlCtx = ctx.subCtx(false);
+            stmtToIR(fnlStmt, fnlCtx);
+            ctx.merge(fnlCtx);
+        }
 
         ctx.addInstr(IRInstr.jump(block));
     }

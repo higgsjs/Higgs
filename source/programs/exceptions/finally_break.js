@@ -1,31 +1,47 @@
+var str = '';
+
 function test()
 {
+    str += 'a';
+
     for (var i = 0; i < 3; ++i)
     {
+        str += 'b';
+
         try
         {
+            str += 'c';
+
             try
             {
-                print('inner try');
-                continue;
+                str += 'd';
+                break;
             }
             catch (e)
             {
+                str = 'fail';
             }
             finally
             {
-                print('finally 1');
+                str += 'e';
             }
+
+            str = 'fail';
         }
 
         catch (e)
         {
+            str = 'fail';
         }
 
         finally
         {
-            print('finally 2');
+            str += 'f';
         }
+
+        str = 'fail';
     }
+
+    str += 'g';
 }
 
