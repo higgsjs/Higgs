@@ -771,11 +771,16 @@ void op_throw(Interp interp, IRInstr instr)
     auto excSlot = instr.args[0].localIdx;
     auto excVal = interp.getSlot(excSlot);
 
-    writefln("op_throw");
+    //writefln("op_throw");
+
+    // Stack trace (call instructions and throwing instruction)
+    IRInstr[] trace;
 
     // Until we're done unwinding the stack
     for (IRInstr curInstr = instr;;)
     {
+        trace ~= curInstr;
+
         auto numLocals = curInstr.fun.numLocals;
         auto numParams = curInstr.fun.params.length;
         auto argcSlot = curInstr.fun.argcSlot;
@@ -796,16 +801,16 @@ void op_throw(Interp interp, IRInstr instr)
         // If we have reached the bottom of the stack
         if (callInstr is null)
         {
-            writefln("reached bottom of stack");
+            //writefln("reached bottom of stack");
 
             // Throw run-time error exception
-            throw new RunError(interp, excVal);
+            throw new RunError(interp, excVal, trace);
         }
 
         // If the call instruction has an exception target
         if (callInstr.target !is null)
         {
-            writefln("found exception target");
+            //writefln("found exception target");
 
             interp.setSlot(
                 callInstr.outSlot, 

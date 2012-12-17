@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2012, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -48,19 +48,8 @@ Implementation of JavaScript native error classes.
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2012 Maxime Chevalier-Boisvert, All Rights Reserved
 */
-
-// TODO: PROBLEM:
-// The [[Class]] internal property of the newly constructed object is set to "Error".
-//
-// JS provides no way to set this internal property
-// Need a custom function to do it (Tachyon-specific)
-
-// TODO: PROBLEM:
-// name property of constructors, can we change this somehow? property not writable
-// one possible fix is to use eval to generate the constructor...
-// Alternative is Tachyon-specific functionality to change name manually
 
 /**
 Function to create an error constructor function
@@ -84,19 +73,9 @@ function makeErrorCtor(errorName, protoParent)
         return newObj;
     }
 
+    // FIXME
     // Create the prototype object for this error constructor
-    ErrorCtor.prototype = Object.create(protoParent, UNDEFINED);
-
-    // Define the prototype property for the error constructor
-    Object.defineProperty(
-        ErrorCtor,
-        'prototype',
-        {
-            writable        : false,
-            enumerable      : false,
-            configurable    : false
-        }
-    );
+    //ErrorCtor.prototype = Object.create(protoParent);
 
     // Set the error name in the error prototype object
     ErrorCtor.prototype.name = errorName;
@@ -116,7 +95,7 @@ Constructor function for error objects
 */
 var Error = makeErrorCtor(
     'Error',
-    Object.prototype
+    $ir_get_obj_proto()
 );
 
 /**

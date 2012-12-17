@@ -144,12 +144,12 @@ Object.getOwnPropertyNames = function (O)
 */
 Object.create = function (O, Properties)
 {
-    if (boxIsExtObj(O) === false && O !== null)
+    if ($rt_valIsObj(O) === false && O !== null)
     {
         typeError('can only create object from object or null prototype');
     }
 
-    var newObj = newObject(O);
+    var newObj = $ir_new_obj(O);
 
     if (Properties !== undefined)
         Object.defineProperties(newObj, Properties);

@@ -75,6 +75,11 @@ void repl()
         {
             writeln("parse error: " ~ e.toString());
         }
+
+        catch (RunError e)
+        {
+            writefln("run-time error: " ~ e.toString());
+        }
     }
 }
 

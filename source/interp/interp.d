@@ -58,14 +58,24 @@ Run-time error
 */
 class RunError : Error
 {
+    /// Associated interpreter
+    Interp interp;
+
     /// Exception value
     ValuePair excVal;
 
-    this(Interp interp, ValuePair excVal)
-    {
-        this.excVal = excVal;
+    /// Error message
+    string message;
 
-        string message;
+    /// Stack trace
+    IRInstr[] trace;
+
+    this(Interp interp, ValuePair excVal, IRInstr[] trace)
+    {
+        this.interp = interp;
+        this.excVal = excVal;
+        this.trace = trace;
+
         if (excVal.type == Type.REFPTR && 
             valIsLayout(excVal.word, LAYOUT_OBJ))
         {
@@ -75,14 +85,26 @@ class RunError : Error
                 getString(interp, "message")
             );
 
-            message = valToString(msgStr);
+            this.message = valToString(msgStr);
         }
         else
         {
-            message = valToString(excVal);
+            this.message = valToString(excVal);
         }
 
-        super(message);
+        super(toString());
+    }
+
+    string toString()
+    {
+        string str = message;
+
+        foreach (instr; trace)
+        {
+            str ~= "\n" ~ instr.fun.name;
+        }
+
+        return str;
     }
 }
 
@@ -393,6 +415,7 @@ class Interp
         // If the standard library should be loaded
         if (loadStdLib)
         {
+            load("stdlib/error.js");
             load("stdlib/object.js");
             load("stdlib/function.js");
             load("stdlib/math.js");

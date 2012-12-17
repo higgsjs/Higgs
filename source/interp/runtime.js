@@ -769,7 +769,7 @@ function $rt_ne(x, y)
         return $ir_ne_f64(x, y);
     }
 
-    assert (false, "unsupported type in eq");
+    assert (false, "unsupported type in ne");
 }
 
 /**
@@ -833,10 +833,13 @@ function $rt_ne(x, y)
         return true;
     }
 
-    // If both values are references
-    else if ($ir_is_refptr(x) && $ir_is_refptr(y))
+    // If x is a reference
+    else if ($ir_is_refptr(x))
     {
-        return $ir_ne_refptr(x, y);
+        if ($ir_is_refptr(y))
+            return $ir_ne_refptr(x, y);
+
+        return true;
     }
 
     // If x is a constant
@@ -854,7 +857,7 @@ function $rt_ne(x, y)
         return $ir_ne_f64(x, y);
     }
 
-    assert (false, "unsupported type in ne");
+    assert (false, "unsupported type in ns");
 }
 
 //=============================================================================
