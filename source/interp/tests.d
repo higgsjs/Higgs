@@ -914,24 +914,52 @@ unittest
     interp.load("programs/clos_xcall/clos_xcall.js");
     interp.assertInt("test(5);", 5);
 
+    writefln("exc tests");
+
     // Exceptions
     interp.load("programs/exceptions/throw_intra.js");
-    interp.assertStr("test();", "abc");
+
+    writefln("loaded");
+
+    interp.assertStr("str;", "abc");
+
+
+
+    writefln("finally_ret");
+
     interp.load("programs/exceptions/finally_ret.js");
     interp.assertStr("test();", "abcd");
     interp.assertStr("str;", "abcdef");
+
+    writefln("finally_break");
+
     interp.load("programs/exceptions/finally_break.js");
     interp.assertStr("test(); return str;", "abcdefg");
+
+    writefln("finally_cont");
+
     interp.load("programs/exceptions/finally_cont.js");
     interp.assertStr("test(); return str;", "abcdefbcdefg");
 
+    writefln("finally_throw");
 
-    // TODO: test throw from within catch clause
-    //interp.load("programs/exceptions/finally_throw.js");
+    interp.load("programs/exceptions/finally_throw.js");
+    interp.assertStr("test(); return str;", "abcdefghijk");
+    interp.load("programs/exceptions/throw_in_finally.js");
+    interp.assertStr("str;", "abcdef");
+    interp.load("programs/exceptions/throw_in_catch.js");
+    interp.assertStr("str;", "abcdefg");
 
 
 
+
+
+    // TODO: call_no_throw.js ? test call code gen
+
+
+    // TODO: interprocedural throw
     //interp.load("programs/exceptions/throw_inter.js");
+
 
 
 

@@ -1,26 +1,21 @@
-function test()
+var str = '';
+
+try
 {
-    var str = '';
+    str += 'a';
 
-    try
-    {
-        str += 'a';
+    throw 'b';
 
-        throw 'b';
+    str += 'x';
+}
 
-        str += 'x';
-    }
+catch (e)
+{
+    str += e;
+}
 
-    catch (e)
-    {
-        str += e;
-    }
-
-    finally
-    {
-        str += 'c';
-    }
-
-    return str;
+finally
+{
+    str += 'c';
 }
 

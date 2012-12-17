@@ -1,29 +1,57 @@
-function foo()
+var str = '';
+
+function test()
 {
+    str += 'a';
+
     try
     {
+        str += 'b';
+
         try
         {
-            throw 'hi';
+            str += 'c';
+            throw 'd';
         }
         catch (e)
         {
-            print('catch 1');
+            str += e;
+
+            try 
+            {
+                str += 'e';
+                throw 'f';
+            }
+            catch (e)
+            {
+                str += e;
+                throw 'i';
+            }
+            finally
+            {
+                str += 'g';
+            }
+
+            str = 'fail';
         }
         finally
         {
-            print('finally 1');
+            str += 'h';
         }
+
+        str = 'fail';
     }
 
     catch (e)
     {
-        print('catch 2');
+        str += e;
     }
 
     finally
     {
-        print('finally 2');
+        str += 'j';
     }
+
+    str += 'k';
 }
 

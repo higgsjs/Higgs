@@ -291,15 +291,18 @@ class IRGenCtx
     /**
     Get the englobing catch block and catch variable, if defined
     */
-    auto getCatchInfo()
+    auto getCatchInfo(ASTStmt[]* stmts)
     {
         if (catchIdent !is null)
         {
             return new Tuple!(IdentExpr, "ident", IRBlock, "block")(catchIdent, catchBlock);
         }
 
+        if (fnlStmt)
+            *stmts ~= fnlStmt;
+
         if (parent)
-            return parent.getCatchInfo();
+            return parent.getCatchInfo(stmts);
 
         return null;
     }
@@ -825,33 +828,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(throwStmt.expr, subCtx);
         ctx.merge(subCtx);
 
-        auto catchInfo = ctx.getCatchInfo();
-
-        // If there is an englobing try-catch block
-        if (catchInfo !is null)
+        // Generate the exception path
+        if (auto excBlock = genExcPath(ctx, subCtx.getOutSlot()))
         {
-            auto assgBlock = ctx.fun.newBlock("throw_assg");
-            auto assgCtx = ctx.subCtx(true, NULL_LOCAL, assgBlock);
-
-            // Assign the exception value to the catch variable
-            assgToIR(
-                catchInfo.ident,
-                null,
-                delegate void(IRGenCtx ctx)
-                {
-                    ctx.moveToOutput(subCtx.getOutSlot());
-                },
-                assgCtx
-            );
-
-            // Jump to the catch block
-            assgBlock.addInstr(IRInstr.jump(catchInfo.block));
-
-            // Jump to the assignment block, no throw required
-            ctx.addInstr(IRInstr.jump(assgBlock));
+            // Jump to the exception path
+            ctx.addInstr(IRInstr.jump(excBlock));
         }
-
-        // Otherwise, there is no englobing try-catch block
         else
         {
             // Add an interprocedural throw instruction
@@ -1514,6 +1496,10 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         callInstr.args[1].localIdx = thisSlot;
         for (size_t i = 0; i < argSlots.length; ++i)
             callInstr.args[2+i].localIdx = argSlots[i];
+
+        // Generate the exception path for the call instruction
+        if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
+            callInstr.target = excBlock;
     }
 
     // New operator call expression
@@ -1545,6 +1531,10 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         callInstr.args[0].localIdx = baseCtx.outSlot;
         for (size_t i = 0; i < argSlots.length; ++i)
             callInstr.args[1+i].localIdx = argSlots[i];
+
+        // Generate the exception path for the call instruction
+        if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
+            callInstr.target = excBlock;
     }
 
     else if (auto indexExpr = cast(IndexExpr)expr)
@@ -2098,6 +2088,87 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLo
     for (size_t i = 0; i < argLocals.length; ++i)
         callInstr.args[2+i].localIdx = argLocals[i];
 
+    
+
+    /*
+
+    // Generate the exception path for the call instruction
+    if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
+    {
+        writefln("exc path generated for %s", fName);
+        callInstr.target = excBlock;
+
+        //writeln(ctx.fun.toString());
+
+    }
+    
+    */
+
+
+
     return callInstr;
+}
+
+/**
+Generate the exception code path for a call or throw instruction
+*/
+IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
+{
+    ASTStmt[] fnlStmts;
+    auto catchInfo = ctx.getCatchInfo(&fnlStmts);
+
+    // If there is no englobing catch block and there are
+    // no englobing finally statements
+    if (catchInfo is null && fnlStmts.length == 0)
+        return null;
+
+    // Create a block for the exception path
+    auto excBlock = ctx.fun.newBlock("call_exc");
+    auto excCtx = ctx.subCtx(false, NULL_LOCAL, excBlock);           
+
+
+    writefln("num fnl stmts: %s", fnlStmts.length);
+
+
+    // Compile the finally statements in-line
+    foreach (fnlStmt; fnlStmts)
+    {
+        auto fnlCtx = excCtx.subCtx(false);
+        stmtToIR(fnlStmt, fnlCtx);
+        excCtx.merge(fnlCtx);
+    }
+
+    // If there is an englobing try block
+    if (catchInfo !is null)
+    {
+        // Assign the exception value to the catch variable
+        auto assgCtx = excCtx.subCtx(true);
+        assgToIR(
+            catchInfo.ident,
+            null,
+            delegate void(IRGenCtx ctx)
+            {
+                ctx.moveToOutput(excSlot);
+            },
+            assgCtx
+        );
+        excCtx.merge(assgCtx);
+
+        // Jump to the catch block
+        excCtx.addInstr(IRInstr.jump(catchInfo.block));
+    }
+
+    // Otherwise, there is no englobing try-catch block
+    else
+    {
+        // Add an interprocedural throw instruction
+        excCtx.addInstr(new IRInstr(
+            &THROW,
+            NULL_LOCAL,
+            excSlot
+        ));
+    }
+
+    return excBlock;
 }
 
