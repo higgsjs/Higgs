@@ -918,12 +918,7 @@ unittest
 
     // Exceptions
     interp.load("programs/exceptions/throw_intra.js");
-
-    writefln("loaded");
-
     interp.assertStr("str;", "abc");
-
-
 
     writefln("finally_ret");
 
@@ -950,11 +945,6 @@ unittest
     interp.load("programs/exceptions/throw_in_catch.js");
     interp.assertStr("str;", "abcdefg");
 
-
-
-
-
-    // TODO: call_no_throw.js ? test call code gen
 
 
     // TODO: interprocedural throw

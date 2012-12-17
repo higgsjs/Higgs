@@ -87,6 +87,12 @@ class IRGenCtx
     /// Finally statement
     ASTStmt fnlStmt;
 
+    /// Finally statement and context pair
+    alias Tuple!(
+        ASTStmt, "stmt",
+        IRGenCtx, "ctx"
+    ) FnlInfo;
+
     this(
         IRGenCtx parent,
         IRFunction fun, 
@@ -236,7 +242,7 @@ class IRGenCtx
     /**
     Find the target block for a break statement
     */
-    IRBlock getBreakTarget(IdentExpr ident, ASTStmt[]* stmts)
+    IRBlock getBreakTarget(IdentExpr ident, FnlInfo[]* stmts)
     {
         foreach (target; labelTargets)
             if ((target.name is null && ident is null) || 
@@ -244,7 +250,7 @@ class IRGenCtx
                 return target.breakBlock;
 
         if (fnlStmt)
-            *stmts ~= fnlStmt;
+            *stmts ~= FnlInfo(fnlStmt, parent);
 
         if (parent is null)
             return null;
@@ -255,7 +261,7 @@ class IRGenCtx
     /**
     Find the target block for a continue statement
     */
-    IRBlock getContTarget(IdentExpr ident, ASTStmt[]* stmts)
+    IRBlock getContTarget(IdentExpr ident, FnlInfo[]* stmts)
     {
         foreach (target; labelTargets)
         {
@@ -268,7 +274,7 @@ class IRGenCtx
         }
 
         if (fnlStmt)
-            *stmts ~= fnlStmt;
+            *stmts ~= FnlInfo(fnlStmt, parent);
 
         if (parent is null)
             return null;
@@ -279,10 +285,10 @@ class IRGenCtx
     /**
     Get all englobing finally statements
     */
-    void getFnlStmts(ASTStmt[]* stmts)
+    void getFnlStmts(FnlInfo[]* stmts)
     {
         if (fnlStmt)
-            *stmts ~= fnlStmt;
+            *stmts ~= FnlInfo(fnlStmt, parent);
 
         if (parent)
             parent.getFnlStmts(stmts);   
@@ -291,7 +297,7 @@ class IRGenCtx
     /**
     Get the englobing catch block and catch variable, if defined
     */
-    auto getCatchInfo(ASTStmt[]* stmts)
+    auto getCatchInfo(FnlInfo[]* stmts)
     {
         if (catchIdent !is null)
         {
@@ -299,7 +305,7 @@ class IRGenCtx
         }
 
         if (fnlStmt)
-            *stmts ~= fnlStmt;
+            *stmts ~= FnlInfo(fnlStmt, parent);
 
         if (parent)
             return parent.getCatchInfo(stmts);
@@ -758,18 +764,19 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     // Break statement
     else if (auto breakStmt = cast(BreakStmt)stmt)
     {
-        ASTStmt[] fnlStmts;
+        IRGenCtx.FnlInfo[] fnlStmts;
         auto block = ctx.getBreakTarget(breakStmt.label, &fnlStmts);
 
         if (block is null)
             throw new ParseError("break statement with no target", stmt.pos);
 
         // Compile the finally statements in-line
-        foreach (fnlStmt; fnlStmts)
+        foreach (fnl; fnlStmts)
         {
             auto fnlCtx = ctx.subCtx(false);
-            stmtToIR(fnlStmt, fnlCtx);
-            ctx.merge(fnlCtx);
+            fnlCtx.parent = fnl.ctx;
+            stmtToIR(fnl.stmt, fnlCtx);
+            ctx.merge(fnlCtx.curBlock);
         }
 
         ctx.addInstr(IRInstr.jump(block));
@@ -778,18 +785,19 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     // Continue statement
     else if (auto contStmt = cast(ContStmt)stmt)
     {
-        ASTStmt[] fnlStmts;
+        IRGenCtx.FnlInfo[] fnlStmts;
         auto block = ctx.getContTarget(contStmt.label, &fnlStmts);
 
         if (block is null)
             throw new ParseError("continue statement with no target", stmt.pos);
 
         // Compile the finally statements in-line
-        foreach (fnlStmt; fnlStmts)
+        foreach (fnl; fnlStmts)
         {
             auto fnlCtx = ctx.subCtx(false);
-            stmtToIR(fnlStmt, fnlCtx);
-            ctx.merge(fnlCtx);
+            fnlCtx.parent = fnl.ctx;
+            stmtToIR(fnl.stmt, fnlCtx);
+            ctx.merge(fnlCtx.curBlock);
         }
 
         ctx.addInstr(IRInstr.jump(block));
@@ -803,15 +811,16 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.merge(subCtx);
 
         // Get the englobing finally statements
-        ASTStmt[] fnlStmts;
+        IRGenCtx.FnlInfo[] fnlStmts;
         ctx.getFnlStmts(&fnlStmts);
 
         // Compile the finally statements in-line
-        foreach (fnlStmt; fnlStmts)
+        foreach (fnl; fnlStmts)
         {
             auto fnlCtx = ctx.subCtx(false);
-            stmtToIR(fnlStmt, fnlCtx);
-            ctx.merge(fnlCtx);
+            fnlCtx.parent = fnl.ctx;
+            stmtToIR(fnl.stmt, fnlCtx);
+            ctx.merge(fnlCtx.curBlock);
         }
 
         // Add the return instruction
@@ -2088,23 +2097,9 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLo
     for (size_t i = 0; i < argLocals.length; ++i)
         callInstr.args[2+i].localIdx = argLocals[i];
 
-    
-
-    /*
-
     // Generate the exception path for the call instruction
     if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
-    {
-        writefln("exc path generated for %s", fName);
         callInstr.target = excBlock;
-
-        //writeln(ctx.fun.toString());
-
-    }
-    
-    */
-
-
 
     return callInstr;
 }
@@ -2114,7 +2109,7 @@ Generate the exception code path for a call or throw instruction
 */
 IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
 {
-    ASTStmt[] fnlStmts;
+    IRGenCtx.FnlInfo[] fnlStmts;
     auto catchInfo = ctx.getCatchInfo(&fnlStmts);
 
     // If there is no englobing catch block and there are
@@ -2125,18 +2120,6 @@ IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
     // Create a block for the exception path
     auto excBlock = ctx.fun.newBlock("call_exc");
     auto excCtx = ctx.subCtx(false, NULL_LOCAL, excBlock);           
-
-
-    writefln("num fnl stmts: %s", fnlStmts.length);
-
-
-    // Compile the finally statements in-line
-    foreach (fnlStmt; fnlStmts)
-    {
-        auto fnlCtx = excCtx.subCtx(false);
-        stmtToIR(fnlStmt, fnlCtx);
-        excCtx.merge(fnlCtx);
-    }
 
     // If there is an englobing try block
     if (catchInfo !is null)
@@ -2153,7 +2136,22 @@ IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
             assgCtx
         );
         excCtx.merge(assgCtx);
+    }
 
+    //writefln("num fnl stmts: %s", fnlStmts.length);
+
+    // Compile the finally statements in-line
+    foreach (fnl; fnlStmts)
+    {
+        auto fnlCtx = excCtx.subCtx(false);
+        fnlCtx.parent = fnl.ctx;
+        stmtToIR(fnl.stmt, fnlCtx);
+        excCtx.merge(fnlCtx.curBlock);
+    }
+
+    // If there is an englobing try block
+    if (catchInfo !is null)
+    {
         // Jump to the catch block
         excCtx.addInstr(IRInstr.jump(catchInfo.block));
     }
