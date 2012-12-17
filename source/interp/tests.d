@@ -945,13 +945,11 @@ unittest
     interp.load("programs/exceptions/throw_in_catch.js");
     interp.assertStr("str;", "abcdefg");
 
+    interp.load("programs/exceptions/throw_inter.js");
+    interp.assertInt("test();", 0);
 
-
-    // TODO: interprocedural throw
-    //interp.load("programs/exceptions/throw_inter.js");
-
-
-
+    interp.load("programs/exceptions/throw_inter_fnl.js");
+    interp.assertStr("str;", "abcdef");
 
 
 

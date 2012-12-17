@@ -767,16 +767,59 @@ void op_ret(Interp interp, IRInstr instr)
 
 void op_throw(Interp interp, IRInstr instr)
 {
-    auto excSlot   = instr.args[0].localIdx;
-    auto raSlot    = instr.fun.raSlot;
-    auto numLocals = instr.fun.numLocals;
-
     // Get the exception value
-    auto exc = interp.getSlot(excSlot);
+    auto excSlot = instr.args[0].localIdx;
+    auto excVal = interp.getSlot(excSlot);
 
-    throw new Exception(
-        "Exception thrown: " ~ valToString(exc)
-    );
+    writefln("op_throw");
+
+    // Until we're done unwinding the stack
+    for (IRInstr curInstr = instr;;)
+    {
+        auto numLocals = curInstr.fun.numLocals;
+        auto numParams = curInstr.fun.params.length;
+        auto argcSlot = curInstr.fun.argcSlot;
+        auto raSlot = curInstr.fun.raSlot;
+
+        // Get the calling instruction
+        auto callInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
+
+        // Get the argument count
+        auto argCount = interp.wsp[argcSlot].intVal;
+
+        // Compute the actual number of extra arguments to pop
+        size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
+
+        // Pop all local stack slots and arguments
+        interp.pop(numLocals + extraArgs);
+
+        // If we have reached the bottom of the stack
+        if (callInstr is null)
+        {
+            writefln("reached bottom of stack");
+
+            // Throw run-time error exception
+            throw new RunError(interp, excVal);
+        }
+
+        // If the call instruction has an exception target
+        if (callInstr.target !is null)
+        {
+            writefln("found exception target");
+
+            interp.setSlot(
+                callInstr.outSlot, 
+                excVal
+            );
+
+            interp.ip = callInstr.target.firstInstr;
+
+            return;
+        }
+
+        // Move one stack level up
+        curInstr = callInstr;
+    }
 }
 
 void op_get_arg(Interp interp, IRInstr instr)

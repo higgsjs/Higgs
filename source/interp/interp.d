@@ -54,6 +54,39 @@ import interp.string;
 import interp.object;
 
 /**
+Run-time error
+*/
+class RunError : Error
+{
+    /// Exception value
+    ValuePair excVal;
+
+    this(Interp interp, ValuePair excVal)
+    {
+        this.excVal = excVal;
+
+        string message;
+        if (excVal.type == Type.REFPTR && 
+            valIsLayout(excVal.word, LAYOUT_OBJ))
+        {
+            auto msgStr = getProp(
+                interp, 
+                excVal.word.ptrVal,
+                getString(interp, "message")
+            );
+
+            message = valToString(msgStr);
+        }
+        else
+        {
+            message = valToString(excVal);
+        }
+
+        super(message);
+    }
+}
+
+/**
 Memory word union
 */
 union Word
