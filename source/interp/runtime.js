@@ -1008,7 +1008,7 @@ function $rt_getProp(base, prop)
     //println(base);
     //println(prop);
 
-    assert (false, "unsupported base in getProp");
+    throw TypeError("invalid base in property read");
 }
 
 /**
@@ -1263,7 +1263,7 @@ function $rt_setProp(base, prop, val)
     println(typeof base);
     println(base);
 
-    assert (false, "unsupported base in setProp");
+    throw TypeError("invalid base in property write");
 }
 
 /**

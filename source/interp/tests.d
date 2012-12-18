@@ -914,44 +914,28 @@ unittest
     interp.load("programs/clos_xcall/clos_xcall.js");
     interp.assertInt("test(5);", 5);
 
-    writefln("exc tests");
-
     // Exceptions
     interp.load("programs/exceptions/throw_intra.js");
     interp.assertStr("str;", "abc");
-
-    writefln("finally_ret");
-
     interp.load("programs/exceptions/finally_ret.js");
     interp.assertStr("test();", "abcd");
     interp.assertStr("str;", "abcdef");
-
-    writefln("finally_break");
-
     interp.load("programs/exceptions/finally_break.js");
     interp.assertStr("test(); return str;", "abcdefg");
-
-    writefln("finally_cont");
-
     interp.load("programs/exceptions/finally_cont.js");
     interp.assertStr("test(); return str;", "abcdefbcdefg");
-
-    writefln("finally_throw");
-
     interp.load("programs/exceptions/finally_throw.js");
     interp.assertStr("test(); return str;", "abcdefghijk");
     interp.load("programs/exceptions/throw_in_finally.js");
     interp.assertStr("str;", "abcdef");
     interp.load("programs/exceptions/throw_in_catch.js");
     interp.assertStr("str;", "abcdefg");
-
     interp.load("programs/exceptions/throw_inter.js");
     interp.assertInt("test();", 0);
-
     interp.load("programs/exceptions/throw_inter_fnl.js");
     interp.assertStr("str;", "abcdef");
-
-
+    interp.load("programs/exceptions/try_call.js");
+    interp.assertStr("str;", "abc");
 
     // Standard library
     interp.load("programs/stdlib_boolean/stdlib_boolean.js");

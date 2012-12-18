@@ -48,6 +48,125 @@ import interp.layout;
 import interp.string;
 import interp.object;
 
+void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
+{
+    //writefln("throw");
+
+    // Stack trace (call instructions and throwing instruction)
+    IRInstr[] trace;
+
+    // Until we're done unwinding the stack
+    for (IRInstr curInstr = instr;;)
+    {
+        // If we have reached the bottom of the stack
+        if (curInstr is null)
+        {
+            //writefln("reached bottom of stack");
+
+            // Throw run-time error exception
+            throw new RunError(interp, excVal, trace);
+        }
+
+        // Add the current instruction to the stack trace
+        trace ~= curInstr;
+
+        // If this is a call instruction and it has an exception target
+        if (curInstr.opcode is &CALL && curInstr.target !is null)
+        {
+            //writefln("found exception target");
+
+            // Set the return value slot to the exception value
+            interp.setSlot(
+                curInstr.outSlot, 
+                excVal
+            );
+
+            // Go to the exception target
+            interp.ip = curInstr.target.firstInstr;
+
+            // Stop unwinding the stack
+            return;
+        }
+
+        auto numLocals = curInstr.fun.numLocals;
+        auto numParams = curInstr.fun.params.length;
+        auto argcSlot = curInstr.fun.argcSlot;
+        auto raSlot = curInstr.fun.raSlot;
+
+        // Get the calling instruction for the current stack frame
+        curInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
+
+        // Get the argument count
+        auto argCount = interp.wsp[argcSlot].intVal;
+
+        // Compute the actual number of extra arguments to pop
+        size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
+
+        // Pop all local stack slots and arguments
+        interp.pop(numLocals + extraArgs);
+    }
+}
+
+void throwError(
+    Interp interp,
+    IRInstr instr,
+    string ctorName, 
+    string errMsg
+)
+{
+    auto errStr = getString(interp, to!wstring(errMsg));
+
+    ValuePair errCtor = getProp(
+        interp,
+        interp.globalObj,
+        getString(interp, to!wstring(ctorName))
+    );
+
+    if (errCtor.type == Type.REFPTR &&
+        valIsLayout(errCtor.word, LAYOUT_OBJ))
+    {
+        ValuePair errProto = getProp(
+            interp,
+            errCtor.word.ptrVal,
+            getString(interp, "prototype"w)
+        );
+
+        if (errProto.type == Type.REFPTR &&
+            valIsLayout(errCtor.word, LAYOUT_OBJ))
+        {
+            // Create the error object
+            auto excObj = newObj(
+                interp, 
+                null, 
+                errProto.word.ptrVal,
+                CLASS_INIT_SIZE,
+                CLASS_INIT_SIZE
+            );
+
+            // Set the error "message" property
+            setProp(
+                interp,
+                excObj,
+                getString(interp, "message"w),
+                ValuePair(Word.ptrv(errStr), Type.REFPTR)
+            );
+
+            throwExc(
+                interp,
+                instr,
+                ValuePair(Word.ptrv(excObj), Type.REFPTR)
+            );
+        }
+    }
+
+    // Throw the error string directly
+    throwExc(
+        interp,
+        instr,
+        ValuePair(Word.ptrv(errStr), Type.REFPTR)
+    );
+}
+
 void op_set_int(Interp interp, IRInstr instr)
 {
     interp.setSlot(
@@ -637,10 +756,8 @@ void op_call(Interp interp, IRInstr instr)
     auto wThis = interp.getWord(thisIdx);
     auto tThis = interp.getType(thisIdx);
 
-    assert (
-        tClos == Type.REFPTR,
-        "closure is not ref ptr"
-    );
+    if (tClos != Type.REFPTR || !valIsLayout(wClos, LAYOUT_CLOS))
+        return throwError(interp, instr, "TypeError", "call to non-function");
 
     // Get the function object from the closure
     auto closPtr = interp.getWord(closIdx).ptrVal;
@@ -666,9 +783,14 @@ void op_call(Interp interp, IRInstr instr)
 void op_call_new(Interp interp, IRInstr instr)
 {
     auto closIdx = instr.args[0].localIdx;
+    auto wClos = interp.getWord(closIdx);
+    auto tClos = interp.getType(closIdx);
+
+    if (tClos != Type.REFPTR || !valIsLayout(wClos, LAYOUT_CLOS))
+        return throwError(interp, instr, "TypeError", "new with non-function");
 
     // Get the function object from the closure
-    auto closPtr = interp.getWord(closIdx).ptrVal;
+    auto closPtr = wClos.ptrVal;
     auto fun = cast(IRFunction)clos_get_fptr(closPtr);
     assert (
         fun !is null, 
@@ -771,60 +893,8 @@ void op_throw(Interp interp, IRInstr instr)
     auto excSlot = instr.args[0].localIdx;
     auto excVal = interp.getSlot(excSlot);
 
-    //writefln("op_throw");
-
-    // Stack trace (call instructions and throwing instruction)
-    IRInstr[] trace;
-
-    // Until we're done unwinding the stack
-    for (IRInstr curInstr = instr;;)
-    {
-        trace ~= curInstr;
-
-        auto numLocals = curInstr.fun.numLocals;
-        auto numParams = curInstr.fun.params.length;
-        auto argcSlot = curInstr.fun.argcSlot;
-        auto raSlot = curInstr.fun.raSlot;
-
-        // Get the calling instruction
-        auto callInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
-
-        // Get the argument count
-        auto argCount = interp.wsp[argcSlot].intVal;
-
-        // Compute the actual number of extra arguments to pop
-        size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
-
-        // Pop all local stack slots and arguments
-        interp.pop(numLocals + extraArgs);
-
-        // If we have reached the bottom of the stack
-        if (callInstr is null)
-        {
-            //writefln("reached bottom of stack");
-
-            // Throw run-time error exception
-            throw new RunError(interp, excVal, trace);
-        }
-
-        // If the call instruction has an exception target
-        if (callInstr.target !is null)
-        {
-            //writefln("found exception target");
-
-            interp.setSlot(
-                callInstr.outSlot, 
-                excVal
-            );
-
-            interp.ip = callInstr.target.firstInstr;
-
-            return;
-        }
-
-        // Move one stack level up
-        curInstr = callInstr;
-    }
+    // Throw the exception
+    throwExc(interp, instr, excVal);
 }
 
 void op_get_arg(Interp interp, IRInstr instr)

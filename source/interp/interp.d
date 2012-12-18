@@ -168,7 +168,7 @@ Test if a heap object has a given layout
 */
 bool valIsLayout(Word w, uint32 layoutId)
 {
-    return (obj_get_header(w.ptrVal) == layoutId);
+    return (w != NULL && obj_get_header(w.ptrVal) == layoutId);
 }
 
 /**
