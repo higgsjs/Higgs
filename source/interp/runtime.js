@@ -61,14 +61,16 @@ function isNaN(v)
 /**
 Perform an assertion test
 */
-function assert(test, error)
+function assert(test, errorMsg)
 {
     if ($ir_if_true(test))
         return;
 
-    // TODO: throw Error object
-    throw error;
-    //throw 'ASSERTION FAILED:\n' + error
+    var globalObj = $ir_get_global_obj();
+    if (globalObj.Error != undefined)
+        throw Error(errorMsg);
+
+    throw errorMsg;
 }
 
 /**
@@ -95,9 +97,12 @@ function println(val)
 /**
 Test if a value is of a given layout
 */
-function $rt_valIsLayout(val, layoutId)
+function $rt_refIsLayout(val, layoutId)
 {
-    return $ir_eq_i8($rt_obj_get_header(val), layoutId)
+    return (
+        $ir_ne_refptr(val, null) && 
+        $ir_eq_i8($rt_obj_get_header(val), layoutId)
+    );
 }
 
 /**
@@ -105,7 +110,11 @@ Test if a value is a string
 */
 function $rt_isString(val)
 {
-    return $ir_is_refptr(val) && $rt_valIsLayout(val, $rt_LAYOUT_STR);
+    return (
+        $ir_is_refptr(val) && 
+        $ir_ne_refptr(val, null) && 
+        $rt_refIsLayout(val, $rt_LAYOUT_STR)
+    );
 }
 
 /**
@@ -114,7 +123,8 @@ Test if a value is an object
 function $rt_valIsObj(val)
 {
     return (
-        $ir_is_refptr(val) && (
+        $ir_is_refptr(val) && 
+        $ir_ne_refptr(val, null) && (
             $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_OBJ) ||
             $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_ARR) ||
             $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_CLOS)
@@ -807,13 +817,19 @@ function $rt_se(x, y)
         return false;
     }
 
-    // If both values are floating-point
-    else if ($ir_is_float(x) && $ir_is_float(y))
+    // If x is a float
+    else if ($ir_is_float(x))
     {
-        return $ir_eq_f64(x, y);
+        if ($ir_is_float(y))
+            return $ir_eq_f64(x, y);
+
+        if ($ir_is_int(x))
+            return $ir_eq_f64(x, $ir_i32_to_f64(y));
+
+        return false;
     }
 
-    assert (false, "unsupported type in se");
+    throw TypeError("unsupported types in strict equality comparison");
 }
 
 /**
@@ -851,13 +867,19 @@ function $rt_ne(x, y)
         return true;
     }
 
-    // If both values are floating-point
-    else if ($ir_is_float(x) && $ir_is_float(y))
+    // If x is a float
+    else if ($ir_is_float(x))
     {
-        return $ir_ne_f64(x, y);
+        if ($ir_is_float(y))
+            return $ir_ne_f64(x, y);
+
+        if ($ir_is_int(x))
+            return $ir_ne_f64(x, $ir_i32_to_f64(y));
+
+        return true;
     }
 
-    assert (false, "unsupported type in ns");
+    throw TypeError("unsupported types in strict inequality comparison");
 }
 
 //=============================================================================
@@ -1271,12 +1293,8 @@ Implementation of the "instanceof" operator
 */
 function $rt_instanceof(obj, ctor)
 { 
-    // TODO: type error
-    assert (
-        $ir_is_refptr(ctor) &&
-        $rt_valIsLayout(ctor, $rt_LAYOUT_CLOS),
-        'constructor must be function'
-    );
+    if (!$ir_is_refptr(ctor) || !$rt_refIsLayout(ctor, $rt_LAYOUT_CLOS))
+        throw TypeError('constructor must be function');
 
     // If the value is not an object
     if ($rt_valIsObj(obj) === false)
@@ -1352,6 +1370,9 @@ Implementation of the "in" operator
 */
 function $rt_in(prop, obj)
 {
+    if (!$rt_valIsObj(obj))
+        throw TypeError('invalid object passed to "in" operator');
+
     // Until we went all the way through the prototype chain
     do
     {

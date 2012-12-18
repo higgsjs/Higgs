@@ -121,6 +121,28 @@ void assertBool(Interp interp, string input, bool boolVal)
     );
 }
 
+void assertThrows(Interp interp, string input)
+{
+    try
+    {
+        interp.evalString(input);
+    }
+
+    catch (RunError e)
+    {
+        return;
+    }
+
+    throw new Error(
+        format(
+            "Test failed:\n" ~
+            "%s" ~ "\n" ~
+            "no exception thrown",
+            input
+        )
+    );
+}
+
 void assertStr(Interp interp, string input, string strVal)
 {
     auto ret = interp.evalString(input);
@@ -162,6 +184,11 @@ void assertBool(string input, bool boolVal)
 void assertStr(string input, string strVal)
 {
     assertStr(new Interp(), input, strVal);
+}
+
+void assertThrows(string input)
+{
+    assertThrows(new Interp(), input);
 }
 
 unittest
@@ -252,6 +279,8 @@ unittest
     assertBool("true == false", false);
     assertBool("true === true", true);
     assertBool("true !== false", true);
+    assertBool("3 === 3.0", true);
+    assertBool("3 !== 3.5", true);
 
     assertInt("return true? 1:0", 1);
     assertInt("return false? 1:0", 0);
@@ -788,6 +817,11 @@ unittest
         ",
         3
     );
+
+    assertBool("({}) instanceof Object", true);
+    assertThrows("false instanceof false");
+    assertBool("'foo' in {}", false);
+    assertThrows("2 in null");
 }
 
 /// Closures, captured and escaping variables
