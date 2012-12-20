@@ -117,49 +117,6 @@ Math.abs = function (x)
 };
 
 /**
-15.8.2.6 ceil (x)
-Returns the smallest (closest to −∞) Number value that is not less than x
-and is equal to a mathematical integer. If x is already an integer, the
-result is x.
-
-• If x is NaN, the result is NaN.
-• If x is +0, the result is +0.
-• If x is −0, the result is −0.
-• If x is +∞, the result is +∞.
-• If x is −∞, the result is −∞.
-• If x is less than 0 but greater than -1, the result is −0.
-
-The value of Math.ceil(x) is the same as the value of -Math.floor(-x).
-*/
-Math.ceil = function (x)
-{
-    // TODO: requires F64 to/from I64 conversion for truncation
-
-    // For integers, the value is unchanged
-    return x;
-};
-
-/**
-15.8.2.9 floor (x)
-Returns the greatest (closest to +∞) Number value that is not greater than x 
-and is equal to a mathematical integer. If x is already an integer, the result
-is x.
-
-• If x is NaN, the result is NaN.
-• If x is +0, the result is +0.
-• If x is −0, the result is −0.
-• If x is +∞, the result is +∞.
-• If x is −∞, the result is −∞.
-• If x is greater than 0 but less than 1, the result is +0.
-
-NOTE: The value of Math.floor(x) is the same as the value of -Math.ceil(-x).
-*/
-Math.floor = function (x)
-{
-    return -Math.ceil(-x);
-};
-
-/**
 15.8.2.11 max ([value1 [, value2 [, … ]]])
 Given zero or more arguments, calls ToNumber on each of the arguments and 
 returns the largest of the resulting values.
@@ -218,6 +175,49 @@ Math.min = function ()
 };
 
 /**
+15.8.2.6 ceil (x)
+Returns the smallest (closest to −∞) Number value that is not less than x
+and is equal to a mathematical integer. If x is already an integer, the
+result is x.
+
+• If x is NaN, the result is NaN.
+• If x is +0, the result is +0.
+• If x is −0, the result is −0.
+• If x is +∞, the result is +∞.
+• If x is −∞, the result is −∞.
+• If x is less than 0 but greater than -1, the result is −0.
+
+The value of Math.ceil(x) is the same as the value of -Math.floor(-x).
+*/
+Math.ceil = function (x)
+{
+    // TODO: requires F64 to/from I64 conversion for truncation
+
+    // For integers, the value is unchanged
+    return x;
+};
+
+/**
+15.8.2.9 floor (x)
+Returns the greatest (closest to +∞) Number value that is not greater than x 
+and is equal to a mathematical integer. If x is already an integer, the result
+is x.
+
+• If x is NaN, the result is NaN.
+• If x is +0, the result is +0.
+• If x is −0, the result is −0.
+• If x is +∞, the result is +∞.
+• If x is −∞, the result is −∞.
+• If x is greater than 0 but less than 1, the result is +0.
+
+NOTE: The value of Math.floor(x) is the same as the value of -Math.ceil(-x).
+*/
+Math.floor = function (x)
+{
+    return -Math.ceil(-x);
+};
+
+/**
 15.8.2.13 pow (x, y)
 Returns an implementation-dependent approximation to the result of raising 
 x to the power y.
@@ -236,7 +236,7 @@ x to the power y.
 • If x is +∞ and y<0, the result is +0.
 • If x is −∞ and y>0 and y is an odd integer, the result is −∞.
 • If x is −∞ and y>0 and y is not an odd integer, the result is +∞.
-• If x is −∞ and y<0 and y is an odd integer, the result is −0. 162 © Ecma International 2009
+• If x is −∞ and y<0 and y is an odd integer, the result is −0.
 • If x is −∞ and y<0 and y is not an odd integer, the result is +0.
 • If x is +0 and y>0, the result is +0.
 • If x is +0 and y<0, the result is +∞.
@@ -261,12 +261,6 @@ Math.pow = function (x, y)
 
         for (;;)
         {
-            /*
-            println('power  : ' + power);
-            println('cur: ' + current);
-            println('acc: ' + acc);
-            */
-
             // Multiply the result by the current exponent
             if ($ir_ne_i32($ir_and_i32(power, 1), 0))
             {
@@ -275,13 +269,6 @@ Math.pow = function (x, y)
                 }
                 else
                 {
-                    /*
-                    println('acc integer overflow in Math.pow');
-                    println('power  : ' + power);
-                    println('cur: ' + current);
-                    println('acc: ' + acc);
-                    */
-
                     // Continue the calculation with floating-point numbers
                     var accf = $ir_i32_to_f64(acc);
                     var curf = $ir_i32_to_f64(current);
@@ -306,13 +293,6 @@ Math.pow = function (x, y)
             }
             else
             {
-                /*
-                println('current integer overflow in Math.pow');
-                println('power  : ' + power);
-                println('cur: ' + current);
-                println('acc: ' + acc);
-                */
-
                 // Continue the calculation with floating-point numbers
                 var xf = $ir_i32_to_f64(x);
                 var yf = $ir_i32_to_f64(y);
@@ -447,16 +427,51 @@ logarithm of x.
 */
 Math.log = function (x)
 {
+    /*
+    // For x in the interval -1 < x < 1
+    // log(1+x) = x - x2/2 + x3/3 - x4/4 + ...
+    if (x >= 0 && x < 1)
+    {
+        // Want to compute log(1 + (x-1))
+        x = x - 1;
+
+        var sum = 0;
+        var prod = x;
+        var div = 1;
+
+        print('x: ' + x);
+
+        for (;;)
+        {   
+            var term = prod / div;
+
+            if (div & 1 === 1)
+                sum += term;
+            else
+                sum -= term;
+
+            print('term: ' + term);
+            print('sum: ' + sum);
+            print('div: ' + div);
+
+            if (term > -1E-18 && term < 1E-18)
+                break;
+
+            prod *= x;
+            div += 1;
+        }
+
+        return sum;
+    }
+
+    // log(pq) = log(p) + log(q)
+    // log(4) = log(e*1.47151...) = 1 + log(1.47151...)
+    */
+
     // TODO: implement this function
     assert (false, 'Math.log unimplemented');
 
-    // For x in the interval -1 < x < 1
-    // log(1+x) = x - x2/2 + x3/3 - x4/4 + ...
 
-    // log(pq) = log(p) + log(q)
-
-    // 4/e = 1.47151...
-    // log(4) = log(e*1.47151...) = 1 + log(1.47151...)
 
 
 

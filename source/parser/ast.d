@@ -996,7 +996,7 @@ class FloatExpr : ASTExpr
         if (floor(val) == val)
             return format("%.1f", val);
         else
-            return format("%f", val);
+            return format("%G", val);
     }
 }
 

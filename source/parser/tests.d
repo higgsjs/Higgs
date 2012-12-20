@@ -160,6 +160,8 @@ unittest
     testParse("1");
     testParse("1;");
     testParse("3.0;");
+    testParse("1E15;");
+    testParse("1E-15;");
     testParse("0x09ABCD;");
 
     testParse("\"foobar\";");
