@@ -584,10 +584,15 @@ Opcode SUB_F64 = { "sub_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_f64 };
 Opcode MUL_F64 = { "mul_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_f64 };
 Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_div_f64 };
 
-// Floating-point functions
+// Higher-level floating-point functions
 Opcode SIN_F64 = { "sin_f64", true, [OpArg.LOCAL], &op_sin_f64 };
 Opcode COS_F64 = { "cos_f64", true, [OpArg.LOCAL], &op_cos_f64 };
 Opcode SQRT_F64 = { "sqrt_f64", true, [OpArg.LOCAL], &op_sqrt_f64 };
+Opcode CEIL_F64 = { "ceil_f64", true, [OpArg.LOCAL], &op_ceil_f64 };
+Opcode FLOOR_F64 = { "floor_f64", true, [OpArg.LOCAL], &op_floor_f64 };
+Opcode LOG_F64 = { "log_f64", true, [OpArg.LOCAL], &op_log_f64 };
+Opcode EXP_F64 = { "exp_f64", true, [OpArg.LOCAL], &op_exp_f64 };
+Opcode POW_F64 = { "pow_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_pow_f64 };
 
 // Integer operations with overflow handling
 Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32_ovf, false, true };
@@ -785,6 +790,11 @@ static this()
     addOp(COS_F64);
     addOp(SIN_F64);
     addOp(SQRT_F64);
+    addOp(CEIL_F64);
+    addOp(FLOOR_F64);
+    addOp(LOG_F64);
+    addOp(EXP_F64);
+    addOp(POW_F64);
 
     addOp(ADD_I32_OVF);
     addOp(SUB_I32_OVF);

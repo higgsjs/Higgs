@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2012, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -191,10 +191,15 @@ The value of Math.ceil(x) is the same as the value of -Math.floor(-x).
 */
 Math.ceil = function (x)
 {
-    // TODO: requires F64 to/from I64 conversion for truncation
-
     // For integers, the value is unchanged
-    return x;
+    if ($ir_is_int(x))
+        return x;
+
+    // If x is floating-point
+    if ($ir_is_float(x))
+        return $ir_ceil_f64(x);
+
+    return NaN;
 };
 
 /**
@@ -214,7 +219,15 @@ NOTE: The value of Math.floor(x) is the same as the value of -Math.ceil(-x).
 */
 Math.floor = function (x)
 {
-    return -Math.ceil(-x);
+    // For integers, the value is unchanged
+    if ($ir_is_int(x))
+        return x;
+
+    // If x is floating-point
+    if ($ir_is_float(x))
+        return $ir_floor_f64(x);
+
+    return NaN;
 };
 
 /**
@@ -304,19 +317,23 @@ Math.pow = function (x, y)
         }
     }
 
+    var fx;
+    if ($ir_is_int(x))
+        fx = $ir_i32_to_f64(x);
+    else if ($ir_is_float(x))
+        fx = x;
+    else
+        return NaN;
 
+    var fy;
+    if ($ir_is_int(y))
+        fy = $ir_i32_to_f64(y);
+    else if ($ir_is_float(y))
+        fy = y;
+    else
+        return NaN;
 
-    // TODO:
-    // pow(a,x) = exp(x * log(a))
-
-
-
-
-
-
-
-
-    assert(false, 'floating-point support unimplemented');
+    return $ir_pow_f64(fx, fy);
 };
 
 /**
@@ -394,24 +411,28 @@ natural logarithms).
 */
 Math.exp = function (x)
 {
-    // TODO: implement this function
-    assert (false, 'Math.exp unimplemented');
-
+    /*
     //ex = 1 + x + x2/2! + x3/3! + x4/4! + x5/5! + ...
 
     //exp(int + frac) = exp(int)*exp(frac)
 
-    // TODO: integer powers of e
+    // integer powers of e
 
-    // TODO: how do we extract the int/frac part of x?
+    // how do we extract the int/frac part of x?
 
-    // TODO: fractional powers of e
+    // fractional powers of e
     // How many Taylor series terms do we need?
+    */
 
+    // If x is integer, convert it to a float
+    if ($ir_is_int(x))
+        return $ir_exp_f64($ir_i32_to_f64(x));
 
+    // If x is floating-point
+    if ($ir_is_float(x))
+        return $ir_exp_f64(x);
 
-
-
+    return NaN;
 };
 
 /**
@@ -427,6 +448,16 @@ logarithm of x.
 */
 Math.log = function (x)
 {
+    // If x is integer, convert it to a float
+    if ($ir_is_int(x))
+        return $ir_log_f64($ir_i32_to_f64(x));
+
+    // If x is floating-point
+    if ($ir_is_float(x))
+        return $ir_log_f64(x);
+
+    return NaN;
+
     /*
     // For x in the interval -1 < x < 1
     // log(1+x) = x - x2/2 + x3/3 - x4/4 + ...
@@ -467,15 +498,6 @@ Math.log = function (x)
     // log(pq) = log(p) + log(q)
     // log(4) = log(e*1.47151...) = 1 + log(1.47151...)
     */
-
-    // TODO: implement this function
-    assert (false, 'Math.log unimplemented');
-
-
-
-
-
-
 };
 
 /// Next random seed

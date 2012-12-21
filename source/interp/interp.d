@@ -347,6 +347,7 @@ class Interp
         if (heapPtr is null)
             throw new Error("heap allocation failed");
 
+        /*
         // Map the memory as executable
         auto pa = mmap(
             cast(void*)heapPtr,
@@ -356,10 +357,10 @@ class Interp
             -1,
             0
         );
-
         // Check that the memory mapping was successful
         if (pa == MAP_FAILED)
             throw new Error("mmap call failed");
+        */
 
         // Initialize the allocation pointer
         allocPtr = alignPtr(heapPtr);

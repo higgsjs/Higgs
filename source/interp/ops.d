@@ -438,6 +438,11 @@ alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x / y;") op_div_f64;
 alias ArithOp!(float64, Type.FLOAT, 1, "auto r = sin(x);") op_sin_f64;
 alias ArithOp!(float64, Type.FLOAT, 1, "auto r = cos(x);") op_cos_f64;
 alias ArithOp!(float64, Type.FLOAT, 1, "auto r = sqrt(x);") op_sqrt_f64;
+alias ArithOp!(float64, Type.FLOAT, 1, "auto r = ceil(x);") op_ceil_f64;
+alias ArithOp!(float64, Type.FLOAT, 1, "auto r = floor(x);") op_floor_f64;
+alias ArithOp!(float64, Type.FLOAT, 1, "auto r = log(x);") op_log_f64;
+alias ArithOp!(float64, Type.FLOAT, 1, "auto r = exp(x);") op_exp_f64;
+alias ArithOp!(float64, Type.FLOAT, 2, "auto r = pow(x, y);") op_pow_f64;
 
 void ArithOpOvf(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
 {

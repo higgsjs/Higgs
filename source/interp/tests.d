@@ -896,6 +896,17 @@ unittest
     assertInt("Math.pow(2, 4)", 16);
     assertInt("Math.pow(2, 8)", 256);
 
+    assertFloat("Math.log(Math.E)", 1);
+    assertFloat("Math.log(1)", 0);
+
+    assertFloat("Math.exp(0)", 1);
+
+    assertFloat("Math.ceil(1.5)", 2);
+    assertInt("Math.ceil(2)", 2);
+
+    assertFloat("Math.floor(1.5)", 1);
+    assertInt("Math.floor(2)", 2);
+
     assertBool("r = Math.random(); return r >= 0 && r < 1;", true);
     assertBool("r0 = Math.random(); r1 = Math.random(); return r0 !== r1;", true);
 }
@@ -991,7 +1002,6 @@ unittest
     interp.assertInt("ack(3,2);", 29);
     interp.assertInt("tak(9,5,3);", 4);
 
-    // FIXME: needs Math.pow on floats
     //interp.load("programs/sunspider/math-partial-sums.js");
 }
 
