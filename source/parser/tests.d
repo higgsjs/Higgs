@@ -479,6 +479,16 @@ unittest
             new VarStmt([new IdentExpr("x")], [new IntExpr(1)])
         ])
     );
+
+    testAST(
+        "var x = 1, y = 2;",
+        new ASTProgram([
+            new VarStmt(
+                [new IdentExpr("x"), new IdentExpr("y")],
+                [new IntExpr(1), new IntExpr(2)]
+            )
+        ])
+    );
 }
 
 /// Test function parsing and ASTs

@@ -305,8 +305,7 @@ function $rt_toString(v)
             if (v === -Infinity)
                 return "-Infinity";
 
-            // TODO: $rt_floatToStr
-            assert (false, "fp tostring unimplemented");
+            return $ir_f64_to_str(v);
         }
     }
 
@@ -608,6 +607,16 @@ function $rt_ursft(x, y)
     }
 
     assert (false, "unsupported type in bitwise xor");
+}
+
+function $rt_not(x)
+{
+    if ($ir_is_int(x))
+    {
+        return $ir_not_i32(x);
+    }
+
+    assert (false, "unsupported type in not");
 }
 
 //=============================================================================
@@ -1282,8 +1291,9 @@ function $rt_setProp(base, prop, val)
         }
     }
 
-    println(typeof base);
-    println(base);
+    //println(typeof base);
+    //println(base);
+    //println(prop);
 
     throw TypeError("invalid base in property write");
 }

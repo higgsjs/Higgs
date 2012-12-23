@@ -39,6 +39,7 @@ module interp.ops;
 
 import std.stdio;
 import std.algorithm;
+import std.string;
 import std.conv;
 import std.math;
 import ir.ir;
@@ -1157,6 +1158,26 @@ void op_get_ir_str(Interp interp, IRInstr instr)
         Type.REFPTR
     );
 }
+
+void op_f64_to_str(Interp interp, IRInstr instr)
+{
+    auto val = interp.getSlot(instr.args[0].localIdx);
+
+    assert (
+        val.type == Type.FLOAT,
+        "invalid float value"
+    );
+
+    auto str = format("%G", val.word.floatVal);
+    auto strObj = getString(interp, to!wstring(str));
+   
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(strObj),
+        Type.REFPTR
+    );
+}
+
 
 // ===========================================================================
 // TODO: translate to runtime functions

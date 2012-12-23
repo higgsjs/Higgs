@@ -222,6 +222,7 @@ unittest
     assertInt("return 5 << 2", 20);
     assertInt("return 7 >> 1", 3);
     assertInt("return 7 >>> 1", 3);
+    assertInt("return ~2", -3);
 
     assertFloat("return 3.5", 3.5);
     assertFloat("return 2.5 + 2", 4.5);
@@ -552,6 +553,7 @@ unittest
     assertInt("var a; a = 1; return a;", 1);
     assertInt("var a = 1; return a;", 1);
     assertInt("a = 1; b = 2; return a+b;", 3);
+    assertInt("var x=3,y=5; return x;", 3);
 
     assertInt("return a = 1,2;", 2);
     assertInt("a = 1,2; return a;", 1);
@@ -929,6 +931,7 @@ unittest
 unittest
 {
     assertStr("String(10)", "10");
+    assertStr("String(1.5)", "1.5");
     assertStr("String([0,1,2])", "0,1,2");
 }
 

@@ -703,6 +703,9 @@ Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &op_get_ast_str };
 // Get a string representation of a function's IR
 Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &op_get_ir_str };
 
+// Format a floating-point value as a string
+Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str };
+
 
 
 // ===========================================================================
@@ -854,5 +857,6 @@ static this()
     addOp(PRINT_STR);
     addOp(GET_AST_STR);
     addOp(GET_IR_STR);
+    addOp(F64_TO_STR);
 }
 

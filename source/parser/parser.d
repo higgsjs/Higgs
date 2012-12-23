@@ -454,7 +454,7 @@ ASTStmt parseStmt(TokenStream input)
             if (op.type == Token.OP && op.stringVal == "=")
             {
                 input.read(); 
-                initExpr = parseExpr(input);
+                initExpr = parseExpr(input, COMMA_PREC+1);
             }
     
             identExprs ~= [identExpr];
