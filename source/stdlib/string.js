@@ -222,10 +222,7 @@ function string_concat()
 /**
 15.5.4.7 String.prototype.indexOf(searchString, position)
 */
-function string_indexOf (
-    searchString,
-    pos
-)
+function string_indexOf(searchString, pos)
 {
     var i;
 
@@ -250,10 +247,7 @@ function string_indexOf (
 /**
 15.5.4.8 String.prototype.lastIndexOf(searchString, position)
 */
-function string_lastIndexOf (
-    searchString,
-    pos
-)
+function string_lastIndexOf(searchString, pos)
 {
     if (searchString.length > this.length)
         return -1;
@@ -295,9 +289,7 @@ function string_lastIndexOf (
 /**
 15.5.4.9 String.prototype.localeCompare(that)
 */
-function string_localeCompare (
-    that
-)
+function string_localeCompare(that)
 {
     var length = this.length;
 
@@ -334,9 +326,7 @@ function string_localeCompare (
 /**
 15.5.4.10 String.prototype.match(regexp)
 */
-function string_match (
-    regexp
-)
+function string_match(regexp)
 {
     var re;
 
@@ -367,10 +357,7 @@ function string_match (
 /**
 15.5.4.11 String.prototype.replace(searchValue, replaceValue)
 */
-function string_replace (
-    searchValue,
-    replaceValue
-)
+function string_replace(searchValue, replaceValue)
 {
     if (typeof searchValue === "string")
     {
@@ -538,9 +525,7 @@ function string_replace (
 /**
 15.5.4.12 String.prototype.search(regexp)
 */
-function string_search (
-    regexp
-)
+function string_search(regexp)
 {
     var re;
     var globalSave;
@@ -571,10 +556,7 @@ function string_search (
 /**
 15.5.4.14 String.prototype.split(separator, limit)
 */
-function string_split (
-    separator,
-    limit
-)
+function string_split(separator, limit)
 {
     var res = new Array();
     if (limit === 0) return res;
@@ -608,10 +590,7 @@ function string_split (
 /**
 15.5.4.15 String.prototype.substring(start, end)
 */
-function string_substring (
-    start,
-    end
-)
+function string_substring(start, end)
 {
     var source = this.toString();
     var length = string_internal_getLength(source.toString());
@@ -636,23 +615,19 @@ function string_substring (
     }
     
     // Allocate new string.
-    var s = alloc_str(unboxInt(end - start));
+    var s = $rt_str_alloc(end - start);
 
     // Copy substring characters in the new allocated string.
-    for (var i = start, j = pint(0); i < end; ++i, ++j)
-        set_str_data(s, j, iir.icast(IRType.u16, unboxInt( source.charCodeAt(i) )));
+    for (var i = start, j = 0; i < end; ++i, ++j)
+        $rt_str_set_data(s, j, source.charCodeAt(i));
 
-    compStrHash(s);
-    return getTableStr(s);
+    return $ir_get_str(s);
 }
 
 /**
 String.prototype.substr(start, length)
 */
-function string_substr (
-    start,
-    length
-)
+function string_substr(start, length)
 {
     var end = (length === undefined) ? undefined : (start + length);
 
@@ -662,7 +637,7 @@ function string_substr (
 /**
 15.5.4.16 String.prototype.toLowerCase()
 */
-function string_toLowerCase ()
+function string_toLowerCase()
 {
     var a = string_internal_toCharCodeArray(this);
 
@@ -690,7 +665,7 @@ function string_toLowerCase ()
 /**
 15.5.4.17 String.prototype.toLocaleLowerCase()
 */
-function string_toLocaleLowerCase ()
+function string_toLocaleLowerCase()
 {
     // FIXME: not quire correct for the full Unicode
     return this.toLowerCase();
@@ -722,7 +697,7 @@ function string_toUpperCase()
 /**
 15.5.4.19 String.prototype.toLocaleUpperCase()
 */
-function string_toLocaleUpperCase ()
+function string_toLocaleUpperCase()
 {
     // FIXME: not quire correct for the full Unicode
     return this.toUpperCase();
@@ -731,7 +706,7 @@ function string_toLocaleUpperCase ()
 /**
 15.5.4.20 String.prototype.trim()
 */
-function string_trim ()
+function string_trim()
 {
     var from = 0, to = this.length - 1;
 

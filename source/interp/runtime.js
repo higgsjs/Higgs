@@ -348,12 +348,40 @@ function $rt_toBool(v)
     if ($ir_is_rawptr(v))
     {
         // TODO: raw ptr?
-
-
-
     }
 
     return false;
+}
+
+/**
+Attempt to convert a value to a number. If this fails, return NaN
+*/
+function $rt_toNumber(v)
+{
+    if ($ir_is_int(v) || $ir_is_float(v))
+        return v;
+
+    if (v === null)
+        return 0;
+
+    if (v === true)
+        return 1;
+
+    if (v === false)
+        return 0;
+
+    if ($ir_is_refptr(v))
+    {
+        var type = $rt_obj_get_header(v);
+
+        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
+            throw Error("string->number unimplemented");
+
+        if ($rt_valIsObj(v))
+            return $rt_toNumber($rt_toString(v));
+    }
+
+    return NaN;
 }
 
 /**

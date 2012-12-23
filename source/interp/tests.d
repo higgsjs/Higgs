@@ -916,6 +916,10 @@ unittest
 /// Stdlib Number library
 unittest
 {
+    assertInt("Number(10)", 10);
+    assertInt("Number(true)", 1);
+    assertInt("Number(null)", 0);
+
     assertStr("(10).toString()", "10");
 }
 
@@ -933,6 +937,10 @@ unittest
     assertStr("String(10)", "10");
     assertStr("String(1.5)", "1.5");
     assertStr("String([0,1,2])", "0,1,2");
+
+    assertStr("'foobar'.substring(0,3)", "foo");
+
+    assertInt("'f,o,o'.split(',').length", 3);
 }
 
 /// Basic test programs

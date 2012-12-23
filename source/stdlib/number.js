@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2012, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -59,10 +59,10 @@ function Number(value)
     if ($rt_isGlobalObj(this) === false)
     {
         // Convert the value to a number
-        var numVal = boxToNumber(value);
+        var numVal = $rt_toNumber(value);
 
         // If the value is not a number, return it directly
-        if (typeof numVal !== 'number')
+        if (isNaN(numVal))
             return numVal;
 
         // Store the value in the new object
@@ -72,7 +72,7 @@ function Number(value)
     else
     {
         // Convert the value to a number
-        return boxToNumber(value);
+        return $rt_toNumber(value);
     }
 }
 
