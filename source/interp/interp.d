@@ -42,6 +42,7 @@ import core.sys.posix.sys.mman;
 import core.memory;
 import std.stdio;
 import std.string;
+import std.array;
 import std.conv;
 import std.typecons;
 import util.misc;
@@ -243,6 +244,9 @@ immutable size_t STACK_SIZE = 2^^18;
 /// Initial heap size, 16M bytes
 immutable size_t HEAP_INIT_SIZE = 2^^24;
 
+/// Initial link table size
+immutable size_t LINK_TBL_INIT_SIZE = 8192;
+
 /// Initial global object size
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
 
@@ -289,6 +293,18 @@ class Interp
 
     /// Allocation pointer
     ubyte* allocPtr;
+
+    /// Link table words
+    Word* wLinkTable;
+
+    /// Link table types
+    Type* tLinkTable;
+
+    /// Link table size
+    size_t linkTblSize;
+
+    /// Free link table entries
+    size_t[] linkTblFree;
 
     /// Instruction pointer
     IRInstr ip;
@@ -364,6 +380,20 @@ class Interp
 
         // Initialize the allocation pointer
         allocPtr = alignPtr(heapPtr);
+
+        /// Link table size
+        linkTblSize = LINK_TBL_INIT_SIZE;
+
+        /// Free link table entries
+        linkTblFree = new size_t[linkTblSize];
+        for (size_t i = 0; i < linkTblSize; ++i)
+            linkTblFree[i] = i;
+
+        /// Link table words
+        wLinkTable = cast(Word*)GC.malloc(Word.sizeof * linkTblSize);
+
+        /// Link table types
+        tLinkTable = cast(Type*)GC.malloc(Type.sizeof * linkTblSize);
 
         // Initialize the IP to null
         ip = null;
@@ -583,6 +613,87 @@ class Interp
         allocPtr = alignPtr(allocPtr);
 
         return ptr;
+    }
+
+    /**
+    Allocate a link table entry
+    */
+    size_t allocLink()
+    {
+        if (linkTblFree.length == 0)
+        {
+            assert (false, "no free link entries");
+        }
+
+        size_t idx = linkTblFree.back;
+        linkTblFree.popBack();
+
+        return idx;
+    }
+
+    /**
+    Free a link table entry
+    */
+    void freeLink(size_t idx)
+    {
+        assert (
+            idx <= linkTblSize,
+            "invalid link index"
+        );
+
+        linkTblFree ~= idx;
+    }
+
+    /**
+    Get the word associated with a link value
+    */
+    Word getLinkWord(LinkIdx idx)
+    {
+        assert (
+            idx <= linkTblSize,
+            "invalid link index"
+        );
+
+        return wLinkTable[idx];
+    }
+
+    /**
+    Get the type associated with a link value
+    */
+    Type getLinkType(LinkIdx idx)
+    {
+        assert (
+            idx <= linkTblSize,
+            "invalid link index"
+        );
+
+        return tLinkTable[idx];
+    }
+
+    /**
+    Get the word associated with a link value
+    */
+    void setLinkWord(LinkIdx idx, Word word)
+    {
+        assert (
+            idx <= linkTblSize,
+            "invalid link index"
+        );
+
+        wLinkTable[idx] = word;
+    }
+
+    /**
+    Get the word associated with a link value
+    */
+    void setLinkType(LinkIdx idx, Type type)
+    {
+        assert (
+            idx <= linkTblSize,
+            "invalid link index"
+        );
+
+        tLinkTable[idx] = type;
     }
 
     /**

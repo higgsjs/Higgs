@@ -52,8 +52,14 @@ import interp.ops;
 /// Local variable index type
 alias size_t LocalIdx;
 
+/// Link table index type
+alias size_t LinkIdx;
+
 /// Null local constant
 immutable LocalIdx NULL_LOCAL = LocalIdx.max;
+
+/// Null link constant
+immutable LocalIdx NULL_LINK = LinkIdx.max;
 
 /// Number of hidden function arguments
 immutable size_t NUM_HIDDEN_ARGS = 4;
@@ -308,6 +314,7 @@ class IRInstr : IdObject
         ubyte* ptrVal;
         wstring stringVal;
         LocalIdx localIdx;
+        LinkIdx linkIdx;
         IRFunction fun;
     }
 
@@ -438,7 +445,7 @@ class IRInstr : IdObject
         cst.outSlot = outSlot;
         cst.args.length = 2;
         cst.args[0].stringVal = stringVal;
-        cst.args[1].ptrVal = null;
+        cst.args[1].linkIdx = NULL_LINK;
 
         return cst;
     }
@@ -473,13 +480,29 @@ class IRInstr : IdObject
 
             switch (opcode.getArgType(i))
             {
-                case OpArg.INT    : output ~= to!string(arg.intVal); break;
-                case OpArg.FLOAT  : output ~= to!string(arg.floatVal); break;
-                case OpArg.STRING : output ~= "\"" ~ to!string(arg.stringVal) ~ "\""; break;
-                case OpArg.LOCAL  : output ~= "$" ~ to!string(arg.localIdx); break;
-                case OpArg.FUN    : output ~= "<fun:" ~ arg.fun.getName() ~ ">"; break;
-                case OpArg.REFPTR : output ~= "<ref:" ~ to!string(arg.ptrVal) ~ ">"; break;
-                default: assert (false, "unhandled arg type");
+                case OpArg.INT:
+                output ~= to!string(arg.intVal);
+                break;
+                case OpArg.FLOAT:
+                output ~= to!string(arg.floatVal);
+                break;
+                case OpArg.STRING:
+                output ~= "\"" ~ to!string(arg.stringVal) ~ "\"";
+                break;
+                case OpArg.LOCAL:
+                output ~= "$" ~ (arg.localIdx is NULL_LOCAL)? "NULL":to!string(arg.localIdx); 
+                break;
+                case OpArg.LINK:
+                output ~= "<link:" ~ (arg.linkIdx is NULL_LINK)? "NULL":to!string(arg.linkIdx) ~ ">"; 
+                break;
+                case OpArg.FUN:
+                output ~= "<fun:" ~ arg.fun.getName() ~ ">";
+                break;
+                case OpArg.REFPTR:
+                output ~= "<ref:" ~ to!string(arg.ptrVal) ~ ">";
+                break;
+                default:
+                assert (false, "unhandled arg type");
             }
         }
 
@@ -500,6 +523,7 @@ enum OpArg
     REFPTR,
     STRING,
     LOCAL,
+    LINK,
     FUN
 }
 
@@ -535,7 +559,7 @@ alias static immutable(OpInfo) Opcode;
 // Set a local slot to a constant value    
 Opcode SET_INT = { "set_int"   , true, [OpArg.INT], &op_set_int };
 Opcode SET_FLOAT = { "set_float" , true, [OpArg.FLOAT], &op_set_float };
-Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.REFPTR], &op_set_str };
+Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.LINK], &op_set_str };
 Opcode SET_TRUE = { "set_true"  , true, [], &op_set_true };
 Opcode SET_FALSE= { "set_false" , true, [], &op_set_false };
 Opcode SET_NULL = { "set_null"  , true, [], &op_set_null };
@@ -682,6 +706,15 @@ Opcode GET_GLOBAL_OBJ = { "get_global_obj", true, [], &op_get_global_obj };
 // Allocate a block of memory on the heap
 Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
 
+/// Create a link table entry associated with this instruction
+Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], &op_make_link };
+
+/// Set the value of a link table entry
+Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &op_set_link };
+
+/// Get the value of a link table entry
+Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &op_get_link };
+
 // Compute the hash code for a string and
 // try to find the string in the string table
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str };
@@ -706,8 +739,6 @@ Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &op_get_ir_str };
 // Format a floating-point value as a string
 Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str };
 
-
-
 // ===========================================================================
 // TODO: translate to runtime functions
 
@@ -725,8 +756,6 @@ Opcode NEW_ARRAY = { "new_array", true, [OpArg.INT, OpArg.REFPTR], &opNewArr };
 
 // TODO: translate to runtime functions
 // ===========================================================================
-
-
 
 /**
 Inline IR prefix string
@@ -852,6 +881,9 @@ static this()
     addOp(GET_GLOBAL_OBJ);
 
     addOp(HEAP_ALLOC);
+    addOp(MAKE_LINK);
+    addOp(SET_LINK);
+    addOp(GET_LINK);
     addOp(GET_STR);
 
     addOp(PRINT_STR);

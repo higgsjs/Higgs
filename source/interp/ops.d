@@ -188,18 +188,19 @@ void op_set_float(Interp interp, IRInstr instr)
 
 void op_set_str(Interp interp, IRInstr instr)
 {
-    auto objPtr = instr.args[1].ptrVal;
+    auto linkIdx = instr.args[1].linkIdx;
 
-    // If the string is null, allocate it
-    if (objPtr is null)
+    if (linkIdx is NULL_LINK)
     {
-        objPtr = getString(interp, instr.args[0].stringVal);
-        instr.args[1].ptrVal = objPtr;
+        linkIdx = interp.allocLink();
+        auto strPtr = getString(interp, instr.args[0].stringVal);
+        interp.setLinkWord(linkIdx, Word.ptrv(strPtr));
+        instr.args[1].linkIdx = linkIdx;
     }
 
     interp.setSlot(
         instr.outSlot,
-        Word.ptrv(objPtr),
+        interp.getLinkWord(linkIdx),
         Type.REFPTR
     );
 }
@@ -964,6 +965,48 @@ void op_heap_alloc(Interp interp, IRInstr instr)
         Word.ptrv(ptr),
         Type.REFPTR
     );
+}
+
+void op_make_link(Interp interp, IRInstr instr)
+{
+    auto linkIdx = instr.args[0].linkIdx;
+
+    if (linkIdx is NULL_LINK)
+    {
+        linkIdx = interp.allocLink();
+        instr.args[0].linkIdx = linkIdx;
+    }
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.intv(linkIdx),
+        Type.INT
+    );
+}
+
+void op_set_link(Interp interp, IRInstr instr)
+{
+    auto linkIdx = interp.getWord(instr.args[0].localIdx).intVal;
+
+    auto wVal = interp.getWord(instr.args[1].localIdx);
+    auto tVal = interp.getType(instr.args[1].localIdx);
+
+    interp.setLinkWord(linkIdx, wVal);
+    interp.setLinkType(linkIdx, tVal);
+}
+
+void op_get_link(Interp interp, IRInstr instr)
+{
+    auto linkIdx = interp.getWord(instr.args[0].localIdx).intVal;
+
+    auto wVal = interp.getLinkWord(linkIdx);
+    auto tVal = interp.getLinkType(linkIdx);
+
+    interp.setSlot(
+        instr.outSlot,
+        wVal,
+        tVal
+    );    
 }
 
 void op_get_str(Interp interp, IRInstr instr)
