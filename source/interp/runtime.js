@@ -920,6 +920,176 @@ function $rt_ne(x, y)
 }
 
 //=============================================================================
+// Object allocation
+//=============================================================================
+
+/**
+Initial class size (number of slots)
+*/
+var $rt_CLASS_INIT_SIZE = 256;
+
+/**
+Initial number of object properties on class allocation
+*/
+var $rt_OBJ_INIT_SIZE = 1;
+
+/**
+Allocate an object, array or closure
+*/
+function $rt_getClass(classLink, classInitSize)
+{
+    // Get the class pointer
+    var classPtr = classLink? $ir_get_link(classLink):null;
+
+    // If the class is not yet allocated
+    if (classPtr === null)
+    {
+        // Lazily allocate the class
+        classPtr = $rt_class_alloc(classInitSize);
+        $rt_class_set_id(classPtr, 0);
+
+        // Update the instruction's class pointer
+        if (classLink !== null)
+            $ir_set_link(classLink, classPtr);
+    }    
+
+    return classPtr;
+}
+
+/**
+Allocate an empty object
+*/
+function $rt_newObj(classLink, protoPtr)
+{
+    // Get the class pointer
+    var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
+
+    // Get the number of properties to allocate from the class
+    var numProps = $rt_class_get_num_props(classPtr);
+    if (numProps === 0)
+        numProps = $rt_OBJ_INIT_SIZE;
+
+    // Allocate the object
+    var objPtr = $rt_obj_alloc(numProps);
+
+    // Initialize the object
+    $rt_obj_set_class(objPtr, classPtr);
+    $rt_obj_set_proto(objPtr, protoPtr);
+
+    return objPtr;
+}
+
+/**
+Allocate an array
+*/
+function $rt_newArr(
+    classLink,
+    protoPtr, 
+    numElems
+)
+{
+    // Get the class pointer
+    var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
+
+    // Get the number of properties to allocate from the class
+    var numProps = $rt_class_get_num_props(classPtr);
+    if (numProps === 0)
+        numProps = $rt_OBJ_INIT_SIZE;
+
+    // Allocate the array table
+    var tblPtr = $rt_arrtbl_alloc(numElems);
+
+    // Allocate the array
+    var objPtr = $rt_arr_alloc(numProps);
+
+    // Initialize the object
+    $rt_obj_set_class(objPtr, classPtr);
+    $rt_obj_set_proto(objPtr, protoPtr);
+    $rt_arr_set_tbl(objPtr, tblPtr);
+    $rt_arr_set_len(objPtr, 0);
+
+    return objPtr;
+}
+
+
+
+
+/*
+refptr newClos(
+    Interp interp, 
+    refptr* ppClass, 
+    refptr protoPtr, 
+    uint32 classInitSize,
+    uint32 allocNumProps,
+    uint32 allocNumCells,
+    IRFunction fun
+)
+{
+    // Register this function in the function reference set
+    interp.funRefs[cast(void*)fun] = fun;
+
+    //write(interp.funRefs.length);
+    //write("\n");
+
+    return newExtObj(
+        interp, 
+        ppClass, 
+        protoPtr, 
+        classInitSize,
+        allocNumProps,
+        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
+        {
+            auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
+            clos_set_fptr(objPtr, cast(rawptr)fun);
+            return objPtr;
+        }
+    );
+}
+*/
+
+/*
+void opNewClos(Interp interp, IRInstr instr)
+{
+    auto fun = instr.args[0].fun;
+
+    // Allocate the prototype object
+    auto objPtr = newObj(
+        interp, 
+        &instr.args[1].ptrVal, 
+        interp.objProto,
+        CLASS_INIT_SIZE,
+        0
+    );
+
+    // Allocate the closure object
+    auto closPtr = newClos(
+        interp, 
+        &instr.args[2].ptrVal, 
+        interp.funProto,
+        CLASS_INIT_SIZE,
+        1,
+        cast(uint32)fun.captVars.length,
+        fun
+    );
+
+    // Set the prototype property on the closure object
+    setProp(
+        interp, 
+        closPtr,
+        getString(interp, "prototype"),
+        ValuePair(Word.ptrv(objPtr), Type.REFPTR)
+    );
+   
+    // Output a pointer to the closure
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(closPtr),
+        Type.REFPTR
+    );
+}
+*/
+
+//=============================================================================
 // Objects and property access
 //=============================================================================
 

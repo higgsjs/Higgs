@@ -975,6 +975,9 @@ void op_make_link(Interp interp, IRInstr instr)
     {
         linkIdx = interp.allocLink();
         instr.args[0].linkIdx = linkIdx;
+
+        interp.setLinkWord(linkIdx, NULL);
+        interp.setLinkType(linkIdx, Type.REFPTR);
     }
 
     interp.setSlot(
@@ -986,7 +989,7 @@ void op_make_link(Interp interp, IRInstr instr)
 
 void op_set_link(Interp interp, IRInstr instr)
 {
-    auto linkIdx = interp.getWord(instr.args[0].localIdx).intVal;
+    auto linkIdx = interp.getWord(instr.args[0].linkIdx).intVal;
 
     auto wVal = interp.getWord(instr.args[1].localIdx);
     auto tVal = interp.getType(instr.args[1].localIdx);
@@ -997,7 +1000,7 @@ void op_set_link(Interp interp, IRInstr instr)
 
 void op_get_link(Interp interp, IRInstr instr)
 {
-    auto linkIdx = interp.getWord(instr.args[0].localIdx).intVal;
+    auto linkIdx = interp.getWord(instr.args[0].linkIdx).intVal;
 
     auto wVal = interp.getLinkWord(linkIdx);
     auto tVal = interp.getLinkType(linkIdx);

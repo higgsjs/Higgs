@@ -62,14 +62,14 @@ function Array(len)
     if (typeof len === 'number' && $argc === 1)
     {
         // Allocate an array of the desired capacity and set its length
-        var a = [];
+        var a = $rt_newArr($ir_make_link(0), $ir_get_arr_proto(), len);
         a.length = len;
 
         return a;
     }
 
     // Allocate an array of the desired capacity and set its length
-    var a = [];
+    var a = $rt_newArr($ir_make_link(0), $ir_get_arr_proto(), $argc);
     a.length = $argc;
 
     // Copy the arguments into the array

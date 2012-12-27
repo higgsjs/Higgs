@@ -1957,7 +1957,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
         (argExprs.length > opcode.argTypes.length && !opcode.isVarArg))
     {
         throw new ParseError(
-            "wrong iir argument count",
+            "wrong iir argument count for \"" ~ instrName ~ "\"",
             callExpr.pos
         );
     }
@@ -2007,6 +2007,19 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
                 );
             }
             instr.args[i].stringVal = strExpr.val;
+            break;
+
+            // Link table index
+            case OpArg.LINK:
+            auto intExpr = cast(IntExpr)argExpr;
+            if (intExpr is null || intExpr.val != 0)
+            {
+                throw new ParseError(
+                    "expected 0 argument", 
+                    argExpr.pos
+                );
+            }
+            instr.args[i].linkIdx = NULL_LINK;
             break;
 
             default:

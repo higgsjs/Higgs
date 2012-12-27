@@ -757,6 +757,30 @@ unittest
         ",
         77
     );
+
+    assertInt(
+        "
+        var link = $ir_make_link(0);
+        $ir_set_link(link, 133);
+        return $ir_get_link(link);
+        ",
+        133
+    );
+
+    assertInt(
+        "
+        var sum = 0;
+        for (var i = 0; i < 10; ++i)
+        {
+            var link = $ir_make_link(0);
+            if (i === 0)
+                $ir_set_link(link, 1);
+            sum += $ir_get_link(link);
+        }
+        return sum;
+        ",
+        10
+    );
 }
 
 /// Runtime functions
