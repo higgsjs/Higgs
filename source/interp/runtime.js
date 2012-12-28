@@ -982,11 +982,7 @@ function $rt_newObj(classLink, protoPtr)
 /**
 Allocate an array
 */
-function $rt_newArr(
-    classLink,
-    protoPtr, 
-    numElems
-)
+function $rt_newArr(classLink, protoPtr, numElems)
 {
     // Get the class pointer
     var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
@@ -1011,83 +1007,37 @@ function $rt_newArr(
     return objPtr;
 }
 
-
-
-
-/*
-refptr newClos(
-    Interp interp, 
-    refptr* ppClass, 
-    refptr protoPtr, 
-    uint32 classInitSize,
-    uint32 allocNumProps,
-    uint32 allocNumCells,
-    IRFunction fun
-)
-{
-    // Register this function in the function reference set
-    interp.funRefs[cast(void*)fun] = fun;
-
-    //write(interp.funRefs.length);
-    //write("\n");
-
-    return newExtObj(
-        interp, 
-        ppClass, 
-        protoPtr, 
-        classInitSize,
-        allocNumProps,
-        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
-        {
-            auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
-            clos_set_fptr(objPtr, cast(rawptr)fun);
-            return objPtr;
-        }
-    );
-}
+/**
+Create a new closure/function object
 */
-
-/*
-void opNewClos(Interp interp, IRInstr instr)
+function $rt_newClos(classLink, protoLink, numCells, funPtr)
 {
-    auto fun = instr.args[0].fun;
+    // Get the class pointer
+    var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
+
+    // Get the number of properties to allocate from the class
+    var numProps = $rt_class_get_num_props(classPtr);
+    if (numProps === 0)
+        numProps = $rt_OBJ_INIT_SIZE;
+
+    // Allocate the closure
+    var closPtr = $rt_clos_alloc(numProps, numCells);
+
+    // Initialize the closure
+    $rt_obj_set_class(closPtr, classPtr);
+    $rt_obj_set_proto(closPtr, $ir_get_fun_proto());
+
+    // Set the function pointer
+    $rt_clos_set_fptr(closPtr, funPtr);
 
     // Allocate the prototype object
-    auto objPtr = newObj(
-        interp, 
-        &instr.args[1].ptrVal, 
-        interp.objProto,
-        CLASS_INIT_SIZE,
-        0
-    );
-
-    // Allocate the closure object
-    auto closPtr = newClos(
-        interp, 
-        &instr.args[2].ptrVal, 
-        interp.funProto,
-        CLASS_INIT_SIZE,
-        1,
-        cast(uint32)fun.captVars.length,
-        fun
-    );
+    var objPtr = $rt_newObj(protoLink, $ir_get_obj_proto());
 
     // Set the prototype property on the closure object
-    setProp(
-        interp, 
-        closPtr,
-        getString(interp, "prototype"),
-        ValuePair(Word.ptrv(objPtr), Type.REFPTR)
-    );
-   
-    // Output a pointer to the closure
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(closPtr),
-        Type.REFPTR
-    );
+    closPtr.prototype = objPtr;
+
+    return closPtr;
 }
-*/
 
 //=============================================================================
 // Objects and property access

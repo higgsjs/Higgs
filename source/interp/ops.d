@@ -926,6 +926,26 @@ void op_get_arg(Interp interp, IRInstr instr)
     );
 }
 
+void op_get_fun_ptr(Interp interp, IRInstr instr)
+{
+    auto fun = instr.args[0].fun;
+
+    // Register this function in the function reference set
+    interp.funRefs[cast(void*)fun] = fun;
+
+    //write(interp.funRefs.length);
+    //write("\n");
+
+    rawptr ptr = cast(rawptr)fun;
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(ptr),
+        Type.RAWPTR
+    );
+}
+
+/// Templated interpreter object access operation
 void GetObjOp(string objMixin)(Interp interp, IRInstr instr)
 {
     refptr ptr;
