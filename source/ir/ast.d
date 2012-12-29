@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -1570,11 +1570,22 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
-        auto arrInstr = ctx.addInstr(new IRInstr(&NEW_ARRAY));
-        arrInstr.outSlot = ctx.getOutSlot();
-        arrInstr.args.length = 2;
-        arrInstr.args[0].intVal = arrayExpr.exprs.length;
-        arrInstr.args[1].ptrVal = null;
+        auto linkInstr = ctx.addInstr(new IRInstr(&MAKE_LINK));
+        linkInstr.outSlot = ctx.allocTemp();
+        linkInstr.args.length = 1;
+        linkInstr.args[0].linkIdx = NULL_LINK;
+        auto protoInstr = ctx.addInstr(new IRInstr(&GET_ARR_PROTO));
+        protoInstr.outSlot = ctx.allocTemp();
+        auto numInstr = ctx.addInstr(IRInstr.intCst(
+            ctx.allocTemp(),
+            arrayExpr.exprs.length
+        ));
+        auto arrInstr = genRtCall(
+            ctx, 
+            "newArr",
+            ctx.getOutSlot(),
+            [linkInstr.outSlot, protoInstr.outSlot, numInstr.outSlot]
+        );
 
         auto idxTmp = ctx.allocTemp();
         auto valTmp = ctx.allocTemp();
@@ -1606,11 +1617,18 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     else if (auto objExpr = cast(ObjectExpr)expr)
     {
         // Create the object
-        auto objInstr = ctx.addInstr(new IRInstr(&NEW_OBJECT));
-        objInstr.outSlot = ctx.getOutSlot();
-        objInstr.args.length = 2;
-        objInstr.args[0].intVal = objExpr.names.length;
-        objInstr.args[1].ptrVal = null;
+        auto linkInstr = ctx.addInstr(new IRInstr(&MAKE_LINK));
+        linkInstr.outSlot = ctx.allocTemp();
+        linkInstr.args.length = 1;
+        linkInstr.args[0].linkIdx = NULL_LINK;
+        auto protoInstr = ctx.addInstr(new IRInstr(&GET_OBJ_PROTO));
+        protoInstr.outSlot = ctx.allocTemp();
+        auto objInstr = genRtCall(
+            ctx, 
+            "newObj",
+            ctx.getOutSlot(),
+            [linkInstr.outSlot, protoInstr.outSlot]
+        );
 
         auto strTmp = ctx.allocTemp();
         auto valTmp = ctx.allocTemp();
@@ -2092,7 +2110,7 @@ Insert a call to a runtime function
 */
 IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLocals)
 {
-    // TODO: use CALL_GLOBAL?
+    // TODO: implement CALL_GLOBAL?
 
     // Get the global value
     auto getInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL));

@@ -749,14 +749,6 @@ Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str };
 // Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.REFPTR, OpArg.REFPTR], &opNewClos };
 
-// Create new empty object
-// <dstLocal> = NEW_OBJECT <numProps>
-Opcode NEW_OBJECT = { "new_object", true, [OpArg.INT, OpArg.REFPTR], &opNewObj };
-
-// Create new uninitialized array
-// <dstLocal> = NEW_ARRAY <numElems>
-Opcode NEW_ARRAY = { "new_array", true, [OpArg.INT, OpArg.REFPTR], &opNewArr };
-
 // TODO: translate to runtime functions
 // ===========================================================================
 

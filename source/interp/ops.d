@@ -1248,50 +1248,6 @@ void op_f64_to_str(Interp interp, IRInstr instr)
 // ===========================================================================
 // TODO: translate to runtime functions
 
-/// Create a new blank object
-void opNewObj(Interp interp, IRInstr instr)
-{
-    auto numProps = max(instr.args[0].intVal, 2);
-    auto ppClass  = &instr.args[1].ptrVal;
-
-    // Allocate the object
-    auto objPtr = newObj(
-        interp, 
-        ppClass, 
-        interp.objProto,
-        CLASS_INIT_SIZE,
-        cast(uint)numProps
-    );
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(objPtr),
-        Type.REFPTR
-    );
-}
-
-/// Create a new uninitialized array
-void opNewArr(Interp interp, IRInstr instr)
-{
-    auto numElems = max(instr.args[0].intVal, 2);
-    auto ppClass  = &instr.args[1].ptrVal;
-
-    // Allocate the array
-    auto arrPtr = newArr(
-        interp, 
-        ppClass, 
-        interp.arrProto,
-        CLASS_INIT_SIZE,
-        cast(uint)numElems
-    );
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(arrPtr),
-        Type.REFPTR
-    );
-}
-
 void opNewClos(Interp interp, IRInstr instr)
 {
     auto fun = instr.args[0].fun;
