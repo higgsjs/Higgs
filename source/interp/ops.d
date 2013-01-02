@@ -587,8 +587,9 @@ void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 
     static if (
         DataType.stringof == "void*" ||
-        DataType.stringof == "ubyte*")
-        word.ptrVal = val;
+        DataType.stringof == "ubyte*" ||
+        DataType.stringof == "IRFunction")
+        word.ptrVal = cast(refptr)val;
 
     interp.setSlot(
         instr.outSlot,
@@ -641,7 +642,8 @@ void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 
     static if (
         DataType.stringof == "void*" ||
-        DataType.stringof == "ubyte*")
+        DataType.stringof == "ubyte*" ||
+        DataType.stringof == "IRFunction")
         val = cast(DataType)word.ptrVal;
 
     *cast(DataType*)(ptr + ofs) = val;
@@ -654,6 +656,7 @@ alias LoadOp!(uint64, Type.INT) op_load_u64;
 alias LoadOp!(float64, Type.FLOAT) op_load_f64;
 alias LoadOp!(refptr, Type.REFPTR) op_load_refptr;
 alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;
+alias LoadOp!(IRFunction, Type.FUNPTR) op_load_funptr;
 
 alias StoreOp!(uint8, Type.INT) op_store_u8;
 alias StoreOp!(uint16, Type.INT) op_store_u16;
@@ -662,6 +665,7 @@ alias StoreOp!(uint64, Type.INT) op_store_u64;
 alias StoreOp!(float64, Type.FLOAT) op_store_f64;
 alias StoreOp!(refptr, Type.REFPTR) op_store_refptr;
 alias StoreOp!(rawptr, Type.RAWPTR) op_store_rawptr;
+alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
 
 void op_jump(Interp interp, IRInstr instr)
 {
@@ -941,7 +945,7 @@ void op_get_fun_ptr(Interp interp, IRInstr instr)
     interp.setSlot(
         instr.outSlot,
         Word.ptrv(ptr),
-        Type.RAWPTR
+        Type.FUNPTR
     );
 }
 

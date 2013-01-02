@@ -20,6 +20,7 @@ typeSize = {
     'float64':8,
     'rawptr':8,
     'refptr':8,
+    'funptr':8,
 }
 
 typeShortName = {
@@ -34,6 +35,7 @@ typeShortName = {
     'float64':'f64',
     'rawptr':'rawptr',
     'refptr':'refptr',
+    'funptr':'funptr',
 }
 
 # Layout declarations
@@ -103,7 +105,7 @@ layouts = [
         'fields':
         [
             # Function code pointer
-            { 'name':"fptr", 'type':"rawptr" },
+            { 'name':"fptr", 'type':"funptr" },
 
             # Constructor class pointer
             { 'name':"ctor_class", 'type':"refptr", 'init':"null"  },
@@ -661,6 +663,7 @@ DFile.write('module interp.layout;\n')
 DFile.write('import interp.interp;\n')
 DFile.write('\n');
 
+DFile.write('alias ubyte* funptr;\n');
 DFile.write('alias ubyte* rawptr;\n');
 DFile.write('alias ubyte* refptr;\n');
 DFile.write('alias byte   int8;\n');

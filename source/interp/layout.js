@@ -387,7 +387,7 @@ function $rt_clos_get_type(o, i)
 
 function $rt_clos_get_fptr(o)
 {    
-    return $ir_load_rawptr(o, $rt_clos_ofs_fptr(o));
+    return $ir_load_funptr(o, $rt_clos_ofs_fptr(o));
 }
 
 function $rt_clos_get_ctor_class(o)
@@ -442,7 +442,7 @@ function $rt_clos_set_type(o, i, v)
 
 function $rt_clos_set_fptr(o, v)
 {    
-    $ir_store_rawptr(o, $rt_clos_ofs_fptr(o), v);
+    $ir_store_funptr(o, $rt_clos_ofs_fptr(o), v);
 }
 
 function $rt_clos_set_ctor_class(o, v)

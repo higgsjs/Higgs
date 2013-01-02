@@ -5,6 +5,7 @@
 module interp.layout;
 import interp.interp;
 
+alias ubyte* funptr;
 alias ubyte* rawptr;
 alias ubyte* refptr;
 alias byte   int8;
@@ -400,9 +401,9 @@ uint8 clos_get_type(refptr o, uint32 i)
     return *cast(uint8*)(o + clos_ofs_type(o, i));
 }
 
-rawptr clos_get_fptr(refptr o)
+funptr clos_get_fptr(refptr o)
 {    
-    return *cast(rawptr*)(o + clos_ofs_fptr(o));
+    return *cast(funptr*)(o + clos_ofs_fptr(o));
 }
 
 refptr clos_get_ctor_class(refptr o)
@@ -455,9 +456,9 @@ void clos_set_type(refptr o, uint32 i, uint8 v)
     *cast(uint8*)(o + clos_ofs_type(o, i)) = v;
 }
 
-void clos_set_fptr(refptr o, rawptr v)
+void clos_set_fptr(refptr o, funptr v)
 {    
-    *cast(rawptr*)(o + clos_ofs_fptr(o)) = v;
+    *cast(funptr*)(o + clos_ofs_fptr(o)) = v;
 }
 
 void clos_set_ctor_class(refptr o, refptr v)

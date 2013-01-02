@@ -116,8 +116,8 @@ union Word
 {
     static Word intv(uint64 i) { Word w; w.intVal = i; return w; }
     static Word floatv(float64 f) { Word w; w.floatVal = f; return w; }
-    static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
     static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
+    static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
     static Word cstv(rawptr c) { Word w; w.ptrVal = c; return w; }
 
     uint64  uintVal;
@@ -125,6 +125,14 @@ union Word
     float64 floatVal;
     refptr  refVal;
     rawptr  ptrVal;
+}
+
+unittest
+{
+    assert (
+        Word.sizeof == rawptr.sizeof,
+        "word size does not match pointer size"
+    );
 }
 
 // Note: low byte is set to allow for one byte immediate comparison
@@ -140,7 +148,8 @@ enum Type : ubyte
     FLOAT,
     REFPTR,
     RAWPTR,
-    CONST
+    CONST,
+    FUNPTR
 }
 
 /// Word and type pair
@@ -159,6 +168,8 @@ string typeToString(Type type)
         case Type.RAWPTR:   return "raw pointer";
         case Type.REFPTR:   return "ref pointer";
         case Type.CONST:    return "const";
+        case Type.FUNPTR:   return "funptr";
+
         default:
         assert (false, "unsupported type");
     }
@@ -232,6 +243,10 @@ string valToString(ValuePair value)
         if (w == UNDEF)
             return "undefined";
         assert (false, "unsupported constant");
+
+        case Type.FUNPTR:
+        return "funptr";
+        break;
 
         default:
         assert (false, "unsupported value type");

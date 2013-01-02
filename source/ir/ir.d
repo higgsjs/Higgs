@@ -649,6 +649,7 @@ Opcode LOAD_U64 = { "load_u64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u64 }
 Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_f64 };
 Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_refptr };
 Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_rawptr };
+Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_funptr };
 
 // Store instructions
 Opcode STORE_U8 = { "store_u8", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8 };
@@ -658,6 +659,7 @@ Opcode STORE_U64 = { "store_u64", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL],
 Opcode STORE_F64 = { "store_f64", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64 };
 Opcode STORE_REFPTR = { "store_refptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr };
 Opcode STORE_RAWPTR = { "store_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr };
+Opcode STORE_FUNPTR = { "store_funptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_funptr };
 
 // Branching and conditional branching
 Opcode JUMP = { "jump", false, [], &op_jump, false, true };
@@ -842,6 +844,7 @@ static this()
     addOp(LOAD_F64);
     addOp(LOAD_REFPTR);
     addOp(LOAD_RAWPTR);
+    addOp(LOAD_FUNPTR);
 
     addOp(STORE_U8);
     addOp(STORE_U16);
@@ -850,6 +853,7 @@ static this()
     addOp(STORE_F64);
     addOp(STORE_REFPTR);
     addOp(STORE_RAWPTR);
+    addOp(STORE_FUNPTR);
 
     addOp(JUMP_TRUE, "if_false");
     addOp(JUMP_FALSE, "if_true");
