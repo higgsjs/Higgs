@@ -105,11 +105,14 @@ layouts = [
             # Function code pointer
             { 'name':"fptr", 'type':"rawptr" },
 
+            # Constructor class pointer
+            { 'name':"ctor_class", 'type':"refptr", 'init':"null"  },
+
             # Number of closure cells
             { 'name':"num_cells" , 'type':"uint32" },
 
             # Closure cell pointers
-            { 'name':"cell", 'type':"refptr", 'szField':"num_cells" },
+            { 'name':"cell", 'type':"refptr", 'szField':"num_cells", 'init':"null"  },
         ]
     },
 

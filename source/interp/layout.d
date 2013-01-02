@@ -350,14 +350,19 @@ uint32 clos_ofs_fptr(refptr o)
     return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o)));
 }
 
-uint32 clos_ofs_num_cells(refptr o)
+uint32 clos_ofs_ctor_class(refptr o)
 {    
     return ((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8);
 }
 
+uint32 clos_ofs_num_cells(refptr o)
+{    
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 8);
+}
+
 uint32 clos_ofs_cell(refptr o, uint32 i)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 4) + (8 * i));
+    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 8) + 4) + (8 * i));
 }
 
 uint32 clos_get_header(refptr o)
@@ -398,6 +403,11 @@ uint8 clos_get_type(refptr o, uint32 i)
 rawptr clos_get_fptr(refptr o)
 {    
     return *cast(rawptr*)(o + clos_ofs_fptr(o));
+}
+
+refptr clos_get_ctor_class(refptr o)
+{    
+    return *cast(refptr*)(o + clos_ofs_ctor_class(o));
 }
 
 uint32 clos_get_num_cells(refptr o)
@@ -450,6 +460,11 @@ void clos_set_fptr(refptr o, rawptr v)
     *cast(rawptr*)(o + clos_ofs_fptr(o)) = v;
 }
 
+void clos_set_ctor_class(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + clos_ofs_ctor_class(o)) = v;
+}
+
 void clos_set_num_cells(refptr o, uint32 v)
 {    
     *cast(uint32*)(o + clos_ofs_num_cells(o)) = v;
@@ -462,7 +477,7 @@ void clos_set_cell(refptr o, uint32 i, refptr v)
 
 uint32 clos_comp_size(uint32 cap, uint32 num_cells)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 8) + 4) + (8 * num_cells));
+    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 8) + 8) + 4) + (8 * num_cells));
 }
 
 uint32 clos_sizeof(refptr o)
@@ -477,6 +492,11 @@ refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
     clos_set_num_cells(o, num_cells);
     clos_set_header(o, 3);
     clos_set_next(o, null);
+    clos_set_ctor_class(o, null);
+    for (uint32 i = 0; i < num_cells; ++i)
+    {    
+        clos_set_cell(o, i, null);
+    }
     return o;
 }
 

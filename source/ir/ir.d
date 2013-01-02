@@ -104,9 +104,6 @@ class IRFunction : IdObject
     LocalIdx thisSlot;
     LocalIdx argcSlot;
 
-    /// Class pointer used when called using new operator
-    refptr classPtr = null;
-
     /// Constructor
     this(FunExpr ast)
     {

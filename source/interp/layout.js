@@ -335,14 +335,19 @@ function $rt_clos_ofs_fptr(o)
     return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o)));
 }
 
-function $rt_clos_ofs_num_cells(o)
+function $rt_clos_ofs_ctor_class(o)
 {    
     return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 8);
 }
 
+function $rt_clos_ofs_num_cells(o)
+{    
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 8), 8);
+}
+
 function $rt_clos_ofs_cell(o, i)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 8), 4), $ir_mul_i32(8, i));
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 8), 8), 4), $ir_mul_i32(8, i));
 }
 
 function $rt_clos_get_header(o)
@@ -383,6 +388,11 @@ function $rt_clos_get_type(o, i)
 function $rt_clos_get_fptr(o)
 {    
     return $ir_load_rawptr(o, $rt_clos_ofs_fptr(o));
+}
+
+function $rt_clos_get_ctor_class(o)
+{    
+    return $ir_load_refptr(o, $rt_clos_ofs_ctor_class(o));
 }
 
 function $rt_clos_get_num_cells(o)
@@ -435,6 +445,11 @@ function $rt_clos_set_fptr(o, v)
     $ir_store_rawptr(o, $rt_clos_ofs_fptr(o), v);
 }
 
+function $rt_clos_set_ctor_class(o, v)
+{    
+    $ir_store_refptr(o, $rt_clos_ofs_ctor_class(o), v);
+}
+
 function $rt_clos_set_num_cells(o, v)
 {    
     $ir_store_u32(o, $rt_clos_ofs_num_cells(o), v);
@@ -447,7 +462,7 @@ function $rt_clos_set_cell(o, i, v)
 
 function $rt_clos_comp_size(cap, num_cells)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, cap)), $ir_mul_i32(1, cap)), 8), 4), $ir_mul_i32(8, num_cells));
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, cap)), $ir_mul_i32(1, cap)), 8), 8), 4), $ir_mul_i32(8, num_cells));
 }
 
 function $rt_clos_sizeof(o)
@@ -462,6 +477,11 @@ function $rt_clos_alloc(cap, num_cells)
     $rt_clos_set_num_cells(o, num_cells);
     $rt_clos_set_header(o, 3);
     $rt_clos_set_next(o, null);
+    $rt_clos_set_ctor_class(o, null);
+    for (var i = 0; i < num_cells; ++i)
+    {    
+        $rt_clos_set_cell(o, i, null);
+    }
     return o;
 }
 

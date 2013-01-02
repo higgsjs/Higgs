@@ -814,7 +814,7 @@ void op_call_new(Interp interp, IRInstr instr)
     // Allocate the "this" object
     auto thisPtr = newObj(
         interp, 
-        &fun.classPtr, 
+        cast(refptr*)(closPtr + clos_ofs_ctor_class(closPtr)),
         protoPtr.word.ptrVal,
         CLASS_INIT_SIZE,
         2
