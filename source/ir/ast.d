@@ -438,8 +438,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                 newClos.outSlot = ctx.getOutSlot();
                 newClos.args.length = 3;
                 newClos.args[0].fun = subFun;
-                newClos.args[1].ptrVal = null;
-                newClos.args[2].ptrVal = null;
+                newClos.args[1].linkIdx = NULL_LINK;
+                newClos.args[2].linkIdx = NULL_LINK;
 
                 // Set the closure cells for the captured variables
                 foreach (idx, ident; subFun.captVars)
@@ -1016,8 +1016,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             newClos.outSlot = ctx.getOutSlot();
             newClos.args.length = 3;
             newClos.args[0].fun = fun;
-            newClos.args[1].ptrVal = null;
-            newClos.args[2].ptrVal = null;
+            newClos.args[1].linkIdx = NULL_LINK;
+            newClos.args[2].linkIdx = NULL_LINK;
 
             // Set the closure cells for the captured variables
             foreach (idx, ident; funExpr.captVars)

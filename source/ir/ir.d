@@ -311,7 +311,6 @@ class IRInstr : IdObject
     {
         long intVal;
         double floatVal;
-        ubyte* ptrVal;
         wstring stringVal;
         LocalIdx localIdx;
         LinkIdx linkIdx;
@@ -498,9 +497,6 @@ class IRInstr : IdObject
                 case OpArg.FUN:
                 output ~= "<fun:" ~ arg.fun.getName() ~ ">";
                 break;
-                case OpArg.REFPTR:
-                output ~= "<ref:" ~ to!string(arg.ptrVal) ~ ">";
-                break;
                 default:
                 assert (false, "unhandled arg type");
             }
@@ -520,7 +516,6 @@ enum OpArg
 {
     INT,
     FLOAT,
-    REFPTR,
     STRING,
     LOCAL,
     LINK,
@@ -730,6 +725,10 @@ Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT], &op_get_glo
 // Note: hidden parameter is cached global property index
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT], &op_set_global };
 
+// <dstLocal> = NEW_CLOS <funExpr>
+// Create a new closure from a function's AST node
+Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], &op_new_clos };
+
 // Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
 
@@ -741,16 +740,6 @@ Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &op_get_ir_str };
 
 // Format a floating-point value as a string
 Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str };
-
-// ===========================================================================
-// TODO: translate to runtime functions
-
-// <dstLocal> = NEW_CLOS <funExpr>
-// Create a new closure from a function's AST node
-Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.REFPTR, OpArg.REFPTR], &opNewClos };
-
-// TODO: translate to runtime functions
-// ===========================================================================
 
 /**
 Inline IR prefix string

@@ -1155,6 +1155,62 @@ void op_set_global(Interp interp, IRInstr instr)
     }
 }
 
+void op_new_clos(Interp interp, IRInstr instr)
+{
+    auto fun = instr.args[0].fun;
+    auto closLinkIdx = &instr.args[1].linkIdx;
+    auto protLinkIdx = &instr.args[2].linkIdx;
+
+    if (*closLinkIdx is NULL_LINK)
+    {
+        *closLinkIdx = interp.allocLink();
+        interp.setLinkWord(*closLinkIdx, NULL);
+        interp.setLinkType(*closLinkIdx, Type.REFPTR);
+    }
+
+    if (*protLinkIdx is NULL_LINK)
+    {
+        *protLinkIdx = interp.allocLink();
+        interp.setLinkWord(*protLinkIdx, NULL);
+        interp.setLinkType(*protLinkIdx, Type.REFPTR);
+    }
+
+    // Allocate the closure object
+    auto closPtr = newClos(
+        interp, 
+        &interp.wLinkTable[*closLinkIdx].ptrVal,
+        interp.funProto,
+        CLASS_INIT_SIZE,
+        1,
+        cast(uint32)fun.captVars.length,
+        fun
+    );
+
+    // Allocate the prototype object
+    auto objPtr = newObj(
+        interp, 
+        &interp.wLinkTable[*protLinkIdx].ptrVal, 
+        interp.objProto,
+        CLASS_INIT_SIZE,
+        0
+    );
+
+    // Set the prototype property on the closure object
+    setProp(
+        interp, 
+        closPtr,
+        getString(interp, "prototype"),
+        ValuePair(Word.ptrv(objPtr), Type.REFPTR)
+    );
+   
+    // Output a pointer to the closure
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(closPtr),
+        Type.REFPTR
+    );
+}
+
 void op_print_str(Interp interp, IRInstr instr)
 {
     auto wStr = interp.getWord(instr.args[0].localIdx);
@@ -1240,50 +1296,6 @@ void op_f64_to_str(Interp interp, IRInstr instr)
     interp.setSlot(
         instr.outSlot,
         Word.ptrv(strObj),
-        Type.REFPTR
-    );
-}
-
-
-// ===========================================================================
-// TODO: translate to runtime functions
-
-void opNewClos(Interp interp, IRInstr instr)
-{
-    auto fun = instr.args[0].fun;
-
-    // Allocate the prototype object
-    auto objPtr = newObj(
-        interp, 
-        &instr.args[1].ptrVal, 
-        interp.objProto,
-        CLASS_INIT_SIZE,
-        0
-    );
-
-    // Allocate the closure object
-    auto closPtr = newClos(
-        interp, 
-        &instr.args[2].ptrVal, 
-        interp.funProto,
-        CLASS_INIT_SIZE,
-        1,
-        cast(uint32)fun.captVars.length,
-        fun
-    );
-
-    // Set the prototype property on the closure object
-    setProp(
-        interp, 
-        closPtr,
-        getString(interp, "prototype"),
-        ValuePair(Word.ptrv(objPtr), Type.REFPTR)
-    );
-   
-    // Output a pointer to the closure
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(closPtr),
         Type.REFPTR
     );
 }
