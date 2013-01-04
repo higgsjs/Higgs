@@ -53,6 +53,7 @@ import ir.ast;
 import interp.layout;
 import interp.string;
 import interp.object;
+import interp.gc;
 
 /**
 Run-time error
@@ -298,7 +299,7 @@ class Interp
     Type* tUpperLimit;
 
     /// Heap start pointer
-    ubyte* heapPtr;
+    ubyte* heapStart;
 
     /// Heap size
     size_t heapSize;
@@ -371,17 +372,17 @@ class Interp
 
         // Allocate a block of immovable memory for the heap
         heapSize = HEAP_INIT_SIZE;
-        heapPtr = cast(ubyte*)GC.malloc(heapSize);
-        heapLimit = heapPtr + heapSize;
+        heapStart = cast(ubyte*)GC.malloc(heapSize);
+        heapLimit = heapStart + heapSize;
 
         // Check that the allocation was successful
-        if (heapPtr is null)
+        if (heapStart is null)
             throw new Error("heap allocation failed");
 
         /*
         // Map the memory as executable
         auto pa = mmap(
-            cast(void*)heapPtr,
+            cast(void*)heapStart,
             heapSize,
             PROT_READ | PROT_WRITE | PROT_EXEC,
             MAP_PRIVATE | MAP_ANON,
@@ -394,7 +395,7 @@ class Interp
         */
 
         // Initialize the allocation pointer
-        allocPtr = alignPtr(heapPtr);
+        allocPtr = heapStart;
 
         /// Link table size
         linkTblSize = LINK_TBL_INIT_SIZE;
@@ -615,18 +616,41 @@ class Interp
     /**
     Allocate an object on the stack
     */
-    rawptr alloc(size_t size)
+    refptr alloc(size_t size)
     {
-        ubyte* ptr = allocPtr;
+        // If this allocation exceeds the heap limit
+        if (allocPtr + size > heapLimit)
+        {
+            // Log that we are going to perform GC
+            writeln("Performing garbage collection");
 
-        allocPtr += size;
+            // Call the garbage collector
+            gcCollect(this);
 
-        if (allocPtr > heapLimit)
+            assert (
+                allocPtr >= heapStart && allocPtr < heapLimit,
+                "alloc pointer outside of heap after GC"
+            );
+        }
+
+        // Store the pointer to the new object
+        refptr ptr = allocPtr;
+
+        assert (
+            ptr >= heapStart && ptr < heapLimit,
+            "new address outside of heap"
+        );
+
+        // If the heap space is exhausted, throw an error
+        if (ptr + size > heapLimit)
+        {
             throw new Error("heap space exhausted");
+        }
 
-        // Align the allocation pointer
-        allocPtr = alignPtr(allocPtr);
+        // Update the allocation pointer
+        allocPtr = alignPtr(allocPtr + size);
 
+        // Return the object pointer
         return ptr;
     }
 
