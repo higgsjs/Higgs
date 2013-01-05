@@ -310,6 +310,11 @@ class Interp
     /// Allocation pointer
     ubyte* allocPtr;
 
+    /// To-space heap pointers, for garbage collection
+    ubyte* toStart = null;
+    ubyte* toLimit = null;
+    ubyte* toAlloc = null;
+
     /// Link table words
     Word* wLinkTable;
 
