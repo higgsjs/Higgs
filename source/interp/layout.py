@@ -352,6 +352,18 @@ class MulExpr:
     def genD(self):
         return '(' + self.lExpr.genD() + ' * ' + self.rExpr.genD() + ')'
 
+class AndExpr:
+
+    def __init__(self, lExpr, rExpr):
+        self.lExpr = lExpr
+        self.rExpr = rExpr
+
+    def genJS(self):
+        return '$ir_and_i32(' + self.lExpr.genJS() + ', ' + self.rExpr.genJS() + ')'
+
+    def genD(self):
+        return '(' + self.lExpr.genD() + ' & ' + self.rExpr.genD() + ')'
+
 class LoadExpr:
 
     def __init__(self, type, ptr, ofs):
@@ -509,6 +521,51 @@ for layout in layouts:
         if field['szField'] == None:
             raise Exception('size field "%s" of "%s" not found' % (szName, field['name']))
 
+# Compute field alignment requirements
+for layout in layouts:
+
+    #print('');
+    #print(layout['name'])
+
+    # Current offset since last dynamic alignment
+    curOfs = 0
+
+    # For each field of this layout
+    for fieldIdx, field in enumerate(layout['fields']):
+
+        # Field type size
+        fSize = typeSize[field['type']]
+
+        # If the previous field was dynamically sized and of smaller type size
+        if fieldIdx > 0 and 'szField' in layout['fields'][fieldIdx-1] and \
+           typeSize[layout['fields'][fieldIdx-1]['type']] < fSize:
+            
+            # This field will be dynamically aligned
+            field['dynAlign'] = True
+            field['alignPad'] = 0
+
+            # Reset the current offset
+            curOfs = 0
+
+        else:
+
+            # Compute the padding required for alignment
+            alignRem = curOfs % fSize
+            if alignRem != 0:
+                alignPad = fSize - alignRem
+            else:
+                alignPad = 0
+
+            field['dynAlign'] = False
+            field['alignPad'] = alignPad
+
+            # Update the current offset
+            curOfs += alignPad + fSize
+
+        #print(field['name'])
+        #print('  fSize: ' + str(fSize))
+        #print('  align: ' + str(field['alignPad']))
+
 # List of generated functions and declarations
 decls = []
 
@@ -537,14 +594,28 @@ for layout in layouts:
 
         for prev in layout['fields'][:fieldIdx]:
 
-            termExpr = Cst(typeSize[prev['type']])
+            # If this field must be dymamically aligned
+            if prev['dynAlign']:
+                ptrSize = typeSize['rawptr']
+                sumExpr = AndExpr(AddExpr(sumExpr, Cst(ptrSize - 1)), Cst(-ptrSize))
+            elif prev['alignPad'] > 0:
+                sumExpr = AddExpr(sumExpr, Cst(prev['alignPad']))
 
+            # Compute the previous field size
+            termExpr = Cst(typeSize[prev['type']])
             if 'szField' in prev:
                 szCall = CallExpr(getPref + prev['szField']['name'], [fun.params[0]])
                 termExpr = MulExpr(termExpr, szCall)
-
             sumExpr = AddExpr(sumExpr, termExpr)
 
+        # If this field must be dymamically aligned
+        if field['dynAlign']:
+            ptrSize = typeSize['rawptr']
+            sumExpr = AndExpr(AddExpr(sumExpr, Cst(ptrSize - 1)), Cst(-ptrSize))
+        elif field['alignPad'] > 0:
+            sumExpr = AddExpr(sumExpr, Cst(field['alignPad']))
+
+        # Compute the index into the last field
         if 'szField' in field:
             fieldSize = Cst(typeSize[field['type']])
             sumExpr = AddExpr(sumExpr, MulExpr(fieldSize , fun.params[1]))
@@ -593,7 +664,16 @@ for layout in layouts:
         fun.params += [szVar]
 
     szSum = Cst(0)
+
     for field in layout['fields']:
+
+        # If this field must be dymamically aligned
+        if field['dynAlign']:
+            ptrSize = typeSize['rawptr']
+            szSum = AndExpr(AddExpr(szSum, Cst(ptrSize - 1)), Cst(-ptrSize))
+        elif field['alignPad'] > 0:
+            szSum = AddExpr(szSum, Cst(field['alignPad']))
+
         szTerm = Cst(typeSize[field['type']])
         if 'szField' in field:
             szTerm = MulExpr(szTerm, szVars[field['szField']['name']])

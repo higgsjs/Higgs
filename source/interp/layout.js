@@ -101,7 +101,7 @@ function $rt_strtbl_ofs_num_strs(o)
 
 function $rt_strtbl_ofs_str(o, i)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 4), $ir_mul_i32(8, i));
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 4), 4), $ir_mul_i32(8, i));
 }
 
 function $rt_strtbl_get_header(o)
@@ -146,7 +146,7 @@ function $rt_strtbl_set_str(o, i, v)
 
 function $rt_strtbl_comp_size(cap)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 4), $ir_mul_i32(8, cap));
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 4), 4), $ir_mul_i32(8, cap));
 }
 
 function $rt_strtbl_sizeof(o)
@@ -332,22 +332,22 @@ function $rt_clos_ofs_type(o, i)
 
 function $rt_clos_ofs_fptr(o)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o)));
+    return $ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 7), -8);
 }
 
 function $rt_clos_ofs_ctor_class(o)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 8);
+    return $ir_add_i32($ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 7), -8), 8);
 }
 
 function $rt_clos_ofs_num_cells(o)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 8), 8);
+    return $ir_add_i32($ir_add_i32($ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 7), -8), 8), 8);
 }
 
 function $rt_clos_ofs_cell(o, i)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 8), 8), 4), $ir_mul_i32(8, i));
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_clos_get_cap(o))), $ir_mul_i32(1, $rt_clos_get_cap(o))), 7), -8), 8), 8), 4), 4), $ir_mul_i32(8, i));
 }
 
 function $rt_clos_get_header(o)
@@ -462,7 +462,7 @@ function $rt_clos_set_cell(o, i, v)
 
 function $rt_clos_comp_size(cap, num_cells)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, cap)), $ir_mul_i32(1, cap)), 8), 8), 4), $ir_mul_i32(8, num_cells));
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, cap)), $ir_mul_i32(1, cap)), 7), -8), 8), 8), 4), 4), $ir_mul_i32(8, num_cells));
 }
 
 function $rt_clos_sizeof(o)
@@ -494,12 +494,12 @@ function $rt_cell_ofs_header(o)
 
 function $rt_cell_ofs_word(o)
 {    
-    return $ir_add_i32(0, 4);
+    return $ir_add_i32($ir_add_i32(0, 4), 4);
 }
 
 function $rt_cell_ofs_type(o)
 {    
-    return $ir_add_i32($ir_add_i32(0, 4), 8);
+    return $ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8);
 }
 
 function $rt_cell_get_header(o)
@@ -534,7 +534,7 @@ function $rt_cell_set_type(o, v)
 
 function $rt_cell_comp_size()
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 8), 1);
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 1);
 }
 
 function $rt_cell_sizeof(o)
@@ -588,12 +588,12 @@ function $rt_arr_ofs_type(o, i)
 
 function $rt_arr_ofs_tbl(o)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_arr_get_cap(o))), $ir_mul_i32(1, $rt_arr_get_cap(o)));
+    return $ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_arr_get_cap(o))), $ir_mul_i32(1, $rt_arr_get_cap(o))), 7), -8);
 }
 
 function $rt_arr_ofs_len(o)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_arr_get_cap(o))), $ir_mul_i32(1, $rt_arr_get_cap(o))), 8);
+    return $ir_add_i32($ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, $rt_arr_get_cap(o))), $ir_mul_i32(1, $rt_arr_get_cap(o))), 7), -8), 8);
 }
 
 function $rt_arr_get_header(o)
@@ -688,7 +688,7 @@ function $rt_arr_set_len(o, v)
 
 function $rt_arr_comp_size(cap)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, cap)), $ir_mul_i32(1, cap)), 8), 4);
+    return $ir_add_i32($ir_add_i32($ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 4), 4), 8), 8), 8), $ir_mul_i32(8, cap)), $ir_mul_i32(1, cap)), 7), -8), 8), 4);
 }
 
 function $rt_arr_sizeof(o)

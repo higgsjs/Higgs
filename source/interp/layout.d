@@ -117,7 +117,7 @@ uint32 strtbl_ofs_num_strs(refptr o)
 
 uint32 strtbl_ofs_str(refptr o, uint32 i)
 {    
-    return ((((0 + 4) + 4) + 4) + (8 * i));
+    return (((((0 + 4) + 4) + 4) + 4) + (8 * i));
 }
 
 uint32 strtbl_get_header(refptr o)
@@ -162,7 +162,7 @@ void strtbl_set_str(refptr o, uint32 i, refptr v)
 
 uint32 strtbl_comp_size(uint32 cap)
 {    
-    return ((((0 + 4) + 4) + 4) + (8 * cap));
+    return (((((0 + 4) + 4) + 4) + 4) + (8 * cap));
 }
 
 uint32 strtbl_sizeof(refptr o)
@@ -348,22 +348,22 @@ uint32 clos_ofs_type(refptr o, uint32 i)
 
 uint32 clos_ofs_fptr(refptr o)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o)));
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8);
 }
 
 uint32 clos_ofs_ctor_class(refptr o)
 {    
-    return ((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8);
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8);
 }
 
 uint32 clos_ofs_num_cells(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 8);
+    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8) + 8);
 }
 
 uint32 clos_ofs_cell(refptr o, uint32 i)
 {    
-    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 8) + 8) + 4) + (8 * i));
+    return ((((((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8) + 8) + 4) + 4) + (8 * i));
 }
 
 uint32 clos_get_header(refptr o)
@@ -478,7 +478,7 @@ void clos_set_cell(refptr o, uint32 i, refptr v)
 
 uint32 clos_comp_size(uint32 cap, uint32 num_cells)
 {    
-    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 8) + 8) + 4) + (8 * num_cells));
+    return ((((((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 8) + 8) + 4) + 4) + (8 * num_cells));
 }
 
 uint32 clos_sizeof(refptr o)
@@ -510,12 +510,12 @@ uint32 cell_ofs_header(refptr o)
 
 uint32 cell_ofs_word(refptr o)
 {    
-    return (0 + 4);
+    return ((0 + 4) + 4);
 }
 
 uint32 cell_ofs_type(refptr o)
 {    
-    return ((0 + 4) + 8);
+    return (((0 + 4) + 4) + 8);
 }
 
 uint32 cell_get_header(refptr o)
@@ -550,7 +550,7 @@ void cell_set_type(refptr o, uint8 v)
 
 uint32 cell_comp_size()
 {    
-    return (((0 + 4) + 8) + 1);
+    return ((((0 + 4) + 4) + 8) + 1);
 }
 
 uint32 cell_sizeof(refptr o)
@@ -604,12 +604,12 @@ uint32 arr_ofs_type(refptr o, uint32 i)
 
 uint32 arr_ofs_tbl(refptr o)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o)));
+    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 7) & -8);
 }
 
 uint32 arr_ofs_len(refptr o)
 {    
-    return ((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 8);
+    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 7) & -8) + 8);
 }
 
 uint32 arr_get_header(refptr o)
@@ -704,7 +704,7 @@ void arr_set_len(refptr o, uint32 v)
 
 uint32 arr_comp_size(uint32 cap)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 8) + 4);
+    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 8) + 4);
 }
 
 uint32 arr_sizeof(refptr o)
