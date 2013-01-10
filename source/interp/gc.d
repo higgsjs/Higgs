@@ -274,6 +274,32 @@ void visitStackRoots(Interp interp)
     }
 }
 
+const uint64 NEXT_FLAG = 1L << 63;
+
+refptr getNext(refptr obj)
+{
+    auto iVal = *cast(uint64*)obj;
+
+    if ((iVal & NEXT_FLAG) == 0)
+        return null;
+
+    return cast(refptr)(iVal ^ NEXT_FLAG);
+}
+
+void setNext(refptr obj, refptr next)
+{
+    auto iVal = cast(uint64)next;
+
+    assert (
+        (iVal & NEXT_FLAG) == 0,
+        "top bit of next pointer is already set"
+    );
+
+    auto iPtr = cast(uint64*)obj;
+
+    *iPtr = iVal | NEXT_FLAG;
+}
+
 //============================================================================
 //============================================================================
 

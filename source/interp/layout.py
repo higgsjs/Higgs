@@ -328,6 +328,49 @@ class DeclStmt:
     def genD(self):
         return 'auto ' + self.var.genD() + ' = ' + self.val.genD() + ';'
 
+class IfStmt:
+
+    def __init__(self, expr, trueStmts, falseStmts = None):
+        self.expr = expr
+        self.trueStmts = trueStmts
+        self.falseStmts = falseStmts
+
+    def genJS(self):
+        out = 'if (' + self.expr.genJS() + ')\n'
+        out += '{'
+        stmts = ''
+        for stmt in self.trueStmts:
+            stmts += '\n' + stmt.genJS()
+        out += indent(stmts)
+        out += '\n}'
+        if self.falseStmts:
+            out += 'else'
+            out += '{'
+            stmts = ''
+            for stmt in self.falseStmts:
+                stmts += '\n' + stmt.genJS()
+            out += indent(stmts)
+            out += '\n}'
+        return out
+
+    def genD(self):
+        out = 'if (' + self.expr.genD() + ')\n'
+        out += '{'
+        stmts = ''
+        for stmt in self.trueStmts:
+            stmts += '\n' + stmt.genD()
+        out += indent(stmts)
+        out += '\n}'
+        if self.falseStmts:
+            out += 'else'
+            out += '{'
+            stmts = ''
+            for stmt in self.falseStmts:
+                stmts += '\n' + stmt.genD()
+            out += indent(stmts)
+            out += '\n}'
+        return out
+
 class AddExpr:
 
     def __init__(self, lExpr, rExpr):
@@ -363,6 +406,18 @@ class AndExpr:
 
     def genD(self):
         return '(' + self.lExpr.genD() + ' & ' + self.rExpr.genD() + ')'
+
+class EqExpr:
+
+    def __init__(self, lExpr, rExpr):
+        self.lExpr = lExpr
+        self.rExpr = rExpr
+
+    def genJS(self):
+        return '$ir_eq_i32(' + self.lExpr.genJS() + ', ' + self.rExpr.genJS() + ')'
+
+    def genD(self):
+        return '(' + self.lExpr.genD() + ' == ' + self.rExpr.genD() + ')'
 
 class LoadExpr:
 
@@ -726,6 +781,21 @@ for layout in layouts:
 
     fun.stmts += [RetStmt(objVar)]
     decls += [fun]
+
+# Generate the sizeof dispatch method
+fun = Function('uint32', 'layout_sizeof', [Var('refptr', 'o')])
+
+typeVar = Var('uint32', 't')
+fun.stmts += [DeclStmt(typeVar, CallExpr('obj_get_header', [fun.params[0]]))]
+
+for layout in layouts:
+    cmpExpr = EqExpr(typeVar, Var('uint32', 'LAYOUT_' + layout['name'].upper()))
+    retStmt = RetStmt(CallExpr(layout['name'] + '_sizeof', [fun.params[0]]))
+    fun.stmts += [IfStmt(cmpExpr, [retStmt])]
+
+fun.stmts += [ExprStmt(CallExpr('assert', [Cst('false')]))]
+
+decls += [fun]
 
 # Open the output files for writing
 DFile = open(D_OUT_FILE, 'w')

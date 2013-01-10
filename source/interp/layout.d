@@ -967,3 +967,41 @@ refptr class_alloc(Interp interp, uint32 cap)
     return o;
 }
 
+uint32 layout_sizeof(refptr o)
+{    
+    auto t = obj_get_header(o);
+    if ((t == LAYOUT_STR))
+    {    
+        return str_sizeof(o);
+    }
+    if ((t == LAYOUT_STRTBL))
+    {    
+        return strtbl_sizeof(o);
+    }
+    if ((t == LAYOUT_OBJ))
+    {    
+        return obj_sizeof(o);
+    }
+    if ((t == LAYOUT_CLOS))
+    {    
+        return clos_sizeof(o);
+    }
+    if ((t == LAYOUT_CELL))
+    {    
+        return cell_sizeof(o);
+    }
+    if ((t == LAYOUT_ARR))
+    {    
+        return arr_sizeof(o);
+    }
+    if ((t == LAYOUT_ARRTBL))
+    {    
+        return arrtbl_sizeof(o);
+    }
+    if ((t == LAYOUT_CLASS))
+    {    
+        return class_sizeof(o);
+    }
+    assert(false);
+}
+
