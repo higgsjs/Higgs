@@ -91,7 +91,7 @@ layouts = [
             { 'name':"proto", 'type':"refptr" },
 
             # Property words
-            { 'name':"word", 'type':"uint64", 'szField':"cap" },
+            { 'name':"word", 'type':"uint64", 'szField':"cap", 'tpField':'type' },
 
             # Property types
             { 'name':"type", 'type':"uint8", 'szField':"cap" }
@@ -124,7 +124,7 @@ layouts = [
         'fields':
         [
             # Value word
-            { 'name':"word", 'type':"uint64" },
+            { 'name':"word", 'type':"uint64", 'tpField':'type' },
 
             # Value type
             { 'name':"type", 'type':"uint8" },
@@ -154,7 +154,7 @@ layouts = [
             { 'name':"cap" , 'type':"uint32" },
 
             # Element words
-            { 'name':"word", 'type':"uint64", 'szField':"cap" },
+            { 'name':"word", 'type':"uint64", 'szField':"cap", 'tpField':'type' },
 
             # Element types
             { 'name':"type", 'type':"uint8", 'szField':"cap" },
@@ -575,6 +575,26 @@ for layout in layouts:
         # If the size field was not found, raise an exception
         if field['szField'] == None:
             raise Exception('size field "%s" of "%s" not found' % (szName, field['name']))
+
+# Find/resolve word type fields
+for layout in layouts:
+
+    for field in layout['fields']:
+
+        # If this field has no type field, skip it
+        if 'tpField' not in field:
+            continue
+
+        # Find the type field
+        tpName = field['tpField']
+        field['tpField'] = None
+        for prev in layout['fields']:
+            if prev['name'] == tpName:
+                field['tpField'] = prev
+
+        # If the type field was not found, raise an exception
+        if field['tpField'] == None:
+            raise Exception('type field "%s" of "%s" not found' % (tpName, field['name']))
 
 # Compute field alignment requirements
 for layout in layouts:
