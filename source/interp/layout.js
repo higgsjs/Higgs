@@ -82,6 +82,10 @@ function $rt_str_alloc(len)
     return o;
 }
 
+function $rt_str_visit_gc(o)
+{
+}
+
 var $rt_LAYOUT_STRTBL = 1;
 
 function $rt_strtbl_ofs_header(o)
@@ -165,6 +169,15 @@ function $rt_strtbl_alloc(cap)
         $rt_strtbl_set_str(o, i, null);
     }
     return o;
+}
+
+function $rt_strtbl_visit_gc(o)
+{    
+    var cap = $rt_strtbl_get_cap(o);
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_strtbl_set_str(o, i, $rt_gcForward(interp, $rt_strtbl_get_str(o, i)));
+    }
 }
 
 var $rt_LAYOUT_OBJ = 2;
@@ -290,7 +303,27 @@ function $rt_obj_alloc(cap)
     $rt_obj_set_cap(o, cap);
     $rt_obj_set_header(o, 2);
     $rt_obj_set_next(o, null);
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_obj_set_word(o, i, $ir_get_word(undefined));
+    }
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_obj_set_type(o, i, $ir_get_type(undefined));
+    }
     return o;
+}
+
+function $rt_obj_visit_gc(o)
+{    
+    $rt_obj_set_class(o, $rt_gcForward(interp, $rt_obj_get_class(o)));
+    $rt_obj_set_next(o, $rt_gcForward(interp, $rt_obj_get_next(o)));
+    $rt_obj_set_proto(o, $rt_gcForward(interp, $rt_obj_get_proto(o)));
+    var cap = $rt_obj_get_cap(o);
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_obj_set_word(o, i, $rt_gcForward(interp, $rt_obj_get_word(o, i), $rt_obj_get_type(o, i)));
+    }
 }
 
 var $rt_LAYOUT_CLOS = 3;
@@ -477,12 +510,38 @@ function $rt_clos_alloc(cap, num_cells)
     $rt_clos_set_num_cells(o, num_cells);
     $rt_clos_set_header(o, 3);
     $rt_clos_set_next(o, null);
+    for (var i = 0; i < num_cells; ++i)
+    {    
+        $rt_clos_set_word(o, i, $ir_get_word(undefined));
+    }
+    for (var i = 0; i < num_cells; ++i)
+    {    
+        $rt_clos_set_type(o, i, $ir_get_type(undefined));
+    }
     $rt_clos_set_ctor_class(o, null);
     for (var i = 0; i < num_cells; ++i)
     {    
         $rt_clos_set_cell(o, i, null);
     }
     return o;
+}
+
+function $rt_clos_visit_gc(o)
+{    
+    $rt_clos_set_class(o, $rt_gcForward(interp, $rt_clos_get_class(o)));
+    $rt_clos_set_next(o, $rt_gcForward(interp, $rt_clos_get_next(o)));
+    $rt_clos_set_proto(o, $rt_gcForward(interp, $rt_clos_get_proto(o)));
+    var cap = $rt_clos_get_cap(o);
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_clos_set_word(o, i, $rt_gcForward(interp, $rt_clos_get_word(o, i), $rt_clos_get_type(o, i)));
+    }
+    $rt_clos_set_ctor_class(o, $rt_gcForward(interp, $rt_clos_get_ctor_class(o)));
+    var num_cells = $rt_clos_get_num_cells(o);
+    for (var i = 0; i < num_cells; ++i)
+    {    
+        $rt_clos_set_cell(o, i, $rt_gcForward(interp, $rt_clos_get_cell(o, i)));
+    }
 }
 
 var $rt_LAYOUT_CELL = 4;
@@ -546,7 +605,14 @@ function $rt_cell_alloc()
 {    
     var o = $ir_heap_alloc($rt_cell_comp_size());
     $rt_cell_set_header(o, 4);
+    $rt_cell_set_word(o, $ir_get_word(undefined));
+    $rt_cell_set_type(o, $ir_get_type(undefined));
     return o;
+}
+
+function $rt_cell_visit_gc(o)
+{    
+    $rt_cell_set_word(o, $rt_gcForward(interp, $rt_cell_get_word(o), $rt_cell_get_type(o)));
 }
 
 var $rt_LAYOUT_ARR = 5;
@@ -702,7 +768,28 @@ function $rt_arr_alloc(cap)
     $rt_arr_set_cap(o, cap);
     $rt_arr_set_header(o, 5);
     $rt_arr_set_next(o, null);
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_arr_set_word(o, i, $ir_get_word(undefined));
+    }
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_arr_set_type(o, i, $ir_get_type(undefined));
+    }
     return o;
+}
+
+function $rt_arr_visit_gc(o)
+{    
+    $rt_arr_set_class(o, $rt_gcForward(interp, $rt_arr_get_class(o)));
+    $rt_arr_set_next(o, $rt_gcForward(interp, $rt_arr_get_next(o)));
+    $rt_arr_set_proto(o, $rt_gcForward(interp, $rt_arr_get_proto(o)));
+    var cap = $rt_arr_get_cap(o);
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_arr_set_word(o, i, $rt_gcForward(interp, $rt_arr_get_word(o, i), $rt_arr_get_type(o, i)));
+    }
+    $rt_arr_set_tbl(o, $rt_gcForward(interp, $rt_arr_get_tbl(o)));
 }
 
 var $rt_LAYOUT_ARRTBL = 6;
@@ -782,7 +869,24 @@ function $rt_arrtbl_alloc(cap)
     var o = $ir_heap_alloc($rt_arrtbl_comp_size(cap));
     $rt_arrtbl_set_cap(o, cap);
     $rt_arrtbl_set_header(o, 6);
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_arrtbl_set_word(o, i, $ir_get_word(undefined));
+    }
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_arrtbl_set_type(o, i, $ir_get_type(undefined));
+    }
     return o;
+}
+
+function $rt_arrtbl_visit_gc(o)
+{    
+    var cap = $rt_arrtbl_get_cap(o);
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_arrtbl_set_word(o, i, $rt_gcForward(interp, $rt_arrtbl_get_word(o, i), $rt_arrtbl_get_type(o, i)));
+    }
 }
 
 var $rt_LAYOUT_CLASS = 7;
@@ -951,6 +1055,16 @@ function $rt_class_alloc(cap)
     return o;
 }
 
+function $rt_class_visit_gc(o)
+{    
+    $rt_class_set_next(o, $rt_gcForward(interp, $rt_class_get_next(o)));
+    var cap = $rt_class_get_cap(o);
+    for (var i = 0; i < cap; ++i)
+    {    
+        $rt_class_set_prop_name(o, i, $rt_gcForward(interp, $rt_class_get_prop_name(o, i)));
+    }
+}
+
 function $rt_layout_sizeof(o)
 {    
     var t = $rt_obj_get_header(o);
@@ -985,6 +1099,44 @@ function $rt_layout_sizeof(o)
     if ($ir_eq_i32(t, LAYOUT_CLASS))
     {    
         return $rt_class_sizeof(o);
+    }
+    $rt_assert(false);
+}
+
+function $rt_layout_visit_gc(o)
+{    
+    var t = $rt_obj_get_header(o);
+    if ($ir_eq_i32(t, LAYOUT_STR))
+    {    
+        $rt_str_visit_gc(interp, o);
+    }
+    if ($ir_eq_i32(t, LAYOUT_STRTBL))
+    {    
+        $rt_strtbl_visit_gc(interp, o);
+    }
+    if ($ir_eq_i32(t, LAYOUT_OBJ))
+    {    
+        $rt_obj_visit_gc(interp, o);
+    }
+    if ($ir_eq_i32(t, LAYOUT_CLOS))
+    {    
+        $rt_clos_visit_gc(interp, o);
+    }
+    if ($ir_eq_i32(t, LAYOUT_CELL))
+    {    
+        $rt_cell_visit_gc(interp, o);
+    }
+    if ($ir_eq_i32(t, LAYOUT_ARR))
+    {    
+        $rt_arr_visit_gc(interp, o);
+    }
+    if ($ir_eq_i32(t, LAYOUT_ARRTBL))
+    {    
+        $rt_arrtbl_visit_gc(interp, o);
+    }
+    if ($ir_eq_i32(t, LAYOUT_CLASS))
+    {    
+        $rt_class_visit_gc(interp, o);
     }
     $rt_assert(false);
 }

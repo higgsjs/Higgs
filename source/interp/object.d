@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -112,31 +112,6 @@ refptr newObj(
     );
 }
 
-refptr newArr(
-    Interp interp, 
-    refptr* ppClass, 
-    refptr protoPtr, 
-    uint32 classInitSize,
-    uint32 allocNumElems
-)
-{
-    return newExtObj(
-        interp, 
-        ppClass, 
-        protoPtr, 
-        classInitSize,
-        0,
-        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
-        {
-            auto objPtr = arr_alloc(interp, allocNumProps);
-            auto tblPtr = arrtbl_alloc(interp, allocNumElems);
-            arr_set_tbl(objPtr, tblPtr);
-            arr_set_len(objPtr, 0);
-            return objPtr;
-        }
-    );
-}
-
 refptr newClos(
     Interp interp, 
     refptr* ppClass, 
@@ -187,8 +162,6 @@ uint32 getPropIdx(refptr classPtr, refptr propStr)
     // Property not found
     return uint32.max;
 }
-
-// TODO: use getPropIdx in other prop access functions
 
 ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
 {
@@ -333,103 +306,5 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
     // Set the value and its type in the object
     obj_set_word(objPtr, propIdx, val.word.intVal);
     obj_set_type(objPtr, propIdx, val.type);
-}
-
-/**
-Set an element of an array
-*/
-void setArrElem(Interp interp, refptr arr, uint32 index, ValuePair val)
-{
-    // Get the array length
-    auto len = arr_get_len(arr);
-
-    // Get the array table
-    auto tbl = arr_get_tbl(arr);
-
-    // If the index is outside the current size of the array
-    if (index >= len)
-    {
-        // Compute the new length
-        auto newLen = index + 1;
-
-        //writefln("extending array to %s", newLen);
-
-        // Get the array capacity
-        auto cap = arrtbl_get_cap(tbl);
-
-        // If the new length would exceed the capacity
-        if (newLen > cap)
-        {
-            // Compute the new size to resize to
-            auto newSize = 2 * cap;
-            if (newLen > newSize)
-                newSize = newLen;
-
-            // Extend the internal table
-            tbl = extArrTable(interp, arr, tbl, len, cap, newSize);
-        }
-
-        // Update the array length
-        arr_set_len(arr, newLen);
-    }
-
-    // Set the element in the array
-    arrtbl_set_word(tbl, index, val.word.intVal);
-    arrtbl_set_type(tbl, index, val.type);
-}
-
-/**
-Extend the internal array table of an array
-*/
-refptr extArrTable(
-    Interp interp, 
-    refptr arr, 
-    refptr curTbl, 
-    uint32 curLen, 
-    uint32 curSize, 
-    uint32 newSize
-)
-{
-    // Allocate the new table without initializing it, for performance
-    auto newTbl = arrtbl_alloc(interp, newSize);
-
-    // Copy elements from the old table to the new
-    for (uint32 i = 0; i < curLen; i++)
-    {
-        arrtbl_set_word(newTbl, i, arrtbl_get_word(curTbl, i));
-        arrtbl_set_type(newTbl, i, arrtbl_get_type(curTbl, i));
-    }
-
-    // Initialize the remaining table entries to undefined
-    for (uint32 i = curLen; i < newSize; i++)
-    {
-        arrtbl_set_word(newTbl, i, UNDEF.intVal);
-        arrtbl_set_type(newTbl, i, Type.CONST);
-    }
-
-    // Update the table reference in the array
-    arr_set_tbl(arr, newTbl);
-
-    return newTbl;
-}
-
-/**
-Get an element from an array
-*/
-ValuePair getArrElem(Interp interp, refptr arr, uint32 index)
-{
-    auto len = arr_get_len(arr);
-
-    //writefln("cur len %s", len);
-
-    if (index >= len)
-        return ValuePair(UNDEF, Type.CONST);
-
-    auto tbl = arr_get_tbl(arr);
-
-    return ValuePair(
-        Word.intv(arrtbl_get_word(tbl, index)),
-        cast(Type)arrtbl_get_type(tbl, index),
-    );
 }
 

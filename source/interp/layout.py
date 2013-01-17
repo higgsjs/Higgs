@@ -91,10 +91,10 @@ layouts = [
             { 'name':"proto", 'type':"refptr" },
 
             # Property words
-            { 'name':"word", 'type':"uint64", 'szField':"cap", 'tpField':'type' },
+            { 'name':"word", 'type':"uint64", 'init':'undef_word', 'szField':"cap", 'tpField':'type' },
 
             # Property types
-            { 'name':"type", 'type':"uint8", 'szField':"cap" }
+            { 'name':"type", 'type':"uint8", 'init':'undef_type', 'szField':"cap" }
         ]
     },
 
@@ -124,10 +124,10 @@ layouts = [
         'fields':
         [
             # Value word
-            { 'name':"word", 'type':"uint64", 'tpField':'type' },
+            { 'name':"word", 'type':"uint64", 'init':'undef_word', 'tpField':'type' },
 
             # Value type
-            { 'name':"type", 'type':"uint8" },
+            { 'name':"type", 'type':"uint8", 'init':'undef_type' },
         ]
     },
 
@@ -154,10 +154,10 @@ layouts = [
             { 'name':"cap" , 'type':"uint32" },
 
             # Element words
-            { 'name':"word", 'type':"uint64", 'szField':"cap", 'tpField':'type' },
+            { 'name':"word", 'type':"uint64", 'init':'undef_word', 'szField':"cap", 'tpField':'type' },
 
             # Element types
-            { 'name':"type", 'type':"uint8", 'szField':"cap" },
+            { 'name':"type", 'type':"uint8", 'init':'undef_type', 'szField':"cap" },
         ]
     },
 
@@ -239,9 +239,21 @@ class Cst:
         self.val = val
 
     def genJS(self):
+
+        if self.val == 'undef_word':
+            return '$ir_get_word(undefined)'
+        if self.val == 'undef_type':
+            return '$ir_get_type(undefined)'
+
         return str(self.val)
 
     def genD(self):
+
+        if self.val == 'undef_word':
+            return 'UNDEF.intVal'
+        if self.val == 'undef_type':
+            return 'Type.CONST'
+
         return str(self.val)
 
 class ConstDef:
@@ -802,6 +814,54 @@ for layout in layouts:
     fun.stmts += [RetStmt(objVar)]
     decls += [fun]
 
+    # Generate the GC visit function
+    fun = Function('void', layout['name'] + '_visit_gc', [Var('Interp', 'interp'), Var('refptr', 'o')])
+    interpVar = fun.params[0]
+    objVar = fun.params[1]
+
+    for field in layout['fields']:
+
+        # If this is not a heap reference field, skip it
+        if field['type'] != 'refptr' and (not 'tpField' in field):
+            continue
+
+        # If this is a variable-size field
+        if 'szField' in field:
+
+            szVar = Var('uint32', field['szField']['name'])
+            szStmt = DeclStmt(szVar, CallExpr(getPref + field['szField']['name'], [objVar]))
+            fun.stmts += [szStmt]
+
+            loopVar = Var('uint32', 'i')
+
+            # If this is a word/type pair
+            if 'tpField' in field:
+                getWCall = CallExpr(getPref + field['name'], [objVar, loopVar])
+                getTCall = CallExpr(getPref + field['tpField']['name'], [objVar, loopVar])
+                fwdCall = CallExpr('gcForward', [interpVar, getWCall, getTCall])
+            else:
+                getCall = CallExpr(getPref + field['name'], [objVar, loopVar])
+                fwdCall = CallExpr('gcForward', [interpVar, getCall])
+
+            setCall = CallExpr(setPref + field['name'], [objVar, loopVar, fwdCall])
+            fun.stmts += [ForLoop(loopVar, szVar, [ExprStmt(setCall)])]
+
+        else:
+
+            # If this is a word/type pair
+            if 'tpField' in field:
+                getWCall = CallExpr(getPref + field['name'], [objVar])
+                getTCall = CallExpr(getPref + field['tpField']['name'], [objVar])
+                fwdCall = CallExpr('gcForward', [interpVar, getWCall, getTCall])
+            else:
+                getCall = CallExpr(getPref + field['name'], [objVar])
+                fwdCall = CallExpr('gcForward', [interpVar, getCall])
+
+            setCall = CallExpr(setPref + field['name'], [objVar, fwdCall])
+            fun.stmts += [ExprStmt(setCall)]
+
+    decls += [fun]
+
 # Generate the sizeof dispatch method
 fun = Function('uint32', 'layout_sizeof', [Var('refptr', 'o')])
 
@@ -812,6 +872,21 @@ for layout in layouts:
     cmpExpr = EqExpr(typeVar, Var('uint32', 'LAYOUT_' + layout['name'].upper()))
     retStmt = RetStmt(CallExpr(layout['name'] + '_sizeof', [fun.params[0]]))
     fun.stmts += [IfStmt(cmpExpr, [retStmt])]
+
+fun.stmts += [ExprStmt(CallExpr('assert', [Cst('false')]))]
+
+decls += [fun]
+
+# Generate the GC visit dispatch method
+fun = Function('uint32', 'layout_visit_gc', [Var('Interp', 'interp'), Var('refptr', 'o')])
+
+typeVar = Var('uint32', 't')
+fun.stmts += [DeclStmt(typeVar, CallExpr('obj_get_header', [fun.params[1]]))]
+
+for layout in layouts:
+    cmpExpr = EqExpr(typeVar, Var('uint32', 'LAYOUT_' + layout['name'].upper()))
+    callStmt = ExprStmt(CallExpr(layout['name'] + '_visit_gc', [fun.params[0], fun.params[1]]))
+    fun.stmts += [IfStmt(cmpExpr, [callStmt])]
 
 fun.stmts += [ExprStmt(CallExpr('assert', [Cst('false')]))]
 
@@ -831,6 +906,7 @@ JSFile.write(comment)
 
 DFile.write('module interp.layout;\n')
 DFile.write('import interp.interp;\n')
+DFile.write('import interp.gc;\n')
 DFile.write('\n');
 
 DFile.write('alias ubyte* funptr;\n');

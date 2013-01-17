@@ -4,6 +4,7 @@
 
 module interp.layout;
 import interp.interp;
+import interp.gc;
 
 alias ubyte* funptr;
 alias ubyte* rawptr;
@@ -98,6 +99,10 @@ refptr str_alloc(Interp interp, uint32 len)
     return o;
 }
 
+void str_visit_gc(Interp interp, refptr o)
+{
+}
+
 const uint32 LAYOUT_STRTBL = 1;
 
 uint32 strtbl_ofs_header(refptr o)
@@ -181,6 +186,15 @@ refptr strtbl_alloc(Interp interp, uint32 cap)
         strtbl_set_str(o, i, null);
     }
     return o;
+}
+
+void strtbl_visit_gc(Interp interp, refptr o)
+{    
+    auto cap = strtbl_get_cap(o);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        strtbl_set_str(o, i, gcForward(interp, strtbl_get_str(o, i)));
+    }
 }
 
 const uint32 LAYOUT_OBJ = 2;
@@ -306,7 +320,27 @@ refptr obj_alloc(Interp interp, uint32 cap)
     obj_set_cap(o, cap);
     obj_set_header(o, 2);
     obj_set_next(o, null);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        obj_set_word(o, i, UNDEF.intVal);
+    }
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        obj_set_type(o, i, Type.CONST);
+    }
     return o;
+}
+
+void obj_visit_gc(Interp interp, refptr o)
+{    
+    obj_set_class(o, gcForward(interp, obj_get_class(o)));
+    obj_set_next(o, gcForward(interp, obj_get_next(o)));
+    obj_set_proto(o, gcForward(interp, obj_get_proto(o)));
+    auto cap = obj_get_cap(o);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        obj_set_word(o, i, gcForward(interp, obj_get_word(o, i), obj_get_type(o, i)));
+    }
 }
 
 const uint32 LAYOUT_CLOS = 3;
@@ -493,12 +527,38 @@ refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
     clos_set_num_cells(o, num_cells);
     clos_set_header(o, 3);
     clos_set_next(o, null);
+    for (uint32 i = 0; i < num_cells; ++i)
+    {    
+        clos_set_word(o, i, UNDEF.intVal);
+    }
+    for (uint32 i = 0; i < num_cells; ++i)
+    {    
+        clos_set_type(o, i, Type.CONST);
+    }
     clos_set_ctor_class(o, null);
     for (uint32 i = 0; i < num_cells; ++i)
     {    
         clos_set_cell(o, i, null);
     }
     return o;
+}
+
+void clos_visit_gc(Interp interp, refptr o)
+{    
+    clos_set_class(o, gcForward(interp, clos_get_class(o)));
+    clos_set_next(o, gcForward(interp, clos_get_next(o)));
+    clos_set_proto(o, gcForward(interp, clos_get_proto(o)));
+    auto cap = clos_get_cap(o);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        clos_set_word(o, i, gcForward(interp, clos_get_word(o, i), clos_get_type(o, i)));
+    }
+    clos_set_ctor_class(o, gcForward(interp, clos_get_ctor_class(o)));
+    auto num_cells = clos_get_num_cells(o);
+    for (uint32 i = 0; i < num_cells; ++i)
+    {    
+        clos_set_cell(o, i, gcForward(interp, clos_get_cell(o, i)));
+    }
 }
 
 const uint32 LAYOUT_CELL = 4;
@@ -562,7 +622,14 @@ refptr cell_alloc(Interp interp)
 {    
     auto o = interp.alloc(cell_comp_size());
     cell_set_header(o, 4);
+    cell_set_word(o, UNDEF.intVal);
+    cell_set_type(o, Type.CONST);
     return o;
+}
+
+void cell_visit_gc(Interp interp, refptr o)
+{    
+    cell_set_word(o, gcForward(interp, cell_get_word(o), cell_get_type(o)));
 }
 
 const uint32 LAYOUT_ARR = 5;
@@ -718,7 +785,28 @@ refptr arr_alloc(Interp interp, uint32 cap)
     arr_set_cap(o, cap);
     arr_set_header(o, 5);
     arr_set_next(o, null);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        arr_set_word(o, i, UNDEF.intVal);
+    }
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        arr_set_type(o, i, Type.CONST);
+    }
     return o;
+}
+
+void arr_visit_gc(Interp interp, refptr o)
+{    
+    arr_set_class(o, gcForward(interp, arr_get_class(o)));
+    arr_set_next(o, gcForward(interp, arr_get_next(o)));
+    arr_set_proto(o, gcForward(interp, arr_get_proto(o)));
+    auto cap = arr_get_cap(o);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        arr_set_word(o, i, gcForward(interp, arr_get_word(o, i), arr_get_type(o, i)));
+    }
+    arr_set_tbl(o, gcForward(interp, arr_get_tbl(o)));
 }
 
 const uint32 LAYOUT_ARRTBL = 6;
@@ -798,7 +886,24 @@ refptr arrtbl_alloc(Interp interp, uint32 cap)
     auto o = interp.alloc(arrtbl_comp_size(cap));
     arrtbl_set_cap(o, cap);
     arrtbl_set_header(o, 6);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        arrtbl_set_word(o, i, UNDEF.intVal);
+    }
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        arrtbl_set_type(o, i, Type.CONST);
+    }
     return o;
+}
+
+void arrtbl_visit_gc(Interp interp, refptr o)
+{    
+    auto cap = arrtbl_get_cap(o);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        arrtbl_set_word(o, i, gcForward(interp, arrtbl_get_word(o, i), arrtbl_get_type(o, i)));
+    }
 }
 
 const uint32 LAYOUT_CLASS = 7;
@@ -967,6 +1072,16 @@ refptr class_alloc(Interp interp, uint32 cap)
     return o;
 }
 
+void class_visit_gc(Interp interp, refptr o)
+{    
+    class_set_next(o, gcForward(interp, class_get_next(o)));
+    auto cap = class_get_cap(o);
+    for (uint32 i = 0; i < cap; ++i)
+    {    
+        class_set_prop_name(o, i, gcForward(interp, class_get_prop_name(o, i)));
+    }
+}
+
 uint32 layout_sizeof(refptr o)
 {    
     auto t = obj_get_header(o);
@@ -1001,6 +1116,44 @@ uint32 layout_sizeof(refptr o)
     if ((t == LAYOUT_CLASS))
     {    
         return class_sizeof(o);
+    }
+    assert(false);
+}
+
+uint32 layout_visit_gc(Interp interp, refptr o)
+{    
+    auto t = obj_get_header(o);
+    if ((t == LAYOUT_STR))
+    {    
+        str_visit_gc(interp, o);
+    }
+    if ((t == LAYOUT_STRTBL))
+    {    
+        strtbl_visit_gc(interp, o);
+    }
+    if ((t == LAYOUT_OBJ))
+    {    
+        obj_visit_gc(interp, o);
+    }
+    if ((t == LAYOUT_CLOS))
+    {    
+        clos_visit_gc(interp, o);
+    }
+    if ((t == LAYOUT_CELL))
+    {    
+        cell_visit_gc(interp, o);
+    }
+    if ((t == LAYOUT_ARR))
+    {    
+        arr_visit_gc(interp, o);
+    }
+    if ((t == LAYOUT_ARRTBL))
+    {    
+        arrtbl_visit_gc(interp, o);
+    }
+    if ((t == LAYOUT_CLASS))
+    {    
+        class_visit_gc(interp, o);
     }
     assert(false);
 }

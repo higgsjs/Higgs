@@ -627,6 +627,17 @@ unittest
     assertInt("function f() {}; return f.prototype? 1:0", 1);
     assertInt("function f() {}; f.prototype.x = 9; return f.prototype.x", 9);
 
+    assertBool(
+        "
+        function f() {}
+        a = new f();
+        a.x = 3;
+        b = new f();
+        return (b.x === undefined);
+        ",
+        true
+    );
+
     assertInt(
         "
         function f() {}

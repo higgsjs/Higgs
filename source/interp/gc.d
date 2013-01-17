@@ -137,19 +137,16 @@ void gcCollect(Interp interp)
             "object pointer past to-space limit"
         );
 
-        // TODO: Get the object size
-        // TODO: sizeof_layout
-        //auto objSize = sizeof_layout(objRef);
-        auto objSize = 0;
+        // Get the object size
+        auto objSize = layout_sizeof(objPtr);
 
         assert (
             objPtr + objSize <= interp.toLimit,
             "object extends past to-space limit"
         );
 
-        // TODO
         // Visit the object layout, forward its references
-        //gc_visit_layout(objRef);
+        layout_visit_gc(interp, objPtr);
 
         // Move to the next object
         scanPtr = objPtr + objSize;
@@ -194,17 +191,14 @@ refptr gcForward(Interp interp, refptr ptr)
     //     forwarding_address(P) = addr
     //     return addr
 
-    // TODO
     // Get the forwarding pointer field of the object
-    //refptr nextPtr = get_layout_next(ptr);
-    refptr nextPtr = null;
+    refptr nextPtr = getNext(ptr);
 
     // If the object is not already forwarded
     if (nextPtr < interp.toStart && nextPtr >= interp.toLimit)
     {
-        // TODO
         // Copy the object into the to-space
-        nextPtr = gcCopy(interp, ptr, /*sizeof_layout(ref)*/0);
+        nextPtr = gcCopy(interp, ptr, layout_sizeof(ptr));
     }
 
     assert (
@@ -214,6 +208,19 @@ refptr gcForward(Interp interp, refptr ptr)
 
     // Return the forwarded pointer
     return nextPtr;
+}
+
+/**
+Forward a word/value pair
+*/
+uint64 gcForward(Interp interp, uint64 word, uint8 type)
+{
+    // If this is not a heap pointer, don't change it
+    if (cast(Type)type != Type.REFPTR)
+        return word;
+
+    // Forward the pointer
+    return cast(uint64)gcForward(interp, cast(refptr)word);
 }
 
 /**
@@ -245,9 +252,8 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
     for (size_t i = 0; i < size; ++i)
         nextPtr[i] = ptr[i];
 
-    // TODO
     // Write the forwarding pointer in the old object
-    //set_layout_next(ref, newAddr);
+    setNext(ptr, nextPtr);
 
     // Return the copied object pointer
     return nextPtr;

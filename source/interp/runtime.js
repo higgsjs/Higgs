@@ -146,7 +146,6 @@ Allocate and initialize a closure cell
 function $rt_makeClosCell()
 {
     var cell = $rt_cell_alloc();
-    $rt_setCellVal(cell, $ir_set_undef());
     return cell;
 }
 
