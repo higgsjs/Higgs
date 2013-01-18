@@ -48,6 +48,7 @@ import interp.interp;
 import interp.layout;
 import interp.string;
 import interp.object;
+import interp.gc;
 
 void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 {
@@ -982,7 +983,7 @@ void op_heap_alloc(Interp interp, IRInstr instr)
         "size must be positive"
     );
 
-    auto ptr = interp.alloc(wSize.intVal);
+    auto ptr = heapAlloc(interp, wSize.intVal);
 
     interp.setSlot(
         instr.outSlot,

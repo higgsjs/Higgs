@@ -93,7 +93,7 @@ uint32 str_sizeof(refptr o)
 
 refptr str_alloc(Interp interp, uint32 len)
 {    
-    auto o = interp.alloc(str_comp_size(len));
+    auto o = interp.heapAlloc(str_comp_size(len));
     str_set_len(o, len);
     str_set_header(o, 0);
     return o;
@@ -177,7 +177,7 @@ uint32 strtbl_sizeof(refptr o)
 
 refptr strtbl_alloc(Interp interp, uint32 cap)
 {    
-    auto o = interp.alloc(strtbl_comp_size(cap));
+    auto o = interp.heapAlloc(strtbl_comp_size(cap));
     strtbl_set_cap(o, cap);
     strtbl_set_header(o, 1);
     strtbl_set_num_strs(o, 0);
@@ -316,7 +316,7 @@ uint32 obj_sizeof(refptr o)
 
 refptr obj_alloc(Interp interp, uint32 cap)
 {    
-    auto o = interp.alloc(obj_comp_size(cap));
+    auto o = interp.heapAlloc(obj_comp_size(cap));
     obj_set_cap(o, cap);
     obj_set_header(o, 2);
     obj_set_next(o, null);
@@ -522,7 +522,7 @@ uint32 clos_sizeof(refptr o)
 
 refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
 {    
-    auto o = interp.alloc(clos_comp_size(cap, num_cells));
+    auto o = interp.heapAlloc(clos_comp_size(cap, num_cells));
     clos_set_cap(o, cap);
     clos_set_num_cells(o, num_cells);
     clos_set_header(o, 3);
@@ -620,7 +620,7 @@ uint32 cell_sizeof(refptr o)
 
 refptr cell_alloc(Interp interp)
 {    
-    auto o = interp.alloc(cell_comp_size());
+    auto o = interp.heapAlloc(cell_comp_size());
     cell_set_header(o, 4);
     cell_set_word(o, UNDEF.intVal);
     cell_set_type(o, Type.CONST);
@@ -781,7 +781,7 @@ uint32 arr_sizeof(refptr o)
 
 refptr arr_alloc(Interp interp, uint32 cap)
 {    
-    auto o = interp.alloc(arr_comp_size(cap));
+    auto o = interp.heapAlloc(arr_comp_size(cap));
     arr_set_cap(o, cap);
     arr_set_header(o, 5);
     arr_set_next(o, null);
@@ -883,7 +883,7 @@ uint32 arrtbl_sizeof(refptr o)
 
 refptr arrtbl_alloc(Interp interp, uint32 cap)
 {    
-    auto o = interp.alloc(arrtbl_comp_size(cap));
+    auto o = interp.heapAlloc(arrtbl_comp_size(cap));
     arrtbl_set_cap(o, cap);
     arrtbl_set_header(o, 6);
     for (uint32 i = 0; i < cap; ++i)
@@ -1055,7 +1055,7 @@ uint32 class_sizeof(refptr o)
 
 refptr class_alloc(Interp interp, uint32 cap)
 {    
-    auto o = interp.alloc(class_comp_size(cap));
+    auto o = interp.heapAlloc(class_comp_size(cap));
     class_set_cap(o, cap);
     class_set_header(o, 7);
     class_set_num_props(o, 0);

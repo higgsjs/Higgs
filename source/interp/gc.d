@@ -44,6 +44,57 @@ import interp.interp;
 import util.misc;
 
 /**
+Allocate an object in the heap
+*/
+refptr heapAlloc(Interp interp, size_t size)
+{
+    // If this allocation exceeds the heap limit
+    if (interp.allocPtr + size > interp.heapLimit)
+    {
+        // Log that we are going to perform GC
+        writeln("Performing garbage collection");
+
+        // Call the garbage collector
+        gcCollect(interp);
+
+        assert (
+            interp.allocPtr >= interp.heapStart && 
+            interp.allocPtr < interp.heapLimit,
+            "alloc pointer outside of heap after GC"
+        );
+    }
+
+    // Store the pointer to the new object
+    refptr ptr = interp.allocPtr;
+
+    assert (
+        ptr >= interp.heapStart && ptr < interp.heapLimit,
+        "new address outside of heap"
+    );
+
+    // If the heap space is exhausted, throw an error
+    if (ptr + size > interp.heapLimit)
+    {
+        throw new Error("heap space exhausted");
+    }
+
+    // Update and align the allocation pointer
+    interp.allocPtr = alignPtr(interp.allocPtr + size);
+
+    // Return the object pointer
+    return ptr;
+}
+
+/**
+Perform garbage collection if needed
+*/
+void gcCheck(Interp interp)
+{
+    if (interp.toStart !is null)
+        gcCollect(interp);
+}
+
+/**
 Perform a garbage collection
 */
 void gcCollect(Interp interp)
@@ -109,6 +160,18 @@ void gcCollect(Interp interp)
 
     // Visit the stack roots
     visitStackRoots(interp);
+
+    writeln("visiting link table");
+
+    // Visit the link table cells
+    for (size_t i = 0; i < interp.linkTblSize; ++i)
+    {
+        interp.wLinkTable[i].intVal = gcForward(
+            interp,
+            interp.wLinkTable[i].intVal, 
+            interp.tLinkTable[i]
+        );
+    }
 
     writeln("scanning to-space");
 

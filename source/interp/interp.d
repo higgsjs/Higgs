@@ -619,47 +619,6 @@ class Interp
     }
 
     /**
-    Allocate an object on the stack
-    */
-    refptr alloc(size_t size)
-    {
-        // If this allocation exceeds the heap limit
-        if (allocPtr + size > heapLimit)
-        {
-            // Log that we are going to perform GC
-            writeln("Performing garbage collection");
-
-            // Call the garbage collector
-            gcCollect(this);
-
-            assert (
-                allocPtr >= heapStart && allocPtr < heapLimit,
-                "alloc pointer outside of heap after GC"
-            );
-        }
-
-        // Store the pointer to the new object
-        refptr ptr = allocPtr;
-
-        assert (
-            ptr >= heapStart && ptr < heapLimit,
-            "new address outside of heap"
-        );
-
-        // If the heap space is exhausted, throw an error
-        if (ptr + size > heapLimit)
-        {
-            throw new Error("heap space exhausted");
-        }
-
-        // Update the allocation pointer
-        allocPtr = alignPtr(allocPtr + size);
-
-        // Return the object pointer
-        return ptr;
-    }
-
-    /**
     Allocate a link table entry
     */
     size_t allocLink()
@@ -684,6 +643,10 @@ class Interp
             idx <= linkTblSize,
             "invalid link index"
         );
+
+        // Remove any heap reference
+        wLinkTable[idx].intVal = 0;
+        tLinkTable[idx] = Type.INT;
 
         linkTblFree ~= idx;
     }
