@@ -307,14 +307,20 @@ class Function:
 
 class RetStmt:
 
-    def __init__(self, expr):
+    def __init__(self, expr = None):
         self.expr = expr
 
     def genJS(self):
-        return 'return ' + self.expr.genJS() + ';'
+        if self.expr:
+            return 'return ' + self.expr.genJS() + ';'
+        else:
+            return 'return;'
 
     def genD(self):
-        return 'return ' + self.expr.genD() + ';'
+        if self.expr:
+            return 'return ' + self.expr.genD() + ';'
+        else:
+            return 'return;'
 
 class ExprStmt:
 
@@ -873,12 +879,12 @@ for layout in layouts:
     retStmt = RetStmt(CallExpr(layout['name'] + '_sizeof', [fun.params[0]]))
     fun.stmts += [IfStmt(cmpExpr, [retStmt])]
 
-fun.stmts += [ExprStmt(CallExpr('assert', [Cst('false')]))]
+fun.stmts += [ExprStmt(CallExpr('assert', [Cst('false'), Cst('"invalid layout in layout_sizeof"')]))]
 
 decls += [fun]
 
 # Generate the GC visit dispatch method
-fun = Function('uint32', 'layout_visit_gc', [Var('Interp', 'interp'), Var('refptr', 'o')])
+fun = Function('void', 'layout_visit_gc', [Var('Interp', 'interp'), Var('refptr', 'o')])
 
 typeVar = Var('uint32', 't')
 fun.stmts += [DeclStmt(typeVar, CallExpr('obj_get_header', [fun.params[1]]))]
@@ -886,9 +892,10 @@ fun.stmts += [DeclStmt(typeVar, CallExpr('obj_get_header', [fun.params[1]]))]
 for layout in layouts:
     cmpExpr = EqExpr(typeVar, Var('uint32', 'LAYOUT_' + layout['name'].upper()))
     callStmt = ExprStmt(CallExpr(layout['name'] + '_visit_gc', [fun.params[0], fun.params[1]]))
-    fun.stmts += [IfStmt(cmpExpr, [callStmt])]
+    retStmt = RetStmt()
+    fun.stmts += [IfStmt(cmpExpr, [callStmt, retStmt])]
 
-fun.stmts += [ExprStmt(CallExpr('assert', [Cst('false')]))]
+fun.stmts += [ExprStmt(CallExpr('assert', [Cst('false'), Cst('"invalid layout in layout_visit_gc"')]))]
 
 decls += [fun]
 

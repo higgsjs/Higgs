@@ -1117,44 +1117,52 @@ uint32 layout_sizeof(refptr o)
     {    
         return class_sizeof(o);
     }
-    assert(false);
+    assert(false, "invalid layout in layout_sizeof");
 }
 
-uint32 layout_visit_gc(Interp interp, refptr o)
+void layout_visit_gc(Interp interp, refptr o)
 {    
     auto t = obj_get_header(o);
     if ((t == LAYOUT_STR))
     {    
         str_visit_gc(interp, o);
+        return;
     }
     if ((t == LAYOUT_STRTBL))
     {    
         strtbl_visit_gc(interp, o);
+        return;
     }
     if ((t == LAYOUT_OBJ))
     {    
         obj_visit_gc(interp, o);
+        return;
     }
     if ((t == LAYOUT_CLOS))
     {    
         clos_visit_gc(interp, o);
+        return;
     }
     if ((t == LAYOUT_CELL))
     {    
         cell_visit_gc(interp, o);
+        return;
     }
     if ((t == LAYOUT_ARR))
     {    
         arr_visit_gc(interp, o);
+        return;
     }
     if ((t == LAYOUT_ARRTBL))
     {    
         arrtbl_visit_gc(interp, o);
+        return;
     }
     if ((t == LAYOUT_CLASS))
     {    
         class_visit_gc(interp, o);
+        return;
     }
-    assert(false);
+    assert(false, "invalid layout in layout_visit_gc");
 }
 

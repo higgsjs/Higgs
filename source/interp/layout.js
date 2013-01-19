@@ -1100,7 +1100,7 @@ function $rt_layout_sizeof(o)
     {    
         return $rt_class_sizeof(o);
     }
-    $rt_assert(false);
+    $rt_assert(false, "invalid layout in layout_sizeof");
 }
 
 function $rt_layout_visit_gc(o)
@@ -1109,35 +1109,43 @@ function $rt_layout_visit_gc(o)
     if ($ir_eq_i32(t, LAYOUT_STR))
     {    
         $rt_str_visit_gc(interp, o);
+        return;
     }
     if ($ir_eq_i32(t, LAYOUT_STRTBL))
     {    
         $rt_strtbl_visit_gc(interp, o);
+        return;
     }
     if ($ir_eq_i32(t, LAYOUT_OBJ))
     {    
         $rt_obj_visit_gc(interp, o);
+        return;
     }
     if ($ir_eq_i32(t, LAYOUT_CLOS))
     {    
         $rt_clos_visit_gc(interp, o);
+        return;
     }
     if ($ir_eq_i32(t, LAYOUT_CELL))
     {    
         $rt_cell_visit_gc(interp, o);
+        return;
     }
     if ($ir_eq_i32(t, LAYOUT_ARR))
     {    
         $rt_arr_visit_gc(interp, o);
+        return;
     }
     if ($ir_eq_i32(t, LAYOUT_ARRTBL))
     {    
         $rt_arrtbl_visit_gc(interp, o);
+        return;
     }
     if ($ir_eq_i32(t, LAYOUT_CLASS))
     {    
         $rt_class_visit_gc(interp, o);
+        return;
     }
-    $rt_assert(false);
+    $rt_assert(false, "invalid layout in layout_visit_gc");
 }
 

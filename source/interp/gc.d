@@ -51,38 +51,60 @@ refptr heapAlloc(Interp interp, size_t size)
     // If this allocation exceeds the heap limit
     if (interp.allocPtr + size > interp.heapLimit)
     {
-        // Log that we are going to perform GC
-        writeln("Performing garbage collection");
+        // If the to-space is not yet allocated, allocate it
+        if (interp.toStart is null)
+            allocToSpace(interp, interp.heapSize);
 
-        // Call the garbage collector
-        gcCollect(interp);
+        writeln("allocating in to-space");
 
-        assert (
-            interp.allocPtr >= interp.heapStart && 
-            interp.allocPtr < interp.heapLimit,
-            "alloc pointer outside of heap after GC"
-        );
-    }
+        // Store the pointer to the new object
+        refptr ptr = interp.toAlloc;
+
+        // If the heap space is exhausted, throw an error
+        if (ptr + size > interp.toLimit)
+        {
+            throw new Error("to-space heap exhausted");
+        }
+
+        // Update and align the allocation pointer
+        interp.toAlloc = alignPtr(interp.toAlloc + size);
+
+        // Return the object pointer
+        return ptr;
+    }    
 
     // Store the pointer to the new object
     refptr ptr = interp.allocPtr;
-
-    assert (
-        ptr >= interp.heapStart && ptr < interp.heapLimit,
-        "new address outside of heap"
-    );
-
-    // If the heap space is exhausted, throw an error
-    if (ptr + size > interp.heapLimit)
-    {
-        throw new Error("heap space exhausted");
-    }
 
     // Update and align the allocation pointer
     interp.allocPtr = alignPtr(interp.allocPtr + size);
 
     // Return the object pointer
     return ptr;
+}
+
+/**
+Allocate the to-space heap
+*/
+void allocToSpace(Interp interp, size_t heapSize)
+{
+    writefln("allocating to-space heap of size: %s", heapSize);
+
+    // Allocate a memory block for the to-space
+    interp.toStart = cast(ubyte*)GC.malloc(heapSize);
+
+    writefln("allocated to-space block: %s", interp.toStart);
+
+    assert (
+        interp.toStart != null,
+        "failed to allocate to-space heap"
+    );
+
+    // Compute the to-space heap limit
+    interp.toLimit = interp.toStart + heapSize;
+
+    // Initialize the to-space allocation pointer
+    interp.toAlloc = interp.toStart;
 }
 
 /**
@@ -127,25 +149,11 @@ void gcCollect(Interp interp)
     */
 
     writeln("entering gcCollect");
+
+    // If the to-space is not yet allocated, allocate it
+    if (interp.toStart is null)
+        allocToSpace(interp, interp.heapSize);
     
-    writefln("allocating heap of size: %s", interp.heapSize);
-
-    // Allocate a memory block for the to-space
-    interp.toStart = cast(ubyte*)GC.malloc(interp.heapSize);
-
-    writefln("allocated to-space block: %s", interp.toStart);
-
-    assert (
-        interp.toStart != null,
-        "failed to allocate to-space heap"
-    );
-
-    // Compute the to-space heap limit
-    interp.toLimit = interp.toStart + interp.heapSize;
-
-    // Initialize the to-space allocation pointer
-    interp.toAlloc = interp.toStart;
-
     writeln("visiting interpreter roots");
 
     // Forward the interpreter root objects
@@ -254,12 +262,23 @@ refptr gcForward(Interp interp, refptr ptr)
     //     forwarding_address(P) = addr
     //     return addr
 
+    if (ptr is null)
+        return null;
+
+    // If the pointer already points in the to-space
+    if (ptr >= interp.toStart && ptr < interp.toLimit)
+        return ptr;
+
+    writefln("forwarding %s", ptr);
+
     // Get the forwarding pointer field of the object
     refptr nextPtr = getNext(ptr);
 
     // If the object is not already forwarded
-    if (nextPtr < interp.toStart && nextPtr >= interp.toLimit)
+    if (nextPtr is null)
     {
+        writefln("copying");
+
         // Copy the object into the to-space
         nextPtr = gcCopy(interp, ptr, layout_sizeof(ptr));
     }
@@ -303,7 +322,7 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
     auto nextPtr = interp.toAlloc;
 
     assert (
-        nextPtr + size <= interp.heapLimit,
+        nextPtr + size <= interp.toLimit,
         "cannot copy in to-space, heap limit exceeded"
     );
 

@@ -416,6 +416,13 @@ class Interp
         /// Link table types
         tLinkTable = cast(Type*)GC.malloc(Type.sizeof * linkTblSize);
 
+        // Initialize the link table
+        for (size_t i = 0; i < linkTblSize; ++i)
+        {
+            wLinkTable[i].intVal = 0;
+            tLinkTable[i] = Type.INT;
+        }
+
         // Initialize the IP to null
         ip = null;
 
@@ -457,6 +464,8 @@ class Interp
             GLOBAL_OBJ_INIT_SIZE,
             GLOBAL_OBJ_INIT_SIZE
         );
+
+        gcCollect(this);
 
         // Load the layout code
         load("interp/layout.js");
@@ -736,6 +745,9 @@ class Interp
             // Call the opcode's function
             opFun(this, instr);
 
+            // Check if GC needs to be performed
+            gcCheck(this);
+
             // Increment the cycle count
             cycleCount++;
         }
@@ -831,45 +843,6 @@ class Interp
         auto result = exec(ast);
 
         return result;
-    }
-
-    // TODO: replace by runtime function $rt_toString
-    // TODO: way to call $rt_toString with a specific value?
-    // - Probably want to call through exec?
-    // - callGlobal?
-    /**
-    Produce the string representation of a value
-    */
-    refptr stringVal(Word w, Type t)
-    {
-        switch (t)
-        {
-            case Type.REFPTR:
-            if (valIsString(w, t))
-                return w.ptrVal;
-            assert(false, "unsupported ref ptr type in stringVal");
-
-            case Type.INT:
-            return getString(this, to!wstring(w.intVal));
-
-            case Type.FLOAT:
-            return getString(this, to!wstring(w.floatVal));
-
-            case Type.CONST:
-            if (w == TRUE)
-                return getString(this, "true");
-            else if (w == FALSE)
-                return getString(this, "false");
-            else if (w == NULL)
-                return getString(this, "null");
-            else if (w == UNDEF)
-                return getString(this, "undefined");
-            else
-                assert (false, "unsupported constant");
-
-            default:
-            assert (false, "unsupported type in stringVal");
-        }
     }
 }
 
