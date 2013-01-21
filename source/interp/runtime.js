@@ -940,12 +940,18 @@ function $rt_getClass(classLink, classInitSize)
     // Get the class pointer
     var classPtr = classLink? $ir_get_link(classLink):null;
 
+    //$ir_print_str("Got link\n");
+
     // If the class is not yet allocated
     if (classPtr === null)
     {
+        //$ir_print_str("Getting class\n");
+
         // Lazily allocate the class
         classPtr = $rt_class_alloc(classInitSize);
         $rt_class_set_id(classPtr, 0);
+
+        //$ir_print_str("Got class\n");
 
         // Update the instruction's class pointer
         if (classLink !== null)
@@ -960,6 +966,8 @@ Allocate an empty object
 */
 function $rt_newObj(classLink, protoPtr)
 {
+    //$ir_print_str("Allocating object\n");
+
     // Get the class pointer
     var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
 
@@ -975,6 +983,8 @@ function $rt_newObj(classLink, protoPtr)
     $rt_obj_set_class(objPtr, classPtr);
     $rt_obj_set_proto(objPtr, protoPtr);
 
+    //$ir_print_str("Allocated object\n");
+
     return objPtr;
 }
 
@@ -983,16 +993,24 @@ Allocate an array
 */
 function $rt_newArr(classLink, protoPtr, numElems)
 {
+    //$ir_print_str("Allocating array\n");
+
     // Get the class pointer
     var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
+
+    //$ir_print_str("Got class\n");
 
     // Get the number of properties to allocate from the class
     var numProps = $rt_class_get_num_props(classPtr);
     if (numProps === 0)
         numProps = $rt_OBJ_INIT_SIZE;
 
+    //$ir_print_str("Allocating table\n");
+
     // Allocate the array table
     var tblPtr = $rt_arrtbl_alloc(numElems);
+
+    //$ir_print_str("Allocating array\n");
 
     // Allocate the array
     var objPtr = $rt_arr_alloc(numProps);
@@ -1002,6 +1020,8 @@ function $rt_newArr(classLink, protoPtr, numElems)
     $rt_obj_set_proto(objPtr, protoPtr);
     $rt_arr_set_tbl(objPtr, tblPtr);
     $rt_arr_set_len(objPtr, 0);
+
+    //$ir_print_str("Allocated array\n");
 
     return objPtr;
 }
@@ -1217,6 +1237,8 @@ function $rt_extArrTbl(
     newSize
 )
 {
+    //println("Extending array");
+
     // Allocate the new table without initializing it, for performance
     var newTbl = $rt_arrtbl_alloc(newSize);
 
@@ -1236,6 +1258,8 @@ function $rt_extArrTbl(
 
     // Update the table reference in the array
     $rt_arr_set_tbl(arr, newTbl);
+
+    //println("Extended array");
 
     return newTbl;
 }
@@ -1381,8 +1405,14 @@ function $rt_setPropObj(obj, propStr, val)
                 $rt_clos_set_cell(newObj, i, $rt_clos_get_cell(obj, i));
             break;
 
+            case $rt_LAYOUT_ARR:
+            newObj = $rt_arr_alloc(objCap+1);
+            $rt_arr_set_len(newObj, $rt_arr_get_len(obj));
+            $rt_arr_set_tbl(newObj, $rt_arr_get_tbl(obj));
+            break;
+
             default:
-            assert (false, "unhandled object type");
+            assert (false, "unhandled object type in setPropObj");
         }
 
         $rt_obj_set_class(newObj, classPtr);

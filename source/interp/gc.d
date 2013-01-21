@@ -193,6 +193,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     */
 
     writeln("entering gcCollect");
+    writefln("from-space address: %s", interp.heapStart);
 
     if (heapSize != 0)
         interp.heapSize = heapSize;
@@ -306,6 +307,9 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     interp.toLimit = null;
     interp.toAlloc = null;
 
+    // Increment the garbage collection count
+    interp.gcCount++;
+
     writeln("leaving gcCollect");
     writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
 }
@@ -331,12 +335,20 @@ refptr gcForward(Interp interp, refptr ptr)
 
     //writefln("forwarding %s", ptr);
 
-    // If the pointer already points in the to-space
-    if (ptr >= interp.toStart && ptr < interp.toLimit)
-    {
-        //writeln("already in to-space");
-        return ptr;
-    }
+    assert (
+        ptr >= interp.heapStart && ptr < interp.heapLimit,
+        xformat(
+            "gcForward: object not in from-space heap\n" ~
+            "ptr   : %s\n" ~
+            "start : %s\n" ~
+            "limit : %s\n" ~
+            "header: %s",
+            ptr,
+            interp.heapStart,
+            interp.heapLimit,
+            obj_get_header(ptr)
+        )        
+    );
 
     // Get the forwarding pointer field of the object
     refptr nextPtr = getNext(ptr);
@@ -352,7 +364,15 @@ refptr gcForward(Interp interp, refptr ptr)
 
     assert (
         nextPtr >= interp.toStart && nextPtr < interp.toLimit,
-        "forwarded address is outside of to-space"
+        xformat(
+            "gcForward: forwarded address is outside of to-space\n" ~
+            "ptr   : %s\n" ~
+            "start : %s\n" ~
+            "limit : %s\n",
+            nextPtr,
+            interp.toStart,
+            interp.toLimit,
+        )
     );
 
     // Return the forwarded pointer
@@ -389,13 +409,15 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
     assert (
         ptr >= interp.heapStart && ptr < interp.heapLimit,
         xformat(
-            "gcCopy: object not in from-space heap:\n" ~
-            "ptr  :%s\n" ~
-            "start:%s\n" ~
-            "limit:%s",
+            "gcCopy: object not in from-space heap\n" ~
+            "ptr   : %s\n" ~
+            "start : %s\n" ~
+            "limit : %s\n" ~
+            "header: %s",
             ptr,
             interp.heapStart,
-            interp.heapLimit
+            interp.heapLimit,
+            obj_get_header(ptr)
         )        
     );
 
@@ -404,7 +426,21 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
 
     assert (
         nextPtr + size <= interp.toLimit,
-        "cannot copy in to-space, heap limit exceeded"
+        xformat(
+            "cannot copy in to-space, heap limit exceeded\n" ~
+            "ptr     : %s\n" ~
+            "size    : %s\n" ~
+            "fr-limit: %s\n" ~
+            "to-alloc: %s\n" ~
+            "to-limit: %s\n" ~
+            "header  : %s",
+            ptr,
+            size,
+            interp.heapLimit,
+            interp.toAlloc,
+            interp.toLimit,
+            obj_get_header(ptr)
+        )
     );
 
     // Update the allocation pointer
@@ -427,18 +463,36 @@ Walk the stack and forward references to the to-space
 */
 void visitStackRoots(Interp interp)
 {
-    Word* wPtr = interp.wLowerLimit;
-    Type* tPtr = interp.tLowerLimit;
+    if (interp.stackSize() == 0)
+        return;
 
-    // For each stack slot, from bottom to top
-    while (wPtr < interp.wUpperLimit)
+    //writefln("stack size: %s", interp.stackSize());
+
+    // For each stack slot, from top to bottom
+    for (size_t i = 0; i < interp.stackSize(); ++i)
     {
-        // If this is a pointer, forward it
-        *wPtr = gcForward(interp, *wPtr, *tPtr);
+        //writefln("visiting stack slot %s/%s", (i+1), interp.stackSize());
 
-        // Move to the next stack slot
-        ++wPtr;
-        ++tPtr;
+        Word word = interp.getWord(i);
+        Type type = interp.getType(i);
+
+        // If this is a pointer, forward it
+        interp.wsp[i] = gcForward(interp, word, type);
+
+        assert (
+            type != Type.REFPTR ||
+            interp.wsp[i].ptrVal == null ||
+            (interp.wsp[i].ptrVal >= interp.toStart && interp.wsp[i].ptrVal < interp.toLimit),
+            xformat(
+                "invalid forwarded stack pointer\n" ~
+                "ptr     : %s\n" ~
+                "to-alloc: %s\n" ~
+                "to-limit: %s",
+                interp.wsp[i].ptrVal,
+                interp.toStart,
+                interp.toLimit
+            )
+        );
     }
 }
 
@@ -467,160 +521,4 @@ void setNext(refptr obj, refptr next)
 
     *iPtr = iVal | NEXT_FLAG;
 }
-
-//============================================================================
-//============================================================================
-
-/**
-Visit a function pointer and its references
-*/
-/*
-function gcVisitFptr(ptr, offset)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg ptr rptr";
-    "tachyon:arg offset pint";
-
-    //iir.trace_print('fptr');
-
-    // Read the function pointer
-    var funcPtr = iir.load(IRType.rptr, ptr, offset);
-
-    // Visit the function's machine code block
-    gcVisitMCB(funcPtr, MCB_HEADER_SIZE);
-}
-*/
-
-/**
-Visit and update a reference value
-*/
-/*
-function gcVisitRef(ptr, offset)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg ptr rptr";
-    "tachyon:arg offset pint";
-
-    //iir.trace_print('ref');
-
-    // Read the reference
-    var refVal = iir.load(IRType.ref, ptr, offset);
-
-    assert (
-        ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
-        'ref val points out of heap'
-    );
-
-    // Get a forwarded reference in the to-space
-    var newRef = gcForward(refVal);
-
-    // Update the reference
-    iir.store(IRType.ref, ptr, offset, newRef);
-}
-*/
-
-/**
-Visit and update a boxed value
-*/
-/*
-function gcVisitBox(ptr, offset)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg ptr rptr";
-    "tachyon:arg offset pint";
-
-    //iir.trace_print('box');
-
-    // Read the value
-    var boxVal = iir.load(IRType.box, ptr, offset);
-
-    //print('box val: ' + val);
-
-    // If the boxed value is a reference
-    if (boxIsRef(boxVal) === true)
-    {
-        //iir.trace_print('boxed ref');
-
-        // Unbox the reference
-        var refVal = unboxRef(boxVal);
-        var refTag = getRefTag(boxVal);
-
-        assert (
-            ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
-            'ref val points out of heap'
-        );
-
-        // Get a forwarded reference in the to-space
-        var newRef = gcForward(refVal);
-
-        // Rebox the reference value
-        var newBox = boxRef(newRef, refTag);
-
-        // Update the boxed value
-        iir.store(IRType.box, ptr, offset, newBox);
-    }
-}
-*/
-
-/**
-Get the amount of memory allocated in KBs
-*/
-/*
-function memAllocatedKBs()
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-
-    var freePtr = get_ctx_freeptr(ctx);
-    var heapStart = get_ctx_heapstart(ctx);
-    var heapSizeKBs = (freePtr - heapStart) / pint(1024);
-
-    return boxInt(heapSizeKBs);
-}
-*/
-
-/**
-Shrink the heap to a smaller size, for testing purposes
-*/
-/*
-function shrinkHeap(freeSpace)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg freeSpace puint";
-
-    gcCollect();
-
-    var ctx = iir.get_ctx();
-
-    // Get the current heap parameters
-    var heapSize = get_ctx_heapsize(ctx);
-    var heapStart = get_ctx_heapstart(ctx);
-    var heapLimit = get_ctx_heaplimit(ctx);
-    var freePtr = get_ctx_freeptr(ctx);
-
-    var curAlloc = freePtr - heapStart;
-
-    var newLimit = freePtr + freeSpace;
-    var newSize = iir.icast(IRType.puint, newLimit - heapStart);
-
-    assert (
-        newSize <= heapSize,
-        'invalid new heap size'
-    );
-
-    assert (
-        newLimit >= heapStart && newLimit <= heapLimit,
-        'invalid new heap limit'
-    );
-
-    set_ctx_heapsize(ctx, newSize);
-    set_ctx_heaplimit(ctx, newLimit);
-}
-*/
 

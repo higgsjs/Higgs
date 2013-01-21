@@ -1,20 +1,18 @@
-var FREE_SIZE = 500000;
+var ARR_LEN = 5000;
 
-var ARR_LEN = 20000;
+$rt_shrinkHeap(500000);
 
-var numArrs = 2 * $ir_div_i32(FREE_SIZE, 9 * ARR_LEN);
+var gcCount = $ir_get_gc_count();
 
-$rt_shrinkHeap(FREE_SIZE);
+//println('num arrs: ' + numArrs);
 
-println('num arrs: ' + numArrs);
-
-for (var i = 0; i < numArrs; ++i)
+while ($ir_get_gc_count() < gcCount + 2)
 {
-    println('allocating');
+    //println('allocating');
 
     var arr = [];
     arr.length = ARR_LEN;
 
-    println('allocated');
+    //println('allocated');
 }
 

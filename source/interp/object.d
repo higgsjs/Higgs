@@ -47,8 +47,7 @@ import interp.gc;
 
 /// Expression evaluation delegate function
 alias refptr delegate(
-    Interp interp, 
-    refptr classPtr, 
+    Interp interp,
     uint32 allocNumProps
 ) ObjAllocFn;
 
@@ -80,7 +79,7 @@ refptr newExtObj(
     // Allocate the object
     auto obj = GCRoot(
         interp,
-        objAllocFn(interp, classObj.ptr, allocNumProps)
+        objAllocFn(interp, allocNumProps)
     );
 
     // Initialize the object
@@ -104,7 +103,7 @@ refptr newObj(
         protoPtr, 
         classInitSize,
         allocNumProps,
-        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
+        delegate refptr(Interp interp, uint32 allocNumProps)
         {
             auto objPtr = obj_alloc(interp, allocNumProps);
             return objPtr;
@@ -134,7 +133,7 @@ refptr newClos(
         protoPtr, 
         classInitSize,
         allocNumProps,
-        delegate refptr(Interp interp, refptr classPtr, uint32 allocNumProps)
+        delegate refptr(Interp interp, uint32 allocNumProps)
         {
             auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
             clos_set_fptr(objPtr, cast(rawptr)fun);

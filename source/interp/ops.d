@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -116,29 +116,28 @@ void throwError(
     string errMsg
 )
 {
-    auto errStr = GCRoot(
-        interp, 
-        getString(interp, to!wstring(errMsg))
-    );
+    auto errStr = GCRoot(interp, getString(interp, to!wstring(errMsg)));
 
+    auto ctorStr = GCRoot(interp, getString(interp, to!wstring(ctorName)));
     auto errCtor = GCRoot(
         interp,
         getProp(
             interp,
             interp.globalObj,
-            getString(interp, to!wstring(ctorName))
+            ctorStr.ptr
         )
     );
 
     if (errCtor.type == Type.REFPTR &&
         valIsLayout(errCtor.word, LAYOUT_OBJ))
     {
+        auto protoStr = GCRoot(interp, getString(interp, "prototype"w));
         auto errProto = GCRoot(
             interp,
             getProp(
                 interp,
                 errCtor.ptr,
-                getString(interp, "prototype"w)
+                protoStr.ptr
             )
         );
 
@@ -214,6 +213,8 @@ void op_set_str(Interp interp, IRInstr instr)
         interp.setLinkType(linkIdx, Type.REFPTR);
         instr.args[1].linkIdx = linkIdx;
     }
+
+    //writefln("setting str %s", instr.args[0].stringVal);
 
     interp.setSlot(
         instr.outSlot,
@@ -1000,6 +1001,7 @@ alias GetValOp!(Type.REFPTR, "auto r = interp.funProto;") op_get_fun_proto;
 alias GetValOp!(Type.REFPTR, "auto r = interp.globalObj;") op_get_global_obj;
 alias GetValOp!(Type.INT, "auto r = interp.heapSize;") op_get_heap_size;
 alias GetValOp!(Type.INT, "auto r = interp.heapLimit - interp.allocPtr;") op_get_heap_free;
+alias GetValOp!(Type.INT, "auto r = interp.gcCount;") op_get_gc_count;
 
 void op_heap_alloc(Interp interp, IRInstr instr)
 {
@@ -1133,10 +1135,10 @@ void op_get_global(Interp interp, IRInstr instr)
         return;
     }
 
-    auto propStr = getString(interp, nameStr);
+    auto propStr = GCRoot(interp, getString(interp, nameStr));
 
     // Lookup the property index in the class
-    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr);
+    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr.ptr);
 
     // If the property was found, cache it
     if (propIdx != uint32.max)
@@ -1154,7 +1156,7 @@ void op_get_global(Interp interp, IRInstr instr)
     ValuePair val = getProp(
         interp,
         interp.globalObj,
-        propStr
+        propStr.ptr
     );
 
     interp.setSlot(

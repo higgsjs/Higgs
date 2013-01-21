@@ -263,7 +263,9 @@ function test()
     // Shrink the heap for testing
     $rt_shrinkHeap(1000000);
 
-    for (var i = 0; i < 10; ++i)
+    var gcCount = $ir_get_gc_count();
+
+    while ($ir_get_gc_count() < gcCount + 2)
     {
         var r = vmTest();
 

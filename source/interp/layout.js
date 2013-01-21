@@ -510,11 +510,11 @@ function $rt_clos_alloc(cap, num_cells)
     $rt_clos_set_num_cells(o, num_cells);
     $rt_clos_set_header(o, 3);
     $rt_clos_set_next(o, null);
-    for (var i = 0; i < num_cells; ++i)
+    for (var i = 0; i < cap; ++i)
     {    
         $rt_clos_set_word(o, i, $ir_get_word(undefined));
     }
-    for (var i = 0; i < num_cells; ++i)
+    for (var i = 0; i < cap; ++i)
     {    
         $rt_clos_set_type(o, i, $ir_get_type(undefined));
     }

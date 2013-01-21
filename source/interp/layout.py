@@ -811,8 +811,9 @@ for layout in layouts:
 
         if 'szField' in field:
             loopVar = Var('uint32', 'i')
+            szVar = szVars[field['szField']['name']]
             setCall = CallExpr(setPref + field['name'], [objVar, loopVar, Cst(field['init'])])
-            fun.stmts += [ForLoop(loopVar, szVars[szField['name']], [ExprStmt(setCall)])]
+            fun.stmts += [ForLoop(loopVar, szVar, [ExprStmt(setCall)])]
         else:
             setCall = CallExpr(setPref + field['name'], [objVar, Cst(field['init'])])
             fun.stmts += [ExprStmt(setCall)]

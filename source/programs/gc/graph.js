@@ -68,7 +68,9 @@ function graphSum(root)
 function test()
 {
     // Shrink the heap for testing
-    $rt_shrinkHeap(1000000);
+    $rt_shrinkHeap(500000);
+
+    var gcCount = $ir_get_gc_count();
 
     var root = new Node(1);
     var a = new Node(2);
@@ -81,10 +83,8 @@ function test()
     if (graphSum(root) !== 6)
         return 1;
 
-    for (var i = 0; i < 100; ++i)
+    while ($ir_get_gc_count() < gcCount + 2)
     {
-        //iir.trace_print('itr');
-
         //iir.trace_print('creating new node');
 
         var oa = root.edges[0];

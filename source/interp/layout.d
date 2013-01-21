@@ -527,11 +527,11 @@ refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
     clos_set_num_cells(o, num_cells);
     clos_set_header(o, 3);
     clos_set_next(o, null);
-    for (uint32 i = 0; i < num_cells; ++i)
+    for (uint32 i = 0; i < cap; ++i)
     {    
         clos_set_word(o, i, UNDEF.intVal);
     }
-    for (uint32 i = 0; i < num_cells; ++i)
+    for (uint32 i = 0; i < cap; ++i)
     {    
         clos_set_type(o, i, Type.CONST);
     }

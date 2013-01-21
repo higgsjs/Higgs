@@ -486,10 +486,10 @@ class IRInstr : IdObject
                 output ~= "\"" ~ to!string(arg.stringVal) ~ "\"";
                 break;
                 case OpArg.LOCAL:
-                output ~= "$" ~ (arg.localIdx is NULL_LOCAL)? "NULL":to!string(arg.localIdx); 
+                output ~= "$" ~ ((arg.localIdx is NULL_LOCAL)? "NULL":to!string(arg.localIdx)); 
                 break;
                 case OpArg.LINK:
-                output ~= "<link:" ~ (arg.linkIdx is NULL_LINK)? "NULL":to!string(arg.linkIdx) ~ ">"; 
+                output ~= "<link:" ~ ((arg.linkIdx is NULL_LINK)? "NULL":to!string(arg.linkIdx)) ~ ">"; 
                 break;
                 case OpArg.FUN:
                 output ~= "<fun:" ~ arg.fun.getName() ~ ">";
@@ -701,6 +701,7 @@ Opcode GET_FUN_PROTO = { "get_fun_proto", true, [], &op_get_fun_proto };
 Opcode GET_GLOBAL_OBJ = { "get_global_obj", true, [], &op_get_global_obj };
 Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], &op_get_heap_size };
 Opcode GET_HEAP_FREE = { "get_heap_free", true, [], &op_get_heap_free };
+Opcode GET_GC_COUNT = { "get_gc_count", true, [], &op_get_gc_count };
 
 // Allocate a block of memory on the heap
 Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
@@ -871,8 +872,9 @@ static this()
     addOp(GET_ARR_PROTO);
     addOp(GET_FUN_PROTO);
     addOp(GET_GLOBAL_OBJ);
-    addOp(GET_HEAP_SIZE);    
+    addOp(GET_HEAP_SIZE);
     addOp(GET_HEAP_FREE);
+    addOp(GET_GC_COUNT);
 
     addOp(HEAP_ALLOC);
     addOp(GC_COLLECT);

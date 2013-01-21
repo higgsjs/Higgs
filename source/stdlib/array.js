@@ -251,7 +251,7 @@ function array_shift()
     for (var i=1; i<len; i++)
         o[i-1] = o[i];
 
-    delete o[len-1];
+    //delete o[len-1];
     o.length = len-1;
 
     return first;
@@ -442,7 +442,7 @@ function array_splice(start, deleteCount)
             deleteCount = len - start;
     }
 
-    var itemCount = arguments.length - 2;
+    var itemCount = $argc - 2;
 
     if (itemCount < 0)
         itemCount = 0;
@@ -456,8 +456,6 @@ function array_splice(start, deleteCount)
     {
         for (var i=deleteEnd; i<len; i++)
             o[i+adj] = o[i];
-        for (var i=len+adj; i<len; i++)
-            delete o[i];
         o.length = len+adj;
     }
     else if (adj > 0)
@@ -467,7 +465,7 @@ function array_splice(start, deleteCount)
     }
 
     for (var i=itemCount-1; i>=0; i--)
-        o[start+i] = arguments[2+i];
+        o[start+i] = $ir_get_arg(2+i);
 
     return result;
 }
@@ -494,7 +492,7 @@ function array_indexOf(searchElement, fromIndex)
     var o = array_toObject(this);
     var len = o.length;
 
-    if (arguments.length <= 1)
+    if ($argc <= 1)
         fromIndex = 0;
     else
     {
