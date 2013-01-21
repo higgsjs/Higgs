@@ -158,10 +158,11 @@ void throwError(
             );
 
             // Set the error "message" property
+            auto msgStr = GCRoot(interp, getString(interp, "message"w));
             setProp(
                 interp,
                 excObj.ptr,
-                getString(interp, "message"w),
+                msgStr.ptr,
                 errStr.pair
             );
 
@@ -1184,18 +1185,22 @@ void op_set_global(Interp interp, IRInstr instr)
         return;
     }
 
-    auto propStr = getString(interp, nameStr);
+    // Save the value in a GC root
+    auto val = GCRoot(interp, wVal, tVal);
+
+    // Get the property string
+    auto propStr = GCRoot(interp, getString(interp, nameStr));
 
     // Set the property value
     setProp(
         interp,
         interp.globalObj,
-        propStr,
-        ValuePair(wVal, tVal)
+        propStr.ptr,
+        val.pair
     );
 
     // Lookup the property index in the class
-    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr);
+    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr.ptr);
 
     // If the property was found, cache it
     if (propIdx != uint32.max)
@@ -1207,6 +1212,8 @@ void op_set_global(Interp interp, IRInstr instr)
 
 void op_new_clos(Interp interp, IRInstr instr)
 {
+    //writefln("entering newclos");
+
     auto fun = instr.args[0].fun;
     auto closLinkIdx = &instr.args[1].linkIdx;
     auto protLinkIdx = &instr.args[2].linkIdx;
@@ -1225,6 +1232,8 @@ void op_new_clos(Interp interp, IRInstr instr)
         interp.setLinkType(*protLinkIdx, Type.REFPTR);
     }
 
+    //writefln("allocating clos");
+
     // Allocate the closure object
     auto closPtr = GCRoot(
         interp,
@@ -1240,6 +1249,8 @@ void op_new_clos(Interp interp, IRInstr instr)
     );
     interp.wLinkTable[*closLinkIdx].ptrVal = clos_get_class(closPtr.ptr);
 
+    //writefln("allocating proto");
+
     // Allocate the prototype object
     auto objPtr = GCRoot(
         interp,
@@ -1253,13 +1264,18 @@ void op_new_clos(Interp interp, IRInstr instr)
     );
     interp.wLinkTable[*protLinkIdx].ptrVal = obj_get_class(objPtr.ptr);
 
+    //writefln("setting proto");
+
     // Set the prototype property on the closure object
+    auto protoStr = GCRoot(interp, getString(interp, "prototype"));
     setProp(
         interp,
         closPtr.ptr,
-        getString(interp, "prototype"),
+        protoStr.ptr,
         objPtr.pair
     );
+
+    //writefln("leaving newclos");
    
     // Output a pointer to the closure
     interp.setSlot(

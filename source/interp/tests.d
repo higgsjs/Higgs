@@ -1074,7 +1074,15 @@ unittest
     interp.load("programs/gc/arrays.js");
     */
 
+
+
     // TODO: repeated closure allocation test
+
+    interp = new Interp();
+    interp.load("programs/gc/closures.js");
+    interp.assertInt("test();", 0);
+
+
 
     /*    
     interp = new Interp();
