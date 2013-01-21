@@ -43,6 +43,7 @@ import std.algorithm;
 import ir.ir;
 import interp.interp;
 import interp.layout;
+import interp.gc;
 
 /// Expression evaluation delegate function
 alias refptr delegate(
@@ -53,46 +54,45 @@ alias refptr delegate(
 
 refptr newExtObj(
     Interp interp, 
-    refptr* ppClass, 
+    refptr classPtr,
     refptr protoPtr, 
     uint32 classInitSize,
     uint32 allocNumProps,
     ObjAllocFn objAllocFn
 )
 {
-    // Get the class pointer
-    refptr classPtr = ppClass? *ppClass:null;
+    auto protoObj = GCRoot(interp, protoPtr);
+    auto classObj = GCRoot(interp, classPtr);
 
     // If the class is not yet allocated
-    if (classPtr is null)
+    if (classObj.ptr is null)
     {
         // Lazily allocate the class
-        classPtr = class_alloc(interp, classInitSize);
-        class_set_id(classPtr, 0);
-
-        // Update the instruction's class pointer
-        if (ppClass !is null)
-            *ppClass = classPtr;
+        classObj = class_alloc(interp, classInitSize);
+        class_set_id(classObj.ptr, 0);
     }    
     else
     {
         // Get the number of properties to allocate from the class
-        allocNumProps = max(class_get_num_props(classPtr), allocNumProps);
+        allocNumProps = max(class_get_num_props(classObj.ptr), allocNumProps);
     }
 
     // Allocate the object
-    auto objPtr = objAllocFn(interp, classPtr, allocNumProps);
+    auto obj = GCRoot(
+        interp,
+        objAllocFn(interp, classObj.ptr, allocNumProps)
+    );
 
     // Initialize the object
-    obj_set_class(objPtr, classPtr);
-    obj_set_proto(objPtr, protoPtr);
+    obj_set_class(obj.ptr, classObj.ptr);
+    obj_set_proto(obj.ptr, protoObj.ptr);
 
-    return objPtr;
+    return obj.ptr;
 }
 
 refptr newObj(
     Interp interp, 
-    refptr* ppClass, 
+    refptr classPtr,
     refptr protoPtr, 
     uint32 classInitSize,
     uint32 allocNumProps
@@ -100,7 +100,7 @@ refptr newObj(
 {
     return newExtObj(
         interp, 
-        ppClass, 
+        classPtr, 
         protoPtr, 
         classInitSize,
         allocNumProps,
@@ -114,7 +114,7 @@ refptr newObj(
 
 refptr newClos(
     Interp interp, 
-    refptr* ppClass, 
+    refptr classPtr,
     refptr protoPtr, 
     uint32 classInitSize,
     uint32 allocNumProps,
@@ -130,7 +130,7 @@ refptr newClos(
 
     return newExtObj(
         interp, 
-        ppClass, 
+        classPtr, 
         protoPtr, 
         classInitSize,
         allocNumProps,
@@ -212,19 +212,23 @@ ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
     return ValuePair(Word.intv(pWord), pType);
 }
 
-void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
+void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
 {
+    auto obj  = GCRoot(interp, objPtr);
+    auto prop = GCRoot(interp, propStr);
+    auto val  = GCRoot(interp, valPair);
+
     // Follow the next link chain
     for (;;)
     {
-        auto nextPtr = obj_get_next(objPtr);
+        auto nextPtr = obj_get_next(obj.ptr);
         if (nextPtr is null)
             break;
-         objPtr = nextPtr;
+         obj = nextPtr;
     }
 
     // Get the number of class properties
-    auto classPtr = obj_get_class(objPtr);
+    auto classPtr = obj_get_class(obj.ptr);
     auto numProps = class_get_num_props(classPtr);
 
     // Look for the property in the class
@@ -232,7 +236,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
     for (propIdx = 0; propIdx < numProps; ++propIdx)
     {
         auto nameStr = class_get_prop_name(classPtr, propIdx);
-        if (propStr == nameStr)
+        if (prop.ptr == nameStr)
             break;
     }
 
@@ -246,7 +250,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
         assert (propIdx < classCap, "class capacity exceeded");
 
         // Set the property name
-        class_set_prop_name(classPtr, propIdx, propStr);
+        class_set_prop_name(classPtr, propIdx, prop.ptr);
 
         // Increment the number of properties in this class
         class_set_num_props(classPtr, numProps + 1);
@@ -256,14 +260,14 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
     //writefln("intval: %s", wVal.intVal);
 
     // Get the length of the object
-    auto objCap = obj_get_cap(objPtr);
+    auto objCap = obj_get_cap(obj.ptr);
 
     // If the object needs to be extended
     if (propIdx >= objCap)
     {
         //writeln("*** extending object ***");
 
-        auto objType = obj_get_header(objPtr);
+        auto objType = obj_get_header(obj.ptr);
 
         refptr newObj;
 
@@ -275,11 +279,11 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
             break;
 
             case LAYOUT_CLOS:
-            auto numCells = clos_get_num_cells(objPtr);
+            auto numCells = clos_get_num_cells(obj.ptr);
             newObj = clos_alloc(interp, objCap+1, numCells);
-            clos_set_fptr(newObj, clos_get_fptr(objPtr));
+            clos_set_fptr(newObj, clos_get_fptr(obj.ptr));
             for (uint32 i = 0; i < numCells; ++i)
-                clos_set_cell(newObj, i, clos_get_cell(objPtr, i));
+                clos_set_cell(newObj, i, clos_get_cell(obj.ptr, i));
             break;
 
             default:
@@ -287,24 +291,24 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair val)
         }
 
         obj_set_class(newObj, classPtr);
-        obj_set_proto(newObj, obj_get_proto(objPtr));
+        obj_set_proto(newObj, obj_get_proto(obj.ptr));
 
         // Copy over the property words and types
         for (uint32 i = 0; i < objCap; ++i)
         {
-            obj_set_word(newObj, i, obj_get_word(objPtr, i));
-            obj_set_type(newObj, i, obj_get_type(objPtr, i));
+            obj_set_word(newObj, i, obj_get_word(obj.ptr, i));
+            obj_set_type(newObj, i, obj_get_type(obj.ptr, i));
         }
 
         // Set the next pointer in the old object
-        obj_set_next(objPtr, newObj);
+        obj_set_next(obj.ptr, newObj);
 
         // Update the object pointer
-        objPtr = newObj;
+        obj = newObj;
     }
 
     // Set the value and its type in the object
-    obj_set_word(objPtr, propIdx, val.word.intVal);
-    obj_set_type(objPtr, propIdx, val.type);
+    obj_set_word(obj.ptr, propIdx, val.word.intVal);
+    obj_set_type(obj.ptr, propIdx, val.type);
 }
 

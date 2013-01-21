@@ -116,48 +116,62 @@ void throwError(
     string errMsg
 )
 {
-    auto errStr = getString(interp, to!wstring(errMsg));
+    auto errStr = GCRoot(
+        interp, 
+        getString(interp, to!wstring(errMsg))
+    );
 
-    ValuePair errCtor = getProp(
+    auto errCtor = GCRoot(
         interp,
-        interp.globalObj,
-        getString(interp, to!wstring(ctorName))
+        getProp(
+            interp,
+            interp.globalObj,
+            getString(interp, to!wstring(ctorName))
+        )
     );
 
     if (errCtor.type == Type.REFPTR &&
         valIsLayout(errCtor.word, LAYOUT_OBJ))
     {
-        ValuePair errProto = getProp(
+        auto errProto = GCRoot(
             interp,
-            errCtor.word.ptrVal,
-            getString(interp, "prototype"w)
+            getProp(
+                interp,
+                errCtor.ptr,
+                getString(interp, "prototype"w)
+            )
         );
 
         if (errProto.type == Type.REFPTR &&
             valIsLayout(errCtor.word, LAYOUT_OBJ))
         {
             // Create the error object
-            auto excObj = newObj(
-                interp, 
-                null, 
-                errProto.word.ptrVal,
-                CLASS_INIT_SIZE,
-                CLASS_INIT_SIZE
+            auto excObj = GCRoot(
+                interp,
+                    newObj(
+                    interp, 
+                    null, 
+                    errProto.ptr,
+                    CLASS_INIT_SIZE,
+                    CLASS_INIT_SIZE
+                )
             );
 
             // Set the error "message" property
             setProp(
                 interp,
-                excObj,
+                excObj.ptr,
                 getString(interp, "message"w),
-                ValuePair(Word.ptrv(errStr), Type.REFPTR)
+                errStr.pair
             );
 
             throwExc(
                 interp,
                 instr,
-                ValuePair(Word.ptrv(excObj), Type.REFPTR)
+                excObj.pair
             );
+
+            return;
         }
     }
 
@@ -165,7 +179,7 @@ void throwError(
     throwExc(
         interp,
         instr,
-        ValuePair(Word.ptrv(errStr), Type.REFPTR)
+        errStr.pair
     );
 }
 
@@ -196,6 +210,7 @@ void op_set_str(Interp interp, IRInstr instr)
         linkIdx = interp.allocLink();
         auto strPtr = getString(interp, instr.args[0].stringVal);
         interp.setLinkWord(linkIdx, Word.ptrv(strPtr));
+        interp.setLinkType(linkIdx, Type.REFPTR);
         instr.args[1].linkIdx = linkIdx;
     }
 
@@ -802,35 +817,40 @@ void op_call_new(Interp interp, IRInstr instr)
         return throwError(interp, instr, "TypeError", "new with non-function");
 
     // Get the function object from the closure
-    auto closPtr = wClos.ptrVal;
-    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
+    auto clos = GCRoot(interp, wClos.ptrVal);
+    auto fun = cast(IRFunction)clos_get_fptr(clos.pair.word.ptrVal);
     assert (
-        fun !is null, 
+        fun !is null,
         "null IRFunction pointer"
     );
 
     // Lookup the "prototype" property on the closure
-    auto protoPtr = getProp(
+    auto proto = GCRoot(interp);
+    proto = getProp(
         interp, 
-        closPtr,
+        clos.ptr,
         getString(interp, "prototype")
     );
 
     // Allocate the "this" object
-    auto thisPtr = newObj(
-        interp, 
-        cast(refptr*)(closPtr + clos_ofs_ctor_class(closPtr)),
-        protoPtr.word.ptrVal,
-        CLASS_INIT_SIZE,
-        2
+    auto thisObj = GCRoot(
+        interp,
+        newObj(
+            interp, 
+            clos_get_class(clos.ptr),
+            proto.ptr,
+            CLASS_INIT_SIZE,
+            2
+        )
     );
+    clos_set_class(clos.ptr, obj_get_class(thisObj.ptr));
 
     callFun(
         interp,
         fun,
         instr,
-        closPtr,
-        Word.ptrv(thisPtr),
+        clos.ptr,
+        Word.ptrv(thisObj.ptr),
         Type.REFPTR,
         instr.args[1..$]
     );
@@ -950,23 +970,35 @@ void op_get_fun_ptr(Interp interp, IRInstr instr)
     );
 }
 
-/// Templated interpreter object access operation
-void GetObjOp(string objMixin)(Interp interp, IRInstr instr)
+/// Templated interpreter value access operation
+void GetValOp(Type typeTag, string op)(Interp interp, IRInstr instr)
 {
-    refptr ptr;
-    mixin(objMixin);
+    static assert (
+        typeTag == Type.INT || typeTag == Type.REFPTR
+    );
+
+    mixin(op);
+
+    Word output;
+
+    static if (typeTag == Type.INT)
+        output.intVal = r;
+    static if (typeTag == Type.REFPTR)
+        output.ptrVal = r;
 
     interp.setSlot(
         instr.outSlot,
-        Word.ptrv(ptr),
-        Type.REFPTR
+        output,
+        typeTag
     );
 }
 
-alias GetObjOp!("ptr = interp.objProto;") op_get_obj_proto;
-alias GetObjOp!("ptr = interp.arrProto;") op_get_arr_proto;
-alias GetObjOp!("ptr = interp.funProto;") op_get_fun_proto;
-alias GetObjOp!("ptr = interp.globalObj;") op_get_global_obj;
+alias GetValOp!(Type.REFPTR, "auto r = interp.objProto;") op_get_obj_proto;
+alias GetValOp!(Type.REFPTR, "auto r = interp.arrProto;") op_get_arr_proto;
+alias GetValOp!(Type.REFPTR, "auto r = interp.funProto;") op_get_fun_proto;
+alias GetValOp!(Type.REFPTR, "auto r = interp.globalObj;") op_get_global_obj;
+alias GetValOp!(Type.INT, "auto r = interp.heapSize;") op_get_heap_size;
+alias GetValOp!(Type.INT, "auto r = interp.heapLimit - interp.allocPtr;") op_get_heap_free;
 
 void op_heap_alloc(Interp interp, IRInstr instr)
 {
@@ -990,6 +1022,19 @@ void op_heap_alloc(Interp interp, IRInstr instr)
         Word.ptrv(ptr),
         Type.REFPTR
     );
+}
+
+void op_gc_collect(Interp interp, IRInstr instr)
+{
+    auto wSize = interp.getWord(instr.args[0].localIdx);
+    auto tSize = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        tSize == Type.INT,
+        "invalid heap size type"
+    );
+
+    gcCollect(interp, wSize.uintVal);
 }
 
 void op_make_link(Interp interp, IRInstr instr)
@@ -1090,7 +1135,7 @@ void op_get_global(Interp interp, IRInstr instr)
     auto propStr = getString(interp, nameStr);
 
     // Lookup the property index in the class
-    propIdx = getPropIdx(interp.globalClass, propStr);
+    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr);
 
     // If the property was found, cache it
     if (propIdx != uint32.max)
@@ -1150,7 +1195,7 @@ void op_set_global(Interp interp, IRInstr instr)
     );
 
     // Lookup the property index in the class
-    propIdx = getPropIdx(interp.globalClass, propStr);
+    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr);
 
     // If the property was found, cache it
     if (propIdx != uint32.max)
@@ -1181,37 +1226,45 @@ void op_new_clos(Interp interp, IRInstr instr)
     }
 
     // Allocate the closure object
-    auto closPtr = newClos(
-        interp, 
-        &interp.wLinkTable[*closLinkIdx].ptrVal,
-        interp.funProto,
-        CLASS_INIT_SIZE,
-        1,
-        cast(uint32)fun.captVars.length,
-        fun
+    auto closPtr = GCRoot(
+        interp,
+        newClos(
+            interp, 
+            interp.wLinkTable[*closLinkIdx].ptrVal,
+            interp.funProto,
+            CLASS_INIT_SIZE,
+            1,
+            cast(uint32)fun.captVars.length,
+            fun
+        )
     );
+    interp.wLinkTable[*closLinkIdx].ptrVal = clos_get_class(closPtr.ptr);
 
     // Allocate the prototype object
-    auto objPtr = newObj(
-        interp, 
-        &interp.wLinkTable[*protLinkIdx].ptrVal, 
-        interp.objProto,
-        CLASS_INIT_SIZE,
-        0
+    auto objPtr = GCRoot(
+        interp,
+        newObj(
+            interp, 
+            interp.wLinkTable[*protLinkIdx].ptrVal, 
+            interp.objProto,
+            CLASS_INIT_SIZE,
+            0
+        )
     );
+    interp.wLinkTable[*protLinkIdx].ptrVal = obj_get_class(objPtr.ptr);
 
     // Set the prototype property on the closure object
     setProp(
-        interp, 
-        closPtr,
+        interp,
+        closPtr.ptr,
         getString(interp, "prototype"),
-        ValuePair(Word.ptrv(objPtr), Type.REFPTR)
+        objPtr.pair
     );
    
     // Output a pointer to the closure
     interp.setSlot(
         instr.outSlot,
-        Word.ptrv(closPtr),
+        closPtr.word,
         Type.REFPTR
     );
 }

@@ -1038,6 +1038,23 @@ function $rt_newClos(classLink, protoLink, numCells, funPtr)
     return closPtr;
 }
 
+/**
+Shrink the heap for GC testing purposes
+*/
+function $rt_shrinkHeap(freeSpace)
+{
+    $ir_gc_collect(0);
+
+    var heapFree = $ir_get_heap_free();
+    var heapSize = $ir_get_heap_size();
+
+    if (heapFree > freeSpace)
+    {
+        var newSize = heapSize - (heapFree - freeSpace);
+        $ir_gc_collect(newSize);
+    }
+}
+
 //=============================================================================
 // Objects and property access
 //=============================================================================

@@ -315,6 +315,9 @@ class Interp
     ubyte* toLimit = null;
     ubyte* toAlloc = null;
 
+    /// Linked list of GC roots
+    GCRoot* firstRoot = null;
+
     /// Link table words
     Word* wLinkTable;
 
@@ -341,9 +344,6 @@ class Interp
 
     /// Function prototype object
     refptr funProto;
-
-    /// Global object class descriptor
-    refptr globalClass;
 
     /// Global object reference
     refptr globalObj;
@@ -459,19 +459,21 @@ class Interp
         // Allocate the global object
         globalObj = newObj(
             this, 
-            &globalClass, 
+            null, 
             objProto,
             GLOBAL_OBJ_INIT_SIZE,
             GLOBAL_OBJ_INIT_SIZE
         );
 
-        gcCollect(this);
+        //gcCollect(this);
 
         // Load the layout code
         load("interp/layout.js");
 
         // Load the runtime library
         load("interp/runtime.js");
+
+        //gcCollect(this);
 
         // If the standard library should be loaded
         if (loadStdLib)
@@ -485,6 +487,8 @@ class Interp
             load("stdlib/number.js");
             load("stdlib/boolean.js");
         }
+
+        //gcCollect(this);
     }
 
     /**
@@ -744,9 +748,6 @@ class Interp
 
             // Call the opcode's function
             opFun(this, instr);
-
-            // Check if GC needs to be performed
-            gcCheck(this);
 
             // Increment the cycle count
             cycleCount++;

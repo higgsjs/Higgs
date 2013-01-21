@@ -1037,6 +1037,78 @@ unittest
     //interp.assertInt("test();", 0);
 }
 
+/// Garbage collector tests
+unittest
+{
+    Interp interp;
+
+    //interp = new Interp();
+    //interp.assertInt("v = 3; $ir_gc_collect(0); return v;", 3);
+    
+    //interp = new Interp();
+    //interp.assertInt("a = [1,2,3,4]; $ir_gc_collect(0); return a.length;", 4);
+
+    /*
+    interp = new Interp();
+    interp.assertInt("
+        function f() 
+        { 
+            a = []; 
+            a.length = 1000; 
+            $ir_gc_collect(0); 
+            return a.length; 
+        }
+        return f();",
+        1000
+    );
+    */
+
+    /*
+    interp = new Interp();
+    interp.load("programs/gc/collect.js");
+    interp.assertInt("test();", 0);
+    */
+
+    /*
+    interp = new Interp();
+    interp.load("programs/gc/arrays.js");
+    */
+
+    // TODO: repeated closure allocation test
+
+    /*    
+    interp = new Interp();
+    interp.load("programs/gc/deepstack.js");
+    interp.assertInt("test();", 0);
+    */
+
+    // FIXME: invalid base in property read
+    /*
+    interp = new Interp();
+    interp.load("programs/gc/graph.js");
+    interp.assertInt("test();", 0);
+    */
+
+
+    // FIXME: unhandled object type
+    /*
+    interp = new Interp();
+    interp.load("programs/gc/stackvm.js");
+    interp.assertInt("test();", 0);
+    */
+
+
+
+
+
+    // TODO: try more tests
+
+
+
+
+
+}
+
 /// SunSpider benchmarks
 unittest
 {

@@ -39,9 +39,89 @@ module interp.gc;
 
 import core.memory;
 import std.stdio;
+import std.string;
 import interp.layout;
 import interp.interp;
 import util.misc;
+
+/**
+GC root object
+*/
+struct GCRoot
+{
+    this(Interp interp, ValuePair pair)
+    {
+        this.interp = interp;
+
+        this.prev = null;
+        this.next = interp.firstRoot;
+        interp.firstRoot = &this;
+
+        this.pair = pair;
+    }
+
+    this(Interp interp, Word w, Type t)
+    {
+        this(interp, ValuePair(w, t));
+    }
+
+    this(Interp interp, refptr p = null)
+    {
+        this(interp, Word.ptrv(p), Type.REFPTR);
+    }
+
+    @disable this();
+
+    ~this()
+    {
+        assert (
+            interp !is null,
+            "interp is null"
+        );
+
+        if (prev)
+            prev.next = next;
+        else
+            this.interp.firstRoot = next;
+
+        if (next)
+            next.prev = prev;
+    }
+
+    refptr opAssign(refptr p)
+    {
+        pair.word.ptrVal = p;
+        return p;
+    }
+
+    ValuePair opAssign(ValuePair v)
+    {
+        pair = v;
+        return v;
+    }
+
+    Word word()
+    {
+        return pair.word;
+    }
+
+    Type type()
+    {
+        return pair.type;
+    }
+
+    refptr ptr()
+    {
+        return pair.word.ptrVal;
+    }
+
+    private Interp interp;
+
+    private GCRoot* prev;
+    private GCRoot* next;
+
+    ValuePair pair;
+}
 
 /**
 Allocate an object in the heap
@@ -51,27 +131,24 @@ refptr heapAlloc(Interp interp, size_t size)
     // If this allocation exceeds the heap limit
     if (interp.allocPtr + size > interp.heapLimit)
     {
-        // If the to-space is not yet allocated, allocate it
-        if (interp.toStart is null)
-            allocToSpace(interp, interp.heapSize);
+        /*
+        writefln("from-start: %s", interp.heapStart);
+        writefln("from-limit: %s", interp.heapLimit);
+        writefln("to-start: %s", interp.toStart);
+        writefln("to-start: %s", interp.toLimit);
+        */
 
-        writeln("allocating in to-space");
+        writefln("gc on alloc of size %s", size);
 
-        // Store the pointer to the new object
-        refptr ptr = interp.toAlloc;
+        // Perform garbage collection
+        gcCollect(interp);
 
-        // If the heap space is exhausted, throw an error
-        if (ptr + size > interp.toLimit)
+        // If this allocation exceeds the heap limit
+        if (interp.allocPtr + size > interp.heapLimit)
         {
-            throw new Error("to-space heap exhausted");
+            throw new Error("heap space exhausted");
         }
-
-        // Update and align the allocation pointer
-        interp.toAlloc = alignPtr(interp.toAlloc + size);
-
-        // Return the object pointer
-        return ptr;
-    }    
+    }
 
     // Store the pointer to the new object
     refptr ptr = interp.allocPtr;
@@ -84,42 +161,9 @@ refptr heapAlloc(Interp interp, size_t size)
 }
 
 /**
-Allocate the to-space heap
-*/
-void allocToSpace(Interp interp, size_t heapSize)
-{
-    writefln("allocating to-space heap of size: %s", heapSize);
-
-    // Allocate a memory block for the to-space
-    interp.toStart = cast(ubyte*)GC.malloc(heapSize);
-
-    writefln("allocated to-space block: %s", interp.toStart);
-
-    assert (
-        interp.toStart != null,
-        "failed to allocate to-space heap"
-    );
-
-    // Compute the to-space heap limit
-    interp.toLimit = interp.toStart + heapSize;
-
-    // Initialize the to-space allocation pointer
-    interp.toAlloc = interp.toStart;
-}
-
-/**
-Perform garbage collection if needed
-*/
-void gcCheck(Interp interp)
-{
-    if (interp.toStart !is null)
-        gcCollect(interp);
-}
-
-/**
 Perform a garbage collection
 */
-void gcCollect(Interp interp)
+void gcCollect(Interp interp, size_t heapSize = 0)
 {
     /*
     Cheney's Algorithm:
@@ -150,9 +194,26 @@ void gcCollect(Interp interp)
 
     writeln("entering gcCollect");
 
-    // If the to-space is not yet allocated, allocate it
-    if (interp.toStart is null)
-        allocToSpace(interp, interp.heapSize);
+    if (heapSize != 0)
+        interp.heapSize = heapSize;
+
+    writefln("allocating to-space heap of size: %s", interp.heapSize);
+
+    // Allocate a memory block for the to-space
+    interp.toStart = cast(ubyte*)GC.malloc(interp.heapSize);
+
+    writefln("allocated to-space block: %s", interp.toStart);
+
+    assert (
+        interp.toStart != null,
+        "failed to allocate to-space heap"
+    );
+
+    // Compute the to-space heap limit
+    interp.toLimit = interp.toStart + interp.heapSize;
+
+    // Initialize the to-space allocation pointer
+    interp.toAlloc = interp.toStart;
     
     writeln("visiting interpreter roots");
 
@@ -161,7 +222,6 @@ void gcCollect(Interp interp)
     interp.objProto     = gcForward(interp, interp.objProto);
     interp.arrProto     = gcForward(interp, interp.arrProto);
     interp.funProto     = gcForward(interp, interp.funProto);
-    interp.globalClass  = gcForward(interp, interp.globalClass);
     interp.globalObj    = gcForward(interp, interp.globalObj);
 
     writeln("visiting stack roots");
@@ -174,12 +234,18 @@ void gcCollect(Interp interp)
     // Visit the link table cells
     for (size_t i = 0; i < interp.linkTblSize; ++i)
     {
-        interp.wLinkTable[i].intVal = gcForward(
+        interp.wLinkTable[i] = gcForward(
             interp,
-            interp.wLinkTable[i].intVal, 
+            interp.wLinkTable[i],
             interp.tLinkTable[i]
         );
     }
+
+    writeln("visiting GC root objects");
+
+    // Visit the root objects
+    for (GCRoot* pRoot = interp.firstRoot; pRoot !is null; pRoot = pRoot.next)
+        pRoot.pair.word = gcForward(interp, pRoot.pair.word, pRoot.pair.type);    
 
     writeln("scanning to-space");
 
@@ -194,34 +260,31 @@ void gcCollect(Interp interp)
     size_t numObjs;
     for (numObjs = 0;; ++numObjs)
     {
-        //iir.trace_print('scanning object');
-
         // If we are past the free pointer, scanning done
         if (scanPtr >= interp.toAlloc)
             break;
 
-        // Get the current object reference
-        refptr objPtr = scanPtr;
-
         assert (
-            objPtr >= interp.toStart || objPtr < interp.toLimit,
-            "object pointer past to-space limit"
+            scanPtr >= interp.toStart || scanPtr < interp.toLimit,
+            "scan pointer past to-space limit"
         );
 
         // Get the object size
-        auto objSize = layout_sizeof(objPtr);
+        auto objSize = layout_sizeof(scanPtr);
 
         assert (
-            objPtr + objSize <= interp.toLimit,
+            scanPtr + objSize <= interp.toLimit,
             "object extends past to-space limit"
         );
 
+        //writefln("scanning object of size %s", objSize);
+        //writefln("scanning %s (%s)", scanPtr, numObjs);
+
         // Visit the object layout, forward its references
-        layout_visit_gc(interp, objPtr);
+        layout_visit_gc(interp, scanPtr);
 
         // Move to the next object
-        scanPtr = objPtr + objSize;
-        scanPtr = alignPtr(scanPtr);
+        scanPtr = alignPtr(scanPtr + objSize);
     }
 
     writefln("objects copied/scanned: %s", numObjs);
@@ -244,6 +307,7 @@ void gcCollect(Interp interp)
     interp.toAlloc = null;
 
     writeln("leaving gcCollect");
+    writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
 }
 
 /**
@@ -265,11 +329,14 @@ refptr gcForward(Interp interp, refptr ptr)
     if (ptr is null)
         return null;
 
+    //writefln("forwarding %s", ptr);
+
     // If the pointer already points in the to-space
     if (ptr >= interp.toStart && ptr < interp.toLimit)
+    {
+        //writeln("already in to-space");
         return ptr;
-
-    writefln("forwarding %s", ptr);
+    }
 
     // Get the forwarding pointer field of the object
     refptr nextPtr = getNext(ptr);
@@ -277,7 +344,7 @@ refptr gcForward(Interp interp, refptr ptr)
     // If the object is not already forwarded
     if (nextPtr is null)
     {
-        writefln("copying");
+        //writefln("copying");
 
         // Copy the object into the to-space
         nextPtr = gcCopy(interp, ptr, layout_sizeof(ptr));
@@ -295,14 +362,23 @@ refptr gcForward(Interp interp, refptr ptr)
 /**
 Forward a word/value pair
 */
-uint64 gcForward(Interp interp, uint64 word, uint8 type)
+Word gcForward(Interp interp, Word word, Type type)
 {
     // If this is not a heap pointer, don't change it
-    if (cast(Type)type != Type.REFPTR)
+    if (type != Type.REFPTR)
         return word;
 
     // Forward the pointer
-    return cast(uint64)gcForward(interp, cast(refptr)word);
+    return Word.ptrv(gcForward(interp, word.ptrVal));
+}
+
+/**
+Forward a word/value pair
+*/
+uint64 gcForward(Interp interp, uint64 word, uint8 type)
+{
+    // Forward the pointer
+    return gcForward(interp, Word.intv(word), cast(Type)type).uintVal;
 }
 
 /**
@@ -310,12 +386,17 @@ Copy a live object into the to-space.
 */
 refptr gcCopy(Interp interp, refptr ptr, size_t size)
 {
-    //iir.trace_print('copying object:');
-    //printPtr(objPtr);
-
     assert (
         ptr >= interp.heapStart && ptr < interp.heapLimit,
-        "gcCopy: object not in heap"
+        xformat(
+            "gcCopy: object not in from-space heap:\n" ~
+            "ptr  :%s\n" ~
+            "start:%s\n" ~
+            "limit:%s",
+            ptr,
+            interp.heapStart,
+            interp.heapLimit
+        )        
     );
 
     // The object will be copied at the to-space allocation pointer
@@ -353,8 +434,7 @@ void visitStackRoots(Interp interp)
     while (wPtr < interp.wUpperLimit)
     {
         // If this is a pointer, forward it
-        if (*tPtr == Type.REFPTR)
-            wPtr.ptrVal = gcForward(interp, wPtr.ptrVal);
+        *wPtr = gcForward(interp, *wPtr, *tPtr);
 
         // Move to the next stack slot
         ++wPtr;

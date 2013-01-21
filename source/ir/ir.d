@@ -694,14 +694,19 @@ Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &op_get_arg };
 // Get a pointer to an IRFunction object
 Opcode GET_FUN_PTR = { "get_fun_ptr", true, [OpArg.FUN], &op_get_fun_ptr };
 
-// Special implementation object access instructions
+// Special implementation object/value access instructions
 Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &op_get_obj_proto };
 Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], &op_get_arr_proto };
 Opcode GET_FUN_PROTO = { "get_fun_proto", true, [], &op_get_fun_proto };
 Opcode GET_GLOBAL_OBJ = { "get_global_obj", true, [], &op_get_global_obj };
+Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], &op_get_heap_size };
+Opcode GET_HEAP_FREE = { "get_heap_free", true, [], &op_get_heap_free };
 
 // Allocate a block of memory on the heap
 Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
+
+// Trigger a garbage collection
+Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &op_gc_collect };
 
 /// Create a link table entry associated with this instruction
 Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], &op_make_link };
@@ -866,8 +871,11 @@ static this()
     addOp(GET_ARR_PROTO);
     addOp(GET_FUN_PROTO);
     addOp(GET_GLOBAL_OBJ);
+    addOp(GET_HEAP_SIZE);    
+    addOp(GET_HEAP_FREE);
 
     addOp(HEAP_ALLOC);
+    addOp(GC_COLLECT);
     addOp(MAKE_LINK);
     addOp(SET_LINK);
     addOp(GET_LINK);
