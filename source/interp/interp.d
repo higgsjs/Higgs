@@ -115,7 +115,8 @@ Memory word union
 */
 union Word
 {
-    static Word intv(uint64 i) { Word w; w.intVal = i; return w; }
+    static Word intv(int64 i) { Word w; w.intVal = i; return w; }
+    static Word uintv(uint64 i) { Word w; w.uintVal = i; return w; }
     static Word floatv(float64 f) { Word w; w.floatVal = f; return w; }
     static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
     static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }

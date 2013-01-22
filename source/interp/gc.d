@@ -311,7 +311,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     interp.gcCount++;
 
     writeln("leaving gcCollect");
-    //writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
+    writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
 }
 
 /**
@@ -360,20 +360,37 @@ refptr gcForward(Interp interp, refptr ptr)
 
         // Copy the object into the to-space
         nextPtr = gcCopy(interp, ptr, layout_sizeof(ptr));
-    }
 
-    assert (
-        nextPtr >= interp.toStart && nextPtr < interp.toLimit,
-        xformat(
-            "gcForward: forwarded address is outside of to-space\n" ~
-            "ptr   : %s\n" ~
-            "start : %s\n" ~
-            "limit : %s\n",
-            nextPtr,
-            interp.toStart,
-            interp.toLimit,
-        )
-    );
+        assert (
+            nextPtr >= interp.toStart && nextPtr < interp.toLimit,
+            xformat(
+                "gcForward: newly forwarded address is outside of to-space\n" ~
+                "ptr   : %s\n" ~
+                "start : %s\n" ~
+                "limit : %s\n",
+                nextPtr,
+                interp.toStart,
+                interp.toLimit,
+            )
+        );
+    }
+    else
+    {
+        assert (
+            nextPtr >= interp.toStart && nextPtr < interp.toLimit,
+            xformat(
+                "gcForward: next pointer from object is outside of to-space\n" ~
+                "objPtr  : %s\n" ~
+                "nextPtr : %s\n" ~
+                "to-start: %s\n" ~
+                "to-limit: %s\n",
+                ptr,
+                nextPtr,
+                interp.toStart,
+                interp.toLimit,
+            )
+        );
+    }
 
     // Return the forwarded pointer
     return nextPtr;
@@ -398,7 +415,7 @@ Forward a word/value pair
 uint64 gcForward(Interp interp, uint64 word, uint8 type)
 {
     // Forward the pointer
-    return gcForward(interp, Word.intv(word), cast(Type)type).uintVal;
+    return gcForward(interp, Word.uintv(word), cast(Type)type).uintVal;
 }
 
 /**
@@ -451,6 +468,11 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
     for (size_t i = 0; i < size; ++i)
         nextPtr[i] = ptr[i];
 
+    assert (
+        nextPtr >= interp.toStart && nextPtr < interp.toLimit,
+        "gcCopy: next pointer is outside of to-space"
+    );
+
     // Write the forwarding pointer in the old object
     setNext(ptr, nextPtr);
 
@@ -479,16 +501,17 @@ void visitStackRoots(Interp interp)
         // If this is a pointer, forward it
         interp.wsp[i] = gcForward(interp, word, type);
 
+        auto fwdPtr = interp.wsp[i].ptrVal;
         assert (
             type != Type.REFPTR ||
-            interp.wsp[i].ptrVal == null ||
-            (interp.wsp[i].ptrVal >= interp.toStart && interp.wsp[i].ptrVal < interp.toLimit),
+            fwdPtr == null ||
+            (fwdPtr >= interp.toStart && fwdPtr < interp.toLimit),
             xformat(
                 "invalid forwarded stack pointer\n" ~
                 "ptr     : %s\n" ~
                 "to-alloc: %s\n" ~
                 "to-limit: %s",
-                interp.wsp[i].ptrVal,
+                fwdPtr,
                 interp.toStart,
                 interp.toLimit
             )
@@ -519,6 +542,6 @@ void setNext(refptr obj, refptr next)
 
     auto iPtr = cast(uint64*)obj;
 
-    *iPtr = iVal | NEXT_FLAG;
+    *iPtr = NEXT_FLAG | iVal;
 }
 
