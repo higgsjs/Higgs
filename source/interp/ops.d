@@ -828,10 +828,11 @@ void op_call_new(Interp interp, IRInstr instr)
 
     // Lookup the "prototype" property on the closure
     auto proto = GCRoot(interp);
+    auto protoStr = GCRoot(interp, getString(interp, "prototype"));
     proto = getProp(
         interp, 
         clos.ptr,
-        getString(interp, "prototype")
+        protoStr.ptr
     );
 
     // Allocate the "this" object

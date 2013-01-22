@@ -749,6 +749,8 @@ class Interp
             // Get the current instruction
             IRInstr instr = ip;
 
+            //writefln("op: %s", instr.opcode.mnem);
+
             // Update the IP
             ip = instr.next;
  

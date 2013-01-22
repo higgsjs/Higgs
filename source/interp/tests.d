@@ -1077,12 +1077,9 @@ unittest
     interp.load("programs/gc/graph.js");
     interp.assertInt("test();", 0);
 
-    // FIXME: segfault
-    /*
     interp = new Interp();
     interp.load("programs/gc/stackvm.js");
     interp.assertInt("test();", 0);
-    */
 }
 
 /// SunSpider benchmarks
