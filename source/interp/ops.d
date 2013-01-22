@@ -765,7 +765,7 @@ void callFun(
 
     // Push the return address (caller instruction)
     auto retAddr = cast(rawptr)callInstr;
-    interp.push(Word.ptrv(retAddr), Type.RAWPTR);
+    interp.push(Word.ptrv(retAddr), Type.INSPTR);
 
     // Push space for the callee locals and initialize the slots to undefined
     auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length;

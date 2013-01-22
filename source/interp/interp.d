@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -151,7 +151,8 @@ enum Type : ubyte
     REFPTR,
     RAWPTR,
     CONST,
-    FUNPTR
+    FUNPTR,
+    INSPTR
 }
 
 /// Word and type pair
@@ -171,6 +172,7 @@ string typeToString(Type type)
         case Type.REFPTR:   return "ref pointer";
         case Type.CONST:    return "const";
         case Type.FUNPTR:   return "funptr";
+        case Type.INSPTR:   return "insptr";
 
         default:
         assert (false, "unsupported type");
@@ -250,6 +252,10 @@ string valToString(ValuePair value)
         return "funptr";
         break;
 
+        case Type.INSPTR:
+        return "insptr";
+        break;
+
         default:
         assert (false, "unsupported value type");
     }
@@ -319,6 +325,13 @@ class Interp
     /// Linked list of GC roots
     GCRoot* firstRoot = null;
 
+    /// Set of weak references to functions referenced in the heap
+    /// To be cleaned up by the GC
+    IRFunction[void*] funRefs;
+
+    /// Set of functions found live by the GC during collection
+    IRFunction[void*] liveFuns;
+
     /// Garbage collection count
     size_t gcCount = 0;
 
@@ -351,10 +364,6 @@ class Interp
 
     /// Global object reference
     refptr globalObj;
-
-    /// Set of weak references to functions referenced in the heap
-    /// To be cleaned up by the GC
-    IRFunction[void*] funRefs;
 
     // Total cycle count
     uint64 cycleCount = 0;

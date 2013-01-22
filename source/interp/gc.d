@@ -40,6 +40,7 @@ module interp.gc;
 import core.memory;
 import std.stdio;
 import std.string;
+import ir.ir;
 import interp.layout;
 import interp.interp;
 import interp.string;
@@ -341,6 +342,14 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     // Free the from-space heap block
     GC.free(fromStart);
 
+    //writefln("old live funs count: %s", interp.funRefs.length);
+
+    // Swap the function reference maps
+    interp.funRefs = interp.liveFuns;
+    interp.liveFuns.clear();
+
+    //writefln("new live funs count: %s", interp.funRefs.length);
+
     // Increment the garbage collection count
     interp.gcCount++;
 
@@ -383,6 +392,13 @@ refptr gcForward(Interp interp, refptr ptr)
             obj_get_header(ptr)
         )        
     );
+
+    // If this is a closure
+    if (obj_get_header(ptr) == LAYOUT_CLOS)
+    {
+        auto fun = cast(IRFunction)clos_get_fptr(ptr);
+        interp.liveFuns[cast(void*)fun] = fun;
+    }
 
     // Follow the next pointer chain for as long as it points in the from-space
     refptr nextPtr = ptr;
@@ -440,12 +456,35 @@ Forward a word/value pair
 */
 Word gcForward(Interp interp, Word word, Type type)
 {
-    // If this is not a heap pointer, don't change it
-    if (type != Type.REFPTR)
+    // Switch on the type tag
+    switch (type)
+    {
+        // Heap reference pointer
+        // Forward the pointer
+        case Type.REFPTR:
+        return Word.ptrv(gcForward(interp, word.ptrVal));
+
+        // Function pointer (IRFunction)
+        // Return the pointer unchanged
+        case Type.FUNPTR:
+        auto fun = cast(IRFunction)word.ptrVal;
+        interp.liveFuns[cast(void*)fun] = fun;
         return word;
 
-    // Forward the pointer
-    return Word.ptrv(gcForward(interp, word.ptrVal));
+        // Instruction pointer (IRInstr)
+        // Return the pointer unchanged
+        case Type.INSPTR:
+        if (word.ptrVal !is null)
+        {
+            auto fun = (cast(IRInstr)word.ptrVal).fun;
+            interp.liveFuns[cast(void*)fun] = fun;
+        }
+        return word;
+     
+        // Return the word unchanged
+        default:
+        return word;
+    }
 }
 
 /**
