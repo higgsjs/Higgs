@@ -68,7 +68,7 @@ function graphSum(root)
 function test()
 {
     // Shrink the heap for testing
-    $rt_shrinkHeap(500000);
+    $rt_shrinkHeap(250000);
 
     var gcCount = $ir_get_gc_count();
 

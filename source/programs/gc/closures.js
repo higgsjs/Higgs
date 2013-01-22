@@ -1,26 +1,37 @@
-function test()
+function closTest(freeSpace)
 {
-    var FREE_SIZE = 5000;
+    $rt_shrinkHeap(freeSpace);
 
-    var numClos = 2 * $ir_div_i32(FREE_SIZE, $rt_clos_comp_size(0, 0));
-
-    $rt_shrinkHeap(FREE_SIZE);
-
-    //println('num clos: ' + numClos);
+    var gcCount = $ir_get_gc_count();
 
     var a = 0;
 
-    for (var i = 0; i < numClos; ++i)
+    while ($ir_get_gc_count() < gcCount + 1)
     {
-        //println('itr');
-
         clos = function () { a++; }
 
         clos();
     }
 
-    if (a !== numClos)
+    if (typeof a !== 'number')
         return 1;
+
+    if (!(a > 0))
+        return 2;
+
+    return 0;
+}
+
+function test()
+{
+    if (closTest(25000) !== 0)
+        return 1;
+
+    if (closTest(17000) !== 0)
+        return 2;
+
+    if (closTest(15000) !== 0)
+        return 3;
 
     return 0;
 }

@@ -138,7 +138,7 @@ refptr heapAlloc(Interp interp, size_t size)
         writefln("to-start: %s", interp.toLimit);
         */
 
-        writefln("gc on alloc of size %s", size);
+        //writefln("gc on alloc of size %s", size);
 
         // Perform garbage collection
         gcCollect(interp);
@@ -311,7 +311,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     interp.gcCount++;
 
     writeln("leaving gcCollect");
-    writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
+    //writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
 }
 
 /**

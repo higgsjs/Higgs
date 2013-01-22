@@ -1063,6 +1063,9 @@ unittest
     interp.assertInt("test();", 0);
 
     interp = new Interp();
+    interp.load("programs/gc/objects.js");
+
+    interp = new Interp();
     interp.load("programs/gc/arrays.js");
 
     interp = new Interp();

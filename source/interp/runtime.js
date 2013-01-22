@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -1063,16 +1063,18 @@ Shrink the heap for GC testing purposes
 */
 function $rt_shrinkHeap(freeSpace)
 {
+    assert (
+        freeSpace > 0,
+        'invalid free space value'
+    );
+
     $ir_gc_collect(0);
 
     var heapFree = $ir_get_heap_free();
     var heapSize = $ir_get_heap_size();
 
-    if (heapFree > freeSpace)
-    {
-        var newSize = heapSize - (heapFree - freeSpace);
-        $ir_gc_collect(newSize);
-    }
+    var newSize = heapSize - (heapFree - freeSpace);
+    $ir_gc_collect(newSize);
 }
 
 //=============================================================================
