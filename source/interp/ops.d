@@ -767,8 +767,11 @@ void callFun(
     auto retAddr = cast(rawptr)callInstr;
     interp.push(Word.ptrv(retAddr), Type.RAWPTR);
 
-    // Push space for the callee locals
-    interp.push(fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length);
+    // Push space for the callee locals and initialize the slots to undefined
+    auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length;
+    interp.push(numLocals);
+    for (size_t i = 0; i < numLocals; ++i)
+        interp.setSlot(i, UNDEF, Type.CONST);
 
     // Set the instruction pointer
     interp.ip = fun.entryBlock.firstInstr;

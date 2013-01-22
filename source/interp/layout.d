@@ -21,24 +21,34 @@ alias double float64;
 
 const uint32 LAYOUT_STR = 0;
 
-uint32 str_ofs_header(refptr o)
+uint32 str_ofs_next(refptr o)
 {    
     return 0;
 }
 
+uint32 str_ofs_header(refptr o)
+{    
+    return (0 + 8);
+}
+
 uint32 str_ofs_len(refptr o)
 {    
-    return (0 + 4);
+    return ((0 + 8) + 4);
 }
 
 uint32 str_ofs_hash(refptr o)
 {    
-    return ((0 + 4) + 4);
+    return (((0 + 8) + 4) + 4);
 }
 
 uint32 str_ofs_data(refptr o, uint32 i)
 {    
-    return ((((0 + 4) + 4) + 4) + (2 * i));
+    return (((((0 + 8) + 4) + 4) + 4) + (2 * i));
+}
+
+refptr str_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + str_ofs_next(o));
 }
 
 uint32 str_get_header(refptr o)
@@ -59,6 +69,11 @@ uint32 str_get_hash(refptr o)
 uint16 str_get_data(refptr o, uint32 i)
 {    
     return *cast(uint16*)(o + str_ofs_data(o, i));
+}
+
+void str_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + str_ofs_next(o)) = v;
 }
 
 void str_set_header(refptr o, uint32 v)
@@ -83,7 +98,7 @@ void str_set_data(refptr o, uint32 i, uint16 v)
 
 uint32 str_comp_size(uint32 len)
 {    
-    return ((((0 + 4) + 4) + 4) + (2 * len));
+    return (((((0 + 8) + 4) + 4) + 4) + (2 * len));
 }
 
 uint32 str_sizeof(refptr o)
@@ -95,34 +110,46 @@ refptr str_alloc(Interp interp, uint32 len)
 {    
     auto o = interp.heapAlloc(str_comp_size(len));
     str_set_len(o, len);
+    str_set_next(o, null);
     str_set_header(o, 0);
     return o;
 }
 
 void str_visit_gc(Interp interp, refptr o)
-{
+{    
+    str_set_next(o, gcForward(interp, str_get_next(o)));
 }
 
 const uint32 LAYOUT_STRTBL = 1;
 
-uint32 strtbl_ofs_header(refptr o)
+uint32 strtbl_ofs_next(refptr o)
 {    
     return 0;
 }
 
+uint32 strtbl_ofs_header(refptr o)
+{    
+    return (0 + 8);
+}
+
 uint32 strtbl_ofs_cap(refptr o)
 {    
-    return (0 + 4);
+    return ((0 + 8) + 4);
 }
 
 uint32 strtbl_ofs_num_strs(refptr o)
 {    
-    return ((0 + 4) + 4);
+    return (((0 + 8) + 4) + 4);
 }
 
 uint32 strtbl_ofs_str(refptr o, uint32 i)
 {    
-    return (((((0 + 4) + 4) + 4) + 4) + (8 * i));
+    return ((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * i));
+}
+
+refptr strtbl_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + strtbl_ofs_next(o));
 }
 
 uint32 strtbl_get_header(refptr o)
@@ -143,6 +170,11 @@ uint32 strtbl_get_num_strs(refptr o)
 refptr strtbl_get_str(refptr o, uint32 i)
 {    
     return *cast(refptr*)(o + strtbl_ofs_str(o, i));
+}
+
+void strtbl_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + strtbl_ofs_next(o)) = v;
 }
 
 void strtbl_set_header(refptr o, uint32 v)
@@ -167,7 +199,7 @@ void strtbl_set_str(refptr o, uint32 i, refptr v)
 
 uint32 strtbl_comp_size(uint32 cap)
 {    
-    return (((((0 + 4) + 4) + 4) + 4) + (8 * cap));
+    return ((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * cap));
 }
 
 uint32 strtbl_sizeof(refptr o)
@@ -179,6 +211,7 @@ refptr strtbl_alloc(Interp interp, uint32 cap)
 {    
     auto o = interp.heapAlloc(strtbl_comp_size(cap));
     strtbl_set_cap(o, cap);
+    strtbl_set_next(o, null);
     strtbl_set_header(o, 1);
     strtbl_set_num_strs(o, 0);
     for (uint32 i = 0; i < cap; ++i)
@@ -190,6 +223,7 @@ refptr strtbl_alloc(Interp interp, uint32 cap)
 
 void strtbl_visit_gc(Interp interp, refptr o)
 {    
+    strtbl_set_next(o, gcForward(interp, strtbl_get_next(o)));
     auto cap = strtbl_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
@@ -199,39 +233,44 @@ void strtbl_visit_gc(Interp interp, refptr o)
 
 const uint32 LAYOUT_OBJ = 2;
 
-uint32 obj_ofs_header(refptr o)
+uint32 obj_ofs_next(refptr o)
 {    
     return 0;
 }
 
+uint32 obj_ofs_header(refptr o)
+{    
+    return (0 + 8);
+}
+
 uint32 obj_ofs_cap(refptr o)
 {    
-    return (0 + 4);
+    return ((0 + 8) + 4);
 }
 
 uint32 obj_ofs_class(refptr o)
 {    
-    return ((0 + 4) + 4);
-}
-
-uint32 obj_ofs_next(refptr o)
-{    
-    return (((0 + 4) + 4) + 8);
+    return (((0 + 8) + 4) + 4);
 }
 
 uint32 obj_ofs_proto(refptr o)
 {    
-    return ((((0 + 4) + 4) + 8) + 8);
+    return ((((0 + 8) + 4) + 4) + 8);
 }
 
 uint32 obj_ofs_word(refptr o, uint32 i)
 {    
-    return ((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * i));
+    return ((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * i));
 }
 
 uint32 obj_ofs_type(refptr o, uint32 i)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * i));
+    return (((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * obj_get_cap(o))) + (1 * i));
+}
+
+refptr obj_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + obj_ofs_next(o));
 }
 
 uint32 obj_get_header(refptr o)
@@ -249,11 +288,6 @@ refptr obj_get_class(refptr o)
     return *cast(refptr*)(o + obj_ofs_class(o));
 }
 
-refptr obj_get_next(refptr o)
-{    
-    return *cast(refptr*)(o + obj_ofs_next(o));
-}
-
 refptr obj_get_proto(refptr o)
 {    
     return *cast(refptr*)(o + obj_ofs_proto(o));
@@ -269,6 +303,11 @@ uint8 obj_get_type(refptr o, uint32 i)
     return *cast(uint8*)(o + obj_ofs_type(o, i));
 }
 
+void obj_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + obj_ofs_next(o)) = v;
+}
+
 void obj_set_header(refptr o, uint32 v)
 {    
     *cast(uint32*)(o + obj_ofs_header(o)) = v;
@@ -282,11 +321,6 @@ void obj_set_cap(refptr o, uint32 v)
 void obj_set_class(refptr o, refptr v)
 {    
     *cast(refptr*)(o + obj_ofs_class(o)) = v;
-}
-
-void obj_set_next(refptr o, refptr v)
-{    
-    *cast(refptr*)(o + obj_ofs_next(o)) = v;
 }
 
 void obj_set_proto(refptr o, refptr v)
@@ -306,7 +340,7 @@ void obj_set_type(refptr o, uint32 i, uint8 v)
 
 uint32 obj_comp_size(uint32 cap)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap));
+    return (((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * cap)) + (1 * cap));
 }
 
 uint32 obj_sizeof(refptr o)
@@ -318,8 +352,8 @@ refptr obj_alloc(Interp interp, uint32 cap)
 {    
     auto o = interp.heapAlloc(obj_comp_size(cap));
     obj_set_cap(o, cap);
-    obj_set_header(o, 2);
     obj_set_next(o, null);
+    obj_set_header(o, 2);
     for (uint32 i = 0; i < cap; ++i)
     {    
         obj_set_word(o, i, UNDEF.intVal);
@@ -333,8 +367,8 @@ refptr obj_alloc(Interp interp, uint32 cap)
 
 void obj_visit_gc(Interp interp, refptr o)
 {    
-    obj_set_class(o, gcForward(interp, obj_get_class(o)));
     obj_set_next(o, gcForward(interp, obj_get_next(o)));
+    obj_set_class(o, gcForward(interp, obj_get_class(o)));
     obj_set_proto(o, gcForward(interp, obj_get_proto(o)));
     auto cap = obj_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
@@ -345,59 +379,64 @@ void obj_visit_gc(Interp interp, refptr o)
 
 const uint32 LAYOUT_CLOS = 3;
 
-uint32 clos_ofs_header(refptr o)
+uint32 clos_ofs_next(refptr o)
 {    
     return 0;
 }
 
+uint32 clos_ofs_header(refptr o)
+{    
+    return (0 + 8);
+}
+
 uint32 clos_ofs_cap(refptr o)
 {    
-    return (0 + 4);
+    return ((0 + 8) + 4);
 }
 
 uint32 clos_ofs_class(refptr o)
 {    
-    return ((0 + 4) + 4);
-}
-
-uint32 clos_ofs_next(refptr o)
-{    
-    return (((0 + 4) + 4) + 8);
+    return (((0 + 8) + 4) + 4);
 }
 
 uint32 clos_ofs_proto(refptr o)
 {    
-    return ((((0 + 4) + 4) + 8) + 8);
+    return ((((0 + 8) + 4) + 4) + 8);
 }
 
 uint32 clos_ofs_word(refptr o, uint32 i)
 {    
-    return ((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * i));
+    return ((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * i));
 }
 
 uint32 clos_ofs_type(refptr o, uint32 i)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * i));
+    return (((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * i));
 }
 
 uint32 clos_ofs_fptr(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8);
+    return (((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8);
 }
 
 uint32 clos_ofs_ctor_class(refptr o)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8);
+    return ((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8);
 }
 
 uint32 clos_ofs_num_cells(refptr o)
 {    
-    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8) + 8);
+    return (((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8) + 8);
 }
 
 uint32 clos_ofs_cell(refptr o, uint32 i)
 {    
-    return ((((((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8) + 8) + 4) + 4) + (8 * i));
+    return ((((((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8) + 8) + 4) + 4) + (8 * i));
+}
+
+refptr clos_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + clos_ofs_next(o));
 }
 
 uint32 clos_get_header(refptr o)
@@ -413,11 +452,6 @@ uint32 clos_get_cap(refptr o)
 refptr clos_get_class(refptr o)
 {    
     return *cast(refptr*)(o + clos_ofs_class(o));
-}
-
-refptr clos_get_next(refptr o)
-{    
-    return *cast(refptr*)(o + clos_ofs_next(o));
 }
 
 refptr clos_get_proto(refptr o)
@@ -455,6 +489,11 @@ refptr clos_get_cell(refptr o, uint32 i)
     return *cast(refptr*)(o + clos_ofs_cell(o, i));
 }
 
+void clos_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + clos_ofs_next(o)) = v;
+}
+
 void clos_set_header(refptr o, uint32 v)
 {    
     *cast(uint32*)(o + clos_ofs_header(o)) = v;
@@ -468,11 +507,6 @@ void clos_set_cap(refptr o, uint32 v)
 void clos_set_class(refptr o, refptr v)
 {    
     *cast(refptr*)(o + clos_ofs_class(o)) = v;
-}
-
-void clos_set_next(refptr o, refptr v)
-{    
-    *cast(refptr*)(o + clos_ofs_next(o)) = v;
 }
 
 void clos_set_proto(refptr o, refptr v)
@@ -512,7 +546,7 @@ void clos_set_cell(refptr o, uint32 i, refptr v)
 
 uint32 clos_comp_size(uint32 cap, uint32 num_cells)
 {    
-    return ((((((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 8) + 8) + 4) + 4) + (8 * num_cells));
+    return ((((((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 8) + 8) + 4) + 4) + (8 * num_cells));
 }
 
 uint32 clos_sizeof(refptr o)
@@ -525,8 +559,8 @@ refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
     auto o = interp.heapAlloc(clos_comp_size(cap, num_cells));
     clos_set_cap(o, cap);
     clos_set_num_cells(o, num_cells);
-    clos_set_header(o, 3);
     clos_set_next(o, null);
+    clos_set_header(o, 3);
     for (uint32 i = 0; i < cap; ++i)
     {    
         clos_set_word(o, i, UNDEF.intVal);
@@ -545,8 +579,8 @@ refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
 
 void clos_visit_gc(Interp interp, refptr o)
 {    
-    clos_set_class(o, gcForward(interp, clos_get_class(o)));
     clos_set_next(o, gcForward(interp, clos_get_next(o)));
+    clos_set_class(o, gcForward(interp, clos_get_class(o)));
     clos_set_proto(o, gcForward(interp, clos_get_proto(o)));
     auto cap = clos_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
@@ -563,19 +597,29 @@ void clos_visit_gc(Interp interp, refptr o)
 
 const uint32 LAYOUT_CELL = 4;
 
-uint32 cell_ofs_header(refptr o)
+uint32 cell_ofs_next(refptr o)
 {    
     return 0;
 }
 
+uint32 cell_ofs_header(refptr o)
+{    
+    return (0 + 8);
+}
+
 uint32 cell_ofs_word(refptr o)
 {    
-    return ((0 + 4) + 4);
+    return (((0 + 8) + 4) + 4);
 }
 
 uint32 cell_ofs_type(refptr o)
 {    
-    return (((0 + 4) + 4) + 8);
+    return ((((0 + 8) + 4) + 4) + 8);
+}
+
+refptr cell_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + cell_ofs_next(o));
 }
 
 uint32 cell_get_header(refptr o)
@@ -591,6 +635,11 @@ uint64 cell_get_word(refptr o)
 uint8 cell_get_type(refptr o)
 {    
     return *cast(uint8*)(o + cell_ofs_type(o));
+}
+
+void cell_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + cell_ofs_next(o)) = v;
 }
 
 void cell_set_header(refptr o, uint32 v)
@@ -610,7 +659,7 @@ void cell_set_type(refptr o, uint8 v)
 
 uint32 cell_comp_size()
 {    
-    return ((((0 + 4) + 4) + 8) + 1);
+    return (((((0 + 8) + 4) + 4) + 8) + 1);
 }
 
 uint32 cell_sizeof(refptr o)
@@ -621,6 +670,7 @@ uint32 cell_sizeof(refptr o)
 refptr cell_alloc(Interp interp)
 {    
     auto o = interp.heapAlloc(cell_comp_size());
+    cell_set_next(o, null);
     cell_set_header(o, 4);
     cell_set_word(o, UNDEF.intVal);
     cell_set_type(o, Type.CONST);
@@ -629,54 +679,60 @@ refptr cell_alloc(Interp interp)
 
 void cell_visit_gc(Interp interp, refptr o)
 {    
+    cell_set_next(o, gcForward(interp, cell_get_next(o)));
     cell_set_word(o, gcForward(interp, cell_get_word(o), cell_get_type(o)));
 }
 
 const uint32 LAYOUT_ARR = 5;
 
-uint32 arr_ofs_header(refptr o)
+uint32 arr_ofs_next(refptr o)
 {    
     return 0;
 }
 
+uint32 arr_ofs_header(refptr o)
+{    
+    return (0 + 8);
+}
+
 uint32 arr_ofs_cap(refptr o)
 {    
-    return (0 + 4);
+    return ((0 + 8) + 4);
 }
 
 uint32 arr_ofs_class(refptr o)
 {    
-    return ((0 + 4) + 4);
-}
-
-uint32 arr_ofs_next(refptr o)
-{    
-    return (((0 + 4) + 4) + 8);
+    return (((0 + 8) + 4) + 4);
 }
 
 uint32 arr_ofs_proto(refptr o)
 {    
-    return ((((0 + 4) + 4) + 8) + 8);
+    return ((((0 + 8) + 4) + 4) + 8);
 }
 
 uint32 arr_ofs_word(refptr o, uint32 i)
 {    
-    return ((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * i));
+    return ((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * i));
 }
 
 uint32 arr_ofs_type(refptr o, uint32 i)
 {    
-    return (((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * i));
+    return (((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * i));
 }
 
 uint32 arr_ofs_tbl(refptr o)
 {    
-    return (((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 7) & -8);
+    return (((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 7) & -8);
 }
 
 uint32 arr_ofs_len(refptr o)
 {    
-    return ((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 7) & -8) + 8);
+    return ((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 7) & -8) + 8);
+}
+
+refptr arr_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + arr_ofs_next(o));
 }
 
 uint32 arr_get_header(refptr o)
@@ -692,11 +748,6 @@ uint32 arr_get_cap(refptr o)
 refptr arr_get_class(refptr o)
 {    
     return *cast(refptr*)(o + arr_ofs_class(o));
-}
-
-refptr arr_get_next(refptr o)
-{    
-    return *cast(refptr*)(o + arr_ofs_next(o));
 }
 
 refptr arr_get_proto(refptr o)
@@ -724,6 +775,11 @@ uint32 arr_get_len(refptr o)
     return *cast(uint32*)(o + arr_ofs_len(o));
 }
 
+void arr_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + arr_ofs_next(o)) = v;
+}
+
 void arr_set_header(refptr o, uint32 v)
 {    
     *cast(uint32*)(o + arr_ofs_header(o)) = v;
@@ -737,11 +793,6 @@ void arr_set_cap(refptr o, uint32 v)
 void arr_set_class(refptr o, refptr v)
 {    
     *cast(refptr*)(o + arr_ofs_class(o)) = v;
-}
-
-void arr_set_next(refptr o, refptr v)
-{    
-    *cast(refptr*)(o + arr_ofs_next(o)) = v;
 }
 
 void arr_set_proto(refptr o, refptr v)
@@ -771,7 +822,7 @@ void arr_set_len(refptr o, uint32 v)
 
 uint32 arr_comp_size(uint32 cap)
 {    
-    return (((((((((((0 + 4) + 4) + 8) + 8) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 8) + 4);
+    return (((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 8) + 4);
 }
 
 uint32 arr_sizeof(refptr o)
@@ -783,8 +834,8 @@ refptr arr_alloc(Interp interp, uint32 cap)
 {    
     auto o = interp.heapAlloc(arr_comp_size(cap));
     arr_set_cap(o, cap);
-    arr_set_header(o, 5);
     arr_set_next(o, null);
+    arr_set_header(o, 5);
     for (uint32 i = 0; i < cap; ++i)
     {    
         arr_set_word(o, i, UNDEF.intVal);
@@ -798,8 +849,8 @@ refptr arr_alloc(Interp interp, uint32 cap)
 
 void arr_visit_gc(Interp interp, refptr o)
 {    
-    arr_set_class(o, gcForward(interp, arr_get_class(o)));
     arr_set_next(o, gcForward(interp, arr_get_next(o)));
+    arr_set_class(o, gcForward(interp, arr_get_class(o)));
     arr_set_proto(o, gcForward(interp, arr_get_proto(o)));
     auto cap = arr_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
@@ -811,24 +862,34 @@ void arr_visit_gc(Interp interp, refptr o)
 
 const uint32 LAYOUT_ARRTBL = 6;
 
-uint32 arrtbl_ofs_header(refptr o)
+uint32 arrtbl_ofs_next(refptr o)
 {    
     return 0;
 }
 
+uint32 arrtbl_ofs_header(refptr o)
+{    
+    return (0 + 8);
+}
+
 uint32 arrtbl_ofs_cap(refptr o)
 {    
-    return (0 + 4);
+    return ((0 + 8) + 4);
 }
 
 uint32 arrtbl_ofs_word(refptr o, uint32 i)
 {    
-    return (((0 + 4) + 4) + (8 * i));
+    return ((((0 + 8) + 4) + 4) + (8 * i));
 }
 
 uint32 arrtbl_ofs_type(refptr o, uint32 i)
 {    
-    return ((((0 + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * i));
+    return (((((0 + 8) + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * i));
+}
+
+refptr arrtbl_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + arrtbl_ofs_next(o));
 }
 
 uint32 arrtbl_get_header(refptr o)
@@ -849,6 +910,11 @@ uint64 arrtbl_get_word(refptr o, uint32 i)
 uint8 arrtbl_get_type(refptr o, uint32 i)
 {    
     return *cast(uint8*)(o + arrtbl_ofs_type(o, i));
+}
+
+void arrtbl_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + arrtbl_ofs_next(o)) = v;
 }
 
 void arrtbl_set_header(refptr o, uint32 v)
@@ -873,7 +939,7 @@ void arrtbl_set_type(refptr o, uint32 i, uint8 v)
 
 uint32 arrtbl_comp_size(uint32 cap)
 {    
-    return ((((0 + 4) + 4) + (8 * cap)) + (1 * cap));
+    return (((((0 + 8) + 4) + 4) + (8 * cap)) + (1 * cap));
 }
 
 uint32 arrtbl_sizeof(refptr o)
@@ -885,6 +951,7 @@ refptr arrtbl_alloc(Interp interp, uint32 cap)
 {    
     auto o = interp.heapAlloc(arrtbl_comp_size(cap));
     arrtbl_set_cap(o, cap);
+    arrtbl_set_next(o, null);
     arrtbl_set_header(o, 6);
     for (uint32 i = 0; i < cap; ++i)
     {    
@@ -899,6 +966,7 @@ refptr arrtbl_alloc(Interp interp, uint32 cap)
 
 void arrtbl_visit_gc(Interp interp, refptr o)
 {    
+    arrtbl_set_next(o, gcForward(interp, arrtbl_get_next(o)));
     auto cap = arrtbl_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
@@ -908,49 +976,54 @@ void arrtbl_visit_gc(Interp interp, refptr o)
 
 const uint32 LAYOUT_CLASS = 7;
 
-uint32 class_ofs_header(refptr o)
+uint32 class_ofs_next(refptr o)
 {    
     return 0;
 }
 
+uint32 class_ofs_header(refptr o)
+{    
+    return (0 + 8);
+}
+
 uint32 class_ofs_id(refptr o)
 {    
-    return (0 + 4);
+    return ((0 + 8) + 4);
 }
 
 uint32 class_ofs_cap(refptr o)
 {    
-    return ((0 + 4) + 4);
+    return (((0 + 8) + 4) + 4);
 }
 
 uint32 class_ofs_num_props(refptr o)
 {    
-    return (((0 + 4) + 4) + 4);
-}
-
-uint32 class_ofs_next(refptr o)
-{    
-    return ((((0 + 4) + 4) + 4) + 4);
+    return ((((0 + 8) + 4) + 4) + 4);
 }
 
 uint32 class_ofs_arr_type(refptr o)
 {    
-    return (((((0 + 4) + 4) + 4) + 4) + 8);
+    return (((((0 + 8) + 4) + 4) + 4) + 4);
 }
 
 uint32 class_ofs_prop_name(refptr o, uint32 i)
 {    
-    return (((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * i));
+    return (((((((0 + 8) + 4) + 4) + 4) + 4) + 8) + (8 * i));
 }
 
 uint32 class_ofs_prop_type(refptr o, uint32 i)
 {    
-    return ((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * i));
+    return ((((((((0 + 8) + 4) + 4) + 4) + 4) + 8) + (8 * class_get_cap(o))) + (8 * i));
 }
 
 uint32 class_ofs_prop_idx(refptr o, uint32 i)
 {    
-    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * i));
+    return (((((((((0 + 8) + 4) + 4) + 4) + 4) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * i));
+}
+
+refptr class_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + class_ofs_next(o));
 }
 
 uint32 class_get_header(refptr o)
@@ -973,11 +1046,6 @@ uint32 class_get_num_props(refptr o)
     return *cast(uint32*)(o + class_ofs_num_props(o));
 }
 
-refptr class_get_next(refptr o)
-{    
-    return *cast(refptr*)(o + class_ofs_next(o));
-}
-
 rawptr class_get_arr_type(refptr o)
 {    
     return *cast(rawptr*)(o + class_ofs_arr_type(o));
@@ -998,6 +1066,11 @@ uint32 class_get_prop_idx(refptr o, uint32 i)
     return *cast(uint32*)(o + class_ofs_prop_idx(o, i));
 }
 
+void class_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + class_ofs_next(o)) = v;
+}
+
 void class_set_header(refptr o, uint32 v)
 {    
     *cast(uint32*)(o + class_ofs_header(o)) = v;
@@ -1016,11 +1089,6 @@ void class_set_cap(refptr o, uint32 v)
 void class_set_num_props(refptr o, uint32 v)
 {    
     *cast(uint32*)(o + class_ofs_num_props(o)) = v;
-}
-
-void class_set_next(refptr o, refptr v)
-{    
-    *cast(refptr*)(o + class_ofs_next(o)) = v;
 }
 
 void class_set_arr_type(refptr o, rawptr v)
@@ -1045,7 +1113,7 @@ void class_set_prop_idx(refptr o, uint32 i, uint32 v)
 
 uint32 class_comp_size(uint32 cap)
 {    
-    return (((((((((0 + 4) + 4) + 4) + 4) + 8) + 8) + (8 * cap)) + (8 * cap)) + (4 * cap));
+    return (((((((((0 + 8) + 4) + 4) + 4) + 4) + 8) + (8 * cap)) + (8 * cap)) + (4 * cap));
 }
 
 uint32 class_sizeof(refptr o)
@@ -1057,9 +1125,9 @@ refptr class_alloc(Interp interp, uint32 cap)
 {    
     auto o = interp.heapAlloc(class_comp_size(cap));
     class_set_cap(o, cap);
+    class_set_next(o, null);
     class_set_header(o, 7);
     class_set_num_props(o, 0);
-    class_set_next(o, null);
     class_set_arr_type(o, null);
     for (uint32 i = 0; i < cap; ++i)
     {    

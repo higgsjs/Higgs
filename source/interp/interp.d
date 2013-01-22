@@ -618,10 +618,6 @@ class Interp
         wsp -= numWords;
         tsp -= numWords;
 
-        // Initialize new stack slots to 0
-        for (size_t i = 0; i < numWords; ++i)
-            setSlot(i, Word.intv(0), Type.INT);
-
         if (wsp < wLowerLimit)
             throw new Error("interpreter stack overflow");
     }
@@ -631,9 +627,6 @@ class Interp
     */
     void pop(size_t numWords)
     {
-        //for (size_t i = 0; i < numWords; ++i)
-        //    setSlot(i, UNDEF, Type.CONST);
-
         wsp += numWords;
         tsp += numWords;
 

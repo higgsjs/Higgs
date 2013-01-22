@@ -84,9 +84,6 @@ layouts = [
             # Class reference
             { 'name':"class", 'type':"refptr" },
 
-            # Next object reference
-            { 'name':"next", 'type':"refptr", 'init':"null" },
-
             # Prototype reference
             { 'name':"proto", 'type':"refptr" },
 
@@ -174,10 +171,6 @@ layouts = [
 
             # Number of properties in class
             { 'name':"num_props", 'type':"uint32", 'init':"0" },
-
-            # Next class version reference
-            # Used if class is reallocated
-            { 'name':"next", 'type':"refptr", 'init':"null" },
 
             # Array element type
             { 'name':"arr_type", 'type':"rawptr", 'init':"null" },
@@ -556,7 +549,7 @@ for layoutIdx, layout in enumerate(layouts):
         fieldCopies += [deepcopy(field)]
     layout['fields'] = fieldCopies + layout['fields']
 
-# Assign layout ids and add the header field
+# Assign layout ids, add the next and header fields
 nextLayoutId = 0
 for layout in layouts:
 
@@ -564,8 +557,9 @@ for layout in layouts:
     layout['typeId'] = layoutId
     nextLayoutId += 1
 
+    nextField = [{ 'name':'next', 'type':'refptr', 'init':"null" }]
     typeField = [{ 'name':'header', 'type':'uint32', 'init':str(layoutId) }]
-    layout['fields'] = typeField + layout['fields']
+    layout['fields'] = nextField + typeField + layout['fields']
 
 # Find/resolve size fields
 for layout in layouts:

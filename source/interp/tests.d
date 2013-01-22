@@ -263,6 +263,7 @@ unittest
     assertInt("return function () { var x = 0; ++x; return ++x; } ()", 2);
     assertInt("return function () { var x = 0; return x++ + 1; } ()", 1);
     assertInt("return function () { var x = 1; return x = x++ % 2; } ()", 1);
+    assertBool("return function () { var x; return (x === undefined); } ()", true);
 }
 
 /// Comparison and branching
@@ -1074,6 +1075,10 @@ unittest
   
     interp = new Interp();
     interp.load("programs/gc/deepstack.js");
+    interp.assertInt("test();", 0);
+
+    interp = new Interp();
+    interp.load("programs/gc/strcat.js");
     interp.assertInt("test();", 0);
 
     interp = new Interp();

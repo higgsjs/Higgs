@@ -368,8 +368,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         {
             auto localSlot = bodyCtx.allocTemp();
             fun.localMap[ident] = localSlot;
-            bodyCtx.addInstr(new IRInstr(&SET_UNDEF, localSlot));
-        }
+       }
     }
 
     // Get the cell pointers for captured closure variables
@@ -465,7 +464,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Compile the function body
     stmtToIR(ast.bodyStmt, bodyCtx);
 
-    // If the body has nend return, compile a "return null;"
+    // If the body has no final return, compile a "return undefined;"
     auto lastInstr = bodyCtx.getLastInstr();
     if (lastInstr is null || lastInstr.opcode != &RET)
     {

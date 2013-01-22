@@ -42,6 +42,7 @@ import std.stdio;
 import std.string;
 import interp.layout;
 import interp.interp;
+import interp.string;
 import util.misc;
 
 /**
@@ -192,18 +193,18 @@ void gcCollect(Interp interp, size_t heapSize = 0)
             return addr
     */
 
-    writeln("entering gcCollect");
-    writefln("from-space address: %s", interp.heapStart);
+    //writeln("entering gcCollect");
+    //writefln("from-space address: %s", interp.heapStart);
 
     if (heapSize != 0)
         interp.heapSize = heapSize;
 
-    writefln("allocating to-space heap of size: %s", interp.heapSize);
+    //writefln("allocating to-space heap of size: %s", interp.heapSize);
 
     // Allocate a memory block for the to-space
     interp.toStart = cast(ubyte*)GC.malloc(interp.heapSize);
 
-    writefln("allocated to-space block: %s", interp.toStart);
+    //writefln("allocated to-space block: %s", interp.toStart);
 
     assert (
         interp.toStart != null,
@@ -216,21 +217,20 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     // Initialize the to-space allocation pointer
     interp.toAlloc = interp.toStart;
     
-    writeln("visiting interpreter roots");
+    //writeln("visiting interpreter roots");
 
     // Forward the interpreter root objects
-    interp.strTbl       = gcForward(interp, interp.strTbl);
     interp.objProto     = gcForward(interp, interp.objProto);
     interp.arrProto     = gcForward(interp, interp.arrProto);
     interp.funProto     = gcForward(interp, interp.funProto);
     interp.globalObj    = gcForward(interp, interp.globalObj);
 
-    writeln("visiting stack roots");
+    //writeln("visiting stack roots");
 
     // Visit the stack roots
     visitStackRoots(interp);
 
-    writeln("visiting link table");
+    //writeln("visiting link table");
 
     // Visit the link table cells
     for (size_t i = 0; i < interp.linkTblSize; ++i)
@@ -242,13 +242,13 @@ void gcCollect(Interp interp, size_t heapSize = 0)
         );
     }
 
-    writeln("visiting GC root objects");
+    //writeln("visiting GC root objects");
 
     // Visit the root objects
     for (GCRoot* pRoot = interp.firstRoot; pRoot !is null; pRoot = pRoot.next)
         pRoot.pair.word = gcForward(interp, pRoot.pair.word, pRoot.pair.type);    
 
-    writeln("scanning to-space");
+    //writeln("scanning to-space");
 
     // Scan Pointer: All objects behind it (i.e. to its left) have been fully
     // processed; objects in front of it have been copied but not processed.
@@ -288,14 +288,11 @@ void gcCollect(Interp interp, size_t heapSize = 0)
         scanPtr = alignPtr(scanPtr + objSize);
     }
 
-    writefln("objects copied/scanned: %s", numObjs);
+    //writefln("objects copied/scanned: %s", numObjs);
 
-    // For debugging, clear the old heap
-    for (int64* p = cast(int64*)interp.heapStart; p < cast(int64*)interp.heapLimit; p++)
-        *p = 0;
-
-    // Free the from-space heap block
-    GC.free(interp.heapStart);
+    // Store a pointer to the from-space heap
+    auto fromStart = interp.heapStart;
+    auto fromLimit = interp.heapLimit;
 
     // Flip the from-space and to-space
     interp.heapStart = interp.toStart;
@@ -307,11 +304,48 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     interp.toLimit = null;
     interp.toAlloc = null;
 
+    //writefln("rebuilding string table");
+
+    // Store a pointer to the old string table
+    auto oldStrTbl = interp.strTbl;
+    auto strTblCap = strtbl_get_cap(oldStrTbl);
+
+    // Allocate a new string table
+    interp.strTbl = strtbl_alloc(interp, strTblCap);
+
+    // Add the forwarded strings to the new string table
+    for (uint32 i = 0; i < strTblCap; ++i)
+    {
+        auto ptr = strtbl_get_str(oldStrTbl, i);
+
+        if (ptr is null)
+            continue;
+
+        auto next = obj_get_next(ptr);
+
+        if (next is null)
+            continue;
+
+        getTableStr(interp, next);
+    }
+
+    //writefln("old string count: %s", strtbl_get_num_strs(oldStrTbl));
+    //writefln("new string count: %s", strtbl_get_num_strs(interp.strTbl));
+
+    //writefln("clearing from-space heap");
+
+    // For debugging, clear the old heap
+    for (int64* p = cast(int64*)fromStart; p < cast(int64*)fromLimit; p++)
+        *p = 0;
+
+    // Free the from-space heap block
+    GC.free(fromStart);
+
     // Increment the garbage collection count
     interp.gcCount++;
 
-    writeln("leaving gcCollect");
-    writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
+    //writeln("leaving gcCollect");
+    //writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
 }
 
 /**
@@ -350,8 +384,13 @@ refptr gcForward(Interp interp, refptr ptr)
         )        
     );
 
-    // Get the forwarding pointer field of the object
-    refptr nextPtr = getNext(ptr);
+    // Follow the next pointer chain for as long as it points in the from-space
+    refptr nextPtr = ptr;
+    do
+    {
+        nextPtr = obj_get_next(nextPtr);
+
+    } while (nextPtr >= interp.heapStart && nextPtr < interp.heapLimit);
 
     // If the object is not already forwarded
     if (nextPtr is null)
@@ -474,7 +513,7 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
     );
 
     // Write the forwarding pointer in the old object
-    setNext(ptr, nextPtr);
+    obj_set_next(ptr, nextPtr);
 
     // Return the copied object pointer
     return nextPtr;
@@ -517,31 +556,5 @@ void visitStackRoots(Interp interp)
             )
         );
     }
-}
-
-const uint64 NEXT_FLAG = 1L << 63;
-
-refptr getNext(refptr obj)
-{
-    auto iVal = *cast(uint64*)obj;
-
-    if ((iVal & NEXT_FLAG) == 0)
-        return null;
-
-    return cast(refptr)(iVal ^ NEXT_FLAG);
-}
-
-void setNext(refptr obj, refptr next)
-{
-    auto iVal = cast(uint64)next;
-
-    assert (
-        (iVal & NEXT_FLAG) == 0,
-        "top bit of next pointer is already set"
-    );
-
-    auto iPtr = cast(uint64*)obj;
-
-    *iPtr = NEXT_FLAG | iVal;
 }
 
