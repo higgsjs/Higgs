@@ -97,11 +97,11 @@ Object.prototype.constructor = Object;
 Object.getPrototypeOf = function (obj)
 {
     assert (
-        boxIsExtObj(obj),
+        $rt_valIsObj(obj),
         'non-object value in getPrototypeOf'
     );
 
-    var proto = get_obj_proto(obj);
+    var proto = $rt_obj_get_proto(obj);
 
     return proto;
 };
@@ -112,10 +112,10 @@ FIXME: for now, no property attributes
 */
 Object.getOwnPropertyDescriptor = function (O, P)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in getOwnPropertyDescriptor');
 
-    name = boxToString(P);
+    name = String(P);
 
     return { writable:true, enumerable:true, configurable: true, value: O[name] };
 };
@@ -125,7 +125,7 @@ Object.getOwnPropertyDescriptor = function (O, P)
 */
 Object.getOwnPropertyNames = function (O)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in getOwnPropertyNames');
 
     var propNames = [];
@@ -149,7 +149,7 @@ Object.create = function (O, Properties)
         typeError('can only create object from object or null prototype');
     }
 
-    var newObj = $ir_new_obj(O);
+    var newObj = $rt_newObj($ir_make_link(0), O)
 
     if (Properties !== undefined)
         Object.defineProperties(newObj, Properties);
@@ -164,7 +164,7 @@ FIXME: for now, we ignore most attributes
 Object.defineProperty = function (obj, prop, attribs)
 {
     assert (
-        boxIsExtObj(obj),
+        $rt_valIsObj(obj),
         'non-object value in defineProperty'
     );
 
@@ -177,7 +177,7 @@ Object.defineProperty = function (obj, prop, attribs)
 */
 Object.defineProperties = function (O, Properties)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in defineProperties');
 
     for (name in Properties)
@@ -192,7 +192,7 @@ FIXME: noop function for now
 */
 Object.seal = function (O)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in seal');
 
     return O;
@@ -204,7 +204,7 @@ FIXME: noop function for now
 */
 Object.freeze = function (O)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in freeze');
 
     return O;
@@ -216,7 +216,7 @@ FIXME: noop function for now
 */
 Object.preventExtensions = function (O)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in preventExtensions');
 
     return O;
@@ -228,7 +228,7 @@ FIXME: noop function for now
 */
 Object.isSealed = function (O)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in isSealed');
 
     return false; 
@@ -240,7 +240,7 @@ FIXME: for now, all objects are extensible
 */
 Object.isFrozen = function (O)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in isFrozen');
 
     return false;
@@ -252,7 +252,7 @@ FIXME: for now, all objects are extensible
 */
 Object.isExtensible = function (O)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in isExtensible');
 
     return true;
@@ -263,7 +263,7 @@ Object.isExtensible = function (O)
 */
 Object.keys = function (O)
 {
-    if (boxIsExtObj(O) === false)
+    if ($rt_valIsObj(O) === false)
         typeError('invalid object in keys');
 
     var propNames = [];
@@ -306,7 +306,7 @@ Object.prototype.valueOf = function ()
 */
 Object.prototype.hasOwnProperty = function (prop)
 {
-    return hasOwnProp(this, prop);
+    return $rt_hasOwnProp(this, prop);
 };
 
 /**

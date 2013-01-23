@@ -237,6 +237,9 @@ unittest
 {
     assertInt("return function () { return 9; } ()", 9);
     assertInt("return function () { return 2 * 3; } ()", 6);
+
+    // Calling null as a function
+    assertThrows("null()");
 }
 
 /// Argument passing test
@@ -579,6 +582,9 @@ unittest
         ",
         8
     );
+
+    // Unresolved global
+    assertThrows("foo");
 }
 
 /// In-place operators
@@ -635,6 +641,18 @@ unittest
         a.x = 3;
         b = new f();
         return (b.x === undefined);
+        ",
+        true
+    );
+
+    assertBool(
+        "
+        function f() {}
+        f.prototype.y = 3;
+        a = new f();
+        a.x = 3;
+        b = new f();
+        return ('x' in a) && !('x' in b) && ('y' in b);
         ",
         true
     );
@@ -947,6 +965,14 @@ unittest
 
     assertBool("r = Math.random(); return r >= 0 && r < 1;", true);
     assertBool("r0 = Math.random(); r1 = Math.random(); return r0 !== r1;", true);
+}
+
+/// Stdlib Object library
+unittest
+{
+    assertBool("o = {k:3}; return o.hasOwnProperty('k');", true);
+    assertBool("o = {k:3}; p = Object.create(o); return p.hasOwnProperty('k')", false);
+    assertBool("o = {k:3}; p = Object.create(o); return 'k' in p;", true);
 }
 
 /// Stdlib Number library

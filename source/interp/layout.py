@@ -88,10 +88,10 @@ layouts = [
             { 'name':"proto", 'type':"refptr" },
 
             # Property words
-            { 'name':"word", 'type':"uint64", 'init':'undef_word', 'szField':"cap", 'tpField':'type' },
+            { 'name':"word", 'type':"uint64", 'init':'missing_word', 'szField':"cap", 'tpField':'type' },
 
             # Property types
-            { 'name':"type", 'type':"uint8", 'init':'undef_type', 'szField':"cap" }
+            { 'name':"type", 'type':"uint8", 'init':'missing_type', 'szField':"cap" }
         ]
     },
 
@@ -234,9 +234,14 @@ class Cst:
     def genJS(self):
 
         if self.val == 'undef_word':
-            return '$ir_get_word(undefined)'
+            return '$ir_get_word($ir_set_undef())'
         if self.val == 'undef_type':
-            return '$ir_get_type(undefined)'
+            return '$ir_get_type($ir_set_undef())'
+
+        if self.val == 'missing_word':
+            return '$ir_get_word($ir_set_missing())'
+        if self.val == 'missing_type':
+            return '$ir_get_type($ir_set_missing())'
 
         return str(self.val)
 
@@ -245,6 +250,11 @@ class Cst:
         if self.val == 'undef_word':
             return 'UNDEF.intVal'
         if self.val == 'undef_type':
+            return 'Type.CONST'
+
+        if self.val == 'missing_word':
+            return 'MISSING.intVal'
+        if self.val == 'missing_type':
             return 'Type.CONST'
 
         return str(self.val)

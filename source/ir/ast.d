@@ -902,7 +902,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
     else
     {
-        assert (false, "unhandled statement type");
+        assert (false, "unhandled statement type:\n" ~ stmt.toString());
     }
 }
 

@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -255,6 +255,15 @@ void op_set_undef(Interp interp, IRInstr instr)
     interp.setSlot(
         instr.outSlot,
         UNDEF,
+        Type.CONST
+    );
+}
+
+void op_set_missing(Interp interp, IRInstr instr)
+{
+    interp.setSlot(
+        instr.outSlot,
+        MISSING,
         Type.CONST
     );
 }
@@ -1150,11 +1159,6 @@ void op_get_global(Interp interp, IRInstr instr)
         // Cache the property index
         instr.args[1].intVal = propIdx;
     }
-    else
-    {
-        // TODO: remove, throw error when getProp fails to find
-        writefln("global prop unresolved %s", nameStr);
-    }
 
     // Lookup the property
     ValuePair val = getProp(
@@ -1162,6 +1166,17 @@ void op_get_global(Interp interp, IRInstr instr)
         interp.globalObj,
         propStr.ptr
     );
+
+    // If the property is not defined
+    if (val.type == Type.CONST && val.word == MISSING)
+    {
+        return throwError(
+            interp,
+            instr, 
+            "ReferenceError", "global property \"" ~ 
+            to!string(nameStr) ~ "\" is not defined"
+        );
+    }
 
     interp.setSlot(
         instr.outSlot,

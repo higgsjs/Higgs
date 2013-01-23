@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -553,9 +553,10 @@ Opcode SET_INT = { "set_int"   , true, [OpArg.INT], &op_set_int };
 Opcode SET_FLOAT = { "set_float" , true, [OpArg.FLOAT], &op_set_float };
 Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.LINK], &op_set_str };
 Opcode SET_TRUE = { "set_true"  , true, [], &op_set_true };
-Opcode SET_FALSE= { "set_false" , true, [], &op_set_false };
+Opcode SET_FALSE = { "set_false" , true, [], &op_set_false };
 Opcode SET_NULL = { "set_null"  , true, [], &op_set_null };
 Opcode SET_UNDEF = { "set_undef" , true, [], &op_set_undef };
+Opcode SET_MISSING = { "set_missing" , true, [], &op_set_missing };
 
 // Word/type manipulation primitives
 Opcode SET_VALUE = { "set_value", true, [OpArg.LOCAL, OpArg.LOCAL], &op_set_value };
@@ -773,6 +774,7 @@ static this()
     }
 
     addOp(SET_UNDEF);
+    addOp(SET_MISSING);
 
     addOp(SET_VALUE);
     addOp(GET_WORD);

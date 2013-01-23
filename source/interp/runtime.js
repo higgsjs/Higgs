@@ -1225,25 +1225,30 @@ function $rt_getPropObj(obj, propStr)
     // Find the index for this property
     var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr);
 
-    // If the property was not found
-    if ($ir_is_const(propIdx))
+    // If the property was found
+    if ($ir_is_int(propIdx))
     {
-        var proto = $rt_obj_get_proto(obj);
+        var word = $rt_obj_get_word(obj, propIdx);
+        var type = $rt_obj_get_type(obj, propIdx);
+        var val = $ir_set_value(word, type);
 
-        // If the prototype is null, produce undefined
-        if ($ir_eq_refptr(proto, null))
-            return $ir_set_undef();
-
-        // Do a recursive lookup on the prototype
-        return $rt_getPropObj(
-            proto,
-            propStr
-        );
+        // If the value is not missing, return it
+        if (val !== $ir_set_missing())
+            return val;
     }
 
-    var word = $rt_obj_get_word(obj, propIdx);
-    var type = $rt_obj_get_type(obj, propIdx);
-    return $ir_set_value(word, type);
+    // Get the object's prototype
+    var proto = $rt_obj_get_proto(obj);
+
+    // If the prototype is null, produce undefined
+    if ($ir_eq_refptr(proto, null))
+        return $ir_set_undef();
+
+    // Do a recursive lookup on the prototype
+    return $rt_getPropObj(
+        proto,
+        propStr
+    );
 }
 
 /**
@@ -1650,9 +1655,19 @@ function $rt_hasOwnProp(base, prop)
         {
             // If the property is a string
             if ($rt_isString(prop))
-                return $rt_getPropIdx($rt_obj_get_class(base), prop) !== false;
+            {
+                var propIdx = $rt_getPropIdx($rt_obj_get_class(base), prop);
+                if (propIdx === false)
+                    return false;
 
-            return $rt_getPropObj(base, $rt_toString(prop));
+                // Check that the property is not missing
+                var word = $rt_obj_get_word(base, propIdx);
+                var type = $rt_obj_get_type(base, propIdx);
+                var val = $ir_set_value(word, type);
+                return (val !== $ir_set_missing());
+            }
+
+            return $rt_hasPropObj(base, $rt_toString(prop));
         }
 
         // If the base is an array
@@ -1669,9 +1684,19 @@ function $rt_hasOwnProp(base, prop)
 
             // If the property is a string
             if ($rt_isString(prop))
-                return $rt_getPropIdx($rt_obj_get_class(base), prop) !== false;
+            {
+                var propIdx = $rt_getPropIdx($rt_obj_get_class(base), prop);
+                if (propIdx === false)
+                    return false;
 
-            return $rt_getPropObj(base, $rt_toString(prop));
+                // Check that the property is not missing
+                var word = $rt_obj_get_word(base, propIdx);
+                var type = $rt_obj_get_type(base, propIdx);
+                var val = $ir_set_value(word, type);
+                return (val !== $ir_set_missing());
+            }
+
+            return $rt_hasPropObj(base, $rt_toString(prop));
         }
     }
 

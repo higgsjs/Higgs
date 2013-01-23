@@ -356,7 +356,7 @@ refptr obj_alloc(Interp interp, uint32 cap)
     obj_set_header(o, 2);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        obj_set_word(o, i, UNDEF.intVal);
+        obj_set_word(o, i, MISSING.intVal);
     }
     for (uint32 i = 0; i < cap; ++i)
     {    
@@ -563,7 +563,7 @@ refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
     clos_set_header(o, 3);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        clos_set_word(o, i, UNDEF.intVal);
+        clos_set_word(o, i, MISSING.intVal);
     }
     for (uint32 i = 0; i < cap; ++i)
     {    
@@ -838,7 +838,7 @@ refptr arr_alloc(Interp interp, uint32 cap)
     arr_set_header(o, 5);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        arr_set_word(o, i, UNDEF.intVal);
+        arr_set_word(o, i, MISSING.intVal);
     }
     for (uint32 i = 0; i < cap; ++i)
     {    

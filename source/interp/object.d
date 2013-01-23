@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -186,29 +186,30 @@ ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
             break;
     }
 
-    // If the property was not found
-    if (propIdx == numProps)
+    // If the property index was found
+    if (propIdx != numProps)
     {
-        auto protoPtr = obj_get_proto(objPtr);
+        auto pWord = Word.uintv(obj_get_word(objPtr, propIdx));
+        auto pType = cast(Type)obj_get_type(objPtr, propIdx);
 
-        // If the prototype is null, produce undefined
-        if (protoPtr is null)
-            return ValuePair(UNDEF, Type.CONST);
-
-        // Do a recursive lookup on the prototype
-        return getProp(
-            interp,
-            protoPtr,
-            propStr
-        );
+        // If the property is not the "missing" value, return it directly
+        if (pType != Type.CONST || pWord != MISSING)
+            return ValuePair(pWord, pType);
     }
 
-    //writefln("prop idx: %s", propIdx);
+    // Get the prototype pointer
+    auto protoPtr = obj_get_proto(objPtr);
 
-    auto pWord = obj_get_word(objPtr, propIdx);
-    auto pType = cast(Type)obj_get_type(objPtr, propIdx);
+    // If the prototype is null, produce the missing constant
+    if (protoPtr is null)
+        return ValuePair(MISSING, Type.CONST);
 
-    return ValuePair(Word.intv(pWord), pType);
+    // Do a recursive lookup on the prototype
+    return getProp(
+        interp,
+        protoPtr,
+        propStr
+    );
 }
 
 void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
