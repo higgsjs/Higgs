@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -274,6 +274,113 @@ function $rt_intToStr(intVal, radix)
 }
 
 /**
+Compute the integer value of a string
+*/
+function $rt_strToInt(strVal)
+{
+    assert (
+        typeof strVal === 'string',
+        'expected string value in strToInt'
+    );
+
+    // TODO: add radix support
+
+    // TODO: add floating-point support
+
+    var strLen = $rt_str_get_len(strVal);
+
+    var intVal = 0;
+
+    var neg = false;
+
+    var state = 'PREWS';
+
+    // For each string character
+    for (var i = 0; i < strLen;)
+    {
+        var ch = $rt_str_get_data(strVal, i);
+
+        switch (state)
+        {
+            case 'PREWS':
+            {
+                // space or tab
+                if (ch === 32 || ch === 9)
+                {
+                    ++i;
+                }
+
+                // + or -
+                else if (ch === 43 || ch === 45)
+                {
+                    state = 'SIGN';
+                }
+
+                // Any other character
+                else
+                {
+                    state = 'DIGITS';
+                }
+            }
+            break;
+
+            case 'SIGN':
+            {
+                // Plus sign
+                if (ch === 43)
+                {
+                    ++i;
+                }
+
+                // Minus sign
+                else if (ch === 45)
+                {
+                    neg = true;
+                    ++i;
+                }
+
+                state = 'DIGITS';
+            }
+            break;
+
+            case 'DIGITS':
+            {
+                if (ch < 48 || ch > 57)
+                {
+                    state = 'POSTWS';
+                    continue;
+                }
+
+                var digit = ch - 48;
+
+                intVal = 10 * intVal + digit;
+
+                ++i;
+            }
+            break;
+
+            case 'POSTWS':
+            {
+                // If this is not a space or tab
+                if (ch !== 32 && ch !== 9)
+                {
+                    // Invalid number
+                    return NaN;
+                }
+
+                ++i;
+            }
+            break;
+        }
+    }
+
+    if (neg)
+        intVal *= -1;
+
+    return intVal;
+}
+
+/**
 Get the string representation of a value
 */
 function $rt_toString(v)
@@ -374,7 +481,7 @@ function $rt_toNumber(v)
         var type = $rt_obj_get_header(v);
 
         if ($ir_eq_i8(type, $rt_LAYOUT_STR))
-            throw Error("string->number unimplemented");
+            return $rt_strToInt(v);
 
         if ($rt_valIsObj(v))
             return $rt_toNumber($rt_toString(v));
