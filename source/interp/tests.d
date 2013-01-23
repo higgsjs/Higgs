@@ -996,6 +996,12 @@ unittest
     interp.load("programs/nqueens/nqueens.js");
     interp.assertInt("test();", 0);
 
+    interp.load("programs/merge_sort/merge_sort.js");
+    interp.assertInt("test();", 0);
+
+    interp.load("programs/matrix_comp/matrix_comp.js");
+    interp.assertInt("test();", 10);
+
     // Closures
     interp.load("programs/clos_capt/clos_capt.js");
     interp.assertInt("foo(5);", 8);
@@ -1030,10 +1036,16 @@ unittest
     interp.assertStr("str;", "abc");
 
     // Standard library
+    interp.load("programs/stdlib_math/stdlib_math.js");
+    interp.assertInt("test();", 0);
     interp.load("programs/stdlib_boolean/stdlib_boolean.js");
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_number/stdlib_number.js");
     interp.assertInt("test();", 0);
+    // object
+    // array
+    // function
+    // string
 }
 
 /// Garbage collector tests
