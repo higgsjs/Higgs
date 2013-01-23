@@ -344,6 +344,19 @@ void gcCollect(Interp interp, size_t heapSize = 0)
 
     //writefln("old live funs count: %s", interp.funRefs.length);
 
+    // Transitively find live function references inside functions
+    foreach (ptr, fun; interp.liveFuns)
+        for (IRBlock block = fun.firstBlock; block !is null; block = block.next)
+            for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
+                foreach (argIdx, arg; instr.args)
+                    if (instr.opcode.getArgType(argIdx) == OpArg.FUN)
+                        interp.liveFuns[cast(void*)arg.fun] = arg.fun;
+
+    // Collect the dead functions
+    foreach (ptr, fun; interp.funRefs)
+        if (ptr !in interp.liveFuns)
+            collectFun(interp, fun);
+
     // Swap the function reference maps
     interp.funRefs = interp.liveFuns;
     interp.liveFuns.clear();
@@ -594,6 +607,35 @@ void visitStackRoots(Interp interp)
                 interp.toLimit
             )
         );
+    }
+}
+
+/**
+Collect resources held by a dead function
+*/
+void collectFun(Interp interp, IRFunction fun)
+{
+    //writefln("freeing dead function: \"%s\"", fun.name);
+
+    // For each basic block
+    for (IRBlock block = fun.firstBlock; block !is null; block = block.next)
+    {
+        // For each instruction
+        for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+            // For each instruction argument
+            foreach (argIdx, arg; instr.args)
+            {
+                auto argType = instr.opcode.getArgType(argIdx);
+
+                // If this is a link table entry, free it
+                if (argType == OpArg.LINK && arg.linkIdx != NULL_LINK)
+                {
+                    //writefln("freeing link table entry %s", arg.linkIdx);
+                    interp.freeLink(arg.linkIdx);
+                }
+            }
+        }
     }
 }
 
