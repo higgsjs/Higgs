@@ -1,6 +1,6 @@
 function bar(o1, o2)
 {
-    gcCollect();
+    $ir_gc_collect(0);
 
     return o1.v + o2.v;
 }

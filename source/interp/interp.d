@@ -481,15 +481,11 @@ class Interp
             GLOBAL_OBJ_INIT_SIZE
         );
 
-        //gcCollect(this);
-
         // Load the layout code
         load("interp/layout.js");
 
         // Load the runtime library
         load("interp/runtime.js");
-
-        //gcCollect(this);
 
         // If the standard library should be loaded
         if (loadStdLib)

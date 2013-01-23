@@ -673,13 +673,17 @@ Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL], &op_jump_false, false,
 // Pushes the return address word
 Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, true, true };
 
-// <dstLocal> = NEW <closLocal> ...
+// <dstLocal> = CALL_NEW <closLocal> ...
 // Implements the JavaScript new operator.
 // Creates the this object
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
 Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, true, true };
+
+// <dstLocal> = CALL_APPLY <closArg> <thisArg> <argTable> <numArgs>
+// Call with an array of arguments
+Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_call_apply, false, true };
 
 // RET <retLocal>
 // Pops the callee frame (size known by context)
@@ -865,6 +869,8 @@ static this()
 
     addOp(JUMP_TRUE, "if_false");
     addOp(JUMP_FALSE, "if_true");
+
+    addOp(CALL_APPLY);
 
     addOp(GET_ARG);
 

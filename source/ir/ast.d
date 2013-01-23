@@ -806,7 +806,10 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     else if (auto retStmt = cast(ReturnStmt)stmt)
     {
         auto subCtx = ctx.subCtx(true);
-        exprToIR(retStmt.expr, subCtx);
+        if (retStmt.expr is null)
+            subCtx.addInstr(new IRInstr(&SET_UNDEF, subCtx.getOutSlot()));
+        else
+            exprToIR(retStmt.expr, subCtx);
         ctx.merge(subCtx);
 
         // Get the englobing finally statements

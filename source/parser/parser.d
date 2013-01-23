@@ -373,7 +373,7 @@ ASTStmt parseStmt(TokenStream input)
     else if (input.matchKw("return"))
     {
         if (input.matchSep(";"))
-            return new ReturnStmt(new NullExpr(), pos);
+            return new ReturnStmt(null, pos);
 
         ASTExpr expr = parseExpr(input);
         readSemiAuto(input);

@@ -352,7 +352,8 @@ void resolveRefs(ASTStmt stmt, Scope s)
 
     else if (auto retStmt = cast(ReturnStmt)stmt)
     {
-        resolveRefs(retStmt.expr, s);
+        if (retStmt.expr !is null)
+            resolveRefs(retStmt.expr, s);
     }
 
     else if (auto throwStmt = cast(ThrowStmt)stmt)

@@ -871,6 +871,92 @@ void op_call_new(Interp interp, IRInstr instr)
     );
 }
 
+void op_call_apply(Interp interp, IRInstr instr)
+{
+    auto closIdx = instr.args[0].localIdx;
+    auto thisIdx = instr.args[1].localIdx;
+    auto tblIdx  = instr.args[2].localIdx;
+    auto argcIdx = instr.args[3].localIdx;
+
+    auto wClos = interp.getWord(closIdx);
+    auto tClos = interp.getType(closIdx);
+
+    auto wThis = interp.getWord(thisIdx);
+    auto tThis = interp.getType(thisIdx);
+
+    auto wTbl = interp.getWord(tblIdx);
+    auto tTbl = interp.getType(tblIdx);
+
+    auto wArgc = interp.getWord(argcIdx);
+    auto tArgc = interp.getType(argcIdx);
+
+    if (tClos != Type.REFPTR || !valIsLayout(wClos, LAYOUT_CLOS))
+        return throwError(interp, instr, "TypeError", "call to non-function");
+
+    if (tTbl != Type.REFPTR || !valIsLayout(wTbl, LAYOUT_ARRTBL))
+        return throwError(interp, instr, "TypeError", "invalid argument table");
+
+    if (tArgc != Type.INT)
+        return throwError(interp, instr, "TypeError", "invalid argument count type");
+
+    // Get the array table
+    auto argTbl = wTbl.ptrVal;
+
+    // Get the argument count
+    auto argc = wArgc.uintVal;
+
+    // Get the function object from the closure
+    auto closPtr = interp.getWord(closIdx).ptrVal;
+    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
+
+    assert (
+        fun !is null, 
+        "null IRFunction pointer"
+    );
+
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+        astToIR(fun.ast, fun);
+
+    // Compute the number of missing arguments
+    size_t argDiff = (fun.params.length > argc)? (fun.params.length - argc):0;
+
+    // Push undefined values for the missing last arguments
+    for (size_t i = 0; i < argDiff; ++i)
+        interp.push(UNDEF, Type.CONST);
+
+    // Push the visible function arguments in reverse order
+    for (uint32 i = 0; i < argc; ++i)
+    {
+        uint32 argIdx = cast(uint32)argc - (1+i);
+        auto wArg = Word.uintv(arrtbl_get_word(argTbl, argIdx));
+        auto tArg = cast(Type)arrtbl_get_type(argTbl, argIdx);
+        interp.push(wArg, tArg);
+    }
+
+    // Push the argument count
+    interp.push(Word.intv(argc), Type.INT);
+
+    // Push the "this" argument
+    interp.push(wThis, tThis);
+
+    // Push the closure argument
+    interp.push(Word.ptrv(closPtr), Type.REFPTR);
+
+    // Push the return address (caller instruction)
+    auto retAddr = cast(rawptr)instr;
+    interp.push(Word.ptrv(retAddr), Type.INSPTR);
+
+    // Push space for the callee locals and initialize the slots to undefined
+    auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length;
+    interp.push(numLocals);
+    for (size_t i = 0; i < numLocals; ++i)
+        interp.setSlot(i, UNDEF, Type.CONST);
+
+    // Set the instruction pointer
+    interp.ip = fun.entryBlock.firstInstr;
+}
+
 void op_ret(Interp interp, IRInstr instr)
 {
     //writefln("ret from %s", instr.fun.name);

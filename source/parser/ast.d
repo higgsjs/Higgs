@@ -516,7 +516,10 @@ class ReturnStmt : ASTStmt
 
     string toString()
     {
-        return format("return %s;", expr);
+        if (this.expr is null)
+            return "return;";
+        else
+            return format("return %s;", expr);
     }
 }
 

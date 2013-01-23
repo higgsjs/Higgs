@@ -95,11 +95,23 @@ function println(val)
 }
 
 /**
-Test if a value is of a given layout
+Test if a reference is of a given layout
 */
 function $rt_refIsLayout(val, layoutId)
 {
     return (
+        $ir_ne_refptr(val, null) && 
+        $ir_eq_i8($rt_obj_get_header(val), layoutId)
+    );
+}
+
+/**
+Test if a value is of a given layout
+*/
+function $rt_valIsLayout(val, layoutId)
+{
+    return (
+        $ir_is_refptr(val) &&
         $ir_ne_refptr(val, null) && 
         $ir_eq_i8($rt_obj_get_header(val), layoutId)
     );
@@ -1611,7 +1623,7 @@ Implementation of the "instanceof" operator
 */
 function $rt_instanceof(obj, ctor)
 { 
-    if (!$ir_is_refptr(ctor) || !$rt_refIsLayout(ctor, $rt_LAYOUT_CLOS))
+    if (!$rt_valIsLayout(ctor, $rt_LAYOUT_CLOS))
         throw TypeError('constructor must be function');
 
     // If the value is not an object

@@ -1038,6 +1038,10 @@ unittest
     interp.load("programs/clos_xcall/clos_xcall.js");
     interp.assertInt("test(5);", 5);
 
+    // Call with apply
+    interp.load("programs/apply/apply.js");
+    interp.assertInt("test();", 0);
+
     // Exceptions
     interp.load("programs/exceptions/throw_intra.js");
     interp.assertStr("str;", "abc");
@@ -1111,6 +1115,10 @@ unittest
   
     interp = new Interp();
     interp.load("programs/gc/deepstack.js");
+    interp.assertInt("test();", 0);
+
+    interp = new Interp();
+    interp.load("programs/gc/apply.js");
     interp.assertInt("test();", 0);
 
     interp = new Interp();
