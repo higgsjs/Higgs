@@ -1042,6 +1042,10 @@ unittest
     interp.load("programs/apply/apply.js");
     interp.assertInt("test();", 0);
 
+    // Arguments object
+    interp.load("programs/arg_obj/arg_obj.js");
+    interp.assertInt("test();", 0);
+
     // Exceptions
     interp.load("programs/exceptions/throw_intra.js");
     interp.assertStr("str;", "abc");
@@ -1072,9 +1076,10 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_number/stdlib_number.js");
     interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_function/stdlib_function.js");
+    interp.assertInt("test();", 0);
     // object
     // array
-    // function
     // string
 }
 
@@ -1119,6 +1124,10 @@ unittest
 
     interp = new Interp();
     interp.load("programs/gc/apply.js");
+    interp.assertInt("test();", 0);
+
+    interp = new Interp();
+    interp.load("programs/gc/arguments.js");
     interp.assertInt("test();", 0);
 
     interp = new Interp();

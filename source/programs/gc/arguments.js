@@ -2,6 +2,8 @@ function foo()
 {
     var s = 0;
 
+    $ir_gc_collect(0);
+
     for (var i = 0; i < arguments.length; ++i)
          s += arguments[i].v;
 

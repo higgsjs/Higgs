@@ -664,6 +664,12 @@ class FunExpr : ASTExpr
     /// List of nested function declarations
     FunExpr[] funDecls;
 
+    /// Identifier associated with the arguments object
+    IdentExpr argObjIdent;
+
+    /// Flag indicating the arguments object is used
+    bool usesArguments = false;
+
     this(IdentExpr name, IdentExpr[] params, ASTStmt bodyStmt, SrcPos pos = null)
     {
         super(pos);

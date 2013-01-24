@@ -371,6 +371,68 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
        }
     }
 
+    // If the function uses the arguments object
+    if (ast.usesArguments)
+    {
+        auto argObjSlot = bodyCtx.allocTemp();
+        fun.localMap[ast.argObjIdent] = argObjSlot;
+
+        auto subCtx = bodyCtx.subCtx(false);
+
+        // Create the "arguments" array
+        auto linkInstr = subCtx.addInstr(IRInstr.makeLink(subCtx.allocTemp()));
+        auto protoInstr = subCtx.addInstr(new IRInstr(&GET_ARR_PROTO, subCtx.allocTemp()));
+        auto arrInstr = genRtCall(
+            subCtx, 
+            "newArr",
+            argObjSlot,
+            [linkInstr.outSlot, protoInstr.outSlot, fun.argcSlot]
+        );
+        
+        // Set the "callee" property
+        auto calleeStr = subCtx.addInstr(IRInstr.strCst(subCtx.allocTemp(), "callee"));
+        auto setInstr = genRtCall(
+            subCtx, 
+            "setProp",
+            NULL_LOCAL,
+            [argObjSlot, calleeStr.outSlot, fun.closSlot]
+        );
+
+        // Allocate and initialize the loop counter variable
+        auto idxSlot = subCtx.allocTemp();
+        subCtx.addInstr(IRInstr.intCst(idxSlot, 0));
+
+        auto testBlock = fun.newBlock("arg_test");
+        auto loopBlock = fun.newBlock("arg_loop");
+        auto exitBlock = fun.newBlock("arg_exit");
+        auto testCtx = subCtx.subCtx(false, NULL_LOCAL, testBlock);
+        auto loopCtx = subCtx.subCtx(false, NULL_LOCAL, loopBlock);
+        
+        // Jump to the test block
+        subCtx.addInstr(IRInstr.jump(testBlock));
+
+        // Branch based on the index
+        auto cmpInstr = testCtx.addInstr(new IRInstr(&LT_I32, testCtx.allocTemp(), idxSlot, fun.argcSlot));
+        testCtx.addInstr(new IRInstr(&JUMP_TRUE, cmpInstr.outSlot, loopBlock));
+        testCtx.addInstr(IRInstr.jump(exitBlock));
+
+        // Copy an argument into the array
+        auto getInstr = loopCtx.addInstr(new IRInstr(&GET_ARG, loopCtx.allocTemp(), idxSlot));
+        genRtCall(
+            loopCtx, 
+            "setArrElem",
+            NULL_LOCAL,
+            [arrInstr.outSlot, idxSlot, getInstr.outSlot]
+        );
+
+        // Increment the loop index and jump to the test block
+        auto oneCst = loopCtx.addInstr(IRInstr.intCst(loopCtx.allocTemp(), 1));
+        loopCtx.addInstr(new IRInstr(&ADD_I32, idxSlot, idxSlot, oneCst.outSlot));
+        loopCtx.addInstr(IRInstr.jump(testBlock));
+
+        bodyCtx.merge(exitBlock);
+    }
+
     // Get the cell pointers for captured closure variables
     foreach (idx, ident; ast.captVars)
     {
@@ -476,7 +538,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     /// Function to translate (reverse) local indices
     void translLocal(ref LocalIdx localIdx)
     {
-        localIdx = fun.numLocals - 1 - localIdx;
+        if (localIdx !is NULL_LOCAL)
+            localIdx = fun.numLocals - 1 - localIdx;
     }
 
     // Translate the hidden argument slots
@@ -1572,16 +1635,9 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
-        auto linkInstr = ctx.addInstr(new IRInstr(&MAKE_LINK));
-        linkInstr.outSlot = ctx.allocTemp();
-        linkInstr.args.length = 1;
-        linkInstr.args[0].linkIdx = NULL_LINK;
-        auto protoInstr = ctx.addInstr(new IRInstr(&GET_ARR_PROTO));
-        protoInstr.outSlot = ctx.allocTemp();
-        auto numInstr = ctx.addInstr(IRInstr.intCst(
-            ctx.allocTemp(),
-            arrayExpr.exprs.length
-        ));
+        auto linkInstr = ctx.addInstr(IRInstr.makeLink(ctx.allocTemp()));
+        auto protoInstr = ctx.addInstr(new IRInstr(&GET_ARR_PROTO, ctx.allocTemp()));
+        auto numInstr = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), arrayExpr.exprs.length));
         auto arrInstr = genRtCall(
             ctx, 
             "newArr",
@@ -1619,12 +1675,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
     else if (auto objExpr = cast(ObjectExpr)expr)
     {
         // Create the object
-        auto linkInstr = ctx.addInstr(new IRInstr(&MAKE_LINK));
-        linkInstr.outSlot = ctx.allocTemp();
-        linkInstr.args.length = 1;
-        linkInstr.args[0].linkIdx = NULL_LINK;
-        auto protoInstr = ctx.addInstr(new IRInstr(&GET_OBJ_PROTO));
-        protoInstr.outSlot = ctx.allocTemp();
+        auto linkInstr = ctx.addInstr(IRInstr.makeLink(ctx.allocTemp()));
+        auto protoInstr = ctx.addInstr(new IRInstr(&GET_OBJ_PROTO, ctx.allocTemp()));
         auto objInstr = genRtCall(
             ctx, 
             "newObj",

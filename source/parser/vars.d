@@ -38,6 +38,7 @@
 module parser.vars;
 
 import std.stdio;
+import std.algorithm;
 import parser.ast;
 
 /**
@@ -153,6 +154,13 @@ void resolveVars(FunExpr fun, Scope parentSc = null)
     // Add the parameter declarations to the scope
     foreach (ident; fun.params)
         s.addDecl(ident);
+
+    // If there is no parameter named "arguments"
+    if ("arguments"w !in s.decls)
+    {
+        fun.argObjIdent = new IdentExpr("arguments"w);
+        s.addDecl(fun.argObjIdent);
+    }
 
     // Find all declarations in the function body
     findDecls(fun.bodyStmt, s);
@@ -464,6 +472,11 @@ void resolveRefs(ASTExpr expr, Scope s)
     {
         // Resolve this variable reference
         s.resolve(identExpr);
+
+        // If this may be a reference to the "arguments object,
+        // mark the function as possibly using arguments
+        if (identExpr.declNode is s.fun.argObjIdent)
+            s.fun.usesArguments = true;
 
         //writefln("resolved ref: %s => %s", identExpr, identExpr.declNode);
     }

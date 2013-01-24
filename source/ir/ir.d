@@ -263,7 +263,7 @@ class IRBlock : IdObject
         return output.data;
     }
 
-    void addInstr(IRInstr instr)
+    IRInstr addInstr(IRInstr instr)
     {
         if (this.lastInstr)
         {
@@ -279,6 +279,8 @@ class IRBlock : IdObject
             firstInstr = instr;
             lastInstr = instr;
         }
+
+        return instr;
     }
 
     void remInstr(IRInstr instr)
@@ -451,15 +453,24 @@ class IRInstr : IdObject
     {
         auto jump = new this(&JUMP);
         jump.target = block;
-
         return jump;
+
+    }
+    /// Make link instruction
+    static makeLink(LocalIdx outSlot)
+    {
+        auto instr = new this(&MAKE_LINK);
+        instr.outSlot = outSlot;
+        instr.args.length = 1;
+        instr.args[0].linkIdx = NULL_LINK;
+        return instr;
     }
 
     final string toString()
     {
         string output;
 
-        if (opcode.output)
+        if (outSlot !is NULL_LOCAL)
             output ~= "$" ~ to!string(outSlot) ~ " = ";
 
         output ~= opcode.mnem;
