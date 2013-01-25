@@ -140,7 +140,7 @@ refptr heapAlloc(Interp interp, size_t size)
         writefln("to-start: %s", interp.toLimit);
         */
 
-        //writefln("gc on alloc of size %s", size);
+        writefln("gc on alloc of size %s", size);
 
         // Perform garbage collection
         gcCollect(interp);

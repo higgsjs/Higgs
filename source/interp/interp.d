@@ -273,11 +273,11 @@ immutable size_t HEAP_INIT_SIZE = 2^^24;
 /// Initial link table size
 immutable size_t LINK_TBL_INIT_SIZE = 8192;
 
+/// Initial global class size
+immutable size_t GLOBAL_CLASS_INIT_SIZE = 1024;
+
 /// Initial global object size
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
-
-/// Initial object class size
-immutable size_t CLASS_INIT_SIZE = 64;
 
 /**
 Interpreter
@@ -477,7 +477,7 @@ class Interp
             this, 
             null, 
             objProto,
-            GLOBAL_OBJ_INIT_SIZE,
+            GLOBAL_CLASS_INIT_SIZE,
             GLOBAL_OBJ_INIT_SIZE
         );
 
@@ -517,7 +517,7 @@ class Interp
             t != Type.REFPTR ||
             w.ptrVal == null ||
             (w.ptrVal >= heapStart && w.ptrVal < heapLimit),
-            "invalid ref ptr"
+            "ref ptr out of heap"
         );
 
         wsp[idx] = w;

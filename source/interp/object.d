@@ -45,6 +45,13 @@ import interp.interp;
 import interp.layout;
 import interp.gc;
 
+/// Initial object class size
+immutable size_t CLASS_INIT_SIZE = 128;
+
+/// Maximum class hash table load
+immutable uint32 CLASS_MAX_LOAD_NUM = 3;
+immutable uint32 CLASS_MAX_LOAD_DENOM = 5;
+
 /// Expression evaluation delegate function
 alias refptr delegate(
     Interp interp,
@@ -143,23 +150,72 @@ refptr newClos(
 }
 
 /**
-Get the property index for a given property name string
+Find or allocate the property index for a given property name string
 */
-uint32 getPropIdx(refptr classPtr, refptr propStr)
+uint32 getPropIdx(refptr classPtr, refptr propStr, bool alloc)
 {
+    // Get the size of the property table
+    auto tblSize = class_get_cap(classPtr);
+
+    // Get the hash code from the property string
+    auto hashCode = str_get_hash(propStr);
+
+    // Get the hash table index for this hash value
+    auto hashIndex = hashCode % tblSize;
+
+    // Until the key is found, or a free slot is encountered
+    while (true)
+    {
+        // Get the string value at this hash slot
+        auto strVal = class_get_prop_name(classPtr, hashIndex);
+
+        // If this is the string we want
+        if (strVal == propStr)
+        {
+            // Return the associated property index
+            return class_get_prop_idx(classPtr, hashIndex);
+        }
+
+        // If we have reached an empty slot
+        else if (strVal == null)
+        {
+            // Property not found
+            break;
+        }
+
+        // Move to the next hash table slot
+        hashIndex = (hashIndex + 1) % tblSize;
+    }
+
+    // If we are not to allocate new property indices, stop
+    if (alloc == false)
+        return uint32.max;
+
     // Get the number of class properties
     auto numProps = class_get_num_props(classPtr);
 
-    // Look for the property in the global class
-    for (uint32 propIdx = 0; propIdx < numProps; ++propIdx)
+    // Set the property name and index
+    auto propIdx = numProps;
+    class_set_prop_name(classPtr, hashIndex, propStr);
+    class_set_prop_idx(classPtr, hashIndex, propIdx);
+
+    // Update the number of class properties
+    numProps++;
+    class_set_num_props(classPtr, numProps);
+
+    // Test if resizing of the property table is needed
+    // numProps > ratio * tblSize
+    // numProps > num/denom * tblSize
+    // numProps * denom > tblSize * num
+    if (numProps * CLASS_MAX_LOAD_DENOM >
+        tblSize  * CLASS_MAX_LOAD_NUM)
     {
-        auto nameStr = class_get_prop_name(classPtr, propIdx);
-        if (propStr == nameStr)
-            return propIdx;
+        // Extend the property table
+        // TODO
+        assert (false, xformat("class capacity exceeded: %s/%s", numProps, tblSize));
     }
 
-    // Property not found
-    return uint32.max;
+    return propIdx;
 }
 
 ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
@@ -173,21 +229,14 @@ ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
          objPtr = nextPtr;
     }
 
-    // Get the number of class properties
+    // Get the class from the object
     auto classPtr = obj_get_class(objPtr);
-    auto numProps = class_get_num_props(classPtr);
 
-    // Look for the property in the class
-    uint32 propIdx;
-    for (propIdx = 0; propIdx < numProps; ++propIdx)
-    {
-        auto nameStr = class_get_prop_name(classPtr, propIdx);
-        if (propStr == nameStr)
-            break;
-    }
+    // Lookup the property index in the class
+    auto propIdx = getPropIdx(classPtr, propStr, false);
 
     // If the property index was found
-    if (propIdx != numProps)
+    if (propIdx != uint32.max)
     {
         auto pWord = Word.uintv(obj_get_word(objPtr, propIdx));
         auto pType = cast(Type)obj_get_type(objPtr, propIdx);
@@ -227,34 +276,11 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
          obj = nextPtr;
     }
 
-    // Get the number of class properties
-    auto classPtr = obj_get_class(obj.ptr);
-    auto numProps = class_get_num_props(classPtr);
+    // Get the class from the object
+    auto classPtr = obj_get_class(objPtr);
 
-    // Look for the property in the class
-    uint32 propIdx;
-    for (propIdx = 0; propIdx < numProps; ++propIdx)
-    {
-        auto nameStr = class_get_prop_name(classPtr, propIdx);
-        if (prop.ptr == nameStr)
-            break;
-    }
-
-    // If this is a new property
-    if (propIdx == numProps)
-    {
-        //writefln("new property");
-
-        // TODO: implement class extension
-        auto classCap = class_get_cap(classPtr);
-        assert (propIdx < classCap, "class capacity exceeded");
-
-        // Set the property name
-        class_set_prop_name(classPtr, propIdx, prop.ptr);
-
-        // Increment the number of properties in this class
-        class_set_num_props(classPtr, numProps + 1);
-    }
+    // Find/allocate the property index in the class
+    auto propIdx = getPropIdx(classPtr, propStr, true);
 
     //writefln("prop idx: %s", propIdx);
     //writefln("intval: %s", wVal.intVal);

@@ -41,6 +41,7 @@ import std.stdio;
 import std.string;
 import interp.interp;
 import interp.layout;
+import interp.gc;
 
 immutable uint32 STR_TBL_INIT_SIZE = 997;
 immutable uint32 STR_TBL_MAX_LOAD_NUM = 3;
@@ -146,8 +147,14 @@ refptr getTableStr(Interp interp, refptr str)
     if (numStrings * STR_TBL_MAX_LOAD_DENOM >
         tblSize * STR_TBL_MAX_LOAD_NUM)
     {
+        // Store the string pointer in a GC root object
+        auto strRoot = GCRoot(interp, str);
+
         // Extend the string table
         extStrTable(interp, strTbl, tblSize, numStrings);
+
+        // Restore the string pointer
+        str = strRoot.ptr;
     }
 
     // Return a reference to the string object passed as argument
@@ -159,10 +166,10 @@ Extend the string table's capacity
 */
 void extStrTable(Interp interp, refptr curTbl, uint32 curSize, uint32 numStrings)
 {
-    writeln("extending string table");
-
     // Compute the new table size
     auto newSize = curSize * 2 + 1;
+
+    writefln("extending string table, old size: %s, new size: %s", curSize, newSize);
 
     //printInt(curSize);
     //printInt(newSize);

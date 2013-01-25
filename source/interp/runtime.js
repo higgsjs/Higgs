@@ -1044,7 +1044,13 @@ function $rt_ne(x, y)
 /**
 Initial class size (number of slots)
 */
-var $rt_CLASS_INIT_SIZE = 256;
+var $rt_CLASS_INIT_SIZE = 128;
+
+/**
+Maximum class hash table load
+*/
+var $rt_CLASS_MAX_LOAD_NUM = 3;
+var $rt_CLASS_MAX_LOAD_DENOM = 5;
 
 /**
 Initial number of object properties on class allocation
@@ -1201,23 +1207,72 @@ function $rt_shrinkHeap(freeSpace)
 //=============================================================================
 
 /**
-Get the index for a given property
+Find or allocate the property index for a given property name string
 */
-function $rt_getPropIdx(classPtr, propStr)
+function $rt_getPropIdx(classPtr, propStr, alloc)
 {
+    // Get the size of the property table
+    var tblSize = $rt_class_get_cap(classPtr);
+
+    // Get the hash code from the property string
+    var hashCode = $rt_str_get_hash(propStr);
+
+    // Get the hash table index for this hash value
+    var hashIndex = $ir_mod_i32(hashCode, tblSize);
+
+    // Until the key is found, or a free slot is encountered
+    while (true)
+    {
+        // Get the string value at this hash slot
+        var strVal = $rt_class_get_prop_name(classPtr, hashIndex);
+
+        // If this is the string we want
+        if ($ir_eq_refptr(strVal, propStr))
+        {
+            // Return the associated property index
+            return $rt_class_get_prop_idx(classPtr, hashIndex);
+        }
+
+        // If we have reached an empty slot
+        else if ($ir_eq_refptr(strVal, null))
+        {
+            // Property not found
+            break;
+        }
+
+        // Move to the next hash table slot
+        hashIndex = $ir_mod_i32($ir_add_i32(hashIndex, 1), tblSize);
+    }
+
+    // If we are not to allocate new property indices, stop
+    if ($ir_if_false(alloc))
+        return false;
+
     // Get the number of class properties
     var numProps = $rt_class_get_num_props(classPtr);
 
-    // Look for the property in the class
-    for (var propIdx = 0; propIdx < numProps; ++propIdx)
+    // Set the property name and index
+    var propIdx = numProps;
+    $rt_class_set_prop_name(classPtr, hashIndex, propStr);
+    $rt_class_set_prop_idx(classPtr, hashIndex, propIdx);
+
+    // Update the number of class properties
+    numProps = $ir_add_i32(numProps, 1);
+    $rt_class_set_num_props(classPtr, numProps);
+
+    // Test if resizing of the property table is needed
+    // numProps > ratio * tblSize
+    // numProps > num/denom * tblSize
+    // numProps * denom > tblSize * num
+    if (numProps * $rt_CLASS_MAX_LOAD_DENOM >
+        tblSize  * $rt_CLASS_MAX_LOAD_NUM)
     {
-        var nameStr = $rt_class_get_prop_name(classPtr, propIdx);
-        if ($ir_eq_refptr(propStr, nameStr))
-            return propIdx;
+        // Extend the property table
+        // TODO
+        assert (false, "class capacity exceeded");
     }
 
-    // Property not found
-    return false;
+    return propIdx;
 }
 
 /**
@@ -1235,7 +1290,7 @@ function $rt_getPropObj(obj, propStr)
     }
 
     // Find the index for this property
-    var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr);
+    var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr, false);
 
     // If the property was found
     if ($ir_is_int(propIdx))
@@ -1483,26 +1538,11 @@ function $rt_setPropObj(obj, propStr, val)
         obj = next;
     }
 
-    // Find the index for this property
-    var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr);
-
+    // Get the class from the object
     var classPtr = $rt_obj_get_class(obj);
 
-    // If the property was not found
-    if ($ir_is_const(propIdx))
-    {
-        var propIdx = $rt_class_get_num_props(classPtr);
-
-        // TODO: implement class extension
-        var classCap = $rt_class_get_cap(classPtr);
-        assert (propIdx < classCap, "class capacity exceeded");
-
-        // Set the property name
-        $rt_class_set_prop_name(classPtr, propIdx, propStr);
-
-        // Increment the number of properties in this class
-        $rt_class_set_num_props(classPtr, propIdx + 1);
-    }
+    // Find the index for this property
+    var propIdx = $rt_getPropIdx(classPtr, propStr, true);
 
     // Get the capacity of the object
     var objCap = $rt_obj_get_cap(obj);
@@ -1668,7 +1708,7 @@ function $rt_hasOwnProp(base, prop)
             // If the property is a string
             if ($rt_isString(prop))
             {
-                var propIdx = $rt_getPropIdx($rt_obj_get_class(base), prop);
+                var propIdx = $rt_getPropIdx($rt_obj_get_class(base), prop, false);
                 if (propIdx === false)
                     return false;
 
@@ -1697,7 +1737,7 @@ function $rt_hasOwnProp(base, prop)
             // If the property is a string
             if ($rt_isString(prop))
             {
-                var propIdx = $rt_getPropIdx($rt_obj_get_class(base), prop);
+                var propIdx = $rt_getPropIdx($rt_obj_get_class(base), prop, false);
                 if (propIdx === false)
                     return false;
 

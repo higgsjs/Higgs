@@ -1237,7 +1237,7 @@ void op_get_global(Interp interp, IRInstr instr)
     auto propStr = GCRoot(interp, getString(interp, nameStr));
 
     // Lookup the property index in the class
-    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr.ptr);
+    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr.ptr, false);
 
     // If the property was found, cache it
     if (propIdx != uint32.max)
@@ -1307,7 +1307,7 @@ void op_set_global(Interp interp, IRInstr instr)
     );
 
     // Lookup the property index in the class
-    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr.ptr);
+    propIdx = getPropIdx(obj_get_class(interp.globalObj), propStr.ptr, false);
 
     // If the property was found, cache it
     if (propIdx != uint32.max)
