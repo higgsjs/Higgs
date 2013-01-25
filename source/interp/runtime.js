@@ -1733,6 +1733,32 @@ function $rt_instanceof(obj, ctor)
 /**
 Check if an object has a given property
 */
+function $rt_hasPropObj(obj, propStr)
+{
+    // Follow the next link chain
+    for (;;)
+    {
+        var next = $rt_obj_get_next(obj);
+        if ($ir_eq_refptr(next, null))
+            break;
+        obj = next;
+    }
+
+    var classPtr = $rt_obj_get_class(obj);
+    var propIdx = $rt_getPropIdx(classPtr, propStr, false);
+    if (propIdx === false)
+        return false;
+
+    // Check that the property is not missing
+    var word = $rt_obj_get_word(obj, propIdx);
+    var type = $rt_obj_get_type(obj, propIdx);
+    var val = $ir_set_value(word, type);
+    return (val !== $ir_set_missing());
+}
+
+/**
+Check if a value has a given property
+*/
 function $rt_hasOwnProp(base, prop)
 {
     // If the base is a reference
@@ -1746,17 +1772,7 @@ function $rt_hasOwnProp(base, prop)
         {
             // If the property is a string
             if ($rt_isString(prop))
-            {
-                var propIdx = $rt_getPropIdx($rt_obj_get_class(base), prop, false);
-                if (propIdx === false)
-                    return false;
-
-                // Check that the property is not missing
-                var word = $rt_obj_get_word(base, propIdx);
-                var type = $rt_obj_get_type(base, propIdx);
-                var val = $ir_set_value(word, type);
-                return (val !== $ir_set_missing());
-            }
+                return $rt_hasPropObj(base, prop);
 
             return $rt_hasPropObj(base, $rt_toString(prop));
         }
@@ -1775,17 +1791,7 @@ function $rt_hasOwnProp(base, prop)
 
             // If the property is a string
             if ($rt_isString(prop))
-            {
-                var propIdx = $rt_getPropIdx($rt_obj_get_class(base), prop, false);
-                if (propIdx === false)
-                    return false;
-
-                // Check that the property is not missing
-                var word = $rt_obj_get_word(base, propIdx);
-                var type = $rt_obj_get_type(base, propIdx);
-                var val = $ir_set_value(word, type);
-                return (val !== $ir_set_missing());
-            }
+                return $rt_hasPropObj(base, prop);
 
             return $rt_hasPropObj(base, $rt_toString(prop));
         }
@@ -1813,5 +1819,137 @@ function $rt_in(prop, obj)
     } while ($ir_ne_refptr(obj, null));
 
     return false;
+}
+
+/**
+Used to enumerate properties in a for-in loop
+*/
+function $rt_getPropEnum(obj)
+{ 
+    // If the value is not an object or a string
+    if ($rt_valIsObj(obj) === false && 
+        $rt_valIsLayout(obj, $rt_LAYOUT_STR) === false)
+    {
+        // Return the empty enumeration function
+        return function ()
+        {
+            return null;
+        };
+    }
+
+    var curObj = obj;
+    var curIdx = 0;
+
+    // Check if a property is currently shadowed
+    function isShadowed(propName)
+    {
+        // TODO: shadowing check function?
+        return false;
+    }
+
+    // Move to the next available property
+    function nextProp()
+    {
+        while (true)
+        {
+            // FIXME: for now, no support for non-enumerable properties
+            if (curObj === Object.prototype     || 
+                curObj === Array.prototype      || 
+                curObj === Function.prototype   ||
+                curObj === String.prototype)
+                return null;
+
+            // If we are at the end of the prototype chain, stop
+            if (curObj === null)
+                return null;
+
+            // If the current object is an object or extension
+            if ($rt_valIsObj(curObj))
+            {
+                var classPtr = $rt_obj_get_class(curObj);
+                var tblSize = $rt_class_get_cap(classPtr);
+
+                // Until the key is found, or a free slot is encountered
+                for (; curIdx < tblSize; ++curIdx)
+                {
+                    // Get the key value at this hash slot
+                    var keyVal = $rt_class_get_prop_name(classPtr, curIdx);
+
+                    // FIXME: until we have support for non-enumerable properties
+                    if (keyVal === 'length' ||
+                        keyVal === 'callee')
+                    {
+                        ++curIdx;
+                        continue;
+                    }
+
+                    // If this is a valid key, return it
+                    if (keyVal !== null && $rt_hasOwnProp(curObj, keyVal))
+                    {
+                        ++curIdx;
+                        return keyVal;
+                    }
+                }
+
+                // If the object is an array
+                if ($rt_valIsLayout(curObj, $rt_LAYOUT_ARR))
+                {
+                    var arrIdx = curIdx - tblSize;
+                    var len = curObj.length;
+
+                    if (arrIdx < len)
+                    {
+                        ++curIdx;
+                        return arrIdx;
+                    }
+                }
+
+                // Move up the prototype chain
+                curObj = $rt_obj_get_proto(curObj);
+                curIdx = 0;
+                continue;
+            }
+
+            // If the object is a string
+            else if ($rt_valIsLayout(curObj, $rt_LAYOUT_STR))
+            {
+                var len = curObj.length;
+
+                if (curIdx < len)
+                {
+                    return curIdx++;
+                }
+                else
+                {
+                    // Move up the prototype chain
+                    curObj = String.prototype;
+                    curIdx = 0;
+                    continue;
+                }
+            }
+
+            else
+            {
+                return null;
+            }
+        }
+    }
+
+    // Enumerator function, returns a new property name with
+    // each call, undefined when no more properties found
+    function enumerator()
+    {
+        while (true)
+        {
+            var propName = nextProp();
+
+            if (isShadowed(propName))
+                continue;
+
+            return propName;
+        }
+    }
+
+    return enumerator;
 }
 
