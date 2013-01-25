@@ -63,9 +63,7 @@ var MS_PER_DAY = 86400000;
 var MS_PER_HOUR = 3600000;
 var MS_PER_MINUTE = 60000;
 var MS_PER_SECOND = 1000;
-// FIXME: can't currently support this in 32-bit
-//var TIME_YEAR_2000 = 946684800000;
-var TIME_YEAR_2000 = 1337;
+var TIME_YEAR_2000 = 946684800000;
 
 var WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -516,7 +514,7 @@ function Date (
         {
             if (year === undefined)
                 // No arguments given : build the Date object with current time.
-                this.__value__ = currentTimeMillis();
+                this.__value__ = $ir_get_time_ms();
             else if (typeof year === "number" || year instanceof Number)
                 this.__value__ = year.valueOf();
             else
@@ -579,6 +577,7 @@ Date.now = function ()
 */
 Date.prototype.toDateString = function ()
 {
+    // TODO
 }
 
 /**
@@ -586,6 +585,7 @@ Date.prototype.toDateString = function ()
 */
 Date.prototype.toTimeString = function ()
 {
+    // TODO
 }
 
 /**

@@ -719,10 +719,10 @@ Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], &op_get_heap_size };
 Opcode GET_HEAP_FREE = { "get_heap_free", true, [], &op_get_heap_free };
 Opcode GET_GC_COUNT = { "get_gc_count", true, [], &op_get_gc_count };
 
-// Allocate a block of memory on the heap
+/// Allocate a block of memory on the heap
 Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
 
-// Trigger a garbage collection
+/// Trigger a garbage collection
 Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &op_gc_collect };
 
 /// Create a link table entry associated with this instruction
@@ -734,33 +734,36 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &op_set_link 
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &op_get_link };
 
-// Compute the hash code for a string and
-// try to find the string in the string table
+/// Compute the hash code for a string and
+/// try to find the string in the string table
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str };
 
-// GET_GLOBAL <propName>
-// Note: hidden parameter is cached global property index
+/// GET_GLOBAL <propName>
+/// Note: hidden parameter is cached global property index
 Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT], &op_get_global };
 
-// SET_GLOBAL <propName> <value>
-// Note: hidden parameter is cached global property index
+/// SET_GLOBAL <propName> <value>
+/// Note: hidden parameter is cached global property index
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT], &op_set_global };
 
-// <dstLocal> = NEW_CLOS <funExpr>
-// Create a new closure from a function's AST node
+/// <dstLocal> = NEW_CLOS <funExpr>
+/// Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], &op_new_clos };
 
-// Print a string to standard output
+/// Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
 
-// Get a string representation of a function's AST
+/// Get a string representation of a function's AST
 Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &op_get_ast_str };
 
-// Get a string representation of a function's IR
+/// Get a string representation of a function's IR
 Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &op_get_ir_str };
 
-// Format a floating-point value as a string
+/// Format a floating-point value as a string
 Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str };
+
+/// Get the time in milliseconds since process start
+Opcode GET_TIME_MS = { "get_time_ms", true, [], &op_get_time_ms };
 
 /**
 Inline IR prefix string
@@ -906,5 +909,6 @@ static this()
     addOp(GET_AST_STR);
     addOp(GET_IR_STR);
     addOp(F64_TO_STR);
+    addOp(GET_TIME_MS);
 }
 

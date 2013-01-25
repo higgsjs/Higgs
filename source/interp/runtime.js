@@ -503,6 +503,42 @@ function $rt_toNumber(v)
 }
 
 /**
+Convert any value to a signed 32-bit integer
+*/
+function $rt_toInt32(x)
+{
+    x = $rt_toNumber(x);
+
+    if ($ir_is_int(x))
+        return x;
+
+    var x = (x>0)? $ir_floor_f64(x):(-$ir_floor_f64(-x));
+
+    if ($ir_is_int(x))
+        return x;
+
+    assert (false, "unsupported value in toInt32");
+}
+
+/**
+Convert any value to an unsigned 32-bit integer
+*/
+function $rt_toUint32(x)
+{
+    x = $rt_toNumber(x);
+
+    if ($ir_is_int(x))
+        return x;
+
+    var x = (x>0)? $ir_floor_f64(x):$ir_floor_f64(-x);
+
+    if ($ir_is_int(x))
+        return x;
+
+    assert (false, "unsupported value in toUInt32");
+}
+
+/**
 JS typeof operator
 */
 function $rt_typeof(v)
@@ -730,7 +766,8 @@ function $rt_lsft(x, y)
         return $ir_lsft_i32(x, y);
     }
 
-    assert (false, "unsupported type in bitwise xor");
+    // Convert the operands to integers
+    return $ir_lsft_i32($rt_toUint32(x), $rt_toUint32(y));
 }
 
 function $rt_rsft(x, y)
@@ -741,7 +778,8 @@ function $rt_rsft(x, y)
         return $ir_rsft_i32(x, y);
     }
 
-    assert (false, "unsupported type in bitwise xor");
+    // Convert the operands to integers
+    return $ir_rsft_i32($rt_toInt32(x), $rt_toUint32(y));
 }
 
 function $rt_ursft(x, y)
@@ -752,7 +790,8 @@ function $rt_ursft(x, y)
         return $ir_ursft_i32(x, y);
     }
 
-    assert (false, "unsupported type in bitwise xor");
+    // Convert the operands to integers
+    return $ir_ursft_i32($rt_toUint32(x), $rt_toUint32(y));
 }
 
 function $rt_not(x)
@@ -762,7 +801,7 @@ function $rt_not(x)
         return $ir_not_i32(x);
     }
 
-    assert (false, "unsupported type in not");
+    assert (false, "unsupported type in bitwise not");
 }
 
 //=============================================================================

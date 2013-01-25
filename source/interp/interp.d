@@ -498,6 +498,7 @@ class Interp
             load("stdlib/array.js");
             load("stdlib/number.js");
             load("stdlib/boolean.js");
+            load("stdlib/date.js");
         }
 
         //gcCollect(this);

@@ -42,6 +42,7 @@ import std.algorithm;
 import std.string;
 import std.conv;
 import std.math;
+import std.datetime;
 import ir.ir;
 import ir.ast;
 import interp.interp;
@@ -467,11 +468,63 @@ alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x / y;") op_div_f64;
 alias ArithOp!(float64, Type.FLOAT, 1, "auto r = sin(x);") op_sin_f64;
 alias ArithOp!(float64, Type.FLOAT, 1, "auto r = cos(x);") op_cos_f64;
 alias ArithOp!(float64, Type.FLOAT, 1, "auto r = sqrt(x);") op_sqrt_f64;
-alias ArithOp!(float64, Type.FLOAT, 1, "auto r = ceil(x);") op_ceil_f64;
-alias ArithOp!(float64, Type.FLOAT, 1, "auto r = floor(x);") op_floor_f64;
 alias ArithOp!(float64, Type.FLOAT, 1, "auto r = log(x);") op_log_f64;
 alias ArithOp!(float64, Type.FLOAT, 1, "auto r = exp(x);") op_exp_f64;
 alias ArithOp!(float64, Type.FLOAT, 2, "auto r = pow(x, y);") op_pow_f64;
+
+void op_floor_f64(Interp interp, IRInstr instr)
+{
+    auto w0 = interp.getWord(instr.args[0].localIdx);
+    auto t0 = interp.getType(instr.args[0].localIdx);
+
+    assert (t0 == Type.FLOAT, "invalid operand type");
+
+    auto r = floor(w0.floatVal);
+
+    if (r >= int32.min && r <= int32.max)
+    {
+        interp.setSlot(
+            instr.outSlot,
+            Word.intv(cast(int32)r),
+            Type.INT
+        );
+    }
+    else
+    {
+        interp.setSlot(
+            instr.outSlot,
+            Word.floatv(r),
+            Type.FLOAT
+        );
+    }
+}
+
+void op_ceil_f64(Interp interp, IRInstr instr)
+{
+    auto w0 = interp.getWord(instr.args[0].localIdx);
+    auto t0 = interp.getType(instr.args[0].localIdx);
+
+    assert (t0 == Type.FLOAT, "invalid operand type");
+
+    auto r = ceil(w0.floatVal);
+
+    if (r >= int32.min && r <= int32.max)
+    {
+        interp.setSlot(
+            instr.outSlot,
+            Word.intv(cast(int32)r),
+            Type.INT
+        );
+    }
+    else
+    {
+        interp.setSlot(
+            instr.outSlot,
+            Word.floatv(r),
+            Type.FLOAT
+        );
+    }
+}
 
 void ArithOpOvf(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
 {
@@ -1478,6 +1531,17 @@ void op_f64_to_str(Interp interp, IRInstr instr)
         instr.outSlot,
         Word.ptrv(strObj),
         Type.REFPTR
+    );
+}
+
+void op_get_time_ms(Interp interp, IRInstr instr)
+{
+    auto msecs = Clock.currAppTick().msecs();
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.uintv(msecs),
+        Type.INT
     );
 }
 
