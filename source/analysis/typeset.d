@@ -57,45 +57,50 @@ const FLAG_ARRAY    = 1 << 9;   // May be string
 const FLAG_CLOS     = 1 << 10;  // May be closure
 const FLAG_CELL     = 1 << 11;  // May be closure cell
 
-/*
 // Extended object (object or array or function)
-TypeFlags.EXTOBJ =
-    TypeFlags.OBJECT    |
-    TypeFlags.ARRAY     |
-    TypeFlags.FUNCTION;
+const FLAG_EXTOBJ =
+    FLAG_OBJECT    |
+    FLAG_ARRAY     |
+    FLAG_CLOS;
 
 // Unknown/any type flag
-TypeFlags.ANY =
-    TypeFlags.UNDEF    |
-    TypeFlags.NULL     |
-    TypeFlags.TRUE     |
-    TypeFlags.FALSE    |
-    TypeFlags.INT      |
-    TypeFlags.FLOAT    |
-    TypeFlags.STRING   |
-    TypeFlags.OBJECT   |
-    TypeFlags.ARRAY    |
-    TypeFlags.FUNCTION |
-    TypeFlags.CELL;
-*/
+const FLAG_ANY =
+    FLAG_UNDEF    |
+    FLAG_NULL     |
+    FLAG_TRUE     |
+    FLAG_FALSE    |
+    FLAG_INT      |
+    FLAG_FLOAT    |
+    FLAG_STRING   |
+    FLAG_OBJECT   |
+    FLAG_ARRAY    |
+    FLAG_CLOS     |
+    FLAG_CELL;
 
-// Empty/uninferred type flag (before analysis)
+/// Empty/uninferred type flag (before analysis)
 const FLAG_EMPTY = 0;
+
+/// Maximum object set size
+const MAX_OBJ_SET_SIZE = 4;
 
 /**
 Type set representation
 */
 struct TypeSet
 {
+    @disable this();
+
     this(TypeFlags flags)
     {
+        strVal = GCRoot(null);
+
         // TODO
     }
 
-    @disable this();
-
     this(ValuePair val)
     {
+        strVal = GCRoot(null);
+
         // TODO
     }
 
@@ -111,26 +116,16 @@ struct TypeSet
     TypeFlags flags;
 
     // TODO
-    /**
-    Numerical range minimum
-    */
+    /// Numerical range minimum
     //this.rangeMin = rangeMin;
 
-    /**
-    Numerical range maximum
-    */
+    /// Numerical range maximum
     //this.rangeMax = rangeMax;
 
-    // TODO
-    /**
-    String value
-    */
-    //this.strVal = strVal;
+    /// String value
+    GCRoot strVal;
 
-    // TODO
-    /**
-    Object set
-    */
-    //this.objSet = object;
+    /// Object set
+    GCRoot[MAX_OBJ_SET_SIZE] objSet;
 }
 

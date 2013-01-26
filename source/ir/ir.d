@@ -134,7 +134,7 @@ class IRFunction : IdObject
         return this.name ~ "(" ~ idString() ~ ")";
     }
 
-    string toString()
+    override string toString()
     {
         auto output = appender!string();
 
@@ -466,7 +466,7 @@ class IRInstr : IdObject
         return instr;
     }
 
-    final string toString()
+    final override string toString()
     {
         string output;
 

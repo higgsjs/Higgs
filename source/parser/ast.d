@@ -71,7 +71,7 @@ class ASTProgram : FunExpr
         super(null, [], new BlockStmt(stmts), pos);
     }
 
-    string toString()
+    override string toString()
     {
         auto blockStmt = cast(BlockStmt)bodyStmt;
         auto stmts = blockStmt.stmts;
@@ -129,7 +129,7 @@ class BlockStmt : ASTStmt
         this.stmts = stmts;
     }
 
-    string toString()
+    override string toString()
     {
         string str;
         foreach (stmt; stmts)
@@ -159,7 +159,7 @@ class VarStmt : ASTStmt
         this.initExprs = initExprs;
     }
 
-    string toString()
+    override string toString()
     {
         auto output = appender!(string)();
 
@@ -207,7 +207,7 @@ class IfStmt : ASTStmt
         this.falseStmt = falseStmt;
     }
 
-    string toString()
+    override string toString()
     {
         if (falseStmt)
         {
@@ -248,7 +248,7 @@ class WhileStmt : ASTStmt
         this.bodyStmt = bodyStmt;
     }
 
-    string toString()
+    override string toString()
     {
         return format(
             "while (%s)\n%s", 
@@ -288,7 +288,7 @@ class ForStmt : ASTStmt
         this.bodyStmt = bodyStmt;
     }
 
-    string toString()
+    override string toString()
     {
         return format(
             "for (%s %s; %s)\n%s", 
@@ -340,7 +340,7 @@ class ForInStmt : ASTStmt
         this.bodyStmt = bodyStmt;
     }
 
-    string toString()
+    override string toString()
     {
         return format(
             "for (%s%s in %s)\n%s", 
@@ -371,7 +371,7 @@ class DoWhileStmt : ASTStmt
         this.testExpr = testExpr;
     }
 
-    string toString()
+    override string toString()
     {
         return format(
             "do\n%s\nwhile (%s)", 
@@ -411,7 +411,7 @@ class SwitchStmt : ASTStmt
         this.defaultStmts = defaultStmts;
     }
 
-    string toString()
+    override string toString()
     {
         auto output = appender!(string)();
 
@@ -465,7 +465,7 @@ class BreakStmt : ASTStmt
         this.label = label;
     }
 
-    string toString()
+    override string toString()
     {
         if (label)
             return format("break %s;", label);
@@ -492,7 +492,7 @@ class ContStmt : ASTStmt
         this.label = label;
     }
 
-    string toString()
+    override string toString()
     {
         if (label)
             return format("continue %s;", label);
@@ -514,7 +514,7 @@ class ReturnStmt : ASTStmt
         this.expr = expr;
     }
 
-    string toString()
+    override string toString()
     {
         if (this.expr is null)
             return "return;";
@@ -536,7 +536,7 @@ class ThrowStmt : ASTStmt
         this.expr = expr;
     }
 
-    string toString()
+    override string toString()
     {
         return format("throw %s;", expr);
     }
@@ -567,7 +567,7 @@ class TryStmt : ASTStmt
         this.finallyStmt = finallyStmt;
     }
 
-    string toString()
+    override string toString()
     {
         auto output = appender!string();
 
@@ -605,7 +605,7 @@ class ExprStmt : ASTStmt
         this.expr = expr;
     }
 
-    string toString()
+    override string toString()
     {
         return format("%s;", expr);
     }
@@ -683,7 +683,7 @@ class FunExpr : ASTExpr
         return name? name.toString():"";
     }
 
-    string toString()
+    override string toString()
     {
         auto output = appender!string();
 
@@ -733,12 +733,12 @@ class BinOpExpr : ASTExpr
         this(op, lExpr, rExpr, pos);
     }
 
-    int getPrec()
+    override int getPrec()
     {
         return op.prec;
     }
 
-    string toString()
+    override string toString()
     {
         string opStr;
 
@@ -784,12 +784,12 @@ class UnOpExpr : ASTExpr
         this(op, expr, pos);
     }
 
-    int getPrec()
+    override int getPrec()
     {
         return op.prec;
     }
 
-    string toString()
+    override string toString()
     {
         if (op.assoc == 'r')
             return format("%s%s", op.str, expr.parenString(this));
@@ -815,7 +815,7 @@ class CondExpr : ASTExpr
         this.falseExpr = falseExpr;
     }
 
-    string toString()
+    override string toString()
     {
         return format("%s? %s:%s", testExpr, trueExpr, falseExpr);
     }
@@ -837,7 +837,7 @@ class CallExpr : ASTExpr
         this.args = args;
     }
 
-    string toString()
+    override string toString()
     {
         return xformat("%s(%(%s, %))", base, args);
     }
@@ -859,7 +859,7 @@ class NewExpr : ASTExpr
         this.args = args;
     }
 
-    string toString()
+    override string toString()
     {
         return xformat("new %s(%(%s, %))", base, args);
     }
@@ -881,7 +881,7 @@ class IndexExpr : ASTExpr
         this.index = index;
     }
 
-    string toString()
+    override string toString()
     {
         return xformat("%s[%s]", base, index);
     }
@@ -900,7 +900,7 @@ class ArrayExpr : ASTExpr
         this.exprs = exprs;
     }
 
-    string toString()
+    override string toString()
     {
         return xformat("[%(%s, %)]", exprs);
     }
@@ -924,7 +924,7 @@ class ObjectExpr : ASTExpr
         this.values = values;
     }
 
-    string toString()
+    override string toString()
     {
         auto output = appender!(string)();
 
@@ -962,7 +962,7 @@ class IdentExpr : ASTExpr
         this.name = name;
     }
 
-    string toString()
+    override string toString()
     {
         return to!string(name);
     }
@@ -981,7 +981,7 @@ class IntExpr : ASTExpr
         this.val = val;
     }
 
-    string toString()
+    override string toString()
     {
         return to!(string)(val);
     }
@@ -1000,7 +1000,7 @@ class FloatExpr : ASTExpr
         this.val = val;
     }
 
-    string toString()
+    override string toString()
     {
         if (floor(val) == val)
             return format("%.1f", val);
@@ -1022,7 +1022,7 @@ class StringExpr : ASTExpr
         this.val = val;
     }
 
-    string toString()
+    override string toString()
     {
         return "\"" ~ to!string(escapeJSString(val)) ~ "\"";
     }
@@ -1038,7 +1038,7 @@ class TrueExpr : ASTExpr
         super(pos);
     }
 
-    string toString()
+    override string toString()
     {
         return "true";
     }
@@ -1054,7 +1054,7 @@ class FalseExpr : ASTExpr
         super(pos);
     }
 
-    string toString()
+    override string toString()
     {
         return "false";
     }
@@ -1070,7 +1070,7 @@ class NullExpr : ASTExpr
         super(pos);
     }
 
-    string toString()
+    override string toString()
     {
         return "null";
     }

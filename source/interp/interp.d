@@ -97,7 +97,7 @@ class RunError : Error
         super(toString());
     }
 
-    string toString()
+    override string toString()
     {
         string str = message;
 

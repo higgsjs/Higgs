@@ -258,7 +258,7 @@ class SrcPos
         this.col = col;
     }
 
-    string toString()
+    override string toString()
     {
         return format("\"%s\"@%d:%d", file, line, col);
     }

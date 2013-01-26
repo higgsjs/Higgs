@@ -62,7 +62,7 @@ class ParseError : Error
         this.pos = pos;
     }
 
-    string toString()
+    override string toString()
     {
         return pos.toString() ~ ": " ~ this.msg;
     }

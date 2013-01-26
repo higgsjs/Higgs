@@ -58,18 +58,18 @@ class IdObject
         return format("%X", this.id);
     }
 
-    hash_t toHash()
+    override hash_t toHash()
     {
         return cast(hash_t)id;
     }
 
-    bool opEquals(Object o)
+    override bool opEquals(Object o)
     {
         IdObject that = cast(IdObject)o;
         return that && this.id == that.id;
     }
 
-    int opCmp(Object o)
+    override int opCmp(Object o)
     {
         IdObject that = cast(IdObject)o;
 
