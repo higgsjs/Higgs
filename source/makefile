@@ -22,6 +22,7 @@ interp/string.d     \
 interp/object.d     \
 interp/gc.d         \
 interp/tests.d      \
+analysis/typeset.d  \
 repl.d              \
 main.d
 

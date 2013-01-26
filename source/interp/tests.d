@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -1046,6 +1046,10 @@ unittest
     interp.load("programs/arg_obj/arg_obj.js");
     interp.assertInt("test();", 0);
 
+    // For-in loop
+    interp.load("programs/for_in/for_in.js");
+    interp.assertInt("test();", 0);
+
     // Exceptions
     interp.load("programs/exceptions/throw_intra.js");
     interp.assertStr("str;", "abc");
@@ -1078,9 +1082,12 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_function/stdlib_function.js");
     interp.assertInt("test();", 0);
-    // object
-    // array
-    // string
+    interp.load("programs/stdlib_object/stdlib_object.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_array/stdlib_array.js");
+    interp.assertInt("test();", 0);
+    // TODO: regexp
+    // stdlib_string
 }
 
 /// Garbage collector tests

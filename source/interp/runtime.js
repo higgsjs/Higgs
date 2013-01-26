@@ -1833,7 +1833,7 @@ function $rt_getPropEnum(obj)
         // Return the empty enumeration function
         return function ()
         {
-            return null;
+            return false;
         };
     }
 
@@ -1857,11 +1857,11 @@ function $rt_getPropEnum(obj)
                 curObj === Array.prototype      || 
                 curObj === Function.prototype   ||
                 curObj === String.prototype)
-                return null;
+                return false;
 
             // If we are at the end of the prototype chain, stop
             if (curObj === null)
-                return null;
+                return false;
 
             // If the current object is an object or extension
             if ($rt_valIsObj(curObj))
@@ -1930,7 +1930,7 @@ function $rt_getPropEnum(obj)
 
             else
             {
-                return null;
+                return false;
             }
         }
     }

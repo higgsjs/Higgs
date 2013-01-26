@@ -817,6 +817,76 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.merge(exitBlock);
     }
 
+    else if (auto forInStmt = cast(ForInStmt)stmt)
+    {
+        // Create the loop test, body and exit blocks
+        auto testBlock = ctx.fun.newBlock("forin_test");
+        auto bodyBlock = ctx.fun.newBlock("forin_body");
+        auto exitBlock = ctx.fun.newBlock("forin_exit");
+
+        // Register the loop labels, if any
+        ctx.regLabels(stmt.labels, exitBlock, testBlock);
+
+        // Evaluate the object expression
+        auto initCtx = ctx.subCtx(true);
+        exprToIR(forInStmt.inExpr, initCtx);
+        ctx.merge(initCtx);
+
+        // Get the property enumerator
+        auto enumInstr = genRtCall(
+            ctx, 
+            "getPropEnum", 
+            ctx.allocTemp(),
+            [initCtx.getOutSlot()]
+        );
+
+        // Jump to the test block
+        ctx.addInstr(IRInstr.jump(testBlock));
+
+        // Create the loop test context
+        auto testCtx = ctx.subCtx(false, NULL_LOCAL, testBlock);
+
+        // Get the next property
+        auto callInstr = testCtx.addInstr(new IRInstr(&CALL));
+        callInstr.outSlot = testCtx.allocTemp();
+        callInstr.args.length = 2;
+        callInstr.args[0].localIdx = enumInstr.outSlot;
+        callInstr.args[1].localIdx = enumInstr.outSlot;
+
+        // If the property is false, exit the loop
+        testCtx.addInstr(new IRInstr(
+            &JUMP_FALSE,
+            callInstr.outSlot,
+            exitBlock
+        ));
+        testCtx.addInstr(IRInstr.jump(bodyBlock));
+
+        // Create the body context
+        auto bodyCtx = ctx.subCtx(false, NULL_LOCAL, bodyBlock);
+
+        // TODO: Assign into the variable expression
+        auto assgCtx = bodyCtx.subCtx(true);
+        assgToIR(
+            forInStmt.varExpr,
+            null,
+            delegate void(IRGenCtx ctx)
+            {
+                ctx.moveToOutput(callInstr.outSlot);
+            },
+            assgCtx
+        );
+        bodyCtx.merge(assgCtx);
+
+        // Compile the loop body statement
+        stmtToIR(forInStmt.bodyStmt, bodyCtx);
+
+        // Jump to the loop test
+        bodyCtx.addInstr(IRInstr.jump(testBlock));
+
+        // Continue code generation in the exit block
+        ctx.merge(exitBlock);
+    }
+
     // Switch statement
     else if (auto switchStmt = cast(SwitchStmt)stmt)
     {
