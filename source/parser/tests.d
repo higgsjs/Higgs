@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -40,6 +40,7 @@ module parser.tests;
 import core.exception;
 import std.stdio;
 import std.file;
+import std.algorithm;
 import parser.ast;
 import parser.parser;
 
@@ -83,10 +84,6 @@ ASTProgram testParseFile(string fileName)
 
 ASTProgram testParse(string input, bool valid = true)
 {
-    //writefln("input: %s", input);
-    //if (valid == false)
-    //    writeln("  not valid");
-
     ASTProgram ast;
 
     try
@@ -146,6 +143,37 @@ ASTProgram testExprAST(string input, ASTExpr exprAst)
 {
     ASTProgram inAst = new ASTProgram([new ExprStmt(exprAst)]);
     return testAST(input, inAst);
+}
+
+/// Parenthesization test
+unittest
+{
+    void hasParens(string input, bool needsParens)
+    {
+        string output = parseString(input).toString();
+
+        bool hasParens = (countUntil(output, "(") != -1);
+
+        if (hasParens != needsParens)
+        {
+            throw new Error(
+                "incorrect parenthesization on input:\n" ~
+                input ~ "\n" ~
+                "output:\n" ~
+                output
+            );
+        }
+    }
+
+    hasParens("a - (b+c)", true);
+    hasParens("a - (b-c)", true);
+    hasParens("a - b - c", false);
+    hasParens("(a - b) - c", false);
+
+    hasParens("a / (b/c)", true);
+    hasParens("a / (b%c)", true);
+    hasParens("a / b / c", false);
+    hasParens("a * b * c", false);
 }
 
 /// Test parsing of simple expressions

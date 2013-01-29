@@ -215,6 +215,9 @@ unittest
     assertInt("return +7", 7);
     assertInt("return 2 + 3 * 4", 14);
     assertInt("return 5 % 3", 2);
+    assertInt("return 1 - (2+3)", -4);
+    assertInt("return 6 - (3-3)", 6);
+    assertInt("return 3 - 3 - 3", -3);
 
     assertInt("return 5 | 3", 7);
     assertInt("return 5 & 3", 1);
@@ -230,6 +233,8 @@ unittest
     assertFloat("return 2.5 - 1", 1.5);
     assertFloat("return 2 * 1.5", 3);
     assertFloat("return 6 / 2.5", 2.4);
+    assertFloat("return 6/2/2", 1.5);
+    assertFloat("return 6/2*2", 6);
 }
 
 /// Global function calls

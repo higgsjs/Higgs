@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -627,15 +627,6 @@ class ASTExpr : ASTNode
         // By default, maximum precedence (atomic)
         return MAX_PREC;
     }
-
-    /// Parenthesize this expression as appropriate
-    string parenString(ASTExpr parent)
-    {
-        if (parent.getPrec() > this.getPrec())
-            return "(" ~ this.toString() ~ ")";
-        else
-            return this.toString();
-    }
 }
 
 /**
@@ -749,12 +740,26 @@ class BinOpExpr : ASTExpr
         else
             opStr = " " ~ to!string(op.str) ~ " ";
 
-        return format(
-            "%s%s%s",
-            lExpr.parenString(this),
-            opStr,
-            rExpr.parenString(this)
-        );
+        auto lStr = lExpr.toString();
+        auto rStr = rExpr.toString();
+
+        string output;
+
+        if ((lExpr.getPrec() <  op.prec) ||
+            (lExpr.getPrec() == op.prec && op.nonAssoc && op.assoc == 'r'))
+            output ~= "(" ~ lStr ~ ")";
+        else
+            output ~= lStr;
+
+        output ~= opStr;
+
+        if ((rExpr.getPrec() <  op.prec) ||
+            (rExpr.getPrec() == op.prec && op.nonAssoc && op.assoc == 'l'))
+            output ~= "(" ~ rStr ~ ")";
+        else
+            output ~= rStr;
+
+        return output;
     }
 }
 
@@ -791,10 +796,14 @@ class UnOpExpr : ASTExpr
 
     override string toString()
     {
+        string exprStr = expr.toString();
+        if (expr.getPrec() < op.prec)
+            exprStr = "(" ~ exprStr ~ ")";
+
         if (op.assoc == 'r')
-            return format("%s%s", op.str, expr.parenString(this));
+            return format("%s%s", op.str, exprStr);
         else
-            return format("%s%s", expr.parenString(this), op.str);
+            return format("%s%s", exprStr, op.str);
     }
 }
 

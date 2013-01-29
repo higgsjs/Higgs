@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -51,10 +51,20 @@ Operator information structure
 */
 struct OpInfo
 {
+    /// String representation
     wstring str;
+
+    /// Operator arity
     int arity;
+
+    /// Precedence level
     int prec;
+
+    /// Associativity, left-to-right or right-to-left
     char assoc;
+
+    /// Non-associative flag (e.g.: - and / are not associative)
+    bool nonAssoc = false;
 }
 
 alias const(OpInfo)* Operator;
@@ -101,12 +111,12 @@ OpInfo[] operators = [
 
     // Multiplication/division/modulus
     { "*"w, 2, 12, 'l' },
-    { "/"w, 2, 12, 'l' },
-    { "%"w, 2, 12, 'l' },
+    { "/"w, 2, 12, 'l', true },
+    { "%"w, 2, 12, 'l', true },
 
     // Addition/subtraction
     { "+"w, 2, 11, 'l' },
-    { "-"w, 2, 11, 'l' },
+    { "-"w, 2, 11, 'l', true },
 
     // Bitwise shift
     { "<<"w , 2, 10, 'l' },

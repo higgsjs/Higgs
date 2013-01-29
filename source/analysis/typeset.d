@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -83,6 +83,12 @@ const FLAG_EMPTY = 0;
 /// Maximum object set size
 const MAX_OBJ_SET_SIZE = 4;
 
+
+
+// TODO: template w.r.t. pointer repr
+// One with GCRoot, one without
+
+
 /**
 Type set representation
 */
@@ -90,18 +96,33 @@ struct TypeSet
 {
     @disable this();
 
-    this(TypeFlags flags)
+    /**
+    Construct a new type set
+    */
+    this(TypeFlags flags = FLAG_EMPTY)
     {
+        this.flags = flags;
+
         strVal = GCRoot(null);
 
-        // TODO
+        for (size_t i = 0; i < objSet.length; ++i)
+            objSet[i] = GCRoot(null);
     }
 
+    /**
+    Construct a type set from a value
+    */
     this(ValuePair val)
     {
         strVal = GCRoot(null);
 
+        flags = FLAG_EMPTY;
+
         // TODO
+
+
+
+
     }
 
     /**
@@ -109,23 +130,51 @@ struct TypeSet
     */
     void unionSet(TypeSet that)
     {
-        // TODO
+        flags = flags | that.flags;
+
+
+        // TODO: look at Tachyon code
+
+
+
+
+
     }
 
     /// Type flags
     TypeFlags flags;
 
-    // TODO
     /// Numerical range minimum
-    //this.rangeMin = rangeMin;
+    long rangeMin;
 
     /// Numerical range maximum
-    //this.rangeMax = rangeMax;
+    long rangeMax;
 
     /// String value
     GCRoot strVal;
 
-    /// Object set
+    /// Object set (size limited)
     GCRoot[MAX_OBJ_SET_SIZE] objSet;
+}
+
+
+
+// TODO: KISS!
+
+
+
+
+
+// TODO: decouple TypeSet from type monitor, TypeMon?
+// Type monitor can have attached observations
+// TypeMon.observeInt ...
+class TypeMon
+{
+    // TODO
+
+
+
+    /// Internal type representation
+    private TypeSet type;
 }
 
