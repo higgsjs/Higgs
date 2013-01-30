@@ -1091,8 +1091,8 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_array/stdlib_array.js");
     interp.assertInt("test();", 0);
-    // TODO: regexp
-    // stdlib_string
+    // TODO: stdlib_string
+    // TODO: regexp support, regexp test
 }
 
 /// Garbage collector tests

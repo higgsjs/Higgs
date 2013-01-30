@@ -38,7 +38,9 @@
 module analysis.typeset;
 
 import std.stdio;
+import std.math;
 import interp.interp;
+import interp.layout;
 import interp.gc;
 
 alias uint TypeFlags;
@@ -56,6 +58,11 @@ const FLAG_OBJECT   = 1 << 8;   // May be string
 const FLAG_ARRAY    = 1 << 9;   // May be string
 const FLAG_CLOS     = 1 << 10;  // May be closure
 const FLAG_CELL     = 1 << 11;  // May be closure cell
+
+// Boolean type flag
+const FLAG_BOOL =
+    FLAG_TRUE |
+    FLAG_FALSE;
 
 // Extended object (object or array or function)
 const FLAG_EXTOBJ =
@@ -83,52 +90,89 @@ const FLAG_EMPTY = 0;
 /// Maximum object set size
 const MAX_OBJ_SET_SIZE = 4;
 
+/**
+Dummy equivalent to GCRoot for non GC'd type sets
+*/
+struct NonRootPtr
+{
+    this(Interp interp, refptr ptr)
+    {
+        this.ptr = ptr;
+    }
 
-
-// TODO: template w.r.t. pointer repr
-// One with GCRoot, one without
-
+    refptr ptr;
+}
 
 /**
 Type set representation
 */
-struct TypeSet
+struct TypeSet(alias PtrType)
 {
     @disable this();
 
     /**
     Construct a new type set
     */
-    this(TypeFlags flags = FLAG_EMPTY)
+    this(Interp interp, TypeFlags flags = FLAG_EMPTY)
     {
         this.flags = flags;
 
-        strVal = GCRoot(null);
+        strVal = PtrType(interp, null);
 
         for (size_t i = 0; i < objSet.length; ++i)
-            objSet[i] = GCRoot(null);
+            objSet[i] = PtrType(interp, null);
     }
 
     /**
     Construct a type set from a value
     */
-    this(ValuePair val)
+    this(Interp interp, ValuePair val)
     {
-        strVal = GCRoot(null);
+        this(interp);
 
-        flags = FLAG_EMPTY;
+        // Switch on the value type
+        switch (val.type)
+        {
+            // TODO
+            case Type.REFPTR:
+            if (val.word.ptrVal == null)
+                flags = FLAG_NULL;
+            //else if
 
-        // TODO
+            break;
 
+            case Type.CONST:
+            if (val.word == UNDEF)
+                flags = FLAG_UNDEF;
+            else if (val.word == TRUE)
+                flags = FLAG_TRUE;
+            else if (val.word == FALSE)
+                flags = FLAG_FALSE;
+            else
+                assert (false, "unknown const type");
+            break;
 
+            case Type.FLOAT:
+            flags = FLAG_INT | FLAG_FLOAT;
+            rangeMin = val.word.floatVal;
+            rangeMax = val.word.floatVal;
+            break;
 
+            case Type.INT:
+            flags = FLAG_INT;
+            rangeMin = val.word.intVal;
+            rangeMax = val.word.intVal;
+            break;
 
+            default:
+            assert (false, "unhandled value type");
+        }
     }
 
     /**
     Union another type set into this one
     */
-    void unionSet(TypeSet that)
+    void unionSet(alias ThatRoot)(ref const TypeSet!ThatRoot that)
     {
         flags = flags | that.flags;
 
@@ -141,40 +185,92 @@ struct TypeSet
 
     }
 
+    /**
+    Assign the value of another type set into this one
+    */
+    TypeSet* opAssign(alias ThatRoot)(ref const TypeSet!ThatRoot that)
+    {
+        // TODO
+
+
+
+        return this;
+    }
+
     /// Type flags
     TypeFlags flags;
 
     /// Numerical range minimum
-    long rangeMin;
+    double rangeMin;
 
     /// Numerical range maximum
-    long rangeMax;
+    double rangeMax;
 
     /// String value
-    GCRoot strVal;
+    PtrType strVal;
 
     /// Object set (size limited)
-    GCRoot[MAX_OBJ_SET_SIZE] objSet;
+    PtrType[MAX_OBJ_SET_SIZE] objSet;
 }
 
+alias TypeSet!GCRoot TypeSetGC;
+alias TypeSet!NonRootPtr TypeSetNR;
 
-
-// TODO: KISS!
-
-
-
-
-
-// TODO: decouple TypeSet from type monitor, TypeMon?
-// Type monitor can have attached observations
-// TypeMon.observeInt ...
+/**
+Type monitor object, monitors a field or variable type
+*/
 class TypeMon
 {
+    this(Interp interp)
+    {
+        type = TypeSetGC(interp);
+    }
+
+    /// Union a value type into this type
+    void unionVal(ValuePair val)
+    {
+        auto valType = TypeSetNR(interp, val);
+
+
+        // FIXME: not working
+        //type.unionSet!TypeSetNR(valType);
+
+
+
+        // TODO: might as well return new type set on union?
+        // Need to check if changed anyways
+
+
+
+        // TODO: check if changed, if so, check observations
+        /*
+        if ()
+        {
+        }
+        */
+
+
+
+    }
+
     // TODO
+    //void obsvIsInt(trace)
+    //{
+    //}
 
+    //void obsvIntConst(trace)
+    //{
+    //}
 
+    // TODO: store list of observation objects, with list of observer traces?
+    // observation.check ?
+    // List of type observations
+    //private TypeObsv[] obsvs;
+
+    /// Parent interpreter
+    private Interp interp;
 
     /// Internal type representation
-    private TypeSet type;
+    private TypeSetGC type;
 }
 

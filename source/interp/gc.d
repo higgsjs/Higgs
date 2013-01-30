@@ -344,6 +344,9 @@ void gcCollect(Interp interp, size_t heapSize = 0)
 
     //writefln("old live funs count: %s", interp.funRefs.length);
 
+    // Add the currently running frunction to the live functions
+    interp.liveFuns[cast(void*)interp.ip.fun] = interp.ip.fun;
+
     // Transitively find live function references inside functions
     foreach (ptr, fun; interp.liveFuns)
         for (IRBlock block = fun.firstBlock; block !is null; block = block.next)
@@ -637,5 +640,12 @@ void collectFun(Interp interp, IRFunction fun)
             }
         }
     }
+
+    // TODO: delete argument type monitor objects here
+
+    //writefln("destroying function: \"%s\"", fun.name);    
+
+    // Destroy the function
+    destroy(fun);
 }
 
