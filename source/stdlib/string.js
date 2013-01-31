@@ -205,18 +205,18 @@ function string_concat()
     for (var i = 0; i < arguments.length; ++i)
         l += arguments[i].length;
 
-    var s = alloc_str(unboxInt(l));
-    var k = pint(0);
+    var s = $rt_str_alloc(l);
+    var k = 0;
 
     for (var i = 0; i < this.length; ++i, ++k)
-        set_str_data(s, k, iir.icast(IRType.u16, unboxInt( this.charCodeAt(i) )));
+        $rt_str_set_data(s, k, this.charCodeAt(i));
 
     for (var i = 0; i < arguments.length; ++i)
         for (var j = 0; j < arguments[i].length; ++j, ++k)
-            set_str_data(s, k, iir.icast(IRType.u16, unboxInt( arguments[i].charCodeAt(j) )));
+            $rt_str_set_data(s, k, arguments[i].charCodeAt(j));
 
-    compStrHash(s);
-    return getTableStr(s);
+    // Attempt to find the string in the string table
+    return $ir_get_str(s);
 }
 
 /**
