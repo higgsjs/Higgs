@@ -90,16 +90,23 @@ struct GCRoot
             next.prev = prev;
     }
 
-    refptr opAssign(refptr p)
+    GCRoot* opAssign(refptr p)
     {
         pair.word.ptrVal = p;
-        return p;
+        pair.type = Type.REFPTR;
+        return &this;
     }
 
-    ValuePair opAssign(ValuePair v)
+    GCRoot* opAssign(ValuePair v)
     {
         pair = v;
-        return v;
+        return &this;
+    }
+
+    GCRoot* opAssign(GCRoot v)
+    {
+        pair = v.pair;
+        return &this;
     }
 
     Word word()

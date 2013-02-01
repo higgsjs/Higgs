@@ -2,6 +2,7 @@ DC = dmd
 COPTS = -m64 -O
 
 BIN_NAME = higgs
+BIN_NAME_TEST = test-higgs
 
 # Source files
 SRC =               \
@@ -30,12 +31,12 @@ all: layout
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
 
 test: layout
-	$(DC) $(COPTS) -unittest -of$(BIN_NAME) $(SRC)
-	time ./$(BIN_NAME) --test
+	$(DC) $(COPTS) -unittest -of$(BIN_NAME_TEST) $(SRC)
+	time ./$(BIN_NAME_TEST) --test
 
 layout:
 	python interp/layout.py
 
 clean:
-	rm $(BIN_NAME) *.o
+	rm $(BIN_NAME) $(BIN_NAME_TEST) *.o
 

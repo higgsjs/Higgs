@@ -38,7 +38,10 @@
 module analysis.typeset;
 
 import std.stdio;
+import std.conv;
 import std.math;
+import std.string;
+import std.algorithm;
 import interp.interp;
 import interp.layout;
 import interp.gc;
@@ -64,11 +67,22 @@ const FLAG_BOOL =
     FLAG_TRUE |
     FLAG_FALSE;
 
+// Number type flag
+const FLAG_NUMBER =
+    FLAG_INT |
+    FLAG_FLOAT;
+
 // Extended object (object or array or function)
 const FLAG_EXTOBJ =
     FLAG_OBJECT    |
     FLAG_ARRAY     |
     FLAG_CLOS;
+
+// Memory allocated object
+const FLAG_MEMOBJ =
+    FLAG_EXTOBJ    |
+    FLAG_STRING    |
+    FLAG_CELL;
 
 // Unknown/any type flag
 const FLAG_ANY =
@@ -93,11 +107,23 @@ const MAX_OBJ_SET_SIZE = 4;
 /**
 Dummy equivalent to GCRoot for non GC'd type sets
 */
-struct NonRootPtr
+struct NoRoot
 {
     this(Interp interp, refptr ptr)
     {
         this.ptr = ptr;
+    }
+
+    NoRoot* opAssign(NoRoot r)
+    {
+        ptr = r.ptr;
+        return &this;
+    }
+
+    NoRoot* opAssign(refptr p)
+    {
+        ptr = p;
+        return &this;
     }
 
     refptr ptr;
@@ -113,14 +139,28 @@ struct TypeSet(alias PtrType)
     /**
     Construct a new type set
     */
-    this(Interp interp, TypeFlags flags = FLAG_EMPTY)
+    this(
+        Interp interp, 
+        TypeFlags flags = FLAG_EMPTY,
+        double rangeMin = 0,
+        double rangeMax = 0,
+        PtrType[MAX_OBJ_SET_SIZE]* objSet = null
+    )
     {
+        this.interp = interp;
+
         this.flags = flags;
 
-        strVal = PtrType(interp, null);
+        this.rangeMin = rangeMin;
+        this.rangeMax = rangeMax;
 
-        for (size_t i = 0; i < objSet.length; ++i)
-            objSet[i] = PtrType(interp, null);
+        for (size_t i = 0; i < this.objSet.length; ++i)
+        {
+            auto objPtr = (objSet !is null)? (*objSet)[i].ptr:null;
+            this.objSet[i] = PtrType(interp, objPtr);
+        }
+
+        this.numObjs = 0;
     }
 
     /**
@@ -130,23 +170,37 @@ struct TypeSet(alias PtrType)
     {
         this(interp);
 
+        auto word = val.word;
+
         // Switch on the value type
         switch (val.type)
         {
-            // TODO
             case Type.REFPTR:
-            if (val.word.ptrVal == null)
+            if (word.ptrVal == null)
+            {
                 flags = FLAG_NULL;
-            //else if
-
+                break;
+            }
+            this.objSet[0] = word.ptrVal;
+            this.numObjs = 1;
+            if (valIsLayout(word, LAYOUT_STR))
+                flags = FLAG_STRING;
+            else if (valIsLayout(word, LAYOUT_OBJ))
+                flags = FLAG_OBJECT;
+            else if (valIsLayout(word, LAYOUT_ARR))
+                flags = FLAG_ARRAY;
+            else if (valIsLayout(word, LAYOUT_CLOS))
+                flags = FLAG_CLOS;
+            else // TODO: misc object type?
+                assert (false, "unknown layout type");
             break;
 
             case Type.CONST:
-            if (val.word == UNDEF)
+            if (word == UNDEF)
                 flags = FLAG_UNDEF;
-            else if (val.word == TRUE)
+            else if (word == TRUE)
                 flags = FLAG_TRUE;
-            else if (val.word == FALSE)
+            else if (word == FALSE)
                 flags = FLAG_FALSE;
             else
                 assert (false, "unknown const type");
@@ -154,14 +208,14 @@ struct TypeSet(alias PtrType)
 
             case Type.FLOAT:
             flags = FLAG_INT | FLAG_FLOAT;
-            rangeMin = val.word.floatVal;
-            rangeMax = val.word.floatVal;
+            rangeMin = word.floatVal;
+            rangeMax = word.floatVal;
             break;
 
             case Type.INT:
             flags = FLAG_INT;
-            rangeMin = val.word.intVal;
-            rangeMax = val.word.intVal;
+            rangeMin = word.intVal;
+            rangeMax = word.intVal;
             break;
 
             default:
@@ -172,30 +226,188 @@ struct TypeSet(alias PtrType)
     /**
     Union another type set into this one
     */
-    void unionSet(alias ThatRoot)(ref const TypeSet!ThatRoot that)
+    TypeSetNR unionTmpl(alias RT)(TypeSet!RT that)
     {
-        flags = flags | that.flags;
+        auto flags = this.flags | that.flags;
 
+        double rangeMin;
+        double rangeMax;
 
-        // TODO: look at Tachyon code
+        NoRoot[MAX_OBJ_SET_SIZE] objSet;
+        for (size_t i = 0; i < objSet.length; ++i)
+            objSet[i] = null;
 
+        size_t numObjs = 0;
 
+        if (flags & FLAG_NUMBER)
+        {
+            rangeMin = min(this.rangeMin, that.rangeMin);
+            rangeMin = max(this.rangeMax, that.rangeMax);
+        }
 
+        if (flags & FLAG_MEMOBJ)
+        {
+            if (this.numObjs == -1 || that.numObjs == -1)
+            {
+                numObjs = -1;
+            }
+            else
+            {
+                for (int i = 0; i < this.numObjs; ++i)
+                {
+                    objSet[i] = this.objSet[i].ptr;
+                    numObjs += 1;
+                }
 
+                OBJ_LOOP:
+                for (int i = 0; i < that.numObjs; ++i)
+                {
+                    auto ptr = that.objSet[i].ptr;
 
+                    for (int j = 0; j < numObjs; ++j)
+                        if (objSet[j].ptr == ptr)
+                            continue OBJ_LOOP;
+
+                    if (numObjs == objSet.length)
+                    {
+                        for (int k = 0; k < numObjs; ++k)
+                            objSet[i] = null;
+                        numObjs = -1;
+                        break OBJ_LOOP;
+                    }
+
+                    objSet[i] = ptr;
+                    numObjs += 1;
+                }
+            }
+        }
+
+        return TypeSet!NoRoot(
+            interp,
+            flags,
+            rangeMin,
+            rangeMax,
+            &objSet
+        );
     }
+
+    TypeSet!NoRoot unionSet(TypeSet!NoRoot that) { return unionTmpl!NoRoot(that); }
+    TypeSet!NoRoot unionSet(TypeSet!GCRoot that) { return unionTmpl!GCRoot(that); }
 
     /**
     Assign the value of another type set into this one
     */
-    TypeSet* opAssign(alias ThatRoot)(ref const TypeSet!ThatRoot that)
+    TypeSet* assign(alias RT)(TypeSet!RT that)
     {
-        // TODO
+        flags = that.flags;
 
+        rangeMin = that.rangeMin;
+        rangeMax = that.rangeMax;
 
+        for (size_t i = 0; i < objSet.length; ++i)
+            objSet[i] = that.objSet[i].ptr;
 
-        return this;
+        return &this;
     }
+
+    TypeSet* opAssign(TypeSet!NoRoot that) { return assign!NoRoot(that); }
+    TypeSet* opAssign(TypeSet!GCRoot that) { return assign!GCRoot(that); }
+
+    /**
+    Compare with another type set for equivalence
+    */
+    bool equals(alias RT)(TypeSet!RT that)
+    {
+        if (this.flags != that.flags)
+            return false;
+
+        if (flags & FLAG_NUMBER)
+        {
+            if (this.rangeMin != that.rangeMin)
+                return false;
+            if (this.rangeMax != that.rangeMax)
+                return false;
+        }
+
+        if (flags & FLAG_MEMOBJ)
+        {
+            OBJ_LOOP:
+            for (size_t i = 0; i < this.objSet.length; ++i)
+            {
+                auto ptr = this.objSet[i].ptr;
+                for (size_t j = 0; j < that.objSet.length; ++j)
+                    if (that.objSet[i].ptr == ptr)
+                        continue OBJ_LOOP;
+            }
+
+        }
+
+        return true;
+    }
+
+    bool opEquals(TypeSet!NoRoot that) { return equals!NoRoot(that); }
+    bool opEquals(TypeSet!GCRoot that) { return equals!GCRoot(that); }
+
+    /**
+    Produce a string representation of the type set
+    */
+    string toString()
+    {
+        string output;
+
+        output ~= "{";
+
+        auto flags = this.flags;
+
+        for (size_t i = 0; i < TypeFlags.sizeof * 8; ++i)
+        {
+            auto flag = (1 << i);
+
+            if (flags & flag)
+                continue;
+
+            switch (flag)
+            {
+                case FLAG_UNDEF     : output ~= "undef"; break;
+                case FLAG_MISSING   : output ~= "missing"; break;
+                case FLAG_NULL      : output ~= "null"; break;
+                case FLAG_TRUE      : output ~= "true"; break;
+                case FLAG_FALSE     : output ~= "false"; break;
+                case FLAG_INT       : output ~= "int"; break;
+                case FLAG_FLOAT     : output ~= "float"; break;
+                case FLAG_STRING    : output ~= "string"; break;
+                case FLAG_OBJECT    : output ~= "object"; break;
+                case FLAG_ARRAY     : output ~= "array"; break;
+                case FLAG_CLOS      : output ~= "clos"; break;
+                case FLAG_CELL      : output ~= "cell"; break;
+
+                default:
+                assert (false, "unhandled type flag");
+            }
+        }
+
+        if (flags & FLAG_NUMBER)
+        {
+            output ~= "[";
+            output ~= to!string(rangeMin);
+            output ~= ",";
+            output ~= to!string(rangeMax);
+            output ~= "]";
+        }
+
+        // TODO: string, object
+        if (flags & FLAG_MEMOBJ)
+        {
+
+        }
+
+        output ~= "}";
+
+        return output;
+    }
+
+    /// Associated interpreter
+    private Interp interp;
 
     /// Type flags
     TypeFlags flags;
@@ -206,15 +418,15 @@ struct TypeSet(alias PtrType)
     /// Numerical range maximum
     double rangeMax;
 
-    /// String value
-    PtrType strVal;
-
     /// Object set (size limited)
     PtrType[MAX_OBJ_SET_SIZE] objSet;
+
+    /// Number of objects stored
+    int numObjs;
 }
 
 alias TypeSet!GCRoot TypeSetGC;
-alias TypeSet!NonRootPtr TypeSetNR;
+alias TypeSet!NoRoot TypeSetNR;
 
 /**
 Type monitor object, monitors a field or variable type
@@ -223,36 +435,28 @@ class TypeMon
 {
     this(Interp interp)
     {
-        type = TypeSetGC(interp);
+        this.interp = interp;
+
+        this.type = TypeSetGC(interp);
     }
 
     /// Union a value type into this type
     void unionVal(ValuePair val)
     {
+        // Create a type set representing the new value
         auto valType = TypeSetNR(interp, val);
 
+        // Union the value type with the local type
+        auto newType = type.unionSet(valType);
 
-        // FIXME: not working
-        //type.unionSet!TypeSetNR(valType);
-
-
-
-        // TODO: might as well return new type set on union?
-        // Need to check if changed anyways
-
-
-
-        // TODO: check if changed, if so, check observations
-        /*
-        if ()
+        // Check if changed, if so, check observations
+        if (type != newType)
         {
+            // TODO: check observations
         }
-        */
-
-
-
     }
 
+    // TODO: have these functions return booleans?
     // TODO
     //void obsvIsInt(trace)
     //{
@@ -267,7 +471,7 @@ class TypeMon
     // List of type observations
     //private TypeObsv[] obsvs;
 
-    /// Parent interpreter
+    /// Associated interpreter
     private Interp interp;
 
     /// Internal type representation
