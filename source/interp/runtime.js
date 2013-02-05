@@ -1698,6 +1698,46 @@ function $rt_setProp(base, prop, val)
 }
 
 /**
+JS delete operator
+*/
+function $rt_delProp(base, prop)
+{
+    // If the base is not an object, do nothing
+    if ($rt_valIsObj(base) === false)
+        return true;
+
+    // If the property is not a string
+    if ($rt_isString(prop) === false)
+        throw TypeError('non-string property name');
+
+    var obj = base;
+    var propStr = prop;
+
+    // Follow the next link chain
+    for (;;)
+    {
+        var next = $rt_obj_get_next(obj);
+        if ($ir_eq_refptr(next, null))
+            break;
+        obj = next;
+    }
+
+    // Get the class from the object
+    var classPtr = $rt_obj_get_class(obj);
+
+    // Find the index for this property
+    var propIdx = $rt_getPropIdx(classPtr, propStr, false);
+    if (propIdx === false)
+        return true;
+
+    // Set the property slot to missing in the object
+    $rt_obj_set_word(obj, propIdx, $ir_get_word($ir_set_missing()));
+    $rt_obj_set_type(obj, propIdx, $ir_get_type($ir_set_missing()));
+
+    return true;
+}
+
+/**
 Implementation of the "instanceof" operator
 */
 function $rt_instanceof(obj, ctor)

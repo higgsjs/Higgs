@@ -620,6 +620,11 @@ unittest
     assertBool("o = {x: 5}; return 'x' in o;", true);
     assertBool("o = {x: 5}; return 'k' in o;", false);
 
+    // Delete operator
+    assertBool("o = {x: 5}; delete o.x; return 'x' in o;", false);
+    assertBool("o = {x: 5}; delete o.x; return !o.x;", true);
+    assertThrows("a = 5; delete a; a;");
+
     // Function object property
     assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
 

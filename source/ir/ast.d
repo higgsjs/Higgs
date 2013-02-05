@@ -864,7 +864,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Create the body context
         auto bodyCtx = ctx.subCtx(false, NULL_LOCAL, bodyBlock);
 
-        // TODO: Assign into the variable expression
+        // Assign into the variable expression
         auto assgCtx = bodyCtx.subCtx(true);
         assgToIR(
             forInStmt.varExpr,
@@ -1391,6 +1391,21 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
         }
 
+        // Bitwise negation
+        else if (op.str == "~")
+        {
+            auto lCtx = ctx.subCtx(true);
+            exprToIR(unExpr.expr, lCtx);
+            ctx.merge(lCtx);
+
+            genRtCall(
+                ctx, 
+                "not", 
+                ctx.getOutSlot(),
+                [lCtx.getOutSlot()]
+            );
+        }
+
         // Typeof operator
         else if (op.str == "typeof")
         {
@@ -1406,18 +1421,49 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
         }
 
-        // Bitwise negation
-        else if (op.str == "~")
+        // Delete operator
+        else if (op.str == "delete")
         {
-            auto lCtx = ctx.subCtx(true);
-            exprToIR(unExpr.expr, lCtx);
-            ctx.merge(lCtx);
+            IRGenCtx objCtx;
+            IRGenCtx propCtx;
+
+            // If the base expression is a member expression: a[b]
+            if (auto indexExpr = cast(IndexExpr)unExpr.expr)
+            {
+                objCtx = ctx.subCtx(true);
+                exprToIR(indexExpr.base, objCtx);
+                ctx.merge(objCtx);
+
+                propCtx = ctx.subCtx(true);
+                exprToIR(indexExpr.index, propCtx);
+                ctx.merge(propCtx);
+            }
+            else
+            {
+                objCtx = ctx.subCtx(true);
+                ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ, objCtx.getOutSlot()));
+                ctx.merge(objCtx);
+
+                propCtx = ctx.subCtx(true);
+                if (auto identExpr = cast(IdentExpr)unExpr.expr)
+                {
+                    propCtx.addInstr(IRInstr.strCst(
+                        propCtx.getOutSlot(),
+                        identExpr.name
+                    ));
+                }
+                else
+                {
+                    exprToIR(unExpr.expr, objCtx);
+                }
+                ctx.merge(propCtx);
+            }
 
             genRtCall(
                 ctx, 
-                "not", 
+                "delProp",
                 ctx.getOutSlot(),
-                [lCtx.getOutSlot()]
+                [objCtx.getOutSlot(), propCtx.getOutSlot()]
             );
         }
 
