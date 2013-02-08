@@ -85,6 +85,22 @@ function test_floor()
     return 0;
 }
 
+function test_round()
+{
+    if (Math.round(0) !== 0)
+        return 1;
+    if (Math.round(1) !== 1)
+        return 2;
+    if (Math.round(1.1) !== 1)
+        return 3;
+    if (Math.round(1.5) !== 2)
+        return 4;
+    if (Math.round(-1.6) !== -2)
+        return 5;
+
+    return 0;
+}
+
 function test_max()
 {
     if (Math.max(0, 1) !== 1)
@@ -143,17 +159,21 @@ function test()
     if (r !== 0)
         return 300 + r;
 
-    var r = test_max();
+    var r = test_round();
     if (r !== 0)
         return 400 + r;
 
-    var r = test_min();
+    var r = test_max();
     if (r !== 0)
         return 500 + r;
 
-    var r = test_pow();
+    var r = test_min();
     if (r !== 0)
         return 600 + r;
+
+    var r = test_pow();
+    if (r !== 0)
+        return 700 + r;
 
     return 0;
 }

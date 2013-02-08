@@ -477,7 +477,7 @@ void op_floor_f64(Interp interp, IRInstr instr)
     auto w0 = interp.getWord(instr.args[0].localIdx);
     auto t0 = interp.getType(instr.args[0].localIdx);
 
-    assert (t0 == Type.FLOAT, "invalid operand type");
+    assert (t0 == Type.FLOAT, "invalid operand type in floor");
 
     auto r = floor(w0.floatVal);
 
@@ -504,7 +504,7 @@ void op_ceil_f64(Interp interp, IRInstr instr)
     auto w0 = interp.getWord(instr.args[0].localIdx);
     auto t0 = interp.getType(instr.args[0].localIdx);
 
-    assert (t0 == Type.FLOAT, "invalid operand type");
+    assert (t0 == Type.FLOAT, "invalid operand type in ceil");
 
     auto r = ceil(w0.floatVal);
 

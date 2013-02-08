@@ -189,6 +189,9 @@ function string_charCodeAt(pos)
 
     if (pos >= 0 && pos < len)
     {
+        if ($ir_is_int(pos) == false)
+            pos = $rt_toUint32(pos);
+
         return string_internal_charCodeAt(this.toString(), pos);
     }
 

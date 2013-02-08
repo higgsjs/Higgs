@@ -226,6 +226,7 @@ unittest
     assertInt("return 7 >> 1", 3);
     assertInt("return 7 >>> 1", 3);
     assertInt("return ~2", -3);
+    assertInt("return undefined | 1", 1);
 
     assertFloat("return 3.5", 3.5);
     assertFloat("return 2.5 + 2", 4.5);

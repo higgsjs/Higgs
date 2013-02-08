@@ -231,6 +231,46 @@ Math.floor = function (x)
 };
 
 /**
+15.8.2.15 round (x)
+Returns the Number value that is closest to x and is equal to a mathematical
+integer. If two integer Number values are equally close to x, then the result
+is the Number value that is closer to +∞. If x is already an integer, the
+result is x.
+
+• If x is NaN, the result is NaN.
+• If x is +0, the result is +0.
+• If x is −0, the result is −0.
+• If x is +∞, the result is +∞.
+• If x is −∞, the result is −∞.
+• If x is greater than 0 but less than 0.5, the result is +0.
+• If x is less than 0 but greater than or equal to -0.5, the result is −0.
+
+NOTE 1: Math.round(3.5) returns 4, but Math.round(–3.5) returns –3.
+NOTE 2: The value of Math.round(x) is the same as the value of
+Math.floor(x+0.5), except when x is −0 or is less than 0 but greater than or
+equal to -0.5; for these cases Math.round(x) returns −0, but
+Math.floor(x+0.5) returns +0.
+*/
+Math.round = function (x)
+{
+    if ($ir_is_int(x))
+        return x;
+
+    if ($ir_is_float(x))
+    {
+        if (isNaN(x))
+            return NaN;
+
+        if (x < 0 && x >= 0.5)
+            return -1 * 0;
+
+        return Math.floor(x + 0.5);
+    }
+
+    return Math.round($rt_toNumber(x));
+}
+
+/**
 15.8.2.13 pow (x, y)
 Returns an implementation-dependent approximation to the result of raising 
 x to the power y.
