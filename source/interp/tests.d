@@ -292,6 +292,9 @@ unittest
     assertBool("3 === 3.0", true);
     assertBool("3 !== 3.5", true);
 
+    assertBool("return 1 < undefined", false);
+    assertBool("return 1 > undefined", false);
+    assertBool("return 0.5 == null", false);
     assertBool("return 'Foo' != null", true);
     assertBool("return null != null", false);
     assertBool("return 'Foo' == null", false);
@@ -657,6 +660,18 @@ unittest
         return (b.x === undefined);
         ",
         true
+    );
+
+    assertInt(
+        "
+        function f() {}
+        a = new f();
+        b = new f();
+        a.p0 = 0; a.p1 = 1; a.p2 = 2; a.p3 = 3;
+        b.p3 = 4;
+        return b.p3;
+        ",
+        4
     );
 
     assertBool(

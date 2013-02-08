@@ -817,24 +817,31 @@ JS less-than operator
 */
 function $rt_lt(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int(x) && $ir_is_int(y))
+    // If x is integer
+    if ($ir_is_int(x))
     {
-        return $ir_lt_i32(x, y);
+        if ($ir_is_int(y))
+            return $ir_lt_i32(x, y);
+
+        if ($ir_is_float(y))
+            return $ir_lt_f64($ir_i32_to_f64(x), y);
+
+        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
+            return false;
     }
 
-    // If either value is floating-point or integer
-    if (($ir_is_float(x) || $ir_is_int(x)) &&
-        ($ir_is_float(y) || $ir_is_int(y)))
+    // If x is float
+    if ($ir_is_float(x))
     {
-        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_int(y))
+            return $ir_lt_f64(x, $ir_i32_to_f64(y));
 
-        return $ir_lt_f64(fx, fy);
+        if ($ir_is_float(y))
+            return $ir_lt_f64(x, y);
+
+        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
+            return false;
     }
-
-    //println(x);
-    //println(y);
 
     assert (false, "unsupported type in lt");
 }
@@ -868,20 +875,30 @@ JS greater-than operator
 */
 function $rt_gt(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int(x) && $ir_is_int(y))
+    // If x is integer
+    if ($ir_is_int(x))
     {
-        return $ir_gt_i32(x, y);
+        if ($ir_is_int(y))
+            return $ir_gt_i32(x, y);
+
+        if ($ir_is_float(y))
+            return $ir_gt_f64($ir_i32_to_f64(x), y);
+
+        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
+            return false;
     }
 
-    // If either value is floating-point or integer
-    if (($ir_is_float(x) || $ir_is_int(x)) &&
-        ($ir_is_float(y) || $ir_is_int(y)))
+    // If x is float
+    if ($ir_is_float(x))
     {
-        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_int(y))
+            return $ir_gt_f64(x, $ir_i32_to_f64(y));
 
-        return $ir_gt_f64(fx, fy);
+        if ($ir_is_float(y))
+            return $ir_gt_f64(x, y);
+
+        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
+            return false;
     }
 
     assert (false, "unsupported type in gt");
@@ -916,19 +933,27 @@ JS equality (==) comparison operator
 */
 function $rt_eq(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int(x) && $ir_is_int(y))
+    // If x is integer
+    if ($ir_is_int(x))
     {
-        return $ir_eq_i32(x, y);
+        if ($ir_is_int(y))
+            return $ir_eq_i32(x, y);
+
+        if ($ir_is_float(y))
+            return $ir_eq_f64($ir_i32_to_f64(x), y);
+
+        //if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
+        //    return false;
     }
 
-    // If both values are references
-    else if ($ir_is_refptr(x) && $ir_is_refptr(y))
+    // If x is a references
+    if ($ir_is_refptr(x))
     {
         if ($ir_eq_refptr(x, null))
             return $ir_eq_refptr(y, null);
+
         if ($ir_eq_refptr(y, null))
-            return $ir_eq_refptr(x, null);
+            return false;
 
         var tx = $rt_obj_get_header(x);
         var ty = $rt_obj_get_header(y);
@@ -937,17 +962,31 @@ function $rt_eq(x, y)
             return $ir_eq_refptr(x, y);
     }
 
-    // If both values are constants
-    else if ($ir_is_const(x) && $ir_is_const(y))
+    // If x is a constant
+    if ($ir_is_const(x))
     {
-        return $ir_eq_const(x, y);
+        if ($ir_is_const(y))
+            return $ir_eq_const(x, y);
     }
 
-    // If both values are floating-point
-    else if ($ir_is_float(x) && $ir_is_float(y))
+    // If x is float
+    if ($ir_is_float(x))
     {
-        return $ir_eq_f64(x, y);
+        if ($ir_is_int(y))
+            return $ir_eq_f64(x, $ir_i32_to_f64(y));
+
+        if ($ir_is_float(y))
+            return $ir_eq_f64(x, y);
+
+        if ($ir_is_refptr(y) && $ir_eq_refptr(y, null))
+            return false;
+
+        //if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
+        //    return false;
     }
+
+    //println(x);
+    //println(y);
 
     assert (false, "unsupported type in eq");
 }
@@ -1606,7 +1645,7 @@ function $rt_setPropObj(obj, propStr, val)
     // If the object needs to be extended
     if (propIdx >= objCap)
     {
-        //writeln("*** extending object ***");
+        //println("*** extending object ***");
 
         var objType = $rt_obj_get_header(obj);
 
@@ -1616,19 +1655,19 @@ function $rt_setPropObj(obj, propStr, val)
         switch (objType)
         {
             case $rt_LAYOUT_OBJ:
-            newObj = $rt_obj_alloc(objCap+1);
+            newObj = $rt_obj_alloc(propIdx+1);
             break;
 
             case $rt_LAYOUT_CLOS:
             var numCells = $rt_clos_get_num_cells(obj);
-            newObj = $rt_clos_alloc(objCap+1, numCells);
+            newObj = $rt_clos_alloc(propIdx+1, numCells);
             $rt_clos_set_fptr(newObj, $rt_clos_get_fptr(obj));
             for (var i = 0; i < numCells; ++i)
                 $rt_clos_set_cell(newObj, i, $rt_clos_get_cell(obj, i));
             break;
 
             case $rt_LAYOUT_ARR:
-            newObj = $rt_arr_alloc(objCap+1);
+            newObj = $rt_arr_alloc(propIdx+1);
             $rt_arr_set_len(newObj, $rt_arr_get_len(obj));
             $rt_arr_set_tbl(newObj, $rt_arr_get_tbl(obj));
             break;
@@ -1652,6 +1691,8 @@ function $rt_setPropObj(obj, propStr, val)
 
         // Update the object pointer
         obj = newObj;
+
+        //println('extended');
     }
 
     // Set the value and its type in the object

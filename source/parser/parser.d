@@ -457,6 +457,14 @@ ASTStmt parseStmt(TokenStream input)
                 initExpr = parseExpr(input, COMMA_PREC+1);
             }
     
+            // If this is an assignment of an unnamed function to 
+            // a variable, assign the function a name
+            if (auto funExpr = cast(FunExpr)initExpr)
+            {
+                if (funExpr.name is null)
+                    funExpr.name = identExpr;
+            }
+
             identExprs ~= [identExpr];
             initExprs ~= [initExpr];
         }
@@ -729,8 +737,7 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
                 {
                     wstring nameStr;
 
-                    auto curExpr = lhsExpr; 
-                    while (curExpr !is null)
+                    for (auto curExpr = lhsExpr; curExpr !is null;)
                     {
                         wstring subStr;
 

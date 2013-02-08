@@ -104,7 +104,7 @@ class RunError : Error
 
         foreach (instr; trace)
         {
-            str ~= "\n" ~ instr.fun.name;
+            str ~= "\n" ~ instr.fun.name ~ " (" ~ to!string(instr.fun.ast.pos) ~ ")";
         }
 
         return str;
