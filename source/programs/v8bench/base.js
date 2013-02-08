@@ -83,7 +83,6 @@ BenchmarkSuite.version = '6';
 
 // To make the benchmark results predictable, we replace Math.random
 // with a 100% deterministic alternative.
-/*
 Math.random = (function() {
   var seed = 49734321;
   return function() {
@@ -97,10 +96,6 @@ Math.random = (function() {
     return (seed & 0xfffffff) / 0x10000000;
   };
 })();
-*/
-
-// FIXME: until FP support is in
-Math.random = function() { error('call to Math.random, not yet supported'); }
 
 
 // Runs all registered benchmark suites and optionally yields between

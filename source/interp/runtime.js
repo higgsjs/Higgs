@@ -733,7 +733,8 @@ function $rt_and(x, y)
         return $ir_and_i32(x, y);
     }
 
-    assert (false, "unsupported type in bitwise and");
+    // Convert the operands to integers
+    return $ir_and_i32($rt_toUint32(x), $rt_toUint32(y));
 }
 
 function $rt_or(x, y)
@@ -744,7 +745,8 @@ function $rt_or(x, y)
         return $ir_or_i32(x, y);
     }
 
-    assert (false, "unsupported type in bitwise or");
+    // Convert the operands to integers
+    return $ir_or_i32($rt_toUint32(x), $rt_toUint32(y));
 }
 
 function $rt_xor(x, y)
@@ -755,7 +757,8 @@ function $rt_xor(x, y)
         return $ir_xor_i32(x, y);
     }
 
-    assert (false, "unsupported type in bitwise xor");
+    // Convert the operands to integers
+    return $ir_xor_i32($rt_toUint32(x), $rt_toUint32(y));
 }
 
 function $rt_lsft(x, y)
@@ -801,7 +804,8 @@ function $rt_not(x)
         return $ir_not_i32(x);
     }
 
-    assert (false, "unsupported type in bitwise not");
+    // Convert the operand to integers
+    return $ir_not_i32($rt_toUint32(x));
 }
 
 //=============================================================================
@@ -828,6 +832,9 @@ function $rt_lt(x, y)
 
         return $ir_lt_f64(fx, fy);
     }
+
+    //println(x);
+    //println(y);
 
     assert (false, "unsupported type in lt");
 }
@@ -918,6 +925,11 @@ function $rt_eq(x, y)
     // If both values are references
     else if ($ir_is_refptr(x) && $ir_is_refptr(y))
     {
+        if ($ir_eq_refptr(x, null))
+            return $ir_eq_refptr(y, null);
+        if ($ir_eq_refptr(y, null))
+            return $ir_eq_refptr(x, null);
+
         var tx = $rt_obj_get_header(x);
         var ty = $rt_obj_get_header(y);
 
@@ -954,6 +966,11 @@ function $rt_ne(x, y)
     // If both values are references
     else if ($ir_is_refptr(x) && $ir_is_refptr(y))
     {
+        if ($ir_eq_refptr(x, null))
+            return $ir_ne_refptr(y, null);
+        if ($ir_eq_refptr(y, null))
+            return $ir_ne_refptr(x, null);
+
         var tx = $rt_obj_get_header(x);
         var ty = $rt_obj_get_header(y);
 

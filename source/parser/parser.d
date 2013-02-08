@@ -721,6 +721,44 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
                 op = eqOp;
             }
 
+            // If this is an assignment of a function to something, 
+            // try to assign the function a name
+            if (auto funExpr = cast(FunExpr)rhsExpr)
+            {
+                if (op.str == "=" && funExpr.name is null)
+                {
+                    wstring nameStr;
+
+                    auto curExpr = lhsExpr; 
+                    while (curExpr !is null)
+                    {
+                        wstring subStr;
+
+                        if (auto idxExpr = cast(IndexExpr)curExpr)
+                        {
+                            if (auto strExpr = cast(StringExpr)idxExpr.index)
+                                subStr = strExpr.val;
+                            curExpr = idxExpr.base;
+                        }
+                        else if (auto identExpr = cast(IdentExpr)curExpr)
+                        {
+                            subStr = identExpr.name;
+                            curExpr = null;
+                        }
+                        else
+                        {
+                            nameStr = ""w;
+                            break;
+                        }
+
+                        nameStr = subStr ~ (nameStr? "_"w:"") ~ nameStr;
+                    }
+
+                    if (nameStr)
+                        funExpr.name = new IdentExpr(nameStr, funExpr.pos);
+                }
+            }
+
             // Update lhs with the new value
             lhsExpr = new BinOpExpr(op, lhsExpr, rhsExpr, lhsExpr.pos);
         }

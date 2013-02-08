@@ -46,6 +46,7 @@ import std.array;
 import std.conv;
 import std.typecons;
 import util.misc;
+import analysis.typeset;
 import parser.parser;
 import parser.ast;
 import ir.ir;
@@ -327,6 +328,9 @@ class Interp
 
     /// Linked list of GC roots
     GCRoot* firstRoot = null;
+
+    /// Linked list of type sets
+    TypeSet* firstSet = null;
 
     /// Set of weak references to functions referenced in the heap
     /// To be cleaned up by the GC
@@ -834,7 +838,12 @@ class Interp
     */
     ValuePair load(string fileName)
     {
+        //writefln("parsing %s", fileName);
+
         auto ast = parseFile(fileName);
+
+        //writefln("executing!");
+
         return exec(ast);
     }
 

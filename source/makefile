@@ -9,6 +9,7 @@ SRC =               \
 util/id.d           \
 util/string.d       \
 util/misc.d         \
+analysis/typeset.d  \
 parser/lexer.d      \
 parser/ast.d        \
 parser/vars.d       \
@@ -23,7 +24,6 @@ interp/string.d     \
 interp/object.d     \
 interp/gc.d         \
 interp/tests.d      \
-analysis/typeset.d  \
 repl.d              \
 main.d
 

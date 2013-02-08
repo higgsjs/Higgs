@@ -292,6 +292,10 @@ unittest
     assertBool("3 === 3.0", true);
     assertBool("3 !== 3.5", true);
 
+    assertBool("return 'Foo' != null", true);
+    assertBool("return null != null", false);
+    assertBool("return 'Foo' == null", false);
+
     assertInt("return true? 1:0", 1);
     assertInt("return false? 1:0", 0);
 
