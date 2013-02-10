@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -360,15 +360,31 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     fun.closSlot = bodyCtx.allocTemp();
     fun.raSlot   = bodyCtx.allocTemp();
 
-    // Allocate slots for local variables and initialize them to undefined
+    // Allocate slots for local variables
     foreach (ident; ast.locals)
     {
         // If this variable does not escape and is not a parameter
         if (ident !in ast.escpVars && ident !in fun.localMap)
+            fun.localMap[ident] = bodyCtx.allocTemp();
+    }
+
+    // Initialize global variable declarations to undefined
+    if (auto unit = cast(ASTProgram)ast)
+    {
+        auto subCtx = bodyCtx.subCtx(false);
+        auto cstInstr = bodyCtx.addInstr(new IRInstr(&SET_UNDEF, subCtx.allocTemp()));
+
+        foreach (ident; unit.globals)
         {
-            auto localSlot = bodyCtx.allocTemp();
-            fun.localMap[ident] = localSlot;
-       }
+            auto setInstr = subCtx.addInstr(new IRInstr(&SET_GLOBAL));
+            setInstr.outSlot = NULL_LOCAL;
+            setInstr.args.length = 3;
+            setInstr.args[0].stringVal = ident.name;
+            setInstr.args[1].localIdx = cstInstr.outSlot;
+            setInstr.args[2].intVal = -1;
+        }
+
+        bodyCtx.merge(subCtx);
     }
 
     // If the function uses the arguments object
@@ -2007,7 +2023,7 @@ void assgToIR(
             genRhs(subCtx);
             ctx.merge(subCtx);
 
-            // Get the global value
+            // Set the global value
             auto setInstr = ctx.addInstr(new IRInstr(&SET_GLOBAL));
             setInstr.outSlot = NULL_LOCAL;
             setInstr.args.length = 3;

@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -65,7 +65,23 @@ class Scope
     }
 
     /**
-    Add a declaration to this scope
+    Add a global declaration to this unit
+    */
+    void addGlobal(IdentExpr ident)
+    {
+        auto unit = cast(ASTProgram)fun;
+
+        assert (
+            unit !is null,
+            "function is not top-level unit"
+        );
+
+        // Add the global to the unit
+        unit.globals ~= [ident];
+    }
+
+    /**
+    Add a local declaration to this scope
     */
     void addDecl(IdentExpr ident)
     {
@@ -186,10 +202,11 @@ void findDecls(ASTStmt stmt, Scope s)
         {
             auto ident = varStmt.identExprs[i];
 
-            // If we are not in a top-level (program) scope,
-            // add a declaration for this variable
+            // Add a declaration for this variable
             if (cast(ASTProgram)s.fun is null)
                 s.addDecl(ident);
+            else
+                s.addGlobal(ident);
         }
     }
 

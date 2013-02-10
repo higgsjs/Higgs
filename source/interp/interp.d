@@ -503,6 +503,7 @@ class Interp
             load("stdlib/number.js");
             load("stdlib/boolean.js");
             load("stdlib/date.js");
+            load("stdlib/global.js");
         }
 
         //gcCollect(this);

@@ -299,6 +299,8 @@ unittest
     assertBool("return 'Foo' != null", true);
     assertBool("return null != null", false);
     assertBool("return 'Foo' == null", false);
+    assertBool("return undefined == undefined", true);
+    assertBool("return undefined == null", true);
 
     assertInt("return true? 1:0", 1);
     assertInt("return false? 1:0", 0);
@@ -566,6 +568,7 @@ unittest
 /// Global scope, global object
 unittest
 {
+    assertBool("var x; return !x", true);
     assertInt("a = 1; return a;", 1);
     assertInt("var a; a = 1; return a;", 1);
     assertInt("var a = 1; return a;", 1);
@@ -1033,6 +1036,14 @@ unittest
     assertStr("'foobar'.substring(0,3)", "foo");
 
     assertInt("'f,o,o'.split(',').length", 3);
+}
+
+/// Stdlib global functions
+unittest
+{
+    assertInt("parseInt(10)", 10);
+    assertInt("parseInt(-1)", -1);
+    assertBool("isNaN(parseInt('zux'))", true);
 }
 
 /// Basic test programs

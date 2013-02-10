@@ -66,6 +66,9 @@ Top-level program (source file) node
 */
 class ASTProgram : FunExpr
 {
+    /// List of global variable declarations
+    IdentExpr[] globals;
+
     this(ASTStmt[] stmts, SrcPos pos = null)
     {
         super(null, [], new BlockStmt(stmts), pos);

@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2011-2013, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -40,10 +40,7 @@
  * _________________________________________________________________________
  */
 
-function parseInt(
-    string,
-    radix
-)
+function parseInt(string, radix)
 {
     var i = 0;
     var positive = true;
@@ -68,8 +65,7 @@ function parseInt(
 
     // Reject invalid radix value.
     if (radix !== undefined && radix < 2 && radix > 36)
-        // FIXME: must return NaN
-        return null;
+        return NaN;
 
     // Set radix default value if no valid radix parameter given.
     if (radix === undefined)
@@ -111,16 +107,13 @@ function parseInt(
     if (j > i)
        return positive ? n : -n;
 
-    // FIXME: must return NaN
-    return null; 
+    return NaN;
 }
 
 /**
 15.1.3.1 decodeURI(encodedURI)
 */
-function decodeURI (
-    encodedURI
-)
+function decodeURI(encodedURI)
 {
     // Parse and returns a 2 characters hexadecimal value in the string
     // at a given position.
@@ -148,7 +141,6 @@ function decodeURI (
     }
 
     var decodedURIParts = new Array();
-    // FIXME: should be local (backend problem)
     var j = 0;
 
     for (var i = 0; i < encodedURI.length;)
@@ -239,7 +231,7 @@ function decodeURI (
 /**
 Filter for the classes uriUnescaped. (15.1.3)
 */
-function unescapedClassFilter (c)
+function unescapedClassFilter(c)
 {
     return ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) ||
             (c >= 48 && c <= 57) || (c >= 39 && c <= 42)  ||
@@ -250,7 +242,7 @@ function unescapedClassFilter (c)
 /**
 Filter for the classes uriUnescaped, uriReserved and #. (15.1.3)
 */
-function unescapedClassFilterComponent (c)
+function unescapedClassFilterComponent(c)
 {
     return ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) ||
             (c >= 48 && c <= 57) || (c >= 39 && c <= 42)  ||
@@ -263,10 +255,7 @@ function unescapedClassFilterComponent (c)
 /**
 Generic uri encoding function that takes a unescapedClass filter function.
 */
-function _encodeURI (
-    uri,
-    unescapedClassFilter
-)
+function _encodeURI(uri, unescapedClassFilter)
 {
     var encodedURIParts = [], i = 0, j = 0;
 
@@ -364,9 +353,7 @@ function _encodeURI (
 /**
 15.1.3.3 encodeURI(uri)
 */
-function encodeURI (
-    uri
-)
+function encodeURI(uri)
 {
     return _encodeURI(uri, unescapedClassFilter);
 }
@@ -374,32 +361,8 @@ function encodeURI (
 /**
 15.1.3.4 encodeURIComponent(uriComponent)
 */
-function encodeURIComponent (
-    uri
-)
+function encodeURIComponent(uri)
 {
     return _encodeURI(uri, unescapedClassFilterComponent);
-}
-
-function parseFloat (
-    string
-)
-{
-    // FIXME: implement fully once floating-point support is added
-    return parseInt(string);
-}
-
-function isNaN (
-    number
-)
-{
-    return false;
-}
-
-function isFinite (
-    number
-)
-{
-    return true;
 }
 

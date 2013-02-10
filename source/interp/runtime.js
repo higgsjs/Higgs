@@ -948,15 +948,18 @@ function $rt_eq(x, y)
         if ($ir_is_float(y))
             return $ir_eq_f64($ir_i32_to_f64(x), y);
 
-        //if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
-        //    return false;
+        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
+            return false;
+
+        if (y === null)
+            return false;
     }
 
     // If x is a references
     if ($ir_is_refptr(x))
     {
         if ($ir_eq_refptr(x, null))
-            return $ir_eq_refptr(y, null);
+            return $ir_eq_refptr(y, null) || y === $rt_set_undef();
 
         if ($ir_eq_refptr(y, null))
             return false;
@@ -973,6 +976,9 @@ function $rt_eq(x, y)
     {
         if ($ir_is_const(y))
             return $ir_eq_const(x, y);
+
+        if (x === undefined && y === null)
+            return true;
     }
 
     // If x is float
@@ -991,8 +997,8 @@ function $rt_eq(x, y)
         //    return false;
     }
 
-    //println(x);
-    //println(y);
+    println(x);
+    println(y);
 
     assert (false, "unsupported type in eq");
 }
