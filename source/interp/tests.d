@@ -301,6 +301,8 @@ unittest
     assertBool("return 'Foo' == null", false);
     assertBool("return undefined == undefined", true);
     assertBool("return undefined == null", true);
+    assertBool("o = {}; return o == o", true);
+    assertBool("oa = {}; ob = {}; return oa == ob", false);
 
     assertInt("return true? 1:0", 1);
     assertInt("return false? 1:0", 0);
@@ -1132,6 +1134,15 @@ unittest
     interp.load("programs/stdlib_string/stdlib_string.js");
     interp.assertInt("test();", 0);
     // TODO: regexp support, regexp test
+}
+
+/// Regression tests
+unittest
+{
+    auto interp = new Interp();
+
+    interp.load("programs/regress/regress_delta.js");
+    interp.load("programs/regress/regress_in.js");
 }
 
 /// Garbage collector tests

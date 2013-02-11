@@ -958,17 +958,38 @@ function $rt_eq(x, y)
     // If x is a references
     if ($ir_is_refptr(x))
     {
-        if ($ir_eq_refptr(x, null))
-            return $ir_eq_refptr(y, null) || y === $rt_set_undef();
+        // If y is a reference
+        if ($ir_is_refptr(y))
+        {
+            // If the references are equal
+            if ($ir_eq_refptr(x, y))
+                return true;
 
-        if ($ir_eq_refptr(y, null))
-            return false;
+            // If x or y are null, they are not equal
+            if ($ir_eq_refptr(x, null) || $ir_eq_refptr(y, null))
+                return false;
 
-        var tx = $rt_obj_get_header(x);
-        var ty = $rt_obj_get_header(y);
+            var tx = $rt_obj_get_header(x);
+            var ty = $rt_obj_get_header(y);
 
-        if ($ir_eq_i8(tx, $rt_LAYOUT_STR) && $ir_eq_i8(ty, $rt_LAYOUT_STR))
-            return $ir_eq_refptr(x, y);
+            // TODO: test if tx === ty?
+
+            // If x and y are strings
+            if ($ir_eq_i8(tx, $rt_LAYOUT_STR) && $ir_eq_i8(ty, $rt_LAYOUT_STR))
+                return false;
+
+            // If x and y are objects
+            if ($ir_eq_i8(tx, $rt_LAYOUT_OBJ) && $ir_eq_i8(ty, $rt_LAYOUT_OBJ))
+                return false;
+        }
+
+        // If y is a constant
+        if ($ir_is_const(y))
+        {
+            // null == undefined
+            if (x === null)
+                return y === $ir_set_undef();
+        }
     }
 
     // If x is a constant
@@ -1353,10 +1374,12 @@ function $rt_getPropIdx(classPtr, propStr, alloc)
 
     // If we are not to allocate new property indices, stop
     if ($ir_if_false(alloc))
-        return false;
+        return false;   
 
     // Get the number of class properties
     var numProps = $rt_class_get_num_props(classPtr);
+
+    //println('Allocating new prop idx for: ' + propStr + ' => ' + numProps);
 
     // Set the property name and index
     var propIdx = numProps;
@@ -1399,8 +1422,13 @@ function $rt_getPropObj(obj, propStr)
     // Find the index for this property
     var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr, false);
 
-    // If the property was found
-    if ($ir_is_int(propIdx))
+    //println('getProp: ' + propStr + ' => ' + propIdx);
+
+    // Get the capacity of the object
+    var objCap = $rt_obj_get_cap(obj);
+
+    // If the property was found and is present in the object
+    if ($ir_is_int(propIdx) && propIdx < objCap)
     {
         var word = $rt_obj_get_word(obj, propIdx);
         var type = $rt_obj_get_type(obj, propIdx);
@@ -1506,10 +1534,13 @@ function $rt_getProp(base, prop)
         return $rt_getProp(Boolean.prototype, prop);
     }
 
-    // TODO: error on null, undefined
-
     //println(base);
     //println(prop);
+
+    if (base === null)
+        throw TypeError("null base in property read");
+    if (base === $ir_set_undef())
+        throw TypeError("undefined base in property read");
 
     throw TypeError("invalid base in property read");
 }
@@ -1856,8 +1887,17 @@ function $rt_hasPropObj(obj, propStr)
 
     var classPtr = $rt_obj_get_class(obj);
     var propIdx = $rt_getPropIdx(classPtr, propStr, false);
+
+    // If the class doesn't have an index for this property slot, return false
     if (propIdx === false)
         return false;
+
+    // Get the capacity of the object
+    var objCap = $rt_obj_get_cap(obj);
+
+    // If the object doesn't have space for this property, return false
+    if (propIdx >= objCap)
+        return false
 
     // Check that the property is not missing
     var word = $rt_obj_get_word(obj, propIdx);
