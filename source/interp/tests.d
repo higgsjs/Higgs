@@ -563,6 +563,8 @@ unittest
     assertStr("return typeof false", "boolean");
     assertStr("return typeof null", "object");
     assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
+    assertStr("x = 3; return typeof x;", "number");
+    assertStr("delete x; return typeof x;", "undefined");
 }
 
 /// Global scope, global object

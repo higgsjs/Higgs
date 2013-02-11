@@ -1425,6 +1425,33 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Typeof operator
         else if (op.str == "typeof")
         {
+            // If the subexpression is a global variable
+            if (auto identExpr = cast(IdentExpr)unExpr.expr)
+            {
+                if (identExpr.declNode is null && identExpr.name != "this"w)
+                {
+                    auto globInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ, ctx.allocTemp()));
+                    auto strInstr = ctx.addInstr(IRInstr.strCst(ctx.allocTemp(), identExpr.name));
+
+                    auto getInstr = genRtCall(
+                        ctx, 
+                        "getProp",
+                        ctx.allocTemp(),
+                        [globInstr.outSlot, strInstr.outSlot]
+                    );
+
+                    genRtCall(
+                        ctx, 
+                        "typeof", 
+                        ctx.getOutSlot(),
+                        [getInstr.outSlot]
+                    );
+
+                    return;
+                }
+            }
+
+            // Evaluate the subexpression directly
             auto lCtx = ctx.subCtx(true);
             exprToIR(unExpr.expr, lCtx);
             ctx.merge(lCtx);
