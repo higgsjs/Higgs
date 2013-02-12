@@ -356,6 +356,9 @@ void resolveRefs(ASTStmt stmt, Scope s)
 
     else if (auto forInStmt = cast(ForInStmt)stmt)
     {
+        if (forInStmt.hasDecl)
+            resolveRefs(cast(IdentExpr)forInStmt.varExpr, s);
+
         resolveRefs(forInStmt.inExpr, s);
         resolveRefs(forInStmt.bodyStmt, s);
     }
@@ -389,6 +392,7 @@ void resolveRefs(ASTStmt stmt, Scope s)
     else if (auto tryStmt = cast(TryStmt)stmt)
     {
         resolveRefs(tryStmt.tryStmt, s);
+
         if (tryStmt.catchStmt)
         {
             // Create a new scope just for the catch variable
@@ -398,6 +402,7 @@ void resolveRefs(ASTStmt stmt, Scope s)
             resolveRefs(tryStmt.catchIdent, catchVarS);
             resolveRefs(tryStmt.catchStmt, catchVarS);
         }
+
         if (tryStmt.finallyStmt)
         {
             resolveRefs(tryStmt.finallyStmt, s);

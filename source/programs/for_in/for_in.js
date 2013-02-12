@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2011-2013, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -40,24 +40,10 @@
  * _________________________________________________________________________
  */
 
-function test()
+function validate(propNames, valid)
 {
-    var o = [3,4,5];
-
-    o.x = 1;
-    o.y = 2;
-
-    var propNames = [];
-
-    for (k in o)
-        propNames[propNames.length] = k;
-
-    var valid = [0,1,2,'x','y'];
-
     if (valid.length !== propNames.length)
-        return 1;
-
-    var i = 0;
+        return false;
 
     VALID_LOOP:
     for (var i = 0; i < valid.length; ++i)
@@ -73,8 +59,34 @@ function test()
         }
 
         // Property not found
-        return 2;
+        return false;
     }
+
+    return true;
+}
+
+function test()
+{
+    var o = [3,4,5];
+    o.x = 1;
+    o.y = 2;
+
+    var valid = [0,1,2,'x','y'];
+
+    var propNames = [];
+    for (k1 in o)
+        propNames[propNames.length] = k1;
+
+    if (validate(propNames, valid) !== true)
+        return 1;
+
+    var propNames = [];
+    for (var k2 in o)
+        propNames[propNames.length] = k2;
+
+    if (validate(propNames, valid) !== true)
+        return 2;
 
     return 0;
 }
+

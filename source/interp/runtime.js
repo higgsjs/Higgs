@@ -120,7 +120,7 @@ function $rt_valIsLayout(val, layoutId)
 /**
 Test if a value is a string
 */
-function $rt_isString(val)
+function $rt_valIsString(val)
 {
     return (
         $ir_is_refptr(val) && 
@@ -427,11 +427,21 @@ function $rt_toString(v)
         }
     }
 
-    if (type === "object")
-        return v? v.toString():"null";
+    if (type === "object" || type === "function" || type === "array")
+    {
+        if (v === null)
+            return "null";
 
-    if (type === "function" || type === "array")
-        return v.toString();
+        var str = v.toString();
+
+        if ($rt_valIsString(str))
+            return str;
+
+        if ($rt_valIsObj(str))
+            throw TypeError('toString produced non-primitive value');
+
+        return $rt_toString(str);
+    }
 
     assert (false, "unhandled type in toString");
 }
@@ -1468,7 +1478,7 @@ function $rt_getProp(base, prop)
             $ir_eq_i8(type, $rt_LAYOUT_CLOS))
         {
             // If the property is a string
-            if ($rt_isString(prop))
+            if ($rt_valIsString(prop))
                 return $rt_getPropObj(base, prop);
 
             return $rt_getPropObj(base, $rt_toString(prop));
@@ -1492,7 +1502,7 @@ function $rt_getProp(base, prop)
                 return $rt_arr_get_len(base);
 
             // If the property is a string
-            if ($rt_isString(prop))
+            if ($rt_valIsString(prop))
                 return $rt_getPropObj(base, prop);
 
             return $rt_getPropObj(base, $rt_toString(prop));
@@ -1761,7 +1771,7 @@ function $rt_setProp(base, prop, val)
             $ir_eq_i8(type, $rt_LAYOUT_CLOS))
         {
             // If the property is a string
-            if ($rt_isString(prop))
+            if ($rt_valIsString(prop))
                 return $rt_setPropObj(base, prop, val);
 
             return $rt_setPropObj(base, $rt_toString(prop), val);
@@ -1784,7 +1794,7 @@ function $rt_setProp(base, prop, val)
             }
 
             // If the property is a string
-            if ($rt_isString(prop))
+            if ($rt_valIsString(prop))
                 return $rt_setPropObj(base, prop, val);
 
             return $rt_setPropObj(base, $rt_toString(prop), val);
@@ -1808,7 +1818,7 @@ function $rt_delProp(base, prop)
         return true;
 
     // If the property is not a string
-    if ($rt_isString(prop) === false)
+    if ($rt_valIsString(prop) === false)
         throw TypeError('non-string property name');
 
     var obj = base;
@@ -1921,7 +1931,7 @@ function $rt_hasOwnProp(base, prop)
             $ir_eq_i8(type, $rt_LAYOUT_CLOS))
         {
             // If the property is a string
-            if ($rt_isString(prop))
+            if ($rt_valIsString(prop))
                 return $rt_hasPropObj(base, prop);
 
             return $rt_hasPropObj(base, $rt_toString(prop));
@@ -1940,7 +1950,7 @@ function $rt_hasOwnProp(base, prop)
                 return true;
 
             // If the property is a string
-            if ($rt_isString(prop))
+            if ($rt_valIsString(prop))
                 return $rt_hasPropObj(base, prop);
 
             return $rt_hasPropObj(base, $rt_toString(prop));

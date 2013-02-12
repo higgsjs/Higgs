@@ -1143,6 +1143,7 @@ unittest
 
     interp.load("programs/regress/regress_delta.js");
     interp.load("programs/regress/regress_in.js");
+    interp.load("programs/regress/regress_tostring.js");
 }
 
 /// Garbage collector tests
