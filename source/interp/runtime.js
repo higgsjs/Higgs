@@ -1116,7 +1116,7 @@ function $rt_se(x, y)
         if ($ir_is_float(y))
             return $ir_eq_f64(x, y);
 
-        if ($ir_is_int(x))
+        if ($ir_is_int(y))
             return $ir_eq_f64(x, $ir_i32_to_f64(y));
 
         return false;
@@ -1128,7 +1128,7 @@ function $rt_se(x, y)
 /**
 JS strict inequality (!==) comparison operator
 */
-function $rt_ne(x, y)
+function $rt_ns(x, y)
 {
     // If x is integer
     if ($ir_is_int(x))
@@ -1166,7 +1166,7 @@ function $rt_ne(x, y)
         if ($ir_is_float(y))
             return $ir_ne_f64(x, y);
 
-        if ($ir_is_int(x))
+        if ($ir_is_int(y))
             return $ir_ne_f64(x, $ir_i32_to_f64(y));
 
         return true;

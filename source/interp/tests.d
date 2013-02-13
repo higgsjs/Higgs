@@ -1055,6 +1055,21 @@ unittest
 {
     auto interp = new Interp();
 
+    // Basic suite
+    interp.load("programs/basic_arith/basic_arith.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/basic_shift/basic_shift.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/basic_bitops/basic_bitops.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/basic_assign/basic_assign.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/basic_cmp/basic_cmp.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/basic_bool_eval/basic_bool_eval.js");
+    interp.assertInt("test();", 0);
+
+    // Recursive Fibonacci computation
     interp.load("programs/fib/fib.js");
     interp.assertInt("fib(8);", 21);
 
@@ -1064,6 +1079,7 @@ unittest
     interp.load("programs/bubble_sort/bubble_sort.js");
     interp.assertInt("test();", 0);
 
+    // N-queens solver
     interp.load("programs/nqueens/nqueens.js");
     interp.assertInt("test();", 0);
 

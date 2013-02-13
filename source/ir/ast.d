@@ -1273,7 +1273,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == "===")
             genBinOp("se");
         else if (op.str == "!==")
-            genBinOp("ne");
+            genBinOp("ns");
         else if (op.str == "==")
             genBinOp("eq");
         else if (op.str == "!=")
