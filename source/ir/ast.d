@@ -2274,6 +2274,9 @@ LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
         if (isBranchIIR(expr))
             return true;
 
+        if (cast(TrueExpr)expr || cast(FalseExpr)expr)
+            return true;
+
         auto unOp = cast(UnOpExpr)expr;
         if (unOp !is null &&
             unOp.op.str == "!" &&

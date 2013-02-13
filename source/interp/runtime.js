@@ -66,9 +66,9 @@ function assert(test, errorMsg)
     if ($ir_if_true(test))
         return;
 
-    var globalObj = $ir_get_global_obj();
-    if (globalObj.Error != undefined)
-        throw Error(errorMsg);
+    //var globalObj = $ir_get_global_obj();
+    //if (globalObj.Error !== undefined)
+    //    throw Error(errorMsg);
 
     throw errorMsg;
 }
@@ -1031,7 +1031,7 @@ function $rt_eq(x, y)
     println(x);
     println(y);
 
-    assert (false, "unsupported type in eq");
+    throw TypeError("unsupported type in '==' equality comparison");
 }
 
 /**
@@ -1039,40 +1039,7 @@ JS inequality (!=) comparison operator
 */
 function $rt_ne(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int(x) && $ir_is_int(y))
-    {
-        return $ir_ne_i32(x, y);
-    }
-
-    // If both values are references
-    else if ($ir_is_refptr(x) && $ir_is_refptr(y))
-    {
-        if ($ir_eq_refptr(x, null))
-            return $ir_ne_refptr(y, null);
-        if ($ir_eq_refptr(y, null))
-            return $ir_ne_refptr(x, null);
-
-        var tx = $rt_obj_get_header(x);
-        var ty = $rt_obj_get_header(y);
-
-        if ($ir_eq_i8(tx, $rt_LAYOUT_STR) && $ir_eq_i8(ty, $rt_LAYOUT_STR))
-            return $ir_ne_refptr(x, y);
-    }
-
-    // If both values are constants
-    else if ($ir_is_const(x) && $ir_is_const(y))
-    {
-        return $ir_ne_const(x, y);
-    }
-
-    // If both values are floating-point
-    else if ($ir_is_float(x) && $ir_is_float(y))
-    {
-        return $ir_ne_f64(x, y);
-    }
-
-    assert (false, "unsupported type in ne");
+    return !$rt_eq(x, y);
 }
 
 /**
