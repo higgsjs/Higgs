@@ -74,6 +74,14 @@ function assert(test, errorMsg)
 }
 
 /**
+Load and execute a source file
+*/
+function load(fileName)
+{
+    $ir_load_file(fileName);
+}
+
+/**
 Print a value to the console
 */
 function print(val)
@@ -859,7 +867,10 @@ function $rt_lt(x, y)
             return false;
     }
 
-    assert (false, "unsupported type in lt");
+    println(typeof x);
+    println(typeof y);
+
+    throw TypeError("unsupported type in less-than");
 }
 
 /**

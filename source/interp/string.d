@@ -39,6 +39,7 @@ module interp.string;
 
 import std.stdio;
 import std.string;
+import std.conv;
 import interp.interp;
 import interp.layout;
 import interp.gc;
@@ -46,6 +47,27 @@ import interp.gc;
 immutable uint32 STR_TBL_INIT_SIZE = 997;
 immutable uint32 STR_TBL_MAX_LOAD_NUM = 3;
 immutable uint32 STR_TBL_MAX_LOAD_DENOM = 5;
+
+/**
+Extract a D string from a string object
+*/
+string extractStr(refptr ptr)
+{
+    assert (
+        obj_get_header(ptr) == LAYOUT_STR,
+        "invalid string object"
+    );
+
+    auto len = str_get_len(ptr);
+
+    wchar[] wchars = new wchar[len];
+    for (uint32 i = 0; i < len; ++i)
+        wchars[i] = str_get_data(ptr, i);
+
+    auto str = to!string(wchars);
+
+    return str;
+}
 
 /**
 Compute the hash value for a given string object

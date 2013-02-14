@@ -750,6 +750,9 @@ Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT
 /// Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], &op_new_clos };
 
+/// Load a source code unit from a file
+Opcode LOAD_FILE = { "load_file", false, [OpArg.LOCAL], &op_load_file };
+
 /// Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
 
@@ -905,6 +908,7 @@ static this()
     addOp(GET_LINK);
     addOp(GET_STR);
 
+    addOp(LOAD_FILE);
     addOp(PRINT_STR);
     addOp(GET_AST_STR);
     addOp(GET_IR_STR);

@@ -1445,6 +1445,28 @@ void op_new_clos(Interp interp, IRInstr instr)
     );
 }
 
+void op_load_file(Interp interp, IRInstr instr)
+{
+    auto wFile = interp.getWord(instr.args[0].localIdx);
+    auto tFile = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        valIsString(wFile, tFile),
+        "expected string filename argument in load_file"
+    );
+
+    auto fileName = extractStr(wFile.ptrVal);
+
+    // Save the current instruction pointer
+    auto ip = interp.ip;
+
+    // Load and execute the source file
+    interp.load(fileName);
+
+    // Restore the instruction pointer
+    interp.ip = ip;
+}
+
 void op_print_str(Interp interp, IRInstr instr)
 {
     auto wStr = interp.getWord(instr.args[0].localIdx);
@@ -1455,14 +1477,7 @@ void op_print_str(Interp interp, IRInstr instr)
         "expected string in print_str"
     );
 
-    auto ptr = wStr.ptrVal;
-
-    auto len = str_get_len(ptr);
-    wchar[] wchars = new wchar[len];
-    for (uint32 i = 0; i < len; ++i)
-        wchars[i] = str_get_data(ptr, i);
-
-    auto str = to!string(wchars);
+    auto str = extractStr(wStr.ptrVal);
 
     // Print the string to standard output
     write(str);

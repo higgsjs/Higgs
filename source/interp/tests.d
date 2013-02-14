@@ -1069,6 +1069,11 @@ unittest
     interp.load("programs/basic_bool_eval/basic_bool_eval.js");
     interp.assertInt("test();", 0);
 
+    // TODO: enable more es5_cmp tests
+    // ES5 comparison operator test
+    interp.load("programs/es5_cmp/es5_cmp.js");
+    interp.assertInt("test();", 0);
+
     // Recursive Fibonacci computation
     interp.load("programs/fib/fib.js");
     interp.assertInt("fib(8);", 21);
@@ -1110,6 +1115,9 @@ unittest
     // For-in loop
     interp.load("programs/for_in/for_in.js");
     interp.assertInt("test();", 0);
+
+    // Dynamic code loading
+    interp.load("programs/load/loader.js");
 
     // Exceptions
     interp.load("programs/exceptions/throw_intra.js");

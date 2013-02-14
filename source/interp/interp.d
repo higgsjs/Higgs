@@ -232,13 +232,7 @@ string valToString(ValuePair value)
         if (valIsLayout(w, LAYOUT_ARR))
             return "array";
         if (valIsString(w, value.type))
-        {
-            auto len = str_get_len(w.ptrVal);
-            wchar[] str = new wchar[len];
-            for (uint32 i = 0; i < len; ++i)
-                str[i] = str_get_data(w.ptrVal, i);
-            return to!string(str);
-        }
+            return extractStr(w.ptrVal);
         return "refptr";
 
         case Type.CONST:
@@ -810,10 +804,10 @@ class Interp
         // Run the interpreter loop
         loop();
 
-        // Ensure the stack contains one return value
+        // Ensure the stack contains at least one value
         assert (
-            stackSize() == 1,
-            format("expected 1 return value, %s values on stack", (wUpperLimit - wsp))
+            stackSize() >= 1,
+            "stack is empty, no return value found"
         );
 
         // Get the return value
