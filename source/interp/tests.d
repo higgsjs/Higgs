@@ -1069,7 +1069,6 @@ unittest
     interp.load("programs/basic_bool_eval/basic_bool_eval.js");
     interp.assertInt("test();", 0);
 
-    // TODO: enable more es5_cmp tests
     // ES5 comparison operator test
     interp.load("programs/es5_cmp/es5_cmp.js");
     interp.assertInt("test();", 0);

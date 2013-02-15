@@ -226,6 +226,39 @@ function $rt_strcat(str1, str2)
 }
 
 /**
+Compare two string objects lexicographically by iterating over UTF-16
+code units. This conforms to section 11.8.5 of the ECMAScript 262
+specification.
+*/
+function $rt_strcmp(str1, str2)
+{
+    // Get the length of both strings
+    var len1 = $rt_str_get_len(str1);
+    var len2 = $rt_str_get_len(str2);
+
+    // Compute the minimum of both string lengths
+    var minLen = (len1 < len2)? len1:len2;
+
+    // For each character to be compared
+    for (var i = 0; i < minLen; i++)
+    {
+        var ch1 = $rt_str_get_data(str1, i);
+        var ch2 = $rt_str_get_data(str2, i);
+
+        if (ch1 < ch2)
+            return -1;
+        else if (ch1 > ch2)
+            return 1;
+    }
+
+    if (len1 < len2)
+        return -1;
+    if (len2 > len1)
+        return 1;
+    return 0;
+}
+
+/**
 Create a string representing an integer value
 */
 function $rt_intToStr(intVal, radix)
@@ -452,6 +485,40 @@ function $rt_toString(v)
     }
 
     assert (false, "unhandled type in toString");
+}
+
+/**
+Convert a boxed value to a primitive value.
+*/
+function $rt_toPrim(v)
+{
+    if ($ir_is_int(v)   || 
+        $ir_is_float(v) ||
+        $ir_is_const(v))
+        return v
+
+    if ($ir_is_refptr(v))
+    {
+        if ($ir_eq_refptr(v, null))
+            return v;
+
+        var type = $rt_obj_get_header(v);
+
+        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
+            return v;
+
+        if ($rt_valIsObj(v))
+        {
+            var str = v.toString();
+
+            if ($ir_is_refptr(str) && $ir_ne_refptr(str, null) && !$rt_valIsString(str))
+                throw TypeError('toString produced non-primitive value');
+
+            return str;
+        }
+    }
+
+    throw TypeError('unexpected type in toPrimitive');
 }
 
 /**
@@ -849,9 +916,6 @@ function $rt_lt(x, y)
 
         if ($ir_is_float(y))
             return $ir_lt_f64($ir_i32_to_f64(x), y);
-
-        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
-            return false;
     }
 
     // If x is float
@@ -862,15 +926,18 @@ function $rt_lt(x, y)
 
         if ($ir_is_float(y))
             return $ir_lt_f64(x, y);
-
-        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
-            return false;
     }
 
-    println(typeof x);
-    println(typeof y);
+    var px = $rt_toPrim(x);
+    var py = $rt_toPrim(y);
 
-    throw TypeError("unsupported type in less-than");
+    // If x is a string
+    if ($rt_valIsString(px) && $rt_valIsString(py))
+    {
+        return $rt_strcmp(px, py) === -1;
+    }
+
+    return $rt_lt($rt_toNumber(x), $rt_toNumber(y));
 }
 
 /**
@@ -878,23 +945,36 @@ JS less-than or equal operator
 */
 function $rt_le(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int(x) && $ir_is_int(y))
+    // If x is integer
+    if ($ir_is_int(x))
     {
-        return $ir_le_i32(x, y);
+        if ($ir_is_int(y))
+            return $ir_le_i32(x, y);
+
+        if ($ir_is_float(y))
+            return $ir_le_f64($ir_i32_to_f64(x), y);
     }
 
-    // If either value is floating-point or integer
-    if (($ir_is_float(x) || $ir_is_int(x)) &&
-        ($ir_is_float(y) || $ir_is_int(y)))
+    // If x is float
+    if ($ir_is_float(x))
     {
-        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_int(y))
+            return $ir_le_f64(x, $ir_i32_to_f64(y));
 
-        return $ir_le_f64(fx, fy);
+        if ($ir_is_float(y))
+            return $ir_le_f64(x, y);
     }
 
-    assert (false, "unsupported type in le");
+    var px = $rt_toPrim(x);
+    var py = $rt_toPrim(y);
+
+    // If x is a string
+    if ($rt_valIsString(px) && $rt_valIsString(py))
+    {
+        return $rt_strcmp(px, py) <= 0;
+    }
+
+    return $rt_le($rt_toNumber(x), $rt_toNumber(y));
 }
 
 /**
@@ -910,9 +990,6 @@ function $rt_gt(x, y)
 
         if ($ir_is_float(y))
             return $ir_gt_f64($ir_i32_to_f64(x), y);
-
-        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
-            return false;
     }
 
     // If x is float
@@ -923,12 +1000,18 @@ function $rt_gt(x, y)
 
         if ($ir_is_float(y))
             return $ir_gt_f64(x, y);
-
-        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
-            return false;
     }
 
-    assert (false, "unsupported type in gt");
+    var px = $rt_toPrim(x);
+    var py = $rt_toPrim(y);
+
+    // If x is a string
+    if ($rt_valIsString(px) && $rt_valIsString(py))
+    {
+        return $rt_strcmp(px, py) > 0;
+    }
+
+    return $rt_gt($rt_toNumber(x), $rt_toNumber(y));
 }
 
 /**
@@ -936,23 +1019,36 @@ JS greater-than or equal operator
 */
 function $rt_ge(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int(x) && $ir_is_int(y))
+    // If x is integer
+    if ($ir_is_int(x))
     {
-        return $ir_ge_i32(x, y);
+        if ($ir_is_int(y))
+            return $ir_ge_i32(x, y);
+
+        if ($ir_is_float(y))
+            return $ir_ge_f64($ir_i32_to_f64(x), y);
     }
 
-    // If either value is floating-point or integer
-    if (($ir_is_float(x) || $ir_is_int(x)) &&
-        ($ir_is_float(y) || $ir_is_int(y)))
+    // If x is float
+    if ($ir_is_float(x))
     {
-        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_int(y))
+            return $ir_ge_f64(x, $ir_i32_to_f64(y));
 
-        return $ir_ge_f64(fx, fy);
+        if ($ir_is_float(y))
+            return $ir_ge_f64(x, y);
     }
 
-    assert (false, "unsupported type in ge");
+    var px = $rt_toPrim(x);
+    var py = $rt_toPrim(y);
+
+    // If x is a string
+    if ($rt_valIsString(px) && $rt_valIsString(py))
+    {
+        return $rt_strcmp(px, py) >= 0;
+    }
+
+    return $rt_ge($rt_toNumber(x), $rt_toNumber(y));
 }
 
 /**
@@ -968,12 +1064,6 @@ function $rt_eq(x, y)
 
         if ($ir_is_float(y))
             return $ir_eq_f64($ir_i32_to_f64(x), y);
-
-        if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
-            return false;
-
-        if (y === null)
-            return false;
     }
 
     // If x is a references
@@ -992,8 +1082,6 @@ function $rt_eq(x, y)
 
             var tx = $rt_obj_get_header(x);
             var ty = $rt_obj_get_header(y);
-
-            // TODO: test if tx === ty?
 
             // If x and y are strings
             if ($ir_eq_i8(tx, $rt_LAYOUT_STR) && $ir_eq_i8(ty, $rt_LAYOUT_STR))
@@ -1031,18 +1119,18 @@ function $rt_eq(x, y)
 
         if ($ir_is_float(y))
             return $ir_eq_f64(x, y);
-
-        if ($ir_is_refptr(y) && $ir_eq_refptr(y, null))
-            return false;
-
-        //if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
-        //    return false;
     }
 
-    println(x);
-    println(y);
+    var px = $rt_toPrim(x);
+    var py = $rt_toPrim(y);
 
-    throw TypeError("unsupported type in '==' equality comparison");
+    // If x is a string
+    if ($rt_valIsString(px) && $rt_valIsString(py))
+    {
+        return $rt_strcmp(px, py) === 0;
+    }
+
+    return $rt_eq($rt_toNumber(x), $rt_toNumber(y));
 }
 
 /**

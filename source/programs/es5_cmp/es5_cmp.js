@@ -44,13 +44,15 @@ var T = true;
 var F = false;
 var undef = undefined;
 
+var o1 = {};
+var o2 = {};
+
 var o_str = { toString: function () { return 'foo'; } };
 var o_num = { toString: function () { return 3; } };
 
 var tests = [
     // v1     v2      <  <= >  >= == != === !==
     [1      , 2     , T, T, F, F, F, T, F, T],
-    /*
     [1      , '1'   , F, T, F, T, T, F, F, T],
     [1      , ' 1'  , F, T, F, T, T, F, F, T],
     [1      , '1 '  , F, T, F, T, T, F, F, T],
@@ -60,10 +62,9 @@ var tests = [
     ['34'   , '4'   , T, T, F, F, F, T, F, T],
     ['-100' , 'a'   , T, T, F, F, F, T, F, T],
     [undef  , '2'   , F, F, F, F, F, T, F, T],
-    */
+    [o1     , o2    , F, T, F, T, F, T, F, T],
 
     [2      , 1     , F, F, T, T, F, T, F, T],
-    /*
     ['1'    , 1     , F, T, F, T, T, F, F, T],
     [' 1'   , 1     , F, T, F, T, T, F, F, T],
     ['1 '   , 1     , F, T, F, T, T, F, F, T],
@@ -85,19 +86,16 @@ var tests = [
     ['0'    , false , F, T, F, T, T, F, F, T],
     ['0'    , null  , F, T, F, T, F, T, F, T],
     [null   , undef , F, F, F, F, T, F, F, T],
-    */
 
-    [1      , 1     , F, T, F, T, T, F, T, F]
-    /*
+    [1      , 1     , F, T, F, T, T, F, T, F],
     ['2'    , '2'   , F, T, F, T, T, F, T, F],
     ['foo'  , 'foo' , F, T, F, T, T, F, T, F],
     [true   , true  , F, T, F, T, T, F, T, F],
     [false  , false , F, T, F, T, T, F, T, F],
     [null   , null  , F, T, F, T, T, F, T, F],
     [undef  , undef , F, F, F, F, T, F, T, F],
-    [o_num  , o_num , F, F, F, F, T, F, T, F],
-    [o_str  , o_str , F, F, F, F, T, F, T, F],
-    */
+    [o_num  , o_num , F, T, F, T, T, F, T, F],
+    [o_str  , o_str , F, T, F, T, T, F, T, F]
 ];
 
 function test()
@@ -136,6 +134,16 @@ function test()
         var ne  = test[7];
         var seq = test[8];
         var sne = test[9];
+
+        /*
+        println('test ' + i);
+        println(typeof v1);
+        println(typeof v2);
+        print(v1);
+        print('\n');
+        print(v2);
+        print('\n');
+        */
 
         if (testOp(v1, v2, '<'  , (v1 < v2)     , lt    )) return testNo + 1;
         if (testOp(v1, v2, '<=' , (v1 <= v2)    , le    )) return testNo + 2;
