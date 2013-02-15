@@ -42,10 +42,11 @@ import std.string;
 import std.math;
 import parser.parser;
 import ir.ast;
+import interp.layout;
 import interp.interp;
 import repl;
 
-void assertInt(Interp interp, string input, long intVal)
+void assertInt(Interp interp, string input, int32 intVal)
 {
     //writeln(input);
 
@@ -57,18 +58,18 @@ void assertInt(Interp interp, string input, long intVal)
     auto ret = interp.evalString(input);
 
     assert (
-        ret.type == Type.INT,
+        ret.type == Type.INT32,
         "non-integer value: " ~ valToString(ret)
     );
 
     assert (
-        ret.word.intVal == intVal,
+        ret.word.int32Val == intVal,
         format(
             "Test failed:\n" ~
             "%s" ~ "\n" ~
             "incorrect integer value: %s, expected: %s",
             input,
-            ret.word.intVal, 
+            ret.word.int32Val, 
             intVal
         )
     );
@@ -79,12 +80,12 @@ void assertFloat(Interp interp, string input, double floatVal, double eps = 1E-4
     auto ret = interp.evalString(input);
 
     assert (
-        ret.type == Type.INT ||
+        ret.type == Type.INT32 ||
         ret.type == Type.FLOAT,
         "non-numeric value: " ~ valToString(ret)
     );
 
-    auto fRet = (ret.type == Type.FLOAT)? ret.word.floatVal:ret.word.intVal;
+    auto fRet = (ret.type == Type.FLOAT)? ret.word.floatVal:ret.word.int32Val;
 
     assert (
         abs(fRet - floatVal) <= eps,
@@ -166,7 +167,7 @@ void assertStr(Interp interp, string input, string strVal)
     );
 }
 
-void assertInt(string input, long intVal)
+void assertInt(string input, int32 intVal)
 {
     assertInt(new Interp(), input, intVal);
 }
@@ -193,15 +194,15 @@ void assertThrows(string input)
 
 unittest
 {
-    Word w0 = Word.intv(0);
-    Word w1 = Word.intv(1);
-    assert (w0.intVal != w1.intVal);
+    Word w0 = Word.int32v(0);
+    Word w1 = Word.int32v(1);
+    assert (w0.int32Val != w1.int32Val);
 }
 
 unittest
 {
     auto v = (new Interp()).evalString("1");
-    assert (v.word.intVal == 1);
+    assert (v.word.int32Val == 1);
 }
 
 /// Global expression tests
@@ -791,7 +792,7 @@ unittest
         function foo()
         {
             var o;
-            if (o = $ir_add_i32_ovf(-0x80000000, -0x80000000))
+            if (o = $ir_add_i32_ovf(1 << 31, 1 << 31))
                 return o;
             else
                 return -1;
@@ -972,6 +973,8 @@ unittest
 /// Stdlib Math library
 unittest
 {
+    writefln("math");
+
     assertInt("Math.max(1,2);", 2);
     assertInt("Math.max(5,1,2);", 5);
     assertInt("Math.min(5,-1,2);", -1);
@@ -1053,6 +1056,8 @@ unittest
 /// Basic test programs
 unittest
 {
+    writefln("tachyon");
+
     auto interp = new Interp();
 
     // Basic suite
@@ -1162,11 +1167,14 @@ unittest
 /// Regression tests
 unittest
 {
+    writefln("regression");
+
     auto interp = new Interp();
 
     interp.load("programs/regress/regress_delta.js");
     interp.load("programs/regress/regress_in.js");
     interp.load("programs/regress/regress_tostring.js");
+    interp.assertBool("4294967295.0 === 0xFFFFFFFF", true);
 }
 
 /// Garbage collector tests

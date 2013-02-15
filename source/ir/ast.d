@@ -45,6 +45,7 @@ import std.conv;
 import parser.ast;
 import parser.parser;
 import ir.ir;
+import interp.layout;
 
 /**
 IR generation context
@@ -381,7 +382,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             setInstr.args.length = 3;
             setInstr.args[0].stringVal = ident.name;
             setInstr.args[1].localIdx = cstInstr.outSlot;
-            setInstr.args[2].intVal = -1;
+            setInstr.args[2].int32Val = -1;
         }
 
         bodyCtx.merge(subCtx);
@@ -453,7 +454,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     foreach (idx, ident; ast.captVars)
     {
         auto subCtx = bodyCtx.subCtx(false);
-        auto idxInstr = bodyCtx.addInstr(IRInstr.intCst(subCtx.allocTemp(), idx));
+        auto idxInstr = bodyCtx.addInstr(IRInstr.intCst(subCtx.allocTemp(), cast(int32)idx));
         auto getInstr = genRtCall(
             subCtx, 
             "clos_get_cell", 
@@ -521,7 +522,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                 // Set the closure cells for the captured variables
                 foreach (idx, ident; subFun.captVars)
                 {
-                    auto idxCst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), idx));
+                    auto idxCst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), cast(int32)idx));
 
                     genRtCall(
                         ctx, 
@@ -1173,7 +1174,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             // Set the closure cells for the captured variables
             foreach (idx, ident; funExpr.captVars)
             {
-                auto idxCst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), idx));
+                auto idxCst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), cast(int32)idx));
 
                 auto cellSlot = ctx.fun.cellMap[ident];
                 genRtCall(
@@ -1796,7 +1797,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Create the array
         auto linkInstr = ctx.addInstr(IRInstr.makeLink(ctx.allocTemp()));
         auto protoInstr = ctx.addInstr(new IRInstr(&GET_ARR_PROTO, ctx.allocTemp()));
-        auto numInstr = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), arrayExpr.exprs.length));
+        auto numInstr = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), cast(int32)arrayExpr.exprs.length));
         auto arrInstr = genRtCall(
             ctx, 
             "newArr",
@@ -1814,7 +1815,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
             ctx.addInstr(IRInstr.intCst(
                 idxTmp,
-                i
+                cast(int32)i
             ));
 
             auto valCtx = ctx.subCtx(true, valTmp);
@@ -1895,7 +1896,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             getInstr.outSlot = ctx.getOutSlot();
             getInstr.args.length = 2;
             getInstr.args[0].stringVal = identExpr.name;
-            getInstr.args[1].intVal = -1;
+            getInstr.args[1].int32Val = -1;
         }
 
         // If the variable is captured or escaping
@@ -1929,10 +1930,22 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
     else if (auto intExpr = cast(IntExpr)expr)
     {
-        ctx.addInstr(IRInstr.intCst(
-            ctx.getOutSlot(),
-            intExpr.val
-        ));
+        // If the constant fits in the int32 range
+        if (intExpr.val >= int32.min && intExpr.val <= int32.max)
+        {
+            ctx.addInstr(IRInstr.intCst(
+                ctx.getOutSlot(),
+                cast(int32)intExpr.val
+            ));
+        }
+        else
+        {
+            // Convert to a floating-point constant
+            ctx.addInstr(IRInstr.floatCst(
+                ctx.getOutSlot(),
+                cast(double)intExpr.val
+            ));
+        }
     }
 
     else if (auto floatExpr = cast(FloatExpr)expr)
@@ -2056,7 +2069,7 @@ void assgToIR(
             setInstr.args.length = 3;
             setInstr.args[0].stringVal = identExpr.name;
             setInstr.args[1].localIdx = subCtx.getOutSlot();
-            setInstr.args[2].intVal = -1;
+            setInstr.args[2].int32Val = -1;
         }
 
         // If the variable is captured or escaping
@@ -2215,7 +2228,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
             break;
 
             // Integer argument
-            case OpArg.INT:
+            case OpArg.INT32:
             auto intExpr = cast(IntExpr)argExpr;
             if (intExpr is null)
             {
@@ -2224,7 +2237,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
                     argExpr.pos
                 );
             }
-            instr.args[i].intVal = intExpr.val;
+            instr.args[i].int32Val = cast(int32)intExpr.val;
             break;
 
             // String argument
@@ -2333,7 +2346,7 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLo
     getInstr.outSlot = ctx.allocTemp();
     getInstr.args.length = 2;
     getInstr.args[0].stringVal = to!wstring("$rt_" ~ fName);
-    getInstr.args[1].intVal = -1;
+    getInstr.args[1].int32Val = -1;
 
     // <dstLocal> = CALL <fnLocal> <thisArg> ...
     auto callInstr = ctx.addInstr(new IRInstr(&CALL));

@@ -238,7 +238,7 @@ ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
     // If the property index was found
     if (propIdx != uint32.max)
     {
-        auto pWord = Word.uintv(obj_get_word(objPtr, propIdx));
+        auto pWord = Word.uint64v(obj_get_word(objPtr, propIdx));
         auto pType = cast(Type)obj_get_type(objPtr, propIdx);
 
         // If the property is not the "missing" value, return it directly
@@ -334,7 +334,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
     }
 
     // Set the value and its type in the object
-    obj_set_word(obj.ptr, propIdx, val.word.intVal);
+    obj_set_word(obj.ptr, propIdx, val.word.uint64Val);
     obj_set_type(obj.ptr, propIdx, val.type);
 }
 

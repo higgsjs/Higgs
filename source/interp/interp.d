@@ -116,15 +116,19 @@ Memory word union
 */
 union Word
 {
-    static Word intv(int64 i) { Word w; w.intVal = i; return w; }
-    static Word uintv(uint64 i) { Word w; w.uintVal = i; return w; }
+    static Word int32v(int32 i) { Word w; w.int32Val = i; return w; }
+    static Word uint32v(uint32 i) { Word w; w.uint32Val = i; return w; }
+    static Word int64v(int64 i) { Word w; w.int64Val = i; return w; }
+    static Word uint64v(uint64 i) { Word w; w.uint64Val = i; return w; }
     static Word floatv(float64 f) { Word w; w.floatVal = f; return w; }
     static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
     static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
     static Word cstv(rawptr c) { Word w; w.ptrVal = c; return w; }
 
-    uint64  uintVal;
-    int64   intVal;
+    int32   int32Val;
+    int32   uint32Val;
+    uint64  uint64Val;
+    int64   int64Val;
     float64 floatVal;
     refptr  refVal;
     rawptr  ptrVal;
@@ -139,16 +143,16 @@ unittest
 }
 
 // Note: low byte is set to allow for one byte immediate comparison
-Word NULL    = { intVal: 0x0000000000000000 };
-Word TRUE    = { intVal: 0xFFFFFFFFFFFFFFF1 };
-Word FALSE   = { intVal: 0xFFFFFFFFFFFFFFF2 };
-Word UNDEF   = { intVal: 0xFFFFFFFFFFFFFFF3 };
-Word MISSING = { intVal: 0xFFFFFFFFFFFFFFF4 };
+Word NULL    = { uint64Val: 0x0000000000000000 };
+Word TRUE    = { uint64Val: 0xFFFFFFFFFFFFFFF1 };
+Word FALSE   = { uint64Val: 0xFFFFFFFFFFFFFFF2 };
+Word UNDEF   = { uint64Val: 0xFFFFFFFFFFFFFFF3 };
+Word MISSING = { uint64Val: 0xFFFFFFFFFFFFFFF4 };
 
 /// Word type values
 enum Type : ubyte
 {
-    INT,
+    INT32,
     FLOAT,
     REFPTR,
     RAWPTR,
@@ -168,7 +172,7 @@ string typeToString(Type type)
     // Switch on the type tag
     switch (type)
     {
-        case Type.INT:      return "int";
+        case Type.INT32:    return "int32";
         case Type.FLOAT:    return "float";
         case Type.RAWPTR:   return "raw pointer";
         case Type.REFPTR:   return "ref pointer";
@@ -207,8 +211,8 @@ string valToString(ValuePair value)
     // Switch on the type tag
     switch (value.type)
     {
-        case Type.INT:
-        return to!string(w.intVal);
+        case Type.INT32:
+        return to!string(w.int32Val);
 
         case Type.FLOAT:
         if (w.floatVal != w.floatVal)
@@ -343,10 +347,10 @@ class Interp
     Type* tLinkTable;
 
     /// Link table size
-    size_t linkTblSize;
+    uint32 linkTblSize;
 
     /// Free link table entries
-    size_t[] linkTblFree;
+    uint32[] linkTblFree;
 
     /// Instruction pointer
     IRInstr ip;
@@ -420,8 +424,8 @@ class Interp
         linkTblSize = LINK_TBL_INIT_SIZE;
 
         /// Free link table entries
-        linkTblFree = new size_t[linkTblSize];
-        for (size_t i = 0; i < linkTblSize; ++i)
+        linkTblFree = new LinkIdx[linkTblSize];
+        for (uint32 i = 0; i < linkTblSize; ++i)
             linkTblFree[i] = i;
 
         /// Link table words
@@ -433,8 +437,8 @@ class Interp
         // Initialize the link table
         for (size_t i = 0; i < linkTblSize; ++i)
         {
-            wLinkTable[i].intVal = 0;
-            tLinkTable[i] = Type.INT;
+            wLinkTable[i].int32Val = 0;
+            tLinkTable[i] = Type.INT32;
         }
 
         // Initialize the IP to null
@@ -543,9 +547,9 @@ class Interp
     /**
     Set a stack slot to an integer value
     */
-    void setSlot(LocalIdx idx, uint64 val)
+    void setSlot(LocalIdx idx, uint32 val)
     {
-        setSlot(idx, Word.intv(val), Type.INT);
+        setSlot(idx, Word.int32v(val), Type.INT32);
     }
 
     /**
@@ -653,14 +657,14 @@ class Interp
     /**
     Allocate a link table entry
     */
-    size_t allocLink()
+    LinkIdx allocLink()
     {
         if (linkTblFree.length == 0)
         {
             assert (false, "no free link entries");
         }
 
-        size_t idx = linkTblFree.back;
+        auto idx = linkTblFree.back;
         linkTblFree.popBack();
 
         return idx;
@@ -669,7 +673,7 @@ class Interp
     /**
     Free a link table entry
     */
-    void freeLink(size_t idx)
+    void freeLink(LinkIdx idx)
     {
         assert (
             idx <= linkTblSize,
@@ -677,8 +681,8 @@ class Interp
         );
 
         // Remove any heap reference
-        wLinkTable[idx].intVal = 0;
-        tLinkTable[idx] = Type.INT;
+        wLinkTable[idx].uint32Val = 0;
+        tLinkTable[idx] = Type.INT32;
 
         linkTblFree ~= idx;
     }

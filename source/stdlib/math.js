@@ -192,7 +192,7 @@ The value of Math.ceil(x) is the same as the value of -Math.floor(-x).
 Math.ceil = function (x)
 {
     // For integers, the value is unchanged
-    if ($ir_is_int(x))
+    if ($ir_is_int32(x))
         return x;
 
     // If x is floating-point
@@ -220,7 +220,7 @@ NOTE: The value of Math.floor(x) is the same as the value of -Math.ceil(-x).
 Math.floor = function (x)
 {
     // For integers, the value is unchanged
-    if ($ir_is_int(x))
+    if ($ir_is_int32(x))
         return x;
 
     // If x is floating-point
@@ -253,7 +253,7 @@ Math.floor(x+0.5) returns +0.
 */
 Math.round = function (x)
 {
-    if ($ir_is_int(x))
+    if ($ir_is_int32(x))
         return x;
 
     if ($ir_is_float(x))
@@ -302,7 +302,7 @@ x to the power y.
 Math.pow = function (x, y)
 {
     // If both values are non-negative integers
-    if ($ir_is_int(x) && $ir_is_int(y) && $ir_ge_i32(x, 0) && $ir_ge_i32(y, 0))
+    if ($ir_is_int32(x) && $ir_is_int32(y) && $ir_ge_i32(x, 0) && $ir_ge_i32(y, 0))
     {
         // If the power is 0, the result is 1
         if ($ir_eq_i32(y, 0))
@@ -358,7 +358,7 @@ Math.pow = function (x, y)
     }
 
     var fx;
-    if ($ir_is_int(x))
+    if ($ir_is_int32(x))
         fx = $ir_i32_to_f64(x);
     else if ($ir_is_float(x))
         fx = x;
@@ -366,7 +366,7 @@ Math.pow = function (x, y)
         return NaN;
 
     var fy;
-    if ($ir_is_int(y))
+    if ($ir_is_int32(y))
         fy = $ir_i32_to_f64(y);
     else if ($ir_is_float(y))
         fy = y;
@@ -389,7 +389,7 @@ argument is expressed in radians.
 */
 Math.cos = function (x)
 {
-    if ($ir_is_int(x) === true)
+    if ($ir_is_int32(x) === true)
         x = $ir_i32_to_f64(x);
     else if ($ir_is_float(x) === false)
         return NaN;
@@ -409,7 +409,7 @@ argument is expressed in radians.
 */
 Math.sin = function (x)
 {
-    if ($ir_is_int(x) === true)
+    if ($ir_is_int32(x) === true)
         x = $ir_i32_to_f64(x);
     else if ($ir_is_float(x) === false)
         return NaN;
@@ -429,7 +429,7 @@ Returns an implementation-dependent approximation to the square root of x.
 */
 Math.sqrt = function (x)
 {
-    if ($ir_is_int(x) === true)
+    if ($ir_is_int32(x) === true)
         x = $ir_i32_to_f64(x);
     else if ($ir_is_float(x) === false)
         return NaN;
@@ -465,7 +465,7 @@ Math.exp = function (x)
     */
 
     // If x is integer, convert it to a float
-    if ($ir_is_int(x))
+    if ($ir_is_int32(x))
         return $ir_exp_f64($ir_i32_to_f64(x));
 
     // If x is floating-point
@@ -489,7 +489,7 @@ logarithm of x.
 Math.log = function (x)
 {
     // If x is integer, convert it to a float
-    if ($ir_is_int(x))
+    if ($ir_is_int32(x))
         return $ir_log_f64($ir_i32_to_f64(x));
 
     // If x is floating-point

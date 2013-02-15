@@ -50,10 +50,10 @@ import interp.layout;
 import interp.ops;
 
 /// Local variable index type
-alias size_t LocalIdx;
+alias uint32 LocalIdx;
 
 /// Link table index type
-alias size_t LinkIdx;
+alias uint32 LinkIdx;
 
 /// Null local constant
 immutable LocalIdx NULL_LOCAL = LocalIdx.max;
@@ -308,7 +308,7 @@ class IRInstr : IdObject
     /// Instruction argument
     union Arg
     {
-        long intVal;
+        int int32Val;
         double floatVal;
         wstring stringVal;
         LocalIdx localIdx;
@@ -416,9 +416,9 @@ class IRInstr : IdObject
     }
 
     /// Integer constant
-    static intCst(LocalIdx outSlot, long intVal)
+    static intCst(LocalIdx outSlot, int intVal)
     {
-        auto cst = new this(&SET_INT);
+        auto cst = new this(&SET_INT32);
         cst.outSlot = outSlot;
         cst.args = [Arg(intVal)];
 
@@ -487,8 +487,8 @@ class IRInstr : IdObject
 
             switch (opcode.getArgType(i))
             {
-                case OpArg.INT:
-                output ~= to!string(arg.intVal);
+                case OpArg.INT32:
+                output ~= to!string(arg.int32Val);
                 break;
                 case OpArg.FLOAT:
                 output ~= to!string(arg.floatVal);
@@ -522,7 +522,7 @@ Opcode argument type
 */
 enum OpArg
 {
-    INT,
+    INT32,
     FLOAT,
     STRING,
     LOCAL,
@@ -560,7 +560,7 @@ struct OpInfo
 alias static immutable(OpInfo) Opcode;
 
 // Set a local slot to a constant value    
-Opcode SET_INT = { "set_int"   , true, [OpArg.INT], &op_set_int };
+Opcode SET_INT32 = { "set_int32"   , true, [OpArg.INT32], &op_set_int32 };
 Opcode SET_FLOAT = { "set_float" , true, [OpArg.FLOAT], &op_set_float };
 Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.LINK], &op_set_str };
 Opcode SET_TRUE = { "set_true"  , true, [], &op_set_true };
@@ -578,7 +578,7 @@ Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &op_get_type };
 Opcode MOVE = { "move", true, [OpArg.LOCAL], &op_move };
 
 // Type tag test
-Opcode IS_INT = { "is_int", true, [OpArg.LOCAL], &op_is_int };
+Opcode IS_INT32 = { "is_int32", true, [OpArg.LOCAL], &op_is_int32 };
 Opcode IS_FLOAT = { "is_float", true, [OpArg.LOCAL], &op_is_float };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &op_is_refptr };
 Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &op_is_rawptr };
@@ -740,11 +740,11 @@ Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str };
 
 /// GET_GLOBAL <propName>
 /// Note: hidden parameter is cached global property index
-Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT], &op_get_global };
+Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT32], &op_get_global };
 
 /// SET_GLOBAL <propName> <value>
 /// Note: hidden parameter is cached global property index
-Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT], &op_set_global };
+Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT32], &op_set_global };
 
 /// <dstLocal> = NEW_CLOS <funExpr>
 /// Create a new closure from a function's AST node
@@ -801,7 +801,7 @@ static this()
     addOp(GET_WORD);
     addOp(GET_TYPE);
 
-    addOp(IS_INT);
+    addOp(IS_INT32);
     addOp(IS_FLOAT);
     addOp(IS_REFPTR);
     addOp(IS_RAWPTR);

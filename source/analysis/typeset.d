@@ -189,10 +189,10 @@ struct TypeSet
             rangeMax = word.floatVal;
             break;
 
-            case Type.INT:
+            case Type.INT32:
             flags = TYPE_INT;
-            rangeMin = word.intVal;
-            rangeMax = word.intVal;
+            rangeMin = word.int32Val;
+            rangeMax = word.int32Val;
             break;
 
             default:

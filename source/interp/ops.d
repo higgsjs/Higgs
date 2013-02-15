@@ -100,7 +100,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
         curInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
 
         // Get the argument count
-        auto argCount = interp.wsp[argcSlot].intVal;
+        auto argCount = interp.wsp[argcSlot].int32Val;
 
         // Compute the actual number of extra arguments to pop
         size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
@@ -184,12 +184,12 @@ void throwError(
     );
 }
 
-void op_set_int(Interp interp, IRInstr instr)
+void op_set_int32(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
-        Word.intv(instr.args[0].intVal),
-        Type.INT
+        Word.int32v(instr.args[0].int32Val),
+        Type.INT32
     );
 }
 
@@ -277,19 +277,19 @@ void op_set_value(Interp interp, IRInstr instr)
     auto tType = interp.getType(instr.args[1].localIdx);
 
     assert (
-        tType == Type.INT,
+        tType == Type.INT32,
         "type should be integer"
     );
 
     assert (
-        wType.intVal >= Type.min && wType.intVal <= Type.max,
-        "type value out of range: " ~ to!string(wType.intVal)
+        wType.int32Val >= Type.min && wType.int32Val <= Type.max,
+        "type value out of range: " ~ to!string(wType.int32Val)
     );
 
     interp.setSlot(
         instr.outSlot,
-        Word.intv(wWord.intVal),
-        cast(Type)wType.intVal
+        Word.int64v(wWord.int64Val),
+        cast(Type)wType.int32Val
     );
 }
 
@@ -300,7 +300,7 @@ void op_get_word(Interp interp, IRInstr instr)
     interp.setSlot(
         instr.outSlot,
         word,
-        Type.INT
+        Type.INT32
     );
 }
 
@@ -310,8 +310,8 @@ void op_get_type(Interp interp, IRInstr instr)
 
     interp.setSlot(
         instr.outSlot,
-        Word.intv(cast(int)type),
-        Type.INT
+        Word.int32v(cast(int32)type),
+        Type.INT32
     );
 }
 
@@ -334,7 +334,7 @@ void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
     );
 }
 
-alias TypeCheckOp!(Type.INT) op_is_int;
+alias TypeCheckOp!(Type.INT32) op_is_int32;
 alias TypeCheckOp!(Type.FLOAT) op_is_float;
 alias TypeCheckOp!(Type.REFPTR) op_is_refptr;
 alias TypeCheckOp!(Type.RAWPTR) op_is_rawptr;
@@ -346,7 +346,7 @@ void op_i32_to_f64(Interp interp, IRInstr instr)
 
     interp.setSlot(
         instr.outSlot,
-        Word.floatv(cast(int32)w0.intVal),
+        Word.floatv(w0.int32Val),
         Type.FLOAT
     );
 }
@@ -357,7 +357,7 @@ void op_i64_to_f64(Interp interp, IRInstr instr)
 
     interp.setSlot(
         instr.outSlot,
-        Word.floatv(w0.intVal),
+        Word.floatv(w0.int64Val),
         Type.FLOAT
     );
 }
@@ -366,12 +366,14 @@ void op_f64_to_i32(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
 
-    auto intVal = cast(int32)w0.floatVal;
+    // Do the conversion according to the ECMAScript
+    // toInt32 specs (see section 9.5)
+    auto intVal = cast(int32)cast(int64)w0.floatVal;
 
     interp.setSlot(
         instr.outSlot,
-        Word.intv(intVal),
-        Type.INT
+        Word.int32v(intVal),
+        Type.INT32
     );
 }
 
@@ -381,15 +383,15 @@ void op_f64_to_i64(Interp interp, IRInstr instr)
 
     interp.setSlot(
         instr.outSlot,
-        Word.intv(cast(int64)w0.floatVal),
+        Word.int64v(cast(int64)w0.floatVal),
         Type.FLOAT
     );
 }
 
-void ArithOp(DataType, Type typeTag, uint arity, string op)(Interp interp, IRInstr instr)
+void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRInstr instr)
 {
     static assert (
-        typeTag == Type.INT || typeTag == Type.FLOAT
+        typeTag == Type.INT32 || typeTag == Type.FLOAT
     );
 
     static assert (
@@ -403,7 +405,7 @@ void ArithOp(DataType, Type typeTag, uint arity, string op)(Interp interp, IRIns
 
         assert (
             tX == typeTag,
-            "invalid operand 1 type in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+            "invalid operand 1 type in op \"" ~ op ~ "\" (" ~ typeToString(typeTag) ~ ")"
         );
     }
     static if (arity > 1)
@@ -413,31 +415,31 @@ void ArithOp(DataType, Type typeTag, uint arity, string op)(Interp interp, IRIns
 
         assert (
             tY == typeTag,
-            "invalid operand 2 type in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+            "invalid operand 2 type in op \"" ~ op ~ "\" (" ~ typeToString(typeTag) ~ ")"
         );
     }
 
     Word output;
 
-    static if (typeTag == Type.INT)
+    static if (typeTag == Type.INT32)
     {
         static if (arity > 0)
-            auto x = cast(DataType)wX.intVal;
+            auto x = wX.int32Val;
         static if (arity > 1)
-            auto y = cast(DataType)wY.intVal;
+            auto y = wY.int32Val;
     }
     static if (typeTag == Type.FLOAT)
     {
         static if (arity > 0)
-            auto x = cast(DataType)wX.floatVal;
+            auto x = wX.floatVal;
         static if (arity > 1)
-            auto y = cast(DataType)wY.floatVal;
+            auto y = wY.floatVal;
     }
 
     mixin(op);
 
-    static if (typeTag == Type.INT)
-        output.intVal = r;
+    static if (typeTag == Type.INT32)
+        output.int32Val = r;
     static if (typeTag == Type.FLOAT)
         output.floatVal = r;
 
@@ -448,31 +450,31 @@ void ArithOp(DataType, Type typeTag, uint arity, string op)(Interp interp, IRIns
     );
 }
 
-alias ArithOp!(int32, Type.INT, 2, "auto r = x + y;") op_add_i32;
-alias ArithOp!(int32, Type.INT, 2, "auto r = x - y;") op_sub_i32;
-alias ArithOp!(int32, Type.INT, 2, "auto r = x * y;") op_mul_i32;
-alias ArithOp!(int32, Type.INT, 2, "auto r = x / y;") op_div_i32;
-alias ArithOp!(int32, Type.INT, 2, "auto r = x % y;") op_mod_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x + y;") op_add_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x - y;") op_sub_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x * y;") op_mul_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x / y;") op_div_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x % y;") op_mod_i32;
 
-alias ArithOp!(int32, Type.INT, 2, "auto r = x & y;") op_and_i32;
-alias ArithOp!(int32, Type.INT, 2, "auto r = x | y;") op_or_i32;
-alias ArithOp!(int32, Type.INT, 2, "auto r = x ^ y;") op_xor_i32;
-alias ArithOp!(int32, Type.INT, 2, "auto r = x << y;") op_lsft_i32;
-alias ArithOp!(int32, Type.INT, 2, "auto r = x >> y;") op_rsft_i32;
-alias ArithOp!(int32, Type.INT, 2, "auto r = cast(uint32)x >>> y;") op_ursft_i32;
-alias ArithOp!(int32, Type.INT, 1, "auto r = ~x;") op_not_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x & y;") op_and_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x | y;") op_or_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x ^ y;") op_xor_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x << y;") op_lsft_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = x >> y;") op_rsft_i32;
+alias ArithOp!(Type.INT32, 2, "auto r = cast(uint32)x >>> y;") op_ursft_i32;
+alias ArithOp!(Type.INT32, 1, "auto r = ~x;") op_not_i32;
 
-alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x + y;") op_add_f64;
-alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x - y;") op_sub_f64;
-alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x * y;") op_mul_f64;
-alias ArithOp!(float64, Type.FLOAT, 2, "auto r = x / y;") op_div_f64;
+alias ArithOp!(Type.FLOAT, 2, "auto r = x + y;") op_add_f64;
+alias ArithOp!(Type.FLOAT, 2, "auto r = x - y;") op_sub_f64;
+alias ArithOp!(Type.FLOAT, 2, "auto r = x * y;") op_mul_f64;
+alias ArithOp!(Type.FLOAT, 2, "auto r = x / y;") op_div_f64;
 
-alias ArithOp!(float64, Type.FLOAT, 1, "auto r = sin(x);") op_sin_f64;
-alias ArithOp!(float64, Type.FLOAT, 1, "auto r = cos(x);") op_cos_f64;
-alias ArithOp!(float64, Type.FLOAT, 1, "auto r = sqrt(x);") op_sqrt_f64;
-alias ArithOp!(float64, Type.FLOAT, 1, "auto r = log(x);") op_log_f64;
-alias ArithOp!(float64, Type.FLOAT, 1, "auto r = exp(x);") op_exp_f64;
-alias ArithOp!(float64, Type.FLOAT, 2, "auto r = pow(x, y);") op_pow_f64;
+alias ArithOp!(Type.FLOAT, 1, "auto r = sin(x);") op_sin_f64;
+alias ArithOp!(Type.FLOAT, 1, "auto r = cos(x);") op_cos_f64;
+alias ArithOp!(Type.FLOAT, 1, "auto r = sqrt(x);") op_sqrt_f64;
+alias ArithOp!(Type.FLOAT, 1, "auto r = log(x);") op_log_f64;
+alias ArithOp!(Type.FLOAT, 1, "auto r = exp(x);") op_exp_f64;
+alias ArithOp!(Type.FLOAT, 2, "auto r = pow(x, y);") op_pow_f64;
 
 void op_floor_f64(Interp interp, IRInstr instr)
 {
@@ -487,8 +489,8 @@ void op_floor_f64(Interp interp, IRInstr instr)
     {
         interp.setSlot(
             instr.outSlot,
-            Word.intv(cast(int32)r),
-            Type.INT
+            Word.int32v(cast(int32)r),
+            Type.INT32
         );
     }
     else
@@ -514,8 +516,8 @@ void op_ceil_f64(Interp interp, IRInstr instr)
     {
         interp.setSlot(
             instr.outSlot,
-            Word.intv(cast(int32)r),
-            Type.INT
+            Word.int32v(cast(int32)r),
+            Type.INT32
         );
     }
     else
@@ -528,7 +530,7 @@ void op_ceil_f64(Interp interp, IRInstr instr)
     }
 }
 
-void ArithOpOvf(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
+void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr)
 {
     auto wX = interp.getWord(instr.args[0].localIdx);
     auto tX = interp.getType(instr.args[0].localIdx);
@@ -536,21 +538,21 @@ void ArithOpOvf(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
     auto tY = interp.getType(instr.args[1].localIdx);
 
     assert (
-        tX == Type.INT && tY == Type.INT,
-        "invalid operand types in ovf op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+        tX == Type.INT32 && tY == Type.INT32,
+        "invalid operand types in ovf op \"" ~ op ~ "\" (" ~ typeToString(typeTag) ~ ")"
     );
 
-    auto x = wX.intVal;
-    auto y = wY.intVal;
+    auto x = cast(int64)wX.int32Val;
+    auto y = cast(int64)wY.int32Val;
 
     mixin(op);
 
-    if (r >= DataType.min && r <= DataType.max)
+    if (r >= int32.min && r <= int32.max)
     {
         interp.setSlot(
             instr.outSlot,
-            Word.intv(cast(DataType)r),
-            Type.INT
+            Word.int32v(cast(int32)r),
+            Type.INT32
         );
     }
     else
@@ -559,10 +561,10 @@ void ArithOpOvf(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
     }
 }
 
-alias ArithOpOvf!(int32, Type.INT, "auto r = x + y;") op_add_i32_ovf;
-alias ArithOpOvf!(int32, Type.INT, "auto r = x - y;") op_sub_i32_ovf;
-alias ArithOpOvf!(int32, Type.INT, "auto r = x * y;") op_mul_i32_ovf;
-alias ArithOpOvf!(int32, Type.INT, "auto r = x << y;") op_lsft_i32_ovf;
+alias ArithOpOvf!(Type.INT32, "auto r = x + y;") op_add_i32_ovf;
+alias ArithOpOvf!(Type.INT32, "auto r = x - y;") op_sub_i32_ovf;
+alias ArithOpOvf!(Type.INT32, "auto r = x * y;") op_mul_i32_ovf;
+alias ArithOpOvf!(Type.INT32, "auto r = x << y;") op_lsft_i32_ovf;
 
 void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
 {
@@ -579,10 +581,10 @@ void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
     // Boolean result
     bool r;
 
-    static if (typeTag == Type.INT || typeTag == Type.CONST)
+    static if (typeTag == Type.INT32 || typeTag == Type.CONST)
     {
-        auto x = cast(DataType)wX.intVal;
-        auto y = cast(DataType)wY.intVal;
+        auto x = cast(DataType)wX.int32Val;
+        auto y = cast(DataType)wY.int32Val;
     }
     static if (typeTag == Type.REFPTR || typeTag == Type.RAWPTR)
     {
@@ -604,13 +606,13 @@ void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
     );
 }
 
-alias CompareOp!(int32, Type.INT, "r = (x == y);") op_eq_i32;
-alias CompareOp!(int32, Type.INT, "r = (x != y);") op_ne_i32;
-alias CompareOp!(int32, Type.INT, "r = (x < y);") op_lt_i32;
-alias CompareOp!(int32, Type.INT, "r = (x > y);") op_gt_i32;
-alias CompareOp!(int32, Type.INT, "r = (x <= y);") op_le_i32;
-alias CompareOp!(int32, Type.INT, "r = (x >= y);") op_ge_i32;
-alias CompareOp!(int8, Type.INT, "r = (x == y);") op_eq_i8;
+alias CompareOp!(int32, Type.INT32, "r = (x == y);") op_eq_i32;
+alias CompareOp!(int32, Type.INT32, "r = (x != y);") op_ne_i32;
+alias CompareOp!(int32, Type.INT32, "r = (x < y);") op_lt_i32;
+alias CompareOp!(int32, Type.INT32, "r = (x > y);") op_gt_i32;
+alias CompareOp!(int32, Type.INT32, "r = (x <= y);") op_le_i32;
+alias CompareOp!(int32, Type.INT32, "r = (x >= y);") op_ge_i32;
+alias CompareOp!(int8, Type.INT32, "r = (x == y);") op_eq_i8;
 
 alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_eq_refptr;
 alias CompareOp!(refptr, Type.REFPTR, "r = (x != y);") op_ne_refptr;
@@ -639,12 +641,12 @@ void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     );
 
     assert (
-        tOfs == Type.INT,
+        tOfs == Type.INT32,
         "offset is not integer type in load op"
     );
 
     auto ptr = wPtr.ptrVal;
-    auto ofs = wOfs.intVal;
+    auto ofs = wOfs.int32Val;
 
     auto val = *cast(DataType*)(ptr + ofs);
 
@@ -653,16 +655,20 @@ void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     static if (
         DataType.stringof == "byte"  ||
         DataType.stringof == "short" ||
-        DataType.stringof == "int"   ||
-        DataType.stringof == "long")
-        word.intVal = val;
+        DataType.stringof == "int")
+        word.int32Val = val;
+
+    static if (DataType.stringof == "long")
+        word.int64Val = val;
 
     static if (
         DataType.stringof == "ubyte"  ||
         DataType.stringof == "ushort" ||
-        DataType.stringof == "uint"   ||
-        DataType.stringof == "ulong")
-        word.uintVal = val;
+        DataType.stringof == "uint")
+        word.uint32Val = val;
+
+    static if (DataType.stringof == "ulong")
+        word.uint64Val = val;
 
     static if (DataType.stringof == "double")
         word.floatVal = val;
@@ -694,12 +700,12 @@ void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     );
 
     assert (
-        tOfs == Type.INT,
+        tOfs == Type.INT32,
         "offset is not integer type in store op"
     );
 
     auto ptr = wPtr.ptrVal;
-    auto ofs = wOfs.intVal;
+    auto ofs = wOfs.int32Val;
 
     auto word = interp.getWord(instr.args[2].localIdx);
 
@@ -708,16 +714,20 @@ void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     static if (
         DataType.stringof == "byte"  ||
         DataType.stringof == "short" ||
-        DataType.stringof == "int"   ||
-        DataType.stringof == "long")
-        val = cast(DataType)word.intVal;
+        DataType.stringof == "int")
+        val = cast(DataType)word.int32Val;
+
+    static if (DataType.stringof == "long")
+        val = cast(DataType)word.int64Val;
 
     static if (
         DataType.stringof == "ubyte"  ||
         DataType.stringof == "ushort" ||
-        DataType.stringof == "uint"   ||
-        DataType.stringof == "ulong")
-        val = cast(DataType)word.uintVal;
+        DataType.stringof == "uint")
+        val = cast(DataType)word.uint32Val;
+
+    static if (DataType.stringof == "ulong")
+        val = cast(DataType)word.uint64Val;
 
     static if (DataType.stringof == "double")
         val = cast(DataType)word.floatVal;
@@ -731,19 +741,19 @@ void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     *cast(DataType*)(ptr + ofs) = val;
 }
 
-alias LoadOp!(uint8, Type.INT) op_load_u8;
-alias LoadOp!(uint16, Type.INT) op_load_u16;
-alias LoadOp!(uint32, Type.INT) op_load_u32;
-alias LoadOp!(uint64, Type.INT) op_load_u64;
+alias LoadOp!(uint8, Type.INT32) op_load_u8;
+alias LoadOp!(uint16, Type.INT32) op_load_u16;
+alias LoadOp!(uint32, Type.INT32) op_load_u32;
+alias LoadOp!(uint64, Type.INT32) op_load_u64;
 alias LoadOp!(float64, Type.FLOAT) op_load_f64;
 alias LoadOp!(refptr, Type.REFPTR) op_load_refptr;
 alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;
 alias LoadOp!(IRFunction, Type.FUNPTR) op_load_funptr;
 
-alias StoreOp!(uint8, Type.INT) op_store_u8;
-alias StoreOp!(uint16, Type.INT) op_store_u16;
-alias StoreOp!(uint32, Type.INT) op_store_u32;
-alias StoreOp!(uint64, Type.INT) op_store_u64;
+alias StoreOp!(uint8, Type.INT32) op_store_u8;
+alias StoreOp!(uint16, Type.INT32) op_store_u16;
+alias StoreOp!(uint32, Type.INT32) op_store_u32;
+alias StoreOp!(uint64, Type.INT32) op_store_u64;
 alias StoreOp!(float64, Type.FLOAT) op_store_f64;
 alias StoreOp!(refptr, Type.REFPTR) op_store_refptr;
 alias StoreOp!(rawptr, Type.RAWPTR) op_store_rawptr;
@@ -813,13 +823,13 @@ void callFun(
     for (size_t i = 0; i < argSlots.length; ++i)
     {
         auto argSlot = argSlots[$-(1+i)].localIdx + (argDiff + i);
-        auto wArg = interp.getWord(argSlot);
-        auto tArg = interp.getType(argSlot);
+        auto wArg = interp.getWord(cast(LocalIdx)argSlot);
+        auto tArg = interp.getType(cast(LocalIdx)argSlot);
         interp.push(wArg, tArg);
     }
 
     // Push the argument count
-    interp.push(Word.intv(argSlots.length), Type.INT);
+    interp.push(Word.int32v(cast(int32)argSlots.length), Type.INT32);
 
     // Push the "this" argument
     interp.push(thisWord, thisType);
@@ -834,7 +844,7 @@ void callFun(
     // Push space for the callee locals and initialize the slots to undefined
     auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length;
     interp.push(numLocals);
-    for (size_t i = 0; i < numLocals; ++i)
+    for (LocalIdx i = 0; i < numLocals; ++i)
         interp.setSlot(i, UNDEF, Type.CONST);
 
     // Set the instruction pointer
@@ -951,14 +961,14 @@ void op_call_apply(Interp interp, IRInstr instr)
     if (tTbl != Type.REFPTR || !valIsLayout(wTbl, LAYOUT_ARRTBL))
         return throwError(interp, instr, "TypeError", "invalid argument table");
 
-    if (tArgc != Type.INT)
+    if (tArgc != Type.INT32)
         return throwError(interp, instr, "TypeError", "invalid argument count type");
 
     // Get the array table
     auto argTbl = wTbl.ptrVal;
 
     // Get the argument count
-    auto argc = wArgc.uintVal;
+    auto argc = wArgc.uint32Val;
 
     // Get the function object from the closure
     auto closPtr = interp.getWord(closIdx).ptrVal;
@@ -984,13 +994,13 @@ void op_call_apply(Interp interp, IRInstr instr)
     for (uint32 i = 0; i < argc; ++i)
     {
         uint32 argIdx = cast(uint32)argc - (1+i);
-        auto wArg = Word.uintv(arrtbl_get_word(argTbl, argIdx));
+        auto wArg = Word.uint64v(arrtbl_get_word(argTbl, argIdx));
         auto tArg = cast(Type)arrtbl_get_type(argTbl, argIdx);
         interp.push(wArg, tArg);
     }
 
     // Push the argument count
-    interp.push(Word.intv(argc), Type.INT);
+    interp.push(Word.uint32v(argc), Type.INT32);
 
     // Push the "this" argument
     interp.push(wThis, tThis);
@@ -1005,7 +1015,7 @@ void op_call_apply(Interp interp, IRInstr instr)
     // Push space for the callee locals and initialize the slots to undefined
     auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length;
     interp.push(numLocals);
-    for (size_t i = 0; i < numLocals; ++i)
+    for (LocalIdx i = 0; i < numLocals; ++i)
         interp.setSlot(i, UNDEF, Type.CONST);
 
     // Set the instruction pointer
@@ -1030,7 +1040,7 @@ void op_ret(Interp interp, IRInstr instr)
     auto callInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
 
     // Get the argument count
-    auto argCount = interp.wsp[argcSlot].intVal;
+    auto argCount = interp.wsp[argcSlot].uint32Val;
 
     // If the call instruction is valid
     if (callInstr !is null)
@@ -1092,13 +1102,8 @@ void op_get_arg(Interp interp, IRInstr instr)
 
     // Get the argument index
     auto idxVal = interp.getSlot(instr.args[0].localIdx);
-    auto idx = idxVal.word.intVal;
+    auto idx = idxVal.word.uint32Val;
 
-    assert (
-        idx >= 0,
-        "negative argument index"
-    );
-    
     auto argVal = interp.getSlot(argSlot + idx);
 
     interp.setSlot(
@@ -1130,15 +1135,15 @@ void op_get_fun_ptr(Interp interp, IRInstr instr)
 void GetValOp(Type typeTag, string op)(Interp interp, IRInstr instr)
 {
     static assert (
-        typeTag == Type.INT || typeTag == Type.REFPTR
+        typeTag == Type.INT32 || typeTag == Type.REFPTR
     );
 
     mixin(op);
 
     Word output;
 
-    static if (typeTag == Type.INT)
-        output.intVal = r;
+    static if (typeTag == Type.INT32)
+        output.int32Val = r;
     static if (typeTag == Type.REFPTR)
         output.ptrVal = r;
 
@@ -1153,9 +1158,9 @@ alias GetValOp!(Type.REFPTR, "auto r = interp.objProto;") op_get_obj_proto;
 alias GetValOp!(Type.REFPTR, "auto r = interp.arrProto;") op_get_arr_proto;
 alias GetValOp!(Type.REFPTR, "auto r = interp.funProto;") op_get_fun_proto;
 alias GetValOp!(Type.REFPTR, "auto r = interp.globalObj;") op_get_global_obj;
-alias GetValOp!(Type.INT, "auto r = interp.heapSize;") op_get_heap_size;
-alias GetValOp!(Type.INT, "auto r = interp.heapLimit - interp.allocPtr;") op_get_heap_free;
-alias GetValOp!(Type.INT, "auto r = interp.gcCount;") op_get_gc_count;
+alias GetValOp!(Type.INT32, "auto r = cast(int32)interp.heapSize;") op_get_heap_size;
+alias GetValOp!(Type.INT32, "auto r = cast(int32)(interp.heapLimit - interp.allocPtr);") op_get_heap_free;
+alias GetValOp!(Type.INT32, "auto r = cast(int32)interp.gcCount;") op_get_gc_count;
 
 void op_heap_alloc(Interp interp, IRInstr instr)
 {
@@ -1163,16 +1168,16 @@ void op_heap_alloc(Interp interp, IRInstr instr)
     auto tSize = interp.getType(instr.args[0].localIdx);
 
     assert (
-        tSize == Type.INT,
+        tSize == Type.INT32,
         "invalid size type"
     );
 
     assert (
-        wSize.intVal > 0,
+        wSize.uint32Val > 0,
         "size must be positive"
     );
 
-    auto ptr = heapAlloc(interp, wSize.intVal);
+    auto ptr = heapAlloc(interp, wSize.uint32Val);
 
     interp.setSlot(
         instr.outSlot,
@@ -1187,11 +1192,11 @@ void op_gc_collect(Interp interp, IRInstr instr)
     auto tSize = interp.getType(instr.args[0].localIdx);
 
     assert (
-        tSize == Type.INT,
+        tSize == Type.INT32,
         "invalid heap size type"
     );
 
-    gcCollect(interp, wSize.uintVal);
+    gcCollect(interp, wSize.uint32Val);
 }
 
 void op_make_link(Interp interp, IRInstr instr)
@@ -1209,14 +1214,14 @@ void op_make_link(Interp interp, IRInstr instr)
 
     interp.setSlot(
         instr.outSlot,
-        Word.intv(linkIdx),
-        Type.INT
+        Word.uint32v(linkIdx),
+        Type.INT32
     );
 }
 
 void op_set_link(Interp interp, IRInstr instr)
 {
-    auto linkIdx = interp.getWord(instr.args[0].linkIdx).intVal;
+    auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
 
     auto wVal = interp.getWord(instr.args[1].localIdx);
     auto tVal = interp.getType(instr.args[1].localIdx);
@@ -1227,7 +1232,7 @@ void op_set_link(Interp interp, IRInstr instr)
 
 void op_get_link(Interp interp, IRInstr instr)
 {
-    auto linkIdx = interp.getWord(instr.args[0].linkIdx).intVal;
+    auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
 
     auto wVal = interp.getLinkWord(linkIdx);
     auto tVal = interp.getLinkType(linkIdx);
@@ -1272,17 +1277,17 @@ void op_get_global(Interp interp, IRInstr instr)
     auto nameStr = instr.args[0].stringVal;
 
     // Cached property index
-    auto propIdx = instr.args[1].intVal;
+    auto propIdx = instr.args[1].int32Val;
 
     // If a property index was cached
     if (propIdx >= 0)
     {
-        auto wVal = obj_get_word(interp.globalObj, cast(uint32)propIdx);
-        auto tVal = obj_get_type(interp.globalObj, cast(uint32)propIdx);
+        auto wVal = obj_get_word(interp.globalObj, propIdx);
+        auto tVal = obj_get_type(interp.globalObj, propIdx);
 
         interp.setSlot(
             instr.outSlot,
-            Word.intv(wVal),
+            Word.uint64v(wVal),
             cast(Type)tVal
         );
 
@@ -1298,7 +1303,7 @@ void op_get_global(Interp interp, IRInstr instr)
     if (propIdx != uint32.max)
     {
         // Cache the property index
-        instr.args[1].intVal = propIdx;
+        instr.args[1].int32Val = propIdx;
     }
 
     // Lookup the property
@@ -1336,12 +1341,12 @@ void op_set_global(Interp interp, IRInstr instr)
     auto tVal = interp.getType(instr.args[1].localIdx);
 
     // Cached property index
-    auto propIdx = instr.args[2].intVal;
+    auto propIdx = instr.args[2].int32Val;
 
     // If a property index was cached
     if (propIdx >= 0)
     {
-        obj_set_word(interp.globalObj, cast(uint32)propIdx, wVal.intVal);
+        obj_set_word(interp.globalObj, cast(uint32)propIdx, wVal.uint64Val);
         obj_set_type(interp.globalObj, cast(uint32)propIdx, tVal);
 
         return;
@@ -1368,7 +1373,7 @@ void op_set_global(Interp interp, IRInstr instr)
     if (propIdx != uint32.max)
     {
         // Cache the property index
-        instr.args[2].intVal = propIdx;
+        instr.args[2].int32Val = propIdx;
     }
 }
 
@@ -1557,8 +1562,8 @@ void op_get_time_ms(Interp interp, IRInstr instr)
 
     interp.setSlot(
         instr.outSlot,
-        Word.uintv(msecs),
-        Type.INT
+        Word.uint32v(cast(uint32)msecs),
+        Type.INT32
     );
 }
 

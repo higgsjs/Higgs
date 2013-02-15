@@ -516,7 +516,7 @@ Forward a word/value pair
 uint64 gcForward(Interp interp, uint64 word, uint8 type)
 {
     // Forward the pointer
-    return gcForward(interp, Word.uintv(word), cast(Type)type).uintVal;
+    return gcForward(interp, Word.uint64v(word), cast(Type)type).uint64Val;
 }
 
 /**
@@ -592,7 +592,7 @@ void visitStackRoots(Interp interp)
     //writefln("stack size: %s", interp.stackSize());
 
     // For each stack slot, from top to bottom
-    for (size_t i = 0; i < interp.stackSize(); ++i)
+    for (LocalIdx i = 0; i < interp.stackSize(); ++i)
     {
         //writefln("visiting stack slot %s/%s", (i+1), interp.stackSize());
 

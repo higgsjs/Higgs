@@ -248,12 +248,12 @@ class Cst:
     def genD(self):
 
         if self.val == 'undef_word':
-            return 'UNDEF.intVal'
+            return 'UNDEF.uint64Val'
         if self.val == 'undef_type':
             return 'Type.CONST'
 
         if self.val == 'missing_word':
-            return 'MISSING.intVal'
+            return 'MISSING.uint64Val'
         if self.val == 'missing_type':
             return 'Type.CONST'
 

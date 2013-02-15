@@ -430,7 +430,7 @@ struct Token
         this.pos = pos;
     }
 
-    this(Type type, float val, SrcPos pos)
+    this(Type type, double val, SrcPos pos)
     {
         assert (type == FLOAT);
 
