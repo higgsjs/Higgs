@@ -366,10 +366,12 @@ void op_f64_to_i32(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
 
+    auto intVal = cast(int32)w0.floatVal;
+
     interp.setSlot(
         instr.outSlot,
-        Word.intv(cast(int32)w0.floatVal),
-        Type.FLOAT
+        Word.intv(intVal),
+        Type.INT
     );
 }
 

@@ -83,49 +83,32 @@ function shift_out_bits(n, k)
 function test()
 {
     if (lshift_test(2,3) !== 16)
-    {
         return 1;
-    } 
-
+    if (lshift_test(0xFFFFFFFF, 1) !== -2)
+        return 2; 
     if (lshift_test2(2) !== 16)
-    {
-        return 2;
-    } 
-
-    if (rshift_test(8,2) !== 2)
-    {
         return 3;
-    }
-
-    if (rshift_test2(8) !== 2)
-    {
+ 
+    if (rshift_test(8,2) !== 2)
         return 4;
-    }
-
-    if (rshift_test(-2, 1) !== -1)
-    {
+    if (rshift_test(0xFFFFFFFF, 1) !== -1)
         return 5;
-    }
-
-    if (rshift_test3(-2) !== -1)
-    {
+    if (rshift_test2(8) !== 2)
+        return 5;
+    if (rshift_test(-2, 1) !== -1)
         return 6;
-    }
+    if (rshift_test3(-2) !== -1)
+        return 8;
 
     if (urshift_test(-2, 30) !== 3)
-    {
-        return 7;
-    }
-
+        return 9;
+    if (urshift_test(0xFFFFFFFF, 1) !== 0x7FFFFFFF)
+        return 11;
     if (urshift_test2(-2) !== 3)
-    {
-        return 8;
-    }
+        return 10;
 
     if (shift_out_bits(15, 2) !== 12)
-    {
-        return 9;
-    }
+        return 12;
 
     return 0;
 }

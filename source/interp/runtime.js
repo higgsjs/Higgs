@@ -600,12 +600,7 @@ function $rt_toInt32(x)
     if (isNaN(x) || x === Infinity || x === -Infinity)
         x = 0.0;
 
-    var x = (x>0)? $ir_floor_f64(x):(-$ir_floor_f64(-x));
-
-    if ($ir_is_int(x))
-        return x;
-
-    assert (false, "unsupported value in toInt32");
+    return $ir_f64_to_i32(x);
 }
 
 /**
@@ -825,7 +820,7 @@ function $rt_and(x, y)
     }
 
     // Convert the operands to integers
-    return $ir_and_i32($rt_toUint32(x), $rt_toUint32(y));
+    return $ir_and_i32($rt_toInt32(x), $rt_toInt32(y));
 }
 
 function $rt_or(x, y)
@@ -837,7 +832,7 @@ function $rt_or(x, y)
     }
 
     // Convert the operands to integers
-    return $ir_or_i32($rt_toUint32(x), $rt_toUint32(y));
+    return $ir_or_i32($rt_toInt32(x), $rt_toInt32(y));
 }
 
 function $rt_xor(x, y)
@@ -849,7 +844,7 @@ function $rt_xor(x, y)
     }
 
     // Convert the operands to integers
-    return $ir_xor_i32($rt_toUint32(x), $rt_toUint32(y));
+    return $ir_xor_i32($rt_toInt32(x), $rt_toInt32(y));
 }
 
 function $rt_lsft(x, y)
@@ -861,7 +856,7 @@ function $rt_lsft(x, y)
     }
 
     // Convert the operands to integers
-    return $ir_lsft_i32($rt_toUint32(x), $rt_toUint32(y));
+    return $ir_lsft_i32($rt_toInt32(x), $rt_toUint32(y));
 }
 
 function $rt_rsft(x, y)
@@ -896,7 +891,7 @@ function $rt_not(x)
     }
 
     // Convert the operand to integers
-    return $ir_not_i32($rt_toUint32(x));
+    return $ir_not_i32($rt_toInt32(x));
 }
 
 //=============================================================================

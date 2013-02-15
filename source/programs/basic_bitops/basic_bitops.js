@@ -98,27 +98,31 @@ function test()
         return 2;
     if (test_3and(9) !== 1)
         return 3;
+    if (test_and(-1, 2) !== 2)
+        return 4;
+    if (test_and(-1, 0xFFFFFFFF) !== -1)
+        return 5;
 
     if (test_or(11, 33) !== 43)
-        return 4;
-    if (test_or75(42) !== 107)
-        return 5;
-    if (test_75or(43) !== 107)
         return 6;
+    if (test_or75(42) !== 107)
+        return 7;
+    if (test_75or(43) !== 107)
+        return 8;
 
     if (test_xor(93, 107) !== 54)
-        return 7;
-    if (test_xor101(69) !== 32)
-        return 8;
-    if (test_101xor(69) !== 32)
         return 9;
+    if (test_xor101(69) !== 32)
+        return 10;
+    if (test_101xor(69) !== 32)
+        return 11;
 
     if (test_not(1) !== -2)
-        return 10;
+        return 12;
     if (test_not(-3) !== 2)
-        return 10;
+        return 13;
     if (test_not(-2147483648) !== 2147483647)
-        return 11;
+        return 14;
 
     return 0;
 }
