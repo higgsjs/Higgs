@@ -1734,6 +1734,15 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Generate the exception path for the call instruction
         if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
             callInstr.target = excBlock;
+
+        // Create a block for the call continuation
+        auto contBlock = ctx.fun.newBlock("call_cont");
+
+        // TODO: Set the continuation target
+        ctx.addInstr(IRInstr.jump(contBlock));
+
+        // Continue code generation in the continuation block
+        ctx.merge(contBlock);
     }
 
     // New operator call expression

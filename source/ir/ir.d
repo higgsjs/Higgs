@@ -325,7 +325,7 @@ class IRInstr : IdObject
     /// Output local slot
     LocalIdx outSlot = NULL_LOCAL;
 
-    /// Branch target block (may be null)
+    /// Branch target blocks (may be null)
     IRBlock target;
 
     /// Parent function
