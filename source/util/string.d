@@ -43,24 +43,36 @@ import std.array;
 /**
 Indent each line of a text string
 */
-string indent(string input, string indentStr = "    ")
+string indent(string input, string indentStr = "\t")
 {
-    auto output = appender!string();
+    if (input.length == 0)
+        return "";
 
-    if (input.length > 0)
-        output.put(indentStr);
-
-    for (size_t i = 0; i < input.length; ++i)
+    auto output = appender!string(indentStr);
+    output.reserve(input.length + indentStr.length*input.length/10);
+    
+    size_t marker = 0;
+    foreach(i, ch; input[0..$-1])
     {
-        auto ch = input[i];
-
-        output.put(ch);
-
-        if (ch == '\n' && i != input.length - 1)
+        if (ch == '\n')
+        {
+            output.put(input[marker..i+1]);
             output.put(indentStr);
+            marker = i+1;
+        }
     }
+    output.put(input[marker..$]);
 
     return output.data;
+}
+
+unittest
+{
+    assert(indent("") == "");
+    auto testStr = "\nabcd\nefgh\n";
+    auto expRes = "#\n#abcd\n#efgh\n";
+    auto res = indent(testStr,"#");
+    assert(res == expRes);
 }
 
 /**
@@ -70,10 +82,8 @@ wstring escapeJSString(wstring input)
 {
     auto output = appender!wstring();
 
-    for (size_t i = 0; i < input.length; ++i)
+    foreach(ch; input)
     {
-        auto ch = input[i];
-
         switch (ch)
         {
             case '\0': output.put("\\0"); break;
@@ -104,10 +114,8 @@ string escapeDString(string input)
 {
     auto output = appender!string();
 
-    for (size_t i = 0; i < input.length; ++i)
+    foreach(ch; input)
     {
-        auto ch = input[i];
-
         switch (ch)
         {
             case '\0': output.put("\\0"); break;

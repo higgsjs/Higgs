@@ -8,4 +8,5 @@ Interpreter and tracing JIT for JavaScript targetting x86-64 platforms.
 Requirements:
 - D compiler (DMD recommended)
 - POSIX compliant OS (Linux, Unix, MacOS X)
+- x86 64-bit CPU (if using the JIT compiler)
 - Python 2.7 (if regenerating object layouts)
