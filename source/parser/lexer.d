@@ -333,9 +333,8 @@ class StrStream
         if (index + str.length > this.str.length)
             return false;
 
-        for (int i = 0; i < str.length; ++i)
-            if (str[i] != this.str[index+i])
-                return false;
+        if (str != this.str[index .. index+str.length])
+            return false;
 
         // Consume the characters
         for (int i = 0; i < str.length; ++i)
