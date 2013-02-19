@@ -74,7 +74,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
         trace ~= curInstr;
 
         // If this is a call instruction and it has an exception target
-        if (curInstr.opcode is &CALL && curInstr.target !is null)
+        if (curInstr.opcode is &CALL && curInstr.targets[1] !is null)
         {
             //writefln("found exception target");
 
@@ -85,7 +85,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
             );
 
             // Go to the exception target
-            interp.ip = curInstr.target.firstInstr;
+            interp.ip = curInstr.targets[1].firstInstr;
 
             // Stop unwinding the stack
             return;
@@ -557,7 +557,7 @@ void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr)
     }
     else
     {
-        interp.ip = instr.target.firstInstr;
+        interp.ip = instr.targets[0].firstInstr;
     }
 }
 
@@ -761,7 +761,7 @@ alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
 
 void op_jump(Interp interp, IRInstr instr)
 {
-    interp.ip = instr.target.firstInstr;
+    interp.ip = instr.targets[0].firstInstr;
 }
 
 void op_jump_true(Interp interp, IRInstr instr)
@@ -770,7 +770,7 @@ void op_jump_true(Interp interp, IRInstr instr)
     auto wVal = interp.getWord(valIdx);
 
     if (wVal == TRUE)
-        interp.ip = instr.target.firstInstr;
+        interp.ip = instr.targets[0].firstInstr;
 }
 
 void op_jump_false(Interp interp, IRInstr instr)
@@ -779,7 +779,7 @@ void op_jump_false(Interp interp, IRInstr instr)
     auto wVal = interp.getWord(valIdx);
 
     if (wVal == FALSE)
-        interp.ip = instr.target.firstInstr;
+        interp.ip = instr.targets[0].firstInstr;
 }
 
 void callFun(
@@ -1059,8 +1059,13 @@ void op_ret(Interp interp, IRInstr instr)
         // Pop all local stack slots and arguments
         interp.pop(numLocals + extraArgs);
 
-        // Set the instruction pointer to the post-call instruction
-        interp.ip = callInstr.next;
+        // Set the instruction pointer to the call continuation instruction
+        interp.ip = callInstr.targets[0].firstInstr;
+
+        assert (
+            interp.ip !is null,
+            "call cont target is null"
+        );
 
         // Leave the return value in the call's return slot, if any
         if (callInstr.outSlot !is NULL_LOCAL)

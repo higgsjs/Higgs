@@ -140,17 +140,12 @@ refptr heapAlloc(Interp interp, size_t size)
     // If this allocation exceeds the heap limit
     if (interp.allocPtr + size > interp.heapLimit)
     {
-        /*
-        writefln("from-start: %s", interp.heapStart);
-        writefln("from-limit: %s", interp.heapLimit);
-        writefln("to-start: %s", interp.toStart);
-        writefln("to-start: %s", interp.toLimit);
-        */
-
         writefln("gc on alloc of size %s", size);
 
         // Perform garbage collection
         gcCollect(interp);
+
+        //writefln("gc done");
 
         // If this allocation exceeds the heap limit
         if (interp.allocPtr + size > interp.heapLimit)
@@ -352,7 +347,10 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     //writefln("old live funs count: %s", interp.funRefs.length);
 
     // Add the currently running frunction to the live functions
-    interp.liveFuns[cast(void*)interp.ip.fun] = interp.ip.fun;
+    if (interp.ip !is null)
+        interp.liveFuns[cast(void*)interp.ip.fun] = interp.ip.fun;
+
+    //writefln("finding live functions transitively");
 
     // Transitively find live function references inside functions
     foreach (ptr, fun; interp.liveFuns)

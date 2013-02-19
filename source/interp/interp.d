@@ -370,9 +370,6 @@ class Interp
     /// Global object reference
     refptr globalObj;
 
-    // Total cycle count
-    uint64 cycleCount = 0;
-
     /**
     Constructor, initializes/resets the interpreter state
     */
@@ -773,9 +770,6 @@ class Interp
 
             // Call the opcode's function
             opFun(this, instr);
-
-            // Increment the cycle count
-            cycleCount++;
         }
     }
 

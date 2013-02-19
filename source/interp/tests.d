@@ -854,6 +854,8 @@ unittest
 /// Runtime functions
 unittest
 {
+    writefln("runtime");
+
     assertInt("$rt_toBool(0)? 1:0", 0);
     assertInt("$rt_toBool(5)? 1:0", 1);
     assertInt("$rt_toBool(true)? 1:0", 1);
@@ -1053,10 +1055,40 @@ unittest
     assertBool("isNaN(parseInt('zux'))", true);
 }
 
+/// Exceptions
+unittest
+{
+    writefln("exceptions");
+
+    auto interp = new Interp();
+
+    interp.load("programs/exceptions/throw_intra.js");
+    interp.assertStr("str;", "abc");
+    interp.load("programs/exceptions/finally_ret.js");
+    interp.assertStr("test();", "abcd");
+    interp.assertStr("str;", "abcdef");
+    interp.load("programs/exceptions/finally_break.js");
+    interp.assertStr("test(); return str;", "abcdefg");
+    interp.load("programs/exceptions/finally_cont.js");
+    interp.assertStr("test(); return str;", "abcdefbcdefg");
+    interp.load("programs/exceptions/finally_throw.js");
+    interp.assertStr("test(); return str;", "abcdefghijk");
+    interp.load("programs/exceptions/throw_in_finally.js");
+    interp.assertStr("str;", "abcdef");
+    interp.load("programs/exceptions/throw_in_catch.js");
+    interp.assertStr("str;", "abcdefg");
+    interp.load("programs/exceptions/throw_inter.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/exceptions/throw_inter_fnl.js");
+    interp.assertStr("str;", "abcdef");
+    interp.load("programs/exceptions/try_call.js");
+    interp.assertStr("str;", "abc");
+}
+
 /// Basic test programs
 unittest
 {
-    writefln("tachyon");
+    writefln("basic");
 
     auto interp = new Interp();
 
@@ -1073,6 +1105,14 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/basic_bool_eval/basic_bool_eval.js");
     interp.assertInt("test();", 0);
+}
+
+/// Tachyon tests
+unittest
+{
+    writefln("tachyon");
+
+    auto interp = new Interp();
 
     // ES5 comparison operator test
     interp.load("programs/es5_cmp/es5_cmp.js");
@@ -1098,6 +1138,8 @@ unittest
     interp.load("programs/matrix_comp/matrix_comp.js");
     interp.assertInt("test();", 10);
 
+    writefln("closures");
+
     // Closures
     interp.load("programs/clos_capt/clos_capt.js");
     interp.assertInt("foo(5);", 8);
@@ -1108,43 +1150,30 @@ unittest
     interp.load("programs/clos_xcall/clos_xcall.js");
     interp.assertInt("test(5);", 5);
 
+    writefln("apply");
+
     // Call with apply
     interp.load("programs/apply/apply.js");
     interp.assertInt("test();", 0);
+
+    writefln("arguments");
 
     // Arguments object
     interp.load("programs/arg_obj/arg_obj.js");
     interp.assertInt("test();", 0);
 
+    writefln("for-in");
+
     // For-in loop
     interp.load("programs/for_in/for_in.js");
     interp.assertInt("test();", 0);
 
+    writefln("load");
+
     // Dynamic code loading
     interp.load("programs/load/loader.js");
 
-    // Exceptions
-    interp.load("programs/exceptions/throw_intra.js");
-    interp.assertStr("str;", "abc");
-    interp.load("programs/exceptions/finally_ret.js");
-    interp.assertStr("test();", "abcd");
-    interp.assertStr("str;", "abcdef");
-    interp.load("programs/exceptions/finally_break.js");
-    interp.assertStr("test(); return str;", "abcdefg");
-    interp.load("programs/exceptions/finally_cont.js");
-    interp.assertStr("test(); return str;", "abcdefbcdefg");
-    interp.load("programs/exceptions/finally_throw.js");
-    interp.assertStr("test(); return str;", "abcdefghijk");
-    interp.load("programs/exceptions/throw_in_finally.js");
-    interp.assertStr("str;", "abcdef");
-    interp.load("programs/exceptions/throw_in_catch.js");
-    interp.assertStr("str;", "abcdefg");
-    interp.load("programs/exceptions/throw_inter.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/exceptions/throw_inter_fnl.js");
-    interp.assertStr("str;", "abcdef");
-    interp.load("programs/exceptions/try_call.js");
-    interp.assertStr("str;", "abc");
+    writefln("stdlib");
 
     // Standard library
     interp.load("programs/stdlib_math/stdlib_math.js");
@@ -1180,6 +1209,8 @@ unittest
 /// Garbage collector tests
 unittest
 {
+    writefln("garbage collector");
+
     Interp interp;
 
     interp = new Interp();
@@ -1216,21 +1247,31 @@ unittest
     interp.load("programs/gc/deepstack.js");
     interp.assertInt("test();", 0);
 
+    writefln("gc/apply");
+
     interp = new Interp();
     interp.load("programs/gc/apply.js");
     interp.assertInt("test();", 0);
+
+    writefln("gc/arguments");
 
     interp = new Interp();
     interp.load("programs/gc/arguments.js");
     interp.assertInt("test();", 0);
 
+    writefln("gc/strcat");
+
     interp = new Interp();
     interp.load("programs/gc/strcat.js");
     interp.assertInt("test();", 0);
 
+    writefln("gc/graph");
+
     interp = new Interp();
     interp.load("programs/gc/graph.js");
     interp.assertInt("test();", 0);
+
+    writefln("gc/stackvm");
 
     interp = new Interp();
     interp.load("programs/gc/stackvm.js");
@@ -1240,6 +1281,8 @@ unittest
 /// SunSpider benchmarks
 unittest
 {
+    writefln("sunspider");
+
     auto interp = new Interp();
 
     //interp.load("programs/sunspider/bitops-bitwise-and.js");

@@ -660,12 +660,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         if (isBranchIIR(ifStmt.testExpr) && lastInstr && lastInstr.opcode.isBranch)
         {
             assert (
-                lastInstr.target is null,
+                lastInstr.targets[0] is null,
                 "iir target already set"
             );
 
             // If the instruction branches, go to the false block
-            lastInstr.target = falseBlock;
+            lastInstr.targets[0] = falseBlock;
         }
 
         else
@@ -869,6 +869,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         callInstr.args.length = 2;
         callInstr.args[0].localIdx = enumInstr.outSlot;
         callInstr.args[1].localIdx = enumInstr.outSlot;
+
+        // Generate the call targets
+        genCallTargets(testCtx, callInstr);
 
         // If the property is false, exit the loop
         testCtx.addInstr(new IRInstr(
@@ -1731,18 +1734,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         for (size_t i = 0; i < argSlots.length; ++i)
             callInstr.args[2+i].localIdx = argSlots[i];
 
-        // Generate the exception path for the call instruction
-        if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
-            callInstr.target = excBlock;
-
-        // Create a block for the call continuation
-        auto contBlock = ctx.fun.newBlock("call_cont");
-
-        // TODO: Set the continuation target
-        ctx.addInstr(IRInstr.jump(contBlock));
-
-        // Continue code generation in the continuation block
-        ctx.merge(contBlock);
+        // Generate the call targets
+        genCallTargets(ctx, callInstr);
     }
 
     // New operator call expression
@@ -1775,9 +1768,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         for (size_t i = 0; i < argSlots.length; ++i)
             callInstr.args[1+i].localIdx = argSlots[i];
 
-        // Generate the exception path for the call instruction
-        if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
-            callInstr.target = excBlock;
+        // Generate the call targets
+        genCallTargets(ctx, callInstr);
     }
 
     else if (auto indexExpr = cast(IndexExpr)expr)
@@ -2283,6 +2275,10 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
     // Add the instruction to the context
     ctx.addInstr(instr);
 
+    // If this is the call_apply instruction, generate the call targets
+    if (instr.opcode == &CALL_APPLY)
+        genCallTargets(ctx, instr);
+
     return instr;
 }
 
@@ -2366,9 +2362,8 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLo
     for (size_t i = 0; i < argLocals.length; ++i)
         callInstr.args[2+i].localIdx = argLocals[i];
 
-    // Generate the exception path for the call instruction
-    if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
-        callInstr.target = excBlock;
+    // Generate the call targets
+    genCallTargets(ctx, callInstr);
 
     return callInstr;
 }
@@ -2437,5 +2432,24 @@ IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
     }
 
     return excBlock;
+}
+
+/**
+Generate and set the normal and exception targets for a call instruction
+*/
+void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
+{
+    // Create a block for the call continuation
+    auto contBlock = ctx.fun.newBlock("call_cont");
+
+    // Set the continuation target
+    callInstr.targets[0] = contBlock;
+
+    // Generate the exception path for the call instruction
+    if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
+        callInstr.targets[1] = excBlock;
+
+    // Continue code generation in the continuation block
+    ctx.merge(contBlock);
 }
 
