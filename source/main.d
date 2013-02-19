@@ -39,6 +39,7 @@ import std.stdio;
 import std.regex;
 import std.getopt;
 import interp.interp;
+import parser.parser;
 import ir.ir;
 import ir.ast;
 import repl;
@@ -71,13 +72,26 @@ void main(string[] args)
     // a string of code to be executed
     if (fileNames.length != 0 || execString !is null)
     {
-        auto interp = new Interp();
+        try
+        {
+            auto interp = new Interp();
 
-        foreach (fileName; fileNames)
-            interp.load(fileName);
+            foreach (fileName; fileNames)
+                interp.load(fileName);
 
-        if (execString)
-            interp.evalString(execString);
+            if (execString)
+                interp.evalString(execString);
+        }
+
+        catch (ParseError e)
+        {
+            writeln("parse error: " ~ e.toString());
+        }
+
+        catch (RunError e)
+        {
+            writefln("run-time error: " ~ e.toString());
+        }
 
         return;
     }

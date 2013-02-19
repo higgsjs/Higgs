@@ -838,10 +838,15 @@ ASTExpr parseAtom(TokenStream input)
                 throw new ParseError("expected comma", input.getPos());
 
             auto nameExpr = parseAtom(input);
-            auto identExpr = cast(IdentExpr)nameExpr;
-            auto stringExpr = cast(StringExpr)nameExpr;
-            if (identExpr)
-                stringExpr = new StringExpr(identExpr.name, identExpr.pos);
+
+            StringExpr stringExpr = null;
+            if (auto strExpr = cast(StringExpr)nameExpr)
+                stringExpr = strExpr;
+            else if (auto identExpr = cast(IdentExpr)nameExpr)
+                stringExpr = new StringExpr(identExpr.name, nameExpr.pos);
+            else if (auto intExpr = cast(IntExpr)nameExpr)
+                stringExpr = new StringExpr(to!wstring(intExpr.val), nameExpr.pos);
+
             if (!stringExpr)
                 throw new ParseError("invalid property name", nameExpr.pos);
             names ~= [stringExpr];

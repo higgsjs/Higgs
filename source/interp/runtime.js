@@ -1564,7 +1564,13 @@ function $rt_getProp(base, prop)
 
             // If the property is a string
             if ($rt_valIsString(prop))
+            {
+                var propNum = $rt_strToInt(prop);
+                if (!isNaN(propNum))
+                    return $rt_getProp(base, propNum);
+
                 return $rt_getPropObj(base, prop);
+            }
 
             return $rt_getPropObj(base, $rt_toString(prop));
         }
@@ -1856,7 +1862,13 @@ function $rt_setProp(base, prop, val)
 
             // If the property is a string
             if ($rt_valIsString(prop))
+            {
+                var propNum = $rt_strToInt(prop);
+                if (!isNaN(propNum))
+                    return $rt_setProp(base, propNum, val);
+
                 return $rt_setPropObj(base, prop, val);
+            }
 
             return $rt_setPropObj(base, $rt_toString(prop), val);
         }

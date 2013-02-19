@@ -376,7 +376,7 @@ JSON.parse = function (
         if (name === null)
             value = holder;
         else
-            value = holder[name]; 
+            value = holder[name];
 
         if ((typeof value) === "object")
         {
@@ -476,7 +476,9 @@ JSON.stringify = function (
         else
             value = holder[key];
 
-        if (typeof value.toJSON === "function")
+        if (value !== null && 
+            value !== undefined && 
+            typeof value.toJSON === "function")
            value = value.toJSON(); 
 
         if (replacerFunction !== undefined)

@@ -498,6 +498,7 @@ class Interp
             load("stdlib/number.js");
             load("stdlib/boolean.js");
             load("stdlib/date.js");
+            load("stdlib/json.js");
             load("stdlib/global.js");
         }
 

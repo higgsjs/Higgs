@@ -585,5 +585,6 @@ unittest
     testParseFile("stdlib/string.js");
     testParseFile("stdlib/number.js");
     testParseFile("stdlib/object.js");
+    testParseFile("stdlib/json.js");
 }
 

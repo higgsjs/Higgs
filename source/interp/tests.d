@@ -740,6 +740,8 @@ unittest
     assertInt("a = [1,2]; a[3] = 4; return a[1]", 2);
     assertInt("a = [1,2]; a[3] = 4; return a[3]", 4);
     assertInt("a = [1,2]; return a[3]? 1:0;", 0);
+    assertInt("a = [1337]; return a['0'];", 1337);
+    assertInt("a = []; a['0'] = 55; return a[0];", 55);
 }
 
 /// Inline IR
@@ -1189,6 +1191,8 @@ unittest
     interp.load("programs/stdlib_array/stdlib_array.js");
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_string/stdlib_string.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_json/stdlib_json.js");
     interp.assertInt("test();", 0);
     // TODO: regexp support, regexp test
 }

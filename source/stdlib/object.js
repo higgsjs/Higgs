@@ -268,7 +268,7 @@ Object.keys = function (O)
 
     var propNames = [];
 
-    for (k in O)
+    for (var k in O)
     {
         if (O.hasOwnProperty(k) === true)
             propNames.push(k);

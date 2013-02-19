@@ -774,6 +774,7 @@ Token getToken(StrStream stream)
                     case 'b' : str ~= '\b'; break;
                     case 'a' : str ~= '\a'; break;
                     case '\\': str ~= '\\'; break;
+                    case '/': str ~= '/'; break;
                     case '\"': str ~= '\"'; break;
                     case '\'': str ~= '\''; break;
 
@@ -783,7 +784,7 @@ Token getToken(StrStream stream)
                     default:
                     return Token(
                         Token.ERROR, 
-                        "unknown escape sequence",
+                        "unknown escape sequence: \\" ~ to!wstring(code),
                         stream.getPos()
                     );
                 }

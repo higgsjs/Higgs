@@ -148,7 +148,7 @@ function array_join(separator)
     if (separator === undefined)
         separator = ",";
     else
-        separator = separator.toString();
+        separator = String(separator);
 
     var length = 0;
     var strarray = Array(o.length);
@@ -156,7 +156,7 @@ function array_join(separator)
     {
         var str;
         if (o[i] !== undefined)
-            str = o[i].toString();
+            str = String(o[i]);
         else
             str = "";
         length += str.length;
