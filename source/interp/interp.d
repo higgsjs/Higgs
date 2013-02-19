@@ -738,6 +738,28 @@ class Interp
     }
 
     /**
+    Make the execution jump to a specific block
+    */
+    void jump(IRBlock block)
+    {
+        assert (
+            block !is null,
+            "jump target block is null"
+        );
+
+        assert (
+            block.firstInstr !is null,
+            "first instruction is null"
+        );
+
+        // Jump to the first instruction of the block
+        ip = block.firstInstr;
+
+        // Increment the execution count for the block
+        block.execCount++;
+    }
+
+    /**
     Execute the interpreter loop
     */
     void loop()

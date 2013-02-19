@@ -85,7 +85,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
             );
 
             // Go to the exception target
-            interp.ip = curInstr.targets[1].firstInstr;
+            interp.jump(curInstr.targets[1]);
 
             // Stop unwinding the stack
             return;
@@ -557,7 +557,7 @@ void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr)
     }
     else
     {
-        interp.ip = instr.targets[0].firstInstr;
+        interp.jump(instr.targets[0]);
     }
 }
 
@@ -761,7 +761,7 @@ alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
 
 void op_jump(Interp interp, IRInstr instr)
 {
-    interp.ip = instr.targets[0].firstInstr;
+    interp.jump(instr.targets[0]);
 }
 
 void op_jump_true(Interp interp, IRInstr instr)
@@ -770,7 +770,7 @@ void op_jump_true(Interp interp, IRInstr instr)
     auto wVal = interp.getWord(valIdx);
 
     if (wVal == TRUE)
-        interp.ip = instr.targets[0].firstInstr;
+        interp.jump(instr.targets[0]);
 }
 
 void op_jump_false(Interp interp, IRInstr instr)
@@ -779,7 +779,7 @@ void op_jump_false(Interp interp, IRInstr instr)
     auto wVal = interp.getWord(valIdx);
 
     if (wVal == FALSE)
-        interp.ip = instr.targets[0].firstInstr;
+        interp.jump(instr.targets[0]);
 }
 
 void callFun(
@@ -847,8 +847,8 @@ void callFun(
     for (LocalIdx i = 0; i < numLocals; ++i)
         interp.setSlot(i, UNDEF, Type.CONST);
 
-    // Set the instruction pointer
-    interp.ip = fun.entryBlock.firstInstr;
+    // Jump to the function entry
+    interp.jump(fun.entryBlock);
 }
 
 void op_call(Interp interp, IRInstr instr)
@@ -1018,8 +1018,8 @@ void op_call_apply(Interp interp, IRInstr instr)
     for (LocalIdx i = 0; i < numLocals; ++i)
         interp.setSlot(i, UNDEF, Type.CONST);
 
-    // Set the instruction pointer
-    interp.ip = fun.entryBlock.firstInstr;
+    // Jump to the function entry
+    interp.jump(fun.entryBlock);
 }
 
 void op_ret(Interp interp, IRInstr instr)
@@ -1060,7 +1060,7 @@ void op_ret(Interp interp, IRInstr instr)
         interp.pop(numLocals + extraArgs);
 
         // Set the instruction pointer to the call continuation instruction
-        interp.ip = callInstr.targets[0].firstInstr;
+        interp.jump(callInstr.targets[0]);
 
         assert (
             interp.ip !is null,

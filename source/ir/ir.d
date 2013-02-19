@@ -230,6 +230,9 @@ class IRBlock : IdObject
     /// Block name (non-unique)
     private string name;
 
+    /// Execution count, for profiling
+    uint64 execCount;
+
     IRInstr firstInstr;
     IRInstr lastInstr;
     
