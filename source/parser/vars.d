@@ -198,10 +198,8 @@ void findDecls(ASTStmt stmt, Scope s)
 
     else if (auto varStmt = cast(VarStmt)stmt)
     {
-        for (size_t i = 0; i < varStmt.identExprs.length; ++i)
+        foreach (ident; varStmt.identExprs)
         {
-            auto ident = varStmt.identExprs[i];
-
             // Add a declaration for this variable
             if (cast(ASTProgram)s.fun is null)
                 s.addDecl(ident);
