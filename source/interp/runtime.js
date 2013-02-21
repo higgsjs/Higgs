@@ -87,19 +87,14 @@ Print a value to the console
 function print(val)
 {
     // Convert the value to a string
-    var strVal = $rt_toString(val);
+    if (!$rt_valIsString(val))
+        val = $rt_toString(val);
        
     // Print the string
-    $ir_print_str(strVal);
-}
+    $ir_print_str(val);
 
-/**
-Print a value followed by a newline
-*/
-function println(val)
-{
-    print(val);
-    print('\n');
+    // Print a newline
+    $ir_print_str('\n');
 }
 
 /**
@@ -737,7 +732,7 @@ function $rt_sub(x, y)
         return $ir_sub_f64(fx, fy);
     }
 
-    return NaN; 
+    return $rt_sub($rt_toNumber(x), $rt_toNumber(y));
 }
 
 /**
@@ -772,7 +767,7 @@ function $rt_mul(x, y)
         return $ir_mul_f64(fx, fy);
     }
 
-    return NaN; 
+    return $rt_mul($rt_toNumber(x), $rt_toNumber(y));
 }
 
 /**
@@ -790,7 +785,7 @@ function $rt_div(x, y)
         return $ir_div_f64(fx, fy);
     }
 
-    return NaN; 
+    return $rt_div($rt_toNumber(x), $rt_toNumber(y));
 }
 
 /**
@@ -1450,7 +1445,7 @@ function $rt_getPropIdx(classPtr, propStr, alloc)
     // Get the number of class properties
     var numProps = $rt_class_get_num_props(classPtr);
 
-    //println('Allocating new prop idx for: ' + propStr + ' => ' + numProps);
+    //print('Allocating new prop idx for: ' + propStr + ' => ' + numProps);
 
     // Set the property name and index
     var propIdx = numProps;
@@ -1493,7 +1488,7 @@ function $rt_getPropObj(obj, propStr)
     // Find the index for this property
     var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr, false);
 
-    //println('getProp: ' + propStr + ' => ' + propIdx);
+    //print('getProp: ' + propStr + ' => ' + propIdx);
 
     // Get the capacity of the object
     var objCap = $rt_obj_get_cap(obj);
@@ -1611,8 +1606,8 @@ function $rt_getProp(base, prop)
         return $rt_getProp(Boolean.prototype, prop);
     }
 
-    //println(base);
-    //println(prop);
+    //print(base);
+    //print(prop);
 
     if (base === null)
         throw TypeError("null base in property read");
@@ -1633,7 +1628,7 @@ function $rt_extArrTbl(
     newSize
 )
 {
-    //println("Extending array");
+    //print("Extending array");
 
     // Allocate the new table without initializing it, for performance
     var newTbl = $rt_arrtbl_alloc(newSize);
@@ -1655,7 +1650,7 @@ function $rt_extArrTbl(
     // Update the table reference in the array
     $rt_arr_set_tbl(arr, newTbl);
 
-    //println("Extended array");
+    //print("Extended array");
 
     return newTbl;
 }
@@ -1765,7 +1760,7 @@ function $rt_setPropObj(obj, propStr, val)
     // If the object needs to be extended
     if (propIdx >= objCap)
     {
-        //println("*** extending object ***");
+        //print("*** extending object ***");
 
         var objType = $rt_obj_get_header(obj);
 
@@ -1812,7 +1807,7 @@ function $rt_setPropObj(obj, propStr, val)
         // Update the object pointer
         obj = newObj;
 
-        //println('extended');
+        //print('extended');
     }
 
     // Set the value and its type in the object
@@ -1874,9 +1869,9 @@ function $rt_setProp(base, prop, val)
         }
     }
 
-    //println(typeof base);
-    //println(base);
-    //println(prop);
+    //print(typeof base);
+    //print(base);
+    //print(prop);
 
     throw TypeError("invalid base in property write");
 }

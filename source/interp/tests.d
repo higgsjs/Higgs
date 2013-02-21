@@ -237,6 +237,9 @@ unittest
     assertFloat("return 6 / 2.5", 2.4);
     assertFloat("return 6/2/2", 1.5);
     assertFloat("return 6/2*2", 6);
+
+    assertFloat("return 100 * '5'", 500);
+    assertFloat("return 100 / '5'", 20);
 }
 
 /// Global function calls
