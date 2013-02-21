@@ -235,6 +235,7 @@ unittest
     assertFloat("return 2.5 - 1", 1.5);
     assertFloat("return 2 * 1.5", 3);
     assertFloat("return 6 / 2.5", 2.4);
+    assertFloat("return 0.5 % 0.2", 0.1);
     assertFloat("return 6/2/2", 1.5);
     assertFloat("return 6/2*2", 6);
 

@@ -793,13 +793,27 @@ JS modulo operator
 */
 function $rt_mod(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    // If x is integer
+    if ($ir_is_int32(x))
     {
-        return $ir_mod_i32(x, y);
+        if ($ir_is_int32(y))
+            return $ir_mod_i32(x, y);
+
+        if ($ir_is_float(y))
+            return $ir_mod_f64($ir_i32_to_f64(x), y);
     }
 
-    assert (false, "floating-point modulo unsupported");
+    // If x is float
+    if ($ir_is_float(x))
+    {
+        if ($ir_is_float(y))
+            return $ir_mod_f64(x, y);
+
+        if ($ir_is_int32(y))
+            return $ir_mod_f64(x, $ir_i32_to_f64(y));
+    }
+
+    return $rt_mod($rt_toNumber(x), $rt_toNumber(y));
 }
 
 //=============================================================================

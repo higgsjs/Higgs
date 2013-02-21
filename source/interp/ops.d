@@ -468,6 +468,7 @@ alias ArithOp!(Type.FLOAT, 2, "auto r = x + y;") op_add_f64;
 alias ArithOp!(Type.FLOAT, 2, "auto r = x - y;") op_sub_f64;
 alias ArithOp!(Type.FLOAT, 2, "auto r = x * y;") op_mul_f64;
 alias ArithOp!(Type.FLOAT, 2, "auto r = x / y;") op_div_f64;
+alias ArithOp!(Type.FLOAT, 2, "auto r = fmod(x, y);") op_mod_f64;
 
 alias ArithOp!(Type.FLOAT, 1, "auto r = sin(x);") op_sin_f64;
 alias ArithOp!(Type.FLOAT, 1, "auto r = cos(x);") op_cos_f64;

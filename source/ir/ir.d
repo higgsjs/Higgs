@@ -618,6 +618,7 @@ Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_f64 };
 Opcode SUB_F64 = { "sub_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_f64 };
 Opcode MUL_F64 = { "mul_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_f64 };
 Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_div_f64 };
+Opcode MOD_F64 = { "mod_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mod_f64 };
 
 // Higher-level floating-point functions
 Opcode SIN_F64 = { "sin_f64", true, [OpArg.LOCAL], &op_sin_f64 };
@@ -837,6 +838,7 @@ static this()
     addOp(SUB_F64);
     addOp(MUL_F64);
     addOp(DIV_F64);
+    addOp(MOD_F64);
 
     addOp(COS_F64);
     addOp(SIN_F64);
