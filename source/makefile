@@ -25,17 +25,21 @@ interp/object.d     \
 interp/gc.d         \
 interp/tests.d      \
 jit/x86.d           \
+jit/encodings.d     \
 jit/codeblock.d     \
 jit/tests.d         \
 repl.d              \
 main.d
 
-all: layout
+all: layout encodings
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
 
-test: layout
+test: layout encodings
 	$(DC) $(COPTS) -unittest -of$(BIN_NAME_TEST) $(SRC)
 	time ./$(BIN_NAME_TEST) --test
+
+encodings:
+	python jit/encodings.py
 
 layout:
 	python interp/layout.py
