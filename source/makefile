@@ -25,6 +25,7 @@ interp/object.d     \
 interp/gc.d         \
 interp/tests.d      \
 jit/x86.d           \
+jit/codeblock.d     \
 jit/tests.d         \
 repl.d              \
 main.d
