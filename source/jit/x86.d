@@ -177,6 +177,9 @@ struct X86Opnd
     };
 }
 
+/**
+X86 opcode and list of associated encodings
+*/
 struct X86Op
 {
     /// Mnemonic name string
@@ -186,22 +189,26 @@ struct X86Op
     X86Enc[] encs;
 }
 
+alias immutable(X86Op)* X86OpPtr;
+
+/**
+X86 instruction encoding
+*/
 struct X86Enc
 {
-    struct OpndDesc
+    enum : uint8_t
     {
-        bool r;
-        bool m;
-        bool xmm;
-        bool imm;
-
-        bool ra;
-        bool cst1;
-
-        uint8_t size;
+        R,
+        M,
+        XMM,
+        IMM,
+        REGA,   // AL/AX/EAX/RAX
+        REGC,   // CL
+        CST1    // Constant 1
     }
 
-    OpndDesc opnds;
+    uint8_t[] opndTypes;
+    uint8_t[] opndSizes;
 
     uint8_t[] prefix;
     uint8_t[] opcode;
@@ -233,7 +240,7 @@ class X86Instr : JITInstr
         return "";
     }
 
-    X86Op* opcode;
+    X86OpPtr opcode;
 
     X86Opnd[MAX_OPNDS] opnds;
 }
