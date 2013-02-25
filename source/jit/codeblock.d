@@ -38,15 +38,17 @@
 module jit.codeblock;
 
 import std.stdio;
+import std.string;
+import std.array;
 import std.stdint;
 
 class JITInstr
 {
+    abstract override string toString();
+
     abstract size_t length();
 
-    abstract void encode();
-
-    abstract override string toString();
+    abstract void encode(CodeBlock codeBlock);
 
     JITInstr prev;
     JITInstr next;
@@ -72,15 +74,6 @@ class Label : JITInstr
     }
 
     /**
-    Find an encoding for a label, does nothing
-    */
-    /*
-    void findEncoding()
-    {
-    }
-    */
-
-    /**
     Get the length of a label, always 0
     */
     override size_t length()
@@ -91,13 +84,12 @@ class Label : JITInstr
     /**
     Encode a label into a code block
     */
-    override void encode(/*codeBlock*/)
+    override void encode(CodeBlock codeBlock)
     {
-        // TODO
-
         // If this label is to be exported
         if (this.exported == true)
         {
+            // TODO
             // Add the export to the code block
             //codeBlock.exportLabel(this.name);
         }
@@ -126,225 +118,210 @@ class Label : JITInstr
 }
 
 /**
-@class Low-level machine code block implementation.
+Low-level machine code block implementation.
 Stores generated machine code, external references and exposed labels.
 */
-/*
-function CodeBlock(size)
+class CodeBlock
 {
-    assert (
-        isPosInt(size),
-        'invalid code block size: ' + size
-    );
-
-    /// Executable memory block
-    this.memBlock = allocMemoryBlock(size, true);
-
     /// Memory block size
-    this.size = size;
+    private size_t size;
+
+    /// Memory block
+    private uint8_t* memBlock;
 
     /// Current writing position
-    this.writePos = 0;
+    private size_t writePos;
 
-    /// Exported labels in this block
-    this.exports = {};
-}
-*/
-
-/**
-Print the code block as a string
-*/
-/*
-CodeBlock.prototype.toString = function ()
-{
-    var str = '';
-
-    for (var i = 0; i < this.writePos; ++i)
+    this(size_t size)
     {
-        var byteVal = this.readByte(i);
+        // TODO
+        // Allocate an executable memory block
+        //this.memBlock = allocMemoryBlock(size, true);
+        this.memBlock = null;
 
-        var byteStr = byteVal.toString(16);
-        byteStr = byteStr.toUpperCase();
-        if (byteStr.length === 1)
-            byteStr = '0' + byteStr;
+        this.size = size;
 
-        if (i !== 0)
-            str += ' ';
+        this.writePos = 0;
 
-        str += byteStr;
+        /// Exported labels in this block
+        //this.exports = {};
     }
 
-    return str;
-}
-*/
-
-/**
-Get the address of an offset in the code block
-*/
-/*
-CodeBlock.prototype.getAddress = function (idx)
-{
-    if (idx === undefined)
-        idx = 0;
-
-    return getBlockAddr(this.memBlock, idx);
-}
-*/
-
-/**
-Get the address of an exported label in the code block
-*/
-/*
-CodeBlock.prototype.getExportAddr = function (name)
-{
-    assert (
-        this.exports[name] !== undefined,
-        'invalid exported label'
-    );
-
-    return getBlockAddr(this.memBlock, this.exports[name]);
-}
-*/
-
-/**
-Clear the contents of the code block
-*/
-/*
-CodeBlock.prototype.clear = function ()
-{
-    this.writePos = 0;
-}
-*/
-
-/**
-Set the current write position
-*/
-/*
-CodeBlock.prototype.setWritePos = function (pos)
-{
-    assert (
-        pos < this.size,
-        'invalid code block position'
-    );
-
-    this.writePos = pos;
-}
-*/
-
-/**
-Write a byte at the current position
-*/
-/*
-CodeBlock.prototype.writeByte = function (val)
-{
-    assert (
-        this.memBlock,
-        'invalid memory block'
-    );
-
-    assert (
-        this.writePos + 1 <= this.size,
-        'no space to write byte in code block ' +
-        '(pos ' + this.writePos + '/' + this.size + ')'
-    );
-
-    assert (
-        isNonNegInt(val) && val <= 255,
-        'invalid byte value: ' + val
-    );
-
-    writeToMemoryBlock(this.memBlock, this.writePos, val);
-
-    this.writePos += 1;
-}
-*/
-
-/**
-Write a sequence of bytes at the current position
-*/
-/*
-CodeBlock.prototype.writeBytes = function (bytes)
-{
-    for (var i = 0; i < bytes.length; ++i)
-        this.writeByte(bytes[i]);
-}
-*/
-
-/**
-Write a signed integer at the current position
-*/
-/*
-CodeBlock.prototype.writeInt = function (val, numBits)
-{
-    assert (
-        isPosInt(numBits) && numBits % 8 === 0,
-        'the number of bits must be a positive multiple of 8'
-    );
-
-    assert (
-        num_ge(val, getIntMin(numBits)) &&
-        num_le(val, getIntMax(numBits, true)),
-        'integer value does not fit within ' + numBits + ' bits: ' + val
-    );
-
-    // Compute the size in bytes
-    var numBytes = numBits / 8;
-
-    // Write out the bytes
-    for (var i = 0; i < numBytes; ++i)
+    /**
+    Print the code block as a string
+    */
+    override string toString()
     {
-        //print(num_to_string(val));
+        auto app = appender!string();
 
-        var byteVal = num_and(val, 0xFF);
-
-        this.writeByte(byteVal);
-
-        val = num_shift(val, -8);
-    }
-}
-*/
-
-/**
-Write a link value at the current position
-*/
-/*
-CodeBlock.prototype.writeLink = function (linkVal, numBits)
-{
-    assert (
-        numBits === 32 || numBits === 64,
-        'invalid link value size'
-    );
-
-    // Store the link value and its position
-    this.imports.push(
+        for (size_t i = 0; i < this.writePos; ++i)
         {
-            value: linkVal,
-            pos: this.writePos
+            auto b = this.memBlock[i];
+
+            if (i != 0)
+                app.put(' ');
+
+            app.put(xformat("%02X", b));
         }
-    );
 
-    // Compute the size in bytes
-    var numBytes = numBits / 8;
+        return app.data;
+    }
 
-    // Write placeholder bytes for the value
-    for (var i = 0; i < numBytes; ++i)
-        this.writeByte(0);
+    /**
+    Get a direct pointer to th executable memory block
+    */
+    auto getMemBlock()
+    {
+        return memBlock;
+    }
+
+    /**
+    Get the address of an exported label in the code block
+    */
+    /*
+    CodeBlock.prototype.getExportAddr = function (name)
+    {
+        assert (
+            this.exports[name] !== undefined,
+            'invalid exported label'
+        );
+
+        return getBlockAddr(this.memBlock, this.exports[name]);
+    }
+    */
+
+    /**
+    Clear the contents of the code block
+    */
+    void clear()
+    {
+        this.writePos = 0;
+    }
+
+    /**
+    Set the current write position
+    */
+    void setWritePos(size_t pos)
+    {
+        assert (
+            pos < size,
+            "invalid code block position"
+        );
+
+        writePos = pos;
+    }
+
+    /**
+    Get the current write position
+    */
+    size_t getWritePos()
+    {
+        return writePos;
+    }
+
+    /**
+    Write a byte at the current position
+    */
+    void writeByte(uint8_t val)
+    {
+        assert (
+            this.memBlock,
+            "invalid memory block"
+        );
+
+        assert (
+            this.writePos + 1 <= this.size,
+            "no space to write byte in code block"
+        );
+
+        this.memBlock[this.writePos] = val;
+
+        this.writePos += 1;
+    }
+
+    /**
+    Write a sequence of bytes at the current position
+    */
+    void writeBytes(immutable uint8_t[] bytes)
+    {
+        foreach (b; bytes)
+            writeByte(b);
+    }
+
+    /**
+    Write a signed integer at the current position
+    */
+    void writeInt(uint64_t val, uint8_t numBits)
+    {
+        assert (
+            numBits > 0 && numBits % 8 == 0,
+            "the number of bits must be a positive multiple of 8"
+        );
+
+        /*
+        assert (
+            num_ge(val, getIntMin(numBits)) &&
+            num_le(val, getIntMax(numBits, true)),
+            'integer value does not fit within ' + numBits + ' bits: ' + val
+        );
+        */
+
+        // Compute the size in bytes
+        auto numBytes = numBits / 8;
+
+        // Write out the bytes
+        for (size_t i = 0; i < numBytes; ++i)
+        {
+            auto byteVal = cast(uint8_t)(val & 0xFF);
+
+            this.writeByte(byteVal);
+
+            val >>= 8;
+        }
+    }
+
+    /**
+    Write a link value at the current position
+    */
+    /*
+    CodeBlock.prototype.writeLink = function (linkVal, numBits)
+    {
+        assert (
+            numBits === 32 || numBits === 64,
+            'invalid link value size'
+        );
+
+        // Store the link value and its position
+        this.imports.push(
+            {
+                value: linkVal,
+                pos: this.writePos
+            }
+        );
+
+        // Compute the size in bytes
+        var numBytes = numBits / 8;
+
+        // Write placeholder bytes for the value
+        for (var i = 0; i < numBytes; ++i)
+            this.writeByte(0);
+    }
+    */
+
+    /**
+    Add an exported label at the the current position
+    */
+    /*
+    CodeBlock.prototype.exportLabel = function (name)
+    {
+        assert (
+            this.exports.hasOwnProperty(name) === false,
+            'exported label already exists: "' + name + '"'
+        );
+
+        // Store the link value and its position
+        this.exports[name] = this.writePos
+    }
+    */
 }
-*/
-
-/**
-Add an exported label at the the current position
-*/
-/*
-CodeBlock.prototype.exportLabel = function (name)
-{
-    assert (
-        this.exports.hasOwnProperty(name) === false,
-        'exported label already exists: "' + name + '"'
-    );
-
-    // Store the link value and its position
-    this.exports[name] = this.writePos
-}
-*/
 

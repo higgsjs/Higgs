@@ -38,6 +38,7 @@
 module jit.x86;
 
 import std.stdio;
+import std.string;
 import std.stdint;
 import jit.codeblock;
 
@@ -61,88 +62,90 @@ struct X86Reg
     uint8_t size;
 };
 
+alias immutable(X86Reg)* X86RegPtr;
+
 /// General-purpose registers
-auto al = X86Reg(X86Reg.GP, 0, 8);
-auto cl = X86Reg(X86Reg.GP, 0, 8);
-auto dl = X86Reg(X86Reg.GP, 0, 8);
-auto bl = X86Reg(X86Reg.GP, 0, 8);
-auto r8l = X86Reg(X86Reg.GP, 8, 8);
-auto r9l = X86Reg(X86Reg.GP, 8, 8);
-auto r10l = X86Reg(X86Reg.GP, 8, 8);
-auto r11l = X86Reg(X86Reg.GP, 8, 8);
-auto r12l = X86Reg(X86Reg.GP, 8, 8);
-auto r13l = X86Reg(X86Reg.GP, 8, 8);
-auto r14l = X86Reg(X86Reg.GP, 8, 8);
-auto r15l = X86Reg(X86Reg.GP, 8, 8);
-auto ax = X86Reg(X86Reg.GP, 0, 16);
-auto cx = X86Reg(X86Reg.GP, 1, 16);
-auto dx = X86Reg(X86Reg.GP, 2, 16);
-auto bx = X86Reg(X86Reg.GP, 3, 16);
-auto sp = X86Reg(X86Reg.GP, 4, 16);
-auto bp = X86Reg(X86Reg.GP, 5, 16);
-auto si = X86Reg(X86Reg.GP, 6, 16);
-auto di = X86Reg(X86Reg.GP, 7, 16);
-auto r8w = X86Reg(X86Reg.GP, 8, 16);
-auto r9w = X86Reg(X86Reg.GP, 9, 16);
-auto r10w = X86Reg(X86Reg.GP, 10, 16);
-auto r11w = X86Reg(X86Reg.GP, 11, 16);
-auto r12w = X86Reg(X86Reg.GP, 12, 16);
-auto r13w = X86Reg(X86Reg.GP, 13, 16);
-auto r14w = X86Reg(X86Reg.GP, 14, 16);
-auto r15w = X86Reg(X86Reg.GP, 15, 16);
-auto eax = X86Reg(X86Reg.GP, 0, 32);
-auto ecx = X86Reg(X86Reg.GP, 1, 32);
-auto edx = X86Reg(X86Reg.GP, 2, 32);
-auto ebx = X86Reg(X86Reg.GP, 3, 32);
-auto esp = X86Reg(X86Reg.GP, 4, 32);
-auto ebp = X86Reg(X86Reg.GP, 5, 32);
-auto esi = X86Reg(X86Reg.GP, 6, 32);
-auto edi = X86Reg(X86Reg.GP, 7, 32);
-auto r8d = X86Reg(X86Reg.GP, 8, 32);
-auto r9d = X86Reg(X86Reg.GP, 9, 32);
-auto r10d = X86Reg(X86Reg.GP, 10, 32);
-auto r11d = X86Reg(X86Reg.GP, 11, 32);
-auto r12d = X86Reg(X86Reg.GP, 12, 32);
-auto r13d = X86Reg(X86Reg.GP, 13, 32);
-auto r14d = X86Reg(X86Reg.GP, 14, 32);
-auto r15d = X86Reg(X86Reg.GP, 15, 32);
-auto rax = X86Reg(X86Reg.GP, 0, 64);
-auto rcx = X86Reg(X86Reg.GP, 1, 64);
-auto rdx = X86Reg(X86Reg.GP, 2, 64);
-auto rbx = X86Reg(X86Reg.GP, 3, 64);
-auto rsp = X86Reg(X86Reg.GP, 4, 64);
-auto rbp = X86Reg(X86Reg.GP, 5, 64);
-auto rsi = X86Reg(X86Reg.GP, 6, 64);
-auto rdi = X86Reg(X86Reg.GP, 7, 64);
-auto r8 = X86Reg(X86Reg.GP, 8, 64);
-auto r9 = X86Reg(X86Reg.GP, 9, 64);
-auto r10 = X86Reg(X86Reg.GP, 10, 64);
-auto r11 = X86Reg(X86Reg.GP, 11, 64);
-auto r12 = X86Reg(X86Reg.GP, 12, 64);
-auto r13 = X86Reg(X86Reg.GP, 13, 64);
-auto r14 = X86Reg(X86Reg.GP, 14, 64);
-auto r15 = X86Reg(X86Reg.GP, 15, 64);
+immutable al = X86Reg(X86Reg.GP, 0, 8);
+immutable cl = X86Reg(X86Reg.GP, 0, 8);
+immutable dl = X86Reg(X86Reg.GP, 0, 8);
+immutable bl = X86Reg(X86Reg.GP, 0, 8);
+immutable r8l = X86Reg(X86Reg.GP, 8, 8);
+immutable r9l = X86Reg(X86Reg.GP, 8, 8);
+immutable r10l = X86Reg(X86Reg.GP, 8, 8);
+immutable r11l = X86Reg(X86Reg.GP, 8, 8);
+immutable r12l = X86Reg(X86Reg.GP, 8, 8);
+immutable r13l = X86Reg(X86Reg.GP, 8, 8);
+immutable r14l = X86Reg(X86Reg.GP, 8, 8);
+immutable r15l = X86Reg(X86Reg.GP, 8, 8);
+immutable ax = X86Reg(X86Reg.GP, 0, 16);
+immutable cx = X86Reg(X86Reg.GP, 1, 16);
+immutable dx = X86Reg(X86Reg.GP, 2, 16);
+immutable bx = X86Reg(X86Reg.GP, 3, 16);
+immutable sp = X86Reg(X86Reg.GP, 4, 16);
+immutable bp = X86Reg(X86Reg.GP, 5, 16);
+immutable si = X86Reg(X86Reg.GP, 6, 16);
+immutable di = X86Reg(X86Reg.GP, 7, 16);
+immutable r8w = X86Reg(X86Reg.GP, 8, 16);
+immutable r9w = X86Reg(X86Reg.GP, 9, 16);
+immutable r10w = X86Reg(X86Reg.GP, 10, 16);
+immutable r11w = X86Reg(X86Reg.GP, 11, 16);
+immutable r12w = X86Reg(X86Reg.GP, 12, 16);
+immutable r13w = X86Reg(X86Reg.GP, 13, 16);
+immutable r14w = X86Reg(X86Reg.GP, 14, 16);
+immutable r15w = X86Reg(X86Reg.GP, 15, 16);
+immutable eax = X86Reg(X86Reg.GP, 0, 32);
+immutable ecx = X86Reg(X86Reg.GP, 1, 32);
+immutable edx = X86Reg(X86Reg.GP, 2, 32);
+immutable ebx = X86Reg(X86Reg.GP, 3, 32);
+immutable esp = X86Reg(X86Reg.GP, 4, 32);
+immutable ebp = X86Reg(X86Reg.GP, 5, 32);
+immutable esi = X86Reg(X86Reg.GP, 6, 32);
+immutable edi = X86Reg(X86Reg.GP, 7, 32);
+immutable r8d = X86Reg(X86Reg.GP, 8, 32);
+immutable r9d = X86Reg(X86Reg.GP, 9, 32);
+immutable r10d = X86Reg(X86Reg.GP, 10, 32);
+immutable r11d = X86Reg(X86Reg.GP, 11, 32);
+immutable r12d = X86Reg(X86Reg.GP, 12, 32);
+immutable r13d = X86Reg(X86Reg.GP, 13, 32);
+immutable r14d = X86Reg(X86Reg.GP, 14, 32);
+immutable r15d = X86Reg(X86Reg.GP, 15, 32);
+immutable rax = X86Reg(X86Reg.GP, 0, 64);
+immutable rcx = X86Reg(X86Reg.GP, 1, 64);
+immutable rdx = X86Reg(X86Reg.GP, 2, 64);
+immutable rbx = X86Reg(X86Reg.GP, 3, 64);
+immutable rsp = X86Reg(X86Reg.GP, 4, 64);
+immutable rbp = X86Reg(X86Reg.GP, 5, 64);
+immutable rsi = X86Reg(X86Reg.GP, 6, 64);
+immutable rdi = X86Reg(X86Reg.GP, 7, 64);
+immutable r8 = X86Reg(X86Reg.GP, 8, 64);
+immutable r9 = X86Reg(X86Reg.GP, 9, 64);
+immutable r10 = X86Reg(X86Reg.GP, 10, 64);
+immutable r11 = X86Reg(X86Reg.GP, 11, 64);
+immutable r12 = X86Reg(X86Reg.GP, 12, 64);
+immutable r13 = X86Reg(X86Reg.GP, 13, 64);
+immutable r14 = X86Reg(X86Reg.GP, 14, 64);
+immutable r15 = X86Reg(X86Reg.GP, 15, 64);
 
 // Instruction pointer, for ip-relative addressing
-auto rip = X86Reg(X86Reg.IP, 5, 64);
+immutable rip = X86Reg(X86Reg.IP, 5, 64);
 
 // XMM SIMD registers
-auto xmm0   = X86Reg(X86Reg.XMM, 0, 128);
-auto xmm1   = X86Reg(X86Reg.XMM, 1, 128);
-auto xmm2   = X86Reg(X86Reg.XMM, 2, 128);
-auto xmm3   = X86Reg(X86Reg.XMM, 3, 128);
-auto xmm4   = X86Reg(X86Reg.XMM, 4, 128);
-auto xmm5   = X86Reg(X86Reg.XMM, 5, 128);
-auto xmm6   = X86Reg(X86Reg.XMM, 6, 128);
-auto xmm7   = X86Reg(X86Reg.XMM, 7, 128);
-auto xmm8   = X86Reg(X86Reg.XMM, 8, 128);
-auto xmm9   = X86Reg(X86Reg.XMM, 9, 128);
-auto xmm10  = X86Reg(X86Reg.XMM,10, 128);
-auto xmm11  = X86Reg(X86Reg.XMM,11, 128);
-auto xmm12  = X86Reg(X86Reg.XMM,12, 128);
-auto xmm13  = X86Reg(X86Reg.XMM,13, 128);
-auto xmm14  = X86Reg(X86Reg.XMM,14, 128);
-auto xmm15  = X86Reg(X86Reg.XMM,15, 128);
+immutable xmm0   = X86Reg(X86Reg.XMM, 0, 128);
+immutable xmm1   = X86Reg(X86Reg.XMM, 1, 128);
+immutable xmm2   = X86Reg(X86Reg.XMM, 2, 128);
+immutable xmm3   = X86Reg(X86Reg.XMM, 3, 128);
+immutable xmm4   = X86Reg(X86Reg.XMM, 4, 128);
+immutable xmm5   = X86Reg(X86Reg.XMM, 5, 128);
+immutable xmm6   = X86Reg(X86Reg.XMM, 6, 128);
+immutable xmm7   = X86Reg(X86Reg.XMM, 7, 128);
+immutable xmm8   = X86Reg(X86Reg.XMM, 8, 128);
+immutable xmm9   = X86Reg(X86Reg.XMM, 9, 128);
+immutable xmm10  = X86Reg(X86Reg.XMM,10, 128);
+immutable xmm11  = X86Reg(X86Reg.XMM,11, 128);
+immutable xmm12  = X86Reg(X86Reg.XMM,12, 128);
+immutable xmm13  = X86Reg(X86Reg.XMM,13, 128);
+immutable xmm14  = X86Reg(X86Reg.XMM,14, 128);
+immutable xmm15  = X86Reg(X86Reg.XMM,15, 128);
 
 /**
 Instruction operand value
@@ -165,16 +168,82 @@ struct X86Opnd
     union
     {
         // Register
-        X86Reg reg;
+        X86RegPtr reg;
 
         // Memory location
-        struct { uint memSize; X86Reg base; uint disp; X86Reg index; uint scale; }
+        struct { uint memSize; X86RegPtr base; uint disp; X86RegPtr index; uint scale; }
 
         // Immediate value
-        ulong imm;
+        uint64_t imm;
 
         // TODO: link-time value
     };
+
+    string toString()
+    {
+        // TODO
+        return "";
+    }
+
+    bool rexNeeded()
+    {
+        // TODO:
+        return false;
+    }
+
+    bool sibNeeded()
+    {
+        // TODO:
+        return false;
+    }
+
+    bool rexAvail()
+    {
+        // TODO:
+        return true;
+    }
+
+    /**
+    Compute the size of the displacement field needed (memory operands only)
+    */
+    size_t dispSize()
+    {
+        assert (
+            type == MEM,
+            "dispSize only available for memory operands"
+        );
+
+        /*
+        // If EBP or RBP or R13 is used as the base, displacement must be encoded
+        if (base === x86.regs.ebp ||
+            base === x86.regs.rbp || 
+            base === x86.regs.r13)
+            this.dispSize = 8;
+
+        // If using displacement only or if using an index only or if using
+        // RIP as the base, use disp32
+        if ((!base && !index) || 
+            (!base && index) ||
+            (base === x86.regs.rip))
+        {
+            this.dispSize = 32;
+        }
+
+        // Compute the required displacement size
+        else if (num_ne(disp, 0))
+        {
+            if (num_ge(disp, getIntMin(8)) && num_le(disp, getIntMax(8)))
+                this.dispSize = 8;
+            else if (num_ge(disp, getIntMin(32)) && num_le(disp, getIntMax(32)))
+                this.dispSize = 32;
+            else
+                error('displacement does not fit within 32 bits');
+        }
+        */
+
+        // TODO
+        return 0;
+    }
 }
 
 /**
@@ -219,612 +288,612 @@ struct X86Enc
     bool rexW;
 }
 
+alias immutable(X86Enc)* X86EncPtr;
+
+/**
+X86 machine instruction representation
+*/
 class X86Instr : JITInstr
 {
-    immutable size_t MAX_OPNDS = 4;
+    /// Opcode (instruction type)
+    X86OpPtr opcode = null;
 
-    override size_t length()
+    /// Operands
+    X86Opnd[] opnds = [];
+
+    /// Encoding found
+    X86EncPtr enc = null;
+
+    /// Encoding length
+    uint8_t encLength = 0;
+
+    this(X86OpPtr opcode)
     {
-        // TODO
-        return 0;
+        this.opcode = opcode;
     }
 
-    override void encode()
+    this(X86OpPtr opcode, X86Opnd opnd0, X86Opnd opnd1)
     {
-        // TODO
+        this.opcode = opcode;
+        this.opnds = [opnd0, opnd1];
     }
 
+    /**
+    Produce a string representation of this instruction
+    */
     override string toString()
     {
-        // TODO
-        return "";
-    }
+        auto str = "";
 
-    X86OpPtr opcode;
+        str ~= opcode.mnem;
 
-    X86Opnd[MAX_OPNDS] opnds;
-}
-
-/**
-Produce a string representation of this instruction
-*/
-/*
-x86.Instruction.prototype.toString = function ()
-{
-    var str = '';
-
-    str += this.mnem;
-
-    for (var i = 0; i < this.opnds.length; ++i)
-    {
-        if (i === 0)
-            str += ' ';
-        else
-            str += ', ';
-
-        str += this.opnds[i].toString();
-    }
-
-    str += ';';
-
-    return str;
-}
-*/
-
-/**
-Compute the length of an encoding of this instruction
-*/
-/*
-x86.Instruction.prototype.compEncLen = function (enc, x86_64)
-{
-    // x86 instruction format:
-    // prefix(es)  [REX] opcode  [XRM  [SIB]]  disp  imm
-
-    // Flag to indicate the REX prefix is needed
-    var rexNeeded = (enc.REX_W === 1);
-
-    // Flags to indicate if the ModRM and SIB bytes needed
-    var rmNeeded = false;
-    var sibNeeded = false;
-
-    // RM operand, if present
-    var rmOpnd = null;
-
-    // Displacement size required
-    var dispSize = 0;
-
-    // Immediate size required
-    var immSize = 0;
-
-    // For each operand
-    for (var i = 0; i < this.opnds.length; ++i)
-    {
-        var opnd = this.opnds[i];
-
-        var opndType = x86.opndType(enc.opnds[i]);
-        var opndSize = x86.opndSize(enc.opnds[i]);
-
-        if (opnd.rexNeeded)
-            rexNeeded = true;
-
-        if (opndType === 'imm' ||
-            opndType === 'moffs' ||
-            opndType === 'rel')
+        foreach (i, opnd; opnds)
         {
-            immSize = opndSize;
+            if (i == 0)
+                str ~= " ";
+            else
+                str ~= ", ";
+
+            str ~= opnd.toString();
         }
 
-        else if (opndType === 'm' ||
-                 opndType === 'r/m' ||
-                 opndType === 'xmm/m')
-        {
-            rmNeeded = true;
-            rmOpnd = opnd;
+        str ~= ';';
 
-            if (opnd instanceof x86.MemLoc)
-            {
-                if (opnd.sibNeeded(x86_64))
-                    sibNeeded = true;
-
-                if (opnd.dispSize > 0)
-                    dispSize = opnd.dispSize;
-            }
-        }
+        return str;
     }
 
-    // Total encoding size
-    var size = 0;
-
-    // Add the address-size prefix, if needed
-    if (rmOpnd && x86_64 &&
-        ((rmOpnd.base && rmOpnd.base.size === 32) ||
-         (rmOpnd.index && rmOpnd.index.size === 32)))
-        size += 1;
-
-    // Add the operand-size prefix, if needed
-    if (enc.szPref === true)
-        size += 1;
-
-    // Add the prefix size
-    size += enc.prefix.length;
-
-    // Add the REX prefix, if needed
-    if (rexNeeded === true)
-        size += 1;
-
-    // Add the opcode size
-    size += enc.opCode.length;
-
-    // Add the ModR/M byte, if needed
-    if (rmNeeded)
-        size += 1;
-
-    // Add the SIB byte, if needed
-    if (sibNeeded)
-        size += 1;
-
-    // Add the displacement size (in bytes)
-    size += dispSize / 8;
-
-    // Add the immediate size (in bytes)
-    size += immSize / 8;
-
-    // Return the encoding size
-    return size;
-}
-*/
-
-/**
-Find the shortest possible encoding for this instruction.
-Returns null if no valid encoding is found
-*/
-/*
-x86.Instruction.prototype.findEncoding = function (x86_64)
-{
-    // Best encoding found
-    var bestEnc = null;
-    var bestLen = 0xFFFF;
-
-    // For each possible encoding
-    ENC_LOOP:
-    for (var i = 0; i < this.encodings.length; ++i)
+    /**
+    Get the length of the best encoding of this instruction
+    */
+    override size_t length()
     {
-        //print('encoding #' + (i+1));
+        // If no encoding is yet found, find one
+        if (enc is null)
+            findEncoding();
 
-        var enc = this.encodings[i];
+        // Return the encoding length
+        return this.encLength;
+    }
 
-        // If we are in x86-64 and this encoding is not valid in that mode
-        if (x86_64 === true && enc.x86_64 === false)
-            continue ENC_LOOP;
+    /**
+    Encode the instruction into a byte array
+    */
+    override void encode(CodeBlock codeBlock)
+    {
+        // If no encoding is yet found, find one
+        if (this.enc is null)
+            this.findEncoding();
 
-        // If the number of operands does not match, skip this encoding
-        if (enc.opnds.length !== this.opnds.length)
-            continue ENC_LOOP;
+        // Flag to indicate the REX prefix is needed
+        bool rexNeeded = (enc.rexW == 1);
+
+        // Flags to indicate if the ModRM and SIB bytes needed
+        bool rmNeeded = false;
+        bool sibNeeded = false;
+
+        // r and r/m operands
+        X86Opnd* rOpnd = null;
+        X86Opnd* rmOpnd = null;
+
+        // Immediate operand size and value
+        size_t immSize = 0;
+        size_t immVal = 0;
+
+        // Displacement size and value
+        size_t dispSize = 0;
+        size_t dispVal = 0;
 
         // For each operand
-        for (var j = 0; j < this.opnds.length; ++j)
+        for (size_t i = 0; i < this.opnds.length; ++i)
         {
-            var opnd = this.opnds[j];
+            auto opnd = &this.opnds[i];
 
-            var encOpnd = enc.opnds[j];
+            auto opndType = enc.opndTypes[i];
+            auto opndSize = enc.opndSizes[i];
 
-            var opndType = x86.opndType(encOpnd);
-            var opndSize = x86.opndSize(encOpnd);
+            if (opnd.rexNeeded == true)
+                rexNeeded = true;
 
-            // If this encoding requires REX but the operand is not
-            // available under REX, skip this encoding
-            if (enc.REX_W && !opnd.rexAvail)
+            /*
+            if (opndType === 'imm' || 
+                opndType === 'moffs' ||
+                opndType === 'rel')
+            {
+                immSize = opndSize;
+                immOpnd = opnd;
+            }
+
+            else if (opndType === 'r' ||
+                     opndType === 'xmm')
+            {
+                rOpnd = opnd;
+            }
+
+            else if (opndType === 'm' ||
+                     opndType === 'r/m' ||
+                     opndType === 'xmm/m')
+            {
+                rmNeeded = true;
+                rmOpnd = opnd;
+
+                if (opnd instanceof x86.MemLoc)
+                {
+                    if (opnd.sibNeeded(x86_64))
+                    {
+                        sibNeeded = true;
+                    }
+
+                    if (opnd.dispSize > 0)
+                    {
+                        dispSize = opnd.dispSize;
+                        dispVal = opnd.disp;
+                    }
+                }
+            }
+            */
+        }
+
+        // Get the index in the code block before the encoding
+        auto startIndex = codeBlock.getWritePos();
+
+        // Add the address-size prefix, if needed
+        if (rmOpnd &&
+            ((rmOpnd.base && rmOpnd.base.size == 32) ||
+             (rmOpnd.index && rmOpnd.index.size == 32)))
+            codeBlock.writeByte(0x67);
+
+        // Add the operand-size prefix, if needed
+        if (enc.szPref == true)
+            codeBlock.writeByte(0x66);
+
+        // Write the prefix bytes to the code block
+        codeBlock.writeBytes(enc.prefix);
+
+        // Add the REX prefix, if needed
+        if (rexNeeded)
+        {
+            // 0 1 0 0 w r x b
+            // w - 64-bit operand size flag
+            // r - MODRM.reg extension
+            // x - SIB.index extension
+            // b - MODRM.rm or SIB.base extension
+
+            uint w = enc.rexW? 1:0;
+
+            uint r;
+            if (rOpnd && rmOpnd)
+                r = (rOpnd.reg.regNo & 8)? 1:0;
+            else
+                r = 0;
+
+            uint x;
+            if (sibNeeded && rmOpnd.index)
+                x = (rmOpnd.index.regNo & 8)? 1:0;
+            else
+                x = 0;
+
+            uint b;
+            if (rmOpnd)
+                b = (rmOpnd.reg.regNo & 8)? 1:0;
+            else if (rOpnd && !rmOpnd)
+                b = (rOpnd.reg.regNo & 8)? 1:0;
+            else if (rmOpnd && rmOpnd.base)
+                b = (rmOpnd.base.regNo & 8)? 1:0;
+            else
+                b = 0;
+
+            // Encode and write the REX byte
+            auto rexByte = 0x40 + (w << 3) + (r << 2) + (x << 1) + (b);
+            codeBlock.writeByte(cast(byte)rexByte);
+        }
+
+        // If an opcode reg field is to be used
+        if (rOpnd && !rmOpnd)
+        {
+            // Write the reg field into the opcode byte
+            uint8_t opByte = enc.opcode[0] | (rOpnd.reg.regNo & 7);
+            codeBlock.writeByte(opByte);
+        }
+        else
+        {
+            // Write the opcode bytes to the code block
+            codeBlock.writeBytes(enc.opcode);
+        }
+
+        // Add the ModR/M byte, if needed
+        if (rmNeeded)
+        {
+            // MODRM.mod (2 bits)
+            // MODRM.reg (3 bits)
+            // MODRM.rm  (3 bits)
+
+            assert (
+                !(enc.opExt != byte.max && rOpnd),
+                "opcode extension and register operand present"
+            );
+
+            /*
+            // Encode the mod field
+            var mod;
+            if (rmOpnd instanceof x86.Register)
+            {
+                mod = 3;
+            }
+            else
+            {
+                if (dispSize === 0 || !rmOpnd.base)
+                    mod = 0;
+                else if (dispSize === 8)
+                    mod = 1
+                else if (dispSize === 32)
+                    mod = 2;
+            }
+
+            // Encode the reg field
+            var reg;
+            if (enc.opExt)
+                reg = enc.opExt;
+            else if (rOpnd)
+                reg = rOpnd.regNo & 7;
+            else
+                reg = 0;
+
+            // Encode the rm field
+            var rm;
+            if (rmOpnd instanceof x86.Register)
+            {
+                rm = rmOpnd.regNo & 7;
+            }
+            else
+            {
+                if (sibNeeded)
+                    rm = 4;
+                else if (!x86_64 && !rmOpnd.base && !rmOpnd.index)
+                    rm = 5;
+                else if (rmOpnd.base === x86.regs.rip)
+                    rm = 5;
+                else if (rmOpnd.base)
+                    rm = rmOpnd.base.regNo & 7;
+                else
+                    rm = 0;
+            }
+
+            // Encode and write the ModR/M byte
+            var rmByte = (mod << 6) + (reg << 3) + (rm);
+            codeBlock.writeByte(rmByte);
+            */
+        }
+
+        // Add the SIB byte, if needed
+        if (sibNeeded)
+        {
+            // SIB.scale (2 bits)
+            // SIB.index (3 bits)
+            // SIB.base  (3 bits)
+
+            /*
+            assert (
+                rmOpnd instanceof x86.MemLoc,
+                'expected r/m opnd to be mem loc'
+            );
+
+            // Encode the scale value
+            var scale;
+            switch (rmOpnd.scale)
+            {
+                case 1: scale = 0; break;
+                case 2: scale = 1; break
+                case 4: scale = 2; break
+                case 8: scale = 3; break
+                default: error('invalid SIB scale: ' + rmOpnd.scale);
+            }
+
+            // Encode the index value
+            var index;
+            if (!rmOpnd.index)
+                index = 4;
+            else
+                index = rmOpnd.index.regNo & 7;
+
+            // Encode the base register
+            var base;
+            if (!rmOpnd.base)
+                base = 5;
+            else
+                base = rmOpnd.base.regNo & 7;
+
+            // Encode and write the SIB byte
+            var sibByte = (scale << 6) + (index << 3) + (base);
+            codeBlock.writeByte(sibByte);
+            */
+        }
+
+        /*
+        // Add the displacement size
+        if (dispSize !== 0)
+            codeBlock.writeInt(dispVal, dispSize);
+
+        // If there is an immediate operand
+        if (immSize !== 0)
+        {
+            if (immOpnd instanceof x86.Immediate)
+                immOpnd.writeImm(codeBlock, immSize);
+            else if (immOpnd instanceof x86.LabelRef)
+                codeBlock.writeInt(immOpnd.relOffset, immSize);
+            else
+                error('invalid immediate operand');
+        }
+        */
+
+        // Get the index in the code block after the encoding
+        auto endIndex = codeBlock.getWritePos();
+
+        // Compute the length of the data written
+        auto wrtLength = endIndex - startIndex;
+
+        assert (
+            wrtLength == this.encLength,
+            xformat(
+                "encoding length:\n" ~
+                "%s\n" ~
+                "does not match expected length:\n" ~
+                "%s\n" ~
+                "for:\n" ~
+                "%s",
+                wrtLength,
+                encLength,
+                toString()
+            )
+        );
+    }
+
+    /**
+    Find the best encoding for this instruction
+    */
+    void findEncoding()
+    {
+        // Best encoding found
+        X86EncPtr bestEnc = null;
+        size_t bestLen = size_t.max;
+
+        // TODO: look at opndSize first
+        // Get current opnd size, if applicable
+
+        // TODO: stop when opndSize is too small
+
+        // For each possible encoding
+        ENC_LOOP:
+        for (size_t i = 0; i < opcode.encs.length; ++i)
+        {
+            auto enc = &opcode.encs[i];
+
+            // If the number of operands does not match, skip this encoding
+            if (enc.opndTypes.length != this.opnds.length)
                 continue ENC_LOOP;
 
-            // Switch on the operand type
-            switch (opndType)
+            // For each operand
+            for (size_t j = 0; j < this.opnds.length; ++j)
             {
-                case 'fixed_reg':
-                if (opnd !== encOpnd)
-                    continue ENC_LOOP;
-                break;
+                auto opnd = &this.opnds[j];
 
-                case 'cst':
-                if (!(opnd instanceof x86.Immediate))
-                    continue ENC_LOOP;
-                if (opnd.value !== encOpnd)
-                    continue ENC_LOOP;
-                break;
+                auto opndType = enc.opndTypes[j];
+                auto opndSize = enc.opndSizes[j];
 
-                case 'imm':
-                //print('imm opnd');
-                //print('imm opnd size: ' + opnd.size);
-                if (!(opnd instanceof x86.Immediate))
+                // If this encoding requires REX but the operand is not
+                // available under REX, skip this encoding
+                if (enc.rexW && !opnd.rexAvail)
                     continue ENC_LOOP;
-                if (opnd.type !== 'imm')
-                    continue ENC_LOOP;
-                if (opnd.size > opndSize)
+
+
+
+
+                /*
+                // Switch on the operand type
+                switch (opndType)
                 {
-                    if (!opnd.unsgSize)
+                    case 'fixed_reg':
+                    if (opnd !== encOpnd)
                         continue ENC_LOOP;
+                    break;
 
-                    if (opnd.unsgSize !== opndSize || 
-                        opndSize !== enc.opndSize)
+                    case 'cst':
+                    if (!(opnd instanceof x86.Immediate))
                         continue ENC_LOOP;
+                    if (opnd.value !== encOpnd)
+                        continue ENC_LOOP;
+                    break;
+
+                    case 'imm':
+                    //print('imm opnd');
+                    //print('imm opnd size: ' + opnd.size);
+                    if (!(opnd instanceof x86.Immediate))
+                        continue ENC_LOOP;
+                    if (opnd.type !== 'imm')
+                        continue ENC_LOOP;
+                    if (opnd.size > opndSize)
+                    {
+                        if (!opnd.unsgSize)
+                            continue ENC_LOOP;
+
+                        if (opnd.unsgSize !== opndSize || 
+                            opndSize !== enc.opndSize)
+                            continue ENC_LOOP;
+                    }
+                    break;
+
+                    case 'r':
+                    if (!(opnd instanceof x86.Register && opnd.type === 'gp'))
+                        continue ENC_LOOP;
+                    if (opnd.size !== opndSize)
+                        continue ENC_LOOP;
+                    break;
+
+                    case 'xmm':
+                    if (!(opnd instanceof x86.Register && opnd.type === 'xmm'))
+                        continue ENC_LOOP;
+                    break;
+
+                    case 'm':
+                    if (!(opnd instanceof x86.MemLoc))
+                        continue ENC_LOOP;
+                    if (opnd.size !== opndSize && opndSize !== undefined)
+                        continue ENC_LOOP;
+                    break;
+
+                    case 'r/m':
+                    if (!(opnd instanceof x86.Register && opnd.type === 'gp') && 
+                        !(opnd instanceof x86.MemLoc))
+                        continue ENC_LOOP;
+                    if (opnd.size !== opndSize)
+                        continue ENC_LOOP;
+                    break;
+
+                    case 'xmm/m':
+                    if (!(opnd instanceof x86.Register && opnd.type === 'xmm') && 
+                        !(opnd instanceof x86.MemLoc && opnd.size === opndSize))
+                        continue ENC_LOOP;
+                    break;
+
+                    case 'rel':
+                    if (!(opnd instanceof x86.LabelRef))
+                        continue ENC_LOOP;
+                    if (opnd.size > opndSize)
+                        continue ENC_LOOP;
+                    break;
+
+                    case 'moffs':
+                    if (!(opnd instanceof x86.Immediate))
+                        continue ENC_LOOP;
+                    if (opnd.type !== 'moffs')
+                        continue ENC_LOOP;
+                    if (opnd.unsgSize > opndSize)
+                        continue ENC_LOOP;
+                    break;
+
+                    default:
+                    error('invalid operand type "' + opndType + '"');
                 }
-                break;
+                */
+            }
 
-                case 'r':
-                if (!(opnd instanceof x86.Register && opnd.type === 'gp'))
-                    continue ENC_LOOP;
-                if (opnd.size !== opndSize)
-                    continue ENC_LOOP;
-                break;
+            auto len = compEncLen(enc);
 
-                case 'xmm':
-                if (!(opnd instanceof x86.Register && opnd.type === 'xmm'))
-                    continue ENC_LOOP;
-                break;
-
-                case 'm':
-                if (!(opnd instanceof x86.MemLoc))
-                    continue ENC_LOOP;
-                if (opnd.size !== opndSize && opndSize !== undefined)
-                    continue ENC_LOOP;
-                break;
-
-                case 'r/m':
-                if (!(opnd instanceof x86.Register && opnd.type === 'gp') && 
-                    !(opnd instanceof x86.MemLoc))
-                    continue ENC_LOOP;
-                if (opnd.size !== opndSize)
-                    continue ENC_LOOP;
-                break;
-
-                case 'xmm/m':
-                if (!(opnd instanceof x86.Register && opnd.type === 'xmm') && 
-                    !(opnd instanceof x86.MemLoc && opnd.size === opndSize))
-                    continue ENC_LOOP;
-                break;
-
-                case 'rel':
-                if (!(opnd instanceof x86.LabelRef))
-                    continue ENC_LOOP;
-                if (opnd.size > opndSize)
-                    continue ENC_LOOP;
-                break;
-
-                case 'moffs':
-                if (!(opnd instanceof x86.Immediate))
-                    continue ENC_LOOP;
-                if (opnd.type !== 'moffs')
-                    continue ENC_LOOP;
-                if (opnd.unsgSize > opndSize)
-                    continue ENC_LOOP;
-                break;
-
-                default:
-                error('invalid operand type "' + opndType + '"');
+            if (len < bestLen)
+            {
+                bestEnc = enc;
+                bestLen = len;
             }
         }
 
-        var len = this.compEncLen(enc, x86_64);
+        assert (
+            bestEnc !is null,
+            "no valid encoding found for " ~ this.toString()
+        );
 
-        //print('encoding length: ' + len);
+        // Store the best encoding found
+        enc = bestEnc;
 
-        if (len < bestLen)
-        {
-            bestEnc = enc;
-            bestLen = len;
-        }
+        // Store the encoding length
+        encLength = cast(uint8_t)bestLen;
     }
 
-    if (DEBUG === true && bestEnc === null)
-        error('no valid ' + (x86_64? 64:32) + '-bit encoding for "' + this + '"');
-
-    // Store the best encoding found
-    this.encDesc = bestEnc;
-
-    // Store the encoding length
-    this.encLength = bestLen;
-}
-*/
-
-/**
-Get the length of this instruction
-*/
-/*
-x86.Instruction.prototype.length = function (x86_64)
-{
-    // If no encoding is yet found, find one
-    if (this.encDesc === null)
-        this.findEncoding(x86_64);
-
-    // Return the encoding length
-    return this.encLength;
-}
-*/
-
-/**
-Encode the instruction into a byte array
-*/
-/*
-x86.Instruction.prototype.encode = function (codeBlock, x86_64)
-{
-    // If no encoding is yet found, find one
-    if (this.encDesc === null)
-        this.findEncoding();
-
-    // Get a reference to the encoding descriptor found
-    var enc = this.encDesc;
-
-    // Flag to indicate the REX prefix is needed
-    var rexNeeded = (enc.REX_W === 1);
-
-    // Flags to indicate if the ModRM and SIB bytes needed
-    var rmNeeded = false;
-    var sibNeeded = false;
-
-    // r and r/m operands
-    var rOpnd = null;
-    var rmOpnd = null;
-
-    // Immediate operand size and value
-    var immSize = 0;
-    var immVal = 0;
-
-    // Displacement size and value
-    var dispSize = 0;
-    var dispVal = 0;
-
-    // For each operand
-    for (var i = 0; i < this.opnds.length; ++i)
+    /**
+    Compute the length of an encoding of this instruction
+    */
+    size_t compEncLen(X86EncPtr enc)
     {
-        var opnd = this.opnds[i];
+        // x86 instruction format:
+        // prefix(es)  [REX] opcode  [XRM  [SIB]]  disp  imm
 
-        var opndType = x86.opndType(enc.opnds[i]);
-        var opndSize = x86.opndSize(enc.opnds[i]);
+        // Flag to indicate the REX prefix is needed
+        bool rexNeeded = (enc.rexW == 1);
 
-        if (opnd.rexNeeded === true)
-            rexNeeded = true;
+        // Flags to indicate if the ModRM and SIB bytes needed
+        bool rmNeeded = false;
+        bool sibNeeded = false;
 
-        if (opndType === 'imm' || 
-            opndType === 'moffs' ||
-            opndType === 'rel')
+        // RM operand, if present
+        X86Opnd* rmOpnd = null;
+
+        // Displacement size required
+        size_t dispSize = 0;
+
+        // Immediate size required
+        size_t immSize = 0;
+
+        // For each operand
+        for (size_t i = 0; i < this.opnds.length; ++i)
         {
-            immSize = opndSize;
-            immOpnd = opnd;
-        }
+            auto opnd = &this.opnds[i];
 
-        else if (opndType === 'r' ||
-                 opndType === 'xmm')
-        {
-            rOpnd = opnd;
-        }
+            auto opndType = enc.opndTypes[i];
+            auto opndSize = enc.opndSizes[i];
 
-        else if (opndType === 'm' ||
-                 opndType === 'r/m' ||
-                 opndType === 'xmm/m')
-        {
-            rmNeeded = true;
-            rmOpnd = opnd;
+            if (opnd.rexNeeded)
+                rexNeeded = true;
 
-            if (opnd instanceof x86.MemLoc)
+            if (opndType & X86Enc.IMM)
             {
-                if (opnd.sibNeeded(x86_64))
-                {
-                    sibNeeded = true;
-                }
+                immSize = opndSize;
+            }
 
-                if (opnd.dispSize > 0)
+            // If this operand can be a memory location
+            else if (opndType & X86Enc.M)
+            {
+                rmNeeded = true;
+                rmOpnd = opnd;
+
+                if (opnd.type == X86Opnd.MEM)
                 {
-                    dispSize = opnd.dispSize;
-                    dispVal = opnd.disp;
+                    if (opnd.sibNeeded)
+                        sibNeeded = true;
+
+                    // TODO: dispSize??? is this the same as disp
+                    //if (opnd.dispSize > 0)
+                    //    dispSize = opnd.dispSize;
                 }
             }
         }
-    }
 
-    // Get the index in the code block before the encoding
-    var startIndex = codeBlock.writePos;
+        // Total encoding size
+        size_t size = 0;
 
-    // Add the address-size prefix, if needed
-    if (rmOpnd && x86_64 &&
-        ((rmOpnd.base && rmOpnd.base.size === 32) ||
-         (rmOpnd.index && rmOpnd.index.size === 32)))
-        codeBlock.writeByte(0x67);
+        // Add the address-size prefix, if needed
+        if (rmOpnd && 
+            ((rmOpnd.base && rmOpnd.base.size == 32) ||
+             (rmOpnd.index && rmOpnd.index.size == 32)))
+            size += 1;
 
-    // Add the operand-size prefix, if needed
-    if (enc.szPref === true)
-        codeBlock.writeByte(0x66);
+        // Add the operand-size prefix, if needed
+        if (enc.szPref == true)
+            size += 1;
 
-    // Write the prefix bytes to the code block
-    for (var i = 0; i < enc.prefix.length; ++i)
-        codeBlock.writeByte(enc.prefix[i]);
+        // Add the prefix size
+        size += enc.prefix.length;
 
-    // Add the REX prefix, if needed
-    if (rexNeeded === true)
-    {
-        // 0 1 0 0 w r x b
-        // w - 64-bit operand size flag
-        // r - MODRM.reg extension
-        // x - SIB.index extension
-        // b - MODRM.rm or SIB.base extension
+        // Add the REX prefix, if needed
+        if (rexNeeded == true)
+            size += 1;
 
-        var w = enc.REX_W;
+        // Add the opcode size
+        size += enc.opcode.length;
 
-        var r;
-        if (rOpnd && rmOpnd)
-            r = (rOpnd.regNo & 8)? 1:0;
-        else
-            r = 0;
+        // Add the ModR/M byte, if needed
+        if (rmNeeded)
+            size += 1;
 
-        var x;
-        if (sibNeeded && rmOpnd.index instanceof x86.Register)
-            x = (rmOpnd.index.regNo & 8)? 1:0;
-        else
-            x = 0;
+        // Add the SIB byte, if needed
+        if (sibNeeded)
+            size += 1;
 
-        var b;
-        if (rmOpnd instanceof x86.Register)
-            b = (rmOpnd.regNo & 8)? 1:0;
-        else if (rOpnd && !rmOpnd)
-            b = (rOpnd.regNo & 8)? 1:0;
-        else if (rmOpnd && rmOpnd.base instanceof x86.Register)
-            b = (rmOpnd.base.regNo & 8)? 1:0;
-        else
-            b = 0;
+        // Add the displacement size (in bytes)
+        size += dispSize / 8;
 
-        // Encode and write the REX byte
-        var rexByte = 0x40 + (w << 3) + (r << 2) + (x << 1) + (b);
-        codeBlock.writeByte(rexByte);
-    }
+        // Add the immediate size (in bytes)
+        size += immSize / 8;
 
-    // If an opcode reg field is to be used
-    if (rOpnd && !rmOpnd)
-    {
-        // Write the reg field into the opcode byte
-        var opByte = enc.opCode[0] | (rOpnd.regNo & 7);
-        codeBlock.writeByte(opByte);
-    }
-    else
-    {
-        // Write the opcode bytes to the code block
-        for (var i = 0; i < enc.opCode.length; ++i)
-            codeBlock.writeByte(enc.opCode[i]);
-    }
-
-    // Add the ModR/M byte, if needed
-    if (rmNeeded)
-    {
-        // MODRM.mod (2 bits)
-        // MODRM.reg (3 bits)
-        // MODRM.rm  (3 bits)
-
-        assert (
-            !(enc.opExt && rOpnd),
-            'opcode extension and register operand present'
-        );
-
-        // Encode the mod field
-        var mod;
-        if (rmOpnd instanceof x86.Register)
-        {
-            mod = 3;
-        }
-        else
-        {
-            if (dispSize === 0 || !rmOpnd.base)
-                mod = 0;
-            else if (dispSize === 8)
-                mod = 1
-            else if (dispSize === 32)
-                mod = 2;
-        }
-
-        // Encode the reg field
-        var reg;
-        if (enc.opExt)
-            reg = enc.opExt;
-        else if (rOpnd)
-            reg = rOpnd.regNo & 7;
-        else
-            reg = 0;
-
-        // Encode the rm field
-        var rm;
-        if (rmOpnd instanceof x86.Register)
-        {
-            rm = rmOpnd.regNo & 7;
-        }
-        else
-        {
-            if (sibNeeded)
-                rm = 4;
-            else if (!x86_64 && !rmOpnd.base && !rmOpnd.index)
-                rm = 5;
-            else if (rmOpnd.base === x86.regs.rip)
-                rm = 5;
-            else if (rmOpnd.base)
-                rm = rmOpnd.base.regNo & 7;
-            else
-                rm = 0;
-        }
-
-        // Encode and write the ModR/M byte
-        var rmByte = (mod << 6) + (reg << 3) + (rm);
-        codeBlock.writeByte(rmByte);
-    }
-
-    // Add the SIB byte, if needed
-    if (sibNeeded)
-    {
-        // SIB.scale (2 bits)
-        // SIB.index (3 bits)
-        // SIB.base  (3 bits)
-
-        assert (
-            rmOpnd instanceof x86.MemLoc,
-            'expected r/m opnd to be mem loc'
-        );
-
-        // Encode the scale value
-        var scale;
-        switch (rmOpnd.scale)
-        {
-            case 1: scale = 0; break;
-            case 2: scale = 1; break
-            case 4: scale = 2; break
-            case 8: scale = 3; break
-            default: error('invalid SIB scale: ' + rmOpnd.scale);
-        }
-
-        // Encode the index value
-        var index;
-        if (!rmOpnd.index)
-            index = 4;
-        else
-            index = rmOpnd.index.regNo & 7;
-
-        // Encode the base register
-        var base;
-        if (!rmOpnd.base)
-            base = 5;
-        else
-            base = rmOpnd.base.regNo & 7;
-
-        // Encode and write the SIB byte
-        var sibByte = (scale << 6) + (index << 3) + (base);
-        codeBlock.writeByte(sibByte);
-    }
-
-    // Add the displacement size
-    if (dispSize !== 0)
-        codeBlock.writeInt(dispVal, dispSize);
-
-    // If there is an immediate operand
-    if (immSize !== 0)
-    {
-        if (immOpnd instanceof x86.Immediate)
-            immOpnd.writeImm(codeBlock, immSize);
-        else if (immOpnd instanceof x86.LabelRef)
-            codeBlock.writeInt(immOpnd.relOffset, immSize);
-        else
-            error('invalid immediate operand');
-    }
-
-    // Get the index in the code block after the encoding
-    var endIndex = codeBlock.writePos;
-
-    // Compute the length of the data written
-    var wrtLength = endIndex - startIndex;
-
-    if (DEBUG === true && wrtLength !== this.encLength)
-    {
-        error(
-            'encoding length:\n' +
-            wrtLength + '\n' +
-            'does not match expected length:\n' +
-            this.encLength + '\n' +
-            'for:\n' +
-            this
-        );
+        // Return the encoding size
+        return size;
     }
 }
-*/
 
