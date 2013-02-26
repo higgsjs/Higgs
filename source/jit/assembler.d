@@ -346,6 +346,26 @@ class Assembler
         // Return the code block we assembled into
         return codeBlock;
     }
+
+    /**
+    Helper method to insert an instruction
+    */
+    X86Instr instr(X86OpPtr opcode)
+    {
+        auto instr = new X86Instr(opcode);
+        this.addInstr(instr);
+        return instr;
+    }
+
+    /**
+    Helper method to create and insert a label
+    */
+    Label label(string name)
+    {
+        auto label = new Label(name);
+        this.addInstr(label);
+        return label;
+    }
 }
 
 /*
@@ -387,26 +407,6 @@ class Assembler
     // Create an assembler method for each instruction
     for (var instr in x86.instrs)
         makeInstrMethod(instr);
-
-    // Create method to create labels on the assembler
-    x86.Assembler.prototype.label = function (name)
-    {
-        var label = new x86.Label(name);
-
-        this.addInstr(label);
-
-        return label;
-    }
-
-    // Create an assembler field for each register
-    for (var reg in x86.regs)
-        x86.Assembler.prototype[reg] = x86.regs[reg];
-
-    // Create a method to encode memory locations on the assembler
-    x86.Assembler.prototype.mem = function (size, base, disp, index, scale)
-    {
-        return new x86.MemLoc(size, base, disp, index, scale);
-    }
 
 })();
 */

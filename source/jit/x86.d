@@ -57,12 +57,13 @@ struct X86Reg
         IP
     }
 
+    /// Register type
     uint8_t type;
 
-    // Register index number
+    /// Register index number
     uint8_t regNo;
 
-    // Size in bits
+    /// Size in bits
     uint8_t size;
 
     /**
@@ -251,7 +252,7 @@ struct X86Opnd
         X86RegPtr reg;
 
         // Memory location
-        struct { uint memSize; X86RegPtr base; uint disp; X86RegPtr index; uint scale; }
+        struct { X86RegPtr base; X86RegPtr index; uint32_t disp; uint8_t memSize; uint8_t scale; }
 
         // Immediate value or label
         struct { int64_t imm; Label label; }
@@ -261,6 +262,53 @@ struct X86Opnd
 
         // TODO: link-time value
     };
+
+    /**
+    Create an immediate operand
+    */
+    this(int64_t imm)
+    {
+        this.type = X86Opnd.IMM;
+        this.imm = imm;
+    }
+
+    /**
+    Create a register operand
+    */
+    this(ref immutable(X86Reg) reg)
+    {
+        this.type = REG;
+        this.reg = &reg;
+    }
+
+    /**
+    Create a memory operand
+    */
+    this(
+        size_t size, 
+        X86RegPtr base, 
+        uint32_t disp   = 0, 
+        X86RegPtr index = null, 
+        size_t scale    = 1
+    )
+    {
+        this.type = MEM;
+        this.memSize = cast(uint8_t)size;
+        this.base    = base;
+        this.disp    = disp;
+        this.index   = index;
+        this.scale   = cast(uint8_t)scale;
+    }
+
+    /**
+    Create a label operand
+    */
+    this(Label label)
+    {
+        this.type = REL;
+        this.imm = 0;
+        this.label = label;
+    }
 
     /**
     Produce a string representation of the operand

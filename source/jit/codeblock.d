@@ -65,7 +65,7 @@ Label inserted into an instruction stream
 */
 class Label : JITInstr
 {
-    this(string name, bool exported)
+    this(string name, bool exported = false)
     {
         this.name = name;
         this.exported = exported;
@@ -182,6 +182,14 @@ class CodeBlock
         }
 
         return app.data;
+    }
+
+    /**
+    Get the size of the code block
+    */
+    auto length()
+    {
+        return size;
     }
 
     /**
@@ -324,6 +332,18 @@ class CodeBlock
             this.writeByte(0);
     }
     */
+
+    /**
+    Read the byte at the given index
+    */
+    ubyte readByte(size_t index)
+    {
+        assert (
+            index < size
+        );
+
+        return memBlock[index];
+    }
 
     /**
     Add an exported label at the the current position
