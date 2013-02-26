@@ -37,11 +37,17 @@
 
 module jit.codeblock;
 
+import core.sys.posix.unistd;
+import core.sys.posix.sys.mman;
+import core.memory;
 import std.stdio;
 import std.string;
 import std.array;
 import std.stdint;
 
+/**
+JIT compiler instruction
+*/
 class JITInstr
 {
     abstract override string toString();
@@ -132,19 +138,30 @@ class CodeBlock
     /// Current writing position
     private size_t writePos;
 
+    /// Exported labels in this block
+    //this.exports = {};
+
     this(size_t size)
     {
-        // TODO
-        // Allocate an executable memory block
-        //this.memBlock = allocMemoryBlock(size, true);
-        this.memBlock = null;
+        // Allocate a memory block
+        this.memBlock = cast(ubyte*)GC.malloc(size);
+
+        // Map the memory as executable
+        auto pa = mmap(
+            cast(void*)this.memBlock,
+            size,
+            PROT_READ | PROT_WRITE | PROT_EXEC,
+            MAP_PRIVATE | MAP_ANON,
+            -1,
+            0
+        );
+        // Check that the memory mapping was successful
+        if (pa == MAP_FAILED)
+            throw new Error("mmap call failed");
 
         this.size = size;
 
         this.writePos = 0;
-
-        /// Exported labels in this block
-        //this.exports = {};
     }
 
     /**
@@ -179,7 +196,7 @@ class CodeBlock
     Get the address of an exported label in the code block
     */
     /*
-    CodeBlock.prototype.getExportAddr = function (name)
+    auto getExportAddr(name)
     {
         assert (
             this.exports[name] !== undefined,
@@ -251,7 +268,7 @@ class CodeBlock
     /**
     Write a signed integer at the current position
     */
-    void writeInt(uint64_t val, uint8_t numBits)
+    void writeInt(uint64_t val, size_t numBits)
     {
         assert (
             numBits > 0 && numBits % 8 == 0,
@@ -284,7 +301,7 @@ class CodeBlock
     Write a link value at the current position
     */
     /*
-    CodeBlock.prototype.writeLink = function (linkVal, numBits)
+    writeLink(linkVal, numBits)
     {
         assert (
             numBits === 32 || numBits === 64,
@@ -312,7 +329,7 @@ class CodeBlock
     Add an exported label at the the current position
     */
     /*
-    CodeBlock.prototype.exportLabel = function (name)
+    exportLabel(name)
     {
         assert (
             this.exports.hasOwnProperty(name) === false,

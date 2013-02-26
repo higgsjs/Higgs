@@ -27,6 +27,7 @@ interp/tests.d      \
 jit/x86.d           \
 jit/encodings.d     \
 jit/codeblock.d     \
+jit/assembler.d     \
 jit/tests.d         \
 repl.d              \
 main.d

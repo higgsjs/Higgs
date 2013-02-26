@@ -37,8 +37,6 @@
 
 module interp.interp;
 
-import core.sys.posix.unistd;
-import core.sys.posix.sys.mman;
 import core.memory;
 import std.stdio;
 import std.string;
@@ -398,21 +396,6 @@ class Interp
         // Check that the allocation was successful
         if (heapStart is null)
             throw new Error("heap allocation failed");
-
-        /*
-        // Map the memory as executable
-        auto pa = mmap(
-            cast(void*)heapStart,
-            heapSize,
-            PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_PRIVATE | MAP_ANON,
-            -1,
-            0
-        );
-        // Check that the memory mapping was successful
-        if (pa == MAP_FAILED)
-            throw new Error("mmap call failed");
-        */
 
         // Initialize the allocation pointer
         allocPtr = heapStart;

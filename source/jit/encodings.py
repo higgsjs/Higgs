@@ -970,14 +970,14 @@ def opndFlags(opnd):
     if opnd.startswith('imm'):
         return 'X86Enc.IMM'
     if opnd.startswith('moffs'):
-        return 'X86Enc.IMM'
+        return 'X86Enc.MOFFS'
     if opnd.startswith('rel'):
-        return 'X86Enc.IMM'
+        return 'X86Enc.REL'
 
     if opnd.startswith('r/m'):
-        return 'X86Enc.R | X86Enc.M'
+        return 'X86Enc.R_OR_M'
     if opnd.startswith('xmm/m'):
-        return 'X86Enc.XMM | X86Enc.M'
+        return 'X86Enc.XMM_OR_M'
 
     if opnd.startswith('r'):
         return 'X86Enc.R'

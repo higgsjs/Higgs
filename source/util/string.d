@@ -76,6 +76,17 @@ unittest
 }
 
 /**
+Pad the right side of a string until it has the desired length
+*/
+string rightPadStr(string str, string pad, size_t len)
+{
+    while (str.length < len)
+        str = str ~ pad;
+
+    return str;
+}
+
+/**
 Escape a JavaScript string for output
 */
 wstring escapeJSString(wstring input)
