@@ -57,7 +57,7 @@ instrTable = [
     # Add scalar double
     Op(
         'addsd',
-        Enc(opnds=['xmm', 'xmm/m64'], prefix=[0xF2], opcode=[0x0F, 0x58]),
+        Enc(opnds=['xmm', 'xmm/m64'], prefix=[0xF2], opcode=[0x0F, 0x58], rexW=False),
     ),
 
     # Bitwise AND
@@ -98,11 +98,11 @@ instrTable = [
         Enc(opnds=[], opcode=[0x99], opndSize=16),
     ),
     Op(
-        'cwq', 
+        'cdq', 
         Enc(opnds=[], opcode=[0x99], opndSize=32),
     ),
     Op(
-        'cwo', 
+        'cqo', 
         Enc(opnds=[], opcode=[0x99], opndSize=64),
     ),
 
@@ -1002,7 +1002,9 @@ for op in instrTable:
 
         # Try to infer the operand size from operands if necessary
         if enc.opndSize == None:
-            if len(enc.opnds) > 0:
+            if len(enc.opnds) > 1 and enc.opnds[0] == 'xmm':
+                enc.opndSize = opndSize(enc.opnds[1])
+            elif len(enc.opnds) > 0:
                 enc.opndSize = opndSize(enc.opnds[0])
             else:
                 enc.opndSize = 32

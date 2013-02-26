@@ -33,7 +33,7 @@ immutable X86OpPtr ADD = &add;
 immutable X86Op addsd = {
     "addsd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 88], 0xFF, 128, false, false }
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 88], 0xFF, 64, false, false }
     ]
 };
 immutable X86OpPtr ADDSD = &addsd;
@@ -77,20 +77,20 @@ immutable X86Op cwd = {
     ]
 };
 immutable X86OpPtr CWD = &cwd;
-immutable X86Op cwq = {
-    "cwq",
+immutable X86Op cdq = {
+    "cdq",
     [
         { [], [], [], [153], 0xFF, 32, false, false }
     ]
 };
-immutable X86OpPtr CWQ = &cwq;
-immutable X86Op cwo = {
-    "cwo",
+immutable X86OpPtr CDQ = &cdq;
+immutable X86Op cqo = {
+    "cqo",
     [
         { [], [], [], [153], 0xFF, 64, false, true }
     ]
 };
-immutable X86OpPtr CWO = &cwo;
+immutable X86OpPtr CQO = &cqo;
 immutable X86Op cmova = {
     "cmova",
     [
@@ -389,8 +389,8 @@ immutable X86OpPtr CMP = &cmp;
 immutable X86Op cvtsi2sd = {
     "cvtsi2sd",
     [
-        { [X86Enc.XMM, X86Enc.R_OR_M], [128, 32], [242], [15, 42], 0xFF, 128, false, false },
-        { [X86Enc.XMM, X86Enc.R_OR_M], [128, 64], [242], [15, 42], 0xFF, 128, false, false }
+        { [X86Enc.XMM, X86Enc.R_OR_M], [128, 64], [242], [15, 42], 0xFF, 64, false, true },
+        { [X86Enc.XMM, X86Enc.R_OR_M], [128, 32], [242], [15, 42], 0xFF, 32, false, false }
     ]
 };
 immutable X86OpPtr CVTSI2SD = &cvtsi2sd;
@@ -425,7 +425,7 @@ immutable X86OpPtr DIV = &div;
 immutable X86Op divsd = {
     "divsd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 94], 0xFF, 128, false, false }
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 94], 0xFF, 64, false, true }
     ]
 };
 immutable X86OpPtr DIVSD = &divsd;
@@ -761,7 +761,7 @@ immutable X86OpPtr MOV = &mov;
 immutable X86Op movapd = {
     "movapd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 8], [102], [15, 40], 0xFF, 128, false, false },
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 8], [102], [15, 40], 0xFF, 8, false, false },
         { [X86Enc.XMM_OR_M, X86Enc.XMM], [8, 128], [102], [15, 41], 0xFF, 8, false, false }
     ]
 };
@@ -769,7 +769,7 @@ immutable X86OpPtr MOVAPD = &movapd;
 immutable X86Op movsd = {
     "movsd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 16], 0xFF, 128, false, false },
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 16], 0xFF, 64, false, true },
         { [X86Enc.XMM_OR_M, X86Enc.XMM], [64, 128], [242], [15, 17], 0xFF, 64, false, true }
     ]
 };
@@ -795,7 +795,7 @@ immutable X86OpPtr MOVSXD = &movsxd;
 immutable X86Op movupd = {
     "movupd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 8], [102], [15, 16], 0xFF, 128, false, false },
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 8], [102], [15, 16], 0xFF, 8, false, false },
         { [X86Enc.XMM_OR_M, X86Enc.XMM], [8, 128], [102], [15, 17], 0xFF, 8, false, false }
     ]
 };
@@ -824,7 +824,7 @@ immutable X86OpPtr MUL = &mul;
 immutable X86Op mulsd = {
     "mulsd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 89], 0xFF, 128, false, false }
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 89], 0xFF, 64, false, true }
     ]
 };
 immutable X86OpPtr MULSD = &mulsd;
@@ -955,7 +955,7 @@ immutable X86OpPtr RET = &ret;
 immutable X86Op roundsd = {
     "roundsd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M, X86Enc.IMM], [128, 64, 8], [102], [15, 58, 11], 0xFF, 128, false, false }
+        { [X86Enc.XMM, X86Enc.XMM_OR_M, X86Enc.IMM], [128, 64, 8], [102], [15, 58, 11], 0xFF, 64, false, true }
     ]
 };
 immutable X86OpPtr ROUNDSD = &roundsd;
@@ -1034,7 +1034,7 @@ immutable X86OpPtr SHR = &shr;
 immutable X86Op sqrtsd = {
     "sqrtsd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 81], 0xFF, 128, false, false }
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 81], 0xFF, 64, false, true }
     ]
 };
 immutable X86OpPtr SQRTSD = &sqrtsd;
@@ -1066,7 +1066,7 @@ immutable X86OpPtr SUB = &sub;
 immutable X86Op subsd = {
     "subsd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 92], 0xFF, 128, false, false }
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [242], [15, 92], 0xFF, 64, false, true }
     ]
 };
 immutable X86OpPtr SUBSD = &subsd;
@@ -1091,7 +1091,7 @@ immutable X86OpPtr TEST = &test;
 immutable X86Op ucomisd = {
     "ucomisd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [102], [15, 46], 0xFF, 128, false, false }
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [102], [15, 46], 0xFF, 64, false, true }
     ]
 };
 immutable X86OpPtr UCOMISD = &ucomisd;

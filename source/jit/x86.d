@@ -636,7 +636,7 @@ class X86Instr : JITInstr
         auto startIndex = codeBlock.getWritePos();
 
         // Add the address-size prefix, if needed
-        if (rmOpnd &&
+        if (rmOpnd && rmOpnd.type == X86Opnd.MEM &&
             ((rmOpnd.base && rmOpnd.base.size == 32) ||
              (rmOpnd.index && rmOpnd.index.size == 32)))
             codeBlock.writeByte(0x67);
@@ -945,10 +945,9 @@ class X86Instr : JITInstr
                     break;
 
                     case X86Enc.XMM_OR_M:
-                    if (!(opnd.type == X86Opnd.REG    && 
-                          opnd.reg.type == X86Reg.XMM && 
-                          opnd.reg.size == opndSize)  && 
-                        !(opnd.type == X86Opnd.MEM    && 
+                    if (!(opnd.type == X86Opnd.REG     && 
+                          opnd.reg.type == X86Reg.XMM) && 
+                        !(opnd.type == X86Opnd.MEM     && 
                           opnd.memSize == opndSize))
                         continue ENC_LOOP;
                     break;
@@ -1044,7 +1043,7 @@ class X86Instr : JITInstr
         size_t size = 0;
 
         // Add the address-size prefix, if needed
-        if (rmOpnd && 
+        if (rmOpnd && rmOpnd.type == X86Opnd.MEM &&
             ((rmOpnd.base && rmOpnd.base.size == 32) ||
              (rmOpnd.index && rmOpnd.index.size == 32)))
             size += 1;
