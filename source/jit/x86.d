@@ -184,6 +184,7 @@ struct X86Opnd
         MEM,
         IMM,
         REL,
+        MOFFS,
         LINK
     };
 
@@ -318,6 +319,10 @@ struct X86Opnd
 
             case REL:
             return this.label.name ~ " (" ~ to!string(this.immSize) ~ ")";
+
+            // TODO:
+            //case MOFFS:
+            //return;
 
             default:
             assert (false);
@@ -578,12 +583,13 @@ class X86Instr : JITInstr
         X86Opnd* rOpnd = null;
         X86Opnd* rmOpnd = null;
 
-        // Immediate operand
-        X86Opnd* immOpnd = null;
+        // Immediate operand size and value
+        size_t immSize = 0;
+        int64_t immVal = 0;
 
         // Displacement size and value
         size_t dispSize = 0;
-        size_t dispVal = 0;
+        int32_t dispVal = 0;
 
         // For each operand
         for (size_t i = 0; i < this.opnds.length; ++i)
@@ -600,7 +606,8 @@ class X86Instr : JITInstr
                 opndType == X86Enc.MOFFS ||
                 opndType == X86Enc.REL)
             {
-                immOpnd = opnd;
+                immSize = opndSize;
+                immVal = opnd.imm;
             }
 
             else if (opndType == X86Enc.R ||
@@ -808,8 +815,8 @@ class X86Instr : JITInstr
             codeBlock.writeInt(dispVal, dispSize);
 
         // If there is an immediate operand
-        if (immOpnd)
-            codeBlock.writeInt(immOpnd.imm, immOpnd.immSize);
+        if (immSize != 0)
+            codeBlock.writeInt(immVal, immSize);
 
         // Get the index in the code block after the encoding
         auto endIndex = codeBlock.getWritePos();
@@ -842,11 +849,7 @@ class X86Instr : JITInstr
         X86EncPtr bestEnc = null;
         size_t bestLen = size_t.max;
 
-        // TODO: look at opndSize first
-        // Get current opnd size, if applicable
-
-        // TODO: stop when opndSize is too small
-        // only if register opnd?
+        // TODO: stop at first match? sort by shortest first?
 
         // For each possible encoding
         ENC_LOOP:
@@ -871,13 +874,15 @@ class X86Instr : JITInstr
                 {
                     case X86Enc.REGA:
                     if (opnd.type != X86Opnd.REG ||
-                        opnd.reg.regNo != RAX.regNo)
+                        opnd.reg.regNo != RAX.regNo ||
+                        opnd.reg.size != opndSize)
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.REGC:
                     if (opnd.type != X86Opnd.REG || 
-                        opnd.reg.regNo != RCX.regNo)
+                        opnd.reg.regNo != RCX.regNo ||
+                        opnd.reg.size != opndSize)
                         continue ENC_LOOP;
                     break;
 
@@ -910,7 +915,7 @@ class X86Instr : JITInstr
                     break;
 
                     case X86Enc.MOFFS:
-                    if (opnd.type != X86Opnd.IMM)
+                    if (opnd.type != X86Opnd.MOFFS)
                         continue ENC_LOOP;
                     if (opnd.unsgSize > opndSize)
                         continue ENC_LOOP;
@@ -931,7 +936,8 @@ class X86Instr : JITInstr
                     case X86Enc.M:
                     if (!(opnd.type == X86Opnd.MEM))
                         continue ENC_LOOP;
-                    if (opnd.memSize != opndSize)
+                    // If the memory location has a size and it doesn't match
+                    if (opndSize != 0 && opnd.memSize != opndSize)
                         continue ENC_LOOP;
                     break;
 

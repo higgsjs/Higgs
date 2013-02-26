@@ -432,7 +432,7 @@ immutable X86OpPtr DIVSD = &divsd;
 immutable X86Op fstp = {
     "fstp",
     [
-        { [X86Enc.M], [64], [], [221], 3, 64, false, true }
+        { [X86Enc.M], [64], [], [221], 3, 64, false, false }
     ]
 };
 immutable X86OpPtr FSTP = &fstp;
@@ -761,8 +761,8 @@ immutable X86OpPtr MOV = &mov;
 immutable X86Op movapd = {
     "movapd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 8], [102], [15, 40], 0xFF, 8, false, false },
-        { [X86Enc.XMM_OR_M, X86Enc.XMM], [8, 128], [102], [15, 41], 0xFF, 8, false, false }
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 128], [102], [15, 40], 0xFF, 128, false, false },
+        { [X86Enc.XMM_OR_M, X86Enc.XMM], [128, 128], [102], [15, 41], 0xFF, 128, false, false }
     ]
 };
 immutable X86OpPtr MOVAPD = &movapd;
@@ -795,8 +795,8 @@ immutable X86OpPtr MOVSXD = &movsxd;
 immutable X86Op movupd = {
     "movupd",
     [
-        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 8], [102], [15, 16], 0xFF, 8, false, false },
-        { [X86Enc.XMM_OR_M, X86Enc.XMM], [8, 128], [102], [15, 17], 0xFF, 8, false, false }
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 128], [102], [15, 16], 0xFF, 128, false, false },
+        { [X86Enc.XMM_OR_M, X86Enc.XMM], [128, 128], [102], [15, 17], 0xFF, 128, false, false }
     ]
 };
 immutable X86OpPtr MOVUPD = &movupd;

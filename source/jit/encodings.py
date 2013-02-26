@@ -353,7 +353,7 @@ instrTable = [
     # Store and pop floating-point value (x87)
     Op(
         'fstp', 
-        Enc(opnds=['m64'], opcode=[0xDD], opExt=3),
+        Enc(opnds=['m64'], opcode=[0xDD], opExt=3, rexW=False),
     ),
 
     # Signed integer division
@@ -938,21 +938,23 @@ def opndSize(opnd):
         return 0
     if opnd == 1:
         return 8
+    if opnd == 'xmm':
+        return 128
 
-    if opnd.endswith('8') or opnd == 'al' or opnd == 'cl':
-        return 8
-
-    if opnd.endswith('16') or opnd == 'ax':
-        return 16
-
-    if opnd.endswith('32') or opnd == 'eax':
-        return 32
+    if opnd.endswith('128'):
+        return 128
 
     if opnd.endswith('64') or opnd == 'rax':
         return 64
 
-    if opnd == 'xmm':
-        return 128
+    if opnd.endswith('32') or opnd == 'eax':
+        return 32
+
+    if opnd.endswith('16') or opnd == 'ax':
+        return 16
+
+    if opnd.endswith('8') or opnd == 'al' or opnd == 'cl':
+        return 8
 
     raise Exception("unknown operand " + opnd)
 

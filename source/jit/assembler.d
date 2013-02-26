@@ -364,6 +364,10 @@ class Assembler
     {
         return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a)));
     }
+    X86Instr instr(X86OpPtr opcode, Label a)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a)));
+    }
 
     // Binary instruction helper methods
     X86Instr instr(X86OpPtr opcode, X86Opnd a, X86Opnd b)

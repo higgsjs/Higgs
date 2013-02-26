@@ -287,119 +287,114 @@ unittest
         "67F77424F4"
     );
 
-    /*
     // fst
     test(
-        delegate void (Assembler a) { a.fst(X86Opnd(64, ESP, -8)); },
-        "DD5424F8",
-        "67DD5424F8"
-    );
-    test(
-        delegate void (Assembler a) { a.fstp(X86Opnd(64, RSP, -16)); },
+        delegate void (Assembler a) { a.instr(FSTP, X86Opnd(64, RSP, -16)); },
         "",
         "DD5C24F0"
     );
 
     // imul
     test(
-        delegate void (Assembler a) { a.imul(EDX, ECX); },
+        delegate void (Assembler a) { a.instr(IMUL, EDX, ECX); },
         "0FAFD1"
     );
     test(
-        delegate void (Assembler a) { a.imul(RSI, RDI); },
+        delegate void (Assembler a) { a.instr(IMUL, RSI, RDI); },
         "",
         "480FAFF7"
     );
     test(
-        delegate void (Assembler a) { a.imul(R14, R9); }, 
+        delegate void (Assembler a) { a.instr(IMUL, R14, R9); }, 
         "", 
         "4D0FAFF1"
     );
     test(
-        delegate void (Assembler a) { a.imul(EAX, X86Opnd(32, ESP, 8)); },
+        delegate void (Assembler a) { a.instr(IMUL, EAX, X86Opnd(32, ESP, 8)); },
         "0FAF442408",
         "670FAF442408"
     );
 
     // inc
     test(
-        delegate void (Assembler a) { a.inc(BL); },
+        delegate void (Assembler a) { a.instr(INC, BL); },
         "FEC3", 
         "FEC3"
     );
     test(
-        delegate void (Assembler a) { a.inc(ESP); },
+        delegate void (Assembler a) { a.instr(INC, ESP); },
         "44",
         "FFC4"
     );
     test(
-        delegate void (Assembler a) { a.inc(X86Opnd(32, ESP, 0)); },
+        delegate void (Assembler a) { a.instr(INC, X86Opnd(32, ESP, 0)); },
         "FF0424",
         "67FF0424"
     );
     test(
-        delegate void (Assembler a) { a.inc(X86Opnd(64, RSP, 4)); },
+        delegate void (Assembler a) { a.instr(INC, X86Opnd(64, RSP, 4)); },
         "",
         "48FF442404"
     );
 
     // jcc
     test(
-        delegate void (Assembler a) { var l = a.label("foo"); a.jge(l); },
+        delegate void (Assembler a) { auto l = a.label("foo"); a.instr(JGE, l); },
         "7DFE"
     );
     test(
-        delegate void (Assembler a) { var l = a.label("foo"); a.jno(l); },
+        delegate void (Assembler a) { auto l = a.label("foo"); a.instr(JNO, l); },
         "71FE"
     );
 
     // lea
     test(
-        delegate void (Assembler a) {a.lea(EBX, X86Opnd(32, ESP, 4)); },
+        delegate void (Assembler a) {a.instr(LEA, EBX, X86Opnd(32, ESP, 4)); },
         "8D5C2404",
         "678D5C2404"
     );
 
     // mov
     test(
-        delegate void (Assembler a) { a.mov(EAX, 7); }, 
+        delegate void (Assembler a) { a.instr(MOV, EAX, 7); }, 
         "B807000000"
     );
     test(
-        delegate void (Assembler a) { a.mov(EAX, -3); }, 
+        delegate void (Assembler a) { a.instr(MOV, EAX, -3); }, 
         "B8FDFFFFFF"
     );
     test(
-        delegate void (Assembler a) { a.mov(EAX, EBX); }, 
+        delegate void (Assembler a) { a.instr(MOV, EAX, EBX); }, 
         "89D8"
     );
     test(
-        delegate void (Assembler a) { a.mov(EAX, ECX); }, 
+        delegate void (Assembler a) { a.instr(MOV, EAX, ECX); }, 
         "89C8"
     );
     test(
-        delegate void (Assembler a) { a.mov(ECX, X86Opnd(32, ESP, -4)); }, 
+        delegate void (Assembler a) { a.instr(MOV, ECX, X86Opnd(32, ESP, -4)); }, 
         "8B4C24FC",
         "678B4C24FC"
     );
     test(
-        delegate void (Assembler a) { a.mov(CL, R9L); }, 
+        delegate void (Assembler a) { a.instr(MOV, CL, R9L); }, 
         "",
         "4488C9"
     );
 
     // movapd
     test(
-        delegate void (Assembler a) { a.movapd(XMM5, X86Opnd(128, ESP)); },
+        delegate void (Assembler a) { a.instr(MOVAPD, XMM5, X86Opnd(128, ESP)); },
         "660F282C24",
         "67660F282C24"
     );
     test(
-        delegate void (Assembler a) { a.movapd(X86Opnd(128, ESP, -8), XMM6); },
+        delegate void (Assembler a) { a.instr(MOVAPD, X86Opnd(128, ESP, -8), XMM6); },
         "660F297424F8",
         "67660F297424F8"
     );
 
+    /*
     // movsd
     test(
         delegate void (Assembler a) { a.movsd(XMM3, XMM5); },
