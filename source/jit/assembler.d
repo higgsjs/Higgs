@@ -37,6 +37,7 @@
 
 module jit.assembler;
 
+import std.stdio;
 import std.array;
 import std.stdint;
 import util.string;
@@ -233,8 +234,6 @@ class Assembler
         // Total code length
         size_t codeLength;
 
-        // TODO: array of instruction lengths
-
         // Flag to indicate an encoding changed
         bool changed = true;
 
@@ -255,9 +254,8 @@ class Assembler
                 // If this instruction is a label
                 if (auto label = cast(Label)instr)
                 {
-                    /*
                     // If the position of the label did not change, do nothing
-                    if (instr.offset === codeLength)
+                    if (label.offset == codeLength)
                         continue;
 
                     //print('label position changed for ' + instr + ' (' + codeLength + ')');
@@ -266,8 +264,7 @@ class Assembler
                     changed = true;
 
                     // Store the offset where the label currently is
-                    instr.offset = codeLength;
-                    */
+                    label.offset = cast(uint32_t)codeLength;
                 }
 
                 // If this is a machine instruction
@@ -364,6 +361,10 @@ class Assembler
     {
         return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a)));
     }
+    X86Instr instr(X86OpPtr opcode, int64_t imm)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(imm)));
+    }
     X86Instr instr(X86OpPtr opcode, Label a)
     {
         return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a)));
@@ -393,6 +394,12 @@ class Assembler
     X86Instr instr(X86OpPtr opcode, X86Opnd a, int64_t b)
     {
         return cast(X86Instr)addInstr(new X86Instr(opcode, a, X86Opnd(b)));
+    }
+
+    // Trinary instruction helper methods
+    X86Instr instr(X86OpPtr opcode, X86RegPtr a, X86RegPtr b, int64_t imm)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a), X86Opnd(b), X86Opnd(imm)));
     }
 
     Label label(string name)

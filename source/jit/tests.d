@@ -99,7 +99,7 @@ unittest
                     "%s (%s bytes)\n" ~
                     "expected:\n" ~
                     "%s (%s bytes)\n",
-                    assembler.toString(),
+                    assembler.toString(false),
                     codeBlock.toString(),
                     codeBlock.length,
                     encBlock.toString(),
@@ -394,112 +394,110 @@ unittest
         "67660F297424F8"
     );
 
-    /*
     // movsd
     test(
-        delegate void (Assembler a) { a.movsd(XMM3, XMM5); },
+        delegate void (Assembler a) { a.instr(MOVSD, XMM3, XMM5); },
         "F20F10DD"
     );
     test(
-        delegate void (Assembler a) { a.movsd(XMM3, X86Opnd(64, ESP)); },
+        delegate void (Assembler a) { a.instr(MOVSD, XMM3, X86Opnd(64, ESP)); },
         "F20F101C24",
         "67F20F101C24"
     );
     test(
-        delegate void (Assembler a) { a.movsd(X86Opnd(64, RSP), XMM14); },
+        delegate void (Assembler a) { a.instr(MOVSD, X86Opnd(64, RSP), XMM14); },
         "",
         "F2440F113424"
     );
 
     // movsx
     test(
-        delegate void (Assembler a) { a.movsx(AX, AL); },
+        delegate void (Assembler a) { a.instr(MOVSX, AX, AL); },
         "660FBEC0"
     );
     test(
-        delegate void (Assembler a) { a.movsx(EDX, AL); },
+        delegate void (Assembler a) { a.instr(MOVSX, EDX, AL); },
         "0FBED0"
     );
     test(
-        delegate void (Assembler a) { a.movsx(RAX, BL); },
+        delegate void (Assembler a) { a.instr(MOVSX, RAX, BL); },
         "",
         "480FBEC3"
     );
     test(
-        delegate void (Assembler a) { a.movsx(ECX, AX); },
+        delegate void (Assembler a) { a.instr(MOVSX, ECX, AX); },
         "0FBFC8"
     );
     test(
-        delegate void (Assembler a) { a.movsx(R11, CL); },
+        delegate void (Assembler a) { a.instr(MOVSX, R11, CL); },
         "",
         "4C0FBED9"
     );
     test(
-        delegate void (Assembler a) { a.movsxd(R10, X86Opnd(32, ESP, 12)); },
+        delegate void (Assembler a) { a.instr(MOVSXD, R10, X86Opnd(32, ESP, 12)); },
         "",
         "674C6354240C"
     );
 
     // movupd
     test(
-        delegate void (Assembler a) { a.movupd(XMM7, X86Opnd(128, RSP)); },
+        delegate void (Assembler a) { a.instr(MOVUPD, XMM7, X86Opnd(128, RSP)); },
         "",
         "660F103C24"
     );
     test(
-        delegate void (Assembler a) { a.movupd(X86Opnd(128, RCX, -8), XMM9); },
+        delegate void (Assembler a) { a.instr(MOVUPD, X86Opnd(128, RCX, -8), XMM9); },
         "",
         "66440F1149F8"
     );
 
     // movzx
     test(
-        delegate void (Assembler a) { a.movzx(SI, BL); },
+        delegate void (Assembler a) { a.instr(MOVZX, SI, BL); },
         "660FB6F3"
     );
     test(
-        delegate void (Assembler a) { a.movzx(ECX, AL); },
+        delegate void (Assembler a) { a.instr(MOVZX, ECX, AL); },
         "0FB6C8"
     );
     test(
-        delegate void (Assembler a) { a.movzx(EDI, AL); },
+        delegate void (Assembler a) { a.instr(MOVZX, EDI, AL); },
         "0FB6F8"
     );
     test(
-        delegate void (Assembler a) { a.movzx(EBP, AL); },
+        delegate void (Assembler a) { a.instr(MOVZX, EBP, AL); },
         "0FB6E8"
     );
     test(
-        delegate void (Assembler a) { a.movzx(RCX, BL); },
+        delegate void (Assembler a) { a.instr(MOVZX, RCX, BL); },
         "",
         "480FB6CB"
     );
     test(
-        delegate void (Assembler a) { a.movzx(ECX, AX); },
+        delegate void (Assembler a) { a.instr(MOVZX, ECX, AX); },
         "0FB7C8"
     );
     test(
-        delegate void (Assembler a) { a.movzx(R11, CL); },
+        delegate void (Assembler a) { a.instr(MOVZX, R11, CL); },
         "",
         "4C0FB6D9"
     );
 
     // mul
     test(
-        delegate void (Assembler a) { a.mul(EDX); }, 
+        delegate void (Assembler a) { a.instr(MUL, EDX); }, 
         "F7E2"
     );
     test(
-        delegate void (Assembler a) { a.mul(R15); },
+        delegate void (Assembler a) { a.instr(MUL, R15); },
         "",
         "49F7E7"
     );
     test(
-        delegate void (Assembler a) { a.mul(R10D); },
+        delegate void (Assembler a) { a.instr(MUL, R10D); },
         "",
         "41F7E2"
     );
-    */
 
     // nop
     test(
@@ -507,360 +505,365 @@ unittest
         "90"
     );
 
-    /*
     // not
     test(
-        delegate void (Assembler a) { a.not(AX); }, 
+        delegate void (Assembler a) { a.instr(NOT, AX); }, 
         "66F7D0"
     );
     test(
-        delegate void (Assembler a) { a.not(EAX); }, 
+        delegate void (Assembler a) { a.instr(NOT, EAX); }, 
         "F7D0"
     );
     test(
-        delegate void (Assembler a) { a.not(RAX); }, 
+        delegate void (Assembler a) { a.instr(NOT, RAX); }, 
         "", 
         "48F7D0"
     );
     test(
-        delegate void (Assembler a) { a.not(R11); }, 
+        delegate void (Assembler a) { a.instr(NOT, R11); }, 
         "", 
         "49F7D3"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EAX)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EAX)); }, 
         "F710", 
         "67F710"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, ESI)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, ESI)); },
         "F716", 
         "67F716"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EDI)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EDI)); }, 
         "F717", 
         "67F717"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EDX, 55)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EDX, 55)); },
         "F75237", 
         "67F75237"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EDX, 1337)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EDX, 1337)); },
         "F79239050000", 
         "67F79239050000"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EDX, -55)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EDX, -55)); },
         "F752C9", 
         "67F752C9"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EDX, -555)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EDX, -555)); },
         "F792D5FDFFFF", 
         "67F792D5FDFFFF"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EAX, 0, EBX)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EAX, 0, EBX)); }, 
         "F71418", 
         "67F71418"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, RAX, 0, RBX)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, RAX, 0, RBX)); }, 
         "", 
         "F71418"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, RAX, 0, R12)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, RAX, 0, R12)); }, 
         "", 
         "42F71420"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, R15, 0, R12)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, R15, 0, R12)); }, 
         "", 
         "43F71427"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, R15, 5, R12)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, R15, 5, R12)); }, 
         "", 
         "43F7542705"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, R15, 5, R12, 8)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, R15, 5, R12, 8)); }, 
         "", 
         "43F754E705"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, R15, 5, R13, 8)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, R15, 5, R13, 8)); }, 
         "", 
         "43F754EF05"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(64, R12)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(64, R12)); }, 
         "",
         "49F71424"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, R12, 5, R9, 4)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, R12, 5, R9, 4)); }, 
         "", 
         "43F7548C05"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, R12, 301, R9, 4)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, R12, 301, R9, 4)); }, 
         "", 
         "43F7948C2D010000"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EAX, 5, EDX, 4)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EAX, 5, EDX, 4)); }, 
         "F7549005",
         "67F7549005"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(64, EAX, 0, EDX, 2)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(64, EAX, 0, EDX, 2)); },
         "",
         "6748F71450"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, ESP)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, ESP)); },
         "F71424",
         "67F71424"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, ESP, 301)); }, 
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, ESP, 301)); }, 
         "F794242D010000",
         "67F794242D010000"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, RSP)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, RSP)); },
         "",
         "F71424"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, RSP, 0, RBX)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, RSP, 0, RBX)); },
         "",
         "F7141C"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, RSP, 3, RBX)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, RSP, 3, RBX)); },
         "",
         "F7541C03"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, RSP, 3)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, RSP, 3)); },
         "",
         "F7542403"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EBP)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EBP)); },
         "F75500",
         "67F75500"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EBP, 13)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EBP, 13)); },
         "F7550D",
         "67F7550D"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, EBP, 13, EDX)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, EBP, 13, EDX)); },
         "F754150D",
         "67F754150D"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, RIP)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, RIP)); },
         "",
         "F79500000000"
     );
     test(
-        delegate void (Assembler a) { a.not(X86Opnd(32, RIP, 13)); },
+        delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, RIP, 13)); },
         "",
         "F7950D000000"
     );
-    test(delegate void (Assembler a) { a.not(X86Opnd(32, undefined, 0, R8, 8)); }, 
+    test(delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, null, 0, R8, 8)); }, 
         "", 
         "42F714C500000000"
     );
-    test(delegate void (Assembler a) { a.not(X86Opnd(32, undefined, 5)); }, 
+    test(delegate void (Assembler a) { a.instr(NOT, X86Opnd(32, null, 5)); }, 
         "F71505000000", 
         "F7142505000000"
     );
 
     // or
     test(
-        delegate void (Assembler a) { a.or(EDX, ESI); },
+        delegate void (Assembler a) { a.instr(OR, EDX, ESI); },
         "09F2"
     );
 
+    // FIXME: test with 64-bit registers instead
+    /*
     // pop
     test(
-        delegate void (Assembler a) { a.pop(EAX); }, 
+        delegate void (Assembler a) { a.instr(POP, EAX); }, 
         "58",
         false
     );
     test(
-        delegate void (Assembler a) { a.pop(EBX); },
+        delegate void (Assembler a) { a.instr(POP, EBX); },
         "5B",
         false
     );
+    */
 
+    // FIXME
+    /*
     // push
     test(
-        delegate void (Assembler a) { a.push(EAX); },
+        delegate void (Assembler a) { a.instr(PUSH, EAX); },
         "50",
         false
     );
     test(
-        delegate void (Assembler a) { a.push(BX); }, 
+        delegate void (Assembler a) { a.instr(PUSH, BX); }, 
         "6653", 
         false
     );
     test(
-        delegate void (Assembler a) { a.push(EBX); },
+        delegate void (Assembler a) { a.instr(PUSH, EBX); },
         "53",
         false
     );
     test(
-        delegate void (Assembler a) { a.push(1); },
+        delegate void (Assembler a) { a.instr(PUSH, 1); },
         "6A01",
         false
     );
+    */
 
     // ret
     test(
-        delegate void (Assembler a) { a.ret(); },
+        delegate void (Assembler a) { a.instr(RET); },
         "C3"
     );
     test(
-        delegate void (Assembler a) { a.ret(5); },
+        delegate void (Assembler a) { a.instr(RET, 5); },
         "C20500"
     );
 
     // roundsd
     test(
-        delegate void (Assembler a) { a.roundsd(XMM2, XMM5, 0); },
+        delegate void (Assembler a) { a.instr(ROUNDSD, XMM2, XMM5, 0); },
         "660F3A0BD500"
     );
 
     // sal
     test(
-        delegate void (Assembler a) { a.sal(CX, 1); },
+        delegate void (Assembler a) { a.instr(SAL, CX, 1); },
         "66D1E1"
     );
     test(
-        delegate void (Assembler a) { a.sal(ECX, 1); },
+        delegate void (Assembler a) { a.instr(SAL, ECX, 1); },
         "D1E1"
     );
     test(
-        delegate void (Assembler a) { a.sal(AL, CL); },
+        delegate void (Assembler a) { a.instr(SAL, AL, CL); },
         "D2E0"
     );
     test(
-        delegate void (Assembler a) { a.sal(EBP, 5); },
+        delegate void (Assembler a) { a.instr(SAL, EBP, 5); },
         "C1E505"
     );
     test(
-        delegate void (Assembler a) { a.sal(X86Opnd(32, ESP, 68), 1); },
+        delegate void (Assembler a) { a.instr(SAL, X86Opnd(32, ESP, 68), 1); },
         "D1642444",
         "67D1642444"  
     );
 
     // sar
     test(
-        delegate void (Assembler a) { a.sar(EDX, 1); },
+        delegate void (Assembler a) { a.instr(SAR, EDX, 1); },
         "D1FA"
     );
 
     // shr
     test(
-        delegate void (Assembler a) { a.shr(R14, 7); },
+        delegate void (Assembler a) { a.instr(SHR, R14, 7); },
         "",
         "49C1EE07"
     );
 
     // sqrtsd
     test(
-        delegate void (Assembler a) { a.sqrtsd(XMM2, XMM6); },
+        delegate void (Assembler a) { a.instr(SQRTSD, XMM2, XMM6); },
         "F20F51D6"
     );
 
     // sub
     test(
-        delegate void (Assembler a) { a.sub(EAX, 1); },
+        delegate void (Assembler a) { a.instr(SUB, EAX, 1); },
         "83E801",
         "83E801"
     );
 
     // test
     test(
-        delegate void (Assembler a) { a.test(AL, 4); },
+        delegate void (Assembler a) { a.instr(TEST, AL, 4); },
         "A804"
     );
     test(
-        delegate void (Assembler a) { a.test(CL, 255); },
+        delegate void (Assembler a) { a.instr(TEST, CL, 255); },
         "F6C1FF"
     );
     test(
-        delegate void (Assembler a) { a.test(DL, 7); },
+        delegate void (Assembler a) { a.instr(TEST, DL, 7); },
         "F6C207"
     );
     test(
-        delegate void (Assembler a) { a.test(DIL, 9); },
+        delegate void (Assembler a) { a.instr(TEST, DIL, 9); },
         "",
         "40F6C709"
     );
 
     // ucomisd
     test(
-        delegate void (Assembler a) { a.ucomisd(XMM3, XMM5); },
+        delegate void (Assembler a) { a.instr(UCOMISD, XMM3, XMM5); },
         "660F2EDD"
     );
     test(
-        delegate void (Assembler a) { a.ucomisd(XMM11, XMM13); },
+        delegate void (Assembler a) { a.instr(UCOMISD, XMM11, XMM13); },
         "",
         "66450F2EDD"
     );
 
     // xchg
     test(
-        delegate void (Assembler a) { a.xchg(AX, a.dx); }, 
+        delegate void (Assembler a) { a.instr(XCHG, AX, DX); }, 
         "6692"
     );
     test(
-        delegate void (Assembler a) { a.xchg(EAX, EDX); }, 
+        delegate void (Assembler a) { a.instr(XCHG, EAX, EDX); }, 
         "92"
     );
     test(
-        delegate void (Assembler a) { a.xchg(RAX, R15); },
+        delegate void (Assembler a) { a.instr(XCHG, RAX, R15); },
         "",
         "4997"
     );
     test(
-        delegate void (Assembler a) { a.xchg(R14, R15); }, 
+        delegate void (Assembler a) { a.instr(XCHG, R14, R15); }, 
         "", 
         "4D87FE"
     );
 
     // xor
     test(
-        delegate void (Assembler a) { a.xor(EAX, EAX); },
+        delegate void (Assembler a) { a.instr(XOR, EAX, EAX); },
         "", 
         "31C0"
     );
 
     // Simple loop from 0 to 10
     test(
-        delegate void (Assembler a) { with (a) {
-            mov(eax, 0);
-            var LOOP = label("LOOP");
-            add(eax, 1);
-            cmp(eax, 10);
-            jb(LOOP);
-            ret();
-        }},
+        delegate void (Assembler a) 
+        {
+            a.instr(MOV, EAX, 0);
+            auto LOOP = a.label("LOOP");
+            a.instr(ADD, EAX, 1);
+            a.instr(CMP, EAX, 10);
+            a.instr(JB, LOOP);
+            a.instr(RET);
+        },
         "B80000000083C00183F80A72F8C3"
     );
-    */
 }
 
 /**
@@ -869,9 +872,6 @@ Test the execution of x86 code snippets
 unittest
 {
     /*
-    // Check if we are running in 32-bit or 64-bit
-    const x86_64 = PLATFORM_64BIT;
-
     // Test the execution of a piece of code
     function test(genFunc, retVal, argVals)
     {

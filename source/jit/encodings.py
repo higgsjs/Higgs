@@ -12,13 +12,13 @@ class Op:
         self.encs = list(encs)
 
 class Enc:
-    def __init__(self, opnds, opcode, prefix=[], opExt=None, opndSize=None, rexW=None):
+    def __init__(self, opnds, opcode, prefix=[], opExt=None, opndSize=None, szPref=None, rexW=None):
         self.opnds = opnds
         self.opcode = opcode
         self.prefix = prefix
         self.opExt = opExt
         self.opndSize = opndSize
-        self.szPref = False
+        self.szPref = szPref
         self.rexW = rexW
 
 # x86 instruction description table.
@@ -594,8 +594,8 @@ instrTable = [
     # Move scalar double to/from XMM
     Op(
         'movsd',
-        Enc(opnds=['xmm', 'xmm/m64'], prefix=[0xF2], opcode=[0x0F, 0x10]),
-        Enc(opnds=['xmm/m64', 'xmm'], prefix=[0xF2], opcode=[0x0F, 0x11]),
+        Enc(opnds=['xmm', 'xmm/m64'], prefix=[0xF2], opcode=[0x0F, 0x10], rexW=False),
+        Enc(opnds=['xmm/m64', 'xmm'], prefix=[0xF2], opcode=[0x0F, 0x11], rexW=False),
     ),
 
     # Move with sign extension
@@ -749,14 +749,14 @@ instrTable = [
         'ret',
         Enc(opnds=[], opcode=[0xC3]),
         # Return and pop bytes off the stack
-        Enc(opnds=['imm16'], opcode=[0xC2]),
+        Enc(opnds=['imm16'], opcode=[0xC2], szPref=False),
     ),
 
     # Round scalar double
     # The rounding mode is determined by the immediate
     Op(
         'roundsd',
-        Enc(opnds=['xmm', 'xmm/m64', 'imm8'], prefix=[0x66], opcode=[0x0F, 0x3A, 0x0B]),
+        Enc(opnds=['xmm', 'xmm/m64', 'imm8'], prefix=[0x66], opcode=[0x0F, 0x3A, 0x0B], rexW=False),
     ),
 
     # Shift arithmetic left
@@ -830,7 +830,7 @@ instrTable = [
     # Square root of scalar doubles (SSE2)
     Op(
         'sqrtsd',
-        Enc(opnds=['xmm', 'xmm/m64'], prefix=[0xF2], opcode=[0x0F, 0x51]),
+        Enc(opnds=['xmm', 'xmm/m64'], prefix=[0xF2], opcode=[0x0F, 0x51], rexW=False),
     ),
 
     # Integer subtraction
@@ -883,7 +883,7 @@ instrTable = [
     # Unordered compare scalar double
     Op(
         'ucomisd',
-        Enc(opnds=['xmm', 'xmm/m64'], prefix=[0x66], opcode=[0x0F, 0x2E]),
+        Enc(opnds=['xmm', 'xmm/m64'], prefix=[0x66], opcode=[0x0F, 0x2E], rexW=False),
     ),
 
     # Exchange
@@ -1012,7 +1012,7 @@ for op in instrTable:
                 enc.opndSize = 32
 
         # Determine necessity of szPref, rexW
-        enc.szPref = (enc.opndSize == 16)
+        enc.szPref = (enc.szPref == None and enc.opndSize == 16)
         enc.rexW   = (enc.rexW == None and enc.opndSize == 64)
 
     # Sort encodings by decreasing operand size
