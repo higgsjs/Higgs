@@ -14,7 +14,6 @@ parser/lexer.d      \
 parser/ast.d        \
 parser/vars.d       \
 parser/parser.d     \
-parser/tests.d      \
 ir/ir.d             \
 ir/ast.d            \
 interp/interp.d     \
@@ -23,12 +22,13 @@ interp/layout.d     \
 interp/string.d     \
 interp/object.d     \
 interp/gc.d         \
-interp/tests.d      \
 jit/x86.d           \
 jit/encodings.d     \
 jit/codeblock.d     \
 jit/assembler.d     \
 jit/tests.d         \
+parser/tests.d      \
+interp/tests.d      \
 repl.d              \
 main.d
 

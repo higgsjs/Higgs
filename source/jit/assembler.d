@@ -38,6 +38,7 @@
 module jit.assembler;
 
 import std.array;
+import std.stdint;
 import util.string;
 import jit.codeblock;
 import jit.x86;
@@ -110,7 +111,7 @@ class Assembler
     /**
     Add an instruction at the end of the block
     */
-    void addInstr(JITInstr instr)
+    JITInstr addInstr(JITInstr instr)
     {
         if (this.lastInstr is null)
         {
@@ -129,6 +130,8 @@ class Assembler
 
             this.lastInstr = instr;
         }
+
+        return instr;
     }
 
     /**
@@ -347,19 +350,47 @@ class Assembler
         return codeBlock;
     }
 
-    /**
-    Helper method to insert an instruction
-    */
     X86Instr instr(X86OpPtr opcode)
     {
-        auto instr = new X86Instr(opcode);
-        this.addInstr(instr);
-        return instr;
+        return cast(X86Instr)addInstr(new X86Instr(opcode));
     }
 
-    /**
-    Helper method to create and insert a label
-    */
+    // Unary instruction helper methods
+    X86Instr instr(X86OpPtr opcode, X86Opnd a)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, a));
+    }
+    X86Instr instr(X86OpPtr opcode, X86RegPtr a)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a)));
+    }
+
+    // Binary instruction helper methods
+    X86Instr instr(X86OpPtr opcode, X86Opnd a, X86Opnd b)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, a, b));
+    }
+    X86Instr instr(X86OpPtr opcode, X86RegPtr a, X86RegPtr b)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a), X86Opnd(b)));
+    }
+    X86Instr instr(X86OpPtr opcode, X86RegPtr a, int64_t b)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a), X86Opnd(b)));
+    }
+    X86Instr instr(X86OpPtr opcode, X86RegPtr a, X86Opnd b)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a), b));
+    }
+    X86Instr instr(X86OpPtr opcode, X86Opnd a, X86RegPtr b)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, a, X86Opnd(b)));
+    }
+    X86Instr instr(X86OpPtr opcode, X86Opnd a, int64_t b)
+    {
+        return cast(X86Instr)addInstr(new X86Instr(opcode, a, X86Opnd(b)));
+    }
+
     Label label(string name)
     {
         auto label = new Label(name);

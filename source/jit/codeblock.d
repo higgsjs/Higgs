@@ -133,7 +133,7 @@ class CodeBlock
     private size_t size;
 
     /// Memory block
-    private uint8_t* memBlock;
+    private ubyte* memBlock;
 
     /// Current writing position
     private size_t writePos;
@@ -247,7 +247,7 @@ class CodeBlock
     /**
     Write a byte at the current position
     */
-    void writeByte(uint8_t val)
+    void writeByte(ubyte val)
     {
         assert (
             this.memBlock,
@@ -267,7 +267,7 @@ class CodeBlock
     /**
     Write a sequence of bytes at the current position
     */
-    void writeBytes(immutable uint8_t[] bytes)
+    void writeBytes(immutable ubyte[] bytes)
     {
         foreach (b; bytes)
             writeByte(b);
@@ -297,7 +297,7 @@ class CodeBlock
         // Write out the bytes
         for (size_t i = 0; i < numBytes; ++i)
         {
-            auto byteVal = cast(uint8_t)(val & 0xFF);
+            auto byteVal = cast(ubyte)(val & 0xFF);
 
             this.writeByte(byteVal);
 

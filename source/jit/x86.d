@@ -39,6 +39,7 @@ module jit.x86;
 
 import std.stdio;
 import std.string;
+import std.array;
 import std.conv;
 import std.stdint;
 import jit.codeblock;
@@ -137,95 +138,38 @@ struct X86Reg
 
 alias immutable(X86Reg)* X86RegPtr;
 
-/// General-purpose registers
-immutable al = X86Reg(X86Reg.GP, 0, 8);
-immutable cl = X86Reg(X86Reg.GP, 1, 8);
-immutable dl = X86Reg(X86Reg.GP, 2, 8);
-immutable bl = X86Reg(X86Reg.GP, 3, 8);
-immutable spl = X86Reg(X86Reg.GP, 4, 8);
-immutable bpl = X86Reg(X86Reg.GP, 5, 8);
-immutable sil = X86Reg(X86Reg.GP, 6, 8);
-immutable dil = X86Reg(X86Reg.GP, 7, 8);
-immutable r8l = X86Reg(X86Reg.GP, 8, 8);
-immutable r9l = X86Reg(X86Reg.GP, 9, 8);
-immutable r10l = X86Reg(X86Reg.GP, 10, 8);
-immutable r11l = X86Reg(X86Reg.GP, 11, 8);
-immutable r12l = X86Reg(X86Reg.GP, 12, 8);
-immutable r13l = X86Reg(X86Reg.GP, 13, 8);
-immutable r14l = X86Reg(X86Reg.GP, 14, 8);
-immutable r15l = X86Reg(X86Reg.GP, 15, 8);
-immutable ax = X86Reg(X86Reg.GP, 0, 16);
-immutable cx = X86Reg(X86Reg.GP, 1, 16);
-immutable dx = X86Reg(X86Reg.GP, 2, 16);
-immutable bx = X86Reg(X86Reg.GP, 3, 16);
-immutable sp = X86Reg(X86Reg.GP, 4, 16);
-immutable bp = X86Reg(X86Reg.GP, 5, 16);
-immutable si = X86Reg(X86Reg.GP, 6, 16);
-immutable di = X86Reg(X86Reg.GP, 7, 16);
-immutable r8w = X86Reg(X86Reg.GP, 8, 16);
-immutable r9w = X86Reg(X86Reg.GP, 9, 16);
-immutable r10w = X86Reg(X86Reg.GP, 10, 16);
-immutable r11w = X86Reg(X86Reg.GP, 11, 16);
-immutable r12w = X86Reg(X86Reg.GP, 12, 16);
-immutable r13w = X86Reg(X86Reg.GP, 13, 16);
-immutable r14w = X86Reg(X86Reg.GP, 14, 16);
-immutable r15w = X86Reg(X86Reg.GP, 15, 16);
-immutable eax = X86Reg(X86Reg.GP, 0, 32);
-immutable ecx = X86Reg(X86Reg.GP, 1, 32);
-immutable edx = X86Reg(X86Reg.GP, 2, 32);
-immutable ebx = X86Reg(X86Reg.GP, 3, 32);
-immutable esp = X86Reg(X86Reg.GP, 4, 32);
-immutable ebp = X86Reg(X86Reg.GP, 5, 32);
-immutable esi = X86Reg(X86Reg.GP, 6, 32);
-immutable edi = X86Reg(X86Reg.GP, 7, 32);
-immutable r8d = X86Reg(X86Reg.GP, 8, 32);
-immutable r9d = X86Reg(X86Reg.GP, 9, 32);
-immutable r10d = X86Reg(X86Reg.GP, 10, 32);
-immutable r11d = X86Reg(X86Reg.GP, 11, 32);
-immutable r12d = X86Reg(X86Reg.GP, 12, 32);
-immutable r13d = X86Reg(X86Reg.GP, 13, 32);
-immutable r14d = X86Reg(X86Reg.GP, 14, 32);
-immutable r15d = X86Reg(X86Reg.GP, 15, 32);
-immutable rax = X86Reg(X86Reg.GP, 0, 64);
-immutable rcx = X86Reg(X86Reg.GP, 1, 64);
-immutable rdx = X86Reg(X86Reg.GP, 2, 64);
-immutable rbx = X86Reg(X86Reg.GP, 3, 64);
-immutable rsp = X86Reg(X86Reg.GP, 4, 64);
-immutable rbp = X86Reg(X86Reg.GP, 5, 64);
-immutable rsi = X86Reg(X86Reg.GP, 6, 64);
-immutable rdi = X86Reg(X86Reg.GP, 7, 64);
-immutable r8 = X86Reg(X86Reg.GP, 8, 64);
-immutable r9 = X86Reg(X86Reg.GP, 9, 64);
-immutable r10 = X86Reg(X86Reg.GP, 10, 64);
-immutable r11 = X86Reg(X86Reg.GP, 11, 64);
-immutable r12 = X86Reg(X86Reg.GP, 12, 64);
-immutable r13 = X86Reg(X86Reg.GP, 13, 64);
-immutable r14 = X86Reg(X86Reg.GP, 14, 64);
-immutable r15 = X86Reg(X86Reg.GP, 15, 64);
+// Auto-generate named register constants
+string genRegCsts()
+{
+    auto app = appender!string();
 
-// Instruction pointer, for ip-relative addressing
-immutable rip = X86Reg(X86Reg.IP, 5, 64);
+    void genCst(ubyte type, string typeStr, ubyte regNo, ubyte numBits)
+    {
+        auto regName = X86Reg(type, regNo, numBits).toString();
+        auto upName = regName.toUpper();
+        app.put("immutable _" ~ upName ~ " = X86Reg(" ~ typeStr ~ ", " ~ to!string(regNo) ~ ", " ~ to!string(numBits) ~ ");\n");
+        app.put("immutable " ~ upName ~ " = &_" ~ upName ~ ";\n");
+    }
 
-// XMM SIMD registers
-immutable xmm0   = X86Reg(X86Reg.XMM, 0, 128);
-immutable xmm1   = X86Reg(X86Reg.XMM, 1, 128);
-immutable xmm2   = X86Reg(X86Reg.XMM, 2, 128);
-immutable xmm3   = X86Reg(X86Reg.XMM, 3, 128);
-immutable xmm4   = X86Reg(X86Reg.XMM, 4, 128);
-immutable xmm5   = X86Reg(X86Reg.XMM, 5, 128);
-immutable xmm6   = X86Reg(X86Reg.XMM, 6, 128);
-immutable xmm7   = X86Reg(X86Reg.XMM, 7, 128);
-immutable xmm8   = X86Reg(X86Reg.XMM, 8, 128);
-immutable xmm9   = X86Reg(X86Reg.XMM, 9, 128);
-immutable xmm10  = X86Reg(X86Reg.XMM,10, 128);
-immutable xmm11  = X86Reg(X86Reg.XMM,11, 128);
-immutable xmm12  = X86Reg(X86Reg.XMM,12, 128);
-immutable xmm13  = X86Reg(X86Reg.XMM,13, 128);
-immutable xmm14  = X86Reg(X86Reg.XMM,14, 128);
-immutable xmm15  = X86Reg(X86Reg.XMM,15, 128);
+    for (ubyte regNo = 0; regNo < 16; ++regNo)
+    {
+        genCst(X86Reg.GP, "X86Reg.GP", regNo, 8);
+        genCst(X86Reg.GP, "X86Reg.GP", regNo, 16);
+        genCst(X86Reg.GP, "X86Reg.GP", regNo, 32);
+        genCst(X86Reg.GP, "X86Reg.GP", regNo, 64);
 
-// Floating-point registers (x87)
-immutable st0 = X86Reg(X86Reg.FP, 0, 80);
+        genCst(X86Reg.XMM, "X86Reg.XMM", regNo, 128);
+    }
+
+    // RIP
+    genCst(X86Reg.IP, "X86Reg.IP", 5, 64);
+
+    // Floating-point registers (x87)
+    genCst(X86Reg.FP, "X86Reg.FP", 0, 80);
+
+    return app.data;
+}
+mixin(genRegCsts());
 
 /**
 Instruction operand value
@@ -252,7 +196,7 @@ struct X86Opnd
         X86RegPtr reg;
 
         // Memory location
-        struct { X86RegPtr base; X86RegPtr index; uint32_t disp; uint8_t memSize; uint8_t scale; }
+        struct { X86RegPtr base; X86RegPtr index; int32_t disp; uint8_t memSize; uint8_t scale; }
 
         // Immediate value or label
         struct { int64_t imm; Label label; }
@@ -275,10 +219,10 @@ struct X86Opnd
     /**
     Create a register operand
     */
-    this(ref immutable(X86Reg) reg)
+    this(X86RegPtr reg)
     {
         this.type = REG;
-        this.reg = &reg;
+        this.reg = reg;
     }
 
     /**
@@ -287,7 +231,7 @@ struct X86Opnd
     this(
         size_t size, 
         X86RegPtr base, 
-        uint32_t disp   = 0, 
+        int32_t disp    = 0, 
         X86RegPtr index = null, 
         size_t scale    = 1
     )
@@ -408,9 +352,9 @@ struct X86Opnd
             this.index || 
             this.scale != 1 ||
             (!this.base && !this.index) ||
-            this.base == &esp ||
-            this.base == &rsp ||
-            this.base == &r12
+            this.base == ESP ||
+            this.base == RSP ||
+            this.base == R12
         );
     }
 
@@ -467,7 +411,7 @@ struct X86Opnd
 
         // If using displacement only or if using an index only or if using
         // RIP as the base, use disp32
-        if ((!base && !index) || (!base && index) || (base == &rip))
+        if ((!base && !index) || (!base && index) || (base == RIP))
             return 32;
 
         // Compute the required displacement size
@@ -477,11 +421,12 @@ struct X86Opnd
                 return 8;
             if (disp >= int32_t.min && disp <= int32_t.max)
                 return 32;
-            assert (false, "displacement does not fit in 32 bits");
+
+            assert (false, "displacement does not fit in 32 bits: " ~ to!string(disp));
         }
 
         // If EBP or RBP or R13 is used as the base, displacement must be encoded
-        if (base == &ebp || base == &rbp || base == &r13)
+        if (base == EBP || base == RBP || base == R13)
             return 8;
 
         return 0;
@@ -727,7 +672,7 @@ class X86Instr : JITInstr
                 x = 0;
 
             uint b;
-            if (rmOpnd)
+            if (rmOpnd && rmOpnd.type == X86Opnd.REG)
                 b = (rmOpnd.reg.regNo & 8)? 1:0;
             else if (rOpnd && !rmOpnd)
                 b = (rOpnd.reg.regNo & 8)? 1:0;
@@ -762,13 +707,13 @@ class X86Instr : JITInstr
             // MODRM.rm  (3 bits)
 
             assert (
-                !(enc.opExt != byte.max && rOpnd),
+                !(enc.opExt != 0xFF && rOpnd),
                 "opcode extension and register operand present"
             );
 
             // Encode the mod field
             int mod;
-            if (rmOpnd)
+            if (rmOpnd && rmOpnd.type == X86Opnd.REG)
             {
                 mod = 3;
             }
@@ -784,7 +729,7 @@ class X86Instr : JITInstr
 
             // Encode the reg field
             int reg;
-            if (enc.opExt)
+            if (enc.opExt != 0xFF)
                 reg = enc.opExt;
             else if (rOpnd)
                 reg = rOpnd.reg.regNo & 7;
@@ -793,7 +738,7 @@ class X86Instr : JITInstr
 
             // Encode the rm field
             int rm;
-            if (rmOpnd)
+            if (rmOpnd && rmOpnd.type == X86Opnd.REG)
             {
                 rm = rmOpnd.reg.regNo & 7;
             }
@@ -801,7 +746,7 @@ class X86Instr : JITInstr
             {
                 if (sibNeeded)
                     rm = 4;
-                else if (rmOpnd.base == &rip)
+                else if (rmOpnd.base == RIP)
                     rm = 5;
                 else if (rmOpnd.base)
                     rm = rmOpnd.base.regNo & 7;
@@ -811,7 +756,9 @@ class X86Instr : JITInstr
 
             // Encode and write the ModR/M byte
             auto rmByte = (mod << 6) + (reg << 3) + (rm);
-            codeBlock.writeByte(cast(uint8_t)rmByte);
+            codeBlock.writeByte(cast(ubyte)rmByte);
+
+            //writefln("rmByte: %s", rmByte);
         }
 
         // Add the SIB byte, if needed
@@ -924,13 +871,13 @@ class X86Instr : JITInstr
                 {
                     case X86Enc.REGA:
                     if (opnd.type != X86Opnd.REG ||
-                        opnd.reg.regNo != rax.regNo)
+                        opnd.reg.regNo != RAX.regNo)
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.REGC:
                     if (opnd.type != X86Opnd.REG || 
-                        opnd.reg.regNo != rcx.regNo)
+                        opnd.reg.regNo != RCX.regNo)
                         continue ENC_LOOP;
                     break;
 
