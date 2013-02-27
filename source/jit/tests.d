@@ -40,6 +40,7 @@ module jit.tests;
 import std.stdio;
 import std.string;
 import std.format;
+import std.stdint;
 import jit.x86;
 import jit.assembler;
 import jit.codeblock;
@@ -689,45 +690,37 @@ unittest
         "09F2"
     );
 
-    // FIXME: test with 64-bit registers instead
-    /*
     // pop
     test(
-        delegate void (Assembler a) { a.instr(POP, EAX); }, 
-        "58",
-        false
+        delegate void (Assembler a) { a.instr(POP, RAX); }, 
+        "",
+        "58"
     );
     test(
-        delegate void (Assembler a) { a.instr(POP, EBX); },
-        "5B",
-        false
+        delegate void (Assembler a) { a.instr(POP, RBX); },
+        "",
+        "5B"
     );
-    */
 
-    // FIXME
-    /*
     // push
     test(
-        delegate void (Assembler a) { a.instr(PUSH, EAX); },
-        "50",
-        false
+        delegate void (Assembler a) { a.instr(PUSH, RAX); },
+        "",
+        "50"
     );
     test(
         delegate void (Assembler a) { a.instr(PUSH, BX); }, 
-        "6653", 
-        false
+        "6653"
     );
     test(
-        delegate void (Assembler a) { a.instr(PUSH, EBX); },
-        "53",
-        false
+        delegate void (Assembler a) { a.instr(PUSH, RBX); },
+        "",
+        "53"
     );
     test(
         delegate void (Assembler a) { a.instr(PUSH, 1); },
-        "6A01",
-        false
+        "6A01"
     );
-    */
 
     // ret
     test(
@@ -871,37 +864,23 @@ Test the execution of x86 code snippets
 */
 unittest
 {
-    /*
     // Test the execution of a piece of code
-    function test(genFunc, retVal, argVals)
+    void test(CodeGenFun genFunc, int64_t retVal)
     {
-        if (argVals === undefined)
-            argVals = [];
-
         // Create an assembler to generate code into
-        var assembler = new x86.Assembler(x86_64);
+        auto assembler = new Assembler();
 
         // Generate the code
         genFunc(assembler);
 
         // Assemble to a code block (code only, no header)
-        var codeBlock = assembler.assemble(true);
+        auto codeBlock = assembler.assemble();
 
-        var blockAddr = codeBlock.getAddress();
+        /*
+        auto blockAddr = codeBlock.getAddress();
 
-        var argTypes = [];
-        for (var i = 0; i < argVals.length; ++i)
-            argTypes.push('int');
 
-        var ctxPtr = x86_64? [0,0,0,0,0,0,0,0]:[0,0,0,0];
 
-        var ret = callTachyonFFI(
-            argTypes,
-            'int',
-            blockAddr,
-            ctxPtr,
-            argVals
-        );
 
         if (ret !== retVal)
         {
@@ -916,150 +895,149 @@ unittest
                 retVal
             );
         }
+        */
     }
-
-    // GP register aliases for 32-bit and 64-bit
-    var rega = x86_64? x86.regs.rax:x86.regs.eax;
-    var regb = x86_64? x86.regs.rbx:x86.regs.ebx;
-    var regc = x86_64? x86.regs.rcx:x86.regs.ecx;
-    var regd = x86_64? x86.regs.rdx:x86.regs.edx;
-    var regsp = x86_64? x86.regs.rsp:x86.regs.esp;
 
     // Loop until 10
     test(
-        delegate void (Assembler a) { with (a) {
-            mov(eax, 0);
-            var LOOP = label('LOOP');
-            add(eax, 1);
-            cmp(eax, 10);
-            jb(LOOP);
-            ret();
-        }},
+        delegate void (Assembler a) 
+        {
+            a.instr(MOV, RAX, 0);
+            auto LOOP = a.label("LOOP");
+            a.instr(ADD, RAX, 1);
+            a.instr(CMP, RAX, 10);
+            a.instr(JB, LOOP);
+            a.instr(RET);
+        },
         10
     );
 
     // Jump with a large offset (> 8 bits)
     test(
-        delegate void (Assembler a) { with (a) {
-            mov(eax, 0);
-            var LOOP = label('LOOP');
-            add(eax, 1);
-            cmp(eax, 15);
-            for (var i = 0; i < 400; ++i)
-                nop();
-            jb(LOOP);
-            ret();
-        }},
+        delegate void (Assembler a)
+        {
+            a.instr(MOV, RAX, 0);
+            auto LOOP = a.label("LOOP");
+            a.instr(ADD, RAX, 1);
+            a.instr(CMP, RAX, 15);
+            for (auto i = 0; i < 400; ++i)
+                a.instr(NOP);
+            a.instr(JB, LOOP);
+            a.instr(RET);
+        },
         15
     );
 
     // Arithmetic
     test(
-        delegate void (Assembler a) { with (a) {
-            push(regb);
-            push(regc);
-            push(regd);
+        delegate void (Assembler a)
+        {
+            a.instr(PUSH, RBX);
+            a.instr(PUSH, RCX);
+            a.instr(PUSH, RDX);
 
-            mov(rega, 4);       // a = 4
-            mov(regb, 5);       // b = 5
-            mov(regc, 3);       // c = 3
-            add(rega, regb);    // a = 9
-            sub(regb, regc);    // b = 2
-            mul(regb);          // a = 18, d = 0
-            mov(regd, -2);      // d = -2
-            imul(regd, rega);   // d = -36
-            mov(rega, regd);    // a = -36
+            a.instr(MOV, RAX, 4);       // a = 4
+            a.instr(MOV, RBX, 5);       // b = 5
+            a.instr(MOV, RCX, 3);       // c = 3
+            a.instr(ADD, RAX, RBX);     // a = 9
+            a.instr(SUB, RBX, RCX);     // b = 2
+            a.instr(MUL, RBX);          // a = 18, d = 0
+            a.instr(MOV, RDX, -2);      // d = -2
+            a.instr(IMUL, RDX, RAX);    // d = -36
+            a.instr(MOV, RAX, RDX);     // a = -36
 
-            pop(regd);
-            pop(regc);
-            pop(regb);
+            a.instr(POP, RDX);
+            a.instr(POP, RCX);
+            a.instr(POP, RBX);
 
-            ret();
-        }},
+            a.instr(RET);
+        },
         -36
     );
 
     // Stack manipulation, sign extension
     test(
-        delegate void (Assembler a) { with (a) {
-            sub(regsp, 1);
-            var sloc = mem(8, regsp, 0);
-            mov(sloc, -3);
-            movsx(rega, sloc);
-            add(regsp, 1);
-            ret();
-        }},
+        delegate void (Assembler a)
+        {
+            a.instr(SUB, RSP, 1);
+            auto sloc = X86Opnd(8, RSP, 0);
+            a.instr(MOV, sloc, -3);
+            a.instr(MOVSX, RAX, sloc);
+            a.instr(ADD, RSP, 1);
+            a.instr(RET);
+        },
         -3
     );
     
     // fib(20), function calls
     test(
-        delegate void (Assembler a) { with (a) {
-            var CALL = new x86.Label('CALL');
-            var COMP = new x86.Label('COMP');
-            var FIB = new x86.Label('FIB');
+        delegate void (Assembler a)
+        {
+            auto COMP = new Label("COMP");
+            auto FIB  = new Label("FIB");
 
-            push(regb);
-            mov(rega, 20);
-            call(FIB);
-            pop(regb);
-            ret();
+            a.instr(PUSH, RBX);
+            a.instr(MOV, RAX, 20);
+            a.instr(CALL, FIB);
+            a.instr(POP, RBX);
+            a.instr(RET);
 
             // FIB
-            addInstr(FIB);
-            cmp(rega, 2);
-            jge(COMP);
-            ret();
+            a.addInstr(FIB);
+            a.instr(CMP, RAX, 2);
+            a.instr(JGE, COMP);
+            a.instr(RET);
 
             // COMP
-            addInstr(COMP);
-            push(rega);         // store n
-            sub(eax, 1);        // eax = n-1
-            call(FIB);          // fib(n-1)
-            mov(regb, rega);    // eax = fib(n-1)
-            pop(rega);          // eax = n
-            push(regb);         // store fib(n-1)
-            sub(rega, 2);       // eax = n-2
-            call(FIB);          // fib(n-2)
-            pop(regb);          // ebx = fib(n-1)
-            add(rega, regb);    // eax = fib(n-2) + fib(n-1)
-            ret();
-        }},
+            a.addInstr(COMP);
+            a.instr(PUSH, RAX);     // store n
+            a.instr(SUB, RAX, 1);   // RAX = n-1
+            a.instr(CALL, FIB);     // fib(n-1)
+            a.instr(MOV, RBX, RAX); // RAX = fib(n-1)
+            a.instr(POP, RAX);      // RAX = n
+            a.instr(PUSH, RBX);     // store fib(n-1)
+            a.instr(SUB, RAX, 2);   // RAX = n-2
+            a.instr(CALL, FIB);     // fib(n-2)
+            a.instr(POP, RBX);      // RBX = fib(n-1)
+            a.instr(ADD, RAX, RBX); // RAX = fib(n-2) + fib(n-1)
+            a.instr(RET);
+        },
         6765
     );
 
     // SSE2 floating-point computation
     test(
-        delegate void (Assembler a) { with (a) {
-            mov(rega, 2);
-            cvtsi2sd(xmm0, rega);
-            mov(rega, 7);
-            cvtsi2sd(xmm1, rega);
-            addsd(xmm0, xmm1);
-            cvtsd2si(rega, xmm0);
-            ret();
-        }},
+        delegate void (Assembler a)
+        {
+            a.instr(MOV, RAX, 2);
+            a.instr(CVTSI2SD, XMM0, RAX);
+            a.instr(MOV, RAX, 7);
+            a.instr(CVTSI2SD, XMM1, RAX);
+            a.instr(ADDSD, XMM0, XMM1);
+            a.instr(CVTSD2SI, RAX, XMM0);
+            a.instr(RET);
+        },
         9
     );
 
     // Floating-point comparison
     test(
-        delegate void (Assembler a) { with (a) {
-            mov(rega, 10);
-            cvtsi2sd(xmm2, rega);       // xmm2 = 10
-            mov(rega, 1);
-            cvtsi2sd(xmm1, rega);       // xmm1 = 1
-            mov(rega, 0);
-            cvtsi2sd(xmm0, rega);       // xmm0 = 0
-            var LOOP = label('LOOP');
-            addsd(xmm0, xmm1);
-            ucomisd(xmm0, xmm2);
-            jbe(LOOP);
-            cvtsd2si(rega, xmm0);
-            ret();
-        }},
+        delegate void (Assembler a) 
+        {
+            a.instr(MOV, RAX, 10);
+            a.instr(CVTSI2SD, XMM2, RAX);   // XMM2 = 10
+            a.instr(MOV, RAX, 1);
+            a.instr(CVTSI2SD, XMM1, RAX);   // XMM1 = 1
+            a.instr(MOV, RAX, 0);
+            a.instr(CVTSI2SD, XMM0, RAX);   // XMM0 = 0
+            auto LOOP = a.label("LOOP");
+            a.instr(ADDSD, XMM0, XMM1);
+            a.instr(UCOMISD, XMM0, XMM2);
+            a.instr(JBE, LOOP);
+            a.instr(CVTSD2SI, RAX, XMM0);
+            a.instr(RET);
+        },
         11
     );
-    */
 }
 

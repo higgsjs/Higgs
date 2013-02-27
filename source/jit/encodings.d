@@ -883,8 +883,8 @@ immutable X86OpPtr OR = &or;
 immutable X86Op pop = {
     "pop",
     [
-        { [X86Enc.R_OR_M], [64], [], [143], 0, 64, false, true },
-        { [X86Enc.R], [64], [], [88], 0xFF, 64, false, true },
+        { [X86Enc.R_OR_M], [64], [], [143], 0, 64, false, false },
+        { [X86Enc.R], [64], [], [88], 0xFF, 64, false, false },
         { [X86Enc.R_OR_M], [16], [], [143], 0, 16, true, false },
         { [X86Enc.R], [16], [], [88], 0xFF, 16, true, false }
     ]
@@ -907,8 +907,8 @@ immutable X86OpPtr POPFQ = &popfq;
 immutable X86Op push = {
     "push",
     [
-        { [X86Enc.R_OR_M], [64], [], [255], 6, 64, false, true },
-        { [X86Enc.R], [64], [], [80], 0xFF, 64, false, true },
+        { [X86Enc.R_OR_M], [64], [], [255], 6, 64, false, false },
+        { [X86Enc.R], [64], [], [80], 0xFF, 64, false, false },
         { [X86Enc.IMM], [32], [], [104], 0xFF, 32, false, false },
         { [X86Enc.R_OR_M], [16], [], [255], 6, 16, true, false },
         { [X86Enc.R], [16], [], [80], 0xFF, 16, true, false },

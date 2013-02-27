@@ -696,9 +696,9 @@ instrTable = [
     Op(
         'pop',
         Enc(opnds=['r/m16'], opcode=[0x8F], opExt=0),
-        Enc(opnds=['r/m64'], opcode=[0x8F], opExt=0),
+        Enc(opnds=['r/m64'], opcode=[0x8F], opExt=0, rexW=False),
         Enc(opnds=['r16'], opcode=[0x58]),
-        Enc(opnds=['r64'], opcode=[0x58]),
+        Enc(opnds=['r64'], opcode=[0x58], rexW=False),
     ),
 
     # Pop into the flags register
@@ -715,9 +715,9 @@ instrTable = [
     Op(
         'push',
         Enc(opnds=['r/m16'], opcode=[0xFF], opExt=6),
-        Enc(opnds=['r/m64'], opcode=[0xFF], opExt=6),
+        Enc(opnds=['r/m64'], opcode=[0xFF], opExt=6, rexW=False),
         Enc(opnds=['r16'], opcode=[0x50]),
-        Enc(opnds=['r64'], opcode=[0x50]),
+        Enc(opnds=['r64'], opcode=[0x50], rexW=False),
         Enc(opnds=['imm8'], opcode=[0x6A]),
         Enc(opnds=['imm32'], opcode=[0x68]),
     ),
