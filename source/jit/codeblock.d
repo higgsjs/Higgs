@@ -143,25 +143,36 @@ class CodeBlock
 
     this(size_t size)
     {
-        // Allocate a memory block
-        this.memBlock = cast(ubyte*)GC.malloc(size);
-
         // Map the memory as executable
-        auto pa = mmap(
-            cast(void*)this.memBlock,
+        this.memBlock = cast(ubyte*)mmap(
+            null,
             size,
             PROT_READ | PROT_WRITE | PROT_EXEC,
             MAP_PRIVATE | MAP_ANON,
             -1,
             0
         );
+
         // Check that the memory mapping was successful
-        if (pa == MAP_FAILED)
+        if (this.memBlock == MAP_FAILED)
             throw new Error("mmap call failed");
+
+        //writefln("memBlock: %s", this.memBlock);
+        //writefln("pa: %s", pa);
 
         this.size = size;
 
         this.writePos = 0;
+    }
+
+    ~this()
+    {
+        //writefln("freeing executable memory");
+
+        auto ret = munmap(this.memBlock, this.size);
+
+        if (ret != 0)
+            throw new Error("munmap call failed");
     }
 
     /**
@@ -193,11 +204,16 @@ class CodeBlock
     }
 
     /**
-    Get a direct pointer to th executable memory block
+    Get a direct pointer into the executable memory block
     */
-    auto getMemBlock()
+    auto getAddress(size_t index = 0)
     {
-        return memBlock;
+        assert (
+            index < size,
+            "invalid index"
+        );
+
+        return &memBlock[index];
     }
 
     /**

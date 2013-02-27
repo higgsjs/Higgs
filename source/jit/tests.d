@@ -54,6 +54,8 @@ Test x86 instruction encodings
 */
 unittest
 {
+    writefln("machine code generation");
+
     // Test encodings for 32-bit and 64-bit
     void test(CodeGenFun codeFunc, string enc32, string enc64 = "")
     {
@@ -119,8 +121,6 @@ unittest
             if (codeBlock.readByte(i) != encBlock.readByte(i))
                 encError();
         }
-
-        writeln(enc64);
     }
 
     // add
@@ -140,6 +140,11 @@ unittest
     test(
         delegate void (Assembler a) { a.instr(ADD, CX, BX); },
         "6601D9"
+    );
+    test(
+        delegate void (Assembler a) { a.instr(ADD, RAX, RBX); },
+        "",
+        "4801D8"
     );
     test(
         delegate void (Assembler a) { a.instr(ADD, RDX, R14); },
@@ -200,6 +205,12 @@ unittest
         "4421E5"
     );
 
+    // call
+    test(
+        delegate void (Assembler a) { auto l = a.label("foo"); a.instr(CALL, l); },
+        "E8FBFFFFFF"
+    );
+
     // cmovcc
     test(
         delegate void (Assembler a) { a.instr(CMOVG, ESI, EDI); }, 
@@ -234,6 +245,11 @@ unittest
         delegate void (Assembler a) { a.instr(CMP, RDX, X86Opnd(64, R12)); },
         "",
         "493B1424"
+    );
+    test(
+        delegate void (Assembler a) { a.instr(CMP, RAX, 2); },
+        "",
+        "4883F802"
     );   
 
     // cqo
@@ -381,6 +397,11 @@ unittest
         delegate void (Assembler a) { a.instr(MOV, CL, R9L); }, 
         "",
         "4488C9"
+    );
+    test(
+        delegate void (Assembler a) { a.instr(MOV, RBX, RAX); }, 
+        "",
+        "4889C3"
     );
 
     // movapd
@@ -786,6 +807,11 @@ unittest
         "83E801",
         "83E801"
     );
+    test(
+        delegate void (Assembler a) { a.instr(SUB, RAX, 2); },
+        "",
+        "4883E802"
+    );
 
     // test
     test(
@@ -857,13 +883,32 @@ unittest
         },
         "B80000000083C00183F80A72F8C3"
     );
+
+    // Simple loop from 0 to 10 (64-bit)
+    test(
+        delegate void (Assembler a) 
+        {
+            a.instr(MOV, RAX, 0);
+            auto LOOP = a.label("LOOP");
+            a.instr(ADD, RAX, 1);
+            a.instr(CMP, RAX, 10);
+            a.instr(JB, LOOP);
+            a.instr(RET);
+        },
+        "48C7C0000000004883C0014883F80A72F6C3"
+    );
 }
+
+/// Test function pointer type
+alias int64_t function() TestFun;
 
 /**
 Test the execution of x86 code snippets
 */
 unittest
 {
+    writefln("machine code execution");
+
     // Test the execution of a piece of code
     void test(CodeGenFun genFunc, int64_t retVal)
     {
@@ -876,27 +921,43 @@ unittest
         // Assemble to a code block (code only, no header)
         auto codeBlock = assembler.assemble();
 
-        /*
-        auto blockAddr = codeBlock.getAddress();
+        auto testFun = cast(TestFun)codeBlock.getAddress();
 
+        //writefln("calling %s", testFun);
 
+        auto ret = testFun();
+        
+        //writefln("ret: %s", ret);
 
-
-        if (ret !== retVal)
+        if (ret != retVal)
         {
-            error(
-                'invalid return value for:\n'+
-                '\n' +
-                assembler.toString(true) + '\n' +
-                '\n' +
-                'got:\n' +
-                ret + '\n' +
-                'expected:\n' +
-                retVal
+            throw new Error(
+                xformat(
+                    "invalid return value for:\n" ~
+                    "\n" ~
+                    "%s\n" ~
+                    "\n" ~
+                    "got:\n" ~
+                    "%s\n" ~
+                    "expected:\n" ~
+                    "%s",
+                    assembler.toString(true),
+                    ret,
+                    retVal
+                )
             );
         }
-        */
     }
+
+    // Trivial return 3
+    test(
+        delegate void (Assembler a) 
+        {
+            a.instr(MOV, RAX, 3);
+            a.instr(RET);
+        },
+        3
+    );
 
     // Loop until 10
     test(

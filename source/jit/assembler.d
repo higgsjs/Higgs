@@ -290,6 +290,9 @@ class Assembler
                             // Compute the relative offset to the label
                             auto relOffset = label.offset - codeLength;
 
+                            // Get the previous offset size
+                            auto prevOffSize = opnd.immSize();
+
                             // Store the computed relative offset on the operand
                             opnd.imm = relOffset;
 
@@ -297,8 +300,7 @@ class Assembler
                             auto offSize = opnd.immSize();
 
                             // If the offset size did not change, do nothing
-                            if ((offSize == x86Instr.enc.opndSizes[i]) ||
-                                (offSize <  x86Instr.enc.opndSizes[i] && offSize == 16))
+                            if (offSize == prevOffSize)
                                 continue;
 
                             /*
