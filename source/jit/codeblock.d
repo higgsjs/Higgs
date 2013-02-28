@@ -172,7 +172,7 @@ class CodeBlock
 
     ~this()
     {
-        //writefln("freeing executable memory");
+        //writefln("freeing executable memory: %s", this.memBlock);
 
         auto ret = munmap(this.memBlock, this.size);
 

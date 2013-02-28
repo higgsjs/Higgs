@@ -43,6 +43,7 @@ import std.string;
 import std.array;
 import std.conv;
 import std.typecons;
+import options;
 import util.misc;
 import analysis.typeset;
 import parser.parser;
@@ -354,6 +355,9 @@ class Interp
 
     /// Instruction pointer
     IRInstr ip;
+
+    /// Trace entry pointer
+    TraceFn traceEntry;
 
     /// String table reference
     refptr strTbl;
@@ -737,31 +741,45 @@ class Interp
             "first instruction is null"
         );
 
+        //writefln("jump to: %s\n", block.getName());
+
         // If there is a compiled trace entry for this block
-        if (block.traceEntry)
+        if (block.traceEntry !is null)
         {
-            writefln("calling trace");
+            //writefln("set tracelet from %s:\n%s\n", block.fun.getName(), block.toString());
 
-            // Call into the trace entry
-            block.traceEntry();
+            // Store the trace entry pointer
+            traceEntry = block.traceEntry;
 
-            writefln("returned from trace");
+            //writefln("code pointer: %s", traceEntry);
+
+            return;
         }
-        else 
+
+        // If the block has been executed often enough
+        if (block.execCount == 50 && opts.nojit == false)
         {
-            // If the block has been executed often enough
-            if (block.execCount == 50)
+            // Compile a tracelet for this block
+            auto codeBlock = compileBlock(this, block);
+            
+            // If compilation was successful
+            if (codeBlock !is null)
             {
-                // Compile a tracelet for this block
-                //block.traceEntry = compileBlock(this, block);
+                block.traceCode = codeBlock;
+                block.traceEntry = cast(TraceFn)codeBlock.getAddress();
+
+                // Store the trace entry pointer
+                traceEntry = block.traceEntry;
+
+                return;
             }
-
-            // Jump to the first instruction of the block
-            ip = block.firstInstr;
-
-            // Increment the execution count for the block
-            block.execCount++;
         }
+
+        // Jump to the first instruction of the block
+        ip = block.firstInstr;
+
+        // Increment the execution count for the block
+        block.execCount++;
     }
 
     /**
@@ -774,6 +792,50 @@ class Interp
             "ip is null"
         );
 
+        // Repeat until execution is done
+        while (true)
+        {
+            // If a trace entry pointer is set
+            if (traceEntry !is null)
+            {
+                auto traceFn = traceEntry;
+                traceEntry = null;
+                //writefln("entering trace: %s", traceEntry);
+                traceFn();
+                //writefln("returned from trace");
+                continue;
+            }
+
+            // If the ip is null, stop the execution
+            if (ip is null)
+            {
+                break;
+            }
+
+            // Get the current instruction
+            IRInstr instr = ip;
+
+            //writefln("op: %s", instr.opcode.mnem);
+
+            // Update the IP
+            ip = instr.next;
+ 
+            // Get the opcode's implementation function
+            auto opFn = instr.opcode.opFn;
+
+            assert (
+                opFn !is null,
+                format(
+                    "unsupported opcode: %s",
+                    instr.opcode.mnem
+                )
+            );
+
+            // Call the opcode's function
+            opFn(this, instr);
+        }
+
+        /*
         // Repeat for each instruction
         while (ip !is null)
         {
@@ -799,6 +861,7 @@ class Interp
             // Call the opcode's function
             opFn(this, instr);
         }
+        */
     }
 
     /**

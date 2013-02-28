@@ -1066,11 +1066,6 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         // Set the instruction pointer to the call continuation instruction
         interp.jump(callInstr.targets[0]);
 
-        assert (
-            interp.ip !is null,
-            "call cont target is null"
-        );
-
         // Leave the return value in the call's return slot, if any
         if (callInstr.outSlot !is NULL_LOCAL)
         {

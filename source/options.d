@@ -36,56 +36,35 @@
 *****************************************************************************/
 
 import std.stdio;
-import std.regex;
 import std.getopt;
-import interp.interp;
-import parser.parser;
-import ir.ir;
-import ir.ast;
-import repl;
-import options;
 
-void main(string[] args)
+struct Options
 {
-    // Parse the command-line arguments
-    parseCmdArgs(args);
+    /// Test mode, disables repl
+    bool test = false;
 
-    // If in (unit) test mode
-    if (opts.test == true)
-        return;
+    /// Flag to disable the JIT compiler
+    bool nojit = false;
 
-    // Get the names of files to execute
-    auto fileNames = args[1..$];
+    /// String of code to execute
+    string execString = null;
+}
 
-    // If file arguments were passed or there is 
-    // a string of code to be executed
-    if (fileNames.length != 0 || opts.execString !is null)
-    {
-        try
-        {
-            auto interp = new Interp();
+/// Global options structure
+Options opts;
 
-            foreach (fileName; fileNames)
-                interp.load(fileName);
-
-            if (opts.execString)
-                interp.evalString(opts.execString);
-        }
-
-        catch (ParseError e)
-        {
-            writeln("parse error: " ~ e.toString());
-        }
-
-        catch (RunError e)
-        {
-            writefln("run-time error: " ~ e.toString());
-        }
-
-        return;
-    }
-
-    // Start the REPL
-    repl.repl();
+/**
+Parse the command-line arguments
+*/
+void parseCmdArgs(ref string[] args)
+{
+    getopt(
+        args,
+        config.stopOnFirstNonOption,
+        config.passThrough,
+        "test"  , &opts.test,
+        "nojit" , &opts.nojit,
+        "e"     , &opts.execString
+    );
 }
 

@@ -31,6 +31,7 @@ jit/tests.d         \
 parser/tests.d      \
 interp/tests.d      \
 repl.d              \
+options.d           \
 main.d
 
 all: layout encodings

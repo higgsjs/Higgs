@@ -57,7 +57,16 @@ alias void function() TraceFn;
 // TODO: Optimize the generated machine code with peephole patterns
 // - Port existing Tachyon code?
 
-TraceFn compileBlock(Interp interp, IRBlock block)
+extern (C) void printUint(uint64_t v)
+{
+    writefln("%s", v);
+}
+
+//as.instr(MOV, RDI, RSP);
+//as.instr(MOV, RAX, X86Opnd(cast(void*)&printUint));
+//as.instr(jit.encodings.CALL, RAX);
+
+CodeBlock compileBlock(Interp interp, IRBlock block)
 {
     assert (
         block.firstInstr !is null,
@@ -69,28 +78,37 @@ TraceFn compileBlock(Interp interp, IRBlock block)
         "block fun ptr is null"
     );
 
-    writefln("compiling tracelet in %s:\n%s\n", block.fun.getName(), block.toString());
+    //writefln("compiling tracelet in %s:\n%s\n", block.fun.getName(), block.toString());
 
     // Assembler to write code into
     auto as = new Assembler();
 
+    // Align SP to a multiple of 16 bytes
+    as.instr(SUB, RSP, 8);
+
     // Save the GP registers
     as.instr(PUSH, RBX);
     as.instr(PUSH, RBP);
-    // r12-r15
+    as.instr(PUSH, R12);
+    as.instr(PUSH, R13);
+    as.instr(PUSH, R14);
+    as.instr(PUSH, R15);
 
-    // TODO: increment block exec count
-
+    // Increment the block execution count
+    as.instr(MOV, RBX, X86Opnd(cast(void*)block));
+    as.instr(INC, X86Opnd(8*block.execCount.sizeof, RBX, block.execCount.offsetof));
 
     // Store a pointer to the interpreter in RBX
     as.instr(MOV, RBX, X86Opnd(cast(void*)interp));
-
-
 
     // For each instruction of the block
     for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
     {
         auto opcode = instr.opcode;
+
+        // Unsupported opcodes abort the compilation
+        if (opcode.isBranch && opcode != &JUMP && opcode != &ir.ir.RET && opcode != &ir.ir.CALL)
+            return null;
 
         // Get the function corresponding to this instruction
         // alias void function(Interp interp, IRInstr instr) OpFn;
@@ -104,49 +122,48 @@ TraceFn compileBlock(Interp interp, IRBlock block)
         // Store a pointer to the instruction in RSI
         as.instr(MOV, RSI, X86Opnd(cast(void*)instr));
 
+
+
+        // Set the interpreter's IP
+        // TODO: figure out when this isn't necessary!
+        as.instr(MOV, X86Opnd(64, RDI, interp.ip.offsetof), RSI);
+
+
+
         // Call the op function
         as.instr(MOV, RAX, X86Opnd(cast(void*)opFn));
         as.instr(jit.encodings.CALL, RAX);
 
-        // If this instruction is a branch
-        if (opcode.isBranch)
-        {
-            // TODO
-            // Need special handling of branch instructions
-            // Some we can handle, others not so easy
-            //
-            // jump_true, jump_false => need to read from the stacks
-            // interp pointer register + offset
-            //
-            // jump or call or ret or throw => stop the block compilation
-
-            // If we know the instruction will leave this block, 
-            // stop the block compilation
-            if (opcode == &ir.ir.CALL || 
-                opcode == &ir.ir.RET  || 
-                opcode == &JUMP       ||
-                opcode == &THROW)
-                break;
-
-            // TODO: For now, other kinds of branches unsupported,
-            // compilation fails
-            return null;
-        }
+        // If we know the instruction will leave this block, 
+        // stop the block compilation
+        if (opcode == &JUMP         ||
+            opcode == &ir.ir.CALL   || 
+            opcode == &CALL_NEW     || 
+            opcode == &ir.ir.RET    || 
+            opcode == &THROW)
+            break;
     }
 
     // Restore the GP registers
+    as.instr(POP, R15);
+    as.instr(POP, R14);
+    as.instr(POP, R13);
+    as.instr(POP, R12);
     as.instr(POP, RBP);
     as.instr(POP, RBX);
+
+    // Pop the stack alignment padding
+    as.instr(ADD, RSP, 8);
 
     // Return to the interpreter
     as.instr(jit.encodings.RET);
 
-    writefln("%s\n", as.toString(true));
+    //writefln("output code:\n%s\n", as.toString(true));
 
     // Assemble the machine code
     auto codeBlock = as.assemble();
 
     // Return a pointer to the compiled code
-    return cast(TraceFn)codeBlock.getAddress();
+    return codeBlock;
 }
 

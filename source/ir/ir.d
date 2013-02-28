@@ -49,6 +49,7 @@ import interp.interp;
 import interp.layout;
 import interp.ops;
 import jit.jit;
+import jit.codeblock;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -235,6 +236,9 @@ class IRBlock : IdObject
 
     /// Execution count, for profiling
     uint64 execCount = 0;
+
+    /// Trace code block
+    CodeBlock traceCode = null;
 
     /// Trace entry function
     TraceFn traceEntry = null;
@@ -717,11 +721,11 @@ Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL
 
 // RET <retLocal>
 // Pops the callee frame (size known by context)
-Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret };
+Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret, false, true };
 
 // THROW <excLocal>
 // Throws an exception, unwinds the stack
-Opcode THROW = { "throw", false, [OpArg.LOCAL], &op_throw };
+Opcode THROW = { "throw", false, [OpArg.LOCAL], &op_throw, false, true };
 
 // Access visible arguments by index
 Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &op_get_arg };
