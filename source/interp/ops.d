@@ -91,10 +91,10 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
             return;
         }
 
-        auto numLocals = curInstr.fun.numLocals;
-        auto numParams = curInstr.fun.params.length;
-        auto argcSlot = curInstr.fun.argcSlot;
-        auto raSlot = curInstr.fun.raSlot;
+        auto numLocals = curInstr.block.fun.numLocals;
+        auto numParams = curInstr.block.fun.params.length;
+        auto argcSlot = curInstr.block.fun.argcSlot;
+        auto raSlot = curInstr.block.fun.raSlot;
 
         // Get the calling instruction for the current stack frame
         curInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
@@ -184,8 +184,11 @@ void throwError(
     );
 }
 
-void op_set_int32(Interp interp, IRInstr instr)
+extern (C) void op_set_int32(Interp interp, IRInstr instr)
 {
+    //writefln("interp: %s", cast(int64)cast(void*)interp);
+    //writefln(" instr: %s", cast(int64)cast(void*)instr);
+
     interp.setSlot(
         instr.outSlot,
         Word.int32v(instr.args[0].int32Val),
@@ -193,7 +196,7 @@ void op_set_int32(Interp interp, IRInstr instr)
     );
 }
 
-void op_set_float(Interp interp, IRInstr instr)
+extern (C) void op_set_float(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -202,7 +205,7 @@ void op_set_float(Interp interp, IRInstr instr)
     );
 }
 
-void op_set_str(Interp interp, IRInstr instr)
+extern (C) void op_set_str(Interp interp, IRInstr instr)
 {
     auto linkIdx = instr.args[1].linkIdx;
 
@@ -224,7 +227,7 @@ void op_set_str(Interp interp, IRInstr instr)
     );
 }
 
-void op_set_true(Interp interp, IRInstr instr)
+extern (C) void op_set_true(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -233,7 +236,7 @@ void op_set_true(Interp interp, IRInstr instr)
     );
 }
 
-void op_set_false(Interp interp, IRInstr instr)
+extern (C) void op_set_false(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -242,7 +245,7 @@ void op_set_false(Interp interp, IRInstr instr)
     );
 }
 
-void op_set_null(Interp interp, IRInstr instr)
+extern (C) void op_set_null(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -251,7 +254,7 @@ void op_set_null(Interp interp, IRInstr instr)
     );
 }
 
-void op_set_undef(Interp interp, IRInstr instr)
+extern (C) void op_set_undef(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -260,7 +263,7 @@ void op_set_undef(Interp interp, IRInstr instr)
     );
 }
 
-void op_set_missing(Interp interp, IRInstr instr)
+extern (C) void op_set_missing(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
@@ -269,7 +272,7 @@ void op_set_missing(Interp interp, IRInstr instr)
     );
 }
 
-void op_set_value(Interp interp, IRInstr instr)
+extern (C) void op_set_value(Interp interp, IRInstr instr)
 {
     auto wWord = interp.getWord(instr.args[0].localIdx);
 
@@ -293,7 +296,7 @@ void op_set_value(Interp interp, IRInstr instr)
     );
 }
 
-void op_get_word(Interp interp, IRInstr instr)
+extern (C) void op_get_word(Interp interp, IRInstr instr)
 {
     auto word = interp.getWord(instr.args[0].localIdx);
 
@@ -304,7 +307,7 @@ void op_get_word(Interp interp, IRInstr instr)
     );
 }
 
-void op_get_type(Interp interp, IRInstr instr)
+extern (C) void op_get_type(Interp interp, IRInstr instr)
 {
     auto type = interp.getType(instr.args[0].localIdx);
 
@@ -315,7 +318,7 @@ void op_get_type(Interp interp, IRInstr instr)
     );
 }
 
-void op_move(Interp interp, IRInstr instr)
+extern (C) void op_move(Interp interp, IRInstr instr)
 {
     interp.move(
         instr.args[0].localIdx,
@@ -323,7 +326,7 @@ void op_move(Interp interp, IRInstr instr)
     );
 }
 
-void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
+extern (C) void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
 {
     auto typeTag = interp.getType(instr.args[0].localIdx);
 
@@ -340,7 +343,7 @@ alias TypeCheckOp!(Type.REFPTR) op_is_refptr;
 alias TypeCheckOp!(Type.RAWPTR) op_is_rawptr;
 alias TypeCheckOp!(Type.CONST) op_is_const;
 
-void op_i32_to_f64(Interp interp, IRInstr instr)
+extern (C) void op_i32_to_f64(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
 
@@ -351,7 +354,7 @@ void op_i32_to_f64(Interp interp, IRInstr instr)
     );
 }
 
-void op_i64_to_f64(Interp interp, IRInstr instr)
+extern (C) void op_i64_to_f64(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
 
@@ -362,7 +365,7 @@ void op_i64_to_f64(Interp interp, IRInstr instr)
     );
 }
 
-void op_f64_to_i32(Interp interp, IRInstr instr)
+extern (C) void op_f64_to_i32(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
 
@@ -377,7 +380,7 @@ void op_f64_to_i32(Interp interp, IRInstr instr)
     );
 }
 
-void op_f64_to_i64(Interp interp, IRInstr instr)
+extern (C) void op_f64_to_i64(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
 
@@ -388,7 +391,7 @@ void op_f64_to_i64(Interp interp, IRInstr instr)
     );
 }
 
-void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRInstr instr)
+extern (C) void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRInstr instr)
 {
     static assert (
         typeTag == Type.INT32 || typeTag == Type.FLOAT
@@ -477,7 +480,7 @@ alias ArithOp!(Type.FLOAT, 1, "auto r = log(x);") op_log_f64;
 alias ArithOp!(Type.FLOAT, 1, "auto r = exp(x);") op_exp_f64;
 alias ArithOp!(Type.FLOAT, 2, "auto r = pow(x, y);") op_pow_f64;
 
-void op_floor_f64(Interp interp, IRInstr instr)
+extern (C) void op_floor_f64(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
     auto t0 = interp.getType(instr.args[0].localIdx);
@@ -504,7 +507,7 @@ void op_floor_f64(Interp interp, IRInstr instr)
     }
 }
 
-void op_ceil_f64(Interp interp, IRInstr instr)
+extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
     auto t0 = interp.getType(instr.args[0].localIdx);
@@ -531,7 +534,7 @@ void op_ceil_f64(Interp interp, IRInstr instr)
     }
 }
 
-void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr)
+extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr)
 {
     auto wX = interp.getWord(instr.args[0].localIdx);
     auto tX = interp.getType(instr.args[0].localIdx);
@@ -567,7 +570,7 @@ alias ArithOpOvf!(Type.INT32, "auto r = x - y;") op_sub_i32_ovf;
 alias ArithOpOvf!(Type.INT32, "auto r = x * y;") op_mul_i32_ovf;
 alias ArithOpOvf!(Type.INT32, "auto r = x << y;") op_lsft_i32_ovf;
 
-void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
+extern (C) void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
 {
     auto wX = interp.getWord(instr.args[0].localIdx);
     auto tX = interp.getType(instr.args[0].localIdx);
@@ -628,7 +631,7 @@ alias CompareOp!(float64, Type.FLOAT, "r = (x > y);") op_gt_f64;
 alias CompareOp!(float64, Type.FLOAT, "r = (x <= y);") op_le_f64;
 alias CompareOp!(float64, Type.FLOAT, "r = (x >= y);") op_ge_f64;
 
-void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
+extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {
     auto wPtr = interp.getWord(instr.args[0].localIdx);
     auto tPtr = interp.getType(instr.args[0].localIdx);
@@ -687,7 +690,7 @@ void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     );
 }
 
-void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
+extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {
     auto wPtr = interp.getWord(instr.args[0].localIdx);
     auto tPtr = interp.getType(instr.args[0].localIdx);
@@ -760,12 +763,12 @@ alias StoreOp!(refptr, Type.REFPTR) op_store_refptr;
 alias StoreOp!(rawptr, Type.RAWPTR) op_store_rawptr;
 alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
 
-void op_jump(Interp interp, IRInstr instr)
+extern (C) void op_jump(Interp interp, IRInstr instr)
 {
     interp.jump(instr.targets[0]);
 }
 
-void op_jump_true(Interp interp, IRInstr instr)
+extern (C) void op_jump_true(Interp interp, IRInstr instr)
 {
     auto valIdx = instr.args[0].localIdx;
     auto wVal = interp.getWord(valIdx);
@@ -774,7 +777,7 @@ void op_jump_true(Interp interp, IRInstr instr)
         interp.jump(instr.targets[0]);
 }
 
-void op_jump_false(Interp interp, IRInstr instr)
+extern (C) void op_jump_false(Interp interp, IRInstr instr)
 {
     auto valIdx = instr.args[0].localIdx;
     auto wVal = interp.getWord(valIdx);
@@ -852,7 +855,7 @@ void callFun(
     interp.jump(fun.entryBlock);
 }
 
-void op_call(Interp interp, IRInstr instr)
+extern (C) void op_call(Interp interp, IRInstr instr)
 {
     auto closIdx = instr.args[0].localIdx;
     auto thisIdx = instr.args[1].localIdx;
@@ -887,7 +890,7 @@ void op_call(Interp interp, IRInstr instr)
 }
 
 /// JavaScript new operator (constructor call)
-void op_call_new(Interp interp, IRInstr instr)
+extern (C) void op_call_new(Interp interp, IRInstr instr)
 {
     auto closIdx = instr.args[0].localIdx;
     auto wClos = interp.getWord(closIdx);
@@ -937,7 +940,7 @@ void op_call_new(Interp interp, IRInstr instr)
     );
 }
 
-void op_call_apply(Interp interp, IRInstr instr)
+extern (C) void op_call_apply(Interp interp, IRInstr instr)
 {
     auto closIdx = instr.args[0].localIdx;
     auto thisIdx = instr.args[1].localIdx;
@@ -1023,15 +1026,15 @@ void op_call_apply(Interp interp, IRInstr instr)
     interp.jump(fun.entryBlock);
 }
 
-void op_ret(Interp interp, IRInstr instr)
+extern (C) void op_ret(Interp interp, IRInstr instr)
 {
-    //writefln("ret from %s", instr.fun.name);
+    //writefln("ret from %s", instr.block.fun.name);
 
     auto retSlot   = instr.args[0].localIdx;
-    auto raSlot    = instr.fun.raSlot;
-    auto argcSlot  = instr.fun.argcSlot;
-    auto numParams = instr.fun.params.length;
-    auto numLocals = instr.fun.numLocals;
+    auto raSlot    = instr.block.fun.raSlot;
+    auto argcSlot  = instr.block.fun.argcSlot;
+    auto numParams = instr.block.fun.params.length;
+    auto numLocals = instr.block.fun.numLocals;
 
     // Get the return value
     auto wRet = interp.wsp[retSlot];
@@ -1050,8 +1053,8 @@ void op_ret(Interp interp, IRInstr instr)
         if (callInstr.opcode == &CALL_NEW && wRet == UNDEF)
         {
             // Use the this value as the return value
-            wRet = interp.getWord(instr.fun.thisSlot);
-            tRet = interp.getType(instr.fun.thisSlot);
+            wRet = interp.getWord(instr.block.fun.thisSlot);
+            tRet = interp.getType(instr.block.fun.thisSlot);
         }
 
         // Compute the actual number of extra arguments to pop
@@ -1091,7 +1094,7 @@ void op_ret(Interp interp, IRInstr instr)
     }
 }
 
-void op_throw(Interp interp, IRInstr instr)
+extern (C) void op_throw(Interp interp, IRInstr instr)
 {
     // Get the exception value
     auto excSlot = instr.args[0].localIdx;
@@ -1101,10 +1104,10 @@ void op_throw(Interp interp, IRInstr instr)
     throwExc(interp, instr, excVal);
 }
 
-void op_get_arg(Interp interp, IRInstr instr)
+extern (C) void op_get_arg(Interp interp, IRInstr instr)
 {
     // Get the first argument slot
-    auto argSlot = instr.fun.argcSlot + 1;
+    auto argSlot = instr.block.fun.argcSlot + 1;
 
     // Get the argument index
     auto idxVal = interp.getSlot(instr.args[0].localIdx);
@@ -1118,7 +1121,7 @@ void op_get_arg(Interp interp, IRInstr instr)
     );
 }
 
-void op_get_fun_ptr(Interp interp, IRInstr instr)
+extern (C) void op_get_fun_ptr(Interp interp, IRInstr instr)
 {
     auto fun = instr.args[0].fun;
 
@@ -1138,7 +1141,7 @@ void op_get_fun_ptr(Interp interp, IRInstr instr)
 }
 
 /// Templated interpreter value access operation
-void GetValOp(Type typeTag, string op)(Interp interp, IRInstr instr)
+extern (C) void GetValOp(Type typeTag, string op)(Interp interp, IRInstr instr)
 {
     static assert (
         typeTag == Type.INT32 || typeTag == Type.REFPTR
@@ -1168,7 +1171,7 @@ alias GetValOp!(Type.INT32, "auto r = cast(int32)interp.heapSize;") op_get_heap_
 alias GetValOp!(Type.INT32, "auto r = cast(int32)(interp.heapLimit - interp.allocPtr);") op_get_heap_free;
 alias GetValOp!(Type.INT32, "auto r = cast(int32)interp.gcCount;") op_get_gc_count;
 
-void op_heap_alloc(Interp interp, IRInstr instr)
+extern (C) void op_heap_alloc(Interp interp, IRInstr instr)
 {
     auto wSize = interp.getWord(instr.args[0].localIdx);
     auto tSize = interp.getType(instr.args[0].localIdx);
@@ -1192,7 +1195,7 @@ void op_heap_alloc(Interp interp, IRInstr instr)
     );
 }
 
-void op_gc_collect(Interp interp, IRInstr instr)
+extern (C) void op_gc_collect(Interp interp, IRInstr instr)
 {
     auto wSize = interp.getWord(instr.args[0].localIdx);
     auto tSize = interp.getType(instr.args[0].localIdx);
@@ -1205,7 +1208,7 @@ void op_gc_collect(Interp interp, IRInstr instr)
     gcCollect(interp, wSize.uint32Val);
 }
 
-void op_make_link(Interp interp, IRInstr instr)
+extern (C) void op_make_link(Interp interp, IRInstr instr)
 {
     auto linkIdx = instr.args[0].linkIdx;
 
@@ -1225,7 +1228,7 @@ void op_make_link(Interp interp, IRInstr instr)
     );
 }
 
-void op_set_link(Interp interp, IRInstr instr)
+extern (C) void op_set_link(Interp interp, IRInstr instr)
 {
     auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
 
@@ -1236,7 +1239,7 @@ void op_set_link(Interp interp, IRInstr instr)
     interp.setLinkType(linkIdx, tVal);
 }
 
-void op_get_link(Interp interp, IRInstr instr)
+extern (C) void op_get_link(Interp interp, IRInstr instr)
 {
     auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
 
@@ -1250,7 +1253,7 @@ void op_get_link(Interp interp, IRInstr instr)
     );    
 }
 
-void op_get_str(Interp interp, IRInstr instr)
+extern (C) void op_get_str(Interp interp, IRInstr instr)
 {
     auto wStr = interp.getWord(instr.args[0].localIdx);
     auto tStr = interp.getType(instr.args[0].localIdx);
@@ -1277,7 +1280,7 @@ void op_get_str(Interp interp, IRInstr instr)
 }
 
 /// Get the value of a global variable
-void op_get_global(Interp interp, IRInstr instr)
+extern (C) void op_get_global(Interp interp, IRInstr instr)
 {
     // Name string (D string)
     auto nameStr = instr.args[0].stringVal;
@@ -1337,7 +1340,7 @@ void op_get_global(Interp interp, IRInstr instr)
 }
 
 /// Set the value of a global variable
-void op_set_global(Interp interp, IRInstr instr)
+extern (C) void op_set_global(Interp interp, IRInstr instr)
 {
     // Name string (D string)
     auto nameStr = instr.args[0].stringVal;
@@ -1383,7 +1386,7 @@ void op_set_global(Interp interp, IRInstr instr)
     }
 }
 
-void op_new_clos(Interp interp, IRInstr instr)
+extern (C) void op_new_clos(Interp interp, IRInstr instr)
 {
     //writefln("entering newclos");
 
@@ -1458,7 +1461,7 @@ void op_new_clos(Interp interp, IRInstr instr)
     );
 }
 
-void op_load_file(Interp interp, IRInstr instr)
+extern (C) void op_load_file(Interp interp, IRInstr instr)
 {
     auto wFile = interp.getWord(instr.args[0].localIdx);
     auto tFile = interp.getType(instr.args[0].localIdx);
@@ -1480,7 +1483,7 @@ void op_load_file(Interp interp, IRInstr instr)
     interp.ip = ip;
 }
 
-void op_print_str(Interp interp, IRInstr instr)
+extern (C) void op_print_str(Interp interp, IRInstr instr)
 {
     auto wStr = interp.getWord(instr.args[0].localIdx);
     auto tStr = interp.getType(instr.args[0].localIdx);
@@ -1496,7 +1499,7 @@ void op_print_str(Interp interp, IRInstr instr)
     write(str);
 }
 
-void op_get_ast_str(Interp interp, IRInstr instr)
+extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
 {
     auto wFn = interp.getWord(instr.args[0].localIdx);
     auto tFn = interp.getType(instr.args[0].localIdx);
@@ -1517,7 +1520,7 @@ void op_get_ast_str(Interp interp, IRInstr instr)
     );
 }
 
-void op_get_ir_str(Interp interp, IRInstr instr)
+extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
 {
     auto wFn = interp.getWord(instr.args[0].localIdx);
     auto tFn = interp.getType(instr.args[0].localIdx);
@@ -1543,7 +1546,7 @@ void op_get_ir_str(Interp interp, IRInstr instr)
     );
 }
 
-void op_f64_to_str(Interp interp, IRInstr instr)
+extern (C) void op_f64_to_str(Interp interp, IRInstr instr)
 {
     auto val = interp.getSlot(instr.args[0].localIdx);
 
@@ -1562,7 +1565,7 @@ void op_f64_to_str(Interp interp, IRInstr instr)
     );
 }
 
-void op_get_time_ms(Interp interp, IRInstr instr)
+extern (C) void op_get_time_ms(Interp interp, IRInstr instr)
 {
     auto msecs = Clock.currAppTick().msecs();
 

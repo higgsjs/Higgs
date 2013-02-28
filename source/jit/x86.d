@@ -218,6 +218,25 @@ struct X86Opnd
     }
 
     /**
+    Create a pointer constant operand
+    */
+    this(void* ptr)
+    {
+        this.type = X86Opnd.IMM;
+        this.unsgImm = cast(uint64_t)ptr;
+    }
+
+    /**
+    Create a label operand
+    */
+    this(Label label)
+    {
+        this.type = REL;
+        this.imm = 0;
+        this.label = label;
+    }
+
+    /**
     Create a register operand
     */
     this(X86RegPtr reg)
@@ -243,16 +262,6 @@ struct X86Opnd
         this.disp    = disp;
         this.index   = index;
         this.scale   = cast(uint8_t)scale;
-    }
-
-    /**
-    Create a label operand
-    */
-    this(Label label)
-    {
-        this.type = REL;
-        this.imm = 0;
-        this.label = label;
     }
 
     /**
@@ -320,9 +329,8 @@ struct X86Opnd
             case REL:
             return this.label.name ~ " (" ~ to!string(this.immSize) ~ ")";
 
-            // TODO:
-            //case MOFFS:
-            //return;
+            case MOFFS:
+            return xformat("[%X]", this.unsgImm);
 
             default:
             assert (false);
@@ -390,7 +398,7 @@ struct X86Opnd
     size_t unsgSize()
     {
         assert (
-            type == IMM || type == REL,
+            type == IMM || type == REL || type == MOFFS,
             "unsgSize only available for immediate operands"
         );
 

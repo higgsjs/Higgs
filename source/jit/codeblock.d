@@ -143,6 +143,11 @@ class CodeBlock
 
     this(size_t size)
     {
+        assert (
+            size > 0,
+            "cannot create zero-sized memory block"
+        );
+
         // Map the memory as executable
         this.memBlock = cast(ubyte*)mmap(
             null,

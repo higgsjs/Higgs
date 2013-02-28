@@ -48,6 +48,7 @@ import parser.ast;
 import interp.interp;
 import interp.layout;
 import interp.ops;
+import jit.jit;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -203,6 +204,8 @@ class IRFunction : IdObject
             firstBlock = block;
             lastBlock = block;
         }
+
+        block.fun = this;
     }
 
     void remBlock(IRBlock block)
@@ -231,10 +234,16 @@ class IRBlock : IdObject
     private string name;
 
     /// Execution count, for profiling
-    uint64 execCount;
+    uint64 execCount = 0;
 
-    IRInstr firstInstr;
-    IRInstr lastInstr;
+    /// Trace entry function
+    TraceFn traceEntry = null;
+
+    /// Parent function
+    IRFunction fun = null;
+
+    IRInstr firstInstr = null;
+    IRInstr lastInstr = null;
     
     IRBlock prev;
     IRBlock next;
@@ -282,6 +291,8 @@ class IRBlock : IdObject
             firstInstr = instr;
             lastInstr = instr;
         }
+
+        instr.block = this;
 
         return instr;
     }
@@ -331,8 +342,8 @@ class IRInstr : IdObject
     /// Branch target blocks (may be null)
     IRBlock targets[2] = [null, null];
 
-    /// Parent function
-    IRFunction fun;
+    /// Parent block
+    IRBlock block = null;
 
     /// Previous and next instructions (linked list)
     IRInstr prev;
@@ -538,7 +549,7 @@ enum OpArg
 }
 
 /// Opcode implementation function
-alias void function(Interp interp, IRInstr instr) OpFun;
+alias extern (C) void function(Interp interp, IRInstr instr) OpFn;
 
 /**
 Opcode information
@@ -548,7 +559,7 @@ struct OpInfo
     string mnem;
     bool output;
     OpArg[] argTypes;
-    OpFun opFun = null;
+    OpFn opFn = null;
     bool isVarArg = false;
     bool isBranch = false;
 

@@ -213,9 +213,6 @@ class IRGenCtx
     */
     IRInstr addInstr(IRInstr instr)
     {
-        // Set the parent function pointer
-        instr.fun = fun;
-
         curBlock.addInstr(instr);
         return instr;
     }

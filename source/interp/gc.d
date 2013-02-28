@@ -348,7 +348,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
 
     // Add the currently running frunction to the live functions
     if (interp.ip !is null)
-        interp.liveFuns[cast(void*)interp.ip.fun] = interp.ip.fun;
+        interp.liveFuns[cast(void*)interp.ip.block.fun] = interp.ip.block.fun;
 
     //writefln("finding live functions transitively");
 
@@ -497,7 +497,7 @@ Word gcForward(Interp interp, Word word, Type type)
         case Type.INSPTR:
         if (word.ptrVal !is null)
         {
-            auto fun = (cast(IRInstr)word.ptrVal).fun;
+            auto fun = (cast(IRInstr)word.ptrVal).block.fun;
             interp.liveFuns[cast(void*)fun] = fun;
         }
         return word;

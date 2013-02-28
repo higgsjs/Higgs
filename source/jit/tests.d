@@ -47,7 +47,7 @@ import jit.codeblock;
 import jit.encodings;
 
 /// Code generation function for testing
-alias void delegate(Assembler) CodeGenFun;
+alias void delegate(Assembler) CodeGenFn;
 
 /**
 Test x86 instruction encodings
@@ -57,7 +57,7 @@ unittest
     writefln("machine code generation");
 
     // Test encodings for 32-bit and 64-bit
-    void test(CodeGenFun codeFunc, string enc32, string enc64 = "")
+    void test(CodeGenFn codeFunc, string enc32, string enc64 = "")
     {
         if (enc64.length == 0)
             enc64 = enc32;
@@ -402,6 +402,15 @@ unittest
         delegate void (Assembler a) { a.instr(MOV, RBX, RAX); }, 
         "",
         "4889C3"
+    );
+    test(
+        delegate void (Assembler a) { a.instr(MOV, RDI, RBX); }, 
+        "",
+        "4889DF"
+    );
+    test(
+        delegate void (Assembler a) { a.instr(MOV, SIL, 11); },
+        "40B60B"
     );
 
     // movapd
@@ -900,7 +909,7 @@ unittest
 }
 
 /// Test function pointer type
-alias int64_t function() TestFun;
+alias int64_t function() TestFn;
 
 /**
 Test the execution of x86 code snippets
@@ -910,7 +919,7 @@ unittest
     writefln("machine code execution");
 
     // Test the execution of a piece of code
-    void test(CodeGenFun genFunc, int64_t retVal)
+    void test(CodeGenFn genFunc, int64_t retVal)
     {
         // Create an assembler to generate code into
         auto assembler = new Assembler();
@@ -921,7 +930,7 @@ unittest
         // Assemble to a code block (code only, no header)
         auto codeBlock = assembler.assemble();
 
-        auto testFun = cast(TestFun)codeBlock.getAddress();
+        auto testFun = cast(TestFn)codeBlock.getAddress();
 
         //writefln("calling %s", testFun);
 

@@ -53,6 +53,7 @@ import interp.layout;
 import interp.string;
 import interp.object;
 import interp.gc;
+import jit.jit;
 
 /**
 Run-time error
@@ -102,7 +103,8 @@ class RunError : Error
 
         foreach (instr; trace)
         {
-            str ~= "\n" ~ instr.fun.name ~ " (" ~ to!string(instr.fun.ast.pos) ~ ")";
+            auto fun = instr.block.fun;
+            str ~= "\n" ~ fun.name ~ " (" ~ to!string(fun.ast.pos) ~ ")";
         }
 
         return str;
@@ -735,11 +737,31 @@ class Interp
             "first instruction is null"
         );
 
-        // Jump to the first instruction of the block
-        ip = block.firstInstr;
+        // If there is a compiled trace entry for this block
+        if (block.traceEntry)
+        {
+            writefln("calling trace");
 
-        // Increment the execution count for the block
-        block.execCount++;
+            // Call into the trace entry
+            block.traceEntry();
+
+            writefln("returned from trace");
+        }
+        else 
+        {
+            // If the block has been executed often enough
+            if (block.execCount == 50)
+            {
+                // Compile a tracelet for this block
+                //block.traceEntry = compileBlock(this, block);
+            }
+
+            // Jump to the first instruction of the block
+            ip = block.firstInstr;
+
+            // Increment the execution count for the block
+            block.execCount++;
+        }
     }
 
     /**
@@ -764,10 +786,10 @@ class Interp
             ip = instr.next;
  
             // Get the opcode's implementation function
-            auto opFun = instr.opcode.opFun;
+            auto opFn = instr.opcode.opFn;
 
             assert (
-                opFun !is null,
+                opFn !is null,
                 format(
                     "unsupported opcode: %s",
                     instr.opcode.mnem
@@ -775,7 +797,7 @@ class Interp
             );
 
             // Call the opcode's function
-            opFun(this, instr);
+            opFn(this, instr);
         }
     }
 
