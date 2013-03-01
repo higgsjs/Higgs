@@ -270,6 +270,12 @@ class Assembler
                 // If this is a machine instruction
                 if (auto x86Instr = cast(X86Instr)instr)
                 {
+                    if (!x86Instr.valid())
+                    {
+                        writefln("cannot assemble invalid instruction:\n%s", instr.toString());
+                        assert (false);
+                    }
+
                     // Get the current instruction length
                     auto curInstrLen = instr.length();
 
@@ -338,7 +344,7 @@ class Assembler
             } // foreach (instr)
         } // while (changed)
 
-        // Allocate a new code block for the code onlu
+        // Allocate a new code block for the code
         auto codeBlock = new CodeBlock(codeLength);
 
         // Encode the instructions into the code block

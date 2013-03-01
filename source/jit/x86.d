@@ -559,6 +559,19 @@ class X86Instr : JITInstr
     }
 
     /**
+    Test if this instruction has a valid encoding
+    */
+    bool valid()
+    {
+        if (enc !is null)
+            return true;
+
+        findEncoding();
+
+        return (enc !is null);
+    }
+
+    /**
     Get the length of the best encoding of this instruction
     */
     override size_t length()
@@ -566,6 +579,11 @@ class X86Instr : JITInstr
         // If no encoding is yet found, find one
         if (enc is null)
             findEncoding();
+
+        assert (
+            this.enc !is null,
+            "cannot compute length, no encoding found"
+        );
 
         // Return the encoding length
         return this.encLength;
@@ -579,6 +597,12 @@ class X86Instr : JITInstr
         // If no encoding is yet found, find one
         if (this.enc is null)
             this.findEncoding();
+
+        assert (
+            this.enc !is null,
+            "cannot encode instruction, no encoding found for:\n" ~
+            this.toString()
+        );
 
         // Flag to indicate the REX prefix is needed
         bool rexNeeded = (enc.rexW == 1);
@@ -851,8 +875,10 @@ class X86Instr : JITInstr
     /**
     Find the best encoding for this instruction
     */
-    void findEncoding()
+    X86EncPtr findEncoding()
     {
+        //writefln("findEncoding");
+
         // Best encoding found
         X86EncPtr bestEnc = null;
         size_t bestLen = size_t.max;
@@ -980,16 +1006,15 @@ class X86Instr : JITInstr
             }
         }
 
-        assert (
-            bestEnc !is null,
-            "no valid encoding found for " ~ this.toString()
-        );
-
         // Store the best encoding found
         enc = bestEnc;
 
         // Store the encoding length
         encLength = cast(uint8_t)bestLen;
+
+        //writefln("findEncoding done");
+
+        return bestEnc;
     }
 
     /**
@@ -997,6 +1022,11 @@ class X86Instr : JITInstr
     */
     size_t compEncLen(X86EncPtr enc)
     {
+        assert (
+            enc !is null,
+            "compEncLen on null encoding"
+        );
+
         // x86 instruction format:
         // prefix(es)  [REX] opcode  [XRM  [SIB]]  disp  imm
 
