@@ -1082,7 +1082,7 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         interp.pop(numLocals);
 
         // Terminate the execution
-        interp.ip = null;
+        interp.jump(null);
 
         // Leave the return value on top of the stack
         interp.push(wRet, tRet);

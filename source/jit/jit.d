@@ -102,13 +102,11 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     // Store a pointer to the interpreter in R15
     as.instr(MOV, R15, X86Opnd(cast(void*)interp));
 
-
     // TODO: loadField, storeField macros?
 
     // TODO: load the stack pointers into RBX and RBP
     as.instr(MOV, RBX, X86Opnd(8*interp.wsp.sizeof, R15, interp.wsp.offsetof));
     as.instr(MOV, RBP, X86Opnd(8*interp.tsp.sizeof, R15, interp.tsp.offsetof));
-
 
     // For each instruction of the block
     for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -159,7 +157,6 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
 
 
         }
-
 
 
         // Get the function corresponding to this instruction

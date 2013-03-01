@@ -270,11 +270,10 @@ class Assembler
                 // If this is a machine instruction
                 if (auto x86Instr = cast(X86Instr)instr)
                 {
-                    if (!x86Instr.valid())
-                    {
-                        writefln("cannot assemble invalid instruction:\n%s", instr.toString());
-                        assert (false);
-                    }
+                    assert (
+                        x86Instr.valid(),
+                        "cannot assemble invalid instruction:\n" ~ instr.toString()
+                    );
 
                     // Get the current instruction length
                     auto curInstrLen = instr.length();

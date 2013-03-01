@@ -353,11 +353,11 @@ class Interp
     /// Free link table entries
     uint32[] linkTblFree;
 
-    /// Instruction pointer
-    IRInstr ip;
+    /// Branch target block
+    IRBlock target = null;
 
-    /// Trace entry pointer
-    TraceFn traceEntry;
+    /// Instruction pointer
+    IRInstr ip = null;
 
     /// String table reference
     refptr strTbl;
@@ -426,9 +426,6 @@ class Interp
             wLinkTable[i].int32Val = 0;
             tLinkTable[i] = Type.INT32;
         }
-
-        // Initialize the IP to null
-        ip = null;
 
         // Allocate and initialize the string table
         strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
@@ -731,55 +728,11 @@ class Interp
     */
     void jump(IRBlock block)
     {
-        assert (
-            block !is null,
-            "jump target block is null"
-        );
+        // Set the branch target block
+        target = block;
 
-        assert (
-            block.firstInstr !is null,
-            "first instruction is null"
-        );
-
-        //writefln("jump to: %s\n", block.getName());
-
-        // If there is a compiled trace entry for this block
-        if (block.traceEntry !is null)
-        {
-            //writefln("set tracelet from %s:\n%s\n", block.fun.getName(), block.toString());
-
-            // Store the trace entry pointer
-            traceEntry = block.traceEntry;
-
-            //writefln("code pointer: %s", traceEntry);
-
-            return;
-        }
-
-        // If the block has been executed often enough
-        if (block.execCount == 100 && opts.nojit == false)
-        {
-            // Compile a tracelet for this block
-            auto codeBlock = compileBlock(this, block);
-            
-            // If compilation was successful
-            if (codeBlock !is null)
-            {
-                block.traceCode = codeBlock;
-                block.traceEntry = cast(TraceFn)codeBlock.getAddress();
-
-                // Store the trace entry pointer
-                traceEntry = block.traceEntry;
-
-                return;
-            }
-        }
-
-        // Jump to the first instruction of the block
-        ip = block.firstInstr;
-
-        // Increment the execution count for the block
-        block.execCount++;
+        // Nullify the IP to stop the execution of the current block
+        ip = null;
     }
 
     /**
@@ -787,81 +740,67 @@ class Interp
     */
     void loop()
     {
-        assert (
-            ip !is null,
-            "ip is null"
-        );
-
-        // Repeat until execution is done
-        while (true)
+        // While we have a target to branch to
+        while (target !is null)
         {
-            // If a trace entry pointer is set
-            if (traceEntry !is null)
+            // If this block has an associated trace entry
+            if (target.traceEntry !is null)
             {
-                auto traceFn = traceEntry;
-                traceEntry = null;
                 //writefln("entering trace: %s", traceEntry);
-                traceFn();
+                target.traceEntry();
                 //writefln("returned from trace");
                 continue;
             }
 
-            // If the ip is null, stop the execution
-            if (ip is null)
+            // If the block has been executed often enough
+            if (target.execCount == 100 && opts.nojit == false)
             {
-                break;
+                // Compile a tracelet for this block
+                auto codeBlock = compileBlock(this, target);
+                
+                // If compilation was successful, store the trace entry
+                if (codeBlock !is null)
+                {
+                    target.traceCode = codeBlock;
+                    target.traceEntry = cast(TraceFn)codeBlock.getAddress();
+                }
             }
 
-            // Get the current instruction
-            IRInstr instr = ip;
+            // Increment the execution count for the block
+            target.execCount++;
 
-            //writefln("op: %s", instr.opcode.mnem);
+            // Set the IP to the first instruction of the block
+            ip = target.firstInstr;
 
-            // Update the IP
-            ip = instr.next;
- 
-            // Get the opcode's implementation function
-            auto opFn = instr.opcode.opFn;
+            // Nullify the target pointer
+            target = null;
 
-            assert (
-                opFn !is null,
-                format(
-                    "unsupported opcode: %s",
-                    instr.opcode.mnem
-                )
-            );
+            // Until the execution of the block is done
+            while (ip !is null)
+            {
+                // Get the current instruction
+                IRInstr instr = ip;
 
-            // Call the opcode's function
-            opFn(this, instr);
+                //writefln("op: %s", instr.opcode.mnem);
+
+                // Update the IP
+                ip = instr.next;
+     
+                // Get the opcode's implementation function
+                auto opFn = instr.opcode.opFn;
+
+                assert (
+                    opFn !is null,
+                    format(
+                        "unsupported opcode: %s",
+                        instr.opcode.mnem
+                    )
+                );
+
+                // Call the opcode's function
+                opFn(this, instr);
+            }
         }
-
-        /*
-        // Repeat for each instruction
-        while (ip !is null)
-        {
-            // Get the current instruction
-            IRInstr instr = ip;
-
-            //writefln("op: %s", instr.opcode.mnem);
-
-            // Update the IP
-            ip = instr.next;
- 
-            // Get the opcode's implementation function
-            auto opFn = instr.opcode.opFn;
-
-            assert (
-                opFn !is null,
-                format(
-                    "unsupported opcode: %s",
-                    instr.opcode.mnem
-                )
-            );
-
-            // Call the opcode's function
-            opFn(this, instr);
-        }
-        */
     }
 
     /**
