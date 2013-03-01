@@ -44,6 +44,7 @@ import std.stdint;
 import options;
 import ir.ir;
 import interp.interp;
+import interp.layout;
 import jit.codeblock;
 import jit.assembler;
 import jit.x86;
@@ -105,11 +106,15 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
         as.instr(MOV, X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset), srcReg);
     }
 
-    // TODO: loadWS, loadTS
+    // TODO: getWord, getType
 
     void jump(IRBlock target)
     {
         auto JUMP_INTERP = new Label("jump_interp");
+
+        // TODO: directly patch a jump to the trace join point if found
+        // mov rax, ptr
+        // mov [rip - k], rax
 
         // Get a pointer to the branch target
         ptr(RAX, target);
@@ -245,20 +250,51 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
             continue;
         }
 
-
-        /*
         if (opcode == &GET_GLOBAL)
         {
+            // Cached property index
+            auto propIdx = instr.args[1].int32Val;
 
+            if (propIdx >= 0)
+            {
+                // Get the global object pointer
+                getField(RAX, R15, interp.globalObj.sizeof, interp.globalObj.offsetof);
 
+                getField(RDI, RAX, 8, obj_ofs_word(interp.globalObj, propIdx));
+                getField(SIL, RAX, 1, obj_ofs_type(interp.globalObj, propIdx));
+                    
+                // wsp[outSlot] = RDI
+                as.instr(MOV, X86Opnd(64, RBX, instr.outSlot * 8), RDI);
 
+                // tsp[outSlot] = SIL
+                as.instr(MOV, X86Opnd(8, RBP, instr.outSlot), SIL);
 
-
-
-
+                continue;
+            }
         }
-        */
 
+        if (opcode == &SET_GLOBAL)
+        {
+            // Cached property index
+            auto propIdx = instr.args[2].int32Val;
+
+            if (propIdx >= 0)
+            {
+                // Get the global object pointer
+                getField(RAX, R15, interp.globalObj.sizeof, interp.globalObj.offsetof);
+
+                // RDI = wsp[outSlot]
+                as.instr(MOV, RDI, X86Opnd(64, RBX, instr.args[1].localIdx * 8));
+
+                // SIL = tsp[outSlot]
+                as.instr(MOV, SIL, X86Opnd(8, RBP, instr.args[1].localIdx));
+
+                setField(RAX, 8, obj_ofs_word(interp.globalObj, propIdx), RDI);
+                setField(RAX, 1, obj_ofs_type(interp.globalObj, propIdx), SIL);
+
+                continue;
+            }
+        }
 
 
 
@@ -322,4 +358,12 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     // Return a pointer to the compiled code
     return codeBlock;
 }
+
+
+
+
+
+
+
+
 
