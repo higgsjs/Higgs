@@ -95,9 +95,8 @@ class Label : JITInstr
         // If this label is to be exported
         if (this.exported == true)
         {
-            // TODO
             // Add the export to the code block
-            //codeBlock.exportLabel(this.name);
+            codeBlock.exportLabel(this.name);
         }
     }
 
@@ -139,7 +138,7 @@ class CodeBlock
     private size_t writePos;
 
     /// Exported labels in this block
-    //this.exports = {};
+    private size_t exports[string];
 
     this(size_t size)
     {
@@ -224,17 +223,15 @@ class CodeBlock
     /**
     Get the address of an exported label in the code block
     */
-    /*
-    auto getExportAddr(name)
+    auto getExportAddr(string name)
     {
         assert (
-            this.exports[name] !== undefined,
-            'invalid exported label'
+            name in this.exports,
+            "invalid exported label"
         );
 
-        return getBlockAddr(this.memBlock, this.exports[name]);
+        return getAddress(this.exports[name]);
     }
-    */
 
     /**
     Clear the contents of the code block
@@ -369,17 +366,15 @@ class CodeBlock
     /**
     Add an exported label at the the current position
     */
-    /*
-    exportLabel(name)
+    void exportLabel(string name)
     {
         assert (
-            this.exports.hasOwnProperty(name) === false,
-            'exported label already exists: "' + name + '"'
+            name !in this.exports,
+            "exported label already exists: \"" ~ name ~ "\""
         );
 
         // Store the link value and its position
-        this.exports[name] = this.writePos
+        this.exports[name] = this.writePos;
     }
-    */
 }
 

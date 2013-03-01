@@ -84,6 +84,50 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     // Assembler to write code into
     auto as = new Assembler();
 
+    // Label at the trace join point (exported)
+    auto TRACE_JOIN = new Label("trace_join", true);
+
+    // Label at the end of the block
+    auto BLOCK_END = new Label("block_end");
+
+    void ptr(TPtr)(X86RegPtr destReg, TPtr ptr)
+    {
+        as.instr(MOV, destReg, X86Opnd(cast(void*)ptr));
+    }
+
+    void getField(X86RegPtr dstReg, X86RegPtr baseReg, size_t fSize, size_t fOffset)
+    {
+        as.instr(MOV, dstReg, X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset));
+    }
+
+    void setField(X86RegPtr baseReg, size_t fSize, size_t fOffset, X86RegPtr srcReg)
+    {
+        as.instr(MOV, X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset), srcReg);
+    }
+
+    // TODO: loadWS, loadTS
+
+    void jump(IRBlock target)
+    {
+        auto JUMP_INTERP = new Label("jump_interp");
+
+        // Get a pointer to the branch target
+        ptr(RAX, target);
+
+        // If there is a trace join point, jump to it directly
+        getField(RCX, RAX, block.traceJoin.sizeof, block.traceJoin.offsetof);
+        as.instr(CMP, RCX, 0);
+        as.instr(JE, JUMP_INTERP);
+        as.instr(JMP, RCX);
+        
+        // Make the interpreter jump to the target
+        as.addInstr(JUMP_INTERP);
+        setField(R15, interp.target.sizeof, interp.target.offsetof, RAX);
+        ptr(RAX, target.firstInstr);
+        setField(R15, interp.ip.sizeof, interp.ip.offsetof, RAX);
+        as.instr(JMP, BLOCK_END);
+    }
+
     // Align SP to a multiple of 16 bytes
     as.instr(SUB, RSP, 8);
 
@@ -95,18 +139,19 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     as.instr(PUSH, R14);
     as.instr(PUSH, R15);
 
-    // Increment the block execution count
-    as.instr(MOV, RBX, X86Opnd(cast(void*)block));
-    as.instr(INC, X86Opnd(8*block.execCount.sizeof, RBX, block.execCount.offsetof));
-
     // Store a pointer to the interpreter in R15
-    as.instr(MOV, R15, X86Opnd(cast(void*)interp));
+    ptr(R15, interp);
 
-    // TODO: loadField, storeField macros?
+    // Load the stack pointers into RBX and RBP
+    getField(RBX, R15, interp.wsp.sizeof, interp.wsp.offsetof);
+    getField(RBP, R15, interp.tsp.sizeof, interp.tsp.offsetof);
 
-    // TODO: load the stack pointers into RBX and RBP
-    as.instr(MOV, RBX, X86Opnd(8*interp.wsp.sizeof, R15, interp.wsp.offsetof));
-    as.instr(MOV, RBP, X86Opnd(8*interp.tsp.sizeof, R15, interp.tsp.offsetof));
+    // Join point of the tracelet
+    as.addInstr(TRACE_JOIN);
+
+    // Increment the block execution count
+    ptr(RAX, block);
+    as.instr(INC, X86Opnd(8*block.execCount.sizeof, RAX, block.execCount.offsetof));
 
     // For each instruction of the block
     for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -114,9 +159,14 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
         auto opcode = instr.opcode;
 
         // Unsupported opcodes abort the compilation
-        if (opcode.isBranch && opcode != &JUMP && opcode != &ir.ir.RET && opcode != &ir.ir.CALL)
+        if (opcode.isBranch && 
+            opcode != &JUMP && 
+            opcode != &ir.ir.RET && 
+            opcode != &ir.ir.CALL &&
+            opcode != &CALL_NEW &&
+            opcode != &JUMP_TRUE &&
+            opcode != &JUMP_FALSE)
             return null;
-
 
         if (opcode == &SET_INT32)
         {
@@ -153,10 +203,66 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
             // Need to check if tsp[a0] == Type.INT32
             // Load it, do cmp, do conditional move into out slot?
 
+            // RAX = tsp[a0]
+            as.instr(MOV, AL, X86Opnd(8, RBP, instr.args[0].localIdx));
+
+            // CMP RAX, Type.INT32
+            as.instr(CMP, AL, Type.INT32);
+
+            as.instr(MOV, RAX, FALSE.int64Val);
+            as.instr(MOV, RCX, TRUE.int64Val);
+            as.instr(CMOVE, RAX, RCX);
+
+            as.instr(MOV, X86Opnd(64, RBX, instr.outSlot * 8), RAX);
+
+            // tsp[outSlot] = Type.CONST
+            as.instr(MOV, X86Opnd(8, RBP, instr.outSlot), Type.CONST);
+
+            continue;
+        }
+
+        if (opcode == &JUMP_TRUE || opcode == &JUMP_FALSE)
+        {
+            auto JUMP_FAIL = new Label("jump_fail");
+
+            // EAX = wsp[a0]
+            as.instr(MOV, AL, X86Opnd(8, RBX, instr.args[0].localIdx * 8));
+
+            as.instr(CMP, AL, cast(int8_t)TRUE.int32Val);
+            as.instr((opcode == &JUMP_TRUE)? JNE:JE, JUMP_FAIL);
+
+            jump(instr.targets[0]);
+
+            as.addInstr(JUMP_FAIL);
+
+            continue;
+        }
+
+        if (opcode == &JUMP)
+        {
+            jump(instr.targets[0]);
+
+            continue;
+        }
+
+
+        /*
+        if (opcode == &GET_GLOBAL)
+        {
+
+
+
+
 
 
 
         }
+        */
+
+
+
+
+
 
 
         // Get the function corresponding to this instruction
@@ -168,11 +274,10 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
         // Move the interpreter pointer into RDI
         as.instr(MOV, RDI, R15);
         
-        // Store a pointer to the instruction in RSI
-        as.instr(MOV, RSI, X86Opnd(cast(void*)instr));
+        // Load a pointer to the instruction in RSI
+        ptr(RSI, instr);
 
         // Set the interpreter's IP
-        // TODO: figure out when this isn't necessary!
         as.instr(MOV, X86Opnd(64, RDI, interp.ip.offsetof), RSI);
 
         // Call the op function
@@ -188,6 +293,9 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
             opcode == &THROW)
             break;
     }
+
+    // Block end, exit of tracelet
+    as.addInstr(BLOCK_END);
 
     // TODO: Store back wsp, tsp in the interpreter
 

@@ -243,6 +243,9 @@ class IRBlock : IdObject
     /// Trace entry function
     TraceFn traceEntry = null;
 
+    // Trace join point code pointer
+    ubyte* traceJoin = null;
+
     /// Parent function
     IRFunction fun = null;
 

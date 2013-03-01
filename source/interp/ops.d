@@ -1070,7 +1070,7 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         if (callInstr.outSlot !is NULL_LOCAL)
         {
             interp.setSlot(
-                callInstr.outSlot, 
+                callInstr.outSlot,
                 wRet,
                 tRet
             );

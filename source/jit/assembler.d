@@ -114,6 +114,11 @@ class Assembler
     */
     JITInstr addInstr(JITInstr instr)
     {
+        assert (
+            instr.prev is null && instr.next is null,
+            "instr is already part of a list"
+        );
+
         if (this.lastInstr is null)
         {
             this.firstInstr = instr;
@@ -416,47 +421,4 @@ class Assembler
         return label;
     }
 }
-
-/*
-(function ()
-{
-    // Create an assembler method for this instruction
-    function makeInstrMethod(mnem)
-    {
-        x86.Assembler.prototype[mnem] = function ()
-        {
-            var opnds = [];
-
-            for (var i = 0; i < arguments.length; ++i)
-            {
-                var opnd = arguments[i];
-
-                if (!(opnd instanceof x86.Operand))
-                {
-                    if (opnd instanceof x86.Label)
-                        opnd = new x86.LabelRef(opnd);
-                    else if (num_instance(opnd) === true)
-                        opnd = new x86.Immediate(opnd);
-                    else
-                        error('invalid operand: ' + opnd);
-                }
-
-                if (DEBUG === true && !(opnd instanceof x86.Operand))
-                    error('invalid operand argument: ' + opnd);
-
-                opnds.push(opnd);
-            }
-
-            var instr = new x86.instrs[mnem](opnds, this.x86_64);
-
-            this.addInstr(instr);
-        };
-    }
-
-    // Create an assembler method for each instruction
-    for (var instr in x86.instrs)
-        makeInstrMethod(instr);
-
-})();
-*/
 

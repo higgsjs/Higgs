@@ -763,6 +763,7 @@ class Interp
                 {
                     target.traceCode = codeBlock;
                     target.traceEntry = cast(TraceFn)codeBlock.getAddress();
+                    target.traceJoin = codeBlock.getExportAddr("trace_join");
                 }
             }
 
