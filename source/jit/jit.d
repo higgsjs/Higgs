@@ -200,6 +200,25 @@ struct CodeGenCtx
         as.instr(MOV, X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset), srcReg);
     }
 
+    void getMember(string className, string fName)(X86RegPtr dstReg, X86RegPtr baseReg)
+    {
+        // FIXME: hack temporarily required because of a DMD compiler bug
+        mixin(className ~ " ptr = null;");
+        mixin("auto fSize = ptr." ~ fName ~ ".sizeof;");
+        mixin("auto fOffset = ptr." ~ fName ~ ".offsetof;");
+
+        return getField(dstReg, baseReg, fSize, fOffset);
+    }
+
+    void setMember(string className, string fName)(X86RegPtr baseReg, X86RegPtr srcReg)
+    {
+        mixin(className ~ " ptr = null;");
+        mixin("auto fSize = ptr." ~ fName ~ ".sizeof;");
+        mixin("auto fOffset = ptr." ~ fName ~ ".offsetof;");
+
+        return setField(baseReg, fSize, fOffset, srcReg);
+    }
+
     /// Read from the word stack
     void getWord(X86RegPtr dstReg, LocalIdx idx)
     {
@@ -242,7 +261,7 @@ struct CodeGenCtx
         ptr(RAX, target);
 
         // If there is a trace join point, jump to it directly
-        getField(RCX, RAX, target.traceJoin.sizeof, target.traceJoin.offsetof);
+        getMember!("IRBlock", "traceJoin")(RCX, RAX);
         as.instr(CMP, RCX, 0);
         as.instr(JE, interpJump);
         as.instr(JMP, RCX);
@@ -303,7 +322,7 @@ void gen_and_i32(ref CodeGenCtx ctx, IRInstr instr)
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.jump(instr.targets[0]);
+    ctx.jump(instr.target);
 }
 
 void gen_jump_bool(ref CodeGenCtx ctx, IRInstr instr)
@@ -316,7 +335,7 @@ void gen_jump_bool(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.instr(CMP, AL, cast(int8_t)TRUE.int32Val);
     ctx.as.instr((instr.opcode == &JUMP_TRUE)? JNE:JE, jumpStay);
 
-    ctx.jump(instr.targets[0]);
+    ctx.jump(instr.target);
 
     ctx.as.addInstr(jumpStay);
 }
@@ -335,7 +354,7 @@ void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
     }
 
     // Get the global object pointer
-    ctx.getField(RAX, R15, interp.globalObj.sizeof, interp.globalObj.offsetof);
+    ctx.getMember!("Interp", "globalObj")(RAX, R15);
 
     ctx.getField(RDI, RAX, 8, obj_ofs_word(interp.globalObj, propIdx));
     ctx.getField(SIL, RAX, 1, obj_ofs_type(interp.globalObj, propIdx));
@@ -358,13 +377,114 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
     }
 
     // Get the global object pointer
-    ctx.getField(RAX, R15, interp.globalObj.sizeof, interp.globalObj.offsetof);
+    ctx.getMember!("Interp", "globalObj")(RAX, R15);
 
     ctx.getWord(RDI, instr.args[1].localIdx);
     ctx.getType(SIL, instr.args[1].localIdx);
 
     ctx.setField(RAX, 8, obj_ofs_word(interp.globalObj, propIdx), RDI);
     ctx.setField(RAX, 1, obj_ofs_type(interp.globalObj, propIdx), SIL);
+}
+
+void gen_op_ret(ref CodeGenCtx ctx, IRInstr instr)
+{
+    auto retSlot   = instr.args[0].localIdx;
+    auto raSlot    = instr.block.fun.raSlot;
+    auto argcSlot  = instr.block.fun.argcSlot;
+    auto numParams = instr.block.fun.params.length;
+    auto numLocals = instr.block.fun.numLocals;
+
+
+
+
+    // Label for returns from a new instruction
+    auto retFromNew = new Label("ret_new");
+
+    // Label for the end of the return logic
+    auto retDone = new Label("ret_done");
+
+
+
+    // RAX = calling instruction
+    ctx.getWord(RAX, raSlot);
+
+    // RCX = opcode of the calling instruction
+    ctx.getMember!("IRInstr", "opcode")(RCX, RAX);
+
+    // If opcode == &CALL_NEW, jump to newRet
+    ctx.ptr(RDX, &CALL_NEW);
+    ctx.as.instr(CMP, RCX, RDX);
+    ctx.as.instr(JNE, retFromNew);
+
+    // EDX = number of stack slots to pop
+    ctx.getWord(EDX, argcSlot);
+    ctx.as.instr(SUB, EDX, numParams);
+    ctx.as.instr(CMP, EDX, 0);
+    ctx.as.instr(MOV, EDI, 0);
+    ctx.as.instr(CMOVB, EDX, EDI);
+    ctx.as.instr(ADD, EDX, numLocals);
+
+    // RDI = wRet
+    // SIL = tRet
+    ctx.getWord(RDI, retSlot);
+    ctx.getType(SIL, retSlot);
+
+    // Pop all local stack slots and arguments
+    ctx.as.instr(ADD, RBP, RDX);
+    ctx.as.instr(MUL, RDX, 8);
+    ctx.as.instr(ADD, RBX, RDX);
+
+
+    // RCX = output slot of the calling instruction
+    ctx.getMember!("IRInstr", "outSlot")(RCX, RAX);
+
+    // If the call instruction has no output slot, we are done
+    ctx.as.instr(MOV, RDX, NULL_LOCAL);
+    ctx.as.instr(CMP, RCX, RDX);
+    ctx.as.instr(JE, retDone);
+
+    // Set the return value
+    ctx.as.instr(MOV, X86Opnd(64, RBX, 0, RCX, 8), RDI);
+    ctx.as.instr(MOV, X86Opnd( 8, RBP, 0, RCX, 1), SIL);
+
+    // Return done
+    ctx.as.addInstr(retDone);
+
+
+    // RCX = call continuation target
+    ctx.getMember!("IRInstr", "target")(RCX, RAX);
+
+
+
+    // Set the instruction pointer to the call continuation instruction
+    //interp.jump(callInstr.targets[0]);
+
+
+
+    // Return from new case
+    ctx.as.addInstr(retFromNew);
+
+    // TODO: return from new case
+    // Can assume outSlot is not null_local here!
+
+    /*
+    // If this is a new call and the return value is undefined
+    if (callInstr.opcode == &CALL_NEW && wRet == UNDEF)
+    {
+        // Use the this value as the return value
+        wRet = interp.getWord(instr.block.fun.thisSlot);
+        tRet = interp.getType(instr.block.fun.thisSlot);
+    }
+    else
+    {
+        // Get the return value
+        auto wRet = interp.wsp[retSlot];
+        auto tRet = interp.tsp[retSlot];
+    }
+    */
+
+
+
 }
 
 void defaultFn(ref CodeGenCtx ctx, IRInstr instr)
@@ -382,7 +502,7 @@ void defaultFn(ref CodeGenCtx ctx, IRInstr instr)
     ctx.ptr(RSI, instr);
 
     // Set the interpreter's IP
-    ctx.as.instr(MOV, X86Opnd(64, RDI, ctx.interp.ip.offsetof), RSI);
+    ctx.setMember!("Interp", "ip")(RDI, RSI);
 
     // Call the op function
     ctx.as.instr(MOV, RAX, X86Opnd(cast(void*)opFn));
@@ -409,4 +529,8 @@ static this()
     codeGenFns[&GET_GLOBAL] = &gen_get_global;
     codeGenFns[&SET_GLOBAL] = &gen_set_global;
 }
+
+
+
+
 

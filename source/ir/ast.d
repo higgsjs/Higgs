@@ -657,12 +657,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         if (isBranchIIR(ifStmt.testExpr) && lastInstr && lastInstr.opcode.isBranch)
         {
             assert (
-                lastInstr.targets[0] is null,
+                lastInstr.target is null,
                 "iir target already set"
             );
 
             // If the instruction branches, go to the false block
-            lastInstr.targets[0] = falseBlock;
+            lastInstr.target = falseBlock;
         }
 
         else
@@ -2440,11 +2440,11 @@ void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
     auto contBlock = ctx.fun.newBlock("call_cont");
 
     // Set the continuation target
-    callInstr.targets[0] = contBlock;
+    callInstr.contTarget = contBlock;
 
     // Generate the exception path for the call instruction
     if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
-        callInstr.targets[1] = excBlock;
+        callInstr.target = excBlock;
 
     // Continue code generation in the continuation block
     ctx.merge(contBlock);

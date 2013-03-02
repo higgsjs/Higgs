@@ -348,8 +348,11 @@ class IRInstr : IdObject
     /// Output local slot
     LocalIdx outSlot = NULL_LOCAL;
 
-    /// Branch target blocks (may be null)
-    IRBlock targets[2] = [null, null];
+    /// Branch target
+    IRBlock target = null;
+
+    /// Continuation target (call instructions only)
+    IRBlock contTarget = null;
 
     /// Parent block
     IRBlock block = null;
@@ -435,7 +438,7 @@ class IRInstr : IdObject
 
         this.opcode = opcode;
         this.args = [Arg(arg0)];
-        this.targets[0] = block;
+        this.target = block;
     }
 
     /// Integer constant
@@ -475,7 +478,7 @@ class IRInstr : IdObject
     static jump(IRBlock block)
     {
         auto jump = new this(&JUMP);
-        jump.targets[0] = block;
+        jump.target = block;
         return jump;
 
     }
@@ -533,11 +536,11 @@ class IRInstr : IdObject
             }
         }
 
-        if (targets[0] !is null)
+        if (target !is null)
         {
-            output ~= " => " ~ targets[0].getName();
-            if (targets[1] !is null)
-                output ~= ", " ~ targets[1].getName();
+            output ~= " => " ~ target.getName();
+            if (contTarget !is null)
+                output ~= ", " ~ contTarget.getName();
         }
 
         return output;

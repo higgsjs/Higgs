@@ -74,7 +74,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
         trace ~= curInstr;
 
         // If this is a call instruction and it has an exception target
-        if (curInstr.opcode is &CALL && curInstr.targets[1] !is null)
+        if (curInstr.opcode is &CALL && curInstr.target !is null)
         {
             //writefln("found exception target");
 
@@ -85,7 +85,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
             );
 
             // Go to the exception target
-            interp.jump(curInstr.targets[1]);
+            interp.jump(curInstr.target);
 
             // Stop unwinding the stack
             return;
@@ -561,7 +561,7 @@ extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr
     }
     else
     {
-        interp.jump(instr.targets[0]);
+        interp.jump(instr.target);
     }
 }
 
@@ -765,7 +765,7 @@ alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
 
 extern (C) void op_jump(Interp interp, IRInstr instr)
 {
-    interp.jump(instr.targets[0]);
+    interp.jump(instr.target);
 }
 
 extern (C) void op_jump_true(Interp interp, IRInstr instr)
@@ -774,7 +774,7 @@ extern (C) void op_jump_true(Interp interp, IRInstr instr)
     auto wVal = interp.getWord(valIdx);
 
     if (wVal == TRUE)
-        interp.jump(instr.targets[0]);
+        interp.jump(instr.target);
 }
 
 extern (C) void op_jump_false(Interp interp, IRInstr instr)
@@ -783,7 +783,7 @@ extern (C) void op_jump_false(Interp interp, IRInstr instr)
     auto wVal = interp.getWord(valIdx);
 
     if (wVal == FALSE)
-        interp.jump(instr.targets[0]);
+        interp.jump(instr.target);
 }
 
 void callFun(
@@ -1064,7 +1064,7 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         interp.pop(numLocals + extraArgs);
 
         // Set the instruction pointer to the call continuation instruction
-        interp.jump(callInstr.targets[0]);
+        interp.jump(callInstr.contTarget);
 
         // Leave the return value in the call's return slot, if any
         if (callInstr.outSlot !is NULL_LOCAL)
