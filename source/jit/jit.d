@@ -200,11 +200,35 @@ struct CodeGenCtx
         as.instr(MOV, X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset), srcReg);
     }
 
-    // TODO: getWord, getType
+    /// Read from the word stack
+    void getWord(X86RegPtr dstReg, LocalIdx idx)
+    {
+        as.instr(MOV, dstReg, X86Opnd(dstReg.size, RBX, 8 * idx));
+    }
 
+    /// Read from the type stack
+    void getType(X86RegPtr dstReg, LocalIdx idx)
+    {
+        as.instr(MOV, dstReg, X86Opnd(8, RBP, idx));
+    }
 
+    /// Write to the word stack
+    void setWord(LocalIdx idx, X86RegPtr srcReg)
+    {
+        as.instr(MOV, X86Opnd(64, RBX, 8 * idx), srcReg);
+    }
 
+    /// Write to the type stack
+    void setType(LocalIdx idx, X86RegPtr srcReg)
+    {
+        as.instr(MOV, X86Opnd(8, RBP, idx), srcReg);
+    }
 
+    /// Write a constant to the type stack
+    void setType(LocalIdx idx, Type type)
+    {
+        as.instr(MOV, X86Opnd(8, RBP, idx), type);
+    }
 
     void jump(IRBlock target)
     {
@@ -246,8 +270,8 @@ void gen_is_int32(ref CodeGenCtx ctx, IRInstr instr)
     // Need to check if tsp[a0] == Type.INT32
     // Load it, do cmp, do conditional move into out slot?
 
-    // RAX = tsp[a0]
-    ctx.as.instr(MOV, AL, X86Opnd(8, RBP, instr.args[0].localIdx));
+    // AL = tsp[a0]
+    ctx.getType(AL, instr.args[0].localIdx);
 
     // CMP RAX, Type.INT32
     ctx.as.instr(CMP, AL, Type.INT32);
@@ -256,10 +280,8 @@ void gen_is_int32(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.instr(MOV, RCX, TRUE.int64Val);
     ctx.as.instr(CMOVE, RAX, RCX);
 
-    ctx.as.instr(MOV, X86Opnd(64, RBX, instr.outSlot * 8), RAX);
-
-    // tsp[outSlot] = Type.CONST
-    ctx.as.instr(MOV, X86Opnd(8, RBP, instr.outSlot), Type.CONST);
+    ctx.setWord(instr.outSlot, RAX);
+    ctx.setType(instr.outSlot, Type.CONST);
 }
 
 void gen_and_i32(ref CodeGenCtx ctx, IRInstr instr)
@@ -288,8 +310,8 @@ void gen_jump_bool(ref CodeGenCtx ctx, IRInstr instr)
 {
     auto jumpStay = new Label("jump_stay");
 
-    // EAX = wsp[a0]
-    ctx.as.instr(MOV, AL, X86Opnd(8, RBX, instr.args[0].localIdx * 8));
+    // AL = wsp[a0]
+    ctx.getWord(AL, instr.args[0].localIdx);
 
     ctx.as.instr(CMP, AL, cast(int8_t)TRUE.int32Val);
     ctx.as.instr((instr.opcode == &JUMP_TRUE)? JNE:JE, jumpStay);
@@ -317,12 +339,9 @@ void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
 
     ctx.getField(RDI, RAX, 8, obj_ofs_word(interp.globalObj, propIdx));
     ctx.getField(SIL, RAX, 1, obj_ofs_type(interp.globalObj, propIdx));
-        
-    // wsp[outSlot] = RDI
-    ctx.as.instr(MOV, X86Opnd(64, RBX, instr.outSlot * 8), RDI);
 
-    // tsp[outSlot] = SIL
-    ctx.as.instr(MOV, X86Opnd(8, RBP, instr.outSlot), SIL);
+    ctx.setWord(instr.outSlot, RDI);
+    ctx.setType(instr.outSlot, SIL);
 }
 
 void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
@@ -341,11 +360,8 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
     // Get the global object pointer
     ctx.getField(RAX, R15, interp.globalObj.sizeof, interp.globalObj.offsetof);
 
-    // RDI = wsp[outSlot]
-    ctx.as.instr(MOV, RDI, X86Opnd(64, RBX, instr.args[1].localIdx * 8));
-
-    // SIL = tsp[outSlot]
-    ctx.as.instr(MOV, SIL, X86Opnd(8, RBP, instr.args[1].localIdx));
+    ctx.getWord(RDI, instr.args[1].localIdx);
+    ctx.getType(SIL, instr.args[1].localIdx);
 
     ctx.setField(RAX, 8, obj_ofs_word(interp.globalObj, propIdx), RDI);
     ctx.setField(RAX, 1, obj_ofs_type(interp.globalObj, propIdx), SIL);
