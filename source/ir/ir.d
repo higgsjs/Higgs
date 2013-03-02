@@ -48,7 +48,6 @@ import parser.ast;
 import interp.interp;
 import interp.layout;
 import interp.ops;
-import jit.jit;
 import jit.codeblock;
 
 /// Local variable index type
@@ -225,6 +224,9 @@ class IRFunction : IdObject
         block.next = null;
     }
 }
+
+/// Trace function pointer
+alias void function() TraceFn;
 
 /**
 IR basic block
