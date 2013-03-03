@@ -1113,6 +1113,30 @@ unittest
     interp.assertInt("test();", 0);
 }
 
+/// Regression tests
+unittest
+{
+    writefln("regression");
+
+    auto interp = new Interp();
+
+    interp.load("programs/regress/regress_delta.js");
+    interp.load("programs/regress/regress_in.js");
+    interp.load("programs/regress/regress_tostring.js");
+    interp.assertBool("4294967295.0 === 0xFFFFFFFF", true);
+}
+
+/// JIT specific tests
+unittest
+{
+    writefln("jit");
+
+    auto interp = new Interp();
+
+    interp.load("programs/jit/loop_lessargs.js");
+    interp.load("programs/jit/loop_new.js");
+}
+
 /// Tachyon tests
 unittest
 {
@@ -1199,19 +1223,6 @@ unittest
     interp.load("programs/stdlib_json/stdlib_json.js");
     interp.assertInt("test();", 0);
     // TODO: regexp support, regexp test
-}
-
-/// Regression tests
-unittest
-{
-    writefln("regression");
-
-    auto interp = new Interp();
-
-    interp.load("programs/regress/regress_delta.js");
-    interp.load("programs/regress/regress_in.js");
-    interp.load("programs/regress/regress_tostring.js");
-    interp.assertBool("4294967295.0 === 0xFFFFFFFF", true);
 }
 
 /// Garbage collector tests

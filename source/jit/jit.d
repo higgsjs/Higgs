@@ -96,8 +96,8 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     ctx.ptr(R15, interp);
 
     // Load the stack pointers into RBX and RBP
-    ctx.getField(RBX, R15, interp.wsp.sizeof, interp.wsp.offsetof);
-    ctx.getField(RBP, R15, interp.tsp.sizeof, interp.tsp.offsetof);
+    ctx.getMember!("Interp", "wsp")(RBX, R15);
+    ctx.getMember!("Interp", "tsp")(RBP, R15);
 
     // Join point of the tracelet
     as.addInstr(traceJoin);
@@ -147,8 +147,10 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     // Block end, exit of tracelet
     as.addInstr(traceExit);
 
-    // TODO: Store back wsp, tsp in the interpreter
-    // TODO: store only if they changed
+    // FIXME: can't do this until we support call!
+    // Store the stack pointers back in the interpreter
+    //ctx.setMember!("Interp", "wsp")(R15, RBX);
+    //ctx.setMember!("Interp", "tsp")(R15, RBP);
 
     // Restore the GP registers
     as.instr(POP, R15);
@@ -268,10 +270,59 @@ struct CodeGenCtx
         
         // Make the interpreter jump to the target
         as.addInstr(interpJump);
-        setField(R15, interp.target.sizeof, interp.target.offsetof, RAX);
+        setMember!("Interp", "target")(R15, RAX);
         ptr(RAX, target.firstInstr);
-        setField(R15, interp.ip.sizeof, interp.ip.offsetof, RAX);
+        setMember!("Interp", "ip")(R15, RAX);
         as.instr(JMP, traceExit);
+    }
+
+    void jump(X86RegPtr targetAddr)
+    {
+        assert (targetAddr != RCX);
+
+        auto interpJump = new Label("interp_jump");
+
+        // If there is a trace join point, jump to it directly
+        getMember!("IRBlock", "traceJoin")(RCX, targetAddr);
+        as.instr(CMP, RCX, 0);
+        as.instr(JE, interpJump);
+        as.instr(JMP, RCX);
+        
+        // Make the interpreter jump to the target
+        as.addInstr(interpJump);
+        setMember!("Interp", "target")(R15, targetAddr);
+        getMember!("IRBlock", "firstInstr")(RCX, targetAddr);
+        setMember!("Interp", "ip")(R15, RCX);
+        as.instr(JMP, traceExit);
+    }
+
+    void printUint(X86RegPtr reg)
+    {
+        as.instr(PUSH, RAX);
+        as.instr(PUSH, RCX);
+        as.instr(PUSH, RDX);
+        as.instr(PUSH, RSI);
+        as.instr(PUSH, RDI);
+        as.instr(PUSH, R8);
+        as.instr(PUSH, R9);
+        as.instr(PUSH, R10);
+        as.instr(PUSH, R11);
+        as.instr(PUSH, R11);
+
+        as.instr(MOV, RDI, reg);
+        ptr(RAX, &jit.jit.printUint);
+        as.instr(jit.encodings.CALL, RAX);
+
+        as.instr(POP, R11);
+        as.instr(POP, R11);
+        as.instr(POP, R10);
+        as.instr(POP, R9);
+        as.instr(POP, R8);
+        as.instr(POP, RDI);
+        as.instr(POP, RSI);
+        as.instr(POP, RDX);
+        as.instr(POP, RCX);
+        as.instr(POP, RAX);
     }
 }
 
@@ -386,16 +437,16 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
     ctx.setField(RAX, 1, obj_ofs_type(interp.globalObj, propIdx), SIL);
 }
 
-void gen_op_ret(ref CodeGenCtx ctx, IRInstr instr)
+void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
 {
+    //writefln("compiling ret from %s", instr.block.fun.getName());
+
     auto retSlot   = instr.args[0].localIdx;
     auto raSlot    = instr.block.fun.raSlot;
     auto argcSlot  = instr.block.fun.argcSlot;
+    auto thisSlot  = instr.block.fun.thisSlot;
     auto numParams = instr.block.fun.params.length;
     auto numLocals = instr.block.fun.numLocals;
-
-
-
 
     // Label for returns from a new instruction
     auto retFromNew = new Label("ret_new");
@@ -403,7 +454,14 @@ void gen_op_ret(ref CodeGenCtx ctx, IRInstr instr)
     // Label for the end of the return logic
     auto retDone = new Label("ret_done");
 
+    // Label for the stack locals popping
+    auto popLocals = new Label("ret_pop");
 
+    // Get the return value
+    // RDI = wRet
+    // SIL = tRet
+    ctx.getWord(RDI, retSlot);
+    ctx.getType(SIL, retSlot);
 
     // RAX = calling instruction
     ctx.getWord(RAX, raSlot);
@@ -414,77 +472,63 @@ void gen_op_ret(ref CodeGenCtx ctx, IRInstr instr)
     // If opcode == &CALL_NEW, jump to newRet
     ctx.ptr(RDX, &CALL_NEW);
     ctx.as.instr(CMP, RCX, RDX);
-    ctx.as.instr(JNE, retFromNew);
+    ctx.as.instr(JE, retFromNew);
+
+    // Pop the stack locals
+    ctx.as.addInstr(popLocals);
 
     // EDX = number of stack slots to pop
     ctx.getWord(EDX, argcSlot);
     ctx.as.instr(SUB, EDX, numParams);
+    ctx.as.instr(MOV, ECX, 0);
     ctx.as.instr(CMP, EDX, 0);
-    ctx.as.instr(MOV, EDI, 0);
-    ctx.as.instr(CMOVB, EDX, EDI);
+    ctx.as.instr(CMOVL, EDX, ECX);
     ctx.as.instr(ADD, EDX, numLocals);
-
-    // RDI = wRet
-    // SIL = tRet
-    ctx.getWord(RDI, retSlot);
-    ctx.getType(SIL, retSlot);
 
     // Pop all local stack slots and arguments
     ctx.as.instr(ADD, RBP, RDX);
-    ctx.as.instr(MUL, RDX, 8);
+    ctx.as.instr(SHL, RDX, 3);
     ctx.as.instr(ADD, RBX, RDX);
 
+    // FIXME: no longer needed once we support CALL
+    // Store the stack pointers back in the interpreter
+    ctx.setMember!("Interp", "wsp")(R15, RBX);
+    ctx.setMember!("Interp", "tsp")(R15, RBP);
 
-    // RCX = output slot of the calling instruction
-    ctx.getMember!("IRInstr", "outSlot")(RCX, RAX);
+    // ECX = output slot of the calling instruction
+    ctx.getMember!("IRInstr", "outSlot")(ECX, RAX);
 
     // If the call instruction has no output slot, we are done
-    ctx.as.instr(MOV, RDX, NULL_LOCAL);
-    ctx.as.instr(CMP, RCX, RDX);
+    ctx.as.instr(MOV, EDX, NULL_LOCAL);
+    ctx.as.instr(CMP, ECX, EDX);
     ctx.as.instr(JE, retDone);
 
     // Set the return value
-    ctx.as.instr(MOV, X86Opnd(64, RBX, 0, RCX, 8), RDI);
     ctx.as.instr(MOV, X86Opnd( 8, RBP, 0, RCX, 1), SIL);
+    ctx.as.instr(MOV, X86Opnd(64, RBX, 0, RCX, 8), RDI);
 
     // Return done
     ctx.as.addInstr(retDone);
 
-
     // RCX = call continuation target
-    ctx.getMember!("IRInstr", "target")(RCX, RAX);
+    ctx.getMember!("IRInstr", "contTarget")(RDX, RAX);
 
-
-
-    // Set the instruction pointer to the call continuation instruction
-    //interp.jump(callInstr.targets[0]);
-
-
+    // Jump to the call continuation
+    ctx.jump(RDX);
 
     // Return from new case
     ctx.as.addInstr(retFromNew);
 
-    // TODO: return from new case
-    // Can assume outSlot is not null_local here!
+    // If the return value is not undefined, return that value
+    ctx.as.instr(CMP, SIL, Type.CONST);
+    ctx.as.instr(JNE, popLocals);
+    ctx.as.instr(CMP, DIL, cast(int8_t)UNDEF.int32Val);
+    ctx.as.instr(JNE, popLocals);
 
-    /*
-    // If this is a new call and the return value is undefined
-    if (callInstr.opcode == &CALL_NEW && wRet == UNDEF)
-    {
-        // Use the this value as the return value
-        wRet = interp.getWord(instr.block.fun.thisSlot);
-        tRet = interp.getType(instr.block.fun.thisSlot);
-    }
-    else
-    {
-        // Get the return value
-        auto wRet = interp.wsp[retSlot];
-        auto tRet = interp.tsp[retSlot];
-    }
-    */
-
-
-
+    // Use the this value as the return value
+    ctx.getWord(RDI, thisSlot);
+    ctx.getType(SIL, thisSlot);
+    ctx.as.instr(JMP, popLocals);
 }
 
 void defaultFn(ref CodeGenCtx ctx, IRInstr instr)
@@ -526,11 +570,9 @@ static this()
     codeGenFns[&JUMP_TRUE]  = &gen_jump_bool;
     codeGenFns[&JUMP_FALSE] = &gen_jump_bool;
 
+    codeGenFns[&ir.ir.RET]  = &gen_ret;
+
     codeGenFns[&GET_GLOBAL] = &gen_get_global;
     codeGenFns[&SET_GLOBAL] = &gen_set_global;
 }
-
-
-
-
 
