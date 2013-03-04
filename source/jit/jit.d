@@ -45,6 +45,8 @@ import options;
 import ir.ir;
 import interp.interp;
 import interp.layout;
+import interp.object;
+import interp.string;
 import jit.codeblock;
 import jit.assembler;
 import jit.x86;
@@ -147,10 +149,9 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     // Block end, exit of tracelet
     as.addInstr(traceExit);
 
-    // FIXME: can't do this until we support call!
     // Store the stack pointers back in the interpreter
-    //ctx.setMember!("Interp", "wsp")(R15, RBX);
-    //ctx.setMember!("Interp", "tsp")(R15, RBP);
+    ctx.setMember!("Interp", "wsp")(R15, RBX);
+    ctx.setMember!("Interp", "tsp")(R15, RBP);
 
     // Restore the GP registers
     as.instr(POP, R15);
@@ -237,6 +238,12 @@ struct CodeGenCtx
     void setWord(LocalIdx idx, X86RegPtr srcReg)
     {
         as.instr(MOV, X86Opnd(64, RBX, 8 * idx), srcReg);
+    }
+
+    // Write a constant to the word type
+    void setWord(LocalIdx idx, int32_t imm)
+    {
+        as.instr(MOV, X86Opnd(64, RBX, 8 * idx), imm);
     }
 
     /// Write to the type stack
@@ -354,21 +361,46 @@ void gen_is_int32(ref CodeGenCtx ctx, IRInstr instr)
     ctx.setType(instr.outSlot, Type.CONST);
 }
 
+void gen_add_i32(ref CodeGenCtx ctx, IRInstr instr)
+{
+    // EAX = wsp[a0]
+    // ECX = wsp[a1]
+    ctx.getWord(EAX, instr.args[0].localIdx);
+    ctx.getWord(ECX, instr.args[1].localIdx);
+
+    // EAX = add EAX, ECX
+    ctx.as.instr(ADD, EAX, ECX);
+
+    ctx.setWord(instr.outSlot, RAX);
+    ctx.setType(instr.outSlot, Type.INT32);
+}
+
+void gen_mul_i32(ref CodeGenCtx ctx, IRInstr instr)
+{
+    // EAX = wsp[o0]
+    // ECX = wsp[o1]
+    ctx.getWord(EAX, instr.args[0].localIdx);
+    ctx.getWord(ECX, instr.args[1].localIdx);
+
+    // EAX = and EAX, ECX
+    ctx.as.instr(IMUL, EAX, ECX);
+
+    ctx.setWord(instr.outSlot, RAX);
+    ctx.setType(instr.outSlot, Type.INT32);
+}
+
 void gen_and_i32(ref CodeGenCtx ctx, IRInstr instr)
 {
     // EAX = wsp[o0]
     // ECX = wsp[o1]
-    ctx.as.instr(MOV, EAX, X86Opnd(32, RBX, instr.args[0].localIdx * 8));
-    ctx.as.instr(MOV, ECX, X86Opnd(32, RBX, instr.args[1].localIdx * 8));
+    ctx.getWord(EAX, instr.args[0].localIdx);
+    ctx.getWord(ECX, instr.args[1].localIdx);
 
     // EAX = and EAX, ECX
     ctx.as.instr(AND, EAX, ECX);
 
-    // wsp[outSlot] = EAX
-    ctx.as.instr(MOV, X86Opnd(32, RBX, instr.outSlot * 8), EAX);
-
-    // tsp[outSlot] = Type.INT32
-    ctx.as.instr(MOV, X86Opnd(8, RBP, instr.outSlot), Type.INT32);
+    ctx.setWord(instr.outSlot, RAX);
+    ctx.setType(instr.outSlot, Type.INT32);
 }
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
@@ -437,6 +469,126 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
     ctx.setField(RAX, 1, obj_ofs_type(interp.globalObj, propIdx), SIL);
 }
 
+void gen_call(ref CodeGenCtx ctx, IRInstr instr)
+{
+    // Label for the bailout to interpreter cases
+    auto bailout = new Label("call_bailout");
+
+    auto closIdx = instr.args[0].localIdx;
+    auto thisIdx = instr.args[1].localIdx;
+
+    // TODO: if we can guess the closure...
+    // If not, fully bailout to interpreter ***
+
+    refptr closPtr = null;
+    
+    for (auto curInstr = instr.prev; curInstr !is null; curInstr = curInstr.prev)
+    {
+        // If we are calling a global function
+        if (curInstr.outSlot == closIdx && curInstr.opcode == &GET_GLOBAL)
+        {
+            auto propName = curInstr.args[0].stringVal;
+
+            // Lookup the global function
+            ValuePair val = getProp(
+                ctx.interp,
+                ctx.interp.globalObj,
+                getString(ctx.interp, propName)
+            );
+
+            if (val.type == Type.REFPTR && valIsLayout(val.word, LAYOUT_CLOS))
+                closPtr = val.word.ptrVal;
+
+            break;
+        }
+    }
+
+    // If the global closure was found
+    if (closPtr !is null)
+    {
+        //writefln("function found");
+
+        // Get the closure word
+        ctx.getWord(RCX, closIdx);
+
+        // If this is not the closure we expect, bailout to the interpreter
+        ctx.ptr(RAX, closPtr);
+        ctx.as.instr(CMP, RAX, RCX);
+        ctx.as.instr(JNE, bailout);
+
+        auto numArgs = instr.args.length - 2;
+
+        auto fun = cast(IRFunction)clos_get_fptr(closPtr);
+
+        // If the function is compiled
+        if (fun.entryBlock !is null && numArgs == fun.numParams)
+        {
+            //writefln("match");
+
+            auto numPush = fun.numLocals;
+            auto numVars = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
+
+            //writefln("numPush: %s, numVars: %s", numPush, numVars);
+
+            // Push space for the callee arguments and locals
+            ctx.as.instr(SUB, RBX, 8 * numPush);
+            ctx.as.instr(SUB, RBP, numPush);
+
+            // Copy the function arguments in reverse order
+            for (size_t i = 0; i < numArgs; ++i)
+            {
+                auto argSlot = instr.args[$-(1+i)].localIdx /*+ (argDiff + i)*/;
+
+                ctx.getWord(RDI, argSlot + numPush); 
+                ctx.getType(SIL, argSlot + numPush);
+
+                auto dstIdx = (numArgs - i - 1) + numVars + NUM_HIDDEN_ARGS;
+
+                ctx.setWord(cast(LocalIdx)dstIdx, RDI);
+                ctx.setType(cast(LocalIdx)dstIdx, SIL);
+            }
+
+            // Write the argument count
+            ctx.setWord(cast(LocalIdx)(numVars + 3), cast(int32_t)numArgs);
+            ctx.setType(cast(LocalIdx)(numVars + 3), Type.INT32);
+
+            // Copy the "this" argument
+            ctx.getWord(RDI, closIdx + numPush);
+            ctx.getType(SIL, closIdx + numPush);
+            ctx.setWord(cast(LocalIdx)(numVars + 2), RDI);
+            ctx.setType(cast(LocalIdx)(numVars + 2), SIL);
+
+            // Write the closure argument
+            ctx.setWord(cast(LocalIdx)(numVars + 1), RCX);
+            ctx.setType(cast(LocalIdx)(numVars + 1), Type.REFPTR);
+
+            // Write the return address (caller instruction)
+            ctx.ptr(RAX, instr);
+            ctx.setWord(cast(LocalIdx)(numVars + 0), RAX);
+            ctx.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
+
+            // Initialize the variables to undefined
+            for (LocalIdx i = 0; i < numVars; ++i)
+            {
+                ctx.as.instr(MOV, RAX, UNDEF.int64Val);
+                ctx.setWord(i, RAX);
+                ctx.setType(i, Type.CONST);
+            }
+
+            // Jump to the function entry
+            ctx.ptr(RAX, fun.entryBlock);
+            ctx.jump(RAX);
+        }
+    }
+
+    // Bailout to the interpreter
+    ctx.as.addInstr(bailout);
+
+    // Call the interpreter call instruction
+    // Fallback to interpreter execution
+    defaultFn(ctx, instr);
+}
+
 void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
 {
     //writefln("compiling ret from %s", instr.block.fun.getName());
@@ -490,11 +642,6 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.instr(SHL, RDX, 3);
     ctx.as.instr(ADD, RBX, RDX);
 
-    // FIXME: no longer needed once we support CALL
-    // Store the stack pointers back in the interpreter
-    ctx.setMember!("Interp", "wsp")(R15, RBX);
-    ctx.setMember!("Interp", "tsp")(R15, RBP);
-
     // ECX = output slot of the calling instruction
     ctx.getMember!("IRInstr", "outSlot")(ECX, RAX);
 
@@ -545,12 +692,23 @@ void defaultFn(ref CodeGenCtx ctx, IRInstr instr)
     // Load a pointer to the instruction in RSI
     ctx.ptr(RSI, instr);
 
+    // TODO: figure out where we can optimize this
+    // If necessary, test for specific instructions
+
     // Set the interpreter's IP
     ctx.setMember!("Interp", "ip")(RDI, RSI);
+
+    // Store the stack pointers back in the interpreter
+    ctx.setMember!("Interp", "wsp")(R15, RBX);
+    ctx.setMember!("Interp", "tsp")(R15, RBP);
 
     // Call the op function
     ctx.as.instr(MOV, RAX, X86Opnd(cast(void*)opFn));
     ctx.as.instr(jit.encodings.CALL, RAX);
+
+    // Load the stack pointers into RBX and RBP
+    ctx.getMember!("Interp", "wsp")(RBX, R15);
+    ctx.getMember!("Interp", "tsp")(RBP, R15);
 }
 
 alias void function(ref CodeGenCtx ctx, IRInstr instr) CodeGenFn;
@@ -563,6 +721,8 @@ static this()
 
     codeGenFns[&IS_INT32]   = &gen_is_int32;
 
+    codeGenFns[&ADD_I32]    = &gen_add_i32;
+    codeGenFns[&MUL_I32]    = &gen_mul_i32;
     codeGenFns[&AND_I32]    = &gen_and_i32;
 
     codeGenFns[&JUMP]       = &gen_jump;
@@ -570,6 +730,7 @@ static this()
     codeGenFns[&JUMP_TRUE]  = &gen_jump_bool;
     codeGenFns[&JUMP_FALSE] = &gen_jump_bool;
 
+    codeGenFns[&ir.ir.CALL] = &gen_call;
     codeGenFns[&ir.ir.RET]  = &gen_ret;
 
     codeGenFns[&GET_GLOBAL] = &gen_get_global;

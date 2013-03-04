@@ -42,6 +42,7 @@ import std.array;
 import std.string;
 import std.conv;
 import std.regex;
+import std.stdint;
 import util.id;
 import util.string;
 import parser.ast;
@@ -96,8 +97,11 @@ class IRFunction : IdObject
     /// Map of variable declarations to local slots
     LocalIdx[IdentExpr] localMap;
 
+    // Number of visible parameters
+    uint32_t numParams = 0;
+
     /// Number of local variables, including temporaries
-    uint numLocals = 0;
+    uint32_t numLocals = 0;
 
     /// Hidden argument slots
     LocalIdx raSlot;
@@ -108,11 +112,11 @@ class IRFunction : IdObject
     /// Constructor
     this(FunExpr ast)
     {
+        this.name = ast.getName();
         this.ast = ast;
         this.params = ast.params;
         this.captVars = ast.captVars;
-
-        this.name = ast.getName();
+        this.numParams = cast(uint32_t)this.params.length;
 
         // If the function is anonymous
         if (this.name == "")

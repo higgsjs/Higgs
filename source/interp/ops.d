@@ -870,7 +870,7 @@ extern (C) void op_call(Interp interp, IRInstr instr)
         return throwError(interp, instr, "TypeError", "call to non-function");
 
     // Get the function object from the closure
-    auto closPtr = interp.getWord(closIdx).ptrVal;
+    auto closPtr = wClos.ptrVal;
     auto fun = cast(IRFunction)clos_get_fptr(closPtr);
 
     /*
