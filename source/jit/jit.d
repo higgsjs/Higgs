@@ -121,7 +121,8 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
             opcode != &ir.ir.CALL &&
             opcode != &CALL_NEW &&
             opcode != &JUMP_TRUE &&
-            opcode != &JUMP_FALSE)
+            opcode != &JUMP_FALSE &&
+            opcode != &ADD_I32_OVF)
             return null;
 
         // If there is a codegen function for this opcode
@@ -333,20 +334,46 @@ struct CodeGenCtx
     }
 }
 
+void gen_set_true(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.setWord(instr.outSlot, cast(int8_t)TRUE.int64Val);
+    ctx.setType(instr.outSlot, Type.CONST);
+}
+
+void gen_set_false(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.setWord(instr.outSlot, cast(int8_t)FALSE.int64Val);
+    ctx.setType(instr.outSlot, Type.CONST);
+}
+
+void gen_set_undef(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.setWord(instr.outSlot, cast(int8_t)UNDEF.int64Val);
+    ctx.setType(instr.outSlot, Type.CONST);
+}
+
+void gen_set_null(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.setWord(instr.outSlot, cast(int8_t)NULL.int64Val);
+    ctx.setType(instr.outSlot, Type.REFPTR);
+}
+
 void gen_set_int32(ref CodeGenCtx ctx, IRInstr instr)
 {
-    // wsp[outSlot] = int32Val
-    ctx.as.instr(MOV, X86Opnd(32, RBX, instr.outSlot * 8), instr.args[0].int32Val);
+    ctx.setWord(instr.outSlot, instr.args[0].int32Val);
+    ctx.setType(instr.outSlot, Type.INT32);
+}
 
-    // tsp[outSlot] = Type.INT32
-    ctx.as.instr(MOV, X86Opnd(8, RBP, instr.outSlot), Type.INT32);
+void gen_move(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.getWord(RDI, instr.args[0].localIdx);
+    ctx.getType(SIL, instr.args[0].localIdx);
+    ctx.setWord(instr.outSlot, RDI);
+    ctx.setType(instr.outSlot, SIL);
 }
 
 void gen_is_int32(ref CodeGenCtx ctx, IRInstr instr)
 {
-    // Need to check if tsp[a0] == Type.INT32
-    // Load it, do cmp, do conditional move into out slot?
-
     // AL = tsp[a0]
     ctx.getType(AL, instr.args[0].localIdx);
 
@@ -400,6 +427,39 @@ void gen_and_i32(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.instr(AND, EAX, ECX);
 
     ctx.setWord(instr.outSlot, RAX);
+    ctx.setType(instr.outSlot, Type.INT32);
+}
+
+void gen_lt_i32(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.getWord(ECX, instr.args[0].localIdx);
+    ctx.getWord(EDX, instr.args[1].localIdx);
+
+    ctx.as.instr(CMP, ECX, EDX);
+
+    ctx.as.instr(MOV, RDI, FALSE.int64Val);
+    ctx.as.instr(MOV, RSI, TRUE.int64Val);
+    ctx.as.instr(CMOVL, RDI, RSI);
+
+    ctx.setWord(instr.outSlot, RDI);
+    ctx.setType(instr.outSlot, Type.CONST);
+}
+
+void gen_add_i32_ovf(ref CodeGenCtx ctx, IRInstr instr)
+{
+    auto ovfStay = new Label("ovf_stay");
+
+    ctx.getWord(ECX, instr.args[0].localIdx);
+    ctx.getWord(EDX, instr.args[1].localIdx);
+
+    ctx.as.instr(ADD, ECX, EDX);
+    ctx.as.instr(JNO, ovfStay);
+
+    ctx.jump(instr.target);
+
+    ctx.as.addInstr(ovfStay);
+
+    ctx.setWord(instr.outSlot, RCX);
     ctx.setType(instr.outSlot, Type.INT32);
 }
 
@@ -692,9 +752,7 @@ void defaultFn(ref CodeGenCtx ctx, IRInstr instr)
     // Load a pointer to the instruction in RSI
     ctx.ptr(RSI, instr);
 
-    // TODO: figure out where we can optimize this
-    // If necessary, test for specific instructions
-
+    // TODO: only necessary if we may alloc or branch?
     // Set the interpreter's IP
     ctx.setMember!("Interp", "ip")(RDI, RSI);
 
@@ -707,8 +765,12 @@ void defaultFn(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.instr(jit.encodings.CALL, RAX);
 
     // Load the stack pointers into RBX and RBP
-    ctx.getMember!("Interp", "wsp")(RBX, R15);
-    ctx.getMember!("Interp", "tsp")(RBP, R15);
+    // if the instruction may have changed them
+    if (instr.opcode.isBranch == true)
+    {
+        ctx.getMember!("Interp", "wsp")(RBX, R15);
+        ctx.getMember!("Interp", "tsp")(RBP, R15);
+    }
 }
 
 alias void function(ref CodeGenCtx ctx, IRInstr instr) CodeGenFn;
@@ -717,23 +779,33 @@ CodeGenFn[Opcode*] codeGenFns;
 
 static this()
 {
-    codeGenFns[&SET_INT32]  = &gen_set_int32;
+    codeGenFns[&SET_TRUE]       = &gen_set_true;
+    codeGenFns[&SET_FALSE]      = &gen_set_false;
+    codeGenFns[&SET_UNDEF]      = &gen_set_undef;
+    codeGenFns[&SET_NULL]       = &gen_set_null;
+    codeGenFns[&SET_INT32]      = &gen_set_int32;
 
-    codeGenFns[&IS_INT32]   = &gen_is_int32;
+    codeGenFns[&IS_INT32]       = &gen_is_int32;
 
-    codeGenFns[&ADD_I32]    = &gen_add_i32;
-    codeGenFns[&MUL_I32]    = &gen_mul_i32;
-    codeGenFns[&AND_I32]    = &gen_and_i32;
+    codeGenFns[&MOVE]           = &gen_move;
 
-    codeGenFns[&JUMP]       = &gen_jump;
+    codeGenFns[&ADD_I32]        = &gen_add_i32;
+    codeGenFns[&MUL_I32]        = &gen_mul_i32;
+    codeGenFns[&AND_I32]        = &gen_and_i32;
 
-    codeGenFns[&JUMP_TRUE]  = &gen_jump_bool;
-    codeGenFns[&JUMP_FALSE] = &gen_jump_bool;
+    codeGenFns[&LT_I32]         = &gen_lt_i32;
 
-    codeGenFns[&ir.ir.CALL] = &gen_call;
-    codeGenFns[&ir.ir.RET]  = &gen_ret;
+    codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
 
-    codeGenFns[&GET_GLOBAL] = &gen_get_global;
-    codeGenFns[&SET_GLOBAL] = &gen_set_global;
+    codeGenFns[&JUMP]           = &gen_jump;
+
+    codeGenFns[&JUMP_TRUE]      = &gen_jump_bool;
+    codeGenFns[&JUMP_FALSE]     = &gen_jump_bool;
+
+    codeGenFns[&ir.ir.CALL]     = &gen_call;
+    codeGenFns[&ir.ir.RET]      = &gen_ret;
+
+    codeGenFns[&GET_GLOBAL]     = &gen_get_global;
+    codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 }
 
