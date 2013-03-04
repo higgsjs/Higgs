@@ -152,7 +152,7 @@ refptr newClos(
 /**
 Find or allocate the property index for a given property name string
 */
-uint32 getPropIdx(refptr classPtr, refptr propStr, bool alloc)
+uint32 getPropIdx(Interp interp, refptr classPtr, refptr propStr, refptr objPtr = null)
 {
     // Get the size of the property table
     auto tblSize = class_get_cap(classPtr);
@@ -188,7 +188,7 @@ uint32 getPropIdx(refptr classPtr, refptr propStr, bool alloc)
     }
 
     // If we are not to allocate new property indices, stop
-    if (alloc == false)
+    if (objPtr is null)
         return uint32.max;
 
     // Get the number of class properties
@@ -210,12 +210,88 @@ uint32 getPropIdx(refptr classPtr, refptr propStr, bool alloc)
     if (numProps * CLASS_MAX_LOAD_DENOM >
         tblSize  * CLASS_MAX_LOAD_NUM)
     {
-        // Extend the property table
-        // TODO
-        assert (false, xformat("class capacity exceeded: %s/%s", numProps, tblSize));
+        // Extend the class
+        extClass(interp, classPtr, tblSize, numProps, objPtr);
     }
 
     return propIdx;
+}
+
+void extClass(Interp interp, refptr classPtr, uint32 curSize, uint32 numProps, refptr objPtr)
+{
+    // Protect the class and object references with GC roots
+    auto obj = GCRoot(interp, objPtr);
+    auto cls = GCRoot(interp, classPtr);
+
+    // Compute the new table size
+    auto newSize = curSize * 2 + 1;
+
+    writefln("extending class, old size: %s, new size: %s", curSize, newSize);
+    writefln("%s", classPtr);
+
+    // Allocate a new, larger hash table
+    auto newClass = class_alloc(interp, newSize);
+
+    // Set the class id
+    class_set_id(newClass, class_get_id(cls.ptr));
+
+    // Set the number of strings stored
+    class_set_num_props(newClass, numProps);
+
+    // For each entry in the current table
+    for (uint32 curIdx = 0; curIdx < curSize; curIdx++)
+    {
+        auto propName = class_get_prop_name(cls.ptr, curIdx);
+
+        // If this slot is empty, skip it
+        if (propName == null)
+            continue;
+
+        // Get the hash code for the value
+        auto valHash = str_get_hash(propName);
+
+        // Get the hash table index for this hash value in the new table
+        auto startHashIndex = valHash % newSize;
+        auto hashIndex = startHashIndex;
+
+        // Until a free slot is encountered
+        while (true)
+        {
+            // Get the value at this hash slot
+            auto propName2 = class_get_prop_name(newClass, hashIndex);
+
+            // If we have reached an empty slot
+            if (propName2 == null)
+            {
+                // Set the corresponding key and value in the slot
+                class_set_prop_name(
+                    newClass, 
+                    hashIndex, 
+                    propName
+                );
+                class_set_prop_idx(
+                    newClass, 
+                    hashIndex, 
+                    class_get_prop_idx(cls.ptr, curIdx)
+                );
+
+                // Break out of the loop
+                break;
+            }
+
+            // Move to the next hash table slot
+            hashIndex = (hashIndex + 1) % newSize;
+
+            // Ensure that a free slot was found for this key
+            assert (
+                hashIndex != startHashIndex,
+                "no free slots found in extended hash table"
+            );
+        }
+    }
+
+    // Update the class pointer in the object
+    obj_set_class(obj.ptr, newClass);
 }
 
 ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
@@ -233,7 +309,7 @@ ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
     auto classPtr = obj_get_class(objPtr);
 
     // Lookup the property index in the class
-    auto propIdx = getPropIdx(classPtr, propStr, false);
+    auto propIdx = getPropIdx(interp, classPtr, propStr);
 
     // If the property index was found
     if (propIdx != uint32.max)
@@ -273,14 +349,14 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
         auto nextPtr = obj_get_next(obj.ptr);
         if (nextPtr is null)
             break;
-         obj = nextPtr;
+        obj = nextPtr;
     }
 
     // Get the class from the object
-    auto classPtr = obj_get_class(objPtr);
+    auto classPtr = obj_get_class(obj.ptr);
 
     // Find/allocate the property index in the class
-    auto propIdx = getPropIdx(classPtr, propStr, true);
+    auto propIdx = getPropIdx(interp, classPtr, prop.ptr, obj.ptr);
 
     //writefln("prop idx: %s", propIdx);
     //writefln("intval: %s", wVal.intVal);
@@ -316,7 +392,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
             assert (false, "unhandled object type");
         }
 
-        obj_set_class(newObj, classPtr);
+        obj_set_class(newObj, obj_get_class(obj.ptr));
         obj_set_proto(newObj, obj_get_proto(obj.ptr));
 
         // Copy over the property words and types

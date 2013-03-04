@@ -753,7 +753,7 @@ class Interp
             }
 
             // If the block has been executed often enough
-            if (target.execCount == 100 && opts.nojit == false)
+            if (target.execCount == 500 && opts.nojit == false)
             {
                 // Compile a tracelet for this block
                 auto codeBlock = compileBlock(this, target);

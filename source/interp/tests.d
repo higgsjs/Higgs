@@ -610,6 +610,10 @@ unittest
 
     // Unresolved global
     assertThrows("foo");
+
+    // Many global variables
+    auto interp = new Interp();
+    interp.load("programs/many_globals/many_globals.js");
 }
 
 /// In-place operators
