@@ -54,7 +54,7 @@ void repl()
         write("h> ");
         string input = readln().stripRight();
         
-        if (input is null || input.toLower() == "exit\n")
+        if (input is null || input.toLower() == "exit")
         {
             if (input is null)
                 writeln();
