@@ -57,14 +57,15 @@ void main(string[] args)
     // Get the names of files to execute
     auto fileNames = args[1..$];
 
+    // Interpreter instance
+    auto interp = new Interp();
+
     // If file arguments were passed or there is 
     // a string of code to be executed
     if (fileNames.length != 0 || opts.execString !is null)
     {
         try
         {
-            auto interp = new Interp();
-
             foreach (fileName; fileNames)
                 interp.load(fileName);
 
@@ -82,10 +83,12 @@ void main(string[] args)
             writefln("run-time error: " ~ e.toString());
         }
 
-        return;
+	// Exit unless a repl is forced
+    	if (opts.repl == false)
+        	return;
     }
 
     // Start the REPL
-    repl.repl();
+    repl.repl(interp);
 }
 
