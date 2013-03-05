@@ -76,7 +76,7 @@ class Label : JITInstr
     */
     override string toString()
     {
-        return this.name ~ (this.exported? " (exported)":"") ~ ":";
+        return xformat("%s(%s)%s:", this.name, this.offset, (this.exported? " (exported)":""));
     }
 
     /**

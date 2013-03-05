@@ -327,7 +327,7 @@ struct X86Opnd
             return to!string(this.imm);
 
             case REL:
-            return this.label.name ~ " (" ~ to!string(this.immSize) ~ ")";
+            return xformat("%s(%s)", this.label.name, this.label.offset);
 
             case MOFFS:
             return xformat("[%X]", this.unsgImm);

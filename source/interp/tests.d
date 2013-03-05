@@ -1137,6 +1137,7 @@ unittest
 
     auto interp = new Interp();
 
+    interp.load("programs/jit/loop_lt.js");
     interp.load("programs/jit/loop_lessargs.js");
     interp.load("programs/jit/loop_new.js");
 }

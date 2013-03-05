@@ -83,7 +83,7 @@ void main(string[] args)
             writefln("run-time error: " ~ e.toString());
         }
 
-	// Exit unless a repl is forced
+        // Exit unless a repl is forced
     	if (opts.repl == false)
         	return;
     }

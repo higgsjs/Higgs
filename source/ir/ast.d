@@ -1324,8 +1324,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == "||" || op.str == "&&")
         {
             // Create the right expression and exit blocks
-            auto secnBlock = ctx.fun.newBlock("or_sec");
-            auto exitBlock = ctx.fun.newBlock("or_exit");
+            auto secnBlock = ctx.fun.newBlock(((op.str == "||")? "or":"and") ~ "_sec");
+            auto exitBlock = ctx.fun.newBlock(((op.str == "||")? "or":"and") ~ "_exit");
 
             // Evaluate the left expression
             auto lCtx = ctx.subCtx(true, ctx.getOutSlot());

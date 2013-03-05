@@ -82,7 +82,7 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     auto traceExit = new Label("trace_exit");
 
     // Create a code generation context
-    auto ctx = CodeGenCtx(interp, as, ol, traceExit);
+    auto ctx = CodeGenCtx(interp, as, ol, traceExit, block);
 
     // Align SP to a multiple of 16 bytes
     as.instr(SUB, RSP, 8);
@@ -109,42 +109,38 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     as.ptr(RAX, block);
     as.instr(INC, X86Opnd(8*block.execCount.sizeof, RAX, block.execCount.offsetof));
 
-    // For each instruction of the block
-    for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+    // While there is a block to generate code from
+    while (ctx.nextBlock !is null)
     {
-        auto opcode = instr.opcode;
+        auto curBlock = ctx.nextBlock;
+        ctx.nextBlock = null;
+        ctx.depth++;
 
-        // TODO: remove this
-        // Unsupported opcodes abort the compilation
-        if (opcode.isBranch && 
-            opcode != &JUMP && 
-            opcode != &IF_TRUE &&
-            opcode != &ir.ir.RET && 
-            opcode != &ir.ir.CALL &&
-            opcode != &CALL_NEW &&
-            opcode != &ADD_I32_OVF)
-            return null;
-
-        // If there is a codegen function for this opcode
-        if (opcode in codeGenFns)
+        // For each instruction of the block
+        for (auto instr = curBlock.firstInstr; instr !is null; instr = instr.next)
         {
-            // Call the code generation function for the opcode
-            codeGenFns[opcode](ctx, instr);
-        }
-        else
-        {
-            // Use the default code generation function
-            defaultFn(ctx, instr);
-        }
+            auto opcode = instr.opcode;
 
-        // If we know the instruction will definitely leave 
-        // this block, stop the block compilation
-        if (opcode == &JUMP         ||
-            opcode == &ir.ir.CALL   || 
-            opcode == &CALL_NEW     || 
-            opcode == &ir.ir.RET    || 
-            opcode == &THROW)
-            break;
+            // If there is a codegen function for this opcode
+            if (opcode in codeGenFns)
+            {
+                // Call the code generation function for the opcode
+                codeGenFns[opcode](ctx, instr);
+            }
+            else
+            {
+                // Use the default code generation function
+                defaultFn(as, ctx, instr);
+                //writefln("using default for: %s (%s)", instr.toString(), instr.block.fun.getName());
+            }
+
+            // If we know the instruction will definitely leave 
+            // this block, stop the block compilation
+            if (opcode.isBranch)
+            {
+                break;
+            }
+        }
     }
 
     // Block end, exit of tracelet
@@ -183,6 +179,8 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
         );
     }
 
+    //writefln("depth: %s", ctx.depth);
+
     // Return a pointer to the compiled code
     return codeBlock;
 }
@@ -203,6 +201,12 @@ struct CodeGenCtx
 
     /// Trace exit label
     Label traceExit;
+
+    /// Block from which to continue code generation
+    IRBlock nextBlock;
+
+    /// Depth of code generation (block chain length)
+    size_t depth = 0;
 }
 
 void ptr(TPtr)(Assembler as, X86RegPtr destReg, TPtr ptr)
@@ -242,7 +246,12 @@ void setMember(string className, string fName)(Assembler as, X86RegPtr baseReg, 
 /// Read from the word stack
 void getWord(Assembler as, X86RegPtr dstReg, LocalIdx idx)
 {
-    as.instr(MOV, dstReg, X86Opnd(dstReg.size, RBX, 8 * idx));
+    if (dstReg.type == X86Reg.GP)
+        as.instr(MOV, dstReg, X86Opnd(dstReg.size, RBX, 8 * idx));
+    else if (dstReg.type == X86Reg.XMM)
+        as.instr(MOVSD, dstReg, X86Opnd(64, RBX, 8 * idx));
+    else
+        assert (false, "unsupported register type");
 }
 
 /// Read from the type stack
@@ -254,7 +263,12 @@ void getType(Assembler as, X86RegPtr dstReg, LocalIdx idx)
 /// Write to the word stack
 void setWord(Assembler as, LocalIdx idx, X86RegPtr srcReg)
 {
-    as.instr(MOV, X86Opnd(64, RBX, 8 * idx), srcReg);
+    if (srcReg.type == X86Reg.GP)
+        as.instr(MOV, X86Opnd(64, RBX, 8 * idx), srcReg);
+    else if (srcReg.type == X86Reg.XMM)
+        as.instr(MOVSD, X86Opnd(64, RBX, 8 * idx), srcReg);
+    else
+        assert (false, "unsupported register type");
 }
 
 // Write a constant to the word type
@@ -391,13 +405,13 @@ void gen_move(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setType(instr.outSlot, SIL);
 }
 
-void gen_is_int32(ref CodeGenCtx ctx, IRInstr instr)
+void IsTypeOp(Type type)(ref CodeGenCtx ctx, IRInstr instr)
 {
     // AL = tsp[a0]
     ctx.as.getType(AL, instr.args[0].localIdx);
 
-    // CMP RAX, Type.INT32
-    ctx.as.instr(CMP, AL, Type.INT32);
+    // CMP RAX, Type.FLOAT
+    ctx.as.instr(CMP, AL, type);
 
     ctx.as.instr(MOV, RAX, FALSE.int64Val);
     ctx.as.instr(MOV, RCX, TRUE.int64Val);
@@ -406,6 +420,11 @@ void gen_is_int32(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setWord(instr.outSlot, RAX);
     ctx.as.setType(instr.outSlot, Type.CONST);
 }
+
+alias IsTypeOp!(Type.CONST) gen_is_const;
+alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
+alias IsTypeOp!(Type.INT32) gen_is_int32;
+alias IsTypeOp!(Type.FLOAT) gen_is_float;
 
 void gen_add_i32(ref CodeGenCtx ctx, IRInstr instr)
 {
@@ -449,6 +468,50 @@ void gen_and_i32(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setType(instr.outSlot, Type.INT32);
 }
 
+void gen_add_f64(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.as.getWord(XMM0, instr.args[0].localIdx);
+    ctx.as.getWord(XMM1, instr.args[1].localIdx);
+
+    ctx.as.instr(ADDSD, XMM0, XMM1);
+
+    ctx.as.setWord(instr.outSlot, XMM0);
+    ctx.as.setType(instr.outSlot, Type.FLOAT);
+}
+
+void gen_sub_f64(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.as.getWord(XMM0, instr.args[0].localIdx);
+    ctx.as.getWord(XMM1, instr.args[1].localIdx);
+
+    ctx.as.instr(SUBSD, XMM0, XMM1);
+
+    ctx.as.setWord(instr.outSlot, XMM0);
+    ctx.as.setType(instr.outSlot, Type.FLOAT);
+}
+
+void gen_mul_f64(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.as.getWord(XMM0, instr.args[0].localIdx);
+    ctx.as.getWord(XMM1, instr.args[1].localIdx);
+
+    ctx.as.instr(MULSD, XMM0, XMM1);
+
+    ctx.as.setWord(instr.outSlot, XMM0);
+    ctx.as.setType(instr.outSlot, Type.FLOAT);
+}
+
+void gen_div_f64(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.as.getWord(XMM0, instr.args[0].localIdx);
+    ctx.as.getWord(XMM1, instr.args[1].localIdx);
+
+    ctx.as.instr(DIVSD, XMM0, XMM1);
+
+    ctx.as.setWord(instr.outSlot, XMM0);
+    ctx.as.setType(instr.outSlot, Type.FLOAT);
+}
+
 void gen_lt_i32(ref CodeGenCtx ctx, IRInstr instr)
 {
     ctx.as.getWord(ECX, instr.args[0].localIdx);
@@ -486,32 +549,67 @@ void gen_add_i32_ovf(ref CodeGenCtx ctx, IRInstr instr)
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.as.jump(ctx, instr.target);
+    // Continue code generation in the jump target
+    ctx.nextBlock = instr.target;
+
+    //ctx.as.jump(ctx, instr.target);
 }
 
 void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
 {
     /*
     writefln(
-        "%s %s:%s\n  %s", 
-        instr.toString(), instr.target.execCount, instr.excTarget.execCount,
+        "%s\n  %s:%s\n  %s", 
+        instr.block.toString(), 
+        instr.target.execCount, instr.excTarget.execCount,
         instr.block.fun.getName()
     );
-    */
+    */    
 
+    auto ifTrue = new Label("if_true");
     auto ifFalse = new Label("if_false");
 
     // AL = wsp[a0]
     ctx.as.getWord(AL, instr.args[0].localIdx);
-
     ctx.as.instr(CMP, AL, cast(int8_t)TRUE.int32Val);
-    ctx.as.instr(JNE, ifFalse);
+  
+    if (instr.target.execCount > 10 * instr.excTarget.execCount)
+    {
+        ctx.as.instr(JNE, ifFalse);
+     
+        // Continue code generation in the true branch directly
+        ctx.nextBlock = instr.target;
+        //ctx.as.jump(ctx, instr.target);
 
-    ctx.as.jump(ctx, instr.target);
+        // The false branch is out of line
+        ctx.ol.addInstr(ifFalse);
+        ctx.ol.jump(ctx, instr.excTarget);
+    }
 
-    ctx.as.addInstr(ifFalse);
+    else if (instr.excTarget.execCount > 10 * instr.target.execCount)
+    {
+        //writefln("match");
+        //writefln("%s", instr.block.fun.getName());
 
-    ctx.as.jump(ctx, instr.excTarget);
+        ctx.as.instr(JE, ifTrue);
+     
+        // Continue code generation in the false branch directly
+        ctx.nextBlock = instr.excTarget;
+        //ctx.as.jump(ctx, instr.target);
+
+        // The true branch is out of line
+        ctx.ol.addInstr(ifTrue);
+        ctx.ol.jump(ctx, instr.target);
+    }
+
+    else
+    {
+        ctx.as.instr(JNE, ifFalse);
+        ctx.as.jump(ctx, instr.target);
+
+        ctx.as.addInstr(ifFalse);
+        ctx.as.jump(ctx, instr.excTarget);
+    }
 }
 
 void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
@@ -523,7 +621,7 @@ void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
 
     if (propIdx < 0)
     {
-        defaultFn(ctx, instr);
+        defaultFn(ctx.as, ctx, instr);
         return;
     }
 
@@ -546,7 +644,7 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
 
     if (propIdx < 0)
     {
-        defaultFn(ctx, instr);
+        defaultFn(ctx.as, ctx, instr);
         return;
     }
 
@@ -567,12 +665,10 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
 
     auto closIdx = instr.args[0].localIdx;
     auto thisIdx = instr.args[1].localIdx;
+    auto numArgs = instr.args.length - 2;
 
-    // TODO: if we can guess the closure...
-    // If not, fully bailout to interpreter ***
-
-    refptr closPtr = null;
-    
+    // Try to find the function we are calling
+    refptr closPtr = null;    
     for (auto curInstr = instr.prev; curInstr !is null; curInstr = curInstr.prev)
     {
         // If we are calling a global function
@@ -594,90 +690,102 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
         }
     }
 
-    // If the global closure was found
-    if (closPtr !is null)
+    // If the global closure was not found
+    if (closPtr is null)
     {
-        //writefln("function found");
-
-        // Get the closure word
-        ctx.as.getWord(RCX, closIdx);
-
-        // If this is not the closure we expect, bailout to the interpreter
-        ctx.as.ptr(RAX, closPtr);
-        ctx.as.instr(CMP, RAX, RCX);
-        ctx.as.instr(JNE, bailout);
-
-        auto numArgs = instr.args.length - 2;
-
-        auto fun = cast(IRFunction)clos_get_fptr(closPtr);
-
-        // If the function is compiled
-        if (fun.entryBlock !is null && numArgs == fun.numParams)
-        {
-            //writefln("match");
-
-            auto numPush = fun.numLocals;
-            auto numVars = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
-
-            //writefln("numPush: %s, numVars: %s", numPush, numVars);
-
-            // Push space for the callee arguments and locals
-            ctx.as.instr(SUB, RBX, 8 * numPush);
-            ctx.as.instr(SUB, RBP, numPush);
-
-            // Copy the function arguments in reverse order
-            for (size_t i = 0; i < numArgs; ++i)
-            {
-                auto argSlot = instr.args[$-(1+i)].localIdx /*+ (argDiff + i)*/;
-
-                ctx.as.getWord(RDI, argSlot + numPush); 
-                ctx.as.getType(SIL, argSlot + numPush);
-
-                auto dstIdx = (numArgs - i - 1) + numVars + NUM_HIDDEN_ARGS;
-
-                ctx.as.setWord(cast(LocalIdx)dstIdx, RDI);
-                ctx.as.setType(cast(LocalIdx)dstIdx, SIL);
-            }
-
-            // Write the argument count
-            ctx.as.setWord(cast(LocalIdx)(numVars + 3), cast(int32_t)numArgs);
-            ctx.as.setType(cast(LocalIdx)(numVars + 3), Type.INT32);
-
-            // Copy the "this" argument
-            ctx.as.getWord(RDI, closIdx + numPush);
-            ctx.as.getType(SIL, closIdx + numPush);
-            ctx.as.setWord(cast(LocalIdx)(numVars + 2), RDI);
-            ctx.as.setType(cast(LocalIdx)(numVars + 2), SIL);
-
-            // Write the closure argument
-            ctx.as.setWord(cast(LocalIdx)(numVars + 1), RCX);
-            ctx.as.setType(cast(LocalIdx)(numVars + 1), Type.REFPTR);
-
-            // Write the return address (caller instruction)
-            ctx.as.ptr(RAX, instr);
-            ctx.as.setWord(cast(LocalIdx)(numVars + 0), RAX);
-            ctx.as.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
-
-            // Initialize the variables to undefined
-            for (LocalIdx i = 0; i < numVars; ++i)
-            {
-                ctx.as.instr(MOV, RAX, UNDEF.int64Val);
-                ctx.as.setWord(i, RAX);
-                ctx.as.setType(i, Type.CONST);
-            }
-
-            // Jump to the function entry
-            ctx.as.ptr(RAX, fun.entryBlock);
-            ctx.as.jump(ctx, RAX);
-        }
+        // Call the interpreter call instruction
+        defaultFn(ctx.as, ctx, instr);
+        return;
     }
 
-    // Bailout to the interpreter
-    ctx.as.addInstr(bailout);
+    // Get a pointer to the IR function
+    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
+
+    // If the function is not compiled or the argument count doesn't match
+    if (fun.entryBlock is null || numArgs != fun.numParams)
+    {
+        // Call the interpreter call instruction
+        defaultFn(ctx.as, ctx, instr);
+        return;
+    }
+
+    //writefln("%s\n  %s %s %s", instr.block.toString(), fun.getName(), fun.numParams, numArgs);
+
+    // Get the closure word
+    ctx.as.getWord(RCX, closIdx);
+
+    // If this is not the closure we expect, bailout to the interpreter
+    ctx.as.ptr(RAX, closPtr);
+    ctx.as.instr(CMP, RAX, RCX);
+    ctx.as.instr(JNE, bailout);
+
+    auto numPush = fun.numLocals;
+    auto numVars = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
+
+    //writefln("numPush: %s, numVars: %s", numPush, numVars);
+
+    // Push space for the callee arguments and locals
+    ctx.as.instr(SUB, RBX, 8 * numPush);
+    ctx.as.instr(SUB, RBP, numPush);
+
+    // Copy the function arguments in reverse order
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        auto argSlot = instr.args[$-(1+i)].localIdx /*+ (argDiff + i)*/;
+
+        ctx.as.getWord(RDI, argSlot + numPush); 
+        ctx.as.getType(SIL, argSlot + numPush);
+
+        auto dstIdx = (numArgs - i - 1) + numVars + NUM_HIDDEN_ARGS;
+
+        ctx.as.setWord(cast(LocalIdx)dstIdx, RDI);
+        ctx.as.setType(cast(LocalIdx)dstIdx, SIL);
+    }
+
+    // Write the argument count
+    ctx.as.setWord(cast(LocalIdx)(numVars + 3), cast(int32_t)numArgs);
+    ctx.as.setType(cast(LocalIdx)(numVars + 3), Type.INT32);
+
+    // Copy the "this" argument
+    ctx.as.getWord(RDI, thisIdx + numPush);
+    ctx.as.getType(SIL, thisIdx + numPush);
+    ctx.as.setWord(cast(LocalIdx)(numVars + 2), RDI);
+    ctx.as.setType(cast(LocalIdx)(numVars + 2), SIL);
+
+    // Write the closure argument
+    ctx.as.setWord(cast(LocalIdx)(numVars + 1), RCX);
+    ctx.as.setType(cast(LocalIdx)(numVars + 1), Type.REFPTR);
+
+    // Write the return address (caller instruction)
+    ctx.as.ptr(RAX, instr);
+    ctx.as.setWord(cast(LocalIdx)(numVars + 0), RAX);
+    ctx.as.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
+
+    // Initialize the variables to undefined
+    for (LocalIdx i = 0; i < numVars; ++i)
+    {
+        ctx.as.instr(MOV, RAX, UNDEF.int64Val);
+        ctx.as.setWord(i, RAX);
+        ctx.as.setType(i, Type.CONST);
+    }
+
+    // TODO: evaluate when this is acceptable
+    // Continue code generation in the function entry block    
+    ctx.nextBlock = fun.entryBlock;
+
+    // Jump to the function entry
+    //ctx.as.ptr(RAX, fun.entryBlock);
+    //ctx.as.jump(ctx, RAX);
+
+    // Bailout to the interpreter (out of line)
+    ctx.ol.addInstr(bailout);
 
     // Call the interpreter call instruction
     // Fallback to interpreter execution
-    defaultFn(ctx, instr);
+    defaultFn(ctx.ol, ctx, instr);
+
+    // Exit the trace
+    ctx.ol.instr(JMP, ctx.traceExit);
 }
 
 void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
@@ -769,7 +877,7 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.instr(JMP, popLocals);
 }
 
-void defaultFn(ref CodeGenCtx ctx, IRInstr instr)
+void defaultFn(Assembler as, ref CodeGenCtx ctx, IRInstr instr)
 {
     // Get the function corresponding to this instruction
     // alias void function(Interp interp, IRInstr instr) OpFn;
@@ -778,29 +886,29 @@ void defaultFn(ref CodeGenCtx ctx, IRInstr instr)
     auto opFn = instr.opcode.opFn;
 
     // Move the interpreter pointer into RDI
-    ctx.as.instr(MOV, RDI, R15);
+    as.instr(MOV, RDI, R15);
     
     // Load a pointer to the instruction in RSI
-    ctx.as.ptr(RSI, instr);
+    as.ptr(RSI, instr);
 
     // TODO: only necessary if we may alloc or branch?
     // Set the interpreter's IP
-    ctx.as.setMember!("Interp", "ip")(RDI, RSI);
+    as.setMember!("Interp", "ip")(RDI, RSI);
 
     // Store the stack pointers back in the interpreter
-    ctx.as.setMember!("Interp", "wsp")(R15, RBX);
-    ctx.as.setMember!("Interp", "tsp")(R15, RBP);
+    as.setMember!("Interp", "wsp")(R15, RBX);
+    as.setMember!("Interp", "tsp")(R15, RBP);
 
     // Call the op function
-    ctx.as.instr(MOV, RAX, X86Opnd(cast(void*)opFn));
-    ctx.as.instr(jit.encodings.CALL, RAX);
+    as.instr(MOV, RAX, X86Opnd(cast(void*)opFn));
+    as.instr(jit.encodings.CALL, RAX);
 
     // Load the stack pointers into RBX and RBP
     // if the instruction may have changed them
     if (instr.opcode.isBranch == true)
     {
-        ctx.as.getMember!("Interp", "wsp")(RBX, R15);
-        ctx.as.getMember!("Interp", "tsp")(RBP, R15);
+        as.getMember!("Interp", "wsp")(RBX, R15);
+        as.getMember!("Interp", "tsp")(RBP, R15);
     }
 }
 
@@ -816,13 +924,21 @@ static this()
     codeGenFns[&SET_NULL]       = &gen_set_null;
     codeGenFns[&SET_INT32]      = &gen_set_int32;
 
+    codeGenFns[&IS_CONST]       = &gen_is_const;
+    codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
     codeGenFns[&IS_INT32]       = &gen_is_int32;
+    codeGenFns[&IS_FLOAT]       = &gen_is_float;
 
     codeGenFns[&MOVE]           = &gen_move;
 
     codeGenFns[&ADD_I32]        = &gen_add_i32;
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
     codeGenFns[&AND_I32]        = &gen_and_i32;
+
+    codeGenFns[&ADD_F64]        = &gen_add_f64;
+    codeGenFns[&SUB_F64]        = &gen_sub_f64;
+    codeGenFns[&MUL_F64]        = &gen_mul_f64;
+    codeGenFns[&DIV_F64]        = &gen_div_f64;
 
     codeGenFns[&LT_I32]         = &gen_lt_i32;
 
