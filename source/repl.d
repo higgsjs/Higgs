@@ -42,9 +42,8 @@ import parser.parser;
 import ir.ast;
 import interp.interp;
 
-void repl()
+void repl(Interp interp)
 {
-    auto interp = new Interp();
 
     writeln("Entering read-eval-print loop");
     writeln("To exit, press ctrl+D (end-of-file) or type \"exit\" at the prompt");
@@ -54,7 +53,7 @@ void repl()
         write("h> ");
         string input = readln().stripRight();
         
-        if (input is null || input.toLower() == "exit\n")
+        if (input is null || input.toLower() == "exit")
         {
             if (input is null)
                 writeln();
