@@ -711,7 +711,7 @@ class Interp
     }
 
     /**
-    Set the word associated with a link value
+    Set the type associated with a link value
     */
     void setLinkType(LinkIdx idx, Type type)
     {
