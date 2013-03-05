@@ -46,6 +46,9 @@ struct Options
     /// Test mode, disables repl
     bool test = false;
 
+    /// Force a repl
+    bool repl = false;
+
     /// Flag to disable the JIT compiler
     bool nojit = false;
 
@@ -67,6 +70,7 @@ void parseCmdArgs(ref string[] args)
         config.passThrough,
         "e"         , &opts.execString,
         "test"      , &opts.test,
+        "repl"      , &opts.repl,
         "nojit"     , &opts.nojit,
         "dumpasm"   , &opts.dumpasm
     );
