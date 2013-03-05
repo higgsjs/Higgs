@@ -698,7 +698,7 @@ class Interp
     }
 
     /**
-    Get the word associated with a link value
+    Set the word associated with a link value
     */
     void setLinkWord(LinkIdx idx, Word word)
     {
@@ -711,7 +711,7 @@ class Interp
     }
 
     /**
-    Get the word associated with a link value
+    Set the word associated with a link value
     */
     void setLinkType(LinkIdx idx, Type type)
     {
