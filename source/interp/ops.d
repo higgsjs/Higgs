@@ -74,7 +74,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
         trace ~= curInstr;
 
         // If this is a call instruction and it has an exception target
-        if (curInstr.opcode is &CALL && curInstr.target !is null)
+        if (curInstr.opcode is &CALL && curInstr.excTarget !is null)
         {
             //writefln("found exception target");
 
@@ -85,7 +85,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
             );
 
             // Go to the exception target
-            interp.jump(curInstr.target);
+            interp.jump(curInstr.excTarget);
 
             // Stop unwinding the stack
             return;
@@ -558,10 +558,12 @@ extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr
             Word.int32v(cast(int32)r),
             Type.INT32
         );
+
+        interp.jump(instr.target);
     }
     else
     {
-        interp.jump(instr.target);
+        interp.jump(instr.excTarget);
     }
 }
 
@@ -768,22 +770,15 @@ extern (C) void op_jump(Interp interp, IRInstr instr)
     interp.jump(instr.target);
 }
 
-extern (C) void op_jump_true(Interp interp, IRInstr instr)
+extern (C) void op_if_true(Interp interp, IRInstr instr)
 {
     auto valIdx = instr.args[0].localIdx;
     auto wVal = interp.getWord(valIdx);
 
     if (wVal == TRUE)
         interp.jump(instr.target);
-}
-
-extern (C) void op_jump_false(Interp interp, IRInstr instr)
-{
-    auto valIdx = instr.args[0].localIdx;
-    auto wVal = interp.getWord(valIdx);
-
-    if (wVal == FALSE)
-        interp.jump(instr.target);
+    else
+        interp.jump(instr.excTarget);
 }
 
 void callFun(
@@ -1064,7 +1059,7 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         interp.pop(numLocals + extraArgs);
 
         // Set the instruction pointer to the call continuation instruction
-        interp.jump(callInstr.contTarget);
+        interp.jump(callInstr.target);
 
         // Leave the return value in the call's return slot, if any
         if (callInstr.outSlot !is NULL_LOCAL)

@@ -117,11 +117,10 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
         // Unsupported opcodes abort the compilation
         if (opcode.isBranch && 
             opcode != &JUMP && 
+            opcode != &IF_TRUE &&
             opcode != &ir.ir.RET && 
             opcode != &ir.ir.CALL &&
             opcode != &CALL_NEW &&
-            opcode != &JUMP_TRUE &&
-            opcode != &JUMP_FALSE &&
             opcode != &ADD_I32_OVF)
             return null;
 
@@ -447,20 +446,23 @@ void gen_lt_i32(ref CodeGenCtx ctx, IRInstr instr)
 
 void gen_add_i32_ovf(ref CodeGenCtx ctx, IRInstr instr)
 {
-    auto ovfStay = new Label("ovf_stay");
+    auto ovf = new Label("ovf");
 
     ctx.getWord(ECX, instr.args[0].localIdx);
     ctx.getWord(EDX, instr.args[1].localIdx);
 
     ctx.as.instr(ADD, ECX, EDX);
-    ctx.as.instr(JNO, ovfStay);
-
-    ctx.jump(instr.target);
-
-    ctx.as.addInstr(ovfStay);
+    ctx.as.instr(JO, ovf);
 
     ctx.setWord(instr.outSlot, RCX);
     ctx.setType(instr.outSlot, Type.INT32);
+
+    ctx.jump(instr.target);
+
+    // TODO: Out of line jump
+    ctx.as.addInstr(ovf);
+
+    ctx.jump(instr.excTarget);
 }
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
@@ -468,19 +470,21 @@ void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
     ctx.jump(instr.target);
 }
 
-void gen_jump_bool(ref CodeGenCtx ctx, IRInstr instr)
+void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
 {
-    auto jumpStay = new Label("jump_stay");
+    auto ifFalse = new Label("if_false");
 
     // AL = wsp[a0]
     ctx.getWord(AL, instr.args[0].localIdx);
 
     ctx.as.instr(CMP, AL, cast(int8_t)TRUE.int32Val);
-    ctx.as.instr((instr.opcode == &JUMP_TRUE)? JNE:JE, jumpStay);
+    ctx.as.instr(JNE, ifFalse);
 
     ctx.jump(instr.target);
 
-    ctx.as.addInstr(jumpStay);
+    ctx.as.addInstr(ifFalse);
+
+    ctx.jump(instr.excTarget);
 }
 
 void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
@@ -718,7 +722,7 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.addInstr(retDone);
 
     // RCX = call continuation target
-    ctx.getMember!("IRInstr", "contTarget")(RDX, RAX);
+    ctx.getMember!("IRInstr", "target")(RDX, RAX);
 
     // Jump to the call continuation
     ctx.jump(RDX);
@@ -799,8 +803,7 @@ static this()
 
     codeGenFns[&JUMP]           = &gen_jump;
 
-    codeGenFns[&JUMP_TRUE]      = &gen_jump_bool;
-    codeGenFns[&JUMP_FALSE]     = &gen_jump_bool;
+    codeGenFns[&IF_TRUE]      = &gen_if_true;
 
     codeGenFns[&ir.ir.CALL]     = &gen_call;
     codeGenFns[&ir.ir.RET]      = &gen_ret;

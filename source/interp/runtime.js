@@ -63,7 +63,7 @@ Perform an assertion test
 */
 function assert(test, errorMsg)
 {
-    if ($ir_if_true(test))
+    if ($ir_eq_const(test, true))
         return;
 
     //var globalObj = $ir_get_global_obj();
@@ -1453,7 +1453,7 @@ function $rt_getPropIdx(classPtr, propStr, alloc)
     }
 
     // If we are not to allocate new property indices, stop
-    if ($ir_if_false(alloc))
+    if ($ir_eq_const(alloc, false))
         return false;   
 
     // Get the number of class properties
@@ -2075,7 +2075,7 @@ function $rt_getPropEnum(obj)
         // Return the empty enumeration function
         return function ()
         {
-            return false;
+            return true;
         };
     }
 
@@ -2099,11 +2099,11 @@ function $rt_getPropEnum(obj)
                 curObj === Array.prototype      || 
                 curObj === Function.prototype   ||
                 curObj === String.prototype)
-                return false;
+                return true;
 
             // If we are at the end of the prototype chain, stop
             if (curObj === null)
-                return false;
+                return true;
 
             // If the current object is an object or extension
             if ($rt_valIsObj(curObj))
@@ -2172,7 +2172,7 @@ function $rt_getPropEnum(obj)
 
             else
             {
-                return false;
+                return true;
             }
         }
     }

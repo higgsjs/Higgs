@@ -352,11 +352,11 @@ class IRInstr : IdObject
     /// Output local slot
     LocalIdx outSlot = NULL_LOCAL;
 
-    /// Branch target
+    /// Default branch target
     IRBlock target = null;
 
-    /// Continuation target (call instructions only)
-    IRBlock contTarget = null;
+    /// Exception branch target
+    IRBlock excTarget = null;
 
     /// Parent block
     IRBlock block = null;
@@ -429,22 +429,6 @@ class IRInstr : IdObject
         this.outSlot = outSlot;
     }
 
-    /// Conditional branching constructor
-    this(Opcode* opcode, LocalIdx arg0, IRBlock block)
-    {
-        assert (
-            opcode.output == false &&
-            opcode.argTypes.length == 1 &&
-            opcode.argTypes[0] == OpArg.LOCAL &&
-            opcode.isBranch == true,
-            "invalid instruction for ctor: " ~ opcode.mnem
-        );
-
-        this.opcode = opcode;
-        this.args = [Arg(arg0)];
-        this.target = block;
-    }
-
     /// Integer constant
     static intCst(LocalIdx outSlot, int intVal)
     {
@@ -486,6 +470,17 @@ class IRInstr : IdObject
         return jump;
 
     }
+
+    /// Conditional branching instruction
+    static ifTrue(LocalIdx arg0, IRBlock trueBlock, IRBlock falseBlock)
+    {
+        auto ift = new this(&IF_TRUE);
+        ift.args = [Arg(arg0)];
+        ift.target = trueBlock;
+        ift.excTarget = falseBlock;
+        return ift;
+    }
+
     /// Make link instruction
     static makeLink(LocalIdx outSlot)
     {
@@ -543,8 +538,8 @@ class IRInstr : IdObject
         if (target !is null)
         {
             output ~= " => " ~ target.getName();
-            if (contTarget !is null)
-                output ~= ", " ~ contTarget.getName();
+            if (excTarget !is null)
+                output ~= ", " ~ excTarget.getName();
         }
 
         return output;
@@ -710,8 +705,7 @@ Opcode STORE_FUNPTR = { "store_funptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.L
 
 // Branching and conditional branching
 Opcode JUMP = { "jump", false, [], &op_jump, false, true };
-Opcode JUMP_TRUE = { "jump_true", false, [OpArg.LOCAL], &op_jump_true, false, true };
-Opcode JUMP_FALSE = { "jump_false", false, [OpArg.LOCAL], &op_jump_false, false, true };
+Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &op_if_true, false, true };
 
 // <dstLocal> = CALL <closLocal> <thisArg> ...
 // Makes the execution go to the callee entry
@@ -919,9 +913,6 @@ static this()
     addOp(STORE_REFPTR);
     addOp(STORE_RAWPTR);
     addOp(STORE_FUNPTR);
-
-    addOp(JUMP_TRUE, "if_false");
-    addOp(JUMP_FALSE, "if_true");
 
     addOp(CALL_APPLY);
 

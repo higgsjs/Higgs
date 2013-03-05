@@ -427,8 +427,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
         // Branch based on the index
         auto cmpInstr = testCtx.addInstr(new IRInstr(&LT_I32, testCtx.allocTemp(), idxSlot, fun.argcSlot));
-        testCtx.addInstr(new IRInstr(&JUMP_TRUE, cmpInstr.outSlot, loopBlock));
-        testCtx.addInstr(IRInstr.jump(exitBlock));
+        testCtx.addInstr(IRInstr.ifTrue(cmpInstr.outSlot, loopBlock, exitBlock));
 
         // Copy an argument into the array
         auto getInstr = loopCtx.addInstr(new IRInstr(&GET_ARG, loopCtx.allocTemp(), idxSlot));
@@ -661,8 +660,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
                 "iir target already set"
             );
 
-            // If the instruction branches, go to the false block
-            lastInstr.target = falseBlock;
+            // Set branch targets for the instruction
+            lastInstr.target = trueBlock;
+            lastInstr.excTarget = falseBlock;
         }
 
         else
@@ -674,16 +674,13 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
                 exprCtx.getOutSlot
             );
 
-            // If the expresson is false, jump
-            ctx.addInstr(new IRInstr(
-                &JUMP_FALSE,
+            // Branch based on the boolean value
+            ctx.addInstr(IRInstr.ifTrue(
                 boolSlot,
+                trueBlock,
                 falseBlock
             ));
         }
-
-        // Jump to the true statement
-        ctx.addInstr(IRInstr.jump(trueBlock));
 
         // Continue code generation in the join block
         ctx.merge(joinBlock);
@@ -714,12 +711,11 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         );
 
         // If the expresson is true, jump to the loop body
-        testCtx.addInstr(new IRInstr(
-            &JUMP_TRUE,
+        testCtx.addInstr(IRInstr.ifTrue(
             boolSlot,
-            bodyBlock
+            bodyBlock,
+            exitBlock
         ));
-        testCtx.addInstr(IRInstr.jump(exitBlock));
 
         // Compile the loop body statement
         auto bodyCtx = ctx.subCtx(false, NULL_LOCAL, bodyBlock);
@@ -764,12 +760,11 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         );
 
         // If the expresson is true, jump to the loop body
-        testCtx.addInstr(new IRInstr(
-            &JUMP_TRUE,
+        testCtx.addInstr(IRInstr.ifTrue(
             boolSlot,
-            bodyBlock
+            bodyBlock,
+            exitBlock
         ));
-        testCtx.addInstr(IRInstr.jump(exitBlock));
 
         // Continue code generation in the exit block
         ctx.merge(exitBlock);
@@ -806,12 +801,11 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         );
 
         // If the expresson is true, jump to the loop body
-        testCtx.addInstr(new IRInstr(
-            &JUMP_TRUE,
+        testCtx.addInstr(IRInstr.ifTrue(
             boolSlot,
-            bodyBlock
+            bodyBlock,
+            exitBlock
         ));
-        testCtx.addInstr(IRInstr.jump(exitBlock));
 
         // Compile the loop body statement
         auto bodyCtx = ctx.subCtx(false, NULL_LOCAL, bodyBlock);
@@ -870,13 +864,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Generate the call targets
         genCallTargets(testCtx, callInstr);
 
-        // If the property is false, exit the loop
-        testCtx.addInstr(new IRInstr(
-            &JUMP_FALSE,
+        // If the property is the constant true, exit the loop
+        testCtx.addInstr(IRInstr.ifTrue(
             callInstr.outSlot,
-            exitBlock
+            exitBlock,
+            bodyBlock
         ));
-        testCtx.addInstr(IRInstr.jump(bodyBlock));
 
         // Create the body context
         auto bodyCtx = ctx.subCtx(false, NULL_LOCAL, bodyBlock);
@@ -1116,12 +1109,11 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
         );
 
         // Branch based on the test
-        ctx.addInstr(new IRInstr(
-            &JUMP_FALSE,
+        ctx.addInstr(IRInstr.ifTrue(
             cmpInstr.outSlot,
+            caseBlock,
             nextTestBlock
         ));
-        ctx.addInstr(IRInstr.jump(caseBlock));
 
         // Compile the case statements
         auto subCtx = ctx.subCtx(false, NULL_LOCAL, caseBlock);
@@ -1348,12 +1340,11 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
 
             // Evaluate the second expression, if necessary
-            ctx.addInstr(new IRInstr(
-                (op.str == "||")? &JUMP_TRUE:&JUMP_FALSE,
+            ctx.addInstr(IRInstr.ifTrue(
                 boolSlot,
-                exitBlock
+                (op.str == "||")? exitBlock:secnBlock,
+                (op.str == "||")? secnBlock:exitBlock,
             ));
-            ctx.addInstr(IRInstr.jump(secnBlock));
 
             // Evaluate the right expression
             auto rCtx = ctx.subCtx(true, ctx.getOutSlot(), secnBlock);
@@ -1516,6 +1507,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         {
             // Create the right expression and exit blocks
             auto trueBlock = ctx.fun.newBlock("not_true");
+            auto falseBlock = ctx.fun.newBlock("not_false");
             auto exitBlock = ctx.fun.newBlock("not_exit");
 
             auto lCtx = ctx.subCtx(true);
@@ -1530,19 +1522,19 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
 
             // If the boolean is true, jump
-            ctx.addInstr(new IRInstr(
-               &JUMP_TRUE,
+            ctx.addInstr(IRInstr.ifTrue(
                 boolSlot,
-                trueBlock
+                trueBlock,
+                falseBlock
             ));
-
-            // false => true
-            ctx.addInstr(new IRInstr(&SET_TRUE, ctx.getOutSlot()));
-            ctx.addInstr(IRInstr.jump(exitBlock));
 
             // true => false
             trueBlock.addInstr(new IRInstr(&SET_FALSE, ctx.getOutSlot()));
             trueBlock.addInstr(IRInstr.jump(exitBlock));
+
+            // false => true
+            falseBlock.addInstr(new IRInstr(&SET_TRUE, ctx.getOutSlot()));
+            falseBlock.addInstr(IRInstr.jump(exitBlock));
 
             // Continue code generation in the exit block
             ctx.merge(exitBlock);
@@ -1634,12 +1626,11 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         );
 
         // If the expresson is true, jump
-        ctx.addInstr(new IRInstr(
-            &JUMP_TRUE,
+        ctx.addInstr(IRInstr.ifTrue(
             boolSlot,
-            trueBlock
+            trueBlock,
+            falseBlock
         ));
-        ctx.addInstr(IRInstr.jump(falseBlock));
 
         // Compile the true expression and assign into the output slot
         auto trueCtx = ctx.subCtx(true, ctx.getOutSlot(), trueBlock);
@@ -2440,11 +2431,11 @@ void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
     auto contBlock = ctx.fun.newBlock("call_cont");
 
     // Set the continuation target
-    callInstr.contTarget = contBlock;
+    callInstr.target = contBlock;
 
     // Generate the exception path for the call instruction
     if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
-        callInstr.target = excBlock;
+        callInstr.excTarget = excBlock;
 
     // Continue code generation in the continuation block
     ctx.merge(contBlock);
