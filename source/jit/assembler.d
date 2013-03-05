@@ -143,84 +143,54 @@ class Assembler
     /**
     Add an instruction after another instruction
     */
-    /*
-    x86.Assembler.prototype.addInstrAfter = function (instr, prev)
+    void addInstrAfter(JITInstr instr, JITInstr prev)
     {
-        assert (
-            instr instanceof x86.Instruction,
-            'invalid instruction'
-        );
-
-        assert (
-            prev instanceof x86.Instruction,
-            'invalid previous instruction'
-        );
-
-        var next = prev.next;
+        auto next = prev.next;
 
         instr.prev = prev;
         instr.next = next;
 
         prev.next = instr;
 
-        if (next !== null)
+        if (next !is null)
             next.prev = instr;
         else
             this.lastInstr = instr;
     }
-    */
 
     /**
     Remove an instruction from the list
     */
-    /*
-    x86.Assembler.prototype.remInstr = function (instr)
+    void remInstr(JITInstr instr)
     {
-        assert (
-            instr instanceof x86.Instruction,
-            'invalid instruction'
-        );
+        auto prev = instr.prev;
+        auto next = instr.next;
 
-        var prev = instr.prev;
-        var next = instr.next;
-
-        if (prev !== null)
+        if (prev !is null)
             prev.next = next;
         else
             this.firstInstr = next;
 
-        if (next !== null)
+        if (next !is null)
             next.prev = prev;
         else
             this.lastInstr = prev;
     }
-    */
 
     /**
     Replace an instruction
     */
-    /*
-    x86.Assembler.prototype.replInstr = function (oldInstr, newInstr)
+    void replInstr(JITInstr oldInstr, JITInstr newInstr)
     {
-        assert (
-            oldInstr instanceof x86.Instruction,
-            'invalid old instruction'
-        );
+        auto prev = oldInstr.prev;
+        auto next = oldInstr.next;
 
-        assert (
-            newInstr instanceof x86.Instruction,
-            'invalid new instruction'
-        );
-
-        var prev = oldInstr.prev;
-        var next = oldInstr.next;
-
-        if (prev !== null)
+        if (prev !is null)
             prev.next = newInstr;
         else
             this.firstInstr = newInstr;
 
-        if (next !== null)
+        if (next !is null)
             next.prev = newInstr;
         else
             this.lastInstr = newInstr;
@@ -228,7 +198,29 @@ class Assembler
         newInstr.prev = prev;
         newInstr.next = next;
     }
+
+    /**
+    Append the instructions from another assembler
+    Note: this removes instructions from the other assembler
     */
+    void append(Assembler that)
+    {
+        if (!this.lastInstr)
+        {
+            this.firstInstr = that.firstInstr;
+            this.lastInstr = that.lastInstr;
+        }
+        else if (that.lastInstr)
+        {
+
+            that.firstInstr.prev = this.lastInstr;
+            this.lastInstr.next = that.firstInstr;            
+            this.lastInstr = that.lastInstr;
+        }
+
+        that.firstInstr = null;
+        that.lastInstr = null;
+    }
 
     /**
     Assemble a code block from the instruction list
@@ -414,6 +406,7 @@ class Assembler
         return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a), X86Opnd(b), X86Opnd(imm)));
     }
 
+    /// Create and insert a label
     Label label(string name)
     {
         auto label = new Label(name);
