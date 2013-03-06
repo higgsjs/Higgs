@@ -238,6 +238,10 @@ unittest
 
     // cmp
     test(
+        delegate void (Assembler a) { a.instr(CMP, CL, DL); },
+        "38D1"
+    );   
+    test(
         delegate void (Assembler a) { a.instr(CMP, ECX, EDI); },
         "39F9"
     );   

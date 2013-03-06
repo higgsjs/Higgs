@@ -354,17 +354,6 @@ extern (C) void op_i32_to_f64(Interp interp, IRInstr instr)
     );
 }
 
-extern (C) void op_i64_to_f64(Interp interp, IRInstr instr)
-{
-    auto w0 = interp.getWord(instr.args[0].localIdx);
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.floatv(w0.int64Val),
-        Type.FLOAT
-    );
-}
-
 extern (C) void op_f64_to_i32(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
@@ -377,17 +366,6 @@ extern (C) void op_f64_to_i32(Interp interp, IRInstr instr)
         instr.outSlot,
         Word.int32v(intVal),
         Type.INT32
-    );
-}
-
-extern (C) void op_f64_to_i64(Interp interp, IRInstr instr)
-{
-    auto w0 = interp.getWord(instr.args[0].localIdx);
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.int64v(cast(int64)w0.floatVal),
-        Type.FLOAT
     );
 }
 

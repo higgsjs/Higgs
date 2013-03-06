@@ -615,9 +615,7 @@ Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &op_is_const };
 
 // Type conversion
 Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &op_i32_to_f64 };
-Opcode I64_TO_F64 = { "i64_to_f64", true, [OpArg.LOCAL], &op_i64_to_f64 };
 Opcode F64_TO_I32 = { "f64_to_i32", true, [OpArg.LOCAL], &op_f64_to_i32 };
-Opcode F64_TO_I64 = { "f64_to_i64", true, [OpArg.LOCAL], &op_f64_to_i64 };
 
 // Integer arithmetic
 Opcode ADD_I32 = { "add_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32 };
@@ -837,9 +835,7 @@ static this()
     addOp(IS_CONST);
 
     addOp(I32_TO_F64);
-    addOp(I64_TO_F64);
     addOp(F64_TO_I32);
-    addOp(F64_TO_I64);
 
     addOp(ADD_I32);
     addOp(SUB_I32);

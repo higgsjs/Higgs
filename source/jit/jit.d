@@ -226,19 +226,16 @@ void setField(Assembler as, X86RegPtr baseReg, size_t fSize, size_t fOffset, X86
 
 void getMember(string className, string fName)(Assembler as, X86RegPtr dstReg, X86RegPtr baseReg)
 {
-    // FIXME: hack temporarily required because of a DMD compiler bug
-    mixin(className ~ " ptr = null;");
-    mixin("auto fSize = ptr." ~ fName ~ ".sizeof;");
-    mixin("auto fOffset = ptr." ~ fName ~ ".offsetof;");
+    mixin("auto fSize = " ~ className ~ "." ~ fName ~ ".sizeof;");
+    mixin("auto fOffset = " ~ className ~ "." ~ fName ~ ".offsetof;");
 
     return as.getField(dstReg, baseReg, fSize, fOffset);
 }
 
 void setMember(string className, string fName)(Assembler as, X86RegPtr baseReg, X86RegPtr srcReg)
 {
-    mixin(className ~ " ptr = null;");
-    mixin("auto fSize = ptr." ~ fName ~ ".sizeof;");
-    mixin("auto fOffset = ptr." ~ fName ~ ".offsetof;");
+    mixin("auto fSize = " ~ className ~ "." ~ fName ~ ".sizeof;");
+    mixin("auto fOffset = " ~ className ~ "." ~ fName ~ ".offsetof;");
 
     return as.setField(baseReg, fSize, fOffset, srcReg);
 }
@@ -385,6 +382,12 @@ void gen_set_undef(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setType(instr.outSlot, Type.CONST);
 }
 
+void gen_set_missing(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.as.setWord(instr.outSlot, cast(int8_t)MISSING.int64Val);
+    ctx.as.setType(instr.outSlot, Type.CONST);
+}
+
 void gen_set_null(ref CodeGenCtx ctx, IRInstr instr)
 {
     ctx.as.setWord(instr.outSlot, cast(int8_t)NULL.int64Val);
@@ -425,6 +428,24 @@ alias IsTypeOp!(Type.CONST) gen_is_const;
 alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
 alias IsTypeOp!(Type.INT32) gen_is_int32;
 alias IsTypeOp!(Type.FLOAT) gen_is_float;
+
+void gen_i32_to_f64(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.as.instr(CVTSI2SD, XMM0, X86Opnd(32, RBX, instr.args[0].localIdx * 8));
+
+    ctx.as.setWord(instr.outSlot, XMM0);
+    ctx.as.setType(instr.outSlot, Type.FLOAT);
+}
+
+void gen_f64_to_i32(ref CodeGenCtx ctx, IRInstr instr)
+{
+    // Cast to int64 and truncate to int32 (to match JS semantics)
+    ctx.as.instr(CVTSD2SI, RAX, X86Opnd(64, RBX, instr.args[0].localIdx * 8));
+    ctx.as.instr(MOV, ECX, EAX);
+
+    ctx.as.setWord(instr.outSlot, RCX);
+    ctx.as.setType(instr.outSlot, Type.INT32);
+}
 
 void gen_add_i32(ref CodeGenCtx ctx, IRInstr instr)
 {
@@ -512,29 +533,18 @@ void gen_div_f64(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setType(instr.outSlot, Type.FLOAT);
 }
 
-void gen_lt_i32(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.getWord(ECX, instr.args[0].localIdx);
-    ctx.as.getWord(EDX, instr.args[1].localIdx);
-
-    ctx.as.instr(CMP, ECX, EDX);
-
-    ctx.as.instr(MOV, RDI, FALSE.int64Val);
-    ctx.as.instr(MOV, RSI, TRUE.int64Val);
-    ctx.as.instr(CMOVL, RDI, RSI);
-
-    ctx.as.setWord(instr.outSlot, RDI);
-    ctx.as.setType(instr.outSlot, Type.CONST);
-}
-
-void gen_add_i32_ovf(ref CodeGenCtx ctx, IRInstr instr)
+void OvfOp(string op)(ref CodeGenCtx ctx, IRInstr instr)
 {
     auto ovf = new Label("ovf");
 
     ctx.as.getWord(ECX, instr.args[0].localIdx);
     ctx.as.getWord(EDX, instr.args[1].localIdx);
 
-    ctx.as.instr(ADD, ECX, EDX);
+    static if (op == "add")
+        ctx.as.instr(ADD, ECX, EDX);
+    static if (op == "mul")
+        ctx.as.instr(IMUL, ECX, EDX);
+
     ctx.as.instr(JO, ovf);
 
     ctx.as.setWord(instr.outSlot, RCX);
@@ -546,6 +556,56 @@ void gen_add_i32_ovf(ref CodeGenCtx ctx, IRInstr instr)
     ctx.ol.addInstr(ovf);
     ctx.ol.jump(ctx, instr.excTarget);
 }
+
+alias OvfOp!("add") gen_add_i32_ovf;
+alias OvfOp!("mul") gen_mul_i32_ovf;
+
+void CmpOp(string type, string op)(ref CodeGenCtx ctx, IRInstr instr)
+{
+    X86RegPtr regA;
+    X86RegPtr regB;
+
+    static if (type == "i8")
+    {
+        regA = CL;
+        regB = DL;
+    }
+    static if (type == "i32")
+    {
+        regA = ECX;
+        regB = EDX;
+    }
+    static if (type == "i64")
+    {
+        regA = RCX;
+        regB = RDX;
+    }
+
+    ctx.as.getWord(regA, instr.args[0].localIdx);
+    ctx.as.getWord(regB, instr.args[1].localIdx);
+
+    ctx.as.instr(CMP, regA, regB);
+
+    ctx.as.instr(MOV, RAX, cast(int8_t)FALSE.int64Val);
+    ctx.as.instr(MOV, RCX, cast(int8_t)TRUE.int64Val);
+
+    static if (op == "eq")
+        ctx.as.instr(CMOVE, RAX, RCX);
+    static if (op == "ne")
+        ctx.as.instr(CMOVNE, RAX, RCX);
+    static if (op == "lt")
+        ctx.as.instr(CMOVL, RAX, RCX);
+
+    ctx.as.setWord(instr.outSlot, RAX);
+    ctx.as.setType(instr.outSlot, Type.CONST);
+}
+
+alias CmpOp!("i32", "lt") gen_lt_i32;
+
+alias CmpOp!("i64", "eq") gen_eq_refptr;
+alias CmpOp!("i64", "ne") gen_ne_refptr;
+
+alias CmpOp!("i8", "eq") gen_eq_const;
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
 {
@@ -877,6 +937,14 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.instr(JMP, popLocals);
 }
 
+void gen_get_global_obj(ref CodeGenCtx ctx, IRInstr instr)
+{
+    ctx.as.getMember!("Interp", "globalObj")(RAX, R15);
+    
+    ctx.as.setWord(instr.outSlot, RAX);
+    ctx.as.setType(instr.outSlot, Type.REFPTR);
+}
+
 void defaultFn(Assembler as, ref CodeGenCtx ctx, IRInstr instr)
 {
     // Get the function corresponding to this instruction
@@ -921,15 +989,19 @@ static this()
     codeGenFns[&SET_TRUE]       = &gen_set_true;
     codeGenFns[&SET_FALSE]      = &gen_set_false;
     codeGenFns[&SET_UNDEF]      = &gen_set_undef;
+    codeGenFns[&SET_MISSING]    = &gen_set_missing;
     codeGenFns[&SET_NULL]       = &gen_set_null;
     codeGenFns[&SET_INT32]      = &gen_set_int32;
+
+    codeGenFns[&MOVE]           = &gen_move;
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
     codeGenFns[&IS_INT32]       = &gen_is_int32;
     codeGenFns[&IS_FLOAT]       = &gen_is_float;
 
-    codeGenFns[&MOVE]           = &gen_move;
+    codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
+    codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
 
     codeGenFns[&ADD_I32]        = &gen_add_i32;
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
@@ -940,9 +1012,14 @@ static this()
     codeGenFns[&MUL_F64]        = &gen_mul_f64;
     codeGenFns[&DIV_F64]        = &gen_div_f64;
 
-    codeGenFns[&LT_I32]         = &gen_lt_i32;
-
     codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
+    codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
+
+    codeGenFns[&EQ_CONST]       = &gen_eq_const;
+    codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
+    codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
+    codeGenFns[&LT_I32]         = &gen_lt_i32;
+    //codeGenFns[&LT_F64]         = &gen_lt_f64;
 
     codeGenFns[&JUMP]           = &gen_jump;
 
@@ -953,5 +1030,7 @@ static this()
 
     codeGenFns[&GET_GLOBAL]     = &gen_get_global;
     codeGenFns[&SET_GLOBAL]     = &gen_set_global;
+
+    codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 }
 
