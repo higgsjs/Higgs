@@ -51,11 +51,15 @@ import jit.codeblock;
 import jit.assembler;
 import jit.x86;
 import jit.encodings;
+import jit.segment;
+
+const BRANCH_EXTEND_COUNT = 1000;
+const BRANCH_EXTEND_RATIO = 10;
 
 /**
 Compile a basic block into executable machine code
 */
-CodeBlock compileBlock(Interp interp, IRBlock block)
+Segment compileBlock(Interp interp, IRBlock block)
 {
     assert (
         block.firstInstr !is null,
@@ -69,20 +73,32 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
 
     //writefln("compiling tracelet in %s:\n%s\n", block.fun.getName(), block.toString());
 
+    // TODO: reuse if extending existing segment
+    // Create a new segment object
+    auto segment = new Segment();
+
     // Assembler to write code into
     auto as = new Assembler();
 
     // Assembler for out of line code (slow paths)
     auto ol = new Assembler();
 
-    // Label at the trace join point (exported)
-    auto traceJoin = new Label("trace_join", true);
+    // Label at the segment join point (exported)
+    auto joinLabel = new Label("segment_join", true);
 
     // Label at the end of the block
-    auto traceExit = new Label("trace_exit");
+    auto exitLabel = new Label("segment_exit");
 
     // Create a code generation context
-    auto ctx = CodeGenCtx(interp, as, ol, traceExit, block);
+    auto ctx = CodeGenCtx(
+        segment, 
+        interp, 
+        as, 
+        ol, 
+        joinLabel, 
+        exitLabel, 
+        block
+    );
 
     // Align SP to a multiple of 16 bytes
     as.instr(SUB, RSP, 8);
@@ -103,7 +119,7 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     as.getMember!("Interp", "tsp")(RBP, R15);
 
     // Join point of the tracelet
-    as.addInstr(traceJoin);
+    as.addInstr(joinLabel);
 
     // Increment the block execution count
     as.ptr(RAX, block);
@@ -114,7 +130,6 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     {
         auto curBlock = ctx.nextBlock;
         ctx.nextBlock = null;
-        ctx.depth++;
 
         // For each instruction of the block
         for (auto instr = curBlock.firstInstr; instr !is null; instr = instr.next)
@@ -144,7 +159,7 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
     }
 
     // Block end, exit of tracelet
-    as.addInstr(traceExit);
+    as.addInstr(exitLabel);
 
     // Store the stack pointers back in the interpreter
     as.setMember!("Interp", "wsp")(R15, RBX);
@@ -181,8 +196,16 @@ CodeBlock compileBlock(Interp interp, IRBlock block)
 
     //writefln("depth: %s", ctx.depth);
 
-    // Return a pointer to the compiled code
-    return codeBlock;
+    // Set the code block and code pointers
+    segment.codeBlock = codeBlock;
+    segment.entryFn = cast(EntryFn)codeBlock.getAddress();
+    segment.joinPoint = codeBlock.getExportAddr("segment_join");
+
+    // Reset the segment counters;
+    segment.counters = [0, 0];
+
+    // Return a pointer to the segment object
+    return segment;
 }
 
 /**
@@ -190,6 +213,9 @@ Code generation context
 */
 struct CodeGenCtx
 {
+    /// Segment object
+    Segment segment;
+
     /// Interpreter object
     Interp interp;
 
@@ -199,14 +225,14 @@ struct CodeGenCtx
     /// Assembler for out of line code
     Assembler ol;
 
-    /// Trace exit label
-    Label traceExit;
+    /// Segment join label
+    Label joinLabel;
+
+    /// Segment exit label
+    Label exitLabel;
 
     /// Block from which to continue code generation
     IRBlock nextBlock;
-
-    /// Depth of code generation (block chain length)
-    size_t depth = 0;
 }
 
 void ptr(TPtr)(Assembler as, X86RegPtr destReg, TPtr ptr)
@@ -298,7 +324,7 @@ void jump(Assembler as, CodeGenCtx ctx, IRBlock target)
     as.ptr(RAX, target);
 
     // If there is a trace join point, jump to it directly
-    as.getMember!("IRBlock", "traceJoin")(RCX, RAX);
+    as.getMember!("IRBlock", "joinPoint")(RCX, RAX);
     as.instr(CMP, RCX, 0);
     as.instr(JE, interpJump);
     as.instr(JMP, RCX);
@@ -306,7 +332,7 @@ void jump(Assembler as, CodeGenCtx ctx, IRBlock target)
     // Make the interpreter jump to the target
     as.addInstr(interpJump);
     as.setMember!("Interp", "target")(R15, RAX);
-    as.instr(JMP, ctx.traceExit);
+    as.instr(JMP, ctx.exitLabel);
 }
 
 void jump(Assembler as, CodeGenCtx ctx, X86RegPtr targetAddr)
@@ -316,7 +342,7 @@ void jump(Assembler as, CodeGenCtx ctx, X86RegPtr targetAddr)
     auto interpJump = new Label("interp_jump");
 
     // If there is a trace join point, jump to it directly
-    as.getMember!("IRBlock", "traceJoin")(RCX, targetAddr);
+    as.getMember!("IRBlock", "joinPoint")(RCX, targetAddr);
     as.instr(CMP, RCX, 0);
     as.instr(JE, interpJump);
     as.instr(JMP, RCX);
@@ -324,7 +350,7 @@ void jump(Assembler as, CodeGenCtx ctx, X86RegPtr targetAddr)
     // Make the interpreter jump to the target
     as.addInstr(interpJump);
     as.setMember!("Interp", "target")(R15, targetAddr);
-    as.instr(JMP, ctx.traceExit);
+    as.instr(JMP, ctx.exitLabel);
 }
 
 void printUint(Assembler as, X86RegPtr reg)
@@ -845,7 +871,7 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     defaultFn(ctx.ol, ctx, instr);
 
     // Exit the trace
-    ctx.ol.instr(JMP, ctx.traceExit);
+    ctx.ol.instr(JMP, ctx.exitLabel);
 }
 
 void gen_ret(ref CodeGenCtx ctx, IRInstr instr)

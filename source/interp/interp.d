@@ -743,11 +743,11 @@ class Interp
         // While we have a target to branch to
         while (target !is null)
         {
-            // If this block has an associated trace entry
-            if (target.traceEntry !is null)
+            // If this block has an associated segment entry
+            if (target.segment !is null)
             {
                 //writefln("entering trace: %s", traceEntry);
-                target.traceEntry();
+                target.segment.entryFn();
                 //writefln("returned from trace");
                 continue;
             }
@@ -755,15 +755,14 @@ class Interp
             // If the block has been executed often enough
             if (target.execCount == 500 && opts.nojit == false)
             {
-                // Compile a tracelet for this block
-                auto codeBlock = compileBlock(this, target);
+                // Compile a segment for this block
+                auto segment = compileBlock(this, target);
                 
-                // If compilation was successful, store the trace entry
-                if (codeBlock !is null)
+                // If compilation was successful, store the code pointers
+                if (segment !is null)
                 {
-                    target.traceCode = codeBlock;
-                    target.traceEntry = cast(TraceFn)codeBlock.getAddress();
-                    target.traceJoin = codeBlock.getExportAddr("trace_join");
+                    target.segment = segment;
+                    target.joinPoint = segment.joinPoint;
                 }
             }
 
