@@ -64,7 +64,7 @@ runtime:
 
 clean:
 	@if [ "`readlink -f $(BIN_DIR)`" != "$(PWD)" ] ; then\
-		echo "cd $(BIN_DIR)/ rm -rf interp stdlib" ;\
+		echo "cd $(BIN_DIR)/ && rm -rf interp stdlib" ;\
 		cd $(BIN_DIR)/ && rm -rf interp stdlib ;\
 	 fi
 	cd $(BIN_DIR)/ && rm -f $(BIN_NAME) $(BIN_NAME_TEST) $(BIN_NAME).o $(BIN_NAME_TEST).o
