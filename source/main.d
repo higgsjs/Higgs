@@ -84,8 +84,8 @@ void main(string[] args)
         }
 
         // Exit unless a repl is forced
-    	if (opts.repl == false)
-        	return;
+        if (opts.repl == false)
+            return;
     }
 
     // Start the REPL
