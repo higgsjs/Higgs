@@ -38,7 +38,7 @@ To execute one or more files, pass them to `higgs`:
 
 The `-e` option accepts a string to execute:
 
-`higgs -e "var x = 4; x + 5; print(x)"`
+`higgs -e "var x = 4; x = x + 5; print(x)"`
 
 The `--repl` option will give a REPL after evaluating a string and/or files:
 
