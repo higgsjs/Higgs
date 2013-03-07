@@ -55,7 +55,7 @@ class Segment
     uint64_t[2] counters = [0, 0];
 
     /// List of blocks chained in this segment
-    IRBlock[] blocks;
+    IRBlock[] blockList;
 
     /// Trace code block
     CodeBlock codeBlock = null;

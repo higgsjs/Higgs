@@ -57,25 +57,21 @@ const BRANCH_EXTEND_COUNT = 1000;
 const BRANCH_EXTEND_RATIO = 10;
 
 /**
-Compile a basic block into executable machine code
+Compile a machine code segment starting at a given block
 */
-Segment compileBlock(Interp interp, IRBlock block)
+extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment = null)
 {
-    assert (
-        block.firstInstr !is null,
-        "first instr of block is null"
-    );
-
-    assert (
-        block.fun !is null,
-        "block fun ptr is null"
-    );
-
     //writefln("compiling tracelet in %s:\n%s\n", block.fun.getName(), block.toString());
 
-    // TODO: reuse if extending existing segment
-    // Create a new segment object
-    auto segment = new Segment();
+    //if (segment)
+    //    writefln("extending, length: %s", segment.blockList.length + 1);
+
+    // If no segment is supplied, create a new segment object
+    if (segment is null)
+        segment = new Segment();
+
+    // Add the next block to the segment
+    segment.blockList ~= nextBlock;
 
     // Assembler to write code into
     auto as = new Assembler();
@@ -91,13 +87,12 @@ Segment compileBlock(Interp interp, IRBlock block)
 
     // Create a code generation context
     auto ctx = CodeGenCtx(
-        segment, 
+        segment,
         interp, 
         as, 
         ol, 
         joinLabel, 
-        exitLabel, 
-        block
+        exitLabel
     );
 
     // Align SP to a multiple of 16 bytes
@@ -121,15 +116,15 @@ Segment compileBlock(Interp interp, IRBlock block)
     // Join point of the tracelet
     as.addInstr(joinLabel);
 
+    // TODO: remove
     // Increment the block execution count
-    as.ptr(RAX, block);
-    as.instr(INC, X86Opnd(8*block.execCount.sizeof, RAX, block.execCount.offsetof));
+    //as.ptr(RAX, block);
+    //as.instr(INC, X86Opnd(8*block.execCount.sizeof, RAX, block.execCount.offsetof));
 
-    // While there is a block to generate code from
-    while (ctx.nextBlock !is null)
+    // For each block in the list
+    for (ctx.blockIdx = 0; ctx.blockIdx < ctx.segment.blockList.length; ++ctx.blockIdx)
     {
-        auto curBlock = ctx.nextBlock;
-        ctx.nextBlock = null;
+        auto curBlock = ctx.segment.blockList[ctx.blockIdx];
 
         // For each instruction of the block
         for (auto instr = curBlock.firstInstr; instr !is null; instr = instr.next)
@@ -182,8 +177,12 @@ Segment compileBlock(Interp interp, IRBlock block)
     // Append the out of line code to the rest
     as.append(ol);
 
+    //writefln("assembling");
+
     // Assemble the machine code
     auto codeBlock = as.assemble();
+
+    //writefln("assembled");
 
     if (opts.dumpasm)
     {
@@ -194,7 +193,7 @@ Segment compileBlock(Interp interp, IRBlock block)
         );
     }
 
-    //writefln("depth: %s", ctx.depth);
+    //writefln("blocks compiled: %s", ctx.blockIdx);
 
     // Set the code block and code pointers
     segment.codeBlock = codeBlock;
@@ -203,6 +202,11 @@ Segment compileBlock(Interp interp, IRBlock block)
 
     // Reset the segment counters;
     segment.counters = [0, 0];
+
+    // Set the segment pointer and join point on the first block
+    auto firstBlock = segment.blockList[0];
+    firstBlock.segment = segment;
+    firstBlock.joinPoint = segment.joinPoint;
 
     // Return a pointer to the segment object
     return segment;
@@ -231,8 +235,8 @@ struct CodeGenCtx
     /// Segment exit label
     Label exitLabel;
 
-    /// Block from which to continue code generation
-    IRBlock nextBlock;
+    /// Current block index in the block list
+    size_t blockIdx;
 }
 
 void ptr(TPtr)(Assembler as, X86RegPtr destReg, TPtr ptr)
@@ -635,23 +639,15 @@ alias CmpOp!("i8", "eq") gen_eq_const;
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
 {
-    // Continue code generation in the jump target
-    ctx.nextBlock = instr.target;
+    // Add the jump target to the block list if it isn't there already
+    if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
+        ctx.segment.blockList ~= instr.target;
 
     //ctx.as.jump(ctx, instr.target);
 }
 
 void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
 {
-    /*
-    writefln(
-        "%s\n  %s:%s\n  %s", 
-        instr.block.toString(), 
-        instr.target.execCount, instr.excTarget.execCount,
-        instr.block.fun.getName()
-    );
-    */    
-
     auto ifTrue = new Label("if_true");
     auto ifFalse = new Label("if_false");
 
@@ -659,43 +655,100 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.getWord(AL, instr.args[0].localIdx);
     ctx.as.instr(CMP, AL, cast(int8_t)TRUE.int32Val);
   
-    if (instr.target.execCount > 10 * instr.excTarget.execCount)
+    // If we already determined a likely branch target
+    if (ctx.blockIdx + 1 < ctx.segment.blockList.length)
     {
-        ctx.as.instr(JNE, ifFalse);
-     
-        // Continue code generation in the true branch directly
-        ctx.nextBlock = instr.target;
-        //ctx.as.jump(ctx, instr.target);
+        auto inTarget = ctx.segment.blockList[ctx.blockIdx + 1];
 
-        // The false branch is out of line
-        ctx.ol.addInstr(ifFalse);
-        ctx.ol.jump(ctx, instr.excTarget);
+        if (inTarget == instr.target)
+        {
+            // If false, branch out of line
+            ctx.as.instr(JNE, ifFalse);
+
+            // The false branch is out of line
+            ctx.ol.addInstr(ifFalse);
+            ctx.ol.jump(ctx, instr.excTarget);
+        }
+        else
+        {
+            // If true, branch out of line
+            ctx.as.instr(JE, ifTrue);
+
+            // The true branch is out of line
+            ctx.ol.addInstr(ifTrue);
+            ctx.ol.jump(ctx, instr.target);
+        }
+
+        return;
     }
 
-    else if (instr.excTarget.execCount > 10 * instr.target.execCount)
-    {
-        //writefln("match");
-        //writefln("%s", instr.block.fun.getName());
+    auto extTrue = new Label("ext_true");
+    auto extFalse = new Label("ext_false");
 
-        ctx.as.instr(JE, ifTrue);
-     
-        // Continue code generation in the false branch directly
-        ctx.nextBlock = instr.excTarget;
-        //ctx.as.jump(ctx, instr.target);
+    auto jumpTrue = new Label("jump_true");
+    auto jumpFalse = new Label("jump_false");
 
-        // The true branch is out of line
-        ctx.ol.addInstr(ifTrue);
-        ctx.ol.jump(ctx, instr.target);
-    }
+    // True/false counter operands
+    auto ctrOpndT = X86Opnd(64, RDX, Segment.counters.offsetof);
+    auto ctrOpndF = X86Opnd(64, RDX, Segment.counters.offsetof + 8);
 
-    else
-    {
-        ctx.as.instr(JNE, ifFalse);
-        ctx.as.jump(ctx, instr.target);
+    // Set the segment pointer in RDX
+    ctx.as.ptr(RDX, ctx.segment);
 
-        ctx.as.addInstr(ifFalse);
-        ctx.as.jump(ctx, instr.excTarget);
-    }
+    // If false, jump to the false label
+    ctx.as.instr(JNE, ifFalse);
+
+    //
+    // If true
+    //
+    ctx.as.instr(INC, ctrOpndT);
+    ctx.as.instr(CMP, ctrOpndT, BRANCH_EXTEND_COUNT);
+    ctx.as.instr(JE, extTrue);
+
+    ctx.as.addInstr(jumpTrue);
+    ctx.as.jump(ctx, instr.target);
+
+    //
+    // If false
+    //
+    ctx.as.addInstr(ifFalse);
+
+    ctx.as.instr(INC, ctrOpndF);
+    ctx.as.instr(CMP, ctrOpndF, BRANCH_EXTEND_COUNT);
+    ctx.as.instr(JE, extFalse);
+
+    ctx.as.addInstr(jumpFalse);
+    ctx.as.jump(ctx, instr.excTarget);
+
+    //
+    // Extend the true branch (out of line)
+    //
+    ctx.ol.addInstr(extTrue);
+
+    ctx.as.instr(CMP, ctrOpndF, BRANCH_EXTEND_COUNT / BRANCH_EXTEND_RATIO);
+    ctx.as.instr(JG, jumpTrue);
+
+    ctx.ol.instr(MOV, RDI, R15);
+    ctx.ol.ptr(RSI, instr.target);
+    ctx.ol.ptr(RAX, &compSegment);
+    ctx.ol.instr(jit.encodings.CALL, RAX);
+
+    ctx.ol.instr(JMP, jumpTrue);
+
+    //
+    // Extend the false branch (out of line)
+    //
+    ctx.ol.addInstr(extFalse);
+
+    ctx.as.instr(CMP, ctrOpndT, BRANCH_EXTEND_COUNT / BRANCH_EXTEND_RATIO);
+    ctx.as.instr(JG, jumpFalse);
+
+    ctx.ol.instr(MOV, RDI, R15);
+    ctx.ol.ptr(RSI, instr.excTarget);
+    ctx.ol.ptr(RAX, &compSegment);
+    ctx.ol.instr(jit.encodings.CALL, RAX);
+
+    ctx.ol.instr(JMP, jumpFalse);
 }
 
 void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
@@ -856,8 +909,9 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     }
 
     // TODO: evaluate when this is acceptable
-    // Continue code generation in the function entry block    
-    ctx.nextBlock = fun.entryBlock;
+    // Add the jump target to the block list if it isn't there already
+    if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
+        ctx.segment.blockList ~= fun.entryBlock;
 
     // Jump to the function entry
     //ctx.as.ptr(RAX, fun.entryBlock);

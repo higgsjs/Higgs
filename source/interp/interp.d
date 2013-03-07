@@ -746,7 +746,7 @@ class Interp
             // If this block has an associated segment entry
             if (target.segment !is null)
             {
-                //writefln("entering trace: %s", traceEntry);
+                //writefln("entering trace: %s", target.segment.entryFn);
                 target.segment.entryFn();
                 //writefln("returned from trace");
                 continue;
@@ -756,14 +756,7 @@ class Interp
             if (target.execCount == 500 && opts.nojit == false)
             {
                 // Compile a segment for this block
-                auto segment = compileBlock(this, target);
-                
-                // If compilation was successful, store the code pointers
-                if (segment !is null)
-                {
-                    target.segment = segment;
-                    target.joinPoint = segment.joinPoint;
-                }
+                compSegment(this, target);
             }
 
             // Increment the execution count for the block
