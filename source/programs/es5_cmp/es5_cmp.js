@@ -86,6 +86,8 @@ var tests = [
     ['0'    , false , F, T, F, T, T, F, F, T],
     ['0'    , null  , F, T, F, T, F, T, F, T],
     [null   , undef , F, F, F, F, T, F, F, T],
+    [null   , 0     , F, T, F, T, F, T, F, T],
+    [0      , null  , F, T, F, T, F, T, F, T],
 
     [1      , 1     , F, T, F, T, T, F, T, F],
     ['2'    , '2'   , F, T, F, T, T, F, T, F],

@@ -126,6 +126,16 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     {
         auto curBlock = ctx.segment.blockList[ctx.blockIdx];
 
+        //writefln("%s (%s)", curBlock.getName(), curBlock.fun.getName());
+
+        // If the segment jumps back into itself
+        if (ctx.blockIdx > 0 && curBlock is ctx.segment.blockList[0])
+        {
+            //writefln("inserting jump to self**********************");
+            ctx.as.instr(JMP, ctx.joinLabel);
+            break;
+        }
+
         // For each instruction of the block
         for (auto instr = curBlock.firstInstr; instr !is null; instr = instr.next)
         {
@@ -237,6 +247,9 @@ struct CodeGenCtx
 
     /// Current block index in the block list
     size_t blockIdx;
+
+    /// Array of call instructions on the stack
+    IRInstr[] callStack;
 }
 
 void ptr(TPtr)(Assembler as, X86RegPtr destReg, TPtr ptr)
@@ -580,7 +593,11 @@ void OvfOp(string op)(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setWord(instr.outSlot, RCX);
     ctx.as.setType(instr.outSlot, Type.INT32);
 
-    ctx.as.jump(ctx, instr.target);
+    // Add the normal target to the block list if it isn't there already
+    if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
+        ctx.segment.blockList ~= instr.target;
+
+    //ctx.as.jump(ctx, instr.target);
 
     // Out of line jump to the overflow target
     ctx.ol.addInstr(ovf);
@@ -913,6 +930,9 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
         ctx.segment.blockList ~= fun.entryBlock;
 
+    // Add the call instruction to the pseudo call stack
+    ctx.callStack ~= instr;
+
     // Jump to the function entry
     //ctx.as.ptr(RAX, fun.entryBlock);
     //ctx.as.jump(ctx, RAX);
@@ -938,6 +958,12 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     auto thisSlot  = instr.block.fun.thisSlot;
     auto numParams = instr.block.fun.params.length;
     auto numLocals = instr.block.fun.numLocals;
+
+
+    // TODO: optimize based on ctx.callStack?
+    // optimized path if return target known?
+    // otherwise call interp?
+
 
     // Label for returns from a new instruction
     auto retFromNew = new Label("ret_new");
@@ -996,25 +1022,49 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     // Return done
     ctx.as.addInstr(retDone);
 
-    // RCX = call continuation target
-    ctx.as.getMember!("IRInstr", "target")(RDX, RAX);
 
-    // Jump to the call continuation
-    ctx.as.jump(ctx, RDX);
+
+    // FIXME: ret_new gets compiled before this!
+
+    if (ctx.callStack.length > 0)
+    {
+        auto callInstr = ctx.callStack[$-1];
+
+        //writefln("returning to %s", callInstr.block.fun.getName());
+
+        if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
+            ctx.segment.blockList ~= callInstr.target;
+
+        ctx.callStack = ctx.callStack[0..$-1];
+    }
+    else
+    {
+        //writefln("no return target");
+
+        // RCX = call continuation target
+        ctx.as.getMember!("IRInstr", "target")(RDX, RAX);
+
+        // Jump to the call continuation
+        ctx.as.jump(ctx, RDX);
+    }
+
+
+
+
 
     // Return from new case
-    ctx.as.addInstr(retFromNew);
+    ctx.ol.addInstr(retFromNew);
 
     // If the return value is not undefined, return that value
-    ctx.as.instr(CMP, SIL, Type.CONST);
-    ctx.as.instr(JNE, popLocals);
-    ctx.as.instr(CMP, DIL, cast(int8_t)UNDEF.int32Val);
-    ctx.as.instr(JNE, popLocals);
+    ctx.ol.instr(CMP, SIL, Type.CONST);
+    ctx.ol.instr(JNE, popLocals);
+    ctx.ol.instr(CMP, DIL, cast(int8_t)UNDEF.int32Val);
+    ctx.ol.instr(JNE, popLocals);
 
     // Use the this value as the return value
-    ctx.as.getWord(RDI, thisSlot);
-    ctx.as.getType(SIL, thisSlot);
-    ctx.as.instr(JMP, popLocals);
+    ctx.ol.getWord(RDI, thisSlot);
+    ctx.ol.getType(SIL, thisSlot);
+    ctx.ol.instr(JMP, popLocals);
 }
 
 void gen_get_global_obj(ref CodeGenCtx ctx, IRInstr instr)

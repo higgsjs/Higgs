@@ -1068,6 +1068,10 @@ function $rt_eq(x, y)
 
         if ($ir_is_float(y))
             return $ir_eq_f64($ir_i32_to_f64(x), y);
+
+        // 0 != null
+        if (x === 0 && y === null)
+            return false;
     }
 
     // If x is a references
@@ -1096,12 +1100,16 @@ function $rt_eq(x, y)
                 return false;
         }
 
-        // If y is a constant
-        if ($ir_is_const(y))
+        // If x is null
+        if ($ir_eq_refptr(x, null))
         {
             // null == undefined
-            if (x === null)
-                return y === $ir_set_undef();
+            if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
+                return true;
+
+            // null != 0
+            if (y === 0)
+                return false;
         }
     }
 
