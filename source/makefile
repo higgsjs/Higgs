@@ -29,14 +29,13 @@ jit/encodings.d     \
 jit/codeblock.d     \
 jit/assembler.d     \
 jit/jit.d           \
+jit/segment.d       \
 jit/tests.d         \
 parser/tests.d      \
 interp/tests.d      \
 repl.d              \
 options.d           \
 main.d
-
-
 
 all: layout encodings runtime
 	$(DC) $(COPTS) -of$(BIN_DIR)/$(BIN_NAME) $(SRC)

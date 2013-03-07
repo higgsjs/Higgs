@@ -49,7 +49,7 @@ import parser.ast;
 import interp.interp;
 import interp.layout;
 import interp.ops;
-import jit.codeblock;
+import jit.segment;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -229,9 +229,6 @@ class IRFunction : IdObject
     }
 }
 
-/// Trace function pointer
-alias void function() TraceFn;
-
 /**
 IR basic block
 */
@@ -243,14 +240,11 @@ class IRBlock : IdObject
     /// Execution count, for profiling
     uint64 execCount = 0;
 
-    /// Trace code block
-    CodeBlock traceCode = null;
+    /// Compiled code segment
+    Segment segment = null;
 
-    /// Trace entry function
-    TraceFn traceEntry = null;
-
-    // Trace join point code pointer
-    ubyte* traceJoin = null;
+    // Segment join point code pointer
+    ubyte* joinPoint = null;
 
     /// Parent function
     IRFunction fun = null;
