@@ -757,9 +757,10 @@ class Interp
             // If this block has an associated segment entry
             if (target.segment !is null)
             {
-                //writefln("entering trace: %s", target.segment.entryFn);
+                //writefln("entering segment: %s", target.segment.entryFn);
+                //writefln("entering segment in: %s", target.fun.getName());
                 target.segment.entryFn();
-                //writefln("returned from trace");
+                //writefln("returned from segment");
                 continue;
             }
 

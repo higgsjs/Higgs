@@ -53,7 +53,7 @@ import jit.x86;
 import jit.encodings;
 import jit.segment;
 
-const BRANCH_EXTEND_COUNT = 1000;
+const BRANCH_EXTEND_COUNT = 2000;
 const BRANCH_EXTEND_RATIO = 10;
 
 /**
@@ -61,7 +61,7 @@ Compile a machine code segment starting at a given block
 */
 extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment = null)
 {
-    //writefln("compiling tracelet in %s:\n%s\n", block.fun.getName(), block.toString());
+    //writefln("compiling segment in %s", nextBlock.fun.getName());
 
     //if (segment)
     //    writefln("extending, length: %s", segment.blockList.length + 1);
@@ -833,13 +833,13 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
         // If we are calling a global function
         if (curInstr.outSlot == closIdx && curInstr.opcode == &GET_GLOBAL)
         {
-            auto propName = curInstr.args[0].stringVal;
+            auto propStr = getString(ctx.interp, curInstr.args[0].stringVal);
 
             // Lookup the global function
             ValuePair val = getProp(
                 ctx.interp,
                 ctx.interp.globalObj,
-                getString(ctx.interp, propName)
+                propStr
             );
 
             if (val.type == Type.REFPTR && valIsLayout(val.word, LAYOUT_CLOS))
@@ -956,8 +956,6 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
 
 void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
 {
-    //writefln("compiling ret from %s", instr.block.fun.getName());
-
     auto retSlot   = instr.args[0].localIdx;
     auto raSlot    = instr.block.fun.raSlot;
     auto argcSlot  = instr.block.fun.argcSlot;
@@ -965,12 +963,59 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     auto numParams = instr.block.fun.params.length;
     auto numLocals = instr.block.fun.numLocals;
 
+      
+    IRInstr callInstr = (ctx.callStack.length > 0)? ctx.callStack[$-1]:null;
 
-    // TODO: optimize based on ctx.callStack?
-    // optimized path if return target known?
-    // otherwise call interp?
+    // If the call instruction is unknown or is not a regular call
+    if (callInstr is null || callInstr.opcode != &ir.ir.CALL)
+    {
+        //writefln("interp return");
 
+        // Call the interpreter return instruction
+        defaultFn(ctx.as, ctx, instr);
+        return;
+    }
 
+    //writefln("optimized return");
+
+    // Get the argument count
+    auto argCount = callInstr.args.length - 2;
+
+    // Compute the actual number of extra arguments to pop
+    size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
+
+    // Compute the number of stack slots to pop
+    auto numPop = numLocals + extraArgs;
+
+    // If the call instruction has an output slot
+    if (callInstr.outSlot != NULL_LOCAL)
+    {
+        // Get the return value
+        ctx.as.getWord(RDI, retSlot);
+        ctx.as.getType(SIL, retSlot);
+    }
+
+    // Pop all local stack slots and arguments
+    ctx.as.instr(ADD, RBX, numPop * 8);
+    ctx.as.instr(ADD, RBP, numPop);
+
+    // If the call instruction has an output slot
+    if (callInstr.outSlot != NULL_LOCAL)
+    {
+        // Set the return value
+        ctx.as.setWord(callInstr.outSlot, RDI);
+        ctx.as.setType(callInstr.outSlot, SIL);
+    }
+
+    // Continue code generation in the call continuation
+    if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
+        ctx.segment.blockList ~= callInstr.target;
+
+    // Remove this call instruction from the pseudo call stack
+    ctx.callStack = ctx.callStack[0..$-1];
+    
+
+    /*
     // Label for returns from a new instruction
     auto retFromNew = new Label("ret_new");
 
@@ -1028,9 +1073,6 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     // Return done
     ctx.as.addInstr(retDone);
 
-
-
-    // FIXME: ret_new gets compiled before this!
     if (ctx.callStack.length > 0)
     {
         auto callInstr = ctx.callStack[$-1];
@@ -1054,10 +1096,6 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
         ctx.as.jump(ctx, RDX);
     }
 
-
-
-
-
     // Return from new case
     ctx.ol.addInstr(retFromNew);
 
@@ -1071,6 +1109,7 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     ctx.ol.getWord(RDI, thisSlot);
     ctx.ol.getType(SIL, thisSlot);
     ctx.ol.instr(JMP, popLocals);
+    */
 }
 
 void gen_get_global_obj(ref CodeGenCtx ctx, IRInstr instr)
