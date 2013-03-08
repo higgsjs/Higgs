@@ -409,31 +409,31 @@ extern (C) void printUint(uint64_t v)
 
 void gen_set_true(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.as.setWord(instr.outSlot, cast(int8_t)TRUE.int64Val);
+    ctx.as.setWord(instr.outSlot, TRUE.int8Val);
     ctx.as.setType(instr.outSlot, Type.CONST);
 }
 
 void gen_set_false(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.as.setWord(instr.outSlot, cast(int8_t)FALSE.int64Val);
+    ctx.as.setWord(instr.outSlot, FALSE.int8Val);
     ctx.as.setType(instr.outSlot, Type.CONST);
 }
 
 void gen_set_undef(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.as.setWord(instr.outSlot, cast(int8_t)UNDEF.int64Val);
+    ctx.as.setWord(instr.outSlot, UNDEF.int8Val);
     ctx.as.setType(instr.outSlot, Type.CONST);
 }
 
 void gen_set_missing(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.as.setWord(instr.outSlot, cast(int8_t)MISSING.int64Val);
+    ctx.as.setWord(instr.outSlot, MISSING.int8Val);
     ctx.as.setType(instr.outSlot, Type.CONST);
 }
 
 void gen_set_null(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.as.setWord(instr.outSlot, cast(int8_t)NULL.int64Val);
+    ctx.as.setWord(instr.outSlot, NULL.int8Val);
     ctx.as.setType(instr.outSlot, Type.REFPTR);
 }
 
@@ -715,11 +715,14 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     // If false, jump to the false label
     ctx.as.instr(JNE, ifFalse);
 
+    // Increase the extension count with the segment length
+    auto extCount = ctx.segment.blockList.length * BRANCH_EXTEND_COUNT;
+
     //
     // If true
     //
     ctx.as.instr(INC, ctrOpndT);
-    ctx.as.instr(CMP, ctrOpndT, BRANCH_EXTEND_COUNT);
+    ctx.as.instr(CMP, ctrOpndT, extCount);
     ctx.as.instr(JE, extTrue);
 
     ctx.as.addInstr(jumpTrue);
@@ -731,7 +734,7 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.addInstr(ifFalse);
 
     ctx.as.instr(INC, ctrOpndF);
-    ctx.as.instr(CMP, ctrOpndF, BRANCH_EXTEND_COUNT);
+    ctx.as.instr(CMP, ctrOpndF, extCount);
     ctx.as.instr(JE, extFalse);
 
     ctx.as.addInstr(jumpFalse);
@@ -742,7 +745,7 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     //
     ctx.ol.addInstr(extTrue);
 
-    ctx.as.instr(CMP, ctrOpndF, BRANCH_EXTEND_COUNT / BRANCH_EXTEND_RATIO);
+    ctx.as.instr(CMP, ctrOpndF, extCount / BRANCH_EXTEND_RATIO);
     ctx.as.instr(JG, jumpTrue);
 
     ctx.ol.instr(MOV, RDI, R15);
@@ -757,7 +760,7 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     //
     ctx.ol.addInstr(extFalse);
 
-    ctx.as.instr(CMP, ctrOpndT, BRANCH_EXTEND_COUNT / BRANCH_EXTEND_RATIO);
+    ctx.as.instr(CMP, ctrOpndT, extCount / BRANCH_EXTEND_RATIO);
     ctx.as.instr(JG, jumpFalse);
 
     ctx.ol.instr(MOV, RDI, R15);
@@ -920,10 +923,11 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     // Initialize the variables to undefined
     for (LocalIdx i = 0; i < numVars; ++i)
     {
-        ctx.as.instr(MOV, RAX, UNDEF.int64Val);
-        ctx.as.setWord(i, RAX);
+        ctx.as.setWord(i, UNDEF.int8Val);
         ctx.as.setType(i, Type.CONST);
     }
+
+
 
     // TODO: evaluate when this is acceptable
     // Add the jump target to the block list if it isn't there already
@@ -936,6 +940,8 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     // Jump to the function entry
     //ctx.as.ptr(RAX, fun.entryBlock);
     //ctx.as.jump(ctx, RAX);
+
+
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(bailout);
@@ -1025,12 +1031,12 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
 
 
     // FIXME: ret_new gets compiled before this!
-
     if (ctx.callStack.length > 0)
     {
         auto callInstr = ctx.callStack[$-1];
 
         //writefln("returning to %s", callInstr.block.fun.getName());
+        //writefln("returning to %s", callInstr.toString());
 
         if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
             ctx.segment.blockList ~= callInstr.target;
@@ -1149,7 +1155,6 @@ static this()
     codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&LT_I32]         = &gen_lt_i32;
-    //codeGenFns[&LT_F64]         = &gen_lt_f64;
 
     codeGenFns[&JUMP]           = &gen_jump;
 

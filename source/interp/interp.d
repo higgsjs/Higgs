@@ -118,18 +118,19 @@ Memory word union
 union Word
 {
     static Word int32v(int32 i) { Word w; w.int32Val = i; return w; }
-    static Word uint32v(uint32 i) { Word w; w.uint32Val = i; return w; }
     static Word int64v(int64 i) { Word w; w.int64Val = i; return w; }
+    static Word uint32v(uint32 i) { Word w; w.uint32Val = i; return w; }
     static Word uint64v(uint64 i) { Word w; w.uint64Val = i; return w; }
     static Word floatv(float64 f) { Word w; w.floatVal = f; return w; }
     static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
     static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
     static Word cstv(rawptr c) { Word w; w.ptrVal = c; return w; }
 
+    int8    int8Val;
     int32   int32Val;
-    int32   uint32Val;
-    uint64  uint64Val;
     int64   int64Val;
+    uint32  uint32Val;
+    uint64  uint64Val;
     float64 floatVal;
     refptr  refVal;
     rawptr  ptrVal;
@@ -743,14 +744,8 @@ class Interp
         // While we have a target to branch to
         while (target !is null)
         {
-            // If this block has an associated segment entry
-            if (target.segment !is null)
-            {
-                //writefln("entering trace: %s", target.segment.entryFn);
-                target.segment.entryFn();
-                //writefln("returned from trace");
-                continue;
-            }
+            // Increment the execution count for the block
+            target.execCount++;
 
             // If the block has been executed often enough
             if (target.execCount == BRANCH_EXTEND_COUNT && opts.nojit == false)
@@ -759,8 +754,14 @@ class Interp
                 compSegment(this, target);
             }
 
-            // Increment the execution count for the block
-            target.execCount++;
+            // If this block has an associated segment entry
+            if (target.segment !is null)
+            {
+                //writefln("entering trace: %s", target.segment.entryFn);
+                target.segment.entryFn();
+                //writefln("returned from trace");
+                continue;
+            }
 
             // Set the IP to the first instruction of the block
             ip = target.firstInstr;
