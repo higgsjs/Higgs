@@ -53,7 +53,7 @@ import jit.x86;
 import jit.encodings;
 import jit.segment;
 
-const BRANCH_EXTEND_COUNT = 2000;
+const BRANCH_EXTEND_COUNT = 1000;
 const BRANCH_EXTEND_RATIO = 10;
 
 /**
@@ -443,6 +443,22 @@ void gen_set_int32(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setType(instr.outSlot, Type.INT32);
 }
 
+void gen_set_str(ref CodeGenCtx ctx, IRInstr instr)
+{
+    auto linkIdx = instr.args[1].linkIdx;
+
+    assert (
+        linkIdx !is NULL_LINK,
+        "link not allocated for set_str"
+    );
+
+    ctx.as.getMember!("Interp", "wLinkTable")(RCX, R15);
+    ctx.as.instr(MOV, RCX, X86Opnd(64, RCX, 8 * linkIdx));
+
+    ctx.as.setWord(instr.outSlot, RCX);
+    ctx.as.setType(instr.outSlot, Type.REFPTR);
+}
+
 void gen_move(ref CodeGenCtx ctx, IRInstr instr)
 {
     ctx.as.getWord(RDI, instr.args[0].localIdx);
@@ -653,6 +669,39 @@ alias CmpOp!("i64", "eq") gen_eq_refptr;
 alias CmpOp!("i64", "ne") gen_ne_refptr;
 
 alias CmpOp!("i8", "eq") gen_eq_const;
+
+void LoadOp(size_t memSize, Type typeTag)(ref CodeGenCtx ctx, IRInstr instr)
+{
+    // Pointer
+    ctx.as.getWord(RCX, instr.args[0].localIdx);
+
+    // Offset
+    ctx.as.getWord(RDX, instr.args[1].localIdx);
+
+    X86RegPtr dstReg;
+    static if (memSize == 8)
+        dstReg = AL;
+    static if (memSize == 16)
+        dstReg = AX;
+    static if (memSize == 32)
+        dstReg = EAX;
+    static if (memSize == 64)
+        dstReg = RAX;
+
+    ctx.as.instr(MOV, dstReg, X86Opnd(memSize, RCX, 0, RDX));
+
+    ctx.as.setWord(instr.outSlot, RAX);
+    ctx.as.setType(instr.outSlot, typeTag);
+}
+
+//alias LoadOp!(uint8, Type.INT32) op_load_u8;
+//alias LoadOp!(uint16, Type.INT32) op_load_u16;
+alias LoadOp!(32, Type.INT32) gen_load_u32;
+//alias LoadOp!(uint64, Type.INT32) op_load_u64;
+alias LoadOp!(64, Type.FLOAT) gen_load_f64;
+alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
+//alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;
+//alias LoadOp!(IRFunction, Type.FUNPTR) op_load_funptr;
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
 {
@@ -1167,6 +1216,7 @@ static this()
     codeGenFns[&SET_MISSING]    = &gen_set_missing;
     codeGenFns[&SET_NULL]       = &gen_set_null;
     codeGenFns[&SET_INT32]      = &gen_set_int32;
+    codeGenFns[&SET_STR]        = &gen_set_str;
 
     codeGenFns[&MOVE]           = &gen_move;
 
@@ -1194,6 +1244,10 @@ static this()
     codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&LT_I32]         = &gen_lt_i32;
+
+    codeGenFns[&LOAD_U32]       = &gen_load_u32;
+    codeGenFns[&LOAD_F64]       = &gen_load_f64;
+    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
 
     codeGenFns[&JUMP]           = &gen_jump;
 

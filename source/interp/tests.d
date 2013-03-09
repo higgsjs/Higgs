@@ -612,8 +612,11 @@ unittest
     assertThrows("foo");
 
     // Many global variables
-    auto interp = new Interp();
+    Interp interp;
+    interp = new Interp();
     interp.load("programs/many_globals/many_globals.js");
+    interp = new Interp();
+    interp.load("programs/many_globals/many_globals2.js");
 }
 
 /// In-place operators

@@ -405,6 +405,11 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
         // Set the next pointer in the old object
         obj_set_next(obj.ptr, newObj);
 
+        // If this is the global object, update
+        // the global object pointer
+        if (obj.ptr == interp.globalObj)
+            interp.globalObj = newObj;
+
         // Update the object pointer
         obj = newObj;
     }
