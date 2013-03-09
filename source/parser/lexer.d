@@ -734,12 +734,12 @@ Token getToken(StrStream stream)
                     m = stream.match(uniRegex);
                 if (m.empty == false)
                 {
-                    auto hexStr = m.captures[1].toLower();
+                    auto hexStr = m.captures[1];
 
                     int charCode;
                     formattedRead(hexStr, "%x", &charCode);
 
-                    str ~= cast(char)charCode;
+                    str ~= cast(wchar)charCode;
 
                     continue CHAR_LOOP;
                 }
@@ -751,7 +751,7 @@ Token getToken(StrStream stream)
                 m = stream.match(octRegex);
                 if (m.empty == false)
                 {
-                    auto octStr = m.captures[1].toLower();
+                    auto octStr = m.captures[1];
 
                     int charCode;
                     formattedRead(octStr, "%o", &charCode);
