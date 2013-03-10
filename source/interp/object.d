@@ -227,7 +227,6 @@ void extClass(Interp interp, refptr classPtr, uint32 curSize, uint32 numProps, r
     auto newSize = curSize * 2 + 1;
 
     writefln("extending class, old size: %s, new size: %s", curSize, newSize);
-    writefln("%s", classPtr);
 
     // Allocate a new, larger hash table
     auto newClass = class_alloc(interp, newSize);
@@ -292,6 +291,8 @@ void extClass(Interp interp, refptr classPtr, uint32 curSize, uint32 numProps, r
 
     // Update the class pointer in the object
     obj_set_class(obj.ptr, newClass);
+
+    //writefln("done extending class");
 }
 
 ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)

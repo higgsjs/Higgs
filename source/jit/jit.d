@@ -836,6 +836,7 @@ void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
     // Get the global object pointer
     ctx.as.getMember!("Interp", "globalObj")(RAX, R15);
 
+    // FIXME... type offset varies with global obj size!...
     ctx.as.getField(RDI, RAX, 8, obj_ofs_word(interp.globalObj, propIdx));
     ctx.as.getField(SIL, RAX, 1, obj_ofs_type(interp.globalObj, propIdx));
 
@@ -862,6 +863,7 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.getWord(RDI, instr.args[1].localIdx);
     ctx.as.getType(SIL, instr.args[1].localIdx);
 
+    // FIXME... type offset varies with global obj size!...
     ctx.as.setField(RAX, 8, obj_ofs_word(interp.globalObj, propIdx), RDI);
     ctx.as.setField(RAX, 1, obj_ofs_type(interp.globalObj, propIdx), SIL);
 }
@@ -1256,8 +1258,9 @@ static this()
     codeGenFns[&ir.ir.CALL]     = &gen_call;
     codeGenFns[&ir.ir.RET]      = &gen_ret;
 
-    codeGenFns[&GET_GLOBAL]     = &gen_get_global;
-    codeGenFns[&SET_GLOBAL]     = &gen_set_global;
+    // FIXME
+    //codeGenFns[&GET_GLOBAL]     = &gen_get_global;
+    //codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 }

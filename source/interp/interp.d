@@ -758,7 +758,8 @@ class Interp
             if (target.segment !is null)
             {
                 //writefln("entering segment: %s", target.segment.entryFn);
-                //writefln("entering segment in: %s", target.fun.getName());
+                //writefln("entering segment in: %s, len: %s", target.fun.getName(), target.segment.blockList.length);
+                //writefln("%s", target.toString());
                 target.segment.entryFn();
                 //writefln("returned from segment");
                 continue;
