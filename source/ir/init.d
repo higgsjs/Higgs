@@ -192,10 +192,7 @@ void genInitMaps(IRFunction fun)
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
             // Store the init map at all call and allocation instructions
-            if (instr.opcode == &CALL || 
-                instr.opcode == &CALL_NEW || 
-                instr.opcode == &CALL_APPLY || 
-                instr.opcode.mayGC)
+            if (instr.opcode.isCall || instr.opcode.mayGC)
             {
                 fun.initMaps[instr] = initMap;
             }

@@ -1304,6 +1304,12 @@ unittest
     interp = new Interp();
     interp.load("programs/gc/stackvm.js");
     interp.assertInt("test();", 0);
+
+    writefln("gc/load");
+
+    interp = new Interp();
+    interp.load("programs/gc/load.js");
+    interp.assertInt("theFlag;", 1337);
 }
 
 /// SunSpider benchmarks

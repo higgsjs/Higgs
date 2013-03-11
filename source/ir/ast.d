@@ -2271,8 +2271,8 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
     // Add the instruction to the context
     ctx.addInstr(instr);
 
-    // If this is the call_apply instruction, generate the call targets
-    if (instr.opcode == &CALL_APPLY)
+    // If this is a call_instruction, generate the call targets
+    if (instr.opcode.isCall)
         genCallTargets(ctx, instr);
 
     return instr;

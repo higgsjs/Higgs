@@ -1174,9 +1174,12 @@ void defaultFn(Assembler as, ref CodeGenCtx ctx, IRInstr instr)
     // Load a pointer to the instruction in RSI
     as.ptr(RSI, instr);
 
-    // TODO: only necessary if we may alloc or branch?
     // Set the interpreter's IP
-    as.setMember!("Interp", "ip")(RDI, RSI);
+    // Only necessary if we may branch or allocate
+    if (instr.opcode.isBranch || instr.opcode.mayGC)
+    {
+        as.setMember!("Interp", "ip")(RDI, RSI);
+    }
 
     // Store the stack pointers back in the interpreter
     as.setMember!("Interp", "wsp")(R15, RBX);

@@ -43,6 +43,7 @@ import std.string;
 import std.conv;
 import std.math;
 import std.datetime;
+import parser.parser;
 import ir.ir;
 import ir.ast;
 import interp.interp;
@@ -1437,14 +1438,23 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
 
     auto fileName = extractStr(wFile.ptrVal);
 
-    // Save the current instruction pointer
-    auto ip = interp.ip;
+    // Parse the source file and generate IR
+    auto ast = parseFile(fileName);
+    auto fun = astToIR(ast);
 
-    // Load and execute the source file
-    interp.load(fileName);
+    // Register this function in the function reference set
+    interp.funRefs[cast(void*)fun] = fun;
 
-    // Restore the instruction pointer
-    interp.ip = ip;
+    // Setup the callee stack frame
+    callFun(
+        interp,
+        fun,
+        instr,      // Calling instruction
+        null,       // Null closure argument
+        NULL,       // Null this argument
+        Type.REFPTR,// This value is a reference
+        []          // 0 arguments
+    );
 }
 
 extern (C) void op_print_str(Interp interp, IRInstr instr)

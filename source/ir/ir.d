@@ -612,7 +612,8 @@ struct OpInfo
     {
         VAR_ARG = 1 << 0,
         BRANCH  = 1 << 1,
-        MAY_GC  = 1 << 2
+        CALL    = 1 << 2,
+        MAY_GC  = 1 << 3
     }
 
     string mnem;
@@ -623,6 +624,7 @@ struct OpInfo
 
     bool isVarArg() const { return (opFlags & VAR_ARG) != 0; }
     bool isBranch() const { return (opFlags & BRANCH) != 0; }
+    bool isCall  () const { return (opFlags & CALL) != 0; }
     bool mayGC   () const { return (opFlags & MAY_GC) != 0; }
 
     OpArg getArgType(size_t i) immutable
@@ -760,7 +762,7 @@ Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &op_if_true, OpInfo.BRANCH }
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, OpInfo.VAR_ARG | OpInfo.BRANCH };
+Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
 
 // <dstLocal> = CALL_NEW <closLocal> ...
 // Implements the JavaScript new operator.
@@ -768,11 +770,11 @@ Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, OpInfo.VAR_A
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.MAY_GC };
+Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
 
 // <dstLocal> = CALL_APPLY <closArg> <thisArg> <argTable> <numArgs>
 // Call with an array of arguments
-Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_call_apply, OpInfo.BRANCH };
+Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_call_apply, OpInfo.BRANCH | OpInfo.CALL };
 
 // RET <retLocal>
 // Pops the callee frame (size known by context)
@@ -829,7 +831,7 @@ Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], &op_new_clos, OpInfo.MAY_GC };
 
 /// Load a source code unit from a file
-Opcode LOAD_FILE = { "load_file", false, [OpArg.LOCAL], &op_load_file, OpInfo.MAY_GC };
+Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], &op_load_file, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
 
 /// Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };

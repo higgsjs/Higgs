@@ -78,7 +78,7 @@ Load and execute a source file
 */
 function load(fileName)
 {
-    $ir_load_file(fileName);
+    return $ir_load_file(fileName);
 }
 
 /**
