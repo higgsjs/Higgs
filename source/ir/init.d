@@ -71,6 +71,8 @@ class InitMap
         if ((initSlots[intIdx] >> bitIdx) & 1)
             return this;
 
+        // TODO: optimize copying
+
         auto newMap = new InitMap(numSlots);
 
         for (size_t i = 0; i < this.initSlots.length; ++i)
@@ -128,18 +130,22 @@ class InitMap
 
 unittest
 {
+    writefln("InitMap");
+
     InitMap m = new InitMap(100);
 
     assert (m.get(0) == false);
     assert (m.get(99) == false);
     assert (m.merge(m) == m);
 
-    auto m2 = m.set(5);
+    auto m2 = m.set(5).set(33);
 
     assert (m2.get(5) == true);
+    assert (m2.get(33) == true);
     assert (m2 != m);
     assert (m2.merge(m) == m2);
     assert (m2.get(5) == true);
+    assert (m2.get(33) == true);
     assert (m.get(5) == false);
 
     auto m3 = m.set(65);
@@ -158,20 +164,20 @@ void genInitMaps(IRFunction fun)
     );
 
     InitMap[IRBlock] entryMaps;
-    InitMap[IRBlock] exitMaps;
+
+    // Create an empty map
+    auto emptyMap = new InitMap(fun.numLocals);
 
     // Create a map for the function entry
-    auto entryMap = new InitMap(fun.numLocals);
+    auto entryMap = emptyMap;
     for (size_t i = 0; i < fun.numParams + NUM_HIDDEN_ARGS; ++i)
         entryMap = entryMap.set(cast(LocalIdx)(fun.numLocals - 1 - i));
 
-    // Initialize the slot init maps
+    // Initialize the maps for each block
     for (auto block = fun.firstBlock; block !is null; block = block.next)
-    {
-        entryMaps[block] = entryMap;
-        exitMaps[block] = entryMap;
-    }
+        entryMaps[block] = (block is fun.entryBlock)? entryMap:emptyMap;
 
+    // Add the entry block to the work list
     IRBlock[] workList = [fun.entryBlock];
 
     // Until the work list is empty
@@ -189,7 +195,7 @@ void genInitMaps(IRFunction fun)
             if (instr.opcode == &CALL || 
                 instr.opcode == &CALL_NEW || 
                 instr.opcode == &CALL_APPLY || 
-                instr.opcode == &HEAP_ALLOC)
+                instr.opcode.mayGC)
             {
                 fun.initMaps[instr] = initMap;
             }
@@ -199,34 +205,72 @@ void genInitMaps(IRFunction fun)
             {
                 initMap = initMap.set(instr.outSlot);
             }
+
+            assert (!(instr.opcode.isBranch && instr.next));
         }
 
-        // If the map at the exit changed
-        if (exitMaps[block] != initMap)
+        auto branch = block.lastInstr;
+        assert (branch.opcode.isBranch);
+
+        // If the target entry map is changed after merging
+        if (branch.target)
         {
-            exitMaps[block] = initMap;
+            auto targetMap = entryMaps[branch.target];
+            auto mergedMap = targetMap.merge(initMap);
 
-            auto branch = block.lastInstr;
-            assert (branch.opcode.isBranch);
-
-            if (branch.target)
+            if (mergedMap != targetMap)
             {
-                entryMaps[branch.target] = entryMaps[branch.target].merge(initMap);
+                entryMaps[branch.target] = mergedMap;
                 workList ~= branch.target;
             }
-            if (branch.excTarget)
+        }
+
+        // If the exception target entry map is changed after merging
+        if (branch.excTarget)
+        {
+            auto targetMap = entryMaps[branch.excTarget];
+            auto mergedMap = targetMap.merge(initMap);
+
+            if (mergedMap != targetMap)
             {
-                entryMaps[branch.excTarget] = entryMaps[branch.excTarget].merge(initMap);
+                entryMaps[branch.excTarget] = mergedMap;
                 workList ~= branch.excTarget;
             }
         }
     }
 
+    //writefln("itr count: %s", itrCount);
+
     // Initialize the variables needing it
     // Go through blocks, if not init and successor has init, insert set_undef?
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
-        auto exitMap = exitMaps[block];
+        auto initMap = entryMaps[block];
+
+        // For each instruction
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+            // If this instruction reads an uninitialized variable,
+            // initialize it to undefined before this instruction
+            foreach (i, arg; instr.args)
+            {
+                if (instr.opcode.getArgType(i) == OpArg.LOCAL && 
+                    initMap.get(instr.args[i].localIdx) == false)
+                {
+                    block.addInstrBefore(
+                        new IRInstr(&SET_UNDEF, instr.args[i].localIdx),
+                        instr
+                    );
+                }
+            }
+
+            // If this instruction has an output slot, mark it as initialized
+            if (instr.outSlot !is NULL_LOCAL)
+            {
+                initMap = initMap.set(instr.outSlot);
+                assert (initMap.get(instr.outSlot));
+            }
+        }
 
         auto branch = block.lastInstr;
         assert (branch.opcode.isBranch);
@@ -235,10 +279,8 @@ void genInitMaps(IRFunction fun)
         for (LocalIdx i = 0; i < fun.numLocals; ++i)
         {
             // If this slot is initialized, skip it
-            if (exitMap.get(i) == true)
+            if (initMap.get(i) == true)
                 continue;
-
-            //continue;
 
             // If the a successor has this slot marked as initialized
             if ((branch.target && entryMaps[branch.target].get(i) == true) ||

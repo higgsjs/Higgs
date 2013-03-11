@@ -589,6 +589,90 @@ void visitStackRoots(Interp interp)
 
     //writefln("stack size: %s", interp.stackSize());
 
+    // Get the stack pointers
+    auto wsp = interp.wsp;
+    auto tsp = interp.tsp;
+
+    auto curInstr = interp.ip;
+    assert (curInstr !is null);
+    auto curFun = curInstr.block.fun;
+    assert (curFun !is null);
+
+    // For each stack frame, starting from the topmost
+    for (;;)
+    {
+        //writefln("scanning stack frame");
+
+        assert (
+            curInstr in curFun.initMaps, 
+            "no init map for instr: " ~ curInstr.toString()
+        );       
+
+        auto numParams = curFun.numParams;
+        auto numLocals = curFun.numLocals;
+        auto raSlot = curFun.raSlot;
+        auto argcSlot = curFun.argcSlot;
+
+        auto initMap = curFun.initMaps[curInstr];
+
+        // Get the argument count
+        auto argCount = wsp[argcSlot].int32Val;
+
+        // Compute the actual number of extra arguments to pop
+        size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
+
+        // Compute the number of locals in this frame
+        auto frameSize = numLocals + extraArgs;
+
+        // For each local in this frame
+        for (LocalIdx idx = 0; idx < frameSize; ++idx)
+        {
+            // If this local is not initialized, skip it
+            if (idx < numLocals && initMap.get(idx) == false)
+                continue;
+
+            Word word = wsp[idx];
+            Type type = tsp[idx];
+
+            // If this is a pointer, forward it
+            wsp[idx] = gcForward(interp, word, type);
+
+            auto fwdPtr = wsp[idx].ptrVal;
+            assert (
+                type != Type.REFPTR ||
+                fwdPtr == null ||
+                (fwdPtr >= interp.toStart && fwdPtr < interp.toLimit),
+                xformat(
+                    "invalid forwarded stack pointer\n" ~
+                    "ptr     : %s\n" ~
+                    "to-alloc: %s\n" ~
+                    "to-limit: %s",
+                    fwdPtr,
+                    interp.toStart,
+                    interp.toLimit
+                )
+            );
+        }
+
+        // Get the calling instruction
+        curInstr = cast(IRInstr)wsp[raSlot].ptrVal;
+
+        // If we reached the bottom of the stack, stop
+        if (curInstr is null)
+            break;
+
+        // Update the current function
+        curFun = curInstr.block.fun;
+        assert (curFun !is null);
+
+        // Pop all local stack slots and arguments
+        wsp += frameSize;
+        tsp += frameSize;
+    }
+
+    //writefln("done scanning stack");
+
+    /*
     // For each stack slot, from top to bottom
     for (LocalIdx i = 0; i < interp.stackSize(); ++i)
     {
@@ -616,6 +700,7 @@ void visitStackRoots(Interp interp)
             )
         );
     }
+    */
 }
 
 /**

@@ -971,15 +971,6 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setWord(cast(LocalIdx)(numVars + 0), RAX);
     ctx.as.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
 
-    // Initialize the variables to undefined
-    for (LocalIdx i = 0; i < numVars; ++i)
-    {
-        ctx.as.setWord(i, UNDEF.int8Val);
-        ctx.as.setType(i, Type.CONST);
-    }
-
-
-
     // TODO: evaluate when this is acceptable
     // Add the jump target to the block list if it isn't there already
     if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
@@ -991,8 +982,6 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     // Jump to the function entry
     //ctx.as.ptr(RAX, fun.entryBlock);
     //ctx.as.jump(ctx, RAX);
-
-
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(bailout);

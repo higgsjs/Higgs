@@ -778,9 +778,6 @@ class Interp
                 IRInstr instr = ip;
 
                 //writefln("op: %s", instr.opcode.mnem);
-
-                // Update the IP
-                ip = instr.next;
      
                 // Get the opcode's implementation function
                 auto opFn = instr.opcode.opFn;
@@ -795,6 +792,9 @@ class Interp
 
                 // Call the opcode's function
                 opFn(this, instr);
+
+                // Update the IP
+                ip = instr.next;
             }
         }
     }

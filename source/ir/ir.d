@@ -607,12 +607,23 @@ Opcode information
 */
 struct OpInfo
 {
+    alias uint OpFlag;
+    enum : OpFlag
+    {
+        VAR_ARG = 1 << 0,
+        BRANCH  = 1 << 1,
+        MAY_GC  = 1 << 2
+    }
+
     string mnem;
     bool output;
     OpArg[] argTypes;
     OpFn opFn = null;
-    bool isVarArg = false;
-    bool isBranch = false;
+    OpFlag opFlags = 0;
+
+    bool isVarArg() const { return (opFlags & VAR_ARG) != 0; }
+    bool isBranch() const { return (opFlags & BRANCH) != 0; }
+    bool mayGC   () const { return (opFlags & MAY_GC) != 0; }
 
     OpArg getArgType(size_t i) immutable
     {
@@ -691,10 +702,10 @@ Opcode EXP_F64 = { "exp_f64", true, [OpArg.LOCAL], &op_exp_f64 };
 Opcode POW_F64 = { "pow_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_pow_f64 };
 
 // Integer operations with overflow handling
-Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32_ovf, false, true };
-Opcode SUB_I32_OVF = { "sub_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_i32_ovf, false, true };
-Opcode MUL_I32_OVF = { "mul_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_i32_ovf, false, true };
-Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lsft_i32_ovf, false, true };
+Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32_ovf, OpInfo.BRANCH };
+Opcode SUB_I32_OVF = { "sub_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_i32_ovf, OpInfo.BRANCH };
+Opcode MUL_I32_OVF = { "mul_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_i32_ovf, OpInfo.BRANCH };
+Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lsft_i32_ovf, OpInfo.BRANCH };
 
 // Integer comparison instructions
 Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_i32 };
@@ -742,14 +753,14 @@ Opcode STORE_RAWPTR = { "store_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.L
 Opcode STORE_FUNPTR = { "store_funptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_funptr };
 
 // Branching and conditional branching
-Opcode JUMP = { "jump", false, [], &op_jump, false, true };
-Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &op_if_true, false, true };
+Opcode JUMP = { "jump", false, [], &op_jump, OpInfo.BRANCH };
+Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &op_if_true, OpInfo.BRANCH };
 
 // <dstLocal> = CALL <closLocal> <thisArg> ...
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, true, true };
+Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, OpInfo.VAR_ARG | OpInfo.BRANCH };
 
 // <dstLocal> = CALL_NEW <closLocal> ...
 // Implements the JavaScript new operator.
@@ -757,19 +768,19 @@ Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, true, true }
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, true, true };
+Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.MAY_GC };
 
 // <dstLocal> = CALL_APPLY <closArg> <thisArg> <argTable> <numArgs>
 // Call with an array of arguments
-Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_call_apply, false, true };
+Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_call_apply, OpInfo.BRANCH };
 
 // RET <retLocal>
 // Pops the callee frame (size known by context)
-Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret, false, true };
+Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret, OpInfo.BRANCH };
 
 // THROW <excLocal>
 // Throws an exception, unwinds the stack
-Opcode THROW = { "throw", false, [OpArg.LOCAL], &op_throw, false, true };
+Opcode THROW = { "throw", false, [OpArg.LOCAL], &op_throw, OpInfo.BRANCH };
 
 // Access visible arguments by index
 Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &op_get_arg };
@@ -787,10 +798,10 @@ Opcode GET_HEAP_FREE = { "get_heap_free", true, [], &op_get_heap_free };
 Opcode GET_GC_COUNT = { "get_gc_count", true, [], &op_get_gc_count };
 
 /// Allocate a block of memory on the heap
-Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc };
+Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection
-Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &op_gc_collect };
+Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &op_gc_collect, OpInfo.MAY_GC };
 
 /// Create a link table entry associated with this instruction
 Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], &op_make_link };
@@ -803,34 +814,34 @@ Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &op_get_link };
 
 /// Compute the hash code for a string and
 /// try to find the string in the string table
-Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str };
+Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str, OpInfo.MAY_GC };
 
 /// GET_GLOBAL <propName>
 /// Note: hidden parameter is cached global property index
-Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT32], &op_get_global };
+Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT32], &op_get_global, OpInfo.MAY_GC };
 
 /// SET_GLOBAL <propName> <value>
 /// Note: hidden parameter is cached global property index
-Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT32], &op_set_global };
+Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT32], &op_set_global, OpInfo.MAY_GC };
 
 /// <dstLocal> = NEW_CLOS <funExpr>
 /// Create a new closure from a function's AST node
-Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], &op_new_clos };
+Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], &op_new_clos, OpInfo.MAY_GC };
 
 /// Load a source code unit from a file
-Opcode LOAD_FILE = { "load_file", false, [OpArg.LOCAL], &op_load_file };
+Opcode LOAD_FILE = { "load_file", false, [OpArg.LOCAL], &op_load_file, OpInfo.MAY_GC };
 
 /// Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
 
 /// Get a string representation of a function's AST
-Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &op_get_ast_str };
+Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &op_get_ast_str, OpInfo.MAY_GC };
 
 /// Get a string representation of a function's IR
-Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &op_get_ir_str };
+Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &op_get_ir_str, OpInfo.MAY_GC };
 
 /// Format a floating-point value as a string
-Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str };
+Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str, OpInfo.MAY_GC };
 
 /// Get the time in milliseconds since process start
 Opcode GET_TIME_MS = { "get_time_ms", true, [], &op_get_time_ms };

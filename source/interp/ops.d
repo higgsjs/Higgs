@@ -821,8 +821,6 @@ void callFun(
     // Push space for the callee locals and initialize the slots to undefined
     auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length;
     interp.push(numLocals);
-    for (LocalIdx i = 0; i < numLocals; ++i)
-        interp.setSlot(i, UNDEF, Type.CONST);
 
     // Jump to the function entry
     interp.jump(fun.entryBlock);
@@ -992,8 +990,6 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
     // Push space for the callee locals and initialize the slots to undefined
     auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length;
     interp.push(numLocals);
-    for (LocalIdx i = 0; i < numLocals; ++i)
-        interp.setSlot(i, UNDEF, Type.CONST);
 
     // Jump to the function entry
     interp.jump(fun.entryBlock);
