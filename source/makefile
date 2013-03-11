@@ -18,6 +18,7 @@ parser/vars.d       \
 parser/parser.d     \
 ir/ir.d             \
 ir/ast.d            \
+ir/init.d           \
 interp/interp.d     \
 interp/ops.d        \
 interp/layout.d     \

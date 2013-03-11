@@ -45,6 +45,7 @@ import std.conv;
 import parser.ast;
 import parser.parser;
 import ir.ir;
+import ir.init;
 import interp.layout;
 
 /**
@@ -213,6 +214,10 @@ class IRGenCtx
     */
     IRInstr addInstr(IRInstr instr)
     {
+        // If the current block already has a branch, do nothing
+        if (curBlock.lastInstr && curBlock.lastInstr.opcode.isBranch)
+            return instr;
+
         curBlock.addInstr(instr);
         return instr;
     }
@@ -584,6 +589,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             }
         }
     }
+
+    // Generate the stack init maps and initialize local variables
+    genInitMaps(fun);
 
     //writeln(fun.toString());
 

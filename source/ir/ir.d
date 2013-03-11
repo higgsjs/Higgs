@@ -46,6 +46,7 @@ import std.stdint;
 import util.id;
 import util.string;
 import parser.ast;
+import ir.init;
 import interp.interp;
 import interp.layout;
 import interp.ops;
@@ -90,13 +91,6 @@ class IRFunction : IdObject
     IRBlock firstBlock = null;
     IRBlock lastBlock = null;
 
-    /// Map of shared variable declarations (captured/escaping) to
-    /// local slots where their closure cells are stored
-    LocalIdx[IdentExpr] cellMap;
-
-    /// Map of variable declarations to local slots
-    LocalIdx[IdentExpr] localMap;
-
     // Number of visible parameters
     uint32_t numParams = 0;
 
@@ -108,6 +102,16 @@ class IRFunction : IdObject
     LocalIdx closSlot;
     LocalIdx thisSlot;
     LocalIdx argcSlot;
+
+    /// Map of shared variable declarations (captured/escaping) to
+    /// local slots where their closure cells are stored
+    LocalIdx[IdentExpr] cellMap;
+
+    /// Map of variable declarations to local slots
+    LocalIdx[IdentExpr] localMap;
+
+    /// Maps of initialized stack slots for call/alloc instructions
+    InitMap[IRInstr] initMaps;
 
     /// Constructor
     this(FunExpr ast)
@@ -282,6 +286,9 @@ class IRBlock : IdObject
         return output.data;
     }
 
+    /**
+    Add an instruction at the end of the block
+    */
     IRInstr addInstr(IRInstr instr)
     {
         if (this.lastInstr)
@@ -304,6 +311,45 @@ class IRBlock : IdObject
         return instr;
     }
 
+    /**
+    Add an instruction after another instruction
+    */
+    void addInstrAfter(IRInstr instr, IRInstr prev)
+    {
+        auto next = prev.next;
+
+        instr.prev = prev;
+        instr.next = next;
+
+        prev.next = instr;
+
+        if (next !is null)
+            next.prev = instr;
+        else
+            this.lastInstr = instr;
+    }
+
+    /**
+    Add an instruction before another instruction
+    */
+    void addInstrBefore(IRInstr instr, IRInstr next)
+    {
+        auto prev = next.prev;
+
+        instr.prev = prev;
+        instr.next = next;
+
+        next.prev = instr;
+
+        if (prev !is null)
+            prev.next = instr;
+        else
+            this.firstInstr = instr;
+    }
+
+    /**
+    Remove an instruction
+    */
     void remInstr(IRInstr instr)
     {
         if (instr.prev)
