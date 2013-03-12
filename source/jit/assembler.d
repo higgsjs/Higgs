@@ -40,9 +40,120 @@ module jit.assembler;
 import std.stdio;
 import std.array;
 import std.stdint;
+import std.string;
 import util.string;
 import jit.codeblock;
 import jit.x86;
+
+/**
+JIT compiler instruction
+*/
+class JITInstr
+{
+    JITInstr prev;
+    JITInstr next;
+
+    abstract override string toString();
+
+    abstract size_t length();
+
+    abstract void encode(CodeBlock codeBlock);
+}
+
+/**
+Label inserted into an instruction stream
+*/
+class Label : JITInstr
+{
+    /**
+    Label name
+    */
+    string name;
+
+    /**
+    Offset at which this label is located
+    */
+    uint32_t offset = 0;
+
+    /**
+    Reference count for this label
+    */
+    uint32_t refCount = 0;
+
+    /**
+    Flag to indicate this label will be externally visible
+    and usable for linking.
+    */
+    bool exported;
+
+    this(string name, bool exported = false)
+    {
+        this.name = name;
+        this.exported = exported;
+    }
+
+    /**
+    Get the string representation of a label
+    */
+    override string toString()
+    {
+        return xformat("%s(%s)%s:", this.name, this.offset, (this.exported? " (exported)":""));
+    }
+
+    /**
+    Get the length of a label, always 0
+    */
+    override size_t length()
+    {
+        return 0;
+    }
+
+    /**
+    Encode a label into a code block
+    */
+    override void encode(CodeBlock codeBlock)
+    {
+        // If this label is to be exported
+        if (this.exported == true)
+        {
+            // Add the export to the code block
+            codeBlock.exportLabel(this.name);
+        }
+    }
+}
+
+/**
+Integer data inserted into an instruction stream
+*/
+class IntData : JITInstr
+{
+    uint64_t value;
+
+    size_t numBits;
+
+    this(uint64_t value, size_t numBits)
+    {
+        assert (numBits % 8 == 0 && numBits > 0);
+
+        this.value = value;
+        this.numBits = numBits;
+    }
+
+    override string toString()
+    {
+        return xformat("%s (%s)", value, numBits);
+    }
+
+    override size_t length()
+    {
+        return numBits / 8;
+    }
+
+    override void encode(CodeBlock codeBlock)
+    {
+        codeBlock.writeInt(value, numBits);
+    }
+}
 
 /**
 Assembler to assemble a function or block of assembler code.
