@@ -208,6 +208,8 @@ unittest
 /// Global expression tests
 unittest
 {
+    writefln("global expressions");
+
     assertInt("return 7", 7);
     assertInt("return 1 + 2", 3);
     assertInt("return 5 - 1", 4);

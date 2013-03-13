@@ -46,9 +46,20 @@ import jit.assembler;
 import jit.codeblock;
 
 /**
+Base class for X86 operands
+*/
+class X86Opnd
+{
+    bool rexNeeded() const
+    {
+        return false;
+    }
+}
+
+/**
 Representation of an x86 register
 */
-struct X86Reg
+class X86Reg : X86Opnd
 {
     alias uint8_t Type;
     enum : Type
@@ -59,6 +70,8 @@ struct X86Reg
         IP
     }
 
+    // TODO: make members const?
+
     /// Register type
     uint8_t type;
 
@@ -68,10 +81,17 @@ struct X86Reg
     /// Size in bits
     uint8_t size;
 
+    this(uint8_t type, uint8_t regNo, uint8_t size)
+    {
+        this.type = type;
+        this.regNo = regNo;
+        this.size = size;
+    }
+
     /**
     Produce a string representation of the register
     */
-    string toString() const
+    override string toString() const
     {
         switch (type)
         {
@@ -128,7 +148,7 @@ struct X86Reg
     /**
     Test if the REX prefix is needed to encode this operand
     */
-    bool rexNeeded() const
+    override bool rexNeeded() const
     {
         return (
             regNo > 7 ||
@@ -137,19 +157,23 @@ struct X86Reg
     }
 }
 
-alias immutable(X86Reg)* X86RegPtr;
-
 // Auto-generate named register constants
 string genRegCsts()
 {
-    auto app = appender!string();
+    auto decls = appender!string();
+    auto init = appender!string();
+
+    init.put("static this()\n");
+    init.put("{\n");
 
     void genCst(ubyte type, string typeStr, ubyte regNo, ubyte numBits)
     {
-        auto regName = X86Reg(type, regNo, numBits).toString();
+        auto regName = (new X86Reg(type, regNo, numBits)).toString();
         auto upName = regName.toUpper();
-        app.put("immutable _" ~ upName ~ " = X86Reg(" ~ typeStr ~ ", " ~ to!string(regNo) ~ ", " ~ to!string(numBits) ~ ");\n");
-        app.put("immutable " ~ upName ~ " = &_" ~ upName ~ ";\n");
+
+        decls.put("X86Reg " ~ upName ~ ";\n");
+
+        init.put(upName ~ " = new X86Reg(" ~ typeStr ~ ", " ~ to!string(regNo) ~ ", " ~ to!string(numBits) ~ ");\n");
     }
 
     for (ubyte regNo = 0; regNo < 16; ++regNo)
@@ -168,220 +192,52 @@ string genRegCsts()
     // Floating-point registers (x87)
     genCst(X86Reg.FP, "X86Reg.FP", 0, 80);
 
-    return app.data;
+    init.put("}\n");
+
+    return decls.data ~ "\n" ~ init.data;
 }
 mixin(genRegCsts());
 
 /**
-Instruction operand value
+Immediate operand value (constant)
 */
-struct X86Opnd
+class X86Imm : X86Opnd
 {
-    /// Operand type enumeration
-    alias uint Type;
-    enum : Type
-    {
-        REG,
-        MEM,
-        IMM,
-        REL,
-        MOFFS,
-        LINK
-    };
-
-    // Operand type
-    Type type;
-    
     union
     {
-        // Register
-        X86RegPtr reg;
-
-        // Memory location
-        struct { X86RegPtr base; X86RegPtr index; int32_t disp; uint8_t memSize; uint8_t scale; }
-
-        // Immediate value or label
-        struct { int64_t imm; Label label; }
+        // Signed immediate value
+        int64_t imm;
 
         // Unsigned immediate value
         uint64_t unsgImm;
-
-        // TODO: link-time value
-    };
+    }
 
     /**
     Create an immediate operand
     */
     this(int64_t imm)
     {
-        this.type = X86Opnd.IMM;
         this.imm = imm;
     }
 
     /**
-    Create a pointer constant operand
+    Create a pointer constant
     */
     this(void* ptr)
     {
-        this.type = X86Opnd.IMM;
         this.unsgImm = cast(uint64_t)ptr;
     }
 
-    /**
-    Create a label operand
-    */
-    this(Label label)
+    override string toString() const
     {
-        this.type = REL;
-        this.imm = 0;
-        this.label = label;
-    }
-
-    /**
-    Create a register operand
-    */
-    this(X86RegPtr reg)
-    {
-        this.type = REG;
-        this.reg = reg;
-    }
-
-    /**
-    Create a memory operand
-    */
-    this(
-        size_t size, 
-        X86RegPtr base, 
-        int32_t disp    = 0, 
-        X86RegPtr index = null, 
-        size_t scale    = 1
-    )
-    {
-        this.type = MEM;
-        this.memSize = cast(uint8_t)size;
-        this.base    = base;
-        this.disp    = disp;
-        this.index   = index;
-        this.scale   = cast(uint8_t)scale;
-    }
-
-    /**
-    Produce a string representation of the operand
-    */
-    string toString()
-    {
-        switch (type)
-        {
-            case REG:
-            return reg.toString();
-
-            case MEM:
-            {
-                auto str = "";
-
-                switch (this.memSize)
-                {
-                    case 8:     str ~= "byte"; break;
-                    case 16:    str ~= "word"; break;
-                    case 32:    str ~= "dword"; break;
-                    case 64:    str ~= "qword"; break;
-                    case 128:   str ~= "oword"; break;
-                    default:
-                    assert (false, "unknown operand size");
-                }
-
-                if (this.base)
-                {
-                    if (str != "")
-                        str ~= " ";
-                    str ~= this.base.toString();
-                }
-
-                if (this.disp)
-                {
-                    if (str != "")
-                    {
-                        if (disp < 0)
-                            str ~= " - " ~ to!string(-disp);
-                        else
-                            str ~= " + " ~ to!string(disp);
-                    }
-                    else
-                    {
-                        str ~= disp;
-                    }
-                }
-
-                if (this.index)
-                {
-                    if (str != "")
-                        str ~= " + ";
-                    if (this.scale != 1)
-                        str ~= to!string(this.scale) ~ " * ";
-                    str ~= this.index.toString();
-                }
-
-                return '[' ~ str ~ ']';
-            }
-
-            case IMM:
-            return to!string(this.imm);
-
-            case REL:
-            return xformat("%s(%s)", this.label.name, this.label.offset);
-
-            case MOFFS:
-            return xformat("[%X]", this.unsgImm);
-
-            default:
-            assert (false);
-        }
-    }
-
-    /**
-    Test if the REX prefix is needed to encode this operand
-    */
-    bool rexNeeded()
-    {
-        if (type == REG)
-            return reg.rexNeeded;
-
-        if (type == MEM)
-            return (base && base.rexNeeded) || (index && index.rexNeeded);
-
-        return false;
-    }
-
-    /**
-    Test if an SIB byte is needed to encode this operand
-    */
-    bool sibNeeded()
-    {
-        assert (
-           type == MEM,
-            "sibNeeded called on non-memory operand"
-        );
-
-        return (
-            this.index || 
-            this.scale != 1 ||
-            (!this.base && !this.index) ||
-            this.base == ESP ||
-            this.base == RSP ||
-            this.base == R12
-        );
+        return to!string(this.imm);
     }
 
     /**
     Compute the immediate value size
     */
-    size_t immSize()
+    size_t immSize() const
     {
-        assert (
-            type == IMM || type == REL,
-            "immSize only available for immediate operands"
-        );
-
         // Compute the smallest size this immediate fits in
         if (imm >= int8_t.min && imm <= int8_t.max)
             return 8;
@@ -396,13 +252,8 @@ struct X86Opnd
     /**
     Immediate value size if treated as unsigned
     */
-    size_t unsgSize()
+    size_t unsgSize() const
     {
-        assert (
-            type == IMM || type == REL || type == MOFFS,
-            "unsgSize only available for immediate operands"
-        );
-
         if (unsgImm <= uint8_t.max)
             return 8;
         else if (unsgImm <= uint16_t.max)
@@ -412,17 +263,150 @@ struct X86Opnd
 
         return 64;
     }
+}
+
+/**
+Reference to a label (relative operand)
+*/
+class X86LabelRef : X86Imm
+{
+    this(Label label)
+    {
+        super(0);
+        this.label = label;
+    }
+
+    override string toString() const
+    {
+        return xformat("%s(%s)", this.label.name, this.label.offset);
+    }
+
+    Label label;
+}
+
+/**
+Absolute memory offset
+*/
+class X86MOffs : X86Imm
+{
+    this(void* ptr)
+    {
+        super(ptr);
+    }
+
+    override string toString() const
+    {
+        return xformat("[%X]", this.unsgImm);
+    }
+}
+
+/**
+Memory location operand
+*/
+class X86Mem : X86Opnd
+{
+    X86Reg base; 
+
+    X86Reg index; 
+
+    int32_t disp; 
+
+    uint8_t memSize;
+
+    uint8_t scale;
+
+    this(
+        size_t size, 
+        X86Reg base, 
+        int32_t disp    = 0, 
+        X86Reg index    = null, 
+        size_t scale    = 1
+    )
+    {
+        this.memSize = cast(uint8_t)size;
+        this.base    = base;
+        this.disp    = disp;
+        this.index   = index;
+        this.scale   = cast(uint8_t)scale;
+    }
+
+    override string toString() const
+    {
+        auto str = "";
+
+        switch (this.memSize)
+        {
+            case 8:     str ~= "byte"; break;
+            case 16:    str ~= "word"; break;
+            case 32:    str ~= "dword"; break;
+            case 64:    str ~= "qword"; break;
+            case 128:   str ~= "oword"; break;
+            default:
+            assert (false, "unknown operand size");
+        }
+
+        if (this.base)
+        {
+            if (str != "")
+                str ~= " ";
+            str ~= this.base.toString();
+        }
+
+        if (this.disp)
+        {
+            if (str != "")
+            {
+                if (disp < 0)
+                    str ~= " - " ~ to!string(-disp);
+                else
+                    str ~= " + " ~ to!string(disp);
+            }
+            else
+            {
+                str ~= disp;
+            }
+        }
+
+        if (this.index)
+        {
+            if (str != "")
+                str ~= " + ";
+            if (this.scale != 1)
+                str ~= to!string(this.scale) ~ " * ";
+            str ~= this.index.toString();
+        }
+
+        return '[' ~ str ~ ']';
+    }
+
+    /**
+    Test if the REX prefix is needed to encode this operand
+    */
+    override bool rexNeeded()
+    {
+        return (base && base.rexNeeded) || (index && index.rexNeeded);
+    }
+
+    /**
+    Test if an SIB byte is needed to encode this operand
+    */
+    bool sibNeeded()
+    {
+        return (
+            this.index || 
+            this.scale != 1 ||
+            (!this.base && !this.index) ||
+            this.base == ESP ||
+            this.base == RSP ||
+            this.base == R12
+        );
+    }
 
     /**
     Compute the size of the displacement field needed
     */
     size_t dispSize()
     {
-        assert (
-            type == MEM,
-            "dispSize only available for memory operands"
-        );
-
         // If using displacement only or if using an index only or if using
         // RIP as the base, use disp32
         if ((!base && !index) || (!base && index) || (base == RIP))
@@ -445,6 +429,28 @@ struct X86Opnd
 
         return 0;
     }
+}
+
+/**
+IP-relative memory location
+*/
+class X86IPRel : X86Mem
+{
+    Label label;
+
+    this(
+        size_t size, 
+        Label label,  
+        int32_t disp    = 0,
+        X86Reg index    = null, 
+        size_t scale    = 1
+    )
+    {
+        super(size, RIP, disp, index, scale);
+        this.label = label;
+    }
+
+    // TODO
 }
 
 /**
@@ -500,11 +506,14 @@ X86 machine instruction representation
 */
 class X86Instr : JITInstr
 {
+    /// Maximum number of operands
+    static const MAX_OPNDS = 4;
+
     /// Opcode (instruction type)
     X86OpPtr opcode = null;
 
     /// Operands
-    X86Opnd[] opnds = [];
+    X86Opnd[MAX_OPNDS] opnds;
 
     /// Encoding found
     X86EncPtr enc = null;
@@ -520,19 +529,19 @@ class X86Instr : JITInstr
     this(X86OpPtr opcode, X86Opnd opnd0)
     {
         this.opcode = opcode;
-        this.opnds = [opnd0];
+        this.opnds = [opnd0, null, null, null];
     }
 
     this(X86OpPtr opcode, X86Opnd opnd0, X86Opnd opnd1)
     {
         this.opcode = opcode;
-        this.opnds = [opnd0, opnd1];
+        this.opnds = [opnd0, opnd1, null, null];
     }
 
     this(X86OpPtr opcode, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
     {
         this.opcode = opcode;
-        this.opnds = [opnd0, opnd1, opnd2];
+        this.opnds = [opnd0, opnd1, opnd2, null];
     }
 
     /**
@@ -546,6 +555,9 @@ class X86Instr : JITInstr
 
         foreach (i, opnd; opnds)
         {
+            if (opnd is null)
+                break;
+
             if (i == 0)
                 str ~= " ";
             else
@@ -613,8 +625,9 @@ class X86Instr : JITInstr
         bool sibNeeded = false;
 
         // r and r/m operands
-        X86Opnd* rOpnd = null;
-        X86Opnd* rmOpnd = null;
+        X86Reg rOpnd = null;
+        X86Mem rmOpndM = null;
+        X86Reg rmOpndR = null;
 
         // Immediate operand size and value
         size_t immSize = 0;
@@ -625,9 +638,9 @@ class X86Instr : JITInstr
         int32_t dispVal = 0;
 
         // For each operand
-        for (size_t i = 0; i < this.opnds.length; ++i)
+        for (size_t i = 0; i < enc.opndTypes.length; ++i)
         {
-            auto opnd = &this.opnds[i];
+            auto opnd = this.opnds[i];
 
             auto opndType = enc.opndTypes[i];
             auto opndSize = enc.opndSizes[i];
@@ -640,13 +653,13 @@ class X86Instr : JITInstr
                 opndType == X86Enc.REL)
             {
                 immSize = opndSize;
-                immVal = opnd.imm;
+                immVal = (cast(X86Imm)opnd).imm;
             }
 
             else if (opndType == X86Enc.R ||
                      opndType == X86Enc.XMM)
             {
-                rOpnd = opnd;
+                rOpnd = cast(X86Reg)opnd;
             }
 
             else if (opndType == X86Enc.M ||
@@ -654,20 +667,25 @@ class X86Instr : JITInstr
                      opndType == X86Enc.XMM_OR_M)
             {
                 rmNeeded = true;
-                rmOpnd = opnd;
 
-                if (opnd.type == X86Opnd.MEM)
+                rmOpndM = cast(X86Mem)opnd;
+
+                if (rmOpndM !is null)
                 {
-                    if (opnd.sibNeeded)
+                    if (rmOpndM.sibNeeded)
                     {
                         sibNeeded = true;
                     }
 
-                    if (opnd.dispSize > 0)
+                    if (rmOpndM.dispSize > 0)
                     {
-                        dispSize = opnd.dispSize;
-                        dispVal = opnd.disp;
+                        dispSize = rmOpndM.dispSize;
+                        dispVal = rmOpndM.disp;
                     }
+                }
+                else
+                {
+                    rmOpndR = cast(X86Reg)opnd;
                 }
             }
         }
@@ -676,10 +694,12 @@ class X86Instr : JITInstr
         auto startIndex = codeBlock.getWritePos();
 
         // Add the address-size prefix, if needed
-        if (rmOpnd && rmOpnd.type == X86Opnd.MEM &&
-            ((rmOpnd.base && rmOpnd.base.size == 32) ||
-             (rmOpnd.index && rmOpnd.index.size == 32)))
-            codeBlock.writeByte(0x67);
+        if (rmOpndM)
+        {
+            if ((rmOpndM.base && rmOpndM.base.size == 32) ||
+                (rmOpndM.index && rmOpndM.index.size == 32))
+                    codeBlock.writeByte(0x67);
+        }
 
         // Add the operand-size prefix, if needed
         if (enc.szPref == true)
@@ -700,24 +720,24 @@ class X86Instr : JITInstr
             uint w = enc.rexW? 1:0;
 
             uint r;
-            if (rOpnd && rmOpnd)
-                r = (rOpnd.reg.regNo & 8)? 1:0;
+            if (rOpnd && rmNeeded)
+                r = (rOpnd.regNo & 8)? 1:0;
             else
                 r = 0;
 
             uint x;
-            if (sibNeeded && rmOpnd.index)
-                x = (rmOpnd.index.regNo & 8)? 1:0;
+            if (sibNeeded && rmOpndM.index)
+                x = (rmOpndM.index.regNo & 8)? 1:0;
             else
                 x = 0;
 
             uint b;
-            if (rmOpnd && rmOpnd.type == X86Opnd.REG)
-                b = (rmOpnd.reg.regNo & 8)? 1:0;
-            else if (rOpnd && !rmOpnd)
-                b = (rOpnd.reg.regNo & 8)? 1:0;
-            else if (rmOpnd && rmOpnd.base)
-                b = (rmOpnd.base.regNo & 8)? 1:0;
+            if (rmOpndR)
+                b = (rmOpndR.regNo & 8)? 1:0;
+            else if (rOpnd && !rmNeeded)
+                b = (rOpnd.regNo & 8)? 1:0;
+            else if (rmOpndM && rmOpndM.base)
+                b = (rmOpndM.base.regNo & 8)? 1:0;
             else
                 b = 0;
 
@@ -727,10 +747,10 @@ class X86Instr : JITInstr
         }
 
         // If an opcode reg field is to be used
-        if (rOpnd && !rmOpnd)
+        if (rOpnd && !rmNeeded)
         {
             // Write the reg field into the opcode byte
-            uint8_t opByte = enc.opcode[0] | (rOpnd.reg.regNo & 7);
+            uint8_t opByte = enc.opcode[0] | (rOpnd.regNo & 7);
             codeBlock.writeByte(opByte);
         }
         else
@@ -753,13 +773,13 @@ class X86Instr : JITInstr
 
             // Encode the mod field
             int mod;
-            if (rmOpnd && rmOpnd.type == X86Opnd.REG)
+            if (rmOpndR)
             {
                 mod = 3;
             }
             else
             {
-                if (dispSize == 0 || !rmOpnd.base)
+                if (dispSize == 0 || !rmOpndM.base)
                     mod = 0;
                 else if (dispSize == 8)
                     mod = 1;
@@ -772,24 +792,24 @@ class X86Instr : JITInstr
             if (enc.opExt != 0xFF)
                 reg = enc.opExt;
             else if (rOpnd)
-                reg = rOpnd.reg.regNo & 7;
+                reg = rOpnd.regNo & 7;
             else
                 reg = 0;
 
             // Encode the rm field
             int rm;
-            if (rmOpnd && rmOpnd.type == X86Opnd.REG)
+            if (rmOpndR)
             {
-                rm = rmOpnd.reg.regNo & 7;
+                rm = rmOpndR.regNo & 7;
             }
             else
             {
                 if (sibNeeded)
                     rm = 4;
-                else if (rmOpnd.base == RIP)
+                else if (rmOpndM.base == RIP)
                     rm = 5;
-                else if (rmOpnd.base)
-                    rm = rmOpnd.base.regNo & 7;
+                else if (rmOpndM.base)
+                    rm = rmOpndM.base.regNo & 7;
                 else
                     rm = 0;
             }
@@ -809,13 +829,13 @@ class X86Instr : JITInstr
             // SIB.base  (3 bits)
 
             assert (
-                rmOpnd.type == X86Opnd.MEM,
+                rmOpndM !is null,
                 "expected r/m opnd to be mem loc"
             );
 
             // Encode the scale value
             int scale;
-            switch (rmOpnd.scale)
+            switch (rmOpndM.scale)
             {
                 case 1: scale = 0; break;
                 case 2: scale = 1; break;
@@ -826,17 +846,17 @@ class X86Instr : JITInstr
 
             // Encode the index value
             int index;
-            if (!rmOpnd.index)
+            if (!rmOpndM.index)
                 index = 4;
             else
-                index = rmOpnd.index.regNo & 7;
+                index = rmOpndM.index.regNo & 7;
 
             // Encode the base register
             int base;
-            if (!rmOpnd.base)
+            if (!rmOpndM.base)
                 base = 5;
             else
-                base = rmOpnd.base.regNo & 7;
+                base = rmOpndM.base.regNo & 7;
 
             // Encode and write the SIB byte
             auto sibByte = (scale << 6) + (index << 3) + (base);
@@ -893,13 +913,15 @@ class X86Instr : JITInstr
             auto enc = &opcode.encs[i];
 
             // If the number of operands does not match, skip this encoding
-            if (enc.opndTypes.length != this.opnds.length)
+            auto numOpnds = enc.opndTypes.length;
+            if ((numOpnds > 0 && this.opnds[numOpnds - 1] is null) ||
+                (numOpnds < MAX_OPNDS && this.opnds[numOpnds] !is null))
                 continue ENC_LOOP;
 
             // For each operand
-            for (size_t j = 0; j < this.opnds.length; ++j)
+            for (size_t j = 0; j < numOpnds; ++j)
             {
-                auto opnd = &this.opnds[j];
+                auto opnd = this.opnds[j];
 
                 auto opndType = enc.opndTypes[j];
                 auto opndSize = enc.opndSizes[j];
@@ -908,88 +930,99 @@ class X86Instr : JITInstr
                 switch (opndType)
                 {
                     case X86Enc.REGA:
-                    if (opnd.type != X86Opnd.REG ||
-                        opnd.reg.regNo != RAX.regNo ||
-                        opnd.reg.size != opndSize)
+                    auto reg = cast(X86Reg)opnd;
+                    if (reg is null ||
+                        reg.regNo != RAX.regNo ||
+                        reg.size != opndSize)
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.REGC:
-                    if (opnd.type != X86Opnd.REG || 
-                        opnd.reg.regNo != RCX.regNo ||
-                        opnd.reg.size != opndSize)
+                    auto reg = cast(X86Reg)opnd;
+                    if (reg is null ||
+                        reg.regNo != RCX.regNo ||
+                        reg.size != opndSize)
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.CST1:
-                    if (opnd.type != X86Opnd.IMM)
+                    auto imm = cast(X86Imm)opnd;
+                    if (imm is null)
                         continue ENC_LOOP;
-                    if (opnd.imm != 1)
+                    if (imm.imm != 1)
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.IMM:
-                    if (opnd.type != X86Opnd.IMM)
+                    auto imm = cast(X86Imm)opnd;
+                    if (imm is null)
                         continue ENC_LOOP;
-                    if (opnd.immSize > opndSize)
+                    if (imm.immSize > opndSize)
                     {
-                        if (!opnd.unsgSize)
+                        if (!imm.unsgSize)
                             continue ENC_LOOP;
 
-                        if (opnd.unsgSize != opndSize || 
+                        if (imm.unsgSize != opndSize || 
                             opndSize != enc.opndSize)
                             continue ENC_LOOP;
                     }
                     break;
 
                     case X86Enc.REL:
-                    if (opnd.type != X86Opnd.REL)
+                    auto rel = cast(X86LabelRef)opnd;
+                    if (rel is null)
                         continue ENC_LOOP;
-                    if (opnd.immSize > opndSize)
+                    if (rel.immSize > opndSize)
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.MOFFS:
-                    if (opnd.type != X86Opnd.MOFFS)
+                    auto moffs = cast(X86MOffs)opnd;
+                    if (moffs is null)
                         continue ENC_LOOP;
-                    if (opnd.unsgSize > opndSize)
+                    if (moffs.unsgSize > opndSize)
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.R:
-                    if (!(opnd.type == X86Opnd.REG && opnd.reg.type == X86Reg.GP))
+                    auto reg = cast(X86Reg)opnd;
+                    if (!(reg && reg.type == X86Reg.GP))
                         continue ENC_LOOP;
-                    if (opnd.reg.size != opndSize)
+                    if (reg.size != opndSize)
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.XMM:
-                    if (!(opnd.type == X86Opnd.REG && opnd.reg.type == X86Reg.XMM))
+                    auto reg = cast(X86Reg)opnd;
+                    if (!(reg && reg.type == X86Reg.XMM))
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.M:
-                    if (!(opnd.type == X86Opnd.MEM))
+                    auto mem = cast(X86Mem)opnd;
+                    if (mem is null)
                         continue ENC_LOOP;
                     // If the memory location has a size and it doesn't match
-                    if (opndSize != 0 && opnd.memSize != opndSize)
+                    if (opndSize != 0 && mem.memSize != opndSize)
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.R_OR_M:
-                    if (!(opnd.type == X86Opnd.REG   && 
-                          opnd.reg.type == X86Reg.GP && 
-                          opnd.reg.size == opndSize) && 
-                        !(opnd.type == X86Opnd.MEM   && 
-                          opnd.memSize == opndSize))
+                    auto reg = cast(X86Reg)opnd;
+                    auto mem = cast(X86Mem)opnd;
+                    if (!(reg                       && 
+                          reg.type == X86Reg.GP     && 
+                          reg.size == opndSize)     && 
+                        !(mem                       && 
+                          mem.memSize == opndSize))
                         continue ENC_LOOP;
                     break;
 
                     case X86Enc.XMM_OR_M:
-                    if (!(opnd.type == X86Opnd.REG     && 
-                          opnd.reg.type == X86Reg.XMM) && 
-                        !(opnd.type == X86Opnd.MEM     && 
-                          opnd.memSize == opndSize))
+                    auto reg = cast(X86Reg)opnd;
+                    auto mem = cast(X86Mem)opnd;
+                    if (!(reg && reg.type == X86Reg.XMM) && 
+                        !(mem && mem.memSize == opndSize))
                         continue ENC_LOOP;
                     break;
 
@@ -1039,7 +1072,8 @@ class X86Instr : JITInstr
         bool sibNeeded = false;
 
         // RM operand, if present
-        X86Opnd* rmOpnd = null;
+        X86Mem rmOpndM = null;
+        X86Reg rmOpndR = null;
 
         // Displacement size required
         size_t dispSize = 0;
@@ -1048,9 +1082,9 @@ class X86Instr : JITInstr
         size_t immSize = 0;
 
         // For each operand
-        for (size_t i = 0; i < this.opnds.length; ++i)
+        for (size_t i = 0; i < enc.opndTypes.length; ++i)
         {
-            auto opnd = &this.opnds[i];
+            auto opnd = this.opnds[i];
 
             auto opndType = enc.opndTypes[i];
             auto opndSize = enc.opndSizes[i];
@@ -1071,15 +1105,20 @@ class X86Instr : JITInstr
                      opndType == X86Enc.XMM_OR_M)
             {
                 rmNeeded = true;
-                rmOpnd = opnd;
 
-                if (opnd.type == X86Opnd.MEM)
+                rmOpndM = cast(X86Mem)opnd;
+
+                if (rmOpndM !is null)
                 {
-                    if (opnd.sibNeeded)
+                    if (rmOpndM.sibNeeded)
                         sibNeeded = true;
 
-                    if (opnd.dispSize > 0)
-                        dispSize = opnd.dispSize;
+                    if (rmOpndM.dispSize > 0)
+                        dispSize = rmOpndM.dispSize;
+                }
+                else
+                {
+                    rmOpndR = cast(X86Reg)opnd;
                 }
             }
         }
@@ -1088,10 +1127,12 @@ class X86Instr : JITInstr
         size_t size = 0;
 
         // Add the address-size prefix, if needed
-        if (rmOpnd && rmOpnd.type == X86Opnd.MEM &&
-            ((rmOpnd.base && rmOpnd.base.size == 32) ||
-             (rmOpnd.index && rmOpnd.index.size == 32)))
-            size += 1;
+        if (rmOpndM)
+        {
+            if ((rmOpndM.base && rmOpndM.base.size == 32) ||
+                (rmOpndM.index && rmOpndM.index.size == 32))
+                size += 1;
+        }
 
         // Add the operand-size prefix, if needed
         if (enc.szPref == true)

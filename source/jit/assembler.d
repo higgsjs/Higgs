@@ -390,27 +390,28 @@ class Assembler
                     codeLength += curInstrLen;
 
                     // For each operand of the instruction
-                    for (size_t i = 0; i < x86Instr.opnds.length; ++i)
+                    foreach (i, opnd; x86Instr.opnds)
                     {
-                        auto opnd = &x86Instr.opnds[i];
+                        if (opnd is null)
+                            break;
 
                         // If this is a label reference
-                        if (opnd.type == X86Opnd.REL)
+                        if (auto rel = cast(X86LabelRef)opnd)
                         {
                             // Get a reference to the label
-                            auto label = opnd.label;
+                            auto label = rel.label;
 
                             // Compute the relative offset to the label
                             auto relOffset = label.offset - codeLength;
 
                             // Get the previous offset size
-                            auto prevOffSize = opnd.immSize();
+                            auto prevOffSize = rel.immSize();
 
                             // Store the computed relative offset on the operand
-                            opnd.imm = relOffset;
+                            rel.imm = relOffset;
 
                             // Compute the updated relative offset size
-                            auto offSize = opnd.immSize();
+                            auto offSize = rel.immSize();
 
                             // If the offset size did not change, do nothing
                             if (offSize == prevOffSize)
@@ -472,17 +473,13 @@ class Assembler
     {
         return cast(X86Instr)addInstr(new X86Instr(opcode, a));
     }
-    X86Instr instr(X86OpPtr opcode, X86RegPtr a)
-    {
-        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a)));
-    }
     X86Instr instr(X86OpPtr opcode, int64_t imm)
     {
-        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(imm)));
+        return cast(X86Instr)addInstr(new X86Instr(opcode, new X86Imm(imm)));
     }
     X86Instr instr(X86OpPtr opcode, Label a)
     {
-        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a)));
+        return cast(X86Instr)addInstr(new X86Instr(opcode, new X86LabelRef(a)));
     }
 
     // Binary instruction helper methods
@@ -490,31 +487,15 @@ class Assembler
     {
         return cast(X86Instr)addInstr(new X86Instr(opcode, a, b));
     }
-    X86Instr instr(X86OpPtr opcode, X86RegPtr a, X86RegPtr b)
-    {
-        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a), X86Opnd(b)));
-    }
-    X86Instr instr(X86OpPtr opcode, X86RegPtr a, int64_t b)
-    {
-        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a), X86Opnd(b)));
-    }
-    X86Instr instr(X86OpPtr opcode, X86RegPtr a, X86Opnd b)
-    {
-        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a), b));
-    }
-    X86Instr instr(X86OpPtr opcode, X86Opnd a, X86RegPtr b)
-    {
-        return cast(X86Instr)addInstr(new X86Instr(opcode, a, X86Opnd(b)));
-    }
     X86Instr instr(X86OpPtr opcode, X86Opnd a, int64_t b)
     {
-        return cast(X86Instr)addInstr(new X86Instr(opcode, a, X86Opnd(b)));
+        return cast(X86Instr)addInstr(new X86Instr(opcode, a, new X86Imm(b)));
     }
 
     // Trinary instruction helper methods
-    X86Instr instr(X86OpPtr opcode, X86RegPtr a, X86RegPtr b, int64_t imm)
+    X86Instr instr(X86OpPtr opcode, X86Opnd a, X86Opnd b, int64_t imm)
     {
-        return cast(X86Instr)addInstr(new X86Instr(opcode, X86Opnd(a), X86Opnd(b), X86Opnd(imm)));
+        return cast(X86Instr)addInstr(new X86Instr(opcode, a, b, new X86Imm(imm)));
     }
 
     /// Create and insert a label

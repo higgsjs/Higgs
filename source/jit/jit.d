@@ -218,6 +218,8 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     firstBlock.segment = segment;
     firstBlock.joinPoint = segment.joinPoint;
 
+    //writefln("returning segment");
+
     // Return a pointer to the segment object
     return segment;
 }
@@ -252,22 +254,22 @@ struct CodeGenCtx
     IRInstr[] callStack;
 }
 
-void ptr(TPtr)(Assembler as, X86RegPtr destReg, TPtr ptr)
+void ptr(TPtr)(Assembler as, X86Reg destReg, TPtr ptr)
 {
-    as.instr(MOV, destReg, X86Opnd(cast(void*)ptr));
+    as.instr(MOV, destReg, new X86Imm(cast(void*)ptr));
 }
 
-void getField(Assembler as, X86RegPtr dstReg, X86RegPtr baseReg, size_t fSize, size_t fOffset)
+void getField(Assembler as, X86Reg dstReg, X86Reg baseReg, size_t fSize, size_t fOffset)
 {
-    as.instr(MOV, dstReg, X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset));
+    as.instr(MOV, dstReg, new X86Mem(8*fSize, baseReg, cast(int32_t)fOffset));
 }
 
-void setField(Assembler as, X86RegPtr baseReg, size_t fSize, size_t fOffset, X86RegPtr srcReg)
+void setField(Assembler as, X86Reg baseReg, size_t fSize, size_t fOffset, X86Reg srcReg)
 {
-    as.instr(MOV, X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset), srcReg);
+    as.instr(MOV, new X86Mem(8*fSize, baseReg, cast(int32_t)fOffset), srcReg);
 }
 
-void getMember(string className, string fName)(Assembler as, X86RegPtr dstReg, X86RegPtr baseReg)
+void getMember(string className, string fName)(Assembler as, X86Reg dstReg, X86Reg baseReg)
 {
     mixin("auto fSize = " ~ className ~ "." ~ fName ~ ".sizeof;");
     mixin("auto fOffset = " ~ className ~ "." ~ fName ~ ".offsetof;");
@@ -275,7 +277,7 @@ void getMember(string className, string fName)(Assembler as, X86RegPtr dstReg, X
     return as.getField(dstReg, baseReg, fSize, fOffset);
 }
 
-void setMember(string className, string fName)(Assembler as, X86RegPtr baseReg, X86RegPtr srcReg)
+void setMember(string className, string fName)(Assembler as, X86Reg baseReg, X86Reg srcReg)
 {
     mixin("auto fSize = " ~ className ~ "." ~ fName ~ ".sizeof;");
     mixin("auto fOffset = " ~ className ~ "." ~ fName ~ ".offsetof;");
@@ -284,29 +286,29 @@ void setMember(string className, string fName)(Assembler as, X86RegPtr baseReg, 
 }
 
 /// Read from the word stack
-void getWord(Assembler as, X86RegPtr dstReg, LocalIdx idx)
+void getWord(Assembler as, X86Reg dstReg, LocalIdx idx)
 {
     if (dstReg.type == X86Reg.GP)
-        as.instr(MOV, dstReg, X86Opnd(dstReg.size, RBX, 8 * idx));
+        as.instr(MOV, dstReg, new X86Mem(dstReg.size, RBX, 8 * idx));
     else if (dstReg.type == X86Reg.XMM)
-        as.instr(MOVSD, dstReg, X86Opnd(64, RBX, 8 * idx));
+        as.instr(MOVSD, dstReg, new X86Mem(64, RBX, 8 * idx));
     else
         assert (false, "unsupported register type");
 }
 
 /// Read from the type stack
-void getType(Assembler as, X86RegPtr dstReg, LocalIdx idx)
+void getType(Assembler as, X86Reg dstReg, LocalIdx idx)
 {
-    as.instr(MOV, dstReg, X86Opnd(8, RBP, idx));
+    as.instr(MOV, dstReg, new X86Mem(8, RBP, idx));
 }
 
 /// Write to the word stack
-void setWord(Assembler as, LocalIdx idx, X86RegPtr srcReg)
+void setWord(Assembler as, LocalIdx idx, X86Reg srcReg)
 {
     if (srcReg.type == X86Reg.GP)
-        as.instr(MOV, X86Opnd(64, RBX, 8 * idx), srcReg);
+        as.instr(MOV, new X86Mem(64, RBX, 8 * idx), srcReg);
     else if (srcReg.type == X86Reg.XMM)
-        as.instr(MOVSD, X86Opnd(64, RBX, 8 * idx), srcReg);
+        as.instr(MOVSD, new X86Mem(64, RBX, 8 * idx), srcReg);
     else
         assert (false, "unsupported register type");
 }
@@ -314,19 +316,19 @@ void setWord(Assembler as, LocalIdx idx, X86RegPtr srcReg)
 // Write a constant to the word type
 void setWord(Assembler as, LocalIdx idx, int32_t imm)
 {
-    as.instr(MOV, X86Opnd(64, RBX, 8 * idx), imm);
+    as.instr(MOV, new X86Mem(64, RBX, 8 * idx), imm);
 }
 
 /// Write to the type stack
-void setType(Assembler as, LocalIdx idx, X86RegPtr srcReg)
+void setType(Assembler as, LocalIdx idx, X86Reg srcReg)
 {
-    as.instr(MOV, X86Opnd(8, RBP, idx), srcReg);
+    as.instr(MOV, new X86Mem(8, RBP, idx), srcReg);
 }
 
 /// Write a constant to the type stack
 void setType(Assembler as, LocalIdx idx, Type type)
 {
-    as.instr(MOV, X86Opnd(8, RBP, idx), type);
+    as.instr(MOV, new X86Mem(8, RBP, idx), type);
 }
 
 void jump(Assembler as, CodeGenCtx ctx, IRBlock target)
@@ -352,7 +354,7 @@ void jump(Assembler as, CodeGenCtx ctx, IRBlock target)
     as.instr(JMP, ctx.exitLabel);
 }
 
-void jump(Assembler as, CodeGenCtx ctx, X86RegPtr targetAddr)
+void jump(Assembler as, CodeGenCtx ctx, X86Reg targetAddr)
 {
     assert (targetAddr != RCX);
 
@@ -370,7 +372,7 @@ void jump(Assembler as, CodeGenCtx ctx, X86RegPtr targetAddr)
     as.instr(JMP, ctx.exitLabel);
 }
 
-void printUint(Assembler as, X86RegPtr reg)
+void printUint(Assembler as, X86Reg reg)
 {
     as.instr(PUSH, RAX);
     as.instr(PUSH, RCX);
@@ -453,7 +455,7 @@ void gen_set_str(ref CodeGenCtx ctx, IRInstr instr)
     );
 
     ctx.as.getMember!("Interp", "wLinkTable")(RCX, R15);
-    ctx.as.instr(MOV, RCX, X86Opnd(64, RCX, 8 * linkIdx));
+    ctx.as.instr(MOV, RCX, new X86Mem(64, RCX, 8 * linkIdx));
 
     ctx.as.setWord(instr.outSlot, RCX);
     ctx.as.setType(instr.outSlot, Type.REFPTR);
@@ -490,7 +492,7 @@ alias IsTypeOp!(Type.FLOAT) gen_is_float;
 
 void gen_i32_to_f64(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.as.instr(CVTSI2SD, XMM0, X86Opnd(32, RBX, instr.args[0].localIdx * 8));
+    ctx.as.instr(CVTSI2SD, XMM0, new X86Mem(32, RBX, instr.args[0].localIdx * 8));
 
     ctx.as.setWord(instr.outSlot, XMM0);
     ctx.as.setType(instr.outSlot, Type.FLOAT);
@@ -499,7 +501,7 @@ void gen_i32_to_f64(ref CodeGenCtx ctx, IRInstr instr)
 void gen_f64_to_i32(ref CodeGenCtx ctx, IRInstr instr)
 {
     // Cast to int64 and truncate to int32 (to match JS semantics)
-    ctx.as.instr(CVTSD2SI, RAX, X86Opnd(64, RBX, instr.args[0].localIdx * 8));
+    ctx.as.instr(CVTSD2SI, RAX, new X86Mem(64, RBX, instr.args[0].localIdx * 8));
     ctx.as.instr(MOV, ECX, EAX);
 
     ctx.as.setWord(instr.outSlot, RCX);
@@ -625,8 +627,8 @@ alias OvfOp!("mul") gen_mul_i32_ovf;
 
 void CmpOp(string type, string op)(ref CodeGenCtx ctx, IRInstr instr)
 {
-    X86RegPtr regA;
-    X86RegPtr regB;
+    X86Reg regA;
+    X86Reg regB;
 
     static if (type == "i8")
     {
@@ -678,7 +680,7 @@ void LoadOp(size_t memSize, Type typeTag)(ref CodeGenCtx ctx, IRInstr instr)
     // Offset
     ctx.as.getWord(RDX, instr.args[1].localIdx);
 
-    X86RegPtr dstReg;
+    X86Reg dstReg;
     static if (memSize == 8)
         dstReg = AL;
     static if (memSize == 16)
@@ -688,7 +690,7 @@ void LoadOp(size_t memSize, Type typeTag)(ref CodeGenCtx ctx, IRInstr instr)
     static if (memSize == 64)
         dstReg = RAX;
 
-    ctx.as.instr(MOV, dstReg, X86Opnd(memSize, RCX, 0, RDX));
+    ctx.as.instr(MOV, dstReg, new X86Mem(memSize, RCX, 0, RDX));
 
     ctx.as.setWord(instr.outSlot, RAX);
     ctx.as.setType(instr.outSlot, typeTag);
@@ -755,8 +757,8 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     auto jumpFalse = new Label("jump_false");
 
     // True/false counter operands
-    auto ctrOpndT = X86Opnd(64, RDX, Segment.counters.offsetof);
-    auto ctrOpndF = X86Opnd(64, RDX, Segment.counters.offsetof + 8);
+    auto ctrOpndT = new X86Mem(64, RDX, Segment.counters.offsetof);
+    auto ctrOpndF = new X86Mem(64, RDX, Segment.counters.offsetof + 8);
 
     // Set the segment pointer in RDX
     ctx.as.ptr(RDX, ctx.segment);
@@ -1186,7 +1188,7 @@ void defaultFn(Assembler as, ref CodeGenCtx ctx, IRInstr instr)
     as.setMember!("Interp", "tsp")(R15, RBP);
 
     // Call the op function
-    as.instr(MOV, RAX, X86Opnd(cast(void*)opFn));
+    as.ptr(RAX, opFn);
     as.instr(jit.encodings.CALL, RAX);
 
     // Load the stack pointers into RBX and RBP
