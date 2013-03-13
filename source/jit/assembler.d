@@ -395,43 +395,34 @@ class Assembler
                         if (opnd is null)
                             break;
 
-                        // If this is a label reference
-                        if (auto rel = cast(X86LabelRef)opnd)
+                        auto rel = cast(X86LabelRef)opnd;
+                        auto ipr = cast(X86IPRel)opnd;
+
+                        // If this is a label reference or an 
+                        // ip-relative memory location
+                        if (rel !is null || ipr !is null)
                         {
                             // Get a reference to the label
-                            auto label = rel.label;
+                            auto label = rel? rel.label:ipr.label;
 
                             // Compute the relative offset to the label
                             auto relOffset = label.offset - codeLength;
 
                             // Get the previous offset size
-                            auto prevOffSize = rel.immSize();
+                            auto prevOffSize = rel? rel.immSize():ipr.dispSize();
 
                             // Store the computed relative offset on the operand
-                            rel.imm = relOffset;
+                            if (rel)
+                                rel.imm = relOffset;
+                            else
+                                ipr.disp = cast(int32_t)(relOffset + ipr.labelDisp);
 
                             // Compute the updated relative offset size
-                            auto offSize = rel.immSize();
+                            auto offSize = rel? rel.immSize():ipr.dispSize();
 
                             // If the offset size did not change, do nothing
                             if (offSize == prevOffSize)
                                 continue;
-
-                            /*
-                            // If the offset size is fixed, do not change it
-                            if (opnd.fixedSize === true)
-                            {
-                                assert (
-                                    offSize < opnd.size,
-                                    'fixed size specified is insufficient'
-                                );
-
-                                continue;
-                            }
-
-                            // Update the offset size
-                            opnd.size = offSize;
-                            */
 
                             // Find an encoding for this instruction
                             x86Instr.findEncoding();
@@ -448,7 +439,15 @@ class Assembler
 
                         } // if (label)
                     } // foreach(opnd)
+                } // if (X86Instr)
+
+                // If this is integer data
+                if (auto intData = cast(IntData)instr)
+                {
+                    // Add its length to the total
+                    codeLength += instr.length();
                 }
+
             } // foreach (instr)
         } // while (changed)
 

@@ -332,7 +332,17 @@ class X86Mem : X86Opnd
 
     override string toString() const
     {
+        return toString(this.disp, null);
+    }
+
+    string toString(uint32_t disp, const Label label) const
+    {
         auto str = "";
+
+        assert (
+            !(label && this.base != RIP),
+            "label provided when base is not RIP"
+        );
 
         switch (this.memSize)
         {
@@ -345,14 +355,21 @@ class X86Mem : X86Opnd
             assert (false, "unknown operand size");
         }
 
-        if (this.base)
+        if (this.base && !label)
         {
             if (str != "")
                 str ~= " ";
             str ~= this.base.toString();
         }
 
-        if (this.disp)
+        if (label)
+        {
+            if (str != "")
+                str ~= " ";
+            str ~= label.name;
+        }
+
+        if (disp)
         {
             if (str != "")
             {
@@ -436,7 +453,11 @@ IP-relative memory location
 */
 class X86IPRel : X86Mem
 {
+    /// Label to use as a reference
     Label label;
+
+    /// Additional displacement relative to the label
+    int32_t labelDisp;
 
     this(
         size_t size, 
@@ -448,9 +469,13 @@ class X86IPRel : X86Mem
     {
         super(size, RIP, disp, index, scale);
         this.label = label;
+        this.labelDisp = disp;
     }
 
-    // TODO
+    override string toString() const
+    {
+        return super.toString(this.labelDisp, this.label);
+    }
 }
 
 /**
@@ -779,7 +804,7 @@ class X86Instr : JITInstr
             }
             else
             {
-                if (dispSize == 0 || !rmOpndM.base)
+                if (dispSize == 0 || !rmOpndM.base || rmOpndM.base == RIP)
                     mod = 0;
                 else if (dispSize == 8)
                     mod = 1;

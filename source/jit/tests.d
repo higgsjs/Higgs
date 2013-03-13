@@ -712,12 +712,12 @@ unittest
     test(
         delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RIP)); },
         "",
-        "F79500000000"
+        "F71500000000"
     );
     test(
         delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RIP, 13)); },
         "",
-        "F7950D000000"
+        "F7150D000000"
     );
     test(delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, null, 0, R8, 8)); }, 
         "", 
@@ -1020,6 +1020,23 @@ unittest
             a.instr(RET);
         },
         15
+    );
+
+    // IP-relative addressing
+    test(
+        delegate void (Assembler a) 
+        {
+            auto CODE = new Label("CODE");
+            a.instr(JMP, CODE);
+            auto MEMLOC = a.label("MEMLOC");
+            a.addInstr(new IntData(77, 32));
+            a.addInstr(new IntData(55, 32));
+            a.addInstr(new IntData(11, 32));
+            a.addInstr(CODE);
+            a.instr(MOV, EAX, new X86IPRel(32, MEMLOC, 4));
+            a.instr(RET);
+        },
+        55
     );
 
     // Arithmetic
