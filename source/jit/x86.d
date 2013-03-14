@@ -335,7 +335,7 @@ class X86Mem : X86Opnd
         return toString(this.disp, null);
     }
 
-    string toString(uint32_t disp, const Label label) const
+    string toString(int32_t disp, const Label label) const
     {
         auto str = "";
 

@@ -835,15 +835,56 @@ void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
         return;
     }
 
-    // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(RAX, R15);
+    auto AFTER_CMP  = new Label("PROP_AFTER_CMP");
+    auto AFTER_WORD = new Label("PROP_AFTER_WORD");
+    auto AFTER_TYPE = new Label("PROP_AFTER_TYPE");
+    auto GET_PROP = new Label("PROP_GET_PROP");
+    auto GET_OFS  = new Label("PROP_GET_OFS");
 
-    // FIXME... type offset varies with global obj size!...
-    ctx.as.getField(RDI, RAX, 8, obj_ofs_word(interp.globalObj, propIdx));
-    ctx.as.getField(SIL, RAX, 1, obj_ofs_type(interp.globalObj, propIdx));
+    ctx.as.addInstr(GET_PROP);
+
+    // Get the global object pointer
+    ctx.as.getMember!("Interp", "globalObj")(R12, R15);
+
+    // Compare the object size to the cached size
+    ctx.as.getField(EDX, R12, 4, obj_ofs_cap(interp.globalObj));
+    ctx.as.instr(CMP, EDX, 0x7FFFFFFF);
+    ctx.as.addInstr(AFTER_CMP);
+    ctx.as.instr(JNE, GET_OFS);
+
+    // Get the word and type from the object
+    ctx.as.instr(MOV, RDI, new X86Mem(64, R12, 0x7FFFFFFF));
+    ctx.as.addInstr(AFTER_WORD);
+    ctx.as.instr(MOV, SIL, new X86Mem( 8, R12, 0x7FFFFFFF));
+    ctx.as.addInstr(AFTER_TYPE);
 
     ctx.as.setWord(instr.outSlot, RDI);
     ctx.as.setType(instr.outSlot, SIL);
+
+    //
+    // If we need to update the cached offset
+    //
+    ctx.ol.addInstr(GET_OFS);
+
+    // Update the cached object size
+    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), EDX);
+
+    // Get the word offset
+    ctx.ol.instr(MOV, RDI, R12);
+    ctx.ol.instr(MOV, RSI, propIdx);
+    ctx.ol.ptr(RAX, &obj_ofs_word);
+    ctx.ol.instr(jit.encodings.CALL, RAX);
+    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_WORD, -4), EAX);
+
+    // Get the type offset
+    ctx.ol.instr(MOV, RDI, R12);
+    ctx.ol.instr(MOV, RSI, propIdx);
+    ctx.ol.ptr(RAX, &obj_ofs_type);
+    ctx.ol.instr(jit.encodings.CALL, RAX);
+    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_TYPE, -4), EAX);
+
+    // Jump back to the get prop logic
+    ctx.ol.instr(JMP, GET_PROP);
 }
 
 void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
@@ -859,15 +900,56 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
         return;
     }
 
+    auto AFTER_CMP  = new Label("PROP_AFTER_CMP");
+    auto AFTER_WORD = new Label("PROP_AFTER_WORD");
+    auto AFTER_TYPE = new Label("PROP_AFTER_TYPE");
+    auto SET_PROP = new Label("PROP_SET_PROP");
+    auto GET_OFS  = new Label("PROP_GET_OFS");
+
+    ctx.as.addInstr(SET_PROP);
+
     // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(RAX, R15);
+    ctx.as.getMember!("Interp", "globalObj")(R12, R15);
+
+    // Compare the object size to the cached size
+    ctx.as.getField(EDX, R12, 4, obj_ofs_cap(interp.globalObj));
+    ctx.as.instr(CMP, EDX, 0x7FFFFFFF);
+    ctx.as.addInstr(AFTER_CMP);
+    ctx.as.instr(JNE, GET_OFS);
 
     ctx.as.getWord(RDI, instr.args[1].localIdx);
     ctx.as.getType(SIL, instr.args[1].localIdx);
 
-    // FIXME... type offset varies with global obj size!...
-    ctx.as.setField(RAX, 8, obj_ofs_word(interp.globalObj, propIdx), RDI);
-    ctx.as.setField(RAX, 1, obj_ofs_type(interp.globalObj, propIdx), SIL);
+    // Set the word and type on the object
+    ctx.as.instr(MOV, new X86Mem(64, R12, 0x7FFFFFFF), RDI);
+    ctx.as.addInstr(AFTER_WORD);
+    ctx.as.instr(MOV, new X86Mem( 8, R12, 0x7FFFFFFF), SIL);
+    ctx.as.addInstr(AFTER_TYPE);
+
+    //
+    // If we need to update the cached offset
+    //
+    ctx.ol.addInstr(GET_OFS);
+
+    // Update the cached object size
+    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), EDX);
+
+    // Get the word offset
+    ctx.ol.instr(MOV, RDI, R12);
+    ctx.ol.instr(MOV, RSI, propIdx);
+    ctx.ol.ptr(RAX, &obj_ofs_word);
+    ctx.ol.instr(jit.encodings.CALL, RAX);
+    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_WORD, -4), EAX);
+
+    // Get the type offset
+    ctx.ol.instr(MOV, RDI, R12);
+    ctx.ol.instr(MOV, RSI, propIdx);
+    ctx.ol.ptr(RAX, &obj_ofs_type);
+    ctx.ol.instr(jit.encodings.CALL, RAX);
+    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_TYPE, -4), EAX);
+
+    // Jump back to the get prop logic
+    ctx.ol.instr(JMP, SET_PROP);
 }
 
 void gen_call(ref CodeGenCtx ctx, IRInstr instr)
@@ -1252,9 +1334,8 @@ static this()
     codeGenFns[&ir.ir.CALL]     = &gen_call;
     codeGenFns[&ir.ir.RET]      = &gen_ret;
 
-    // FIXME
-    //codeGenFns[&GET_GLOBAL]     = &gen_get_global;
-    //codeGenFns[&SET_GLOBAL]     = &gen_set_global;
+    codeGenFns[&GET_GLOBAL]     = &gen_get_global;
+    codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 }

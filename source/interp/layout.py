@@ -297,7 +297,8 @@ class Function:
         return out
 
     def genD(self):
-        out  = self.type + ' ' + self.name + '('
+        out = ''
+        out += 'extern (C) ' + self.type + ' ' + self.name + '('
         out += sepList(map(lambda v:v.genDeclD(), self.params))
         out += ')\n'
         out += '{'
