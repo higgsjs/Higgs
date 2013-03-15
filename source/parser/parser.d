@@ -972,7 +972,7 @@ ASTExpr[] parseExprList(TokenStream input, wstring openSep, wstring closeSep)
 {
     input.readSep(openSep);
 
-    ASTExpr[] exprs = [];
+    ASTExpr[] exprs;
 
     for (;;)
     {
@@ -982,7 +982,7 @@ ASTExpr[] parseExprList(TokenStream input, wstring openSep, wstring closeSep)
         if (exprs.length > 0 && input.matchSep(",") == false)
             throw new ParseError("expected comma", input.getPos());
 
-        exprs ~= [parseExpr(input, COMMA_PREC+1)];
+        exprs ~= parseExpr(input, COMMA_PREC+1);
     }
 
     return exprs;
@@ -995,7 +995,7 @@ IdentExpr[] parseParamList(TokenStream input)
 {
     input.readSep("(");
 
-    IdentExpr[] exprs = [];
+    IdentExpr[] exprs;
 
     for (;;)
     {
@@ -1010,7 +1010,7 @@ IdentExpr[] parseParamList(TokenStream input)
         if (ident is null)
             throw new ParseError("invalid parameter", expr.pos);
 
-        exprs ~= [ident];
+        exprs ~= ident;
     }
 
     return exprs;
