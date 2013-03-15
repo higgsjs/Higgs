@@ -529,7 +529,7 @@ alias immutable(X86Enc)* X86EncPtr;
 /**
 X86 machine instruction representation
 */
-class X86Instr : JITInstr
+class X86Instr : ASMInstr
 {
     /// Maximum number of operands
     static const MAX_OPNDS = 4;

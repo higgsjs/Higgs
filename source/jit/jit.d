@@ -80,10 +80,10 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     auto ol = new Assembler();
 
     // Label at the segment join point (exported)
-    auto joinLabel = new Label("segment_join", true);
+    auto joinLabel = new Label("trace_join", true);
 
     // Label at the end of the block
-    auto exitLabel = new Label("segment_exit");
+    auto exitLabel = new Label("trace_exit");
 
     // Create a code generation context
     auto ctx = CodeGenCtx(
@@ -114,6 +114,7 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     as.getMember!("Interp", "tsp")(RBP, R15);
 
     // Join point of the tracelet
+    as.comment("Fast trace-trace join point");
     as.addInstr(joinLabel);
 
     // TODO: remove
@@ -141,6 +142,8 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
         {
             auto opcode = instr.opcode;
 
+            as.comment(instr.toString());
+
             // If there is a codegen function for this opcode
             if (opcode in codeGenFns)
             {
@@ -164,6 +167,7 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     }
 
     // Block end, exit of tracelet
+    as.comment("Trace exit to interpreter");
     as.addInstr(exitLabel);
 
     // Store the stack pointers back in the interpreter
@@ -185,6 +189,7 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     as.instr(jit.encodings.RET);
 
     // Append the out of line code to the rest
+    as.comment("Out of line code");
     as.append(ol);
 
     //writefln("assembling");
@@ -208,7 +213,7 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     // Set the code block and code pointers
     segment.codeBlock = codeBlock;
     segment.entryFn = cast(EntryFn)codeBlock.getAddress();
-    segment.joinPoint = codeBlock.getExportAddr("segment_join");
+    segment.joinPoint = codeBlock.getExportAddr("trace_join");
 
     // Reset the segment counters;
     segment.counters = [0, 0];
@@ -252,6 +257,14 @@ struct CodeGenCtx
 
     /// Array of call instructions on the stack
     IRInstr[] callStack;
+}
+
+void comment(Assembler as, string str)
+{
+    if (!opts.dumpasm)
+        return;
+
+    as.addInstr(new Comment(str));
 }
 
 void ptr(TPtr)(Assembler as, X86Reg destReg, TPtr ptr)
@@ -829,6 +842,7 @@ void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
     // Cached property index
     auto propIdx = instr.args[1].int32Val;
 
+    // If no property index is cached, used the interpreter function
     if (propIdx < 0)
     {
         defaultFn(ctx.as, ctx, instr);
@@ -841,6 +855,9 @@ void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
     auto GET_PROP = new Label("PROP_GET_PROP");
     auto GET_OFS  = new Label("PROP_GET_OFS");
 
+    //
+    // Fast path
+    //
     ctx.as.addInstr(GET_PROP);
 
     // Get the global object pointer
@@ -862,7 +879,7 @@ void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setType(instr.outSlot, SIL);
 
     //
-    // If we need to update the cached offset
+    // Slow path: update the cached offset
     //
     ctx.ol.addInstr(GET_OFS);
 
@@ -894,6 +911,7 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
     // Cached property index
     auto propIdx = instr.args[2].int32Val;
 
+    // If no property index is cached, used the interpreter function
     if (propIdx < 0)
     {
         defaultFn(ctx.as, ctx, instr);
@@ -906,6 +924,9 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
     auto SET_PROP = new Label("PROP_SET_PROP");
     auto GET_OFS  = new Label("PROP_GET_OFS");
 
+    //
+    // Fast path
+    //
     ctx.as.addInstr(SET_PROP);
 
     // Get the global object pointer
@@ -927,7 +948,7 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.addInstr(AFTER_TYPE);
 
     //
-    // If we need to update the cached offset
+    // Slow path: update the cached offset
     //
     ctx.ol.addInstr(GET_OFS);
 

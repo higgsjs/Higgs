@@ -46,12 +46,12 @@ import jit.codeblock;
 import jit.x86;
 
 /**
-JIT compiler instruction
+Base class for assembler instructions and pseudo-instruction
 */
-class JITInstr
+class ASMInstr
 {
-    JITInstr prev;
-    JITInstr next;
+    ASMInstr prev;
+    ASMInstr next;
 
     abstract override string toString();
 
@@ -61,9 +61,36 @@ class JITInstr
 }
 
 /**
+Comment inserted between assembler instructions
+*/
+class Comment : ASMInstr
+{
+    string text;
+
+    this(string text)
+    {
+        this.text = text;
+    }
+
+    override string toString()
+    {
+        return indent(text, "; ");
+    }
+
+    override size_t length()
+    {
+        return 0;
+    }
+
+    override void encode(CodeBlock codeBlock)
+    {
+    }
+}
+
+/**
 Label inserted into an instruction stream
 */
-class Label : JITInstr
+class Label : ASMInstr
 {
     /**
     Label name
@@ -125,7 +152,7 @@ class Label : JITInstr
 /**
 Integer data inserted into an instruction stream
 */
-class IntData : JITInstr
+class IntData : ASMInstr
 {
     uint64_t value;
 
@@ -161,10 +188,10 @@ Assembler to assemble a function or block of assembler code.
 class Assembler
 {
     /// First instruction in the block
-    private JITInstr firstInstr = null;
+    private ASMInstr firstInstr = null;
 
     /// Last instruction in the block
-    private JITInstr lastInstr = null;
+    private ASMInstr lastInstr = null;
 
     this ()
     {
@@ -215,7 +242,7 @@ class Assembler
     /**
     Get the first instruction in the list
     */
-    JITInstr getFirstInstr()
+    ASMInstr getFirstInstr()
     {
         return this.firstInstr;
     }
@@ -223,7 +250,7 @@ class Assembler
     /**
     Add an instruction at the end of the block
     */
-    JITInstr addInstr(JITInstr instr)
+    ASMInstr addInstr(ASMInstr instr)
     {
         assert (
             instr.prev is null && instr.next is null,
@@ -254,7 +281,7 @@ class Assembler
     /**
     Add an instruction after another instruction
     */
-    void addInstrAfter(JITInstr instr, JITInstr prev)
+    void addInstrAfter(ASMInstr instr, ASMInstr prev)
     {
         auto next = prev.next;
 
@@ -272,7 +299,7 @@ class Assembler
     /**
     Remove an instruction from the list
     */
-    void remInstr(JITInstr instr)
+    void remInstr(ASMInstr instr)
     {
         auto prev = instr.prev;
         auto next = instr.next;
@@ -291,7 +318,7 @@ class Assembler
     /**
     Replace an instruction
     */
-    void replInstr(JITInstr oldInstr, JITInstr newInstr)
+    void replInstr(ASMInstr oldInstr, ASMInstr newInstr)
     {
         auto prev = oldInstr.prev;
         auto next = oldInstr.next;
