@@ -770,7 +770,7 @@ void callFun(
     IRInstr.Arg[] argSlots  // Argument slots
 )
 {
-    //writefln("call to %s", fun.name);
+    //writefln("call to %s (%s)", fun.name, cast(void*)fun);
 
     assert (
         fun !is null, 
@@ -1415,8 +1415,6 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
         protoStr.ptr,
         objPtr.pair
     );
-
-    //writefln("leaving newclos");
    
     // Output a pointer to the closure
     interp.setSlot(
@@ -1424,6 +1422,8 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
         closPtr.word,
         Type.REFPTR
     );
+
+    //writefln("leaving newclos");
 }
 
 extern (C) void op_load_file(Interp interp, IRInstr instr)

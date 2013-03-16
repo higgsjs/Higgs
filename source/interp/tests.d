@@ -1127,12 +1127,17 @@ unittest
 {
     writefln("regression");
 
-    auto interp = new Interp();
+    Interp interp;
+
+    interp = new Interp();
 
     interp.load("programs/regress/regress_delta.js");
     interp.load("programs/regress/regress_in.js");
     interp.load("programs/regress/regress_tostring.js");
     interp.assertBool("4294967295.0 === 0xFFFFFFFF", true);
+
+    interp = new Interp();
+    interp.load("programs/regress/regress_boyer.js");
 }
 
 /// JIT specific tests

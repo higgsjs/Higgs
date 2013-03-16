@@ -346,20 +346,6 @@ void gcCollect(Interp interp, size_t heapSize = 0)
 
     //writefln("old live funs count: %s", interp.funRefs.length);
 
-    // Add the currently running frunction to the live functions
-    if (interp.ip !is null)
-        interp.liveFuns[cast(void*)interp.ip.block.fun] = interp.ip.block.fun;
-
-    //writefln("finding live functions transitively");
-
-    // Transitively find live function references inside functions
-    foreach (ptr, fun; interp.liveFuns)
-        for (IRBlock block = fun.firstBlock; block !is null; block = block.next)
-            for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
-                foreach (argIdx, arg; instr.args)
-                    if (instr.opcode.getArgType(argIdx) == OpArg.FUN)
-                        interp.liveFuns[cast(void*)arg.fun] = arg.fun;
-
     // Collect the dead functions
     foreach (ptr, fun; interp.funRefs)
         if (ptr !in interp.liveFuns)
@@ -418,7 +404,7 @@ refptr gcForward(Interp interp, refptr ptr)
     if (obj_get_header(ptr) == LAYOUT_CLOS)
     {
         auto fun = cast(IRFunction)clos_get_fptr(ptr);
-        interp.liveFuns[cast(void*)fun] = fun;
+        visitFun(interp, fun);
     }
 
     // Follow the next pointer chain for as long as it points in the from-space
@@ -489,7 +475,7 @@ Word gcForward(Interp interp, Word word, Type type)
         // Return the pointer unchanged
         case Type.FUNPTR:
         auto fun = cast(IRFunction)word.ptrVal;
-        interp.liveFuns[cast(void*)fun] = fun;
+        visitFun(interp, fun);
         return word;
 
         // Instruction pointer (IRInstr)
@@ -498,7 +484,7 @@ Word gcForward(Interp interp, Word word, Type type)
         if (word.ptrVal !is null)
         {
             auto fun = (cast(IRInstr)word.ptrVal).block.fun;
-            interp.liveFuns[cast(void*)fun] = fun;
+            visitFun(interp, fun);
         }
         return word;
      
@@ -606,7 +592,12 @@ void visitStackRoots(Interp interp)
         assert (
             curInstr in curFun.initMaps, 
             "no init map for instr: " ~ curInstr.toString()
-        );       
+        );
+
+        //writefln("function on stack: %s", curFun.name);
+
+        // Visit the function this stack frame belongs to
+        visitFun(interp, curFun);
 
         auto numParams = curFun.numParams;
         auto numLocals = curFun.numLocals;
@@ -704,6 +695,28 @@ void visitStackRoots(Interp interp)
 }
 
 /**
+Visit a function and its sub-functions
+*/
+void visitFun(Interp interp, IRFunction fun)
+{
+    // If this function was already visited, stop
+    if (cast(void*)fun in interp.liveFuns)
+        return;
+
+    // Add the function to the set of live functions
+    interp.liveFuns[cast(void*)fun] = fun;
+
+    // Transitively find live function references inside the function
+    for (IRBlock block = fun.firstBlock; block !is null; block = block.next)
+    {
+        for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
+            foreach (argIdx, arg; instr.args)
+                if (instr.opcode.getArgType(argIdx) == OpArg.FUN)
+                    visitFun(interp, arg.fun);
+    }
+}
+
+/**
 Collect resources held by a dead function
 */
 void collectFun(Interp interp, IRFunction fun)
@@ -733,7 +746,7 @@ void collectFun(Interp interp, IRFunction fun)
 
     // TODO: delete argument type monitor objects here
 
-    //writefln("destroying function: \"%s\"", fun.name);    
+    //writefln("destroying function: \"%s\" (%s)", fun.name, cast(void*)fun);
 
     // Destroy the function
     destroy(fun);
