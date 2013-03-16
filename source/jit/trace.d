@@ -35,7 +35,7 @@
 *
 *****************************************************************************/
 
-module jit.segment;
+module jit.trace;
 
 import std.stdio;
 import std.stdint;
@@ -43,18 +43,18 @@ import options;
 import ir.ir;
 import jit.codeblock;
 
-/// Segment entry function pointer
+/// Trace entry function pointer
 alias void function() EntryFn;
 
 /**
-Compiled code segment
+Compiled code trace
 */
-class Segment
+class Trace
 {
     /// Outgoing branch counters
     uint64_t[2] counters = [0, 0];
 
-    /// List of blocks chained in this segment
+    /// List of blocks chained in this trace
     IRBlock[] blockList;
 
     /// Trace code block

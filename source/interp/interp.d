@@ -750,18 +750,18 @@ class Interp
             // If the block has been executed often enough
             if (target.execCount == BRANCH_EXTEND_COUNT && opts.nojit == false)
             {
-                // Compile a segment for this block
-                compSegment(this, target);
+                // Compile a trace for this block
+                compTrace(this, target);
             }
 
-            // If this block has an associated segment entry
-            if (target.segment !is null)
+            // If this block has an associated trace entry
+            if (target.trace !is null)
             {
-                //writefln("entering segment: %s", target.segment.entryFn);
-                //writefln("entering segment in: %s, len: %s", target.fun.getName(), target.segment.blockList.length);
+                //writefln("entering trace: %s", target.trace.entryFn);
+                //writefln("entering trace in: %s, len: %s", target.fun.getName(), target.trace.blockList.length);
                 //writefln("%s", target.toString());
-                target.segment.entryFn();
-                //writefln("returned from segment");
+                target.trace.entryFn();
+                //writefln("returned from trace");
                 continue;
             }
 

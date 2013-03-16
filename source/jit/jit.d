@@ -51,27 +51,27 @@ import jit.codeblock;
 import jit.assembler;
 import jit.x86;
 import jit.encodings;
-import jit.segment;
+import jit.trace;
 
 const BRANCH_EXTEND_COUNT = 1000;
 const BRANCH_EXTEND_RATIO = 10;
 
 /**
-Compile a machine code segment starting at a given block
+Compile a machine code trace starting at a given block
 */
-extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment = null)
+extern (C) Trace compTrace(Interp interp, IRBlock nextBlock, Trace trace = null)
 {
-    //writefln("compiling segment in %s", nextBlock.fun.getName());
+    //writefln("compiling trace in %s", nextBlock.fun.getName());
 
-    //if (segment)
-    //    writefln("extending, length: %s", segment.blockList.length + 1);
+    //if (trace)
+    //    writefln("extending, length: %s", trace.blockList.length + 1);
 
-    // If no segment is supplied, create a new segment object
-    if (segment is null)
-        segment = new Segment();
+    // If no trace is supplied, create a new trace object
+    if (trace is null)
+        trace = new Trace();
 
-    // Add the next block to the segment
-    segment.blockList ~= nextBlock;
+    // Add the next block to the trace
+    trace.blockList ~= nextBlock;
 
     // Assembler to write code into
     auto as = new Assembler();
@@ -79,7 +79,7 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     // Assembler for out of line code (slow paths)
     auto ol = new Assembler();
 
-    // Label at the segment join point (exported)
+    // Label at the trace join point (exported)
     auto joinLabel = new Label("trace_join", true);
 
     // Label at the end of the block
@@ -87,7 +87,7 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
 
     // Create a code generation context
     auto ctx = CodeGenCtx(
-        segment,
+        trace,
         interp, 
         as, 
         ol, 
@@ -123,14 +123,14 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     //as.instr(INC, X86Opnd(8*block.execCount.sizeof, RAX, block.execCount.offsetof));
 
     // For each block in the list
-    for (ctx.blockIdx = 0; ctx.blockIdx < ctx.segment.blockList.length; ++ctx.blockIdx)
+    for (ctx.blockIdx = 0; ctx.blockIdx < ctx.trace.blockList.length; ++ctx.blockIdx)
     {
-        auto curBlock = ctx.segment.blockList[ctx.blockIdx];
+        auto curBlock = ctx.trace.blockList[ctx.blockIdx];
 
         //writefln("%s (%s)", curBlock.getName(), curBlock.fun.getName());
 
-        // If the segment jumps back into itself
-        if (ctx.blockIdx > 0 && curBlock is ctx.segment.blockList[0])
+        // If the trace jumps back into itself
+        if (ctx.blockIdx > 0 && curBlock is ctx.trace.blockList[0])
         {
             //writefln("inserting jump to self**********************");
             ctx.as.instr(JMP, ctx.joinLabel);
@@ -211,22 +211,22 @@ extern (C) Segment compSegment(Interp interp, IRBlock nextBlock, Segment segment
     //writefln("blocks compiled: %s", ctx.blockIdx);
 
     // Set the code block and code pointers
-    segment.codeBlock = codeBlock;
-    segment.entryFn = cast(EntryFn)codeBlock.getAddress();
-    segment.joinPoint = codeBlock.getExportAddr("trace_join");
+    trace.codeBlock = codeBlock;
+    trace.entryFn = cast(EntryFn)codeBlock.getAddress();
+    trace.joinPoint = codeBlock.getExportAddr("trace_join");
 
-    // Reset the segment counters;
-    segment.counters = [0, 0];
+    // Reset the trace counters;
+    trace.counters = [0, 0];
 
-    // Set the segment pointer and join point on the first block
-    auto firstBlock = segment.blockList[0];
-    firstBlock.segment = segment;
-    firstBlock.joinPoint = segment.joinPoint;
+    // Set the trace pointer and join point on the first block
+    auto firstBlock = trace.blockList[0];
+    firstBlock.trace = trace;
+    firstBlock.joinPoint = trace.joinPoint;
 
-    //writefln("returning segment");
+    //writefln("returning trace");
 
-    // Return a pointer to the segment object
-    return segment;
+    // Return a pointer to the trace object
+    return trace;
 }
 
 /**
@@ -234,8 +234,8 @@ Code generation context
 */
 struct CodeGenCtx
 {
-    /// Segment object
-    Segment segment;
+    /// Trace object
+    Trace trace;
 
     /// Interpreter object
     Interp interp;
@@ -246,10 +246,10 @@ struct CodeGenCtx
     /// Assembler for out of line code
     Assembler ol;
 
-    /// Segment join label
+    /// Trace join label
     Label joinLabel;
 
-    /// Segment exit label
+    /// Trace exit label
     Label exitLabel;
 
     /// Current block index in the block list
@@ -625,8 +625,8 @@ void OvfOp(string op)(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setType(instr.outSlot, Type.INT32);
 
     // Add the normal target to the block list if it isn't there already
-    if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
-        ctx.segment.blockList ~= instr.target;
+    if (ctx.blockIdx + 1 >= ctx.trace.blockList.length)
+        ctx.trace.blockList ~= instr.target;
 
     //ctx.as.jump(ctx, instr.target);
 
@@ -721,8 +721,8 @@ alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
 {
     // Add the jump target to the block list if it isn't there already
-    if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
-        ctx.segment.blockList ~= instr.target;
+    if (ctx.blockIdx + 1 >= ctx.trace.blockList.length)
+        ctx.trace.blockList ~= instr.target;
 
     //ctx.as.jump(ctx, instr.target);
 }
@@ -737,9 +737,9 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.instr(CMP, AL, cast(int8_t)TRUE.int32Val);
   
     // If we already determined a likely branch target
-    if (ctx.blockIdx + 1 < ctx.segment.blockList.length)
+    if (ctx.blockIdx + 1 < ctx.trace.blockList.length)
     {
-        auto inTarget = ctx.segment.blockList[ctx.blockIdx + 1];
+        auto inTarget = ctx.trace.blockList[ctx.blockIdx + 1];
 
         if (inTarget == instr.target)
         {
@@ -770,17 +770,17 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     auto jumpFalse = new Label("jump_false");
 
     // True/false counter operands
-    auto ctrOpndT = new X86Mem(64, RDX, Segment.counters.offsetof);
-    auto ctrOpndF = new X86Mem(64, RDX, Segment.counters.offsetof + 8);
+    auto ctrOpndT = new X86Mem(64, RDX, Trace.counters.offsetof);
+    auto ctrOpndF = new X86Mem(64, RDX, Trace.counters.offsetof + 8);
 
-    // Set the segment pointer in RDX
-    ctx.as.ptr(RDX, ctx.segment);
+    // Set the trace pointer in RDX
+    ctx.as.ptr(RDX, ctx.trace);
 
     // If false, jump to the false label
     ctx.as.instr(JNE, ifFalse);
 
-    // Increase the extension count with the segment length
-    auto extCount = ctx.segment.blockList.length * BRANCH_EXTEND_COUNT;
+    // Increase the extension count with the trace length
+    auto extCount = ctx.trace.blockList.length * BRANCH_EXTEND_COUNT;
 
     //
     // If true
@@ -814,7 +814,7 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
 
     ctx.ol.instr(MOV, RDI, R15);
     ctx.ol.ptr(RSI, instr.target);
-    ctx.ol.ptr(RAX, &compSegment);
+    ctx.ol.ptr(RAX, &compTrace);
     ctx.ol.instr(jit.encodings.CALL, RAX);
 
     ctx.ol.instr(JMP, jumpTrue);
@@ -829,7 +829,7 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
 
     ctx.ol.instr(MOV, RDI, R15);
     ctx.ol.ptr(RSI, instr.excTarget);
-    ctx.ol.ptr(RAX, &compSegment);
+    ctx.ol.ptr(RAX, &compTrace);
     ctx.ol.instr(jit.encodings.CALL, RAX);
 
     ctx.ol.instr(JMP, jumpFalse);
@@ -1078,8 +1078,8 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
 
     // TODO: evaluate when this is acceptable
     // Add the jump target to the block list if it isn't there already
-    if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
-        ctx.segment.blockList ~= fun.entryBlock;
+    if (ctx.blockIdx + 1 >= ctx.trace.blockList.length)
+        ctx.trace.blockList ~= fun.entryBlock;
 
     // Add the call instruction to the pseudo call stack
     ctx.callStack ~= instr;
@@ -1153,8 +1153,8 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     }
 
     // Continue code generation in the call continuation
-    if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
-        ctx.segment.blockList ~= callInstr.target;
+    if (ctx.blockIdx + 1 >= ctx.trace.blockList.length)
+        ctx.trace.blockList ~= callInstr.target;
 
     // Remove this call instruction from the pseudo call stack
     ctx.callStack = ctx.callStack[0..$-1];
@@ -1225,8 +1225,8 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
         //writefln("returning to %s", callInstr.block.fun.getName());
         //writefln("returning to %s", callInstr.toString());
 
-        if (ctx.blockIdx + 1 >= ctx.segment.blockList.length)
-            ctx.segment.blockList ~= callInstr.target;
+        if (ctx.blockIdx + 1 >= ctx.trace.blockList.length)
+            ctx.trace.blockList ~= callInstr.target;
 
         ctx.callStack = ctx.callStack[0..$-1];
     }

@@ -50,7 +50,7 @@ import ir.init;
 import interp.interp;
 import interp.layout;
 import interp.ops;
-import jit.segment;
+import jit.trace;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -244,10 +244,10 @@ class IRBlock : IdObject
     /// Execution count, for profiling
     uint64 execCount = 0;
 
-    /// Compiled code segment
-    Segment segment = null;
+    /// Compiled code trace
+    Trace trace = null;
 
-    // Segment join point code pointer
+    // Trace join point code pointer
     ubyte* joinPoint = null;
 
     /// Parent function
