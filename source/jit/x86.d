@@ -399,7 +399,7 @@ class X86Mem : X86Opnd
     /**
     Test if the REX prefix is needed to encode this operand
     */
-    override bool rexNeeded()
+    override bool rexNeeded() const
     {
         return (base && base.rexNeeded) || (index && index.rexNeeded);
     }
