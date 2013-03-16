@@ -77,7 +77,8 @@ unittest
         for (size_t i = 0; i < numBytes; ++i)
         {
             int num;
-            formattedRead(enc64[(2*i)..(2*i)+2], "%x", &num);
+            auto slice = enc64[(2*i)..(2*i)+2];
+            formattedRead(slice, "%x", &num);
             encBlock.writeByte(cast(ubyte)num);
         }
 
