@@ -82,6 +82,14 @@ function load(fileName)
 }
 
 /**
+Evaluate a source string in the global scope
+*/
+function eval(codeStr)
+{
+    return $ir_eval_str(codeStr);
+}
+
+/**
 Print a value to the console
 */
 function print(val)

@@ -874,23 +874,6 @@ class Interp
         //writefln("input: %s", input);
 
         auto ast = parseString(input, fileName);
-
-        // If the AST contains only an expression statement,
-        // turn it into a return statement
-        if (auto blockStmt = cast(BlockStmt)ast.bodyStmt)
-        {
-            if (blockStmt.stmts.length == 1)
-            {
-                if (auto exprStmt = cast(ExprStmt)blockStmt.stmts[$-1])
-                {
-                    blockStmt.stmts[$-1] = new ReturnStmt(
-                        exprStmt.expr,
-                        exprStmt.pos
-                    );
-                }
-            }
-        }
-
         auto result = exec(ast);
 
         return result;

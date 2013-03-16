@@ -178,7 +178,33 @@ ASTProgram parseProgram(TokenStream input)
 
     // Create the AST program node
     auto ast = new ASTProgram(stmtApp.data, pos);
-    
+
+    // Transform single expression statements into return statements
+    void makeReturn(ASTStmt stmt)
+    {
+        auto blockStmt = cast(BlockStmt)ast.bodyStmt;
+        if (blockStmt is null || blockStmt.stmts.length != 1)
+            return;
+
+        auto exprStmt = cast(ExprStmt)blockStmt.stmts[$-1];
+        if (exprStmt is null)
+            return;
+
+        // If this is a named function, don't transform
+        auto funExpr = cast(FunExpr)exprStmt.expr;
+        if (funExpr && funExpr.name !is null)
+            return;
+
+        blockStmt.stmts[$-1] = new ReturnStmt(
+            exprStmt.expr,
+            exprStmt.pos
+        );
+    }
+
+    // If the AST contains only an expression statement,
+    // turn it into a return statement
+    makeReturn(ast.bodyStmt);
+
     // Resolve variable declarations in the AST
     resolveVars(ast);
 

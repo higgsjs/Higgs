@@ -833,6 +833,9 @@ Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], &op_n
 /// Load a source code unit from a file
 Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], &op_load_file, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
 
+/// Evaluate a source string in the global scope
+Opcode EVAL_STR = { "eval_str", true, [OpArg.LOCAL], &op_eval_str, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
+
 /// Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
 
@@ -985,6 +988,7 @@ static this()
     addOp(GET_STR);
 
     addOp(LOAD_FILE);
+    addOp(EVAL_STR);
     addOp(PRINT_STR);
     addOp(GET_AST_STR);
     addOp(GET_IR_STR);

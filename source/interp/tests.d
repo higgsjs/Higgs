@@ -1214,11 +1214,6 @@ unittest
     interp.load("programs/for_in/for_in.js");
     interp.assertInt("test();", 0);
 
-    writefln("load");
-
-    // Dynamic code loading
-    interp.load("programs/load/loader.js");
-
     writefln("stdlib");
 
     // Standard library
@@ -1239,6 +1234,20 @@ unittest
     interp.load("programs/stdlib_json/stdlib_json.js");
     interp.assertInt("test();", 0);
     // TODO: regexp support, regexp test
+}
+
+/// Dynamic code loading and eval
+unittest
+{
+    auto interp = new Interp();
+
+    writefln("load");
+
+    // Dynamic code loading
+    interp.load("programs/load/loader.js");
+
+    // Eval
+    interp.load("programs/eval/eval.js");
 }
 
 /// Garbage collector tests

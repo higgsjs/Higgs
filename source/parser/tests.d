@@ -141,7 +141,7 @@ ASTProgram testAST(string input, ASTNode inAst)
 
 ASTProgram testExprAST(string input, ASTExpr exprAst)
 {
-    ASTProgram inAst = new ASTProgram([new ExprStmt(exprAst)]);
+    ASTProgram inAst = new ASTProgram([new ReturnStmt(exprAst)]);
     return testAST(input, inAst);
 }
 
@@ -537,12 +537,16 @@ unittest
         )
     );
 
-    testExprAST("function foo() {};",
-        new FunExpr(
-            new IdentExpr("foo"),
-            [],
-            new BlockStmt([])
-        )
+    testAST("function foo() {};",
+        new ASTProgram([
+            new ExprStmt(
+                new FunExpr(
+                    new IdentExpr("foo"),
+                    [],
+                    new BlockStmt([])
+                )
+            )
+        ])
     );
 }
 

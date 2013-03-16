@@ -1457,6 +1457,37 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
     );
 }
 
+extern (C) void op_eval_str(Interp interp, IRInstr instr)
+{
+    auto wStr = interp.getWord(instr.args[0].localIdx);
+    auto tStr = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        valIsString(wStr, tStr),
+        "expected string argument in eval_str"
+    );
+
+    auto codeStr = extractStr(wStr.ptrVal);
+
+    // Parse the source file and generate IR
+    auto ast = parseString(codeStr, "eval_str");
+    auto fun = astToIR(ast);
+
+    // Register this function in the function reference set
+    interp.funRefs[cast(void*)fun] = fun;
+
+    // Setup the callee stack frame
+    callFun(
+        interp,
+        fun,
+        instr,      // Calling instruction
+        null,       // Null closure argument
+        NULL,       // Null this argument
+        Type.REFPTR,// This value is a reference
+        []          // 0 arguments
+    );
+}
+
 extern (C) void op_print_str(Interp interp, IRInstr instr)
 {
     auto wStr = interp.getWord(instr.args[0].localIdx);
