@@ -54,6 +54,7 @@ import interp.layout;
 import interp.string;
 import interp.object;
 import interp.gc;
+import jit.trace;
 import jit.jit;
 
 /**
@@ -359,6 +360,9 @@ class Interp
 
     /// Instruction pointer
     IRInstr ip = null;
+
+    /// Trace node pointer
+    TraceNode traceNode = null;
 
     /// String table reference
     refptr strTbl;
@@ -747,12 +751,48 @@ class Interp
             // Increment the execution count for the block
             target.execCount++;
 
-            // If the block has been executed often enough
-            if (target.execCount == BRANCH_EXTEND_COUNT && opts.nojit == false)
+
+
+
+
+            // If we are recording a trace
+            if (traceNode !is null)
             {
-                // Compile a trace for this block
-                compTrace(this, target);
+                // Record the jump to the target block
+                traceNode = traceNode.traceTo(target);
             }
+
+            // If the block is a potential trace start and
+            // has been executed often enough
+            if (target.traceStart == true && 
+                target.execCount == TRACE_RECORD_COUNT && 
+                opts.nojit == false)
+            {
+                // Begin recording traces at this node
+                target.traceNode = new TraceNode(target);
+                traceNode = target.traceNode;
+            }
+
+            // If the block has an associated trace node
+            if (target.traceNode !is null)
+            {
+                traceNode = target.traceNode;
+
+                // If enough trace information was recorded
+                if (traceNode.count >= TRACE_VISIT_COUNT)
+                {
+                    // TODO: pass trace info
+                    // Compile a trace for this block
+                    compTrace(this, target);
+
+                    // Stop recording traces at this node
+                    target.traceNode = null;
+                }
+            }
+
+
+
+
 
             // If this block has an associated trace entry
             if (target.trace !is null)

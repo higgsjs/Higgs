@@ -244,6 +244,12 @@ class IRBlock : IdObject
     /// Execution count, for profiling
     uint64 execCount = 0;
 
+    /// Potential trace start flag
+    bool traceStart = false;
+
+    /// Trace node, for trace recording
+    TraceNode traceNode = null;
+
     /// Compiled code trace
     Trace trace = null;
 

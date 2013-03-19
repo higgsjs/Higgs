@@ -779,14 +779,11 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     // If false, jump to the false label
     ctx.as.instr(JNE, ifFalse);
 
-    // Increase the extension count with the trace length
-    auto extCount = ctx.trace.blockList.length * BRANCH_EXTEND_COUNT;
-
     //
     // If true
     //
     ctx.as.instr(INC, ctrOpndT);
-    ctx.as.instr(CMP, ctrOpndT, extCount);
+    ctx.as.instr(CMP, ctrOpndT, BRANCH_EXTEND_COUNT);
     ctx.as.instr(JE, extTrue);
 
     ctx.as.addInstr(jumpTrue);
@@ -798,7 +795,7 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.addInstr(ifFalse);
 
     ctx.as.instr(INC, ctrOpndF);
-    ctx.as.instr(CMP, ctrOpndF, extCount);
+    ctx.as.instr(CMP, ctrOpndF, BRANCH_EXTEND_COUNT);
     ctx.as.instr(JE, extFalse);
 
     ctx.as.addInstr(jumpFalse);
@@ -809,7 +806,7 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     //
     ctx.ol.addInstr(extTrue);
 
-    ctx.as.instr(CMP, ctrOpndF, extCount / BRANCH_EXTEND_RATIO);
+    ctx.as.instr(CMP, ctrOpndF, BRANCH_EXTEND_COUNT / BRANCH_EXTEND_RATIO);
     ctx.as.instr(JG, jumpTrue);
 
     ctx.ol.instr(MOV, RDI, R15);
@@ -824,7 +821,7 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
     //
     ctx.ol.addInstr(extFalse);
 
-    ctx.as.instr(CMP, ctrOpndT, extCount / BRANCH_EXTEND_RATIO);
+    ctx.as.instr(CMP, ctrOpndT, BRANCH_EXTEND_COUNT / BRANCH_EXTEND_RATIO);
     ctx.as.instr(JG, jumpFalse);
 
     ctx.ol.instr(MOV, RDI, R15);

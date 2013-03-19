@@ -43,6 +43,12 @@ import options;
 import ir.ir;
 import jit.codeblock;
 
+const TRACE_RECORD_COUNT = 500;
+
+const TRACE_VISIT_COUNT = 100;
+
+const TRACE_MAX_DEPTH = 128;
+
 /// Trace entry function pointer
 alias void function() EntryFn;
 
@@ -51,10 +57,11 @@ Compiled code trace
 */
 class Trace
 {
+    // TODO: remove
     /// Outgoing branch counters
     uint64_t[2] counters = [0, 0];
 
-    /// List of blocks chained in this trace
+    /// List of basic blocks chained in this trace
     IRBlock[] blockList;
 
     /// Trace code block
@@ -65,5 +72,71 @@ class Trace
 
     // Trace join point code pointer
     ubyte* joinPoint = null;
+
+    // TODO: list of sub-traces?
+    //Trace[] subTraces;
+}
+
+/**
+Trace node, used for trace construction/profiling
+*/
+class TraceNode
+{
+    /// Associated block
+    IRBlock block;
+
+    /// Tree root node
+    TraceNode root;
+
+    /// Depth away from the tree root
+    uint32_t depth;
+
+    /// Visit count
+    uint32_t count = 0;
+
+    /// List of children (blocks this has branched to)
+    TraceNode[] children;
+
+    this(IRBlock block)
+    {
+        this.block = block;
+        this.depth = 0;
+        this.root = this;
+    }
+
+    this(IRBlock block, TraceNode parent)
+    {
+        this.block = block;
+        this.root = parent.root;
+        this.depth = parent.depth + 1;
+    }
+
+    /// Continue the tracing process at a given target block
+    TraceNode traceTo(IRBlock target)
+    {
+        // Increment the visit count for this node
+        count++;
+
+        // If we are at the max trace depth, stop
+        if (depth >= TRACE_MAX_DEPTH)
+            return null;
+
+        // Get the child node corresponding to the target
+        return getChild(target);
+    }
+
+    TraceNode getChild(IRBlock block)
+    {
+        foreach (child; children)
+        {
+            if (child.block is block)
+                return child;
+        }
+
+        auto child = new TraceNode(block, this);
+        children ~= child;
+
+        return child;
+    }
 }
 
