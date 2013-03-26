@@ -759,51 +759,37 @@ class Interp
             if (traceNode !is null)
             {
                 // Record the jump to the target block
-                traceNode = traceNode.traceTo(target);
+                traceNode = traceNode.traceTo(this, target);
             }
 
-            // If the block is a potential trace start and
-            // has been executed often enough
-            if (target.traceStart == true && 
-                target.execCount == TRACE_RECORD_COUNT && 
-                opts.nojit == false)
+            // Otherwise, we are not recording a trace
+            else
             {
-                // Begin recording traces at this node
-                target.traceNode = new TraceNode(target);
-                traceNode = target.traceNode;
-            }
-
-            // If the block has an associated trace node
-            if (target.traceNode !is null)
-            {
-                traceNode = target.traceNode;
-
-                // If enough trace information was recorded
-                if (traceNode.count >= TRACE_VISIT_COUNT)
+                // If this block has an associated trace entry
+                // and we aren't recording a trace
+                if (target.trace !is null)
                 {
-                    // TODO: pass trace info
-                    // Compile a trace for this block
-                    compTrace(this, target);
+                    //writefln("entering trace: %s", target.trace.entryFn);
+                    //writefln("%s", target.toString());
+                    target.trace.entryFn();
+                    //writefln("returned from trace");
+                    continue;
+                }
 
-                    // Stop recording traces at this node
-                    target.traceNode = null;
+                // If the block is a potential trace start and
+                // has been executed often enough
+                if (target.traceStart == true && 
+                    target.execCount >= TRACE_RECORD_COUNT && 
+                    opts.nojit == false)
+                {
+                    // Begin recording traces at this node
+                    traceNode = TraceNode.record(this, target);
                 }
             }
 
 
 
 
-
-            // If this block has an associated trace entry
-            if (target.trace !is null)
-            {
-                //writefln("entering trace: %s", target.trace.entryFn);
-                //writefln("entering trace in: %s, len: %s", target.fun.getName(), target.trace.blockList.length);
-                //writefln("%s", target.toString());
-                target.trace.entryFn();
-                //writefln("returned from trace");
-                continue;
-            }
 
             // Set the IP to the first instruction of the block
             ip = target.firstInstr;
@@ -836,6 +822,9 @@ class Interp
                 // Update the IP
                 ip = instr.next;
             }
+
+
+
         }
     }
 

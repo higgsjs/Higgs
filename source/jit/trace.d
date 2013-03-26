@@ -41,13 +41,15 @@ import std.stdio;
 import std.stdint;
 import options;
 import ir.ir;
+import interp.interp;
 import jit.codeblock;
+import jit.jit;
 
 const TRACE_RECORD_COUNT = 500;
 
 const TRACE_VISIT_COUNT = 100;
 
-const TRACE_MAX_DEPTH = 128;
+const TRACE_MAX_DEPTH = 512;
 
 /// Trace entry function pointer
 alias void function() EntryFn;
@@ -57,13 +59,6 @@ Compiled code trace
 */
 class Trace
 {
-    // TODO: remove
-    /// Outgoing branch counters
-    uint64_t[2] counters = [0, 0];
-
-    /// List of basic blocks chained in this trace
-    IRBlock[] blockList;
-
     /// Trace code block
     CodeBlock codeBlock = null;
 
@@ -94,8 +89,8 @@ class TraceNode
     /// Visit count
     uint32_t count = 0;
 
-    /// List of children (blocks this has branched to)
-    TraceNode[] children;
+    /// List of successors (blocks this has branched to)
+    TraceNode[] succs;
 
     this(IRBlock block)
     {
@@ -111,8 +106,35 @@ class TraceNode
         this.depth = parent.depth + 1;
     }
 
+    /// Start recording a trace at this block
+    static TraceNode record(Interp interp, IRBlock target)
+    {
+        //writefln("recording from %s", target.fun.getName());
+
+        // If there is no trace node for this target
+        if (target.traceNode is null)
+        {
+            target.traceNode = new TraceNode(target);
+            return target.traceNode;
+        }
+
+        // If enough trace information was recorded about
+        // traces starting from this node
+        if (target.traceNode && target.traceNode.count >= TRACE_VISIT_COUNT)
+        {
+            // Compile a trace for this block
+            compTrace(interp, target.traceNode);
+
+            // Stop recording traces at this node
+            target.traceNode = null;
+            return null;
+        }
+
+        return target.traceNode;
+    }
+
     /// Continue the tracing process at a given target block
-    TraceNode traceTo(IRBlock target)
+    TraceNode traceTo(Interp interp, IRBlock target)
     {
         // Increment the visit count for this node
         count++;
@@ -121,22 +143,48 @@ class TraceNode
         if (depth >= TRACE_MAX_DEPTH)
             return null;
 
-        // Get the child node corresponding to the target
-        return getChild(target);
-    }
-
-    TraceNode getChild(IRBlock block)
-    {
-        foreach (child; children)
+        // If we are going back to the root block
+        if (target is root.block)
         {
-            if (child.block is block)
-                return child;
+            // Add a last successor for the root node
+            auto succ = getSucc(target);
+            succ.count++;
+
+            // Record a new trace starting from the root
+            return record(interp, root.block);
         }
 
-        auto child = new TraceNode(block, this);
-        children ~= child;
+        // Get the successor for this target
+        return getSucc(target);
+    }
 
-        return child;
+    /// Get the successor node corresponding to the target
+    TraceNode getSucc(IRBlock block)
+    {
+        foreach (succ; succs)
+        {
+            if (succ.block is block)
+                return succ;
+        }
+
+        auto succ = new TraceNode(block, this);
+        succs ~= succ;
+
+        return succ;
+    }
+
+    /// Get the most visited successor
+    TraceNode getMostVisited()
+    {
+        TraceNode mostVisited = null;
+
+        foreach (succ; succs)
+        {
+            if (!mostVisited || succ.count > mostVisited.count)
+                mostVisited = succ;
+        }
+
+        return mostVisited;
     }
 }
 

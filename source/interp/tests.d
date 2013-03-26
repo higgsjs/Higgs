@@ -1335,7 +1335,7 @@ unittest
 
     auto interp = new Interp();
 
-    //interp.load("programs/sunspider/bitops-bitwise-and.js");
+    interp.load("programs/sunspider/bitops-bitwise-and.js");
 
     interp.load("programs/sunspider/controlflow-recursive.js");
     interp.assertInt("ack(3,2);", 29);

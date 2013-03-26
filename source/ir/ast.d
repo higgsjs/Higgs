@@ -45,6 +45,7 @@ import std.conv;
 import parser.ast;
 import parser.parser;
 import ir.ir;
+import ir.iir;
 import ir.init;
 import interp.layout;
 
