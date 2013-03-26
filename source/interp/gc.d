@@ -594,7 +594,7 @@ void visitStackRoots(Interp interp)
             "no init map for instr: " ~ curInstr.toString()
         );
 
-        writefln("function on stack: %s", curFun.name);
+        //writefln("function on stack: %s", curFun.name);
 
         // Visit the function this stack frame belongs to
         visitFun(interp, curFun);
@@ -612,9 +612,8 @@ void visitStackRoots(Interp interp)
         // Compute the actual number of extra arguments to pop
         size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
 
-
-        writefln("  numParams: %s", numParams);
-        writefln("  argCount: %s", argCount);
+        //writefln("  numParams: %s", numParams);
+        //writefln("  argCount: %s", argCount);
 
         // Compute the number of locals in this frame
         auto frameSize = numLocals + extraArgs;
@@ -626,7 +625,7 @@ void visitStackRoots(Interp interp)
             if (idx < numLocals && initMap.get(idx) == false)
                 continue;
 
-            writefln("ref %s/%s", idx+1, frameSize);
+            //writefln("ref %s/%s", idx+1, frameSize);
 
             Word word = wsp[idx];
             Type type = tsp[idx];

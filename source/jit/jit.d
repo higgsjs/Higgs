@@ -58,7 +58,7 @@ Compile a machine code trace starting at a given block
 */
 extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
 {
-    writefln("compiling trace in %s", traceNode.block.fun.getName());
+    //writefln("compiling trace in %s", traceNode.block.fun.getName());
 
     // Create a trace object
     auto trace = new Trace();
@@ -109,7 +109,7 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
         {
             if (stackDepth == 0)
             {
-                writefln("stopping at return");
+                //writefln("stopping at return");
                 break;
             }
 
@@ -158,7 +158,7 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
         // If the trace jumps back into itself
         if (ctx.blockIdx > 0 && curBlock is ctx.blockList[0])
         {
-            writefln("inserting jump to self (%s/%s) *", ctx.blockIdx+1, ctx.blockList.length);
+            //writefln("inserting jump to self (%s/%s) *", ctx.blockIdx+1, ctx.blockList.length);
             ctx.as.instr(JMP, ctx.joinLabel);
             break;
         }
@@ -242,7 +242,7 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
         );
     }
 
-    writefln("blocks compiled: %s", ctx.blockIdx);
+    //writefln("blocks compiled: %s", ctx.blockIdx);
 
     // Set the code block and code pointers
     trace.codeBlock = codeBlock;
@@ -1040,38 +1040,12 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
 
 void gen_call(ref CodeGenCtx ctx, IRInstr instr)
 {
-    // Label for the bailout to interpreter cases
-    auto bailout = new Label("call_bailout");
-
     auto closIdx = instr.args[0].localIdx;
     auto thisIdx = instr.args[1].localIdx;
     auto numArgs = instr.args.length - 2;
 
-    // Try to find the function we are calling
-    refptr closPtr = null;    
-    for (auto curInstr = instr.prev; curInstr !is null; curInstr = curInstr.prev)
-    {
-        // If we are calling a global function
-        if (curInstr.outSlot == closIdx && curInstr.opcode == &GET_GLOBAL)
-        {
-            auto propStr = getString(ctx.interp, curInstr.args[0].stringVal);
-
-            // Lookup the global function
-            ValuePair val = getProp(
-                ctx.interp,
-                ctx.interp.globalObj,
-                propStr
-            );
-
-            if (val.type == Type.REFPTR && valIsLayout(val.word, LAYOUT_CLOS))
-                closPtr = val.word.ptrVal;
-
-            break;
-        }
-    }
-
-    // If the global closure was not found
-    if (closPtr is null)
+    // If we do not know who the callee function is
+    if (ctx.blockIdx + 1 >= ctx.blockList.length)
     {
         // Call the interpreter call instruction
         defaultFn(ctx.as, ctx, instr);
@@ -1079,11 +1053,12 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
         return;
     }
 
-    // Get a pointer to the IR function
-    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
+    // Get the callee function
+    auto fun = ctx.blockList[ctx.blockIdx+1].fun;
+    assert (fun.entryBlock !is null);
 
-    // If the function is not compiled or the argument count doesn't match
-    if (fun.entryBlock is null || numArgs != fun.numParams)
+    // If the argument count doesn't match
+    if (numArgs != fun.numParams)
     {
         // Call the interpreter call instruction
         defaultFn(ctx.as, ctx, instr);
@@ -1091,14 +1066,56 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
         return;
     }
 
-    //writefln("%s\n  %s %s %s", instr.block.toString(), fun.getName(), fun.numParams, numArgs);
+    // Label for the bailout to interpreter cases
+    auto bailout = new Label("call_bailout");
 
-    // Get the closure word
+    auto AFTER_CLOS  = new Label("CALL_AFTER_CLOS");
+    auto AFTER_OFS = new Label("CALL_AFTER_OFS");
+    auto GET_FPTR = new Label("CALL_GET_FPTR");
+    auto GET_OFS = new Label("CALL_GET_OFS");
+
+    //
+    // Fast path
+    //
+    ctx.as.addInstr(GET_FPTR);
+
+    // Get the closure word off the stack
     ctx.as.getWord(RCX, closIdx);
 
+    // Compare the closure pointer to the cached pointer
+    ctx.as.instr(MOV, RAX, 0x7FFFFFFFFFFFFFFF);
+    ctx.as.addInstr(AFTER_CLOS);
+    ctx.as.instr(CMP, RCX, RAX);
+    ctx.as.instr(JNE, GET_OFS);
+
+    // Get the function pointer from the closure object
+    ctx.as.instr(MOV, RDI, new X86Mem(64, RCX, 0x7FFFFFFF));
+    ctx.as.addInstr(AFTER_OFS);
+
+    //
+    // Slow path: update the cached function pointer offset (out of line)
+    //
+    ctx.ol.addInstr(GET_OFS);
+
+    // Update the cached closure poiter
+    ctx.ol.instr(MOV, new X86IPRel(64, AFTER_CLOS, -8), RCX);
+
+    // Get the function pointer offset
+    ctx.ol.instr(MOV, RDI, RCX);
+    ctx.ol.ptr(RAX, &clos_ofs_fptr);
+    ctx.ol.instr(jit.encodings.CALL, RAX);
+    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_OFS, -4), EAX);
+
+    // Jump back to the fast path logic
+    ctx.ol.instr(JMP, GET_FPTR);
+
+    //
+    // Function call logic
+    //
+
     // If this is not the closure we expect, bailout to the interpreter
-    ctx.as.ptr(RAX, closPtr);
-    ctx.as.instr(CMP, RAX, RCX);
+    ctx.as.ptr(RSI, fun);
+    ctx.as.instr(CMP, RDI, RSI);
     ctx.as.instr(JNE, bailout);
 
     auto numPush = fun.numLocals;
@@ -1143,17 +1160,10 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setWord(cast(LocalIdx)(numVars + 0), RAX);
     ctx.as.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
 
-    // TODO: evaluate when this is acceptable
-    // Add the jump target to the block list if it isn't there already
-    if (ctx.blockIdx + 1 >= ctx.blockList.length)
-        ctx.blockList ~= fun.entryBlock;
-
     // Add the call instruction to the pseudo call stack
     ctx.callStack ~= instr;
 
-    // Jump to the function entry
-    //ctx.as.ptr(RAX, fun.entryBlock);
-    //ctx.as.jump(ctx, RAX);
+    // *** The trace will continue in line at the function entry block ***
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(bailout);
@@ -1225,103 +1235,8 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
 
     // Remove this call instruction from the pseudo call stack
     ctx.callStack = ctx.callStack[0..$-1];
-    
 
-    /*
-    // Label for returns from a new instruction
-    auto retFromNew = new Label("ret_new");
-
-    // Label for the end of the return logic
-    auto retDone = new Label("ret_done");
-
-    // Label for the stack locals popping
-    auto popLocals = new Label("ret_pop");
-
-    // Get the return value
-    // RDI = wRet
-    // SIL = tRet
-    ctx.as.getWord(RDI, retSlot);
-    ctx.as.getType(SIL, retSlot);
-
-    // RAX = calling instruction
-    ctx.as.getWord(RAX, raSlot);
-
-    // RCX = opcode of the calling instruction
-    ctx.as.getMember!("IRInstr", "opcode")(RCX, RAX);
-
-    // If opcode == &CALL_NEW, jump to newRet
-    ctx.as.ptr(RDX, &CALL_NEW);
-    ctx.as.instr(CMP, RCX, RDX);
-    ctx.as.instr(JE, retFromNew);
-
-    // Pop the stack locals
-    ctx.as.addInstr(popLocals);
-
-    // EDX = number of stack slots to pop
-    ctx.as.getWord(EDX, argcSlot);
-    ctx.as.instr(SUB, EDX, numParams);
-    ctx.as.instr(MOV, ECX, 0);
-    ctx.as.instr(CMP, EDX, 0);
-    ctx.as.instr(CMOVL, EDX, ECX);
-    ctx.as.instr(ADD, EDX, numLocals);
-
-    // Pop all local stack slots and arguments
-    ctx.as.instr(ADD, RBP, RDX);
-    ctx.as.instr(SHL, RDX, 3);
-    ctx.as.instr(ADD, RBX, RDX);
-
-    // ECX = output slot of the calling instruction
-    ctx.as.getMember!("IRInstr", "outSlot")(ECX, RAX);
-
-    // If the call instruction has no output slot, we are done
-    ctx.as.instr(MOV, EDX, NULL_LOCAL);
-    ctx.as.instr(CMP, ECX, EDX);
-    ctx.as.instr(JE, retDone);
-
-    // Set the return value
-    ctx.as.instr(MOV, X86Opnd( 8, RBP, 0, RCX, 1), SIL);
-    ctx.as.instr(MOV, X86Opnd(64, RBX, 0, RCX, 8), RDI);
-
-    // Return done
-    ctx.as.addInstr(retDone);
-
-    if (ctx.callStack.length > 0)
-    {
-        auto callInstr = ctx.callStack[$-1];
-
-        //writefln("returning to %s", callInstr.block.fun.getName());
-        //writefln("returning to %s", callInstr.toString());
-
-        if (ctx.blockIdx + 1 >= ctx.trace.blockList.length)
-            ctx.trace.blockList ~= callInstr.target;
-
-        ctx.callStack = ctx.callStack[0..$-1];
-    }
-    else
-    {
-        //writefln("no return target");
-
-        // RCX = call continuation target
-        ctx.as.getMember!("IRInstr", "target")(RDX, RAX);
-
-        // Jump to the call continuation
-        ctx.as.jump(ctx, RDX);
-    }
-
-    // Return from new case
-    ctx.ol.addInstr(retFromNew);
-
-    // If the return value is not undefined, return that value
-    ctx.ol.instr(CMP, SIL, Type.CONST);
-    ctx.ol.instr(JNE, popLocals);
-    ctx.ol.instr(CMP, DIL, cast(int8_t)UNDEF.int32Val);
-    ctx.ol.instr(JNE, popLocals);
-
-    // Use the this value as the return value
-    ctx.ol.getWord(RDI, thisSlot);
-    ctx.ol.getType(SIL, thisSlot);
-    ctx.ol.instr(JMP, popLocals);
-    */
+    // *** The trace will continue in line at the call continuation block ***
 }
 
 void gen_get_global_obj(ref CodeGenCtx ctx, IRInstr instr)
