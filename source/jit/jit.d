@@ -85,12 +85,7 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
         exitLabel
     );
 
-
-
-
-
     // Assemble the block list
-    size_t stackDepth = 0;
     while (traceNode !is null)
     {
         auto block = traceNode.block;
@@ -100,30 +95,8 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
 
         ctx.blockList ~= block;
 
-        auto branch = block.lastInstr;
-
-        if (branch.opcode.isCall)
-            stackDepth++;
-
-        if (branch.opcode == &ir.ir.RET)
-        {
-            if (stackDepth == 0)
-            {
-                //writefln("stopping at return");
-                break;
-            }
-
-            stackDepth--;
-        }
-
         traceNode = traceNode.getMostVisited();
     }
-
-
-
-
-
-
 
     // Align SP to a multiple of 16 bytes
     as.instr(SUB, RSP, 8);

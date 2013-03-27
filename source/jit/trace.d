@@ -86,24 +86,43 @@ class TraceNode
     /// Depth away from the tree root
     uint32_t depth;
 
-    /// Visit count
-    uint32_t count = 0;
+    /// Call stack depth
+    uint32_t stackDepth;
 
     /// List of successors (blocks this has branched to)
     TraceNode[] succs;
 
+    /// Visit count
+    uint32_t count = 0;
+
+    /**
+    Root node constructor
+    */
     this(IRBlock block)
     {
         this.block = block;
-        this.depth = 0;
         this.root = this;
+        this.depth = 0;
+        this.stackDepth = 0;
     }
 
+    /**
+    Child node constructor
+    */
     this(IRBlock block, TraceNode parent)
     {
         this.block = block;
         this.root = parent.root;
         this.depth = parent.depth + 1;
+
+        // Compute the stack depth relative to the parent
+        auto branch = parent.block.lastInstr;
+        if (branch.opcode.isCall)
+            stackDepth = parent.stackDepth + 1;
+        else if (branch.opcode == &RET)
+            stackDepth = parent.stackDepth - 1;
+        else
+            stackDepth = parent.stackDepth;
     }
 
     /// Start recording a trace at this block
@@ -141,6 +160,10 @@ class TraceNode
 
         // If we are at the max trace depth, stop
         if (depth >= TRACE_MAX_DEPTH)
+            return null;
+
+        // If this block returns from stack depth 0, stop
+        if (stackDepth == 0 && block.lastInstr.opcode == &RET)
             return null;
 
         // If we are going back to the root block
