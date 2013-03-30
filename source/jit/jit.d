@@ -54,14 +54,17 @@ import jit.encodings;
 import jit.trace;
 
 /**
-Compile a machine code trace starting at a given block
+Compile a trace of machine code blocks to machine code
 */
-extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
+Trace compTrace(Interp interp, Trace trace)
 {
-    //writefln("compiling trace in %s", traceNode.block.fun.getName());
-
-    // Create a trace object
-    auto trace = new Trace();
+    /*
+    writefln(
+        "compiling %strace in %s", 
+        trace.subCtx? "sub-":"",
+        trace.startNode.block.fun.getName()
+    );
+    */
 
     // Assembler to write code into
     auto as = new Assembler();
@@ -85,15 +88,25 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
         exitLabel
     );
 
-    // Assemble the block list
-    while (traceNode !is null)
+    // If this is a sub-trace
+    if (trace.subCtx)
     {
-        auto block = traceNode.block;
+        ctx.callStack = trace.subCtx.callStack.dup;
+        //writefln("inheriting call-stack of depth: %s", ctx.callStack.length);
+
+        if (ctx.callStack.length != trace.startNode.stackDepth)
+            writefln("call stack length %s doesn't match node stack depth %s", ctx.callStack.length, trace.startNode.stackDepth);
+
+        assert (ctx.callStack.length == trace.startNode.stackDepth);
+    }
+
+    // Assemble the node list
+    for (auto traceNode = trace.startNode; traceNode !is null;)
+    {
+        ctx.nodeList ~= traceNode;
 
         //writefln("%s\n", block.getName());
-        //writefln("%s\n", block.toString());
-
-        ctx.blockList ~= block;
+        //writefln("block: %s\n", block.toString());
 
         traceNode = traceNode.getMostVisited();
     }
@@ -120,25 +133,44 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
     as.comment("Fast trace-trace join point");
     as.addInstr(joinLabel);
 
-    // For each block in the list
+    // For each trace node in the list
     BLOCK_LOOP:
-    for (ctx.blockIdx = 0; ctx.blockIdx < ctx.blockList.length; ++ctx.blockIdx)
+    for (ctx.nodeIdx = 0; ctx.nodeIdx < ctx.nodeList.length; ++ctx.nodeIdx)
     {
-        auto curBlock = ctx.blockList[ctx.blockIdx];
+        auto block = ctx.nodeList[ctx.nodeIdx].block;
 
-        //writefln("%s (%s)", curBlock.toString(), curBlock.fun.getName());
+        //writefln("%s (%s)", block.toString(), block.fun.getName());
 
-        // If the trace jumps back into itself
-        if (ctx.blockIdx > 0 && curBlock is ctx.blockList[0])
+        // If the trace jumps back into itself and the call stack depth is 0
+        if (ctx.nodeIdx > 0 && 
+            block is trace.rootNode.block && 
+            ctx.callStack.length == 0)
         {
-            //writefln("inserting jump to self (%s/%s) *", ctx.blockIdx+1, ctx.blockList.length);
-            ctx.as.instr(JMP, ctx.joinLabel);
+            /*
+            writefln(
+                "inserting jump to self (%s/%s) *", 
+                ctx.nodeIdx+1, 
+                ctx.nodeList.length
+            );
+            */
+
+            // If this is part of the root trace
+            if (trace.parent is null)
+            {
+                ctx.as.instr(JMP, ctx.joinLabel);
+            }
+            else
+            {
+                ctx.as.ptr(RAX, trace.rootNode.block.joinPoint);
+                ctx.as.instr(JMP, RAX);
+            }
+
             break;
         }
 
         // For each instruction of the block
         INSTR_LOOP:
-        for (auto instr = curBlock.firstInstr; instr !is null; instr = instr.next)
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
             auto opcode = instr.opcode;
 
@@ -161,7 +193,10 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
             // compilation be stopped
             if (ctx.endTrace)
             {
-                break BLOCK_LOOP;
+                // TODO: Shorten the node list for the trace
+                //break BLOCK_LOOP;
+                ctx.nodeList = ctx.nodeList[0..ctx.nodeIdx+1];
+                break INSTR_LOOP;
             }
 
             // If we know the instruction will definitely leave 
@@ -170,6 +205,24 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
             {
                 break INSTR_LOOP;
             }
+        }
+
+        // Get the branch instruction for this block
+        auto branch = block.lastInstr;
+        assert (branch !is null);
+
+        // If the branch is a call instruction
+        if (branch.opcode.isCall)
+        {
+            // Add the call instruction to the pseudo call stack
+            ctx.callStack ~= branch;
+        }
+
+        // If the branch is a return instruction
+        else if (branch.opcode == &ir.ir.RET && ctx.callStack.length > 0)
+        {
+            // Remove this call instruction from the pseudo call stack
+            ctx.callStack = ctx.callStack[0..$-1];
         }
     }
 
@@ -215,7 +268,8 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
         );
     }
 
-    //writefln("blocks compiled: %s", ctx.blockIdx);
+    //writefln("blocks compiled: %s", ctx.nodeIdx);
+    //writefln("machine code bytes: %s", codeBlock.length);
 
     // Set the code block and code pointers
     trace.codeBlock = codeBlock;
@@ -224,15 +278,80 @@ extern (C) Trace compTrace(Interp interp, TraceNode traceNode)
 
     //writefln("trace entry fn: %s", trace.entryFn);
 
-    // Set the trace pointer and join point on the first block
-    auto firstBlock = ctx.blockList[0];
-    firstBlock.trace = trace;
-    firstBlock.joinPoint = trace.joinPoint;
+    // If this is not a sub-trace
+    if (trace.parent is null)
+    {
+        // Set the trace pointer and join point on the first block
+        auto firstBlock = ctx.nodeList[0].block;
+        firstBlock.trace = trace;
+        firstBlock.joinPoint = trace.joinPoint;
+    }
+    else
+    {
+        //writefln("patching sub-trace jump");
+
+        // Compile instructions for a direct jump to the sub-trace
+        auto jas = new Assembler();
+        jas.ptr(RAX, trace.joinPoint);
+        jas.instr(JMP, RAX);
+        auto jcb = jas.assemble();
+
+        // Patch a direct jump to the sub-trace in the parent trace
+        assert (jcb.length <= JUMP_PATCH_SIZE);
+        for (size_t i = 0; i < jcb.length; ++i)
+            trace.patchPtr[i] = jcb.readByte(i);
+    }
 
     //writefln("returning trace");
 
     // Return a pointer to the trace object
     return trace;
+}
+
+/// Size reserved for a direct jump patch (code rewriting)
+const JUMP_PATCH_SIZE = 16;
+
+/**
+Record and/or compile a sub-trace starting at a given block
+Patch the jump address in the parent trace once compiled
+*/
+extern (C) void recordSubTrace(
+    IRBlock block,
+    TraceNode branchNode,
+    CodeGenCtx* subCtx, 
+    ubyte* patchPtr
+)
+{
+    //writefln("recordSubTrace");
+    //writefln("block: %s", block.getName());
+
+    auto parent = subCtx.trace;
+
+    // If no trace object exists for this trace exit
+    if (patchPtr !in parent.subTraces)
+    {
+        // Create a trace object for the sub-trace
+        parent.subTraces[patchPtr] = new Trace(
+            block, 
+            parent, 
+            branchNode, 
+            subCtx, patchPtr
+        );
+    }
+
+    auto trace = parent.subTraces[patchPtr];
+
+    // If enough information was accumulated about this trace
+    if (trace.startNode && trace.startNode.count >= TRACE_VISIT_COUNT)
+    {
+        // Compile a trace for this block
+        compTrace(subCtx.interp, trace);
+    }
+    else
+    {
+        // Make the interpreter begin tracing from the branch node
+        subCtx.interp.traceNode = branchNode;
+    }
 }
 
 /**
@@ -258,17 +377,36 @@ struct CodeGenCtx
     /// Trace exit label
     Label exitLabel;
 
-    /// List of basic blocks chained in this trace
-    IRBlock[] blockList;
+    /// List of trace nodes chained in this trace
+    TraceNode[] nodeList;
 
     /// Current block index in the block list
-    size_t blockIdx = 0;
+    size_t nodeIdx = 0;
 
     /// Array of call instructions on the stack
     IRInstr[] callStack;
 
     /// Flag to end the trace compilation
     bool endTrace = false;
+
+    /// Postblit (copy) constructor
+    this(this)
+    { 
+        callStack = callStack.dup; 
+    }
+
+    /// Test if a next node is available
+    bool hasNextNode()
+    {
+        return nodeIdx + 1 < nodeList.length;
+    }
+
+    /// Get the next basic block
+    IRBlock nextBlock()
+    {
+        assert (nodeIdx + 1 < nodeList.length);
+        return nodeList[nodeIdx+1].block;
+    }
 }
 
 void comment(Assembler as, string str)
@@ -636,11 +774,9 @@ void OvfOp(string op)(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setWord(instr.outSlot, RCX);
     ctx.as.setType(instr.outSlot, Type.INT32);
 
-    // Add the normal target to the block list if it isn't there already
-    if (ctx.blockIdx + 1 >= ctx.blockList.length)
-        ctx.blockList ~= instr.target;
-
-    //ctx.as.jump(ctx, instr.target);
+    // If the next block isn't in the block list, jump to it
+    if (ctx.hasNextNode)
+        ctx.as.jump(ctx, instr.target);
 
     // Out of line jump to the overflow target
     ctx.ol.addInstr(ovf);
@@ -732,145 +868,100 @@ alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
 {
-    // Add the jump target to the block list if it isn't there already
-    if (ctx.blockIdx + 1 >= ctx.blockList.length)
-        ctx.blockList ~= instr.target;
-
-    //ctx.as.jump(ctx, instr.target);
+    // If the trace has no next block, jump to the target
+    if (!ctx.hasNextNode)
+        ctx.as.jump(ctx, instr.target);
 }
 
 void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
 {
-    auto ifTrue = new Label("if_true");
-    auto ifFalse = new Label("if_false");
+    auto IF_EXIT = new Label("IF_EXIT");
+    auto IF_EXIT_CTR = new Label("IF_EXIT_CTR");
+    auto IF_EXIT_JUMP = new Label("IF_EXIT_JUMP");
 
-    // AL = wsp[a0]
+    // Compare wsp[a0] to the true value
     ctx.as.getWord(AL, instr.args[0].localIdx);
     ctx.as.instr(CMP, AL, TRUE.int8Val);
   
-
-
-    // TODO: side-exit, sub-trace when count exceeded
-
-
-
     // If we already determined a likely branch target
-    if (ctx.blockIdx + 1 < ctx.blockList.length)
+    if (ctx.hasNextNode)
     {
-        auto inTarget = ctx.blockList[ctx.blockIdx + 1];
+        IRBlock inTarget = ctx.nextBlock();
+
+        IRBlock outTarget;
+        X86OpPtr jumpOp;
 
         if (inTarget == instr.target)
         {
-            // If false, branch out of line
-            ctx.as.instr(JNE, ifFalse);
-
-            // The false branch is out of line
-            ctx.ol.addInstr(ifFalse);
-            ctx.ol.jump(ctx, instr.excTarget);
+            outTarget = instr.excTarget;
+            jumpOp = JNE;
         }
         else
         {
-            // If true, branch out of line
-            ctx.as.instr(JE, ifTrue);
-
-            // The true branch is out of line
-            ctx.ol.addInstr(ifTrue);
-            ctx.ol.jump(ctx, instr.target);
+            outTarget = instr.target;
+            jumpOp = JE;
         }
+
+        // If we are not going to the likely target, branch out of line
+        ctx.as.instr(jumpOp, IF_EXIT);
+
+        // * Code for the most likely target will be inserted here *
+
+        // The less likely (trace exit) branch is out of line
+        ctx.ol.addInstr(IF_EXIT);
+
+        // Reserve nops for an eventual jump to a sub trace
+        for (size_t i = 0; i < JUMP_PATCH_SIZE; ++i)
+            ctx.ol.instr(NOP);
+
+        // Increment the trace exit counter
+        ctx.ol.instr(INC, new X86IPRel(32, IF_EXIT_CTR));
+        ctx.ol.instr(CMP, new X86IPRel(32, IF_EXIT_CTR), TRACE_RECORD_COUNT);
+        ctx.ol.instr(JL, IF_EXIT_JUMP);
+        //ctx.ol.instr(JMP, IF_EXIT_JUMP);
+
+        // Allocate a copy of the context for the sub-trace and keep a reference to it
+        auto subCtx = new CodeGenCtx();
+        *subCtx = ctx;
+        ctx.trace.subCtxs ~= subCtx;
+
+
+        if (subCtx.callStack.length != ctx.nodeList[ctx.nodeIdx].stackDepth)
+        {
+            writefln("branchNode stack depth mismatch in gen_if: %s,%s", subCtx.callStack.length, ctx.nodeList[ctx.nodeIdx].stackDepth);
+            writefln("  node idx: %s", ctx.nodeIdx);
+
+            writefln("%s", instr.block.toString());
+
+            assert (false);
+        }
+
+
+        // Call the recordSubTrace function
+        ctx.ol.ptr(RDI, outTarget);
+        ctx.ol.ptr(RSI, ctx.nodeList[ctx.nodeIdx]);
+        ctx.ol.ptr(RDX, subCtx);
+        ctx.ol.instr(LEA, RCX, new X86IPRel(32, IF_EXIT));
+        ctx.ol.ptr(RAX, &recordSubTrace);
+        ctx.ol.instr(jit.encodings.CALL, RAX);
+
+        // Jump to the less likely target
+        ctx.ol.addInstr(IF_EXIT_JUMP);
+        ctx.ol.jump(ctx, outTarget);
+
+        // Trace exit counter
+        ctx.ol.addInstr(IF_EXIT_CTR);
+        ctx.ol.addInstr(new IntData(0, 32));
 
         return;
     }
 
-
-
-
-
     // If false, jump
-    ctx.as.instr(JNE, ifFalse);
-
-    ctx.as.addInstr(ifTrue);
+    ctx.as.instr(JNE, IF_EXIT);
     ctx.as.jump(ctx, instr.target);
 
-    ctx.as.addInstr(ifFalse);
+    ctx.as.addInstr(IF_EXIT);
     ctx.as.jump(ctx, instr.excTarget);
-
-
-
-
-
-
-
-    /*
-    auto extTrue = new Label("ext_true");
-    auto extFalse = new Label("ext_false");
-
-    auto jumpTrue = new Label("jump_true");
-    auto jumpFalse = new Label("jump_false");
-
-    // True/false counter operands
-    auto ctrOpndT = new X86Mem(64, RDX, Trace.counters.offsetof);
-    auto ctrOpndF = new X86Mem(64, RDX, Trace.counters.offsetof + 8);
-
-    // Set the trace pointer in RDX
-    ctx.as.ptr(RDX, ctx.trace);
-
-    // If false, jump to the false label
-    ctx.as.instr(JNE, ifFalse);
-
-    //
-    // If true
-    //
-    ctx.as.instr(INC, ctrOpndT);
-    ctx.as.instr(CMP, ctrOpndT, BRANCH_EXTEND_COUNT);
-    ctx.as.instr(JE, extTrue);
-
-    ctx.as.addInstr(jumpTrue);
-    ctx.as.jump(ctx, instr.target);
-
-    //
-    // If false
-    //
-    ctx.as.addInstr(ifFalse);
-
-    ctx.as.instr(INC, ctrOpndF);
-    ctx.as.instr(CMP, ctrOpndF, BRANCH_EXTEND_COUNT);
-    ctx.as.instr(JE, extFalse);
-
-    ctx.as.addInstr(jumpFalse);
-    ctx.as.jump(ctx, instr.excTarget);
-
-    //
-    // Extend the true branch (out of line)
-    //
-    ctx.ol.addInstr(extTrue);
-
-    ctx.as.instr(CMP, ctrOpndF, BRANCH_EXTEND_COUNT / BRANCH_EXTEND_RATIO);
-    ctx.as.instr(JG, jumpTrue);
-
-    ctx.ol.instr(MOV, RDI, R15);
-    ctx.ol.ptr(RSI, instr.target);
-    ctx.ol.ptr(RAX, &compTrace);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-
-    ctx.ol.instr(JMP, jumpTrue);
-
-    //
-    // Extend the false branch (out of line)
-    //
-    ctx.ol.addInstr(extFalse);
-
-    ctx.as.instr(CMP, ctrOpndT, BRANCH_EXTEND_COUNT / BRANCH_EXTEND_RATIO);
-    ctx.as.instr(JG, jumpFalse);
-
-    ctx.ol.instr(MOV, RDI, R15);
-    ctx.ol.ptr(RSI, instr.excTarget);
-    ctx.ol.ptr(RAX, &compTrace);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-
-    ctx.ol.instr(JMP, jumpFalse);
-    */
-
-
 }
 
 void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
@@ -1018,7 +1109,7 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     auto numArgs = instr.args.length - 2;
 
     // If we do not know who the callee function is
-    if (ctx.blockIdx + 1 >= ctx.blockList.length)
+    if (!ctx.hasNextNode)
     {
         // Call the interpreter call instruction
         defaultFn(ctx.as, ctx, instr);
@@ -1027,7 +1118,7 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     }
 
     // Get the callee function
-    auto fun = ctx.blockList[ctx.blockIdx+1].fun;
+    auto fun = ctx.nextBlock.fun;
     assert (fun.entryBlock !is null);
 
     // If the argument count doesn't match
@@ -1133,9 +1224,6 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setWord(cast(LocalIdx)(numVars + 0), RAX);
     ctx.as.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
 
-    // Add the call instruction to the pseudo call stack
-    ctx.callStack ~= instr;
-
     // *** The trace will continue in line at the function entry block ***
 
     // Bailout to the interpreter (out of line)
@@ -1202,12 +1290,9 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
         ctx.as.setType(callInstr.outSlot, SIL);
     }
 
-    // Continue code generation in the call continuation
-    if (ctx.blockIdx + 1 >= ctx.blockList.length)
-        ctx.blockList ~= callInstr.target;
-
-    // Remove this call instruction from the pseudo call stack
-    ctx.callStack = ctx.callStack[0..$-1];
+    // If the trace stops here, jump to the call continuation
+    if (!ctx.hasNextNode)
+        ctx.as.jump(ctx, callInstr.target);
 
     // *** The trace will continue in line at the call continuation block ***
 }

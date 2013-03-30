@@ -247,9 +247,6 @@ class IRBlock : IdObject
     /// Potential trace start flag
     bool traceStart = false;
 
-    /// Trace node, for trace recording
-    TraceNode traceNode = null;
-
     /// Compiled code trace
     Trace trace = null;
 

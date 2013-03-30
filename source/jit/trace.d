@@ -59,17 +59,63 @@ Compiled code trace
 */
 class Trace
 {
-    /// Trace code block
+    /// Trace start node
+    TraceNode startNode;
+
+    /// Trace start node of the trace root
+    TraceNode rootNode;
+
+    /// Parent trace
+    Trace parent;
+
+    /// Code generation context passed by the parent trace
+    CodeGenCtx* subCtx;
+
+    /// Map of jump addresses to sub-traces
+    Trace[ubyte*] subTraces;
+
+    /// References to code generation contexts for sub-traces
+    CodeGenCtx*[] subCtxs;
+
+    /// Compiled code block
     CodeBlock codeBlock = null;
 
     /// Trace entry function, used as an entry point by the interpreter
     EntryFn entryFn = null;
 
-    // Trace join point code pointer
+    /// Trace join point machine code pointer
     ubyte* joinPoint = null;
 
-    // TODO: list of sub-traces?
-    //Trace[] subTraces;
+    /// Parent trace code patched to jump to this trace
+    ubyte* patchPtr = null;
+
+    /// Root trace constructor
+    this(IRBlock startBlock)
+    {
+        this.startNode = new TraceNode(startBlock);
+        this.rootNode = this.startNode;
+
+        this.parent = null;
+        this.subCtx = null;
+        this.patchPtr = null;
+    }
+
+    /// Sub-trace constructor
+    this(
+        IRBlock startBlock, 
+        Trace parent,
+        TraceNode branchNode, 
+        CodeGenCtx* subCtx, 
+        ubyte* patchPtr
+    )
+    {
+        this.startNode = branchNode.getSucc(startBlock);
+        this.rootNode = parent.startNode;
+
+        this.parent = parent;
+        this.subCtx = subCtx;
+        this.patchPtr = patchPtr;
+    }
 }
 
 /**
@@ -80,11 +126,11 @@ class TraceNode
     /// Associated block
     IRBlock block;
 
-    /// Tree root node
-    TraceNode root;
+    /// Trace root block for this trace tree
+    IRBlock rootBlock;
 
     /// Depth away from the tree root
-    uint32_t depth;
+    uint32_t treeDepth;
 
     /// Call stack depth
     uint32_t stackDepth;
@@ -92,7 +138,7 @@ class TraceNode
     /// List of successors (blocks this has branched to)
     TraceNode[] succs;
 
-    /// Visit count
+    /// Visit count (number of times traced)
     uint32_t count = 0;
 
     /**
@@ -101,8 +147,8 @@ class TraceNode
     this(IRBlock block)
     {
         this.block = block;
-        this.root = this;
-        this.depth = 0;
+        this.rootBlock = block;
+        this.treeDepth = 0;
         this.stackDepth = 0;
     }
 
@@ -112,8 +158,8 @@ class TraceNode
     this(IRBlock block, TraceNode parent)
     {
         this.block = block;
-        this.root = parent.root;
-        this.depth = parent.depth + 1;
+        this.rootBlock = parent.rootBlock;
+        this.treeDepth = parent.treeDepth + 1;
 
         // Compute the stack depth relative to the parent
         auto branch = parent.block.lastInstr;
@@ -130,26 +176,26 @@ class TraceNode
     {
         //writefln("recording from %s", target.fun.getName());
 
-        // If there is no trace node for this target
-        if (target.traceNode is null)
+        // If there is no trace object for this target
+        if (target.trace is null)
         {
-            target.traceNode = new TraceNode(target);
-            return target.traceNode;
+            target.trace = new Trace(target);
+            return target.trace.startNode;
         }
 
         // If enough trace information was recorded about
         // traces starting from this node
-        if (target.traceNode && target.traceNode.count >= TRACE_VISIT_COUNT)
+        if (target.trace.startNode.count >= TRACE_VISIT_COUNT &&
+            target.trace.entryFn is null)
         {
             // Compile a trace for this block
-            compTrace(interp, target.traceNode);
+            compTrace(interp, target.trace);
 
             // Stop recording traces at this node
-            target.traceNode = null;
             return null;
         }
 
-        return target.traceNode;
+        return target.trace.startNode;
     }
 
     /// Continue the tracing process at a given target block
@@ -159,22 +205,31 @@ class TraceNode
         count++;
 
         // If we are at the max trace depth, stop
-        if (depth >= TRACE_MAX_DEPTH)
+        if (treeDepth >= TRACE_MAX_DEPTH)
             return null;
 
         // If this block returns from stack depth 0, stop
         if (stackDepth == 0 && block.lastInstr.opcode == &RET)
             return null;
 
-        // If we are going back to the root block
-        if (target is root.block)
+        // If we are going back to the trace root block
+        if (target is rootBlock)
         {
             // Add a last successor for the root node
             auto succ = getSucc(target);
             succ.count++;
 
-            // Record a new trace starting from the root
-            return record(interp, root.block);
+            // If no trace is compiled for the trace root
+            if (rootBlock.trace.codeBlock is null)
+            {
+                // Record a new trace starting from the root
+                return record(interp, rootBlock);
+            }
+            else
+            {
+                // Stop the trace recording
+                return null;
+            }
         }
 
         // Get the successor for this target

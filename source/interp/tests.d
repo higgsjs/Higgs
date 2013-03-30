@@ -1335,12 +1335,30 @@ unittest
 
     auto interp = new Interp();
 
+    writefln("sunspider/bitops-bitwise-and");
     interp.load("programs/sunspider/bitops-bitwise-and.js");
 
+    writefln("sunspider/bitops-3bit-bits-in-byte");
+    interp.load("programs/sunspider/bitops-3bit-bits-in-byte.js");
+
+    writefln("sunspider/controlflow-recursive");
     interp.load("programs/sunspider/controlflow-recursive.js");
     interp.assertInt("ack(3,2);", 29);
     interp.assertInt("tak(9,5,3);", 4);
 
-    //interp.load("programs/sunspider/math-partial-sums.js");
+    writefln("sunspider/bitops-nsieve-bits");
+    interp.load("programs/sunspider/bitops-nsieve-bits.js");
+
+    writefln("sunspider/math-partial-sums");
+    interp.load("programs/sunspider/math-partial-sums.js");
+
+    writefln("sunspider/math-spectral-norm");
+    interp.load("programs/sunspider/math-spectral-norm.js");
+
+    writefln("sunspider/math-cordic");
+    interp.load("programs/sunspider/math-cordic.js");
+
+    writefln("sunspider/access-binary-trees");
+    interp.load("programs/sunspider/access-binary-trees.js");
 }
 

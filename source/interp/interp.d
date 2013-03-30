@@ -751,10 +751,6 @@ class Interp
             // Increment the execution count for the block
             target.execCount++;
 
-
-
-
-
             // If we are recording a trace
             if (traceNode !is null)
             {
@@ -767,7 +763,7 @@ class Interp
             {
                 // If this block has an associated trace entry
                 // and we aren't recording a trace
-                if (target.trace !is null)
+                if (target.trace && target.trace.entryFn)
                 {
                     //writefln("entering trace: %s", target.trace.entryFn);
                     //writefln("%s", target.toString());
@@ -786,10 +782,6 @@ class Interp
                     traceNode = TraceNode.record(this, target);
                 }
             }
-
-
-
-
 
             // Set the IP to the first instruction of the block
             ip = target.firstInstr;
