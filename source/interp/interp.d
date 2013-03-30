@@ -748,9 +748,6 @@ class Interp
         // While we have a target to branch to
         while (target !is null)
         {
-            // Increment the execution count for the block
-            target.execCount++;
-
             // If we are recording a trace
             if (traceNode !is null)
             {
@@ -758,8 +755,9 @@ class Interp
                 traceNode = traceNode.traceTo(this, target);
             }
 
-            // Otherwise, we are not recording a trace
-            else
+            // Otherwise, if the block is a potential trace
+            // start and the jit is enabled
+            else if (target.traceStart == true && opts.jit_disable == false)
             {
                 // If this block has an associated trace entry
                 // and we aren't recording a trace
@@ -772,15 +770,15 @@ class Interp
                     continue;
                 }
 
-                // If the block is a potential trace start and
-                // has been executed often enough
-                if (target.traceStart == true && 
-                    target.execCount >= TRACE_RECORD_COUNT && 
-                    opts.nojit == false)
+                // If the block has been executed often enough
+                if (target.execCount >= TRACE_RECORD_COUNT)
                 {
                     // Begin recording traces at this node
                     traceNode = TraceNode.record(this, target);
                 }
+
+                // Increment the execution count for the block
+                target.execCount++;
             }
 
             // Set the IP to the first instruction of the block
@@ -814,9 +812,6 @@ class Interp
                 // Update the IP
                 ip = instr.next;
             }
-
-
-
         }
     }
 

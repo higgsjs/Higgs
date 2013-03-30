@@ -49,6 +49,10 @@ const TRACE_RECORD_COUNT = 500;
 
 const TRACE_VISIT_COUNT = 100;
 
+const TRACE_RECORD_COUNT_SUBS = 500;
+
+const TRACE_VISIT_COUNT_SUBS = 20;
+
 const TRACE_MAX_DEPTH = 512;
 
 /// Trace entry function pointer

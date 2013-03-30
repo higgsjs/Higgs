@@ -259,7 +259,7 @@ Trace compTrace(Interp interp, Trace trace)
 
     //writefln("assembled");
 
-    if (opts.dumpasm)
+    if (opts.jit_dumpasm)
     {
         writefln(
             "%s\nblock length: %s bytes\n", 
@@ -342,7 +342,7 @@ extern (C) void recordSubTrace(
     auto trace = parent.subTraces[patchPtr];
 
     // If enough information was accumulated about this trace
-    if (trace.startNode && trace.startNode.count >= TRACE_VISIT_COUNT)
+    if (trace.startNode && trace.startNode.count >= TRACE_VISIT_COUNT_SUBS)
     {
         // Compile a trace for this block
         compTrace(subCtx.interp, trace);
@@ -411,7 +411,7 @@ struct CodeGenCtx
 
 void comment(Assembler as, string str)
 {
-    if (!opts.dumpasm)
+    if (!opts.jit_dumpasm)
         return;
 
     as.addInstr(new Comment(str));
@@ -910,40 +910,31 @@ void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
         // The less likely (trace exit) branch is out of line
         ctx.ol.addInstr(IF_EXIT);
 
-        // Reserve nops for an eventual jump to a sub trace
-        for (size_t i = 0; i < JUMP_PATCH_SIZE; ++i)
-            ctx.ol.instr(NOP);
-
-        // Increment the trace exit counter
-        ctx.ol.instr(INC, new X86IPRel(32, IF_EXIT_CTR));
-        ctx.ol.instr(CMP, new X86IPRel(32, IF_EXIT_CTR), TRACE_RECORD_COUNT);
-        ctx.ol.instr(JL, IF_EXIT_JUMP);
-        //ctx.ol.instr(JMP, IF_EXIT_JUMP);
-
-        // Allocate a copy of the context for the sub-trace and keep a reference to it
-        auto subCtx = new CodeGenCtx();
-        *subCtx = ctx;
-        ctx.trace.subCtxs ~= subCtx;
-
-
-        if (subCtx.callStack.length != ctx.nodeList[ctx.nodeIdx].stackDepth)
+        // If sub-traces are enabled
+        if (!opts.jit_nosubs)
         {
-            writefln("branchNode stack depth mismatch in gen_if: %s,%s", subCtx.callStack.length, ctx.nodeList[ctx.nodeIdx].stackDepth);
-            writefln("  node idx: %s", ctx.nodeIdx);
+            // Reserve nops for an eventual jump to a sub trace
+            for (size_t i = 0; i < JUMP_PATCH_SIZE; ++i)
+                ctx.ol.instr(NOP);
 
-            writefln("%s", instr.block.toString());
+            // Increment the trace exit counter
+            ctx.ol.instr(INC, new X86IPRel(32, IF_EXIT_CTR));
+            ctx.ol.instr(CMP, new X86IPRel(32, IF_EXIT_CTR), TRACE_RECORD_COUNT_SUBS);
+            ctx.ol.instr(JL, IF_EXIT_JUMP);
 
-            assert (false);
+            // Allocate a copy of the context for the sub-trace and keep a reference to it
+            auto subCtx = new CodeGenCtx();
+            *subCtx = ctx;
+            ctx.trace.subCtxs ~= subCtx;
+
+            // Call the recordSubTrace function
+            ctx.ol.ptr(RDI, outTarget);
+            ctx.ol.ptr(RSI, ctx.nodeList[ctx.nodeIdx]);
+            ctx.ol.ptr(RDX, subCtx);
+            ctx.ol.instr(LEA, RCX, new X86IPRel(32, IF_EXIT));
+            ctx.ol.ptr(RAX, &recordSubTrace);
+            ctx.ol.instr(jit.encodings.CALL, RAX);
         }
-
-
-        // Call the recordSubTrace function
-        ctx.ol.ptr(RDI, outTarget);
-        ctx.ol.ptr(RSI, ctx.nodeList[ctx.nodeIdx]);
-        ctx.ol.ptr(RDX, subCtx);
-        ctx.ol.instr(LEA, RCX, new X86IPRel(32, IF_EXIT));
-        ctx.ol.ptr(RAX, &recordSubTrace);
-        ctx.ol.instr(jit.encodings.CALL, RAX);
 
         // Jump to the less likely target
         ctx.ol.addInstr(IF_EXIT_JUMP);
