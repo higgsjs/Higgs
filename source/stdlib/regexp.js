@@ -2522,15 +2522,6 @@ function assertionToAutomata (
     return nextTransition;
 }
 
-(function ()
-{
-    // Get a reference to the context
-    var ctx = iir.get_ctx();
-
-    // Set the regexp prototype object in the context
-    set_ctx_regexp(ctx, RegExp);
-})();
-
 RegExp.prototype.toString = function ()
 {
     return this.source;

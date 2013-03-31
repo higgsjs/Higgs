@@ -490,6 +490,7 @@ class Interp
             load("stdlib/boolean.js");
             load("stdlib/date.js");
             load("stdlib/json.js");
+            load("stdlib/regexp.js");
             load("stdlib/global.js");
         }
 

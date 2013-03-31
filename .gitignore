@@ -1,8 +1,7 @@
-notes/
 old/
 source/higgs
-source/higgs.o
 source/test-higgs
-source/test-higgs.o
-*.*~
+source/*.o
 bin/
+*.*~
+

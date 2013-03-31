@@ -1,0 +1,1787 @@
+Conference deadlines:
+- DLS 2013      June 8, 2013
+- VMIL 2013     ~August 2013
+- CGO 2014      ~September 2013
+- CC 2014       ~October 2013
+- PLDI 2014     ~November 2013
+- VEE 2014      ~November 2013
+
+TODO: give this project more lovin'! Improve various aspects! Blog!
+
+Idea: use movd/movq to spill regular registers into xmm registers
+- Apparently recommended by intel optimization manual
+
+Idea: Raw graphical output interface, use SDL library, pixel plotting
+
+Idea: C function call IR instruction
+- Signature as D string, e.g.: "bool(int,int)"
+- Raw pointer for fn ptr
+- List of argument slots
+- Lazily generates machine code to convert/pass args
+- Can generate wrapper function using eval, if desired
+- See https://developer.mozilla.org/en-US/docs/Mozilla/js-ctypes
+
+------------------------------------------------------------------------------
+
+TODO: think about special monitoring instructions
+- instrs to allocate type monitors
+  - add TypeMon ptr to interp ref list
+- union based on values
+
+TODO: System to register TypeMon refs
+- Type objs from classes
+- Type objects need to be destroyed/finalized (to destroy GC roots)
+
+TODO: log function argument types for most called funs?
+- Big dump of all functions, call count, types?
+
+TODO: monitor function arguments in call instructions
+- Lazily create monitor objects
+- Destroy monitors in collectFun
+
+TODO: update heap refs in type sets after GC
+TODO: destroy dead type sets after GC
+
+TODO: allocate class ids?
+- nextClassId var in interpreter?
+- Need instr to allocate a class id as well
+- class_alloc called in only 2 places
+- Could add an opNewClass to take care of this
+
+TODO: port over stdlib/regex
+
+TODO: make sure global obj ptr is updated when global obj is extended
+- Trigger GC?
+
+TODO: should traces belong to specific block branches?
+- Provides some context?
+- For loops, we always start at the second iteration, auto loop peeling
+- Somewhat problematic for calls, can't start a segment there?
+  - Segment starts in the caller, might be better?
+- Can decide this later
+
+TODO: peephole assembler optimizations
+- Look at generated asm code first
+- Eliminate redundant jumps?
+- Use mov RAX, moffs64 when appropriate
+- Look at existing Tachyon code
+- Bit mask for free registers
+- Map of stack slots to regs/mem
+- How do we indicate when values/registers become free?
+ctx.getWord/setWord indicates mapping of values to regs?
+could auto add value kill info?
+
+TODO: live variable analysis, run lazily
+- Bool flag on function to signal if done
+- Bool flags on arg values to signal when to kill
+- Use bit vector to implement
+
+TODO: think further about register allocation
+- Must leave interp frame in a coherent state on trace exit!
+
+TODO: compute trace completion rates?
+- increment interp counter on trace start, other counter on trace end
+- counter for interpreter fallback rate
+
+TODO: integrate level 0 FFI functionality
+
+TODO: optimize test and conditional jump pattern
+- use dumpasm on bitwise-and
+- jit/peephole.d?
+- add jit_noopts flag
+- eliminate useless load and cmp
+- can we eliminate some useless loads?
+
+
+
+
+TODO: blog
+- Traces, sub-traces
+- Stack frame init maps
+- Updated perf numbers
+- All SunSpider/V8 benchmarks except regexp working, thanks to Tom Low
+- FFI
+- eval
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: segfault on ./higgs programs/sunspider/bitops-bits-in-byte.js 
+- Doesn't crash with no JIT
+- jump to self at block 30/169 in sub-trace of bits-in-bytes
+- Root node has no trace object???? wtf
+  - root not marked as a trace start
+  - not calling record on it
+- not setting root node properly in sub-traces
+
+[DONE] TODO: look at more missing instrs for nsieve-bits
+- eq_i8
+- does this make sub-traces faster? yes
+- crash in sunspider tests, signal 11
+
+[DONE] TODO: review traces and sub-traces, do they make sense?
+- long traces probably due to loops in runtime, e.g.: getPropidx
+- does allowing longer traces result in slowdowns?
+- increasing max trace length makes it slower
+
+[DONE] TODO: jit_dumpinfo
+
+[DONE] TODO: test JIT on earley-boyer
+- check memory usage: 2.3%
+- sub-traces aren't making much difference
+
+[DONE] TODO: try tweaking trace/sub-trace constants/heuristics
+- use jit_nosubs for performance comparisons
+- 3d-raytrace is faster with sub-traces
+- Tweaking inconclusive, would ideally need automation
+
+[DONE] TODO: jit_disable, jit_dumpasm, jit_nosubs
+
+[DONE] TODO: increment block idx only for trace headers
+
+[DONE] TODO: add/enable more sunspider benchmarks in unit tests
+
+[DONE] FIXME: gc/stackvm crashes with JIT, uses GC
+- Crashes during sub-trace compilation
+
+[DONE] FIXME: 3d-raytrace segfaults
+- jumps to self too early?
+
+[DONE] FIXME: stack depth issues in sub-traces
+- Not keeping track of call stack and call stack depth properly
+- Sub-trace needs this initial call stack
+- Trace start node needs to start with correct stack depth
+
+[DONE] FIXME: make sub-traces belong to parent trace object, not blocks
+
+[DONE] TODO: make it so sub-traces are part of the root trace tree?
+- Do we really need a trace pointer in TraceNode objects, is rootNode ok?
+
+[DONE] TODO: Pass a copy of the CodeGenCtx to the sub-trace?
+- Could be a big object
+- Can we retrace steps from the root trace? Expensive
+  - Expensive but necessary?
+  - Could have hundreds of blocks in a main trace
+  - Still OK if ctx is relatively small
+
+[DONE] TODO: implement sub traces from if
+- If threshold reached
+  - call function that begins tracing from block
+  - jump to interpreter
+- Pass address to patch back for direct jump to trace
+  - Write jump directly over a reserved block of nops, 10 + 2 bytes
+  - Can reserve 12 bytes, use an assembler to get the proper bytes
+
+[DONE] TODO: Trace node currently stores root node pointer
+- Could store trace object pointer instead
+- Trace object can store:
+  - root trace node
+  - parent trace object
+  - parent jump address
+- Creating the trace object can create the root trace node?
+
+[PASS] TODO: loop to loop, stop at inner trace?
+- Doesn't seem to improve performance
+
+[DONE] TODO: keep track of calls/returns during tracing, avoid wasting time?
+- Will avoid wasting a lot of time in function traces, super long traces
+- Simplifies logic of JIT itself
+- Should speedup 3d-cube, 3d-raytrace
+
+[DONE] TODO: better callee-guessing in call
+
+[DONE] TODO: ctx.stopTrace
+
+[DONE] FIXME: 3d-cube, interpreter stack underflow, other crashes
+- Caused by trace length being capped? No
+- access-binary-trees, multiple levels of recursion in
+  run-time error: undefined base in property read
+  crash after compiling trace in $rt_getProp(27F5)
+- Try disabling global prop access: no
+- Disabling ret logic seems to fix it...
+- Problem comes from default call/ret implementation not stopping trace
+
+[DONE] FIXME: enable jump to self
+
+[DONE] TODO: remove segment extension code, compile traces from trace nodes
+
+[DONE] FIXME: in nsieve-bits, recording many many traces at rt_not, never compiling
+
+[DONE] TODO: move IIR static ctor to ir/iir.d
+
+[DONE] FIXME: seemingly unrelated blocks in traces...
+- Jump into a trace while recording, end up anywhere
+
+[DONE] TODO: implement trace node updating during tracing
+- compTrace should take a TraceNode argument, construct the block list
+- add a trace node pointer to the interp class?
+
+[DONE] TODO: implement TraceNode class, jit/trace.d
+- Node should have count, associated block, depth, tree root, list of children
+
+[DONE] TODO: implement system to constrain trace starts to specific blocks
+- Need to label trace start blocks
+- Blocks need counter + trace start flag + trace object pointer
+
+[DONE] TODO: refactor global return code into parser
+- Useful for eval
+
+[DONE] TODO: implement global eval
+- eval_str instruction?
+
+[DONE] TODO: rename segment object to trace, compSegment to compTrace, etc.
+- Do grep for Segment/segment, to match comments
+
+[DONE] FIXME: GC bug after multiple runs after load?
+- Try to replicate with unit test
+  - Hard to achieve, too much code
+- rule_loop is the function that was destroyed then called *****
+  - appears to be a local function, recreated
+  - there are 3 different rule_loop functions...
+    - 2 of them transitively added, last one destroyed
+- How can we not find one of the rule_loop functions transitively?
+- If we GC on global scope... Most functions are destroyed
+  - Only a problem if first run occurs first
+  - Obviously poor traversal, poor finding of function references
+- The problem must be that our transitive function adding is imperfect..
+  - Does not implement a proper DFS
+
+[DONE] TODO: ASMComment pseudo-instruction?
+- Have function to add comments when dumpasm is enabled?
+- Will allow better understanding of asm output
+
+[DONE] TODO: rename JITInstr to ASMInstr
+
+[DONE] TODO: prepare presentation for Friday 15th March
+- Explain ideas in more detail
+- Elaborate on incremental segment extension
+- Is counter=1 like regular tracing?
+  - Not exactly, still need multiple passes through segment to extend
+
+[DONE] FIXME: earley-boyer, call to non-function
+
+[DONE] TODO: try self-patching mechanism for optimized global object access?
+- cache based on global object address?
+- can a load patch its own 32 bit offset???
+- flesh out ASM code
+
+[DONE] TODO: IP-relative addressing
+- Should be able to specify label, but also extra disp
+- Unit asm code execution
+
+[DONE] TODO: refactor instruction operands
+- Array of fixed size in instr
+- Pointers to subclasses of X86Opnd
+
+[DONE] TODO: IntData JITInstr
+- Num bits, value
+
+[DONE] TODO: optimize JIT interp fallback, now have mayGC, isCall
+- Test with earley-boyer
+
+[DONE] FIXME: GC during load(), not a proper function call! can't traverse stack
+- unit test this, gc/load.js?
+
+[DONE] TODO: remove stack init code from JIT
+
+[DONE] TODO: make interp no longer init stack slots in function calls
+
+[DONE] TODO: refactor GC to use init maps when traversing stack
+- Make sure unit tests, earley-boyer still work fine!
+
+[DONE] FIXME: ip is moved before instr is executed...
+- Could probably change this with current design
+
+[DONE] TODO: mayGC opcode flag
+- Needed by heap_alloc, set_str, set_global, get_global
+
+[DONE] TODO: implement init map system
+- bug, seems to be caused by code after branch
+- stop adding instrs after branch?
+
+[DONE] FIXME: JIT bug causing segfault in earley-boyer
+- Crashes in segment in $rt_class_get_cap(1394), len: 1
+- Disabling call and ret JIT instrs does not fix it
+- String table gets extended, class gets extended, but no GC yet
+    $2 = get_global "$rt_class_ofs_cap", 177
+    $1 = get_global_obj
+    $3 = call $2, $1, $11 => call_cont(2D5A)
+- Could it be get_global? Try disabling?
+  - Works without get_global!
+
+[DONE] TODO: optimize set_str
+
+[DONE] TODO: try optimizing/specializing return sequence
+
+[DONE] FIXME: gc causes crash during trace?
+- Could the GC be invalidating something?
+- Collecting the current function? No
+- Segment causing crash is in array_push
+  - Loops over $argc
+- not crashing in get_arg, set_str, heap_alloc, load
+- bug caused by getString in gen_call causing gc!
+
+[DONE] TODO: can we have traces join themselves, e.g.: bitwise-and?
+
+[DONE] TODO: add callStack in CodeGenCtx?
+- push/pop the call instructions
+- can allow full inlining
+- may have problems with very long traces
+
+[DONE] FIXME: v8/crypto sanity check fails
+
+[DONE] TODO: branches extend according to which block is specified in the list
+- Last if_true, if no next block is specified, insert counter code
+compSegment(Interp, nextBlock, segment = null)
+- Segment is created if none exists
+- nextBlock gets added to the block list
+- compilation loop follows the block list
+
+[DONE] TODO: Create Segment class
+- Can store counters, list of blocks, code block, etc.
+- Easier to manage!
+
+[DONE] NOTE: block exec counts are betraying us even in very simple cases!
+- rt_and, both operands integers
+- and_exit and and_sec blocks have the same exec count
+- can't tell that the AND condition is always true
+- Do we want branch counters instead?
+  - Strictly more powerful than block exec counters, can still compute block exec count
+
+[DONE] TODO: log instrs for which default fn is used
+
+[DONE] FIXME: JIT breaks 3d-raytrace?
+- Find issue, add jit unit test
+- Problem seems to be in the call logic
+- String(undefined) produces undefined after compilation
+- $rt_isGlobalObj(this) in String starts producing true after compilation
+
+[DONE] TODO: use unique id system for labels, use in toString?
+- Just print their current offset?
+
+[DONE] TODO: second assembler object for out of line paths
+- Assembler.append(Assembler) function?
+- OVF logic => out of line
+- Function call interp path => out of line
+
+[DONE] TODO: try logging branch exec counts on if_true
+- Log with associated instr
+- Many go entirely one way, most unbalanced
+
+[DONE] TODO: refactor all conditional branches to have 2 targets?
+- target, excTarget?
+- Probably best for block extension
+- Need to pick a target to extend the block with either way
+
+[DONE] TODO: blog post about JIT compiler
+
+[DONE] FIXME: v8/earley-boyer requires class extension
+- Implement in interp/object.d
+- Add unit test for this
+
+[DONE] TODO: try to guess callee function?
+- Can introspect a bit, check if calling global fun
+- Compare closure pointer against known global
+- If known global, run optimized sequence!
+- Otherwise run interp version
+- Great speedups!
+
+[PASS] TODO: implement CALL instruction
+- PROBLEM: call instruction sequence is extremely long!
+- Very inefficient to implement
+
+[DONE] TODO: implement RET instruction
+
+[DONE] TODO: stack access functions
+
+[DONE] TODO: table of code gen functions, addressed by opcode
+- Default gen function calls the instruction
+
+[DONE] TODO: implement JUMP_TRUE, JUMP_FALSE
+- jump to trace end label
+
+[DONE] TODO: implement set_int32
+- Need to access wsp, tsp
+- Load them from interpreter at start of trace, spill at end?
+  - Allows proper indexing
+  - Put them in callee-save registers
+
+[DONE] FIXME: including RET or CALL in tracelet causes segfaultl
+- Return seems to occur twice?
+- Set traceEntry to null before entering trace
+- Otherwise, we're setting it to null after trace, undoing work of another trace
+
+[DONE] TODO: command-line option to enable or disable JIT
+- options.d?
+
+[DONE] FIXME: somehow, traces make odd behaviors happen, e.g.: call to non-function
+- Somehow, semantics differ
+- Lots of tracelets seem to get executed successfully
+- Setting the IP before instruction execution seems to fix this...
+
+[DONE] FIXME: trace issue, jump(block) can trigger recursive trace exec
+- Could jump() set a trace pointer in interp, but not call it?
+
+[DONE] TODO: basic tracelet JIT, jit.d
+- Lazily compile tracelets for blocks
+- Start with one entry point, as a C function
+- Need trace to call into instr op functions
+- Trace exits by doing ret
+
+[DONE] TODO: port and test x86 execution tests
+
+[DONE] TODO: convert push/pop test to 64-bit registers
+
+[DONE] TODO: complete porting of assembler tests
+
+[DONE] TODO: begin porting assembler tests
+
+[DONE] TODO: port assembler code
+
+[DONE] TODO: port operand toString
+
+[DONE] TODO: finish porting basics of CodeBlock, add mem block allocation
+
+[DONE] TODO: implement register toString
+
+[DONE] TODO: port operand, encoding code
+
+[DONE] TODO: port instruction table construction
+
+[DONE] TODO: copy over Tachyon assembler tests, instr table
+
+[DONE] TODO: fmod, needed by both raytrace benchmarks
+
+[DONE] FIXME: raytrace sanity check fails
+- Problem is division of number by string... assholes.
+
+[DONE] TODO: look at D ABI
+- Should match the linux 64-bit C ABI
+First six int/pointer arguments in RDI, RSI, RDX, RCX, R8, and R9
+Return value is stored in RAX
+
+[DONE] TODO: blog
+- Mozilla people, learning, friendly people, pleasant office
+- DConf 2013
+- Meeting with Apple
+- Silicon valley is quite different
+- Smartphone
+- First pull requests
+- Bug fixes
+- Feature and benchmark list
+- Brainstorming
+- Preparing tracelet JIT implementation
+
+[DONE] TODO: Add jump function, to jump to a certain block
+- Changes the state of the interpreter, returns
+- Asserts target is not null
+- add block exec count
+
+[DONE] TODO: enable JSON stdlib module
+- parse fails, unknown escape sequence
+
+[DONE] TODO: genCallTargets
+
+[DONE] TODO: make call have 2 targets
+
+[DONE] TODO: make post-call be separate block
+- Don't want ret tracelet starting in middle of block
+- Better for analysis?
+- Alternative is ret stays in same block, IP is post-call
+  - Would have to associate tracelet with instr in middle of block!
+- bitops-nsieve-bits, before: 19.879, after: 24.189, sep: 21.837
+
+[DONE] FIXME: 4294967295.0 === 0xFFFFFFFF
+- Int not represented correctly
+- Gen code using set_float instead
+
+[DONE] TODO: Fix toInt32, needed by v8/crypto, v8/splay
+- Make it use f64_to_i32
+- Add more bitwise unit tests for and, or ops, rsft, ursft
+- test corner cases
+
+[DONE] TODO: Comply with ES5 comparison unit test
+- Will help certify proper working
+- Look at Tachyon implementation of primitives
+
+[DONE] TODO: load_file instr
+- Add unit test for this
+- Add load to feature list on blog
+
+[DONE] FIXME: deltablue, interpreter stack overflow
+- Fails after Error object is finally found?
+- Did some assertion fail?
+
+[DONE] TODO: add more basic Tachyon unit tests
+- Arith, operators
+
+[DONE] FIXME: do we expect the result of Obj.toString to be a string in $rt_toString
+
+[DONE] FIXME: v8/raytrace, info.color is undefined, shouldn't be
+- for-in, used by object extension, is broken
+- the presence of "var" screws it up
+
+[DONE] FIXME: v8/deltablue, call to non-function
+- EditConstraint corrupts working of UnaryConstraint?
+- Setting EditConstraint.prototype.isInput corrupts EditConstraint.prototype.isInput
+
+[DONE] FIXME: typeof global var should produce undefined
+- $rt_typeOfGlobal(propName)?
+- Needed by v8bench/raytrace
+- Implement runtime function to see how practical this is
+- Add unit test
+
+[DONE] TODO: parseInt, needed for v8bench/crypto
+
+[DONE] FIXME: interp.interp.RunError: global property "rng_pool" is not defined
+- Global var stmt, not initialized to undefined
+- Add unit test
+
+[DONE] TODO: add list of working benchmark programs on Higgs page, useful to have
+
+[DONE] TODO: Math.round, needed for 3d-cube
+
+[DONE] FIXME: crypto-md5, crypto-sha1, invalid operand 2 type in op "auto r = x * y;" (int)
+
+[DONE] FIXME: deltablue, 3d-cube, ref ptr out of heap
+- Failing on object property
+- propIdx is 2, object capacity is 2
+
+[DONE] FIXME: lt,gt,eq functions fails in 3d-raytrace, undefined/null value as input
+
+[DONE] TODO: anon function naming in AST
+- Anon functions in sunspider/raytrace.js hard to debug
+
+[DONE] FIXME: v8bench/richards, Segmentation fault
+- Can we replicate this in a unit test?
+
+[DONE] TODO: TypeSet, GCRoot, could we just use type monitor objects as weak roots?
+- Use linked list kind of system, all type sets linked
+- Store associated class, if any
+- If class is dead after GC, destroy
+- Functions destroy their type sets automatically
+- Merge TypeMon and TypeSet
+
+[DONE] TODO: implement delete operator
+- Unit test this
+
+[DONE] TODO: complete TypeSet constructor from val, union
+
+[DONE] TODO: complete TypeMon basics
+
+[DONE] TODO: GCRoot assignment operator, copy constructor
+
+[DONE] TODO: blog, higgs interpreter complete
+- Flesh out feature list on about page
+- Post feature list
+- Blog about monitoring
+- Mozilla visit
+
+[DONE] TODO: enable stdlib_string unit test, comment out regexp code
+- interp.interp.RunError: global property "alloc_str" is not defined
+
+[DONE] FIXME: destroy fun in collectFun causes odd interpreter bug
+- Collecting function on stack?
+- Log deleted functions
+
+[DONE] TODO: parser, encode operator associativity, improve parenthesization
+- Test with Function.toString
+- Unit test expressions for correctness
+- Problems arise when the parent doesn't have higher priority than us
+
+[DONE] TODO: try to find expression tests that break parser re-parse
+- write failing unit test
+
+[DONE] TODO: add problematic expression tests for interpreter
+
+[DONE] TODO: determine how to represent numerical ranges
+- Look at moller's paper for insight
+- just use int64
+
+[DONE] TODO: start implementing type set object, in D
+- interp/type.d?
+- operations should mutate set objects? Yes, probably
+  - want to keep list of dependencies
+  - want to maximize speed of operations
+
+------------------------------------------------------------------------------
+
+Milestone Complete: working benchmarks
+
+[DONE] TODO: for-in loop
+- [DONE] Port over Tachyon runtime code for this
+- [DONE] Test getPropEnum before implementing loop code gen
+- [DONE] Base loop code gen on Tachyon code
+  - loop until enum function returns false
+- [DONE] Enable for_in unit test
+
+[DONE] TODO: basic Date support
+- currentTimeMillis()
+- IR instr get_time_ms
+
+[DONE] TODO: class obj, make it a hash table
+- like the string table
+- add max load consts to layout.py
+
+[DONE] FIXME: string table extension provokes GC
+- gc during table ext invalidates string ptr?
+
+[DONE] TODO: arguments object
+- If no "arguments" param, create arguments local
+- KISS, just create array, copy arg vals in loop, set in local slot
+- vars analysis should set usesArguments flag in function
+  - KISS for now, any occurrence of "arguments" identifier
+- enable gc test
+
+[DONE] TODO: call with apply
+- call_apply(closArg, thisArg, argTable, numArgs)
+- enable gc test
+- add unit Tachyon apply tests
+
+[DONE] TODO: accessing missing global prop should throw exception
+- use missing property constant
+- assertThrows
+
+[DONE] TODO: missing property constant, like undefined, but not
+- [DONE] set_missing
+- [DONE] init object properties to missing
+- [DONE] revise getProp
+- [DONE] revise "in" operator, hasOwnProperty
+- [DONE] add unit tests
+
+[DONE] TODO: Look at features of two "real" benchmarks to guide development
+- Benchmarks: Bones, sunspider/3d-raytrace
+- What features are we missing?
+  - Float32Array, could replace by Float64Array, aliased to array
+  - Already have everything else for bones!
+  - For raytrace, new Date().getTime()
+- v8/raytrace uses the for-in loop
+
+[DONE] TODO: string->number, parsing numbers in strings
+- stdlib_number unit test
+
+------------------------------------------------------------------------------
+
+Milestone Complete: complete simple interpreter (~Dec 31st)
+
+[DONE] FIXME: topmost function doesn't have closure on stack?
+- We free a closure, but can we free all its link indices?
+  - No, because the code might still be used...
+
+[DONE] TODO: traverse instructions of dead functions, collect link table refs
+- log dead functions
+
+[DONE] TODO: garbage collecting fun refs
+- Create new fn ref table
+- liveFuns table in interpreter
+- When traversing closures, add fns to ref table
+- Replace original ref table
+
+[DONE] FIXME: ret addr is calling instruction, not IR function pointer
+- Add special instruction pointer type tag
+
+[DONE] TODO: blog post, interpreter milestone complete
+- Next goals, monitoring, tracing JIT
+
+[DONE] TODO: edit Higgs page on pgw, add supported features list
+- Objects
+- Arrays
+- Closures
+- Variadic functions
+- For/while/do loops
+- If/switch statements
+- UTF-16 strings
+- Integer and floating-point arithmetic
+- Redefinable arithmetic operators
+- Garbage collector
+
+[DONE] TODO: remove GC output during unit tests
+
+[DONE] TODO: garbage collecting string table
+- don't forward string table, just re-alloc with same size
+- after scan, remove strings table entries without a next pointer
+  - need to rebuild table, reinsert strings
+  - rebuild from old table
+- strcat unit test
+
+[DONE] TODO: remove stack slot init to undef, make it implicit?
+- move from push to callFun
+
+[DONE] TODO: make next ptr first field in all layouts
+- init next ptr to null
+- header is second field
+- have GC traverse next pointers in objects
+
+[DONE] TODO: beef up clos alloc test
+
+[DONE] TODO: obj alloc test
+
+[DONE] FIXME: stackvm test, segfault
+- allocation completes
+- crash after alloc in op_call_new
+
+[DONE] FIXME: deepstack... Stack ref, object not in from-space heap
+- collect called manually, not in the middle of anything...
+- invalid object is all zeros?
+- pointer appears to be from old from-space (zeroed out)
+- clearing stack slots on push seems to remove problem
+- Temp slots don't get initialized!
+
+[DONE] FIXME: graph test, second collection fails, cannot copy in to-space, heap limit exceeded
+- object size is corrupted (by previous GC?)
+- happens during op_heap_alloc
+- crash during "visiting stack roots"
+  - probably, some stack object or stack ref is corrupt
+- setting slots to undef on push and pop does not fix the problem
+- inserting/removing prints can make the bug disappear...
+- layout type of faulty object is closure...
+  - object is near boundary of from-space
+
+[DONE] TODO: implement GC count variable, IR instruction
+
+[DONE] TODO: make programs/gc/graph.js run
+
+[DONE] TODO: repeated closure allocation test
+- closure in loop
+- call closure to test
+
+[DONE] FIXME: heisenbug with repeated closure alloc
+- call to non function
+
+[DONE] FIXME: repeated closure allocation produces segfault
+- Failure probably occurs during newClos
+
+[DONE] TODO: implement proper shrinkHeap
+
+[DONE] FIXME: heap corruption during collection
+- println fails, unhandled type in toString
+  - link table problems?
+
+[DONE] TODO: implement heap resizing for GC tests
+
+[DONE] TODO: gc arrays test
+
+[DONE] TODO: while manipulating references in interp, push refs to be saved on stack
+- [DONE] setProp 
+- [DONE] newObject
+  - pay special attention to arguments
+- [DONE] interp/string.d
+- [DONE] setProp callers
+- [DONE] throwError
+- [DONE] op_call_new
+- [DONE] op_new_clos
+
+[DONE] TODO: eliminate ppClass in newExtObj? How useful is it really?
+- Not that important!
+
+[DONE] TODO: store ValuePair in stack root
+- Multiple helpful constructors
+- Assignment operators
+
+[DONE] TODO: implement stack root system
+- use special pointer container object, struct w/ destructor (implement in gc.d)
+- object can be linked in doubly linked list
+
+[DONE] TODO: revert to-space alloc code
+
+[DONE] TODO: collect in function test
+
+[DONE] TODO: $ir_gc_collect instruction
+
+[DONE] TODO: get heap size instruction
+- $ir_get_heap_size
+
+[DONE] TODO: gcCollect after library loading
+
+[DONE] TODO: gcCollect in middle of library loading
+
+[DONE] TODO: first GC test, call gcCollect after interp init?
+
+[DONE] FIXME: forwarding the same address many times over?
+
+[DONE] TODO: function to allocate to-space
+- Check if not allocated in gcCollect, if so allocate
+
+[DONE] TODO: when allocating and running out of space, alloc to-space?
+- Can keep allocating in from-space as well!
+- Have a special function to check if to-space is allocated, allocate to it
+
+[DONE] TODO: move heapAlloc to interp/gc.d
+
+[DONE] TODO: scan link cells during GC
+- Scan as roots
+
+[DONE] TODO: layout_visit_gc(o) dispatching fn
+
+[DONE] TODO: GC obj traversal functions
+- Do a get on fields, call gcForward, set the result
+  - word/type pairs slightly problematic?
+    - if tpField set, call special function to forward
+
+[DONE] TODO: remove array functions from objects.d, maintainability hazard
+
+[DONE] TODO: init object properties and array elements to undefined for now
+
+[DONE] TODO: unit test for obj field init
+- Two objects from one class, one with a specific field, one without
+  - Second one should come out undefined
+
+[DONE] TODO: word field in object/array/cell should be annoted with type field name
+- type field should be resolved
+
+[DONE] TODO: layout_sizeof(o) dispatching fn
+- Easy to implement, do this automatically
+- obj_get_header(o)
+
+[DONE] TODO: Forwarding pointer in layout
+  layout_get_next(o)
+  layout_set_next(o, p)
+- Set special header flag (top bit), store forwarding pointer after header
+- Can write these functions in D if desired
+
+[DONE] TODO: layouts, enforce alignment of fields to field size
+
+[DONE] TODO: implement visitStackRoots
+
+[DONE] TODO: port gcCopy, gcForward
+
+[DONE] TODO: complete port of gcCollect
+
+[DONE] TODO: call gcCollect in heapAlloc function
+
+[DONE] TODO: copy over relevant Tachyon GC code
+
+[DONE] TODO: Make sure pointers are initialized to null
+- Unless immediately initialized, init pointers to null
+
+[DONE] TODO: create interp/gc.d
+
+[DONE] TODO: create IRFunction ptr word type tag
+- Update in layout.py as well
+
+[DONE] TODO: store ctor class ptr on closure obj?
+- refptrs
+
+[DONE] TODO: no more ptr caching in instr/IRFunction, no ptrVal instr arg type
+
+[DONE] TODO: modify opNewClos to use link table entries
+
+[DONE] TODO: use new arr alloc in IR->AST
+
+[DONE] TODO: use new obj alloc in IR->AST
+
+[DONE] TODO: implement newClos in runtime.js
+- Issue: need to get IRFunction ptr, add to ref table
+  - Special instruction for this?
+
+[DONE] TODO: GET_FUN_PTR
+interp.funRefs[cast(void*)fun] = fun;
+- GET_FUN_PTR <irfunction>
+- Takes ptr, add fn to ref table, produces raw ptr
+
+[DONE] TODO: implement newArr in runtime.js
+- Improve Array ctor, use newArr
+
+[DONE] TODO: implement newObj in runtime.js
+
+[DONE] TODO: instructions to access link table
+- make_link "name"
+- get_link
+- set_link
+
+[DONE] TODO: make SET_STR alloc a link table cell internally
+- Store cell index in arg
+- Add new arg type
+
+[DONE] TODO: add wLinkTable, tLinkTable to interpreter
+- Allocate in constructor using malloc
+- Have list of free link table entry indices
+- Function to get a new link table entry index
+
+[DONE] TODO: create $rt_toNumber
+- Used in number constructor
+
+[DONE] FIXME: programs/sunspider/math-spectral-norm.js
+interp.interp.RunError: invalid base in property write
+- Var statement is parsed incorrectly...
+  - Only first identifier is resolved, rest goes in init expression
+ - Make a parser unit test
+
+[DONE] FIXME: programs/sunspider/bitops-nsieve-bits.js 
+global prop unresolved $rt_not
+- Add unit test
+
+[DONE] TODO: float to string support, can't print floats right now!
+- expose f64_to_str instruction
+- Unit test
+
+[DONE] TODO: can we run more benchmarks? Yes
+bitops-nsieve-bits  14.5
+math-spectral-norm  3.28
+math-partial-sums   10.4
+3d-morph            6.07
+access-nsieve       8.46
+access-fannkuch     33.0
+
+[DONE] TODO: Math.log, Math.exp, Math.pow, Math.ceil, Math.floor, expose as instrs
+- Too early to try optimizing this, beat libraries
+
+[DONE] TODO: remove exec flag from heap
+
+[DONE] FIXME: stdlib/math.js, second parse gave different result
+    if (term < 1E-15)
+        break;
+- Add parser unit test, fix
+
+[DONE] TODO: blog post about state of Higgs, features supported, upcoming
+- Ask for help, Math.js, anything else?
+  - be specific
+- Simple JS FFT benchmark?
+
+[DONE] TODO: use exceptions in op_call
+- Throw exceptions on error, e.g.: call non-function
+- Lookup global exception constructor
+  - If avail, create deriv obj from prototype
+  - If not avail, throw message string
+- Need to run throw logic
+
+[DONE] TODO: catch RunError instances in repl, print stack trace
+
+[DONE] TODO: make stdlib/error.js work
+
+[DONE] TODO: stack trace
+- KISS for now, accumulate stack trace in throw
+
+[DONE] TODO: test basic interprocedural try/catch
+
+[DONE] TODO: implement stack unwinding, RunError
+- Uncaught exception throws D exception
+
+[DONE] FIXME: infinite loop when generating exc path for runtime calls?
+- Infinite loop in compiling finally statements
+  - string concat in finally stmt
+  - finally stmt has itself in finally list? WRONGE!
+
+[DONE] TODO: exception codegen for call / call_new
+- If there is no englobing try/catch and no englobing finally, do nothing special
+- If there are englobing finally blocks, need to compile those on exception path
+  - After these are compiled, jump to try catch if present, otherwise do interp throw
+- Prototype with call
+
+[DONE] TODO: throw from within catch, no catch block, but should trigger finally block
+- Could we use getFnlStmts, just use first fnl block?
+- make test, finally_throw.js
+
+[DONE] TODO: implement finally support in break/continue
+- accumulate finallys until target? can pass list ref as argument to ctx fn
+  - compile from inner to outer
+
+[DONE] TODO: implement finally support for return
+- find all englobing finally statements
+  - compile from inner to outer
+- test with finally_ret.js
+
+[DONE] TODO: test intraprocedural throw
+- throw_intra.js
+
+[DONE] TODO: basic catch block compilation, ir/ast.d
+
+[DONE] TODO: import some Tachyon stdlib tests (e.g.: boolean)
+
+[DONE] TODO: make String ctor work
+
+[DONE] TODO: make array toString/join work
+
+[DONE] TODO: make new Array(len) work
+- Needs arguments object
+- unit test
+- nqueens test?
+
+[DONE] TODO: make Math.max work
+
+[DONE] TODO: instructions to get arg count, access args
+
+[DONE] TODO: refactor calling convention, call instr will:
+  ra, clos, this, argc, args.., ...padding...
+- pad with undef for missing args
+- push args in reverse order
+- push local slots
+- ret pops local slots, pops args based on argc, pushes ret val
+
+[DONE] TODO: employ closures to implement Math.random RNG
+- Keep the RNG simple, KISS!
+
+[DONE] TODO: use subCtx when creating managing clos cells at function init, save temps
+
+[DONE] TODO: unit test closures more thoroughly
+- Tachyon closure tests
+
+[DONE] FIXME: variable resolution
+- Currently, after nested function has had its defs added, resolve them
+- This seems wrong, need to finish parsing parent functions
+- Do a recursive resolveRefs pass at the end?
+- Problem: all the scope objects are lost! god damnit.
+- Alternative: find all decls at one level before trying to resolve
+  - Can just resolve immediately instead of calling resolveRefs
+
+[DONE] TODO: gen code for closure cells
+- grab unit tests from Tachyon
+- cellMap: maps symbols to closure cells
+  - in our case, symbol -> local slot of clos cell
+- Creating closure objects, set their cells
+
+[DONE] TODO: allow not having return slot in call instr
+
+[DONE] TODO: resolve captured (closure) vars in parser/vars.d
+- In Tachyon, fun.captVars vs fun.escpVars
+- captVars: captured from other functions
+- escpVars: escaping to nested functions
+
+[DONE] TODO: closure cell layout
+- Extra properties after object fields
+
+------------------------------------------------------------------------------
+
+[DONE] TODO: improve valToString
+
+[DONE] TODO: fix AST bracketing (curly braces)?
+
+[DONE] TODO: support for "in" operator
+
+[DONE] TODO: implement instanceof operator (used by stdlib/string)
+
+[DONE] TODO: array prototype object
+
+[DONE] TODO: implement Function.toString()
+
+[DONE] TODO: create fun proto obj in interp?
+- Corresponding access instruction
+
+[DONE] TODO: function IR dump, log arg slots
+
+[DONE] TODO: $ir_get_ir_str, $ir_get_ast_str?
+- Useful for implementing function toString
+- Useful for debugging!
+
+[DONE] TODO: eliminate opSetProp, opGetProp
+
+[DONE] TODO: make ast IR gen use prop access runtime functions
+
+[DONE] TODO: implement getProp, setProp in runtime
+- array.length property access
+- string indexing access
+- Don't need to compute hash code, already computed in strings
+
+[DONE] TODO: implement switch stmt code gen
+
+[DONE] TODO: way to test for null pointer
+- Make null constant an actual zero null pointer (refptr)
+
+[DONE] TODO: set_value
+- Takes word and type inputs
+
+[DONE] TODO: eq_u8
+- Useful for layout type comparison
+
+[DONE] TODO: basic throw instruction support, make it stop interpreter
+
+[DONE] TODO: add global undefined property
+
+[DONE] TODO: interp/objects.d
+- Object manipulation primitives
+- Keep that code alive
+
+[DONE] TODO: SET_GLOBAL, GET_GLOBAL
+- D string argument
+- Implement global prop slot caching
+- Test speed of bitops-bitwise-and
+  - About 10x faster
+
+[DONE] TODO: boolean negation !
+- Probably want to inline code sequence?
+  - Better compatible with genBoolEval
+- Unit test this
+
+[DONE] TODO: finish replacing basic operators with runtime functions
+- eg: +=, *=, ...
+- Remove corresponding high-level instrs
+
+[DONE] FIXME: genAssign, incompatible with rt fun calls
+- Pass delegate function instead
+
+[DONE] TODO: I64/F64 conversion instructions
+
+[DONE] TODO: interp cycle count?
+- bitwise-and => 3.72M cycles
+- will be less cycles once we have GET_GLOBAL
+- currently look through 170+ property names in linear search!
+
+[DONE] TODO: complete bitwise op runtime functions
+
+[DONE] TODO: complete runtime comparison primitives
+
+[DONE] TODO: IIR improvements, eliminate need for $ir_jump_false
+- Clearer, more concise!
+- genBoolEval? Treat IIR differently
+
+[DONE] TODO: implement/test $rt_toBool
+- Before: bitwise and takes 5.97s
+- After: bitwise-and takes ~24.6s
+- Time probably dwarfed by global lookups
+
+[DONE] TODO: interp file loading
+- useful for testing/timing benchmarks
+
+[DONE] TODO: make typeof use runtime function
+
+[DONE] TODO: run controlflow-recursive in unit tests
+
+[DONE] TODO: $rt_eq
+
+[DONE] TODO: assertBool
+
+[DONE] TODO: begin using runtime system for arith ops
+- Works for add, make test time seems unaffected
+
+[DONE] FIXME: GC bug redux
+- Reference IRFunction in fun table instead of AST
+- AST has no pointer to IRFunction
+
+[DONE] TODO: insertRtCall(IRGenCtx ctx, string fName, LocalIdx[] argLocals)
+- Current impl uses many IR instrs
+
+[DONE] TODO: JS file tests, import some from Tachyon
+
+[DONE] TODO: comma operator support, ir/ast.d
+- Evaluates both expressions, returns second value
+
+[DONE] FIXME: for (var i = 0; i < 1000000; ++i);
+    object.Error: heap space exhausted
+- SET_STRING allocates string every time
+
+[DONE] FIXME: interpreter crash in unit test
+  $rt_toBool('foo')? 1:0
+- Crash may or may not happen if source is modified...
+- May be related to D GC
+  - What if a function we need was randomly collected...?
+    - AST or IR collected
+- Closure objects keep refs to ASTs
+  - Need to keep a function table in interp
+- Seems fun.ast has been freed by interp!
+    write(core.memory.GC.addrOf(cast(void*)fun.ast));
+- Add function reference table in interpreter
+
+[DONE] TODO: Math.pow for integers
+
+[DONE] TODO: $rt_div
+
+[DONE] TODO: $rt_mul
+
+[DONE] TODO: Math.sin, Math.cos, Math.sqrt
+
+[DONE] TODO: cos, sin, sqrt instrs
+- Needed for math lib
+
+[DONE] TODO: add interp loadStdLib flag, load stdlib/math.js
+
+[DONE] TODO: $rt_toBool
+
+[DONE] TODO: REPL, don't print if undefined
+
+[DONE] TODO: $ir_print instruction, for debugging
+- Use in runtime print function :)
+
+[DONE] TODO: complete $rt_toString
+
+[DONE] TODO: complete $rt_add
+
+[DONE] TODO: complete $rt_strcat
+
+[DONE] TODO: complete $rt_intToStr
+
+[DONE] TODO: GET_STR instruction
+
+[DONE] TODO: heap_alloc instruction
+- Unit test w/ load/store
+
+[DONE] TODO: complete low-level arithmetic, bitwise instructions
+- Template with mixin
+
+[DONE] TODO: Design Link table
+- Part of interpreter, statically allocated, unmoving, contiguous
+- primitives to manipulate this (get, set), take a unique id number
+- wLinkTable, tLinkTable
+- What problem are we trying to solve?
+  - For getString: want to link a string object pointer
+  - For callNew: want to link a class pointer, different for each callee
+  - For newClos, newObj, newArr: want to link a class pointer
+    - Two pointers for newClos, closure *and* prototype
+  - Want the GC to have easy, fast access to these slots!
+- MAKE_LINK instr can give us link cell index (need index, otherwise 2 pointers)
+- Want to be able to allocate slots lazily
+- JIT may need to link constant objs too. Can be done at compilation time.
+- Instrs needing global obj, obj proto?
+  - Can have host primitives for this, access through interp object ***
+- make_link "classptr", produces index to cell
+
+[DONE] TODO: $rt_typeof
+- Will need access to header type field
+
+[DONE] FIXME: obj_get_header not working
+
+[DONE] TODO: Generate runtime functions for layout alloc
+
+[DONE] TODO: Define layout type constants
+
+[DONE] TODO: implement new layout system, layout.py
+- Declarative layouts in a list
+- add make layout makefile entry
+- Generate ASTs from layouts (simple ASTs)
+  - For JS, auto add $rt_ prefix to every function name
+- Generate D and JS source from ASTs
+- layout.d, layout.js
+
+[DONE] TODO: Interp.evalString(string str, string fileName = "string")?
+- Use to load layout code
+
+[DONE] TODO: eq_i32, lt_i32
+
+[DONE] TODO: add_i32, mul_i32
+
+[DONE] TODO: load/store instrs
+- load_i32, ptr, offs
+- simple template for op fun generation
+
+[DONE] TODO: is_refptr, is_const
+
+[DONE] TODO: initial $rt_add runtime function
+
+[DONE] TODO: ftoi instruction, I32_TO_F64
+
+[DONE] TODO: add_i32_ovf, add_f64
+- unit test
+
+[DONE] FIXME: branchy IIR, need assignment support
+
+[DONE] TODO: is_int, is_float, is_refptr type test instrs
+- Do we ever need to compare type tags? Probably not
+
+[DONE] TODO: implement member call in AST->IR, needed for $rt_toString
+
+[DONE] TODO: test $rt_toString runtime function
+
+[DONE] TODO: branchy IIR syntax: if (%...)
+
+[DONE] TODO: special syntax for inline IR, with % sign (make special unary op?)
+- Could just use $iir_ syntax, KISS!
+- Normal IIR is a function call expression
+- Test in shell
+
+[DONE] TODO: Create extensible table of inlinable IR instructions for IIR access
+
+[DONE] TODO: Create interp/runtime.js file, parse/run this at interp startup
+
+[DONE] TODO: interp.exec(AST), interp.load(file)
+
+[DONE] TODO: integrate SET_ARG into call
+- Would make for shorter IR if we call into primitives
+- 2 instructions per primitive call could be alot
+- constant argument: set_int, then set_arg, kind of retarded!
+- setArg is fragile anyways
+
+[DONE] TODO: No more MAX_ARGS for instrs. Var arg system.
+
+[DONE] TODO: Add instruction branch target field
+- Refactor branch instructions
+
+[DONE] TODO: Eliminate get_ret and the likes!
+- RA is call instr
+- Problem: Interp loop sets next instr before call
+- Doesn't matter, call/return sets next instr anyways
+
+[DONE] TODO: instr, add IRFunction ptr,
+- get rid of raSlot, numLocals in RET, PUSH_FRAME
+- Better for supporting exceptions, stack traces!
+
+[DONE] TODO: array unit tests
+
+[DONE] TODO: Modify getProp/putProp
+- Look at Tachyon code, port over
+- Modify underlying getProp, or higher level?
+  - setArrElem assumes array, no toObject
+  - go with Tachyon approach, simplify lower level fns
+
+[DONE] TODO: rename confusing len fields in layouts
+
+[DONE] TODO: make type objs in class rawptr, will be host objects
+
+[DONE] TODO: implement opNewArr
+
+[ODNE] TODO: array literal AST->IR
+
+[DONE] TODO: NEW_OBJECT, remove proto local
+- Only used for object literals
+- stdlib will use custom host functions where needed
+
+[DONE] TODO: array object & array table layout
+- Should have array table field for array objects
+
+[DONE] TODO: refactor layout system
+- genLayouts
+- Auto-generate layout type ids, define constants
+- Auto-add type field as first layout field
+- Add default field initializers (eg: init next to null)
+- Layout extension
+
+[DONE] TODO: alloc min size on closures, proto object
+- Test adding many properties to fn.prototype
+
+[DONE] TODO: implement object extension
+- Need to handle closures and arrays too!
+- Need to define type tags
+- Modify getProp to follow next link chain
+
+[DONE] TODO: implement type tags into layout system
+- Define as uint32 in layout.d, make enum
+- Type should be auto initialized on allocation
+- Remove _set_type calls
+
+[DONE] TODO: GET_RET_NEW
+- ISSUE: need access to the this object passed to the call!
+- Push a hidden this argument on the stack?
+- Could have CALL_NEW produce this object in output slot, do explicit
+  coupling between CALL_NEW and GET_RET_NEW?
+  - Seems reasonable?
+- Unit tests for new operator
+
+[DONE] TODO: fix this binding resolution
+
+[DONE] TODO: do proto lookup in opCallNew
+
+[DONE] TODO: prototype chain support in lookup
+- Test that missing props evaluate to false
+
+[DONE] TODO: simplify class system, allocate proto slot, all property slots for now!
+
+[DONE] TODO: create proper closure in opNewClos, fix opCall
+- Test properties on function objects
+
+[DONE] TODO: closure layout
+- Needed for functions to have .prototype
+- Cannot concat new props on prop array at compile time...
+- Want list of closure cell pointers, function pointer
+
+[DONE] TODO: opNew, AST->IR for new
+
+[DONE] TODO: FP less-than comparison
+
+[DONE] TODO: basic floating-point support
+- assertFloat w/ epsilon
+
+[DONE] TODO: Interp.getSlot/Interp.setSlot with ValuePair
+- Use to simplify code in interp/ops.d
+
+[DONE] TODO: object literal support w/ unit tests
+
+[DONE] TODO: opSetProp
+
+[DONE] TODO: implement opNewObj
+- Lazily create new object class?
+
+[DONE] TODO: make alloc set size fields automatically
+
+[DONE] TODO: auto-generate alloc layout method taking interp as parameter
+
+[DONE] TODO: AST->IR for indexed operations, property access
+
+[DONE] TODO: object literal AST->IR
+
+[DONE] TODO: typeof operator
+- IR, AST->IR
+
+[DONE] TODO: string concatenation
+
+[DONE] TODO: Implement getString, replace uses of makeString by getString
+
+[DONE] TODO: string table extension
+
+[DONE] TODO: Interpreter method to get a string from the table
+
+[DONE] TODO: alloc initial string table
+- allocStrTable(Interp*)
+
+[DONE] TODO: string hash code computation
+
+[DONE] TODO: string table layout
+- len
+- num_strs
+
+[DONE] TODO: interp/string.d
+
+[DONE] TODO: interp/ops.d
+
+[DONE] FIXME: many moves are unnecessary
+- Moving a value into the output slot, just to transfer the value
+- Possible fix: add setOutSlot again
+
+[DONE] TODO: ability to prescribe output slot to sub-context
+
+[DONE] TODO: test unary plus, minus operators
+
+[DONE] TODO: in-place operators, +=, -=, etc.
+- Issue: "a[f()] += 1" is not "a[f()] = a[f()] + 1"
+  - Don't want to evaluate f twice
+- TODO: check in what order V8 evaluates lhs, rhs?
+  - lhs, then rhs
+- Try passing IR instr to assgToIR for in-place operators
+
+[DONE] TODO: revise ast-to-ir design, currently hard to debug&maintain
+- context/sub-contexts interfere with each other in unpredictable way
+- out slot should be allocated in current context too, to avoid collision
+- should eliminate desired out slot/set out slot mechanism?
+  - inserts confusing invisible moves!
+  - every expression allocates an output temp for itself
+- favor simpler, more robust design!
+- When creating sub-ctx, decide if it has output or not
+  - If it has output, allocate out slot immediately
+
+[DONE] TODO: fix class desc, prop idx instead of woffs/toffs
+
+[DONE] TODO: test global function declarations
+
+[DONE] TODO: test global var statement
+
+[DONE] TODO: global var unit tests
+
+[DONE] TODO: basic SET_GLOBAL, GET_GLOBAL interp implementation
+
+[DONE] TODO: SET_GLOBAL, GET_GLOBAL IR instructions + IR gen
+- opSetGlobal, opGetGlobal?
+
+[DONE] TODO: allocate global object in interpreter init function
+- Also need to allocate global class
+- Also need to initialize both objects
+- Make room for 512 properties
+
+[DONE] TODO: finalize initial object layout, class desc layout
+- Start with simple layouts
+  - V8 uses at least 3 extra words per object, if not more!
+
+Objects have:
+- Header
+- Num fields
+- Class ptr
+- Next ptr
+- Prop words
+- Prop types
+- Proto is property 0
+
+Arrays are objects with special properties:
+- array table
+- length, capacity
+
+Functions are objects with special properties:
+- fn ptr slot (raw ptr)
+- fixed number of closure vars (can be named)
+
+Class desc:
+- Needs next pointer too, so we can add new fields if needed
+
+[DONE] TODO: IR gen for logical and, logical or
+- More unit tests
+
+[DONE] TODO: implement/test string concat
+
+[DONE] TODO: implement SET_STR in interpreter
+- Lazily allocate strings in the interpreter?
+- Unit test this
+
+[DONE] TODO: instr implementation functions
+- instr type objects, rename to opcode
+- Have pointer to implementation function
+  - implementation takes interp state pointer as input
+
+[DONE] TODO: merge Interp and State, no need for two classes
+
+[DONE] FIXME: crash bug, taking address of function wrong
+
+[DONE] TODO: implement string constant IR gen
+
+[DONE] TODO: think about object layout/format further
+- Object needs next ptr, otherwise can't reallocate more space
+  - Only needed when writing past num fields
+- Simple approach might be best!
+
+[DONE] ISSUE: reading field from object, always need to check next pointer...
+- Never know that object is big enough to have this field
+- Unless class has special "all conforming" field?
+  - All pointers to old objects eliminated during GC
+- Result: as soon as a new field is added to one object, class is expanded, 
+  not all conform (unless only one object of this type), any JITted using this
+  class code must be recompiled not to assume next is null
+- Global object: if preallocated large, can stay conforming
+
+[DONE] TODO: SET_STR instruction
+- Have string + ref/ptr val, not yet allocated?
+- Note: string references exist outside the heap
+
+[DONE] TODO: rename REF to REFPTR
+
+[DONE] TODO: interp/layout.js
+- genLayout(), test with mixin immediately, print output
+
+[DONE] TODO: heap memory block
+    import core.sys.posix.unistd, core.sys.posix.sys.mman;
+    PROT_READ | PROT_WRITE | PROT_EXEC;
+    auto mem = mmap(null, length, flags, MAP_PRIVATE | MAP_ANON, -1, 0);
+    if (mem == MAP_FAILED)
+        return null;
+    return cast(ubyte*)mem;
+- Must be executable ***
+- State should allocate a ubyte array for the heap. Must be immovable.
+- Alloc ptr is bumped and aligned (see previous gc code)
+
+[DONE] TODO: break, continue IR gen
+- When entering IR gen for a loop, associate labels with break, continue blocks
+  in the current context.
+- Make a context function for this, pass a statement, the break and continue blocks
+- Make a context function to do a recursive break or continue target lookup
+
+[DONE] TODO: break, continue with and without label in parser
+
+[DONE] TODO: label support in parser
+    LabelledStatement :
+        Identifier : Statement
+- Store a list of labels on the statement
+- Try with backtracking, see how speed is affected
+
+[DONE] TODO: IR gen for cond ? expr
+
+[DONE] TODO: IR gen for post incr., decr
+
+[DONE] TODO: IR gen for do-while loop
+
+[DONE] TODO: IR gen for for loop
+
+[DONE] TODO: Interpreter while loop test
+
+[DONE] TODO: repl, if ExprStmt, transform into ReturnStmt?
+
+[DONE] TODO: repl, output to string?
+
+[DONE]FIXME: handle incorrect argument counts, currently crashes
+- add unit tests
+
+[DONE] TODO: state.move function
+
+[DONE] FIXME: IR function args printing
+
+[DONE] TODO: test fib
+
+[DONE] TODO: test fact?
+
+[DONE] TODO: ValuePair to string
+
+[DONE] TODO: test lt comparison
+
+[DONE] TODO: test branching
+
+[DONE] TODO: implement JUMP, JUMP_TRUE, SET_TRUE, BOOL_VAL instructions
+
+[DONE] TODO: implement CMP_LT comparison instruction
+
+[DONE] TODO: test local var assignment
+
+[DONE] TODO: parameter passing
+
+[DONE] TODO: function calls, return global call
+- unit tests
+
+[DONE] TODO: unit tests for global expr return
+
+[DONE] TODO: basic interpreter loop
+- Capable of evaluating global expr
+
+[DONE] TODO: calling of top unit-level functions in interpreter
+- Interp.run(ASTProgram) ?
+- Interp.getRet() ?
+
+[DONE] TODO: PUSH_FRAME call at start of function
+
+[DONE] TODO: start implementing simple interpreter
+- Could cheat, closures as IR fn ptrs
+- Interpreter state structure
+  - Double stack system, two base pointers, two top pointers
+  - IR instruction pointer
+  - heap allocPtr?
+
+[DONE] TODO: auto name unit functions
+- use delegate, map?
+
+[DONE] TODO: reverse local indices after IR gen?
+- Issue: want to use stack pointer, not base pointer
+- Need to know how many locals there are
+- Highest local becomes index 0, top of stack
+
+[DONE] TODO: IR gen, map hidden args in local map
+
+[DONE] TODO: IR gen for closures of nested functions
+
+[DONE] TODO: use IR function in new_clos IR
+
+[DONE] TODO: look at IR for global call
+
+[DONE] TODO: IR gen for function call
+
+[DONE] TODO: IR gen for function expressions
+
+[DONE] Call protocol ISSUES:
+- Many hidden args (closure, this, nArgs, RA)
+- Should we push all after normal args? Practical, may be problematic if frame resizing needed
+  - Not a problem for the JIT if call is inlined (most calls can be?)
+  - Not a problem if no resizing!
+- Would want call instr to take exception block arg?
+  - Technically, this can be some annotation per return address for a function!
+
+Stack frame layout (grows down):
+        arg0
+        arg1
+...
+        argN
+        closure (pushed by call)
+        this    (pushed by call)
+        nArgs   (pushed by call)
+        RA      (pushed by call as raw pointer)
+...
+SP+2    local
+SP+1    tmp
+SP+0    tmp
+
+[DONE] TODO: IR instructions for call protocol
+
+[DONE] FIXME: resolve vars in assign lhs exprs?
+
+[DONE] TODO: pretty print of expressions with less parentheses
+- Can parenthesize sub-expressions
+- When do we need parentheses?
+  - Parent has higher precedence: (x + y) * z
+- getPrec function, returns highest by default (atomic)
+
+[DONE] TODO: IR gen for while statement
+
+[DONE] TODO: float expr
+
+[DONE] TODO: IndexExpr, merge with dot operator to simplify AST
+- create string expr from ident
+
+[DONE] TODO: IR gen for VarStmt
+
+[DONE] TODO: code gen for if statement
+
+[DONE] TODO: IR for undef constant, return undef by default
+
+[DONE] TODO: decide on IR generation strategy.
+- Current code generation strategy:
+  - Create codegen context for sub-expressions
+  - Can specify an output slot (where the sub-expression should store its output)
+  - Sub-expression can specify it already has a slot, move inserted if needed
+  - Sub-expression can get a slot allocated for its output if none was specified
+- What is problematic about this approach? How can we fix it?
+  - Need more higher-level constructs, simplifications for common operations
+
+[DONE] TODO: unary negation code gen
+
+[DONE] TODO: look at Marc's simple C compiler. It uses a stack machine.
+
+[DONE] TODO: for-in statement parsing
+- need to make work with regular for statement
+- if there's no var, we know it's an expression
+- could parse whole expression, see if it's an "in" expression ***?
+- if starts with var, parse following expression
+  - check if expr is "in" expression
+  - can't parse as real var statement...
+- for var ... in, could try peeking ahead more
+
+[DONE] TODO: peekSep, peekKw
+
+[PASS] TODO: IR, fuse compare and jump
+- Uselessly complicates IR->AST translation
+
+[DONE] TODO: optional catch clause
+
+[DONE] TODO: try parsing stdlib
+
+[DONE] TODO: fix sunspider/3d-raytrace parsing/toString bug
+
+[DONE] TODO: decide on boxing scheme
+- Scraping float bits for tagging is problematic
+- x86 has (all valid in 64-bit):
+    CMP r/m8, imm8 : two-byte instruction
+    MOV r/m8, imm8 : two-byte instruction
+    MOV r8,r/m8     : 2 bytes?
+    MOV r/m8,r8     : 2 bytes?
+- With double wrappers, don't need to query objects about their type!
+- ASM microbenchmark?
+  - Performance indistinguishable between one vs two stack
+    pointers, separate type array or not
+- "Representing Type Information in Dynamically Typed Languages"
+  - Had mostly good things to say
+  - Seemed to assume that the only "large-wrapper" option is two words
+- Separate tags may have advantages for instr level parallelism (ILP)
+
+[DONE] TODO: adapt parser code
+- [DONE] fix operator precedence, operator table
+- [DONE] new operator
+- [DONE] function syntax, missing fn name
+- [DONE] object literal syntax
+- [DONE] string literals with single quotes
+- [DONE] source should be processed as wstring, UTF-16
+- [DONE] string expr should store wstring
+- [DONE] hex/unicode string escapes
+- [DONE] hex number support
+- [DONE] variables, one scope per function
+- [DONE] functions, find fn decls in scope
+- [DONE] variables, multiple decls per statement
+- [DONE] optional semicolon for expression statements
+- [DONE] test empty statement
+- [DONE] multiline string continuation
+- [DONE] re-parse test
+- [DONE] optional semicolon for var statement
+- [DONE] optional semicolon for return and throw
+- [DONE] fix bug with crypto benchmark, do diff
+- [DONE] break, continue statements
+- [DONE] switch statement, as if cascade
+- [DONE] more unit tests
+- [DONE] real JS code unit tests, sunspider benchmarks
+- [DONE] reverse operator precedence numbering
+- [DONE] implement comma operator
+
+[DONE] TODO: put project on github
+
+[DONE] TODO: create Higgs project folder, move code
+
+[DONE] TODO: how many benchmarks can we run with this? Need 2-5 (easier first)
+- access-binary-trees, new operator
+- math-spectral-norm, uses FP
+- math-cordic, uses FP
+- access-fannkuc, uses arrays
+- access-nbody, uses FP math, arrays
+- navier-stokes, uses arrays, FP math
+- string-base64, uses strings, arrays
+- crypto-*, strings, arrays
+- crypto (V8), strings, arrays, math, new
+- richards
+- splay
+- deltablue, uses .call
+- raytrace, uses .apply, arguments as object, object literals, FP math
+- earley-boyer, uses .call, .apply, arrays, strings
+- some of the new octane ones might be feasible (non-DOM ones)
+
