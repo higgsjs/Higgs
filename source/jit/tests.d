@@ -373,6 +373,10 @@ unittest
         delegate void (Assembler a) { auto l = a.label("foo"); a.instr(JNO, l); },
         "71FE"
     );
+    test(
+        delegate void (Assembler a) { auto l = a.label("foo"); a.instr(JO, l); },
+        "70FE"
+    );
 
     // lea
     test(
@@ -407,6 +411,11 @@ unittest
         delegate void (Assembler a) { a.instr(MOV, EDX, new X86Mem(32, RBX, 128)); }, 
         "",
         "8B9380000000"
+    );
+    test(
+        delegate void (Assembler a) { a.instr(MOV, AL, new X86Mem(8, RCX, 0, RDX)); }, 
+        "",
+        "8A0411"
     );
     test(
         delegate void (Assembler a) { a.instr(MOV, CL, R9L); }, 

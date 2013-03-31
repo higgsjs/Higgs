@@ -114,7 +114,7 @@ class Trace
     )
     {
         this.startNode = branchNode.getSucc(startBlock);
-        this.rootNode = parent.startNode;
+        this.rootNode = parent.rootNode;
 
         this.parent = parent;
         this.subCtx = subCtx;
@@ -216,8 +216,8 @@ class TraceNode
         if (stackDepth == 0 && block.lastInstr.opcode == &RET)
             return null;
 
-        // If we are going back to the trace root block
-        if (target is rootBlock)
+        // If we are going back to the trace root block at stack depth 0
+        if (target is rootBlock && stackDepth == 0)
         {
             // Add a last successor for the root node
             auto succ = getSucc(target);

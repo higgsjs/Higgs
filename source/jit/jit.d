@@ -58,13 +58,14 @@ Compile a trace of machine code blocks to machine code
 */
 Trace compTrace(Interp interp, Trace trace)
 {
-    /*
-    writefln(
-        "compiling %strace in %s", 
-        trace.subCtx? "sub-":"",
-        trace.startNode.block.fun.getName()
-    );
-    */
+    if (opts.jit_dumpinfo)
+    {
+        writefln(
+            "compiling %strace in %s", 
+            trace.subCtx? "sub-":"",
+            trace.startNode.block.fun.getName()
+        );
+    }
 
     // Assembler to write code into
     auto as = new Assembler();
@@ -93,10 +94,6 @@ Trace compTrace(Interp interp, Trace trace)
     {
         ctx.callStack = trace.subCtx.callStack.dup;
         //writefln("inheriting call-stack of depth: %s", ctx.callStack.length);
-
-        if (ctx.callStack.length != trace.startNode.stackDepth)
-            writefln("call stack length %s doesn't match node stack depth %s", ctx.callStack.length, trace.startNode.stackDepth);
-
         assert (ctx.callStack.length == trace.startNode.stackDepth);
     }
 
@@ -146,13 +143,14 @@ Trace compTrace(Interp interp, Trace trace)
             block is trace.rootNode.block && 
             ctx.callStack.length == 0)
         {
-            /*
-            writefln(
-                "inserting jump to self (%s/%s) *", 
-                ctx.nodeIdx+1, 
-                ctx.nodeList.length
-            );
-            */
+            if (opts.jit_dumpinfo)
+            {
+                writefln(
+                    "inserting jump to self (%s/%s) *", 
+                    ctx.nodeIdx+1, 
+                    ctx.nodeList.length
+                );
+            }
 
             // If this is part of the root trace
             if (trace.parent is null)
@@ -161,11 +159,12 @@ Trace compTrace(Interp interp, Trace trace)
             }
             else
             {
+                //writefln("direct jump to root join point");
                 ctx.as.ptr(RAX, trace.rootNode.block.joinPoint);
                 ctx.as.instr(JMP, RAX);
             }
 
-            break;
+            break BLOCK_LOOP;
         }
 
         // For each instruction of the block
@@ -186,15 +185,22 @@ Trace compTrace(Interp interp, Trace trace)
             {
                 // Use the default code generation function
                 defaultFn(as, ctx, instr);
-                //writefln("using default for: %s (%s)", instr.toString(), instr.block.fun.getName());
+
+                if (opts.jit_dumpinfo)
+                {
+                    writefln(
+                        "using default for: %s (%s)",
+                        instr.toString(),
+                        instr.block.fun.getName()
+                    );
+                }
             }
 
             // If a code generation function requested the trace
             // compilation be stopped
             if (ctx.endTrace)
             {
-                // TODO: Shorten the node list for the trace
-                //break BLOCK_LOOP;
+                // Shorten the node list for the trace
                 ctx.nodeList = ctx.nodeList[0..ctx.nodeIdx+1];
                 break INSTR_LOOP;
             }
@@ -252,31 +258,13 @@ Trace compTrace(Interp interp, Trace trace)
     as.comment("Out of line code");
     as.append(ol);
 
-    //writefln("assembling");
-
     // Assemble the machine code
     auto codeBlock = as.assemble();
-
-    //writefln("assembled");
-
-    if (opts.jit_dumpasm)
-    {
-        writefln(
-            "%s\nblock length: %s bytes\n", 
-            as.toString(true),
-            codeBlock.length
-        );
-    }
-
-    //writefln("blocks compiled: %s", ctx.nodeIdx);
-    //writefln("machine code bytes: %s", codeBlock.length);
 
     // Set the code block and code pointers
     trace.codeBlock = codeBlock;
     trace.entryFn = cast(EntryFn)codeBlock.getAddress();
     trace.joinPoint = codeBlock.getExportAddr("trace_join");
-
-    //writefln("trace entry fn: %s", trace.entryFn);
 
     // If this is not a sub-trace
     if (trace.parent is null)
@@ -288,8 +276,6 @@ Trace compTrace(Interp interp, Trace trace)
     }
     else
     {
-        //writefln("patching sub-trace jump");
-
         // Compile instructions for a direct jump to the sub-trace
         auto jas = new Assembler();
         jas.ptr(RAX, trace.joinPoint);
@@ -300,6 +286,21 @@ Trace compTrace(Interp interp, Trace trace)
         assert (jcb.length <= JUMP_PATCH_SIZE);
         for (size_t i = 0; i < jcb.length; ++i)
             trace.patchPtr[i] = jcb.readByte(i);
+    }
+
+    if (opts.jit_dumpasm)
+    {
+        writefln(
+            "%s\nblock length: %s bytes\n", 
+            as.toString(true),
+            codeBlock.length
+        );
+    }
+
+    if (opts.jit_dumpinfo)
+    {
+        writefln("blocks compiled: %s", ctx.nodeIdx);
+        writefln("machine code bytes: %s", codeBlock.length);
     }
 
     //writefln("returning trace");
@@ -759,31 +760,37 @@ void gen_div_f64(ref CodeGenCtx ctx, IRInstr instr)
 
 void OvfOp(string op)(ref CodeGenCtx ctx, IRInstr instr)
 {
-    auto ovf = new Label("ovf");
+    auto OVF = new Label("OVF");
 
     ctx.as.getWord(ECX, instr.args[0].localIdx);
     ctx.as.getWord(EDX, instr.args[1].localIdx);
 
     static if (op == "add")
         ctx.as.instr(ADD, ECX, EDX);
+    static if (op == "sub")
+        ctx.as.instr(SUB, ECX, EDX);
     static if (op == "mul")
         ctx.as.instr(IMUL, ECX, EDX);
 
-    ctx.as.instr(JO, ovf);
+    ctx.as.instr(JO, OVF);
 
+    // Set the output
     ctx.as.setWord(instr.outSlot, RCX);
     ctx.as.setType(instr.outSlot, Type.INT32);
 
-    // If the next block isn't in the block list, jump to it
-    if (ctx.hasNextNode)
+    // If the target block isn't in the block list, jump to it
+    if (!ctx.hasNextNode || ctx.nextBlock != instr.target)
         ctx.as.jump(ctx, instr.target);
 
+    // *** The trace will continue at the target block ***
+
     // Out of line jump to the overflow target
-    ctx.ol.addInstr(ovf);
+    ctx.ol.addInstr(OVF);
     ctx.ol.jump(ctx, instr.excTarget);
 }
 
 alias OvfOp!("add") gen_add_i32_ovf;
+alias OvfOp!("sub") gen_sub_i32_ovf;
 alias OvfOp!("mul") gen_mul_i32_ovf;
 
 void CmpOp(string type, string op)(ref CodeGenCtx ctx, IRInstr instr)
@@ -821,17 +828,24 @@ void CmpOp(string type, string op)(ref CodeGenCtx ctx, IRInstr instr)
         ctx.as.instr(CMOVNE, RAX, RCX);
     static if (op == "lt")
         ctx.as.instr(CMOVL, RAX, RCX);
+    static if (op == "le")
+        ctx.as.instr(CMOVLE, RAX, RCX);
+    static if (op == "gt")
+        ctx.as.instr(CMOVG, RAX, RCX);
+    static if (op == "ge")
+        ctx.as.instr(CMOVGE, RAX, RCX);
 
     ctx.as.setWord(instr.outSlot, RAX);
     ctx.as.setType(instr.outSlot, Type.CONST);
 }
 
+alias CmpOp!("i8" , "eq") gen_eq_i8;
 alias CmpOp!("i32", "lt") gen_lt_i32;
-
+alias CmpOp!("i32", "ge") gen_ge_i32;
+alias CmpOp!("i32", "ne") gen_ne_i32;
+alias CmpOp!("i8" , "eq") gen_eq_const;
 alias CmpOp!("i64", "eq") gen_eq_refptr;
 alias CmpOp!("i64", "ne") gen_ne_refptr;
-
-alias CmpOp!("i8", "eq") gen_eq_const;
 
 void LoadOp(size_t memSize, Type typeTag)(ref CodeGenCtx ctx, IRInstr instr)
 {
@@ -851,20 +865,22 @@ void LoadOp(size_t memSize, Type typeTag)(ref CodeGenCtx ctx, IRInstr instr)
     static if (memSize == 64)
         dstReg = RAX;
 
+    static if (memSize == 8)
+        ctx.as.instr(MOV, RAX, 0);
     ctx.as.instr(MOV, dstReg, new X86Mem(memSize, RCX, 0, RDX));
 
     ctx.as.setWord(instr.outSlot, RAX);
     ctx.as.setType(instr.outSlot, typeTag);
 }
 
-//alias LoadOp!(uint8, Type.INT32) op_load_u8;
-//alias LoadOp!(uint16, Type.INT32) op_load_u16;
+alias LoadOp!(8 , Type.INT32) gen_load_u8;
+//alias LoadOp!(uint16, Type.INT32) gen_load_u16;
 alias LoadOp!(32, Type.INT32) gen_load_u32;
-//alias LoadOp!(uint64, Type.INT32) op_load_u64;
+alias LoadOp!(64, Type.INT32) gen_load_u64;
 alias LoadOp!(64, Type.FLOAT) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
-//alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;
-//alias LoadOp!(IRFunction, Type.FUNPTR) op_load_funptr;
+//alias LoadOp!(rawptr, Type.RAWPTR) gen_load_rawptr;
+//alias LoadOp!(IRFunction, Type.FUNPTR) gen_load_funptr;
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
 {
@@ -1368,14 +1384,20 @@ static this()
     codeGenFns[&DIV_F64]        = &gen_div_f64;
 
     codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
+    codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
     codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
 
+    codeGenFns[&EQ_I8]          = &gen_eq_i8;
+    codeGenFns[&LT_I32]         = &gen_lt_i32;
+    codeGenFns[&GE_I32]         = &gen_ge_i32;
+    codeGenFns[&NE_I32]         = &gen_ne_i32;
     codeGenFns[&EQ_CONST]       = &gen_eq_const;
     codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
-    codeGenFns[&LT_I32]         = &gen_lt_i32;
 
+    codeGenFns[&LOAD_U8]        = &gen_load_u8;
     codeGenFns[&LOAD_U32]       = &gen_load_u32;
+    codeGenFns[&LOAD_U64]       = &gen_load_u64;
     codeGenFns[&LOAD_F64]       = &gen_load_f64;
     codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
 

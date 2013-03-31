@@ -1338,6 +1338,9 @@ unittest
     writefln("sunspider/bitops-bitwise-and");
     interp.load("programs/sunspider/bitops-bitwise-and.js");
 
+    writefln("sunspider/bitops-bits-in-byte");
+    interp.load("programs/sunspider/bitops-bits-in-byte.js");
+
     writefln("sunspider/bitops-3bit-bits-in-byte");
     interp.load("programs/sunspider/bitops-3bit-bits-in-byte.js");
 
