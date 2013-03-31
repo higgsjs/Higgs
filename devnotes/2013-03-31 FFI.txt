@@ -1,7 +1,9 @@
 The eventual goal is to give users of Higgs easy access to various APIs.
 We will probably want to provide access to standard C APIs such as
 malloc/free as well as the C file APIs. May also want to provide BSD-type
-sockets, OpenGL, keyboard/mouse input, audio output.
+sockets, OpenGL, keyboard/mouse input, audio output. We could possibly
+try to recruit some help (e.g.: on reddit) to implement some of these APIs
+once our FFI system is in a more mature state.
 
 Other layers of abstraction can be built to simplify the user experience 
 further. For example, I would really like to have a drawing/canvas API that
