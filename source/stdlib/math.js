@@ -110,10 +110,23 @@ but has positive sign.
 */
 Math.abs = function (x)
 {
-    if (x < 0)
-        return -x;
-    else
-        return x;
+    if ($ir_is_float(x))
+    {
+        if ($ir_lt_f64(x, 0.0))
+            return $ir_sub_f64(0.0, x);
+        else
+            return x;
+    }
+
+    if ($ir_is_int32(x))
+    {
+        if ($ir_lt_i32(x, 0))
+            return $ir_sub_i32(0, x);
+        else
+            return x;
+    }
+
+    return Math.abs($rt_toNumber(x));
 };
 
 /**

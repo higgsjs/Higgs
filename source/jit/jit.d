@@ -155,6 +155,7 @@ Trace compTrace(Interp interp, Trace trace)
     {
         auto block = ctx.nodeList[ctx.nodeIdx].block;
 
+        //writefln("%s", block.fun.getName());
         //writefln("%s (%s)", block.toString(), block.fun.getName());
 
         // If the trace jumps back into itself and the call stack depth is 0

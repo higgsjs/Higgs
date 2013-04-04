@@ -48,8 +48,6 @@ TODO: allocate class ids?
 - class_alloc called in only 2 places
 - Could add an opNewClass to take care of this
 
-TODO: port over stdlib/regex
-
 TODO: make sure global obj ptr is updated when global obj is extended
 - Trigger GC?
 
@@ -66,29 +64,51 @@ could auto add value kill info?
 
 TODO: integrate level 0 FFI functionality
 
-TODO: think further about register allocation
-- Should we do reg alloc while compiling traces?
-- Use live var info
-- Must leave interp frame in coherent state on trace exit!
-
-
-
 TODO: live variable analysis, run lazily
 - Set of instructions before which a value is live?
 - Set of pairs of LocalIdx/instr
 - Can ask if a value is still live at a given point
 
+TODO: think further about register allocation
+- Should we do reg alloc while compiling traces?
+- Use live var info
+- Must leave interp frame in coherent state on trace exit!
+  - Store all reg values on stack
+- Map local slots to stack or registers
+- Multiple levels of calls or returns...
 
 
-TODO: 3d-cube has a horrible trace exit count, why?
+TODO: think about method-based compilation
+
+
+
+
+TODO: add support for regexp in parser
+var re = /pattern/flags
+var re = new RegExp("pattern", "flags");
+flags: i, g, m, y
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: 3d-cube has a horrible trace exit count, why?
 - Is it because traces are limited in length? Is it because of recursion?
-
-
-
-
-
-
-
+- MMulti trace has 513 blocks
+    root trace entry count: 1160855
+    sub-trace entry count : 624093
+    trace loop count: 241408
+    trace exit count: 919447
+- Increasing max trace length doesn't improve things
+- getPropIdx isn't the problem
+- Low trace count and super long traces doesn't help
+- The trace is legitimately very long...
 
 [DONE] TODO: compute trace completion rates?
 - increment interp counter on trace start, other counter on final trace completion

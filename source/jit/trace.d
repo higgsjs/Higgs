@@ -47,7 +47,7 @@ import jit.jit;
 
 const TRACE_RECORD_COUNT = 500;
 
-const TRACE_VISIT_COUNT = 100;
+const TRACE_VISIT_COUNT = 20;
 
 const TRACE_RECORD_COUNT_SUBS = 500;
 

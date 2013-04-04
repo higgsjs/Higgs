@@ -156,7 +156,7 @@ ASTProgram parseString(string src, string fileName = "")
     // Convert the string to UTF-16
     wstring wSrc = toUTF16(src);
 
-    TokenStream input = lexString(wSrc, fileName);
+    auto input = new TokenStream(wSrc, fileName);
 
     return parseProgram(input);
 }

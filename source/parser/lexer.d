@@ -277,7 +277,7 @@ class SrcPos
 /**
 String stream, used to lex from strings
 */
-class StrStream
+struct StrStream
 {
     /// Input string
     wstring str;
@@ -484,118 +484,134 @@ struct Token
 }
 
 /**
-Token stream, to simplify parsing
+Lexer flags, used to parameterize lexical analysis
 */
-class TokenStream
+alias uint LexFlags;
+const LexFlags LEX_MAYBE_RE = 1 << 0;
+
+/**
+Lexer error exception
+*/
+class LexError : Error
 {
-    /// Internal token array
-    private Token[] tokens;
-
-    /// Flag indicating a newline occurs before the current token
-    private bool nlPresent;
-
-    this(Token[] tokens)
+    this(wstring msg, SrcPos pos)
     {
-        this.tokens = tokens;
-        this.nlPresent = false;
+        this.msg = msg;
+        this.pos = pos;
+
+        super(to!string(msg));
     }
 
-    /**
-    Copy constructor for this token stream. Allows for backtracking
-    */
-    this(TokenStream that)
+    wstring msg;
+    SrcPos pos;
+}
+
+/**
+Read a string constant from a stream
+*/
+wstring getString(ref StrStream stream, wchar stopChar)
+{
+    wstring str = "";
+
+    // Until the end of the string
+    CHAR_LOOP: 
+    for (;;)
     {
-        this.tokens = that.tokens[];
-        this.nlPresent = that.nlPresent;
+        wchar ch = stream.readCh();
+
+        if (ch == stopChar)
+            break;
+
+        // End of file
+        if (ch == '\0')
+        {
+            throw new LexError(
+                "EOF in string literal",
+                stream.getPos()
+            );
+        }
+
+        // Escape sequence
+        if (ch == '\\')
+        {
+            // Hexadecimal escape sequence regular expressions
+            enum hexRegex = ctRegex!(`^x([0-9|a-f|A-F]{2})`w);
+            enum uniRegex = ctRegex!(`^u([0-9|a-f|A-F]{4})`w);
+
+            // Try to match a hexadecimal escape sequence
+            auto m = stream.match(hexRegex);
+            if (m.empty == true)
+                m = stream.match(uniRegex);
+            if (m.empty == false)
+            {
+                auto hexStr = m.captures[1];
+
+                int charCode;
+                formattedRead(hexStr, "%x", &charCode);
+
+                str ~= cast(wchar)charCode;
+
+                continue CHAR_LOOP;
+            }
+
+            // Octal escape sequence regular expression
+            enum octRegex = ctRegex!(`^([0-7][0-7]?[0-7]?)`w);
+
+            // Try to match an octal escape sequence
+            m = stream.match(octRegex);
+            if (m.empty == false)
+            {
+                auto octStr = m.captures[1];
+
+                int charCode;
+                formattedRead(octStr, "%o", &charCode);
+
+                str ~= cast(char)charCode;
+
+                continue CHAR_LOOP;
+            }
+
+            auto code = stream.readCh();
+
+            switch (code)
+            {
+                case 'r' : str ~= '\r'; break;
+                case 'n' : str ~= '\n'; break;
+                case 'v' : str ~= '\v'; break;
+                case 't' : str ~= '\t'; break;
+                case 'f' : str ~= '\f'; break;
+                case 'b' : str ~= '\b'; break;
+                case 'a' : str ~= '\a'; break;
+                case '\\': str ~= '\\'; break;
+                case '/' : str ~= '/'; break;
+                case '\"': str ~= '\"'; break;
+                case '\'': str ~= '\''; break;
+
+                // Multiline string continuation
+                case '\n': break;
+
+                default:
+                throw new LexError(
+                    "unknown escape sequence: \\" ~ to!wstring(code),
+                    stream.getPos()
+                );
+            }
+        }
+
+        // Normal character
+        else
+        {
+            str ~= ch;
+        }
     }
 
-    /**
-    Method to backtrack to a previous state
-    */
-    void backtrack(TokenStream that)
-    {
-        assert (
-            that.tokens.length >= this.tokens.length, 
-            "past state has less tokens"
-        );
-
-        this.tokens = that.tokens[];
-        this.nlPresent = that.nlPresent;
-    }
-
-    SrcPos getPos()
-    {
-        return tokens.front.pos;
-    }
-
-    Token peek()
-    {
-        return tokens.front;
-    }
-
-    Token read()
-    {
-        // Cannot read the last (EOF) token
-        assert (tokens.length > 1, "cannot read final EOF token");
-
-        auto t = tokens.front;
-        tokens.popFront();
-
-        // Test if a newline occurs before the new front token
-        nlPresent = (tokens.front.pos.line > t.pos.line);
-
-        //writefln("read: %s", t);
-        //writefln("  next: %s", peek());
-        //writefln("  nlPresent: %s", nlPresent);
-
-        return t;
-    }
-
-    bool newline()
-    {
-        return nlPresent;
-    }
-
-    bool peekKw(wstring keyword)
-    {
-        auto t = peek();
-        return (t.type == Token.KEYWORD && t.stringVal == keyword);
-    }
-
-    bool peekSep(wstring sep)
-    {
-        auto t = peek();
-        return (t.type == Token.SEP && t.stringVal == sep);
-    }
-
-    bool matchKw(wstring keyword)
-    {
-        if (peekKw(keyword) == false)
-            return false;
-        read();
-
-        return true;
-    }
-
-    bool matchSep(wstring sep)
-    {
-        if (peekSep(sep) == false)
-            return false;
-        read();
-
-        return true;
-    }
-
-    bool eof()
-    {
-        return tokens.front.type == Token.EOF;
-    }
+    return str;
 }
 
 /**
 Get the first token from a stream
 */
-Token getToken(StrStream stream)
+Token getToken(ref StrStream stream, LexFlags flags)
 {
     wchar ch;
 
@@ -671,7 +687,7 @@ Token getToken(StrStream stream)
     }
 
     // Number
-    else if (digit(ch))
+    if (digit(ch))
     {
         enum fpRegex = ctRegex!(`^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?`w);
     
@@ -701,102 +717,16 @@ Token getToken(StrStream stream)
     {
         auto openChar = stream.readCh();
 
-        wstring str = "";
-
-        // Until the end of the string
-        CHAR_LOOP: for (;;)
+        try
         {
-            ch = stream.readCh();
-
-            if (ch == openChar)
-                break;
-
-            // End of file
-            if (ch == '\0')
-            {
-                return Token(
-                    Token.ERROR, 
-                    "EOF in string literal",
-                    pos
-                );
-            }
-
-            // Escape sequence
-            if (ch == '\\')
-            {
-                // Hexadecimal escape sequence regular expressions
-                enum hexRegex = ctRegex!(`^x([0-9|a-f|A-F]{2})`w);
-                enum uniRegex = ctRegex!(`^u([0-9|a-f|A-F]{4})`w);
-
-                // Try to match a hexadecimal escape sequence
-                auto m = stream.match(hexRegex);
-                if (m.empty == true)
-                    m = stream.match(uniRegex);
-                if (m.empty == false)
-                {
-                    auto hexStr = m.captures[1];
-
-                    int charCode;
-                    formattedRead(hexStr, "%x", &charCode);
-
-                    str ~= cast(wchar)charCode;
-
-                    continue CHAR_LOOP;
-                }
-
-                // Octal escape sequence regular expression
-                enum octRegex = ctRegex!(`^([0-7][0-7]?[0-7]?)`w);
-
-                // Try to match an octal escape sequence
-                m = stream.match(octRegex);
-                if (m.empty == false)
-                {
-                    auto octStr = m.captures[1];
-
-                    int charCode;
-                    formattedRead(octStr, "%o", &charCode);
-
-                    str ~= cast(char)charCode;
-
-                    continue CHAR_LOOP;
-                }
-
-                auto code = stream.readCh();
-
-                switch (code)
-                {
-                    case 'r' : str ~= '\r'; break;
-                    case 'n' : str ~= '\n'; break;
-                    case 'v' : str ~= '\v'; break;
-                    case 't' : str ~= '\t'; break;
-                    case 'f' : str ~= '\f'; break;
-                    case 'b' : str ~= '\b'; break;
-                    case 'a' : str ~= '\a'; break;
-                    case '\\': str ~= '\\'; break;
-                    case '/': str ~= '/'; break;
-                    case '\"': str ~= '\"'; break;
-                    case '\'': str ~= '\''; break;
-
-                    // Multiline string continuation
-                    case '\n': break;
-
-                    default:
-                    return Token(
-                        Token.ERROR, 
-                        "unknown escape sequence: \\" ~ to!wstring(code),
-                        stream.getPos()
-                    );
-                }
-            }
-
-            // Normal character
-            else
-            {
-                str ~= ch;
-            }
+            auto str = getString(stream, openChar);
+            return Token(Token.STRING, str, pos);
         }
 
-        return Token(Token.STRING, str, pos);
+        catch (LexError err)
+        {
+            return Token(Token.ERROR, err.msg, err.pos);
+        }
     }
 
     // End of file
@@ -832,6 +762,14 @@ Token getToken(StrStream stream)
         return Token(Token.IDENT, identStr, pos);
     }
 
+    // Regular expression
+    if ((flags & LEX_MAYBE_RE) && ch == '/')
+    {
+
+
+
+    }
+
     // Try matching all separators    
     foreach (sep; separators)
         if (stream.match(sep))
@@ -855,25 +793,143 @@ Token getToken(StrStream stream)
     );
 }
 
-TokenStream lexStream(StrStream input)
+/**
+Token stream, to simplify parsing
+*/
+class TokenStream
 {
-    auto app = appender!(Token[])();
+    /// String stream before the next token
+    private StrStream preStream;
 
-    for (;;)
+    /// String stream after the next token
+    private StrStream postStream;
+
+    /// Flag indicating a newline occurs before the next token
+    private bool nlPresent;
+
+    /// Next token to be read
+    private Token nextToken;
+
+    // Next token available flag
+    private bool tokenAvail;
+
+    // Lexer flags used when reading the next token
+    private LexFlags lexFlags;
+
+    /**
+    Constructor to tokenize a string
+    */
+    this(wstring str, string file)
     {
-        Token t = getToken(input);
+        this.preStream = StrStream(str, file);
 
-        app.put(t);
-
-        if (t.type == Token.EOF)
-            break;
+        this.tokenAvail = false;
+        this.nlPresent = false;
     }
 
-    return new TokenStream(app.data);
-}
+    /**
+    Copy constructor for this token stream. Allows for backtracking
+    */
+    this(TokenStream that)
+    {
+        // Copy the string streams
+        this.preStream = that.preStream;
+        this.postStream = that.postStream;
 
-TokenStream lexString(wstring input, string file)
-{
-    return lexStream(new StrStream(input, file));
+        this.nlPresent = that.nlPresent;
+        this.nextToken = that.nextToken;
+        this.tokenAvail = that.tokenAvail;
+        this.lexFlags = that.lexFlags;
+    }
+
+    /**
+    Method to backtrack to a previous state
+    */
+    void backtrack(TokenStream that)
+    {
+        // Copy the string streams
+        this.preStream = that.preStream;
+        this.postStream = that.postStream;
+
+        this.nlPresent = that.nlPresent;
+        this.nextToken = that.nextToken;
+        this.tokenAvail = that.tokenAvail;
+        this.lexFlags = that.lexFlags;
+    }
+
+    SrcPos getPos()
+    {
+        return preStream.getPos();
+    }
+
+    Token peek(LexFlags lexFlags = 0)
+    {
+        if (tokenAvail is false || this.lexFlags != lexFlags)
+        {
+            postStream = preStream;
+            nextToken = getToken(postStream, lexFlags);
+            tokenAvail = true;
+            lexFlags = lexFlags;
+        }
+
+        return nextToken;
+    }
+
+    Token read(LexFlags flags = 0)
+    {
+        auto t = peek(flags);
+
+        // Cannot read the last (EOF) token
+        assert (t.type != Token.EOF, "cannot read final EOF token");
+
+        // Read the token
+        preStream = postStream;
+        tokenAvail = false;
+
+        // Test if a newline occurs before the new front token
+        nlPresent = (peek.pos.line > t.pos.line);
+
+        return t;
+    }
+
+    bool newline()
+    {
+        return nlPresent;
+    }
+
+    bool peekKw(wstring keyword)
+    {
+        auto t = peek();
+        return (t.type == Token.KEYWORD && t.stringVal == keyword);
+    }
+
+    bool peekSep(wstring sep)
+    {
+        auto t = peek();
+        return (t.type == Token.SEP && t.stringVal == sep);
+    }
+
+    bool matchKw(wstring keyword)
+    {
+        if (peekKw(keyword) == false)
+            return false;
+        read();
+
+        return true;
+    }
+
+    bool matchSep(wstring sep)
+    {
+        if (peekSep(sep) == false)
+            return false;
+        read();
+
+        return true;
+    }
+
+    bool eof()
+    {
+        return peek().type == Token.EOF;
+    }
 }
 
