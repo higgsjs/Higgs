@@ -60,6 +60,12 @@ struct Options
 
     /// Disable sub-traces in the JIT
     bool jit_nosubs = false;
+
+    /// Disable peephole optimizations in the JIT
+    bool jit_noopts = false;
+
+    /// Compute stats about JIT code execution
+    bool jit_stats = false;
 }
 
 /// Global options structure
@@ -80,9 +86,11 @@ void parseCmdArgs(ref string[] args)
         "repl"          , &opts.repl,
 
         "jit_disable"   , &opts.jit_disable,
+        "jit_nosubs"    , &opts.jit_nosubs,
+        "jit_noopts"    , &opts.jit_noopts,
         "jit_dumpasm"   , &opts.jit_dumpasm,
         "jit_dumpinfo"  , &opts.jit_dumpinfo,
-        "jit_nosubs"    , &opts.jit_nosubs
+        "jit_stats"     , &opts.jit_stats
     );
 }
 

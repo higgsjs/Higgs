@@ -36,12 +36,9 @@
 *****************************************************************************/
 
 import std.stdio;
-import std.regex;
-import std.getopt;
-import interp.interp;
 import parser.parser;
-import ir.ir;
-import ir.ast;
+import interp.interp;
+import jit.jit;
 import repl;
 import options;
 
@@ -82,13 +79,24 @@ void main(string[] args)
         {
             writefln("run-time error: " ~ e.toString());
         }
-
-        // Exit unless a repl is forced
-        if (opts.repl == false)
-            return;
     }
 
-    // Start the REPL
-    repl.repl(interp);
+    // If a REPL was requested or no code to be executed was specified
+    if (opts.repl || (fileNames.length == 0 && opts.execString is null))
+    {
+        // Start the REPL
+        repl.repl(interp);
+    }
+
+    // If JIT stats are enabled
+    if (opts.jit_stats)
+    {
+        writefln("");
+        writefln("JIT stats:");
+        writefln("root trace entry count: %s", traceRootCnt);
+        writefln("sub-trace entry count : %s", traceSubCnt);
+        writefln("trace loop count: %s", traceLoopCnt);
+        writefln("trace exit count: %s", traceExitCnt);
+    }
 }
 

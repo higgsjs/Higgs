@@ -52,6 +52,19 @@ import jit.assembler;
 import jit.x86;
 import jit.encodings;
 import jit.trace;
+import jit.peephole;
+
+/// Root trace entry count
+uint64_t traceRootCnt = 0;
+
+/// Sub-trace entry count
+uint64_t traceSubCnt = 0;
+
+/// Trace loop jump count
+uint64_t traceLoopCnt = 0;
+
+/// Trace interpreter exit count
+uint64_t traceExitCnt = 0;
 
 /**
 Compile a trace of machine code blocks to machine code
@@ -130,6 +143,12 @@ Trace compTrace(Interp interp, Trace trace)
     as.comment("Fast trace-trace join point");
     as.addInstr(joinLabel);
 
+    // Increment the root or sub-trace entry counter
+    if (trace.parent is null)
+        as.incStatCnt!("traceRootCnt")();
+    else
+        as.incStatCnt!("traceSubCnt")();
+
     // For each trace node in the list
     BLOCK_LOOP:
     for (ctx.nodeIdx = 0; ctx.nodeIdx < ctx.nodeList.length; ++ctx.nodeIdx)
@@ -151,6 +170,9 @@ Trace compTrace(Interp interp, Trace trace)
                     ctx.nodeList.length
                 );
             }
+
+            // Increment the trace loop counter
+            as.incStatCnt!("traceLoopCnt")();
 
             // If this is part of the root trace
             if (trace.parent is null)
@@ -240,6 +262,9 @@ Trace compTrace(Interp interp, Trace trace)
     as.setMember!("Interp", "wsp")(R15, RBX);
     as.setMember!("Interp", "tsp")(R15, RBP);
 
+    // Increment the trace exit count
+    as.incStatCnt!("traceExitCnt")();
+
     // Restore the GP registers
     as.instr(POP, R15);
     as.instr(POP, R14);
@@ -257,6 +282,13 @@ Trace compTrace(Interp interp, Trace trace)
     // Append the out of line code to the rest
     as.comment("Out of line code");
     as.append(ol);
+
+    // If JIT optimizations are not disabled
+    if (!opts.jit_noopts)
+    {
+        // Perform peephole optimizations on the trace instructions
+        optTrace(trace, as);
+    }
 
     // Assemble the machine code
     auto codeBlock = as.assemble();
@@ -290,11 +322,7 @@ Trace compTrace(Interp interp, Trace trace)
 
     if (opts.jit_dumpasm)
     {
-        writefln(
-            "%s\nblock length: %s bytes\n", 
-            as.toString(true),
-            codeBlock.length
-        );
+        writefln("%s\n", as.toString(true));
     }
 
     if (opts.jit_dumpinfo)
@@ -418,9 +446,24 @@ void comment(Assembler as, string str)
     as.addInstr(new Comment(str));
 }
 
+/// Load a pointer constant into a register
 void ptr(TPtr)(Assembler as, X86Reg destReg, TPtr ptr)
 {
     as.instr(MOV, destReg, new X86Imm(cast(void*)ptr));
+}
+
+/// Increment a global JIT stat counter variable
+void incStatCnt(string varName)(Assembler as)
+{
+    if (!opts.jit_stats)
+        return;
+
+    mixin("auto vSize = " ~ varName ~ ".sizeof;");
+    mixin("auto vAddr = &" ~ varName ~ ";");
+
+    as.ptr(RAX, vAddr);
+
+    as.instr(INC, new X86Mem(vSize * 8, RAX));
 }
 
 void getField(Assembler as, X86Reg dstReg, X86Reg baseReg, size_t fSize, size_t fOffset)
@@ -499,19 +542,9 @@ void jump(Assembler as, CodeGenCtx ctx, IRBlock target)
 {
     auto interpJump = new Label("interp_jump");
 
-    // TODO: directly patch a jump to the trace join point if found
-    // mov rax, ptr
-    // mov [rip - k], rax
-
     // Get a pointer to the branch target
     as.ptr(RAX, target);
 
-    // If there is a trace join point, jump to it directly
-    as.getMember!("IRBlock", "joinPoint")(RCX, RAX);
-    as.instr(CMP, RCX, 0);
-    as.instr(JE, interpJump);
-    as.instr(JMP, RCX);
-    
     // Make the interpreter jump to the target
     as.addInstr(interpJump);
     as.setMember!("Interp", "target")(R15, RAX);

@@ -330,6 +330,25 @@ class X86Mem : X86Opnd
         this.scale   = cast(uint8_t)scale;
     }
 
+    /**
+    Equality comparison operator
+    */
+    override bool opEquals(Object that) 
+    {
+        auto a = cast(X86Mem)this;
+        auto b = cast(X86Mem)that;
+
+        assert (a !is null && b !is null);
+
+        return (
+            a.base is b.base &&
+            a.index is b.index &&
+            a.disp is b.disp &&
+            a.memSize is b.memSize &&
+            a.scale is b.scale
+        );
+    }
+
     override string toString() const
     {
         return toString(this.disp, null);
