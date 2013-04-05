@@ -1,2 +1,3 @@
-RegExp.run();
-
+RegExpSetup();
+RegExpRun();
+RegExpTearDown();

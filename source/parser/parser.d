@@ -825,7 +825,7 @@ ASTExpr parseAtom(TokenStream input)
 {
     //writeln("parseAtom");
 
-    Token t = input.peek();
+    Token t = input.peek(LEX_MAYBE_RE);
     SrcPos pos = t.pos;
 
     // End of file
@@ -885,6 +885,13 @@ ASTExpr parseAtom(TokenStream input)
         }
 
         return new ObjectExpr(names, values, pos);
+    }
+
+    // Regular expression literal
+    else if (t.type == Token.REGEXP)
+    {
+        input.read();
+        return new RegexpExpr(t.regexpVal, t.flagsVal, pos);
     }
 
     // New expression

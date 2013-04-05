@@ -505,6 +505,7 @@ void resolveRefs(ASTExpr expr, Scope s)
         cast(IntExpr)expr       ||
         cast(FloatExpr)expr     ||
         cast(StringExpr)expr    ||
+        cast(RegexpExpr)expr    ||
         cast(TrueExpr)expr      ||
         cast(FalseExpr)expr     ||
         cast(NullExpr)expr

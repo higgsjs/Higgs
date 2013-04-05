@@ -1233,7 +1233,8 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_json/stdlib_json.js");
     interp.assertInt("test();", 0);
-    // TODO: regexp support, regexp test
+    interp.load("programs/stdlib_regexp/stdlib_regexp.js");
+    interp.assertInt("test();", 0);
 }
 
 /// Dynamic code loading and eval

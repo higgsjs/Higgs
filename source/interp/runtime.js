@@ -1408,6 +1408,23 @@ function $rt_newClos(classLink, protoLink, numCells, funPtr)
 }
 
 /**
+Get/allocate a regular expresson object
+*/
+function $rt_getRegexp(link, pattern, flags)
+{
+    var rePtr = $ir_get_link(link);
+
+    if (rePtr === null)
+    {
+        rePtr = new RegExp(pattern, flags);
+
+        $ir_set_link(link, rePtr);
+    }
+
+    return rePtr;
+}
+
+/**
 Shrink the heap for GC testing purposes
 */
 function $rt_shrinkHeap(freeSpace)

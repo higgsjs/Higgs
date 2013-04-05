@@ -83,20 +83,19 @@ TODO: think about method-based compilation
 
 
 
-TODO: add support for regexp in parser
+FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
+
+
+
+
+
+
+
+
+[DONE] TODO: add support for regexp in parser
 var re = /pattern/flags
 var re = new RegExp("pattern", "flags");
 flags: i, g, m, y
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: 3d-cube has a horrible trace exit count, why?
 - Is it because traces are limited in length? Is it because of recursion?

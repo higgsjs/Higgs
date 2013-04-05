@@ -960,28 +960,6 @@ class ObjectExpr : ASTExpr
 }
 
 /**
-Regexp expression
-*/
-class RegexpExpr : ASTExpr
-{
-    wstring pattern;
-
-    wstring flags;
-
-    this(wstring pattern, wstring flags, SrcPos pos = null)
-    {
-        super(pos);
-        this.pattern = pattern;
-        this.flags = flags;
-    }
-
-    override string toString()
-    {
-        return xformat("/%s/%s", pattern, flags);
-    }
-}
-
-/**
 Identifier/symbol expression
 */
 class IdentExpr : ASTExpr
@@ -1061,6 +1039,28 @@ class StringExpr : ASTExpr
     override string toString()
     {
         return "\"" ~ to!string(escapeJSString(val)) ~ "\"";
+    }
+}
+
+/**
+Regexp expression
+*/
+class RegexpExpr : ASTExpr
+{
+    wstring pattern;
+
+    wstring flags;
+
+    this(wstring pattern, wstring flags, SrcPos pos = null)
+    {
+        super(pos);
+        this.pattern = pattern;
+        this.flags = flags;
+    }
+
+    override string toString()
+    {
+        return xformat("/%s/%s", pattern, flags);
     }
 }
 

@@ -1977,6 +1977,26 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         ));
     }
 
+    else if (auto regexpExpr = cast(RegexpExpr)expr)
+    {
+        auto linkInstr = ctx.addInstr(IRInstr.makeLink(ctx.allocTemp()));
+        auto reInstr = ctx.addInstr(IRInstr.strCst(
+            ctx.allocTemp(),
+            regexpExpr.pattern
+        ));
+        auto flagsInstr = ctx.addInstr(IRInstr.strCst(
+            ctx.allocTemp(), 
+            regexpExpr.flags
+        ));
+
+        auto arrInstr = genRtCall(
+            ctx, 
+            "getRegexp",
+            ctx.outSlot,
+            [linkInstr.outSlot, reInstr.outSlot, flagsInstr.outSlot]
+        );
+    }
+
     else if (cast(TrueExpr)expr)
     {
         ctx.addInstr(new IRInstr(&SET_TRUE, ctx.getOutSlot()));

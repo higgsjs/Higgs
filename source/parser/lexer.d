@@ -402,6 +402,7 @@ struct Token
         INT,
         FLOAT,
         STRING,
+        REGEXP,
         EOF,
         ERROR
     }
@@ -415,6 +416,7 @@ struct Token
         long intVal;
         double floatVal;
         wstring stringVal;
+        struct { wstring regexpVal; wstring flagsVal; }
     }
 
     /// Source position
@@ -454,6 +456,16 @@ struct Token
         this.pos = pos;
     }
 
+    this(Type type, wstring re, wstring flags, SrcPos pos)
+    {
+        assert (type == REGEXP);
+
+        this.type = type;
+        this.regexpVal = re;
+        this.flagsVal = flags;
+        this.pos = pos;
+    }
+
     this(Type type, SrcPos pos)
     {
         assert (type == EOF);
@@ -474,6 +486,7 @@ struct Token
             case INT:       return format("int:%s"       , intVal);
             case FLOAT:     return format("float:%f"     , floatVal);
             case STRING:    return format("string:%s"    , stringVal);
+            case REGEXP:    return format("regexp:/%s/%s", regexpVal, flagsVal);
             case ERROR:     return format("error:%s"     , stringVal);
             case EOF:       return "EOF";
 
@@ -526,7 +539,7 @@ wstring getString(ref StrStream stream, wchar stopChar)
         if (ch == '\0')
         {
             throw new LexError(
-                "EOF in string literal",
+                "EOF in literal",
                 stream.getPos()
             );
         }
@@ -583,18 +596,15 @@ wstring getString(ref StrStream stream, wchar stopChar)
                 case 'b' : str ~= '\b'; break;
                 case 'a' : str ~= '\a'; break;
                 case '\\': str ~= '\\'; break;
-                case '/' : str ~= '/'; break;
                 case '\"': str ~= '\"'; break;
                 case '\'': str ~= '\''; break;
 
                 // Multiline string continuation
                 case '\n': break;
 
+                // By default, add the escape character as is
                 default:
-                throw new LexError(
-                    "unknown escape sequence: \\" ~ to!wstring(code),
-                    stream.getPos()
-                );
+                str ~= code;
             }
         }
 
@@ -765,9 +775,49 @@ Token getToken(ref StrStream stream, LexFlags flags)
     // Regular expression
     if ((flags & LEX_MAYBE_RE) && ch == '/')
     {
+        // Read the opening slash
+        stream.readCh();
 
+        // Read the pattern
+        wstring reStr = "";
+        for (;;)
+        {
+            ch = stream.readCh();
 
+            if (ch == '\\' && stream.peekCh() == '/')
+            {
+                stream.readCh();
+                reStr ~= "\\/"w;
+                continue;
+            }
 
+            if (ch == '/')
+                break;
+
+            // End of file
+            if (ch == '\0')
+                return Token(Token.ERROR, "EOF in literal", stream.getPos());
+
+            reStr ~= ch;
+        }
+
+        // Read the flags
+        wstring reFlags = "";
+        for (;;)
+        {
+            ch = stream.peekCh();
+
+            if (ch != 'i' && ch != 'g' && ch != 'm' && ch != 'y')
+                break;
+
+            stream.readCh();
+
+            reFlags ~= ch;
+        }
+
+        //writefln("reStr: \"%s\"", reStr);
+
+        return Token(Token.REGEXP, reStr, reFlags, pos);
     }
 
     // Try matching all separators    

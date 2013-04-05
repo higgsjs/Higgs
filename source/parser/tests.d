@@ -198,6 +198,10 @@ unittest
     testParse("'foo\\x55bar';");
     testParse("'foo\\uABCDbar';");
 
+    testParse("/foobar/;");
+    testParse("/\\//;");
+    testParse("/foobar/ig;");
+
     testParse("[1, 2, 3];");
     testParse("true;");
     testParse("false;");
@@ -226,6 +230,7 @@ unittest
     testParse("a = { a:1, b:2 };");
     testParse("a = { a:1, \"b\":2 };");
     testParse("a = { a:1, b:2+3*4 };");
+    testParse("a = /f+/ig;");
 
     // Comma operator
     testParse("1, 2");
