@@ -47,11 +47,31 @@ import jit.x86;
 import jit.assembler;
 import jit.codeblock;
 import jit.encodings;
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 static import ir.ir;
 
 alias extern (C) void function(void*) FFICall;
 
 FFICall genFFICall(ir.ir.Interp interp, ir.ir.IRInstr instr)
+=======
+=======
+>>>>>>> ffi
+=======
+>>>>>>> ffi
+import ir.ir;
+
+alias extern (C) void function(void*) FFIFn;
+
+FFIFn genFFIFn(Interp interp, IRInstr instr)
+<<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> ffi
+=======
+>>>>>>> ffi
+=======
+>>>>>>> ffi
 {
     // Mappings for arguments/return values
     X86Reg[] iArgRegs = [RDI, RSI, RDX, RCX, R8, R9];
@@ -66,9 +86,9 @@ FFICall genFFICall(ir.ir.Interp interp, ir.ir.IRInstr instr)
     typeMap["*"] = Type.RAWPTR;
 
     // Type info (D string)
-    auto typeinfo = to!string(instr.args[1].stringVal);
+    auto typeinfo = to!string(instr.args[2].stringVal);
     // Args after the first two go to the FFI call
-    auto args = instr.args[2..$];
+    auto args = instr.args[3..$];
     auto types = split(typeinfo, ",");
     // Return type of the FFI call
     auto retType = types[0];
@@ -136,7 +156,7 @@ FFICall genFFICall(ir.ir.Interp interp, ir.ir.IRInstr instr)
     }
 
     // Fun* call
-    as.instr(CALL, R14);
+    as.instr(jit.encodings.CALL, R14);
 
     // Send return value/type to interp
     if (retType == "f64")
@@ -184,9 +204,10 @@ FFICall genFFICall(ir.ir.Interp interp, ir.ir.IRInstr instr)
     as.instr(POP, R12);
     as.instr(POP, RBP);
     as.instr(POP, RBX);
-    as.instr(RET);
+
+    as.instr(jit.encodings.RET);
 
     auto cb = as.assemble();
-    auto callerfun = cast(FFICall)cb.getAddress();
+    auto callerfun = cast(FFIFn)cb.getAddress();
     return callerfun;
 }

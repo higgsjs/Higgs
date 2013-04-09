@@ -2299,6 +2299,18 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
             instr.args[i].linkIdx = NULL_LINK;
             break;
 
+            // FFIFn
+            case OpArg.CODEBLOCK:
+            if (argExpr.toString() != "null")
+            {
+                throw new ParseError(
+                    "expected null argument", 
+                    argExpr.pos
+                );
+            }
+            instr.args[i].int32Val = 0;
+            break;
+
             default:
             assert (false, "unsupported argument type");
         }

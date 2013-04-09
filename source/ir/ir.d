@@ -48,6 +48,7 @@ import util.string;
 import parser.ast;
 import ir.init;
 import interp.interp;
+import interp.ffi;
 import interp.layout;
 import interp.ops;
 import jit.trace;
@@ -384,6 +385,7 @@ class IRInstr : IdObject
         LocalIdx localIdx;
         LinkIdx linkIdx;
         IRFunction fun;
+        FFIFn codeBlock;
     }
 
     /// Opcode
@@ -599,7 +601,8 @@ enum OpArg
     STRING,
     LOCAL,
     LINK,
-    FUN
+    FUN,
+    CODEBLOCK
 }
 
 /// Opcode implementation function
@@ -858,10 +861,11 @@ Opcode GET_TIME_MS = { "get_time_ms", true, [], &op_get_time_ms };
 Opcode LOAD_LIB = { "load_lib", true, [OpArg.STRING], &op_load_lib };
 
 /// Close shared lib
-Opcode CLOSE_LIB = { "close_lib", true, [OpArg.LOCAL], &op_close_lib };
+Opcode CLOSE_LIB = { "close_lib", false, [OpArg.LOCAL], &op_close_lib };
 
 /// Lookup symbol in shared lib
 Opcode GET_SYM = { "get_sym", true, [OpArg.LOCAL, OpArg.STRING], &op_get_sym };
 
 /// Call function in shared lib
-Opcode CALL_FFI = { "call_ffi", true, [OpArg.LOCAL, OpArg.STRING], &op_call_ffi, OpInfo.VAR_ARG };
+Opcode CALL_FFI = { "call_ffi", true, [OpArg.CODEBLOCK, OpArg.LOCAL, OpArg.STRING], &op_call_ffi, OpInfo.VAR_ARG };
+

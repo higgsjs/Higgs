@@ -1651,17 +1651,24 @@ extern (C) void op_get_sym(Interp interp, IRInstr instr)
 
 extern (C) void op_call_ffi(Interp interp, IRInstr instr)
 {
-    auto fun = interp.getSlot(instr.args[0].localIdx);
+    auto fun = interp.getSlot(instr.args[1].localIdx);
 
     assert (
         fun.type == Type.RAWPTR,
         "invalid rawptr value"
     );
 
-    // TODO: add logic to check for cached version here
-    FFICall callerfun;
-    callerfun = genFFICall(interp, instr);
+    FFIFn stubfn;
+    if(instr.args[0].int32Val == 0)
+    {
+        stubfn = genFFIFn(interp, instr);
+        instr.args[0].codeBlock = stubfn;
+    }
+    else
+    {
+        stubfn = instr.args[0].codeBlock;
+    }
 
     // Call the wrapper
-    callerfun(cast(void*)fun.word.ptrVal);
+    stubfn(cast(void*)fun.word.ptrVal);
 }
