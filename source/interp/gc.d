@@ -622,7 +622,7 @@ void visitStackRoots(Interp interp)
         for (LocalIdx idx = 0; idx < frameSize; ++idx)
         {
             // If this local is not initialized, skip it
-            if (idx < numLocals && initMap.get(idx) == false)
+            if (idx < numLocals && initMap.has(idx) == false)
                 continue;
 
             //writefln("ref %s/%s", idx+1, frameSize);

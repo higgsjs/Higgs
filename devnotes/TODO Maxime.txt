@@ -103,6 +103,11 @@ TODO: register allocation
   - Writing a type tag in an IR instruction can give us the info, 
     no need for extra analysis, just call setTypeTag(...)
   - When you do setTypeTag, don't actually write the tag!
+- A value can be on the stack AND in a register
+  - No cost to spill
+  - Must signal if we write either location?
+    - Instrs only write to *out slot*
+    - Requesting out slot as reg or mem makes this happen
 
 Versioning... Context objects could get big?
 - Reg alloc (1 byte per)
@@ -119,16 +124,33 @@ TODO: interference analysis
   - If register must be used, pick one from neighbor with least contention
 - Also color with XMM registers for FP values and spills
 
+TODO: JIT-to-JIT call
+- Now or wait until later? Patch in caller?
+- join point for return blocks too?
+
 TODO: for ret, can we cache the caller?
 - Needs to check that arg count matches, have interp fallback
 
+TODO: simple `make install` target
+
 TODO: integrate level 0 FFI functionality
 
-TODO: liveness analysis for stack slots
-- Set of instructions before which a value is live?
-- Returns map of instrs to lists of live slots before the instr
 
-TODO: JIT-to-JIT call
+
+TODO: visit stub invalidation, make one label for this, reuse code
+- rename to invCode
+- getBlockLabel can return this label directly
+- Only generate if it's used
+
+
+
+
+
+TODO: liveness analysis for stack slots
+- Returns map of instrs to sets of live slots after the instr
+- Need to know if we can kill a value after an instr
+
+
 
 
 

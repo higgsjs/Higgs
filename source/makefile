@@ -12,6 +12,7 @@ SRC =               \
 util/id.d           \
 util/string.d       \
 util/misc.d         \
+util/bitset.d       \
 analysis/typeset.d  \
 parser/lexer.d      \
 parser/ast.d        \
@@ -21,6 +22,7 @@ ir/ir.d             \
 ir/iir.d            \
 ir/ast.d            \
 ir/init.d           \
+ir/livevars.d       \
 interp/interp.d     \
 interp/ops.d        \
 interp/layout.d     \
