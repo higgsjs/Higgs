@@ -51,7 +51,11 @@ import ir.ir;
 
 alias extern (C) void function(void*) FFIFn;
 
+<<<<<<< HEAD
 FFIFn genFFIFn(Interp interp, IRInstr instr)
+=======
+CodeBlock genFFIFn(Interp interp, IRInstr instr)
+>>>>>>> ffidev
 {
     // Mappings for arguments/return values
     X86Reg[] iArgRegs = [RDI, RSI, RDX, RCX, R8, R9];
@@ -188,6 +192,5 @@ FFIFn genFFIFn(Interp interp, IRInstr instr)
     as.instr(jit.encodings.RET);
 
     auto cb = as.assemble();
-    auto callerfun = cast(FFIFn)cb.getAddress();
-    return callerfun;
+    return cb;
 }

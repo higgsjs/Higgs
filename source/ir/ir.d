@@ -51,6 +51,10 @@ import interp.interp;
 import interp.ffi;
 import interp.layout;
 import interp.ops;
+<<<<<<< HEAD
+=======
+import jit.trace;
+>>>>>>> ffidev
 import jit.codeblock;
 
 /// Local variable index type
@@ -393,7 +397,7 @@ class IRInstr : IdObject
         LocalIdx localIdx;
         LinkIdx linkIdx;
         IRFunction fun;
-        FFIFn codeBlock;
+        CodeBlock codeBlock;
     }
 
     /// Opcode
@@ -585,7 +589,7 @@ class IRInstr : IdObject
                 break;
                 case OpArg.CODEBLOCK:
                 output ~= "<codeblock:" ~ ((arg.codeBlock is null)? "NULL":"0x"~to!string(arg.codeBlock)) ~ ">";
-                break;
+                break; 
                 default:
                 assert (false, "unhandled arg type");
             }
@@ -878,5 +882,5 @@ Opcode CLOSE_LIB = { "close_lib", false, [OpArg.LOCAL], &op_close_lib };
 Opcode GET_SYM = { "get_sym", true, [OpArg.LOCAL, OpArg.STRING], &op_get_sym };
 
 /// Call function in shared lib
-Opcode CALL_FFI = { "call_ffi", true, [OpArg.CODEBLOCK, OpArg.LOCAL, OpArg.STRING], &op_call_ffi, OpInfo.VAR_ARG };
+Opcode CALL_FFI = { "call_ffi", true, [OpArg.CODEBLOCK, OpArg.LOCAL, OpArg.STRING], &op_call_ffi, OpInfo.BRANCH | OpInfo.CALL | OpInfo.VAR_ARG };
 

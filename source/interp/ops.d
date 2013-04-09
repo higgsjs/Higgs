@@ -43,7 +43,6 @@ import std.string;
 import std.conv;
 import std.math;
 import std.datetime;
-import std.stdint;
 import core.sys.posix.dlfcn;
 import parser.parser;
 import ir.ir;
@@ -54,6 +53,7 @@ import interp.string;
 import interp.object;
 import interp.gc;
 import interp.ffi;
+import jit.codeblock;
 
 void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 {
@@ -1657,17 +1657,21 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
         "invalid rawptr value"
     );
 
-    FFIFn stubfn;
-    if(instr.args[0].codeBlock is null)
+    CodeBlock cb;
+    if (instr.args[0].codeBlock is null)
     {
-        stubfn = genFFIFn(interp, instr);
-        instr.args[0].codeBlock = stubfn;
+        cb = genFFIFn(interp, instr);
+        instr.args[0].codeBlock = cb;
     }
     else
     {
-        stubfn = instr.args[0].codeBlock;
+        cb = instr.args[0].codeBlock;
     }
 
+    FFIFn callerfun = cast(FFIFn)cb.getAddress();
+
     // Call the wrapper
-    stubfn(cast(void*)fun.word.ptrVal);
+    callerfun(cast(void*)fun.word.ptrVal);
+
+    interp.jump(instr.target);
 }
