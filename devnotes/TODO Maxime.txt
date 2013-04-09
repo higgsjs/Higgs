@@ -59,8 +59,6 @@ TODO: live variable analysis, run lazily
 
 FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
-TODO: integrate level 0 FFI functionality
-
 Versioning JIT ideas:
 - Generalize versioning to per-version pre-conditions
   - Generic/catch-all version has no conditions required
@@ -90,6 +88,10 @@ Basic block versioning:
 - If known constant value, can try generating new version
   - If too many versions already, try to match existing versions more coarsely
 
+TODO: implement callee-guessing, JIT-to-JIT call
+
+TODO: implement/fix get_global, set_global wrt reg alloc
+
 TODO: revise defaultFn, might need to save allocatable regs
 
 TODO: register allocation
@@ -110,32 +112,29 @@ TODO: register allocation
   - When you do setTypeTag, don't actually write the tag!
 
 
+TODO: integrate level 0 FFI functionality
 
 
 
-TODO: implement callee-guessing, JIT-to-JIT call
 
-TODO: mid-loop entry
+
+
+
+
+
+
+[DONE] TODO: mid-loop entry
 - Create entry points for loop headers
 - Bitwise and can't be optimized without this
 
-
-
-TODO: basic block stubbing
+[DONE] TODO: basic block stubbing
 - Code should be out of line
 - Invalidates code block and all entry points for function
   - Implement through C function
 - Run unit tests
 
-
-
-TODO: implement some of the ops in rt_and
-
-
-
-
-
-
+[DONE] TODO: implement some of the ops in rt_and
+- is_int32, and_i32
 
 [DONE] TODO: make basic method JIT work, use only scratch regs for now, no reg alloc
 - Implement jump, if_true

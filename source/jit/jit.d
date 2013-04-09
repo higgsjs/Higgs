@@ -200,6 +200,7 @@ void compFun(Interp interp, IRFunction fun)
     as.addInstr(fastLabel);
 
     // Until the work list is empty
+    BLOCK_LOOP:
     while (workList.length > 0)
     {
         // Remove a block from the work list
@@ -210,6 +211,38 @@ void compFun(Interp interp, IRFunction fun)
         {
             writefln("compiling block: %s", block.getName());
             //writefln("compiling block: %s", block.toString());
+        }
+
+        // If this block was never executed
+        if (block.execCount == 0)
+        {
+            if (opts.jit_dumpinfo)
+                writefln("producing stub");
+            
+            // Insert the label for this block in the out of line code
+            ol.addInstr(labelMap[block]);
+
+            // Invalidate the compiled code for this function
+            ol.ptr(cargRegs[0], block);
+            ol.ptr(scratchRegs[0], &visitStub);
+            ol.instr(jit.encodings.CALL, scratchRegs[0]);
+
+            // Bailout to the interpreter and jump to the block
+            ol.jump(ctx, block);
+
+            // Don't compile the block
+            continue BLOCK_LOOP;
+        }
+
+        // If this is a loop header block, generate an entry point
+        auto blockName = block.getName();
+        if (blockName.startsWith("do_test") ||
+            blockName.startsWith("for_test") ||
+            blockName.startsWith("forin_test") ||
+            blockName.startsWith("while_test"))
+        {
+            //writefln("generating entry point");
+            getEntryPoint(block);
         }
 
         // Insert the label for this block
@@ -319,6 +352,24 @@ void compFun(Interp interp, IRFunction fun)
         writefln("machine code bytes: %s", codeBlock.length);
         writefln("");
     }
+}
+
+/**
+Visit a stubbed (uncompiled) basic block
+*/
+extern (C) void visitStub(IRBlock stubBlock)
+{
+    auto fun = stubBlock.fun;
+
+    if (opts.jit_dumpinfo)
+        writefln("invalidating %s", fun.getName());
+
+    // Remove block entry points for this function
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+        block.entryFn = null;
+
+    // Invalidate the compiled code for this function
+    fun.codeBlock = null;
 }
 
 /**
@@ -1274,7 +1325,6 @@ CodeGenFn[Opcode*] codeGenFns;
 
 static this()
 {
-    /*
     codeGenFns[&SET_TRUE]       = &gen_set_true;
     codeGenFns[&SET_FALSE]      = &gen_set_false;
     codeGenFns[&SET_UNDEF]      = &gen_set_undef;
@@ -1283,20 +1333,25 @@ static this()
     codeGenFns[&SET_INT32]      = &gen_set_int32;
     codeGenFns[&SET_STR]        = &gen_set_str;
 
+    /*
     codeGenFns[&MOVE]           = &gen_move;
+    */
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
     codeGenFns[&IS_INT32]       = &gen_is_int32;
     codeGenFns[&IS_FLOAT]       = &gen_is_float;
 
+    /*
     codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
     codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
+    */
 
     codeGenFns[&ADD_I32]        = &gen_add_i32;
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
     codeGenFns[&AND_I32]        = &gen_and_i32;
 
+    /*
     codeGenFns[&ADD_F64]        = &gen_add_f64;
     codeGenFns[&SUB_F64]        = &gen_sub_f64;
     codeGenFns[&MUL_F64]        = &gen_mul_f64;

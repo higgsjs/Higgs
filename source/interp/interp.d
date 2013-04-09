@@ -745,9 +745,6 @@ class Interp
         // While we have a target to branch to
         while (target !is null)
         {
-            // Increment the execution count for the block
-            target.execCount++;
-
             // If this block was executed often enough and 
             // JIT compilation is enabled
             if (target.execCount > JIT_COMPILE_COUNT &&
@@ -766,6 +763,9 @@ class Interp
                 //writefln("returned from fn");
                 continue;
             }
+
+            // Increment the execution count for the block
+            target.execCount++;
             
             // Set the IP to the first instruction of the block
             ip = target.firstInstr;
@@ -798,6 +798,7 @@ class Interp
                 // Update the IP
                 ip = instr.next;
             }
+
         }
     }
 
