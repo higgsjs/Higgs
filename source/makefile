@@ -33,7 +33,6 @@ jit/encodings.d     \
 jit/codeblock.d     \
 jit/assembler.d     \
 jit/jit.d           \
-jit/trace.d         \
 jit/peephole.d      \
 jit/tests.d         \
 parser/tests.d      \
