@@ -51,6 +51,12 @@ import ir.ir;
 
 alias extern (C) void function(void*) FFIFn;
 
+extern (C) void testf()
+{
+    write("test\n");
+    return;
+}
+
 CodeBlock genFFIFn(Interp interp, IRInstr instr)
 {
     // Mappings for arguments/return values
@@ -75,7 +81,7 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     // Argument types the call expects
     auto argTypes = types[1..$];
     // Arguments to pass via the stack
-    ir.ir.LocalIdx[] stackArgs;
+    LocalIdx[] stackArgs;
 
     auto as = new Assembler();
 
@@ -83,6 +89,9 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
         args.length == argTypes.length,
         "invalid number of args in ffi call"
     );
+
+    // Align SP to a multiple of 16 bytes
+    as.instr(SUB, RSP, 8);
 
     // Store the GP registers
     as.instr(PUSH, RBX);
@@ -102,15 +111,6 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     as.getMember!("Interp", "wsp")(RBX, R15);
     as.getMember!("Interp", "tsp")(RBP, R15);
 
-    // preserve registers the callee may trash
-    as.instr(PUSH, RCX);
-    as.instr(PUSH, RDX);
-    as.instr(PUSH, RSI);
-    as.instr(PUSH, RDI);
-    as.instr(PUSH, R8);
-    as.instr(PUSH, R9);
-    as.instr(PUSH, R10);
-    as.instr(PUSH, R11);
 
     // Set up arguments
     foreach(int i, a; args)
@@ -127,12 +127,12 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
 
     // Make sure there is an even number of pushes
     if (stackArgs.length % 2 != 0)
-        as.instr(PUSH, R11);
+        as.instr(PUSH, R12);
 
     foreach_reverse (idx; stackArgs)
     {
-        as.getWord(R11, idx);
-        as.instr(PUSH, R11);
+        as.getWord(R12, idx);
+        as.instr(PUSH, R12);
     }
 
     // Fun* call
@@ -157,21 +157,11 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
 
     // Remove stackArgs
     foreach (idx; stackArgs)
-        as.instr(POP, R11);
+        as.instr(POP, R12);
 
     // Make sure there is an even number of pops
     if (stackArgs.length % 2 != 0)
-        as.instr(POP, R11);
-
-    // Restore registers the callee may trash
-    as.instr(POP, R11);
-    as.instr(POP, R10);
-    as.instr(POP, R9);
-    as.instr(POP, R8);
-    as.instr(POP, RDI);
-    as.instr(POP, RSI);
-    as.instr(POP, RDX);
-    as.instr(POP, RCX);
+        as.instr(POP, R12);
 
     // Store the stack pointers back in the interpreter
     as.setMember!("Interp", "wsp")(R15, RBX);
@@ -184,6 +174,9 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     as.instr(POP, R12);
     as.instr(POP, RBP);
     as.instr(POP, RBX);
+
+    // Pop the stack alignment padding
+    as.instr(ADD, RSP, 8);
 
     as.instr(jit.encodings.RET);
 
