@@ -45,7 +45,6 @@ import ir.ir;
 import jit.assembler;
 import jit.x86;
 import jit.encodings;
-import jit.trace;
 
 /*
 ; $7 = is_int32 $15
@@ -125,7 +124,7 @@ bool writesReg(X86Instr instr, X86Reg reg)
     );
 }
 
-void optTrace(Trace trace, Assembler as)
+void optAsm(Assembler as)
 {
     // While changes are still occurring
     for (bool changed = true; changed !is false; changed = false)

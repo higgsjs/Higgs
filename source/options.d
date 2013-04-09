@@ -58,9 +58,6 @@ struct Options
     /// Dump information about JIT compilation
     bool jit_dumpinfo = false;
 
-    /// Disable sub-traces in the JIT
-    bool jit_nosubs = false;
-
     /// Disable peephole optimizations in the JIT
     bool jit_noopts = false;
 
@@ -86,7 +83,6 @@ void parseCmdArgs(ref string[] args)
         "repl"          , &opts.repl,
 
         "jit_disable"   , &opts.jit_disable,
-        "jit_nosubs"    , &opts.jit_nosubs,
         "jit_noopts"    , &opts.jit_noopts,
         "jit_dumpasm"   , &opts.jit_dumpasm,
         "jit_dumpinfo"  , &opts.jit_dumpinfo,

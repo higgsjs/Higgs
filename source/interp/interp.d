@@ -54,7 +54,6 @@ import interp.layout;
 import interp.string;
 import interp.object;
 import interp.gc;
-import jit.trace;
 import jit.jit;
 
 /**
@@ -360,9 +359,6 @@ class Interp
 
     /// Instruction pointer
     IRInstr ip = null;
-
-    /// Trace node pointer
-    TraceNode traceNode = null;
 
     /// String table reference
     refptr strTbl;
@@ -749,39 +745,28 @@ class Interp
         // While we have a target to branch to
         while (target !is null)
         {
-            // If we are recording a trace
-            if (traceNode !is null)
+            // If this block was executed often enough and 
+            // JIT compilation is enabled
+            if (target.execCount > JIT_COMPILE_COUNT &&
+                target.fun.codeBlock is null &&
+                opts.jit_disable == false)
             {
-                // Record the jump to the target block
-                traceNode = traceNode.traceTo(this, target);
+                // Compile the function this block belongs to
+                compFun(this, target.fun);
             }
 
-            // Otherwise, if the block is a potential trace
-            // start and the jit is enabled
-            else if (target.traceStart == true && opts.jit_disable == false)
+            // If this block has an associated entry point
+            if (target.entryFn !is null)
             {
-                // If this block has an associated trace entry
-                // and we aren't recording a trace
-                if (target.trace && target.trace.entryFn)
-                {
-                    //writefln("entering trace: %s", target.trace.entryFn);
-                    //writefln("%s", target.toString());
-                    target.trace.entryFn();
-                    //writefln("returned from trace");
-                    continue;
-                }
-
-                // If the block has been executed often enough
-                if (target.execCount >= TRACE_RECORD_COUNT)
-                {
-                    // Begin recording traces at this node
-                    traceNode = TraceNode.record(this, target);
-                }
-
-                // Increment the execution count for the block
-                target.execCount++;
+                //writefln("entering fn: %s (%s)", target.fun.getName(), target.getName());
+                target.entryFn();
+                //writefln("returned from fn");
+                continue;
             }
 
+            // Increment the execution count for the block
+            target.execCount++;
+            
             // Set the IP to the first instruction of the block
             ip = target.firstInstr;
 
@@ -813,6 +798,7 @@ class Interp
                 // Update the IP
                 ip = instr.next;
             }
+
         }
     }
 

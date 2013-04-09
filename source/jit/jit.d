@@ -51,32 +51,59 @@ import jit.codeblock;
 import jit.assembler;
 import jit.x86;
 import jit.encodings;
-import jit.trace;
 import jit.peephole;
 
-/// Root trace entry count
-uint64_t traceRootCnt = 0;
+/// Block execution count at which a function should be compiled
+const JIT_COMPILE_COUNT = 500;
 
-/// Sub-trace entry count
-uint64_t traceSubCnt = 0;
-
-/// Trace loop jump count
-uint64_t traceLoopCnt = 0;
-
-/// Trace interpreter exit count
-uint64_t traceExitCnt = 0;
+X86Reg interpReg;
+X86Reg wspReg;
+X86Reg tspReg;
+X86Reg cspReg;
+X86Reg[] cargRegs;
+X86Reg[] scratchRegs;
+X86Reg[] allocRegs;
 
 /**
-Compile a trace of machine code blocks to machine code
+Mapping of the x86 machine registers
 */
-Trace compTrace(Interp interp, Trace trace)
+static this()
+{
+    /// R15: interpreter object pointer (C callee-save) 
+    interpReg = R15;
+
+    /// R14: type stack pointer (C callee-save)
+    wspReg = R14;
+
+    /// R13: word stack pointer (C callee-save)
+    tspReg = R13;
+
+    // RSP: C stack pointer (used for C calls only)
+    cspReg = RSP;
+
+    /// C argument registers
+    cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
+
+    /// RAX: scratch register
+    /// RDX: scratch register
+    /// RDI: scratch register, first C argument register
+    /// RSI: scratch register, second C argument register
+    scratchRegs = [RAX, RDX, RDI, RSI];
+
+    /// RCX, RBX, RBP, R8-R12: 8 allocatable registers
+    allocRegs = [RCX, RBX, RBP, R8, R9, R10, R11, R12];
+}
+
+/**
+Compile a function to machine code
+*/
+void compFun(Interp interp, IRFunction fun)
 {
     if (opts.jit_dumpinfo)
     {
         writefln(
-            "compiling %strace in %s", 
-            trace.subCtx? "sub-":"",
-            trace.startNode.block.fun.getName()
+            "compiling function %s", 
+            fun.getName()
         );
     }
 
@@ -86,109 +113,140 @@ Trace compTrace(Interp interp, Trace trace)
     // Assembler for out of line code (slow paths)
     auto ol = new Assembler();
 
-    // Label at the trace join point (exported)
-    auto joinLabel = new Label("trace_join", true);
+    // Fast entry label (exported)
+    auto fastLabel = new Label("entry_fast", true);
 
-    // Label at the end of the block
-    auto exitLabel = new Label("trace_exit");
+    // Bailout to interpreter label
+    auto bailLabel = new Label("bailout");
+
+    // Work list of blocks to be compiled
+    IRBlock[] workList;
+
+    // Map of blocks to labels
+    Label[IRBlock] labelMap;
+
+    // Map of blocks to exported entry point labels
+    Label[IRBlock] entryMap;
+
+    /// Get a label for a given basic block
+    auto getBlockLabel = delegate Label(IRBlock block)
+    {
+        // If there is no label for this block
+        if (block !in labelMap)
+        {
+            // Create a label for the block
+            auto label = new Label(block.getName());
+            labelMap[block] = label;
+
+            // Add the block to the work list
+            workList ~= block;
+        }
+
+        // Return the label for this block
+        return labelMap[block];
+    };
+
+    /// Get an entry point label for a given basic block
+    auto getEntryPoint = delegate Label(IRBlock block)
+    {
+        if (block in entryMap)
+            return entryMap[block];
+
+        // Create an exported label for the entry point
+        ol.comment("Entry point for " ~ block.getName());
+        auto entryLabel = ol.label("entry_" ~ block.getName(), true);
+        entryMap[block] = entryLabel;
+
+        // Align SP to a multiple of 16 bytes
+        ol.instr(SUB, RSP, 8);
+
+        // Save the callee-save GP registers
+        ol.instr(PUSH, RBX);
+        ol.instr(PUSH, RBP);
+        ol.instr(PUSH, R12);
+        ol.instr(PUSH, R13);
+        ol.instr(PUSH, R14);
+        ol.instr(PUSH, R15);
+
+        // Load a pointer to the interpreter object
+        ol.ptr(interpReg, interp);
+
+        // Load the stack pointers into RBX and RBP
+        ol.getMember!("Interp", "wsp")(wspReg, interpReg);
+        ol.getMember!("Interp", "tsp")(tspReg, interpReg);
+
+        // Jump to the target block
+        auto blockLabel = getBlockLabel(block);
+        ol.instr(JMP, blockLabel);
+
+        return entryLabel;
+    };
 
     // Create a code generation context
     auto ctx = CodeGenCtx(
-        trace,
         interp, 
         as, 
         ol, 
-        joinLabel, 
-        exitLabel
+        bailLabel,
+        getBlockLabel,
+        getEntryPoint
     );
 
-    // If this is a sub-trace
-    if (trace.subCtx)
-    {
-        ctx.callStack = trace.subCtx.callStack.dup;
-        //writefln("inheriting call-stack of depth: %s", ctx.callStack.length);
-        assert (ctx.callStack.length == trace.startNode.stackDepth);
-    }
+    // Create an entry point for the function
+    getEntryPoint(fun.entryBlock);
 
-    // Assemble the node list
-    for (auto traceNode = trace.startNode; traceNode !is null;)
-    {
-        ctx.nodeList ~= traceNode;
+    // Fast entry point (used for JIT-to-JIT calls)
+    as.comment("Fast entry point");
+    as.addInstr(fastLabel);
 
-        //writefln("%s\n", block.getName());
-        //writefln("block: %s\n", block.toString());
-
-        traceNode = traceNode.getMostVisited();
-    }
-
-    // Align SP to a multiple of 16 bytes
-    as.instr(SUB, RSP, 8);
-
-    // Save the GP registers
-    as.instr(PUSH, RBX);
-    as.instr(PUSH, RBP);
-    as.instr(PUSH, R12);
-    as.instr(PUSH, R13);
-    as.instr(PUSH, R14);
-    as.instr(PUSH, R15);
-
-    // Store a pointer to the interpreter in R15
-    as.ptr(R15, interp);
-
-    // Load the stack pointers into RBX and RBP
-    as.getMember!("Interp", "wsp")(RBX, R15);
-    as.getMember!("Interp", "tsp")(RBP, R15);
-
-    // Join point of the tracelet
-    as.comment("Fast trace-trace join point");
-    as.addInstr(joinLabel);
-
-    // Increment the root or sub-trace entry counter
-    if (trace.parent is null)
-        as.incStatCnt!("traceRootCnt")();
-    else
-        as.incStatCnt!("traceSubCnt")();
-
-    // For each trace node in the list
+    // Until the work list is empty
     BLOCK_LOOP:
-    for (ctx.nodeIdx = 0; ctx.nodeIdx < ctx.nodeList.length; ++ctx.nodeIdx)
+    while (workList.length > 0)
     {
-        auto block = ctx.nodeList[ctx.nodeIdx].block;
+        // Remove a block from the work list
+        auto block = workList[$-1];
+        workList.popBack();
 
-        //writefln("%s", block.fun.getName());
-        //writefln("%s (%s)", block.toString(), block.fun.getName());
+        if (opts.jit_dumpinfo)
+        {
+            writefln("compiling block: %s", block.getName());
+            //writefln("compiling block: %s", block.toString());
+        }
 
-        // If the trace jumps back into itself and the call stack depth is 0
-        if (ctx.nodeIdx > 0 && 
-            block is trace.rootNode.block && 
-            ctx.callStack.length == 0)
+        // If this block was never executed
+        if (block.execCount == 0)
         {
             if (opts.jit_dumpinfo)
-            {
-                writefln(
-                    "inserting jump to self (%s/%s) *", 
-                    ctx.nodeIdx+1, 
-                    ctx.nodeList.length
-                );
-            }
+                writefln("producing stub");
+            
+            // Insert the label for this block in the out of line code
+            ol.addInstr(labelMap[block]);
 
-            // Increment the trace loop counter
-            as.incStatCnt!("traceLoopCnt")();
+            // Invalidate the compiled code for this function
+            ol.ptr(cargRegs[0], block);
+            ol.ptr(scratchRegs[0], &visitStub);
+            ol.instr(jit.encodings.CALL, scratchRegs[0]);
 
-            // If this is part of the root trace
-            if (trace.parent is null)
-            {
-                ctx.as.instr(JMP, ctx.joinLabel);
-            }
-            else
-            {
-                //writefln("direct jump to root join point");
-                ctx.as.ptr(RAX, trace.rootNode.block.joinPoint);
-                ctx.as.instr(JMP, RAX);
-            }
+            // Bailout to the interpreter and jump to the block
+            ol.jump(ctx, block);
 
-            break BLOCK_LOOP;
+            // Don't compile the block
+            continue BLOCK_LOOP;
         }
+
+        // If this is a loop header block, generate an entry point
+        auto blockName = block.getName();
+        if (blockName.startsWith("do_test") ||
+            blockName.startsWith("for_test") ||
+            blockName.startsWith("forin_test") ||
+            blockName.startsWith("while_test"))
+        {
+            //writefln("generating entry point");
+            getEntryPoint(block);
+        }
+
+        // Insert the label for this block
+        as.addInstr(labelMap[block]);
 
         // For each instruction of the block
         INSTR_LOOP:
@@ -198,6 +256,8 @@ Trace compTrace(Interp interp, Trace trace)
 
             as.comment(instr.toString());
 
+            //writefln("instr: %s", instr.toString());
+
             // If there is a codegen function for this opcode
             if (opcode in codeGenFns)
             {
@@ -206,9 +266,6 @@ Trace compTrace(Interp interp, Trace trace)
             }
             else
             {
-                // Use the default code generation function
-                defaultFn(as, ctx, instr);
-
                 if (opts.jit_dumpinfo)
                 {
                     writefln(
@@ -217,15 +274,9 @@ Trace compTrace(Interp interp, Trace trace)
                         instr.block.fun.getName()
                     );
                 }
-            }
 
-            // If a code generation function requested the trace
-            // compilation be stopped
-            if (ctx.endTrace)
-            {
-                // Shorten the node list for the trace
-                ctx.nodeList = ctx.nodeList[0..ctx.nodeIdx+1];
-                break INSTR_LOOP;
+                // Use the default code generation function
+                defaultFn(as, ctx, instr);
             }
 
             // If we know the instruction will definitely leave 
@@ -235,38 +286,19 @@ Trace compTrace(Interp interp, Trace trace)
                 break INSTR_LOOP;
             }
         }
-
-        // Get the branch instruction for this block
-        auto branch = block.lastInstr;
-        assert (branch !is null);
-
-        // If the branch is a call instruction
-        if (branch.opcode.isCall)
-        {
-            // Add the call instruction to the pseudo call stack
-            ctx.callStack ~= branch;
-        }
-
-        // If the branch is a return instruction
-        else if (branch.opcode == &ir.ir.RET && ctx.callStack.length > 0)
-        {
-            // Remove this call instruction from the pseudo call stack
-            ctx.callStack = ctx.callStack[0..$-1];
-        }
     }
 
-    // Block end, exit of tracelet
-    as.comment("Trace exit to interpreter");
-    as.addInstr(exitLabel);
+    //writefln("done compiling blocks");
+
+    // Bailout/exit to interpreter
+    as.comment("Bailout to interpreter");
+    as.addInstr(bailLabel);
 
     // Store the stack pointers back in the interpreter
-    as.setMember!("Interp", "wsp")(R15, RBX);
-    as.setMember!("Interp", "tsp")(R15, RBP);
+    as.setMember!("Interp", "wsp")(interpReg, wspReg);
+    as.setMember!("Interp", "tsp")(interpReg, tspReg);
 
-    // Increment the trace exit count
-    as.incStatCnt!("traceExitCnt")();
-
-    // Restore the GP registers
+    // Restore the callee-save GP registers
     as.instr(POP, R15);
     as.instr(POP, R14);
     as.instr(POP, R13);
@@ -284,41 +316,30 @@ Trace compTrace(Interp interp, Trace trace)
     as.comment("Out of line code");
     as.append(ol);
 
+    /*
     // If JIT optimizations are not disabled
     if (!opts.jit_noopts)
     {
-        // Perform peephole optimizations on the trace instructions
-        optTrace(trace, as);
+        // Perform peephole optimizations on the generated code
+        optAsm(as);
     }
+    */
 
     // Assemble the machine code
     auto codeBlock = as.assemble();
 
-    // Set the code block and code pointers
-    trace.codeBlock = codeBlock;
-    trace.entryFn = cast(EntryFn)codeBlock.getAddress();
-    trace.joinPoint = codeBlock.getExportAddr("trace_join");
+    // Store the CodeBlock pointer on the compiled function
+    fun.codeBlock = codeBlock;
 
-    // If this is not a sub-trace
-    if (trace.parent is null)
-    {
-        // Set the trace pointer and join point on the first block
-        auto firstBlock = ctx.nodeList[0].block;
-        firstBlock.trace = trace;
-        firstBlock.joinPoint = trace.joinPoint;
-    }
-    else
-    {
-        // Compile instructions for a direct jump to the sub-trace
-        auto jas = new Assembler();
-        jas.ptr(RAX, trace.joinPoint);
-        jas.instr(JMP, RAX);
-        auto jcb = jas.assemble();
+    // TODO: fast entry point for JIT-to-JIT calls
+    //fun.fastEntry = codeBlock.getExportAddr("entry_fast");
 
-        // Patch a direct jump to the sub-trace in the parent trace
-        assert (jcb.length <= JUMP_PATCH_SIZE);
-        for (size_t i = 0; i < jcb.length; ++i)
-            trace.patchPtr[i] = jcb.readByte(i);
+    // For each block with an exported label
+    foreach (block, label; entryMap)
+    {
+        // Set the entry point function pointer on the function entry block
+        auto entryAddr = codeBlock.getExportAddr(label.name);
+        block.entryFn = cast(EntryFn)entryAddr;
     }
 
     if (opts.jit_dumpasm)
@@ -328,60 +349,27 @@ Trace compTrace(Interp interp, Trace trace)
 
     if (opts.jit_dumpinfo)
     {
-        writefln("blocks compiled: %s", ctx.nodeIdx);
         writefln("machine code bytes: %s", codeBlock.length);
+        writefln("");
     }
-
-    //writefln("returning trace");
-
-    // Return a pointer to the trace object
-    return trace;
 }
 
-/// Size reserved for a direct jump patch (code rewriting)
-const JUMP_PATCH_SIZE = 16;
-
 /**
-Record and/or compile a sub-trace starting at a given block
-Patch the jump address in the parent trace once compiled
+Visit a stubbed (uncompiled) basic block
 */
-extern (C) void recordSubTrace(
-    IRBlock block,
-    TraceNode branchNode,
-    CodeGenCtx* subCtx, 
-    ubyte* patchPtr
-)
+extern (C) void visitStub(IRBlock stubBlock)
 {
-    //writefln("recordSubTrace");
-    //writefln("block: %s", block.getName());
+    auto fun = stubBlock.fun;
 
-    auto parent = subCtx.trace;
+    if (opts.jit_dumpinfo)
+        writefln("invalidating %s", fun.getName());
 
-    // If no trace object exists for this trace exit
-    if (patchPtr !in parent.subTraces)
-    {
-        // Create a trace object for the sub-trace
-        parent.subTraces[patchPtr] = new Trace(
-            block, 
-            parent, 
-            branchNode, 
-            subCtx, patchPtr
-        );
-    }
+    // Remove block entry points for this function
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+        block.entryFn = null;
 
-    auto trace = parent.subTraces[patchPtr];
-
-    // If enough information was accumulated about this trace
-    if (trace.startNode && trace.startNode.count >= TRACE_VISIT_COUNT_SUBS)
-    {
-        // Compile a trace for this block
-        compTrace(subCtx.interp, trace);
-    }
-    else
-    {
-        // Make the interpreter begin tracing from the branch node
-        subCtx.interp.traceNode = branchNode;
-    }
+    // Invalidate the compiled code for this function
+    fun.codeBlock = null;
 }
 
 /**
@@ -389,9 +377,6 @@ Code generation context
 */
 struct CodeGenCtx
 {
-    /// Trace object
-    Trace trace;
-
     /// Interpreter object
     Interp interp;
 
@@ -401,41 +386,18 @@ struct CodeGenCtx
     /// Assembler for out of line code
     Assembler ol;
 
-    /// Trace join label
-    Label joinLabel;
+    /// Bailout to interpreter label
+    Label bailLabel;
 
-    /// Trace exit label
-    Label exitLabel;
+    /// Function to get the label for a given block
+    Label delegate(IRBlock) getBlockLabel;
 
-    /// List of trace nodes chained in this trace
-    TraceNode[] nodeList;
-
-    /// Current block index in the block list
-    size_t nodeIdx = 0;
-
-    /// Array of call instructions on the stack
-    IRInstr[] callStack;
-
-    /// Flag to end the trace compilation
-    bool endTrace = false;
+    /// Function to generate an entry point for a given block
+    Label delegate(IRBlock) getEntryPoint;
 
     /// Postblit (copy) constructor
     this(this)
-    { 
-        callStack = callStack.dup; 
-    }
-
-    /// Test if a next node is available
-    bool hasNextNode()
     {
-        return nodeIdx + 1 < nodeList.length;
-    }
-
-    /// Get the next basic block
-    IRBlock nextBlock()
-    {
-        assert (nodeIdx + 1 < nodeList.length);
-        return nodeList[nodeIdx+1].block;
     }
 }
 
@@ -497,9 +459,9 @@ void setMember(string className, string fName)(Assembler as, X86Reg baseReg, X86
 void getWord(Assembler as, X86Reg dstReg, LocalIdx idx)
 {
     if (dstReg.type == X86Reg.GP)
-        as.instr(MOV, dstReg, new X86Mem(dstReg.size, RBX, 8 * idx));
+        as.instr(MOV, dstReg, new X86Mem(dstReg.size, wspReg, 8 * idx));
     else if (dstReg.type == X86Reg.XMM)
-        as.instr(MOVSD, dstReg, new X86Mem(64, RBX, 8 * idx));
+        as.instr(MOVSD, dstReg, new X86Mem(64, wspReg, 8 * idx));
     else
         assert (false, "unsupported register type");
 }
@@ -507,16 +469,16 @@ void getWord(Assembler as, X86Reg dstReg, LocalIdx idx)
 /// Read from the type stack
 void getType(Assembler as, X86Reg dstReg, LocalIdx idx)
 {
-    as.instr(MOV, dstReg, new X86Mem(8, RBP, idx));
+    as.instr(MOV, dstReg, new X86Mem(8, tspReg, idx));
 }
 
 /// Write to the word stack
 void setWord(Assembler as, LocalIdx idx, X86Reg srcReg)
 {
     if (srcReg.type == X86Reg.GP)
-        as.instr(MOV, new X86Mem(64, RBX, 8 * idx), srcReg);
+        as.instr(MOV, new X86Mem(64, wspReg, 8 * idx), srcReg);
     else if (srcReg.type == X86Reg.XMM)
-        as.instr(MOVSD, new X86Mem(64, RBX, 8 * idx), srcReg);
+        as.instr(MOVSD, new X86Mem(64, wspReg, 8 * idx), srcReg);
     else
         assert (false, "unsupported register type");
 }
@@ -524,50 +486,38 @@ void setWord(Assembler as, LocalIdx idx, X86Reg srcReg)
 // Write a constant to the word type
 void setWord(Assembler as, LocalIdx idx, int32_t imm)
 {
-    as.instr(MOV, new X86Mem(64, RBX, 8 * idx), imm);
+    as.instr(MOV, new X86Mem(64, wspReg, 8 * idx), imm);
 }
 
 /// Write to the type stack
 void setType(Assembler as, LocalIdx idx, X86Reg srcReg)
 {
-    as.instr(MOV, new X86Mem(8, RBP, idx), srcReg);
+    as.instr(MOV, new X86Mem(8, tspReg, idx), srcReg);
 }
 
 /// Write a constant to the type stack
 void setType(Assembler as, LocalIdx idx, Type type)
 {
-    as.instr(MOV, new X86Mem(8, RBP, idx), type);
+    as.instr(MOV, new X86Mem(8, tspReg, idx), type);
 }
 
 void jump(Assembler as, CodeGenCtx ctx, IRBlock target)
 {
-    auto interpJump = new Label("interp_jump");
-
     // Get a pointer to the branch target
     as.ptr(RAX, target);
 
     // Make the interpreter jump to the target
-    as.addInstr(interpJump);
-    as.setMember!("Interp", "target")(R15, RAX);
-    as.instr(JMP, ctx.exitLabel);
+    as.setMember!("Interp", "target")(interpReg, RAX);
+    as.instr(JMP, ctx.bailLabel);
 }
 
 void jump(Assembler as, CodeGenCtx ctx, X86Reg targetAddr)
 {
     assert (targetAddr != RCX);
-
-    auto interpJump = new Label("interp_jump");
-
-    // If there is a trace join point, jump to it directly
-    as.getMember!("IRBlock", "joinPoint")(RCX, targetAddr);
-    as.instr(CMP, RCX, 0);
-    as.instr(JE, interpJump);
-    as.instr(JMP, RCX);
     
     // Make the interpreter jump to the target
-    as.addInstr(interpJump);
-    as.setMember!("Interp", "target")(R15, targetAddr);
-    as.instr(JMP, ctx.exitLabel);
+    as.setMember!("Interp", "target")(interpReg, targetAddr);
+    as.instr(JMP, ctx.bailLabel);
 }
 
 void printUint(Assembler as, X86Reg reg)
@@ -652,7 +602,7 @@ void gen_set_str(ref CodeGenCtx ctx, IRInstr instr)
         "link not allocated for set_str"
     );
 
-    ctx.as.getMember!("Interp", "wLinkTable")(RCX, R15);
+    ctx.as.getMember!("Interp", "wLinkTable")(RCX, interpReg);
     ctx.as.instr(MOV, RCX, new X86Mem(64, RCX, 8 * linkIdx));
 
     ctx.as.setWord(instr.outSlot, RCX);
@@ -690,7 +640,7 @@ alias IsTypeOp!(Type.FLOAT) gen_is_float;
 
 void gen_i32_to_f64(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.as.instr(CVTSI2SD, XMM0, new X86Mem(32, RBX, instr.args[0].localIdx * 8));
+    ctx.as.instr(CVTSI2SD, XMM0, new X86Mem(32, wspReg, instr.args[0].localIdx * 8));
 
     ctx.as.setWord(instr.outSlot, XMM0);
     ctx.as.setType(instr.outSlot, Type.FLOAT);
@@ -699,7 +649,7 @@ void gen_i32_to_f64(ref CodeGenCtx ctx, IRInstr instr)
 void gen_f64_to_i32(ref CodeGenCtx ctx, IRInstr instr)
 {
     // Cast to int64 and truncate to int32 (to match JS semantics)
-    ctx.as.instr(CVTSD2SI, RAX, new X86Mem(64, RBX, instr.args[0].localIdx * 8));
+    ctx.as.instr(CVTSD2SI, RAX, new X86Mem(64, wspReg, instr.args[0].localIdx * 8));
     ctx.as.instr(MOV, ECX, EAX);
 
     ctx.as.setWord(instr.outSlot, RCX);
@@ -792,6 +742,7 @@ void gen_div_f64(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setType(instr.outSlot, Type.FLOAT);
 }
 
+/*
 void OvfOp(string op)(ref CodeGenCtx ctx, IRInstr instr)
 {
     auto OVF = new Label("OVF");
@@ -826,6 +777,7 @@ void OvfOp(string op)(ref CodeGenCtx ctx, IRInstr instr)
 alias OvfOp!("add") gen_add_i32_ovf;
 alias OvfOp!("sub") gen_sub_i32_ovf;
 alias OvfOp!("mul") gen_mul_i32_ovf;
+*/
 
 void CmpOp(string type, string op)(ref CodeGenCtx ctx, IRInstr instr)
 {
@@ -918,91 +870,41 @@ alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 
 void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
 {
-    // If the trace has no next block, jump to the target
-    if (!ctx.hasNextNode)
-        ctx.as.jump(ctx, instr.target);
+    // Jump to the target block
+    auto blockLabel = ctx.getBlockLabel(instr.target);
+    ctx.as.instr(JMP, blockLabel);
 }
 
 void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
 {
-    auto IF_EXIT = new Label("IF_EXIT");
-    auto IF_EXIT_CTR = new Label("IF_EXIT_CTR");
-    auto IF_EXIT_JUMP = new Label("IF_EXIT_JUMP");
-
     // Compare wsp[a0] to the true value
     ctx.as.getWord(AL, instr.args[0].localIdx);
     ctx.as.instr(CMP, AL, TRUE.int8Val);
-  
-    // If we already determined a likely branch target
-    if (ctx.hasNextNode)
+
+    X86OpPtr jumpOp;
+    IRBlock fTarget;
+    IRBlock sTarget;
+
+    if (instr.target.execCount > instr.excTarget.execCount)
     {
-        IRBlock inTarget = ctx.nextBlock();
-
-        IRBlock outTarget;
-        X86OpPtr jumpOp;
-
-        if (inTarget == instr.target)
-        {
-            outTarget = instr.excTarget;
-            jumpOp = JNE;
-        }
-        else
-        {
-            outTarget = instr.target;
-            jumpOp = JE;
-        }
-
-        // If we are not going to the likely target, branch out of line
-        ctx.as.instr(jumpOp, IF_EXIT);
-
-        // * Code for the most likely target will be inserted here *
-
-        // The less likely (trace exit) branch is out of line
-        ctx.ol.addInstr(IF_EXIT);
-
-        // If sub-traces are enabled
-        if (!opts.jit_nosubs)
-        {
-            // Reserve nops for an eventual jump to a sub trace
-            for (size_t i = 0; i < JUMP_PATCH_SIZE; ++i)
-                ctx.ol.instr(NOP);
-
-            // Increment the trace exit counter
-            ctx.ol.instr(INC, new X86IPRel(32, IF_EXIT_CTR));
-            ctx.ol.instr(CMP, new X86IPRel(32, IF_EXIT_CTR), TRACE_RECORD_COUNT_SUBS);
-            ctx.ol.instr(JL, IF_EXIT_JUMP);
-
-            // Allocate a copy of the context for the sub-trace and keep a reference to it
-            auto subCtx = new CodeGenCtx();
-            *subCtx = ctx;
-            ctx.trace.subCtxs ~= subCtx;
-
-            // Call the recordSubTrace function
-            ctx.ol.ptr(RDI, outTarget);
-            ctx.ol.ptr(RSI, ctx.nodeList[ctx.nodeIdx]);
-            ctx.ol.ptr(RDX, subCtx);
-            ctx.ol.instr(LEA, RCX, new X86IPRel(32, IF_EXIT));
-            ctx.ol.ptr(RAX, &recordSubTrace);
-            ctx.ol.instr(jit.encodings.CALL, RAX);
-        }
-
-        // Jump to the less likely target
-        ctx.ol.addInstr(IF_EXIT_JUMP);
-        ctx.ol.jump(ctx, outTarget);
-
-        // Trace exit counter
-        ctx.ol.addInstr(IF_EXIT_CTR);
-        ctx.ol.addInstr(new IntData(0, 32));
-
-        return;
+        fTarget = instr.target;
+        sTarget = instr.excTarget;
+        jumpOp = JNE;
+    }
+    else
+    {
+        fTarget = instr.excTarget;
+        sTarget = instr.target;
+        jumpOp = JE;
     }
 
-    // If false, jump
-    ctx.as.instr(JNE, IF_EXIT);
-    ctx.as.jump(ctx, instr.target);
+    // Get the fast target label last so the fast target is
+    // more likely to get generated first (LIFO stack)
+    auto sLabel = ctx.getBlockLabel(sTarget);
+    auto fLabel = ctx.getBlockLabel(fTarget);
 
-    ctx.as.addInstr(IF_EXIT);
-    ctx.as.jump(ctx, instr.excTarget);
+    ctx.as.instr(jumpOp, sLabel);
+    ctx.as.instr(JMP, fLabel);
 }
 
 void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
@@ -1031,7 +933,7 @@ void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.addInstr(GET_PROP);
 
     // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(R12, R15);
+    ctx.as.getMember!("Interp", "globalObj")(R12, interpReg);
 
     // Compare the object size to the cached size
     ctx.as.getField(EDX, R12, 4, obj_ofs_cap(interp.globalObj));
@@ -1100,7 +1002,7 @@ void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.addInstr(SET_PROP);
 
     // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(R12, R15);
+    ctx.as.getMember!("Interp", "globalObj")(R12, interpReg);
 
     // Compare the object size to the cached size
     ctx.as.getField(EDX, R12, 4, obj_ofs_cap(interp.globalObj));
@@ -1149,6 +1051,21 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     auto thisIdx = instr.args[1].localIdx;
     auto numArgs = instr.args.length - 2;
 
+
+    // Call the interpreter call instruction
+    defaultFn(ctx.as, ctx, instr);
+
+
+
+
+    // Generate an entry point for the call continuation
+    ctx.getEntryPoint(instr.target);
+
+
+
+
+
+    /*
     // If we do not know who the callee function is
     if (!ctx.hasNextNode)
     {
@@ -1229,13 +1146,14 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     //writefln("numPush: %s, numVars: %s", numPush, numVars);
 
     // Push space for the callee arguments and locals
-    ctx.as.instr(SUB, RBX, 8 * numPush);
-    ctx.as.instr(SUB, RBP, numPush);
+    ctx.as.instr(SUB, wspReg, 8 * numPush);
+    ctx.as.instr(SUB, tspReg, numPush);
 
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
     {
-        auto argSlot = instr.args[$-(1+i)].localIdx /*+ (argDiff + i)*/;
+        //auto argSlot = instr.args[$-(1+i)].localIdx + (argDiff + i);
+        auto argSlot = instr.args[$-(1+i)].localIdx;
 
         ctx.as.getWord(RDI, argSlot + numPush); 
         ctx.as.getType(SIL, argSlot + numPush);
@@ -1276,6 +1194,7 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
 
     // Exit the trace
     ctx.ol.instr(JMP, ctx.exitLabel);
+    */
 }
 
 void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
@@ -1287,6 +1206,15 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     auto numParams = instr.block.fun.params.length;
     auto numLocals = instr.block.fun.numLocals;
 
+    // Call the interpreter return instruction
+    defaultFn(ctx.as, ctx, instr);
+
+
+
+
+    // TODO: caller guessing?
+
+    /*
     IRInstr callInstr = (ctx.callStack.length > 0)? ctx.callStack[$-1]:null;
 
     // If the call instruction is unknown or is not a regular call
@@ -1320,8 +1248,8 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
     }
 
     // Pop all local stack slots and arguments
-    ctx.as.instr(ADD, RBX, numPop * 8);
-    ctx.as.instr(ADD, RBP, numPop);
+    ctx.as.instr(ADD, wspReg, numPop * 8);
+    ctx.as.instr(ADD, tspReg, numPop);
 
     // If the call instruction has an output slot
     if (callInstr.outSlot != NULL_LOCAL)
@@ -1336,11 +1264,12 @@ void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
         ctx.as.jump(ctx, callInstr.target);
 
     // *** The trace will continue in line at the call continuation block ***
+    */
 }
 
 void gen_get_global_obj(ref CodeGenCtx ctx, IRInstr instr)
 {
-    ctx.as.getMember!("Interp", "globalObj")(RAX, R15);
+    ctx.as.getMember!("Interp", "globalObj")(RAX, interpReg);
     
     ctx.as.setWord(instr.outSlot, RAX);
     ctx.as.setType(instr.outSlot, Type.REFPTR);
@@ -1354,33 +1283,39 @@ void defaultFn(Assembler as, ref CodeGenCtx ctx, IRInstr instr)
     // RSI: second argument (instr)
     auto opFn = instr.opcode.opFn;
 
-    // Move the interpreter pointer into RDI
-    as.instr(MOV, RDI, R15);
+    // Move the interpreter pointer into the first argument
+    as.instr(MOV, cargRegs[0], interpReg);
     
-    // Load a pointer to the instruction in RSI
-    as.ptr(RSI, instr);
+    // Load a pointer to the instruction in the second argument
+    as.ptr(cargRegs[1], instr);
 
     // Set the interpreter's IP
     // Only necessary if we may branch or allocate
     if (instr.opcode.isBranch || instr.opcode.mayGC)
     {
-        as.setMember!("Interp", "ip")(RDI, RSI);
+        as.setMember!("Interp", "ip")(interpReg, cargRegs[1]);
     }
 
     // Store the stack pointers back in the interpreter
-    as.setMember!("Interp", "wsp")(R15, RBX);
-    as.setMember!("Interp", "tsp")(R15, RBP);
+    as.setMember!("Interp", "wsp")(interpReg, wspReg);
+    as.setMember!("Interp", "tsp")(interpReg, tspReg);
 
     // Call the op function
-    as.ptr(RAX, opFn);
-    as.instr(jit.encodings.CALL, RAX);
+    as.ptr(scratchRegs[0], opFn);
+    as.instr(jit.encodings.CALL, scratchRegs[0]);
 
-    // Load the stack pointers into RBX and RBP
-    // if the instruction may have changed them
+    // If this is a branch instruction
     if (instr.opcode.isBranch == true)
     {
-        as.getMember!("Interp", "wsp")(RBX, R15);
-        as.getMember!("Interp", "tsp")(RBP, R15);
+        // Reload the stack pointers, the instruction may have changed them
+        as.getMember!("Interp", "wsp")(wspReg, interpReg);
+        as.getMember!("Interp", "tsp")(tspReg, interpReg);
+
+        // Bailout to the interpreter
+        as.instr(JMP, ctx.bailLabel);
+
+        if (opts.jit_dumpinfo)
+            writefln("interpreter bailout");
     }
 }
 
@@ -1398,20 +1333,25 @@ static this()
     codeGenFns[&SET_INT32]      = &gen_set_int32;
     codeGenFns[&SET_STR]        = &gen_set_str;
 
+    /*
     codeGenFns[&MOVE]           = &gen_move;
+    */
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
     codeGenFns[&IS_INT32]       = &gen_is_int32;
     codeGenFns[&IS_FLOAT]       = &gen_is_float;
 
+    /*
     codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
     codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
+    */
 
     codeGenFns[&ADD_I32]        = &gen_add_i32;
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
     codeGenFns[&AND_I32]        = &gen_and_i32;
 
+    /*
     codeGenFns[&ADD_F64]        = &gen_add_f64;
     codeGenFns[&SUB_F64]        = &gen_sub_f64;
     codeGenFns[&MUL_F64]        = &gen_mul_f64;
@@ -1434,6 +1374,7 @@ static this()
     codeGenFns[&LOAD_U64]       = &gen_load_u64;
     codeGenFns[&LOAD_F64]       = &gen_load_f64;
     codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
+    */
 
     codeGenFns[&JUMP]           = &gen_jump;
 
@@ -1442,9 +1383,11 @@ static this()
     codeGenFns[&ir.ir.CALL]     = &gen_call;
     codeGenFns[&ir.ir.RET]      = &gen_ret;
 
+    /*
     codeGenFns[&GET_GLOBAL]     = &gen_get_global;
     codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
+    */
 }
 

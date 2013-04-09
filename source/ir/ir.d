@@ -51,7 +51,7 @@ import interp.interp;
 import interp.ffi;
 import interp.layout;
 import interp.ops;
-import jit.trace;
+import jit.codeblock;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -113,6 +113,9 @@ class IRFunction : IdObject
 
     /// Maps of initialized stack slots for call/alloc instructions
     InitMap[IRInstr] initMaps;
+
+    /// Compiled code block
+    CodeBlock codeBlock = null;
 
     /// Constructor
     this(FunExpr ast)
@@ -234,6 +237,9 @@ class IRFunction : IdObject
     }
 }
 
+/// Compiled function entry point
+alias void function() EntryFn;
+
 /**
 IR basic block
 */
@@ -245,14 +251,8 @@ class IRBlock : IdObject
     /// Execution count, for profiling
     uint64 execCount = 0;
 
-    /// Potential trace start flag
-    bool traceStart = false;
-
-    /// Compiled code trace
-    Trace trace = null;
-
-    // Trace join point code pointer
-    ubyte* joinPoint = null;
+    /// Compiled code entry point function
+    EntryFn entryFn = null;
 
     /// Parent function
     IRFunction fun = null;
@@ -318,7 +318,7 @@ class IRBlock : IdObject
     /**
     Add an instruction after another instruction
     */
-    void addInstrAfter(IRInstr instr, IRInstr prev)
+    IRInstr addInstrAfter(IRInstr instr, IRInstr prev)
     {
         auto next = prev.next;
 
@@ -331,12 +331,16 @@ class IRBlock : IdObject
             next.prev = instr;
         else
             this.lastInstr = instr;
+
+        instr.block = this;
+
+        return instr;
     }
 
     /**
     Add an instruction before another instruction
     */
-    void addInstrBefore(IRInstr instr, IRInstr next)
+    IRInstr addInstrBefore(IRInstr instr, IRInstr next)
     {
         auto prev = next.prev;
 
@@ -349,6 +353,10 @@ class IRBlock : IdObject
             prev.next = instr;
         else
             this.firstInstr = instr;
+
+        instr.block = this;
+
+        return instr;
     }
 
     /**
