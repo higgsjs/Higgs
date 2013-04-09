@@ -52,11 +52,6 @@ TODO: peephole assembler optimizations
 ctx.getWord/setWord indicates mapping of values to regs?
 could auto add value kill info?
 
-TODO: live variable analysis, run lazily
-- Set of instructions before which a value is live?
-- Set of pairs of LocalIdx/instr
-- Can ask if a value is still live at a given point
-
 FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
 Versioning JIT ideas:
@@ -88,9 +83,7 @@ Basic block versioning:
 - If known constant value, can try generating new version
   - If too many versions already, try to match existing versions more coarsely
 
-TODO: implement callee-guessing, JIT-to-JIT call
-
-TODO: implement/fix get_global, set_global wrt reg alloc
+TODO: implement/fix get_global, set_global, call wrt reg alloc
 
 TODO: revise defaultFn, might need to save allocatable regs
 
@@ -111,9 +104,31 @@ TODO: register allocation
     no need for extra analysis, just call setTypeTag(...)
   - When you do setTypeTag, don't actually write the tag!
 
+Versioning... Context objects could get big?
+- Reg alloc (1 byte per)
+- Type tags (1 byte per), may be "on stack"
+- More specific types? (later)
+- Constant values?
+- Not that big for most functions
+- Consult Marc and Bruno
+
+TODO: interference analysis
+- Go over basic blocks, count number of instrs where values interfere
+- Color slots with registers so as to minimize conflicts
+  - Use greedy coloring algorithm
+  - If register must be used, pick one from neighbor with least contention
+- Also color with XMM registers for FP values and spills
+
+TODO: for ret, can we cache the caller?
+- Needs to check that arg count matches, have interp fallback
 
 TODO: integrate level 0 FFI functionality
 
+TODO: liveness analysis for stack slots
+- Set of instructions before which a value is live?
+- Returns map of instrs to lists of live slots before the instr
+
+TODO: JIT-to-JIT call
 
 
 
@@ -122,6 +137,10 @@ TODO: integrate level 0 FFI functionality
 
 
 
+[DONE] TODO: implement callee-guessing
+- Map of call instrs to lists of callee fptrs with frequencies
+  - Store on the caller function
+- Test fptr and not closure ptr
 
 [DONE] TODO: mid-loop entry
 - Create entry points for loop headers

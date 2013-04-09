@@ -184,7 +184,8 @@ void compFun(Interp interp, IRFunction fun)
 
     // Create a code generation context
     auto ctx = CodeGenCtx(
-        interp, 
+        interp,
+        fun,
         as, 
         ol, 
         bailLabel,
@@ -379,6 +380,9 @@ struct CodeGenCtx
 {
     /// Interpreter object
     Interp interp;
+
+    /// Function being compiled
+    IRFunction fun;
 
     /// Assembler into which to generate code
     Assembler as;
@@ -1051,32 +1055,26 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     auto thisIdx = instr.args[1].localIdx;
     auto numArgs = instr.args.length - 2;
 
-
-    // Call the interpreter call instruction
-    defaultFn(ctx.as, ctx, instr);
-
-
-
-
     // Generate an entry point for the call continuation
     ctx.getEntryPoint(instr.target);
 
+    // Call the interpreter call instruction
+    //defaultFn(ctx.as, ctx, instr);
 
-
-
-
-    /*
-    // If we do not know who the callee function is
-    if (!ctx.hasNextNode)
+    // Find the most called callee function
+    uint64_t maxCount = 0;
+    IRFunction maxCallee = null;
+    foreach (callee, count; ctx.fun.callCounts[instr])
     {
-        // Call the interpreter call instruction
-        defaultFn(ctx.as, ctx, instr);
-        ctx.endTrace = true;
-        return;
+        if (count > maxCount)
+        {
+            maxCallee = callee;
+            maxCount = count;
+        }
     }
 
     // Get the callee function
-    auto fun = ctx.nextBlock.fun;
+    auto fun = maxCallee;
     assert (fun.entryBlock !is null);
 
     // If the argument count doesn't match
@@ -1084,7 +1082,6 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     {
         // Call the interpreter call instruction
         defaultFn(ctx.as, ctx, instr);
-        ctx.endTrace = true;
         return;
     }
 
@@ -1183,7 +1180,8 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     ctx.as.setWord(cast(LocalIdx)(numVars + 0), RAX);
     ctx.as.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
 
-    // *** The trace will continue in line at the function entry block ***
+    // Jump to the callee entry point
+    ctx.as.jump(ctx, fun.entryBlock);
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(bailout);
@@ -1191,10 +1189,6 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     // Call the interpreter call instruction
     // Fallback to interpreter execution
     defaultFn(ctx.ol, ctx, instr);
-
-    // Exit the trace
-    ctx.ol.instr(JMP, ctx.exitLabel);
-    */
 }
 
 void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
@@ -1383,11 +1377,9 @@ static this()
     codeGenFns[&ir.ir.CALL]     = &gen_call;
     codeGenFns[&ir.ir.RET]      = &gen_ret;
 
-    /*
     codeGenFns[&GET_GLOBAL]     = &gen_get_global;
     codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
-    */
 }
 
