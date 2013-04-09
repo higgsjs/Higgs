@@ -67,7 +67,7 @@ FFIFn genFFIFn(Interp interp, IRInstr instr)
 
     // Type info (D string)
     auto typeinfo = to!string(instr.args[2].stringVal);
-    // Args after the first two go to the FFI call
+    // Args after the first 3 go to the FFI call
     auto args = instr.args[3..$];
     auto types = split(typeinfo, ",");
     // Return type of the FFI call
