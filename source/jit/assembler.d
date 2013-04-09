@@ -525,9 +525,9 @@ class Assembler
     }
 
     /// Create and insert a label
-    Label label(string name)
+    Label label(string name, bool exported = false)
     {
-        auto label = new Label(name);
+        auto label = new Label(name, exported);
         this.addInstr(label);
         return label;
     }

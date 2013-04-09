@@ -11,16 +11,6 @@ TODO: give this project more lovin'! Improve various aspects! Blog!
 Idea: use movd/movq to spill regular registers into xmm registers
 - Apparently recommended by intel optimization manual
 
-Idea: Raw graphical output interface, use SDL library, pixel plotting
-
-Idea: C function call IR instruction
-- Signature as D string, e.g.: "bool(int,int)"
-- Raw pointer for fn ptr
-- List of argument slots
-- Lazily generates machine code to convert/pass args
-- Can generate wrapper function using eval, if desired
-- See https://developer.mozilla.org/en-US/docs/Mozilla/js-ctypes
-
 ------------------------------------------------------------------------------
 
 TODO: think about special monitoring instructions
@@ -62,35 +52,173 @@ TODO: peephole assembler optimizations
 ctx.getWord/setWord indicates mapping of values to regs?
 could auto add value kill info?
 
-TODO: integrate level 0 FFI functionality
-
 TODO: live variable analysis, run lazily
 - Set of instructions before which a value is live?
 - Set of pairs of LocalIdx/instr
 - Can ask if a value is still live at a given point
 
-TODO: think further about register allocation
-- Should we do reg alloc while compiling traces?
-- Use live var info
-- Must leave interp frame in coherent state on trace exit!
-  - Store all reg values on stack
-- Map local slots to stack or registers
-- Multiple levels of calls or returns...
-
-
-TODO: think about method-based compilation
-
-
-
-
 FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
+TODO: integrate level 0 FFI functionality
+
+Versioning JIT ideas:
+- Generalize versioning to per-version pre-conditions
+  - Generic/catch-all version has no conditions required
+  - Type requirements of various granularities can be encoded as conditions
+- Count interpreter cycles per call to grant versioning/optimization/inlining budget
+  - Functions that take long to execute should get more!
+- Monitor call args to decide how to version
+  - Can specialize all the way down to constants
+- Can transform loops into tail calls
+  - Optimize the tail
+
+TODO: inlining
+- Inline at the IR level
+- Generate a new IRFunction instance with the inlined code included?
+  - Has more stack slots
+
+Basic block versioning:
+- Can version based on spill status, type, known constant value
+- Instr flow functions give us type info
+- Type checks give us extra type info
+- Checking if something is a given constant gives us info
+  - e.g.: check type of receiver before inlined call
+- Can avoid generating paths that haven't occurred in practice
+  - Jumping to non-existing path needs to bailout to interpreter, invalidate function
+- Blocks with 0 exec count are stubs
+- If IRFunction is transformed for inlining, non-inline paths will have 0 exec count to begin with
+- If known constant value, can try generating new version
+  - If too many versions already, try to match existing versions more coarsely
+
+TODO: revise defaultFn, might need to save allocatable regs
+
+TODO: register allocation
+- Do interference and liveness analysis for stack slots
+  - Simultaneously live slots interfere
+  - Assign different registers to interfering slots
+- Slot can either be on stack or in its assigned register
+- Keep a certain number of scratch regs (3-4?)
+  - Should include RAX, regs used by mul/div
+- Fix regs for wsp, tsp, interp
+- Loop variables should get priority (not get spilled)
+- Type tags are either known (implied) or on the stack
+  - If any type, type tag is on the stack
+  - If known for this block or at this point, it's implied
+  - When a function returns, its type tags don't matter
+  - Writing a type tag in an IR instruction can give us the info, 
+    no need for extra analysis, just call setTypeTag(...)
+  - When you do setTypeTag, don't actually write the tag!
+
+
+
+
+
+TODO: implement callee-guessing, JIT-to-JIT call
+
+TODO: mid-loop entry
+- Create entry points for loop headers
+- Bitwise and can't be optimized without this
+
+
+
+TODO: basic block stubbing
+- Code should be out of line
+- Invalidates code block and all entry points for function
+  - Implement through C function
+- Run unit tests
+
+
+
+TODO: implement some of the ops in rt_and
 
 
 
 
 
 
+
+[DONE] TODO: make basic method JIT work, use only scratch regs for now, no reg alloc
+- Implement jump, if_true
+- Implement initial call/ret by bailing out to interp
+  - Generate export for continuation target
+- Test on bitwise-and to start
+- Try unit tests and commit method JIT v0
+
+[DONE] TODO: JIT compilation & entry hooks in interpreter
+- If block reaches target exec count, compile its function
+- Will automatically work for loops too
+
+[DONE] TODO: secondary entry points for fn returns
+- Function to generate the code for an entry point
+- Create an exported label? Need to wait until code is assembled to set
+- Map of blocks to exported labels
+- This code should be out of line ***
+- getEntryPoint
+- Eliminate initial entry point, just get the entry point for the entry block!
+
+[DONE] ISSUE: you don't know if the caller was running JITted code?
+- If calling interpreter function, have to bail out to interpreter first, so that's OK
+- If doing JIT-to-JIT call, and then we bail out to the interpreter...
+  - KISS: when you do any call, spill the locals
+
+[DONE] TODO: begin compiling basic blocks?
+- getBlockLabel?
+- stack overflow warning
+
+[DONE] TODO: store CodeBlock pointer on compiled function
+
+[DONE] TODO: solve first problem: how do we enter, how do we bailout
+- To enter, call entryFn on some basic block
+  - Saves regs, does required prep
+- To bailout, pop regs, save wsp, tsp, do return to interpreter
+- For now, can have generic bailout label in code gen context
+
+[DONE] TODO: plan register mapping with fixed regs, scratch regs, allocatable regs
+
+[DONE] TODO: read SELF customization article
+
+[DONE] TODO: research procedure cloning, dynamic languages
+- Find MATLAB versioning article
+  - MaJIC, precompiles version
+
+[DONE] TODO: can we generalize versioning, dispatch based on arbitrary conditions?
+- types of class properties involved in parameters (specific type sets)?
+  - Is this effective? Avoids invalidation
+  - Might have lots of type sets involved?
+  - Can disable entry to function with boolean flags, basically
+- How granular? can dispatch all the way down to constant values
+  - Profiling argument types would make sense here
+  - If almost always constant, take advantage
+- Heuristic: functions with longer execution time (in interpreter instrs)
+  should get more versioning budget/granularity
+  - Re-add interpreter cycle counter?
+- Should generalize string down to pre-conditions **********
+  - Generic/catch-all version has no conditions required ******
+  - Type requirements of various granularities can be encoded as conditions
+- Start by implementing generic method-based compiler
+
+[DONE] TODO: think about method-based compilation
+- Interp fallback
+  - Dump stack slots to interp stack
+- Mid-loop interp jump
+  - Special entry point that jumps into loop (outer loop only?)
+  - Can have special prelude code
+- Fallback w/ inlining
+  - Need to keep track of frames pushed, locals for each frame
+  - When inlining, add special call/ret annotation instructions
+    - Keeps track of frames pushed, slots added
+- Join w/ inlining
+  - Join at loop header, not in the middle of inlined calls
+- Speculative inlining
+  - Can use interp fallback if incorrect guess, or have 2 paths
+  - Default path does generic call
+- Can prealloc space for inlined frames on call to compiled function
+  - When doing inlined call, avoid copying args until write occurs
+- Calling non-inlined function
+  - Leave extended stack frame as is
+  - Put calling instr on stack, as normal
+  - Callee checks who caller is when returning, can find actual RA
+  - May need to return to interpreter to do call
 
 [DONE] TODO: add support for regexp in parser
 var re = /pattern/flags

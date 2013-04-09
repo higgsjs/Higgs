@@ -341,9 +341,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     auto entry = fun.newBlock("entry");
     fun.entryBlock = entry;
 
-    // Mark the entry block as a potential trace start
-    entry.traceStart = true;
-
     // Create a context for the function body
     auto bodyCtx = new IRGenCtx(
         null,
@@ -705,9 +702,6 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto bodyBlock = ctx.fun.newBlock("while_body");
         auto exitBlock = ctx.fun.newBlock("while_exit");
 
-        // Mark the trst block as a potential trace start
-        testBlock.traceStart = true;
-
         // Register the loop labels, if any
         ctx.regLabels(stmt.labels, exitBlock, testBlock);
 
@@ -749,9 +743,6 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto bodyBlock = ctx.fun.newBlock("do_body");
         auto testBlock = ctx.fun.newBlock("do_test");
         auto exitBlock = ctx.fun.newBlock("do_exit");
-
-        // Mark the trst block as a potential trace start
-        testBlock.traceStart = true;
 
         // Register the loop labels, if any
         ctx.regLabels(stmt.labels, exitBlock, testBlock);
@@ -795,9 +786,6 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto bodyBlock = ctx.fun.newBlock("for_body");
         auto incrBlock = ctx.fun.newBlock("for_incr");
         auto exitBlock = ctx.fun.newBlock("for_exit");
-
-        // Mark the trst block as a potential trace start
-        testBlock.traceStart = true;
 
         // Register the loop labels, if any
         ctx.regLabels(stmt.labels, exitBlock, incrBlock);
@@ -852,9 +840,6 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto testBlock = ctx.fun.newBlock("forin_test");
         auto bodyBlock = ctx.fun.newBlock("forin_body");
         auto exitBlock = ctx.fun.newBlock("forin_exit");
-
-        // Mark the trst block as a potential trace start
-        testBlock.traceStart = true;
 
         // Register the loop labels, if any
         ctx.regLabels(stmt.labels, exitBlock, testBlock);

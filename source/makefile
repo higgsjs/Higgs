@@ -31,7 +31,6 @@ jit/x86.d           \
 jit/encodings.d     \
 jit/codeblock.d     \
 jit/assembler.d     \
-jit/trace.d         \
 jit/jit.d           \
 jit/peephole.d      \
 jit/tests.d         \
