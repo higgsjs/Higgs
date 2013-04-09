@@ -1,5 +1,5 @@
 DC = dmd
-COPTS = -m64 -O
+COPTS = -m64 -O -L-ldl
 
 BIN_NAME = higgs
 BIN_NAME_TEST = test-higgs
@@ -27,6 +27,7 @@ interp/layout.d     \
 interp/string.d     \
 interp/object.d     \
 interp/gc.d         \
+interp/ffi.d        \
 jit/x86.d           \
 jit/encodings.d     \
 jit/codeblock.d     \
@@ -34,6 +35,7 @@ jit/assembler.d     \
 jit/trace.d         \
 jit/jit.d           \
 jit/peephole.d      \
+jit/trace.d         \
 jit/tests.d         \
 parser/tests.d      \
 interp/tests.d      \
@@ -58,7 +60,7 @@ runtime:
 	@if [ ! -d $(BIN_DIR) ] ; then echo "mkdir $(BIN_DIR)" ; mkdir $(BIN_DIR) ; fi
 	@if [ ! -d $(BIN_DIR)/interp ] ; then echo "mkdir $(BIN_DIR)/interp" ; mkdir $(BIN_DIR)/interp ; fi
 	@if [ ! -d $(BIN_DIR)/stdlib ] ; then echo "mkdir $(BIN_DIR)/stdlib" ; mkdir $(BIN_DIR)/stdlib ; fi
-	@if [ "`cd $(BIN_DIR) && echo $(PWD) && cd $(SRC_DIR)`" != "$(PWD)" ] ; then\
+	@if [ "`cd $(BIN_DIR) && pwd && cd $(SRC_DIR)`" != "$(PWD)" ] ; then\
 		echo "cp ./interp/*.js $(BIN_DIR)/interp" ;\
 		cp ./interp/*.js $(BIN_DIR)/interp ;\
 		echo "cp ./stdlib/*.js $(BIN_DIR)/stdlib" ;\
@@ -66,7 +68,7 @@ runtime:
 	 fi
 
 clean:
-	@if [ "`cd $(BIN_DIR) && echo $(PWD) && cd $(SRC_DIR)`" != "$(PWD)" ] ; then\
+	@if [ "`cd $(BIN_DIR) && pwd && cd $(SRC_DIR)`" != "$(PWD)" ] ; then\
 		echo "cd $(BIN_DIR)/ && rm -rf interp stdlib" ;\
 		cd $(BIN_DIR)/ && rm -rf interp stdlib ;\
 	 fi
