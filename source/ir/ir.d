@@ -115,6 +115,14 @@ class IRFunction : IdObject
     /// Maps of initialized stack slots for call/alloc instructions
     InitMap[IRInstr] initMaps;
 
+
+    /// Callee profiling information
+    alias uint64_t[IRFunction] CallCounts;
+
+    CallCounts[IRInstr] callCounts;
+
+    //uint64_t[IRFunction][IRInstr] callCounts;  
+
     /// Compiled code block
     CodeBlock codeBlock = null;
 

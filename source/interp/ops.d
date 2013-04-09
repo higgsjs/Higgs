@@ -43,6 +43,7 @@ import std.string;
 import std.conv;
 import std.math;
 import std.datetime;
+import std.stdint;
 import core.sys.posix.dlfcn;
 import parser.parser;
 import ir.ir;
@@ -828,6 +829,20 @@ void callFun(
 
     // Jump to the function entry
     interp.jump(fun.entryBlock);
+
+    // Count the number of times each callee is called
+    if (callInstr !is null)
+    {
+        auto caller = callInstr.block.fun;
+        
+        if (callInstr !in caller.callCounts)
+            caller.callCounts[callInstr] = uint64_t[IRFunction].init;
+
+        if (fun !in caller.callCounts[callInstr])
+            caller.callCounts[callInstr][fun] = 0;
+
+        caller.callCounts[callInstr][fun]++;
+    }
 }
 
 extern (C) void op_call(Interp interp, IRInstr instr)
