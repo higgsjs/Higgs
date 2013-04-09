@@ -1659,7 +1659,7 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
     );
 
     FFIFn stubfn;
-    if(instr.args[0].int32Val == 0)
+    if(instr.args[0].codeBlock is null)
     {
         stubfn = genFFIFn(interp, instr);
         instr.args[0].codeBlock = stubfn;

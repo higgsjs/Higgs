@@ -575,6 +575,9 @@ class IRInstr : IdObject
                 case OpArg.FUN:
                 output ~= "<fun:" ~ arg.fun.getName() ~ ">";
                 break;
+                case OpArg.CODEBLOCK:
+                output ~= "<codeblock:" ~ ((arg.codeBlock is null)? "NULL":"0x"~to!string(arg.codeBlock)) ~ ">";
+                break;
                 default:
                 assert (false, "unhandled arg type");
             }

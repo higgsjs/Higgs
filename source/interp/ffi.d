@@ -47,31 +47,11 @@ import jit.x86;
 import jit.assembler;
 import jit.codeblock;
 import jit.encodings;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-static import ir.ir;
-
-alias extern (C) void function(void*) FFICall;
-
-FFICall genFFICall(ir.ir.Interp interp, ir.ir.IRInstr instr)
-=======
-=======
->>>>>>> ffi
-=======
->>>>>>> ffi
 import ir.ir;
 
 alias extern (C) void function(void*) FFIFn;
 
 FFIFn genFFIFn(Interp interp, IRInstr instr)
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> ffi
-=======
->>>>>>> ffi
-=======
->>>>>>> ffi
 {
     // Mappings for arguments/return values
     X86Reg[] iArgRegs = [RDI, RSI, RDX, RCX, R8, R9];

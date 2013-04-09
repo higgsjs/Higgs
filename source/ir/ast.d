@@ -2301,14 +2301,17 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
 
             // FFIFn
             case OpArg.CODEBLOCK:
-            if (argExpr.toString() != "null")
+            if (cast(NullExpr)argExpr)
+            {
+                instr.args[i].codeBlock = null;
+            }
+            else
             {
                 throw new ParseError(
-                    "expected null argument", 
-                    argExpr.pos
+                        "expected null argument", 
+                        argExpr.pos
                 );
             }
-            instr.args[i].int32Val = 0;
             break;
 
             default:
