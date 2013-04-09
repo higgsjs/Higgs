@@ -51,10 +51,7 @@ import interp.interp;
 import interp.ffi;
 import interp.layout;
 import interp.ops;
-<<<<<<< HEAD
-=======
 import jit.trace;
->>>>>>> ffidev
 import jit.codeblock;
 
 /// Local variable index type

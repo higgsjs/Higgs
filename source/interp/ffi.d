@@ -51,11 +51,7 @@ import ir.ir;
 
 alias extern (C) void function(void*) FFIFn;
 
-<<<<<<< HEAD
-FFIFn genFFIFn(Interp interp, IRInstr instr)
-=======
 CodeBlock genFFIFn(Interp interp, IRInstr instr)
->>>>>>> ffidev
 {
     // Mappings for arguments/return values
     X86Reg[] iArgRegs = [RDI, RSI, RDX, RCX, R8, R9];
