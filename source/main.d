@@ -67,7 +67,6 @@ void main(string[] args)
                 interp.load(fileName);
 
             if (opts.execString)
-                writeln(opts.execString);
                 interp.evalString(opts.execString);
         }
 
