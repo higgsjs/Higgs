@@ -1143,7 +1143,7 @@ unittest
 
     // Floating-point comparison
     test(
-        delegate void (Assembler a) 
+        delegate void (Assembler a)
         {
             a.instr(MOV, RAX, 10);
             a.instr(CVTSI2SD, XMM2, RAX);   // XMM2 = 10

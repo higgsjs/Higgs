@@ -225,7 +225,7 @@ class Assembler
 
             if (printBytes)
             {
-                line = rightPadStr(line, " ", 40);            
+                line = rightPadStr(line, " ", 40);
 
                 codeBlock.clear();
                 instr.encode(codeBlock);

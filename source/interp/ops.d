@@ -44,6 +44,7 @@ import std.conv;
 import std.math;
 import std.datetime;
 import std.stdint;
+import core.sys.posix.dlfcn;
 import parser.parser;
 import ir.ir;
 import ir.ast;
@@ -52,6 +53,8 @@ import interp.layout;
 import interp.string;
 import interp.object;
 import interp.gc;
+import interp.ffi;
+import jit.codeblock;
 
 void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 {
@@ -1596,3 +1599,94 @@ extern (C) void op_get_time_ms(Interp interp, IRInstr instr)
     );
 }
 
+extern (C) void op_load_lib(Interp interp, IRInstr instr)
+{
+
+    // Library to load (D string)
+    auto libname = to!string(instr.args[0].stringVal);
+
+    // String must be null terminated
+    // todo: use lib for this?
+    libname ~= '\0';
+
+    auto lib = dlopen(libname.ptr, RTLD_LAZY | RTLD_LOCAL);
+
+    if (lib is null)
+        return throwError(interp, instr, "RuntimeError", to!string(dlerror()));
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(cast(rawptr)lib),
+        Type.RAWPTR
+    );
+}
+
+extern (C) void op_close_lib(Interp interp, IRInstr instr)
+{
+    auto lib = interp.getSlot(instr.args[0].localIdx);
+
+    assert (
+        lib.type == Type.RAWPTR,
+        "invalid rawptr value"
+    );
+
+    if (dlclose(lib.word.ptrVal) != 0)
+         return throwError(interp, instr, "RuntimeError", "could not close lib.");
+}
+
+extern (C) void op_get_sym(Interp interp, IRInstr instr)
+{
+    // handle for shared lib
+    auto lib = interp.getSlot(instr.args[0].localIdx);
+
+    assert (
+        lib.type == Type.RAWPTR,
+        "invalid rawptr value"
+    );
+
+    // Symbol name (D string)
+    auto symname = to!string(instr.args[1].stringVal);
+
+    // String must be null terminated
+    // todo: use lib for this?
+    symname ~= '\0';
+
+    auto sym = dlsym(lib.word.ptrVal, symname.ptr);
+
+    if (sym is null)
+        return throwError(interp, instr, "RuntimeError", to!string(dlerror()));
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(cast(rawptr)sym),
+        Type.RAWPTR
+    );
+}
+
+extern (C) void op_call_ffi(Interp interp, IRInstr instr)
+{
+    auto fun = interp.getSlot(instr.args[1].localIdx);
+
+    assert (
+        fun.type == Type.RAWPTR,
+        "invalid rawptr value"
+    );
+
+    CodeBlock cb;
+    if (instr.args[0].codeBlock is null)
+    {
+        cb = genFFIFn(interp, instr);
+        instr.args[0].codeBlock = cb;
+    }
+    else
+    {
+        cb = instr.args[0].codeBlock;
+    }
+
+    FFIFn callerfun = cast(FFIFn)cb.getAddress();
+
+    // Call the wrapper
+    callerfun(cast(void*)fun.word.ptrVal);
+
+    interp.jump(instr.target);
+}
