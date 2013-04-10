@@ -1668,7 +1668,7 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
 {
     // Pointer to function to call
     auto fun = interp.getSlot(instr.args[1].localIdx);
-     // Type info (D string)
+    // Type info (D string)
     auto typeinfo = to!string(instr.args[2].stringVal);
     auto types = split(typeinfo, ",");
     // Slots for arguments

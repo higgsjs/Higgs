@@ -2284,7 +2284,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
             instr.args[i].linkIdx = NULL_LINK;
             break;
 
-            // FFIFn
+            // CODEBLOCK
             case OpArg.CODEBLOCK:
             if (cast(NullExpr)argExpr)
             {
