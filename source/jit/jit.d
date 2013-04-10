@@ -61,6 +61,7 @@ X86Reg wspReg;
 X86Reg tspReg;
 X86Reg cspReg;
 X86Reg[] cargRegs;
+X86Reg[] cfpArgRegs;
 X86Reg[] scratchRegs;
 X86Reg[] allocRegs;
 
@@ -83,6 +84,9 @@ static this()
 
     /// C argument registers
     cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
+
+    /// C fp argument registers
+    cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
 
     /// RAX: scratch register
     /// RDX: scratch register

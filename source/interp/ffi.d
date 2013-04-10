@@ -49,8 +49,6 @@ import jit.codeblock;
 import jit.encodings;
 import ir.ir;
 
-alias extern (C) void function(void*) FFIFn;
-
 extern (C) void testf()
 {
     write("test\n");
@@ -58,28 +56,31 @@ extern (C) void testf()
 }
 
 Type[string] typeMap;
-typeMap["i8"] = Type.INT32;
-typeMap["i16"] = Type.INT32;
-typeMap["i32"] = Type.INT32;
-typeMap["f64"] = Type.FLOAT;
-typeMap["*"] = Type.RAWPTR;
+X86Reg funReg;
+X86Reg scratchReg;
 
-CodeBlock genFFIFn(Interp interp, IRInstr instr)
+alias extern (C) void function(void*) FFIFn;
+
+static this()
 {
     // Mappings for arguments/return values
-    X86Reg[] iArgRegs = [RDI, RSI, RDX, RCX, R8, R9];
-    X86Reg[] fArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
-    X86Reg funReg = R12;
-    X86Reg scratchReg = R11;
+    typeMap["i8"]  = Type.INT32;
+    typeMap["i16"] = Type.INT32;
+    typeMap["i32"] = Type.INT32;
+    typeMap["f64"] = Type.FLOAT;
+    typeMap["*"]   = Type.RAWPTR;
+
+    // Registers used by the wrapper
+    funReg = R12;
+    scratchReg = R11;
+}
+
+CodeBlock genFFIFn(Interp interp, string tInfo, LocalIdx outSlot, LocalIdx[] argSlots)
+{
     auto iArgIdx = 0;
     auto fArgIdx = 0;
 
-
-    // Type info (D string)
-    auto typeinfo = to!string(instr.args[2].stringVal);
-    // Args after the first 3 go to the FFI call
-    auto args = instr.args[3..$];
-    auto types = split(typeinfo, ",");
+    auto types = split(tInfo, ",");
     // Return type of the FFI call
     auto retType = types[0];
     // Argument types the call expects
@@ -90,7 +91,7 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     auto as = new Assembler();
 
     assert (
-        args.length == argTypes.length,
+        argSlots.length == argTypes.length,
         "invalid number of args in ffi call"
     );
 
@@ -113,16 +114,16 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     as.getMember!("Interp", "tsp")(tspReg, interpReg);
 
     // Set up arguments
-    foreach(int i, a; args)
+    foreach(int i, idx; argSlots)
     {
         // Either put the arg in the appropriate register
         // or set it to be pushed to the stack later
-        if (argTypes[i] == "f64" && fArgIdx < fArgRegs.length)
-            as.getWord(fArgRegs[fArgIdx++], a.localIdx);
-        else if (argTypes[i] != "f64" && iArgIdx < iArgRegs.length)
-            as.getWord(iArgRegs[iArgIdx++], a.localIdx);
+        if (argTypes[i] == "f64" && fArgIdx < cfpArgRegs.length)
+            as.getWord(cfpArgRegs[fArgIdx++], idx);
+        else if (argTypes[i] != "f64" && iArgIdx < cargRegs.length)
+            as.getWord(cargRegs[iArgIdx++], idx);
         else
-            stackArgs ~= a.localIdx;
+            stackArgs ~= idx;
     }
 
     // Make sure there is an even number of pushes
@@ -141,18 +142,18 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     // Send return value/type to interp
     if (retType == "f64")
     {
-        as.setWord(instr.outSlot, XMM0);
-        as.setType(instr.outSlot, typeMap[retType]);
+        as.setWord(outSlot, XMM0);
+        as.setType(outSlot, typeMap[retType]);
     }
     else if (retType == "void")
     {
-        as.setWord(instr.outSlot, UNDEF.int8Val);
-        as.setType(instr.outSlot, Type.CONST);
+        as.setWord(outSlot, UNDEF.int8Val);
+        as.setType(outSlot, Type.CONST);
     }
     else
     {
-        as.setWord(instr.outSlot, RAX);
-        as.setType(instr.outSlot, typeMap[retType]);
+        as.setWord(outSlot, RAX);
+        as.setType(outSlot, typeMap[retType]);
     }
 
     // Remove stackArgs

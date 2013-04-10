@@ -1666,7 +1666,14 @@ extern (C) void op_get_sym(Interp interp, IRInstr instr)
 
 extern (C) void op_call_ffi(Interp interp, IRInstr instr)
 {
+    // Pointer to function to call
     auto fun = interp.getSlot(instr.args[1].localIdx);
+     // Type info (D string)
+    auto typeinfo = to!string(instr.args[2].stringVal);
+    // Slots for arguments
+    LocalIdx[] argSlots;
+    foreach(a;instr.args[3..$])
+        argSlots ~= a.localIdx;
 
     assert (
         fun.type == Type.RAWPTR,
@@ -1676,7 +1683,7 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
     CodeBlock cb;
     if (instr.args[0].codeBlock is null)
     {
-        cb = genFFIFn(interp, instr);
+        cb = genFFIFn(interp, typeinfo, instr.outSlot, argSlots);
         instr.args[0].codeBlock = cb;
     }
     else
@@ -1685,8 +1692,6 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
     }
 
     FFIFn callerfun = cast(FFIFn)(cb.getAddress());
-
-    // Call the wrapper
     callerfun(cast(void*)fun.word.ptrVal);
 
     interp.jump(instr.target);
