@@ -57,6 +57,13 @@ extern (C) void testf()
     return;
 }
 
+Type[string] typeMap;
+typeMap["i8"] = Type.INT32;
+typeMap["i16"] = Type.INT32;
+typeMap["i32"] = Type.INT32;
+typeMap["f64"] = Type.FLOAT;
+typeMap["*"] = Type.RAWPTR;
+
 CodeBlock genFFIFn(Interp interp, IRInstr instr)
 {
     // Mappings for arguments/return values
@@ -66,12 +73,7 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     X86Reg scratchReg = R11;
     auto iArgIdx = 0;
     auto fArgIdx = 0;
-    Type[string] typeMap;
-    typeMap["i8"] = Type.INT32;
-    typeMap["i16"] = Type.INT32;
-    typeMap["i32"] = Type.INT32;
-    typeMap["f64"] = Type.FLOAT;
-    typeMap["*"] = Type.RAWPTR;
+
 
     // Type info (D string)
     auto typeinfo = to!string(instr.args[2].stringVal);
