@@ -46,7 +46,9 @@ import jit.x86;
 import jit.jit;
 import util.bitset;
 
-X86Reg[LocalIdx] mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
+alias X86Reg[LocalIdx] RegMapping;
+
+RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
 {
     /*
     Slots with short live ranges should be colored first?
@@ -89,7 +91,7 @@ X86Reg[LocalIdx] mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
     }
 
     // Map of stack slots to registers
-    X86Reg[LocalIdx] mapping;
+    RegMapping mapping;
 
     size_t numConflicts = 0;
 

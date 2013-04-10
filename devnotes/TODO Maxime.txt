@@ -76,30 +76,34 @@ TODO: register allocation
     - Instrs only write to *out slot*
     - Requesting out slot as reg or mem makes this happen
 
-Versioning... Context objects could get big?
-- Reg alloc (1 byte per)
-- Type tags (1 byte per), may be "on stack"
-- More specific types? (later)
-- Constant values?
-- Not that big for most functions
-
-
-TODO: think about block version context objects
-- Turn CodeGenCtx into this?
-  - Context evolves as we go through blocks
-- Need list of block versions, labels with associated contexts
-- Should this be a struct?
+TODO: think about reg alloc API
+- getArgOpnd, getOutOpnd?
+- No forcing to reg, use scratch if needed
+- Out opnd should always be reg if possible
 
 
 
-TODO: integrate level 0 FFI functionality
+
+
+TODO: make versioning system work without actual versions or reg alloc
+- Always the same state value, one version
 
 
 
 
 
 
+[DONE] TODO: think about block version **state** objects
+- State evolves as we go through blocks
+- Should be a struct so we can assign it simply
+- Need list of block versions, labels with associated states
+- For now, ignore type tags, keep them on the stack ***
+  - Focus on reg alloc only
+- Need a map of blocks to state/label pairs
+  - getBlockLabel(block, state)
+  - Try to find a match, if none, produce one
 
+[DONE] TODO: integrate level 0 FFI functionality
 
 [DONE] TODO: interference analysis, coloring
 - Go over basic blocks, count number of instrs where values interfere
