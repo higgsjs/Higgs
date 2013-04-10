@@ -1668,28 +1668,31 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
 {
     // Pointer to function to call
     auto fun = interp.getSlot(instr.args[1].localIdx);
-    // Type info (D string)
-    auto typeinfo = to!string(instr.args[2].stringVal);
-    auto types = split(typeinfo, ",");
-    // Slots for arguments
-    LocalIdx[] argSlots;
-    foreach(a;instr.args[3..$])
-        argSlots ~= a.localIdx;
 
     assert (
         fun.type == Type.RAWPTR,
         "invalid rawptr value"
     );
 
-    assert (
-        argSlots.length == types.length - 1,
-        "invalid number of args in ffi call"
-    );
-
-
     CodeBlock cb;
+
+    // Check if there is a cached CodeBlock, generate one if not
     if (instr.args[0].codeBlock is null)
     {
+        // Type info (D string)
+        auto typeinfo = to!string(instr.args[2].stringVal);
+        auto types = split(typeinfo, ",");
+        // Slots for arguments
+        LocalIdx[] argSlots;
+
+        foreach(a;instr.args[3..$])
+            argSlots ~= a.localIdx;
+
+        assert (
+            argSlots.length == types.length - 1,
+            "invalid number of args in ffi call"
+        );
+
         cb = genFFIFn(interp, types, instr.outSlot, argSlots);
         instr.args[0].codeBlock = cb;
     }
