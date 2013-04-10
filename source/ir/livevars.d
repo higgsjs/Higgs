@@ -41,6 +41,7 @@ import std.stdio;
 import std.array;
 import ir.ir;
 import util.bitset;
+import util.string;
 
 BitSet[IRInstr] compLiveVars(IRFunction fun)
 {
@@ -52,13 +53,10 @@ BitSet[IRInstr] compLiveVars(IRFunction fun)
     // Sets of variables live after each instruction
     BitSet[IRInstr] liveSets;
 
-    // Create an empty map
-    auto emptyMap = new BitSet(fun.numLocals);
-
     // Initialize the maps for each instruction
     for (auto block = fun.firstBlock; block !is null; block = block.next)
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
-            liveSets[instr] = emptyMap;
+            liveSets[instr] = new BitSet(fun.numLocals);
 
     // Compute the list of predecessors for each block
     IRBlock[][IRBlock] preds;
@@ -79,6 +77,10 @@ BitSet[IRInstr] compLiveVars(IRFunction fun)
     for (auto block = fun.firstBlock; block !is null; block = block.next)
         workList ~= block;
 
+    // Preallocate temporary live set objects
+    auto liveSet = new BitSet(fun.numLocals);
+    auto origSet = new BitSet(fun.numLocals);
+
     // Until the work list is empty
     while (workList.length > 0)
     {
@@ -88,8 +90,9 @@ BitSet[IRInstr] compLiveVars(IRFunction fun)
         auto branch = block.lastInstr;
         assert (branch.opcode.isBranch);
 
-        // Get the live set at the exit of this block
-        auto liveSet = liveSets[branch];
+        // Get a copy of the live set at the exit of this block
+        //auto liveSet = new BitSet(liveSets[branch]);
+        liveSet.assign(liveSets[branch]);
 
         // For each instruction, in reverse order
         for (auto instr = block.lastInstr; instr !is null; instr = instr.prev)
@@ -109,21 +112,50 @@ BitSet[IRInstr] compLiveVars(IRFunction fun)
         }
     
         // For each predecessor of this block
-        foreach (pred; preds[block])
+        foreach (pred; preds.get(block, []))
         {
             auto predBranch = pred.lastInstr;
             assert (predBranch !is null);
+            auto predSet = liveSets[predBranch];
 
-            auto origSet = liveSets[predBranch];
+            // Save a copy of the predecessor's original live set
+            //auto origSet = new BitSet(predSet);
+            origSet.assign(predSet);
 
             // Merge the current live set into the predecessor's
-            liveSets[predBranch].setUnion(liveSet);
+            predSet.setUnion(liveSet);
 
             // If the live set changed, queue the predecessor
-            if (liveSets[predBranch] != origSet)
+            if (predSet != origSet)
                 workList ~= pred;
         }
     }
+
+    /*    
+    writefln("");
+    writefln("%s", fun.getName());
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        writefln("%s", block.getName());
+
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+            writeln(indent(instr.toString(), "  "));
+
+            liveSet = liveSets[instr];
+
+            write("    ");
+            for (size_t i = 0; i < liveSet.length; ++i)
+                if (liveSet.has(i))
+                    writef("$%s ", i);
+            writeln();
+
+        }
+
+        writefln("");
+    }
+    writefln("");
+    */
 
     return liveSets;
 }

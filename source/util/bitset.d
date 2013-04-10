@@ -60,6 +60,22 @@ class BitSet
             intVals[i] = 0;
     }
 
+    /// Copy constructor
+    this(BitSet that)
+    {
+        this.intVals.length = that.intVals.length;
+
+        this.numBits = that.numBits;
+
+        for (size_t i = 0; i < this.intVals.length; ++i)
+            this.intVals[i] = that.intVals[i];
+    }
+
+    size_t length()
+    {
+        return numBits;
+    }
+
     void add(size_t idx)
     {
         auto intIdx = idx >> 5;
@@ -86,8 +102,11 @@ class BitSet
     }
 
     /// Compare two sets for equality
-    bool opEqual(BitSet that)
+    override bool opEquals(Object o)
     {
+        auto that = cast(BitSet)o;
+
+        assert (o !is null);
         assert (this.numBits == that.numBits);
 
         for (size_t i = 0; i < this.intVals.length; ++i)
@@ -133,6 +152,11 @@ class BitSetCW
 
         for (size_t i = 0; i < intVals.length; ++i)
             intVals[i] = 0;
+    }
+
+    size_t length()
+    {
+        return numBits;
     }
 
     BitSetCW add(size_t idx)
