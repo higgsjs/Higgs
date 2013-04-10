@@ -49,12 +49,6 @@ import jit.codeblock;
 import jit.encodings;
 import ir.ir;
 
-extern (C) void testf()
-{
-    write("test\n");
-    return;
-}
-
 Type[string] typeMap;
 X86Reg funReg;
 X86Reg scratchReg;
@@ -75,12 +69,11 @@ static this()
     scratchReg = R11;
 }
 
-CodeBlock genFFIFn(Interp interp, string tInfo, LocalIdx outSlot, LocalIdx[] argSlots)
+CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] argSlots)
 {
+    // Track register usage for args
     auto iArgIdx = 0;
     auto fArgIdx = 0;
-
-    auto types = split(tInfo, ",");
     // Return type of the FFI call
     auto retType = types[0];
     // Argument types the call expects
@@ -89,11 +82,6 @@ CodeBlock genFFIFn(Interp interp, string tInfo, LocalIdx outSlot, LocalIdx[] arg
     LocalIdx[] stackArgs;
 
     auto as = new Assembler();
-
-    assert (
-        argSlots.length == argTypes.length,
-        "invalid number of args in ffi call"
-    );
 
     // Store the GP registers
     as.instr(PUSH, RBX);
@@ -181,3 +169,4 @@ CodeBlock genFFIFn(Interp interp, string tInfo, LocalIdx outSlot, LocalIdx[] arg
     auto cb = as.assemble();
     return cb;
 }
+

@@ -1670,6 +1670,7 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
     auto fun = interp.getSlot(instr.args[1].localIdx);
      // Type info (D string)
     auto typeinfo = to!string(instr.args[2].stringVal);
+    auto types = split(typeinfo, ",");
     // Slots for arguments
     LocalIdx[] argSlots;
     foreach(a;instr.args[3..$])
@@ -1680,10 +1681,16 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
         "invalid rawptr value"
     );
 
+    assert (
+        argSlots.length == types.length - 1,
+        "invalid number of args in ffi call"
+    );
+
+
     CodeBlock cb;
     if (instr.args[0].codeBlock is null)
     {
-        cb = genFFIFn(interp, typeinfo, instr.outSlot, argSlots);
+        cb = genFFIFn(interp, types, instr.outSlot, argSlots);
         instr.args[0].codeBlock = cb;
     }
     else
@@ -1696,3 +1703,4 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
 
     interp.jump(instr.target);
 }
+

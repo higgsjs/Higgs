@@ -887,4 +887,3 @@ Opcode GET_SYM = { "get_sym", true, [OpArg.LOCAL, OpArg.STRING], &op_get_sym };
 /// Call function in shared lib
 Opcode CALL_FFI = { "call_ffi", true, [OpArg.CODEBLOCK, OpArg.LOCAL, OpArg.STRING], &op_call_ffi, OpInfo.BRANCH | OpInfo.CALL | OpInfo.VAR_ARG };
 
-
