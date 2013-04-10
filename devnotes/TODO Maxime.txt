@@ -8,9 +8,6 @@ Conference deadlines:
 
 TODO: give this project more lovin'! Improve various aspects! Blog!
 
-Idea: use movd/movq to spill regular registers into xmm registers
-- Apparently recommended by intel optimization manual
-
 ------------------------------------------------------------------------------
 
 TODO: think about special monitoring instructions
@@ -41,47 +38,17 @@ TODO: allocate class ids?
 TODO: make sure global obj ptr is updated when global obj is extended
 - Trigger GC?
 
-TODO: peephole assembler optimizations
-- Look at generated asm code first
-- Eliminate redundant jumps?
-- Use mov RAX, moffs64 when appropriate
-- Look at existing Tachyon code
-- Bit mask for free registers
-- Map of stack slots to regs/mem
-- How do we indicate when values/registers become free?
-ctx.getWord/setWord indicates mapping of values to regs?
-could auto add value kill info?
-
-FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
-
-Versioning JIT ideas:
-- Generalize versioning to per-version pre-conditions
-  - Generic/catch-all version has no conditions required
-  - Type requirements of various granularities can be encoded as conditions
-- Count interpreter cycles per call to grant versioning/optimization/inlining budget
-  - Functions that take long to execute should get more!
-- Monitor call args to decide how to version
-  - Can specialize all the way down to constants
-- Can transform loops into tail calls
-  - Optimize the tail
-
 TODO: inlining
 - Inline at the IR level
 - Generate a new IRFunction instance with the inlined code included?
   - Has more stack slots
 
-Basic block versioning:
-- Can version based on spill status, type, known constant value
-- Instr flow functions give us type info
-- Type checks give us extra type info
-- Checking if something is a given constant gives us info
-  - e.g.: check type of receiver before inlined call
-- Can avoid generating paths that haven't occurred in practice
-  - Jumping to non-existing path needs to bailout to interpreter, invalidate function
-- Blocks with 0 exec count are stubs
-- If IRFunction is transformed for inlining, non-inline paths will have 0 exec count to begin with
-- If known constant value, can try generating new version
-  - If too many versions already, try to match existing versions more coarsely
+TODO: for ret, can we cache the caller?
+- Needs to check that arg count matches, have interp fallback
+
+FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
+
+TODO: simple `make install` target
 
 TODO: implement/fix get_global, set_global, call wrt reg alloc
 
@@ -103,6 +70,11 @@ TODO: register allocation
   - Writing a type tag in an IR instruction can give us the info, 
     no need for extra analysis, just call setTypeTag(...)
   - When you do setTypeTag, don't actually write the tag!
+- A value can be on the stack AND in a register
+  - No cost to spill
+  - Must signal if we write either location?
+    - Instrs only write to *out slot*
+    - Requesting out slot as reg or mem makes this happen
 
 Versioning... Context objects could get big?
 - Reg alloc (1 byte per)
@@ -110,32 +82,63 @@ Versioning... Context objects could get big?
 - More specific types? (later)
 - Constant values?
 - Not that big for most functions
-- Consult Marc and Bruno
 
-TODO: interference analysis
+
+TODO: think about block version context objects
+- Turn CodeGenCtx into this?
+  - Context evolves as we go through blocks
+- Need list of block versions, labels with associated contexts
+- Should this be a struct?
+
+
+
+TODO: integrate level 0 FFI functionality
+
+
+
+
+
+
+
+
+[DONE] TODO: interference analysis, coloring
 - Go over basic blocks, count number of instrs where values interfere
+  - Add counts to edges
 - Color slots with registers so as to minimize conflicts
   - Use greedy coloring algorithm
   - If register must be used, pick one from neighbor with least contention
 - Also color with XMM registers for FP values and spills
 
-TODO: for ret, can we cache the caller?
-- Needs to check that arg count matches, have interp fallback
+[DONE] TODO: JIT-to-JIT call
+- fast jit entry points on blocks
 
-TODO: integrate level 0 FFI functionality
+[DONE] TODO: liveness analysis for stack slots
+- Returns map of instrs to sets of live slots after the instr
+- Need to know if we can kill a value after an instr
 
-TODO: liveness analysis for stack slots
-- Set of instructions before which a value is live?
-- Returns map of instrs to lists of live slots before the instr
+[DONE] IDEAS: Basic block versioning
+- Can version based on spill status, type, known constant value
+- Instr flow functions give us type info
+- Type checks give us extra type info
+- Checking if something is a given constant gives us info
+  - e.g.: check type of receiver before inlined call
+- Can avoid generating paths that haven't occurred in practice
+  - Jumping to non-existing path needs to bailout to interpreter, invalidate function
+- Blocks with 0 exec count are stubs
+- If IRFunction is transformed for inlining, non-inline paths will have 0 exec count to begin with
+- If known constant value, can try generating new version
+  - If too many versions already, try to match existing versions more coarsely
 
-TODO: JIT-to-JIT call
-
-
-
-
-
-
-
+[DONE] IDEAS: Versioning JIT
+- Generalize versioning to per-version pre-conditions
+  - Generic/catch-all version has no conditions required
+  - Type requirements of various granularities can be encoded as conditions
+- Count interpreter cycles per call to grant versioning/optimization/inlining budget
+  - Functions that take long to execute should get more!
+- Monitor call args to decide how to version
+  - Can specialize all the way down to constants
+- Can transform loops into tail calls
+  - Optimize the tail
 
 [DONE] TODO: implement callee-guessing
 - Map of call instrs to lists of callee fptrs with frequencies

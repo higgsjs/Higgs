@@ -43,6 +43,7 @@ import std.array;
 import std.stdint;
 import options;
 import ir.ir;
+import ir.livevars;
 import interp.interp;
 import interp.layout;
 import interp.object;
@@ -52,6 +53,7 @@ import jit.assembler;
 import jit.x86;
 import jit.encodings;
 import jit.peephole;
+import jit.regalloc;
 
 /// Block execution count at which a function should be compiled
 const JIT_COMPILE_COUNT = 500;
@@ -111,17 +113,26 @@ void compFun(Interp interp, IRFunction fun)
         );
     }
 
+
+    // Run a live variable analysis on the function
+    auto liveSets = compLiveVars(fun);
+
+    // Assign a register mapping to each temporary
+    auto regMapping = mapRegs(fun, liveSets);
+
+
+
+
+
+
     // Assembler to write code into
     auto as = new Assembler();
 
     // Assembler for out of line code (slow paths)
     auto ol = new Assembler();
 
-    // Fast entry label (exported)
-    auto fastLabel = new Label("entry_fast", true);
-
     // Bailout to interpreter label
-    auto bailLabel = new Label("bailout");
+    auto bailLabel = new Label("BAILOUT");
 
     // Work list of blocks to be compiled
     IRBlock[] workList;
@@ -131,6 +142,7 @@ void compFun(Interp interp, IRFunction fun)
 
     // Map of blocks to exported entry point labels
     Label[IRBlock] entryMap;
+    Label[IRBlock] fastEntryMap;
 
     /// Get a label for a given basic block
     auto getBlockLabel = delegate Label(IRBlock block)
@@ -139,7 +151,7 @@ void compFun(Interp interp, IRFunction fun)
         if (block !in labelMap)
         {
             // Create a label for the block
-            auto label = new Label(block.getName());
+            auto label = new Label(block.getName().toUpper(), true);
             labelMap[block] = label;
 
             // Add the block to the work list
@@ -158,7 +170,7 @@ void compFun(Interp interp, IRFunction fun)
 
         // Create an exported label for the entry point
         ol.comment("Entry point for " ~ block.getName());
-        auto entryLabel = ol.label("entry_" ~ block.getName(), true);
+        auto entryLabel = ol.label("ENTRY_" ~ block.getName().toUpper(), true);
         entryMap[block] = entryLabel;
 
         // Align SP to a multiple of 16 bytes
@@ -179,9 +191,14 @@ void compFun(Interp interp, IRFunction fun)
         ol.getMember!("Interp", "wsp")(wspReg, interpReg);
         ol.getMember!("Interp", "tsp")(tspReg, interpReg);
 
+        // TODO: get block with context where everything is spilled
+
         // Jump to the target block
         auto blockLabel = getBlockLabel(block);
         ol.instr(JMP, blockLabel);
+
+        // For the fast entry point, use the block label directly
+        fastEntryMap[block] = blockLabel;
 
         return entryLabel;
     };
@@ -199,10 +216,6 @@ void compFun(Interp interp, IRFunction fun)
 
     // Create an entry point for the function
     getEntryPoint(fun.entryBlock);
-
-    // Fast entry point (used for JIT-to-JIT calls)
-    as.comment("Fast entry point");
-    as.addInstr(fastLabel);
 
     // Until the work list is empty
     BLOCK_LOOP:
@@ -296,26 +309,26 @@ void compFun(Interp interp, IRFunction fun)
     //writefln("done compiling blocks");
 
     // Bailout/exit to interpreter
-    as.comment("Bailout to interpreter");
-    as.addInstr(bailLabel);
+    ol.comment("Bailout to interpreter");
+    ol.addInstr(bailLabel);
 
     // Store the stack pointers back in the interpreter
-    as.setMember!("Interp", "wsp")(interpReg, wspReg);
-    as.setMember!("Interp", "tsp")(interpReg, tspReg);
+    ol.setMember!("Interp", "wsp")(interpReg, wspReg);
+    ol.setMember!("Interp", "tsp")(interpReg, tspReg);
 
     // Restore the callee-save GP registers
-    as.instr(POP, R15);
-    as.instr(POP, R14);
-    as.instr(POP, R13);
-    as.instr(POP, R12);
-    as.instr(POP, RBP);
-    as.instr(POP, RBX);
+    ol.instr(POP, R15);
+    ol.instr(POP, R14);
+    ol.instr(POP, R13);
+    ol.instr(POP, R12);
+    ol.instr(POP, RBP);
+    ol.instr(POP, RBX);
 
     // Pop the stack alignment padding
-    as.instr(ADD, RSP, 8);
+    ol.instr(ADD, RSP, 8);
 
     // Return to the interpreter
-    as.instr(jit.encodings.RET);
+    ol.instr(jit.encodings.RET);
 
     // Append the out of line code to the rest
     as.comment("Out of line code");
@@ -336,15 +349,16 @@ void compFun(Interp interp, IRFunction fun)
     // Store the CodeBlock pointer on the compiled function
     fun.codeBlock = codeBlock;
 
-    // TODO: fast entry point for JIT-to-JIT calls
-    //fun.fastEntry = codeBlock.getExportAddr("entry_fast");
-
     // For each block with an exported label
     foreach (block, label; entryMap)
     {
-        // Set the entry point function pointer on the function entry block
+        // Set the entry point function pointer on the block
         auto entryAddr = codeBlock.getExportAddr(label.name);
         block.entryFn = cast(EntryFn)entryAddr;
+
+        // Set the fast entry point on the block
+        auto fastLabel = fastEntryMap[block];
+        block.jitEntry = codeBlock.getExportAddr(fastLabel.name); 
     }
 
     if (opts.jit_dumpasm)
@@ -371,7 +385,10 @@ extern (C) void visitStub(IRBlock stubBlock)
 
     // Remove block entry points for this function
     for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
         block.entryFn = null;
+        block.jitEntry = null;
+    }
 
     // Invalidate the compiled code for this function
     fun.codeBlock = null;
@@ -511,12 +528,21 @@ void setType(Assembler as, LocalIdx idx, Type type)
 
 void jump(Assembler as, CodeGenCtx ctx, IRBlock target)
 {
+    auto INTERP_JUMP = new Label("INTERP_JUMP");
+
     // Get a pointer to the branch target
-    as.ptr(RAX, target);
+    as.ptr(scratchRegs[0], target);
+
+    // If a JIT entry point exists, jump to it directly
+    as.getMember!("IRBlock", "jitEntry")(scratchRegs[1], scratchRegs[0]);
+    as.instr(CMP, scratchRegs[1], 0);
+    as.instr(JE, INTERP_JUMP);
+    as.instr(JMP, scratchRegs[1]);
 
     // Make the interpreter jump to the target
-    as.setMember!("Interp", "target")(interpReg, RAX);
-    as.instr(JMP, ctx.bailLabel);
+    ctx.ol.addInstr(INTERP_JUMP);
+    ctx.ol.setMember!("Interp", "target")(interpReg, scratchRegs[0]);
+    ctx.ol.instr(JMP, ctx.bailLabel);
 }
 
 void jump(Assembler as, CodeGenCtx ctx, X86Reg targetAddr)
@@ -1090,7 +1116,7 @@ void gen_call(ref CodeGenCtx ctx, IRInstr instr)
     }
 
     // Label for the bailout to interpreter cases
-    auto bailout = new Label("call_bailout");
+    auto bailout = new Label("CALL_BAILOUT");
 
     auto AFTER_CLOS  = new Label("CALL_AFTER_CLOS");
     auto AFTER_OFS = new Label("CALL_AFTER_OFS");

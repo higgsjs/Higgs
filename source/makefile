@@ -12,6 +12,7 @@ SRC =               \
 util/id.d           \
 util/string.d       \
 util/misc.d         \
+util/bitset.d       \
 analysis/typeset.d  \
 parser/lexer.d      \
 parser/ast.d        \
@@ -21,6 +22,7 @@ ir/ir.d             \
 ir/iir.d            \
 ir/ast.d            \
 ir/init.d           \
+ir/livevars.d       \
 interp/interp.d     \
 interp/ops.d        \
 interp/layout.d     \
@@ -32,8 +34,9 @@ jit/x86.d           \
 jit/encodings.d     \
 jit/codeblock.d     \
 jit/assembler.d     \
-jit/jit.d           \
+jit/regalloc.d      \
 jit/peephole.d      \
+jit/jit.d           \
 jit/tests.d         \
 parser/tests.d      \
 interp/tests.d      \

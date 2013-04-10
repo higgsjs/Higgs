@@ -51,6 +51,7 @@ import interp.interp;
 import interp.layout;
 import interp.ops;
 import jit.codeblock;
+import util.bitset;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -111,15 +112,10 @@ class IRFunction : IdObject
     LocalIdx[IdentExpr] localMap;
 
     /// Maps of initialized stack slots for call/alloc instructions
-    InitMap[IRInstr] initMaps;
+    BitSetCW[IRInstr] initMaps;
 
-
-    /// Callee profiling information
-    alias uint64_t[IRFunction] CallCounts;
-
-    CallCounts[IRInstr] callCounts;
-
-    //uint64_t[IRFunction][IRInstr] callCounts;  
+    /// Callee profiling information (filled by interpreter)
+    uint64_t[IRFunction][IRInstr] callCounts;  
 
     /// Compiled code block
     CodeBlock codeBlock = null;
@@ -258,8 +254,11 @@ class IRBlock : IdObject
     /// Execution count, for profiling
     uint64 execCount = 0;
 
-    /// Compiled code entry point function
+    /// JIT code entry point function
     EntryFn entryFn = null;
+
+    /// JIT code fast entry point
+    ubyte* jitEntry = null;
 
     /// Parent function
     IRFunction fun = null;
@@ -769,14 +768,14 @@ Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load
 Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_funptr };
 
 // Store instructions
-Opcode STORE_U8 = { "store_u8", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8 };
-Opcode STORE_U16 = { "store_u16", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u16 };
-Opcode STORE_U32 = { "store_u32", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u32 };
-Opcode STORE_U64 = { "store_u64", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u64 };
-Opcode STORE_F64 = { "store_f64", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64 };
-Opcode STORE_REFPTR = { "store_refptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr };
-Opcode STORE_RAWPTR = { "store_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr };
-Opcode STORE_FUNPTR = { "store_funptr", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_funptr };
+Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8 };
+Opcode STORE_U16 = { "store_u16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u16 };
+Opcode STORE_U32 = { "store_u32", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u32 };
+Opcode STORE_U64 = { "store_u64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u64 };
+Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64 };
+Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr };
+Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr };
+Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_funptr };
 
 // Branching and conditional branching
 Opcode JUMP = { "jump", false, [], &op_jump, OpInfo.BRANCH };
