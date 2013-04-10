@@ -50,48 +50,31 @@ FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
 TODO: simple `make install` target
 
+
+
 TODO: implement/fix get_global, set_global, call wrt reg alloc
 
 TODO: revise defaultFn, might need to save allocatable regs
 
-TODO: register allocation
-- Do interference and liveness analysis for stack slots
-  - Simultaneously live slots interfere
-  - Assign different registers to interfering slots
-- Slot can either be on stack or in its assigned register
-- Keep a certain number of scratch regs (3-4?)
-  - Should include RAX, regs used by mul/div
-- Fix regs for wsp, tsp, interp
-- Loop variables should get priority (not get spilled)
-- Type tags are either known (implied) or on the stack
-  - If any type, type tag is on the stack
-  - If known for this block or at this point, it's implied
-  - When a function returns, its type tags don't matter
-  - Writing a type tag in an IR instruction can give us the info, 
-    no need for extra analysis, just call setTypeTag(...)
-  - When you do setTypeTag, don't actually write the tag!
-- A value can be on the stack AND in a register
-  - No cost to spill
-  - Must signal if we write either location?
-    - Instrs only write to *out slot*
-    - Requesting out slot as reg or mem makes this happen
 
-TODO: think about reg alloc API
+
+
+TODO: implement basic reg alloc
 - getArgOpnd, getOutOpnd?
 - No forcing to reg, use scratch if needed
 - Out opnd should always be reg if possible
+- Don't use liveness info for not
 
 
 
 
 
-TODO: make versioning system work without actual versions or reg alloc
-- Always the same state value, one version
 
 
 
 
-
+[DONE] TODO: make versioning system work without actual versions or reg alloc
+- Always the same state, one version
 
 [DONE] TODO: think about block version **state** objects
 - State evolves as we go through blocks

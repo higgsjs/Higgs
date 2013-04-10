@@ -419,7 +419,14 @@ Code generation state
 class CodeGenState
 {
     /// Register allocation state (per-local flags)
-    uint8_t[] RAFlags;
+    RAFlags[] allocState;
+
+    /// Map of general-purpose registers to locals
+    /// This is NULL_LOCAL if a register is free
+    LocalIdx[] gpRegMap;
+
+
+
 
     /// TODO: type flags
     // Implement only once versioning/regalloc working
@@ -428,15 +435,15 @@ class CodeGenState
     this(size_t numLocals)
     {
         // All values are initially on the stack
-        RAFlags.length = numLocals;
+        allocState.length = numLocals;
         for (size_t i = 0; i < numLocals; ++i)
-            RAFlags[i] = RA_STACK;
+            allocState[i] = RA_STACK;
     }
 
     /// Copy constructor
     this(CodeGenState that)
     {
-        this.RAFlags = that.RAFlags;
+        this.allocState = that.allocState;
     }
 
     /// Equality comparison operator
@@ -445,10 +452,113 @@ class CodeGenState
         auto that = cast(CodeGenState)o;
         assert (that !is null);
 
-        if (this.RAFlags != that.RAFlags)
+        if (this.allocState != that.allocState)
+            return false;
+
+        if (this.gpRegMap != that.gpRegMap)
             return false;
 
         return true;
+    }
+
+    /// Get the operand for an instruction argument
+    X86Opnd getArgOpnd(Assembler as, IRInstr instr, size_t argIdx, size_t numBits)
+    {
+        assert (
+            argIdx < instr.args.length,
+            "invalid argument index"
+        );
+
+        assert (
+            instr.opcode.getArgType(argIdx) == OpArg.LOCAL,
+            "argument type is not local"
+        );
+
+        auto localIdx = instr.args[argIdx].localIdx;
+
+        auto flags = allocState[localIdx];
+
+        // If the argument is in a general-purpose register
+        if (flags & RA_GPREG)
+        {
+            auto regNo = flags & RA_REG_MASK;
+            return new X86Reg(X86Reg.GP, cast(uint8_t)regNo, cast(uint16_t)numBits);
+        }
+
+        // If the argument is on the stack
+        if (flags & RA_STACK)
+        {
+            // Return a memory operand of the right size
+            return new X86Mem(numBits, wspReg, 8 * localIdx);
+        }
+
+        assert (false, "argument is neither in a register or on the stack");
+    }
+
+    /// Get the operand for an instruction's output
+    X86Opnd getOutOpnd(Assembler as, IRInstr instr, size_t numBits)
+    {
+        assert (
+            instr.outSlot != NULL_LOCAL,
+            "instruction has no output slot"
+        );
+
+        auto flags = allocState[instr.outSlot];
+
+
+        // TODO: if reg is taken, spill value in reg
+        // need map of regs->slots to do this
+
+
+
+
+        // If the argument is on the stack
+        if (flags & RA_STACK)
+        {
+            // Return a memory operand of the right size
+            return new X86Mem(numBits, wspReg, 8 * instr.outSlot);
+        }
+
+        // TODO: temporary until spill logic
+        assert (false);
+    }
+
+    // Set the output type value for an instruction's output
+    void setOutType(Assembler as, IRInstr instr, Type type)
+    {
+        assert (
+            instr.outSlot != NULL_LOCAL,
+            "instruction has no output slot"
+        );
+
+        // TODO
+
+
+
+
+
+
+
+
+
+
+        // Create a memory operand to access the type stack
+        auto memOpnd = new X86Mem(8, tspReg, instr.outSlot);
+
+        // Write the type to the type stack
+        as.instr(MOV, memOpnd, type);
+    }
+
+    /**
+    Spill all registers to the stack
+    */
+    void spillRegs()
+    {
+        // TODO
+
+
+
+
     }
 }
 
@@ -735,6 +845,7 @@ void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 }
 */
 
+/*
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // AL = tsp[a0]
@@ -755,6 +866,7 @@ alias IsTypeOp!(Type.CONST) gen_is_const;
 alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
 alias IsTypeOp!(Type.INT32) gen_is_int32;
 alias IsTypeOp!(Type.FLOAT) gen_is_float;
+*/
 
 /*
 void gen_i32_to_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -1455,10 +1567,12 @@ static this()
     codeGenFns[&MOVE]           = &gen_move;
     */
 
+    /*
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
     codeGenFns[&IS_INT32]       = &gen_is_int32;
     codeGenFns[&IS_FLOAT]       = &gen_is_float;
+    */
 
     /*
     codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
