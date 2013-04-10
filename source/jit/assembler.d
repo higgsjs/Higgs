@@ -225,7 +225,7 @@ class Assembler
 
             if (printBytes)
             {
-                line = rightPadStr(line, " ", 40);            
+                line = rightPadStr(line, " ", 40);
 
                 codeBlock.clear();
                 instr.encode(codeBlock);
@@ -352,7 +352,7 @@ class Assembler
         {
 
             that.firstInstr.prev = this.lastInstr;
-            this.lastInstr.next = that.firstInstr;            
+            this.lastInstr.next = that.firstInstr;
             this.lastInstr = that.lastInstr;
         }
 
