@@ -62,6 +62,8 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     // Mappings for arguments/return values
     X86Reg[] iArgRegs = [RDI, RSI, RDX, RCX, R8, R9];
     X86Reg[] fArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
+    X86Reg funReg = R12;
+    X86Reg scratchReg = R11;
     auto iArgIdx = 0;
     auto fArgIdx = 0;
     Type[string] typeMap;
@@ -90,9 +92,6 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
         "invalid number of args in ffi call"
     );
 
-    // Align SP to a multiple of 16 bytes
-    as.instr(SUB, RSP, 8);
-
     // Store the GP registers
     as.instr(PUSH, RBX);
     as.instr(PUSH, RBP);
@@ -101,16 +100,15 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     as.instr(PUSH, R14);
     as.instr(PUSH, R15);
 
-    // Store a pointer to the interpreter in R15
-    as.instr(MOV, R15, new X86Imm(cast(void*)interp));
+    // Store a pointer to the interpreter in interpReg
+    as.instr(MOV, interpReg, new X86Imm(cast(void*)interp));
 
-    // Fun* goes in R14
-    as.instr(MOV, R14, RDI);
+    // Fun* goes in R12
+    as.instr(MOV, funReg, RDI);
 
-    // Load the stack pointers into RBX and RBP
-    as.getMember!("Interp", "wsp")(RBX, R15);
-    as.getMember!("Interp", "tsp")(RBP, R15);
-
+    // Load the stack pointers into wspReg and tspReg
+    as.getMember!("Interp", "wsp")(wspReg, interpReg);
+    as.getMember!("Interp", "tsp")(tspReg, interpReg);
 
     // Set up arguments
     foreach(int i, a; args)
@@ -127,16 +125,16 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
 
     // Make sure there is an even number of pushes
     if (stackArgs.length % 2 != 0)
-        as.instr(PUSH, R12);
+        as.instr(PUSH, scratchReg);
 
     foreach_reverse (idx; stackArgs)
     {
-        as.getWord(R12, idx);
-        as.instr(PUSH, R12);
+        as.getWord(scratchReg, idx);
+        as.instr(PUSH, scratchReg);
     }
 
     // Fun* call
-    as.instr(jit.encodings.CALL, R14);
+    as.instr(jit.encodings.CALL, funReg);
 
     // Send return value/type to interp
     if (retType == "f64")
@@ -157,15 +155,15 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
 
     // Remove stackArgs
     foreach (idx; stackArgs)
-        as.instr(POP, R12);
+        as.instr(POP, scratchReg);
 
     // Make sure there is an even number of pops
     if (stackArgs.length % 2 != 0)
-        as.instr(POP, R12);
+        as.instr(POP, scratchReg);
 
     // Store the stack pointers back in the interpreter
-    as.setMember!("Interp", "wsp")(R15, RBX);
-    as.setMember!("Interp", "tsp")(R15, RBP);
+    as.setMember!("Interp", "wsp")(interpReg, wspReg);
+    as.setMember!("Interp", "tsp")(interpReg, tspReg);
 
     // Restore the GP registers & return
     as.instr(POP, R15);
@@ -174,9 +172,6 @@ CodeBlock genFFIFn(Interp interp, IRInstr instr)
     as.instr(POP, R12);
     as.instr(POP, RBP);
     as.instr(POP, RBX);
-
-    // Pop the stack alignment padding
-    as.instr(ADD, RSP, 8);
 
     as.instr(jit.encodings.RET);
 

@@ -72,10 +72,10 @@ static this()
     /// R15: interpreter object pointer (C callee-save) 
     interpReg = R15;
 
-    /// R14: type stack pointer (C callee-save)
+    /// R14: word stack pointer (C callee-save)
     wspReg = R14;
 
-    /// R13: word stack pointer (C callee-save)
+    /// R13: type stack pointer (C callee-save)
     tspReg = R13;
 
     // RSP: C stack pointer (used for C calls only)
