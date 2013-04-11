@@ -289,15 +289,17 @@ extern (C) void op_set_value(Interp interp, IRInstr instr)
         "type should be integer"
     );
 
+    auto type = cast(Type)wType.uint8Val;
+
     assert (
-        wType.int32Val >= Type.min && wType.int32Val <= Type.max,
-        "type value out of range: " ~ to!string(wType.int32Val)
+        type >= Type.min && type <= Type.max,
+        "type value out of range: " ~ to!string(type)
     );
 
     interp.setSlot(
         instr.outSlot,
-        Word.int64v(wWord.int64Val),
-        cast(Type)wType.int32Val
+        wWord,
+        type
     );
 }
 
@@ -318,7 +320,7 @@ extern (C) void op_get_type(Interp interp, IRInstr instr)
 
     interp.setSlot(
         instr.outSlot,
-        Word.int32v(cast(int32)type),
+        Word.uint32v(cast(uint8)type),
         Type.INT32
     );
 }

@@ -334,6 +334,8 @@ unittest
 /// Recursion
 unittest
 {
+    writefln("recursion");
+
     assertInt(
         "
         return function (n)
@@ -374,6 +376,8 @@ unittest
 /// Loops
 unittest
 {
+    writefln("loops");
+
     assertInt(
         "
         return function ()
@@ -938,6 +942,8 @@ unittest
 /// Closures, captured and escaping variables
 unittest
 {
+    writefln("closures");
+
     assertInt(
         "
         function foo(x) { return function() { return x; } }

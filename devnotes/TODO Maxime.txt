@@ -55,17 +55,30 @@ TODO: implement/fix get_global, set_global wrt reg alloc
 TODO: use liveness info to eliminate spills
 
 TODO: revise gen_call
+- Will test the limits of the reg alloc
+
+TODO: jit/ops.d?
+
 
 TODO: implement reg alloc for simple instructions
-
-FIXME: is allocating of output opnd to reg broken?
-- Test in console?
-
-
+- add, mul, and
+- get_global_obj
+- load
 
 
 
 
+
+FIXME: load with refptr gets bus error
+- Unaligned memory access or wrong address???
+- Must be corrupting the inputs to this instruction somehow
+- Likely have calculation beforehand, look at it
+- UPDATE: borks for load of int64 too
+
+
+
+FIXME: while grabbing a register for an operand, could be spilling another
+operand... Invalidating it
 
 
 

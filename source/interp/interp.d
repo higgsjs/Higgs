@@ -129,6 +129,7 @@ union Word
     int8    int8Val;
     int32   int32Val;
     int64   int64Val;
+    uint8   uint8Val;
     uint32  uint32Val;
     uint64  uint64Val;
     float64 floatVal;

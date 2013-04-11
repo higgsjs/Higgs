@@ -223,12 +223,12 @@ void compFun(Interp interp, IRFunction fun)
 
             // Invalidate the compiled code for this function
             ol.ptr(cargRegs[0], block);
-            ol.ptr(scratchRegs[0], &visitStub);
-            ol.instr(jit.encodings.CALL, scratchRegs[0]);
+            ol.ptr(scrRegs64[0], &visitStub);
+            ol.instr(jit.encodings.CALL, scrRegs64[0]);
 
             // Bailout to the interpreter and jump to the block
-            ol.ptr(scratchRegs[0], block);
-            ol.setMember!("Interp", "target")(interpReg, scratchRegs[0]);
+            ol.ptr(scrRegs64[0], block);
+            ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
             ol.instr(JMP, bailLabel);
 
             // Don't compile the block
@@ -470,51 +470,64 @@ class CodeGenState
             "argument type is not local"
         );
 
-        auto localIdx = instr.args[argIdx].localIdx;
+        auto argSlot = instr.args[argIdx].localIdx;
+        auto flags = allocState[argSlot];
 
-        auto flags = allocState[localIdx];
-
-        // If the argument is in a general-purpose register
+        // If the argument already is in a general-purpose register
         if (flags & RA_GPREG)
         {
             auto regNo = flags & RA_REG_MASK;
             return new X86Reg(X86Reg.GP, cast(uint8_t)regNo, cast(uint16_t)numBits);
         }
 
-        // If the argument is on the stack
-        if (flags & RA_STACK)
+        assert (
+            flags & RA_STACK, 
+            "argument is neither in a register nor on the stack"
+        );
+
+        // If the value shouldn't be loaded into a register
+        if (loadVal == false)
         {
-            // If the value should be loaded into a register
-            if (loadVal)
-            {
-                // Get the assigned register for the argument
-                auto reg = ctx.regMapping[localIdx];
-
-                // Get the slot mapped to this register
-                auto regSlot = gpRegMap[reg.regNo];
-
-                // If the slot is already mapped to a different value
-                if (regSlot !is NULL_LOCAL && regSlot !is localIdx)
-                {
-                    // Spill the value currently in the register
-                    as.instr(MOV, new X86Mem(64, wspReg, 8 * regSlot), reg);
-                    allocState[regSlot] = RA_STACK;
-                }
-
-                // Load the argument into the register
-                as.instr(MOV, reg, new X86Mem(64, wspReg, 8 * localIdx));
-
-                // Map the argument to the register
-                allocState[localIdx] = RA_GPREG | reg.regNo;
-                gpRegMap[reg.regNo] = localIdx;
-                return new X86Reg(X86Reg.GP, reg.regNo, numBits);
-            }
-
             // Return a memory operand of the right size
-            return new X86Mem(numBits, wspReg, 8 * localIdx);
+            return new X86Mem(numBits, wspReg, 8 * argSlot);
         }
 
-        assert (false, "argument is neither in a register nor on the stack");
+        // Get the assigned register for the argument
+        auto reg = ctx.regMapping[argSlot];
+
+        // Get the slot mapped to this register
+        auto regSlot = gpRegMap[reg.regNo];
+
+        // If the register is mapped to a value
+        if (regSlot !is NULL_LOCAL)
+        {
+            // If the mapped slot belongs to another instruction argument
+            foreach (otherIdx, arg; instr.args)
+            {
+                if (otherIdx != argIdx && 
+                    instr.opcode.getArgType(otherIdx) == OpArg.LOCAL &&
+                    arg.localIdx == regSlot)
+                {
+                    writefln("got overlap");
+
+                    // Map the argument to its stack location
+                    allocState[argSlot] = RA_STACK;
+                    return new X86Mem(numBits, wspReg, 8 * argSlot);
+                }
+            }
+
+            // Spill the value currently in the register
+            as.instr(MOV, new X86Mem(64, wspReg, 8 * regSlot), reg);
+            allocState[regSlot] = RA_STACK;
+        }
+
+        // Load the argument into the register
+        as.instr(MOV, reg, new X86Mem(64, wspReg, 8 * argSlot));
+
+        // Map the argument to the register
+        allocState[argSlot] = RA_GPREG | reg.regNo;
+        gpRegMap[reg.regNo] = argSlot;
+        return new X86Reg(X86Reg.GP, reg.regNo, numBits);
     }
 
     /// Get the operand for an instruction's output
@@ -600,6 +613,14 @@ class CodeGenState
 
             // Mark the register as free
             gpRegMap[regNo] = NULL_LOCAL;
+        }
+
+        foreach (localIdx, flags; allocState)
+        {
+            assert (
+                flags == RA_STACK, 
+                "value not on stack after spill " ~ to!string(flags)
+            );
         }
     }
 }
@@ -775,17 +796,17 @@ void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, IRBlock target)
     auto INTERP_JUMP = new Label("INTERP_JUMP");
 
     // Get a pointer to the branch target
-    as.ptr(scratchRegs[0], target);
+    as.ptr(scrRegs64[0], target);
 
     // If a JIT entry point exists, jump to it directly
-    as.getMember!("IRBlock", "jitEntry")(scratchRegs[1], scratchRegs[0]);
-    as.instr(CMP, scratchRegs[1], 0);
+    as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], scrRegs64[0]);
+    as.instr(CMP, scrRegs64[1], 0);
     as.instr(JE, INTERP_JUMP);
-    as.instr(JMP, scratchRegs[1]);
+    as.instr(JMP, scrRegs64[1]);
 
     // Make the interpreter jump to the target
     ctx.ol.addInstr(INTERP_JUMP);
-    ctx.ol.setMember!("Interp", "target")(interpReg, scratchRegs[0]);
+    ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
     ctx.ol.bail(ctx, st);
 }
 
@@ -887,11 +908,11 @@ void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         "link not allocated for set_str"
     );
 
-    ctx.as.getMember!("Interp", "wLinkTable")(scratchRegs[0], interpReg);
-    ctx.as.instr(MOV, scratchRegs[0], new X86Mem(64, scratchRegs[0], 8 * linkIdx));
+    ctx.as.getMember!("Interp", "wLinkTable")(scrRegs64[0], interpReg);
+    ctx.as.instr(MOV, scrRegs64[0], new X86Mem(64, scrRegs64[0], 8 * linkIdx));
 
     auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, scratchRegs[0]);
+    ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
 
@@ -905,28 +926,29 @@ void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 }
 */
 
-/*
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // AL = tsp[a0]
-    ctx.as.getType(AL, instr.args[0].localIdx);
+    // TODO: change one type tags are accounted for in state
+    // Get the type value
+    ctx.as.getType(scrRegs8[0], instr.args[0].localIdx);
 
-    // CMP RAX, Type.FLOAT
-    ctx.as.instr(CMP, AL, type);
+    // Compare against the tested type
+    ctx.as.instr(CMP, scrRegs8[0], type);
 
-    ctx.as.instr(MOV, RAX, FALSE.int64Val);
-    ctx.as.instr(MOV, RCX, TRUE.int64Val);
-    ctx.as.instr(CMOVE, RAX, RCX);
+    ctx.as.instr(MOV, scrRegs64[0], FALSE.int64Val);
+    ctx.as.instr(MOV, scrRegs64[1], TRUE.int64Val);
+    ctx.as.instr(CMOVE, scrRegs64[0], scrRegs64[1]);
 
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.CONST);
+    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
+
+    st.setOutType(ctx.as, instr, Type.CONST);
 }
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
 alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
 alias IsTypeOp!(Type.INT32) gen_is_int32;
 alias IsTypeOp!(Type.FLOAT) gen_is_float;
-*/
 
 /*
 void gen_i32_to_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -948,72 +970,57 @@ void gen_f64_to_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 }
 */
 
-void gen_add_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 32);
-    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, 32);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    // The register allocator should ensure that at
+    // least one input is a register operand
+    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, numBits);
+    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, numBits);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, numBits);
+
+    X86OpPtr opPtr = null;
+    static if (op == "add")
+        opPtr = ADD;
+    static if (op == "sub")
+        opPtr = SUB;
+    static if (op == "imul")
+        opPtr = IMUL;
+    static if (op == "and")
+        opPtr = AND;
+    assert (opPtr !is null);
 
     if (opnd0 == opndOut)
     {
-        ctx.as.instr(ADD, opndOut, opnd1);
+        ctx.as.instr(opPtr, opndOut, opnd1);
     }
+
     else if (opnd1 == opndOut)
     {
-        ctx.as.instr(ADD, opndOut, opnd0);
+        ctx.as.instr(opPtr, opndOut, opnd0);
     }
+
+    else if (opPtr == IMUL && cast(X86Mem)opndOut)
+    {
+        // IMUL does not support memory operands as output
+        auto scrReg0 = new X86Reg(X86Reg.GP, scrRegs64[0].regNo, numBits);
+        ctx.as.instr(MOV, scrReg0, opnd0);
+        ctx.as.instr(opPtr, scrReg0, opnd1);
+        ctx.as.instr(MOV, opndOut, scrReg0);
+    }
+
     else
     {
         // Neither input operand is the output
         ctx.as.instr(MOV, opndOut, opnd0);
-        ctx.as.instr(ADD, opndOut, opnd1);
+        ctx.as.instr(opPtr, opndOut, opnd1);
     }
 
-    st.setOutType(ctx.as, instr, Type.INT32);
-
-    /*
-    // EAX = wsp[a0]
-    // ECX = wsp[a1]
-    ctx.as.getWord(EAX, instr.args[0].localIdx);
-    ctx.as.getWord(ECX, instr.args[1].localIdx);
-
-    // EAX = add EAX, ECX
-    ctx.as.instr(ADD, EAX, ECX);
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-    */
+    st.setOutType(ctx.as, instr, typeTag);
 }
 
-/*
-void gen_mul_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // EAX = wsp[o0]
-    // ECX = wsp[o1]
-    ctx.as.getWord(EAX, instr.args[0].localIdx);
-    ctx.as.getWord(ECX, instr.args[1].localIdx);
-
-    // EAX = and EAX, ECX
-    ctx.as.instr(IMUL, EAX, ECX);
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-}
-
-void gen_and_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // EAX = wsp[o0]
-    // ECX = wsp[o1]
-    ctx.as.getWord(EAX, instr.args[0].localIdx);
-    ctx.as.getWord(ECX, instr.args[1].localIdx);
-
-    // EAX = and EAX, ECX
-    ctx.as.instr(AND, EAX, ECX);
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-}
-*/
+alias RMMOp!("add" , 32, Type.INT32) gen_add_i32;
+alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
+alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
 
 /*
 void gen_add_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -1154,9 +1161,76 @@ alias CmpOp!("i64", "eq") gen_eq_refptr;
 alias CmpOp!("i64", "ne") gen_ne_refptr;
 */
 
-/*
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 64);
+    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, 64);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+
+    X86Reg opnd0Reg = cast(X86Reg)opnd0;
+    X86Reg opnd1Reg = cast(X86Reg)opnd1;
+
+    // If the second input is a memory location
+    if (opnd1Reg is null)
+    {
+        writefln("in2 is mem loc");
+
+        // Move that value to a scratch register
+        ctx.as.instr(MOV, scrRegs64[0], opnd1);
+        opnd1Reg = scrRegs64[0];
+    }
+
+    assert (
+        opnd0Reg && opnd1Reg, 
+        "both inputs must be in registers"
+    );
+
+    // If the memory operand is 8 bits wide
+    /*
+    static if (memSize == 8)
+    { 
+        // TODO: use movzx
+
+        // Clear a scratch register and load to it
+        ctx.as.instr(MOV, scrRegs64[1], 0);
+        ctx.as.instr(MOV, scrRegs8[1], new X86Mem(memSize, opnd0Reg, 0, opnd1Reg));
+        ctx.as.instr(MOV, opndOut, scrRegs64[1]);
+    }
+    else
+    */
+    {
+        // If the output operand is a memory location
+        if (cast(X86Mem)opndOut)    
+        {
+            // Load to a scratch register first
+            auto scrReg = new X86Reg(X86Reg.GP, scrRegs64[1].regNo, memSize);
+            auto memOpnd = new X86Mem(memSize, opnd0Reg, 0, opnd1Reg);
+            ctx.as.instr(MOV, scrReg, memOpnd);
+            ctx.as.instr(MOV, opndOut, scrReg);
+
+
+            writefln("out is mem loc, type tag: %s", typeTag);
+            writefln("  opnd0Reg: %s", opnd0Reg);
+            writefln("  opnd1Reg: %s", opnd1Reg);
+            writefln("  opndOut : %s", opndOut);
+            writefln("  memOpnd : %s", memOpnd);
+            writefln("  memSize : %s", memSize);
+            writefln("  scrReg  : %s", scrReg);
+
+
+        }
+        else
+        {
+            writefln("out is reg");
+
+            ctx.as.instr(MOV, opndOut, new X86Mem(memSize, opnd0Reg, 0, opnd1Reg));
+        }
+    }
+
+    // Set the output type tag
+    st.setOutType(ctx.as, instr, typeTag);
+
+    /*
     // Pointer
     ctx.as.getWord(RCX, instr.args[0].localIdx);
 
@@ -1179,17 +1253,17 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
 
     ctx.as.setWord(instr.outSlot, RAX);
     ctx.as.setType(instr.outSlot, typeTag);
+    */
 }
 
 alias LoadOp!(8 , Type.INT32) gen_load_u8;
 //alias LoadOp!(uint16, Type.INT32) gen_load_u16;
 alias LoadOp!(32, Type.INT32) gen_load_u32;
 alias LoadOp!(64, Type.INT32) gen_load_u64;
-alias LoadOp!(64, Type.FLOAT) gen_load_f64;
+//alias LoadOp!(64, Type.FLOAT) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 //alias LoadOp!(rawptr, Type.RAWPTR) gen_load_rawptr;
 //alias LoadOp!(IRFunction, Type.FUNPTR) gen_load_funptr;
-*/
 
 void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -1594,15 +1668,17 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     */
 }
 
-/*
 void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    ctx.as.getMember!("Interp", "globalObj")(RAX, interpReg);
-    
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.REFPTR);
+    // Get the output operand. This must be a 
+    // register since it's the only operand.
+    auto opndOut = cast(X86Reg)st.getOutOpnd(ctx, ctx.as, instr, 64);
+    assert (opndOut !is null, "output is not a register");
+
+    ctx.as.getMember!("Interp", "globalObj")(opndOut, interpReg);
+
+    st.setOutType(ctx.as, instr, Type.REFPTR);
 }
-*/
 
 void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -1633,8 +1709,8 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     as.setMember!("Interp", "tsp")(interpReg, tspReg);
 
     // Call the op function
-    as.ptr(scratchRegs[0], opFn);
-    as.instr(jit.encodings.CALL, scratchRegs[0]);
+    as.ptr(scrRegs64[0], opFn);
+    as.instr(jit.encodings.CALL, scrRegs64[0]);
 
     // If this is a branch instruction
     if (instr.opcode.isBranch == true)
@@ -1669,12 +1745,10 @@ static this()
     codeGenFns[&MOVE]           = &gen_move;
     */
 
-    /*
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
     codeGenFns[&IS_INT32]       = &gen_is_int32;
     codeGenFns[&IS_FLOAT]       = &gen_is_float;
-    */
 
     /*
     codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
@@ -1682,8 +1756,8 @@ static this()
     */
 
     codeGenFns[&ADD_I32]        = &gen_add_i32;
-    //codeGenFns[&MUL_I32]        = &gen_mul_i32;
-    //codeGenFns[&AND_I32]        = &gen_and_i32;
+    codeGenFns[&MUL_I32]        = &gen_mul_i32;
+    codeGenFns[&AND_I32]        = &gen_and_i32;
 
     /*
     codeGenFns[&ADD_F64]        = &gen_add_f64;
@@ -1694,7 +1768,9 @@ static this()
     codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
     codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
     codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
+    */
 
+    /*
     codeGenFns[&EQ_I8]          = &gen_eq_i8;
     codeGenFns[&LT_I32]         = &gen_lt_i32;
     codeGenFns[&GE_I32]         = &gen_ge_i32;
@@ -1702,13 +1778,13 @@ static this()
     codeGenFns[&EQ_CONST]       = &gen_eq_const;
     codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
-
-    codeGenFns[&LOAD_U8]        = &gen_load_u8;
-    codeGenFns[&LOAD_U32]       = &gen_load_u32;
-    codeGenFns[&LOAD_U64]       = &gen_load_u64;
-    codeGenFns[&LOAD_F64]       = &gen_load_f64;
-    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
     */
+
+    //codeGenFns[&LOAD_U8]        = &gen_load_u8;
+    //codeGenFns[&LOAD_U32]       = &gen_load_u32;
+    //codeGenFns[&LOAD_U64]       = &gen_load_u64;
+    //codeGenFns[&LOAD_F64]       = &gen_load_f64;
+    //codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
 
     codeGenFns[&JUMP]           = &gen_jump;
 
@@ -1720,6 +1796,6 @@ static this()
     //codeGenFns[&GET_GLOBAL]     = &gen_get_global;
     //codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
-    //codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
+    codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 }
 

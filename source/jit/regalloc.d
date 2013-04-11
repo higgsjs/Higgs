@@ -51,7 +51,10 @@ X86Reg tspReg;
 X86Reg cspReg;
 X86Reg[] cargRegs;
 X86Reg[] cfpArgRegs;
-X86Reg[] scratchRegs;
+X86Reg[] scrRegs64;
+X86Reg[] scrRegs32;
+X86Reg[] scrRegs16;
+X86Reg[] scrRegs8;
 X86Reg[] allocRegs;
 
 /**
@@ -81,7 +84,10 @@ static this()
     /// RDX: scratch register
     /// RDI: scratch register, first C argument register
     /// RSI: scratch register, second C argument register
-    scratchRegs = [RAX, RDX, RDI, RSI];
+    scrRegs64 = [RAX, RDX, RDI, RSI];
+    scrRegs32 = [EAX, EDX, EDI, ESI];
+    scrRegs16 = [AX , DX , DI , SI ];
+    scrRegs8  = [AL , DL , DIL, SIL];
 
     /// RCX, RBX, RBP, R8-R12: 8 allocatable registers
     allocRegs = [RCX, RBX, RBP, R8, R9, R10, R11, R12];

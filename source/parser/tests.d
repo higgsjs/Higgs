@@ -179,6 +179,8 @@ unittest
 /// Test parsing of simple expressions
 unittest
 {
+    writefln("simple expression parsing");
+
     testParse("");
 
     testParse(";");
@@ -558,6 +560,8 @@ unittest
 /// Test parsing of source files
 unittest
 {
+    writefln("source file parsing");
+
     // Sunspider benchmarks
     testParseFile("programs/sunspider/controlflow-recursive.js");
     testParseFile("programs/sunspider/bitops-bits-in-byte.js");
