@@ -149,7 +149,9 @@ class X86Reg : X86Opnd
     override bool opEquals(Object o)
     {
         auto that = cast(X86Reg)o;
-        assert (that !is null);
+
+        if (that is null)
+            return false;
 
         return (
             this.type == that.type && 

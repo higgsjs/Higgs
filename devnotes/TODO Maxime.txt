@@ -50,20 +50,16 @@ FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
 TODO: simple `make install` target
 
+TODO: implement/fix get_global, set_global wrt reg alloc
 
+TODO: use liveness info to eliminate spills
 
-TODO: implement/fix get_global, set_global, call wrt reg alloc
+TODO: revise gen_call
 
-TODO: revise defaultFn, might need to save allocatable regs
+TODO: implement reg alloc for simple instructions
 
-
-
-
-TODO: implement basic reg alloc
-- getArgOpnd, getOutOpnd?
-- No forcing to reg, use scratch if needed
-- Out opnd should always be reg if possible
-- Don't use liveness info for not
+FIXME: is allocating of output opnd to reg broken?
+- Test in console?
 
 
 
@@ -72,6 +68,22 @@ TODO: implement basic reg alloc
 
 
 
+
+
+
+[DONE] FIXME: ; if_true $4 => if_true(32D6), if_false(32E2)
+- Jumping to block with wrong reg alloc
+
+[DONE] TODO: exit to interpreter, should spill regs appropriately
+
+[DONE] TODO: revise defaultFn, might need to save allocatable regs
+
+[DONE] TODO: spill logic
+
+[DONE] TODO: make getArgOpnd have a loadVal argument, load to reg
+- Assert not bumping output val
+
+[DONE] TODO: make getOutOpnd try to load to reg if not bumping input
 
 [DONE] TODO: make versioning system work without actual versions or reg alloc
 - Always the same state, one version

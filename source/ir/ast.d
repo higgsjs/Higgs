@@ -873,9 +873,15 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Generate the call targets
         genCallTargets(testCtx, callInstr);
 
-        // If the property is the constant true, exit the loop
+        // If the property is a constant value, exit the loop
+        auto boolTemp = testCtx.allocTemp();
+        testCtx.addInstr(new IRInstr(
+            &IS_CONST,
+            boolTemp,
+            callInstr.outSlot
+        ));
         testCtx.addInstr(IRInstr.ifTrue(
-            callInstr.outSlot,
+            boolTemp,
             exitBlock,
             bodyBlock
         ));

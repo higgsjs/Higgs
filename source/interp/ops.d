@@ -570,7 +570,12 @@ extern (C) void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRIn
     // Boolean result
     bool r;
 
-    static if (typeTag == Type.INT32 || typeTag == Type.CONST)
+    static if (typeTag == Type.CONST)
+    {
+        auto x = cast(DataType)wX.int8Val;
+        auto y = cast(DataType)wY.int8Val;
+    }
+    static if (typeTag == Type.INT32)
     {
         auto x = cast(DataType)wX.int32Val;
         auto y = cast(DataType)wY.int32Val;
@@ -606,8 +611,8 @@ alias CompareOp!(int8, Type.INT32, "r = (x == y);") op_eq_i8;
 alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_eq_refptr;
 alias CompareOp!(refptr, Type.REFPTR, "r = (x != y);") op_ne_refptr;
 
-alias CompareOp!(uint8, Type.CONST, "r = (x == y);") op_eq_const;
-alias CompareOp!(uint8, Type.CONST, "r = (x != y);") op_ne_const;
+alias CompareOp!(int8, Type.CONST, "r = (x == y);") op_eq_const;
+alias CompareOp!(int8, Type.CONST, "r = (x != y);") op_ne_const;
 
 alias CompareOp!(float64, Type.FLOAT, "r = (x == y);") op_eq_f64;
 alias CompareOp!(float64, Type.FLOAT, "r = (x != y);") op_ne_f64;
@@ -757,8 +762,14 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
 {
     auto valIdx = instr.args[0].localIdx;
     auto wVal = interp.getWord(valIdx);
+    auto tVal = interp.getType(valIdx);
 
-    if (wVal == TRUE)
+    assert (
+        tVal == Type.CONST,
+        "input to if_true is not constant type"
+    );
+
+    if (wVal.int8Val == TRUE.int8Val)
         interp.jump(instr.target);
     else
         interp.jump(instr.excTarget);
@@ -1038,7 +1049,7 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
     if (callInstr !is null)
     {
         // If this is a new call and the return value is undefined
-        if (callInstr.opcode == &CALL_NEW && wRet == UNDEF)
+        if (callInstr.opcode == &CALL_NEW && (tRet == Type.CONST && wRet == UNDEF))
         {
             // Use the this value as the return value
             wRet = interp.getWord(instr.block.fun.thisSlot);

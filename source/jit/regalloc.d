@@ -43,9 +43,51 @@ import std.stdint;
 import ir.ir;
 import ir.livevars;
 import jit.x86;
-import jit.jit;
 import util.bitset;
 
+X86Reg interpReg;
+X86Reg wspReg;
+X86Reg tspReg;
+X86Reg cspReg;
+X86Reg[] cargRegs;
+X86Reg[] cfpArgRegs;
+X86Reg[] scratchRegs;
+X86Reg[] allocRegs;
+
+/**
+Mapping of the x86 machine registers
+*/
+static this()
+{
+    /// R15: interpreter object pointer (C callee-save) 
+    interpReg = R15;
+
+    /// R14: word stack pointer (C callee-save)
+    wspReg = R14;
+
+    /// R13: type stack pointer (C callee-save)
+    tspReg = R13;
+
+    // RSP: C stack pointer (used for C calls only)
+    cspReg = RSP;
+
+    /// C argument registers
+    cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
+
+    /// C fp argument registers
+    cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
+
+    /// RAX: scratch register
+    /// RDX: scratch register
+    /// RDI: scratch register, first C argument register
+    /// RSI: scratch register, second C argument register
+    scratchRegs = [RAX, RDX, RDI, RSI];
+
+    /// RCX, RBX, RBP, R8-R12: 8 allocatable registers
+    allocRegs = [RCX, RBX, RBP, R8, R9, R10, R11, R12];
+}
+
+/// Mapping of locals to registers
 alias X86Reg[LocalIdx] RegMapping;
 
 RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
