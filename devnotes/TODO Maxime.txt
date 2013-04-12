@@ -56,16 +56,19 @@ TODO: use liveness info to eliminate spills
 
 TODO: jit/ops.d?
 
+TODO: asm code reuse, functions for slow paths?
 
 
 
-TODO: implement/fix get_global, set_global wrt reg alloc
+TODO: what ops are we missing for bitwise-and?
 
 
+TODO: fix set_global
 
 
+[DONE] TODO: implement/fix get_global
 
-
+[DONE] TODO: pushRegs, popRegs
 
 [DONE] TODO: revise gen_call
 - Will test the limits of the reg alloc

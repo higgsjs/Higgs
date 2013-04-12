@@ -831,6 +831,36 @@ void bail(Assembler as, CodeGenCtx ctx, CodeGenState st)
     as.instr(JMP, ctx.bailLabel);
 }
 
+/// Save caller-save registers on the stack before a C call
+void pushRegs(Assembler as)
+{
+    as.instr(PUSH, RAX);
+    as.instr(PUSH, RCX);
+    as.instr(PUSH, RDX);
+    as.instr(PUSH, RSI);
+    as.instr(PUSH, RDI);
+    as.instr(PUSH, R8);
+    as.instr(PUSH, R9);
+    as.instr(PUSH, R10);
+    as.instr(PUSH, R11);
+    as.instr(PUSH, R11);
+}
+
+/// Restore caller-save registers from the after before a C call
+void popRegs(Assembler as)
+{
+    as.instr(POP, R11);
+    as.instr(POP, R11);
+    as.instr(POP, R10);
+    as.instr(POP, R9);
+    as.instr(POP, R8);
+    as.instr(POP, RDI);
+    as.instr(POP, RSI);
+    as.instr(POP, RDX);
+    as.instr(POP, RCX);
+    as.instr(POP, RAX);
+}
+
 void printUint(Assembler as, X86Reg reg)
 {
     as.instr(PUSH, RAX);
@@ -1265,7 +1295,6 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(JMP, fLabel);
 }
 
-/*
 void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto interp = ctx.interp;
@@ -1273,7 +1302,7 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Cached property index
     auto propIdx = instr.args[1].int32Val;
 
-    // If no property index is cached, used the interpreter function
+    // If no property index is cached, use the interpreter function
     if (propIdx < 0)
     {
         defaultFn(ctx.as, ctx, st, instr);
@@ -1286,28 +1315,34 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto GET_PROP = new Label("PROP_GET_PROP");
     auto GET_OFS  = new Label("PROP_GET_OFS");
 
+    // Allocate the output operand
+    auto argOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+
     //
     // Fast path
     //
     ctx.as.addInstr(GET_PROP);
 
     // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(R12, interpReg);
+    ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
 
     // Compare the object size to the cached size
-    ctx.as.getField(EDX, R12, 4, obj_ofs_cap(interp.globalObj));
-    ctx.as.instr(CMP, EDX, 0x7FFFFFFF);
+    ctx.as.getField(scrRegs32[1], scrRegs64[0], 4, obj_ofs_cap(interp.globalObj));
+    ctx.as.instr(CMP, scrRegs32[1], 0x7FFFFFFF);
     ctx.as.addInstr(AFTER_CMP);
     ctx.as.instr(JNE, GET_OFS);
 
     // Get the word and type from the object
-    ctx.as.instr(MOV, RDI, new X86Mem(64, R12, 0x7FFFFFFF));
+    ctx.as.instr(MOV, scrRegs64[2], new X86Mem(64, scrRegs64[0], 0x7FFFFFFF));
     ctx.as.addInstr(AFTER_WORD);
-    ctx.as.instr(MOV, SIL, new X86Mem( 8, R12, 0x7FFFFFFF));
+    ctx.as.instr(MOV, scrRegs8[3] , new X86Mem(8 , scrRegs64[0], 0x7FFFFFFF));
     ctx.as.addInstr(AFTER_TYPE);
 
-    ctx.as.setWord(instr.outSlot, RDI);
-    ctx.as.setType(instr.outSlot, SIL);
+    // Move the word to the output operand
+    ctx.as.instr(MOV, argOpnd, scrRegs64[2]);
+
+    // TODO: change when integrating type knowledge
+    ctx.as.setType(instr.outSlot, scrRegs8[3]);
 
     //
     // Slow path: update the cached offset
@@ -1315,26 +1350,29 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.addInstr(GET_OFS);
 
     // Update the cached object size
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), EDX);
+    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), scrRegs32[1]);
 
     // Get the word offset
-    ctx.ol.instr(MOV, RDI, R12);
+    ctx.ol.pushRegs();
+    ctx.ol.instr(MOV, RDI, scrRegs64[0]);
     ctx.ol.instr(MOV, RSI, propIdx);
     ctx.ol.ptr(RAX, &obj_ofs_word);
     ctx.ol.instr(jit.encodings.CALL, RAX);
     ctx.ol.instr(MOV, new X86IPRel(32, AFTER_WORD, -4), EAX);
+    ctx.ol.popRegs();
 
     // Get the type offset
-    ctx.ol.instr(MOV, RDI, R12);
+    ctx.ol.pushRegs();
+    ctx.ol.instr(MOV, RDI, scrRegs64[0]);
     ctx.ol.instr(MOV, RSI, propIdx);
     ctx.ol.ptr(RAX, &obj_ofs_type);
     ctx.ol.instr(jit.encodings.CALL, RAX);
     ctx.ol.instr(MOV, new X86IPRel(32, AFTER_TYPE, -4), EAX);
+    ctx.ol.popRegs();
 
-    // Jump back to the get prop logic
+    // Read the property
     ctx.ol.instr(JMP, GET_PROP);
 }
-*/
 
 /*
 void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -1487,10 +1525,12 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.instr(MOV, new X86IPRel(64, AFTER_CLOS, -8), scrRegs64[0]);
 
     // Get the function pointer offset
+    ctx.ol.pushRegs();
     ctx.ol.instr(MOV, RDI, scrRegs64[0]);
     ctx.ol.ptr(scrRegs64[0], &clos_ofs_fptr);
     ctx.ol.instr(jit.encodings.CALL, scrRegs64[0]);
     ctx.ol.instr(MOV, new X86IPRel(32, AFTER_OFS, -4), EAX);
+    ctx.ol.popRegs();
 
     // Use the interpreter call instruction this time
     ctx.ol.instr(JMP, BAILOUT);
@@ -1758,7 +1798,7 @@ static this()
     codeGenFns[&ir.ir.CALL]     = &gen_call;
     codeGenFns[&ir.ir.RET]      = &gen_ret;
 
-    //codeGenFns[&GET_GLOBAL]     = &gen_get_global;
+    codeGenFns[&GET_GLOBAL]     = &gen_get_global;
     //codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
