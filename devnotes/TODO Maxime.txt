@@ -53,36 +53,33 @@ TODO: simple `make install` target
 TODO: implement/fix get_global, set_global wrt reg alloc
 
 TODO: use liveness info to eliminate spills
-
-TODO: revise gen_call
-- Will test the limits of the reg alloc
+- Might want to mark this slot as live?
 
 TODO: jit/ops.d?
 
 
-TODO: implement reg alloc for simple instructions
+
+
+
+TODO: revise gen_call
+- Will test the limits of the reg alloc
+
+
+
+
+
+
+
+[DONE] TODO: implement reg alloc for simple instructions
 - add, mul, and
 - get_global_obj
 - load
 
-
-
-
-
-FIXME: load with refptr gets bus error
+[DONE] FIXME: load with refptr gets bus error
 - Unaligned memory access or wrong address???
-- Must be corrupting the inputs to this instruction somehow
-- Likely have calculation beforehand, look at it
-- UPDATE: borks for load of int64 too
-
-
-
-FIXME: while grabbing a register for an operand, could be spilling another
-operand... Invalidating it
-
-
-
-
+- Could we be, by using int32 offsets, having invalid hi reg values?
+  - If so, problematic!
+  - There's your problem...
 
 [DONE] FIXME: ; if_true $4 => if_true(32D6), if_false(32E2)
 - Jumping to block with wrong reg alloc

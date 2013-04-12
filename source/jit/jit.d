@@ -1164,96 +1164,46 @@ alias CmpOp!("i64", "ne") gen_ne_refptr;
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 64);
-    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, 64);
+    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, 32);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
     X86Reg opnd0Reg = cast(X86Reg)opnd0;
-    X86Reg opnd1Reg = cast(X86Reg)opnd1;
 
-    // If the second input is a memory location
-    if (opnd1Reg is null)
-    {
-        writefln("in2 is mem loc");
-
-        // Move that value to a scratch register
-        ctx.as.instr(MOV, scrRegs64[0], opnd1);
-        opnd1Reg = scrRegs64[0];
-    }
+    // Zero extend the offset input into a scratch register
+    X86Reg opnd1Reg = scrRegs64[0];
+    ctx.as.instr(MOV, scrRegs32[0], opnd1);
 
     assert (
         opnd0Reg && opnd1Reg, 
         "both inputs must be in registers"
     );
 
-    // If the memory operand is 8 bits wide
-    /*
-    static if (memSize == 8)
-    { 
-        // TODO: use movzx
+    X86OpPtr loadOp;
+    static if (memSize == 8 || memSize == 16)
+        loadOp = MOVZX;
+    else
+        loadOp = MOV;
 
-        // Clear a scratch register and load to it
-        ctx.as.instr(MOV, scrRegs64[1], 0);
-        ctx.as.instr(MOV, scrRegs8[1], new X86Mem(memSize, opnd0Reg, 0, opnd1Reg));
-        ctx.as.instr(MOV, opndOut, scrRegs64[1]);
+    // If the output operand is a memory location
+    if (cast(X86Mem)opndOut || memSize == 32)    
+    {
+        uint16_t scrSize = (memSize == 32)? 32:64;
+        auto scrReg64 = scrRegs64[1];
+        auto scrReg = new X86Reg(X86Reg.GP, scrReg64.regNo, scrSize);
+        auto memOpnd = new X86Mem(memSize, opnd0Reg, 0, opnd1Reg);
+
+        // Load to a scratch register and then move to the output
+        ctx.as.instr(loadOp, scrReg, memOpnd);
+        ctx.as.instr(MOV, opndOut, scrReg64);
     }
     else
-    */
     {
-        // If the output operand is a memory location
-        if (cast(X86Mem)opndOut)    
-        {
-            // Load to a scratch register first
-            auto scrReg = new X86Reg(X86Reg.GP, scrRegs64[1].regNo, memSize);
-            auto memOpnd = new X86Mem(memSize, opnd0Reg, 0, opnd1Reg);
-            ctx.as.instr(MOV, scrReg, memOpnd);
-            ctx.as.instr(MOV, opndOut, scrReg);
-
-
-            writefln("out is mem loc, type tag: %s", typeTag);
-            writefln("  opnd0Reg: %s", opnd0Reg);
-            writefln("  opnd1Reg: %s", opnd1Reg);
-            writefln("  opndOut : %s", opndOut);
-            writefln("  memOpnd : %s", memOpnd);
-            writefln("  memSize : %s", memSize);
-            writefln("  scrReg  : %s", scrReg);
-
-
-        }
-        else
-        {
-            writefln("out is reg");
-
-            ctx.as.instr(MOV, opndOut, new X86Mem(memSize, opnd0Reg, 0, opnd1Reg));
-        }
+        // Load to the output register directly
+        ctx.as.instr(loadOp, opndOut, new X86Mem(memSize, opnd0Reg, 0, opnd1Reg));
     }
 
     // Set the output type tag
     st.setOutType(ctx.as, instr, typeTag);
-
-    /*
-    // Pointer
-    ctx.as.getWord(RCX, instr.args[0].localIdx);
-
-    // Offset
-    ctx.as.getWord(RDX, instr.args[1].localIdx);
-
-    X86Reg dstReg;
-    static if (memSize == 8)
-        dstReg = AL;
-    static if (memSize == 16)
-        dstReg = AX;
-    static if (memSize == 32)
-        dstReg = EAX;
-    static if (memSize == 64)
-        dstReg = RAX;
-
-    static if (memSize == 8)
-        ctx.as.instr(MOV, RAX, 0);
-    ctx.as.instr(MOV, dstReg, new X86Mem(memSize, RCX, 0, RDX));
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, typeTag);
-    */
 }
 
 alias LoadOp!(8 , Type.INT32) gen_load_u8;
@@ -1780,11 +1730,11 @@ static this()
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     */
 
-    //codeGenFns[&LOAD_U8]        = &gen_load_u8;
-    //codeGenFns[&LOAD_U32]       = &gen_load_u32;
-    //codeGenFns[&LOAD_U64]       = &gen_load_u64;
+    codeGenFns[&LOAD_U8]        = &gen_load_u8;
+    codeGenFns[&LOAD_U32]       = &gen_load_u32;
+    codeGenFns[&LOAD_U64]       = &gen_load_u64;
     //codeGenFns[&LOAD_F64]       = &gen_load_f64;
-    //codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
+    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
 
     codeGenFns[&JUMP]           = &gen_jump;
 
