@@ -50,25 +50,25 @@ FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
 TODO: simple `make install` target
 
-TODO: implement/fix get_global, set_global wrt reg alloc
-
 TODO: use liveness info to eliminate spills
-- Might want to mark this slot as live?
+- Might want to mark this slot as always live?
+  - Can't be corrupted?
 
 TODO: jit/ops.d?
 
 
 
 
+TODO: implement/fix get_global, set_global wrt reg alloc
 
-TODO: revise gen_call
+
+
+
+
+
+
+[DONE] TODO: revise gen_call
 - Will test the limits of the reg alloc
-
-
-
-
-
-
 
 [DONE] TODO: implement reg alloc for simple instructions
 - add, mul, and

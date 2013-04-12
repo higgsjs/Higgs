@@ -623,6 +623,17 @@ class CodeGenState
             );
         }
     }
+
+    /// Get the register to which a local is mapped, if any
+    X86Reg getReg(LocalIdx localIdx)
+    {
+        auto flags = allocState[localIdx];
+
+        if (flags & RA_GPREG)
+            return new X86Reg(X86Reg.GP, flags & RA_REG_MASK, 64);
+
+        return null;
+    }
 }
 
 /**
@@ -1405,22 +1416,6 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Generate an entry point for the call continuation
     ctx.getEntryPoint(instr.target);
 
-
-
-
-    // Call the interpreter call instruction
-    defaultFn(ctx.as, ctx, st, instr);
-
-
-    // TODO: revise gen_call
-    return;
-
-
-
-
-
-
-
     // Find the most called callee function
     uint64_t maxCount = 0;
     IRFunction maxCallee = null;
@@ -1445,10 +1440,22 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
-    // Label for the bailout to interpreter cases
-    auto bailout = new Label("CALL_BAILOUT");
+    // Get the argument registers before spilling
+    X86Reg[] argRegs;
+    argRegs.length = numArgs;
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        auto argSlot = instr.args[$-(1+i)].localIdx;
+        argRegs[i] = st.getReg(argSlot);
+    }
 
-    auto AFTER_CLOS  = new Label("CALL_AFTER_CLOS");
+    // Spill the registers
+    st.spillRegs(ctx.as);
+
+    // Label for the bailout to interpreter cases
+    auto BAILOUT = new Label("CALL_BAILOUT");
+
+    auto AFTER_CLOS = new Label("CALL_AFTER_CLOS");
     auto AFTER_OFS = new Label("CALL_AFTER_OFS");
     auto GET_FPTR = new Label("CALL_GET_FPTR");
     auto GET_OFS = new Label("CALL_GET_OFS");
@@ -1459,16 +1466,16 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.addInstr(GET_FPTR);
 
     // Get the closure word off the stack
-    ctx.as.getWord(RCX, closIdx);
+    ctx.as.getWord(scrRegs64[0], closIdx);
 
     // Compare the closure pointer to the cached pointer
-    ctx.as.instr(MOV, RAX, 0x7FFFFFFFFFFFFFFF);
+    ctx.as.instr(MOV, scrRegs64[1], 0x7FFFFFFFFFFFFFFF);
     ctx.as.addInstr(AFTER_CLOS);
-    ctx.as.instr(CMP, RCX, RAX);
+    ctx.as.instr(CMP, scrRegs64[0], scrRegs64[1]);
     ctx.as.instr(JNE, GET_OFS);
 
     // Get the function pointer from the closure object
-    ctx.as.instr(MOV, RDI, new X86Mem(64, RCX, 0x7FFFFFFF));
+    ctx.as.instr(MOV, scrRegs64[2], new X86Mem(64, scrRegs64[0], 0x7FFFFFFF));
     ctx.as.addInstr(AFTER_OFS);
 
     //
@@ -1477,25 +1484,25 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.addInstr(GET_OFS);
 
     // Update the cached closure poiter
-    ctx.ol.instr(MOV, new X86IPRel(64, AFTER_CLOS, -8), RCX);
+    ctx.ol.instr(MOV, new X86IPRel(64, AFTER_CLOS, -8), scrRegs64[0]);
 
     // Get the function pointer offset
-    ctx.ol.instr(MOV, RDI, RCX);
-    ctx.ol.ptr(RAX, &clos_ofs_fptr);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
+    ctx.ol.instr(MOV, RDI, scrRegs64[0]);
+    ctx.ol.ptr(scrRegs64[0], &clos_ofs_fptr);
+    ctx.ol.instr(jit.encodings.CALL, scrRegs64[0]);
     ctx.ol.instr(MOV, new X86IPRel(32, AFTER_OFS, -4), EAX);
 
-    // Jump back to the fast path logic
-    ctx.ol.instr(JMP, GET_FPTR);
+    // Use the interpreter call instruction this time
+    ctx.ol.instr(JMP, BAILOUT);
 
     //
     // Function call logic
     //
 
     // If this is not the closure we expect, bailout to the interpreter
-    ctx.as.ptr(RSI, fun);
-    ctx.as.instr(CMP, RDI, RSI);
-    ctx.as.instr(JNE, bailout);
+    ctx.as.ptr(scrRegs64[3], fun);
+    ctx.as.instr(CMP, scrRegs64[2], scrRegs64[3]);
+    ctx.as.instr(JNE, BAILOUT);
 
     auto numPush = fun.numLocals;
     auto numVars = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
@@ -1511,14 +1518,22 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     {
         //auto argSlot = instr.args[$-(1+i)].localIdx + (argDiff + i);
         auto argSlot = instr.args[$-(1+i)].localIdx;
-
-        ctx.as.getWord(RDI, argSlot + numPush); 
-        ctx.as.getType(SIL, argSlot + numPush);
-
         auto dstIdx = (numArgs - i - 1) + numVars + NUM_HIDDEN_ARGS;
 
-        ctx.as.setWord(cast(LocalIdx)dstIdx, RDI);
-        ctx.as.setType(cast(LocalIdx)dstIdx, SIL);
+        // If this argument is in a register
+        if (argRegs[i] !is null)
+        {
+            //writefln("arg reg: %s %s", argRegs[i], i);
+            ctx.as.setWord(cast(LocalIdx)dstIdx, argRegs[i]);
+        }
+        else
+        {
+            ctx.as.getWord(scrRegs64[3], argSlot + numPush); 
+            ctx.as.setWord(cast(LocalIdx)dstIdx, scrRegs64[3]);
+        }
+
+        ctx.as.getType(scrRegs8[3], argSlot + numPush);
+        ctx.as.setType(cast(LocalIdx)dstIdx, scrRegs8[3]);
     }
 
     // Write the argument count
@@ -1526,25 +1541,25 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.setType(cast(LocalIdx)(numVars + 3), Type.INT32);
 
     // Copy the "this" argument
-    ctx.as.getWord(RDI, thisIdx + numPush);
-    ctx.as.getType(SIL, thisIdx + numPush);
-    ctx.as.setWord(cast(LocalIdx)(numVars + 2), RDI);
-    ctx.as.setType(cast(LocalIdx)(numVars + 2), SIL);
+    ctx.as.getWord(scrRegs64[2], thisIdx + numPush);
+    ctx.as.getType(scrRegs8[3], thisIdx + numPush);
+    ctx.as.setWord(cast(LocalIdx)(numVars + 2), scrRegs64[2]);
+    ctx.as.setType(cast(LocalIdx)(numVars + 2), scrRegs8[3]);
 
     // Write the closure argument
-    ctx.as.setWord(cast(LocalIdx)(numVars + 1), RCX);
+    ctx.as.setWord(cast(LocalIdx)(numVars + 1), scrRegs64[0]);
     ctx.as.setType(cast(LocalIdx)(numVars + 1), Type.REFPTR);
 
     // Write the return address (caller instruction)
-    ctx.as.ptr(RAX, instr);
-    ctx.as.setWord(cast(LocalIdx)(numVars + 0), RAX);
+    ctx.as.ptr(scrRegs64[3], instr);
+    ctx.as.setWord(cast(LocalIdx)(numVars + 0), scrRegs64[3]);
     ctx.as.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
 
     // Jump to the callee entry point
     ctx.as.jump(ctx, st, fun.entryBlock);
 
     // Bailout to the interpreter (out of line)
-    ctx.ol.addInstr(bailout);
+    ctx.ol.addInstr(BAILOUT);
 
     // Call the interpreter call instruction
     // Fallback to interpreter execution
