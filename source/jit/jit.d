@@ -55,6 +55,7 @@ import jit.x86;
 import jit.encodings;
 import jit.peephole;
 import jit.regalloc;
+import util.bitset;
 
 /// Block execution count at which a function should be compiled
 const JIT_COMPILE_COUNT = 1000;
@@ -161,7 +162,7 @@ void compFun(Interp interp, IRFunction fun)
 
         // Request a version of the block that accepts the
         // default state where all locals are on the stack
-        auto blockLabel = getBlockLabel(block, new CodeGenState(fun.numLocals));
+        auto blockLabel = getBlockLabel(block, new CodeGenState(fun));
 
         // Jump to the target block
         ol.instr(JMP, blockLabel);
@@ -180,6 +181,7 @@ void compFun(Interp interp, IRFunction fun)
         as, 
         ol, 
         bailLabel,
+        liveSets,
         regMapping,
         getBlockLabel,
         getEntryPoint
@@ -377,7 +379,23 @@ extern (C) void visitStub(IRBlock stubBlock)
     fun.codeBlock = null;
 }
 
+/**
+Basic block version
+*/
+struct BlockVersion
+{
+    /// Basic block
+    IRBlock block;
+
+    /// Associated state
+    CodeGenState state;
+
+    /// Jump label
+    Label label;
+}
+
 alias uint8_t RAFlags;
+const RAFlags RA_DEAD = 0;
 const RAFlags RA_STACK = (1 << 7);
 const RAFlags RA_GPREG = (1 << 6);
 const RAFlags RA_REG_MASK = (0x0F);
@@ -398,12 +416,19 @@ class CodeGenState
     // Implement only once versioning/regalloc working
 
     /// Constructor for a default/entry code generation state
-    this(size_t numLocals)
+    this(IRFunction fun)
     {
-        // All values are initially on the stack
-        allocState.length = numLocals;
+        allocState.length = fun.numLocals;
+
+        // All arguments are initially on the stack, other
+        // values are dead until they are written
         for (size_t i = 0; i < allocState.length; ++i)
-            allocState[i] = RA_STACK;
+        {
+            if (i < fun.numLocals - (fun.numLocals + NUM_HIDDEN_ARGS))
+                allocState[i] = RA_STACK;
+            else
+                allocState[i] = RA_DEAD;
+        }
 
         // All registers are initially free
         gpRegMap.length = 16;
@@ -418,6 +443,7 @@ class CodeGenState
         this.gpRegMap = that.gpRegMap.dup;
     }
 
+    /// Produce a string representation of the state
     override string toString()
     {
         auto output = "";
@@ -482,7 +508,11 @@ class CodeGenState
 
         assert (
             flags & RA_STACK, 
-            "argument is neither in a register nor on the stack"
+            "argument is neither in a register nor on the stack \n" ~
+            "argSlot: " ~ to!string(argSlot) ~ "\n" ~
+            "fun: " ~ instr.block.fun.getName() ~ "\n" ~
+            instr.block.toString()
+
         );
 
         // If the value shouldn't be loaded into a register
@@ -517,8 +547,8 @@ class CodeGenState
             }
 
             // Spill the value currently in the register
-            as.instr(MOV, new X86Mem(64, wspReg, 8 * regSlot), reg);
-            allocState[regSlot] = RA_STACK;
+            //spillReg(as, reg.regNo, null);
+            spillReg(as, reg.regNo, ctx.liveSets[instr]);
         }
 
         // Load the argument into the register
@@ -565,8 +595,8 @@ class CodeGenState
             }
 
             // Spill the value currently in the register
-            as.instr(MOV, new X86Mem(64, wspReg, 8 * regSlot), reg);
-            allocState[regSlot] = RA_STACK;
+            //spillReg(as, reg.regNo, null);
+            spillReg(as, reg.regNo, ctx.liveSets[instr]);
         }
 
         // Map the output slot to the register
@@ -595,33 +625,69 @@ class CodeGenState
     /**
     Spill all registers to the stack
     */
-    void spillRegs(Assembler as)
+    void spillRegs(Assembler as, BitSet liveSet = null)
     {
         foreach (regNo, localIdx; gpRegMap)
         {
             if (localIdx is NULL_LOCAL)
                 continue;
 
-            auto mem = new X86Mem(64, wspReg, 8 * localIdx);
-            auto reg = new X86Reg(X86Reg.GP, cast(uint8_t)regNo, 64);
-
-            // Spill the value currently in the register
-            as.instr(MOV, mem, reg);
-
-            // Mark the value as being on the stack
-            allocState[localIdx] = RA_STACK;
-
-            // Mark the register as free
-            gpRegMap[regNo] = NULL_LOCAL;
+            spillReg(as, regNo, liveSet);
         }
 
         foreach (localIdx, flags; allocState)
         {
             assert (
-                flags == RA_STACK, 
-                "value not on stack after spill " ~ to!string(flags)
+                (flags & RA_GPREG) == 0,
+                "value in register after spill " ~ to!string(flags)
             );
         }
+    }
+
+    /// Spill a given register to the stack
+    void spillReg(Assembler as, size_t regNo, BitSet liveSet)
+    {
+        // Get the slot mapped to this register
+        auto regSlot = gpRegMap[regNo];
+
+        // If no value is mapped to this register, stop
+        if (regSlot is NULL_LOCAL)
+            return;
+
+        // If the value is live or we have no liveness information
+        if (liveSet is null || liveSet.has(regSlot) == true)
+        {
+            //if (liveSet !is null)
+            //    writefln("spilling %s", regSlot);
+
+            auto mem = new X86Mem(64, wspReg, 8 * regSlot);
+            auto reg = new X86Reg(X86Reg.GP, cast(uint8_t)regNo, 64);
+
+            // Spill the value currently in the register
+            as.comment("Spilling $" ~ to!string(regSlot));
+            as.instr(MOV, mem, reg);
+
+            // Mark the value as being on the stack
+            allocState[regSlot] = RA_STACK;
+        }
+        else
+        {
+            //if (liveSet !is null)
+            //    writefln("not spilling %s", regSlot);
+
+            // Mark the value as dead
+            allocState[regSlot] = RA_DEAD;
+        }
+
+        // Mark the register as free
+        gpRegMap[regNo] = NULL_LOCAL;
+    }
+
+    /// Mark a value as being stored on the stack
+    void valOnStack(LocalIdx localIdx)
+    {
+        // Mark the value as being on the stack
+        allocState[localIdx] = RA_STACK;
     }
 
     /// Get the register to which a local is mapped, if any
@@ -634,21 +700,6 @@ class CodeGenState
 
         return null;
     }
-}
-
-/**
-Basic block version
-*/
-struct BlockVersion
-{
-    /// Basic block
-    IRBlock block;
-
-    /// Associated state
-    CodeGenState state;
-
-    /// Jump label
-    Label label;
 }
 
 /**
@@ -671,6 +722,9 @@ class CodeGenCtx
     /// Bailout to interpreter label
     Label bailLabel;
 
+    /// Per-instruction live sets
+    BitSet[IRInstr] liveSets;
+
     /// Register mapping (slots->regs)
     RegMapping regMapping;
 
@@ -686,6 +740,7 @@ class CodeGenCtx
         Assembler as,
         Assembler ol,
         Label bailLabel,
+        BitSet[IRInstr] liveSets,
         RegMapping regMapping,
         Label delegate(IRBlock, CodeGenState) getBlockLabel,
         Label delegate(IRBlock) getEntryPoint,
@@ -696,6 +751,7 @@ class CodeGenCtx
         this.as = as;
         this.ol = ol;
         this.bailLabel = bailLabel;
+        this.liveSets = liveSets;
         this.regMapping = regMapping;
         this.getBlockLabel = getBlockLabel;
         this.getEntryPoint = getEntryPoint;
@@ -1482,7 +1538,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         argRegs[i] = st.getReg(argSlot);
     }
 
-    // Spill the registers
+    // Spill the registers live after the call
+    //writeln(instr.block);
     st.spillRegs(ctx.as);
 
     // Label for the bailout to interpreter cases
@@ -1724,6 +1781,13 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
         if (opts.jit_dumpinfo)
             writefln("interpreter bailout");
+    }
+
+    // If the instruction has an output slot, mark its
+    // output as being on the stack
+    if (instr.outSlot !is NULL_LOCAL)
+    {
+        st.valOnStack(instr.outSlot);
     }
 }
 

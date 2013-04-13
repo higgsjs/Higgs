@@ -55,6 +55,8 @@ TODO: asm code reuse, functions for slow paths?
 - can use for entry points too?
 
 TODO: can we use one less scratch reg?
+- Delay until type tags integrated
+- Might need more scratch regs as refactorings progress
 
 TODO: jit/ops.d?
 
@@ -65,6 +67,42 @@ TODO: use liveness info to eliminate spills
 
 
 
+ISSUE: stack initialization, GC, spills
+- If we avoid spilling to the stack, running risks of GC issues
+- Random stuff on the stack is bad!
+- Just init everything on the stack to 0?
+  - When you GC, reset the top of the stack to 0
+  - Ensures all values written were valid
+  - No longer need init maps
+- But if a value is dead, should we be scanning it???
+
+
+
+TODO: right now, always storing type info on the stack
+- Don't want value in reg but type info on stack...
+- Could end up with old integer value tagged as pointer
+- If type info is on stack, but value is dead, must clear out?
+- spillRegs should spill the type tags
+- Once we know a type value, we never write it back until we spill
+  - If we spill, we definitely write a type tag
+- If we get called with some value/type on the stack, we might leave
+  the type tag on the stack
+  - If we aren't spilling, value will remain unchanged and coherent
+
+
+In the meantime, we're writing type tags on the stack, but not necessarily
+spilling values
+- Can write 0/null on the stack temporarily?
+  - Not if the out opnd is the stack, ha
+  - Must check what output opnd is
+
+
+TODO: get rid of init maps, init analysis?
+- Must still init vars to undef?
+- Important part is to refactor GC to init/reset stack to 0
+- Can also try ignoring init map for testing?
+- If this works, can avoid spilling everything on every bailout/call
+- Can init less slots if we only worry about uninitialized variables ***
 
 
 
@@ -72,6 +110,21 @@ TODO: use liveness info to eliminate spills
 
 
 
+
+
+
+[DONE] TODO: default state, only args should be on stack
+
+[DONE] FIXME: jit.d(485): argument is neither in a register nor on the stack
+- Problem is with rt_typeof, used in jit/loop_new
+- Log the function we're actually compiling
+  $1 = set_null
+  $3 = eq_refptr $10, $1
+  if_true $3 => if_true(A368), if_false(A36B)
+$3 is in fact live after eq_refptr
+- eq_refptr uses the interp fallback
+  - will not map its value as being on the stack!
+  - could change interp fallback to fix this?
 
 [DONE] TODO: bitwise-and, must still be missing instrs for lt
 - using default for: $7 = lt_i32 $15, $16 ($rt_lt(27EA))

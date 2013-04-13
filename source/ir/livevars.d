@@ -39,6 +39,7 @@ module ir.livevars;
 
 import std.stdio;
 import std.array;
+import std.string;
 import ir.ir;
 import util.bitset;
 import util.string;
@@ -131,7 +132,10 @@ BitSet[IRInstr] compLiveVars(IRFunction fun)
         }
     }
 
-    /*    
+    /*
+    if (!fun.getName.startsWith("$rt_typeof"))
+        return liveSets;
+
     writefln("");
     writefln("%s", fun.getName());
     for (auto block = fun.firstBlock; block !is null; block = block.next)
