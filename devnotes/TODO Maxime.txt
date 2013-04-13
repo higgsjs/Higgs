@@ -66,7 +66,6 @@ TODO: use liveness info to eliminate spills
 
 
 
-TODO: bitwise-and, must still be missing instrs for lt
 
 
 
@@ -74,6 +73,8 @@ TODO: bitwise-and, must still be missing instrs for lt
 
 
 
+[DONE] TODO: bitwise-and, must still be missing instrs for lt
+- using default for: $7 = lt_i32 $15, $16 ($rt_lt(27EA))
 
 [DONE] TODO: fix set_global
 - Bug with type tags? Should get true, get integer 1, integer type tag

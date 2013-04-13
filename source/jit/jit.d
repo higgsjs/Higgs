@@ -957,15 +957,17 @@ void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
 
-/*
 void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    ctx.as.getWord(RDI, instr.args[0].localIdx);
-    ctx.as.getType(SIL, instr.args[0].localIdx);
-    ctx.as.setWord(instr.outSlot, RDI);
-    ctx.as.setType(instr.outSlot, SIL);
+    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 64);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+
+    ctx.as.instr(MOV, opndOut, opnd0);
+
+    // TODO: change when type info integrated?
+    ctx.as.getType(scrRegs8[0], instr.args[0].localIdx);
+    ctx.as.setType(instr.outSlot, scrRegs8[0]);
 }
-*/
 
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -1146,61 +1148,46 @@ alias OvfOp!("sub") gen_sub_i32_ovf;
 alias OvfOp!("mul") gen_mul_i32_ovf;
 */
 
-/*
-void CmpOp(string type, string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    X86Reg regA;
-    X86Reg regB;
+    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, numBits);
+    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, numBits);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
 
-    static if (type == "i8")
-    {
-        regA = CL;
-        regB = DL;
-    }
-    static if (type == "i32")
-    {
-        regA = ECX;
-        regB = EDX;
-    }
-    static if (type == "i64")
-    {
-        regA = RCX;
-        regB = RDX;
-    }
+    // Compare the inputs
+    ctx.as.instr(CMP, opnd0, opnd1);
 
-    ctx.as.getWord(regA, instr.args[0].localIdx);
-    ctx.as.getWord(regB, instr.args[1].localIdx);
+    ctx.as.instr(MOV, scrRegs16[0], FALSE.int8Val);
+    ctx.as.instr(MOV, scrRegs16[1], TRUE.int8Val);
 
-    ctx.as.instr(CMP, regA, regB);
-
-    ctx.as.instr(MOV, RAX, cast(int8_t)FALSE.int64Val);
-    ctx.as.instr(MOV, RCX, cast(int8_t)TRUE.int64Val);
-
+    X86OpPtr cmovOp = null;
     static if (op == "eq")
-        ctx.as.instr(CMOVE, RAX, RCX);
+        cmovOp = CMOVE;
     static if (op == "ne")
-        ctx.as.instr(CMOVNE, RAX, RCX);
+        cmovOp = CMOVNE;
     static if (op == "lt")
-        ctx.as.instr(CMOVL, RAX, RCX);
+        cmovOp = CMOVL;
     static if (op == "le")
-        ctx.as.instr(CMOVLE, RAX, RCX);
+        cmovOp = CMOVLE;
     static if (op == "gt")
-        ctx.as.instr(CMOVG, RAX, RCX);
+        cmovOp = CMOVG;
     static if (op == "ge")
-        ctx.as.instr(CMOVGE, RAX, RCX);
+        cmovOp = CMOVGE;
 
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.CONST);
+    ctx.as.instr(cmovOp, scrRegs32[0], scrRegs32[1]);
+
+    ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+
+    st.setOutType(ctx.as, instr, Type.CONST);
 }
 
-alias CmpOp!("i8" , "eq") gen_eq_i8;
-alias CmpOp!("i32", "lt") gen_lt_i32;
-alias CmpOp!("i32", "ge") gen_ge_i32;
-alias CmpOp!("i32", "ne") gen_ne_i32;
-alias CmpOp!("i8" , "eq") gen_eq_const;
-alias CmpOp!("i64", "eq") gen_eq_refptr;
-alias CmpOp!("i64", "ne") gen_ne_refptr;
-*/
+alias CmpOp!("eq", 8) gen_eq_i8;
+alias CmpOp!("lt", 32) gen_lt_i32;
+//alias CmpOp!("i32", "ge") gen_ge_i32;
+//alias CmpOp!("i32", "ne") gen_ne_i32;
+alias CmpOp!("eq", 8) gen_eq_const;
+//alias CmpOp!("i64", "eq") gen_eq_refptr;
+//alias CmpOp!("i64", "ne") gen_ne_refptr;
 
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -1754,9 +1741,7 @@ static this()
     codeGenFns[&SET_INT32]      = &gen_set_int32;
     codeGenFns[&SET_STR]        = &gen_set_str;
 
-    /*
     codeGenFns[&MOVE]           = &gen_move;
-    */
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
@@ -1783,15 +1768,13 @@ static this()
     codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
     */
 
-    /*
     codeGenFns[&EQ_I8]          = &gen_eq_i8;
     codeGenFns[&LT_I32]         = &gen_lt_i32;
-    codeGenFns[&GE_I32]         = &gen_ge_i32;
-    codeGenFns[&NE_I32]         = &gen_ne_i32;
+    //codeGenFns[&GE_I32]         = &gen_ge_i32;
+    //codeGenFns[&NE_I32]         = &gen_ne_i32;
     codeGenFns[&EQ_CONST]       = &gen_eq_const;
-    codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
-    codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
-    */
+    //codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
+    //codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
 
     codeGenFns[&LOAD_U8]        = &gen_load_u8;
     codeGenFns[&LOAD_U32]       = &gen_load_u32;
