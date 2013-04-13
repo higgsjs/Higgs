@@ -57,7 +57,7 @@ import jit.peephole;
 import jit.regalloc;
 
 /// Block execution count at which a function should be compiled
-const JIT_COMPILE_COUNT = 500;
+const JIT_COMPILE_COUNT = 1000;
 
 /**
 Compile a function to machine code
@@ -1316,7 +1316,7 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto GET_OFS  = new Label("PROP_GET_OFS");
 
     // Allocate the output operand
-    auto argOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
     //
     // Fast path
@@ -1339,7 +1339,7 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.addInstr(AFTER_TYPE);
 
     // Move the word to the output operand
-    ctx.as.instr(MOV, argOpnd, scrRegs64[2]);
+    ctx.as.instr(MOV, outOpnd, scrRegs64[2]);
 
     // TODO: change when integrating type knowledge
     ctx.as.setType(instr.outSlot, scrRegs8[3]);
@@ -1374,7 +1374,6 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.instr(JMP, GET_PROP);
 }
 
-/*
 void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto interp = ctx.interp;
@@ -1395,27 +1394,33 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto SET_PROP = new Label("PROP_SET_PROP");
     auto GET_OFS  = new Label("PROP_GET_OFS");
 
+    // Allocate the input operand
+    auto argOpnd = st.getArgOpnd(ctx, ctx.as, instr, 1, 64);
+
     //
     // Fast path
     //
     ctx.as.addInstr(SET_PROP);
 
     // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(R12, interpReg);
+    ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
 
     // Compare the object size to the cached size
-    ctx.as.getField(EDX, R12, 4, obj_ofs_cap(interp.globalObj));
-    ctx.as.instr(CMP, EDX, 0x7FFFFFFF);
+    ctx.as.getField(scrRegs32[1], scrRegs64[0], 4, obj_ofs_cap(interp.globalObj));
+    ctx.as.instr(CMP, scrRegs32[1], 0x7FFFFFFF);
     ctx.as.addInstr(AFTER_CMP);
     ctx.as.instr(JNE, GET_OFS);
 
-    ctx.as.getWord(RDI, instr.args[1].localIdx);
-    ctx.as.getType(SIL, instr.args[1].localIdx);
+    // Move the input operand to a scratch register
+    ctx.as.instr(MOV, scrRegs64[2], argOpnd);
 
-    // Set the word and type on the object
-    ctx.as.instr(MOV, new X86Mem(64, R12, 0x7FFFFFFF), RDI);
+    // TODO: change when integrating type knowledge
+    ctx.as.getType(scrRegs8[3], instr.args[1].localIdx);
+
+    // Set the word and type from the object
+    ctx.as.instr(MOV, new X86Mem(64, scrRegs64[0], 0x7FFFFFFF), scrRegs64[2]);
     ctx.as.addInstr(AFTER_WORD);
-    ctx.as.instr(MOV, new X86Mem( 8, R12, 0x7FFFFFFF), SIL);
+    ctx.as.instr(MOV, new X86Mem(8 , scrRegs64[0], 0x7FFFFFFF), scrRegs8[3]);
     ctx.as.addInstr(AFTER_TYPE);
 
     //
@@ -1424,26 +1429,29 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.addInstr(GET_OFS);
 
     // Update the cached object size
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), EDX);
+    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), scrRegs32[1]);
 
     // Get the word offset
-    ctx.ol.instr(MOV, RDI, R12);
+    ctx.ol.pushRegs();
+    ctx.ol.instr(MOV, RDI, scrRegs64[0]);
     ctx.ol.instr(MOV, RSI, propIdx);
     ctx.ol.ptr(RAX, &obj_ofs_word);
     ctx.ol.instr(jit.encodings.CALL, RAX);
     ctx.ol.instr(MOV, new X86IPRel(32, AFTER_WORD, -4), EAX);
+    ctx.ol.popRegs();
 
     // Get the type offset
-    ctx.ol.instr(MOV, RDI, R12);
+    ctx.ol.pushRegs();
+    ctx.ol.instr(MOV, RDI, scrRegs64[0]);
     ctx.ol.instr(MOV, RSI, propIdx);
     ctx.ol.ptr(RAX, &obj_ofs_type);
     ctx.ol.instr(jit.encodings.CALL, RAX);
     ctx.ol.instr(MOV, new X86IPRel(32, AFTER_TYPE, -4), EAX);
+    ctx.ol.popRegs();
 
-    // Jump back to the get prop logic
+    // Read the property
     ctx.ol.instr(JMP, SET_PROP);
 }
-*/
 
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -1799,7 +1807,7 @@ static this()
     codeGenFns[&ir.ir.RET]      = &gen_ret;
 
     codeGenFns[&GET_GLOBAL]     = &gen_get_global;
-    //codeGenFns[&SET_GLOBAL]     = &gen_set_global;
+    codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 }
