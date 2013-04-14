@@ -58,26 +58,6 @@ TODO: can we use one less scratch reg?
 - Delay until type tags integrated
 - Might need more scratch regs as refactorings progress
 
-TODO: jit/ops.d?
-
-TODO: use liveness info to eliminate spills
-- Might want to mark this slot as always live?
-  - Can't be corrupted?
-- Log the spills we eliminate vs those we don't
-
-
-
-ISSUE: stack initialization, GC, spills
-- If we avoid spilling to the stack, running risks of GC issues
-- Random stuff on the stack is bad!
-- Just init everything on the stack to 0?
-  - When you GC, reset the top of the stack to 0
-  - Ensures all values written were valid
-  - No longer need init maps
-- But if a value is dead, should we be scanning it???
-
-
-
 TODO: right now, always storing type info on the stack
 - Don't want value in reg but type info on stack...
 - Could end up with old integer value tagged as pointer
@@ -89,29 +69,45 @@ TODO: right now, always storing type info on the stack
   the type tag on the stack
   - If we aren't spilling, value will remain unchanged and coherent
 
+TODO: fast entry point, pre-map first argument registers
+- Jump directly to target if already compiled
 
-In the meantime, we're writing type tags on the stack, but not necessarily
-spilling values
-- Can write 0/null on the stack temporarily?
-  - Not if the out opnd is the stack, ha
-  - Must check what output opnd is
+TODO: functions, have ptr to object
+- fptr at constant offset, no need to cache closure, less complex code
 
-
-TODO: get rid of init maps, init analysis?
-- Must still init vars to undef?
-- Important part is to refactor GC to init/reset stack to 0
-- Can also try ignoring init map for testing?
-- If this works, can avoid spilling everything on every bailout/call
-- Can init less slots if we only worry about uninitialized variables ***
+TODO: usesThis, usesClos? can optimize function calls further
 
 
 
+TODO: try eliminating init maps, commit first!
+- Don't store on function, don't use in GC
+- Can init less slots if we only worry about uninitialized variables
+- Refactor GC to init/reset stack to 0
+- Temporarily: when setting a type, write 0 value
 
 
 
 
 
 
+FIXME: function calls
+- Selectively spill non-args in regs before the call
+- Copy the state for the bailout, then spill all live
+- Everything that's live after the call must be spilled
+- ISSUE: hit GC bug...
+  - Could try fixing by writing 0 value when setting type of reg value?
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: jit/ops.d
 
 [DONE] TODO: default state, only args should be on stack
 

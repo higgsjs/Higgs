@@ -36,6 +36,7 @@ jit/codeblock.d     \
 jit/assembler.d     \
 jit/regalloc.d      \
 jit/peephole.d      \
+jit/ops.d           \
 jit/jit.d           \
 jit/tests.d         \
 parser/tests.d      \
