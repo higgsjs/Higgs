@@ -395,11 +395,18 @@ struct BlockVersion
     Label label;
 }
 
-alias uint8_t RAFlags;
-const RAFlags RA_DEAD = 0;
-const RAFlags RA_STACK = (1 << 7);
-const RAFlags RA_GPREG = (1 << 6);
-const RAFlags RA_REG_MASK = (0x0F);
+/// Register allocation state
+alias uint8_t RAState;
+const RAState RA_DEAD = 0;
+const RAState RA_STACK = (1 << 7);
+const RAState RA_GPREG = (1 << 6);
+const RAState RA_REG_MASK = (0x0F);
+
+// Type flag state
+alias uint8_t TFState;
+const TFState TF_TYPE_KNOWN = (1 << 7);
+const TFState TF_TYPE_SYNC = (1 << 6);
+const TFState TF_TYPE_MASK = (0x1F);
 
 /**
 Code generation state
@@ -407,7 +414,7 @@ Code generation state
 class CodeGenState
 {
     /// Register allocation state (per-local flags)
-    RAFlags[] allocState;
+    RAState[] allocState;
 
     /// Map of general-purpose registers to locals
     /// This is NULL_LOCAL if a register is free
@@ -549,7 +556,7 @@ class CodeGenState
 
             // Spill the value currently in the register
             //spillReg(as, reg.regNo, null);
-            spillReg(as, reg.regNo, ctx.liveSets[instr]);
+            spillReg(as, reg.regNo, ctx.liveSets[instr], false);
         }
 
         // Load the argument into the register
@@ -597,7 +604,7 @@ class CodeGenState
 
             // Spill the value currently in the register
             //spillReg(as, reg.regNo, null);
-            spillReg(as, reg.regNo, ctx.liveSets[instr]);
+            spillReg(as, reg.regNo, ctx.liveSets[instr], false);
         }
 
         // Map the output slot to the register
@@ -621,32 +628,33 @@ class CodeGenState
 
         // Write the type to the type stack
         as.instr(MOV, memOpnd, type);
+
+
+        // FIXME: temporary until type info is integrated
+        if (allocState[instr.outSlot] & RA_GPREG)
+            as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
+
+
+
+
     }
 
     /**
     Spill all registers to the stack
     */
-    void spillRegs(Assembler as, BitSet liveSet = null)
+    void spillRegs(Assembler as, BitSet liveSet = null, bool keepDead = false)
     {
         foreach (regNo, localIdx; gpRegMap)
         {
             if (localIdx is NULL_LOCAL)
                 continue;
 
-            spillReg(as, regNo, liveSet);
-        }
-
-        foreach (localIdx, flags; allocState)
-        {
-            assert (
-                (flags & RA_GPREG) == 0,
-                "value in register after spill " ~ to!string(flags)
-            );
+            spillReg(as, regNo, liveSet, keepDead);
         }
     }
 
     /// Spill a given register to the stack
-    void spillReg(Assembler as, size_t regNo, BitSet liveSet)
+    void spillReg(Assembler as, size_t regNo, BitSet liveSet, bool keepDead)
     {
         // Get the slot mapped to this register
         auto regSlot = gpRegMap[regNo];
@@ -676,8 +684,12 @@ class CodeGenState
             //if (liveSet !is null)
             //    writefln("not spilling %s", regSlot);
 
-            // Mark the value as dead
-            allocState[regSlot] = RA_DEAD;
+            // If we shouldn't keep dead values
+            if (keepDead == false)
+            {
+                // Mark the value as dead
+                allocState[regSlot] = RA_DEAD;
+            }
         }
 
         // Mark the register as free

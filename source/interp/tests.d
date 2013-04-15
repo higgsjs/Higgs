@@ -583,6 +583,8 @@ unittest
 /// Global scope, global object
 unittest
 {
+    writefln("global object");
+
     assertBool("var x; return !x", true);
     assertInt("a = 1; return a;", 1);
     assertInt("var a; a = 1; return a;", 1);
@@ -668,6 +670,8 @@ unittest
 /// New operator, prototype chain
 unittest
 {
+    writefln("new operator");
+
     assertInt("function f() {}; o = new f(); return 0", 0);
     assertInt("function f() {}; o = new f(); return o? 1:0", 1);
     assertInt("function f() { g = this; }; o = new f(); return g? 1:0", 1);

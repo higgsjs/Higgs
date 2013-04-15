@@ -78,11 +78,13 @@ void genInitMaps(IRFunction fun)
         // For each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
+            /*
             // Store the init map at all call and allocation instructions
             if (instr.opcode.isCall || instr.opcode.mayGC)
             {
                 fun.initMaps[instr] = initMap;
             }
+            */
 
             // If this instruction has an output slot, mark it as initialized
             if (instr.outSlot !is NULL_LOCAL)

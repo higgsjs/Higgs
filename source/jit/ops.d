@@ -121,11 +121,19 @@ void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 64);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
+    // Copy the value
     ctx.as.instr(MOV, opndOut, opnd0);
 
-    // TODO: change when type info integrated?
+
+    // Copy the type tag
     ctx.as.getType(scrRegs8[0], instr.args[0].localIdx);
     ctx.as.setType(instr.outSlot, scrRegs8[0]);
+
+
+
+    // FIXME: temporary until type flags are accounted for in the state
+    if (cast(X86Reg)opndOut)
+        ctx.as.setWord(instr.outSlot, 0);
 }
 
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -487,8 +495,16 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Move the word to the output operand
     ctx.as.instr(MOV, outOpnd, scrRegs64[2]);
 
+
     // TODO: change when integrating type knowledge
     ctx.as.setType(instr.outSlot, scrRegs8[3]);
+
+
+    if (cast(X86Reg)outOpnd)
+        ctx.as.setWord(instr.outSlot, 0);
+
+
+
 
     //
     // Slow path: update the cached offset
@@ -645,31 +661,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         argRegs[i] = st.getReg(argSlot);
     }
 
-
-
-
-
-
-
     // Spill the values live after the call
-    //writeln(instr.block);
-    st.spillRegs(ctx.as, null);
-
-
-    // Make a copy the state for the bailout point
-    //auto bailSt = new CodeGenState(st);
-
-    // Spill the values live after the call
-    //st.spillRegs(ctx.as, ctx.liveSets[instr]);
-
-
-
-
-
-
-
-
-
+    st.spillRegs(ctx.as, ctx.liveSets[instr], true);
 
     // Label for the bailout to interpreter cases
     auto BAILOUT = new Label("CALL_BAILOUT");

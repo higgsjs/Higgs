@@ -61,8 +61,6 @@ TODO: can we use one less scratch reg?
 TODO: right now, always storing type info on the stack
 - Don't want value in reg but type info on stack...
 - Could end up with old integer value tagged as pointer
-- If type info is on stack, but value is dead, must clear out?
-- spillRegs should spill the type tags
 - Once we know a type value, we never write it back until we spill
   - If we spill, we definitely write a type tag
 - If we get called with some value/type on the stack, we might leave
@@ -77,35 +75,40 @@ TODO: functions, have ptr to object
 
 TODO: usesThis, usesClos? can optimize function calls further
 
+TODO: move, should reuse constant type tag if known
 
 
-TODO: try eliminating init maps, commit first!
+
+
+
+
+
+
+
+
+[DONE] TODO: type flags, type state definitions
+- Known type bit
+  - If not known, it's stored on the stack
+- In sync with stack bit
+  - if we test a type, the type we now know is what's on the stack
+  - if we spill a type tag, stack becomes in sync
+  - if we set a type, and it's the same as before, flag unchanged
+- 5 bits for type tag itself, if known
+
+[DONE] FIXME: function calls
+- Selectively spill non-args in regs before the call
+- Everything that's live after the call must be spilled
+- Keep non-live flag for spilling?
+
+[DONE] TODO: try eliminating init maps
 - Don't store on function, don't use in GC
 - Can init less slots if we only worry about uninitialized variables
 - Refactor GC to init/reset stack to 0
 - Temporarily: when setting a type, write 0 value
+  - Writing 0 in get_global prevents GC crash
 
-
-
-
-
-
-FIXME: function calls
-- Selectively spill non-args in regs before the call
-- Copy the state for the bailout, then spill all live
-- Everything that's live after the call must be spilled
-- ISSUE: hit GC bug...
-  - Could try fixing by writing 0 value when setting type of reg value?
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: check if 0 when setting type fixes the GC bug w.r.t. calls/spills
+- Crashes during GC
 
 [DONE] TODO: jit/ops.d
 

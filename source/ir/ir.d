@@ -51,7 +51,6 @@ import interp.interp;
 import interp.layout;
 import interp.ops;
 import jit.codeblock;
-import util.bitset;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -110,9 +109,6 @@ class IRFunction : IdObject
 
     /// Map of variable declarations to local slots
     LocalIdx[IdentExpr] localMap;
-
-    /// Maps of initialized stack slots for call/alloc instructions
-    BitSetCW[IRInstr] initMaps;
 
     /// Callee profiling information (filled by interpreter)
     uint64_t[IRFunction][IRInstr] callCounts;  
