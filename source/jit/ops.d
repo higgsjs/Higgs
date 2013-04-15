@@ -758,22 +758,28 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.setWord(cast(LocalIdx)(numVars + 3), cast(int32_t)numArgs);
     ctx.as.setType(cast(LocalIdx)(numVars + 3), Type.INT32);
 
-    // Copy the "this" argument
-    if (thisReg)
-    {
-        ctx.as.setWord(cast(LocalIdx)(numVars + 2), thisReg);
+    // If the callee uses its "this" argument, write it on the stack
+    if (fun.ast.usesThis == true)
+    {    
+        if (thisReg)
+        {
+            ctx.as.setWord(cast(LocalIdx)(numVars + 2), thisReg);
+        }
+        else
+        {
+            ctx.as.getWord(scrRegs64[2], thisIdx + numPush);
+            ctx.as.setWord(cast(LocalIdx)(numVars + 2), scrRegs64[2]);
+        }
+        ctx.as.getType(scrRegs8[3], thisIdx + numPush);
+        ctx.as.setType(cast(LocalIdx)(numVars + 2), scrRegs8[3]);
     }
-    else
-    {
-        ctx.as.getWord(scrRegs64[2], thisIdx + numPush);
-        ctx.as.setWord(cast(LocalIdx)(numVars + 2), scrRegs64[2]);
-    }
-    ctx.as.getType(scrRegs8[3], thisIdx + numPush);
-    ctx.as.setType(cast(LocalIdx)(numVars + 2), scrRegs8[3]);
 
-    // Write the closure argument
-    ctx.as.setWord(cast(LocalIdx)(numVars + 1), closReg);
-    ctx.as.setType(cast(LocalIdx)(numVars + 1), Type.REFPTR);
+    // If the callee uses its closure argument, write it on the stack
+    if (fun.ast.usesClos == true)
+    {
+        ctx.as.setWord(cast(LocalIdx)(numVars + 1), closReg);
+        ctx.as.setType(cast(LocalIdx)(numVars + 1), Type.REFPTR);
+    }
 
     // Write the return address (caller instruction)
     ctx.as.ptr(scrRegs64[3], instr);

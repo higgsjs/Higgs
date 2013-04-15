@@ -70,10 +70,9 @@ TODO: right now, always storing type info on the stack
 TODO: fast entry point, pre-map first argument registers
 - Jump directly to target if already compiled
 
-TODO: functions, have ptr to object
+TODO: functions, use ptr to object
 - fptr at constant offset, no need to cache closure, less complex code
-
-TODO: usesThis, usesClos? can optimize function calls further
+- commit before attempting refactoring
 
 TODO: move, should reuse constant type tag if known
 
@@ -83,8 +82,15 @@ TODO: move, should reuse constant type tag if known
 
 
 
+TODO: re-implement return in JIT
 
 
+
+
+
+
+
+[DONE] TODO: usesThis, usesClos, can optimize function calls further
 
 [DONE] TODO: type flags, type state definitions
 - Known type bit
