@@ -221,8 +221,21 @@ void compFun(Interp interp, IRFunction fun)
             ol.comment("Block stub for " ~ block.getName());
             ol.addInstr(label);
 
-            // Spill the registers
-            state.spillRegs(ol);
+            // Spill the registers live at the beginning of this block
+            auto liveSet = ctx.liveSets[block.firstInstr];
+            state.spillRegs(
+                ol,
+                delegate bool(size_t regNo, LocalIdx localIdx)
+                {
+                    if (block.firstInstr.hasArg(localIdx))
+                        return true;
+
+                    if (liveSet.has(localIdx))
+                        return true;
+
+                    return false;
+                }
+            );
 
             // Invalidate the compiled code for this function
             ol.ptr(cargRegs[0], block);
@@ -554,9 +567,11 @@ class CodeGenState
                 }
             }
 
-            // Spill the value currently in the register
-            //spillReg(as, reg.regNo, null);
-            spillReg(as, reg.regNo, ctx.liveSets[instr], false);
+            // If the value is live, spill it
+            if (ctx.liveSets[instr].has(regSlot) == true)
+                spillReg(as, reg.regNo);
+            else
+                allocState[regSlot] = RA_DEAD;
         }
 
         // Load the argument into the register
@@ -602,9 +617,11 @@ class CodeGenState
                 }
             }
 
-            // Spill the value currently in the register
-            //spillReg(as, reg.regNo, null);
-            spillReg(as, reg.regNo, ctx.liveSets[instr], false);
+            // If the value is live, spill it
+            if (ctx.liveSets[instr].has(regSlot) == true)
+                spillReg(as, reg.regNo);
+            else
+                allocState[regSlot] = RA_DEAD;
         }
 
         // Map the output slot to the register
@@ -629,32 +646,34 @@ class CodeGenState
         // Write the type to the type stack
         as.instr(MOV, memOpnd, type);
 
-
         // FIXME: temporary until type info is integrated
         if (allocState[instr.outSlot] & RA_GPREG)
             as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
-
-
-
-
     }
 
+    /// Spill test function
+    alias bool delegate(size_t regNo, LocalIdx localIdx) SpillTestFn;
+
     /**
-    Spill all registers to the stack
+    Spill registers to the stack
     */
-    void spillRegs(Assembler as, BitSet liveSet = null, bool keepDead = false)
+    void spillRegs(Assembler as, SpillTestFn spillTest = null)
     {
+        // For each general-purpose register
         foreach (regNo, localIdx; gpRegMap)
         {
+            // If nothing is mapped to this register, skip it
             if (localIdx is NULL_LOCAL)
                 continue;
 
-            spillReg(as, regNo, liveSet, keepDead);
+            // If the value should be spilled, spill it
+            if (spillTest is null || spillTest(regNo, localIdx) == true)
+                spillReg(as, regNo);
         }
     }
 
-    /// Spill a given register to the stack
-    void spillReg(Assembler as, size_t regNo, BitSet liveSet, bool keepDead)
+    /// Spill a specific register to the stack
+    void spillReg(Assembler as, size_t regNo)
     {
         // Get the slot mapped to this register
         auto regSlot = gpRegMap[regNo];
@@ -663,34 +682,17 @@ class CodeGenState
         if (regSlot is NULL_LOCAL)
             return;
 
-        // If the value is live or we have no liveness information
-        if (liveSet is null || liveSet.has(regSlot) == true)
-        {
-            //if (liveSet !is null)
-            //    writefln("spilling %s", regSlot);
+        auto mem = new X86Mem(64, wspReg, 8 * regSlot);
+        auto reg = new X86Reg(X86Reg.GP, cast(uint8_t)regNo, 64);
 
-            auto mem = new X86Mem(64, wspReg, 8 * regSlot);
-            auto reg = new X86Reg(X86Reg.GP, cast(uint8_t)regNo, 64);
+        //writefln("spilling: %s (%s)", regSlot, reg);
 
-            // Spill the value currently in the register
-            as.comment("Spilling $" ~ to!string(regSlot));
-            as.instr(MOV, mem, reg);
+        // Spill the value currently in the register
+        as.comment("Spilling $" ~ to!string(regSlot));
+        as.instr(MOV, mem, reg);
 
-            // Mark the value as being on the stack
-            allocState[regSlot] = RA_STACK;
-        }
-        else
-        {
-            //if (liveSet !is null)
-            //    writefln("not spilling %s", regSlot);
-
-            // If we shouldn't keep dead values
-            if (keepDead == false)
-            {
-                // Mark the value as dead
-                allocState[regSlot] = RA_DEAD;
-            }
-        }
+        // Mark the value as being on the stack
+        allocState[regSlot] = RA_STACK;
 
         // Mark the register as free
         gpRegMap[regNo] = NULL_LOCAL;
@@ -699,7 +701,6 @@ class CodeGenState
     /// Mark a value as being stored on the stack
     void valOnStack(LocalIdx localIdx)
     {
-        // Mark the value as being on the stack
         allocState[localIdx] = RA_STACK;
     }
 
@@ -887,7 +888,7 @@ void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, IRBlock target)
     // Make the interpreter jump to the target
     ctx.ol.addInstr(INTERP_JUMP);
     ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
-    ctx.ol.bail(ctx, st);
+    ctx.ol.instr(JMP, ctx.bailLabel);
 }
 
 void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, X86Reg targetReg)
@@ -902,20 +903,10 @@ void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, X86Reg targetReg)
     as.instr(JE, INTERP_JUMP);
     as.instr(JMP, scrRegs64[1]);
 
-    // Make the interpreter jump to the target
+    // Make the interpreter jump to the target and bailout
     ctx.ol.addInstr(INTERP_JUMP);
     ctx.ol.setMember!("Interp", "target")(interpReg, targetReg);
-    ctx.ol.bail(ctx, st);
-}
-
-/// Bailout to the interpreter
-void bail(Assembler as, CodeGenCtx ctx, CodeGenState st)
-{
-    // Spill the registers
-    st.spillRegs(as);
-
-    // Bailout to the interpreter
-    as.instr(JMP, ctx.bailLabel);
+    ctx.ol.instr(JMP, ctx.bailLabel);
 }
 
 /// Save caller-save registers on the stack before a C call
@@ -950,31 +941,13 @@ void popRegs(Assembler as)
 
 void printUint(Assembler as, X86Reg reg)
 {
-    as.instr(PUSH, RAX);
-    as.instr(PUSH, RCX);
-    as.instr(PUSH, RDX);
-    as.instr(PUSH, RSI);
-    as.instr(PUSH, RDI);
-    as.instr(PUSH, R8);
-    as.instr(PUSH, R9);
-    as.instr(PUSH, R10);
-    as.instr(PUSH, R11);
-    as.instr(PUSH, R11);
+    as.pushRegs();
 
     as.instr(MOV, RDI, reg);
     as.ptr(RAX, &jit.jit.printUint);
     as.instr(jit.encodings.CALL, RAX);
 
-    as.instr(POP, R11);
-    as.instr(POP, R11);
-    as.instr(POP, R10);
-    as.instr(POP, R9);
-    as.instr(POP, R8);
-    as.instr(POP, RDI);
-    as.instr(POP, RSI);
-    as.instr(POP, RDX);
-    as.instr(POP, RCX);
-    as.instr(POP, RAX);
+    as.popRegs();
 }
 
 /**

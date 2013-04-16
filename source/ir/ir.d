@@ -546,6 +546,16 @@ class IRInstr : IdObject
         return instr;
     }
 
+    /// Test if this instruction has a specific local as an argument
+    bool hasArg(LocalIdx local)
+    {
+        foreach (idx, arg; args)
+            if (opcode.getArgType(idx) == OpArg.LOCAL && arg.localIdx == local)
+                return true;
+
+        return false;
+    }
+
     final override string toString()
     {
         string output;

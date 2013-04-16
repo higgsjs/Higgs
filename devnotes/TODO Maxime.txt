@@ -38,34 +38,10 @@ TODO: allocate class ids?
 TODO: make sure global obj ptr is updated when global obj is extended
 - Trigger GC?
 
-TODO: inlining
-- Inline at the IR level
-- Generate a new IRFunction instance with the inlined code included?
-  - Has more stack slots
-
-TODO: for ret, can we cache the caller?
-- Needs to check that arg count matches, have interp fallback
-
 FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
-TODO: simple `make install` target
-
-TODO: asm code reuse, functions for slow paths?
-- lazily allocate a global code block and compile
-- can use for entry points too?
-
-TODO: can we use one less scratch reg?
-- Delay until type tags integrated
-- Might need more scratch regs as refactorings progress
-
-TODO: right now, always storing type info on the stack
-- Don't want value in reg but type info on stack...
-- Could end up with old integer value tagged as pointer
-- Once we know a type value, we never write it back until we spill
-  - If we spill, we definitely write a type tag
-- If we get called with some value/type on the stack, we might leave
-  the type tag on the stack
-  - If we aren't spilling, value will remain unchanged and coherent
+FIXME: v8/splay segfault with JIT
+- Does lots of GC, could be related
 
 TODO: fast entry point, pre-map first argument registers
 - Jump directly to target if already compiled
@@ -74,17 +50,29 @@ TODO: functions, use ptr to object
 - fptr at constant offset, no need to cache closure, less complex code
 - commit before attempting refactoring
 
+TODO: inlining
+- Inline at the IR level
+- Generate a new IRFunction instance with the inlined code included?
+  - Has more stack slots
+
+TODO: can we use one less scratch reg?
+- Delay until type tags integrated
+- Might need more scratch regs as refactorings progress
+
+TODO: asm code reuse, functions for slow paths?
+- lazily allocate a global code block and compile
+- can use for entry points too?
+
+TODO: simple `make install` target
+
 TODO: move, should reuse constant type tag if known
 
-FIXME: v8/splay segfault with JIT
-- Does lots of GC, could be related
+TODO: begin type tag info integration
 
-
-
-TODO: improve defaultFn, only spill instr args?
-- Regs will be properly saved when doing C call anyways
-- Improve associated branch bailout too
-
+TODO: write adversarial GC/JIT test
+- Big loop
+- Mix many obj refs & integer calculations?
+- Branching
 
 
 
@@ -96,6 +84,8 @@ TODO: improve defaultFn, only spill instr args?
 
 
 
+
+[DONE] TODO: improve register spilling, defaultFn, better usage of liveness info
 
 [DONE] TODO: add a V8 benchmark to make test, more sunspider tests?
 

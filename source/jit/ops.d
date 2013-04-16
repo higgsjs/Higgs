@@ -661,8 +661,14 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         argRegs[i] = st.getReg(argSlot);
     }
 
-    // Spill the values live after the call
-    st.spillRegs(ctx.as, ctx.liveSets[instr], true);
+    // Spill the values that are live after the call
+    st.spillRegs(
+        ctx.as,
+        delegate bool(size_t regNo, LocalIdx localIdx)
+        {
+            return (ctx.liveSets[instr].has(localIdx) == true);
+        }
+    );
 
     // Label for the bailout to interpreter cases
     auto BAILOUT = new Label("CALL_BAILOUT");
@@ -887,8 +893,21 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // RSI: second argument (instr)
     auto opFn = instr.opcode.opFn;
 
-    // Spill all registers
-    st.spillRegs(as);
+    // Spill all live values and instruction arguments
+    auto liveSet = ctx.liveSets[instr];
+    st.spillRegs(
+        as,
+        delegate bool(size_t regNo, LocalIdx localIdx)
+        {
+            if (instr.hasArg(localIdx))
+                return true;
+
+            if (liveSet.has(localIdx))
+                return true;
+
+            return false;
+        }
+    );
 
     // Move the interpreter pointer into the first argument
     as.instr(MOV, cargRegs[0], interpReg);
@@ -919,7 +938,7 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         as.getMember!("Interp", "tsp")(tspReg, interpReg);
 
         // Bailout to the interpreter
-        as.bail(ctx, st);
+        as.instr(JMP, ctx.bailLabel);
 
         if (opts.jit_dumpinfo)
             writefln("interpreter bailout");

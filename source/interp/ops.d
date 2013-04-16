@@ -788,6 +788,7 @@ void callFun(
 )
 {
     //writefln("call to %s (%s)", fun.name, cast(void*)fun);
+    //writefln("num args: %s", argSlots.length);
 
     assert (
         fun !is null, 
@@ -1060,6 +1061,9 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
 
         // Compute the actual number of extra arguments to pop
         size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
+
+        //writefln("argCount: %s", argCount);
+        //writefln("popping %s", numLocals + extraArgs);
 
         // Pop all local stack slots and arguments
         interp.pop(numLocals + extraArgs);
