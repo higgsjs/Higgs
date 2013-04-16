@@ -225,8 +225,7 @@ unittest
 {
     writefln("FFI");
 
-    Interp interp;
-    interp = new Interp();
+    auto interp = new Interp();
     interp.load("programs/ffi/ffi.js");
 }
 
