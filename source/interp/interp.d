@@ -491,6 +491,7 @@ class Interp
             load("stdlib/json.js");
             load("stdlib/regexp.js");
             load("stdlib/global.js");
+            load("stdlib/commonjs.js");
         }
 
         //gcCollect(this);
@@ -859,9 +860,9 @@ class Interp
     }
 
     /**
-    Parse and execute a source file
+    Get the path to load based on a (potentially relative) path
     */
-    ValuePair load(string fileName)
+    string getLoadPath(string fileName)
     {
         // If the path is relative, first check the Higgs lib dir
         if (!isAbsolute(fileName))
@@ -871,8 +872,16 @@ class Interp
                 fileName = to!string(libfile);
         }
 
-        auto ast = parseFile(fileName);
+        return fileName;
+    }
 
+    /**
+    Parse and execute a source file
+    */
+    ValuePair load(string fileName)
+    {
+        auto file = getLoadPath(fileName);
+        auto ast = parseFile(fileName);
         return exec(ast);
     }
 
