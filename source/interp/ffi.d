@@ -42,11 +42,12 @@ import std.string;
 import std.stdint;
 import std.conv;
 import interp.interp;
-import jit.jit;
 import jit.x86;
 import jit.assembler;
 import jit.codeblock;
 import jit.encodings;
+import jit.regalloc;
+import jit.jit;
 import ir.ir;
 
 Type[string] typeMap;

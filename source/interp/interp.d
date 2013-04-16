@@ -131,6 +131,7 @@ union Word
     int8    int8Val;
     int32   int32Val;
     int64   int64Val;
+    uint8   uint8Val;
     uint32  uint32Val;
     uint64  uint64Val;
     float64 floatVal;
@@ -148,10 +149,10 @@ unittest
 
 // Note: low byte is set to allow for one byte immediate comparison
 Word NULL    = { uint64Val: 0x0000000000000000 };
-Word TRUE    = { uint64Val: 0xFFFFFFFFFFFFFFF1 };
-Word FALSE   = { uint64Val: 0xFFFFFFFFFFFFFFF2 };
-Word UNDEF   = { uint64Val: 0xFFFFFFFFFFFFFFF3 };
-Word MISSING = { uint64Val: 0xFFFFFFFFFFFFFFF4 };
+Word TRUE    = { uint64Val: 0x0000000000000001 };
+Word FALSE   = { uint64Val: 0x0000000000000002 };
+Word UNDEF   = { uint64Val: 0x0000000000000003 };
+Word MISSING = { uint64Val: 0x0000000000000004 };
 
 /// Word type values
 enum Type : ubyte

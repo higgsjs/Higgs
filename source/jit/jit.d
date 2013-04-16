@@ -41,6 +41,7 @@ import std.stdio;
 import std.string;
 import std.array;
 import std.stdint;
+import std.conv;
 import options;
 import ir.ir;
 import ir.livevars;
@@ -54,51 +55,11 @@ import jit.x86;
 import jit.encodings;
 import jit.peephole;
 import jit.regalloc;
+import jit.ops;
+import util.bitset;
 
 /// Block execution count at which a function should be compiled
-const JIT_COMPILE_COUNT = 500;
-
-X86Reg interpReg;
-X86Reg wspReg;
-X86Reg tspReg;
-X86Reg cspReg;
-X86Reg[] cargRegs;
-X86Reg[] cfpArgRegs;
-X86Reg[] scratchRegs;
-X86Reg[] allocRegs;
-
-/**
-Mapping of the x86 machine registers
-*/
-static this()
-{
-    /// R15: interpreter object pointer (C callee-save) 
-    interpReg = R15;
-
-    /// R14: word stack pointer (C callee-save)
-    wspReg = R14;
-
-    /// R13: type stack pointer (C callee-save)
-    tspReg = R13;
-
-    // RSP: C stack pointer (used for C calls only)
-    cspReg = RSP;
-
-    /// C argument registers
-    cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
-
-    /// C fp argument registers
-    cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
-
-    /// RAX: scratch register
-    /// RDX: scratch register
-    /// RDI: scratch register, first C argument register
-    /// RSI: scratch register, second C argument register
-    scratchRegs = [RAX, RDX, RDI, RSI];
-
-    /// RCX, RBX, RBP, R8-R12: 8 allocatable registers
-    allocRegs = [RCX, RBX, RBP, R8, R9, R10, R11, R12];
-}
+const JIT_COMPILE_COUNT = 1000;
 
 /**
 Compile a function to machine code
@@ -113,17 +74,11 @@ void compFun(Interp interp, IRFunction fun)
         );
     }
 
-
     // Run a live variable analysis on the function
     auto liveSets = compLiveVars(fun);
 
     // Assign a register mapping to each temporary
     auto regMapping = mapRegs(fun, liveSets);
-
-
-
-
-
 
     // Assembler to write code into
     auto as = new Assembler();
@@ -134,37 +89,52 @@ void compFun(Interp interp, IRFunction fun)
     // Bailout to interpreter label
     auto bailLabel = new Label("BAILOUT");
 
-    // Work list of blocks to be compiled
-    IRBlock[] workList;
+    // Work list of block versions to be compiled
+    BlockVersion[] workList;
 
-    // Map of blocks to labels
-    Label[IRBlock] labelMap;
+    // Map of blocks to lists of available versions
+    BlockVersion[][IRBlock] versionMap;
 
     // Map of blocks to exported entry point labels
     Label[IRBlock] entryMap;
     Label[IRBlock] fastEntryMap;
 
     /// Get a label for a given basic block
-    auto getBlockLabel = delegate Label(IRBlock block)
+    auto getBlockLabel = delegate Label(IRBlock block, CodeGenState state)
     {
-        // If there is no label for this block
-        if (block !in labelMap)
-        {
-            // Create a label for the block
-            auto label = new Label(block.getName().toUpper(), true);
-            labelMap[block] = label;
+        // Get the list of versions for this block
+        auto versions = versionMap.get(block, []);
 
-            // Add the block to the work list
-            workList ~= block;
+        // For each available version of this block
+        foreach (ver; versions)
+        {
+            // If the state matches, return the label for this version
+            if (ver.state == state)
+                return ver.label;
         }
 
-        // Return the label for this block
-        return labelMap[block];
+        // Create a label for this version of the block
+        auto label = new Label(block.getName().toUpper());
+
+        // Create a new block version object
+        BlockVersion ver = { block, new CodeGenState(state), label };
+
+        // Add the new version to the list for this block
+        versionMap[block] ~= ver;
+
+        //writefln("%s num versions: %s", block.getName(), versionMap[block].length);
+
+        // Queue the new version to be compiled
+        workList ~= ver;
+
+        // Return the label for this version
+        return label;
     };
 
     /// Get an entry point label for a given basic block
     auto getEntryPoint = delegate Label(IRBlock block)
     {
+        // If there is already an entry label for this block, return it
         if (block in entryMap)
             return entryMap[block];
 
@@ -191,25 +161,29 @@ void compFun(Interp interp, IRFunction fun)
         ol.getMember!("Interp", "wsp")(wspReg, interpReg);
         ol.getMember!("Interp", "tsp")(tspReg, interpReg);
 
-        // TODO: get block with context where everything is spilled
+        // Request a version of the block that accepts the
+        // default state where all locals are on the stack
+        auto blockLabel = getBlockLabel(block, new CodeGenState(fun));
 
         // Jump to the target block
-        auto blockLabel = getBlockLabel(block);
         ol.instr(JMP, blockLabel);
 
         // For the fast entry point, use the block label directly
+        blockLabel.exported = true;
         fastEntryMap[block] = blockLabel;
 
         return entryLabel;
     };
 
     // Create a code generation context
-    auto ctx = CodeGenCtx(
+    auto ctx = new CodeGenCtx(
         interp,
         fun,
         as, 
         ol, 
         bailLabel,
+        liveSets,
+        regMapping,
         getBlockLabel,
         getEntryPoint
     );
@@ -221,14 +195,20 @@ void compFun(Interp interp, IRFunction fun)
     BLOCK_LOOP:
     while (workList.length > 0)
     {
-        // Remove a block from the work list
-        auto block = workList[$-1];
+        // Remove a block version from the work list
+        auto ver = workList[$-1];
         workList.popBack();
+        auto block = ver.block;
+        auto label = ver.label;
+
+        // Create a copy of the state to avoid corrupting the block entry state
+        auto state = new CodeGenState(ver.state);
 
         if (opts.jit_dumpinfo)
         {
             writefln("compiling block: %s", block.getName());
             //writefln("compiling block: %s", block.toString());
+            //writeln(state);
         }
 
         // If this block was never executed
@@ -238,15 +218,21 @@ void compFun(Interp interp, IRFunction fun)
                 writefln("producing stub");
             
             // Insert the label for this block in the out of line code
-            ol.addInstr(labelMap[block]);
+            ol.comment("Block stub for " ~ block.getName());
+            ol.addInstr(label);
+
+            // Spill the registers
+            state.spillRegs(ol);
 
             // Invalidate the compiled code for this function
             ol.ptr(cargRegs[0], block);
-            ol.ptr(scratchRegs[0], &visitStub);
-            ol.instr(jit.encodings.CALL, scratchRegs[0]);
+            ol.ptr(scrRegs64[0], &visitStub);
+            ol.instr(jit.encodings.CALL, scrRegs64[0]);
 
             // Bailout to the interpreter and jump to the block
-            ol.jump(ctx, block);
+            ol.ptr(scrRegs64[0], block);
+            ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
+            ol.instr(JMP, bailLabel);
 
             // Don't compile the block
             continue BLOCK_LOOP;
@@ -264,7 +250,7 @@ void compFun(Interp interp, IRFunction fun)
         }
 
         // Insert the label for this block
-        as.addInstr(labelMap[block]);
+        as.addInstr(label);
 
         // For each instruction of the block
         INSTR_LOOP:
@@ -280,7 +266,7 @@ void compFun(Interp interp, IRFunction fun)
             if (opcode in codeGenFns)
             {
                 // Call the code generation function for the opcode
-                codeGenFns[opcode](ctx, instr);
+                codeGenFns[opcode](ctx, state, instr);
             }
             else
             {
@@ -294,7 +280,7 @@ void compFun(Interp interp, IRFunction fun)
                 }
 
                 // Use the default code generation function
-                defaultFn(as, ctx, instr);
+                defaultFn(as, ctx, state, instr);
             }
 
             // If we know the instruction will definitely leave 
@@ -395,9 +381,344 @@ extern (C) void visitStub(IRBlock stubBlock)
 }
 
 /**
+Basic block version
+*/
+struct BlockVersion
+{
+    /// Basic block
+    IRBlock block;
+
+    /// Associated state
+    CodeGenState state;
+
+    /// Jump label
+    Label label;
+}
+
+/// Register allocation state
+alias uint8_t RAState;
+const RAState RA_DEAD = 0;
+const RAState RA_STACK = (1 << 7);
+const RAState RA_GPREG = (1 << 6);
+const RAState RA_REG_MASK = (0x0F);
+
+// Type flag state
+alias uint8_t TFState;
+const TFState TF_TYPE_KNOWN = (1 << 7);
+const TFState TF_TYPE_SYNC = (1 << 6);
+const TFState TF_TYPE_MASK = (0x1F);
+
+/**
+Code generation state
+*/
+class CodeGenState
+{
+    /// Register allocation state (per-local flags)
+    RAState[] allocState;
+
+    /// Map of general-purpose registers to locals
+    /// This is NULL_LOCAL if a register is free
+    LocalIdx[] gpRegMap;
+
+    /// TODO: type flags
+    // Implement only once versioning/regalloc working
+
+    /// Constructor for a default/entry code generation state
+    this(IRFunction fun)
+    {
+        allocState.length = fun.numLocals;
+
+        // All arguments are initially on the stack, other
+        // values are dead until they are written
+        for (size_t i = 0; i < allocState.length; ++i)
+        {
+            if (i < fun.numLocals - (fun.numLocals + NUM_HIDDEN_ARGS))
+                allocState[i] = RA_STACK;
+            else
+                allocState[i] = RA_DEAD;
+        }
+
+        // All registers are initially free
+        gpRegMap.length = 16;
+        for (size_t i  = 0; i < gpRegMap.length; ++i)
+            gpRegMap[i] = NULL_LOCAL;
+    }
+
+    /// Copy constructor
+    this(CodeGenState that)
+    {
+        this.allocState = that.allocState.dup;
+        this.gpRegMap = that.gpRegMap.dup;
+    }
+
+    /// Produce a string representation of the state
+    override string toString()
+    {
+        auto output = "";
+
+        foreach (regNo, localIdx; gpRegMap)
+        {
+            if (localIdx is NULL_LOCAL)
+                continue;
+
+            auto reg = new X86Reg(X86Reg.GP, cast(uint8_t)regNo, 64);
+
+            output ~= reg.toString() ~ " => $" ~ to!string(localIdx);
+        }
+
+        return output;
+    }
+
+    /// Equality comparison operator
+    override bool opEquals(Object o)
+    {
+        auto that = cast(CodeGenState)o;
+        assert (that !is null);
+
+        if (this.allocState != that.allocState)
+            return false;
+
+        if (this.gpRegMap != that.gpRegMap)
+            return false;
+
+        return true;
+    }
+
+    /// Get the operand for an instruction argument
+    X86Opnd getArgOpnd(
+        CodeGenCtx ctx, 
+        Assembler as, 
+        IRInstr instr, 
+        size_t argIdx, 
+        uint16_t numBits, 
+        bool loadVal = true
+    )
+    {
+        assert (
+            argIdx < instr.args.length,
+            "invalid argument index"
+        );
+
+        assert (
+            instr.opcode.getArgType(argIdx) == OpArg.LOCAL,
+            "argument type is not local"
+        );
+
+        auto argSlot = instr.args[argIdx].localIdx;
+        auto flags = allocState[argSlot];
+
+        // If the argument already is in a general-purpose register
+        if (flags & RA_GPREG)
+        {
+            auto regNo = flags & RA_REG_MASK;
+            return new X86Reg(X86Reg.GP, cast(uint8_t)regNo, cast(uint16_t)numBits);
+        }
+
+        assert (
+            flags & RA_STACK, 
+            "argument is neither in a register nor on the stack \n" ~
+            "argSlot: " ~ to!string(argSlot) ~ "\n" ~
+            "fun: " ~ instr.block.fun.getName() ~ "\n" ~
+            instr.block.toString()
+
+        );
+
+        // If the value shouldn't be loaded into a register
+        if (loadVal == false)
+        {
+            // Return a memory operand of the right size
+            return new X86Mem(numBits, wspReg, 8 * argSlot);
+        }
+
+        // Get the assigned register for the argument
+        auto reg = ctx.regMapping[argSlot];
+
+        // Get the slot mapped to this register
+        auto regSlot = gpRegMap[reg.regNo];
+
+        // If the register is mapped to a value
+        if (regSlot !is NULL_LOCAL)
+        {
+            // If the mapped slot belongs to another instruction argument
+            foreach (otherIdx, arg; instr.args)
+            {
+                if (otherIdx != argIdx && 
+                    instr.opcode.getArgType(otherIdx) == OpArg.LOCAL &&
+                    arg.localIdx == regSlot)
+                {
+                    writefln("got overlap");
+
+                    // Map the argument to its stack location
+                    allocState[argSlot] = RA_STACK;
+                    return new X86Mem(numBits, wspReg, 8 * argSlot);
+                }
+            }
+
+            // Spill the value currently in the register
+            //spillReg(as, reg.regNo, null);
+            spillReg(as, reg.regNo, ctx.liveSets[instr], false);
+        }
+
+        // Load the argument into the register
+        as.instr(MOV, reg, new X86Mem(64, wspReg, 8 * argSlot));
+
+        // Map the argument to the register
+        allocState[argSlot] = RA_GPREG | reg.regNo;
+        gpRegMap[reg.regNo] = argSlot;
+        return new X86Reg(X86Reg.GP, reg.regNo, numBits);
+    }
+
+    /// Get the operand for an instruction's output
+    X86Opnd getOutOpnd(
+        CodeGenCtx ctx, 
+        Assembler as, 
+        IRInstr instr, 
+        uint16_t numBits
+    )
+    {
+        assert (
+            instr.outSlot != NULL_LOCAL,
+            "instruction has no output slot"
+        );
+
+        // Get the assigned register for the out slot
+        auto reg = ctx.regMapping[instr.outSlot];
+
+        // Get the slot mapped to this register
+        auto regSlot = gpRegMap[reg.regNo];
+
+        // If another slot is using the register
+        if (regSlot !is NULL_LOCAL && regSlot !is instr.outSlot)
+        {
+            // If an instruction argument is using this slot
+            foreach (argIdx, arg; instr.args)
+            {
+                if (instr.opcode.getArgType(argIdx) == OpArg.LOCAL &&
+                    arg.localIdx == regSlot)
+                {
+                    // Map the output slot to its stack location
+                    allocState[instr.outSlot] = RA_STACK;
+                    return new X86Mem(numBits, wspReg, 8 * instr.outSlot);
+                }
+            }
+
+            // Spill the value currently in the register
+            //spillReg(as, reg.regNo, null);
+            spillReg(as, reg.regNo, ctx.liveSets[instr], false);
+        }
+
+        // Map the output slot to the register
+        allocState[instr.outSlot] = RA_GPREG | reg.regNo;
+        gpRegMap[reg.regNo] = instr.outSlot;
+        return new X86Reg(X86Reg.GP, reg.regNo, numBits);
+    }
+
+    // TODO: arg type access
+
+    // Set the output type value for an instruction's output
+    void setOutType(Assembler as, IRInstr instr, Type type)
+    {
+        assert (
+            instr.outSlot != NULL_LOCAL,
+            "instruction has no output slot"
+        );
+
+        // Create a memory operand to access the type stack
+        auto memOpnd = new X86Mem(8, tspReg, instr.outSlot);
+
+        // Write the type to the type stack
+        as.instr(MOV, memOpnd, type);
+
+
+        // FIXME: temporary until type info is integrated
+        if (allocState[instr.outSlot] & RA_GPREG)
+            as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
+
+
+
+
+    }
+
+    /**
+    Spill all registers to the stack
+    */
+    void spillRegs(Assembler as, BitSet liveSet = null, bool keepDead = false)
+    {
+        foreach (regNo, localIdx; gpRegMap)
+        {
+            if (localIdx is NULL_LOCAL)
+                continue;
+
+            spillReg(as, regNo, liveSet, keepDead);
+        }
+    }
+
+    /// Spill a given register to the stack
+    void spillReg(Assembler as, size_t regNo, BitSet liveSet, bool keepDead)
+    {
+        // Get the slot mapped to this register
+        auto regSlot = gpRegMap[regNo];
+
+        // If no value is mapped to this register, stop
+        if (regSlot is NULL_LOCAL)
+            return;
+
+        // If the value is live or we have no liveness information
+        if (liveSet is null || liveSet.has(regSlot) == true)
+        {
+            //if (liveSet !is null)
+            //    writefln("spilling %s", regSlot);
+
+            auto mem = new X86Mem(64, wspReg, 8 * regSlot);
+            auto reg = new X86Reg(X86Reg.GP, cast(uint8_t)regNo, 64);
+
+            // Spill the value currently in the register
+            as.comment("Spilling $" ~ to!string(regSlot));
+            as.instr(MOV, mem, reg);
+
+            // Mark the value as being on the stack
+            allocState[regSlot] = RA_STACK;
+        }
+        else
+        {
+            //if (liveSet !is null)
+            //    writefln("not spilling %s", regSlot);
+
+            // If we shouldn't keep dead values
+            if (keepDead == false)
+            {
+                // Mark the value as dead
+                allocState[regSlot] = RA_DEAD;
+            }
+        }
+
+        // Mark the register as free
+        gpRegMap[regNo] = NULL_LOCAL;
+    }
+
+    /// Mark a value as being stored on the stack
+    void valOnStack(LocalIdx localIdx)
+    {
+        // Mark the value as being on the stack
+        allocState[localIdx] = RA_STACK;
+    }
+
+    /// Get the register to which a local is mapped, if any
+    X86Reg getReg(LocalIdx localIdx)
+    {
+        auto flags = allocState[localIdx];
+
+        if (flags & RA_GPREG)
+            return new X86Reg(X86Reg.GP, flags & RA_REG_MASK, 64);
+
+        return null;
+    }
+}
+
+/**
 Code generation context
 */
-struct CodeGenCtx
+class CodeGenCtx
 {
     /// Interpreter object
     Interp interp;
@@ -414,15 +735,39 @@ struct CodeGenCtx
     /// Bailout to interpreter label
     Label bailLabel;
 
+    /// Per-instruction live sets
+    BitSet[IRInstr] liveSets;
+
+    /// Register mapping (slots->regs)
+    RegMapping regMapping;
+
     /// Function to get the label for a given block
-    Label delegate(IRBlock) getBlockLabel;
+    Label delegate(IRBlock, CodeGenState) getBlockLabel;
 
     /// Function to generate an entry point for a given block
     Label delegate(IRBlock) getEntryPoint;
 
-    /// Postblit (copy) constructor
-    this(this)
+    this(
+        Interp interp,
+        IRFunction fun,
+        Assembler as,
+        Assembler ol,
+        Label bailLabel,
+        BitSet[IRInstr] liveSets,
+        RegMapping regMapping,
+        Label delegate(IRBlock, CodeGenState) getBlockLabel,
+        Label delegate(IRBlock) getEntryPoint,
+    )
     {
+        this.interp = interp;
+        this.fun = fun;
+        this.as = as;
+        this.ol = ol;
+        this.bailLabel = bailLabel;
+        this.liveSets = liveSets;
+        this.regMapping = regMapping;
+        this.getBlockLabel = getBlockLabel;
+        this.getEntryPoint = getEntryPoint;
     }
 }
 
@@ -526,32 +871,81 @@ void setType(Assembler as, LocalIdx idx, Type type)
     as.instr(MOV, new X86Mem(8, tspReg, idx), type);
 }
 
-void jump(Assembler as, CodeGenCtx ctx, IRBlock target)
+void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, IRBlock target)
 {
     auto INTERP_JUMP = new Label("INTERP_JUMP");
 
     // Get a pointer to the branch target
-    as.ptr(scratchRegs[0], target);
+    as.ptr(scrRegs64[0], target);
 
     // If a JIT entry point exists, jump to it directly
-    as.getMember!("IRBlock", "jitEntry")(scratchRegs[1], scratchRegs[0]);
-    as.instr(CMP, scratchRegs[1], 0);
+    as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], scrRegs64[0]);
+    as.instr(CMP, scrRegs64[1], 0);
     as.instr(JE, INTERP_JUMP);
-    as.instr(JMP, scratchRegs[1]);
+    as.instr(JMP, scrRegs64[1]);
 
     // Make the interpreter jump to the target
     ctx.ol.addInstr(INTERP_JUMP);
-    ctx.ol.setMember!("Interp", "target")(interpReg, scratchRegs[0]);
-    ctx.ol.instr(JMP, ctx.bailLabel);
+    ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
+    ctx.ol.bail(ctx, st);
 }
 
-void jump(Assembler as, CodeGenCtx ctx, X86Reg targetAddr)
+void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, X86Reg targetReg)
 {
-    assert (targetAddr != RCX);
-    
+    assert (targetReg != scrRegs64[1]);
+
+    auto INTERP_JUMP = new Label("INTERP_JUMP");
+
+    // If a JIT entry point exists, jump to it directly
+    as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], targetReg);
+    as.instr(CMP, scrRegs64[1], 0);
+    as.instr(JE, INTERP_JUMP);
+    as.instr(JMP, scrRegs64[1]);
+
     // Make the interpreter jump to the target
-    as.setMember!("Interp", "target")(interpReg, targetAddr);
+    ctx.ol.addInstr(INTERP_JUMP);
+    ctx.ol.setMember!("Interp", "target")(interpReg, targetReg);
+    ctx.ol.bail(ctx, st);
+}
+
+/// Bailout to the interpreter
+void bail(Assembler as, CodeGenCtx ctx, CodeGenState st)
+{
+    // Spill the registers
+    st.spillRegs(as);
+
+    // Bailout to the interpreter
     as.instr(JMP, ctx.bailLabel);
+}
+
+/// Save caller-save registers on the stack before a C call
+void pushRegs(Assembler as)
+{
+    as.instr(PUSH, RAX);
+    as.instr(PUSH, RCX);
+    as.instr(PUSH, RDX);
+    as.instr(PUSH, RSI);
+    as.instr(PUSH, RDI);
+    as.instr(PUSH, R8);
+    as.instr(PUSH, R9);
+    as.instr(PUSH, R10);
+    as.instr(PUSH, R11);
+    as.instr(PUSH, R11);
+}
+
+/// Restore caller-save registers from the after before a C call
+void popRegs(Assembler as)
+{
+    as.instr(POP, R11);
+    as.instr(POP, R11);
+    as.instr(POP, R10);
+    as.instr(POP, R9);
+    as.instr(POP, R8);
+    as.instr(POP, RDI);
+    as.instr(POP, RSI);
+    as.instr(POP, RDX);
+    as.instr(POP, RCX);
+    as.instr(POP, RAX);
 }
 
 void printUint(Assembler as, X86Reg reg)
@@ -589,827 +983,5 @@ Print an unsigned integer value. Callable from the JIT
 extern (C) void printUint(uint64_t v)
 {
     writefln("%s", v);
-}
-
-void gen_set_true(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.setWord(instr.outSlot, TRUE.int8Val);
-    ctx.as.setType(instr.outSlot, Type.CONST);
-}
-
-void gen_set_false(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.setWord(instr.outSlot, FALSE.int8Val);
-    ctx.as.setType(instr.outSlot, Type.CONST);
-}
-
-void gen_set_undef(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.setWord(instr.outSlot, UNDEF.int8Val);
-    ctx.as.setType(instr.outSlot, Type.CONST);
-}
-
-void gen_set_missing(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.setWord(instr.outSlot, MISSING.int8Val);
-    ctx.as.setType(instr.outSlot, Type.CONST);
-}
-
-void gen_set_null(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.setWord(instr.outSlot, NULL.int8Val);
-    ctx.as.setType(instr.outSlot, Type.REFPTR);
-}
-
-void gen_set_int32(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.setWord(instr.outSlot, instr.args[0].int32Val);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-}
-
-void gen_set_str(ref CodeGenCtx ctx, IRInstr instr)
-{
-    auto linkIdx = instr.args[1].linkIdx;
-
-    assert (
-        linkIdx !is NULL_LINK,
-        "link not allocated for set_str"
-    );
-
-    ctx.as.getMember!("Interp", "wLinkTable")(RCX, interpReg);
-    ctx.as.instr(MOV, RCX, new X86Mem(64, RCX, 8 * linkIdx));
-
-    ctx.as.setWord(instr.outSlot, RCX);
-    ctx.as.setType(instr.outSlot, Type.REFPTR);
-}
-
-void gen_move(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.getWord(RDI, instr.args[0].localIdx);
-    ctx.as.getType(SIL, instr.args[0].localIdx);
-    ctx.as.setWord(instr.outSlot, RDI);
-    ctx.as.setType(instr.outSlot, SIL);
-}
-
-void IsTypeOp(Type type)(ref CodeGenCtx ctx, IRInstr instr)
-{
-    // AL = tsp[a0]
-    ctx.as.getType(AL, instr.args[0].localIdx);
-
-    // CMP RAX, Type.FLOAT
-    ctx.as.instr(CMP, AL, type);
-
-    ctx.as.instr(MOV, RAX, FALSE.int64Val);
-    ctx.as.instr(MOV, RCX, TRUE.int64Val);
-    ctx.as.instr(CMOVE, RAX, RCX);
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.CONST);
-}
-
-alias IsTypeOp!(Type.CONST) gen_is_const;
-alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
-alias IsTypeOp!(Type.INT32) gen_is_int32;
-alias IsTypeOp!(Type.FLOAT) gen_is_float;
-
-void gen_i32_to_f64(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.instr(CVTSI2SD, XMM0, new X86Mem(32, wspReg, instr.args[0].localIdx * 8));
-
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
-}
-
-void gen_f64_to_i32(ref CodeGenCtx ctx, IRInstr instr)
-{
-    // Cast to int64 and truncate to int32 (to match JS semantics)
-    ctx.as.instr(CVTSD2SI, RAX, new X86Mem(64, wspReg, instr.args[0].localIdx * 8));
-    ctx.as.instr(MOV, ECX, EAX);
-
-    ctx.as.setWord(instr.outSlot, RCX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-}
-
-void gen_add_i32(ref CodeGenCtx ctx, IRInstr instr)
-{
-    // EAX = wsp[a0]
-    // ECX = wsp[a1]
-    ctx.as.getWord(EAX, instr.args[0].localIdx);
-    ctx.as.getWord(ECX, instr.args[1].localIdx);
-
-    // EAX = add EAX, ECX
-    ctx.as.instr(ADD, EAX, ECX);
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-}
-
-void gen_mul_i32(ref CodeGenCtx ctx, IRInstr instr)
-{
-    // EAX = wsp[o0]
-    // ECX = wsp[o1]
-    ctx.as.getWord(EAX, instr.args[0].localIdx);
-    ctx.as.getWord(ECX, instr.args[1].localIdx);
-
-    // EAX = and EAX, ECX
-    ctx.as.instr(IMUL, EAX, ECX);
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-}
-
-void gen_and_i32(ref CodeGenCtx ctx, IRInstr instr)
-{
-    // EAX = wsp[o0]
-    // ECX = wsp[o1]
-    ctx.as.getWord(EAX, instr.args[0].localIdx);
-    ctx.as.getWord(ECX, instr.args[1].localIdx);
-
-    // EAX = and EAX, ECX
-    ctx.as.instr(AND, EAX, ECX);
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-}
-
-void gen_add_f64(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.getWord(XMM0, instr.args[0].localIdx);
-    ctx.as.getWord(XMM1, instr.args[1].localIdx);
-
-    ctx.as.instr(ADDSD, XMM0, XMM1);
-
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
-}
-
-void gen_sub_f64(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.getWord(XMM0, instr.args[0].localIdx);
-    ctx.as.getWord(XMM1, instr.args[1].localIdx);
-
-    ctx.as.instr(SUBSD, XMM0, XMM1);
-
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
-}
-
-void gen_mul_f64(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.getWord(XMM0, instr.args[0].localIdx);
-    ctx.as.getWord(XMM1, instr.args[1].localIdx);
-
-    ctx.as.instr(MULSD, XMM0, XMM1);
-
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
-}
-
-void gen_div_f64(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.getWord(XMM0, instr.args[0].localIdx);
-    ctx.as.getWord(XMM1, instr.args[1].localIdx);
-
-    ctx.as.instr(DIVSD, XMM0, XMM1);
-
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
-}
-
-/*
-void OvfOp(string op)(ref CodeGenCtx ctx, IRInstr instr)
-{
-    auto OVF = new Label("OVF");
-
-    ctx.as.getWord(ECX, instr.args[0].localIdx);
-    ctx.as.getWord(EDX, instr.args[1].localIdx);
-
-    static if (op == "add")
-        ctx.as.instr(ADD, ECX, EDX);
-    static if (op == "sub")
-        ctx.as.instr(SUB, ECX, EDX);
-    static if (op == "mul")
-        ctx.as.instr(IMUL, ECX, EDX);
-
-    ctx.as.instr(JO, OVF);
-
-    // Set the output
-    ctx.as.setWord(instr.outSlot, RCX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-
-    // If the target block isn't in the block list, jump to it
-    if (!ctx.hasNextNode || ctx.nextBlock != instr.target)
-        ctx.as.jump(ctx, instr.target);
-
-    // *** The trace will continue at the target block ***
-
-    // Out of line jump to the overflow target
-    ctx.ol.addInstr(OVF);
-    ctx.ol.jump(ctx, instr.excTarget);
-}
-
-alias OvfOp!("add") gen_add_i32_ovf;
-alias OvfOp!("sub") gen_sub_i32_ovf;
-alias OvfOp!("mul") gen_mul_i32_ovf;
-*/
-
-void CmpOp(string type, string op)(ref CodeGenCtx ctx, IRInstr instr)
-{
-    X86Reg regA;
-    X86Reg regB;
-
-    static if (type == "i8")
-    {
-        regA = CL;
-        regB = DL;
-    }
-    static if (type == "i32")
-    {
-        regA = ECX;
-        regB = EDX;
-    }
-    static if (type == "i64")
-    {
-        regA = RCX;
-        regB = RDX;
-    }
-
-    ctx.as.getWord(regA, instr.args[0].localIdx);
-    ctx.as.getWord(regB, instr.args[1].localIdx);
-
-    ctx.as.instr(CMP, regA, regB);
-
-    ctx.as.instr(MOV, RAX, cast(int8_t)FALSE.int64Val);
-    ctx.as.instr(MOV, RCX, cast(int8_t)TRUE.int64Val);
-
-    static if (op == "eq")
-        ctx.as.instr(CMOVE, RAX, RCX);
-    static if (op == "ne")
-        ctx.as.instr(CMOVNE, RAX, RCX);
-    static if (op == "lt")
-        ctx.as.instr(CMOVL, RAX, RCX);
-    static if (op == "le")
-        ctx.as.instr(CMOVLE, RAX, RCX);
-    static if (op == "gt")
-        ctx.as.instr(CMOVG, RAX, RCX);
-    static if (op == "ge")
-        ctx.as.instr(CMOVGE, RAX, RCX);
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.CONST);
-}
-
-alias CmpOp!("i8" , "eq") gen_eq_i8;
-alias CmpOp!("i32", "lt") gen_lt_i32;
-alias CmpOp!("i32", "ge") gen_ge_i32;
-alias CmpOp!("i32", "ne") gen_ne_i32;
-alias CmpOp!("i8" , "eq") gen_eq_const;
-alias CmpOp!("i64", "eq") gen_eq_refptr;
-alias CmpOp!("i64", "ne") gen_ne_refptr;
-
-void LoadOp(size_t memSize, Type typeTag)(ref CodeGenCtx ctx, IRInstr instr)
-{
-    // Pointer
-    ctx.as.getWord(RCX, instr.args[0].localIdx);
-
-    // Offset
-    ctx.as.getWord(RDX, instr.args[1].localIdx);
-
-    X86Reg dstReg;
-    static if (memSize == 8)
-        dstReg = AL;
-    static if (memSize == 16)
-        dstReg = AX;
-    static if (memSize == 32)
-        dstReg = EAX;
-    static if (memSize == 64)
-        dstReg = RAX;
-
-    static if (memSize == 8)
-        ctx.as.instr(MOV, RAX, 0);
-    ctx.as.instr(MOV, dstReg, new X86Mem(memSize, RCX, 0, RDX));
-
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, typeTag);
-}
-
-alias LoadOp!(8 , Type.INT32) gen_load_u8;
-//alias LoadOp!(uint16, Type.INT32) gen_load_u16;
-alias LoadOp!(32, Type.INT32) gen_load_u32;
-alias LoadOp!(64, Type.INT32) gen_load_u64;
-alias LoadOp!(64, Type.FLOAT) gen_load_f64;
-alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
-//alias LoadOp!(rawptr, Type.RAWPTR) gen_load_rawptr;
-//alias LoadOp!(IRFunction, Type.FUNPTR) gen_load_funptr;
-
-void gen_jump(ref CodeGenCtx ctx, IRInstr instr)
-{
-    // Jump to the target block
-    auto blockLabel = ctx.getBlockLabel(instr.target);
-    ctx.as.instr(JMP, blockLabel);
-}
-
-void gen_if_true(ref CodeGenCtx ctx, IRInstr instr)
-{
-    // Compare wsp[a0] to the true value
-    ctx.as.getWord(AL, instr.args[0].localIdx);
-    ctx.as.instr(CMP, AL, TRUE.int8Val);
-
-    X86OpPtr jumpOp;
-    IRBlock fTarget;
-    IRBlock sTarget;
-
-    if (instr.target.execCount > instr.excTarget.execCount)
-    {
-        fTarget = instr.target;
-        sTarget = instr.excTarget;
-        jumpOp = JNE;
-    }
-    else
-    {
-        fTarget = instr.excTarget;
-        sTarget = instr.target;
-        jumpOp = JE;
-    }
-
-    // Get the fast target label last so the fast target is
-    // more likely to get generated first (LIFO stack)
-    auto sLabel = ctx.getBlockLabel(sTarget);
-    auto fLabel = ctx.getBlockLabel(fTarget);
-
-    ctx.as.instr(jumpOp, sLabel);
-    ctx.as.instr(JMP, fLabel);
-}
-
-void gen_get_global(ref CodeGenCtx ctx, IRInstr instr)
-{
-    auto interp = ctx.interp;
-
-    // Cached property index
-    auto propIdx = instr.args[1].int32Val;
-
-    // If no property index is cached, used the interpreter function
-    if (propIdx < 0)
-    {
-        defaultFn(ctx.as, ctx, instr);
-        return;
-    }
-
-    auto AFTER_CMP  = new Label("PROP_AFTER_CMP");
-    auto AFTER_WORD = new Label("PROP_AFTER_WORD");
-    auto AFTER_TYPE = new Label("PROP_AFTER_TYPE");
-    auto GET_PROP = new Label("PROP_GET_PROP");
-    auto GET_OFS  = new Label("PROP_GET_OFS");
-
-    //
-    // Fast path
-    //
-    ctx.as.addInstr(GET_PROP);
-
-    // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(R12, interpReg);
-
-    // Compare the object size to the cached size
-    ctx.as.getField(EDX, R12, 4, obj_ofs_cap(interp.globalObj));
-    ctx.as.instr(CMP, EDX, 0x7FFFFFFF);
-    ctx.as.addInstr(AFTER_CMP);
-    ctx.as.instr(JNE, GET_OFS);
-
-    // Get the word and type from the object
-    ctx.as.instr(MOV, RDI, new X86Mem(64, R12, 0x7FFFFFFF));
-    ctx.as.addInstr(AFTER_WORD);
-    ctx.as.instr(MOV, SIL, new X86Mem( 8, R12, 0x7FFFFFFF));
-    ctx.as.addInstr(AFTER_TYPE);
-
-    ctx.as.setWord(instr.outSlot, RDI);
-    ctx.as.setType(instr.outSlot, SIL);
-
-    //
-    // Slow path: update the cached offset
-    //
-    ctx.ol.addInstr(GET_OFS);
-
-    // Update the cached object size
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), EDX);
-
-    // Get the word offset
-    ctx.ol.instr(MOV, RDI, R12);
-    ctx.ol.instr(MOV, RSI, propIdx);
-    ctx.ol.ptr(RAX, &obj_ofs_word);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_WORD, -4), EAX);
-
-    // Get the type offset
-    ctx.ol.instr(MOV, RDI, R12);
-    ctx.ol.instr(MOV, RSI, propIdx);
-    ctx.ol.ptr(RAX, &obj_ofs_type);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_TYPE, -4), EAX);
-
-    // Jump back to the get prop logic
-    ctx.ol.instr(JMP, GET_PROP);
-}
-
-void gen_set_global(ref CodeGenCtx ctx, IRInstr instr)
-{
-    auto interp = ctx.interp;
-
-    // Cached property index
-    auto propIdx = instr.args[2].int32Val;
-
-    // If no property index is cached, used the interpreter function
-    if (propIdx < 0)
-    {
-        defaultFn(ctx.as, ctx, instr);
-        return;
-    }
-
-    auto AFTER_CMP  = new Label("PROP_AFTER_CMP");
-    auto AFTER_WORD = new Label("PROP_AFTER_WORD");
-    auto AFTER_TYPE = new Label("PROP_AFTER_TYPE");
-    auto SET_PROP = new Label("PROP_SET_PROP");
-    auto GET_OFS  = new Label("PROP_GET_OFS");
-
-    //
-    // Fast path
-    //
-    ctx.as.addInstr(SET_PROP);
-
-    // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(R12, interpReg);
-
-    // Compare the object size to the cached size
-    ctx.as.getField(EDX, R12, 4, obj_ofs_cap(interp.globalObj));
-    ctx.as.instr(CMP, EDX, 0x7FFFFFFF);
-    ctx.as.addInstr(AFTER_CMP);
-    ctx.as.instr(JNE, GET_OFS);
-
-    ctx.as.getWord(RDI, instr.args[1].localIdx);
-    ctx.as.getType(SIL, instr.args[1].localIdx);
-
-    // Set the word and type on the object
-    ctx.as.instr(MOV, new X86Mem(64, R12, 0x7FFFFFFF), RDI);
-    ctx.as.addInstr(AFTER_WORD);
-    ctx.as.instr(MOV, new X86Mem( 8, R12, 0x7FFFFFFF), SIL);
-    ctx.as.addInstr(AFTER_TYPE);
-
-    //
-    // Slow path: update the cached offset
-    //
-    ctx.ol.addInstr(GET_OFS);
-
-    // Update the cached object size
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), EDX);
-
-    // Get the word offset
-    ctx.ol.instr(MOV, RDI, R12);
-    ctx.ol.instr(MOV, RSI, propIdx);
-    ctx.ol.ptr(RAX, &obj_ofs_word);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_WORD, -4), EAX);
-
-    // Get the type offset
-    ctx.ol.instr(MOV, RDI, R12);
-    ctx.ol.instr(MOV, RSI, propIdx);
-    ctx.ol.ptr(RAX, &obj_ofs_type);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_TYPE, -4), EAX);
-
-    // Jump back to the get prop logic
-    ctx.ol.instr(JMP, SET_PROP);
-}
-
-void gen_call(ref CodeGenCtx ctx, IRInstr instr)
-{
-    auto closIdx = instr.args[0].localIdx;
-    auto thisIdx = instr.args[1].localIdx;
-    auto numArgs = instr.args.length - 2;
-
-    // Generate an entry point for the call continuation
-    ctx.getEntryPoint(instr.target);
-
-    // Call the interpreter call instruction
-    //defaultFn(ctx.as, ctx, instr);
-
-    // Find the most called callee function
-    uint64_t maxCount = 0;
-    IRFunction maxCallee = null;
-    foreach (callee, count; ctx.fun.callCounts[instr])
-    {
-        if (count > maxCount)
-        {
-            maxCallee = callee;
-            maxCount = count;
-        }
-    }
-
-    // Get the callee function
-    auto fun = maxCallee;
-    assert (fun.entryBlock !is null);
-
-    // If the argument count doesn't match
-    if (numArgs != fun.numParams)
-    {
-        // Call the interpreter call instruction
-        defaultFn(ctx.as, ctx, instr);
-        return;
-    }
-
-    // Label for the bailout to interpreter cases
-    auto bailout = new Label("CALL_BAILOUT");
-
-    auto AFTER_CLOS  = new Label("CALL_AFTER_CLOS");
-    auto AFTER_OFS = new Label("CALL_AFTER_OFS");
-    auto GET_FPTR = new Label("CALL_GET_FPTR");
-    auto GET_OFS = new Label("CALL_GET_OFS");
-
-    //
-    // Fast path
-    //
-    ctx.as.addInstr(GET_FPTR);
-
-    // Get the closure word off the stack
-    ctx.as.getWord(RCX, closIdx);
-
-    // Compare the closure pointer to the cached pointer
-    ctx.as.instr(MOV, RAX, 0x7FFFFFFFFFFFFFFF);
-    ctx.as.addInstr(AFTER_CLOS);
-    ctx.as.instr(CMP, RCX, RAX);
-    ctx.as.instr(JNE, GET_OFS);
-
-    // Get the function pointer from the closure object
-    ctx.as.instr(MOV, RDI, new X86Mem(64, RCX, 0x7FFFFFFF));
-    ctx.as.addInstr(AFTER_OFS);
-
-    //
-    // Slow path: update the cached function pointer offset (out of line)
-    //
-    ctx.ol.addInstr(GET_OFS);
-
-    // Update the cached closure poiter
-    ctx.ol.instr(MOV, new X86IPRel(64, AFTER_CLOS, -8), RCX);
-
-    // Get the function pointer offset
-    ctx.ol.instr(MOV, RDI, RCX);
-    ctx.ol.ptr(RAX, &clos_ofs_fptr);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_OFS, -4), EAX);
-
-    // Jump back to the fast path logic
-    ctx.ol.instr(JMP, GET_FPTR);
-
-    //
-    // Function call logic
-    //
-
-    // If this is not the closure we expect, bailout to the interpreter
-    ctx.as.ptr(RSI, fun);
-    ctx.as.instr(CMP, RDI, RSI);
-    ctx.as.instr(JNE, bailout);
-
-    auto numPush = fun.numLocals;
-    auto numVars = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
-
-    //writefln("numPush: %s, numVars: %s", numPush, numVars);
-
-    // Push space for the callee arguments and locals
-    ctx.as.instr(SUB, wspReg, 8 * numPush);
-    ctx.as.instr(SUB, tspReg, numPush);
-
-    // Copy the function arguments in reverse order
-    for (size_t i = 0; i < numArgs; ++i)
-    {
-        //auto argSlot = instr.args[$-(1+i)].localIdx + (argDiff + i);
-        auto argSlot = instr.args[$-(1+i)].localIdx;
-
-        ctx.as.getWord(RDI, argSlot + numPush); 
-        ctx.as.getType(SIL, argSlot + numPush);
-
-        auto dstIdx = (numArgs - i - 1) + numVars + NUM_HIDDEN_ARGS;
-
-        ctx.as.setWord(cast(LocalIdx)dstIdx, RDI);
-        ctx.as.setType(cast(LocalIdx)dstIdx, SIL);
-    }
-
-    // Write the argument count
-    ctx.as.setWord(cast(LocalIdx)(numVars + 3), cast(int32_t)numArgs);
-    ctx.as.setType(cast(LocalIdx)(numVars + 3), Type.INT32);
-
-    // Copy the "this" argument
-    ctx.as.getWord(RDI, thisIdx + numPush);
-    ctx.as.getType(SIL, thisIdx + numPush);
-    ctx.as.setWord(cast(LocalIdx)(numVars + 2), RDI);
-    ctx.as.setType(cast(LocalIdx)(numVars + 2), SIL);
-
-    // Write the closure argument
-    ctx.as.setWord(cast(LocalIdx)(numVars + 1), RCX);
-    ctx.as.setType(cast(LocalIdx)(numVars + 1), Type.REFPTR);
-
-    // Write the return address (caller instruction)
-    ctx.as.ptr(RAX, instr);
-    ctx.as.setWord(cast(LocalIdx)(numVars + 0), RAX);
-    ctx.as.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
-
-    // Jump to the callee entry point
-    ctx.as.jump(ctx, fun.entryBlock);
-
-    // Bailout to the interpreter (out of line)
-    ctx.ol.addInstr(bailout);
-
-    // Call the interpreter call instruction
-    // Fallback to interpreter execution
-    defaultFn(ctx.ol, ctx, instr);
-}
-
-void gen_ret(ref CodeGenCtx ctx, IRInstr instr)
-{
-    auto retSlot   = instr.args[0].localIdx;
-    auto raSlot    = instr.block.fun.raSlot;
-    auto argcSlot  = instr.block.fun.argcSlot;
-    auto thisSlot  = instr.block.fun.thisSlot;
-    auto numParams = instr.block.fun.params.length;
-    auto numLocals = instr.block.fun.numLocals;
-
-    // Call the interpreter return instruction
-    defaultFn(ctx.as, ctx, instr);
-
-
-
-
-    // TODO: caller guessing?
-
-    /*
-    IRInstr callInstr = (ctx.callStack.length > 0)? ctx.callStack[$-1]:null;
-
-    // If the call instruction is unknown or is not a regular call
-    if (callInstr is null || callInstr.opcode != &ir.ir.CALL)
-    {
-        //writefln("interp return");
-
-        // Call the interpreter return instruction
-        defaultFn(ctx.as, ctx, instr);
-        ctx.endTrace = true;
-        return;
-    }
-
-    //writefln("optimized return");
-
-    // Get the argument count
-    auto argCount = callInstr.args.length - 2;
-
-    // Compute the actual number of extra arguments to pop
-    size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
-
-    // Compute the number of stack slots to pop
-    auto numPop = numLocals + extraArgs;
-
-    // If the call instruction has an output slot
-    if (callInstr.outSlot != NULL_LOCAL)
-    {
-        // Get the return value
-        ctx.as.getWord(RDI, retSlot);
-        ctx.as.getType(SIL, retSlot);
-    }
-
-    // Pop all local stack slots and arguments
-    ctx.as.instr(ADD, wspReg, numPop * 8);
-    ctx.as.instr(ADD, tspReg, numPop);
-
-    // If the call instruction has an output slot
-    if (callInstr.outSlot != NULL_LOCAL)
-    {
-        // Set the return value
-        ctx.as.setWord(callInstr.outSlot, RDI);
-        ctx.as.setType(callInstr.outSlot, SIL);
-    }
-
-    // If the trace stops here, jump to the call continuation
-    if (!ctx.hasNextNode)
-        ctx.as.jump(ctx, callInstr.target);
-
-    // *** The trace will continue in line at the call continuation block ***
-    */
-}
-
-void gen_get_global_obj(ref CodeGenCtx ctx, IRInstr instr)
-{
-    ctx.as.getMember!("Interp", "globalObj")(RAX, interpReg);
-    
-    ctx.as.setWord(instr.outSlot, RAX);
-    ctx.as.setType(instr.outSlot, Type.REFPTR);
-}
-
-void defaultFn(Assembler as, ref CodeGenCtx ctx, IRInstr instr)
-{
-    // Get the function corresponding to this instruction
-    // alias void function(Interp interp, IRInstr instr) OpFn;
-    // RDI: first argument (interp)
-    // RSI: second argument (instr)
-    auto opFn = instr.opcode.opFn;
-
-    // Move the interpreter pointer into the first argument
-    as.instr(MOV, cargRegs[0], interpReg);
-    
-    // Load a pointer to the instruction in the second argument
-    as.ptr(cargRegs[1], instr);
-
-    // Set the interpreter's IP
-    // Only necessary if we may branch or allocate
-    if (instr.opcode.isBranch || instr.opcode.mayGC)
-    {
-        as.setMember!("Interp", "ip")(interpReg, cargRegs[1]);
-    }
-
-    // Store the stack pointers back in the interpreter
-    as.setMember!("Interp", "wsp")(interpReg, wspReg);
-    as.setMember!("Interp", "tsp")(interpReg, tspReg);
-
-    // Call the op function
-    as.ptr(scratchRegs[0], opFn);
-    as.instr(jit.encodings.CALL, scratchRegs[0]);
-
-    // If this is a branch instruction
-    if (instr.opcode.isBranch == true)
-    {
-        // Reload the stack pointers, the instruction may have changed them
-        as.getMember!("Interp", "wsp")(wspReg, interpReg);
-        as.getMember!("Interp", "tsp")(tspReg, interpReg);
-
-        // Bailout to the interpreter
-        as.instr(JMP, ctx.bailLabel);
-
-        if (opts.jit_dumpinfo)
-            writefln("interpreter bailout");
-    }
-}
-
-alias void function(ref CodeGenCtx ctx, IRInstr instr) CodeGenFn;
-
-CodeGenFn[Opcode*] codeGenFns;
-
-static this()
-{
-    codeGenFns[&SET_TRUE]       = &gen_set_true;
-    codeGenFns[&SET_FALSE]      = &gen_set_false;
-    codeGenFns[&SET_UNDEF]      = &gen_set_undef;
-    codeGenFns[&SET_MISSING]    = &gen_set_missing;
-    codeGenFns[&SET_NULL]       = &gen_set_null;
-    codeGenFns[&SET_INT32]      = &gen_set_int32;
-    codeGenFns[&SET_STR]        = &gen_set_str;
-
-    /*
-    codeGenFns[&MOVE]           = &gen_move;
-    */
-
-    codeGenFns[&IS_CONST]       = &gen_is_const;
-    codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
-    codeGenFns[&IS_INT32]       = &gen_is_int32;
-    codeGenFns[&IS_FLOAT]       = &gen_is_float;
-
-    /*
-    codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
-    codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
-    */
-
-    codeGenFns[&ADD_I32]        = &gen_add_i32;
-    codeGenFns[&MUL_I32]        = &gen_mul_i32;
-    codeGenFns[&AND_I32]        = &gen_and_i32;
-
-    /*
-    codeGenFns[&ADD_F64]        = &gen_add_f64;
-    codeGenFns[&SUB_F64]        = &gen_sub_f64;
-    codeGenFns[&MUL_F64]        = &gen_mul_f64;
-    codeGenFns[&DIV_F64]        = &gen_div_f64;
-
-    codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
-    codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
-    codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
-
-    codeGenFns[&EQ_I8]          = &gen_eq_i8;
-    codeGenFns[&LT_I32]         = &gen_lt_i32;
-    codeGenFns[&GE_I32]         = &gen_ge_i32;
-    codeGenFns[&NE_I32]         = &gen_ne_i32;
-    codeGenFns[&EQ_CONST]       = &gen_eq_const;
-    codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
-    codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
-
-    codeGenFns[&LOAD_U8]        = &gen_load_u8;
-    codeGenFns[&LOAD_U32]       = &gen_load_u32;
-    codeGenFns[&LOAD_U64]       = &gen_load_u64;
-    codeGenFns[&LOAD_F64]       = &gen_load_f64;
-    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
-    */
-
-    codeGenFns[&JUMP]           = &gen_jump;
-
-    codeGenFns[&IF_TRUE]        = &gen_if_true;
-
-    codeGenFns[&ir.ir.CALL]     = &gen_call;
-    codeGenFns[&ir.ir.RET]      = &gen_ret;
-
-    codeGenFns[&GET_GLOBAL]     = &gen_get_global;
-    codeGenFns[&SET_GLOBAL]     = &gen_set_global;
-
-    codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 }
 

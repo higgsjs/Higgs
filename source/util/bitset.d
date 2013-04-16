@@ -227,7 +227,7 @@ class BitSetCW
 
 unittest
 {
-    writefln("BitSetCW");
+    writefln("bit set");
 
     auto m = new BitSetCW(100);
 

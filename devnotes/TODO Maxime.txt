@@ -50,49 +50,40 @@ FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
 TODO: simple `make install` target
 
-TODO: implement/fix get_global, set_global, call wrt reg alloc
+TODO: asm code reuse, functions for slow paths?
+- lazily allocate a global code block and compile
+- can use for entry points too?
 
-TODO: revise defaultFn, might need to save allocatable regs
+TODO: can we use one less scratch reg?
+- Delay until type tags integrated
+- Might need more scratch regs as refactorings progress
 
-TODO: register allocation
-- Do interference and liveness analysis for stack slots
-  - Simultaneously live slots interfere
-  - Assign different registers to interfering slots
-- Slot can either be on stack or in its assigned register
-- Keep a certain number of scratch regs (3-4?)
-  - Should include RAX, regs used by mul/div
-- Fix regs for wsp, tsp, interp
-- Loop variables should get priority (not get spilled)
-- Type tags are either known (implied) or on the stack
-  - If any type, type tag is on the stack
-  - If known for this block or at this point, it's implied
-  - When a function returns, its type tags don't matter
-  - Writing a type tag in an IR instruction can give us the info, 
-    no need for extra analysis, just call setTypeTag(...)
-  - When you do setTypeTag, don't actually write the tag!
-- A value can be on the stack AND in a register
-  - No cost to spill
-  - Must signal if we write either location?
-    - Instrs only write to *out slot*
-    - Requesting out slot as reg or mem makes this happen
+TODO: right now, always storing type info on the stack
+- Don't want value in reg but type info on stack...
+- Could end up with old integer value tagged as pointer
+- Once we know a type value, we never write it back until we spill
+  - If we spill, we definitely write a type tag
+- If we get called with some value/type on the stack, we might leave
+  the type tag on the stack
+  - If we aren't spilling, value will remain unchanged and coherent
 
-Versioning... Context objects could get big?
-- Reg alloc (1 byte per)
-- Type tags (1 byte per), may be "on stack"
-- More specific types? (later)
-- Constant values?
-- Not that big for most functions
+TODO: fast entry point, pre-map first argument registers
+- Jump directly to target if already compiled
 
+TODO: functions, use ptr to object
+- fptr at constant offset, no need to cache closure, less complex code
+- commit before attempting refactoring
 
-TODO: think about block version context objects
-- Turn CodeGenCtx into this?
-  - Context evolves as we go through blocks
-- Need list of block versions, labels with associated contexts
-- Should this be a struct?
+TODO: move, should reuse constant type tag if known
+
+FIXME: v8/splay segfault with JIT
+- Does lots of GC, could be related
 
 
 
-TODO: integrate level 0 FFI functionality
+TODO: improve defaultFn, only spill instr args?
+- Regs will be properly saved when doing C call anyways
+- Improve associated branch bailout too
 
 
 
@@ -100,6 +91,109 @@ TODO: integrate level 0 FFI functionality
 
 
 
+
+
+
+
+
+
+[DONE] TODO: add a V8 benchmark to make test, more sunspider tests?
+
+[DONE] TODO: re-implement return in JIT
+
+[DONE] TODO: usesThis, usesClos, can optimize function calls further
+
+[DONE] TODO: type flags, type state definitions
+- Known type bit
+  - If not known, it's stored on the stack
+- In sync with stack bit
+  - if we test a type, the type we now know is what's on the stack
+  - if we spill a type tag, stack becomes in sync
+  - if we set a type, and it's the same as before, flag unchanged
+- 5 bits for type tag itself, if known
+
+[DONE] FIXME: function calls
+- Selectively spill non-args in regs before the call
+- Everything that's live after the call must be spilled
+- Keep non-live flag for spilling?
+
+[DONE] TODO: try eliminating init maps
+- Don't store on function, don't use in GC
+- Can init less slots if we only worry about uninitialized variables
+- Refactor GC to init/reset stack to 0
+- Temporarily: when setting a type, write 0 value
+  - Writing 0 in get_global prevents GC crash
+
+[DONE] TODO: check if 0 when setting type fixes the GC bug w.r.t. calls/spills
+- Crashes during GC
+
+[DONE] TODO: jit/ops.d
+
+[DONE] TODO: default state, only args should be on stack
+
+[DONE] FIXME: jit.d(485): argument is neither in a register nor on the stack
+- Problem is with rt_typeof, used in jit/loop_new
+- Log the function we're actually compiling
+  $1 = set_null
+  $3 = eq_refptr $10, $1
+  if_true $3 => if_true(A368), if_false(A36B)
+$3 is in fact live after eq_refptr
+- eq_refptr uses the interp fallback
+  - will not map its value as being on the stack!
+  - could change interp fallback to fix this?
+
+[DONE] TODO: bitwise-and, must still be missing instrs for lt
+- using default for: $7 = lt_i32 $15, $16 ($rt_lt(27EA))
+
+[DONE] TODO: fix set_global
+- Bug with type tags? Should get true, get integer 1, integer type tag
+
+[DONE] TODO: implement/fix get_global
+
+[DONE] TODO: pushRegs, popRegs
+
+[DONE] TODO: revise gen_call
+- Will test the limits of the reg alloc
+
+[DONE] TODO: implement reg alloc for simple instructions
+- add, mul, and
+- get_global_obj
+- load
+
+[DONE] FIXME: load with refptr gets bus error
+- Unaligned memory access or wrong address???
+- Could we be, by using int32 offsets, having invalid hi reg values?
+  - If so, problematic!
+  - There's your problem...
+
+[DONE] FIXME: ; if_true $4 => if_true(32D6), if_false(32E2)
+- Jumping to block with wrong reg alloc
+
+[DONE] TODO: exit to interpreter, should spill regs appropriately
+
+[DONE] TODO: revise defaultFn, might need to save allocatable regs
+
+[DONE] TODO: spill logic
+
+[DONE] TODO: make getArgOpnd have a loadVal argument, load to reg
+- Assert not bumping output val
+
+[DONE] TODO: make getOutOpnd try to load to reg if not bumping input
+
+[DONE] TODO: make versioning system work without actual versions or reg alloc
+- Always the same state, one version
+
+[DONE] TODO: think about block version **state** objects
+- State evolves as we go through blocks
+- Should be a struct so we can assign it simply
+- Need list of block versions, labels with associated states
+- For now, ignore type tags, keep them on the stack ***
+  - Focus on reg alloc only
+- Need a map of blocks to state/label pairs
+  - getBlockLabel(block, state)
+  - Try to find a match, if none, produce one
+
+[DONE] TODO: integrate level 0 FFI functionality
 
 [DONE] TODO: interference analysis, coloring
 - Go over basic blocks, count number of instrs where values interfere

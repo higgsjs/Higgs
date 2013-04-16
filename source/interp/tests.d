@@ -334,6 +334,8 @@ unittest
 /// Recursion
 unittest
 {
+    writefln("recursion");
+
     assertInt(
         "
         return function (n)
@@ -374,6 +376,8 @@ unittest
 /// Loops
 unittest
 {
+    writefln("loops");
+
     assertInt(
         "
         return function ()
@@ -579,6 +583,8 @@ unittest
 /// Global scope, global object
 unittest
 {
+    writefln("global object");
+
     assertBool("var x; return !x", true);
     assertInt("a = 1; return a;", 1);
     assertInt("var a; a = 1; return a;", 1);
@@ -664,6 +670,8 @@ unittest
 /// New operator, prototype chain
 unittest
 {
+    writefln("new operator");
+
     assertInt("function f() {}; o = new f(); return 0", 0);
     assertInt("function f() {}; o = new f(); return o? 1:0", 1);
     assertInt("function f() { g = this; }; o = new f(); return g? 1:0", 1);
@@ -938,6 +946,8 @@ unittest
 /// Closures, captured and escaping variables
 unittest
 {
+    writefln("closures");
+
     assertInt(
         "
         function foo(x) { return function() { return x; } }
@@ -1364,5 +1374,29 @@ unittest
 
     writefln("sunspider/access-binary-trees");
     interp.load("programs/sunspider/access-binary-trees.js");
+
+    writefln("sunspider/crypto-sha1");
+    interp.load("programs/sunspider/crypto-sha1.js");
+
+    writefln("sunspider/crypto-md5");
+    interp.load("programs/sunspider/crypto-md5.js");
+}
+
+/// V8 benchmarks
+unittest
+{
+    writefln("v8bench");
+
+    auto interp = new Interp();
+
+    interp.load("programs/v8bench/base.js");
+
+    writefln("v8bench/richards");
+    interp.load("programs/v8bench/richards.js");
+    interp.load("programs/v8bench/drv-richards.js");
+
+    writefln("v8bench/deltablue");
+    interp.load("programs/v8bench/deltablue.js");
+    interp.load("programs/v8bench/drv-deltablue.js");
 }
 

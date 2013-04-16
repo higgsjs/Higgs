@@ -70,8 +70,6 @@ class X86Reg : X86Opnd
         IP
     }
 
-    // TODO: make members const?
-
     /// Register type
     uint8_t type;
 
@@ -79,9 +77,9 @@ class X86Reg : X86Opnd
     uint8_t regNo;
 
     /// Size in bits
-    uint8_t size;
+    uint16_t size;
 
-    this(uint8_t type, uint8_t regNo, uint8_t size)
+    this(uint8_t type, uint8_t regNo, uint16_t size)
     {
         this.type = type;
         this.regNo = regNo;
@@ -146,6 +144,23 @@ class X86Reg : X86Opnd
     }
 
     /**
+    Comparison operator
+    */
+    override bool opEquals(Object o)
+    {
+        auto that = cast(X86Reg)o;
+
+        if (that is null)
+            return false;
+
+        return (
+            this.type == that.type && 
+            this.regNo == that.regNo && 
+            this.size == that.size
+        );
+    }
+
+    /**
     Test if the REX prefix is needed to encode this operand
     */
     override bool rexNeeded() const
@@ -156,7 +171,7 @@ class X86Reg : X86Opnd
         );
     }
 }
-
+ 
 // Auto-generate named register constants
 string genRegCsts()
 {

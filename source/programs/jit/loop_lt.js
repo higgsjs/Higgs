@@ -5,11 +5,11 @@ for (var i = 0; i < 5000; ++i)
 
 assert (
     i === 5000,
-    'incorrect i'
+    'incorrect i value'
 );
 
 assert (
     r === true,
-    'incorrect r'
+    'incorrect r value: ' + r
 );
 

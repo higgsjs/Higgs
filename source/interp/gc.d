@@ -344,6 +344,13 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     // Free the from-space heap block
     GC.free(fromStart);
 
+    // Clear the stack space below the stack pointers (free space)
+    // to eliminate any unprocessed references to the from space
+    for (int64* p = cast(int64*)interp.wLowerLimit; p < cast(int64*)interp.wsp; p++)
+        *p = 0;
+    for (int64* p = cast(int64*)interp.tLowerLimit; p < cast(int64*)interp.tsp; p++)
+        *p = 0;
+
     //writefln("old live funs count: %s", interp.funRefs.length);
 
     // Collect the dead functions
@@ -383,7 +390,7 @@ refptr gcForward(Interp interp, refptr ptr)
     if (ptr is null)
         return null;
 
-    //writefln("forwarding %s", ptr);
+    //writefln("forwarding object %s", ptr);
 
     assert (
         ptr >= interp.heapStart && ptr < interp.heapLimit,
@@ -475,6 +482,7 @@ Word gcForward(Interp interp, Word word, Type type)
         // Return the pointer unchanged
         case Type.FUNPTR:
         auto fun = cast(IRFunction)word.ptrVal;
+        assert (fun !is null);
         visitFun(interp, fun);
         return word;
 
@@ -573,7 +581,7 @@ void visitStackRoots(Interp interp)
     if (interp.stackSize() == 0)
         return;
 
-    //writefln("stack size: %s", interp.stackSize());
+    writefln("stack size: %s", interp.stackSize());
 
     // Get the stack pointers
     auto wsp = interp.wsp;
@@ -589,11 +597,6 @@ void visitStackRoots(Interp interp)
     {
         //writefln("scanning stack frame");
 
-        assert (
-            curInstr in curFun.initMaps, 
-            "no init map for instr: " ~ curInstr.toString()
-        );
-
         //writefln("function on stack: %s", curFun.name);
 
         // Visit the function this stack frame belongs to
@@ -604,7 +607,10 @@ void visitStackRoots(Interp interp)
         auto raSlot = curFun.raSlot;
         auto argcSlot = curFun.argcSlot;
 
-        auto initMap = curFun.initMaps[curInstr];
+        assert (
+            wsp + numLocals <= interp.wUpperLimit, 
+            "no room for numLocals in stack frame"
+        );
 
         // Get the argument count
         auto argCount = wsp[argcSlot].int32Val;
@@ -612,6 +618,7 @@ void visitStackRoots(Interp interp)
         // Compute the actual number of extra arguments to pop
         size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
 
+        //writefln("  numLocals: %s", numLocals);
         //writefln("  numParams: %s", numParams);
         //writefln("  argCount: %s", argCount);
 
@@ -621,10 +628,6 @@ void visitStackRoots(Interp interp)
         // For each local in this frame
         for (LocalIdx idx = 0; idx < frameSize; ++idx)
         {
-            // If this local is not initialized, skip it
-            if (idx < numLocals && initMap.has(idx) == false)
-                continue;
-
             //writefln("ref %s/%s", idx+1, frameSize);
 
             Word word = wsp[idx];
@@ -650,12 +653,16 @@ void visitStackRoots(Interp interp)
             );
         }
 
+        //writefln("done scanning locals");
+
         // Get the calling instruction
         curInstr = cast(IRInstr)wsp[raSlot].ptrVal;
 
         // If we reached the bottom of the stack, stop
         if (curInstr is null)
             break;
+
+        //writefln("moving up stack");
 
         // Update the current function
         curFun = curInstr.block.fun;
@@ -666,37 +673,7 @@ void visitStackRoots(Interp interp)
         tsp += frameSize;
     }
 
-    //writefln("done scanning stack");
-
-    /*
-    // For each stack slot, from top to bottom
-    for (LocalIdx i = 0; i < interp.stackSize(); ++i)
-    {
-        //writefln("visiting stack slot %s/%s", (i+1), interp.stackSize());
-
-        Word word = interp.getWord(i);
-        Type type = interp.getType(i);
-
-        // If this is a pointer, forward it
-        interp.wsp[i] = gcForward(interp, word, type);
-
-        auto fwdPtr = interp.wsp[i].ptrVal;
-        assert (
-            type != Type.REFPTR ||
-            fwdPtr == null ||
-            (fwdPtr >= interp.toStart && fwdPtr < interp.toLimit),
-            xformat(
-                "invalid forwarded stack pointer\n" ~
-                "ptr     : %s\n" ~
-                "to-alloc: %s\n" ~
-                "to-limit: %s",
-                fwdPtr,
-                interp.toStart,
-                interp.toLimit
-            )
-        );
-    }
-    */
+    writefln("done scanning stack");
 }
 
 /**

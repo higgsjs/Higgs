@@ -183,6 +183,10 @@ void resolveVars(FunExpr fun, Scope parentSc = null)
 
     // Resolve references in the function body
     resolveRefs(fun.bodyStmt, s);
+
+    // If the function has captured variables, it needs a closure argument
+    if (fun.captVars.length > 0)
+        fun.usesClos = true;
 }
 
 /**
@@ -497,6 +501,11 @@ void resolveRefs(ASTExpr expr, Scope s)
         // mark the function as possibly using arguments
         if (identExpr.declNode is s.fun.argObjIdent)
             s.fun.usesArguments = true;
+
+        // If this is the "this" argument, mark the function as
+        // using its this reference
+        if (identExpr.name == "this")
+            s.fun.usesThis = true;
 
         //writefln("resolved ref: %s => %s", identExpr, identExpr.declNode);
     }
