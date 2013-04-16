@@ -890,6 +890,24 @@ void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, IRBlock target)
     ctx.ol.bail(ctx, st);
 }
 
+void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, X86Reg targetReg)
+{
+    assert (targetReg != scrRegs64[1]);
+
+    auto INTERP_JUMP = new Label("INTERP_JUMP");
+
+    // If a JIT entry point exists, jump to it directly
+    as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], targetReg);
+    as.instr(CMP, scrRegs64[1], 0);
+    as.instr(JE, INTERP_JUMP);
+    as.instr(JMP, scrRegs64[1]);
+
+    // Make the interpreter jump to the target
+    ctx.ol.addInstr(INTERP_JUMP);
+    ctx.ol.setMember!("Interp", "target")(interpReg, targetReg);
+    ctx.ol.bail(ctx, st);
+}
+
 /// Bailout to the interpreter
 void bail(Assembler as, CodeGenCtx ctx, CodeGenState st)
 {

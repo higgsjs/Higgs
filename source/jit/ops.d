@@ -807,62 +807,64 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto numParams = instr.block.fun.params.length;
     auto numLocals = instr.block.fun.numLocals;
 
-    // Call the interpreter return instruction
-    defaultFn(ctx.as, ctx, st, instr);
+    // Label for the bailout to interpreter cases
+    auto BAILOUT = new Label("RET_BAILOUT");
 
-    // TODO: caller guessing?
-
-    /*
-    IRInstr callInstr = (ctx.callStack.length > 0)? ctx.callStack[$-1]:null;
-
-    // If the call instruction is unknown or is not a regular call
-    if (callInstr is null || callInstr.opcode != &ir.ir.CALL)
-    {
-        //writefln("interp return");
-
-        // Call the interpreter return instruction
-        defaultFn(ctx.as, ctx, instr);
-        ctx.endTrace = true;
-        return;
-    }
-
-    //writefln("optimized return");
-
+    // Label for the point at which we pop the locals
+    auto POP_LOCALS = new Label("POP_LOCALS");
+    
     // Get the argument count
-    auto argCount = callInstr.args.length - 2;
+    // If it doesn't match the expected count, bailout
+    ctx.as.getWord(scrRegs64[0], argcSlot);
+    ctx.as.instr(CMP, scrRegs64[0], numParams);
+    ctx.as.instr(JNE, BAILOUT);
 
-    // Compute the actual number of extra arguments to pop
-    size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
+    // Get the call instruction
+    ctx.as.getWord(scrRegs64[0], raSlot);
+    
+    // If this is not a regular call, bailout
+    ctx.as.getMember!("IRInstr", "opcode")(scrRegs64[1], scrRegs64[0]);
+    ctx.as.ptr(scrRegs64[2], &ir.ir.CALL);
+    ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
+    ctx.as.instr(JNE, BAILOUT);
 
-    // Compute the number of stack slots to pop
-    auto numPop = numLocals + extraArgs;
+    // Get the output slot for the call instruction
+    ctx.as.getMember!("IRInstr", "outSlot")(scrRegs32[1], scrRegs64[0]);
+    ctx.as.instr(CMP, scrRegs32[1], NULL_LOCAL);
+    ctx.as.instr(JE, POP_LOCALS);
 
-    // If the call instruction has an output slot
-    if (callInstr.outSlot != NULL_LOCAL)
+    // Copy the return value
+    auto retReg = st.getReg(retSlot);
+    if (retReg is null)
     {
-        // Get the return value
-        ctx.as.getWord(RDI, retSlot);
-        ctx.as.getType(SIL, retSlot);
+        ctx.as.instr(MOV, scrRegs64[2], new X86Mem(64, wspReg, 8 * retSlot));
+        retReg = scrRegs64[2];
     }
+    ctx.as.instr(MOV, new X86Mem(64, wspReg, 8 * numLocals, scrRegs64[1], 8), retReg);
+
+    // TODO: fix when integrating type info
+    ctx.as.instr(MOV, scrRegs8[2], new X86Mem(8, tspReg, retSlot));
+    ctx.as.instr(MOV, new X86Mem(8, tspReg, numLocals, scrRegs64[1]), scrRegs8[2]);
 
     // Pop all local stack slots and arguments
-    ctx.as.instr(ADD, wspReg, numPop * 8);
-    ctx.as.instr(ADD, tspReg, numPop);
+    ctx.as.addInstr(POP_LOCALS);
+    ctx.as.instr(ADD, wspReg, numLocals * 8);
+    ctx.as.instr(ADD, tspReg, numLocals);
 
-    // If the call instruction has an output slot
-    if (callInstr.outSlot != NULL_LOCAL)
-    {
-        // Set the return value
-        ctx.as.setWord(callInstr.outSlot, RDI);
-        ctx.as.setType(callInstr.outSlot, SIL);
-    }
+    // Get the call continuation block
+    ctx.as.getMember!("IRInstr", "target")(scrRegs64[0], scrRegs64[0]);
 
-    // If the trace stops here, jump to the call continuation
-    if (!ctx.hasNextNode)
-        ctx.as.jump(ctx, callInstr.target);
+    // Jump to the call continuation block without spilling anything
+    ctx.as.jump(ctx, new CodeGenState(ctx.fun), scrRegs64[0]);
 
-    // *** The trace will continue in line at the call continuation block ***
-    */
+    // Bailout to the interpreter (out of line)
+    ctx.ol.addInstr(BAILOUT);
+
+    // FIXME: only want to spill instr arg here
+    // Fallback to interpreter execution
+    // Spill all values, including arguments
+    // Call the interpreter call instruction
+    defaultFn(ctx.ol, ctx, st, instr);
 }
 
 void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)

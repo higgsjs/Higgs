@@ -78,17 +78,22 @@ TODO: move, should reuse constant type tag if known
 
 
 
+TODO: improve defaultFn, only spill instr args?
+- Regs will be properly saved when doing C call anyways
+- Improve associated branch bailout too
 
 
 
 
-TODO: re-implement return in JIT
 
 
 
 
 
 
+
+
+[DONE] TODO: re-implement return in JIT
 
 [DONE] TODO: usesThis, usesClos, can optimize function calls further
 
