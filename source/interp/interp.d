@@ -867,7 +867,7 @@ class Interp
         if (!isAbsolute(fileName))
         {
             auto libfile = buildPath("/etc/higgs", fileName);
-            if (exists(libfile))
+            if (!exists(fileName) && exists(libfile))
                 fileName = to!string(libfile);
         }
 

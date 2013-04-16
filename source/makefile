@@ -4,7 +4,7 @@ COPTS = -m64 -O -L-ldl
 BIN_NAME = higgs
 BIN_NAME_TEST = test-higgs
 
-INSTALL_DIR = /usr/bin
+BIN_DIR = /usr/bin
 LIB_DIR = /etc/higgs
 
 # Source files
@@ -67,4 +67,4 @@ install: all
 	@if [ ! -d $(LIB_DIR)/stdlib ] ; then echo "mkdir $(LIB_DIR)/stdlib" ; mkdir $(LIB_DIR)/stdlib ; fi
 	cp ./interp/*.js $(LIB_DIR)/interp
 	cp ./stdlib/*.js $(LIB_DIR)/stdlib
-	cp $(BIN_NAME) $(INSTALL_DIR)
+	cp $(BIN_NAME) $(BIN_DIR)
