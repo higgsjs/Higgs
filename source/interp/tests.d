@@ -1374,5 +1374,29 @@ unittest
 
     writefln("sunspider/access-binary-trees");
     interp.load("programs/sunspider/access-binary-trees.js");
+
+    writefln("sunspider/crypto-sha1");
+    interp.load("programs/sunspider/crypto-sha1.js");
+
+    writefln("sunspider/crypto-md5");
+    interp.load("programs/sunspider/crypto-md5.js");
+}
+
+/// V8 benchmarks
+unittest
+{
+    writefln("v8bench");
+
+    auto interp = new Interp();
+
+    interp.load("programs/v8bench/base.js");
+
+    writefln("v8bench/richards");
+    interp.load("programs/v8bench/richards.js");
+    interp.load("programs/v8bench/drv-richards.js");
+
+    writefln("v8bench/deltablue");
+    interp.load("programs/v8bench/deltablue.js");
+    interp.load("programs/v8bench/drv-deltablue.js");
 }
 

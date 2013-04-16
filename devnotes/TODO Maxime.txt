@@ -76,6 +76,9 @@ TODO: functions, use ptr to object
 
 TODO: move, should reuse constant type tag if known
 
+FIXME: v8/splay segfault with JIT
+- Does lots of GC, could be related
+
 
 
 TODO: improve defaultFn, only spill instr args?
@@ -92,6 +95,9 @@ TODO: improve defaultFn, only spill instr args?
 
 
 
+
+
+[DONE] TODO: add a V8 benchmark to make test, more sunspider tests?
 
 [DONE] TODO: re-implement return in JIT
 
