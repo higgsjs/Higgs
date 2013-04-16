@@ -1607,7 +1607,6 @@ extern (C) void op_load_lib(Interp interp, IRInstr instr)
     auto libname = to!string(instr.args[0].stringVal);
 
     // String must be null terminated
-    // todo: use lib for this?
     libname ~= '\0';
 
     auto lib = dlopen(libname.ptr, RTLD_LAZY | RTLD_LOCAL);
@@ -1649,7 +1648,6 @@ extern (C) void op_get_sym(Interp interp, IRInstr instr)
     auto symname = to!string(instr.args[1].stringVal);
 
     // String must be null terminated
-    // todo: use lib for this?
     symname ~= '\0';
 
     auto sym = dlsym(lib.word.ptrVal, symname.ptr);

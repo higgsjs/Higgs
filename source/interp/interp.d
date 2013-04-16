@@ -43,6 +43,8 @@ import std.string;
 import std.array;
 import std.conv;
 import std.typecons;
+import std.path;
+import std.file;
 import options;
 import util.misc;
 import analysis.typeset;
@@ -860,11 +862,15 @@ class Interp
     */
     ValuePair load(string fileName)
     {
-        //writefln("parsing %s", fileName);
+        // If the path is relative, first check the Higgs lib dir
+        if (!isAbsolute(fileName))
+        {
+            auto libfile = buildPath("/etc/higgs", fileName);
+            if (exists(libfile))
+                fileName = to!string(libfile);
+        }
 
         auto ast = parseFile(fileName);
-
-        //writefln("executing!");
 
         return exec(ast);
     }
