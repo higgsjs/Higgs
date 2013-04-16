@@ -881,7 +881,7 @@ class Interp
     ValuePair load(string fileName)
     {
         auto file = getLoadPath(fileName);
-        auto ast = parseFile(fileName);
+        auto ast = parseFile(file);
         return exec(ast);
     }
 
