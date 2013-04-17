@@ -171,3 +171,61 @@ CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] a
     return cb;
 }
 
+
+
+// Dummy functions used for testing
+extern (C) {
+    void testVoidFun()
+    {
+        return;
+    }
+
+    int testIntFun()
+    {
+        return 5;
+    }
+
+    double testDoubleFun()
+    {
+        return 5.5;
+    }
+
+    int testIntAddFun(int a, int b)
+    {
+        return a + b;
+    }
+
+    double testDoubleAddFun(double a, double b)
+    {
+        return a + b;
+    }
+
+    int testIntArgsFun(int a, int b, int c, int d, int e, int f, int g)
+    {
+        return a + b + c + d + e + (f - g);
+    }
+
+    double testDoubleArgsFun(double a, double b, double c, double d, double e, double f, double g)
+    {
+        return a + b + c + d + e + (f - g);
+    }
+
+    void* testPtrFun()
+    {
+        return &testIntAddFun;
+    }
+
+    double testMixedArgsFun(int a, double b, int c, double d, int e, double f, int g)
+    {
+        return cast(double)(a + b + c + d + e + (f - g));
+    }
+}
+
+unittest
+{
+    writefln("FFI");
+
+    auto interp = new Interp();
+    interp.load("programs/ffi/ffi.js");
+}
+
