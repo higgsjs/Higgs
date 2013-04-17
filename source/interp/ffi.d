@@ -171,10 +171,9 @@ CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] a
     return cb;
 }
 
-
-
 // Dummy functions used for testing
-extern (C) {
+extern (C) 
+{
     void testVoidFun()
     {
         return;

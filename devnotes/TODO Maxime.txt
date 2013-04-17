@@ -63,8 +63,6 @@ TODO: asm code reuse, functions for slow paths?
 - lazily allocate a global code block and compile
 - can use for entry points too?
 
-TODO: simple `make install` target
-
 TODO: move, should reuse constant type tag if known
 
 
@@ -72,9 +70,17 @@ TODO: move, should reuse constant type tag if known
 
 
 
+TODO: clearOutType?
 
 
 
+
+
+
+[DONE] TODO: make setOutType change type state
+- Should result in more versions, but still working code
+
+[DONE] TODO: simple `make install` target
 
 [DONE] TODO: add typeState to CodeGenState
 

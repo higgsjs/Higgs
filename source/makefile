@@ -38,12 +38,12 @@ jit/regalloc.d      \
 jit/peephole.d      \
 jit/ops.d           \
 jit/jit.d           \
-jit/tests.d         \
-parser/tests.d      \
-interp/tests.d      \
 repl.d              \
 options.d           \
-main.d
+main.d              \
+jit/tests.d         \
+parser/tests.d      \
+interp/tests.d
 
 all: layout encodings
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
@@ -68,3 +68,4 @@ install: all
 	cp ./interp/*.js $(LIB_DIR)/interp
 	cp ./stdlib/*.js $(LIB_DIR)/stdlib
 	cp $(BIN_NAME) $(BIN_DIR)
+

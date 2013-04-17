@@ -867,9 +867,9 @@ class Interp
         // If the path is relative, first check the Higgs lib dir
         if (!isAbsolute(fileName))
         {
-            auto libfile = buildPath("/etc/higgs", fileName);
-            if (!exists(fileName) && exists(libfile))
-                fileName = to!string(libfile);
+            auto libFile = buildPath("/etc/higgs", fileName);
+            if (!exists(fileName) && exists(libFile))
+                fileName = to!string(libFile);
         }
 
         return fileName;

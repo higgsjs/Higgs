@@ -35,13 +35,13 @@
 *
 *****************************************************************************/
 
-(function(global)
+(function ()
 {
+    var global = $ir_get_global_obj();
 
     global.exports = global.exports || undefined;
 
-    var hasFileExt = /\.js$/
-
+    var hasFileExt = /\.js$/;
 
     function require(identifier)
     {
@@ -68,4 +68,5 @@
     // Export
     global.require = require;
 
-})($ir_get_global_obj());
+})();
+

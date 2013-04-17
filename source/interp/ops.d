@@ -1471,7 +1471,7 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
         "expected string filename argument in load_file"
     );
 
-    auto fileName = extractStr(wFile.ptrVal);
+    auto fileName = interp.getLoadPath(extractStr(wFile.ptrVal));
 
     // Parse the source file and generate IR
     auto ast = parseFile(fileName);

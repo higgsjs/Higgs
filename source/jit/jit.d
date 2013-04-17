@@ -650,6 +650,10 @@ class CodeGenState
         return new X86Reg(X86Reg.GP, reg.regNo, numBits);
     }
 
+
+
+
+
     // TODO: arg type access
 
     // Set the output type value for an instruction's output
@@ -660,9 +664,39 @@ class CodeGenState
             "instruction has no output slot"
         );
 
+        assert (
+            (type & TF_TYPE_MASK) == type,
+            "type mask corrupts type tag"
+        );
+
+        auto localIdx = instr.outSlot;
+
+
+
+
+        // Get the previous type state
+        auto prevState = typeState[localIdx];
+
+        // Check if the type is still in sync
+        auto inSync = (
+            (prevState & TF_TYPE_SYNC) &&
+            (prevState & TF_TYPE_KNOWN) &&
+            ((prevState & TF_TYPE_MASK) == type)
+        );
+
+        // Set the type known flag and update the type
+        typeState[localIdx] = TF_TYPE_KNOWN | (inSync? TF_TYPE_SYNC:0) | type;
+
+
+
+
+
+
+        // FIXME:
         // Create a memory operand to access the type stack
         auto memOpnd = new X86Mem(8, tspReg, instr.outSlot);
 
+        // FIXME:
         // Write the type to the type stack
         as.instr(MOV, memOpnd, type);
 
