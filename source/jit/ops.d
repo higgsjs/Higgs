@@ -463,79 +463,40 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
-    auto AFTER_CMP  = new Label("PROP_AFTER_CMP");
-    auto AFTER_WORD = new Label("PROP_AFTER_WORD");
-    auto AFTER_TYPE = new Label("PROP_AFTER_TYPE");
-    auto GET_PROP = new Label("PROP_GET_PROP");
-    auto GET_OFS  = new Label("PROP_GET_OFS");
-
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
-    //
-    // Fast path
-    //
-    ctx.as.addInstr(GET_PROP);
 
     // Get the global object pointer
     ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
 
-    // Compare the object size to the cached size
+    // Get the global object size/capacity
     ctx.as.getField(scrRegs32[1], scrRegs64[0], 4, obj_ofs_cap(interp.globalObj));
-    ctx.as.instr(CMP, scrRegs32[1], 0x7FFFFFFF);
-    ctx.as.addInstr(AFTER_CMP);
-    ctx.as.instr(JNE, GET_OFS);
 
-    // Get the word and type from the object
-    ctx.as.instr(MOV, scrRegs64[2], new X86Mem(64, scrRegs64[0], 0x7FFFFFFF));
-    ctx.as.addInstr(AFTER_WORD);
-    ctx.as.instr(MOV, scrRegs8[3] , new X86Mem(8 , scrRegs64[0], 0x7FFFFFFF));
-    ctx.as.addInstr(AFTER_TYPE);
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
 
-    // Move the word to the output operand
-    ctx.as.instr(MOV, outOpnd, scrRegs64[2]);
+    // Get the word value
+    auto wordMem = new X86Mem(64, scrRegs64[0], wordOfs + 8 * propIdx);
+    if (cast(X86Reg)outOpnd)
+    {
+        ctx.as.instr(MOV, outOpnd, wordMem);
+    }
+    else
+    {
+        ctx.as.instr(MOV, scrRegs64[2], wordMem);
+        ctx.as.instr(MOV, outOpnd, scrRegs64[2]);
+    }
 
+    // Get the type value
+    auto typeMem = new X86Mem(8, scrRegs64[0], wordOfs + propIdx, scrRegs64[1], 8);
+    ctx.as.instr(MOV, scrRegs8[2] , typeMem);
 
     // TODO: change when integrating type knowledge
-    ctx.as.setType(instr.outSlot, scrRegs8[3]);
+    ctx.as.setType(instr.outSlot, scrRegs8[2]);
 
-
+    // FIXME: temporary until type info integration
     if (cast(X86Reg)outOpnd)
         ctx.as.setWord(instr.outSlot, 0);
-
-
-
-
-    //
-    // Slow path: update the cached offset
-    //
-    ctx.ol.addInstr(GET_OFS);
-
-    // Update the cached object size
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), scrRegs32[1]);
-
-    // Get the word offset
-    ctx.ol.pushRegs();
-    ctx.ol.instr(PUSH, scrRegs64[0]);
-    ctx.ol.instr(PUSH, scrRegs64[0]);
-    ctx.ol.instr(MOV, RDI, scrRegs64[0]);
-    ctx.ol.instr(MOV, RSI, propIdx);
-    ctx.ol.ptr(RAX, &obj_ofs_word);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_WORD, -4), EAX);
-    ctx.ol.instr(POP, scrRegs64[0]);
-    ctx.ol.instr(POP, scrRegs64[0]);
-
-    // Get the type offset
-    ctx.ol.instr(MOV, RDI, scrRegs64[0]);
-    ctx.ol.instr(MOV, RSI, propIdx);
-    ctx.ol.ptr(RAX, &obj_ofs_type);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_TYPE, -4), EAX);
-    ctx.ol.popRegs();
-
-    // Read the property
-    ctx.ol.instr(JMP, GET_PROP);
 }
 
 void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -552,69 +513,36 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
-    auto AFTER_CMP  = new Label("PROP_AFTER_CMP");
-    auto AFTER_WORD = new Label("PROP_AFTER_WORD");
-    auto AFTER_TYPE = new Label("PROP_AFTER_TYPE");
-    auto SET_PROP = new Label("PROP_SET_PROP");
-    auto GET_OFS  = new Label("PROP_GET_OFS");
-
     // Allocate the input operand
     auto argOpnd = st.getArgOpnd(ctx, ctx.as, instr, 1, 64);
-
-    //
-    // Fast path
-    //
-    ctx.as.addInstr(SET_PROP);
 
     // Get the global object pointer
     ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
 
-    // Compare the object size to the cached size
+    // Get the global object size/capacity
     ctx.as.getField(scrRegs32[1], scrRegs64[0], 4, obj_ofs_cap(interp.globalObj));
-    ctx.as.instr(CMP, scrRegs32[1], 0x7FFFFFFF);
-    ctx.as.addInstr(AFTER_CMP);
-    ctx.as.instr(JNE, GET_OFS);
 
-    // Move the input operand to a scratch register
-    ctx.as.instr(MOV, scrRegs64[2], argOpnd);
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
+
+    // Set the word value
+    auto wordMem = new X86Mem(64, scrRegs64[0], wordOfs + 8 * propIdx);
+    if (cast(X86Reg)argOpnd)
+    {
+        ctx.as.instr(MOV, wordMem, argOpnd);
+    }
+    else
+    {
+        ctx.as.instr(MOV, scrRegs64[2], argOpnd);
+        ctx.as.instr(MOV, wordMem, scrRegs64[2]);
+    }
 
     // TODO: change when integrating type knowledge
-    ctx.as.getType(scrRegs8[3], instr.args[1].localIdx);
+    ctx.as.getType(scrRegs8[2], instr.args[1].localIdx);
 
-    // Set the word and type from the object
-    ctx.as.instr(MOV, new X86Mem(64, scrRegs64[0], 0x7FFFFFFF), scrRegs64[2]);
-    ctx.as.addInstr(AFTER_WORD);
-    ctx.as.instr(MOV, new X86Mem(8 , scrRegs64[0], 0x7FFFFFFF), scrRegs8[3]);
-    ctx.as.addInstr(AFTER_TYPE);
-
-    //
-    // Slow path: update the cached offset
-    //
-    ctx.ol.addInstr(GET_OFS);
-
-    // Update the cached object size
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_CMP, -4), scrRegs32[1]);
-
-    // Get the word offset
-    ctx.ol.pushRegs();
-    ctx.ol.instr(MOV, RDI, scrRegs64[0]);
-    ctx.ol.instr(MOV, RSI, propIdx);
-    ctx.ol.ptr(RAX, &obj_ofs_word);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_WORD, -4), EAX);
-    ctx.ol.popRegs();
-
-    // Get the type offset
-    ctx.ol.pushRegs();
-    ctx.ol.instr(MOV, RDI, scrRegs64[0]);
-    ctx.ol.instr(MOV, RSI, propIdx);
-    ctx.ol.ptr(RAX, &obj_ofs_type);
-    ctx.ol.instr(jit.encodings.CALL, RAX);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_TYPE, -4), EAX);
-    ctx.ol.popRegs();
-
-    // Read the property
-    ctx.ol.instr(JMP, SET_PROP);
+    // Set the type value
+    auto typeMem = new X86Mem(8, scrRegs64[0], wordOfs + propIdx, scrRegs64[1], 8);
+    ctx.as.instr(MOV, typeMem, scrRegs8[2]);
 }
 
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)

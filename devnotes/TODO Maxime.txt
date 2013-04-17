@@ -70,12 +70,9 @@ TODO: move, should reuse constant type tag if known
 
 
 
-TODO: clearOutType?
 
 
-
-
-
+[DONE] TODO: try to optimize global prop access, remove offset recomputation
 
 [DONE] TODO: make setOutType change type state
 - Should result in more versions, but still working code

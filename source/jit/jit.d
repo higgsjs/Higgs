@@ -425,8 +425,9 @@ const RAState RA_REG_MASK = (0x0F);
 
 // Type flag state
 alias uint8_t TFState;
-const TFState TF_TYPE_KNOWN = (1 << 7);
-const TFState TF_TYPE_SYNC = (1 << 6);
+const TFState TF_UNKNOWN = 0;
+const TFState TF_KNOWN = (1 << 7);
+const TFState TF_SYNC = (1 << 6);
 const TFState TF_TYPE_MASK = (0x1F);
 
 /**
@@ -654,9 +655,11 @@ class CodeGenState
 
 
 
-    // TODO: arg type access
 
-    // Set the output type value for an instruction's output
+
+
+
+    /// Set the output type value for an instruction's output
     void setOutType(Assembler as, IRInstr instr, Type type)
     {
         assert (
@@ -671,26 +674,18 @@ class CodeGenState
 
         auto localIdx = instr.outSlot;
 
-
-
-
         // Get the previous type state
         auto prevState = typeState[localIdx];
 
         // Check if the type is still in sync
         auto inSync = (
-            (prevState & TF_TYPE_SYNC) &&
-            (prevState & TF_TYPE_KNOWN) &&
+            (prevState & TF_SYNC) &&
+            (prevState & TF_KNOWN) &&
             ((prevState & TF_TYPE_MASK) == type)
         );
 
         // Set the type known flag and update the type
-        typeState[localIdx] = TF_TYPE_KNOWN | (inSync? TF_TYPE_SYNC:0) | type;
-
-
-
-
-
+        typeState[localIdx] = TF_KNOWN | (inSync? TF_SYNC:0) | type;
 
         // FIXME:
         // Create a memory operand to access the type stack
@@ -704,6 +699,40 @@ class CodeGenState
         if (allocState[instr.outSlot] & RA_GPREG)
             as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
     }
+
+    /// Write the output type for an instruction's output to the type stack
+    void setOutType(Assembler as, IRInstr instr, X86Reg typeReg)
+    {
+        // Mark the type value as unknown
+        typeState[instr.outSlot] = TF_UNKNOWN;
+
+        // Write the type to the type stack
+        auto memOpnd = new X86Mem(8, tspReg, instr.outSlot);
+        as.instr(MOV, memOpnd, typeReg);
+    }
+
+    /// Test if a constant type is known for an instruction's input
+    bool inTypeKnown(IRInstr instr, size_t argIdx) const
+    {
+        auto argSlot = instr.args[argIdx].localIdx;
+
+        assert (
+            argSlot != NULL_LOCAL,
+            "argument is not valid local"
+        );
+
+        return (typeState[argSlot] & TF_KNOWN) != 0;
+    }
+
+    // TODO: arg type access
+
+
+
+
+
+
+
+
 
     /// Spill test function
     alias bool delegate(size_t regNo, LocalIdx localIdx) SpillTestFn;
