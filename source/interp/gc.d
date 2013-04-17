@@ -581,7 +581,7 @@ void visitStackRoots(Interp interp)
     if (interp.stackSize() == 0)
         return;
 
-    writefln("stack size: %s", interp.stackSize());
+    //writefln("stack size: %s", interp.stackSize());
 
     // Get the stack pointers
     auto wsp = interp.wsp;
@@ -673,7 +673,7 @@ void visitStackRoots(Interp interp)
         tsp += frameSize;
     }
 
-    writefln("done scanning stack");
+    //writefln("done scanning stack");
 }
 
 /**

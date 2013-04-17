@@ -67,23 +67,21 @@ TODO: simple `make install` target
 
 TODO: move, should reuse constant type tag if known
 
-TODO: begin type tag info integration
 
-TODO: write adversarial GC/JIT test
+
+
+
+
+
+
+
+
+[DONE] TODO: add typeState to CodeGenState
+
+[DONE] TODO: write adversarial GC/JIT test
 - Big loop
 - Mix many obj refs & integer calculations?
 - Branching
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: improve register spilling, defaultFn, better usage of liveness info
 

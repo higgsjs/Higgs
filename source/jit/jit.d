@@ -99,6 +99,9 @@ void compFun(Interp interp, IRFunction fun)
     Label[IRBlock] entryMap;
     Label[IRBlock] fastEntryMap;
 
+    // Total number of block versions
+    size_t numVersions = 0;
+
     /// Get a label for a given basic block
     auto getBlockLabel = delegate Label(IRBlock block, CodeGenState state)
     {
@@ -126,6 +129,9 @@ void compFun(Interp interp, IRFunction fun)
 
         // Queue the new version to be compiled
         workList ~= ver;
+
+        // Increment the total number of versions
+        numVersions++;
 
         // Return the label for this version
         return label;
@@ -368,6 +374,8 @@ void compFun(Interp interp, IRFunction fun)
     if (opts.jit_dumpinfo)
     {
         writefln("machine code bytes: %s", codeBlock.length);
+        writefln("num blocks: %s", versionMap.length);
+        writefln("num versions: %s", numVersions);
         writefln("");
     }
 }
@@ -426,7 +434,7 @@ Code generation state
 */
 class CodeGenState
 {
-    /// Register allocation state (per-local flags)
+    /// Register allocation state (per-local)
     RAState[] allocState;
 
     /// Map of general-purpose registers to locals
@@ -435,6 +443,9 @@ class CodeGenState
 
     /// TODO: type flags
     // Implement only once versioning/regalloc working
+
+    /// Type information state, type flags (per-local)
+    TFState[] typeState;
 
     /// Constructor for a default/entry code generation state
     this(IRFunction fun)
@@ -453,8 +464,13 @@ class CodeGenState
 
         // All registers are initially free
         gpRegMap.length = 16;
-        for (size_t i  = 0; i < gpRegMap.length; ++i)
+        for (size_t i = 0; i < gpRegMap.length; ++i)
             gpRegMap[i] = NULL_LOCAL;
+
+        // No type info is initially known
+        typeState.length = fun.numLocals;
+        for (size_t i = 0; i < typeState.length; ++i)
+            typeState[i] = 0;
     }
 
     /// Copy constructor
@@ -462,6 +478,7 @@ class CodeGenState
     {
         this.allocState = that.allocState.dup;
         this.gpRegMap = that.gpRegMap.dup;
+        this.typeState = that.typeState.dup;
     }
 
     /// Produce a string representation of the state
@@ -492,6 +509,9 @@ class CodeGenState
             return false;
 
         if (this.gpRegMap != that.gpRegMap)
+            return false;
+
+        if (this.typeState != that.typeState)
             return false;
 
         return true;

@@ -879,54 +879,56 @@ unittest
 {
     writefln("runtime");
 
-    assertInt("$rt_toBool(0)? 1:0", 0);
-    assertInt("$rt_toBool(5)? 1:0", 1);
-    assertInt("$rt_toBool(true)? 1:0", 1);
-    assertInt("$rt_toBool(false)? 1:0", 0);
-    assertInt("$rt_toBool(null)? 1:0", 0);
-    assertInt("$rt_toBool('')? 1:0", 0);
-    assertInt("$rt_toBool('foo')? 1:0", 1);
+    auto interp = new Interp();
 
-    assertStr("$rt_toString(5)", "5");
-    assertStr("$rt_toString('foo')", "foo");
-    assertStr("$rt_toString(null)", "null");
+    interp.assertInt("$rt_toBool(0)? 1:0", 0);
+    interp.assertInt("$rt_toBool(5)? 1:0", 1);
+    interp.assertInt("$rt_toBool(true)? 1:0", 1);
+    interp.assertInt("$rt_toBool(false)? 1:0", 0);
+    interp.assertInt("$rt_toBool(null)? 1:0", 0);
+    interp.assertInt("$rt_toBool('')? 1:0", 0);
+    interp.assertInt("$rt_toBool('foo')? 1:0", 1);
 
-    assertStr("$rt_toString({toString: function(){return 's';}})", "s");
+    interp.assertStr("$rt_toString(5)", "5");
+    interp.assertStr("$rt_toString('foo')", "foo");
+    interp.assertStr("$rt_toString(null)", "null");
 
-    assertInt("$rt_add(5, 3)", 8);
-    assertFloat("$rt_add(5, 3.5)", 8.5);
-    assertStr("$rt_add(5, 'bar')", "5bar");
-    assertStr("$rt_add('foo', 'bar')", "foobar");
+    interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
-    assertInt("$rt_sub(5, 3)", 2);
-    assertFloat("$rt_sub(5, 3.5)", 1.5);
+    interp.assertInt("$rt_add(5, 3)", 8);
+    interp.assertFloat("$rt_add(5, 3.5)", 8.5);
+    interp.assertStr("$rt_add(5, 'bar')", "5bar");
+    interp.assertStr("$rt_add('foo', 'bar')", "foobar");
 
-    assertInt("$rt_mul(3, 5)", 15);
-    assertFloat("$rt_mul(5, 1.5)", 7.5);
-    assertFloat("$rt_mul(0xFFFF, 0xFFFF)", 4294836225);
+    interp.assertInt("$rt_sub(5, 3)", 2);
+    interp.assertFloat("$rt_sub(5, 3.5)", 1.5);
 
-    assertFloat("$rt_div(15, 3)", 5);
-    assertFloat("$rt_div(15, 1.5)", 10);
+    interp.assertInt("$rt_mul(3, 5)", 15);
+    interp.assertFloat("$rt_mul(5, 1.5)", 7.5);
+    interp.assertFloat("$rt_mul(0xFFFF, 0xFFFF)", 4294836225);
 
-    assertBool("$rt_eq(3,3)", true);
-    assertBool("$rt_eq(3,5)", false);
-    assertBool("$rt_eq('foo','foo')", true);
+    interp.assertFloat("$rt_div(15, 3)", 5);
+    interp.assertFloat("$rt_div(15, 1.5)", 10);
 
-    assertInt("isNaN(3)? 1:0", 0);
-    assertInt("isNaN(3.5)? 1:0", 0);
-    assertInt("isNaN(NaN)? 1:0", 1);
-    assertStr("$rt_toString(NaN);", "NaN");
+    interp.assertBool("$rt_eq(3,3)", true);
+    interp.assertBool("$rt_eq(3,5)", false);
+    interp.assertBool("$rt_eq('foo','foo')", true);
 
-    assertInt("$rt_getProp('foo', 'length')", 3);
-    assertStr("$rt_getProp('foo', 0)", "f");
-    assertInt("$rt_getProp([0,1], 'length')", 2);
-    assertInt("$rt_getProp([3,4,5], 1)", 4);
-    assertInt("$rt_getProp({v:7}, 'v')", 7);
-    assertInt("a = [0,0,0]; $rt_setProp(a,1,5); return $rt_getProp(a,1);", 5);
-    assertInt("a = [0,0,0]; $rt_setProp(a,9,7); return $rt_getProp(a,9);", 7);
-    assertInt("a = []; $rt_setProp(a,'length',5); return $rt_getProp(a,'length');", 5);
+    interp.assertInt("isNaN(3)? 1:0", 0);
+    interp.assertInt("isNaN(3.5)? 1:0", 0);
+    interp.assertInt("isNaN(NaN)? 1:0", 1);
+    interp.assertStr("$rt_toString(NaN);", "NaN");
 
-    assertInt(
+    interp.assertInt("$rt_getProp('foo', 'length')", 3);
+    interp.assertStr("$rt_getProp('foo', 0)", "f");
+    interp.assertInt("$rt_getProp([0,1], 'length')", 2);
+    interp.assertInt("$rt_getProp([3,4,5], 1)", 4);
+    interp.assertInt("$rt_getProp({v:7}, 'v')", 7);
+    interp.assertInt("a = [0,0,0]; $rt_setProp(a,1,5); return $rt_getProp(a,1);", 5);
+    interp.assertInt("a = [0,0,0]; $rt_setProp(a,9,7); return $rt_getProp(a,9);", 7);
+    interp.assertInt("a = []; $rt_setProp(a,'length',5); return $rt_getProp(a,'length');", 5);
+
+    interp.assertInt(
         "
         o = {};
         $rt_setProp(o,'a',1);
@@ -937,10 +939,10 @@ unittest
         3
     );
 
-    assertBool("({}) instanceof Object", true);
-    assertThrows("false instanceof false");
-    assertBool("'foo' in {}", false);
-    assertThrows("2 in null");
+    interp.assertBool("({}) instanceof Object", true);
+    interp.assertThrows("false instanceof false");
+    interp.assertBool("'foo' in {}", false);
+    interp.assertThrows("2 in null");
 }
 
 /// Closures, captured and escaping variables
@@ -1301,6 +1303,11 @@ unittest
     interp = new Interp();
     interp.load("programs/gc/deepstack.js");
     interp.assertInt("test();", 0);
+
+    writefln("gc/bigloop");
+
+    interp = new Interp();
+    interp.load("programs/gc/bigloop.js");
 
     writefln("gc/apply");
 

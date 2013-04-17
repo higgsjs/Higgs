@@ -516,15 +516,17 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Get the word offset
     ctx.ol.pushRegs();
+    ctx.ol.instr(PUSH, scrRegs64[0]);
+    ctx.ol.instr(PUSH, scrRegs64[0]);
     ctx.ol.instr(MOV, RDI, scrRegs64[0]);
     ctx.ol.instr(MOV, RSI, propIdx);
     ctx.ol.ptr(RAX, &obj_ofs_word);
     ctx.ol.instr(jit.encodings.CALL, RAX);
     ctx.ol.instr(MOV, new X86IPRel(32, AFTER_WORD, -4), EAX);
-    ctx.ol.popRegs();
+    ctx.ol.instr(POP, scrRegs64[0]);
+    ctx.ol.instr(POP, scrRegs64[0]);
 
     // Get the type offset
-    ctx.ol.pushRegs();
     ctx.ol.instr(MOV, RDI, scrRegs64[0]);
     ctx.ol.instr(MOV, RSI, propIdx);
     ctx.ol.ptr(RAX, &obj_ofs_type);
