@@ -43,6 +43,8 @@ import std.string;
 import std.array;
 import std.conv;
 import std.typecons;
+import std.path;
+import std.file;
 import options;
 import util.misc;
 import analysis.typeset;
@@ -489,6 +491,7 @@ class Interp
             load("stdlib/json.js");
             load("stdlib/regexp.js");
             load("stdlib/global.js");
+            load("stdlib/commonjs.js");
         }
 
         //gcCollect(this);
@@ -857,16 +860,28 @@ class Interp
     }
 
     /**
+    Get the path to load based on a (potentially relative) path
+    */
+    string getLoadPath(string fileName)
+    {
+        // If the path is relative, first check the Higgs lib dir
+        if (!isAbsolute(fileName))
+        {
+            auto libfile = buildPath("/etc/higgs", fileName);
+            if (!exists(fileName) && exists(libfile))
+                fileName = to!string(libfile);
+        }
+
+        return fileName;
+    }
+
+    /**
     Parse and execute a source file
     */
     ValuePair load(string fileName)
     {
-        //writefln("parsing %s", fileName);
-
-        auto ast = parseFile(fileName);
-
-        //writefln("executing!");
-
+        auto file = getLoadPath(fileName);
+        auto ast = parseFile(file);
         return exec(ast);
     }
 
