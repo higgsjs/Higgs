@@ -79,7 +79,6 @@ void parseCmdArgs(ref string[] args)
         config.passThrough,
 
         "e"             , &opts.execString,
-        "test"          , &opts.test,
         "repl"          , &opts.repl,
 
         "jit_disable"   , &opts.jit_disable,
@@ -88,5 +87,11 @@ void parseCmdArgs(ref string[] args)
         "jit_dumpinfo"  , &opts.jit_dumpinfo,
         "jit_stats"     , &opts.jit_stats
     );
+}
+
+/// If running in unit test mode, set the test option to true
+unittest
+{
+    opts.test = true;
 }
 

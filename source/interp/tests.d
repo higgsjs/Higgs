@@ -210,39 +210,41 @@ unittest
 {
     writefln("global expressions");
 
-    assertInt("return 7", 7);
-    assertInt("return 1 + 2", 3);
-    assertInt("return 5 - 1", 4);
-    assertInt("return 8 % 5", 3);
-    assertInt("return -3", -3);
-    assertInt("return +7", 7);
-    assertInt("return 2 + 3 * 4", 14);
-    assertInt("return 5 % 3", 2);
-    assertInt("return 1 - (2+3)", -4);
-    assertInt("return 6 - (3-3)", 6);
-    assertInt("return 3 - 3 - 3", -3);
+    auto interp = new Interp();
 
-    assertInt("return 5 | 3", 7);
-    assertInt("return 5 & 3", 1);
-    assertInt("return 5 ^ 3", 6);
-    assertInt("return 5 << 2", 20);
-    assertInt("return 7 >> 1", 3);
-    assertInt("return 7 >>> 1", 3);
-    assertInt("return ~2", -3);
-    assertInt("return undefined | 1", 1);
+    interp.assertInt("return 7", 7);
+    interp.assertInt("return 1 + 2", 3);
+    interp.assertInt("return 5 - 1", 4);
+    interp.assertInt("return 8 % 5", 3);
+    interp.assertInt("return -3", -3);
+    interp.assertInt("return +7", 7);
+    interp.assertInt("return 2 + 3 * 4", 14);
+    interp.assertInt("return 5 % 3", 2);
+    interp.assertInt("return 1 - (2+3)", -4);
+    interp.assertInt("return 6 - (3-3)", 6);
+    interp.assertInt("return 3 - 3 - 3", -3);
 
-    assertFloat("return 3.5", 3.5);
-    assertFloat("return 2.5 + 2", 4.5);
-    assertFloat("return 2.5 + 2.5", 5);
-    assertFloat("return 2.5 - 1", 1.5);
-    assertFloat("return 2 * 1.5", 3);
-    assertFloat("return 6 / 2.5", 2.4);
-    assertFloat("return 0.5 % 0.2", 0.1);
-    assertFloat("return 6/2/2", 1.5);
-    assertFloat("return 6/2*2", 6);
+    interp.assertInt("return 5 | 3", 7);
+    interp.assertInt("return 5 & 3", 1);
+    interp.assertInt("return 5 ^ 3", 6);
+    interp.assertInt("return 5 << 2", 20);
+    interp.assertInt("return 7 >> 1", 3);
+    interp.assertInt("return 7 >>> 1", 3);
+    interp.assertInt("return ~2", -3);
+    interp.assertInt("return undefined | 1", 1);
 
-    assertFloat("return 100 * '5'", 500);
-    assertFloat("return 100 / '5'", 20);
+    interp.assertFloat("return 3.5", 3.5);
+    interp.assertFloat("return 2.5 + 2", 4.5);
+    interp.assertFloat("return 2.5 + 2.5", 5);
+    interp.assertFloat("return 2.5 - 1", 1.5);
+    interp.assertFloat("return 2 * 1.5", 3);
+    interp.assertFloat("return 6 / 2.5", 2.4);
+    interp.assertFloat("return 0.5 % 0.2", 0.1);
+    interp.assertFloat("return 6/2/2", 1.5);
+    interp.assertFloat("return 6/2*2", 6);
+
+    interp.assertFloat("return 100 * '5'", 500);
+    interp.assertFloat("return 100 / '5'", 20);
 }
 
 /// Global function calls
@@ -285,50 +287,54 @@ unittest
 /// Comparison and branching
 unittest
 {
-    assertInt("if (true) return 1; else return 0;", 1);
-    assertInt("if (false) return 1; else return 0;", 0);
-    assertInt("if (3 < 7) return 1; else return 0;", 1);
-    assertInt("if (5 < 2) return 1; else return 0;", 0);
-    assertInt("if (1 < 1.5) return 1; else return 0;", 1);
-    assertBool("3 <= 5", true);
-    assertBool("5 <= 5", true);
-    assertBool("7 <= 5", false);
-    assertBool("7 > 5", true);
-    assertBool("true == false", false);
-    assertBool("true === true", true);
-    assertBool("true !== false", true);
-    assertBool("3 === 3.0", true);
-    assertBool("3 !== 3.5", true);
+    writefln("comparison and branching");
 
-    assertBool("return 1 < undefined", false);
-    assertBool("return 1 > undefined", false);
-    assertBool("return 0.5 == null", false);
-    assertBool("return 'Foo' != null", true);
-    assertBool("return null != null", false);
-    assertBool("return 'Foo' == null", false);
-    assertBool("return undefined == undefined", true);
-    assertBool("return undefined == null", true);
-    assertBool("o = {}; return o == o", true);
-    assertBool("oa = {}; ob = {}; return oa == ob", false);
+    auto interp = new Interp();
 
-    assertInt("return true? 1:0", 1);
-    assertInt("return false? 1:0", 0);
+    interp.assertInt("if (true) return 1; else return 0;", 1);
+    interp.assertInt("if (false) return 1; else return 0;", 0);
+    interp.assertInt("if (3 < 7) return 1; else return 0;", 1);
+    interp.assertInt("if (5 < 2) return 1; else return 0;", 0);
+    interp.assertInt("if (1 < 1.5) return 1; else return 0;", 1);
+    interp.assertBool("3 <= 5", true);
+    interp.assertBool("5 <= 5", true);
+    interp.assertBool("7 <= 5", false);
+    interp.assertBool("7 > 5", true);
+    interp.assertBool("true == false", false);
+    interp.assertBool("true === true", true);
+    interp.assertBool("true !== false", true);
+    interp.assertBool("3 === 3.0", true);
+    interp.assertBool("3 !== 3.5", true);
 
-    assertInt("return 0 || 2", 2);
-    assertInt("return 1 || 2", 1);
-    assertInt("1 || 2; return 3", 3);
-    assertInt("return 0 || 0 || 3", 3);
-    assertInt("return 0 || 2 || 3", 2);
-    assertInt("if (0 || 2) return 1; else return 0;", 1);
-    assertInt("if (1 || 2) return 1; else return 0;", 1);
-    assertInt("if (0 || 0) return 1; else return 0;", 0);
+    interp.assertBool("return 1 < undefined", false);
+    interp.assertBool("return 1 > undefined", false);
+    interp.assertBool("return 0.5 == null", false);
+    interp.assertBool("return 'Foo' != null", true);
+    interp.assertBool("return null != null", false);
+    interp.assertBool("return 'Foo' == null", false);
+    interp.assertBool("return undefined == undefined", true);
+    interp.assertBool("return undefined == null", true);
+    interp.assertBool("o = {}; return o == o", true);
+    interp.assertBool("oa = {}; ob = {}; return oa == ob", false);
 
-    assertInt("return 0 && 2", 0);
-    assertInt("return 1 && 2", 2);
-    assertInt("return 1 && 2 && 3", 3);
-    assertInt("return 1 && 0 && 3", 0);
-    assertInt("if (0 && 2) return 1; else return 0;", 0);
-    assertInt("if (1 && 2) return 1; else return 0;", 1);
+    interp.assertInt("return true? 1:0", 1);
+    interp.assertInt("return false? 1:0", 0);
+
+    interp.assertInt("return 0 || 2", 2);
+    interp.assertInt("return 1 || 2", 1);
+    interp.assertInt("1 || 2; return 3", 3);
+    interp.assertInt("return 0 || 0 || 3", 3);
+    interp.assertInt("return 0 || 2 || 3", 2);
+    interp.assertInt("if (0 || 2) return 1; else return 0;", 1);
+    interp.assertInt("if (1 || 2) return 1; else return 0;", 1);
+    interp.assertInt("if (0 || 0) return 1; else return 0;", 0);
+
+    interp.assertInt("return 0 && 2", 0);
+    interp.assertInt("return 1 && 2", 2);
+    interp.assertInt("return 1 && 2 && 3", 3);
+    interp.assertInt("return 1 && 0 && 3", 0);
+    interp.assertInt("if (0 && 2) return 1; else return 0;", 0);
+    interp.assertInt("if (1 && 2) return 1; else return 0;", 1);
 }
 
 /// Recursion

@@ -493,8 +493,6 @@ class Interp
             load("stdlib/global.js");
             load("stdlib/commonjs.js");
         }
-
-        //gcCollect(this);
     }
 
     /**

@@ -50,7 +50,7 @@ all: layout encodings
 
 test: layout encodings
 	$(DC) $(COPTS) -unittest -of$(BIN_NAME_TEST) $(SRC)
-	time ./$(BIN_NAME_TEST) --test
+	time ./$(BIN_NAME_TEST)
 
 encodings:
 	python jit/encodings.py
