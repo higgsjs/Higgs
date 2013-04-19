@@ -1151,14 +1151,15 @@ unittest
 
     interp.assertBool("4294967295.0 === 0xFFFFFFFF", true);
 
-    interp.load("programs/regress/regress_delta.js");
-    interp.load("programs/regress/regress_in.js");
-    interp.load("programs/regress/regress_tostring.js");
+    interp.load("programs/regress/post_incr.js");
+    interp.load("programs/regress/in_operator.js");
+    interp.load("programs/regress/tostring.js");
 
-    interp.load("programs/regress/regress_raytrace.js");
+    interp.load("programs/regress/delta.js");
+    interp.load("programs/regress/raytrace.js");
 
     interp = new Interp();
-    interp.load("programs/regress/regress_boyer.js");
+    interp.load("programs/regress/boyer.js");
 }
 
 /// JIT specific tests

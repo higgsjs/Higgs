@@ -672,31 +672,6 @@ class CodeGenState
         return null;
     }
 
-    /// Get an x86 operand for a local's word
-    X86Opnd getWordOpnd(
-        Assembler as, 
-        LocalIdx localIdx,
-        size_t numBits,
-        X86Reg scrReg = null, 
-        int32_t stackOfs = 0
-    ) const
-    {
-        auto flags = allocState[localIdx];
-
-        if (flags & RA_GPREG)
-            return new X86Reg(X86Reg.GP, flags & RA_REG_MASK, numBits);
-
-        auto memLoc = new X86Mem(numBits, wspReg, 8 * (localIdx + stackOfs));
-
-        if (scrReg !is null)
-        {
-            as.instr(MOV, scrReg, memLoc);
-            return scrReg;
-        }
-
-        return memLoc;
-    }
-
     /// Set the output type value for an instruction's output
     void setOutType(Assembler as, IRInstr instr, Type type)
     {
@@ -925,7 +900,7 @@ class CodeGenCtx
     }
 }
 
-void comment(Assembler as, string str)
+void comment(Assembler as, lazy string str)
 {
     if (!opts.jit_dumpasm)
         return;

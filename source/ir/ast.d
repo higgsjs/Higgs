@@ -1565,7 +1565,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                 {
                     genRtCall(
                         ctx, 
-                        (op.str == "++")? "add":"sub", 
+                        (op.str == "++")? "add":"sub",
                         ctx.getOutSlot(),
                         [lArg, rArg]
                     );
@@ -1581,10 +1581,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Post-incrementation and post-decrementation (x++, x--)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'l')
         {
-            // Evaluate the subexpression into the output slot
-            auto vCtx = ctx.subCtx(true, ctx.getOutSlot());
-            exprToIR(unExpr.expr, vCtx);
-            ctx.merge(vCtx);
+            // Get the slot for the output value
+            auto valOutSlot = ctx.getOutSlot();
 
             // Perform the incrementation/decrementation and assignment
             auto aCtx = ctx.subCtx(true);
@@ -1592,6 +1590,8 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
                 unExpr.expr,
                 delegate void(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg)
                 {
+                    ctx.addInstr(new IRInstr(&MOVE, valOutSlot, lArg));
+
                     genRtCall(
                         ctx, 
                         (op.str == "++")? "add":"sub", 

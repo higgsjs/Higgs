@@ -62,11 +62,18 @@ TODO: functions, use ptr to object
 - fptr at constant offset, no need to cache closure, less complex code
 - most of the out of line code seems to be for get offset
 
+TODO: optimize IsTypeOp, compare ops
+- Log optimized instances
+- Need to optimize in conjunction with if_true
+- Bool op followed by if_true using output of bool op
+- Could include the if_true compilation into the boolean compilation if right
+  afterwards, skip the if_true compilation
+- Test if own value is dead after if_true, if so, don't produce
+- BOOL_OUT flag on instructions?
+  - May be useful for IsBool in AST->IR
+
 TODO: don't init temps to undef, only local variables
-
-TODO: optimize IsTypeOp
-
-FIXME: i++ does get_global "i" twice???
+- numTemps, numVars?
 
 
 
@@ -76,10 +83,10 @@ FIXME: i++ does get_global "i" twice???
 
 
 
-
-
-[DONE] TODO: getWordOpnd(LocalIdx, numBits, scrReg, stackOfs)
-- load to scratch reg if supplied
+[DONE] FIXME: i++ does get_global "i" twice???
+function () { return i++; }
+- confirmed, first value not used
+- Problem is we want the value pre-incrementation
 
 [DONE] FIXME: bug with 3d-raytrace
 run-time error: undefined base in read of property "intersect"
