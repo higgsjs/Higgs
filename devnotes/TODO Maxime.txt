@@ -68,15 +68,18 @@ TODO: optimize IsTypeOp
 
 FIXME: i++ does get_global "i" twice???
 
-TODO: getWordOpnd(LocalIdx, numBits, scrReg, stackOfs)
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: getWordOpnd(LocalIdx, numBits, scrReg, stackOfs)
 - load to scratch reg if supplied
-
-
-
-
-
-
-
 
 [DONE] FIXME: bug with 3d-raytrace
 run-time error: undefined base in read of property "intersect"

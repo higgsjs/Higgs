@@ -492,7 +492,7 @@ class CodeGenState
             if (localIdx is NULL_LOCAL)
                 continue;
 
-            auto reg = new X86Reg(X86Reg.GP, cast(uint8_t)regNo, 64);
+            auto reg = new X86Reg(X86Reg.GP, regNo, 64);
 
             output ~= reg.toString() ~ " => $" ~ to!string(localIdx);
         }
@@ -545,7 +545,7 @@ class CodeGenState
         if (flags & RA_GPREG)
         {
             auto regNo = flags & RA_REG_MASK;
-            return new X86Reg(X86Reg.GP, cast(uint8_t)regNo, cast(uint16_t)numBits);
+            return new X86Reg(X86Reg.GP, regNo, numBits);
         }
 
         assert (
@@ -649,6 +649,52 @@ class CodeGenState
         allocState[instr.outSlot] = RA_GPREG | reg.regNo;
         gpRegMap[reg.regNo] = instr.outSlot;
         return new X86Reg(X86Reg.GP, reg.regNo, numBits);
+    }
+
+    /// Mark a value as being stored on the stack
+    void valOnStack(LocalIdx localIdx)
+    {
+        // Mark the value as being on the stack
+        allocState[localIdx] = RA_STACK;
+
+        // Mark the type of this value as unknown
+        typeState[localIdx] = TF_UNKNOWN;
+    }
+
+    /// Get the register to which a local is mapped, if any
+    X86Reg getReg(LocalIdx localIdx)
+    {
+        auto flags = allocState[localIdx];
+
+        if (flags & RA_GPREG)
+            return new X86Reg(X86Reg.GP, flags & RA_REG_MASK, 64);
+
+        return null;
+    }
+
+    /// Get an x86 operand for a local's word
+    X86Opnd getWordOpnd(
+        Assembler as, 
+        LocalIdx localIdx,
+        size_t numBits,
+        X86Reg scrReg = null, 
+        int32_t stackOfs = 0
+    ) const
+    {
+        auto flags = allocState[localIdx];
+
+        if (flags & RA_GPREG)
+            return new X86Reg(X86Reg.GP, flags & RA_REG_MASK, numBits);
+
+        auto memLoc = new X86Mem(numBits, wspReg, 8 * (localIdx + stackOfs));
+
+        if (scrReg !is null)
+        {
+            as.instr(MOV, scrReg, memLoc);
+            return scrReg;
+        }
+
+        return memLoc;
     }
 
     /// Set the output type value for an instruction's output
@@ -791,7 +837,7 @@ class CodeGenState
             return;
 
         auto mem = new X86Mem(64, wspReg, 8 * regSlot);
-        auto reg = new X86Reg(X86Reg.GP, cast(uint8_t)regNo, 64);
+        auto reg = new X86Reg(X86Reg.GP, regNo, 64);
 
         //writefln("spilling: %s (%s)", regSlot, reg);
 
@@ -820,27 +866,6 @@ class CodeGenState
             // The type state is now in sync
             typeState[regSlot] |= TF_SYNC;
         }
-    }
-
-    /// Mark a value as being stored on the stack
-    void valOnStack(LocalIdx localIdx)
-    {
-        // Mark the value as being on the stack
-        allocState[localIdx] = RA_STACK;
-
-        // Mark the type of this value as unknown
-        typeState[localIdx] = TF_UNKNOWN;
-    }
-
-    /// Get the register to which a local is mapped, if any
-    X86Reg getReg(LocalIdx localIdx)
-    {
-        auto flags = allocState[localIdx];
-
-        if (flags & RA_GPREG)
-            return new X86Reg(X86Reg.GP, flags & RA_REG_MASK, 64);
-
-        return null;
     }
 }
 

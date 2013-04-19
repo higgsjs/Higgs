@@ -79,11 +79,21 @@ class X86Reg : X86Opnd
     /// Size in bits
     uint16_t size;
 
-    this(uint8_t type, uint8_t regNo, uint16_t size)
+    this(Type type, size_t regNo, size_t size)
     {
+        assert (
+            regNo < 16,
+            "invalid register number"
+        );
+
+        assert (
+            size <= 256,
+            "invalid register size"
+        );
+
         this.type = type;
-        this.regNo = regNo;
-        this.size = size;
+        this.regNo = cast(uint8_t)regNo;
+        this.size = cast(uint16_t)size;
     }
 
     /**

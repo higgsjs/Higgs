@@ -464,9 +464,6 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
-    // Allocate the output operand
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
     // Get the global object pointer
     ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
 
@@ -475,6 +472,9 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
+
+    // Allocate the output operand
+    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
     // Get the word value from the object
     auto wordMem = new X86Mem(64, scrRegs64[0], wordOfs + 8 * propIdx);
@@ -510,9 +510,6 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
-    // Allocate the input operand
-    auto argOpnd = st.getArgOpnd(ctx, ctx.as, instr, 1, 64);
-
     // Get the global object pointer
     ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
 
@@ -523,16 +520,9 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
 
     // Set the word value
+    auto wordOpnd = st.getWordOpnd(ctx.as, instr.args[1].localIdx, 64, scrRegs64[2]);
     auto wordMem = new X86Mem(64, scrRegs64[0], wordOfs + 8 * propIdx);
-    if (cast(X86Reg)argOpnd)
-    {
-        ctx.as.instr(MOV, wordMem, argOpnd);
-    }
-    else
-    {
-        ctx.as.instr(MOV, scrRegs64[2], argOpnd);
-        ctx.as.instr(MOV, wordMem, scrRegs64[2]);
-    }
+    ctx.as.instr(MOV, wordMem, wordOpnd);
 
     // Set the type value
     auto typeOpnd = st.getTypeOpnd(ctx.as, instr.args[1].localIdx, scrRegs8[2]);
@@ -692,7 +682,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // If the callee uses its "this" argument, write it on the stack
     if (fun.ast.usesThis == true)
-    {    
+    {
         if (thisReg)
         {
             ctx.as.setWord(cast(LocalIdx)(numVars + 2), thisReg);
