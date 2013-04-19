@@ -369,7 +369,11 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     {
         // If this variable does not escape and is not a parameter
         if (ident !in ast.escpVars && ident !in fun.localMap)
-            fun.localMap[ident] = bodyCtx.allocTemp();
+        {
+            auto varTemp = bodyCtx.allocTemp();
+            fun.localMap[ident] = varTemp;
+            //bodyCtx.addInstr(new IRInstr(&SET_UNDEF, varTemp));
+        }
     }
 
     // Initialize global variable declarations to undefined

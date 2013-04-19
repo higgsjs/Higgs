@@ -94,7 +94,7 @@ class IRFunction : IdObject
     // Number of visible parameters
     uint32_t numParams = 0;
 
-    /// Number of local variables, including temporaries
+    /// Total number of locals, including parameters and temporaries
     uint32_t numLocals = 0;
 
     /// Hidden argument slots

@@ -55,7 +55,8 @@ void genInitMaps(IRFunction fun)
     // Create an empty map
     auto emptyMap = new BitSetCW(fun.numLocals);
 
-    // Create a map for the function entry
+    // Create a map for the function entry where only
+    // the hidden and visible arguments are initialized
     auto entryMap = emptyMap;
     for (size_t i = 0; i < fun.numParams + NUM_HIDDEN_ARGS; ++i)
         entryMap = entryMap.add(cast(LocalIdx)(fun.numLocals - 1 - i));
@@ -63,6 +64,11 @@ void genInitMaps(IRFunction fun)
     // Initialize the maps for each block
     for (auto block = fun.firstBlock; block !is null; block = block.next)
         entryMaps[block] = (block is fun.entryBlock)? entryMap:emptyMap;
+    
+    // Create a bit set for the local variables
+    auto varMap = new BitSet(fun.numLocals);
+    foreach (localIdx; fun.localMap)
+        varMap.add(localIdx);
 
     // Add the entry block to the work list
     IRBlock[] workList = [fun.entryBlock];
@@ -78,19 +84,9 @@ void genInitMaps(IRFunction fun)
         // For each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            /*
-            // Store the init map at all call and allocation instructions
-            if (instr.opcode.isCall || instr.opcode.mayGC)
-            {
-                fun.initMaps[instr] = initMap;
-            }
-            */
-
             // If this instruction has an output slot, mark it as initialized
             if (instr.outSlot !is NULL_LOCAL)
-            {
                 initMap = initMap.add(instr.outSlot);
-            }
 
             assert (!(instr.opcode.isBranch && instr.next));
         }
@@ -167,6 +163,10 @@ void genInitMaps(IRFunction fun)
             // If this slot is initialized, skip it
             if (initMap.has(i) == true)
                 continue;
+
+            // If this is not a local variable, skip it
+            if (varMap.has(i) == false)
+                continue; 
 
             // If the a successor has this slot marked as initialized
             if ((branch.target && entryMaps[branch.target].has(i) == true) ||

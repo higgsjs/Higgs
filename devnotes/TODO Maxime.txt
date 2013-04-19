@@ -72,16 +72,16 @@ TODO: optimize IsTypeOp, compare ops
 - BOOL_OUT flag on instructions?
   - May be useful for IsBool in AST->IR
 
-TODO: don't init temps to undef, only local variables
+
+
+
+
+
+
+
+
+[DONE] TODO: don't init temps to undef, only local variables
 - numTemps, numVars?
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: i++ does get_global "i" twice???
 function () { return i++; }
