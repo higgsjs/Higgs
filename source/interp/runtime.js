@@ -1653,13 +1653,21 @@ function $rt_getProp(base, prop)
         return $rt_getProp(Boolean.prototype, prop);
     }
 
-    //print(base);
-    //print(prop);
-
     if (base === null)
-        throw TypeError("null base in property read");
+    {
+        if ($rt_valIsString(prop))
+            throw TypeError('null base in read of property "' + prop + '"');
+        else
+            throw TypeError("null base in property read");
+    }
+
     if (base === $ir_set_undef())
-        throw TypeError("undefined base in property read");
+    {
+        if ($rt_valIsString(prop))
+            throw TypeError('undefined base in read of property "' + prop + '"');
+        else
+            throw TypeError("undefined base in property read");
+    }
 
     throw TypeError("invalid base in property read");
 }

@@ -157,7 +157,7 @@ Word MISSING = { uint64Val: 0x0000000000000004 };
 /// Word type values
 enum Type : ubyte
 {
-    INT32,
+    INT32 = 0,
     FLOAT,
     REFPTR,
     RAWPTR,

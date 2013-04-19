@@ -651,14 +651,6 @@ class CodeGenState
         return new X86Reg(X86Reg.GP, reg.regNo, numBits);
     }
 
-
-
-
-
-
-
-
-
     /// Set the output type value for an instruction's output
     void setOutType(Assembler as, IRInstr instr, Type type)
     {
@@ -687,17 +679,15 @@ class CodeGenState
         // Set the type known flag and update the type
         typeState[localIdx] = TF_KNOWN | (inSync? TF_SYNC:0) | type;
 
-        // FIXME:
-        // Create a memory operand to access the type stack
-        auto memOpnd = new X86Mem(8, tspReg, instr.outSlot);
+        // If the output operand is on the stack
+        if (allocState[localIdx] & RA_STACK)
+        {
+            // Write the type value to the type stack
+            as.instr(MOV, new X86Mem(8, tspReg, instr.outSlot), type);
 
-        // FIXME:
-        // Write the type to the type stack
-        as.instr(MOV, memOpnd, type);
-
-        // FIXME: temporary until type info is integrated
-        if (allocState[instr.outSlot] & RA_GPREG)
-            as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
+            // Mark the type as in sync, so we don't spill the type later
+            typeState[localIdx] |= TF_SYNC;
+        }
     }
 
     /// Write the output type for an instruction's output to the type stack
@@ -709,30 +699,65 @@ class CodeGenState
         // Write the type to the type stack
         auto memOpnd = new X86Mem(8, tspReg, instr.outSlot);
         as.instr(MOV, memOpnd, typeReg);
+
+        // If the output is mapped to a register, write a 0 value
+        // to the word stack to avoid invalid references
+        if (allocState[instr.outSlot] & RA_GPREG)
+            as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
     }
 
-    /// Test if a constant type is known for an instruction's input
-    bool inTypeKnown(IRInstr instr, size_t argIdx) const
+    /// Test if a constant type is known for a given value
+    bool typeKnown(LocalIdx localIdx) const
     {
-        auto argSlot = instr.args[argIdx].localIdx;
-
         assert (
-            argSlot != NULL_LOCAL,
+            localIdx != NULL_LOCAL,
+            "invalid local"
+        );
+
+        return (typeState[localIdx] & TF_KNOWN) != 0;
+    }
+
+    /// Get the known type of a value
+    Type getType(LocalIdx localIdx) const
+    {
+        assert (
+            localIdx != NULL_LOCAL,
             "argument is not valid local"
         );
 
-        return (typeState[argSlot] & TF_KNOWN) != 0;
+        auto typeState = typeState[localIdx];
+
+        assert (
+            typeState & TF_KNOWN,
+            "type is unknown"
+        );
+
+        return cast(Type)(typeState & TF_TYPE_MASK);
     }
 
-    // TODO: arg type access
+    /// Get an x86 operand for the type of a value
+    X86Opnd getTypeOpnd(
+        Assembler as, 
+        LocalIdx localIdx, 
+        X86Reg scrReg8 = null, 
+        int32_t stackOfs = 0
+    ) const
+    {
+        if (typeKnown(localIdx))
+        {
+            return new X86Imm(getType(localIdx));
+        }
 
+        auto memLoc = new X86Mem(8, tspReg, localIdx + stackOfs);
 
+        if (scrReg8 !is null)
+        {
+            as.instr(MOV, scrReg8, memLoc);
+            return scrReg8;
+        }
 
-
-
-
-
-
+        return memLoc;
+    }
 
     /// Spill test function
     alias bool delegate(size_t regNo, LocalIdx localIdx) SpillTestFn;
@@ -779,12 +804,32 @@ class CodeGenState
 
         // Mark the register as free
         gpRegMap[regNo] = NULL_LOCAL;
+
+        // Get the type state for this local
+        auto typeSt = typeState[regSlot];
+
+        // If the type is known but not in sync
+        if ((typeSt & TF_KNOWN) && !(typeSt & TF_SYNC))
+        {
+            // Write the type tag to the type stack
+            as.comment("Spilling type for $" ~to!string(regSlot));
+            auto type = typeSt & TF_TYPE_MASK;
+            auto memOpnd = new X86Mem(8, tspReg, cast(LocalIdx)regSlot);
+            as.instr(MOV, memOpnd, type);
+
+            // The type state is now in sync
+            typeState[regSlot] |= TF_SYNC;
+        }
     }
 
     /// Mark a value as being stored on the stack
     void valOnStack(LocalIdx localIdx)
     {
+        // Mark the value as being on the stack
         allocState[localIdx] = RA_STACK;
+
+        // Mark the type of this value as unknown
+        typeState[localIdx] = TF_UNKNOWN;
     }
 
     /// Get the register to which a local is mapped, if any
@@ -944,9 +989,9 @@ void setWord(Assembler as, LocalIdx idx, int32_t imm)
 }
 
 /// Write to the type stack
-void setType(Assembler as, LocalIdx idx, X86Reg srcReg)
+void setType(Assembler as, LocalIdx idx, X86Opnd srcOpnd)
 {
-    as.instr(MOV, new X86Mem(8, tspReg, idx), srcReg);
+    as.instr(MOV, new X86Mem(8, tspReg, idx), srcOpnd);
 }
 
 /// Write a constant to the type stack

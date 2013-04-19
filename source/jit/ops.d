@@ -124,23 +124,24 @@ void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Copy the value
     ctx.as.instr(MOV, opndOut, opnd0);
 
-
     // Copy the type tag
-    ctx.as.getType(scrRegs8[0], instr.args[0].localIdx);
-    ctx.as.setType(instr.outSlot, scrRegs8[0]);
-
-
-
-    // FIXME: temporary until type flags are accounted for in the state
-    if (cast(X86Reg)opndOut)
-        ctx.as.setWord(instr.outSlot, 0);
+    auto argSlot = instr.args[0].localIdx;
+    if (st.typeKnown(argSlot))
+    {
+        auto type = st.getType(argSlot);
+        st.setOutType(ctx.as, instr, type);
+    }
+    else
+    {
+        ctx.as.getType(scrRegs8[0], argSlot);
+        st.setOutType(ctx.as, instr, scrRegs8[0]);
+    }
 }
 
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // TODO: change one type tags are accounted for in state
     // Get the type value
-    ctx.as.getType(scrRegs8[0], instr.args[0].localIdx);
+    auto typeOpnd = st.getTypeOpnd(ctx.as, instr.args[0].localIdx, scrRegs8[0]);
 
     // Compare against the tested type
     ctx.as.instr(CMP, scrRegs8[0], type);
@@ -475,7 +476,7 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
 
-    // Get the word value
+    // Get the word value from the object
     auto wordMem = new X86Mem(64, scrRegs64[0], wordOfs + 8 * propIdx);
     if (cast(X86Reg)outOpnd)
     {
@@ -487,16 +488,12 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         ctx.as.instr(MOV, outOpnd, scrRegs64[2]);
     }
 
-    // Get the type value
+    // Get the type value from the object
     auto typeMem = new X86Mem(8, scrRegs64[0], wordOfs + propIdx, scrRegs64[1], 8);
-    ctx.as.instr(MOV, scrRegs8[2] , typeMem);
+    ctx.as.instr(MOV, scrRegs8[2], typeMem);
 
-    // TODO: change when integrating type knowledge
-    ctx.as.setType(instr.outSlot, scrRegs8[2]);
-
-    // FIXME: temporary until type info integration
-    if (cast(X86Reg)outOpnd)
-        ctx.as.setWord(instr.outSlot, 0);
+    // Set the type value
+    st.setOutType(ctx.as, instr, scrRegs8[2]);
 }
 
 void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -537,12 +534,10 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         ctx.as.instr(MOV, wordMem, scrRegs64[2]);
     }
 
-    // TODO: change when integrating type knowledge
-    ctx.as.getType(scrRegs8[2], instr.args[1].localIdx);
-
     // Set the type value
+    auto typeOpnd = st.getTypeOpnd(ctx.as, instr.args[1].localIdx, scrRegs8[2]);
     auto typeMem = new X86Mem(8, scrRegs64[0], wordOfs + propIdx, scrRegs64[1], 8);
-    ctx.as.instr(MOV, typeMem, scrRegs8[2]);
+    ctx.as.instr(MOV, typeMem, typeOpnd);
 }
 
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -686,8 +681,9 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             ctx.as.setWord(cast(LocalIdx)dstIdx, scrRegs64[3]);
         }
 
-        ctx.as.getType(scrRegs8[3], argSlot + numPush);
-        ctx.as.setType(cast(LocalIdx)dstIdx, scrRegs8[3]);
+        // Set the argument type
+        auto typeOpnd = st.getTypeOpnd(ctx.as, argSlot, scrRegs8[3], numPush);
+        ctx.as.setType(cast(LocalIdx)dstIdx, typeOpnd);
     }
 
     // Write the argument count
@@ -706,8 +702,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             ctx.as.getWord(scrRegs64[2], thisIdx + numPush);
             ctx.as.setWord(cast(LocalIdx)(numVars + 2), scrRegs64[2]);
         }
-        ctx.as.getType(scrRegs8[3], thisIdx + numPush);
-        ctx.as.setType(cast(LocalIdx)(numVars + 2), scrRegs8[3]);
+        auto typeOpnd = st.getTypeOpnd(ctx.as, thisIdx, scrRegs8[3], numPush);
+        ctx.as.setType(cast(LocalIdx)(numVars + 2), typeOpnd);
     }
 
     // If the callee uses its closure argument, write it on the stack
@@ -769,7 +765,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(CMP, scrRegs32[1], NULL_LOCAL);
     ctx.as.instr(JE, POP_LOCALS);
 
-    // Copy the return value
+    // Copy the return value word and type
     auto retReg = st.getReg(retSlot);
     if (retReg is null)
     {
@@ -777,10 +773,8 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         retReg = scrRegs64[2];
     }
     ctx.as.instr(MOV, new X86Mem(64, wspReg, 8 * numLocals, scrRegs64[1], 8), retReg);
-
-    // TODO: fix when integrating type info
-    ctx.as.instr(MOV, scrRegs8[2], new X86Mem(8, tspReg, retSlot));
-    ctx.as.instr(MOV, new X86Mem(8, tspReg, numLocals, scrRegs64[1]), scrRegs8[2]);
+    auto typeOpnd = st.getTypeOpnd(ctx.as, retSlot, scrRegs8[2]);
+    ctx.as.instr(MOV, new X86Mem(8, tspReg, numLocals, scrRegs64[1]), typeOpnd);
 
     // Pop all local stack slots and arguments
     ctx.as.addInstr(POP_LOCALS);
@@ -796,7 +790,6 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(BAILOUT);
 
-    // FIXME: only want to spill instr arg here
     // Fallback to interpreter execution
     // Spill all values, including arguments
     // Call the interpreter call instruction

@@ -46,24 +46,30 @@ FIXME: v8/splay segfault with JIT
 TODO: fast entry point, pre-map first argument registers
 - Jump directly to target if already compiled
 
-TODO: functions, use ptr to object
-- fptr at constant offset, no need to cache closure, less complex code
-- commit before attempting refactoring
-
 TODO: inlining
 - Inline at the IR level
 - Generate a new IRFunction instance with the inlined code included?
   - Has more stack slots
 
+TODO: special function entry points w/ param type info?
+
 TODO: can we use one less scratch reg?
 - Delay until type tags integrated
 - Might need more scratch regs as refactorings progress
 
-TODO: asm code reuse, functions for slow paths?
-- lazily allocate a global code block and compile
-- can use for entry points too?
+TODO: functions, use ptr to object
+- commit before attempting refactoring
+- fptr at constant offset, no need to cache closure, less complex code
+- most of the out of line code seems to be for get offset
 
-TODO: move, should reuse constant type tag if known
+TODO: don't init temps to undef, only local variables
+
+TODO: optimize IsTypeOp
+
+FIXME: i++ does get_global "i" twice???
+
+TODO: getWordOpnd(LocalIdx, numBits, scrReg, stackOfs)
+- load to scratch reg if supplied
 
 
 
@@ -71,6 +77,26 @@ TODO: move, should reuse constant type tag if known
 
 
 
+
+[DONE] FIXME: bug with 3d-raytrace
+run-time error: undefined base in read of property "intersect"
+Scene_prototype_blocked ("programs/sunspider/3d-raytrace.js"@244:27)
+- all unit tests pass, make new regress_raytrace test
+- iteration index i becomes null
+- i is a global variable! some kind of type corruption happening
+- problem is with set_global not using type info properly
+
+[DONE] FIXME: type spilling
+- Should only write a type when spilling a value AND the type is not in sync
+- What if we're writing a dynamic type, e.g.: move
+  - Should write 0 value on the word stack
+- BUT, what if we have a memory operand?
+  - Might still know the type, not write it to the stack...
+  - If we're writing a different type and not in sync, write it to the stack?
+- Problem: copying types during ret and call is cumbersome
+  - getTypeOpnd, pass scratch reg if mem reading is needed?
+  - Need to add stack offset param (in case we pushed more stack space!)
+  - default is int32_t.max
 
 [DONE] TODO: try to optimize global prop access, remove offset recomputation
 
