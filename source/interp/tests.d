@@ -1363,6 +1363,15 @@ unittest
 
     auto interp = new Interp();
 
+    writefln("sunspider/3d-morph");
+    interp.load("programs/sunspider/3d-morph.js");
+
+    writefln("sunspider/access-binary-trees");
+    interp.load("programs/sunspider/access-binary-trees.js");
+
+    writefln("sunspider/access-nsieve");
+    interp.load("programs/sunspider/access-nsieve.js");
+
     writefln("sunspider/bitops-bitwise-and");
     interp.load("programs/sunspider/bitops-bitwise-and.js");
 
@@ -1372,31 +1381,28 @@ unittest
     writefln("sunspider/bitops-3bit-bits-in-byte");
     interp.load("programs/sunspider/bitops-3bit-bits-in-byte.js");
 
+    writefln("sunspider/bitops-nsieve-bits");
+    interp.load("programs/sunspider/bitops-nsieve-bits.js");
+
     writefln("sunspider/controlflow-recursive");
     interp.load("programs/sunspider/controlflow-recursive.js");
     interp.assertInt("ack(3,2);", 29);
     interp.assertInt("tak(9,5,3);", 4);
 
-    writefln("sunspider/bitops-nsieve-bits");
-    interp.load("programs/sunspider/bitops-nsieve-bits.js");
+    writefln("sunspider/crypto-md5");
+    interp.load("programs/sunspider/crypto-md5.js");
+
+    writefln("sunspider/crypto-sha1");
+    interp.load("programs/sunspider/crypto-sha1.js");
+
+    writefln("sunspider/math-cordic");
+    interp.load("programs/sunspider/math-cordic.js");
 
     writefln("sunspider/math-partial-sums");
     interp.load("programs/sunspider/math-partial-sums.js");
 
     writefln("sunspider/math-spectral-norm");
     interp.load("programs/sunspider/math-spectral-norm.js");
-
-    writefln("sunspider/math-cordic");
-    interp.load("programs/sunspider/math-cordic.js");
-
-    writefln("sunspider/access-binary-trees");
-    interp.load("programs/sunspider/access-binary-trees.js");
-
-    writefln("sunspider/crypto-sha1");
-    interp.load("programs/sunspider/crypto-sha1.js");
-
-    writefln("sunspider/crypto-md5");
-    interp.load("programs/sunspider/crypto-md5.js");
 }
 
 /// V8 benchmarks
@@ -1408,12 +1414,12 @@ unittest
 
     interp.load("programs/v8bench/base.js");
 
-    writefln("v8bench/richards");
-    interp.load("programs/v8bench/richards.js");
-    interp.load("programs/v8bench/drv-richards.js");
-
     writefln("v8bench/deltablue");
     interp.load("programs/v8bench/deltablue.js");
     interp.load("programs/v8bench/drv-deltablue.js");
+
+    writefln("v8bench/richards");
+    interp.load("programs/v8bench/richards.js");
+    interp.load("programs/v8bench/drv-richards.js");
 }
 

@@ -598,15 +598,9 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Label for the bailout to interpreter cases
     auto BAILOUT = new Label("CALL_BAILOUT");
 
-    auto AFTER_CLOS = new Label("CALL_AFTER_CLOS");
-    auto AFTER_OFS = new Label("CALL_AFTER_OFS");
-    auto GET_FPTR = new Label("CALL_GET_FPTR");
-    auto GET_OFS = new Label("CALL_GET_OFS");
-
     //
-    // Fast path
+    // Function pointer extraction
     //
-    ctx.as.addInstr(GET_FPTR);
 
     // Get the closure word off the stack if necessary
     if (closReg is null)
@@ -615,34 +609,18 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         ctx.as.getWord(closReg, closIdx);
     }
 
-    // Compare the closure pointer to the cached pointer
-    ctx.as.instr(MOV, scrRegs64[1], 0x7FFFFFFFFFFFFFFF);
-    ctx.as.addInstr(AFTER_CLOS);
-    ctx.as.instr(CMP, closReg, scrRegs64[1]);
-    ctx.as.instr(JNE, GET_OFS);
+    // Get the number of words stored on the function object
+    ctx.as.getField(scrRegs32[1], closReg, 4, obj_ofs_cap(null));
+
+    // Compute the offset of the function pointer from the word array start
+    ctx.as.instr(SHL, scrRegs32[1], 3);
+    ctx.as.instr(ADD, scrRegs32[1], scrRegs32[1]);
+    ctx.as.instr(ADD, scrRegs32[1], 7);
+    ctx.as.instr(AND, scrRegs32[1], -8);
 
     // Get the function pointer from the closure object
-    ctx.as.instr(MOV, scrRegs64[2], new X86Mem(64, closReg, 0x7FFFFFFF));
-    ctx.as.addInstr(AFTER_OFS);
-
-    //
-    // Slow path: update the cached function pointer offset (out of line)
-    //
-    ctx.ol.addInstr(GET_OFS);
-
-    // Update the cached closure poiter
-    ctx.ol.instr(MOV, new X86IPRel(64, AFTER_CLOS, -8), closReg);
-
-    // Get the function pointer offset
-    ctx.ol.pushRegs();
-    ctx.ol.instr(MOV, RDI, closReg);
-    ctx.ol.ptr(scrRegs64[0], &clos_ofs_fptr);
-    ctx.ol.instr(jit.encodings.CALL, scrRegs64[0]);
-    ctx.ol.instr(MOV, new X86IPRel(32, AFTER_OFS, -4), EAX);
-    ctx.ol.popRegs();
-
-    // Use the interpreter call instruction this time
-    ctx.ol.instr(JMP, GET_FPTR);
+    auto fptrMem = new X86Mem(64, closReg, obj_ofs_word(null, 0), scrRegs64[1]);
+    ctx.as.instr(MOV, scrRegs64[2], fptrMem);
 
     //
     // Function call logic

@@ -340,14 +340,14 @@ void gcCollect(Interp interp, size_t heapSize = 0)
 
     //writefln("clearing from-space heap");
 
-    // For debugging, clear the old heap
+    // Zero out the from-space to prepare it for reuse in the next collection
     for (int64* p = cast(int64*)fromStart; p < cast(int64*)fromLimit; p++)
         *p = 0;
 
     // Free the from-space heap block
     GC.free(fromStart);
 
-    // Clear the stack space below the stack pointers (free space)
+    // Zero out the stack space below the stack pointers (free space)
     // to eliminate any unprocessed references to the from space
     for (int64* p = cast(int64*)interp.wLowerLimit; p < cast(int64*)interp.wsp; p++)
         *p = 0;

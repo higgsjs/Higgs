@@ -84,21 +84,11 @@ Dynamic compilation pros:
 - get much better profiling?
   - with static compilation, must do this in multiple steps
 
-
-
-
 Inlining heuristics:
 - max numLocals of the callee
 - max number of blocks in the callee
 - total caller + callee size
 
-TODO: functions, use ptr to object
-- commit before attempting refactoring
-- fptr at constant offset, no need to cache closure, less complex code
-- most of the out of line code seems to be for get offset
-
-TODO: improve initialization, default everything possible to integer 0
-- Heap is zeroed out before alloc
 
 
 TODO: optimize IsTypeOp, compare ops in conjunction with if_true
@@ -109,29 +99,28 @@ TODO: optimize IsTypeOp, compare ops in conjunction with if_true
   afterwards, skip the if_true compilation
 - Test if own value is dead after if_true, if so, don't produce
 
-TODO: BOOL_OUT flag on instructions?
-- May be useful for IsBool in AST->IR
 
 
 
 
 
-FIXME: v8/splay segfault with JIT
+
+
+
+
+
+
+
+
+
+[DONE] TODO: functions, remove closure caching, slow offset comp path
+
+[DONE] TODO: BOOL_OUT flag on instructions
+
+[DONE] FIXME: v8/splay segfault with JIT
 - Does lots of GC, could be related
 - Is this fast enough to include in unit tests? Can we make it faster?
-- Note: the GC goes increasingly fast! heap space is exhausted
-
-
-
-
-
-
-
-
-
-
-
-
+- Note: the GC happens increasingly fast! heap space is exhausted
 
 [DONE] TODO: don't init temps to undef, only local variables
 - numTemps, numVars?
