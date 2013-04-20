@@ -40,37 +40,90 @@ TODO: make sure global obj ptr is updated when global obj is extended
 
 FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
-FIXME: v8/splay segfault with JIT
-- Does lots of GC, could be related
-
-TODO: fast entry point, pre-map first argument registers
-- Jump directly to target if already compiled
-
 TODO: inlining
 - Inline at the IR level
 - Generate a new IRFunction instance with the inlined code included?
   - Has more stack slots
 
-TODO: special function entry points w/ param type info?
-
 TODO: can we use one less scratch reg?
 - Delay until type tags integrated
 - Might need more scratch regs as refactorings progress
+
+Dynamic block compilation...
+- Could dynamically profile branches/calls on stubs, eventually compile
+- Need to manage a code block and append to it
+  - Could simply preallocate to start
+- Need to keep track of what jumps to what? Only if we need to displace?
+- Incremental compilation of functions
+- If compiling and branch occurs, create interp fallback stub, install profiling counters
+  - First stub to trigger compilation gets concatenated?
+  - Could have already compiled multiple loop iterations?
+    - No, because you stopped at the branch!
+- Inlining, could do it in the backend?
+  - Yes, but we need some sort of lazy move, special alloc state
+  - Might be able to recompile calls after some counter hits a threshold
+- Issues:
+  - Suboptimal code, reoptimization more difficult, but not impossible
+  - Jumps to movable code, need to place and rewrite jump
+
+TODO: think about dynamic block/version compilation further
+- What would the infrastructure look like?
+  - Compile to an assembler, write to a code block
+  - ol assembler used for interp entry points, interp fallback
+- No longer need a queue of things to compile!
+  - Blocks, entry points compiled immediately, until branch occurs
+- Need an out of line code block
+
+Dynamic compilation cons:
+- complicates the backend (N level contexts?)
+- possibly reduces optimization opportunities.
+- hard to reoptimize code
+
+Dynamic compilation pros:
+- may save compilation time
+- get much better profiling?
+  - with static compilation, must do this in multiple steps
+
+
+
+
+Inlining heuristics:
+- max numLocals of the callee
+- max number of blocks in the callee
+- total caller + callee size
 
 TODO: functions, use ptr to object
 - commit before attempting refactoring
 - fptr at constant offset, no need to cache closure, less complex code
 - most of the out of line code seems to be for get offset
 
-TODO: optimize IsTypeOp, compare ops
+TODO: improve initialization, default everything possible to integer 0
+- Heap is zeroed out before alloc
+
+
+TODO: optimize IsTypeOp, compare ops in conjunction with if_true
 - Log optimized instances
 - Need to optimize in conjunction with if_true
 - Bool op followed by if_true using output of bool op
 - Could include the if_true compilation into the boolean compilation if right
   afterwards, skip the if_true compilation
 - Test if own value is dead after if_true, if so, don't produce
-- BOOL_OUT flag on instructions?
-  - May be useful for IsBool in AST->IR
+
+TODO: BOOL_OUT flag on instructions?
+- May be useful for IsBool in AST->IR
+
+
+
+
+
+FIXME: v8/splay segfault with JIT
+- Does lots of GC, could be related
+- Is this fast enough to include in unit tests? Can we make it faster?
+- Note: the GC goes increasingly fast! heap space is exhausted
+
+
+
+
 
 
 

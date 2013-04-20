@@ -147,10 +147,13 @@ refptr heapAlloc(Interp interp, size_t size)
 
         writefln("gc done");
 
-        // If this allocation exceeds the heap limit
-        if (interp.allocPtr + size > interp.heapLimit)
+        // While this allocation exceeds the heap limit
+        while (interp.allocPtr + size > interp.heapLimit)
         {
-            throw new Error("heap space exhausted");
+            writefln("heap space exhausted, expanding heap");
+
+            // Double the size of the heap
+            gcCollect(interp, 2 * interp.heapSize);
         }
     }
 
