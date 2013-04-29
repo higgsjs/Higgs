@@ -752,9 +752,8 @@ Opcode EQ_I8 = { "eq_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_i8, OpInfo.BO
 // Pointer comparison instructions
 Opcode EQ_REFPTR = { "eq_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_refptr, OpInfo.BOOL_VAL };
 Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_refptr, OpInfo.BOOL_VAL };
-
-Opcode EQ_RAWPTR = { "eq_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_rawptr };
-Opcode NE_RAWPTR = { "ne_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_rawptr };
+Opcode EQ_RAWPTR = { "eq_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_rawptr, OpInfo.BOOL_VAL };
+Opcode NE_RAWPTR = { "ne_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_rawptr, OpInfo.BOOL_VAL };
 
 // Constant comparison instructions
 Opcode EQ_CONST = { "eq_const", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_const, OpInfo.BOOL_VAL };

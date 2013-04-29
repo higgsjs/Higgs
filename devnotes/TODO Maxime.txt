@@ -40,14 +40,82 @@ TODO: make sure global obj ptr is updated when global obj is extended
 
 FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
-TODO: inlining
-- Inline at the IR level
-- Generate a new IRFunction instance with the inlined code included?
-  - Has more stack slots
+TODO: optimize IsTypeOp, compare ops in conjunction with if_true
+- Log optimized instances
+- Need to optimize in conjunction with if_true
+- Bool op followed by if_true using output of bool op
+- Could include the if_true compilation into the boolean compilation if right
+  afterwards, skip the if_true compilation
+- Test if own value is dead after if_true, if so, don't produce
 
 TODO: can we use one less scratch reg?
 - Delay until type tags integrated
 - Might need more scratch regs as refactorings progress
+
+TODO: IR-level inlining
+- If we optimize an inlined function and remove temps/vars, need to somehow know
+  what temps map to which original function temps
+  - could use special pseudo-instr to manage this
+  - plase pseudo-instr before possible bailout points, function calls
+
+
+
+TODO: improved interpreter frame inflation scheme
+- Pros
+  - Ordinary function calls will not cause type spilling
+  - No need to write 0 when writing type on type stack
+- Must setup stack frame as multiple frames before each exiting call?
+  - Correct stack height
+  - Write return addresses
+  - Spill values/types in the proper slots
+- Need to inflate if exiting to interpreter
+  - call to interp
+  - unsupported behavior
+  - unsupported instruction
+- special extern(C) function to inflate/spill stack frames?
+- Map of call instrs to inflate function
+
+
+
+TODO: start fleshing out ir/inlining.d
+
+
+
+
+
+
+
+Problem: unwinding stack frames on throw or before calls...
+- Must setup stack frame as multiple frames before each exiting call?
+  - Correct stack height
+  - Write return addresses
+  - Spill values/types in the proper slots
+- Could save on cost of having to spill types too?
+- Need to inflate if exiting to interpreter
+  - call to interp
+  - unsupported behavior
+  - unsupported instruction
+- Exceptions need to be able to make the caller inflate
+  - Probably want a special extern(C) function to inflate/spill stack frames?
+  - Map of call instrs to inflate function
+- We can still have interpreter entry points in the middle of functions as before!
+  - But these will go to non-inlined versions of functions
+  - Don't even place entry points in the inlined functions, only at top level
+  - Not a huge deal
+- Functions with inlining can have an internal stack frame size different from numLocals
+  - If we optimize an inlined function and remove temps/vars, need to somehow know
+    what temps map to which original function temps
+    - could use special pseudo-instr to manage this
+    - plase pseudo-instr before possible bailout points, function calls
+
+[DONE] TODO: think about dynamic block/version compilation further
+- What would the infrastructure look like?
+  - Compile to an assembler, write to a code block
+  - ol assembler used for interp entry points, interp fallback
+- No longer need a queue of things to compile!
+  - Blocks, entry points compiled immediately, until branch occurs
+- Need an out of line code block
+- Contexts need to account for inlining
 
 Dynamic block compilation...
 - Could dynamically profile branches/calls on stubs, eventually compile
@@ -66,52 +134,36 @@ Dynamic block compilation...
   - Suboptimal code, reoptimization more difficult, but not impossible
   - Jumps to movable code, need to place and rewrite jump
 
-TODO: think about dynamic block/version compilation further
-- What would the infrastructure look like?
-  - Compile to an assembler, write to a code block
-  - ol assembler used for interp entry points, interp fallback
-- No longer need a queue of things to compile!
-  - Blocks, entry points compiled immediately, until branch occurs
-- Need an out of line code block
-
 Dynamic compilation cons:
-- complicates the backend (N level contexts?)
-- possibly reduces optimization opportunities.
+- complicates the backend (N level contexts when inlining?)
+- possibly reduces optimization opportunities
 - hard to reoptimize code
+- need to keep around lists of block versions for future compilations
+- can't compute total frame size for inlining ahead of time...
+  - would need to reserve space ahead of time
 
 Dynamic compilation pros:
 - may save compilation time
-- get much better profiling?
-  - with static compilation, must do this in multiple steps
+- get better profiling data
+- avoids invalidating on stub hit
+- can try going along with an inlining and back out of it?
 
-Inlining heuristics:
-- max numLocals of the callee
-- max number of blocks in the callee
+[DONE] Inlining heuristics:
+- max allowable numLocals of the callee
+- max allowable number of blocks in the callee
 - total caller + callee size
+- total caller + callee locals
+- IBM paper considers inlining based on profiles at the callee
+  - How many callers, how frequently
+  - Generates inlining requests for next compilation
+  - Works based on call edge density/distribution, relative method hotness
 
+[DONE] TODO: read empirical inlining paper, note insights
 
-
-TODO: optimize IsTypeOp, compare ops in conjunction with if_true
-- Log optimized instances
-- Need to optimize in conjunction with if_true
-- Bool op followed by if_true using output of bool op
-- Could include the if_true compilation into the boolean compilation if right
-  afterwards, skip the if_true compilation
-- Test if own value is dead after if_true, if so, don't produce
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: look at IR for getPropIdx... Can we benefit from type info at all?
+- Has a ton of calls to various methods
+- some eq_const, eq_refptr
+- Benefit would probably be fairly small, but inlining will help a lot
 
 [DONE] TODO: functions, remove closure caching, slow offset comp path
 
