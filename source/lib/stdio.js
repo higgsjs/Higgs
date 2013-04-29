@@ -87,15 +87,6 @@ Bindings for common c I/O functions
     var io = {};
 
     /**
-    Error function
-    */
-    function FILE_ERROR()
-    {
-        throw "Can't perform operation on file: " + this.name;
-    }
-
-
-    /**
     FILE OBJECT
     */
 
@@ -112,9 +103,9 @@ Bindings for common c I/O functions
         // What mode to open the file in
         this.mode = mode;
         // The size of the buffer used in various string operations
-        this.buff_size = io.BUFF_SIZE;
+        this.buf_size = io.BUF_SIZE;
         // Handle for buffer
-        this.buffer = c.malloc(io.BUFF_SIZE);
+        this.buffer = c.malloc(io.BUF_SIZE);
 
         // Pass null for dummy file object
         if (file === null && mode === undefined)
@@ -136,13 +127,13 @@ Bindings for common c I/O functions
     /**
     Resize the buffer used for various string operations.
     */
-    File.prototype.resizeBuff = function(size)
+    File.prototype.resizeBuf = function(size)
     {
         var b = c.realloc(this.buffer, size);
         if (ffi.isNull(b))
             throw "Unable to resize buffer."
         this.buffer = b;
-        this.buff_size = size;
+        this.buf_size = size;
     }
 
     /**
@@ -157,17 +148,11 @@ Bindings for common c I/O functions
         // Close, return false if it fails
         var r = c.fclose(this.handle);
         if (r !== 0)
-            return false
+            return false;
 
         // Free resources
         c.free(this.buffer);
-
-        // Prevent further operations on this file
-        for (var fun in File.prototype)
-        {
-            if (typeof this[fun] === "function")
-                this[fun] = FILE_ERROR;
-        }
+        this.handle = ffi.nullPtr;
 
         return true;
     }
@@ -242,13 +227,13 @@ Bindings for common c I/O functions
         var limit = (max > -1);
 
         if (!limit)
-            max = this.buff_size;
-        else if (max > this.buff_size)
-            this.resizeBuff(max);
+            max = this.buf_size;
+        else if (max > this.buf_size)
+            this.resizeBuf(max);
 
         var line = c.fgets(this.buffer, max, this.handle);
 
-        // Handle cases where line fits within buff_size/max or could not be read
+        // Handle cases where line fits within buf_size/max or could not be read
         if (ffi.isNull(line))
             return "";
 
@@ -257,7 +242,7 @@ Bindings for common c I/O functions
         if ($ir_load_u8(line, len - 1) === 10 || limit)
             return ffi.string(line, len);
 
-        // Handle cases where line does not fit within buff_size
+        // Handle cases where line does not fit within buf_size
         str = ffi.string(line, len);
 
         do {
@@ -285,14 +270,14 @@ Bindings for common c I/O functions
         // Handle read(size)
         if (limit)
         {
-            if (max > this.buff_size)
-                this.resizeBuff(max);
+            if (max > this.buf_size)
+                this.resizeBuf(max);
             len = c.fread(this.buffer, 1, max, this.handle);
             return ffi.string(this.buffer, len);
         }
 
         // Handle read() entire file
-        max = this.buff_size;
+        max = this.buf_size;
         str = "";
         do {
             len = c.fread(this.buffer, 1, max, this.handle);
@@ -304,9 +289,9 @@ Bindings for common c I/O functions
     /**
     Put char to a file.
     */
-    File.prototype.putc = function(char)
+    File.prototype.putc = function(chr)
     {
-        var code = $rt_str_get_data(char, 0);
+        var code = $rt_str_get_data(chr, 0);
         var r;
         r = c.fputc(code, this.handle);
         return (r === code);
@@ -318,8 +303,8 @@ Bindings for common c I/O functions
     File.prototype.write = function(data)
     {
         var max = data.length;
-        if (max > this.buff_size)
-            this.resizeBuff(max + 1);
+        if (max > this.buf_size)
+            this.resizeBuf(max + 1);
         ffi.jstrcpy(this.buffer, data);
         return c.fwrite(this.buffer, 1, max, this.handle);
     }
@@ -391,12 +376,12 @@ Bindings for common c I/O functions
     */
     io.tempname = function()
     {
-        var buff = c.malloc(100);
-        var name = c.tmpnam(buff);
+        var buf = c.malloc(100);
+        var name = c.tmpnam(buf);
         if(ffi.isNull(name))
             throw "Unable to get temp name."
-        name = ffi.string(buff);
-        c.free(buff);
+        name = ffi.string(buf);
+        c.free(buf);
         return name;
     }
 
@@ -411,7 +396,7 @@ Bindings for common c I/O functions
     }
 
     // Default settings
-    io.BUFF_SIZE = 1000;
+    io.BUF_SIZE = 1000;
 
     // Constants
     io.SEEK_SET = 0;

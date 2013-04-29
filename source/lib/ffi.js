@@ -290,7 +290,7 @@ The Higgs FFI api
             // ( [ {
             if (chr === 40 || chr === 91 || chr ===123)
             {
-                counter += 1;
+                counter += chr - (chr % 10);
                 tokens.push(input[cursor])
                 cursor += 1;
                 continue;
@@ -299,7 +299,7 @@ The Higgs FFI api
             // ) ] }
             if (chr === 41 || chr === 93 || chr ===125)
             {
-                counter -= 1;
+                counter -= chr - (chr % 10);
                 tokens.push(input[cursor])
                 cursor += 1;
                 continue;
