@@ -54,7 +54,7 @@ The Higgs FFI api
     */
     function getArgString(len)
     {
-        if (arg_strings[len])
+        if (arg_strings[len] !== undefined)
             return arg_strings[len]
 
         var arg_string = "a";
