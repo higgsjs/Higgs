@@ -189,7 +189,7 @@ The Higgs FFI api
     }
 
     /**
-    Copy a JS string to a c buffer;
+    Copy a JS string to a c buffer.
     */
     function jstrcpy(buff, jstr, len)
     {
