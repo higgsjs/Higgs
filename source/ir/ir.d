@@ -753,6 +753,9 @@ Opcode EQ_I8 = { "eq_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_i8, OpInfo.BO
 Opcode EQ_REFPTR = { "eq_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_refptr, OpInfo.BOOL_VAL };
 Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_refptr, OpInfo.BOOL_VAL };
 
+Opcode EQ_RAWPTR = { "eq_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_rawptr };
+Opcode NE_RAWPTR = { "ne_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_rawptr };
+
 // Constant comparison instructions
 Opcode EQ_CONST = { "eq_const", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_const, OpInfo.BOOL_VAL };
 Opcode NE_CONST = { "ne_const", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_const, OpInfo.BOOL_VAL };
@@ -883,7 +886,7 @@ Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str, OpInfo.
 Opcode GET_TIME_MS = { "get_time_ms", true, [], &op_get_time_ms };
 
 /// Load a shared lib
-Opcode LOAD_LIB = { "load_lib", true, [OpArg.STRING], &op_load_lib };
+Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], &op_load_lib };
 
 /// Close shared lib
 Opcode CLOSE_LIB = { "close_lib", false, [OpArg.LOCAL], &op_close_lib };

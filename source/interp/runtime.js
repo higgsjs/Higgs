@@ -1237,6 +1237,15 @@ function $rt_ns(x, y)
         return true;
     }
 
+    // If x is a rawptr
+    else if($ir_is_rawptr(x))
+    {
+        if ($ir_is_rawptr(y))
+            return $ir_ne_rawptr(x, y);
+
+        return true
+    }
+
     // If x is a constant
     else if ($ir_is_const(x))
     {
@@ -1928,7 +1937,7 @@ function $rt_setProp(base, prop, val)
     //print(base);
     //print(prop);
 
-    throw TypeError("invalid base in property write");
+    throw TypeError("invalid base in property write: " + prop);
 }
 
 /**
