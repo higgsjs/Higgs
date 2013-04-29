@@ -61,11 +61,13 @@ layout:
 clean:
 	rm $(BIN_NAME) $(BIN_NAME_TEST) *.o
 
-install: all
+install:
 	@if [ ! -d $(LIB_DIR) ] ; then echo "mkdir $(LIB_DIR)" ; mkdir $(LIB_DIR) ; fi
 	@if [ ! -d $(LIB_DIR)/interp ] ; then echo "mkdir $(LIB_DIR)/interp" ; mkdir $(LIB_DIR)/interp ; fi
 	@if [ ! -d $(LIB_DIR)/stdlib ] ; then echo "mkdir $(LIB_DIR)/stdlib" ; mkdir $(LIB_DIR)/stdlib ; fi
+	@if [ ! -d $(LIB_DIR)/lib ] ; then echo "mkdir $(LIB_DIR)/lib" ; mkdir $(LIB_DIR)/lib ; fi
 	cp ./interp/*.js $(LIB_DIR)/interp
 	cp ./stdlib/*.js $(LIB_DIR)/stdlib
+	cp ./lib/*.js $(LIB_DIR)/lib
 	cp $(BIN_NAME) $(BIN_DIR)
 

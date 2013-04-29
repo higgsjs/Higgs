@@ -129,6 +129,9 @@ static this()
     addOp(EQ_REFPTR);
     addOp(NE_REFPTR);
 
+    addOp(EQ_RAWPTR);
+    addOp(NE_RAWPTR);
+
     addOp(EQ_CONST);
     addOp(NE_CONST);
 
