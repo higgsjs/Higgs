@@ -613,6 +613,9 @@ alias CompareOp!(int8, Type.INT32, "r = (x == y);") op_eq_i8;
 alias CompareOp!(refptr, Type.REFPTR, "r = (x == y);") op_eq_refptr;
 alias CompareOp!(refptr, Type.REFPTR, "r = (x != y);") op_ne_refptr;
 
+alias CompareOp!(rawptr, Type.RAWPTR, "r = (x == y);") op_eq_rawptr;
+alias CompareOp!(rawptr, Type.RAWPTR, "r = (x != y);") op_ne_rawptr;
+
 alias CompareOp!(int8, Type.CONST, "r = (x == y);") op_eq_const;
 alias CompareOp!(int8, Type.CONST, "r = (x != y);") op_ne_const;
 
@@ -1616,12 +1619,20 @@ extern (C) void op_get_time_ms(Interp interp, IRInstr instr)
     );
 }
 
-
 extern (C) void op_load_lib(Interp interp, IRInstr instr)
 {
 
+    // Library to load (JS string)
+    auto wLib = interp.getWord(instr.args[0].localIdx);
+    auto tLib = interp.getType(instr.args[0].localIdx);
+
+    assert (
+        valIsString(wLib, tLib),
+        "expected string lib name argument in load_lib"
+    );
+
     // Library to load (D string)
-    auto libname = to!string(instr.args[0].stringVal);
+    auto libname = extractStr(wLib.ptrVal);
 
     // String must be null terminated
     libname ~= '\0';
