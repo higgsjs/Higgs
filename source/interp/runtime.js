@@ -1937,7 +1937,7 @@ function $rt_setProp(base, prop, val)
     //print(base);
     //print(prop);
 
-    throw TypeError("invalid base in property write: " + prop);
+    throw TypeError("invalid base in property write");
 }
 
 /**
