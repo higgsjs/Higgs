@@ -303,10 +303,12 @@ Bindings for common c I/O functions
     File.prototype.write = function(data)
     {
         var max = data.length;
+        var r;
         if (max > this.buf_size)
             this.resizeBuf(max + 1);
         ffi.jstrcpy(this.buffer, data);
-        return c.fwrite(this.buffer, 1, max, this.handle);
+        r = c.fwrite(this.buffer, 1, max, this.handle);
+        return r === max;
     }
 
     /**
