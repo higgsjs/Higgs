@@ -85,6 +85,15 @@ TODO: start fleshing out ir/inlining.d
 
 
 
+
+
+
+
+
+
+[DONE] FIXME: return with no semicolon causes parse error
+- Create failing parser test
+
 Problem: unwinding stack frames on throw or before calls...
 - Must setup stack frame as multiple frames before each exiting call?
   - Correct stack height

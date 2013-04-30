@@ -497,6 +497,8 @@ unittest
     testParse("if (x) y\nelse\nz");
     testParse("var x\n2");
     testParse("return x");
+    testParse("return");
+    testParse("(function () { return })");
     testParse("throw x");
 }
 
