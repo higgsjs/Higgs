@@ -303,10 +303,12 @@ Bindings for common c I/O functions
     File.prototype.write = function(data)
     {
         var max = data.length;
+        var r;
         if (max > this.buf_size)
             this.resizeBuf(max + 1);
         ffi.jstrcpy(this.buffer, data);
-        return c.fwrite(this.buffer, 1, max, this.handle);
+        r = c.fwrite(this.buffer, 1, max, this.handle);
+        return r === max;
     }
 
     /**
@@ -363,18 +365,25 @@ Bindings for common c I/O functions
     /**
     Get a tmpfile
     */
-    io.tempfile = function()
+    io.tmpfile = function()
     {
         var file = c.tmpfile();
+        var r;
         if(ffi.isNull(file))
-            throw "Unable to get temp file."
-        return file;
+            throw "Unable to get tmp file."
+
+        r = new File(null);
+        r.handle = file;
+        r.mode = "wb+";
+        r.name = "TMPFILE";
+        r.file = "TMPFILE";
+        return r;
     }
 
     /**
     Get a tmpnam
     */
-    io.tempname = function()
+    io.tmpname = function()
     {
         var buf = c.malloc(100);
         var name = c.tmpnam(buf);
