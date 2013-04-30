@@ -70,8 +70,7 @@ Libraries
 
 **stdio:**
 
-Higgs has a library to provide common I/O functionality. It is based on (and is actually a wrapper around)
-the C I/O functions found in [the standard library](http://www.cplusplus.com/reference/cstdio/).
+Higgs has a library to provide common I/O functionality. It is a wrapper around the C I/O functions found in [the stdio library](http://www.cplusplus.com/reference/cstdio/).
 
 *Importing:*
 ```JS
@@ -115,7 +114,7 @@ var c = myfile.getc();
 var line = myfile.readLine();
 
 // You can also specify a maximum length to read
-// the next read will get the remainder (if any of the line)
+// the next read will get the remainder of the line (if any)
 var first_ten_chars = myfile.readLine(10);
 var remainder = myfile.readLine();
 
