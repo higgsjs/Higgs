@@ -96,13 +96,12 @@ var myfile = io.tmpfile();
 // Get a unique name, returns a string containing the name on success or throws error on failure
 var name = io.tmpname();
 
-
 // Open a file, returns a File object on success or throws error on failure
 // open foo.txt for reading
 var foo = io.fopen("foo.txt", "r");
 ```
 
-*File Objects:*
+*File objects:*
 ```JS
 // Some functions like fopen return an instance of File:
 var myfile = io.fopen("foo.txt", "w+");
@@ -144,13 +143,6 @@ myfile.tell();
 // Rewind to beginning of file
 myfile.rewind();
 
-/*
-Seek to a given character. You can optionally provide an origin
-Valid origins:
-io.SEEK_SET - absolute position (default)
-io.SEEK_CUR - current position
-*/
-
 // Seek to 10th character
 myfile.seek(10);
 
@@ -160,7 +152,7 @@ myfile.seek(2, io.SEEK_CUR);
 // When finished with a file close() will close it and free some resources
 myfile.close();
 ```
-*stdin/stdout/stderr:*
+*The stdin/stdout/stderr streams:*
 ```JS
 // The stdio module provides File objects for stdin/stdout/stderr
 
