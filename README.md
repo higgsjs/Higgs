@@ -71,7 +71,7 @@ Libraries
 **stdio:**
 
 Higgs has a library to provide common I/O functionality. It is based on (and is actually a wrapper around)
-the C I/O functions found in [the standard library](http://en.wikipedia.org/wiki/C_standard_library).
+the C I/O functions found in [the standard library](http://www.cplusplus.com/reference/cstdio/).
 
 *Importing:*
 ```JS
@@ -84,7 +84,7 @@ var io = require('lib/stdio');
 
 // The stdio module provides some common file operations
 
-// Delete a file, returns true if successful, false otherwise
+// Delete a file, returns true if successful or false otherwise
 io.remove('test.txt');
 
 // Rename a file, returns true if successful or false otherwise
@@ -97,30 +97,15 @@ var myfile = io.tmpfile();
 var name = io.tmpname();
 
 
-/*
-
-Open a file, returns a File object on success or throws error on failure
-
-The following modes are supported:
-
-   | Action    | File Exists      | File Doesn't Exist
- r   read        read from start    failure to open
- w   write       destroy contents   create new
- a   append      write to end       create new
- r+  read/write  read from start    error
- w+  read/write  destroy contents   create new
- a+  read/write  write to end       create new
- 
-*/
-
-// Open foo.txt for reading
-var foo = io.fopen("foo.text", "r");
+// Open a file, returns a File object on success or throws error on failure
+// open foo.txt for reading
+var foo = io.fopen("foo.txt", "r");
 ```
 
 *File Objects:*
 ```JS
 // Some functions like fopen return an instance of File:
-var myfile = io.fopen("foo.text", "w+");
+var myfile = io.fopen("foo.txt", "w+");
 
 // File objects provide methods for reading, writing, etc
 
@@ -162,15 +147,15 @@ myfile.rewind();
 /*
 Seek to a given character. You can optionally provide an origin
 Valid origins:
-0 - absolute position (default)
-1 - current position
+io.SEEK_SET - absolute position (default)
+io.SEEK_CUR - current position
 */
 
 // Seek to 10th character
 myfile.seek(10);
 
 // Seek 2 characters ahead
-myfile.seek(2, 1);
+myfile.seek(2, io.SEEK_CUR);
 
 // When finished with a file close() will close it and free some resources
 myfile.close();
