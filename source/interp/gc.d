@@ -208,7 +208,11 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     //writefln("allocating to-space heap of size: %s", interp.heapSize);
 
     // Allocate a memory block for the to-space
-    interp.toStart = cast(ubyte*)GC.malloc(interp.heapSize);
+    interp.toStart = cast(ubyte*)GC.malloc(
+        interp.heapSize, 
+        GC.BlkAttr.NO_SCAN |
+        GC.BlkAttr.NO_INTERIOR
+    );
 
     //writefln("allocated to-space block: %s", interp.toStart);
 
@@ -349,9 +353,9 @@ void gcCollect(Interp interp, size_t heapSize = 0)
 
     // Zero out the stack space below the stack pointers (free space)
     // to eliminate any unprocessed references to the from space
-    for (int64* p = cast(int64*)interp.wLowerLimit; p < cast(int64*)interp.wsp; p++)
+    for (int64* p = cast(int64*)interp.wStack; p < cast(int64*)interp.wsp; p++)
         *p = 0;
-    for (int64* p = cast(int64*)interp.tLowerLimit; p < cast(int64*)interp.tsp; p++)
+    for (int64* p = cast(int64*)interp.tStack; p < cast(int64*)interp.tsp; p++)
         *p = 0;
 
     //writefln("old live funs count: %s", interp.funRefs.length);

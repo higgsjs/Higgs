@@ -91,6 +91,10 @@ TODO: start fleshing out ir/inlining.d
 
 
 
+[DONE] TODO: allocate stacks with malloc, NO_SCAN
+
+[DONE] TODO: use GC.BlkAttr.NO_SCAN when allocating heap, link table
+
 [DONE] FIXME: return with no semicolon causes parse error
 - Create failing parser test
 

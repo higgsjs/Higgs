@@ -289,28 +289,22 @@ Interpreter
 class Interp
 {
     /// Word stack
-    Word wStack[STACK_SIZE];
+    Word* wStack;
 
     /// Type stack
-    Type tStack[STACK_SIZE];
+    Type* tStack;
+
+    /// Word stack upper limit
+    Word* wUpperLimit;
+
+    /// Type stack upper limit
+    Type* tUpperLimit;
 
     /// Word and type stack pointers (stack top)
     Word* wsp;
 
     /// Type stack pointer (stack top)
     Type* tsp;
-
-    /// Word stack lower limit
-    Word* wLowerLimit;
-
-    /// Word stack upper limit
-    Word* wUpperLimit;
-
-    /// Type stack lower limit
-    Type* tLowerLimit;
-
-    /// Type stack upper limit
-    Type* tUpperLimit;
 
     /// Heap start pointer
     ubyte* heapStart;
@@ -383,16 +377,23 @@ class Interp
     */
     this(bool loadStdLib = true)
     {
-        assert (
-            wStack.length == tStack.length,
-            "stack lengths do not match"
+        // Allocate the word stack
+        wStack = cast(Word*)GC.malloc(
+            Word.sizeof * STACK_SIZE,
+            GC.BlkAttr.NO_SCAN |
+            GC.BlkAttr.NO_INTERIOR
+        );
+
+        // Allocate the type stack
+        tStack = cast(Type*)GC.malloc(
+            Type.sizeof * STACK_SIZE,
+            GC.BlkAttr.NO_SCAN |
+            GC.BlkAttr.NO_INTERIOR
         );
 
         // Initialize the stack limit pointers
-        wLowerLimit = &wStack[0];
-        wUpperLimit = &wStack[0] + wStack.length;
-        tLowerLimit = &tStack[0];
-        tUpperLimit = &tStack[0] + tStack.length;
+        wUpperLimit = wStack + STACK_SIZE;
+        tUpperLimit = tStack + STACK_SIZE;
 
         // Initialize the stack pointers just past the end of the stack
         wsp = wUpperLimit;
@@ -400,15 +401,19 @@ class Interp
 
         // Allocate a block of immovable memory for the heap
         heapSize = HEAP_INIT_SIZE;
-        heapStart = cast(ubyte*)GC.malloc(heapSize);
-        heapLimit = heapStart + heapSize;
+        heapStart = cast(ubyte*)GC.malloc(
+            heapSize, 
+            GC.BlkAttr.NO_SCAN |
+            GC.BlkAttr.NO_INTERIOR
+        );
 
         // Check that the allocation was successful
         if (heapStart is null)
             throw new Error("heap allocation failed");
 
-        // Initialize the allocation pointer
+        // Initialize the allocation and limit pointers
         allocPtr = heapStart;
+        heapLimit = heapStart + heapSize;
 
         /// Link table size
         linkTblSize = LINK_TBL_INIT_SIZE;
@@ -419,10 +424,18 @@ class Interp
             linkTblFree[i] = i;
 
         /// Link table words
-        wLinkTable = cast(Word*)GC.malloc(Word.sizeof * linkTblSize);
+        wLinkTable = cast(Word*)GC.malloc(
+            Word.sizeof * linkTblSize,
+            GC.BlkAttr.NO_SCAN |
+            GC.BlkAttr.NO_INTERIOR
+        );
 
         /// Link table types
-        tLinkTable = cast(Type*)GC.malloc(Type.sizeof * linkTblSize);
+        tLinkTable = cast(Type*)GC.malloc(
+            Type.sizeof * linkTblSize,
+            GC.BlkAttr.NO_SCAN |
+            GC.BlkAttr.NO_INTERIOR
+        );
 
         // Initialize the link table
         for (size_t i = 0; i < linkTblSize; ++i)
@@ -501,7 +514,7 @@ class Interp
     void setSlot(LocalIdx idx, Word w, Type t)
     {
         assert (
-            &wsp[idx] >= wLowerLimit && &wsp[idx] < wUpperLimit,
+            &wsp[idx] >= wStack && &wsp[idx] < wUpperLimit,
             "invalid stack slot index"
         );
 
@@ -554,7 +567,7 @@ class Interp
     Word getWord(LocalIdx idx)
     {
         assert (
-            &wsp[idx] >= wLowerLimit && &wsp[idx] < wUpperLimit,
+            &wsp[idx] >= wStack && &wsp[idx] < wUpperLimit,
             "invalid stack slot index"
         );
 
@@ -567,7 +580,7 @@ class Interp
     Type getType(LocalIdx idx)
     {
         assert (
-            &tsp[idx] >= tLowerLimit && &tsp[idx] < tUpperLimit,
+            &tsp[idx] >= tStack && &tsp[idx] < tUpperLimit,
             "invalid stack slot index"
         );
 
@@ -588,12 +601,12 @@ class Interp
     void move(LocalIdx src, LocalIdx dst)
     {
         assert (
-            &wsp[src] >= wLowerLimit && &wsp[src] < wUpperLimit,
+            &wsp[src] >= wStack && &wsp[src] < wUpperLimit,
             "invalid src index"
         );
 
         assert (
-            &wsp[dst] >= wLowerLimit && &wsp[dst] < wUpperLimit,
+            &wsp[dst] >= wStack && &wsp[dst] < wUpperLimit,
             "invalid dst index"
         );
 
@@ -618,7 +631,7 @@ class Interp
         wsp -= numWords;
         tsp -= numWords;
 
-        if (wsp < wLowerLimit)
+        if (wsp < wStack)
             throw new Error("interpreter stack overflow");
     }
 
