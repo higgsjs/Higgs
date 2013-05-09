@@ -249,8 +249,8 @@ class IRGenCtx
     IRBlock getBreakTarget(IdentExpr ident, FnlInfo[]* stmts)
     {
         foreach (target; labelTargets)
-            if ((target.name is null && ident is null) || 
-                target.name == ident.name)
+            if ((ident is null && target.name is null) || 
+                (ident !is null && target.name == ident.name))
                 return target.breakBlock;
 
         if (fnlStmt)
@@ -272,8 +272,8 @@ class IRGenCtx
             if (target.contBlock is null)
                 continue;
 
-            if ((target.name is null && ident is null) || 
-                target.name == ident.name)
+            if ((ident is null && target.name is null) || 
+                (ident !is null && target.name == ident.name))
                 return target.contBlock;
         }
 

@@ -38,8 +38,6 @@ TODO: allocate class ids?
 TODO: make sure global obj ptr is updated when global obj is extended
 - Trigger GC?
 
-FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
-
 TODO: optimize IsTypeOp, compare ops in conjunction with if_true
 - Log optimized instances
 - Need to optimize in conjunction with if_true
@@ -52,32 +50,51 @@ TODO: can we use one less scratch reg?
 - Delay until type tags integrated
 - Might need more scratch regs as refactorings progress
 
-TODO: IR-level inlining
-- If we optimize an inlined function and remove temps/vars, need to somehow know
-  what temps map to which original function temps
-  - could use special pseudo-instr to manage this
-  - plase pseudo-instr before possible bailout points, function calls
+TODO: complete IR-level inlining
+
+FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 
 
 
-TODO: improved interpreter frame inflation scheme
+
+
+TODO: improved interpreter frame spill scheme
 - Pros
   - Ordinary function calls will not cause type spilling
   - No need to write 0 when writing type on type stack
 - Must setup stack frame as multiple frames before each exiting call?
-  - Correct stack height
-  - Write return addresses
-  - Spill values/types in the proper slots
-- Need to inflate if exiting to interpreter
-  - call to interp
-  - unsupported behavior
-  - unsupported instruction
-- special extern(C) function to inflate/spill stack frames?
+  - Spill values/types
+- Need to spill if
+  - GC, stack traversal
+  - exception, stack unwinding
+- special extern(C) function to spill stack frames?
 - Map of call instrs to inflate function
+- How do we know the caller was running in the JIT and needs to be spilled? ***
+  - Can we really overspill? Generally, not spilling registers, but constants?
+
+
+Inlining, should keep original call cont IRBlock. Allow inlined functions to
+return into optimized function with inlined code.
+
+
+OSR? Most likely want to maintain mapping with original function, do OSR
+after inlining happened.
+
+
+Don't go with frame splitting approach. Instead, keep track of who's inlined
+at each call site for stack traces. Frame spilling can spill in a saner
+fashion, without resizing, without writing multiple return addresses.
+Functions with inlining can be thoroughly optimized.
+
+
+TODO: blog
+- DConf, impressions
+- method JIT, versioning
+- talk slides
+- forum.dlang.org/group/digitalmars.D
 
 
 
-TODO: start fleshing out ir/inlining.d
 
 
 
@@ -85,11 +102,71 @@ TODO: start fleshing out ir/inlining.d
 
 
 
+[DONE] TODO: fix loop label segfault
 
+Publishing: figure out their litmus test. For some, numbers, for some it's
+proofs, make sure you have that
+- You're selling something, try to have a grand narrative
+- Why it's hard, why it's interesting, why is it novel
+- Papers you *should cite*, how does it compare
+- Try to cite the reviewer...?
+- Cohesion, line of thought, don't want sections to look like afterthought
 
+Michael: try to do these optimizations by hand on some benchmarks, where will it pay off?
+- I wasted a lot of time trying to do clever things I thought would matter
 
+Michael: constant folding, copy propagation, try to predict benefit? *****
 
+Michael: either work backwards or you backtrack
+- Or do it greedily backwards?
 
+Shu: flow problem. Want to optimize CFG to reduce joining work.
+- Attach weight to individual nodes based on amount of work
+- How much work did we save?
+- Model performance characteristics
+
+Problem: add operator, overflow case... Don't want this automatically compiled
+- Whole other loop path for doubles?
+
+Michael: don't want duplication to propagate all the way through
+- Merge as early as possible
+- Metric of benefit vs cost of duplicating a block
+- If merging from two different types, we get boxing overhead
+
+Max: Incremental duplication may be necessary... Prevents impossible/useless
+duplications to some extent. Otherwise duplication can propagate to successors.
+- Similar problem to trace trees
+
+Michael: if you duplicate a block, what is the probability you'll have to
+duplicate its successors
+
+Michael: tail duplication has been around for a long time, lots of literature
+
+Michael: would be interesting to try and predict if tail duplication will help
+at a specific point
+
+Michael: come up with a metric
+- Now way of knowing tail duplication will pay off in the future
+- Has a cost, could afford it if it pays off
+
+Shu: split (terminology?)
+
+Michael: profile in an interpreter
+- Backwards flow analysis, I need this type info?
+- I would like this not to be polymorphic
+- Would like this to be an int
+
+Shu: tail duplicate until things become monomorphic
+- Drives the duplication
+
+Michael: compile without duplication, monitor hot spots
+
+Shu: don't version at some blocks?
+- Re-merge if useless?
+
+[DONE] TODO: start sketching out ir/inlining.d
+- inlineCall?
+- add comments to flesh out process
 
 [DONE] TODO: allocate stacks with malloc, NO_SCAN
 
@@ -113,7 +190,7 @@ Problem: unwinding stack frames on throw or before calls...
   - Map of call instrs to inflate function
 - We can still have interpreter entry points in the middle of functions as before!
   - But these will go to non-inlined versions of functions
-  - Don't even place entry points in the inlined functions, only at top level
+  - Don't place entry points in the inlined functions, only at top level
   - Not a huge deal
 - Functions with inlining can have an internal stack frame size different from numLocals
   - If we optimize an inlined function and remove temps/vars, need to somehow know

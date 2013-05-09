@@ -23,6 +23,7 @@ ir/iir.d            \
 ir/ast.d            \
 ir/init.d           \
 ir/livevars.d       \
+ir/inlining.d       \
 interp/interp.d     \
 interp/ops.d        \
 interp/layout.d     \

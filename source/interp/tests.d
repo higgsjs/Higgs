@@ -1154,6 +1154,7 @@ unittest
     interp.load("programs/regress/post_incr.js");
     interp.load("programs/regress/in_operator.js");
     interp.load("programs/regress/tostring.js");
+    interp.load("programs/regress/loop_labels.js");
 
     interp.load("programs/regress/delta.js");
     interp.load("programs/regress/raytrace.js");
