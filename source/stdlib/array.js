@@ -61,6 +61,9 @@ function Array(len)
     // Call with length
     if (typeof len === 'number' && $argc === 1)
     {
+        // Convert the length to a uint32 value
+        len = $rt_toUint32(len);
+
         // Allocate an array of the desired capacity and set its length
         var a = $rt_newArr($ir_make_link(0), $ir_get_arr_proto(), len);
         a.length = len;
