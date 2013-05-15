@@ -487,7 +487,7 @@ class IRInstr : IdObject
     /// Integer constant
     static intCst(LocalIdx outSlot, int intVal)
     {
-        auto cst = new this(&SET_INT32);
+        auto cst = new this(&SET_I32);
         cst.outSlot = outSlot;
         cst.args = [Arg(intVal)];
 
@@ -497,7 +497,7 @@ class IRInstr : IdObject
     /// Floating-point constant
     static floatCst(LocalIdx outSlot, double floatVal)
     {
-        auto cst = new this(&SET_FLOAT);
+        auto cst = new this(&SET_F64);
         cst.outSlot = outSlot;
         cst.args.length = 1;
         cst.args[0].floatVal = floatVal;
@@ -673,8 +673,8 @@ struct OpInfo
 alias static immutable(OpInfo) Opcode;
 
 // Set a local slot to a constant value    
-Opcode SET_INT32 = { "set_int32"   , true, [OpArg.INT32], &op_set_int32 };
-Opcode SET_FLOAT = { "set_float" , true, [OpArg.FLOAT], &op_set_float };
+Opcode SET_I32 = { "set_i32", true, [OpArg.INT32], &op_set_i32 };
+Opcode SET_F64 = { "set_f64", true, [OpArg.FLOAT], &op_set_f64 };
 Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.LINK], &op_set_str };
 Opcode SET_TRUE = { "set_true"  , true, [], &op_set_true };
 Opcode SET_FALSE = { "set_false" , true, [], &op_set_false };
@@ -691,8 +691,8 @@ Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &op_get_type };
 Opcode MOVE = { "move", true, [OpArg.LOCAL], &op_move };
 
 // Type tag test
-Opcode IS_INT32 = { "is_int32", true, [OpArg.LOCAL], &op_is_int32, OpInfo.BOOL_VAL };
-Opcode IS_FLOAT = { "is_float", true, [OpArg.LOCAL], &op_is_float, OpInfo.BOOL_VAL };
+Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &op_is_i32, OpInfo.BOOL_VAL };
+Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], &op_is_f64, OpInfo.BOOL_VAL };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &op_is_refptr, OpInfo.BOOL_VAL };
 Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &op_is_rawptr, OpInfo.BOOL_VAL };
 Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &op_is_const, OpInfo.BOOL_VAL };

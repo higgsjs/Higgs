@@ -81,11 +81,11 @@ void assertFloat(Interp interp, string input, double floatVal, double eps = 1E-4
 
     assert (
         ret.type == Type.INT32 ||
-        ret.type == Type.FLOAT,
+        ret.type == Type.FLOAT64,
         "non-numeric value: " ~ valToString(ret)
     );
 
-    auto fRet = (ret.type == Type.FLOAT)? ret.word.floatVal:ret.word.int32Val;
+    auto fRet = (ret.type == Type.FLOAT64)? ret.word.floatVal:ret.word.int32Val;
 
     assert (
         abs(fRet - floatVal) <= eps,

@@ -62,7 +62,7 @@ static this()
     typeMap["i8"]  = Type.INT32;
     typeMap["i16"] = Type.INT32;
     typeMap["i32"] = Type.INT32;
-    typeMap["f64"] = Type.FLOAT;
+    typeMap["f64"] = Type.FLOAT64;
     typeMap["*"]   = Type.RAWPTR;
 
     // Registers used by the wrapper

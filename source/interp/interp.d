@@ -123,10 +123,9 @@ union Word
     static Word int64v(int64 i) { Word w; w.int64Val = i; return w; }
     static Word uint32v(uint32 i) { Word w; w.uint32Val = i; return w; }
     static Word uint64v(uint64 i) { Word w; w.uint64Val = i; return w; }
-    static Word floatv(float64 f) { Word w; w.floatVal = f; return w; }
+    static Word float64v(float64 f) { Word w; w.floatVal = f; return w; }
     static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
     static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
-    static Word cstv(rawptr c) { Word w; w.ptrVal = c; return w; }
 
     int8    int8Val;
     int32   int32Val;
@@ -158,7 +157,8 @@ Word MISSING = { uint64Val: 0x0000000000000004 };
 enum Type : ubyte
 {
     INT32 = 0,
-    FLOAT,
+    INT64,
+    FLOAT64,
     REFPTR,
     RAWPTR,
     CONST,
@@ -178,7 +178,8 @@ string typeToString(Type type)
     switch (type)
     {
         case Type.INT32:    return "int32";
-        case Type.FLOAT:    return "float";
+        case Type.INT64:    return "int64";
+        case Type.FLOAT64:  return "float64";
         case Type.RAWPTR:   return "raw pointer";
         case Type.REFPTR:   return "ref pointer";
         case Type.CONST:    return "const";
@@ -219,7 +220,7 @@ string valToString(ValuePair value)
         case Type.INT32:
         return to!string(w.int32Val);
 
-        case Type.FLOAT:
+        case Type.FLOAT64:
         if (w.floatVal != w.floatVal)
             return "NaN";
         if (w.floatVal == 1.0/0)
@@ -558,7 +559,7 @@ class Interp
     */
     void setSlot(LocalIdx idx, float64 val)
     {
-        setSlot(idx, Word.floatv(val), Type.FLOAT);
+        setSlot(idx, Word.float64v(val), Type.FLOAT64);
     }
 
     /**

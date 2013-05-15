@@ -189,7 +189,7 @@ void throwError(
     );
 }
 
-extern (C) void op_set_int32(Interp interp, IRInstr instr)
+extern (C) void op_set_i32(Interp interp, IRInstr instr)
 {
     //writefln("interp: %s", cast(int64)cast(void*)interp);
     //writefln(" instr: %s", cast(int64)cast(void*)instr);
@@ -201,12 +201,12 @@ extern (C) void op_set_int32(Interp interp, IRInstr instr)
     );
 }
 
-extern (C) void op_set_float(Interp interp, IRInstr instr)
+extern (C) void op_set_f64(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
-        Word.floatv(instr.args[0].floatVal),
-        Type.FLOAT
+        Word.float64v(instr.args[0].floatVal),
+        Type.FLOAT64
     );
 }
 
@@ -284,9 +284,10 @@ extern (C) void op_set_value(Interp interp, IRInstr instr)
     auto wType = interp.getWord(instr.args[1].localIdx);
     auto tType = interp.getType(instr.args[1].localIdx);
 
+    // FIXME
     assert (
         tType == Type.INT32,
-        "type should be integer"
+        "type should be int64"
     );
 
     auto type = cast(Type)wType.uint8Val;
@@ -344,8 +345,8 @@ extern (C) void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
     );
 }
 
-alias TypeCheckOp!(Type.INT32) op_is_int32;
-alias TypeCheckOp!(Type.FLOAT) op_is_float;
+alias TypeCheckOp!(Type.INT32) op_is_i32;
+alias TypeCheckOp!(Type.FLOAT64) op_is_f64;
 alias TypeCheckOp!(Type.REFPTR) op_is_refptr;
 alias TypeCheckOp!(Type.RAWPTR) op_is_rawptr;
 alias TypeCheckOp!(Type.CONST) op_is_const;
@@ -356,8 +357,8 @@ extern (C) void op_i32_to_f64(Interp interp, IRInstr instr)
 
     interp.setSlot(
         instr.outSlot,
-        Word.floatv(w0.int32Val),
-        Type.FLOAT
+        Word.float64v(w0.int32Val),
+        Type.FLOAT64
     );
 }
 
@@ -379,7 +380,7 @@ extern (C) void op_f64_to_i32(Interp interp, IRInstr instr)
 extern (C) void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRInstr instr)
 {
     static assert (
-        typeTag == Type.INT32 || typeTag == Type.FLOAT
+        typeTag == Type.INT32 || typeTag == Type.FLOAT64
     );
 
     static assert (
@@ -416,7 +417,7 @@ extern (C) void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRIn
         static if (arity > 1)
             auto y = wY.int32Val;
     }
-    static if (typeTag == Type.FLOAT)
+    static if (typeTag == Type.FLOAT64)
     {
         static if (arity > 0)
             auto x = wX.floatVal;
@@ -428,7 +429,7 @@ extern (C) void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRIn
 
     static if (typeTag == Type.INT32)
         output.int32Val = r;
-    static if (typeTag == Type.FLOAT)
+    static if (typeTag == Type.FLOAT64)
         output.floatVal = r;
 
     interp.setSlot(
@@ -452,25 +453,25 @@ alias ArithOp!(Type.INT32, 2, "auto r = x >> y;") op_rsft_i32;
 alias ArithOp!(Type.INT32, 2, "auto r = cast(uint32)x >>> y;") op_ursft_i32;
 alias ArithOp!(Type.INT32, 1, "auto r = ~x;") op_not_i32;
 
-alias ArithOp!(Type.FLOAT, 2, "auto r = x + y;") op_add_f64;
-alias ArithOp!(Type.FLOAT, 2, "auto r = x - y;") op_sub_f64;
-alias ArithOp!(Type.FLOAT, 2, "auto r = x * y;") op_mul_f64;
-alias ArithOp!(Type.FLOAT, 2, "auto r = x / y;") op_div_f64;
-alias ArithOp!(Type.FLOAT, 2, "auto r = fmod(x, y);") op_mod_f64;
+alias ArithOp!(Type.FLOAT64, 2, "auto r = x + y;") op_add_f64;
+alias ArithOp!(Type.FLOAT64, 2, "auto r = x - y;") op_sub_f64;
+alias ArithOp!(Type.FLOAT64, 2, "auto r = x * y;") op_mul_f64;
+alias ArithOp!(Type.FLOAT64, 2, "auto r = x / y;") op_div_f64;
+alias ArithOp!(Type.FLOAT64, 2, "auto r = fmod(x, y);") op_mod_f64;
 
-alias ArithOp!(Type.FLOAT, 1, "auto r = sin(x);") op_sin_f64;
-alias ArithOp!(Type.FLOAT, 1, "auto r = cos(x);") op_cos_f64;
-alias ArithOp!(Type.FLOAT, 1, "auto r = sqrt(x);") op_sqrt_f64;
-alias ArithOp!(Type.FLOAT, 1, "auto r = log(x);") op_log_f64;
-alias ArithOp!(Type.FLOAT, 1, "auto r = exp(x);") op_exp_f64;
-alias ArithOp!(Type.FLOAT, 2, "auto r = pow(x, y);") op_pow_f64;
+alias ArithOp!(Type.FLOAT64, 1, "auto r = sin(x);") op_sin_f64;
+alias ArithOp!(Type.FLOAT64, 1, "auto r = cos(x);") op_cos_f64;
+alias ArithOp!(Type.FLOAT64, 1, "auto r = sqrt(x);") op_sqrt_f64;
+alias ArithOp!(Type.FLOAT64, 1, "auto r = log(x);") op_log_f64;
+alias ArithOp!(Type.FLOAT64, 1, "auto r = exp(x);") op_exp_f64;
+alias ArithOp!(Type.FLOAT64, 2, "auto r = pow(x, y);") op_pow_f64;
 
 extern (C) void op_floor_f64(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.args[0].localIdx);
     auto t0 = interp.getType(instr.args[0].localIdx);
 
-    assert (t0 == Type.FLOAT, "invalid operand type in floor");
+    assert (t0 == Type.FLOAT64, "invalid operand type in floor");
 
     auto r = floor(w0.floatVal);
 
@@ -486,8 +487,8 @@ extern (C) void op_floor_f64(Interp interp, IRInstr instr)
     {
         interp.setSlot(
             instr.outSlot,
-            Word.floatv(r),
-            Type.FLOAT
+            Word.float64v(r),
+            Type.FLOAT64
         );
     }
 }
@@ -497,7 +498,7 @@ extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
     auto w0 = interp.getWord(instr.args[0].localIdx);
     auto t0 = interp.getType(instr.args[0].localIdx);
 
-    assert (t0 == Type.FLOAT, "invalid operand type in ceil");
+    assert (t0 == Type.FLOAT64, "invalid operand type in ceil");
 
     auto r = ceil(w0.floatVal);
 
@@ -513,8 +514,8 @@ extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
     {
         interp.setSlot(
             instr.outSlot,
-            Word.floatv(r),
-            Type.FLOAT
+            Word.float64v(r),
+            Type.FLOAT64
         );
     }
 }
@@ -587,7 +588,7 @@ extern (C) void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRIn
         auto x = cast(DataType)wX.ptrVal;
         auto y = cast(DataType)wY.ptrVal;
     }
-    static if (typeTag == Type.FLOAT)
+    static if (typeTag == Type.FLOAT64)
     {
         auto x = cast(DataType)wX.floatVal;
         auto y = cast(DataType)wY.floatVal;
@@ -619,12 +620,12 @@ alias CompareOp!(rawptr, Type.RAWPTR, "r = (x != y);") op_ne_rawptr;
 alias CompareOp!(int8, Type.CONST, "r = (x == y);") op_eq_const;
 alias CompareOp!(int8, Type.CONST, "r = (x != y);") op_ne_const;
 
-alias CompareOp!(float64, Type.FLOAT, "r = (x == y);") op_eq_f64;
-alias CompareOp!(float64, Type.FLOAT, "r = (x != y);") op_ne_f64;
-alias CompareOp!(float64, Type.FLOAT, "r = (x < y);") op_lt_f64;
-alias CompareOp!(float64, Type.FLOAT, "r = (x > y);") op_gt_f64;
-alias CompareOp!(float64, Type.FLOAT, "r = (x <= y);") op_le_f64;
-alias CompareOp!(float64, Type.FLOAT, "r = (x >= y);") op_ge_f64;
+alias CompareOp!(float64, Type.FLOAT64, "r = (x == y);") op_eq_f64;
+alias CompareOp!(float64, Type.FLOAT64, "r = (x != y);") op_ne_f64;
+alias CompareOp!(float64, Type.FLOAT64, "r = (x < y);") op_lt_f64;
+alias CompareOp!(float64, Type.FLOAT64, "r = (x > y);") op_gt_f64;
+alias CompareOp!(float64, Type.FLOAT64, "r = (x <= y);") op_le_f64;
+alias CompareOp!(float64, Type.FLOAT64, "r = (x >= y);") op_ge_f64;
 
 extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {
@@ -744,7 +745,7 @@ alias LoadOp!(uint8, Type.INT32) op_load_u8;
 alias LoadOp!(uint16, Type.INT32) op_load_u16;
 alias LoadOp!(uint32, Type.INT32) op_load_u32;
 alias LoadOp!(uint64, Type.INT32) op_load_u64;
-alias LoadOp!(float64, Type.FLOAT) op_load_f64;
+alias LoadOp!(float64, Type.FLOAT64) op_load_f64;
 alias LoadOp!(refptr, Type.REFPTR) op_load_refptr;
 alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;
 alias LoadOp!(IRFunction, Type.FUNPTR) op_load_funptr;
@@ -753,7 +754,7 @@ alias StoreOp!(uint8, Type.INT32) op_store_u8;
 alias StoreOp!(uint16, Type.INT32) op_store_u16;
 alias StoreOp!(uint32, Type.INT32) op_store_u32;
 alias StoreOp!(uint64, Type.INT32) op_store_u64;
-alias StoreOp!(float64, Type.FLOAT) op_store_f64;
+alias StoreOp!(float64, Type.FLOAT64) op_store_f64;
 alias StoreOp!(refptr, Type.REFPTR) op_store_refptr;
 alias StoreOp!(rawptr, Type.RAWPTR) op_store_rawptr;
 alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
@@ -1594,7 +1595,7 @@ extern (C) void op_f64_to_str(Interp interp, IRInstr instr)
     auto val = interp.getSlot(instr.args[0].localIdx);
 
     assert (
-        val.type == Type.FLOAT,
+        val.type == Type.FLOAT64,
         "invalid float value"
     );
 

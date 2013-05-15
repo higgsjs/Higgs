@@ -75,8 +75,8 @@ static this()
     addOp(GET_WORD);
     addOp(GET_TYPE);
 
-    addOp(IS_INT32);
-    addOp(IS_FLOAT);
+    addOp(IS_I32);
+    addOp(IS_F64);
     addOp(IS_REFPTR);
     addOp(IS_RAWPTR);
     addOp(IS_CONST);

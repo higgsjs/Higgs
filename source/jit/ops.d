@@ -92,7 +92,7 @@ void gen_set_null(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
 
-void gen_set_int32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_set_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 32);
     ctx.as.instr(MOV, outOpnd, instr.args[0].int32Val);
@@ -158,8 +158,8 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
 alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
-alias IsTypeOp!(Type.INT32) gen_is_int32;
-alias IsTypeOp!(Type.FLOAT) gen_is_float;
+alias IsTypeOp!(Type.INT32) gen_is_i32;
+alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 
 /*
 void gen_i32_to_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -167,7 +167,7 @@ void gen_i32_to_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(CVTSI2SD, XMM0, new X86Mem(32, wspReg, instr.args[0].localIdx * 8));
 
     ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
+    ctx.as.setType(instr.outSlot, Type.FLOAT64);
 }
 
 void gen_f64_to_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -242,7 +242,7 @@ void gen_add_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(ADDSD, XMM0, XMM1);
 
     ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
+    ctx.as.setType(instr.outSlot, Type.FLOAT64);
 }
 
 void gen_sub_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -253,7 +253,7 @@ void gen_sub_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(SUBSD, XMM0, XMM1);
 
     ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
+    ctx.as.setType(instr.outSlot, Type.FLOAT64);
 }
 
 void gen_mul_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -264,7 +264,7 @@ void gen_mul_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(MULSD, XMM0, XMM1);
 
     ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
+    ctx.as.setType(instr.outSlot, Type.FLOAT64);
 }
 
 void gen_div_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -275,7 +275,7 @@ void gen_div_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(DIVSD, XMM0, XMM1);
 
     ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT);
+    ctx.as.setType(instr.outSlot, Type.FLOAT64);
 }
 */
 
@@ -406,7 +406,7 @@ alias LoadOp!(8 , Type.INT32) gen_load_u8;
 //alias LoadOp!(uint16, Type.INT32) gen_load_u16;
 alias LoadOp!(32, Type.INT32) gen_load_u32;
 alias LoadOp!(64, Type.INT32) gen_load_u64;
-//alias LoadOp!(64, Type.FLOAT) gen_load_f64;
+//alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 //alias LoadOp!(rawptr, Type.RAWPTR) gen_load_rawptr;
 //alias LoadOp!(IRFunction, Type.FUNPTR) gen_load_funptr;
@@ -864,15 +864,15 @@ static this()
     codeGenFns[&SET_UNDEF]      = &gen_set_undef;
     codeGenFns[&SET_MISSING]    = &gen_set_missing;
     codeGenFns[&SET_NULL]       = &gen_set_null;
-    codeGenFns[&SET_INT32]      = &gen_set_int32;
+    codeGenFns[&SET_I32]        = &gen_set_i32;
     codeGenFns[&SET_STR]        = &gen_set_str;
 
     codeGenFns[&MOVE]           = &gen_move;
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
-    codeGenFns[&IS_INT32]       = &gen_is_int32;
-    codeGenFns[&IS_FLOAT]       = &gen_is_float;
+    codeGenFns[&IS_I32]         = &gen_is_i32;
+    codeGenFns[&IS_F64]         = &gen_is_f64;
 
     /*
     codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;

@@ -86,6 +86,12 @@ Functions with inlining can be thoroughly optimized.
 
 
 
+TODO: IR, i64 tag, support
+
+TODO: IR instr renaming for convenience
+- tags: i32, f64, rptr, hptr
+- is_i32, is_f64, ...
+- set_i32, set_f64, set_str
 
 
 

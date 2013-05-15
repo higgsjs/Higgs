@@ -55,7 +55,7 @@ Test if a value is NaN
 */
 function isNaN(v)
 {
-    return ($ir_is_float(v) && $ir_ne_f64(v, v));
+    return ($ir_is_f64(v) && $ir_ne_f64(v, v));
 }
 
 /**
@@ -267,7 +267,7 @@ Create a string representing an integer value
 function $rt_intToStr(intVal, radix)
 {
     assert (
-        $ir_is_int32(radix)    &&
+        $ir_is_i32(radix)    &&
         $ir_gt_i32(radix, 0) && 
         $ir_le_i32(radix, 36),
         'invalid radix'
@@ -454,7 +454,7 @@ function $rt_toString(v)
 
     if (type === "number")
     {
-        if ($ir_is_int32(v))
+        if ($ir_is_i32(v))
         {
             return $rt_intToStr(v, 10);
         }
@@ -495,8 +495,8 @@ Convert a boxed value to a primitive value.
 */
 function $rt_toPrim(v)
 {
-    if ($ir_is_int32(v)   || 
-        $ir_is_float(v) ||
+    if ($ir_is_i32(v)   || 
+        $ir_is_f64(v) ||
         $ir_is_const(v))
         return v
 
@@ -532,10 +532,10 @@ function $rt_toBool(v)
     if ($ir_is_const(v))
         return $ir_eq_const(v, true);
 
-    if ($ir_is_int32(v))
+    if ($ir_is_i32(v))
         return $ir_ne_i32(v, 0);
 
-    if ($ir_is_float(v))
+    if ($ir_is_f64(v))
         return $ir_ne_f64(v, 0.0);
 
     if ($ir_is_refptr(v))
@@ -564,7 +564,7 @@ Attempt to convert a value to a number. If this fails, return NaN
 */
 function $rt_toNumber(v)
 {
-    if ($ir_is_int32(v) || $ir_is_float(v))
+    if ($ir_is_i32(v) || $ir_is_f64(v))
         return v;
 
     if (v === null)
@@ -597,7 +597,7 @@ function $rt_toInt32(x)
 {
     x = $rt_toNumber(x);
 
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
         return x;
 
     if (isNaN(x) || x === Infinity || x === -Infinity)
@@ -613,7 +613,7 @@ function $rt_toUint32(x)
 {
     x = $rt_toNumber(x);
 
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
         return x;
 
     if (isNaN(x) || x === Infinity || x === -Infinity)
@@ -621,7 +621,7 @@ function $rt_toUint32(x)
 
     var x = (x>0)? $ir_floor_f64(x):$ir_floor_f64(-x);
 
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
         return x;
 
     assert (false, "unsupported value in toUInt32: " + x);
@@ -632,7 +632,7 @@ JS typeof operator
 */
 function $rt_typeof(v)
 {
-    if ($ir_is_int32(v) || $ir_is_float(v))
+    if ($ir_is_i32(v) || $ir_is_f64(v))
         return "number";
 
     if ($ir_is_const(v))
@@ -674,7 +674,7 @@ JS addition operator
 function $rt_add(x, y)
 {
     // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y))
     {
         var r;
         if (r = $ir_add_i32_ovf(x, y))
@@ -691,11 +691,11 @@ function $rt_add(x, y)
 
     // If either value is floating-point or integer
     else if (
-        ($ir_is_float(x) || $ir_is_int32(x)) &&
-        ($ir_is_float(y) || $ir_is_int32(y)))
+        ($ir_is_f64(x) || $ir_is_i32(x)) &&
+        ($ir_is_f64(y) || $ir_is_i32(y)))
     {
-        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
 
         return $ir_add_f64(fx, fy);
     }
@@ -714,7 +714,7 @@ JS subtraction operator
 function $rt_sub(x, y)
 {
     // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y))
     {
         var r;
         if (r = $ir_sub_i32_ovf(x, y))
@@ -731,11 +731,11 @@ function $rt_sub(x, y)
 
     // If either value is floating-point or integer
     else if (
-        ($ir_is_float(x) || $ir_is_int32(x)) &&
-        ($ir_is_float(y) || $ir_is_int32(y)))
+        ($ir_is_f64(x) || $ir_is_i32(x)) &&
+        ($ir_is_f64(y) || $ir_is_i32(y)))
     {
-        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
 
         return $ir_sub_f64(fx, fy);
     }
@@ -749,7 +749,7 @@ JS multiplication operator
 function $rt_mul(x, y)
 {
     // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y))
     {
         var r;
         if (r = $ir_mul_i32_ovf(x, y))
@@ -766,11 +766,11 @@ function $rt_mul(x, y)
 
     // If either value is floating-point or integer
     else if (
-        ($ir_is_float(x) || $ir_is_int32(x)) &&
-        ($ir_is_float(y) || $ir_is_int32(y)))
+        ($ir_is_f64(x) || $ir_is_i32(x)) &&
+        ($ir_is_f64(y) || $ir_is_i32(y)))
     {
-        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
 
         return $ir_mul_f64(fx, fy);
     }
@@ -784,11 +784,11 @@ JS division operator
 function $rt_div(x, y)
 {
     // If either value is floating-point or integer
-    if (($ir_is_float(x) || $ir_is_int32(x)) &&
-        ($ir_is_float(y) || $ir_is_int32(y)))
+    if (($ir_is_f64(x) || $ir_is_i32(x)) &&
+        ($ir_is_f64(y) || $ir_is_i32(y)))
     {
-        var fx = $ir_is_float(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float(y)? y:$ir_i32_to_f64(y);
+        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
 
         return $ir_div_f64(fx, fy);
     }
@@ -802,22 +802,22 @@ JS modulo operator
 function $rt_mod(x, y)
 {
     // If x is integer
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_mod_i32(x, y);
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_mod_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    if ($ir_is_float(x))
+    if ($ir_is_f64(x))
     {
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_mod_f64(x, y);
 
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_mod_f64(x, $ir_i32_to_f64(y));
     }
 
@@ -831,7 +831,7 @@ function $rt_mod(x, y)
 function $rt_and(x, y)
 {
     // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y))
     {
         return $ir_and_i32(x, y);
     }
@@ -843,7 +843,7 @@ function $rt_and(x, y)
 function $rt_or(x, y)
 {
     // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y))
     {
         return $ir_or_i32(x, y);
     }
@@ -855,7 +855,7 @@ function $rt_or(x, y)
 function $rt_xor(x, y)
 {
     // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y))
     {
         return $ir_xor_i32(x, y);
     }
@@ -867,7 +867,7 @@ function $rt_xor(x, y)
 function $rt_lsft(x, y)
 {
     // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y))
     {
         return $ir_lsft_i32(x, y);
     }
@@ -879,7 +879,7 @@ function $rt_lsft(x, y)
 function $rt_rsft(x, y)
 {
     // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y))
     {
         return $ir_rsft_i32(x, y);
     }
@@ -891,7 +891,7 @@ function $rt_rsft(x, y)
 function $rt_ursft(x, y)
 {
     // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y))
     {
         return $ir_ursft_i32(x, y);
     }
@@ -902,7 +902,7 @@ function $rt_ursft(x, y)
 
 function $rt_not(x)
 {
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
     {
         return $ir_not_i32(x);
     }
@@ -921,22 +921,22 @@ JS less-than operator
 function $rt_lt(x, y)
 {
     // If x is integer
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_lt_i32(x, y);
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_lt_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    if ($ir_is_float(x))
+    if ($ir_is_f64(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_lt_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_lt_f64(x, y);
     }
 
@@ -958,22 +958,22 @@ JS less-than or equal operator
 function $rt_le(x, y)
 {
     // If x is integer
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_le_i32(x, y);
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_le_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    if ($ir_is_float(x))
+    if ($ir_is_f64(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_le_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_le_f64(x, y);
     }
 
@@ -995,22 +995,22 @@ JS greater-than operator
 function $rt_gt(x, y)
 {
     // If x is integer
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_gt_i32(x, y);
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_gt_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    if ($ir_is_float(x))
+    if ($ir_is_f64(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_gt_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_gt_f64(x, y);
     }
 
@@ -1032,22 +1032,22 @@ JS greater-than or equal operator
 function $rt_ge(x, y)
 {
     // If x is integer
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_ge_i32(x, y);
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_ge_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    if ($ir_is_float(x))
+    if ($ir_is_f64(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_ge_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_ge_f64(x, y);
     }
 
@@ -1069,12 +1069,12 @@ JS equality (==) comparison operator
 function $rt_eq(x, y)
 {
     // If x is integer
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_eq_i32(x, y);
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_eq_f64($ir_i32_to_f64(x), y);
 
         // 0 != null
@@ -1132,12 +1132,12 @@ function $rt_eq(x, y)
     }
 
     // If x is float
-    if ($ir_is_float(x))
+    if ($ir_is_f64(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_eq_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_eq_f64(x, y);
     }
 
@@ -1167,12 +1167,12 @@ JS strict equality (===) comparison operator
 function $rt_se(x, y)
 {
     // If x is integer
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_eq_i32(x, y);
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_eq_f64($ir_i32_to_f64(x), y);
 
         return false;
@@ -1197,12 +1197,12 @@ function $rt_se(x, y)
     }
 
     // If x is a float
-    else if ($ir_is_float(x))
+    else if ($ir_is_f64(x))
     {
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_eq_f64(x, y);
 
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_eq_f64(x, $ir_i32_to_f64(y));
 
         return false;
@@ -1217,12 +1217,12 @@ JS strict inequality (!==) comparison operator
 function $rt_ns(x, y)
 {
     // If x is integer
-    if ($ir_is_int32(x))
+    if ($ir_is_i32(x))
     {
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_ne_i32(x, y);
 
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_ne_f64($ir_i32_to_f64(x), y);
 
         return true;
@@ -1256,12 +1256,12 @@ function $rt_ns(x, y)
     }
 
     // If x is a float
-    else if ($ir_is_float(x))
+    else if ($ir_is_f64(x))
     {
-        if ($ir_is_float(y))
+        if ($ir_is_f64(y))
             return $ir_ne_f64(x, y);
 
-        if ($ir_is_int32(y))
+        if ($ir_is_i32(y))
             return $ir_ne_f64(x, $ir_i32_to_f64(y));
 
         return true;
@@ -1550,7 +1550,7 @@ function $rt_getPropObj(obj, propStr)
     var objCap = $rt_obj_get_cap(obj);
 
     // If the property was found and is present in the object
-    if ($ir_is_int32(propIdx) && propIdx < objCap)
+    if ($ir_is_i32(propIdx) && propIdx < objCap)
     {
         var word = $rt_obj_get_word(obj, propIdx);
         var type = $rt_obj_get_type(obj, propIdx);
@@ -1600,7 +1600,7 @@ function $rt_getProp(base, prop)
         if ($ir_eq_i8(type, $rt_LAYOUT_ARR))
         {
             // If the property is a non-negative integer
-            if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) &&
+            if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
                 $ir_lt_i32(prop, $rt_arr_get_len(base)))
             {
                 var tbl = $rt_arr_get_tbl(base);
@@ -1610,7 +1610,7 @@ function $rt_getProp(base, prop)
             }
 
             // If the property is a floating-point number
-            if ($ir_is_float(prop))
+            if ($ir_is_f64(prop))
             {
                 var intVal = $rt_toUint32(prop);
                 if (intVal === prop)
@@ -1640,7 +1640,7 @@ function $rt_getProp(base, prop)
         if ($ir_eq_i8(type, $rt_LAYOUT_STR))
         {
             // If the property is a non-negative integer
-            if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) && 
+            if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) && 
                 $ir_lt_i32(prop, $rt_str_get_len(base)))
             {
                 var ch = $rt_str_get_data(base, prop);
@@ -1659,7 +1659,7 @@ function $rt_getProp(base, prop)
     }
 
     // If the base is a number
-    if ($ir_is_int32(base) || $ir_is_float(base))
+    if ($ir_is_i32(base) || $ir_is_f64(base))
     {
         // Recurse on Number.prototype
         return $rt_getProp(Number.prototype, prop);
@@ -1917,13 +1917,13 @@ function $rt_setProp(base, prop, val)
         if ($ir_eq_i8(type, $rt_LAYOUT_ARR))
         {
             // If the property is a non-negative integer
-            if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0))
+            if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0))
             {
                 return $rt_setArrElem(base, prop, val);            
             }
 
             // If the property is a floating-point number
-            if ($ir_is_float(prop))
+            if ($ir_is_f64(prop))
             {
                 var intVal = $rt_toUint32(prop);
                 if (intVal === prop)
@@ -1933,7 +1933,7 @@ function $rt_setProp(base, prop, val)
             // If this is the length property
             if (prop === 'length')
             {
-                if ($ir_is_int32(val) && $ir_ge_i32(val, 0))
+                if ($ir_is_i32(val) && $ir_ge_i32(val, 0))
                     return $rt_setArrLen(base, val);
 
                 assert (false, 'invalid array length');
@@ -2093,7 +2093,7 @@ function $rt_hasOwnProp(base, prop)
         if ($ir_eq_i8(type, $rt_LAYOUT_ARR))
         {
             // If the property is a non-negative integer
-            if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) &&
+            if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
                 $ir_lt_i32(prop, $rt_arr_get_len(base)))
                 return true;
 

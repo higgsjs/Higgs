@@ -183,7 +183,7 @@ struct TypeSet
                 assert (false, "unknown const type");
             break;
 
-            case Type.FLOAT:
+            case Type.FLOAT64:
             flags = TYPE_INT | TYPE_FLOAT;
             rangeMin = word.floatVal;
             rangeMax = word.floatVal;
