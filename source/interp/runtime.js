@@ -1609,9 +1609,19 @@ function $rt_getProp(base, prop)
                 return $ir_set_value(word, type);
             }
 
+            // If the property is a floating-point number
+            if ($ir_is_float(prop))
+            {
+                var intVal = $rt_toUint32(prop);
+                if (intVal === prop)
+                    return $rt_getProp(base, intVal);
+            }
+
             // If this is the length property
             if (prop === 'length')
+            {
                 return $rt_arr_get_len(base);
+            }
 
             // If the property is a string
             if ($rt_valIsString(prop))
@@ -1908,7 +1918,17 @@ function $rt_setProp(base, prop, val)
         {
             // If the property is a non-negative integer
             if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0))
+            {
                 return $rt_setArrElem(base, prop, val);            
+            }
+
+            // If the property is a floating-point number
+            if ($ir_is_float(prop))
+            {
+                var intVal = $rt_toUint32(prop);
+                if (intVal === prop)
+                    return $rt_setProp(base, intVal, val);
+            }
 
             // If this is the length property
             if (prop === 'length')

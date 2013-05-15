@@ -85,14 +85,14 @@ Functions with inlining can be thoroughly optimized.
 
 
 
-FIXME: crypto-aes, run-time error: undefined base in property read
 
 
 
 
 
-
-
+[DONE] FIXME: crypto-aes, run-time error: undefined base in property read
+- array w in KeyExpansion should have been initialized with array, is not
+- Likely, failing because loop index is not integer
 
 [DONE] FIXME: crypto-aes, invalid operand 2 type in op "auto r = x * y;" (int32)
 - Investigate, create failing unit test
