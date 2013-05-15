@@ -405,7 +405,7 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
 alias LoadOp!(8 , Type.INT32) gen_load_u8;
 //alias LoadOp!(uint16, Type.INT32) gen_load_u16;
 alias LoadOp!(32, Type.INT32) gen_load_u32;
-alias LoadOp!(64, Type.INT32) gen_load_u64;
+alias LoadOp!(64, Type.INT64) gen_load_u64;
 //alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 //alias LoadOp!(rawptr, Type.RAWPTR) gen_load_rawptr;

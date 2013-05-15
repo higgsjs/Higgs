@@ -692,6 +692,7 @@ Opcode MOVE = { "move", true, [OpArg.LOCAL], &op_move };
 
 // Type tag test
 Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &op_is_i32, OpInfo.BOOL_VAL };
+Opcode IS_I64 = { "is_i64", true, [OpArg.LOCAL], &op_is_i64, OpInfo.BOOL_VAL };
 Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], &op_is_f64, OpInfo.BOOL_VAL };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &op_is_refptr, OpInfo.BOOL_VAL };
 Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &op_is_rawptr, OpInfo.BOOL_VAL };

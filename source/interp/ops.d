@@ -284,10 +284,9 @@ extern (C) void op_set_value(Interp interp, IRInstr instr)
     auto wType = interp.getWord(instr.args[1].localIdx);
     auto tType = interp.getType(instr.args[1].localIdx);
 
-    // FIXME
     assert (
         tType == Type.INT32,
-        "type should be int64"
+        "type should be int32"
     );
 
     auto type = cast(Type)wType.uint8Val;
@@ -346,6 +345,7 @@ extern (C) void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
 }
 
 alias TypeCheckOp!(Type.INT32) op_is_i32;
+alias TypeCheckOp!(Type.INT64) op_is_i64;
 alias TypeCheckOp!(Type.FLOAT64) op_is_f64;
 alias TypeCheckOp!(Type.REFPTR) op_is_refptr;
 alias TypeCheckOp!(Type.RAWPTR) op_is_rawptr;
@@ -744,16 +744,15 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 alias LoadOp!(uint8, Type.INT32) op_load_u8;
 alias LoadOp!(uint16, Type.INT32) op_load_u16;
 alias LoadOp!(uint32, Type.INT32) op_load_u32;
-alias LoadOp!(uint64, Type.INT32) op_load_u64;
+alias LoadOp!(uint64, Type.INT64) op_load_u64;
 alias LoadOp!(float64, Type.FLOAT64) op_load_f64;
 alias LoadOp!(refptr, Type.REFPTR) op_load_refptr;
 alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;
 alias LoadOp!(IRFunction, Type.FUNPTR) op_load_funptr;
-
 alias StoreOp!(uint8, Type.INT32) op_store_u8;
 alias StoreOp!(uint16, Type.INT32) op_store_u16;
 alias StoreOp!(uint32, Type.INT32) op_store_u32;
-alias StoreOp!(uint64, Type.INT32) op_store_u64;
+alias StoreOp!(uint64, Type.INT64) op_store_u64;
 alias StoreOp!(float64, Type.FLOAT64) op_store_f64;
 alias StoreOp!(refptr, Type.REFPTR) op_store_refptr;
 alias StoreOp!(rawptr, Type.RAWPTR) op_store_rawptr;
