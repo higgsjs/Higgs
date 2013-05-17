@@ -270,6 +270,19 @@ class IRBlock : IdObject
         this.name = name;
     }
 
+    IRBlock dup()
+    {
+        auto that = new IRBlock(this.name);
+
+        that.execCount = this.execCount;
+        that.fun = this.fun;
+        
+        for (auto instr = firstInstr; instr !is null; instr = instr.next)
+            that.addInstr(instr.dup);
+
+        return that;
+    }
+
     string getName()
     {
         return this.name ~ "(" ~ idString() ~ ")";
@@ -482,6 +495,22 @@ class IRInstr : IdObject
 
         this.opcode = opcode;
         this.outSlot = outSlot;
+    }
+
+    /// Copy an instruction
+    IRInstr dup()
+    {
+        auto that = new IRInstr(this.opcode);
+
+        that.args = this.args.dup;
+        that.outSlot = this.outSlot;
+        that.target = this.target;
+        that.excTarget = this.excTarget;
+        that.block = this.block;
+        that.prev = this.prev;
+        that.next = this.next;
+
+        return that;
     }
 
     /// Integer constant

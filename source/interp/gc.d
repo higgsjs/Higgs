@@ -145,7 +145,7 @@ refptr heapAlloc(Interp interp, size_t size)
         // Perform garbage collection
         gcCollect(interp);
 
-        writefln("gc done");
+        //writefln("gc done");
 
         // While this allocation exceeds the heap limit
         while (interp.allocPtr + size > interp.heapLimit)

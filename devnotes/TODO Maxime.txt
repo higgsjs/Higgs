@@ -50,51 +50,65 @@ TODO: can we use one less scratch reg?
 - Delay until type tags integrated
 - Might need more scratch regs as refactorings progress
 
-TODO: complete IR-level inlining
-
-
-
-
 TODO: improved interpreter frame spill scheme
-- Pros
-  - Ordinary function calls will not cause type spilling
-  - No need to write 0 when writing type on type stack
-- Must setup stack frame as multiple frames before each exiting call?
-  - Spill values/types
+- Map of call instrs to spill functions
+  - special extern(C) function, called by interpreter
 - Need to spill if
   - GC, stack traversal
   - exception, stack unwinding
-- special extern(C) function to spill stack frames?
-- Map of call instrs to inflate function
-- How do we know the caller was running in the JIT and needs to be spilled? ***
-  - Can we really overspill? Generally, not spilling registers, but constants?
+- Pros
+  - Ordinary function calls will not cause type spilling
+  - No need to write 0 when writing type on type stack
+- ISSUE: return address, multiple versions
+  - Could be calling a JIT function from multiple points
+  - Can't have spilling associated with one single return points
+  - Need special JIT return address structure
+    - Spill fun
+    - Interp call cont
+    - JIT fast entry point
+
+TODO: OSR
+- Need to produce mapping of pre-inlining stack slots to inlined slots
+  - Done during inlining
+- Keep original call cont IRBlock. Allow inlined functions to
+return into optimized function after OSR
+- JIT functions might not be spilled at OSR time, must trigger spilling
 
 
-Inlining, should keep original call cont IRBlock. Allow inlined functions to
-return into optimized function with inlined code.
-
-
-OSR? Most likely want to maintain mapping with original function, do OSR
-after inlining happened.
-
-
-Don't go with frame splitting approach. Instead, keep track of who's inlined
-at each call site for stack traces. Frame spilling can spill in a saner
-fashion, without resizing, without writing multiple return addresses.
-Functions with inlining can be thoroughly optimized.
 
 
 
 
-TODO: IR, i64 tag, support
+TODO: implement inlining
+- Maintain original call cont blocks
+- Keep track of who's inlined at each call site, for exception stack unwinding
+  - Map of call instrs to lists of functions
+- Produce mapping of pre-inlining stack slots to inlined slots, for OSR
+  - Map of stack indices to stack indices
 
-TODO: IR instr renaming for convenience
-- tags: i32, f64, rptr, hptr
+
+
+
+
+
+
+
+
+
+
+
+
+
+Inlining plan:
+- Implement inlining
+- Implement OSR
+- Implement new stack spilling scheme
+
+[DONE] TODO: IR, i64 tag, support
+
+[DONE] TODO: IR instr renaming for convenience
 - is_i32, is_f64, ...
-- set_i32, set_f64, set_str
-
-
-
+- set_i32, set_f64, set_str, ...
 
 [DONE] FIXME: crypto-aes, run-time error: undefined base in property read
 - array w in KeyExpansion should have been initialized with array, is not

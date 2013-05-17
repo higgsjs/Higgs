@@ -46,20 +46,80 @@ Inline a callee function at a call site
 */
 void inlineCall(IRInstr callSite, IRFunction callee)
 {
+    // Not support for new for now, avoids complicated return logic
     assert (callSite.opcode is &CALL);
+
+    // No support for inlinin within try blocks for now
     assert (callSite.excTarget is null);
 
+    // No support fo rfunctions with arguments
     assert (callee.ast.usesArguments == false);
 
+    // Get the caller function
     auto caller = callSite.block.fun;
     assert (caller !is null);
 
-    // Don't support new, avoids complicated return logic
 
-    // Don't inline if exception target set
+
+    // Map of pre-inlining local indices to post-inlining local indices 
+    // Only for locals of the caller function
+    LocalIdx[LocalIdx] localMap;
+
+    // TODO: extend caller frame, remap locals
+    // - Map of stack indices to stack indices
+
+
+
+
+
+
+
 
 
     // TODO: should copy caller blocks?
+    // TODO: reprocess blocks
+
+    IRBlock[IRBlock] blockMap;
+
+    // Copy the callee blocks
+    for (auto block = callee.firstBlock; block !is null; block = block.next)
+    {
+        auto newBlock = block.dup;
+        blockMap[block] = newBlock;
+        caller.addBlock(newBlock);
+    }
+
+    // For each copied block
+    foreach (orig, block; blockMap)
+    {
+        // For each instruction
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+            // TODO:
+            //  - Map of call instrs to lists of functions
+            if (instr.opcode.isCall)
+            {
+
+            }
+
+
+
+            // Translate local indices
+            // TODO
+
+
+
+
+            // Tanslate targets
+            if (instr.target)
+                instr.target = blockMap[instr.target];
+            if (instr.excTarget)
+                instr.excTarget = blockMap[instr.excTarget];
+        }
+    }
+
+
+
 
 
 
@@ -74,9 +134,6 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     // Can do many inlinings, extend stack frame a lot, compact at the end?
 
 
-    // ISSUE: stack frame inflation/spilling
-    // Probably want to keep track of callers, depth of inlining
-    // Don't want wildly different layout from separate frames w/o inlining
 
 
 
@@ -101,17 +158,6 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     // - move return value into ret slot
 
 
-
-
-
-    /*
-    TODO:
-
-    If we optimize an inlined function and remove temps/vars, need to somehow
-    know what temps map to which original function temps
-    - could use special pseudo-instr to manage this
-    - place pseudo-instr before possible bailout points: function calls, throw
-    */
 
 
 

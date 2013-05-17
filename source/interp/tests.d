@@ -167,31 +167,6 @@ void assertStr(Interp interp, string input, string strVal)
     );
 }
 
-void assertInt(string input, int32 intVal)
-{
-    assertInt(new Interp(), input, intVal);
-}
-
-void assertFloat(string input, double floatVal, double eps = 1E-4)
-{
-    assertFloat(new Interp(), input, floatVal, eps);
-}
-
-void assertBool(string input, bool boolVal)
-{
-    assertBool(new Interp(), input, boolVal);
-}
-
-void assertStr(string input, string strVal)
-{
-    assertStr(new Interp(), input, strVal);
-}
-
-void assertThrows(string input)
-{
-    assertThrows(new Interp(), input);
-}
-
 unittest
 {
     Word w0 = Word.int32v(0);
@@ -245,43 +220,59 @@ unittest
 
     interp.assertFloat("return 100 * '5'", 500);
     interp.assertFloat("return 100 / '5'", 20);
+
+    interp.assertBool("!true", false);
+    interp.assertBool("!false", true);
+    interp.assertBool("!0", true);
 }
 
 /// Global function calls
 unittest
 {
-    assertInt("return function () { return 9; } ()", 9);
-    assertInt("return function () { return 2 * 3; } ()", 6);
+    writefln("global functions");
+
+    auto interp = new Interp();
+
+    interp.assertInt("return function () { return 9; } ()", 9);
+    interp.assertInt("return function () { return 2 * 3; } ()", 6);
 
     // Calling null as a function
-    assertThrows("null()");
+    interp.assertThrows("null()");
 }
 
 /// Argument passing test
 unittest
 {
-    assertInt("return function (x) { return x + 3; } (5)", 8);
-    assertInt("return function (x, y) { return x - y; } (5, 2)", 3);
+    writefln("argument passing");
+
+    auto interp = new Interp();
+
+    interp.assertInt("return function (x) { return x + 3; } (5)", 8);
+    interp.assertInt("return function (x, y) { return x - y; } (5, 2)", 3);
 
     // Too many arguments
-    assertInt("return function (x) { return x + 1; } (5, 9)", 6);
+    interp.assertInt("return function (x) { return x + 1; } (5, 9)", 6);
 
     // Too few arguments
-    assertInt("return function (x, y) { return x - 1; } (4)", 3);
+    interp.assertInt("return function (x, y) { return x - 1; } (4)", 3);
 }
 
 /// Local variable assignment
 unittest
 {
-    assertInt("return function () { var x = 4; return x; } ()", 4);
-    assertInt("return function () { var x = 0; return x++; } ()", 0);
-    assertInt("return function () { var x = 0; return ++x; } ()", 1);
-    assertInt("return function () { var x = 0; return x--; } ()", 0);
-    assertInt("return function () { var x = 0; return --x; } ()", -1);
-    assertInt("return function () { var x = 0; ++x; return ++x; } ()", 2);
-    assertInt("return function () { var x = 0; return x++ + 1; } ()", 1);
-    assertInt("return function () { var x = 1; return x = x++ % 2; } ()", 1);
-    assertBool("return function () { var x; return (x === undefined); } ()", true);
+    writefln("local variables");
+
+    auto interp = new Interp();
+
+    interp.assertInt("return function () { var x = 4; return x; } ()", 4);
+    interp.assertInt("return function () { var x = 0; return x++; } ()", 0);
+    interp.assertInt("return function () { var x = 0; return ++x; } ()", 1);
+    interp.assertInt("return function () { var x = 0; return x--; } ()", 0);
+    interp.assertInt("return function () { var x = 0; return --x; } ()", -1);
+    interp.assertInt("return function () { var x = 0; ++x; return ++x; } ()", 2);
+    interp.assertInt("return function () { var x = 0; return x++ + 1; } ()", 1);
+    interp.assertInt("return function () { var x = 1; return x = x++ % 2; } ()", 1);
+    interp.assertBool("return function () { var x; return (x === undefined); } ()", true);
 }
 
 /// Comparison and branching
@@ -342,7 +333,9 @@ unittest
 {
     writefln("recursion");
 
-    assertInt(
+    auto interp = new Interp();
+
+    interp.assertInt(
         "
         return function (n)
         {
@@ -360,7 +353,7 @@ unittest
         24
     );
 
-    assertInt(
+    interp.assertInt(
         "
         return function (n)
         {
@@ -384,7 +377,9 @@ unittest
 {
     writefln("loops");
 
-    assertInt(
+    auto interp = new Interp();
+
+    interp.assertInt(
         "
         return function ()
         {
@@ -396,7 +391,7 @@ unittest
         10
     );
 
-    assertInt(
+    interp.assertInt(
         "
         return function ()
         {
@@ -414,7 +409,7 @@ unittest
         5
     );
 
-    assertInt(
+    interp.assertInt(
         "
         return function ()
         {
@@ -434,7 +429,7 @@ unittest
         30
     );
 
-    assertInt(
+    interp.assertInt(
         "
         return function ()
         {
@@ -446,7 +441,7 @@ unittest
         9
     );
 
-    assertInt(
+    interp.assertInt(
         "
         return function ()
         {
@@ -461,7 +456,11 @@ unittest
 /// Switch statement
 unittest
 {
-    assertInt(
+    writefln("switch");
+
+    auto interp = new Interp();
+
+    interp.assertInt(
         "
         switch (0)
         {
@@ -471,7 +470,7 @@ unittest
         0
     );
 
-    assertInt(
+    interp.assertInt(
         "
         switch (0)
         {
@@ -483,7 +482,7 @@ unittest
         1
     );
 
-    assertInt(
+    interp.assertInt(
         "
         switch (3)
         {
@@ -495,7 +494,7 @@ unittest
         0
     );
 
-    assertInt(
+    interp.assertInt(
         "
         var v;
         switch (0)
@@ -510,7 +509,7 @@ unittest
         6
     );
 
-    assertInt(
+    interp.assertInt(
         "
         var v;
         switch (3)
@@ -525,7 +524,7 @@ unittest
         9
     );
 
-    assertInt(
+    interp.assertInt(
         "
         var v;
         switch (2)
@@ -542,22 +541,23 @@ unittest
 /// Strings
 unittest
 {
-    assertStr("return 'foo'", "foo");
-    assertStr("return 'foo' + 'bar'", "foobar");
-    assertStr("return 'foo' + 1", "foo1");
-    assertStr("return 'foo' + true", "footrue");
-    assertInt("return 'foo'? 1:0", 1);
-    assertInt("return ''? 1:0", 0);
-    assertBool("return ('foo' === 'foo')", true);
-    assertBool("return ('foo' === 'f' + 'oo')", true);
-    assertBool("return ('bar' == 'bar')", true);
-    assertBool("return ('bar' != 'b')", true);
-    assertBool("return ('bar' != 'bar')", false);
-    assertBool("!true", false);
-    assertBool("!false", true);
-    assertBool("!0", true);
+    writefln("strings");
 
-    assertStr(
+    auto interp = new Interp();
+
+    interp.assertStr("return 'foo'", "foo");
+    interp.assertStr("return 'foo' + 'bar'", "foobar");
+    interp.assertStr("return 'foo' + 1", "foo1");
+    interp.assertStr("return 'foo' + true", "footrue");
+    interp.assertInt("return 'foo'? 1:0", 1);
+    interp.assertInt("return ''? 1:0", 0);
+    interp.assertBool("return ('foo' === 'foo')", true);
+    interp.assertBool("return ('foo' === 'f' + 'oo')", true);
+    interp.assertBool("return ('bar' == 'bar')", true);
+    interp.assertBool("return ('bar' != 'b')", true);
+    interp.assertBool("return ('bar' != 'bar')", false);
+
+    interp.assertStr(
         "
         return function ()
         {
@@ -576,14 +576,18 @@ unittest
 // Typeof operator
 unittest
 {
-    assertStr("return typeof 'foo'", "string");
-    assertStr("return typeof 1", "number");
-    assertStr("return typeof true", "boolean");
-    assertStr("return typeof false", "boolean");
-    assertStr("return typeof null", "object");
-    assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
-    assertStr("x = 3; return typeof x;", "number");
-    assertStr("delete x; return typeof x;", "undefined");
+    writefln("typeof");
+
+    auto interp = new Interp();
+
+    interp.assertStr("return typeof 'foo'", "string");
+    interp.assertStr("return typeof 1", "number");
+    interp.assertStr("return typeof true", "boolean");
+    interp.assertStr("return typeof false", "boolean");
+    interp.assertStr("return typeof null", "object");
+    interp.assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
+    interp.assertStr("x = 3; return typeof x;", "number");
+    interp.assertStr("delete x; return typeof x;", "undefined");
 }
 
 /// Global scope, global object
@@ -591,23 +595,25 @@ unittest
 {
     writefln("global object");
 
-    assertBool("var x; return !x", true);
-    assertInt("a = 1; return a;", 1);
-    assertInt("var a; a = 1; return a;", 1);
-    assertInt("var a = 1; return a;", 1);
-    assertInt("a = 1; b = 2; return a+b;", 3);
-    assertInt("var x=3,y=5; return x;", 3);
+    auto interp = new Interp();
 
-    assertInt("return a = 1,2;", 2);
-    assertInt("a = 1,2; return a;", 1);
-    assertInt("a = (1,2); return a;", 2);
+    interp.assertBool("var x; return !x", true);
+    interp.assertInt("a = 1; return a;", 1);
+    interp.assertInt("var a; a = 1; return a;", 1);
+    interp.assertInt("var a = 1; return a;", 1);
+    interp.assertInt("a = 1; b = 2; return a+b;", 3);
+    interp.assertInt("var x=3,y=5; return x;", 3);
 
-    assertInt("f = function() { return 7; }; return f();", 7);
-    assertInt("function f() { return 9; }; return f();", 9);
-    assertInt("(function () {}); return 0;", 0);
-    assertInt("a = 7; function f() { return this.a; }; return f();", 7);
+    interp.assertInt("return a = 1,2;", 2);
+    interp.assertInt("a = 1,2; return a;", 1);
+    interp.assertInt("a = (1,2); return a;", 2);
 
-    assertInt(
+    interp.assertInt("f = function() { return 7; }; return f();", 7);
+    interp.assertInt("function f() { return 9; }; return f();", 9);
+    interp.assertInt("(function () {}); return 0;", 0);
+    interp.assertInt("a = 7; function f() { return this.a; }; return f();", 7);
+
+    interp.assertInt(
         "
         function fib(n)
         {
@@ -623,10 +629,9 @@ unittest
     );
 
     // Unresolved global
-    assertThrows("foo");
+    interp.assertThrows("foo");
 
     // Many global variables
-    Interp interp;
     interp = new Interp();
     interp.load("programs/many_globals/many_globals.js");
     interp = new Interp();
@@ -636,41 +641,49 @@ unittest
 /// In-place operators
 unittest
 {
-    assertInt("a = 1; a += 2; return a;", 3);
-    assertInt("a = 1; a += 4; a -= 3; return a;", 2);
-    assertInt("a = 1; b = 3; a += b; return a;", 4);
-    assertInt("a = 1; b = 3; return a += b;", 4);
-    assertInt("a = 3; a -= 2; return a", 1);
-    assertInt("a = 5; a %= 3; return a", 2);
-    assertInt("function f() { var a = 0; a += 1; a += 1; return a; }; return f();", 2);
-    assertInt("function f() { var a = 0; a += 2; a *= 3; return a; }; return f();", 6);
+    writefln("in-place operators");
+
+    auto interp = new Interp();
+
+    interp.assertInt("a = 1; a += 2; return a;", 3);
+    interp.assertInt("a = 1; a += 4; a -= 3; return a;", 2);
+    interp.assertInt("a = 1; b = 3; a += b; return a;", 4);
+    interp.assertInt("a = 1; b = 3; return a += b;", 4);
+    interp.assertInt("a = 3; a -= 2; return a", 1);
+    interp.assertInt("a = 5; a %= 3; return a", 2);
+    interp.assertInt("function f() { var a = 0; a += 1; a += 1; return a; }; return f();", 2);
+    interp.assertInt("function f() { var a = 0; a += 2; a *= 3; return a; }; return f();", 6);
 }
 
 /// Object literals, property access, method calls
 unittest
 {
-    assertInt("{}; return 1;", 1);
-    assertInt("{x: 7}; return 1;", 1);
-    assertInt("o = {}; o.x = 7; return 1;", 1);
-    assertInt("o = {}; o.x = 7; return o.x;", 7);
-    assertInt("o = {x: 9}; return o.x;", 9);
-    assertInt("o = {x: 9}; o.y = 1; return o.x + o.y;", 10);
-    assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
-    assertInt("o = {x: 5}; return o.y? 1:0;", 0);
+    writefln("objects and properties");
 
-    assertBool("o = {x: 5}; return 'x' in o;", true);
-    assertBool("o = {x: 5}; return 'k' in o;", false);
+    auto interp = new Interp();
+
+    interp.assertInt("{}; return 1;", 1);
+    interp.assertInt("{x: 7}; return 1;", 1);
+    interp.assertInt("o = {}; o.x = 7; return 1;", 1);
+    interp.assertInt("o = {}; o.x = 7; return o.x;", 7);
+    interp.assertInt("o = {x: 9}; return o.x;", 9);
+    interp.assertInt("o = {x: 9}; o.y = 1; return o.x + o.y;", 10);
+    interp.assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
+    interp.assertInt("o = {x: 5}; return o.y? 1:0;", 0);
+
+    interp.assertBool("o = {x: 5}; return 'x' in o;", true);
+    interp.assertBool("o = {x: 5}; return 'k' in o;", false);
 
     // Delete operator
-    assertBool("o = {x: 5}; delete o.x; return 'x' in o;", false);
-    assertBool("o = {x: 5}; delete o.x; return !o.x;", true);
-    assertThrows("a = 5; delete a; a;");
+    interp.assertBool("o = {x: 5}; delete o.x; return 'x' in o;", false);
+    interp.assertBool("o = {x: 5}; delete o.x; return !o.x;", true);
+    interp.assertThrows("a = 5; delete a; a;");
 
     // Function object property
-    assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
+    interp.assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
 
     // Method call
-    assertInt("o = {x:7, m:function() {return this.x;}}; return o.m();", 7);
+    interp.assertInt("o = {x:7, m:function() {return this.x;}}; return o.m();", 7);
 }
 
 /// New operator, prototype chain
@@ -678,16 +691,18 @@ unittest
 {
     writefln("new operator");
 
-    assertInt("function f() {}; o = new f(); return 0", 0);
-    assertInt("function f() {}; o = new f(); return o? 1:0", 1);
-    assertInt("function f() { g = this; }; o = new f(); return g? 1:0", 1);
-    assertInt("function f() { this.x = 3 }; o = new f(); return o.x", 3);
-    assertInt("function f() { return {y:7}; }; o = new f(); return o.y", 7);
+    auto interp = new Interp();
 
-    assertInt("function f() {}; return f.prototype? 1:0", 1);
-    assertInt("function f() {}; f.prototype.x = 9; return f.prototype.x", 9);
+    interp.assertInt("function f() {}; o = new f(); return 0", 0);
+    interp.assertInt("function f() {}; o = new f(); return o? 1:0", 1);
+    interp.assertInt("function f() { g = this; }; o = new f(); return g? 1:0", 1);
+    interp.assertInt("function f() { this.x = 3 }; o = new f(); return o.x", 3);
+    interp.assertInt("function f() { return {y:7}; }; o = new f(); return o.y", 7);
 
-    assertBool(
+    interp.assertInt("function f() {}; return f.prototype? 1:0", 1);
+    interp.assertInt("function f() {}; f.prototype.x = 9; return f.prototype.x", 9);
+
+    interp.assertBool(
         "
         function f() {}
         a = new f();
@@ -698,7 +713,7 @@ unittest
         true
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function f() {}
         a = new f();
@@ -710,7 +725,7 @@ unittest
         4
     );
 
-    assertBool(
+    interp.assertBool(
         "
         function f() {}
         f.prototype.y = 3;
@@ -722,7 +737,7 @@ unittest
         true
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function f() {}
         f.prototype.x = 9;
@@ -732,7 +747,7 @@ unittest
         9
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function f() {}
         f.prototype.x = 9;
@@ -743,7 +758,7 @@ unittest
         9
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function f() {}
         f.prototype.x = 9;
@@ -758,35 +773,43 @@ unittest
 
 /// Array literals, array operations
 unittest
-{   
-    assertInt("a = []; return 0", 0);
-    assertInt("a = [1]; return 0", 0);
-    assertInt("a = [1,2]; return 0", 0);
-    assertInt("a = [1,2]; return a[0]", 1);
-    assertInt("a = [1,2]; a[0] = 3; return a[0]", 3);
-    assertInt("a = [1,2]; a[3] = 4; return a[1]", 2);
-    assertInt("a = [1,2]; a[3] = 4; return a[3]", 4);
-    assertInt("a = [1,2]; return a[3]? 1:0;", 0);
-    assertInt("a = [1337]; return a['0'];", 1337);
-    assertInt("a = []; a['0'] = 55; return a[0];", 55);
+{
+    writefln("arrays");
+
+    auto interp = new Interp();
+ 
+    interp.assertInt("a = []; return 0", 0);
+    interp.assertInt("a = [1]; return 0", 0);
+    interp.assertInt("a = [1,2]; return 0", 0);
+    interp.assertInt("a = [1,2]; return a[0]", 1);
+    interp.assertInt("a = [1,2]; a[0] = 3; return a[0]", 3);
+    interp.assertInt("a = [1,2]; a[3] = 4; return a[1]", 2);
+    interp.assertInt("a = [1,2]; a[3] = 4; return a[3]", 4);
+    interp.assertInt("a = [1,2]; return a[3]? 1:0;", 0);
+    interp.assertInt("a = [1337]; return a['0'];", 1337);
+    interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
 }
 
 /// Inline IR
 unittest
 {
-    assertInt("return $ir_add_i32(5,3);", 8);
-    assertInt("return $ir_sub_i32(5,3);", 2);
-    assertInt("return $ir_mul_i32(5,3);", 15);
-    assertInt("return $ir_div_i32(5,3);", 1);
-    assertInt("return $ir_mod_i32(5,3);", 2);
-    assertInt("return $ir_eq_i32(3,3)? 1:0;", 1);
-    assertInt("return $ir_eq_i32(3,2)? 1:0;", 0);
-    assertInt("return $ir_ne_i32(3,5)? 1:0;", 1);
-    assertInt("return $ir_ne_i32(3,3)? 1:0;", 0);
-    assertInt("return $ir_lt_i32(3,5)? 1:0;", 1);
-    assertInt("return $ir_ge_i32(5,5)? 1:0;", 1);
+    writefln("inline IR");
 
-    assertInt(
+    auto interp = new Interp();
+
+    interp.assertInt("return $ir_add_i32(5,3);", 8);
+    interp.assertInt("return $ir_sub_i32(5,3);", 2);
+    interp.assertInt("return $ir_mul_i32(5,3);", 15);
+    interp.assertInt("return $ir_div_i32(5,3);", 1);
+    interp.assertInt("return $ir_mod_i32(5,3);", 2);
+    interp.assertInt("return $ir_eq_i32(3,3)? 1:0;", 1);
+    interp.assertInt("return $ir_eq_i32(3,2)? 1:0;", 0);
+    interp.assertInt("return $ir_ne_i32(3,5)? 1:0;", 1);
+    interp.assertInt("return $ir_ne_i32(3,3)? 1:0;", 0);
+    interp.assertInt("return $ir_lt_i32(3,5)? 1:0;", 1);
+    interp.assertInt("return $ir_ge_i32(5,5)? 1:0;", 1);
+
+    interp.assertInt(
         "
         function foo()
         {
@@ -801,7 +824,7 @@ unittest
         3
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function foo()
         {
@@ -816,7 +839,7 @@ unittest
         -1
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function foo()
         {
@@ -831,7 +854,7 @@ unittest
         -1
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function foo()
         {
@@ -846,7 +869,7 @@ unittest
         16
     );
 
-    assertInt(
+    interp.assertInt(
         "
         var ptr = $ir_heap_alloc(16);
         $ir_store_u8(ptr, 0, 77);
@@ -855,7 +878,7 @@ unittest
         77
     );
 
-    assertInt(
+    interp.assertInt(
         "
         var link = $ir_make_link(0);
         $ir_set_link(link, 133);
@@ -864,7 +887,7 @@ unittest
         133
     );
 
-    assertInt(
+    interp.assertInt(
         "
         var sum = 0;
         for (var i = 0; i < 10; ++i)
@@ -956,7 +979,9 @@ unittest
 {
     writefln("closures");
 
-    assertInt(
+    auto interp = new Interp();
+
+    interp.assertInt(
         "
         function foo(x) { return function() { return x; } }
         f = foo(5);
@@ -965,7 +990,7 @@ unittest
         5
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function foo(x) { var y = x + 1; return function() { return y; } }
         f = foo(5);
@@ -974,7 +999,7 @@ unittest
         6
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function foo(x) { return function() { return x++; } }
         f = foo(5);
@@ -984,7 +1009,7 @@ unittest
         6
     );
 
-    assertInt(
+    interp.assertInt(
         "
         function foo(x)
         {
@@ -1008,84 +1033,106 @@ unittest
 /// Stdlib Math library
 unittest
 {
-    writefln("math");
+    writefln("stdlib/math");
 
-    assertInt("Math.max(1,2);", 2);
-    assertInt("Math.max(5,1,2);", 5);
-    assertInt("Math.min(5,-1,2);", -1);
+    auto interp = new Interp();
 
-    assertFloat("Math.cos(0)", 1);
-    assertFloat("Math.cos(Math.PI)", -1);
-    assertInt("isNaN(Math.cos('f'))? 1:0", 1);
+    interp.assertInt("Math.max(1,2);", 2);
+    interp.assertInt("Math.max(5,1,2);", 5);
+    interp.assertInt("Math.min(5,-1,2);", -1);
 
-    assertFloat("Math.sin(0)", 0);
-    assertFloat("Math.sin(Math.PI)", 0);
+    interp.assertFloat("Math.cos(0)", 1);
+    interp.assertFloat("Math.cos(Math.PI)", -1);
+    interp.assertInt("isNaN(Math.cos('f'))? 1:0", 1);
 
-    assertFloat("Math.sqrt(4)", 2);
+    interp.assertFloat("Math.sin(0)", 0);
+    interp.assertFloat("Math.sin(Math.PI)", 0);
 
-    assertInt("Math.pow(2, 0)", 1);
-    assertInt("Math.pow(2, 4)", 16);
-    assertInt("Math.pow(2, 8)", 256);
+    interp.assertFloat("Math.sqrt(4)", 2);
 
-    assertFloat("Math.log(Math.E)", 1);
-    assertFloat("Math.log(1)", 0);
+    interp.assertInt("Math.pow(2, 0)", 1);
+    interp.assertInt("Math.pow(2, 4)", 16);
+    interp.assertInt("Math.pow(2, 8)", 256);
 
-    assertFloat("Math.exp(0)", 1);
+    interp.assertFloat("Math.log(Math.E)", 1);
+    interp.assertFloat("Math.log(1)", 0);
 
-    assertFloat("Math.ceil(1.5)", 2);
-    assertInt("Math.ceil(2)", 2);
+    interp.assertFloat("Math.exp(0)", 1);
 
-    assertFloat("Math.floor(1.5)", 1);
-    assertInt("Math.floor(2)", 2);
+    interp.assertFloat("Math.ceil(1.5)", 2);
+    interp.assertInt("Math.ceil(2)", 2);
 
-    assertBool("r = Math.random(); return r >= 0 && r < 1;", true);
-    assertBool("r0 = Math.random(); r1 = Math.random(); return r0 !== r1;", true);
+    interp.assertFloat("Math.floor(1.5)", 1);
+    interp.assertInt("Math.floor(2)", 2);
+
+    interp.assertBool("r = Math.random(); return r >= 0 && r < 1;", true);
+    interp.assertBool("r0 = Math.random(); r1 = Math.random(); return r0 !== r1;", true);
 }
 
 /// Stdlib Object library
 unittest
 {
-    assertBool("o = {k:3}; return o.hasOwnProperty('k');", true);
-    assertBool("o = {k:3}; p = Object.create(o); return p.hasOwnProperty('k')", false);
-    assertBool("o = {k:3}; p = Object.create(o); return 'k' in p;", true);
+    writefln("stdlib/object");
+
+    auto interp = new Interp();
+
+    interp.assertBool("o = {k:3}; return o.hasOwnProperty('k');", true);
+    interp.assertBool("o = {k:3}; p = Object.create(o); return p.hasOwnProperty('k')", false);
+    interp.assertBool("o = {k:3}; p = Object.create(o); return 'k' in p;", true);
 }
 
 /// Stdlib Number library
 unittest
 {
-    assertInt("Number(10)", 10);
-    assertInt("Number(true)", 1);
-    assertInt("Number(null)", 0);
+    writefln("stdlib/number");
 
-    assertStr("(10).toString()", "10");
+    auto interp = new Interp();
+
+    interp.assertInt("Number(10)", 10);
+    interp.assertInt("Number(true)", 1);
+    interp.assertInt("Number(null)", 0);
+
+    interp.assertStr("(10).toString()", "10");
 }
 
 /// Stdlib Array library
 unittest
 {
-    assertInt("a = Array(10); return a.length;", 10);
-    assertInt("a = Array(1,2,3); return a.length;", 3);
-    assertStr("([0,1,2]).toString()", "0,1,2");
+    writefln("stdlib/array");
+
+    auto interp = new Interp();
+
+    interp.assertInt("a = Array(10); return a.length;", 10);
+    interp.assertInt("a = Array(1,2,3); return a.length;", 3);
+    interp.assertStr("([0,1,2]).toString()", "0,1,2");
 }
 
 /// Stdlib String library
 unittest
 {
-    assertStr("String(10)", "10");
-    assertStr("String(1.5)", "1.5");
-    assertStr("String([0,1,2])", "0,1,2");
+    writefln("stdlib/string");
 
-    assertStr("'foobar'.substring(0,3)", "foo");
+    auto interp = new Interp();
 
-    assertInt("'f,o,o'.split(',').length", 3);
+    interp.assertStr("String(10)", "10");
+    interp.assertStr("String(1.5)", "1.5");
+    interp.assertStr("String([0,1,2])", "0,1,2");
+
+    interp.assertStr("'foobar'.substring(0,3)", "foo");
+
+    interp.assertInt("'f,o,o'.split(',').length", 3);
 }
 
 /// Stdlib global functions
 unittest
 {
-    assertInt("parseInt(10)", 10);
-    assertInt("parseInt(-1)", -1);
-    assertBool("isNaN(parseInt('zux'))", true);
+    writefln("stdlib/global");
+
+    auto interp = new Interp();
+
+    interp.assertInt("parseInt(10)", 10);
+    interp.assertInt("parseInt(-1)", -1);
+    interp.assertBool("isNaN(parseInt('zux'))", true);
 }
 
 /// Exceptions
