@@ -44,6 +44,7 @@ import ir.ir;
 /**
 Inline a callee function at a call site
 */
+// TODO: return localMap
 void inlineCall(IRInstr callSite, IRFunction callee)
 {
     // Not support for new for now, avoids complicated return logic
@@ -59,26 +60,41 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto caller = callSite.block.fun;
     assert (caller !is null);
 
+    // No support for argument count mismatch
+    auto numArgs = callSite.args.length - 2;
+    assert (numArgs == callee.numParams);
 
 
-    // Map of pre-inlining local indices to post-inlining local indices 
-    // Only for locals of the caller function
+
+    //
+    // Stack-frame remapping
+    //
+
+    // Map of pre-inlining local indices to post-inlining indices 
+    // Only for locals of the caller function, used for on-stack replacement
     LocalIdx[LocalIdx] localMap;
 
-    // TODO: extend caller frame, remap locals
-    // - Map of stack indices to stack indices
+    // Remap the caller locals to add callee locals
+    for (LocalIdx i = 0; i < caller.numLocals; ++i)
+        localMap[i] = i + callee.numLocals;
+
+    // Remap the caller identifier
+    foreach (id, local; caller.cellMap)
+        caller.cellMap[id] = local + callee.numLocals;
+    foreach (id, local; caller.localMap)
+        caller.localMap[id] = local + callee.numLocals;
+
+    // Extend the caller stack frame for the callee
+    caller.numLocals += callee.numLocals;
 
 
 
 
+    //
+    // Callee basic block copying
+    //
 
-
-
-
-
-    // TODO: should copy caller blocks?
-    // TODO: reprocess blocks
-
+    // Map of callee blocks to copied blocks
     IRBlock[IRBlock] blockMap;
 
     // Copy the callee blocks
@@ -95,26 +111,41 @@ void inlineCall(IRInstr callSite, IRFunction callee)
         // For each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            // TODO:
-            //  - Map of call instrs to lists of functions
-            if (instr.opcode.isCall)
-            {
-
-            }
-
-
-
             // Translate local indices
-            // TODO
-
-
-
+            foreach (argIdx, arg; instr.args)
+                if (instr.opcode.getArgType(argIdx) == OpArg.LOCAL)
+                    instr.args[argIdx].localIdx = localMap[instr.args[argIdx].localIdx];
 
             // Tanslate targets
             if (instr.target)
                 instr.target = blockMap[instr.target];
             if (instr.excTarget)
                 instr.excTarget = blockMap[instr.excTarget];
+
+            // If this is a call instruction
+            if (instr.opcode.isCall)
+            {
+                // Add the callee function to the list of
+                // inlined functions at this call site
+                caller.inlineMap[instr] ~= callee;
+            }
+
+            // If this is a return instruction
+            if (instr.opcode == &RET)
+            {
+                // Remove the return instruction
+                block.remInstr(instr);
+
+                // Move the return value
+                block.addInstr(new IRInstr(
+                    &MOVE,
+                    instr.args[0].localIdx,
+                    localMap[callSite.outSlot]
+                ));
+
+                // Jump to the call continuation block
+                block.addInstr(IRInstr.jump(callSite.target));
+            }
         }
     }
 
@@ -125,44 +156,54 @@ void inlineCall(IRInstr callSite, IRFunction callee)
 
 
 
-    // TODO: extend caller frame to store all callee locals
-    // - rename caller locals (make offset higher)
-    // ISSUE: inlining multiple functions, don't want to add more locals each time
-    // Can we pre-extend the caller frame? Not very convenient
-    // Could extend at each inlining, compact frame in separate pass
-    // - compute liveness, perform allocation/coloring
-    // Can do many inlinings, extend stack frame a lot, compact at the end?
 
 
+    //
+    // Callee test and call patching
+    //
 
+    // Move the call instruction to a new basic block
+    auto callBlock = callSite.block;
+    auto regCall = caller.newBlock("call_reg");
+    callBlock.remInstr(callSite);
+    regCall.addInstr(callSite);
 
+    auto entryBlock = blockMap[callee.entryBlock];
 
-
-
-    // TODO: test for callee before jumping
+    // TODO
     // Need to test that the IRFunction matches
     // clos_get_fptr? Don't want to add another function call, dude
     // - need to load it directly from the closure, need fixed offset
     // eq_rawptr
+    auto testInstr = callBlock.addInstr(new IRInstr(&EQ_REFPTR));
+    callBlock.addInstr(IRInstr.ifTrue(testInstr.outSlot, entryBlock, regCall));
 
 
 
+    // Copy the visible arguments
+    foreach (argIdx, arg; callSite.args[2..$])
+    {
+        auto dstIdx = cast(LocalIdx)(callee.numLocals - NUM_HIDDEN_ARGS + argIdx - 2);
+        entryBlock.addInstrBefore(
+            new IRInstr(&MOVE, localMap[arg.localIdx], dstIdx),
+            entryBlock.firstInstr
+        );
+    }
 
-    // TODO: translate the return slot
-    auto retSlot = callSite.outSlot;
+    // Copy the closure and this arguments
+    entryBlock.addInstrBefore(
+        new IRInstr(&MOVE, localMap[callSite.args[0].localIdx], callee.closSlot),
+        entryBlock.firstInstr
+    );
+    entryBlock.addInstrBefore(
+        new IRInstr(&MOVE, localMap[callSite.args[1].localIdx], callee.thisSlot),
+        entryBlock.firstInstr
+    );
 
-
-    // TODO: copy callee code into caller
-    // - move args into locals
-    // - write undef into missing args
-    // - move return value into ret slot
-
-
-
-
-
-
-
-
+    // Set the argument count
+    entryBlock.addInstrBefore(
+        IRInstr.intCst(cast(uint)numArgs, callee.argcSlot),
+        entryBlock.firstInstr
+    );
 }
 

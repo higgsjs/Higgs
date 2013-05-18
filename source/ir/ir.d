@@ -113,6 +113,9 @@ class IRFunction : IdObject
     /// Callee profiling information (filled by interpreter)
     uint64_t[IRFunction][IRInstr] callCounts;  
 
+    /// Map of call instructions to list of inlined functions
+    IRFunction[][IRInstr] inlineMap;
+
     /// Compiled code block
     CodeBlock codeBlock = null;
 

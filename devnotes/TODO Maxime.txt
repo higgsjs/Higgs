@@ -66,6 +66,13 @@ TODO: improved interpreter frame spill scheme
     - Spill fun
     - Interp call cont
     - JIT fast entry point
+- Is this needed right now, is this orthogonal to inlining?
+
+TODO: benchmarking (performance testing) JS script
+- benchmark.js
+- should do multiple runs (parameterizable numRuns?)
+- use load command, list of benchmarks
+- try to make it compatible with V8 as-is
 
 TODO: OSR
 - Need to produce mapping of pre-inlining stack slots to inlined slots
@@ -74,10 +81,9 @@ TODO: OSR
 return into optimized function after OSR
 - JIT functions might not be spilled at OSR time, must trigger spilling
 
+TODO: stack-frame compaction
 
-
-
-
+TODO: test inlining with functions not currently on stack (pre-OSR)
 
 TODO: implement inlining
 - Maintain original call cont blocks
@@ -89,6 +95,7 @@ TODO: implement inlining
 
 
 
+TODO: change function layout to contain object
 
 
 
@@ -98,11 +105,6 @@ TODO: implement inlining
 
 
 
-
-Inlining plan:
-- Implement inlining
-- Implement OSR
-- Implement new stack spilling scheme
 
 [DONE] TODO: IR, i64 tag, support
 
