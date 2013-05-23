@@ -59,7 +59,8 @@ Lazily allocate a class object
 refptr getClass(
     Interp interp, 
     refptr classPtr, 
-    uint32_t classInitSize
+    uint32_t classInitSize,
+    uint32_t numRsvProps
 )
 {
     // If the class is not yet allocated
@@ -70,6 +71,9 @@ refptr getClass(
 
         // TODO: allocate class IDs
         class_set_id(classPtr, 0);
+
+        // Set the number of pre-reserved property slots
+        class_set_num_props(classPtr, numRsvProps);
     }    
 
     return classPtr;
@@ -89,7 +93,12 @@ refptr newObj(
     // Lazily allocate a class object
     auto classObj = GCRoot(
         interp,
-        getClass(interp, classPtr, classInitSize)
+        getClass(
+            interp, 
+            classPtr, 
+            classInitSize,
+            0
+        )
     );
 
     auto classNumProps = class_get_num_props(classObj.ptr);
@@ -120,9 +129,15 @@ refptr newClos(
     auto protoObj = GCRoot(interp, protoPtr);
 
     // Lazily allocate a class object
+    // We reserve one hidden property for the function pointer
     auto classObj = GCRoot(
         interp,
-        getClass(interp, classPtr, classInitSize)
+        getClass(
+            interp, 
+            classPtr, 
+            classInitSize,
+            1
+        )
     );
 
     // Register this function in the function reference set
@@ -139,11 +154,36 @@ refptr newClos(
     obj_set_class(objPtr, classObj.ptr);
     obj_set_proto(objPtr, protoObj.ptr);
 
+    // TODO: remove meeee
+    // Set the function pointer 
+    //clos_set_fptr(objPtr, cast(rawptr)fun);
+
     // Set the function pointer
-    clos_set_fptr(objPtr, cast(rawptr)fun);
+    setClosFun(objPtr, fun);
 
     return objPtr;
 }
+
+/**
+Set the function pointer on a closure object
+*/
+void setClosFun(refptr closPtr, IRFunction fun)
+{
+    // Write the function pointer in the first property slot
+    clos_set_word(closPtr, 0, cast(uint64_t)cast(rawptr)fun);
+    clos_set_type(closPtr, 0, cast(uint8)Type.FUNPTR);
+}
+
+/**
+Get the function pointer from a closure object
+*/
+IRFunction getClosFun(refptr closPtr)
+{
+    return cast(IRFunction)cast(refptr)clos_get_word(closPtr, 0);
+}
+
+/// Static offset for the function pointer in a closure object
+immutable size_t CLOS_OFS_FPTR = clos_ofs_word(null, 0);
 
 /**
 Find or allocate the property index for a given property name string
@@ -380,7 +420,6 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
             case LAYOUT_CLOS:
             auto numCells = clos_get_num_cells(obj.ptr);
             newObj = clos_alloc(interp, objCap+1, numCells);
-            clos_set_fptr(newObj, clos_get_fptr(obj.ptr));
             for (uint32_t i = 0; i < numCells; ++i)
                 clos_set_cell(newObj, i, clos_get_cell(obj.ptr, i));
             break;

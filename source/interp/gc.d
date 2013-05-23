@@ -44,6 +44,7 @@ import ir.ir;
 import interp.layout;
 import interp.interp;
 import interp.string;
+import interp.object;
 import util.misc;
 
 /**
@@ -417,7 +418,7 @@ refptr gcForward(Interp interp, refptr ptr)
     // If this is a closure
     if (obj_get_header(ptr) == LAYOUT_CLOS)
     {
-        auto fun = cast(IRFunction)clos_get_fptr(ptr);
+        auto fun = getClosFun(ptr);
         visitFun(interp, fun);
     }
 

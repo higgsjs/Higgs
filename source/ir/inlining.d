@@ -40,12 +40,12 @@ module ir.inlining;
 import std.stdio;
 import std.string;
 import ir.ir;
+import interp.object;
 
 /**
 Inline a callee function at a call site
 */
-// TODO: return localMap
-void inlineCall(IRInstr callSite, IRFunction callee)
+LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
 {
     // Not support for new for now, avoids complicated return logic
     assert (callSite.opcode is &CALL);
@@ -162,21 +162,45 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     // Callee test and call patching
     //
 
-    // Move the call instruction to a new basic block
+    // Move the call instruction to a new basic block,
+    // This will be our fallback (uninlined call)
     auto callBlock = callSite.block;
     auto regCall = caller.newBlock("call_reg");
     callBlock.remInstr(callSite);
     regCall.addInstr(callSite);
 
+    // Load the function pointer from the closure object
+    auto ofsInstr = callBlock.addInstr(IRInstr.intCst(callee.closSlot, CLOS_OFS_FPTR));
+    auto loadInstr = callBlock.addInstr(
+        new IRInstr(
+            &LOAD_RAWPTR, 
+            callee.closSlot, 
+            localMap[callSite.args[0].localIdx], 
+            ofsInstr.outSlot
+        )
+    );
+
+    // Set a constant for the function pointer
+    auto ptrInstr = callBlock.addInstr(new IRInstr(&SET_RAWPTR));
+    ptrInstr.outSlot = callee.thisSlot;
+    ptrInstr.args.length = 1;
+    ptrInstr.args[0].ptrVal = cast(ubyte*)callee;
+
+    // Get the entry block for the callee function
     auto entryBlock = blockMap[callee.entryBlock];
 
-    // TODO
-    // Need to test that the IRFunction matches
-    // clos_get_fptr? Don't want to add another function call, dude
-    // - need to load it directly from the closure, need fixed offset
-    // eq_rawptr
-    auto testInstr = callBlock.addInstr(new IRInstr(&EQ_REFPTR));
+    // If the function pointer matches, jump to the callee's entry
+    auto testInstr = callBlock.addInstr(
+        new IRInstr(
+            &EQ_RAWPTR,
+            loadInstr.outSlot,
+            ptrInstr.outSlot
+        )
+    );
     callBlock.addInstr(IRInstr.ifTrue(testInstr.outSlot, entryBlock, regCall));
+
+
+
 
 
 
@@ -205,5 +229,8 @@ void inlineCall(IRInstr callSite, IRFunction callee)
         IRInstr.intCst(cast(uint)numArgs, callee.argcSlot),
         entryBlock.firstInstr
     );
+
+    // Return the mapping of pre-inlining local indices to post-inlining indices 
+    return localMap;
 }
 

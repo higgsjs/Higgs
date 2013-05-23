@@ -169,8 +169,7 @@ The Higgs FFI api
     */
 
     // Used in some conversions
-    var PTR_TYPE = 2;
-    var NullPtr = $ir_set_value($ir_get_word(0), PTR_TYPE);
+    var NullPtr = $ir_set_rawptr(0);
 
     /**
     Create a C string from a JS string.

@@ -406,7 +406,8 @@ class IRInstr : IdObject
     union Arg
     {
         int int32Val;
-        double floatVal;
+        double float64Val;
+        rawptr ptrVal;
         wstring stringVal;
         LocalIdx localIdx;
         LinkIdx linkIdx;
@@ -532,7 +533,7 @@ class IRInstr : IdObject
         auto cst = new this(&SET_F64);
         cst.outSlot = outSlot;
         cst.args.length = 1;
-        cst.args[0].floatVal = floatVal;
+        cst.args[0].float64Val = floatVal;
 
         return cst;
     }
@@ -612,8 +613,11 @@ class IRInstr : IdObject
                 case OpArg.INT32:
                 output ~= to!string(arg.int32Val);
                 break;
-                case OpArg.FLOAT:
-                output ~= to!string(arg.floatVal);
+                case OpArg.FLOAT64:
+                output ~= to!string(arg.float64Val);
+                break;
+                case OpArg.RAWPTR:
+                output ~= "<rawptr:" ~ ((arg.ptrVal is null)? "NULL":"0x"~to!string(arg.ptrVal)) ~ ">";
                 break;
                 case OpArg.STRING:
                 output ~= "\"" ~ to!string(arg.stringVal) ~ "\"";
@@ -652,7 +656,8 @@ Opcode argument type
 enum OpArg
 {
     INT32,
-    FLOAT,
+    FLOAT64,
+    RAWPTR,
     STRING,
     LOCAL,
     LINK,
@@ -706,7 +711,8 @@ alias static immutable(OpInfo) Opcode;
 
 // Set a local slot to a constant value    
 Opcode SET_I32 = { "set_i32", true, [OpArg.INT32], &op_set_i32 };
-Opcode SET_F64 = { "set_f64", true, [OpArg.FLOAT], &op_set_f64 };
+Opcode SET_F64 = { "set_f64", true, [OpArg.FLOAT64], &op_set_f64 };
+Opcode SET_RAWPTR = { "set_rawptr", true, [OpArg.RAWPTR], &op_set_rawptr };
 Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.LINK], &op_set_str };
 Opcode SET_TRUE = { "set_true"  , true, [], &op_set_true };
 Opcode SET_FALSE = { "set_false" , true, [], &op_set_false };

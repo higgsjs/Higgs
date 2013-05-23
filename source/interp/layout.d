@@ -414,24 +414,19 @@ extern (C) uint32 clos_ofs_type(refptr o, uint32 i)
     return (((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * i));
 }
 
-extern (C) uint32 clos_ofs_fptr(refptr o)
+extern (C) uint32 clos_ofs_ctor_class(refptr o)
 {    
     return (((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8);
 }
 
-extern (C) uint32 clos_ofs_ctor_class(refptr o)
+extern (C) uint32 clos_ofs_num_cells(refptr o)
 {    
     return ((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8);
 }
 
-extern (C) uint32 clos_ofs_num_cells(refptr o)
-{    
-    return (((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8) + 8);
-}
-
 extern (C) uint32 clos_ofs_cell(refptr o, uint32 i)
 {    
-    return ((((((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8) + 8) + 4) + 4) + (8 * i));
+    return (((((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 8) + 4) + 4) + (8 * i));
 }
 
 extern (C) refptr clos_get_next(refptr o)
@@ -467,11 +462,6 @@ extern (C) uint64 clos_get_word(refptr o, uint32 i)
 extern (C) uint8 clos_get_type(refptr o, uint32 i)
 {    
     return *cast(uint8*)(o + clos_ofs_type(o, i));
-}
-
-extern (C) funptr clos_get_fptr(refptr o)
-{    
-    return *cast(funptr*)(o + clos_ofs_fptr(o));
 }
 
 extern (C) refptr clos_get_ctor_class(refptr o)
@@ -524,11 +514,6 @@ extern (C) void clos_set_type(refptr o, uint32 i, uint8 v)
     *cast(uint8*)(o + clos_ofs_type(o, i)) = v;
 }
 
-extern (C) void clos_set_fptr(refptr o, funptr v)
-{    
-    *cast(funptr*)(o + clos_ofs_fptr(o)) = v;
-}
-
 extern (C) void clos_set_ctor_class(refptr o, refptr v)
 {    
     *cast(refptr*)(o + clos_ofs_ctor_class(o)) = v;
@@ -546,7 +531,7 @@ extern (C) void clos_set_cell(refptr o, uint32 i, refptr v)
 
 extern (C) uint32 clos_comp_size(uint32 cap, uint32 num_cells)
 {    
-    return ((((((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 8) + 8) + 4) + 4) + (8 * num_cells));
+    return (((((((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 8) + 4) + 4) + (8 * num_cells));
 }
 
 extern (C) uint32 clos_sizeof(refptr o)

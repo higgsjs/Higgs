@@ -609,17 +609,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         ctx.as.getWord(closReg, closIdx);
     }
 
-    // Get the number of words stored on the function object
-    ctx.as.getField(scrRegs32[1], closReg, 4, obj_ofs_cap(null));
-
-    // Compute the offset of the function pointer from the word array start
-    ctx.as.instr(SHL, scrRegs32[1], 3);
-    ctx.as.instr(ADD, scrRegs32[1], scrRegs32[1]);
-    ctx.as.instr(ADD, scrRegs32[1], 7);
-    ctx.as.instr(AND, scrRegs32[1], -8);
-
     // Get the function pointer from the closure object
-    auto fptrMem = new X86Mem(64, closReg, obj_ofs_word(null, 0), scrRegs64[1]);
+    auto fptrMem = new X86Mem(64, closReg, CLOS_OFS_FPTR);
     ctx.as.instr(MOV, scrRegs64[2], fptrMem);
 
     //

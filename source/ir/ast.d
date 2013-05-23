@@ -2261,11 +2261,24 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
             if (intExpr is null)
             {
                 throw new ParseError(
-                    "expected int argument", 
+                    "expected integer argument", 
                     argExpr.pos
                 );
             }
             instr.args[i].int32Val = cast(int32)intExpr.val;
+            break;
+
+            // Raw pointer constant
+            case OpArg.RAWPTR:
+            auto intExpr = cast(IntExpr)argExpr;
+            if (intExpr is null)
+            {
+                throw new ParseError(
+                    "expected integer argument", 
+                    argExpr.pos
+                );
+            }
+            instr.args[i].ptrVal = cast(rawptr)intExpr.val;
             break;
 
             // String argument

@@ -205,8 +205,17 @@ extern (C) void op_set_f64(Interp interp, IRInstr instr)
 {
     interp.setSlot(
         instr.outSlot,
-        Word.float64v(instr.args[0].floatVal),
+        Word.float64v(instr.args[0].float64Val),
         Type.FLOAT64
+    );
+}
+
+extern (C) void op_set_rawptr(Interp interp, IRInstr instr)
+{
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(instr.args[0].ptrVal),
+        Type.RAWPTR
     );
 }
 
@@ -878,7 +887,7 @@ extern (C) void op_call(Interp interp, IRInstr instr)
 
     // Get the function object from the closure
     auto closPtr = wClos.ptrVal;
-    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
+    auto fun = getClosFun(closPtr);
 
     /*
     write(core.memory.GC.addrOf(cast(void*)fun));
@@ -908,7 +917,8 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
 
     // Get the function object from the closure
     auto clos = GCRoot(interp, wClos.ptrVal);
-    auto fun = cast(IRFunction)clos_get_fptr(clos.pair.word.ptrVal);
+    auto fun = getClosFun(clos.pair.word.ptrVal);
+
     assert (
         fun !is null,
         "null IRFunction pointer"
@@ -983,7 +993,7 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
 
     // Get the function object from the closure
     auto closPtr = interp.getWord(closIdx).ptrVal;
-    auto fun = cast(IRFunction)clos_get_fptr(closPtr);
+    auto fun = getClosFun(closPtr);
 
     assert (
         fun !is null, 
@@ -1552,7 +1562,8 @@ extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
         "invalid closure object"
     );
 
-    auto fun = cast(IRFunction)clos_get_fptr(wFn.ptrVal);
+    auto fun = getClosFun(wFn.ptrVal);
+
     auto str = fun.ast.toString();
     auto strObj = getString(interp, to!wstring(str));
    
@@ -1573,7 +1584,7 @@ extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
         "invalid closure object"
     );
 
-    auto fun = cast(IRFunction)clos_get_fptr(wFn.ptrVal);
+    auto fun = getClosFun(wFn.ptrVal);
 
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)

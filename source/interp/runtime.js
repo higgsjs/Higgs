@@ -1852,7 +1852,6 @@ function $rt_setPropObj(obj, propStr, val)
             case $rt_LAYOUT_CLOS:
             var numCells = $rt_clos_get_num_cells(obj);
             newObj = $rt_clos_alloc(propIdx+1, numCells);
-            $rt_clos_set_fptr(newObj, $rt_clos_get_fptr(obj));
             for (var i = 0; i < numCells; ++i)
                 $rt_clos_set_cell(newObj, i, $rt_clos_get_cell(obj, i));
             break;

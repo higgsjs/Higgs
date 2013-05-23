@@ -83,32 +83,34 @@ return into optimized function after OSR
 
 TODO: stack-frame compaction
 
+
+
 TODO: test inlining with functions not currently on stack (pre-OSR)
 
-TODO: implement inlining
+
+
+
+
+
+
+TODO: go over inlining implementation, inspect code carefully
+
+
+
+
+
+
+
+[DONE] TODO: implement inlining
 - Maintain original call cont blocks
 - Keep track of who's inlined at each call site, for exception stack unwinding
   - Map of call instrs to lists of functions
 - Produce mapping of pre-inlining stack slots to inlined slots, for OSR
   - Map of stack indices to stack indices
 
-
-
-
-TODO: change function layout to contain object
+[DONE] TODO: change function layout so function pointer has fixed offset
 - Get offset of word slot 0?
 - on alloc class, add numRsvProps parameter
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: fix closure ctor_class issue
 

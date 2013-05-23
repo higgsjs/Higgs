@@ -101,8 +101,7 @@ layouts = [
         'extends':'obj',
         'fields':
         [
-            # Function code pointer
-            { 'name':"fptr", 'type':"funptr" },
+            # Note: the function pointer is stored in the first object slot
 
             # Class for objects constructed using "new" with this closure
             { 'name':"ctor_class", 'type':"refptr", 'init':"null"  },
