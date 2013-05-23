@@ -1291,7 +1291,7 @@ Initial number of object properties on class allocation
 var $rt_OBJ_INIT_SIZE = 1;
 
 /**
-Allocate an object, array or closure
+Lazily allocate a class object
 */
 function $rt_getClass(classLink, classInitSize)
 {
@@ -1387,6 +1387,7 @@ function $rt_newArr(classLink, protoPtr, numElems)
 /**
 Create a new closure/function object
 */
+/*
 function $rt_newClos(classLink, protoLink, numCells, funPtr)
 {
     // Get the class pointer
@@ -1415,6 +1416,7 @@ function $rt_newClos(classLink, protoLink, numCells, funPtr)
 
     return closPtr;
 }
+*/
 
 /**
 Get/allocate a regular expresson object

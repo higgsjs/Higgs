@@ -737,6 +737,18 @@ unittest
         true
     );
 
+    interp.assertBool(
+        "
+        function f() {}
+        f.x = 1;
+        f.y = 2;
+        o = new f();
+        o.y = 3;
+        return ('x' in f) && !('x' in o);
+        ",
+        true
+    );
+
     interp.assertInt(
         "
         function f() {}

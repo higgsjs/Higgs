@@ -40,119 +40,115 @@ module interp.object;
 import std.stdio;
 import std.string;
 import std.algorithm;
+import std.stdint;
 import ir.ir;
 import interp.interp;
 import interp.layout;
 import interp.gc;
 
 /// Initial object class size
-immutable size_t CLASS_INIT_SIZE = 128;
+immutable uint32_t CLASS_INIT_SIZE = 128;
 
 /// Maximum class hash table load
-immutable uint32 CLASS_MAX_LOAD_NUM = 3;
-immutable uint32 CLASS_MAX_LOAD_DENOM = 5;
+immutable uint32_t CLASS_MAX_LOAD_NUM = 3;
+immutable uint32_t CLASS_MAX_LOAD_DENOM = 5;
 
-/// Expression evaluation delegate function
-alias refptr delegate(
-    Interp interp,
-    uint32 allocNumProps
-) ObjAllocFn;
-
-refptr newExtObj(
+/**
+Lazily allocate a class object
+*/
+refptr getClass(
     Interp interp, 
-    refptr classPtr,
-    refptr protoPtr, 
-    uint32 classInitSize,
-    uint32 allocNumProps,
-    ObjAllocFn objAllocFn
+    refptr classPtr, 
+    uint32_t classInitSize
 )
 {
-    auto protoObj = GCRoot(interp, protoPtr);
-    auto classObj = GCRoot(interp, classPtr);
-
     // If the class is not yet allocated
-    if (classObj.ptr is null)
+    if (classPtr is null)
     {
         // Lazily allocate the class
-        classObj = class_alloc(interp, classInitSize);
-        class_set_id(classObj.ptr, 0);
+        classPtr = class_alloc(interp, classInitSize);
+
+        // TODO: allocate class IDs
+        class_set_id(classPtr, 0);
     }    
-    else
-    {
-        // Get the number of properties to allocate from the class
-        allocNumProps = max(class_get_num_props(classObj.ptr), allocNumProps);
-    }
 
-    // Allocate the object
-    auto obj = GCRoot(
-        interp,
-        objAllocFn(interp, allocNumProps)
-    );
-
-    // Initialize the object
-    obj_set_class(obj.ptr, classObj.ptr);
-    obj_set_proto(obj.ptr, protoObj.ptr);
-
-    return obj.ptr;
+    return classPtr;
 }
 
 refptr newObj(
     Interp interp, 
     refptr classPtr,
     refptr protoPtr, 
-    uint32 classInitSize,
-    uint32 allocNumProps
+    uint32_t classInitSize,
+    uint32_t allocNumProps
 )
 {
-    return newExtObj(
-        interp, 
-        classPtr, 
-        protoPtr, 
-        classInitSize,
-        allocNumProps,
-        delegate refptr(Interp interp, uint32 allocNumProps)
-        {
-            auto objPtr = obj_alloc(interp, allocNumProps);
-            return objPtr;
-        }
+    // Create a root for the prototype object
+    auto protoObj = GCRoot(interp, protoPtr);
+
+    // Lazily allocate a class object
+    auto classObj = GCRoot(
+        interp,
+        getClass(interp, classPtr, classInitSize)
     );
+
+    auto classNumProps = class_get_num_props(classObj.ptr);
+    if (classNumProps > allocNumProps)
+        allocNumProps = classNumProps;
+
+    // Allocate the object
+    auto objPtr = obj_alloc(interp, allocNumProps);
+
+    // Initialize the object
+    obj_set_class(objPtr, classObj.ptr);
+    obj_set_proto(objPtr, protoObj.ptr);
+
+    return objPtr;
 }
 
 refptr newClos(
     Interp interp, 
     refptr classPtr,
     refptr protoPtr, 
-    uint32 classInitSize,
-    uint32 allocNumProps,
-    uint32 allocNumCells,
+    uint32_t classInitSize,
+    uint32_t allocNumProps,
+    uint32_t allocNumCells,
     IRFunction fun
 )
 {
+    // Create a root for the prototype object
+    auto protoObj = GCRoot(interp, protoPtr);
+
+    // Lazily allocate a class object
+    auto classObj = GCRoot(
+        interp,
+        getClass(interp, classPtr, classInitSize)
+    );
+
     // Register this function in the function reference set
     interp.funRefs[cast(void*)fun] = fun;
 
-    //write(interp.funRefs.length);
-    //write("\n");
+    auto classNumProps = class_get_num_props(classObj.ptr);
+    if (classNumProps > allocNumProps)
+        allocNumProps = classNumProps;
 
-    return newExtObj(
-        interp, 
-        classPtr, 
-        protoPtr, 
-        classInitSize,
-        allocNumProps,
-        delegate refptr(Interp interp, uint32 allocNumProps)
-        {
-            auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
-            clos_set_fptr(objPtr, cast(rawptr)fun);
-            return objPtr;
-        }
-    );
+    // Allocate the closure object
+    auto objPtr = clos_alloc(interp, allocNumProps, allocNumCells);
+
+    // Initialize the object
+    obj_set_class(objPtr, classObj.ptr);
+    obj_set_proto(objPtr, protoObj.ptr);
+
+    // Set the function pointer
+    clos_set_fptr(objPtr, cast(rawptr)fun);
+
+    return objPtr;
 }
 
 /**
 Find or allocate the property index for a given property name string
 */
-uint32 getPropIdx(Interp interp, refptr classPtr, refptr propStr, refptr objPtr = null)
+uint32_t getPropIdx(Interp interp, refptr classPtr, refptr propStr, refptr objPtr = null)
 {
     // Get the size of the property table
     auto tblSize = class_get_cap(classPtr);
@@ -217,7 +213,7 @@ uint32 getPropIdx(Interp interp, refptr classPtr, refptr propStr, refptr objPtr 
     return propIdx;
 }
 
-void extClass(Interp interp, refptr classPtr, uint32 curSize, uint32 numProps, refptr objPtr)
+void extClass(Interp interp, refptr classPtr, uint32_t curSize, uint32_t numProps, refptr objPtr)
 {
     // Protect the class and object references with GC roots
     auto obj = GCRoot(interp, objPtr);
@@ -238,7 +234,7 @@ void extClass(Interp interp, refptr classPtr, uint32 curSize, uint32 numProps, r
     class_set_num_props(newClass, numProps);
 
     // For each entry in the current table
-    for (uint32 curIdx = 0; curIdx < curSize; curIdx++)
+    for (uint32_t curIdx = 0; curIdx < curSize; curIdx++)
     {
         auto propName = class_get_prop_name(cls.ptr, curIdx);
 
@@ -385,7 +381,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
             auto numCells = clos_get_num_cells(obj.ptr);
             newObj = clos_alloc(interp, objCap+1, numCells);
             clos_set_fptr(newObj, clos_get_fptr(obj.ptr));
-            for (uint32 i = 0; i < numCells; ++i)
+            for (uint32_t i = 0; i < numCells; ++i)
                 clos_set_cell(newObj, i, clos_get_cell(obj.ptr, i));
             break;
 
@@ -397,7 +393,7 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
         obj_set_proto(newObj, obj_get_proto(obj.ptr));
 
         // Copy over the property words and types
-        for (uint32 i = 0; i < objCap; ++i)
+        for (uint32_t i = 0; i < objCap; ++i)
         {
             obj_set_word(newObj, i, obj_get_word(obj.ptr, i));
             obj_set_type(newObj, i, obj_get_type(obj.ptr, i));

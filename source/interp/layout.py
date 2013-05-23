@@ -104,7 +104,7 @@ layouts = [
             # Function code pointer
             { 'name':"fptr", 'type':"funptr" },
 
-            # Constructor class pointer
+            # Class for objects constructed using "new" with this closure
             { 'name':"ctor_class", 'type':"refptr", 'init':"null"  },
 
             # Number of closure cells

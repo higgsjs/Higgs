@@ -928,13 +928,13 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
         interp,
         newObj(
             interp, 
-            clos_get_class(clos.ptr),
+            clos_get_ctor_class(clos.ptr),
             proto.ptr,
             CLASS_INIT_SIZE,
             2
         )
     );
-    clos_set_class(clos.ptr, obj_get_class(thisObj.ptr));
+    clos_set_ctor_class(clos.ptr, obj_get_class(thisObj.ptr));
 
     callFun(
         interp,
