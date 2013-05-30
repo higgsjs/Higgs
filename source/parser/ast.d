@@ -689,7 +689,7 @@ class FunExpr : ASTExpr
     {
         auto output = appender!string();
 
-        output.put(xformat("function %s(%(%s, %))", getName(), params));
+        output.put(format("function %s(%(%s, %))", getName(), params));
 
         if (cast(ReturnStmt)bodyStmt || cast(ExprStmt)bodyStmt)
         {
@@ -859,7 +859,7 @@ class CallExpr : ASTExpr
 
     override string toString()
     {
-        return xformat("%s(%(%s, %))", base, args);
+        return format("%s(%(%s, %))", base, args);
     }
 }
 
@@ -881,7 +881,7 @@ class NewExpr : ASTExpr
 
     override string toString()
     {
-        return xformat("new %s(%(%s, %))", base, args);
+        return format("new %s(%(%s, %))", base, args);
     }
 }
 
@@ -903,7 +903,7 @@ class IndexExpr : ASTExpr
 
     override string toString()
     {
-        return xformat("%s[%s]", base, index);
+        return format("%s[%s]", base, index);
     }
 }
 
@@ -922,7 +922,7 @@ class ArrayExpr : ASTExpr
 
     override string toString()
     {
-        return xformat("[%(%s, %)]", exprs);
+        return format("[%(%s, %)]", exprs);
     }
 }
 
@@ -1066,7 +1066,7 @@ class RegexpExpr : ASTExpr
 
     override string toString()
     {
-        return xformat("/%s/%s", pattern, flags);
+        return format("/%s/%s", pattern, flags);
     }
 }
 

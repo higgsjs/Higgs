@@ -303,7 +303,7 @@ class X86LabelRef : X86Imm
 
     override string toString() const
     {
-        return xformat("%s(%s)", this.label.name, this.label.offset);
+        return format("%s(%s)", this.label.name, this.label.offset);
     }
 
     Label label;
@@ -321,7 +321,7 @@ class X86MOffs : X86Imm
 
     override string toString() const
     {
-        return xformat("[%X]", this.unsgImm);
+        return format("[%X]", this.unsgImm);
     }
 }
 
@@ -948,7 +948,7 @@ class X86Instr : ASMInstr
 
         assert (
             wrtLength == this.encLength,
-            xformat(
+            format(
                 "encoding length:\n" ~
                 "%s\n" ~
                 "does not match expected length:\n" ~

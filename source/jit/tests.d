@@ -95,7 +95,7 @@ unittest
         void encError()
         {
             throw new Error(
-                xformat(
+                format(
                     "invalid encoding for:\n" ~
                     "%s\n" ~
                     "\n" ~
@@ -975,7 +975,7 @@ unittest
         if (ret != retVal)
         {
             throw new Error(
-                xformat(
+                format(
                     "invalid return value for:\n" ~
                     "\n" ~
                     "%s\n" ~

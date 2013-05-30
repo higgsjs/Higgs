@@ -39,32 +39,50 @@ module ir.inlining;
 
 import std.stdio;
 import std.string;
+import std.stdint;
 import ir.ir;
 import interp.object;
+
+/**
+Test if a function is inlinable at a call site
+*/
+bool inlinable(IRInstr callSite, IRFunction callee)
+{
+    // Not support for new for now, avoids complicated return logic
+    if (callSite.opcode !is &CALL)
+        return false;
+
+    // No support for inlinin within try blocks for now
+    if (callSite.excTarget !is null)
+        return false;
+
+    // No support fo rfunctions with arguments
+    if (callee.ast.usesArguments == true)
+        return false;
+
+    // No support for argument count mismatch
+    auto numArgs = callSite.args.length - 2;
+    if (numArgs != callee.numParams)
+        return false;
+
+    // Inlining is possible
+    return true;
+}
 
 /**
 Inline a callee function at a call site
 */
 LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
 {
-    // Not support for new for now, avoids complicated return logic
-    assert (callSite.opcode is &CALL);
-
-    // No support for inlinin within try blocks for now
-    assert (callSite.excTarget is null);
-
-    // No support fo rfunctions with arguments
-    assert (callee.ast.usesArguments == false);
+    // Ensure that this inlining is possible
+    assert (inlinable(callSite, callee));
 
     // Get the caller function
     auto caller = callSite.block.fun;
     assert (caller !is null);
 
-    // No support for argument count mismatch
+    // Get the number of arguments passed
     auto numArgs = callSite.args.length - 2;
-    assert (numArgs == callee.numParams);
-
-
 
     //
     // Stack-frame remapping
@@ -79,10 +97,10 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
         localMap[i] = i + callee.numLocals;
 
     // Remap the caller identifier
-    foreach (id, local; caller.cellMap)
-        caller.cellMap[id] = local + callee.numLocals;
-    foreach (id, local; caller.localMap)
-        caller.localMap[id] = local + callee.numLocals;
+    foreach (id, localIdx; caller.cellMap)
+        caller.cellMap[id] = localIdx + callee.numLocals;
+    foreach (id, localIdx; caller.localMap)
+        caller.localMap[id] = localIdx + callee.numLocals;
 
     // Extend the caller stack frame for the callee
     caller.numLocals += callee.numLocals;
@@ -93,6 +111,12 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
     //
     // Callee basic block copying
     //
+
+    // Get the execution count of the call site
+    auto callCount = cast(uint64_t)callSite.block.execCount;
+
+    // Get the execution count of the callee's entry block
+    auto entryCount = cast(uint64_t)callee.entryBlock.execCount;
 
     // Map of callee blocks to copied blocks
     IRBlock[IRBlock] blockMap;
@@ -136,18 +160,23 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
                 // Remove the return instruction
                 block.remInstr(instr);
 
-                // Move the return value
+                // Move the return value to the return value slot
                 block.addInstr(new IRInstr(
                     &MOVE,
-                    instr.args[0].localIdx,
-                    localMap[callSite.outSlot]
+                    localMap[callSite.outSlot],
+                    instr.args[0].localIdx
                 ));
 
                 // Jump to the call continuation block
                 block.addInstr(IRInstr.jump(callSite.target));
             }
         }
+
+        // Adjust the block execution count
+        block.execCount = (block.execCount * callCount) / entryCount;
     }
+
+
 
 
 

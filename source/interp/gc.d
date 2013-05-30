@@ -402,7 +402,7 @@ refptr gcForward(Interp interp, refptr ptr)
 
     assert (
         ptr >= interp.heapStart && ptr < interp.heapLimit,
-        xformat(
+        format(
             "gcForward: object not in from-space heap\n" ~
             "ptr   : %s\n" ~
             "start : %s\n" ~
@@ -440,7 +440,7 @@ refptr gcForward(Interp interp, refptr ptr)
 
         assert (
             nextPtr >= interp.toStart && nextPtr < interp.toLimit,
-            xformat(
+            format(
                 "gcForward: newly forwarded address is outside of to-space\n" ~
                 "ptr   : %s\n" ~
                 "start : %s\n" ~
@@ -455,7 +455,7 @@ refptr gcForward(Interp interp, refptr ptr)
     {
         assert (
             nextPtr >= interp.toStart && nextPtr < interp.toLimit,
-            xformat(
+            format(
                 "gcForward: next pointer from object is outside of to-space\n" ~
                 "objPtr  : %s\n" ~
                 "nextPtr : %s\n" ~
@@ -526,7 +526,7 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
 {
     assert (
         ptr >= interp.heapStart && ptr < interp.heapLimit,
-        xformat(
+        format(
             "gcCopy: object not in from-space heap\n" ~
             "ptr   : %s\n" ~
             "start : %s\n" ~
@@ -544,7 +544,7 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
 
     assert (
         nextPtr + size <= interp.toLimit,
-        xformat(
+        format(
             "cannot copy in to-space, heap limit exceeded\n" ~
             "ptr     : %s\n" ~
             "size    : %s\n" ~
@@ -649,7 +649,7 @@ void visitStackRoots(Interp interp)
                 type != Type.REFPTR ||
                 fwdPtr == null ||
                 (fwdPtr >= interp.toStart && fwdPtr < interp.toLimit),
-                xformat(
+                format(
                     "invalid forwarded stack pointer\n" ~
                     "ptr     : %s\n" ~
                     "to-alloc: %s\n" ~

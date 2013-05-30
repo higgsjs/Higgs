@@ -124,7 +124,7 @@ class Label : ASMInstr
     */
     override string toString()
     {
-        return xformat("%s(%s)%s:", this.name, this.offset, (this.exported? " (exported)":""));
+        return format("%s(%s)%s:", this.name, this.offset, (this.exported? " (exported)":""));
     }
 
     /**
@@ -168,7 +168,7 @@ class IntData : ASMInstr
 
     override string toString()
     {
-        return xformat("%s (%s)", value, numBits);
+        return format("%s (%s)", value, numBits);
     }
 
     override size_t length()

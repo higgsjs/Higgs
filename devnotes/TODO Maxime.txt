@@ -86,14 +86,24 @@ TODO: stack-frame compaction
 
 
 TODO: test inlining with functions not currently on stack (pre-OSR)
-
-
+- Need to traverse stack to check function isn't there
+  - Just scan the stack for RAs, very simple
 
 
 
 
 
 TODO: go over inlining implementation, inspect code carefully
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -116,7 +116,7 @@ class CodeBlock
             if (i != 0)
                 app.put(' ');
 
-            app.put(xformat("%02X", b));
+            app.put(format("%02X", b));
         }
 
         return app.data;
