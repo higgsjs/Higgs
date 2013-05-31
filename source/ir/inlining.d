@@ -182,6 +182,11 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
                 // Add the callee function to the list of
                 // inlined functions at this call site
                 caller.inlineMap[instr] ~= callee;
+
+                // Copy the call profiles from the callee
+                auto origCall = orig.lastInstr;
+                assert (origCall.opcode.isCall);
+                caller.callCounts[instr] = callee.callCounts.get(origCall, uint64_t[IRFunction].init);
             }
 
             // If this is a return instruction
@@ -191,11 +196,14 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
                 block.remInstr(instr);
 
                 // Move the return value to the return value slot
-                block.addInstr(new IRInstr(
-                    &MOVE,
-                    callSite.outSlot,
-                    instr.args[0].localIdx
-                ));
+                if (callSite.outSlot !is NULL_LOCAL)
+                {
+                    block.addInstr(new IRInstr(
+                        &MOVE,
+                        callSite.outSlot,
+                        instr.args[0].localIdx
+                    ));
+                }
 
                 // Jump to the call continuation block
                 block.addInstr(IRInstr.jump(callSite.target));
@@ -248,10 +256,10 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
     );
     callBlock.addInstr(IRInstr.ifTrue(testInstr.outSlot, entryBlock, regCall));
 
-    // Copy the visible arguments
+    // Copy the visible arguments in reverse order
     foreach (argIdx, arg; callSite.args[2..$])
     {
-        auto dstIdx = cast(LocalIdx)(callee.numLocals - NUM_HIDDEN_ARGS - argIdx - 1);
+        auto dstIdx = cast(LocalIdx)(callee.numLocals - (numArgs - argIdx));
         entryBlock.addInstrBefore(
             new IRInstr(&MOVE, dstIdx, arg.localIdx),
             entryBlock.firstInstr

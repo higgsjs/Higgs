@@ -118,6 +118,8 @@ void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    assert (instr.outSlot !is NULL_LOCAL);
+
     auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 64);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
@@ -563,7 +565,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Get the callee function
     auto fun = maxCallee;
-    assert (fun.entryBlock !is null);
+    assert (fun !is null && fun.entryBlock !is null);
 
     // If the argument count doesn't match
     if (numArgs != fun.numParams)

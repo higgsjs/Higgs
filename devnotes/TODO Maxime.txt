@@ -75,6 +75,7 @@ TODO: benchmarking (performance testing) JS script
 - try to make it compatible with V8 as-is
 
 TODO: IR-level optimizations?
+- Basic arith ops, simple const prop?
 
 TODO: stack-frame compaction
 
@@ -91,13 +92,38 @@ TODO: test inlining with functions not currently on stack (pre-OSR)
 
 
 
-FIXME: pointer is not pointer type in load op, failing to load from clos ptr
+
+
+FIXME: interp/ops.d(577): invalid operand types in op "r = (x == y);" (double)
+
+FIXME: another segfault!
+- Works if we disable gen_call in the JIT
 
 
 
 
 
 
+
+
+
+
+[DONE] TODO: test inlining with the JIT off first?
+- Tests pass without JIT and without inlining
+  inlining $rt_setCellVal(22E120) into clos(2380CD)
+- invalid move dst in clos() function
+    $4 = set_undef
+    move $4
+    jump => call_cont(23812C)
+- Call with no return value unhandled
+
+[DONE] FIXME: segfault when executing fun w/ inlining
+inlining $rt_obj_ofs_type(11AC) into $rt_obj_set_type(11D6)
+- Arguments not copied right, inverted order
+
+[DONE] FIXME: segfault during JIT compilation
+
+[DONE] FIXME: pointer is not pointer type in load op, failing to load from clos ptr
 
 [DONE] TODO: implement size limit in inlining test
 

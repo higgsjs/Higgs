@@ -603,12 +603,12 @@ class Interp
     {
         assert (
             &wsp[src] >= wStack && &wsp[src] < wUpperLimit,
-            "invalid src index"
+            "invalid move src index"
         );
 
         assert (
             &wsp[dst] >= wStack && &wsp[dst] < wUpperLimit,
-            "invalid dst index"
+            "invalid move dst index"
         );
 
         wsp[dst] = wsp[src];

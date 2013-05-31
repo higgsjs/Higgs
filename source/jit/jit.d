@@ -136,8 +136,7 @@ void inlinePass(Interp interp, IRFunction fun)
             continue;
 
         // If there is more than one callee, skip it
-        if (lastInstr !in fun.callCounts || 
-            fun.callCounts[lastInstr].length > 1)
+        if (fun.callCounts[lastInstr].length != 1)
             continue;
 
         // Get the callee
@@ -148,7 +147,7 @@ void inlinePass(Interp interp, IRFunction fun)
             continue;
 
         // TODO: 
-        //if (opts.jit_dumpinfo)
+        if (opts.jit_dumpinfo)
         {
             writefln(
                 "inlining %s into %s",
@@ -160,11 +159,13 @@ void inlinePass(Interp interp, IRFunction fun)
         // Inline the callee
         inlineCall(lastInstr, callee);
 
-
+        //writefln("inlined");
         //writeln(fun.toString());
     }
 
     // TODO: stack frame compaction
+
+    //writefln("inlinePass done");
 }
 
 /**
