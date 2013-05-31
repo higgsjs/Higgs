@@ -74,31 +74,24 @@ TODO: benchmarking (performance testing) JS script
 - use load command, list of benchmarks
 - try to make it compatible with V8 as-is
 
-TODO: OSR
-- Need to produce mapping of pre-inlining stack slots to inlined slots
-  - Done during inlining
-- Keep original call cont IRBlock. Allow inlined functions to
-return into optimized function after OSR
-- JIT functions might not be spilled at OSR time, must trigger spilling
+TODO: IR-level optimizations?
 
 TODO: stack-frame compaction
+
+TODO: disable compFun on compilation
+
+TODO: basic OSR if function is on top of the stack
 
 
 
 TODO: test inlining with functions not currently on stack (pre-OSR)
-- Need to traverse stack to check function isn't there
-  - Just scan the stack for RAs, very simple
+- funOnStack
+- ISSUE: all functions are on the stack when compiled!
+- For now, temporarily call compFun in function call bit?
 
 
 
-
-
-TODO: go over inlining implementation, inspect code carefully
-
-
-
-
-
+FIXME: pointer is not pointer type in load op, failing to load from clos ptr
 
 
 
@@ -106,10 +99,12 @@ TODO: go over inlining implementation, inspect code carefully
 
 
 
+[DONE] TODO: implement size limit in inlining test
 
+[DONE] TODO: funOnStack
+- Just scan the stack for RAs, very simple
 
-
-
+[DONE] TODO: go over inlining implementation, inspect code
 
 [DONE] TODO: implement inlining
 - Maintain original call cont blocks

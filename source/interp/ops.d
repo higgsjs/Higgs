@@ -789,6 +789,17 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
         interp.jump(instr.excTarget);
 }
 
+
+
+
+// TODO
+// TODO: TEMPORARY ****
+// TODO
+import jit.jit;
+
+
+
+
 void callFun(
     Interp interp,
     IRFunction fun,         // Function to call
@@ -819,6 +830,23 @@ void callFun(
 
         astToIR(fun.ast, fun);
     }
+
+
+
+
+
+    // TODO: temporary, to test inlining
+    if (fun.entryBlock.execCount == 400)
+    {
+        //compFun(interp, fun);
+    }
+
+
+
+
+
+
+
 
     // Compute the number of missing arguments
     size_t argDiff = (fun.params.length > argSlots.length)? (fun.params.length - argSlots.length):0;

@@ -56,10 +56,116 @@ import jit.encodings;
 import jit.peephole;
 import jit.regalloc;
 import jit.ops;
+import ir.inlining;
 import util.bitset;
 
 /// Block execution count at which a function should be compiled
 const JIT_COMPILE_COUNT = 1000;
+
+/// Where a function is on the call stack
+enum StackPos
+{
+    NOT,
+    TOP,
+    DEEP
+}
+
+/**
+Test if a function is on the interpreter stack
+*/
+StackPos funOnStack(Interp interp, IRFunction fun)
+{
+    // If a return address to this function is on the stack
+    for (LocalIdx idx = 0; idx < interp.stackSize(); idx++)
+    {
+        auto val = interp.getSlot(idx);
+
+        if (val.type is Type.INSPTR)
+        {
+            auto ins = cast(IRInstr)val.word.ptrVal;
+
+            // The function is deep in the stack
+            if (ins !is null && ins.block.fun is fun)
+                return StackPos.DEEP;
+        }
+    }
+
+    // If this is the currently executing function
+    if ((interp.target !is null && interp.target.fun is fun) ||
+        (interp.ip !is null && interp.ip.block.fun is fun))
+        return StackPos.TOP;
+
+    return StackPos.NOT;
+}
+
+/**
+Selectively inline callees into a function
+*/
+void inlinePass(Interp interp, IRFunction fun)
+{
+    // Test if and where this function is on the call stack
+    auto stackPos = funOnStack(interp, fun);
+
+    // Don't inline if the function is deep on the stack
+    if (stackPos is StackPos.DEEP)
+        return;
+
+    // FIXME: temporary
+    if (stackPos is StackPos.TOP)
+        return;
+
+
+
+    //writeln(fun.toString());
+
+
+
+
+    // For each block of the function
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        // If this block was never executed, skip it
+        if (block.execCount == 0)
+            continue;
+
+        // Get the last instruction of the block
+        auto lastInstr = block.lastInstr;
+
+        // If this is is not a call instruction, skip it
+        if (lastInstr.opcode != &ir.ir.CALL)
+            continue;
+
+        // If there is more than one callee, skip it
+        if (lastInstr !in fun.callCounts || 
+            fun.callCounts[lastInstr].length > 1)
+            continue;
+
+        // Get the callee
+        auto callee = fun.callCounts[lastInstr].keys[0];
+
+        // If this combination is not inlinable, skip it
+        if (inlinable(lastInstr, callee) is false)
+            continue;
+
+        // TODO: 
+        //if (opts.jit_dumpinfo)
+        {
+            writefln(
+                "inlining %s into %s",
+                callee.getName(),
+                lastInstr.block.fun.getName()
+            );
+        }
+
+        // Inline the callee
+        inlineCall(lastInstr, callee);
+
+
+        //writeln(fun.toString());
+    }
+
+    // TODO: stack frame compaction
+}
 
 /**
 Compile a function to machine code
@@ -72,6 +178,13 @@ void compFun(Interp interp, IRFunction fun)
             "compiling function %s", 
             fun.getName()
         );
+    }
+
+    // If JIT optimizations are not disabled
+    if (!opts.jit_noopts)
+    {
+        // Run the inlining pass on this function
+        inlinePass(interp, fun);
     }
 
     // Run a live variable analysis on the function

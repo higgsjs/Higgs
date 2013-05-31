@@ -385,12 +385,12 @@ class IRBlock : IdObject
         if (instr.prev)
             instr.prev.next = instr.next;
         else
-            firstInstr = null;
+            firstInstr = instr.next;
 
         if (instr.next)
             instr.next.prev = instr.prev;
         else
-            lastInstr = null;
+            lastInstr = instr.prev;
 
         instr.prev = null;
         instr.next = null;
