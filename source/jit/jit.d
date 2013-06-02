@@ -385,6 +385,8 @@ void compFun(Interp interp, IRFunction fun)
         // Insert the label for this block
         as.addInstr(label);
 
+        //as.printStr(block.getName() ~ " (" ~ fun.getName() ~ ")\n");
+
         // For each instruction of the block
         INSTR_LOOP:
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -393,6 +395,7 @@ void compFun(Interp interp, IRFunction fun)
 
             as.comment(instr.toString());
 
+            //as.printStr(instr.toString() ~ "\n");
             //writefln("instr: %s", instr.toString());
 
             // If there is a codegen function for this opcode
@@ -1069,7 +1072,7 @@ void setMember(string className, string fName)(Assembler as, X86Reg baseReg, X86
 }
 
 /// Read from the word stack
-void getWord(Assembler as, X86Reg dstReg, LocalIdx idx)
+void getWord(Assembler as, X86Reg dstReg, int32_t idx)
 {
     if (dstReg.type == X86Reg.GP)
         as.instr(MOV, dstReg, new X86Mem(dstReg.size, wspReg, 8 * idx));
@@ -1080,13 +1083,13 @@ void getWord(Assembler as, X86Reg dstReg, LocalIdx idx)
 }
 
 /// Read from the type stack
-void getType(Assembler as, X86Reg dstReg, LocalIdx idx)
+void getType(Assembler as, X86Reg dstReg, int32_t idx)
 {
     as.instr(MOV, dstReg, new X86Mem(8, tspReg, idx));
 }
 
 /// Write to the word stack
-void setWord(Assembler as, LocalIdx idx, X86Reg srcReg)
+void setWord(Assembler as, int32_t idx, X86Reg srcReg)
 {
     if (srcReg.type == X86Reg.GP)
         as.instr(MOV, new X86Mem(64, wspReg, 8 * idx), srcReg);
@@ -1097,19 +1100,19 @@ void setWord(Assembler as, LocalIdx idx, X86Reg srcReg)
 }
 
 // Write a constant to the word type
-void setWord(Assembler as, LocalIdx idx, int32_t imm)
+void setWord(Assembler as, int32_t idx, int32_t imm)
 {
     as.instr(MOV, new X86Mem(64, wspReg, 8 * idx), imm);
 }
 
 /// Write to the type stack
-void setType(Assembler as, LocalIdx idx, X86Opnd srcOpnd)
+void setType(Assembler as, int32_t idx, X86Opnd srcOpnd)
 {
     as.instr(MOV, new X86Mem(8, tspReg, idx), srcOpnd);
 }
 
 /// Write a constant to the type stack
-void setType(Assembler as, LocalIdx idx, Type type)
+void setType(Assembler as, int32_t idx, Type type)
 {
     as.instr(MOV, new X86Mem(8, tspReg, idx), type);
 }
@@ -1185,9 +1188,40 @@ void printUint(Assembler as, X86Reg reg)
 {
     as.pushRegs();
 
-    as.instr(MOV, RDI, reg);
-    as.ptr(RAX, &jit.jit.printUint);
+    as.instr(MOV, cargRegs[0], reg);
+
+    alias extern (C) void function(uint64_t) PrintUintFn;
+    PrintUintFn printUintFn = &printUint;
+
+    as.ptr(RAX, printUintFn);
     as.instr(jit.encodings.CALL, RAX);
+
+    as.popRegs();
+}
+
+void printStr(Assembler as, string str)
+{
+    as.pushRegs();
+
+    auto STR_DATA = new Label("STR_DATA");
+    auto AFTER_STR = new Label("AFTER_STR");
+
+    as.instr(JMP, AFTER_STR);
+
+    as.addInstr(STR_DATA);
+    foreach (chIdx, ch; str)
+        as.addInstr(new IntData(cast(uint)ch, 8));    
+    as.addInstr(new IntData(0, 8));
+
+    as.addInstr(AFTER_STR);
+
+    as.instr(LEA, cargRegs[0], new X86IPRel(8, STR_DATA));
+
+    alias extern (C) void function(char*) PrintStrFn;
+    PrintStrFn printStrFn = &printStr;
+
+    as.ptr(scrRegs64[0], printStrFn);
+    as.instr(jit.encodings.CALL, scrRegs64[0]);
 
     as.popRegs();
 }
@@ -1198,5 +1232,13 @@ Print an unsigned integer value. Callable from the JIT
 extern (C) void printUint(uint64_t v)
 {
     writefln("%s", v);
+}
+
+/**
+Print a C string value. Callable from the JIT
+*/
+extern (C) void printStr(char* pStr)
+{
+    printf("%s", pStr);
 }
 

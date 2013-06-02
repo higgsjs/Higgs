@@ -76,10 +76,13 @@ TODO: benchmarking (performance testing) JS script
 
 TODO: IR-level optimizations?
 - Basic arith ops, simple const prop?
+- Jump to block that jumps
+- Redundant moves, use original value
+  - Must prove move is useless to remove
 
 TODO: stack-frame compaction
 
-TODO: disable compFun on compilation
+TODO: disable temporary compFun in callFun
 
 TODO: basic OSR if function is on top of the stack
 
@@ -94,10 +97,7 @@ TODO: test inlining with functions not currently on stack (pre-OSR)
 
 
 
-FIXME: interp/ops.d(577): invalid operand types in op "r = (x == y);" (double)
-
-FIXME: another segfault!
-- Works if we disable gen_call in the JIT
+FIXME: on Higgs init, invalid operand 2 type in op "auto r = x & y;" (int32)
 
 
 
@@ -107,6 +107,11 @@ FIXME: another segfault!
 
 
 
+[DONE] FIXME: segmentation fault on Higgs init
+- JIT is probably calling valIsString with the wrong stack frame size
+- Optimized call based on pre-inlining size
+
+[DONE] TODO: JIT string printing mechanism
 
 [DONE] TODO: test inlining with the JIT off first?
 - Tests pass without JIT and without inlining

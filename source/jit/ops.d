@@ -546,7 +546,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto closIdx = instr.args[0].localIdx;
     auto thisIdx = instr.args[1].localIdx;
-    auto numArgs = instr.args.length - 2;
+    auto numArgs = cast(int32_t)instr.args.length - 2;
 
     // Generate an entry point for the call continuation
     ctx.getEntryPoint(instr.target);
@@ -613,81 +613,78 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Get the function pointer from the closure object
     auto fptrMem = new X86Mem(64, closReg, CLOS_OFS_FPTR);
-    ctx.as.instr(MOV, scrRegs64[2], fptrMem);
+    ctx.as.instr(MOV, scrRegs64[1], fptrMem);
 
     //
     // Function call logic
     //
 
     // If this is not the closure we expect, bailout to the interpreter
-    ctx.as.ptr(scrRegs64[3], fun);
-    ctx.as.instr(CMP, scrRegs64[2], scrRegs64[3]);
+    ctx.as.ptr(scrRegs64[2], fun);
+    ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
     ctx.as.instr(JNE, BAILOUT);
-
-    auto numPush = fun.numLocals;
-    auto numVars = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
-
-    //writefln("numPush: %s, numVars: %s", numPush, numVars);
-
-    // Push space for the callee arguments and locals
-    ctx.as.instr(SUB, wspReg, 8 * numPush);
-    ctx.as.instr(SUB, tspReg, numPush);
 
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
     {
         //auto argSlot = instr.args[$-(1+i)].localIdx + (argDiff + i);
         auto argSlot = instr.args[$-(1+i)].localIdx;
-        auto dstIdx = (numArgs - i - 1) + numVars + NUM_HIDDEN_ARGS;
+        auto dstIdx = -(cast(int32_t)i + 1);
 
         // If this argument is in a register
         if (argRegs[i] !is null)
         {
             //writefln("arg reg: %s %s", argRegs[i], i);
-            ctx.as.setWord(cast(LocalIdx)dstIdx, argRegs[i]);
+            ctx.as.setWord(dstIdx, argRegs[i]);
         }
         else
         {
-            ctx.as.getWord(scrRegs64[3], argSlot + numPush); 
-            ctx.as.setWord(cast(LocalIdx)dstIdx, scrRegs64[3]);
+            ctx.as.getWord(scrRegs64[3], argSlot); 
+            ctx.as.setWord(dstIdx, scrRegs64[3]);
         }
 
         // Set the argument type
-        auto typeOpnd = st.getTypeOpnd(ctx.as, argSlot, scrRegs8[3], numPush);
-        ctx.as.setType(cast(LocalIdx)dstIdx, typeOpnd);
+        auto typeOpnd = st.getTypeOpnd(ctx.as, argSlot, scrRegs8[3]);
+        ctx.as.setType(dstIdx, typeOpnd);
     }
 
     // Write the argument count
-    ctx.as.setWord(cast(LocalIdx)(numVars + 3), cast(int32_t)numArgs);
-    ctx.as.setType(cast(LocalIdx)(numVars + 3), Type.INT32);
+    ctx.as.setWord(-numArgs - 1, numArgs);
+    ctx.as.setType(-numArgs - 1, Type.INT32);
 
     // If the callee uses its "this" argument, write it on the stack
     if (fun.ast.usesThis == true)
     {
         if (thisReg)
         {
-            ctx.as.setWord(cast(LocalIdx)(numVars + 2), thisReg);
+            ctx.as.setWord(-numArgs - 2, thisReg);
         }
         else
         {
-            ctx.as.getWord(scrRegs64[2], thisIdx + numPush);
-            ctx.as.setWord(cast(LocalIdx)(numVars + 2), scrRegs64[2]);
+            ctx.as.getWord(scrRegs64[2], thisIdx);
+            ctx.as.setWord(-numArgs - 2, scrRegs64[2]);
         }
-        auto typeOpnd = st.getTypeOpnd(ctx.as, thisIdx, scrRegs8[3], numPush);
-        ctx.as.setType(cast(LocalIdx)(numVars + 2), typeOpnd);
+        auto typeOpnd = st.getTypeOpnd(ctx.as, thisIdx, scrRegs8[3]);
+        ctx.as.setType(-numArgs - 2, typeOpnd);
     }
 
     // If the callee uses its closure argument, write it on the stack
     if (fun.ast.usesClos == true)
     {
-        ctx.as.setWord(cast(LocalIdx)(numVars + 1), closReg);
-        ctx.as.setType(cast(LocalIdx)(numVars + 1), Type.REFPTR);
+        ctx.as.setWord(-numArgs - 3, closReg);
+        ctx.as.setType(-numArgs - 3, Type.REFPTR);
     }
 
     // Write the return address (caller instruction)
     ctx.as.ptr(scrRegs64[3], instr);
-    ctx.as.setWord(cast(LocalIdx)(numVars + 0), scrRegs64[3]);
-    ctx.as.setType(cast(LocalIdx)(numVars + 0), Type.INSPTR);
+    ctx.as.setWord(-numArgs - 4, scrRegs64[3]);
+    ctx.as.setType(-numArgs - 4, Type.INSPTR);
+
+    // Push space for the callee arguments and locals
+    ctx.as.getMember!("IRFunction", "numLocals")(scrRegs32[1], scrRegs64[1]);
+    ctx.as.instr(SUB, tspReg, scrRegs64[1]);
+    ctx.as.instr(SHL, scrRegs64[1], 3);
+    ctx.as.instr(SUB, wspReg, scrRegs64[1]);
 
     // Jump to the callee entry point
     ctx.as.jump(ctx, st, fun.entryBlock);
@@ -724,7 +721,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Get the call instruction
     ctx.as.getWord(scrRegs64[0], raSlot);
-    
+
     // If this is not a regular call, bailout
     ctx.as.getMember!("IRInstr", "opcode")(scrRegs64[1], scrRegs64[0]);
     ctx.as.ptr(scrRegs64[2], &ir.ir.CALL);
