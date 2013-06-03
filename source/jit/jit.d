@@ -146,7 +146,6 @@ void inlinePass(Interp interp, IRFunction fun)
         if (inlinable(lastInstr, callee) is false)
             continue;
 
-        // TODO: 
         if (opts.jit_dumpinfo)
         {
             writefln(
@@ -181,8 +180,8 @@ void compFun(Interp interp, IRFunction fun)
         );
     }
 
-    // If JIT optimizations are not disabled
-    if (!opts.jit_noopts)
+    // If inlining is not disabled
+    if (!opts.jit_noinline)
     {
         // Run the inlining pass on this function
         inlinePass(interp, fun);
@@ -457,8 +456,8 @@ void compFun(Interp interp, IRFunction fun)
     as.append(ol);
 
     /*
-    // If JIT optimizations are not disabled
-    if (!opts.jit_noopts)
+    // If ASM optimizations are not disabled
+    if (!opts.jit_noasmopts)
     {
         // Perform peephole optimizations on the generated code
         optAsm(as);

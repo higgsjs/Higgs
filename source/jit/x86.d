@@ -363,9 +363,8 @@ class X86Mem : X86Opnd
         auto a = cast(X86Mem)this;
         auto b = cast(X86Mem)that;
 
-        assert (a !is null && b !is null);
-
         return (
+            b !is null &&
             a.base is b.base &&
             a.index is b.index &&
             a.disp is b.disp &&

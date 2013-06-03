@@ -42,6 +42,7 @@ import std.string;
 import std.stdint;
 import ir.ir;
 import interp.object;
+import util.bitset;
 
 /// Maximum number of locals a caller may have before inlining
 const size_t MAX_CALLER_LOCALS = 100;
@@ -156,9 +157,41 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
     // Map of callee blocks to copied blocks
     IRBlock[IRBlock] blockMap;
 
-    // Copy the callee blocks
+    // Flags indicating if the callee uses the hidden arguments
+    bool usesArgc = false;
+    bool usesClos = false;
+    bool usesThis = false;
+
+    // Slot index for the first callee argument
+    auto arg0Slot = callee.numLocals - callee.numParams;
+
+    // Bit set to keep track of arguments slots written to
+    auto writtenArgs = new BitSet(numArgs);
+
+    // For each callee block
     for (auto block = callee.firstBlock; block !is null; block = block.next)
     {
+        // For each instruction
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+            // Check if the hidden arguments are used
+            foreach (argIdx, arg; instr.args)
+            {
+                if (instr.opcode.getArgType(argIdx) == OpArg.LOCAL)
+                {
+                    auto argSlot = instr.args[argIdx].localIdx;
+                    usesArgc = usesArgc || (argSlot == callee.argcSlot);
+                    usesClos = usesClos || (argSlot == callee.closSlot);
+                    usesThis = usesThis || (argSlot == callee.thisSlot);
+                }
+            }
+
+            // Keep track of arguments written to
+            if (instr.outSlot - arg0Slot < writtenArgs.length)
+                writtenArgs.add(instr.outSlot - arg0Slot);
+        }
+
+        // Copy the block and add it to the caller
         auto newBlock = block.dup;
         blockMap[block] = newBlock;
         caller.addBlock(newBlock);
@@ -170,6 +203,17 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
         // For each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
+            // Remap uses of argument slots that were never written to
+            foreach (argIdx, arg; instr.args)
+            {
+                if (instr.opcode.getArgType(argIdx) == OpArg.LOCAL)
+                {
+                    auto argNo = instr.args[argIdx].localIdx - arg0Slot;
+                    if (argNo < numArgs && !writtenArgs.has(argNo))
+                        instr.args[argIdx].localIdx = callSite.args[2 + argNo].localIdx;
+                }
+            }
+
             // Tanslate targets
             if (instr.target)
                 instr.target = blockMap[instr.target];
@@ -256,31 +300,45 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
     );
     callBlock.addInstr(IRInstr.ifTrue(testInstr.outSlot, entryBlock, regCall));
 
-    // Copy the visible arguments in reverse order
+    // Copy the visible arguments that were written to, in reverse order
     foreach (argIdx, arg; callSite.args[2..$])
     {
-        auto dstIdx = cast(LocalIdx)(callee.numLocals - (numArgs - argIdx));
+        if (writtenArgs.has(argIdx))
+        {
+            auto dstIdx = cast(LocalIdx)(callee.numLocals - (numArgs - argIdx));
+            entryBlock.addInstrBefore(
+                new IRInstr(&MOVE, dstIdx, arg.localIdx),
+                entryBlock.firstInstr
+            );
+        }
+    }
+
+    // Copy the closure argument
+    if (usesClos)
+    {
         entryBlock.addInstrBefore(
-            new IRInstr(&MOVE, dstIdx, arg.localIdx),
+            new IRInstr(&MOVE, callee.closSlot, callSite.args[0].localIdx),
             entryBlock.firstInstr
         );
     }
 
-    // Copy the closure and this arguments
-    entryBlock.addInstrBefore(
-        new IRInstr(&MOVE, callee.closSlot, callSite.args[0].localIdx),
-        entryBlock.firstInstr
-    );
-    entryBlock.addInstrBefore(
-        new IRInstr(&MOVE, callee.thisSlot, callSite.args[1].localIdx),
-        entryBlock.firstInstr
-    );
+    // Copy the "this" argument
+    if (usesThis)
+    {
+        entryBlock.addInstrBefore(
+            new IRInstr(&MOVE, callee.thisSlot, callSite.args[1].localIdx),
+            entryBlock.firstInstr
+        );
+    }
 
     // Set the argument count
-    entryBlock.addInstrBefore(
-        IRInstr.intCst(callee.argcSlot, cast(uint)numArgs),
-        entryBlock.firstInstr
-    );
+    if (usesArgc)
+    {
+        entryBlock.addInstrBefore(
+            IRInstr.intCst(callee.argcSlot, cast(uint)numArgs),
+            entryBlock.firstInstr
+        );
+    }
 
     // Return the mapping of pre-inlining local indices to post-inlining indices 
     return localMap;

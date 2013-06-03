@@ -79,6 +79,9 @@ TODO: IR-level optimizations?
 - Jump to block that jumps
 - Redundant moves, use original value
   - Must prove move is useless to remove
+- Need basic reaching defs for moves, const prop
+  - Map inputs to instrs to other instrs (like SSA)
+- Might be smarter to start with simple ASM peephole opts
 
 TODO: stack-frame compaction
 - Need liveness info if doing OSR
@@ -88,9 +91,6 @@ TODO: stack-frame compaction
 TODO: disable temporary compFun in callFun
 
 TODO: basic OSR if function is on top of the stack
-
-
-
 
 TODO: blog, Implementing Inlining
 - Inlining in Higgs
@@ -107,6 +107,28 @@ TODO: blog, Implementing Inlining
 
 
 
+TODO: investigate why most functions get no inlining, including $rt_add, $rt_lt ***
+- Lack of inlining partially explains lack of speed
+
+
+
+
+
+
+
+
+
+[DONE] TODO: for inlining, be a little smarter
+- Check if arg count never read, if so don't write it
+- Check if arg slots never written, if so use arg vals directly
+
+[DONE] TODO: jit_noinline flag
+- remove plain jit_noopts, not specific enough
+- 3d-raytrace still 0.6s faster without inlining, 3.5 vs 4.3
+
+[DONE] TODO: IR flag for non-pure values, things we can't safely remove
+- STORE_..., SET_LINK, SET_GLOBAL, EVAL_STR, PRINT_STR, CLOSE_LIB, GC_COLLECT
+- OpInfo.IMPURE
 
 [DONE] TODO: optimize instructions needed for inlining
 - set_rawptr, eq_rawptr, set_i32, load_rawptr

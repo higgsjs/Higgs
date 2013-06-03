@@ -345,11 +345,12 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
     auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, numBits);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
 
+    auto outReg = cast(X86Reg)opndOut;
+    if (outReg is null)
+        outReg = scrRegs32[0];
+
     // Compare the inputs
     ctx.as.instr(CMP, opnd0, opnd1);
-
-    ctx.as.instr(MOV, scrRegs16[0], FALSE.int8Val);
-    ctx.as.instr(MOV, scrRegs16[1], TRUE.int8Val);
 
     X86OpPtr cmovOp = null;
     static if (op == "eq")
@@ -365,14 +366,20 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
     static if (op == "ge")
         cmovOp = CMOVGE;
 
-    ctx.as.instr(cmovOp, scrRegs32[0], scrRegs32[1]);
+    ctx.as.instr(MOV   , outReg      , FALSE.int8Val);
+    ctx.as.instr(MOV   , scrRegs32[1], TRUE.int8Val );
+    ctx.as.instr(cmovOp, outReg      , scrRegs32[1] );
 
-    ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+    // If the output is not a register
+    if (opndOut !is outReg)
+        ctx.as.instr(MOV, opndOut, outReg);
 
     st.setOutType(ctx.as, instr, Type.CONST);
 }
 
 alias CmpOp!("eq", 8) gen_eq_i8;
+alias CmpOp!("eq", 32) gen_eq_i32;
+alias CmpOp!("ne", 32) gen_ne_i32;
 alias CmpOp!("lt", 32) gen_lt_i32;
 alias CmpOp!("eq", 8) gen_eq_const;
 alias CmpOp!("eq", 64) gen_eq_rawptr;
@@ -903,9 +910,10 @@ static this()
     */
 
     codeGenFns[&EQ_I8]          = &gen_eq_i8;
+    codeGenFns[&EQ_I32]         = &gen_eq_i32;
+    codeGenFns[&NE_I32]         = &gen_ne_i32;
     codeGenFns[&LT_I32]         = &gen_lt_i32;
     //codeGenFns[&GE_I32]         = &gen_ge_i32;
-    //codeGenFns[&NE_I32]         = &gen_ne_i32;
     codeGenFns[&EQ_CONST]       = &gen_eq_const;
     //codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
     //codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;

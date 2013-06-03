@@ -680,7 +680,8 @@ struct OpInfo
         BRANCH      = 1 << 1,
         CALL        = 1 << 2,
         MAY_GC      = 1 << 3,
-        BOOL_VAL    = 1 << 4
+        BOOL_VAL    = 1 << 4,
+        IMPURE      = 1 << 5
     }
 
     string mnem;
@@ -694,6 +695,7 @@ struct OpInfo
     bool isCall  () const { return (opFlags & CALL) != 0; }
     bool mayGC   () const { return (opFlags & MAY_GC) != 0; }
     bool boolVal () const { return (opFlags & BOOL_VAL) != 0; }
+    bool isImpure() const { return (opFlags & IMPURE) != 0; }
 
     OpArg getArgType(size_t i) immutable
     {
@@ -817,14 +819,14 @@ Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load
 Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_funptr };
 
 // Store instructions
-Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8 };
-Opcode STORE_U16 = { "store_u16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u16 };
-Opcode STORE_U32 = { "store_u32", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u32 };
-Opcode STORE_U64 = { "store_u64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u64 };
-Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64 };
-Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr };
-Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr };
-Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_funptr };
+Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8, OpInfo.IMPURE };
+Opcode STORE_U16 = { "store_u16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u16, OpInfo.IMPURE };
+Opcode STORE_U32 = { "store_u32", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u32, OpInfo.IMPURE };
+Opcode STORE_U64 = { "store_u64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u64, OpInfo.IMPURE };
+Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64, OpInfo.IMPURE };
+Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr, OpInfo.IMPURE };
+Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr, OpInfo.IMPURE };
+Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_funptr, OpInfo.IMPURE };
 
 // Branching and conditional branching
 Opcode JUMP = { "jump", false, [], &op_jump, OpInfo.BRANCH };
@@ -875,13 +877,13 @@ Opcode GET_GC_COUNT = { "get_gc_count", true, [], &op_get_gc_count };
 Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection
-Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &op_gc_collect, OpInfo.MAY_GC };
+Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &op_gc_collect, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Create a link table entry associated with this instruction
 Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], &op_make_link };
 
 /// Set the value of a link table entry
-Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &op_set_link };
+Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &op_set_link, OpInfo.IMPURE };
 
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &op_get_link };
@@ -896,20 +898,20 @@ Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT32], &op_get_g
 
 /// SET_GLOBAL <propName> <value>
 /// Note: hidden parameter is cached global property index
-Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT32], &op_set_global, OpInfo.MAY_GC };
+Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT32], &op_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// <dstLocal> = NEW_CLOS <funExpr>
 /// Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], &op_new_clos, OpInfo.MAY_GC };
 
 /// Load a source code unit from a file
-Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], &op_load_file, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
+Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], &op_load_file, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Evaluate a source string in the global scope
-Opcode EVAL_STR = { "eval_str", true, [OpArg.LOCAL], &op_eval_str, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
+Opcode EVAL_STR = { "eval_str", true, [OpArg.LOCAL], &op_eval_str, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Print a string to standard output
-Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str };
+Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str, OpInfo.IMPURE };
 
 /// Get a string representation of a function's AST
 Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &op_get_ast_str, OpInfo.MAY_GC };
@@ -927,7 +929,7 @@ Opcode GET_TIME_MS = { "get_time_ms", true, [], &op_get_time_ms };
 Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], &op_load_lib };
 
 /// Close shared lib
-Opcode CLOSE_LIB = { "close_lib", false, [OpArg.LOCAL], &op_close_lib };
+Opcode CLOSE_LIB = { "close_lib", false, [OpArg.LOCAL], &op_close_lib, OpInfo.IMPURE };
 
 /// Lookup symbol in shared lib
 Opcode GET_SYM = { "get_sym", true, [OpArg.LOCAL, OpArg.STRING], &op_get_sym };
