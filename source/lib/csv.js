@@ -35,9 +35,6 @@
 *
 *****************************************************************************/
 
-// TODO: fromString, toString
-// These functions will be useful for simple unit tests
-
 (function()
 {
     var io = require('lib/stdio');
@@ -50,12 +47,8 @@
         this.rows = [];
     }
 
-    CSV.prototype.loadFile = function (fileName)
+    CSV.prototype.fromString = function (str)
     {
-        print('loading CSV file: "' + fileName + '"');
-
-        var data = io.fopen(fileName, "r").read();
-
         var state = 'PRE-QUOTE';
 
         var curRow = [];
@@ -91,9 +84,9 @@
         }
 
         // For each character
-        for (chIdx = 0; chIdx < data.length; ++chIdx)
+        for (chIdx = 0; chIdx < str.length; ++chIdx)
         {
-            var ch = data[chIdx];
+            var ch = str[chIdx];
 
             if (ch === '\r')
                 continue;
@@ -164,18 +157,46 @@
 
         if (curRow.length > 0)
             pushRow();
-
-        print('read ' + this.rows.length + ' rows');
     }
 
     CSV.prototype.toString = function ()
     {
-        // TODO
+        var str = '';
+
+        for (var y = 0; y < this.rows.length; ++y)
+        {
+            var row = this.rows[y];
+
+            for (var x = 0; x < row.length; ++x)
+            {
+                var cell = row[x];
+
+                if (cell.indexOf(',') !== -1)
+                    str += '"' + cell + '"';
+                else
+                    str += cell;
+
+                if (x < row.length - 1)
+                    str += ',';
+            }
+
+            if (y < this.rows.length - 1)
+                str += '\n';
+        }
+
+        return str;
+    }
+
+    CSV.prototype.loadFile = function (fileName)
+    {
+        var str = io.fopen(fileName, "r").read();
+        return this.fromString(str);
     }
 
     CSV.prototype.writeFile = function (fileName)
     {
-        // TODO
+        var str = this.toString();
+        io.fopen(fileName, "w").write(str);
     }
 
     CSV.prototype.getNumRows = function ()
@@ -206,6 +227,11 @@
         );
 
         return this.rows[rowIdx][colIdx];
+    }
+
+    CSV.prototype.setCell = function (rowIdx, colIdx, val)
+    {
+        // TODO
     }
 
     CSV.prototype.getColIdx = function (colName)
