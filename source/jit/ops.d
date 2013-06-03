@@ -57,6 +57,37 @@ import jit.regalloc;
 import jit.jit;
 import util.bitset;
 
+void gen_set_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    ctx.as.instr(MOV, outOpnd, instr.args[0].int32Val);
+    st.setOutType(ctx.as, instr, Type.INT32);
+}
+
+void gen_set_rawptr(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    ctx.as.instr(MOV, outOpnd, cast(int64_t)instr.args[0].ptrVal);
+    st.setOutType(ctx.as, instr, Type.RAWPTR);
+}
+
+void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto linkIdx = instr.args[1].linkIdx;
+
+    assert (
+        linkIdx !is NULL_LINK,
+        "link not allocated for set_str"
+    );
+
+    ctx.as.getMember!("Interp", "wLinkTable")(scrRegs64[0], interpReg);
+    ctx.as.instr(MOV, scrRegs64[0], new X86Mem(64, scrRegs64[0], 8 * linkIdx));
+
+    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
+    st.setOutType(ctx.as, instr, Type.REFPTR);
+}
+
 void gen_set_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
@@ -89,30 +120,6 @@ void gen_set_null(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
     ctx.as.instr(MOV, outOpnd, NULL.int8Val);
-    st.setOutType(ctx.as, instr, Type.REFPTR);
-}
-
-void gen_set_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 32);
-    ctx.as.instr(MOV, outOpnd, instr.args[0].int32Val);
-    st.setOutType(ctx.as, instr, Type.INT32);
-}
-
-void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto linkIdx = instr.args[1].linkIdx;
-
-    assert (
-        linkIdx !is NULL_LINK,
-        "link not allocated for set_str"
-    );
-
-    ctx.as.getMember!("Interp", "wLinkTable")(scrRegs64[0], interpReg);
-    ctx.as.instr(MOV, scrRegs64[0], new X86Mem(64, scrRegs64[0], 8 * linkIdx));
-
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
 
@@ -367,11 +374,8 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
 
 alias CmpOp!("eq", 8) gen_eq_i8;
 alias CmpOp!("lt", 32) gen_lt_i32;
-//alias CmpOp!("i32", "ge") gen_ge_i32;
-//alias CmpOp!("i32", "ne") gen_ne_i32;
 alias CmpOp!("eq", 8) gen_eq_const;
-//alias CmpOp!("i64", "eq") gen_eq_refptr;
-//alias CmpOp!("i64", "ne") gen_ne_refptr;
+alias CmpOp!("eq", 64) gen_eq_rawptr;
 
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -424,8 +428,7 @@ alias LoadOp!(32, Type.INT32) gen_load_u32;
 alias LoadOp!(64, Type.INT64) gen_load_u64;
 //alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
-//alias LoadOp!(rawptr, Type.RAWPTR) gen_load_rawptr;
-//alias LoadOp!(IRFunction, Type.FUNPTR) gen_load_funptr;
+alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
 
 void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -863,13 +866,14 @@ CodeGenFn[Opcode*] codeGenFns;
 
 static this()
 {
+    codeGenFns[&SET_I32]        = &gen_set_i32;
+    codeGenFns[&SET_RAWPTR]     = &gen_set_rawptr;
+    codeGenFns[&SET_STR]        = &gen_set_str;
     codeGenFns[&SET_TRUE]       = &gen_set_true;
     codeGenFns[&SET_FALSE]      = &gen_set_false;
     codeGenFns[&SET_UNDEF]      = &gen_set_undef;
     codeGenFns[&SET_MISSING]    = &gen_set_missing;
     codeGenFns[&SET_NULL]       = &gen_set_null;
-    codeGenFns[&SET_I32]        = &gen_set_i32;
-    codeGenFns[&SET_STR]        = &gen_set_str;
 
     codeGenFns[&MOVE]           = &gen_move;
 
@@ -905,12 +909,14 @@ static this()
     codeGenFns[&EQ_CONST]       = &gen_eq_const;
     //codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
     //codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
+    codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
 
     codeGenFns[&LOAD_U8]        = &gen_load_u8;
     codeGenFns[&LOAD_U32]       = &gen_load_u32;
     codeGenFns[&LOAD_U64]       = &gen_load_u64;
     //codeGenFns[&LOAD_F64]       = &gen_load_f64;
     codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
+    codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
 
     codeGenFns[&JUMP]           = &gen_jump;
 

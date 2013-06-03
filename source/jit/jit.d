@@ -697,8 +697,6 @@ class CodeGenState
                     instr.opcode.getArgType(otherIdx) == OpArg.LOCAL &&
                     arg.localIdx == regSlot)
                 {
-                    writefln("got overlap");
-
                     // Map the argument to its stack location
                     allocState[argSlot] = RA_STACK;
                     return new X86Mem(numBits, wspReg, 8 * argSlot);

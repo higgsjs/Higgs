@@ -231,7 +231,27 @@
 
     CSV.prototype.setCell = function (rowIdx, colIdx, val)
     {
-        // TODO
+        if (rowIdx >= this.rows.length)
+        {
+            var curLen = this.rows.length;
+            this.rows.length = rowIdx + 1;
+
+            for (var i = curLen; i < this.rows.length; ++i)
+                this.rows[i] = [];
+        }
+
+        var row = this.rows[rowIdx];
+
+        if (colIdx >= row.length)
+        {
+            var curLen = row.length;
+            row.length = colIdx + 1;
+
+            for (var i = curLen; i < row.length; ++i)
+                row[i] = '';
+        }
+
+        row[colIdx] = val;
     }
 
     CSV.prototype.getColIdx = function (colName)

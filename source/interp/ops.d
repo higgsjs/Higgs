@@ -833,7 +833,7 @@ void callFun(
 
 
 
-    /*
+    
     // TODO: temporary, to test inlining
     if (fun.entryBlock.execCount == 950)
     {
@@ -841,7 +841,7 @@ void callFun(
         fun.entryBlock.execCount++;
         //writefln("done compiling w/ inlining, executing");
     }
-    */
+    
 
 
 

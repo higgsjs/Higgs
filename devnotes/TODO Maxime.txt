@@ -89,15 +89,32 @@ TODO: disable temporary compFun in callFun
 
 TODO: basic OSR if function is on top of the stack
 
-TODO: test performance on raytrace, bitwise-and? try increasing fn size limit
+
+
+
+TODO: blog, Implementing Inlining
+- Inlining in Higgs
+  - OSR aspect
+  - nontrivial, stressing the JIT, bug fixing
+  - frame compaction, optimization
+  - no perf gains yet
+- Plans: more libs, graphics/audio wrappers, testing system
+  - Competing with Python?
+- DConf 2013 talk in a week or so
+  - Will be announced and linked on this blog and on my twitter feed
 
 
 
 
 
 
+[DONE] TODO: optimize instructions needed for inlining
+- set_rawptr, eq_rawptr, set_i32, load_rawptr
+- produces some speedup, but still not as fast as uninlined
+- moves may be quite inefficient
 
-
+[DONE] TODO: test performance on raytrace, bitwise-and? try increasing fn size limit
+- Raytrace is twice as slow, 4.4s vs 10s
 
 [DONE] TODO: test inlining with functions not currently on stack (pre-OSR)
 - funOnStack
