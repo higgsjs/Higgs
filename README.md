@@ -18,11 +18,6 @@ Interpreter and tracing JIT for JavaScript targetting x86-64 platforms.
  
 `git clone https://github.com/maximecb/Higgs.git && cd Higgs/source`
 
-*You may wish to run the unit tests:*
- 
-`make test`
-generates a binary `test-higgs` and tests its proper functioning.
-
 *Compile a binary:*
  
 `make all`
@@ -37,6 +32,11 @@ copies the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`.
 
 `make clean`
 will remove any binaries in the source directory.
+
+*You may wish to run the unit tests:*
+ 
+`make test`
+generates a binary `test-higgs` and tests its proper functioning.
 
 For further info, see the `makefile`.
 
