@@ -835,7 +835,7 @@ void callFun(
 
     /*
     // TODO: temporary, to test inlining
-    if (fun.entryBlock.execCount == 900)
+    if (fun.entryBlock.execCount == 950)
     {
         compFun(interp, fun);
         fun.entryBlock.execCount++;

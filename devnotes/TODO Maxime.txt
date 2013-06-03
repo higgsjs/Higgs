@@ -89,7 +89,7 @@ TODO: disable temporary compFun in callFun
 
 TODO: basic OSR if function is on top of the stack
 
-
+TODO: test performance on raytrace, bitwise-and? try increasing fn size limit
 
 
 
