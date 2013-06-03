@@ -48,7 +48,7 @@ import util.bitset;
 const size_t MAX_CALLER_LOCALS = 100;
 
 /// Maximum number of locals a callee may have before inlining
-const size_t MAX_CALLEE_LOCALS = 20;
+const size_t MAX_CALLEE_LOCALS = 30;
 
 /**
 Test if a function is inlinable at a call site

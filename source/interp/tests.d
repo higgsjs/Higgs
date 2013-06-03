@@ -1427,6 +1427,9 @@ unittest
     writefln("sunspider/3d-morph");
     interp.load("programs/sunspider/3d-morph.js");
 
+    writefln("sunspider/3d-cube");
+    interp.load("programs/sunspider/3d-cube.js");
+
     writefln("sunspider/access-binary-trees");
     interp.load("programs/sunspider/access-binary-trees.js");
 

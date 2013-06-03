@@ -92,12 +92,17 @@ TODO: disable temporary compFun in callFun
 
 TODO: basic OSR if function is on top of the stack
 
+
+FIXME: earley-boyer not working, with or without inlining
+- add to tests permanently?
+
+
 TODO: blog, Implementing Inlining
 - Inlining in Higgs
   - OSR aspect
   - nontrivial, stressing the JIT, bug fixing
   - frame compaction, optimization
-  - no perf gains yet
+  - most tests show slight perf loss, some slightly faster
 - Plans: more libs, graphics/audio wrappers, testing system
   - Competing with Python?
 - DConf 2013 talk in a week or so
@@ -107,16 +112,19 @@ TODO: blog, Implementing Inlining
 
 
 
-TODO: investigate why most functions get no inlining, including $rt_add, $rt_lt ***
+
+
+
+[DONE] TODO: investigate why most functions get no inlining, including $rt_add, $rt_lt
 - Lack of inlining partially explains lack of speed
+- bitwise-and is a loop, won't inline anything without basic OSR
+- rt_add, rt_lt themselves don't really need inlining for the common case
+- must have basic OSR to see change in functions with loops
+- 3d-cube is actually faster
 
+[DONE] TODO: re-implement add_i32_ovf in JIT
 
-
-
-
-
-
-
+[DONE] TODO: re-implement set_f64
 
 [DONE] TODO: for inlining, be a little smarter
 - Check if arg count never read, if so don't write it

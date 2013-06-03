@@ -64,10 +64,17 @@ void gen_set_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     st.setOutType(ctx.as, instr, Type.INT32);
 }
 
+void gen_set_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    ctx.as.instr(MOV, outOpnd, instr.args[0].int64Val);
+    st.setOutType(ctx.as, instr, Type.FLOAT64);
+}
+
 void gen_set_rawptr(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, cast(int64_t)instr.args[0].ptrVal);
+    ctx.as.instr(MOV, outOpnd, instr.args[0].int64Val);
     st.setOutType(ctx.as, instr, Type.RAWPTR);
 }
 
@@ -249,12 +256,32 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
         ctx.as.instr(opPtr, opndOut, opnd1);
     }
 
+    // If the instruction has an exception/overflow target
+    if (instr.excTarget)
+    {
+        // On overflow, jump to the overflow target
+        auto ovfLabel = ctx.getBlockLabel(instr.excTarget, st);
+        ctx.as.instr(JO, ovfLabel);
+    }
+
+    // Set the output type
     st.setOutType(ctx.as, instr, typeTag);
+
+    // If the instruction has a non-overflow target
+    if (instr.target)
+    {
+        auto jmpLabel = ctx.getBlockLabel(instr.target, st);
+        ctx.as.instr(JMP, jmpLabel);
+    }
 }
 
 alias RMMOp!("add" , 32, Type.INT32) gen_add_i32;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
 alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
+
+alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
+alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
+alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
 /*
 void gen_add_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -302,43 +329,6 @@ void gen_div_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 }
 */
 
-/*
-void OvfOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto OVF = new Label("OVF");
-
-    ctx.as.getWord(ECX, instr.args[0].localIdx);
-    ctx.as.getWord(EDX, instr.args[1].localIdx);
-
-    static if (op == "add")
-        ctx.as.instr(ADD, ECX, EDX);
-    static if (op == "sub")
-        ctx.as.instr(SUB, ECX, EDX);
-    static if (op == "mul")
-        ctx.as.instr(IMUL, ECX, EDX);
-
-    ctx.as.instr(JO, OVF);
-
-    // Set the output
-    ctx.as.setWord(instr.outSlot, RCX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
-
-    // If the target block isn't in the block list, jump to it
-    if (!ctx.hasNextNode || ctx.nextBlock != instr.target)
-        ctx.as.jump(ctx, instr.target);
-
-    // *** The trace will continue at the target block ***
-
-    // Out of line jump to the overflow target
-    ctx.ol.addInstr(OVF);
-    ctx.ol.jump(ctx, instr.excTarget);
-}
-
-alias OvfOp!("add") gen_add_i32_ovf;
-alias OvfOp!("sub") gen_sub_i32_ovf;
-alias OvfOp!("mul") gen_mul_i32_ovf;
-*/
-
 void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, numBits);
@@ -381,6 +371,9 @@ alias CmpOp!("eq", 8) gen_eq_i8;
 alias CmpOp!("eq", 32) gen_eq_i32;
 alias CmpOp!("ne", 32) gen_ne_i32;
 alias CmpOp!("lt", 32) gen_lt_i32;
+alias CmpOp!("le", 32) gen_le_i32;
+alias CmpOp!("gt", 32) gen_gt_i32;
+alias CmpOp!("ge", 32) gen_ge_i32;
 alias CmpOp!("eq", 8) gen_eq_const;
 alias CmpOp!("eq", 64) gen_eq_rawptr;
 
@@ -874,6 +867,7 @@ CodeGenFn[Opcode*] codeGenFns;
 static this()
 {
     codeGenFns[&SET_I32]        = &gen_set_i32;
+    codeGenFns[&SET_F64]        = &gen_set_f64;
     codeGenFns[&SET_RAWPTR]     = &gen_set_rawptr;
     codeGenFns[&SET_STR]        = &gen_set_str;
     codeGenFns[&SET_TRUE]       = &gen_set_true;
@@ -898,22 +892,22 @@ static this()
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
     codeGenFns[&AND_I32]        = &gen_and_i32;
 
-    /*
-    codeGenFns[&ADD_F64]        = &gen_add_f64;
-    codeGenFns[&SUB_F64]        = &gen_sub_f64;
-    codeGenFns[&MUL_F64]        = &gen_mul_f64;
-    codeGenFns[&DIV_F64]        = &gen_div_f64;
+    //codeGenFns[&ADD_F64]        = &gen_add_f64;
+    //codeGenFns[&SUB_F64]        = &gen_sub_f64;
+    //codeGenFns[&MUL_F64]        = &gen_mul_f64;
+    //codeGenFns[&DIV_F64]        = &gen_div_f64;
 
     codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
     codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
     codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
-    */
 
     codeGenFns[&EQ_I8]          = &gen_eq_i8;
     codeGenFns[&EQ_I32]         = &gen_eq_i32;
     codeGenFns[&NE_I32]         = &gen_ne_i32;
     codeGenFns[&LT_I32]         = &gen_lt_i32;
-    //codeGenFns[&GE_I32]         = &gen_ge_i32;
+    codeGenFns[&LE_I32]         = &gen_le_i32;
+    codeGenFns[&GT_I32]         = &gen_gt_i32;
+    codeGenFns[&GE_I32]         = &gen_ge_i32;
     codeGenFns[&EQ_CONST]       = &gen_eq_const;
     //codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
     //codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;

@@ -40,6 +40,7 @@ module ir.ir;
 import std.stdio;
 import std.array;
 import std.string;
+import std.stdint;
 import std.conv;
 import std.regex;
 import std.stdint;
@@ -405,7 +406,8 @@ class IRInstr : IdObject
     /// Instruction argument
     union Arg
     {
-        int int32Val;
+        int32_t int32Val;
+        int64_t int64Val;
         double float64Val;
         rawptr ptrVal;
         wstring stringVal;

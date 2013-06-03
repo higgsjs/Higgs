@@ -135,7 +135,7 @@ void inlinePass(Interp interp, IRFunction fun)
         if (lastInstr.opcode != &ir.ir.CALL)
             continue;
 
-        // If there is more than one callee, skip it
+        // If there is not exactly one callee, skip it
         if (fun.callCounts[lastInstr].length != 1)
             continue;
 
@@ -490,6 +490,7 @@ void compFun(Interp interp, IRFunction fun)
     if (opts.jit_dumpinfo)
     {
         writefln("machine code bytes: %s", codeBlock.length);
+        writefln("num locals: %s", fun.numLocals);
         writefln("num blocks: %s", versionMap.length);
         writefln("num versions: %s", numVersions);
         writefln("");
