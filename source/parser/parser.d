@@ -992,6 +992,12 @@ ASTExpr parseAtom(TokenStream input)
         // Parse the right subexpression
         ASTExpr expr = parseExpr(input, op.prec);
 
+        // If this is a negated integer, negate the value now
+        if (op.str == "-"w)
+            if (auto intExpr = cast(IntExpr)expr)
+                return new IntExpr(-intExpr.val, intExpr.pos);
+
+        // Return the unary expression
         return new UnOpExpr(op, expr, pos);
     }
 

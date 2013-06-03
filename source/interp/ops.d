@@ -835,11 +835,11 @@ void callFun(
 
     /*
     // TODO: temporary, to test inlining
-    if (fun.entryBlock.execCount == 400)
+    if (fun.entryBlock.execCount == 900)
     {
         compFun(interp, fun);
         fun.entryBlock.execCount++;
-        writefln("done compiling w/ inlining, executing");
+        //writefln("done compiling w/ inlining, executing");
     }
     */
 

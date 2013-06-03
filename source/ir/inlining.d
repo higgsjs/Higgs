@@ -278,7 +278,7 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
 
     // Set the argument count
     entryBlock.addInstrBefore(
-        IRInstr.intCst(cast(uint)numArgs, callee.argcSlot),
+        IRInstr.intCst(callee.argcSlot, cast(uint)numArgs),
         entryBlock.firstInstr
     );
 

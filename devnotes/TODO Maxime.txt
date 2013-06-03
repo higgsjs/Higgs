@@ -46,10 +46,6 @@ TODO: optimize IsTypeOp, compare ops in conjunction with if_true
   afterwards, skip the if_true compilation
 - Test if own value is dead after if_true, if so, don't produce
 
-TODO: can we use one less scratch reg?
-- Delay until type tags integrated
-- Might need more scratch regs as refactorings progress
-
 TODO: improved interpreter frame spill scheme
 - Map of call instrs to spill functions
   - special extern(C) function, called by interpreter
@@ -68,6 +64,10 @@ TODO: improved interpreter frame spill scheme
     - JIT fast entry point
 - Is this needed right now, is this orthogonal to inlining?
 
+TODO: can we use one less scratch reg?
+- Delay until type tags integrated
+- Might need more scratch regs as refactorings progress
+
 TODO: benchmarking (performance testing) JS script
 - benchmark.js
 - should do multiple runs (parameterizable numRuns?)
@@ -81,6 +81,9 @@ TODO: IR-level optimizations?
   - Must prove move is useless to remove
 
 TODO: stack-frame compaction
+- Need liveness info if doing OSR
+  - Move only live values to new slot
+  - Two live values can't map to same slot
 
 TODO: disable temporary compFun in callFun
 
@@ -88,24 +91,28 @@ TODO: basic OSR if function is on top of the stack
 
 
 
-TODO: test inlining with functions not currently on stack (pre-OSR)
+
+
+
+
+
+
+
+
+[DONE] TODO: test inlining with functions not currently on stack (pre-OSR)
 - funOnStack
 - ISSUE: all functions are on the stack when compiled!
 - For now, temporarily call compFun in function call bit?
 
+[DONE] FIXME: rt_sub used for negative numbers in JS layout computation!
+- Look at irString, $rt_clos_ofs_cell
+- Fix in parser
 
-
-
-
-FIXME: on Higgs init, invalid operand 2 type in op "auto r = x & y;" (int32)
-
-
-
-
-
-
-
-
+[DONE] FIXME: inlined rt_sub is compiled all wrong???
+- Move instruction doesn't copy type tag properly?
+- Disabling gen_move fixes problem
+- Immediately after move, is_int32 fails
+- IsTypeOp doesn't account for known type tags
 
 [DONE] FIXME: segmentation fault on Higgs init
 - JIT is probably calling valIsString with the wrong stack frame size

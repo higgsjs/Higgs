@@ -142,18 +142,32 @@ void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // Get the type value
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr.args[0].localIdx, scrRegs8[0]);
-
-    // Compare against the tested type
-    ctx.as.instr(CMP, scrRegs8[0], type);
-
-    ctx.as.instr(MOV, scrRegs64[0], FALSE.int64Val);
-    ctx.as.instr(MOV, scrRegs64[1], TRUE.int64Val);
-    ctx.as.instr(CMOVE, scrRegs64[0], scrRegs64[1]);
+    auto argSlot = instr.args[0].localIdx;
 
     auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
+
+    if (st.typeKnown(argSlot))
+    {
+        auto knownType = st.getType(argSlot);
+
+        if (knownType == type)
+            ctx.as.instr(MOV, outOpnd, TRUE.int64Val);
+        else
+            ctx.as.instr(MOV, outOpnd, FALSE.int64Val);
+    }
+    else
+    {
+        auto typeOpnd = st.getTypeOpnd(ctx.as, argSlot, scrRegs8[0]);
+
+        // Compare against the tested type
+        ctx.as.instr(CMP, scrRegs8[0], type);
+
+        ctx.as.instr(MOV, scrRegs64[0], FALSE.int64Val);
+        ctx.as.instr(MOV, scrRegs64[1], TRUE.int64Val);
+        ctx.as.instr(CMOVE, scrRegs64[0], scrRegs64[1]);
+
+        ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
+    }
 
     st.setOutType(ctx.as, instr, Type.CONST);
 }
