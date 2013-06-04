@@ -6,8 +6,6 @@ function Node(v)
 
 function addEdge(n)
 {
-    //iir.trace_print('entering addEdge');
-
     this.edges.push(n);
 }
 Node.prototype.addEdge = addEdge;
@@ -72,11 +70,18 @@ function test()
 
     var gcCount = $ir_get_gc_count();
 
+    //print('creating first nodes');
+
     var root = new Node(1);
     var a = new Node(2);
     var b = new Node(3);
 
+    //print('adding edges');
+
     root.addEdge(a);
+
+    //print('first edge added');
+
     a.addEdge(b);
     b.addEdge(root);
 
@@ -85,8 +90,6 @@ function test()
 
     while ($ir_get_gc_count() < gcCount + 2)
     {
-        //iir.trace_print('creating new node');
-
         var oa = root.edges[0];
         var na = new Node(oa.value);
 

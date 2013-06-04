@@ -1370,6 +1370,9 @@ unittest
     interp = new Interp();
     interp.load("programs/gc/closures.js");
     interp.assertInt("test();", 0);
+
+    interp = new Interp();
+    interp.load("programs/gc/objext.js");
   
     interp = new Interp();
     interp.load("programs/gc/deepstack.js");
@@ -1485,5 +1488,12 @@ unittest
     writefln("v8bench/richards");
     interp.load("programs/v8bench/richards.js");
     interp.load("programs/v8bench/drv-richards.js");
+
+    // FIXME: GC-related bug?
+    /*
+    writefln("v8bench/earley-boyer");
+    interp.load("programs/v8bench/earley-boyer.js");
+    interp.load("programs/v8bench/drv-earley-boyer.js");
+    */
 }
 

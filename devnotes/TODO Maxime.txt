@@ -101,9 +101,14 @@ TODO: basic OSR if function is on top of the stack
 
 
 FIXME: earley-boyer not working, with or without inlining
+run-time error: undefined base in read of property "car"
 - add to tests permanently?
-- try with jit_disable
+- jit_disable : still broken!
+- jit_noinline: still broken
 - try disabling JIT instrs selectively
+- Might have to do with recent changes to obj alloc
+  - gc happens during newObj
+- Doesn't seem directly connected to GC
 
 
 
@@ -117,7 +122,18 @@ FIXME: earley-boyer not working, with or without inlining
 
 
 
+[DONE] TODO: GC unit test
+- Alloc small object, add more properties, trigger GC,
+  try accessing latter properties
 
+[DONE] FIXME: GC bug with next chain
+- Segfault in gc/graph after collection is done
+- GC is artificially triggered by shrinkHeap, not during allocation
+- Crashes somewhere while setting up initial graph
+- Seem to be crashing on array push
+- Crashing when trying to get a closure cell property (array_toObject)
+  - $rt_getCellVal
+- Quite possibly our closure got a next pointer before the cells were set!
 
 [DONE] TODO: interpreter stack traversal function with delegates?
 - use for GC, funOnStack

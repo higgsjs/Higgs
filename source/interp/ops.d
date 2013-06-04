@@ -948,7 +948,7 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
 
     // Get the function object from the closure
     auto clos = GCRoot(interp, wClos.ptrVal);
-    auto fun = getClosFun(clos.pair.word.ptrVal);
+    auto fun = getClosFun(clos.ptr);
 
     assert (
         fun !is null,
@@ -956,12 +956,14 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
     );
 
     // Lookup the "prototype" property on the closure
-    auto proto = GCRoot(interp);
     auto protoStr = GCRoot(interp, getString(interp, "prototype"));
-    proto = getProp(
-        interp, 
-        clos.ptr,
-        protoStr.ptr
+    auto protoObj = GCRoot(
+        interp,
+        getProp(
+            interp, 
+            clos.ptr,
+            protoStr.ptr
+        )
     );
 
     // Allocate the "this" object
@@ -970,7 +972,7 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
         newObj(
             interp, 
             clos_get_ctor_class(clos.ptr),
-            proto.ptr,
+            protoObj.ptr,
             CLASS_INIT_SIZE,
             2
         )
@@ -1462,7 +1464,7 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
             interp.wLinkTable[*closLinkIdx].ptrVal,
             interp.funProto,
             CLASS_INIT_SIZE,
-            1,
+            2,
             cast(uint32)fun.captVars.length,
             fun
         )
@@ -1495,6 +1497,11 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
         objPtr.pair
     );
    
+    assert (
+        clos_get_next(closPtr.ptr) == null,
+        "closure next pointer is not null"
+    );
+
     // Output a pointer to the closure
     interp.setSlot(
         instr.outSlot,

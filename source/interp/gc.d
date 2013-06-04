@@ -421,16 +421,28 @@ refptr gcForward(Interp interp, refptr ptr)
         auto fun = getClosFun(ptr);
         visitFun(interp, fun);
     }
-
-    // Follow the next pointer chain for as long as it points in the from-space
+   
+    // Follow the next pointer chain as long as it points in the from-space
     refptr nextPtr = ptr;
-    do
+    for (;;)
     {
+        // Get the next pointer
         nextPtr = obj_get_next(nextPtr);
 
-    } while (nextPtr >= interp.heapStart && nextPtr < interp.heapLimit);
+        // If the next pointer is outside of the from-space
+        if (nextPtr < interp.heapStart || nextPtr >= interp.heapLimit)
+            break;
 
-    // If the object is not already forwarded
+        // Follow the next pointer chain
+        ptr = nextPtr;
+
+        assert (
+            ptr !is null, 
+            "object pointer is null"
+        );
+    } 
+
+    // If the object is not already forwarded to the to-space
     if (nextPtr is null)
     {
         //writefln("copying");
@@ -439,35 +451,27 @@ refptr gcForward(Interp interp, refptr ptr)
         nextPtr = gcCopy(interp, ptr, layout_sizeof(ptr));
 
         assert (
-            nextPtr >= interp.toStart && nextPtr < interp.toLimit,
-            format(
-                "gcForward: newly forwarded address is outside of to-space\n" ~
-                "ptr   : %s\n" ~
-                "start : %s\n" ~
-                "limit : %s\n",
-                nextPtr,
-                interp.toStart,
-                interp.toLimit,
-            )
+            obj_get_next(ptr) == nextPtr, 
+            "next pointer not set"
         );
     }
-    else
-    {
-        assert (
-            nextPtr >= interp.toStart && nextPtr < interp.toLimit,
-            format(
-                "gcForward: next pointer from object is outside of to-space\n" ~
-                "objPtr  : %s\n" ~
-                "nextPtr : %s\n" ~
-                "to-start: %s\n" ~
-                "to-limit: %s\n",
-                ptr,
-                nextPtr,
-                interp.toStart,
-                interp.toLimit,
-            )
-        );
-    }
+
+    assert (
+        nextPtr >= interp.toStart && nextPtr < interp.toLimit,
+        format(
+            "gcForward: next pointer is outside of to-space\n" ~
+            "objPtr  : %s\n" ~
+            "nextPtr : %s\n" ~
+            "to-start: %s\n" ~
+            "to-limit: %s\n",
+            ptr,
+            nextPtr,
+            interp.toStart,
+            interp.toLimit,
+        )
+    );
+
+    //writefln("object forwarded");
 
     // Return the forwarded pointer
     return nextPtr;
@@ -539,6 +543,11 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
         )        
     );
 
+    assert (
+        obj_get_next(ptr) == null,
+        "next pointer in object to forward is not null"
+    );
+    
     // The object will be copied at the to-space allocation pointer
     auto nextPtr = interp.toAlloc;
 
@@ -630,105 +639,7 @@ void visitStackRoots(Interp interp)
 
     interp.visitStack(visitFrame);
 
-
-    /*
-    if (interp.stackSize() == 0)
-        return;
-
-    //writefln("stack size: %s", interp.stackSize());
-
-    // Get the stack pointers
-    auto wsp = interp.wsp;
-    auto tsp = interp.tsp;
-
-    auto curInstr = interp.ip;
-    assert (curInstr !is null, "curInstr is null");
-    auto curFun = curInstr.block.fun;
-    assert (curFun !is null, "curFun is null");
-
-    // For each stack frame, starting from the topmost
-    for (;;)
-    {
-        //writefln("scanning stack frame");
-
-        //writefln("function on stack: %s", curFun.name);
-
-        // Visit the function this stack frame belongs to
-        visitFun(interp, curFun);
-
-        auto numParams = curFun.numParams;
-        auto numLocals = curFun.numLocals;
-        auto raSlot = curFun.raSlot;
-        auto argcSlot = curFun.argcSlot;
-
-        assert (
-            wsp + numLocals <= interp.wUpperLimit, 
-            "no room for numLocals in stack frame"
-        );
-
-        // Get the argument count
-        auto argCount = wsp[argcSlot].int32Val;
-
-        // Compute the actual number of extra arguments to pop
-        size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
-
-        //writefln("  numLocals: %s", numLocals);
-        //writefln("  numParams: %s", numParams);
-        //writefln("  argCount: %s", argCount);
-
-        // Compute the number of locals in this frame
-        auto frameSize = numLocals + extraArgs;
-
-        // For each local in this frame
-        for (LocalIdx idx = 0; idx < frameSize; ++idx)
-        {
-            //writefln("ref %s/%s", idx+1, frameSize);
-
-            Word word = wsp[idx];
-            Type type = tsp[idx];
-
-            // If this is a pointer, forward it
-            wsp[idx] = gcForward(interp, word, type);
-
-            auto fwdPtr = wsp[idx].ptrVal;
-            assert (
-                type != Type.REFPTR ||
-                fwdPtr == null ||
-                (fwdPtr >= interp.toStart && fwdPtr < interp.toLimit),
-                format(
-                    "invalid forwarded stack pointer\n" ~
-                    "ptr     : %s\n" ~
-                    "to-alloc: %s\n" ~
-                    "to-limit: %s",
-                    fwdPtr,
-                    interp.toStart,
-                    interp.toLimit
-                )
-            );
-        }
-
-        //writefln("done scanning locals");
-
-        // Get the calling instruction
-        curInstr = cast(IRInstr)wsp[raSlot].ptrVal;
-
-        // If we reached the bottom of the stack, stop
-        if (curInstr is null)
-            break;
-
-        //writefln("moving up stack");
-
-        // Update the current function
-        curFun = curInstr.block.fun;
-        assert (curFun !is null);
-
-        // Pop all local stack slots and arguments
-        wsp += frameSize;
-        tsp += frameSize;
-    }
-
     //writefln("done scanning stack");
-    */
 }
 
 /**

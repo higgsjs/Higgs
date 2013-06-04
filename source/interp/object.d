@@ -154,10 +154,6 @@ refptr newClos(
     obj_set_class(objPtr, classObj.ptr);
     obj_set_proto(objPtr, protoObj.ptr);
 
-    // TODO: remove meeee
-    // Set the function pointer 
-    //clos_set_fptr(objPtr, cast(rawptr)fun);
-
     // Set the function pointer
     setClosFun(objPtr, fun);
 
@@ -448,6 +444,8 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
 
         // Update the object pointer
         obj = newObj;
+
+        //writefln("done extending object");
     }
 
     // Set the value and its type in the object
