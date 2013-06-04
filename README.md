@@ -3,7 +3,7 @@ Higgs
 
 Higgs JavaScript Virtual Machine
 
-Interpreter and tracing JIT for JavaScript targetting x86-64 platforms.
+An interpreter and JIT compiler for JavaScript targetting x86-64 platforms.
 
 **Requirements:**
 
