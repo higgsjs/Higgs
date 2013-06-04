@@ -586,6 +586,52 @@ Walk the stack and forward references to the to-space
 */
 void visitStackRoots(Interp interp)
 {
+    auto visitFrame = delegate void(
+        IRFunction fun, 
+        Word* wsp, 
+        Type* tsp, 
+        size_t depth,
+        size_t frameSize,
+        IRInstr callInstr
+    )
+    {
+        // Visit the function this stack frame belongs to
+        visitFun(interp, fun);
+
+        // For each local in this frame
+        for (LocalIdx idx = 0; idx < frameSize; ++idx)
+        {
+            //writefln("ref %s/%s", idx+1, frameSize);
+
+            Word word = wsp[idx];
+            Type type = tsp[idx];
+
+            // If this is a pointer, forward it
+            wsp[idx] = gcForward(interp, word, type);
+
+            auto fwdPtr = wsp[idx].ptrVal;
+
+            assert (
+                type != Type.REFPTR ||
+                fwdPtr == null ||
+                (fwdPtr >= interp.toStart && fwdPtr < interp.toLimit),
+                format(
+                    "invalid forwarded stack pointer\n" ~
+                    "ptr     : %s\n" ~
+                    "to-alloc: %s\n" ~
+                    "to-limit: %s",
+                    fwdPtr,
+                    interp.toStart,
+                    interp.toLimit
+                )
+            );
+        }
+    };
+
+    interp.visitStack(visitFrame);
+
+
+    /*
     if (interp.stackSize() == 0)
         return;
 
@@ -682,6 +728,7 @@ void visitStackRoots(Interp interp)
     }
 
     //writefln("done scanning stack");
+    */
 }
 
 /**

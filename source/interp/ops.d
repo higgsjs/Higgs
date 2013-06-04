@@ -837,6 +837,7 @@ void callFun(
     // TODO: temporary, to test inlining
     if (fun.entryBlock.execCount == 950)
     {
+        //writefln("*** compiling before call: %s", fun.getName());
         compFun(interp, fun);
         fun.entryBlock.execCount++;
         //writefln("done compiling w/ inlining, executing");

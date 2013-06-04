@@ -75,27 +75,30 @@ Test if a function is on the interpreter stack
 */
 StackPos funOnStack(Interp interp, IRFunction fun)
 {
-    // If a return address to this function is on the stack
-    for (LocalIdx idx = 0; idx < interp.stackSize(); idx++)
+    size_t maxDepth = size_t.max;
+
+    auto visitFrame = delegate void(
+        IRFunction curFun, 
+        Word* wsp, 
+        Type* tsp, 
+        size_t depth,
+        size_t frameSize,
+        IRInstr callInstr
+    )
     {
-        auto val = interp.getSlot(idx);
+        if (curFun is fun)
+            if (depth > maxDepth || maxDepth == size_t.max)
+                maxDepth = depth;
+    };
 
-        if (val.type is Type.INSPTR)
-        {
-            auto ins = cast(IRInstr)val.word.ptrVal;
+    interp.visitStack(visitFrame);
 
-            // The function is deep in the stack
-            if (ins !is null && ins.block.fun is fun)
-                return StackPos.DEEP;
-        }
-    }
-
-    // If this is the currently executing function
-    if ((interp.target !is null && interp.target.fun is fun) ||
-        (interp.ip !is null && interp.ip.block.fun is fun))
+    if (maxDepth == size_t.max)
+        return StackPos.NOT;
+    else if (maxDepth == 0)
         return StackPos.TOP;
-
-    return StackPos.NOT;
+    else
+        return StackPos.DEEP;
 }
 
 /**
@@ -110,16 +113,24 @@ void inlinePass(Interp interp, IRFunction fun)
     if (stackPos is StackPos.DEEP)
         return;
 
-    // FIXME: temporary
+
+
+
+    // TODO: shallow on-stack replacement
     if (stackPos is StackPos.TOP)
         return;
 
 
 
+
+
+
+
+
+
+
+
     //writeln(fun.toString());
-
-
-
 
     // For each block of the function
     for (auto block = fun.firstBlock; block !is null; block = block.next)

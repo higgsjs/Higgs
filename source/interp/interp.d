@@ -774,8 +774,11 @@ class Interp
             // If this block has an associated entry point
             if (target.entryFn !is null)
             {
+                auto entryFn = target.entryFn;
+                target = null;
+
                 //writefln("entering fn: %s (%s)", target.fun.getName(), target.getName());
-                target.entryFn();
+                entryFn();
                 //writefln("returned from fn");
                 continue;
             }
@@ -908,6 +911,90 @@ class Interp
         auto result = exec(ast);
 
         return result;
+    }
+
+    /// Stack frame visit function
+    alias void delegate(
+        IRFunction fun, 
+        Word* wsp, 
+        Type* tsp, 
+        size_t depth,
+        size_t frameSize,
+        IRInstr callInstr
+    ) VisitFrameFn;
+
+    /**
+    Visit each stack frame currently on the stack
+    */
+    void visitStack(VisitFrameFn visitFrame)
+    {
+        // If the stack is empty, stop
+        if (this.stackSize() == 0)
+            return;
+
+        // Get the current stack pointers
+        auto wsp = this.wsp;
+        auto tsp = this.tsp;
+
+        IRInstr curInstr = this.target? this.target.firstInstr:this.ip;
+        assert (
+            curInstr !is null, 
+            "curInstr is null"
+        );
+
+        auto curFun = curInstr.block.fun;
+        assert (
+            curFun !is null, 
+            "curFun is null"
+        );
+
+        // For each stack frame, starting from the topmost
+        for (size_t depth = 0;; depth++)
+        {
+            auto numParams = curFun.numParams;
+            auto numLocals = curFun.numLocals;
+            auto raSlot = curFun.raSlot;
+            auto argcSlot = curFun.argcSlot;
+
+            assert (
+                wsp + numLocals <= this.wUpperLimit, 
+                "no room for numLocals in stack frame"
+            );
+
+            // Get the argument count
+            auto argCount = wsp[argcSlot].int32Val;
+
+            // Compute the actual number of extra arguments to pop
+            size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
+
+            // Compute the number of locals in this frame
+            auto frameSize = numLocals + extraArgs;
+
+            // Get the calling instruction for this frame
+            curInstr = cast(IRInstr)wsp[raSlot].ptrVal;
+
+            // Visit this stack frame
+            visitFrame(
+                curFun,
+                wsp,
+                tsp,
+                depth,
+                frameSize,
+                curInstr
+            );
+
+            // If we reached the bottom of the stack, stop
+            if (curInstr is null)
+                break;
+
+            // Move to the caller function
+            curFun = curInstr.block.fun;
+            assert (curFun !is null);
+
+            // Move to the next stack frame
+            wsp += frameSize;
+            tsp += frameSize;
+        }
     }
 }
 

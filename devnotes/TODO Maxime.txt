@@ -38,14 +38,6 @@ TODO: allocate class ids?
 TODO: make sure global obj ptr is updated when global obj is extended
 - Trigger GC?
 
-TODO: optimize IsTypeOp, compare ops in conjunction with if_true
-- Log optimized instances
-- Need to optimize in conjunction with if_true
-- Bool op followed by if_true using output of bool op
-- Could include the if_true compilation into the boolean compilation if right
-  afterwards, skip the if_true compilation
-- Test if own value is dead after if_true, if so, don't produce
-
 TODO: improved interpreter frame spill scheme
 - Map of call instrs to spill functions
   - special extern(C) function, called by interpreter
@@ -88,16 +80,50 @@ TODO: stack-frame compaction
   - Move only live values to new slot
   - Two live values can't map to same slot
 
+TODO: optimize IsTypeOp, compare ops in conjunction with if_true
+- Log optimized instances
+- Need to optimize in conjunction with if_true
+- Bool op followed by if_true using output of bool op
+- Could include the if_true compilation into the boolean compilation if right
+  afterwards, skip the if_true compilation
+- Test if own value is dead after if_true, if so, don't produce
+
 TODO: disable temporary compFun in callFun
 
 TODO: basic OSR if function is on top of the stack
+- Easy at this point? Just move the values to the new slots
+- Fn on stack must be interp function if we're in compFun
+- Large majority of stuff isn't deep on the stack when compiled
+  bitops-nsieve-bits shows $rt_arr_ofs_len as "deep"... How???
+  - Could an old RA be left over on the stack, not used?
+  - Try implementing proper stack traversal
+
 
 
 FIXME: earley-boyer not working, with or without inlining
 - add to tests permanently?
+- try with jit_disable
+- try disabling JIT instrs selectively
 
 
-TODO: blog, Implementing Inlining
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: interpreter stack traversal function with delegates?
+- use for GC, funOnStack
+- delegate with: IRFunction fun, wsp, tsp, size_t depth
+
+[DONE] TODO: blog, Implementing Inlining
 - Inlining in Higgs
   - OSR aspect
   - nontrivial, stressing the JIT, bug fixing
@@ -107,13 +133,6 @@ TODO: blog, Implementing Inlining
   - Competing with Python?
 - DConf 2013 talk in a week or so
   - Will be announced and linked on this blog and on my twitter feed
-
-
-
-
-
-
-
 
 [DONE] TODO: investigate why most functions get no inlining, including $rt_add, $rt_lt
 - Lack of inlining partially explains lack of speed
