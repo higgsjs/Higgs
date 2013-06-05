@@ -63,7 +63,7 @@ bool inlinable(IRInstr callSite, IRFunction callee)
     if (callSite.excTarget !is null)
         return false;
 
-    // No support fo rfunctions with arguments
+    // No support for functions using the "arguments" object
     if (callee.ast.usesArguments == true)
         return false;
 
@@ -169,7 +169,8 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
     auto writtenArgs = new BitSet(numArgs);
 
     // For each callee block
-    for (auto block = callee.firstBlock; block !is null; block = block.next)
+    auto lastBlock = callee.lastBlock;
+    for (auto block = callee.firstBlock;; block = block.next)
     {
         // For each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -195,6 +196,10 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
         auto newBlock = block.dup;
         blockMap[block] = newBlock;
         caller.addBlock(newBlock);
+
+        // If this is the last block to inline, stop
+        if (block is lastBlock)
+            break;
     }
 
     // For each copied block

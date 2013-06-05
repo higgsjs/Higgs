@@ -383,17 +383,24 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
     auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, 32);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
+    // Ensure that the pointer operand is in a register
     X86Reg opnd0Reg = cast(X86Reg)opnd0;
+    if (opnd0Reg is null)
+    {
+        opnd0Reg = scrRegs64[0];
+        ctx.as.instr(MOV, scrRegs64[0], opnd0);
+    }
 
     // Zero extend the offset input into a scratch register
-    X86Reg opnd1Reg = scrRegs64[0];
-    ctx.as.instr(MOV, scrRegs32[0], opnd1);
+    X86Reg opnd1Reg = scrRegs64[1];
+    ctx.as.instr(MOV, scrRegs32[1], opnd1);
 
     assert (
         opnd0Reg && opnd1Reg, 
         "both inputs must be in registers"
     );
 
+    // Select which load opcode to use
     X86OpPtr loadOp;
     static if (memSize == 8 || memSize == 16)
         loadOp = MOVZX;
@@ -404,7 +411,7 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
     if (cast(X86Mem)opndOut || memSize == 32)    
     {
         uint16_t scrSize = (memSize == 32)? 32:64;
-        auto scrReg64 = scrRegs64[1];
+        auto scrReg64 = scrRegs64[2];
         auto scrReg = new X86Reg(X86Reg.GP, scrReg64.regNo, scrSize);
         auto memOpnd = new X86Mem(memSize, opnd0Reg, 0, opnd1Reg);
 

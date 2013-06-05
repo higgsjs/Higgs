@@ -90,15 +90,6 @@ TODO: optimize IsTypeOp, compare ops in conjunction with if_true
 
 TODO: disable temporary compFun in callFun
 
-TODO: basic OSR if function is on top of the stack
-- Easy at this point? Just move the values to the new slots
-- Fn on stack must be interp function if we're in compFun
-- Large majority of stuff isn't deep on the stack when compiled
-  bitops-nsieve-bits shows $rt_arr_ofs_len as "deep"... How???
-  - Could an old RA be left over on the stack, not used?
-  - Try implementing proper stack traversal
-
-
 
 FIXME: earley-boyer not working, with or without inlining
 run-time error: undefined base in read of property "car"
@@ -111,6 +102,13 @@ run-time error: undefined base in read of property "car"
 - Doesn't seem directly connected to GC
 
 
+TODO: basic OSR if function is on top of the stack
+- Easy at this point? Just move the values to the new slots
+- Fn on stack must be interp function if we're in compFun
+- Large majority of stuff isn't deep on the stack when compiled
+  bitops-nsieve-bits shows $rt_arr_ofs_len as "deep"... How???
+  - Could an old RA be left over on the stack, not used?
+  - Try implementing proper stack traversal
 
 
 
@@ -121,6 +119,8 @@ run-time error: undefined base in read of property "car"
 
 
 
+[DONE] FIXME: v8bench/splay borks the JIT
+- operand is null, nonsense!
 
 [DONE] TODO: GC unit test
 - Alloc small object, add more properties, trigger GC,

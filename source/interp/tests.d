@@ -1481,9 +1481,17 @@ unittest
 
     interp.load("programs/v8bench/base.js");
 
+    writefln("v8bench/crypto");
+    interp.load("programs/v8bench/crypto.js");
+    interp.load("programs/v8bench/drv-crypto.js");
+
     writefln("v8bench/deltablue");
     interp.load("programs/v8bench/deltablue.js");
     interp.load("programs/v8bench/drv-deltablue.js");
+
+    writefln("v8bench/raytrace");
+    interp.load("programs/v8bench/raytrace.js");
+    interp.load("programs/v8bench/drv-raytrace.js");
 
     writefln("v8bench/richards");
     interp.load("programs/v8bench/richards.js");
