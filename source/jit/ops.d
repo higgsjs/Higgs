@@ -362,6 +362,8 @@ alias CmpOp!("le", 32) gen_le_i32;
 alias CmpOp!("gt", 32) gen_gt_i32;
 alias CmpOp!("ge", 32) gen_ge_i32;
 alias CmpOp!("eq", 8) gen_eq_const;
+alias CmpOp!("eq", 64) gen_eq_refptr;
+alias CmpOp!("ne", 64) gen_ne_refptr;
 alias CmpOp!("eq", 64) gen_eq_rawptr;
 
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -417,7 +419,7 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
 }
 
 alias LoadOp!(8 , Type.INT32) gen_load_u8;
-//alias LoadOp!(uint16, Type.INT32) gen_load_u16;
+alias LoadOp!(16, Type.INT32) gen_load_u16;
 alias LoadOp!(32, Type.INT32) gen_load_u32;
 alias LoadOp!(64, Type.INT64) gen_load_u64;
 alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
@@ -903,14 +905,15 @@ static this()
     codeGenFns[&GT_I32]         = &gen_gt_i32;
     codeGenFns[&GE_I32]         = &gen_ge_i32;
     codeGenFns[&EQ_CONST]       = &gen_eq_const;
-    //codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
-    //codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
+    codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
+    codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
 
     codeGenFns[&LOAD_U8]        = &gen_load_u8;
+    codeGenFns[&LOAD_U16]       = &gen_load_u16;
     codeGenFns[&LOAD_U32]       = &gen_load_u32;
     codeGenFns[&LOAD_U64]       = &gen_load_u64;
-    //codeGenFns[&LOAD_F64]       = &gen_load_f64;
+    codeGenFns[&LOAD_F64]       = &gen_load_f64;
     codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
     codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
 
