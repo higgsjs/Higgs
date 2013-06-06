@@ -88,7 +88,7 @@ bool inlinable(IRInstr callSite, IRFunction callee)
 /**
 Inline a callee function at a call site
 */
-LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
+void inlineCall(IRInstr callSite, IRFunction callee)
 {
     // Ensure that this inlining is possible
     assert (inlinable(callSite, callee));
@@ -110,14 +110,6 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
     caller.thisSlot += callee.numLocals;
     caller.argcSlot += callee.numLocals;
 
-    // Map of pre-inlining local indices to post-inlining indices 
-    // Only for locals of the caller function, used for on-stack replacement
-    LocalIdx[LocalIdx] localMap;
-
-    // Remap the caller locals to add callee locals
-    for (LocalIdx i = 0; i < caller.numLocals; ++i)
-        localMap[i] = i + callee.numLocals;
-
     // Remap the caller identifiers
     foreach (id, localIdx; caller.cellMap)
         caller.cellMap[id] = localIdx + callee.numLocals;
@@ -133,11 +125,11 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
             // Translate local indices
             foreach (argIdx, arg; instr.args)
                 if (instr.opcode.getArgType(argIdx) == OpArg.LOCAL)
-                    instr.args[argIdx].localIdx = localMap[instr.args[argIdx].localIdx];
+                    instr.args[argIdx].localIdx += callee.numLocals;
 
             // Translate the output slot
             if (instr.outSlot !is NULL_LOCAL)
-                instr.outSlot = localMap[instr.outSlot];
+                instr.outSlot += callee.numLocals;
         }
     }
 
@@ -344,8 +336,5 @@ LocalIdx[LocalIdx] inlineCall(IRInstr callSite, IRFunction callee)
             entryBlock.firstInstr
         );
     }
-
-    // Return the mapping of pre-inlining local indices to post-inlining indices 
-    return localMap;
 }
 

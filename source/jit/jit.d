@@ -113,22 +113,12 @@ void inlinePass(Interp interp, IRFunction fun)
     if (stackPos is StackPos.DEEP)
         return;
 
+    // TODO: remove me
+    //if (stackPos is StackPos.TOP)
+    //    return;
 
-
-
-    // TODO: shallow on-stack replacement
-    if (stackPos is StackPos.TOP)
-        return;
-
-
-
-
-
-
-
-
-
-
+    // Get the number of locals before inlining
+    auto numLocals = fun.numLocals;
 
     //writeln(fun.toString());
 
@@ -173,8 +163,22 @@ void inlinePass(Interp interp, IRFunction fun)
         //writeln(fun.toString());
     }
 
-    // TODO: stack frame compaction
+    // If the function is on top of the stack
+    if (stackPos is StackPos.TOP)
+    {
+        //writefln("rearranging stack frame");
 
+        // Add space for the new locals to the stack frame
+        auto numAdded = fun.numLocals - numLocals;
+        interp.push(numAdded);
+    }
+
+    //
+    // TODO: stack frame compaction
+    // will depend on liveness info, current IP (who's live now)
+    // live values get mapped to new slots
+    // will need to use a virtual dst frame to avoid collisions
+    //
     //writefln("inlinePass done");
 }
 

@@ -80,17 +80,6 @@ TODO: stack-frame compaction
   - Move only live values to new slot
   - Two live values can't map to same slot
 
-TODO: optimize IsTypeOp, compare ops in conjunction with if_true
-- Log optimized instances
-- Need to optimize in conjunction with if_true
-- Bool op followed by if_true using output of bool op
-- Could include the if_true compilation into the boolean compilation if right
-  afterwards, skip the if_true compilation
-- Test if own value is dead after if_true, if so, don't produce
-
-TODO: disable temporary compFun in callFun
-
-
 FIXME: earley-boyer not working, with or without inlining
 run-time error: undefined base in read of property "car"
 - add to tests permanently?
@@ -101,26 +90,38 @@ run-time error: undefined base in read of property "car"
   - gc happens during newObj
 - Doesn't seem directly connected to GC
 
+TODO: optimize IsTypeOp, compare ops in conjunction with if_true
+- Log optimized instances
+- Need to optimize in conjunction with if_true
+- Bool op followed by if_true using output of bool op
+- Could include the if_true compilation into the boolean compilation if right
+  afterwards, skip the if_true compilation
+- Test if own value is dead after if_true, if so, don't produce
 
-TODO: basic OSR if function is on top of the stack
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: basic OSR if function is on top of the stack
 - Easy at this point? Just move the values to the new slots
 - Fn on stack must be interp function if we're in compFun
 - Large majority of stuff isn't deep on the stack when compiled
   bitops-nsieve-bits shows $rt_arr_ofs_len as "deep"... How???
   - Could an old RA be left over on the stack, not used?
   - Try implementing proper stack traversal
+- Disable temporary compFun in callFun
 
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: remove localMap thang from inlineCall, not needed
 
 [DONE] TODO: re-implement FP ops in JIT
 
