@@ -465,6 +465,13 @@ unittest
         "F2440F113424"
     );
 
+    // movq
+    test(
+        delegate void (Assembler a) { a.instr(MOVQ, XMM1, RCX); },
+        ""
+        "66480F6EC9"
+    );
+
     // movsx
     test(
         delegate void (Assembler a) { a.instr(MOVSX, AX, AL); },

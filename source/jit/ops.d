@@ -283,51 +283,38 @@ alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
 alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
-/*
-void gen_add_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void FPOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    ctx.as.getWord(XMM0, instr.args[0].localIdx);
-    ctx.as.getWord(XMM1, instr.args[1].localIdx);
+    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 64, false);
+    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, 64, false);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
-    ctx.as.instr(ADDSD, XMM0, XMM1);
+    ctx.as.instr(cast(X86Reg)opnd0? MOVQ:MOVSD, XMM0, opnd0);
+    ctx.as.instr(cast(X86Reg)opnd1? MOVQ:MOVSD, XMM1, opnd1);
 
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT64);
+    X86OpPtr opPtr = null;
+    static if (op == "add")
+        opPtr = ADDSD;
+    static if (op == "sub")
+        opPtr = SUBSD;
+    static if (op == "mul")
+        opPtr = MULSD;
+    static if (op == "div")
+        opPtr = DIVSD;
+    assert (opPtr !is null);
+
+    ctx.as.instr(opPtr, XMM0, XMM1);
+
+    ctx.as.instr(cast(X86Reg)opndOut? MOVQ:MOVSD, opndOut, XMM0);
+
+    // Set the output type
+    st.setOutType(ctx.as, instr, Type.FLOAT64);
 }
 
-void gen_sub_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    ctx.as.getWord(XMM0, instr.args[0].localIdx);
-    ctx.as.getWord(XMM1, instr.args[1].localIdx);
-
-    ctx.as.instr(SUBSD, XMM0, XMM1);
-
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT64);
-}
-
-void gen_mul_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    ctx.as.getWord(XMM0, instr.args[0].localIdx);
-    ctx.as.getWord(XMM1, instr.args[1].localIdx);
-
-    ctx.as.instr(MULSD, XMM0, XMM1);
-
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT64);
-}
-
-void gen_div_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    ctx.as.getWord(XMM0, instr.args[0].localIdx);
-    ctx.as.getWord(XMM1, instr.args[1].localIdx);
-
-    ctx.as.instr(DIVSD, XMM0, XMM1);
-
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT64);
-}
-*/
+alias FPOp!("add") gen_add_f64;
+alias FPOp!("sub") gen_sub_f64;
+alias FPOp!("mul") gen_mul_f64;
+alias FPOp!("div") gen_div_f64;
 
 void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -433,7 +420,7 @@ alias LoadOp!(8 , Type.INT32) gen_load_u8;
 //alias LoadOp!(uint16, Type.INT32) gen_load_u16;
 alias LoadOp!(32, Type.INT32) gen_load_u32;
 alias LoadOp!(64, Type.INT64) gen_load_u64;
-//alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
+alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
 
@@ -899,10 +886,10 @@ static this()
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
     codeGenFns[&AND_I32]        = &gen_and_i32;
 
-    //codeGenFns[&ADD_F64]        = &gen_add_f64;
-    //codeGenFns[&SUB_F64]        = &gen_sub_f64;
-    //codeGenFns[&MUL_F64]        = &gen_mul_f64;
-    //codeGenFns[&DIV_F64]        = &gen_div_f64;
+    codeGenFns[&ADD_F64]        = &gen_add_f64;
+    codeGenFns[&SUB_F64]        = &gen_sub_f64;
+    codeGenFns[&MUL_F64]        = &gen_mul_f64;
+    codeGenFns[&DIV_F64]        = &gen_div_f64;
 
     codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
     codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;

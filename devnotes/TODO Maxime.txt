@@ -119,6 +119,11 @@ TODO: basic OSR if function is on top of the stack
 
 
 
+
+
+
+[DONE] TODO: re-implement FP ops in JIT
+
 [DONE] FIXME: v8bench/splay borks the JIT
 - operand is null, nonsense!
 

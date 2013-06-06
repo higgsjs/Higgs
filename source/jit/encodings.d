@@ -774,6 +774,14 @@ immutable X86Op movsd = {
     ]
 };
 immutable X86OpPtr MOVSD = &movsd;
+immutable X86Op movq = {
+    "movq",
+    [
+        { [X86Enc.XMM, X86Enc.R_OR_M], [128, 64], [102], [15, 110], 0xFF, 64, false, true },
+        { [X86Enc.R_OR_M, X86Enc.XMM], [64, 128], [102], [15, 126], 0xFF, 64, false, true }
+    ]
+};
+immutable X86OpPtr MOVQ = &movq;
 immutable X86Op movsx = {
     "movsx",
     [

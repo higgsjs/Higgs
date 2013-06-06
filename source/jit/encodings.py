@@ -598,6 +598,13 @@ instrTable = [
         Enc(opnds=['xmm/m64', 'xmm'], prefix=[0xF2], opcode=[0x0F, 0x11], rexW=False),
     ),
 
+    # Move quadword
+    Op(
+        'movq',
+        Enc(opnds=['xmm', 'r/m64'], prefix=[0x66], opcode=[0x0F, 0x6E]),
+        Enc(opnds=['r/m64', 'xmm'], prefix=[0x66], opcode=[0x0F, 0x7E]),
+    ),
+
     # Move with sign extension
     Op(
         'movsx',
