@@ -144,7 +144,7 @@ void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     assert (instr.outSlot !is NULL_LOCAL);
 
-    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 64);
+    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 64);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
     // Copy the value
@@ -178,7 +178,7 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     }
     else
     {
-        auto typeOpnd = st.getTypeOpnd(ctx.as, argSlot, scrRegs8[0]);
+        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0, scrRegs8[0]);
         auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
         // Compare against the tested type
@@ -224,8 +224,8 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
 {
     // The register allocator should ensure that at
     // least one input is a register operand
-    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, numBits);
-    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, numBits);
+    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, numBits);
+    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, numBits);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, numBits);
 
     X86OpPtr opPtr = null;
@@ -294,12 +294,16 @@ alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
 void FPOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 64, false);
-    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, 64, false);
+    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0);
+    auto opnd1 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 1, 64, XMM1);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
-    ctx.as.instr(cast(X86Reg)opnd0? MOVQ:MOVSD, XMM0, opnd0);
-    ctx.as.instr(cast(X86Reg)opnd1? MOVQ:MOVSD, XMM1, opnd1);
+    assert (opnd0 && opnd1);
+
+    if (opnd0.type == X86Reg.GP)
+        ctx.as.instr(MOVQ, XMM0, opnd0);
+    if (opnd1.type == X86Reg.GP)
+        ctx.as.instr(MOVQ, XMM1, opnd1);
 
     X86OpPtr opPtr = null;
     static if (op == "add")
@@ -327,8 +331,8 @@ alias FPOp!("div") gen_div_f64;
 
 void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, numBits);
-    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, numBits);
+    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, numBits);
+    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, numBits);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
 
     auto outReg = cast(X86Reg)opndOut;
@@ -377,8 +381,8 @@ alias CmpOp!("eq", 64) gen_eq_rawptr;
 
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    auto opnd0 = st.getArgOpnd(ctx, ctx.as, instr, 0, 64);
-    auto opnd1 = st.getArgOpnd(ctx, ctx.as, instr, 1, 32);
+    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 64);
+    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
     // Ensure that the pointer operand is in a register
@@ -462,7 +466,7 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     }
 
     // Compare the argument to the true value
-    auto argOpnd = st.getArgOpnd(ctx, ctx.as, instr, 0, 8);
+    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 8);
     ctx.as.instr(CMP, argOpnd, TRUE.int8Val);
 
     X86OpPtr jumpOp;
@@ -552,7 +556,7 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     }
 
     // Allocate the input operand
-    auto argOpnd = st.getArgOpnd(ctx, ctx.as, instr, 1, 64);
+    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 1, 64);
 
     // Get the global object pointer
     ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
@@ -576,17 +580,13 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     }
 
     // Set the type value
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr.args[1].localIdx, scrRegs8[2]);
+    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2]);
     auto typeMem = new X86Mem(8, scrRegs64[0], wordOfs + propIdx, scrRegs64[1], 8);
     ctx.as.instr(MOV, typeMem, typeOpnd);
 }
 
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    auto closIdx = instr.args[0].localIdx;
-    auto thisIdx = instr.args[1].localIdx;
-    auto numArgs = cast(int32_t)instr.args.length - 2;
-
     // Generate an entry point for the call continuation
     ctx.getEntryPoint(instr.target);
 
@@ -607,34 +607,13 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     assert (fun !is null && fun.entryBlock !is null);
 
     // If the argument count doesn't match
+    auto numArgs = cast(int32_t)instr.args.length - 2;
     if (numArgs != fun.numParams)
     {
         // Call the interpreter call instruction
         defaultFn(ctx.as, ctx, st, instr);
         return;
     }
-
-    // Get the closure and this registers before spilling
-    X86Reg closReg = st.getReg(closIdx);
-    X86Reg thisReg = st.getReg(thisIdx);
-
-    // Get the argument registers before spilling
-    X86Reg[] argRegs;
-    argRegs.length = numArgs;
-    for (size_t i = 0; i < numArgs; ++i)
-    {
-        auto argSlot = instr.args[$-(1+i)].localIdx;
-        argRegs[i] = st.getReg(argSlot);
-    }
-
-    // Spill the values that are live after the call
-    st.spillRegs(
-        ctx.as,
-        delegate bool(LocalIdx localIdx)
-        {
-            return (ctx.liveSets[instr].has(localIdx) == true);
-        }
-    );
 
     // Label for the bailout to interpreter cases
     auto BAILOUT = new Label("CALL_BAILOUT");
@@ -643,12 +622,15 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Function pointer extraction
     //
 
-    // Get the closure word off the stack if necessary
-    if (closReg is null)
-    {
-        closReg = scrRegs64[0];
-        ctx.as.getWord(closReg, closIdx);
-    }
+    auto closReg = cast(X86Reg)st.getWordOpnd(
+        ctx, 
+        ctx.as, 
+        instr, 
+        0,
+        64,
+        scrRegs64[0]
+    );
+    assert (closReg !is null);
 
     // Get the function pointer from the closure object
     auto fptrMem = new X86Mem(64, closReg, CLOS_OFS_FPTR);
@@ -666,24 +648,23 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
     {
-        //auto argSlot = instr.args[$-(1+i)].localIdx + (argDiff + i);
-        auto argSlot = instr.args[$-(1+i)].localIdx;
+        auto instrArgIdx = instr.args.length - (1+i);
+        auto argSlot = instr.args[instrArgIdx].localIdx;
         auto dstIdx = -(cast(int32_t)i + 1);
 
-        // If this argument is in a register
-        if (argRegs[i] !is null)
-        {
-            //writefln("arg reg: %s %s", argRegs[i], i);
-            ctx.as.setWord(dstIdx, argRegs[i]);
-        }
-        else
-        {
-            ctx.as.getWord(scrRegs64[3], argSlot); 
-            ctx.as.setWord(dstIdx, scrRegs64[3]);
-        }
+        // Copy the argument word
+        auto argOpnd = st.getWordOpnd(
+            ctx, 
+            ctx.as, 
+            instr, 
+            instrArgIdx,
+            64,
+            scrRegs64[3]
+        );
+        ctx.as.setWord(dstIdx, argOpnd);
 
         // Set the argument type
-        auto typeOpnd = st.getTypeOpnd(ctx.as, argSlot, scrRegs8[3]);
+        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, instrArgIdx, scrRegs8[3]);
         ctx.as.setType(dstIdx, typeOpnd);
     }
 
@@ -694,16 +675,18 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // If the callee uses its "this" argument, write it on the stack
     if (fun.ast.usesThis == true)
     {
-        if (thisReg)
-        {
-            ctx.as.setWord(-numArgs - 2, thisReg);
-        }
-        else
-        {
-            ctx.as.getWord(scrRegs64[2], thisIdx);
-            ctx.as.setWord(-numArgs - 2, scrRegs64[2]);
-        }
-        auto typeOpnd = st.getTypeOpnd(ctx.as, thisIdx, scrRegs8[3]);
+        auto thisReg = cast(X86Reg)st.getWordOpnd(
+            ctx, 
+            ctx.as, 
+            instr, 
+            1,
+            64,
+            scrRegs64[2]
+        );
+        assert (thisReg !is null);
+        ctx.as.setWord(-numArgs - 2, thisReg);
+
+        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[3]);
         ctx.as.setType(-numArgs - 2, typeOpnd);
     }
 
@@ -718,6 +701,15 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.ptr(scrRegs64[3], instr);
     ctx.as.setWord(-numArgs - 4, scrRegs64[3]);
     ctx.as.setType(-numArgs - 4, Type.INSPTR);
+
+    // Spill the values that are live after the call
+    st.spillRegs(
+        ctx.as,
+        delegate bool(LocalIdx localIdx)
+        {
+            return (ctx.liveSets[instr].has(localIdx) == true);
+        }
+    );
 
     // Push space for the callee arguments and locals
     ctx.as.getMember!("IRFunction", "numLocals")(scrRegs32[1], scrRegs64[1]);
@@ -772,15 +764,23 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(CMP, scrRegs32[1], NULL_LOCAL);
     ctx.as.instr(JE, POP_LOCALS);
 
-    // Copy the return value word and type
-    auto retReg = st.getReg(retSlot);
-    if (retReg is null)
-    {
-        ctx.as.instr(MOV, scrRegs64[2], new X86Mem(64, wspReg, 8 * retSlot));
-        retReg = scrRegs64[2];
-    }
-    ctx.as.instr(MOV, new X86Mem(64, wspReg, 8 * numLocals, scrRegs64[1], 8), retReg);
-    auto typeOpnd = st.getTypeOpnd(ctx.as, retSlot, scrRegs8[2]);
+    // Copy the return value word
+    auto retOpnd = st.getWordOpnd(
+        ctx, 
+        ctx.as, 
+        instr, 
+        0,
+        64,
+        scrRegs64[2]
+    );
+    ctx.as.instr(
+        MOV, 
+        new X86Mem(64, wspReg, 8 * numLocals, scrRegs64[1], 8),
+        retOpnd
+    );
+
+    // Copy the return value type
+    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0, scrRegs8[2]);
     ctx.as.instr(MOV, new X86Mem(8, tspReg, numLocals, scrRegs64[1]), typeOpnd);
 
     // Pop all local stack slots and arguments

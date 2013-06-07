@@ -649,14 +649,20 @@ class CodeGenState
         return true;
     }
 
-    /// Get the operand for an instruction argument
-    X86Opnd getArgOpnd(
+    /// Get the word operand for an instruction argument
+    X86Opnd getWordOpnd(
         CodeGenCtx ctx, 
         Assembler as, 
         IRInstr instr, 
         size_t argIdx, 
         uint16_t numBits, 
-        bool loadVal = true,
+
+        //bool loadVal = true,
+
+
+        X86Reg tmpReg = null,
+
+
         bool acceptImm = false
     )
     {
@@ -692,18 +698,24 @@ class CodeGenState
             return new X86Reg(X86Reg.GP, regNo, numBits);
         }
 
-        // If the value shouldn't be loaded into a register
-        if (loadVal == false)
+        // If a temporary register is specified
+        if (tmpReg !is null)
         {
-            // Map the argument to its stack location
-            allocState[argSlot] = RA_STACK;
-            auto opnd = new X86Mem(numBits, wspReg, 8 * argSlot);
-
-            // If constant, move the constant value into the operand
+            // Move the current value into the temporary register
             if (immOpnd)
-                as.instr(MOV, new X86Mem(64, wspReg, 8 * argSlot), immOpnd);
+            {
+                as.instr(MOV, tmpReg, immOpnd);
+            }
+            else
+            {
+                as.instr(
+                    (tmpReg.type == X86Reg.XMM)? MOVSD:MOV, 
+                    tmpReg, 
+                    new X86Mem(numBits, wspReg, 8 * argSlot)
+                );
+            }
 
-            return opnd;
+            return tmpReg;
         }
 
         // Get the assigned register for the argument
@@ -756,6 +768,42 @@ class CodeGenState
         return opnd;
     }
 
+    /// Get an x86 operand for the type of a value
+    X86Opnd getTypeOpnd(
+        Assembler as,
+        IRInstr instr,
+        size_t argIdx,
+        X86Reg tmpReg8 = null
+    ) const
+    {
+        assert (
+            argIdx < instr.args.length,
+            "invalid argument index"
+        );
+
+        assert (
+            instr.opcode.getArgType(argIdx) == OpArg.LOCAL,
+            "argument type is not local"
+        );
+
+        auto argSlot = instr.args[argIdx].localIdx;
+
+        if (typeKnown(argSlot))
+        {
+            return new X86Imm(getType(argSlot));
+        }
+
+        auto memLoc = new X86Mem(8, tspReg, argSlot);
+
+        if (tmpReg8 !is null)
+        {
+            as.instr(MOV, tmpReg8, memLoc);
+            return tmpReg8;
+        }
+
+        return memLoc;
+    }
+
     /// Get the operand for an instruction's output
     X86Opnd getOutOpnd(
         CodeGenCtx ctx, 
@@ -801,27 +849,6 @@ class CodeGenState
         allocState[instr.outSlot] = RA_GPREG | reg.regNo;
         gpRegMap[reg.regNo] = instr.outSlot;
         return new X86Reg(X86Reg.GP, reg.regNo, numBits);
-    }
-
-    /// Mark a value as being stored on the stack
-    void valOnStack(LocalIdx localIdx)
-    {
-        // Mark the value as being on the stack
-        allocState[localIdx] = RA_STACK;
-
-        // Mark the type of this value as unknown
-        typeState[localIdx] = TF_UNKNOWN;
-    }
-
-    /// Get the register to which a local is mapped, if any
-    X86Reg getReg(LocalIdx localIdx)
-    {
-        auto flags = allocState[localIdx];
-
-        if (flags & RA_GPREG)
-            return new X86Reg(X86Reg.GP, flags & RA_REG_MASK, 64);
-
-        return null;
     }
 
     /// Set the output of an instruction to a known boolean value
@@ -955,28 +982,14 @@ class CodeGenState
         return cast(Type)(typeState & TF_TYPE_MASK);
     }
 
-    /// Get an x86 operand for the type of a value
-    X86Opnd getTypeOpnd(
-        Assembler as, 
-        LocalIdx localIdx, 
-        X86Reg scrReg8 = null, 
-        int32_t stackOfs = 0
-    ) const
+    /// Mark a value as being stored on the stack
+    void valOnStack(LocalIdx localIdx)
     {
-        if (typeKnown(localIdx))
-        {
-            return new X86Imm(getType(localIdx));
-        }
+        // Mark the value as being on the stack
+        allocState[localIdx] = RA_STACK;
 
-        auto memLoc = new X86Mem(8, tspReg, localIdx + stackOfs);
-
-        if (scrReg8 !is null)
-        {
-            as.instr(MOV, scrReg8, memLoc);
-            return scrReg8;
-        }
-
-        return memLoc;
+        // Mark the type of this value as unknown
+        typeState[localIdx] = TF_UNKNOWN;
     }
 
     /// Spill test function
@@ -1204,14 +1217,27 @@ void getType(Assembler as, X86Reg dstReg, int32_t idx)
 }
 
 /// Write to the word stack
-void setWord(Assembler as, int32_t idx, X86Reg srcReg)
+void setWord(Assembler as, int32_t idx, X86Opnd src)
 {
-    if (srcReg.type == X86Reg.GP)
-        as.instr(MOV, new X86Mem(64, wspReg, 8 * idx), srcReg);
-    else if (srcReg.type == X86Reg.XMM)
-        as.instr(MOVSD, new X86Mem(64, wspReg, 8 * idx), srcReg);
+    auto memOpnd = new X86Mem(64, wspReg, 8 * idx);
+
+    if (auto srcReg = cast(X86Reg)src)
+    {
+        if (srcReg.type == X86Reg.GP)
+            as.instr(MOV, memOpnd, srcReg);
+        else if (srcReg.type == X86Reg.XMM)
+            as.instr(MOVSD, memOpnd, srcReg);
+        else
+            assert (false, "unsupported register type");
+    }
+    else if (auto srcImm = cast(X86Imm)src)
+    {
+        as.instr(MOV, memOpnd, srcImm);
+    }
     else
-        assert (false, "unsupported register type");
+    {
+        assert (false, "unsupported src operand type");
+    }
 }
 
 // Write a constant to the word type

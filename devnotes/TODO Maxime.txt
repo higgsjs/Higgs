@@ -104,7 +104,6 @@ FIXME: bug in 3d-raytrace, has to do with set_true, set_false
 - log instr using const operands in getArgOpnd?
 - Fn args could be constant, but call/ret wouldn't know?
   - Test if this is the case
-  - Restructure/simplify call, spill everything *after* arg copying???
 
 
 
@@ -113,6 +112,17 @@ FIXME: bug in 3d-raytrace, has to do with set_true, set_false
 
 
 
+
+
+[DONE] TODO: getWordOpnd: provide a tmpReg parameter
+
+[DONE] TODO: rename getArgOpnd to getWordOpnd
+
+[DONE] TODO: getTypeOpnd, do we ever get a type that's not an instr argument? grep it
+
+[DONE] TODO: eliminate getReg
+
+[DONE] TODO: restructure/simplify call, spill everything *after* arg copying
 
 [DONE] TODO: SET_TRUE should store its constant
 
