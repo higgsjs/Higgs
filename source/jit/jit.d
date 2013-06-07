@@ -113,10 +113,6 @@ void inlinePass(Interp interp, IRFunction fun)
     if (stackPos is StackPos.DEEP)
         return;
 
-    // TODO: remove me
-    //if (stackPos is StackPos.TOP)
-    //    return;
-
     // Get the number of locals before inlining
     auto numLocals = fun.numLocals;
 
@@ -359,7 +355,7 @@ void compFun(Interp interp, IRFunction fun)
             auto liveSet = ctx.liveSets[block.firstInstr];
             state.spillRegs(
                 ol,
-                delegate bool(size_t regNo, LocalIdx localIdx)
+                delegate bool(LocalIdx localIdx)
                 {
                     if (block.firstInstr.hasArg(localIdx))
                         return true;
@@ -553,6 +549,7 @@ alias uint8_t RAState;
 const RAState RA_DEAD = 0;
 const RAState RA_STACK = (1 << 7);
 const RAState RA_GPREG = (1 << 6);
+const RAState RA_CONST = (1 << 5);
 const RAState RA_REG_MASK = (0x0F);
 
 // Type flag state
@@ -560,7 +557,9 @@ alias uint8_t TFState;
 const TFState TF_UNKNOWN = 0;
 const TFState TF_KNOWN = (1 << 7);
 const TFState TF_SYNC = (1 << 6);
-const TFState TF_TYPE_MASK = (0x1F);
+const TFState TF_BOOL_TRUE = (1 << 5);
+const TFState TF_BOOL_FALSE = (1 << 4);
+const TFState TF_TYPE_MASK = (0xF);
 
 /**
 Code generation state
@@ -657,7 +656,8 @@ class CodeGenState
         IRInstr instr, 
         size_t argIdx, 
         uint16_t numBits, 
-        bool loadVal = true
+        bool loadVal = true,
+        bool acceptImm = false
     )
     {
         assert (
@@ -673,6 +673,18 @@ class CodeGenState
         auto argSlot = instr.args[argIdx].localIdx;
         auto flags = allocState[argSlot];
 
+        X86Opnd immOpnd = null;
+
+        // If the value is a constant
+        if (flags & RA_CONST)
+        {
+            immOpnd = new X86Imm(getWord(argSlot).int64Val);
+
+            // If we can accept immediate operands
+            if (acceptImm)
+                return immOpnd;
+        }
+
         // If the argument already is in a general-purpose register
         if (flags & RA_GPREG)
         {
@@ -680,20 +692,18 @@ class CodeGenState
             return new X86Reg(X86Reg.GP, regNo, numBits);
         }
 
-        assert (
-            flags & RA_STACK, 
-            "argument is neither in a register nor on the stack \n" ~
-            "argSlot: " ~ to!string(argSlot) ~ "\n" ~
-            "fun: " ~ instr.block.fun.getName() ~ "\n" ~
-            instr.block.toString()
-
-        );
-
         // If the value shouldn't be loaded into a register
         if (loadVal == false)
         {
-            // Return a memory operand of the right size
-            return new X86Mem(numBits, wspReg, 8 * argSlot);
+            // Map the argument to its stack location
+            allocState[argSlot] = RA_STACK;
+            auto opnd = new X86Mem(numBits, wspReg, 8 * argSlot);
+
+            // If constant, move the constant value into the operand
+            if (immOpnd)
+                as.instr(MOV, new X86Mem(64, wspReg, 8 * argSlot), immOpnd);
+
+            return opnd;
         }
 
         // Get the assigned register for the argument
@@ -714,11 +724,17 @@ class CodeGenState
                 {
                     // Map the argument to its stack location
                     allocState[argSlot] = RA_STACK;
-                    return new X86Mem(numBits, wspReg, 8 * argSlot);
+                    auto opnd = new X86Mem(numBits, wspReg, 8 * argSlot);
+
+                    // If constant, move the constant value into the operand
+                    if (immOpnd)
+                        as.instr(MOV, new X86Mem(64, wspReg, 8 * argSlot), immOpnd);
+
+                    return opnd;
                 }
             }
 
-            // If the value is live, spill it
+            // If the currently mapped value is live, spill it
             if (ctx.liveSets[instr].has(regSlot) == true)
                 spillReg(as, reg.regNo);
             else
@@ -731,7 +747,13 @@ class CodeGenState
         // Map the argument to the register
         allocState[argSlot] = RA_GPREG | reg.regNo;
         gpRegMap[reg.regNo] = argSlot;
-        return new X86Reg(X86Reg.GP, reg.regNo, numBits);
+        auto opnd = new X86Reg(X86Reg.GP, reg.regNo, numBits);
+
+        // If constant, move the constant value into the operand
+        if (immOpnd)
+            as.instr(MOV, new X86Reg(X86Reg.GP, reg.regNo, 32), immOpnd);
+
+        return opnd;
     }
 
     /// Get the operand for an instruction's output
@@ -802,6 +824,53 @@ class CodeGenState
         return null;
     }
 
+    /// Set the output of an instruction to a known boolean value
+    void setOutBool(IRInstr instr, bool val)
+    {
+        assert (
+            instr.outSlot != NULL_LOCAL,
+            "instruction has no output slot"
+        );
+
+        auto localIdx = instr.outSlot;
+
+        // Mark this as being a known constant
+        allocState[localIdx] = RA_CONST;
+
+        // Set the output type
+        setOutType(null, instr, Type.CONST);
+
+        // Store the boolean constant in the type flags
+        typeState[localIdx] |= val? TF_BOOL_TRUE:TF_BOOL_FALSE;
+    }
+
+    /// Test if a constant word value is known for a given local
+    bool wordKnown(LocalIdx localIdx) const
+    {
+        assert (
+            localIdx != NULL_LOCAL,
+            "invalid local"
+        );
+
+        return (allocState[localIdx] & RA_CONST) != 0;
+    }
+
+    /// Get the word value for a known constant local
+    Word getWord(LocalIdx localIdx)
+    {
+        auto allocSt = allocState[localIdx];
+        auto typeSt = typeState[localIdx];
+
+        assert (allocSt & RA_CONST);
+
+        if (typeSt & TF_BOOL_TRUE)
+            return TRUE;
+        else if (typeSt & TF_BOOL_FALSE)
+            return FALSE;
+        else
+            assert (false, "unknown constant");
+    }
+
     /// Set the output type value for an instruction's output
     void setOutType(Assembler as, IRInstr instr, Type type)
     {
@@ -857,7 +926,7 @@ class CodeGenState
             as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
     }
 
-    /// Test if a constant type is known for a given value
+    /// Test if a constant type is known for a given local
     bool typeKnown(LocalIdx localIdx) const
     {
         assert (
@@ -911,7 +980,7 @@ class CodeGenState
     }
 
     /// Spill test function
-    alias bool delegate(size_t regNo, LocalIdx localIdx) SpillTestFn;
+    alias bool delegate(LocalIdx localIdx) SpillTestFn;
 
     /**
     Spill registers to the stack
@@ -926,9 +995,42 @@ class CodeGenState
                 continue;
 
             // If the value should be spilled, spill it
-            if (spillTest is null || spillTest(regNo, localIdx) == true)
+            if (spillTest is null || spillTest(localIdx) == true)
                 spillReg(as, regNo);
         }
+
+        //writefln("spilling consts");
+
+        // For each local
+        foreach (LocalIdx localIdx, allocSt; allocState)
+        {
+            // If this is a known constant
+            if (allocSt & RA_CONST)          
+            {
+                // If the value should be spilled
+                if (spillTest is null || spillTest(localIdx) == true)
+                {
+                    // Spill the constant value to the stack
+                    as.comment("Spilling constant value of $" ~to!string(localIdx));
+                    auto word = getWord(localIdx);
+                    as.setWord(localIdx, word.int32Val);
+
+                    auto typeSt = typeState[localIdx];
+                    assert (typeSt & TF_KNOWN);
+
+                    // If the type flags are not in sync
+                    if (!(typeSt & TF_SYNC))
+                    {
+                        // Write the type tag to the type stack
+                        as.comment("Spilling type for $" ~to!string(localIdx));
+                        auto type = cast(Type)(typeSt & TF_TYPE_MASK);
+                        as.setType(localIdx, type);
+                    }
+                }
+            }
+        }
+
+        //writefln("done spilling consts");
     }
 
     /// Spill a specific register to the stack

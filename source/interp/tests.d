@@ -1234,6 +1234,7 @@ unittest
     interp.load("programs/jit/loop_lessargs.js");
     interp.load("programs/jit/loop_new.js");
     interp.load("programs/jit/loop_argc.js");
+    interp.load("programs/jit/loop_bool.js");
 }
 
 /// Tachyon tests

@@ -97,16 +97,26 @@ void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_set_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    // Defer writing the constant
+    //st.setOutBool(instr, true);
+
+
     auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
     ctx.as.instr(MOV, outOpnd, TRUE.int8Val);
     st.setOutType(ctx.as, instr, Type.CONST);
+
 }
 
 void gen_set_false(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    // Defer writing the constant
+    //st.setOutBool(instr, false);
+
+
     auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
     ctx.as.instr(MOV, outOpnd, FALSE.int8Val);
     st.setOutType(ctx.as, instr, Type.CONST);
+
 }
 
 void gen_set_undef(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -158,20 +168,18 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto argSlot = instr.args[0].localIdx;
 
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
+    // If the type of the argument is known
     if (st.typeKnown(argSlot))
-    {
+    {   
+        // Mark the value as a known constant
+        // This will defer writing the value
         auto knownType = st.getType(argSlot);
-
-        if (knownType == type)
-            ctx.as.instr(MOV, outOpnd, TRUE.int64Val);
-        else
-            ctx.as.instr(MOV, outOpnd, FALSE.int64Val);
+        st.setOutBool(instr, type is knownType);
     }
     else
     {
         auto typeOpnd = st.getTypeOpnd(ctx.as, argSlot, scrRegs8[0]);
+        auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
         // Compare against the tested type
         ctx.as.instr(CMP, scrRegs8[0], type);
@@ -181,9 +189,10 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         ctx.as.instr(CMOVE, scrRegs64[0], scrRegs64[1]);
 
         ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
-    }
 
-    st.setOutType(ctx.as, instr, Type.CONST);
+        // Set the output type
+        st.setOutType(ctx.as, instr, Type.CONST);
+    }
 }
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
@@ -435,6 +444,23 @@ void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    auto argSlot = instr.args[0].localIdx;
+
+    // If the argument is a known constant
+    if (st.wordKnown(argSlot))
+    {
+        //writefln("known target!");
+
+        auto argWord = st.getWord(argSlot);
+
+        auto target = (argWord == TRUE)? instr.target:instr.excTarget;
+        auto label = ctx.getBlockLabel(target, st);
+
+        ctx.as.instr(JMP, label);
+
+        return;
+    }
+
     // Compare the argument to the true value
     auto argOpnd = st.getArgOpnd(ctx, ctx.as, instr, 0, 8);
     ctx.as.instr(CMP, argOpnd, TRUE.int8Val);
@@ -604,7 +630,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Spill the values that are live after the call
     st.spillRegs(
         ctx.as,
-        delegate bool(size_t regNo, LocalIdx localIdx)
+        delegate bool(LocalIdx localIdx)
         {
             return (ctx.liveSets[instr].has(localIdx) == true);
         }
@@ -801,7 +827,7 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto liveSet = ctx.liveSets[instr];
     st.spillRegs(
         as,
-        delegate bool(size_t regNo, LocalIdx localIdx)
+        delegate bool(LocalIdx localIdx)
         {
             if (instr.hasArg(localIdx))
                 return true;

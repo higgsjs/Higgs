@@ -90,13 +90,21 @@ run-time error: undefined base in read of property "car"
   - gc happens during newObj
 - Doesn't seem directly connected to GC
 
-TODO: optimize IsTypeOp, compare ops in conjunction with if_true
-- Log optimized instances
-- Need to optimize in conjunction with if_true
-- Bool op followed by if_true using output of bool op
-- Could include the if_true compilation into the boolean compilation if right
-  afterwards, skip the if_true compilation
-- Test if own value is dead after if_true, if so, don't produce
+TODO: look at ASM output, think about ASM peephole opts
+
+TODO: look at num versions generated, how bad is it?
+
+TODO: optimize comparison against true with eq_const
+- use immediate operand
+
+
+
+
+FIXME: bug in 3d-raytrace, has to do with set_true, set_false
+- log instr using const operands in getArgOpnd?
+- Fn args could be constant, but call/ret wouldn't know?
+  - Test if this is the case
+  - Restructure/simplify call, spill everything *after* arg copying???
 
 
 
@@ -106,11 +114,15 @@ TODO: optimize IsTypeOp, compare ops in conjunction with if_true
 
 
 
+[DONE] TODO: SET_TRUE should store its constant
 
+[DONE] TODO: optimize IsTypeOp
 
-
-
-
+[DONE] TODO: add flags for known boolean values, defer value write?
+- Allows optimizing both IsTypeOp and if_true
+- If opnd is requested, move value to opnd
+- If spilling, write value
+- Probably need a special TF_CONST
 
 [DONE] TODO: basic OSR if function is on top of the stack
 - Easy at this point? Just move the values to the new slots
