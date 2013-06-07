@@ -52,7 +52,7 @@ void genInitMaps(IRFunction fun)
 
     BitSetCW[IRBlock] entryMaps;
 
-    // Create an empty map
+    // Create an empty map with nothing initialized
     auto emptyMap = new BitSetCW(fun.numLocals);
 
     // Create a map for the function entry where only
@@ -61,10 +61,9 @@ void genInitMaps(IRFunction fun)
     for (size_t i = 0; i < fun.numParams + NUM_HIDDEN_ARGS; ++i)
         entryMap = entryMap.add(cast(LocalIdx)(fun.numLocals - 1 - i));
 
-    // Initialize the maps for each block
-    for (auto block = fun.firstBlock; block !is null; block = block.next)
-        entryMaps[block] = (block is fun.entryBlock)? entryMap:emptyMap;
-    
+    // Initialize the entry map for the entry block
+    entryMaps[fun.entryBlock] = entryMap;
+
     // Create a bit set for the local variables
     auto varMap = new BitSet(fun.numLocals);
     foreach (localIdx; fun.localMap)
@@ -97,7 +96,7 @@ void genInitMaps(IRFunction fun)
         // If the target entry map is changed after merging
         if (branch.target)
         {
-            auto targetMap = entryMaps[branch.target];
+            auto targetMap = entryMaps.get(branch.target, emptyMap);
             auto mergedMap = targetMap.setUnion(initMap);
 
             if (mergedMap != targetMap)
@@ -110,7 +109,7 @@ void genInitMaps(IRFunction fun)
         // If the exception target entry map is changed after merging
         if (branch.excTarget)
         {
-            auto targetMap = entryMaps[branch.excTarget];
+            auto targetMap = entryMaps.get(branch.excTarget, emptyMap);
             auto mergedMap = targetMap.setUnion(initMap);
 
             if (mergedMap != targetMap)
@@ -127,6 +126,10 @@ void genInitMaps(IRFunction fun)
     // Go through blocks, if not init and successor has init, insert set_undef?
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
+        // If this block is was never visited (is dead code)
+        if (block !in entryMaps)
+            continue;
+
         auto initMap = entryMaps[block];
 
         // For each instruction
@@ -168,7 +171,7 @@ void genInitMaps(IRFunction fun)
             if (varMap.has(i) == false)
                 continue; 
 
-            // If the a successor has this slot marked as initialized
+            // If a successor has this slot marked as initialized
             if ((branch.target && entryMaps[branch.target].has(i) == true) ||
                 (branch.excTarget && entryMaps[branch.excTarget].has(i) == true))
             {

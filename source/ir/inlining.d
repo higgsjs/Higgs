@@ -181,7 +181,10 @@ void inlineCall(IRInstr callSite, IRFunction callee)
 
             // Keep track of arguments written to
             if (instr.outSlot - arg0Slot < writtenArgs.length)
+            {
+                //writefln("written arg: %s in %s", instr.outSlot-arg0Slot, callee.getName());
                 writtenArgs.add(instr.outSlot - arg0Slot);
+            }
         }
 
         // Copy the block and add it to the caller

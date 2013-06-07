@@ -98,25 +98,13 @@ void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 void gen_set_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Defer writing the constant
-    //st.setOutBool(instr, true);
-
-
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, TRUE.int8Val);
-    st.setOutType(ctx.as, instr, Type.CONST);
-
+    st.setOutBool(instr, true);
 }
 
 void gen_set_false(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Defer writing the constant
-    //st.setOutBool(instr, false);
-
-
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, FALSE.int8Val);
-    st.setOutType(ctx.as, instr, Type.CONST);
-
+    st.setOutBool(instr, false);
 }
 
 void gen_set_undef(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -292,6 +280,39 @@ alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
 alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
+void ShiftOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32);
+    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 8);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+
+    X86OpPtr opPtr = null;
+    static if (op == "sal")
+        opPtr = SAL;
+    static if (op == "sar")
+        opPtr = SAR;
+    assert (opPtr !is null);
+
+    // Save RCX
+    ctx.as.instr(MOV, scrRegs64[1], RCX);
+
+    ctx.as.instr(MOV, scrRegs32[0], opnd0);
+    ctx.as.instr(MOV, CL, opnd1);
+
+    ctx.as.instr(opPtr, scrRegs32[0], CL);
+
+    // Restore RCX
+    ctx.as.instr(MOV, RCX, scrRegs64[1]);
+
+    ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+
+    // Set the output type
+    st.setOutType(ctx.as, instr, Type.INT32);
+}
+
+alias ShiftOp!("sal") gen_lsft_i32;
+alias ShiftOp!("sar") gen_rsft_i32;
+
 void FPOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0);
@@ -375,6 +396,7 @@ alias CmpOp!("le", 32) gen_le_i32;
 alias CmpOp!("gt", 32) gen_gt_i32;
 alias CmpOp!("ge", 32) gen_ge_i32;
 alias CmpOp!("eq", 8) gen_eq_const;
+alias CmpOp!("ne", 8) gen_ne_const;
 alias CmpOp!("eq", 64) gen_eq_refptr;
 alias CmpOp!("ne", 64) gen_ne_refptr;
 alias CmpOp!("eq", 64) gen_eq_rawptr;
@@ -659,7 +681,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             instr, 
             instrArgIdx,
             64,
-            scrRegs64[3]
+            scrRegs64[3],
+            true
         );
         ctx.as.setWord(dstIdx, argOpnd);
 
@@ -771,7 +794,8 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         instr, 
         0,
         64,
-        scrRegs64[2]
+        scrRegs64[2],
+        true
     );
     ctx.as.instr(
         MOV, 
@@ -914,14 +938,17 @@ static this()
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
     codeGenFns[&AND_I32]        = &gen_and_i32;
 
+    codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
+    codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
+    codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
+
+    codeGenFns[&LSFT_I32]       = &gen_lsft_i32;
+    codeGenFns[&RSFT_I32]       = &gen_rsft_i32;
+
     codeGenFns[&ADD_F64]        = &gen_add_f64;
     codeGenFns[&SUB_F64]        = &gen_sub_f64;
     codeGenFns[&MUL_F64]        = &gen_mul_f64;
     codeGenFns[&DIV_F64]        = &gen_div_f64;
-
-    codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
-    codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
-    codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
 
     codeGenFns[&EQ_I8]          = &gen_eq_i8;
     codeGenFns[&EQ_I32]         = &gen_eq_i32;
@@ -931,6 +958,7 @@ static this()
     codeGenFns[&GT_I32]         = &gen_gt_i32;
     codeGenFns[&GE_I32]         = &gen_ge_i32;
     codeGenFns[&EQ_CONST]       = &gen_eq_const;
+    codeGenFns[&NE_CONST]       = &gen_ne_const;
     codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;

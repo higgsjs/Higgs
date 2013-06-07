@@ -56,10 +56,6 @@ TODO: improved interpreter frame spill scheme
     - JIT fast entry point
 - Is this needed right now, is this orthogonal to inlining?
 
-TODO: can we use one less scratch reg?
-- Delay until type tags integrated
-- Might need more scratch regs as refactorings progress
-
 TODO: benchmarking (performance testing) JS script
 - benchmark.js
 - should do multiple runs (parameterizable numRuns?)
@@ -90,29 +86,51 @@ run-time error: undefined base in read of property "car"
   - gc happens during newObj
 - Doesn't seem directly connected to GC
 
-TODO: look at ASM output, think about ASM peephole opts
+TODO: optimize non-constant comparison followed by if_true
+- 4 extra instructions
+- If next instr is if_true and value is dead after if_true, don't write bool val
+- if_true can check if prev instr had boolean output (or check for specific)
+- Won't quite work for inlined functions... Could implement through peepholes
+  - Peepholes need some sort of dead register indicator instruction
+  - kill(rxx)
+- Is it realistic for us to be able to kill registers in the ASM?
 
-TODO: look at num versions generated, how bad is it?
-
-TODO: optimize comparison against true with eq_const
-- use immediate operand
-
+TODO: try to use one less scratch reg, commit before
+- Grep for scrRegs64[3]
+- Might need more scratch regs as refactorings progress
 
 
 
-FIXME: bug in 3d-raytrace, has to do with set_true, set_false
-- log instr using const operands in getArgOpnd?
+
+
+
+
+
+
+
+[DONE] TODO: lsft_i32, rsft_i32
+
+[DONE] TODO: test simple artificial benchmark for study
+- for_loop.js, just a for loop that increments a counter
+- issue: quite likely, w.r.t. const prop, global values aren't optimized
+  - global version is a little slower
+- stare at ASM, make it better
+- Observations
+  - lt, add successfully inlined in main loop
+  - tons of stubs are produced, should probably optimize stub compilation
+  - with lots of iterations, it's almost twice as fast with inlining
+- when we do get_global, we copy the type to the stack, but we keep the
+  value in a register. We then write 0 to the stack to prevent a type out
+  of sync problem...
+- jumps to next label are quite common
+- int offset in load instr could be optimized
+
+[DONE] FIXME: useless move in simple for loop, closure version
+- Flaw in init analysis w.r.t. dead code and argument initialization
+
+[DONE] FIXME: bug in 3d-raytrace, has to do with set_true, set_false
 - Fn args could be constant, but call/ret wouldn't know?
   - Test if this is the case
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: getWordOpnd: provide a tmpReg parameter
 
