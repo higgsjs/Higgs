@@ -166,11 +166,11 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     }
     else
     {
-        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0, scrRegs8[0]);
+        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0);
         auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
         // Compare against the tested type
-        ctx.as.instr(CMP, scrRegs8[0], type);
+        ctx.as.instr(CMP, typeOpnd, type);
 
         ctx.as.instr(MOV, scrRegs64[0], FALSE.int64Val);
         ctx.as.instr(MOV, scrRegs64[1], TRUE.int64Val);
@@ -681,13 +681,13 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             instr, 
             instrArgIdx,
             64,
-            scrRegs64[3],
+            scrRegs64[2],
             true
         );
         ctx.as.setWord(dstIdx, argOpnd);
 
         // Set the argument type
-        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, instrArgIdx, scrRegs8[3]);
+        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, instrArgIdx, scrRegs8[2]);
         ctx.as.setType(dstIdx, typeOpnd);
     }
 
@@ -709,7 +709,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         assert (thisReg !is null);
         ctx.as.setWord(-numArgs - 2, thisReg);
 
-        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[3]);
+        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2]);
         ctx.as.setType(-numArgs - 2, typeOpnd);
     }
 
@@ -721,8 +721,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     }
 
     // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[3], instr);
-    ctx.as.setWord(-numArgs - 4, scrRegs64[3]);
+    ctx.as.ptr(scrRegs64[2], instr);
+    ctx.as.setWord(-numArgs - 4, scrRegs64[2]);
     ctx.as.setType(-numArgs - 4, Type.INSPTR);
 
     // Spill the values that are live after the call

@@ -80,17 +80,16 @@ static this()
     /// C fp argument registers
     cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
 
-    /// RAX: scratch register
-    /// RDX: scratch register
+    /// RAX: scratch register, C return value
     /// RDI: scratch register, first C argument register
     /// RSI: scratch register, second C argument register
-    scrRegs64 = [RAX, RDX, RDI, RSI];
-    scrRegs32 = [EAX, EDX, EDI, ESI];
-    scrRegs16 = [AX , DX , DI , SI ];
-    scrRegs8  = [AL , DL , DIL, SIL];
+    scrRegs64 = [RAX, RDI, RSI];
+    scrRegs32 = [EAX, EDI, ESI];
+    scrRegs16 = [AX , DI , SI ];
+    scrRegs8  = [AL , DIL, SIL];
 
-    /// RCX, RBX, RBP, R8-R12: 8 allocatable registers
-    allocRegs = [RCX, RBX, RBP, R8, R9, R10, R11, R12];
+    /// RCX, RBX, RBP, R8-R12: 9 allocatable registers
+    allocRegs = [RCX, RDX, RBX, RBP, R8, R9, R10, R11, R12];
 }
 
 /// Mapping of locals to registers

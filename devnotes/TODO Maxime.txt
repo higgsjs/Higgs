@@ -56,12 +56,6 @@ TODO: improved interpreter frame spill scheme
     - JIT fast entry point
 - Is this needed right now, is this orthogonal to inlining?
 
-TODO: benchmarking (performance testing) JS script
-- benchmark.js
-- should do multiple runs (parameterizable numRuns?)
-- use load command, list of benchmarks
-- try to make it compatible with V8 as-is
-
 TODO: IR-level optimizations?
 - Basic arith ops, simple const prop?
 - Jump to block that jumps
@@ -75,6 +69,12 @@ TODO: stack-frame compaction
 - Need liveness info if doing OSR
   - Move only live values to new slot
   - Two live values can't map to same slot
+
+TODO: benchmarking (performance testing) JS script
+- benchmark.js
+- should do multiple runs (parameterizable numRuns?)
+- use load command, list of benchmarks
+- try to make it compatible with V8 as-is
 
 FIXME: earley-boyer not working, with or without inlining
 run-time error: undefined base in read of property "car"
@@ -91,22 +91,29 @@ TODO: optimize non-constant comparison followed by if_true
 - If next instr is if_true and value is dead after if_true, don't write bool val
 - if_true can check if prev instr had boolean output (or check for specific)
 - Won't quite work for inlined functions... Could implement through peepholes
-  - Peepholes need some sort of dead register indicator instruction
-  - kill(rxx)
-- Is it realistic for us to be able to kill registers in the ASM?
 
-TODO: try to use one less scratch reg, commit before
+TODO: use reg kill to optimize load instrs
+
+
+TODO: think about register kill in ASM, would be very useful
+- Combined kill with bit mask of GP registers to kill
+- KillRegs annotation
+
+
+
+
+
+[DONE] TODO: basic peephole opts
+
+[DONE] TODO: jit_noasmopts flag
+
+[DONE] TODO: try to use one less scratch reg, commit before
+- Benchmark first, note times ***
+  3d-cube               2.45    2.50
+  3d-raytrace           4.34    4.43
+  bitops-nsieve-bits    1.32    1.33
 - Grep for scrRegs64[3]
-- Might need more scratch regs as refactorings progress
-
-
-
-
-
-
-
-
-
+- Result: no noticeable difference!
 
 [DONE] TODO: lsft_i32, rsft_i32
 

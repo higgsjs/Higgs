@@ -466,14 +466,12 @@ void compFun(Interp interp, IRFunction fun)
     as.comment("Out of line code");
     as.append(ol);
 
-    /*
     // If ASM optimizations are not disabled
     if (!opts.jit_noasmopts)
     {
         // Perform peephole optimizations on the generated code
         optAsm(as);
     }
-    */
 
     // Assemble the machine code
     auto codeBlock = as.assemble();
@@ -572,9 +570,6 @@ class CodeGenState
     /// Map of general-purpose registers to locals
     /// This is NULL_LOCAL if a register is free
     LocalIdx[] gpRegMap;
-
-    /// TODO: type flags
-    // Implement only once versioning/regalloc working
 
     /// Type information state, type flags (per-local)
     TFState[] typeState;

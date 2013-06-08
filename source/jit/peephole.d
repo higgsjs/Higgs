@@ -46,57 +46,6 @@ import jit.assembler;
 import jit.x86;
 import jit.encodings;
 
-/*
-; $7 = is_int32 $15
-mov al, [byte rbp + 15];                8A 45 0F
-cmp al, 0;                              3C 00
-mov rax, -14;                           48 C7 C0 F2 FF FF FF
-mov rcx, -15;                           48 C7 C1 F1 FF FF FF
-cmove rax, rcx;                         48 0F 44 C1
-mov [qword rbx + 56], rax;              48 89 43 38
-mov [byte rbp + 7], 4;                  C6 45 07 04
-; if_true $7 => if_true(2DEF), if_false(2E05)
-mov al, [byte rbx + 56];                8A 43 38
-cmp al, -15;                            3C F1
-jne IF_EXIT(1669);                      0F 85 2B 05 00 00
-
-need almost the whole pattern, except for the initial load
-
-can optimize to:
-; $7 = is_int32 $15         
-mov al, [byte rbp + 15];                8A 45 0F
-cmp al, 0;                              3C 00
-mov rax, -14;                           48 C7 C0 F2 FF FF FF
-mov rcx, -15;                           48 C7 C1 F1 FF FF FF
-cmove rax, rcx;                         48 0F 44 C1
-mov [qword rbx + 56], rax;              48 89 43 38
-mov [byte rbp + 7], 4;                  C6 45 07 04
-; if_true $7 => if_true(2DEF), if_false(2E05)
-; mov al, [byte rbx + 56];                8A 43 38
-; cmp al, -15;                            3C F1
-jne IF_EXIT(1669);                      0F 85 2B 05 00 00
-
-Saves two instructions, one load
-*/
-
-/*
-Redundant loads, more sophisticated
-- If value still in a register, use the register directly
-
-Can also eliminate redundant cmps
-
-Both of these together implement a more powerful version of the above ***
-
-Redundant load:
-- Find write to a mem loc from register
-- Scan until load from mem loc
-  - Stop scan if anything writes to register or may touch register
-- Eliminate load, replace use of load dest by init reg (if possible?)
-
-PROBLEM: can't eliminate load unless we really know it's uses are dead!
-
-*/
-
 /// Test if two operands are registers with the same register number
 bool sameRegNo(X86Opnd a, X86Opnd b)
 {
@@ -124,78 +73,143 @@ bool writesReg(X86Instr instr, X86Reg reg)
     );
 }
 
+// TODO
+/*
+// Table of conditional jump instructions and their logical inverses
+const jumpInvs = {
+    'je': 'jne',
+    'jg': 'jle',
+    'jge': 'jl',
+    'jl': 'jge',
+    'jle': 'jg',
+    'jne': 'je'
+}
+*/
+
+/**
+Perform peephole optimizations on a function's ASM code
+*/
 void optAsm(Assembler as)
 {
-    // While changes are still occurring
-    for (bool changed = true; changed !is false; changed = false)
-    {
-        // For each instruction
-        for (auto ins1 = as.getFirstInstr(); ins1 !is null; ins1 = ins1.next)
-        {
-            auto instr = cast(X86Instr)ins1;
-            if (instr is null)
-                continue;
+    // ASM changed flag
+    bool changed = true;
 
-
-
-
-
-
-
-
-
-            //optStoreLoad(instr, changed);
-        }
-    }
-}
-
-void optStoreLoad(X86Instr instr, ref bool changed)
-{
-    /*
-    auto memLoc = cast(X86Mem)instr.opnds[0];
-    auto reg = cast(X86Reg)instr.opnds[1];
-
-    // If this is not a store instruction, stop
-    if (instr.opcode != MOV || memLoc is null || reg is null)
-        return;
-
-    // TODO: limit the number of iterations
-
-    for (auto ins1 = instr.next; ins1 !is null; ins1 = ins1.next)
-    {
-        auto instr = cast(X86Instr)ins1;
-        if (instr is null)
-            continue;
-
-        // Stop if anything writes to the source register
-        if (writesReg(instr1, reg))
-            return;
-
-        // Stop if anything writes to the memory location base
-        if (writesReg(instr2, memLoc.base))
-            return;
-
-        // Stop if anything writes to the memory location
-        if (instr2.opcode == MOV)
-        {
-            // TODO
-        }
-
-        // If this is a load from the same memory location
-        if (instr2.opcode == MOV &&
-            cast(X86Reg)instr2.opnds[0] && 
-            cast(X86Mem)instr2.opnds[1] &&
-            instr2.opnds[1] == memLoc)
-        {
-
-
-
-            writefln("match");
-
-        }
-    }
-
-    // TODO
+    /**
+    Remove an instruction
     */
+    void remInstr(ASMInstr instr)
+    {
+        /*
+        assert (
+            (instr instanceof x86.DataBlock) === false,
+            'removing data block'
+        );
+        */
+
+        //writefln("removing %s", instr);
+
+        as.remInstr(instr);
+        changed = true;
+    }
+
+    /**
+    Add an instruction after another one
+    */
+    void addAfter(ASMInstr newInstr, ASMInstr prev)
+    {
+        as.addInstrAfter(newInstr, prev);
+        changed = true;
+    }
+
+    bool jumpOpts(X86Instr instr, X86OpPtr op)
+    {
+        // If this is not a jump instruction, stop
+        if (op !is JMP   &&
+            op !is JL    &&
+            op !is JLE   &&
+            op !is JG    &&
+            op !is JGE   &&
+            op !is JE    &&
+            op !is JNE)
+            return false;
+
+        // Get the jump label
+        auto labelRef = cast(X86LabelRef)instr.opnds[0];
+
+        // If this does not jump to a label, stop
+        if (labelRef is null)
+            return false;
+
+        auto label = labelRef.label;
+
+        // If the label immediately follows
+        if (label is instr.next)
+        {
+            remInstr(instr);
+            return true;
+        }
+
+        // If this is a jump to a direct jump
+        if (auto instr2 = cast(X86Instr)label.next)
+        {
+            if (instr2.opcode is JMP)
+            {
+                auto j2LabelRef = cast(X86LabelRef)instr2.opnds[0]; 
+
+                // If the second jump label is not the same as ours
+                if (j2LabelRef && j2LabelRef.label && j2LabelRef.label !is label)
+                {
+                    // Jump directly to the second label
+                    labelRef.label = j2LabelRef.label;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // While changes are still occurring
+    while (changed !is false)
+    {
+        changed = false;
+
+        // Count the references to each label
+        for (auto obj = as.getFirstInstr(); obj !is null; obj = obj.next)
+        {
+            if (auto instr = cast(X86Instr)obj)
+                if (auto labelRef = cast(X86LabelRef)instr.opnds[0])
+                    labelRef.label.refCount++;
+        }
+
+        // For each instruction
+        INSTR_LOOP:
+        for (auto obj = as.getFirstInstr(); obj !is null; obj = obj.next)
+        {
+            // If this is an instruction
+            if (auto instr = cast(X86Instr)obj)
+            {
+                auto opcode = instr.opcode;
+
+                if (jumpOpts(instr, opcode))
+                    continue INSTR_LOOP;
+
+
+
+            }
+
+            // If this is a label
+            else if (auto label = cast(Label)obj)
+            {
+                // If the reference count is 0 and this label is
+                // not exported, remove it
+                if (label.refCount == 0 && label.exported == false)
+                    remInstr(label);
+
+                // Reset the reference count for the label
+                label.refCount = 0;
+            }
+        }
+    }
 }
 
