@@ -1,0 +1,126 @@
+
+How hard would it be to switch to SSA?
+
+1. Tweak/adapt IR
+- Constant pool for int32s, float64s, true/false/null/undef/missing
+
+2. Port/reimplement AST->IR
+- No longer does slot mapping
+- Now needs to build basic SSA graph (varmap, ...)
+- Overall structure remains the same
+
+3. Liveness and slot mapping analysis for new IR
+- Needed for interpreter
+- Instructions marked with their assigned slots
+- Args get fixed slots as before
+- Other instrs get slots based on who's live at the same time
+  - Map instr to first slot that's not already mapped to an interfering value
+
+4. Adapt interpreter
+- Interpreter mostly doesn't care?
+- Instructions have mapped output slots as before
+- Phi nodes have mapped slots, do a move as necessary?
+- The block who branches should do the SSA moves
+
+4. Modify/remplement inlining for SSA
+- Not too hard? Disable inlining at first
+
+3. Rework JIT for new IR
+- Instrs have slots mapped to them as before
+- Try to use SSA info to generate better code
+- Phi nodes? Normally would require moves
+  - In version case, request version where phi node has current slot/reg
+
+Do a git branch if you decide to do this ****
+
+(12:16:44 AM) Mot Low: git branch branchname
+(12:16:49 AM) Mot Low: then git checkout branch
+
+
+
+IRValue class
+- Instrs, constants, phi nodes
+
+Blocks should have:
+- list of preds
+  - No list of succs, build into branch
+- List of phi nodes
+- List of instrs
+
+
+IRInstr needs to have list of dsts
+- Probably shouldn't try to be too clever and optimized at this stage?
+- If dsts are linked lists of use objects, removal is automatic***
+- Also never need to traverse this list, or only rarely
+
+
+struct Use
+{
+    prev
+    next
+    value
+    dst
+}
+
+
+
+
+Blocks with parameters?
+- Entry has arguments as parameters, pre-mapped to slots
+- For other blocks, params are the phi nodes
+- Branches need to specify what value goes into what block argument?
+  - Can have one block branch to the same target on true/false
+
+
+block parameter objects need to be IRValues
+- have dsts, have stackSlot
+- have names
+
+
+
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+Alternative:
+- allow our IR instrs to have constant value args not mapped to slots
+- use/def, def/use chains?
+
+Kind of clunky, need re-analysis to update u/d d/u
+
+------------------------------------------------------------------------------
+
+; $12 = set_i32 32                      
+mov ecx, 32;                            B9 20 00 00 00
+; free rdx r11                          
+; $12 = load_rawptr $34, $12            
+mov edi, ecx;                           89 CF
+mov rcx, [qword rbx + rdi];             48 8B 0C 3B
+; free rdx r11                          
+
+; $12 = eq_rawptr $12, $13              
+cmp rcx, rdx;                           48 39 D1
+mov ecx, 2;                             B9 02 00 00 00
+mov edi, 1;                             BF 01 00 00 00
+cmove ecx, edi;                         0F 44 CF
+; free rdx r11                          
+; if_true $12 => entry(C1DF), call_reg(C234)
+cmp cl, 1;                              80 F9 01
+jne CALL_REG(C234)(2392);               0F 85 B8 03 00 00
+jmp ENTRY(C1DF)(1442);                  EB 00
+; free rcx rdx r11                      
+
+Conclusion: we are mostly screwed? The free reg info is unhelpful.
+
+This would be trivial to optimize with SSA but really isn't here.
+In SSA, we'd just generate better code in the first place. Right now, we're
+trying to fix a problem post-hoc. Many inlining opts currently not possible. 
+Redundant move elimination isn't even a problem with SSA.
+

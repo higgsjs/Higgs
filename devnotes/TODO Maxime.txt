@@ -86,22 +86,33 @@ run-time error: undefined base in read of property "car"
   - gc happens during newObj
 - Doesn't seem directly connected to GC
 
+TODO: implement cap on number of block versions
+- Add command-line options, jit_maxblockvers
+- Will require generating ASM adaptors before jumps? If we hit the max
+vers cap, the jump target we get back is an adaptor?
+
 TODO: optimize non-constant comparison followed by if_true
 - 4 extra instructions
 - If next instr is if_true and value is dead after if_true, don't write bool val
 - if_true can check if prev instr had boolean output (or check for specific)
 - Won't quite work for inlined functions... Could implement through peepholes
 
-TODO: use reg kill to optimize load instrs
 
 
-TODO: think about register kill in ASM, would be very useful
+
+
+
+
+
+
+
+[DONE] TODO: think about register kill in ASM, would be very useful
 - Combined kill with bit mask of GP registers to kill
 - KillRegs annotation
-
-
-
-
+- Only insert if !jit_noasmopts
+- slows the code gen a bit...
+  - another argument for SSA
+- this idea actually sucks
 
 [DONE] TODO: basic peephole opts
 
