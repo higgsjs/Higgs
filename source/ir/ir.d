@@ -41,6 +41,7 @@ import std.stdio;
 import std.array;
 import std.string;
 import std.stdint;
+import std.typecons;
 import std.conv;
 import std.regex;
 import std.stdint;
@@ -397,6 +398,178 @@ class IRBlock : IdObject
         instr.next = null;
     }
 }
+
+
+
+
+/**
+Base class for IR/SSA values
+*/
+class IRValue : IdObject
+{
+    struct Use
+    {
+        Use* prev;
+        Use* next;
+        IRValue value;
+        IRValue dst;
+    }
+
+    /// Linked list of destinations
+    Use* firstDst = null;    
+}
+
+/**
+SSA constant and constant pools/instances
+*/
+class IRConst : IRValue
+{
+    override string toString() 
+    {
+        return valToString(value);
+    }
+
+    ValuePair pair() { return value; }
+    Word word() { return value.word; }
+    Type type() { return value.type; }    
+
+    /// Value of this constant
+    private ValuePair value;
+
+    static IRConst int32Cst(int32 val)
+    {
+        if (val in int32Vals)
+            return int32Vals[val];
+
+        auto cst = new IRConst(Word.int32v(val), Type.INT32);
+        int32Vals[val] = cst;
+        return cst;
+    }
+
+    static IRConst int64Cst(int64 val)
+    {
+        if (val in int64Vals)
+            return int64Vals[val];
+
+        auto cst = new IRConst(Word.int64v(val), Type.INT64);
+        int64Vals[val] = cst;
+        return cst;
+    }
+
+    static IRConst float64Cst(float64 val)
+    {
+        if (val in float64Vals)
+            return float64Vals[val];
+
+        auto cst = new IRConst(Word.float64v(val), Type.FLOAT64);
+        float64Vals[val] = cst;
+        return cst;
+    }
+
+    static IRConst trueCst() { return trueVal; }
+    static IRConst falseCst() { return falseVal; }
+    static IRConst undefCst() { return undefVal; }
+    static IRConst nullCst() { return nullVal; }
+
+    private static IRConst trueVal;
+    private static IRConst falseVal;
+    private static IRConst undefVal;
+    private static IRConst nullVal;
+
+    private static IRConst[int32] int32Vals;
+    private static IRConst[int64] int64Vals;
+    private static IRConst[float64] float64Vals;
+
+    private this(Word word, Type type)
+    {
+        this.value = ValuePair(word, type);
+    }
+
+    private static this()
+    {
+        trueVal = new IRConst(TRUE, Type.CONST);
+        falseVal = new IRConst(FALSE, Type.CONST);
+        undefVal = new IRConst(UNDEF, Type.CONST);
+        nullVal = new IRConst(NULL, Type.REFPTR);
+    }
+}
+
+/**
+Function parameter value
+*/
+class FunParam : IRValue
+{
+    this(string name, size_t idx)
+    {
+        this.name = name;
+        this.idx = idx;
+    }
+
+    string name;
+    size_t idx;
+}
+
+/**
+Branch edge descriptor
+*/
+class BranchDesc
+{
+    /// Branch predecessor block
+    IRBlock pred;
+
+    /// Branch successor block
+    IRBlock succ;
+
+    /// Mapping of incoming phi values (block arguments)
+    Tuple!(IRValue, "src", PhiNode, "dst") args[];
+}
+
+/**
+Phi node value
+*/
+class PhiNode : IRValue
+{
+    // TODO: do we need to list this info here or in the branch?
+    // Probably want some kind of branch descriptor object with a list of arguments
+    // Both the branch target and the phi node can refer to it
+    //BranchDesc preds[];
+
+    /// Output stack slot
+    LocalIdx outSlot;
+}
+
+// TODO: missing arg types, create special objects?
+// LinkIdx (can be const?)
+// rawptr
+// IRFunction
+// CodeBlock
+
+class SSAInstr : IRValue
+{
+
+
+    Use[] uses;
+
+
+
+    BranchDesc target = null;
+    BranchDesc excTarget = null;
+
+    /// Output stack slot
+    LocalIdx outSlot;
+}
+
+
+// TODO: blocks should have list of incoming branch edges
+
+
+
+
+
+
+
+
+
 
 /**
 IR instruction

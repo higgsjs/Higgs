@@ -75,6 +75,7 @@ Blocks with parameters?
 block parameter objects need to be IRValues
 - have dsts, have stackSlot
 - have names
+- pretty much phi nodes or args!
 
 
 
