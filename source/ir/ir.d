@@ -402,6 +402,8 @@ class IRBlock : IdObject
 
 
 
+
+
 /**
 Base class for IR/SSA values
 */
@@ -494,6 +496,27 @@ class IRConst : IRValue
     }
 }
 
+// TODO: missing arg types, create special objects?
+// LinkIdx (can be const?)
+// rawptr
+// IRFunction
+// CodeBlock
+class IRLinkIdx : IRValue
+{
+}
+
+class IRRawPtr : IRValue
+{
+}
+
+class IRFunPtr : IRValue
+{
+}
+
+class IRCodeBlock : IRValue
+{
+}
+
 /**
 Function parameter value
 */
@@ -529,38 +552,164 @@ Phi node value
 */
 class PhiNode : IRValue
 {
-    // TODO: do we need to list this info here or in the branch?
-    // Probably want some kind of branch descriptor object with a list of arguments
-    // Both the branch target and the phi node can refer to it
-    //BranchDesc preds[];
+    // TODO: do we need to keep track of preds here?
 
     /// Output stack slot
     LocalIdx outSlot;
 }
 
-// TODO: missing arg types, create special objects?
-// LinkIdx (can be const?)
-// rawptr
-// IRFunction
-// CodeBlock
-
+/**
+SSA instruction
+*/
 class SSAInstr : IRValue
 {
+    /// Opcode
+    Opcode* opcode;
+
+    /// Arguments to this instruction
+    private Use[] args;
+
+    /// Branch targets 
+    private BranchDesc[2] targets = [null, null];
+
+    /// Parent block
+    IRBlock block = null;
+
+    /// Previous and next instructions (linked list)
+    IRInstr prev;
+    IRInstr next;
+
+    /// Assigned output stack slot
+    LocalIdx outSlot = NULL_LOCAL;
+
+    /// Default constructor
+    this(Opcode* opcode)
+    {
+        this.opcode = opcode;
+    }
 
 
-    Use[] uses;
+
+
+    void setUse()
+    {
+    }
+
+
+    // TODO: external method to setup branches between blocks and instrs
+    // Things in the same module can see each other's privates :O
+    void setTarget(size_t idx)
+    {
+        // TODO: set block incoming
+
+
+    }
 
 
 
-    BranchDesc target = null;
-    BranchDesc excTarget = null;
 
-    /// Output stack slot
-    LocalIdx outSlot;
+    final override string toString()
+    {
+        string output;
+
+        /*
+        if (outSlot !is NULL_LOCAL)
+            output ~= "$" ~ to!string(outSlot) ~ " = ";
+
+        output ~= opcode.mnem;
+
+        if (opcode.argTypes.length > 0)
+            output ~= " ";
+
+        for (size_t i = 0; i < args.length; ++i)
+        {
+            auto arg = args[i];
+
+            if (i > 0)
+                output ~= ", ";
+
+            switch (opcode.getArgType(i))
+            {
+                case OpArg.INT32:
+                output ~= to!string(arg.int32Val);
+                break;
+                case OpArg.FLOAT64:
+                output ~= to!string(arg.float64Val);
+                break;
+                case OpArg.RAWPTR:
+                output ~= "<rawptr:" ~ ((arg.ptrVal is null)? "NULL":"0x"~to!string(arg.ptrVal)) ~ ">";
+                break;
+                case OpArg.STRING:
+                output ~= "\"" ~ to!string(arg.stringVal) ~ "\"";
+                break;
+                case OpArg.LOCAL:
+                output ~= "$" ~ ((arg.localIdx is NULL_LOCAL)? "NULL":to!string(arg.localIdx)); 
+                break;
+                case OpArg.LINK:
+                output ~= "<link:" ~ ((arg.linkIdx is NULL_LINK)? "NULL":to!string(arg.linkIdx)) ~ ">"; 
+                break;
+                case OpArg.FUN:
+                output ~= "<fun:" ~ arg.fun.getName() ~ ">";
+                break;
+                case OpArg.CODEBLOCK:
+                output ~= "<codeblock:" ~ ((arg.codeBlock is null)? "NULL":"0x"~to!string(arg.codeBlock.getAddress())) ~ ">";
+                break; 
+                default:
+                assert (false, "unhandled arg type");
+            }
+        }
+
+        if (target !is null)
+        {
+            output ~= " => " ~ target.getName();
+            if (excTarget !is null)
+                output ~= ", " ~ excTarget.getName();
+        }
+        */
+
+        return output;
+    }
+}
+
+/**
+TODO
+*/
+class SSABlock
+{
+    /// Block name (non-unique)
+    private string name;
+
+    /// List of incoming branches
+    private BranchDesc[] incoming;
+
+    /// Execution count, for profiling
+    uint64 execCount = 0;
+
+    /// JIT code entry point function
+    EntryFn entryFn = null;
+
+    /// JIT code fast entry point
+    ubyte* jitEntry = null;
+
+    /// Parent function
+    IRFunction fun = null;
+
+    IRInstr firstInstr = null;
+    IRInstr lastInstr = null;
+    
+    IRBlock prev;
+    IRBlock next;
+
+
+
+
+
+
+
+
 }
 
 
-// TODO: blocks should have list of incoming branch edges
 
 
 
