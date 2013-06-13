@@ -1737,8 +1737,9 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
             "invalid number of args in ffi call"
         );
 
-        cb = genFFIFn(interp, types, instr.outSlot, argSlots);
-        instr.args[0].codeBlock = cb;
+        // TODO: temporary for SSA refactoring
+        //cb = genFFIFn(interp, types, instr.outSlot, argSlots);
+        //instr.args[0].codeBlock = cb;
     }
     else
     {

@@ -47,7 +47,7 @@ import jit.assembler;
 import jit.codeblock;
 import jit.encodings;
 import jit.regalloc;
-import jit.jit;
+//import jit.jit;
 import ir.ir;
 
 Type[string] typeMap;
@@ -70,6 +70,7 @@ static this()
     scratchReg = R11;
 }
 
+/*
 CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] argSlots)
 {
     // Track register usage for args
@@ -170,6 +171,7 @@ CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] a
     auto cb = as.assemble();
     return cb;
 }
+*/
 
 // Dummy functions used for testing
 extern (C) 

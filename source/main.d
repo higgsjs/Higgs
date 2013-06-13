@@ -38,7 +38,6 @@
 import std.stdio;
 import parser.parser;
 import interp.interp;
-import jit.jit;
 import repl;
 import options;
 
