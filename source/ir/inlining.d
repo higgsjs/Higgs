@@ -41,6 +41,7 @@ import std.stdio;
 import std.string;
 import std.stdint;
 import ir.ir;
+import ir.ops;
 import interp.object;
 import util.bitset;
 
@@ -100,6 +101,7 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     // Get the number of arguments passed
     auto numArgs = callSite.args.length - 2;
 
+    /*
     //
     // Stack-frame remapping
     //
@@ -339,5 +341,6 @@ void inlineCall(IRInstr callSite, IRFunction callee)
             entryBlock.firstInstr
         );
     }
+    */
 }
 

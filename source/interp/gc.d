@@ -41,6 +41,7 @@ import core.memory;
 import std.stdio;
 import std.string;
 import ir.ir;
+import ir.ops;
 import interp.layout;
 import interp.interp;
 import interp.string;

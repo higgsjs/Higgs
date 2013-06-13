@@ -48,10 +48,9 @@ import std.stdint;
 import util.id;
 import util.string;
 import parser.ast;
-import ir.init;
+import ir.ops;
 import interp.interp;
 import interp.layout;
-import interp.ops;
 import jit.codeblock;
 
 /// Local variable index type
@@ -983,10 +982,29 @@ class IRConst : IRValue
         return cst;
     }
 
-    static IRConst trueCst() { return trueVal; }
-    static IRConst falseCst() { return falseVal; }
-    static IRConst undefCst() { return undefVal; }
-    static IRConst nullCst() { return nullVal; }
+    static IRConst trueCst() 
+    { 
+        if (!trueVal) trueVal = new IRConst(TRUE , Type.CONST); 
+        return trueVal;
+    }
+
+    static IRConst falseCst()
+    {
+        if (!falseVal) falseVal = new IRConst(FALSE, Type.CONST); 
+        return falseVal;
+    }
+
+    static IRConst undefCst()
+    {
+        if (!undefVal) undefVal = new IRConst(UNDEF, Type.CONST);
+        return undefVal;
+    }
+
+    static IRConst nullCst()  
+    { 
+        if (!nullVal) nullVal = new IRConst(NULL, Type.REFPTR);
+        return nullVal;
+    }
 
     private static IRConst trueVal;
     private static IRConst falseVal;
@@ -1000,14 +1018,6 @@ class IRConst : IRValue
     private this(Word word, Type type)
     {
         this.value = ValuePair(word, type);
-    }
-
-    private static this()
-    {
-        trueVal = new IRConst(TRUE, Type.CONST);
-        falseVal = new IRConst(FALSE, Type.CONST);
-        undefVal = new IRConst(UNDEF, Type.CONST);
-        nullVal = new IRConst(NULL, Type.REFPTR);
     }
 }
 
@@ -1191,347 +1201,54 @@ class SSAInstr : IRValue
         foreach (argIdx, arg; this.args)
             that.setArg(argIdx, arg.value);
 
-
-
-        // TODO: copy the targets
-        // TODO: copy branch args?
-        //foreach (branchIdx, branch; this.targets)
-        //    that.setTarget(branchIdx, 
-
-
-
         return that;
+    }
+
+    /// Get the short name string associated with this instruction
+    string getName()
+    {
+        // TODO
+
+        /*
+        if (outSlot !is NULL_LOCAL)
+            output ~= "$" ~ to!string(outSlot);
+        */
+
+        return "";
     }
 
     final override string toString()
     {
         string output;
 
-        /*
-        if (outSlot !is NULL_LOCAL)
-            output ~= "$" ~ to!string(outSlot) ~ " = ";
+        if (firstDst !is null)
+            output ~= getName() ~ " = ";
 
         output ~= opcode.mnem;
 
         if (opcode.argTypes.length > 0)
             output ~= " ";
 
-        for (size_t i = 0; i < args.length; ++i)
+        foreach (argIdx, arg; args)
         {
-            auto arg = args[i];
-
-            if (i > 0)
+            if (argIdx > 0)
                 output ~= ", ";
 
-            // TODO
+            if (auto instr = cast(SSAInstr)arg.value)
+                output ~= instr.getName();
+            else
+                output ~= arg.value.toString();
         }
 
-        if (target !is null)
+        if (targets[0] !is null)
         {
-            output ~= " => " ~ target.getName();
-            if (excTarget !is null)
-                output ~= ", " ~ excTarget.getName();
+            output ~= " => " ~ targets[0].succ.getName();
+
+            if (targets[1] !is null)
+                output ~= ", " ~ targets[1].succ.getName();
         }
-        */
 
         return output;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-/**
-Opcode argument type
-*/
-enum OpArg
-{
-    INT32,
-    FLOAT64,
-    RAWPTR,
-    STRING,
-    LOCAL,
-    LINK,
-    FUN,
-    CODEBLOCK
-}
-
-/// Opcode implementation function
-alias extern (C) void function(Interp interp, IRInstr instr) OpFn;
-
-/**
-Opcode information
-*/
-struct OpInfo
-{
-    alias uint OpFlag;
-    enum : OpFlag
-    {
-        VAR_ARG     = 1 << 0,
-        BRANCH      = 1 << 1,
-        CALL        = 1 << 2,
-        MAY_GC      = 1 << 3,
-        BOOL_VAL    = 1 << 4,
-        IMPURE      = 1 << 5
-    }
-
-    string mnem;
-    bool output;
-    OpArg[] argTypes;
-    OpFn opFn = null;
-    OpFlag opFlags = 0;
-
-    bool isVarArg() const { return (opFlags & VAR_ARG) != 0; }
-    bool isBranch() const { return (opFlags & BRANCH) != 0; }
-    bool isCall  () const { return (opFlags & CALL) != 0; }
-    bool mayGC   () const { return (opFlags & MAY_GC) != 0; }
-    bool boolVal () const { return (opFlags & BOOL_VAL) != 0; }
-    bool isImpure() const { return (opFlags & IMPURE) != 0; }
-
-    OpArg getArgType(size_t i) immutable
-    {
-        if (i < argTypes.length)
-            return argTypes[i];
-        else if (isVarArg)
-            return OpArg.LOCAL;
-        else
-            assert (false, "invalid arg index");
-    }
-}
-
-/// Instruction type (opcode) alias
-alias static immutable(OpInfo) Opcode;
-
-// Set a local slot to a constant value    
-Opcode SET_I32 = { "set_i32", true, [OpArg.INT32], &op_set_i32 };
-Opcode SET_F64 = { "set_f64", true, [OpArg.FLOAT64], &op_set_f64 };
-Opcode SET_RAWPTR = { "set_rawptr", true, [OpArg.RAWPTR], &op_set_rawptr };
-Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.LINK], &op_set_str };
-Opcode SET_TRUE = { "set_true"  , true, [], &op_set_true };
-Opcode SET_FALSE = { "set_false" , true, [], &op_set_false };
-Opcode SET_NULL = { "set_null"  , true, [], &op_set_null };
-Opcode SET_UNDEF = { "set_undef" , true, [], &op_set_undef };
-Opcode SET_MISSING = { "set_missing" , true, [], &op_set_missing };
-
-// Word/type manipulation primitives
-Opcode SET_VALUE = { "set_value", true, [OpArg.LOCAL, OpArg.LOCAL], &op_set_value };
-Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &op_get_word };
-Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &op_get_type };
-
-// Move a value from one stack slot to another
-Opcode MOVE = { "move", true, [OpArg.LOCAL], &op_move };
-
-// Type tag test
-Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &op_is_i32, OpInfo.BOOL_VAL };
-Opcode IS_I64 = { "is_i64", true, [OpArg.LOCAL], &op_is_i64, OpInfo.BOOL_VAL };
-Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], &op_is_f64, OpInfo.BOOL_VAL };
-Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &op_is_refptr, OpInfo.BOOL_VAL };
-Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &op_is_rawptr, OpInfo.BOOL_VAL };
-Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &op_is_const, OpInfo.BOOL_VAL };
-
-// Type conversion
-Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &op_i32_to_f64 };
-Opcode F64_TO_I32 = { "f64_to_i32", true, [OpArg.LOCAL], &op_f64_to_i32 };
-
-// Integer arithmetic
-Opcode ADD_I32 = { "add_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32 };
-Opcode SUB_I32 = { "sub_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_i32 };
-Opcode MUL_I32 = { "mul_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_i32 };
-Opcode DIV_I32 = { "div_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_div_i32 };
-Opcode MOD_I32 = { "mod_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mod_i32 };
-
-// Bitwise operations
-Opcode AND_I32 = { "and_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_and_i32 };
-Opcode OR_I32 = { "or_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_or_i32 };
-Opcode XOR_I32 = { "xor_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_xor_i32 };
-Opcode LSFT_I32 = { "lsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lsft_i32 };
-Opcode RSFT_I32 = { "rsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_rsft_i32 };
-Opcode URSFT_I32 = { "ursft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ursft_i32 };
-Opcode NOT_I32 = { "not_i32", true, [OpArg.LOCAL], &op_not_i32 };
-
-// Floating-point arithmetic
-Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_f64 };
-Opcode SUB_F64 = { "sub_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_f64 };
-Opcode MUL_F64 = { "mul_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_f64 };
-Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_div_f64 };
-Opcode MOD_F64 = { "mod_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mod_f64 };
-
-// Higher-level floating-point functions
-Opcode SIN_F64 = { "sin_f64", true, [OpArg.LOCAL], &op_sin_f64 };
-Opcode COS_F64 = { "cos_f64", true, [OpArg.LOCAL], &op_cos_f64 };
-Opcode SQRT_F64 = { "sqrt_f64", true, [OpArg.LOCAL], &op_sqrt_f64 };
-Opcode CEIL_F64 = { "ceil_f64", true, [OpArg.LOCAL], &op_ceil_f64 };
-Opcode FLOOR_F64 = { "floor_f64", true, [OpArg.LOCAL], &op_floor_f64 };
-Opcode LOG_F64 = { "log_f64", true, [OpArg.LOCAL], &op_log_f64 };
-Opcode EXP_F64 = { "exp_f64", true, [OpArg.LOCAL], &op_exp_f64 };
-Opcode POW_F64 = { "pow_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_pow_f64 };
-
-// Integer operations with overflow handling
-Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_add_i32_ovf, OpInfo.BRANCH };
-Opcode SUB_I32_OVF = { "sub_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_sub_i32_ovf, OpInfo.BRANCH };
-Opcode MUL_I32_OVF = { "mul_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_mul_i32_ovf, OpInfo.BRANCH };
-Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lsft_i32_ovf, OpInfo.BRANCH };
-
-// Integer comparison instructions
-Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_i32, OpInfo.BOOL_VAL };
-Opcode NE_I32 = { "ne_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_i32, OpInfo.BOOL_VAL };
-Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lt_i32, OpInfo.BOOL_VAL };
-Opcode GT_I32 = { "gt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_gt_i32, OpInfo.BOOL_VAL };
-Opcode LE_I32 = { "le_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_le_i32, OpInfo.BOOL_VAL };
-Opcode GE_I32 = { "ge_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ge_i32, OpInfo.BOOL_VAL };
-Opcode EQ_I8 = { "eq_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_i8, OpInfo.BOOL_VAL };
-
-// Pointer comparison instructions
-Opcode EQ_REFPTR = { "eq_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_refptr, OpInfo.BOOL_VAL };
-Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_refptr, OpInfo.BOOL_VAL };
-Opcode EQ_RAWPTR = { "eq_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_rawptr, OpInfo.BOOL_VAL };
-Opcode NE_RAWPTR = { "ne_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_rawptr, OpInfo.BOOL_VAL };
-
-// Constant comparison instructions
-Opcode EQ_CONST = { "eq_const", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_const, OpInfo.BOOL_VAL };
-Opcode NE_CONST = { "ne_const", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_const, OpInfo.BOOL_VAL };
-
-// Floating-point comparison instructions
-Opcode EQ_F64 = { "eq_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_eq_f64, OpInfo.BOOL_VAL };
-Opcode NE_F64 = { "ne_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ne_f64, OpInfo.BOOL_VAL };
-Opcode LT_F64 = { "lt_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_lt_f64, OpInfo.BOOL_VAL };
-Opcode GT_F64 = { "gt_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_gt_f64, OpInfo.BOOL_VAL };
-Opcode LE_F64 = { "le_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_le_f64, OpInfo.BOOL_VAL };
-Opcode GE_F64 = { "ge_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_ge_f64, OpInfo.BOOL_VAL };
-
-// Load instructions
-Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u8 };
-Opcode LOAD_U16 = { "load_u16", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u16 };
-Opcode LOAD_U32 = { "load_u32", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u32 };
-Opcode LOAD_U64 = { "load_u64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_u64 };
-Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_f64 };
-Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_refptr };
-Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_rawptr };
-Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_funptr };
-
-// Store instructions
-Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8, OpInfo.IMPURE };
-Opcode STORE_U16 = { "store_u16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u16, OpInfo.IMPURE };
-Opcode STORE_U32 = { "store_u32", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u32, OpInfo.IMPURE };
-Opcode STORE_U64 = { "store_u64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u64, OpInfo.IMPURE };
-Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_f64, OpInfo.IMPURE };
-Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr, OpInfo.IMPURE };
-Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr, OpInfo.IMPURE };
-Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_funptr, OpInfo.IMPURE };
-
-// Branching and conditional branching
-Opcode JUMP = { "jump", false, [], &op_jump, OpInfo.BRANCH };
-Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &op_if_true, OpInfo.BRANCH };
-
-// <dstLocal> = CALL <closLocal> <thisArg> ...
-// Makes the execution go to the callee entry
-// Sets the frame pointer to the new frame's base
-// Pushes the return address word
-Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &op_call, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
-
-// <dstLocal> = CALL_NEW <closLocal> ...
-// Implements the JavaScript new operator.
-// Creates the this object
-// Makes the execution go to the callee entry
-// Sets the frame pointer to the new frame's base
-// Pushes the return address word
-Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
-
-// <dstLocal> = CALL_APPLY <closArg> <thisArg> <argTable> <numArgs>
-// Call with an array of arguments
-Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_call_apply, OpInfo.BRANCH | OpInfo.CALL };
-
-// RET <retLocal>
-// Pops the callee frame (size known by context)
-Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret, OpInfo.BRANCH };
-
-// THROW <excLocal>
-// Throws an exception, unwinds the stack
-Opcode THROW = { "throw", false, [OpArg.LOCAL], &op_throw, OpInfo.BRANCH };
-
-// Access visible arguments by index
-Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &op_get_arg };
-
-// Get a pointer to an IRFunction object
-Opcode GET_FUN_PTR = { "get_fun_ptr", true, [OpArg.FUN], &op_get_fun_ptr };
-
-// Special implementation object/value access instructions
-Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &op_get_obj_proto };
-Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], &op_get_arr_proto };
-Opcode GET_FUN_PROTO = { "get_fun_proto", true, [], &op_get_fun_proto };
-Opcode GET_GLOBAL_OBJ = { "get_global_obj", true, [], &op_get_global_obj };
-Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], &op_get_heap_size };
-Opcode GET_HEAP_FREE = { "get_heap_free", true, [], &op_get_heap_free };
-Opcode GET_GC_COUNT = { "get_gc_count", true, [], &op_get_gc_count };
-
-/// Allocate a block of memory on the heap
-Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &op_heap_alloc, OpInfo.MAY_GC };
-
-/// Trigger a garbage collection
-Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &op_gc_collect, OpInfo.MAY_GC | OpInfo.IMPURE };
-
-/// Create a link table entry associated with this instruction
-Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], &op_make_link };
-
-/// Set the value of a link table entry
-Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &op_set_link, OpInfo.IMPURE };
-
-/// Get the value of a link table entry
-Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &op_get_link };
-
-/// Compute the hash code for a string and
-/// try to find the string in the string table
-Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str, OpInfo.MAY_GC };
-
-/// GET_GLOBAL <propName>
-/// Note: hidden parameter is cached global property index
-Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT32], &op_get_global, OpInfo.MAY_GC };
-
-/// SET_GLOBAL <propName> <value>
-/// Note: hidden parameter is cached global property index
-Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT32], &op_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
-
-/// <dstLocal> = NEW_CLOS <funExpr>
-/// Create a new closure from a function's AST node
-Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], &op_new_clos, OpInfo.MAY_GC };
-
-/// Load a source code unit from a file
-Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], &op_load_file, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
-
-/// Evaluate a source string in the global scope
-Opcode EVAL_STR = { "eval_str", true, [OpArg.LOCAL], &op_eval_str, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
-
-/// Print a string to standard output
-Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &op_print_str, OpInfo.IMPURE };
-
-/// Get a string representation of a function's AST
-Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &op_get_ast_str, OpInfo.MAY_GC };
-
-/// Get a string representation of a function's IR
-Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &op_get_ir_str, OpInfo.MAY_GC };
-
-/// Format a floating-point value as a string
-Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str, OpInfo.MAY_GC };
-
-/// Get the time in milliseconds since process start
-Opcode GET_TIME_MS = { "get_time_ms", true, [], &op_get_time_ms };
-
-/// Load a shared lib
-Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], &op_load_lib };
-
-/// Close shared lib
-Opcode CLOSE_LIB = { "close_lib", false, [OpArg.LOCAL], &op_close_lib, OpInfo.IMPURE };
-
-/// Lookup symbol in shared lib
-Opcode GET_SYM = { "get_sym", true, [OpArg.LOCAL, OpArg.STRING], &op_get_sym };
-
-/// Call function in shared lib
-Opcode CALL_FFI = { "call_ffi", true, [OpArg.CODEBLOCK, OpArg.LOCAL, OpArg.STRING], &op_call_ffi, OpInfo.BRANCH | OpInfo.CALL | OpInfo.VAR_ARG };
 

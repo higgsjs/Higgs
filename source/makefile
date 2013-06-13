@@ -19,9 +19,9 @@ parser/ast.d        \
 parser/vars.d       \
 parser/parser.d     \
 ir/ir.d             \
+ir/ops.d            \
 ir/iir.d            \
 ir/ast.d            \
-ir/init.d           \
 ir/livevars.d       \
 ir/inlining.d       \
 interp/interp.d     \

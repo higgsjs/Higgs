@@ -115,6 +115,7 @@ RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
     - Also color with XMM registers for FP values and spills
     */
 
+    /*
     // Interference counts
     uint32_t[LocalIdx][LocalIdx] interfCounts;
 
@@ -136,10 +137,12 @@ RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
             }
         }
     }
+    */
 
     // Map of stack slots to registers
     RegMapping mapping;
 
+    /*
     size_t numConflicts = 0;
 
     // For each local slot
@@ -207,6 +210,7 @@ RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
         //writefln("%s conflict assign: %s", fun.getName(), leastReg.toString());
         numConflicts++;
     }
+    */
 
     //writefln("%s num conflicts: %s", fun.getName(), numConflicts);
 

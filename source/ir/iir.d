@@ -40,7 +40,7 @@ module ir.iir;
 import std.stdio;
 import std.string;
 import std.conv;
-import ir.ir;
+import ir.ops;
 
 /**
 Inline IR prefix string

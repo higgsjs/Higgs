@@ -47,6 +47,7 @@ import std.stdint;
 import core.sys.posix.dlfcn;
 import parser.parser;
 import ir.ir;
+import ir.ops;
 import ir.ast;
 import interp.interp;
 import interp.layout;

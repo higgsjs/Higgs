@@ -45,8 +45,8 @@ import std.conv;
 import parser.ast;
 import parser.parser;
 import ir.ir;
+import ir.ops;
 import ir.iir;
-import ir.init;
 import interp.layout;
 
 /**
@@ -594,9 +594,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             }
         }
     }
-
-    // Generate the stack init maps and initialize local variables
-    genInitMaps(fun);
 
     //writeln(fun.toString());
 

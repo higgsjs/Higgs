@@ -146,7 +146,9 @@ TODO: implement SSA IR
 
 
 
+[DONE] TODO: fix dependency cycle ir.ir -> interp.ops -> ir.ast -> ir.iir -> ir.ir
 
+[DONE] TODO: disable various IR analyses
 
 [DONE] TODO: disable JIT for now, comment out aside in makefile
 

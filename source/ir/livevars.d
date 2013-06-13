@@ -54,6 +54,7 @@ BitSet[IRInstr] compLiveVars(IRFunction fun)
     // Sets of variables live after each instruction
     BitSet[IRInstr] liveSets;
 
+    /*
     // Initialize the maps for each instruction
     for (auto block = fun.firstBlock; block !is null; block = block.next)
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -131,6 +132,7 @@ BitSet[IRInstr] compLiveVars(IRFunction fun)
                 workList ~= pred;
         }
     }
+    */
 
     /*
     if (!fun.getName.startsWith("$rt_typeof"))
