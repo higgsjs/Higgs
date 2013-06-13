@@ -689,8 +689,8 @@ class SSABlock : IdObject
     PhiNode lastPhi = null;
 
     /// Linked list of instructions
-    IRInstr firstInstr = null;
-    IRInstr lastInstr = null;
+    SSAInstr firstInstr = null;
+    SSAInstr lastInstr = null;
     
     /// Previous and next block (linked list)
     IRBlock prev = null;
@@ -701,22 +701,21 @@ class SSABlock : IdObject
         this.name = name;
     }
 
-    /*
-    IRBlock dup()
+    SSABlock dup()
     {
-        auto that = new IRBlock(this.name);
+        auto that = new SSABlock(this.name);
 
         that.execCount = this.execCount;
         that.fun = this.fun;
 
-        // TODO: duplicate phi nodes
+        for (auto phi = firstPhi; phi !is null; phi = phi.next)
+            that.addPhi(phi.dup);
         
         for (auto instr = firstInstr; instr !is null; instr = instr.next)
             that.addInstr(instr.dup);
 
         return that;
     }
-    */
 
     string getName()
     {
@@ -729,11 +728,19 @@ class SSABlock : IdObject
 
         output.put(this.getName() ~ ":\n");
 
-        for (IRInstr instr = firstInstr; instr !is null; instr = instr.next)
+        for (auto phi = firstPhi; phi !is null; phi = phi.next)
+        {
+            auto phiStr = phi.toString();
+            output.put(indent(phiStr, "  "));
+            if (phi.next !is null)
+                output.put("\n");
+        }
+
+        for (auto instr = firstInstr; instr !is null; instr = instr.next)
         {
             auto instrStr = instr.toString();
             output.put(indent(instrStr, "  "));
-            if (instr !is lastInstr)
+            if (instr.next !is null)
                 output.put("\n");
         }
 
@@ -743,8 +750,7 @@ class SSABlock : IdObject
     /**
     Add an instruction at the end of the block
     */
-    /*
-    IRInstr addInstr(IRInstr instr)
+    SSAInstr addInstr(SSAInstr instr)
     {
         if (this.lastInstr)
         {
@@ -765,7 +771,6 @@ class SSABlock : IdObject
 
         return instr;
     }
-    */
 
     /**
     Add an instruction after another instruction
@@ -856,6 +861,8 @@ class SSABlock : IdObject
             lastPhi = phi;
         }
 
+        phi.block = this;
+
         return phi;
     }
 
@@ -933,6 +940,15 @@ class BranchDesc
 
     /// Mapping of incoming phi values (block arguments)
     Tuple!(IRValue, "src", PhiNode, "dst") args[];
+
+    this(SSABlock pred, SSABlock succ)
+    {
+        this.pred = pred;
+        this.succ = succ;
+    }
+
+    // TODO: method to set/add argument?
+    // May want to wait until AST->IR implementation
 }
 
 /**
@@ -940,6 +956,9 @@ SSA constant and constant pools/instances
 */
 class IRConst : IRValue
 {
+    /// Value of this constant
+    private ValuePair value;
+
     override string toString() 
     {
         return valToString(value);
@@ -948,9 +967,6 @@ class IRConst : IRValue
     ValuePair pair() { return value; }
     Word word() { return value.word; }
     Type type() { return value.type; }    
-
-    /// Value of this constant
-    private ValuePair value;
 
     static IRConst int32Cst(int32 val)
     {
@@ -1026,6 +1042,8 @@ Raw pointer constant
 */
 class IRRawPtr : IRValue
 {
+    ValuePair ptr;
+
     this(rawptr ptr)
     {
         this.ptr = ValuePair(Word.ptrv(ptr), Type.RAWPTR);
@@ -1036,8 +1054,6 @@ class IRRawPtr : IRValue
         auto p = ptr.word.ptrVal;
         return "<rawptr:" ~ ((p is null)? "NULL":"0x"~to!string(p)) ~ ">";
     }
-
-    ValuePair ptr;
 }
 
 /**
@@ -1045,6 +1061,8 @@ IR function pointer constant
 */
 class IRFunPtr : IRValue
 {
+    IRFunction fun;
+
     this(IRFunction fun)
     {
         assert (fun !is null);
@@ -1055,8 +1073,6 @@ class IRFunPtr : IRValue
     {
         return "<fun:" ~ fun.getName() ~ ">";
     }
-
-    IRFunction fun;
 }
 
 /**
@@ -1064,6 +1080,8 @@ Link index pointer value (non-constant, initially null)
 */
 class IRLinkIdx : IRValue
 {
+    LinkIdx linkIdx = NULL_LINK;
+
     this()
     {
     }
@@ -1072,8 +1090,6 @@ class IRLinkIdx : IRValue
     {
         return "<link:" ~ ((linkIdx is NULL_LINK)? "NULL":to!string(linkIdx)) ~ ">";
     }
-
-    LinkIdx linkIdx = NULL_LINK;
 }
 
 /**
@@ -1081,6 +1097,8 @@ Code block pointer value (non-constant, initially null)
 */
 class IRCodeBlock : IRValue
 {
+    CodeBlock codeBlock = null;
+
     this()
     {
     }
@@ -1089,8 +1107,6 @@ class IRCodeBlock : IRValue
     {
         return "<codeblock:" ~ ((codeBlock is null)? "NULL":"0x"~to!string(codeBlock.getAddress())) ~ ">";
     }
-
-    CodeBlock codeBlock = null;
 }
 
 /**
@@ -1098,14 +1114,28 @@ Phi node value
 */
 class PhiNode : IRValue
 {
-    // TODO: do we need to keep track of preds here?
-
     /// Previous and next phi nodes (linked list)
     PhiNode prev = null;
     PhiNode next = null;
 
+    /// Parent block
+    SSABlock block = null;
+
     /// Output stack slot
     LocalIdx outSlot = NULL_LOCAL;
+
+    /// Copy a phi node
+    PhiNode dup()
+    {
+        auto that = new PhiNode();
+        return that;
+    }
+
+    override string toString()
+    {
+        // TODO
+        return "";
+    }
 }
 
 /**
@@ -1114,14 +1144,20 @@ Function parameter value
 */
 class FunParam : PhiNode
 {
+    string name;
+    size_t idx;
+
     this(string name, size_t idx)
     {
         this.name = name;
         this.idx = idx;
     }
 
-    string name;
-    size_t idx;
+    override string toString()
+    {
+        // TODO
+        return "";
+    }
 }
 
 /**
@@ -1139,11 +1175,11 @@ class SSAInstr : IRValue
     private BranchDesc[2] targets = [null, null];
 
     /// Parent block
-    IRBlock block = null;
+    SSABlock block = null;
 
     /// Previous and next instructions (linked list)
-    IRInstr prev = null;
-    IRInstr next = null;
+    SSAInstr prev = null;
+    SSAInstr next = null;
 
     /// Assigned output stack slot
     LocalIdx outSlot = NULL_LOCAL;
@@ -1170,8 +1206,6 @@ class SSAInstr : IRValue
         val.addDst(args[idx]);
     }
 
-    // TODO: external method to setup branches between blocks and instrs
-    // Things in the same module can see each other's privates :O
     void setTarget(size_t idx, SSABlock succ)
     {
         assert (idx < targets.length);
@@ -1180,16 +1214,12 @@ class SSAInstr : IRValue
         if (targets[idx] !is null)
             targets[idx].succ.remIncoming(targets[idx]);
 
+        // Create a branch edge descriptor
+        auto desc = new BranchDesc(this.block, succ);
+        targets[idx] = desc;
 
-        // TODO: create branch descriptor?
-
-
-        // TODO: set block incoming
-
-
-
-
-
+        // Add an incoming edge to the block
+        block.addIncoming(desc);
     }
 
     /// Copy an instruction
@@ -1207,14 +1237,10 @@ class SSAInstr : IRValue
     /// Get the short name string associated with this instruction
     string getName()
     {
-        // TODO
-
-        /*
         if (outSlot !is NULL_LOCAL)
-            output ~= "$" ~ to!string(outSlot);
-        */
+            return "$" ~ to!string(outSlot);
 
-        return "";
+        return "t_" ~ idString();
     }
 
     final override string toString()
@@ -1249,6 +1275,25 @@ class SSAInstr : IRValue
         }
 
         return output;
+    }
+
+    /// Jump instruction
+    static jump(SSABlock block)
+    {
+        auto jump = new this(&JUMP);
+        jump.setTarget(0, block);
+        return jump;
+
+    }
+
+    /// Conditional branching instruction
+    static ifTrue(IRValue arg0, SSABlock trueBlock, SSABlock falseBlock)
+    {
+        auto ift = new this(&IF_TRUE, 2);
+        ift.setArg(0, arg0);
+        ift.setTarget(0, trueBlock);
+        ift.setTarget(1, falseBlock);
+        return ift;
     }
 }
 
