@@ -888,6 +888,30 @@ class SSABlock : IdObject
 }
 
 /**
+Branch edge descriptor
+*/
+class BranchDesc
+{
+    /// Branch predecessor block
+    SSABlock pred;
+
+    /// Branch successor block
+    SSABlock succ;
+
+    /// Mapping of incoming phi values (block arguments)
+    Tuple!(IRValue, "src", PhiNode, "dst") args[];
+
+    this(SSABlock pred, SSABlock succ)
+    {
+        this.pred = pred;
+        this.succ = succ;
+    }
+
+    // TODO: method to set/add argument?
+    // May want to wait until AST->IR implementation
+}
+
+/**
 Base class for IR/SSA values
 */
 class IRValue : IdObject
@@ -925,30 +949,12 @@ class IRValue : IdObject
         if (dst.next !is null)
             dst.next.prev = dst.prev;
     }
-}
 
-/**
-Branch edge descriptor
-*/
-class BranchDesc
-{
-    /// Branch predecessor block
-    SSABlock pred;
-
-    /// Branch successor block
-    SSABlock succ;
-
-    /// Mapping of incoming phi values (block arguments)
-    Tuple!(IRValue, "src", PhiNode, "dst") args[];
-
-    this(SSABlock pred, SSABlock succ)
+    /// Get the short name for this value
+    string getName()
     {
-        this.pred = pred;
-        this.succ = succ;
+        return toString();
     }
-
-    // TODO: method to set/add argument?
-    // May want to wait until AST->IR implementation
 }
 
 /**
@@ -1131,10 +1137,38 @@ class PhiNode : IRValue
         return that;
     }
 
+    /// Get the short name string associated with this phi node
+    override string getName()
+    {
+        if (outSlot !is NULL_LOCAL)
+            return "$" ~ to!string(outSlot);
+
+        return "phi_" ~ idString();
+    }
+
     override string toString()
     {
-        // TODO
-        return "";
+        string output;
+
+        output ~= getName() ~ " = [";
+
+        foreach (descIdx, desc; block.incoming)
+        {
+            foreach (arg; desc.args)
+            {
+                if (arg.dst !is this)
+                    continue;
+
+                if (descIdx > 0)
+                    output ~= " ";
+
+                output ~= desc.pred.getName() ~ " => " ~ arg.src.getName();
+            }
+        }
+
+        output ~= "]";
+
+        return output;
     }
 }
 
@@ -1153,10 +1187,21 @@ class FunParam : PhiNode
         this.idx = idx;
     }
 
+    /// Get the short name string associated with this argument
+    override string getName()
+    {
+        if (outSlot !is NULL_LOCAL)
+            return "$" ~ to!string(outSlot);
+
+        return "arg_" ~ to!string(idx);
+    }
+
     override string toString()
     {
-        // TODO
-        return "";
+        if (outSlot !is NULL_LOCAL)
+            return "$" ~ to!string(outSlot) ~ " = arg_" ~ to!string(idx);
+
+        return "arg_" ~ to!string(idx);
     }
 }
 
@@ -1235,7 +1280,7 @@ class SSAInstr : IRValue
     }
 
     /// Get the short name string associated with this instruction
-    string getName()
+    override string getName()
     {
         if (outSlot !is NULL_LOCAL)
             return "$" ~ to!string(outSlot);

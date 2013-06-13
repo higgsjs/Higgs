@@ -109,16 +109,7 @@ TODO: Rework JIT for new IR
 - Phi nodes? Normally would require moves
   - In version case, request version where phi node has current slot/reg
 
-TODO: disable inlining for now
-
-TODO: Port/reimplement AST->IR
-- No longer does slot mapping
-- Now needs to build basic SSA graph (varmap, ...)
-- Overall structure remains the same
-- Look at Tachyon code
-
-
-
+TODO: disable inlining in JIT for now
 
 TODO: liveness and slot mapping analysis for new IR
 - Needed for interpreter
@@ -138,13 +129,22 @@ TODO: adapt interpreter
 
 
 
-TODO: implement SSA IR
+TODO: Port/reimplement AST->IR
+- No longer does slot mapping
+- Now needs to build basic SSA graph (varmap, ...)
+- Overall structure remains the same
+- Look at Tachyon code
+
+
+
+
+
+
+
+
+[DONE] TODO: implement SSA IR
 - Constant pool for int32s, float64s, true/false/null/undef/missing
 - Remove instrs that are now constants
-
-
-
-
 
 [DONE] TODO: fix dependency cycle ir.ir -> interp.ops -> ir.ast -> ir.iir -> ir.ir
 
