@@ -135,8 +135,13 @@ TODO: Port/reimplement AST->IR
 - Overall structure remains the same
 - Look at Tachyon code
 
+TODO: remove useless instructions
 
 
+
+TODO: remove original IR classes, replace by new ones
+- Comment out code until things compile?
+  - Comment out most of ir/ast.d
 
 
 

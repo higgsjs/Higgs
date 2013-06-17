@@ -104,12 +104,28 @@ class IRFunction : IdObject
     LocalIdx thisSlot;
     LocalIdx argcSlot;
 
+
+
+    // TODO: hidden argument value objects
+
+
+    // TODO: argument value objects
+
+
+
+
     /// Map of shared variable declarations (captured/escaping) to
     /// local slots where their closure cells are stored
     LocalIdx[IdentExpr] cellMap;
 
     /// Map of variable declarations to local slots
     LocalIdx[IdentExpr] localMap;
+
+
+
+
+
+
 
     /// Callee profiling information (filled by interpreter)
     uint64_t[IRFunction][IRInstr] callCounts;  
@@ -240,8 +256,15 @@ class IRFunction : IdObject
     }
 }
 
-/// Compiled function entry point
-alias void function() EntryFn;
+
+
+
+
+
+
+
+
+
 
 /**
 IR basic block
@@ -660,6 +683,10 @@ class IRInstr : IdObject
 
 
 
+
+
+/// Compiled function entry point
+alias void function() EntryFn;
 
 /**
 SSA IR basic block
@@ -1234,6 +1261,25 @@ class SSAInstr : IRValue
     {
         this.opcode = opcode;
         this.args.length = numArgs;
+    }
+
+    /// Binary constructor
+    this(Opcode* opcode, IRValue arg0, IRValue arg1)
+    {
+        assert (opcode.argTypes.length == 2);
+
+        this(opcode, 2);
+        setArg(0, arg0);
+        setArg(0, arg1);
+    }
+
+    /// Unary constructor
+    this(Opcode* opcode, IRValue arg0)
+    {
+        assert (opcode.argTypes.length == 1);
+
+        this(opcode, 1);
+        setArg(0, arg0);
     }
 
     /// Set an argument of this instruction
