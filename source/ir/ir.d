@@ -256,23 +256,19 @@ class IRFunction : IdObject
     }
 }
 
-
-
-
-
-
-
-
-
-
+/// Compiled function entry point
+alias void function() EntryFn;
 
 /**
-IR basic block
+SSA IR basic block
 */
 class IRBlock : IdObject
 {
     /// Block name (non-unique)
     private string name;
+
+    /// List of incoming branches
+    private BranchDesc[] incoming;
 
     /// Execution count, for profiling
     uint64 execCount = 0;
@@ -286,11 +282,17 @@ class IRBlock : IdObject
     /// Parent function
     IRFunction fun = null;
 
+    /// Linked list of phi nodes
+    PhiNode firstPhi = null;
+    PhiNode lastPhi = null;
+
+    /// Linked list of instructions
     IRInstr firstInstr = null;
     IRInstr lastInstr = null;
     
-    IRBlock prev;
-    IRBlock next;
+    /// Previous and next block (linked list)
+    IRBlock prev = null;
+    IRBlock next = null;
 
     this(string name = "")
     {
@@ -303,6 +305,9 @@ class IRBlock : IdObject
 
         that.execCount = this.execCount;
         that.fun = this.fun;
+
+        for (auto phi = firstPhi; phi !is null; phi = phi.next)
+            that.addPhi(phi.dup);
         
         for (auto instr = firstInstr; instr !is null; instr = instr.next)
             that.addInstr(instr.dup);
@@ -315,17 +320,25 @@ class IRBlock : IdObject
         return this.name ~ "(" ~ idString() ~ ")";
     }
 
-    string toString()
+    override string toString()
     {
         auto output = appender!string();
 
         output.put(this.getName() ~ ":\n");
 
-        for (IRInstr instr = firstInstr; instr !is null; instr = instr.next)
+        for (auto phi = firstPhi; phi !is null; phi = phi.next)
+        {
+            auto phiStr = phi.toString();
+            output.put(indent(phiStr, "  "));
+            if (phi.next !is null)
+                output.put("\n");
+        }
+
+        for (auto instr = firstInstr; instr !is null; instr = instr.next)
         {
             auto instrStr = instr.toString();
             output.put(indent(instrStr, "  "));
-            if (instr !is lastInstr)
+            if (instr.next !is null)
                 output.put("\n");
         }
 
@@ -419,454 +432,6 @@ class IRBlock : IdObject
         instr.prev = null;
         instr.next = null;
     }
-}
-
-/**
-IR instruction
-*/
-class IRInstr : IdObject
-{
-    /// Instruction argument
-    union Arg
-    {
-        int32_t int32Val;
-        int64_t int64Val;
-        double float64Val;
-        rawptr ptrVal;
-        wstring stringVal;
-        LocalIdx localIdx;
-        LinkIdx linkIdx;
-        IRFunction fun;
-        CodeBlock codeBlock;
-    }
-
-    /// Opcode
-    Opcode* opcode;
-
-    /// Instruction arguments
-    Arg[] args;
-
-    /// Output local slot
-    LocalIdx outSlot = NULL_LOCAL;
-
-    /// Default branch target
-    IRBlock target = null;
-
-    /// Exception branch target
-    IRBlock excTarget = null;
-
-    /// Parent block
-    IRBlock block = null;
-
-    /// Previous and next instructions (linked list)
-    IRInstr prev = null;
-    IRInstr next = null;
-
-    this(Opcode* opcode)
-    {
-        this.opcode = opcode;
-    }
-
-    /// Trinary constructor
-    this(Opcode* opcode, LocalIdx outSlot, LocalIdx arg0, LocalIdx arg1, LocalIdx arg2)
-    {
-        assert (
-            (opcode.output == true || outSlot == NULL_LOCAL) &&
-            opcode.argTypes.length == 3 &&
-            opcode.argTypes[0] == OpArg.LOCAL &&
-            opcode.argTypes[1] == OpArg.LOCAL &&
-            opcode.argTypes[2] == OpArg.LOCAL
-        );
-
-        this.opcode = opcode;
-        this.outSlot = outSlot;
-        this.args = [Arg(arg0), Arg(arg1), Arg(arg2)];
-    }
-
-    /// Binary constructor
-    this(Opcode* opcode, LocalIdx outSlot, LocalIdx arg0, LocalIdx arg1)
-    {
-        assert (
-            (opcode.output == true || outSlot == NULL_LOCAL) &&
-            opcode.argTypes.length == 2 &&
-            opcode.argTypes[0] == OpArg.LOCAL &&
-            opcode.argTypes[1] == OpArg.LOCAL
-        );
-
-        this.opcode = opcode;
-        this.outSlot = outSlot;
-        this.args = [Arg(arg0), Arg(arg1)];
-    }
-
-    /// Unary constructor
-    this(Opcode* opcode, LocalIdx outSlot, LocalIdx arg0)
-    {
-        assert (
-            (opcode.output == true || outSlot == NULL_LOCAL) &&
-            opcode.argTypes.length == 1 &&
-            opcode.argTypes[0] == OpArg.LOCAL,
-            "invalid instruction for ctor: " ~ opcode.mnem
-        );
-
-        this.opcode = opcode;
-        this.outSlot = outSlot;
-        this.args = [Arg(arg0)];
-    }
-
-    /// No argument constructor
-    this(Opcode* opcode, LocalIdx outSlot)
-    {
-        assert (
-            opcode.output == true &&
-            opcode.argTypes.length == 0,
-            "invalid instruction for ctor: " ~ opcode.mnem
-        );
-
-        this.opcode = opcode;
-        this.outSlot = outSlot;
-    }
-
-    /// Copy an instruction
-    IRInstr dup()
-    {
-        auto that = new IRInstr(this.opcode);
-
-        that.args = this.args.dup;
-        that.outSlot = this.outSlot;
-        that.target = this.target;
-        that.excTarget = this.excTarget;
-        that.block = this.block;
-        that.prev = this.prev;
-        that.next = this.next;
-
-        return that;
-    }
-
-    /// Integer constant
-    static intCst(LocalIdx outSlot, int intVal)
-    {
-        auto cst = new this(&SET_I32);
-        cst.outSlot = outSlot;
-        cst.args = [Arg(intVal)];
-
-        return cst;
-    }
-
-    /// Floating-point constant
-    static floatCst(LocalIdx outSlot, double floatVal)
-    {
-        auto cst = new this(&SET_F64);
-        cst.outSlot = outSlot;
-        cst.args.length = 1;
-        cst.args[0].float64Val = floatVal;
-
-        return cst;
-    }
-
-    /// String constant
-    static strCst(LocalIdx outSlot, wstring stringVal)
-    {
-        auto cst = new this(&SET_STR);
-        cst.outSlot = outSlot;
-        cst.args.length = 2;
-        cst.args[0].stringVal = stringVal;
-        cst.args[1].linkIdx = NULL_LINK;
-
-        return cst;
-    }
-
-    /// Jump instruction
-    static jump(IRBlock block)
-    {
-        auto jump = new this(&JUMP);
-        jump.target = block;
-        return jump;
-
-    }
-
-    /// Conditional branching instruction
-    static ifTrue(LocalIdx arg0, IRBlock trueBlock, IRBlock falseBlock)
-    {
-        auto ift = new this(&IF_TRUE);
-        ift.args = [Arg(arg0)];
-        ift.target = trueBlock;
-        ift.excTarget = falseBlock;
-        return ift;
-    }
-
-    /// Make link instruction
-    static makeLink(LocalIdx outSlot)
-    {
-        auto instr = new this(&MAKE_LINK);
-        instr.outSlot = outSlot;
-        instr.args.length = 1;
-        instr.args[0].linkIdx = NULL_LINK;
-        return instr;
-    }
-
-    /// Test if this instruction has a specific local as an argument
-    bool hasArg(LocalIdx local)
-    {
-        foreach (idx, arg; args)
-            if (opcode.getArgType(idx) == OpArg.LOCAL && arg.localIdx == local)
-                return true;
-
-        return false;
-    }
-
-    final override string toString()
-    {
-        string output;
-
-        if (outSlot !is NULL_LOCAL)
-            output ~= "$" ~ to!string(outSlot) ~ " = ";
-
-        output ~= opcode.mnem;
-
-        if (opcode.argTypes.length > 0)
-            output ~= " ";
-
-        for (size_t i = 0; i < args.length; ++i)
-        {
-            auto arg = args[i];
-
-            if (i > 0)
-                output ~= ", ";
-
-            switch (opcode.getArgType(i))
-            {
-                case OpArg.INT32:
-                output ~= to!string(arg.int32Val);
-                break;
-                case OpArg.FLOAT64:
-                output ~= to!string(arg.float64Val);
-                break;
-                case OpArg.RAWPTR:
-                output ~= "<rawptr:" ~ ((arg.ptrVal is null)? "NULL":"0x"~to!string(arg.ptrVal)) ~ ">";
-                break;
-                case OpArg.STRING:
-                output ~= "\"" ~ to!string(arg.stringVal) ~ "\"";
-                break;
-                case OpArg.LOCAL:
-                output ~= "$" ~ ((arg.localIdx is NULL_LOCAL)? "NULL":to!string(arg.localIdx)); 
-                break;
-                case OpArg.LINK:
-                output ~= "<link:" ~ ((arg.linkIdx is NULL_LINK)? "NULL":to!string(arg.linkIdx)) ~ ">"; 
-                break;
-                case OpArg.FUN:
-                output ~= "<fun:" ~ arg.fun.getName() ~ ">";
-                break;
-                case OpArg.CODEBLOCK:
-                output ~= "<codeblock:" ~ ((arg.codeBlock is null)? "NULL":"0x"~to!string(arg.codeBlock.getAddress())) ~ ">";
-                break; 
-                default:
-                assert (false, "unhandled arg type");
-            }
-        }
-
-        if (target !is null)
-        {
-            output ~= " => " ~ target.getName();
-            if (excTarget !is null)
-                output ~= ", " ~ excTarget.getName();
-        }
-
-        return output;
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-/// Compiled function entry point
-alias void function() EntryFn;
-
-/**
-SSA IR basic block
-*/
-class SSABlock : IdObject
-{
-    /// Block name (non-unique)
-    private string name;
-
-    /// List of incoming branches
-    private BranchDesc[] incoming;
-
-    /// Execution count, for profiling
-    uint64 execCount = 0;
-
-    /// JIT code entry point function
-    EntryFn entryFn = null;
-
-    /// JIT code fast entry point
-    ubyte* jitEntry = null;
-
-    /// Parent function
-    IRFunction fun = null;
-
-    /// Linked list of phi nodes
-    PhiNode firstPhi = null;
-    PhiNode lastPhi = null;
-
-    /// Linked list of instructions
-    SSAInstr firstInstr = null;
-    SSAInstr lastInstr = null;
-    
-    /// Previous and next block (linked list)
-    IRBlock prev = null;
-    IRBlock next = null;
-
-    this(string name = "")
-    {
-        this.name = name;
-    }
-
-    SSABlock dup()
-    {
-        auto that = new SSABlock(this.name);
-
-        that.execCount = this.execCount;
-        that.fun = this.fun;
-
-        for (auto phi = firstPhi; phi !is null; phi = phi.next)
-            that.addPhi(phi.dup);
-        
-        for (auto instr = firstInstr; instr !is null; instr = instr.next)
-            that.addInstr(instr.dup);
-
-        return that;
-    }
-
-    string getName()
-    {
-        return this.name ~ "(" ~ idString() ~ ")";
-    }
-
-    override string toString()
-    {
-        auto output = appender!string();
-
-        output.put(this.getName() ~ ":\n");
-
-        for (auto phi = firstPhi; phi !is null; phi = phi.next)
-        {
-            auto phiStr = phi.toString();
-            output.put(indent(phiStr, "  "));
-            if (phi.next !is null)
-                output.put("\n");
-        }
-
-        for (auto instr = firstInstr; instr !is null; instr = instr.next)
-        {
-            auto instrStr = instr.toString();
-            output.put(indent(instrStr, "  "));
-            if (instr.next !is null)
-                output.put("\n");
-        }
-
-        return output.data;
-    }
-
-    /**
-    Add an instruction at the end of the block
-    */
-    SSAInstr addInstr(SSAInstr instr)
-    {
-        if (this.lastInstr)
-        {
-            instr.prev = lastInstr;
-            instr.next = null;
-            lastInstr.next = instr;
-            lastInstr = instr;
-        }
-        else
-        {
-            instr.prev = null;
-            instr.next = null;
-            firstInstr = instr;
-            lastInstr = instr;
-        }
-
-        instr.block = this;
-
-        return instr;
-    }
-
-    /**
-    Add an instruction after another instruction
-    */
-    /*
-    IRInstr addInstrAfter(IRInstr instr, IRInstr prev)
-    {
-        auto next = prev.next;
-
-        instr.prev = prev;
-        instr.next = next;
-
-        prev.next = instr;
-
-        if (next !is null)
-            next.prev = instr;
-        else
-            this.lastInstr = instr;
-
-        instr.block = this;
-
-        return instr;
-    }
-    */
-
-    /**
-    Add an instruction before another instruction
-    */
-    /*
-    IRInstr addInstrBefore(IRInstr instr, IRInstr next)
-    {
-        auto prev = next.prev;
-
-        instr.prev = prev;
-        instr.next = next;
-
-        next.prev = instr;
-
-        if (prev !is null)
-            prev.next = instr;
-        else
-            this.firstInstr = instr;
-
-        instr.block = this;
-
-        return instr;
-    }
-    */
-
-    /**
-    Remove an instruction
-    */
-    /*
-    void remInstr(IRInstr instr)
-    {
-        if (instr.prev)
-            instr.prev.next = instr.next;
-        else
-            firstInstr = instr.next;
-
-        if (instr.next)
-            instr.next.prev = instr.prev;
-        else
-            lastInstr = instr.prev;
-
-        instr.prev = null;
-        instr.next = null;
-    }
-    */
 
     /**
     Add a phi node to this block
@@ -920,15 +485,15 @@ Branch edge descriptor
 class BranchDesc
 {
     /// Branch predecessor block
-    SSABlock pred;
+    IRBlock pred;
 
     /// Branch successor block
-    SSABlock succ;
+    IRBlock succ;
 
     /// Mapping of incoming phi values (block arguments)
     Tuple!(IRValue, "src", PhiNode, "dst") args[];
 
-    this(SSABlock pred, SSABlock succ)
+    this(IRBlock pred, IRBlock succ)
     {
         this.pred = pred;
         this.succ = succ;
@@ -1070,6 +635,13 @@ class IRConst : IRValue
     }
 }
 
+
+// TODO
+// TODO: string constant argument
+// TODO
+
+
+
 /**
 Raw pointer constant
 */
@@ -1152,7 +724,7 @@ class PhiNode : IRValue
     PhiNode next = null;
 
     /// Parent block
-    SSABlock block = null;
+    IRBlock block = null;
 
     /// Output stack slot
     LocalIdx outSlot = NULL_LOCAL;
@@ -1235,7 +807,7 @@ class FunParam : PhiNode
 /**
 SSA instruction
 */
-class SSAInstr : IRValue
+class IRInstr : IRValue
 {
     /// Opcode
     Opcode* opcode;
@@ -1247,11 +819,11 @@ class SSAInstr : IRValue
     private BranchDesc[2] targets = [null, null];
 
     /// Parent block
-    SSABlock block = null;
+    IRBlock block = null;
 
     /// Previous and next instructions (linked list)
-    SSAInstr prev = null;
-    SSAInstr next = null;
+    IRInstr prev = null;
+    IRInstr next = null;
 
     /// Assigned output stack slot
     LocalIdx outSlot = NULL_LOCAL;
@@ -1297,7 +869,36 @@ class SSAInstr : IRValue
         val.addDst(args[idx]);
     }
 
-    void setTarget(size_t idx, SSABlock succ)
+    size_t getNumArgs()
+    {
+        return args.length;
+    }
+
+    /// Get the stack slot associated with an argument
+    LocalIdx getArgSlot(size_t idx)
+    {
+        assert (idx < args.length);
+
+        auto value = args[idx].value;
+
+        LocalIdx outSlot;
+
+        if (auto instr = cast(IRInstr)value)
+            outSlot = instr.outSlot;
+        else if (auto phi = cast(PhiNode)value)
+            outSlot = phi.outSlot;
+        else
+            assert (false, "value has no out slot");
+
+        assert (
+            outSlot != NULL_LOCAL, 
+            "out slot unassigned"
+        );
+
+        return outSlot;
+    }
+
+    void setTarget(size_t idx, IRBlock succ)
     {
         assert (idx < targets.length);
 
@@ -1313,10 +914,16 @@ class SSAInstr : IRValue
         block.addIncoming(desc);
     }
 
-    /// Copy an instruction
-    SSAInstr dup()
+    BranchDesc getTarget(size_t idx)
     {
-        auto that = new SSAInstr(this.opcode, this.args.length);
+        assert (idx < targets.length);
+        return targets[idx];
+    }
+
+    /// Copy an instruction
+    IRInstr dup()
+    {
+        auto that = new IRInstr(this.opcode, this.args.length);
 
         // Copy the arguments
         foreach (argIdx, arg; this.args)
@@ -1351,7 +958,7 @@ class SSAInstr : IRValue
             if (argIdx > 0)
                 output ~= ", ";
 
-            if (auto instr = cast(SSAInstr)arg.value)
+            if (auto instr = cast(IRInstr)arg.value)
                 output ~= instr.getName();
             else
                 output ~= arg.value.toString();
@@ -1369,7 +976,7 @@ class SSAInstr : IRValue
     }
 
     /// Jump instruction
-    static jump(SSABlock block)
+    static jump(IRBlock block)
     {
         auto jump = new this(&JUMP);
         jump.setTarget(0, block);
@@ -1378,7 +985,7 @@ class SSAInstr : IRValue
     }
 
     /// Conditional branching instruction
-    static ifTrue(IRValue arg0, SSABlock trueBlock, SSABlock falseBlock)
+    static ifTrue(IRValue arg0, IRBlock trueBlock, IRBlock falseBlock)
     {
         auto ift = new this(&IF_TRUE, 2);
         ift.setArg(0, arg0);

@@ -56,7 +56,7 @@ import interp.layout;
 import interp.string;
 import interp.object;
 import interp.gc;
-// TODO: temporary for SSA refactoring
+// FIXME: temporary for SSA refactoring
 //import jit.jit;
 
 /**
@@ -762,7 +762,7 @@ class Interp
         // While we have a target to branch to
         while (target !is null)
         {
-            // TODO: temporary for SSA refactoring
+            // FIXME: temporary for SSA refactoring
             /*
             // If this block was executed often enough and 
             // JIT compilation is enabled
@@ -840,6 +840,8 @@ class Interp
         // Register this function in the function reference set
         funRefs[cast(void*)fun] = fun;
 
+        // FIXME
+        /*
         // Setup the callee stack frame
         interp.ops.callFun(
             this,
@@ -850,6 +852,7 @@ class Interp
             Type.REFPTR,// This value is a reference
             []          // 0 arguments
         );
+        */
 
         // Run the interpreter loop
         loop();

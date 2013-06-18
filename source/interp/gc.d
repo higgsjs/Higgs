@@ -658,10 +658,13 @@ void visitFun(Interp interp, IRFunction fun)
     // Transitively find live function references inside the function
     for (IRBlock block = fun.firstBlock; block !is null; block = block.next)
     {
+        // FIXME
+        /*
         for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
             foreach (argIdx, arg; instr.args)
                 if (instr.opcode.getArgType(argIdx) == OpArg.FUN)
                     visitFun(interp, arg.fun);
+        */
     }
 }
 
@@ -678,6 +681,8 @@ void collectFun(Interp interp, IRFunction fun)
         // For each instruction
         for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
         {
+            // FIXME
+            /*
             // For each instruction argument
             foreach (argIdx, arg; instr.args)
             {
@@ -690,6 +695,7 @@ void collectFun(Interp interp, IRFunction fun)
                     interp.freeLink(arg.linkIdx);
                 }
             }
+            */
         }
     }
 

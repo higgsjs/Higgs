@@ -68,10 +68,6 @@ static this()
         iir[opName] = &op; 
     }
 
-    addOp(SET_RAWPTR);
-    addOp(SET_UNDEF);
-    addOp(SET_MISSING);
-
     addOp(SET_VALUE);
     addOp(GET_WORD);
     addOp(GET_TYPE);

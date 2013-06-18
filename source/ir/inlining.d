@@ -61,7 +61,7 @@ bool inlinable(IRInstr callSite, IRFunction callee)
         return false;
 
     // No support for inlinin within try blocks for now
-    if (callSite.excTarget !is null)
+    if (callSite.getTarget(1) !is null)
         return false;
 
     // No support for functions using the "arguments" object
@@ -69,7 +69,7 @@ bool inlinable(IRInstr callSite, IRFunction callee)
         return false;
 
     // No support for argument count mismatch
-    auto numArgs = callSite.args.length - 2;
+    auto numArgs = callSite.getNumArgs() - 2;
     if (numArgs != callee.numParams)
         return false;
 
@@ -99,7 +99,7 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     assert (caller !is null);
 
     // Get the number of arguments passed
-    auto numArgs = callSite.args.length - 2;
+    auto numArgs = callSite.getNumArgs() - 2;
 
     /*
     //

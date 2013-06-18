@@ -103,23 +103,12 @@ struct OpInfo
 alias static immutable(OpInfo) Opcode;
 
 // Set a local slot to a constant value    
-Opcode SET_I32 = { "set_i32", true, [OpArg.INT32], &op_set_i32 };
-Opcode SET_F64 = { "set_f64", true, [OpArg.FLOAT64], &op_set_f64 };
-Opcode SET_RAWPTR = { "set_rawptr", true, [OpArg.RAWPTR], &op_set_rawptr };
 Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.LINK], &op_set_str };
-Opcode SET_TRUE = { "set_true"  , true, [], &op_set_true };
-Opcode SET_FALSE = { "set_false" , true, [], &op_set_false };
-Opcode SET_NULL = { "set_null"  , true, [], &op_set_null };
-Opcode SET_UNDEF = { "set_undef" , true, [], &op_set_undef };
-Opcode SET_MISSING = { "set_missing" , true, [], &op_set_missing };
 
 // Word/type manipulation primitives
 Opcode SET_VALUE = { "set_value", true, [OpArg.LOCAL, OpArg.LOCAL], &op_set_value };
 Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &op_get_word };
 Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &op_get_type };
-
-// Move a value from one stack slot to another
-Opcode MOVE = { "move", true, [OpArg.LOCAL], &op_move };
 
 // Type tag test
 Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &op_is_i32, OpInfo.BOOL_VAL };

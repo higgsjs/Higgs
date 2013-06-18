@@ -80,7 +80,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
         trace ~= curInstr;
 
         // If this is a call instruction and it has an exception target
-        if (curInstr.opcode is &CALL && curInstr.excTarget !is null)
+        if (curInstr.opcode is &CALL && curInstr.getTarget(1) !is null)
         {
             //writefln("found exception target");
 
@@ -90,8 +90,9 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
                 excVal
             );
 
+            // FIXME
             // Go to the exception target
-            interp.jump(curInstr.excTarget);
+            interp.jump(/*curInstr.excTarget*/null);
 
             // Stop unwinding the stack
             return;
@@ -190,38 +191,10 @@ void throwError(
     );
 }
 
-extern (C) void op_set_i32(Interp interp, IRInstr instr)
-{
-    //writefln("interp: %s", cast(int64)cast(void*)interp);
-    //writefln(" instr: %s", cast(int64)cast(void*)instr);
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.int32v(instr.args[0].int32Val),
-        Type.INT32
-    );
-}
-
-extern (C) void op_set_f64(Interp interp, IRInstr instr)
-{
-    interp.setSlot(
-        instr.outSlot,
-        Word.float64v(instr.args[0].float64Val),
-        Type.FLOAT64
-    );
-}
-
-extern (C) void op_set_rawptr(Interp interp, IRInstr instr)
-{
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(instr.args[0].ptrVal),
-        Type.RAWPTR
-    );
-}
-
 extern (C) void op_set_str(Interp interp, IRInstr instr)
 {
+    // FIXME
+    /*
     auto linkIdx = instr.args[1].linkIdx;
 
     if (linkIdx is NULL_LINK)
@@ -240,6 +213,7 @@ extern (C) void op_set_str(Interp interp, IRInstr instr)
         interp.getLinkWord(linkIdx),
         Type.REFPTR
     );
+    */
 }
 
 extern (C) void op_set_true(Interp interp, IRInstr instr)
@@ -251,48 +225,12 @@ extern (C) void op_set_true(Interp interp, IRInstr instr)
     );
 }
 
-extern (C) void op_set_false(Interp interp, IRInstr instr)
-{
-    interp.setSlot(
-        instr.outSlot,
-        FALSE,
-        Type.CONST
-    );
-}
-
-extern (C) void op_set_null(Interp interp, IRInstr instr)
-{
-    interp.setSlot(
-        instr.outSlot,
-        NULL,
-        Type.REFPTR
-    );
-}
-
-extern (C) void op_set_undef(Interp interp, IRInstr instr)
-{
-    interp.setSlot(
-        instr.outSlot,
-        UNDEF,
-        Type.CONST
-    );
-}
-
-extern (C) void op_set_missing(Interp interp, IRInstr instr)
-{
-    interp.setSlot(
-        instr.outSlot,
-        MISSING,
-        Type.CONST
-    );
-}
-
 extern (C) void op_set_value(Interp interp, IRInstr instr)
 {
-    auto wWord = interp.getWord(instr.args[0].localIdx);
+    auto wWord = interp.getWord(instr.getArgSlot(0));
 
-    auto wType = interp.getWord(instr.args[1].localIdx);
-    auto tType = interp.getType(instr.args[1].localIdx);
+    auto wType = interp.getWord(instr.getArgSlot(1));
+    auto tType = interp.getType(instr.getArgSlot(1));
 
     assert (
         tType == Type.INT32,
@@ -315,7 +253,7 @@ extern (C) void op_set_value(Interp interp, IRInstr instr)
 
 extern (C) void op_get_word(Interp interp, IRInstr instr)
 {
-    auto word = interp.getWord(instr.args[0].localIdx);
+    auto word = interp.getWord(instr.getArgSlot(0));
 
     interp.setSlot(
         instr.outSlot,
@@ -326,7 +264,7 @@ extern (C) void op_get_word(Interp interp, IRInstr instr)
 
 extern (C) void op_get_type(Interp interp, IRInstr instr)
 {
-    auto type = interp.getType(instr.args[0].localIdx);
+    auto type = interp.getType(instr.getArgSlot(0));
 
     interp.setSlot(
         instr.outSlot,
@@ -338,14 +276,14 @@ extern (C) void op_get_type(Interp interp, IRInstr instr)
 extern (C) void op_move(Interp interp, IRInstr instr)
 {
     interp.move(
-        instr.args[0].localIdx,
+        instr.getArgSlot(0),
         instr.outSlot
     );
 }
 
 extern (C) void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
 {
-    auto typeTag = interp.getType(instr.args[0].localIdx);
+    auto typeTag = interp.getType(instr.getArgSlot(0));
 
     interp.setSlot(
         instr.outSlot,
@@ -363,7 +301,7 @@ alias TypeCheckOp!(Type.CONST) op_is_const;
 
 extern (C) void op_i32_to_f64(Interp interp, IRInstr instr)
 {
-    auto w0 = interp.getWord(instr.args[0].localIdx);
+    auto w0 = interp.getWord(instr.getArgSlot(0));
 
     interp.setSlot(
         instr.outSlot,
@@ -374,7 +312,7 @@ extern (C) void op_i32_to_f64(Interp interp, IRInstr instr)
 
 extern (C) void op_f64_to_i32(Interp interp, IRInstr instr)
 {
-    auto w0 = interp.getWord(instr.args[0].localIdx);
+    auto w0 = interp.getWord(instr.getArgSlot(0));
 
     // Do the conversion according to the ECMAScript
     // toInt32 specs (see section 9.5)
@@ -399,8 +337,8 @@ extern (C) void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRIn
 
     static if (arity > 0)
     {
-        auto wX = interp.getWord(instr.args[0].localIdx);
-        auto tX = interp.getType(instr.args[0].localIdx);
+        auto wX = interp.getWord(instr.getArgSlot(0));
+        auto tX = interp.getType(instr.getArgSlot(0));
 
         assert (
             tX == typeTag,
@@ -409,8 +347,8 @@ extern (C) void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRIn
     }
     static if (arity > 1)
     {
-        auto wY = interp.getWord(instr.args[1].localIdx);
-        auto tY = interp.getType(instr.args[1].localIdx);
+        auto wY = interp.getWord(instr.getArgSlot(1));
+        auto tY = interp.getType(instr.getArgSlot(1));
 
         assert (
             tY == typeTag,
@@ -478,8 +416,8 @@ alias ArithOp!(Type.FLOAT64, 2, "auto r = pow(x, y);") op_pow_f64;
 
 extern (C) void op_floor_f64(Interp interp, IRInstr instr)
 {
-    auto w0 = interp.getWord(instr.args[0].localIdx);
-    auto t0 = interp.getType(instr.args[0].localIdx);
+    auto w0 = interp.getWord(instr.getArgSlot(0));
+    auto t0 = interp.getType(instr.getArgSlot(0));
 
     assert (t0 == Type.FLOAT64, "invalid operand type in floor");
 
@@ -505,8 +443,8 @@ extern (C) void op_floor_f64(Interp interp, IRInstr instr)
 
 extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
 {
-    auto w0 = interp.getWord(instr.args[0].localIdx);
-    auto t0 = interp.getType(instr.args[0].localIdx);
+    auto w0 = interp.getWord(instr.getArgSlot(0));
+    auto t0 = interp.getType(instr.getArgSlot(0));
 
     assert (t0 == Type.FLOAT64, "invalid operand type in ceil");
 
@@ -532,10 +470,10 @@ extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
 
 extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr)
 {
-    auto wX = interp.getWord(instr.args[0].localIdx);
-    auto tX = interp.getType(instr.args[0].localIdx);
-    auto wY = interp.getWord(instr.args[1].localIdx);
-    auto tY = interp.getType(instr.args[1].localIdx);
+    auto wX = interp.getWord(instr.getArgSlot(0));
+    auto tX = interp.getType(instr.getArgSlot(0));
+    auto wY = interp.getWord(instr.getArgSlot(1));
+    auto tY = interp.getType(instr.getArgSlot(1));
 
     assert (
         tX == Type.INT32 && tY == Type.INT32,
@@ -555,11 +493,13 @@ extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr
             Type.INT32
         );
 
-        interp.jump(instr.target);
+        // FIXME
+        interp.jump(/*instr.target*/null);
     }
     else
     {
-        interp.jump(instr.excTarget);
+        // FIXME
+        interp.jump(/*instr.excTarget*/null);
     }
 }
 
@@ -570,10 +510,10 @@ alias ArithOpOvf!(Type.INT32, "auto r = x << y;") op_lsft_i32_ovf;
 
 extern (C) void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
 {
-    auto wX = interp.getWord(instr.args[0].localIdx);
-    auto tX = interp.getType(instr.args[0].localIdx);
-    auto wY = interp.getWord(instr.args[1].localIdx);
-    auto tY = interp.getType(instr.args[1].localIdx);
+    auto wX = interp.getWord(instr.getArgSlot(0));
+    auto tX = interp.getType(instr.getArgSlot(0));
+    auto wY = interp.getWord(instr.getArgSlot(1));
+    auto tY = interp.getType(instr.getArgSlot(1));
 
     assert (
         tX == typeTag && tY == typeTag,
@@ -639,11 +579,11 @@ alias CompareOp!(float64, Type.FLOAT64, "r = (x >= y);") op_ge_f64;
 
 extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {
-    auto wPtr = interp.getWord(instr.args[0].localIdx);
-    auto tPtr = interp.getType(instr.args[0].localIdx);
+    auto wPtr = interp.getWord(instr.getArgSlot(0));
+    auto tPtr = interp.getType(instr.getArgSlot(0));
 
-    auto wOfs = interp.getWord(instr.args[1].localIdx);
-    auto tOfs = interp.getType(instr.args[1].localIdx);
+    auto wOfs = interp.getWord(instr.getArgSlot(1));
+    auto tOfs = interp.getType(instr.getArgSlot(1));
 
     assert (
         tPtr == Type.REFPTR || tPtr == Type.RAWPTR,
@@ -698,11 +638,11 @@ extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 
 extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {
-    auto wPtr = interp.getWord(instr.args[0].localIdx);
-    auto tPtr = interp.getType(instr.args[0].localIdx);
+    auto wPtr = interp.getWord(instr.getArgSlot(0));
+    auto tPtr = interp.getType(instr.getArgSlot(0));
 
-    auto wOfs = interp.getWord(instr.args[1].localIdx);
-    auto tOfs = interp.getType(instr.args[1].localIdx);
+    auto wOfs = interp.getWord(instr.getArgSlot(1));
+    auto tOfs = interp.getType(instr.getArgSlot(1));
 
     assert (
         tPtr == Type.REFPTR || tPtr == Type.RAWPTR,
@@ -717,7 +657,7 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     auto ptr = wPtr.ptrVal;
     auto ofs = wOfs.int32Val;
 
-    auto word = interp.getWord(instr.args[2].localIdx);
+    auto word = interp.getWord(instr.getArgSlot(2));
 
     DataType val;
 
@@ -770,12 +710,13 @@ alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
 
 extern (C) void op_jump(Interp interp, IRInstr instr)
 {
-    interp.jump(instr.target);
+    // FIXME
+    interp.jump(/*instr.target*/null);
 }
 
 extern (C) void op_if_true(Interp interp, IRInstr instr)
 {
-    auto valIdx = instr.args[0].localIdx;
+    auto valIdx = instr.getArgSlot(0);
     auto wVal = interp.getWord(valIdx);
     auto tVal = interp.getType(valIdx);
 
@@ -784,12 +725,14 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
         "input to if_true is not constant type"
     );
 
+    // FIXME
     if (wVal.int8Val == TRUE.int8Val)
-        interp.jump(instr.target);
+        interp.jump(/*instr.target*/null);
     else
-        interp.jump(instr.excTarget);
+        interp.jump(/*instr.excTarget*/null);
 }
 
+/*
 void callFun(
     Interp interp,
     IRFunction fun,         // Function to call
@@ -811,12 +754,10 @@ void callFun(
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
     {
-        /*    
-        write("compiling");
-        write("\n");
-        write(core.memory.GC.addrOf(cast(void*)fun.ast));
-        write("\n");
-        */
+        //write("compiling");
+        //write("\n");
+        //write(core.memory.GC.addrOf(cast(void*)fun.ast));
+        //write("\n");
 
         astToIR(fun.ast, fun);
     }
@@ -871,11 +812,12 @@ void callFun(
         caller.callCounts[callInstr][fun]++;
     }
 }
+*/
 
 extern (C) void op_call(Interp interp, IRInstr instr)
 {
-    auto closIdx = instr.args[0].localIdx;
-    auto thisIdx = instr.args[1].localIdx;
+    auto closIdx = instr.getArgSlot(0);
+    auto thisIdx = instr.getArgSlot(1);
 
     auto wClos = interp.getWord(closIdx);
     auto tClos = interp.getType(closIdx);
@@ -895,6 +837,8 @@ extern (C) void op_call(Interp interp, IRInstr instr)
     write("\n");
     */
 
+    // FIXME
+    /*
     callFun(
         interp,
         fun,
@@ -904,12 +848,13 @@ extern (C) void op_call(Interp interp, IRInstr instr)
         tThis,
         instr.args[2..$]
     );
+    */
 }
 
 /// JavaScript new operator (constructor call)
 extern (C) void op_call_new(Interp interp, IRInstr instr)
 {
-    auto closIdx = instr.args[0].localIdx;
+    auto closIdx = instr.getArgSlot(0);
     auto wClos = interp.getWord(closIdx);
     auto tClos = interp.getType(closIdx);
 
@@ -949,6 +894,8 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
     );
     clos_set_ctor_class(clos.ptr, obj_get_class(thisObj.ptr));
 
+    // FIXME
+    /*
     callFun(
         interp,
         fun,
@@ -958,14 +905,15 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
         Type.REFPTR,
         instr.args[1..$]
     );
+    */
 }
 
 extern (C) void op_call_apply(Interp interp, IRInstr instr)
 {
-    auto closIdx = instr.args[0].localIdx;
-    auto thisIdx = instr.args[1].localIdx;
-    auto tblIdx  = instr.args[2].localIdx;
-    auto argcIdx = instr.args[3].localIdx;
+    auto closIdx = instr.getArgSlot(0);
+    auto thisIdx = instr.getArgSlot(1);
+    auto tblIdx  = instr.getArgSlot(2);
+    auto argcIdx = instr.getArgSlot(3);
 
     auto wClos = interp.getWord(closIdx);
     auto tClos = interp.getType(closIdx);
@@ -1048,7 +996,7 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
 {
     //writefln("ret from %s", instr.block.fun.name);
 
-    auto retSlot   = instr.args[0].localIdx;
+    auto retSlot   = instr.getArgSlot(0);
     auto raSlot    = instr.block.fun.raSlot;
     auto argcSlot  = instr.block.fun.argcSlot;
     auto numParams = instr.block.fun.params.length;
@@ -1084,8 +1032,9 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         // Pop all local stack slots and arguments
         interp.pop(numLocals + extraArgs);
 
+        // FIXME
         // Set the instruction pointer to the call continuation instruction
-        interp.jump(callInstr.target);
+        interp.jump(/*callInstr.target*/null);
 
         // Leave the return value in the call's return slot, if any
         if (callInstr.outSlot !is NULL_LOCAL)
@@ -1113,7 +1062,7 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
 extern (C) void op_throw(Interp interp, IRInstr instr)
 {
     // Get the exception value
-    auto excSlot = instr.args[0].localIdx;
+    auto excSlot = instr.getArgSlot(0);
     auto excVal = interp.getSlot(excSlot);
 
     // Throw the exception
@@ -1126,7 +1075,7 @@ extern (C) void op_get_arg(Interp interp, IRInstr instr)
     auto argSlot = instr.block.fun.argcSlot + 1;
 
     // Get the argument index
-    auto idxVal = interp.getSlot(instr.args[0].localIdx);
+    auto idxVal = interp.getSlot(instr.getArgSlot(0));
     auto idx = idxVal.word.uint32Val;
 
     auto argVal = interp.getSlot(argSlot + idx);
@@ -1139,6 +1088,8 @@ extern (C) void op_get_arg(Interp interp, IRInstr instr)
 
 extern (C) void op_get_fun_ptr(Interp interp, IRInstr instr)
 {
+    // FIXME
+    /*
     auto fun = instr.args[0].fun;
 
     // Register this function in the function reference set
@@ -1154,6 +1105,7 @@ extern (C) void op_get_fun_ptr(Interp interp, IRInstr instr)
         Word.ptrv(ptr),
         Type.FUNPTR
     );
+    */
 }
 
 /// Templated interpreter value access operation
@@ -1189,8 +1141,8 @@ alias GetValOp!(Type.INT32, "auto r = cast(int32)interp.gcCount;") op_get_gc_cou
 
 extern (C) void op_heap_alloc(Interp interp, IRInstr instr)
 {
-    auto wSize = interp.getWord(instr.args[0].localIdx);
-    auto tSize = interp.getType(instr.args[0].localIdx);
+    auto wSize = interp.getWord(instr.getArgSlot(0));
+    auto tSize = interp.getType(instr.getArgSlot(0));
 
     assert (
         tSize == Type.INT32,
@@ -1213,8 +1165,8 @@ extern (C) void op_heap_alloc(Interp interp, IRInstr instr)
 
 extern (C) void op_gc_collect(Interp interp, IRInstr instr)
 {
-    auto wSize = interp.getWord(instr.args[0].localIdx);
-    auto tSize = interp.getType(instr.args[0].localIdx);
+    auto wSize = interp.getWord(instr.getArgSlot(0));
+    auto tSize = interp.getType(instr.getArgSlot(0));
 
     assert (
         tSize == Type.INT32,
@@ -1226,6 +1178,8 @@ extern (C) void op_gc_collect(Interp interp, IRInstr instr)
 
 extern (C) void op_make_link(Interp interp, IRInstr instr)
 {
+    // FIXME
+    /*
     auto linkIdx = instr.args[0].linkIdx;
 
     if (linkIdx is NULL_LINK)
@@ -1242,21 +1196,26 @@ extern (C) void op_make_link(Interp interp, IRInstr instr)
         Word.uint32v(linkIdx),
         Type.INT32
     );
+    */
 }
 
 extern (C) void op_set_link(Interp interp, IRInstr instr)
 {
+    // FIXME
+    /*
     auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
 
-    auto wVal = interp.getWord(instr.args[1].localIdx);
-    auto tVal = interp.getType(instr.args[1].localIdx);
+    auto wVal = interp.getWord(instr.getArgSlot(1));
+    auto tVal = interp.getType(instr.getArgSlot(1));
 
     interp.setLinkWord(linkIdx, wVal);
     interp.setLinkType(linkIdx, tVal);
+    */
 }
 
 extern (C) void op_get_link(Interp interp, IRInstr instr)
 {
+    /*
     auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
 
     auto wVal = interp.getLinkWord(linkIdx);
@@ -1266,13 +1225,14 @@ extern (C) void op_get_link(Interp interp, IRInstr instr)
         instr.outSlot,
         wVal,
         tVal
-    );    
+    );
+    */    
 }
 
 extern (C) void op_get_str(Interp interp, IRInstr instr)
 {
-    auto wStr = interp.getWord(instr.args[0].localIdx);
-    auto tStr = interp.getType(instr.args[0].localIdx);
+    auto wStr = interp.getWord(instr.getArgSlot(0));
+    auto tStr = interp.getType(instr.getArgSlot(0));
 
     assert (
         valIsString(wStr, tStr),
@@ -1298,6 +1258,8 @@ extern (C) void op_get_str(Interp interp, IRInstr instr)
 /// Get the value of a global variable
 extern (C) void op_get_global(Interp interp, IRInstr instr)
 {
+    // FIXME
+    /*
     // Name string (D string)
     auto nameStr = instr.args[0].stringVal;
 
@@ -1353,17 +1315,20 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
         instr.outSlot,
         val
     );
+    */
 }
 
 /// Set the value of a global variable
 extern (C) void op_set_global(Interp interp, IRInstr instr)
 {
+    // FIXME
+    /*
     // Name string (D string)
     auto nameStr = instr.args[0].stringVal;
 
     // Property value
-    auto wVal = interp.getWord(instr.args[1].localIdx);
-    auto tVal = interp.getType(instr.args[1].localIdx);
+    auto wVal = interp.getWord(instr.getArgSlot(1));
+    auto tVal = interp.getType(instr.getArgSlot(1));
 
     // Cached property index
     auto propIdx = instr.args[2].int32Val;
@@ -1400,10 +1365,13 @@ extern (C) void op_set_global(Interp interp, IRInstr instr)
         // Cache the property index
         instr.args[2].int32Val = propIdx;
     }
+    */
 }
 
 extern (C) void op_new_clos(Interp interp, IRInstr instr)
 {
+    // FIXME
+    /*
     //writefln("entering newclos");
 
     auto fun = instr.args[0].fun;
@@ -1480,12 +1448,13 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
     );
 
     //writefln("leaving newclos");
+    */
 }
 
 extern (C) void op_load_file(Interp interp, IRInstr instr)
 {
-    auto wFile = interp.getWord(instr.args[0].localIdx);
-    auto tFile = interp.getType(instr.args[0].localIdx);
+    auto wFile = interp.getWord(instr.getArgSlot(0));
+    auto tFile = interp.getType(instr.getArgSlot(0));
 
     assert (
         valIsString(wFile, tFile),
@@ -1501,6 +1470,8 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
     // Register this function in the function reference set
     interp.funRefs[cast(void*)fun] = fun;
 
+    // FIXME
+    /*
     // Setup the callee stack frame
     callFun(
         interp,
@@ -1511,12 +1482,13 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
         Type.REFPTR,// This value is a reference
         []          // 0 arguments
     );
+    */
 }
 
 extern (C) void op_eval_str(Interp interp, IRInstr instr)
 {
-    auto wStr = interp.getWord(instr.args[0].localIdx);
-    auto tStr = interp.getType(instr.args[0].localIdx);
+    auto wStr = interp.getWord(instr.getArgSlot(0));
+    auto tStr = interp.getType(instr.getArgSlot(0));
 
     assert (
         valIsString(wStr, tStr),
@@ -1532,6 +1504,8 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
     // Register this function in the function reference set
     interp.funRefs[cast(void*)fun] = fun;
 
+    // FIXME
+    /*
     // Setup the callee stack frame
     callFun(
         interp,
@@ -1542,12 +1516,13 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
         Type.REFPTR,// This value is a reference
         []          // 0 arguments
     );
+    */
 }
 
 extern (C) void op_print_str(Interp interp, IRInstr instr)
 {
-    auto wStr = interp.getWord(instr.args[0].localIdx);
-    auto tStr = interp.getType(instr.args[0].localIdx);
+    auto wStr = interp.getWord(instr.getArgSlot(0));
+    auto tStr = interp.getType(instr.getArgSlot(0));
 
     assert (
         valIsString(wStr, tStr),
@@ -1562,8 +1537,8 @@ extern (C) void op_print_str(Interp interp, IRInstr instr)
 
 extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
 {
-    auto wFn = interp.getWord(instr.args[0].localIdx);
-    auto tFn = interp.getType(instr.args[0].localIdx);
+    auto wFn = interp.getWord(instr.getArgSlot(0));
+    auto tFn = interp.getType(instr.getArgSlot(0));
 
     assert (
         tFn == Type.REFPTR && valIsLayout(wFn, LAYOUT_CLOS),
@@ -1584,8 +1559,8 @@ extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
 
 extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
 {
-    auto wFn = interp.getWord(instr.args[0].localIdx);
-    auto tFn = interp.getType(instr.args[0].localIdx);
+    auto wFn = interp.getWord(instr.getArgSlot(0));
+    auto tFn = interp.getType(instr.getArgSlot(0));
 
     assert (
         tFn == Type.REFPTR && valIsLayout(wFn, LAYOUT_CLOS),
@@ -1610,7 +1585,7 @@ extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
 
 extern (C) void op_f64_to_str(Interp interp, IRInstr instr)
 {
-    auto val = interp.getSlot(instr.args[0].localIdx);
+    auto val = interp.getSlot(instr.getArgSlot(0));
 
     assert (
         val.type == Type.FLOAT64,
@@ -1642,8 +1617,8 @@ extern (C) void op_load_lib(Interp interp, IRInstr instr)
 {
 
     // Library to load (JS string)
-    auto wLib = interp.getWord(instr.args[0].localIdx);
-    auto tLib = interp.getType(instr.args[0].localIdx);
+    auto wLib = interp.getWord(instr.getArgSlot(0));
+    auto tLib = interp.getType(instr.getArgSlot(0));
 
     assert (
         valIsString(wLib, tLib),
@@ -1670,7 +1645,7 @@ extern (C) void op_load_lib(Interp interp, IRInstr instr)
 
 extern (C) void op_close_lib(Interp interp, IRInstr instr)
 {
-    auto lib = interp.getSlot(instr.args[0].localIdx);
+    auto lib = interp.getSlot(instr.getArgSlot(0));
 
     assert (
         lib.type == Type.RAWPTR,
@@ -1683,8 +1658,10 @@ extern (C) void op_close_lib(Interp interp, IRInstr instr)
 
 extern (C) void op_get_sym(Interp interp, IRInstr instr)
 {
+    // FIXME
+    /*
     // handle for shared lib
-    auto lib = interp.getSlot(instr.args[0].localIdx);
+    auto lib = interp.getSlot(instr.getArgSlot(0));
 
     assert (
         lib.type == Type.RAWPTR,
@@ -1707,12 +1684,15 @@ extern (C) void op_get_sym(Interp interp, IRInstr instr)
         Word.ptrv(cast(rawptr)sym),
         Type.RAWPTR
     );
+    */
 }
 
 extern (C) void op_call_ffi(Interp interp, IRInstr instr)
 {
+    // FIXME
+    /*
     // Pointer to function to call
-    auto fun = interp.getSlot(instr.args[1].localIdx);
+    auto fun = interp.getSlot(instr.getArgSlot(1));
 
     assert (
         fun.type == Type.RAWPTR,
@@ -1738,7 +1718,7 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
             "invalid number of args in ffi call"
         );
 
-        // TODO: temporary for SSA refactoring
+        // FIXME: temporary for SSA refactoring
         //cb = genFFIFn(interp, types, instr.outSlot, argSlots);
         //instr.args[0].codeBlock = cb;
     }
@@ -1750,6 +1730,8 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
     FFIFn callerfun = cast(FFIFn)(cb.getAddress());
     callerfun(cast(void*)fun.word.ptrVal);
 
-    interp.jump(instr.target);
+    // FIXME
+    //interp.jump(instr.target);
+    */
 }
 

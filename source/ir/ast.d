@@ -177,6 +177,8 @@ class IRGenCtx
     */
     void moveToOutput(LocalIdx valIdx)
     {
+        assert (false, "moveToOutput");
+        /*
         if (outSlotFixed is true)
         {
             //writefln("inserting move");
@@ -191,6 +193,7 @@ class IRGenCtx
             //writefln("changing %s to %s", outSlot, valIdx);
             outSlot = valIdx;
         }
+        */
     }
 
     /**
@@ -379,6 +382,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Initialize global variable declarations to undefined
     if (auto unit = cast(ASTProgram)ast)
     {
+        // FIXME
+        /*
         auto subCtx = bodyCtx.subCtx(false);
         auto cstInstr = bodyCtx.addInstr(new IRInstr(&SET_UNDEF, subCtx.allocTemp()));
 
@@ -393,6 +398,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         }
 
         bodyCtx.merge(subCtx);
+        */
     }
 
     // If the function uses the arguments object
@@ -403,6 +409,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
         auto subCtx = bodyCtx.subCtx(false);
 
+        // FIXME
+        /*
         // Create the "arguments" array
         auto linkInstr = subCtx.addInstr(IRInstr.makeLink(subCtx.allocTemp()));
         auto protoInstr = subCtx.addInstr(new IRInstr(&GET_ARR_PROTO, subCtx.allocTemp()));
@@ -412,7 +420,10 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             argObjSlot,
             [linkInstr.outSlot, protoInstr.outSlot, fun.argcSlot]
         );
+        */
         
+        // FIXME
+        /*
         // Set the "callee" property
         auto calleeStr = subCtx.addInstr(IRInstr.strCst(subCtx.allocTemp(), "callee"));
         auto setInstr = genRtCall(
@@ -421,10 +432,14 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             NULL_LOCAL,
             [argObjSlot, calleeStr.outSlot, fun.closSlot]
         );
+        */
 
+        // FIXME
+        /*
         // Allocate and initialize the loop counter variable
         auto idxSlot = subCtx.allocTemp();
         subCtx.addInstr(IRInstr.intCst(idxSlot, 0));
+        */
 
         auto testBlock = fun.newBlock("arg_test");
         auto loopBlock = fun.newBlock("arg_loop");
@@ -435,6 +450,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         // Jump to the test block
         subCtx.addInstr(IRInstr.jump(testBlock));
 
+        // FIXME
+        /*
         // Branch based on the index
         auto cmpInstr = testCtx.addInstr(new IRInstr(&LT_I32, testCtx.allocTemp(), idxSlot, fun.argcSlot));
         testCtx.addInstr(IRInstr.ifTrue(cmpInstr.outSlot, loopBlock, exitBlock));
@@ -452,6 +469,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         auto oneCst = loopCtx.addInstr(IRInstr.intCst(loopCtx.allocTemp(), 1));
         loopCtx.addInstr(new IRInstr(&ADD_I32, idxSlot, idxSlot, oneCst.outSlot));
         loopCtx.addInstr(IRInstr.jump(testBlock));
+        */
 
         bodyCtx.merge(exitBlock);
     }
@@ -459,6 +477,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Get the cell pointers for captured closure variables
     foreach (idx, ident; ast.captVars)
     {
+        // FIXME
+        /*
         auto subCtx = bodyCtx.subCtx(false);
         auto idxInstr = bodyCtx.addInstr(IRInstr.intCst(subCtx.allocTemp(), cast(int32)idx));
         auto getInstr = genRtCall(
@@ -469,6 +489,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         );
         bodyCtx.merge(subCtx);
         fun.cellMap[ident] = getInstr.outSlot;
+        */
     }
 
     // Create closure cells for the escaping variables
@@ -477,6 +498,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         // If this variable is not captured from another function
         if (ident !in fun.cellMap)
         {
+            // FIXME
+            /*
             auto subCtx = bodyCtx.subCtx(false);
 
             // Allocate a closure cell for the variable
@@ -500,6 +523,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             }
 
             bodyCtx.merge(subCtx);
+            */
         }
     }
 
@@ -509,6 +533,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         // Create an IR function object for the function
         auto subFun = new IRFunction(funDecl);
 
+        // FIXME
+        /*
         // Store the binding for the function
         auto subCtx = bodyCtx.subCtx(false);
         auto assgCtx = subCtx.subCtx(true);
@@ -542,20 +568,25 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         );
         subCtx.merge(assgCtx);
         bodyCtx.merge(subCtx);
+        */
     }
 
     //writefln("num locals: %s", fun.numLocals);
 
+    // FIXME
     // Compile the function body
-    stmtToIR(ast.bodyStmt, bodyCtx);
+    //stmtToIR(ast.bodyStmt, bodyCtx);
 
     // If the body has no final return, compile a "return undefined;"
     auto lastInstr = bodyCtx.getLastInstr();
     if (lastInstr is null || lastInstr.opcode != &RET)
     {
+        // FIXME
+        /*
         auto temp = bodyCtx.allocTemp();
         auto cstInstr = bodyCtx.addInstr(new IRInstr(&SET_UNDEF, temp));
         bodyCtx.addInstr(new IRInstr(&RET, NULL_LOCAL, temp));
+        */
     }
 
     /// Function to translate (reverse) local indices
@@ -586,12 +617,15 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                 translLocal(instr.outSlot);
             }
 
+            // FIXME
+            /*
             // Translate the local argument indices
             for (size_t i = 0; i < instr.args.length; ++i)
             {
                 if (instr.opcode.getArgType(i) == OpArg.LOCAL)
                     translLocal(instr.args[i].localIdx);
             }
+            */
         }
     }
 
@@ -601,6 +635,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     return fun;
 }
 
+/*
 void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 {
     if (auto blockStmt = cast(BlockStmt)stmt)
@@ -1067,7 +1102,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         assert (false, "unhandled statement type:\n" ~ stmt.toString());
     }
 }
+*/
 
+/*
 void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 {
     // Compile the switch expression
@@ -1159,7 +1196,9 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
     // Continue code generation at the exit block
     ctx.merge(exitBlock);
 }
+*/
 
+/*
 void exprToIR(ASTExpr expr, IRGenCtx ctx)
 {
     // Function expression
@@ -2009,6 +2048,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         assert (false, "unhandled expression type:\n" ~ expr.toString());
     }
 }
+*/
 
 /// In-place operation delegate function
 alias void delegate(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg) InPlaceOpFn;
@@ -2019,6 +2059,7 @@ alias void delegate(IRGenCtx ctx) ExprEvalFn;
 /**
 Generate IR for an assignment expression
 */
+/*
 void assgToIR(
     ASTExpr lhsExpr, 
     InPlaceOpFn inPlaceOpFn,
@@ -2166,10 +2207,12 @@ void assgToIR(
         throw new ParseError("invalid lhs in assignment", lhsExpr.pos);
     }
 }
+*/
 
 /**
 Test if an expression is inline IR
 */
+/*
 bool isIIR(ASTExpr expr)
 {
 
@@ -2180,10 +2223,12 @@ bool isIIR(ASTExpr expr)
     auto identExpr = cast(IdentExpr)callExpr.base;
     return (identExpr && identExpr.name.startsWith(IIR_PREFIX));
 }
+*/
 
 /**
 Test if this is a branch-position inline IR expression
 */
+/*
 bool isBranchIIR(ASTExpr expr)
 {
     // If this is an assignment, check the right subexpression
@@ -2193,10 +2238,12 @@ bool isBranchIIR(ASTExpr expr)
 
     return isIIR(expr);
 }
+*/
 
 /**
 Generate an inline IR instruction
 */
+/*
 IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
 {
     assert (
@@ -2333,10 +2380,12 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
 
     return instr;
 }
+*/
 
 /**
 Evaluate a value as a boolean
 */
+/*
 LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
 {
     bool isBoolExpr(ASTExpr expr)
@@ -2390,10 +2439,12 @@ LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
         return boolInstr.outSlot;
     }
 }
+*/
 
 /**
 Insert a call to a runtime function
 */
+/*
 IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLocals)
 {
     // TODO: implement CALL_GLOBAL?
@@ -2419,10 +2470,12 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLo
 
     return callInstr;
 }
+*/
 
 /**
 Generate the exception code path for a call or throw instruction
 */
+/*
 IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
 {
     IRGenCtx.FnlInfo[] fnlStmts;
@@ -2485,10 +2538,12 @@ IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
 
     return excBlock;
 }
+*/
 
 /**
 Generate and set the normal and exception targets for a call instruction
 */
+/*
 void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
 {
     // Create a block for the call continuation
@@ -2504,4 +2559,5 @@ void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
     // Continue code generation in the continuation block
     ctx.merge(contBlock);
 }
+*/
 
