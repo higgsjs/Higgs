@@ -99,7 +99,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
         }
 
         auto numLocals = curInstr.block.fun.numLocals;
-        auto numParams = curInstr.block.fun.params.length;
+        auto numParams = curInstr.block.fun.numParams;
         auto argcSlot = curInstr.block.fun.argcSlot;
         auto raSlot = curInstr.block.fun.raSlot;
 
@@ -956,7 +956,7 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
         astToIR(fun.ast, fun);
 
     // Compute the number of missing arguments
-    size_t argDiff = (fun.params.length > argc)? (fun.params.length - argc):0;
+    size_t argDiff = (fun.numParams > argc)? (fun.numParams - argc):0;
 
     // Push undefined values for the missing last arguments
     for (size_t i = 0; i < argDiff; ++i)
@@ -985,7 +985,7 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
     interp.push(Word.ptrv(retAddr), Type.INSPTR);
 
     // Push space for the callee locals and initialize the slots to undefined
-    auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length;
+    auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
     interp.push(numLocals);
 
     // Jump to the function entry
@@ -999,7 +999,7 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
     auto retSlot   = instr.getArgSlot(0);
     auto raSlot    = instr.block.fun.raSlot;
     auto argcSlot  = instr.block.fun.argcSlot;
-    auto numParams = instr.block.fun.params.length;
+    auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
     // Get the return value

@@ -129,21 +129,109 @@ TODO: adapt interpreter
 - grep ops for FIXME
 
 TODO: Port/reimplement AST->IR
+- Look at Tachyon code
 - No longer does slot mapping
 - Now needs to build basic SSA graph (varmap, ...)
 - Overall structure remains the same
-- Look at Tachyon code
-
-TODO: string constant IRValue
 
 
 
+TODO: mergeContext or mergeContexts?
+- could merge on an individual basis?
+
+TODO: mergeLoopEntry?
+- merges into already existing dst block
+- cannot replace the entry phi node, value may be used
+- entryLocals maps the vars to phi nodes
+
+TODO: createLoopEntry
+- creates phi nodes for each variable going through the loop
+
+TODO: modify/port (most of) astToIR function to get familiar
+
+
+TODO: port genRtCall
+- needed for astToIR function
 
 
 
 
 
 
+
+
+
+
+
+[DONE] TODO: mutable int32 IR value? IntVal?
+
+[DONE] TODO: modify IRGenCtx
+- outValue
+- localMap
+
+Context merge idea: we must make the contexts jump/branch to the right block
+(we do this already). Must also create phi nodes and add incoming values as
+appropriate.
+
+It seems like we probably could have a simpler mergeContext that works on
+an individual context basis... 
+- mergeLoopEntry uses a map of entryLocals and an entryBlock
+- createLoopEntry creates a phi node for each variable going through the loop
+  - no choice without prior knowledge
+
+Tachyon IRConvContext has:
+labels,
+localMap,   // Mutable map of local variable states
+sharedMap,  // Map of shared variable locations
+breakMap, 
+contMap,
+throwList,  // Throw context list
+funcObj,
+thisVal,    // This argument value
+outValue    // Output value of the evaluated AST node
+
+IRConvContext.prototype.setOutput = function (exitBlock, outValue)
+- Note: exitBlock is no longer necessary
+
+// Create a context for the loop entry (the loop body)
+var entryLocals = new HashMap();
+var brkCtxList = [];
+var cntCtxList = [];
+var bodyContext = createLoopEntry(
+    astStmt,
+    astStmt.statement,
+    context,
+    entryLocals,
+    brkCtxList,
+    cntCtxList,
+    'loop_body'
+);
+
+// Merge the break contexts
+var loopExit = mergeContexts(
+    brkCtxList,
+    context.localMap,
+    context.cfg,
+    'loop_exit'
+);
+
+// Merge the continue contexts with the loop entry
+mergeLoopEntry(
+    cntCtxList,
+    entryLocals,
+    context.localMap,
+    testContext.entryBlock
+);
+
+// Merge the local maps using phi nodes
+var joinBlock = mergeContexts(
+    [trueContext, falseContext],
+    context.localMap,
+    context.cfg,
+    'iir_join'
+);
+
+[DONE] TODO: string constant IRValue
 
 [DONE] TODO: get code into compiling state
 - Comment out code until things compile?

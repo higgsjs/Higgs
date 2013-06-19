@@ -63,14 +63,19 @@ class IRGenCtx
     /// Block into which to insert
     IRBlock curBlock;
 
-    /// Next temporary index to allocate
-    private LocalIdx nextTemp;
+
+
+    /// Map of identifiers to values (local variables)
+    IRValue[IdentExpr] localMap;
+
+    /// Map of identifiers to cell values (closure/shared variables)
+    IRValue[IdentExpr] cellMap;
+
+
+
 
     /// Slot to store the output into, if applicable
-    private LocalIdx outSlot;
-
-    /// Flag indicating the output slot is fixed
-    private bool outSlotFixed;
+    private IRValue outValue = null;
 
     alias Tuple!(
         wstring, "name", 
@@ -99,102 +104,49 @@ class IRGenCtx
     this(
         IRGenCtx parent,
         IRFunction fun, 
-        IRBlock block,
-        LocalIdx nextTemp,
-        LocalIdx outSlot,
-        bool outSlotFixed
+        IRBlock block
     )
     {
         this.parent = parent;
         this.fun = fun;
         this.curBlock = block;
-        this.nextTemp = nextTemp;
-        this.outSlot = outSlot;
-        this.outSlotFixed = outSlotFixed;
     }
 
     /**
     Create a context to compile a sub-expression into.
     This context will have its own temporary variables.
     */    
-    IRGenCtx subCtx(
-        bool hasOutput, 
-        LocalIdx outSlot = NULL_LOCAL,
-        IRBlock startBlock = null
-    )
+    IRGenCtx subCtx(IRBlock startBlock = null)
     {
-        assert (
-            !(outSlot != NULL_LOCAL && hasOutput == false),
-            "out slot specified but hasOutput is false"
-        );
-
         if (startBlock is null)
             startBlock = curBlock;
-
-        bool subOutFixed = (outSlot !is NULL_LOCAL);
-
-        if (hasOutput && outSlot is NULL_LOCAL)
-            outSlot = allocTemp();
 
         return new IRGenCtx(
             this,
             fun,
-            startBlock,
-            nextTemp,
-            outSlot,
-            subOutFixed
+            startBlock
         );
     }
 
-    /**
-    Allocate a temporary slot in this context
-    */
-    LocalIdx allocTemp()
-    {
-        if (nextTemp == fun.numLocals)
-            fun.numLocals++;
-
-        assert (nextTemp < fun.numLocals);
-
-        return nextTemp++;
-    }
-
-    /**
-    Get a temporary slot to store output into
-    */
-    LocalIdx getOutSlot()
+    IRValue getOutVal()
     {
         assert (
-            outSlot != NULL_LOCAL,
-            "out slot requested but none allocated"
+            outValue !is null,
+            "output value not set"
         );
 
-        return outSlot;
+        return outValue;
     }
 
     /**
     Move a value into our output slot
     */
+    /*
     void moveToOutput(LocalIdx valIdx)
     {
         assert (false, "moveToOutput");
-        /*
-        if (outSlotFixed is true)
-        {
-            //writefln("inserting move");
-            addInstr(new IRInstr(
-                &MOVE,
-                outSlot,
-                valIdx
-            ));
-        }
-        else
-        {
-            //writefln("changing %s to %s", outSlot, valIdx);
-            outSlot = valIdx;
-        }
-        */
     }
+    */
 
     /**
     Merge and continue insertion in a specific block
@@ -348,66 +300,63 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     auto bodyCtx = new IRGenCtx(
         null,
         fun, 
-        entry,
-        0,
-        0,
-        false
+        entry
     );
 
-    // Allocate local slots for the visible function parameters
+    // Create values for the visible function parameters
     for (size_t i = 0; i < ast.params.length; ++i)
     {
-        auto ident = ast.params[$-(i+1)];
-        fun.localMap[ident] = bodyCtx.allocTemp();
+        auto argIdx = ast.params.length - (i+1);
+        auto ident = ast.params[argIdx];
+
+        auto paramVal = new FunParam(ident.name, argIdx);
+        bodyCtx.localMap[ident] = paramVal;
+        entry.addPhi(paramVal);
     }
 
-    // Map local slots for the hidden function arguments
-    fun.argcSlot = bodyCtx.allocTemp();
-    fun.thisSlot = bodyCtx.allocTemp();
-    fun.closSlot = bodyCtx.allocTemp();
-    fun.raSlot   = bodyCtx.allocTemp();
+    // Create values for the hidden arguments
+    auto raVal   = new FunParam("ra"  , 3);
+    auto argcVal = new FunParam("argc", 2);
+    auto thisVal = new FunParam("this", 1);
+    auto closVal = new FunParam("clos", 0);
+
+    // TODO: store this value on context?
 
     // Allocate slots for local variables
     foreach (ident; ast.locals)
     {
         // If this variable does not escape and is not a parameter
-        if (ident !in ast.escpVars && ident !in fun.localMap)
+        if (ident !in ast.escpVars && ast.params.countUntil(ident) == -1)
         {
-            auto varTemp = bodyCtx.allocTemp();
-            fun.localMap[ident] = varTemp;
-            //bodyCtx.addInstr(new IRInstr(&SET_UNDEF, varTemp));
+            bodyCtx.localMap[ident] = IRConst.undefCst;
         }
     }
 
     // Initialize global variable declarations to undefined
     if (auto unit = cast(ASTProgram)ast)
     {
-        // FIXME
-        /*
-        auto subCtx = bodyCtx.subCtx(false);
-        auto cstInstr = bodyCtx.addInstr(new IRInstr(&SET_UNDEF, subCtx.allocTemp()));
-
         foreach (ident; unit.globals)
         {
-            auto setInstr = subCtx.addInstr(new IRInstr(&SET_GLOBAL));
-            setInstr.outSlot = NULL_LOCAL;
-            setInstr.args.length = 3;
-            setInstr.args[0].stringVal = ident.name;
-            setInstr.args[1].localIdx = cstInstr.outSlot;
-            setInstr.args[2].int32Val = -1;
+            auto setInstr = bodyCtx.addInstr(new IRInstr(
+                &SET_GLOBAL, 
+                new IRString(ident.name),
+                IRConst.undefCst,
+                new IRCachedIdx()
+            ));
         }
-
-        bodyCtx.merge(subCtx);
-        */
     }
+
+
+
+
 
     // If the function uses the arguments object
     if (ast.usesArguments)
     {
-        auto argObjSlot = bodyCtx.allocTemp();
-        fun.localMap[ast.argObjIdent] = argObjSlot;
+        //auto argObjSlot = bodyCtx.allocTemp();
+        //fun.localMap[ast.argObjIdent] = argObjSlot;
 
-        auto subCtx = bodyCtx.subCtx(false);
+        auto subCtx = bodyCtx.subCtx();
 
         // FIXME
         /*
@@ -444,8 +393,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         auto testBlock = fun.newBlock("arg_test");
         auto loopBlock = fun.newBlock("arg_loop");
         auto exitBlock = fun.newBlock("arg_exit");
-        auto testCtx = subCtx.subCtx(false, NULL_LOCAL, testBlock);
-        auto loopCtx = subCtx.subCtx(false, NULL_LOCAL, loopBlock);
+        auto testCtx = subCtx.subCtx(testBlock);
+        auto loopCtx = subCtx.subCtx(loopBlock);
         
         // Jump to the test block
         subCtx.addInstr(IRInstr.jump(testBlock));
@@ -474,32 +423,40 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         bodyCtx.merge(exitBlock);
     }
 
+
+
+
+
+
+
     // Get the cell pointers for captured closure variables
     foreach (idx, ident; ast.captVars)
     {
-        // FIXME
         /*
-        auto subCtx = bodyCtx.subCtx(false);
-        auto idxInstr = bodyCtx.addInstr(IRInstr.intCst(subCtx.allocTemp(), cast(int32)idx));
-        auto getInstr = genRtCall(
+        auto getVal = genRtCall(
             subCtx, 
             "clos_get_cell", 
-            bodyCtx.allocTemp(),
-            [fun.closSlot, idxInstr.outSlot]
+            [closVal, IRConst.int32Cst(idx)]
         );
-        bodyCtx.merge(subCtx);
-        fun.cellMap[ident] = getInstr.outSlot;
+
+        bodyCtx.cellMap[ident] = getVal;
         */
     }
+
+
+
+
+
+
 
     // Create closure cells for the escaping variables
     foreach (ident, bval; ast.escpVars)
     {
+        // FIXME
+        /*
         // If this variable is not captured from another function
         if (ident !in fun.cellMap)
         {
-            // FIXME
-            /*
             auto subCtx = bodyCtx.subCtx(false);
 
             // Allocate a closure cell for the variable
@@ -523,8 +480,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             }
 
             bodyCtx.merge(subCtx);
-            */
         }
+        */
     }
 
     // Create closures for nested function declarations
@@ -573,60 +530,14 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
     //writefln("num locals: %s", fun.numLocals);
 
-    // FIXME
     // Compile the function body
-    //stmtToIR(ast.bodyStmt, bodyCtx);
+    stmtToIR(ast.bodyStmt, bodyCtx);
 
     // If the body has no final return, compile a "return undefined;"
     auto lastInstr = bodyCtx.getLastInstr();
     if (lastInstr is null || lastInstr.opcode != &RET)
     {
-        // FIXME
-        /*
-        auto temp = bodyCtx.allocTemp();
-        auto cstInstr = bodyCtx.addInstr(new IRInstr(&SET_UNDEF, temp));
-        bodyCtx.addInstr(new IRInstr(&RET, NULL_LOCAL, temp));
-        */
-    }
-
-    /// Function to translate (reverse) local indices
-    void translLocal(ref LocalIdx localIdx)
-    {
-        if (localIdx !is NULL_LOCAL)
-            localIdx = fun.numLocals - 1 - localIdx;
-    }
-
-    // Translate the hidden argument slots
-    translLocal(fun.argcSlot);
-    translLocal(fun.closSlot);
-    translLocal(fun.thisSlot);
-    translLocal(fun.raSlot);
-
-    // Translate the local variable mapping
-    foreach (key, value; fun.localMap)
-        translLocal(fun.localMap[key]);
-
-    // For each instruction
-    for (auto block = fun.firstBlock; block !is null; block = block.next)
-    {
-        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
-        {
-            // Translate the output index
-            if (instr.opcode.output)
-            {
-                translLocal(instr.outSlot);
-            }
-
-            // FIXME
-            /*
-            // Translate the local argument indices
-            for (size_t i = 0; i < instr.args.length; ++i)
-            {
-                if (instr.opcode.getArgType(i) == OpArg.LOCAL)
-                    translLocal(instr.args[i].localIdx);
-            }
-            */
-        }
+        bodyCtx.addInstr(new IRInstr(&RET, IRConst.undefCst));
     }
 
     //writeln(fun.toString());
@@ -635,9 +546,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     return fun;
 }
 
-/*
 void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 {
+    /*
     if (auto blockStmt = cast(BlockStmt)stmt)
     {
         foreach (s; blockStmt.stmts)
@@ -1101,8 +1012,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     {
         assert (false, "unhandled statement type:\n" ~ stmt.toString());
     }
+    */
 }
-*/
 
 /*
 void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
@@ -2444,11 +2355,11 @@ LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
 /**
 Insert a call to a runtime function
 */
-/*
 IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLocals)
 {
-    // TODO: implement CALL_GLOBAL?
+    // FIXME
 
+    /*
     // Get the global value
     auto getInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL));
     getInstr.outSlot = ctx.allocTemp();
@@ -2469,8 +2380,11 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLo
     genCallTargets(ctx, callInstr);
 
     return callInstr;
+    */
+
+    // FIXME
+    return null;
 }
-*/
 
 /**
 Generate the exception code path for a call or throw instruction

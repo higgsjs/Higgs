@@ -79,12 +79,6 @@ class IRFunction : IdObject
     /// Function name
     string name = "";
 
-    /// Function parameters
-    IdentExpr[] params;
-
-    /// Captured closure variables
-    IdentExpr[] captVars;
-
     /// Entry block
     IRBlock entryBlock = null;
 
@@ -104,29 +98,6 @@ class IRFunction : IdObject
     LocalIdx thisSlot;
     LocalIdx argcSlot;
 
-
-
-    // TODO: hidden argument value objects
-
-
-    // TODO: argument value objects
-
-
-
-
-    /// Map of shared variable declarations (captured/escaping) to
-    /// local slots where their closure cells are stored
-    LocalIdx[IdentExpr] cellMap;
-
-    /// Map of variable declarations to local slots
-    LocalIdx[IdentExpr] localMap;
-
-
-
-
-
-
-
     /// Callee profiling information (filled by interpreter)
     uint64_t[IRFunction][IRInstr] callCounts;  
 
@@ -141,9 +112,7 @@ class IRFunction : IdObject
     {
         this.name = ast.getName();
         this.ast = ast;
-        this.params = ast.params;
-        this.captVars = ast.captVars;
-        this.numParams = cast(uint32_t)this.params.length;
+        this.numParams = cast(uint32_t)ast.params.length;
 
         // If the function is anonymous
         if (this.name == "")
@@ -173,6 +142,9 @@ class IRFunction : IdObject
         output.put("function ");
         output.put(getName());
 
+        // FIXME
+        // TODO: use ast params and entry block phi values
+        /*
         // Parameters
         output.put("(");
         output.put("ra:$" ~ to!string(raSlot) ~ ", ");
@@ -198,6 +170,7 @@ class IRFunction : IdObject
                 output.put(", ");
         }
         output.put("]");
+        */
 
         output.put("\n{\n");
 
@@ -542,6 +515,12 @@ class IRValue : IdObject
             dst.next.prev = dst.prev;
     }
 
+    /// Test if this value has no uses
+    bool hasNoUses()
+    {
+        return firstDst == null;
+    }
+
     /// Get the short name for this value
     string getName()
     {
@@ -635,12 +614,24 @@ class IRConst : IRValue
     }
 }
 
+/**
+String constant value
+*/
+class IRString : IRValue
+{
+    const wstring str;
 
-// TODO
-// TODO: string constant argument
-// TODO
+    this(wstring str)
+    {
+        assert (str !is null);
+        this.str = str;
+    }
 
-
+    override string toString()
+    {
+        return "\"" ~ to!string(str) ~ "\"";
+    }
+}
 
 /**
 Raw pointer constant
@@ -694,6 +685,28 @@ class IRLinkIdx : IRValue
     override string toString()
     {
         return "<link:" ~ ((linkIdx is NULL_LINK)? "NULL":to!string(linkIdx)) ~ ">";
+    }
+}
+
+/**
+Cached index value (non-constant)
+*/
+class IRCachedIdx : IRValue
+{
+    size_t idx = size_t.max;
+
+    this()
+    {
+    }
+
+    bool isNull()
+    {
+        return idx == size_t.max;
+    }
+
+    override string toString()
+    {
+        return "<idx:" ~ ((idx is size_t.max)? "NULL":to!string(idx)) ~ ">";
     }
 }
 
@@ -777,10 +790,10 @@ Function parameter value
 */
 class FunParam : PhiNode
 {
-    string name;
+    wstring name;
     size_t idx;
 
-    this(string name, size_t idx)
+    this(wstring name, size_t idx)
     {
         this.name = name;
         this.idx = idx;
@@ -831,8 +844,24 @@ class IRInstr : IRValue
     /// Default constructor
     this(Opcode* opcode, size_t numArgs = 0)
     {
+        assert (
+            opcode.argTypes.length == numArgs || 
+            (opcode.argTypes.length < 3 && opcode.isVarArg)
+        );
+
         this.opcode = opcode;
         this.args.length = numArgs;
+    }
+
+    /// Trinary constructor
+    this(Opcode* opcode, IRValue arg0, IRValue arg1, IRValue arg2)
+    {
+        assert (opcode.argTypes.length == 3);
+
+        this(opcode, 3);
+        setArg(0, arg0);
+        setArg(1, arg1);
+        setArg(2, arg2);
     }
 
     /// Binary constructor
@@ -842,7 +871,7 @@ class IRInstr : IRValue
 
         this(opcode, 2);
         setArg(0, arg0);
-        setArg(0, arg1);
+        setArg(1, arg1);
     }
 
     /// Unary constructor
