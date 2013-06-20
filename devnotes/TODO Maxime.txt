@@ -134,7 +134,10 @@ TODO: Port/reimplement AST->IR
 - Now needs to build basic SSA graph (varmap, ...)
 - Overall structure remains the same
 
-
+TODO: begin steps to test interp on simple expressions
+- get complete pipeline working for simple stuff
+- implement trivial stack slot assignment
+  - can we make some quick opts on this? single use instrs
 
 TODO: mergeContext or mergeContexts?
 - could merge on an individual basis?
@@ -144,32 +147,33 @@ TODO: mergeLoopEntry?
 - cannot replace the entry phi node, value may be used
 - entryLocals maps the vars to phi nodes
 
+TODO: method to set/add branch desc argument?
+
 TODO: createLoopEntry
 - creates phi nodes for each variable going through the loop
+- start by making basic while loop work!
+
+Next step is to tackle loops and phi nodes
+- This problem area may force changes in many places
 
 
 
-TODO: test simple functions/expressions
+
+
+
+
+
+
+[DONE] TODO: test simple functions/expressions
 - print text output
+- modify main to do this? return early
 
-TODO: fixup IRFunction.toString
+[DONE] TODO: fixup IRFunction.toString
 
-
-
-TODO: begin porting stmtToIR, exprToIR
+[DONE] TODO: begin porting stmtToIR, exprToIR
 - constant exprs
 - arith add
 - statement expr, return expr
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: modify/port (most of) astToIR function to get familiar
 

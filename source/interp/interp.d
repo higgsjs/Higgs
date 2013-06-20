@@ -960,8 +960,8 @@ class Interp
         {
             auto numParams = curFun.numParams;
             auto numLocals = curFun.numLocals;
-            auto raSlot = curFun.raSlot;
-            auto argcSlot = curFun.argcSlot;
+            auto raSlot = curFun.raVal.outSlot;
+            auto argcSlot = curFun.argcVal.outSlot;
 
             assert (
                 wsp + numLocals <= this.wUpperLimit, 

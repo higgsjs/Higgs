@@ -67,12 +67,6 @@ class IRGenCtx
     /// Map of identifiers to values (local variables)
     IRValue[IdentExpr] localMap;
 
-    /// Map of identifiers to cell values (closure/shared variables)
-    IRValue[IdentExpr] cellMap;
-
-    /// Slot to store the output into, if applicable
-    private IRValue outValue = null;
-
     alias Tuple!(
         wstring, "name", 
         IRBlock, "breakBlock", 
@@ -124,26 +118,6 @@ class IRGenCtx
         );
     }
 
-    void setOutVal(IRValue val)
-    {
-        assert (
-            outValue is null,
-            "output value already set"
-        );
-
-        outValue = val;
-    }
-
-    IRValue getOutVal()
-    {
-        assert (
-            outValue !is null,
-            "output value not set"
-        );
-
-        return outValue;
-    }
-
     /**
     Merge and continue insertion in a specific block
     */
@@ -157,7 +131,11 @@ class IRGenCtx
     */
     void merge(IRGenCtx subCtx)
     {
-        assert (subCtx.parent == this);
+        assert (
+            subCtx.parent == this,
+            "merge: subCtx is not child context"
+        );
+
         merge(subCtx.curBlock);
     }
 
@@ -299,24 +277,23 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         entry
     );
 
+    // Create values for the hidden arguments
+    fun.raVal   = new FunParam("ra"  , 0);
+    fun.closVal = new FunParam("clos", 1);
+    fun.thisVal = new FunParam("this", 2);
+    fun.argcVal = new FunParam("argc", 3);
+
     // Create values for the visible function parameters
     for (size_t i = 0; i < ast.params.length; ++i)
     {
-        auto argIdx = ast.params.length - (i+1);
-        auto ident = ast.params[argIdx];
+        auto argIdx = 4 + i;
+        auto ident = ast.params[i];
 
         auto paramVal = new FunParam(ident.name, argIdx);
+        fun.paramMap[ident] = paramVal;
         bodyCtx.localMap[ident] = paramVal;
         entry.addPhi(paramVal);
     }
-
-    // Create values for the hidden arguments
-    auto raVal   = new FunParam("ra"  , 3);
-    auto argcVal = new FunParam("argc", 2);
-    auto thisVal = new FunParam("this", 1);
-    auto closVal = new FunParam("clos", 0);
-
-    // TODO: store this value on context?
 
     // Allocate slots for local variables
     foreach (ident; ast.locals)
@@ -431,17 +408,17 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         auto getVal = genRtCall(
             bodyCtx, 
             "clos_get_cell",
-            [closVal, cast(IRValue)IRConst.int32Cst(cast(int32_t)idx)]
+            [fun.closVal, cast(IRValue)IRConst.int32Cst(cast(int32_t)idx)]
         );
 
-        bodyCtx.cellMap[ident] = getVal;
+        fun.cellMap[ident] = getVal;
     }
 
     // Create closure cells for the escaping variables
     foreach (ident, bval; ast.escpVars)
     {
         // If this variable is not captured from another function
-        if (ident !in bodyCtx.cellMap)
+        if (ident !in fun.cellMap)
         {
             // Allocate a closure cell for the variable
             auto allocInstr = genRtCall(
@@ -449,7 +426,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                 "makeClosCell",
                 []
             );
-            bodyCtx.cellMap[ident] = allocInstr;
+            fun.cellMap[ident] = allocInstr;
 
             // If this variable is local
             if (ident in bodyCtx.localMap)
@@ -473,7 +450,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         assgToIR(
             funDecl.name,
             null,
-            delegate void(IRGenCtx ctx)
+            delegate IRValue(IRGenCtx ctx)
             {
                 // Create a closure of this function
                 auto newClos = ctx.addInstr(new IRInstr(
@@ -483,8 +460,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                     new IRLinkIdx()
                 ));
 
-                ctx.setOutVal(newClos);
-
                 // Set the closure cells for the captured variables
                 foreach (idx, ident; subFun.ast.captVars)
                 {
@@ -492,9 +467,11 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                     genRtCall(
                         ctx, 
                         "clos_set_cell",
-                        [newClos, idxCst, bodyCtx.cellMap[ident]]
+                        [newClos, idxCst, fun.cellMap[ident]]
                     );
                 }
+
+                return newClos;
             },
             bodyCtx
         );
@@ -518,17 +495,15 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
 void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 {
-    /*
     if (auto blockStmt = cast(BlockStmt)stmt)
     {
         foreach (s; blockStmt.stmts)
         {
-            auto subCtx = ctx.subCtx(false);
-            stmtToIR(s, subCtx);
-            ctx.merge(subCtx);
+            stmtToIR(s, ctx);
         }
     }
 
+    /*
     else if (auto varStmt = cast(VarStmt)stmt)
     {
         for (size_t i = 0; i < varStmt.identExprs.length; ++i)
@@ -876,16 +851,16 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         ctx.addInstr(IRInstr.jump(block));
     }
+    */
 
     // Return statement
     else if (auto retStmt = cast(ReturnStmt)stmt)
     {
-        auto subCtx = ctx.subCtx(true);
+        IRValue retVal;
         if (retStmt.expr is null)
-            subCtx.addInstr(new IRInstr(&SET_UNDEF, subCtx.getOutSlot()));
+            retVal = IRConst.undefCst;
         else
-            exprToIR(retStmt.expr, subCtx);
-        ctx.merge(subCtx);
+            retVal = exprToIR(retStmt.expr, ctx);
 
         // Get the englobing finally statements
         IRGenCtx.FnlInfo[] fnlStmts;
@@ -894,7 +869,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Compile the finally statements in-line
         foreach (fnl; fnlStmts)
         {
-            auto fnlCtx = ctx.subCtx(false);
+            auto fnlCtx = ctx.subCtx();
             fnlCtx.parent = fnl.ctx;
             stmtToIR(fnl.stmt, fnlCtx);
             ctx.merge(fnlCtx.curBlock);
@@ -903,11 +878,11 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Add the return instruction
         ctx.addInstr(new IRInstr(
             &RET,
-            NULL_LOCAL,
-            subCtx.getOutSlot()
+            retVal
         ));
     }
 
+    /*
     else if (auto throwStmt = cast(ThrowStmt)stmt)
     {
         auto subCtx = ctx.subCtx(true);
@@ -970,19 +945,17 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Continue the code generation after the finally statement
         ctx.merge(fnlCtx);
     }
+    */
 
     else if (auto exprStmt = cast(ExprStmt)stmt)
     {
-        auto subCtx = ctx.subCtx(true);
-        exprToIR(exprStmt.expr, subCtx);
-        ctx.merge(subCtx);
+        exprToIR(exprStmt.expr, ctx);
     }
 
     else
     {
         assert (false, "unhandled statement type:\n" ~ stmt.toString());
     }
-    */
 }
 
 /*
@@ -1079,7 +1052,7 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 }
 */
 
-void exprToIR(ASTExpr expr, IRGenCtx ctx)
+IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 {
     if (false) {}
 
@@ -1116,148 +1089,142 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             }
         }
     }
+    */
 
     else if (auto binExpr = cast(BinOpExpr)expr)
     {
-        void genBinOp(string rtFunName)
+        IRValue genBinOp(string rtFunName)
         {
-            auto lCtx = ctx.subCtx(true);
-            exprToIR(binExpr.lExpr, lCtx);
-            ctx.merge(lCtx);
+            auto lVal = exprToIR(binExpr.lExpr, ctx);
+            auto rVal = exprToIR(binExpr.rExpr, ctx);
 
-            auto rCtx = ctx.subCtx(true);     
-            exprToIR(binExpr.rExpr, rCtx);
-            ctx.merge(rCtx);
-
-            genRtCall(
+            return genRtCall(
                 ctx, 
-                rtFunName, 
-                ctx.getOutSlot(),
-                [lCtx.getOutSlot(), rCtx.getOutSlot()]
+                rtFunName,
+                [lVal, rVal]
             );
         }
 
-        void genAssign(string rtFunName)
+        IRValue genAssign(string rtFunName)
         {
             InPlaceOpFn opFn = null;
             if (rtFunName !is null)
             {
-                opFn = delegate void(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg)
+                opFn = delegate IRValue(IRGenCtx ctx, IRValue lArg, IRValue rArg)
                 {
-                    genRtCall(
+                    return genRtCall(
                         ctx, 
                         rtFunName, 
-                        ctx.getOutSlot(),
                         [lArg, rArg]
                     );
                 };
             }
 
-            assgToIR(
+            auto assgVal = assgToIR(
                 binExpr.lExpr,
                 opFn,
-                delegate void(IRGenCtx ctx)
+                delegate IRValue(IRGenCtx ctx)
                 {
-                    exprToIR(binExpr.rExpr, ctx);
+                    return exprToIR(binExpr.rExpr, ctx);
                 },
                 ctx
             );
+
+            return assgVal;
         }
 
         auto op = binExpr.op;
 
         // Arithmetic operators
         if (op.str == "+")
-            genBinOp("add");
+            return genBinOp("add");
         else if (op.str == "-")
-            genBinOp("sub");
+            return genBinOp("sub");
         else if (op.str == "*")
-            genBinOp("mul");
+            return genBinOp("mul");
         else if (op.str == "/")
-            genBinOp("div");
+            return genBinOp("div");
         else if (op.str == "%")
-            genBinOp("mod");
+            return genBinOp("mod");
 
         // Bitwise operators
         else if (op.str == "&")
-            genBinOp("and");
+            return genBinOp("and");
         else if (op.str == "|")
-            genBinOp("or");
+            return genBinOp("or");
         else if (op.str == "^")
-            genBinOp("xor");
+            return genBinOp("xor");
         else if (op.str == "<<")
-            genBinOp("lsft");
+            return genBinOp("lsft");
         else if (op.str == ">>")
-            genBinOp("rsft");
+            return genBinOp("rsft");
         else if (op.str == ">>>")
-            genBinOp("ursft");
+            return genBinOp("ursft");
 
         // Instanceof operator
         else if (op.str == "instanceof")
-            genBinOp("instanceof");
+            return genBinOp("instanceof");
 
         // In operator
         else if (op.str == "in")
-            genBinOp("in");
+            return genBinOp("in");
 
         // Comparison operators
         else if (op.str == "===")
-            genBinOp("se");
+            return genBinOp("se");
         else if (op.str == "!==")
-            genBinOp("ns");
+            return genBinOp("ns");
         else if (op.str == "==")
-            genBinOp("eq");
+            return genBinOp("eq");
         else if (op.str == "!=")
-            genBinOp("ne");
+            return genBinOp("ne");
         else if (op.str == "<")
-            genBinOp("lt");
+            return genBinOp("lt");
         else if (op.str == "<=")
-            genBinOp("le");
+            return genBinOp("le");
         else if (op.str == ">")
-            genBinOp("gt");
+            return genBinOp("gt");
         else if (op.str == ">=")
-            genBinOp("ge");
+            return genBinOp("ge");
 
         // In-place assignment operators
         else if (op.str == "=")
-            genAssign(null);
+            return genAssign(null);
         else if (op.str == "+=")
-            genAssign("add");
+            return genAssign("add");
         else if (op.str == "-=")
-            genAssign("sub");
+            return genAssign("sub");
         else if (op.str == "*=")
-            genAssign("mul");
+            return genAssign("mul");
         else if (op.str == "/=")
-            genAssign("div");
+            return genAssign("div");
         else if (op.str == "&=")
-            genAssign("mod");
+            return genAssign("mod");
         else if (op.str == "&=")
-            genAssign("and");
+            return genAssign("and");
         else if (op.str == "|=")
-            genAssign("or");
+            return genAssign("or");
         else if (op.str == "^=")
-            genAssign("xor");
+            return genAssign("xor");
         else if (op.str == "<<=")
-            genAssign("lsft");
+            return genAssign("lsft");
         else if (op.str == ">>=")
-            genAssign("rsft");
+            return genAssign("rsft");
         else if (op.str == ">>>=")
-            genAssign("ursft");
+            return genAssign("ursft");
 
         // Sequencing (comma) operator
         else if (op.str == ",")
         {
             // Evaluate the left expression
-            auto lCtx = ctx.subCtx(true);
-            exprToIR(binExpr.lExpr, lCtx);
-            ctx.merge(lCtx);
+            exprToIR(binExpr.lExpr, ctx);
 
             // Evaluate the right expression into this context's output
-            auto rCtx = ctx.subCtx(true, ctx.getOutSlot());     
-            exprToIR(binExpr.rExpr, rCtx);
-            ctx.merge(rCtx);
+            return exprToIR(binExpr.rExpr, ctx);
         }
 
+        // FIXME
+        /*
         // Logical OR and logical AND
         else if (op.str == "||" || op.str == "&&")
         {
@@ -1294,6 +1261,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             // Continue code generation in the exit block
             ctx.merge(exitBlock);
         }
+        */
 
         else
         {
@@ -1306,52 +1274,40 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto op = unExpr.op;
 
         if (op.str == "+")
-        {
-            auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 0));
+        {   
+            auto subVal = exprToIR(unExpr.expr, ctx);
 
-            auto subCtx = ctx.subCtx(true);       
-            exprToIR(unExpr.expr, subCtx);
-            ctx.merge(subCtx);
-
-            genRtCall(
+            return genRtCall(
                 ctx, 
-                "add", 
-                ctx.getOutSlot(),
-                [cst.outSlot, subCtx.getOutSlot()]
+                "add",
+                [IRConst.int32Cst(0), subVal]
             );
         }
 
         else if (op.str == "-")
         {
-            auto cst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), 0));
+            auto subVal = exprToIR(unExpr.expr, ctx);
 
-            auto subCtx = ctx.subCtx(true);
-            exprToIR(unExpr.expr, subCtx);
-            ctx.merge(subCtx);
-
-            genRtCall(
+            return genRtCall(
                 ctx, 
-                "sub", 
-                ctx.getOutSlot(),
-                [cst.outSlot, subCtx.getOutSlot()]
+                "sub",
+                [IRConst.int32Cst(0), subVal]
             );
         }
 
         // Bitwise negation
         else if (op.str == "~")
         {
-            auto lCtx = ctx.subCtx(true);
-            exprToIR(unExpr.expr, lCtx);
-            ctx.merge(lCtx);
+            auto subVal = exprToIR(unExpr.expr, ctx);
 
-            genRtCall(
+            return genRtCall(
                 ctx, 
                 "not", 
-                ctx.getOutSlot(),
-                [lCtx.getOutSlot()]
+                [subVal]
             );
         }
 
+        /*
         // Typeof operator
         else if (op.str == "typeof")
         {
@@ -1530,6 +1486,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
             ctx.merge(aCtx);
         }
+        */
 
         else
         {
@@ -1541,6 +1498,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         }
     }
 
+    /*
     else if (auto condExpr = cast(CondExpr)expr)
     {
         // Create the true, false and join blocks
@@ -1697,28 +1655,25 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Generate the call targets
         genCallTargets(ctx, callInstr);
     }
+    */
 
     else if (auto indexExpr = cast(IndexExpr)expr)
     {
         // Evaluate the base expression
-        auto baseCtx = ctx.subCtx(true);       
-        exprToIR(indexExpr.base, baseCtx);
-        ctx.merge(baseCtx);
+        auto baseVal = exprToIR(indexExpr.base, ctx);
 
         // Evaluate the index expression
-        auto idxCtx = ctx.subCtx(true);       
-        exprToIR(indexExpr.index, idxCtx);
-        ctx.merge(idxCtx);
+        auto idxVal = exprToIR(indexExpr.index, ctx);
 
         // Get the property from the object
-        genRtCall(
+        return genRtCall(
             ctx, 
             "getProp",
-            ctx.getOutSlot(),
-            [baseCtx.getOutSlot(), idxCtx.getOutSlot()]
+            [baseVal, idxVal]
         );
     }
 
+    /*
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
@@ -1797,6 +1752,7 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
         }
     }
+    */
 
     // Identifier/variable reference
     else if (auto identExpr = cast(IdentExpr)expr)
@@ -1804,37 +1760,34 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         // If this is the "this" argument
         if (identExpr.name == "this")
         {
-            // Move the "this" argument slot to the output
-            ctx.moveToOutput(ctx.fun.thisSlot);
+            return ctx.fun.thisVal;
         }
 
         // If this is the argument count argument
         else if (identExpr.name == "$argc")
         {
-            // Move the argument count slot to the output
-            ctx.moveToOutput(ctx.fun.argcSlot);
+            return ctx.fun.argcVal;
         }
 
         // If the variable is global
         else if (identExpr.declNode is null)
         {
             // Get the global value
-            auto getInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL));
-            getInstr.outSlot = ctx.getOutSlot();
-            getInstr.args.length = 2;
-            getInstr.args[0].stringVal = identExpr.name;
-            getInstr.args[1].int32Val = -1;
+            return ctx.addInstr(new IRInstr(
+                &GET_GLOBAL,
+                new IRString(identExpr.name),
+                new IRCachedIdx()
+            ));
         }
 
         // If the variable is captured or escaping
         else if (identExpr.declNode in ctx.fun.cellMap)
         {
-            auto cellSlot = ctx.fun.cellMap[identExpr.declNode];
-            genRtCall(
+            auto cellVal = ctx.fun.cellMap[identExpr.declNode];
+            return genRtCall(
                 ctx, 
                 "getCellVal",
-                ctx.getOutSlot(),
-                [cellSlot]
+                [cellVal]
             );
         }
 
@@ -1842,36 +1795,32 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         else
         {
             assert (
-                identExpr.declNode in ctx.fun.localMap,
+                identExpr.declNode in ctx.localMap,
                 "variable declaration not in local map: \"" ~ 
                 to!string(identExpr.name) ~ "\""
             );
 
-            // Get the variable's local slot
-            LocalIdx varIdx = (ctx.fun.localMap)[identExpr.declNode];
-
-            // Move the value into the output slot
-            ctx.moveToOutput(varIdx);
+            // Get the variable's value
+            return ctx.localMap[identExpr.declNode];
         }
     }
-    */
 
     else if (auto intExpr = cast(IntExpr)expr)
     {
         // If the constant fits in the int32 range
         if (intExpr.val >= int32.min && intExpr.val <= int32.max)
         {
-            ctx.setOutVal(IRConst.int32Cst(cast(int32_t)intExpr.val));
+            return IRConst.int32Cst(cast(int32_t)intExpr.val);
         }
         else
         {
-            ctx.setOutVal(IRConst.float64Cst(cast(double)intExpr.val));
+            return IRConst.float64Cst(cast(double)intExpr.val);
         }
     }
 
     else if (auto floatExpr = cast(FloatExpr)expr)
     {
-        ctx.setOutVal(IRConst.float64Cst(floatExpr.val));
+        return IRConst.float64Cst(floatExpr.val);
     }
 
     /*
@@ -1906,17 +1855,17 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 
     else if (cast(TrueExpr)expr)
     {
-        ctx.setOutVal(IRConst.trueCst);
+        return IRConst.trueCst;
     }
 
     else if (cast(FalseExpr)expr)
     {
-        ctx.setOutVal(IRConst.falseCst);
+        return IRConst.falseCst;
     }
 
     else if (cast(NullExpr)expr)
     {
-        ctx.setOutVal(IRConst.nullCst);
+        return IRConst.nullCst;
     }
 
     else
@@ -1926,15 +1875,15 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
 }
 
 /// In-place operation delegate function
-alias void delegate(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg) InPlaceOpFn;
+alias IRValue delegate(IRGenCtx ctx, IRValue lArg, IRValue rArg) InPlaceOpFn;
 
 /// Expression evaluation delegate function
-alias void delegate(IRGenCtx ctx) ExprEvalFn;
+alias IRValue delegate(IRGenCtx ctx) ExprEvalFn;
 
 /**
 Generate IR for an assignment expression
 */
-void assgToIR(
+IRValue assgToIR(
     ASTExpr lhsExpr, 
     InPlaceOpFn inPlaceOpFn,
     ExprEvalFn rhsExprFn, 

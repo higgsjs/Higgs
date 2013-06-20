@@ -89,14 +89,20 @@ class IRFunction : IdObject
     // Number of visible parameters
     uint32_t numParams = 0;
 
+    /// Hidden argument SSA values
+    FunParam raVal;
+    FunParam closVal;
+    FunParam thisVal;
+    FunParam argcVal;
+
+    /// Map of parameters to SSA values
+    FunParam[IdentExpr] paramMap;
+
+    /// Map of identifiers to SSA cell values (closure/shared variables)
+    IRValue[IdentExpr] cellMap;
+
     /// Total number of locals, including parameters and temporaries
     uint32_t numLocals = 0;
-
-    /// Hidden argument slots
-    LocalIdx raSlot;
-    LocalIdx closSlot;
-    LocalIdx thisSlot;
-    LocalIdx argcSlot;
 
     /// Callee profiling information (filled by interpreter)
     uint64_t[IRFunction][IRInstr] callCounts;  
@@ -142,35 +148,29 @@ class IRFunction : IdObject
         output.put("function ");
         output.put(getName());
 
-        // FIXME
-        // TODO: use ast params and entry block phi values
-        /*
         // Parameters
         output.put("(");
-        output.put("ra:$" ~ to!string(raSlot) ~ ", ");
-        output.put("clos:$" ~ to!string(closSlot) ~ ", ");
-        output.put("this:$" ~ to!string(thisSlot) ~ ", ");
-        output.put("argc:$" ~ to!string(argcSlot));
-        for (size_t i = 0; i < params.length; ++i)
+        output.put("ra:" ~ raVal.getName() ~ ", ");
+        output.put("clos:" ~ closVal.getName() ~ ", ");
+        output.put("this:" ~ thisVal.getName() ~ ", ");
+        output.put("argc:" ~ argcVal.getName());
+        foreach (argIdx, var; ast.params)
         {
-            auto param = params[i];
-            auto localIdx = localMap[param];
-            output.put(", " ~ param.toString() ~ ":$" ~ to!string(localIdx));
+            auto paramVal = paramMap[var];
+            output.put(", " ~ var.toString() ~ ":" ~ paramVal.getName());
         }
         output.put(")");
 
         // Captured variables
         output.put(" [");
-        for (size_t i = 0; i < captVars.length; ++i)
+        foreach (varIdx, var; ast.captVars)
         {
-            auto var = captVars[i];
-            auto localIdx = cellMap[var];
-            output.put(var.toString() ~ ":$" ~ to!string(localIdx));
-            if (i < captVars.length - 1)
+            auto cellVal = cellMap[var];
+            output.put(var.toString() ~ ":" ~ cellVal.getName());
+            if (varIdx < ast.captVars.length - 1)
                 output.put(", ");
         }
         output.put("]");
-        */
 
         output.put("\n{\n");
 

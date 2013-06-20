@@ -100,8 +100,8 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 
         auto numLocals = curInstr.block.fun.numLocals;
         auto numParams = curInstr.block.fun.numParams;
-        auto argcSlot = curInstr.block.fun.argcSlot;
-        auto raSlot = curInstr.block.fun.raSlot;
+        auto argcSlot = curInstr.block.fun.argcVal.outSlot;
+        auto raSlot = curInstr.block.fun.raVal.outSlot;
 
         // Get the calling instruction for the current stack frame
         curInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
@@ -997,8 +997,8 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
     //writefln("ret from %s", instr.block.fun.name);
 
     auto retSlot   = instr.getArgSlot(0);
-    auto raSlot    = instr.block.fun.raSlot;
-    auto argcSlot  = instr.block.fun.argcSlot;
+    auto raSlot    = instr.block.fun.raVal.outSlot;
+    auto argcSlot  = instr.block.fun.argcVal.outSlot;
     auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
@@ -1019,8 +1019,8 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         if (callInstr.opcode == &CALL_NEW && (tRet == Type.CONST && wRet == UNDEF))
         {
             // Use the this value as the return value
-            wRet = interp.getWord(instr.block.fun.thisSlot);
-            tRet = interp.getType(instr.block.fun.thisSlot);
+            wRet = interp.getWord(instr.block.fun.thisVal.outSlot);
+            tRet = interp.getType(instr.block.fun.thisVal.outSlot);
         }
 
         // Compute the actual number of extra arguments to pop
@@ -1072,7 +1072,7 @@ extern (C) void op_throw(Interp interp, IRInstr instr)
 extern (C) void op_get_arg(Interp interp, IRInstr instr)
 {
     // Get the first argument slot
-    auto argSlot = instr.block.fun.argcSlot + 1;
+    auto argSlot = instr.block.fun.argcVal.outSlot + 1;
 
     // Get the argument index
     auto idxVal = interp.getSlot(instr.getArgSlot(0));

@@ -53,6 +53,40 @@ void main(string[] args)
     // Get the names of files to execute
     auto fileNames = args[1..$];
 
+
+
+
+
+
+
+    // FIXME: SSA test code
+    import ir.ir;
+    import ir.ast;
+
+    if (opts.execString !is null)
+    {
+        auto ast = parseString(opts.execString, "string");
+        auto fir = astToIR(ast);
+
+
+        writeln(fir.toString());
+
+
+    }
+
+    // FIXME: for testing during SSA refactoring
+    return;
+
+
+
+
+
+
+
+
+
+
+
     // Interpreter instance
     auto interp = new Interp();
 
