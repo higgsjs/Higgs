@@ -37,6 +37,7 @@
 
 module ir.ast;
 
+import std.stdint;
 import std.stdio;
 import std.array;
 import std.algorithm;
@@ -63,16 +64,11 @@ class IRGenCtx
     /// Block into which to insert
     IRBlock curBlock;
 
-
-
     /// Map of identifiers to values (local variables)
     IRValue[IdentExpr] localMap;
 
     /// Map of identifiers to cell values (closure/shared variables)
     IRValue[IdentExpr] cellMap;
-
-
-
 
     /// Slot to store the output into, if applicable
     private IRValue outValue = null;
@@ -128,6 +124,16 @@ class IRGenCtx
         );
     }
 
+    void setOutVal(IRValue val)
+    {
+        assert (
+            outValue is null,
+            "output value already set"
+        );
+
+        outValue = val;
+    }
+
     IRValue getOutVal()
     {
         assert (
@@ -137,16 +143,6 @@ class IRGenCtx
 
         return outValue;
     }
-
-    /**
-    Move a value into our output slot
-    */
-    /*
-    void moveToOutput(LocalIdx valIdx)
-    {
-        assert (false, "moveToOutput");
-    }
-    */
 
     /**
     Merge and continue insertion in a specific block
@@ -432,56 +428,39 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Get the cell pointers for captured closure variables
     foreach (idx, ident; ast.captVars)
     {
-        /*
         auto getVal = genRtCall(
-            subCtx, 
-            "clos_get_cell", 
-            [closVal, IRConst.int32Cst(idx)]
+            bodyCtx, 
+            "clos_get_cell",
+            [closVal, cast(IRValue)IRConst.int32Cst(cast(int32_t)idx)]
         );
 
         bodyCtx.cellMap[ident] = getVal;
-        */
     }
-
-
-
-
-
-
 
     // Create closure cells for the escaping variables
     foreach (ident, bval; ast.escpVars)
     {
-        // FIXME
-        /*
         // If this variable is not captured from another function
-        if (ident !in fun.cellMap)
+        if (ident !in bodyCtx.cellMap)
         {
-            auto subCtx = bodyCtx.subCtx(false);
-
             // Allocate a closure cell for the variable
             auto allocInstr = genRtCall(
-                subCtx, 
-                "makeClosCell", 
-                bodyCtx.allocTemp(),
+                bodyCtx, 
+                "makeClosCell",
                 []
             );
-            fun.cellMap[ident] = allocInstr.outSlot;
+            bodyCtx.cellMap[ident] = allocInstr;
 
-            // If this variable is a parameter
-            if (ident in fun.localMap)
+            // If this variable is local
+            if (ident in bodyCtx.localMap)
             {
                 genRtCall(
-                    subCtx, 
+                    bodyCtx, 
                     "setCellVal", 
-                    NULL_LOCAL,
-                    [allocInstr.outSlot, fun.localMap[ident]]
+                    [allocInstr, bodyCtx.localMap[ident]]
                 );
             }
-
-            bodyCtx.merge(subCtx);
         }
-        */
     }
 
     // Create closures for nested function declarations
@@ -490,45 +469,36 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         // Create an IR function object for the function
         auto subFun = new IRFunction(funDecl);
 
-        // FIXME
-        /*
         // Store the binding for the function
-        auto subCtx = bodyCtx.subCtx(false);
-        auto assgCtx = subCtx.subCtx(true);
         assgToIR(
             funDecl.name,
             null,
             delegate void(IRGenCtx ctx)
             {
                 // Create a closure of this function
-                auto newClos = ctx.addInstr(new IRInstr(&NEW_CLOS));
-                newClos.outSlot = ctx.getOutSlot();
-                newClos.args.length = 3;
-                newClos.args[0].fun = subFun;
-                newClos.args[1].linkIdx = NULL_LINK;
-                newClos.args[2].linkIdx = NULL_LINK;
+                auto newClos = ctx.addInstr(new IRInstr(
+                    &NEW_CLOS,
+                    new IRFunPtr(subFun),
+                    new IRLinkIdx(),
+                    new IRLinkIdx()
+                ));
+
+                ctx.setOutVal(newClos);
 
                 // Set the closure cells for the captured variables
-                foreach (idx, ident; subFun.captVars)
+                foreach (idx, ident; subFun.ast.captVars)
                 {
-                    auto idxCst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), cast(int32)idx));
-
+                    auto idxCst = IRConst.int32Cst(cast(int32_t)idx);
                     genRtCall(
                         ctx, 
                         "clos_set_cell",
-                        NULL_LOCAL,
-                        [newClos.outSlot, idxCst.outSlot, fun.cellMap[ident]]
+                        [newClos, idxCst, bodyCtx.cellMap[ident]]
                     );
                 }
             },
-            assgCtx
+            bodyCtx
         );
-        subCtx.merge(assgCtx);
-        bodyCtx.merge(subCtx);
-        */
     }
-
-    //writefln("num locals: %s", fun.numLocals);
 
     // Compile the function body
     stmtToIR(ast.bodyStmt, bodyCtx);
@@ -1109,9 +1079,11 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 }
 */
 
-/*
 void exprToIR(ASTExpr expr, IRGenCtx ctx)
 {
+    if (false) {}
+
+    /*
     // Function expression
     if (auto funExpr = cast(FunExpr)expr)
     {
@@ -1882,35 +1854,27 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             ctx.moveToOutput(varIdx);
         }
     }
+    */
 
     else if (auto intExpr = cast(IntExpr)expr)
     {
         // If the constant fits in the int32 range
         if (intExpr.val >= int32.min && intExpr.val <= int32.max)
         {
-            ctx.addInstr(IRInstr.intCst(
-                ctx.getOutSlot(),
-                cast(int32)intExpr.val
-            ));
+            ctx.setOutVal(IRConst.int32Cst(cast(int32_t)intExpr.val));
         }
         else
         {
-            // Convert to a floating-point constant
-            ctx.addInstr(IRInstr.floatCst(
-                ctx.getOutSlot(),
-                cast(double)intExpr.val
-            ));
+            ctx.setOutVal(IRConst.float64Cst(cast(double)intExpr.val));
         }
     }
 
     else if (auto floatExpr = cast(FloatExpr)expr)
     {
-        ctx.addInstr(IRInstr.floatCst(
-            ctx.getOutSlot(),
-            floatExpr.val
-        ));
+        ctx.setOutVal(IRConst.float64Cst(floatExpr.val));
     }
 
+    /*
     else if (auto stringExpr = cast(StringExpr)expr)
     {
         ctx.addInstr(IRInstr.strCst(
@@ -1938,20 +1902,21 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
             [linkInstr.outSlot, reInstr.outSlot, flagsInstr.outSlot]
         );
     }
+    */
 
     else if (cast(TrueExpr)expr)
     {
-        ctx.addInstr(new IRInstr(&SET_TRUE, ctx.getOutSlot()));
+        ctx.setOutVal(IRConst.trueCst);
     }
 
     else if (cast(FalseExpr)expr)
     {
-        ctx.addInstr(new IRInstr(&SET_FALSE, ctx.getOutSlot()));
+        ctx.setOutVal(IRConst.falseCst);
     }
 
     else if (cast(NullExpr)expr)
     {
-        ctx.addInstr(new IRInstr(&SET_NULL, ctx.getOutSlot()));
+        ctx.setOutVal(IRConst.nullCst);
     }
 
     else
@@ -1959,7 +1924,6 @@ void exprToIR(ASTExpr expr, IRGenCtx ctx)
         assert (false, "unhandled expression type:\n" ~ expr.toString());
     }
 }
-*/
 
 /// In-place operation delegate function
 alias void delegate(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg) InPlaceOpFn;
@@ -1970,7 +1934,6 @@ alias void delegate(IRGenCtx ctx) ExprEvalFn;
 /**
 Generate IR for an assignment expression
 */
-/*
 void assgToIR(
     ASTExpr lhsExpr, 
     InPlaceOpFn inPlaceOpFn,
@@ -1978,6 +1941,10 @@ void assgToIR(
     IRGenCtx ctx
 )
 {
+    // FIXME
+    assert (false);
+
+    /*
     void genRhs(
         IRGenCtx ctx,
         LocalIdx base = NULL_LOCAL, 
@@ -2117,8 +2084,8 @@ void assgToIR(
     {
         throw new ParseError("invalid lhs in assignment", lhsExpr.pos);
     }
+    */
 }
-*/
 
 /**
 Test if an expression is inline IR
@@ -2355,35 +2322,26 @@ LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
 /**
 Insert a call to a runtime function
 */
-IRInstr genRtCall(IRGenCtx ctx, string fName, LocalIdx outSlot, LocalIdx[] argLocals)
+IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
 {
-    // FIXME
-
-    /*
-    // Get the global value
-    auto getInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL));
-    getInstr.outSlot = ctx.allocTemp();
-    getInstr.args.length = 2;
-    getInstr.args[0].stringVal = to!wstring("$rt_" ~ fName);
-    getInstr.args[1].int32Val = -1;
+    // Get the global function
+    auto funVal = ctx.addInstr(new IRInstr(
+        &GET_GLOBAL, 
+        new IRString(to!wstring("$rt_" ~ fName)),
+        new IRCachedIdx()
+    ));
 
     // <dstLocal> = CALL <fnLocal> <thisArg> ...
-    auto callInstr = ctx.addInstr(new IRInstr(&CALL));
-    callInstr.outSlot = outSlot;
-    callInstr.args.length = 2 + argLocals.length;
-    callInstr.args[0].localIdx = getInstr.outSlot;
-    callInstr.args[1].localIdx = getInstr.outSlot;
-    for (size_t i = 0; i < argLocals.length; ++i)
-        callInstr.args[2+i].localIdx = argLocals[i];
+    auto callInstr = ctx.addInstr(new IRInstr(&CALL, 2 + argVals.length));
+    callInstr.setArg(0, funVal);
+    callInstr.setArg(1, funVal);
+    foreach (argIdx, argVal; argVals)
+        callInstr.setArg(2 + argIdx, argVal);
 
     // Generate the call targets
     genCallTargets(ctx, callInstr);
 
     return callInstr;
-    */
-
-    // FIXME
-    return null;
 }
 
 /**
@@ -2457,9 +2415,10 @@ IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
 /**
 Generate and set the normal and exception targets for a call instruction
 */
-/*
 void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
 {
+    // FIXME
+    /*
     // Create a block for the call continuation
     auto contBlock = ctx.fun.newBlock("call_cont");
 
@@ -2472,6 +2431,6 @@ void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
 
     // Continue code generation in the continuation block
     ctx.merge(contBlock);
+    */
 }
-*/
 

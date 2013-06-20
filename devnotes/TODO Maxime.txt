@@ -147,21 +147,34 @@ TODO: mergeLoopEntry?
 TODO: createLoopEntry
 - creates phi nodes for each variable going through the loop
 
-TODO: modify/port (most of) astToIR function to get familiar
 
 
-TODO: port genRtCall
+TODO: test simple functions/expressions
+- print text output
+
+TODO: fixup IRFunction.toString
+
+
+
+TODO: begin porting stmtToIR, exprToIR
+- constant exprs
+- arith add
+- statement expr, return expr
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: modify/port (most of) astToIR function to get familiar
+
+[DONE] TODO: port genRtCall
 - needed for astToIR function
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: mutable int32 IR value? IntVal?
 
