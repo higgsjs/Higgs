@@ -136,25 +136,22 @@ TODO: Port/reimplement AST->IR
 
 TODO: begin steps to test interp on simple expressions
 - get complete pipeline working for simple stuff
+  - basic exprs, loops
 - implement trivial stack slot assignment
   - can we make some quick opts on this? single use instrs
 
+TODO: get basic while loop working
+
 TODO: mergeContext or mergeContexts?
 - could merge on an individual basis?
+- need to be able to create a new block with phi nodes!
 
 TODO: mergeLoopEntry?
-- merges into already existing dst block
-- cannot replace the entry phi node, value may be used
-- entryLocals maps the vars to phi nodes
-
 TODO: method to set/add branch desc argument?
 
 TODO: createLoopEntry
 - creates phi nodes for each variable going through the loop
 - start by making basic while loop work!
-
-Next step is to tackle loops and phi nodes
-- This problem area may force changes in many places
 
 
 

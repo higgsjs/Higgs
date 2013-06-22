@@ -464,7 +464,8 @@ class BranchDesc
     IRBlock succ;
 
     /// Mapping of incoming phi values (block arguments)
-    Tuple!(IRValue, "src", PhiNode, "dst") args[];
+    alias Tuple!(IRValue, "src", PhiNode, "dst") PhiArgPair;
+    PhiArgPair args[];
 
     this(IRBlock pred, IRBlock succ)
     {
@@ -472,8 +473,22 @@ class BranchDesc
         this.succ = succ;
     }
 
-    // TODO: method to set/add argument?
-    // May want to wait until AST->IR implementation
+    /**
+    Set the value of this edge's branch argument to a phi node
+    */
+    void setPhiArg(PhiNode dst, IRValue src)
+    {
+        foreach (pair; args)
+        {
+            if (pair.dst is dst)
+            {
+                pair.src = src;
+                return;
+            }
+        }
+
+        args ~= PhiArgPair(src, dst);
+    }
 }
 
 /**
@@ -927,7 +942,7 @@ class IRInstr : IRValue
         return outSlot;
     }
 
-    void setTarget(size_t idx, IRBlock succ)
+    void setTarget(size_t idx, BranchDesc desc)
     {
         assert (idx < targets.length);
 
@@ -936,11 +951,21 @@ class IRInstr : IRValue
             targets[idx].succ.remIncoming(targets[idx]);
 
         // Create a branch edge descriptor
-        auto desc = new BranchDesc(this.block, succ);
         targets[idx] = desc;
 
         // Add an incoming edge to the block
         block.addIncoming(desc);
+    }
+
+    BranchDesc setTarget(size_t idx, IRBlock succ)
+    {
+        auto pred = this.block;
+        assert (pred !is null, "instr is not attached to a block");
+
+        auto desc = new BranchDesc(pred, succ);
+        setTarget(idx, desc);
+
+        return desc;
     }
 
     BranchDesc getTarget(size_t idx)
@@ -1004,17 +1029,9 @@ class IRInstr : IRValue
         return output;
     }
 
-    /// Jump instruction
-    static jump(IRBlock block)
-    {
-        auto jump = new this(&JUMP);
-        jump.setTarget(0, block);
-        return jump;
-
-    }
-
+    /*
     /// Conditional branching instruction
-    static ifTrue(IRValue arg0, IRBlock trueBlock, IRBlock falseBlock)
+    static IRInstr ifTrue(IRValue arg0, IRBlock trueBlock, IRBlock falseBlock)
     {
         auto ift = new this(&IF_TRUE, 2);
         ift.setArg(0, arg0);
@@ -1022,5 +1039,6 @@ class IRInstr : IRValue
         ift.setTarget(1, falseBlock);
         return ift;
     }
+    */
 }
 

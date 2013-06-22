@@ -91,31 +91,20 @@ class IRGenCtx
         IRGenCtx, "ctx"
     ) FnlInfo;
 
+    /**
+    Code generation context constructor
+    */
     this(
         IRGenCtx parent,
         IRFunction fun, 
-        IRBlock block
+        IRBlock block,
+        IRValue[IdentExpr] localMap
     )
     {
         this.parent = parent;
         this.fun = fun;
         this.curBlock = block;
-    }
-
-    /**
-    Create a context to compile a sub-expression into.
-    This context will have its own temporary variables.
-    */    
-    IRGenCtx subCtx(IRBlock startBlock = null)
-    {
-        if (startBlock is null)
-            startBlock = curBlock;
-
-        return new IRGenCtx(
-            this,
-            fun,
-            startBlock
-        );
+        this.localMap = localMap;
     }
 
     /**
@@ -131,12 +120,11 @@ class IRGenCtx
     */
     void merge(IRGenCtx subCtx)
     {
-        assert (
-            subCtx.parent == this,
-            "merge: subCtx is not child context"
-        );
+        this.curBlock = subCtx.curBlock;
+        this.localMap = subCtx.localMap;
 
-        merge(subCtx.curBlock);
+        subCtx.curBlock = null;
+        subCtx.localMap = null;
     }
 
     /**
@@ -245,6 +233,16 @@ class IRGenCtx
 
         return null;
     }
+
+    /**
+    Insert a jump to a given block
+    */
+    BranchDesc jump(IRBlock block)
+    {
+        auto jump = addInstr(new IRInstr(&JUMP));
+        auto desc = jump.setTarget(0, block);
+        return desc;
+    }
 }
 
 /**
@@ -270,11 +268,15 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     auto entry = fun.newBlock("entry");
     fun.entryBlock = entry;
 
+    // Create the local variable map
+    IRValue[IdentExpr] localMap;
+
     // Create a context for the function body
     auto bodyCtx = new IRGenCtx(
         null,
         fun, 
-        entry
+        entry,
+        localMap
     );
 
     // Create values for the hidden arguments
@@ -291,7 +293,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
         auto paramVal = new FunParam(ident.name, argIdx);
         fun.paramMap[ident] = paramVal;
-        bodyCtx.localMap[ident] = paramVal;
+        localMap[ident] = paramVal;
         entry.addPhi(paramVal);
     }
 
@@ -301,7 +303,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         // If this variable does not escape and is not a parameter
         if (ident !in ast.escpVars && ast.params.countUntil(ident) == -1)
         {
-            bodyCtx.localMap[ident] = IRConst.undefCst;
+            localMap[ident] = IRConst.undefCst;
         }
     }
 
@@ -319,17 +321,11 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         }
     }
 
-
-
-
-
     // If the function uses the arguments object
     if (ast.usesArguments)
     {
         //auto argObjSlot = bodyCtx.allocTemp();
         //fun.localMap[ast.argObjIdent] = argObjSlot;
-
-        auto subCtx = bodyCtx.subCtx();
 
         // FIXME
         /*
@@ -366,11 +362,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         auto testBlock = fun.newBlock("arg_test");
         auto loopBlock = fun.newBlock("arg_loop");
         auto exitBlock = fun.newBlock("arg_exit");
-        auto testCtx = subCtx.subCtx(testBlock);
-        auto loopCtx = subCtx.subCtx(loopBlock);
-        
+
         // Jump to the test block
-        subCtx.addInstr(IRInstr.jump(testBlock));
+        //subCtx.addInstr(IRInstr.jump(testBlock));
 
         // FIXME
         /*
@@ -395,12 +389,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
         bodyCtx.merge(exitBlock);
     }
-
-
-
-
-
-
 
     // Get the cell pointers for captured closure variables
     foreach (idx, ident; ast.captVars)
@@ -429,12 +417,12 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             fun.cellMap[ident] = allocInstr;
 
             // If this variable is local
-            if (ident in bodyCtx.localMap)
+            if (ident in localMap)
             {
                 genRtCall(
                     bodyCtx, 
                     "setCellVal", 
-                    [allocInstr, bodyCtx.localMap[ident]]
+                    [allocInstr, localMap[ident]]
                 );
             }
         }
@@ -503,7 +491,6 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         }
     }
 
-    /*
     else if (auto varStmt = cast(VarStmt)stmt)
     {
         for (size_t i = 0; i < varStmt.identExprs.length; ++i)
@@ -514,20 +501,19 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
             if (init is null)
                 continue;
 
-            auto subCtx = ctx.subCtx(true);
             assgToIR(
                 ident,
                 null,
-                delegate void(IRGenCtx ctx)
+                delegate IRValue(IRGenCtx ctx)
                 {
-                    exprToIR(init, ctx);
+                    return exprToIR(init, ctx);
                 },
-                subCtx
+                ctx
             );
-            ctx.merge(subCtx);
         }
     }
 
+    /*
     else if (auto ifStmt = cast(IfStmt)stmt)
     {
         // Compile the true statement
@@ -809,10 +795,13 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     {
         switchToIR(switchStmt, ctx);
     }
+    */
 
     // Break statement
     else if (auto breakStmt = cast(BreakStmt)stmt)
     {
+        assert (false);
+        /*
         IRGenCtx.FnlInfo[] fnlStmts;
         auto block = ctx.getBreakTarget(breakStmt.label, &fnlStmts);
 
@@ -829,11 +818,19 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         }
 
         ctx.addInstr(IRInstr.jump(block));
+
+
+        // TODO
+        // Add the new context to the list corresponding to this label
+        context.breakMap.get(label).push(newContext);
+        */
     }
 
     // Continue statement
     else if (auto contStmt = cast(ContStmt)stmt)
     {
+        assert (false);
+        /*
         IRGenCtx.FnlInfo[] fnlStmts;
         auto block = ctx.getContTarget(contStmt.label, &fnlStmts);
 
@@ -850,8 +847,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         }
 
         ctx.addInstr(IRInstr.jump(block));
+        */
     }
-    */
 
     // Return statement
     else if (auto retStmt = cast(ReturnStmt)stmt)
@@ -869,8 +866,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Compile the finally statements in-line
         foreach (fnl; fnlStmts)
         {
-            auto fnlCtx = ctx.subCtx();
-            fnlCtx.parent = fnl.ctx;
+            auto fnlCtx = new IRGenCtx(
+                fnl.ctx,
+                ctx.fun, 
+                ctx.curBlock,
+                ctx.localMap
+            );
             stmtToIR(fnl.stmt, fnlCtx);
             ctx.merge(fnlCtx.curBlock);
         }
@@ -2381,5 +2382,128 @@ void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
     // Continue code generation in the continuation block
     ctx.merge(contBlock);
     */
+}
+
+/*
+Creates phi nodes and modifies the local variable map for a loop entry
+*/
+IRGenCtx createLoopEntry(
+    IRGenCtx curCtx, 
+    IRBlock entryBlock
+)
+{
+    // Branch into the loop entry
+    auto entryDesc = curCtx.jump(entryBlock);  
+
+    // Create a local map for the loop entry
+    IRValue[IdentExpr] localMap;
+
+    // For each local variable
+    foreach (ident, value; curCtx.localMap)
+    {
+        // Create a phi node in the loop entry block
+        auto phiNode = entryBlock.addPhi(new PhiNode());
+
+        // Set the entry argument to the phi node
+        entryDesc.setPhiArg(phiNode, value);
+
+        // Add the phi node to the local map
+        localMap[ident] = phiNode;
+    }
+
+    // Create the loop entry context
+    return new IRGenCtx(
+        curCtx,
+        curCtx.fun,
+        entryBlock,
+        localMap
+    );
+}
+
+/**
+Merge incoming contexts for a loop entry block
+*/
+void mergeLoopEntry(
+    IRGenCtx[] contexts,
+    IRBlock entryBlock,
+    IRValue[IdentExpr] entryMap
+)
+{
+    // Add a jump from each incoming context to the loop entry
+    foreach (ctx; contexts)
+    {
+        assert (
+            ctx.curBlock.lastInstr is null ||
+            ctx.curBlock.lastInstr.opcode.isBranch is false
+        );
+
+        ctx.jump(entryBlock);
+    }
+
+    // For each local variable going through the loop
+    foreach (ident, value; entryMap)
+    {
+        auto phiNode = cast(PhiNode)value;
+        assert (phiNode !is null);
+
+        // Count the number of incoming self reference values
+        size_t numSelf = 0;
+        IRValue nonSelfVal = null;
+        foreach (ctx; contexts)
+        {
+            auto incVal = ctx.localMap[ident];
+
+            if (incVal is phiNode)
+                numSelf++;
+            else
+                nonSelfVal = incVal;
+        }
+
+        // If the phi node only has one incoming value and self references
+        if (numSelf == contexts.length - 1)
+        {
+            // TODO: replace phi node by nonSelfVal
+
+            // TODO: make IRValue helper fn: replaceUses(IRValue newVal)
+
+            // TODO: implement remPhi
+            // Remove the phi node
+            //entryBlock.remPhi(phiNode);
+        }
+        else
+        {
+            // Set the incoming phi values for all incoming contexts
+            foreach (ctx; contexts)
+            {
+                auto incVal = ctx.localMap[ident];
+                auto branchDesc = ctx.curBlock.lastInstr.getTarget(0);
+                branchDesc.setPhiArg(phiNode, incVal);
+            }
+        }
+    }
+}
+
+/*
+TODO: mergeContext or mergeContexts?
+- in Tachyon, creates a new block with phi nodes as appropriate
+- could merge on an individual basis?
+*/
+void mergeContext(
+    /*
+    contexts,
+    mergeMap,
+    cfg,
+    blockName
+    */
+)
+{
+
+
+
+
+
+
+
+
 }
 
