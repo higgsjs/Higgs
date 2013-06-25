@@ -142,24 +142,30 @@ TODO: begin steps to test interp on simple expressions
 
 TODO: get basic while loop working
 
-TODO: mergeContext or mergeContexts?
-- could merge on an individual basis?
-- need to be able to create a new block with phi nodes!
 
-TODO: mergeLoopEntry?
-TODO: method to set/add branch desc argument?
 
-TODO: createLoopEntry
+TODO: adapt context for loops, break ctx list, cont ctx list
+
+
+
+
+
+
+
+[DONE] TODO: mergeContexts
+- In Tachyon, with the output of mergeContexts
+  - Set it as the "output" (continue generating code there), like .merge
+  - Continue generating code from a new context with that block
+- Creating a new context seems like the safer, cleaner option (and probably just as fast)
+  - Much cleaner abstraction
+
+[DONE] TODO: mergeLoopEntry?
+
+[DONE] TODO: method to set/add branch desc argument?
+
+[DONE] TODO: createLoopEntry
 - creates phi nodes for each variable going through the loop
 - start by making basic while loop work!
-
-
-
-
-
-
-
-
 
 [DONE] TODO: test simple functions/expressions
 - print text output

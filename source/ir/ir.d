@@ -404,6 +404,7 @@ class IRBlock : IdObject
 
         instr.prev = null;
         instr.next = null;
+        instr.block = null;
     }
 
     /**
@@ -429,6 +430,26 @@ class IRBlock : IdObject
         phi.block = this;
 
         return phi;
+    }
+
+    /**
+    Remove a phi node
+    */
+    void remPhi(PhiNode phi)
+    {
+        if (phi.prev)
+            phi.prev.next = phi.next;
+        else
+            firstPhi = phi.next;
+
+        if (phi.next)
+            phi.next.prev = phi.prev;
+        else
+            lastPhi = phi.prev;
+
+        phi.prev = null;
+        phi.next = null;
+        phi.block = null;
     }
 
     void addIncoming(BranchDesc branch)
@@ -536,9 +557,39 @@ class IRValue : IdObject
         return firstDst == null;
     }
 
+    /// Replace uses of this value by uses of another value
+    void replUses(IRValue newVal)
+    {
+        assert (newVal !is null);
+
+        // Find the last use of the new value
+        auto lastUse = newVal.firstDst; 
+        while (lastUse !is null && lastUse.next !is null)
+            lastUse = lastUse.next;
+
+        // Make all our uses point to the new value
+        for (auto use = this.firstDst; use !is null; use = use.next)
+            use.value = newVal;
+
+        // Chain all our uses at end of the new value's uses
+        if (lastUse !is null)
+        {
+            lastUse.next = this.firstDst;
+            this.firstDst.prev = lastUse;
+        }
+        else
+        {
+            newVal.firstDst = this.firstDst;
+        }
+
+        // There are no more uses of this value
+        this.firstDst = null;
+    }
+
     /// Get the short name for this value
     string getName()
     {
+        // By default, just use the string representation
         return toString();
     }
 }

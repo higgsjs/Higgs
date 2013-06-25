@@ -2459,16 +2459,16 @@ void mergeLoopEntry(
                 nonSelfVal = incVal;
         }
 
+        assert (nonSelfVal !is null);
+
         // If the phi node only has one incoming value and self references
         if (numSelf == contexts.length - 1)
         {
-            // TODO: replace phi node by nonSelfVal
+            // Replace uses of the phi node by uses of its incoming value
+            phiNode.replUses(nonSelfVal);
 
-            // TODO: make IRValue helper fn: replaceUses(IRValue newVal)
-
-            // TODO: implement remPhi
             // Remove the phi node
-            //entryBlock.remPhi(phiNode);
+            entryBlock.remPhi(phiNode);
         }
         else
         {
@@ -2483,27 +2483,72 @@ void mergeLoopEntry(
     }
 }
 
-/*
-TODO: mergeContext or mergeContexts?
-- in Tachyon, creates a new block with phi nodes as appropriate
-- could merge on an individual basis?
+/**
+Merge local variables locations from multiple contexts using phi nodes
 */
-void mergeContext(
-    /*
-    contexts,
-    mergeMap,
-    cfg,
-    blockName
-    */
+IRGenCtx mergeContexts(
+    IRGenCtx curCtx,
+    IRGenCtx[] contexts,
+    IRBlock mergeBlock
 )
 {
+    // TODO: Do we need a new context, or can we always merge into a new one?
+    // Answer this question once while loop is implemented?
+    // Generally, one context per flow path, sub-ctx is more flexible
 
+    assert (
+        contexts.length > 0, 
+        "no contexts to merge"
+    );
 
+    // Local map for the merged values
+    IRValue[IdentExpr] mergeMap;
 
+    // For each local variable going through the loop
+    foreach (ident, value; curCtx.localMap)
+    {
+        // Check if all incoming values are the same
+        IRValue firstVal = contexts[0].localMap[ident];
+        bool allEqual = true;
+        foreach (ctx; contexts[1..$])
+        {
+            auto incVal = ctx.localMap[ident];
+            if (incVal != firstVal)
+                allEqual = false;
+        }
 
+        // If not all incoming values are the same
+        if (allEqual is false)
+        {
+            // Create a phi node for this value
+            auto phiNode = mergeBlock.addPhi(new PhiNode());
 
+            // Add the phi node to the merged map
+            mergeMap[ident] = phiNode;
 
+            // Set the incoming phi values for all incoming contexts
+            foreach (ctx; contexts)
+            {
+                auto incVal = ctx.localMap[ident];
+                auto branchDesc = ctx.curBlock.lastInstr.getTarget(0);
+                branchDesc.setPhiArg(phiNode, incVal);
+            }
+        }
 
+        // Otherwise, all values are the same
+        else
+        {
+            // Add the value directly to the merged map
+            mergeMap[ident] = firstVal;
+        }
+    }
 
+    // Create the loop entry context
+    return new IRGenCtx(
+        curCtx,
+        curCtx.fun,
+        mergeBlock,
+        mergeMap
+    );
 }
 
