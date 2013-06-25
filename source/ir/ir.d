@@ -888,6 +888,9 @@ SSA instruction
 */
 class IRInstr : IRValue
 {
+    /// Maximum number of branch targets
+    static const MAX_TARGETS = 2;
+
     /// Opcode
     Opcode* opcode;
 
@@ -895,7 +898,7 @@ class IRInstr : IRValue
     private Use[] args;
 
     /// Branch targets 
-    private BranchDesc[2] targets = [null, null];
+    private BranchDesc[MAX_TARGETS] targets = [null, null];
 
     /// Parent block
     IRBlock block = null;
@@ -911,8 +914,9 @@ class IRInstr : IRValue
     this(Opcode* opcode, size_t numArgs = 0)
     {
         assert (
-            opcode.argTypes.length == numArgs || 
-            (opcode.argTypes.length < 3 && opcode.isVarArg)
+            (numArgs == opcode.argTypes.length) ||
+            (numArgs >  opcode.argTypes.length && opcode.isVarArg),
+            "instr argument count mismatch"
         );
 
         this.opcode = opcode;
@@ -1011,7 +1015,11 @@ class IRInstr : IRValue
     BranchDesc setTarget(size_t idx, IRBlock succ)
     {
         auto pred = this.block;
-        assert (pred !is null, "instr is not attached to a block");
+
+        assert (
+            pred !is null, 
+            "setTarget: instr is not attached to a block"
+        );
 
         auto desc = new BranchDesc(pred, succ);
         setTarget(idx, desc);
@@ -1079,17 +1087,5 @@ class IRInstr : IRValue
 
         return output;
     }
-
-    /*
-    /// Conditional branching instruction
-    static IRInstr ifTrue(IRValue arg0, IRBlock trueBlock, IRBlock falseBlock)
-    {
-        auto ift = new this(&IF_TRUE, 2);
-        ift.setArg(0, arg0);
-        ift.setTarget(0, trueBlock);
-        ift.setTarget(1, falseBlock);
-        return ift;
-    }
-    */
 }
 

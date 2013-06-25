@@ -118,6 +118,9 @@ TODO: liveness and slot mapping analysis for new IR
 - Other instrs get slots based on who's live at the same time
   - Map instr to first slot that's not already mapped to an interfering value
 
+TODO: rename getBreakTarget, getContTarget?
+- getBreakCtxs
+
 TODO: fixup GC
 
 TODO: adapt interpreter
@@ -128,29 +131,58 @@ TODO: adapt interpreter
 - interp.getArgVal, interp.jump
 - grep ops for FIXME
 
-TODO: Port/reimplement AST->IR
-- Look at Tachyon code
-- No longer does slot mapping
-- Now needs to build basic SSA graph (varmap, ...)
-- Overall structure remains the same
-
-TODO: begin steps to test interp on simple expressions
+TODO: begin steps to test interp on simple expressions ***
 - get complete pipeline working for simple stuff
   - basic exprs, loops
 - implement trivial stack slot assignment
   - can we make some quick opts on this? single use instrs
 
+Must now begin testing with interpreter
+
+TODO: get if statement working
+
+TODO: compare Tachyon and Higgs WhileStmt versions
+- Possible improvements for clarity/simplicity? Refactor now
+- createLoopEntry? look at Tachyon usages, do we always register labels?
+
+
 TODO: get basic while loop working
+- Test with ./higgs -e "..."
+- Test with local vars, phi nodes
+  - Do phi nodes log branch idx?
+
+FIXME: get x = 1 working
 
 
 
-TODO: adapt context for loops, break ctx list, cont ctx list
+
+
+FIXME: get while (1) to work
+- genRtCall is incomplete
 
 
 
 
 
 
+
+
+[DONE] TODO: get while(true) to work
+
+[DONE] FIXME: merge ctx should check if branch exists
+- If branch present, find matching target
+
+[DONE] TODO: context.merge(subCtx)... proper local map handling?
+
+[DONE] TODO: IRGenCtx.dup? Bring back subCtx! less copying overhead
+
+[DONE] TODO: IRGenCtx.ifTrue
+
+[DONE] TODO: adapt context for loops, break ctx list, cont ctx list
+- No longer want exit and continue blocks, but lists instead
+
+[DONE] TODO: convert genBoolEval
+- KISS for now, improve with SSA way later?
 
 [DONE] TODO: mergeContexts
 - In Tachyon, with the output of mergeContexts

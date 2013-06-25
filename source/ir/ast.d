@@ -68,9 +68,9 @@ class IRGenCtx
     IRValue[IdentExpr] localMap;
 
     alias Tuple!(
-        wstring, "name", 
-        IRBlock, "breakBlock", 
-        IRBlock, "contBlock"
+        wstring, "name",
+        IRGenCtx[]*, "breakCtxs", 
+        IRGenCtx[]*, "contCtxs"
     ) LabelTargets;
 
     /// Target blocks for named statement labels
@@ -108,6 +108,21 @@ class IRGenCtx
     }
 
     /**
+    Create a sub-context of this context
+    */
+    IRGenCtx subCtx(IRBlock startBlock =  null)
+    {
+        auto sub = new IRGenCtx(
+            this, 
+            this.fun,
+            startBlock? startBlock:this.curBlock, 
+            this.localMap.dup
+        );
+
+        return sub;
+    }
+
+    /**
     Merge and continue insertion in a specific block
     */
     void merge(IRBlock block)
@@ -132,6 +147,11 @@ class IRGenCtx
     */
     IRInstr addInstr(IRInstr instr)
     {
+        assert (
+            curBlock !is null,
+            "current block is null, context likely absorbed in merge"
+        );
+
         // If the current block already has a branch, do nothing
         if (curBlock.lastInstr && curBlock.lastInstr.opcode.isBranch)
             return instr;
@@ -151,24 +171,24 @@ class IRGenCtx
     /**
     Register labels in the current context
     */
-    void regLabels(IdentExpr[] labels, IRBlock breakBlock, IRBlock contBlock)
+    void regLabels(IdentExpr[] labels, IRGenCtx[]* breakCtxs, IRGenCtx[]* contCtxs)
     {
         foreach (label; labels)
-            labelTargets ~= LabelTargets(label.name, breakBlock, contBlock);
+            labelTargets ~= LabelTargets(label.name, breakCtxs, contCtxs);
 
         // Implicit null label
-        labelTargets ~= LabelTargets(null, breakBlock, contBlock);
+        labelTargets ~= LabelTargets(null, breakCtxs, contCtxs);
     }
 
     /**
-    Find the target block for a break statement
+    Find the context list for a break statement
     */
-    IRBlock getBreakTarget(IdentExpr ident, FnlInfo[]* stmts)
+    IRGenCtx[]* getBreakTarget(IdentExpr ident, FnlInfo[]* stmts)
     {
         foreach (target; labelTargets)
             if ((ident is null && target.name is null) || 
                 (ident !is null && target.name == ident.name))
-                return target.breakBlock;
+                return target.breakCtxs;
 
         if (fnlStmt)
             *stmts ~= FnlInfo(fnlStmt, parent);
@@ -180,18 +200,18 @@ class IRGenCtx
     }
 
     /**
-    Find the target block for a continue statement
+    Find the context list for a continue statement
     */
-    IRBlock getContTarget(IdentExpr ident, FnlInfo[]* stmts)
+    IRGenCtx[]* getContTarget(IdentExpr ident, FnlInfo[]* stmts)
     {
         foreach (target; labelTargets)
         {
-            if (target.contBlock is null)
+            if (target.contCtxs is null)
                 continue;
 
             if ((ident is null && target.name is null) || 
                 (ident !is null && target.name == ident.name))
-                return target.contBlock;
+                return target.contCtxs;
         }
 
         if (fnlStmt)
@@ -235,13 +255,25 @@ class IRGenCtx
     }
 
     /**
-    Insert a jump to a given block
+    Insert a jump in the current block
     */
     BranchDesc jump(IRBlock block)
     {
-        auto jump = addInstr(new IRInstr(&JUMP));
+        auto jump = this.addInstr(new IRInstr(&JUMP));
+        assert (jump.block is this.curBlock);
         auto desc = jump.setTarget(0, block);
         return desc;
+    }
+
+    /**
+    Insert a conditional branch in the current block
+    */
+    IRInstr ifTrue(IRValue arg0, IRBlock trueBlock, IRBlock falseBlock)
+    {
+        auto ift = this.addInstr(new IRInstr(&IF_TRUE, arg0));
+        ift.setTarget(0, trueBlock);
+        ift.setTarget(1, falseBlock);
+        return ift;
     }
 }
 
@@ -572,7 +604,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Continue code generation in the join block
         ctx.merge(joinBlock);
     }
-  
+    */  
+
     else if (auto whileStmt = cast(WhileStmt)stmt)
     {
         // Create the loop test, body and exit blocks
@@ -580,41 +613,62 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto bodyBlock = ctx.fun.newBlock("while_body");
         auto exitBlock = ctx.fun.newBlock("while_exit");
 
+        // Create a context for the loop entry (the loop test)
+        auto testCtx = createLoopEntry(
+            ctx,
+            testBlock
+        );
+
+        // Store a copy of the loop entry phi nodes
+        auto entryLocals = testCtx.localMap.dup;        
+
         // Register the loop labels, if any
-        ctx.regLabels(stmt.labels, exitBlock, testBlock);
+        IRGenCtx[] brkCtxList = [];
+        IRGenCtx[] cntCtxList = [];
+        testCtx.regLabels(stmt.labels, &brkCtxList, &cntCtxList);
 
-        // Jump to the test block
-        ctx.addInstr(IRInstr.jump(testBlock));
-
-        // Evaluate the test expression
-        auto testCtx = ctx.subCtx(true, NULL_LOCAL, testBlock);
-        exprToIR(whileStmt.testExpr, testCtx);
+        // Compile the loop test in the entry context
+        auto testVal = exprToIR(whileStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
-        auto boolSlot = genBoolEval(
+        auto boolVal = genBoolEval(
             testCtx, 
             whileStmt.testExpr, 
-            testCtx.getOutSlot()
+            testVal
         );
 
         // If the expresson is true, jump to the loop body
-        testCtx.addInstr(IRInstr.ifTrue(
-            boolSlot,
-            bodyBlock,
-            exitBlock
-        ));
+        testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
 
         // Compile the loop body statement
-        auto bodyCtx = ctx.subCtx(false, NULL_LOCAL, bodyBlock);
+        auto bodyCtx = testCtx.subCtx(bodyBlock);
         stmtToIR(whileStmt.bodyStmt, bodyCtx);
 
-        // Jump to the loop test
-        bodyCtx.addInstr(IRInstr.jump(testBlock));
+        // Add the test exit to the entry context list
+        brkCtxList ~= testCtx.subCtx();
 
-        // Continue code generation in the exit block
-        ctx.merge(exitBlock);
+        // Add the body exit to the continue context list
+        cntCtxList ~= bodyCtx.subCtx();
+
+        // Merge the break contexts into the loop exit
+        auto loopExitCtx = mergeContexts(
+            ctx,
+            brkCtxList,
+            exitBlock
+        );
+
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
+            cntCtxList,
+            entryLocals,
+            testBlock
+        );
+
+        // Continue code generation after the loop exit
+        ctx.merge(loopExitCtx);
     }
 
+    /*
     else if (auto doStmt = cast(DoWhileStmt)stmt)
     {
         // Create the loop test, body and exit blocks
@@ -2040,7 +2094,6 @@ IRValue assgToIR(
 /**
 Test if an expression is inline IR
 */
-/*
 bool isIIR(ASTExpr expr)
 {
 
@@ -2051,12 +2104,10 @@ bool isIIR(ASTExpr expr)
     auto identExpr = cast(IdentExpr)callExpr.base;
     return (identExpr && identExpr.name.startsWith(IIR_PREFIX));
 }
-*/
 
 /**
 Test if this is a branch-position inline IR expression
 */
-/*
 bool isBranchIIR(ASTExpr expr)
 {
     // If this is an assignment, check the right subexpression
@@ -2066,7 +2117,6 @@ bool isBranchIIR(ASTExpr expr)
 
     return isIIR(expr);
 }
-*/
 
 /**
 Generate an inline IR instruction
@@ -2213,8 +2263,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
 /**
 Evaluate a value as a boolean
 */
-/*
-LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
+IRValue genBoolEval(IRGenCtx ctx, ASTExpr testExpr, IRValue argVal)
 {
     bool isBoolExpr(ASTExpr expr)
     {
@@ -2252,7 +2301,7 @@ LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
 
     if (isBoolExpr(testExpr))
     {
-        return argSlot;
+        return argVal;
     }
     else
     {
@@ -2260,14 +2309,12 @@ LocalIdx genBoolEval(IRGenCtx ctx, ASTExpr testExpr, LocalIdx argSlot)
         auto boolInstr = genRtCall(
             ctx, 
             "toBool",
-            ctx.allocTemp(),
-            [argSlot]
+            [argVal]
         );
 
-        return boolInstr.outSlot;
+        return boolInstr;
     }
 }
-*/
 
 /**
 Insert a call to a runtime function
@@ -2425,19 +2472,19 @@ Merge incoming contexts for a loop entry block
 */
 void mergeLoopEntry(
     IRGenCtx[] contexts,
-    IRBlock entryBlock,
-    IRValue[IdentExpr] entryMap
+    IRValue[IdentExpr] entryMap,
+    IRBlock entryBlock
 )
 {
     // Add a jump from each incoming context to the loop entry
     foreach (ctx; contexts)
     {
-        assert (
-            ctx.curBlock.lastInstr is null ||
-            ctx.curBlock.lastInstr.opcode.isBranch is false
-        );
+        //writefln("merging context into entry");
+        //writefln("lastInstr: %s", ctx.curBlock.lastInstr);
 
-        ctx.jump(entryBlock);
+        auto lastInstr = ctx.curBlock.lastInstr;
+        if (!lastInstr || !lastInstr.opcode.isBranch)
+            ctx.jump(entryBlock);
     }
 
     // For each local variable going through the loop
@@ -2487,15 +2534,11 @@ void mergeLoopEntry(
 Merge local variables locations from multiple contexts using phi nodes
 */
 IRGenCtx mergeContexts(
-    IRGenCtx curCtx,
+    IRGenCtx parentCtx,
     IRGenCtx[] contexts,
     IRBlock mergeBlock
 )
 {
-    // TODO: Do we need a new context, or can we always merge into a new one?
-    // Answer this question once while loop is implemented?
-    // Generally, one context per flow path, sub-ctx is more flexible
-
     assert (
         contexts.length > 0, 
         "no contexts to merge"
@@ -2505,7 +2548,7 @@ IRGenCtx mergeContexts(
     IRValue[IdentExpr] mergeMap;
 
     // For each local variable going through the loop
-    foreach (ident, value; curCtx.localMap)
+    foreach (ident, value; parentCtx.localMap)
     {
         // Check if all incoming values are the same
         IRValue firstVal = contexts[0].localMap[ident];
@@ -2530,8 +2573,13 @@ IRGenCtx mergeContexts(
             foreach (ctx; contexts)
             {
                 auto incVal = ctx.localMap[ident];
-                auto branchDesc = ctx.curBlock.lastInstr.getTarget(0);
-                branchDesc.setPhiArg(phiNode, incVal);
+                auto branch = ctx.curBlock.lastInstr;
+                assert (branch !is null);
+
+                // For each target of the branch instruction
+                for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
+                    if (auto desc = branch.getTarget(tIdx))
+                        desc.setPhiArg(phiNode, incVal);
             }
         }
 
@@ -2545,8 +2593,8 @@ IRGenCtx mergeContexts(
 
     // Create the loop entry context
     return new IRGenCtx(
-        curCtx,
-        curCtx.fun,
+        parentCtx,
+        parentCtx.fun,
         mergeBlock,
         mergeMap
     );
