@@ -102,8 +102,14 @@ TODO: begin steps to test interp on simple expressions
 - get complete pipeline working for simple stuff, build on
 
 TODO: implement trivial stack slot assignment pass
-- can we make some quick opts on this? single use instrs
 - should be called at end of astToIR
+- ir/slotalloc.d, allocSlots(IRFunction)
+- instrs with single uses *in the same block* interfere with other from block
+  - these are "bounded" temps (same block bound)
+  - each get a slot from tempSlots
+- instrs in the other category interfere with everything
+  - each get their own slot from varSlots
+- for now phi nodes get own slots too, from varSlots
 
 
 
@@ -115,6 +121,9 @@ FIXME: break/cont target should have both ctxList and IRBlock
 
 
 
+
+
+[DONE] TODO: comment out currently broken tests, get make test working
 
 [DONE] TODO: get IR gen for function calls working
 

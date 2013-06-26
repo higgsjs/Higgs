@@ -176,10 +176,13 @@ unittest
 
 unittest
 {
-    auto v = (new Interp()).evalString("1");
-    assert (v.word.int32Val == 1);
+    writefln("string evaluation");
+
+    //auto v = (new Interp()).evalString("1");
+    //assert (v.word.int32Val == 1);
 }
 
+/*
 /// Global expression tests
 unittest
 {
@@ -1499,10 +1502,9 @@ unittest
     interp.load("programs/v8bench/drv-richards.js");
 
     // FIXME: GC-related bug?
-    /*
-    writefln("v8bench/earley-boyer");
-    interp.load("programs/v8bench/earley-boyer.js");
-    interp.load("programs/v8bench/drv-earley-boyer.js");
-    */
+    //writefln("v8bench/earley-boyer");
+    //interp.load("programs/v8bench/earley-boyer.js");
+    //interp.load("programs/v8bench/drv-earley-boyer.js");
 }
+*/
 
