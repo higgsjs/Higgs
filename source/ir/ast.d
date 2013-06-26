@@ -1104,9 +1104,6 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 
 IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 {
-    if (false) {}
-
-    /*
     // Function expression
     if (auto funExpr = cast(FunExpr)expr)
     {
@@ -1117,29 +1114,30 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto fun = new IRFunction(funExpr);
 
             // Create a closure of this function
-            auto newClos = ctx.addInstr(new IRInstr(&NEW_CLOS));
-            newClos.outSlot = ctx.getOutSlot();
-            newClos.args.length = 3;
-            newClos.args[0].fun = fun;
-            newClos.args[1].linkIdx = NULL_LINK;
-            newClos.args[2].linkIdx = NULL_LINK;
+            auto newClos = ctx.addInstr(new IRInstr(
+                &NEW_CLOS,
+                new IRFunPtr(fun),
+                new IRLinkIdx(),
+                new IRLinkIdx()
+            ));
 
             // Set the closure cells for the captured variables
             foreach (idx, ident; funExpr.captVars)
             {
-                auto idxCst = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), cast(int32)idx));
-
-                auto cellSlot = ctx.fun.cellMap[ident];
+                auto idxCst = IRConst.int32Cst(cast(int32_t)idx);
+                auto cellVal = ctx.fun.cellMap[ident];
                 genRtCall(
                     ctx, 
                     "clos_set_cell",
-                    NULL_LOCAL,
-                    [newClos.outSlot, idxCst.outSlot, cellSlot]
+                    [newClos, idxCst, cellVal]
                 );
             }
+
+            return newClos;
         }
+
+        return null;
     }
-    */
 
     else if (auto binExpr = cast(BinOpExpr)expr)
     {
@@ -1591,6 +1589,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Continue code generation in the join block
         ctx.merge(joinBlock);
     }
+    */
 
     // Function call expression
     else if (auto callExpr = cast(CallExpr)expr)
@@ -1601,77 +1600,61 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // If this is an inline IR instruction
         if (isIIR(callExpr))
         {
-            genIIR(callExpr, ctx);
-            return;
+            return genIIR(callExpr, ctx);
         }
 
         // Local slots for the closure and "this" arguments
-        LocalIdx closSlot;
-        LocalIdx thisSlot;
+        IRValue closVal;
+        IRValue thisVal;
 
         // If the base expression is a member expression
         if (auto indexExpr = cast(IndexExpr)baseExpr)
         {
-            // Evaluate the base expression
-            auto baseCtx = ctx.subCtx(true);       
-            exprToIR(indexExpr.base, baseCtx);
-            ctx.merge(baseCtx);
+            // Evaluate the base (this) expression
+            thisVal = exprToIR(indexExpr.base, ctx);
 
             // Evaluate the index expression
-            auto idxCtx = ctx.subCtx(true);       
-            exprToIR(indexExpr.index, idxCtx);
-            ctx.merge(idxCtx);
+            auto keyVal = exprToIR(indexExpr.index, ctx);
 
             // Get the method property
-            closSlot = ctx.allocTemp();
-            genRtCall(
-                ctx, 
+            closVal = genRtCall(
+                ctx,
                 "getProp",
-                closSlot,
-                [baseCtx.getOutSlot(), idxCtx.getOutSlot()]
+                [thisVal, keyVal]
             );
-
-            thisSlot = baseCtx.getOutSlot();
         }
 
         else
         {
             // Evaluate the base expression
-            auto baseCtx = ctx.subCtx(true);       
-            exprToIR(baseExpr, baseCtx);
-            ctx.merge(baseCtx);
-
-            closSlot = baseCtx.getOutSlot();
+            closVal = exprToIR(baseExpr, ctx);
 
             // The this value is the global object
-            thisSlot = ctx.allocTemp();
-            ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ, thisSlot));
+            thisVal = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
         }
 
         // Evaluate the arguments
-        auto argSlots = new LocalIdx[argExprs.length];
-        for (size_t i = 0; i < argExprs.length; ++i)
+        auto argVals = new IRValue[argExprs.length];
+        foreach (argIdx, argExpr; argExprs)
         {
-            auto argCtx = ctx.subCtx(true);       
-            exprToIR(argExprs[i], argCtx);
-            ctx.merge(argCtx);
-            argSlots[i] = argCtx.outSlot;
+            argVals[argIdx] = exprToIR(argExpr, ctx);
         }
 
         // Add the call instruction
         // <dstLocal> = CALL <fnLocal> <thisArg> ...
-        auto callInstr = ctx.addInstr(new IRInstr(&CALL));
-        callInstr.outSlot = ctx.getOutSlot();
-        callInstr.args.length = 2 + argSlots.length;
-        callInstr.args[0].localIdx = closSlot;
-        callInstr.args[1].localIdx = thisSlot;
-        for (size_t i = 0; i < argSlots.length; ++i)
-            callInstr.args[2+i].localIdx = argSlots[i];
+        auto callInstr = ctx.addInstr(new IRInstr(&CALL, 2 + argVals.length));
+        callInstr.setArg(0, closVal);
+        callInstr.setArg(1, thisVal);
+        foreach (argIdx, argVal; argVals)
+            callInstr.setArg(2+argIdx, argVal);
 
         // Generate the call targets
         genCallTargets(ctx, callInstr);
+
+        return callInstr;
     }
 
+    /*
     // New operator call expression
     else if (auto newExpr = cast(NewExpr)expr)
     {
@@ -1873,15 +1856,16 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         return IRConst.float64Cst(floatExpr.val);
     }
 
-    /*
     else if (auto stringExpr = cast(StringExpr)expr)
     {
-        ctx.addInstr(IRInstr.strCst(
-            ctx.getOutSlot(),
-            stringExpr.val
+        return ctx.addInstr(new IRInstr(
+            &SET_STR,
+            new IRString(stringExpr.val),
+            new IRLinkIdx()
         ));
     }
 
+    /*
     else if (auto regexpExpr = cast(RegexpExpr)expr)
     {
         auto linkInstr = ctx.addInstr(IRInstr.makeLink(ctx.allocTemp()));
@@ -2083,7 +2067,6 @@ bool isBranchIIR(ASTExpr expr)
 /**
 Generate an inline IR instruction
 */
-/*
 IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
 {
     assert (
@@ -2091,6 +2074,9 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
         "invalid inline IR expr"
     );
 
+    assert (false);
+
+    /*
     auto callExpr = cast(CallExpr)expr;
     auto baseExpr = callExpr.base;
     auto argExprs = callExpr.args;
@@ -2219,8 +2205,8 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
         genCallTargets(ctx, instr);
 
     return instr;
+    */
 }
-*/
 
 /**
 Evaluate a value as a boolean

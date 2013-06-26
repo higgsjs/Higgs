@@ -937,7 +937,10 @@ class IRInstr : IRValue
     /// Binary constructor
     this(Opcode* opcode, IRValue arg0, IRValue arg1)
     {
-        assert (opcode.argTypes.length == 2);
+        assert (
+            opcode.argTypes.length == 2,
+            "IR instruction does not take 2 arguments"
+        );
 
         this(opcode, 2);
         setArg(0, arg0);
@@ -947,7 +950,10 @@ class IRInstr : IRValue
     /// Unary constructor
     this(Opcode* opcode, IRValue arg0)
     {
-        assert (opcode.argTypes.length == 1);
+        assert (
+            opcode.argTypes.length == 1,
+            "IR instruction does not take 1 argument"
+        );
 
         this(opcode, 1);
         setArg(0, arg0);

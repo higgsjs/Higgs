@@ -57,30 +57,19 @@ void main(string[] args)
 
 
 
-
-
     // FIXME: SSA test code
     import ir.ir;
     import ir.ast;
+    import parser.ast;
 
     if (opts.execString !is null)
     {
-        auto ast = parseString(opts.execString, "string");
+        auto ast = cast(FunExpr)parseString(opts.execString, "string");
         auto fir = astToIR(ast);
-
-
-        writeln(fir.toString());
-
-
+        writeln(fir);
     }
 
-    // FIXME: for testing during SSA refactoring
     return;
-
-
-
-
-
 
 
 
