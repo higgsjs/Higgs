@@ -171,7 +171,11 @@ class IRGenCtx
     /**
     Register labels in the current context
     */
-    void regLabels(IdentExpr[] labels, IRGenCtx[]* breakCtxs, IRGenCtx[]* contCtxs)
+    void regLabels(
+        IdentExpr[] labels, 
+        IRGenCtx[]* breakCtxs, 
+        IRGenCtx[]* contCtxs
+    )
     {
         foreach (label; labels)
             labelTargets ~= LabelTargets(label.name, breakCtxs, contCtxs);
@@ -657,6 +661,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
             exitBlock
         );
 
+        writefln("num break ctxs: %s", brkCtxList.length);
+
         // Merge the continue contexts with the loop entry
         mergeLoopEntry(
             cntCtxList,
@@ -843,41 +849,41 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Continue code generation in the exit block
         ctx.merge(exitBlock);
     }
+    */
 
     // Switch statement
     else if (auto switchStmt = cast(SwitchStmt)stmt)
     {
         switchToIR(switchStmt, ctx);
     }
-    */
 
     // Break statement
     else if (auto breakStmt = cast(BreakStmt)stmt)
     {
-        assert (false);
-        /*
         IRGenCtx.FnlInfo[] fnlStmts;
-        auto block = ctx.getBreakTarget(breakStmt.label, &fnlStmts);
+        auto breakCtxs = ctx.getBreakTarget(breakStmt.label, &fnlStmts);
 
-        if (block is null)
+        if (breakCtxs is null)
             throw new ParseError("break statement with no target", stmt.pos);
 
         // Compile the finally statements in-line
         foreach (fnl; fnlStmts)
         {
-            auto fnlCtx = ctx.subCtx(false);
-            fnlCtx.parent = fnl.ctx;
+            // FIXME: this seems broken
+            // fnl.ctx.subCtx would ignore our local variables?
+            // need to fnlCtx.localMap = ctx.localMap.dup?
+
+            auto fnlCtx = fnl.ctx.subCtx();
             stmtToIR(fnl.stmt, fnlCtx);
-            ctx.merge(fnlCtx.curBlock);
+            ctx.merge(fnlCtx);
         }
 
-        ctx.addInstr(IRInstr.jump(block));
+        // TODO: jump to block target here
+        //ctx.jump(block);
 
+        *breakCtxs ~= ctx.subCtx();
 
-        // TODO
-        // Add the new context to the list corresponding to this label
-        context.breakMap.get(label).push(newContext);
-        */
+        writefln("num break ctxs: %s", breakCtxs.length);
     }
 
     // Continue statement
@@ -939,6 +945,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         exprToIR(throwStmt.expr, subCtx);
         ctx.merge(subCtx);
 
+        // FIXME: need some kind of merge here?
+
         // Generate the exception path
         if (auto excBlock = genExcPath(ctx, subCtx.getOutSlot()))
         {
@@ -955,7 +963,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
             ));
         }
     }
+    */
 
+    /*
     else if (auto tryStmt = cast(TryStmt)stmt)
     {
         // Create a block for the catch statement
@@ -1008,9 +1018,11 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     }
 }
 
-/*
 void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 {
+    assert (false, "switchToIR unimplemented");
+
+    /*
     // Compile the switch expression
     auto switchCtx = ctx.subCtx(true);
     exprToIR(stmt.switchExpr, switchCtx);
@@ -1099,8 +1111,8 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 
     // Continue code generation at the exit block
     ctx.merge(exitBlock);
+    */
 }
-*/
 
 IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 {
@@ -1546,6 +1558,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         }
     }
 
+    // TODO: need merge here? look at Tachyon code, simplify
     /*
     else if (auto condExpr = cast(CondExpr)expr)
     {
@@ -1636,9 +1649,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Evaluate the arguments
         auto argVals = new IRValue[argExprs.length];
         foreach (argIdx, argExpr; argExprs)
-        {
             argVals[argIdx] = exprToIR(argExpr, ctx);
-        }
 
         // Add the call instruction
         // <dstLocal> = CALL <fnLocal> <thisArg> ...
@@ -1654,7 +1665,6 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         return callInstr;
     }
 
-    /*
     // New operator call expression
     else if (auto newExpr = cast(NewExpr)expr)
     {
@@ -1662,33 +1672,25 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto argExprs = newExpr.args;
 
         // Evaluate the base expression
-        auto baseCtx = ctx.subCtx(true);       
-        exprToIR(baseExpr, baseCtx);
-        ctx.merge(baseCtx);
+        auto closVal = exprToIR(baseExpr, ctx);
 
         // Evaluate the arguments
-        auto argSlots = new LocalIdx[argExprs.length];
-        for (size_t i = 0; i < argExprs.length; ++i)
-        {
-            auto argCtx = ctx.subCtx(true);       
-            exprToIR(argExprs[i], argCtx);
-            ctx.merge(argCtx);
-            argSlots[i] = argCtx.outSlot;
-        }
+        auto argVals = new IRValue[argExprs.length];
+        foreach (argIdx, argExpr; argExprs)
+            argVals[argIdx] = exprToIR(argExpr, ctx);
 
         // Add the call instruction
-        // <dstLocal> = NEW <fnLocal> ...
-        auto callInstr = ctx.addInstr(new IRInstr(&CALL_NEW));
-        callInstr.outSlot = ctx.getOutSlot();
-        callInstr.args.length = 1 + argSlots.length;
-        callInstr.args[0].localIdx = baseCtx.outSlot;
-        for (size_t i = 0; i < argSlots.length; ++i)
-            callInstr.args[1+i].localIdx = argSlots[i];
+        // <dstLocal> = CALL <fnLocal> <thisArg> ...
+        auto callInstr = ctx.addInstr(new IRInstr(&CALL_NEW, 1 + argVals.length));
+        callInstr.setArg(0, closVal);
+        foreach (argIdx, argVal; argVals)
+            callInstr.setArg(1+argIdx, argVal);
 
         // Generate the call targets
         genCallTargets(ctx, callInstr);
+
+        return callInstr;
     }
-    */
 
     else if (auto indexExpr = cast(IndexExpr)expr)
     {
@@ -1865,27 +1867,31 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         ));
     }
 
-    /*
     else if (auto regexpExpr = cast(RegexpExpr)expr)
     {
-        auto linkInstr = ctx.addInstr(IRInstr.makeLink(ctx.allocTemp()));
-        auto reInstr = ctx.addInstr(IRInstr.strCst(
-            ctx.allocTemp(),
-            regexpExpr.pattern
+        auto linkInstr = ctx.addInstr(new IRInstr(
+            &MAKE_LINK,
+            new IRLinkIdx()            
         ));
-        auto flagsInstr = ctx.addInstr(IRInstr.strCst(
-            ctx.allocTemp(), 
-            regexpExpr.flags
+        auto strInstr = ctx.addInstr(new IRInstr(
+            &SET_STR,
+            new IRString(regexpExpr.pattern),
+            new IRLinkIdx()
+        ));
+        auto flagsInstr = ctx.addInstr(new IRInstr(
+            &SET_STR,
+            new IRString(regexpExpr.flags),
+            new IRLinkIdx()
         ));
 
-        auto arrInstr = genRtCall(
+        auto reInstr = genRtCall(
             ctx, 
             "getRegexp",
-            ctx.outSlot,
-            [linkInstr.outSlot, reInstr.outSlot, flagsInstr.outSlot]
+            [linkInstr, strInstr, flagsInstr]
         );
+
+        return reInstr;
     }
-    */
 
     else if (cast(TrueExpr)expr)
     {

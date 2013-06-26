@@ -106,7 +106,8 @@ TODO: implement trivial stack slot assignment pass
 - should be called at end of astToIR
 
 
-TODO: get IR gen for function calls working
+
+FIXME: break/cont target should have both ctxList and IRBlock
 
 
 
@@ -115,8 +116,7 @@ TODO: get IR gen for function calls working
 
 
 
-
-
+[DONE] TODO: get IR gen for function calls working
 
 [DONE] TODO: get IR gen for function decls working
 

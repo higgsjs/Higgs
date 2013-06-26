@@ -738,7 +738,7 @@ class IRFunPtr : IRValue
 }
 
 /**
-Link index pointer value (non-constant, initially null)
+Link index pointer value (stateful, non-constant, initially null)
 */
 class IRLinkIdx : IRValue
 {
@@ -755,7 +755,7 @@ class IRLinkIdx : IRValue
 }
 
 /**
-Cached index value (non-constant)
+Cached index value (stateful, non-constant)
 */
 class IRCachedIdx : IRValue
 {
@@ -777,7 +777,7 @@ class IRCachedIdx : IRValue
 }
 
 /**
-Code block pointer value (non-constant, initially null)
+Code block pointer value (stateful, non-constant, initially null)
 */
 class IRCodeBlock : IRValue
 {
@@ -916,7 +916,7 @@ class IRInstr : IRValue
         assert (
             (numArgs == opcode.argTypes.length) ||
             (numArgs >  opcode.argTypes.length && opcode.isVarArg),
-            "instr argument count mismatch"
+            "instr argument count mismatch for \"" ~ opcode.mnem ~ "\""
         );
 
         this.opcode = opcode;

@@ -103,7 +103,7 @@ struct OpInfo
 alias static immutable(OpInfo) Opcode;
 
 // Set a local slot to a constant value    
-Opcode SET_STR = { "set_str"   , true, [OpArg.STRING, OpArg.LINK], &op_set_str };
+Opcode SET_STR = { "set_str", true, [OpArg.STRING, OpArg.LINK], &op_set_str };
 
 // Word/type manipulation primitives
 Opcode SET_VALUE = { "set_value", true, [OpArg.LOCAL, OpArg.LOCAL], &op_set_value };
