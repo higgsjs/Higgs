@@ -802,7 +802,7 @@ class Interp
                 // Get the current instruction
                 IRInstr instr = ip;
 
-                //writefln("op: %s", instr.opcode.mnem);
+                writefln("op: %s", instr.opcode.mnem);
      
                 // Get the opcode's implementation function
                 auto opFn = instr.opcode.opFn;
@@ -840,6 +840,8 @@ class Interp
         // Register this function in the function reference set
         funRefs[cast(void*)fun] = fun;
 
+
+
         // FIXME
         /*
         // Setup the callee stack frame
@@ -853,6 +855,9 @@ class Interp
             []          // 0 arguments
         );
         */
+
+
+
 
         // Run the interpreter loop
         loop();

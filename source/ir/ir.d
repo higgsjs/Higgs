@@ -44,7 +44,6 @@ import std.stdint;
 import std.typecons;
 import std.conv;
 import std.regex;
-import std.stdint;
 import util.id;
 import util.string;
 import parser.ast;
@@ -66,7 +65,7 @@ immutable LocalIdx NULL_LOCAL = LocalIdx.max;
 immutable LocalIdx NULL_LINK = LinkIdx.max;
 
 /// Number of hidden function arguments
-immutable size_t NUM_HIDDEN_ARGS = 4;
+immutable uint32_t NUM_HIDDEN_ARGS = 4;
 
 /***
 IR function
@@ -89,6 +88,9 @@ class IRFunction : IdObject
     // Number of visible parameters
     uint32_t numParams = 0;
 
+    /// Total number of locals, including parameters and temporaries
+    uint32_t numLocals = 0;
+
     /// Hidden argument SSA values
     FunParam raVal;
     FunParam closVal;
@@ -100,9 +102,6 @@ class IRFunction : IdObject
 
     /// Map of identifiers to SSA cell values (closure/shared variables)
     IRValue[IdentExpr] cellMap;
-
-    /// Total number of locals, including parameters and temporaries
-    uint32_t numLocals = 0;
 
     /// Callee profiling information (filled by interpreter)
     uint64_t[IRFunction][IRInstr] callCounts;  
@@ -485,8 +484,7 @@ class BranchDesc
     IRBlock succ;
 
     /// Mapping of incoming phi values (block arguments)
-    alias Tuple!(IRValue, "src", PhiNode, "dst") PhiArgPair;
-    PhiArgPair args[];
+    IRValue.Use args[];
 
     this(IRBlock pred, IRBlock succ)
     {
@@ -497,64 +495,104 @@ class BranchDesc
     /**
     Set the value of this edge's branch argument to a phi node
     */
-    void setPhiArg(PhiNode dst, IRValue src)
+    void setPhiArg(PhiNode phi, IRValue val)
     {
-        foreach (pair; args)
+        // For each existing argument pair
+        foreach (arg; args)
         {
-            if (pair.dst is dst)
+            // If this pair goes to the selected phi node
+            if (arg.owner is phi)
             {
-                pair.src = src;
+                // If the argument changed, remove the current use
+                if (arg.value !is null)
+                    arg.value.remUse(arg);
+
+                // Set the new value
+                arg.value = val;
+
+                // Add a use to the new value
+                val.addUse(arg);
+
                 return;
             }
         }
 
-        args ~= PhiArgPair(src, dst);
+        // Create a new argument
+        auto arg = IRValue.Use(val, phi);
+
+        // Add a use to the new source value
+        val.addUse(arg);
     }
 }
 
 /**
 Base class for IR/SSA values
 */
-class IRValue : IdObject
+abstract class IRValue : IdObject
 {
     struct Use
     {
-        Use* prev;
-        Use* next;
-        IRValue value;
-        IRValue dst;
+        this(IRValue value, IRDstValue owner)
+        {
+            this.value = value;
+            this.owner = owner;
+        }
+
+        // Value this use refers to
+        IRValue value = null;
+
+        // Owner of this use
+        IRDstValue owner = null;
+
+        Use* prev = null;
+        Use* next = null;
     }
 
     /// Linked list of destinations
-    Use* firstDst = null;
+    private Use* firstUse = null;
 
-    private void addDst(ref Use dst)
+    /// Register a use of this value
+    private void addUse(ref Use use)
     {
-        assert (dst.value is this);
+        assert (use.value is this);
+        assert (use.owner !is null);
 
-        dst.prev = null;
-        dst.next = firstDst;
+        use.prev = null;
+        use.next = firstUse;
 
-        firstDst = &dst;
+        firstUse = &use;
     }
 
-    private void remDst(ref Use dst)
+    /// Unregister a use of this value
+    private void remUse(ref Use use)
     {
-        assert (dst.value is this);
+        assert (use.value is this);
 
-        if (dst.prev is null)
-            firstDst = null;
+        if (use.prev is null)
+            firstUse = null;
         else
-            dst.prev.next = dst.next;
+            use.prev.next = use.next;
 
-        if (dst.next !is null)
-            dst.next.prev = dst.prev;
+        if (use.next !is null)
+            use.next.prev = use.prev;
+    }
+
+    /// Get the first use of this value
+    Use* getFirstUse()
+    {
+        return firstUse;
+    }
+
+    /// Test if this value has a single use
+    bool hasOneUse()
+    {
+        return firstUse && firstUse.next == null;
     }
 
     /// Test if this value has no uses
     bool hasNoUses()
     {
-        return firstDst == null;
+        return firstUse == null;
     }
 
     /// Replace uses of this value by uses of another value
@@ -563,27 +601,27 @@ class IRValue : IdObject
         assert (newVal !is null);
 
         // Find the last use of the new value
-        auto lastUse = newVal.firstDst; 
+        auto lastUse = newVal.firstUse; 
         while (lastUse !is null && lastUse.next !is null)
             lastUse = lastUse.next;
 
         // Make all our uses point to the new value
-        for (auto use = this.firstDst; use !is null; use = use.next)
+        for (auto use = this.firstUse; use !is null; use = use.next)
             use.value = newVal;
 
         // Chain all our uses at end of the new value's uses
         if (lastUse !is null)
         {
-            lastUse.next = this.firstDst;
-            this.firstDst.prev = lastUse;
+            lastUse.next = this.firstUse;
+            this.firstUse.prev = lastUse;
         }
         else
         {
-            newVal.firstDst = this.firstDst;
+            newVal.firstUse = this.firstUse;
         }
 
         // There are no more uses of this value
-        this.firstDst = null;
+        this.firstUse = null;
     }
 
     /// Get the short name for this value
@@ -794,34 +832,41 @@ class IRCodeBlock : IRValue
 }
 
 /**
-Phi node value
+Base class for IR values usable as destinations 
+(phi nodes, fun params, instructions)
 */
-class PhiNode : IRValue
+abstract class IRDstValue : IRValue
 {
-    /// Previous and next phi nodes (linked list)
-    PhiNode prev = null;
-    PhiNode next = null;
-
     /// Parent block
     IRBlock block = null;
 
     /// Output stack slot
     LocalIdx outSlot = NULL_LOCAL;
 
-    /// Copy a phi node
-    PhiNode dup()
-    {
-        auto that = new PhiNode();
-        return that;
-    }
-
-    /// Get the short name string associated with this phi node
+    /// Get the short name string associated with this instruction
     override string getName()
     {
         if (outSlot !is NULL_LOCAL)
             return "$" ~ to!string(outSlot);
 
-        return "phi_" ~ idString();
+        return "t_" ~ idString();
+    }
+}
+
+/**
+Phi node value
+*/
+class PhiNode : IRDstValue
+{
+    /// Previous and next phi nodes (linked list)
+    PhiNode prev = null;
+    PhiNode next = null;
+
+    /// Copy a phi node
+    PhiNode dup()
+    {
+        auto that = new PhiNode();
+        return that;
     }
 
     override string toString()
@@ -834,13 +879,14 @@ class PhiNode : IRValue
         {
             foreach (arg; desc.args)
             {
-                if (arg.dst !is this)
+                if (arg.owner !is this)
                     continue;
 
                 if (descIdx > 0)
                     output ~= " ";
 
-                output ~= desc.pred.getName() ~ " => " ~ arg.src.getName();
+                output ~= desc.pred.getName() ~ " => ";
+                output ~= arg.value.getName();
             }
         }
 
@@ -857,9 +903,9 @@ Function parameter value
 class FunParam : PhiNode
 {
     wstring name;
-    size_t idx;
+    uint32_t idx;
 
-    this(wstring name, size_t idx)
+    this(wstring name, uint32_t idx)
     {
         this.name = name;
         this.idx = idx;
@@ -886,7 +932,7 @@ class FunParam : PhiNode
 /**
 SSA instruction
 */
-class IRInstr : IRValue
+class IRInstr : IRDstValue
 {
     /// Maximum number of branch targets
     static const MAX_TARGETS = 2;
@@ -900,15 +946,9 @@ class IRInstr : IRValue
     /// Branch targets 
     private BranchDesc[MAX_TARGETS] targets = [null, null];
 
-    /// Parent block
-    IRBlock block = null;
-
     /// Previous and next instructions (linked list)
     IRInstr prev = null;
     IRInstr next = null;
-
-    /// Assigned output stack slot
-    LocalIdx outSlot = NULL_LOCAL;
 
     /// Default constructor
     this(Opcode* opcode, size_t numArgs = 0)
@@ -964,19 +1004,30 @@ class IRInstr : IRValue
     {
         assert (idx < args.length);
 
-        if (args[idx].value is val)
-            return;
+        // Set the owner property of the use
+        args[idx].owner = this;
 
+        // If a value is already set for this
+        // argument, remove the current use
         if (args[idx].value !is null)
-            args[idx].value.remDst(args[idx]);
+            args[idx].value.remUse(args[idx]);
 
+        // Add a use for the new value
         args[idx].value = val;
-        val.addDst(args[idx]);
+        val.addUse(args[idx]);
     }
 
+    /// Get the number of arguments
     size_t getNumArgs()
     {
         return args.length;
+    }
+
+    /// Get an argument of this instruction
+    IRValue getArg(size_t idx)
+    {
+        assert (idx < args.length);
+        return args[idx].value;
     }
 
     /// Get the stack slot associated with an argument
@@ -1051,20 +1102,11 @@ class IRInstr : IRValue
         return that;
     }
 
-    /// Get the short name string associated with this instruction
-    override string getName()
-    {
-        if (outSlot !is NULL_LOCAL)
-            return "$" ~ to!string(outSlot);
-
-        return "t_" ~ idString();
-    }
-
     final override string toString()
     {
         string output;
 
-        if (firstDst !is null)
+        if (firstUse !is null || outSlot !is NULL_LOCAL)
             output ~= getName() ~ " = ";
 
         output ~= opcode.mnem;

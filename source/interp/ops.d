@@ -193,6 +193,8 @@ void throwError(
 
 extern (C) void op_set_str(Interp interp, IRInstr instr)
 {
+    assert (false, "set_str");
+
     // FIXME
     /*
     auto linkIdx = instr.args[1].linkIdx;
@@ -314,8 +316,7 @@ extern (C) void op_f64_to_i32(Interp interp, IRInstr instr)
 {
     auto w0 = interp.getWord(instr.getArgSlot(0));
 
-    // Do the conversion according to the ECMAScript
-    // toInt32 specs (see section 9.5)
+    // Convert based on the ECMAScript toInt32 specs (see section 9.5)
     auto intVal = cast(int32)cast(int64)w0.floatVal;
 
     interp.setSlot(
@@ -710,6 +711,8 @@ alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
 
 extern (C) void op_jump(Interp interp, IRInstr instr)
 {
+    assert (false, "op_jump");
+
     // FIXME
     interp.jump(/*instr.target*/null);
 }
@@ -816,6 +819,8 @@ void callFun(
 
 extern (C) void op_call(Interp interp, IRInstr instr)
 {
+    assert (false, "op_call");
+
     auto closIdx = instr.getArgSlot(0);
     auto thisIdx = instr.getArgSlot(1);
 
@@ -854,6 +859,8 @@ extern (C) void op_call(Interp interp, IRInstr instr)
 /// JavaScript new operator (constructor call)
 extern (C) void op_call_new(Interp interp, IRInstr instr)
 {
+    assert (false, "op_call_new");
+
     auto closIdx = instr.getArgSlot(0);
     auto wClos = interp.getWord(closIdx);
     auto tClos = interp.getType(closIdx);

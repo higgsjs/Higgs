@@ -48,6 +48,7 @@ import parser.parser;
 import ir.ir;
 import ir.ops;
 import ir.iir;
+import ir.slotalloc;
 import interp.layout;
 
 /**
@@ -157,6 +158,8 @@ class IRGenCtx
             return instr;
 
         curBlock.addInstr(instr);
+        assert (instr.block is curBlock);
+
         return instr;
     }
 
@@ -327,7 +330,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         auto argIdx = 4 + i;
         auto ident = ast.params[i];
 
-        auto paramVal = new FunParam(ident.name, argIdx);
+        auto paramVal = new FunParam(ident.name, cast(uint32_t)argIdx);
         fun.paramMap[ident] = paramVal;
         localMap[ident] = paramVal;
         entry.addPhi(paramVal);
@@ -511,7 +514,10 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         bodyCtx.addInstr(new IRInstr(&RET, IRConst.undefCst));
     }
 
-    //writeln(fun.toString());
+    // Allocate stack slots for the IR instructions
+    allocSlots(fun);
+
+    writeln(fun.toString());
 
     // Return the IR function object
     return fun;
@@ -2080,9 +2086,6 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
         "invalid inline IR expr"
     );
 
-    assert (false);
-
-    /*
     auto callExpr = cast(CallExpr)expr;
     auto baseExpr = callExpr.base;
     auto argExprs = callExpr.args;
@@ -2111,9 +2114,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
     }
 
     // Create the IR instruction
-    auto instr = new IRInstr(opcode);
-    instr.args.length = argExprs.length;
-    instr.outSlot = ctx.getOutSlot();
+    auto instr = new IRInstr(opcode, argExprs.length);
 
     // For each argument
     for (size_t i = 0; i < argExprs.length; ++i)
@@ -2121,14 +2122,13 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
         auto argExpr = argExprs[i];
         auto argType = opcode.getArgType(i);
 
+        IRValue argVal = null;
+
         switch (argType)
         {
             // Local stack slot
             case OpArg.LOCAL:
-            auto argCtx = ctx.subCtx(true);       
-            exprToIR(argExpr, argCtx);
-            ctx.merge(argCtx);
-            instr.args[i].localIdx = argCtx.outSlot;
+            argVal = exprToIR(argExpr, ctx);
             break;
 
             // Integer argument
@@ -2141,7 +2141,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
                     argExpr.pos
                 );
             }
-            instr.args[i].int32Val = cast(int32)intExpr.val;
+            argVal = IRConst.int32Cst(cast(int32)intExpr.val);
             break;
 
             // Raw pointer constant
@@ -2154,7 +2154,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
                     argExpr.pos
                 );
             }
-            instr.args[i].ptrVal = cast(rawptr)intExpr.val;
+            argVal = new IRRawPtr(cast(rawptr)intExpr.val);
             break;
 
             // String argument
@@ -2167,7 +2167,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
                     argExpr.pos
                 );
             }
-            instr.args[i].stringVal = strExpr.val;
+            argVal = new IRString(strExpr.val);
             break;
 
             // Link table index
@@ -2180,27 +2180,28 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
                     argExpr.pos
                 );
             }
-            instr.args[i].linkIdx = NULL_LINK;
+            argVal = new IRLinkIdx();
             break;
 
-            // CODEBLOCK
+            // Code block pointer
             case OpArg.CODEBLOCK:
-            if (cast(NullExpr)argExpr)
-            {
-                instr.args[i].codeBlock = null;
-            }
-            else
-            {
+            if (cast(NullExpr)argExpr is null)
+            {    
                 throw new ParseError(
                         "expected null argument", 
                         argExpr.pos
                 );
             }
+            argVal = new IRCodeBlock();
             break;
 
             default:
             assert (false, "unsupported argument type");
         }
+
+        // Set the argument value
+        assert (argVal !is null);
+        instr.setArg(i, argVal);
     }
 
     // Add the instruction to the context
@@ -2211,7 +2212,6 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
         genCallTargets(ctx, instr);
 
     return instr;
-    */
 }
 
 /**

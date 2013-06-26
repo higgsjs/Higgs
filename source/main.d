@@ -56,7 +56,7 @@ void main(string[] args)
 
 
 
-
+    
     // FIXME: SSA test code
     import ir.ir;
     import ir.ast;
@@ -70,7 +70,7 @@ void main(string[] args)
     }
 
     return;
-
+    
 
 
 

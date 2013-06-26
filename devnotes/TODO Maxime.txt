@@ -101,7 +101,23 @@ for (var i = 0; i < 10; i++)
 TODO: begin steps to test interp on simple expressions
 - get complete pipeline working for simple stuff, build on
 
-TODO: implement trivial stack slot assignment pass
+FIXME: break/cont target should have both ctxList and IRBlock
+
+TODO: get basic "return 1", "1+2" working in interpreter
+
+TODO: refactor callFun
+- Needed to execute any script
+
+
+
+
+
+
+
+
+[DONE] FIXME: temps are not per-block
+
+[DONE] TODO: implement simple stack slot assignment pass
 - should be called at end of astToIR
 - ir/slotalloc.d, allocSlots(IRFunction)
 - instrs with single uses *in the same block* interfere with other from block
@@ -111,17 +127,9 @@ TODO: implement trivial stack slot assignment pass
   - each get their own slot from varSlots
 - for now phi nodes get own slots too, from varSlots
 
+[DONE] TODO: rename "dsts" to uses, less confusion
 
-
-FIXME: break/cont target should have both ctxList and IRBlock
-
-
-
-
-
-
-
-
+[DONE] FIXME: do you consider branch desc args as uses? ***
 
 [DONE] TODO: comment out currently broken tests, get make test working
 
