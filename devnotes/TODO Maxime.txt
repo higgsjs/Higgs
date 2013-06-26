@@ -2,7 +2,7 @@ Conference deadlines:
 - DLS 2013      June 8, 2013
 - VMIL 2013     ~August 2013
 - CGO 2014      ~September 2013
-- CC 2014       ~October 2013
+- CC 2014       Oct 4, Oct 11 2013
 - PLDI 2014     ~November 2013
 - VEE 2014      ~November 2013
 
@@ -10,51 +10,12 @@ TODO: give this project more lovin'! Improve various aspects! Blog!
 
 ------------------------------------------------------------------------------
 
-TODO: think about special monitoring instructions
-- instrs to allocate type monitors
-  - add TypeMon ptr to interp ref list
-- union based on values
+CC Paper Submission Deadline: 11 October 2013
+- 20 page limit, LNCS format
 
-TODO: System to register TypeMon refs
-- Type objs from classes
-- Type objects need to be destroyed/finalized (to destroy GC roots)
+CC Abstract Submission Deadline: 4 October 2013
 
-TODO: log function argument types for most called funs?
-- Big dump of all functions, call count, types?
-
-TODO: monitor function arguments in call instructions
-- Lazily create monitor objects
-- Destroy monitors in collectFun
-
-TODO: update heap refs in type sets after GC
-TODO: destroy dead type sets after GC
-
-TODO: allocate class ids?
-- nextClassId var in interpreter?
-- Need instr to allocate a class id as well
-- class_alloc called in only 2 places
-- Could add an opNewClass to take care of this
-
-TODO: make sure global obj ptr is updated when global obj is extended
-- Trigger GC?
-
-TODO: improved interpreter frame spill scheme
-- Map of call instrs to spill functions
-  - special extern(C) function, called by interpreter
-- Need to spill if
-  - GC, stack traversal
-  - exception, stack unwinding
-- Pros
-  - Ordinary function calls will not cause type spilling
-  - No need to write 0 when writing type on type stack
-- ISSUE: return address, multiple versions
-  - Could be calling a JIT function from multiple points
-  - Can't have spilling associated with one single return points
-  - Need special JIT return address structure
-    - Spill fun
-    - Interp call cont
-    - JIT fast entry point
-- Is this needed right now, is this orthogonal to inlining?
+------------------------------------------------------------------------------
 
 TODO: IR-level optimizations?
 - Basic arith ops, simple const prop?
@@ -64,11 +25,6 @@ TODO: IR-level optimizations?
 - Need basic reaching defs for moves, const prop
   - Map inputs to instrs to other instrs (like SSA)
 - Might be smarter to start with simple ASM peephole opts
-
-TODO: stack-frame compaction
-- Need liveness info if doing OSR
-  - Move only live values to new slot
-  - Two live values can't map to same slot
 
 TODO: benchmarking (performance testing) JS script
 - benchmark.js
@@ -146,26 +102,32 @@ TODO: compare Tachyon and Higgs WhileStmt versions
 - createLoopEntry? look at Tachyon usages, do we always register labels?
 
 
-TODO: get basic while loop working
-- Test with ./higgs -e "..."
-- Test with local vars, phi nodes
-  - Do phi nodes log branch idx?
-
-FIXME: get x = 1 working
 
 
+TODO: get while loop with phi nodes working
+for (var i = 0; i < 10; i++)
+- Do phi nodes log branch idx?
+
+TODO: improve --e IR printing, if only subfunction contained, compile
+and print that subfunction
 
 
 
-FIXME: get while (1) to work
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: get x = 1 working
+
+[DONE] FIXME: get while (1) to work
 - genRtCall is incomplete
-
-
-
-
-
-
-
 
 [DONE] TODO: get while(true) to work
 

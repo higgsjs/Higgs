@@ -920,14 +920,9 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Compile the finally statements in-line
         foreach (fnl; fnlStmts)
         {
-            auto fnlCtx = new IRGenCtx(
-                fnl.ctx,
-                ctx.fun, 
-                ctx.curBlock,
-                ctx.localMap
-            );
+            auto fnlCtx = fnl.ctx.subCtx();
             stmtToIR(fnl.stmt, fnlCtx);
-            ctx.merge(fnlCtx.curBlock);
+            ctx.merge(fnlCtx);
         }
 
         // Add the return instruction
@@ -1945,150 +1940,117 @@ IRValue assgToIR(
     IRGenCtx ctx
 )
 {
-    // FIXME
-    assert (false);
-
-    /*
-    void genRhs(
+    IRValue genRhs(
         IRGenCtx ctx,
-        LocalIdx base = NULL_LOCAL, 
-        LocalIdx index = NULL_LOCAL
+        IRValue base = null,
+        IRValue index = null
     )
     {
         // If there is no in-place operation
         if (inPlaceOpFn is null)
         {
             // Compute the right expression
-            rhsExprFn(ctx);
+            return rhsExprFn(ctx);
         }
         else
         {
             // Compute the right expression
-            auto rCtx = ctx.subCtx(true);
-            rhsExprFn(rCtx);
-            ctx.merge(rCtx);
-
-            auto lhsTemp = ctx.allocTemp();
+            auto rhsVal = rhsExprFn(ctx);
 
             // If this is an indexed property access
-            if (base !is NULL_LOCAL)
+            IRValue lhsTemp;
+            if (base !is null)
             {
                 // Get the property from the object
-                genRtCall(
+                lhsTemp = genRtCall(
                     ctx, 
                     "getProp",
-                    lhsTemp,
                     [base, index]
                 );
             }
             else
             {
                 // Evaluate the lhs value
-                auto lCtx = ctx.subCtx(true, lhsTemp);
-                exprToIR(lhsExpr, lCtx);
-                ctx.merge(lCtx);
+                lhsTemp = exprToIR(lhsExpr, ctx);
             }
 
             // Generate the in-place operation
-            inPlaceOpFn(
-                ctx,
-                lhsTemp,
-                rCtx.getOutSlot()
-            );
+            return inPlaceOpFn(ctx, lhsTemp, rhsVal);
         }
     }
 
     // If the lhs is an identifier
     if (auto identExpr = cast(IdentExpr)lhsExpr)
     {
+        // Compute the right expression
+        auto rhsVal = genRhs(ctx);
+
         // If the variable is global (unresolved)
         if (identExpr.declNode is null)
         {
             //writefln("assigning to global: %s", identExpr);
 
-            // Compute the right expression
-            auto subCtx = ctx.subCtx(true, ctx.getOutSlot());
-            genRhs(subCtx);
-            ctx.merge(subCtx);
-
             // Set the global value
-            auto setInstr = ctx.addInstr(new IRInstr(&SET_GLOBAL));
-            setInstr.outSlot = NULL_LOCAL;
-            setInstr.args.length = 3;
-            setInstr.args[0].stringVal = identExpr.name;
-            setInstr.args[1].localIdx = subCtx.getOutSlot();
-            setInstr.args[2].int32Val = -1;
+            ctx.addInstr(new IRInstr(
+                &SET_GLOBAL,
+                new IRString(identExpr.name),
+                rhsVal,
+                new IRCachedIdx()
+            ));
         }
 
         // If the variable is captured or escaping
         else if (identExpr.declNode in ctx.fun.cellMap)
         {
-            // Compute the right expression
-            auto subCtx = ctx.subCtx(true, ctx.getOutSlot());
-            genRhs(subCtx);
-            ctx.merge(subCtx);
-
             // Set the value in the mutable cell
-            auto cellSlot = ctx.fun.cellMap[identExpr.declNode];
+            auto cellVal = ctx.fun.cellMap[identExpr.declNode];
             genRtCall(
                 ctx, 
                 "setCellVal",
-                NULL_LOCAL,
-                [cellSlot, ctx.getOutSlot()]
+                [cellVal, rhsVal]
             );
         }
 
         // The variable is local
         else
         {
-            LocalIdx varIdx = (ctx.fun.localMap)[identExpr.declNode];
-
-            // Compute the right expression and assign it into the variable
-            auto subCtx = ctx.subCtx(true, varIdx);
-            genRhs(subCtx);
-            ctx.merge(subCtx);            
-
-            // Move the value into the output slot
-            ctx.moveToOutput(varIdx);
+            // Assign the value in the local map
+            ctx.localMap[identExpr.declNode] = rhsVal;
         }
+
+        return rhsVal;
     }
 
     // If the lhs is an array indexing expression (e.g.: a[b])
     else if (auto indexExpr = cast(IndexExpr)lhsExpr)
     {
         // Evaluate the base expression
-        auto baseCtx = ctx.subCtx(true);       
-        exprToIR(indexExpr.base, baseCtx);
-        ctx.merge(baseCtx);
+        auto baseVal = exprToIR(indexExpr.base, ctx);
 
         // Evaluate the index expression
-        auto idxCtx = ctx.subCtx(true);       
-        exprToIR(indexExpr.index, idxCtx);
-        ctx.merge(idxCtx);
+        auto idxVal = exprToIR(indexExpr.index, ctx);
 
         // Compute the right expression
-        auto subCtx = ctx.subCtx(true, ctx.getOutSlot());
-        genRhs(
-            subCtx,
-            baseCtx.getOutSlot(),
-            idxCtx.getOutSlot()
+        auto rhsVal = genRhs(
+            ctx,
+            baseVal,
+            idxVal
         );
-        ctx.merge(subCtx);
 
         // Set the property on the object
         genRtCall(
             ctx, 
             "setProp",
-            ctx.allocTemp(),
-            [baseCtx.getOutSlot(), idxCtx.getOutSlot(), subCtx.getOutSlot()]
+            [baseVal, idxVal, rhsVal]
         );
+
+        return rhsVal;
     }
 
     else
     {
         throw new ParseError("invalid lhs in assignment", lhsExpr.pos);
     }
-    */
 }
 
 /**
@@ -2344,8 +2306,7 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
 /**
 Generate the exception code path for a call or throw instruction
 */
-/*
-IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
+IRBlock genExcPath(IRGenCtx ctx, IRValue excVal)
 {
     IRGenCtx.FnlInfo[] fnlStmts;
     auto catchInfo = ctx.getCatchInfo(&fnlStmts);
@@ -2357,23 +2318,21 @@ IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
 
     // Create a block for the exception path
     auto excBlock = ctx.fun.newBlock("call_exc");
-    auto excCtx = ctx.subCtx(false, NULL_LOCAL, excBlock);           
+    auto excCtx = ctx.subCtx(excBlock);           
 
     // If there is an englobing try block
     if (catchInfo !is null)
     {
         // Assign the exception value to the catch variable
-        auto assgCtx = excCtx.subCtx(true);
         assgToIR(
             catchInfo.ident,
             null,
-            delegate void(IRGenCtx ctx)
+            delegate IRValue(IRGenCtx ctx)
             {
-                ctx.moveToOutput(excSlot);
+                return excVal;
             },
-            assgCtx
+            excCtx
         );
-        excCtx.merge(assgCtx);
     }
 
     //writefln("num fnl stmts: %s", fnlStmts.length);
@@ -2381,54 +2340,45 @@ IRBlock genExcPath(IRGenCtx ctx, LocalIdx excSlot)
     // Compile the finally statements in-line
     foreach (fnl; fnlStmts)
     {
-        auto fnlCtx = excCtx.subCtx(false);
-        fnlCtx.parent = fnl.ctx;
+        auto fnlCtx = fnl.ctx.subCtx();
         stmtToIR(fnl.stmt, fnlCtx);
-        excCtx.merge(fnlCtx.curBlock);
+        excCtx.merge(fnlCtx);
     }
 
     // If there is an englobing try block
     if (catchInfo !is null)
     {
         // Jump to the catch block
-        excCtx.addInstr(IRInstr.jump(catchInfo.block));
+        excCtx.jump(catchInfo.block);
     }
 
     // Otherwise, there is no englobing try-catch block
     else
     {
         // Add an interprocedural throw instruction
-        excCtx.addInstr(new IRInstr(
-            &THROW,
-            NULL_LOCAL,
-            excSlot
-        ));
+        excCtx.addInstr(new IRInstr(&THROW));
     }
 
     return excBlock;
 }
-*/
 
 /**
 Generate and set the normal and exception targets for a call instruction
 */
 void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
 {
-    // FIXME
-    /*
     // Create a block for the call continuation
     auto contBlock = ctx.fun.newBlock("call_cont");
 
     // Set the continuation target
-    callInstr.target = contBlock;
+    callInstr.setTarget(0, contBlock);
 
     // Generate the exception path for the call instruction
-    if (auto excBlock = genExcPath(ctx, callInstr.outSlot))
-        callInstr.excTarget = excBlock;
+    if (auto excBlock = genExcPath(ctx, callInstr))
+        callInstr.setTarget(1, excBlock);
 
     // Continue code generation in the continuation block
     ctx.merge(contBlock);
-    */
 }
 
 /*
