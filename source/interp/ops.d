@@ -92,11 +92,31 @@ private ValuePair getArgVal(Interp interp, IRInstr instr, size_t argIdx)
 }
 
 /**
+Get an argument value and ensure it is an uint32
+*/
+uint32_t getArgUint32(Interp interp, IRInstr instr, size_t argIdx)
+{
+    auto argVal = interp.getArgVal(instr, argIdx);
+
+    assert (
+        argVal.type == Type.INT32,
+        "expected uint32 value for arg " ~ to!string(argIdx)
+    );
+
+    assert (
+        argVal.word.int32Val >= 0,
+        "expected positive value"
+    );
+
+    return argVal.word.uint32Val;
+}
+
+/**
 Get an argument value and ensure it is a string object pointer
 */
 refptr getArgStr(Interp interp, IRInstr instr, size_t argIdx)
 {
-    auto strVal = interp.getArgVal(instr, 0);
+    auto strVal = interp.getArgVal(instr, argIdx);
 
     assert (
         valIsString(strVal.word, strVal.type),
@@ -110,6 +130,9 @@ refptr getArgStr(Interp interp, IRInstr instr, size_t argIdx)
 
 void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 {
+    // FIXME
+    assert (false);
+
     //writefln("throw");
 
     // Stack trace (call instructions and throwing instruction)
@@ -1034,7 +1057,7 @@ extern (C) void op_get_arg(Interp interp, IRInstr instr)
     auto argSlot = instr.block.fun.argcVal.outSlot + 1;
 
     // Get the argument index
-    auto idx = interp.getArgVal(instr, 0).word.uint32Val;
+    auto idx = interp.getArgUint32(instr, 0);
 
     // Get the argument value
     auto argVal = interp.getSlot(argSlot + idx);
@@ -1078,21 +1101,9 @@ alias GetValOp!(Type.INT32, "auto r = cast(int32)interp.gcCount;") op_get_gc_cou
 
 extern (C) void op_heap_alloc(Interp interp, IRInstr instr)
 {
-    auto sizeVal = interp.getArgVal(instr, 0);
+    auto allocSize = interp.getArgUint32(instr, 0);
 
-    assert (
-        sizeVal.type == Type.INT32,
-        "invalid size type"
-    );
-
-    auto size = sizeVal.word.uint32Val;
-
-    assert (
-        size > 0,
-        "size must be positive"
-    );
-
-    auto ptr = heapAlloc(interp, size);
+    auto ptr = heapAlloc(interp, allocSize);
 
     interp.setSlot(
         instr.outSlot,
@@ -1103,61 +1114,45 @@ extern (C) void op_heap_alloc(Interp interp, IRInstr instr)
 
 extern (C) void op_gc_collect(Interp interp, IRInstr instr)
 {
-    auto sizeVal = interp.getArgVal(instr, 0);
+    auto heapSize = interp.getArgUint32(instr, 0);
 
-    assert (
-        sizeVal.type == Type.INT32,
-        "invalid heap size type"
-    );
-
-    gcCollect(interp, sizeVal.word.uint32Val);
+    gcCollect(interp, heapSize);
 }
 
 extern (C) void op_make_link(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-    /*
-    auto linkIdx = instr.args[0].linkIdx;
+    auto linkArg = cast(IRLinkIdx)instr.getArg(1);
+    assert (linkArg !is null);
+    auto linkIdx = &linkArg.linkIdx;
 
-    if (linkIdx is NULL_LINK)
+    if (*linkIdx is NULL_LINK)
     {
-        linkIdx = interp.allocLink();
-        instr.args[0].linkIdx = linkIdx;
+        *linkIdx = interp.allocLink();
 
-        interp.setLinkWord(linkIdx, NULL);
-        interp.setLinkType(linkIdx, Type.REFPTR);
+        interp.setLinkWord(*linkIdx, NULL);
+        interp.setLinkType(*linkIdx, Type.REFPTR);
     }
 
     interp.setSlot(
         instr.outSlot,
-        Word.uint32v(linkIdx),
+        Word.uint32v(*linkIdx),
         Type.INT32
     );
-    */
 }
 
 extern (C) void op_set_link(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-    /*
-    auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
+    auto linkIdx = interp.getArgUint32(instr, 0);
 
-    auto wVal = interp.getWord(instr.getArgSlot(1));
-    auto tVal = interp.getType(instr.getArgSlot(1));
+    auto val = interp.getArgVal(instr, 1);
 
-    interp.setLinkWord(linkIdx, wVal);
-    interp.setLinkType(linkIdx, tVal);
-    */
+    interp.setLinkWord(linkIdx, val.word);
+    interp.setLinkType(linkIdx, val.type);
 }
 
 extern (C) void op_get_link(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-    /*
-    auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
+    auto linkIdx = interp.getArgUint32(instr, 0);
 
     auto wVal = interp.getLinkWord(linkIdx);
     auto tVal = interp.getLinkType(linkIdx);
@@ -1167,7 +1162,6 @@ extern (C) void op_get_link(Interp interp, IRInstr instr)
         wVal,
         tVal
     );
-    */    
 }
 
 extern (C) void op_get_str(Interp interp, IRInstr instr)
@@ -1449,19 +1443,14 @@ extern (C) void op_print_str(Interp interp, IRInstr instr)
 
 extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-
-    /*
-    auto wFn = interp.getWord(instr.getArgSlot(0));
-    auto tFn = interp.getType(instr.getArgSlot(0));
+    auto funArg = interp.getArgVal(instr, 0);
 
     assert (
-        tFn == Type.REFPTR && valIsLayout(wFn, LAYOUT_CLOS),
+        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
         "invalid closure object"
     );
 
-    auto fun = getClosFun(wFn.ptrVal);
+    auto fun = getClosFun(funArg.word.ptrVal);
 
     auto str = fun.ast.toString();
     auto strObj = getString(interp, to!wstring(str));
@@ -1471,24 +1460,18 @@ extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
         Word.ptrv(strObj),
         Type.REFPTR
     );
-    */
 }
 
 extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-
-    /*
-    auto wFn = interp.getWord(instr.getArgSlot(0));
-    auto tFn = interp.getType(instr.getArgSlot(0));
+    auto funArg = interp.getArgVal(instr, 0);
 
     assert (
-        tFn == Type.REFPTR && valIsLayout(wFn, LAYOUT_CLOS),
+        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
         "invalid closure object"
     );
 
-    auto fun = getClosFun(wFn.ptrVal);
+    auto fun = getClosFun(funArg.word.ptrVal);
 
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
@@ -1502,23 +1485,18 @@ extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
         Word.ptrv(strObj),
         Type.REFPTR
     );
-    */
 }
 
 extern (C) void op_f64_to_str(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-
-    /*
-    auto val = interp.getSlot(instr.getArgSlot(0));
+    auto argVal = interp.getArgVal(instr, 0);
 
     assert (
-        val.type == Type.FLOAT64,
+        argVal.type == Type.FLOAT64,
         "invalid float value"
     );
 
-    auto str = format("%G", val.word.floatVal);
+    auto str = format("%G", argVal.word.floatVal);
     auto strObj = getString(interp, to!wstring(str));
    
     interp.setSlot(
@@ -1526,7 +1504,6 @@ extern (C) void op_f64_to_str(Interp interp, IRInstr instr)
         Word.ptrv(strObj),
         Type.REFPTR
     );
-    */
 }
 
 extern (C) void op_get_time_ms(Interp interp, IRInstr instr)
@@ -1565,43 +1542,35 @@ extern (C) void op_load_lib(Interp interp, IRInstr instr)
 
 extern (C) void op_close_lib(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-
-    /*
-    auto lib = interp.getSlot(instr.getArgSlot(0));
+    auto libArg = interp.getArgVal(instr, 0);
 
     assert (
-        lib.type == Type.RAWPTR,
+        libArg.type == Type.RAWPTR,
         "invalid rawptr value"
     );
 
-    if (dlclose(lib.word.ptrVal) != 0)
+    if (dlclose(libArg.word.ptrVal) != 0)
          return throwError(interp, instr, "RuntimeError", "could not close lib.");
-    */
 }
 
 extern (C) void op_get_sym(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-
-    /*
-    // handle for shared lib
-    auto lib = interp.getSlot(instr.getArgSlot(0));
+    auto libArg = interp.getArgVal(instr, 0);
 
     assert (
-        lib.type == Type.RAWPTR,
+        libArg.type == Type.RAWPTR,
         "invalid rawptr value"
     );
 
     // Symbol name (D string)
-    auto symname = to!string(instr.args[1].stringVal);
+    auto strArg = cast(IRString)instr.getArg(1);
+    assert (strArg !is null);   
+    auto symname = to!string(strArg.str);
 
     // String must be null terminated
     symname ~= '\0';
 
-    auto sym = dlsym(lib.word.ptrVal, symname.ptr);
+    auto sym = dlsym(libArg.word.ptrVal, symname.ptr);
 
     if (sym is null)
         return throwError(interp, instr, "RuntimeError", to!string(dlerror()));
@@ -1611,7 +1580,6 @@ extern (C) void op_get_sym(Interp interp, IRInstr instr)
         Word.ptrv(cast(rawptr)sym),
         Type.RAWPTR
     );
-    */
 }
 
 extern (C) void op_call_ffi(Interp interp, IRInstr instr)
