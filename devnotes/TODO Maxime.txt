@@ -105,11 +105,14 @@ TODO: get rid of uint32, use uint32_t?
 
 FIXME: break/cont target should have both ctxList and IRBlock
 
-TODO: get print("hi") working
-- test with --nostdlib?
 
 TODO: jump with branch descriptor, handle phi nodes
 - interp.branch(BranchDesc branch)
+- test if 1 + 1 (runtime, arith ovf) is working
+
+
+
+
 
 
 

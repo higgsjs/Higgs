@@ -130,9 +130,6 @@ refptr getArgStr(Interp interp, IRInstr instr, size_t argIdx)
 
 void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 {
-    // FIXME
-    assert (false);
-
     //writefln("throw");
 
     // Stack trace (call instructions and throwing instruction)
@@ -164,9 +161,8 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
                 excVal
             );
 
-            // FIXME
             // Go to the exception target
-            interp.jump(/*curInstr.excTarget*/null);
+            interp.branch(curInstr.getTarget(1));
 
             // Stop unwinding the stack
             return;
@@ -533,17 +529,11 @@ extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
 
 extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-
-    /*
-    auto wX = interp.getWord(instr.getArgSlot(0));
-    auto tX = interp.getType(instr.getArgSlot(0));
-    auto wY = interp.getWord(instr.getArgSlot(1));
-    auto tY = interp.getType(instr.getArgSlot(1));
+    auto vX = interp.getArgVal(instr, 0);
+    auto vY = interp.getArgVal(instr, 1);
 
     assert (
-        tX == Type.INT32 && tY == Type.INT32,
+        vX.type == Type.INT32 && vY.type == Type.INT32,
         "invalid operand types in ovf op \"" ~ op ~ "\" (" ~ typeToString(typeTag) ~ ")"
     );
 
@@ -560,15 +550,12 @@ extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr
             Type.INT32
         );
 
-        // FIXME
-        interp.jump(instr.target);
+        interp.branch(instr.getTarget(0));
     }
     else
     {
-        // FIXME
-        interp.jump(instr.excTarget);
+        interp.branch(instr.getTarget(1));
     }
-    */
 }
 
 alias ArithOpOvf!(Type.INT32, "auto r = x + y;") op_add_i32_ovf;
@@ -770,10 +757,7 @@ alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
 
 extern (C) void op_jump(Interp interp, IRInstr instr)
 {
-    assert (false, "op_jump");
-
-    // FIXME
-    interp.jump(/*instr.target*/null);
+    interp.branch(instr.getTarget(0));
 }
 
 extern (C) void op_if_true(Interp interp, IRInstr instr)
@@ -785,13 +769,10 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
         "input to if_true is not constant type"
     );
 
-    // FIXME
-    assert (false);
-
     if (v0.word == TRUE)
-        interp.jump(/*instr.target*/null);
+        interp.branch(instr.getTarget(0));
     else
-        interp.jump(/*instr.excTarget*/null);
+        interp.branch(instr.getTarget(1));
 }
 
 extern (C) void op_call(Interp interp, IRInstr instr)
@@ -1016,9 +997,7 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         interp.pop(numLocals + extraArgs);
 
         // Set the instruction pointer to the call continuation instruction
-        auto contBranch = callInstr.getTarget(0);
-        assert (contBranch.args.length == 0);
-        interp.jump(contBranch.succ);
+        interp.branch(callInstr.getTarget(0));
 
         // Leave the return value in the call's return slot, if any
         if (callInstr.outSlot !is NULL_LOCAL)
@@ -1628,7 +1607,7 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
     callerfun(cast(void*)fun.word.ptrVal);
 
     // FIXME
-    //interp.jump(instr.target);
+    //interp.branch(instr.target);
     */
 }
 

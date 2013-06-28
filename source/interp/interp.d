@@ -773,11 +773,22 @@ class Interp
         ip = null;
     }
 
+    /**
+    Make the execution jump to a specific block and set phi node values
+    */
+    void branch(BranchDesc branch)
+    {
+        // TODO: set phi arguments
+        assert (false);
 
-    // TODO: jump with a branch descriptor, handle phi nodes
 
 
 
+
+
+        // Jump to the successor block
+        jump(branch.succ);
+    }
 
     /**
     Execute the interpreter loop
