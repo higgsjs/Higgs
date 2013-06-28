@@ -233,14 +233,14 @@ class Cst:
     def genJS(self):
 
         if self.val == 'undef_word':
-            return '$ir_get_word($ir_set_undef())'
+            return '$ir_get_word($undef)'
         if self.val == 'undef_type':
-            return '$ir_get_type($ir_set_undef())'
+            return '$ir_get_type($undef)'
 
         if self.val == 'missing_word':
-            return '$ir_get_word($ir_set_missing())'
+            return '$ir_get_word($missing)'
         if self.val == 'missing_type':
-            return '$ir_get_type($ir_set_missing())'
+            return '$ir_get_type($missing)'
 
         return str(self.val)
 

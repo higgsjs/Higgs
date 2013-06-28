@@ -38,7 +38,7 @@
 /***
 Undefined value
 */
-var undefined = $ir_set_undef();
+var undefined = $undef;
 
 /**
 Not-a-number value
@@ -1112,7 +1112,7 @@ function $rt_eq(x, y)
         if ($ir_eq_refptr(x, null))
         {
             // null == undefined
-            if ($ir_is_const(y) && $ir_eq_const(y, $ir_set_undef()))
+            if ($ir_is_const(y) && $ir_eq_const(y, $undef()))
                 return true;
 
             // null != 0
@@ -1559,7 +1559,7 @@ function $rt_getPropObj(obj, propStr)
         var val = $ir_set_value(word, type);
 
         // If the value is not missing, return it
-        if (val !== $ir_set_missing())
+        if (val !== $missing)
             return val;
     }
 
@@ -1568,7 +1568,7 @@ function $rt_getPropObj(obj, propStr)
 
     // If the prototype is null, produce undefined
     if ($ir_eq_refptr(proto, null))
-        return $ir_set_undef();
+        return $undef();
 
     // Do a recursive lookup on the prototype
     return $rt_getPropObj(
@@ -1682,7 +1682,7 @@ function $rt_getProp(base, prop)
             throw TypeError("null base in property read");
     }
 
-    if (base === $ir_set_undef())
+    if (base === $undef)
     {
         if ($rt_valIsString(prop))
             throw TypeError('undefined base in read of property "' + prop + '"');
@@ -1995,8 +1995,8 @@ function $rt_delProp(base, prop)
         return true;
 
     // Set the property slot to missing in the object
-    $rt_obj_set_word(obj, propIdx, $ir_get_word($ir_set_missing()));
-    $rt_obj_set_type(obj, propIdx, $ir_get_type($ir_set_missing()));
+    $rt_obj_set_word(obj, propIdx, $ir_get_word($missing));
+    $rt_obj_set_type(obj, propIdx, $ir_get_type($missing));
 
     return true;
 }
@@ -2066,7 +2066,7 @@ function $rt_hasPropObj(obj, propStr)
     var word = $rt_obj_get_word(obj, propIdx);
     var type = $rt_obj_get_type(obj, propIdx);
     var val = $ir_set_value(word, type);
-    return (val !== $ir_set_missing());
+    return (val !== $missing);
 }
 
 /**

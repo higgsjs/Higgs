@@ -188,20 +188,21 @@ unittest
     // 32-bit integer add
     interp.assertInt("$ir_add_i32(1, 2)", 3);
 
-
-    // TODO: more very basic/sanity tests
-
+    // Global property access (needed by runtime lib)
+    interp.assertInt("x = 7; return x;", 7);
 }
 
-/*
 /// Global expression tests
 unittest
 {
     writefln("global expressions");
 
-    auto interp = new Interp();
+    // Create an interpreter with a runtime but no stdlib
+    auto interp = new Interp(true, false);
 
     interp.assertInt("return 7", 7);
+
+    /*
     interp.assertInt("return 1 + 2", 3);
     interp.assertInt("return 5 - 1", 4);
     interp.assertInt("return 8 % 5", 3);
@@ -238,8 +239,10 @@ unittest
     interp.assertBool("!true", false);
     interp.assertBool("!false", true);
     interp.assertBool("!0", true);
+    */
 }
 
+/*
 /// Global function calls
 unittest
 {

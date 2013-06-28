@@ -161,8 +161,6 @@ static this()
 
     addOp(GET_ARG);
 
-    addOp(GET_FUN_PTR);
-
     addOp(GET_OBJ_PROTO);
     addOp(GET_ARR_PROTO);
     addOp(GET_FUN_PROTO);

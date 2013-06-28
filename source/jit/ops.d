@@ -57,27 +57,6 @@ import jit.regalloc;
 import jit.jit;
 import util.bitset;
 
-void gen_set_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 32);
-    ctx.as.instr(MOV, outOpnd, instr.args[0].int32Val);
-    st.setOutType(ctx.as, instr, Type.INT32);
-}
-
-void gen_set_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, instr.args[0].int64Val);
-    st.setOutType(ctx.as, instr, Type.FLOAT64);
-}
-
-void gen_set_rawptr(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, instr.args[0].int64Val);
-    st.setOutType(ctx.as, instr, Type.RAWPTR);
-}
-
 void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto linkIdx = instr.args[1].linkIdx;
@@ -95,39 +74,7 @@ void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
 
-void gen_set_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Defer writing the constant
-    st.setOutBool(instr, true);
-}
-
-void gen_set_false(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Defer writing the constant
-    st.setOutBool(instr, false);
-}
-
-void gen_set_undef(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{  
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, UNDEF.int8Val);
-    st.setOutType(ctx.as, instr, Type.CONST);
-}
-
-void gen_set_missing(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, MISSING.int8Val);
-    st.setOutType(ctx.as, instr, Type.CONST);
-}
-
-void gen_set_null(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, NULL.int8Val);
-    st.setOutType(ctx.as, instr, Type.REFPTR);
-}
-
+// TODO: recuperate some of this code for phi nodes?
 void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     assert (instr.outSlot !is NULL_LOCAL);
@@ -912,17 +859,7 @@ CodeGenFn[Opcode*] codeGenFns;
 
 static this()
 {
-    codeGenFns[&SET_I32]        = &gen_set_i32;
-    codeGenFns[&SET_F64]        = &gen_set_f64;
-    codeGenFns[&SET_RAWPTR]     = &gen_set_rawptr;
     codeGenFns[&SET_STR]        = &gen_set_str;
-    codeGenFns[&SET_TRUE]       = &gen_set_true;
-    codeGenFns[&SET_FALSE]      = &gen_set_false;
-    codeGenFns[&SET_UNDEF]      = &gen_set_undef;
-    codeGenFns[&SET_MISSING]    = &gen_set_missing;
-    codeGenFns[&SET_NULL]       = &gen_set_null;
-
-    codeGenFns[&MOVE]           = &gen_move;
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;

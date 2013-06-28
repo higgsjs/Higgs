@@ -1810,6 +1810,18 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             return ctx.fun.argcVal;
         }
 
+        // If this is the undefined constant
+        else if (identExpr.name == "$undef")
+        {
+            return IRConst.undefCst;
+        }
+
+        // If this is the missing constant
+        else if (identExpr.name == "$missing")
+        {
+            return IRConst.missingCst;
+        }
+
         // If the variable is global
         else if (identExpr.declNode is null)
         {

@@ -339,11 +339,11 @@ function $rt_obj_alloc(cap)
     $rt_obj_set_header(o, 2);
     for (var i = 0; i < cap; ++i)
     {    
-        $rt_obj_set_word(o, i, $ir_get_word($ir_set_missing()));
+        $rt_obj_set_word(o, i, $ir_get_word($missing));
     }
     for (var i = 0; i < cap; ++i)
     {    
-        $rt_obj_set_type(o, i, $ir_get_type($ir_set_missing()));
+        $rt_obj_set_type(o, i, $ir_get_type($missing));
     }
     return o;
 }
@@ -531,11 +531,11 @@ function $rt_clos_alloc(cap, num_cells)
     $rt_clos_set_header(o, 3);
     for (var i = 0; i < cap; ++i)
     {    
-        $rt_clos_set_word(o, i, $ir_get_word($ir_set_missing()));
+        $rt_clos_set_word(o, i, $ir_get_word($missing));
     }
     for (var i = 0; i < cap; ++i)
     {    
-        $rt_clos_set_type(o, i, $ir_get_type($ir_set_missing()));
+        $rt_clos_set_type(o, i, $ir_get_type($missing));
     }
     $rt_clos_set_ctor_class(o, null);
     for (var i = 0; i < num_cells; ++i)
@@ -640,8 +640,8 @@ function $rt_cell_alloc()
     var o = $ir_heap_alloc($rt_cell_comp_size());
     $rt_cell_set_next(o, null);
     $rt_cell_set_header(o, 4);
-    $rt_cell_set_word(o, $ir_get_word($ir_set_undef()));
-    $rt_cell_set_type(o, $ir_get_type($ir_set_undef()));
+    $rt_cell_set_word(o, $ir_get_word($undef));
+    $rt_cell_set_type(o, $ir_get_type($undef));
     return o;
 }
 
@@ -806,11 +806,11 @@ function $rt_arr_alloc(cap)
     $rt_arr_set_header(o, 5);
     for (var i = 0; i < cap; ++i)
     {    
-        $rt_arr_set_word(o, i, $ir_get_word($ir_set_missing()));
+        $rt_arr_set_word(o, i, $ir_get_word($missing));
     }
     for (var i = 0; i < cap; ++i)
     {    
-        $rt_arr_set_type(o, i, $ir_get_type($ir_set_missing()));
+        $rt_arr_set_type(o, i, $ir_get_type($missing));
     }
     return o;
 }
@@ -923,11 +923,11 @@ function $rt_arrtbl_alloc(cap)
     $rt_arrtbl_set_header(o, 6);
     for (var i = 0; i < cap; ++i)
     {    
-        $rt_arrtbl_set_word(o, i, $ir_get_word($ir_set_undef()));
+        $rt_arrtbl_set_word(o, i, $ir_get_word($undef));
     }
     for (var i = 0; i < cap; ++i)
     {    
-        $rt_arrtbl_set_type(o, i, $ir_get_type($ir_set_undef()));
+        $rt_arrtbl_set_type(o, i, $ir_get_type($undef));
     }
     return o;
 }

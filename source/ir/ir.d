@@ -697,16 +697,23 @@ class IRConst : IRValue
         return undefVal;
     }
 
+    static IRConst missingCst()
+    {
+        if (!missingVal) missingVal = new IRConst(MISSING, Type.CONST);
+        return missingVal;
+    }
+
     static IRConst nullCst()  
     { 
         if (!nullVal) nullVal = new IRConst(NULL, Type.REFPTR);
         return nullVal;
     }
 
-    private static IRConst trueVal;
-    private static IRConst falseVal;
-    private static IRConst undefVal;
-    private static IRConst nullVal;
+    private static IRConst trueVal = null;
+    private static IRConst falseVal = null;
+    private static IRConst undefVal = null;
+    private static IRConst missingVal = null;
+    private static IRConst nullVal = null;
 
     private static IRConst[int32] int32Vals;
     private static IRConst[int64] int64Vals;
@@ -797,7 +804,7 @@ Cached index value (stateful, non-constant)
 */
 class IRCachedIdx : IRValue
 {
-    size_t idx = size_t.max;
+    uint32_t idx = uint32_t.max;
 
     this()
     {
@@ -805,12 +812,12 @@ class IRCachedIdx : IRValue
 
     bool isNull()
     {
-        return idx == size_t.max;
+        return idx == idx.max;
     }
 
     override string toString()
     {
-        return "<idx:" ~ ((idx is size_t.max)? "NULL":to!string(idx)) ~ ">";
+        return "<idx:" ~ ((idx is idx.max)? "NULL":to!string(idx)) ~ ">";
     }
 }
 

@@ -244,29 +244,31 @@ void throwError(
 
 extern (C) void op_set_str(Interp interp, IRInstr instr)
 {
-    assert (false, "set_str");
+    auto linkArg = cast(IRLinkIdx)instr.getArg(1);
+    assert (linkArg !is null);
+    auto linkIdx = &linkArg.linkIdx;
 
-    // FIXME
-    /*
-    auto linkIdx = instr.args[1].linkIdx;
-
-    if (linkIdx is NULL_LINK)
+    if (*linkIdx is NULL_LINK)
     {
-        linkIdx = interp.allocLink();
-        auto strPtr = getString(interp, instr.args[0].stringVal);
-        interp.setLinkWord(linkIdx, Word.ptrv(strPtr));
-        interp.setLinkType(linkIdx, Type.REFPTR);
-        instr.args[1].linkIdx = linkIdx;
+        // Find the string in the string table
+        auto strArg = cast(IRString)instr.getArg(0);
+        assert (strArg !is null);
+        auto strPtr = getString(interp, strArg.str);
+
+        // Allocate a link table entry
+        *linkIdx = interp.allocLink();
+
+        interp.setLinkWord(*linkIdx, Word.ptrv(strPtr));
+        interp.setLinkType(*linkIdx, Type.REFPTR);
     }
 
     //writefln("setting str %s", instr.args[0].stringVal);
 
     interp.setSlot(
         instr.outSlot,
-        interp.getLinkWord(linkIdx),
+        interp.getLinkWord(*linkIdx),
         Type.REFPTR
     );
-    */
 }
 
 extern (C) void op_set_true(Interp interp, IRInstr instr)
@@ -753,9 +755,6 @@ extern (C) void op_jump(Interp interp, IRInstr instr)
 
 extern (C) void op_if_true(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-
     auto v0 = interp.getArgVal(instr, 0);
 
     assert (
@@ -764,6 +763,8 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
     );
 
     // FIXME
+    assert (false);
+
     if (v0.word == TRUE)
         interp.jump(/*instr.target*/null);
     else
@@ -1044,28 +1045,6 @@ extern (C) void op_get_arg(Interp interp, IRInstr instr)
     );
 }
 
-extern (C) void op_get_fun_ptr(Interp interp, IRInstr instr)
-{
-    // FIXME
-    /*
-    auto fun = instr.args[0].fun;
-
-    // Register this function in the function reference set
-    interp.funRefs[cast(void*)fun] = fun;
-
-    //write(interp.funRefs.length);
-    //write("\n");
-
-    rawptr ptr = cast(rawptr)fun;
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(ptr),
-        Type.FUNPTR
-    );
-    */
-}
-
 /// Templated interpreter value access operation
 extern (C) void GetValOp(Type typeTag, string op)(Interp interp, IRInstr instr)
 {
@@ -1137,6 +1116,7 @@ extern (C) void op_gc_collect(Interp interp, IRInstr instr)
 extern (C) void op_make_link(Interp interp, IRInstr instr)
 {
     // FIXME
+    assert (false);
     /*
     auto linkIdx = instr.args[0].linkIdx;
 
@@ -1160,6 +1140,7 @@ extern (C) void op_make_link(Interp interp, IRInstr instr)
 extern (C) void op_set_link(Interp interp, IRInstr instr)
 {
     // FIXME
+    assert (false);
     /*
     auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
 
@@ -1173,6 +1154,8 @@ extern (C) void op_set_link(Interp interp, IRInstr instr)
 
 extern (C) void op_get_link(Interp interp, IRInstr instr)
 {
+    // FIXME
+    assert (false);
     /*
     auto linkIdx = interp.getWord(instr.args[0].linkIdx).uint32Val;
 
@@ -1208,13 +1191,15 @@ extern (C) void op_get_str(Interp interp, IRInstr instr)
 /// Get the value of a global variable
 extern (C) void op_get_global(Interp interp, IRInstr instr)
 {
-    // FIXME
-    /*
     // Name string (D string)
-    auto nameStr = instr.args[0].stringVal;
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
 
     // Cached property index
-    auto propIdx = instr.args[1].int32Val;
+    auto idxArg = cast(IRCachedIdx)instr.getArg(1);
+    assert (idxArg !is null);
+    auto propIdx = idxArg.idx;
 
     // If a property index was cached
     if (propIdx >= 0)
@@ -1240,7 +1225,7 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
     if (propIdx != uint32.max)
     {
         // Cache the property index
-        instr.args[1].int32Val = propIdx;
+        idxArg.idx = propIdx;
     }
 
     // Lookup the property
@@ -1265,35 +1250,35 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
         instr.outSlot,
         val
     );
-    */
 }
 
 /// Set the value of a global variable
 extern (C) void op_set_global(Interp interp, IRInstr instr)
 {
-    // FIXME
-    /*
     // Name string (D string)
-    auto nameStr = instr.args[0].stringVal;
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
 
-    // Property value
-    auto wVal = interp.getWord(instr.getArgSlot(1));
-    auto tVal = interp.getType(instr.getArgSlot(1));
+    // Get the property value argument
+    auto propVal = interp.getArgVal(instr, 1);
 
     // Cached property index
-    auto propIdx = instr.args[2].int32Val;
+    auto idxArg = cast(IRCachedIdx)instr.getArg(2);
+    assert (idxArg !is null);
+    auto propIdx = idxArg.idx;
 
     // If a property index was cached
     if (propIdx >= 0)
     {
-        obj_set_word(interp.globalObj, cast(uint32)propIdx, wVal.uint64Val);
-        obj_set_type(interp.globalObj, cast(uint32)propIdx, tVal);
+        obj_set_word(interp.globalObj, cast(uint32)propIdx, propVal.word.uint64Val);
+        obj_set_type(interp.globalObj, cast(uint32)propIdx, propVal.type);
 
         return;
     }
 
     // Save the value in a GC root
-    auto val = GCRoot(interp, wVal, tVal);
+    auto val = GCRoot(interp, propVal);
 
     // Get the property string
     auto propStr = GCRoot(interp, getString(interp, nameStr));
@@ -1313,20 +1298,25 @@ extern (C) void op_set_global(Interp interp, IRInstr instr)
     if (propIdx != uint32.max)
     {
         // Cache the property index
-        instr.args[2].int32Val = propIdx;
+        idxArg.idx = propIdx;
     }
-    */
 }
 
 extern (C) void op_new_clos(Interp interp, IRInstr instr)
 {
-    // FIXME
-    /*
     //writefln("entering newclos");
 
-    auto fun = instr.args[0].fun;
-    auto closLinkIdx = &instr.args[1].linkIdx;
-    auto protLinkIdx = &instr.args[2].linkIdx;
+    auto funArg = cast(IRFunPtr)instr.getArg(0);
+    assert (funArg !is null);
+    auto fun = funArg.fun;
+
+    auto closLinkArg = cast(IRLinkIdx)instr.getArg(1);
+    assert (closLinkArg !is null);
+    auto closLinkIdx = &closLinkArg.linkIdx;
+
+    auto protLinkArg = cast(IRLinkIdx)instr.getArg(2);
+    assert (protLinkArg !is null);
+    auto protLinkIdx = &protLinkArg.linkIdx;
 
     if (*closLinkIdx is NULL_LINK)
     {
@@ -1353,7 +1343,7 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
             interp.funProto,
             CLASS_INIT_SIZE,
             2,
-            cast(uint32)fun.captVars.length,
+            cast(uint32)fun.ast.captVars.length,
             fun
         )
     );
@@ -1398,7 +1388,6 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
     );
 
     //writefln("leaving newclos");
-    */
 }
 
 extern (C) void op_load_file(Interp interp, IRInstr instr)
@@ -1413,20 +1402,16 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
     // Register this function in the function reference set
     interp.funRefs[cast(void*)fun] = fun;
 
-    // FIXME
-    assert (false);
-    /*
     // Setup the callee stack frame
-    callFun(
-        interp,
+    interp.callFun(
         fun,
         instr,      // Calling instruction
         null,       // Null closure argument
         NULL,       // Null this argument
         Type.REFPTR,// This value is a reference
-        []          // 0 arguments
+        0,          // 0 arguments
+        null        // 0 arguments
     );
-    */
 }
 
 extern (C) void op_eval_str(Interp interp, IRInstr instr)
@@ -1441,20 +1426,16 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
     // Register this function in the function reference set
     interp.funRefs[cast(void*)fun] = fun;
 
-    assert (false);
-    // FIXME
-    /*
     // Setup the callee stack frame
-    callFun(
-        interp,
+    interp.callFun(
         fun,
         instr,      // Calling instruction
         null,       // Null closure argument
         NULL,       // Null this argument
         Type.REFPTR,// This value is a reference
-        []          // 0 arguments
+        0,          // 0 arguments
+        null        // 0 arguments
     );
-    */
 }
 
 extern (C) void op_print_str(Interp interp, IRInstr instr)
