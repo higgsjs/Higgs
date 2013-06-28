@@ -735,7 +735,21 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
         interp.jump(/*instr.excTarget*/null);
 }
 
-/*
+
+
+
+
+// TODO: make callFun an interpreter method?
+// should now be generic enough for call_apply
+
+
+// Array of arg slots... No longer practical
+// Could try stack-allocating an array of words with alloca
+//import core.stdc.stdlib;
+//auto p = cast(Word*)alloca(ValuePair.sizeof * 10);
+
+
+
 void callFun(
     Interp interp,
     IRFunction fun,         // Function to call
@@ -743,11 +757,12 @@ void callFun(
     refptr closPtr,         // Closure pointer
     Word thisWord,          // This value word
     Type thisType,          // This value type
-    IRInstr.Arg[] argSlots  // Argument slots
+    uint32_t argCount,
+    ValuePair* argVals
 )
 {
-    //writefln("call to %s (%s)", fun.name, cast(void*)fun);
-    //writefln("num args: %s", argSlots.length);
+    writefln("call to %s (%s)", fun.name, cast(void*)fun);
+    writefln("num args: %s", argCount);
 
     assert (
         fun !is null, 
@@ -766,12 +781,13 @@ void callFun(
     }
 
     // Compute the number of missing arguments
-    size_t argDiff = (fun.params.length > argSlots.length)? (fun.params.length - argSlots.length):0;
+    size_t argDiff = (fun.numParams > argCount)? (fun.numParams - argCount):0;
 
     // Push undefined values for the missing last arguments
     for (size_t i = 0; i < argDiff; ++i)
         interp.push(UNDEF, Type.CONST);
 
+    /*
     // Push the visible function arguments in reverse order
     for (size_t i = 0; i < argSlots.length; ++i)
     {
@@ -780,9 +796,10 @@ void callFun(
         auto tArg = interp.getType(cast(LocalIdx)argSlot);
         interp.push(wArg, tArg);
     }
+    */
 
     // Push the argument count
-    interp.push(Word.int32v(cast(int32)argSlots.length), Type.INT32);
+    interp.push(Word.int32v(argCount), Type.INT32);
 
     // Push the "this" argument
     interp.push(thisWord, thisType);
@@ -793,13 +810,15 @@ void callFun(
     // Push the return address (caller instruction)
     auto retAddr = cast(rawptr)callInstr;
     interp.push(Word.ptrv(retAddr), Type.INSPTR);
-
+ 
     // Push space for the callee locals and initialize the slots to undefined
-    auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.params.length;
+    auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
     interp.push(numLocals);
 
+    // FIXME *****
+    // FIXME
     // Jump to the function entry
-    interp.jump(fun.entryBlock);
+    //interp.jump(fun.entryBlock);
 
     // Count the number of times each callee is called
     if (callInstr !is null)
@@ -815,7 +834,6 @@ void callFun(
         caller.callCounts[callInstr][fun]++;
     }
 }
-*/
 
 extern (C) void op_call(Interp interp, IRInstr instr)
 {

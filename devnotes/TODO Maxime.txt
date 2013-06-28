@@ -103,10 +103,20 @@ TODO: begin steps to test interp on simple expressions
 
 FIXME: break/cont target should have both ctxList and IRBlock
 
+TODO: get print("hi") working
+
 TODO: get basic "return 1", "1+2" working in interpreter
+
+
+
 
 TODO: refactor callFun
 - Needed to execute any script
+
+
+TODO: interp.jump for callFun...? or make callFun interp method
+
+
 
 
 
