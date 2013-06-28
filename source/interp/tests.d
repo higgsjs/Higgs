@@ -176,10 +176,21 @@ unittest
 
 unittest
 {
-    writefln("string evaluation");
+    writefln("interpreter core");
 
-    //auto v = (new Interp()).evalString("1");
-    //assert (v.word.int32Val == 1);
+    // Create an interpreter without a runtime or stdlib
+    auto interp = new Interp(false, false);
+
+    // Constant integer 1
+    auto v = interp.evalString("1");
+    assert (v.word.int32Val == 1);
+
+    // 32-bit integer add
+    interp.assertInt("$ir_add_i32(1, 2)", 3);
+
+
+    // TODO: more very basic/sanity tests
+
 }
 
 /*

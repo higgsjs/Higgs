@@ -42,6 +42,7 @@ import std.stdio;
 import std.string;
 import std.array;
 import std.conv;
+import std.stdint;
 import std.typecons;
 import std.path;
 import std.file;
@@ -377,8 +378,13 @@ class Interp
     /**
     Constructor, initializes/resets the interpreter state
     */
-    this(bool loadStdLib = true)
+    this(bool loadRuntime = true, bool loadStdLib = true)
     {
+        assert (
+            !(loadStdLib && !loadRuntime),
+            "cannot load stdlib without loading runtime"
+        );
+
         // Allocate the word stack
         wStack = cast(Word*)GC.malloc(
             Word.sizeof * STACK_SIZE,
@@ -485,11 +491,15 @@ class Interp
             GLOBAL_OBJ_INIT_SIZE
         );
 
-        // Load the layout code
-        load("interp/layout.js");
+        // If the runtime library should be loaded
+        if (loadRuntime)
+        {
+            // Load the layout code
+            load("interp/layout.js");
 
-        // Load the runtime library
-        load("interp/runtime.js");
+            // Load the runtime library
+            load("interp/runtime.js");
+        }
 
         // If the standard library should be loaded
         if (loadStdLib)
@@ -617,12 +627,21 @@ class Interp
     }
 
     /**
-    Push a word on the stack
+    Push a word and type on the stack
     */
     void push(Word w, Type t)
     {
         push(1);
         setSlot(0, w, t);
+    }
+
+    /**
+    Push a value pair on the stack
+    */
+    void push(ValuePair val)
+    {
+        push(1);
+        setSlot(0, val.word, val.type);
     }
 
     /**
@@ -754,6 +773,12 @@ class Interp
         ip = null;
     }
 
+
+    // TODO: jump with a branch descriptor, handle phi nodes
+
+
+
+
     /**
     Execute the interpreter loop
     */
@@ -826,6 +851,87 @@ class Interp
     }
 
     /**
+    Call a given IR function. Prepares the callee stack-frame.
+    */
+    void callFun(
+        IRFunction fun,         // Function to call
+        IRInstr callInstr,      // Return address
+        refptr closPtr,         // Closure pointer
+        Word thisWord,          // This value word
+        Type thisType,          // This value type
+        uint32_t argCount,
+        ValuePair* argVals
+    )
+    {
+        writefln("call to %s (%s)", fun.name, cast(void*)fun);
+        writefln("num args: %s", argCount);
+
+        assert (
+            fun !is null, 
+            "null IRFunction pointer"
+        );
+
+        // If the function is not yet compiled, compile it now
+        if (fun.entryBlock is null)
+        {
+            //write("compiling");
+            //write("\n");
+            //write(core.memory.GC.addrOf(cast(void*)fun.ast));
+            //write("\n");
+
+            astToIR(fun.ast, fun);
+        }
+
+        // Compute the number of missing arguments
+        size_t argDiff = (fun.numParams > argCount)? (fun.numParams - argCount):0;
+
+        // Push undefined values for the missing last arguments
+        for (size_t i = 0; i < argDiff; ++i)
+            push(UNDEF, Type.CONST);
+
+        // Push the visible function arguments in reverse order
+        for (size_t i = 0; i < argCount; ++i)
+        {
+            auto argVal = argVals[argCount-(1+i)];
+            push(argVal);
+        }
+
+        // Push the argument count
+        push(Word.int32v(argCount), Type.INT32);
+
+        // Push the "this" argument
+        push(thisWord, thisType);
+
+        // Push the closure argument
+        push(Word.ptrv(closPtr), Type.REFPTR);
+
+        // Push the return address (caller instruction)
+        auto retAddr = cast(rawptr)callInstr;
+        push(Word.ptrv(retAddr), Type.INSPTR);
+     
+        // Push space for the callee locals and initialize the slots to undefined
+        auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
+        push(numLocals);
+
+        // Jump to the function entry block
+        jump(fun.entryBlock);
+
+        // Count the number of times each callee is called
+        if (callInstr !is null)
+        {
+            auto caller = callInstr.block.fun;
+            
+            if (callInstr !in caller.callCounts)
+                caller.callCounts[callInstr] = uint64_t[IRFunction].init;
+
+            if (fun !in caller.callCounts[callInstr])
+                caller.callCounts[callInstr][fun] = 0;
+
+            caller.callCounts[callInstr][fun]++;
+        }
+    }
+
+    /**
     Execute a unit-level IR function
     */
     ValuePair exec(IRFunction fun)
@@ -840,24 +946,16 @@ class Interp
         // Register this function in the function reference set
         funRefs[cast(void*)fun] = fun;
 
-
-
-        // FIXME
-        /*
         // Setup the callee stack frame
-        interp.ops.callFun(
-            this,
-            fun,
+        callFun(
+            fun,        // Function to call
             null,       // Null return address
             null,       // Null closure argument
             NULL,       // Null this argument
             Type.REFPTR,// This value is a reference
-            []          // 0 arguments
+            0,          // 0 arguments
+            null        // no argument array
         );
-        */
-
-
-
 
         // Run the interpreter loop
         loop();
@@ -887,7 +985,7 @@ class Interp
     }
 
     /**
-    Get the path to load based on a (potentially relative) path
+    Get the path for a load command based on a (potentially relative) path
     */
     string getLoadPath(string fileName)
     {

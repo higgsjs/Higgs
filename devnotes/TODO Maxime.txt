@@ -101,20 +101,19 @@ for (var i = 0; i < 10; i++)
 TODO: begin steps to test interp on simple expressions
 - get complete pipeline working for simple stuff, build on
 
+TODO: get rid of uint32, use uint32_t?
+
 FIXME: break/cont target should have both ctxList and IRBlock
 
 TODO: get print("hi") working
 
-TODO: get basic "return 1", "1+2" working in interpreter
+TODO: jump with branch descriptor, handle phi nodes
+- interp.branch(BranchDesc branch)
 
 
-
-
-TODO: refactor callFun
-- Needed to execute any script
-
-
-TODO: interp.jump for callFun...? or make callFun interp method
+TODO: get set_global, get_global working
+- Needed for even basic runtime
+- x = 1; return x;
 
 
 
@@ -123,7 +122,13 @@ TODO: interp.jump for callFun...? or make callFun interp method
 
 
 
+[DONE] TODO: get basic "1", "ir_add_i32" working in interpreter
 
+[DONE] TODO: getArgVal
+
+[DONE] TODO: add loadRuntime option to interpreter
+
+[DONE] TODO: make callFun interp method
 
 [DONE] FIXME: temps are not per-block
 

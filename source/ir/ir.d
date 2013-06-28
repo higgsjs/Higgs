@@ -1030,30 +1030,7 @@ class IRInstr : IRDstValue
         return args[idx].value;
     }
 
-    /// Get the stack slot associated with an argument
-    LocalIdx getArgSlot(size_t idx)
-    {
-        assert (idx < args.length);
-
-        auto value = args[idx].value;
-
-        LocalIdx outSlot;
-
-        if (auto instr = cast(IRInstr)value)
-            outSlot = instr.outSlot;
-        else if (auto phi = cast(PhiNode)value)
-            outSlot = phi.outSlot;
-        else
-            assert (false, "value has no out slot");
-
-        assert (
-            outSlot != NULL_LOCAL, 
-            "out slot unassigned"
-        );
-
-        return outSlot;
-    }
-
+    /// Set a branch target with a branch descriptor
     void setTarget(size_t idx, BranchDesc desc)
     {
         assert (idx < targets.length);

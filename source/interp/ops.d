@@ -37,6 +37,8 @@
 
 module interp.ops;
 
+import core.stdc.stdlib;
+import core.sys.posix.dlfcn;
 import std.stdio;
 import std.algorithm;
 import std.string;
@@ -44,7 +46,6 @@ import std.conv;
 import std.math;
 import std.datetime;
 import std.stdint;
-import core.sys.posix.dlfcn;
 import parser.parser;
 import ir.ir;
 import ir.ops;
@@ -56,6 +57,56 @@ import interp.object;
 import interp.gc;
 import interp.ffi;
 import jit.codeblock;
+
+/**
+Get the value of an instruction's argument
+*/
+private ValuePair getArgVal(Interp interp, IRInstr instr, size_t argIdx)
+{
+    // Get the argument IRValue
+    auto val = instr.getArg(argIdx);
+
+    // If the value has an associated output slot
+    if (auto dstVal = cast(IRDstValue)val)
+    {
+        assert (
+            dstVal.outSlot != NULL_LOCAL, 
+            "out slot unassigned"
+        );
+
+        // Get the value at the output slot
+        return interp.getSlot(dstVal.outSlot);
+    }
+
+    // If this is a constant value
+    if (auto cstVal = cast(IRConst)val)
+    {
+        // Get the constant value
+        return cstVal.pair();
+    }
+
+    assert (
+        false,
+        "unsupported value in getArgVal: \"" ~ val.toString() ~ "\""
+    );
+}
+
+/**
+Get an argument value and ensure it is a string object pointer
+*/
+refptr getArgStr(Interp interp, IRInstr instr, size_t argIdx)
+{
+    auto strVal = interp.getArgVal(instr, 0);
+
+    assert (
+        valIsString(strVal.word, strVal.type),
+        "expected string value for arg " ~ to!string(argIdx)
+    );
+
+    return strVal.word.ptrVal;
+}
+
+// TODO: setOutVal
 
 void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 {
@@ -229,17 +280,15 @@ extern (C) void op_set_true(Interp interp, IRInstr instr)
 
 extern (C) void op_set_value(Interp interp, IRInstr instr)
 {
-    auto wWord = interp.getWord(instr.getArgSlot(0));
-
-    auto wType = interp.getWord(instr.getArgSlot(1));
-    auto tType = interp.getType(instr.getArgSlot(1));
+    auto word = interp.getArgVal(instr, 0).word;
+    auto typeVal = interp.getArgVal(instr, 1);
 
     assert (
-        tType == Type.INT32,
+        typeVal.type == Type.INT32,
         "type should be int32"
     );
 
-    auto type = cast(Type)wType.uint8Val;
+    auto type = cast(Type)typeVal.word.uint8Val;
 
     assert (
         type >= Type.min && type <= Type.max,
@@ -248,14 +297,14 @@ extern (C) void op_set_value(Interp interp, IRInstr instr)
 
     interp.setSlot(
         instr.outSlot,
-        wWord,
+        word,
         type
     );
 }
 
 extern (C) void op_get_word(Interp interp, IRInstr instr)
 {
-    auto word = interp.getWord(instr.getArgSlot(0));
+    auto word = interp.getArgVal(instr, 0).word;
 
     interp.setSlot(
         instr.outSlot,
@@ -266,7 +315,7 @@ extern (C) void op_get_word(Interp interp, IRInstr instr)
 
 extern (C) void op_get_type(Interp interp, IRInstr instr)
 {
-    auto type = interp.getType(instr.getArgSlot(0));
+    auto type = interp.getArgVal(instr, 0).type;
 
     interp.setSlot(
         instr.outSlot,
@@ -275,17 +324,9 @@ extern (C) void op_get_type(Interp interp, IRInstr instr)
     );
 }
 
-extern (C) void op_move(Interp interp, IRInstr instr)
-{
-    interp.move(
-        instr.getArgSlot(0),
-        instr.outSlot
-    );
-}
-
 extern (C) void TypeCheckOp(Type type)(Interp interp, IRInstr instr)
 {
-    auto typeTag = interp.getType(instr.getArgSlot(0));
+    auto typeTag = interp.getArgVal(instr, 0).type;
 
     interp.setSlot(
         instr.outSlot,
@@ -303,7 +344,7 @@ alias TypeCheckOp!(Type.CONST) op_is_const;
 
 extern (C) void op_i32_to_f64(Interp interp, IRInstr instr)
 {
-    auto w0 = interp.getWord(instr.getArgSlot(0));
+    auto w0 = interp.getArgVal(instr, 0).word;
 
     interp.setSlot(
         instr.outSlot,
@@ -314,7 +355,7 @@ extern (C) void op_i32_to_f64(Interp interp, IRInstr instr)
 
 extern (C) void op_f64_to_i32(Interp interp, IRInstr instr)
 {
-    auto w0 = interp.getWord(instr.getArgSlot(0));
+    auto w0 = interp.getArgVal(instr, 0).word;
 
     // Convert based on the ECMAScript toInt32 specs (see section 9.5)
     auto intVal = cast(int32)cast(int64)w0.floatVal;
@@ -338,21 +379,19 @@ extern (C) void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRIn
 
     static if (arity > 0)
     {
-        auto wX = interp.getWord(instr.getArgSlot(0));
-        auto tX = interp.getType(instr.getArgSlot(0));
+        auto vX = interp.getArgVal(instr, 0);
 
         assert (
-            tX == typeTag,
+            vX.type == typeTag,
             "invalid operand 1 type in op \"" ~ op ~ "\" (" ~ typeToString(typeTag) ~ ")"
         );
     }
     static if (arity > 1)
     {
-        auto wY = interp.getWord(instr.getArgSlot(1));
-        auto tY = interp.getType(instr.getArgSlot(1));
+        auto vY = interp.getArgVal(instr, 1);
 
         assert (
-            tY == typeTag,
+            vY.type == typeTag,
             "invalid operand 2 type in op \"" ~ op ~ "\" (" ~ typeToString(typeTag) ~ ")"
         );
     }
@@ -362,16 +401,16 @@ extern (C) void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRIn
     static if (typeTag == Type.INT32)
     {
         static if (arity > 0)
-            auto x = wX.int32Val;
+            auto x = vX.word.int32Val;
         static if (arity > 1)
-            auto y = wY.int32Val;
+            auto y = vY.word.int32Val;
     }
     static if (typeTag == Type.FLOAT64)
     {
         static if (arity > 0)
-            auto x = wX.floatVal;
+            auto x = vX.word.floatVal;
         static if (arity > 1)
-            auto y = wY.floatVal;
+            auto y = vY.word.floatVal;
     }
 
     mixin(op);
@@ -417,12 +456,11 @@ alias ArithOp!(Type.FLOAT64, 2, "auto r = pow(x, y);") op_pow_f64;
 
 extern (C) void op_floor_f64(Interp interp, IRInstr instr)
 {
-    auto w0 = interp.getWord(instr.getArgSlot(0));
-    auto t0 = interp.getType(instr.getArgSlot(0));
+    auto v0 = interp.getArgVal(instr, 0);
 
-    assert (t0 == Type.FLOAT64, "invalid operand type in floor");
+    assert (v0.type == Type.FLOAT64, "invalid operand type in floor");
 
-    auto r = floor(w0.floatVal);
+    auto r = floor(v0.word.floatVal);
 
     if (r >= int32.min && r <= int32.max)
     {
@@ -444,12 +482,11 @@ extern (C) void op_floor_f64(Interp interp, IRInstr instr)
 
 extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
 {
-    auto w0 = interp.getWord(instr.getArgSlot(0));
-    auto t0 = interp.getType(instr.getArgSlot(0));
+    auto v0 = interp.getArgVal(instr, 0);
 
-    assert (t0 == Type.FLOAT64, "invalid operand type in ceil");
+    assert (v0.type == Type.FLOAT64, "invalid operand type in ceil");
 
-    auto r = ceil(w0.floatVal);
+    auto r = ceil(v0.word.floatVal);
 
     if (r >= int32.min && r <= int32.max)
     {
@@ -471,6 +508,10 @@ extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
 
 extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr)
 {
+    // FIXME
+    assert (false);
+
+    /*
     auto wX = interp.getWord(instr.getArgSlot(0));
     auto tX = interp.getType(instr.getArgSlot(0));
     auto wY = interp.getWord(instr.getArgSlot(1));
@@ -481,8 +522,8 @@ extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr
         "invalid operand types in ovf op \"" ~ op ~ "\" (" ~ typeToString(typeTag) ~ ")"
     );
 
-    auto x = cast(int64)wX.int32Val;
-    auto y = cast(int64)wY.int32Val;
+    auto x = cast(int64)vX.word.int32Val;
+    auto y = cast(int64)vY.word.int32Val;
 
     mixin(op);
 
@@ -495,13 +536,14 @@ extern (C) void ArithOpOvf(Type typeTag, string op)(Interp interp, IRInstr instr
         );
 
         // FIXME
-        interp.jump(/*instr.target*/null);
+        interp.jump(instr.target);
     }
     else
     {
         // FIXME
-        interp.jump(/*instr.excTarget*/null);
+        interp.jump(instr.excTarget);
     }
+    */
 }
 
 alias ArithOpOvf!(Type.INT32, "auto r = x + y;") op_add_i32_ovf;
@@ -511,13 +553,11 @@ alias ArithOpOvf!(Type.INT32, "auto r = x << y;") op_lsft_i32_ovf;
 
 extern (C) void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRInstr instr)
 {
-    auto wX = interp.getWord(instr.getArgSlot(0));
-    auto tX = interp.getType(instr.getArgSlot(0));
-    auto wY = interp.getWord(instr.getArgSlot(1));
-    auto tY = interp.getType(instr.getArgSlot(1));
+    auto vX = interp.getArgVal(instr, 0);
+    auto vY = interp.getArgVal(instr, 1);
 
     assert (
-        tX == typeTag && tY == typeTag,
+        vX.type == typeTag && vY.type == typeTag,
         "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
     );
 
@@ -526,23 +566,23 @@ extern (C) void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRIn
 
     static if (typeTag == Type.CONST)
     {
-        auto x = cast(DataType)wX.int8Val;
-        auto y = cast(DataType)wY.int8Val;
+        auto x = cast(DataType)vX.word.int8Val;
+        auto y = cast(DataType)vY.word.int8Val;
     }
     static if (typeTag == Type.INT32)
     {
-        auto x = cast(DataType)wX.int32Val;
-        auto y = cast(DataType)wY.int32Val;
+        auto x = cast(DataType)vX.word.int32Val;
+        auto y = cast(DataType)vY.word.int32Val;
     }
     static if (typeTag == Type.REFPTR || typeTag == Type.RAWPTR)
     {
-        auto x = cast(DataType)wX.ptrVal;
-        auto y = cast(DataType)wY.ptrVal;
+        auto x = cast(DataType)vX.word.ptrVal;
+        auto y = cast(DataType)vY.word.ptrVal;
     }
     static if (typeTag == Type.FLOAT64)
     {
-        auto x = cast(DataType)wX.floatVal;
-        auto y = cast(DataType)wY.floatVal;
+        auto x = cast(DataType)vX.word.floatVal;
+        auto y = cast(DataType)vY.word.floatVal;
     }
 
     mixin(op);        
@@ -580,24 +620,21 @@ alias CompareOp!(float64, Type.FLOAT64, "r = (x >= y);") op_ge_f64;
 
 extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {
-    auto wPtr = interp.getWord(instr.getArgSlot(0));
-    auto tPtr = interp.getType(instr.getArgSlot(0));
-
-    auto wOfs = interp.getWord(instr.getArgSlot(1));
-    auto tOfs = interp.getType(instr.getArgSlot(1));
+    auto vPtr = interp.getArgVal(instr, 0);
+    auto vOfs = interp.getArgVal(instr, 1);
 
     assert (
-        tPtr == Type.REFPTR || tPtr == Type.RAWPTR,
+        vPtr.type == Type.REFPTR || vPtr.type == Type.RAWPTR,
         "pointer is not pointer type in load op"
     );
 
     assert (
-        tOfs == Type.INT32,
+        vOfs.type == Type.INT32,
         "offset is not integer type in load op"
     );
 
-    auto ptr = wPtr.ptrVal;
-    auto ofs = wOfs.int32Val;
+    auto ptr = vPtr.word.ptrVal;
+    auto ofs = vOfs.word.int32Val;
 
     auto val = *cast(DataType*)(ptr + ofs);
 
@@ -639,26 +676,23 @@ extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 
 extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 {
-    auto wPtr = interp.getWord(instr.getArgSlot(0));
-    auto tPtr = interp.getType(instr.getArgSlot(0));
-
-    auto wOfs = interp.getWord(instr.getArgSlot(1));
-    auto tOfs = interp.getType(instr.getArgSlot(1));
+    auto vPtr = interp.getArgVal(instr, 0);
+    auto vOfs = interp.getArgVal(instr, 1);
 
     assert (
-        tPtr == Type.REFPTR || tPtr == Type.RAWPTR,
-        "pointer is not pointer type in store op"
+        vPtr.type == Type.REFPTR || vPtr.type == Type.RAWPTR,
+        "pointer is not pointer type in load op"
     );
 
     assert (
-        tOfs == Type.INT32,
-        "offset is not integer type in store op"
+        vOfs.type == Type.INT32,
+        "offset is not integer type in load op"
     );
 
-    auto ptr = wPtr.ptrVal;
-    auto ofs = wOfs.int32Val;
+    auto ptr = vPtr.word.ptrVal;
+    auto ofs = vOfs.word.int32Val;
 
-    auto word = interp.getWord(instr.getArgSlot(2));
+    auto word = interp.getArgVal(instr, 2).word;
 
     DataType val;
 
@@ -719,140 +753,33 @@ extern (C) void op_jump(Interp interp, IRInstr instr)
 
 extern (C) void op_if_true(Interp interp, IRInstr instr)
 {
-    auto valIdx = instr.getArgSlot(0);
-    auto wVal = interp.getWord(valIdx);
-    auto tVal = interp.getType(valIdx);
+    // FIXME
+    assert (false);
+
+    auto v0 = interp.getArgVal(instr, 0);
 
     assert (
-        tVal == Type.CONST,
+        v0.type == Type.CONST,
         "input to if_true is not constant type"
     );
 
     // FIXME
-    if (wVal.int8Val == TRUE.int8Val)
+    if (v0.word == TRUE)
         interp.jump(/*instr.target*/null);
     else
         interp.jump(/*instr.excTarget*/null);
 }
 
-
-
-
-
-// TODO: make callFun an interpreter method?
-// should now be generic enough for call_apply
-
-
-// Array of arg slots... No longer practical
-// Could try stack-allocating an array of words with alloca
-//import core.stdc.stdlib;
-//auto p = cast(Word*)alloca(ValuePair.sizeof * 10);
-
-
-
-void callFun(
-    Interp interp,
-    IRFunction fun,         // Function to call
-    IRInstr callInstr,      // Return address
-    refptr closPtr,         // Closure pointer
-    Word thisWord,          // This value word
-    Type thisType,          // This value type
-    uint32_t argCount,
-    ValuePair* argVals
-)
-{
-    writefln("call to %s (%s)", fun.name, cast(void*)fun);
-    writefln("num args: %s", argCount);
-
-    assert (
-        fun !is null, 
-        "null IRFunction pointer"
-    );
-
-    // If the function is not yet compiled, compile it now
-    if (fun.entryBlock is null)
-    {
-        //write("compiling");
-        //write("\n");
-        //write(core.memory.GC.addrOf(cast(void*)fun.ast));
-        //write("\n");
-
-        astToIR(fun.ast, fun);
-    }
-
-    // Compute the number of missing arguments
-    size_t argDiff = (fun.numParams > argCount)? (fun.numParams - argCount):0;
-
-    // Push undefined values for the missing last arguments
-    for (size_t i = 0; i < argDiff; ++i)
-        interp.push(UNDEF, Type.CONST);
-
-    /*
-    // Push the visible function arguments in reverse order
-    for (size_t i = 0; i < argSlots.length; ++i)
-    {
-        auto argSlot = argSlots[$-(1+i)].localIdx + (argDiff + i);
-        auto wArg = interp.getWord(cast(LocalIdx)argSlot);
-        auto tArg = interp.getType(cast(LocalIdx)argSlot);
-        interp.push(wArg, tArg);
-    }
-    */
-
-    // Push the argument count
-    interp.push(Word.int32v(argCount), Type.INT32);
-
-    // Push the "this" argument
-    interp.push(thisWord, thisType);
-
-    // Push the closure argument
-    interp.push(Word.ptrv(closPtr), Type.REFPTR);
-
-    // Push the return address (caller instruction)
-    auto retAddr = cast(rawptr)callInstr;
-    interp.push(Word.ptrv(retAddr), Type.INSPTR);
- 
-    // Push space for the callee locals and initialize the slots to undefined
-    auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
-    interp.push(numLocals);
-
-    // FIXME *****
-    // FIXME
-    // Jump to the function entry
-    //interp.jump(fun.entryBlock);
-
-    // Count the number of times each callee is called
-    if (callInstr !is null)
-    {
-        auto caller = callInstr.block.fun;
-        
-        if (callInstr !in caller.callCounts)
-            caller.callCounts[callInstr] = uint64_t[IRFunction].init;
-
-        if (fun !in caller.callCounts[callInstr])
-            caller.callCounts[callInstr][fun] = 0;
-
-        caller.callCounts[callInstr][fun]++;
-    }
-}
-
 extern (C) void op_call(Interp interp, IRInstr instr)
 {
-    assert (false, "op_call");
+    auto closVal = interp.getArgVal(instr, 0);
+    auto thisVal = interp.getArgVal(instr, 1);
 
-    auto closIdx = instr.getArgSlot(0);
-    auto thisIdx = instr.getArgSlot(1);
-
-    auto wClos = interp.getWord(closIdx);
-    auto tClos = interp.getType(closIdx);
-
-    auto wThis = interp.getWord(thisIdx);
-    auto tThis = interp.getType(thisIdx);
-
-    if (tClos != Type.REFPTR || !valIsLayout(wClos, LAYOUT_CLOS))
+    if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
         return throwError(interp, instr, "TypeError", "call to non-function");
 
     // Get the function object from the closure
-    auto closPtr = wClos.ptrVal;
+    auto closPtr = closVal.word.ptrVal;
     auto fun = getClosFun(closPtr);
 
     /*
@@ -860,18 +787,23 @@ extern (C) void op_call(Interp interp, IRInstr instr)
     write("\n");
     */
 
-    // FIXME
-    /*
-    callFun(
-        interp,
+    // Stack-allocate an array for the argument values
+    auto argCount = cast(uint32_t)instr.getNumArgs() - 2;
+    auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argCount);
+
+    // Fetch the argument values
+    for (size_t i = 0; i < argCount; ++i)
+        argVals[i] = interp.getArgVal(instr, 2 + i);
+
+    interp.callFun(
         fun,
         instr,
         closPtr,
-        wThis,
-        tThis,
-        instr.args[2..$]
+        thisVal.word,
+        thisVal.type,
+        argCount,
+        argVals
     );
-    */
 }
 
 /// JavaScript new operator (constructor call)
@@ -879,6 +811,7 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
 {
     assert (false, "op_call_new");
 
+    /*
     auto closIdx = instr.getArgSlot(0);
     auto wClos = interp.getWord(closIdx);
     auto tClos = interp.getType(closIdx);
@@ -920,7 +853,6 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
     clos_set_ctor_class(clos.ptr, obj_get_class(thisObj.ptr));
 
     // FIXME
-    /*
     callFun(
         interp,
         fun,
@@ -933,8 +865,12 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
     */
 }
 
+// TODO: refactor to use Interp.callFun
 extern (C) void op_call_apply(Interp interp, IRInstr instr)
 {
+    assert (false);
+
+    /*
     auto closIdx = instr.getArgSlot(0);
     auto thisIdx = instr.getArgSlot(1);
     auto tblIdx  = instr.getArgSlot(2);
@@ -1015,21 +951,20 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
 
     // Jump to the function entry
     interp.jump(fun.entryBlock);
+    */
 }
 
 extern (C) void op_ret(Interp interp, IRInstr instr)
 {
     //writefln("ret from %s", instr.block.fun.name);
 
-    auto retSlot   = instr.getArgSlot(0);
     auto raSlot    = instr.block.fun.raVal.outSlot;
     auto argcSlot  = instr.block.fun.argcVal.outSlot;
     auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
     // Get the return value
-    auto wRet = interp.wsp[retSlot];
-    auto tRet = interp.tsp[retSlot];
+    auto retVal = interp.getArgVal(instr, 0);
 
     // Get the calling instruction
     auto callInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
@@ -1041,11 +976,10 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
     if (callInstr !is null)
     {
         // If this is a new call and the return value is undefined
-        if (callInstr.opcode == &CALL_NEW && (tRet == Type.CONST && wRet == UNDEF))
+        if (callInstr.opcode == &CALL_NEW && (retVal.type == Type.CONST && retVal.word == UNDEF))
         {
             // Use the this value as the return value
-            wRet = interp.getWord(instr.block.fun.thisVal.outSlot);
-            tRet = interp.getType(instr.block.fun.thisVal.outSlot);
+            retVal = interp.getSlot(instr.block.fun.thisVal.outSlot);
         }
 
         // Compute the actual number of extra arguments to pop
@@ -1057,17 +991,17 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         // Pop all local stack slots and arguments
         interp.pop(numLocals + extraArgs);
 
-        // FIXME
         // Set the instruction pointer to the call continuation instruction
-        interp.jump(/*callInstr.target*/null);
+        auto contBranch = callInstr.getTarget(0);
+        assert (contBranch.args.length == 0);
+        interp.jump(contBranch.succ);
 
         // Leave the return value in the call's return slot, if any
         if (callInstr.outSlot !is NULL_LOCAL)
         {
             interp.setSlot(
                 callInstr.outSlot,
-                wRet,
-                tRet
+                retVal
             );
         }
     }
@@ -1080,15 +1014,14 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         interp.jump(null);
 
         // Leave the return value on top of the stack
-        interp.push(wRet, tRet);
+        interp.push(retVal);
     }
 }
 
 extern (C) void op_throw(Interp interp, IRInstr instr)
 {
     // Get the exception value
-    auto excSlot = instr.getArgSlot(0);
-    auto excVal = interp.getSlot(excSlot);
+    auto excVal = interp.getArgVal(instr, 0);
 
     // Throw the exception
     throwExc(interp, instr, excVal);
@@ -1100,9 +1033,9 @@ extern (C) void op_get_arg(Interp interp, IRInstr instr)
     auto argSlot = instr.block.fun.argcVal.outSlot + 1;
 
     // Get the argument index
-    auto idxVal = interp.getSlot(instr.getArgSlot(0));
-    auto idx = idxVal.word.uint32Val;
+    auto idx = interp.getArgVal(instr, 0).word.uint32Val;
 
+    // Get the argument value
     auto argVal = interp.getSlot(argSlot + idx);
 
     interp.setSlot(
@@ -1166,20 +1099,21 @@ alias GetValOp!(Type.INT32, "auto r = cast(int32)interp.gcCount;") op_get_gc_cou
 
 extern (C) void op_heap_alloc(Interp interp, IRInstr instr)
 {
-    auto wSize = interp.getWord(instr.getArgSlot(0));
-    auto tSize = interp.getType(instr.getArgSlot(0));
+    auto sizeVal = interp.getArgVal(instr, 0);
 
     assert (
-        tSize == Type.INT32,
+        sizeVal.type == Type.INT32,
         "invalid size type"
     );
 
+    auto size = sizeVal.word.uint32Val;
+
     assert (
-        wSize.uint32Val > 0,
+        size > 0,
         "size must be positive"
     );
 
-    auto ptr = heapAlloc(interp, wSize.uint32Val);
+    auto ptr = heapAlloc(interp, size);
 
     interp.setSlot(
         instr.outSlot,
@@ -1190,15 +1124,14 @@ extern (C) void op_heap_alloc(Interp interp, IRInstr instr)
 
 extern (C) void op_gc_collect(Interp interp, IRInstr instr)
 {
-    auto wSize = interp.getWord(instr.getArgSlot(0));
-    auto tSize = interp.getType(instr.getArgSlot(0));
+    auto sizeVal = interp.getArgVal(instr, 0);
 
     assert (
-        tSize == Type.INT32,
+        sizeVal.type == Type.INT32,
         "invalid heap size type"
     );
 
-    gcCollect(interp, wSize.uint32Val);
+    gcCollect(interp, sizeVal.word.uint32Val);
 }
 
 extern (C) void op_make_link(Interp interp, IRInstr instr)
@@ -1256,26 +1189,18 @@ extern (C) void op_get_link(Interp interp, IRInstr instr)
 
 extern (C) void op_get_str(Interp interp, IRInstr instr)
 {
-    auto wStr = interp.getWord(instr.getArgSlot(0));
-    auto tStr = interp.getType(instr.getArgSlot(0));
-
-    assert (
-        valIsString(wStr, tStr),
-        "expected string in get_str"
-    );
-
-    auto ptr = wStr.ptrVal;
+    auto strPtr = interp.getArgStr(instr, 0);
 
     // Compute and set the hash code for the string
-    auto hashCode = compStrHash(ptr);
-    str_set_hash(ptr, hashCode);
+    auto hashCode = compStrHash(strPtr);
+    str_set_hash(strPtr, hashCode);
 
     // Find the corresponding string in the string table
-    ptr = getTableStr(interp, ptr);
+    strPtr = getTableStr(interp, strPtr);
 
     interp.setSlot(
         instr.outSlot,
-        Word.ptrv(ptr),
+        Word.ptrv(strPtr),
         Type.REFPTR
     );
 }
@@ -1478,15 +1403,8 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
 
 extern (C) void op_load_file(Interp interp, IRInstr instr)
 {
-    auto wFile = interp.getWord(instr.getArgSlot(0));
-    auto tFile = interp.getType(instr.getArgSlot(0));
-
-    assert (
-        valIsString(wFile, tFile),
-        "expected string filename argument in load_file"
-    );
-
-    auto fileName = interp.getLoadPath(extractStr(wFile.ptrVal));
+    auto strPtr = interp.getArgStr(instr, 0);
+    auto fileName = interp.getLoadPath(extractStr(strPtr));
 
     // Parse the source file and generate IR
     auto ast = parseFile(fileName);
@@ -1496,6 +1414,7 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
     interp.funRefs[cast(void*)fun] = fun;
 
     // FIXME
+    assert (false);
     /*
     // Setup the callee stack frame
     callFun(
@@ -1512,15 +1431,8 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
 
 extern (C) void op_eval_str(Interp interp, IRInstr instr)
 {
-    auto wStr = interp.getWord(instr.getArgSlot(0));
-    auto tStr = interp.getType(instr.getArgSlot(0));
-
-    assert (
-        valIsString(wStr, tStr),
-        "expected string argument in eval_str"
-    );
-
-    auto codeStr = extractStr(wStr.ptrVal);
+    auto strPtr = interp.getArgStr(instr, 0);
+    auto codeStr = extractStr(strPtr);
 
     // Parse the source file and generate IR
     auto ast = parseString(codeStr, "eval_str");
@@ -1529,6 +1441,7 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
     // Register this function in the function reference set
     interp.funRefs[cast(void*)fun] = fun;
 
+    assert (false);
     // FIXME
     /*
     // Setup the callee stack frame
@@ -1546,15 +1459,8 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
 
 extern (C) void op_print_str(Interp interp, IRInstr instr)
 {
-    auto wStr = interp.getWord(instr.getArgSlot(0));
-    auto tStr = interp.getType(instr.getArgSlot(0));
-
-    assert (
-        valIsString(wStr, tStr),
-        "expected string in print_str"
-    );
-
-    auto str = extractStr(wStr.ptrVal);
+    auto strPtr = interp.getArgStr(instr, 0);
+    auto str = extractStr(strPtr);
 
     // Print the string to standard output
     write(str);
@@ -1562,6 +1468,10 @@ extern (C) void op_print_str(Interp interp, IRInstr instr)
 
 extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
 {
+    // FIXME
+    assert (false);
+
+    /*
     auto wFn = interp.getWord(instr.getArgSlot(0));
     auto tFn = interp.getType(instr.getArgSlot(0));
 
@@ -1580,10 +1490,15 @@ extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
         Word.ptrv(strObj),
         Type.REFPTR
     );
+    */
 }
 
 extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
 {
+    // FIXME
+    assert (false);
+
+    /*
     auto wFn = interp.getWord(instr.getArgSlot(0));
     auto tFn = interp.getType(instr.getArgSlot(0));
 
@@ -1606,10 +1521,15 @@ extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
         Word.ptrv(strObj),
         Type.REFPTR
     );
+    */
 }
 
 extern (C) void op_f64_to_str(Interp interp, IRInstr instr)
 {
+    // FIXME
+    assert (false);
+
+    /*
     auto val = interp.getSlot(instr.getArgSlot(0));
 
     assert (
@@ -1625,6 +1545,7 @@ extern (C) void op_f64_to_str(Interp interp, IRInstr instr)
         Word.ptrv(strObj),
         Type.REFPTR
     );
+    */
 }
 
 extern (C) void op_get_time_ms(Interp interp, IRInstr instr)
@@ -1640,18 +1561,11 @@ extern (C) void op_get_time_ms(Interp interp, IRInstr instr)
 
 extern (C) void op_load_lib(Interp interp, IRInstr instr)
 {
-
     // Library to load (JS string)
-    auto wLib = interp.getWord(instr.getArgSlot(0));
-    auto tLib = interp.getType(instr.getArgSlot(0));
-
-    assert (
-        valIsString(wLib, tLib),
-        "expected string lib name argument in load_lib"
-    );
+    auto strPtr = interp.getArgStr(instr, 0);
 
     // Library to load (D string)
-    auto libname = extractStr(wLib.ptrVal);
+    auto libname = extractStr(strPtr);
 
     // String must be null terminated
     libname ~= '\0';
@@ -1670,6 +1584,10 @@ extern (C) void op_load_lib(Interp interp, IRInstr instr)
 
 extern (C) void op_close_lib(Interp interp, IRInstr instr)
 {
+    // FIXME
+    assert (false);
+
+    /*
     auto lib = interp.getSlot(instr.getArgSlot(0));
 
     assert (
@@ -1679,11 +1597,14 @@ extern (C) void op_close_lib(Interp interp, IRInstr instr)
 
     if (dlclose(lib.word.ptrVal) != 0)
          return throwError(interp, instr, "RuntimeError", "could not close lib.");
+    */
 }
 
 extern (C) void op_get_sym(Interp interp, IRInstr instr)
 {
     // FIXME
+    assert (false);
+
     /*
     // handle for shared lib
     auto lib = interp.getSlot(instr.getArgSlot(0));
@@ -1715,6 +1636,8 @@ extern (C) void op_get_sym(Interp interp, IRInstr instr)
 extern (C) void op_call_ffi(Interp interp, IRInstr instr)
 {
     // FIXME
+    assert (false);
+
     /*
     // Pointer to function to call
     auto fun = interp.getSlot(instr.getArgSlot(1));

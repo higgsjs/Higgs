@@ -84,18 +84,13 @@ void allocSlots(IRFunction fun)
             // If this instruction has one use
             if (instr.hasOneUse)
             {
-                writefln("one use only");
-
                 // Get the owner of this use
                 auto owner = instr.getFirstUse.owner;
 
-                writefln("owner: %s", owner);
-                writefln("owner block: %s", owner.block);
+                //writefln("owner: %s", owner);
+                //writefln("owner block: %s", owner.block);
 
                 assert (owner.block !is null);
-
-                writeln(owner.block.getName());
-                writeln(instr.block.getName());
 
                 if (owner.block is instr.block)
                 {
