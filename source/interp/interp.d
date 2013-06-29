@@ -762,6 +762,38 @@ class Interp
     }
 
     /**
+    Get the value pair for an IR value
+    */
+    ValuePair getValue(IRValue val)
+    {
+        // If the value has an associated output slot
+        if (auto dstVal = cast(IRDstValue)val)
+        {
+            assert (
+                dstVal.outSlot != NULL_LOCAL, 
+                "out slot unassigned"
+            );
+
+            writefln("getting value from slot of %s", val);
+
+            // Get the value at the output slot
+            return getSlot(dstVal.outSlot);
+        }
+
+        // If this is a constant value
+        if (auto cstVal = cast(IRConst)val)
+        {
+            // Get the constant value
+            return cstVal.pair();
+        }
+
+        assert (
+            false,
+            "unsupported value in getValue: \"" ~ val.toString() ~ "\""
+        );
+    }
+
+    /**
     Make the execution jump to a specific block
     */
     void jump(IRBlock block)
@@ -778,13 +810,15 @@ class Interp
     */
     void branch(BranchDesc branch)
     {
-        // TODO: set phi arguments
-        assert (false);
+        // For each phi node argument
+        foreach (argIdx, arg; branch.args)
+        {
+            auto inVal = arg.value;
+            auto phiNode = arg.owner;
 
-
-
-
-
+            auto value = getValue(inVal);
+            setSlot(phiNode.outSlot, value);
+        }
 
         // Jump to the successor block
         jump(branch.succ);

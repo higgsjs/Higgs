@@ -201,9 +201,9 @@ unittest
     auto interp = new Interp(true, false);
 
     interp.assertInt("return 7", 7);
+    interp.assertInt("return 1 + 2", 3);
 
     /*
-    interp.assertInt("return 1 + 2", 3);
     interp.assertInt("return 5 - 1", 4);
     interp.assertInt("return 8 % 5", 3);
     interp.assertInt("return -3", -3);

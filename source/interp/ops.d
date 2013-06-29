@@ -66,29 +66,7 @@ private ValuePair getArgVal(Interp interp, IRInstr instr, size_t argIdx)
     // Get the argument IRValue
     auto val = instr.getArg(argIdx);
 
-    // If the value has an associated output slot
-    if (auto dstVal = cast(IRDstValue)val)
-    {
-        assert (
-            dstVal.outSlot != NULL_LOCAL, 
-            "out slot unassigned"
-        );
-
-        // Get the value at the output slot
-        return interp.getSlot(dstVal.outSlot);
-    }
-
-    // If this is a constant value
-    if (auto cstVal = cast(IRConst)val)
-    {
-        // Get the constant value
-        return cstVal.pair();
-    }
-
-    assert (
-        false,
-        "unsupported value in getArgVal: \"" ~ val.toString() ~ "\""
-    );
+    return interp.getValue(val);
 }
 
 /**
@@ -777,11 +755,18 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
 
 extern (C) void op_call(Interp interp, IRInstr instr)
 {
+    writeln("entering op_call");
+
     auto closVal = interp.getArgVal(instr, 0);
     auto thisVal = interp.getArgVal(instr, 1);
 
+    writefln("clos arg: %s", instr.getArg(0));
+    writefln("clos val type: %s", closVal.type);
+
     if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
         return throwError(interp, instr, "TypeError", "call to non-function");
+
+    writefln("tested clos type");
 
     // Get the function object from the closure
     auto closPtr = closVal.word.ptrVal;
@@ -796,9 +781,13 @@ extern (C) void op_call(Interp interp, IRInstr instr)
     auto argCount = cast(uint32_t)instr.getNumArgs() - 2;
     auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argCount);
 
+    writefln("argVals ptr: %s", cast(void*)argVals);
+
     // Fetch the argument values
     for (size_t i = 0; i < argCount; ++i)
         argVals[i] = interp.getArgVal(instr, 2 + i);
+
+    writeln("calling callFun");
 
     interp.callFun(
         fun,
@@ -1175,7 +1164,7 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
     auto propIdx = idxArg.idx;
 
     // If a property index was cached
-    if (propIdx >= 0)
+    if (propIdx !is idxArg.idx.max)
     {
         auto wVal = obj_get_word(interp.globalObj, propIdx);
         auto tVal = obj_get_type(interp.globalObj, propIdx);
@@ -1242,7 +1231,7 @@ extern (C) void op_set_global(Interp interp, IRInstr instr)
     auto propIdx = idxArg.idx;
 
     // If a property index was cached
-    if (propIdx >= 0)
+    if (propIdx !is idxArg.idx.max)
     {
         obj_set_word(interp.globalObj, cast(uint32)propIdx, propVal.word.uint64Val);
         obj_set_type(interp.globalObj, cast(uint32)propIdx, propVal.type);
