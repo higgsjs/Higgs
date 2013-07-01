@@ -154,8 +154,10 @@ class IRGenCtx
         );
 
         // If the current block already has a branch, do nothing
-        if (curBlock.lastInstr && curBlock.lastInstr.opcode.isBranch)
-            return instr;
+        assert (
+            !hasBranch(),
+            "current block already has a final branch"
+        );
 
         curBlock.addInstr(instr);
         assert (instr.block is curBlock);
@@ -169,6 +171,14 @@ class IRGenCtx
     IRInstr getLastInstr()
     {
         return curBlock.lastInstr;
+    }
+
+    /**
+    Test if a branch instruction was added
+    */
+    bool hasBranch()
+    {
+        return (curBlock.lastInstr && curBlock.lastInstr.opcode.isBranch);
     }
 
     /**
@@ -278,6 +288,12 @@ class IRGenCtx
     IRInstr ifTrue(IRValue arg0, IRBlock trueBlock, IRBlock falseBlock)
     {
         auto ift = this.addInstr(new IRInstr(&IF_TRUE, arg0));
+
+        assert (curBlock !is null, "cur block is null, wtf");
+        assert (ift.block !is null, "ift block is null");
+
+
+
         ift.setTarget(0, trueBlock);
         ift.setTarget(1, falseBlock);
         return ift;
@@ -307,15 +323,13 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     auto entry = fun.newBlock("entry");
     fun.entryBlock = entry;
 
-    // Create the local variable map
-    IRValue[IdentExpr] localMap;
-
     // Create a context for the function body
+    IRValue[IdentExpr] initLocalMap;
     auto bodyCtx = new IRGenCtx(
         null,
         fun, 
         entry,
-        localMap
+        initLocalMap
     );
 
     // Create values for the hidden arguments
@@ -332,7 +346,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
         auto paramVal = new FunParam(ident.name, cast(uint32_t)argIdx);
         fun.paramMap[ident] = paramVal;
-        localMap[ident] = paramVal;
+        bodyCtx.localMap[ident] = paramVal;
         entry.addPhi(paramVal);
     }
 
@@ -342,7 +356,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         // If this variable does not escape and is not a parameter
         if (ident !in ast.escpVars && ast.params.countUntil(ident) == -1)
         {
-            localMap[ident] = IRConst.undefCst;
+            bodyCtx.localMap[ident] = IRConst.undefCst;
         }
     }
 
@@ -364,7 +378,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     if (ast.usesArguments)
     {
         //auto argObjSlot = bodyCtx.allocTemp();
-        //fun.localMap[ast.argObjIdent] = argObjSlot;
+        //fun.bodyCtx.localMap[ast.argObjIdent] = argObjSlot;
 
         // FIXME
         /*
@@ -456,12 +470,12 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             fun.cellMap[ident] = allocInstr;
 
             // If this variable is local
-            if (ident in localMap)
+            if (ident in bodyCtx.localMap)
             {
                 genRtCall(
                     bodyCtx, 
                     "setCellVal", 
-                    [allocInstr, localMap[ident]]
+                    [allocInstr, bodyCtx.localMap[ident]]
                 );
             }
         }
@@ -525,11 +539,20 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
 void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 {
+    writeln("stmt to IR: ", stmt);
+
+    // Curly-brace enclosed block statement
     if (auto blockStmt = cast(BlockStmt)stmt)
     {
+        // For each statement in the block
         foreach (s; blockStmt.stmts)
         {
+            // Compile the statement in the current context
             stmtToIR(s, ctx);
+
+            // If a final branch was added, stop
+            if (ctx.hasBranch)
+                break;
         }
     }
 
@@ -555,66 +578,72 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         }
     }
 
-    /*
     else if (auto ifStmt = cast(IfStmt)stmt)
     {
-        // Compile the true statement
+        writeln("compiling ifStmt");
+
         auto trueBlock = ctx.fun.newBlock("if_true");
-        auto trueCtx = ctx.subCtx(false, NULL_LOCAL, trueBlock);
-        stmtToIR(ifStmt.trueStmt, trueCtx);
-
-        // Compile the false statement
         auto falseBlock = ctx.fun.newBlock("if_false");
-        auto falseCtx = ctx.subCtx(false, NULL_LOCAL, falseBlock);
-        stmtToIR(ifStmt.falseStmt, falseCtx);
-
-        // Create the join block and patch jumps to it
         auto joinBlock = ctx.fun.newBlock("if_join");
-        trueCtx.addInstr(IRInstr.jump(joinBlock));
-        falseCtx.addInstr(IRInstr.jump(joinBlock));
 
         // Evaluate the test expression
-        auto exprCtx = ctx.subCtx(true);
-        exprToIR(ifStmt.testExpr, exprCtx);
-        ctx.merge(exprCtx);
+        auto testVal = exprToIR(ifStmt.testExpr, ctx);
+
+        writeln("evaluated test expr");
 
         // Get the last instruction of the current block
         auto lastInstr = ctx.curBlock.lastInstr;
+
+        writeln("got last instr");
 
         // If this is a branch inline IR expression
         if (isBranchIIR(ifStmt.testExpr) && lastInstr && lastInstr.opcode.isBranch)
         {
             assert (
-                lastInstr.target is null,
+                lastInstr.getTarget(0) is null,
                 "iir target already set"
             );
 
             // Set branch targets for the instruction
-            lastInstr.target = trueBlock;
-            lastInstr.excTarget = falseBlock;
+            lastInstr.setTarget(0, trueBlock);
+            lastInstr.setTarget(1, falseBlock);
         }
 
         else
         {
             // Convert the expression value to a boolean
-            auto boolSlot = genBoolEval(
+            auto boolVal = genBoolEval(
                 ctx, 
                 ifStmt.testExpr, 
-                exprCtx.getOutSlot
+                testVal
             );
 
             // Branch based on the boolean value
-            ctx.addInstr(IRInstr.ifTrue(
-                boolSlot,
-                trueBlock,
-                falseBlock
-            ));
+            ctx.ifTrue(boolVal, trueBlock, falseBlock);
         }
 
+        writeln("compiling trueStmt");
+    
+        // Compile the true statement
+        auto trueCtx = ctx.subCtx(trueBlock);
+        stmtToIR(ifStmt.trueStmt, trueCtx);
+
+        // Compile the false statement
+        auto falseCtx = ctx.subCtx(falseBlock);
+        stmtToIR(ifStmt.falseStmt, falseCtx);
+
+        // Merge the true and false contexts into the join block
+        auto joinCtx = mergeContexts(
+            ctx,
+            [trueCtx, falseCtx],
+            joinBlock
+        );
+
         // Continue code generation in the join block
-        ctx.merge(joinBlock);
+        ctx.merge(joinCtx);
+
+        writeln("done compiling ifStmt");
     }
-    */  
 
     else if (auto whileStmt = cast(WhileStmt)stmt)
     {
@@ -1122,6 +1151,8 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 
 IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 {
+    writeln("expr to IR: ", expr);
+
     // Function expression
     if (auto funExpr = cast(FunExpr)expr)
     {
@@ -1289,45 +1320,54 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             return exprToIR(binExpr.rExpr, ctx);
         }
 
-        // FIXME
-        /*
         // Logical OR and logical AND
         else if (op.str == "||" || op.str == "&&")
         {
+            writeln("compiling logical ||/&&");
+
             // Create the right expression and exit blocks
-            auto secnBlock = ctx.fun.newBlock(((op.str == "||")? "or":"and") ~ "_sec");
+            auto secBlock = ctx.fun.newBlock(((op.str == "||")? "or":"and") ~ "_sec");
             auto exitBlock = ctx.fun.newBlock(((op.str == "||")? "or":"and") ~ "_exit");
 
             // Evaluate the left expression
-            auto lCtx = ctx.subCtx(true, ctx.getOutSlot());
-            exprToIR(binExpr.lExpr, lCtx);
-            ctx.merge(lCtx); 
+            auto fstCtx = ctx.subCtx();
+            auto fstVal = exprToIR(binExpr.lExpr, fstCtx);
 
             // Convert the expression value to a boolean
-            auto boolSlot = genBoolEval(
-                ctx, 
-                binExpr.lExpr, 
-                lCtx.getOutSlot()
+            auto boolVal = genBoolEval(
+                fstCtx, 
+                binExpr.lExpr,
+                fstVal
             );
 
             // Evaluate the second expression, if necessary
-            ctx.addInstr(IRInstr.ifTrue(
-                boolSlot,
-                (op.str == "||")? exitBlock:secnBlock,
-                (op.str == "||")? secnBlock:exitBlock,
-            ));
+            auto ifTrue = fstCtx.ifTrue(
+                boolVal,
+                (op.str == "||")? exitBlock:secBlock,
+                (op.str == "||")? secBlock:exitBlock,
+            );
+            auto fstBranch = ifTrue.getTarget((op.str == "||")? 0:1);
 
             // Evaluate the right expression
-            auto rCtx = ctx.subCtx(true, ctx.getOutSlot(), secnBlock);
-            exprToIR(binExpr.rExpr, rCtx); 
+            auto secCtx = ctx.subCtx(secBlock);
+            auto secVal = exprToIR(binExpr.rExpr, secCtx);
+            auto secBranch = secCtx.jump(exitBlock);
 
-            // Jump to the exit block
-            rCtx.addInstr(IRInstr.jump(exitBlock));
+            auto exitCtx = mergeContexts(
+                ctx,
+                [fstCtx, secCtx],
+                exitBlock
+            );
 
-            // Continue code generation in the exit block
-            ctx.merge(exitBlock);
+            // Create a phi node to select the output value
+            auto phiNode = exitBlock.addPhi(new PhiNode());
+            fstBranch.setPhiArg(phiNode, fstVal);
+            secBranch.setPhiArg(phiNode, secVal);
+
+            ctx.merge(exitCtx);
+
+            return phiNode;
         }
-        */
 
         else
         {
@@ -1854,7 +1894,9 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
 
             // Get the variable's value
-            return ctx.localMap[identExpr.declNode];
+            auto value = ctx.localMap[identExpr.declNode];
+            writefln("got local var value: %s", value);
+            return value;
         }
     }
 

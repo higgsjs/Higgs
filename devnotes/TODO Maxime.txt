@@ -113,6 +113,20 @@ TODO: test if 1 + 1 (runtime, arith ovf) is working
 
 
 
+TODO: ternary expression
+
+
+
+
+
+
+[DONE] FIXME: r/ast.d(1854): variable declaration not in local map: "x"
+- x is a parameter to $rt_add
+- local map length: 0
+
+[DONE] TODO: && operator
+
+[DONE] TODO: if statement
 
 [DONE] TODO: jump with branch descriptor, handle phi nodes
 - interp.getValue(IRValue val)
