@@ -105,20 +105,28 @@ TODO: get rid of uint32, use uint32_t?
 
 FIXME: break/cont target should have both ctxList and IRBlock
 
+FIXME: phi nodes with 0 or 1 input
+
+TODO: if you do remPhi, should remove args for that phi node
+- BranchDesc.remPhiArg(PhiNode phi)
 
 
-TODO: test if 1 + 1 (runtime, arith ovf) is working
+
+
+
+
+
+[DONE] TODO: test if 1 + 1 (runtime, arith ovf) is working
 - Missing if statement support
 
+[DONE] FIXME: visible argument slots wrongly assigned?
 
+[DONE] FIXME: phi node toString doesn't show any incoming values
+- desc.args.length: 0
 
+[DONE] FIXME: newlines in IR listing
 
-TODO: ternary expression
-
-
-
-
-
+[DONE] TODO: ternary expression
 
 [DONE] FIXME: r/ast.d(1854): variable declaration not in local map: "x"
 - x is a parameter to $rt_add

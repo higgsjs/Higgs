@@ -156,7 +156,8 @@ class IRGenCtx
         // If the current block already has a branch, do nothing
         assert (
             !hasBranch(),
-            "current block already has a final branch"
+            "current block already has a final branch:\n" ~
+            curBlock.toString()
         );
 
         curBlock.addInstr(instr);
@@ -341,7 +342,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Create values for the visible function parameters
     for (size_t i = 0; i < ast.params.length; ++i)
     {
-        auto argIdx = 4 + i;
+        auto argIdx = NUM_HIDDEN_ARGS + i;
         auto ident = ast.params[i];
 
         auto paramVal = new FunParam(ident.name, cast(uint32_t)argIdx);
@@ -627,10 +628,14 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Compile the true statement
         auto trueCtx = ctx.subCtx(trueBlock);
         stmtToIR(ifStmt.trueStmt, trueCtx);
+        if (!trueCtx.hasBranch)
+            trueCtx.jump(joinBlock);
 
         // Compile the false statement
         auto falseCtx = ctx.subCtx(falseBlock);
         stmtToIR(ifStmt.falseStmt, falseCtx);
+        if (!falseCtx.hasBranch)
+            falseCtx.jump(joinBlock);
 
         // Merge the true and false contexts into the join block
         auto joinCtx = mergeContexts(
@@ -1604,8 +1609,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         }
     }
 
-    // TODO: need merge here? look at Tachyon code, simplify
-    /*
+    // Ternary operator
     else if (auto condExpr = cast(CondExpr)expr)
     {
         // Create the true, false and join blocks
@@ -1613,42 +1617,51 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto falseBlock = ctx.fun.newBlock("cond_false");
         auto joinBlock  = ctx.fun.newBlock("cond_join");
 
-        // Get the output slot
-        auto outSlot = ctx.getOutSlot();
-
         // Evaluate the test expression
-        auto exprCtx = ctx.subCtx(true);
-        exprToIR(condExpr.testExpr, exprCtx);
-        ctx.merge(exprCtx);
+        auto testVal = exprToIR(condExpr.testExpr, ctx);
 
         // Convert the expression value to a boolean
-        auto boolSlot = genBoolEval(
+        auto boolVal = genBoolEval(
             ctx, 
             condExpr.testExpr,
-            exprCtx.getOutSlot()
+            testVal
         );
 
         // If the expresson is true, jump
-        ctx.addInstr(IRInstr.ifTrue(
-            boolSlot,
+        ctx.ifTrue(
+            boolVal,
             trueBlock,
             falseBlock
-        ));
+        );
 
         // Compile the true expression and assign into the output slot
-        auto trueCtx = ctx.subCtx(true, ctx.getOutSlot(), trueBlock);
-        exprToIR(condExpr.trueExpr, trueCtx);
-        trueCtx.addInstr(IRInstr.jump(joinBlock));
+        auto trueCtx = ctx.subCtx(trueBlock);
+        auto trueVal = exprToIR(condExpr.trueExpr, trueCtx);
+        auto trueBranch = trueCtx.jump(joinBlock);
 
         // Compile the false expression and assign into the output slot
-        auto falseCtx = ctx.subCtx(true, ctx.getOutSlot(), falseBlock);
-        exprToIR(condExpr.falseExpr, falseCtx);
-        falseCtx.addInstr(IRInstr.jump(joinBlock));
+        auto falseCtx = ctx.subCtx(falseBlock);
+        auto falseVal = exprToIR(condExpr.falseExpr, falseCtx);
+        auto falseBranch = falseCtx.jump(joinBlock);
 
         // Continue code generation in the join block
         ctx.merge(joinBlock);
+
+        auto joinCtx = mergeContexts(
+            ctx,
+            [trueCtx, falseCtx],
+            joinBlock
+        );
+
+        // Create a phi node to select the output value
+        auto phiNode = joinBlock.addPhi(new PhiNode());
+        trueBranch.setPhiArg(phiNode, trueVal);
+        falseBranch.setPhiArg(phiNode, falseVal);
+
+        ctx.merge(joinCtx);
+
+        return phiNode;
     }
-    */
 
     // Function call expression
     else if (auto callExpr = cast(CallExpr)expr)
@@ -2570,7 +2583,12 @@ IRGenCtx mergeContexts(
             {
                 auto incVal = ctx.localMap[ident];
                 auto branch = ctx.curBlock.lastInstr;
-                assert (branch !is null);
+
+                assert (
+                    branch !is null,
+                    "mergeContexts: no branch from block: \"" ~ 
+                    ctx.curBlock.getName() ~ "\""
+                );
 
                 // For each target of the branch instruction
                 for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)

@@ -111,11 +111,14 @@ void allocSlots(IRFunction fun)
     // Note: function parameters are included in the variable slots
     fun.numLocals = NUM_HIDDEN_ARGS + numVarSlots + numTmpSlots;
 
+    // Total number of arguments, including hidden arguments
+    auto numTotalArgs = NUM_HIDDEN_ARGS + fun.numParams;
+
     // Assign slots for the hidden arguments
-    fun.raVal.outSlot   = fun.numLocals - fun.numParams - 1;
-    fun.closVal.outSlot = fun.numLocals - fun.numParams - 2;
-    fun.thisVal.outSlot = fun.numLocals - fun.numParams - 3;
-    fun.argcVal.outSlot = fun.numLocals - fun.numParams - 4;
+    fun.raVal.outSlot   = fun.numLocals - numTotalArgs + 0;
+    fun.closVal.outSlot = fun.numLocals - numTotalArgs + 1;
+    fun.thisVal.outSlot = fun.numLocals - numTotalArgs + 2;
+    fun.argcVal.outSlot = fun.numLocals - numTotalArgs + 3;
 
     // For each block of the function
     for (auto block = fun.entryBlock; block !is null; block = block.next)
@@ -127,7 +130,7 @@ void allocSlots(IRFunction fun)
             if (auto param = cast(FunParam)phi)
             {
                 // Assign the corresponding parameter slot index
-                param.outSlot = fun.numParams - param.idx - 1;
+                param.outSlot = fun.numLocals - numTotalArgs + param.idx;
             }
             else
             {

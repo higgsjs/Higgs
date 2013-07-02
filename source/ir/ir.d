@@ -153,6 +153,7 @@ class IRFunction : IdObject
         output.put("clos:" ~ closVal.getName() ~ ", ");
         output.put("this:" ~ thisVal.getName() ~ ", ");
         output.put("argc:" ~ argcVal.getName());
+
         foreach (argIdx, var; ast.params)
         {
             auto paramVal = paramMap[var];
@@ -302,7 +303,7 @@ class IRBlock : IdObject
         {
             auto phiStr = phi.toString();
             output.put(indent(phiStr, "  "));
-            if (phi.next !is null)
+            if (phi.next !is null || firstInstr !is null)
                 output.put("\n");
         }
 
@@ -497,7 +498,7 @@ class BranchDesc
     */
     void setPhiArg(PhiNode phi, IRValue val)
     {
-        // For each existing argument pair
+        // For each existing branch argument
         foreach (arg; args)
         {
             // If this pair goes to the selected phi node
@@ -519,9 +520,12 @@ class BranchDesc
 
         // Create a new argument
         auto arg = IRValue.Use(val, phi);
+        args ~= arg;
 
         // Add a use to the new source value
         val.addUse(arg);
+
+        assert (arg.owner is phi);
     }
 }
 
@@ -880,20 +884,24 @@ class PhiNode : IRDstValue
     {
         string output;
 
-        output ~= getName() ~ " = [";
+        output ~= getName() ~ " = [";          
 
+        // For each incoming branch
         foreach (descIdx, desc; block.incoming)
         {
+            // For each branch argument
             foreach (arg; desc.args)
             {
-                if (arg.owner !is this)
-                    continue;
+                if (arg.owner is this)
+                {
+                    if (descIdx > 0)
+                        output ~= ", ";
 
-                if (descIdx > 0)
-                    output ~= " ";
+                    output ~= desc.pred.getName() ~ " => ";
+                    output ~= arg.value.getName();
 
-                output ~= desc.pred.getName() ~ " => ";
-                output ~= arg.value.getName();
+                    break;
+                }
             }
         }
 
@@ -1050,7 +1058,7 @@ class IRInstr : IRDstValue
         targets[idx] = desc;
 
         // Add an incoming edge to the block
-        block.addIncoming(desc);
+        desc.succ.addIncoming(desc);
     }
 
     BranchDesc setTarget(size_t idx, IRBlock succ)
@@ -1103,10 +1111,7 @@ class IRInstr : IRDstValue
             if (argIdx > 0)
                 output ~= ", ";
 
-            if (auto instr = cast(IRInstr)arg.value)
-                output ~= instr.getName();
-            else
-                output ~= arg.value.toString();
+            output ~= arg.value.getName();
         }
 
         if (targets[0] !is null)
