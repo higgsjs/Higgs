@@ -774,7 +774,7 @@ class Interp
                 "out slot unassigned"
             );
 
-            writefln("getting value from slot of %s", val);
+            //writefln("getting value from slot of %s", val);
 
             // Get the value at the output slot
             return getSlot(dstVal.outSlot);
@@ -908,8 +908,8 @@ class Interp
         ValuePair* argVals
     )
     {
-        writefln("call to %s (%s)", fun.name, cast(void*)fun);
-        writefln("num args: %s", argCount);
+        //writefln("call to %s (%s)", fun.name, cast(void*)fun);
+        //writefln("num args: %s", argCount);
 
         assert (
             fun !is null, 

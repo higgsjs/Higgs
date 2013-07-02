@@ -202,26 +202,25 @@ unittest
 
     interp.assertInt("return 7", 7);
     interp.assertInt("return 1 + 2", 3);
-
-    /*
     interp.assertInt("return 5 - 1", 4);
     interp.assertInt("return 8 % 5", 3);
     interp.assertInt("return -3", -3);
     interp.assertInt("return +7", 7);
+
     interp.assertInt("return 2 + 3 * 4", 14);
     interp.assertInt("return 5 % 3", 2);
     interp.assertInt("return 1 - (2+3)", -4);
     interp.assertInt("return 6 - (3-3)", 6);
     interp.assertInt("return 3 - 3 - 3", -3);
 
-    interp.assertInt("return 5 | 3", 7);
-    interp.assertInt("return 5 & 3", 1);
-    interp.assertInt("return 5 ^ 3", 6);
-    interp.assertInt("return 5 << 2", 20);
-    interp.assertInt("return 7 >> 1", 3);
-    interp.assertInt("return 7 >>> 1", 3);
-    interp.assertInt("return ~2", -3);
-    interp.assertInt("return undefined | 1", 1);
+    //interp.assertInt("return 5 | 3", 7);
+    //interp.assertInt("return 5 & 3", 1);
+    //interp.assertInt("return 5 ^ 3", 6);
+    //interp.assertInt("return 5 << 2", 20);
+    //interp.assertInt("return 7 >> 1", 3);
+    //interp.assertInt("return 7 >>> 1", 3);
+    //interp.assertInt("return ~2", -3);
+    //interp.assertInt("return undefined | 1", 1);
 
     interp.assertFloat("return 3.5", 3.5);
     interp.assertFloat("return 2.5 + 2", 4.5);
@@ -229,17 +228,18 @@ unittest
     interp.assertFloat("return 2.5 - 1", 1.5);
     interp.assertFloat("return 2 * 1.5", 3);
     interp.assertFloat("return 6 / 2.5", 2.4);
-    interp.assertFloat("return 0.5 % 0.2", 0.1);
-    interp.assertFloat("return 6/2/2", 1.5);
-    interp.assertFloat("return 6/2*2", 6);
+    //interp.assertFloat("return 0.5 % 0.2", 0.1);
+    //interp.assertFloat("return 6/2/2", 1.5);
+    //interp.assertFloat("return 6/2*2", 6);
 
+    /*
     interp.assertFloat("return 100 * '5'", 500);
     interp.assertFloat("return 100 / '5'", 20);
+    */
 
     interp.assertBool("!true", false);
     interp.assertBool("!false", true);
     interp.assertBool("!0", true);
-    */
 }
 
 /*

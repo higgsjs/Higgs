@@ -98,23 +98,31 @@ TODO: get while loop with phi nodes working
 for (var i = 0; i < 10; i++)
 - Do phi nodes log branch idx?
 
-TODO: begin steps to test interp on simple expressions
-- get complete pipeline working for simple stuff, build on
 
-TODO: get rid of uint32, use uint32_t?
+
 
 FIXME: break/cont target should have both ctxList and IRBlock
+- enable some loop tests
 
-FIXME: phi nodes with 0 or 1 input
 
-TODO: if you do remPhi, should remove args for that phi node
+
+
+TODO: --nostdlib option?
+
+
+
+
+
+
+
+
+[DONE] TODO: log branch target idx in phi toString
+
+[DONE] TODO: if you do remPhi, should remove args for that phi node
 - BranchDesc.remPhiArg(PhiNode phi)
 
-
-
-
-
-
+[PASS] FIXME: phi nodes with 0 or 1 input
+- seems valid for now...
 
 [DONE] TODO: test if 1 + 1 (runtime, arith ovf) is working
 - Missing if statement support

@@ -49,7 +49,6 @@ import ir.ir;
 import ir.ops;
 import ir.iir;
 import ir.slotalloc;
-import interp.layout;
 
 /**
 IR generation context
@@ -581,8 +580,6 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
     else if (auto ifStmt = cast(IfStmt)stmt)
     {
-        writeln("compiling ifStmt");
-
         auto trueBlock = ctx.fun.newBlock("if_true");
         auto falseBlock = ctx.fun.newBlock("if_false");
         auto joinBlock = ctx.fun.newBlock("if_join");
@@ -590,12 +587,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Evaluate the test expression
         auto testVal = exprToIR(ifStmt.testExpr, ctx);
 
-        writeln("evaluated test expr");
-
         // Get the last instruction of the current block
         auto lastInstr = ctx.curBlock.lastInstr;
-
-        writeln("got last instr");
 
         // If this is a branch inline IR expression
         if (isBranchIIR(ifStmt.testExpr) && lastInstr && lastInstr.opcode.isBranch)
@@ -622,8 +615,6 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
             // Branch based on the boolean value
             ctx.ifTrue(boolVal, trueBlock, falseBlock);
         }
-
-        writeln("compiling trueStmt");
     
         // Compile the true statement
         auto trueCtx = ctx.subCtx(trueBlock);
@@ -646,8 +637,6 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Continue code generation in the join block
         ctx.merge(joinCtx);
-
-        writeln("done compiling ifStmt");
     }
 
     else if (auto whileStmt = cast(WhileStmt)stmt)
@@ -1328,8 +1317,6 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Logical OR and logical AND
         else if (op.str == "||" || op.str == "&&")
         {
-            writeln("compiling logical ||/&&");
-
             // Create the right expression and exit blocks
             auto secBlock = ctx.fun.newBlock(((op.str == "||")? "or":"and") ~ "_sec");
             auto exitBlock = ctx.fun.newBlock(((op.str == "||")? "or":"and") ~ "_exit");
@@ -1506,45 +1493,43 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
                 [objCtx.getOutSlot(), propCtx.getOutSlot()]
             );
         }
+        */
 
         // Boolean (logical) negation
         else if (op.str == "!")
         {
             // Create the right expression and exit blocks
-            auto trueBlock = ctx.fun.newBlock("not_true");
-            auto falseBlock = ctx.fun.newBlock("not_false");
             auto exitBlock = ctx.fun.newBlock("not_exit");
 
-            auto lCtx = ctx.subCtx(true);
-            exprToIR(unExpr.expr, lCtx);
-            ctx.merge(lCtx);
+            // Evaluate the test expression
+            auto testVal = exprToIR(unExpr.expr, ctx);
 
             // Convert the expression value to a boolean
-            auto boolSlot = genBoolEval(
+            auto boolVal = genBoolEval(
                 ctx, 
                 unExpr.expr,
-                lCtx.getOutSlot()
+                testVal
             );
 
             // If the boolean is true, jump
-            ctx.addInstr(IRInstr.ifTrue(
-                boolSlot,
-                trueBlock,
-                falseBlock
-            ));
+            auto ift = ctx.ifTrue(
+                boolVal,
+                exitBlock,
+                exitBlock
+            );
 
-            // true => false
-            trueBlock.addInstr(new IRInstr(&SET_FALSE, ctx.getOutSlot()));
-            trueBlock.addInstr(IRInstr.jump(exitBlock));
-
-            // false => true
-            falseBlock.addInstr(new IRInstr(&SET_TRUE, ctx.getOutSlot()));
-            falseBlock.addInstr(IRInstr.jump(exitBlock));
+            // Create a phi node to invert the boolean value
+            auto phiNode = exitBlock.addPhi(new PhiNode());
+            ift.getTarget(0).setPhiArg(phiNode, IRConst.falseCst);
+            ift.getTarget(1).setPhiArg(phiNode, IRConst.trueCst);
 
             // Continue code generation in the exit block
             ctx.merge(exitBlock);
+
+            return phiNode;
         }
 
+        /*
         // Pre-incrementation and pre-decrementation (++x, --x)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'r')
         {
@@ -1773,7 +1758,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Create the array
         auto linkInstr = ctx.addInstr(IRInstr.makeLink(ctx.allocTemp()));
         auto protoInstr = ctx.addInstr(new IRInstr(&GET_ARR_PROTO, ctx.allocTemp()));
-        auto numInstr = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), cast(int32)arrayExpr.exprs.length));
+        auto numInstr = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), cast(int32_t)arrayExpr.exprs.length));
         auto arrInstr = genRtCall(
             ctx, 
             "newArr",
@@ -1791,7 +1776,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 
             ctx.addInstr(IRInstr.intCst(
                 idxTmp,
-                cast(int32)i
+                cast(int32_t)i
             ));
 
             auto valCtx = ctx.subCtx(true, valTmp);
@@ -1908,7 +1893,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 
             // Get the variable's value
             auto value = ctx.localMap[identExpr.declNode];
-            writefln("got local var value: %s", value);
+            //writefln("got local var value: %s", value);
             return value;
         }
     }
@@ -1916,7 +1901,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
     else if (auto intExpr = cast(IntExpr)expr)
     {
         // If the constant fits in the int32 range
-        if (intExpr.val >= int32.min && intExpr.val <= int32.max)
+        if (intExpr.val >= int32_t.min && intExpr.val <= int32_t.max)
         {
             return IRConst.int32Cst(cast(int32_t)intExpr.val);
         }
@@ -2208,7 +2193,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
                     argExpr.pos
                 );
             }
-            argVal = IRConst.int32Cst(cast(int32)intExpr.val);
+            argVal = IRConst.int32Cst(cast(int32_t)intExpr.val);
             break;
 
             // Raw pointer constant
@@ -2221,7 +2206,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
                     argExpr.pos
                 );
             }
-            argVal = new IRRawPtr(cast(rawptr)intExpr.val);
+            argVal = new IRRawPtr(cast(ubyte*)intExpr.val);
             break;
 
             // String argument

@@ -104,8 +104,6 @@ refptr getArgStr(Interp interp, IRInstr instr, size_t argIdx)
     return strVal.word.ptrVal;
 }
 
-// TODO: setOutVal
-
 void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 {
     //writefln("throw");
@@ -755,18 +753,11 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
 
 extern (C) void op_call(Interp interp, IRInstr instr)
 {
-    writeln("entering op_call");
-
     auto closVal = interp.getArgVal(instr, 0);
     auto thisVal = interp.getArgVal(instr, 1);
 
-    writefln("clos arg: %s", instr.getArg(0));
-    writefln("clos val type: %s", closVal.type);
-
     if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
         return throwError(interp, instr, "TypeError", "call to non-function");
-
-    writefln("tested clos type");
 
     // Get the function object from the closure
     auto closPtr = closVal.word.ptrVal;
@@ -781,13 +772,9 @@ extern (C) void op_call(Interp interp, IRInstr instr)
     auto argCount = cast(uint32_t)instr.getNumArgs() - 2;
     auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argCount);
 
-    writefln("argVals ptr: %s", cast(void*)argVals);
-
     // Fetch the argument values
     for (size_t i = 0; i < argCount; ++i)
         argVals[i] = interp.getArgVal(instr, 2 + i);
-
-    writeln("calling callFun");
 
     interp.callFun(
         fun,
@@ -1552,51 +1539,59 @@ extern (C) void op_get_sym(Interp interp, IRInstr instr)
 
 extern (C) void op_call_ffi(Interp interp, IRInstr instr)
 {
-    // FIXME
-    assert (false);
-
-    /*
     // Pointer to function to call
-    auto fun = interp.getSlot(instr.getArgSlot(1));
-
+    auto funArg = interp.getArgVal(instr, 1);
     assert (
-        fun.type == Type.RAWPTR,
+        funArg.type == Type.RAWPTR,
         "invalid rawptr value"
     );
+
+    // Compiled code block argument
+    auto cbArg = cast(IRCodeBlock)instr.getArg(0);
+    assert (cbArg !is null);
 
     CodeBlock cb;
 
     // Check if there is a cached CodeBlock, generate one if not
-    if (instr.args[0].codeBlock is null)
+    if (cbArg.codeBlock is null)
     {
         // Type info (D string)
-        auto typeinfo = to!string(instr.args[2].stringVal);
+        auto typeArg = cast(IRString)instr.getArg(2);
+        assert (typeArg !is null);
+        auto typeinfo = to!string(typeArg.str);
         auto types = split(typeinfo, ",");
+
         // Slots for arguments
         LocalIdx[] argSlots;
 
-        foreach(a;instr.args[3..$])
+        // FIXME: temporary for SSA refactoring
+        assert (false);
+
+        // TODO: extract arg vals as Interp.callFun does, not arg slots
+        /*
+        foreach (a; instr.args[3..$])
             argSlots ~= a.localIdx;
 
         assert (
             argSlots.length == types.length - 1,
             "invalid number of args in ffi call"
         );
+        */
 
-        // FIXME: temporary for SSA refactoring
         //cb = genFFIFn(interp, types, instr.outSlot, argSlots);
         //instr.args[0].codeBlock = cb;
     }
     else
     {
-        cb = instr.args[0].codeBlock;
+        cb = cbArg.codeBlock;
     }
 
-    FFIFn callerfun = cast(FFIFn)(cb.getAddress());
-    callerfun(cast(void*)fun.word.ptrVal);
-
     // FIXME
-    //interp.branch(instr.target);
-    */
+    assert (false);
+
+    //FFIFn callerfun = cast(FFIFn)(cb.getAddress());
+    //callerfun(cast(void*)fun.word.ptrVal);
+
+    interp.branch(instr.getTarget(0));
 }
 

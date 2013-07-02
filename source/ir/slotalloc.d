@@ -64,12 +64,16 @@ void allocSlots(IRFunction fun)
     // For each block of the function
     for (auto block = fun.entryBlock; block !is null; block = block.next)
     {
+        //writefln("block:\n%s", block.toString());
+
         // Reset the temp slot index
         auto tmpSlotIdx = 0;
 
         // For each phi node
         for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
         {
+            //writefln("phi: %s", phi.toString());
+
             // Assign the phi node to a variable slot
             phi.outSlot = numVarSlots++;
         }
@@ -77,6 +81,8 @@ void allocSlots(IRFunction fun)
         // For each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
+            //writefln("instr: %s", instr.toString());
+
             // If this instruction produces no output, skip it
             if (!instr.opcode.output)
                 continue;
@@ -84,13 +90,21 @@ void allocSlots(IRFunction fun)
             // If this instruction has one use
             if (instr.hasOneUse)
             {
+                //writeln("instr has one use");
+
                 // Get the owner of this use
                 auto owner = instr.getFirstUse.owner;
 
-                //writefln("owner: %s", owner);
-                //writefln("owner block: %s", owner.block);
+                assert (
+                    owner !is null,
+                    "use owner is null for use of instr: " ~
+                    instr.toString()
+                );
 
-                assert (owner.block !is null);
+                assert (
+                    owner.block !is null, 
+                    "instr owner block is null"
+                );
 
                 if (owner.block is instr.block)
                 {
@@ -106,6 +120,8 @@ void allocSlots(IRFunction fun)
             instr.outSlot = numVarSlots++;
         }
     }
+
+    writeln("allocating slots");
 
     // Compute the total number of local variables
     // Note: function parameters are included in the variable slots

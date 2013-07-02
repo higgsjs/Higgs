@@ -450,6 +450,10 @@ class IRBlock : IdObject
         phi.prev = null;
         phi.next = null;
         phi.block = null;
+
+        // Remove the incoming arguments to this phi node
+        foreach (descIdx, desc; incoming)
+            desc.remPhiArg(phi);
     }
 
     void addIncoming(BranchDesc branch)
@@ -485,7 +489,7 @@ class BranchDesc
     IRBlock succ;
 
     /// Mapping of incoming phi values (block arguments)
-    IRValue.Use args[];
+    Use args[];
 
     this(IRBlock pred, IRBlock succ)
     {
@@ -519,7 +523,7 @@ class BranchDesc
         }
 
         // Create a new argument
-        auto arg = IRValue.Use(val, phi);
+        auto arg = new Use(val, phi);
         args ~= arg;
 
         // Add a use to the new source value
@@ -527,6 +531,49 @@ class BranchDesc
 
         assert (arg.owner is phi);
     }
+
+    /// Remove the argument to a phi node
+    void remPhiArg(PhiNode phi)
+    {
+        writeln("******** REMOVING PHI ARG");
+
+        // For each existing branch argument
+        foreach (argIdx, arg; args)
+        {
+            // If this pair goes to the selected phi node
+            if (arg.owner is phi)
+            {
+                args[argIdx] = args[$-1];
+                args.length = args.length - 1;
+
+                // TODO: remUse
+
+                return;
+            }
+        }
+    }
+}
+
+/**
+IR value use instance
+*/
+class Use
+{
+    this(IRValue value, IRDstValue owner)
+    {
+        assert (owner !is null);
+        this.value = value;
+        this.owner = owner;
+    }
+
+    // Value this use refers to
+    IRValue value = null;
+
+    // Owner of this use
+    IRDstValue owner = null;
+
+    Use prev = null;
+    Use next = null;
 }
 
 /**
@@ -534,41 +581,24 @@ Base class for IR/SSA values
 */
 abstract class IRValue : IdObject
 {
-    struct Use
-    {
-        this(IRValue value, IRDstValue owner)
-        {
-            this.value = value;
-            this.owner = owner;
-        }
-
-        // Value this use refers to
-        IRValue value = null;
-
-        // Owner of this use
-        IRDstValue owner = null;
-
-        Use* prev = null;
-        Use* next = null;
-    }
-
     /// Linked list of destinations
-    private Use* firstUse = null;
+    private Use firstUse = null;
 
     /// Register a use of this value
-    private void addUse(ref Use use)
+    private void addUse(Use use)
     {
+        assert (use !is null);
         assert (use.value is this);
         assert (use.owner !is null);
 
         use.prev = null;
         use.next = firstUse;
 
-        firstUse = &use;
+        firstUse = use;
     }
 
     /// Unregister a use of this value
-    private void remUse(ref Use use)
+    private void remUse(Use use)
     {
         assert (use.value is this);
 
@@ -582,7 +612,7 @@ abstract class IRValue : IdObject
     }
 
     /// Get the first use of this value
-    Use* getFirstUse()
+    Use getFirstUse()
     {
         return firstUse;
     }
@@ -590,19 +620,24 @@ abstract class IRValue : IdObject
     /// Test if this value has a single use
     bool hasOneUse()
     {
-        return firstUse && firstUse.next == null;
+        return firstUse !is null && firstUse.next is null;
     }
 
     /// Test if this value has no uses
     bool hasNoUses()
     {
-        return firstUse == null;
+        return firstUse is null;
     }
 
     /// Replace uses of this value by uses of another value
     void replUses(IRValue newVal)
     {
         assert (newVal !is null);
+
+
+        writefln("************* replUses of: %s, by: %s", this.toString(), newVal.toString());
+
+
 
         // Find the last use of the new value
         auto lastUse = newVal.firstUse; 
@@ -897,8 +932,17 @@ class PhiNode : IRDstValue
                     if (descIdx > 0)
                         output ~= ", ";
 
-                    output ~= desc.pred.getName() ~ " => ";
-                    output ~= arg.value.getName();
+                    // Find the index of this branch target
+                    auto branch = desc.pred.lastInstr;
+                    assert (branch !is null);
+                    size_t tIdx = size_t.max;
+                    for (size_t idx = 0; idx < branch.MAX_TARGETS; ++idx)
+                        if (branch.getTarget(idx) is desc)
+                            tIdx = idx;
+                    assert (tIdx != size_t.max);
+
+                    output ~= desc.pred.getName() ~ ":" ~ to!string(tIdx);
+                    output ~= " => " ~ arg.value.getName();
 
                     break;
                 }
@@ -1019,16 +1063,21 @@ class IRInstr : IRDstValue
     {
         assert (idx < args.length);
 
-        // Set the owner property of the use
-        args[idx].owner = this;
+        // If this use is not yet initialized
+        if (args[idx] is null)
+        {
+            args[idx] = new Use(val, this);
+        }
 
         // If a value is already set for this
         // argument, remove the current use
-        if (args[idx].value !is null)
+        else if (args[idx].value !is null)
+        {
             args[idx].value.remUse(args[idx]);
+            args[idx].value = val;
+        }
 
         // Add a use for the new value
-        args[idx].value = val;
         val.addUse(args[idx]);
     }
 
