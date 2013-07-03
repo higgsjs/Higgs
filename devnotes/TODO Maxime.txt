@@ -17,6 +17,18 @@ CC Abstract Submission Deadline: 4 October 2013
 
 ------------------------------------------------------------------------------
 
+Sept 31st goal: have paper written & edited
+
+August 31st goal: have gathered some perf data, demonstrate gains from versioning
+- See paper note for metric ideas
+  - total blocks compiled in backend
+  - compilation time
+  - no instrs executed dynamically
+  - execution time
+- further perf tweaks
+
+July 31st goal: fully working interp/JIT, perf gains from inlining
+
 TODO: IR-level optimizations?
 - Basic arith ops, simple const prop?
 - Jump to block that jumps
