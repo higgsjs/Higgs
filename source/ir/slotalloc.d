@@ -74,8 +74,12 @@ void allocSlots(IRFunction fun)
         {
             //writefln("phi: %s", phi.toString());
 
-            // Assign the phi node to a variable slot
-            phi.outSlot = numVarSlots++;
+            // If this is not a function parameter
+            if (cast(FunParam)phi is null)
+            {
+                // Assign the phi node to a variable slot
+                phi.outSlot = numVarSlots++;
+            }
         }
 
         // For each instruction
@@ -121,11 +125,9 @@ void allocSlots(IRFunction fun)
         }
     }
 
-    writeln("allocating slots");
-
     // Compute the total number of local variables
     // Note: function parameters are included in the variable slots
-    fun.numLocals = NUM_HIDDEN_ARGS + numVarSlots + numTmpSlots;
+    fun.numLocals = NUM_HIDDEN_ARGS + fun.numParams + numVarSlots + numTmpSlots;
 
     // Total number of arguments, including hidden arguments
     auto numTotalArgs = NUM_HIDDEN_ARGS + fun.numParams;

@@ -1090,7 +1090,11 @@ class IRInstr : IRDstValue
     /// Get an argument of this instruction
     IRValue getArg(size_t idx)
     {
-        assert (idx < args.length);
+        assert (
+            idx < args.length,
+            "getArg: invalid arg index"
+        );
+
         return args[idx].value;
     }
 

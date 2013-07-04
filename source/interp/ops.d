@@ -937,7 +937,7 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
 
 extern (C) void op_ret(Interp interp, IRInstr instr)
 {
-    //writefln("ret from %s", instr.block.fun.name);
+    writefln("ret from %s", instr.block.fun.name);
 
     auto raSlot    = instr.block.fun.raVal.outSlot;
     auto argcSlot  = instr.block.fun.argcVal.outSlot;
@@ -1076,7 +1076,7 @@ extern (C) void op_gc_collect(Interp interp, IRInstr instr)
 
 extern (C) void op_make_link(Interp interp, IRInstr instr)
 {
-    auto linkArg = cast(IRLinkIdx)instr.getArg(1);
+    auto linkArg = cast(IRLinkIdx)instr.getArg(0);
     assert (linkArg !is null);
     auto linkIdx = &linkArg.linkIdx;
 

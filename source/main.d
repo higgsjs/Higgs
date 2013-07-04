@@ -53,31 +53,8 @@ void main(string[] args)
     // Get the names of files to execute
     auto fileNames = args[1..$];
 
-
-
-
-    
-    // FIXME: SSA test code
-    import ir.ir;
-    import ir.ast;
-    import parser.ast;
-
-    if (opts.execString !is null)
-    {
-        auto ast = cast(FunExpr)parseString(opts.execString, "string");
-        auto fir = astToIR(ast);
-        writeln(fir);
-    }
-
-    return;
-    
-
-
-
-
-
     // Interpreter instance
-    auto interp = new Interp();
+    auto interp = new Interp(true, !opts.nostdlib);
 
     // If file arguments were passed or there is 
     // a string of code to be executed

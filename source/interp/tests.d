@@ -46,6 +46,17 @@ import interp.layout;
 import interp.interp;
 import repl;
 
+/**
+Interpreter which doesn't load the standard library
+*/
+class InterpNoStdLib : Interp
+{
+    this()
+    {
+        super(true, false);
+    }
+}
+
 void assertInt(Interp interp, string input, int32 intVal)
 {
     //writeln(input);
@@ -197,8 +208,7 @@ unittest
 {
     writefln("global expressions");
 
-    // Create an interpreter with a runtime but no stdlib
-    auto interp = new Interp(true, false);
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt("return 7", 7);
     interp.assertInt("return 1 + 2", 3);
@@ -213,13 +223,14 @@ unittest
     interp.assertInt("return 6 - (3-3)", 6);
     interp.assertInt("return 3 - 3 - 3", -3);
 
-    //interp.assertInt("return 5 | 3", 7);
-    //interp.assertInt("return 5 & 3", 1);
-    //interp.assertInt("return 5 ^ 3", 6);
-    //interp.assertInt("return 5 << 2", 20);
-    //interp.assertInt("return 7 >> 1", 3);
-    //interp.assertInt("return 7 >>> 1", 3);
-    //interp.assertInt("return ~2", -3);
+    interp.assertInt("return 5 | 3", 7);
+    interp.assertInt("return 5 & 3", 1);
+    interp.assertInt("return 5 ^ 3", 6);
+    interp.assertInt("return 5 << 2", 20);
+    interp.assertInt("return 7 >> 1", 3);
+    interp.assertInt("return 7 >>> 1", 3);
+    interp.assertInt("return ~2", -3);
+    // FIXME: throw
     //interp.assertInt("return undefined | 1", 1);
 
     interp.assertFloat("return 3.5", 3.5);
@@ -228,33 +239,32 @@ unittest
     interp.assertFloat("return 2.5 - 1", 1.5);
     interp.assertFloat("return 2 * 1.5", 3);
     interp.assertFloat("return 6 / 2.5", 2.4);
-    //interp.assertFloat("return 0.5 % 0.2", 0.1);
-    //interp.assertFloat("return 6/2/2", 1.5);
-    //interp.assertFloat("return 6/2*2", 6);
+    interp.assertFloat("return 0.5 % 0.2", 0.1);
+    interp.assertFloat("return 6/2/2", 1.5);
+    interp.assertFloat("return 6/2*2", 6);
 
-    /*
-    interp.assertFloat("return 100 * '5'", 500);
-    interp.assertFloat("return 100 / '5'", 20);
-    */
+    // FIXME: not yet compiling throw statement
+    //interp.assertFloat("return 100 * '5'", 500);
+    //interp.assertFloat("return 100 / '5'", 20);
 
     interp.assertBool("!true", false);
     interp.assertBool("!false", true);
     interp.assertBool("!0", true);
 }
 
-/*
 /// Global function calls
 unittest
 {
     writefln("global functions");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt("return function () { return 9; } ()", 9);
     interp.assertInt("return function () { return 2 * 3; } ()", 6);
 
+    // FIXME: exception support
     // Calling null as a function
-    interp.assertThrows("null()");
+    //interp.assertThrows("null()");
 }
 
 /// Argument passing test
@@ -262,7 +272,7 @@ unittest
 {
     writefln("argument passing");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt("return function (x) { return x + 3; } (5)", 8);
     interp.assertInt("return function (x, y) { return x - y; } (5, 2)", 3);
@@ -279,7 +289,7 @@ unittest
 {
     writefln("local variables");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt("return function () { var x = 4; return x; } ()", 4);
     interp.assertInt("return function () { var x = 0; return x++; } ()", 0);
@@ -289,7 +299,8 @@ unittest
     interp.assertInt("return function () { var x = 0; ++x; return ++x; } ()", 2);
     interp.assertInt("return function () { var x = 0; return x++ + 1; } ()", 1);
     interp.assertInt("return function () { var x = 1; return x = x++ % 2; } ()", 1);
-    interp.assertBool("return function () { var x; return (x === undefined); } ()", true);
+    // FIXME: throw support
+    //interp.assertBool("return function () { var x; return (x === undefined); } ()", true);
 }
 
 /// Comparison and branching
@@ -297,7 +308,7 @@ unittest
 {
     writefln("comparison and branching");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt("if (true) return 1; else return 0;", 1);
     interp.assertInt("if (false) return 1; else return 0;", 0);
@@ -308,6 +319,7 @@ unittest
     interp.assertBool("5 <= 5", true);
     interp.assertBool("7 <= 5", false);
     interp.assertBool("7 > 5", true);
+    /*
     interp.assertBool("true == false", false);
     interp.assertBool("true === true", true);
     interp.assertBool("true !== false", true);
@@ -324,6 +336,7 @@ unittest
     interp.assertBool("return undefined == null", true);
     interp.assertBool("o = {}; return o == o", true);
     interp.assertBool("oa = {}; ob = {}; return oa == ob", false);
+    */
 
     interp.assertInt("return true? 1:0", 1);
     interp.assertInt("return false? 1:0", 0);
@@ -350,7 +363,7 @@ unittest
 {
     writefln("recursion");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt(
         "
@@ -394,8 +407,10 @@ unittest
 {
     writefln("loops");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
+    // TODO
+    /*
     interp.assertInt(
         "
         return function ()
@@ -407,7 +422,9 @@ unittest
         ",
         10
     );
+    */
 
+    /*
     interp.assertInt(
         "
         return function ()
@@ -468,14 +485,16 @@ unittest
         ",
         10
     );
+    */
 }
 
+/*
 /// Switch statement
 unittest
 {
     writefln("switch");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt(
         "
@@ -595,7 +614,7 @@ unittest
 {
     writefln("typeof");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertStr("return typeof 'foo'", "string");
     interp.assertStr("return typeof 1", "number");
@@ -606,13 +625,14 @@ unittest
     interp.assertStr("x = 3; return typeof x;", "number");
     interp.assertStr("delete x; return typeof x;", "undefined");
 }
+*/
 
 /// Global scope, global object
 unittest
 {
     writefln("global object");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertBool("var x; return !x", true);
     interp.assertInt("a = 1; return a;", 1);
@@ -628,7 +648,8 @@ unittest
     interp.assertInt("f = function() { return 7; }; return f();", 7);
     interp.assertInt("function f() { return 9; }; return f();", 9);
     interp.assertInt("(function () {}); return 0;", 0);
-    interp.assertInt("a = 7; function f() { return this.a; }; return f();", 7);
+    // FIXME: this, exceptions
+    //interp.assertInt("a = 7; function f() { return this.a; }; return f();", 7);
 
     interp.assertInt(
         "
@@ -645,14 +666,16 @@ unittest
         8
     );
 
+    // FIXME
     // Unresolved global
-    interp.assertThrows("foo");
+    //interp.assertThrows("foo");
 
+    // FIXME: loops, closures
     // Many global variables
-    interp = new Interp();
-    interp.load("programs/many_globals/many_globals.js");
-    interp = new Interp();
-    interp.load("programs/many_globals/many_globals2.js");
+    //interp = new Interp(true, false);
+    //interp.load("programs/many_globals/many_globals.js");
+    //interp = new Interp(true, false);
+    //interp.load("programs/many_globals/many_globals2.js");
 }
 
 /// In-place operators
@@ -660,7 +683,7 @@ unittest
 {
     writefln("in-place operators");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt("a = 1; a += 2; return a;", 3);
     interp.assertInt("a = 1; a += 4; a -= 3; return a;", 2);
@@ -672,6 +695,7 @@ unittest
     interp.assertInt("function f() { var a = 0; a += 2; a *= 3; return a; }; return f();", 6);
 }
 
+/*
 /// Object literals, property access, method calls
 unittest
 {
@@ -818,13 +842,14 @@ unittest
     interp.assertInt("a = [1337]; return a['0'];", 1337);
     interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
 }
+*/
 
 /// Inline IR
 unittest
 {
     writefln("inline IR");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt("return $ir_add_i32(5,3);", 8);
     interp.assertInt("return $ir_sub_i32(5,3);", 2);
@@ -916,6 +941,8 @@ unittest
         133
     );
 
+    // FIXME: loop support
+    /*
     interp.assertInt(
         "
         var sum = 0;
@@ -930,6 +957,7 @@ unittest
         ",
         10
     );
+    */
 }
 
 /// Runtime functions
@@ -937,7 +965,7 @@ unittest
 {
     writefln("runtime");
 
-    auto interp = new Interp();
+    auto interp = new InterpNoStdLib();
 
     interp.assertInt("$rt_toBool(0)? 1:0", 0);
     interp.assertInt("$rt_toBool(5)? 1:0", 1);
@@ -947,6 +975,7 @@ unittest
     interp.assertInt("$rt_toBool('')? 1:0", 0);
     interp.assertInt("$rt_toBool('foo')? 1:0", 1);
 
+    /*
     interp.assertStr("$rt_toString(5)", "5");
     interp.assertStr("$rt_toString('foo')", "foo");
     interp.assertStr("$rt_toString(null)", "null");
@@ -1001,8 +1030,10 @@ unittest
     interp.assertThrows("false instanceof false");
     interp.assertBool("'foo' in {}", false);
     interp.assertThrows("2 in null");
+    */
 }
 
+/*
 /// Closures, captured and escaping variables
 unittest
 {

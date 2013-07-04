@@ -539,7 +539,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
 void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 {
-    writeln("stmt to IR: ", stmt);
+    //writeln("stmt to IR: ", stmt);
 
     // Curly-brace enclosed block statement
     if (auto blockStmt = cast(BlockStmt)stmt)
@@ -1145,7 +1145,7 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 
 IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 {
-    writeln("expr to IR: ", expr);
+    //writeln("expr to IR: ", expr);
 
     // Function expression
     if (auto funExpr = cast(FunExpr)expr)
@@ -1529,25 +1529,23 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             return phiNode;
         }
 
-        /*
         // Pre-incrementation and pre-decrementation (++x, --x)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'r')
         {
             // Perform the incrementation/decrementation and assignment
-            assgToIR(
+            return assgToIR(
                 unExpr.expr,
-                delegate void(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg)
+                delegate IRValue(IRGenCtx ctx, IRValue lArg, IRValue rArg)
                 {
-                    genRtCall(
+                    return genRtCall(
                         ctx, 
                         (op.str == "++")? "add":"sub",
-                        ctx.getOutSlot(),
                         [lArg, rArg]
                     );
                 },
-                delegate void(IRGenCtx ctx)
+                delegate IRValue(IRGenCtx ctx)
                 {
-                    ctx.addInstr(IRInstr.intCst(ctx.getOutSlot(), 1));
+                    return IRConst.int32Cst(1);
                 },
                 ctx
             );
@@ -1556,33 +1554,31 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Post-incrementation and post-decrementation (x++, x--)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'l')
         {
-            // Get the slot for the output value
-            auto valOutSlot = ctx.getOutSlot();
+            IRValue outVal = null;
 
             // Perform the incrementation/decrementation and assignment
-            auto aCtx = ctx.subCtx(true);
             assgToIR(
                 unExpr.expr,
-                delegate void(IRGenCtx ctx, LocalIdx lArg, LocalIdx rArg)
+                delegate IRValue(IRGenCtx ctx, IRValue lArg, IRValue rArg)
                 {
-                    ctx.addInstr(new IRInstr(&MOVE, valOutSlot, lArg));
+                    // Store the l-value pre-assignment
+                    outVal = lArg;
 
-                    genRtCall(
+                    return genRtCall(
                         ctx, 
-                        (op.str == "++")? "add":"sub", 
-                        ctx.getOutSlot(),
+                        (op.str == "++")? "add":"sub",
                         [lArg, rArg]
                     );
                 },
-                delegate void(IRGenCtx ctx)
+                delegate IRValue(IRGenCtx ctx)
                 {
-                    ctx.addInstr(IRInstr.intCst(ctx.getOutSlot(), 1));
+                    return IRConst.int32Cst(1);
                 },
-                aCtx
+                ctx
             );
-            ctx.merge(aCtx);
+
+            return outVal;
         }
-        */
 
         else
         {

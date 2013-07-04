@@ -106,12 +106,9 @@ TODO: compare Tachyon and Higgs WhileStmt versions
 - Possible improvements for clarity/simplicity? Refactor now
 - createLoopEntry? look at Tachyon usages, do we always register labels?
 
-TODO: get while loop with phi nodes working
+TODO: get simple while loop with phi nodes working
 for (var i = 0; i < 10; i++)
-- Do phi nodes log branch idx?
-
-
-
+- can now test this with --nostdlib --e "..."
 
 FIXME: break/cont target should have both ctxList and IRBlock
 - enable some loop tests
@@ -119,14 +116,21 @@ FIXME: break/cont target should have both ctxList and IRBlock
 
 
 
-TODO: --nostdlib option?
 
 
 
 
 
 
+[DONE] TODO: operator ++
 
+[DONE] FIXME: signal 11 at ret in basic tests
+  call_cont(26473):
+    $0 = or_i32 $5, $8
+    ret $0
+- phi node assigns into RA!
+
+[DONE] TODO: --nostdlib option?
 
 [DONE] TODO: log branch target idx in phi toString
 

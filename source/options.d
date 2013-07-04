@@ -49,6 +49,13 @@ struct Options
     /// Force a repl
     bool repl = false;
 
+    /* Interpreter options */
+
+    /// Disable loading of the standard library
+    bool nostdlib = false;
+
+    /* JIT options */
+
     /// Flag to disable the JIT compiler
     bool jit_disable = false;
 
@@ -83,6 +90,8 @@ void parseCmdArgs(ref string[] args)
 
         "e"             , &opts.execString,
         "repl"          , &opts.repl,
+
+        "nostdlib"      , &opts.nostdlib,
 
         "jit_disable"   , &opts.jit_disable,
         "jit_noinline"  , &opts.jit_noinline,
