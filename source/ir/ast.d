@@ -69,7 +69,9 @@ class IRGenCtx
 
     alias Tuple!(
         wstring, "name",
-        IRGenCtx[]*, "breakCtxs", 
+        IRBlock, "breakTarget",
+        IRGenCtx[]*, "breakCtxs",
+        IRBlock, "contTarget", 
         IRGenCtx[]*, "contCtxs"
     ) LabelTargets;
 
@@ -186,49 +188,46 @@ class IRGenCtx
     */
     void regLabels(
         IdentExpr[] labels, 
-        IRGenCtx[]* breakCtxs, 
+        IRBlock breakTarget,
+        IRGenCtx[]* breakCtxs,
+        IRBlock contTarget, 
         IRGenCtx[]* contCtxs
     )
     {
         foreach (label; labels)
-            labelTargets ~= LabelTargets(label.name, breakCtxs, contCtxs);
+        {
+            labelTargets ~= LabelTargets(
+                label.name, 
+                breakTarget, 
+                breakCtxs, 
+                contTarget, 
+                contCtxs
+            );
+        }
 
         // Implicit null label
-        labelTargets ~= LabelTargets(null, breakCtxs, contCtxs);
+        labelTargets ~= LabelTargets(
+            null, 
+            breakTarget,
+            breakCtxs,
+            contTarget,
+            contCtxs
+        );
     }
 
     /**
     Find the context list for a break statement
     */
-    IRGenCtx[]* getBreakTarget(IdentExpr ident, FnlInfo[]* stmts)
-    {
-        foreach (target; labelTargets)
-            if ((ident is null && target.name is null) || 
-                (ident !is null && target.name == ident.name))
-                return target.breakCtxs;
-
-        if (fnlStmt)
-            *stmts ~= FnlInfo(fnlStmt, parent);
-
-        if (parent is null)
-            return null;
-
-        return parent.getBreakTarget(ident, stmts);
-    }
-
-    /**
-    Find the context list for a continue statement
-    */
-    IRGenCtx[]* getContTarget(IdentExpr ident, FnlInfo[]* stmts)
+    IRBlock getBreakTarget(IdentExpr ident, FnlInfo[]* stmts, ref IRGenCtx[]* breakCtxs)
     {
         foreach (target; labelTargets)
         {
-            if (target.contCtxs is null)
-                continue;
-
             if ((ident is null && target.name is null) || 
                 (ident !is null && target.name == ident.name))
-                return target.contCtxs;
+                {
+                    breakCtxs = target.breakCtxs;
+                    return target.breakTarget;
+                }
         }
 
         if (fnlStmt)
@@ -237,7 +236,34 @@ class IRGenCtx
         if (parent is null)
             return null;
 
-        return parent.getContTarget(ident, stmts);
+        return parent.getBreakTarget(ident, stmts, breakCtxs);
+    }
+
+    /**
+    Find the context list for a continue statement
+    */
+    IRBlock getContTarget(IdentExpr ident, FnlInfo[]* stmts, ref IRGenCtx[]* contCtxs)
+    {
+        foreach (target; labelTargets)
+        {
+            if (target.contCtxs is null)
+                continue;
+
+            if ((ident is null && target.name is null) || 
+                (ident !is null && target.name == ident.name))
+            {
+                contCtxs = target.contCtxs;
+                return target.contTarget;
+            }
+        }
+
+        if (fnlStmt)
+            *stmts ~= FnlInfo(fnlStmt, parent);
+
+        if (parent is null)
+            return null;
+
+        return parent.getContTarget(ident, stmts, contCtxs);
     }
 
     /**
@@ -647,18 +673,20 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto exitBlock = ctx.fun.newBlock("while_exit");
 
         // Create a context for the loop entry (the loop test)
+        IRGenCtx[] breakCtxLst = [];
+        IRGenCtx[] contCtxLst = [];
         auto testCtx = createLoopEntry(
             ctx,
-            testBlock
+            testBlock,
+            stmt,
+            exitBlock,
+            &breakCtxLst,
+            testBlock,
+            &contCtxLst
         );
 
         // Store a copy of the loop entry phi nodes
         auto entryLocals = testCtx.localMap.dup;        
-
-        // Register the loop labels, if any
-        IRGenCtx[] brkCtxList = [];
-        IRGenCtx[] cntCtxList = [];
-        testCtx.regLabels(stmt.labels, &brkCtxList, &cntCtxList);
 
         // Compile the loop test in the entry context
         auto testVal = exprToIR(whileStmt.testExpr, testCtx);
@@ -678,23 +706,21 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         stmtToIR(whileStmt.bodyStmt, bodyCtx);
 
         // Add the test exit to the entry context list
-        brkCtxList ~= testCtx.subCtx();
+        breakCtxLst ~= testCtx.subCtx();
 
         // Add the body exit to the continue context list
-        cntCtxList ~= bodyCtx.subCtx();
+        contCtxLst ~= bodyCtx.subCtx();
 
         // Merge the break contexts into the loop exit
         auto loopExitCtx = mergeContexts(
             ctx,
-            brkCtxList,
+            breakCtxLst,
             exitBlock
         );
 
-        writefln("num break ctxs: %s", brkCtxList.length);
-
         // Merge the continue contexts with the loop entry
         mergeLoopEntry(
-            cntCtxList,
+            contCtxLst,
             entryLocals,
             testBlock
         );
@@ -890,7 +916,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     else if (auto breakStmt = cast(BreakStmt)stmt)
     {
         IRGenCtx.FnlInfo[] fnlStmts;
-        auto breakCtxs = ctx.getBreakTarget(breakStmt.label, &fnlStmts);
+        IRGenCtx[]* breakCtxs;
+        auto breakTarget = ctx.getBreakTarget(breakStmt.label, &fnlStmts, breakCtxs);
 
         if (breakCtxs is null)
             throw new ParseError("break statement with no target", stmt.pos);
@@ -898,45 +925,41 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Compile the finally statements in-line
         foreach (fnl; fnlStmts)
         {
-            // FIXME: this seems broken
-            // fnl.ctx.subCtx would ignore our local variables?
-            // need to fnlCtx.localMap = ctx.localMap.dup?
-
             auto fnlCtx = fnl.ctx.subCtx();
+            fnlCtx.localMap = ctx.localMap.dup;
             stmtToIR(fnl.stmt, fnlCtx);
             ctx.merge(fnlCtx);
         }
 
-        // TODO: jump to block target here
-        //ctx.jump(block);
+        // Jump to the break target block
+        ctx.jump(breakTarget);
 
         *breakCtxs ~= ctx.subCtx();
-
-        writefln("num break ctxs: %s", breakCtxs.length);
     }
 
     // Continue statement
     else if (auto contStmt = cast(ContStmt)stmt)
     {
-        assert (false);
-        /*
         IRGenCtx.FnlInfo[] fnlStmts;
-        auto block = ctx.getContTarget(contStmt.label, &fnlStmts);
+        IRGenCtx[]* contCtxs;
+        auto contTarget = ctx.getContTarget(contStmt.label, &fnlStmts, contCtxs);
 
-        if (block is null)
+        if (contCtxs is null)
             throw new ParseError("continue statement with no target", stmt.pos);
 
         // Compile the finally statements in-line
         foreach (fnl; fnlStmts)
         {
-            auto fnlCtx = ctx.subCtx(false);
-            fnlCtx.parent = fnl.ctx;
+            auto fnlCtx = fnl.ctx.subCtx();
+            fnlCtx.localMap = ctx.localMap.dup;
             stmtToIR(fnl.stmt, fnlCtx);
-            ctx.merge(fnlCtx.curBlock);
+            ctx.merge(fnlCtx);
         }
 
-        ctx.addInstr(IRInstr.jump(block));
-        */
+        // Jump to the continue target block
+        ctx.jump(contTarget);
+
+        *contCtxs ~= ctx.subCtx();
     }
 
     // Return statement
@@ -967,14 +990,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ));
     }
 
-    /*
     else if (auto throwStmt = cast(ThrowStmt)stmt)
     {
-        auto subCtx = ctx.subCtx(true);
-        exprToIR(throwStmt.expr, subCtx);
-        ctx.merge(subCtx);
+        // FIXME
 
-        // FIXME: need some kind of merge here?
+        /*
+        auto throwVal = exprToIR(throwStmt.expr, ctx);
 
         // Generate the exception path
         if (auto excBlock = genExcPath(ctx, subCtx.getOutSlot()))
@@ -991,8 +1012,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
                 subCtx.getOutSlot()
             ));
         }
+        */
     }
-    */
 
     /*
     else if (auto tryStmt = cast(TryStmt)stmt)
@@ -2425,8 +2446,13 @@ void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
 Creates phi nodes and modifies the local variable map for a loop entry
 */
 IRGenCtx createLoopEntry(
-    IRGenCtx curCtx, 
-    IRBlock entryBlock
+    IRGenCtx curCtx,
+    IRBlock entryBlock,
+    ASTStmt loopStmt,
+    IRBlock breakBlock,
+    IRGenCtx[]* breakCtxLst,
+    IRBlock contBlock,
+    IRGenCtx[]* contCtxLst
 )
 {
     // Branch into the loop entry
@@ -2449,12 +2475,23 @@ IRGenCtx createLoopEntry(
     }
 
     // Create the loop entry context
-    return new IRGenCtx(
+    auto loopCtx = new IRGenCtx(
         curCtx,
         curCtx.fun,
         entryBlock,
         localMap
     );
+
+    // Register the loop labels, if any
+    loopCtx.regLabels(
+        loopStmt.labels,
+        breakBlock, 
+        breakCtxLst, 
+        contBlock, 
+        contCtxLst
+    );
+
+    return loopCtx;
 }
 
 /**
@@ -2485,7 +2522,7 @@ void mergeLoopEntry(
 
         // Count the number of incoming self reference values
         size_t numSelf = 0;
-        IRValue nonSelfVal = null;
+        IRValue nonSelfVal = entryMap[ident];
         foreach (ctx; contexts)
         {
             auto incVal = ctx.localMap[ident];
@@ -2496,10 +2533,8 @@ void mergeLoopEntry(
                 nonSelfVal = incVal;
         }
 
-        assert (nonSelfVal !is null);
-
         // If the phi node only has one incoming value and self references
-        if (numSelf == contexts.length - 1)
+        if (numSelf == contexts.length)
         {
             // Replace uses of the phi node by uses of its incoming value
             phiNode.replUses(nonSelfVal);

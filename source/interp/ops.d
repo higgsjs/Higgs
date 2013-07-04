@@ -937,7 +937,7 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
 
 extern (C) void op_ret(Interp interp, IRInstr instr)
 {
-    writefln("ret from %s", instr.block.fun.name);
+    //writefln("ret from %s", instr.block.fun.name);
 
     auto raSlot    = instr.block.fun.raVal.outSlot;
     auto argcSlot  = instr.block.fun.argcVal.outSlot;

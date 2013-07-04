@@ -102,25 +102,32 @@ TODO: get basic unit tests working again
 
 TODO: get if statement working
 
+TODO: typeof operator
+- Has its own unittest section
+
+
+
+
+
 TODO: compare Tachyon and Higgs WhileStmt versions
 - Possible improvements for clarity/simplicity? Refactor now
 - createLoopEntry? look at Tachyon usages, do we always register labels?
 
-TODO: get simple while loop with phi nodes working
-for (var i = 0; i < 10; i++)
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: get simple while loop with phi nodes working
 - can now test this with --nostdlib --e "..."
 
-FIXME: break/cont target should have both ctxList and IRBlock
+[DONE] FIXME: break/cont target should have both ctxList and IRBlock
 - enable some loop tests
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: operator ++
 

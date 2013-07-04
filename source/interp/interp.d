@@ -872,7 +872,7 @@ class Interp
                 // Get the current instruction
                 IRInstr instr = ip;
 
-                writefln("op: %s", instr.opcode.mnem);
+                //writefln("op: %s", instr.opcode.mnem);
      
                 // Get the opcode's implementation function
                 auto opFn = instr.opcode.opFn;
