@@ -457,7 +457,6 @@ unittest
         30
     );
 
-    /*
     interp.assertInt(
         "
         return function ()
@@ -470,6 +469,7 @@ unittest
         9
     );
 
+    /*
     interp.assertInt(
         "
         return function ()

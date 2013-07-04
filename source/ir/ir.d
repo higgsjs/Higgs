@@ -532,6 +532,20 @@ class BranchDesc
         assert (arg.owner is phi);
     }
 
+    /**
+    Get the argument to a phi node
+    */
+    IRValue getPhiArg(PhiNode phi)
+    {
+        // For each existing branch argument
+        foreach (arg; args)
+            if (arg.owner is phi)
+                return arg.value;
+
+        // Not found
+        return null;
+    }
+
     /// Remove the argument to a phi node
     void remPhiArg(PhiNode phi)
     {
@@ -634,10 +648,7 @@ abstract class IRValue : IdObject
     {
         assert (newVal !is null);
 
-
-        writefln("************* replUses of: %s, by: %s", this.toString(), newVal.toString());
-
-
+        writefln("*** replUses of: %s, by: %s", this.toString(), newVal.toString());
 
         // Find the last use of the new value
         auto lastUse = newVal.firstUse; 
@@ -652,7 +663,8 @@ abstract class IRValue : IdObject
         if (lastUse !is null)
         {
             lastUse.next = this.firstUse;
-            this.firstUse.prev = lastUse;
+            if (this.firstUse !is null)
+                this.firstUse.prev = lastUse;
         }
         else
         {
@@ -917,6 +929,11 @@ class PhiNode : IRDstValue
 
     override string toString()
     {
+        assert (
+            block !is null, 
+            "phi node is not attached to a block"
+        );
+
         string output;
 
         output ~= getName() ~ " = [";          
@@ -933,6 +950,7 @@ class PhiNode : IRDstValue
                         output ~= ", ";
 
                     // Find the index of this branch target
+                    assert (desc.pred !is null);
                     auto branch = desc.pred.lastInstr;
                     assert (branch !is null);
                     size_t tIdx = size_t.max;

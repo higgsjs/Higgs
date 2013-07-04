@@ -557,6 +557,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Allocate stack slots for the IR instructions
     allocSlots(fun);
 
+    writeln("compiled fn:");
     writeln(fun.toString());
 
     // Return the IR function object
@@ -720,6 +721,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Merge the continue contexts with the loop entry
         mergeLoopEntry(
+            ctx,
             contCtxLst,
             entryLocals,
             testBlock
@@ -729,9 +731,74 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.merge(loopExitCtx);
     }
 
-    /*
     else if (auto doStmt = cast(DoWhileStmt)stmt)
     {
+        // Create the loop test, body and exit blocks
+        auto bodyBlock = ctx.fun.newBlock("do_body");
+        auto testBlock = ctx.fun.newBlock("do_test");
+        auto exitBlock = ctx.fun.newBlock("do_exit");
+
+        // Create a context for the loop entry (the loop test)
+        IRGenCtx[] breakCtxLst = [];
+        IRGenCtx[] contCtxLst = [];
+        auto bodyCtx = createLoopEntry(
+            ctx,
+            bodyBlock,
+            stmt,
+            exitBlock,
+            &breakCtxLst,
+            testBlock,
+            &contCtxLst
+        );
+
+        // Store a copy of the loop entry phi nodes
+        auto entryLocals = bodyCtx.localMap.dup;        
+
+        // Compile the loop body statement
+        stmtToIR(doStmt.bodyStmt, bodyCtx);
+        bodyCtx.jump(testBlock);
+
+        // Compile the loop test
+        auto testCtx = bodyCtx.subCtx(testBlock);
+        auto testVal = exprToIR(doStmt.testExpr, testCtx);
+
+        // Convert the expression value to a boolean
+        auto boolVal = genBoolEval(
+            testCtx, 
+            doStmt.testExpr, 
+            testVal
+        );
+
+        // If the expresson is true, jump to the loop body
+        testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
+
+        // Add the test exit to the break context list
+        breakCtxLst ~= testCtx.subCtx();
+
+        // Add the test exit to the continue context list
+        contCtxLst ~= testCtx.subCtx();
+
+        // Merge the break contexts into the loop exit
+        auto loopExitCtx = mergeContexts(
+            ctx,
+            breakCtxLst,
+            exitBlock
+        );
+
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
+            ctx,
+            contCtxLst,
+            entryLocals,
+            bodyBlock
+        );
+
+        // Continue code generation after the loop exit
+        ctx.merge(loopExitCtx);
+
+
+
+        /*
         // Create the loop test, body and exit blocks
         auto bodyBlock = ctx.fun.newBlock("do_body");
         auto testBlock = ctx.fun.newBlock("do_test");
@@ -770,8 +837,10 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Continue code generation in the exit block
         ctx.merge(exitBlock);
+        */
     }
 
+    /*
     else if (auto forStmt = cast(ForStmt)stmt)
     {
         // Create the loop test, body and exit blocks
@@ -2498,6 +2567,7 @@ IRGenCtx createLoopEntry(
 Merge incoming contexts for a loop entry block
 */
 void mergeLoopEntry(
+    IRGenCtx parentCtx,
     IRGenCtx[] contexts,
     IRValue[IdentExpr] entryMap,
     IRBlock entryBlock
@@ -2519,23 +2589,22 @@ void mergeLoopEntry(
     {
         auto phiNode = cast(PhiNode)value;
         assert (phiNode !is null);
+        assert (phiNode.block is entryBlock);
 
         // Count the number of incoming self reference values
         size_t numSelf = 0;
-        IRValue nonSelfVal = entryMap[ident];
         foreach (ctx; contexts)
-        {
-            auto incVal = ctx.localMap[ident];
-
-            if (incVal is phiNode)
+            if (ctx.localMap[ident] is phiNode)
                 numSelf++;
-            else
-                nonSelfVal = incVal;
-        }
 
-        // If the phi node only has one incoming value and self references
+        // If the merged contexts only have self-references as incoming values
+        // Note: phi nodes start out with one non-self value entering the loop
         if (numSelf == contexts.length)
         {
+            auto nonSelfVal = parentCtx.localMap[ident];
+            assert (nonSelfVal !is null);
+            assert (nonSelfVal !is phiNode);
+
             // Replace uses of the phi node by uses of its incoming value
             phiNode.replUses(nonSelfVal);
 

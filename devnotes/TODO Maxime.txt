@@ -107,21 +107,22 @@ TODO: typeof operator
 
 
 
+TODO: for loop
 
 
-TODO: compare Tachyon and Higgs WhileStmt versions
+
+
+
+
+
+
+
+
+[DONE] TODO: do-while loop
+
+[DONE] TODO: compare Tachyon and Higgs WhileStmt versions
 - Possible improvements for clarity/simplicity? Refactor now
 - createLoopEntry? look at Tachyon usages, do we always register labels?
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: get simple while loop with phi nodes working
 - can now test this with --nostdlib --e "..."

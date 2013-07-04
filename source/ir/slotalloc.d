@@ -187,5 +187,8 @@ void allocSlots(IRFunction fun)
     writefln("numVarSlots: %s", numVarSlots);    
     writefln("numTmpSlots: %s", numTmpSlots);
 
+    //writeln("printing fun: ");
+    //writeln(fun.toString());
+
 }
 
