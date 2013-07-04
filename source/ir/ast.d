@@ -706,7 +706,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto bodyCtx = testCtx.subCtx(bodyBlock);
         stmtToIR(whileStmt.bodyStmt, bodyCtx);
 
-        // Add the test exit to the entry context list
+        // Add the test exit to the break context list
         breakCtxLst ~= testCtx.subCtx();
 
         // Add the body exit to the continue context list
@@ -795,52 +795,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Continue code generation after the loop exit
         ctx.merge(loopExitCtx);
-
-
-
-        /*
-        // Create the loop test, body and exit blocks
-        auto bodyBlock = ctx.fun.newBlock("do_body");
-        auto testBlock = ctx.fun.newBlock("do_test");
-        auto exitBlock = ctx.fun.newBlock("do_exit");
-
-        // Register the loop labels, if any
-        ctx.regLabels(stmt.labels, exitBlock, testBlock);
-
-        // Jump to the body block
-        ctx.addInstr(IRInstr.jump(bodyBlock));
-
-        // Compile the loop body statement
-        auto bodyCtx = ctx.subCtx(false, NULL_LOCAL, bodyBlock);
-        stmtToIR(doStmt.bodyStmt, bodyCtx);
-
-        // Jump to the loop test
-        bodyCtx.addInstr(IRInstr.jump(testBlock));
-
-        // Evaluate the test expression
-        auto testCtx = ctx.subCtx(true, NULL_LOCAL, testBlock);
-        exprToIR(doStmt.testExpr, testCtx);
-
-        // Convert the expression value to a boolean
-        auto boolSlot = genBoolEval(
-            testCtx, 
-            doStmt.testExpr, 
-            testCtx.getOutSlot()
-        );
-
-        // If the expresson is true, jump to the loop body
-        testCtx.addInstr(IRInstr.ifTrue(
-            boolSlot,
-            bodyBlock,
-            exitBlock
-        ));
-
-        // Continue code generation in the exit block
-        ctx.merge(exitBlock);
-        */
     }
 
-    /*
     else if (auto forStmt = cast(ForStmt)stmt)
     {
         // Create the loop test, body and exit blocks
@@ -849,53 +805,79 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto incrBlock = ctx.fun.newBlock("for_incr");
         auto exitBlock = ctx.fun.newBlock("for_exit");
 
-        // Register the loop labels, if any
-        ctx.regLabels(stmt.labels, exitBlock, incrBlock);
-
         // Compile the init statement
-        auto initCtx = ctx.subCtx(false);
-        stmtToIR(forStmt.initStmt, initCtx);
-        ctx.merge(initCtx);
+        stmtToIR(forStmt.initStmt, ctx);
 
-        // Jump to the test block
-        ctx.addInstr(IRInstr.jump(testBlock));
+        // Create a context for the loop entry (the loop test)
+        IRGenCtx[] breakCtxLst = [];
+        IRGenCtx[] contCtxLst = [];
+        auto testCtx = createLoopEntry(
+            ctx,
+            testBlock,
+            stmt,
+            exitBlock,
+            &breakCtxLst,
+            incrBlock,
+            &contCtxLst
+        );
 
-        // Evaluate the test expression
-        auto testCtx = ctx.subCtx(true, NULL_LOCAL, testBlock);
-        exprToIR(forStmt.testExpr, testCtx);
+        // Store a copy of the loop entry phi nodes
+        auto entryLocals = testCtx.localMap.dup;        
+
+        // Compile the loop test in the entry context
+        auto testVal = exprToIR(forStmt.testExpr, testCtx);
 
         // Convert the expression value to a boolean
-        auto boolSlot = genBoolEval(
+        auto boolVal = genBoolEval(
             testCtx, 
             forStmt.testExpr, 
-            testCtx.getOutSlot()
+            testVal
         );
 
         // If the expresson is true, jump to the loop body
-        testCtx.addInstr(IRInstr.ifTrue(
-            boolSlot,
-            bodyBlock,
-            exitBlock
-        ));
+        testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
 
         // Compile the loop body statement
-        auto bodyCtx = ctx.subCtx(false, NULL_LOCAL, bodyBlock);
+        auto bodyCtx = testCtx.subCtx(bodyBlock);
         stmtToIR(forStmt.bodyStmt, bodyCtx);
+        bodyCtx.jump(incrBlock);
 
-        // Jump to the increment block
-        bodyCtx.addInstr(IRInstr.jump(incrBlock));
+        // Add the test exit to the break context list
+        breakCtxLst ~= testCtx.subCtx();
+
+        // Add the body exit to the continue context list
+        contCtxLst ~= bodyCtx.subCtx();
+
+        // Merge the continue contexts into the increment block
+        auto incrCtx = mergeContexts(
+            ctx,
+            contCtxLst,
+            incrBlock
+        );
 
         // Compile the increment expression
-        auto incrCtx = ctx.subCtx(true, NULL_LOCAL, incrBlock);
         exprToIR(forStmt.incrExpr, incrCtx);
 
-        // Jump to the loop test
-        incrCtx.addInstr(IRInstr.jump(testBlock));
+        // Merge the increment context with the entry block
+        mergeLoopEntry(
+            ctx,
+            [incrCtx],
+            entryLocals,
+            testBlock
+        );
 
-        // Continue code generation in the exit block
-        ctx.merge(exitBlock);
+        // Merge the break contexts into the loop exit
+        auto loopExitCtx = mergeContexts(
+            ctx,
+            breakCtxLst,
+            exitBlock
+        );
+
+        // Continue code generation after the loop exit
+        ctx.merge(loopExitCtx);
     }
 
+    /*
     else if (auto forInStmt = cast(ForInStmt)stmt)
     {
         // Create the loop test, body and exit blocks

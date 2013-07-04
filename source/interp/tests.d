@@ -469,7 +469,6 @@ unittest
         9
     );
 
-    /*
     interp.assertInt(
         "
         return function ()
@@ -480,7 +479,23 @@ unittest
         ",
         10
     );
-    */
+
+    interp.assertInt(
+        "
+        return function ()
+        {
+            for (var i = 0; i < 10; ++i)
+            {
+                if (i % 2 === 0)
+                    continue;
+                if (i === 5)
+                    break;
+            }
+            return i;
+        } ();
+        ",
+        5
+    );
 }
 
 /*
@@ -573,23 +588,24 @@ unittest
 /// Strings
 unittest
 {
-    /*
     writefln("strings");
 
     auto interp = new InterpNoStdLib();
 
     interp.assertStr("return 'foo'", "foo");
-    interp.assertStr("return 'foo' + 'bar'", "foobar");
-    interp.assertStr("return 'foo' + 1", "foo1");
-    interp.assertStr("return 'foo' + true", "footrue");
+    // FIXME: requires typeof
+    //interp.assertStr("return 'foo' + 'bar'", "foobar");
+    //interp.assertStr("return 'foo' + 1", "foo1");
+    //interp.assertStr("return 'foo' + true", "footrue");
     interp.assertInt("return 'foo'? 1:0", 1);
     interp.assertInt("return ''? 1:0", 0);
     interp.assertBool("return ('foo' === 'foo')", true);
-    interp.assertBool("return ('foo' === 'f' + 'oo')", true);
+    //interp.assertBool("return ('foo' === 'f' + 'oo')", true);
     interp.assertBool("return ('bar' == 'bar')", true);
     interp.assertBool("return ('bar' != 'b')", true);
     interp.assertBool("return ('bar' != 'bar')", false);
 
+    /*
     interp.assertStr(
         "
         return function ()

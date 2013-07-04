@@ -107,16 +107,12 @@ TODO: typeof operator
 
 
 
-TODO: for loop
 
 
 
 
 
-
-
-
-
+[DONE] TODO: for loop
 
 [DONE] TODO: do-while loop
 
