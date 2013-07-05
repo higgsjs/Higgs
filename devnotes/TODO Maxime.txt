@@ -86,6 +86,13 @@ TODO: liveness and slot mapping analysis for new IR
 - Other instrs get slots based on who's live at the same time
   - Map instr to first slot that's not already mapped to an interfering value
 
+TODO: basic IR peephole pass
+- opts:
+  - phi node
+  - basic const prop
+  - jump to jump
+- Try to optimize a little, changedblocks?
+
 TODO: fixup GC
 
 TODO: switch statement
@@ -94,14 +101,9 @@ TODO: new operator
 
 TODO: array literal support
 
-TODO: delete operator
-
 TODO: object literal support
 
-
-
-FIXME: $rt_toString(5), ir.d(932): phi node is not attached to a block
-
+TODO: delete operator
 
 
 
@@ -110,6 +112,12 @@ FIXME: $rt_toString(5), ir.d(932): phi node is not attached to a block
 
 
 
+
+
+[DONE] FIXME: $rt_toString(5), ir.d(932): phi node is not attached to a block
+- Replacing value by unattached phi node????
+- Problem: replacing uses of phi but, phi may be in context already
+- Shouldn't be doing this during code gen... Need separate opt phase
 
 [DONE] TODO: typeof operator
 - Has its own unittest section

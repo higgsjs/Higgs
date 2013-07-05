@@ -557,8 +557,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Allocate stack slots for the IR instructions
     allocSlots(fun);
 
-    writeln("compiled fn:");
-    writeln(fun.toString());
+    //writeln("compiled fn:");
+    //writeln(fun.toString());
 
     // Return the IR function object
     return fun;
@@ -2572,35 +2572,12 @@ void mergeLoopEntry(
         assert (phiNode !is null);
         assert (phiNode.block is entryBlock);
 
-        // Count the number of incoming self reference values
-        size_t numSelf = 0;
+        // Set the incoming phi values for all incoming contexts
         foreach (ctx; contexts)
-            if (ctx.localMap[ident] is phiNode)
-                numSelf++;
-
-        // If the merged contexts only have self-references as incoming values
-        // Note: phi nodes start out with one non-self value entering the loop
-        if (numSelf == contexts.length)
         {
-            auto nonSelfVal = parentCtx.localMap[ident];
-            assert (nonSelfVal !is null);
-            assert (nonSelfVal !is phiNode);
-
-            // Replace uses of the phi node by uses of its incoming value
-            phiNode.replUses(nonSelfVal);
-
-            // Remove the phi node
-            entryBlock.remPhi(phiNode);
-        }
-        else
-        {
-            // Set the incoming phi values for all incoming contexts
-            foreach (ctx; contexts)
-            {
-                auto incVal = ctx.localMap[ident];
-                auto branchDesc = ctx.curBlock.lastInstr.getTarget(0);
-                branchDesc.setPhiArg(phiNode, incVal);
-            }
+            auto incVal = ctx.localMap[ident];
+            auto branchDesc = ctx.curBlock.lastInstr.getTarget(0);
+            branchDesc.setPhiArg(phiNode, incVal);
         }
     }
 }

@@ -53,7 +53,7 @@ void allocSlots(IRFunction fun)
     // interfere with previous tmp?
     // keep track of lastTmp?
 
-    writefln("allocSlots");
+    //writefln("allocSlots");
 
     // Number of assigned variable slots
     auto numVarSlots = 0;
@@ -182,13 +182,11 @@ void allocSlots(IRFunction fun)
         }
     }
 
+    /*
     writeln(fun.getName());
     writefln("numLocals  : %s", fun.numLocals);    
     writefln("numVarSlots: %s", numVarSlots);    
     writefln("numTmpSlots: %s", numTmpSlots);
-
-    //writeln("printing fun: ");
-    //writeln(fun.toString());
-
+    */
 }
 

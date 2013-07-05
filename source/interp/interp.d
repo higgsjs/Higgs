@@ -774,7 +774,8 @@ class Interp
         {
             assert (
                 dstVal.outSlot != NULL_LOCAL, 
-                "out slot unassigned"
+                "out slot unassigned for:\n" ~
+                dstVal.toString()
             );
 
             //writefln("getting value from slot of %s", val);
@@ -875,7 +876,7 @@ class Interp
                 // Get the current instruction
                 IRInstr instr = ip;
 
-                writefln("op: %s", instr.opcode.mnem);
+                //writefln("op: %s", instr.opcode.mnem);
      
                 // Get the opcode's implementation function
                 auto opFn = instr.opcode.opFn;

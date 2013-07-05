@@ -593,19 +593,17 @@ unittest
     auto interp = new InterpNoStdLib();
 
     interp.assertStr("return 'foo'", "foo");
-    // FIXME: phi node bug
-    //interp.assertStr("return 'foo' + 'bar'", "foobar");
-    //interp.assertStr("return 'foo' + 1", "foo1");
-    //interp.assertStr("return 'foo' + true", "footrue");
+    interp.assertStr("return 'foo' + 'bar'", "foobar");
+    interp.assertStr("return 'foo' + 1", "foo1");
+    interp.assertStr("return 'foo' + true", "footrue");
     interp.assertInt("return 'foo'? 1:0", 1);
     interp.assertInt("return ''? 1:0", 0);
     interp.assertBool("return ('foo' === 'foo')", true);
-    //interp.assertBool("return ('foo' === 'f' + 'oo')", true);
+    interp.assertBool("return ('foo' === 'f' + 'oo')", true);
     interp.assertBool("return ('bar' == 'bar')", true);
     interp.assertBool("return ('bar' != 'b')", true);
     interp.assertBool("return ('bar' != 'bar')", false);
 
-    /*
     interp.assertStr(
         "
         return function ()
@@ -620,7 +618,6 @@ unittest
         ",
         "01234"
     );
-    */
 }
 
 // Typeof operator
@@ -636,8 +633,7 @@ unittest
     interp.assertStr("return typeof false", "boolean");
     interp.assertStr("return typeof null", "object");
     interp.assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
-    // FIXME
-    //interp.assertStr("x = 3; return typeof x;", "number");
+    interp.assertStr("x = 3; return typeof x;", "number");
     // FIXME: delete operator
     //interp.assertStr("delete x; return typeof x;", "undefined");
 }
@@ -689,8 +685,7 @@ unittest
     interp = new InterpNoStdLib();
     interp.load("programs/many_globals/many_globals.js");
     interp = new InterpNoStdLib();
-    // FIXME: out slot unassigned
-    //interp.load("programs/many_globals/many_globals2.js");
+    interp.load("programs/many_globals/many_globals2.js");
 }
 
 /// In-place operators
@@ -991,14 +986,15 @@ unittest
     interp.assertInt("$rt_toBool('')? 1:0", 0);
     interp.assertInt("$rt_toBool('foo')? 1:0", 1);
 
-    //interp.assertStr("$rt_toString(5)", "5");
-    //interp.assertStr("$rt_toString('foo')", "foo");
-    //interp.assertStr("$rt_toString(null)", "null");
+    interp.assertStr("$rt_toString(5)", "5");
+    interp.assertStr("$rt_toString('foo')", "foo");
+    interp.assertStr("$rt_toString(null)", "null");
+    // FIXME: object literal support
     //interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     interp.assertInt("$rt_add(5, 3)", 8);
     interp.assertFloat("$rt_add(5, 3.5)", 8.5);
-    /*interp.assertStr("$rt_add(5, 'bar')", "5bar");
+    interp.assertStr("$rt_add(5, 'bar')", "5bar");
     interp.assertStr("$rt_add('foo', 'bar')", "foobar");
 
     interp.assertInt("$rt_sub(5, 3)", 2);
@@ -1022,6 +1018,7 @@ unittest
 
     interp.assertInt("$rt_getProp('foo', 'length')", 3);
     interp.assertStr("$rt_getProp('foo', 0)", "f");
+    /*
     interp.assertInt("$rt_getProp([0,1], 'length')", 2);
     interp.assertInt("$rt_getProp([3,4,5], 1)", 4);
     interp.assertInt("$rt_getProp({v:7}, 'v')", 7);
@@ -1050,7 +1047,6 @@ unittest
 /// Closures, captured and escaping variables
 unittest
 {
-    /*
     writefln("closures");
 
     auto interp = new InterpNoStdLib();
@@ -1102,7 +1098,6 @@ unittest
         ",
         6
     );
-    */
 }
 
 /*
