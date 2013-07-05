@@ -1849,21 +1849,18 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
         }
     }
+    */
 
     else if (auto objExpr = cast(ObjectExpr)expr)
     {
         // Create the object
-        auto linkInstr = ctx.addInstr(IRInstr.makeLink(ctx.allocTemp()));
-        auto protoInstr = ctx.addInstr(new IRInstr(&GET_OBJ_PROTO, ctx.allocTemp()));
-        auto objInstr = genRtCall(
+        auto linkVal = ctx.addInstr(new IRInstr(&MAKE_LINK, new IRLinkIdx()));
+        auto protoVal = ctx.addInstr(new IRInstr(&GET_OBJ_PROTO));
+        auto objVal = genRtCall(
             ctx, 
             "newObj",
-            ctx.getOutSlot(),
-            [linkInstr.outSlot, protoInstr.outSlot]
+            [linkVal, protoVal]
         );
-
-        auto strTmp = ctx.allocTemp();
-        auto valTmp = ctx.allocTemp();
 
         // Evaluate the property values
         for (size_t i = 0; i < objExpr.names.length; ++i)
@@ -1871,24 +1868,19 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto strExpr = objExpr.names[i];
             auto valExpr = objExpr.values[i];
 
-            auto strCtx = ctx.subCtx(true, strTmp);
-            exprToIR(strExpr, strCtx);
-            ctx.merge(strCtx);
-
-            auto valCtx = ctx.subCtx(true, valTmp);
-            exprToIR(valExpr, valCtx);
-            ctx.merge(valCtx);
+            auto strVal = exprToIR(strExpr, ctx);
+            auto propVal = exprToIR(valExpr, ctx);
 
             // Set the property on the object
             genRtCall(
                 ctx, 
                 "setProp",
-                ctx.allocTemp(),
-                [objInstr.outSlot, strCtx.getOutSlot(), valCtx.getOutSlot()]
+                [objVal, strVal, propVal]
             );
         }
+
+        return objVal;
     }
-    */
 
     // Identifier/variable reference
     else if (auto identExpr = cast(IdentExpr)expr)

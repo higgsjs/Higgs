@@ -332,9 +332,8 @@ unittest
     interp.assertBool("return 'Foo' == null", false);
     interp.assertBool("return undefined == undefined", true);
     interp.assertBool("return undefined == null", true);
-    // FIXME: object literal support
-    //interp.assertBool("o = {}; return o == o", true);
-    //interp.assertBool("oa = {}; ob = {}; return oa == ob", false);
+    interp.assertBool("o = {}; return o == o", true);
+    interp.assertBool("oa = {}; ob = {}; return oa == ob", false);
 
     interp.assertInt("return true? 1:0", 1);
     interp.assertInt("return false? 1:0", 0);
@@ -498,10 +497,10 @@ unittest
     );
 }
 
-/*
 /// Switch statement
 unittest
 {
+    /*
     writefln("switch");
 
     auto interp = new InterpNoStdLib();
@@ -582,8 +581,8 @@ unittest
         ",
         8
     );
+    */
 }
-*/
 
 /// Strings
 unittest
@@ -707,20 +706,21 @@ unittest
 /// Object literals, property access, method calls
 unittest
 {
-    /*
     writefln("objects and properties");
 
     auto interp = new InterpNoStdLib();
 
     interp.assertInt("{}; return 1;", 1);
-    interp.assertInt("{x: 7}; return 1;", 1);
-    interp.assertInt("o = {}; o.x = 7; return 1;", 1);
-    interp.assertInt("o = {}; o.x = 7; return o.x;", 7);
-    interp.assertInt("o = {x: 9}; return o.x;", 9);
-    interp.assertInt("o = {x: 9}; o.y = 1; return o.x + o.y;", 10);
-    interp.assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
-    interp.assertInt("o = {x: 5}; return o.y? 1:0;", 0);
+    // FIXME: requires switch
+    //interp.assertInt("{x: 7}; return 1;", 1);
+    //interp.assertInt("o = {}; o.x = 7; return 1;", 1);
+    //interp.assertInt("o = {}; o.x = 7; return o.x;", 7);
+    //interp.assertInt("o = {x: 9}; return o.x;", 9);
+    //interp.assertInt("o = {x: 9}; o.y = 1; return o.x + o.y;", 10);
+    //interp.assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
+    //interp.assertInt("o = {x: 5}; return o.y? 1:0;", 0);
 
+    /*
     interp.assertBool("o = {x: 5}; return 'x' in o;", true);
     interp.assertBool("o = {x: 5}; return 'k' in o;", false);
 

@@ -95,25 +95,23 @@ TODO: basic IR peephole pass
 
 TODO: fixup GC
 
-TODO: switch statement
-
 TODO: new operator
+
+TODO: switch statement
 
 TODO: array literal support
 
-TODO: object literal support
+
+
+
+
+
+
+
+
+
+[DONE] TODO: object literal support
 - Should enable many more tests
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: delete operator
 - Signal 11 on delete of global
