@@ -254,9 +254,12 @@ string valToString(ValuePair value)
             return "false";
         if (w == UNDEF)
             return "undefined";
-        if (w == UNDEF)
+        if (w == MISSING)
             return "missing";
-        assert (false, "unsupported constant");
+        assert (
+            false, 
+            "unsupported constant " ~ to!string(value.word.uint64Val)
+        );
 
         case Type.FUNPTR:
         return "funptr";
@@ -872,7 +875,7 @@ class Interp
                 // Get the current instruction
                 IRInstr instr = ip;
 
-                //writefln("op: %s", instr.opcode.mnem);
+                writefln("op: %s", instr.opcode.mnem);
      
                 // Get the opcode's implementation function
                 auto opFn = instr.opcode.opFn;

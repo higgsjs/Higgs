@@ -1056,7 +1056,7 @@ class IRInstr : IRDstValue
     {
         assert (
             opcode.argTypes.length == 2,
-            "IR instruction does not take 2 arguments"
+            "IR instruction does not take 2 arguments \"" ~ opcode.mnem ~ "\""
         );
 
         this(opcode, 2);
@@ -1069,7 +1069,7 @@ class IRInstr : IRDstValue
     {
         assert (
             opcode.argTypes.length == 1,
-            "IR instruction does not take 1 argument"
+            "IR instruction does not take 1 argument \"" ~ opcode.mnem ~ "\""
         );
 
         this(opcode, 1);

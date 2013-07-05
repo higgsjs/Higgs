@@ -86,31 +86,33 @@ TODO: liveness and slot mapping analysis for new IR
 - Other instrs get slots based on who's live at the same time
   - Map instr to first slot that's not already mapped to an interfering value
 
-TODO: rename getBreakTarget, getContTarget?
-- getBreakCtxs
-
 TODO: fixup GC
 
-TODO: adapt interpreter
-- Instructions have mapped output slots as before
-- Phi nodes have mapped slots, do a move as necessary?
-- The block who branches should do the SSA moves
-- interp.getArgVal, interp.jump
-- grep ops for FIXME
+TODO: switch statement
 
-TODO: get basic unit tests working again
+TODO: new operator
 
-TODO: get if statement working
+TODO: array literal support
 
-TODO: typeof operator
+TODO: delete operator
+
+TODO: object literal support
+
+
+
+FIXME: $rt_toString(5), ir.d(932): phi node is not attached to a block
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: typeof operator
 - Has its own unittest section
-
-
-
-
-
-
-
 
 [DONE] TODO: for loop
 

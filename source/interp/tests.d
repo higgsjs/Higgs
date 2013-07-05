@@ -242,7 +242,7 @@ unittest
     interp.assertFloat("return 6/2/2", 1.5);
     interp.assertFloat("return 6/2*2", 6);
 
-    // FIXME: typeof support
+    // FIXME: switch support
     //interp.assertFloat("return 100 * '5'", 500);
     //interp.assertFloat("return 100 / '5'", 20);
 
@@ -593,7 +593,7 @@ unittest
     auto interp = new InterpNoStdLib();
 
     interp.assertStr("return 'foo'", "foo");
-    // FIXME: requires typeof
+    // FIXME: phi node bug
     //interp.assertStr("return 'foo' + 'bar'", "foobar");
     //interp.assertStr("return 'foo' + 1", "foo1");
     //interp.assertStr("return 'foo' + true", "footrue");
@@ -626,7 +626,6 @@ unittest
 // Typeof operator
 unittest
 {
-    /*
     writefln("typeof");
 
     auto interp = new InterpNoStdLib();
@@ -637,9 +636,10 @@ unittest
     interp.assertStr("return typeof false", "boolean");
     interp.assertStr("return typeof null", "object");
     interp.assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
-    interp.assertStr("x = 3; return typeof x;", "number");
-    interp.assertStr("delete x; return typeof x;", "undefined");
-    */
+    // FIXME
+    //interp.assertStr("x = 3; return typeof x;", "number");
+    // FIXME: delete operator
+    //interp.assertStr("delete x; return typeof x;", "undefined");
 }
 
 /// Global scope, global object
@@ -681,15 +681,15 @@ unittest
         8
     );
 
-    // FIXME
+    // FIXME: exception support
     // Unresolved global
     //interp.assertThrows("foo");
 
-    // FIXME: loops, closures
     // Many global variables
-    //interp = new Interp(true, false);
-    //interp.load("programs/many_globals/many_globals.js");
-    //interp = new Interp(true, false);
+    interp = new InterpNoStdLib();
+    interp.load("programs/many_globals/many_globals.js");
+    interp = new InterpNoStdLib();
+    // FIXME: out slot unassigned
     //interp.load("programs/many_globals/many_globals2.js");
 }
 
@@ -960,8 +960,6 @@ unittest
         133
     );
 
-    // FIXME: loop support
-    /*
     interp.assertInt(
         "
         var sum = 0;
@@ -976,7 +974,6 @@ unittest
         ",
         10
     );
-    */
 }
 
 /// Runtime functions
@@ -994,16 +991,14 @@ unittest
     interp.assertInt("$rt_toBool('')? 1:0", 0);
     interp.assertInt("$rt_toBool('foo')? 1:0", 1);
 
-    /*
-    interp.assertStr("$rt_toString(5)", "5");
-    interp.assertStr("$rt_toString('foo')", "foo");
-    interp.assertStr("$rt_toString(null)", "null");
-
-    interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
+    //interp.assertStr("$rt_toString(5)", "5");
+    //interp.assertStr("$rt_toString('foo')", "foo");
+    //interp.assertStr("$rt_toString(null)", "null");
+    //interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     interp.assertInt("$rt_add(5, 3)", 8);
     interp.assertFloat("$rt_add(5, 3.5)", 8.5);
-    interp.assertStr("$rt_add(5, 'bar')", "5bar");
+    /*interp.assertStr("$rt_add(5, 'bar')", "5bar");
     interp.assertStr("$rt_add('foo', 'bar')", "foobar");
 
     interp.assertInt("$rt_sub(5, 3)", 2);

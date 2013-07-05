@@ -1477,7 +1477,6 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
         }
 
-        /*
         // Typeof operator
         else if (op.str == "typeof")
         {
@@ -1486,40 +1485,40 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             {
                 if (identExpr.declNode is null && identExpr.name != "this"w)
                 {
-                    auto globInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ, ctx.allocTemp()));
-                    auto strInstr = ctx.addInstr(IRInstr.strCst(ctx.allocTemp(), identExpr.name));
+                    auto globInstr = ctx.addInstr(new IRInstr(
+                        &GET_GLOBAL_OBJ
+                    ));
+                    auto propStr = ctx.addInstr(new IRInstr(
+                        &SET_STR,
+                        new IRString(identExpr.name),
+                        new IRLinkIdx()
+                    ));
 
                     auto getInstr = genRtCall(
                         ctx, 
                         "getProp",
-                        ctx.allocTemp(),
-                        [globInstr.outSlot, strInstr.outSlot]
+                        [globInstr, propStr]
                     );
 
-                    genRtCall(
+                    return genRtCall(
                         ctx, 
                         "typeof", 
-                        ctx.getOutSlot(),
-                        [getInstr.outSlot]
+                        [getInstr]
                     );
-
-                    return;
                 }
             }
 
             // Evaluate the subexpression directly
-            auto lCtx = ctx.subCtx(true);
-            exprToIR(unExpr.expr, lCtx);
-            ctx.merge(lCtx);
+            auto exprVal = exprToIR(unExpr.expr, ctx);
 
-            genRtCall(
+            return genRtCall(
                 ctx, 
-                "typeof", 
-                ctx.getOutSlot(),
-                [lCtx.getOutSlot()]
+                "typeof",
+                [exprVal]
             );
         }
 
+        /*
         // Delete operator
         else if (op.str == "delete")
         {
