@@ -1112,7 +1112,7 @@ function $rt_eq(x, y)
         if ($ir_eq_refptr(x, null))
         {
             // null == undefined
-            if ($ir_is_const(y) && $ir_eq_const(y, $undef()))
+            if ($ir_is_const(y) && $ir_eq_const(y, $undef))
                 return true;
 
             // null != 0
@@ -1568,7 +1568,7 @@ function $rt_getPropObj(obj, propStr)
 
     // If the prototype is null, produce undefined
     if ($ir_eq_refptr(proto, null))
-        return $undef();
+        return $undef;
 
     // Do a recursive lookup on the prototype
     return $rt_getPropObj(

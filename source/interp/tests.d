@@ -634,8 +634,7 @@ unittest
     interp.assertStr("return typeof null", "object");
     interp.assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
     interp.assertStr("x = 3; return typeof x;", "number");
-    // FIXME: delete operator
-    //interp.assertStr("delete x; return typeof x;", "undefined");
+    interp.assertStr("delete x; return typeof x;", "undefined");
 }
 
 /// Global scope, global object

@@ -1518,53 +1518,43 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             );
         }
 
-        /*
         // Delete operator
         else if (op.str == "delete")
         {
-            IRGenCtx objCtx;
-            IRGenCtx propCtx;
+            IRValue objVal;
+            IRValue propVal;
 
             // If the base expression is a member expression: a[b]
             if (auto indexExpr = cast(IndexExpr)unExpr.expr)
             {
-                objCtx = ctx.subCtx(true);
-                exprToIR(indexExpr.base, objCtx);
-                ctx.merge(objCtx);
+                objVal = exprToIR(indexExpr.base, ctx);
 
-                propCtx = ctx.subCtx(true);
-                exprToIR(indexExpr.index, propCtx);
-                ctx.merge(propCtx);
+                propVal = exprToIR(indexExpr.index, ctx);
             }
             else
             {
-                objCtx = ctx.subCtx(true);
-                ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ, objCtx.getOutSlot()));
-                ctx.merge(objCtx);
+                objVal = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
 
-                propCtx = ctx.subCtx(true);
                 if (auto identExpr = cast(IdentExpr)unExpr.expr)
                 {
-                    propCtx.addInstr(IRInstr.strCst(
-                        propCtx.getOutSlot(),
-                        identExpr.name
+                    propVal = ctx.addInstr(new IRInstr(
+                        &SET_STR,                       
+                        new IRString(identExpr.name),
+                        new IRLinkIdx()
                     ));
                 }
                 else
                 {
-                    exprToIR(unExpr.expr, objCtx);
+                    propVal = exprToIR(unExpr.expr, ctx);
                 }
-                ctx.merge(propCtx);
             }
 
-            genRtCall(
+            return genRtCall(
                 ctx, 
                 "delProp",
-                ctx.getOutSlot(),
-                [objCtx.getOutSlot(), propCtx.getOutSlot()]
+                [objVal, propVal]
             );
         }
-        */
 
         // Boolean (logical) negation
         else if (op.str == "!")
@@ -2406,7 +2396,10 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
     callInstr.setArg(0, funVal);
     callInstr.setArg(1, funVal);
     foreach (argIdx, argVal; argVals)
+    {
+        assert (argVal !is null);
         callInstr.setArg(2 + argIdx, argVal);
+    }
 
     // Generate the call targets
     genCallTargets(ctx, callInstr);

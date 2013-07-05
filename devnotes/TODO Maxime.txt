@@ -102,9 +102,7 @@ TODO: new operator
 TODO: array literal support
 
 TODO: object literal support
-
-TODO: delete operator
-
+- Should enable many more tests
 
 
 
@@ -113,6 +111,12 @@ TODO: delete operator
 
 
 
+
+
+
+
+[DONE] TODO: delete operator
+- Signal 11 on delete of global
 
 [DONE] FIXME: $rt_toString(5), ir.d(932): phi node is not attached to a block
 - Replacing value by unattached phi node????
