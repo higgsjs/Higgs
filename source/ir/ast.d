@@ -1809,47 +1809,36 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         );
     }
 
-    /*
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
-        auto linkInstr = ctx.addInstr(IRInstr.makeLink(ctx.allocTemp()));
-        auto protoInstr = ctx.addInstr(new IRInstr(&GET_ARR_PROTO, ctx.allocTemp()));
-        auto numInstr = ctx.addInstr(IRInstr.intCst(ctx.allocTemp(), cast(int32_t)arrayExpr.exprs.length));
-        auto arrInstr = genRtCall(
+        auto linkVal = ctx.addInstr(new IRInstr(&MAKE_LINK, new IRLinkIdx()));
+        auto protoVal = ctx.addInstr(new IRInstr(&GET_ARR_PROTO));
+        auto numVal = cast(IRValue)IRConst.int32Cst(cast(int32_t)arrayExpr.exprs.length);
+        auto arrVal = genRtCall(
             ctx, 
             "newArr",
-            ctx.getOutSlot(),
-            [linkInstr.outSlot, protoInstr.outSlot, numInstr.outSlot]
+            [linkVal, protoVal, numVal]
         );
-
-        auto idxTmp = ctx.allocTemp();
-        auto valTmp = ctx.allocTemp();
 
         // Evaluate the property values
         for (size_t i = 0; i < arrayExpr.exprs.length; ++i)
         {
             auto valExpr = arrayExpr.exprs[i];
 
-            ctx.addInstr(IRInstr.intCst(
-                idxTmp,
-                cast(int32_t)i
-            ));
-
-            auto valCtx = ctx.subCtx(true, valTmp);
-            exprToIR(valExpr, valCtx);
-            ctx.merge(valCtx);
+            auto idxVal = IRConst.int32Cst(cast(int32_t)i);
+            auto propVal = exprToIR(valExpr, ctx);
 
             // Set the property on the object
             genRtCall(
                 ctx, 
                 "setProp",
-                ctx.allocTemp(),
-                [arrInstr.outSlot, idxTmp, valCtx.getOutSlot()]
+                [arrVal, idxVal, propVal]
             );
         }
+
+        return arrVal;
     }
-    */
 
     else if (auto objExpr = cast(ObjectExpr)expr)
     {

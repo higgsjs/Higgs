@@ -91,16 +91,16 @@ TODO: basic IR peephole pass
   - phi node
   - basic const prop
   - jump to jump
-- Try to optimize a little, changedblocks?
+- Try to optimize a little, changedblocks list, work list?
 
 TODO: fixup GC
+
+TODO: exceptions, try-catch-finally
 
 TODO: new operator
 
 TODO: switch statement
-
-TODO: array literal support
-
+- Needed to load stdlib
 
 
 
@@ -109,6 +109,9 @@ TODO: array literal support
 
 
 
+
+
+[DONE] TODO: array literal support
 
 [DONE] TODO: object literal support
 - Should enable many more tests

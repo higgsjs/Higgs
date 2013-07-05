@@ -500,11 +500,12 @@ unittest
 /// Switch statement
 unittest
 {
-    /*
     writefln("switch");
 
     auto interp = new InterpNoStdLib();
 
+    // TODO
+    /*
     interp.assertInt(
         "
         switch (0)
@@ -839,7 +840,6 @@ unittest
 /// Array literals, array operations
 unittest
 {
-    /*
     writefln("arrays");
 
     auto interp = new InterpNoStdLib();
@@ -852,9 +852,9 @@ unittest
     interp.assertInt("a = [1,2]; a[3] = 4; return a[1]", 2);
     interp.assertInt("a = [1,2]; a[3] = 4; return a[3]", 4);
     interp.assertInt("a = [1,2]; return a[3]? 1:0;", 0);
-    interp.assertInt("a = [1337]; return a['0'];", 1337);
-    interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
-    */
+    // FIXME: requires switch
+    //interp.assertInt("a = [1337]; return a['0'];", 1337);
+    //interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
 }
 
 /// Inline IR
@@ -1017,14 +1017,15 @@ unittest
 
     interp.assertInt("$rt_getProp('foo', 'length')", 3);
     interp.assertStr("$rt_getProp('foo', 0)", "f");
-    /*
     interp.assertInt("$rt_getProp([0,1], 'length')", 2);
     interp.assertInt("$rt_getProp([3,4,5], 1)", 4);
-    interp.assertInt("$rt_getProp({v:7}, 'v')", 7);
+    // FIXME: switch
+    //interp.assertInt("$rt_getProp({v:7}, 'v')", 7);
     interp.assertInt("a = [0,0,0]; $rt_setProp(a,1,5); return $rt_getProp(a,1);", 5);
     interp.assertInt("a = [0,0,0]; $rt_setProp(a,9,7); return $rt_getProp(a,9);", 7);
     interp.assertInt("a = []; $rt_setProp(a,'length',5); return $rt_getProp(a,'length');", 5);
 
+    /*
     interp.assertInt(
         "
         o = {};
@@ -1035,12 +1036,15 @@ unittest
         ",
         3
     );
-
-    interp.assertBool("({}) instanceof Object", true);
-    interp.assertThrows("false instanceof false");
-    interp.assertBool("'foo' in {}", false);
-    interp.assertThrows("2 in null");
     */
+
+    // FIXME: invalid operand types in rawptr eq
+    //interp.assertBool("({}) instanceof $ir_get_obj_proto()", true);
+    // FIXME: exception support
+    //interp.assertThrows("false instanceof false");
+    interp.assertBool("'foo' in {}", false);
+    // FIXME: signal 11, segfault
+    //interp.assertThrows("2 in null");
 }
 
 /// Closures, captured and escaping variables
@@ -1256,10 +1260,12 @@ unittest
     interp.load("programs/basic_bool_eval/basic_bool_eval.js");
     interp.assertInt("test();", 0);
 }
+*/
 
 /// Regression tests
 unittest
 {
+    /*
     writefln("regression");
 
     Interp interp;
@@ -1279,8 +1285,10 @@ unittest
 
     interp = new Interp();
     interp.load("programs/regress/boyer.js");
+    */
 }
 
+/*
 /// JIT specific tests
 unittest
 {

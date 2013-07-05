@@ -700,7 +700,7 @@ class IRConst : IRValue
     Word word() { return value.word; }
     Type type() { return value.type; }    
 
-    static IRConst int32Cst(int32 val)
+    static IRConst int32Cst(int32_t val)
     {
         if (val in int32Vals)
             return int32Vals[val];
@@ -710,7 +710,7 @@ class IRConst : IRValue
         return cst;
     }
 
-    static IRConst int64Cst(int64 val)
+    static IRConst int64Cst(int64_t val)
     {
         if (val in int64Vals)
             return int64Vals[val];
