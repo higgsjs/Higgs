@@ -658,8 +658,7 @@ unittest
     interp.assertInt("f = function() { return 7; }; return f();", 7);
     interp.assertInt("function f() { return 9; }; return f();", 9);
     interp.assertInt("(function () {}); return 0;", 0);
-    // FIXME: this, exceptions
-    //interp.assertInt("a = 7; function f() { return this.a; }; return f();", 7);
+    interp.assertInt("a = 7; function f() { return this.a; }; return f();", 7);
 
     interp.assertInt(
         "
@@ -988,7 +987,7 @@ unittest
     interp.assertStr("$rt_toString(5)", "5");
     interp.assertStr("$rt_toString('foo')", "foo");
     interp.assertStr("$rt_toString(null)", "null");
-    // FIXME: object literal support
+    // FIXME: switch support
     //interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     interp.assertInt("$rt_add(5, 3)", 8);
@@ -1019,12 +1018,13 @@ unittest
     interp.assertStr("$rt_getProp('foo', 0)", "f");
     interp.assertInt("$rt_getProp([0,1], 'length')", 2);
     interp.assertInt("$rt_getProp([3,4,5], 1)", 4);
-    // FIXME: switch
+    // FIXME: switch suppport
     //interp.assertInt("$rt_getProp({v:7}, 'v')", 7);
     interp.assertInt("a = [0,0,0]; $rt_setProp(a,1,5); return $rt_getProp(a,1);", 5);
     interp.assertInt("a = [0,0,0]; $rt_setProp(a,9,7); return $rt_getProp(a,9);", 7);
     interp.assertInt("a = []; $rt_setProp(a,'length',5); return $rt_getProp(a,'length');", 5);
 
+    // FIXME: switch suppport
     /*
     interp.assertInt(
         "
@@ -1038,13 +1038,10 @@ unittest
     );
     */
 
-    // FIXME: invalid operand types in rawptr eq
-    //interp.assertBool("({}) instanceof $ir_get_obj_proto()", true);
     // FIXME: exception support
     //interp.assertThrows("false instanceof false");
-    interp.assertBool("'foo' in {}", false);
-    // FIXME: signal 11, segfault
     //interp.assertThrows("2 in null");
+    interp.assertBool("'foo' in {}", false);
 }
 
 /// Closures, captured and escaping variables

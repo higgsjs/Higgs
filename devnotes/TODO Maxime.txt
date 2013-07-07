@@ -99,8 +99,15 @@ TODO: exceptions, try-catch-finally
 
 TODO: new operator
 
+
+
 TODO: switch statement
 - Needed to load stdlib
+- Look at Tachyon code
+
+
+
+
 
 
 

@@ -1081,6 +1081,8 @@ class IRInstr : IRDstValue
     {
         assert (idx < args.length);
 
+        assert (val !is null);
+
         // If this use is not yet initialized
         if (args[idx] is null)
         {

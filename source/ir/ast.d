@@ -1123,12 +1123,10 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 {
     assert (false, "switchToIR unimplemented");
 
-    /*
     // Compile the switch expression
-    auto switchCtx = ctx.subCtx(true);
-    exprToIR(stmt.switchExpr, switchCtx);
-    ctx.merge(switchCtx);
+    auto switchVal = exprToIR(stmt.switchExpr, ctx);
 
+    /*
     // Get the stack slot for the switch expression output
     auto cmpSlot = switchCtx.getOutSlot();
 
