@@ -242,9 +242,8 @@ unittest
     interp.assertFloat("return 6/2/2", 1.5);
     interp.assertFloat("return 6/2*2", 6);
 
-    // FIXME: switch support
-    //interp.assertFloat("return 100 * '5'", 500);
-    //interp.assertFloat("return 100 / '5'", 20);
+    interp.assertFloat("return 100 * '5'", 500);
+    interp.assertFloat("return 100 / '5'", 20);
 
     interp.assertBool("!true", false);
     interp.assertBool("!false", true);
@@ -514,7 +513,6 @@ unittest
         0
     );
 
-    /*
     interp.assertInt(
         "
         switch (0)
@@ -561,7 +559,7 @@ unittest
         {
             case 0: v = 5;
             case 1: v += 1; break;
-            case 2: v = 7; beak;
+            case 2: v = 7; break;
             default: v = 9;
         }
         return v;
@@ -581,7 +579,19 @@ unittest
         ",
         8
     );
-    */
+
+    interp.assertInt(
+        "
+        var v;
+        switch (2)
+        {
+            case 2: v = 7;
+            default: v += 1; break;
+        }
+        return v;
+        ",
+        8
+    );
 }
 
 /// Strings
@@ -710,16 +720,15 @@ unittest
     auto interp = new InterpNoStdLib();
 
     interp.assertInt("{}; return 1;", 1);
-    // FIXME: requires switch
-    //interp.assertInt("{x: 7}; return 1;", 1);
-    //interp.assertInt("o = {}; o.x = 7; return 1;", 1);
-    //interp.assertInt("o = {}; o.x = 7; return o.x;", 7);
-    //interp.assertInt("o = {x: 9}; return o.x;", 9);
-    //interp.assertInt("o = {x: 9}; o.y = 1; return o.x + o.y;", 10);
-    //interp.assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
-    //interp.assertInt("o = {x: 5}; return o.y? 1:0;", 0);
+    interp.assertInt("{x: 7}; return 1;", 1);
+    interp.assertInt("o = {}; o.x = 7; return 1;", 1);
+    interp.assertInt("o = {}; o.x = 7; return o.x;", 7);
+    interp.assertInt("o = {x: 9}; return o.x;", 9);
+    interp.assertInt("o = {x: 9}; o.y = 1; return o.x + o.y;", 10);
+    interp.assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
+    interp.assertInt("o = {x: 5}; return o.y? 1:0;", 0);
 
-    /*
+    // In operator
     interp.assertBool("o = {x: 5}; return 'x' in o;", true);
     interp.assertBool("o = {x: 5}; return 'k' in o;", false);
 
@@ -733,7 +742,6 @@ unittest
 
     // Method call
     interp.assertInt("o = {x:7, m:function() {return this.x;}}; return o.m();", 7);
-    */
 }
 
 /// New operator, prototype chain
@@ -850,9 +858,8 @@ unittest
     interp.assertInt("a = [1,2]; a[3] = 4; return a[1]", 2);
     interp.assertInt("a = [1,2]; a[3] = 4; return a[3]", 4);
     interp.assertInt("a = [1,2]; return a[3]? 1:0;", 0);
-    // FIXME: requires switch
-    //interp.assertInt("a = [1337]; return a['0'];", 1337);
-    //interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
+    interp.assertInt("a = [1337]; return a['0'];", 1337);
+    interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
 }
 
 /// Inline IR
@@ -986,8 +993,7 @@ unittest
     interp.assertStr("$rt_toString(5)", "5");
     interp.assertStr("$rt_toString('foo')", "foo");
     interp.assertStr("$rt_toString(null)", "null");
-    // FIXME: switch support
-    //interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
+    interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     interp.assertInt("$rt_add(5, 3)", 8);
     interp.assertFloat("$rt_add(5, 3.5)", 8.5);
@@ -1017,14 +1023,11 @@ unittest
     interp.assertStr("$rt_getProp('foo', 0)", "f");
     interp.assertInt("$rt_getProp([0,1], 'length')", 2);
     interp.assertInt("$rt_getProp([3,4,5], 1)", 4);
-    // FIXME: switch suppport
-    //interp.assertInt("$rt_getProp({v:7}, 'v')", 7);
+    interp.assertInt("$rt_getProp({v:7}, 'v')", 7);
     interp.assertInt("a = [0,0,0]; $rt_setProp(a,1,5); return $rt_getProp(a,1);", 5);
     interp.assertInt("a = [0,0,0]; $rt_setProp(a,9,7); return $rt_getProp(a,9);", 7);
     interp.assertInt("a = []; $rt_setProp(a,'length',5); return $rt_getProp(a,'length');", 5);
 
-    // FIXME: switch suppport
-    /*
     interp.assertInt(
         "
         o = {};
@@ -1035,7 +1038,6 @@ unittest
         ",
         3
     );
-    */
 
     // FIXME: exception support
     //interp.assertThrows("false instanceof false");

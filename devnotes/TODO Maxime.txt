@@ -101,22 +101,16 @@ TODO: new operator
 
 
 
-TODO: switch statement
+
+
+
+
+
+
+
+[DONE] TODO: switch statement
 - Needed to load stdlib
 - Look at Tachyon code
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: array literal support
 

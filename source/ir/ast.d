@@ -1139,15 +1139,8 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
     IRGenCtx[] breakCtxLst = [];
     switchCtx.regLabels(stmt.labels, exitBlock, &breakCtxLst, null, null);
 
-
-
-    //auto testCtx =
-
-    //auto prevStmtCtx =
-
-
-
-
+    // Context from the previous clause statement block
+    IRGenCtx prevStmtCtx = null;
 
     // Blocks in which the nest test and case statements will reside
     auto nextTestBlock = ctx.curBlock;
@@ -1171,66 +1164,57 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
         else
             nextCaseBlock = defaultBlock;
 
-
-
-        /*
-        TODO
-        Control flow going to a given case...
-        - comparison match in comparison chain
-        - fallthrough from preceding
-
-        These must be merged
-        prevStmtCtx, curTestCtx
-        */
-
-
-
-        // TODO: curTestCtx?
         // Compile the case expression
-        //auto exprCtx = ctx.subCtx(true, NULL_LOCAL, testBlock);
-        //auto caseVal = exprToIR(caseExpr, exprCtx);
-        //ctx.merge(exprCtx);
-        IRValue caseVal = null;
-
-
+        auto testCtx = switchCtx.subCtx(testBlock);
+        auto caseVal = exprToIR(caseExpr, testCtx);
 
         // Test if the case expression matches
         auto cmpInstr = genRtCall(
-            ctx, 
+            testCtx, 
             "se", 
             [switchVal, caseVal]
         );
 
         // Branch based on the test
-        ctx.ifTrue(cmpInstr, caseBlock, nextTestBlock);
+        testCtx.ifTrue(cmpInstr, caseBlock, nextTestBlock);
 
-        // TODO: prevStmtCtx?
+        switchCtx.merge(testCtx);
+
+        // Merge the test and previous case contexts
+        auto stmtCtx = mergeContexts(
+           switchCtx,
+           prevStmtCtx? [switchCtx, prevStmtCtx]:[switchCtx],
+           caseBlock
+        );
+
         // Compile the case statements
-        auto subCtx = ctx.subCtx(caseBlock);
         foreach (s; caseStmts)
-            stmtToIR(s, subCtx);
+            stmtToIR(s, stmtCtx);
 
         // Go to the next case block, skipping its test (fallthrough)
-        subCtx.jump(nextCaseBlock);
+        if (!stmtCtx.hasBranch)
+            stmtCtx.jump(nextCaseBlock);
+
+        prevStmtCtx = stmtCtx;
     }
 
-
-
-
-
-    // TODO: merge?
-
+    // Merge the test and previous case contexts
+    auto defaultCtx = mergeContexts(
+       switchCtx,
+       prevStmtCtx? [switchCtx, prevStmtCtx]:[switchCtx],
+       defaultBlock
+    );
 
     // Compile the default block
-    auto subCtx = ctx.subCtx(defaultBlock);
     foreach (s; stmt.defaultStmts)
-        stmtToIR(s, subCtx);
+        stmtToIR(s, defaultCtx);
 
     // Jump to the exit block
-    subCtx.jump(exitBlock);
+    if (!defaultCtx.hasBranch)
+        defaultCtx.jump(exitBlock);
 
     // Add the default block context to the break context list
-    breakCtxLst ~= subCtx;
+    breakCtxLst ~= defaultCtx;
 
     // Merge the break contexts
     auto switchExit = mergeContexts(
