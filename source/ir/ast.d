@@ -1121,14 +1121,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
 void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 {
-    assert (false, "switchToIR unimplemented");
-
     // Compile the switch expression
     auto switchVal = exprToIR(stmt.switchExpr, ctx);
-
-    /*
-    // Get the stack slot for the switch expression output
-    auto cmpSlot = switchCtx.getOutSlot();
 
     // If there are no clauses in the switch statement, we are done
     if (stmt.caseExprs.length == 0)
@@ -1138,8 +1132,22 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
     auto exitBlock = ctx.fun.newBlock("switch_exit");
     auto defaultBlock = ctx.fun.newBlock("switch_default");
 
+    // Create a sub-context for the switch clauses
+    auto switchCtx = ctx.subCtx();
+
     // Register the statement labels, if any
-    ctx.regLabels(stmt.labels, exitBlock, null);
+    IRGenCtx[] breakCtxLst = [];
+    switchCtx.regLabels(stmt.labels, exitBlock, &breakCtxLst, null, null);
+
+
+
+    //auto testCtx =
+
+    //auto prevStmtCtx =
+
+
+
+
 
     // Blocks in which the nest test and case statements will reside
     auto nextTestBlock = ctx.curBlock;
@@ -1163,54 +1171,76 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
         else
             nextCaseBlock = defaultBlock;
 
+
+
+        /*
+        TODO
+        Control flow going to a given case...
+        - comparison match in comparison chain
+        - fallthrough from preceding
+
+        These must be merged
+        prevStmtCtx, curTestCtx
+        */
+
+
+
+        // TODO: curTestCtx?
         // Compile the case expression
-        auto exprCtx = ctx.subCtx(true, NULL_LOCAL, testBlock);
-        exprToIR(caseExpr, exprCtx);
-        ctx.merge(exprCtx);
+        //auto exprCtx = ctx.subCtx(true, NULL_LOCAL, testBlock);
+        //auto caseVal = exprToIR(caseExpr, exprCtx);
+        //ctx.merge(exprCtx);
+        IRValue caseVal = null;
+
+
 
         // Test if the case expression matches
         auto cmpInstr = genRtCall(
             ctx, 
             "se", 
-            ctx.allocTemp(),
-            [cmpSlot, exprCtx.getOutSlot()]
+            [switchVal, caseVal]
         );
 
         // Branch based on the test
-        ctx.addInstr(IRInstr.ifTrue(
-            cmpInstr.outSlot,
-            caseBlock,
-            nextTestBlock
-        ));
+        ctx.ifTrue(cmpInstr, caseBlock, nextTestBlock);
 
+        // TODO: prevStmtCtx?
         // Compile the case statements
-        auto subCtx = ctx.subCtx(false, NULL_LOCAL, caseBlock);
+        auto subCtx = ctx.subCtx(caseBlock);
         foreach (s; caseStmts)
-        {
-            auto stmtCtx = subCtx.subCtx(false);
-            stmtToIR(s, stmtCtx);
-            subCtx.merge(stmtCtx);
-        }
+            stmtToIR(s, subCtx);
 
-        // Go to the next case block, skipping its test condition
-        subCtx.addInstr(IRInstr.jump(nextCaseBlock));
+        // Go to the next case block, skipping its test (fallthrough)
+        subCtx.jump(nextCaseBlock);
     }
+
+
+
+
+
+    // TODO: merge?
+
 
     // Compile the default block
-    auto subCtx = ctx.subCtx(false, NULL_LOCAL, defaultBlock);
+    auto subCtx = ctx.subCtx(defaultBlock);
     foreach (s; stmt.defaultStmts)
-    {
-        auto stmtCtx = subCtx.subCtx(false);
-        stmtToIR(s, stmtCtx);
-        subCtx.merge(stmtCtx);
-    }
+        stmtToIR(s, subCtx);
 
     // Jump to the exit block
-    subCtx.addInstr(IRInstr.jump(exitBlock));
+    subCtx.jump(exitBlock);
+
+    // Add the default block context to the break context list
+    breakCtxLst ~= subCtx;
+
+    // Merge the break contexts
+    auto switchExit = mergeContexts(
+       ctx,
+       breakCtxLst,
+       exitBlock
+    );
 
     // Continue code generation at the exit block
-    ctx.merge(exitBlock);
-    */
+    ctx.merge(switchExit);
 }
 
 IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)

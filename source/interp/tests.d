@@ -504,8 +504,6 @@ unittest
 
     auto interp = new InterpNoStdLib();
 
-    // TODO
-    /*
     interp.assertInt(
         "
         switch (0)
@@ -516,6 +514,7 @@ unittest
         0
     );
 
+    /*
     interp.assertInt(
         "
         switch (0)
