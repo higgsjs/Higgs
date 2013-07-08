@@ -1426,10 +1426,11 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto fstBranch = ifTrue.getTarget((op.str == "||")? 0:1);
 
             // Evaluate the right expression
-            auto secCtx = ctx.subCtx(secBlock);
+            auto secCtx = fstCtx.subCtx(secBlock);
             auto secVal = exprToIR(binExpr.rExpr, secCtx);
             auto secBranch = secCtx.jump(exitBlock);
 
+            // Merge the contexts from both branches
             auto exitCtx = mergeContexts(
                 ctx,
                 [fstCtx, secCtx],

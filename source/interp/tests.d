@@ -1251,9 +1251,8 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/basic_bitops/basic_bitops.js");
     interp.assertInt("test();", 0);
-    // FIXME: returns 20
-    //interp.load("programs/basic_assign/basic_assign.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/basic_assign/basic_assign.js");
+    interp.assertInt("test();", 0);
     interp.load("programs/basic_cmp/basic_cmp.js");
     interp.assertInt("test();", 0);
     interp.load("programs/basic_bool_eval/basic_bool_eval.js");
@@ -1285,10 +1284,10 @@ unittest
     //interp.load("programs/regress/boyer.js");
 }
 
-/*
-/// JIT specific tests
+/// JIT-specific tests
 unittest
 {
+    /*
     writefln("jit");
 
     auto interp = new Interp();
@@ -1298,6 +1297,7 @@ unittest
     interp.load("programs/jit/loop_new.js");
     interp.load("programs/jit/loop_argc.js");
     interp.load("programs/jit/loop_bool.js");
+    */
 }
 
 /// Tachyon tests
@@ -1349,17 +1349,23 @@ unittest
     interp.load("programs/apply/apply.js");
     interp.assertInt("test();", 0);
 
+    // FIXME: arguments support
+    /*
     writefln("arguments");
 
     // Arguments object
     interp.load("programs/arg_obj/arg_obj.js");
     interp.assertInt("test();", 0);
+    */
 
+    // FIXME
+    /*
     writefln("for-in");
 
     // For-in loop
     interp.load("programs/for_in/for_in.js");
     interp.assertInt("test();", 0);
+    */
 
     writefln("stdlib");
 
@@ -1370,18 +1376,24 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_number/stdlib_number.js");
     interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_function/stdlib_function.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_object/stdlib_object.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_array/stdlib_array.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_string/stdlib_string.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_json/stdlib_json.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_regexp/stdlib_regexp.js");
-    interp.assertInt("test();", 0);
+    // FIXME: arguments
+    //interp.load("programs/stdlib_function/stdlib_function.js");
+    //interp.assertInt("test();", 0);
+    // FIXME: for-in    
+    //interp.load("programs/stdlib_object/stdlib_object.js");
+    //interp.assertInt("test();", 0);
+    // FIXME: returns 48
+    //interp.load("programs/stdlib_array/stdlib_array.js");
+    //interp.assertInt("test();", 0);
+    // FIXME: apply
+    //interp.load("programs/stdlib_string/stdlib_string.js");
+    //interp.assertInt("test();", 0);
+    // FIXME: for-in
+    //interp.load("programs/stdlib_json/stdlib_json.js");
+    //interp.assertInt("test();", 0);
+    // FIXME: non-integer value?
+    //interp.load("programs/stdlib_regexp/stdlib_regexp.js");
+    //interp.assertInt("test();", 0);
 }
 
 /// Dynamic code loading and eval
@@ -1401,6 +1413,7 @@ unittest
 /// Garbage collector tests
 unittest
 {
+    /*
     writefln("garbage collector");
 
     Interp interp;
@@ -1482,11 +1495,13 @@ unittest
     interp = new Interp();
     interp.load("programs/gc/load.js");
     interp.assertInt("theFlag;", 1337);
+    */
 }
 
 /// SunSpider benchmarks
 unittest
 {
+    /*
     writefln("sunspider");
 
     auto interp = new Interp();
@@ -1534,11 +1549,13 @@ unittest
 
     writefln("sunspider/math-spectral-norm");
     interp.load("programs/sunspider/math-spectral-norm.js");
+    */
 }
 
 /// V8 benchmarks
 unittest
 {
+    /*
     writefln("v8bench");
 
     auto interp = new Interp();
@@ -1565,6 +1582,6 @@ unittest
     //writefln("v8bench/earley-boyer");
     //interp.load("programs/v8bench/earley-boyer.js");
     //interp.load("programs/v8bench/drv-earley-boyer.js");
+    */
 }
-*/
 

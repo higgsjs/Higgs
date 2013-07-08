@@ -853,93 +853,45 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
     free(argVals);
 }
 
-// TODO: refactor to use Interp.callFun
 extern (C) void op_call_apply(Interp interp, IRInstr instr)
 {
-    assert (false);
+    auto closVal = interp.getArgVal(instr, 0);
+    auto thisVal = interp.getArgVal(instr, 1);
+    auto tblVal = interp.getArgVal(instr, 2);
+    auto argc = interp.getArgUint32(instr, 3);
 
-    /*
-    auto closIdx = instr.getArgSlot(0);
-    auto thisIdx = instr.getArgSlot(1);
-    auto tblIdx  = instr.getArgSlot(2);
-    auto argcIdx = instr.getArgSlot(3);
-
-    auto wClos = interp.getWord(closIdx);
-    auto tClos = interp.getType(closIdx);
-
-    auto wThis = interp.getWord(thisIdx);
-    auto tThis = interp.getType(thisIdx);
-
-    auto wTbl = interp.getWord(tblIdx);
-    auto tTbl = interp.getType(tblIdx);
-
-    auto wArgc = interp.getWord(argcIdx);
-    auto tArgc = interp.getType(argcIdx);
-
-    if (tClos != Type.REFPTR || !valIsLayout(wClos, LAYOUT_CLOS))
+    if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
         return throwError(interp, instr, "TypeError", "call to non-function");
 
-    if (tTbl != Type.REFPTR || !valIsLayout(wTbl, LAYOUT_ARRTBL))
+    if (tblVal.type != Type.REFPTR || !valIsLayout(tblVal.word, LAYOUT_ARRTBL))
         return throwError(interp, instr, "TypeError", "invalid argument table");
 
-    if (tArgc != Type.INT32)
-        return throwError(interp, instr, "TypeError", "invalid argument count type");
-
-    // Get the array table
-    auto argTbl = wTbl.ptrVal;
-
-    // Get the argument count
-    auto argc = wArgc.uint32Val;
-
     // Get the function object from the closure
-    auto closPtr = interp.getWord(closIdx).ptrVal;
+    auto closPtr = closVal.word.ptrVal;
     auto fun = getClosFun(closPtr);
 
-    assert (
-        fun !is null, 
-        "null IRFunction pointer"
-    );
+    // Get the array table pointer
+    auto tblPtr = tblVal.word.ptrVal;
 
-    // If the function is not yet compiled, compile it now
-    if (fun.entryBlock is null)
-        astToIR(fun.ast, fun);
+    // Stack-allocate an array for the argument values
+    auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argc);
 
-    // Compute the number of missing arguments
-    size_t argDiff = (fun.numParams > argc)? (fun.numParams - argc):0;
-
-    // Push undefined values for the missing last arguments
-    for (size_t i = 0; i < argDiff; ++i)
-        interp.push(UNDEF, Type.CONST);
-
-    // Push the visible function arguments in reverse order
-    for (uint32 i = 0; i < argc; ++i)
+    // Fetch the argument values from the array table
+    for (uint32_t i = 0; i < argc; ++i)
     {
-        uint32 argIdx = cast(uint32)argc - (1+i);
-        auto wArg = Word.uint64v(arrtbl_get_word(argTbl, argIdx));
-        auto tArg = cast(Type)arrtbl_get_type(argTbl, argIdx);
-        interp.push(wArg, tArg);
+        argVals[i].word.uint64Val = arrtbl_get_word(tblPtr, i);
+        argVals[i].type = cast(Type)arrtbl_get_type(tblPtr, i);
     }
 
-    // Push the argument count
-    interp.push(Word.uint32v(argc), Type.INT32);
-
-    // Push the "this" argument
-    interp.push(wThis, tThis);
-
-    // Push the closure argument
-    interp.push(Word.ptrv(closPtr), Type.REFPTR);
-
-    // Push the return address (caller instruction)
-    auto retAddr = cast(rawptr)instr;
-    interp.push(Word.ptrv(retAddr), Type.INSPTR);
-
-    // Push space for the callee locals and initialize the slots to undefined
-    auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
-    interp.push(numLocals);
-
-    // Jump to the function entry
-    interp.jump(fun.entryBlock);
-    */
+    interp.callFun(
+        fun,
+        instr,
+        closPtr,
+        thisVal.word,
+        thisVal.type,
+        argc,
+        argVals
+    );
 }
 
 extern (C) void op_ret(Interp interp, IRInstr instr)

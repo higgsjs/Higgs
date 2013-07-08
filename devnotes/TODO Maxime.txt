@@ -77,6 +77,8 @@ TODO: Rework JIT for new IR
 - Phi nodes? Normally would require moves
   - In version case, request version where phi node has current slot/reg
 
+TODO: fixup FFI
+
 TODO: disable inlining in JIT for now
 
 TODO: liveness and slot mapping analysis for new IR
@@ -97,17 +99,24 @@ TODO: fixup GC
 
 TODO: exceptions, try-catch-finally
 
+TODO: for-in loop
 
 
-FIXME: "programs/basic_assign/basic_assign.js" produces 20
-
-
-
-
+TODO: arguments object
 
 
 
 
+
+
+
+
+
+
+
+[DONE] TODO: call_apply
+
+[DONE] FIXME: "programs/basic_assign/basic_assign.js" produces 20
 
 [DONE] TODO: new operator
 
