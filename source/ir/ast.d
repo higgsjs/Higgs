@@ -840,7 +840,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Compile the loop body statement
         auto bodyCtx = testCtx.subCtx(bodyBlock);
         stmtToIR(forStmt.bodyStmt, bodyCtx);
-        bodyCtx.jump(incrBlock);
+        if (!bodyCtx.hasBranch)
+            bodyCtx.jump(incrBlock);
 
         // Add the test exit to the break context list
         breakCtxLst ~= testCtx.subCtx();

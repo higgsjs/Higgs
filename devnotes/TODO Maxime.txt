@@ -97,7 +97,9 @@ TODO: fixup GC
 
 TODO: exceptions, try-catch-finally
 
-TODO: new operator
+
+
+FIXME: "programs/basic_assign/basic_assign.js" produces 20
 
 
 
@@ -107,6 +109,7 @@ TODO: new operator
 
 
 
+[DONE] TODO: new operator
 
 [DONE] TODO: switch statement
 - Needed to load stdlib

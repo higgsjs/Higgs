@@ -790,18 +790,13 @@ extern (C) void op_call(Interp interp, IRInstr instr)
 /// JavaScript new operator (constructor call)
 extern (C) void op_call_new(Interp interp, IRInstr instr)
 {
-    assert (false, "op_call_new");
+    auto closVal = interp.getArgVal(instr, 0);
 
-    /*
-    auto closIdx = instr.getArgSlot(0);
-    auto wClos = interp.getWord(closIdx);
-    auto tClos = interp.getType(closIdx);
-
-    if (tClos != Type.REFPTR || !valIsLayout(wClos, LAYOUT_CLOS))
-        return throwError(interp, instr, "TypeError", "new with non-function");
+    if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
+        return throwError(interp, instr, "TypeError", "call to non-function");
 
     // Get the function object from the closure
-    auto clos = GCRoot(interp, wClos.ptrVal);
+    auto clos = GCRoot(interp, closVal.word.ptrVal);
     auto fun = getClosFun(clos.ptr);
 
     assert (
@@ -833,17 +828,29 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
     );
     clos_set_ctor_class(clos.ptr, obj_get_class(thisObj.ptr));
 
-    // FIXME
-    callFun(
-        interp,
+    // Stack-allocate an array for the argument values
+    auto argCount = cast(uint32_t)instr.getNumArgs() - 1;
+
+    // FIXME: temporary until bug in DMD 2.063 is fixed
+    //auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argCount);
+    auto argVals = cast(ValuePair*)malloc(ValuePair.sizeof * argCount);
+
+    // Fetch the argument values
+    for (size_t i = 0; i < argCount; ++i)
+        argVals[i] = interp.getArgVal(instr, 1 + i);
+
+    interp.callFun(
         fun,
         instr,
         clos.ptr,
-        Word.ptrv(thisObj.ptr),
+        thisObj.word,
         Type.REFPTR,
-        instr.args[1..$]
+        argCount,
+        argVals
     );
-    */
+
+    // FIXME: temporary until bug in DMD 2.063 is fixed
+    free(argVals);
 }
 
 // TODO: refactor to use Interp.callFun
