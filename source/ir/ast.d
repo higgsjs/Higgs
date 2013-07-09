@@ -314,15 +314,32 @@ class IRGenCtx
     IRInstr ifTrue(IRValue arg0, IRBlock trueBlock, IRBlock falseBlock)
     {
         auto ift = this.addInstr(new IRInstr(&IF_TRUE, arg0));
-
-        assert (curBlock !is null, "cur block is null, wtf");
-        assert (ift.block !is null, "ift block is null");
-
-
-
         ift.setTarget(0, trueBlock);
         ift.setTarget(1, falseBlock);
         return ift;
+    }
+
+    /**
+    Create a location-dependent link value
+    */
+    IRInstr makeLink()
+    {
+        return addInstr(new IRInstr(
+            &MAKE_LINK,
+            new IRLinkIdx()            
+        ));
+    }
+
+    /**
+    Obtain a constant string value
+    */
+    IRInstr strVal(wstring str)
+    {
+        return addInstr(new IRInstr(
+            &SET_STR,
+            new IRString(str),
+            new IRLinkIdx()
+        ));
     }
 }
 
@@ -403,69 +420,69 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // If the function uses the arguments object
     if (ast.usesArguments)
     {
-        //auto argObjSlot = bodyCtx.allocTemp();
-        //fun.bodyCtx.localMap[ast.argObjIdent] = argObjSlot;
-
-        // FIXME
-        /*
         // Create the "arguments" array
-        auto linkInstr = subCtx.addInstr(IRInstr.makeLink(subCtx.allocTemp()));
-        auto protoInstr = subCtx.addInstr(new IRInstr(&GET_ARR_PROTO, subCtx.allocTemp()));
-        auto arrInstr = genRtCall(
-            subCtx, 
+        auto linkVal = bodyCtx.makeLink();;
+        auto protoVal = bodyCtx.addInstr(new IRInstr(&GET_ARR_PROTO));
+        auto argObjVal = genRtCall(
+            bodyCtx, 
             "newArr",
-            argObjSlot,
-            [linkInstr.outSlot, protoInstr.outSlot, fun.argcSlot]
+            [linkVal, protoVal, fun.argcVal]
         );
-        */
-        
-        // FIXME
-        /*
+
+        // Map the "arguments" identifier to the array object
+        bodyCtx.localMap[ast.argObjIdent] = argObjVal;
+
         // Set the "callee" property
-        auto calleeStr = subCtx.addInstr(IRInstr.strCst(subCtx.allocTemp(), "callee"));
+        auto calleeStr = bodyCtx.strVal("callee");        
         auto setInstr = genRtCall(
-            subCtx, 
+            bodyCtx, 
             "setProp",
-            NULL_LOCAL,
-            [argObjSlot, calleeStr.outSlot, fun.closSlot]
+            [argObjVal, calleeStr, fun.closVal]
         );
-        */
 
-        // FIXME
-        /*
-        // Allocate and initialize the loop counter variable
-        auto idxSlot = subCtx.allocTemp();
-        subCtx.addInstr(IRInstr.intCst(idxSlot, 0));
-        */
-
+        // Create the loop test, body and exit blocks
         auto testBlock = fun.newBlock("arg_test");
         auto loopBlock = fun.newBlock("arg_loop");
         auto exitBlock = fun.newBlock("arg_exit");
 
         // Jump to the test block
-        //subCtx.addInstr(IRInstr.jump(testBlock));
+        auto entryBranch = bodyCtx.jump(testBlock);
 
-        // FIXME
-        /*
+        // Create a phi node for the loop index
+        auto idxPhi = testBlock.addPhi(new PhiNode());
+        entryBranch.setPhiArg(idxPhi, IRConst.int32Cst(0));
+
         // Branch based on the index
-        auto cmpInstr = testCtx.addInstr(new IRInstr(&LT_I32, testCtx.allocTemp(), idxSlot, fun.argcSlot));
-        testCtx.addInstr(IRInstr.ifTrue(cmpInstr.outSlot, loopBlock, exitBlock));
+        auto testCtx = bodyCtx.subCtx(testBlock);
+        auto cmpVal = testCtx.addInstr(new IRInstr(
+            &LT_I32, 
+            idxPhi,
+            fun.argcVal
+        ));
+        testCtx.ifTrue(cmpVal, loopBlock, exitBlock);
 
         // Copy an argument into the array
-        auto getInstr = loopCtx.addInstr(new IRInstr(&GET_ARG, loopCtx.allocTemp(), idxSlot));
+        auto loopCtx = bodyCtx.subCtx(loopBlock);
+        auto argVal = loopCtx.addInstr(new IRInstr(
+            &GET_ARG,
+            idxPhi
+        ));
         genRtCall(
             loopCtx, 
             "setArrElem",
-            NULL_LOCAL,
-            [arrInstr.outSlot, idxSlot, getInstr.outSlot]
+            [cast(IRValue)argObjVal, idxPhi, argVal]
         );
 
         // Increment the loop index and jump to the test block
-        auto oneCst = loopCtx.addInstr(IRInstr.intCst(loopCtx.allocTemp(), 1));
-        loopCtx.addInstr(new IRInstr(&ADD_I32, idxSlot, idxSlot, oneCst.outSlot));
-        loopCtx.addInstr(IRInstr.jump(testBlock));
-        */
+        auto incVal = loopCtx.addInstr(new IRInstr(
+            &ADD_I32, 
+            idxPhi,
+            IRConst.int32Cst(1)
+        ));
+        auto loopBranch = loopCtx.jump(testBlock);
+        loopBranch.setPhiArg(idxPhi, incVal);
 
+        // Continue code generation in the exit block
         bodyCtx.merge(exitBlock);
     }
 
@@ -1499,15 +1516,8 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             {
                 if (identExpr.declNode is null && identExpr.name != "this"w)
                 {
-                    auto globInstr = ctx.addInstr(new IRInstr(
-                        &GET_GLOBAL_OBJ
-                    ));
-                    auto propStr = ctx.addInstr(new IRInstr(
-                        &SET_STR,
-                        new IRString(identExpr.name),
-                        new IRLinkIdx()
-                    ));
-
+                    auto globInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
+                    auto propStr = ctx.strVal(identExpr.name);
                     auto getInstr = genRtCall(
                         ctx, 
                         "getProp",
@@ -1542,7 +1552,6 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             if (auto indexExpr = cast(IndexExpr)unExpr.expr)
             {
                 objVal = exprToIR(indexExpr.base, ctx);
-
                 propVal = exprToIR(indexExpr.index, ctx);
             }
             else
@@ -1550,17 +1559,9 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
                 objVal = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
 
                 if (auto identExpr = cast(IdentExpr)unExpr.expr)
-                {
-                    propVal = ctx.addInstr(new IRInstr(
-                        &SET_STR,                       
-                        new IRString(identExpr.name),
-                        new IRLinkIdx()
-                    ));
-                }
+                    propVal = ctx.strVal(identExpr.name);
                 else
-                {
                     propVal = exprToIR(unExpr.expr, ctx);
-                }
             }
 
             return genRtCall(
@@ -1826,7 +1827,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
-        auto linkVal = ctx.addInstr(new IRInstr(&MAKE_LINK, new IRLinkIdx()));
+        auto linkVal = ctx.makeLink();
         auto protoVal = ctx.addInstr(new IRInstr(&GET_ARR_PROTO));
         auto numVal = cast(IRValue)IRConst.int32Cst(cast(int32_t)arrayExpr.exprs.length);
         auto arrVal = genRtCall(
@@ -1857,7 +1858,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
     else if (auto objExpr = cast(ObjectExpr)expr)
     {
         // Create the object
-        auto linkVal = ctx.addInstr(new IRInstr(&MAKE_LINK, new IRLinkIdx()));
+        auto linkVal = ctx.makeLink();
         auto protoVal = ctx.addInstr(new IRInstr(&GET_OBJ_PROTO));
         auto objVal = genRtCall(
             ctx, 
@@ -1970,30 +1971,14 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 
     else if (auto stringExpr = cast(StringExpr)expr)
     {
-        return ctx.addInstr(new IRInstr(
-            &SET_STR,
-            new IRString(stringExpr.val),
-            new IRLinkIdx()
-        ));
+        return ctx.strVal(stringExpr.val);
     }
 
     else if (auto regexpExpr = cast(RegexpExpr)expr)
     {
-        auto linkInstr = ctx.addInstr(new IRInstr(
-            &MAKE_LINK,
-            new IRLinkIdx()            
-        ));
-        auto strInstr = ctx.addInstr(new IRInstr(
-            &SET_STR,
-            new IRString(regexpExpr.pattern),
-            new IRLinkIdx()
-        ));
-        auto flagsInstr = ctx.addInstr(new IRInstr(
-            &SET_STR,
-            new IRString(regexpExpr.flags),
-            new IRLinkIdx()
-        ));
-
+        auto linkInstr = ctx.makeLink();
+        auto strInstr = ctx.strVal(regexpExpr.pattern);
+        auto flagsInstr = ctx.strVal(regexpExpr.flags);
         auto reInstr = genRtCall(
             ctx, 
             "getRegexp",

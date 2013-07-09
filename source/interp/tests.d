@@ -1279,7 +1279,7 @@ unittest
     interp.load("programs/regress/delta.js");
     interp.load("programs/regress/raytrace.js");
 
-    // FIXME: signal 11
+    // FIXME: signal 11, segfault, likely cause is GC not yet fixed
     //interp = new Interp();
     //interp.load("programs/regress/boyer.js");
 }
@@ -1349,14 +1349,11 @@ unittest
     interp.load("programs/apply/apply.js");
     interp.assertInt("test();", 0);
 
-    // FIXME: arguments support
-    /*
     writefln("arguments");
 
     // Arguments object
     interp.load("programs/arg_obj/arg_obj.js");
     interp.assertInt("test();", 0);
-    */
 
     // FIXME
     /*
@@ -1376,24 +1373,20 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_number/stdlib_number.js");
     interp.assertInt("test();", 0);
-    // FIXME: arguments
-    //interp.load("programs/stdlib_function/stdlib_function.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_function/stdlib_function.js");
+    interp.assertInt("test();", 0);
     // FIXME: for-in    
     //interp.load("programs/stdlib_object/stdlib_object.js");
     //interp.assertInt("test();", 0);
-    // FIXME: returns 48
-    //interp.load("programs/stdlib_array/stdlib_array.js");
-    //interp.assertInt("test();", 0);
-    // FIXME: apply
-    //interp.load("programs/stdlib_string/stdlib_string.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_array/stdlib_array.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_string/stdlib_string.js");
+    interp.assertInt("test();", 0);
     // FIXME: for-in
     //interp.load("programs/stdlib_json/stdlib_json.js");
     //interp.assertInt("test();", 0);
-    // FIXME: non-integer value?
-    //interp.load("programs/stdlib_regexp/stdlib_regexp.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_regexp/stdlib_regexp.js");
+    interp.assertInt("test();", 0);
 }
 
 /// Dynamic code loading and eval
@@ -1501,11 +1494,11 @@ unittest
 /// SunSpider benchmarks
 unittest
 {
-    /*
     writefln("sunspider");
 
     auto interp = new Interp();
 
+    /*
     writefln("sunspider/3d-morph");
     interp.load("programs/sunspider/3d-morph.js");
 
@@ -1529,12 +1522,14 @@ unittest
 
     writefln("sunspider/bitops-nsieve-bits");
     interp.load("programs/sunspider/bitops-nsieve-bits.js");
+    */
 
     writefln("sunspider/controlflow-recursive");
     interp.load("programs/sunspider/controlflow-recursive.js");
     interp.assertInt("ack(3,2);", 29);
     interp.assertInt("tak(9,5,3);", 4);
 
+    /*
     writefln("sunspider/crypto-md5");
     interp.load("programs/sunspider/crypto-md5.js");
 

@@ -10,14 +10,17 @@ TODO: give this project more lovin'! Improve various aspects! Blog!
 
 ------------------------------------------------------------------------------
 
-CC Paper Submission Deadline: 11 October 2013
+Oct 11th: CC Paper Submission Deadline
 - 20 page limit, LNCS format
 
-CC Abstract Submission Deadline: 4 October 2013
+Final paper corrections
+- Can you submit early, re-submit updates/fixes?
 
-------------------------------------------------------------------------------
+Oct 4th: CC Abstract Submission Deadline
 
 Sept 31st goal: have paper written & edited
+
+------------------------------------------------------------------------------
 
 August 31st goal: have gathered some perf data, demonstrate gains from versioning
 - See paper note for metric ideas
@@ -27,22 +30,21 @@ August 31st goal: have gathered some perf data, demonstrate gains from versionin
   - execution time
 - further perf tweaks
 
-July 31st goal: fully working interp/JIT, perf gains from inlining
-
-TODO: IR-level optimizations?
-- Basic arith ops, simple const prop?
-- Jump to block that jumps
-- Redundant moves, use original value
-  - Must prove move is useless to remove
-- Need basic reaching defs for moves, const prop
-  - Map inputs to instrs to other instrs (like SSA)
-- Might be smarter to start with simple ASM peephole opts
-
 TODO: benchmarking (performance testing) JS script
 - benchmark.js
 - should do multiple runs (parameterizable numRuns?)
 - use load command, list of benchmarks
 - try to make it compatible with V8 as-is
+- should be able to pass config flags to Higgs (i.e.: modify JIT params)
+
+TODO: implement cap on number of block versions
+- Add command-line options, jit_maxblockvers
+- Will require generating ASM adaptors before jumps? If we hit the max
+vers cap, the jump target we get back is an adaptor?
+
+------------------------------------------------------------------------------
+
+July 31st goal: fully working interp/JIT, perf gains from inlining
 
 FIXME: earley-boyer not working, with or without inlining
 run-time error: undefined base in read of property "car"
@@ -54,18 +56,11 @@ run-time error: undefined base in read of property "car"
   - gc happens during newObj
 - Doesn't seem directly connected to GC
 
-TODO: implement cap on number of block versions
-- Add command-line options, jit_maxblockvers
-- Will require generating ASM adaptors before jumps? If we hit the max
-vers cap, the jump target we get back is an adaptor?
-
 TODO: optimize non-constant comparison followed by if_true
 - 4 extra instructions
 - If next instr is if_true and value is dead after if_true, don't write bool val
 - if_true can check if prev instr had boolean output (or check for specific)
 - Won't quite work for inlined functions... Could implement through peepholes
-
-------------------------------------------------------------------------------
 
 TODO: Modify/reimplement inlining for SSA
 - Not too hard?
@@ -76,6 +71,13 @@ TODO: Rework JIT for new IR
   - But port first, don't try to do everything at once
 - Phi nodes? Normally would require moves
   - In version case, request version where phi node has current slot/reg
+
+TODO: basic IR peephole pass
+- opts:
+  - phi node
+  - basic const prop
+  - jump to jump
+- Try to optimize a little, changedblocks list, work list?
 
 TODO: fixup FFI
 
@@ -88,21 +90,17 @@ TODO: liveness and slot mapping analysis for new IR
 - Other instrs get slots based on who's live at the same time
   - Map instr to first slot that's not already mapped to an interfering value
 
-TODO: basic IR peephole pass
-- opts:
-  - phi node
-  - basic const prop
-  - jump to jump
-- Try to optimize a little, changedblocks list, work list?
-
 TODO: fixup GC
 
 TODO: exceptions, try-catch-finally
+- Finally execution
+- Try/catch/finally, context merging
+- Throw, throw ctx lst? See Tachyon
+
 
 TODO: for-in loop
 
 
-TODO: arguments object
 
 
 
@@ -113,6 +111,11 @@ TODO: arguments object
 
 
 
+
+
+
+
+[DONE] TODO: arguments object
 
 [DONE] TODO: call_apply
 
