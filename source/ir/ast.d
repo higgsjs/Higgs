@@ -895,14 +895,105 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         ctx.merge(loopExitCtx);
     }
 
-    /*
+    // For-in loop statement
     else if (auto forInStmt = cast(ForInStmt)stmt)
     {
+        assert (false, "for-in");
+
         // Create the loop test, body and exit blocks
         auto testBlock = ctx.fun.newBlock("forin_test");
         auto bodyBlock = ctx.fun.newBlock("forin_body");
         auto exitBlock = ctx.fun.newBlock("forin_exit");
 
+        // Create a context for the loop entry (the loop test)
+        IRGenCtx[] breakCtxLst = [];
+        IRGenCtx[] contCtxLst = [];
+        auto testCtx = createLoopEntry(
+            ctx,
+            testBlock,
+            stmt,
+            exitBlock,
+            &breakCtxLst,
+            testBlock,
+            &contCtxLst
+        );
+
+        // Store a copy of the loop entry phi nodes
+        auto entryLocals = testCtx.localMap.dup;        
+
+
+
+
+
+
+
+
+        /*
+        // Compile the loop test in the entry context
+        auto testVal = exprToIR(forStmt.testExpr, testCtx);
+
+        // Convert the expression value to a boolean
+        auto boolVal = genBoolEval(
+            testCtx, 
+            forStmt.testExpr, 
+            testVal
+        );
+
+        // If the expresson is true, jump to the loop body
+        testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
+
+        // Compile the loop body statement
+        auto bodyCtx = testCtx.subCtx(bodyBlock);
+        stmtToIR(forStmt.bodyStmt, bodyCtx);
+        if (!bodyCtx.hasBranch)
+            bodyCtx.jump(incrBlock);
+
+        // Add the test exit to the break context list
+        breakCtxLst ~= testCtx.subCtx();
+
+        // Add the body exit to the continue context list
+        contCtxLst ~= bodyCtx.subCtx();
+
+        // Merge the continue contexts into the increment block
+        auto incrCtx = mergeContexts(
+            ctx,
+            contCtxLst,
+            incrBlock
+        );
+
+        // Compile the increment expression
+        exprToIR(forStmt.incrExpr, incrCtx);
+
+        // Merge the increment context with the entry block
+        mergeLoopEntry(
+            ctx,
+            [incrCtx],
+            entryLocals,
+            testBlock
+        );
+
+        // Merge the break contexts into the loop exit
+        auto loopExitCtx = mergeContexts(
+            ctx,
+            breakCtxLst,
+            exitBlock
+        );
+
+        // Continue code generation after the loop exit
+        ctx.merge(loopExitCtx);
+
+
+
+
+
+
+
+
+
+
+
+
+        /*
         // Register the loop labels, if any
         ctx.regLabels(stmt.labels, exitBlock, testBlock);
 
@@ -972,8 +1063,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Continue code generation in the exit block
         ctx.merge(exitBlock);
+        */
     }
-    */
 
     // Switch statement
     else if (auto switchStmt = cast(SwitchStmt)stmt)
