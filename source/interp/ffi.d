@@ -47,7 +47,7 @@ import jit.assembler;
 import jit.codeblock;
 import jit.encodings;
 import jit.regalloc;
-//import jit.jit;
+import jit.jit;
 import ir.ir;
 
 Type[string] typeMap;
@@ -70,9 +70,9 @@ static this()
     scratchReg = R11;
 }
 
-/*
 CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] argSlots)
 {
+    /*
     // Track register usage for args
     auto iArgIdx = 0;
     auto fArgIdx = 0;
@@ -82,6 +82,7 @@ CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] a
     auto argTypes = types[1..$];
     // Arguments to pass via the stack
     LocalIdx[] stackArgs;
+    */
 
     auto as = new Assembler();
 
@@ -103,6 +104,7 @@ CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] a
     as.getMember!("Interp", "wsp")(wspReg, interpReg);
     as.getMember!("Interp", "tsp")(tspReg, interpReg);
 
+    /*
     // Set up arguments
     foreach(int i, idx; argSlots)
     {
@@ -153,6 +155,7 @@ CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] a
     // Make sure there is an even number of pops
     if (stackArgs.length % 2 != 0)
         as.instr(POP, scratchReg);
+    */
 
     // Store the stack pointers back in the interpreter
     as.setMember!("Interp", "wsp")(interpReg, wspReg);
@@ -171,7 +174,6 @@ CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] a
     auto cb = as.assemble();
     return cb;
 }
-*/
 
 // Dummy functions used for testing
 extern (C) 

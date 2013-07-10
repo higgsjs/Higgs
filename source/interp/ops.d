@@ -1511,6 +1511,11 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
 
     CodeBlock cb;
 
+
+    // FIXME: temporary for SSA refactoring
+    assert (false);
+
+
     // Check if there is a cached CodeBlock, generate one if not
     if (cbArg.codeBlock is null)
     {
@@ -1523,10 +1528,9 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
         // Slots for arguments
         LocalIdx[] argSlots;
 
-        // FIXME: temporary for SSA refactoring
-        assert (false);
 
-        // TODO: extract arg vals as Interp.callFun does, not arg slots
+        // TODO: extract arg values as op_call does, not arg slots
+        // TODO: use alloca to allocate ValuePair[]
         /*
         foreach (a; instr.args[3..$])
             argSlots ~= a.localIdx;
@@ -1537,20 +1541,23 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
         );
         */
 
-        //cb = genFFIFn(interp, types, instr.outSlot, argSlots);
-        //instr.args[0].codeBlock = cb;
+
+
+
+
+
+        cb = genFFIFn(interp, types, instr.outSlot, /*argSlots*/null);
+        cbArg.codeBlock = cb;
     }
     else
     {
         cb = cbArg.codeBlock;
     }
 
-    // FIXME
-    assert (false);
+    FFIFn callerfun = cast(FFIFn)(cb.getAddress());
+    callerfun(cast(void*)funArg.word.ptrVal);
 
-    //FFIFn callerfun = cast(FFIFn)(cb.getAddress());
-    //callerfun(cast(void*)fun.word.ptrVal);
-
+    // Branch to the continuation target of the call_ffi instruction
     interp.branch(instr.getTarget(0));
 }
 

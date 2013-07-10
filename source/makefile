@@ -37,17 +37,15 @@ jit/encodings.d     \
 jit/codeblock.d     \
 jit/assembler.d     \
 jit/regalloc.d      \
+jit/jit.d           \
+jit/ops.d           \
+jit/peephole.d      \
 repl.d              \
 options.d           \
 main.d              \
 jit/tests.d         \
 parser/tests.d      \
 interp/tests.d
-
-# TODO: temporarily removed for SSA refactoring
-#jit/peephole.d      \
-#jit/ops.d           \
-#jit/jit.d           \
 
 all: layout encodings
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)

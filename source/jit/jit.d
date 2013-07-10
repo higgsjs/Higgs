@@ -116,6 +116,10 @@ void inlinePass(Interp interp, IRFunction fun)
     // Get the number of locals before inlining
     auto numLocals = fun.numLocals;
 
+    // FIXME
+    return;
+
+    /*
     //writeln(fun.toString());
 
     // For each block of the function
@@ -176,6 +180,7 @@ void inlinePass(Interp interp, IRFunction fun)
     // will need to use a virtual dst frame to avoid collisions
     //
     //writefln("inlinePass done");
+    */
 }
 
 /**
@@ -321,6 +326,15 @@ void compFun(Interp interp, IRFunction fun)
     // Create an entry point for the function
     getEntryPoint(fun.entryBlock);
 
+
+
+
+
+
+
+    // FIXME
+
+    /*
     // Until the work list is empty
     BLOCK_LOOP:
     while (workList.length > 0)
@@ -504,6 +518,7 @@ void compFun(Interp interp, IRFunction fun)
         writefln("num versions: %s", numVersions);
         writefln("");
     }
+    */
 }
 
 /**
@@ -644,6 +659,8 @@ class CodeGenState
         return true;
     }
 
+    // FIXME
+    /*
     /// Get the word operand for an instruction argument
     X86Opnd getWordOpnd(
         CodeGenCtx ctx, 
@@ -762,7 +779,10 @@ class CodeGenState
 
         return opnd;
     }
+    */
 
+    // FIXME
+    /*
     /// Get an x86 operand for the type of a value
     X86Opnd getTypeOpnd(
         Assembler as,
@@ -798,7 +818,10 @@ class CodeGenState
 
         return memLoc;
     }
+    */
 
+    // FIXME
+    /*
     /// Get the operand for an instruction's output
     X86Opnd getOutOpnd(
         CodeGenCtx ctx, 
@@ -845,6 +868,7 @@ class CodeGenState
         gpRegMap[reg.regNo] = instr.outSlot;
         return new X86Reg(X86Reg.GP, reg.regNo, numBits);
     }
+    */
 
     /// Set the output of an instruction to a known boolean value
     void setOutBool(IRInstr instr, bool val)

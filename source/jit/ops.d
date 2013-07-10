@@ -44,6 +44,7 @@ import std.stdint;
 import std.conv;
 import options;
 import ir.ir;
+import ir.ops;
 import interp.interp;
 import interp.layout;
 import interp.object;
@@ -57,6 +58,7 @@ import jit.regalloc;
 import jit.jit;
 import util.bitset;
 
+/*
 void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto linkIdx = instr.args[1].linkIdx;
@@ -73,8 +75,10 @@ void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
+*/
 
 // TODO: recuperate some of this code for phi nodes?
+/*
 void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     assert (instr.outSlot !is NULL_LOCAL);
@@ -98,9 +102,11 @@ void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         st.setOutType(ctx.as, instr, scrRegs8[0]);
     }
 }
+*/
 
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    /*
     auto argSlot = instr.args[0].localIdx;
 
     // If the type of the argument is known
@@ -128,6 +134,7 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         // Set the output type
         st.setOutType(ctx.as, instr, Type.CONST);
     }
+    */
 }
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
@@ -157,6 +164,7 @@ void gen_f64_to_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    /*
     // The register allocator should ensure that at
     // least one input is a register operand
     auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, numBits);
@@ -217,6 +225,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
         auto jmpLabel = ctx.getBlockLabel(instr.target, st);
         ctx.as.instr(JMP, jmpLabel);
     }
+    */
 }
 
 alias RMMOp!("add" , 32, Type.INT32) gen_add_i32;
@@ -229,6 +238,7 @@ alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
 void ShiftOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    /*
     auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32);
     auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 8);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
@@ -255,6 +265,7 @@ void ShiftOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Set the output type
     st.setOutType(ctx.as, instr, Type.INT32);
+    */
 }
 
 alias ShiftOp!("sal") gen_lsft_i32;
@@ -262,6 +273,7 @@ alias ShiftOp!("sar") gen_rsft_i32;
 
 void FPOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    /*
     auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0);
     auto opnd1 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 1, 64, XMM1);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
@@ -290,6 +302,7 @@ void FPOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Set the output type
     st.setOutType(ctx.as, instr, Type.FLOAT64);
+    */
 }
 
 alias FPOp!("add") gen_add_f64;
@@ -299,6 +312,7 @@ alias FPOp!("div") gen_div_f64;
 
 void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    /*
     auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, numBits);
     auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, numBits);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
@@ -333,6 +347,7 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         ctx.as.instr(MOV, opndOut, outReg);
 
     st.setOutType(ctx.as, instr, Type.CONST);
+    */
 }
 
 alias CmpOp!("eq", 8) gen_eq_i8;
@@ -350,6 +365,7 @@ alias CmpOp!("eq", 64) gen_eq_rawptr;
 
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    /*
     auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 64);
     auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
@@ -398,6 +414,7 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
 
     // Set the output type tag
     st.setOutType(ctx.as, instr, typeTag);
+    */
 }
 
 alias LoadOp!(8 , Type.INT32) gen_load_u8;
@@ -408,13 +425,18 @@ alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
 
+// FIXME
+/*
 void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Jump to the target block
     auto blockLabel = ctx.getBlockLabel(instr.target, st);
     ctx.as.instr(JMP, blockLabel);
 }
+*/
 
+// FIXME
+/*
 void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto argSlot = instr.args[0].localIdx;
@@ -463,7 +485,9 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(jumpOp, sLabel);
     ctx.as.instr(JMP, fLabel);
 }
+*/
 
+/*
 void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto interp = ctx.interp;
@@ -553,7 +577,9 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto typeMem = new X86Mem(8, scrRegs64[0], wordOfs + propIdx, scrRegs64[1], 8);
     ctx.as.instr(MOV, typeMem, typeOpnd);
 }
+*/
 
+/*
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Generate an entry point for the call continuation
@@ -773,7 +799,9 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Call the interpreter call instruction
     defaultFn(ctx.ol, ctx, st, instr);
 }
+*/
 
+/*
 void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Get the output operand. This must be a 
@@ -785,7 +813,9 @@ void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
+*/
 
+/*
 void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Get the function corresponding to this instruction
@@ -852,6 +882,7 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         st.valOnStack(instr.outSlot);
     }
 }
+*/
 
 alias void function(CodeGenCtx ctx, CodeGenState st, IRInstr instr) CodeGenFn;
 
@@ -859,17 +890,13 @@ CodeGenFn[Opcode*] codeGenFns;
 
 static this()
 {
+    /*
     codeGenFns[&SET_STR]        = &gen_set_str;
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
     codeGenFns[&IS_I32]         = &gen_is_i32;
     codeGenFns[&IS_F64]         = &gen_is_f64;
-
-    /*
-    codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
-    codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
-    */
 
     codeGenFns[&ADD_I32]        = &gen_add_i32;
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
@@ -919,5 +946,6 @@ static this()
     codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
+    */
 }
 
