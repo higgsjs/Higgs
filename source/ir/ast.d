@@ -898,12 +898,20 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     // For-in loop statement
     else if (auto forInStmt = cast(ForInStmt)stmt)
     {
-        assert (false, "for-in");
-
         // Create the loop test, body and exit blocks
         auto testBlock = ctx.fun.newBlock("forin_test");
         auto bodyBlock = ctx.fun.newBlock("forin_body");
         auto exitBlock = ctx.fun.newBlock("forin_exit");
+
+        // Evaluate the object expression
+        auto objVal = exprToIR(forInStmt.inExpr, ctx);
+
+        // Get the property enumerator
+        auto enumVal = genRtCall(
+            ctx, 
+            "getPropEnum", 
+            [objVal]
+        );
 
         // Create a context for the loop entry (the loop test)
         IRGenCtx[] breakCtxLst = [];
@@ -921,56 +929,40 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         // Store a copy of the loop entry phi nodes
         auto entryLocals = testCtx.localMap.dup;        
 
+        // Get the next property
+        auto callInstr = testCtx.addInstr(new IRInstr(&CALL, 2));
+        callInstr.setArg(0, enumVal);
+        callInstr.setArg(1, enumVal);
 
+        // Generate the call targets
+        genCallTargets(testCtx, callInstr);
 
+        // If the property is a constant value, exit the loop
+        auto isConst = testCtx.addInstr(new IRInstr(&IS_CONST, callInstr));
+        testCtx.ifTrue(isConst, exitBlock, bodyBlock);
 
+        // Create the body context
+        auto bodyCtx = testCtx.subCtx(bodyBlock);
 
-
-
-
-        /*
-        // Compile the loop test in the entry context
-        auto testVal = exprToIR(forStmt.testExpr, testCtx);
-
-        // Convert the expression value to a boolean
-        auto boolVal = genBoolEval(
-            testCtx, 
-            forStmt.testExpr, 
-            testVal
+        // Assign into the variable expression
+        assgToIR(
+            forInStmt.varExpr,
+            null,
+            delegate IRValue(IRGenCtx ctx)
+            {
+                return callInstr;
+            },
+            bodyCtx
         );
 
-        // If the expresson is true, jump to the loop body
-        testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
-
         // Compile the loop body statement
-        auto bodyCtx = testCtx.subCtx(bodyBlock);
-        stmtToIR(forStmt.bodyStmt, bodyCtx);
-        if (!bodyCtx.hasBranch)
-            bodyCtx.jump(incrBlock);
+        stmtToIR(forInStmt.bodyStmt, bodyCtx);
 
         // Add the test exit to the break context list
         breakCtxLst ~= testCtx.subCtx();
 
         // Add the body exit to the continue context list
         contCtxLst ~= bodyCtx.subCtx();
-
-        // Merge the continue contexts into the increment block
-        auto incrCtx = mergeContexts(
-            ctx,
-            contCtxLst,
-            incrBlock
-        );
-
-        // Compile the increment expression
-        exprToIR(forStmt.incrExpr, incrCtx);
-
-        // Merge the increment context with the entry block
-        mergeLoopEntry(
-            ctx,
-            [incrCtx],
-            entryLocals,
-            testBlock
-        );
 
         // Merge the break contexts into the loop exit
         auto loopExitCtx = mergeContexts(
@@ -979,91 +971,16 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
             exitBlock
         );
 
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
+            ctx,
+            contCtxLst,
+            entryLocals,
+            testBlock
+        );
+
         // Continue code generation after the loop exit
         ctx.merge(loopExitCtx);
-
-
-
-
-
-
-
-
-
-
-
-
-        /*
-        // Register the loop labels, if any
-        ctx.regLabels(stmt.labels, exitBlock, testBlock);
-
-        // Evaluate the object expression
-        auto initCtx = ctx.subCtx(true);
-        exprToIR(forInStmt.inExpr, initCtx);
-        ctx.merge(initCtx);
-
-        // Get the property enumerator
-        auto enumInstr = genRtCall(
-            ctx, 
-            "getPropEnum", 
-            ctx.allocTemp(),
-            [initCtx.getOutSlot()]
-        );
-
-        // Jump to the test block
-        ctx.addInstr(IRInstr.jump(testBlock));
-
-        // Create the loop test context
-        auto testCtx = ctx.subCtx(false, NULL_LOCAL, testBlock);
-
-        // Get the next property
-        auto callInstr = testCtx.addInstr(new IRInstr(&CALL));
-        callInstr.outSlot = testCtx.allocTemp();
-        callInstr.args.length = 2;
-        callInstr.args[0].localIdx = enumInstr.outSlot;
-        callInstr.args[1].localIdx = enumInstr.outSlot;
-
-        // Generate the call targets
-        genCallTargets(testCtx, callInstr);
-
-        // If the property is a constant value, exit the loop
-        auto boolTemp = testCtx.allocTemp();
-        testCtx.addInstr(new IRInstr(
-            &IS_CONST,
-            boolTemp,
-            callInstr.outSlot
-        ));
-        testCtx.addInstr(IRInstr.ifTrue(
-            boolTemp,
-            exitBlock,
-            bodyBlock
-        ));
-
-        // Create the body context
-        auto bodyCtx = ctx.subCtx(false, NULL_LOCAL, bodyBlock);
-
-        // Assign into the variable expression
-        auto assgCtx = bodyCtx.subCtx(true);
-        assgToIR(
-            forInStmt.varExpr,
-            null,
-            delegate void(IRGenCtx ctx)
-            {
-                ctx.moveToOutput(callInstr.outSlot);
-            },
-            assgCtx
-        );
-        bodyCtx.merge(assgCtx);
-
-        // Compile the loop body statement
-        stmtToIR(forInStmt.bodyStmt, bodyCtx);
-
-        // Jump to the loop test
-        bodyCtx.addInstr(IRInstr.jump(testBlock));
-
-        // Continue code generation in the exit block
-        ctx.merge(exitBlock);
-        */
     }
 
     // Switch statement
@@ -1175,9 +1092,11 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         */
     }
 
-    /*
     else if (auto tryStmt = cast(TryStmt)stmt)
     {
+        assert (false, "tryStmt");
+
+        /*
         // Create a block for the catch statement
         auto catchBlock = ctx.fun.newBlock("try_catch");
 
@@ -1214,8 +1133,8 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Continue the code generation after the finally statement
         ctx.merge(fnlCtx);
+        */
     }
-    */
 
     else if (auto exprStmt = cast(ExprStmt)stmt)
     {
@@ -2624,8 +2543,7 @@ void mergeLoopEntry(
         //writefln("merging context into entry");
         //writefln("lastInstr: %s", ctx.curBlock.lastInstr);
 
-        auto lastInstr = ctx.curBlock.lastInstr;
-        if (!lastInstr || !lastInstr.opcode.isBranch)
+        if (!ctx.hasBranch)
             ctx.jump(entryBlock);
     }
 
@@ -2640,8 +2558,14 @@ void mergeLoopEntry(
         foreach (ctx; contexts)
         {
             auto incVal = ctx.localMap[ident];
-            auto branchDesc = ctx.curBlock.lastInstr.getTarget(0);
-            branchDesc.setPhiArg(phiNode, incVal);
+
+            assert (ctx.hasBranch);
+            auto branch = ctx.curBlock.lastInstr;
+
+            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
+                if (auto desc = branch.getTarget(tIdx))
+                    if (desc.succ == entryBlock)
+                        desc.setPhiArg(phiNode, incVal);
         }
     }
 }
@@ -2700,7 +2624,8 @@ IRGenCtx mergeContexts(
                 // For each target of the branch instruction
                 for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
                     if (auto desc = branch.getTarget(tIdx))
-                        desc.setPhiArg(phiNode, incVal);
+                        if (desc.succ == mergeBlock)
+                            desc.setPhiArg(phiNode, incVal);
             }
         }
 

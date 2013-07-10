@@ -1208,11 +1208,12 @@ unittest
 unittest
 {
     // FIXME: exception support
-    /*
+
     writefln("exceptions");
 
     auto interp = new Interp();
 
+    /*
     interp.load("programs/exceptions/throw_intra.js");
     interp.assertStr("str;", "abc");
     interp.load("programs/exceptions/finally_ret.js");
@@ -1355,14 +1356,11 @@ unittest
     interp.load("programs/arg_obj/arg_obj.js");
     interp.assertInt("test();", 0);
 
-    // FIXME
-    /*
     writefln("for-in");
 
     // For-in loop
     interp.load("programs/for_in/for_in.js");
     interp.assertInt("test();", 0);
-    */
 
     writefln("stdlib");
 
@@ -1375,16 +1373,14 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_function/stdlib_function.js");
     interp.assertInt("test();", 0);
-    // FIXME: for-in    
-    //interp.load("programs/stdlib_object/stdlib_object.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_object/stdlib_object.js");
+    interp.assertInt("test();", 0);
     interp.load("programs/stdlib_array/stdlib_array.js");
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_string/stdlib_string.js");
     interp.assertInt("test();", 0);
-    // FIXME: for-in
-    //interp.load("programs/stdlib_json/stdlib_json.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_json/stdlib_json.js");
+    interp.assertInt("test();", 0);
     interp.load("programs/stdlib_regexp/stdlib_regexp.js");
     interp.assertInt("test();", 0);
 }

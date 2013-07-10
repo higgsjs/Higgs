@@ -98,7 +98,6 @@ TODO: exceptions, try-catch-finally
 - Throw, throw ctx lst? See Tachyon
 
 
-TODO: for-in loop
 
 
 
@@ -107,13 +106,8 @@ TODO: for-in loop
 
 
 
-
-
-
-
-
-
-
+[DONE] TODO: for-in loop
+- crash, first call to enumerator fails
 
 [DONE] TODO: arguments object
 

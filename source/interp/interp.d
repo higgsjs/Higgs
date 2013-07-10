@@ -923,12 +923,12 @@ class Interp
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
         {
-            //write("compiling");
-            //write("\n");
-            //write(core.memory.GC.addrOf(cast(void*)fun.ast));
-            //write("\n");
+            //writeln("compiling");
+            //writeln(core.memory.GC.addrOf(cast(void*)fun.ast));
 
             astToIR(fun.ast, fun);
+
+            //writeln("compiled");
         }
 
         // Compute the number of missing arguments
