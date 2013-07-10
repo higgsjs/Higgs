@@ -260,9 +260,8 @@ unittest
     interp.assertInt("return function () { return 9; } ()", 9);
     interp.assertInt("return function () { return 2 * 3; } ()", 6);
 
-    // FIXME: exception support
     // Calling null as a function
-    //interp.assertThrows("null()");
+    interp.assertThrows("null()");
 }
 
 /// Argument passing test
@@ -678,15 +677,14 @@ unittest
             else   
                 return fib(n-1) + fib(n-2);
         }
-                          
+
         return fib(6);
         ",
         8
     );
 
-    // FIXME: exception support
     // Unresolved global
-    //interp.assertThrows("foo");
+    interp.assertThrows("foo5783");
 
     // Many global variables
     interp = new InterpNoStdLib();
@@ -1037,9 +1035,8 @@ unittest
         3
     );
 
-    // FIXME: exception support
-    //interp.assertThrows("false instanceof false");
-    //interp.assertThrows("2 in null");
+    interp.assertThrows("false instanceof false");
+    interp.assertThrows("2 in null");
     interp.assertBool("'foo' in {}", false);
 }
 
@@ -1207,13 +1204,11 @@ unittest
 /// Exceptions
 unittest
 {
-    // FIXME: exception support
-
     writefln("exceptions");
 
     auto interp = new Interp();
 
-    /*
+    // Intraprocedural tests
     interp.load("programs/exceptions/throw_intra.js");
     interp.assertStr("str;", "abc");
     interp.load("programs/exceptions/finally_ret.js");
@@ -1229,13 +1224,14 @@ unittest
     interp.assertStr("str;", "abcdef");
     interp.load("programs/exceptions/throw_in_catch.js");
     interp.assertStr("str;", "abcdefg");
+
+    // Interprocedural tests
     interp.load("programs/exceptions/throw_inter.js");
     interp.assertInt("test();", 0);
     interp.load("programs/exceptions/throw_inter_fnl.js");
     interp.assertStr("str;", "abcdef");
     interp.load("programs/exceptions/try_call.js");
     interp.assertStr("str;", "abc");
-    */
 }
 
 /// Basic test programs

@@ -91,20 +91,26 @@ TODO: liveness and slot mapping analysis for new IR
   - Map instr to first slot that's not already mapped to an interfering value
 
 TODO: fixup GC
+- Try enabling GC tests in steps
 
-TODO: exceptions, try-catch-finally
+TODO: grep for FIXME
+
+
+
+
+
+
+
+
+
+[DONE] TODO: exceptions, try-catch-finally
 - Finally execution
 - Try/catch/finally, context merging
 - Throw, throw ctx lst? See Tachyon
+- genExcPath needs to be altered
 
-
-
-
-
-
-
-
-
+[DONE] FIXME: trying to add instr after call to rt_add
+- Seems to be caused by englobing try block... genExcPath?
 
 [DONE] TODO: for-in loop
 - crash, first call to enumerator fails
