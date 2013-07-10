@@ -658,13 +658,15 @@ void visitFun(Interp interp, IRFunction fun)
     // Transitively find live function references inside the function
     for (IRBlock block = fun.firstBlock; block !is null; block = block.next)
     {
-        // FIXME
-        /*
         for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
-            foreach (argIdx, arg; instr.args)
-                if (instr.opcode.getArgType(argIdx) == OpArg.FUN)
-                    visitFun(interp, arg.fun);
-        */
+        {
+            for (size_t argIdx = 0; argIdx < instr.getNumArgs(); ++argIdx)
+            {
+                auto arg = instr.getArg(argIdx);
+                if (auto funArg = cast(IRFunPtr)arg)
+                    visitFun(interp, funArg.fun);
+            }
+        }
     }
 }
 
@@ -681,21 +683,19 @@ void collectFun(Interp interp, IRFunction fun)
         // For each instruction
         for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            // FIXME
-            /*
             // For each instruction argument
-            foreach (argIdx, arg; instr.args)
+            for (size_t argIdx = 0; argIdx < instr.getNumArgs(); ++argIdx)
             {
-                auto argType = instr.opcode.getArgType(argIdx);
+                auto arg = instr.getArg(argIdx);
 
                 // If this is a link table entry, free it
-                if (argType == OpArg.LINK && arg.linkIdx != NULL_LINK)
+                if (auto linkArg = cast(IRLinkIdx)arg)
                 {
                     //writefln("freeing link table entry %s", arg.linkIdx);
-                    interp.freeLink(arg.linkIdx);
+                    if (linkArg.linkIdx != NULL_LINK)
+                        interp.freeLink(linkArg.linkIdx);
                 }
             }
-            */
         }
     }
 

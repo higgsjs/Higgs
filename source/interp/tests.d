@@ -1276,9 +1276,8 @@ unittest
     interp.load("programs/regress/delta.js");
     interp.load("programs/regress/raytrace.js");
 
-    // FIXME: signal 11, segfault, likely cause is GC not yet fixed
-    //interp = new Interp();
-    //interp.load("programs/regress/boyer.js");
+    interp = new Interp();
+    interp.load("programs/regress/boyer.js");
 }
 
 /// JIT-specific tests
@@ -1398,7 +1397,6 @@ unittest
 /// Garbage collector tests
 unittest
 {
-    /*
     writefln("garbage collector");
 
     Interp interp;
@@ -1480,7 +1478,6 @@ unittest
     interp = new Interp();
     interp.load("programs/gc/load.js");
     interp.assertInt("theFlag;", 1337);
-    */
 }
 
 /// SunSpider benchmarks

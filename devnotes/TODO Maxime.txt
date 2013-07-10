@@ -65,13 +65,6 @@ TODO: optimize non-constant comparison followed by if_true
 TODO: Modify/reimplement inlining for SSA
 - Not too hard?
 
-TODO: Rework JIT for new IR
-- Instrs have slots mapped to them as before
-- Try to use SSA info to generate better code
-  - But port first, don't try to do everything at once
-- Phi nodes? Normally would require moves
-  - In version case, request version where phi node has current slot/reg
-
 TODO: basic IR peephole pass
 - opts:
   - phi node
@@ -79,9 +72,12 @@ TODO: basic IR peephole pass
   - jump to jump
 - Try to optimize a little, changedblocks list, work list?
 
-TODO: fixup FFI
-
-TODO: disable inlining in JIT for now
+TODO: Rework JIT for new IR
+- Instrs have slots mapped to them as before
+- Try to use SSA info to generate better code
+  - But port first, don't try to do everything at once
+- Phi nodes? Normally would require moves
+  - In version case, request version where phi node has current slot/reg
 
 TODO: liveness and slot mapping analysis for new IR
 - Needed for interpreter
@@ -90,18 +86,23 @@ TODO: liveness and slot mapping analysis for new IR
 - Other instrs get slots based on who's live at the same time
   - Map instr to first slot that's not already mapped to an interfering value
 
-TODO: fixup GC
+TODO: fixup FFI
+
+TODO: get jit.d compiling with JIT disabled
+
+TODO: rebase main branch onto SSA
+
+
+
+
+
+
+
+
+[DONE] TODO: fixup GC
 - Try enabling GC tests in steps
 
-TODO: grep for FIXME
-
-
-
-
-
-
-
-
+[DONE] TODO: grep for FIXME
 
 [DONE] TODO: exceptions, try-catch-finally
 - Finally execution
