@@ -65,30 +65,44 @@ TODO: optimize non-constant comparison followed by if_true
 TODO: Modify/reimplement inlining for SSA
 - Not too hard?
 
+TODO: reimplement instructions in jit/ops.d
+- Will need a way to request an argument as a register
+  - If it's a constant, we need to supply a temp
+
+TODO: get jit working with defaultFn only
+- Need mechanism to handle block transitions w.r.t. phi nodes
+  - Update state to reflect which phi nodes are in slots or regs
+  - Insert moves as appropriate
+
+TODO: smarter slot/register mapping pass
+- Keep old slot mapping still (quick)
+  - Could improve with simple phi heuristics, do phis after other instrs
+- Map instr to first slot that's not already mapped to an interfering value
+  - Grow num slots as needed
+- Ideally, slot/reg allocation assigns vals and phi nodes to same slot/reg
+  - Provided they don't interfere (should monitor this, want this stat)
+- Ideally, values that share a phi target end up in same register
+
+TODO: fixup liveness analysis to work with SSA
+- how often are phis live/interfering with their non-const arguments?
+
+TODO: fixup FFI
+- extract args into alloca'd buffer
+
 TODO: basic IR peephole pass
+- look at irString for primitives, add, getProp, etc before and after
 - opts:
   - phi node
   - basic const prop
   - jump to jump
 - Try to optimize a little, changedblocks list, work list?
+- See if interp performance changes much ***
+bitwise-and     7.24
+nsieve-bits     77.6
 
-TODO: Rework JIT for new IR
-- Instrs have slots mapped to them as before
-- Try to use SSA info to generate better code
-  - But port first, don't try to do everything at once
-- Phi nodes? Normally would require moves
-  - In version case, request version where phi node has current slot/reg
 
-TODO: liveness and slot mapping analysis for new IR
-- Needed for interpreter
-- Instructions marked with their assigned slots
-- Args get fixed slots as before
-- Other instrs get slots based on who's live at the same time
-  - Map instr to first slot that's not already mapped to an interfering value
 
-TODO: get jit working with defaultFn only
 
-TODO: fixup FFI
 
 
 
@@ -98,6 +112,23 @@ TODO: fixup FFI
 
 
 [DONE] TODO: get jit.d compiling with JIT disabled
+
+How should the SSA JIT work?
+- Moves may need to be generated for some phi nodes, when jumping to a block
+  - getTarget may need to take pred into account, generate stub of moves
+- Current state: whether each value is in its register or slot
+- Will need a way to request an argument as a register
+  - If it's a constant, we need to supply a temp
+- If I have some phi incoming in a slot, and I branch to a block, I'll be
+  redefining this phi node, hence the state I branch to should have that phi
+  also in a slot, if they're the same ***
+- Maybe the JIT shouldn't make phi nodes have fixed slots?
+  - This only matters if phi incomings and phi nodes often interfere ***
+    - Must compute this stat to inform our decision
+
+------------------------------------------------------------------------------
+
+July 15th goal: complete AST->IR and interpreter refactoring
 
 [DONE] TODO: rebase main branch onto SSA
 

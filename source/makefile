@@ -22,6 +22,7 @@ ir/ir.d             \
 ir/ops.d            \
 ir/iir.d            \
 ir/ast.d            \
+ir/peephole.d       \
 ir/slotalloc.d      \
 ir/livevars.d       \
 ir/inlining.d       \
