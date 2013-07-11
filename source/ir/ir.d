@@ -212,7 +212,10 @@ class IRFunction : IdObject
         block.fun = this;
     }
 
-    void remBlock(IRBlock block)
+    /**
+    Remove and destroy a block
+    */
+    void delBlock(IRBlock block)
     {
         if (block.prev)
             block.prev.next = block.next;
@@ -224,8 +227,20 @@ class IRFunction : IdObject
         else
             lastBlock = null;
 
+        // Destroy the phi nodes
+        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
+            block.delPhi(phi);
+
+        // Destroy the instructions
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+            block.delInstr(instr);
+
         block.prev = null;
         block.next = null;
+        block.fun = null;
+
+        // Destroy the block
+        destroy(block);
     }
 }
 
@@ -388,9 +403,9 @@ class IRBlock : IdObject
     }
 
     /**
-    Remove an instruction
+    Remove and destroy an instruction
     */
-    void remInstr(IRInstr instr)
+    void delInstr(IRInstr instr)
     {
         if (instr.prev)
             instr.prev.next = instr.next;
@@ -402,9 +417,38 @@ class IRBlock : IdObject
         else
             lastInstr = instr.prev;
 
+
+
+
+        // If this is a branch instruction
+        if (instr.opcode.isBranch)
+        {
+            // Remove branch edges from successors
+            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)            
+            {
+                auto branch = instr.getTarget(tIdx);
+                branch.succ.remIncoming(branch);
+            }
+        }
+
+
+        // TODO: check that there are no uses of this instr
+
+
+        // TODO: remove uses of other values
+
+
+
+
+
+
+
         instr.prev = null;
         instr.next = null;
         instr.block = null;
+
+        // Destroy the instruction
+        destroy(instr);
     }
 
     /**
@@ -433,9 +477,9 @@ class IRBlock : IdObject
     }
 
     /**
-    Remove a phi node
+    Remove and destroy a phi node
     */
-    void remPhi(PhiNode phi)
+    void delPhi(PhiNode phi)
     {
         if (phi.prev)
             phi.prev.next = phi.next;
@@ -447,13 +491,16 @@ class IRBlock : IdObject
         else
             lastPhi = phi.prev;
 
+        // Remove the incoming arguments to this phi node
+        foreach (descIdx, desc; incoming)
+            desc.remPhiArg(phi);
+
         phi.prev = null;
         phi.next = null;
         phi.block = null;
 
-        // Remove the incoming arguments to this phi node
-        foreach (descIdx, desc; incoming)
-            desc.remPhiArg(phi);
+        // Destroy the phi node
+        destroy(phi);
     }
 
     void addIncoming(BranchDesc branch)
@@ -474,6 +521,17 @@ class IRBlock : IdObject
         }
 
         assert (false);
+    }
+
+    auto numIncoming()
+    {
+        return incoming.length;
+    }
+
+    auto getIncoming(size_t idx)
+    {
+        assert (idx < incoming.length);
+        return incoming[idx];
     }
 }
 
@@ -560,7 +618,7 @@ class BranchDesc
                 args[argIdx] = args[$-1];
                 args.length = args.length - 1;
 
-                // TODO: remUse
+                arg.value.remUse(arg);
 
                 return;
             }
@@ -1102,7 +1160,7 @@ class IRInstr : IRDstValue
     }
 
     /// Get the number of arguments
-    size_t getNumArgs()
+    size_t numArgs()
     {
         return args.length;
     }

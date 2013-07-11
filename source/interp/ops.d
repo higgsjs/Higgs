@@ -769,7 +769,7 @@ extern (C) void op_call(Interp interp, IRInstr instr)
     */
 
     // Stack-allocate an array for the argument values
-    auto argCount = cast(uint32_t)instr.getNumArgs() - 2;
+    auto argCount = cast(uint32_t)instr.numArgs - 2;
     auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argCount);
 
     // Fetch the argument values
@@ -829,7 +829,7 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
     clos_set_ctor_class(clos.ptr, obj_get_class(thisObj.ptr));
 
     // Stack-allocate an array for the argument values
-    auto argCount = cast(uint32_t)instr.getNumArgs() - 1;
+    auto argCount = cast(uint32_t)instr.numArgs - 1;
 
     // FIXME: temporary until bug in DMD 2.063 is fixed
     //auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argCount);

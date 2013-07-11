@@ -48,6 +48,7 @@ import parser.parser;
 import ir.ir;
 import ir.ops;
 import ir.iir;
+import ir.peephole;
 import ir.slotalloc;
 
 /**
@@ -579,6 +580,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     {
         bodyCtx.addInstr(new IRInstr(&RET, IRConst.undefCst));
     }
+
+    // Perform peephole optimizations on the function
+    optIR(fun);
 
     // Allocate stack slots for the IR instructions
     allocSlots(fun);

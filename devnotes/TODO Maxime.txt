@@ -92,15 +92,14 @@ TODO: fixup FFI
 TODO: basic IR peephole pass
 - look at irString for primitives, add, getProp, etc before and after
 - opts:
-  - phi node
+  - phi node: one pred, zero preds, args to missing phis?
   - basic const prop
   - jump to jump
 - Try to optimize a little, changedblocks list, work list?
 - See if interp performance changes much ***
 bitwise-and     7.24
 nsieve-bits     77.6
-
-
+bitwise-and-lp  3.3
 
 
 

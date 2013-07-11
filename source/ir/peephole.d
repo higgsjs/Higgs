@@ -45,4 +45,81 @@ import std.conv;
 import ir.ir;
 import ir.ops;
 
+void optIR(IRFunction fun)
+{
+    //writeln("peephole pass");
+
+    // Work list for blocks
+    IRBlock[] blockWL = [];
+
+    // Populate the work lists
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        blockWL ~= block;
+    }
+
+    /// Remove and destroy a block
+    void delBlock(IRBlock block)
+    {
+        // TODO: delBlock removal function
+        // TODO: queue up successors for re-examination before doing delBlock
+        // ISSUE: if we delete a block, we shouldn't be holding a reference to it...
+        // Need to scan the work list and remove references
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+    // Until all work lists are empty
+    while (blockWL.length > 0)
+    {
+        // If there are blocks on the block work list
+        if (blockWL.length > 0)
+        {
+            // Remove a block from the work list
+            auto block = blockWL[$-1];
+            blockWL.length = blockWL.length - 1;
+
+            // If this block is dead, remove it
+            if (block.numIncoming is 0)
+            {
+
+
+
+                // FIXME
+                /*
+                writeln("deleting block");
+                fun.delBlock(block);
+                writeln("block deleted");
+                */
+
+
+                // TODO: traverse fn and look for incoming branches?
+
+
+            }
+        }
+
+
+        // TODO: If an instruction's block is removed...
+
+
+
+
+
+
+
+
+    }
+
+    //writeln("peephole pass complete");
+}
 

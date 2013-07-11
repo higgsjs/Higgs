@@ -660,7 +660,7 @@ void visitFun(Interp interp, IRFunction fun)
     {
         for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            for (size_t argIdx = 0; argIdx < instr.getNumArgs(); ++argIdx)
+            for (size_t argIdx = 0; argIdx < instr.numArgs; ++argIdx)
             {
                 auto arg = instr.getArg(argIdx);
                 if (auto funArg = cast(IRFunPtr)arg)
@@ -684,7 +684,7 @@ void collectFun(Interp interp, IRFunction fun)
         for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
         {
             // For each instruction argument
-            for (size_t argIdx = 0; argIdx < instr.getNumArgs(); ++argIdx)
+            for (size_t argIdx = 0; argIdx < instr.numArgs; ++argIdx)
             {
                 auto arg = instr.getArg(argIdx);
 

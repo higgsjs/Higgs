@@ -69,7 +69,7 @@ bool inlinable(IRInstr callSite, IRFunction callee)
         return false;
 
     // No support for argument count mismatch
-    auto numArgs = callSite.getNumArgs() - 2;
+    auto numArgs = callSite.numArgs - 2;
     if (numArgs != callee.numParams)
         return false;
 
@@ -99,7 +99,7 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     assert (caller !is null);
 
     // Get the number of arguments passed
-    auto numArgs = callSite.getNumArgs() - 2;
+    auto numArgs = callSite.numArgs - 2;
 
     /*
     //
