@@ -1304,26 +1304,33 @@ unittest
     auto interp = new Interp();
 
     // ES5 comparison operator test
+    writeln("es5 comparisons");
     interp.load("programs/es5_cmp/es5_cmp.js");
     interp.assertInt("test();", 0);
 
     // Recursive Fibonacci computation
+    writeln("fib");
     interp.load("programs/fib/fib.js");
     interp.assertInt("fib(8);", 21);
 
+    writeln("nested loops");
     interp.load("programs/nested_loops/nested_loops.js");
     interp.assertInt("foo(10);", 510);
 
+    writeln("bubble sort");
     interp.load("programs/bubble_sort/bubble_sort.js");
     interp.assertInt("test();", 0);
 
     // N-queens solver
+    writeln("n-queens");
     interp.load("programs/nqueens/nqueens.js");
     interp.assertInt("test();", 0);
 
+    writeln("merge sort");
     interp.load("programs/merge_sort/merge_sort.js");
     interp.assertInt("test();", 0);
 
+    writeln("matrix comp");
     interp.load("programs/matrix_comp/matrix_comp.js");
     interp.assertInt("test();", 10);
 

@@ -49,76 +49,201 @@ void optIR(IRFunction fun)
 {
     //writeln("peephole pass");
 
-    // Work list for blocks
-    IRBlock[] blockWL = [];
-
-    // Populate the work lists
-    for (auto block = fun.firstBlock; block !is null; block = block.next)
-    {
-        blockWL ~= block;
-    }
+    // CFG changed flag
+    bool changed = true;
 
     /// Remove and destroy a block
-    void delBlock(IRBlock block)
+    void delBlock(ref IRBlock block)
     {
-        // TODO: delBlock removal function
-        // TODO: queue up successors for re-examination before doing delBlock
-        // ISSUE: if we delete a block, we shouldn't be holding a reference to it...
-        // Need to scan the work list and remove references
+        //writeln("*** deleting block ", block.getName());
 
+        // Set the changed flag
+        changed = true;
 
-
-
-    }
-
-
-
-
-
-
-
-
-    // Until all work lists are empty
-    while (blockWL.length > 0)
-    {
-        // If there are blocks on the block work list
-        if (blockWL.length > 0)
+        // Check that the block has no incoming branches
+        version (unittest)
         {
-            // Remove a block from the work list
-            auto block = blockWL[$-1];
-            blockWL.length = blockWL.length - 1;
-
-            // If this block is dead, remove it
-            if (block.numIncoming is 0)
+            for (auto zblock = fun.firstBlock; zblock !is null; zblock = zblock.next)
             {
+                auto branch = zblock.lastInstr;
+                if (branch is null)
+                    continue;
 
-
-
-                // FIXME
-                /*
-                writeln("deleting block");
-                fun.delBlock(block);
-                writeln("block deleted");
-                */
-
-
-                // TODO: traverse fn and look for incoming branches?
-
-
+                for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
+                {
+                    auto target = branch.getTarget(tIdx);
+                    if (target !is null && target.succ is block)
+                        assert (false, "block is still target!");
+                }
             }
         }
 
+        // Remove and delete the block
+        fun.delBlock(block);
 
-        // TODO: If an instruction's block is removed...
-
-
-
-
-
-
-
-
+        //writeln("block deleted");
     }
+
+    // Remove and destroy a phi node
+    void delPhi(PhiNode phi)
+    {
+        //writeln("*** deleting phi node ", phi.getName());
+
+        // Set the changed flag
+        changed = true;
+
+        assert (phi.hasNoUses);
+
+        // Remove and delete the phi node
+        phi.block.delPhi(phi);
+
+        version (unittest)
+        {
+            for (auto block = fun.firstBlock; block !is null; block = block.next)
+            {
+                auto branch = block.lastInstr;
+                if (branch)
+                {
+                    for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
+                    {
+                        auto target = branch.getTarget(tIdx);
+                        if (target !is null)
+                        {
+                            assert (
+                                target.getPhiArg(phi) is null,
+                                "target has arg to deleted phi"
+                            );
+                        }
+                    }
+                }
+
+                for (auto zphi = block.firstPhi; zphi !is null; zphi = zphi.next)
+                {
+                    for (size_t iIdx = 0; iIdx < zphi.block.numIncoming; ++iIdx)
+                    {
+                        auto ibranch = zphi.block.getIncoming(iIdx);
+                        assert (ibranch !is null);
+                        auto arg = ibranch.getPhiArg(zphi);
+                        assert (
+                            arg !is phi, 
+                            "phi uses deleted phi in block:\n" ~
+                            zphi.block.getName()
+                        );
+                    }
+                }
+
+                for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+                {
+                    for (size_t i = 0; i < instr.numArgs; ++i)
+                    {
+                        auto arg = instr.getArg(i);
+                        assert (arg !is phi, "instr uses deleted phi");
+                    }
+                }
+            }
+        }
+
+        //writeln("phi deleted");
+    }
+
+    // Until there are no more changes;
+    for (size_t passNo = 1; changed is true; passNo++)
+    {
+        // Reset the changed flag
+        changed = false;
+
+        // For each block of the function
+        for (IRBlock nextBlock, block = fun.firstBlock; block !is null; block = nextBlock)
+        {
+            nextBlock = block.next;
+
+            // If this block has no incoming branches, remove it
+            if (block !is fun.entryBlock && block.numIncoming is 0)
+            {               
+                delBlock(block);
+                continue;
+            }
+
+            // For each phi node of the block
+            for (PhiNode nextPhi, phi = block.firstPhi; phi !is null; phi = nextPhi)
+            {
+                nextPhi = phi.next;
+
+                // Delete all phi assignments of the form:
+                // Vi <- phi(...Vi...Vi...)
+                // with 0+ Vi
+                //
+                // If a phi assignment has the form:
+                // Vi <- phi(...Vi...Vj...Vi...Vj...)
+                // with 0+ Vi and 1+ Vj (where Vi != Vj)
+                //
+                // Then delete the assignment and rename
+                // all occurences of Vi to Vj
+
+                //writeln("phi: ", phi.getName());
+
+                // If this phi node is a function parameter, skip it
+                if (cast(FunParam)phi)
+                    continue;
+
+                // If this phi node has no uses, remove it
+                if (phi.hasNoUses)
+                {
+                    delPhi(phi);
+                    continue;
+                }
+
+                size_t numVi = 0;
+                size_t numVj = 0;
+                IRValue Vj = null;
+
+                // Count the kinds of arguments to the phi node
+                for (size_t iIdx = 0; iIdx < phi.block.numIncoming; ++iIdx)
+                {
+                    auto branch = phi.block.getIncoming(iIdx);
+                    assert (branch !is null);
+                    auto arg = branch.getPhiArg(phi);
+
+                    if (arg is phi)
+                    {
+                        numVi++;
+                    }
+                    else if (arg is Vj || Vj is null)
+                    {
+                        numVj++;
+                        Vj = arg;
+                    }
+                }
+
+                // If this phi node has the form:
+                // Vi <- phi(...Vi...Vi...)
+                if (numVi == phi.block.numIncoming)
+                {
+                    // Remove the phi node
+                    delPhi(phi);
+                    continue;
+                }
+             
+                // If this phi assignment has the form:
+                // Vi <- phi(...Vi...Vj...Vi...Vj...)
+                // 0 or more Vi and 1 or more Vj
+                /*if (numVi + numVj == phi.block.numIncoming)
+                {
+                    //print('Renaming phi: ' + instr);
+
+                    // Rename all occurences of Vi to Vj
+                    phi.replUses(Vj);
+
+                    // Remove the phi node
+                    delPhi(phi);
+                    continue;
+                }*/
+
+            } // foreach phi
+
+        } // foreach block
+
+    } // while changed
 
     //writeln("peephole pass complete");
 }

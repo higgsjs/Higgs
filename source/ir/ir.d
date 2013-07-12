@@ -238,9 +238,6 @@ class IRFunction : IdObject
         block.prev = null;
         block.next = null;
         block.fun = null;
-
-        // Destroy the block
-        destroy(block);
     }
 }
 
@@ -314,6 +311,8 @@ class IRBlock : IdObject
 
         output.put(this.getName() ~ ":\n");
 
+        //writeln("printing phis");
+
         for (auto phi = firstPhi; phi !is null; phi = phi.next)
         {
             auto phiStr = phi.toString();
@@ -322,6 +321,8 @@ class IRBlock : IdObject
                 output.put("\n");
         }
 
+        //writeln("printing instrs");
+
         for (auto instr = firstInstr; instr !is null; instr = instr.next)
         {
             auto instrStr = instr.toString();
@@ -329,6 +330,8 @@ class IRBlock : IdObject
             if (instr.next !is null)
                 output.put("\n");
         }
+
+        //writeln("done");
 
         return output.data;
     }
@@ -417,9 +420,6 @@ class IRBlock : IdObject
         else
             lastInstr = instr.prev;
 
-
-
-
         // If this is a branch instruction
         if (instr.opcode.isBranch)
         {
@@ -427,28 +427,21 @@ class IRBlock : IdObject
             for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)            
             {
                 auto branch = instr.getTarget(tIdx);
-                branch.succ.remIncoming(branch);
+                if (branch !is null)
+                    branch.succ.remIncoming(branch);
             }
         }
 
-
-        // TODO: check that there are no uses of this instr
-
-
-        // TODO: remove uses of other values
-
-
-
-
-
-
+        // Unregister uses of other values
+        foreach (arg; instr.args)
+        {
+            assert (arg.value !is null);
+            arg.value.remUse(arg);
+        }
 
         instr.prev = null;
         instr.next = null;
         instr.block = null;
-
-        // Destroy the instruction
-        destroy(instr);
     }
 
     /**
@@ -498,13 +491,17 @@ class IRBlock : IdObject
         phi.prev = null;
         phi.next = null;
         phi.block = null;
-
-        // Destroy the phi node
-        destroy(phi);
     }
 
     void addIncoming(BranchDesc branch)
     {
+        version (unittest)
+        {
+            foreach (entry; incoming)
+                if (entry is branch)
+                    assert (false, "duplicate incoming branch");
+        }
+
         incoming ~= branch;
     }
 
@@ -607,8 +604,6 @@ class BranchDesc
     /// Remove the argument to a phi node
     void remPhiArg(PhiNode phi)
     {
-        writeln("******** REMOVING PHI ARG");
-
         // For each existing branch argument
         foreach (argIdx, arg; args)
         {
@@ -623,13 +618,15 @@ class BranchDesc
                 return;
             }
         }
+
+        assert (false, "phi arg not found");
     }
 }
 
 /**
 IR value use instance
 */
-class Use
+private class Use
 {
     this(IRValue value, IRDstValue owner)
     {
@@ -663,6 +660,12 @@ abstract class IRValue : IdObject
         assert (use.value is this);
         assert (use.owner !is null);
 
+        if (firstUse !is null)
+        {
+            assert (firstUse.prev is null);
+            firstUse.prev = use;
+        }
+
         use.prev = null;
         use.next = firstUse;
 
@@ -672,15 +675,45 @@ abstract class IRValue : IdObject
     /// Unregister a use of this value
     private void remUse(Use use)
     {
-        assert (use.value is this);
+        /*
+        FIXME
 
-        if (use.prev is null)
-            firstUse = null;
-        else
+        We have a situation where use.prev is null (no previous)
+        but the use being removed is not firstUse...
+        firstUse is null ***, as if we had no uses (never added?)
+
+        Could this problem occur because of removal?
+        if we have a next when removing (not last), we set its prev to our prev
+
+        Hypothesis: the use was never added, never registered.
+        must have some kind of bug in setPhiArg? ***
+        */
+
+        assert (
+            use.value is this,
+            "use does not point to this value"
+        );
+
+        if (use.prev !is null)
+        {
+            assert (firstUse !is use);
             use.prev.next = use.next;
+        }
+        else
+        {
+            assert (firstUse !is null);
+            assert (firstUse is use);
+            firstUse = use.next;
+        }
 
         if (use.next !is null)
+        {
             use.next.prev = use.prev;
+        }
+
+        use.prev = null;
+        use.next = null;
+        use.value = null;
     }
 
     /// Get the first use of this value
@@ -704,9 +737,11 @@ abstract class IRValue : IdObject
     /// Replace uses of this value by uses of another value
     void replUses(IRValue newVal)
     {
+        //assert (false, "replUses");
+
         assert (newVal !is null);
 
-        writefln("*** replUses of: %s, by: %s", this.toString(), newVal.toString());
+        //writefln("*** replUses of: %s, by: %s", this.toString(), newVal.toString());
 
         // Find the last use of the new value
         auto lastUse = newVal.firstUse; 
@@ -1138,7 +1173,6 @@ class IRInstr : IRDstValue
     void setArg(size_t idx, IRValue val)
     {
         assert (idx < args.length);
-
         assert (val !is null);
 
         // If this use is not yet initialized
@@ -1146,12 +1180,13 @@ class IRInstr : IRDstValue
         {
             args[idx] = new Use(val, this);
         }
-
-        // If a value is already set for this
-        // argument, remove the current use
-        else if (args[idx].value !is null)
+        else
         {
-            args[idx].value.remUse(args[idx]);
+            // If a value is already set for this
+            // argument, remove the current use
+            if (args[idx].value !is null)
+                args[idx].value.remUse(args[idx]);
+
             args[idx].value = val;
         }
 
@@ -1242,6 +1277,7 @@ class IRInstr : IRDstValue
             if (argIdx > 0)
                 output ~= ", ";
 
+            assert (arg.value !is null);
             output ~= arg.value.getName();
         }
 

@@ -105,10 +105,25 @@ bitwise-and-lp  3.3
 
 
 
+FIXME: phi replacement causes: incorrect integer value: 1, expected: 0
+- tachyon merge sort test fails, produces 1
 
 
 
 
+
+
+
+
+
+[DONE] FIXME: phi uses deleted phi
+- removing "first use", but firstUse is null... val already deleted?
+  - could we be marked as a use of ourself? should not be an issue?
+- Can't just destroy phi nodes or instrs when removing block
+  - May have other (dead, uncollected) uses still referencing them
+
+[DONE] FIXME: removing phi nodes always results in a seg fault? why?
+- printing some instr fails while printing args...
 
 [DONE] TODO: get jit.d compiling with JIT disabled
 
