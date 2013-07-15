@@ -91,18 +91,11 @@ TODO: jump to jump peephole opt
 
 
 
-TODO: int32 add const prop peephole opt
 
 
 
 
-
-
-
-
-
-
-
+[DONE] TODO: int32 add const prop peephole opt
 
 [DONE] TODO: fixup FFI
 - extract args into buffer

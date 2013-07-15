@@ -791,9 +791,12 @@ class IRConst : IRValue
         return valToString(value);
     }
 
-    ValuePair pair() { return value; }
-    Word word() { return value.word; }
-    Type type() { return value.type; }    
+    auto isInt32 () { return value.type == Type.INT32; }
+
+    auto pair() { return value; }
+    auto word() { return value.word; }
+    auto type() { return value.type; }
+    auto int32Val() { return value.word.int32Val; }
 
     static IRConst int32Cst(int32_t val)
     {

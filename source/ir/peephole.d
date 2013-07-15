@@ -242,6 +242,30 @@ void optIR(IRFunction fun)
 
             } // foreach phi
 
+            // For each instruction of the block
+            for (IRInstr nextInstr, instr = block.firstInstr; instr !is null; instr = nextInstr)
+            {
+                nextInstr = instr.next;
+
+                // Perform constant folding on int32 add instructions
+                if (instr.opcode == &ADD_I32)
+                {
+                    auto cst0 = cast(IRConst)instr.getArg(0);
+                    auto cst1 = cast(IRConst)instr.getArg(1);
+
+                    if (cst0 && cst1 && cst0.isInt32 && cst1.isInt32)
+                    {
+                        auto sum = cst0.int32Val + cst1.int32Val;
+                        if (sum >= int32_t.min && sum <= int32_t.max)
+                        {
+                            instr.replUses(IRConst.int32Cst(sum));
+                            block.delInstr(instr);
+                        }
+                    }
+                }
+
+            } // foreach instr
+
         } // foreach block
 
     } // while changed
