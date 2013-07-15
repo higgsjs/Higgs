@@ -83,17 +83,34 @@ TODO: smarter slot/register mapping pass
   - Provided they don't interfere (should monitor this, want this stat)
 - Ideally, values that share a phi target end up in same register
 
+TODO: if_true of phi opt pattern
+
+TODO: phi of phi opt pattern
+
 TODO: fixup liveness analysis to work with SSA
 - how often are phis live/interfering with their non-const arguments?
 
-TODO: jump to jump peephole opt
+
+
+[DONE] TODO: $nullptr
+- add unit test for typeof $nullptr, typeof $argc
+
+[DONE] TODO: in ir/ast.d, flip ctx arg to be first in *toIR functions
+
+[DONE] FIXME: null owner block for phi use
+- phi node is not attached to a block
+- have phi node use that was deleted, but not properly unregistered
+- PROBABLE: we make a block dead, and it has arguments to some phi
+  - branch is removed, but phi args never removed
+  - remIncoming should unregister all associated phi args
+
+[DONE] TODO: jump to jump peephole opt
 - block with only branch instr, no phi nodes
 
-
-
-
-
-
+[DONE] FIXME: jump to jump peephole doesn't seem to work when done with call
+and phi args are allowed...
+- ret instr in interpreter seems capable of handling phi args...
+- Need to set ret val before executing phis!
 
 [DONE] TODO: int32 add const prop peephole opt
 
@@ -107,7 +124,7 @@ TODO: jump to jump peephole opt
   - dead blocks
 - See if interp performance changes much
 bitwise-and     7.24    6.8-7.1
-nsieve-bits     77.6
+nsieve-bits     77.6    69
 
 [DONE] FIXME: GC bug after phi replacement, gc/closures
 - ops.d(613): pointer is not pointer type in load op

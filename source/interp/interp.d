@@ -794,6 +794,12 @@ class Interp
             return cstVal.pair();
         }
 
+        // If this is a raw pointer
+        if (auto rawPtrVal = cast(IRRawPtr)val)
+        {
+            return rawPtrVal.ptr;
+        }
+
         assert (
             false,
             "unsupported value in getValue: \"" ~ val.toString() ~ "\""
@@ -831,77 +837,6 @@ class Interp
 
         // Jump to the successor block
         jump(branch.succ);
-    }
-
-    /**
-    Execute the interpreter loop
-    */
-    void loop()
-    {
-        // While we have a target to branch to
-        while (target !is null)
-        {
-            // FIXME: temporary for SSA refactoring
-            /*
-            // If this block was executed often enough and 
-            // JIT compilation is enabled
-            if (target.execCount > JIT_COMPILE_COUNT &&
-                target.fun.codeBlock is null &&
-                opts.jit_disable == false)
-            {
-                // Compile the function this block belongs to
-                compFun(this, target.fun);
-            }
-            */
-
-            // If this block has an associated entry point
-            if (target.entryFn !is null)
-            {
-                auto entryFn = target.entryFn;
-                target = null;
-
-                //writefln("entering fn: %s (%s)", target.fun.getName(), target.getName());
-                entryFn();
-                //writefln("returned from fn");
-                continue;
-            }
-
-            // Increment the execution count for the block
-            target.execCount++;
-            
-            // Set the IP to the first instruction of the block
-            ip = target.firstInstr;
-
-            // Nullify the target pointer
-            target = null;
-
-            // Until the execution of the block is done
-            while (ip !is null)
-            {
-                // Get the current instruction
-                IRInstr instr = ip;
-
-                //writefln("op: %s", instr.opcode.mnem);
-     
-                // Get the opcode's implementation function
-                auto opFn = instr.opcode.opFn;
-
-                assert (
-                    opFn !is null,
-                    format(
-                        "unsupported opcode: %s",
-                        instr.opcode.mnem
-                    )
-                );
-
-                // Call the opcode's function
-                opFn(this, instr);
-
-                // Update the IP
-                ip = instr.next;
-            }
-
-        }
     }
 
     /**
@@ -983,6 +918,77 @@ class Interp
                 caller.callCounts[callInstr][fun] = 0;
 
             caller.callCounts[callInstr][fun]++;
+        }
+    }
+
+    /**
+    Execute the interpreter loop
+    */
+    void loop()
+    {
+        // While we have a target to branch to
+        while (target !is null)
+        {
+            // FIXME: temporary for SSA refactoring
+            /*
+            // If this block was executed often enough and 
+            // JIT compilation is enabled
+            if (target.execCount > JIT_COMPILE_COUNT &&
+                target.fun.codeBlock is null &&
+                opts.jit_disable == false)
+            {
+                // Compile the function this block belongs to
+                compFun(this, target.fun);
+            }
+            */
+
+            // If this block has an associated entry point
+            if (target.entryFn !is null)
+            {
+                auto entryFn = target.entryFn;
+                target = null;
+
+                //writefln("entering fn: %s (%s)", target.fun.getName(), target.getName());
+                entryFn();
+                //writefln("returned from fn");
+                continue;
+            }
+
+            // Increment the execution count for the block
+            target.execCount++;
+            
+            // Set the IP to the first instruction of the block
+            ip = target.firstInstr;
+
+            // Nullify the target pointer
+            target = null;
+
+            // Until the execution of the block is done
+            while (ip !is null)
+            {
+                // Get the current instruction
+                IRInstr instr = ip;
+
+                //writefln("op: %s", instr.opcode.mnem);
+     
+                // Get the opcode's implementation function
+                auto opFn = instr.opcode.opFn;
+
+                assert (
+                    opFn !is null,
+                    format(
+                        "unsupported opcode: %s",
+                        instr.opcode.mnem
+                    )
+                );
+
+                // Call the opcode's function
+                opFn(this, instr);
+
+                // Update the IP
+                ip = instr.next;
+            }
+
         }
     }
 

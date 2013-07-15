@@ -741,7 +741,8 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
 
     assert (
         v0.type == Type.CONST,
-        "input to if_true is not constant type"
+        "input to if_true is not constant type:\n" ~
+        instr.block.toString()
     );
 
     if (v0.word == TRUE)
@@ -933,9 +934,6 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         // Pop all local stack slots and arguments
         interp.pop(numLocals + extraArgs);
 
-        // Set the instruction pointer to the call continuation instruction
-        interp.branch(callInstr.getTarget(0));
-
         // Leave the return value in the call's return slot, if any
         if (callInstr.outSlot !is NULL_LOCAL)
         {
@@ -944,6 +942,9 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
                 retVal
             );
         }
+
+        // Set the instruction pointer to the call continuation instruction
+        interp.branch(callInstr.getTarget(0));
     }
     else
     {

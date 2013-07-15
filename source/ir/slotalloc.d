@@ -107,7 +107,8 @@ void allocSlots(IRFunction fun)
 
                 assert (
                     owner.block !is null, 
-                    "instr owner block is null"
+                    "owner instr block is null for: " ~
+                    owner.getName()
                 );
 
                 if (owner.block is instr.block)

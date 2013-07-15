@@ -858,12 +858,16 @@ unittest
     interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
 }
 
-/// Inline IR
+/// Inline IR and JS extensions
 unittest
 {
     writefln("inline IR");
 
     auto interp = new InterpNoStdLib();
+
+    interp.assertStr("typeof $undef", "undefined");
+    interp.assertStr("typeof $nullptr", "rawptr");
+    interp.assertStr("typeof $argc", "number");
 
     interp.assertInt("return $ir_add_i32(5,3);", 8);
     interp.assertInt("return $ir_sub_i32(5,3);", 2);

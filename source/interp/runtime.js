@@ -671,7 +671,7 @@ function $rt_typeof(v)
         return "rawptr";
     }
 
-    return "unhandled type in typeof";
+    throw TypeError("unhandled type in typeof");
 }
 
 //=============================================================================

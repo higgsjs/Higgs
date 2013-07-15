@@ -493,6 +493,9 @@ class IRBlock : IdObject
         phi.block = null;
     }
 
+    /**
+    Register an incoming branch on this block
+    */
     void addIncoming(BranchDesc branch)
     {
         version (unittest)
@@ -505,6 +508,9 @@ class IRBlock : IdObject
         incoming ~= branch;
     }
 
+    /**
+    Remove (unregister) an incoming branch
+    */
     void remIncoming(BranchDesc branch)
     {
         foreach (idx, entry; incoming)
@@ -513,6 +519,14 @@ class IRBlock : IdObject
             {
                 incoming[idx] = incoming[$-1];
                 incoming.length -= 1;
+
+                // Unregister the phi arguments
+                foreach (arg; branch.args)
+                    arg.value.remUse(arg);
+
+                branch.args = [];
+                branch.succ = null;
+
                 return;
             }
         }
@@ -675,20 +689,6 @@ abstract class IRValue : IdObject
     /// Unregister a use of this value
     private void remUse(Use use)
     {
-        /*
-        FIXME
-
-        We have a situation where use.prev is null (no previous)
-        but the use being removed is not firstUse...
-        firstUse is null ***, as if we had no uses (never added?)
-
-        Could this problem occur because of removal?
-        if we have a next when removing (not last), we set its prev to our prev
-
-        Hypothesis: the use was never added, never registered.
-        must have some kind of bug in setPhiArg? ***
-        */
-
         assert (
             use.value is this,
             "use does not point to this value"
@@ -1034,7 +1034,7 @@ class PhiNode : IRDstValue
 
         string output;
 
-        output ~= getName() ~ " = [";          
+        output ~= getName() ~ " = phi [";          
 
         // For each incoming branch
         foreach (descIdx, desc; block.incoming)

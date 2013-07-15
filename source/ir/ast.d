@@ -543,6 +543,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
         // Store the binding for the function
         assgToIR(
+            bodyCtx,
             funDecl.name,
             null,
             delegate IRValue(IRGenCtx ctx)
@@ -567,13 +568,12 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                 }
 
                 return newClos;
-            },
-            bodyCtx
+            }
         );
     }
 
     // Compile the function body
-    stmtToIR(ast.bodyStmt, bodyCtx);
+    stmtToIR(bodyCtx, ast.bodyStmt);
 
     // If the body has no final branch, compile a "return undefined;"
     if (!bodyCtx.hasBranch)
@@ -594,7 +594,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     return fun;
 }
 
-void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
+void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
 {
     //writeln("stmt to IR: ", stmt);
 
@@ -605,7 +605,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         foreach (s; blockStmt.stmts)
         {
             // Compile the statement in the current context
-            stmtToIR(s, ctx);
+            stmtToIR(ctx, s);
 
             // If a final branch was added, stop
             if (ctx.hasBranch)
@@ -624,13 +624,13 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
                 continue;
 
             assgToIR(
+                ctx,
                 ident,
                 null,
                 delegate IRValue(IRGenCtx ctx)
                 {
-                    return exprToIR(init, ctx);
-                },
-                ctx
+                    return exprToIR(ctx, init);
+                }
             );
         }
     }
@@ -642,7 +642,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto joinBlock = ctx.fun.newBlock("if_join");
 
         // Evaluate the test expression
-        auto testVal = exprToIR(ifStmt.testExpr, ctx);
+        auto testVal = exprToIR(ctx, ifStmt.testExpr);
 
         // Get the last instruction of the current block
         auto lastInstr = ctx.curBlock.lastInstr;
@@ -675,13 +675,13 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     
         // Compile the true statement
         auto trueCtx = ctx.subCtx(trueBlock);
-        stmtToIR(ifStmt.trueStmt, trueCtx);
+        stmtToIR(trueCtx, ifStmt.trueStmt);
         if (!trueCtx.hasBranch)
             trueCtx.jump(joinBlock);
 
         // Compile the false statement
         auto falseCtx = ctx.subCtx(falseBlock);
-        stmtToIR(ifStmt.falseStmt, falseCtx);
+        stmtToIR(falseCtx, ifStmt.falseStmt);
         if (!falseCtx.hasBranch)
             falseCtx.jump(joinBlock);
 
@@ -720,7 +720,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto entryLocals = testCtx.localMap.dup;        
 
         // Compile the loop test in the entry context
-        auto testVal = exprToIR(whileStmt.testExpr, testCtx);
+        auto testVal = exprToIR(testCtx, whileStmt.testExpr);
 
         // Convert the expression value to a boolean
         auto boolVal = genBoolEval(
@@ -734,7 +734,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Compile the loop body statement
         auto bodyCtx = testCtx.subCtx(bodyBlock);
-        stmtToIR(whileStmt.bodyStmt, bodyCtx);
+        stmtToIR(bodyCtx, whileStmt.bodyStmt);
 
         // Add the test exit to the break context list
         breakCtxLst ~= testCtx.subCtx();
@@ -785,12 +785,12 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto entryLocals = bodyCtx.localMap.dup;        
 
         // Compile the loop body statement
-        stmtToIR(doStmt.bodyStmt, bodyCtx);
+        stmtToIR(bodyCtx, doStmt.bodyStmt);
         bodyCtx.jump(testBlock);
 
         // Compile the loop test
         auto testCtx = bodyCtx.subCtx(testBlock);
-        auto testVal = exprToIR(doStmt.testExpr, testCtx);
+        auto testVal = exprToIR(testCtx, doStmt.testExpr);
 
         // Convert the expression value to a boolean
         auto boolVal = genBoolEval(
@@ -836,7 +836,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto exitBlock = ctx.fun.newBlock("for_exit");
 
         // Compile the init statement
-        stmtToIR(forStmt.initStmt, ctx);
+        stmtToIR(ctx, forStmt.initStmt);
 
         // Create a context for the loop entry (the loop test)
         IRGenCtx[] breakCtxLst = [];
@@ -855,7 +855,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto entryLocals = testCtx.localMap.dup;        
 
         // Compile the loop test in the entry context
-        auto testVal = exprToIR(forStmt.testExpr, testCtx);
+        auto testVal = exprToIR(testCtx, forStmt.testExpr);
 
         // Convert the expression value to a boolean
         auto boolVal = genBoolEval(
@@ -869,7 +869,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Compile the loop body statement
         auto bodyCtx = testCtx.subCtx(bodyBlock);
-        stmtToIR(forStmt.bodyStmt, bodyCtx);
+        stmtToIR(bodyCtx, forStmt.bodyStmt);
         if (!bodyCtx.hasBranch)
             bodyCtx.jump(incrBlock);
 
@@ -887,7 +887,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         );
 
         // Compile the increment expression
-        exprToIR(forStmt.incrExpr, incrCtx);
+        exprToIR(incrCtx, forStmt.incrExpr);
 
         // Merge the increment context with the entry block
         mergeLoopEntry(
@@ -917,7 +917,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         auto exitBlock = ctx.fun.newBlock("forin_exit");
 
         // Evaluate the object expression
-        auto objVal = exprToIR(forInStmt.inExpr, ctx);
+        auto objVal = exprToIR(ctx, forInStmt.inExpr);
 
         // Get the property enumerator
         auto enumVal = genRtCall(
@@ -959,17 +959,17 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Assign into the variable expression
         assgToIR(
+            bodyCtx,
             forInStmt.varExpr,
             null,
             delegate IRValue(IRGenCtx ctx)
             {
                 return callInstr;
-            },
-            bodyCtx
+            }
         );
 
         // Compile the loop body statement
-        stmtToIR(forInStmt.bodyStmt, bodyCtx);
+        stmtToIR(bodyCtx, forInStmt.bodyStmt);
 
         // Add the test exit to the break context list
         breakCtxLst ~= testCtx.subCtx();
@@ -999,7 +999,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     // Switch statement
     else if (auto switchStmt = cast(SwitchStmt)stmt)
     {
-        switchToIR(switchStmt, ctx);
+        switchToIR(ctx, switchStmt);
     }
 
     // Break statement
@@ -1017,7 +1017,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         {
             auto fnlCtx = fnl.ctx.subCtx(ctx.curBlock);
             fnlCtx.localMap = ctx.localMap.dup;
-            stmtToIR(fnl.stmt, fnlCtx);
+            stmtToIR(fnlCtx, fnl.stmt);
             ctx.merge(fnlCtx);
         }
 
@@ -1042,7 +1042,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         {
             auto fnlCtx = fnl.ctx.subCtx(ctx.curBlock);
             fnlCtx.localMap = ctx.localMap.dup;
-            stmtToIR(fnl.stmt, fnlCtx);
+            stmtToIR(fnlCtx, fnl.stmt);
             ctx.merge(fnlCtx);
         }
 
@@ -1059,7 +1059,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         if (retStmt.expr is null)
             retVal = IRConst.undefCst;
         else
-            retVal = exprToIR(retStmt.expr, ctx);
+            retVal = exprToIR(ctx, retStmt.expr);
 
         // Get the englobing finally statements
         IRGenCtx.FnlInfo[] fnlStmts;
@@ -1070,7 +1070,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         {
             auto fnlCtx = fnl.ctx.subCtx(ctx.curBlock);
             fnlCtx.localMap = ctx.localMap.dup;
-            stmtToIR(fnl.stmt, fnlCtx);
+            stmtToIR(fnlCtx, fnl.stmt);
             ctx.merge(fnlCtx);
         }
 
@@ -1083,7 +1083,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
     else if (auto throwStmt = cast(ThrowStmt)stmt)
     {
-        auto throwVal = exprToIR(throwStmt.expr, ctx);
+        auto throwVal = exprToIR(ctx, throwStmt.expr);
 
         // Generate the exception path
         if (auto excBlock = genExcPath(ctx, throwVal))
@@ -1118,7 +1118,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
         tryCtx.throwCtxs  = &throwCtxLst;
 
         // Compile the try statement
-        stmtToIR(tryStmt.tryStmt, tryCtx);
+        stmtToIR(tryCtx, tryStmt.tryStmt);
 
         // After the try statement, go to the finally block
         if (!tryCtx.hasBranch)
@@ -1138,7 +1138,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
             // Compile the catch statement, if present
             if (tryStmt.catchStmt !is null)
-                stmtToIR(tryStmt.catchStmt, catchCtx);
+                stmtToIR(catchCtx, tryStmt.catchStmt);
 
             // After the catch statement, go to the finally block
             if (!catchCtx.hasBranch)
@@ -1154,7 +1154,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
         // Compile the finally statement, if present
         if (tryStmt.finallyStmt !is null)
-            stmtToIR(tryStmt.finallyStmt, fnlCtx);
+            stmtToIR(fnlCtx, tryStmt.finallyStmt);
 
         // Continue the code generation after the finally statement
         ctx.merge(fnlCtx);
@@ -1162,7 +1162,7 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
 
     else if (auto exprStmt = cast(ExprStmt)stmt)
     {
-        exprToIR(exprStmt.expr, ctx);
+        exprToIR(ctx, exprStmt.expr);
     }
 
     else
@@ -1171,10 +1171,10 @@ void stmtToIR(ASTStmt stmt, IRGenCtx ctx)
     }
 }
 
-void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
+void switchToIR(IRGenCtx ctx, SwitchStmt stmt)
 {
     // Compile the switch expression
-    auto switchVal = exprToIR(stmt.switchExpr, ctx);
+    auto switchVal = exprToIR(ctx, stmt.switchExpr);
 
     // If there are no clauses in the switch statement, we are done
     if (stmt.caseExprs.length == 0)
@@ -1218,7 +1218,7 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 
         // Compile the case expression
         auto testCtx = switchCtx.subCtx(testBlock);
-        auto caseVal = exprToIR(caseExpr, testCtx);
+        auto caseVal = exprToIR(testCtx, caseExpr);
 
         // Test if the case expression matches
         auto cmpInstr = genRtCall(
@@ -1241,7 +1241,7 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 
         // Compile the case statements
         foreach (s; caseStmts)
-            stmtToIR(s, stmtCtx);
+            stmtToIR(stmtCtx, s);
 
         // Go to the next case block, skipping its test (fallthrough)
         if (!stmtCtx.hasBranch)
@@ -1259,7 +1259,7 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
 
     // Compile the default block
     foreach (s; stmt.defaultStmts)
-        stmtToIR(s, defaultCtx);
+        stmtToIR(defaultCtx, s);
 
     // Jump to the exit block
     if (!defaultCtx.hasBranch)
@@ -1279,7 +1279,7 @@ void switchToIR(SwitchStmt stmt, IRGenCtx ctx)
     ctx.merge(switchExit);
 }
 
-IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
+IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 {
     //writeln("expr to IR: ", expr);
 
@@ -1322,8 +1322,8 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
     {
         IRValue genBinOp(string rtFunName)
         {
-            auto lVal = exprToIR(binExpr.lExpr, ctx);
-            auto rVal = exprToIR(binExpr.rExpr, ctx);
+            auto lVal = exprToIR(ctx, binExpr.lExpr);
+            auto rVal = exprToIR(ctx, binExpr.rExpr);
 
             return genRtCall(
                 ctx, 
@@ -1348,13 +1348,13 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             }
 
             auto assgVal = assgToIR(
+                ctx,
                 binExpr.lExpr,
                 opFn,
                 delegate IRValue(IRGenCtx ctx)
                 {
-                    return exprToIR(binExpr.rExpr, ctx);
-                },
-                ctx
+                    return exprToIR(ctx, binExpr.rExpr);
+                }
             );
 
             return assgVal;
@@ -1444,10 +1444,10 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         else if (op.str == ",")
         {
             // Evaluate the left expression
-            exprToIR(binExpr.lExpr, ctx);
+            exprToIR(ctx, binExpr.lExpr);
 
             // Evaluate the right expression into this context's output
-            return exprToIR(binExpr.rExpr, ctx);
+            return exprToIR(ctx, binExpr.rExpr);
         }
 
         // Logical OR and logical AND
@@ -1459,7 +1459,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 
             // Evaluate the left expression
             auto fstCtx = ctx.subCtx();
-            auto fstVal = exprToIR(binExpr.lExpr, fstCtx);
+            auto fstVal = exprToIR(fstCtx, binExpr.lExpr);
 
             // Convert the expression value to a boolean
             auto boolVal = genBoolEval(
@@ -1478,7 +1478,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 
             // Evaluate the right expression
             auto secCtx = fstCtx.subCtx(secBlock);
-            auto secVal = exprToIR(binExpr.rExpr, secCtx);
+            auto secVal = exprToIR(secCtx, binExpr.rExpr);
             auto secBranch = secCtx.jump(exitBlock);
 
             // Merge the contexts from both branches
@@ -1510,7 +1510,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         if (op.str == "+")
         {   
-            auto subVal = exprToIR(unExpr.expr, ctx);
+            auto subVal = exprToIR(ctx, unExpr.expr);
 
             return genRtCall(
                 ctx, 
@@ -1521,7 +1521,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         else if (op.str == "-")
         {
-            auto subVal = exprToIR(unExpr.expr, ctx);
+            auto subVal = exprToIR(ctx, unExpr.expr);
 
             return genRtCall(
                 ctx, 
@@ -1533,7 +1533,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Bitwise negation
         else if (op.str == "~")
         {
-            auto subVal = exprToIR(unExpr.expr, ctx);
+            auto subVal = exprToIR(ctx, unExpr.expr);
 
             return genRtCall(
                 ctx, 
@@ -1545,29 +1545,20 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Typeof operator
         else if (op.str == "typeof")
         {
-            // If the subexpression is a global variable
+            IRValue exprVal;
+
+            // If the subexpression is an identifier
             if (auto identExpr = cast(IdentExpr)unExpr.expr)
             {
-                if (identExpr.declNode is null && identExpr.name != "this"w)
-                {
-                    auto globInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
-                    auto propStr = ctx.strVal(identExpr.name);
-                    auto getInstr = genRtCall(
-                        ctx, 
-                        "getProp",
-                        [globInstr, propStr]
-                    );
-
-                    return genRtCall(
-                        ctx, 
-                        "typeof", 
-                        [getInstr]
-                    );
-                }
+                // Evaluate the identifier, but don't throw
+                // an exception if it's a non-existent global
+                exprVal = refToIR(ctx, identExpr, false);
             }
-
-            // Evaluate the subexpression directly
-            auto exprVal = exprToIR(unExpr.expr, ctx);
+            else
+            {
+                // Evaluate the subexpression
+                exprVal = exprToIR(ctx, unExpr.expr);
+            }
 
             return genRtCall(
                 ctx, 
@@ -1585,8 +1576,8 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             // If the base expression is a member expression: a[b]
             if (auto indexExpr = cast(IndexExpr)unExpr.expr)
             {
-                objVal = exprToIR(indexExpr.base, ctx);
-                propVal = exprToIR(indexExpr.index, ctx);
+                objVal = exprToIR(ctx, indexExpr.base);
+                propVal = exprToIR(ctx, indexExpr.index);
             }
             else
             {
@@ -1595,7 +1586,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
                 if (auto identExpr = cast(IdentExpr)unExpr.expr)
                     propVal = ctx.strVal(identExpr.name);
                 else
-                    propVal = exprToIR(unExpr.expr, ctx);
+                    propVal = exprToIR(ctx, unExpr.expr);
             }
 
             return genRtCall(
@@ -1612,7 +1603,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto exitBlock = ctx.fun.newBlock("not_exit");
 
             // Evaluate the test expression
-            auto testVal = exprToIR(unExpr.expr, ctx);
+            auto testVal = exprToIR(ctx, unExpr.expr);
 
             // Convert the expression value to a boolean
             auto boolVal = genBoolEval(
@@ -1644,6 +1635,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         {
             // Perform the incrementation/decrementation and assignment
             return assgToIR(
+                ctx,
                 unExpr.expr,
                 delegate IRValue(IRGenCtx ctx, IRValue lArg, IRValue rArg)
                 {
@@ -1656,8 +1648,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
                 delegate IRValue(IRGenCtx ctx)
                 {
                     return IRConst.int32Cst(1);
-                },
-                ctx
+                }
             );
         }
         
@@ -1668,6 +1659,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 
             // Perform the incrementation/decrementation and assignment
             assgToIR(
+                ctx,
                 unExpr.expr,
                 delegate IRValue(IRGenCtx ctx, IRValue lArg, IRValue rArg)
                 {
@@ -1683,8 +1675,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
                 delegate IRValue(IRGenCtx ctx)
                 {
                     return IRConst.int32Cst(1);
-                },
-                ctx
+                }
             );
 
             return outVal;
@@ -1709,7 +1700,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto joinBlock  = ctx.fun.newBlock("cond_join");
 
         // Evaluate the test expression
-        auto testVal = exprToIR(condExpr.testExpr, ctx);
+        auto testVal = exprToIR(ctx, condExpr.testExpr);
 
         // Convert the expression value to a boolean
         auto boolVal = genBoolEval(
@@ -1727,12 +1718,12 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
 
         // Compile the true expression and assign into the output slot
         auto trueCtx = ctx.subCtx(trueBlock);
-        auto trueVal = exprToIR(condExpr.trueExpr, trueCtx);
+        auto trueVal = exprToIR(trueCtx, condExpr.trueExpr);
         auto trueBranch = trueCtx.jump(joinBlock);
 
         // Compile the false expression and assign into the output slot
         auto falseCtx = ctx.subCtx(falseBlock);
-        auto falseVal = exprToIR(condExpr.falseExpr, falseCtx);
+        auto falseVal = exprToIR(falseCtx, condExpr.falseExpr);
         auto falseBranch = falseCtx.jump(joinBlock);
 
         // Continue code generation in the join block
@@ -1763,7 +1754,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // If this is an inline IR instruction
         if (isIIR(callExpr))
         {
-            return genIIR(callExpr, ctx);
+            return genIIR(ctx, callExpr);
         }
 
         // Local slots for the closure and "this" arguments
@@ -1774,10 +1765,10 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         if (auto indexExpr = cast(IndexExpr)baseExpr)
         {
             // Evaluate the base (this) expression
-            thisVal = exprToIR(indexExpr.base, ctx);
+            thisVal = exprToIR(ctx, indexExpr.base);
 
             // Evaluate the index expression
-            auto keyVal = exprToIR(indexExpr.index, ctx);
+            auto keyVal = exprToIR(ctx, indexExpr.index);
 
             // Get the method property
             closVal = genRtCall(
@@ -1790,7 +1781,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         else
         {
             // Evaluate the base expression
-            closVal = exprToIR(baseExpr, ctx);
+            closVal = exprToIR(ctx, baseExpr);
 
             // The this value is the global object
             thisVal = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
@@ -1799,7 +1790,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         // Evaluate the arguments
         auto argVals = new IRValue[argExprs.length];
         foreach (argIdx, argExpr; argExprs)
-            argVals[argIdx] = exprToIR(argExpr, ctx);
+            argVals[argIdx] = exprToIR(ctx, argExpr);
 
         // Add the call instruction
         // <dstLocal> = CALL <fnLocal> <thisArg> ...
@@ -1822,12 +1813,12 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
         auto argExprs = newExpr.args;
 
         // Evaluate the base expression
-        auto closVal = exprToIR(baseExpr, ctx);
+        auto closVal = exprToIR(ctx, baseExpr);
 
         // Evaluate the arguments
         auto argVals = new IRValue[argExprs.length];
         foreach (argIdx, argExpr; argExprs)
-            argVals[argIdx] = exprToIR(argExpr, ctx);
+            argVals[argIdx] = exprToIR(ctx, argExpr);
 
         // Add the call instruction
         // <dstLocal> = CALL <fnLocal> <thisArg> ...
@@ -1845,10 +1836,10 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
     else if (auto indexExpr = cast(IndexExpr)expr)
     {
         // Evaluate the base expression
-        auto baseVal = exprToIR(indexExpr.base, ctx);
+        auto baseVal = exprToIR(ctx, indexExpr.base);
 
         // Evaluate the index expression
-        auto idxVal = exprToIR(indexExpr.index, ctx);
+        auto idxVal = exprToIR(ctx, indexExpr.index);
 
         // Get the property from the object
         return genRtCall(
@@ -1876,7 +1867,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto valExpr = arrayExpr.exprs[i];
 
             auto idxVal = IRConst.int32Cst(cast(int32_t)i);
-            auto propVal = exprToIR(valExpr, ctx);
+            auto propVal = exprToIR(ctx, valExpr);
 
             // Set the property on the object
             genRtCall(
@@ -1906,8 +1897,8 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
             auto strExpr = objExpr.names[i];
             auto valExpr = objExpr.values[i];
 
-            auto strVal = exprToIR(strExpr, ctx);
-            auto propVal = exprToIR(valExpr, ctx);
+            auto strVal = exprToIR(ctx, strExpr);
+            auto propVal = exprToIR(ctx, valExpr);
 
             // Set the property on the object
             genRtCall(
@@ -1923,66 +1914,7 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
     // Identifier/variable reference
     else if (auto identExpr = cast(IdentExpr)expr)
     {
-        // If this is the "this" argument
-        if (identExpr.name == "this")
-        {
-            return ctx.fun.thisVal;
-        }
-
-        // If this is the argument count argument
-        else if (identExpr.name == "$argc")
-        {
-            return ctx.fun.argcVal;
-        }
-
-        // If this is the undefined constant
-        else if (identExpr.name == "$undef")
-        {
-            return IRConst.undefCst;
-        }
-
-        // If this is the missing constant
-        else if (identExpr.name == "$missing")
-        {
-            return IRConst.missingCst;
-        }
-
-        // If the variable is global
-        else if (identExpr.declNode is null)
-        {
-            // Get the global value
-            return ctx.addInstr(new IRInstr(
-                &GET_GLOBAL,
-                new IRString(identExpr.name),
-                new IRCachedIdx()
-            ));
-        }
-
-        // If the variable is captured or escaping
-        else if (identExpr.declNode in ctx.fun.cellMap)
-        {
-            auto cellVal = ctx.fun.cellMap[identExpr.declNode];
-            return genRtCall(
-                ctx, 
-                "getCellVal",
-                [cellVal]
-            );
-        }
-
-        // The variable is local
-        else
-        {
-            assert (
-                identExpr.declNode in ctx.localMap,
-                "variable declaration not in local map: \"" ~ 
-                to!string(identExpr.name) ~ "\""
-            );
-
-            // Get the variable's value
-            auto value = ctx.localMap[identExpr.declNode];
-            //writefln("got local var value: %s", value);
-            return value;
-        }
+        return refToIR(ctx, identExpr);
     }
 
     else if (auto intExpr = cast(IntExpr)expr)
@@ -2043,6 +1975,98 @@ IRValue exprToIR(ASTExpr expr, IRGenCtx ctx)
     }
 }
 
+/**
+Generate IR to evaluate an identifier/variable reference
+*/
+IRValue refToIR(
+    IRGenCtx ctx,
+    IdentExpr identExpr,
+    bool useGetGlobal = true
+)
+{
+    // If this is the "this" argument
+    if (identExpr.name == "this")
+    {
+        return ctx.fun.thisVal;
+    }
+
+    // If this is the argument count argument
+    else if (identExpr.name == "$argc")
+    {
+        return ctx.fun.argcVal;
+    }
+
+    // If this is the undefined constant
+    else if (identExpr.name == "$undef")
+    {
+        return IRConst.undefCst;
+    }
+
+    // If this is the missing constant
+    else if (identExpr.name == "$missing")
+    {
+        return IRConst.missingCst;
+    }
+
+    // If this is the null pointer constant
+    else if (identExpr.name == "$nullptr")
+    {
+        return new IRRawPtr(null);
+    }
+
+    // If the variable is global
+    else if (identExpr.declNode is null)
+    {
+        if (useGetGlobal)
+        {
+            // Get the global value
+            return ctx.addInstr(new IRInstr(
+                &GET_GLOBAL,
+                new IRString(identExpr.name),
+                new IRCachedIdx()
+            ));
+        }
+        else
+        {
+            // Use getProp to get the global value
+            // This won't throw an exception if the global doesn't exist
+            auto globInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
+            auto propStr = ctx.strVal(identExpr.name);
+            return  genRtCall(
+                ctx, 
+                "getProp",
+                [globInstr, propStr]
+            );
+        }
+    }
+
+    // If the variable is captured or escaping
+    else if (identExpr.declNode in ctx.fun.cellMap)
+    {
+        auto cellVal = ctx.fun.cellMap[identExpr.declNode];
+        return genRtCall(
+            ctx, 
+            "getCellVal",
+            [cellVal]
+        );
+    }
+
+    // The variable is local
+    else
+    {
+        assert (
+            identExpr.declNode in ctx.localMap,
+            "variable declaration not in local map: \"" ~ 
+            to!string(identExpr.name) ~ "\""
+        );
+
+        // Get the variable's value
+        auto value = ctx.localMap[identExpr.declNode];
+        //writefln("got local var value: %s", value);
+        return value;
+    }
+}
+
 /// In-place operation delegate function
 alias IRValue delegate(IRGenCtx ctx, IRValue lArg, IRValue rArg) InPlaceOpFn;
 
@@ -2053,10 +2077,10 @@ alias IRValue delegate(IRGenCtx ctx) ExprEvalFn;
 Generate IR for an assignment expression
 */
 IRValue assgToIR(
+    IRGenCtx ctx,
     ASTExpr lhsExpr, 
     InPlaceOpFn inPlaceOpFn,
-    ExprEvalFn rhsExprFn, 
-    IRGenCtx ctx
+    ExprEvalFn rhsExprFn
 )
 {
     IRValue genRhs(
@@ -2090,7 +2114,7 @@ IRValue assgToIR(
             else
             {
                 // Evaluate the lhs value
-                lhsTemp = exprToIR(lhsExpr, ctx);
+                lhsTemp = exprToIR(ctx, lhsExpr);
             }
 
             // Generate the in-place operation
@@ -2144,10 +2168,10 @@ IRValue assgToIR(
     else if (auto indexExpr = cast(IndexExpr)lhsExpr)
     {
         // Evaluate the base expression
-        auto baseVal = exprToIR(indexExpr.base, ctx);
+        auto baseVal = exprToIR(ctx, indexExpr.base);
 
         // Evaluate the index expression
-        auto idxVal = exprToIR(indexExpr.index, ctx);
+        auto idxVal = exprToIR(ctx, indexExpr.index);
 
         // Compute the right expression
         auto rhsVal = genRhs(
@@ -2202,7 +2226,7 @@ bool isBranchIIR(ASTExpr expr)
 /**
 Generate an inline IR instruction
 */
-IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
+IRInstr genIIR(IRGenCtx ctx, ASTExpr expr)
 {
     assert (
         isIIR(expr), 
@@ -2251,7 +2275,7 @@ IRInstr genIIR(ASTExpr expr, IRGenCtx ctx)
         {
             // Local stack slot
             case OpArg.LOCAL:
-            argVal = exprToIR(argExpr, ctx);
+            argVal = exprToIR(ctx, argExpr);
             break;
 
             // Integer argument
@@ -2443,13 +2467,13 @@ IRBlock genExcPath(IRGenCtx ctx, IRValue excVal)
     {
         // Assign the exception value to the catch variable
         assgToIR(
+            excCtx,
             catchInfo.ident,
             null,
             delegate IRValue(IRGenCtx ctx)
             {
                 return excVal;
-            },
-            excCtx
+            }
         );
     }
 
@@ -2458,7 +2482,7 @@ IRBlock genExcPath(IRGenCtx ctx, IRValue excVal)
     {
         auto fnlCtx = fnl.ctx.subCtx(excCtx.curBlock);
         fnlCtx.localMap = excCtx.localMap.dup;
-        stmtToIR(fnl.stmt, fnlCtx);
+        stmtToIR(fnlCtx, fnl.stmt);
         excCtx.merge(fnlCtx);
     }
 

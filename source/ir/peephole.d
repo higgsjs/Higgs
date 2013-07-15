@@ -153,6 +153,7 @@ void optIR(IRFunction fun)
         changed = false;
 
         // For each block of the function
+        BLOCK_LOOP:
         for (IRBlock nextBlock, block = fun.firstBlock; block !is null; block = nextBlock)
         {
             nextBlock = block.next;
@@ -161,10 +162,11 @@ void optIR(IRFunction fun)
             if (block !is fun.entryBlock && block.numIncoming is 0)
             {               
                 delBlock(block);
-                continue;
+                continue BLOCK_LOOP;
             }
 
             // For each phi node of the block
+            PHI_LOOP:
             for (PhiNode nextPhi, phi = block.firstPhi; phi !is null; phi = nextPhi)
             {
                 nextPhi = phi.next;
@@ -243,6 +245,7 @@ void optIR(IRFunction fun)
             } // foreach phi
 
             // For each instruction of the block
+            INSTR_LOOP:
             for (IRInstr nextInstr, instr = block.firstInstr; instr !is null; instr = nextInstr)
             {
                 nextInstr = instr.next;
@@ -260,6 +263,41 @@ void optIR(IRFunction fun)
                         {
                             instr.replUses(IRConst.int32Cst(sum));
                             block.delInstr(instr);
+                            continue INSTR_LOOP;
+                        }
+                    }
+                }
+
+                // If this is a branch instruction
+                if (instr.opcode.isBranch)
+                {
+                    // For each branch edge from this instruction
+                    for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
+                    {
+                        auto branch = instr.getTarget(tIdx);
+                        if (branch is null)
+                            continue;
+
+                        // Get the first instruction of the successor
+                        auto firstInstr = branch.succ.firstInstr;
+
+                        // If the branch has no phi args and the target is a jump
+                        if (branch.args.length is 0 && firstInstr.opcode is &JUMP)
+                        {
+                            assert (branch.succ.firstPhi is null);
+                            auto jmpBranch = firstInstr.getTarget(0);
+
+                            //writeln("instr block:\n", instr.block.toString);
+                            //writeln("jump block:\n", branch.succ.toString);
+                            //writeln("num phis: ", jmpBranch.args.length);
+
+                            // Branch directly to the target ot the jump
+                            auto newBranch = instr.setTarget(tIdx, jmpBranch.succ);
+                            foreach (arg; jmpBranch.args)
+                                newBranch.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+
+                            changed = true;
+                            continue INSTR_LOOP;
                         }
                     }
                 }
@@ -271,5 +309,6 @@ void optIR(IRFunction fun)
     } // while changed
 
     //writeln("peephole pass complete");
+    //writeln(fun);
 }
 
