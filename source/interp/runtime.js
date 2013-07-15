@@ -192,6 +192,8 @@ function $rt_getCellVal(cell)
     var word = $rt_cell_get_word(cell);
     var type = $rt_cell_get_type(cell);
 
+    //print('getCellVal: ' + $ir_set_value(word, 0));
+
     return $ir_set_value(word, type);
 }
 
@@ -659,6 +661,14 @@ function $rt_typeof(v)
 
         if ($ir_eq_i8(type, $rt_LAYOUT_CLOS))
             return "function";
+
+        if ($ir_eq_i8(type, $rt_LAYOUT_CELL))
+            return "cell";
+    }
+
+    if ($ir_is_rawptr(v))
+    {
+        return "rawptr";
     }
 
     return "unhandled type in typeof";

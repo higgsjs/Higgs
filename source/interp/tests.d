@@ -1272,6 +1272,7 @@ unittest
     interp.load("programs/regress/tostring.js");
     interp.load("programs/regress/loop_labels.js");
     interp.load("programs/regress/new_array.js");
+    interp.load("programs/regress/loop_swap.js");
 
     interp.load("programs/regress/delta.js");
     interp.load("programs/regress/raytrace.js");
@@ -1424,22 +1425,34 @@ unittest
         1000
     );
 
+    writefln("gc/collect");
+
     interp = new Interp();
     interp.load("programs/gc/collect.js");
     interp.assertInt("test();", 0);
 
+    writefln("gc/objects");
+
     interp = new Interp();
     interp.load("programs/gc/objects.js");
 
+    writefln("gc/arrays");
+
     interp = new Interp();
     interp.load("programs/gc/arrays.js");
+
+    writefln("gc/closures");
 
     interp = new Interp();
     interp.load("programs/gc/closures.js");
     interp.assertInt("test();", 0);
 
+    writefln("gc/objext");
+
     interp = new Interp();
     interp.load("programs/gc/objext.js");
+
+    writefln("gc/deepstack");
   
     interp = new Interp();
     interp.load("programs/gc/deepstack.js");

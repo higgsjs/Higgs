@@ -8,7 +8,7 @@ function closTest(freeSpace)
 
     while ($ir_get_gc_count() < gcCount + 1)
     {
-        clos = function () { a++; }
+        var clos = function () { a++; }
 
         clos();
     }

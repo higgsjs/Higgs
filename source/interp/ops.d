@@ -37,7 +37,6 @@
 
 module interp.ops;
 
-import core.stdc.stdlib;
 import core.sys.posix.dlfcn;
 import std.stdio;
 import std.algorithm;
@@ -768,9 +767,12 @@ extern (C) void op_call(Interp interp, IRInstr instr)
     write("\n");
     */
 
-    // Stack-allocate an array for the argument values
     auto argCount = cast(uint32_t)instr.numArgs - 2;
-    auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argCount);
+
+    // Allocate temporary storage for the argument values
+    if (argCount > interp.tempVals.length)
+        interp.tempVals.length = argCount;
+    auto argVals = interp.tempVals.ptr;
 
     // Fetch the argument values
     for (size_t i = 0; i < argCount; ++i)
@@ -831,9 +833,10 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
     // Stack-allocate an array for the argument values
     auto argCount = cast(uint32_t)instr.numArgs - 1;
 
-    // FIXME: temporary until bug in DMD 2.063 is fixed
-    //auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argCount);
-    auto argVals = cast(ValuePair*)malloc(ValuePair.sizeof * argCount);
+    // Allocate temporary storage for the argument values
+    if (argCount > interp.tempVals.length)
+        interp.tempVals.length = argCount;
+    auto argVals = interp.tempVals.ptr;
 
     // Fetch the argument values
     for (size_t i = 0; i < argCount; ++i)
@@ -848,9 +851,6 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
         argCount,
         argVals
     );
-
-    // FIXME: temporary until bug in DMD 2.063 is fixed
-    free(argVals);
 }
 
 extern (C) void op_call_apply(Interp interp, IRInstr instr)
@@ -858,7 +858,7 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
     auto closVal = interp.getArgVal(instr, 0);
     auto thisVal = interp.getArgVal(instr, 1);
     auto tblVal = interp.getArgVal(instr, 2);
-    auto argc = interp.getArgUint32(instr, 3);
+    auto argCount = interp.getArgUint32(instr, 3);
 
     if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
         return throwError(interp, instr, "TypeError", "call to non-function");
@@ -873,11 +873,13 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
     // Get the array table pointer
     auto tblPtr = tblVal.word.ptrVal;
 
-    // Stack-allocate an array for the argument values
-    auto argVals = cast(ValuePair*)alloca(ValuePair.sizeof * argc);
+    // Allocate temporary storage for the argument values
+    if (argCount > interp.tempVals.length)
+        interp.tempVals.length = argCount;
+    auto argVals = interp.tempVals.ptr;
 
     // Fetch the argument values from the array table
-    for (uint32_t i = 0; i < argc; ++i)
+    for (uint32_t i = 0; i < argCount; ++i)
     {
         argVals[i].word.uint64Val = arrtbl_get_word(tblPtr, i);
         argVals[i].type = cast(Type)arrtbl_get_type(tblPtr, i);
@@ -889,7 +891,7 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
         closPtr,
         thisVal.word,
         thisVal.type,
-        argc,
+        argCount,
         argVals
     );
 }
@@ -1282,11 +1284,13 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
         protoStr.ptr,
         objPtr.pair
     );
-   
+
     assert (
         clos_get_next(closPtr.ptr) == null,
         "closure next pointer is not null"
     );
+
+    //writeln("final clos ptr: ", closPtr.ptr);
 
     // Output a pointer to the closure
     interp.setSlot(

@@ -227,17 +227,18 @@ void optIR(IRFunction fun)
                 // If this phi assignment has the form:
                 // Vi <- phi(...Vi...Vj...Vi...Vj...)
                 // 0 or more Vi and 1 or more Vj
-                /*if (numVi + numVj == phi.block.numIncoming)
+                if (numVi + numVj == phi.block.numIncoming)
                 {
                     //print('Renaming phi: ' + instr);
 
                     // Rename all occurences of Vi to Vj
+                    assert (!Vj.hasNoUses);
                     phi.replUses(Vj);
 
                     // Remove the phi node
                     delPhi(phi);
                     continue;
-                }*/
+                }
 
             } // foreach phi
 

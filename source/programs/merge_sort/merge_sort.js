@@ -77,13 +77,9 @@ function merge_sort(o)
 
             do
             {
-                //array_print(a1);
-
                 var start = ((len-1)>>(k+1))<<(k+1);
                 var j_end = len;
-                var i_end = start+size;;
-
-                //printBox(start);
+                var i_end = start+size;
 
                 if (i_end > len)
                     i_end = len;
@@ -160,9 +156,8 @@ function array_eq(a1, a2)
 
 function array_print(a)
 {
-    printBox('array:');
     for (var i = 0; i < a.length; ++i)
-        printBox(a[i]);
+        print(a[i]);
 }
 
 function test()
@@ -173,7 +168,12 @@ function test()
 
     var b = [-33,-5,0,3,7,12,15];
 
-    //array_print(a);
+    /*
+    print('result:');
+    array_print(a);
+    print('expected:');
+    array_print(b);
+    */
 
     if (!array_eq(a, b))
         return 1;

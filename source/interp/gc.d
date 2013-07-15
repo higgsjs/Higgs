@@ -357,7 +357,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     // to eliminate any unprocessed references to the from space
     for (int64* p = cast(int64*)interp.wStack; p < cast(int64*)interp.wsp; p++)
         *p = 0;
-    for (int64* p = cast(int64*)interp.tStack; p < cast(int64*)interp.tsp; p++)
+    for (int8* p = cast(int8*)interp.tStack; p < cast(int8*)interp.tsp; p++)
         *p = 0;
 
     //writefln("old live funs count: %s", interp.funRefs.length);
@@ -608,10 +608,13 @@ void visitStackRoots(Interp interp)
         // Visit the function this stack frame belongs to
         visitFun(interp, fun);
 
+        //writeln("visiting frame for: ", fun.getName());
+        //writeln("frame size: ", frameSize);
+
         // For each local in this frame
         for (LocalIdx idx = 0; idx < frameSize; ++idx)
         {
-            //writefln("ref %s/%s", idx+1, frameSize);
+            //writefln("ref %s/%s", idx, frameSize);
 
             Word word = wsp[idx];
             Type type = tsp[idx];

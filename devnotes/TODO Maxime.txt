@@ -86,35 +86,49 @@ TODO: smarter slot/register mapping pass
 TODO: fixup liveness analysis to work with SSA
 - how often are phis live/interfering with their non-const arguments?
 
+TODO: jump to jump peephole opt
+
+TODO: int32 const prop peephole opt
+
 TODO: fixup FFI
 - extract args into alloca'd buffer
 
-TODO: basic IR peephole pass
+
+
+[DONE] TODO: basic IR peephole pass
 - look at irString for primitives, add, getProp, etc before and after
 - opts:
-  - phi node: one pred, zero preds, args to missing phis?
-  - basic const prop
-  - jump to jump
-- Try to optimize a little, changedblocks list, work list?
-- See if interp performance changes much ***
-bitwise-and     7.24
+  - phi node opts
+  - dead blocks
+- See if interp performance changes much
+bitwise-and     7.24    6.8-7.1
 nsieve-bits     77.6
-bitwise-and-lp  3.3
 
+[DONE] FIXME: GC bug after phi replacement, gc/closures
+- ops.d(613): pointer is not pointer type in load op
+- new_clos triggers the collection
+  - clos allocation itself triggers collection
+- crashes in $rt_cell_get_word, inside of closure code
+- cell pointer set to wrong value? or maybe in wrong closure?
+  - very unlikely
+  - we are calling the right closure object
+- cell pointer we got from closure (clos ptr arg to call) is wrong?
+- final get seems to be what fails...
+  - adding prints in test function or getCellVal seems to make this issue go away
+- As soon as the GC executes, tsp[3] becomes corrupted. How is this possible?
+- GC corrupts type stack when zeroing it out using wrong pointer type!
 
-
-
-
-FIXME: phi replacement causes: incorrect integer value: 1, expected: 0
+[DONE] FIXME: phi replacement causes: incorrect integer value: 1, expected: 0
 - tachyon merge sort test fails, produces 1
+- resulting array has permutations but is quite wrong
+- lots of nested loops and ifs
+- The array swapping fails in the phi replacement version
+  - Minimal swap test fails with or without phi replacement
 
-
-
-
-
-
-
-
+[DONE] FIXME: phi moves don't swap properly... would have to all be simultaneous
+- could load all arg values into a temp vector, then copy temp vector?
+- preallocate temp vector for phi, calls in interp, not that inefficient!
+- eliminate alloca
 
 [DONE] FIXME: phi uses deleted phi
 - removing "first use", but firstUse is null... val already deleted?

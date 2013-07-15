@@ -741,7 +741,7 @@ abstract class IRValue : IdObject
 
         assert (newVal !is null);
 
-        //writefln("*** replUses of: %s, by: %s", this.toString(), newVal.toString());
+        //writefln("*** replUses of: %s, by: %s", this.toString(), newVal.getName());
 
         // Find the last use of the new value
         auto lastUse = newVal.firstUse; 
@@ -755,12 +755,14 @@ abstract class IRValue : IdObject
         // Chain all our uses at end of the new value's uses
         if (lastUse !is null)
         {
+            assert (lastUse.next is null);
             lastUse.next = this.firstUse;
             if (this.firstUse !is null)
                 this.firstUse.prev = lastUse;
         }
         else
         {
+            assert (newVal.firstUse is null);
             newVal.firstUse = this.firstUse;
         }
 

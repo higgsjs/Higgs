@@ -357,6 +357,9 @@ class Interp
     /// Free link table entries
     uint32[] linkTblFree;
 
+    /// Temporary value array
+    ValuePair[] tempVals;
+
     /// Branch target block
     IRBlock target = null;
 
@@ -814,15 +817,17 @@ class Interp
     */
     void branch(BranchDesc branch)
     {
-        // For each phi node argument
-        foreach (argIdx, arg; branch.args)
-        {
-            auto inVal = arg.value;
-            auto phiNode = arg.owner;
+        // Allocate temp space for the values
+        if (tempVals.length < branch.args.length)
+            tempVals.length = branch.args.length;
 
-            auto value = getValue(inVal);
-            setSlot(phiNode.outSlot, value);
-        }
+        // Extract the argument values into the temp array
+        foreach (argIdx, arg; branch.args)
+            tempVals[argIdx] = getValue(arg.value);
+
+        // Set the phi values from the temp array
+        foreach (argIdx, arg; branch.args)
+            setSlot(arg.owner.outSlot, tempVals[argIdx]);
 
         // Jump to the successor block
         jump(branch.succ);
@@ -914,6 +919,7 @@ class Interp
     {
         //writefln("call to %s (%s)", fun.name, cast(void*)fun);
         //writefln("num args: %s", argCount);
+        //writeln("clos ptr: ", closPtr);
 
         assert (
             fun !is null, 
