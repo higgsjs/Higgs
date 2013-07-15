@@ -52,9 +52,10 @@ import ir.ir;
 
 Type[string] typeMap;
 X86Reg funReg;
+X86Reg argsReg;
 X86Reg scratchReg;
 
-alias extern (C) void function(void*) FFIFn;
+alias extern (C) void function(void*, ValuePair*) FFIFn;
 
 static this()
 {
@@ -67,22 +68,26 @@ static this()
 
     // Registers used by the wrapper
     funReg = R12;
-    scratchReg = R11;
+    argsReg = R11;
+    scratchReg = R10;
 }
 
-CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] argSlots)
+CodeBlock genFFIFn(
+    Interp interp, 
+    string[] types, 
+    LocalIdx outSlot, 
+    size_t argCount
+)
 {
-    /*
     // Track register usage for args
     auto iArgIdx = 0;
     auto fArgIdx = 0;
+
     // Return type of the FFI call
     auto retType = types[0];
+
     // Argument types the call expects
     auto argTypes = types[1..$];
-    // Arguments to pass via the stack
-    LocalIdx[] stackArgs;
-    */
 
     auto as = new Assembler();
 
@@ -100,38 +105,65 @@ CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] a
     // Fun* goes in R12
     as.instr(MOV, funReg, RDI);
 
+    // Args* goes into R11
+    as.instr(MOV, argsReg, RSI);
+
     // Load the stack pointers into wspReg and tspReg
     as.getMember!("Interp", "wsp")(wspReg, interpReg);
     as.getMember!("Interp", "tsp")(tspReg, interpReg);
 
-    /*
+    // Indices of arguments to be pushed on the stack
+    size_t stackArgs[];
+
+    static assert (ValuePair.word.offsetof == 0);
+
     // Set up arguments
-    foreach(int i, idx; argSlots)
+    for (int idx = 0; idx < argCount; ++idx)
     {
         // Either put the arg in the appropriate register
         // or set it to be pushed to the stack later
-        if (argTypes[i] == "f64" && fArgIdx < cfpArgRegs.length)
-            as.getWord(cfpArgRegs[fArgIdx++], idx);
-        else if (argTypes[i] != "f64" && iArgIdx < cargRegs.length)
-            as.getWord(cargRegs[iArgIdx++], idx);
+        if (argTypes[idx] == "f64" && fArgIdx < cfpArgRegs.length)
+        {
+            as.instr(
+                MOVQ, 
+                cfpArgRegs[fArgIdx++], 
+                new X86Mem(64, argsReg, cast(int)(ValuePair.sizeof * idx))
+            );
+        }
+        else if (argTypes[idx] != "f64" && iArgIdx < cargRegs.length)
+        {
+            as.instr(
+                MOV,
+                cargRegs[iArgIdx++], 
+                new X86Mem(64, argsReg, cast(int)(ValuePair.sizeof * idx))
+            );
+        }
         else
+        {
             stackArgs ~= idx;
+        }
     }
 
     // Make sure there is an even number of pushes
     if (stackArgs.length % 2 != 0)
         as.instr(PUSH, scratchReg);
 
+    // Push the stack arguments, in reverse order
     foreach_reverse (idx; stackArgs)
     {
-        as.getWord(scratchReg, idx);
+        as.instr(
+            MOV, 
+            scratchReg,
+            new X86Mem(64, argsReg, cast(int)(ValuePair.sizeof * idx))
+        );
+
         as.instr(PUSH, scratchReg);
     }
 
-    // Fun* call
+    // Call the C function
     as.instr(jit.encodings.CALL, funReg);
 
-    // Send return value/type to interp
+    // Send return value/type to interpreter
     if (retType == "f64")
     {
         as.setWord(outSlot, XMM0);
@@ -148,14 +180,13 @@ CodeBlock genFFIFn(Interp interp, string[] types, LocalIdx outSlot, LocalIdx[] a
         as.setType(outSlot, typeMap[retType]);
     }
 
-    // Remove stackArgs
+    // Pop the stack arguments
     foreach (idx; stackArgs)
         as.instr(POP, scratchReg);
 
     // Make sure there is an even number of pops
     if (stackArgs.length % 2 != 0)
         as.instr(POP, scratchReg);
-    */
 
     // Store the stack pointers back in the interpreter
     as.setMember!("Interp", "wsp")(interpReg, wspReg);
@@ -224,8 +255,6 @@ extern (C)
     }
 }
 
-// FIXME
-/*
 unittest
 {
     writefln("FFI");
@@ -233,5 +262,4 @@ unittest
     auto interp = new Interp();
     interp.load("programs/ffi/ffi.js");
 }
-*/
 

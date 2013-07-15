@@ -1513,12 +1513,8 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
     auto cbArg = cast(IRCodeBlock)instr.getArg(0);
     assert (cbArg !is null);
 
-    CodeBlock cb;
-
-
-    // FIXME: temporary for SSA refactoring
-    assert (false);
-
+    // Get the argument count
+    auto argCount = instr.numArgs - 3;
 
     // Check if there is a cached CodeBlock, generate one if not
     if (cbArg.codeBlock is null)
@@ -1529,37 +1525,28 @@ extern (C) void op_call_ffi(Interp interp, IRInstr instr)
         auto typeinfo = to!string(typeArg.str);
         auto types = split(typeinfo, ",");
 
-        // Slots for arguments
-        LocalIdx[] argSlots;
-
-
-        // TODO: extract arg values as op_call does, not arg slots
-        // TODO: use alloca to allocate ValuePair[]
-        /*
-        foreach (a; instr.args[3..$])
-            argSlots ~= a.localIdx;
-
         assert (
-            argSlots.length == types.length - 1,
+            argCount == types.length - 1,
             "invalid number of args in ffi call"
         );
-        */
 
-
-
-
-
-
-        cb = genFFIFn(interp, types, instr.outSlot, /*argSlots*/null);
-        cbArg.codeBlock = cb;
-    }
-    else
-    {
-        cb = cbArg.codeBlock;
+        // Compile the call stub
+        cbArg.codeBlock = genFFIFn(interp, types, instr.outSlot, argCount);
     }
 
-    FFIFn callerfun = cast(FFIFn)(cb.getAddress());
-    callerfun(cast(void*)funArg.word.ptrVal);
+    // Allocate temporary storage for the argument values
+    if (argCount > interp.tempVals.length)
+        interp.tempVals.length = argCount;
+    auto argVals = interp.tempVals.ptr;
+
+    // Fetch the argument values
+    for (size_t i = 0; i < argCount; ++i)
+        argVals[i] = interp.getArgVal(instr, 3 + i);
+
+    // Call the call stub passing the function
+    // pointer argument array pointers as arguments
+    FFIFn callerfun = cast(FFIFn)(cbArg.codeBlock.getAddress());
+    callerfun(cast(void*)funArg.word.ptrVal, argVals);
 
     // Branch to the continuation target of the call_ffi instruction
     interp.branch(instr.getTarget(0));
