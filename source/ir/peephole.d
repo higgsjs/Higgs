@@ -249,9 +249,18 @@ void optIR(IRFunction fun)
             for (IRInstr nextInstr, instr = block.firstInstr; instr !is null; instr = nextInstr)
             {
                 nextInstr = instr.next;
+                auto op = instr.opcode;
+
+                // If this instruction has no uses and is pure, remove it
+                if (instr.hasNoUses && !op.isImpure && !op.isBranch)
+                {
+                    //writeln("removing dead: ", instr);
+                    block.delInstr(instr);
+                    continue INSTR_LOOP;
+                }
 
                 // Perform constant folding on int32 add instructions
-                if (instr.opcode == &ADD_I32)
+                if (op == &ADD_I32)
                 {
                     auto cst0 = cast(IRConst)instr.getArg(0);
                     auto cst1 = cast(IRConst)instr.getArg(1);
@@ -269,7 +278,7 @@ void optIR(IRFunction fun)
                 }
 
                 // If this is a branch instruction
-                if (instr.opcode.isBranch)
+                if (op.isBranch)
                 {
                     // For each branch edge from this instruction
                     for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)

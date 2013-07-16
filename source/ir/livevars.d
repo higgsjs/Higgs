@@ -44,15 +44,27 @@ import ir.ir;
 import util.bitset;
 import util.string;
 
-BitSet[IRInstr] compLiveVars(IRFunction fun)
+/**
+FIXME: better data structure for liveness???
+Need to fit phi nodes in here too
+
+Produces a bit set of live output slots after each instruction
+*/
+/*BitSet[IRDstValue]*/ void compLiveVars(IRFunction fun)
 {
     assert (
         fun.entryBlock !is null,
         "function has no IR"
     );
 
+
+
     // Sets of variables live after each instruction
-    BitSet[IRInstr] liveSets;
+    //BitSet[IRInstr] liveSets;
+
+
+
+
 
     /*
     // Initialize the maps for each instruction
@@ -163,6 +175,12 @@ BitSet[IRInstr] compLiveVars(IRFunction fun)
     writefln("");
     */
 
-    return liveSets;
+
+
+
+
+
+
+    //return liveSets;
 }
 

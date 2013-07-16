@@ -84,13 +84,35 @@ TODO: smarter slot/register mapping pass
 - Ideally, values that share a phi target end up in same register
 
 TODO: if_true of phi opt pattern
+- see $rt_add
 
 TODO: phi of phi opt pattern
+- see $rt_add
 
 TODO: fixup liveness analysis to work with SSA
-- how often are phis live/interfering with their non-const arguments?
+- how often are phis live/interfering with their non-const arguments? ***
+- better liveness data structure?
+- could have dead/kill points for values?
+  - if no uses, immediately dead
+  - can die on branches
+- Don't actually want to insert kill points in the IR?
+
+TODO: read SSA liveness PDF
 
 
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: remove dead instrs peephole
+- hasNoUses, !opcode.isImpure, !opcode.isBranch
+- Actually very few dead instrs, probably a good thing
 
 [DONE] TODO: $nullptr
 - add unit test for typeof $nullptr, typeof $argc

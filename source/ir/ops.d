@@ -271,7 +271,7 @@ Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str, OpInfo.MAY_GC };
 
 /// GET_GLOBAL <propName>
 /// Note: hidden parameter is cached global property index
-Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT32], &op_get_global, OpInfo.MAY_GC };
+Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT32], &op_get_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// SET_GLOBAL <propName> <value>
 /// Note: hidden parameter is cached global property index

@@ -203,8 +203,10 @@ void compFun(Interp interp, IRFunction fun)
         inlinePass(interp, fun);
     }
 
+    // FIXME
     // Run a live variable analysis on the function
-    auto liveSets = compLiveVars(fun);
+    BitSet[IRInstr] liveSets;
+    //auto liveSets = compLiveVars(fun);
 
     // Assign a register mapping to each temporary
     auto regMapping = mapRegs(fun, liveSets);
