@@ -788,8 +788,17 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         stmtToIR(bodyCtx, doStmt.bodyStmt);
         bodyCtx.jump(testBlock);
 
-        // Compile the loop test
-        auto testCtx = bodyCtx.subCtx(testBlock);
+        // Add the body exit to the continue context list
+        contCtxLst ~= bodyCtx;
+
+        // Merge the continue contexts
+        auto testCtx = mergeContexts(
+            ctx,
+            contCtxLst,
+            testBlock
+        );
+
+        // Compile the loop test expression
         auto testVal = exprToIR(testCtx, doStmt.testExpr);
 
         // Convert the expression value to a boolean
@@ -805,9 +814,6 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         // Add the test exit to the break context list
         breakCtxLst ~= testCtx.subCtx();
 
-        // Add the test exit to the continue context list
-        contCtxLst ~= testCtx.subCtx();
-
         // Merge the break contexts into the loop exit
         auto loopExitCtx = mergeContexts(
             ctx,
@@ -818,7 +824,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         // Merge the continue contexts with the loop entry
         mergeLoopEntry(
             ctx,
-            contCtxLst,
+            [testCtx.subCtx()],
             entryLocals,
             bodyBlock
         );
