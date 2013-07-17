@@ -1,8 +1,10 @@
 DC = dmd
 COPTS = -m64 -O -L-ldl
+DBGOPTS = -m64 -O -L-ldl -gc
 
 BIN_NAME = higgs
 BIN_NAME_TEST = test-higgs
+BIN_NAME_DEBUG = dbg-higgs
 
 BIN_DIR = /usr/bin
 LIB_DIR = /etc/higgs
@@ -54,6 +56,9 @@ all: layout encodings
 test: layout encodings
 	$(DC) $(COPTS) -unittest -of$(BIN_NAME_TEST) $(SRC)
 	time ./$(BIN_NAME_TEST)
+
+debug: layout encodings
+	$(DC) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)
 
 encodings:
 	python jit/encodings.py
