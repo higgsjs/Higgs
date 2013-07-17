@@ -29,6 +29,8 @@ August 31st goal: have gathered some perf data, demonstrate gains from versionin
   - no instrs executed dynamically
   - execution time
 - further perf tweaks
+- look at linux-tools-common package, `perf stat` command, has instr and
+  branch counts?
 
 TODO: benchmarking (performance testing) JS script
 - benchmark.js
@@ -85,6 +87,19 @@ TODO: smarter slot/register mapping pass
 
 TODO: how often are phis live/interfering with their non-const arguments?
 - compute stats in astToIR to get this info
+- Liveness... Do we need more info?
+  - Can manually test if used by a phi node if necessary
+  - When checking if phi interferes with arg... Doesn't matter if val is live
+    while phis are being assigned into if the val isn't live after
+
+
+
+
+
+
+
+
+
 
 
 

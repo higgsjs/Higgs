@@ -83,7 +83,6 @@ LiveQueryFn compLiveVars(IRFunction fun)
             if (!instr.hasNoUses)
                 valIdxs[instr] = cast(uint32_t)valIdxs.length;
 
-
             // We can query for liveness after any instruction
             locIdxs[instr] = cast(uint32_t)locIdxs.length;
         }
@@ -102,7 +101,11 @@ LiveQueryFn compLiveVars(IRFunction fun)
         assert (val in valIdxs);
         assert (afterInstr in locIdxs);
 
-        auto idx = valIdxs[val] * locIdxs[afterInstr];
+        auto x = valIdxs[val];
+        auto y = locIdxs[afterInstr];
+        auto idx = y * valIdxs.length + x;
+        assert (idx < valIdxs.length * locIdxs.length);
+
         auto bitIdx = idx & 31;
         auto intIdx = idx >> 5;
 
@@ -117,10 +120,27 @@ LiveQueryFn compLiveVars(IRFunction fun)
         if (val.hasNoUses)
             return false;
 
-        assert (val in valIdxs);
+        /*
+        if (val.block.fun !is fun)
+        {
+            writeln("val fun is null: ", val.block.fun is null);
+            writeln("fun: ", fun.getName);
+        }
+        assert (val.block.fun is fun);
+        */
+
+        assert (
+            val in valIdxs,
+            "val not in liveness map: " ~ val.toString()
+        );
+
         assert (afterInstr in locIdxs);
 
-        auto idx = valIdxs[val] * locIdxs[afterInstr];
+        auto x = valIdxs[val];
+        auto y = locIdxs[afterInstr];
+        auto idx = y * valIdxs.length + x;
+        assert (idx < valIdxs.length * locIdxs.length);
+
         auto bitIdx = idx & 31;
         auto intIdx = idx >> 5;
 
