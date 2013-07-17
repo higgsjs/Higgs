@@ -83,24 +83,20 @@ TODO: smarter slot/register mapping pass
   - Provided they don't interfere (should monitor this, want this stat)
 - Ideally, values that share a phi target end up in same register
 
-TODO: phi of phi opt pattern
-- see $rt_add
-
 TODO: how often are phis live/interfering with their non-const arguments?
 - compute stats in astToIR to get this info
 
-TODO: jump to if_true of phi opt pattern
-- see $rt_add
+
+
+
+
+
+
+[DONE] TODO: jump to if_true of phi opt pattern
+- Occurs in $rt_add
 - pred can potentially be made to do if instead of jump
 - succ must have just this one phi, which feeds into the if
-
-
-
-
-
-
-
-
+- down from 6 to 2 phis in $rt_add!
 
 [DONE] TODO: fixup liveness analysis to work with SSA
 - better liveness data structure?

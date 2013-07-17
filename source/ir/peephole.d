@@ -280,6 +280,43 @@ void optIR(IRFunction fun)
                 // If this is a branch instruction
                 if (op.isBranch)
                 {
+                    // If this is a jump to a block containing
+                    // an if_true of a single phi node
+                    if (op == &JUMP)
+                    {
+                        auto branch = instr.getTarget(0);
+                        auto succ = branch.succ;
+
+                        if (branch.args.length is 1 &&
+                            succ.firstInstr.opcode is &IF_TRUE &&
+                            succ.firstInstr.getArg(0) is succ.firstPhi &&
+                            succ.firstInstr.getArg(0).hasOneUse &&
+                            branch.getPhiArg(succ.firstPhi).hasOneUse)
+                        {
+                            // Create an if_true instruction to replace the jump
+                            auto predIf = block.addInstr(new IRInstr(
+                                &IF_TRUE,
+                                branch.getPhiArg(succ.firstPhi)
+                            ));
+
+                            // Copy the successor if branches to the new if branch
+                            auto succIf = succ.firstInstr;
+                            for (size_t tIdx = 0; tIdx < 2; ++tIdx)
+                            {
+                                auto succTarget = succIf.getTarget(tIdx);
+                                auto predTarget = predIf.setTarget(tIdx, succTarget.succ);
+                                foreach (arg; succTarget.args)
+                                    predTarget.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+                            }
+
+                            // Remove the jump instruction
+                            block.delInstr(instr);
+
+                            changed = true;
+                            continue INSTR_LOOP;
+                        }
+                    }
+
                     // For each branch edge from this instruction
                     for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
                     {

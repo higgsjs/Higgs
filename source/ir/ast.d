@@ -592,6 +592,18 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     compLiveVars(fun);
 
 
+
+
+
+
+
+
+
+
+
+
+
+
     //writeln("compiled fn:");
     //writeln(fun.toString());
 
