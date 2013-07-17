@@ -81,6 +81,13 @@ void optIR(IRFunction fun)
         // Remove and delete the block
         fun.delBlock(block);
 
+        // Check that the block was properly destroyed
+        version (unittest)
+        {
+            assert (block.firstPhi is null);
+            assert (block.firstInstr is null);
+        }
+
         //writeln("block deleted");
     }
 
@@ -101,6 +108,7 @@ void optIR(IRFunction fun)
         {
             for (auto block = fun.firstBlock; block !is null; block = block.next)
             {
+                // Check that there are no arguments to the deleted phi node
                 auto branch = block.lastInstr;
                 if (branch)
                 {
@@ -117,6 +125,7 @@ void optIR(IRFunction fun)
                     }
                 }
 
+                // Check that no phi uses the deleted phi node
                 for (auto zphi = block.firstPhi; zphi !is null; zphi = zphi.next)
                 {
                     for (size_t iIdx = 0; iIdx < zphi.block.numIncoming; ++iIdx)
@@ -132,6 +141,7 @@ void optIR(IRFunction fun)
                     }
                 }
 
+                // Check that no instruction uses the deleted phi node
                 for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
                 {
                     for (size_t i = 0; i < instr.numArgs; ++i)
@@ -154,23 +164,19 @@ void optIR(IRFunction fun)
 
         // For each block of the function
         BLOCK_LOOP:
-        for (IRBlock nextBlock, block = fun.firstBlock; block !is null; block = nextBlock)
+        for (auto block = fun.firstBlock; block !is null; block = block.next)
         {
-            nextBlock = block.next;
-
             // If this block has no incoming branches, remove it
             if (block !is fun.entryBlock && block.numIncoming is 0)
-            {               
+            {
                 delBlock(block);
                 continue BLOCK_LOOP;
             }
 
             // For each phi node of the block
             PHI_LOOP:
-            for (PhiNode nextPhi, phi = block.firstPhi; phi !is null; phi = nextPhi)
+            for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
             {
-                nextPhi = phi.next;
-
                 // Delete all phi assignments of the form:
                 // Vi <- phi(...Vi...Vi...)
                 // with 0+ Vi
@@ -246,9 +252,8 @@ void optIR(IRFunction fun)
 
             // For each instruction of the block
             INSTR_LOOP:
-            for (IRInstr nextInstr, instr = block.firstInstr; instr !is null; instr = nextInstr)
+            for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             {
-                nextInstr = instr.next;
                 auto op = instr.opcode;
 
                 // If this instruction has no uses and is pure, remove it

@@ -235,8 +235,7 @@ class IRFunction : IdObject
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             block.delInstr(instr);
 
-        block.prev = null;
-        block.next = null;
+        // Nullify the parent pointer
         block.fun = null;
     }
 }
@@ -439,8 +438,7 @@ class IRBlock : IdObject
             arg.value.remUse(arg);
         }
 
-        instr.prev = null;
-        instr.next = null;
+        // Nullify the parent pointer
         instr.block = null;
     }
 
@@ -488,8 +486,7 @@ class IRBlock : IdObject
         foreach (descIdx, desc; incoming)
             desc.remPhiArg(phi);
 
-        phi.prev = null;
-        phi.next = null;
+        // Nullify the parent pointer
         phi.block = null;
     }
 
@@ -1097,10 +1094,14 @@ class FunParam : PhiNode
 
     override string toString()
     {
-        if (outSlot !is NULL_LOCAL)
-            return "$" ~ to!string(outSlot) ~ " = arg_" ~ to!string(idx);
+        string str;
 
-        return "arg_" ~ to!string(idx);
+        if (outSlot !is NULL_LOCAL)
+            str ~= "$" ~ to!string(outSlot) ~ " = ";
+
+        str ~= "arg " ~ to!string(idx) ~ " \"" ~ to!string(name) ~ "\"";
+
+        return str;
     }
 }
 

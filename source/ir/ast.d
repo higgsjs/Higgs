@@ -388,10 +388,10 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     );
 
     // Create values for the hidden arguments
-    fun.raVal   = new FunParam("ra"  , 0);
-    fun.closVal = new FunParam("clos", 1);
-    fun.thisVal = new FunParam("this", 2);
-    fun.argcVal = new FunParam("argc", 3);
+    fun.raVal   = cast(FunParam)entry.addPhi(new FunParam("ra"  , 0));
+    fun.closVal = cast(FunParam)entry.addPhi(new FunParam("clos", 1));
+    fun.thisVal = cast(FunParam)entry.addPhi(new FunParam("this", 2));
+    fun.argcVal = cast(FunParam)entry.addPhi(new FunParam("argc", 3));
 
     // Create values for the visible function parameters
     for (size_t i = 0; i < ast.params.length; ++i)
@@ -400,9 +400,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         auto ident = ast.params[i];
 
         auto paramVal = new FunParam(ident.name, cast(uint32_t)argIdx);
+        entry.addPhi(paramVal);
         fun.paramMap[ident] = paramVal;
         bodyCtx.localMap[ident] = paramVal;
-        entry.addPhi(paramVal);
     }
 
     // Allocate slots for local variables
@@ -588,15 +588,12 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Allocate stack slots for the IR instructions
     allocSlots(fun);
 
-
-
-
-
-
-
+    /*
     auto liveQueryFn = compLiveVars(fun);
 
-    /*
+    auto numInterf = 0;
+    auto numNonInterf = 0;
+    
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
         for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
@@ -612,6 +609,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                 if (phiArg is null)
                     continue PHI_ARG_LOOP;
 
+                // For each instruction (live query point)
                 for (auto block2 = fun.firstBlock; block2 !is null; block2 = block2.next)
                 {
                     for (auto instr = block2.firstInstr; instr !is null; instr = instr.next)
@@ -619,39 +617,21 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                         auto argLive = liveQueryFn(phiArg, instr);
                         auto phiLive = liveQueryFn(phi, instr);
 
-
-                        
-
-
-
+                        if (argLive && phiLive)
+                        {
+                            numInterf++;
+                            continue PHI_ARG_LOOP;
+                        }
                     }
                 }
 
-
-
-
-
-
-
+                numNonInterf++;
             }
         }
     }
+    
+    writefln("interf: %s/%s", numInterf, (numInterf+numNonInterf));
     */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     //writeln("compiled fn:");
     //writeln(fun.toString());

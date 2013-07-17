@@ -104,7 +104,7 @@ LiveQueryFn compLiveVars(IRFunction fun)
         auto x = valIdxs[val];
         auto y = locIdxs[afterInstr];
         auto idx = y * valIdxs.length + x;
-        assert (idx < valIdxs.length * locIdxs.length);
+        assert (idx < numBits);
 
         auto bitIdx = idx & 31;
         auto intIdx = idx >> 5;
@@ -114,32 +114,26 @@ LiveQueryFn compLiveVars(IRFunction fun)
 
     /**
     Test if a value is live after a given instruction
+    Note: this function is exposed outside of this analysis
     */
     auto isLiveAfter = delegate bool(IRDstValue val, IRInstr afterInstr)
     {
         if (val.hasNoUses)
             return false;
 
-        /*
-        if (val.block.fun !is fun)
-        {
-            writeln("val fun is null: ", val.block.fun is null);
-            writeln("fun: ", fun.getName);
-        }
-        assert (val.block.fun is fun);
-        */
-
         assert (
             val in valIdxs,
             "val not in liveness map: " ~ val.toString()
         );
-
-        assert (afterInstr in locIdxs);
+        assert (
+            afterInstr in locIdxs,
+            "cannot query for liveness at instr: " ~ afterInstr.toString()
+        );
 
         auto x = valIdxs[val];
         auto y = locIdxs[afterInstr];
         auto idx = y * valIdxs.length + x;
-        assert (idx < valIdxs.length * locIdxs.length);
+        assert (idx < numBits);
 
         auto bitIdx = idx & 31;
         auto intIdx = idx >> 5;

@@ -76,36 +76,50 @@ TODO: get jit working with defaultFn only
   - Update state to reflect which phi nodes are in slots or regs
   - Insert moves as appropriate
 
-TODO: smarter slot/register mapping pass
-- Keep old slot mapping still (quick)
-  - Could improve with simple phi heuristics, do phis after other instrs
+TODO: smarter slot/register mapping pass, jit/regalloc.d
 - Map instr to first slot that's not already mapped to an interfering value
   - Grow num slots as needed
 - Ideally, slot/reg allocation assigns vals and phi nodes to same slot/reg
-  - Provided they don't interfere (should monitor this, want this stat)
+  - Provided they don't interfere
 - Ideally, values that share a phi target end up in same register
+- Should do phis first, values after?
+- Should produce mapping of values to slots, allows remapping stack frames
+  - Don't compute liveness just for interp, expensive
 
-TODO: how often are phis live/interfering with their non-const arguments?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: how often are phis live/interfering with their non-const arguments?
 - compute stats in astToIR to get this info
 - Liveness... Do we need more info?
   - Can manually test if used by a phi node if necessary
   - When checking if phi interferes with arg... Doesn't matter if val is live
     while phis are being assigned into if the val isn't live after
+- Phis and args do sometimes interfere but most of the time not ***
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] FIXME: live vars queries with instr from block that isn't in the function anymore?
+- instr.block.fun is null (so block was removed from function?)
+- we got this instr from a phi argument
+- normally, incoming branch should have been removed
+- PROBLEM: if instr had been removed, its block would be null...
+- delBlock in peephole.d causes this to happen
+  - only deleting dead blocks... removing incoming to other blocks
+  - our instructions should have null block
+- the instruction is still the valid last instr in the block!
+- block was deleted, should have no instrs...
 
 [DONE] TODO: jump to if_true of phi opt pattern
 - Occurs in $rt_add
