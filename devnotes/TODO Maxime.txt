@@ -83,22 +83,32 @@ TODO: smarter slot/register mapping pass
   - Provided they don't interfere (should monitor this, want this stat)
 - Ideally, values that share a phi target end up in same register
 
-TODO: if_true of phi opt pattern
-- see $rt_add
-- see Tachyon patterns
-
 TODO: phi of phi opt pattern
 - see $rt_add
-- see Tachyon patterns
 
-TODO: fixup liveness analysis to work with SSA
-- how often are phis live/interfering with their non-const arguments? ***
+TODO: how often are phis live/interfering with their non-const arguments?
+- compute stats in astToIR to get this info
+
+TODO: jump to if_true of phi opt pattern
+- see $rt_add
+- pred can potentially be made to do if instead of jump
+- succ must have just this one phi, which feeds into the if
+
+
+
+
+
+
+
+
+
+[DONE] TODO: fixup liveness analysis to work with SSA
 - better liveness data structure?
 - could have dead/kill points for values?
   - if no uses, immediately dead
   - can die on branches
 
-TODO: read SSA liveness PDF
+[DONE] TODO: read SSA liveness PDF
 - Should really use bit sets for liveness if possible
 - Could we produce live sets as query-able closures? ***
   - Internally store bit set(s), instr to id mapping
@@ -107,24 +117,6 @@ TODO: read SSA liveness PDF
     - Instrs/phis with no uses get no entry
     - Can log biggest table size for ease
 - Paper says "variable by variable approach" performs best, read section 5
-
-for each val
-    for each use of val
-        do traversal, update sets
-
-No need for set unions
-No need for per-block sets
-Visited set? If val is live at block exit, stop
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: fix loop bug w.r.t. loop vars and continue
 

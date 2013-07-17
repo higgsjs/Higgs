@@ -49,6 +49,7 @@ import ir.ir;
 import ir.ops;
 import ir.iir;
 import ir.peephole;
+import ir.livevars;
 import ir.slotalloc;
 
 /**
@@ -586,6 +587,10 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 
     // Allocate stack slots for the IR instructions
     allocSlots(fun);
+
+
+    compLiveVars(fun);
+
 
     //writeln("compiled fn:");
     //writeln(fun.toString());

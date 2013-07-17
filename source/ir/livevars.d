@@ -40,147 +40,194 @@ module ir.livevars;
 import std.stdio;
 import std.array;
 import std.string;
+import std.stdint;
 import ir.ir;
 import util.bitset;
 import util.string;
 
 /**
-FIXME: better data structure for liveness???
-Need to fit phi nodes in here too
-
-Produces a bit set of live output slots after each instruction
+Liveness query function (closure)
+Tells if a given value is live after a given instruction
 */
-/*BitSet[IRDstValue]*/ void compLiveVars(IRFunction fun)
+alias bool delegate(IRDstValue val, IRInstr afterInstr) LiveQueryFn;
+
+/**
+Performs liveness analysis on a function body and
+returns a liveness query function (closure)
+*/
+LiveQueryFn compLiveVars(IRFunction fun)
 {
     assert (
         fun.entryBlock !is null,
         "function has no IR"
     );
 
+    // Indices for values we track the liveness of
+    uint32_t valIdxs[IRDstValue];
 
+    // Indices for instructions we may query for liveness at
+    uint32_t locIdxs[IRInstr];
 
-    // Sets of variables live after each instruction
-    //BitSet[IRInstr] liveSets;
-
-
-
-
-
-    /*
-    // Initialize the maps for each instruction
-    for (auto block = fun.firstBlock; block !is null; block = block.next)
-        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
-            liveSets[instr] = new BitSet(fun.numLocals);
-
-    // Compute the list of predecessors for each block
-    IRBlock[][IRBlock] preds;
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
-        auto branch = block.lastInstr;
-        assert (branch.opcode.isBranch);
-        if (branch.target)
-            preds[branch.target] ~= block;
-        if (branch.excTarget)
-            preds[branch.excTarget] ~= block;
+        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
+        {
+            // We can query for the liveness of this phi node if it has uses
+            if (!phi.hasNoUses)
+                valIdxs[phi] = cast(uint32_t)valIdxs.length;
+        }
+
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+            // We can query for the liveness of this instruction if it has uses
+            if (!instr.hasNoUses)
+                valIdxs[instr] = cast(uint32_t)valIdxs.length;
+
+
+            // We can query for liveness after any instruction
+            locIdxs[instr] = cast(uint32_t)locIdxs.length;
+        }
     }
 
-    // Work list of blocks to process
-    IRBlock[] workList;
+    // Allocate a contiguous bit vector to store liveness information
+    auto numBits = valIdxs.length * locIdxs.length;
+    auto numInts = (numBits / 32) + ((numBits % 32)? 1:0);
+    auto bitSet = new int32_t[numInts];
 
-    // Add all blocks to the work list
-    for (auto block = fun.firstBlock; block !is null; block = block.next)
-        workList ~= block;
-
-    // Preallocate temporary live set objects
-    auto liveSet = new BitSet(fun.numLocals);
-    auto origSet = new BitSet(fun.numLocals);
-
-    // Until the work list is empty
-    while (workList.length > 0)
+    /**
+    Mark a value as live after a given instruction
+    */
+    void markLiveAfter(IRDstValue val, IRInstr afterInstr)
     {
-        auto block = workList[$-1];
-        workList.popBack();
+        assert (val in valIdxs);
+        assert (afterInstr in locIdxs);
 
-        auto branch = block.lastInstr;
-        assert (branch.opcode.isBranch);
+        auto idx = valIdxs[val] * locIdxs[afterInstr];
+        auto bitIdx = idx & 31;
+        auto intIdx = idx >> 5;
 
-        // Get a copy of the live set at the exit of this block
-        //auto liveSet = new BitSet(liveSets[branch]);
-        liveSet.assign(liveSets[branch]);
+        bitSet[intIdx] |= (1 << bitIdx);
+    }
 
+    /**
+    Test if a value is live after a given instruction
+    */
+    auto isLiveAfter = delegate bool(IRDstValue val, IRInstr afterInstr)
+    {
+        if (val.hasNoUses)
+            return false;
+
+        assert (val in valIdxs);
+        assert (afterInstr in locIdxs);
+
+        auto idx = valIdxs[val] * locIdxs[afterInstr];
+        auto bitIdx = idx & 31;
+        auto intIdx = idx >> 5;
+
+        return ((bitSet[intIdx] >> bitIdx) & 1) == 1;
+    };
+
+    // Stack of blocks for DFS traversal
+    IRBlock stack[];
+
+    /**
+    Traverse a basic block as part of a liveness analysis
+    */
+    void traverseBlock(IRDstValue defVal, IRBlock block, IRInstr fromInstr)
+    {
         // For each instruction, in reverse order
-        for (auto instr = block.lastInstr; instr !is null; instr = instr.prev)
+        for (auto instr = fromInstr; instr !is null; instr = instr.prev)
         {
-            // Update the live set for after this instruction
-            if (instr !is branch)
-                liveSets[instr].assign(liveSet);
+            // Mark the value as live after this instruction
+            markLiveAfter(defVal, instr);
 
-            // The output slot of the instruction is no longer live
-            if (instr.outSlot != NULL_LOCAL)
-                liveSet.remove(instr.outSlot);
-
-            // All slots read by the instruction become live
-            foreach (argIdx, arg; instr.args)
-                if (instr.opcode.getArgType(argIdx) is OpArg.LOCAL)
-                    liveSet.add(arg.localIdx);
+            // If this is the definition point for the value, stop
+            if (instr is defVal)
+                return;
         }
-    
-        // For each predecessor of this block
-        foreach (pred; preds.get(block, []))
+
+        // If the value is defined by a phi node from this block, stop
+        if (defVal.block is block)
         {
-            auto predBranch = pred.lastInstr;
-            assert (predBranch !is null);
-            auto predSet = liveSets[predBranch];
+            assert (cast(PhiNode)defVal !is null);
+            return;
+        }
 
-            // Save a copy of the predecessor's original live set
-            //auto origSet = new BitSet(predSet);
-            origSet.assign(predSet);
+        // Queue the predecessor blocks
+        for (size_t iIdx = 0; iIdx < block.numIncoming; ++iIdx)
+            stack ~= block.getIncoming(iIdx).pred;
+    }
 
-            // Merge the current live set into the predecessor's
-            predSet.setUnion(liveSet);
 
-            // If the live set changed, queue the predecessor
-            if (predSet != origSet)
-                workList ~= pred;
+    /**
+    Do the liveness traversal for a given use
+    */
+    void liveTraversal(IRDstValue defVal, IRDstValue useVal)
+    {
+        assert (defVal !is null);
+        assert (useVal !is null);
+        assert (stack.length is 0);
+
+        // Get the block the use belongs to
+        auto useBlock = useVal.block;
+        assert (useBlock !is null);
+
+        // If the use belongs to an instruction
+        if (auto useInstr = cast(IRInstr)useVal)
+        {
+            // Traverse the block starting from the previous instruction
+            traverseBlock(defVal, useBlock, useInstr.prev);
+        }
+
+        // If the use belongs to a phi node
+        else if (auto usePhi = cast(PhiNode)useVal)
+        {
+            // Find the predecessors which supplies the value and queue them
+            for (size_t iIdx = 0; iIdx < useBlock.numIncoming; ++iIdx)
+            {
+                auto branch = useBlock.getIncoming(iIdx);
+                auto phiArg = branch.getPhiArg(usePhi);
+                if (phiArg is defVal)
+                    stack ~= branch.pred;
+            }
+        }
+
+        else
+        {
+            assert (false);
+        }
+
+        // Until the stack is empty
+        while (stack.length > 0)
+        {
+            // Pop the top of the stack
+            auto block = stack[$-1];
+            stack.length -= 1;
+
+            assert (block.lastInstr !is null);
+
+            // If the value is live at the exit of this block, skip it
+            if (isLiveAfter(defVal, block.lastInstr))
+                continue;
+
+            // Traverse the block starting from the last instruction
+            traverseBlock(defVal, block, block.lastInstr);
         }
     }
-    */
 
-    /*
-    if (!fun.getName.startsWith("$rt_typeof"))
-        return liveSets;
-
-    writefln("");
-    writefln("%s", fun.getName());
+    // Compute the liveness of all values
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
-        writefln("%s", block.getName());
+        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
+            for (auto use = phi.getFirstUse; use !is null; use = use.next)
+                liveTraversal(phi, use.owner);
 
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
-        {
-            writeln(indent(instr.toString(), "  "));
-
-            liveSet = liveSets[instr];
-
-            write("    ");
-            for (size_t i = 0; i < liveSet.length; ++i)
-                if (liveSet.has(i))
-                    writef("$%s ", i);
-            writeln();
-
-        }
-
-        writefln("");
+            for (auto use = instr.getFirstUse; use !is null; use = use.next)
+                liveTraversal(instr, use.owner);
     }
-    writefln("");
-    */
 
-
-
-
-
-
-
-    //return liveSets;
+    // Return the liveness query closure
+    return isLiveAfter;
 }
 
