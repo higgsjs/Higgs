@@ -73,8 +73,34 @@ TODO: reimplement instructions in jit/ops.d
 
 TODO: get jit working with defaultFn only
 - Need mechanism to handle block transitions w.r.t. phi nodes
+  - "Execute" the phi assignment at the beginning of that block
   - Update state to reflect which phi nodes are in slots or regs
   - Insert moves as appropriate
+  - May have cycles between phi node moves
+- Alternative is to say phi nodes don't have assigned reg
+  - just assigned slot for interp. fallback
+  - phi keeps reg/slot from incoming arg
+  - if instr writes over phi value and phi value still live, spill into phi slot
+  - but phi moves will be rare anyways!
+- May want a generic alloc state transition function?
+  - Params
+    - Incoming pred block
+    - phi nodes to execute (succ block)
+    - pred assignments for non-phi values (pred state)
+    - succ assignments for non-phi values (succ state, if it might change?)
+  - Assemble list of moves to simultaneously execute
+- From list of moves... If any moves don't overwrite an SRC, execute them
+  - If no moves don't overwrite an src, take pair (A->B) and remove from list,
+    move A into tmp, add (tmp->B) to list
+  - Pretty simple iterative algorithm!
+
+TODO: move list execution function
+- uses one temp reg
+- algorithm:
+  - Identity moves are removed
+  - If no moves don't overwrite an src, take pair (A->B) and remove from list,
+    move A into tmp, add (tmp->B) to list
+  - Pretty simple iterative algorithm!
 
 TODO: smarter slot/register mapping pass, jit/regalloc.d
 - Map instr to first slot that's not already mapped to an interfering value
