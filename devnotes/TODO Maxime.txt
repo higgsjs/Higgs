@@ -110,7 +110,7 @@ TODO: smarter slot/register mapping pass, jit/regalloc.d
 - Ideally, values that share a phi target end up in same register
 - Should do phis first, values after?
 - Should produce mapping of values to slots, allows remapping stack frames
-  - Don't compute liveness just for interp, expensive
+  - Don't compute liveness just for interp, that's expensive
 
 
 

@@ -204,12 +204,13 @@ void compFun(Interp interp, IRFunction fun)
     }
 
     // FIXME
-    // Run a live variable analysis on the function
     BitSet[IRInstr] liveSets;
-    //auto liveSets = compLiveVars(fun);
+
+    // Run a live variable analysis on the function
+    auto liveQueryFn = compLiveVars(fun);
 
     // Assign a register mapping to each temporary
-    auto regMapping = mapRegs(fun, liveSets);
+    auto regMapping = mapRegs(fun, liveQueryFn);
 
     // Assembler to write code into
     auto as = new Assembler();

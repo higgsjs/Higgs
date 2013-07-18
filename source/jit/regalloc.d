@@ -43,7 +43,7 @@ import std.stdint;
 import ir.ir;
 import ir.livevars;
 import jit.x86;
-import util.bitset;
+//import util.bitset;
 
 X86Reg interpReg;
 X86Reg wspReg;
@@ -93,13 +93,11 @@ static this()
 }
 
 /// Mapping of locals to registers
-alias X86Reg[LocalIdx] RegMapping;
+alias X86Reg[IRDstValue] RegMapping;
 
-RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
+RegMapping mapRegs(IRFunction fun, LiveQueryFn)
 {
     /*
-    Slots with short live ranges should be colored first?
-
     - Go over basic blocks, count number of instrs where values interfere
       - Add counts to edges
 
@@ -112,13 +110,20 @@ RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
         neighbor with least contention?
         - But hooooow?
 
-    - Also color with XMM registers for FP values and spills
+    TODO: Also color with XMM registers for FP values and spills
     */
 
-    /*
-    // Interference counts
-    uint32_t[LocalIdx][LocalIdx] interfCounts;
 
+    // Interference counts
+    uint32_t[IRDstValue][IRDstValue] interfCounts;
+
+
+
+
+
+
+
+    /*
     // For each live set
     foreach (instr, liveSet; liveSets)
     {
@@ -139,8 +144,23 @@ RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
     }
     */
 
-    // Map of stack slots to registers
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Map of values to registers
     RegMapping mapping;
+
+
 
     /*
     size_t numConflicts = 0;
@@ -212,6 +232,19 @@ RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
     }
     */
 
+
+
+
+
+
+
+
+
+
+
+
+
+
     //writefln("%s num conflicts: %s", fun.getName(), numConflicts);
 
     /*    
@@ -232,6 +265,23 @@ RegMapping mapRegs(IRFunction fun, BitSet[IRInstr] liveSets)
     }
     writeln();
     */    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     return mapping;
 }
