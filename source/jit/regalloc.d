@@ -95,155 +95,36 @@ static this()
 /// Mapping of locals to registers
 alias X86Reg[IRDstValue] RegMapping;
 
-RegMapping mapRegs(IRFunction fun, LiveQueryFn)
+// TODO: Also color all values with XMM registers for FP values and spills
+
+RegMapping mapRegs(IRFunction fun, LiveQueryFn isLiveAfter)
 {
-    /*
-    - Go over basic blocks, count number of instrs where values interfere
-      - Add counts to edges
-
-    Slots that are live at the same time interfere
-    Slots that interfere are assigned different regs if possible
-
-    - Color slots with registers so as to minimize conflicts
-      - Use greedy coloring algorithm
-      - If already mapped register must be used, pick
-        neighbor with least contention?
-        - But hooooow?
-
-    TODO: Also color with XMM registers for FP values and spills
-    */
-
-
-    // Interference counts
-    uint32_t[IRDstValue][IRDstValue] interfCounts;
-
-
-
-
-
-
-
-    /*
-    // For each live set
-    foreach (instr, liveSet; liveSets)
-    {
-        for (LocalIdx i0 = 0; i0 < liveSet.length; ++i0)
-        {
-            if (liveSet.has(i0))
-            {
-                for (LocalIdx i1 = 0; i1 < liveSet.length; ++i1)
-                {
-                    if (liveSet.has(i1) && i1 != i0)
-                    {
-                        interfCounts[i0][i1]++;
-                        interfCounts[i1][i0]++;
-                    }
-                }
-            }
-        }
-    }
-    */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     // Map of values to registers
     RegMapping mapping;
 
+    auto curRegIdx = 0;
 
-
-    /*
-    size_t numConflicts = 0;
-
-    // For each local slot
-    MAPPING_LOOP:
-    for (LocalIdx idx = 0; idx < fun.numLocals; ++idx)
+    // For each block
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
-        // If this slot interferes with nothing
-        if (idx !in interfCounts)
+        // For each phi
+        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
         {
-            //writefln("no interf for %s", idx);
+            if (phi.hasNoUses)
+                continue;
 
-            // Assign it the first allocatable register
-            mapping[idx] = allocRegs[0];
-            continue MAPPING_LOOP;
+            mapping[phi] = allocRegs[curRegIdx++];
         }
 
-        // Bit map of used registers
-        uint16_t usedRegs = 0;
-
-        // Register with the least interference count
-        LocalIdx leastCnt = LocalIdx.max;
-        X86Reg leastReg = null;
-
-        // For each interfering slot
-        foreach (interfIdx, count; interfCounts[idx])
+        // Fo each instruction
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            // If that slot has an assigned register
-            if (interfIdx in mapping)
-            {
-                // Mark that register as used
-                auto reg = mapping[interfIdx];
-                usedRegs |= (1 << reg.regNo);
+            if (instr.hasNoUses)
+                continue;
 
-                //writefln("reg taken: %s (%s) by %s", reg.toString(), (1 << reg.regNo), interfIdx);
-
-                // Keep track of the register of the mapped slot
-                // we least often interfere with
-                if (count < leastCnt)
-                {
-                    leastCnt = count;
-                    leastReg = reg;
-                }
-            }
+            mapping[instr] = allocRegs[curRegIdx++];
         }
-
-        // For each allocatable register
-        foreach (reg; allocRegs)
-        {
-            // If this register is free
-            if ((usedRegs & (1 << reg.regNo)) == 0)
-            {
-                // Assign the register to this slot
-                mapping[idx] = reg;
-                continue MAPPING_LOOP;
-            }
-        }
-
-        //writefln("%s", interf.length);
-
-        // Choose the register of the slot we
-        // least often interfere with
-        assert (leastReg !is null);
-        mapping[idx] = leastReg;
-
-        //writefln("%s conflict assign: %s", fun.getName(), leastReg.toString());
-        numConflicts++;
     }
-    */
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     //writefln("%s num conflicts: %s", fun.getName(), numConflicts);
 
@@ -266,23 +147,189 @@ RegMapping mapRegs(IRFunction fun, LiveQueryFn)
     writeln();
     */    
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     return mapping;
 }
+
+/*
+    // Interference counts
+    uint32_t[IRDstValue][IRDstValue] interfCounts;
+
+    // Assemble a list of values we need to consider the liveness of
+    IRDstValue[] values;
+    for (auto b = fun.firstBlock; b !is null; b = b.next)
+    {
+        for (auto p = b.firstPhi; p !is null; p = p.next)
+            if (p.hasNoUses is false)
+                values ~= p;
+
+        for (auto i = b.firstInstr; i !is null; i = i.next)
+            if (i.hasNoUses is false)
+                values ~= i;
+    }
+
+    // For block
+    for (auto lBlock = fun.firstBlock; lBlock !is null; lBlock = lBlock.next)
+    {
+        // TODO: store a live set for after the phi nodes?
+
+        // Mark the phi node values as interfering with each other
+        for (auto p0 = lBlock.firstPhi; p0 !is null; p0 = p0.next)
+        {
+            for (auto p1 = lBlock.firstPhi; p1 !is null; p1 = p1.next)
+            {
+                if (p0 !is p1)
+                {
+                    interfCounts[p0][p1]++;
+                    interfCounts[p1][p0]++;
+                }
+            }
+
+        }
+
+        // Mark arguments of the first instruction as interfering with
+        // values live after the instruction and each other
+        auto fInstr = lBlock.firstInstr;
+        assert (fInstr !is null);
+        for (size_t aIdx0 = 0; aIdx0 < fInstr.numArgs; ++aIdx0)
+        {
+            auto a0 = cast(IRDstValue)fInstr.getArg(aIdx0);
+            if (a0 is null)
+                continue;
+
+            foreach (v; values)
+            {
+                if (a0 !is v && v !is fInstr && isLiveAfter(v, fInstr))
+                {
+                    interfCounts[a0][v]++;
+                    interfCounts[v][a0]++;
+                }
+            }
+
+            for (size_t aIdx1 = 0; aIdx1 < aIdx0; ++aIdx1)
+            {
+                auto a1 = cast(IRDstValue)fInstr.getArg(aIdx0);
+                if (a1 is null)
+                    continue;
+
+                interfCounts[a0][a1]++;
+                interfCounts[a1][a0]++;
+            }
+        }
+
+        // For each post-instruction location in this block
+        for (auto lInstr = lBlock.firstInstr; lInstr !is null; lInstr = lInstr.next)
+        {
+            // For each value
+            foreach (v0; values)
+            {
+                // If the value isn't live after this point, skip it
+                if (isLiveAfter(v0, lInstr) is false)
+                    continue;
+
+                // For each value
+                foreach (v1; values)
+                {
+                    // If both v0 and v1 are live after this point,
+                    // mark the pair of values as interfering
+                    if (v1 !is v0 && isLiveAfter(v1, lInstr))
+                    {
+                        interfCounts[v0][v1]++;
+                        interfCounts[v1][v0]++;
+                    }
+                }
+            }
+        }
+    }
+
+    // Map of values to registers
+    RegMapping mapping;
+
+    size_t numConflicts = 0;
+
+    void allocReg(IRDstValue val)
+    {
+        // TODO: check uses of value, if use is phi, already mapped and doesn't interf, use same reg
+
+        // If this phi node interferes with nothing
+        if (phi !in interfCounts)
+        {
+            //writefln("no interf for %s", idx);
+
+            // Assign it the first allocatable register
+            mapping[phi] = allocRegs[0];
+            return;
+        }
+
+        // Bit map of used registers
+        uint16_t usedRegs = 0;
+
+        // Register with the least interference count
+        LocalIdx leastCnt = LocalIdx.max;
+        X86Reg leastReg = null;
+
+        // For each interfering value
+        foreach (interfVal, count; interfCounts[idx])
+        {
+            // If that slot has an assigned register
+            if (interfVal in mapping)
+            {
+                // Mark that register as used
+                auto reg = mapping[interfVal];
+                usedRegs |= (1 << reg.regNo);
+
+                //writefln("reg taken: %s (%s) by %s", reg.toString(), (1 << reg.regNo), interfIdx);
+
+                // Keep track of the register of the mapped slot
+                // we least often interfere with
+                if (count < leastCnt)
+                {
+                    leastCnt = count;
+                    leastReg = reg;
+                }
+            }
+        }
+
+        // For each allocatable register
+        foreach (reg; allocRegs)
+        {
+            // If this register is free
+            if ((usedRegs & (1 << reg.regNo)) == 0)
+            {
+                // Assign the register to this slot
+                mapping[phi] = reg;
+                continue PHI_LOOP;
+            }
+        }
+
+        //writefln("%s", interf.length);
+
+        // Choose the register of the slot we
+        // least often interfere with
+        assert (leastReg !is null);
+        mapping[phi] = leastReg;
+
+        //writefln("%s conflict assign: %s", fun.getName(), leastReg.toString());
+        numConflicts++;
+    }
+
+    // Allocate registers to the phi nodes
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
+        {
+            if (!phi.hasNoUses)
+                allocReg(phi);
+        }
+    }
+
+    // Allocate registers to instructions
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+            if (!instr.hasNoUses)
+                allocReg(instr);
+        }
+    }
+    */
 

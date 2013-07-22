@@ -66,6 +66,7 @@ TODO: optimize non-constant comparison followed by if_true
 
 TODO: Modify/reimplement inlining for SSA
 - Not too hard?
+- Try creating new IRFunction for function with inlining?
 
 TODO: reimplement instructions in jit/ops.d
 - Will need a way to request an argument as a register
@@ -94,6 +95,8 @@ TODO: get jit working with defaultFn only
     move A into tmp, add (tmp->B) to list
   - Pretty simple iterative algorithm!
 
+
+
 TODO: move list execution function
 - uses one temp reg
 - algorithm:
@@ -102,31 +105,26 @@ TODO: move list execution function
     move A into tmp, add (tmp->B) to list
   - Pretty simple iterative algorithm!
 
-TODO: smarter slot/register mapping pass, jit/regalloc.d
-- Map instr to first slot that's not already mapped to an interfering value
-  - Grow num slots as needed
+
+
+
+
+
+
+
+[DONE] TODO: dumb register allocator
+- need to test our ideas first, quality reg alloc is not on the critical path
+
+[PASS] TODO: smarter slot/register mapping pass, jit/regalloc.d
+- Only map registers for now, later map both slots and regs
 - Ideally, slot/reg allocation assigns vals and phi nodes to same slot/reg
   - Provided they don't interfere
 - Ideally, values that share a phi target end up in same register
 - Should do phis first, values after?
 - Should produce mapping of values to slots, allows remapping stack frames
   - Don't compute liveness just for interp, that's expensive
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- Map instr to first slot that's not already mapped to an interfering value
+  - Grow num slots as needed
 
 [DONE] TODO: how often are phis live/interfering with their non-const arguments?
 - compute stats in astToIR to get this info
