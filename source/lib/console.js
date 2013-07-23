@@ -98,7 +98,7 @@ Console functions
     stringers.array = function(ar)
     {
         var l = ar.length;
-        var max =5;
+        var max = 5;
         var str = "[ ";
 
         if (l > 0)
