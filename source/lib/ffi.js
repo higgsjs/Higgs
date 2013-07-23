@@ -168,8 +168,9 @@ The Higgs FFI api
     TYPE UTILTIY FUNCTIONS
     */
 
-    // Used in some conversions
-    var NullPtr = $ir_set_rawptr(0);
+    // It's common to want to pass a null ptr as an arg,
+    // so one is provided by the ffi
+    var NullPtr = $nullptr;
 
     /**
     Create a C string from a JS string.
@@ -255,24 +256,245 @@ The Higgs FFI api
     */
 
     /**
-    TOKENIZER
+    Take a list of C style declarations and create bindings for them.
     */
+    function cdef(defs)
+    {
+
+        var def, sig;
+
+        // Loop through defs
+        for (var i = 0, l = defs.length; i < l; i++)
+        {
+            def = defs[i];
+            handleDec(def, this);
+        }
+    }
+
+
+    /**
+    Constants
+    */
+
+    // ( [ {
+    var OPEN_ROUND = 40;
+    var OPEN_SQUARE = 91;
+    var OPEN_CURLY = 123;
+    // ) ] }
+    var CLOSE_ROUND = 41;
+    var CLOSE_SQUARE = 93;
+    var CLOSE_CURLY = 125;
+    // ; * ,
+    var SEMI_COLON = 59;
+    var STAR = 42;
+    var COMMA =44;
+
+
+    /**
+    Types
+    */
+
+    // A mapping of known type names to type values (string or object)
+    var types = {
+        // void
+        "void" : "void",
+        // int types
+        "char" : "char",
+        "int" : "int",
+        "signed" : "signed",
+        "unsigned" : "unsigned",
+        "long" : "long",
+        "short" : "short",
+        // double
+        "double" : "double"
+    }
+
+    // Mapping of C types to the low-level FFI type markers.
+    var type_map = {
+        // all pointers
+        "*" : "*",
+        // void
+        "void" : "void",
+        // int types
+        "char" : "i8",
+        "short" : "i16",
+        "int" : "i32",
+        "long" : "i64",
+        // double
+        "double" : "f64"
+    }
+
+    // Mapping of type to size
+    var size_map = {
+        // all pointers
+        "*" : 8
+    }
+
+
+    /**
+    Parser State
+    */
+
+    // Input text
+    var input;
+    // Input tokens
+    var tokens;
+    // Position in token stream
+    var index;
+    // Current token
+    var tok;
+
+
+    /**
+    Binding Functions
+    */
+
+    /**
+    Handle a declaration. Entry point from cdef().
+    */
+    function handleDec(inp, lib)
+    {
+        // Reset parser state
+        input = inp;
+        tokens = tokenize();
+        index = 0;
+        tok = tokens[index];
+
+        // Parse
+        var dec = parseDeclaration();
+        dec = getTopDec(dec);
+
+        // Handle
+        if (dec.typedef)
+            handleTypeDef(dec);
+        else if (dec.fun)
+            lib.fun(dec.name, getFunSig(dec));
+        else
+            lib.symbol(dec.name, getTypeMarker(dec));
+
+        return dec;
+    }
+
+    /**
+    Add a type def to the list of known types.
+    */
+    function handleTypeDef(dec)
+    {
+        types[dec.name] = dec.type;
+    }
+
+    /**
+    Get the top most declaration.
+    */
+    function getTopDec(dec)
+    {
+        var d = dec;
+
+        while(d.dec)
+            d = d.dec;
+
+        return d;
+    }
+
+    /**
+    Return the function signatrue (in string form) from a declaration.
+    */
+    function getFunSig(dec)
+    {
+
+        var sig = [];
+        var args = dec.args;
+        var i = -1;
+        var l = (args) ? args.length : 0;
+
+        if (dec.ptr)
+            sig.push("*");
+        else
+            sig.push(getTypeMarker(getTopDec(dec.type)));
+
+        while ( ++i < l)
+            sig.push(getTypeMarker(getTopDec(args[i])));
+
+        return sig.join(',');
+    }
+
+    /**
+    Get a low-level type name for a type.
+    */
+    function getTypeMarker(type)
+    {
+        var mark;
+
+        // TODO: more error checking
+        if (type.ptr)
+        {
+            return "*";
+        }
+        else if (typeof type === "string")
+        {
+            if (type === "struct")
+                ParseError("Invalid use of struct");
+            else if (type === "union")
+                ParseError("Invalid use of union");
+            else if (!type_map.hasOwnProperty(type))
+                ParseError("Unkown type " + type);
+
+            mark = type_map[type];
+            if (typeof mark === "string")
+                return mark;
+            else
+                return getTypeMarker(mark);
+        }
+        else if (typeof type !== "object")
+        {
+            ParseError();
+        }
+        else
+        {
+            return getTypeMarker(type.type);
+        }
+    }
+
+
+    /**
+    Helper Functions
+    */
+
+    /**
+    Move to next token.
+    */
+    function advance(val)
+    {
+        tok = tokens[++index];
+        return val;
+    }
+
+    /**
+    Throw an error.
+    */
+    function ParseError(msg)
+    {
+        msg = msg || "Unable to parse declaration";
+        throw "CDefParseError: '" + msg + "' in '" + input + "'.";
+    }
 
     /**
     Split an input string into an array of token strings.
     */
-    function tokenize(input)
+    function tokenize()
     {
         var end = input.length;
         var chr = 0;
         var cursor = 0;
         var tokens = [];
-        var tok = c.malloc(200);
+        var tok = c.malloc(128);
         var tok_cursor = 0;
-        var counter = 0;
+        var round_counter = 0;
+        var square_counter = 0;
+        var curly_counter = 0;
 
-        do {
-
+        do
+        {
             chr = $rt_str_get_data(input, cursor);
 
             // Eat whitespace
@@ -287,27 +509,59 @@ The Higgs FFI api
             }
 
             // ( [ {
-            if (chr === 40 || chr === 91 || chr ===123)
+            if (chr === OPEN_ROUND)
             {
-                counter += chr - (chr % 10);
-                tokens.push(input[cursor])
+                round_counter += 1;
+                tokens.push(chr);
+                cursor += 1;
+                continue;
+            }
+
+            if (chr === OPEN_SQUARE)
+            {
+                square_counter += 1;
+                tokens.push(chr);
+                cursor += 1;
+                continue;
+            }
+
+            if (chr === OPEN_CURLY)
+            {
+                curly_counter += 1;
+                tokens.push(chr);
                 cursor += 1;
                 continue;
             }
 
             // ) ] }
-            if (chr === 41 || chr === 93 || chr ===125)
+            if (chr === CLOSE_ROUND)
             {
-                counter -= chr - (chr % 10);
-                tokens.push(input[cursor])
+                round_counter -= 1;
+                tokens.push(chr);
+                cursor += 1;
+                continue;
+            }
+
+            if (chr === CLOSE_SQUARE)
+            {
+                square_counter -= 1;
+                tokens.push(chr);
+                cursor += 1;
+                continue;
+            }
+
+            if (chr === CLOSE_CURLY)
+            {
+                curly_counter -= 1;
+                tokens.push(chr);
                 cursor += 1;
                 continue;
             }
 
             // ; * ,
-            if (chr === 59 || chr === 42 || chr ===44)
+            if (chr === SEMI_COLON || chr === STAR || chr === COMMA)
             {
-                tokens.push(input[cursor])
+                tokens.push(chr)
                 cursor += 1;
                 continue;
             }
@@ -317,7 +571,7 @@ The Higgs FFI api
                    (chr > 96 && chr < 123) ||
                    (chr > 47 && chr < 58) ||
                    (chr === 95)))
-                throw "Invalid character: " + input[cursor];
+                ParseError("Invalid Character: " + input[cursor]);
 
             // Alphanumeric and _
             while ((chr > 64 && chr < 91) ||
@@ -335,268 +589,405 @@ The Higgs FFI api
             tokens.push(string(tok, tok_cursor));
             tok_cursor = 0;
 
-        } while (cursor < end);
+        }
+        while (cursor < end);
 
         c.free(tok);
 
-        if (counter !== 0)
-            throw "Unbalanced (), [], or {} in declaration:\n" + input;
+        if (round_counter !== 0)
+            ParseError("Unbalanced ()");
+        else if (square_counter !== 0)
+            ParseError("Unbalanced []");
+        else if (curly_counter !== 0)
+            ParseError("Unbalanced {}");
+
         return tokens;
     }
 
 
     /**
-    PARSER
+    Predicate Functions
     */
 
     /**
-    TYPES
+    Check if token is a storage class specifier.
     */
+    function isStorageClassSpecifier()
+    {
+        if (tok === "register" || tok === "auto" || tok === "static")
+            ParseError("Invalid Storage Class Specifier: " + tok);
 
-    // Mapping of C types to the low-level FFI type markers.
-    var type_map = {
-        // all pointers
-        "*" : "*",
-        // void
-        "void" : "void",
-        "char" : "i8",
-        // int
-        "int" : "i32",
-        // double
-        "double" : "f64",
-        // TODO: these are wrong
-        "long" : "i32",
-        "size_t" : "i32"
+        // TODO: let extern pass through?
+        return (tok === "typedef");
     }
 
     /**
-    Get the type binding power of a token.
+    Check if token is a type qualifier.
     */
-    function typeP(t)
+    function isTypeQualifier()
     {
-        // Any given token has a "type binding power"
-        // 3 all pointer types are all treated as void*
-        if (t === "*")
-            return 3;
-        // 2 all supported short and long types are interchangeable 
-        if (t === "short" || t === "long")
-            return 2;
-        // 1 it's a known type
-        if (type_map.hasOwnProperty(t))
-            return 1;
-        // 0 it's not a known type
-        return 0;
+        return (tok === "const" || tok === "volatile" || tok === "restrict");
     }
 
     /**
-    Convert all types in a body to Higgs FFI type.
+    Check if token is a function specifier.
     */
-    function mapTypes(body)
+    function isFunSpecifier()
     {
-        var type;
-        var i = body.length;
-        while (i-- > 1)
+        if (tok === "inline")
+            ParseError("Invalid Function Specifier: inline");
+        return false;
+    }
+
+    /**
+    Check if token is an identifier.
+    */
+    function isIdentifier()
+    {
+        return !(tok === STAR || tok === OPEN_ROUND || tok === CLOSE_ROUND ||
+                    tok === OPEN_SQUARE || tok === CLOSE_SQUARE ||
+                    tok === OPEN_CURLY || tok === CLOSE_CURLY ||
+                    tok === COMMA || tok === SEMI_COLON ||
+                    isStorageClassSpecifier() || isTypeSpecifier() ||
+                    tok === "struct" || tok === "union" ||
+                    isTypeQualifier() || isFunSpecifier());
+    }
+
+    /**
+    Check if token is a type specifier.
+    */
+    function isTypeSpecifier()
+    {
+        // NOTE: technically struct-or-union-specifier should he handled here,
+        //       instead it is handled as a separate check.
+        return (types.hasOwnProperty(tok));
+    }
+
+
+    /**
+    Parsing Functions
+    */
+
+    /**
+    Parse short type
+    */
+    function parseShortType()
+    {
+        var peek = tokens[index + 1];
+        if (peek === "int")
+            return advance("short");
+        else
+            return tok
+    }
+
+    /**
+    Parse long type
+    */
+    function parseLongType()
+    {
+        var peek = tokens[index + 1];
+
+        if (peek === "int")
+            return advance("long");
+        else if (peek === "long")
+            return parseLongType(advance());
+        
+        if (peek === "unsigned")
         {
-            type = body[i];
-            if (type === "*")
-                continue;
-            if (type_map.hasOwnProperty(type))
-                body[i] = type_map[type];
-            else
-                throw "Unknown type: " + type;
+            parseUnsignedType(advance());
+            return advance("long");
         }
-    }
-
-
-    /**
-    Helpers
-    */
-
-    /**
-    Check if a token is a terminator.
-    */
-    function isTerm(token)
-    {
-        return (token === "," || token === ";" ||
-                token === ")" || token === "}" || token === "]");
-    }
-
-    /**
-    Check if a token is an l-terminator.
-    */
-    function isLTerm(token)
-    {
-        return (token === "(" || token === "{" || token ==- "[");
-    }
-
-    /**
-    Check if a token is an identifier.
-    */
-    function isIdent(token)
-    {
-        return (!typeP(token) && !isTerm(token) && !isLTerm(token));
-    }
-
-
-    /**
-    Info for declaration
-    */
-
-    // Tokens for declaration
-    var tokens;
-    // Length of declaration
-    var end;
-    // Current position
-    var index;
-    // Current name
-    var name;
-    // Current type
-    var type;
-    // Current type binding power
-    var type_p;
-    // Body for the declaration
-    var body;
-
-    /**
-    Skip to the next instance of the given token.
-    */
-    function skipTo(to)
-    {
-        index += 1;
-        while (tokens[index++] !== to) ;
-    }
-
-    /**
-    Get next type taking type binding power into account.
-    */
-    function getType(i)
-    {
-        var token;
-        var b = 0;
-        do
+        else if (peek === "signed")
         {
-            token = tokens[i++];
-            b = typeP(token);
-
-            if (b === 0 || b < type_p)
-                continue;
-
-            // long double type is not currently supported
-            if (token === "double" && type === "long")
-                throw "Unsupported type: long double.";
-
-            type = token;
-            index = i;
-            type_p = b;
-        } while (!isTerm(token) && !isLTerm(token));
-    }
-
-
-    /**
-    Parse a declaration for either a variable or a function.
-    */
-    function parseVar()
-    {
-        var token;
-        name = undefined;
-        type = undefined;
-        type_p = 0;
-
-        while ((!type || !name) && index < end)
-        {
-            getType(index);
-            token = tokens[index++];
-            if (token === ")")
-                break;
-            if (isIdent(token))
-                name = token;
+            parseSignedType(advance());
+            return advance("long");
         }
+        
+        return tok;
+    }
 
-        return (!!name && !!type);
+
+    /**
+    NOTE: For now the signedness is discarded
+          and it's up to the programmer to track whether
+          a value is signed or unsigned. Eventually it
+          may be kept for use by wrappers.
+    */
+
+    /**
+    Parse signed type
+    */
+    function parseSignedType()
+    {
+        var peek = tokens[index + 1];
+
+        if (peek === "char")
+            return "char";
+        else if (peek === "int")
+            return "int";
+        else if (peek === "short")
+            return parseShortType();
+        else if (peek === "long")
+            return parseLongType();
+        else
+            return tok;
     }
 
     /**
-    Parse the arguments to a function.
+    Parse unsigned type
     */
-    function parseArgs()
+    function parseUnsignedType()
     {
-        var token;
+        var peek = tokens[index + 1];
 
-        while(index < end)
-        {
-            token = tokens[index];
-
-            if (!parseVar())
-                break;
-
-            body.push(type);
-            token = tokens[index];
-
-            if (token === ")" && tokens[index + 1] === "(")
-                skipTo(")");
-
-            if (token !== "," && token !== ")")
-                throw "Error: expected , or ) after " +
-                    tokens[index - 1] + ".";
-        }
-
-        if (!type && token !== ")")
-            throw "Error: expected ) after " +
-                    tokens[index - 1] + ".";
-
-        return;
+        if (peek === "char" || peek === "int")
+            return peek;
+        else if (peek === "short")
+            return parseShortType();
+        else if (peek === "long")
+            return parseLongType();
+        else
+            return tok;
     }
 
     /**
-    Parse a declaration
+    Parse a declaration.
     */
-    function parseDec(input, lib)
+    function parseDeclaration()
     {
-        tokens = tokenize(input);
-        end = tokens.length;
-        index = 0;
-        name = undefined;
-        type = undefined;
-        type_p = 0;
-        body = [];
+        var dec = {};
+        acceptDeclarationSpecifier(dec);
+        acceptDeclarator(dec);
 
-        if (parseVar())
+        if (tok !== SEMI_COLON)
+            ParseError("Expected ;");
+
+        return dec;
+    }
+
+    /**
+    Accept a declaration specifier.
+    */
+    function acceptDeclarationSpecifier(dec)
+    {
+        while (true)
         {
-            body.push(name);
-            body.push(type);
-
-            // If it's a function
-            if (tokens[index] == "(")
+            // NOTE: any number/combination of these is accepted,
+            // it doesn't fully validate input.
+            if (isTypeSpecifier())
             {
-                parseArgs(++index);
-                mapTypes(body);
-                lib.fun(body.shift(), body.join(","));
-                return;
+                if (tok === "signed")
+                    dec.type = advance(parseSignedType());
+                else if (tok === "unsigned")
+                    dec.type = advance(parseUnsignedType());
+                else if (tok === "short")
+                    dec.type = advance(parseShortType());
+                else if (tok === "long")
+                    dec.type = advance(parseLongType());
+                else
+                    dec.type = advance(types[tok]);
+            }
+            else if (tok === "struct" || tok === "union")
+            {
+                // leave tok in place for parseStructOrUnionSpecifier
+                dec.type = parseStructOrUnionSpecifier();
+                dec.str_or_uni = true;
+            }
+            else if (isTypeQualifier() || isStorageClassSpecifier() || isFunSpecifier())
+            {
+                if (tok === "typedef")
+                    dec.typedef = true;
+                advance();
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    /**
+    Accept a declarator.
+    */
+    function acceptDeclarator(dec, allow_abstract)
+    {
+        acceptPointer(dec);
+        acceptDirectDeclarator(dec, allow_abstract);
+    }
+
+    /**
+    Accept a pointer.
+    */
+    function acceptPointer(dec)
+    {
+        if (tok === STAR)
+        {
+            dec.ptr = true;
+            while (tok === STAR || isTypeQualifier())
+                advance();
+        }
+    }
+
+    /**
+    Accept a direct declarator.
+    */
+    function acceptDirectDeclarator(dec, allow_abstract)
+    {
+        var count;
+        var nested_dec;
+
+        if (isIdentifier())
+        {
+            if (dec.name)
+                ParseError("Unexpected Identifier: " + tok);
+            dec.name = tok;
+            advance();
+        }
+        else if (tok === OPEN_ROUND)
+        {
+            advance();
+            nested_dec = {};
+            nested_dec.type = dec;
+            acceptDeclarator(nested_dec, true);
+            dec.dec = nested_dec;
+
+            if (tok === CLOSE_ROUND)
+                advance();
+            else
+                ParseError("Expected )");
+        }
+        else if (!allow_abstract && !dec.str_or_uni)
+        {
+            ParseError("Expected identifier or ( at " + index);
+        }
+
+        // TODO: [] - Arrays
+
+        if (tok === OPEN_ROUND)
+        {
+            // Distinguish between a function declaration and a 
+            // declaration returning a function. In the later case we don't care
+            // about the signature of the returned function.
+            if (dec.fun)
+            {
+                // TODO: handle this
+                if (!dec.ptr)
+                    ParseError("Cannot return function");
+
+                // Just skip the args
+                count = 1;
+
+                while (count > 0)
+                {
+                    advance();
+                    if (tok === undefined)
+                        ParseError("Unable to parse declaration");
+                    else if (tok === OPEN_ROUND)
+                        count += 1;
+                    else if(tok === CLOSE_ROUND)
+                        count -= 1;
+                }
+
+                return advance();
             }
 
-            // Otherwise, it's a var declaration.
-            mapTypes(body);
-            lib.symbol(body[0], body[1]);
-            return;
-        }
+            // Otherwise, it's a function declaration; get the arg types
+            dec.fun = true;
+            advance();
 
-        throw "Unable to parse declaration.";
-        return;
+            // Handle empty arg list
+            if (tok === CLOSE_ROUND)
+                return advance();
+
+            dec.args = parseParameterTypeList();
+
+            if (tok === CLOSE_ROUND)
+                advance();
+            else
+                ParseError("Expected )");
+        }
     }
 
     /**
-    Take a list of C style declarations and automatically create bindings for them.
+    Parse a parameter type list.
     */
-    function cdef(defs)
+    function parseParameterTypeList()
     {
+        var parameter_decs = [];
+        var dec;
 
-        var def, sig;
-
-        // Loop through defs
-        for (var i = 0, l = defs.length; i < l; i++)
+        while(true)
         {
-            def = defs[i];
-            parseDec(def, this);
+            dec = {};
+            acceptDeclarationSpecifier(dec);
+            // All declarators inside parameter lists can be abstract.
+            acceptDeclarator(dec, true);
+            parameter_decs.push(dec);
+
+            if (tok === COMMA)
+                advance();
+            else if (tok == CLOSE_ROUND)
+                return parameter_decs;
+            else
+                ParseError("Expected ,  or )");
+        }
+    }
+
+    /**
+    Parse a struct or union.
+    */
+    function parseStructOrUnionSpecifier()
+    {
+        var dec = {};
+        var members;
+        var member_dec;
+        var tagged = false;
+
+        dec.type = tok;
+        advance();
+
+        if (isIdentifier())
+        {
+            tagged = true;
+            dec.name = tok;
+            advance();
+        }
+        
+        if (tok === OPEN_CURLY)
+        {
+            advance();
+            members = [];
+            dec.members = members;
+            member_dec = {};
+
+            while(true)
+            {
+                member_dec = {};
+
+                acceptDeclarationSpecifier(member_dec);
+                // TODO: allow abstract declarators?
+                acceptDeclarator(member_dec);
+
+                members.push(member_dec);
+
+                if ((tok === SEMI_COLON) && (tokens[index + 1] === CLOSE_CURLY))
+                {
+                    return advance(), advance(dec);
+                }
+                else if (tok === SEMI_COLON)
+                    advance();
+                else
+                    ParseError("Expected ;  or }");
+            }
+        }
+        else if (tagged)
+        {
+            // TODO: more checks?
+            return dec;
+        }
+        else
+        {
+            ParseError("Expected { or identifier");
         }
     }
 
