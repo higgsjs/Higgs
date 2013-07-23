@@ -63,6 +63,7 @@ static this()
     typeMap["i8"]  = Type.INT32;
     typeMap["i16"] = Type.INT32;
     typeMap["i32"] = Type.INT32;
+    typeMap["i64"] = Type.INT64;
     typeMap["f64"] = Type.FLOAT64;
     typeMap["*"]   = Type.RAWPTR;
 

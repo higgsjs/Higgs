@@ -50,6 +50,9 @@ Bindings for common c I/O functions
     var c = ffi.c;
 
     c.cdef([
+        "typedef int size_t;", // the int is a lie, not enough i64 support atm
+        "typedef struct _IO_FILE FILE;",
+
         "FILE *fopen( const char *filename, const char *mode );",
         "int fflush( FILE *stream );",
         "int fclose( FILE *stream );",
