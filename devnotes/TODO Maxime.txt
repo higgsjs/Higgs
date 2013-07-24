@@ -95,11 +95,17 @@ TODO: streamline this... How can you get something working relatively fast?
 - Temporarily simplify if you have to
 - Don't try to reinvent everything at once
 
-
-
+TODO: fix state comparison
 
 TODO: fix spillRegs, shouldn't take localidx as argument
 
+TODO: replace liveSets by liveQueryFn
+
+FIXME:
+Object.keys({length : 1}).length == 0
+keys there should give ["length"] but instead you get []
+- Test in REPL
+- Add object unit test
 
 
 
@@ -112,6 +118,8 @@ TODO: fix spillRegs, shouldn't take localidx as argument
 
 
 
+
+[DONE] TODO: make register mapping use values instead of local indices
 
 [DONE] TODO: move list execution function
 - uses one temp reg

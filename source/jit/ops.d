@@ -815,7 +815,6 @@ void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 }
 */
 
-/*
 void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Get the function corresponding to this instruction
@@ -824,6 +823,8 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // RSI: second argument (instr)
     auto opFn = instr.opcode.opFn;
 
+    // FIXME
+    /*
     // Spill all live values and instruction arguments
     auto liveSet = ctx.liveSets[instr];
     st.spillRegs(
@@ -881,8 +882,8 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     {
         st.valOnStack(instr.outSlot);
     }
+    */
 }
-*/
 
 alias void function(CodeGenCtx ctx, CodeGenState st, IRInstr instr) CodeGenFn;
 

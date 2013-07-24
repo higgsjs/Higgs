@@ -392,10 +392,6 @@ void compFun(Interp interp, IRFunction fun)
             continue BLOCK_LOOP;
         }
 
-
-
-
-        /*
         // If this is a loop header block, generate an entry point
         auto blockName = block.getName();
         if (blockName.startsWith("do_test") ||
@@ -451,10 +447,6 @@ void compFun(Interp interp, IRFunction fun)
                 break INSTR_LOOP;
             }
         }
-        */
-
-
-
     }
 
     //writefln("done compiling blocks");
@@ -563,7 +555,6 @@ struct BlockVersion
 
 /// Register allocation state
 alias uint8_t RAState;
-const RAState RA_DEAD = 0;
 const RAState RA_STACK = (1 << 7);
 const RAState RA_GPREG = (1 << 6);
 const RAState RA_CONST = (1 << 5);
@@ -571,7 +562,6 @@ const RAState RA_REG_MASK = (0x0F);
 
 // Type flag state
 alias uint8_t TFState;
-const TFState TF_UNKNOWN = 0;
 const TFState TF_KNOWN = (1 << 7);
 const TFState TF_SYNC = (1 << 6);
 const TFState TF_BOOL_TRUE = (1 << 5);
@@ -583,40 +573,26 @@ Code generation state
 */
 class CodeGenState
 {
-    /// Register allocation state (per-local)
-    RAState[] allocState;
+    /// Type information state, type flags (per-value)
+    private TFState[IRDstValue] typeState;
 
-    /// Map of general-purpose registers to locals
+    /// Register allocation state (per-value)
+    private RAState[IRDstValue] allocState;
+
+    /// Map of general-purpose registers to values
     /// This is NULL_LOCAL if a register is free
-    LocalIdx[] gpRegMap;
-
-    /// Type information state, type flags (per-local)
-    TFState[] typeState;
+    private IRDstValue[] gpRegMap;
 
     /// Constructor for a default/entry code generation state
     this(IRFunction fun)
     {
-        allocState.length = fun.numLocals;
-
-        // All arguments are initially on the stack, other
-        // values are dead until they are written
-        for (size_t i = 0; i < allocState.length; ++i)
-        {
-            if (i < fun.numLocals - (fun.numLocals + NUM_HIDDEN_ARGS))
-                allocState[i] = RA_STACK;
-            else
-                allocState[i] = RA_DEAD;
-        }
+        // TODO: mark argument values as initially on the stack
+        // allocState[i] = RA_STACK;
 
         // All registers are initially free
         gpRegMap.length = 16;
         for (size_t i = 0; i < gpRegMap.length; ++i)
-            gpRegMap[i] = NULL_LOCAL;
-
-        // No type info is initially known
-        typeState.length = fun.numLocals;
-        for (size_t i = 0; i < typeState.length; ++i)
-            typeState[i] = 0;
+            gpRegMap[i] = null;
     }
 
     /// Copy constructor
@@ -632,14 +608,14 @@ class CodeGenState
     {
         auto output = "";
 
-        foreach (regNo, localIdx; gpRegMap)
+        foreach (regNo, value; gpRegMap)
         {
-            if (localIdx is NULL_LOCAL)
+            if (value is null)
                 continue;
 
             auto reg = new X86Reg(X86Reg.GP, regNo, 64);
 
-            output ~= reg.toString() ~ " => $" ~ to!string(localIdx);
+            output ~= reg.toString() ~ " => $" ~ value.toString();
         }
 
         return output;
@@ -651,13 +627,15 @@ class CodeGenState
         auto that = cast(CodeGenState)o;
         assert (that !is null);
 
+        // FIXME: need to remove dead values for this to work
+
+        if (this.typeState != that.typeState)
+            return false;
+
         if (this.allocState != that.allocState)
             return false;
 
         if (this.gpRegMap != that.gpRegMap)
-            return false;
-
-        if (this.typeState != that.typeState)
             return false;
 
         return true;
@@ -885,31 +863,26 @@ class CodeGenState
         auto localIdx = instr.outSlot;
 
         // Mark this as being a known constant
-        allocState[localIdx] = RA_CONST;
+        allocState[instr] = RA_CONST;
 
         // Set the output type
         setOutType(null, instr, Type.CONST);
 
         // Store the boolean constant in the type flags
-        typeState[localIdx] |= val? TF_BOOL_TRUE:TF_BOOL_FALSE;
+        typeState[instr] |= val? TF_BOOL_TRUE:TF_BOOL_FALSE;
     }
 
-    /// Test if a constant word value is known for a given local
-    bool wordKnown(LocalIdx localIdx) const
+    /// Test if a constant word value is known for a given value
+    bool wordKnown(IRDstValue value) const
     {
-        assert (
-            localIdx != NULL_LOCAL,
-            "invalid local"
-        );
-
-        return (allocState[localIdx] & RA_CONST) != 0;
+        return (allocState[value] & RA_CONST) != 0;
     }
 
     /// Get the word value for a known constant local
-    Word getWord(LocalIdx localIdx)
+    Word getWord(IRDstValue value)
     {
-        auto allocSt = allocState[localIdx];
-        auto typeSt = typeState[localIdx];
+        auto allocSt = allocState[value];
+        auto typeSt = typeState[value];
 
         assert (allocSt & RA_CONST);
 
@@ -937,7 +910,7 @@ class CodeGenState
         auto localIdx = instr.outSlot;
 
         // Get the previous type state
-        auto prevState = typeState[localIdx];
+        auto prevState = typeState.get(instr, 0);
 
         // Check if the type is still in sync
         auto inSync = (
@@ -947,16 +920,16 @@ class CodeGenState
         );
 
         // Set the type known flag and update the type
-        typeState[localIdx] = TF_KNOWN | (inSync? TF_SYNC:0) | type;
+        typeState[instr] = TF_KNOWN | (inSync? TF_SYNC:0) | type;
 
         // If the output operand is on the stack
-        if (allocState[localIdx] & RA_STACK)
+        if (allocState.get(instr, 0) & RA_STACK)
         {
             // Write the type value to the type stack
             as.instr(MOV, new X86Mem(8, tspReg, instr.outSlot), type);
 
             // Mark the type as in sync, so we don't spill the type later
-            typeState[localIdx] |= TF_SYNC;
+            typeState[instr] |= TF_SYNC;
         }
     }
 
@@ -964,7 +937,7 @@ class CodeGenState
     void setOutType(Assembler as, IRInstr instr, X86Reg typeReg)
     {
         // Mark the type value as unknown
-        typeState[instr.outSlot] = TF_UNKNOWN;
+        typeState.remove(instr);
 
         // Write the type to the type stack
         auto memOpnd = new X86Mem(8, tspReg, instr.outSlot);
@@ -972,30 +945,20 @@ class CodeGenState
 
         // If the output is mapped to a register, write a 0 value
         // to the word stack to avoid invalid references
-        if (allocState[instr.outSlot] & RA_GPREG)
+        if (allocState.get(instr, 0) & RA_GPREG)
             as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
     }
 
     /// Test if a constant type is known for a given local
-    bool typeKnown(LocalIdx localIdx) const
+    bool typeKnown(IRDstValue value) const
     {
-        assert (
-            localIdx != NULL_LOCAL,
-            "invalid local"
-        );
-
-        return (typeState[localIdx] & TF_KNOWN) != 0;
+        return (value in typeState) !is null;
     }
 
     /// Get the known type of a value
-    Type getType(LocalIdx localIdx) const
+    Type getType(IRDstValue value) const
     {
-        assert (
-            localIdx != NULL_LOCAL,
-            "argument is not valid local"
-        );
-
-        auto typeState = typeState[localIdx];
+        auto typeState = typeState.get(value, 0);
 
         assert (
             typeState & TF_KNOWN,
@@ -1006,15 +969,16 @@ class CodeGenState
     }
 
     /// Mark a value as being stored on the stack
-    void valOnStack(LocalIdx localIdx)
+    void valOnStack(IRDstValue value)
     {
         // Mark the value as being on the stack
-        allocState[localIdx] = RA_STACK;
+        allocState[value] = RA_STACK;
 
         // Mark the type of this value as unknown
-        typeState[localIdx] = TF_UNKNOWN;
+        typeState.remove(value);
     }
 
+    // FIXME: make this use values instead of LocalIdx
     /// Spill test function
     alias bool delegate(LocalIdx localIdx) SpillTestFn;
 
@@ -1023,6 +987,9 @@ class CodeGenState
     */
     void spillRegs(Assembler as, SpillTestFn spillTest = null)
     {
+        // FIXME
+
+        /*
         // For each general-purpose register
         foreach (regNo, localIdx; gpRegMap)
         {
@@ -1065,6 +1032,7 @@ class CodeGenState
                 }
             }
         }
+        */
 
         //writefln("done spilling consts");
     }
@@ -1072,6 +1040,10 @@ class CodeGenState
     /// Spill a specific register to the stack
     void spillReg(Assembler as, size_t regNo)
     {
+
+        // FIXME
+
+        /*
         // Get the slot mapped to this register
         auto regSlot = gpRegMap[regNo];
 
@@ -1109,6 +1081,9 @@ class CodeGenState
             // The type state is now in sync
             typeState[regSlot] |= TF_SYNC;
         }
+        */
+
+
     }
 }
 
