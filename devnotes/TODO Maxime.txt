@@ -68,7 +68,7 @@ TODO: Modify/reimplement inlining for SSA
 - Not too hard?
 - Try creating new IRFunction for function with inlining?
 
-TODO: reimplement instructions in jit/ops.d
+TODO: progressively reimplement instructions in jit/ops.d
 - Will need a way to request an argument as a register
   - If it's a constant, we need to supply a temp
 
@@ -78,12 +78,7 @@ TODO: get jit working with defaultFn only
   - Update state to reflect which phi nodes are in slots or regs
   - Insert moves as appropriate
   - May have cycles between phi node moves
-- Alternative is to say phi nodes don't have assigned reg
-  - just assigned slot for interp. fallback
-  - phi keeps reg/slot from incoming arg
-  - if instr writes over phi value and phi value still live, spill into phi slot
-  - but phi moves will be rare anyways!
-- May want a generic alloc state transition function?
+- May want a generic state transition function?
   - Params
     - Incoming pred block
     - phi nodes to execute (succ block)
@@ -95,22 +90,26 @@ TODO: get jit working with defaultFn only
     move A into tmp, add (tmp->B) to list
   - Pretty simple iterative algorithm!
 
+TODO: streamline this... How can you get something working relatively fast?
+- Start by studying/re-examining state class
+- Temporarily simplify if you have to
 
 
-TODO: move list execution function
+
+
+
+
+
+
+
+
+[DONE] TODO: move list execution function
 - uses one temp reg
 - algorithm:
   - Identity moves are removed
   - If no moves don't overwrite an src, take pair (A->B) and remove from list,
     move A into tmp, add (tmp->B) to list
   - Pretty simple iterative algorithm!
-
-
-
-
-
-
-
 
 [DONE] TODO: dumb register allocator
 - need to test our ideas first, quality reg alloc is not on the critical path

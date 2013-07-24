@@ -43,7 +43,6 @@ import std.stdint;
 import ir.ir;
 import ir.livevars;
 import jit.x86;
-//import util.bitset;
 
 X86Reg interpReg;
 X86Reg wspReg;

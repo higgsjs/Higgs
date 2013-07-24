@@ -39,6 +39,7 @@ jit/x86.d           \
 jit/encodings.d     \
 jit/codeblock.d     \
 jit/assembler.d     \
+jit/moves.d         \
 jit/regalloc.d      \
 jit/jit.d           \
 jit/ops.d           \
