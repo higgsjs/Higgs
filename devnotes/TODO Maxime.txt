@@ -93,6 +93,16 @@ TODO: get jit working with defaultFn only
 TODO: streamline this... How can you get something working relatively fast?
 - Start by studying/re-examining state class
 - Temporarily simplify if you have to
+- Don't try to reinvent everything at once
+
+
+
+
+TODO: fix spillRegs, shouldn't take localidx as argument
+
+
+
+
 
 
 

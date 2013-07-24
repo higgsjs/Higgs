@@ -329,15 +329,6 @@ void compFun(Interp interp, IRFunction fun)
     // Create an entry point for the function
     getEntryPoint(fun.entryBlock);
 
-
-
-
-
-
-
-    // FIXME
-
-    /*
     // Until the work list is empty
     BLOCK_LOOP:
     while (workList.length > 0)
@@ -368,6 +359,8 @@ void compFun(Interp interp, IRFunction fun)
             ol.comment("Block stub for " ~ block.getName());
             ol.addInstr(label);
 
+            // FIXME
+            /*
             // Spill the registers live at the beginning of this block
             auto liveSet = ctx.liveSets[block.firstInstr];
             state.spillRegs(
@@ -383,6 +376,7 @@ void compFun(Interp interp, IRFunction fun)
                     return false;
                 }
             );
+            */
 
             // Invalidate the compiled code for this function
             ol.ptr(cargRegs[0], block);
@@ -398,6 +392,10 @@ void compFun(Interp interp, IRFunction fun)
             continue BLOCK_LOOP;
         }
 
+
+
+
+        /*
         // If this is a loop header block, generate an entry point
         auto blockName = block.getName();
         if (blockName.startsWith("do_test") ||
@@ -453,6 +451,10 @@ void compFun(Interp interp, IRFunction fun)
                 break INSTR_LOOP;
             }
         }
+        */
+
+
+
     }
 
     //writefln("done compiling blocks");
@@ -521,7 +523,6 @@ void compFun(Interp interp, IRFunction fun)
         writefln("num versions: %s", numVersions);
         writefln("");
     }
-    */
 }
 
 /**
