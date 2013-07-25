@@ -235,12 +235,20 @@ function test_keys()
 
     if (keys.length !== 2)
         return 1;
-
     if (keys.indexOf('k2') === -1)
         return 2;
-
     if (keys.indexOf('k3') === -1)
         return 3;
+
+    var a = {length:3};
+    var keys = Object.keys(a);
+    if (keys.length !== 1)
+        return 4;
+
+    var a = [];
+    var keys = Object.keys(a);
+    if (keys.indexOf('length') !== -1)
+        return 5;
 
     return 0;
 }

@@ -101,23 +101,20 @@ TODO: fix spillRegs, shouldn't take localidx as argument
 
 TODO: replace liveSets by liveQueryFn
 
-FIXME:
-Object.keys({length : 1}).length == 0
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: Object.keys({length : 1}).length == 0
 keys there should give ["length"] but instead you get []
 - Test in REPL
 - Add object unit test
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: make register mapping use values instead of local indices
 

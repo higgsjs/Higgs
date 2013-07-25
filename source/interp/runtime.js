@@ -2199,8 +2199,8 @@ function $rt_getPropEnum(obj)
                     var keyVal = $rt_class_get_prop_name(classPtr, curIdx);
 
                     // FIXME: until we have support for non-enumerable properties
-                    if (keyVal === 'length' ||
-                        keyVal === 'callee')
+                    if ((keyVal === 'length' || keyVal === 'callee' ) &&
+                        $rt_valIsLayout(obj, $rt_LAYOUT_OBJ) === false)
                     {
                         ++curIdx;
                         continue;
