@@ -203,14 +203,11 @@ void compFun(Interp interp, IRFunction fun)
         inlinePass(interp, fun);
     }
 
-    // FIXME
-    BitSet[IRInstr] liveSets;
-
     // Run a live variable analysis on the function
-    auto liveQueryFn = compLiveVars(fun);
+    auto liveInfo = new LiveInfo(fun);
 
     // Assign a register mapping to each temporary
-    auto regMapping = mapRegs(fun, liveQueryFn);
+    auto regMapping = mapRegs(fun, liveInfo);
 
     // Assembler to write code into
     auto as = new Assembler();
@@ -320,7 +317,7 @@ void compFun(Interp interp, IRFunction fun)
         as, 
         ol, 
         bailLabel,
-        liveSets,
+        liveInfo,
         regMapping,
         getBlockLabel,
         getEntryPoint
@@ -359,24 +356,20 @@ void compFun(Interp interp, IRFunction fun)
             ol.comment("Block stub for " ~ block.getName());
             ol.addInstr(label);
 
-            // FIXME
-            /*
             // Spill the registers live at the beginning of this block
-            auto liveSet = ctx.liveSets[block.firstInstr];
             state.spillRegs(
                 ol,
-                delegate bool(LocalIdx localIdx)
+                delegate bool(IRDstValue value)
                 {
-                    if (block.firstInstr.hasArg(localIdx))
+                    if (block.firstInstr.hasArg(value))
                         return true;
 
-                    if (liveSet.has(localIdx))
+                    if (ctx.liveInfo.liveAfter(value, block.firstInstr))
                         return true;
 
                     return false;
                 }
             );
-            */
 
             // Invalidate the compiled code for this function
             ol.ptr(cargRegs[0], block);
@@ -626,8 +619,6 @@ class CodeGenState
     {
         auto that = cast(CodeGenState)o;
         assert (that !is null);
-
-        // FIXME: need to remove dead values for this to work
 
         if (this.typeState != that.typeState)
             return false;
@@ -978,61 +969,60 @@ class CodeGenState
         typeState.remove(value);
     }
 
-    // FIXME: make this use values instead of LocalIdx
     /// Spill test function
-    alias bool delegate(LocalIdx localIdx) SpillTestFn;
+    alias bool delegate(IRDstValue value) SpillTestFn;
 
     /**
     Spill registers to the stack
     */
     void spillRegs(Assembler as, SpillTestFn spillTest = null)
     {
-        // FIXME
-
-        /*
         // For each general-purpose register
-        foreach (regNo, localIdx; gpRegMap)
+        foreach (regNo, value; gpRegMap)
         {
             // If nothing is mapped to this register, skip it
-            if (localIdx is NULL_LOCAL)
+            if (value is null)
                 continue;
 
             // If the value should be spilled, spill it
-            if (spillTest is null || spillTest(localIdx) == true)
+            if (spillTest is null || spillTest(value) == true)
                 spillReg(as, regNo);
         }
 
         //writefln("spilling consts");
 
-        // For each local
-        foreach (LocalIdx localIdx, allocSt; allocState)
+        // For each value
+        foreach (value, allocSt; allocState)
         {
             // If this is a known constant
             if (allocSt & RA_CONST)          
             {
                 // If the value should be spilled
-                if (spillTest is null || spillTest(localIdx) == true)
+                if (spillTest is null || spillTest(value) == true)
                 {
                     // Spill the constant value to the stack
-                    as.comment("Spilling constant value of $" ~to!string(localIdx));
+                    as.comment("Spilling constant value of " ~ value.toString());
+
+                    // FIXME
+                    /*
                     auto word = getWord(localIdx);
                     as.setWord(localIdx, word.int32Val);
+                    */
 
-                    auto typeSt = typeState[localIdx];
+                    auto typeSt = typeState.get(value, 0);
                     assert (typeSt & TF_KNOWN);
 
                     // If the type flags are not in sync
                     if (!(typeSt & TF_SYNC))
                     {
                         // Write the type tag to the type stack
-                        as.comment("Spilling type for $" ~to!string(localIdx));
+                        as.comment("Spilling type for $" ~ value.toString());
                         auto type = cast(Type)(typeSt & TF_TYPE_MASK);
-                        as.setType(localIdx, type);
+                        as.setType(value.outSlot, type);
                     }
                 }
             }
         }
-        */
 
         //writefln("done spilling consts");
     }
@@ -1040,50 +1030,43 @@ class CodeGenState
     /// Spill a specific register to the stack
     void spillReg(Assembler as, size_t regNo)
     {
-
-        // FIXME
-
-        /*
-        // Get the slot mapped to this register
-        auto regSlot = gpRegMap[regNo];
+        // Get the value mapped to this register
+        auto regVal = gpRegMap[regNo];
 
         // If no value is mapped to this register, stop
-        if (regSlot is NULL_LOCAL)
+        if (regVal is null)
             return;
 
-        auto mem = new X86Mem(64, wspReg, 8 * regSlot);
+        auto mem = new X86Mem(64, wspReg, 8 * regVal.outSlot);
         auto reg = new X86Reg(X86Reg.GP, regNo, 64);
 
-        //writefln("spilling: %s (%s)", regSlot, reg);
+        //writefln("spilling: %s (%s)", regVal.toString(), reg);
 
         // Spill the value currently in the register
-        as.comment("Spilling $" ~ to!string(regSlot));
+        as.comment("Spilling $" ~ regVal.toString());
         as.instr(MOV, mem, reg);
 
         // Mark the value as being on the stack
-        allocState[regSlot] = RA_STACK;
+        allocState[regVal] = RA_STACK;
 
         // Mark the register as free
-        gpRegMap[regNo] = NULL_LOCAL;
+        gpRegMap[regNo] = null;
 
         // Get the type state for this local
-        auto typeSt = typeState[regSlot];
+        auto typeSt = typeState.get(regVal, 0);
 
         // If the type is known but not in sync
         if ((typeSt & TF_KNOWN) && !(typeSt & TF_SYNC))
         {
             // Write the type tag to the type stack
-            as.comment("Spilling type for $" ~to!string(regSlot));
+            as.comment("Spilling type for $" ~ regVal.toString());
             auto type = typeSt & TF_TYPE_MASK;
-            auto memOpnd = new X86Mem(8, tspReg, cast(LocalIdx)regSlot);
+            auto memOpnd = new X86Mem(8, tspReg, regVal.outSlot);
             as.instr(MOV, memOpnd, type);
 
             // The type state is now in sync
-            typeState[regSlot] |= TF_SYNC;
+            typeState[regVal] |= TF_SYNC;
         }
-        */
-
-
     }
 }
 
@@ -1107,8 +1090,8 @@ class CodeGenCtx
     /// Bailout to interpreter label
     Label bailLabel;
 
-    /// Per-instruction live sets
-    BitSet[IRInstr] liveSets;
+    /// Liveness information for the function
+    LiveInfo liveInfo;
 
     /// Register mapping (slots->regs)
     RegMapping regMapping;
@@ -1125,7 +1108,7 @@ class CodeGenCtx
         Assembler as,
         Assembler ol,
         Label bailLabel,
-        BitSet[IRInstr] liveSets,
+        LiveInfo liveInfo,
         RegMapping regMapping,
         Label delegate(IRBlock, CodeGenState) getBlockLabel,
         Label delegate(IRBlock) getEntryPoint,
@@ -1136,7 +1119,7 @@ class CodeGenCtx
         this.as = as;
         this.ol = ol;
         this.bailLabel = bailLabel;
-        this.liveSets = liveSets;
+        this.liveInfo = liveInfo;
         this.regMapping = regMapping;
         this.getBlockLabel = getBlockLabel;
         this.getEntryPoint = getEntryPoint;

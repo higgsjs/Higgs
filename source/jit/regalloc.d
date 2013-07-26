@@ -96,7 +96,7 @@ alias X86Reg[IRDstValue] RegMapping;
 
 // TODO: Also color all values with XMM registers for FP values and spills
 
-RegMapping mapRegs(IRFunction fun, LiveQueryFn isLiveAfter)
+RegMapping mapRegs(IRFunction fun, LiveInfo liveInfo)
 {
     // Map of values to registers
     RegMapping mapping;

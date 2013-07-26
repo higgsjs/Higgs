@@ -72,7 +72,11 @@ TODO: progressively reimplement instructions in jit/ops.d
 - Will need a way to request an argument as a register
   - If it's a constant, we need to supply a temp
 
-TODO: get jit working with defaultFn only
+TODO: re-enable jit call in interpreter
+- get jit working with defaultFn only
+
+TODO: block transitions, state transition handling
+- getTarget, need to generate code
 - Need mechanism to handle block transitions w.r.t. phi nodes
   - "Execute" the phi assignment at the beginning of that block
   - Update state to reflect which phi nodes are in slots or regs
@@ -85,21 +89,11 @@ TODO: get jit working with defaultFn only
     - pred assignments for non-phi values (pred state)
     - succ assignments for non-phi values (succ state, if it might change?)
   - Assemble list of moves to simultaneously execute
-- From list of moves... If any moves don't overwrite an SRC, execute them
-  - If no moves don't overwrite an src, take pair (A->B) and remove from list,
-    move A into tmp, add (tmp->B) to list
-  - Pretty simple iterative algorithm!
 
-TODO: streamline this... How can you get something working relatively fast?
-- Start by studying/re-examining state class
-- Temporarily simplify if you have to
-- Don't try to reinvent everything at once
+TODO: search for FIXME in jit.d
 
-TODO: fix state comparison
-
-TODO: fix spillRegs, shouldn't take localidx as argument
-
-TODO: replace liveSets by liveQueryFn
+TODO: fix state.getWord
+- used once in SpillRegs
 
 
 
@@ -107,9 +101,16 @@ TODO: replace liveSets by liveQueryFn
 
 
 
+[DONE] TODO: fix defaultFn
 
+[DONE] TODO: implement IRInstr.hasArg(IRValue)
 
+[DONE] TODO: fix spillRegs calls
 
+[DONE] TODO: fix spillRegs implementation
+- if something is dead, delete it from the map, no more RA_DEAD
+
+[DONE] TODO: replace liveSets by liveQueryFn
 
 [DONE] FIXME: Object.keys({length : 1}).length == 0
 keys there should give ["length"] but instead you get []

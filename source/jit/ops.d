@@ -823,18 +823,15 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // RSI: second argument (instr)
     auto opFn = instr.opcode.opFn;
 
-    // FIXME
-    /*
     // Spill all live values and instruction arguments
-    auto liveSet = ctx.liveSets[instr];
     st.spillRegs(
         as,
-        delegate bool(LocalIdx localIdx)
+        delegate bool(IRDstValue value)
         {
-            if (instr.hasArg(localIdx))
+            if (instr.hasArg(value))
                 return true;
 
-            if (liveSet.has(localIdx))
+            if (ctx.liveInfo.liveAfter(value, instr))
                 return true;
 
             return false;
@@ -880,9 +877,8 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // output as being on the stack
     if (instr.outSlot !is NULL_LOCAL)
     {
-        st.valOnStack(instr.outSlot);
+        st.valOnStack(instr);
     }
-    */
 }
 
 alias void function(CodeGenCtx ctx, CodeGenState st, IRInstr instr) CodeGenFn;

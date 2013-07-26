@@ -1217,6 +1217,16 @@ class IRInstr : IRDstValue
         return args[idx].value;
     }
 
+    /// Test if this instruction uses a given value as argument
+    bool hasArg(IRValue value)
+    {
+        foreach (arg; args)
+            if (arg.value is value)
+                return true;
+
+        return false;
+    }
+
     /// Set a branch target with a branch descriptor
     void setTarget(size_t idx, BranchDesc desc)
     {
