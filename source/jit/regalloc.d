@@ -112,7 +112,8 @@ RegMapping mapRegs(IRFunction fun, LiveInfo liveInfo)
             if (phi.hasNoUses)
                 continue;
 
-            mapping[phi] = allocRegs[curRegIdx++];
+            mapping[phi] = allocRegs[curRegIdx];
+            curRegIdx = (curRegIdx + 1) % cast(int)allocRegs.length;
         }
 
         // Fo each instruction
@@ -121,7 +122,8 @@ RegMapping mapRegs(IRFunction fun, LiveInfo liveInfo)
             if (instr.hasNoUses)
                 continue;
 
-            mapping[instr] = allocRegs[curRegIdx++];
+            mapping[instr] = allocRegs[curRegIdx];
+            curRegIdx = (curRegIdx + 1) % cast(int)allocRegs.length;
         }
     }
 

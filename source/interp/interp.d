@@ -57,8 +57,7 @@ import interp.layout;
 import interp.string;
 import interp.object;
 import interp.gc;
-// FIXME: temporary for SSA refactoring
-//import jit.jit;
+import jit.jit;
 
 /**
 Run-time error
@@ -929,8 +928,6 @@ class Interp
         // While we have a target to branch to
         while (target !is null)
         {
-            // FIXME: temporary for SSA refactoring
-            /*
             // If this block was executed often enough and 
             // JIT compilation is enabled
             if (target.execCount > JIT_COMPILE_COUNT &&
@@ -940,7 +937,6 @@ class Interp
                 // Compile the function this block belongs to
                 compFun(this, target.fun);
             }
-            */
 
             // If this block has an associated entry point
             if (target.entryFn !is null)

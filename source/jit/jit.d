@@ -1003,11 +1003,8 @@ class CodeGenState
                     // Spill the constant value to the stack
                     as.comment("Spilling constant value of " ~ value.toString());
 
-                    // FIXME
-                    /*
-                    auto word = getWord(localIdx);
-                    as.setWord(localIdx, word.int32Val);
-                    */
+                    auto word = getWord(value);
+                    as.setWord(value.outSlot, word.int32Val);
 
                     auto typeSt = typeState.get(value, 0);
                     assert (typeSt & TF_KNOWN);

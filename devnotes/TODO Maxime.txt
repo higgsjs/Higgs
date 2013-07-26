@@ -68,12 +68,18 @@ TODO: Modify/reimplement inlining for SSA
 - Not too hard?
 - Try creating new IRFunction for function with inlining?
 
+TODO: dumpasm vs dumpasm_full?
+- Don't dump out of line?
+
 TODO: progressively reimplement instructions in jit/ops.d
 - Will need a way to request an argument as a register
   - If it's a constant, we need to supply a temp
 
-TODO: re-enable jit call in interpreter
-- get jit working with defaultFn only
+TODO: reimplement if_true instruction
+
+TODO: fix state.getWordOpnd, etc.
+- used once in SpillRegs
+- search for FIXME in jit.d
 
 TODO: block transitions, state transition handling
 - getTarget, need to generate code
@@ -90,16 +96,19 @@ TODO: block transitions, state transition handling
     - succ assignments for non-phi values (succ state, if it might change?)
   - Assemble list of moves to simultaneously execute
 
-TODO: search for FIXME in jit.d
-
-TODO: fix state.getWord
-- used once in SpillRegs
 
 
 
 
 
 
+
+
+
+
+[DONE] TODO: re-enable jit call in interpreter
+- get jit working with defaultFn only
+- no branch handling for now, bailout to interpreter pre-branch
 
 [DONE] TODO: fix defaultFn
 
