@@ -82,9 +82,22 @@ TODO: dumpasm vs dumpasm_full?
 
 TODO: reimplement if_true instruction
 
-TODO: fix execMoves wrt tmp reg size
 
-TODO: block transitions, state transition handling
+
+TODO: fix execMoves wrt tmp reg size
+- add sanity checks, ie: no move into imm
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: block transitions, state transition handling
 - getTarget, need to generate code
 - Need mechanism to handle block transitions w.r.t. phi nodes
   - "Execute" the phi assignment at the beginning of that block
@@ -92,24 +105,12 @@ TODO: block transitions, state transition handling
   - Insert moves as appropriate
   - May have cycles between phi node moves
 
-TODO: fix getWordOpnd
+[DONE] TODO: fix getWordOpnd
 - used once in SpillRegs
 - used by block trandition!
 - need to be able to prevent load
 - comment out current implementation and try reimplementing?
 - getCurOpnd sub-function?
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: fix getOutOpnd
 

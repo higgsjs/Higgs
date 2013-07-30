@@ -307,9 +307,6 @@ void compFun(Interp interp, IRFunction fun)
         CodeGenState predState
     )
     {
-        writeln("getBranchLabel");
-        assert (false);
-
         // Get a version of the successor matching the incoming state
         auto succVer = getBlockVersion(branch.succ, predState, false);
         auto succState = succVer.state;
@@ -321,31 +318,16 @@ void compFun(Interp interp, IRFunction fun)
             auto arg = branch.getPhiArg(phi);
             assert (arg !is null);
 
-            // TODO: getWordOpnd, loadVal = false
-            // Get the source operand for the argument word
-            X86Opnd srcWordOpnd;
-            // = predState.getWordOpnd()
-
-            // TODO
-            X86Opnd dstWordOpnd;
-            // = succState.getWordOpnd()
+            // Get the source and destination operands for the phi word
+            X86Opnd srcWordOpnd = predState.getWordOpnd(phi, 64);
+            X86Opnd dstWordOpnd = succState.getWordOpnd(phi, 64);
 
             if (srcWordOpnd != dstWordOpnd)
                 moveList ~= Move(dstWordOpnd, srcWordOpnd);
 
-
-
-            // TODO: need to get/move the type too
-            // may be a known type constant
-            // if known type constant, dst need to be made known too
-
-            X86Opnd srcTypeOpnd;
-            // TODO
-
-            X86Opnd dstTypeOpnd;
-            // TODO
-
-
+            // Get the source and destination operands for the phi type
+            X86Opnd srcTypeOpnd = predState.getTypeOpnd(phi);
+            X86Opnd dstTypeOpnd = succState.getTypeOpnd(phi);
 
             if (srcTypeOpnd != dstTypeOpnd)
                 moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
@@ -742,7 +724,36 @@ class CodeGenState
     }
 
     /**
-    Get the word operand for an instruction argument
+    Get an operand for any IR value without allocating a register.
+    */
+    X86Opnd getWordOpnd(IRValue value, size_t numBits)
+    {
+        auto dstVal = cast(IRDstValue)value;
+
+        // Get the current alloc flags for the argument
+        auto flags = allocState.get(dstVal, 0);
+
+        // If the argument is a known constant
+        if (flags & RA_CONST || dstVal is null)
+        {
+            return new X86Imm(getWord(value).int64Val);
+        }
+
+        // If the argument already is in a general-purpose register
+        if (flags & RA_GPREG)
+        {
+            auto regNo = flags & RA_REG_MASK;
+            return new X86Reg(X86Reg.GP, regNo, numBits);
+        }
+
+        // Return the stack operand for the argument
+        assert (flags & RA_STACK);
+        return new X86Mem(64, wspReg, 8 * dstVal.outSlot);
+    }
+
+    /**
+    Get the word operand for an instruction argument,
+    allocating a register when possible.
     - If tmpReg is supplied, memory operands will be loaded in the tmpReg
     - If acceptImm is false, constant operants will be loaded into tmpReg
     - If loadVal is false, memory operands will not be loaded
@@ -766,30 +777,6 @@ class CodeGenState
         // Get the IR value for the argument
         auto argVal = instr.getArg(argIdx);
         auto dstVal = cast(IRDstValue)argVal;
-
-        /// Get an operand for the current location of the argument
-        X86Opnd getCurOpnd()
-        {
-            // Get the current alloc flags for the argument
-            auto flags = allocState[dstVal];
-
-            // If the argument is a known constant
-            if (flags & RA_CONST || dstVal is null)
-            {
-                return new X86Imm(getWord(argVal).int64Val);
-            }
-
-            // If the argument already is in a general-purpose register
-            if (flags & RA_GPREG)
-            {
-                auto regNo = flags & RA_REG_MASK;
-                return new X86Reg(X86Reg.GP, regNo, numBits);
-            }
-
-            // Return the stack operand for the argument
-            assert (flags & RA_STACK);
-            return new X86Mem(64, wspReg, 8 * dstVal.outSlot);
-        }
 
         /// Allocate a register for the argument
         X86Opnd allocReg()
@@ -830,7 +817,7 @@ class CodeGenState
         }
 
         // Get the current operand for the argument value
-        auto curOpnd = getCurOpnd();
+        auto curOpnd = getWordOpnd(argVal, numBits);
 
         // If the argument is already in a register
         if (auto regOpnd = cast(X86Reg)curOpnd)
@@ -860,44 +847,25 @@ class CodeGenState
         // If the operand is a memory location
         if (auto memOpnd = cast(X86Mem)curOpnd)
         {
-            // TODO: loadVal
+            auto opnd = allocReg();
+            as.instr(MOV, opnd, curOpnd);
 
+            // If the register allocation failed but a temp reg was supplied
+            if (cast(X86Mem)opnd && tmpReg !is null)
+            {
+                as.instr(
+                    (tmpReg.type == X86Reg.XMM)? MOVSD:MOV, 
+                    tmpReg, 
+                    opnd
+                );
 
+                return tmpReg;
+            }
 
-
+            return opnd;
         }
 
-
-
-
-        /*
-        // If a temporary register is specified
-        if (tmpReg !is null)
-        {
-            as.instr(
-                (tmpReg.type == X86Reg.XMM)? MOVSD:MOV, 
-                tmpReg, 
-                new X86Mem(numBits, wspReg, 8 * argSlot)
-            );
-
-            return tmpReg;
-        }
-
-        // Load the argument into the register
-        as.instr(MOV, reg, new X86Mem(64, wspReg, 8 * argSlot));
-        */
-
-
-
-
-
-
-
-
-
-
-        // TODO
-        return null;
+        assert (false, "invalid cur opnd type");
     }
 
     /*
@@ -1011,7 +979,24 @@ class CodeGenState
     }
     */
 
-    /// Get an x86 operand for the type of a value
+    /**
+    Get an x86 operand for the type of any IR value
+    */
+    X86Opnd getTypeOpnd(IRValue value) const
+    {
+        auto dstVal = cast(IRDstValue)value;
+
+        if (dstVal is null)
+        {
+            return new X86Imm(getType(value));
+        }
+
+        return new X86Mem(8, tspReg, dstVal.outSlot);
+    }
+
+    /**
+    Get an x86 operand for the type of an instruction argument
+    */
     X86Opnd getTypeOpnd(
         Assembler as,
         IRInstr instr,
@@ -1025,22 +1010,17 @@ class CodeGenState
         );
 
         auto argVal = instr.getArg(argIdx);
-        auto dstVal = cast(IRDstValue)argVal;
 
-        if (dstVal is null)
-        {
-            return new X86Imm(getType(argVal));
-        }
-
-        auto memLoc = new X86Mem(8, tspReg, dstVal.outSlot);
+        // Get an operand for the argument value
+        auto curOpnd = getTypeOpnd(argVal);
 
         if (tmpReg8 !is null)
         {
-            as.instr(MOV, tmpReg8, memLoc);
+            as.instr(MOV, tmpReg8, curOpnd);
             return tmpReg8;
         }
 
-        return memLoc;
+        return curOpnd;
     }
 
     /// Get the operand for an instruction's output
