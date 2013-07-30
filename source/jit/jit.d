@@ -55,6 +55,7 @@ import jit.x86;
 import jit.encodings;
 import jit.peephole;
 import jit.regalloc;
+import jit.moves;
 import jit.ops;
 import ir.inlining;
 import util.bitset;
@@ -231,25 +232,58 @@ void compFun(Interp interp, IRFunction fun)
     // Total number of block versions
     size_t numVersions = 0;
 
-    /// Get a label for a given basic block
-    auto getBlockLabel = delegate Label(IRBlock block, CodeGenState state)
+    /// Get a label for a given block and incoming state
+    auto getBlockVersion = delegate BlockVersion(
+        IRBlock block, 
+        CodeGenState predState,
+        bool noLoadPhi
+    )
     {
         // Get the list of versions for this block
         auto versions = versionMap.get(block, []);
 
-        // For each available version of this block
+        // TODO: if there is a cap on the number of versions,
+        // don't look for exact match but a best match
+
+        // Look for the best successor version available
+        BlockVersion* succVersion = null;
         foreach (ver; versions)
         {
-            // If the state matches, return the label for this version
-            if (ver.state == state)
-                return ver.label;
+            if (ver.state == predState)
+                return ver;
         }
 
-        // Create a label for this version of the block
+        // Create a label for this new version of the block
         auto label = new Label(block.getName().toUpper());
 
-        // Create a new block version object
-        BlockVersion ver = { block, new CodeGenState(state), label };
+        // Copy the predecessor state
+        auto succState = new CodeGenState(predState);
+
+        // Map each phi node on the stack or in its register
+        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
+        {
+            if (phi.hasNoUses)
+                continue;
+
+            auto phiReg = regMapping[phi];
+            assert (phiReg !is null);
+
+            // TODO: can we use liveness info here?
+            auto regVal = predState.gpRegMap[phiReg.regNo];
+
+            if (regVal is null && noLoadPhi is false)
+            {
+                succState.allocState[phi] = RA_GPREG | phiReg.regNo;
+                succState.gpRegMap[phiReg.regNo] = phi;
+            }
+            else
+            {
+                succState.allocState[phi] = RA_STACK;
+            }
+        }
+
+        // Create a new block version object using the predecessor's state
+        BlockVersion ver = { block, succState, label };
 
         // Add the new version to the list for this block
         versionMap[block] ~= ver;
@@ -262,8 +296,78 @@ void compFun(Interp interp, IRFunction fun)
         // Increment the total number of versions
         numVersions++;
 
-        // Return the label for this version
-        return label;
+        // Return the newly created block version
+        return ver;
+    };
+
+    /// Get a label for a given branch edge transition
+    auto getBranchLabel = delegate Label(
+        Assembler as,
+        BranchDesc branch, 
+        CodeGenState predState
+    )
+    {
+        writeln("getBranchLabel");
+        assert (false);
+
+        // Get a version of the successor matching the incoming state
+        auto succVer = getBlockVersion(branch.succ, predState, false);
+        auto succState = succVer.state;
+
+        // Generate move list to make transition to the successor state
+        Move[] moveList;
+        for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
+        {
+            auto arg = branch.getPhiArg(phi);
+            assert (arg !is null);
+
+            // TODO: getWordOpnd, loadVal = false
+            // Get the source operand for the argument word
+            X86Opnd srcWordOpnd;
+            // = predState.getWordOpnd()
+
+            // TODO
+            X86Opnd dstWordOpnd;
+            // = succState.getWordOpnd()
+
+            if (srcWordOpnd != dstWordOpnd)
+                moveList ~= Move(dstWordOpnd, srcWordOpnd);
+
+
+
+            // TODO: need to get/move the type too
+            // may be a known type constant
+            // if known type constant, dst need to be made known too
+
+            X86Opnd srcTypeOpnd;
+            // TODO
+
+            X86Opnd dstTypeOpnd;
+            // TODO
+
+
+
+            if (srcTypeOpnd != dstTypeOpnd)
+                moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
+        }
+
+        // If there are no moves, return the successor label now
+        if (moveList.length == 0)
+            return succVer.label;
+
+        // Create a label for the branch edge
+        auto edgeLabel = new Label(
+            branch.pred.getName().toUpper() ~ "_TO_" ~
+            branch.succ.getName().toUpper()
+        );
+
+        // Execute the moves
+        execMoves(as, moveList, scrRegs64[0], scrRegs64[1]);
+
+        // Jump to the block label
+        as.instr(JMP, succVer.label);
+
+        return edgeLabel;
     };
 
     /// Get an entry point label for a given basic block
@@ -298,14 +402,14 @@ void compFun(Interp interp, IRFunction fun)
 
         // Request a version of the block that accepts the
         // default state where all locals are on the stack
-        auto blockLabel = getBlockLabel(block, new CodeGenState(fun));
+        auto ver = getBlockVersion(block, new CodeGenState(fun), true);
 
         // Jump to the target block
-        ol.instr(JMP, blockLabel);
+        ol.instr(JMP, ver.label);
 
         // For the fast entry point, use the block label directly
-        blockLabel.exported = true;
-        fastEntryMap[block] = blockLabel;
+        ver.label.exported = true;
+        fastEntryMap[block] = ver.label;
 
         return entryLabel;
     };
@@ -319,7 +423,7 @@ void compFun(Interp interp, IRFunction fun)
         bailLabel,
         liveInfo,
         regMapping,
-        getBlockLabel,
+        getBranchLabel,
         getEntryPoint
     );
 
@@ -579,8 +683,13 @@ class CodeGenState
     /// Constructor for a default/entry code generation state
     this(IRFunction fun)
     {
-        // TODO: mark argument values as initially on the stack
-        // allocState[i] = RA_STACK;
+        // Mark argument values as initially on the stack
+        allocState[fun.raVal] = RA_STACK;
+        allocState[fun.closVal] = RA_STACK;
+        allocState[fun.thisVal] = RA_STACK;
+        allocState[fun.argcVal] = RA_STACK;
+        foreach (param; fun.paramMap)
+            allocState[param] = RA_STACK;
 
         // All registers are initially free
         gpRegMap.length = 16;
@@ -632,7 +741,165 @@ class CodeGenState
         return true;
     }
 
-    // FIXME
+    /**
+    Get the word operand for an instruction argument
+    - If tmpReg is supplied, memory operands will be loaded in the tmpReg
+    - If acceptImm is false, constant operants will be loaded into tmpReg
+    - If loadVal is false, memory operands will not be loaded
+    */
+    X86Opnd getWordOpnd(
+        CodeGenCtx ctx, 
+        Assembler as, 
+        IRInstr instr, 
+        size_t argIdx,
+        size_t numBits,
+        X86Reg tmpReg = null,
+        bool acceptImm = false,
+        bool loadVal = true
+    )
+    {
+        assert (
+            argIdx < instr.numArgs,
+            "invalid argument index"
+        );
+
+        // Get the IR value for the argument
+        auto argVal = instr.getArg(argIdx);
+        auto dstVal = cast(IRDstValue)argVal;
+
+        /// Get an operand for the current location of the argument
+        X86Opnd getCurOpnd()
+        {
+            // Get the current alloc flags for the argument
+            auto flags = allocState[dstVal];
+
+            // If the argument is a known constant
+            if (flags & RA_CONST || dstVal is null)
+            {
+                return new X86Imm(getWord(argVal).int64Val);
+            }
+
+            // If the argument already is in a general-purpose register
+            if (flags & RA_GPREG)
+            {
+                auto regNo = flags & RA_REG_MASK;
+                return new X86Reg(X86Reg.GP, regNo, numBits);
+            }
+
+            // Return the stack operand for the argument
+            assert (flags & RA_STACK);
+            return new X86Mem(64, wspReg, 8 * dstVal.outSlot);
+        }
+
+        /// Allocate a register for the argument
+        X86Opnd allocReg()
+        {
+            assert (dstVal !is null);
+
+            // Get the assigned register for the argument
+            auto reg = ctx.regMapping[dstVal];
+
+            // Get the value mapped to this register
+            auto regVal = gpRegMap[reg.regNo];
+
+            // If the register is mapped to a value
+            if (regVal !is null)
+            {
+                // If the mapped slot belongs to another instruction argument
+                for (size_t otherIdx = 0; otherIdx < instr.numArgs; ++otherIdx)
+                {
+                    if (otherIdx != argIdx && argVal is instr.getArg(otherIdx))
+                    {
+                        // Map the argument to its stack location
+                        allocState[dstVal] = RA_STACK;
+                        auto opnd = new X86Mem(numBits, wspReg, 8 * dstVal.outSlot);
+                    }
+                }
+
+                // If the currently mapped value is live, spill it
+                if (ctx.liveInfo.liveAfter(regVal, instr))
+                    spillReg(as, reg.regNo);
+                else
+                    allocState.remove(regVal);
+            }
+
+            // Map the argument to the register
+            allocState[dstVal] = RA_GPREG | reg.regNo;
+            gpRegMap[reg.regNo] = dstVal;
+            return new X86Reg(X86Reg.GP, reg.regNo, numBits);
+        }
+
+        // Get the current operand for the argument value
+        auto curOpnd = getCurOpnd();
+
+        // If the argument is already in a register
+        if (auto regOpnd = cast(X86Reg)curOpnd)
+        {
+            return regOpnd;
+        }
+
+        // If the operand is immediate
+        if (auto immOpnd = cast(X86Imm)curOpnd)
+        {
+            if (acceptImm)
+            {
+                return immOpnd;
+            }
+
+            if (tmpReg)
+            {
+                as.instr(MOV, tmpReg, immOpnd);
+                return tmpReg;
+            }
+
+            auto opnd = allocReg();
+            as.instr(MOV, opnd, curOpnd);
+            return opnd;
+        }
+
+        // If the operand is a memory location
+        if (auto memOpnd = cast(X86Mem)curOpnd)
+        {
+            // TODO: loadVal
+
+
+
+
+        }
+
+
+
+
+        /*
+        // If a temporary register is specified
+        if (tmpReg !is null)
+        {
+            as.instr(
+                (tmpReg.type == X86Reg.XMM)? MOVSD:MOV, 
+                tmpReg, 
+                new X86Mem(numBits, wspReg, 8 * argSlot)
+            );
+
+            return tmpReg;
+        }
+
+        // Load the argument into the register
+        as.instr(MOV, reg, new X86Mem(64, wspReg, 8 * argSlot));
+        */
+
+
+
+
+
+
+
+
+
+
+        // TODO
+        return null;
+    }
+
     /*
     /// Get the word operand for an instruction argument
     X86Opnd getWordOpnd(
@@ -640,25 +907,15 @@ class CodeGenState
         Assembler as, 
         IRInstr instr, 
         size_t argIdx, 
-        uint16_t numBits, 
-
+        size_t numBits, 
         //bool loadVal = true,
-
-
         X86Reg tmpReg = null,
-
-
         bool acceptImm = false
     )
     {
         assert (
-            argIdx < instr.args.length,
+            argIdx < instr.numArgs,
             "invalid argument index"
-        );
-
-        assert (
-            instr.opcode.getArgType(argIdx) == OpArg.LOCAL,
-            "argument type is not local"
         );
 
         auto argSlot = instr.args[argIdx].localIdx;
@@ -754,8 +1011,6 @@ class CodeGenState
     }
     */
 
-    // FIXME
-    /*
     /// Get an x86 operand for the type of a value
     X86Opnd getTypeOpnd(
         Assembler as,
@@ -765,23 +1020,19 @@ class CodeGenState
     ) const
     {
         assert (
-            argIdx < instr.args.length,
+            argIdx < instr.numArgs,
             "invalid argument index"
         );
 
-        assert (
-            instr.opcode.getArgType(argIdx) == OpArg.LOCAL,
-            "argument type is not local"
-        );
+        auto argVal = instr.getArg(argIdx);
+        auto dstVal = cast(IRDstValue)argVal;
 
-        auto argSlot = instr.args[argIdx].localIdx;
-
-        if (typeKnown(argSlot))
+        if (dstVal is null)
         {
-            return new X86Imm(getType(argSlot));
+            return new X86Imm(getType(argVal));
         }
 
-        auto memLoc = new X86Mem(8, tspReg, argSlot);
+        auto memLoc = new X86Mem(8, tspReg, dstVal.outSlot);
 
         if (tmpReg8 !is null)
         {
@@ -791,10 +1042,7 @@ class CodeGenState
 
         return memLoc;
     }
-    */
 
-    // FIXME
-    /*
     /// Get the operand for an instruction's output
     X86Opnd getOutOpnd(
         CodeGenCtx ctx, 
@@ -808,40 +1056,38 @@ class CodeGenState
             "instruction has no output slot"
         );
 
-        // Get the assigned register for the out slot
-        auto reg = ctx.regMapping[instr.outSlot];
+        // Get the assigned register for this instruction
+        auto reg = ctx.regMapping[instr];
 
-        // Get the slot mapped to this register
-        auto regSlot = gpRegMap[reg.regNo];
+        // Get the value mapped to this register
+        auto regVal = gpRegMap[reg.regNo];
 
         // If another slot is using the register
-        if (regSlot !is NULL_LOCAL && regSlot !is instr.outSlot)
+        if (regVal !is null && regVal !is instr)
         {
             // If an instruction argument is using this slot
-            foreach (argIdx, arg; instr.args)
+            for (size_t argIdx = 0; argIdx < instr.numArgs; ++argIdx)
             {
-                if (instr.opcode.getArgType(argIdx) == OpArg.LOCAL &&
-                    arg.localIdx == regSlot)
+                if (regVal is instr.getArg(argIdx))
                 {
                     // Map the output slot to its stack location
-                    allocState[instr.outSlot] = RA_STACK;
+                    allocState[instr] = RA_STACK;
                     return new X86Mem(numBits, wspReg, 8 * instr.outSlot);
                 }
             }
 
             // If the value is live, spill it
-            if (ctx.liveSets[instr].has(regSlot) == true)
+            if (ctx.liveInfo.liveAfter(regVal, instr) is true)
                 spillReg(as, reg.regNo);
             else
-                allocState[regSlot] = RA_DEAD;
+                allocState.remove(regVal);
         }
 
-        // Map the output slot to the register
-        allocState[instr.outSlot] = RA_GPREG | reg.regNo;
-        gpRegMap[reg.regNo] = instr.outSlot;
+        // Map the instruction to the register
+        allocState[instr] = RA_GPREG | reg.regNo;
+        gpRegMap[reg.regNo] = instr;
         return new X86Reg(X86Reg.GP, reg.regNo, numBits);
     }
-    */
 
     /// Set the output of an instruction to a known boolean value
     void setOutBool(IRInstr instr, bool val)
@@ -864,16 +1110,26 @@ class CodeGenState
     }
 
     /// Test if a constant word value is known for a given value
-    bool wordKnown(IRDstValue value) const
+    bool wordKnown(IRValue value) const
     {
-        return (allocState[value] & RA_CONST) != 0;
+        auto dstValue = cast(IRDstValue)value;
+
+        if (dstValue is null)
+            return true;
+
+        return (allocState[dstValue] & RA_CONST) != 0;
     }
 
     /// Get the word value for a known constant local
-    Word getWord(IRDstValue value)
+    Word getWord(IRValue value)
     {
-        auto allocSt = allocState[value];
-        auto typeSt = typeState[value];
+        auto dstValue = cast(IRDstValue)value;
+
+        if (dstValue is null)
+            return value.cstValue.word;
+
+        auto allocSt = allocState[dstValue];
+        auto typeSt = typeState[dstValue];
 
         assert (allocSt & RA_CONST);
 
@@ -941,15 +1197,25 @@ class CodeGenState
     }
 
     /// Test if a constant type is known for a given local
-    bool typeKnown(IRDstValue value) const
+    bool typeKnown(IRValue value) const
     {
-        return (value in typeState) !is null;
+        auto dstValue = cast(IRDstValue)value;
+
+        if (dstValue is null)
+            return true;
+
+        return (dstValue in typeState) !is null;
     }
 
     /// Get the known type of a value
-    Type getType(IRDstValue value) const
+    Type getType(IRValue value) const
     {
-        auto typeState = typeState.get(value, 0);
+        auto dstValue = cast(IRDstValue)value;
+
+        if (dstValue is null)
+            return value.cstValue.type;
+
+        auto typeState = typeState.get(dstValue, 0);
 
         assert (
             typeState & TF_KNOWN,
@@ -1093,8 +1359,8 @@ class CodeGenCtx
     /// Register mapping (slots->regs)
     RegMapping regMapping;
 
-    /// Function to get the label for a given block
-    Label delegate(IRBlock, CodeGenState) getBlockLabel;
+    /// Function to get the label for a given branch edge
+    Label delegate(Assembler as, BranchDesc, CodeGenState) getBranchLabel;
 
     /// Function to generate an entry point for a given block
     Label delegate(IRBlock) getEntryPoint;
@@ -1107,7 +1373,7 @@ class CodeGenCtx
         Label bailLabel,
         LiveInfo liveInfo,
         RegMapping regMapping,
-        Label delegate(IRBlock, CodeGenState) getBlockLabel,
+        Label delegate(Assembler as, BranchDesc, CodeGenState) getBranchLabel,
         Label delegate(IRBlock) getEntryPoint,
     )
     {
@@ -1118,7 +1384,7 @@ class CodeGenCtx
         this.bailLabel = bailLabel;
         this.liveInfo = liveInfo;
         this.regMapping = regMapping;
-        this.getBlockLabel = getBlockLabel;
+        this.getBranchLabel = getBranchLabel;
         this.getEntryPoint = getEntryPoint;
     }
 }

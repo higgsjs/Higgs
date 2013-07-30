@@ -773,6 +773,15 @@ abstract class IRValue : IdObject
         // By default, just use the string representation
         return toString();
     }
+
+    /// Get the constant value pair for this IR value
+    ValuePair cstValue()
+    {
+        assert (
+            false,
+            "cannot get constant value for: \"" ~ toString() ~ "\""
+        );
+    }
 }
 
 /**
@@ -786,6 +795,12 @@ class IRConst : IRValue
     override string toString() 
     {
         return valToString(value);
+    }
+
+    /// Get the constant value pair for this IR value
+    override ValuePair cstValue()
+    {
+        return value;
     }
 
     auto isInt32 () { return value.type == Type.INT32; }
@@ -906,6 +921,12 @@ class IRRawPtr : IRValue
     {
         auto p = ptr.word.ptrVal;
         return "<rawptr:" ~ ((p is null)? "NULL":"0x"~to!string(p)) ~ ">";
+    }
+
+    /// Get the constant value pair for this IR value
+    override ValuePair cstValue()
+    {
+        return ptr;
     }
 }
 

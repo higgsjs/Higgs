@@ -786,23 +786,8 @@ class Interp
             return getSlot(dstVal.outSlot);
         }
 
-        // If this is a constant value
-        if (auto cstVal = cast(IRConst)val)
-        {
-            // Get the constant value
-            return cstVal.pair();
-        }
-
-        // If this is a raw pointer
-        if (auto rawPtrVal = cast(IRRawPtr)val)
-        {
-            return rawPtrVal.ptr;
-        }
-
-        assert (
-            false,
-            "unsupported value in getValue: \"" ~ val.toString() ~ "\""
-        );
+        // Get the constant value pair for this IR value
+        return val.cstValue();
     }
 
     /**

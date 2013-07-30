@@ -106,15 +106,14 @@ void gen_move(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    /*
-    auto argSlot = instr.args[0].localIdx;
+    auto argVal = instr.getArg(0);
 
     // If the type of the argument is known
-    if (st.typeKnown(argSlot))
-    {   
+    if (st.typeKnown(argVal))
+    {
         // Mark the value as a known constant
         // This will defer writing the value
-        auto knownType = st.getType(argSlot);
+        auto knownType = st.getType(argVal);
         st.setOutBool(instr, type is knownType);
     }
     else
@@ -134,7 +133,6 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         // Set the output type
         st.setOutType(ctx.as, instr, Type.CONST);
     }
-    */
 }
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
@@ -887,14 +885,14 @@ CodeGenFn[Opcode*] codeGenFns;
 
 static this()
 {
-    /*
-    codeGenFns[&SET_STR]        = &gen_set_str;
+    //codeGenFns[&SET_STR]        = &gen_set_str;
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
     codeGenFns[&IS_I32]         = &gen_is_i32;
     codeGenFns[&IS_F64]         = &gen_is_f64;
 
+    /*
     codeGenFns[&ADD_I32]        = &gen_add_i32;
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
     codeGenFns[&AND_I32]        = &gen_and_i32;

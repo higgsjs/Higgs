@@ -46,7 +46,7 @@ vers cap, the jump target we get back is an adaptor?
 
 ------------------------------------------------------------------------------
 
-July 31st goal: fully working interp/JIT, perf gains from inlining
+August 15th goal: perf gains from inlining
 
 FIXME: earley-boyer not working, with or without inlining
 run-time error: undefined base in read of property "car"
@@ -59,27 +59,30 @@ run-time error: undefined base in read of property "car"
 - Doesn't seem directly connected to GC
 
 TODO: optimize non-constant comparison followed by if_true
-- 4 extra instructions
-- If next instr is if_true and value is dead after if_true, don't write bool val
-- if_true can check if prev instr had boolean output (or check for specific)
-- Won't quite work for inlined functions... Could implement through peepholes
+
+Focus on issues that get in the way of inlining perf gains ***
 
 TODO: Modify/reimplement inlining for SSA
 - Not too hard?
 - Try creating new IRFunction for function with inlining?
 
-TODO: dumpasm vs dumpasm_full?
-- Don't dump out of line?
-
 TODO: progressively reimplement instructions in jit/ops.d
-- Will need a way to request an argument as a register
-  - If it's a constant, we need to supply a temp
+
+------------------------------------------------------------------------------
+
+July 31st goal: working basic JIT with SSA
+
+TODO: reimplement basic arith
+
+TODO: reimplement eq instructions
+
+TODO: dumpasm vs dumpasm_full?
+- Don't dump out of line code?
+- Very useful for debugging
 
 TODO: reimplement if_true instruction
 
-TODO: fix state.getWordOpnd, etc.
-- used once in SpillRegs
-- search for FIXME in jit.d
+TODO: fix execMoves wrt tmp reg size
 
 TODO: block transitions, state transition handling
 - getTarget, need to generate code
@@ -88,13 +91,13 @@ TODO: block transitions, state transition handling
   - Update state to reflect which phi nodes are in slots or regs
   - Insert moves as appropriate
   - May have cycles between phi node moves
-- May want a generic state transition function?
-  - Params
-    - Incoming pred block
-    - phi nodes to execute (succ block)
-    - pred assignments for non-phi values (pred state)
-    - succ assignments for non-phi values (succ state, if it might change?)
-  - Assemble list of moves to simultaneously execute
+
+TODO: fix getWordOpnd
+- used once in SpillRegs
+- used by block trandition!
+- need to be able to prevent load
+- comment out current implementation and try reimplementing?
+- getCurOpnd sub-function?
 
 
 
@@ -105,6 +108,24 @@ TODO: block transitions, state transition handling
 
 
 
+
+
+
+[DONE] TODO: fix getOutOpnd
+
+[DONE] TODO: reimplement is_i32 instruction, IsTypeOp
+
+[DONE] TODO: fix getOutOpnd
+
+[DONE] FIXME: getEntryPoint, interp already executed phi nodes
+- Doesn't make sense to generate new phi node mapping
+  - phi nodes should remain on the stack as they were
+- Could add a "noLoadPhi" arg. Simple enough
+
+[DONE] TODO: fix getTypeOpnd
+
+[DONE] FIXME: don't want to need interp pointer to evaluate constants
+- could make static interp method, callable with interp or null
 
 [DONE] TODO: re-enable jit call in interpreter
 - get jit working with defaultFn only
