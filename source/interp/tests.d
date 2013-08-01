@@ -1278,6 +1278,7 @@ unittest
     interp.load("programs/regress/loop_labels.js");
     interp.load("programs/regress/loop_swap.js");
     interp.load("programs/regress/dowhile_cont.js");
+    interp.load("programs/regress/jit_se_cmp.js");
 
     interp.load("programs/regress/delta.js");
     interp.load("programs/regress/raytrace.js");
@@ -1524,10 +1525,12 @@ unittest
 
     writefln("sunspider/access-nsieve");
     interp.load("programs/sunspider/access-nsieve.js");
+    */
 
     writefln("sunspider/bitops-bitwise-and");
     interp.load("programs/sunspider/bitops-bitwise-and.js");
 
+    /*
     writefln("sunspider/bitops-bits-in-byte");
     interp.load("programs/sunspider/bitops-bits-in-byte.js");
 

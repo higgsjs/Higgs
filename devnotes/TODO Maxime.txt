@@ -39,6 +39,8 @@ TODO: benchmarking (performance testing) JS script
 - try to make it compatible with V8 as-is
 - should be able to pass config flags to Higgs (i.e.: modify JIT params)
 
+TODO: counter on IsTypeOp, with vs without versioning
+
 TODO: implement cap on number of block versions
 - Add command-line options, jit_maxblockvers
 - Will require generating ASM adaptors before jumps? If we hit the max
@@ -70,23 +72,17 @@ TODO: progressively reimplement instructions in jit/ops.d
 
 ------------------------------------------------------------------------------
 
-July 31st goal: working basic JIT with SSA
+TODO: don't load arg values with only one use?
 
-TODO: reimplement basic arith
-
-TODO: reimplement eq instructions
+TODO: re-enable JIT-specific unit tests
 
 TODO: dumpasm vs dumpasm_full?
 - Don't dump out of line code?
 - Very useful for debugging
 
-TODO: don't load arg values with only one use?
-
 TODO: asm peepholes, eliminate jump after jump
 
-
-TODO: check that phi nodes aren't getting the same register in succState
-
+TODO: reimplement basic arith
 
 
 
@@ -94,7 +90,22 @@ TODO: check that phi nodes aren't getting the same register in succState
 
 
 
+[DONE] TODO: reimplement eq instructions
 
+[DONE] FIXME: CmpOp causes malfunction?
+- Causes some values to be loaded from the stack...
+- Neither $rt_se nor $rt_toBool have phi nodes, so this is probably not the issue
+- Seems we get issues when using EDI as our output reg?
+- Not obvious at all what's wrong
+- Issue is with CmpOp not writing the upper 32 bits of memory words
+- Fixed if_true implementation in interpreter
+
+[DONE] TODO: copy es5_cmp, simplify until bug disappears, regress_cmp
+- use --nostdlib to minimize interference
+  - no JIT usage
+- only one instance of eq_i32, in $rt_se
+
+[DONE] TODO: check that phi nodes aren't getting the same register in succState
 
 [DONE] TODO: reimplement if_true instruction
 

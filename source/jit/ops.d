@@ -310,14 +310,33 @@ alias FPOp!("div") gen_div_f64;
 
 void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    /*
-    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, numBits);
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, numBits);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    // The first operand must be memory or register, but not immediate
+    auto opnd0 = st.getWordOpnd(
+        ctx, 
+        ctx.as, 
+        instr, 
+        0,
+        numBits, 
+        scrRegs64[0].ofSize(numBits),
+        false
+    );
 
+    // The second operand may be an immediate
+    auto opnd1 = st.getWordOpnd(
+        ctx, 
+        ctx.as, 
+        instr, 
+        1, 
+        numBits, 
+        null, 
+        true
+    );
+
+    // We must have a register for the output (so we can use cmov)
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
     auto outReg = cast(X86Reg)opndOut;
     if (outReg is null)
-        outReg = scrRegs32[0];
+        outReg = scrRegs64[1];
 
     // Compare the inputs
     ctx.as.instr(CMP, opnd0, opnd1);
@@ -337,15 +356,14 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         cmovOp = CMOVGE;
 
     ctx.as.instr(MOV   , outReg      , FALSE.int8Val);
-    ctx.as.instr(MOV   , scrRegs32[1], TRUE.int8Val );
-    ctx.as.instr(cmovOp, outReg      , scrRegs32[1] );
+    ctx.as.instr(MOV   , scrRegs64[2], TRUE.int8Val );
+    ctx.as.instr(cmovOp, outReg      , scrRegs64[2] );
 
     // If the output is not a register
     if (opndOut !is outReg)
         ctx.as.instr(MOV, opndOut, outReg);
 
     st.setOutType(ctx.as, instr, Type.CONST);
-    */
 }
 
 alias CmpOp!("eq", 8) gen_eq_i8;
@@ -901,6 +919,7 @@ static this()
     codeGenFns[&SUB_F64]        = &gen_sub_f64;
     codeGenFns[&MUL_F64]        = &gen_mul_f64;
     codeGenFns[&DIV_F64]        = &gen_div_f64;
+    */
 
     codeGenFns[&EQ_I8]          = &gen_eq_i8;
     codeGenFns[&EQ_I32]         = &gen_eq_i32;
@@ -915,6 +934,7 @@ static this()
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
 
+    /*
     codeGenFns[&LOAD_U8]        = &gen_load_u8;
     codeGenFns[&LOAD_U16]       = &gen_load_u16;
     codeGenFns[&LOAD_U32]       = &gen_load_u32;

@@ -745,7 +745,7 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
         instr.block.toString()
     );
 
-    if (v0.word == TRUE)
+    if (v0.word.int8Val == TRUE.int8Val)
         interp.branch(instr.getTarget(0));
     else
         interp.branch(instr.getTarget(1));
@@ -937,6 +937,13 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         // Leave the return value in the call's return slot, if any
         if (callInstr.outSlot !is NULL_LOCAL)
         {
+            /*            
+            writeln("ret val: ");
+            writeln("  word: ", retVal.word.int64Val);
+            writeln("   i32: ", retVal.word.int32Val);
+            writeln("  type: ", retVal.type);
+            */
+
             interp.setSlot(
                 callInstr.outSlot,
                 retVal

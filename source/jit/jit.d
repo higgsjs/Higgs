@@ -268,20 +268,25 @@ void compFun(Interp interp, IRFunction fun)
             auto phiReg = regMapping[phi];
             assert (phiReg !is null);
 
-            // TODO: can we use liveness info here?
-            /*auto regVal = predState.gpRegMap[phiReg.regNo];
+            // if value mapped to reg isn't live, use reg
+            // Note: we are querying succState here because the
+            // register might be used by a phi node we just mapped
+            auto regVal = succState.gpRegMap[phiReg.regNo];
 
+            // TODO: can we use liveness info here?
+            // need to query liveness at pred exit?
             if (regVal is null && noLoadPhi is false)
             {
                 succState.allocState[phi] = RA_GPREG | phiReg.regNo;
                 succState.gpRegMap[phiReg.regNo] = phi;
             }
-            else*/
+            else
             {
                 succState.allocState[phi] = RA_STACK;
             }
 
             // FIXME: for now, force the phi type state to be spilled
+            // eventually, want to carry over from pred arg
             succState.typeState.remove(phi);
         }
 
@@ -768,7 +773,10 @@ class CodeGenState
         /// Allocate a register for the argument
         X86Opnd allocReg()
         {
-            assert (dstVal !is null);
+            assert (
+                dstVal !is null,
+                "cannot allocate register for constant IR value"
+            );
 
             // Get the assigned register for the argument
             auto reg = ctx.regMapping[dstVal];
