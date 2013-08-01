@@ -97,6 +97,18 @@ class X86Reg : X86Opnd
     }
 
     /**
+    Get a register with the same type and register number
+    but a potentially different size
+    */
+    X86Reg ofSize(size_t numBits)
+    {
+        if (numBits == this.size)
+            return this;
+
+        return new X86Reg(this.type, this.regNo, numBits);
+    }
+
+    /**
     Produce a string representation of the register
     */
     override string toString() const

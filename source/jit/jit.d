@@ -269,17 +269,20 @@ void compFun(Interp interp, IRFunction fun)
             assert (phiReg !is null);
 
             // TODO: can we use liveness info here?
-            auto regVal = predState.gpRegMap[phiReg.regNo];
+            /*auto regVal = predState.gpRegMap[phiReg.regNo];
 
             if (regVal is null && noLoadPhi is false)
             {
                 succState.allocState[phi] = RA_GPREG | phiReg.regNo;
                 succState.gpRegMap[phiReg.regNo] = phi;
             }
-            else
+            else*/
             {
                 succState.allocState[phi] = RA_STACK;
             }
+
+            // FIXME: for now, force the phi type state to be spilled
+            succState.typeState.remove(phi);
         }
 
         // Create a new block version object using the predecessor's state
@@ -301,8 +304,9 @@ void compFun(Interp interp, IRFunction fun)
     };
 
     /// Get a label for a given branch edge transition
-    auto getBranchLabel = delegate Label(
+    CodeGenCtx.BranchEdgeFn genBranchEdge = delegate void(
         Assembler as,
+        Label edgeLabel,
         BranchDesc branch, 
         CodeGenState predState
     )
@@ -318,42 +322,34 @@ void compFun(Interp interp, IRFunction fun)
             auto arg = branch.getPhiArg(phi);
             assert (arg !is null);
 
-            // Get the source and destination operands for the phi word
-            X86Opnd srcWordOpnd = predState.getWordOpnd(phi, 64);
+            // Get the source and destination operands for the arg word
+            X86Opnd srcWordOpnd = predState.getWordOpnd(arg, 64);
             X86Opnd dstWordOpnd = succState.getWordOpnd(phi, 64);
 
             if (srcWordOpnd != dstWordOpnd)
                 moveList ~= Move(dstWordOpnd, srcWordOpnd);
 
             // Get the source and destination operands for the phi type
-            X86Opnd srcTypeOpnd = predState.getTypeOpnd(phi);
+            X86Opnd srcTypeOpnd = predState.getTypeOpnd(arg);
             X86Opnd dstTypeOpnd = succState.getTypeOpnd(phi);
 
             if (srcTypeOpnd != dstTypeOpnd)
                 moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
         }
 
-        // If there are no moves, return the successor label now
-        if (moveList.length == 0)
-            return succVer.label;
-
-        // Create a label for the branch edge
-        auto edgeLabel = new Label(
-            branch.pred.getName().toUpper() ~ "_TO_" ~
-            branch.succ.getName().toUpper()
-        );
+        // Insert the branch edge label, if any
+        if (edgeLabel !is null)
+            as.addInstr(edgeLabel);
 
         // Execute the moves
         execMoves(as, moveList, scrRegs64[0], scrRegs64[1]);
 
         // Jump to the block label
         as.instr(JMP, succVer.label);
-
-        return edgeLabel;
     };
 
     /// Get an entry point label for a given basic block
-    auto getEntryPoint = delegate Label(IRBlock block)
+    CodeGenCtx.EntryPointFn getEntryPoint = delegate Label(IRBlock block)
     {
         // If there is already an entry label for this block, return it
         if (block in entryMap)
@@ -405,7 +401,7 @@ void compFun(Interp interp, IRFunction fun)
         bailLabel,
         liveInfo,
         regMapping,
-        getBranchLabel,
+        genBranchEdge,
         getEntryPoint
     );
 
@@ -665,14 +661,6 @@ class CodeGenState
     /// Constructor for a default/entry code generation state
     this(IRFunction fun)
     {
-        // Mark argument values as initially on the stack
-        allocState[fun.raVal] = RA_STACK;
-        allocState[fun.closVal] = RA_STACK;
-        allocState[fun.thisVal] = RA_STACK;
-        allocState[fun.argcVal] = RA_STACK;
-        foreach (param; fun.paramMap)
-            allocState[param] = RA_STACK;
-
         // All registers are initially free
         gpRegMap.length = 16;
         for (size_t i = 0; i < gpRegMap.length; ++i)
@@ -747,8 +735,7 @@ class CodeGenState
         }
 
         // Return the stack operand for the argument
-        assert (flags & RA_STACK);
-        return new X86Mem(64, wspReg, 8 * dstVal.outSlot);
+        return new X86Mem(numBits, wspReg, 8 * dstVal.outSlot);
     }
 
     /**
@@ -810,6 +797,10 @@ class CodeGenState
                     allocState.remove(regVal);
             }
 
+            // Load the value into the register 
+            // note: all 64 bits of it, not just the requested bits
+            as.instr(MOV, reg, getWordOpnd(argVal, 64));
+
             // Map the argument to the register
             allocState[dstVal] = RA_GPREG | reg.regNo;
             gpRegMap[reg.regNo] = dstVal;
@@ -839,16 +830,18 @@ class CodeGenState
                 return tmpReg;
             }
 
+            // Allocate a register and load the value into it
             auto opnd = allocReg();
-            as.instr(MOV, opnd, curOpnd);
             return opnd;
         }
 
         // If the operand is a memory location
         if (auto memOpnd = cast(X86Mem)curOpnd)
         {
+            // TODO: only allocate a register if more than one use?
+
+            // Try to allocate a register for the operand
             auto opnd = allocReg();
-            as.instr(MOV, opnd, curOpnd);
 
             // If the register allocation failed but a temp reg was supplied
             if (cast(X86Mem)opnd && tmpReg !is null)
@@ -856,12 +849,13 @@ class CodeGenState
                 as.instr(
                     (tmpReg.type == X86Reg.XMM)? MOVSD:MOV, 
                     tmpReg, 
-                    opnd
+                    curOpnd
                 );
 
                 return tmpReg;
             }
 
+            // Return the allocated operand
             return opnd;
         }
 
@@ -986,7 +980,8 @@ class CodeGenState
     {
         auto dstVal = cast(IRDstValue)value;
 
-        if (dstVal is null)
+        // If the value is an IR constant or has a known type
+        if (dstVal is null || typeKnown(value))
         {
             return new X86Imm(getType(value));
         }
@@ -1259,7 +1254,7 @@ class CodeGenState
                     if (!(typeSt & TF_SYNC))
                     {
                         // Write the type tag to the type stack
-                        as.comment("Spilling type for $" ~ value.toString());
+                        as.comment("Spilling type for " ~ value.toString());
                         auto type = cast(Type)(typeSt & TF_TYPE_MASK);
                         as.setType(value.outSlot, type);
                     }
@@ -1286,7 +1281,7 @@ class CodeGenState
         //writefln("spilling: %s (%s)", regVal.toString(), reg);
 
         // Spill the value currently in the register
-        as.comment("Spilling $" ~ regVal.toString());
+        as.comment("Spilling " ~ regVal.toString());
         as.instr(MOV, mem, reg);
 
         // Mark the value as being on the stack
@@ -1302,7 +1297,7 @@ class CodeGenState
         if ((typeSt & TF_KNOWN) && !(typeSt & TF_SYNC))
         {
             // Write the type tag to the type stack
-            as.comment("Spilling type for $" ~ regVal.toString());
+            as.comment("Spilling type for " ~ regVal.toString());
             auto type = typeSt & TF_TYPE_MASK;
             auto memOpnd = new X86Mem(8, tspReg, regVal.outSlot);
             as.instr(MOV, memOpnd, type);
@@ -1340,10 +1335,12 @@ class CodeGenCtx
     RegMapping regMapping;
 
     /// Function to get the label for a given branch edge
-    Label delegate(Assembler as, BranchDesc, CodeGenState) getBranchLabel;
+    alias void delegate(Assembler as, Label edgeLabel, BranchDesc, CodeGenState) BranchEdgeFn;
+    BranchEdgeFn genBranchEdge;
 
     /// Function to generate an entry point for a given block
-    Label delegate(IRBlock) getEntryPoint;
+    alias Label delegate(IRBlock) EntryPointFn;
+    EntryPointFn getEntryPoint;
 
     this(
         Interp interp,
@@ -1353,8 +1350,8 @@ class CodeGenCtx
         Label bailLabel,
         LiveInfo liveInfo,
         RegMapping regMapping,
-        Label delegate(Assembler as, BranchDesc, CodeGenState) getBranchLabel,
-        Label delegate(IRBlock) getEntryPoint,
+        BranchEdgeFn genBranchEdge,
+        EntryPointFn getEntryPoint,
     )
     {
         this.interp = interp;
@@ -1364,7 +1361,7 @@ class CodeGenCtx
         this.bailLabel = bailLabel;
         this.liveInfo = liveInfo;
         this.regMapping = regMapping;
-        this.getBranchLabel = getBranchLabel;
+        this.genBranchEdge = genBranchEdge;
         this.getEntryPoint = getEntryPoint;
     }
 }
@@ -1482,6 +1479,8 @@ void setType(Assembler as, int32_t idx, Type type)
     as.instr(MOV, new X86Mem(8, tspReg, idx), type);
 }
 
+// FIXME: proper interp branching w/ branch desc
+/*
 void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, IRBlock target)
 {
     auto INTERP_JUMP = new Label("INTERP_JUMP");
@@ -1500,7 +1499,10 @@ void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, IRBlock target)
     ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
     ctx.ol.instr(JMP, ctx.bailLabel);
 }
+*/
 
+// FIXME: proper interp branching w/ branch desc
+/*
 void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, X86Reg targetReg)
 {
     assert (targetReg != scrRegs64[1]);
@@ -1518,6 +1520,7 @@ void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, X86Reg targetReg)
     ctx.ol.setMember!("Interp", "target")(interpReg, targetReg);
     ctx.ol.instr(JMP, ctx.bailLabel);
 }
+*/
 
 /// Save caller-save registers on the stack before a C call
 void pushRegs(Assembler as)

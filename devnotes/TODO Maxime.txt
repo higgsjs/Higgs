@@ -80,22 +80,63 @@ TODO: dumpasm vs dumpasm_full?
 - Don't dump out of line code?
 - Very useful for debugging
 
-TODO: reimplement if_true instruction
+TODO: don't load arg values with only one use?
+
+TODO: asm peepholes, eliminate jump after jump
+
+
+TODO: check that phi nodes aren't getting the same register in succState
 
 
 
-TODO: fix execMoves wrt tmp reg size
+
+
+
+
+
+
+
+[DONE] TODO: reimplement if_true instruction
+
+[DONE] FIXME: interp.d(538): ref ptr out of heap
+- es5_cmp benchmark, many ifs
+- no gc
+- phi moves are involved
+- Check if if_true code is correct...
+  - all cases are exerted
+- Log if cycles occur
+  - no cycles
+  - several mem-mem moves, type info
+  - few moves, moves seem normal
+- if args are all regs
+  - two of the args are phis
+  - are we loading them properly?
+  - mapping all phis to stack doesn't fix the problem
+./higgs --e "test()" --jit_dumpasm programs/es5_cmp/es5_cmp.js 
+entering fn: $rt_valIsString(2B7A) (entry(32C2))
+**** disabling IsType ops seems to fix the problem
+- test in more detail what in IsTypeOp causes an issue
+- Bug in loading from mem to reg, not loading all the bits
+- Also bug in getTypeOpnd
+
+[DONE] TODO: reimplement jump instruction
+
+[DONE] FIXME: mov r12l, [qword r14];
+- 8-bit dst? wtf?
+- getWordOpnd mem opnd wrong
+
+[DONE] FIXME: getTransLabel, can't just insert instructions immediately!
+- Might be called at various points inside an instruction
+  - branch instructions only, at end of blocks
+- Need to wait until end of current instruction
+- can queue until end of current block
+- What if we supplied a label to getTransLabel?
+  - Call genBranchEdge at the end
+
+[DONE] TODO: fix execMoves wrt tmp reg size
 - add sanity checks, ie: no move into imm
 
-
-
-
-
-
-
-
-
-
+[DONE] TODO: X86Reg.ofSize
 
 [DONE] TODO: block transitions, state transition handling
 - getTarget, need to generate code

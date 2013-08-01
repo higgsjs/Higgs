@@ -108,7 +108,7 @@ class RunError : Error
         foreach (instr; trace)
         {
             auto fun = instr.block.fun;
-            str ~= "\n" ~ fun.name ~ " (" ~ to!string(fun.ast.pos) ~ ")";
+            str ~= "\n" ~ fun.getName ~ " (" ~ to!string(fun.ast.pos) ~ ")";
         }
 
         return str;
@@ -926,12 +926,12 @@ class Interp
             // If this block has an associated entry point
             if (target.entryFn !is null)
             {
+                //writefln("entering fn: %s (%s)", target.fun.getName(), target.getName());
                 auto entryFn = target.entryFn;
                 target = null;
 
-                //writefln("entering fn: %s (%s)", target.fun.getName(), target.getName());
                 entryFn();
-                //writefln("returned from fn");
+                //writefln("returned from fn: %s (%s)", target.fun.getName(), target.getName());
                 continue;
             }
 

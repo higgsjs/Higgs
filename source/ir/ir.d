@@ -72,11 +72,11 @@ IR function
 */
 class IRFunction : IdObject
 {
+    /// Function name
+    private string name = "";
+
     /// Corresponding AST node
     FunExpr ast;
-
-    /// Function name
-    string name = "";
 
     /// Entry block
     IRBlock entryBlock = null;

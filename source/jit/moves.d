@@ -46,7 +46,7 @@ import jit.assembler;
 import jit.x86;
 import jit.encodings;
 
-alias Tuple!(X86Opnd, "src", X86Opnd, "dst") Move;
+alias Tuple!(X86Opnd, "dst", X86Opnd, "src") Move;
 
 /**
 Execute a list of moves as if occurring simultaneously,
@@ -56,14 +56,22 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
 {
     void execMove(Move move)
     {
-        if (cast(X86Mem)move.src && cast(X86Mem)move.dst)
+        assert (cast(X86Imm)move.dst is null);
+
+        auto memSrc = cast(X86Mem)move.src;
+        auto memDst = cast(X86Mem)move.dst;
+
+        if (memSrc && memDst)
         {
-            as.instr(MOV, tmp1, move.src);
-            as.instr(MOV, move.dst, tmp1);
+            assert (memSrc.memSize == memDst.memSize);
+            auto tmpReg = tmp1.ofSize(memSrc.memSize);
+
+            as.instr(MOV, tmpReg, memSrc);
+            as.instr(MOV, memDst, tmpReg);
         }
         else
         {
-            as.instr(MOV, move.dst, move.src);            
+            as.instr(MOV, move.dst, move.src);  
         }
     }
 
@@ -108,13 +116,24 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             continue EXEC_LOOP;
         }
 
+        writeln("cycle occurs ***");
+
         // No safe move was found
         // take a pair (A->B) and remove it from list
         // add (A->tmp), (tmp->B) to list
         Move move = moveList[$-1];
         moveList.length -= 1;
-        moveList ~= Move(move.src, tmp0);
-        moveList ~= Move(tmp0, move.dst);
+
+        X86Reg tmpReg;
+        if (auto regSrc = cast(X86Reg)move.src)
+            tmpReg = tmp0.ofSize(regSrc.size);
+        else if (auto memSrc = cast(X86Mem)move.src)
+            tmpReg = tmp0.ofSize(memSrc.memSize);
+        else
+            tmpReg = tmp0;
+
+        moveList ~= Move(tmpReg, move.src);
+        moveList ~= Move(move.dst, tmpReg);
     }
 }
 

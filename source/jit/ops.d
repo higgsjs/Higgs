@@ -423,34 +423,25 @@ alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
 
-// FIXME
-/*
 void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Jump to the target block
-    auto blockLabel = ctx.getBlockLabel(instr.target, st);
-    ctx.as.instr(JMP, blockLabel);
+    ctx.genBranchEdge(ctx.as, null, instr.getTarget(0), st);
 }
-*/
 
-// FIXME
-/*
 void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    auto argSlot = instr.args[0].localIdx;
+    auto argVal = instr.getArg(0);
+
+    auto targetT = instr.getTarget(0);
+    auto targetF = instr.getTarget(1);
 
     // If the argument is a known constant
-    if (st.wordKnown(argSlot))
+    if (st.wordKnown(argVal))
     {
-        //writefln("known target!");
-
-        auto argWord = st.getWord(argSlot);
-
-        auto target = (argWord == TRUE)? instr.target:instr.excTarget;
-        auto label = ctx.getBlockLabel(target, st);
-
-        ctx.as.instr(JMP, label);
-
+        auto argWord = st.getWord(argVal);
+        auto target = (argWord == TRUE)? targetT:targetF;
+        ctx.genBranchEdge(ctx.as, null, target, st);
         return;
     }
 
@@ -458,32 +449,34 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 8);
     ctx.as.instr(CMP, argOpnd, TRUE.int8Val);
 
+    BranchDesc fTarget;
+    BranchDesc sTarget;
     X86OpPtr jumpOp;
-    IRBlock fTarget;
-    IRBlock sTarget;
 
-    if (instr.target.execCount > instr.excTarget.execCount)
+    if (targetT.succ.execCount > targetF.succ.execCount)
     {
-        fTarget = instr.target;
-        sTarget = instr.excTarget;
+        fTarget = targetT;
+        sTarget = targetF;
         jumpOp = JNE;
     }
     else
     {
-        fTarget = instr.excTarget;
-        sTarget = instr.target;
+        fTarget = targetF;
+        sTarget = targetT;
         jumpOp = JE;
     }
 
-    // Get the fast target label last so the fast target is
-    // more likely to get generated first (LIFO stack)
-    auto sLabel = ctx.getBlockLabel(sTarget, st);
-    auto fLabel = ctx.getBlockLabel(fTarget, st);
+    auto sLabel = new Label("IF_LIKELY");
+    auto fLabel = new Label("IF_UNLIKELY");
 
     ctx.as.instr(jumpOp, sLabel);
     ctx.as.instr(JMP, fLabel);
+
+    // Get the fast target label last so the fast target is
+    // more likely to get generated first (LIFO stack)
+    ctx.genBranchEdge(ctx.as, sLabel, sTarget, st);
+    ctx.genBranchEdge(ctx.as, fLabel, fTarget, st);
 }
-*/
 
 /*
 void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -815,12 +808,6 @@ void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // Get the function corresponding to this instruction
-    // alias void function(Interp interp, IRInstr instr) OpFn;
-    // RDI: first argument (interp)
-    // RSI: second argument (instr)
-    auto opFn = instr.opcode.opFn;
-
     // Spill all live values and instruction arguments
     st.spillRegs(
         as,
@@ -835,6 +822,12 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             return false;
         }
     );
+
+    // Get the function corresponding to this instruction
+    // alias void function(Interp interp, IRInstr instr) OpFn;
+    // RDI: first argument (interp)
+    // RSI: second argument (instr)
+    auto opFn = instr.opcode.opFn;
 
     // Move the interpreter pointer into the first argument
     as.instr(MOV, cargRegs[0], interpReg);
@@ -929,11 +922,13 @@ static this()
     codeGenFns[&LOAD_F64]       = &gen_load_f64;
     codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
     codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
+    */
 
     codeGenFns[&JUMP]           = &gen_jump;
 
     codeGenFns[&IF_TRUE]        = &gen_if_true;
 
+    /*
     codeGenFns[&ir.ir.CALL]     = &gen_call;
     codeGenFns[&ir.ir.RET]      = &gen_ret;
 
