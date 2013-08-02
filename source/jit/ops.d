@@ -374,27 +374,23 @@ alias CmpOp!("eq", 64) gen_eq_rawptr;
 
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    /*
-    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 64);
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32);
+    // The pointer operand must be a register
+    auto opnd0Reg = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
+
+    // The offset operand may be a register or an immediate
+    X86Reg opnd1Reg = scrRegs64[1];
+    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[1], true);
+
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
-    // Ensure that the pointer operand is in a register
-    X86Reg opnd0Reg = cast(X86Reg)opnd0;
-    if (opnd0Reg is null)
-    {
-        opnd0Reg = scrRegs64[0];
-        ctx.as.instr(MOV, scrRegs64[0], opnd0);
-    }
-
-    // Zero extend the offset input into a scratch register
-    X86Reg opnd1Reg = scrRegs64[1];
-    ctx.as.instr(MOV, scrRegs32[1], opnd1);
-
-    assert (
-        opnd0Reg && opnd1Reg, 
-        "both inputs must be in registers"
-    );
+    // Create the memory operand
+    X86Mem memOpnd;
+    if (auto immOffs = cast(X86Imm)opnd1)
+        memOpnd = new X86Mem(memSize, opnd0Reg, cast(int32_t)immOffs.imm);
+    else if (auto regOffs = cast(X86Reg)opnd1)
+        memOpnd = new X86Mem(memSize, opnd0Reg, 0, opnd1Reg);
+    else
+        assert (false, "invalid offset operand");
 
     // Select which load opcode to use
     X86OpPtr loadOp;
@@ -409,7 +405,6 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
         uint16_t scrSize = (memSize == 32)? 32:64;
         auto scrReg64 = scrRegs64[2];
         auto scrReg = new X86Reg(X86Reg.GP, scrReg64.regNo, scrSize);
-        auto memOpnd = new X86Mem(memSize, opnd0Reg, 0, opnd1Reg);
 
         // Load to a scratch register and then move to the output
         ctx.as.instr(loadOp, scrReg, memOpnd);
@@ -418,12 +413,11 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
     else
     {
         // Load to the output register directly
-        ctx.as.instr(loadOp, opndOut, new X86Mem(memSize, opnd0Reg, 0, opnd1Reg));
+        ctx.as.instr(loadOp, opndOut, memOpnd);
     }
 
     // Set the output type tag
     st.setOutType(ctx.as, instr, typeTag);
-    */
 }
 
 alias LoadOp!(8 , Type.INT32) gen_load_u8;
@@ -499,7 +493,7 @@ void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto propIdx = idxArg.idx;
 
     // If no property index is cached, use the interpreter function
-    if (propIdx !is idxArg.idx.max)
+    if (propIdx is idxArg.idx.max)
     {
         defaultFn(ctx.as, ctx, st, instr);
         return;
@@ -547,39 +541,31 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto propIdx = idxArg.idx;
 
     // If no property index is cached, use the interpreter function
-    if (propIdx !is idxArg.idx.max)
+    if (propIdx is idxArg.idx.max)
     {
         defaultFn(ctx.as, ctx, st, instr);
         return;
     }
 
     // Allocate the input operand
-    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 1, 64);
+    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 1, 64, scrRegs64[0], true);
 
     // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
+    ctx.as.getMember!("Interp", "globalObj")(scrRegs64[1], interpReg);
 
     // Get the global object size/capacity
-    ctx.as.getField(scrRegs32[1], scrRegs64[0], 4, obj_ofs_cap(interp.globalObj));
+    ctx.as.getField(scrRegs32[2], scrRegs64[1], 4, obj_ofs_cap(interp.globalObj));
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
 
     // Set the word value
-    auto wordMem = new X86Mem(64, scrRegs64[0], wordOfs + 8 * propIdx);
-    if (cast(X86Reg)argOpnd)
-    {
-        ctx.as.instr(MOV, wordMem, argOpnd);
-    }
-    else
-    {
-        ctx.as.instr(MOV, scrRegs64[2], argOpnd);
-        ctx.as.instr(MOV, wordMem, scrRegs64[2]);
-    }
+    auto wordMem = new X86Mem(64, scrRegs64[1], wordOfs + 8 * propIdx);
+    ctx.as.instr(MOV, wordMem, argOpnd);
 
     // Set the type value
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2]);
-    auto typeMem = new X86Mem(8, scrRegs64[0], wordOfs + propIdx, scrRegs64[1], 8);
+    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2], true);
+    auto typeMem = new X86Mem(8, scrRegs64[1], wordOfs + propIdx, scrRegs64[2], 8);
     ctx.as.instr(MOV, typeMem, typeOpnd);
 }
 
@@ -925,7 +911,6 @@ static this()
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
 
-    /*
     codeGenFns[&LOAD_U8]        = &gen_load_u8;
     codeGenFns[&LOAD_U16]       = &gen_load_u16;
     codeGenFns[&LOAD_U32]       = &gen_load_u32;
@@ -933,7 +918,6 @@ static this()
     codeGenFns[&LOAD_F64]       = &gen_load_f64;
     codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
     codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
-    */
 
     codeGenFns[&JUMP]           = &gen_jump;
     codeGenFns[&IF_TRUE]        = &gen_if_true;

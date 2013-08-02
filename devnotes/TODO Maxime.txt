@@ -67,30 +67,40 @@ TODO: propagate known phi arg types to phis
 - test perf impact
 
 TODO: optimize non-constant comparison followed by if_true
+- generate both instrs at once? maybe not
+- cmp can check that if instruction follows and is the only use
 
 Focus on issues that get in the way of inlining perf gains ***
 
 TODO: Modify/reimplement inlining for SSA
 - Inlining transform itself not too hard?
 - Reallocate stack slots and regs afterwards, as normal
+- Reoptimize fused IRs?
 - Try creating new IRFunction for function with inlining?
   - Easier wrt reg alloc, etc
   - Don't care if frame is on stack or not
   - Can recreate CFG & code block without recreating IRFunction object
 
+TODO: blog
+
 ------------------------------------------------------------------------------
 
 TODO: re-benchmark and enable more sunspider/v8 tests
 
-TODO: reimplement call & ret in JIT
+TODO: reimplement ret instruction in JIT
 
-TODO: fix load ops in JIT
-
-
-
+TODO: reimplement call instruction in JIT
+- might cause load ops to be triggered, bugs to pop up
 
 
 
+
+
+
+[DONE] FIXME: get_global, set_global, cannot allocate IR value for constant
+
+[DONE] TODO: fixup load ops in JIT
+- Also improve codegen wrt imm
 
 [DONE] TODO: set_global, get_global
 

@@ -729,6 +729,12 @@ class CodeGenState
         // If the argument is a known constant
         if (flags & RA_CONST || dstVal is null)
         {
+            auto word = getWord(value);
+
+            if (numBits is 8)
+                return new X86Imm(word.int8Val);
+            if (numBits is 32)
+                return new X86Imm(word.int32Val);
             return new X86Imm(getWord(value).int64Val);
         }
 
@@ -827,7 +833,7 @@ class CodeGenState
         // If the operand is immediate
         if (auto immOpnd = cast(X86Imm)curOpnd)
         {
-            if (acceptImm)
+            if (acceptImm && immOpnd.immSize <= 32)
             {
                 return immOpnd;
             }
@@ -1004,7 +1010,8 @@ class CodeGenState
         Assembler as,
         IRInstr instr,
         size_t argIdx,
-        X86Reg tmpReg8 = null
+        X86Reg tmpReg8 = null,
+        bool acceptImm = false
     ) const
     {
         assert (
@@ -1016,6 +1023,12 @@ class CodeGenState
 
         // Get an operand for the argument value
         auto curOpnd = getTypeOpnd(argVal);
+
+        if (acceptImm is true)
+        {
+            if (cast(X86Imm)curOpnd)
+                return curOpnd;
+        }
 
         if (tmpReg8 !is null)
         {
