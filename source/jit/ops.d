@@ -375,10 +375,9 @@ alias CmpOp!("eq", 64) gen_eq_rawptr;
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // The pointer operand must be a register
-    auto opnd0Reg = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
+    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
 
     // The offset operand may be a register or an immediate
-    X86Reg opnd1Reg = scrRegs64[1];
     auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[1], true);
 
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
@@ -386,9 +385,9 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
     // Create the memory operand
     X86Mem memOpnd;
     if (auto immOffs = cast(X86Imm)opnd1)
-        memOpnd = new X86Mem(memSize, opnd0Reg, cast(int32_t)immOffs.imm);
+        memOpnd = new X86Mem(memSize, opnd0, cast(int32_t)immOffs.imm);
     else if (auto regOffs = cast(X86Reg)opnd1)
-        memOpnd = new X86Mem(memSize, opnd0Reg, 0, opnd1Reg);
+        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.ofSize(64));
     else
         assert (false, "invalid offset operand");
 
@@ -941,13 +940,13 @@ static this()
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
 
-    codeGenFns[&LOAD_U8]        = &gen_load_u8;
-    codeGenFns[&LOAD_U16]       = &gen_load_u16;
-    codeGenFns[&LOAD_U32]       = &gen_load_u32;
-    codeGenFns[&LOAD_U64]       = &gen_load_u64;
-    codeGenFns[&LOAD_F64]       = &gen_load_f64;
-    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
-    codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
+    //codeGenFns[&LOAD_U8]        = &gen_load_u8;
+    //codeGenFns[&LOAD_U16]       = &gen_load_u16;
+    //codeGenFns[&LOAD_U32]       = &gen_load_u32;
+    //codeGenFns[&LOAD_U64]       = &gen_load_u64;
+    //codeGenFns[&LOAD_F64]       = &gen_load_f64;
+    //codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
+    //codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
 
     codeGenFns[&JUMP]           = &gen_jump;
     codeGenFns[&IF_TRUE]        = &gen_if_true;

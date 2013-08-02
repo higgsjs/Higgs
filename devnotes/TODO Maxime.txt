@@ -101,8 +101,11 @@ TODO: reimplement ret instruction in JIT
 
 TODO: valToString should validate ref pointers
 
-FIXME: segfault once JIT call is enabled
-- try disabling various parts, disabling continuation generation
+
+FIXME: es5 comparisons, 2 !== 2 ==> false (expected undefined)
+- undefined, wrong value extracted from array?
+- try prop read loop in REPL?
+- try disabling comparisons?
 
 
 
@@ -110,9 +113,15 @@ FIXME: segfault once JIT call is enabled
 
 
 
-
-
-
+[DONE] FIXME: segfault once JIT call is enabled
+make; ./higgs --nostdlib --jit_dumpinfo programs/sunspider/bitops-bitwise-and.js 
+- segfaults if using interp call
+- no segfault if interp call and no call continuation
+- no segfault with JIT call and no call continuation
+- still segfaults with stdlib enabled
+  - after $rt_obj_get_cap compiled?
+  - disabling JIT load ops seems to fix this
+  - wrong reg used in load
 
 [DONE] TODO: debug mode tests in load ops
 

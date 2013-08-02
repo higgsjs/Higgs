@@ -1113,7 +1113,7 @@ class CodeGenState
         if (dstValue is null)
             return true;
 
-        return (allocState[dstValue] & RA_CONST) != 0;
+        return (allocState.get(dstValue, 0) & RA_CONST) != 0;
     }
 
     /// Get the word value for a known constant local
