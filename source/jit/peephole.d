@@ -166,6 +166,17 @@ void optAsm(Assembler as)
             }
         }
 
+        // If this is a direct jump
+        if (op is JMP)
+        {
+            // Remove any instructions that immediately follow
+            while (cast(X86Instr)instr.next)
+                remInstr(instr.next);
+
+            return true;
+        }
+
+        // No changes made
         return false;
     }
 

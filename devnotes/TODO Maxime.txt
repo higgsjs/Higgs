@@ -60,35 +60,45 @@ run-time error: undefined base in read of property "car"
   - gc happens during newObj
 - Doesn't seem directly connected to GC
 
+TODO: don't load arg values with only one use?
+- test perf impact
+
+TODO: propagate known phi arg types to phis
+- test perf impact
+
 TODO: optimize non-constant comparison followed by if_true
 
 Focus on issues that get in the way of inlining perf gains ***
 
 TODO: Modify/reimplement inlining for SSA
-- Not too hard?
+- Inlining transform itself not too hard?
+- Reallocate stack slots and regs afterwards, as normal
 - Try creating new IRFunction for function with inlining?
-
-TODO: progressively reimplement instructions in jit/ops.d
+  - Easier wrt reg alloc, etc
+  - Don't care if frame is on stack or not
+  - Can recreate CFG & code block without recreating IRFunction object
 
 ------------------------------------------------------------------------------
 
-TODO: don't load arg values with only one use?
+TODO: re-benchmark and enable more sunspider/v8 tests
 
-TODO: re-enable JIT-specific unit tests
+TODO: reimplement call & ret in JIT
 
-TODO: dumpasm vs dumpasm_full?
-- Don't dump out of line code?
-- Very useful for debugging
-
-TODO: asm peepholes, eliminate jump after jump
-
-TODO: reimplement basic arith
+TODO: fix load ops in JIT
 
 
 
 
 
 
+
+[DONE] TODO: set_global, get_global
+
+[DONE] TODO: asm peepholes, eliminate jump after jump
+
+[DONE] TODO: re-enable JIT-specific unit tests
+
+[DONE] TODO: reimplement basic arith
 
 [DONE] TODO: reimplement eq instructions
 

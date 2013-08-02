@@ -1290,7 +1290,6 @@ unittest
 /// JIT-specific tests
 unittest
 {
-    /*
     writefln("jit");
 
     auto interp = new Interp();
@@ -1300,7 +1299,6 @@ unittest
     interp.load("programs/jit/loop_new.js");
     interp.load("programs/jit/loop_argc.js");
     interp.load("programs/jit/loop_bool.js");
-    */
 }
 
 /// Tachyon tests
@@ -1533,10 +1531,12 @@ unittest
     /*
     writefln("sunspider/bitops-bits-in-byte");
     interp.load("programs/sunspider/bitops-bits-in-byte.js");
+    */
 
     writefln("sunspider/bitops-3bit-bits-in-byte");
     interp.load("programs/sunspider/bitops-3bit-bits-in-byte.js");
 
+    /*
     writefln("sunspider/bitops-nsieve-bits");
     interp.load("programs/sunspider/bitops-nsieve-bits.js");
     */
