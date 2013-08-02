@@ -701,9 +701,35 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(SHL, scrRegs64[1], 3);
     ctx.as.instr(SUB, wspReg, scrRegs64[1]);
 
-    // FIXME
-    // Jump to the callee entry point
-    //ctx.as.jump(ctx, st, fun.entryBlock);
+
+
+
+
+    auto INTERP_JUMP = new Label("INTERP_JUMP");
+
+    // Get a pointer to the branch target
+    ctx.as.ptr(scrRegs64[0], fun.entryBlock);
+
+    // If a JIT entry point exists, jump to it directly
+    ctx.as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], scrRegs64[0]);
+    ctx.as.instr(CMP, scrRegs64[1], 0);
+    ctx.as.instr(JE, INTERP_JUMP);
+    ctx.as.instr(JMP, scrRegs64[1]);
+
+    // Make the interpreter jump to the target
+    ctx.ol.addInstr(INTERP_JUMP);
+    ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
+    ctx.ol.instr(JMP, ctx.bailLabel);
+
+
+
+
+
+
+
+
+
+
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(BAILOUT);
@@ -926,8 +952,8 @@ static this()
     codeGenFns[&JUMP]           = &gen_jump;
     codeGenFns[&IF_TRUE]        = &gen_if_true;
 
-    //codeGenFns[&ir.ir.CALL]     = &gen_call;
-    //codeGenFns[&ir.ir.RET]      = &gen_ret;
+    //codeGenFns[&ir.ops.CALL]    = &gen_call;
+    //codeGenFns[&ir.ops.RET]     = &gen_ret;
 
     codeGenFns[&GET_GLOBAL]     = &gen_get_global;
     codeGenFns[&SET_GLOBAL]     = &gen_set_global;

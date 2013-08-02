@@ -61,7 +61,7 @@ void optIR(IRFunction fun)
         changed = true;
 
         // Check that the block has no incoming branches
-        version (unittest)
+        debug
         {
             for (auto zblock = fun.firstBlock; zblock !is null; zblock = zblock.next)
             {
@@ -82,7 +82,7 @@ void optIR(IRFunction fun)
         fun.delBlock(block);
 
         // Check that the block was properly destroyed
-        version (unittest)
+        debug
         {
             assert (block.firstPhi is null);
             assert (block.firstInstr is null);
@@ -104,7 +104,7 @@ void optIR(IRFunction fun)
         // Remove and delete the phi node
         phi.block.delPhi(phi);
 
-        version (unittest)
+        debug
         {
             for (auto block = fun.firstBlock; block !is null; block = block.next)
             {

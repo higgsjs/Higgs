@@ -623,6 +623,11 @@ extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     auto ptr = vPtr.word.ptrVal;
     auto ofs = vOfs.word.int32Val;
 
+    assert (
+        typeTag is Type.RAWPTR || interp.inFromSpace(ptr),
+        "ref ptr not in from space in load op"
+    );
+
     auto val = *cast(DataType*)(ptr + ofs);
 
     Word word;
@@ -678,6 +683,11 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 
     auto ptr = vPtr.word.ptrVal;
     auto ofs = vOfs.word.int32Val;
+
+    assert (
+        typeTag is Type.RAWPTR || interp.inFromSpace(ptr),
+        "ref ptr not in from space in load op"
+    );
 
     auto word = interp.getArgVal(instr, 2).word;
 

@@ -39,6 +39,8 @@ TODO: benchmarking (performance testing) JS script
 - try to make it compatible with V8 as-is
 - should be able to pass config flags to Higgs (i.e.: modify JIT params)
 
+TODO: release version with no asserts for performance testing
+
 TODO: global counter on IsTypeOp, with vs without versioning
 
 TODO: implement cap on number of block versions
@@ -95,31 +97,27 @@ TODO: re-benchmark and enable more sunspider/v8 tests
 
 TODO: reimplement ret instruction in JIT
 - need to fix jump(reg) to work branch desc
+  - move code into ret, it's the only usage
 
-TODO: fix jump(reg)
-- call interp branch method?
+TODO: valToString should validate ref pointers
+
+FIXME: segfault once JIT call is enabled
+- try disabling various parts, disabling continuation generation
 
 
 
-TODO: reimplement call instruction in JIT
+
+
+
+
+
+
+
+
+[DONE] TODO: debug mode tests in load ops
+
+[DONE] TODO: reimplement call instruction in JIT
 - might cause load ops to be triggered, bugs to pop up, we shall see!
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: get_global, set_global, cannot allocate IR value for constant
 

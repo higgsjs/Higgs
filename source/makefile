@@ -1,6 +1,7 @@
 DC = dmd
 COPTS = -m64 -O -L-ldl
-DBGOPTS = -m64 -O -L-ldl -gc
+TESTOPTS = -m64 -O -L-ldl -unittest -debug
+DBGOPTS = -m64 -O -L-ldl -gc -debug
 
 BIN_NAME = higgs
 BIN_NAME_TEST = test-higgs
@@ -55,7 +56,7 @@ all: layout encodings
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
 
 test: layout encodings
-	$(DC) $(COPTS) -unittest -of$(BIN_NAME_TEST) $(SRC)
+	$(DC) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
 	time ./$(BIN_NAME_TEST)
 
 debug: layout encodings

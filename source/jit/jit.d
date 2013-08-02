@@ -1502,28 +1502,6 @@ void setType(Assembler as, int32_t idx, Type type)
 
 // FIXME: proper interp branching w/ branch desc
 /*
-void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, IRBlock target)
-{
-    auto INTERP_JUMP = new Label("INTERP_JUMP");
-
-    // Get a pointer to the branch target
-    as.ptr(scrRegs64[0], target);
-
-    // If a JIT entry point exists, jump to it directly
-    as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], scrRegs64[0]);
-    as.instr(CMP, scrRegs64[1], 0);
-    as.instr(JE, INTERP_JUMP);
-    as.instr(JMP, scrRegs64[1]);
-
-    // Make the interpreter jump to the target
-    ctx.ol.addInstr(INTERP_JUMP);
-    ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
-    ctx.ol.instr(JMP, ctx.bailLabel);
-}
-*/
-
-// FIXME: proper interp branching w/ branch desc
-/*
 void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, X86Reg targetReg)
 {
     assert (targetReg != scrRegs64[1]);

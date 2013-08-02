@@ -135,6 +135,22 @@ struct GCRoot
 }
 
 /**
+Check that a pointer points in an interpreter's from-space heap
+*/
+bool inFromSpace(Interp interp, refptr ptr)
+{
+    return (ptr >= interp.heapStart && ptr < interp.heapLimit);
+}
+
+/**
+Check that a pointer points in an interpreter's to-space heap
+*/
+bool inToSpace(Interp interp, refptr ptr)
+{
+    return (ptr >= interp.toStart && ptr < interp.toLimit);
+}
+
+/**
 Allocate an object in the heap
 */
 refptr heapAlloc(Interp interp, size_t size)
@@ -278,7 +294,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
             break;
 
         assert (
-            scanPtr >= interp.toStart || scanPtr < interp.toLimit,
+            interp.inToSpace(scanPtr),
             "scan pointer past to-space limit"
         );
 
@@ -402,7 +418,7 @@ refptr gcForward(Interp interp, refptr ptr)
     //writefln("forwarding object %s", ptr);
 
     assert (
-        ptr >= interp.heapStart && ptr < interp.heapLimit,
+        interp.inFromSpace(ptr),
         format(
             "gcForward: object not in from-space heap\n" ~
             "ptr   : %s\n" ~
@@ -431,7 +447,7 @@ refptr gcForward(Interp interp, refptr ptr)
         nextPtr = obj_get_next(nextPtr);
 
         // If the next pointer is outside of the from-space
-        if (nextPtr < interp.heapStart || nextPtr >= interp.heapLimit)
+        if (interp.inFromSpace(nextPtr) is false)
             break;
 
         // Follow the next pointer chain
@@ -458,7 +474,7 @@ refptr gcForward(Interp interp, refptr ptr)
     }
 
     assert (
-        nextPtr >= interp.toStart && nextPtr < interp.toLimit,
+        interp.inToSpace(nextPtr),
         format(
             "gcForward: next pointer is outside of to-space\n" ~
             "objPtr  : %s\n" ~
@@ -530,7 +546,7 @@ Copy a live object into the to-space.
 refptr gcCopy(Interp interp, refptr ptr, size_t size)
 {
     assert (
-        ptr >= interp.heapStart && ptr < interp.heapLimit,
+        interp.inFromSpace(ptr),
         format(
             "gcCopy: object not in from-space heap\n" ~
             "ptr   : %s\n" ~
@@ -580,7 +596,7 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
         nextPtr[i] = ptr[i];
 
     assert (
-        nextPtr >= interp.toStart && nextPtr < interp.toLimit,
+        interp.inToSpace(nextPtr),
         "gcCopy: next pointer is outside of to-space"
     );
 
@@ -627,7 +643,7 @@ void visitStackRoots(Interp interp)
             assert (
                 type != Type.REFPTR ||
                 fwdPtr == null ||
-                (fwdPtr >= interp.toStart && fwdPtr < interp.toLimit),
+                interp.inToSpace(fwdPtr),
                 format(
                     "invalid forwarded stack pointer\n" ~
                     "ptr     : %s\n" ~

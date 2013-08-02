@@ -495,7 +495,7 @@ class IRBlock : IdObject
     */
     void addIncoming(BranchDesc branch)
     {
-        version (unittest)
+        debug
         {
             foreach (entry; incoming)
                 if (entry is branch)
