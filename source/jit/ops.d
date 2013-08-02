@@ -569,11 +569,10 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(MOV, typeMem, typeOpnd);
 }
 
-/*
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Generate an entry point for the call continuation
-    ctx.getEntryPoint(instr.target);
+    ctx.getEntryPoint(instr.getTarget(0).succ);
 
     // Find the most called callee function
     uint64_t maxCount = 0;
@@ -592,7 +591,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     assert (fun !is null && fun.entryBlock !is null);
 
     // If the argument count doesn't match
-    auto numArgs = cast(int32_t)instr.args.length - 2;
+    auto numArgs = cast(int32_t)instr.numArgs - 2;
     if (numArgs != fun.numParams)
     {
         // Call the interpreter call instruction
@@ -633,8 +632,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
     {
-        auto instrArgIdx = instr.args.length - (1+i);
-        auto argSlot = instr.args[instrArgIdx].localIdx;
+        auto instrArgIdx = instr.numArgs - (1+i);
         auto dstIdx = -(cast(int32_t)i + 1);
 
         // Copy the argument word
@@ -691,9 +689,9 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Spill the values that are live after the call
     st.spillRegs(
         ctx.as,
-        delegate bool(LocalIdx localIdx)
+        delegate bool(IRDstValue val)
         {
-            return (ctx.liveSets[instr].has(localIdx) == true);
+            return ctx.liveInfo.liveAfter(val, instr);
         }
     );
 
@@ -703,8 +701,9 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(SHL, scrRegs64[1], 3);
     ctx.as.instr(SUB, wspReg, scrRegs64[1]);
 
+    // FIXME
     // Jump to the callee entry point
-    ctx.as.jump(ctx, st, fun.entryBlock);
+    //ctx.as.jump(ctx, st, fun.entryBlock);
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(BAILOUT);
@@ -717,11 +716,10 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    auto retSlot   = instr.args[0].localIdx;
-    auto raSlot    = instr.block.fun.raSlot;
-    auto argcSlot  = instr.block.fun.argcSlot;
-    auto thisSlot  = instr.block.fun.thisSlot;
-    auto numParams = instr.block.fun.params.length;
+    auto raSlot    = instr.block.fun.raVal.outSlot;
+    auto argcSlot  = instr.block.fun.argcVal.outSlot;
+    auto thisSlot  = instr.block.fun.thisVal.outSlot;
+    auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
     // Label for the bailout to interpreter cases
@@ -741,7 +739,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // If this is not a regular call, bailout
     ctx.as.getMember!("IRInstr", "opcode")(scrRegs64[1], scrRegs64[0]);
-    ctx.as.ptr(scrRegs64[2], &ir.ir.CALL);
+    ctx.as.ptr(scrRegs64[2], &ir.ops.CALL);
     ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
     ctx.as.instr(JNE, BAILOUT);
 
@@ -775,11 +773,18 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(ADD, wspReg, numLocals * 8);
     ctx.as.instr(ADD, tspReg, numLocals);
 
+
+
+    // FIXME: need to get the branch desc, jump with branch desc instead
     // Get the call continuation block
-    ctx.as.getMember!("IRInstr", "target")(scrRegs64[0], scrRegs64[0]);
+    //ctx.as.getMember!("IRInstr", "target")(scrRegs64[0], scrRegs64[0]);
 
     // Jump to the call continuation block without spilling anything
-    ctx.as.jump(ctx, new CodeGenState(ctx.fun), scrRegs64[0]);
+    //ctx.as.jump(ctx, new CodeGenState(ctx.fun), scrRegs64[0]);
+
+
+
+
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(BAILOUT);
@@ -789,7 +794,6 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Call the interpreter call instruction
     defaultFn(ctx.ol, ctx, st, instr);
 }
-*/
 
 void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {

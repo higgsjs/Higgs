@@ -1511,69 +1511,58 @@ unittest
 
     auto interp = new Interp();
 
-    /*
-    writefln("sunspider/3d-morph");
-    interp.load("programs/sunspider/3d-morph.js");
+    void run(string name)
+    {
+        writefln("sunspider/%s", name);
+        interp.load("programs/sunspider/" ~ name ~ ".js");
+    }
 
-    writefln("sunspider/3d-cube");
-    interp.load("programs/sunspider/3d-cube.js");
+    //interp.load("programs/sunspider/3d-cube.js");
+    //interp.load("programs/sunspider/3d-morph.js");
+    // TODO: 3d-raytrace
+    //interp.load("programs/sunspider/access-binary-trees.js");
+    // TODO: access-fannkuch
+    // TODO: access-nbody
+    // TODO: access-nsieve
+    //interp.load("programs/sunspider/access-nsieve.js");
 
-    writefln("sunspider/access-binary-trees");
-    interp.load("programs/sunspider/access-binary-trees.js");
+    run("bitops-bitwise-and");
+    run("bitops-bits-in-byte");
+    run("bitops-3bit-bits-in-byte");
 
-    writefln("sunspider/access-nsieve");
-    interp.load("programs/sunspider/access-nsieve.js");
-    */
+    //interp.load("programs/sunspider/bitops-nsieve-bits.js");
 
-    writefln("sunspider/bitops-bitwise-and");
-    interp.load("programs/sunspider/bitops-bitwise-and.js");
-
-    /*
-    writefln("sunspider/bitops-bits-in-byte");
-    interp.load("programs/sunspider/bitops-bits-in-byte.js");
-    */
-
-    writefln("sunspider/bitops-3bit-bits-in-byte");
-    interp.load("programs/sunspider/bitops-3bit-bits-in-byte.js");
-
-    /*
-    writefln("sunspider/bitops-nsieve-bits");
-    interp.load("programs/sunspider/bitops-nsieve-bits.js");
-    */
-
-    writefln("sunspider/controlflow-recursive");
-    interp.load("programs/sunspider/controlflow-recursive.js");
+    run("controlflow-recursive");
     interp.assertInt("ack(3,2);", 29);
     interp.assertInt("tak(9,5,3);", 4);
 
-    /*
-    writefln("sunspider/crypto-md5");
-    interp.load("programs/sunspider/crypto-md5.js");
+    //interp.load("programs/sunspider/crypto-md5.js");
+    //interp.load("programs/sunspider/crypto-sha1.js");
+    //interp.load("programs/sunspider/math-cordic.js");
+    //interp.load("programs/sunspider/math-partial-sums.js");
+    //interp.load("programs/sunspider/math-spectral-norm.js");
 
-    writefln("sunspider/crypto-sha1");
-    interp.load("programs/sunspider/crypto-sha1.js");
+    // TODO: string-base64
 
-    writefln("sunspider/math-cordic");
-    interp.load("programs/sunspider/math-cordic.js");
-
-    writefln("sunspider/math-partial-sums");
-    interp.load("programs/sunspider/math-partial-sums.js");
-
-    writefln("sunspider/math-spectral-norm");
-    interp.load("programs/sunspider/math-spectral-norm.js");
-    */
+    // TODO: string-fasta
 }
 
 /// V8 benchmarks
 unittest
 {
-    /*
     writefln("v8bench");
 
     auto interp = new Interp();
-
     interp.load("programs/v8bench/base.js");
 
+    void run(string name)
+    {
+        writefln("v8bench/%s", name);
+        interp.load("programs/v8bench/" ~ name ~ ".js");
+        interp.load("programs/v8bench/drv-" ~ name ~ ".js");
+    }
+
+    /*
     writefln("v8bench/crypto");
     interp.load("programs/v8bench/crypto.js");
     interp.load("programs/v8bench/drv-crypto.js");
@@ -1589,11 +1578,15 @@ unittest
     writefln("v8bench/richards");
     interp.load("programs/v8bench/richards.js");
     interp.load("programs/v8bench/drv-richards.js");
+    */
 
     // FIXME: GC-related bug?
     //writefln("v8bench/earley-boyer");
     //interp.load("programs/v8bench/earley-boyer.js");
     //interp.load("programs/v8bench/drv-earley-boyer.js");
-    */
+
+    // TODO: v8bench/splay
+
+    // TODO: v8bench/navier-stokes
 }
 

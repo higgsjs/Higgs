@@ -39,7 +39,7 @@ TODO: benchmarking (performance testing) JS script
 - try to make it compatible with V8 as-is
 - should be able to pass config flags to Higgs (i.e.: modify JIT params)
 
-TODO: counter on IsTypeOp, with vs without versioning
+TODO: global counter on IsTypeOp, with vs without versioning
 
 TODO: implement cap on number of block versions
 - Add command-line options, jit_maxblockvers
@@ -66,11 +66,8 @@ TODO: don't load arg values with only one use?
 TODO: propagate known phi arg types to phis
 - test perf impact
 
-TODO: optimize non-constant comparison followed by if_true
-- generate both instrs at once? maybe not
-- cmp can check that if instruction follows and is the only use
-
-Focus on issues that get in the way of inlining perf gains ***
+TODO: Focus on issues that get in the way of inlining perf gains ***
+- Look at the code, where are the problems?
 
 TODO: Modify/reimplement inlining for SSA
 - Inlining transform itself not too hard?
@@ -81,16 +78,43 @@ TODO: Modify/reimplement inlining for SSA
   - Don't care if frame is on stack or not
   - Can recreate CFG & code block without recreating IRFunction object
 
+TODO: optimize non-constant comparison followed by if_true
+- generate both instrs at once? maybe not
+- cmp can check that if instruction follows and is the only use
+
 TODO: blog
+- JIT complete, now with SSA
+- Difficulties encountered, phi nodes, reg alloc bugs
+- For now reg alloc simple
+- Better code quality?
+- speedups
 
 ------------------------------------------------------------------------------
 
 TODO: re-benchmark and enable more sunspider/v8 tests
 
 TODO: reimplement ret instruction in JIT
+- need to fix jump(reg) to work branch desc
+
+TODO: fix jump(reg)
+- call interp branch method?
+
+
 
 TODO: reimplement call instruction in JIT
-- might cause load ops to be triggered, bugs to pop up
+- might cause load ops to be triggered, bugs to pop up, we shall see!
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -145,7 +169,7 @@ TODO: reimplement call instruction in JIT
   - mapping all phis to stack doesn't fix the problem
 ./higgs --e "test()" --jit_dumpasm programs/es5_cmp/es5_cmp.js 
 entering fn: $rt_valIsString(2B7A) (entry(32C2))
-**** disabling IsType ops seems to fix the problem
+- disabling IsType ops seems to fix the problem
 - test in more detail what in IsTypeOp causes an issue
 - Bug in loading from mem to reg, not loading all the bits
 - Also bug in getTypeOpnd
