@@ -1279,6 +1279,7 @@ unittest
     interp.load("programs/regress/loop_swap.js");
     interp.load("programs/regress/dowhile_cont.js");
     interp.load("programs/regress/jit_se_cmp.js");
+    interp.load("programs/regress/jit_getprop_arr.js");
 
     interp.load("programs/regress/delta.js");
     interp.load("programs/regress/raytrace.js");

@@ -940,18 +940,18 @@ static this()
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
 
-    //codeGenFns[&LOAD_U8]        = &gen_load_u8;
-    //codeGenFns[&LOAD_U16]       = &gen_load_u16;
-    //codeGenFns[&LOAD_U32]       = &gen_load_u32;
-    //codeGenFns[&LOAD_U64]       = &gen_load_u64;
-    //codeGenFns[&LOAD_F64]       = &gen_load_f64;
-    //codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
-    //codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
+    codeGenFns[&LOAD_U8]        = &gen_load_u8;
+    codeGenFns[&LOAD_U16]       = &gen_load_u16;
+    codeGenFns[&LOAD_U32]       = &gen_load_u32;
+    codeGenFns[&LOAD_U64]       = &gen_load_u64;
+    codeGenFns[&LOAD_F64]       = &gen_load_f64;
+    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
+    codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
 
     codeGenFns[&JUMP]           = &gen_jump;
     codeGenFns[&IF_TRUE]        = &gen_if_true;
 
-    //codeGenFns[&ir.ops.CALL]    = &gen_call;
+    codeGenFns[&ir.ops.CALL]    = &gen_call;
     //codeGenFns[&ir.ops.RET]     = &gen_ret;
 
     codeGenFns[&GET_GLOBAL]     = &gen_get_global;

@@ -796,11 +796,11 @@ class CodeGenState
                 // If the mapped slot belongs to another instruction argument
                 for (size_t otherIdx = 0; otherIdx < instr.numArgs; ++otherIdx)
                 {
-                    if (otherIdx != argIdx && argVal is instr.getArg(otherIdx))
+                    if (otherIdx != argIdx && regVal is instr.getArg(otherIdx))
                     {
                         // Map the argument to its stack location
                         allocState[dstVal] = RA_STACK;
-                        auto opnd = new X86Mem(numBits, wspReg, 8 * dstVal.outSlot);
+                        return new X86Mem(numBits, wspReg, 8 * dstVal.outSlot);
                     }
                 }
 

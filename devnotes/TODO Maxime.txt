@@ -95,23 +95,32 @@ TODO: blog
 
 TODO: re-benchmark and enable more sunspider/v8 tests
 
+TODO: valToString should validate ref pointers
+- core.memory.query, returns null if invalid pointer
+
+
+
 TODO: reimplement ret instruction in JIT
 - need to fix jump(reg) to work branch desc
   - move code into ret, it's the only usage
 
-TODO: valToString should validate ref pointers
 
 
-FIXME: es5 comparisons, 2 !== 2 ==> false (expected undefined)
+
+
+
+
+
+
+
+
+[DONE] FIXME: es5 comparisons, 2 !== 2 ==> false (expected undefined)
 - undefined, wrong value extracted from array?
 - try prop read loop in REPL?
 - try disabling comparisons?
-
-
-
-
-
-
+- make small regression test again
+- test passes when JIT comparison ops disabled
+  - fails if eq_i8 enabled
 
 [DONE] FIXME: segfault once JIT call is enabled
 make; ./higgs --nostdlib --jit_dumpinfo programs/sunspider/bitops-bitwise-and.js 
