@@ -1137,6 +1137,10 @@ class IRInstr : IRDstValue
     /// Opcode
     Opcode* opcode;
 
+    // TODO: subdivide instructions into branch and call instruction classes?
+    /// JIT code call continuation entry point
+    ubyte* jitCont = null;
+
     /// Arguments to this instruction
     private Use[] args;
 

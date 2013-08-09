@@ -232,6 +232,13 @@ void compFun(Interp interp, IRFunction fun)
     // Total number of block versions
     size_t numVersions = 0;
 
+
+
+
+    Label[IRInstr] callContMap;
+
+
+
     /// Get a label for a given block and incoming state
     auto getBlockVersion = delegate BlockVersion(
         IRBlock block, 
@@ -320,7 +327,7 @@ void compFun(Interp interp, IRFunction fun)
         auto succVer = getBlockVersion(branch.succ, predState, false);
         auto succState = succVer.state;
 
-        // Generate move list to make transition to the successor state
+        // Generate a move list to transition to the successor state
         Move[] moveList;
         for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
         {
@@ -349,8 +356,27 @@ void compFun(Interp interp, IRFunction fun)
         // Execute the moves
         execMoves(as, moveList, scrRegs64[0], scrRegs64[1]);
 
+        //if (branch.pred.lastInstr.opcode is &ir.ops.CALL)
+        //    as.printStr("cont in " ~ branch.pred.lastInstr.block.fun.getName ~ " (" ~ to!string(moveList.length) ~ " moves)");
+
         // Jump to the block label
         as.instr(JMP, succVer.label);
+
+
+        // TODO: move this to some helper function
+        // genCallCont
+        if (branch.pred.lastInstr.opcode is &ir.ops.CALL)
+        {
+            if (branch.pred.lastInstr !in callContMap)
+            {
+                assert (edgeLabel !is null);
+                edgeLabel.exported = true;
+                callContMap[branch.pred.lastInstr] = edgeLabel;
+            }
+        }
+
+
+
     };
 
     /// Get an entry point label for a given basic block
@@ -582,6 +608,19 @@ void compFun(Interp interp, IRFunction fun)
         block.jitEntry = codeBlock.getExportAddr(fastLabel.name); 
     }
 
+
+
+
+    foreach (instr, label; callContMap)
+    {
+
+        instr.jitCont = codeBlock.getExportAddr(label.name); 
+    }
+
+
+
+
+
     if (opts.jit_dumpasm)
     {
         writefln("%s\n", as.toString(true));
@@ -607,11 +646,14 @@ extern (C) void visitStub(IRBlock stubBlock)
     if (opts.jit_dumpinfo)
         writefln("invalidating %s", fun.getName());
 
-    // Remove block entry points for this function
+    // Remove entry points for this function
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
         block.entryFn = null;
         block.jitEntry = null;
+
+        if (block.lastInstr)
+            block.lastInstr.jitCont = null;
     }
 
     // Invalidate the compiled code for this function
@@ -1500,27 +1542,6 @@ void setType(Assembler as, int32_t idx, Type type)
     as.instr(MOV, new X86Mem(8, tspReg, idx), type);
 }
 
-// FIXME: proper interp branching w/ branch desc
-/*
-void jump(Assembler as, CodeGenCtx ctx, CodeGenState st, X86Reg targetReg)
-{
-    assert (targetReg != scrRegs64[1]);
-
-    auto INTERP_JUMP = new Label("INTERP_JUMP");
-
-    // If a JIT entry point exists, jump to it directly
-    as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], targetReg);
-    as.instr(CMP, scrRegs64[1], 0);
-    as.instr(JE, INTERP_JUMP);
-    as.instr(JMP, scrRegs64[1]);
-
-    // Make the interpreter jump to the target and bailout
-    ctx.ol.addInstr(INTERP_JUMP);
-    ctx.ol.setMember!("Interp", "target")(interpReg, targetReg);
-    ctx.ol.instr(JMP, ctx.bailLabel);
-}
-*/
-
 /// Save caller-save registers on the stack before a C call
 void pushRegs(Assembler as)
 {
@@ -1551,15 +1572,20 @@ void popRegs(Assembler as)
     as.instr(POP, RAX);
 }
 
-void printUint(Assembler as, X86Reg reg)
+void printUint(Assembler as, X86Opnd opnd)
 {
+    assert (
+        opnd !is null,
+        "invalid operand in printUint"
+    );
+
     as.pushRegs();
 
-    as.instr(MOV, cargRegs[0], reg);
+    as.instr(MOV, cargRegs[0], opnd);
 
+    // Call the print function
     alias extern (C) void function(uint64_t) PrintUintFn;
     PrintUintFn printUintFn = &printUint;
-
     as.ptr(RAX, printUintFn);
     as.instr(jit.encodings.CALL, RAX);
 
@@ -1576,7 +1602,7 @@ void printStr(Assembler as, string str)
     as.instr(JMP, AFTER_STR);
 
     as.addInstr(STR_DATA);
-    foreach (chIdx, ch; str)
+    foreach (ch; str)
         as.addInstr(new IntData(cast(uint)ch, 8));    
     as.addInstr(new IntData(0, 8));
 
@@ -1606,6 +1632,6 @@ Print a C string value. Callable from the JIT
 */
 extern (C) void printStr(char* pStr)
 {
-    printf("%s", pStr);
+    printf("%s\n", pStr);
 }
 

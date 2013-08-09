@@ -52,15 +52,13 @@ vers cap, the jump target we get back is an adaptor?
 
 August 15th goal: perf gains from inlining
 
-FIXME: earley-boyer not working, with or without inlining
+FIXME: earley-boyer not working?, with or without inlining
 run-time error: undefined base in read of property "car"
-- add to tests permanently?
 - jit_disable : still broken!
-- jit_noinline: still broken
-- try disabling JIT instrs selectively
 - Might have to do with recent changes to obj alloc
   - gc happens during newObj
 - Doesn't seem directly connected to GC
+- add to tests permanently?
 
 TODO: don't load arg values with only one use?
 - test perf impact
@@ -80,10 +78,6 @@ TODO: Modify/reimplement inlining for SSA
   - Don't care if frame is on stack or not
   - Can recreate CFG & code block without recreating IRFunction object
 
-TODO: optimize non-constant comparison followed by if_true
-- generate both instrs at once? maybe not
-- cmp can check that if instruction follows and is the only use
-
 TODO: blog
 - JIT complete, now with SSA
 - Difficulties encountered, phi nodes, reg alloc bugs
@@ -91,28 +85,85 @@ TODO: blog
 - Better code quality?
 - speedups
 
+TODO: optimize non-constant comparison followed by if_true
+- cmp can check that if instruction follows and is the only use
+- if can check that cmp instruction precedes
+- could possibly directly check the last ASM instruction?
+
 ------------------------------------------------------------------------------
 
-TODO: re-benchmark and enable more sunspider/v8 tests
+TODO: re-benchmark and re-enable more sunspider/v8 tests
 
 TODO: valToString should validate ref pointers
 - core.memory.query, returns null if invalid pointer
 
+TODO: JIT currently checks if call instr has out slot, do we still have
+situations where we don't allocate an out slot to call? test it
+
+TODO: cleanup call cont generation code
+- add ctx.genCallCont function
+
+TODO: getTypeOpnd in gen_ret should have acceptImm = true
 
 
-TODO: reimplement ret instruction in JIT
+
+FIXME: bug in stackvm with ret enabled
+- doesn't happen with interp ret only
+  - much less JIT execution
+- Does it crash when run on its own? Yes
+- Does it crash if we disable GC? Yes, after a few runs (enough for JIT?)
+- Try disabling specific ops, like load?
+./higgs regress_stackvm.js 
+- segfault with new Array(1)
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: jit ret causes infinite loop in stdlib, setPropObj
+- Not caused by phi nodes
+- Return value somehow not set?
+  - interp and jit ret should be doing the same wrt return value
+- Seems we get a loop with always the same next pointer returned
+  - but the return code seems correct
+- The situation we have occurs with a loop... The loop definitely has phi nodes
+- Seems we really have an object with itself as next value
+- Disabling ret makes it work
+  - disabling jit ret doesn't fix it
+  - disabling jit call cont generation doesn't fix it
+- must be a phi node issue with the interpreter
+- wspReg, tspReg not set in interpreter before interp.branch
+
+[DONE] FIXME: jit entry point should be executing the phi moves...
+- interp entry point doesn't execute moves, because the interpreter
+  already executed them in the branch() function
+- Could put a special pointer on the call instruction
+- genBranchEdge to generate the phi nodes?
+  - need to use stack entry state
+- store association between label and call instr
+- at the end of compFun, write the pointer
+    ctx.genBranchEdge(
+        ctx.ol,
+        new Label("cont_branch"),
+        instr.getTarget(0), 
+        new CodeGenState(fun)
+    );
+- fixup gen_ret to use jitCont
+- also make the branch edge exported
+- add jitCont pointer on IRInstr
+
+[DONE] FIXME: printStr is broken
+
+[DONE] TODO: reimplement ret instruction in JIT
 - need to fix jump(reg) to work branch desc
-  - move code into ret, it's the only usage
-
-
-
-
-
-
-
-
-
-
+- move code into ret, it's the only usage
 
 [DONE] FIXME: es5 comparisons, 2 !== 2 ==> false (expected undefined)
 - undefined, wrong value extracted from array?

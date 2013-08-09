@@ -807,6 +807,9 @@ class Interp
     */
     void branch(BranchDesc branch)
     {
+        //writefln("branch into %s", branch.succ.fun.getName);
+        //writefln("executing %s phis", branch.args.length);
+
         // Allocate temp space for the values
         if (tempVals.length < branch.args.length)
             tempVals.length = branch.args.length;

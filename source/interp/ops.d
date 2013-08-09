@@ -1050,6 +1050,8 @@ extern (C) void op_gc_collect(Interp interp, IRInstr instr)
 {
     auto heapSize = interp.getArgUint32(instr, 0);
 
+    writeln("triggering gc");
+
     gcCollect(interp, heapSize);
 }
 

@@ -570,8 +570,18 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    // TODO: re-enable?
     // Generate an entry point for the call continuation
-    ctx.getEntryPoint(instr.getTarget(0).succ);
+    //ctx.getEntryPoint(instr.getTarget(0).succ);
+
+    // TODO: ctx.genCallCont
+    // Generate a JIT entry point for the call continuation
+    ctx.genBranchEdge(
+        ctx.ol,
+        new Label("CONT_" ~ instr.block.getName.toUpper),
+        instr.getTarget(0), 
+        new CodeGenState(ctx.fun)
+    );
 
     // Find the most called callee function
     uint64_t maxCount = 0;
@@ -700,10 +710,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(SHL, scrRegs64[1], 3);
     ctx.as.instr(SUB, wspReg, scrRegs64[1]);
 
-
-
-
-
+    // Label for the interpreter jump
     auto INTERP_JUMP = new Label("INTERP_JUMP");
 
     // Get a pointer to the branch target
@@ -720,16 +727,6 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
     ctx.ol.instr(JMP, ctx.bailLabel);
 
-
-
-
-
-
-
-
-
-
-
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(BAILOUT);
 
@@ -743,7 +740,6 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto raSlot    = instr.block.fun.raVal.outSlot;
     auto argcSlot  = instr.block.fun.argcVal.outSlot;
-    auto thisSlot  = instr.block.fun.thisVal.outSlot;
     auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
@@ -752,7 +748,9 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Label for the point at which we pop the locals
     auto POP_LOCALS = new Label("POP_LOCALS");
-    
+
+    //ctx.as.printStr("ret from " ~ instr.block.fun.getName);
+
     // Get the argument count
     // If it doesn't match the expected count, bailout
     ctx.as.getWord(scrRegs64[0], argcSlot);
@@ -798,18 +796,39 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(ADD, wspReg, numLocals * 8);
     ctx.as.instr(ADD, tspReg, numLocals);
 
+    // Label for the interpreter jump
+    auto INTERP_JUMP = new Label("INTERP_JUMP");
+
+    // Function to make the interpreter jump to the call continuation
+    extern (C) void interpBranch(Interp interp, IRInstr callInstr)
+    {
+        //writeln("interp ret to ", callInstr.block.fun.getName);
+        auto desc = callInstr.getTarget(0);
+        interp.branch(desc);
+    }
 
 
-    // FIXME: need to get the branch desc, jump with branch desc instead
-    // Get the call continuation block
-    //ctx.as.getMember!("IRInstr", "target")(scrRegs64[0], scrRegs64[0]);
-
-    // Jump to the call continuation block without spilling anything
-    //ctx.as.jump(ctx, new CodeGenState(ctx.fun), scrRegs64[0]);
 
 
 
+    // If a JIT entry point exists, jump to it directly
+    // Note: this will execute the phi node moves on entry
+    ctx.as.getMember!("IRInstr", "jitCont")(scrRegs64[1], scrRegs64[0]);
+    ctx.as.instr(CMP, scrRegs64[1], 0);
+    ctx.as.instr(JE, INTERP_JUMP);
+    //ctx.as.printStr("jit ret");
+    ctx.as.instr(JMP, scrRegs64[1]);
 
+    // Make the interpreter jump to the call continuation and bailout
+    ctx.ol.addInstr(INTERP_JUMP);
+    //ctx.ol.printStr("interp ret");
+    ctx.ol.setMember!("Interp", "wsp")(interpReg, wspReg);
+    ctx.ol.setMember!("Interp", "tsp")(interpReg, tspReg);
+    ctx.ol.instr(MOV, RDI, interpReg);
+    ctx.ol.instr(MOV, RSI, scrRegs64[0]);
+    ctx.ol.ptr(scrRegs64[0], &interpBranch);
+    ctx.ol.instr(jit.encodings.CALL, scrRegs64[0]);
+    ctx.ol.instr(JMP, ctx.bailLabel);
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(BAILOUT);

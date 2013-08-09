@@ -189,8 +189,16 @@ void optAsm(Assembler as)
         for (auto obj = as.getFirstInstr(); obj !is null; obj = obj.next)
         {
             if (auto instr = cast(X86Instr)obj)
-                if (auto labelRef = cast(X86LabelRef)instr.opnds[0])
-                    labelRef.label.refCount++;
+            {
+                foreach (opnd; instr.opnds)
+                {
+                    if (auto labelRef = cast(X86LabelRef)opnd)
+                        labelRef.label.refCount++;
+
+                    if (auto ipRel = cast(X86IPRel)opnd)
+                        ipRel.label.refCount++;
+                }
+            }
         }
 
         // For each instruction
