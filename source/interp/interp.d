@@ -234,6 +234,8 @@ string valToString(ValuePair value)
         return to!string(w.ptrVal);
 
         case Type.REFPTR:
+        if (GC.query(w.ptrVal) == GC.BlkInfo.init)
+            return "invalid refptr";
         if (w == NULL)
             return "null";
         if (valIsLayout(w, LAYOUT_OBJ))
@@ -934,7 +936,7 @@ class Interp
                 target = null;
 
                 entryFn();
-                //writefln("returned from fn: %s (%s)", target.fun.getName(), target.getName());
+                //writefln("exited at fn: %s (%s)", target.fun.getName(), target.getName());
                 continue;
             }
 

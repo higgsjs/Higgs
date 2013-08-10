@@ -928,6 +928,13 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
     // If the call instruction is valid
     if (callInstr !is null)
     {
+        /*
+        writeln("ret val: ");
+        writeln("  word: ", retVal.word.int64Val);
+        writeln("   i32: ", retVal.word.int32Val);
+        writeln("  type: ", retVal.type);
+        */
+
         // If this is a new call and the return value is undefined
         if (callInstr.opcode == &CALL_NEW && (retVal.type == Type.CONST && retVal.word == UNDEF))
         {

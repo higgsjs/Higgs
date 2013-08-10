@@ -652,7 +652,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             instrArgIdx,
             64,
             scrRegs64[2],
-            true
+            true,
+            false
         );
         ctx.as.setWord(dstIdx, argOpnd);
 
@@ -679,7 +680,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         assert (thisReg !is null);
         ctx.as.setWord(-numArgs - 2, thisReg);
 
-        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2]);
+        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2], true);
         ctx.as.setType(-numArgs - 2, typeOpnd);
     }
 
@@ -779,7 +780,8 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         0,
         64,
         scrRegs64[2],
-        true
+        true,
+        false
     );
     ctx.as.instr(
         MOV, 
@@ -788,7 +790,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     );
 
     // Copy the return value type
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0, scrRegs8[2]);
+    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0, scrRegs8[2], true);
     ctx.as.instr(MOV, new X86Mem(8, tspReg, numLocals, scrRegs64[1]), typeOpnd);
 
     // Pop all local stack slots and arguments
@@ -802,14 +804,18 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Function to make the interpreter jump to the call continuation
     extern (C) void interpBranch(Interp interp, IRInstr callInstr)
     {
-        //writeln("interp ret to ", callInstr.block.fun.getName);
         auto desc = callInstr.getTarget(0);
+
+        /*
+        writefln(
+            "interp ret to %s (%s phis)", 
+            callInstr.block.fun.getName,
+            desc.args.length
+        );
+        */
+
         interp.branch(desc);
     }
-
-
-
-
 
     // If a JIT entry point exists, jump to it directly
     // Note: this will execute the phi node moves on entry
@@ -836,6 +842,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Fallback to interpreter execution
     // Spill all values, including arguments
     // Call the interpreter call instruction
+    //ctx.ol.printStr("ret bailout in " ~ instr.block.fun.getName);
     defaultFn(ctx.ol, ctx, st, instr);
 }
 
@@ -971,7 +978,7 @@ static this()
     codeGenFns[&IF_TRUE]        = &gen_if_true;
 
     codeGenFns[&ir.ops.CALL]    = &gen_call;
-    //codeGenFns[&ir.ops.RET]     = &gen_ret;
+    codeGenFns[&ir.ops.RET]     = &gen_ret;
 
     codeGenFns[&GET_GLOBAL]     = &gen_get_global;
     codeGenFns[&SET_GLOBAL]     = &gen_set_global;

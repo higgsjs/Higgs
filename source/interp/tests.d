@@ -1280,6 +1280,7 @@ unittest
     interp.load("programs/regress/dowhile_cont.js");
     interp.load("programs/regress/jit_se_cmp.js");
     interp.load("programs/regress/jit_getprop_arr.js");
+    interp.load("programs/regress/jit_ctor.js");
 
     interp.load("programs/regress/delta.js");
     interp.load("programs/regress/raytrace.js");
@@ -1518,30 +1519,31 @@ unittest
         interp.load("programs/sunspider/" ~ name ~ ".js");
     }
 
-    //interp.load("programs/sunspider/3d-cube.js");
-    //interp.load("programs/sunspider/3d-morph.js");
-    // TODO: 3d-raytrace
-    //interp.load("programs/sunspider/access-binary-trees.js");
-    // TODO: access-fannkuch
-    // TODO: access-nbody
-    // TODO: access-nsieve
-    //interp.load("programs/sunspider/access-nsieve.js");
+    // FIXME: mov xmm0, 0
+    //run("3d-cube");
+    run("3d-morph");
+    run("3d-raytrace");
+
+    run("access-binary-trees");
+    run("access-fannkuch");
+    run("access-nbody");
+    run("access-nsieve");
 
     run("bitops-bitwise-and");
     run("bitops-bits-in-byte");
     run("bitops-3bit-bits-in-byte");
-
-    //interp.load("programs/sunspider/bitops-nsieve-bits.js");
+    run("bitops-nsieve-bits");
 
     run("controlflow-recursive");
     interp.assertInt("ack(3,2);", 29);
     interp.assertInt("tak(9,5,3);", 4);
 
-    //interp.load("programs/sunspider/crypto-md5.js");
-    //interp.load("programs/sunspider/crypto-sha1.js");
-    //interp.load("programs/sunspider/math-cordic.js");
-    //interp.load("programs/sunspider/math-partial-sums.js");
-    //interp.load("programs/sunspider/math-spectral-norm.js");
+    run("crypto-md5");
+    run("crypto-sha1");
+
+    run("math-cordic");
+    run("math-partial-sums");
+    run("math-spectral-norm");
 
     // TODO: string-base64
 
@@ -1563,31 +1565,37 @@ unittest
         interp.load("programs/v8bench/drv-" ~ name ~ ".js");
     }
 
-    /*
-    writefln("v8bench/crypto");
-    interp.load("programs/v8bench/crypto.js");
-    interp.load("programs/v8bench/drv-crypto.js");
+    run("crypto");
 
+    // FIXME: segfault
+    /*
     writefln("v8bench/deltablue");
     interp.load("programs/v8bench/deltablue.js");
     interp.load("programs/v8bench/drv-deltablue.js");
+    */
 
+    // FIXME: infinite loop? test longer
+    //writefln("v8bench/earley-boyer");
+    //interp.load("programs/v8bench/earley-boyer.js");
+    //interp.load("programs/v8bench/drv-earley-boyer.js");
+
+    run("navier-stokes");
+
+    // TODO: quite slow!
+    /*
     writefln("v8bench/raytrace");
     interp.load("programs/v8bench/raytrace.js");
     interp.load("programs/v8bench/drv-raytrace.js");
+    */
 
+    // FIXME: run-time error: undefined base in read of property "suspendCurrent"
+    /*
     writefln("v8bench/richards");
     interp.load("programs/v8bench/richards.js");
     interp.load("programs/v8bench/drv-richards.js");
     */
 
-    // FIXME: GC-related bug?
-    //writefln("v8bench/earley-boyer");
-    //interp.load("programs/v8bench/earley-boyer.js");
-    //interp.load("programs/v8bench/drv-earley-boyer.js");
-
     // TODO: v8bench/splay
-
-    // TODO: v8bench/navier-stokes
+    // very slow
 }
 

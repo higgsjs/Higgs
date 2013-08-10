@@ -77,13 +77,14 @@ TODO: Modify/reimplement inlining for SSA
   - Easier wrt reg alloc, etc
   - Don't care if frame is on stack or not
   - Can recreate CFG & code block without recreating IRFunction object
-
 TODO: blog
 - JIT complete, now with SSA
 - Difficulties encountered, phi nodes, reg alloc bugs
 - For now reg alloc simple
 - Better code quality?
 - speedups
+
+TODO: implement more opts in JIT, target defaults of slower benchmarks
 
 TODO: optimize non-constant comparison followed by if_true
 - cmp can check that if instruction follows and is the only use
@@ -92,40 +93,49 @@ TODO: optimize non-constant comparison followed by if_true
 
 ------------------------------------------------------------------------------
 
-TODO: re-benchmark and re-enable more sunspider/v8 tests
-
-TODO: valToString should validate ref pointers
-- core.memory.query, returns null if invalid pointer
-
 TODO: JIT currently checks if call instr has out slot, do we still have
 situations where we don't allocate an out slot to call? test it
+
+FIXME: segfault in v8/deltablue
+
+FIXME: error in v8/richards
 
 TODO: cleanup call cont generation code
 - add ctx.genCallCont function
 
-TODO: getTypeOpnd in gen_ret should have acceptImm = true
+FIXME: bug with sunspider/3d-cube, mov xmm0, 0;
 
 
 
-FIXME: bug in stackvm with ret enabled
+
+
+
+
+
+[DONE] TODO: re-benchmark and re-enable more sunspider/v8 tests
+
+[DONE] TODO: getTypeOpnd in gen_ret should have acceptImm = true
+
+[DONE] TODO: valToString should validate ref pointers
+- core.memory.query, returns null if invalid pointer
+
+[DONE] FIXME: bug in stackvm with ret enabled
 - doesn't happen with interp ret only
   - much less JIT execution
 - Does it crash when run on its own? Yes
 - Does it crash if we disable GC? Yes, after a few runs (enough for JIT?)
 - Try disabling specific ops, like load?
-./higgs regress_stackvm.js 
-- segfault with new Array(1)
-
-
-
-
-
-
-
-
-
-
-
+./higgs --nostdlib programs/regress/jit_ctor.js
+- segfaults with object ctor call, adding property, returning new object
+- many conditions need to occur
+- Disabling load fixes the segfault...
+  - Enabling just load_u32 makes it happen
+    - 5 instances
+  - pointers and offsets passed seem valid
+  - doesn't seem like the load itself is causing the segfault
+- Load code seems correct, try disabling other ops
+- Bug in ret bailout code, state doesn't match entry state
+  - need to set loadVal=false in getWordOpnd
 
 [DONE] FIXME: jit ret causes infinite loop in stdlib, setPropObj
 - Not caused by phi nodes

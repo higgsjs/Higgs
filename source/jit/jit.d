@@ -522,7 +522,7 @@ void compFun(Interp interp, IRFunction fun)
 
             as.comment(instr.toString());
 
-            //as.printStr(instr.toString() ~ "\n");
+            //as.printStr(instr.toString());
             //writefln("instr: %s", instr.toString());
 
             // If there is a codegen function for this opcode
@@ -894,10 +894,10 @@ class CodeGenState
         // If the operand is a memory location
         if (auto memOpnd = cast(X86Mem)curOpnd)
         {
-            // TODO: only allocate a register if more than one use?
+            // TODO: only allocate a register if more than one use?            
 
             // Try to allocate a register for the operand
-            auto opnd = allocReg();
+            auto opnd = loadVal? allocReg():curOpnd;
 
             // If the register allocation failed but a temp reg was supplied
             if (cast(X86Mem)opnd && tmpReg !is null)
@@ -1594,6 +1594,8 @@ void printUint(Assembler as, X86Opnd opnd)
 
 void printStr(Assembler as, string str)
 {
+    as.comment("printStr(\"" ~ str ~ "\")");
+
     as.pushRegs();
 
     auto STR_DATA = new Label("STR_DATA");

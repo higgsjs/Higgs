@@ -240,6 +240,26 @@ class Assembler
     }
 
     /**
+    Print the last few instructions in the assembler
+    */
+    void printTail(size_t numInstrs = 10)
+    {
+        // Count back up to N instructions
+        auto ctr = 0;
+        ASMInstr instr;
+        for (instr = this.lastInstr; instr !is null; instr = instr.prev)
+        {
+            if (++ctr >= numInstrs)
+                break;
+        }
+
+        for (; instr !is null; instr = instr.next)
+        {
+            writeln(instr.toString());
+        }
+    }
+
+    /**
     Get the first instruction in the list
     */
     ASMInstr getFirstInstr()
