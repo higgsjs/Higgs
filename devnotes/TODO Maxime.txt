@@ -102,18 +102,20 @@ FIXME: segfault in v8/deltablue
 TODO: JIT currently checks if call instr has out slot, do we still have
 situations where we don't allocate an out slot to call? test it
 
-TODO: cleanup call cont generation code
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: cleanup call cont generation code
 - add ctx.genCallCont function
-
-
-
-
-
-
-
-
-
-
+- remove getEntryPoint from there
 
 [DONE] FIXME: bug with sunspider/3d-cube, mov xmm0, 0;
 - How do we load an immediate into XMM?

@@ -1544,12 +1544,10 @@ unittest
     run("math-partial-sums");
     run("math-spectral-norm");
 
-    // FIXME: cannot allocate register for constant IR value
     // TODO: enable once faster
     //run("string-base64");
 
     // FIXME: segfault
-    // TODO: enable once faster
     //run("string-fasta");
 }
 
@@ -1571,34 +1569,20 @@ unittest
     run("crypto");
 
     // FIXME: segfault
-    /*
-    writefln("v8bench/deltablue");
-    interp.load("programs/v8bench/deltablue.js");
-    interp.load("programs/v8bench/drv-deltablue.js");
-    */
+    //run("deltablue");
 
-    // FIXME: infinite loop? test longer
-    //writefln("v8bench/earley-boyer");
-    //interp.load("programs/v8bench/earley-boyer.js");
-    //interp.load("programs/v8bench/drv-earley-boyer.js");
+    // FIXME: infinite loop?
+    //run("earley-boyer");
 
     run("navier-stokes");
 
-    // TODO: quite slow!
-    /*
-    writefln("v8bench/raytrace");
-    interp.load("programs/v8bench/raytrace.js");
-    interp.load("programs/v8bench/drv-raytrace.js");
-    */
+    // TODO: enable once faster
+    //run("raytrace");
 
-    // FIXME: run-time error: undefined base in read of property "suspendCurrent"
-    /*
-    writefln("v8bench/richards");
-    interp.load("programs/v8bench/richards.js");
-    interp.load("programs/v8bench/drv-richards.js");
-    */
+    // FIXME: undefined base in read of property "suspendCurrent"
+    //run("richard");
 
-    // TODO: v8bench/splay
-    // very slow
+    // TODO: enable once faster
+    //run("splay");
 }
 

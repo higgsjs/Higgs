@@ -232,12 +232,8 @@ void compFun(Interp interp, IRFunction fun)
     // Total number of block versions
     size_t numVersions = 0;
 
-
-
-
+    // Map of call instructions to continuation block labels
     Label[IRInstr] callContMap;
-
-
 
     /// Get a label for a given block and incoming state
     auto getBlockVersion = delegate BlockVersion(
@@ -316,7 +312,7 @@ void compFun(Interp interp, IRFunction fun)
     };
 
     /// Get a label for a given branch edge transition
-    CodeGenCtx.BranchEdgeFn genBranchEdge = delegate void(
+    auto genBranchEdge = delegate void(
         Assembler as,
         Label edgeLabel,
         BranchDesc branch, 
@@ -356,31 +352,12 @@ void compFun(Interp interp, IRFunction fun)
         // Execute the moves
         execMoves(as, moveList, scrRegs64[0], scrRegs64[1]);
 
-        //if (branch.pred.lastInstr.opcode is &ir.ops.CALL)
-        //    as.printStr("cont in " ~ branch.pred.lastInstr.block.fun.getName ~ " (" ~ to!string(moveList.length) ~ " moves)");
-
         // Jump to the block label
         as.instr(JMP, succVer.label);
-
-
-        // TODO: move this to some helper function
-        // genCallCont
-        if (branch.pred.lastInstr.opcode is &ir.ops.CALL)
-        {
-            if (branch.pred.lastInstr !in callContMap)
-            {
-                assert (edgeLabel !is null);
-                edgeLabel.exported = true;
-                callContMap[branch.pred.lastInstr] = edgeLabel;
-            }
-        }
-
-
-
     };
 
     /// Get an entry point label for a given basic block
-    CodeGenCtx.EntryPointFn getEntryPoint = delegate Label(IRBlock block)
+    auto getEntryPoint = delegate Label(IRBlock block)
     {
         // If there is already an entry label for this block, return it
         if (block in entryMap)
@@ -423,6 +400,39 @@ void compFun(Interp interp, IRFunction fun)
         return entryLabel;
     };
 
+    /// Generate the call continuation for a given call instruction
+    auto genCallCont = delegate void(
+        IRInstr callInstr
+    )
+    {
+        // TODO: re-enable?
+        // Generate an interpreter entry point for the call continuation
+        //ctx.getEntryPoint(instr.getTarget(0).succ);
+
+        //if (branch.pred.lastInstr.opcode is &ir.ops.CALL)
+        //    as.printStr("cont in " ~ branch.pred.lastInstr.block.fun.getName ~ " (" ~ to!string(moveList.length) ~ " moves)");
+
+        assert (callInstr.opcode is &ir.ops.CALL);
+
+        // If we already have a continuation for this call, stop
+        if (callInstr in callContMap)
+            return;
+
+        // Create an exported label for the continuation
+        auto contLabel = new Label("CONT_" ~ callInstr.block.getName.toUpper, true);
+        
+        // Generate the branch edge to the continuation block
+        genBranchEdge(
+            ol,
+            contLabel,
+            callInstr.getTarget(0), 
+            new CodeGenState(fun)
+        );
+
+        // Add the label to the continuation map
+        callContMap[callInstr] = contLabel;
+    };
+
     // Create a code generation context
     auto ctx = new CodeGenCtx(
         interp,
@@ -433,7 +443,7 @@ void compFun(Interp interp, IRFunction fun)
         liveInfo,
         regMapping,
         genBranchEdge,
-        getEntryPoint
+        genCallCont
     );
 
     // Create an entry point for the function
@@ -608,18 +618,12 @@ void compFun(Interp interp, IRFunction fun)
         block.jitEntry = codeBlock.getExportAddr(fastLabel.name); 
     }
 
-
-
-
+    // For each call instruction in the continuation map
     foreach (instr, label; callContMap)
     {
-
+        // Set the JIT continuation entry point
         instr.jitCont = codeBlock.getExportAddr(label.name); 
     }
-
-
-
-
 
     if (opts.jit_dumpasm)
     {
@@ -932,117 +936,6 @@ class CodeGenState
 
         assert (false, "invalid cur opnd type");
     }
-
-    /*
-    /// Get the word operand for an instruction argument
-    X86Opnd getWordOpnd(
-        CodeGenCtx ctx, 
-        Assembler as, 
-        IRInstr instr, 
-        size_t argIdx, 
-        size_t numBits, 
-        //bool loadVal = true,
-        X86Reg tmpReg = null,
-        bool acceptImm = false
-    )
-    {
-        assert (
-            argIdx < instr.numArgs,
-            "invalid argument index"
-        );
-
-        auto argSlot = instr.args[argIdx].localIdx;
-        auto flags = allocState[argSlot];
-
-        X86Opnd immOpnd = null;
-
-        // If the value is a constant
-        if (flags & RA_CONST)
-        {
-            immOpnd = new X86Imm(getWord(argSlot).int64Val);
-
-            // If we can accept immediate operands
-            if (acceptImm)
-                return immOpnd;
-        }
-
-        // If the argument already is in a general-purpose register
-        if (flags & RA_GPREG)
-        {
-            auto regNo = flags & RA_REG_MASK;
-            return new X86Reg(X86Reg.GP, regNo, numBits);
-        }
-
-        // If a temporary register is specified
-        if (tmpReg !is null)
-        {
-            // Move the current value into the temporary register
-            if (immOpnd)
-            {
-                as.instr(MOV, tmpReg, immOpnd);
-            }
-            else
-            {
-                as.instr(
-                    (tmpReg.type == X86Reg.XMM)? MOVSD:MOV, 
-                    tmpReg, 
-                    new X86Mem(numBits, wspReg, 8 * argSlot)
-                );
-            }
-
-            return tmpReg;
-        }
-
-        // Get the assigned register for the argument
-        auto reg = ctx.regMapping[argSlot];
-
-        // Get the slot mapped to this register
-        auto regSlot = gpRegMap[reg.regNo];
-
-        // If the register is mapped to a value
-        if (regSlot !is NULL_LOCAL)
-        {
-            // If the mapped slot belongs to another instruction argument
-            foreach (otherIdx, arg; instr.args)
-            {
-                if (otherIdx != argIdx && 
-                    instr.opcode.getArgType(otherIdx) == OpArg.LOCAL &&
-                    arg.localIdx == regSlot)
-                {
-                    // Map the argument to its stack location
-                    allocState[argSlot] = RA_STACK;
-                    auto opnd = new X86Mem(numBits, wspReg, 8 * argSlot);
-
-                    // If constant, move the constant value into the operand
-                    if (immOpnd)
-                        as.instr(MOV, new X86Mem(64, wspReg, 8 * argSlot), immOpnd);
-
-                    return opnd;
-                }
-            }
-
-            // If the currently mapped value is live, spill it
-            if (ctx.liveSets[instr].has(regSlot) == true)
-                spillReg(as, reg.regNo);
-            else
-                allocState[regSlot] = RA_DEAD;
-        }
-
-        // Load the argument into the register
-        as.instr(MOV, reg, new X86Mem(64, wspReg, 8 * argSlot));
-
-        // Map the argument to the register
-        allocState[argSlot] = RA_GPREG | reg.regNo;
-        gpRegMap[reg.regNo] = argSlot;
-        auto opnd = new X86Reg(X86Reg.GP, reg.regNo, numBits);
-
-        // If constant, move the constant value into the operand
-        if (immOpnd)
-            as.instr(MOV, new X86Reg(X86Reg.GP, reg.regNo, 32), immOpnd);
-
-        return opnd;
-    }
-    */
 
     /**
     Get an x86 operand for the type of any IR value
@@ -1416,9 +1309,9 @@ class CodeGenCtx
     alias void delegate(Assembler as, Label edgeLabel, BranchDesc, CodeGenState) BranchEdgeFn;
     BranchEdgeFn genBranchEdge;
 
-    /// Function to generate an entry point for a given block
-    alias Label delegate(IRBlock) EntryPointFn;
-    EntryPointFn getEntryPoint;
+    /// Function to generate a call instruction continuation
+    alias void delegate(IRInstr) CallContFn;
+    CallContFn genCallCont;
 
     this(
         Interp interp,
@@ -1429,7 +1322,7 @@ class CodeGenCtx
         LiveInfo liveInfo,
         RegMapping regMapping,
         BranchEdgeFn genBranchEdge,
-        EntryPointFn getEntryPoint,
+        CallContFn genCallCont,
     )
     {
         this.interp = interp;
@@ -1440,7 +1333,7 @@ class CodeGenCtx
         this.liveInfo = liveInfo;
         this.regMapping = regMapping;
         this.genBranchEdge = genBranchEdge;
-        this.getEntryPoint = getEntryPoint;
+        this.genCallCont = genCallCont;
     }
 }
 

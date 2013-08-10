@@ -570,18 +570,8 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // TODO: re-enable?
-    // Generate an entry point for the call continuation
-    //ctx.getEntryPoint(instr.getTarget(0).succ);
-
-    // TODO: ctx.genCallCont
     // Generate a JIT entry point for the call continuation
-    ctx.genBranchEdge(
-        ctx.ol,
-        new Label("CONT_" ~ instr.block.getName.toUpper),
-        instr.getTarget(0), 
-        new CodeGenState(ctx.fun)
-    );
+    ctx.genCallCont(instr);
 
     // Find the most called callee function
     uint64_t maxCount = 0;
