@@ -823,7 +823,8 @@ class CodeGenState
         {
             assert (
                 dstVal !is null,
-                "cannot allocate register for constant IR value"
+                "cannot allocate register for constant IR value: " ~
+                argVal.toString()
             );
 
             // Get the assigned register for the argument
@@ -880,15 +881,29 @@ class CodeGenState
                 return immOpnd;
             }
 
-            if (tmpReg)
+            assert (
+                tmpReg !is null,
+                "immediates not accepted but no tmpReg supplied"
+            );
+
+            if (tmpReg.type is X86Reg.GP)
             {
                 as.instr(MOV, tmpReg, immOpnd);
                 return tmpReg;
             }
 
-            // Allocate a register and load the value into it
-            auto opnd = allocReg();
-            return opnd;
+            if (tmpReg.type is X86Reg.XMM)
+            {
+                auto cstLabel = ctx.ol.label("FP_CONST");
+                ctx.ol.addInstr(new IntData(immOpnd.imm, 64));
+                as.instr(MOVQ, tmpReg, new X86IPRel(64, cstLabel));
+                return tmpReg;
+            }            
+
+            assert (
+                false,
+                "unhandled immediate"
+            );
         }
 
         // If the operand is a memory location
