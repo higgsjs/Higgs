@@ -52,6 +52,10 @@ vers cap, the jump target we get back is an adaptor?
 
 August 15th goal: perf gains from inlining
 
+TODO: fp consts, write in out of line assembler?
+- need better handling in getWordOpnd
+- FP 0 should just xorsd
+
 FIXME: earley-boyer not working?, with or without inlining
 run-time error: undefined base in read of property "car"
 - jit_disable : still broken!
@@ -77,6 +81,7 @@ TODO: Modify/reimplement inlining for SSA
   - Easier wrt reg alloc, etc
   - Don't care if frame is on stack or not
   - Can recreate CFG & code block without recreating IRFunction object
+
 TODO: blog
 - JIT complete, now with SSA
 - Difficulties encountered, phi nodes, reg alloc bugs
@@ -93,17 +98,20 @@ TODO: optimize non-constant comparison followed by if_true
 
 ------------------------------------------------------------------------------
 
-TODO: JIT currently checks if call instr has out slot, do we still have
-situations where we don't allocate an out slot to call? test it
+FIXME: error in v8/richards
 
 FIXME: segfault in v8/deltablue
+- make regression test
 
-FIXME: error in v8/richards
+FIXME: string-base64, jit.d(824): cannot allocate register for constant IR value
+- create small regression test
+
+TODO: JIT currently checks if call instr has out slot, do we still have
+situations where we don't allocate an out slot to call? test it
 
 TODO: cleanup call cont generation code
 - add ctx.genCallCont function
 
-FIXME: bug with sunspider/3d-cube, mov xmm0, 0;
 
 
 
@@ -111,6 +119,11 @@ FIXME: bug with sunspider/3d-cube, mov xmm0, 0;
 
 
 
+
+
+
+[DONE] FIXME: bug with sunspider/3d-cube, mov xmm0, 0;
+- How do we load an immediate into XMM?
 
 [DONE] TODO: re-benchmark and re-enable more sunspider/v8 tests
 

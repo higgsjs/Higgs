@@ -1519,8 +1519,7 @@ unittest
         interp.load("programs/sunspider/" ~ name ~ ".js");
     }
 
-    // FIXME: mov xmm0, 0
-    //run("3d-cube");
+    run("3d-cube");
     run("3d-morph");
     run("3d-raytrace");
 
@@ -1545,9 +1544,13 @@ unittest
     run("math-partial-sums");
     run("math-spectral-norm");
 
-    // TODO: string-base64
+    // FIXME: cannot allocate register for constant IR value
+    // TODO: enable once faster
+    //run("string-base64");
 
-    // TODO: string-fasta
+    // FIXME: segfault
+    // TODO: enable once faster
+    //run("string-fasta");
 }
 
 /// V8 benchmarks

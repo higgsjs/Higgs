@@ -266,8 +266,38 @@ alias ShiftOp!("sar") gen_rsft_i32;
 
 void FPOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0);
-    auto opnd1 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 1, 64, XMM1);
+    auto arg0 = instr.getArg(0);
+    auto arg1 = instr.getArg(1);
+
+    X86Reg opnd0;
+    X86Reg opnd1;
+
+    if (auto cst0 = cast(IRConst)arg0)
+    {
+        auto pair = cst0.pair;
+        assert (pair.type is Type.FLOAT64);
+        ctx.as.instr(MOV, scrRegs64[0], pair.word.int64Val);
+        ctx.as.instr(MOVQ, XMM0, scrRegs64[0]);
+        opnd0 = XMM0;
+    }
+    else
+    {
+        opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0);
+    }
+
+    if (auto cst1 = cast(IRConst)arg1)
+    {
+        auto pair = cst1.pair;
+        assert (pair.type is Type.FLOAT64);
+        ctx.as.instr(MOV, scrRegs64[0], pair.word.int64Val);
+        ctx.as.instr(MOVQ, XMM1, scrRegs64[0]);
+        opnd0 = XMM1;
+    }
+    else
+    {
+        opnd1 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 1, 64, XMM1);
+    }
+
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
     assert (opnd0 && opnd1);
