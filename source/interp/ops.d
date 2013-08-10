@@ -951,21 +951,18 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         // Pop all local stack slots and arguments
         interp.pop(numLocals + extraArgs);
 
-        // Leave the return value in the call's return slot, if any
-        if (callInstr.outSlot !is NULL_LOCAL)
-        {
-            /*            
-            writeln("ret val: ");
-            writeln("  word: ", retVal.word.int64Val);
-            writeln("   i32: ", retVal.word.int32Val);
-            writeln("  type: ", retVal.type);
-            */
+        /*            
+        writeln("ret val: ");
+        writeln("  word: ", retVal.word.int64Val);
+        writeln("   i32: ", retVal.word.int32Val);
+        writeln("  type: ", retVal.type);
+        */
 
-            interp.setSlot(
-                callInstr.outSlot,
-                retVal
-            );
-        }
+        // Leave the return value in the call instruction's output slot
+        interp.setSlot(
+            callInstr.outSlot,
+            retVal
+        );
 
         // Set the instruction pointer to the call continuation instruction
         interp.branch(callInstr.getTarget(0));

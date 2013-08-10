@@ -737,10 +737,9 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Label for the bailout to interpreter cases
     auto BAILOUT = new Label("RET_BAILOUT");
 
-    // Label for the point at which we pop the locals
-    auto POP_LOCALS = new Label("POP_LOCALS");
-
     //ctx.as.printStr("ret from " ~ instr.block.fun.getName);
+
+    // TODO: improve this, make JIT test for too many args case
 
     // Get the argument count
     // If it doesn't match the expected count, bailout
@@ -759,8 +758,6 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Get the output slot for the call instruction
     ctx.as.getMember!("IRInstr", "outSlot")(scrRegs32[1], scrRegs64[0]);
-    ctx.as.instr(CMP, scrRegs32[1], NULL_LOCAL);
-    ctx.as.instr(JE, POP_LOCALS);
 
     // Copy the return value word
     auto retOpnd = st.getWordOpnd(
@@ -784,7 +781,6 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(MOV, new X86Mem(8, tspReg, numLocals, scrRegs64[1]), typeOpnd);
 
     // Pop all local stack slots and arguments
-    ctx.as.addInstr(POP_LOCALS);
     ctx.as.instr(ADD, wspReg, numLocals * 8);
     ctx.as.instr(ADD, tspReg, numLocals);
 

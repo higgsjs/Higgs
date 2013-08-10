@@ -86,6 +86,7 @@ TODO: blog
 - speedups
 
 TODO: implement more opts in JIT, target defaults of slower benchmarks
+- i32_to_f64? already commented out
 
 TODO: optimize non-constant comparison followed by if_true
 - cmp can check that if instruction follows and is the only use
@@ -98,20 +99,19 @@ FIXME: error in v8/richards
 
 FIXME: segfault in v8/deltablue
 - make regression test
+- does this fix other segfaults?
 
-TODO: JIT currently checks if call instr has out slot, do we still have
+
+
+
+
+
+
+
+
+
+[DONE] TODO: JIT currently checks if call instr has out slot, do we still have
 situations where we don't allocate an out slot to call? test it
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: cleanup call cont generation code
 - add ctx.genCallCont function
