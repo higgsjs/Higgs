@@ -234,10 +234,10 @@ string valToString(ValuePair value)
         return to!string(w.ptrVal);
 
         case Type.REFPTR:
-        if (GC.query(w.ptrVal) == GC.BlkInfo.init)
-            return "invalid refptr";
         if (w == NULL)
             return "null";
+        if (GC.query(w.ptrVal) == GC.BlkInfo.init)
+            return "invalid refptr";
         if (valIsLayout(w, LAYOUT_OBJ))
             return "object";
         if (valIsLayout(w, LAYOUT_CLOS))

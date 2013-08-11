@@ -42,6 +42,7 @@ import std.string;
 import std.array;
 import std.stdint;
 import std.conv;
+import std.algorithm;
 import options;
 import ir.ir;
 import ir.ops;
@@ -76,42 +77,6 @@ void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
-
-void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto argVal = instr.getArg(0);
-
-    // If the type of the argument is known
-    if (st.typeKnown(argVal))
-    {
-        // Mark the value as a known constant
-        // This will defer writing the value
-        auto knownType = st.getType(argVal);
-        st.setOutBool(instr, type is knownType);
-    }
-    else
-    {
-        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0);
-        auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
-        // Compare against the tested type
-        ctx.as.instr(CMP, typeOpnd, type);
-
-        ctx.as.instr(MOV, scrRegs64[0], FALSE.int64Val);
-        ctx.as.instr(MOV, scrRegs64[1], TRUE.int64Val);
-        ctx.as.instr(CMOVE, scrRegs64[0], scrRegs64[1]);
-
-        ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
-
-        // Set the output type
-        st.setOutType(ctx.as, instr, Type.CONST);
-    }
-}
-
-alias IsTypeOp!(Type.CONST) gen_is_const;
-alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
-alias IsTypeOp!(Type.INT32) gen_is_i32;
-alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 
 void gen_i32_to_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -310,77 +275,6 @@ alias FPOp!("sub") gen_sub_f64;
 alias FPOp!("mul") gen_mul_f64;
 alias FPOp!("div") gen_div_f64;
 
-void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // The first operand must be memory or register, but not immediate
-    auto opnd0 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
-        instr, 
-        0,
-        numBits, 
-        scrRegs64[0].ofSize(numBits),
-        false
-    );
-
-    // The second operand may be an immediate
-    auto opnd1 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
-        instr, 
-        1, 
-        numBits, 
-        null, 
-        true
-    );
-
-    // We must have a register for the output (so we can use cmov)
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    auto outReg = cast(X86Reg)opndOut;
-    if (outReg is null)
-        outReg = scrRegs64[1];
-
-    // Compare the inputs
-    ctx.as.instr(CMP, opnd0, opnd1);
-
-    X86OpPtr cmovOp = null;
-    static if (op == "eq")
-        cmovOp = CMOVE;
-    static if (op == "ne")
-        cmovOp = CMOVNE;
-    static if (op == "lt")
-        cmovOp = CMOVL;
-    static if (op == "le")
-        cmovOp = CMOVLE;
-    static if (op == "gt")
-        cmovOp = CMOVG;
-    static if (op == "ge")
-        cmovOp = CMOVGE;
-
-    ctx.as.instr(MOV   , outReg      , FALSE.int8Val);
-    ctx.as.instr(MOV   , scrRegs64[2], TRUE.int8Val );
-    ctx.as.instr(cmovOp, outReg      , scrRegs64[2] );
-
-    // If the output is not a register
-    if (opndOut !is outReg)
-        ctx.as.instr(MOV, opndOut, outReg);
-
-    st.setOutType(ctx.as, instr, Type.CONST);
-}
-
-alias CmpOp!("eq", 8) gen_eq_i8;
-alias CmpOp!("eq", 32) gen_eq_i32;
-alias CmpOp!("ne", 32) gen_ne_i32;
-alias CmpOp!("lt", 32) gen_lt_i32;
-alias CmpOp!("le", 32) gen_le_i32;
-alias CmpOp!("gt", 32) gen_gt_i32;
-alias CmpOp!("ge", 32) gen_ge_i32;
-alias CmpOp!("eq", 8) gen_eq_const;
-alias CmpOp!("ne", 8) gen_ne_const;
-alias CmpOp!("eq", 64) gen_eq_refptr;
-alias CmpOp!("ne", 64) gen_ne_refptr;
-alias CmpOp!("eq", 64) gen_eq_rawptr;
-
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // The pointer operand must be a register
@@ -435,61 +329,6 @@ alias LoadOp!(64, Type.INT64) gen_load_u64;
 alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
-
-void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Jump to the target block
-    ctx.genBranchEdge(ctx.as, null, instr.getTarget(0), st);
-}
-
-void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto argVal = instr.getArg(0);
-
-    auto targetT = instr.getTarget(0);
-    auto targetF = instr.getTarget(1);
-
-    // If the argument is a known constant
-    if (st.wordKnown(argVal))
-    {
-        auto argWord = st.getWord(argVal);
-        auto target = (argWord == TRUE)? targetT:targetF;
-        ctx.genBranchEdge(ctx.as, null, target, st);
-        return;
-    }
-
-    // Compare the argument to the true value
-    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 8);
-    ctx.as.instr(CMP, argOpnd, TRUE.int8Val);
-
-    BranchDesc fTarget;
-    BranchDesc sTarget;
-    X86OpPtr jumpOp;
-
-    if (targetT.succ.execCount > targetF.succ.execCount)
-    {
-        fTarget = targetT;
-        sTarget = targetF;
-        jumpOp = JNE;
-    }
-    else
-    {
-        fTarget = targetF;
-        sTarget = targetT;
-        jumpOp = JE;
-    }
-
-    auto sLabel = new Label("IF_LIKELY");
-    auto fLabel = new Label("IF_UNLIKELY");
-
-    ctx.as.instr(jumpOp, sLabel);
-    ctx.as.instr(JMP, fLabel);
-
-    // Get the fast target label last so the fast target is
-    // more likely to get generated first (LIFO stack)
-    ctx.genBranchEdge(ctx.as, sLabel, sTarget, st);
-    ctx.genBranchEdge(ctx.as, fLabel, fTarget, st);
-}
 
 void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -575,6 +414,291 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2], true);
     auto typeMem = new X86Mem(8, scrRegs64[1], wordOfs + propIdx, scrRegs64[2], 8);
     ctx.as.instr(MOV, typeMem, typeOpnd);
+}
+
+void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    // Get the output operand. This must be a 
+    // register since it's the only operand.
+    auto opndOut = cast(X86Reg)st.getOutOpnd(ctx, ctx.as, instr, 64);
+    assert (opndOut !is null, "output is not a register");
+
+    ctx.as.getMember!("Interp", "globalObj")(opndOut, interpReg);
+
+    st.setOutType(ctx.as, instr, Type.REFPTR);
+}
+
+/**
+Generates the conditional branch for an if_true instruction with the given
+conditional jump operations. Assumes a comparison between input operands has
+already been inserted.
+*/
+void genCondBranch(CodeGenCtx ctx, CodeGenState st, IRInstr ifInstr, X86OpPtr trueOp, X86OpPtr falseOp)
+{
+    auto trueTarget = ifInstr.getTarget(0);
+    auto falseTarget = ifInstr.getTarget(1);
+
+    BranchDesc fastTarget;
+    BranchDesc slowTarget;
+    X86OpPtr jumpOp;
+
+    // If the true branch is more often executed
+    if (trueTarget.succ.execCount > falseTarget.succ.execCount)
+    {
+        // False result causes a jump
+        fastTarget = trueTarget;
+        slowTarget = falseTarget;
+        jumpOp = falseOp; 
+    }
+    else
+    {
+        // True result causes a jump
+        fastTarget = falseTarget;
+        slowTarget = trueTarget;
+        jumpOp = trueOp;
+    }
+
+    auto slowLabel = new Label("IF_UNLIKELY");
+    auto fastLabel = new Label("IF_LIKELY");
+
+    // Jump conditionally to the slow label
+    ctx.as.instr(jumpOp, slowLabel);
+
+    // Jump directly to the fast label
+    ctx.as.instr(JMP, fastLabel);
+
+    // Get the fast target label last so the fast target is
+    // more likely to get generated first (LIFO stack)
+    ctx.genBranchEdge(ctx.as, slowLabel, slowTarget, st);
+    ctx.genBranchEdge(ctx.as, fastLabel, fastTarget, st);
+}
+
+/**
+Test if an instruction's only use is an immediately-following if_true
+*/
+bool ifUseNext(IRInstr instr)
+{
+    return (
+        instr.hasOneUse &&
+        instr.getFirstUse.owner is instr.next &&
+        instr.next.opcode is &IF_TRUE
+    );
+}
+
+/**
+Test if our argument precedes and generates a boolean value
+*/
+bool boolArgPrev(IRInstr instr)
+{
+    return (
+        instr.getArg(0) is instr.prev &&
+        instr.prev.opcode.boolVal &&
+        instr.prev.opcode in codeGenFns
+    );
+}
+
+void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto argVal = instr.getArg(0);
+
+    // If the type of the argument is known
+    if (st.typeKnown(argVal))
+    {
+        // Mark the value as a known constant
+        // This will defer writing the value
+        auto knownType = st.getType(argVal);
+        st.setOutBool(instr, type is knownType);
+
+        return;
+    }
+
+    // Get an operand for the value's type
+    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0);
+
+    // Compare against the tested type
+    ctx.as.instr(CMP, typeOpnd, type);
+
+    // If our only use is an immediately following if_true
+    if (ifUseNext(instr) is true)
+    {
+        // Clear any previously known type for this value
+        st.valOnStack(instr);
+
+        // Generate the conditional branch and targets here
+        ctx.genCondBranch(st, instr.next, JE, JNE);
+
+        // Don't generate a proper boolean value
+        return;
+    }
+
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+
+    ctx.as.instr(MOV, scrRegs64[0], FALSE.int64Val);
+    ctx.as.instr(MOV, scrRegs64[1], TRUE.int64Val);
+    ctx.as.instr(CMOVE, scrRegs64[0], scrRegs64[1]);
+    ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
+
+    // Set the output type
+    st.setOutType(ctx.as, instr, Type.CONST);
+}
+
+alias IsTypeOp!(Type.CONST) gen_is_const;
+alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
+alias IsTypeOp!(Type.INT32) gen_is_i32;
+alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
+
+void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    // The first operand must be memory or register, but not immediate
+    auto opnd0 = st.getWordOpnd(
+        ctx, 
+        ctx.as, 
+        instr, 
+        0,
+        numBits, 
+        scrRegs64[0].ofSize(numBits),
+        false
+    );
+
+    // The second operand may be an immediate
+    auto opnd1 = st.getWordOpnd(
+        ctx, 
+        ctx.as, 
+        instr, 
+        1, 
+        numBits, 
+        null, 
+        true
+    );
+
+    // Compare the inputs
+    ctx.as.instr(CMP, opnd0, opnd1);
+
+    // Choose conditional instructions based on the comparison operator
+    X86OpPtr cmovOp = null;
+    X86OpPtr trueOp = null;
+    X86OpPtr falseOp = null;
+    static if (op == "eq")
+    {
+        cmovOp  = CMOVE;
+        trueOp  = JE;
+        falseOp = JNE;
+    }
+    static if (op == "ne")
+    {
+        cmovOp  = CMOVNE;
+        trueOp  = JNE;
+        falseOp = JE;
+    }
+    static if (op == "lt")
+    {
+        cmovOp  = CMOVL;
+        trueOp  = JL;
+        falseOp = JGE;
+    }
+    static if (op == "le")
+    {
+        cmovOp  = CMOVLE;
+        trueOp  = JLE;
+        falseOp = JG;
+    }
+    static if (op == "gt")
+    {
+        cmovOp = CMOVG;
+        trueOp  = JG;
+        falseOp = JLE;
+    }
+    static if (op == "ge")
+    {
+        cmovOp = CMOVGE;
+        trueOp  = JGE;
+        falseOp = JL;
+    }
+
+    // If our only use is an immediately following if_true
+    if (ifUseNext(instr) is true)
+    {
+        // Clear any previously known type for this value
+        st.valOnStack(instr);
+
+        // Generate the conditional branch and targets here
+        ctx.genCondBranch(st, instr.next, trueOp, falseOp);
+
+
+        // TODO: only if we have just one use?
+
+        // Don't generate a proper boolean value
+        return;
+    }
+
+    // We must have a register for the output (so we can use cmov)
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto outReg = cast(X86Reg)opndOut;
+    if (outReg is null)
+        outReg = scrRegs64[1];
+
+    ctx.as.instr(MOV   , outReg      , FALSE.int8Val);
+    ctx.as.instr(MOV   , scrRegs64[2], TRUE.int8Val );
+    ctx.as.instr(cmovOp, outReg      , scrRegs64[2] );
+
+    // If the output is not a register
+    if (opndOut !is outReg)
+        ctx.as.instr(MOV, opndOut, outReg);
+
+    // Set the output type
+    st.setOutType(ctx.as, instr, Type.CONST);
+}
+
+alias CmpOp!("eq", 8) gen_eq_i8;
+alias CmpOp!("eq", 32) gen_eq_i32;
+alias CmpOp!("ne", 32) gen_ne_i32;
+alias CmpOp!("lt", 32) gen_lt_i32;
+alias CmpOp!("le", 32) gen_le_i32;
+alias CmpOp!("gt", 32) gen_gt_i32;
+alias CmpOp!("ge", 32) gen_ge_i32;
+alias CmpOp!("eq", 8) gen_eq_const;
+alias CmpOp!("ne", 8) gen_ne_const;
+alias CmpOp!("eq", 64) gen_eq_refptr;
+alias CmpOp!("ne", 64) gen_ne_refptr;
+alias CmpOp!("eq", 64) gen_eq_rawptr;
+
+void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto argVal = instr.getArg(0);
+
+    // If the argument is a known constant
+    if (st.wordKnown(argVal))
+    {
+        auto targetT = instr.getTarget(0);
+        auto targetF = instr.getTarget(1);
+
+        auto argWord = st.getWord(argVal);
+        auto target = (argWord == TRUE)? targetT:targetF;
+        ctx.genBranchEdge(ctx.as, null, target, st);
+
+        return;
+    }
+
+
+    // If a boolean argument immediately precedes
+    if (boolArgPrev(instr) is true && argVal.hasOneUse)
+        return;
+
+
+
+    // Compare the argument to the true boolean value
+    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 8);
+    ctx.as.instr(CMP, argOpnd, TRUE.int8Val);
+
+    // Generate the conditional branch and targets
+    ctx.genCondBranch(st, instr, JE, JNE);
+}
+
+void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    // Jump to the target block
+    ctx.genBranchEdge(ctx.as, null, instr.getTarget(0), st);
 }
 
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -702,7 +826,6 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.setWord(-numArgs - 4, scrRegs64[2]);
     ctx.as.setType(-numArgs - 4, Type.INSPTR);
 
-    // FIXME: ISSUE? spilling here, after call bailout? bailout needs to spill too?
     // Spill the values that are live after the call
     st.spillRegs(
         ctx.as,
@@ -850,18 +973,6 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     defaultFn(ctx.ol, ctx, st, instr);
 }
 
-void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Get the output operand. This must be a 
-    // register since it's the only operand.
-    auto opndOut = cast(X86Reg)st.getOutOpnd(ctx, ctx.as, instr, 64);
-    assert (opndOut !is null, "output is not a register");
-
-    ctx.as.getMember!("Interp", "globalObj")(opndOut, interpReg);
-
-    st.setOutType(ctx.as, instr, Type.REFPTR);
-}
-
 void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Spill all live values and instruction arguments
@@ -936,11 +1047,6 @@ static this()
 {
     codeGenFns[&SET_STR]        = &gen_set_str;
 
-    codeGenFns[&IS_CONST]       = &gen_is_const;
-    codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
-    codeGenFns[&IS_I32]         = &gen_is_i32;
-    codeGenFns[&IS_F64]         = &gen_is_f64;
-
     codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
     codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
 
@@ -960,6 +1066,24 @@ static this()
     codeGenFns[&MUL_F64]        = &gen_mul_f64;
     codeGenFns[&DIV_F64]        = &gen_div_f64;
 
+    codeGenFns[&LOAD_U8]        = &gen_load_u8;
+    codeGenFns[&LOAD_U16]       = &gen_load_u16;
+    codeGenFns[&LOAD_U32]       = &gen_load_u32;
+    codeGenFns[&LOAD_U64]       = &gen_load_u64;
+    codeGenFns[&LOAD_F64]       = &gen_load_f64;
+    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
+    codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
+
+    codeGenFns[&GET_GLOBAL]     = &gen_get_global;
+    codeGenFns[&SET_GLOBAL]     = &gen_set_global;
+
+    codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
+
+    codeGenFns[&IS_CONST]       = &gen_is_const;
+    codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
+    codeGenFns[&IS_I32]         = &gen_is_i32;
+    codeGenFns[&IS_F64]         = &gen_is_f64;
+
     codeGenFns[&EQ_I8]          = &gen_eq_i8;
     codeGenFns[&EQ_I32]         = &gen_eq_i32;
     codeGenFns[&NE_I32]         = &gen_ne_i32;
@@ -973,23 +1097,10 @@ static this()
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
 
-    codeGenFns[&LOAD_U8]        = &gen_load_u8;
-    codeGenFns[&LOAD_U16]       = &gen_load_u16;
-    codeGenFns[&LOAD_U32]       = &gen_load_u32;
-    codeGenFns[&LOAD_U64]       = &gen_load_u64;
-    codeGenFns[&LOAD_F64]       = &gen_load_f64;
-    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
-    codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
-
-    codeGenFns[&JUMP]           = &gen_jump;
     codeGenFns[&IF_TRUE]        = &gen_if_true;
+    codeGenFns[&JUMP]           = &gen_jump;
 
     codeGenFns[&ir.ops.CALL]    = &gen_call;
     codeGenFns[&ir.ops.RET]     = &gen_ret;
-
-    codeGenFns[&GET_GLOBAL]     = &gen_get_global;
-    codeGenFns[&SET_GLOBAL]     = &gen_set_global;
-
-    codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 }
 

@@ -600,8 +600,12 @@ void compFun(Interp interp, IRFunction fun)
         optAsm(as);
     }
 
+    //writeln("assembling");
+
     // Assemble the machine code
     auto codeBlock = as.assemble();
+
+    //writeln("assembled");
 
     // Store the CodeBlock pointer on the compiled function
     fun.codeBlock = codeBlock;

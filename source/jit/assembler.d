@@ -386,6 +386,34 @@ class Assembler
     */
     CodeBlock assemble()
     {
+        // For each instruction
+        for (auto instr = this.firstInstr; instr !is null; instr = instr.next)
+        {
+            // If this is a machine instruction
+            if (auto x86Instr = cast(X86Instr)instr)
+            {
+                assert (
+                    x86Instr.valid(),
+                    "cannot assemble invalid instruction:\n" ~ instr.toString()
+                );
+
+                // For each operand of the instruction
+                foreach (i, opnd; x86Instr.opnds)
+                {
+                    if (opnd is null)
+                        break;
+
+                    if (auto rel = cast(X86LabelRef)opnd)
+                        rel.imm = int32_t.max;
+                    else if (auto ipr = cast(X86IPRel)opnd)
+                        ipr.disp = int32_t.max;
+                }
+
+                // Get the longest encoding for this instruction
+                x86Instr.findEncoding();
+            }
+        }
+
         // Total code length
         size_t codeLength;
 
@@ -395,13 +423,14 @@ class Assembler
         // Until no encodings changed
         while (changed == true)
         {
-            //print('iterating');
+            //writeln("iterating");
+
+            //
+            // Compute the label positions
+            //
 
             // Reset the code length
             codeLength = 0;
-
-            // No changes for this iteration yet
-            changed = false;
 
             // For each instruction
             for (auto instr = this.firstInstr; instr !is null; instr = instr.next)
@@ -409,33 +438,32 @@ class Assembler
                 // If this instruction is a label
                 if (auto label = cast(Label)instr)
                 {
-                    // If the position of the label did not change, do nothing
-                    if (label.offset == codeLength)
-                        continue;
-
-                    //print('label position changed for ' + instr + ' (' + codeLength + ')');
-
-                    // Note that the offset changed
-                    changed = true;
-
-                    // Store the offset where the label currently is
+                    // Store its current position
                     label.offset = cast(uint32_t)codeLength;
                 }
+                else
+                {
+                    // Add the current instruction length to the total
+                    codeLength += instr.length();
+                }
+            }
+
+            //
+            // Compute the jump offsets
+            //
+
+            // Reset the code length
+            codeLength = 0;
+
+            // For each instruction
+            for (auto instr = this.firstInstr; instr !is null; instr = instr.next)
+            {
+                // Add the current instruction length to the total
+                codeLength += instr.length();
 
                 // If this is a machine instruction
                 if (auto x86Instr = cast(X86Instr)instr)
                 {
-                    assert (
-                        x86Instr.valid(),
-                        "cannot assemble invalid instruction:\n" ~ instr.toString()
-                    );
-
-                    // Get the current instruction length
-                    auto curInstrLen = instr.length();
-
-                    // Add the current instruction length to the total
-                    codeLength += curInstrLen;
-
                     // For each operand of the instruction
                     foreach (i, opnd; x86Instr.opnds)
                     {
@@ -453,49 +481,55 @@ class Assembler
                             auto label = rel? rel.label:ipr.label;
 
                             // Compute the relative offset to the label
+                            // based on the current instruction encodings
                             auto relOffset = label.offset - codeLength;
-
-                            // Get the previous offset size
-                            auto prevOffSize = rel? rel.immSize():ipr.dispSize();
 
                             // Store the computed relative offset on the operand
                             if (rel)
                                 rel.imm = relOffset;
                             else
                                 ipr.disp = cast(int32_t)(relOffset + ipr.labelDisp);
-
-                            // Compute the updated relative offset size
-                            auto offSize = rel? rel.immSize():ipr.dispSize();
-
-                            // If the offset size did not change, do nothing
-                            if (offSize == prevOffSize)
-                                continue;
-
-                            // Find an encoding for this instruction
-                            x86Instr.findEncoding();
-
-                            // Get the updated instruction length
-                            auto newInstrLen = instr.length();
-                   
-                            // Correct the total code length
-                            codeLength -= curInstrLen;
-                            codeLength += newInstrLen;
-
-                            // Note that the offset changed
-                            changed = true;
-
-                        } // if (label)
-                    } // foreach(opnd)
-                } // if (X86Instr)
-
-                // If this is integer data
-                if (auto intData = cast(IntData)instr)
-                {
-                    // Add its length to the total
-                    codeLength += instr.length();
+                        }
+                    }
                 }
+            }
 
-            } // foreach (instr)
+            //
+            // Update the instruction encodings
+            //
+
+            // No changes for this iteration yet
+            changed = false;
+
+            // For each instruction
+            for (auto instr = this.firstInstr; instr !is null; instr = instr.next)
+            {
+                // If this is a machine instruction
+                if (auto x86Instr = cast(X86Instr)instr)
+                {
+                    // Get the current instruction length
+                    auto curInstrLen = instr.length();
+
+                    // Find an encoding for this instruction
+                    x86Instr.findEncoding();
+
+                    // Get the updated instruction length
+                    auto newInstrLen = instr.length();
+
+                    // If the encoding changed
+                    if (newInstrLen != curInstrLen)
+                    {
+                        assert (
+                            newInstrLen < curInstrLen,
+                            "instruction size increased"
+                        );
+
+                        // Note that the encoding changed
+                        changed = true;
+                    }
+                }
+            }
+
         } // while (changed)
 
         // Allocate a new code block for the code

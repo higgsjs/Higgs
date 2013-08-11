@@ -52,6 +52,9 @@ vers cap, the jump target we get back is an adaptor?
 
 August 15th goal: perf gains from inlining
 
+TODO: optimize if of phi?
+- boolean ops flow into phi, phi goes into if
+
 FIXME: earley-boyer not working?, with or without inlining
 run-time error: undefined base in read of property "car"
 - jit_disable : still broken!
@@ -87,10 +90,28 @@ TODO: blog
 - Better code quality, speedups
 - Higgs would ideally need fuzz testing
 
+
+
+
+
 TODO: optimize non-constant comparison followed by if_true
 - cmp can check that if instruction follows and is the only use
 - if can check that cmp instruction precedes
 - could possibly directly check the last ASM instruction?
+- time benchmarks before if opt, best of 5
+3d-cube             1.75
+3d-raytrace         3.84
+bitops-nsieve-bits  1.14
+access-fannkuch     2.32
+
+
+
+
+TODO: improve cmp + if_true
+- can generate bool and then cmp independently
+- must modify ifTrueNext
+- generate bool if we have more than one use or no if_true follows
+- generate the if_true if one immediately follows
 
 
 
@@ -100,6 +121,26 @@ TODO: optimize non-constant comparison followed by if_true
 
 
 
+[DONE] FIXME: segfault after if opt.
+- Problem is not with single use
+- using for only IsTypeOp seems to work
+- two versions of a null comparison, one fails?
+- Problem is, for comparison, we can only do do cmp in the comparison operator...
+  - Might need an implementation of if_true to which we can supply our own comparison operators...
+  - if_true just calls implementation if bool arg doesn't immediately precede
+- need void genCondBranch(trueOp, falseOp)
+
+[DONE] FIXME: assembler fixed point goes into infinite loop...
+- Computed jump offset can be wrong
+- If jump instr becomes shorter, label offset is no longer accurate in current pass
+- May recompute offset and get wrong answer because label position is no longer valid
+
+[DONE] TODO: boolArgPrev
+- Can avoid comparing against true val if cmp already done!
+- most often true, but not always, sometimes because of phi
+
+[DONE] TODO: implement ifUseNext(IRInstr) for IsTypeOp and CmpOp
+- log occurrence: 80 to 90% true
 
 [DONE] TODO: implement more opts in JIT, target defaults of slower benchmarks
 - i32_to_f64? already commented out
