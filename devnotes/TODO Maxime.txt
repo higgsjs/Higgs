@@ -78,37 +78,56 @@ TODO: Modify/reimplement inlining for SSA
   - Don't care if frame is on stack or not
   - Can recreate CFG & code block without recreating IRFunction object
 
+FIXME: string-fasta segfaults at the end?
+
 TODO: blog
 - JIT complete, now with SSA
-- Difficulties encountered, phi nodes, reg alloc bugs
+- Difficulties encountered, phi nodes, reg alloc bugs, call/ret bugs
 - For now reg alloc simple
-- Better code quality?
-- speedups
-
-TODO: implement more opts in JIT, target defaults of slower benchmarks
-- i32_to_f64? already commented out
+- Better code quality, speedups
+- Higgs would ideally need fuzz testing
 
 TODO: optimize non-constant comparison followed by if_true
 - cmp can check that if instruction follows and is the only use
 - if can check that cmp instruction precedes
 - could possibly directly check the last ASM instruction?
 
+TODO: implement more opts in JIT, target defaults of slower benchmarks
+- i32_to_f64? already commented out
+- 3d-raytrace time?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ------------------------------------------------------------------------------
 
-FIXME: error in v8/richards
+[DONE] FIXME: error in v8/richards
+- also issue with call bailout
 
-FIXME: segfault in v8/deltablue
-- make regression test
+[DONE] FIXME: segfault in v8/deltablue
+- when fixed, enable in unit tests
 - does this fix other segfaults?
-
-
-
-
-
-
-
-
-
+- crashes somewhere in the plan execution
+- modifying Plan.prototype.execute causes it to work properly
+- get the IR string for this function?
+  - just one phi node for the loop increment
+  - mostly function calls
+entering fn: Plan_prototype_execute(F529) (for_test(F642))
+Segmentation fault
+The call to c.execute crashes
+Call bailout happens in this function just before the crash!
+- Forgot to put loadVal=false in all getWordOpnd calls
 
 [DONE] TODO: JIT currently checks if call instr has out slot, do we still have
 situations where we don't allocate an out slot to call? test it

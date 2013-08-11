@@ -598,6 +598,9 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
+    // Save the current state before any values are spilled
+    auto entrySt = new CodeGenState(st);
+
     // Label for the bailout to interpreter cases
     auto BAILOUT = new Label("CALL_BAILOUT");
 
@@ -611,7 +614,9 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         instr, 
         0,
         64,
-        scrRegs64[0]
+        scrRegs64[0],
+        true,
+        false
     );
     assert (closReg !is null);
 
@@ -665,7 +670,9 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             instr, 
             1,
             64,
-            scrRegs64[2]
+            scrRegs64[2],
+            true,
+            false
         );
         assert (thisReg !is null);
         ctx.as.setWord(-numArgs - 2, thisReg);
@@ -686,6 +693,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.setWord(-numArgs - 4, scrRegs64[2]);
     ctx.as.setType(-numArgs - 4, Type.INSPTR);
 
+    // FIXME: ISSUE? spilling here, after call bailout? bailout needs to spill too?
     // Spill the values that are live after the call
     st.spillRegs(
         ctx.as,
@@ -720,11 +728,12 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(BAILOUT);
+    //ctx.ol.printStr("call bailout in " ~ instr.block.fun.getName);
 
     // Fallback to interpreter execution
     // Spill all values, including arguments
     // Call the interpreter call instruction
-    defaultFn(ctx.ol, ctx, st, instr);
+    defaultFn(ctx.ol, ctx, entrySt, instr);
 }
 
 void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -824,11 +833,11 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(BAILOUT);
+    //ctx.ol.printStr("ret bailout in " ~ instr.block.fun.getName);
 
     // Fallback to interpreter execution
     // Spill all values, including arguments
     // Call the interpreter call instruction
-    //ctx.ol.printStr("ret bailout in " ~ instr.block.fun.getName);
     defaultFn(ctx.ol, ctx, st, instr);
 }
 

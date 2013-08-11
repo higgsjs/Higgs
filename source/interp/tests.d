@@ -1547,7 +1547,8 @@ unittest
     // TODO: enable once faster
     //run("string-base64");
 
-    // FIXME: segfault
+    // FIXME: segfaults at the end?
+    // TODO: enable once faster
     //run("string-fasta");
 }
 
@@ -1568,10 +1569,9 @@ unittest
 
     run("crypto");
 
-    // FIXME: segfault
-    //run("deltablue");
+    run("deltablue");
 
-    // FIXME: infinite loop?
+    // FIXME: infinite loop? why so slow?
     //run("earley-boyer");
 
     run("navier-stokes");
@@ -1579,8 +1579,7 @@ unittest
     // TODO: enable once faster
     //run("raytrace");
 
-    // FIXME: undefined base in read of property "suspendCurrent"
-    //run("richard");
+    run("richards");
 
     // TODO: enable once faster
     //run("splay");
