@@ -92,23 +92,18 @@ TODO: optimize non-constant comparison followed by if_true
 - if can check that cmp instruction precedes
 - could possibly directly check the last ASM instruction?
 
-TODO: implement more opts in JIT, target defaults of slower benchmarks
+
+
+
+
+
+
+
+
+
+[DONE] TODO: implement more opts in JIT, target defaults of slower benchmarks
 - i32_to_f64? already commented out
 - 3d-raytrace time?
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ------------------------------------------------------------------------------
 

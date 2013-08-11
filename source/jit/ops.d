@@ -113,25 +113,34 @@ alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
 alias IsTypeOp!(Type.INT32) gen_is_i32;
 alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 
-/*
 void gen_i32_to_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    ctx.as.instr(CVTSI2SD, XMM0, new X86Mem(32, wspReg, instr.args[0].localIdx * 8));
+    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 32, scrRegs32[0], false, false);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
-    ctx.as.setWord(instr.outSlot, XMM0);
-    ctx.as.setType(instr.outSlot, Type.FLOAT64);
+    // Sign-extend the 32-bit integer to 64-bit
+    ctx.as.instr(MOVSXD, scrRegs64[1], opnd0);
+
+    ctx.as.instr(CVTSI2SD, XMM0, opnd0);
+
+    ctx.as.instr(MOVQ, opndOut, XMM0);
+    st.setOutType(ctx.as, instr, Type.FLOAT64);
 }
 
 void gen_f64_to_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // Cast to int64 and truncate to int32 (to match JS semantics)
-    ctx.as.instr(CVTSD2SI, RAX, new X86Mem(64, wspReg, instr.args[0].localIdx * 8));
-    ctx.as.instr(MOV, ECX, EAX);
+    auto opndReg = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0, false, false);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
 
-    ctx.as.setWord(instr.outSlot, RCX);
-    ctx.as.setType(instr.outSlot, Type.INT32);
+    if (opndReg.type !is X86Reg.XMM)
+        ctx.as.instr(MOVQ, XMM0, opndReg);
+
+    // Cast to int64 and truncate to int32 (to match JS semantics)
+    ctx.as.instr(CVTSD2SI, scrRegs64[0], XMM0);
+    ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+
+    st.setOutType(ctx.as, instr, Type.INT32);
 }
-*/
 
 void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -931,6 +940,9 @@ static this()
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
     codeGenFns[&IS_I32]         = &gen_is_i32;
     codeGenFns[&IS_F64]         = &gen_is_f64;
+
+    codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
+    codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
 
     codeGenFns[&ADD_I32]        = &gen_add_i32;
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
