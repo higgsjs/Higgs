@@ -64,7 +64,7 @@ run-time error: undefined base in read of property "car"
 - add to tests permanently?
 
 TODO: don't load arg values with only one use?
-- test perf impact
+- test perf impact, need bench script, need desktop
 
 TODO: propagate known phi arg types to phis
 - test perf impact
@@ -81,7 +81,12 @@ TODO: Modify/reimplement inlining for SSA
   - Don't care if frame is on stack or not
   - Can recreate CFG & code block without recreating IRFunction object
 
+** Avoid more JIT ops & opts for now, concentrate on inlining
+
 FIXME: string-fasta segfaults at the end?
+- Can we quickly determine why and fix it?
+
+TODO: optimize assembler to avoid recomputing find encoding if imm length didn't change?
 
 TODO: blog
 - JIT complete, now with SSA
@@ -94,32 +99,28 @@ TODO: blog
 
 
 
-TODO: optimize non-constant comparison followed by if_true
+
+
+
+
+
+
+
+[DONE] TODO: optimize non-constant comparison followed by if_true
 - cmp can check that if instruction follows and is the only use
 - if can check that cmp instruction precedes
 - could possibly directly check the last ASM instruction?
 - time benchmarks before if opt, best of 5
-3d-cube             1.75
-3d-raytrace         3.84
-bitops-nsieve-bits  1.14
-access-fannkuch     2.32
+3d-cube             1.75    1.65
+3d-raytrace         3.84    3.9??
+bitops-nsieve-bits  1.14    1.12
+access-fannkuch     2.32    2.38
 
-
-
-
-TODO: improve cmp + if_true
+[DONE] TODO: improve cmp + if_true
 - can generate bool and then cmp independently
 - must modify ifTrueNext
 - generate bool if we have more than one use or no if_true follows
 - generate the if_true if one immediately follows
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: segfault after if opt.
 - Problem is not with single use

@@ -731,6 +731,12 @@ abstract class IRValue : IdObject
         return firstUse is null;
     }
 
+    /// Test if this value has more than one use
+    bool hasManyUses()
+    {
+        return firstUse !is null && firstUse.next !is null;
+    }
+
     /// Replace uses of this value by uses of another value
     void replUses(IRValue newVal)
     {

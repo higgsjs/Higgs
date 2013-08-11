@@ -474,14 +474,14 @@ void genCondBranch(CodeGenCtx ctx, CodeGenState st, IRInstr ifInstr, X86OpPtr tr
 }
 
 /**
-Test if an instruction's only use is an immediately-following if_true
+Test if an instruction is followed by an if_true branching on its value
 */
 bool ifUseNext(IRInstr instr)
 {
     return (
-        instr.hasOneUse &&
-        instr.getFirstUse.owner is instr.next &&
-        instr.next.opcode is &IF_TRUE
+        instr.next &&
+        instr.next.opcode is &IF_TRUE &&
+        instr.next.getArg(0) is instr
     );
 }
 
@@ -518,29 +518,27 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Compare against the tested type
     ctx.as.instr(CMP, typeOpnd, type);
 
+    // If this instruction has many uses or is not followed by an if
+    if (instr.hasManyUses || ifUseNext(instr) is false)
+    {
+        // Get the output operand
+        auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+
+        ctx.as.instr(MOV, scrRegs64[0], FALSE.int64Val);
+        ctx.as.instr(MOV, scrRegs64[1], TRUE.int64Val);
+        ctx.as.instr(CMOVE, scrRegs64[0], scrRegs64[1]);
+        ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
+
+        // Set the output type
+        st.setOutType(ctx.as, instr, Type.CONST);
+    }
+
     // If our only use is an immediately following if_true
     if (ifUseNext(instr) is true)
     {
-        // Clear any previously known type for this value
-        st.valOnStack(instr);
-
         // Generate the conditional branch and targets here
         ctx.genCondBranch(st, instr.next, JE, JNE);
-
-        // Don't generate a proper boolean value
-        return;
     }
-
-    // Get the output operand
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
-    ctx.as.instr(MOV, scrRegs64[0], FALSE.int64Val);
-    ctx.as.instr(MOV, scrRegs64[1], TRUE.int64Val);
-    ctx.as.instr(CMOVE, scrRegs64[0], scrRegs64[1]);
-    ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
-
-    // Set the output type
-    st.setOutType(ctx.as, instr, Type.CONST);
 }
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
@@ -616,38 +614,33 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         falseOp = JL;
     }
 
+    // If this instruction has many uses or is not followed by an if
+    if (instr.hasManyUses || ifUseNext(instr) is false)
+    {
+        // We must have a register for the output (so we can use cmov)
+        auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+        auto outReg = cast(X86Reg)opndOut;
+        if (outReg is null)
+            outReg = scrRegs64[1];
+
+        ctx.as.instr(MOV   , outReg      , FALSE.int8Val);
+        ctx.as.instr(MOV   , scrRegs64[2], TRUE.int8Val );
+        ctx.as.instr(cmovOp, outReg      , scrRegs64[2] );
+
+        // If the output is not a register
+        if (opndOut !is outReg)
+            ctx.as.instr(MOV, opndOut, outReg);
+
+        // Set the output type
+        st.setOutType(ctx.as, instr, Type.CONST);
+    }
+
     // If our only use is an immediately following if_true
     if (ifUseNext(instr) is true)
     {
-        // Clear any previously known type for this value
-        st.valOnStack(instr);
-
         // Generate the conditional branch and targets here
         ctx.genCondBranch(st, instr.next, trueOp, falseOp);
-
-
-        // TODO: only if we have just one use?
-
-        // Don't generate a proper boolean value
-        return;
     }
-
-    // We must have a register for the output (so we can use cmov)
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    auto outReg = cast(X86Reg)opndOut;
-    if (outReg is null)
-        outReg = scrRegs64[1];
-
-    ctx.as.instr(MOV   , outReg      , FALSE.int8Val);
-    ctx.as.instr(MOV   , scrRegs64[2], TRUE.int8Val );
-    ctx.as.instr(cmovOp, outReg      , scrRegs64[2] );
-
-    // If the output is not a register
-    if (opndOut !is outReg)
-        ctx.as.instr(MOV, opndOut, outReg);
-
-    // Set the output type
-    st.setOutType(ctx.as, instr, Type.CONST);
 }
 
 alias CmpOp!("eq", 8) gen_eq_i8;
@@ -680,12 +673,10 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
-
-    // If a boolean argument immediately precedes
-    if (boolArgPrev(instr) is true && argVal.hasOneUse)
+    // If a boolean argument immediately precedes, the
+    // conditional branch has already been generated
+    if (boolArgPrev(instr) is true)
         return;
-
-
 
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 8);
