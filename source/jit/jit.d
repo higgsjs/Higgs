@@ -38,6 +38,7 @@
 module jit.jit;
 
 import std.stdio;
+import std.datetime;
 import std.string;
 import std.array;
 import std.stdint;
@@ -189,6 +190,8 @@ Compile a function to machine code
 */
 void compFun(Interp interp, IRFunction fun)
 {
+    auto startTimeMS = Clock.currAppTick().msecs();
+
     if (opts.jit_dumpinfo)
     {
         writefln(
@@ -642,6 +645,9 @@ void compFun(Interp interp, IRFunction fun)
         writefln("num versions: %s", numVersions);
         writefln("");
     }
+
+    auto endTimeMS = Clock.currAppTick().msecs();
+    jit.stats.compTimeMS += endTimeMS - startTimeMS;
 }
 
 /**

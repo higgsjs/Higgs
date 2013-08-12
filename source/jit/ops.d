@@ -57,7 +57,6 @@ import jit.encodings;
 import jit.peephole;
 import jit.regalloc;
 import jit.jit;
-import util.bitset;
 
 void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {

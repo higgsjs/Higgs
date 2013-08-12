@@ -86,18 +86,5 @@ void main(string[] args)
         // Start the REPL
         repl.repl(interp);
     }
-
-    /*
-    // If JIT stats are enabled
-    if (opts.jit_stats)
-    {
-        writefln("");
-        writefln("JIT stats:");
-        writefln("root trace entry count: %s", traceRootCnt);
-        writefln("sub-trace entry count : %s", traceSubCnt);
-        writefln("trace loop count: %s", traceLoopCnt);
-        writefln("trace exit count: %s", traceExitCnt);
-    }
-    */
 }
 

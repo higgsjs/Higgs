@@ -36,6 +36,7 @@ interp/string.d     \
 interp/object.d     \
 interp/gc.d         \
 interp/ffi.d        \
+jit/stats.d         \
 jit/x86.d           \
 jit/encodings.d     \
 jit/codeblock.d     \

@@ -81,12 +81,17 @@ TODO: Modify/reimplement inlining for SSA
   - Don't care if frame is on stack or not
   - Can recreate CFG & code block without recreating IRFunction object
 
-** Avoid more JIT ops & opts for now, concentrate on inlining
+** Avoid more JIT ops & opts for now, concentrate on inlining ***
 
 FIXME: string-fasta segfaults at the end?
 - Can we quickly determine why and fix it?
 
 TODO: optimize assembler to avoid recomputing find encoding if imm length didn't change?
+
+TODO: dynamic type tests, incr counter only if jit_stats enabled
+
+TODO: exec time stat? record start time in static ctor
+- Could we log stats in static dtor???
 
 TODO: blog
 - JIT complete, now with SSA
@@ -95,6 +100,7 @@ TODO: blog
 - Better code quality, speedups
 - Higgs would ideally need fuzz testing
 
+TODO: can we compute comp time using microsecs to make more accurate?
 
 
 
@@ -104,7 +110,8 @@ TODO: blog
 
 
 
-
+[DONE] TODO: jit.stats, stats.compTimeMS
+- What is the comp time for 3d-raytrace? 304ms out of 3800ms
 
 [DONE] TODO: optimize non-constant comparison followed by if_true
 - cmp can check that if instruction follows and is the only use
