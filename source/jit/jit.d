@@ -190,7 +190,7 @@ Compile a function to machine code
 */
 void compFun(Interp interp, IRFunction fun)
 {
-    auto startTimeMS = Clock.currAppTick().msecs();
+    auto startTimeUsecs = Clock.currAppTick().usecs();
 
     if (opts.jit_dumpinfo)
     {
@@ -646,8 +646,8 @@ void compFun(Interp interp, IRFunction fun)
         writefln("");
     }
 
-    auto endTimeMS = Clock.currAppTick().msecs();
-    jit.stats.compTimeMS += endTimeMS - startTimeMS;
+    auto endTimeUsecs = Clock.currAppTick().usecs();
+    jit.stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 }
 
 /**

@@ -90,9 +90,6 @@ TODO: optimize assembler to avoid recomputing find encoding if imm length didn't
 
 TODO: dynamic type tests, incr counter only if jit_stats enabled
 
-TODO: exec time stat? record start time in static ctor
-- Could we log stats in static dtor???
-
 TODO: blog
 - JIT complete, now with SSA
 - Difficulties encountered, phi nodes, reg alloc bugs, call/ret bugs
@@ -100,7 +97,6 @@ TODO: blog
 - Better code quality, speedups
 - Higgs would ideally need fuzz testing
 
-TODO: can we compute comp time using microsecs to make more accurate?
 
 
 
@@ -108,7 +104,11 @@ TODO: can we compute comp time using microsecs to make more accurate?
 
 
 
+[DONE] TODO: exec time stat? record start time in static ctor
+- Could we log stats in static dtor???
 
+[DONE] TODO: can we compute comp time using microsecs to make more accurate?
+- 3d-raytrace, 327ms out of 3675ms
 
 [DONE] TODO: jit.stats, stats.compTimeMS
 - What is the comp time for 3d-raytrace? 304ms out of 3800ms
