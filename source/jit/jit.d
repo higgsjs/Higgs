@@ -1362,7 +1362,7 @@ void ptr(TPtr)(Assembler as, X86Reg destReg, TPtr ptr)
 }
 
 /// Increment a global JIT stat counter variable
-void incStatCnt(string varName)(Assembler as)
+void incStatCnt(string varName)(Assembler as, X86Reg scrReg)
 {
     if (!opts.jit_stats)
         return;
@@ -1370,7 +1370,7 @@ void incStatCnt(string varName)(Assembler as)
     mixin("auto vSize = " ~ varName ~ ".sizeof;");
     mixin("auto vAddr = &" ~ varName ~ ";");
 
-    as.ptr(RAX, vAddr);
+    as.ptr(scrReg, vAddr);
 
     as.instr(INC, new X86Mem(vSize * 8, RAX));
 }

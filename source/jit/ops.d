@@ -511,6 +511,9 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
+    // Increment the type test stat counter
+    ctx.as.incStatCnt!("jit.stats.numTypeTests")(scrRegs64[0]);
+
     // Get an operand for the value's type
     auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0);
 

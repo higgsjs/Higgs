@@ -83,13 +83,6 @@ TODO: Modify/reimplement inlining for SSA
 
 ** Avoid more JIT ops & opts for now, concentrate on inlining ***
 
-FIXME: string-fasta segfaults at the end?
-- Can we quickly determine why and fix it?
-
-TODO: optimize assembler to avoid recomputing find encoding if imm length didn't change?
-
-TODO: dynamic type tests, incr counter only if jit_stats enabled
-
 TODO: blog
 - JIT complete, now with SSA
 - Difficulties encountered, phi nodes, reg alloc bugs, call/ret bugs
@@ -98,11 +91,22 @@ TODO: blog
 - Higgs would ideally need fuzz testing
 
 
+FIXME: string-fasta segfaults at the end?
+- Can we quickly determine why and fix it?
 
 
 
 
 
+
+
+
+
+
+
+
+
+[DONE] TODO: dynamic type tests, incr counter only if jit_stats enabled
 
 [DONE] TODO: exec time stat? record start time in static ctor
 - Could we log stats in static dtor???
@@ -119,9 +123,9 @@ TODO: blog
 - could possibly directly check the last ASM instruction?
 - time benchmarks before if opt, best of 5
 3d-cube             1.75    1.65
-3d-raytrace         3.84    3.9??
+3d-raytrace         3.84    3.5
 bitops-nsieve-bits  1.14    1.12
-access-fannkuch     2.32    2.38
+access-fannkuch     2.32    2.28
 
 [DONE] TODO: improve cmp + if_true
 - can generate bool and then cmp independently
