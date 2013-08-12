@@ -236,7 +236,7 @@ string valToString(ValuePair value)
         case Type.REFPTR:
         if (w == NULL)
             return "null";
-        if (GC.query(w.ptrVal) == GC.BlkInfo.init)
+        if (ptrValid(w.ptrVal) is false)
             return "invalid refptr";
         if (valIsLayout(w, LAYOUT_OBJ))
             return "object";

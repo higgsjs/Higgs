@@ -976,12 +976,16 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             if (instr.hasArg(value))
                 return true;
 
+            // TODO: for some values, don't need to spill all
             if (ctx.liveInfo.liveAfter(value, instr))
                 return true;
 
             return false;
         }
     );
+
+    // Increment the unjitted instruction counter
+    ctx.as.incStatCnt!("jit.stats.numUnjitInstrs")(scrRegs64[0]);
 
     // Get the function corresponding to this instruction
     // alias void function(Interp interp, IRInstr instr) OpFn;

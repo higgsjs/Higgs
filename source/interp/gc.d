@@ -151,6 +151,15 @@ bool inToSpace(Interp interp, refptr ptr)
 }
 
 /**
+Check that a pointer points to a valid chunk of memory
+*/
+bool ptrValid(refptr ptr)
+{
+    // Query the D GC regarding this pointer
+    return GC.query(ptr) != GC.BlkInfo.init;
+}
+
+/**
 Allocate an object in the heap
 */
 refptr heapAlloc(Interp interp, size_t size)
@@ -253,12 +262,12 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     interp.funProto     = gcForward(interp, interp.funProto);
     interp.globalObj    = gcForward(interp, interp.globalObj);
 
-    //writeln("visiting stack roots");
+    writeln("visiting stack roots");
 
     // Visit the stack roots
     visitStackRoots(interp);
 
-    //writeln("visiting link table");
+    writeln("visiting link table");
 
     // Visit the link table cells
     for (size_t i = 0; i < interp.linkTblSize; ++i)
@@ -270,13 +279,13 @@ void gcCollect(Interp interp, size_t heapSize = 0)
         );
     }
 
-    //writeln("visiting GC root objects");
+    writeln("visiting GC root objects");
 
     // Visit the root objects
     for (GCRoot* pRoot = interp.firstRoot; pRoot !is null; pRoot = pRoot.next)
         pRoot.pair.word = gcForward(interp, pRoot.pair.word, pRoot.pair.type);    
 
-    //writeln("scanning to-space");
+    writeln("scanning to-space");
 
     // Scan Pointer: All objects behind it (i.e. to its left) have been fully
     // processed; objects in front of it have been copied but not processed.
@@ -308,15 +317,18 @@ void gcCollect(Interp interp, size_t heapSize = 0)
 
         //writefln("scanning object of size %s", objSize);
         //writefln("scanning %s (%s)", scanPtr, numObjs);
+        //writefln("obj header: %s", obj_get_header(scanPtr));
 
         // Visit the object layout, forward its references
         layout_visit_gc(interp, scanPtr);
+
+        //writeln("visited layout");
 
         // Move to the next object
         scanPtr = alignPtr(scanPtr + objSize);
     }
 
-    //writefln("objects copied/scanned: %s", numObjs);
+    writefln("objects copied/scanned: %s", numObjs);
 
     // Store a pointer to the from-space heap
     auto fromStart = interp.heapStart;
@@ -415,7 +427,7 @@ refptr gcForward(Interp interp, refptr ptr)
     if (ptr is null)
         return null;
 
-    //writefln("forwarding object %s", ptr);
+    //writefln("forwarding object %s (%s)", ptr, interp.inFromSpace(ptr));
 
     assert (
         interp.inFromSpace(ptr),
@@ -428,8 +440,8 @@ refptr gcForward(Interp interp, refptr ptr)
             ptr,
             interp.heapStart,
             interp.heapLimit,
-            obj_get_header(ptr)
-        )        
+            (ptrValid(ptr)? obj_get_header(ptr):0xFFFF)
+        )
     );
 
     // If this is a closure

@@ -51,6 +51,9 @@ package ulong compTimeUsecs = 0;
 /// Number of type tests executed (dynamic)
 package ulong numTypeTests = 0;
 
+/// Number of unjitted instructions executed (dynamic)
+package ulong numUnjitInstrs = 0;
+
 /// Program start time in milliseconds
 private ulong startTimeMsecs = 0;
 
@@ -75,5 +78,6 @@ static ~this()
     writefln("total execution time (ms): %s", execTimeMsecs);
     writefln("total compilation time (ms): %s", compTimeUsecs / 1000);
     writefln("type tests executed: %s", numTypeTests);
+    writefln("unjitted instructions executed: %s", numUnjitInstrs);
 }
 

@@ -3,7 +3,7 @@ Conference deadlines:
 - VMIL 2013     ~August 2013
 - CGO 2014      ~September 2013
 - CC 2014       Oct 4, Oct 11 2013
-- PLDI 2014     ~November 2013
+- PLDI 2014     Nov 8, Nov 15 2013
 - VEE 2014      ~November 2013
 
 TODO: give this project more lovin'! Improve various aspects! Blog!
@@ -23,11 +23,14 @@ Sept 31st goal: have paper written & edited
 ------------------------------------------------------------------------------
 
 August 31st goal: have gathered some perf data, demonstrate gains from versioning
-- See paper note for metric ideas
+
+TODO: gather metrics
+- Metrics to gather
   - total blocks compiled in backend
-  - compilation time
-  - no instrs executed dynamically
+  - num instrs executed dynamically
+  - num IsTypeOps executed dynamically
   - execution time
+  - compilation time
 - further perf tweaks
 - look at linux-tools-common package, `perf stat` command, has instr and
   branch counts?
@@ -38,10 +41,10 @@ TODO: benchmarking (performance testing) JS script
 - use load command, list of benchmarks
 - try to make it compatible with V8 as-is
 - should be able to pass config flags to Higgs (i.e.: modify JIT params)
+- use release version
 
-TODO: release version with no asserts for performance testing
-
-TODO: global counter on IsTypeOp, with vs without versioning
+TODO: release target with no asserts for performance testing
+- the -release flag disables assertions
 
 TODO: implement cap on number of block versions
 - Add command-line options, jit_maxblockvers
@@ -55,22 +58,11 @@ August 15th goal: perf gains from inlining
 TODO: optimize if of phi?
 - boolean ops flow into phi, phi goes into if
 
-FIXME: earley-boyer not working?, with or without inlining
-run-time error: undefined base in read of property "car"
-- jit_disable : still broken!
-- Might have to do with recent changes to obj alloc
-  - gc happens during newObj
-- Doesn't seem directly connected to GC
-- add to tests permanently?
-
 TODO: don't load arg values with only one use?
 - test perf impact, need bench script, need desktop
 
 TODO: propagate known phi arg types to phis
 - test perf impact
-
-TODO: Focus on issues that get in the way of inlining perf gains ***
-- Look at the code, where are the problems?
 
 TODO: Modify/reimplement inlining for SSA
 - Inlining transform itself not too hard?
@@ -83,6 +75,9 @@ TODO: Modify/reimplement inlining for SSA
 
 ** Avoid more JIT ops & opts for now, concentrate on inlining ***
 
+TODO: think about different inlining strategies
+- New CFG, new IRFunction? Basic OSR?
+
 TODO: blog
 - JIT complete, now with SSA
 - Difficulties encountered, phi nodes, reg alloc bugs, call/ret bugs
@@ -90,9 +85,18 @@ TODO: blog
 - Better code quality, speedups
 - Higgs would ideally need fuzz testing
 
+TODO: logging of default JIT ops using ctx.as.printStr, test on 3d-raytrace, string-fasta
 
 FIXME: string-fasta segfaults at the end?
-- Can we quickly determine why and fix it?
+- Make regression test?
+- Does it segfault with --jit_disable? No
+- Segfaults inside the GC, while scanning to-space
+- GC seems to be called inside JIT
+  - should not be an issue, proper spilling
+- bugs when disabling most JIT ops too
+  - is the bug in call fallback or something?
+- 4th object scanned failed, this is the global object
+  - writing invalid ref ptr in there? can test dynamically
 
 
 
@@ -105,6 +109,9 @@ FIXME: string-fasta segfaults at the end?
 
 
 
+
+[DONE] TODO: stat counter for number unjitted instructions executed
+- 9.5M for raytrace, probably dominates execution time!
 
 [DONE] TODO: dynamic type tests, incr counter only if jit_stats enabled
 
