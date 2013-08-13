@@ -68,7 +68,7 @@ static this()
         iir[opName] = &op; 
     }
 
-    addOp(SET_VALUE);
+    addOp(MAKE_VALUE);
     addOp(GET_WORD);
     addOp(GET_TYPE);
 

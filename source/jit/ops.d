@@ -77,6 +77,41 @@ void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
 
+void gen_make_value(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    // Move the word value into the output word
+    auto wordOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0], true);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    ctx.as.instr(MOV, opndOut, wordOpnd);
+
+    // Get the type value from the second operand
+    auto typeOpnd = st.getWordOpnd(ctx, ctx.as, instr, 1, 8, scrRegs8[0]);
+    st.setOutType(ctx.as, instr, cast(X86Reg)typeOpnd);
+}
+
+void gen_get_word(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto wordOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0], true);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+
+    ctx.as.instr(MOV, opndOut, wordOpnd);
+
+    st.setOutType(ctx.as, instr, Type.INT64);
+}
+
+void gen_get_type(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0, scrRegs8[0], true);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+
+    if (cast(X86Imm)typeOpnd)
+        ctx.as.instr(MOV, opndOut, typeOpnd);
+    else
+        ctx.as.instr(MOVZX, opndOut, typeOpnd);
+
+    st.setOutType(ctx.as, instr, Type.INT32);
+}
+
 void gen_i32_to_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 32, scrRegs32[0], false, false);
@@ -545,7 +580,9 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
 alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
+alias IsTypeOp!(Type.RAWPTR) gen_is_rawptr;
 alias IsTypeOp!(Type.INT32) gen_is_i32;
+alias IsTypeOp!(Type.INT64) gen_is_i64;
 alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 
 void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -968,6 +1005,8 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    //ctx.as.printStr(instr.toString);
+
     // Spill all live values and instruction arguments
     st.spillRegs(
         as,
@@ -1044,6 +1083,10 @@ static this()
 {
     codeGenFns[&SET_STR]        = &gen_set_str;
 
+    codeGenFns[&MAKE_VALUE]     = &gen_make_value;
+    codeGenFns[&GET_WORD]       = &gen_get_word;
+    codeGenFns[&GET_TYPE]       = &gen_get_type;
+
     codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
     codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
 
@@ -1078,7 +1121,9 @@ static this()
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
+    codeGenFns[&IS_RAWPTR]      = &gen_is_rawptr;
     codeGenFns[&IS_I32]         = &gen_is_i32;
+    codeGenFns[&IS_I64]         = &gen_is_i64;
     codeGenFns[&IS_F64]         = &gen_is_f64;
 
     codeGenFns[&EQ_I8]          = &gen_eq_i8;

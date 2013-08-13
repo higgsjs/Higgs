@@ -192,9 +192,9 @@ function $rt_getCellVal(cell)
     var word = $rt_cell_get_word(cell);
     var type = $rt_cell_get_type(cell);
 
-    //print('getCellVal: ' + $ir_set_value(word, 0));
+    //print('getCellVal: ' + $ir_make_value(word, 0));
 
-    return $ir_set_value(word, type);
+    return $ir_make_value(word, type);
 }
 
 /**
@@ -1566,7 +1566,7 @@ function $rt_getPropObj(obj, propStr)
     {
         var word = $rt_obj_get_word(obj, propIdx);
         var type = $rt_obj_get_type(obj, propIdx);
-        var val = $ir_set_value(word, type);
+        var val = $ir_make_value(word, type);
 
         // If the value is not missing, return it
         if (val !== $missing)
@@ -1618,7 +1618,7 @@ function $rt_getProp(base, prop)
                 var tbl = $rt_arr_get_tbl(base);
                 var word = $rt_arrtbl_get_word(tbl, prop);
                 var type = $rt_arrtbl_get_type(tbl, prop);
-                return $ir_set_value(word, type);
+                return $ir_make_value(word, type);
             }
 
             // If the property is a floating-point number
@@ -2075,7 +2075,7 @@ function $rt_hasPropObj(obj, propStr)
     // Check that the property is not missing
     var word = $rt_obj_get_word(obj, propIdx);
     var type = $rt_obj_get_type(obj, propIdx);
-    var val = $ir_set_value(word, type);
+    var val = $ir_make_value(word, type);
     return (val !== $missing);
 }
 

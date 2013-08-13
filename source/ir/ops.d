@@ -106,7 +106,7 @@ alias static immutable(OpInfo) Opcode;
 Opcode SET_STR = { "set_str", true, [OpArg.STRING, OpArg.LINK], &op_set_str };
 
 // Word/type manipulation primitives
-Opcode SET_VALUE = { "set_value", true, [OpArg.LOCAL, OpArg.LOCAL], &op_set_value };
+Opcode MAKE_VALUE = { "make_value", true, [OpArg.LOCAL, OpArg.LOCAL], &op_make_value };
 Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &op_get_word };
 Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &op_get_type };
 

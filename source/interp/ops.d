@@ -274,7 +274,7 @@ extern (C) void op_set_true(Interp interp, IRInstr instr)
     );
 }
 
-extern (C) void op_set_value(Interp interp, IRInstr instr)
+extern (C) void op_make_value(Interp interp, IRInstr instr)
 {
     auto word = interp.getArgVal(instr, 0).word;
     auto typeVal = interp.getArgVal(instr, 1);

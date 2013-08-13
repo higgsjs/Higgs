@@ -50,6 +50,7 @@ import interp.interp;
 import interp.layout;
 import interp.object;
 import interp.string;
+import interp.gc;
 import jit.codeblock;
 import jit.assembler;
 import jit.x86;
@@ -1490,6 +1491,47 @@ void popRegs(Assembler as)
     as.instr(POP, RAX);
 }
 
+void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)
+{
+    as.pushRegs();
+
+    auto STR_DATA = new Label("STR_DATA");
+    auto AFTER_STR = new Label("AFTER_STR");
+
+    as.instr(JMP, AFTER_STR);
+    as.addInstr(STR_DATA);
+    foreach (ch; errorStr)
+        as.addInstr(new IntData(cast(uint)ch, 8));    
+    as.addInstr(new IntData(0, 8));
+    as.addInstr(AFTER_STR);
+
+    as.instr(MOV, cargRegs[2].ofSize(8), typeOpnd);
+    as.instr(MOV, cargRegs[1], wordOpnd);
+    as.instr(MOV, cargRegs[0], interpReg);
+    as.instr(LEA, cargRegs[3], new X86IPRel(8, STR_DATA));
+
+    auto checkFn = &checkValFn;
+    as.ptr(scrRegs64[0], checkFn);
+    as.instr(jit.encodings.CALL, scrRegs64[0]);
+
+    as.popRegs();
+}
+
+extern (C) void checkValFn(Interp interp, Word word, Type type, char* errorStr)
+{
+    if (type != Type.REFPTR)
+        return;
+
+    if (interp.inFromSpace(word.ptrVal) is false)
+    {
+        writefln(
+            "pointer not in from-space: %s\n%s",
+            word.ptrVal,
+            to!string(errorStr)
+        );
+    }
+}
+
 void printUint(Assembler as, X86Opnd opnd)
 {
     assert (
@@ -1510,6 +1552,14 @@ void printUint(Assembler as, X86Opnd opnd)
     as.popRegs();
 }
 
+/**
+Print an unsigned integer value. Callable from the JIT
+*/
+extern (C) void printUint(uint64_t v)
+{
+    writefln("%s", v);
+}
+
 void printStr(Assembler as, string str)
 {
     as.comment("printStr(\"" ~ str ~ "\")");
@@ -1520,31 +1570,20 @@ void printStr(Assembler as, string str)
     auto AFTER_STR = new Label("AFTER_STR");
 
     as.instr(JMP, AFTER_STR);
-
     as.addInstr(STR_DATA);
     foreach (ch; str)
         as.addInstr(new IntData(cast(uint)ch, 8));    
     as.addInstr(new IntData(0, 8));
-
     as.addInstr(AFTER_STR);
 
     as.instr(LEA, cargRegs[0], new X86IPRel(8, STR_DATA));
 
     alias extern (C) void function(char*) PrintStrFn;
     PrintStrFn printStrFn = &printStr;
-
     as.ptr(scrRegs64[0], printStrFn);
     as.instr(jit.encodings.CALL, scrRegs64[0]);
 
     as.popRegs();
-}
-
-/**
-Print an unsigned integer value. Callable from the JIT
-*/
-extern (C) void printUint(uint64_t v)
-{
-    writefln("%s", v);
 }
 
 /**
