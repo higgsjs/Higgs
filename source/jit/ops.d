@@ -239,6 +239,48 @@ alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
 alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
+void gen_mod_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, null, true);
+    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs64[2], false, true);
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+
+    // Save RDX
+    ctx.as.instr(MOV, scrRegs64[1], RDX);
+    if (opnd1 == EDX)
+        opnd1 = scrRegs32[1];
+
+    // Move the dividend into EAX
+    ctx.as.instr(MOV, EAX, opnd0);
+
+    // Sign-extend EAX into EDX:EAX
+    ctx.as.instr(CDQ);
+
+    // Signed divide/quotient EDX:EAX by r/m32
+    ctx.as.instr(IDIV, opnd1);
+
+    if (opndOut != EDX)
+    {
+        // Store the remainder into the output operand
+        ctx.as.instr(MOV, opndOut, EDX);
+
+        // Restore RDX
+        ctx.as.instr(MOV, RDX, scrRegs64[1]);
+    }
+
+    // Set the output type
+    st.setOutType(ctx.as, instr, Type.INT32);
+
+    /*
+    writeln();
+    writeln(instr.block);
+    writeln("opnd0: ", opnd0);
+    writeln("opnd1: ", opnd1);
+    writeln();
+    ctx.as.printTail(10);
+    */
+}
+
 void ShiftOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, null, true);
@@ -815,10 +857,14 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         );
         ctx.as.setWord(dstIdx, argOpnd);
 
-        // TODO: accept type imm?
-
-        // Set the argument type
-        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, instrArgIdx, scrRegs8[2]);
+        // Copy the argument type
+        auto typeOpnd = st.getTypeOpnd(
+            ctx.as, 
+            instr, 
+            instrArgIdx, 
+            scrRegs8[2], 
+            true
+        );
         ctx.as.setType(dstIdx, typeOpnd);
     }
 
@@ -1099,6 +1145,8 @@ static this()
     codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
     codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
     codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
+
+    codeGenFns[&MOD_I32]        = &gen_mod_i32;
 
     codeGenFns[&LSFT_I32]       = &gen_lsft_i32;
     codeGenFns[&RSFT_I32]       = &gen_rsft_i32;

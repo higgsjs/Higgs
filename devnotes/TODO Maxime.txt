@@ -64,6 +64,8 @@ TODO: don't load arg values with only one use?
 TODO: propagate known phi arg types to phis
 - test perf impact
 
+TODO: better JIT ret handling for too few or too many args
+
 TODO: Modify/reimplement inlining for SSA
 - Inlining transform itself not too hard?
 - Reallocate stack slots and regs afterwards, as normal
@@ -80,7 +82,7 @@ TODO: think about different inlining strategies
 
 TODO: StoreOp
 
-TODO: mod_i32 op
+TODO: add call bailout and ret bailout JIT stat, try on string-fasta
 
 TODO: blog
 - JIT complete, now with SSA
@@ -90,10 +92,6 @@ TODO: blog
 - Higgs would ideally need fuzz testing
 - Intel/AMD sponsorship?
 
-TODO: how many unjitted instrs in string-fasta?
-- can we make this fast enough for our test suite?
-
-TODO: gen_call, accept type imm?
 
 
 
@@ -101,6 +99,23 @@ TODO: gen_call, accept type imm?
 
 
 
+
+
+
+[DONE] FIXME: some kind of phi node bug in $rt_getPropIdx
+- once mod_i32 introduced, value gets de-incremented?
+- spilling a register, but the value is mapped to the stack
+  - mapping of reg to values got broken
+- bug when phi node reg is in use by said phi node
+
+[DONE] TODO: mod_i32 op
+- 3d-raytrace unjitted ops down to 7.1M, string-fasta down to 17.9M
+
+[DONE] TODO: gen_call, accept type imm
+
+[DONE] TODO: how many unjitted instrs in string-fasta?
+- about 28M
+- does a lot of ret bailout, probably most of the problem
 
 [DONE] FIXME: string-fasta segfaults at the end?
 - No call or ret bailout

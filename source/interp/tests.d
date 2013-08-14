@@ -1548,7 +1548,6 @@ unittest
     // TODO: enable once faster
     //run("string-base64");
 
-    // FIXME: segfaults at the end?
     // TODO: enable once faster
     //run("string-fasta");
 }

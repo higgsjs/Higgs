@@ -275,14 +275,14 @@ void compFun(Interp interp, IRFunction fun)
             auto phiReg = regMapping[phi];
             assert (phiReg !is null);
 
-            // if value mapped to reg isn't live, use reg
+            // If value mapped to reg isn't live, use reg
             // Note: we are querying succState here because the
             // register might be used by a phi node we just mapped
             auto regVal = succState.gpRegMap[phiReg.regNo];
 
             // TODO: can we use liveness info here?
             // need to query liveness at pred exit?
-            if (regVal is null && noLoadPhi is false)
+            if ((regVal is null || regVal is phi) && noLoadPhi is false)
             {
                 succState.allocState[phi] = RA_GPREG | phiReg.regNo;
                 succState.gpRegMap[phiReg.regNo] = phi;
@@ -1185,6 +1185,19 @@ class CodeGenState
     /// Mark a value as being stored on the stack
     void valOnStack(IRDstValue value)
     {
+        // Get the current allocation state for this value
+        auto allocSt = allocState.get(value, 0);
+
+        // If the value is currently mapped to a register
+        if (allocSt & RA_GPREG)
+        {
+            writeln("marking reg free");
+
+            // Mark the register as free
+            auto regNo = allocSt & RA_REG_MASK;
+            gpRegMap[regNo] = null;
+        }
+
         // Mark the value as being on the stack
         allocState[value] = RA_STACK;
 
@@ -1252,6 +1265,11 @@ class CodeGenState
     {
         // Get the value mapped to this register
         auto regVal = gpRegMap[regNo];
+
+        assert (
+            allocState.get(regVal, 0) & RA_GPREG,
+            "value not mapped to reg to be spilled"
+        );
 
         // If no value is mapped to this register, stop
         if (regVal is null)
