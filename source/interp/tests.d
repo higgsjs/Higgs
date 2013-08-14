@@ -1571,13 +1571,12 @@ unittest
 
     run("deltablue");
 
-    // FIXME: infinite loop? why so slow?
+    // FIXME: segfaults
     //run("earley-boyer");
 
     run("navier-stokes");
 
-    // TODO: enable once faster
-    //run("raytrace");
+    run("raytrace");
 
     run("richards");
 

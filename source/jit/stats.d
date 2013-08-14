@@ -45,6 +45,9 @@ import std.stdint;
 import std.conv;
 import options;
 
+/// Program start time in milliseconds
+private ulong startTimeMsecs = 0;
+
 /// Total compilation time in microseconds
 package ulong compTimeUsecs = 0;
 
@@ -54,8 +57,11 @@ package ulong numTypeTests = 0;
 /// Number of unjitted instructions executed (dynamic)
 package ulong numUnjitInstrs = 0;
 
-/// Program start time in milliseconds
-private ulong startTimeMsecs = 0;
+/// Number of call instruction bailouts (dynamic)
+package ulong numCallBailouts = 0;
+
+/// Number of return instruction bailouts (dynamic)
+package ulong numRetBailouts = 0;
 
 /// Static module constructor
 static this()
@@ -79,5 +85,7 @@ static ~this()
     writefln("total compilation time (ms): %s", compTimeUsecs / 1000);
     writefln("type tests executed: %s", numTypeTests);
     writefln("unjitted instructions executed: %s", numUnjitInstrs);
+    writefln("call bailouts executed: %s", numCallBailouts);
+    writefln("return bailouts executed: %s", numRetBailouts);
 }
 

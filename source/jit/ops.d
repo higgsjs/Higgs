@@ -406,6 +406,38 @@ alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
 
+void StoreOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    // The pointer operand must be a register
+    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
+
+    // The offset operand may be a register or an immediate
+    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[1], true);
+
+    // The value operand may be a register or an immediate
+    auto opnd2 = st.getWordOpnd(ctx, ctx.as, instr, 2, memSize, scrRegs64[2].ofSize(memSize), true);
+
+    // Create the memory operand
+    X86Mem memOpnd;
+    if (auto immOffs = cast(X86Imm)opnd1)
+        memOpnd = new X86Mem(memSize, opnd0, cast(int32_t)immOffs.imm);
+    else if (auto regOffs = cast(X86Reg)opnd1)
+        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.ofSize(64));
+    else
+        assert (false, "invalid offset operand");
+
+    // Store the value into the memory location
+    ctx.as.instr(MOV, memOpnd, opnd2);
+}
+
+alias StoreOp!(8 , Type.INT32) gen_store_u8;
+alias StoreOp!(16, Type.INT32) gen_store_u16;
+alias StoreOp!(32, Type.INT32) gen_store_u32;
+alias StoreOp!(64, Type.INT64) gen_store_u64;
+alias StoreOp!(64, Type.FLOAT64) gen_store_f64;
+alias StoreOp!(64, Type.REFPTR) gen_store_refptr;
+alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
+
 void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto interp = ctx.interp;
@@ -798,6 +830,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     if (numArgs != fun.numParams)
     {
+        ctx.as.incStatCnt!("jit.stats.numCallBailouts")(scrRegs64[0]);
+
         // Call the interpreter call instruction
         defaultFn(ctx.as, ctx, st, instr);
         return;
@@ -940,6 +974,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.addInstr(BAILOUT);
     //ctx.ol.printStr("call bailout in " ~ instr.block.fun.getName);
 
+    ctx.ol.incStatCnt!("jit.stats.numCallBailouts")(scrRegs64[0]);
+
     // Fallback to interpreter execution
     // Spill all values, including arguments
     // Call the interpreter call instruction
@@ -1045,6 +1081,8 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.addInstr(BAILOUT);
     //ctx.ol.printStr("ret bailout in " ~ instr.block.fun.getName ~ " (" ~ instr.block.getName ~ ")");
 
+    ctx.ol.incStatCnt!("jit.stats.numRetBailouts")(scrRegs64[0]);
+
     // Fallback to interpreter execution
     // Spill all values, including arguments
     // Call the interpreter call instruction
@@ -1063,7 +1101,6 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             if (instr.hasArg(value))
                 return true;
 
-            // TODO: for some values, don't need to spill all
             if (ctx.liveInfo.liveAfter(value, instr))
                 return true;
 
@@ -1163,6 +1200,14 @@ static this()
     codeGenFns[&LOAD_F64]       = &gen_load_f64;
     codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
     codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
+
+    codeGenFns[&STORE_U8]       = &gen_store_u8;
+    codeGenFns[&STORE_U16]      = &gen_store_u16;
+    codeGenFns[&STORE_U32]      = &gen_store_u32;
+    codeGenFns[&STORE_U64]      = &gen_store_u64;
+    codeGenFns[&STORE_F64]      = &gen_load_f64;
+    codeGenFns[&STORE_REFPTR]   = &gen_store_refptr;
+    codeGenFns[&STORE_RAWPTR]   = &gen_store_rawptr;
 
     codeGenFns[&GET_GLOBAL]     = &gen_get_global;
     codeGenFns[&SET_GLOBAL]     = &gen_set_global;

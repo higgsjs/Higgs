@@ -24,6 +24,8 @@ Sept 31st goal: have paper written & edited
 
 August 31st goal: have gathered some perf data, demonstrate gains from versioning
 
+FIXME: earley-boyer segfaults
+
 TODO: gather metrics
 - Metrics to gather
   - total blocks compiled in backend
@@ -80,9 +82,14 @@ TODO: Modify/reimplement inlining for SSA
 TODO: think about different inlining strategies
 - New CFG, new IRFunction? Basic OSR?
 
-TODO: StoreOp
+TODO: some *opcodes* don't produce output, don't need stack slots or regs
 
-TODO: add call bailout and ret bailout JIT stat, try on string-fasta
+TODO: get_arg for V8/raytrace
+
+TODO: FP comparison operations for 3d-raytrace
+- special FP comparison instruction, XMM args, everything else the same?
+
+TODO: get_str for string-fasta
 
 TODO: blog
 - JIT complete, now with SSA
@@ -100,7 +107,15 @@ TODO: blog
 
 
 
+[DONE] TODO: StoreOp
+- 3d-raytrace at 2.4s
+- V8 raytrace now fast enough
 
+[DONE] TODO: add call bailout and ret bailout JIT stat, try on string-fasta
+- 3d-cube and 3d-raytrace have a few thousand ret bailouts
+  - wasting time in the interpreter
+- string-fasta has about 4K ret bailouts only
+  - might still amount to a lot of time in the interpreter
 
 [DONE] FIXME: some kind of phi node bug in $rt_getPropIdx
 - once mod_i32 introduced, value gets de-incremented?
