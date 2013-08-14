@@ -78,31 +78,38 @@ TODO: Modify/reimplement inlining for SSA
 TODO: think about different inlining strategies
 - New CFG, new IRFunction? Basic OSR?
 
+TODO: StoreOp
+
+TODO: mod_i32 op
+
 TODO: blog
 - JIT complete, now with SSA
 - Difficulties encountered, phi nodes, reg alloc bugs, call/ret bugs
 - For now reg alloc simple
 - Better code quality, speedups
 - Higgs would ideally need fuzz testing
+- Intel/AMD sponsorship?
 
-FIXME: string-fasta segfaults at the end?
-- Make regression test?
-- Does it segfault with --jit_disable? No
-- Segfaults inside the GC, while scanning to-space
-- GC seems to be called inside JIT
-  - should not be an issue, proper spilling
-- bugs when disabling most JIT ops too
-  - is the bug in call fallback or something?
-- 4th object scanned failed, this is the global object
-  - writing invalid ref ptr in there? can test dynamically
-- checkVal
-  - got nothing by verifying set_global
-  - check in store_refptr? not in JIT!
-- could try checking output of all instrs that have uses, loadVal=false
+TODO: how many unjitted instrs in string-fasta?
+- can we make this fast enough for our test suite?
+
+TODO: gen_call, accept type imm?
 
 
 
 
+
+
+
+
+[DONE] FIXME: string-fasta segfaults at the end?
+- No call or ret bailout
+- global v is not the corrupted value...
+- something gets written at the wrong position?
+- what if our type tag gets written in the wrong place?
+- bug in set_global implementation
+
+[DONE] TODO: check ref ptr values stored in interp StoreOp
 
 [DONE] TODO: void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)
 - use CMP to check value, jump to final label if OK, otherwise print errorStr

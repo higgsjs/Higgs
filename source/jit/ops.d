@@ -445,7 +445,7 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(MOV, wordMem, argOpnd);
 
     // Set the type value
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2], true);
+    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[0], true);
     auto typeMem = new X86Mem(8, scrRegs64[1], wordOfs + propIdx, scrRegs64[2], 8);
     ctx.as.instr(MOV, typeMem, typeOpnd);
 }
@@ -815,6 +815,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         );
         ctx.as.setWord(dstIdx, argOpnd);
 
+        // TODO: accept type imm?
+
         // Set the argument type
         auto typeOpnd = st.getTypeOpnd(ctx.as, instr, instrArgIdx, scrRegs8[2]);
         ctx.as.setType(dstIdx, typeOpnd);
@@ -995,7 +997,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Bailout to the interpreter (out of line)
     ctx.ol.addInstr(BAILOUT);
-    //ctx.ol.printStr("ret bailout in " ~ instr.block.fun.getName);
+    //ctx.ol.printStr("ret bailout in " ~ instr.block.fun.getName ~ " (" ~ instr.block.getName ~ ")");
 
     // Fallback to interpreter execution
     // Spill all values, including arguments

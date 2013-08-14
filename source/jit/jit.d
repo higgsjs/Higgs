@@ -956,7 +956,7 @@ class CodeGenState
         auto dstVal = cast(IRDstValue)value;
 
         // If the value is an IR constant or has a known type
-        if (dstVal is null || typeKnown(value))
+        if (dstVal is null || typeKnown(value) is true)
         {
             return new X86Imm(getType(value));
         }
@@ -1161,7 +1161,7 @@ class CodeGenState
         if (dstValue is null)
             return true;
 
-        return (dstValue in typeState) !is null;
+        return (typeState.get(dstValue, 0) & TF_KNOWN) != 0;
     }
 
     /// Get the known type of a value

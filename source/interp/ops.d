@@ -671,9 +671,19 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     auto vPtr = interp.getArgVal(instr, 0);
     auto vOfs = interp.getArgVal(instr, 1);
 
+    auto ptr = vPtr.word.ptrVal;
+    auto ofs = vOfs.word.int32Val;
+
+    auto val = interp.getArgVal(instr, 2);
+
     assert (
         vPtr.type == Type.REFPTR || vPtr.type == Type.RAWPTR,
         "pointer is not pointer type in load op"
+    );
+
+    assert (
+        vPtr.type is Type.RAWPTR || interp.inFromSpace(ptr),
+        "ref ptr not in from space in store op"
     );
 
     assert (
@@ -681,46 +691,44 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
         "offset is not integer type in load op"
     );
 
-    auto ptr = vPtr.word.ptrVal;
-    auto ofs = vOfs.word.int32Val;
-
     assert (
-        typeTag is Type.RAWPTR || interp.inFromSpace(ptr),
-        "ref ptr not in from space in load op"
+        val.type !is Type.REFPTR || 
+        val.word.ptrVal is null ||
+        interp.inFromSpace(val.word.ptrVal),
+        "ref value stored not in from space: " ~ 
+        to!string(val.word.ptrVal)
     );
 
-    auto word = interp.getArgVal(instr, 2).word;
-
-    DataType val;
+    DataType storeVal;
 
     static if (
         DataType.stringof == "byte"  ||
         DataType.stringof == "short" ||
         DataType.stringof == "int")
-        val = cast(DataType)word.int32Val;
+        storeVal = cast(DataType)val.word.int32Val;
 
     static if (DataType.stringof == "long")
-        val = cast(DataType)word.int64Val;
+        storeVal = cast(DataType)val.word.int64Val;
 
     static if (
         DataType.stringof == "ubyte"  ||
         DataType.stringof == "ushort" ||
         DataType.stringof == "uint")
-        val = cast(DataType)word.uint32Val;
+        storeVal = cast(DataType)val.word.uint32Val;
 
     static if (DataType.stringof == "ulong")
-        val = cast(DataType)word.uint64Val;
+        storeVal = cast(DataType)val.word.uint64Val;
 
     static if (DataType.stringof == "double")
-        val = cast(DataType)word.floatVal;
+        storeVal = cast(DataType)val.word.floatVal;
 
     static if (
         DataType.stringof == "void*" ||
         DataType.stringof == "ubyte*" ||
         DataType.stringof == "IRFunction")
-        val = cast(DataType)word.ptrVal;
+        storeVal = cast(DataType)val.word.ptrVal;
 
-    *cast(DataType*)(ptr + ofs) = val;
+    *cast(DataType*)(ptr + ofs) = storeVal;
 }
 
 alias LoadOp!(uint8, Type.INT32) op_load_u8;
@@ -928,10 +936,10 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
     // If the call instruction is valid
     if (callInstr !is null)
     {
-        /*
+        /*        
         writeln("ret val: ");
         writeln("  word: ", retVal.word.int64Val);
-        writeln("   i32: ", retVal.word.int32Val);
+        //writeln("   i32: ", retVal.word.int32Val);
         writeln("  type: ", retVal.type);
         */
 
@@ -950,13 +958,6 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
 
         // Pop all local stack slots and arguments
         interp.pop(numLocals + extraArgs);
-
-        /*            
-        writeln("ret val: ");
-        writeln("  word: ", retVal.word.int64Val);
-        writeln("   i32: ", retVal.word.int32Val);
-        writeln("  type: ", retVal.type);
-        */
 
         // Leave the return value in the call instruction's output slot
         interp.setSlot(
