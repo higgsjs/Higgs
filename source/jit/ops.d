@@ -58,6 +58,29 @@ import jit.peephole;
 import jit.regalloc;
 import jit.jit;
 
+void gen_get_arg(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    // Get the first argument slot
+    auto argSlot = instr.block.fun.argcVal.outSlot + 1;
+
+    // Get the argument index
+    auto idxOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0], false);
+
+    // Get the output operand
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+
+    // TODO: optimize for immediate idx, register opndOut
+    // Copy the word value
+    auto wordSlot = new X86Mem(64, wspReg, argSlot * 8, cast(X86Reg)idxOpnd, 8);
+    ctx.as.instr(MOV, scrRegs64[1], wordSlot);
+    ctx.as.instr(MOV, opndOut, scrRegs64[1]);
+
+    // Copy the type value
+    auto typeSlot = new X86Mem(8, tspReg, argSlot * 1, cast(X86Reg)idxOpnd, 1);
+    ctx.as.instr(MOV, scrRegs8[1], typeSlot);
+    st.setOutType(ctx.as, instr, scrRegs8[1]);
+}
+
 void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto linkVal = cast(IRLinkIdx)instr.getArg(1);
@@ -1166,6 +1189,8 @@ CodeGenFn[Opcode*] codeGenFns;
 
 static this()
 {
+    codeGenFns[&GET_ARG]        = &gen_get_arg;
+
     codeGenFns[&SET_STR]        = &gen_set_str;
 
     codeGenFns[&MAKE_VALUE]     = &gen_make_value;

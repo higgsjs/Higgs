@@ -1548,7 +1548,7 @@ unittest
     // TODO: enable once faster
     //run("string-base64");
 
-    // TODO: enable once faster
+    // TODO: enable once faster, now ~16s
     //run("string-fasta");
 }
 

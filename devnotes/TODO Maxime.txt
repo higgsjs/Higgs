@@ -66,7 +66,8 @@ TODO: don't load arg values with only one use?
 TODO: propagate known phi arg types to phis
 - test perf impact
 
-TODO: better JIT ret handling for too few or too many args
+TODO: better JIT ret handling for too few or too many args in call & ret
+- Special handling branches should go out of line, return to main line
 
 TODO: Modify/reimplement inlining for SSA
 - Inlining transform itself not too hard?
@@ -79,33 +80,32 @@ TODO: Modify/reimplement inlining for SSA
 
 ** Avoid more JIT ops & opts for now, concentrate on inlining ***
 
+TODO: jit.stats, total size of machine code generated
+
 TODO: think about different inlining strategies
 - New CFG, new IRFunction? Basic OSR?
 
 TODO: some *opcodes* don't produce output, don't need stack slots or regs
 
-TODO: get_arg for V8/raytrace
 
-TODO: FP comparison operations for 3d-raytrace
-- special FP comparison instruction, XMM args, everything else the same?
 
-TODO: get_str for string-fasta
 
-TODO: blog
+
+
+
+
+
+[DONE] TODO: get_arg for V8/raytrace
+- 782K unjitted, 3.3s
+- 620K unjitted, 3.2s
+- still many many ret bailouts
+
+[DONE] TODO: blog
 - JIT complete, now with SSA
 - Difficulties encountered, phi nodes, reg alloc bugs, call/ret bugs
 - For now reg alloc simple
-- Better code quality, speedups
+- Better code quality, speedups (table?)
 - Higgs would ideally need fuzz testing
-- Intel/AMD sponsorship?
-
-
-
-
-
-
-
-
 
 [DONE] TODO: StoreOp
 - 3d-raytrace at 2.4s
