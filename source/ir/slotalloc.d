@@ -56,10 +56,13 @@ void allocSlots(IRFunction fun)
     //writefln("allocSlots");
 
     // Number of assigned variable slots
-    auto numVarSlots = 0;
+    uint numVarSlots = 0;
 
     // Number of assigned temp slots
-    auto numTmpSlots = 0;
+    uint numTmpSlots = 0;
+
+    // Slot assigned to unused values
+    uint unusedSlot = uint.max;
 
     // For each block of the function
     for (auto block = fun.entryBlock; block !is null; block = block.next)
@@ -111,6 +114,7 @@ void allocSlots(IRFunction fun)
                     owner.getName()
                 );
 
+                // If the instruction is used in this block
                 if (owner.block is instr.block)
                 {
                     // Assign the instruction a temp slot
@@ -119,6 +123,15 @@ void allocSlots(IRFunction fun)
                     instr.outSlot = tmpSlotIdx++;
                     continue;
                 }
+            }
+
+            // If this instruction has no uses
+            if (instr.hasNoUses)
+            {
+                if (unusedSlot is uint.max)
+                    unusedSlot = numVarSlots++;
+                instr.outSlot = unusedSlot;
+                continue;
             }
 
             // Assign the instruction a variable slot

@@ -51,6 +51,9 @@ private ulong startTimeMsecs = 0;
 /// Total compilation time in microseconds
 package ulong compTimeUsecs = 0;
 
+/// Total size of the machine code generated in bytes
+package ulong machineCodeBytes = 0;
+
 /// Number of type tests executed (dynamic)
 package ulong numTypeTests = 0;
 
@@ -83,6 +86,7 @@ static ~this()
     writeln();
     writefln("total execution time (ms): %s", execTimeMsecs);
     writefln("total compilation time (ms): %s", compTimeUsecs / 1000);
+    writefln("machine code generated (bytes): %s", machineCodeBytes);
     writefln("type tests executed: %s", numTypeTests);
     writefln("unjitted instructions executed: %s", numUnjitInstrs);
     writefln("call bailouts executed: %s", numCallBailouts);

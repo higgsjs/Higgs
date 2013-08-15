@@ -341,6 +341,11 @@ void compFun(Interp interp, IRFunction fun)
             if (srcWordOpnd != dstWordOpnd)
                 moveList ~= Move(dstWordOpnd, srcWordOpnd);
 
+            // If we are moving the phi word into a register, write 0 on
+            // the word stack to avoid invalid references
+            if (cast(X86Reg)dstWordOpnd)
+                moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
+
             // Get the source and destination operands for the phi type
             X86Opnd srcTypeOpnd = predState.getTypeOpnd(arg);
             X86Opnd dstTypeOpnd = succState.getTypeOpnd(phi);
@@ -647,6 +652,10 @@ void compFun(Interp interp, IRFunction fun)
         writefln("");
     }
 
+    // Update the machine code size stat
+    jit.stats.machineCodeBytes += codeBlock.length;
+
+    // Update the compilation time stat
     auto endTimeUsecs = Clock.currAppTick().usecs();
     jit.stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 }

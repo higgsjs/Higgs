@@ -80,12 +80,16 @@ TODO: Modify/reimplement inlining for SSA
 
 ** Avoid more JIT ops & opts for now, concentrate on inlining ***
 
-TODO: jit.stats, total size of machine code generated
-
 TODO: think about different inlining strategies
 - New CFG, new IRFunction? Basic OSR?
 
-TODO: some *opcodes* don't produce output, don't need stack slots or regs
+FIXME: bug in earley-boyer
+core.exception.AssertError@ir/ast.d(162): cannot add instr:
+jump
+current block already has final branch:
+call_cont(1BC38):
+  ret t_1BC37
+in function "anon(1AECE)"
 
 
 
@@ -94,6 +98,34 @@ TODO: some *opcodes* don't produce output, don't need stack slots or regs
 
 
 
+
+
+
+
+[DONE] TODO: jit.stats, total size of machine code generated
+
+[DONE] FIXME: bug with 3d-raytrace introduced by stack slot opt
+- only happens in context of make test
+- crashes while during GC, while visiting stack roots
+    forwarding object 3 (false)
+- Probably, stack slot gets corrupted somewhere in the JIT
+- A single phi node is producing this value ***
+  - Uses values from a call and from another phi ($30)
+  - $30 was already forwarded
+$119 word: 3
+$119 type: INT32
+$30 word: 47386518933928
+$30 type: REFPTR
+Type comes from $30...
+Value comes from $119
+On path from $119 (call cont), phi is assigned to r11
+REFPTR type is written to the stack
+On path from $30, phi is also assigned to r11
+When doing GC deep down the stack, need to have spilled r11
+May not ever spill this phi node if it isn't live after the call ***
+This is a peculiar situation... Type is on the stack but value is in a reg
+
+[DONE] TODO: all instrs whose value is not used can share one stack slot
 
 [DONE] TODO: get_arg for V8/raytrace
 - 782K unjitted, 3.3s
