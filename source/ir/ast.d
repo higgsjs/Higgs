@@ -1293,7 +1293,11 @@ void switchToIR(IRGenCtx ctx, SwitchStmt stmt)
 
         // Compile the case statements
         foreach (s; caseStmts)
+        {
             stmtToIR(stmtCtx, s);
+            if (stmtCtx.hasBranch)
+                break;
+        }
 
         // Go to the next case block, skipping its test (fallthrough)
         if (!stmtCtx.hasBranch)
@@ -1311,7 +1315,11 @@ void switchToIR(IRGenCtx ctx, SwitchStmt stmt)
 
     // Compile the default block
     foreach (s; stmt.defaultStmts)
+    {
         stmtToIR(defaultCtx, s);
+        if (defaultCtx.hasBranch)
+            break;
+    }
 
     // Jump to the exit block
     if (!defaultCtx.hasBranch)

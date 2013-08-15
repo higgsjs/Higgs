@@ -6,7 +6,17 @@ Conference deadlines:
 - PLDI 2014     Nov 8, Nov 15 2013
 - VEE 2014      ~November 2013
 
+------------------------------------------------------------------------------
+
+Misc improvements
+
 TODO: give this project more lovin'! Improve various aspects! Blog!
+
+TODO: don't load arg values with only one use?
+- test perf impact, need bench script, need desktop
+
+TODO: propagate known phi arg types to phis
+- test perf impact
 
 ------------------------------------------------------------------------------
 
@@ -23,8 +33,6 @@ Sept 31st goal: have paper written & edited
 ------------------------------------------------------------------------------
 
 August 31st goal: have gathered some perf data, demonstrate gains from versioning
-
-FIXME: earley-boyer segfaults
 
 TODO: gather metrics
 - Metrics to gather
@@ -57,16 +65,9 @@ vers cap, the jump target we get back is an adaptor?
 
 August 15th goal: perf gains from inlining
 
-TODO: optimize if of phi?
-- boolean ops flow into phi, phi goes into if
+** Avoid more JIT ops & opts for now, concentrate on inlining ***
 
-TODO: don't load arg values with only one use?
-- test perf impact, need bench script, need desktop
-
-TODO: propagate known phi arg types to phis
-- test perf impact
-
-TODO: better JIT ret handling for too few or too many args in call & ret
+TODO: better JIT ret handling for too few or too many args in call & ret ***
 - Special handling branches should go out of line, return to main line
 
 TODO: Modify/reimplement inlining for SSA
@@ -78,29 +79,29 @@ TODO: Modify/reimplement inlining for SSA
   - Don't care if frame is on stack or not
   - Can recreate CFG & code block without recreating IRFunction object
 
-** Avoid more JIT ops & opts for now, concentrate on inlining ***
-
 TODO: think about different inlining strategies
 - New CFG, new IRFunction? Basic OSR?
 
-FIXME: bug in earley-boyer
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: bug in earley-boyer
 core.exception.AssertError@ir/ast.d(162): cannot add instr:
 jump
 current block already has final branch:
 call_cont(1BC38):
   ret t_1BC37
 in function "anon(1AECE)"
-
-
-
-
-
-
-
-
-
-
-
+./higgs(void ir.ast.stmtToIR(ir.ast.IRGenCtx, parser.ast.ASTStmt)+0x1181) [0x575dfd]
+./higgs(void ir.ast.switchToIR(ir.ast.IRGenCtx, parser.ast.SwitchStmt)+0x3a2) [0x5768be]
 
 [DONE] TODO: jit.stats, total size of machine code generated
 

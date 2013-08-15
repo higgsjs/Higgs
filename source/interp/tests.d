@@ -1571,8 +1571,7 @@ unittest
 
     run("deltablue");
 
-    // FIXME: segfaults
-    //run("earley-boyer");
+    run("earley-boyer");
 
     run("navier-stokes");
 
