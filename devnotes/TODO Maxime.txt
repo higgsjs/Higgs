@@ -77,7 +77,16 @@ TODO: Implement basic inlining for SSA
   - Test with interpreter only, --jit_disable
 
 
-TODO: implement heap_alloc in JIT?
+
+
+
+
+
+
+
+
+
+[DONE] TODO: implement heap_alloc in JIT?
 - interp.allocPtr + size > interp.heapLimit
 - if past heap limit, bailout
 - increment interp.allocPtr
@@ -86,12 +95,8 @@ TODO: implement heap_alloc in JIT?
   - + (ptrSize - 1) & -ptrSize
   - drops the low 3 bits
 - if the size is a multiple of ptr size, no need to align :)
-
-
-
-
-
-
+- fasta unjitted instrs, 541366 vs 853500
+  - but not much faster!
 
 [DONE] TODO: better JIT ret handling for too few or too many args in call & ret
 - Special handling branches should go out of line, return to main line

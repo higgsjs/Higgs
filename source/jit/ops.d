@@ -561,13 +561,82 @@ void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // TODO
+    // Label for the bailout case
+    auto BAILOUT = new Label("ALLOC_BAILOUT");
 
+    // Label for the exit
+    auto DONE = new Label("ALLOC_DONE");
 
+    // Get the allocation size operand
+    auto szOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, null, true);
 
+    ctx.as.getMember!("Interp", "allocPtr")(scrRegs64[0], interpReg);
+    ctx.as.getMember!("Interp", "heapLimit")(scrRegs64[1], interpReg);
 
+    // r2 = allocPtr + size
+    ctx.as.instr(MOV, scrRegs64[2], scrRegs64[0]);
+    ctx.as.instr(ADD, scrRegs64[2], szOpnd);
 
+    // if (allocPtr + size > heapLimit) bailout
+    ctx.as.instr(CMP, scrRegs64[2], scrRegs64[1]);
+    ctx.as.instr(JG, BAILOUT);
+
+    // Clone the state for the bailout case, which will spill for GC
+    auto bailSt = new CodeGenState(st);
+
+    // Get the output operand
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+
+    // Move the allocation pointer to the output
+    ctx.as.instr(MOV, opndOut, scrRegs64[0]);
+
+    // Align the incremented allocation pointer
+    ctx.as.instr(ADD, scrRegs64[2], 7);
+    ctx.as.instr(AND, scrRegs64[2], -8);
+
+    // Store the incremented and aligned allocation pointer
+    ctx.as.setMember!("Interp", "allocPtr")(interpReg, scrRegs64[2]);
+
+    // Allocation done
+    ctx.as.addInstr(DONE);
+
+    // The output is a reference pointer
     st.setOutType(ctx.as, instr, Type.REFPTR);
+
+    // Bailout to the interpreter (out of line)
+    ctx.ol.addInstr(BAILOUT);
+
+    // Save our allocated registers
+    if (allocRegs.length % 2 != 0)
+        ctx.ol.instr(PUSH, allocRegs[0]);
+    foreach (reg; allocRegs)
+        ctx.ol.instr(PUSH, reg);
+
+    //ctx.ol.printStr("alloc bailout ***");
+
+    // Fallback to interpreter execution
+    // Spill all values, including arguments
+    // Call the interpreter alloc instruction
+    defaultFn(ctx.ol, ctx, bailSt, instr);
+
+    //ctx.ol.printStr("alloc bailout done ***");
+
+    // Restore the allocated registers
+    foreach_reverse(reg; allocRegs)
+        ctx.ol.instr(POP, reg);
+    if (allocRegs.length % 2 != 0)
+        ctx.ol.instr(POP, allocRegs[0]);
+
+    // If the output operand is a register
+    if (cast(X86Reg)opndOut)
+    {
+        // Load the stack value into the register
+        auto stackOpnd = bailSt.getWordOpnd(instr, 64);
+        ctx.ol.instr(MOV, opndOut, stackOpnd);
+    }
+
+    // Allocation done
+    ctx.ol.instr(JMP, DONE);
 }
 
 /**
@@ -1171,7 +1240,7 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     );
 
     // Increment the unjitted instruction counter
-    ctx.as.incStatCnt!("jit.stats.numUnjitInstrs")(scrRegs64[0]);
+    as.incStatCnt!("jit.stats.numUnjitInstrs")(scrRegs64[0]);
 
     // Get the function corresponding to this instruction
     // alias void function(Interp interp, IRInstr instr) OpFn;
@@ -1278,7 +1347,7 @@ static this()
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 
-    //codeGenFns[&GET_HEAP_ALLOC] = &gen_heap_alloc;
+    codeGenFns[&HEAP_ALLOC]     = &gen_heap_alloc;
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
