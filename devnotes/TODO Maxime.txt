@@ -77,8 +77,15 @@ TODO: Implement basic inlining for SSA
   - Test with interpreter only, --jit_disable
 
 
-
-
+TODO: implement heap_alloc in JIT?
+- interp.allocPtr + size > interp.heapLimit
+- if past heap limit, bailout
+- increment interp.allocPtr
+- align interp.allocPtr
+  - align: +7 & -8
+  - + (ptrSize - 1) & -ptrSize
+  - drops the low 3 bits
+- if the size is a multiple of ptr size, no need to align :)
 
 
 

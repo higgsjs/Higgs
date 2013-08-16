@@ -559,6 +559,17 @@ void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
 
+void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    // TODO
+
+
+
+
+
+    st.setOutType(ctx.as, instr, Type.REFPTR);
+}
+
 /**
 Generates the conditional branch for an if_true instruction with the given
 conditional jump operations. Assumes a comparison between input operands has
@@ -1266,6 +1277,8 @@ static this()
     codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
+
+    //codeGenFns[&GET_HEAP_ALLOC] = &gen_heap_alloc;
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
