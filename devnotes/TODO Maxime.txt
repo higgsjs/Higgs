@@ -67,31 +67,37 @@ August 15th goal: perf gains from inlining
 
 ** Avoid more JIT ops & opts for now, concentrate on inlining ***
 
-TODO: better JIT ret handling for too few or too many args in call & ret ***
+TODO: Implement basic inlining for SSA
+- For now, only do inlining if function not on stack
+- After inlining:
+  - Reallocate stack slots
+  - Reoptimize fused IR
+- To begin, try inlining code without running it
+  - call compFun after K calls, do inlining, but don't go into JIT
+  - Test with interpreter only, --jit_disable
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: better JIT ret handling for too few or too many args in call & ret
 - Special handling branches should go out of line, return to main line
+- ret bailouts
+    3d-raytrace     3.3K    2.4K
+    string-fasta    4.8K    0
+    earley-boyer    271K    266K
 
-TODO: Modify/reimplement inlining for SSA
-- Inlining transform itself not too hard?
-- Reallocate stack slots and regs afterwards, as normal
-- Reoptimize fused IRs?
-- Try creating new IRFunction for function with inlining?
-  - Easier wrt reg alloc, etc
-  - Don't care if frame is on stack or not
-  - Can recreate CFG & code block without recreating IRFunction object
-
-TODO: think about different inlining strategies
-- New CFG, new IRFunction? Basic OSR?
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: think about different inlining strategies
+- Can create new IRFunction & replace in closures, but...
+  - Still need to mutate an IRFunction during inlining
+- Current scheme might still be best
+- Can simplify for now by avoiding top of stack replacement, gets most gains
 
 [DONE] FIXME: bug in earley-boyer
 core.exception.AssertError@ir/ast.d(162): cannot add instr:

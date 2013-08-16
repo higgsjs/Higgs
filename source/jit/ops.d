@@ -1012,30 +1012,47 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
+    // Find an extra scratch register
+    auto curWordOpnd = st.getWordOpnd(instr.getArg(0), 64);
+    X86Reg scrReg3;
+    if (curWordOpnd == allocRegs[0])
+        scrReg3 = allocRegs[1].ofSize(32);
+    else
+        scrReg3 = allocRegs[0].ofSize(32);
+
     // Label for the bailout to interpreter cases
     auto BAILOUT = new Label("RET_BAILOUT");
 
     //ctx.as.printStr("ret from " ~ instr.block.fun.getName);
 
-    // TODO: improve this, make JIT test for too many args case
-
-    // Get the argument count
-    // If it doesn't match the expected count, bailout
-    ctx.as.getWord(scrRegs64[0], argcSlot);
-    ctx.as.instr(CMP, scrRegs64[0], numParams);
-    ctx.as.instr(JNE, BAILOUT);
-
-    // Get the call instruction
+    // Get the call instruction into r0
     ctx.as.getWord(scrRegs64[0], raSlot);
 
-    // If this is not a regular call, bailout
-    ctx.as.getMember!("IRInstr", "opcode")(scrRegs64[1], scrRegs64[0]);
-    ctx.as.ptr(scrRegs64[2], &ir.ops.CALL);
+    // If this is a new/constructor call, bailout
+    ctx.as.getMember!("IRInstr", "opcode")(scrRegs64[1], scrRegs64[0]);   
+    ctx.as.ptr(scrRegs64[2], &ir.ops.CALL_NEW);
     ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
-    ctx.as.instr(JNE, BAILOUT);
+    ctx.as.instr(JE, BAILOUT);
 
-    // Get the output slot for the call instruction
+    // Get the output slot for the call instruction into scratch r1
     ctx.as.getMember!("IRInstr", "outSlot")(scrRegs32[1], scrRegs64[0]);
+
+    // Get the actual argument count into r2
+    ctx.as.getWord(scrRegs32[2], argcSlot);
+
+    // Compare the arg count against the expected count
+    ctx.as.instr(CMP, scrRegs32[2], numParams);
+
+    // Compute the number of extra arguments into r2
+    ctx.as.instr(SUB, scrRegs32[2], numParams);
+    ctx.as.instr(MOV, scrReg3, 0);
+    ctx.as.instr(CMOVL, scrRegs32[2], scrReg3);
+
+    // Adjust the output slot for extra arguments
+    ctx.as.instr(ADD, scrRegs32[1], scrRegs32[2]);
+
+    // Compute the number of stack slots to pop into r2
+    ctx.as.instr(ADD, scrRegs32[2], numLocals);
 
     // Copy the return value word
     auto retOpnd = st.getWordOpnd(
@@ -1044,7 +1061,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         instr, 
         0,
         64,
-        scrRegs64[2],
+        scrReg3.ofSize(64),
         true,
         false
     );
@@ -1055,12 +1072,23 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     );
 
     // Copy the return value type
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0, scrRegs8[2], true);
-    ctx.as.instr(MOV, new X86Mem(8, tspReg, numLocals, scrRegs64[1]), typeOpnd);
+    auto typeOpnd = st.getTypeOpnd(
+        ctx.as, 
+        instr, 
+        0, 
+        scrReg3.ofSize(8),
+        true
+    );
+    ctx.as.instr(
+        MOV, 
+        new X86Mem(8, tspReg, numLocals, scrRegs64[1]),
+        typeOpnd
+    );
 
     // Pop all local stack slots and arguments
-    ctx.as.instr(ADD, wspReg, numLocals * 8);
-    ctx.as.instr(ADD, tspReg, numLocals);
+    ctx.as.instr(ADD, tspReg, scrRegs64[2]);
+    ctx.as.instr(SHL, scrRegs64[2], 3);
+    ctx.as.instr(ADD, wspReg, scrRegs64[2]);
 
     // Label for the interpreter jump
     auto INTERP_JUMP = new Label("INTERP_JUMP");

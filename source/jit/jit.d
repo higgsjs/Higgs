@@ -122,7 +122,6 @@ void inlinePass(Interp interp, IRFunction fun)
     // FIXME
     return;
 
-    /*
     //writeln(fun.toString());
 
     // For each block of the function
@@ -136,7 +135,7 @@ void inlinePass(Interp interp, IRFunction fun)
         auto lastInstr = block.lastInstr;
 
         // If this is is not a call instruction, skip it
-        if (lastInstr.opcode != &ir.ir.CALL)
+        if (lastInstr.opcode != &ir.ops.CALL)
             continue;
 
         // If there is not exactly one callee, skip it
@@ -166,6 +165,8 @@ void inlinePass(Interp interp, IRFunction fun)
         //writeln(fun.toString());
     }
 
+    // FIXME
+    /*
     // If the function is on top of the stack
     if (stackPos is StackPos.TOP)
     {
@@ -175,15 +176,14 @@ void inlinePass(Interp interp, IRFunction fun)
         auto numAdded = fun.numLocals - numLocals;
         interp.push(numAdded);
     }
+    */
 
-    //
     // TODO: stack frame compaction
     // will depend on liveness info, current IP (who's live now)
     // live values get mapped to new slots
     // will need to use a virtual dst frame to avoid collisions
-    //
+
     //writefln("inlinePass done");
-    */
 }
 
 /**
