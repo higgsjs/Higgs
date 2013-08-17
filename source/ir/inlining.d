@@ -98,49 +98,19 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto caller = callSite.block.fun;
     assert (caller !is null);
 
-    // Get the number of arguments passed
+    // Get the number of arguments passed at the call site
     auto numArgs = callSite.numArgs - 2;
 
-    /*
-    //
-    // Stack-frame remapping
-    //
-
-    // Remap the hidden arguments
-    caller.raSlot += callee.numLocals;
-    caller.closSlot += callee.numLocals;
-    caller.thisSlot += callee.numLocals;
-    caller.argcSlot += callee.numLocals;
-
-    // Remap the caller identifiers
-    foreach (id, localIdx; caller.cellMap)
-        caller.cellMap[id] = localIdx + callee.numLocals;
-    foreach (id, localIdx; caller.localMap)
-        caller.localMap[id] = localIdx + callee.numLocals;
-
-    // For each caller block
-    for (auto block = caller.firstBlock; block !is null; block = block.next)
-    {
-        // For each instruction
-        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
-        {
-            // Translate local indices
-            foreach (argIdx, arg; instr.args)
-                if (instr.opcode.getArgType(argIdx) == OpArg.LOCAL)
-                    instr.args[argIdx].localIdx += callee.numLocals;
-
-            // Translate the output slot
-            if (instr.outSlot !is NULL_LOCAL)
-                instr.outSlot += callee.numLocals;
-        }
-    }
-
-    // Extend the caller stack frame for the callee
-    caller.numLocals += callee.numLocals;
+    // Get the call continuation branch and successor block
+    auto contDesc = callSite.getTarget(0);
+    auto contBlock = contDesc.succ;
 
     //
-    // Callee basic block copying
+    // Callee basic block copying and translation
     //
+
+    // Create a phi node for the return value, add it to the call continuation
+    auto retPhi = contBlock.addPhi(new PhiNode());
 
     // Get the execution count of the call site
     auto callCount = cast(uint64_t)callSite.block.execCount;
@@ -148,51 +118,49 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     // Get the execution count of the callee's entry block
     auto entryCount = cast(uint64_t)callee.entryBlock.execCount;
 
-    // Map of callee blocks to copied blocks
+    // Map of callee blocks to copies
     IRBlock[IRBlock] blockMap;
 
-    // Flags indicating if the callee uses the hidden arguments
-    bool usesArgc = false;
-    bool usesClos = false;
-    bool usesThis = false;
+    // Map of callee instructions and phi nodes to copies
+    IRValue[IRValue] valMap;
 
-    // Slot index for the first callee argument
-    auto arg0Slot = callee.numLocals - callee.numParams;
-
-    // Bit set to keep track of arguments slots written to
-    auto writtenArgs = new BitSet(numArgs);
+    // Map the hidden argument values to call site parameters
+    valMap[callee.raVal] = IRConst.nullCst;
+    valMap[callee.closVal] = callSite.getArg(0);
+    valMap[callee.thisVal] = callSite.getArg(1);
+    valMap[callee.argcVal] = IRConst.int32Cst(cast(int32_t)(callSite.numArgs - 2));
 
     // For each callee block
     auto lastBlock = callee.lastBlock;
     for (auto block = callee.firstBlock;; block = block.next)
     {
-        // For each instruction
-        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
-        {
-            // Check if the hidden arguments are used
-            foreach (argIdx, arg; instr.args)
-            {
-                if (instr.opcode.getArgType(argIdx) == OpArg.LOCAL)
-                {
-                    auto argSlot = instr.args[argIdx].localIdx;
-                    usesArgc = usesArgc || (argSlot == callee.argcSlot);
-                    usesClos = usesClos || (argSlot == callee.closSlot);
-                    usesThis = usesThis || (argSlot == callee.thisSlot);
-                }
-            }
+        // Copy the block and add it to the caller
+        auto newBlock = caller.newBlock(block.name);
+        blockMap[block] = newBlock;
 
-            // Keep track of arguments written to
-            if (instr.outSlot - arg0Slot < writtenArgs.length)
+        // For each phi node
+        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
+        {
+            // If this is a function parameter
+            if (auto param = cast(FunParam)phi)
             {
-                //writefln("written arg: %s in %s", instr.outSlot-arg0Slot, callee.getName());
-                writtenArgs.add(instr.outSlot - arg0Slot);
+                // Map the parameter to the call site argument value
+                if (param.idx < numArgs)
+                    valMap[phi] = callSite.getArg(2 + param.idx);
+                else
+                    valMap[phi] = IRConst.undefCst;
+            }
+            else
+            {
+                valMap[phi] = new PhiNode();
             }
         }
 
-        // Copy the block and add it to the caller
-        auto newBlock = block.dup;
-        blockMap[block] = newBlock;
-        caller.addBlock(newBlock);
+        // For each instruction
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+            valMap[instr] = new IRInstr(instr.opcode, instr.numArgs);
+        }
 
         // If this is the last block to inline, stop
         if (block is lastBlock)
@@ -205,22 +173,37 @@ void inlineCall(IRInstr callSite, IRFunction callee)
         // For each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            // Remap uses of argument slots that were never written to
-            foreach (argIdx, arg; instr.args)
+            auto oldInstr = cast(IRInstr)valMap.get(instr, null);
+            assert (oldInstr !is null);
+
+            // Translate the instruction arguments
+            for (size_t aIdx = 0; aIdx < instr.numArgs; ++aIdx)
             {
-                if (instr.opcode.getArgType(argIdx) == OpArg.LOCAL)
-                {
-                    auto argNo = instr.args[argIdx].localIdx - arg0Slot;
-                    if (argNo < numArgs && !writtenArgs.has(argNo))
-                        instr.args[argIdx].localIdx = callSite.args[2 + argNo].localIdx;
-                }
+                auto arg = oldInstr.getArg(aIdx);
+                assert (arg in valMap || cast(IRDstValue)arg is null);
+                auto newArg = valMap.get(arg, arg);
+                instr.setArg(aIdx, newArg);
             }
 
-            // Tanslate targets
-            if (instr.target)
-                instr.target = blockMap[instr.target];
-            if (instr.excTarget)
-                instr.excTarget = blockMap[instr.excTarget];
+            // Translate the branch targets
+            for (size_t tIdx = 0; tIdx < instr.MAX_TARGETS; ++tIdx)
+            {
+                auto desc = oldInstr.getTarget(tIdx);
+                if (desc is null)
+                    continue;
+
+                auto newDesc = new BranchDesc(block, blockMap[desc.succ]);
+
+                foreach (arg; desc.args)
+                {
+                    newDesc.setPhiArg(
+                        cast(PhiNode)arg.owner,
+                        valMap.get(arg.value, arg.value)
+                    );
+                }
+
+                instr.setTarget(tIdx, newDesc);
+            }
 
             // If this is a call instruction
             if (instr.opcode.isCall)
@@ -238,55 +221,74 @@ void inlineCall(IRInstr callSite, IRFunction callee)
             // If this is a return instruction
             if (instr.opcode == &RET)
             {
+                // Get the return value
+                auto retVal = instr.getArg(0);
+
                 // Remove the return instruction
-                block.remInstr(instr);
+                block.delInstr(instr);
 
-                // Move the return value to the return value slot
-                if (callSite.outSlot !is NULL_LOCAL)
-                {
-                    block.addInstr(new IRInstr(
-                        &MOVE,
-                        callSite.outSlot,
-                        instr.args[0].localIdx
-                    ));
-                }
+                // Jump directly to the call continuation block
+                auto jump = block.addInstr(new IRInstr(&JUMP));
+                auto desc = jump.setTarget(0, contBlock);
 
-                // Jump to the call continuation block
-                block.addInstr(IRInstr.jump(callSite.target));
+                // Add a phi argument for the return value
+                desc.setPhiArg(retPhi, valMap.get(retVal, retVal));
+
+                // Add phi arguments for the call continuation phis
+                foreach (arg; contDesc.args)
+                    desc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
             }
         }
 
         // Adjust the block execution count
         block.execCount = (block.execCount * callCount) / entryCount;
     }
-
+ 
     //
     // Callee test and call patching
     //
 
-    // Move the call instruction to a new basic block,
+    // Replace uses of the call instruction by uses of the return phi
+    callSite.replUses(retPhi);
+
+    // Copy the call instruction to a new basic block,
     // This will be our fallback (uninlined call)
     auto callBlock = callSite.block;
-    auto regCall = caller.newBlock("call_reg");
-    callBlock.remInstr(callSite);
-    regCall.addInstr(callSite);
+    auto regCallBlock = caller.newBlock("call_reg");
+    auto newCallInstr = new IRInstr(callSite.opcode, callSite.numArgs);
+    regCallBlock.addInstr(newCallInstr);
+
+    // Copy the call arguments
+    for (size_t aIdx = 0; aIdx < callSite.numArgs; ++aIdx)
+        newCallInstr.setArg(aIdx, callSite.getArg(aIdx));
+
+    // Copy the branch descriptors
+    for (size_t tIdx = 0; tIdx < callSite.MAX_TARGETS; ++tIdx)
+    {
+        auto desc = callSite.getTarget(tIdx);
+        if (desc is null)
+            continue;
+
+        auto newDesc = new BranchDesc(regCallBlock, desc.succ);
+        foreach (arg; desc.args)
+            newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+        newCallInstr.setTarget(tIdx, newDesc);
+    }
+
+    // Remove the old call instruction
+    callBlock.delInstr(callSite);
 
     // Load the function pointer from the closure object
-    auto ofsInstr = callBlock.addInstr(IRInstr.intCst(callee.closSlot, CLOS_OFS_FPTR));
     auto loadInstr = callBlock.addInstr(
         new IRInstr(
             &LOAD_RAWPTR, 
-            callee.closSlot, 
-            callSite.args[0].localIdx,
-            ofsInstr.outSlot
+            newCallInstr.getArg(0),
+            IRConst.int32Cst(CLOS_OFS_FPTR)
         )
     );
 
-    // Set a constant for the function pointer
-    auto ptrInstr = callBlock.addInstr(new IRInstr(&SET_RAWPTR));
-    ptrInstr.outSlot = callee.thisSlot;
-    ptrInstr.args.length = 1;
-    ptrInstr.args[0].ptrVal = cast(ubyte*)callee;
+    // Create a pointer constant for the callee function
+    auto ptrConst = new IRRawPtr(cast(ubyte*)callee);
 
     // Get the inlined entry block for the callee function
     auto entryBlock = blockMap[callee.entryBlock];
@@ -295,52 +297,12 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto testInstr = callBlock.addInstr(
         new IRInstr(
             &EQ_RAWPTR,
-            callee.closSlot,
-            loadInstr.outSlot,
-            ptrInstr.outSlot
+            loadInstr,
+            ptrConst
         )
     );
-    callBlock.addInstr(IRInstr.ifTrue(testInstr.outSlot, entryBlock, regCall));
-
-    // Copy the visible arguments that were written to, in reverse order
-    foreach (argIdx, arg; callSite.args[2..$])
-    {
-        if (writtenArgs.has(argIdx))
-        {
-            auto dstIdx = cast(LocalIdx)(callee.numLocals - (numArgs - argIdx));
-            entryBlock.addInstrBefore(
-                new IRInstr(&MOVE, dstIdx, arg.localIdx),
-                entryBlock.firstInstr
-            );
-        }
-    }
-
-    // Copy the closure argument
-    if (usesClos)
-    {
-        entryBlock.addInstrBefore(
-            new IRInstr(&MOVE, callee.closSlot, callSite.args[0].localIdx),
-            entryBlock.firstInstr
-        );
-    }
-
-    // Copy the "this" argument
-    if (usesThis)
-    {
-        entryBlock.addInstrBefore(
-            new IRInstr(&MOVE, callee.thisSlot, callSite.args[1].localIdx),
-            entryBlock.firstInstr
-        );
-    }
-
-    // Set the argument count
-    if (usesArgc)
-    {
-        entryBlock.addInstrBefore(
-            IRInstr.intCst(callee.argcSlot, cast(uint)numArgs),
-            entryBlock.firstInstr
-        );
-    }
-    */
+    auto ifInstr = callBlock.addInstr(new IRInstr(&IF_TRUE));
+    ifInstr.setTarget(0, blockMap[callee.entryBlock]);
+    ifInstr.setTarget(1, regCallBlock);
 }
 

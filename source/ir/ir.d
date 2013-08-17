@@ -73,7 +73,7 @@ IR function
 class IRFunction : IdObject
 {
     /// Function name
-    private string name = "";
+    package string name = "";
 
     /// Corresponding AST node
     FunExpr ast;
@@ -249,7 +249,7 @@ SSA IR basic block
 class IRBlock : IdObject
 {
     /// Block name (non-unique)
-    private string name;
+    package string name;
 
     /// List of incoming branches
     private BranchDesc[] incoming;
@@ -283,6 +283,7 @@ class IRBlock : IdObject
         this.name = name;
     }
 
+    /*
     IRBlock dup()
     {
         auto that = new IRBlock(this.name);
@@ -298,6 +299,7 @@ class IRBlock : IdObject
 
         return that;
     }
+    */
 
     string getName()
     {
@@ -1042,12 +1044,14 @@ class PhiNode : IRDstValue
     PhiNode prev = null;
     PhiNode next = null;
 
+    /*
     /// Copy a phi node
     PhiNode dup()
     {
         auto that = new PhiNode();
         return that;
     }
+    */
 
     override string toString()
     {
@@ -1295,6 +1299,7 @@ class IRInstr : IRDstValue
         return targets[idx];
     }
 
+    /*
     /// Copy an instruction
     IRInstr dup()
     {
@@ -1306,6 +1311,7 @@ class IRInstr : IRDstValue
 
         return that;
     }
+    */
 
     final override string toString()
     {
