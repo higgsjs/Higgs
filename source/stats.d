@@ -35,7 +35,7 @@
 *
 *****************************************************************************/
 
-module jit.stats;
+module stats;
 
 import std.stdio;
 import std.datetime;
@@ -49,22 +49,25 @@ import options;
 private ulong startTimeMsecs = 0;
 
 /// Total compilation time in microseconds
-package ulong compTimeUsecs = 0;
+ulong compTimeUsecs = 0;
 
 /// Total size of the machine code generated in bytes
-package ulong machineCodeBytes = 0;
+ulong machineCodeBytes = 0;
 
 /// Number of type tests executed (dynamic)
-package ulong numTypeTests = 0;
+ulong numTypeTests = 0;
 
 /// Number of unjitted instructions executed (dynamic)
-package ulong numUnjitInstrs = 0;
+ulong numUnjitInstrs = 0;
 
 /// Number of call instruction bailouts (dynamic)
-package ulong numCallBailouts = 0;
+ulong numCallBailouts = 0;
 
 /// Number of return instruction bailouts (dynamic)
-package ulong numRetBailouts = 0;
+ulong numRetBailouts = 0;
+
+/// Number of instructions executed by the interpreter (dynamic)
+ulong numInterpCycles = 0;
 
 /// Static module constructor
 static this()
@@ -76,8 +79,8 @@ static this()
 /// Static module destructor, log the accumulated stats
 static ~this()
 {
-    // If JIT stats are disabled, stop
-    if (opts.jit_stats is false)
+    // If stats not enabled, stop
+    if (opts.stats is false)
         return;
 
     auto endTimeMsecs = Clock.currAppTick().msecs();
@@ -91,5 +94,7 @@ static ~this()
     writefln("unjitted instructions executed: %s", numUnjitInstrs);
     writefln("call bailouts executed: %s", numCallBailouts);
     writefln("return bailouts executed: %s", numRetBailouts);
+    writefln("interpreter cycles executed: %s", numInterpCycles);
+
 }
 

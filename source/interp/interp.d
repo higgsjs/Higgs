@@ -47,6 +47,7 @@ import std.typecons;
 import std.path;
 import std.file;
 import options;
+import stats;
 import util.misc;
 import analysis.typeset;
 import parser.parser;
@@ -973,6 +974,9 @@ class Interp
 
                 // Update the IP
                 ip = instr.next;
+
+                // Increment the count of instructions executed
+                stats.numInterpCycles++;
             }
 
         }

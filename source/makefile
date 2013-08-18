@@ -36,7 +36,6 @@ interp/string.d     \
 interp/object.d     \
 interp/gc.d         \
 interp/ffi.d        \
-jit/stats.d         \
 jit/x86.d           \
 jit/encodings.d     \
 jit/codeblock.d     \
@@ -48,6 +47,7 @@ jit/ops.d           \
 jit/peephole.d      \
 repl.d              \
 options.d           \
+stats.d             \
 main.d              \
 jit/tests.d         \
 parser/tests.d      \

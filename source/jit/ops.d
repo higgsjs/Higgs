@@ -44,6 +44,7 @@ import std.stdint;
 import std.conv;
 import std.algorithm;
 import options;
+import stats;
 import ir.ir;
 import ir.ops;
 import interp.interp;
@@ -724,7 +725,7 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     }
 
     // Increment the type test stat counter
-    ctx.as.incStatCnt!("jit.stats.numTypeTests")(scrRegs64[0]);
+    ctx.as.incStatCnt!("stats.numTypeTests")(scrRegs64[0]);
 
     // Get an operand for the value's type
     auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0);
@@ -933,7 +934,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     if (numArgs != fun.numParams)
     {
-        ctx.as.incStatCnt!("jit.stats.numCallBailouts")(scrRegs64[0]);
+        ctx.as.incStatCnt!("stats.numCallBailouts")(scrRegs64[0]);
 
         // Call the interpreter call instruction
         defaultFn(ctx.as, ctx, st, instr);
@@ -1077,7 +1078,7 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.addInstr(BAILOUT);
     //ctx.ol.printStr("call bailout in " ~ instr.block.fun.getName);
 
-    ctx.ol.incStatCnt!("jit.stats.numCallBailouts")(scrRegs64[0]);
+    ctx.ol.incStatCnt!("stats.numCallBailouts")(scrRegs64[0]);
 
     // Fallback to interpreter execution
     // Spill all values, including arguments
@@ -1212,7 +1213,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.addInstr(BAILOUT);
     //ctx.ol.printStr("ret bailout in " ~ instr.block.fun.getName ~ " (" ~ instr.block.getName ~ ")");
 
-    ctx.ol.incStatCnt!("jit.stats.numRetBailouts")(scrRegs64[0]);
+    ctx.ol.incStatCnt!("stats.numRetBailouts")(scrRegs64[0]);
 
     // Fallback to interpreter execution
     // Spill all values, including arguments
@@ -1240,7 +1241,7 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     );
 
     // Increment the unjitted instruction counter
-    as.incStatCnt!("jit.stats.numUnjitInstrs")(scrRegs64[0]);
+    as.incStatCnt!("stats.numUnjitInstrs")(scrRegs64[0]);
 
     // Get the function corresponding to this instruction
     // alias void function(Interp interp, IRInstr instr) OpFn;

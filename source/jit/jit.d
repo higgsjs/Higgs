@@ -653,11 +653,11 @@ void compFun(Interp interp, IRFunction fun)
     }
 
     // Update the machine code size stat
-    jit.stats.machineCodeBytes += codeBlock.length;
+    stats.machineCodeBytes += codeBlock.length;
 
     // Update the compilation time stat
     auto endTimeUsecs = Clock.currAppTick().usecs();
-    jit.stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 }
 
 /**
@@ -1392,7 +1392,7 @@ void ptr(TPtr)(Assembler as, X86Reg destReg, TPtr ptr)
 /// Increment a global JIT stat counter variable
 void incStatCnt(string varName)(Assembler as, X86Reg scrReg)
 {
-    if (!opts.jit_stats)
+    if (!opts.stats)
         return;
 
     mixin("auto vSize = " ~ varName ~ ".sizeof;");

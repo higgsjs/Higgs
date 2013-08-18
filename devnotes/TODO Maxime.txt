@@ -67,6 +67,10 @@ August 15th goal: perf gains from inlining
 
 ** Avoid more JIT ops & opts for now, concentrate on inlining ***
 
+TODO: return support for new? 
+- may speed up 3d-cube, 3d-raytrace, earley-boyer significantly
+- can have out of line case, need to compare ret val, get this val
+
 TODO: re-enable inlining in JIT
 - For now, only do inlining if function not on stack
 - After inlining:
@@ -77,14 +81,15 @@ TODO: test inlining with interpreter
 - call compFun after K calls, do inlining, but don't go into JIT
 - Test with interpreter only, --jit_disable
 
-TODO: add interpreter cycle count, add to stats?
+
+
+
+
+
+
+[DONE] TODO: add interpreter cycle count, add to stats?
 - move stats out of jit namespace?
 - --stats option
-
-
-
-
-
 
 [DONE]  TODO: refactor inlining function
 
