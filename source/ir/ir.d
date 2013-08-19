@@ -220,12 +220,12 @@ class IRFunction : IdObject
         if (block.prev)
             block.prev.next = block.next;
         else
-            firstBlock = null;
+            firstBlock = block.next;
 
         if (block.next)
             block.next.prev = block.prev;
         else
-            lastBlock = null;
+            lastBlock = block.prev;
 
         // Destroy the phi nodes
         for (auto phi = block.firstPhi; phi !is null; phi = phi.next)

@@ -105,11 +105,6 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto contDesc = callSite.getTarget(0);
     auto contBlock = contDesc.succ;
 
-
-    writeln("call cont block: ", contBlock.getName);
-
-
-
     //
     // Callee basic block copying and translation
     //
@@ -135,10 +130,22 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     valMap[callee.thisVal] = callSite.getArg(1);
     valMap[callee.argcVal] = IRConst.int32Cst(cast(int32_t)(callSite.numArgs - 2));
 
+    // Map the visible parameters to call site parameters
+    foreach (param; callee.paramMap)
+    {
+        auto argIdx = param.idx - NUM_HIDDEN_ARGS;
+        if (argIdx < numArgs)
+            valMap[param] = callSite.getArg(2 + argIdx);
+        else
+            valMap[param] = IRConst.undefCst;
+    }
+
     // For each callee block
     auto lastBlock = callee.lastBlock;
     for (auto block = callee.firstBlock;; block = block.next)
     {
+        assert (block !is null);
+
         // Copy the block and add it to the caller
         auto newBlock = caller.newBlock(block.name);
         blockMap[block] = newBlock;
@@ -146,16 +153,8 @@ void inlineCall(IRInstr callSite, IRFunction callee)
         // For each phi node
         for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
         {
-            // If this is a function parameter
-            if (auto param = cast(FunParam)phi)
-            {
-                // Map the parameter to the call site argument value
-                if (param.idx < numArgs)
-                    valMap[phi] = callSite.getArg(2 + param.idx);
-                else
-                    valMap[phi] = IRConst.undefCst;
-            }
-            else
+            // If this not a function parameter
+            if (cast(FunParam)phi is null)
             {
                 // Create a new phi node (copy)
                 valMap[phi] = newBlock.addPhi(new PhiNode());
@@ -318,7 +317,5 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto ifInstr = callBlock.addInstr(new IRInstr(&IF_TRUE, testInstr));
     ifInstr.setTarget(0, blockMap[callee.entryBlock]);
     ifInstr.setTarget(1, regCallBlock);
-
-    writeln(newCallInstr.block.fun);
 }
 

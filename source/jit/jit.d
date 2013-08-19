@@ -111,9 +111,10 @@ Selectively inline callees into a function
 */
 void inlinePass(Interp interp, IRFunction fun)
 {
+
+
+
     return;
-
-
 
 
 
@@ -172,7 +173,7 @@ void inlinePass(Interp interp, IRFunction fun)
         // Inline the callee
         inlineCall(lastInstr, callee);
 
-        writefln("inlined");
+        //writefln("inlined");
         //writeln(fun.toString());
     }
 
@@ -180,7 +181,7 @@ void inlinePass(Interp interp, IRFunction fun)
     // Reoptimize the fused IRs
     //optIR(fun);
 
-    writeln("re-allocating slots");
+    //writeln("re-allocating slots");
 
     // Reallocate stack slots for the IR instructions
     allocSlots(fun);
@@ -188,14 +189,14 @@ void inlinePass(Interp interp, IRFunction fun)
     // If the function is on top of the stack
     if (stackPos is StackPos.TOP)
     {
-        writefln("rearranging stack frame");
+        //writefln("rearranging stack frame");
 
         // Add space for the new locals to the stack frame
         auto numAdded = fun.numLocals - numLocals;
         interp.push(numAdded);
     }
 
-    writefln("inlinePass done");
+    //writefln("inlinePass done");
 }
 
 /**

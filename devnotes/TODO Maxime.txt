@@ -78,13 +78,24 @@ $2 = mul_i32 1, $10
 
 TODO: re-enable inlining in JIT, test inlining
 
-TODO: if no inlining happened, don't re-allocate slots
+TODO: if no inlining happened, don't re-allocate stack slots
+
+FIXME: missing phi argument for:
+$87 = phi [, call_reg(EBA3):0 => $295, call_cont(EB9F):0 => undefined]
+in block:
+if_join(E83B):
 
 
 
 
 
 
+
+
+
+[DONE] FIXME: nsieve-bits segfaults
+- Try logging executed instructions again
+- Inlining itself fails for $rt_valIsString(2B7A) into $rt_setProp(2D02)
 
 [DONE] FIXME: copying eliminates phi args
 
