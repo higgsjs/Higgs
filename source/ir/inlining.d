@@ -45,17 +45,19 @@ import ir.ops;
 import interp.object;
 import util.bitset;
 
-/// Maximum number of locals a caller may have before inlining
-const size_t MAX_CALLER_LOCALS = 100;
+/// Maximum number of blocks a caller may have before inlining
+const size_t MAX_CALLER_BLOCKS = 100;
 
-/// Maximum number of locals a callee may have before inlining
-const size_t MAX_CALLEE_LOCALS = 30;
+/// Maximum number of blocks a callee may have before inlining
+const size_t MAX_CALLEE_BLOCKS = 35;
 
 /**
 Test if a function is inlinable at a call site
 */
 bool inlinable(IRInstr callSite, IRFunction callee)
 {
+    auto caller = callSite.block.fun;
+
     // Not support for new for now, avoids complicated return logic
     if (callSite.opcode !is &CALL)
         return false;
@@ -74,12 +76,17 @@ bool inlinable(IRInstr callSite, IRFunction callee)
         return false;
 
     // If the caller is too big to inline into
-    auto caller = callSite.block.fun;
-    if (caller.numLocals > MAX_CALLER_LOCALS)
+    size_t callerBlocks = 0;
+    for (auto block = caller.firstBlock; block !is null; block = block.next)
+        callerBlocks++;
+    if (callerBlocks > MAX_CALLER_BLOCKS)
         return false;
 
     // If the callee is too big to be inlined
-    if (callee.numLocals > MAX_CALLEE_LOCALS)
+    size_t calleeBlocks = 0;
+    for (auto block = callee.firstBlock; block !is null; block = block.next)
+        calleeBlocks++;
+    if (calleeBlocks > MAX_CALLEE_BLOCKS)
         return false;
 
     // Inlining is possible
@@ -111,6 +118,15 @@ void inlineCall(IRInstr callSite, IRFunction callee)
 
     // Create a phi node for the return value, add it to the call continuation
     auto retPhi = contBlock.addPhi(new PhiNode());
+
+    // If there are non-call predecessors to the call continuation,
+    // make their return phi argument the undefined value
+    for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
+    {
+        auto desc = contBlock.getIncoming(pIdx);
+        if (desc.pred !is callSite.block)
+            desc.setPhiArg(retPhi, IRConst.undefCst);
+    }
 
     // Get the execution count of the call site
     auto callCount = cast(uint64_t)callSite.block.execCount;
@@ -217,9 +233,11 @@ void inlineCall(IRInstr callSite, IRFunction callee)
             // If this is a call instruction
             if (newInstr.opcode.isCall)
             {
+                // FIXME: 
+
                 // Add the callee function to the list of
                 // inlined functions at this call site
-                caller.inlineMap[newInstr] ~= callee;
+                caller.inlineMap[newInstr] ~= callee.inlineMap.get(oldInstr, []) ~ callee;
 
                 // Copy the call profiles from the callee
                 caller.callCounts[newInstr] = callee.callCounts.get(

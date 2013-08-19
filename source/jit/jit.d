@@ -135,6 +135,9 @@ void inlinePass(Interp interp, IRFunction fun)
 
     //writeln(fun.toString());
 
+    // Number of inlinings performed
+    auto numInlinings = 0;
+
     // For each block of the function
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
@@ -173,9 +176,15 @@ void inlinePass(Interp interp, IRFunction fun)
         // Inline the callee
         inlineCall(lastInstr, callee);
 
+        numInlinings++;
+
         //writefln("inlined");
         //writeln(fun.toString());
     }
+
+    // If no inlining was done, stop
+    if (numInlinings is 0)
+        return;
 
     // TODO
     // Reoptimize the fused IRs

@@ -612,7 +612,8 @@ extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 
     assert (
         vPtr.type == Type.REFPTR || vPtr.type == Type.RAWPTR,
-        "pointer is not pointer type in load op"
+        "pointer is not pointer type in load op:\n" ~
+        instr.toString()
     );
 
     assert (
@@ -678,7 +679,8 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 
     assert (
         vPtr.type == Type.REFPTR || vPtr.type == Type.RAWPTR,
-        "pointer is not pointer type in load op"
+        "pointer is not pointer type in store op:\n" ~
+        instr.toString()
     );
 
     assert (
@@ -688,7 +690,7 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 
     assert (
         vOfs.type == Type.INT32,
-        "offset is not integer type in load op"
+        "offset is not integer type in store op"
     );
 
     assert (

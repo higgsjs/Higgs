@@ -76,22 +76,33 @@ TODO: return support for new?
 TODO: optimize this
 $2 = mul_i32 1, $10
 
+FIXME:
+(02:22:55 AM) Tom Brasington: if you want to look, just try importing the stdio lib
+(02:23:39 AM) maximechevalierb@gmail.com/236D85EF: ok, and maybe you can try it with --jit_disable
+(02:23:45 AM) maximechevalierb@gmail.com/236D85EF: to see if it's the JIT causing the problem
+(02:24:47 AM) Tom Brasington: yea it crashes either way, it fails an assert
+(02:24:56 AM) Tom Brasington: core.exception.AssertError@interp/ops.d(626): ref ptr not in from space in load op
+
 TODO: re-enable inlining in JIT, test inlining
 
-TODO: if no inlining happened, don't re-allocate stack slots
 
-FIXME: missing phi argument for:
+
+FIXME: 3d-cube, interp/ops.d(679): pointer is not pointer type in store op
+- Test in interpreter? Disable JIT fn execution, but not compilation
+
+
+
+
+
+
+
+
+[DONE] TODO: if no inlining happened, don't re-allocate stack slots
+
+[DONE] FIXME: missing phi argument for:
 $87 = phi [, call_reg(EBA3):0 => $295, call_cont(EB9F):0 => undefined]
 in block:
 if_join(E83B):
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: nsieve-bits segfaults
 - Try logging executed instructions again
