@@ -46,6 +46,8 @@ import std.conv;
 import options;
 import ir.ir;
 import ir.livevars;
+import ir.peephole;
+import ir.slotalloc;
 import interp.interp;
 import interp.layout;
 import interp.object;
@@ -109,6 +111,13 @@ Selectively inline callees into a function
 */
 void inlinePass(Interp interp, IRFunction fun)
 {
+    return;
+
+
+
+
+
+
     // Test if and where this function is on the call stack
     auto stackPos = funOnStack(interp, fun);
 
@@ -116,11 +125,12 @@ void inlinePass(Interp interp, IRFunction fun)
     if (stackPos is StackPos.DEEP)
         return;
 
+    // Don't inline if at the top of the stack and not at the entry block
+    if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
+        return;
+
     // Get the number of locals before inlining
     auto numLocals = fun.numLocals;
-
-    // FIXME
-    return;
 
     //writeln(fun.toString());
 
@@ -133,6 +143,7 @@ void inlinePass(Interp interp, IRFunction fun)
 
         // Get the last instruction of the block
         auto lastInstr = block.lastInstr;
+        assert (lastInstr !is null, "last instr is null");
 
         // If this is is not a call instruction, skip it
         if (lastInstr.opcode != &ir.ops.CALL)
@@ -161,29 +172,30 @@ void inlinePass(Interp interp, IRFunction fun)
         // Inline the callee
         inlineCall(lastInstr, callee);
 
-        //writefln("inlined");
+        writefln("inlined");
         //writeln(fun.toString());
     }
 
-    // FIXME
-    /*
+    // TODO
+    // Reoptimize the fused IRs
+    //optIR(fun);
+
+    writeln("re-allocating slots");
+
+    // Reallocate stack slots for the IR instructions
+    allocSlots(fun);
+
     // If the function is on top of the stack
     if (stackPos is StackPos.TOP)
     {
-        //writefln("rearranging stack frame");
+        writefln("rearranging stack frame");
 
         // Add space for the new locals to the stack frame
         auto numAdded = fun.numLocals - numLocals;
         interp.push(numAdded);
     }
-    */
 
-    // TODO: stack frame compaction
-    // will depend on liveness info, current IP (who's live now)
-    // live values get mapped to new slots
-    // will need to use a virtual dst frame to avoid collisions
-
-    //writefln("inlinePass done");
+    writefln("inlinePass done");
 }
 
 /**
@@ -332,7 +344,13 @@ void compFun(Interp interp, IRFunction fun)
         for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
         {
             auto arg = branch.getPhiArg(phi);
-            assert (arg !is null);
+            assert (
+                arg !is null, 
+                "missing phi argument for:\n" ~
+                phi.toString() ~
+                "\nin block:\n" ~
+                phi.block.toString()
+            );
 
             // Get the source and destination operands for the arg word
             X86Opnd srcWordOpnd = predState.getWordOpnd(arg, 64);
@@ -473,7 +491,7 @@ void compFun(Interp interp, IRFunction fun)
 
         if (opts.jit_dumpinfo)
         {
-            writefln("compiling block: %s", block.getName());
+            writefln("compiling block: %s (execCount=%s)", block.getName(), block.execCount);
             //writefln("compiling block: %s", block.toString());
             //writeln(state);
         }
@@ -907,7 +925,8 @@ class CodeGenState
 
             assert (
                 tmpReg !is null,
-                "immediates not accepted but no tmpReg supplied"
+                "immediates not accepted but no tmpReg supplied:\n" ~
+                instr.toString()
             );
 
             if (tmpReg.type is X86Reg.GP)

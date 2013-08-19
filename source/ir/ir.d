@@ -283,24 +283,6 @@ class IRBlock : IdObject
         this.name = name;
     }
 
-    /*
-    IRBlock dup()
-    {
-        auto that = new IRBlock(this.name);
-
-        that.execCount = this.execCount;
-        that.fun = this.fun;
-
-        for (auto phi = firstPhi; phi !is null; phi = phi.next)
-            that.addPhi(phi.dup);
-        
-        for (auto instr = firstInstr; instr !is null; instr = instr.next)
-            that.addInstr(instr.dup);
-
-        return that;
-    }
-    */
-
     string getName()
     {
         return this.name ~ "(" ~ idString() ~ ")";
@@ -1044,15 +1026,6 @@ class PhiNode : IRDstValue
     PhiNode prev = null;
     PhiNode next = null;
 
-    /*
-    /// Copy a phi node
-    PhiNode dup()
-    {
-        auto that = new PhiNode();
-        return that;
-    }
-    */
-
     override string toString()
     {
         assert (
@@ -1070,6 +1043,8 @@ class PhiNode : IRDstValue
             // For each branch argument
             foreach (arg; desc.args)
             {
+                assert (arg !is null);
+
                 if (arg.owner is this)
                 {
                     if (descIdx > 0)
@@ -1298,20 +1273,6 @@ class IRInstr : IRDstValue
         assert (idx < targets.length);
         return targets[idx];
     }
-
-    /*
-    /// Copy an instruction
-    IRInstr dup()
-    {
-        auto that = new IRInstr(this.opcode, this.args.length);
-
-        // Copy the arguments
-        foreach (argIdx, arg; this.args)
-            that.setArg(argIdx, arg.value);
-
-        return that;
-    }
-    */
 
     final override string toString()
     {

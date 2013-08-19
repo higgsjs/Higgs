@@ -70,22 +70,29 @@ August 15th goal: perf gains from inlining
 TODO: return support for new? 
 - may speed up 3d-cube, 3d-raytrace, earley-boyer significantly
 - can have out of line case, need to compare ret val, get this val
+- should ideally get word and type opnds before testing opcode
+  - need more tmp regs, alloc for specific purposes
 
-TODO: re-enable inlining in JIT
-- For now, only do inlining if function not on stack
-- After inlining:
-  - Reallocate stack slots
-  - Reoptimize fused IR
+TODO: optimize this
+$2 = mul_i32 1, $10
 
-TODO: test inlining with interpreter
-- call compFun after K calls, do inlining, but don't go into JIT
-- Test with interpreter only, --jit_disable
+TODO: re-enable inlining in JIT, test inlining
 
+TODO: if no inlining happened, don't re-allocate slots
 
 
 
 
 
+
+
+[DONE] FIXME: copying eliminates phi args
+
+[DONE] FIXME: phi node is missing arg from one branch post inlining
+- missing phi arg from call_reg
+
+[DONE] TODO: rework inlinePass
+- KISS, top of stack replacement only for when at call entry
 
 [DONE] TODO: add interpreter cycle count, add to stats?
 - move stats out of jit namespace?

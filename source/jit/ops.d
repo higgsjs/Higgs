@@ -783,7 +783,7 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         instr, 
         1, 
         numBits, 
-        null, 
+        scrRegs64[1].ofSize(numBits),
         true
     );
 
@@ -838,11 +838,11 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
         auto outReg = cast(X86Reg)opndOut;
         if (outReg is null)
-            outReg = scrRegs64[1];
+            outReg = scrRegs64[0];
 
         ctx.as.instr(MOV   , outReg      , FALSE.int8Val);
-        ctx.as.instr(MOV   , scrRegs64[2], TRUE.int8Val );
-        ctx.as.instr(cmovOp, outReg      , scrRegs64[2] );
+        ctx.as.instr(MOV   , scrRegs64[1], TRUE.int8Val );
+        ctx.as.instr(cmovOp, outReg      , scrRegs64[1] );
 
         // If the output is not a register
         if (opndOut !is outReg)

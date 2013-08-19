@@ -105,6 +105,11 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto contDesc = callSite.getTarget(0);
     auto contBlock = contDesc.succ;
 
+
+    writeln("call cont block: ", contBlock.getName);
+
+
+
     //
     // Callee basic block copying and translation
     //
@@ -152,14 +157,18 @@ void inlineCall(IRInstr callSite, IRFunction callee)
             }
             else
             {
-                valMap[phi] = new PhiNode();
+                // Create a new phi node (copy)
+                valMap[phi] = newBlock.addPhi(new PhiNode());
             }
         }
 
         // For each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            valMap[instr] = new IRInstr(instr.opcode, instr.numArgs);
+            // Create a new instruction (copy)
+            valMap[instr] = newBlock.addInstr(
+                new IRInstr(instr.opcode, instr.numArgs)
+            );
         }
 
         // If this is the last block to inline, stop
@@ -167,68 +176,70 @@ void inlineCall(IRInstr callSite, IRFunction callee)
             break;
     }
 
-    // For each copied block
-    foreach (orig, block; blockMap)
+    // For each block
+    foreach (oldBlock, newBlock; blockMap)
     {
         // For each instruction
-        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        for (auto oldInstr = oldBlock.firstInstr; oldInstr !is null; oldInstr = oldInstr.next)
         {
-            auto oldInstr = cast(IRInstr)valMap.get(instr, null);
-            assert (oldInstr !is null);
+            // Get the corresponding copied instruction
+            auto newInstr = cast(IRInstr)valMap.get(oldInstr, null);
+            assert (newInstr !is null);
+            assert (newInstr.block is newBlock);
 
             // Translate the instruction arguments
-            for (size_t aIdx = 0; aIdx < instr.numArgs; ++aIdx)
+            for (size_t aIdx = 0; aIdx < oldInstr.numArgs; ++aIdx)
             {
                 auto arg = oldInstr.getArg(aIdx);
                 assert (arg in valMap || cast(IRDstValue)arg is null);
                 auto newArg = valMap.get(arg, arg);
-                instr.setArg(aIdx, newArg);
+                newInstr.setArg(aIdx, newArg);
             }
 
             // Translate the branch targets
-            for (size_t tIdx = 0; tIdx < instr.MAX_TARGETS; ++tIdx)
+            for (size_t tIdx = 0; tIdx < oldInstr.MAX_TARGETS; ++tIdx)
             {
                 auto desc = oldInstr.getTarget(tIdx);
                 if (desc is null)
                     continue;
 
-                auto newDesc = new BranchDesc(block, blockMap[desc.succ]);
+                auto newDesc = new BranchDesc(newBlock, blockMap[desc.succ]);
 
                 foreach (arg; desc.args)
                 {
-                    newDesc.setPhiArg(
-                        cast(PhiNode)arg.owner,
-                        valMap.get(arg.value, arg.value)
-                    );
+                    auto newPhi = cast(PhiNode)valMap.get(arg.owner, null);
+                    auto newArg = valMap.get(arg.value, arg.value);
+                    newDesc.setPhiArg(newPhi, newArg);
                 }
 
-                instr.setTarget(tIdx, newDesc);
+                newInstr.setTarget(tIdx, newDesc);
             }
 
             // If this is a call instruction
-            if (instr.opcode.isCall)
+            if (newInstr.opcode.isCall)
             {
                 // Add the callee function to the list of
                 // inlined functions at this call site
-                caller.inlineMap[instr] ~= callee;
+                caller.inlineMap[newInstr] ~= callee;
 
                 // Copy the call profiles from the callee
-                auto origCall = orig.lastInstr;
-                assert (origCall.opcode.isCall);
-                caller.callCounts[instr] = callee.callCounts.get(origCall, uint64_t[IRFunction].init);
+                caller.callCounts[newInstr] = callee.callCounts.get(
+                    oldInstr, 
+                    uint64_t[IRFunction].init
+                );
             }
 
             // If this is a return instruction
-            if (instr.opcode == &RET)
+            if (newInstr.opcode == &RET)
             {
                 // Get the return value
-                auto retVal = instr.getArg(0);
+                auto retVal = oldInstr.getArg(0);
 
                 // Remove the return instruction
-                block.delInstr(instr);
+                newBlock.delInstr(newInstr);
 
                 // Jump directly to the call continuation block
-                auto jump = block.addInstr(new IRInstr(&JUMP));
+                auto jump = newBlock.addInstr(new IRInstr(&JUMP));
                 auto desc = jump.setTarget(0, contBlock);
 
                 // Add a phi argument for the return value
@@ -241,7 +252,7 @@ void inlineCall(IRInstr callSite, IRFunction callee)
         }
 
         // Adjust the block execution count
-        block.execCount = (block.execCount * callCount) / entryCount;
+        newBlock.execCount = (oldBlock.execCount * callCount) / entryCount;
     }
  
     //
@@ -278,6 +289,9 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     // Remove the old call instruction
     callBlock.delInstr(callSite);
 
+    // Add the regular call as an argument for the return phi
+    newCallInstr.getTarget(0).setPhiArg(retPhi, newCallInstr);
+
     // Load the function pointer from the closure object
     auto loadInstr = callBlock.addInstr(
         new IRInstr(
@@ -301,8 +315,10 @@ void inlineCall(IRInstr callSite, IRFunction callee)
             ptrConst
         )
     );
-    auto ifInstr = callBlock.addInstr(new IRInstr(&IF_TRUE));
+    auto ifInstr = callBlock.addInstr(new IRInstr(&IF_TRUE, testInstr));
     ifInstr.setTarget(0, blockMap[callee.entryBlock]);
     ifInstr.setTarget(1, regCallBlock);
+
+    writeln(newCallInstr.block.fun);
 }
 
