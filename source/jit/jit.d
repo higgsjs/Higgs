@@ -43,6 +43,7 @@ import std.string;
 import std.array;
 import std.stdint;
 import std.conv;
+import std.algorithm;
 import options;
 import ir.ir;
 import ir.livevars;
@@ -111,13 +112,7 @@ Selectively inline callees into a function
 */
 void inlinePass(Interp interp, IRFunction fun)
 {
-
-
-
     return;
-
-
-
 
     // Test if and where this function is on the call stack
     auto stackPos = funOnStack(interp, fun);
@@ -204,6 +199,8 @@ void inlinePass(Interp interp, IRFunction fun)
         auto numAdded = fun.numLocals - numLocals;
         interp.push(numAdded);
     }
+
+    //writeln(fun);
 
     //writefln("inlinePass done");
 }

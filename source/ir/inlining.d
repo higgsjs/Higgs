@@ -112,21 +112,28 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto contDesc = callSite.getTarget(0);
     auto contBlock = contDesc.succ;
 
+    // Create a new block to merge inlined returns
+    auto retBlock = callSite.block.fun.newBlock("call_ret");
+
+    // Create a phi node for the return value, add it to the call continuation
+    auto retPhi = retBlock.addPhi(new PhiNode());
+
+    // Create a jump to the call continuation block
+    auto retJump = retBlock.addInstr(new IRInstr(&JUMP));
+    auto retDesc = retJump.setTarget(0, contBlock);
+
+    // Set phi arguments for the jump to the continuation block
+    foreach (arg; contDesc.args)
+    {
+        retDesc.setPhiArg(
+            cast(PhiNode)arg.owner,
+            (arg.value is callSite)? retPhi:callSite
+        );
+    }
+
     //
     // Callee basic block copying and translation
     //
-
-    // Create a phi node for the return value, add it to the call continuation
-    auto retPhi = contBlock.addPhi(new PhiNode());
-
-    // If there are non-call predecessors to the call continuation,
-    // make their return phi argument the undefined value
-    for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
-    {
-        auto desc = contBlock.getIncoming(pIdx);
-        if (desc.pred !is callSite.block)
-            desc.setPhiArg(retPhi, IRConst.undefCst);
-    }
 
     // Get the execution count of the call site
     auto callCount = cast(uint64_t)callSite.block.execCount;
@@ -233,8 +240,6 @@ void inlineCall(IRInstr callSite, IRFunction callee)
             // If this is a call instruction
             if (newInstr.opcode.isCall)
             {
-                // FIXME: 
-
                 // Add the callee function to the list of
                 // inlined functions at this call site
                 caller.inlineMap[newInstr] ~= callee.inlineMap.get(oldInstr, []) ~ callee;
@@ -255,16 +260,12 @@ void inlineCall(IRInstr callSite, IRFunction callee)
                 // Remove the return instruction
                 newBlock.delInstr(newInstr);
 
-                // Jump directly to the call continuation block
+                // Jump to the return block
                 auto jump = newBlock.addInstr(new IRInstr(&JUMP));
-                auto desc = jump.setTarget(0, contBlock);
+                auto desc = jump.setTarget(0, retBlock);
 
                 // Add a phi argument for the return value
                 desc.setPhiArg(retPhi, valMap.get(retVal, retVal));
-
-                // Add phi arguments for the call continuation phis
-                foreach (arg; contDesc.args)
-                    desc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
             }
         }
 
@@ -276,15 +277,16 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     // Callee test and call patching
     //
 
-    // Replace uses of the call instruction by uses of the return phi
-    callSite.replUses(retPhi);
-
     // Copy the call instruction to a new basic block,
     // This will be our fallback (uninlined call)
     auto callBlock = callSite.block;
     auto regCallBlock = caller.newBlock("call_reg");
     auto newCallInstr = new IRInstr(callSite.opcode, callSite.numArgs);
     regCallBlock.addInstr(newCallInstr);
+
+    // Replace uses of the call instruction by uses of the return phi
+    callSite.replUses(retPhi);
+
 
     // Copy the call arguments
     for (size_t aIdx = 0; aIdx < callSite.numArgs; ++aIdx)

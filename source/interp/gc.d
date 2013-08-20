@@ -404,7 +404,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     // Increment the garbage collection count
     interp.gcCount++;
 
-    //writeln("leaving gcCollect");
+    writeln("leaving gcCollect");
     //writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
 }
 
@@ -528,12 +528,18 @@ Word gcForward(Interp interp, Word word, Type type)
         return word;
 
         // Instruction pointer (IRInstr)
-        // Return the pointer unchanged
         case Type.INSPTR:
         if (word.ptrVal !is null)
         {
-            auto fun = (cast(IRInstr)word.ptrVal).block.fun;
-            visitFun(interp, fun);
+            auto instr = cast(IRInstr)word.ptrVal;
+
+            // If the instruction was destroyed (e.g.: by inlining),
+            // this instruction is no longer valid
+            if (instr.block is null)
+                return Word.ptrv(null);
+
+            // Visit the function this instruction belongs to
+            visitFun(interp, instr.block.fun);
         }
         return word;
      
@@ -642,7 +648,7 @@ void visitStackRoots(Interp interp)
         // For each local in this frame
         for (LocalIdx idx = 0; idx < frameSize; ++idx)
         {
-            //writefln("ref %s/%s", idx, frameSize);
+            //ritefln("ref %s/%s", idx, frameSize);
 
             Word word = wsp[idx];
             Type type = tsp[idx];
@@ -667,6 +673,8 @@ void visitStackRoots(Interp interp)
                 )
             );
         }
+
+        //writeln("done visiting frame");
     };
 
     interp.visitStack(visitFrame);

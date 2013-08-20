@@ -680,7 +680,9 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     assert (
         vPtr.type == Type.REFPTR || vPtr.type == Type.RAWPTR,
         "pointer is not pointer type in store op:\n" ~
-        instr.toString()
+        valToString(vPtr) ~
+        "\nin function:\n" ~
+        instr.block.fun.getName
     );
 
     assert (

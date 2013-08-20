@@ -73,6 +73,12 @@ TODO: return support for new?
 - should ideally get word and type opnds before testing opcode
   - need more tmp regs, alloc for specific purposes
 
+TODO: make inlining more selective
+- Don't inline calls with relatively small execution frequency
+- Favor inlining of more likely calls
+
+TODO: re-enable IR opts after inlining
+
 TODO: optimize this
 $2 = mul_i32 1, $10
 
@@ -83,12 +89,6 @@ FIXME:
 (02:24:47 AM) Tom Brasington: yea it crashes either way, it fails an assert
 (02:24:56 AM) Tom Brasington: core.exception.AssertError@interp/ops.d(626): ref ptr not in from space in load op
 
-TODO: re-enable inlining in JIT, test inlining
-
-
-
-FIXME: 3d-cube, interp/ops.d(679): pointer is not pointer type in store op
-- Test in interpreter? Disable JIT fn execution, but not compilation
 
 
 
@@ -96,6 +96,29 @@ FIXME: 3d-cube, interp/ops.d(679): pointer is not pointer type in store op
 
 
 
+
+
+
+[DONE] FIXME: assembler.d(395): invalid instruction: imul r10d, 0;
+- Inlining now working with interpreter only
+
+[DONE] TODO: in debug mode, try encoding instructions immediately when added to assembler
+- X86Instr.isValid()
+
+[DONE] FIXME: inlining causes GC crash?
+./higgs --e "test()" programs/gc/strcat.js
+visiting frame for: $rt_str_alloc(11BA)
+- top stack frame, we get to a value tagged INSPTR, seg fault
+- ra slot is 32, but the insptr is found at 21
+- many functions just inlined into rt_str_alloc
+- instr.block is null...
+  - must have been an old call site, now inlined
+
+[DONE] FIXME: es5_comparisons, 4 >= 34 ==> false (expected true)
+inlining $rt_refIsLayout(2B6A) into $rt_valIsString(2B7A)
+inlining $rt_obj_get_header(12A2) into $rt_valIsString(2B7A)
+- problem: replacing call uses by ret phi, but uses can be phi in call continuation!
+- can't directly put the ret phi in the call continuation, needs its own block
 
 [DONE] TODO: if no inlining happened, don't re-allocate stack slots
 

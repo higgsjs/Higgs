@@ -202,30 +202,30 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
         opPtr = AND;
     assert (opPtr !is null);
 
-    if (opnd0 == opndOut)
-    {
-        ctx.as.instr(opPtr, opndOut, opnd1);
-    }
-
-    else if (opnd1 == opndOut)
-    {
-        ctx.as.instr(opPtr, opndOut, opnd0);
-    }
-
-    else if (opPtr == IMUL && cast(X86Mem)opndOut)
+    if (opPtr == IMUL)
     {
         // IMUL does not support memory operands as output
-        auto scrReg0 = scrRegs64[1].ofSize(numBits);
-        ctx.as.instr(MOV, scrReg0, opnd0);
-        ctx.as.instr(opPtr, scrReg0, opnd1);
-        ctx.as.instr(MOV, opndOut, scrReg0);
+        auto scrReg = scrRegs64[1].ofSize(numBits);
+        ctx.as.instr(MOV, scrReg, opnd1);
+        ctx.as.instr(opPtr, scrReg, opnd0);
+        ctx.as.instr(MOV, opndOut, scrReg);
     }
-
     else
     {
-        // Neither input operand is the output
-        ctx.as.instr(MOV, opndOut, opnd0);
-        ctx.as.instr(opPtr, opndOut, opnd1);
+        if (opnd0 == opndOut)
+        {
+            ctx.as.instr(opPtr, opndOut, opnd1);
+        }
+        else if (opnd1 == opndOut)
+        {
+            ctx.as.instr(opPtr, opndOut, opnd0);
+        }
+        else
+        {
+            // Neither input operand is the output
+            ctx.as.instr(MOV, opndOut, opnd0);
+            ctx.as.instr(opPtr, opndOut, opnd1);
+        }
     }
 
     // If the instruction has an exception/overflow target

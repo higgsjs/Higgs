@@ -277,6 +277,22 @@ class Assembler
             "instr is already part of a list"
         );
 
+        // In debug mode, immediately produce an error
+        // when an invalid instruction is added
+        debug
+        {
+            if (auto x86Instr = cast(X86Instr)instr)
+            {
+                if (x86Instr.valid() is false)
+                {
+                    throw new Error(
+                        "invalid instruction added:\n" ~
+                        instr.toString()
+                    );
+                }
+            }
+        }
+
         if (this.lastInstr is null)
         {
             this.firstInstr = instr;
