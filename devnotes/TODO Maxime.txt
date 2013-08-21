@@ -18,6 +18,12 @@ TODO: don't load arg values with only one use?
 TODO: propagate known phi arg types to phis
 - test perf impact
 
+TODO: return support for new? 
+- may speed up 3d-cube, 3d-raytrace, earley-boyer significantly
+- can have out of line case, need to compare ret val, get this val
+- should ideally get word and type opnds before testing opcode
+  - need more tmp regs, alloc for specific purposes
+
 ------------------------------------------------------------------------------
 
 Oct 11th: CC Paper Submission Deadline
@@ -57,7 +63,7 @@ TODO: release target with no asserts for performance testing
 - the -release flag disables assertions
 
 TODO: implement cap on number of block versions
-- Add command-line options, jit_maxblockvers
+- Add command-line options, jit_maxvers
 - Will require generating ASM adaptors before jumps? If we hit the max
 vers cap, the jump target we get back is an adaptor?
 
@@ -65,22 +71,17 @@ vers cap, the jump target we get back is an adaptor?
 
 August 15th goal: perf gains from inlining
 
-** Avoid more JIT ops & opts for now, concentrate on inlining ***
-
-TODO: return support for new? 
-- may speed up 3d-cube, 3d-raytrace, earley-boyer significantly
-- can have out of line case, need to compare ret val, get this val
-- should ideally get word and type opnds before testing opcode
-  - need more tmp regs, alloc for specific purposes
+TODO: blog about inlining
+- perf
+- basic heuristics
+- making inlining more selective
+- many bugs in 300 lines of code
+- testing with interpreter only
+- benchmark loop incr to 500M with and without inlining
 
 TODO: make inlining more selective
 - Don't inline calls with relatively small execution frequency
 - Favor inlining of more likely calls
-
-TODO: re-enable IR opts after inlining
-
-TODO: optimize this
-$2 = mul_i32 1, $10
 
 FIXME:
 (02:22:55 AM) Tom Brasington: if you want to look, just try importing the stdio lib
@@ -89,6 +90,12 @@ FIXME:
 (02:24:47 AM) Tom Brasington: yea it crashes either way, it fails an assert
 (02:24:56 AM) Tom Brasington: core.exception.AssertError@interp/ops.d(626): ref ptr not in from space in load op
 
+TODO: basic const prop for mul_i32
+$2 = mul_i32 1, $10
+$0 = mul_i32 2, 6
+- inlining makes opportunities appear
+
+TODO: re-enable IR opts after inlining
 
 
 
@@ -98,6 +105,26 @@ FIXME:
 
 
 
+
+
+
+[DONE] FIXME: 
+sunspider/crypto-md5
+global property "error" is not defined
+programs_sunspider_crypto_md5_js(23C306) ("programs/sunspider/crypto-md5.js"@1:1)
+- no GC
+- make regression test
+- str concat seems to be broken
+  - try making JIT strcat test? replicates the problem
+- something in strcat is broken (by the JIT) after inlining?
+  - first bytes written are zeros
+- We compile theAdd, and then our loop fails to execute... i remains undefined
+  - Maybe it was never initialized to zero? Set to undef on some path?
+- Still have bug in inlineCall wrt phi nodes in call cont block
+
+[DONE] FIXME: Inlining, a stub is produced for call_ret... Give call_ret the same
+execCount as the call continuation
+- function gets invalidated every time a call_ret is hit!
 
 [DONE] FIXME: assembler.d(395): invalid instruction: imul r10d, 0;
 - Inlining now working with interpreter only

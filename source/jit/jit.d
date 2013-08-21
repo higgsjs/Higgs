@@ -112,8 +112,6 @@ Selectively inline callees into a function
 */
 void inlinePass(Interp interp, IRFunction fun)
 {
-    return;
-
     // Test if and where this function is on the call stack
     auto stackPos = funOnStack(interp, fun);
 
@@ -184,8 +182,6 @@ void inlinePass(Interp interp, IRFunction fun)
     // TODO
     // Reoptimize the fused IRs
     //optIR(fun);
-
-    //writeln("re-allocating slots");
 
     // Reallocate stack slots for the IR instructions
     allocSlots(fun);

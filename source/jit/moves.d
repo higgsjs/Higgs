@@ -58,6 +58,7 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
     {
         assert (cast(X86Imm)move.dst is null);
 
+        auto immSrc = cast(X86Imm)move.src;
         auto memSrc = cast(X86Mem)move.src;
         auto memDst = cast(X86Mem)move.dst;
 
@@ -68,6 +69,12 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
 
             as.instr(MOV, tmpReg, memSrc);
             as.instr(MOV, memDst, tmpReg);
+        }
+        else if (immSrc && immSrc.immSize > 32 && memDst)
+        {
+            assert (memDst.memSize == 64);
+            as.instr(MOV, tmp1, immSrc);
+            as.instr(MOV, memDst, tmp1);
         }
         else
         {

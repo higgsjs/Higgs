@@ -114,6 +114,7 @@ void inlineCall(IRInstr callSite, IRFunction callee)
 
     // Create a new block to merge inlined returns
     auto retBlock = callSite.block.fun.newBlock("call_ret");
+    retBlock.execCount = contBlock.execCount;
 
     // Create a phi node for the return value, add it to the call continuation
     auto retPhi = retBlock.addPhi(new PhiNode());
@@ -127,7 +128,7 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     {
         retDesc.setPhiArg(
             cast(PhiNode)arg.owner,
-            (arg.value is callSite)? retPhi:callSite
+            (arg.value is callSite)? retPhi:arg.value
         );
     }
 
