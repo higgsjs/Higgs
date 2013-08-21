@@ -231,7 +231,7 @@ void optIR(IRFunction fun)
                     delPhi(phi);
                     continue;
                 }
-             
+
                 // If this phi assignment has the form:
                 // Vi <- phi(...Vi...Vj...Vi...Vj...)
                 // 0 or more Vi and 1 or more Vj
@@ -264,7 +264,7 @@ void optIR(IRFunction fun)
                     continue INSTR_LOOP;
                 }
 
-                // Perform constant folding on int32 add instructions
+                // Constant folding on int32 add instructions
                 if (op == &ADD_I32)
                 {
                     auto cst0 = cast(IRConst)instr.getArg(0);
@@ -272,13 +272,65 @@ void optIR(IRFunction fun)
 
                     if (cst0 && cst1 && cst0.isInt32 && cst1.isInt32)
                     {
-                        auto sum = cst0.int32Val + cst1.int32Val;
-                        if (sum >= int32_t.min && sum <= int32_t.max)
+                        auto v0 = cast(int64_t)cst0.int32Val; 
+                        auto v1 = cast(int64_t)cst1.int32Val;
+                        auto r = v0 + v1;
+
+                        if (r >= int32_t.min && r <= int32_t.max)
                         {
-                            instr.replUses(IRConst.int32Cst(sum));
+                            instr.replUses(IRConst.int32Cst(cast(int32_t)r));
                             block.delInstr(instr);
                             continue INSTR_LOOP;
                         }
+                    }
+
+                    if (cst0 && cst0.isInt32 && cst0.int32Val is 0)
+                    {
+                        instr.replUses(instr.getArg(1));
+                        block.delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
+
+                    if (cst1 && cst1.isInt32 && cst1.int32Val is 0)
+                    {
+                        instr.replUses(instr.getArg(0));
+                        block.delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
+                }
+
+                // Constant folding on int32 mul instructions
+                if (op == &MUL_I32)
+                {
+                    auto cst0 = cast(IRConst)instr.getArg(0);
+                    auto cst1 = cast(IRConst)instr.getArg(1);
+
+                    if (cst0 && cst1 && cst0.isInt32 && cst1.isInt32)
+                    {
+                        auto v0 = cast(int64_t)cst0.int32Val; 
+                        auto v1 = cast(int64_t)cst1.int32Val;
+                        auto r = v0 * v1;
+
+                        if (r >= int32_t.min && r <= int32_t.max)
+                        {
+                            instr.replUses(IRConst.int32Cst(cast(int32_t)r));
+                            block.delInstr(instr);
+                            continue INSTR_LOOP;
+                        }
+                    }
+
+                    if (cst0 && cst0.isInt32 && cst0.int32Val is 1)
+                    {
+                        instr.replUses(instr.getArg(1));
+                        block.delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
+
+                    if (cst1 && cst1.isInt32 && cst1.int32Val is 1)
+                    {
+                        instr.replUses(instr.getArg(0));
+                        block.delInstr(instr);
+                        continue INSTR_LOOP;
                     }
                 }
 

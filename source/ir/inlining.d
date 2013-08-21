@@ -112,6 +112,11 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto contDesc = callSite.getTarget(0);
     auto contBlock = contDesc.succ;
 
+
+
+
+
+
     // Create a new block to merge inlined returns
     auto retBlock = callSite.block.fun.newBlock("call_ret");
     retBlock.execCount = contBlock.execCount;
@@ -131,6 +136,17 @@ void inlineCall(IRInstr callSite, IRFunction callee)
             (arg.value is callSite)? retPhi:arg.value
         );
     }
+
+
+
+
+
+
+
+
+
+
+
 
     //
     // Callee basic block copying and translation
@@ -285,8 +301,19 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto newCallInstr = new IRInstr(callSite.opcode, callSite.numArgs);
     regCallBlock.addInstr(newCallInstr);
 
+
+
+
+
+
+
     // Replace uses of the call instruction by uses of the return phi
     callSite.replUses(retPhi);
+
+
+
+
+
 
 
     // Copy the call arguments

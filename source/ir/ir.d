@@ -1030,7 +1030,7 @@ class PhiNode : IRDstValue
     {
         assert (
             block !is null, 
-            "phi node is not attached to a block"
+            "phi node is not attached to a block: " ~ getName()
         );
 
         string output;

@@ -179,9 +179,12 @@ void inlinePass(Interp interp, IRFunction fun)
     if (numInlinings is 0)
         return;
 
-    // TODO
+    //writeln(fun);
+
     // Reoptimize the fused IRs
     //optIR(fun);
+
+    //writeln(fun);
 
     // Reallocate stack slots for the IR instructions
     allocSlots(fun);

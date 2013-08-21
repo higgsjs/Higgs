@@ -79,34 +79,62 @@ TODO: blog about inlining
 - testing with interpreter only
 - benchmark loop incr to 500M with and without inlining
 
+TODO: IRBlock.moveInstr?
+- Want to maintain instruction identity when possible
+- Stack frame translation post inlining will be problematic otherwise
+
 TODO: make inlining more selective
 - Don't inline calls with relatively small execution frequency
 - Favor inlining of more likely calls
 
-FIXME:
-(02:22:55 AM) Tom Brasington: if you want to look, just try importing the stdio lib
-(02:23:39 AM) maximechevalierb@gmail.com/236D85EF: ok, and maybe you can try it with --jit_disable
-(02:23:45 AM) maximechevalierb@gmail.com/236D85EF: to see if it's the JIT causing the problem
-(02:24:47 AM) Tom Brasington: yea it crashes either way, it fails an assert
-(02:24:56 AM) Tom Brasington: core.exception.AssertError@interp/ops.d(626): ref ptr not in from space in load op
+FIXME: inline test is wrong
+- not testing the type of the callee value
+- not testing that it's a function object
+- should make special callee check comparison?
 
-TODO: basic const prop for mul_i32
+FIXME: regular JIT call doesn't check for fn?
+- Make regression test
+
+FIXME:
+Tom: try importing the stdio lib
+Tom: interp/ops.d(626): ref ptr not in from space in load op
+
+TODO: re-enable IR opts after inlining
+
+FIXME: ir/slotalloc.d(111): owner instr block is null for: t_494D
+- Some phi node was removed, but is still a use of an instruction
+
+TODO: re-enable adversarial inlining test
+
+FIXME: inlining bug, we replace uses of the call by uses of a phi node in
+call_ret. This is incorrect. Must take the value of the call from call_reg
+into account.
+- You should be adding the ret phi node to call_cont directly, as before.
+It takes in a value from call_reg as well (the new call site).
+- Phis already in call_cont taking the value of the call site need to take
+whatever ret argument comes from the predecessor.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: basic const prop for mul_i32
 $2 = mul_i32 1, $10
 $0 = mul_i32 2, 6
 - inlining makes opportunities appear
 
-TODO: re-enable IR opts after inlining
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: write adversarial JIT test where inlined call gets changed, new call
+returns something different
 
 [DONE] FIXME: 
 sunspider/crypto-md5
@@ -170,7 +198,7 @@ if_join(E83B):
 - move stats out of jit namespace?
 - --stats option
 
-[DONE]  TODO: refactor inlining function
+[DONE] TODO: refactor inlining function
 
 [DONE] TODO: implement heap_alloc in JIT?
 - interp.allocPtr + size > interp.heapLimit

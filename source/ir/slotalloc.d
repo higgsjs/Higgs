@@ -110,8 +110,10 @@ void allocSlots(IRFunction fun)
 
                 assert (
                     owner.block !is null, 
-                    "owner instr block is null for: " ~
-                    owner.getName()
+                    "owner instr block is null for instr:\n" ~
+                    owner.toString() ~
+                    "\nusing value of instr:\n" ~
+                    instr.toString()
                 );
 
                 // If the instruction is used in this block
