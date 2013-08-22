@@ -94,18 +94,21 @@ FIXME:
 Tom: try importing the stdio lib
 Tom: interp/ops.d(626): ref ptr not in from space in load op
 
+TODO: make inlining more selective
+- Don't inline calls with relatively small execution frequency
+- Favor inlining of more likely calls
+
+TODO: add shootout benchmarks to tests
+
 FIXME: inline test is wrong
 - not testing the type of the callee value
 - not testing that it's a function object
 - should make special callee check comparison?
   - problem is, need multiple comparisons
 
-TODO: make inlining more selective
-- Don't inline calls with relatively small execution frequency
-- Favor inlining of more likely calls
-
-FIXME: regular JIT call doesn't check for fn?
-- Make regression test that catches exceptions
+[DONE] FIXME: regular JIT call doesn't check that callee is a function
+- enable jit_call_exc test
+- try to pass test with --jit_noinline first
 
 
 
@@ -115,10 +118,8 @@ FIXME: regular JIT call doesn't check for fn?
 
 
 
-
-
-
-
+[DONE] TODO: make JIT regression test that catches exceptions, change callee
+- call instr should throw an exception if the callee is not valid
 
 [DONE] TODO: re-enable IR opts after inlining
 

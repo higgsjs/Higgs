@@ -951,6 +951,20 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Function pointer extraction
     //
 
+    // Get the type tag for the closure value
+    auto closType = st.getTypeOpnd(
+        ctx.as, 
+        instr, 
+        0, 
+        scrRegs8[0],
+        false
+    );
+
+    // If the value is not a reference, bailout to the interpreter
+    ctx.as.instr(CMP, closType, Type.REFPTR);
+    ctx.as.instr(JNE, BAILOUT);
+
+    // Get the word for the closure value
     auto closReg = cast(X86Reg)st.getWordOpnd(
         ctx, 
         ctx.as, 
@@ -962,6 +976,11 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         false
     );
     assert (closReg !is null);
+
+    // If the object is not a closure, bailout
+    ctx.as.instr(MOV, scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
+    ctx.as.instr(CMP, scrRegs32[1], LAYOUT_CLOS);
+    ctx.as.instr(JNE, BAILOUT);
 
     // Get the function pointer from the closure object
     auto fptrMem = new X86Mem(64, closReg, CLOS_OFS_FPTR);
