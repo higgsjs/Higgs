@@ -172,8 +172,10 @@ void resolveVars(FunExpr fun, Scope parentSc = null)
         s.addDecl(ident);
 
     // If there is no parameter named "arguments"
-    if ("arguments"w !in s.decls)
+    // and this is not a unit-level function
+    if ("arguments"w !in s.decls && cast(ASTProgram)fun is null)
     {
+        // Create a special symbol for the "arguments" object
         fun.argObjIdent = new IdentExpr("arguments"w);
         s.addDecl(fun.argObjIdent);
     }
@@ -499,7 +501,8 @@ void resolveRefs(ASTExpr expr, Scope s)
 
         // If this may be a reference to the "arguments object,
         // mark the function as possibly using arguments
-        if (identExpr.declNode is s.fun.argObjIdent)
+        if (identExpr.declNode is s.fun.argObjIdent && 
+            s.fun.argObjIdent !is null)
             s.fun.usesArguments = true;
 
         // If this is the "this" argument, mark the function as

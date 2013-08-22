@@ -40,6 +40,7 @@ module interp.tests;
 import std.stdio;
 import std.string;
 import std.math;
+import std.conv;
 import parser.parser;
 import ir.ast;
 import interp.layout;
@@ -1508,6 +1509,53 @@ unittest
     interp = new Interp();
     interp.load("programs/gc/load.js");
     interp.assertInt("theFlag;", 1337);
+}
+
+/// Computer Language Shootout benchmarks
+unittest
+{
+    writefln("shootout");
+
+    auto interp = new Interp();
+
+    // Silence the print function
+    interp.evalString("print = function (s) {}");
+
+    void run(string name, size_t n)
+    {
+        writefln("shootout/%s", name);
+        interp.evalString("arguments = [" ~ to!string(n) ~ "];");
+        interp.load("programs/shootout/" ~ name ~ ".js");
+    }
+
+    run("hash", 10);
+
+    // FIXME: class capacity exceeded
+    //run("hash2", 20);
+
+    // FIXME: needs Number.prototype.toFixed    
+    //run("heapsort", 2);
+
+    // TODO: too slow for now
+    //run(lists, 1);
+
+    run("mandelbrot", 10);
+
+    run("matrix", 4);
+    interp.assertInt("mm[0][0]", 270165);
+    interp.assertInt("mm[4][4]", 1856025);
+
+    // FIXME: parse error, new without parens, is this valid?
+    //run("methcall", 10);
+
+    run("nestedloop", 10);
+    interp.assertInt("x", 1000000);
+
+    // FIXME: parse error, new without parens, is this valid?
+    //run("objinst", 10);
+
+    // FIXME: needs Number.prototype.toFixed
+    //run("random", 10);
 }
 
 /// SunSpider benchmarks
