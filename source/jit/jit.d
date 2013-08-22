@@ -1047,6 +1047,12 @@ class CodeGenState
             "instruction has no output slot"
         );
 
+        assert (
+            instr in ctx.regMapping,
+            "no reg mapping for instr:\n" ~ 
+            instr.toString()
+        );
+
         // Get the assigned register for this instruction
         auto reg = ctx.regMapping[instr];
 

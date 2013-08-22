@@ -112,41 +112,20 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto contDesc = callSite.getTarget(0);
     auto contBlock = contDesc.succ;
 
+    // Create a phi node in the call continuation for the return value
+    auto retPhi = contBlock.addPhi(new PhiNode());
 
-
-
-
-
-    // Create a new block to merge inlined returns
-    auto retBlock = callSite.block.fun.newBlock("call_ret");
-    retBlock.execCount = contBlock.execCount;
-
-    // Create a phi node for the return value, add it to the call continuation
-    auto retPhi = retBlock.addPhi(new PhiNode());
-
-    // Create a jump to the call continuation block
-    auto retJump = retBlock.addInstr(new IRInstr(&JUMP));
-    auto retDesc = retJump.setTarget(0, contBlock);
-
-    // Set phi arguments for the jump to the continuation block
-    foreach (arg; contDesc.args)
+    // Set arguments to the return phi from call continuation predecessors
+    // Note: the argument from impossible predecessors is self-referential,
+    // this is necessary to handle loop headers as call continuations
+    for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
     {
-        retDesc.setPhiArg(
-            cast(PhiNode)arg.owner,
-            (arg.value is callSite)? retPhi:arg.value
+        auto desc = contBlock.getIncoming(pIdx);
+        desc.setPhiArg(
+            retPhi,
+            (desc.pred is callSite.block)? callSite:retPhi
         );
     }
-
-
-
-
-
-
-
-
-
-
-
 
     //
     // Callee basic block copying and translation
@@ -272,17 +251,23 @@ void inlineCall(IRInstr callSite, IRFunction callee)
             if (newInstr.opcode == &RET)
             {
                 // Get the return value
-                auto retVal = oldInstr.getArg(0);
+                auto retVal = newInstr.getArg(0);
 
                 // Remove the return instruction
                 newBlock.delInstr(newInstr);
 
                 // Jump to the return block
                 auto jump = newBlock.addInstr(new IRInstr(&JUMP));
-                auto desc = jump.setTarget(0, retBlock);
+                auto desc = jump.setTarget(0, contBlock);
 
-                // Add a phi argument for the return value
-                desc.setPhiArg(retPhi, valMap.get(retVal, retVal));
+                // Set phi node arguments for the jump
+                foreach (arg; contDesc.args)
+                {    
+                    desc.setPhiArg(
+                        cast(PhiNode)arg.owner,
+                        (arg.value is callSite)? retVal:arg.value
+                    );
+                }
             }
         }
 
@@ -301,26 +286,27 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto newCallInstr = new IRInstr(callSite.opcode, callSite.numArgs);
     regCallBlock.addInstr(newCallInstr);
 
-
-
-
-
-
-
     // Replace uses of the call instruction by uses of the return phi
     callSite.replUses(retPhi);
 
-
-
-
-
-
+    // Replace uses of the return phi by other phi nodes in the call
+    // continuation by uses of the new call instruction
+    for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
+    {
+        auto desc = contBlock.getIncoming(pIdx);
+        foreach (arg; desc.args)
+        {
+            if ((arg.value is retPhi) && 
+                (arg.owner !is retPhi || desc.pred is callSite.block))
+                desc.setPhiArg(cast(PhiNode)arg.owner, newCallInstr);
+        }
+    }
 
     // Copy the call arguments
     for (size_t aIdx = 0; aIdx < callSite.numArgs; ++aIdx)
         newCallInstr.setArg(aIdx, callSite.getArg(aIdx));
 
-    // Copy the branch descriptors
+    // Copy the branch descriptors from the original call
     for (size_t tIdx = 0; tIdx < callSite.MAX_TARGETS; ++tIdx)
     {
         auto desc = callSite.getTarget(tIdx);
@@ -335,9 +321,6 @@ void inlineCall(IRInstr callSite, IRFunction callee)
 
     // Remove the old call instruction
     callBlock.delInstr(callSite);
-
-    // Add the regular call as an argument for the return phi
-    newCallInstr.getTarget(0).setPhiArg(retPhi, newCallInstr);
 
     // Load the function pointer from the closure object
     auto loadInstr = callBlock.addInstr(

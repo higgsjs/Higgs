@@ -1283,7 +1283,7 @@ unittest
     interp.load("programs/regress/jit_ctor.js");
     interp.load("programs/regress/jit_set_global.js");
     interp.load("programs/regress/jit_inlining.js");
-    //interp.load("programs/regress/jit_inlining2.js");
+    interp.load("programs/regress/jit_inlining2.js");
 
     interp.load("programs/regress/delta.js");
     interp.load("programs/regress/raytrace.js");

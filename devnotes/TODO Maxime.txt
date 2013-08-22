@@ -71,6 +71,8 @@ vers cap, the jump target we get back is an adaptor?
 
 August 15th goal: perf gains from inlining
 
+Goal: for loop to 500M benchmark with inlining fully working, perf gains
+
 TODO: blog about inlining
 - perf
 - basic heuristics
@@ -83,9 +85,18 @@ TODO: IRBlock.moveInstr?
 - Want to maintain instruction identity when possible
 - Stack frame translation post inlining will be problematic otherwise
 
+TODO: don't directly inline when compiling primitives?
+- $rt_add grows to an enormous size
+
+TODO: look into implementing static calls for runtime primitives
+
 TODO: make inlining more selective
 - Don't inline calls with relatively small execution frequency
 - Favor inlining of more likely calls
+
+FIXME:
+Tom: try importing the stdio lib
+Tom: interp/ops.d(626): ref ptr not in from space in load op
 
 FIXME: inline test is wrong
 - not testing the type of the callee value
@@ -95,38 +106,29 @@ FIXME: inline test is wrong
 FIXME: regular JIT call doesn't check for fn?
 - Make regression test
 
-FIXME:
-Tom: try importing the stdio lib
-Tom: interp/ops.d(626): ref ptr not in from space in load op
-
 TODO: re-enable IR opts after inlining
 
-FIXME: ir/slotalloc.d(111): owner instr block is null for: t_494D
-- Some phi node was removed, but is still a use of an instruction
 
-TODO: re-enable adversarial inlining test
 
-FIXME: inlining bug, we replace uses of the call by uses of a phi node in
+
+
+
+
+
+
+
+[DONE] FIXME: inlining bug, we replace uses of the call by uses of a phi node in
 call_ret. This is incorrect. Must take the value of the call from call_reg
 into account.
-- You should be adding the ret phi node to call_cont directly, as before.
-It takes in a value from call_reg as well (the new call site).
-- Phis already in call_cont taking the value of the call site need to take
-whatever ret argument comes from the predecessor.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- Add the ret phi node to call_cont directly, as before.
+- Add a value to ret phi from call_reg as well (the new call site).
+- Add new phi arguments at inlined rets to *all phis*
+  - if arg was call site, replace by ret value
+- Need to do replacement of call site uses manually before inlining?
+  - skip phis in the call cont block?
+  - could replace all, then go over call con't block and replace by new call instr?
+- There may be existing preds to the call_cont
+  - ret phi should have incoming values for these too
 
 [DONE] TODO: basic const prop for mul_i32
 $2 = mul_i32 1, $10
