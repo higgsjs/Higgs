@@ -611,13 +611,13 @@ extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     auto vOfs = interp.getArgVal(instr, 1);
 
     assert (
-        vPtr.type == Type.REFPTR || vPtr.type == Type.RAWPTR,
+        vPtr.type is Type.REFPTR || vPtr.type is Type.RAWPTR,
         "pointer is not pointer type in load op:\n" ~
         instr.toString()
     );
 
     assert (
-        vOfs.type == Type.INT32,
+        vOfs.type is Type.INT32,
         "offset is not integer type in load op"
     );
 
@@ -625,8 +625,11 @@ extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     auto ofs = vOfs.word.int32Val;
 
     assert (
-        typeTag is Type.RAWPTR || interp.inFromSpace(ptr),
-        "ref ptr not in from space in load op"
+        vPtr.type is Type.RAWPTR || interp.inFromSpace(ptr),
+        "ref ptr not in from space in load op:\n" ~
+        to!string(vPtr.word.ptrVal) ~
+       "\nin function:\n" ~
+        instr.block.fun.getName
     );
 
     auto val = *cast(DataType*)(ptr + ofs);
@@ -678,7 +681,7 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     auto val = interp.getArgVal(instr, 2);
 
     assert (
-        vPtr.type == Type.REFPTR || vPtr.type == Type.RAWPTR,
+        vPtr.type is Type.REFPTR || vPtr.type is Type.RAWPTR,
         "pointer is not pointer type in store op:\n" ~
         valToString(vPtr) ~
         "\nin function:\n" ~
@@ -687,7 +690,8 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
 
     assert (
         vPtr.type is Type.RAWPTR || interp.inFromSpace(ptr),
-        "ref ptr not in from space in store op"
+        "ref ptr not in from space in store op:\n" ~
+        to!string(vPtr.word.ptrVal)
     );
 
     assert (

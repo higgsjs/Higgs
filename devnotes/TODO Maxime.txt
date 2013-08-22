@@ -90,26 +90,32 @@ TODO: don't directly inline when compiling primitives?
 
 TODO: look into implementing static calls for runtime primitives
 
-TODO: Number.toFixed, needed by some shootout benchmarks
-
-FIXME:
-Tom: try importing the stdio lib
-Tom: interp/ops.d(626): ref ptr not in from space in load op
-
 TODO: make inlining more selective
 - Don't inline calls with relatively small execution frequency
 - Favor inlining of more likely calls
+- Log data first to get an idea of call site ratios when inlining
+
+TODO: handling of parsing new without parens
+- Should enable 2 shootout benchmarks
 
 FIXME: inline test is wrong
 - not testing the type of the callee value
 - not testing that it's a function object
 - should make special callee check comparison?
   - problem is, need multiple comparisons
+- if_eq_fun?
 
 
 
 
 
+
+
+
+
+[DONE] FIXME:
+Tom: try importing the stdio lib
+Tom: interp/ops.d(626): ref ptr not in from space in load op
 
 [DONE] TODO: add shootout benchmarks to tests
 - set arguments[0] before running each one
