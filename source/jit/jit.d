@@ -182,7 +182,7 @@ void inlinePass(Interp interp, IRFunction fun)
     //writeln(fun);
 
     // Reoptimize the fused IRs
-    //optIR(fun);
+    optIR(fun);
 
     //writeln(fun);
 

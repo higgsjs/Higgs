@@ -90,10 +90,6 @@ TODO: don't directly inline when compiling primitives?
 
 TODO: look into implementing static calls for runtime primitives
 
-TODO: make inlining more selective
-- Don't inline calls with relatively small execution frequency
-- Favor inlining of more likely calls
-
 FIXME:
 Tom: try importing the stdio lib
 Tom: interp/ops.d(626): ref ptr not in from space in load op
@@ -102,11 +98,14 @@ FIXME: inline test is wrong
 - not testing the type of the callee value
 - not testing that it's a function object
 - should make special callee check comparison?
+  - problem is, need multiple comparisons
+
+TODO: make inlining more selective
+- Don't inline calls with relatively small execution frequency
+- Favor inlining of more likely calls
 
 FIXME: regular JIT call doesn't check for fn?
-- Make regression test
-
-TODO: re-enable IR opts after inlining
+- Make regression test that catches exceptions
 
 
 
@@ -116,6 +115,12 @@ TODO: re-enable IR opts after inlining
 
 
 
+
+
+
+
+
+[DONE] TODO: re-enable IR opts after inlining
 
 [DONE] FIXME: inlining bug, we replace uses of the call by uses of a phi node in
 call_ret. This is incorrect. Must take the value of the call from call_reg
