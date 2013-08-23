@@ -144,7 +144,7 @@ Number.prototype.toFixed = function(fractionDigits)
         x = -x;
     }
 
-    if (x >= 1E+21)
+    if (x >= 1e+21)
     {
         m = $rt_toString(x);
     }
