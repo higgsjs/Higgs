@@ -280,19 +280,22 @@ void compFun(Interp interp, IRFunction fun)
         // TODO: if there is a cap on the number of versions,
         // don't look for exact match but a best match
 
+        // Copy the predecessor state
+        auto succState = new CodeGenState(predState);
+
+        // Remove information about values dead at
+        // the beginning of the successor block
+        succState.removeDead(liveInfo, block);
+
         // Look for the best successor version available
-        BlockVersion* succVersion = null;
         foreach (ver; versions)
         {
-            if (ver.state == predState)
+            if (ver.state == succState)
                 return ver;
         }
 
         // Create a label for this new version of the block
         auto label = new Label(block.getName().toUpper());
-
-        // Copy the predecessor state
-        auto succState = new CodeGenState(predState);
 
         // Map each phi node on the stack or in its register
         for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
@@ -761,7 +764,7 @@ class CodeGenState
     private RAState[IRDstValue] allocState;
 
     /// Map of general-purpose registers to values
-    /// This is NULL_LOCAL if a register is free
+    /// The value is null if a register is free
     private IRDstValue[] gpRegMap;
 
     /// Constructor for a default/entry code generation state
@@ -805,10 +808,14 @@ class CodeGenState
         auto that = cast(CodeGenState)o;
         assert (that !is null);
 
-        if (this.typeState != that.typeState)
+        if ((this.typeState is null && that.typeState !is null) ||
+            (this.typeState !is null && that.typeState is null) ||
+            (this.typeState != that.typeState))
             return false;
 
-        if (this.allocState != that.allocState)
+        if ((this.allocState is null && that.allocState !is null) ||
+            (this.allocState !is null && that.allocState is null) ||
+            (this.allocState != that.allocState))
             return false;
 
         if (this.gpRegMap != that.gpRegMap)
@@ -822,6 +829,8 @@ class CodeGenState
     */
     X86Opnd getWordOpnd(IRValue value, size_t numBits)
     {
+        assert (value !is null);
+
         auto dstVal = cast(IRDstValue)value;
 
         // Get the current alloc flags for the argument
@@ -868,6 +877,8 @@ class CodeGenState
         bool loadVal = true
     )
     {
+        assert (instr !is null);
+
         assert (
             argIdx < instr.numArgs,
             "invalid argument index"
@@ -998,6 +1009,8 @@ class CodeGenState
     */
     X86Opnd getTypeOpnd(IRValue value) const
     {
+        assert (value !is null);
+
         auto dstVal = cast(IRDstValue)value;
 
         // If the value is an IR constant or has a known type
@@ -1020,6 +1033,8 @@ class CodeGenState
         bool acceptImm = false
     ) const
     {
+        assert (instr !is null);
+
         assert (
             argIdx < instr.numArgs,
             "invalid argument index"
@@ -1053,10 +1068,7 @@ class CodeGenState
         uint16_t numBits
     )
     {
-        assert (
-            instr.outSlot != NULL_LOCAL,
-            "instruction has no output slot"
-        );
+        assert (instr !is null);
 
         assert (
             instr in ctx.regMapping,
@@ -1100,12 +1112,7 @@ class CodeGenState
     /// Set the output of an instruction to a known boolean value
     void setOutBool(IRInstr instr, bool val)
     {
-        assert (
-            instr.outSlot != NULL_LOCAL,
-            "instruction has no output slot"
-        );
-
-        auto localIdx = instr.outSlot;
+        assert (instr !is null);
 
         // Mark this as being a known constant
         allocState[instr] = RA_CONST;
@@ -1120,6 +1127,8 @@ class CodeGenState
     /// Test if a constant word value is known for a given value
     bool wordKnown(IRValue value) const
     {
+        assert (value !is null);
+
         auto dstValue = cast(IRDstValue)value;
 
         if (dstValue is null)
@@ -1131,6 +1140,8 @@ class CodeGenState
     /// Get the word value for a known constant local
     Word getWord(IRValue value)
     {
+        assert (value !is null);
+
         auto dstValue = cast(IRDstValue)value;
 
         if (dstValue is null)
@@ -1153,16 +1164,14 @@ class CodeGenState
     void setOutType(Assembler as, IRInstr instr, Type type)
     {
         assert (
-            instr.outSlot != NULL_LOCAL,
-            "instruction has no output slot"
+            instr !is null,
+            "null instruction"
         );
 
         assert (
             (type & TF_TYPE_MASK) == type,
             "type mask corrupts type tag"
         );
-
-        auto localIdx = instr.outSlot;
 
         // Get the previous type state
         auto prevState = typeState.get(instr, 0);
@@ -1191,6 +1200,11 @@ class CodeGenState
     /// Write the output type for an instruction's output to the type stack
     void setOutType(Assembler as, IRInstr instr, X86Reg typeReg)
     {
+        assert (
+            instr !is null,
+            "null instruction"
+        );
+
         // Mark the type value as unknown
         typeState.remove(instr);
 
@@ -1207,6 +1221,8 @@ class CodeGenState
     /// Test if a constant type is known for a given local
     bool typeKnown(IRValue value) const
     {
+        assert (value !is null);
+
         auto dstValue = cast(IRDstValue)value;
 
         if (dstValue is null)
@@ -1218,6 +1234,8 @@ class CodeGenState
     /// Get the known type of a value
     Type getType(IRValue value) const
     {
+        assert (value !is null);
+
         auto dstValue = cast(IRDstValue)value;
 
         if (dstValue is null)
@@ -1236,6 +1254,8 @@ class CodeGenState
     /// Mark a value as being stored on the stack
     void valOnStack(IRDstValue value)
     {
+        assert (value !is null);
+
         // Get the current allocation state for this value
         auto allocSt = allocState.get(value, 0);
 
@@ -1317,14 +1337,14 @@ class CodeGenState
         // Get the value mapped to this register
         auto regVal = gpRegMap[regNo];
 
+        // If no value is mapped to this register, stop
+        if (regVal is null)
+            return;
+
         assert (
             allocState.get(regVal, 0) & RA_GPREG,
             "value not mapped to reg to be spilled"
         );
-
-        // If no value is mapped to this register, stop
-        if (regVal is null)
-            return;
 
         auto mem = new X86Mem(64, wspReg, 8 * regVal.outSlot);
         auto reg = new X86Reg(X86Reg.GP, regNo, 64);
@@ -1355,6 +1375,45 @@ class CodeGenState
 
             // The type state is now in sync
             typeState[regVal] |= TF_SYNC;
+        }
+    }
+
+    /**
+    Remove information about values dead at the beginning of
+    a given block
+    */
+    void removeDead(LiveInfo liveInfo, IRBlock block)
+    {
+        // For each general-purpose register
+        foreach (regNo, value; gpRegMap)
+        {
+            // If nothing is mapped to this register, skip it
+            if (value is null)
+                continue;
+
+            // If the value is no longer live, remove it
+            if (liveInfo.liveAtEntry(value, block) is false)
+            {
+                gpRegMap[regNo] = null;
+                allocState.remove(value);
+                typeState.remove(value);
+            }
+        }
+
+        // Remove dead values from the alloc state
+        auto asValues = allocState.keys.dup;
+        foreach (value; asValues)
+        {
+            if (liveInfo.liveAtEntry(value, block) is false)
+                allocState.remove(value);
+        }
+
+        // Remove dead values from the type state
+        auto tsValues = typeState.keys.dup;
+        foreach (value; tsValues)
+        {
+            if (liveInfo.liveAtEntry(value, block) is false)
+                typeState.remove(value);
         }
     }
 }

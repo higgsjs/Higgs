@@ -51,10 +51,9 @@ TODO: gather metrics
 - look at linux-tools-common package, `perf stat` command, has instr and
   branch counts?
 
-TODO: benchmarking (performance testing) JS script
+TODO: benchmarking (performance testing) python script
 - benchmark.js
 - should do multiple runs (parameterizable numRuns?)
-- use load command, list of benchmarks
 - try to make it compatible with V8 as-is
 - should be able to pass config flags to Higgs (i.e.: modify JIT params)
 - use release version
@@ -62,11 +61,36 @@ TODO: benchmarking (performance testing) JS script
 TODO: release target with no asserts for performance testing
 - the -release flag disables assertions
 
+TODO: implement cap on number of block versions now
+- Add command-line options, jit_maxvers
+- Will require generating ASM adaptors before jumps? If we hit the max
+vers cap, the jump target we get back is an adaptor?
+
 ------------------------------------------------------------------------------
 
 August 15th goal: perf gains from inlining
 
 Goal: for loop to 500M benchmark with inlining fully working, perf gains
+
+TODO: look into implementing static calls for runtime primitives
+- modify runtime call generation in ir/ast
+  - call with IRFunPtr directly
+- inlining can check if fun ptr arg is a constant, not put conditional check
+- how do we get the runtime fun ptr when generating AST?
+  - could do the linking lazily?
+  - get_prim_fun "str" cached IRFunPtr instruction?
+- Ideally want some IRValue argument, not an instruction which outputs a value
+  - IRLazyPrim, IRLazyStr, IRLazyLink?
+
+TODO: look into top-level OSR mid-function
+- Save current stack frame into temp arrays
+- Redo liveness info if necessary
+- Pay attention to liveness and IP when doing peephole
+  - For first version, probably shouldn't do peephole
+
+TODO: IRBlock.moveInstr?
+- Want to maintain instruction identity when possible
+- Stack frame translation post inlining will be problematic otherwise
 
 TODO: blog about inlining
 - perf
@@ -82,33 +106,29 @@ TODO: revise Higgs page on pointersgonewild
 - add new supported benchs
 - remove runtime redefinable prims as language feature
 
-TODO: look into implementing static calls for runtime primitives
-- modify runtime call generation in ir/ast
-  - call with IRFunPtr directly
-- inlining can check if fun ptr arg is a constant, not put conditional check
-- how do we get the runtime fun ptr when generating AST?
-  - could do the linking lazily?
-  - get_prim_fun "str" cached IRFunPtr instruction?
-- Ideally want some IRValue argument, not an instruction which outputs a value
-  - IRLazyPrim, IRLazyStr, IRLazyLink?
+TODO: revise reg alloc code, make sure we always remove props from maps where
+appropriate instead of setting their value to 0
 
-TODO: look into top-level OSR mid-function
 
-TODO: IRBlock.moveInstr?
-- Want to maintain instruction identity when possible
-- Stack frame translation post inlining will be problematic otherwise
 
-TODO: implement cap on number of block versions
-- Add command-line options, jit_maxvers
-- Will require generating ASM adaptors before jumps? If we hit the max
-vers cap, the jump target we get back is an adaptor?
 
-TODO: implement phi type versioning? might help with pathological problem
 
-TODO: revise reg alloc code, make sure we always remove props from maps instead
-of setting their value to 0 where appropriate
 
-TODO: try pathos with only ors and shifts? see if problem persists
+
+
+
+
+
+
+[DONE] TODO: enable JIT pathos test
+
+[DONE] TODO: alloc state cleanup code
+- After each instr, should check if its uses are now dead, if so, remove all
+type and alloc info. For branches, should pass branch instr to the 
+genBranchEdge function, this function should cleanup any uses of the
+branch instruction itself.
+- cleanup fn should just remove output type of instrs if immediately dead ***
+- May want to add liveAtEntry and other helpful functions to liveness info class.
 
 Meeting notes:
 - Inlining bugs fixed, now fully working with JIT
@@ -118,15 +138,6 @@ Meeting notes:
   - Faster compile time, less machine code generated, better execution time
 - Pathological case, now we inline more useful code, but seem to get exponential blowup
 - Probably need block version cap
-
-
-
-
-
-
-
-
-
 
 [PASS] FIXME: function: safe_add(EF0C)
 machine code bytes: 2798357

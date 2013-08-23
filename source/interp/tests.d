@@ -1589,14 +1589,12 @@ unittest
     interp.assertInt("ack(3,2);", 29);
     interp.assertInt("tak(9,5,3);", 4);
 
-    // FIXME: versioning blowup
-    //run("crypto-md5");
-    //run("crypto-sha1");
+    run("crypto-md5");
+    run("crypto-sha1");
 
     run("math-cordic");
     run("math-partial-sums");
-    // FIXME: versioning blowup
-    //run("math-spectral-norm");
+    run("math-spectral-norm");
 
     // TODO: enable once faster
     //run("string-base64");

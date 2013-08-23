@@ -89,6 +89,44 @@ class LiveInfo
     };
 
     /**
+    Test if a value is live at a basic block's entry
+    */
+    public bool liveAtEntry(IRDstValue val, IRBlock block)
+    {
+        assert (
+            val !is null,
+            "value is null in liveAtEntry"
+        );
+
+        assert (
+            block.firstInstr !is null,
+            "block contains no instructions"
+        );
+
+        // If the value is a phi node argument, it must be live
+        for (size_t pIdx = 0; pIdx < block.numIncoming; ++pIdx)
+        {
+            auto desc = block.getIncoming(pIdx);
+            foreach (arg; desc.args)
+                if (arg.value is val)
+                    return true;
+        }
+
+        // If the value is from this block and is a phi node
+        // or the first instruction, it isn't live
+        if (val.block is block && (val is block.firstInstr || cast(PhiNode)val))
+            return false;
+
+        // If the value is an argument to the first block instruction, it is live
+        for (size_t aIdx = 0; aIdx < block.firstInstr.numArgs; ++aIdx)
+            if (val is block.firstInstr.getArg(aIdx))
+                return true;
+
+        // Test if the value is live after the first instruction
+        return liveAfter(val, block.firstInstr);
+    }
+
+    /**
     Mark a value as live after a given instruction
     */
     private void markLiveAfter(IRDstValue val, IRInstr afterInstr)
