@@ -81,14 +81,30 @@ TODO: blog about inlining
 - testing with interpreter only
 - benchmark loop incr to 500M with and without inlining
 
-TODO: IRBlock.moveInstr?
-- Want to maintain instruction identity when possible
-- Stack frame translation post inlining will be problematic otherwise
+TODO: list CSV, other existing libs in github readme
+
+TODO: revise Higgs page on pointersgonewild
+- add new supported benchs
+- remove runtime redefinable prims as language feature
 
 TODO: don't directly inline when compiling primitives?
 - $rt_add grows to an enormous size
 
 TODO: look into implementing static calls for runtime primitives
+- modify runtime call generation in ir/ast
+  - call with IRFunPtr directly
+- inlining can check if fun ptr arg is a constant, not put conditional check
+- how do we get the runtime fun ptr when generating AST?
+  - could do the linking lazily?
+  - get_prim_fun "str" cached IRFunPtr instruction?
+- Ideally want some IRValue argument, not an instruction which outputs a value
+  - IRLazyPrim, IRLazyStr, IRLazyLink?
+
+TODO: look into top-level OSR mid-function
+
+TODO: IRBlock.moveInstr?
+- Want to maintain instruction identity when possible
+- Stack frame translation post inlining will be problematic otherwise
 
 TODO: make inlining more selective
 - Don't inline calls with relatively small execution frequency
@@ -98,20 +114,21 @@ TODO: make inlining more selective
 TODO: handling of parsing new without parens
 - Should enable 2 shootout benchmarks
 
-FIXME: inline test is wrong
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: inline test is wrong
 - not testing the type of the callee value
 - not testing that it's a function object
 - should make special callee check comparison?
   - problem is, need multiple comparisons
-- if_eq_fun?
-
-
-
-
-
-
-
-
+- if_eq_fun <clos> <IRFunPtr>
 
 [DONE] FIXME:
 Tom: try importing the stdio lib

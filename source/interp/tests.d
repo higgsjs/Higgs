@@ -1281,7 +1281,7 @@ unittest
     interp.load("programs/regress/dowhile_cont.js");
     interp.load("programs/regress/jit_se_cmp.js");
     interp.load("programs/regress/jit_getprop_arr.js");
-    //interp.load("programs/regress/jit_call_exc.js");
+    interp.load("programs/regress/jit_call_exc.js");
     interp.load("programs/regress/jit_ctor.js");
     interp.load("programs/regress/jit_set_global.js");
     interp.load("programs/regress/jit_inlining.js");

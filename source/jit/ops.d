@@ -266,7 +266,7 @@ alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 void gen_mod_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, null, true);
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs64[2], false, true);
+    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[2], false, true);
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
 
     // Save RDX
@@ -903,6 +903,62 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.genCondBranch(st, instr, JE, JNE);
 }
 
+void gen_if_eq_fun(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    // Label for the function not equal case
+    auto NOT_EQ = new Label("FUN_NOT_EQ");
+
+    // Get the type tag for the closure value
+    auto closType = st.getTypeOpnd(
+        ctx.as, 
+        instr, 
+        0, 
+        scrRegs8[0],
+        false
+    );
+
+    // If the value is not a reference, not equal
+    ctx.as.instr(CMP, closType, Type.REFPTR);
+    ctx.as.instr(JNE, NOT_EQ);
+
+    // Get the word for the closure value
+    auto closReg = cast(X86Reg)st.getWordOpnd(
+        ctx, 
+        ctx.as, 
+        instr, 
+        0,
+        64,
+        scrRegs64[0],
+        true,
+        false
+    );
+    assert (closReg !is null);
+
+    // If the object is not a closure, not equal
+    ctx.as.instr(MOV, scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
+    ctx.as.instr(CMP, scrRegs32[1], LAYOUT_CLOS);
+    ctx.as.instr(JNE, NOT_EQ);
+
+    // Get the function pointer from the closure object
+    auto fptrMem = new X86Mem(64, closReg, CLOS_OFS_FPTR);
+    ctx.as.instr(MOV, scrRegs64[1], fptrMem);
+
+    // If this is not the closure we expect, not equal
+    auto funArg = cast(IRFunPtr)instr.getArg(1);
+    assert (funArg !is null);
+    ctx.as.ptr(scrRegs64[2], funArg.fun);
+    ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
+    ctx.as.instr(JNE, NOT_EQ);
+
+    // Generate the slow branch out of line
+    ctx.genBranchEdge(ctx.ol, NOT_EQ, instr.getTarget(1), st);
+
+    // Get the fast target label last so the fast target is
+    // more likely to get generated first (LIFO stack)
+    // The equal case is generated directly inline
+    ctx.genBranchEdge(ctx.as, null, instr.getTarget(0), st);
+}
+
 void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Jump to the target block
@@ -1390,6 +1446,7 @@ static this()
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
 
     codeGenFns[&IF_TRUE]        = &gen_if_true;
+    codeGenFns[&IF_EQ_FUN]      = &gen_if_eq_fun;
     codeGenFns[&JUMP]           = &gen_jump;
 
     codeGenFns[&ir.ops.CALL]    = &gen_call;

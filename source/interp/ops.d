@@ -777,6 +777,21 @@ extern (C) void op_if_true(Interp interp, IRInstr instr)
         interp.branch(instr.getTarget(1));
 }
 
+extern (C) void op_if_eq_fun(Interp interp, IRInstr instr)
+{
+    auto v0 = interp.getArgVal(instr, 0);
+
+    auto funArg = cast(IRFunPtr)instr.getArg(1);
+    assert (funArg !is null);
+
+    if (v0.type is Type.REFPTR &&
+        valIsLayout(v0.word, LAYOUT_CLOS) &&
+        getClosFun(v0.word.ptrVal) is funArg.fun)
+        interp.branch(instr.getTarget(0));
+    else
+        interp.branch(instr.getTarget(1));
+}
+
 extern (C) void op_call(Interp interp, IRInstr instr)
 {
     auto closVal = interp.getArgVal(instr, 0);

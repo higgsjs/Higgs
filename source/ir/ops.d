@@ -208,9 +208,16 @@ Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.
 Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr, OpInfo.IMPURE };
 Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_funptr, OpInfo.IMPURE };
 
-// Branching and conditional branching
+// Unconditional jump
 Opcode JUMP = { "jump", false, [], &op_jump, OpInfo.BRANCH };
+
+// Branch based on a boolean value
 Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &op_if_true, OpInfo.BRANCH };
+
+// Test if a closure is an instance of a given
+// function and branch based on the result
+// This instruction is used for conditional inlining
+Opcode IF_EQ_FUN = { "if_eq_fun", false, [OpArg.LOCAL, OpArg.FUN], &op_if_eq_fun, OpInfo.BRANCH };
 
 // <dstLocal> = CALL <closLocal> <thisArg> ...
 // Makes the execution go to the callee entry

@@ -286,6 +286,9 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto newCallInstr = new IRInstr(callSite.opcode, callSite.numArgs);
     regCallBlock.addInstr(newCallInstr);
 
+    // Copy the call count profiles from the original call site
+    caller.callCounts[newCallInstr] = caller.callCounts[callSite];
+
     // Replace uses of the call instruction by uses of the return phi
     callSite.replUses(retPhi);
 
@@ -322,30 +325,20 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     // Remove the old call instruction
     callBlock.delInstr(callSite);
 
-    // Load the function pointer from the closure object
-    auto loadInstr = callBlock.addInstr(
-        new IRInstr(
-            &LOAD_RAWPTR, 
-            newCallInstr.getArg(0),
-            IRConst.int32Cst(CLOS_OFS_FPTR)
-        )
-    );
-
     // Create a pointer constant for the callee function
-    auto ptrConst = new IRRawPtr(cast(ubyte*)callee);
+    auto ptrConst = new IRFunPtr(callee);
 
     // Get the inlined entry block for the callee function
     auto entryBlock = blockMap[callee.entryBlock];
 
     // If the function pointer matches, jump to the callee's entry
-    auto testInstr = callBlock.addInstr(
+    auto ifInstr = callBlock.addInstr(
         new IRInstr(
-            &EQ_RAWPTR,
-            loadInstr,
+            &IF_EQ_FUN,
+            newCallInstr.getArg(0),
             ptrConst
         )
     );
-    auto ifInstr = callBlock.addInstr(new IRInstr(&IF_TRUE, testInstr));
     ifInstr.setTarget(0, blockMap[callee.entryBlock]);
     ifInstr.setTarget(1, regCallBlock);
 }
