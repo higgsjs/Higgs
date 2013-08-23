@@ -150,7 +150,7 @@ Math.max = function ()
 
     for (var i = 1; i < $argc; ++i)
     {
-        var val = $ir_get_arg(i)
+        var val = $ir_get_arg(i);
         if (val > m)
             m = val;
     }
@@ -179,7 +179,7 @@ Math.min = function ()
 
     for (var i = 1; i < $argc; ++i)
     {
-        var val = $ir_get_arg(i)
+        var val = $ir_get_arg(i);
         if (val < m)
             m = val;
     }
