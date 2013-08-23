@@ -116,3 +116,85 @@ Number.prototype.valueOf = function ()
     return getNumVal(this);
 };
 
+/**
+15.7.4.5 Number.prototype.toFixed (fractionDigits)
+*/
+Number.prototype.toFixed = function(fractionDigits)
+{
+    var m;
+
+    // toInteger (fractionDigits)
+    var f = $rt_toNumber(fractionDigits);
+    if (isNaN(f))
+        f = 0;
+    else if ($ir_is_f64(f))
+        f = (f > 0 ? 1 : - 1) * $ir_floor_f64((f > 0 ? f : -f));
+
+    if (f < 0 || f > 20)
+        throw new RangeError("toFixed argument out of range.");
+
+    var x = getNumVal(this);
+    if (isNaN(x))
+        return "NaN";
+
+    var s = "";
+    if (x < 0)
+    {
+        s = "-";
+        x = -x;
+    }
+
+    if (x >= 1E+21)
+    {
+        m = $rt_toString(x);
+    }
+    else
+    {
+        var tenf = 1;
+        for(i = 0; i < f; i++)
+            tenf *= 10;
+
+        var n = x * tenf;
+        if ($ir_is_f64(n))
+            n = $ir_floor_f64(n);
+
+        var delta = 0 - (n / tenf - x);
+        delta = (delta > 0) ? delta : -delta;
+        var delta2;
+        while (true)
+        {
+            delta2 = 0 - ((n + 1) / tenf - x);
+            delta2 = (delta2 > 0) ? delta2 : -delta2;
+            if (delta2 > delta)
+                break;
+            n += 1;
+            delta = delta2;
+        }
+
+        if (n === 0)
+            m = "0";
+        else
+            m = $rt_toString(n);
+
+        if (f !== 0)
+        {
+            var k = $rt_str_get_len(m);
+            if (k <= f)
+            {
+                var end = f + 1 - k;
+                var padding = $rt_str_alloc(end);
+                for (var i = 0; i < end; i++)
+                    $rt_str_set_data(padding, i, 48);
+
+                m = $rt_strcat($ir_get_str(padding), m);
+                k = f + 1;
+            }
+            var a = m.substring(0, k - f);
+            var b = m.substring(k - f);
+            m = $rt_strcat(a, $rt_strcat('.', b));
+        }
+    }
+
+    return $rt_strcat(s, m);
+};
+
