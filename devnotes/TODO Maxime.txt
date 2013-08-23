@@ -62,11 +62,6 @@ TODO: benchmarking (performance testing) JS script
 TODO: release target with no asserts for performance testing
 - the -release flag disables assertions
 
-TODO: implement cap on number of block versions
-- Add command-line options, jit_maxvers
-- Will require generating ASM adaptors before jumps? If we hit the max
-vers cap, the jump target we get back is an adaptor?
-
 ------------------------------------------------------------------------------
 
 August 15th goal: perf gains from inlining
@@ -87,9 +82,6 @@ TODO: revise Higgs page on pointersgonewild
 - add new supported benchs
 - remove runtime redefinable prims as language feature
 
-TODO: don't directly inline when compiling primitives?
-- $rt_add grows to an enormous size
-
 TODO: look into implementing static calls for runtime primitives
 - modify runtime call generation in ir/ast
   - call with IRFunPtr directly
@@ -106,19 +98,64 @@ TODO: IRBlock.moveInstr?
 - Want to maintain instruction identity when possible
 - Stack frame translation post inlining will be problematic otherwise
 
-TODO: make inlining more selective
+TODO: implement cap on number of block versions
+- Add command-line options, jit_maxvers
+- Will require generating ASM adaptors before jumps? If we hit the max
+vers cap, the jump target we get back is an adaptor?
+
+TODO: implement phi type versioning? might help with pathological problem
+
+TODO: revise reg alloc code, make sure we always remove props from maps instead
+of setting their value to 0 where appropriate
+
+TODO: try pathos with only ors and shifts? see if problem persists
+
+Meeting notes:
+- Inlining bugs fixed, now fully working with JIT
+- Found some language shootout benchmarks
+- With inlining, compilation time is much longer, but benchmarks still faster
+- More selective inlining, less useless inlinings
+  - Faster compile time, less machine code generated, better execution time
+- Pathological case, now we inline more useful code, but seem to get exponential blowup
+- Probably need block version cap
+
+
+
+
+
+
+
+
+
+
+[PASS] FIXME: function: safe_add(EF0C)
+machine code bytes: 2798357
+num locals: 108
+num blocks: 106
+num versions: 35294
+- Doesn't even contain a loop, unclear why so many versions
+  - Might have a string op in there?
+  - No for_ blocks or obvious loop blocks
+- In less bloated case, 10 versions of call_cont(FF89)
+  - Are these legitimately different? Probably so
+- Try to design a pathological case? Add of add of add...?
+
+[DONE] TODO: make inlining more selective
 - Don't inline calls with relatively small execution frequency
 - Favor inlining of more likely calls
 - Log data first to get an idea of call site ratios when inlining
-
-
-
-
-
-
-
-
-
+  - Scheme seems to very much make sense
+  - Place threshold at 1/3?
+  - const CALL_MIN_FRAC = 3
+- 3d-cube (pre)
+    total execution time (ms): 2551
+    total compilation time (ms): 737
+    machine code generated (bytes): 338787
+- 3d-raytrace (pre)
+    total execution time (ms): 3839
+    total compilation time (ms): 1230
+    machine code generated (bytes): 571490
+- Small but significant improvement on all factors
 
 [DONE] TODO: handling of parsing new without parens
 - Should enable 2 shootout benchmarks

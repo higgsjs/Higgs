@@ -112,6 +112,11 @@ Selectively inline callees into a function
 */
 void inlinePass(Interp interp, IRFunction fun)
 {
+
+    const CALL_MIN_FRAC = 3;
+
+
+
     // Test if and where this function is on the call stack
     auto stackPos = funOnStack(interp, fun);
 
@@ -134,8 +139,8 @@ void inlinePass(Interp interp, IRFunction fun)
     // For each block of the function
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
-        // If this block was never executed, skip it
-        if (block.execCount == 0)
+        // If this block was not executed often enough, skip it
+        if (block.execCount * CALL_MIN_FRAC < fun.entryBlock.execCount)
             continue;
 
         // Get the last instruction of the block
@@ -163,6 +168,11 @@ void inlinePass(Interp interp, IRFunction fun)
                 "inlining %s into %s",
                 callee.getName(),
                 lastInstr.block.fun.getName()
+            );
+
+            writeln(
+                block.execCount, " / ", fun.entryBlock.execCount, 
+                " (", cast(double)block.execCount / fun.entryBlock.execCount, ")"
             );
         }
 
@@ -669,6 +679,7 @@ void compFun(Interp interp, IRFunction fun)
 
     if (opts.jit_dumpinfo)
     {
+        writeln("function: ", fun.getName);
         writefln("machine code bytes: %s", codeBlock.length);
         writefln("num locals: %s", fun.numLocals);
         writefln("num blocks: %s", versionMap.length);

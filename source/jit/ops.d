@@ -200,6 +200,10 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
         opPtr = IMUL;
     static if (op == "and")
         opPtr = AND;
+    static if (op == "or")
+        opPtr = OR;
+    static if (op == "xor")
+        opPtr = XOR;
     assert (opPtr !is null);
 
     if (opPtr == IMUL)
@@ -258,6 +262,8 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
 alias RMMOp!("add" , 32, Type.INT32) gen_add_i32;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
 alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
+alias RMMOp!("or"  , 32, Type.INT32) gen_or_i32;
+alias RMMOp!("xor" , 32, Type.INT32) gen_xor_i32;
 
 alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
 alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
@@ -1387,6 +1393,8 @@ static this()
     codeGenFns[&ADD_I32]        = &gen_add_i32;
     codeGenFns[&MUL_I32]        = &gen_mul_i32;
     codeGenFns[&AND_I32]        = &gen_and_i32;
+    codeGenFns[&OR_I32]         = &gen_or_i32;
+    codeGenFns[&XOR_I32]        = &gen_xor_i32;
 
     codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
     codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
