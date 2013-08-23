@@ -1535,8 +1535,8 @@ unittest
     // FIXME: class capacity exceeded
     //run("hash2", 20);
 
-    // FIXME: needs Number.prototype.toFixed    
-    //run("heapsort", 2);
+    run("heapsort", 4);
+    interp.assertFloat("ary[n]", 0.79348136);
 
     // TODO: too slow for now
     //run(lists, 1);
@@ -1554,8 +1554,8 @@ unittest
 
     run("objinst", 10);
 
-    // FIXME: needs Number.prototype.toFixed
-    //run("random", 10);
+    run("random", 10);
+    interp.assertInt("last", 75056);
 }
 
 /// SunSpider benchmarks
@@ -1599,7 +1599,7 @@ unittest
     // TODO: enable once faster
     //run("string-base64");
 
-    // TODO: enable once faster, now ~16s
+    // TODO: enable once faster, now ~9s
     //run("string-fasta");
 }
 

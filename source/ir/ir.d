@@ -655,6 +655,16 @@ abstract class IRValue : IdObject
         assert (use.value is this);
         assert (use.owner !is null);
 
+        debug
+        {
+            auto dstThis = cast(IRDstValue)this;
+            auto dstUse = cast(IRDstValue)use;
+            assert (
+                !dstThis || !dstUse || dstThis.block is dstUse.block,
+                "use owner is not in the same block as value"
+            );
+        }
+
         if (firstUse !is null)
         {
             assert (firstUse.prev is null);

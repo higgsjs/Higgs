@@ -100,15 +100,12 @@ TODO: blog about inlining
 - testing with interpreter only
 - benchmark loop incr to 500M with and without inlining
 
-TODO: list CSV, other existing libs in github readme
-
-TODO: revise Higgs page on pointersgonewild
-- add new supported benchs
-- remove runtime redefinable prims as language feature
-
 TODO: revise reg alloc code, make sure we always remove props from maps where
 appropriate instead of setting their value to 0
 
+FIXME: sunspider/string-fasta, jit/jit.d(1073): no reg mapping for instr:
+$25 = and_i32 $1, -8
+- Is this instr not used, is it from the wrong function?
 
 
 
@@ -119,6 +116,13 @@ appropriate instead of setting their value to 0
 
 
 
+
+[DONE] TODO: revise Higgs page on pointersgonewild
+- add new supported benchs
+- remove runtime redefinable prims as language feature
+
+[DONE] TODO: IRValue.addUse if use is dstval, check that from same fn
+- Put in assert or debug block
 
 [DONE] TODO: enable JIT pathos test
 

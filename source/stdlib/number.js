@@ -81,9 +81,15 @@ function Number(value)
 // TODO
 // 15.7.3.2 Number.MAX_VALUE
 // 15.7.3.3 Number.MIN_VALUE
-// 15.7.3.4 Number.NaN
+
+// 15.7.3.4 Not a Number value
+Number.NaN = NaN;
+
 // 15.7.3.5 Number.NEGATIVE_INFINITY
+Number.NEGATIVE_INFINITY = -Infinity;
+
 // 15.7.3.6 Number.POSITIVE_INFINITY
+Number.POSITIVE_INFINITY = Infinity;
 
 /**
 Internal function to get the number value of a number or number object
