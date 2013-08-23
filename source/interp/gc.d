@@ -404,7 +404,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     // Increment the garbage collection count
     interp.gcCount++;
 
-    writeln("leaving gcCollect");
+    //writeln("leaving gcCollect");
     //writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
 }
 

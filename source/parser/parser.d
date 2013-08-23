@@ -904,8 +904,10 @@ ASTExpr parseAtom(TokenStream input)
         auto op = findOperator(t.stringVal, 1, 'r');
         auto baseExpr = parseExpr(input, op.prec);
 
-        // Parse the argument list and create the new expression
-        auto argExprs = parseExprList(input, "(", ")");
+        // Parse the argument list (if present, otherwise assumed empty)
+        auto argExprs = input.peekSep("(")? parseExprList(input, "(", ")"):[];
+
+        // Create the new expression
         return new NewExpr(baseExpr, argExprs, t.pos);
     }
 

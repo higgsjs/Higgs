@@ -234,6 +234,10 @@ unittest
     testParse("a = { a:1, b:2+3*4 };");
     testParse("a = /f+/ig;");
 
+    testParse("new Foo();");
+    testParse("new Foo;");
+    testParse("new Foo + 2");
+
     // Comma operator
     testParse("1, 2");
     testParse("x = y, z");

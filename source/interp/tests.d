@@ -1529,6 +1529,7 @@ unittest
     }
 
     run("hash", 10);
+    interp.assertInt("c", 10);
 
     // FIXME: class capacity exceeded
     //run("hash2", 20);
@@ -1545,14 +1546,12 @@ unittest
     interp.assertInt("mm[0][0]", 270165);
     interp.assertInt("mm[4][4]", 1856025);
 
-    // FIXME: parse error, new without parens, is this valid?
-    //run("methcall", 10);
+    run("methcall", 10);
 
     run("nestedloop", 10);
     interp.assertInt("x", 1000000);
 
-    // FIXME: parse error, new without parens, is this valid?
-    //run("objinst", 10);
+    run("objinst", 10);
 
     // FIXME: needs Number.prototype.toFixed
     //run("random", 10);

@@ -111,17 +111,17 @@ TODO: make inlining more selective
 - Favor inlining of more likely calls
 - Log data first to get an idea of call site ratios when inlining
 
-TODO: handling of parsing new without parens
+
+
+
+
+
+
+
+
+
+[DONE] TODO: handling of parsing new without parens
 - Should enable 2 shootout benchmarks
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: inline test is wrong
 - not testing the type of the callee value
