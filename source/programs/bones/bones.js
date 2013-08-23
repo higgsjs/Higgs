@@ -208,6 +208,10 @@ Bones.initBenchmark = function(count, boneCount) {
   };
 };
 
-Bones.initBenchmark(1000000, 200);
+//Bones.initBenchmark(1000000, 200);
+//Bones.runBenchmark();
+
+Float32Array = Array;
+Bones.initBenchmark(1000, 10);
 Bones.runBenchmark();
 

@@ -1512,6 +1512,15 @@ unittest
     interp.assertInt("theFlag;", 1337);
 }
 
+/// Misc benchmarks
+unittest
+{
+    auto interp = new Interp();
+
+    writefln("misc/bones");
+    interp.load("programs/bones/bones.js");
+}
+
 /// Computer Language Shootout benchmarks
 unittest
 {

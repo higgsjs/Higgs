@@ -82,12 +82,6 @@ TODO: look into implementing static calls for runtime primitives
 - Ideally want some IRValue argument, not an instruction which outputs a value
   - IRLazyPrim, IRLazyStr, IRLazyLink?
 
-TODO: look into top-level OSR mid-function
-- Save current stack frame into temp arrays
-- Redo liveness info if necessary
-- Pay attention to liveness and IP when doing peephole
-  - For first version, probably shouldn't do peephole
-
 TODO: IRBlock.moveInstr?
 - Want to maintain instruction identity when possible
 - Stack frame translation post inlining will be problematic otherwise
@@ -100,22 +94,30 @@ TODO: blog about inlining
 - testing with interpreter only
 - benchmark loop incr to 500M with and without inlining
 
+TODO: look into top-level OSR mid-function
+- Save current stack frame into temp arrays
+- Redo liveness info if necessary
+- Pay attention to liveness and IP when doing peephole
+  - For first version, probably shouldn't do peephole
+
 TODO: revise reg alloc code, make sure we always remove props from maps where
 appropriate instead of setting their value to 0
 
-FIXME: sunspider/string-fasta, jit/jit.d(1073): no reg mapping for instr:
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: sunspider/string-base64, jit/jit.d(1073): no reg mapping for instr:
 $25 = and_i32 $1, -8
 - Is this instr not used, is it from the wrong function?
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: revise Higgs page on pointersgonewild
 - add new supported benchs

@@ -156,6 +156,17 @@ void optIR(IRFunction fun)
         //writeln("phi deleted");
     }
 
+    // Remove and destroy an instruction
+    void delInstr(IRInstr instr)
+    {
+        // Set the changed flag
+        changed = true;
+
+        assert (instr.hasNoUses);
+
+        instr.block.delInstr(instr);
+    }
+
     // Until there are no more changes;
     for (size_t passNo = 1; changed is true; passNo++)
     {
@@ -260,7 +271,7 @@ void optIR(IRFunction fun)
                 if (instr.hasNoUses && !op.isImpure && !op.isBranch)
                 {
                     //writeln("removing dead: ", instr);
-                    block.delInstr(instr);
+                    delInstr(instr);
                     continue INSTR_LOOP;
                 }
 
@@ -279,7 +290,7 @@ void optIR(IRFunction fun)
                         if (r >= int32_t.min && r <= int32_t.max)
                         {
                             instr.replUses(IRConst.int32Cst(cast(int32_t)r));
-                            block.delInstr(instr);
+                            delInstr(instr);
                             continue INSTR_LOOP;
                         }
                     }
@@ -287,14 +298,14 @@ void optIR(IRFunction fun)
                     if (cst0 && cst0.isInt32 && cst0.int32Val is 0)
                     {
                         instr.replUses(instr.getArg(1));
-                        block.delInstr(instr);
+                        delInstr(instr);
                         continue INSTR_LOOP;
                     }
 
                     if (cst1 && cst1.isInt32 && cst1.int32Val is 0)
                     {
                         instr.replUses(instr.getArg(0));
-                        block.delInstr(instr);
+                        delInstr(instr);
                         continue INSTR_LOOP;
                     }
                 }
@@ -314,7 +325,7 @@ void optIR(IRFunction fun)
                         if (r >= int32_t.min && r <= int32_t.max)
                         {
                             instr.replUses(IRConst.int32Cst(cast(int32_t)r));
-                            block.delInstr(instr);
+                            delInstr(instr);
                             continue INSTR_LOOP;
                         }
                     }
@@ -322,14 +333,14 @@ void optIR(IRFunction fun)
                     if (cst0 && cst0.isInt32 && cst0.int32Val is 1)
                     {
                         instr.replUses(instr.getArg(1));
-                        block.delInstr(instr);
+                        delInstr(instr);
                         continue INSTR_LOOP;
                     }
 
                     if (cst1 && cst1.isInt32 && cst1.int32Val is 1)
                     {
                         instr.replUses(instr.getArg(0));
-                        block.delInstr(instr);
+                        delInstr(instr);
                         continue INSTR_LOOP;
                     }
                 }
@@ -367,9 +378,8 @@ void optIR(IRFunction fun)
                             }
 
                             // Remove the jump instruction
-                            block.delInstr(instr);
+                            delInstr(instr);
 
-                            changed = true;
                             continue INSTR_LOOP;
                         }
                     }

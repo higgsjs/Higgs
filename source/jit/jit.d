@@ -1401,16 +1401,14 @@ class CodeGenState
         }
 
         // Remove dead values from the alloc state
-        auto asValues = allocState.keys.dup;
-        foreach (value; asValues)
+        foreach (value; allocState.keys)
         {
             if (liveInfo.liveAtEntry(value, block) is false)
                 allocState.remove(value);
         }
 
         // Remove dead values from the type state
-        auto tsValues = typeState.keys.dup;
-        foreach (value; tsValues)
+        foreach (value; typeState.keys)
         {
             if (liveInfo.liveAtEntry(value, block) is false)
                 typeState.remove(value);
