@@ -279,21 +279,17 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     // Callee test and call patching
     //
 
-    // Copy the call instruction to a new basic block,
+    // Move the call instruction to a new basic block,
     // This will be our fallback (uninlined call)
     auto callBlock = callSite.block;
     auto regCallBlock = caller.newBlock("call_reg");
-    auto newCallInstr = new IRInstr(callSite.opcode, callSite.numArgs);
-    regCallBlock.addInstr(newCallInstr);
-
-    // Copy the call count profiles from the original call site
-    caller.callCounts[newCallInstr] = caller.callCounts[callSite];
+    callBlock.moveInstr(callSite, regCallBlock);
 
     // Replace uses of the call instruction by uses of the return phi
     callSite.replUses(retPhi);
 
     // Replace uses of the return phi by other phi nodes in the call
-    // continuation by uses of the new call instruction
+    // continuation by uses of the call instruction
     for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
     {
         auto desc = contBlock.getIncoming(pIdx);
@@ -301,29 +297,9 @@ void inlineCall(IRInstr callSite, IRFunction callee)
         {
             if ((arg.value is retPhi) && 
                 (arg.owner !is retPhi || desc.pred is callSite.block))
-                desc.setPhiArg(cast(PhiNode)arg.owner, newCallInstr);
+                desc.setPhiArg(cast(PhiNode)arg.owner, callSite);
         }
     }
-
-    // Copy the call arguments
-    for (size_t aIdx = 0; aIdx < callSite.numArgs; ++aIdx)
-        newCallInstr.setArg(aIdx, callSite.getArg(aIdx));
-
-    // Copy the branch descriptors from the original call
-    for (size_t tIdx = 0; tIdx < callSite.MAX_TARGETS; ++tIdx)
-    {
-        auto desc = callSite.getTarget(tIdx);
-        if (desc is null)
-            continue;
-
-        auto newDesc = new BranchDesc(regCallBlock, desc.succ);
-        foreach (arg; desc.args)
-            newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
-        newCallInstr.setTarget(tIdx, newDesc);
-    }
-
-    // Remove the old call instruction
-    callBlock.delInstr(callSite);
 
     // Create a pointer constant for the callee function
     auto ptrConst = new IRFunPtr(callee);
@@ -335,7 +311,7 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto ifInstr = callBlock.addInstr(
         new IRInstr(
             &IF_EQ_FUN,
-            newCallInstr.getArg(0),
+            callSite.getArg(0),
             ptrConst
         )
     );

@@ -393,6 +393,8 @@ class IRBlock : IdObject
     */
     void delInstr(IRInstr instr)
     {
+        assert (instr.block is this);
+
         if (instr.prev)
             instr.prev.next = instr.next;
         else
@@ -424,6 +426,38 @@ class IRBlock : IdObject
 
         // Nullify the parent pointer
         instr.block = null;
+    }
+
+    /**
+    Move an instruction to another block
+    */
+    void moveInstr(IRInstr instr, IRBlock dstBlock)
+    {
+        assert (instr.block is this);
+
+        if (instr.prev)
+            instr.prev.next = instr.next;
+        else
+            firstInstr = instr.next;
+
+        if (instr.next)
+            instr.next.prev = instr.prev;
+        else
+            lastInstr = instr.prev;
+
+        // Add the instruction to the destination block
+        dstBlock.addInstr(instr);
+
+        // If this is a branch instruction, update the branch edges
+        if (instr.opcode.isBranch)
+        {
+            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)            
+            {
+                auto desc = instr.getTarget(tIdx);
+                if (desc !is null)
+                    desc.pred = dstBlock;
+            }
+        }
     }
 
     /**

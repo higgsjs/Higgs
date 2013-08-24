@@ -531,14 +531,9 @@ Word gcForward(Interp interp, Word word, Type type)
         case Type.INSPTR:
         if (word.ptrVal !is null)
         {
-            auto instr = cast(IRInstr)word.ptrVal;
-
-            // If the instruction was destroyed (e.g.: by inlining),
-            // this instruction is no longer valid
-            if (instr.block is null)
-                return Word.ptrv(null);
-
             // Visit the function this instruction belongs to
+            auto instr = cast(IRInstr)word.ptrVal;
+            assert (instr.block !is null);
             visitFun(interp, instr.block.fun);
         }
         return word;
