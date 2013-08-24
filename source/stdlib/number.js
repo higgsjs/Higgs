@@ -207,7 +207,6 @@ Number.prototype.toFixed = function(fractionDigits)
         var delta = 0 - (n / tenf - x);
         delta = (delta > 0) ? delta : -delta;
         var delta2;
-        var iter = 0;
         while (true)
         {
             delta2 = 0 - ((n + 1) / tenf - x);
