@@ -41,6 +41,23 @@ function test_valueOf()
     return 0;
 }
 
+function test_toFixed()
+{
+    if ((200).toFixed() !== "200")
+        return 1;
+
+    if ((0.5).toFixed() !== "1")
+        return 2;
+
+    if ((2.45).toFixed(1) !== "2.5")
+        return 3;
+
+    if ((53.6236854143).toFixed(9) != "53.623685414")
+        return 4;
+
+    return 0;
+}
+
 function test()
 {
     var r = test_ctor();
