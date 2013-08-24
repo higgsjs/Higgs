@@ -183,12 +183,15 @@ Number.prototype.toFixed = function(fractionDigits)
             m = m.substr(0, intl);
         }
 
-        padding = $rt_str_alloc(f + 1);
-        $rt_str_set_data(padding, 0, 46);
-        for (i = 1; i <= f; i++)
-            $rt_str_set_data(padding, i, 48);
+        if (f !== 0)
+        {
+            padding = $rt_str_alloc(f + 1);
+            $rt_str_set_data(padding, 0, 46);
+            for (i = 1; i <= f; i++)
+                $rt_str_set_data(padding, i, 48);
 
-        m = $rt_strcat(m, $ir_get_str(padding));
+            m = $rt_strcat(m, $ir_get_str(padding));
+        }
     }
     else
     {
