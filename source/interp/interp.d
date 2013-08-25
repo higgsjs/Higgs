@@ -276,7 +276,7 @@ string valToString(ValuePair value)
     }
 }
 
-/// Stack size, 256K words
+/// Stack size, 256K words (2MB)
 immutable size_t STACK_SIZE = 2^^18;
 
 /// Initial heap size, 16M bytes
@@ -929,6 +929,7 @@ class Interp
                 compFun(this, target.fun);
             }
 
+
             // If this block has an associated entry point
             if (target.entryFn !is null)
             {
@@ -940,6 +941,7 @@ class Interp
                 //writefln("exited at fn: %s (%s)", target.fun.getName(), target.getName());
                 continue;
             }
+
 
             // Increment the execution count for the block
             target.execCount++;

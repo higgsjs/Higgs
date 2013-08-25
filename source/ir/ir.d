@@ -747,16 +747,22 @@ abstract class IRValue : IdObject
         return firstUse;
     }
 
-    /// Test if this value has a single use
-    bool hasOneUse()
-    {
-        return firstUse !is null && firstUse.next is null;
-    }
-
     /// Test if this value has no uses
     bool hasNoUses()
     {
         return firstUse is null;
+    }
+
+    /// Test if this has uses
+    bool hasUses()
+    {
+        return firstUse !is null;
+    }
+
+    /// Test if this value has a single use
+    bool hasOneUse()
+    {
+        return firstUse !is null && firstUse.next is null;
     }
 
     /// Test if this value has more than one use

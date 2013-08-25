@@ -112,19 +112,25 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto contDesc = callSite.getTarget(0);
     auto contBlock = contDesc.succ;
 
-    // Create a phi node in the call continuation for the return value
-    auto retPhi = contBlock.addPhi(new PhiNode());
+    PhiNode retPhi;
 
-    // Set arguments to the return phi from call continuation predecessors
-    // Note: the argument from impossible predecessors is self-referential,
-    // this is necessary to handle loop headers as call continuations
-    for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
+    // If the call site has uses
+    if (callSite.hasUses)
     {
-        auto desc = contBlock.getIncoming(pIdx);
-        desc.setPhiArg(
-            retPhi,
-            (desc.pred is callSite.block)? callSite:retPhi
-        );
+        // Create a phi node in the call continuation for the return value
+        retPhi = contBlock.addPhi(new PhiNode());
+
+        // Set arguments to the return phi from call continuation predecessors
+        // Note: the argument from impossible predecessors is self-referential,
+        // this is necessary to handle loop headers as call continuations
+        for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
+        {
+            auto desc = contBlock.getIncoming(pIdx);
+            desc.setPhiArg(
+                retPhi,
+                (desc.pred is callSite.block)? callSite:retPhi
+            );
+        }
     }
 
     //
@@ -285,19 +291,23 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     auto regCallBlock = caller.newBlock("call_reg");
     callBlock.moveInstr(callSite, regCallBlock);
 
-    // Replace uses of the call instruction by uses of the return phi
-    callSite.replUses(retPhi);
-
-    // Replace uses of the return phi by other phi nodes in the call
-    // continuation by uses of the call instruction
-    for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
+    // If the call site had uses
+    if (retPhi)
     {
-        auto desc = contBlock.getIncoming(pIdx);
-        foreach (arg; desc.args)
+        // Replace uses of the call instruction by uses of the return phi
+        callSite.replUses(retPhi);
+
+        // Replace uses of the return phi by other phi nodes in the call
+        // continuation by uses of the call instruction
+        for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
         {
-            if ((arg.value is retPhi) && 
-                (arg.owner !is retPhi || desc.pred is callSite.block))
-                desc.setPhiArg(cast(PhiNode)arg.owner, callSite);
+            auto desc = contBlock.getIncoming(pIdx);
+            foreach (arg; desc.args)
+            {
+                if ((arg.value is retPhi) && 
+                    (arg.owner !is retPhi || desc.pred is callSite.block))
+                    desc.setPhiArg(cast(PhiNode)arg.owner, callSite);
+            }
         }
     }
 

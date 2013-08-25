@@ -82,6 +82,9 @@ TODO: look into implementing static calls for runtime primitives
 - Ideally want some IRValue argument, not an instruction which outputs a value
   - IRLazyPrim, IRLazyStr, IRLazyLink?
 
+TODO: sort call sites by exec frequency for inlining?
+- Log performance before and after
+
 TODO: blog about inlining
 - perf
 - basic heuristics
@@ -90,23 +93,68 @@ TODO: blog about inlining
 - testing with interpreter only
 - benchmark loop incr to 500M with and without inlining
 
+TODO: enable peephole opts mid-function
+- Need current target and liveness info
+- Don't remove the current block (assert delBlock doesn't do this)
+- Don't remove live phis or instrs (just skip?)
+
 TODO: make load throw proper JS exception when failing to load file
+- Test in interpreter
 - Add test for this
 
-TODO: look into top-level OSR mid-function
+FIXME: top-level OSR segfaults 
+- Could try again disabling JIT, letting interp run, problems will be more obvious
+- ops.d(389): invalid operand 2 type in op "auto r = x * y;" (int32)
+  - Log function where this occurs
+- Phi value is not rewritten, skipped as dead
+- Only 4 values written, none overwritten
+- Log the values we're rewriting, to see if they make any sense
+  - Values appear sensible
+- PROBLEM: when at target, we already made the jump, we're *past* the phi nodes
+  - Must check liveness after the phi nodes
+- Still have an issue in 3d-raytrace
+  rewriting frame for Array(5EE4) at for_test(E893)
+  - Newly created array value is not rewritten
+  - Array value not marked live after first block instr?
+The $rt_newArr call was inlined
+$20 = phi [call_reg(120B1):0 => $51, call_cont(120AE):0 => $50]
+$20 is used in the loop body
+$20 is returned
+But somehow we don't see $20 as live at the for_test block
+Do we even query for $20? Probably not... $20 was live before the
+transformation, but isn't anymore!
+
+Still a problem... We've created a phi node for the array (return phi), but
+this phi node was not executed because it didn't exist!
+
+Would need to check, for live values being rewritten, which ones are inputs to
+phi nodes from our block, and the phi node wasn't rewritten (is new)
+- Catches the case where we have a new phi node
+- Idea is: I have a value that is live, does it go into some phi node that is
+  also live here?
+- Try this and see if it works in practice...
+
+Do we actually want liveness info from before inlining? ***
+
+Could we be in some situation where some phi node needed to have been executed
+way back, because of some other inlining? The value was replaced by a phi node? ***
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: inlining should not create return phi if there are no uses of the call site
+
+[DONE] TODO: implement top-level OSR mid-function
 - Save current stack frame into temp arrays
 - Redo liveness info if necessary
 - Pay attention to liveness and IP when doing peephole
   - For first version, probably shouldn't do peephole in this case
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: IRBlock.moveInstr(dst)
 - Want to maintain instruction identity when possible

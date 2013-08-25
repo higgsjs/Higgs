@@ -66,7 +66,7 @@ class IdObject
     override bool opEquals(Object o)
     {
         IdObject that = cast(IdObject)o;
-        return that && this.id == that.id;
+        return that && (this.id is that.id);
     }
 
     override int opCmp(Object o)

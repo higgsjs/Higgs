@@ -112,10 +112,8 @@ Selectively inline callees into a function
 */
 void inlinePass(Interp interp, IRFunction fun)
 {
-
+    // Minimum execution count frequency required for inlining
     const CALL_MIN_FRAC = 3;
-
-
 
     // Test if and where this function is on the call stack
     auto stackPos = funOnStack(interp, fun);
@@ -124,12 +122,59 @@ void inlinePass(Interp interp, IRFunction fun)
     if (stackPos is StackPos.DEEP)
         return;
 
+
+
+
+
+
+    // TODO: remove this
     // Don't inline if at the top of the stack and not at the entry block
     if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
         return;
 
+
+
+
+
+
+
+
+
+
     // Get the number of locals before inlining
     auto numLocals = fun.numLocals;
+
+    // Pre-inlining word and type stacks (temporary storage)
+    Word[] preWS;
+    Type[] preTS;
+
+    // Pre-inlining stack frame mapping
+    LocalIdx[IRDstValue] preIdxs;
+
+    // Pre-inlining liveness information
+    LiveInfo preLive;
+
+    // If the function is mid-execution
+    if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
+    {
+        // Save the current stack frame
+        preWS.length = numLocals;
+        preTS.length = numLocals;
+        memcpy(preWS.ptr, interp.wsp, numLocals * Word.sizeof);
+        memcpy(preTS.ptr, interp.tsp, numLocals * Type.sizeof);
+
+        // Compute liveness information before inlining
+        preLive = new LiveInfo(fun);
+
+        // Save the current stack mapping of phi nodes and instructions
+        for (auto block = fun.firstBlock; block !is null; block = block.next)
+        {
+            for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
+                preIdxs[phi] = phi.outSlot;
+            for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+                preIdxs[instr] = instr.outSlot;
+        }
+    }
 
     //writeln(fun.toString());
 
@@ -191,8 +236,10 @@ void inlinePass(Interp interp, IRFunction fun)
 
     //writeln(fun);
 
+    // TODO: make optIR work on running functions, remove condition
     // Reoptimize the fused IRs
-    optIR(fun);
+    if (preWS.length is 0)
+        optIR(fun);
 
     //writeln(fun);
 
@@ -207,7 +254,54 @@ void inlinePass(Interp interp, IRFunction fun)
         // Add space for the new locals to the stack frame
         auto numAdded = fun.numLocals - numLocals;
         interp.push(numAdded);
+
+        // If the function was mid-execution when inlining happened
+        if (preWS.length > 0)
+        {
+            writeln("***** rewriting frame for ", fun.getName, " at ", interp.target.getName, " *****");
+
+            writeln();
+            writeln(fun);
+
+            writeln();
+            writeln(interp.target);
+            writeln();
+
+            // For each phi node and instruction in the function
+            foreach (val, oldIdx; preIdxs)
+            {
+                if (oldIdx is NULL_LOCAL)
+                    continue;
+
+                //writeln("value: ", val);
+                //writeln("value: ", val.idString, ", hash: ", val.toHash, ", ptr: ", cast(void*)val);
+
+                //if (preLive.liveAfter(val, interp.target.firstInstr))
+                //    writeln("live after first instr: ", val);
+
+                // If the value is not currently live, skip it
+                if (preLive.liveAfterPhi(val, interp.target) is false)
+                    continue;
+
+                auto newIdx = val.outSlot;
+                assert (val.block !is null);
+                assert (newIdx !is NULL_LOCAL);
+
+                writeln("rewriting: ", val);
+                writeln("  word: ", preWS[oldIdx].int64Val);
+                writeln("  type: ", preTS[oldIdx]);
+
+                // Copy the value to the new stack frame
+                interp.wsp[newIdx] = preWS[oldIdx];
+                interp.tsp[newIdx] = preTS[oldIdx];
+            }
+
+            writeln();
+        }
     }
+
+    //if (fun.getName.startsWith("$rt_obj_alloc"))
+    //    assert (false);
 
     //writeln(fun);
 

@@ -388,7 +388,13 @@ extern (C) void ArithOp(Type typeTag, uint arity, string op)(Interp interp, IRIn
 
         assert (
             vY.type == typeTag,
-            "invalid operand 2 type in op \"" ~ op ~ "\" (" ~ typeToString(typeTag) ~ ")"
+            "invalid operand 2 type in op \"" ~ op ~ "\" (" ~ typeToString(typeTag) ~ ")" ~
+            "\nvalue:\n" ~
+            valToString(vY) ~
+            "\nargument:\n" ~
+            instr.getArg(1).toString() ~
+            "\nin function:\n" ~
+            instr.block.fun.getName
         );
     }
 
