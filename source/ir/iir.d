@@ -182,6 +182,7 @@ static this()
     addOp(GET_AST_STR);
     addOp(GET_IR_STR);
     addOp(F64_TO_STR);
+    addOp(F64_TO_STR_LNG);
     addOp(GET_TIME_MS);
     addOp(LOAD_LIB);
     addOp(CLOSE_LIB);

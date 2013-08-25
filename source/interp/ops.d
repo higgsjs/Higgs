@@ -1451,7 +1451,7 @@ extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
 
     auto str = fun.toString();
     auto strObj = getString(interp, to!wstring(str));
-   
+
     interp.setSlot(
         instr.outSlot,
         Word.ptrv(strObj),
@@ -1470,7 +1470,27 @@ extern (C) void op_f64_to_str(Interp interp, IRInstr instr)
 
     auto str = format("%G", argVal.word.floatVal);
     auto strObj = getString(interp, to!wstring(str));
-   
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(strObj),
+        Type.REFPTR
+    );
+}
+
+extern (C) void op_f64_to_str_lng(Interp interp, IRInstr instr)
+{
+    auto argVal = interp.getArgVal(instr, 0);
+
+    assert (
+        argVal.type == Type.FLOAT64,
+        "invalid float value"
+    );
+
+    enum fmt = format("%%.%df", float64.dig);
+    auto str = format(fmt, argVal.word.floatVal);
+    auto strObj = getString(interp, to!wstring(str));
+
     interp.setSlot(
         instr.outSlot,
         Word.ptrv(strObj),

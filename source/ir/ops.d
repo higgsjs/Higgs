@@ -306,6 +306,9 @@ Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &op_get_ir_str, OpInfo.
 /// Format a floating-point value as a string
 Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &op_f64_to_str, OpInfo.MAY_GC };
 
+/// Format a floating-point value as a string (long)
+Opcode F64_TO_STR_LNG = { "f64_to_str_lng", true, [OpArg.LOCAL], &op_f64_to_str_lng, OpInfo.MAY_GC };
+
 /// Get the time in milliseconds since process start
 Opcode GET_TIME_MS = { "get_time_ms", true, [], &op_get_time_ms };
 
