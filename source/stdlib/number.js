@@ -66,7 +66,6 @@ function Number(value)
             return numVal;
 
         // Store the value in the new object
-        // TODO: this should be a hidden/internal property
         this.value = numVal;
     }
     else
@@ -163,7 +162,6 @@ Number.prototype.toFixed = function(fractionDigits)
         x = -x;
     }
 
-
     // 7. If x ≥ Math.pow(10, 21), then
     if (x >= 1e+21)
     {
@@ -250,6 +248,7 @@ Number.prototype.toFixed = function(fractionDigits)
         {
             // 8.c.i Let k be the number of characters in m.
             var k = $rt_str_get_len(m);
+
             // 8.c.ii If k ≤ f, then
             if (k <= f)
             {
@@ -259,15 +258,18 @@ Number.prototype.toFixed = function(fractionDigits)
                 padding = $rt_str_alloc(end);
                 for (i = 0; i < end; i++)
                     $rt_str_set_data(padding, i, 48);
+
                 // 8.c.ii.2 Let m be the concatenation of Strings z and m.
                 m = $rt_strcat($ir_get_str(padding), m);
                 // 8.c.ii.3 Let k = f + 1
                 k = f + 1;
             }
+
             // 8.c.iii Let a be the first k–f characters of m,
             // and let b be the remaining f characters of m.
             var a = m.substring(0, k - f);
             var b = m.substring(k - f);
+
             // 8.c.iv Let m be the concatenation of the three Strings a, ".", and b.
             m = $rt_strcat(a, $rt_strcat('.', b));
         }

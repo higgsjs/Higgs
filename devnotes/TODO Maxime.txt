@@ -138,7 +138,11 @@ Do we actually want liveness info from before inlining? ***
 
 Could we be in some situation where some phi node needed to have been executed
 way back, because of some other inlining? The value was replaced by a phi node? ***
-
+- Seems like we could
+- Can detect what phi nodes are newly live, see which of their inputs were live previously
+  - If multiple inputs were previously live???
+  - In the case of inlining, might be impossible that multiple inputs were previously live,
+    because the inlined case didn't exist
 
 
 
