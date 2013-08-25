@@ -96,7 +96,7 @@ bool inlinable(IRInstr callSite, IRFunction callee)
 /**
 Inline a callee function at a call site
 */
-void inlineCall(IRInstr callSite, IRFunction callee)
+PhiNode inlineCall(IRInstr callSite, IRFunction callee)
 {
     // Ensure that this inlining is possible
     assert (inlinable(callSite, callee));
@@ -327,5 +327,8 @@ void inlineCall(IRInstr callSite, IRFunction callee)
     );
     ifInstr.setTarget(0, blockMap[callee.entryBlock]);
     ifInstr.setTarget(1, regCallBlock);
+
+    // Return the return merge phi node
+    return retPhi;
 }
 

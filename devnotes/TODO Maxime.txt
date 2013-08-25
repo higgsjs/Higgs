@@ -78,9 +78,7 @@ TODO: look into implementing static calls for runtime primitives
 - inlining can check if fun ptr arg is a constant, not put conditional check
 - how do we get the runtime fun ptr when generating AST?
   - could do the linking lazily?
-  - get_prim_fun "str" cached IRFunPtr instruction?
-- Ideally want some IRValue argument, not an instruction which outputs a value
-  - IRLazyPrim, IRLazyStr, IRLazyLink?
+  - get_prim_fun "str" ptr, cached IRFunPtr instruction
 
 TODO: sort call sites by exec frequency for inlining?
 - Log performance before and after
@@ -102,7 +100,29 @@ TODO: make load throw proper JS exception when failing to load file
 - Test in interpreter
 - Add test for this
 
-FIXME: top-level OSR segfaults 
+
+FIXME: top-level OSR faults after jit_inlining2
+- op_set_str fails with refptr out of heap, odd!
+  - possibly, a function was GCd, its link table entries collected?
+- Possibly need to be careful when collecting link table entries
+  - Should make sure they have no uses before removing them ***
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: top-level OSR segfaults 
 - Could try again disabling JIT, letting interp run, problems will be more obvious
 - ops.d(389): invalid operand 2 type in op "auto r = x * y;" (int32)
   - Log function where this occurs
@@ -123,19 +143,15 @@ $20 is returned
 But somehow we don't see $20 as live at the for_test block
 Do we even query for $20? Probably not... $20 was live before the
 transformation, but isn't anymore!
-
 Still a problem... We've created a phi node for the array (return phi), but
 this phi node was not executed because it didn't exist!
-
 Would need to check, for live values being rewritten, which ones are inputs to
 phi nodes from our block, and the phi node wasn't rewritten (is new)
 - Catches the case where we have a new phi node
 - Idea is: I have a value that is live, does it go into some phi node that is
   also live here?
 - Try this and see if it works in practice...
-
 Do we actually want liveness info from before inlining? ***
-
 Could we be in some situation where some phi node needed to have been executed
 way back, because of some other inlining? The value was replaced by a phi node? ***
 - Seems like we could
@@ -143,14 +159,8 @@ way back, because of some other inlining? The value was replaced by a phi node? 
   - If multiple inputs were previously live???
   - In the case of inlining, might be impossible that multiple inputs were previously live,
     because the inlined case didn't exist
-
-
-
-
-
-
-
-
+- store mapping of call sites to ret phi nodes, process phi nodes based on
+post-inlining liveness info
 
 [DONE] FIXME: inlining should not create return phi if there are no uses of the call site
 

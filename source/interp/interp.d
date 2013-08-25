@@ -542,7 +542,8 @@ class Interp
             t != Type.REFPTR ||
             w.ptrVal == null ||
             (w.ptrVal >= heapStart && w.ptrVal < heapLimit),
-            "ref ptr out of heap"
+            "ref ptr out of heap in setSlot: " ~
+            to!string(w.ptrVal)
         );
 
         wsp[idx] = w;
@@ -929,7 +930,7 @@ class Interp
                 compFun(this, target.fun);
             }
 
-
+            
             // If this block has an associated entry point
             if (target.entryFn !is null)
             {
@@ -941,7 +942,7 @@ class Interp
                 //writefln("exited at fn: %s (%s)", target.fun.getName(), target.getName());
                 continue;
             }
-
+            
 
             // Increment the execution count for the block
             target.execCount++;

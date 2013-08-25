@@ -256,7 +256,7 @@ extern (C) void op_set_str(Interp interp, IRInstr instr)
         interp.setLinkType(*linkIdx, Type.REFPTR);
     }
 
-    //writefln("setting str %s", instr.args[0].stringVal);
+    //writefln("setting str %s", (cast(IRString)instr.getArg(0)).str);
 
     interp.setSlot(
         instr.outSlot,

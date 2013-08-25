@@ -124,16 +124,10 @@ void inlinePass(Interp interp, IRFunction fun)
 
 
 
-
-
-
     // TODO: remove this
     // Don't inline if at the top of the stack and not at the entry block
     if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
         return;
-
-
-
 
 
 
@@ -151,9 +145,6 @@ void inlinePass(Interp interp, IRFunction fun)
     // Pre-inlining stack frame mapping
     LocalIdx[IRDstValue] preIdxs;
 
-    // Pre-inlining liveness information
-    LiveInfo preLive;
-
     // If the function is mid-execution
     if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
     {
@@ -162,9 +153,6 @@ void inlinePass(Interp interp, IRFunction fun)
         preTS.length = numLocals;
         memcpy(preWS.ptr, interp.wsp, numLocals * Word.sizeof);
         memcpy(preTS.ptr, interp.tsp, numLocals * Type.sizeof);
-
-        // Compute liveness information before inlining
-        preLive = new LiveInfo(fun);
 
         // Save the current stack mapping of phi nodes and instructions
         for (auto block = fun.firstBlock; block !is null; block = block.next)
@@ -181,6 +169,9 @@ void inlinePass(Interp interp, IRFunction fun)
     // Number of inlinings performed
     auto numInlinings = 0;
 
+    // Map of inlined call sites to return phi nodes
+    PhiNode[IRInstr] callSites;
+
     // For each block of the function
     for (auto block = fun.firstBlock; block !is null; block = block.next)
     {
@@ -189,22 +180,22 @@ void inlinePass(Interp interp, IRFunction fun)
             continue;
 
         // Get the last instruction of the block
-        auto lastInstr = block.lastInstr;
-        assert (lastInstr !is null, "last instr is null");
+        auto callSite = block.lastInstr;
+        assert (callSite !is null, "last instr is null");
 
         // If this is is not a call instruction, skip it
-        if (lastInstr.opcode != &ir.ops.CALL)
+        if (callSite.opcode != &ir.ops.CALL)
             continue;
 
         // If there is not exactly one callee, skip it
-        if (fun.callCounts[lastInstr].length != 1)
+        if (fun.callCounts[callSite].length != 1)
             continue;
 
         // Get the callee
-        auto callee = fun.callCounts[lastInstr].keys[0];
+        auto callee = fun.callCounts[callSite].keys[0];
 
         // If this combination is not inlinable, skip it
-        if (inlinable(lastInstr, callee) is false)
+        if (inlinable(callSite, callee) is false)
             continue;
 
         if (opts.jit_dumpinfo)
@@ -212,7 +203,7 @@ void inlinePass(Interp interp, IRFunction fun)
             writefln(
                 "inlining %s into %s",
                 callee.getName(),
-                lastInstr.block.fun.getName()
+                callSite.block.fun.getName()
             );
 
             writeln(
@@ -222,7 +213,8 @@ void inlinePass(Interp interp, IRFunction fun)
         }
 
         // Inline the callee
-        inlineCall(lastInstr, callee);
+        auto retPhi = inlineCall(callSite, callee);
+        callSites[callSite] = retPhi;
 
         numInlinings++;
 
@@ -258,14 +250,19 @@ void inlinePass(Interp interp, IRFunction fun)
         // If the function was mid-execution when inlining happened
         if (preWS.length > 0)
         {
-            writeln("***** rewriting frame for ", fun.getName, " at ", interp.target.getName, " *****");
+            //writeln("***** rewriting frame for ", fun.getName, " at ", interp.target.getName, " *****");
 
+            /*
             writeln();
             writeln(fun);
 
             writeln();
             writeln(interp.target);
             writeln();
+            */
+
+            // Compute liveness information for the function
+            auto liveInfo = new LiveInfo(fun);
 
             // For each phi node and instruction in the function
             foreach (val, oldIdx; preIdxs)
@@ -280,31 +277,53 @@ void inlinePass(Interp interp, IRFunction fun)
                 //    writeln("live after first instr: ", val);
 
                 // If the value is not currently live, skip it
-                if (preLive.liveAfterPhi(val, interp.target) is false)
+                if (liveInfo.liveAfterPhi(val, interp.target) is false)
                     continue;
 
                 auto newIdx = val.outSlot;
                 assert (val.block !is null);
                 assert (newIdx !is NULL_LOCAL);
 
+                /*
                 writeln("rewriting: ", val);
                 writeln("  word: ", preWS[oldIdx].int64Val);
                 writeln("  type: ", preTS[oldIdx]);
+                */
 
                 // Copy the value to the new stack frame
                 interp.wsp[newIdx] = preWS[oldIdx];
                 interp.tsp[newIdx] = preTS[oldIdx];
             }
 
-            writeln();
+            // For each return phi node created
+            foreach (callSite, phi; callSites)
+            {
+                if (phi is null)
+                    continue;
+
+                if (liveInfo.liveAfterPhi(phi, interp.target) is false)
+                    continue;
+
+                auto oldIdx = preIdxs[callSite];
+                auto newIdx = phi.outSlot;
+                assert (newIdx !is NULL_LOCAL);
+
+                /*
+                writeln("writing phi: ", phi);
+                writeln("  word: ", preWS[oldIdx].int64Val);
+                writeln("  type: ", preTS[oldIdx]);
+                */
+
+                // Copy the value to the new stack frame
+                interp.wsp[newIdx] = preWS[oldIdx];
+                interp.tsp[newIdx] = preTS[oldIdx];
+            }
+
+            //writeln();
         }
     }
 
-    //if (fun.getName.startsWith("$rt_obj_alloc"))
-    //    assert (false);
-
     //writeln(fun);
-
     //writefln("inlinePass done");
 }
 
