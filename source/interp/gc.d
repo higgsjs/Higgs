@@ -725,10 +725,16 @@ void collectFun(Interp interp, IRFunction fun)
                 // If this is a link table entry, free it
                 if (auto linkArg = cast(IRLinkIdx)arg)
                 {
-                    //writefln("freeing link table entry %s", arg.linkIdx);
-                    if (linkArg.linkIdx != NULL_LINK)
+                    if (linkArg.hasOneUse && linkArg.linkIdx != NULL_LINK)
+                    {
+                        //writefln("freeing link table entry %s", arg.linkIdx);
                         interp.freeLink(linkArg.linkIdx);
+                    }
                 }
+
+                // TODO
+                // TODO: remove uses of args
+                // TODO
             }
         }
     }

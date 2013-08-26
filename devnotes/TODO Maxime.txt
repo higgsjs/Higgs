@@ -96,23 +96,34 @@ TODO: enable peephole opts mid-function
 - Don't remove the current block (assert delBlock doesn't do this)
 - Don't remove live phis or instrs (just skip?)
 
-FIXME: top-level OSR faults after jit_inlining2
+TODO: in collectFun, remove uses of args, nullify?
+
+FIXME: earley-boyer and raytrace segfault
+./higgs --jit_noinline programs/v8bench/base.js programs/v8bench/earley-boyer.js programs/v8bench/drv-earley-boyer.js 
+- Reg alloc bug? 
+  - persists without top of stack OSR
+  - appeared after allocating reg to values with no uses
+  - still happens with --jit_noinline
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: jit/jit.d(1186): no reg mapping for instr:
+$26 = load_refptr $177, $52 (no uses)
+./higgs --e "test()" --jit_dumpinfo programs/gc/graph.js
+- peephole currently disabled when doing mid-execution OSR
+
+[DONE] FIXME: top-level OSR faults after jit_inlining2
 - op_set_str fails with refptr out of heap, odd!
   - possibly, a function was GCd, its link table entries collected?
 - Possibly need to be careful when collecting link table entries
-  - Should make sure they have no uses before removing them ***
-
-
-
-
-
-
-
-
-
-
-
-
+  - Should make sure they have no uses before removing them
 
 [DONE] TODO: make load throw proper JS exception when failing to load file
 - Test in interpreter

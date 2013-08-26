@@ -1186,7 +1186,8 @@ class CodeGenState
         assert (
             instr in ctx.regMapping,
             "no reg mapping for instr:\n" ~ 
-            instr.toString()
+            instr.toString() ~
+            (instr.hasNoUses? " (no uses)":"")
         );
 
         // Get the assigned register for this instruction

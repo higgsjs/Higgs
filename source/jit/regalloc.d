@@ -109,9 +109,6 @@ RegMapping mapRegs(IRFunction fun, LiveInfo liveInfo)
         // For each phi
         for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
         {
-            if (phi.hasNoUses)
-                continue;
-
             mapping[phi] = allocRegs[curRegIdx];
             curRegIdx = (curRegIdx + 1) % cast(int)allocRegs.length;
         }
@@ -119,9 +116,6 @@ RegMapping mapRegs(IRFunction fun, LiveInfo liveInfo)
         // Fo each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            if (instr.hasNoUses)
-                continue;
-
             mapping[instr] = allocRegs[curRegIdx];
             curRegIdx = (curRegIdx + 1) % cast(int)allocRegs.length;
         }
