@@ -1361,23 +1361,31 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
     auto strPtr = interp.getArgStr(instr, 0);
     auto fileName = interp.getLoadPath(extractStr(strPtr));
 
-    // Parse the source file and generate IR
-    auto ast = parseFile(fileName);
-    auto fun = astToIR(ast);
+    try
+    {
+        // Parse the source file and generate IR
+        auto ast = parseFile(fileName);
+        auto fun = astToIR(ast);
 
-    // Register this function in the function reference set
-    interp.funRefs[cast(void*)fun] = fun;
+        // Register this function in the function reference set
+        interp.funRefs[cast(void*)fun] = fun;
 
-    // Setup the callee stack frame
-    interp.callFun(
-        fun,
-        instr,      // Calling instruction
-        null,       // Null closure argument
-        NULL,       // Null this argument
-        Type.REFPTR,// This value is a reference
-        0,          // 0 arguments
-        null        // 0 arguments
-    );
+        // Setup the callee stack frame
+        interp.callFun(
+            fun,
+            instr,      // Calling instruction
+            null,       // Null closure argument
+            NULL,       // Null this argument
+            Type.REFPTR,// This value is a reference
+            0,          // 0 arguments
+            null        // 0 arguments
+        );
+    }
+
+    catch (Exception err)
+    {
+        throwError(interp, instr, "RuntimeError", err.msg);
+    }
 }
 
 extern (C) void op_eval_str(Interp interp, IRInstr instr)

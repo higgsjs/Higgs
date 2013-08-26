@@ -96,11 +96,6 @@ TODO: enable peephole opts mid-function
 - Don't remove the current block (assert delBlock doesn't do this)
 - Don't remove live phis or instrs (just skip?)
 
-TODO: make load throw proper JS exception when failing to load file
-- Test in interpreter
-- Add test for this
-
-
 FIXME: top-level OSR faults after jit_inlining2
 - op_set_str fails with refptr out of heap, odd!
   - possibly, a function was GCd, its link table entries collected?
@@ -119,8 +114,9 @@ FIXME: top-level OSR faults after jit_inlining2
 
 
 
-
-
+[DONE] TODO: make load throw proper JS exception when failing to load file
+- Test in interpreter
+- Add test for this
 
 [DONE] FIXME: top-level OSR segfaults 
 - Could try again disabling JIT, letting interp run, problems will be more obvious

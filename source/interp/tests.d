@@ -1410,6 +1410,9 @@ unittest
     // Dynamic code loading
     interp.load("programs/load/loader.js");
 
+    // Loading a missing file
+    interp.assertThrows("load('_filethatdoesntexist123_')");
+
     // Eval
     interp.load("programs/eval/eval.js");
 }
