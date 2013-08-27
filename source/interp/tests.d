@@ -1634,13 +1634,11 @@ unittest
 
     run("deltablue");
 
-    // FIXME: segfault
-    //run("earley-boyer");
+    run("earley-boyer");
 
     run("navier-stokes");
 
-    // FIXME: segfault
-    //run("raytrace");
+    run("raytrace");
 
     run("richards");
 

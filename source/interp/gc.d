@@ -741,7 +741,7 @@ void collectFun(Interp interp, IRFunction fun)
 
     // TODO: delete argument type monitor objects here
 
-    //writefln("destroying function: \"%s\" (%s)", fun.name, cast(void*)fun);
+    //writefln("destroying function: \"%s\" (%s)", fun.getName, cast(void*)fun);
 
     // Destroy the function
     destroy(fun);

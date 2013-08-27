@@ -231,7 +231,6 @@ class LiveInfo
                 stack ~= block.getIncoming(iIdx).pred;
         }
 
-
         /**
         Do the liveness traversal for a given use
         */

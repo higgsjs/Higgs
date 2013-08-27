@@ -990,7 +990,7 @@ class IRFunPtr : IRValue
 }
 
 /**
-Link index pointer value (stateful, non-constant, initially null)
+Link tanle index value (stateful, non-constant, initially null)
 */
 class IRLinkIdx : IRValue
 {

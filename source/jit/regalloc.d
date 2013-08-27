@@ -116,6 +116,10 @@ RegMapping mapRegs(IRFunction fun, LiveInfo liveInfo)
         // Fo each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
+            // If this instruction produces no output, skip it
+            if (!instr.opcode.output)
+                continue;
+
             mapping[instr] = allocRegs[curRegIdx];
             curRegIdx = (curRegIdx + 1) % cast(int)allocRegs.length;
         }

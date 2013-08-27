@@ -112,26 +112,20 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     auto contDesc = callSite.getTarget(0);
     auto contBlock = contDesc.succ;
 
-    PhiNode retPhi;
+    // Create a block for the return value merging
+    auto mergeBlock = caller.newBlock("call_merge");
+    mergeBlock.execCount = contBlock.execCount;
 
-    // If the call site has uses
-    if (callSite.hasUses)
-    {
-        // Create a phi node in the call continuation for the return value
-        retPhi = contBlock.addPhi(new PhiNode());
+    // Create a phi node in the call continuation for the return value
+    auto retPhi = mergeBlock.addPhi(new PhiNode());
 
-        // Set arguments to the return phi from call continuation predecessors
-        // Note: the argument from impossible predecessors is self-referential,
-        // this is necessary to handle loop headers as call continuations
-        for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
-        {
-            auto desc = contBlock.getIncoming(pIdx);
-            desc.setPhiArg(
-                retPhi,
-                (desc.pred is callSite.block)? callSite:retPhi
-            );
-        }
-    }
+    // Jump to the call continuation block
+    auto jumpInstr = mergeBlock.addInstr(new IRInstr(&JUMP));
+    auto jumpDesc = jumpInstr.setTarget(0, contBlock);
+
+    // Copy arguments from the call continuation jump
+    foreach (arg; contDesc.args)
+        jumpDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
 
     //
     // Callee basic block copying and translation
@@ -262,18 +256,12 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
                 // Remove the return instruction
                 newBlock.delInstr(newInstr);
 
-                // Jump to the return block
+                // Jump to the merge block
                 auto jump = newBlock.addInstr(new IRInstr(&JUMP));
-                auto desc = jump.setTarget(0, contBlock);
+                auto desc = jump.setTarget(0, mergeBlock);
 
-                // Set phi node arguments for the jump
-                foreach (arg; contDesc.args)
-                {    
-                    desc.setPhiArg(
-                        cast(PhiNode)arg.owner,
-                        (arg.value is callSite)? retVal:arg.value
-                    );
-                }
+                // Set the return phi argument
+                desc.setPhiArg(retPhi, retVal);
             }
         }
 
@@ -291,25 +279,12 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     auto regCallBlock = caller.newBlock("call_reg");
     callBlock.moveInstr(callSite, regCallBlock);
 
-    // If the call site had uses
-    if (retPhi)
-    {
-        // Replace uses of the call instruction by uses of the return phi
-        callSite.replUses(retPhi);
+    // Replace uses of the call instruction by uses of the return phi
+    callSite.replUses(retPhi);
 
-        // Replace uses of the return phi by other phi nodes in the call
-        // continuation by uses of the call instruction
-        for (size_t pIdx = 0; pIdx < contBlock.numIncoming; ++pIdx)
-        {
-            auto desc = contBlock.getIncoming(pIdx);
-            foreach (arg; desc.args)
-            {
-                if ((arg.value is retPhi) && 
-                    (arg.owner !is retPhi || desc.pred is callSite.block))
-                    desc.setPhiArg(cast(PhiNode)arg.owner, callSite);
-            }
-        }
-    }
+    // Make the regular call jump to the call merge block
+    auto regCallDesc = callSite.setTarget(0, mergeBlock);
+    regCallDesc.setPhiArg(retPhi, callSite);
 
     // Create a pointer constant for the callee function
     auto ptrConst = new IRFunPtr(callee);

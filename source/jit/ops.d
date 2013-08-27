@@ -394,11 +394,19 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
     // Create the memory operand
     X86Mem memOpnd;
     if (auto immOffs = cast(X86Imm)opnd1)
+    {
         memOpnd = new X86Mem(memSize, opnd0, cast(int32_t)immOffs.imm);
+    }
     else if (auto regOffs = cast(X86Reg)opnd1)
+    {
+        // Zero-extend the offset from 32 to 64 bits
+        ctx.as.instr(MOV, regOffs, regOffs);
         memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.ofSize(64));
+    }
     else
+    {
         assert (false, "invalid offset operand");
+    }
 
     // Select which load opcode to use
     X86OpPtr loadOp;
@@ -450,11 +458,19 @@ void StoreOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIn
     // Create the memory operand
     X86Mem memOpnd;
     if (auto immOffs = cast(X86Imm)opnd1)
+    {
         memOpnd = new X86Mem(memSize, opnd0, cast(int32_t)immOffs.imm);
+    }
     else if (auto regOffs = cast(X86Reg)opnd1)
+    {
+        // Zero-extend the offset from 32 to 64 bits
+        ctx.as.instr(MOV, regOffs, regOffs);
         memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.ofSize(64));
+    }
     else
+    {
         assert (false, "invalid offset operand");
+    }
 
     // Store the value into the memory location
     ctx.as.instr(MOV, memOpnd, opnd2);
