@@ -94,6 +94,20 @@ TODO: don't inline when compiling primitives?
 
 TODO: look at code for the for loop test
 - write this code in a JS file, programs/jit/big_incr_loop.js
+time ./higgs --nostdlib --jit_dumpinfo --jit_dumpasm programs/jit/loop_big_incr.js
+- phi nodes make optimization difficult... Should look at IR, try to enable peephole opts mid-exec?
+- not passing type info through phi nodes, problematic for loop opt
+
+TODO: add comments for phi node moves... Hard to decipher as is
+
+TODO: ASMInstr.nextNC?
+- Modify peephole to ignore comments
+
+
+
+
+
+
 
 
 
