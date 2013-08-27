@@ -1187,8 +1187,6 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    writeln("call_prim...");
-
     // Generate a JIT entry point for the call continuation
     ctx.genCallCont(instr);
 
@@ -1201,9 +1199,6 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Check that the argument count matches
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     assert (numArgs is fun.numParams);
-
-    // Store the function pointer in a scratch register
-    ctx.as.ptr(scrRegs64[0], fun);
 
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
@@ -1248,8 +1243,8 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.setType(-numArgs - 3, Type.REFPTR);
 
     // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[1], instr);
-    ctx.as.setWord(-numArgs - 4, scrRegs64[1]);
+    ctx.as.ptr(scrRegs64[0], instr);
+    ctx.as.setWord(-numArgs - 4, scrRegs64[0]);
     ctx.as.setType(-numArgs - 4, Type.INSPTR);
 
     // Spill the values that are live after the call
@@ -1262,8 +1257,11 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     );
 
     // Push space for the callee arguments and locals
-    ctx.as.instr(SUB, tspReg, numArgs);
-    ctx.as.instr(SUB, wspReg, 8 * numArgs);
+    ctx.as.ptr(scrRegs64[0], fun);
+    ctx.as.getMember!("IRFunction", "numLocals")(scrRegs32[0], scrRegs64[0]);
+    ctx.as.instr(SUB, tspReg, scrRegs64[0]);
+    ctx.as.instr(SHL, scrRegs64[0], 3);
+    ctx.as.instr(SUB, wspReg, scrRegs64[0]);
 
     // Label for the interpreter jump
     auto INTERP_JUMP = new Label("INTERP_JUMP");
@@ -1574,7 +1572,7 @@ static this()
     codeGenFns[&JUMP]           = &gen_jump;
 
     codeGenFns[&ir.ops.CALL]    = &gen_call;
-    //codeGenFns[&CALL_PRIM]      = &gen_call_prim;
+    codeGenFns[&CALL_PRIM]      = &gen_call_prim;
     codeGenFns[&ir.ops.RET]     = &gen_ret;
 }
 

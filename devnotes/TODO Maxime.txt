@@ -98,15 +98,16 @@ TODO: look at code for the for loop test
 TODO: make inlining take advantage of static calls
 - avoid placing conditional block when inlining call_prim
 
-TODO: implement call_prim in JIT
+
+
+
+
+
+
+
+[DONE] TODO: implement call_prim in JIT
 - funOnStack segfaults...
-
-
-
-
-
-
-
+- only one call_prim occurs, to rt_lt, corrupts frame
 
 [DONE] TODO: implement static calls for runtime primitives
 - call_prim "str" ptr, cached IRFunPtr instruction
