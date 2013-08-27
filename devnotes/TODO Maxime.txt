@@ -96,9 +96,7 @@ TODO: implement static calls for runtime primitives
 
 TODO: optimize init loops in layout.js, use lt_i32, add_i32
 - benchmark
-
-
-
+- improves times of both 3d-cube and 3d-raytrace
 
 
 

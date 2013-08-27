@@ -504,9 +504,10 @@ class ForLoop:
         self.stmts = stmts
 
     def genJS(self):
+        loopV = self.loopVar.genJS()
+        endV = self.endVar.genJS()
         out = ''
-        out += 'for (var ' + self.loopVar.genJS() + ' = 0; ' + self.loopVar.genJS() + ' < '
-        out += self.endVar.genJS() + '; ++' + self.loopVar.genJS() + ')\n'
+        out += 'for (var %s = 0; $ir_lt_i32(%s, %s); %s = $ir_add_i32(%s, 1))\n' % (loopV, loopV, endV, loopV, loopV)
         out += '{'
         stmts = ''
         for stmt in self.stmts:
