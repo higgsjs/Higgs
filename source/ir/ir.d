@@ -1260,6 +1260,17 @@ class IRInstr : IRDstValue
         val.addUse(args[idx]);
     }
 
+    /// Remove an argument use
+    void remArg(size_t idx)
+    {
+        assert (idx < args.length);
+
+        if (args[idx].value !is null)
+            args[idx].value.remUse(args[idx]);
+
+        args[idx].value = null;
+    }
+
     /// Get the number of arguments
     size_t numArgs()
     {

@@ -12,6 +12,8 @@ Misc improvements
 
 TODO: give this project more lovin'! Improve various aspects! Blog!
 
+FIXME: but in JIT heap_alloc op
+
 TODO: don't load arg values with only one use?
 - test perf impact, need bench script, need desktop
 
@@ -76,8 +78,6 @@ TODO: blog about inlining
 - testing with interpreter only
 - benchmark loop incr to 500M with and without inlining
 
-TODO: optimize init loops in layout.js, use lt_i32, add_i32
-
 TODO: sort call sites by exec frequency for inlining?
 - Log performance before and after
 
@@ -94,7 +94,8 @@ TODO: implement static calls for runtime primitives
   - could do the linking lazily?
   - get_prim_fun "str" ptr, cached IRFunPtr instruction
 
-TODO: in collectFun, nullify instruction args, remove uses
+TODO: optimize init loops in layout.js, use lt_i32, add_i32
+- benchmark
 
 
 
@@ -104,6 +105,27 @@ TODO: in collectFun, nullify instruction args, remove uses
 
 
 
+
+
+
+[DONE] TODO: in collectFun, nullify instruction args, remove uses
+- See if mem usage is improved, maybe a bit
+
+[DONE] FIXME: sunspider/3d-cube segfaults
+- Crashes just after rewriting the frame for MMulti
+$5 = heap_alloc $23
+$6 = get_global "$rt_arrtbl_set_cap", <idx:164>
+$7 = get_global_obj
+if_eq_fun $6, <fun:$rt_arrtbl_set_cap(1611)> => entry(100C2), call_reg(100CA)
+$0 = get_global "$rt_arrtbl_ofs_cap", <idx:154>
+$1 = get_global_obj
+$27 = call $0, $1, $5 => call_cont(100C6)
+ret 12
+store_u32 $5, $27, $109
+The offset is correct
+The pointer is invalid
+$5 gets corrupted?
+- Bug in JIT heap_alloc implementation
 
 [DONE] FIXME: jit crashes after inlining 
 entering fn: $rt_obj_set_type(1301) (entry(3BD9))

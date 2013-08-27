@@ -732,9 +732,8 @@ void collectFun(Interp interp, IRFunction fun)
                     }
                 }
 
-                // TODO
-                // TODO: remove uses of args
-                // TODO
+                // Remove this argument reference
+                instr.remArg(argIdx);
             }
         }
     }

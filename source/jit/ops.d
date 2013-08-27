@@ -582,6 +582,7 @@ void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
 
+/*
 void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Label for the bailout case
@@ -635,7 +636,7 @@ void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     foreach (reg; allocRegs)
         ctx.ol.instr(PUSH, reg);
 
-    //ctx.ol.printStr("alloc bailout ***");
+    ctx.ol.printStr("alloc bailout ***");
 
     // Fallback to interpreter execution
     // Spill all values, including arguments
@@ -661,6 +662,7 @@ void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Allocation done
     ctx.ol.instr(JMP, DONE);
 }
+*/
 
 /**
 Generates the conditional branch for an if_true instruction with the given
@@ -1447,7 +1449,7 @@ static this()
 
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 
-    codeGenFns[&HEAP_ALLOC]     = &gen_heap_alloc;
+    //codeGenFns[&HEAP_ALLOC]     = &gen_heap_alloc;
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;

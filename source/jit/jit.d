@@ -123,16 +123,10 @@ void inlinePass(Interp interp, IRFunction fun)
         return;
 
 
-
     // TODO: remove this
     // Don't inline if at the top of the stack and not at the entry block
-    if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
-        return;
-
-
-
-
-
+    //if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
+    //    return;
 
 
     // Get the number of locals before inlining
@@ -250,16 +244,16 @@ void inlinePass(Interp interp, IRFunction fun)
         // If the function was mid-execution when inlining happened
         if (preWS.length > 0)
         {
-            writeln("***** rewriting frame for ", fun.getName, " at ", interp.target.getName, " *****");
+            //writeln("***** rewriting frame for ", fun.getName, " at ", interp.target.getName, " *****");
 
-            
+            /*
             writeln();
             writeln(fun);
 
             writeln();
             writeln(interp.target);
             writeln();
-            
+            */
 
             // Compute liveness information for the function
             auto liveInfo = new LiveInfo(fun);
@@ -273,9 +267,6 @@ void inlinePass(Interp interp, IRFunction fun)
                 //writeln("value: ", val);
                 //writeln("value: ", val.idString, ", hash: ", val.toHash, ", ptr: ", cast(void*)val);
 
-                //if (preLive.liveAfter(val, interp.target.firstInstr))
-                //    writeln("live after first instr: ", val);
-
                 // If the value is not currently live, skip it
                 if (liveInfo.liveAfterPhi(val, interp.target) is false)
                     continue;
@@ -284,11 +275,11 @@ void inlinePass(Interp interp, IRFunction fun)
                 assert (val.block !is null);
                 assert (newIdx !is NULL_LOCAL);
 
-                
+                /*
                 writeln("rewriting: ", val);
                 writeln("  word: ", preWS[oldIdx].int64Val);
                 writeln("  type: ", preTS[oldIdx]);
-                
+                */
 
                 // Copy the value to the new stack frame
                 interp.wsp[newIdx] = preWS[oldIdx];
@@ -301,9 +292,8 @@ void inlinePass(Interp interp, IRFunction fun)
                 if (phi is null)
                     continue;
 
-                writeln("return phi: ", phi);
+                //writeln("return phi: ", phi);
                 //writeln(" call site block: ", callSite.block.getName);
-                writeln(liveInfo.liveAfter(phi, interp.target.firstInstr));
 
                 if (liveInfo.liveAfterPhi(phi, interp.target) is false)
                     continue;
@@ -312,11 +302,11 @@ void inlinePass(Interp interp, IRFunction fun)
                 auto newIdx = phi.outSlot;
                 assert (newIdx !is NULL_LOCAL);
 
-                
+                /*
                 writeln("writing phi: ", phi);
                 writeln("  word: ", preWS[oldIdx].int64Val);
                 writeln("  type: ", preTS[oldIdx]);
-                
+                */
 
                 // Copy the value to the new stack frame
                 interp.wsp[newIdx] = preWS[oldIdx];
