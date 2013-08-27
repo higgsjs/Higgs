@@ -533,8 +533,8 @@ Word gcForward(Interp interp, Word word, Type type)
         {
             // Visit the function this instruction belongs to
             auto instr = cast(IRInstr)word.ptrVal;
-            assert (instr.block !is null);
-            visitFun(interp, instr.block.fun);
+            if (instr.block !is null)
+                visitFun(interp, instr.block.fun);
         }
         return word;
      

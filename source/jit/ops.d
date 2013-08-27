@@ -178,14 +178,14 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
         false
     );
 
-    // May be mem, reg or immediate
+    // May be reg or immediate
     auto opnd1 = st.getWordOpnd(
         ctx, 
         ctx.as, 
         instr, 
         1, 
         numBits,
-        null,
+        scrRegs64[1].ofSize(numBits),
         true
     );
 
@@ -209,7 +209,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
     if (opPtr == IMUL)
     {
         // IMUL does not support memory operands as output
-        auto scrReg = scrRegs64[1].ofSize(numBits);
+        auto scrReg = scrRegs64[2].ofSize(numBits);
         ctx.as.instr(MOV, scrReg, opnd1);
         ctx.as.instr(opPtr, scrReg, opnd0);
         ctx.as.instr(MOV, opndOut, scrReg);

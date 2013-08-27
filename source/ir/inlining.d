@@ -59,7 +59,8 @@ bool inlinable(IRInstr callSite, IRFunction callee)
     auto caller = callSite.block.fun;
 
     // Not support for new for now, avoids complicated return logic
-    if (callSite.opcode !is &CALL)
+    if (callSite.opcode !is &CALL &&
+        callSite.opcode !is &CALL_PRIM)
         return false;
 
     // No support for inlinin within try blocks for now
@@ -273,35 +274,50 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     // Callee test and call patching
     //
 
-    // Move the call instruction to a new basic block,
-    // This will be our fallback (uninlined call)
+    // Get the block the call site belongs to
     auto callBlock = callSite.block;
-    auto regCallBlock = caller.newBlock("call_reg");
-    callBlock.moveInstr(callSite, regCallBlock);
-
-    // Replace uses of the call instruction by uses of the return phi
-    callSite.replUses(retPhi);
-
-    // Make the regular call jump to the call merge block
-    auto regCallDesc = callSite.setTarget(0, mergeBlock);
-    regCallDesc.setPhiArg(retPhi, callSite);
-
-    // Create a pointer constant for the callee function
-    auto ptrConst = new IRFunPtr(callee);
 
     // Get the inlined entry block for the callee function
     auto entryBlock = blockMap[callee.entryBlock];
 
-    // If the function pointer matches, jump to the callee's entry
-    auto ifInstr = callBlock.addInstr(
-        new IRInstr(
-            &IF_EQ_FUN,
-            callSite.getArg(0),
-            ptrConst
-        )
-    );
-    ifInstr.setTarget(0, blockMap[callee.entryBlock]);
-    ifInstr.setTarget(1, regCallBlock);
+    // Replace uses of the call instruction by uses of the return phi
+    callSite.replUses(retPhi);
+
+    // If this is a static primitive call
+    if (callSite.opcode is &CALL_PRIM)
+    {
+        // Remove the original call instruction
+        callBlock.delInstr(callSite);
+
+        // Add a direct jump to the callee entry block
+        auto jump = callBlock.addInstr(new IRInstr(&JUMP));
+        jump.setTarget(0, entryBlock);
+    }
+    else
+    {
+        // Move the call instruction to a new basic block,
+        // This will be our fallback (uninlined call)
+        auto regCallBlock = caller.newBlock("call_reg");
+        callBlock.moveInstr(callSite, regCallBlock);
+
+        // Make the regular call continue to the call merge block
+        auto regCallDesc = callSite.setTarget(0, mergeBlock);
+        regCallDesc.setPhiArg(retPhi, callSite);
+
+        // Create a function pointer for the callee function
+        auto ptrConst = new IRFunPtr(callee);
+
+        // If the function pointer matches, jump to the callee's entry
+        auto ifInstr = callBlock.addInstr(
+            new IRInstr(
+                &IF_EQ_FUN,
+                callSite.getArg(0),
+                ptrConst
+            )
+        );
+        ifInstr.setTarget(0, blockMap[callee.entryBlock]);
+        ifInstr.setTarget(1, regCallBlock);
+    }
 
     // Return the return merge phi node
     return retPhi;

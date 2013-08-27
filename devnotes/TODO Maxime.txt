@@ -95,15 +95,14 @@ TODO: don't inline when compiling primitives?
 TODO: look at code for the for loop test
 - write this code in a JS file, programs/jit/big_incr_loop.js
 
-TODO: make inlining take advantage of static calls
+
+
+
+
+
+
+[DONE] TODO: make inlining take advantage of static calls
 - avoid placing conditional block when inlining call_prim
-
-
-
-
-
-
-
 
 [DONE] TODO: implement call_prim in JIT
 - funOnStack segfaults...

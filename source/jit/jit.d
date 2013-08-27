@@ -175,8 +175,8 @@ void inlinePass(Interp interp, IRFunction fun)
         auto callSite = block.lastInstr;
         assert (callSite !is null, "last instr is null");
 
-        // If this is is not a call instruction, skip it
-        if (callSite.opcode != &ir.ops.CALL)
+        // If this is is not a call site, skip it
+        if (callSite.opcode.isCall is false)
             continue;
 
         // If there is not exactly one callee, skip it
