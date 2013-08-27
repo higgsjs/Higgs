@@ -249,7 +249,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
 
         // Get the fast target label last so the fast target is
         // more likely to get generated first (LIFO stack)
-        ctx.genBranchEdge(ctx.as, overLabel, instr.getTarget(1), st);
+        ctx.genBranchEdge(ctx.ol, overLabel, instr.getTarget(1), st);
         ctx.genBranchEdge(ctx.as, contLabel, instr.getTarget(0), st);
     }
     else

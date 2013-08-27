@@ -92,28 +92,28 @@ TODO: don't inline when compiling primitives?
 - do we have an isPrimitive, isRuntime test?
   - add method to irFunction?
 
+TODO: modify IsTypeOp comparison + branch to add info to context?
+
 TODO: look at code for the for loop test
 - write this code in a JS file, programs/jit/big_incr_loop.js
 time ./higgs --nostdlib --jit_dumpinfo --jit_dumpasm programs/jit/loop_big_incr.js
 - phi nodes make optimization difficult... Should look at IR, try to enable peephole opts mid-exec?
 - not passing type info through phi nodes, problematic for loop opt
 
-TODO: add comments for phi node moves... Hard to decipher as is
 
-TODO: ASMInstr.nextNC?
+
+
+
+
+
+[DONE] TODO: add comments for phi node moves... Hard to decipher as is
+
+[DONE] FIXME: dumpir fails, segfault
+
+[DONE] TODO: --jit_dumpir
+
+[DONE] TODO: ASMInstr.nextNC?
 - Modify peephole to ignore comments
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: make inlining take advantage of static calls
 - avoid placing conditional block when inlining call_prim

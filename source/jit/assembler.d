@@ -58,6 +58,16 @@ class ASMInstr
     abstract size_t length();
 
     abstract void encode(CodeBlock codeBlock);
+
+    /// Get the next non-comment instruction object
+    ASMInstr nextNC()
+    {
+        for (auto instr = next; instr !is null; instr = instr.next)
+            if (cast(Comment)instr is null)
+                return instr;
+
+        return null;
+    }
 }
 
 /**

@@ -143,14 +143,14 @@ void optAsm(Assembler as)
         auto label = labelRef.label;
 
         // If the label immediately follows
-        if (label is instr.next)
+        if (label is instr.nextNC)
         {
             remInstr(instr);
             return true;
         }
 
         // If this is a jump to a direct jump
-        if (auto instr2 = cast(X86Instr)label.next)
+        if (auto instr2 = cast(X86Instr)label.nextNC)
         {
             if (instr2.opcode is JMP)
             {
@@ -170,8 +170,8 @@ void optAsm(Assembler as)
         if (op is JMP)
         {
             // Remove any instructions that immediately follow
-            while (cast(X86Instr)instr.next)
-                remInstr(instr.next);
+            while (cast(X86Instr)instr.nextNC)
+                remInstr(instr.nextNC);
 
             return true;
         }
@@ -212,14 +212,6 @@ void optAsm(Assembler as)
 
                 if (jumpOpts(instr, opcode))
                     continue INSTR_LOOP;
-
-
-
-
-
-
-
-
             }
 
             // If this is a label

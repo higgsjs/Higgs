@@ -984,7 +984,7 @@ class IRFunPtr : IRValue
 
     override string toString()
     {
-        return "<fun:" ~ fun.getName() ~ ">";
+        return "<fun:" ~ (fun? fun.getName():"NULL") ~ ">";
     }
 }
 
@@ -1351,8 +1351,10 @@ class IRInstr : IRDstValue
             if (argIdx > 0)
                 output ~= ", ";
 
-            assert (arg.value !is null);
-            output ~= arg.value.getName();
+            if (arg.value is null)
+                output ~= "<NULL ARG>";
+            else
+                output ~= arg.value.getName();
         }
 
         if (targets[0] !is null)

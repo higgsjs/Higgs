@@ -341,6 +341,12 @@ void compFun(Interp interp, IRFunction fun)
         inlinePass(interp, fun);
     }
 
+    // If the IR should be output
+    if (opts.jit_dumpir)
+    {
+        writeln(fun);
+    }
+
     // Run a live variable analysis on the function
     auto liveInfo = new LiveInfo(fun);
 
@@ -475,6 +481,8 @@ void compFun(Interp interp, IRFunction fun)
                 "\nin block:\n" ~
                 phi.block.toString()
             );
+
+            as.comment(phi.getName ~ " = phi " ~ arg.getName);
 
             // Get the source and destination operands for the arg word
             X86Opnd srcWordOpnd = predState.getWordOpnd(arg, 64);
