@@ -1185,6 +1185,104 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     defaultFn(ctx.ol, ctx, entrySt, instr);
 }
 
+void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    writeln("call_prim...");
+
+    // Generate a JIT entry point for the call continuation
+    ctx.genCallCont(instr);
+
+    // Get the cached function pointer
+    auto funArg = cast(IRFunPtr)instr.getArg(1);
+    assert (funArg !is null);
+    auto fun = funArg.fun;
+    assert (fun !is null);
+
+    // Check that the argument count matches
+    auto numArgs = cast(int32_t)instr.numArgs - 2;
+    assert (numArgs is fun.numParams);
+
+    // Store the function pointer in a scratch register
+    ctx.as.ptr(scrRegs64[0], fun);
+
+    // Copy the function arguments in reverse order
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        auto instrArgIdx = instr.numArgs - (1+i);
+        auto dstIdx = -(cast(int32_t)i + 1);
+
+        // Copy the argument word
+        auto argOpnd = st.getWordOpnd(
+            ctx, 
+            ctx.as, 
+            instr, 
+            instrArgIdx,
+            64,
+            scrRegs64[1],
+            true,
+            false
+        );
+        ctx.as.setWord(dstIdx, argOpnd);
+
+        // Copy the argument type
+        auto typeOpnd = st.getTypeOpnd(
+            ctx.as, 
+            instr, 
+            instrArgIdx, 
+            scrRegs8[1], 
+            true
+        );
+        ctx.as.setType(dstIdx, typeOpnd);
+    }
+
+    // Write the argument count
+    ctx.as.setWord(-numArgs - 1, numArgs);
+    ctx.as.setType(-numArgs - 1, Type.INT32);
+
+    // Set the "this" argument to null
+    ctx.as.setWord(-numArgs - 2, NULL.int32Val);
+    ctx.as.setType(-numArgs - 2, Type.REFPTR);
+
+    // Set the closure argument to null
+    ctx.as.setWord(-numArgs - 3, NULL.int32Val);
+    ctx.as.setType(-numArgs - 3, Type.REFPTR);
+
+    // Write the return address (caller instruction)
+    ctx.as.ptr(scrRegs64[1], instr);
+    ctx.as.setWord(-numArgs - 4, scrRegs64[1]);
+    ctx.as.setType(-numArgs - 4, Type.INSPTR);
+
+    // Spill the values that are live after the call
+    st.spillRegs(
+        ctx.as,
+        delegate bool(IRDstValue val)
+        {
+            return ctx.liveInfo.liveAfter(val, instr);
+        }
+    );
+
+    // Push space for the callee arguments and locals
+    ctx.as.instr(SUB, tspReg, numArgs);
+    ctx.as.instr(SUB, wspReg, 8 * numArgs);
+
+    // Label for the interpreter jump
+    auto INTERP_JUMP = new Label("INTERP_JUMP");
+
+    // Get a pointer to the branch target
+    ctx.as.ptr(scrRegs64[0], fun.entryBlock);
+
+    // If a JIT entry point exists, jump to it directly
+    ctx.as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], scrRegs64[0]);
+    ctx.as.instr(CMP, scrRegs64[1], 0);
+    ctx.as.instr(JE, INTERP_JUMP);
+    ctx.as.instr(JMP, scrRegs64[1]);
+
+    // Make the interpreter jump to the target
+    ctx.ol.addInstr(INTERP_JUMP);
+    ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
+    ctx.ol.instr(JMP, ctx.bailLabel);
+}
+
 void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto raSlot    = instr.block.fun.raVal.outSlot;
@@ -1476,6 +1574,7 @@ static this()
     codeGenFns[&JUMP]           = &gen_jump;
 
     codeGenFns[&ir.ops.CALL]    = &gen_call;
+    //codeGenFns[&CALL_PRIM]      = &gen_call_prim;
     codeGenFns[&ir.ops.RET]     = &gen_ret;
 }
 

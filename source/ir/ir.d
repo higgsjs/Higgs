@@ -971,7 +971,7 @@ class IRRawPtr : IRValue
 }
 
 /**
-IR function pointer constant
+IR function pointer constant (stateful, non-constant, may be null)
 */
 class IRFunPtr : IRValue
 {
@@ -979,7 +979,6 @@ class IRFunPtr : IRValue
 
     this(IRFunction fun)
     {
-        assert (fun !is null);
         this.fun = fun;
     }
 

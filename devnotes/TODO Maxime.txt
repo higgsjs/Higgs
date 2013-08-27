@@ -63,6 +63,14 @@ TODO: benchmarking (performance testing) python script
 TODO: release target with no asserts for performance testing
 - the -release flag disables assertions
 
+TODO: sort call sites by exec frequency for inlining?
+- Log performance before and after
+
+TODO: enable peephole opts mid-function
+- Need current target and liveness info
+- Don't remove the current block (assert delBlock doesn't do this)
+- Don't remove live phis or instrs (just skip?)
+
 TODO: implement cap on number of block versions now
 - Add command-line options, jit_maxvers
 - Will require generating ASM adaptors before jumps? If we hit the max
@@ -78,33 +86,37 @@ TODO: blog about inlining
 - testing with interpreter only
 - benchmark loop incr to 500M with and without inlining
 
-TODO: sort call sites by exec frequency for inlining?
-- Log performance before and after
+TODO: don't inline when compiling primitives?
+- will make their compilation faster
+- should result in better inlining overall
+- do we have an isPrimitive, isRuntime test?
+  - add method to irFunction?
 
-TODO: enable peephole opts mid-function
-- Need current target and liveness info
-- Don't remove the current block (assert delBlock doesn't do this)
-- Don't remove live phis or instrs (just skip?)
+TODO: look at code for the for loop test
+- write this code in a JS file, programs/jit/big_incr_loop.js
 
-TODO: implement static calls for runtime primitives
+TODO: make inlining take advantage of static calls
+- avoid placing conditional block when inlining call_prim
+
+TODO: implement call_prim in JIT
+- funOnStack segfaults...
+
+
+
+
+
+
+
+
+[DONE] TODO: implement static calls for runtime primitives
+- call_prim "str" ptr, cached IRFunPtr instruction
+  - check that the function has no closure variables
 - modify runtime call generation in ir/ast
-  - call with IRFunPtr directly
-- inlining can check if fun ptr arg is a constant, not put conditional check
-- how do we get the runtime fun ptr when generating AST?
-  - could do the linking lazily?
-  - get_prim_fun "str" ptr, cached IRFunPtr instruction
+  - call with IRFunPtr directly, no closure object
 
-TODO: optimize init loops in layout.js, use lt_i32, add_i32
+[DONE] TODO: optimize init loops in layout.js, use lt_i32, add_i32
 - benchmark
 - improves times of both 3d-cube and 3d-raytrace
-
-
-
-
-
-
-
-
 
 [DONE] TODO: in collectFun, nullify instruction args, remove uses
 - See if mem usage is improved, maybe a bit

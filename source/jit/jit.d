@@ -122,12 +122,10 @@ void inlinePass(Interp interp, IRFunction fun)
     if (stackPos is StackPos.DEEP)
         return;
 
-
     // TODO: remove this
     // Don't inline if at the top of the stack and not at the entry block
     //if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
     //    return;
-
 
     // Get the number of locals before inlining
     auto numLocals = fun.numLocals;
@@ -558,14 +556,10 @@ void compFun(Interp interp, IRFunction fun)
         IRInstr callInstr
     )
     {
-        // TODO: re-enable?
-        // Generate an interpreter entry point for the call continuation
-        //ctx.getEntryPoint(instr.getTarget(0).succ);
-
-        //if (branch.pred.lastInstr.opcode is &ir.ops.CALL)
-        //    as.printStr("cont in " ~ branch.pred.lastInstr.block.fun.getName ~ " (" ~ to!string(moveList.length) ~ " moves)");
-
-        assert (callInstr.opcode is &ir.ops.CALL);
+        assert (
+            callInstr.opcode is &ir.ops.CALL ||
+            callInstr.opcode is &ir.ops.CALL_PRIM
+        );
 
         // If we already have a continuation for this call, stop
         if (callInstr in callContMap)

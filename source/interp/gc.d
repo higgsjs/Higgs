@@ -698,7 +698,8 @@ void visitFun(Interp interp, IRFunction fun)
             {
                 auto arg = instr.getArg(argIdx);
                 if (auto funArg = cast(IRFunPtr)arg)
-                    visitFun(interp, funArg.fun);
+                    if (funArg.fun !is null)
+                        visitFun(interp, funArg.fun);
             }
         }
     }

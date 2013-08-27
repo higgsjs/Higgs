@@ -2482,6 +2482,24 @@ Insert a call to a runtime function
 */
 IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
 {
+    auto nameStr = new IRString(to!wstring("$rt_" ~ fName));
+
+    // <dstLocal> = CALL_PRIM <prim_name> <cachedFun> ...
+    auto callInstr = ctx.addInstr(new IRInstr(&CALL_PRIM, 2 + argVals.length));
+    callInstr.setArg(0, nameStr);
+    callInstr.setArg(1, new IRFunPtr(null));
+    foreach (argIdx, argVal; argVals)
+    {
+        assert (argVal !is null);
+        callInstr.setArg(2 + argIdx, argVal);
+    }
+
+    // Generate the call targets
+    genCallTargets(ctx, callInstr);
+
+    return callInstr;
+
+    /*
     // Get the global function
     auto funVal = ctx.addInstr(new IRInstr(
         &GET_GLOBAL, 
@@ -2503,6 +2521,7 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
     genCallTargets(ctx, callInstr);
 
     return callInstr;
+    */
 }
 
 /**

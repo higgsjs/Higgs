@@ -944,6 +944,64 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
     );
 }
 
+extern (C) void op_call_prim(Interp interp, IRInstr instr)
+{
+    // Name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Cached function pointer
+    auto funArg = cast(IRFunPtr)instr.getArg(1);
+    assert (funArg !is null);
+
+    // If the function pointer is not yet cached
+    if (funArg.fun is null)
+    {
+        auto propStr = GCRoot(interp, getString(interp, nameStr));
+        ValuePair val = getProp(
+            interp,
+            interp.globalObj,
+            propStr.ptr
+        );
+
+        assert (
+            val.type is Type.REFPTR &&
+            valIsLayout(val.word, LAYOUT_CLOS)
+        );
+
+        funArg.fun = getClosFun(val.word.ptrVal);
+
+        assert (
+            funArg.fun.ast.usesClos == 0,
+            "primitive function uses its closure argument: " ~
+            to!string(strArg.str)
+        );
+    }
+
+    auto argCount = cast(uint32_t)instr.numArgs - 2;
+
+    // Allocate temporary storage for the argument values
+    if (argCount > interp.tempVals.length)
+        interp.tempVals.length = argCount;
+    auto argVals = interp.tempVals.ptr;
+
+    // Fetch the argument values
+    for (size_t i = 0; i < argCount; ++i)
+        argVals[i] = interp.getArgVal(instr, 2 + i);
+
+    // Call the function with null closure and this values
+    interp.callFun(
+        funArg.fun,
+        instr,
+        NULL.ptrVal,
+        NULL,
+        Type.REFPTR,
+        argCount,
+        argVals
+    );
+}
+
 extern (C) void op_ret(Interp interp, IRInstr instr)
 {
     //writefln("ret from %s", instr.block.fun.getName);

@@ -237,6 +237,11 @@ Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &op_call_new, OpInfo.VAR_AR
 // Call with an array of arguments
 Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_call_apply, OpInfo.BRANCH | OpInfo.CALL };
 
+// <dstLocal> = CALL_PRIM <primName> <primFun> ...
+// Call a primitive function by name
+// Note: the second argument is a cached function reference
+Opcode CALL_PRIM = { "call_prim", true, [OpArg.STRING, OpArg.FUN], &op_call_prim, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
+
 // RET <retLocal>
 // Pops the callee frame (size known by context)
 Opcode RET = { "ret", false, [OpArg.LOCAL], &op_ret, OpInfo.BRANCH };
@@ -277,11 +282,11 @@ Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &op_get_link };
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &op_get_str, OpInfo.MAY_GC };
 
 /// GET_GLOBAL <propName>
-/// Note: hidden parameter is cached global property index
+/// Note: hidden parameter is a cached global property index
 Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT32], &op_get_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// SET_GLOBAL <propName> <value>
-/// Note: hidden parameter is cached global property index
+/// Note: hidden parameter is a cached global property index
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT32], &op_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// <dstLocal> = NEW_CLOS <funExpr>
