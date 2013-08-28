@@ -70,7 +70,7 @@ layout:
 	python interp/layout.py
 
 clean:
-	rm $(BIN_NAME) $(BIN_NAME_TEST) *.o
+	rm -f $(BIN_NAME) $(BIN_NAME_TEST) $(BIN_NAME_DEBUG) *.o
 
 install:
 	@if [ ! -d $(LIB_DIR) ] ; then echo "mkdir $(LIB_DIR)" ; mkdir $(LIB_DIR) ; fi

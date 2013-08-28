@@ -57,11 +57,11 @@ TODO: benchmarking (performance testing) python script
 - should be able to pass config flags to Higgs (i.e.: modify JIT params)
 - use release version
 
-TODO: sort call sites by exec frequency for inlining?
-- Log performance before and after
-
 TODO: release target with no asserts for performance testing
 - the -release flag disables assertions
+
+TODO: sort call sites by exec frequency for inlining?
+- Log performance before and after
 
 TODO: implement cap on number of block versions now
 - Add command-line options, jit_maxvers
@@ -70,11 +70,17 @@ vers cap, the jump target we get back is an adaptor?
 - If we request things like known phi types, will get mismatch
   - Must have a default "catch-all" version
   - catch-all can still have custom regs, but no known types and values
-
-------------------------------------------------------------------------------
+- Limit should not include catch-all vers, compile only if no compatible match
+  - Call it the "general" version
 
 TODO: look at known type info, do we remove it when spilling values for
 unjitted instrs?
+
+------------------------------------------------------------------------------
+
+Goal: perf gains on loop increment microbenchmark 
+
+TODO: add asm comment wth function name for asm dump
 
 TODO: blog about inlining
 - perf
@@ -85,7 +91,14 @@ TODO: blog about inlining
   - interpreter is robust, easier to debug
 - benchmark loop incr to 500M with and without inlining
 
-Meeting notes:
+
+
+
+
+
+
+
+[DONE] Meeting notes:
 - Fixed many bugs, system now much more stable
 - Inlining increases compilation time, but decreases execution time significantly
 - Made inlining more selective
@@ -94,13 +107,6 @@ Meeting notes:
 - Implemented OSR for top of stack functions mid-loop execution
 - Enabled peephole opts mid-loop execution
 - Tried loop to 2B, decreased type tests from 4B down to 1
-
-
-
-
-
-
-
 
 [DONE] TODO: enable peephole opts mid-function?
 - Need current target and liveness info
