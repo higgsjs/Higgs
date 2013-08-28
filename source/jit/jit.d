@@ -463,24 +463,27 @@ void compFun(Interp interp, IRFunction fun)
             // register might be used by a phi node we just mapped
             auto regVal = succState.gpRegMap[phiReg.regNo];
 
-            // TODO: can we use liveness info here?
-            // need to query liveness at pred exit?
+            // TODO: can we use liveness info? query liveness at pred exit?
+            TFState allocSt;
             if (regVal is null || regVal is phi)
             {
-                succState.allocState[phi] = RA_GPREG | phiReg.regNo;
+                allocSt = RA_GPREG | phiReg.regNo;
                 succState.gpRegMap[phiReg.regNo] = phi;
             }
             else
             {
-                succState.allocState[phi] = RA_STACK;
+                allocSt = RA_STACK;
             }
+            succState.allocState[phi] = allocSt;
 
             // If the type of the phi argument is known
             if (succState.typeKnown(arg))
             {
-                // Mark the type as known and in sync
                 auto type = succState.getType(arg);
-                succState.typeState[phi] = TF_KNOWN | TF_SYNC | type;
+                auto onStack = allocSt & RA_STACK;
+
+                // Mark the type as known
+                succState.typeState[phi] = TF_KNOWN | (onStack? TF_SYNC:0) | type;
             }
             else
             {
@@ -508,11 +511,6 @@ void compFun(Interp interp, IRFunction fun)
             if (srcWordOpnd != dstWordOpnd)
                 moveList ~= Move(dstWordOpnd, srcWordOpnd);
 
-            // If we are moving the phi word into a register, write 0 on
-            // the word stack to avoid invalid references
-            if (cast(X86Reg)dstWordOpnd)
-                moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
-
             // Get the source and destination operands for the phi type
             X86Opnd srcTypeOpnd = predState.getTypeOpnd(arg);
             X86Opnd dstTypeOpnd = succState.getTypeOpnd(phi);
@@ -520,9 +518,29 @@ void compFun(Interp interp, IRFunction fun)
             if (srcTypeOpnd != dstTypeOpnd)
                 moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
 
-            // If the type is known, spill it to avoid invalid references
-            if (cast(X86Imm)dstTypeOpnd)
+            // If we are moving the phi word into a register, write 0 on
+            // the word stack to avoid invalid references
+            //if (cast(X86Reg)dstWordOpnd)
+            //    moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
+
+            // Get the allocation and type states for the phi node
+            auto allocSt = succState.allocState.get(phi, 0);
+            auto typeSt = succState.typeState.get(phi, 0);
+
+            // If the phi is on the stack and the type is known
+            if ((allocSt & RA_STACK) && (typeSt & TF_KNOWN))
+            {
+                // Write the type to the stack to keep it in sync
+                assert (typeSt & TF_SYNC);
                 moveList ~= Move(new X86Mem(8, tspReg, phi.outSlot), srcTypeOpnd);
+            }
+
+            // If the phi is in a register and the type is unknown
+            if (!(allocSt & RA_STACK) && !(typeSt & TF_KNOWN))
+            {
+                // Write 0 on the stack to avoid invalid references
+                moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
+            }
         }
 
         // Insert the branch edge label, if any
@@ -623,6 +641,7 @@ void compFun(Interp interp, IRFunction fun)
     );
 
     // Create an entry point for the function
+    as.comment("Fast entry point for function " ~ fun.getName);
     getEntryPoint(fun.entryBlock);
 
     // Until the work list is empty

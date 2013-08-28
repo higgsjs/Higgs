@@ -80,7 +80,9 @@ unjitted instrs?
 
 Goal: perf gains on loop increment microbenchmark 
 
-TODO: add asm comment wth function name for asm dump
+TODO: peephole opts for $rt_add, i32(x) && i32(y)
+- Suboptimal reuse of the result, two if branches
+- Look at IR
 
 TODO: blog about inlining
 - perf
@@ -91,12 +93,25 @@ TODO: blog about inlining
   - interpreter is robust, easier to debug
 - benchmark loop incr to 500M with and without inlining
 
+TODO: look at peephole opts for loop benchmark. Redundant jumps?
 
 
 
 
 
 
+
+
+[DONE] FIXME:
+mov rbp, [qword r14 + 200];             49 8B AE C8 00 00 00
+mov [byte r13 + 23], 0;                 41 C6 45 17 00
+mov [qword r14 + 184], 0;               49 C7 86 B8 00 00 00 00 00 00 00
+Don't need to write the value 0 if we just wrote a non-pointer type tag
+- Measure big_incr perf before and after
+    5.9s    411 bytes
+    5.1s    462 bytes
+
+[DONE] TODO: add asm comment with function name for asm dump
 
 [DONE] Meeting notes:
 - Fixed many bugs, system now much more stable
