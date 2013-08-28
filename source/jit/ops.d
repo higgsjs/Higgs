@@ -669,13 +669,22 @@ Generates the conditional branch for an if_true instruction with the given
 conditional jump operations. Assumes a comparison between input operands has
 already been inserted.
 */
-void genCondBranch(CodeGenCtx ctx, CodeGenState st, IRInstr ifInstr, X86OpPtr trueOp, X86OpPtr falseOp)
+void genCondBranch(
+    CodeGenCtx ctx, 
+    IRInstr ifInstr, 
+    X86OpPtr trueOp, 
+    X86OpPtr falseOp,
+    CodeGenState trueSt,
+    CodeGenState falseSt
+)
 {
     auto trueTarget = ifInstr.getTarget(0);
     auto falseTarget = ifInstr.getTarget(1);
 
     BranchDesc fastTarget;
     BranchDesc slowTarget;
+    CodeGenState fastSt;
+    CodeGenState slowSt;
     X86OpPtr jumpOp;
 
     // If the true branch is more often executed
@@ -684,6 +693,8 @@ void genCondBranch(CodeGenCtx ctx, CodeGenState st, IRInstr ifInstr, X86OpPtr tr
         // False result causes a jump
         fastTarget = trueTarget;
         slowTarget = falseTarget;
+        fastSt = trueSt;
+        slowSt = falseSt;
         jumpOp = falseOp; 
     }
     else
@@ -691,6 +702,8 @@ void genCondBranch(CodeGenCtx ctx, CodeGenState st, IRInstr ifInstr, X86OpPtr tr
         // True result causes a jump
         fastTarget = falseTarget;
         slowTarget = trueTarget;
+        fastSt = falseSt;
+        slowSt = trueSt;
         jumpOp = trueOp;
     }
 
@@ -705,8 +718,8 @@ void genCondBranch(CodeGenCtx ctx, CodeGenState st, IRInstr ifInstr, X86OpPtr tr
 
     // Get the fast target label last so the fast target is
     // more likely to get generated first (LIFO stack)
-    ctx.genBranchEdge(ctx.as, slowLabel, slowTarget, st);
-    ctx.genBranchEdge(ctx.as, fastLabel, fastTarget, st);
+    ctx.genBranchEdge(ctx.as, slowLabel, slowTarget, slowSt);
+    ctx.genBranchEdge(ctx.as, fastLabel, fastTarget, fastSt);
 }
 
 /**
@@ -775,8 +788,14 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // If our only use is an immediately following if_true
     if (ifUseNext(instr) is true)
     {
+        // If the test is true, we now known the value's type
+        auto dstValue = cast(IRDstValue)argVal;
+        assert (dstValue !is null);
+        auto trueSt = new CodeGenState(st);
+        trueSt.setKnownType(dstValue, type);
+
         // Generate the conditional branch and targets here
-        ctx.genCondBranch(st, instr.next, JE, JNE);
+        ctx.genCondBranch(instr.next, JE, JNE, trueSt, st);
     }
 }
 
@@ -880,7 +899,7 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
     if (ifUseNext(instr) is true)
     {
         // Generate the conditional branch and targets here
-        ctx.genCondBranch(st, instr.next, trueOp, falseOp);
+        ctx.genCondBranch(instr.next, trueOp, falseOp, st, st);
     }
 }
 
@@ -924,7 +943,7 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(CMP, argOpnd, TRUE.int8Val);
 
     // Generate the conditional branch and targets
-    ctx.genCondBranch(st, instr, JE, JNE);
+    ctx.genCondBranch(instr, JE, JNE, st, st);
 }
 
 void gen_if_eq_fun(CodeGenCtx ctx, CodeGenState st, IRInstr instr)

@@ -12,13 +12,10 @@ Misc improvements
 
 TODO: give this project more lovin'! Improve various aspects! Blog!
 
-FIXME: but in JIT heap_alloc op
+FIXME: bug in JIT heap_alloc op
 
 TODO: don't load arg values with only one use?
 - test perf impact, need bench script, need desktop
-
-TODO: propagate known phi arg types to phis
-- test perf impact
 
 TODO: return support for new? 
 - may speed up 3d-cube, 3d-raytrace, earley-boyer significantly
@@ -60,9 +57,6 @@ TODO: benchmarking (performance testing) python script
 - should be able to pass config flags to Higgs (i.e.: modify JIT params)
 - use release version
 
-TODO: release target with no asserts for performance testing
-- the -release flag disables assertions
-
 TODO: sort call sites by exec frequency for inlining?
 - Log performance before and after
 
@@ -70,6 +64,9 @@ TODO: enable peephole opts mid-function
 - Need current target and liveness info
 - Don't remove the current block (assert delBlock doesn't do this)
 - Don't remove live phis or instrs (just skip?)
+
+TODO: release target with no asserts for performance testing
+- the -release flag disables assertions
 
 TODO: implement cap on number of block versions now
 - Add command-line options, jit_maxvers
@@ -90,21 +87,29 @@ TODO: don't inline when compiling primitives?
 - will make their compilation faster
 - should result in better inlining overall
 - do we have an isPrimitive, isRuntime test?
-  - add method to irFunction?
+  - add method to IRFunction?
+- What's the difference in compilation time?
 
-TODO: modify IsTypeOp comparison + branch to add info to context?
+TODO: propagate types through phi nodes
+- Could save type byte moves, generate better code in loop microbenchmark
 
-TODO: look at code for the for loop test
+
+
+
+
+
+[DONE] TODO: modify IsTypeOp comparison + branch to add info to context?
+- Loop microbenchmark does is_i32 twice, once for lt, once for add
+- Could save 6 instructions in loop benchmark
+- Pre-opt exec time : 8.45s
+- Post-opt exec time: 6.78s
+- Less type tests in 3d-cube and 3d-raytrace, but more code, slightly slower...
+
+[DONE] TODO: look at code for the for loop test
 - write this code in a JS file, programs/jit/big_incr_loop.js
 time ./higgs --nostdlib --jit_dumpinfo --jit_dumpasm programs/jit/loop_big_incr.js
 - phi nodes make optimization difficult... Should look at IR, try to enable peephole opts mid-exec?
 - not passing type info through phi nodes, problematic for loop opt
-
-
-
-
-
-
 
 [DONE] TODO: add comments for phi node moves... Hard to decipher as is
 

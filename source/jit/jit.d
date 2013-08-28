@@ -1270,6 +1270,25 @@ class CodeGenState
             assert (false, "unknown constant");
     }
 
+    /// Set a known type for a given value
+    void setKnownType(IRDstValue value, Type type)
+    {
+        assert (
+            (type & TF_TYPE_MASK) == type,
+            "type mask corrupts type tag"
+        );
+
+        auto prevState = typeState.get(value, 0);
+
+        assert (
+            (prevState & TF_KNOWN) == 0,
+            "cannot set known type, type already known"
+        );
+
+        // Set the type known flag and update the type
+        typeState[value] = TF_KNOWN | TF_SYNC | type;
+    }
+
     /// Set the output type value for an instruction's output
     void setOutType(Assembler as, IRInstr instr, Type type)
     {
