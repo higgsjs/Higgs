@@ -50,13 +50,13 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 {
     //writeln("peephole pass");
 
-    /// Test if a value is live at the target block
-    bool isLive(IRValue value)
+    /// Test if a value is available at the target block
+    bool isAvail(IRValue value)
     {
         auto dstValue = cast(IRDstValue)value;
 
-        if (dstValue is null)
-            return false;
+        if (dstValue is null || liveInfo is null)
+            return true;
 
         return liveInfo.liveAfterPhi(dstValue, target);
     }
@@ -69,8 +69,10 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
     {
         //writeln("*** deleting block ", block.getName());
 
-        // Set the changed flag
-        changed = true;
+        assert (
+            block !is target,
+            "deleting target block"
+        );
 
         // Check that the block has no incoming branches
         debug
@@ -90,6 +92,9 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
             }
         }
 
+        // Set the changed flag
+        changed = true;
+
         // Remove and delete the block
         fun.delBlock(block);
 
@@ -108,10 +113,12 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
     {
         //writeln("*** deleting phi node ", phi.getName());
 
+        assert (
+            phi.hasNoUses
+        );
+
         // Set the changed flag
         changed = true;
-
-        assert (phi.hasNoUses);
 
         // Remove and delete the phi node
         phi.block.delPhi(phi);
@@ -171,10 +178,14 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
     // Remove and destroy an instruction
     void delInstr(IRInstr instr)
     {
+        //writeln("*** deleting instr ", instr);
+
+        assert (
+            instr.hasNoUses
+        );
+
         // Set the changed flag
         changed = true;
-
-        assert (instr.hasNoUses);
 
         instr.block.delInstr(instr);
     }
@@ -190,7 +201,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
         for (auto block = fun.firstBlock; block !is null; block = block.next)
         {
             // If this block has no incoming branches, remove it
-            if (block !is fun.entryBlock && block.numIncoming is 0)
+            if (block !is fun.entryBlock && block.numIncoming is 0 && block !is target)
             {
                 delBlock(block);
                 continue BLOCK_LOOP;
@@ -248,6 +259,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 
                 // If this phi node has the form:
                 // Vi <- phi(...Vi...Vi...)
+                // it is a tautological phi node
                 if (numVi == phi.block.numIncoming)
                 {
                     // Remove the phi node
@@ -258,7 +270,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 // If this phi assignment has the form:
                 // Vi <- phi(...Vi...Vj...Vi...Vj...)
                 // 0 or more Vi and 1 or more Vj
-                if (numVi + numVj == phi.block.numIncoming)
+                if (numVi + numVj == phi.block.numIncoming && isAvail(Vj))
                 {
                     //print('Renaming phi: ' + instr);
 
@@ -290,8 +302,10 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 // Constant folding on int32 add instructions
                 if (op == &ADD_I32)
                 {
-                    auto cst0 = cast(IRConst)instr.getArg(0);
-                    auto cst1 = cast(IRConst)instr.getArg(1);
+                    auto arg0 = instr.getArg(0);
+                    auto arg1 = instr.getArg(1);
+                    auto cst0 = cast(IRConst)arg0;
+                    auto cst1 = cast(IRConst)arg1;
 
                     if (cst0 && cst1 && cst0.isInt32 && cst1.isInt32)
                     {
@@ -307,16 +321,16 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         }
                     }
 
-                    if (cst0 && cst0.isInt32 && cst0.int32Val is 0)
+                    if (cst0 && cst0.isInt32 && cst0.int32Val is 0 && isAvail(arg1))
                     {
-                        instr.replUses(instr.getArg(1));
+                        instr.replUses(arg1);
                         delInstr(instr);
                         continue INSTR_LOOP;
                     }
 
-                    if (cst1 && cst1.isInt32 && cst1.int32Val is 0)
+                    if (cst1 && cst1.isInt32 && cst1.int32Val is 0 && isAvail(arg0))
                     {
-                        instr.replUses(instr.getArg(0));
+                        instr.replUses(arg0);
                         delInstr(instr);
                         continue INSTR_LOOP;
                     }
@@ -325,8 +339,10 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 // Constant folding on int32 mul instructions
                 if (op == &MUL_I32)
                 {
-                    auto cst0 = cast(IRConst)instr.getArg(0);
-                    auto cst1 = cast(IRConst)instr.getArg(1);
+                    auto arg0 = instr.getArg(0);
+                    auto arg1 = instr.getArg(1);
+                    auto cst0 = cast(IRConst)arg0;
+                    auto cst1 = cast(IRConst)arg1;
 
                     if (cst0 && cst1 && cst0.isInt32 && cst1.isInt32)
                     {
@@ -342,16 +358,16 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         }
                     }
 
-                    if (cst0 && cst0.isInt32 && cst0.int32Val is 1)
+                    if (cst0 && cst0.isInt32 && cst0.int32Val is 1 && isAvail(arg1))
                     {
-                        instr.replUses(instr.getArg(1));
+                        instr.replUses(arg1);
                         delInstr(instr);
                         continue INSTR_LOOP;
                     }
 
-                    if (cst1 && cst1.isInt32 && cst1.int32Val is 1)
+                    if (cst1 && cst1.isInt32 && cst1.int32Val is 1 && isAvail(arg0))
                     {
-                        instr.replUses(instr.getArg(0));
+                        instr.replUses(arg0);
                         delInstr(instr);
                         continue INSTR_LOOP;
                     }
@@ -426,7 +442,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         }
                     }
                 }
-
+                
             } // foreach instr
 
         } // foreach block

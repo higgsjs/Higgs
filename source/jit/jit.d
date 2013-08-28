@@ -249,10 +249,9 @@ void inlinePass(Interp interp, IRFunction fun)
         // Compute liveness information for the function
         auto liveInfo = new LiveInfo(fun);
 
-        // TODO
         // Reoptimize the fused IRs, taking the current IP
         // and liveness information into account
-        //optIR(fun, interp.target, liveInfo);
+        optIR(fun, interp.target, liveInfo);
 
         // Reallocate stack slots for the IR instructions
         allocSlots(fun);
