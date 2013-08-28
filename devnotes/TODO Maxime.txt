@@ -79,16 +79,28 @@ TODO: blog about inlining
 - making inlining more selective
 - many bugs in 300 lines of code
 - testing with interpreter only
+  - interpreter is robust, easier to debug
 - benchmark loop incr to 500M with and without inlining
+
+Meeting notes:
+- Fixed many bugs, system now much more stable
+- Inlining increases compilation time, but decreases execution time significantly
+- Made inlining more selective
+- Implemented static calls, significant performance gains
+- Implemented propagation of known types through phi nodes
+- Implemented OSR for top of stack functions mid-loop execution
+- Tried loop to 2B, decreased type tests from 4B down to 1
 
 TODO: enable peephole opts mid-function?
 - Need current target and liveness info
 - Don't remove the current block (assert delBlock doesn't do this)
 - Don't remove live phis or instrs (just skip?)
-
 optIR(fun, IRBlock target)
 - Don't delete the current target block
 - Can't replace an instruction that's live by a value that's not live
+
+
+
 
 
 

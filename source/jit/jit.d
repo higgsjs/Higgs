@@ -218,14 +218,41 @@ void inlinePass(Interp interp, IRFunction fun)
     if (numInlinings is 0)
         return;
 
-    // If the function is on top of the stack
-    if (stackPos is StackPos.TOP)
+    // If the function was not mid-execution when compilation was triggered
+    if (preWS.length is 0)
     {
         //writefln("rearranging stack frame");
 
-        // TODO
         // Reoptimize the fused IRs
-        //optIR(fun);
+        optIR(fun);
+
+        // Reallocate stack slots for the IR instructions
+        allocSlots(fun);
+
+        // Add space for the new locals to the stack frame
+        auto numAdded = fun.numLocals - numLocals;
+        interp.push(numAdded);
+    }
+    else
+    {
+        //writeln("***** rewriting frame for ", fun.getName, " at ", interp.target.getName, " *****");
+
+        /*
+        writeln();
+        writeln(fun);
+
+        writeln();
+        writeln(interp.target);
+        writeln();
+        */
+
+        // Compute liveness information for the function
+        auto liveInfo = new LiveInfo(fun);
+
+        // TODO
+        // Reoptimize the fused IRs, taking the current IP
+        // and liveness information into account
+        //optIR(fun, interp.target, liveInfo);
 
         // Reallocate stack slots for the IR instructions
         allocSlots(fun);
@@ -234,88 +261,62 @@ void inlinePass(Interp interp, IRFunction fun)
         auto numAdded = fun.numLocals - numLocals;
         interp.push(numAdded);
 
-        // If the function was mid-execution when inlining happened
-        if (preWS.length > 0)
+        // For each phi node and instruction in the function
+        foreach (val, oldIdx; preIdxs)
         {
-            //writeln("***** rewriting frame for ", fun.getName, " at ", interp.target.getName, " *****");
+            if (oldIdx is NULL_LOCAL)
+                continue;
+
+            //writeln("value: ", val);
+            //writeln("value: ", val.idString, ", hash: ", val.toHash, ", ptr: ", cast(void*)val);
+
+            // If the value is not currently live, skip it
+            if (liveInfo.liveAfterPhi(val, interp.target) is false)
+                continue;
+
+            auto newIdx = val.outSlot;
+            assert (val.block !is null);
+            assert (newIdx !is NULL_LOCAL);
 
             /*
-            writeln();
-            writeln(fun);
-
-            writeln();
-            writeln(interp.target);
-            writeln();
+            writeln("rewriting: ", val);
+            writeln("  word: ", preWS[oldIdx].int64Val);
+            writeln("  type: ", preTS[oldIdx]);
             */
 
-            // Compute liveness information for the function
-            auto liveInfo = new LiveInfo(fun);
-
-            // For each phi node and instruction in the function
-            foreach (val, oldIdx; preIdxs)
-            {
-                if (oldIdx is NULL_LOCAL)
-                    continue;
-
-                //writeln("value: ", val);
-                //writeln("value: ", val.idString, ", hash: ", val.toHash, ", ptr: ", cast(void*)val);
-
-                // If the value is not currently live, skip it
-                if (liveInfo.liveAfterPhi(val, interp.target) is false)
-                    continue;
-
-                auto newIdx = val.outSlot;
-                assert (val.block !is null);
-                assert (newIdx !is NULL_LOCAL);
-
-                /*
-                writeln("rewriting: ", val);
-                writeln("  word: ", preWS[oldIdx].int64Val);
-                writeln("  type: ", preTS[oldIdx]);
-                */
-
-                // Copy the value to the new stack frame
-                interp.wsp[newIdx] = preWS[oldIdx];
-                interp.tsp[newIdx] = preTS[oldIdx];
-            }
-
-            // For each return phi node created
-            foreach (callSite, phi; callSites)
-            {
-                if (phi is null)
-                    continue;
-
-                //writeln("return phi: ", phi);
-                //writeln(" call site block: ", callSite.block.getName);
-
-                if (liveInfo.liveAfterPhi(phi, interp.target) is false)
-                    continue;
-
-                auto oldIdx = preIdxs[callSite];
-                auto newIdx = phi.outSlot;
-                assert (newIdx !is NULL_LOCAL);
-
-                /*
-                writeln("writing phi: ", phi);
-                writeln("  word: ", preWS[oldIdx].int64Val);
-                writeln("  type: ", preTS[oldIdx]);
-                */
-
-                // Copy the value to the new stack frame
-                interp.wsp[newIdx] = preWS[oldIdx];
-                interp.tsp[newIdx] = preTS[oldIdx];
-            }
-
-            //writeln();
+            // Copy the value to the new stack frame
+            interp.wsp[newIdx] = preWS[oldIdx];
+            interp.tsp[newIdx] = preTS[oldIdx];
         }
-    }
-    else
-    {
-        // Reoptimize the fused IRs
-        optIR(fun);
 
-        // Reallocate stack slots for the IR instructions
-        allocSlots(fun);
+        // For each return phi node created
+        foreach (callSite, phi; callSites)
+        {
+            if (phi is null)
+                continue;
+
+            //writeln("return phi: ", phi);
+            //writeln(" call site block: ", callSite.block.getName);
+
+            if (liveInfo.liveAfterPhi(phi, interp.target) is false)
+                continue;
+
+            auto oldIdx = preIdxs[callSite];
+            auto newIdx = phi.outSlot;
+            assert (newIdx !is NULL_LOCAL);
+
+            /*
+            writeln("writing phi: ", phi);
+            writeln("  word: ", preWS[oldIdx].int64Val);
+            writeln("  type: ", preTS[oldIdx]);
+            */
+
+            // Copy the value to the new stack frame
+            interp.wsp[newIdx] = preWS[oldIdx];
+            interp.tsp[newIdx] = preTS[oldIdx];
+        }
+
+        //writeln();
     }
 
     //writeln(fun);

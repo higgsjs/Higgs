@@ -50,6 +50,17 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 {
     //writeln("peephole pass");
 
+    /// Test if a value is live at the target block
+    bool isLive(IRValue value)
+    {
+        auto dstValue = cast(IRDstValue)value;
+
+        if (dstValue is null)
+            return false;
+
+        return liveInfo.liveAfterPhi(dstValue, target);
+    }
+
     // CFG changed flag
     bool changed = true;
 
