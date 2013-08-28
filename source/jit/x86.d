@@ -265,6 +265,20 @@ class X86Imm : X86Opnd
         this.unsgImm = cast(uint64_t)ptr;
     }
 
+    /**
+    Equality comparison operator
+    */
+    override bool opEquals(Object that) 
+    {
+        auto a = cast(X86Imm)this;
+        auto b = cast(X86Imm)that;
+
+        return (
+            b !is null &&
+            a.imm is b.imm
+        );
+    }
+
     override string toString() const
     {
         return to!string(this.imm);

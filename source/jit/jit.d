@@ -66,7 +66,7 @@ import ir.inlining;
 import util.bitset;
 
 /// Block execution count at which a function should be compiled
-const JIT_COMPILE_COUNT = 1000;
+const JIT_COMPILE_COUNT = 800;
 
 /// Where a function is on the call stack
 enum StackPos
@@ -218,22 +218,17 @@ void inlinePass(Interp interp, IRFunction fun)
     if (numInlinings is 0)
         return;
 
-    //writeln(fun);
-
-    // TODO: make optIR work on running functions, remove condition
-    // Reoptimize the fused IRs
-    if (preWS.length is 0)
-        optIR(fun);
-
-    //writeln(fun);
-
-    // Reallocate stack slots for the IR instructions
-    allocSlots(fun);
-
     // If the function is on top of the stack
     if (stackPos is StackPos.TOP)
     {
         //writefln("rearranging stack frame");
+
+        // TODO
+        // Reoptimize the fused IRs
+        //optIR(fun);
+
+        // Reallocate stack slots for the IR instructions
+        allocSlots(fun);
 
         // Add space for the new locals to the stack frame
         auto numAdded = fun.numLocals - numLocals;
@@ -314,6 +309,14 @@ void inlinePass(Interp interp, IRFunction fun)
             //writeln();
         }
     }
+    else
+    {
+        // Reoptimize the fused IRs
+        optIR(fun);
+
+        // Reallocate stack slots for the IR instructions
+        allocSlots(fun);
+    }
 
     //writeln(fun);
     //writefln("inlinePass done");
@@ -391,56 +394,18 @@ void compFun(Interp interp, IRFunction fun)
         // TODO: if there is a cap on the number of versions,
         // don't look for exact match but a best match
 
-        // Copy the predecessor state
-        auto succState = new CodeGenState(predState);
-
-        // Remove information about values dead at
-        // the beginning of the successor block
-        succState.removeDead(liveInfo, block);
-
         // Look for the best successor version available
         foreach (ver; versions)
         {
-            if (ver.state == succState)
+            if (ver.state == predState)
                 return ver;
         }
 
         // Create a label for this new version of the block
         auto label = new Label(block.getName().toUpper());
 
-        // Map each phi node on the stack or in its register
-        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
-        {
-            if (phi.hasNoUses)
-                continue;
-
-            auto phiReg = regMapping[phi];
-            assert (phiReg !is null);
-
-            // If value mapped to reg isn't live, use reg
-            // Note: we are querying succState here because the
-            // register might be used by a phi node we just mapped
-            auto regVal = succState.gpRegMap[phiReg.regNo];
-
-            // TODO: can we use liveness info here?
-            // need to query liveness at pred exit?
-            if ((regVal is null || regVal is phi) && noLoadPhi is false)
-            {
-                succState.allocState[phi] = RA_GPREG | phiReg.regNo;
-                succState.gpRegMap[phiReg.regNo] = phi;
-            }
-            else
-            {
-                succState.allocState[phi] = RA_STACK;
-            }
-
-            // FIXME: for now, force the phi type state to be spilled
-            // eventually, want to carry over from pred arg
-            succState.typeState.remove(phi);
-        }
-
         // Create a new block version object using the predecessor's state
-        BlockVersion ver = { block, succState, label };
+        BlockVersion ver = { block, predState, label };
 
         // Add the new version to the list for this block
         versionMap[block] ~= ver;
@@ -465,14 +430,21 @@ void compFun(Interp interp, IRFunction fun)
         CodeGenState predState
     )
     {
-        // Get a version of the successor matching the incoming state
-        auto succVer = getBlockVersion(branch.succ, predState, false);
-        auto succState = succVer.state;
+        // Copy the predecessor state
+        auto succState = new CodeGenState(predState);
 
-        // Generate a move list to transition to the successor state
-        Move[] moveList;
+        // Remove information about values dead at
+        // the beginning of the successor block
+        succState.removeDead(liveInfo, branch.succ);
+
+        // Map each successor phi node on the stack or in its register
+        // in a way that best matches the predecessor state
         for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
         {
+            if (phi.hasNoUses)
+                continue;
+
+            // Get the phi argument
             auto arg = branch.getPhiArg(phi);
             assert (
                 arg !is null, 
@@ -481,6 +453,51 @@ void compFun(Interp interp, IRFunction fun)
                 "\nin block:\n" ~
                 phi.block.toString()
             );
+
+            // Get the register the phi is mapped to
+            auto phiReg = regMapping[phi];
+            assert (phiReg !is null);
+
+            // If value mapped to reg isn't live, use reg
+            // Note: we are querying succState here because the
+            // register might be used by a phi node we just mapped
+            auto regVal = succState.gpRegMap[phiReg.regNo];
+
+            // TODO: can we use liveness info here?
+            // need to query liveness at pred exit?
+            if (regVal is null || regVal is phi)
+            {
+                succState.allocState[phi] = RA_GPREG | phiReg.regNo;
+                succState.gpRegMap[phiReg.regNo] = phi;
+            }
+            else
+            {
+                succState.allocState[phi] = RA_STACK;
+            }
+
+            // If the type of the phi argument is known
+            if (succState.typeKnown(arg))
+            {
+                // Mark the type as known and in sync
+                auto type = succState.getType(arg);
+                succState.typeState[phi] = TF_KNOWN | TF_SYNC | type;
+            }
+            else
+            {
+                // The phi type is unknown
+                succState.typeState.remove(phi);
+            }
+        }
+
+        // Get a version of the successor matching the incoming state
+        auto succVer = getBlockVersion(branch.succ, succState, false);
+        succState = succVer.state;
+
+        // Generate a move list to transition to the successor state
+        Move[] moveList;
+        for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
+        {
+            auto arg = branch.getPhiArg(phi);
 
             as.comment(phi.getName ~ " = phi " ~ arg.getName);
 
@@ -502,6 +519,10 @@ void compFun(Interp interp, IRFunction fun)
 
             if (srcTypeOpnd != dstTypeOpnd)
                 moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
+
+            // If the type is known, spill it to avoid invalid references
+            if (cast(X86Imm)dstTypeOpnd)
+                moveList ~= Move(new X86Mem(8, tspReg, phi.outSlot), srcTypeOpnd);
         }
 
         // Insert the branch edge label, if any

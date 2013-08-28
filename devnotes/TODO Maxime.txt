@@ -60,11 +60,6 @@ TODO: benchmarking (performance testing) python script
 TODO: sort call sites by exec frequency for inlining?
 - Log performance before and after
 
-TODO: enable peephole opts mid-function
-- Need current target and liveness info
-- Don't remove the current block (assert delBlock doesn't do this)
-- Don't remove live phis or instrs (just skip?)
-
 TODO: release target with no asserts for performance testing
 - the -release flag disables assertions
 
@@ -72,6 +67,9 @@ TODO: implement cap on number of block versions now
 - Add command-line options, jit_maxvers
 - Will require generating ASM adaptors before jumps? If we hit the max
 vers cap, the jump target we get back is an adaptor?
+- If we request things like known phi types, will get mismatch
+  - Must have a default "catch-all" version
+  - catch-all can still have custom regs, but no known types and values
 
 ------------------------------------------------------------------------------
 
@@ -83,20 +81,69 @@ TODO: blog about inlining
 - testing with interpreter only
 - benchmark loop incr to 500M with and without inlining
 
-TODO: don't inline when compiling primitives?
+TODO: enable peephole opts mid-function?
+- Need current target and liveness info
+- Don't remove the current block (assert delBlock doesn't do this)
+- Don't remove live phis or instrs (just skip?)
+
+optIR(fun, IRBlock target)
+- Don't delete the current target block
+- Can't replace an instruction that's live by a value that's not live
+
+
+
+
+
+
+
+[DONE] TODO: look at IR from big_incr, can we eliminate phi nodes easily?
+- 7 phi nodes in total
+- several possible improvements, worth looking into
+
+[DONE] TODO: don't inline when compiling primitives? No!
 - will make their compilation faster
 - should result in better inlining overall
 - do we have an isPrimitive, isRuntime test?
   - add method to IRFunction?
 - What's the difference in compilation time?
+- Performance is worse on every benchmark, even though comp time is smaller
 
-TODO: propagate types through phi nodes
+[DONE] TODO: propagate types through phi nodes
 - Could save type byte moves, generate better code in loop microbenchmark
+- Reduced code size, reduced type tests on benchmarks
+- Not much type test reduction on some benchmarks
+  - Possibly, unjitted instructions are causing spills
+- One type test executed in big incr (mid-loop entry), down from 4B
 
+3d-cube:
+total execution time (ms): 2223
+total compilation time (ms): 599
+machine code generated (bytes): 253236
+type tests executed: 8998583
+unjitted instructions executed: 344956
+call bailouts executed: 0
+return bailouts executed: 2426
+interpreter cycles executed: 1820808
 
+3d-raytrace:
+total execution time (ms): 3052
+total compilation time (ms): 909
+machine code generated (bytes): 386667
+type tests executed: 31909720
+unjitted instructions executed: 190284
+call bailouts executed: 0
+return bailouts executed: 2494
+interpreter cycles executed: 1310769
 
-
-
+earley-boyer:
+total execution time (ms): 6509
+total compilation time (ms): 863
+machine code generated (bytes): 362126
+type tests executed: 32377182
+unjitted instructions executed: 470606
+call bailouts executed: 3725
+return bailouts executed: 266251
+interpreter cycles executed: 3885102
 
 [DONE] TODO: modify IsTypeOp comparison + branch to add info to context?
 - Loop microbenchmark does is_i32 twice, once for lt, once for add

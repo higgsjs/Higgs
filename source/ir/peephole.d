@@ -43,9 +43,10 @@ import std.string;
 import std.stdint;
 import std.conv;
 import ir.ir;
+import ir.livevars;
 import ir.ops;
 
-void optIR(IRFunction fun)
+void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 {
     //writeln("peephole pass");
 
@@ -404,7 +405,7 @@ void optIR(IRFunction fun)
                             //writeln("jump block:\n", branch.succ.toString);
                             //writeln("num phis: ", jmpBranch.args.length);
 
-                            // Branch directly to the target ot the jump
+                            // Branch directly to the target of the jump
                             auto newBranch = instr.setTarget(tIdx, jmpBranch.succ);
                             foreach (arg; jmpBranch.args)
                                 newBranch.setPhiArg(cast(PhiNode)arg.owner, arg.value);
