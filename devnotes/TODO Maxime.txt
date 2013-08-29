@@ -81,27 +81,49 @@ TODO: more instrs for 3d-cube, 3d-raytrace? What are the most obviously needed?
 
 Goal: perf gains on loop increment microbenchmark 
 
-TODO: optimize calling primitives by name (RT_PREFIX?)
+TODO: optimize calling primitives by name
 
 
 
-TODO: Record new stats for 3d-cube, 3d-raytrace, earley-boyer
+
+
+
+
+
+
+
+
+[DONE] TODO: Record new stats for 3d-cube, 3d-raytrace, earley-boyer
 
 3d-cube:
-
-
+total execution time (ms): 1948
+total compilation time (ms): 563
+machine code generated (bytes): 240666
+type tests executed: 8724951
+unjitted instructions executed: 346907
+call bailouts executed: 0
+return bailouts executed: 2626
+interpreter cycles executed: 1569272
 
 3d-raytrace:
-
-
+total execution time (ms): 2844
+total compilation time (ms): 968
+machine code generated (bytes): 405845
+type tests executed: 23950271
+unjitted instructions executed: 192498
+call bailouts executed: 0
+return bailouts executed: 2544
+interpreter cycles executed: 1106456
 
 earley-boyer:
-
-
-
-
-
-
+total execution time (ms): 5775
+total compilation time (ms): 822
+machine code generated (bytes): 354933
+type tests executed: 24255101
+unjitted instructions executed: 473302
+call bailouts executed: 4143
+return bailouts executed: 266451
+interpreter cycles executed: 3638773
 
 [DONE] TODO: add Marc's microbenchmark to repo
 programs/jit/loop_decr_sum.js

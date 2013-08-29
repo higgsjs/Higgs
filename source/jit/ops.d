@@ -129,9 +129,18 @@ void gen_get_type(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
 
     if (cast(X86Imm)typeOpnd)
+    {
         ctx.as.instr(MOV, opndOut, typeOpnd);
-    else
+    }
+    else if (cast(X86Reg)opndOut)
+    {
         ctx.as.instr(MOVZX, opndOut, typeOpnd);
+    }
+    else
+    {
+        ctx.as.instr(MOVZX, scrRegs32[0], typeOpnd);
+        ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+    }
 
     st.setOutType(ctx.as, instr, Type.INT32);
 }

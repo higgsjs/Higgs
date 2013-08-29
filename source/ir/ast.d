@@ -1817,6 +1817,32 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             return genIIR(ctx, callExpr);
         }
 
+        // Evaluate the call arguments
+        auto argVals = new IRValue[argExprs.length];
+        foreach (argIdx, argExpr; argExprs)
+            argVals[argIdx] = exprToIR(ctx, argExpr);
+
+        /*
+        // If this is a call to a runtime function
+        if (auto identExpr = cast(IdentExpr)baseExpr)
+        {
+            if (identExpr.name.startsWith("$rt_"w))
+            {
+                // Make a direct static call to the primitive
+                auto callInstr = ctx.addInstr(new IRInstr(&CALL_PRIM, 2 + argVals.length));
+                callInstr.setArg(0, new IRString(identExpr.name));
+                callInstr.setArg(1, new IRFunPtr(null));
+                foreach (argIdx, argVal; argVals)
+                    callInstr.setArg(2 + argIdx, argVal);
+
+                // Generate the call targets
+                genCallTargets(ctx, callInstr);
+
+                return callInstr;
+            }
+        }
+        */
+
         // Local slots for the closure and "this" arguments
         IRValue closVal;
         IRValue thisVal;
@@ -1837,7 +1863,6 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 [thisVal, keyVal]
             );
         }
-
         else
         {
             // Evaluate the base expression
@@ -1847,18 +1872,13 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             thisVal = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
         }
 
-        // Evaluate the arguments
-        auto argVals = new IRValue[argExprs.length];
-        foreach (argIdx, argExpr; argExprs)
-            argVals[argIdx] = exprToIR(ctx, argExpr);
-
         // Add the call instruction
         // <dstLocal> = CALL <fnLocal> <thisArg> ...
         auto callInstr = ctx.addInstr(new IRInstr(&CALL, 2 + argVals.length));
         callInstr.setArg(0, closVal);
         callInstr.setArg(1, thisVal);
         foreach (argIdx, argVal; argVals)
-            callInstr.setArg(2+argIdx, argVal);
+            callInstr.setArg(2 + argIdx, argVal);
 
         // Generate the call targets
         genCallTargets(ctx, callInstr);
