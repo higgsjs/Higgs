@@ -10,7 +10,8 @@ Conference deadlines:
 
 Misc improvements
 
-TODO: give this project more lovin'! Improve various aspects! Blog!
+TODO: take a look at Mozilla regression tests
+http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 
 FIXME: bug in JIT heap_alloc op
 
@@ -74,13 +75,38 @@ vers cap, the jump target we get back is an adaptor?
 - Limit should not include catch-all vers, compile only if no compatible match
   - Call it the "general" version
 
-TODO: more opts for 3d-cube, 3d-raytrace? What are the most obviously needed?
+TODO: more instrs for 3d-cube, 3d-raytrace? What are the most obviously needed?
 
 ------------------------------------------------------------------------------
 
 Goal: perf gains on loop increment microbenchmark 
 
-TODO: blog about inlining
+TODO: optimize calling primitives by name (RT_PREFIX?)
+
+
+
+TODO: Record new stats for 3d-cube, 3d-raytrace, earley-boyer
+
+3d-cube:
+
+
+
+3d-raytrace:
+
+
+
+earley-boyer:
+
+
+
+
+
+
+
+[DONE] TODO: add Marc's microbenchmark to repo
+programs/jit/loop_decr_sum.js
+
+[DONE] TODO: blog about inlining
 - perf
 - basic heuristics
 - making inlining more selective
@@ -88,15 +114,6 @@ TODO: blog about inlining
 - testing with interpreter only
   - interpreter is robust, easier to debug
 - benchmark loop incr to 500M with and without inlining
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: phi of phi peephole opt
 - pred has phi and then jump, succ has one phi which uses our phi

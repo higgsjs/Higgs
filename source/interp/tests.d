@@ -1306,6 +1306,7 @@ unittest
     interp.load("programs/jit/loop_new.js");
     interp.load("programs/jit/loop_argc.js");
     interp.load("programs/jit/loop_bool.js");
+    interp.load("programs/jit/loop_decr_sum.js");
     interp.load("programs/jit/vers_pathos.js");
 }
 
