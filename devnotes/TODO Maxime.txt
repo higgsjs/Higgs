@@ -74,8 +74,7 @@ vers cap, the jump target we get back is an adaptor?
 - Limit should not include catch-all vers, compile only if no compatible match
   - Call it the "general" version
 
-TODO: look at known type info, do we remove it when spilling values for
-unjitted instrs?
+TODO: more opts for 3d-cube, 3d-raytrace? What are the most obviously needed?
 
 ------------------------------------------------------------------------------
 

@@ -66,20 +66,36 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
         {
             assert (memSrc.memSize == memDst.memSize);
             auto tmpReg = tmp1.ofSize(memSrc.memSize);
-
             as.instr(MOV, tmpReg, memSrc);
             as.instr(MOV, memDst, tmpReg);
+            return;
         }
-        else if (immSrc && immSrc.immSize > 32 && memDst)
+
+        if (immSrc && immSrc.immSize > 32 && memDst)
         {
             assert (memDst.memSize == 64);
             as.instr(MOV, tmp1, immSrc);
             as.instr(MOV, memDst, tmp1);
+            return;
         }
-        else
+
+        if (!memDst && immSrc)
         {
-            as.instr(MOV, move.dst, move.src);  
+            if (immSrc.imm is 0)
+            {
+                as.instr(XOR, move.dst, move.dst);
+                return;
+            }
+
+            auto regDst = cast(X86Reg)move.dst;
+            if (regDst.size is 64 && immSrc.immSize < 32)
+            {
+                as.instr(MOV, regDst.ofSize(32), immSrc);
+                return;
+            }
         }
+
+        as.instr(MOV, move.dst, move.src);  
     }
 
     // Remove identity moves from the list

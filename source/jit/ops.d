@@ -773,13 +773,20 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // If this instruction has many uses or is not followed by an if
     if (instr.hasManyUses || ifUseNext(instr) is false)
     {
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+        // We must have a register for the output (so we can use cmov)
+        auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+        auto outReg = cast(X86Reg)opndOut;
+        if (outReg is null)
+            outReg = scrRegs64[0];
+        auto outReg32 = outReg.ofSize(32);
 
-        ctx.as.instr(MOV, scrRegs64[0], FALSE.int64Val);
-        ctx.as.instr(MOV, scrRegs64[1], TRUE.int64Val);
-        ctx.as.instr(CMOVE, scrRegs64[0], scrRegs64[1]);
-        ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
+        ctx.as.instr(MOV    , outReg32      , FALSE.int8Val);
+        ctx.as.instr(MOV    , scrRegs32[1]  , TRUE.int8Val );
+        ctx.as.instr(CMOVE  , outReg32      , scrRegs32[1] );
+
+        // If the output is not a register
+        if (opndOut !is outReg)
+            ctx.as.instr(MOV, opndOut, outReg);
 
         // Set the output type
         st.setOutType(ctx.as, instr, Type.CONST);
@@ -882,10 +889,11 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         auto outReg = cast(X86Reg)opndOut;
         if (outReg is null)
             outReg = scrRegs64[0];
+        auto outReg32 = outReg.ofSize(32);
 
-        ctx.as.instr(MOV   , outReg      , FALSE.int8Val);
-        ctx.as.instr(MOV   , scrRegs64[1], TRUE.int8Val );
-        ctx.as.instr(cmovOp, outReg      , scrRegs64[1] );
+        ctx.as.instr(MOV   , outReg32       , FALSE.int8Val);
+        ctx.as.instr(MOV   , scrRegs32[1]   , TRUE.int8Val );
+        ctx.as.instr(cmovOp, outReg32       , scrRegs32[1] );
 
         // If the output is not a register
         if (opndOut !is outReg)
