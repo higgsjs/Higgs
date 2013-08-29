@@ -191,7 +191,8 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
     }
 
     // Until there are no more changes;
-    for (size_t passNo = 1; changed is true; passNo++)
+    size_t passNo;
+    for (passNo = 1; changed is true; passNo++)
     {
         // Reset the changed flag
         changed = false;
@@ -423,6 +424,41 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 
                             continue INSTR_LOOP;
                         }
+
+                        // Phi of phi optimization:
+                        // If the predecessor has a phi and a jump, and the 
+                        // successor has one phi which uses the predecessor phi
+                        if (block.firstInstr is instr && 
+                            block.firstPhi !is null && block.firstPhi.next is null &&
+                            succ.firstPhi !is null && succ.firstPhi.next is null &&
+                            branch.getPhiArg(succ.firstPhi) is block.firstPhi)
+                        {
+                            // For each predecessor
+                            for (size_t pIdx = 0; pIdx < block.numIncoming; ++pIdx)
+                            {
+                                auto desc = block.getIncoming(pIdx);
+                                auto pBranch = desc.pred.lastInstr;
+
+                                // Find the target index
+                                size_t tIdx;
+                                for (tIdx = 0; tIdx < pBranch.MAX_TARGETS; ++tIdx)
+                                    if (pBranch.getTarget(tIdx) is desc)
+                                        break;
+                                assert (tIdx < pBranch.MAX_TARGETS);
+
+                                // Make the predecessor pass the phi argument
+                                // to the successor directly
+                                auto newDesc = new BranchDesc(desc.pred, succ);
+                                newDesc.setPhiArg(
+                                    succ.firstPhi, 
+                                    desc.getPhiArg(block.firstPhi)
+                                );
+                                pBranch.setTarget(tIdx, newDesc);
+                            }
+
+                            changed = true;
+                            continue INSTR_LOOP;
+                        }
                     }
 
                     // For each branch edge from this instruction
@@ -462,7 +498,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 
     } // while changed
 
-    //writeln("peephole pass complete");
+    //writeln("peephole opts completed (", passNo, " passes)");
     //writeln(fun);
 }
 

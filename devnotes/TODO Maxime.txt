@@ -14,14 +14,15 @@ TODO: give this project more lovin'! Improve various aspects! Blog!
 
 FIXME: bug in JIT heap_alloc op
 
-TODO: don't load arg values with only one use?
-- test perf impact, need bench script, need desktop
-
 TODO: return support for new? 
 - may speed up 3d-cube, 3d-raytrace, earley-boyer significantly
 - can have out of line case, need to compare ret val, get this val
 - should ideally get word and type opnds before testing opcode
   - need more tmp regs, alloc for specific purposes
+
+TODO: reg alloc... Can we make simple improvements?
+- Alloc regs to phi nodes first, then map their args to the same regs
+- Get stats for benchmarks before implementing this
 
 ------------------------------------------------------------------------------
 
@@ -89,13 +90,19 @@ TODO: blog about inlining
   - interpreter is robust, easier to debug
 - benchmark loop incr to 500M with and without inlining
 
-TODO: phi of phi peephole opt
+
+
+
+
+
+
+
+
+
+[DONE] TODO: phi of phi peephole opt
 - pred has phi and then jump, succ has one phi which uses our phi
 - make our incoming jump to succ, pass phi arguments directly
-
-
-
-
+- big incr down to 3.2s, 409 bytes
 
 [DONE] TODO: Redundant jump peephole
 - Block ends in a jump, successor has no phi nodes, successor has only one incoming
