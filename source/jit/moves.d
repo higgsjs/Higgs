@@ -60,6 +60,7 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
 
         auto immSrc = cast(X86Imm)move.src;
         auto memSrc = cast(X86Mem)move.src;
+        auto regDst = cast(X86Reg)move.dst;
         auto memDst = cast(X86Mem)move.dst;
 
         if (memSrc && memDst)
@@ -79,18 +80,21 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             return;
         }
 
-        if (!memDst && immSrc)
+        if (regDst && immSrc)
         {
+            auto regDst32 = regDst.ofSize(32);
+
+            // xor rXX, rXX is the shortest way to zero-out a register
             if (immSrc.imm is 0)
             {
-                as.instr(XOR, move.dst, move.dst);
+                as.instr(XOR, regDst32, regDst32);
                 return;
             }
 
-            auto regDst = cast(X86Reg)move.dst;
-            if (regDst.size is 64 && immSrc.immSize < 32)
+            // Take advantage of zero-extension to save REX bytes
+            if (regDst.size is 64 && immSrc.imm > 0 && immSrc.unsgSize <= 32)
             {
-                as.instr(MOV, regDst.ofSize(32), immSrc);
+                as.instr(MOV, regDst32, immSrc);
                 return;
             }
         }
