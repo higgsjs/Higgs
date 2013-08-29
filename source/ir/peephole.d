@@ -376,13 +376,26 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 // If this is a branch instruction
                 if (op.isBranch)
                 {
-                    // If this is a jump to a block containing
-                    // an if_true of a single phi node
+                    // If this is an unconditional jump
                     if (op == &JUMP)
                     {
                         auto branch = instr.getTarget(0);
                         auto succ = branch.succ;
 
+                        // If the successor has no phi nodes and only one predecessor
+                        if (branch.args.length is 0 && succ.numIncoming is 1 && succ !is target)
+                        {
+                            // Move instructions from the successor into the predecessor
+                            while (succ.firstInstr !is null)
+                                succ.moveInstr(succ.firstInstr, block);
+
+                            // Remove the jump instruction
+                            delInstr(instr);
+
+                            continue INSTR_LOOP;
+                        }
+
+                        // If the successor contains an if_true of a single phi node
                         if (branch.args.length is 1 &&
                             succ.firstInstr.opcode is &IF_TRUE &&
                             succ.firstInstr.getArg(0) is succ.firstPhi &&

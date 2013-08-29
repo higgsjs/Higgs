@@ -80,10 +80,6 @@ unjitted instrs?
 
 Goal: perf gains on loop increment microbenchmark 
 
-TODO: peephole opts for $rt_add, i32(x) && i32(y)
-- Suboptimal reuse of the result, two if branches
-- Look at IR
-
 TODO: blog about inlining
 - perf
 - basic heuristics
@@ -93,14 +89,18 @@ TODO: blog about inlining
   - interpreter is robust, easier to debug
 - benchmark loop incr to 500M with and without inlining
 
-TODO: look at peephole opts for loop benchmark. Redundant jumps?
+TODO: phi of phi peephole opt
+- pred has phi and then jump, succ has one phi which uses our phi
+- make our incoming jump to succ, pass phi arguments directly
 
 
 
 
 
-
-
+[DONE] TODO: Redundant jump peephole
+- Block ends in a jump, successor has no phi nodes, successor has only one incoming
+- Might enable further phi elimination. 7 phis before. 7 after, but some opts!
+- big incr down to 4.3s, 412 bytes
 
 [DONE] FIXME:
 mov rbp, [qword r14 + 200];             49 8B AE C8 00 00 00
