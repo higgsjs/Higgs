@@ -229,9 +229,11 @@ void inlinePass(Interp interp, IRFunction fun)
         // Reallocate stack slots for the IR instructions
         allocSlots(fun);
 
-        // Add space for the new locals to the stack frame
-        auto numAdded = fun.numLocals - numLocals;
-        interp.push(numAdded);
+        // Adjust the size of the stack frame
+        if (fun.numLocals > numLocals)
+            interp.push(fun.numLocals - numLocals);
+        else
+            interp.pop(numLocals - fun.numLocals);
     }
     else
     {
@@ -256,9 +258,11 @@ void inlinePass(Interp interp, IRFunction fun)
         // Reallocate stack slots for the IR instructions
         allocSlots(fun);
 
-        // Add space for the new locals to the stack frame
-        auto numAdded = fun.numLocals - numLocals;
-        interp.push(numAdded);
+        // Adjust the size of the stack frame
+        if (fun.numLocals > numLocals)
+            interp.push(fun.numLocals - numLocals);
+        else
+            interp.pop(numLocals - fun.numLocals);
 
         // For each phi node and instruction in the function
         foreach (val, oldIdx; preIdxs)

@@ -77,21 +77,35 @@ vers cap, the jump target we get back is an adaptor?
 
 TODO: more instrs for 3d-cube, 3d-raytrace? What are the most obviously needed?
 
+
+
+
+
+
+
+
+
+
+
+
 ------------------------------------------------------------------------------
 
 Goal: perf gains on loop increment microbenchmark 
 
-TODO: optimize calling primitives by name
+[DONE] FIXME: earley-boyer segfaults when run on its own
+$40 = add_i32 $18, 1
+jump => arg_test(18645)
+$0 = lt_i32 $18, $92
+$19 = get_arg $18
+Segmentation fault
+sc_list(13F29)
+0
+sc_list(13F29)
+139998753980417
 
+[DONE] FIXME: JIT bug wrt call_prim, crash on stdlib init
 
-
-
-
-
-
-
-
-
+[DONE] TODO: optimize calling primitives by name
 
 [DONE] TODO: Record new stats for 3d-cube, 3d-raytrace, earley-boyer
 

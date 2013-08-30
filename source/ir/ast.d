@@ -52,6 +52,9 @@ import ir.peephole;
 import ir.livevars;
 import ir.slotalloc;
 
+/// Runtime function name prefix
+const wstring RT_PREFIX = "$rt_";
+
 /**
 IR generation context
 */
@@ -1822,11 +1825,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         foreach (argIdx, argExpr; argExprs)
             argVals[argIdx] = exprToIR(ctx, argExpr);
 
-        /*
         // If this is a call to a runtime function
         if (auto identExpr = cast(IdentExpr)baseExpr)
         {
-            if (identExpr.name.startsWith("$rt_"w))
+            if (identExpr.name.startsWith(RT_PREFIX))
             {
                 // Make a direct static call to the primitive
                 auto callInstr = ctx.addInstr(new IRInstr(&CALL_PRIM, 2 + argVals.length));
@@ -1841,7 +1843,6 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 return callInstr;
             }
         }
-        */
 
         // Local slots for the closure and "this" arguments
         IRValue closVal;
@@ -2502,7 +2503,7 @@ Insert a call to a runtime function
 */
 IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
 {
-    auto nameStr = new IRString(to!wstring("$rt_" ~ fName));
+    auto nameStr = new IRString(RT_PREFIX ~ to!wstring(fName));
 
     // <dstLocal> = CALL_PRIM <prim_name> <cachedFun> ...
     auto callInstr = ctx.addInstr(new IRInstr(&CALL_PRIM, 2 + argVals.length));
@@ -2523,7 +2524,7 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
     // Get the global function
     auto funVal = ctx.addInstr(new IRInstr(
         &GET_GLOBAL, 
-        new IRString(to!wstring("$rt_" ~ fName)),
+        new IRString(RT_PREFIX ~ to!wstring(fName)),
         new IRCachedIdx()
     ));
 

@@ -65,19 +65,24 @@ void gen_get_arg(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto argSlot = instr.block.fun.argcVal.outSlot + 1;
 
     // Get the argument index
-    auto idxOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0], false);
+    auto idxOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, scrRegs32[0], false);
+    auto idxReg32 = cast(X86Reg)idxOpnd;
+    auto idxReg64 = idxReg32.ofSize(64);
 
     // Get the output operand
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
+    // Zero-extend the index to 64-bit
+    ctx.as.instr(MOV, idxReg32, idxReg32);
+
     // TODO: optimize for immediate idx, register opndOut
     // Copy the word value
-    auto wordSlot = new X86Mem(64, wspReg, argSlot * 8, cast(X86Reg)idxOpnd, 8);
+    auto wordSlot = new X86Mem(64, wspReg, argSlot * 8, idxReg64, 8);
     ctx.as.instr(MOV, scrRegs64[1], wordSlot);
     ctx.as.instr(MOV, opndOut, scrRegs64[1]);
 
     // Copy the type value
-    auto typeSlot = new X86Mem(8, tspReg, argSlot * 1, cast(X86Reg)idxOpnd, 1);
+    auto typeSlot = new X86Mem(8, tspReg, argSlot * 1, idxReg64, 1);
     ctx.as.instr(MOV, scrRegs8[1], typeSlot);
     st.setOutType(ctx.as, instr, scrRegs8[1]);
 }

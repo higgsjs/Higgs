@@ -930,7 +930,6 @@ class Interp
                 compFun(this, target.fun);
             }
 
-            
             // If this block has an associated entry point
             if (target.entryFn !is null)
             {
@@ -942,7 +941,6 @@ class Interp
                 //writefln("exited at fn: %s (%s)", target.fun.getName(), target.getName());
                 continue;
             }
-            
 
             // Increment the execution count for the block
             target.execCount++;
