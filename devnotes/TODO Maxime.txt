@@ -83,17 +83,20 @@ TODO: implement cap on number of block versions now
 - Need diff(that) distance function for CodeGenState
   - returns integer, -1 if incompatible
 
-TODO: implement floating-point comparison instructions
+TODO: implement get_link instruction in JIT
+
+[DONE] TODO: implement floating-point comparison instructions
 - 3d-raytrace, 3d-cube dominated by FP comparisons
 - use UCOMISD instruction
 - Pre-opt times, 3d-cube: 1796ms, 3d-raytrace: 2193ms
-- Don't forget eq_f64 and ne_f64s
-
-TODO: genBoolOut
 
 
 
 
+
+
+
+[DONE] TODO: genBoolOut
 
 [DONE] TODO: release target with no asserts for performance testing
 - the -release flag disables assertions

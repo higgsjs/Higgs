@@ -684,15 +684,41 @@ void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 */
 
 /**
+Conditional jump and move descriptor
+*/
+struct CondOps
+{
+    static CondOps cmov(X86OpPtr cmovT, X86OpPtr cmovF)
+    {
+        CondOps ops;
+        ops.cmovT[0] = cmovT;
+        ops.cmovF[0] = cmovF;
+        return ops;
+    }
+
+    static CondOps jcc(X86OpPtr jccT, X86OpPtr jccF)
+    {
+        CondOps ops;
+        ops.jccT[0] = jccT;
+        ops.jccF[0] = jccF;
+        return ops;
+    }
+
+    X86OpPtr jccT[2];
+    X86OpPtr jccF[2];
+    X86OpPtr cmovT[2];
+    X86OpPtr cmovF[2];
+}
+
+/**
 Generates the conditional branch for an if_true instruction with the given
 conditional jump operations. Assumes a comparison between input operands has
 already been inserted.
 */
 void genCondBranch(
     CodeGenCtx ctx, 
-    IRInstr ifInstr, 
-    X86OpPtr trueOp, 
-    X86OpPtr falseOp,
+    IRInstr ifInstr,
+    CondOps condOps,
     CodeGenState trueSt,
     CodeGenState falseSt
 )
@@ -700,45 +726,106 @@ void genCondBranch(
     auto trueTarget = ifInstr.getTarget(0);
     auto falseTarget = ifInstr.getTarget(1);
 
-    BranchDesc fastTarget;
-    BranchDesc slowTarget;
-    CodeGenState fastSt;
-    CodeGenState slowSt;
-    X86OpPtr jumpOp;
+    auto trueLabel = new Label("IF_TRUE");
+    auto falseLabel = new Label("IF_FALSE");
 
     // If the true branch is more often executed
     if (trueTarget.succ.execCount > falseTarget.succ.execCount)
     {
-        // False result causes a jump
-        fastTarget = trueTarget;
-        slowTarget = falseTarget;
-        fastSt = trueSt;
-        slowSt = falseSt;
-        jumpOp = falseOp; 
+        if (condOps.jccF[0])
+        {
+            // Jump out of line to the false case
+            foreach (jccF; condOps.jccF)
+                if (jccF) ctx.as.instr(jccF, falseLabel);
+
+            // Jump directly to the true case
+            ctx.as.instr(JMP, trueLabel);
+        }
+        else
+        {
+            // Jump conditionally to the true case
+            assert (condOps.jccF[0]);
+            foreach (jccT; condOps.jccT)
+                if (jccT) ctx.as.instr(jccT, trueLabel);
+
+            // Jump to the false case
+            ctx.as.instr(JMP, falseLabel);
+        }
+
+        // Get the fast target label last so the fast target is
+        // more likely to get generated first (LIFO stack)
+        ctx.genBranchEdge(ctx.as, falseLabel, falseTarget, falseSt);
+        ctx.genBranchEdge(ctx.as, trueLabel, trueTarget, trueSt);
     }
     else
     {
-        // True result causes a jump
-        fastTarget = falseTarget;
-        slowTarget = trueTarget;
-        fastSt = falseSt;
-        slowSt = trueSt;
-        jumpOp = trueOp;
+        if (condOps.jccT[0])
+        {
+            // Jump out of line to the true case
+            foreach (jccT; condOps.jccT)
+                if (jccT) ctx.as.instr(jccT, trueLabel);
+
+            // Jump directly to the false case
+            ctx.as.instr(JMP, falseLabel);
+        }
+        else
+        {
+            // Jump conditionally to the false case
+            assert (condOps.jccF[0]);
+            foreach (jccF; condOps.jccF)
+                if (jccF) ctx.as.instr(jccF, falseLabel);
+
+            // Jump to the true case
+            ctx.as.instr(JMP, trueLabel);
+        }
+
+        // Get the fast target label last so the fast target is
+        // more likely to get generated first (LIFO stack)
+        ctx.genBranchEdge(ctx.as, trueLabel, trueTarget, trueSt);
+        ctx.genBranchEdge(ctx.as, falseLabel, falseTarget, falseSt);
+    }
+}
+
+/**
+Generate a boolean output value for an instruction based
+on a preceding comparison instruction's output
+*/
+void genBoolOut(
+    CodeGenCtx ctx,
+    CodeGenState st,
+    IRInstr instr,
+    CondOps condOps,
+)
+{
+    // We must have a register for the output (so we can use cmov)
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto outReg = cast(X86Reg)opndOut;
+    if (outReg is null)
+        outReg = scrRegs64[0];
+    auto outReg32 = outReg.ofSize(32);
+
+    if (condOps.cmovT[0])
+    {
+        ctx.as.instr(MOV, outReg32, FALSE.int8Val);
+        ctx.as.instr(MOV, scrRegs32[1], TRUE.int8Val);
+        foreach (cmovT; condOps.cmovT)
+            if (cmovT) ctx.as.instr(cmovT, outReg32, scrRegs32[1]);
+    }
+    else
+    {
+        assert (condOps.cmovF[0]);
+        ctx.as.instr(MOV, outReg32, TRUE.int8Val);
+        ctx.as.instr(MOV, scrRegs32[1], FALSE.int8Val);
+        foreach (cmovF; condOps.cmovF)
+            if (cmovF) ctx.as.instr(cmovF, outReg32, scrRegs32[1]);
     }
 
-    auto slowLabel = new Label("IF_UNLIKELY");
-    auto fastLabel = new Label("IF_LIKELY");
+    // If the output is not a register
+    if (opndOut !is outReg)
+        ctx.as.instr(MOV, opndOut, outReg);
 
-    // Jump conditionally to the slow label
-    ctx.as.instr(jumpOp, slowLabel);
-
-    // Jump directly to the fast label
-    ctx.as.instr(JMP, fastLabel);
-
-    // Get the fast target label last so the fast target is
-    // more likely to get generated first (LIFO stack)
-    ctx.genBranchEdge(ctx.as, slowLabel, slowTarget, slowSt);
-    ctx.genBranchEdge(ctx.as, fastLabel, fastTarget, fastSt);
+    // Set the output type
+    st.setOutType(ctx.as, instr, Type.CONST);
 }
 
 /**
@@ -792,23 +879,8 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // If this instruction has many uses or is not followed by an if
     if (instr.hasManyUses || ifUseNext(instr) is false)
     {
-        // We must have a register for the output (so we can use cmov)
-        auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-        auto outReg = cast(X86Reg)opndOut;
-        if (outReg is null)
-            outReg = scrRegs64[0];
-        auto outReg32 = outReg.ofSize(32);
-
-        ctx.as.instr(MOV    , outReg32      , FALSE.int8Val);
-        ctx.as.instr(MOV    , scrRegs32[1]  , TRUE.int8Val );
-        ctx.as.instr(CMOVE  , outReg32      , scrRegs32[1] );
-
-        // If the output is not a register
-        if (opndOut !is outReg)
-            ctx.as.instr(MOV, opndOut, outReg);
-
-        // Set the output type
-        st.setOutType(ctx.as, instr, Type.CONST);
+        // Generate a boolean output
+        ctx.genBoolOut(st, instr, CondOps.cmov(CMOVE, CMOVNE));
     }
 
     // If our only use is an immediately following if_true
@@ -821,7 +893,7 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         trueSt.setKnownType(dstValue, type);
 
         // Generate the conditional branch and targets here
-        ctx.genCondBranch(instr.next, JE, JNE, trueSt, st);
+        ctx.genCondBranch(instr.next, CondOps.jcc(JE, JNE), trueSt, st);
     }
 }
 
@@ -875,149 +947,120 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         ctx.as.instr(CMP, opnd0, opnd1);
     }
 
-    // Choose conditional instructions based on the comparison operator
-    X86OpPtr cmovOp = null;
-    X86OpPtr trueOp = null;
-    X86OpPtr falseOp = null;
+    // Conditional operations to implement the comparison
+    CondOps condOps;
 
     // Integer comparison
     static if (op == "eq")
     {
-        cmovOp  = CMOVE;
-        trueOp  = JE;
-        falseOp = JNE;
+        condOps.cmovT[0] = CMOVE;
+        condOps.jccT [0] = JE;
+        condOps.jccF [0] = JNE;
     }
     static if (op == "ne")
     {
-        cmovOp  = CMOVNE;
-        trueOp  = JNE;
-        falseOp = JE;
+        condOps.cmovT[0] = CMOVNE;
+        condOps.jccT [0] = JNE;
+        condOps.jccF [0] = JE;
     }
     static if (op == "lt")
     {
-        cmovOp  = CMOVL;
-        trueOp  = JL;
-        falseOp = JGE;
+        condOps.cmovT[0] = CMOVL;
+        condOps.jccT [0] = JL;
+        condOps.jccF [0] = JGE;
     }
     static if (op == "le")
     {
-        cmovOp  = CMOVLE;
-        trueOp  = JLE;
-        falseOp = JG;
+        condOps.cmovT[0] = CMOVLE;
+        condOps.jccT [0] = JLE;
+        condOps.jccF [0] = JG;
     }
     static if (op == "gt")
     {
-        cmovOp = CMOVG;
-        trueOp  = JG;
-        falseOp = JLE;
+        condOps.cmovT[0] = CMOVG;
+        condOps.jccT [0] = JG;
+        condOps.jccF [0] = JLE;
     }
     static if (op == "ge")
     {
-        cmovOp = CMOVGE;
-        trueOp  = JGE;
-        falseOp = JL;
+        condOps.cmovT[0] = CMOVGE;
+        condOps.jccT [0] = JGE;
+        condOps.jccF [0] = JL;
     }
 
-    /*
-    From the Intel manual:
-
-    RESULT ← UnorderedCompare(SRC1[63:0] < > SRC2[63:0]) {
-    (* Set EFLAGS *)
-    CASE (RESULT) OF
-
-    UNORDERED:
-    ZF, PF, CF ← 111;
-    GREATER_THAN:
-    ZF, PF, CF ← 000;
-    LESS_THAN:
-    ZF, PF, CF ← 001;
-    EQUAL:
-    ZF, PF, CF ← 100;
-    */
-
-
-    // Eq... 
-    // False: JNE + JP
-
-    // Ne: 
-    // greater than or less than or unordered (000 or 001 or 111) but not 100
-
-
-
-
-
-    // Floating-point comparison
+    // Floating-point comparisons
+    // From the Intel manual, EFLAGS are:
+    // UNORDERED:    ZF, PF, CF ← 111;
+    // GREATER_THAN: ZF, PF, CF ← 000;
+    // LESS_THAN:    ZF, PF, CF ← 001;
+    // EQUAL:        ZF, PF, CF ← 100;   
+    static if (op == "feq")
+    {
+        // feq:
+        // True: 100
+        // False: 111 or 000 or 001
+        // False: JNE + JP
+        condOps.cmovF = [CMOVNE, CMOVP];
+        condOps.jccF  = [JNE, JP];
+    }
+    static if (op == "fne")
+    {
+        // fne: 
+        // True: 111 or 000 or 001
+        // False: 100
+        // True: JNE + JP
+        condOps.cmovT = [CMOVNE, CMOVP];
+        condOps.jccT  = [JNE, JP];
+    }
     static if (op == "flt")
     {
-        // In terms of CMOV, can do CMOVNB and CMOVP on false
-
-
-
-
-        /*
-        cmovOp  = CMOVNE;
-        trueOp  = JNE;
-        falseOp = JE;
-        */
+        // flt:
+        // True: 001
+        // False: 111 or 000 or 100
+        // False: JNB + JP
+        condOps.cmovF = [CMOVNB, CMOVP];
+        condOps.jccF  = [JNB, JP];
     }
-
-    /*
     static if (op == "fle")
     {
-
-        cmovOp  = CMOVAE;
-        trueOp  = JAE;
-        falseOp = JB;
+        // fle:
+        // True: 001 or 100
+        // False: 111 or 000
+        // False: JA + JP  
+        condOps.cmovF = [CMOVA, CMOVP];
+        condOps.jccF  = [JA, JP];
     }
-    */
-
     static if (op == "fgt")
     {
-        cmovOp  = CMOVA;
-        trueOp  = JA;
-        falseOp = JNA;
+        // fgt:
+        // True: 000
+        // False: 111 or 001 or 100
+        condOps.cmovT[0] = CMOVA;
+        condOps.jccT [0] = JA;
+        condOps.jccF [0] = JNA;
     }
-
     static if (op == "fge")
     {
-        cmovOp  = CMOVAE;
-        trueOp  = JAE;
-        falseOp = JNAE;
+        // fge:
+        // True: 000 or 100
+        // False: 111 or 001
+        condOps.cmovT[0] = CMOVAE;
+        condOps.jccT [0] = JAE;
+        condOps.jccF [0] = JNAE;
     }
-
-
-
-
-
-
 
     // If this instruction has many uses or is not followed by an if
     if (instr.hasManyUses || ifUseNext(instr) is false)
     {
-        // We must have a register for the output (so we can use cmov)
-        auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-        auto outReg = cast(X86Reg)opndOut;
-        if (outReg is null)
-            outReg = scrRegs64[0];
-        auto outReg32 = outReg.ofSize(32);
-
-        ctx.as.instr(MOV   , outReg32       , FALSE.int8Val);
-        ctx.as.instr(MOV   , scrRegs32[1]   , TRUE.int8Val );
-        ctx.as.instr(cmovOp, outReg32       , scrRegs32[1] );
-
-        // If the output is not a register
-        if (opndOut !is outReg)
-            ctx.as.instr(MOV, opndOut, outReg);
-
-        // Set the output type
-        st.setOutType(ctx.as, instr, Type.CONST);
+        // Generate a boolean output
+        ctx.genBoolOut(st, instr, condOps);
     }
 
     // If our only use is an immediately following if_true
     if (ifUseNext(instr) is true)
     {
         // Generate the conditional branch and targets here
-        ctx.genCondBranch(instr.next, trueOp, falseOp, st, st);
+        ctx.genCondBranch(instr.next, condOps, st, st);
     }
 }
 
@@ -1067,7 +1110,7 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(CMP, argOpnd, TRUE.int8Val);
 
     // Generate the conditional branch and targets
-    ctx.genCondBranch(instr, JE, JNE, st, st);
+    ctx.genCondBranch(instr, CondOps.jcc(JE, JNE), st, st);
 }
 
 void gen_if_eq_fun(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -1713,14 +1756,12 @@ static this()
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
 
-    /*
-    //codeGenFns[&EQ_F64]         = &gen_eq_f64;
-    //codeGenFns[&NE_F64]         = &gen_ne_f64;
+    codeGenFns[&EQ_F64]         = &gen_eq_f64;
+    codeGenFns[&NE_F64]         = &gen_ne_f64;
     codeGenFns[&LT_F64]         = &gen_lt_f64;
-    //codeGenFns[&LE_F64]         = &gen_le_f64;
+    codeGenFns[&LE_F64]         = &gen_le_f64;
     codeGenFns[&GE_F64]         = &gen_ge_f64;
     codeGenFns[&GT_F64]         = &gen_gt_f64;
-    */
 
     codeGenFns[&IF_TRUE]        = &gen_if_true;
     codeGenFns[&IF_EQ_FUN]      = &gen_if_eq_fun;
