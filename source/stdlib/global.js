@@ -366,3 +366,18 @@ function encodeURIComponent(uri)
     return _encodeURI(uri, unescapedClassFilterComponent);
 }
 
+/**
+Extension function to time the execution of a piece of code hidden
+in a closure. The returned time value is in milliseconds.
+*/
+function time(clos)
+{
+    var startTime = $ir_get_time_ms();
+
+    clos();
+
+    var endTime = $ir_get_time_ms();
+
+    return endTime - startTime;
+}
+

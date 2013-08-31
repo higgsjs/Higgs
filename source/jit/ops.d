@@ -584,17 +584,22 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(MOV, typeMem, typeOpnd);
 }
 
-void gen_get_global_obj(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void GetValOp(string fName)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Get the output operand. This must be a 
     // register since it's the only operand.
     auto opndOut = cast(X86Reg)st.getOutOpnd(ctx, ctx.as, instr, 64);
     assert (opndOut !is null, "output is not a register");
 
-    ctx.as.getMember!("Interp", "globalObj")(opndOut, interpReg);
+    ctx.as.getMember!("Interp", fName)(opndOut, interpReg);
 
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }
+
+alias GetValOp!("objProto") gen_get_obj_proto;
+alias GetValOp!("arrProto") gen_get_arr_proto;
+alias GetValOp!("funProto") gen_get_fun_proto;
+alias GetValOp!("globalObj") gen_get_global_obj;
 
 /*
 void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -829,18 +834,21 @@ alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 
 void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
+    // Check if this is a floating-point comparison
+    static bool isFP = op.startsWith("f");
+
     // The first operand must be memory or register, but not immediate
     auto opnd0 = st.getWordOpnd(
         ctx, 
         ctx.as, 
         instr, 
         0,
-        numBits, 
+        numBits,
         scrRegs64[0].ofSize(numBits),
         false
     );
 
-    // The second operand may be an immediate
+    // The second operand may be an immediate, unless FP comparison
     auto opnd1 = st.getWordOpnd(
         ctx, 
         ctx.as, 
@@ -848,16 +856,31 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         1, 
         numBits, 
         scrRegs64[1].ofSize(numBits),
-        true
+        isFP? false:true
     );
 
-    // Compare the inputs
-    ctx.as.instr(CMP, opnd0, opnd1);
+    // If this is an FP comparison
+    if (isFP)
+    {
+        // Move the operands into XMM registers
+        ctx.as.instr(MOVQ, XMM0, opnd0);
+        ctx.as.instr(MOVQ, XMM1, opnd1);
+
+        // Do an unordered scalar floating-point comparison
+        ctx.as.instr(UCOMISD, XMM0, XMM1);
+    }
+    else
+    {
+        // Do an integer comparison
+        ctx.as.instr(CMP, opnd0, opnd1);
+    }
 
     // Choose conditional instructions based on the comparison operator
     X86OpPtr cmovOp = null;
     X86OpPtr trueOp = null;
     X86OpPtr falseOp = null;
+
+    // Integer comparison
     static if (op == "eq")
     {
         cmovOp  = CMOVE;
@@ -894,6 +917,79 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         trueOp  = JGE;
         falseOp = JL;
     }
+
+    /*
+    From the Intel manual:
+
+    RESULT ← UnorderedCompare(SRC1[63:0] < > SRC2[63:0]) {
+    (* Set EFLAGS *)
+    CASE (RESULT) OF
+
+    UNORDERED:
+    ZF, PF, CF ← 111;
+    GREATER_THAN:
+    ZF, PF, CF ← 000;
+    LESS_THAN:
+    ZF, PF, CF ← 001;
+    EQUAL:
+    ZF, PF, CF ← 100;
+    */
+
+
+    // Eq... 
+    // False: JNE + JP
+
+    // Ne: 
+    // greater than or less than or unordered (000 or 001 or 111) but not 100
+
+
+
+
+
+    // Floating-point comparison
+    static if (op == "flt")
+    {
+        // In terms of CMOV, can do CMOVNB and CMOVP on false
+
+
+
+
+        /*
+        cmovOp  = CMOVNE;
+        trueOp  = JNE;
+        falseOp = JE;
+        */
+    }
+
+    /*
+    static if (op == "fle")
+    {
+
+        cmovOp  = CMOVAE;
+        trueOp  = JAE;
+        falseOp = JB;
+    }
+    */
+
+    static if (op == "fgt")
+    {
+        cmovOp  = CMOVA;
+        trueOp  = JA;
+        falseOp = JNA;
+    }
+
+    static if (op == "fge")
+    {
+        cmovOp  = CMOVAE;
+        trueOp  = JAE;
+        falseOp = JNAE;
+    }
+
+
+
+
+
+
 
     // If this instruction has many uses or is not followed by an if
     if (instr.hasManyUses || ifUseNext(instr) is false)
@@ -937,6 +1033,12 @@ alias CmpOp!("ne", 8) gen_ne_const;
 alias CmpOp!("eq", 64) gen_eq_refptr;
 alias CmpOp!("ne", 64) gen_ne_refptr;
 alias CmpOp!("eq", 64) gen_eq_rawptr;
+alias CmpOp!("feq", 64) gen_eq_f64;
+alias CmpOp!("fne", 64) gen_ne_f64;
+alias CmpOp!("flt", 64) gen_lt_f64;
+alias CmpOp!("fle", 64) gen_le_f64;
+alias CmpOp!("fgt", 64) gen_gt_f64;
+alias CmpOp!("fge", 64) gen_ge_f64;
 
 void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -1584,6 +1686,9 @@ static this()
     codeGenFns[&GET_GLOBAL]     = &gen_get_global;
     codeGenFns[&SET_GLOBAL]     = &gen_set_global;
 
+    codeGenFns[&GET_OBJ_PROTO]  = &gen_get_obj_proto;
+    codeGenFns[&GET_ARR_PROTO]  = &gen_get_arr_proto;
+    codeGenFns[&GET_FUN_PROTO]  = &gen_get_fun_proto;
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 
     //codeGenFns[&HEAP_ALLOC]     = &gen_heap_alloc;
@@ -1607,6 +1712,15 @@ static this()
     codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
     codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
     codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
+
+    /*
+    //codeGenFns[&EQ_F64]         = &gen_eq_f64;
+    //codeGenFns[&NE_F64]         = &gen_ne_f64;
+    codeGenFns[&LT_F64]         = &gen_lt_f64;
+    //codeGenFns[&LE_F64]         = &gen_le_f64;
+    codeGenFns[&GE_F64]         = &gen_ge_f64;
+    codeGenFns[&GT_F64]         = &gen_gt_f64;
+    */
 
     codeGenFns[&IF_TRUE]        = &gen_if_true;
     codeGenFns[&IF_EQ_FUN]      = &gen_if_eq_fun;

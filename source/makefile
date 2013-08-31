@@ -2,6 +2,7 @@ DC = dmd
 COPTS = -m64 -O -L-ldl
 TESTOPTS = -m64 -O -L-ldl -unittest -debug
 DBGOPTS = -m64 -O -L-ldl -gc -debug
+RELOPTS = -m64 -O -L-ldl -release
 
 BIN_NAME = higgs
 BIN_NAME_TEST = test-higgs
@@ -62,6 +63,9 @@ test: layout encodings
 
 debug: layout encodings
 	$(DC) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)
+
+release: layout encodings
+	$(DC) $(RELOPTS) -of$(BIN_NAME) $(SRC)
 
 encodings:
 	python jit/encodings.py

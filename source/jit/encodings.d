@@ -386,6 +386,13 @@ immutable X86Op cmp = {
     ]
 };
 immutable X86OpPtr CMP = &cmp;
+immutable X86Op comisd = {
+    "comisd",
+    [
+        { [X86Enc.XMM, X86Enc.XMM_OR_M], [128, 64], [102], [15, 47], 0xFF, 64, false, false }
+    ]
+};
+immutable X86OpPtr COMISD = &comisd;
 immutable X86Op cvtsi2sd = {
     "cvtsi2sd",
     [

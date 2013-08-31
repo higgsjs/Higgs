@@ -312,6 +312,12 @@ instrTable = [
         Enc(opnds=['r64', 'r/m64'], opcode=[0x3B]),
     ),
 
+    # Ordered compare scalar double
+    Op(
+        'comisd',
+        Enc(opnds=['xmm', 'xmm/m64'], prefix=[0x66], opcode=[0x0F, 0x2F], rexW=False),
+    ),
+
     # Convert integer to scalar double
     Op(
         'cvtsi2sd', 
