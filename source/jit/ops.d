@@ -683,6 +683,31 @@ void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 }
 */
 
+void gen_get_link(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+{
+    // Get the link index operand
+    auto idxReg = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
+
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+
+    // Read the link word
+    ctx.as.getMember!("Interp", "wLinkTable")(scrRegs64[1], interpReg);
+    auto wordMem = new X86Mem(64, scrRegs64[1], 0, idxReg, Word.sizeof);
+    ctx.as.instr(MOV, scrRegs64[1], wordMem);
+
+    // Move the link word into the output operand
+    ctx.as.instr(MOV, outOpnd, scrRegs64[1]);
+
+    // Read the link type
+    ctx.as.getMember!("Interp", "tLinkTable")(scrRegs64[1], interpReg);
+    auto typeMem = new X86Mem(8, scrRegs64[1], 0, idxReg, Type.sizeof);
+    ctx.as.instr(MOV, scrRegs8[1], typeMem);
+
+    // Set the output type
+    st.setOutType(ctx.as, instr, scrRegs8[1]);
+}
+
 /**
 Conditional jump and move descriptor
 */
@@ -1735,6 +1760,8 @@ static this()
     codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
 
     //codeGenFns[&HEAP_ALLOC]     = &gen_heap_alloc;
+
+    codeGenFns[&GET_LINK]       = &gen_get_link;
 
     codeGenFns[&IS_CONST]       = &gen_is_const;
     codeGenFns[&IS_REFPTR]      = &gen_is_refptr;

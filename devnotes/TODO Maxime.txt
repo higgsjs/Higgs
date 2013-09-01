@@ -80,21 +80,24 @@ TODO: implement cap on number of block versions now
 - If we request things like known phi types, will get mismatch
   - Once we reach the vers limit, compile general version, will match all
 - General vers can have custom regs, but no known types and values
-- Need diff(that) distance function for CodeGenState
-  - returns integer, -1 if incompatible
 
-TODO: implement get_link instruction in JIT
+TODO: CodeGenState.diff(that), distance function
+- returns size_t, size_t.max if incompatible, 0 if perfect match
+- Sums up penalties
+
+
+
+
+
+
+[DONE] TODO: implement get_link instruction in JIT
+- pre unjitted ops, 3d-raytrace: 59713, 3d-cube: 104491
 
 [DONE] TODO: implement floating-point comparison instructions
 - 3d-raytrace, 3d-cube dominated by FP comparisons
 - use UCOMISD instruction
 - Pre-opt times, 3d-cube: 1796ms, 3d-raytrace: 2193ms
-
-
-
-
-
-
+- Time not really improved
 
 [DONE] TODO: genBoolOut
 
