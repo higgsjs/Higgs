@@ -56,7 +56,10 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
 {
     void execMove(Move move)
     {
-        assert (cast(X86Imm)move.dst is null);
+        assert (
+            cast(X86Imm)move.dst is null,
+            "move dst is an immediate"
+        );
 
         auto immSrc = cast(X86Imm)move.src;
         auto memSrc = cast(X86Mem)move.src;

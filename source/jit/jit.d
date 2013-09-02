@@ -395,15 +395,59 @@ void compFun(Interp interp, IRFunction fun)
         // Get the list of versions for this block
         auto versions = versionMap.get(block, []);
 
-        // TODO: if there is a cap on the number of versions,
-        // don't look for exact match but a best match
 
-        // Look for the best successor version available
+
+        // Best version found
+        BlockVersion bestVer;
+        size_t bestDiff;
+
+        // For each successor version available
         foreach (ver; versions)
         {
+            /*
             if (ver.state == predState)
+            {
                 return ver;
+            }
+            else 
+            {
+                writeln("diff: ", diff);
+            }
+            */
+
+            // Compute the difference with the predecessor state
+            auto diff = predState.diff(ver.state);
+
+            // If this is a perfect match, return it
+            if (diff is 0)
+                return ver;
+
+
+
+
+
+
         }
+
+
+
+        // TODO:
+        // opts.maxvers
+
+        // TODO:
+        // - log when max vers cap is hit
+        // - log perfect match
+
+
+
+
+
+
+
+
+
+
+
 
         // Create a label for this new version of the block
         auto label = new Label(block.getName().toUpper());
@@ -467,7 +511,7 @@ void compFun(Interp interp, IRFunction fun)
             // register might be used by a phi node we just mapped
             auto regVal = succState.gpRegMap[phiReg.regNo];
 
-            // TODO: can we use liveness info? query liveness at pred exit?
+            // Map the phi node to its register or stack location
             TFState allocSt;
             if (regVal is null || regVal is phi)
             {
@@ -500,8 +544,96 @@ void compFun(Interp interp, IRFunction fun)
         auto succVer = getBlockVersion(branch.succ, succState, false);
         succState = succVer.state;
 
-        // Generate a move list to transition to the successor state
+        // List of moves to transition to the successor state
         Move[] moveList;
+
+
+
+
+
+        // For each value in the successor state
+        foreach (succVal, succAS; succState.allocState)
+        {
+            IRValue predVal;
+            if (auto succPhi = cast(PhiNode)succVal)
+                predVal = branch.getPhiArg(succPhi);
+            else
+                predVal = succVal;
+
+
+
+
+            // TODO
+
+
+
+
+            /*
+            as.comment(succVal.getName);
+            //as.comment(phi.getName ~ " = phi " ~ arg.getName);
+
+            // Get the source and destination operands for the arg word
+            X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
+            X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
+
+            if (srcWordOpnd != dstWordOpnd)
+                moveList ~= Move(dstWordOpnd, srcWordOpnd);
+
+            // Get the source and destination operands for the phi type
+            X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
+            X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
+
+            if (srcTypeOpnd != dstTypeOpnd)
+                moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
+            */
+
+
+
+
+
+            /*
+
+            // Get the allocation and type states for the phi node
+            auto allocSt = succState.allocState.get(phi, 0);
+            auto typeSt = succState.typeState.get(phi, 0);
+
+            // If the phi is on the stack and the type is known
+            if ((allocSt & RA_STACK) && (typeSt & TF_KNOWN))
+            {
+                // Write the type to the stack to keep it in sync
+                assert (typeSt & TF_SYNC);
+                moveList ~= Move(new X86Mem(8, tspReg, phi.outSlot), srcTypeOpnd);
+            }
+
+            // If the phi is in a register and the type is unknown
+            if (!(allocSt & RA_STACK) && !(typeSt & TF_KNOWN))
+            {
+                // Write 0 on the stack to avoid invalid references
+                moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
+            }
+            */
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
         {
             auto arg = branch.getPhiArg(phi);
@@ -522,11 +654,6 @@ void compFun(Interp interp, IRFunction fun)
             if (srcTypeOpnd != dstTypeOpnd)
                 moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
 
-            // If we are moving the phi word into a register, write 0 on
-            // the word stack to avoid invalid references
-            //if (cast(X86Reg)dstWordOpnd)
-            //    moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
-
             // Get the allocation and type states for the phi node
             auto allocSt = succState.allocState.get(phi, 0);
             auto typeSt = succState.typeState.get(phi, 0);
@@ -546,6 +673,12 @@ void compFun(Interp interp, IRFunction fun)
                 moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
             }
         }
+
+
+
+
+
+
 
         // Insert the branch edge label, if any
         if (edgeLabel !is null)
@@ -975,6 +1108,95 @@ class CodeGenState
             return false;
 
         return true;
+    }
+
+    /**
+    Compute the difference (similarity) between this state and another
+    - If states are identical, 0 will be returned
+    - If states are incompatible, size_t.max will be returned
+    */
+    size_t diff(CodeGenState succ)
+    {
+        auto pred = this;
+
+        // Difference (penalty) sum
+        size_t diff = 0;
+
+        // For each value in the predecessor alloc state map
+        foreach (value, allocSt; pred.allocState)
+        {
+            // If this value is not in the successor state,
+            // mark it as on the stack in the successor state
+            if (value !in succ.allocState)
+                succ.allocState[value] = RA_STACK;
+        }
+
+        // For each value in the successor alloc state map
+        foreach (value, allocSt; succ.allocState)
+        {
+            auto predAS = pred.allocState.get(value, 0);
+            auto succAS = succ.allocState.get(value, 0);
+
+            // If the alloc states match perfectly, no penalty
+            if (predAS is succAS)
+                continue;
+
+            // If the successor has this value as a known constant, mismatch
+            if (succAS & RA_CONST)
+                return size_t.max;
+
+            // Add a penalty for the mismatched alloc state
+            diff += 1;
+        }
+
+        // For each value in the predecessor type state map
+        foreach (value, allocSt; pred.typeState)
+        {
+            // If this value is not in the successor state,
+            // add an entry for it in the successor state
+            if (value !in succ.typeState)
+                succ.typeState[value] = 0;
+        }
+
+        // For each value in the successor type state map
+        foreach (value, allocSt; succ.typeState)
+        {
+            auto predTS = pred.typeState.get(value, 0);
+            auto succTS = succ.typeState.get(value, 0);
+
+            // If the type states match perfectly, no penalty
+            if (predTS is succTS)
+                continue;
+
+            // If the successor has a known type
+            if (succTS & TF_KNOWN)
+            {
+                // If the predecessor has no known type, mismatch
+                if (!(predTS & TF_KNOWN))
+                    return size_t.max;
+
+                auto predType = predTS & TF_TYPE_MASK;
+                auto succType = succTS & TF_TYPE_MASK;
+
+                // If the known types do not match, mismatch
+                if (predType !is succType)
+                    return size_t.max;
+
+                // If the type sync flags do not match, add a penalty
+                if ((predTS & TF_SYNC) !is (succTS & TF_SYNC))
+                    diff += 1;
+            }
+            else 
+            {
+                // If the predecessor has a known type, transitioning
+                // would lose us this known type
+                if (predTS & TF_KNOWN)
+                    diff += 1;
+            }
+        }
+
+        // Return the total difference
+        return diff;
     }
 
     /**
@@ -1647,6 +1869,7 @@ class CodeGenCtx
     }
 }
 
+/// Insert a comment in the assembly code
 void comment(Assembler as, lazy string str)
 {
     if (!opts.jit_dumpasm)

@@ -75,20 +75,28 @@ TODO: sort call sites by exec frequency for inlining
 - Eliminates need for current min frequency heuristic
 - Log performance before and after
 
-TODO: implement cap on number of block versions now
+TODO: implement cap on number of block versions
 - Add command-line options, jit_maxvers=n
 - If we request things like known phi types, will get mismatch
   - Once we reach the vers limit, compile general version, will match all
 - General vers can have custom regs, but no known types and values
+  - Strip pred map of known types and values
 
-TODO: CodeGenState.diff(that), distance function
+
+
+
+
+
+
+
+
+[DONE] FIXME: issue, function entry contexts have no locals, will give perfect match score?
+- Should have penalty if pred map has more entries than succ map?
+- Or maybe do another scan for pred maps, check for missing info in succ
+
+[DONE] TODO: CodeGenState.diff(that), distance function
 - returns size_t, size_t.max if incompatible, 0 if perfect match
 - Sums up penalties
-
-
-
-
-
 
 [DONE] TODO: implement get_link instruction in JIT
 - pre unjitted ops, 3d-raytrace: 59713, 3d-cube: 104491

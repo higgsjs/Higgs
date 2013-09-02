@@ -62,6 +62,9 @@ struct Options
     /// Flag to disable the JIT compiler
     bool jit_disable = false;
 
+    /// Maximum number of specialized versions to compile per basic block
+    uint jit_maxvers = 20;
+
     /// Disable inlining in the JIT
     bool jit_noinline = false;
 
@@ -98,6 +101,7 @@ void parseCmdArgs(ref string[] args)
         "nostdlib"      , &opts.nostdlib,
 
         "jit_disable"   , &opts.jit_disable,
+        "jit_maxvers"   , &opts.jit_maxvers,
         "jit_noinline"  , &opts.jit_noinline,
         "jit_noasmopts" , &opts.jit_noasmopts,
         "jit_dumpinfo"  , &opts.jit_dumpinfo,
