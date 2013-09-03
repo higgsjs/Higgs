@@ -68,6 +68,8 @@ if high enough (long loop), augment inlining budget to 500 or 1000 or 2000 block
 - Should yield big payoff on some benchmarks
 - See that this doesn't happen in stdlib, getprop, etc.
 
+TODO: use "growth factor" based on initial size for inlining
+
 TODO: sort call sites by exec frequency for inlining
 - Go through call sites, find most executed eligible call site
   - implement in separate function
@@ -81,6 +83,8 @@ TODO: implement cap on number of block versions
   - Once we reach the vers limit, compile general version, will match all
 - General vers can have custom regs, but no known types and values
   - Strip pred map of known types and values
+
+
 
 
 

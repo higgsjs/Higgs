@@ -590,9 +590,39 @@ void compFun(Interp interp, IRFunction fun)
 
 
 
+            // If the type was known before and is not after, or 
+            // the value was on the stack and type in sync but is no longer in sync
+
+
+
+            auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
+            auto succTS = predState.typeState.get(succVal, 0);
+
 
             /*
+            if (
+                ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && !(succTS & TF_KNOWN)) &&
 
+                (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
+
+            {
+
+
+                // If the type is not known after
+                // or !sync and now is
+
+
+
+
+
+            }
+            */
+
+
+
+
+
+            /*
             // Get the allocation and type states for the phi node
             auto allocSt = succState.allocState.get(phi, 0);
             auto typeSt = succState.typeState.get(phi, 0);

@@ -962,14 +962,8 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         // Move the operands into XMM registers
         ctx.as.instr(MOVQ, XMM0, opnd0);
         ctx.as.instr(MOVQ, XMM1, opnd1);
-
-        // Do an unordered scalar floating-point comparison
-        ctx.as.instr(UCOMISD, XMM0, XMM1);
-    }
-    else
-    {
-        // Do an integer comparison
-        ctx.as.instr(CMP, opnd0, opnd1);
+        opnd0 = XMM0;
+        opnd1 = XMM1;
     }
 
     // Conditional operations to implement the comparison
@@ -978,36 +972,42 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
     // Integer comparison
     static if (op == "eq")
     {
+        ctx.as.instr(CMP, opnd0, opnd1);
         condOps.cmovT[0] = CMOVE;
         condOps.jccT [0] = JE;
         condOps.jccF [0] = JNE;
     }
     static if (op == "ne")
     {
+        ctx.as.instr(CMP, opnd0, opnd1);
         condOps.cmovT[0] = CMOVNE;
         condOps.jccT [0] = JNE;
         condOps.jccF [0] = JE;
     }
     static if (op == "lt")
     {
+        ctx.as.instr(CMP, opnd0, opnd1);
         condOps.cmovT[0] = CMOVL;
         condOps.jccT [0] = JL;
         condOps.jccF [0] = JGE;
     }
     static if (op == "le")
     {
+        ctx.as.instr(CMP, opnd0, opnd1);
         condOps.cmovT[0] = CMOVLE;
         condOps.jccT [0] = JLE;
         condOps.jccF [0] = JG;
     }
     static if (op == "gt")
     {
+        ctx.as.instr(CMP, opnd0, opnd1);
         condOps.cmovT[0] = CMOVG;
         condOps.jccT [0] = JG;
         condOps.jccF [0] = JLE;
     }
     static if (op == "ge")
     {
+        ctx.as.instr(CMP, opnd0, opnd1);
         condOps.cmovT[0] = CMOVGE;
         condOps.jccT [0] = JGE;
         condOps.jccF [0] = JL;
@@ -1018,13 +1018,14 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
     // UNORDERED:    ZF, PF, CF ← 111;
     // GREATER_THAN: ZF, PF, CF ← 000;
     // LESS_THAN:    ZF, PF, CF ← 001;
-    // EQUAL:        ZF, PF, CF ← 100;   
+    // EQUAL:        ZF, PF, CF ← 100;
     static if (op == "feq")
     {
         // feq:
         // True: 100
         // False: 111 or 000 or 001
         // False: JNE + JP
+        ctx.as.instr(UCOMISD, opnd0, opnd1);
         condOps.cmovF = [CMOVNE, CMOVP];
         condOps.jccF  = [JNE, JP];
     }
@@ -1034,41 +1035,34 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         // True: 111 or 000 or 001
         // False: 100
         // True: JNE + JP
+        ctx.as.instr(UCOMISD, opnd0, opnd1);
         condOps.cmovT = [CMOVNE, CMOVP];
         condOps.jccT  = [JNE, JP];
     }
     static if (op == "flt")
     {
-        // flt:
-        // True: 001
-        // False: 111 or 000 or 100
-        // False: JNB + JP
-        condOps.cmovF = [CMOVNB, CMOVP];
-        condOps.jccF  = [JNB, JP];
+        ctx.as.instr(UCOMISD, opnd1, opnd0);
+        condOps.cmovT[0] = CMOVA;
+        condOps.jccT [0] = JA;
+        condOps.jccF [0] = JNA;
     }
     static if (op == "fle")
     {
-        // fle:
-        // True: 001 or 100
-        // False: 111 or 000
-        // False: JA + JP  
-        condOps.cmovF = [CMOVA, CMOVP];
-        condOps.jccF  = [JA, JP];
+        ctx.as.instr(UCOMISD, opnd1, opnd0);
+        condOps.cmovT[0] = CMOVAE;
+        condOps.jccT [0] = JAE;
+        condOps.jccF [0] = JNAE;
     }
     static if (op == "fgt")
     {
-        // fgt:
-        // True: 000
-        // False: 111 or 001 or 100
+        ctx.as.instr(UCOMISD, opnd0, opnd1);
         condOps.cmovT[0] = CMOVA;
         condOps.jccT [0] = JA;
         condOps.jccF [0] = JNA;
     }
     static if (op == "fge")
     {
-        // fge:
-        // True: 000 or 100
-        // False: 111 or 001
+        ctx.as.instr(UCOMISD, opnd0, opnd1);
         condOps.cmovT[0] = CMOVAE;
         condOps.jccT [0] = JAE;
         condOps.jccF [0] = JNAE;
