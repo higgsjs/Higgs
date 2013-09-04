@@ -547,30 +547,23 @@ void compFun(Interp interp, IRFunction fun)
         // List of moves to transition to the successor state
         Move[] moveList;
 
-
-
-
+        /*
+        writeln();
+        writeln(branch.succ);
+        */
 
         // For each value in the successor state
         foreach (succVal, succAS; succState.allocState)
         {
-            IRValue predVal;
-            if (auto succPhi = cast(PhiNode)succVal)
-                predVal = branch.getPhiArg(succPhi);
+            auto succPhi = (succVal.block is branch.succ)? cast(PhiNode)succVal:null;
+            auto predVal = succPhi? branch.getPhiArg(succPhi):succVal;
+            assert (succVal !is null);
+            assert (predVal !is null);
+
+            if (succPhi)
+                as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
             else
-                predVal = succVal;
-
-
-
-
-            // TODO
-
-
-
-
-            /*
-            as.comment(succVal.getName);
-            //as.comment(phi.getName ~ " = phi " ~ arg.getName);
+                as.comment("move " ~ succVal.getName);
 
             // Get the source and destination operands for the arg word
             X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
@@ -585,85 +578,44 @@ void compFun(Interp interp, IRFunction fun)
 
             if (srcTypeOpnd != dstTypeOpnd)
                 moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
-            */
 
-
-
-
-            // If the type was known before and is not after, or 
-            // the value was on the stack and type in sync but is no longer in sync
-
-
-
+            // Get the predecessor and successor type states
             auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
-            auto succTS = predState.typeState.get(succVal, 0);
+            auto succTS = succState.typeState.get(succVal, 0);
 
-
-            /*
-            if (
-                ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && !(succTS & TF_KNOWN)) &&
-
-                (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
-
+            // If the successor value is a phi node
+            if (succPhi)
             {
+                // Get the allocation state for the phi node
+                auto allocSt = succState.allocState.get(succPhi, 0);
 
+                // If the phi is on the stack and the type is known
+                if ((allocSt & RA_STACK) && (succTS & TF_KNOWN))
+                {
+                    // Write the type to the stack to keep it in sync
+                    assert (succTS & TF_SYNC);
+                    moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
+                }
 
-                // If the type is not known after
-                // or !sync and now is
-
-
-
-
-
+                // If the phi is in a register and the type is unknown
+                if (!(allocSt & RA_STACK) && !(succTS & TF_KNOWN))
+                {
+                    // Write 0 on the stack to avoid invalid references
+                    moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
+                }
             }
-            */
-
-
-
-
-
-            /*
-            // Get the allocation and type states for the phi node
-            auto allocSt = succState.allocState.get(phi, 0);
-            auto typeSt = succState.typeState.get(phi, 0);
-
-            // If the phi is on the stack and the type is known
-            if ((allocSt & RA_STACK) && (typeSt & TF_KNOWN))
+            else
             {
-                // Write the type to the stack to keep it in sync
-                assert (typeSt & TF_SYNC);
-                moveList ~= Move(new X86Mem(8, tspReg, phi.outSlot), srcTypeOpnd);
+                // If the type was not in sync in the predecessor and is now
+                // in sync in the successor, write the type to the type stack
+                if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
+                {
+                    moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
+                }
             }
-
-            // If the phi is in a register and the type is unknown
-            if (!(allocSt & RA_STACK) && !(typeSt & TF_KNOWN))
-            {
-                // Write 0 on the stack to avoid invalid references
-                moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
-            }
-            */
-
-
-
-
-
-
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        /*
         for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
         {
             auto arg = branch.getPhiArg(phi);
@@ -703,12 +655,7 @@ void compFun(Interp interp, IRFunction fun)
                 moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
             }
         }
-
-
-
-
-
-
+        */
 
         // Insert the branch edge label, if any
         if (edgeLabel !is null)
@@ -1234,7 +1181,10 @@ class CodeGenState
     */
     X86Opnd getWordOpnd(IRValue value, size_t numBits)
     {
-        assert (value !is null);
+        assert (
+            value !is null, 
+            "cannot get operand for null value"
+        );
 
         auto dstVal = cast(IRDstValue)value;
 

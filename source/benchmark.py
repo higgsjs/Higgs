@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from subprocess import *
+import re
 
 MAKE_CMD = 'make release'
 
@@ -43,21 +44,48 @@ values = {}
 # Compile Higgs in release mode
 call(MAKE_CMD, shell=True)
 
+# Captured value pattern
+valPattern = re.compile('^(.+):(.+)$')
+
 # For each run
 for runNo in range(1, NUM_RUNS+1):
 
     print "Run #", runNo
 
     # For each benchmark
-    for benchmark in BENCHMARKS:
+    for benchIdx in range(0, len(BENCHMARKS)):
 
-        print "Benchmark: ", benchmark.split(' ')[-1]
+        benchFiles = BENCHMARKS[benchIdx]
 
-        #pipe = Popen(HIGGS_CMD + ' ' + benchmark, shell=True, stdout=PIPE).stdout
-        #output = pipe.readlines()
+        print benchFiles.split(' ')[-1], "(", (benchIdx+1), "/", len(BENCHMARKS), ")"
+
+        # Run the benchmark and capture its output
+        pipe = Popen(HIGGS_CMD + ' ' + benchFiles, shell=True, stdout=PIPE).stdout
+        output = pipe.readlines()
+
+        # For each line of output
+        for line in output:
+
+            match = valPattern.match(line)
+
+            # If the line doesn't match, continue
+            if match == None:
+                continue
+
+            key = match.group(1)
+            val = float(match.group(2))
+
+            # Add the value to the list for this key
+            if not (key in values):
+                values[key] = []
+            values[key] = values[key] + [val]
+
+# TODO: compute averages
 
 
-        # TODO: gather lists of values, one per run, for each string key
+
+
+
 
 
 
