@@ -88,18 +88,23 @@ for benchmark in BENCHMARKS:
 
 # Compute the geometric mean of values
 benchMeans = {}
-for benchmark in benchResults:
+for benchmark, valLists in benchResults.items():
 
-    pass
+    valMeans = {}
 
+    for key, valList in valLists.items():
+        prod = 1
+        for val in valList:
+            prod *= val
+        mean = prod ** (1/len(valList))
+        valMeans[key] = mean
 
+    benchMeans[benchmark] = valMeans
 
-
-
-
+# TODO: short names for stats?
 
 # TODO: output time stats, including mean time
-
+# Need short name, time (ms)
 
 
 

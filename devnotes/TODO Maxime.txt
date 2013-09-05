@@ -77,22 +77,20 @@ TODO: sort call sites by exec frequency for inlining
 - Eliminates need for current min frequency heuristic
 - Log performance before and after
 
-TODO: implement cap on number of block versions
+TODO: test block version cap with smaller cap, 10, 5, 0
+
+
+
+
+
+
+
+[DONE] TODO: implement cap on number of block versions
 - Add command-line options, jit_maxvers=n
 - If we request things like known phi types, will get mismatch
   - Once we reach the vers limit, compile general version, will match all
 - General vers can have custom regs, but no known types and values
   - Strip pred map of known types and values
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: issue, function entry contexts have no locals, will give perfect match score?
 - Should have penalty if pred map has more entries than succ map?

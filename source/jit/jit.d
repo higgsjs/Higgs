@@ -395,26 +395,13 @@ void compFun(Interp interp, IRFunction fun)
         // Get the list of versions for this block
         auto versions = versionMap.get(block, []);
 
-
-
         // Best version found
         BlockVersion bestVer;
-        size_t bestDiff;
+        size_t bestDiff = size_t.max;
 
         // For each successor version available
         foreach (ver; versions)
         {
-            /*
-            if (ver.state == predState)
-            {
-                return ver;
-            }
-            else 
-            {
-                writeln("diff: ", diff);
-            }
-            */
-
             // Compute the difference with the predecessor state
             auto diff = predState.diff(ver.state);
 
@@ -422,32 +409,44 @@ void compFun(Interp interp, IRFunction fun)
             if (diff is 0)
                 return ver;
 
-
-
-
-
-
+            // Update the best version found
+            if (diff < bestDiff)
+            {
+                bestDiff = diff;
+                bestVer = ver;
+            }
         }
 
 
+        // If the block version cap is hit
+        if (versions.length >= opts.jit_maxvers)
+        {
+            //writeln("block cap hit: ", versions.length);
 
-        // TODO:
-        // opts.maxvers
+            // If a compatible match was found
+            if (bestDiff !is size_t.max)
+            {
+                // Return the best match found
+                return bestVer;
+            }
 
-        // TODO:
-        // - log when max vers cap is hit
-        // - log perfect match
+            //writeln("producing general version");
 
+            // Strip the state of all known types and constants
+            auto genState = new CodeGenState(predState);
+            genState.typeState = genState.typeState.init;
+            foreach (val, allocSt; genState.allocState)
+                if (allocSt & RA_CONST)
+                    genState.allocState[val] = RA_STACK;
 
+            // Ensure that the general version matches
+            assert(predState.diff(genState) !is size_t.max);
 
+            predState = genState;
+        }
+        
 
-
-
-
-
-
-
-
+        //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
 
         // Create a label for this new version of the block
         auto label = new Label(block.getName().toUpper());
