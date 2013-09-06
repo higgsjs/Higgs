@@ -28,6 +28,12 @@ TODO: reg alloc... Can we make simple improvements?
 - Alloc regs to phi nodes first, then map their args to the same regs
 - Get stats for benchmarks before implementing this
 
+TODO: --jit_trace
+- trace entry and bailout in/out of specific functions
+
+TODO: asm peephole, move exported labels if a direct jump follows?
+- Move exported label after jump if there are no refs to it
+
 ------------------------------------------------------------------------------
 
 Oct 11th: CC Paper Submission Deadline
@@ -68,8 +74,6 @@ if high enough (long loop), augment inlining budget to 500 or 1000 or 2000 block
 - Should yield big payoff on some benchmarks
 - See that this doesn't happen in stdlib, getprop, etc.
 
-TODO: use "growth factor" based on initial size for inlining
-
 TODO: sort call sites by exec frequency for inlining
 - Go through call sites, find most executed eligible call site
   - implement in separate function
@@ -77,13 +81,48 @@ TODO: sort call sites by exec frequency for inlining
 - Eliminates need for current min frequency heuristic
 - Log performance before and after
 
-TODO: test block version cap with smaller cap, 10, 5, 0
+TODO: use "growth factor" based on initial size for inlining budget
+- Special provision for small functions
+- Possibly allow 3x, shrinkage after peephole
+
+TODO: examine inlining decisions in bitwise-and, run with --nostdlib
+- Way too many type tests!
+
+TODO: peephole opt for if_true of constant
+
+TODO: test nsieve-bits, 3d-cube, 3d-raytrace with maxvers=1
 
 
 
 
 
 
+
+
+[DONE] FIXME: segfault with maxvers=1 on bitwise-and
+./higgs --jit_maxvers=1 --stats programs/sunspider/bitops-bitwise-and.js
+- crashes somewhere in stdlib?
+entering fn: $rt_getPropObj(2D2F) (for_test(330C))
+Segmentation fault (core dumped)
+num blocks: 20
+num versions: 21
+compiling function $rt_getPropObj(2D2F)
+compiling block: entry(3305) (execCount=252)
+compiling block: for_test(330C) (execCount=801)
+block cap hit: 1
+compiling block: for_body(330D) (execCount=801)
+entering fn: $rt_getPropObj(2D2F) (for_test(330C))
+for_test(330C) ($rt_getPropObj(2D2F))
+if_true true => for_body(330D), for_exit(330F)
+for_body(330D) ($rt_getPropObj(2D2F))
+$2 = call_prim "$rt_obj_get_next", <fun:$rt_obj_get_next(12F8)>, $1 => call_cont(331F)
+entry(336D) ($rt_obj_get_next(12F8))
+$0 = load_refptr $5, 0
+Segmentation fault (core dumped)
+Note: we're entering getPropObj mid-loop, at for_test, and the block cap is hit...
+- Take a look at ASM dump!
+- When we jump from the exported entry point, we don't load anything into r10
+- Probably because we don't treat entry points like block transitions ****
 
 [DONE] TODO: implement cap on number of block versions
 - Add command-line options, jit_maxvers=n

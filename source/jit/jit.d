@@ -388,8 +388,7 @@ void compFun(Interp interp, IRFunction fun)
     /// Get a label for a given block and incoming state
     auto getBlockVersion = delegate BlockVersion(
         IRBlock block, 
-        CodeGenState predState,
-        bool noLoadPhi
+        CodeGenState predState
     )
     {
         // Get the list of versions for this block
@@ -430,7 +429,7 @@ void compFun(Interp interp, IRFunction fun)
                 return bestVer;
             }
 
-            //writeln("producing general version");
+            //writeln("producing general version for: ", block.getName);
 
             // Strip the state of all known types and constants
             auto genState = new CodeGenState(predState);
@@ -488,7 +487,7 @@ void compFun(Interp interp, IRFunction fun)
         // in a way that best matches the predecessor state
         for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
         {
-            if (phi.hasNoUses)
+            if (branch.pred is null || phi.hasNoUses)
                 continue;
 
             // Get the phi argument
@@ -540,7 +539,7 @@ void compFun(Interp interp, IRFunction fun)
         }
 
         // Get a version of the successor matching the incoming state
-        auto succVer = getBlockVersion(branch.succ, succState, false);
+        auto succVer = getBlockVersion(branch.succ, succState);
         succState = succVer.state;
 
         // List of moves to transition to the successor state
@@ -554,8 +553,14 @@ void compFun(Interp interp, IRFunction fun)
         // For each value in the successor state
         foreach (succVal, succAS; succState.allocState)
         {
-            auto succPhi = (succVal.block is branch.succ)? cast(PhiNode)succVal:null;
-            auto predVal = succPhi? branch.getPhiArg(succPhi):succVal;
+            auto succPhi = (
+                (branch.pred !is null && succVal.block is branch.succ)?
+                cast(PhiNode)succVal:null
+            );
+            auto predVal = (
+                succPhi?
+                branch.getPhiArg(succPhi):succVal
+            );
             assert (succVal !is null);
             assert (predVal !is null);
 
@@ -698,15 +703,17 @@ void compFun(Interp interp, IRFunction fun)
         ol.getMember!("Interp", "tsp")(tspReg, interpReg);
 
         // Request a version of the block that accepts the
-        // default state where all locals are on the stack
-        auto ver = getBlockVersion(block, new CodeGenState(fun), true);
+        // default state where all locals are on the stack        
+        auto fastLabel = new Label("ENTRY_FAST_" ~ block.getName().toUpper(), true);
+        genBranchEdge(
+            ol,
+            fastLabel,
+            new BranchDesc(null, block), 
+            new CodeGenState(fun)
+        );
 
-        // Jump to the target block
-        ol.instr(JMP, ver.label);
-
-        // For the fast entry point, use the block label directly
-        ver.label.exported = true;
-        fastEntryMap[block] = ver.label;
+        // Store the label for the fast entry point
+        fastEntryMap[block] = fastLabel;
 
         return entryLabel;
     };
