@@ -3,9 +3,18 @@
 from subprocess import *
 import re
 
+# TODO: need to be able to run this with different args... Different maxvers values
+# Use case: contrast time, contrast code size
+# Should generate CSV file, use unix tools to concat tables and such
+# TODO: take benchmark cmd as a command-line argument
+
+# TODO: short names for stats
+
+
+
 # Configuration
 MAKE_CMD = 'make release'
-HIGGS_CMD = './higgs --stats'
+HIGGS_CMD = './higgs --stats --jit_maxvers=20'
 NUM_RUNS = 5
 
 BENCHMARKS = {
@@ -66,6 +75,8 @@ for benchmark in BENCHMARKS:
         pipe = Popen(HIGGS_CMD + ' ' + benchFiles, shell=True, stdout=PIPE).stdout
         output = pipe.readlines()
 
+        #print output
+
         # For each line of output
         for line in output:
 
@@ -101,12 +112,8 @@ for benchmark, valLists in benchResults.items():
 
     benchMeans[benchmark] = valMeans
 
-# TODO: short names for stats?
-
 # TODO: output time stats, including mean time
 # Need short name, time (ms)
 
-
-
-
+# TODO: generate csv file
 

@@ -90,7 +90,6 @@ TODO: examine inlining decisions in bitwise-and, run with --nostdlib
 
 TODO: peephole opt for if_true of constant
 
-TODO: test nsieve-bits, 3d-cube, 3d-raytrace with maxvers=1
 
 
 
@@ -98,6 +97,12 @@ TODO: test nsieve-bits, 3d-cube, 3d-raytrace with maxvers=1
 
 
 
+[DONE] FIXME: 3d-raytrace segfaults with maxvers=0
+./higgs --jit_maxvers=0 --jit_dumpinfo --stats programs/sunspider/3d-raytrace.js
+- Crashes during GC, invalid ref?
+  - Forwarding clearly integer or const value
+
+[DONE] TODO: test nsieve-bits, 3d-cube, 3d-raytrace with maxvers=0
 
 [DONE] FIXME: segfault with maxvers=1 on bitwise-and
 ./higgs --jit_maxvers=1 --stats programs/sunspider/bitops-bitwise-and.js

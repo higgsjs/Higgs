@@ -587,29 +587,36 @@ void compFun(Interp interp, IRFunction fun)
             auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
             auto succTS = succState.typeState.get(succVal, 0);
 
+            // Get the predecessor allocation state
+            auto predAS = predState.allocState.get(cast(IRDstValue)predVal, 0);
+
             // If the successor value is a phi node
             if (succPhi)
             {
-                // Get the allocation state for the phi node
-                auto allocSt = succState.allocState.get(succPhi, 0);
-
-                // If the phi is on the stack and the type is known
-                if ((allocSt & RA_STACK) && (succTS & TF_KNOWN))
+                // If the phi is on the stack and the type is known,
+                // write the type to the stack to keep it in sync
+                if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
                 {
-                    // Write the type to the stack to keep it in sync
                     assert (succTS & TF_SYNC);
                     moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
                 }
 
-                // If the phi is in a register and the type is unknown
-                if (!(allocSt & RA_STACK) && !(succTS & TF_KNOWN))
+                // If the phi is in a register and the type is unknown,
+                // write 0 on the stack to avoid invalid references
+                if (!(succAS & RA_STACK) && !(succTS & TF_KNOWN))
                 {
-                    // Write 0 on the stack to avoid invalid references
                     moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
                 }
             }
             else
             {
+                // If the value wasn't before in a register, now is, and the type is unknown
+                // write 0 on the stack to avoid invalid references
+                if ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && (succAS & RA_GPREG) && !(succTS & TF_KNOWN))
+                {
+                    moveList ~= Move(new X86Mem(64, wspReg, 8 * succVal.outSlot), new X86Imm(0));
+                }
+
                 // If the type was not in sync in the predecessor and is now
                 // in sync in the successor, write the type to the type stack
                 if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
