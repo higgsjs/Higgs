@@ -378,7 +378,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 if (op.isBranch)
                 {
                     // If this is an unconditional jump
-                    if (op == &JUMP)
+                    if (op is &JUMP)
                     {
                         auto branch = instr.getTarget(0);
                         auto succ = branch.succ;
@@ -457,6 +457,26 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                             }
 
                             changed = true;
+                            continue INSTR_LOOP;
+                        }
+                    }
+                    
+                    // If this is a conditional branch with a constant argument
+                    if (op is &IF_TRUE)
+                    {
+                        if (auto cstArg = cast(IRConst)instr.getArg(0))
+                        {
+                            // Select the target to branch to
+                            auto desc = instr.getTarget((cstArg is IRConst.trueCst)? 0:1);
+
+                            // Replace the if branch by a direct jump
+                            auto newDesc = new BranchDesc(desc.pred, desc.succ);
+                            foreach (arg; desc.args)
+                                newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+                            delInstr(instr);
+                            auto jumpInstr = block.addInstr(new IRInstr(&JUMP));
+                            jumpInstr.setTarget(0, newDesc);
+
                             continue INSTR_LOOP;
                         }
                     }

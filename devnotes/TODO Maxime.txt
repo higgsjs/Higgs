@@ -61,14 +61,6 @@ TODO: gather metrics
 - look at linux-tools-common package, `perf stat` command, has instr and
   branch counts?
 
-TODO: benchmarking (performance testing) python script
-- benchmark.js
-- should do multiple runs (parameterizable numRuns?)
-- try to make it compatible with V8 as-is
-- should be able to pass config flags to Higgs (i.e.: modify JIT params)
-- use release version***
-  - test script should run `make release` first
-
 TODO: if function interrupted in loop when compiling, examine loop exec counter,
 if high enough (long loop), augment inlining budget to 500 or 1000 or 2000 blocks?
 - Should yield big payoff on some benchmarks
@@ -81,6 +73,10 @@ TODO: sort call sites by exec frequency for inlining
 - Eliminates need for current min frequency heuristic
 - Log performance before and after
 
+TODO: benchmarking script, generate CSV output
+
+TODO: benchmarking script, add cmd line option for higgs CMD
+
 TODO: use "growth factor" based on initial size for inlining budget
 - Special provision for small functions
 - Possibly allow 3x, shrinkage after peephole
@@ -88,7 +84,6 @@ TODO: use "growth factor" based on initial size for inlining budget
 TODO: examine inlining decisions in bitwise-and, run with --nostdlib
 - Way too many type tests!
 
-TODO: peephole opt for if_true of constant
 
 
 
@@ -96,6 +91,8 @@ TODO: peephole opt for if_true of constant
 
 
 
+
+[DONE] TODO: peephole opt for if_true of constant
 
 [DONE] FIXME: 3d-raytrace segfaults with maxvers=0
 ./higgs --jit_maxvers=0 --jit_dumpinfo --stats programs/sunspider/3d-raytrace.js
