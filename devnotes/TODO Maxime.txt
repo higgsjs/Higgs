@@ -43,25 +43,43 @@ Oct 4th: CC Abstract Submission Deadline
 
 Sept 31st goal: have paper written & edited
 
+TODO: gather metrics for paper
+
 ------------------------------------------------------------------------------
 
-August 31st goal: have gathered some perf data, demonstrate gains from versioning
+Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
 
-TODO: gather metrics
-- Metrics to gather
-  - total blocks compiled in backend
-  - num instrs executed dynamically
-  - num IsTypeOps executed dynamically
-  - execution time
-  - compilation time
-- further perf tweaks
-- look at linux-tools-common package, `perf stat` command, has instr and
-  branch counts?
+Meeting notes:
+- FP comparisons improved based on GCC
+- Added CSV output to benchmarking script
+  - For paper, command-line tools, latex csv package
+- Discuss specific metrics to gather
+  - currently: 
+    - total generated code size
+    - JIT compilation time (*JIT only*)
+    - Total execution time including compilation
+    - Number of type tests executed by the JIT
+- Toutes les statistiques (incluant le temps d'exécution) devraient se faire
+  mesurer lorsque le code s'est "stabilisé" (plus de nouvelles versions de BB).
+  - Difficile a faire, invalidation de code pendant execution, somewhat incremental
+- Dans l'article on pourra compléter avec des statistiques plus globales (incluant
+  le temps de compilation, le temps passé dans l'interprète, etc).
+  - I have usec counter, but lots of context-switching happens, won't be fully precise?
+  - Could design timer mechanism based on state machine, events, count time in each state?
+  - Could try using CPU cycle counter (but will include *some* OS context-switching noise
+- Il ne faut pas perdre de vue qu'on doit découpler autant que possible l'étude
+  du versionnement de BB de son implantation dans Higgs
+  - Optimal case, compilation time is irrelevant?
+
+TODO: invalidation threshold on stubs, try increasing again, and allowing
+massive inlining budget, see overall effect
+
+TODO: try inlining all the primitives first? or all the adds/subs/muls first?
+- Examine which type tests happen first
 
 TODO: benchmarking script, add cmd line options for higgs CMD, csv out file
 - Keep default command
-
-TODO: benchmarking script, generate CSV output
+- Does Python have some option parsing module?
 
 TODO: log JITTed type tests executed, examine what happens in 3d-raytrace
 - needs inlining budget of ~20X to eliminate most type tests...
@@ -75,6 +93,21 @@ TODO: log JITTed type tests executed, examine what happens in 3d-raytrace
 
 
 
+
+
+
+[DONE] TODO: look into CSV command-line tools
+- transpose, concat, etc
+- use python CSV package, program util fns
+
+[DONE] TODO: look into CSV to latex tool
+\documentclass{article}
+\usepackage{csvsimple}
+\begin{document}
+\csvautotabular{scientists.csv}
+\end{document}
+
+[DONE] TODO: benchmarking script, generate CSV output
 
 [DONE] TODO: get updated stats
 exec time (ms): 1004

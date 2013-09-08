@@ -32,7 +32,7 @@ BENCHMARKS = {
     'fannkuch':'programs/sunspider/access-fannkuch.js',  
     'nbody':'programs/sunspider/access-nbody.js',      
     'nsieve':'programs/sunspider/access-nsieve.js',
-    '3bit':'programs/sunspider/bitops-3bit-bits-in-byte.js',
+    '3bits-in-byte':'programs/sunspider/bitops-3bit-bits-in-byte.js',
     'bits-in-byte':'programs/sunspider/bitops-bits-in-byte.js',  
     'bitwise-and':'programs/sunspider/bitops-bitwise-and.js',       
     'nsieve-bits':'programs/sunspider/bitops-nsieve-bits.js',        
@@ -139,16 +139,14 @@ for benchmark, valMeans in benchMeans.items():
 for key, valList in valLists.items():
     print key + ':', int(geoMean(valList))
 
-# TODO
 # Produce CSV output
 outFile = open(CSV_OUT, 'w')
-writer = csv.writer(outFile, delimiter=' ', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-#writer.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
-
-
-
-
-
-
-
+writer = csv.writer(outFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+keys = valLists.keys()
+writer.writerow([''] + keys)
+for benchmark, valMeans in benchMeans.items():
+    values = []
+    for key in keys:
+        values += [valMeans[key]]
+    writer.writerow([benchmark] + values)
 
