@@ -45,12 +45,6 @@ import ir.ops;
 import interp.object;
 import util.bitset;
 
-/// Maximum number of blocks a caller may have before inlining
-const size_t MAX_CALLER_BLOCKS = 100;
-
-/// Maximum number of blocks a callee may have before inlining
-const size_t MAX_CALLEE_BLOCKS = 35;
-
 /**
 Test if a function is inlinable at a call site
 */
@@ -74,20 +68,6 @@ bool inlinable(IRInstr callSite, IRFunction callee)
     // No support for argument count mismatch
     auto numArgs = callSite.numArgs - 2;
     if (numArgs != callee.numParams)
-        return false;
-
-    // If the caller is too big to inline into
-    size_t callerBlocks = 0;
-    for (auto block = caller.firstBlock; block !is null; block = block.next)
-        callerBlocks++;
-    if (callerBlocks > MAX_CALLER_BLOCKS)
-        return false;
-
-    // If the callee is too big to be inlined
-    size_t calleeBlocks = 0;
-    for (auto block = callee.firstBlock; block !is null; block = block.next)
-        calleeBlocks++;
-    if (calleeBlocks > MAX_CALLEE_BLOCKS)
         return false;
 
     // Inlining is possible
@@ -134,9 +114,11 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
 
     // Get the execution count of the call site
     auto callCount = cast(uint64_t)callSite.block.execCount;
+    assert (callCount > 0);
 
     // Get the execution count of the callee's entry block
     auto entryCount = cast(uint64_t)callee.entryBlock.execCount;
+    assert (entryCount > 0);
 
     // Map of callee blocks to copies
     IRBlock[IRBlock] blockMap;

@@ -43,9 +43,10 @@ jit/codeblock.d     \
 jit/assembler.d     \
 jit/moves.d         \
 jit/regalloc.d      \
-jit/jit.d           \
+jit/inlining.d      \
 jit/ops.d           \
 jit/peephole.d      \
+jit/jit.d           \
 repl.d              \
 options.d           \
 stats.d             \

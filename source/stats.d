@@ -87,14 +87,14 @@ static ~this()
     auto execTimeMsecs = endTimeMsecs - startTimeMsecs;
 
     writeln();
-    writefln("total execution time (ms): %s", execTimeMsecs);
-    writefln("total compilation time (ms): %s", compTimeUsecs / 1000);
-    writefln("machine code generated (bytes): %s", machineCodeBytes);
-    writefln("type tests executed: %s", numTypeTests);
-    writefln("unjitted instructions executed: %s", numUnjitInstrs);
-    writefln("call bailouts executed: %s", numCallBailouts);
-    writefln("return bailouts executed: %s", numRetBailouts);
-    writefln("interpreter cycles executed: %s", numInterpCycles);
+    writefln("exec time (ms): %s", execTimeMsecs);
+    writefln("comp time (ms): %s", compTimeUsecs / 1000);
+    writefln("code size (bytes): %s", machineCodeBytes);
+    writefln("type tests: %s", numTypeTests);
+    writefln("unjit instrs: %s", numUnjitInstrs);
+    writefln("call bailouts: %s", numCallBailouts);
+    writefln("ret bailouts: %s", numRetBailouts);
+    writefln("interp cycles: %s", numInterpCycles);
 
 }
 

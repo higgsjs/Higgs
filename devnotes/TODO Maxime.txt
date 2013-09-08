@@ -21,9 +21,6 @@ TODO: return support for new?
 - should ideally get word and type opnds before testing opcode
   - need more tmp regs, alloc for specific purposes
 
-TODO: threshold on block stubs before immediately invalidating
-- Might save compilation time, allow for more useful profiling
-
 TODO: reg alloc... Can we make simple improvements?
 - Alloc regs to phi nodes first, then map their args to the same regs
 - Get stats for benchmarks before implementing this
@@ -61,36 +58,72 @@ TODO: gather metrics
 - look at linux-tools-common package, `perf stat` command, has instr and
   branch counts?
 
-TODO: if function interrupted in loop when compiling, examine loop exec counter,
-if high enough (long loop), augment inlining budget to 500 or 1000 or 2000 blocks?
-- Should yield big payoff on some benchmarks
-- See that this doesn't happen in stdlib, getprop, etc.
+TODO: benchmarking script, add cmd line options for higgs CMD, csv out file
+- Keep default command
 
-TODO: sort call sites by exec frequency for inlining
+TODO: benchmarking script, generate CSV output
+
+TODO: log JITTed type tests executed, examine what happens in 3d-raytrace
+- needs inlining budget of ~20X to eliminate most type tests...
+- can we annotate functions? how can we help this?
+- can do JIT trace, see where types tested come from
+
+
+
+
+
+
+
+
+
+[DONE] TODO: get updated stats
+exec time (ms): 1004
+comp time (ms): 234
+interp cycles: 675941
+code size (bytes): 108613
+call bailouts: 0
+type tests: 7958803
+unjit instrs: 0
+ret bailouts: 0
+
+[DONE] FIXME: growth factor issue, functions grow at every invalidation
+
+[DONE] TODO: use "growth factor" based on initial size for inlining budget
+- Special provision for small functions
+- Allow 3x, shrinkage after peephole
+
+[DONE] TODO: sort call sites by exec frequency for inlining
 - Go through call sites, find most executed eligible call site
   - implement in separate function
   - could check caller and callee size at the same time
 - Eliminates need for current min frequency heuristic
 - Log performance before and after
+- Keep minimum call threshold for inlining, useful for primitives
 
-TODO: benchmarking script, generate CSV output
+[DONE] TODO: threshold on block stubs before immediately invalidating
+- Might save compilation time, allow for more useful profiling
 
-TODO: benchmarking script, add cmd line option for higgs CMD
+[DONE] TODO: get mean exec times and type tests
+exec time (ms): 1146
+comp time (ms): 175
+interp cycles: 801596
+code size (bytes): 93926
+call bailouts: 0
+type tests: 7174455
+unjit instrs: 7948
+ret bailouts: 0
 
-TODO: use "growth factor" based on initial size for inlining budget
-- Special provision for small functions
-- Possibly allow 3x, shrinkage after peephole
+[DONE] TODO: benchmark script, geo mean of type tests, cut out decimals
 
-TODO: examine inlining decisions in bitwise-and, run with --nostdlib
+[DONE] TODO: benchmarking script, display mean times (exec time (ms))
+
+[DONE] TODO: stats, shorten names
+
+[DONE] TODO: examine inlining decisions in bitwise-and, run with --nostdlib
 - Way too many type tests!
-
-
-
-
-
-
-
-
+- purportedly inlines rt_lt, rt_and, rt_add
+- Need to look at ASM output
+- The problem is that we're operating on global values!
 
 [DONE] TODO: peephole opt for if_true of constant
 

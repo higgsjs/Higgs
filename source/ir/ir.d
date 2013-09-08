@@ -85,6 +85,9 @@ class IRFunction : IdObject
     IRBlock firstBlock = null;
     IRBlock lastBlock = null;
 
+    /// Number of basic blocks
+    uint32_t numBlocks = 0;
+
     // Number of visible parameters
     uint32_t numParams = 0;
 
@@ -111,6 +114,9 @@ class IRFunction : IdObject
 
     /// Compiled code block
     CodeBlock codeBlock = null;
+
+    /// Number of times this function was JIT compiled
+    uint32_t jitCount = 0;
 
     /// Constructor
     this(FunExpr ast)
@@ -210,6 +216,8 @@ class IRFunction : IdObject
         }
 
         block.fun = this;
+
+        numBlocks++;
     }
 
     /**
@@ -237,6 +245,8 @@ class IRFunction : IdObject
 
         // Nullify the parent pointer
         block.fun = null;
+
+        numBlocks--;
     }
 }
 

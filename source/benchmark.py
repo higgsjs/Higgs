@@ -1,21 +1,28 @@
 #!/usr/bin/env python
 
 from subprocess import *
+import os
+import sys
 import re
-
-# TODO: need to be able to run this with different args... Different maxvers values
-# Use case: contrast time, contrast code size
-# Should generate CSV file, use unix tools to concat tables and such
-# TODO: take benchmark cmd as a command-line argument
-
-# TODO: short names for stats
-
-
+import math
+import csv
 
 # Configuration
 MAKE_CMD = 'make release'
 HIGGS_CMD = './higgs --stats --jit_maxvers=20'
-NUM_RUNS = 5
+CSV_OUT = 'results.csv'
+NUM_RUNS = 1
+
+
+# TODO: take benchmark cmd as a command-line argument
+# Have default argument
+
+
+# TODO: take csv output file name as an argument
+
+
+
+
 
 BENCHMARKS = {
     '3d-cube':'programs/sunspider/3d-cube.js',
@@ -53,7 +60,7 @@ benchResults = {}
 call(MAKE_CMD, shell=True)
 
 # Captured value pattern
-valPattern = re.compile('^(.+):(.+)$')
+valPattern = re.compile('^([^:]+):([^:]+)$')
 
 # For each benchmark
 benchNo = 1
@@ -83,7 +90,7 @@ for benchmark in BENCHMARKS:
             match = valPattern.match(line)
 
             # If the line doesn't match, continue
-            if match == None:
+            if match == None or len(line) > 50:
                 continue
 
             key = match.group(1)
@@ -97,23 +104,51 @@ for benchmark in BENCHMARKS:
     # Store the values for this benchmark
     benchResults[benchmark] = valLists
 
+# Computes the geometric mean of a list of values
+def geoMean(numList):
+    prod = 1
+    for val in numList:
+        prod *= val
+    return prod ** (1.0/len(numList))
+
 # Compute the geometric mean of values
 benchMeans = {}
 for benchmark, valLists in benchResults.items():
-
     valMeans = {}
-
     for key, valList in valLists.items():
-        prod = 1
-        for val in valList:
-            prod *= val
-        mean = prod ** (1/len(valList))
-        valMeans[key] = mean
-
+        valMeans[key] = geoMean(valList)
     benchMeans[benchmark] = valMeans
 
-# TODO: output time stats, including mean time
-# Need short name, time (ms)
+# Output the mean execution times for all benchmarks
+print ''
+print 'exec times'
+print '----------'
+for benchmark, valMeans in benchMeans.items():
+    print benchmark + ":", valMeans['exec time (ms)']
 
-# TODO: generate csv file
+# Output the mean of all stats gathered
+print ''
+print 'mean values'
+print '-----------'
+valLists = {}
+for benchmark, valMeans in benchMeans.items():
+    for key, mean in valMeans.items():
+        if not (key in valLists):
+            valLists[key] = []
+        valLists[key] += [mean]
+for key, valList in valLists.items():
+    print key + ':', int(geoMean(valList))
+
+# TODO
+# Produce CSV output
+outFile = open(CSV_OUT, 'w')
+writer = csv.writer(outFile, delimiter=' ', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+#writer.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
+
+
+
+
+
+
+
 

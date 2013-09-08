@@ -47,8 +47,6 @@ import std.algorithm;
 import options;
 import ir.ir;
 import ir.livevars;
-import ir.peephole;
-import ir.slotalloc;
 import interp.interp;
 import interp.layout;
 import interp.object;
@@ -62,269 +60,14 @@ import jit.peephole;
 import jit.regalloc;
 import jit.moves;
 import jit.ops;
-import ir.inlining;
+import jit.inlining;
 import util.bitset;
 
 /// Block execution count at which a function should be compiled
 const JIT_COMPILE_COUNT = 800;
 
-/// Where a function is on the call stack
-enum StackPos
-{
-    NOT,
-    TOP,
-    DEEP
-}
-
-/**
-Test if a function is on the interpreter stack
-*/
-StackPos funOnStack(Interp interp, IRFunction fun)
-{
-    size_t maxDepth = size_t.max;
-
-    auto visitFrame = delegate void(
-        IRFunction curFun, 
-        Word* wsp, 
-        Type* tsp, 
-        size_t depth,
-        size_t frameSize,
-        IRInstr callInstr
-    )
-    {
-        if (curFun is fun)
-            if (depth > maxDepth || maxDepth == size_t.max)
-                maxDepth = depth;
-    };
-
-    interp.visitStack(visitFrame);
-
-    if (maxDepth == size_t.max)
-        return StackPos.NOT;
-    else if (maxDepth == 0)
-        return StackPos.TOP;
-    else
-        return StackPos.DEEP;
-}
-
-/**
-Selectively inline callees into a function
-*/
-void inlinePass(Interp interp, IRFunction fun)
-{
-    // Minimum execution count frequency required for inlining
-    const CALL_MIN_FRAC = 3;
-
-    // Test if and where this function is on the call stack
-    auto stackPos = funOnStack(interp, fun);
-
-    // Don't inline if the function is deep on the stack
-    if (stackPos is StackPos.DEEP)
-        return;
-
-    // TODO: remove this
-    // Don't inline if at the top of the stack and not at the entry block
-    //if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
-    //    return;
-
-    // Get the number of locals before inlining
-    auto numLocals = fun.numLocals;
-
-    // Pre-inlining word and type stacks (temporary storage)
-    Word[] preWS;
-    Type[] preTS;
-
-    // Pre-inlining stack frame mapping
-    LocalIdx[IRDstValue] preIdxs;
-
-    // If the function is mid-execution
-    if (stackPos is StackPos.TOP && interp.target !is fun.entryBlock)
-    {
-        // Save the current stack frame
-        preWS.length = numLocals;
-        preTS.length = numLocals;
-        memcpy(preWS.ptr, interp.wsp, numLocals * Word.sizeof);
-        memcpy(preTS.ptr, interp.tsp, numLocals * Type.sizeof);
-
-        // Save the current stack mapping of phi nodes and instructions
-        for (auto block = fun.firstBlock; block !is null; block = block.next)
-        {
-            for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
-                preIdxs[phi] = phi.outSlot;
-            for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
-                preIdxs[instr] = instr.outSlot;
-        }
-    }
-
-    //writeln(fun.toString());
-
-    // Number of inlinings performed
-    auto numInlinings = 0;
-
-    // Map of inlined call sites to return phi nodes
-    PhiNode[IRInstr] callSites;
-
-    // For each block of the function
-    for (auto block = fun.firstBlock; block !is null; block = block.next)
-    {
-        // If this block was not executed often enough, skip it
-        if (block.execCount * CALL_MIN_FRAC < fun.entryBlock.execCount)
-            continue;
-
-        // Get the last instruction of the block
-        auto callSite = block.lastInstr;
-        assert (callSite !is null, "last instr is null");
-
-        // If this is is not a call site, skip it
-        if (callSite.opcode.isCall is false)
-            continue;
-
-        // If there is not exactly one callee, skip it
-        if (fun.callCounts[callSite].length != 1)
-            continue;
-
-        // Get the callee
-        auto callee = fun.callCounts[callSite].keys[0];
-
-        // If this combination is not inlinable, skip it
-        if (inlinable(callSite, callee) is false)
-            continue;
-
-        if (opts.jit_dumpinfo)
-        {
-            writefln(
-                "inlining %s into %s",
-                callee.getName(),
-                callSite.block.fun.getName()
-            );
-
-            writeln(
-                block.execCount, " / ", fun.entryBlock.execCount, 
-                " (", cast(double)block.execCount / fun.entryBlock.execCount, ")"
-            );
-        }
-
-        // Inline the callee
-        auto retPhi = inlineCall(callSite, callee);
-        callSites[callSite] = retPhi;
-
-        numInlinings++;
-
-        //writefln("inlined");
-        //writeln(fun.toString());
-    }
-
-    // If no inlining was done, stop
-    if (numInlinings is 0)
-        return;
-
-    // If the function was not mid-execution when compilation was triggered
-    if (preWS.length is 0)
-    {
-        //writefln("rearranging stack frame");
-
-        // Reoptimize the fused IRs
-        optIR(fun);
-
-        // Reallocate stack slots for the IR instructions
-        allocSlots(fun);
-
-        // Adjust the size of the stack frame
-        if (fun.numLocals > numLocals)
-            interp.push(fun.numLocals - numLocals);
-        else
-            interp.pop(numLocals - fun.numLocals);
-    }
-    else
-    {
-        //writeln("***** rewriting frame for ", fun.getName, " at ", interp.target.getName, " *****");
-
-        /*
-        writeln();
-        writeln(fun);
-
-        writeln();
-        writeln(interp.target);
-        writeln();
-        */
-
-        // Compute liveness information for the function
-        auto liveInfo = new LiveInfo(fun);
-
-        // Reoptimize the fused IRs, taking the current IP
-        // and liveness information into account
-        optIR(fun, interp.target, liveInfo);
-
-        // Reallocate stack slots for the IR instructions
-        allocSlots(fun);
-
-        // Adjust the size of the stack frame
-        if (fun.numLocals > numLocals)
-            interp.push(fun.numLocals - numLocals);
-        else
-            interp.pop(numLocals - fun.numLocals);
-
-        // For each phi node and instruction in the function
-        foreach (val, oldIdx; preIdxs)
-        {
-            if (oldIdx is NULL_LOCAL)
-                continue;
-
-            //writeln("value: ", val);
-            //writeln("value: ", val.idString, ", hash: ", val.toHash, ", ptr: ", cast(void*)val);
-
-            // If the value is not currently live, skip it
-            if (liveInfo.liveAfterPhi(val, interp.target) is false)
-                continue;
-
-            auto newIdx = val.outSlot;
-            assert (val.block !is null);
-            assert (newIdx !is NULL_LOCAL);
-
-            /*
-            writeln("rewriting: ", val);
-            writeln("  word: ", preWS[oldIdx].int64Val);
-            writeln("  type: ", preTS[oldIdx]);
-            */
-
-            // Copy the value to the new stack frame
-            interp.wsp[newIdx] = preWS[oldIdx];
-            interp.tsp[newIdx] = preTS[oldIdx];
-        }
-
-        // For each return phi node created
-        foreach (callSite, phi; callSites)
-        {
-            if (phi is null)
-                continue;
-
-            //writeln("return phi: ", phi);
-            //writeln(" call site block: ", callSite.block.getName);
-
-            if (liveInfo.liveAfterPhi(phi, interp.target) is false)
-                continue;
-
-            auto oldIdx = preIdxs[callSite];
-            auto newIdx = phi.outSlot;
-            assert (newIdx !is NULL_LOCAL);
-
-            /*
-            writeln("writing phi: ", phi);
-            writeln("  word: ", preWS[oldIdx].int64Val);
-            writeln("  type: ", preTS[oldIdx]);
-            */
-
-            // Copy the value to the new stack frame
-            interp.wsp[newIdx] = preWS[oldIdx];
-            interp.tsp[newIdx] = preTS[oldIdx];
-        }
-
-        //writeln();
-    }
-
-    //writeln(fun);
-    //writefln("inlinePass done");
-}
+/// Number of times a stub should be visited before invalidating a function
+const STUB_INV_COUNT = 1;
 
 /**
 Compile a function to machine code
@@ -341,8 +84,8 @@ void compFun(Interp interp, IRFunction fun)
         );
     }
 
-    // If inlining is not disabled
-    if (!opts.jit_noinline)
+    // If inlining is not disabled and this is the first compilation
+    if (!opts.jit_noinline && fun.jitCount is 0)
     {
         // Run the inlining pass on this function
         inlinePass(interp, fun);
@@ -815,16 +558,32 @@ void compFun(Interp interp, IRFunction fun)
                     return false;
                 }
             );
+           
+            // Label for the stub visit counter
+            auto STUB_CTR = new Label("STUB_CTR");
+
+            // Set the interpreter target to the stub block
+            ol.ptr(scrRegs64[0], block);
+            ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
+
+            // Increment the stub visit counter
+            // If the stub has not been visited enough
+            // times, don't invalidate it yet
+            ol.instr(INC, new X86IPRel(32, STUB_CTR));
+            ol.instr(CMP, new X86IPRel(32, STUB_CTR), STUB_INV_COUNT);
+            ol.instr(JB, bailLabel);
 
             // Invalidate the compiled code for this function
             ol.ptr(cargRegs[0], block);
             ol.ptr(scrRegs64[0], &visitStub);
             ol.instr(jit.encodings.CALL, scrRegs64[0]);
-
-            // Bailout to the interpreter and jump to the block
-            ol.ptr(scrRegs64[0], block);
-            ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
+            
+            // Bailout to the interpreter
             ol.instr(JMP, bailLabel);
+
+            // Inline visit counter for this stub
+            ol.addInstr(STUB_CTR);
+            ol.addInstr(new IntData(0, 32));
 
             // Don't compile the block
             continue BLOCK_LOOP;
@@ -931,6 +690,9 @@ void compFun(Interp interp, IRFunction fun)
 
     // Store the CodeBlock pointer on the compiled function
     fun.codeBlock = codeBlock;
+
+    // Increment the JIT compilation count for this function
+    fun.jitCount++;
 
     // For each block with an exported label
     foreach (block, label; entryMap)
