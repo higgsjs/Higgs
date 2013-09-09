@@ -51,10 +51,11 @@ import ir.slotalloc;
 import options;
 
 // Maximum growth factor due to inlining
+//const GROWTH_FACTOR = 30;
 const GROWTH_FACTOR = 3;
 
 // Minimum execution count frequency required for inlining
-const CALL_MIN_FRAC = 3;
+const CALL_MIN_FRAC = 4;
 
 // Maximum inlinable callee size
 const MAX_CALLEE_SIZE = 30;

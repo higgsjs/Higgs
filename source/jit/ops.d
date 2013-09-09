@@ -892,6 +892,8 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
+    //ctx.as.printStr(instr.opcode.mnem ~ " (" ~ instr.block.fun.getName ~ ")");
+
     // Increment the type test stat counter
     ctx.as.incStatCnt!("stats.numTypeTests")(scrRegs64[0]);
 

@@ -49,7 +49,92 @@ TODO: gather metrics for paper
 
 Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
 
-Meeting notes:
+TODO: try inlining all the primitives first or all the adds/subs/muls/cmps first?
+- Does this reduce the number of type tests?
+
+TODO: try smaller growth factor for primitives, e.g.: 3x
+
+TODO: intraprocedural representation analysis
+- Same type model as backend
+- Must be able to gain info from type tests
+- Fixed-point
+
+TODO: breakout of specific kinds of type tests with counts
+- Try introspecting enum?
+  auto b = [ __traits(allMembers, D) ];
+  writeln(b);
+
+
+
+
+TODO: create repo for paper on github
+
+TODO: begin writing, related work, tracing
+
+TODO: find papers about flow-based type analysis, fixed-point
+
+Note, TODO: future work, keep it to ~3 paragraphs
+- Interesting research avenues that can derive from this, not too much about our own research
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: try scrapping min call frac heuristic
+- See effect on global type tests, code size, exec time
+- Before, budget 3x
+    exec time (ms): 621
+    comp time (ms): 133
+    interp cycles: 675989
+    code size (bytes): 108567
+    call bailouts: 0
+    type tests: 7957747
+    unjit instrs: 0
+    ret bailouts: 0
+- Before, budget 40x
+    exec time (ms): 880
+    comp time (ms): 235
+    interp cycles: 1270519
+    code size (bytes): 142653
+    call bailouts: 0
+    type tests: 3540466
+    unjit instrs: 5998
+    ret bailouts: 0
+- After, budget 3x, frac 50
+    exec time (ms): 681
+    comp time (ms): 142
+    interp cycles: 662441
+    code size (bytes): 109442
+    call bailouts: 0
+    type tests: 9063187
+    unjit instrs: 7688
+    ret bailouts: 0
+- After, budget 10x, frac 50
+    exec time (ms): 825
+    comp time (ms): 249
+    interp cycles: 879796
+    code size (bytes): 133343
+    call bailouts: 0
+    type tests: 5866077
+    unjit instrs: 8144
+    ret bailouts: 0
+- After, budget 40x, frac 50
+    exec time (ms): 1091
+    comp time (ms): 345
+    interp cycles: 1240329
+    code size (bytes): 153116
+    call bailouts: 0
+    type tests: 3693675
+    unjit instrs: 6118
+    ret bailouts: 0
+
+[DONE] Meeting notes:
+sort log_tests_3d_raytrace.txt | uniq -c | sort -n
 - FP comparisons improved based on GCC
 - Added CSV output to benchmarking script
   - For paper, command-line tools, latex csv package
@@ -71,25 +156,19 @@ Meeting notes:
   du versionnement de BB de son implantation dans Higgs
   - Optimal case, compilation time is irrelevant?
 
-TODO: invalidation threshold on stubs, try increasing again, and allowing
-massive inlining budget, see overall effect
-
-TODO: try inlining all the primitives first? or all the adds/subs/muls first?
-- Examine which type tests happen first
-
-TODO: log JITTed type tests executed, examine what happens in 3d-raytrace
+[DONE] TODO: log JITTed type tests executed, examine what happens in 3d-raytrace
 - needs inlining budget of ~20X to eliminate most type tests...
 - can we annotate functions? how can we help this?
 - can do JIT trace, see where types tested come from
-
-
-
-
-
-
-
-
-
+- with 3x budget:
+    3d-raytrace : is_i32 tests in rt_add and rt_lt
+    3d-cube     : is_i32, is_f64 in add, lt, ge, some inlined in DrawLine
+    earley-boyer: se, getProp, setProp, all uninlined
+    still many calls to uninlined primitives
+- with 40x budget: 
+    3d-raytrace : is_i32, is_f64 Triangle.prototype.intersect, many getProp, still some rt_lt, rt_ns
+    3d-cube     : almost all is_i32 and is_f64 in drawline. Why are these not all eliminated???
+    earley-boyer: many in getProp, ns, some inlined
 
 [DONE] TODO: benchmarking script, add cmd line options for higgs CMD, csv out file
 - Keep default command

@@ -1,0 +1,10 @@
+May want to keep function IR intact, but create new interprocedural CFG IR
+- Add new blocks/versions as needed
+
+When jumping to entry of inlined function, can possibly treat this as just a
+jump to a local block. The new version of the inlined block has to operate on
+its inputs as they are mapped on the stack. Temporaries that do not yet exist
+could possibly be lazily mapped on the stack frame. If we use liveness info
+or some kind of interference test, can probably reuse slots and avoid growing
+the frame in most cases. Functions could have a reserve of slots to really
+minimize frame growth operations.
