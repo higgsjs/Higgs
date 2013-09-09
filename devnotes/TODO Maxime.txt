@@ -77,10 +77,6 @@ massive inlining budget, see overall effect
 TODO: try inlining all the primitives first? or all the adds/subs/muls first?
 - Examine which type tests happen first
 
-TODO: benchmarking script, add cmd line options for higgs CMD, csv out file
-- Keep default command
-- Does Python have some option parsing module?
-
 TODO: log JITTed type tests executed, examine what happens in 3d-raytrace
 - needs inlining budget of ~20X to eliminate most type tests...
 - can we annotate functions? how can we help this?
@@ -95,6 +91,9 @@ TODO: log JITTed type tests executed, examine what happens in 3d-raytrace
 
 
 
+[DONE] TODO: benchmarking script, add cmd line options for higgs CMD, csv out file
+- Keep default command
+- Does Python have some option parsing module?
 
 [DONE] TODO: look into CSV command-line tools
 - transpose, concat, etc

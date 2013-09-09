@@ -6,24 +6,22 @@ import sys
 import re
 import math
 import csv
+from optparse import OptionParser
 
 # Configuration
 MAKE_CMD = 'make release'
-HIGGS_CMD = './higgs --stats --jit_maxvers=20'
-CSV_OUT = 'results.csv'
-NUM_RUNS = 1
+DEF_NUM_RUNS = 1
+DEF_HIGGS_CMD = './higgs --stats --jit_maxvers=20'
+DEF_CSV_FILE = ''
 
+# Parse the command-line options
+parser = OptionParser()
+parser.add_option("--csv_file", default=DEF_CSV_FILE)
+parser.add_option("--higgs_cmd", default=DEF_HIGGS_CMD)
+parser.add_option("--num_runs", type="int", default=DEF_NUM_RUNS)
+(options, args) = parser.parse_args()
 
-# TODO: take benchmark cmd as a command-line argument
-# Have default argument
-
-
-# TODO: take csv output file name as an argument
-
-
-
-
-
+# Benchmark programs
 BENCHMARKS = {
     '3d-cube':'programs/sunspider/3d-cube.js',
     '3d-morph':'programs/sunspider/3d-morph.js',
@@ -62,6 +60,10 @@ call(MAKE_CMD, shell=True)
 # Captured value pattern
 valPattern = re.compile('^([^:]+):([^:]+)$')
 
+print "higgs cmd:", options.higgs_cmd
+print "num runs :", options.num_runs
+print ''
+
 # For each benchmark
 benchNo = 1
 for benchmark in BENCHMARKS:
@@ -74,12 +76,12 @@ for benchmark in BENCHMARKS:
     valLists = {}
 
     # For each run
-    for runNo in range(1, NUM_RUNS+1):
+    for runNo in range(1, options.num_runs + 1):
 
-        print 'Run #%d / %d' % (runNo, NUM_RUNS)
+        print 'Run #%d / %d' % (runNo, options.num_runs)
 
         # Run the benchmark and capture its output
-        pipe = Popen(HIGGS_CMD + ' ' + benchFiles, shell=True, stdout=PIPE).stdout
+        pipe = Popen(options.higgs_cmd + ' ' + benchFiles, shell=True, stdout=PIPE).stdout
         output = pipe.readlines()
 
         #print output
@@ -140,13 +142,16 @@ for key, valList in valLists.items():
     print key + ':', int(geoMean(valList))
 
 # Produce CSV output
-outFile = open(CSV_OUT, 'w')
-writer = csv.writer(outFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-keys = valLists.keys()
-writer.writerow([''] + keys)
-for benchmark, valMeans in benchMeans.items():
-    values = []
-    for key in keys:
-        values += [valMeans[key]]
-    writer.writerow([benchmark] + values)
+if options.csv_file != '':
+    print ''
+    print 'writing csv output to "%s"' % (options.csv_file)
+    outFile = open(options.csv_file, 'w')
+    writer = csv.writer(outFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    keys = valLists.keys()
+    writer.writerow([''] + keys)
+    for benchmark, valMeans in benchMeans.items():
+        values = []
+        for key in keys:
+            values += [valMeans[key]]
+        writer.writerow([benchmark] + values)
 
