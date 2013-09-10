@@ -1,3 +1,60 @@
+Deep Interprocedural IR (DI2R)
+
+Could we have the interpreter build a giant interprocedural IR?
+- Keep track of current block, current caller context
+- Issue: some specific cases, like deep or broad recursions might just be too big
+  - Could keep track of how deep we're expanding specific call sites, allow max depth of 2 or 3
+  - Could disallow recursive expansion of call sites
+
+In theory, this is very powerful. Can access stack frames deep down if desired.
+Can propagate type information and constants deeply, analyse the entire interprocedural CFG.
+- May have invariants become invalid, however? If new callee propagated, for example
+
+If we reach max depth on some call site, need to call into a block with some generic context.
+
+If we have a giant incremental CFG we're building, our predecessors (to backpropagate to)
+are obvious, can explore the graph back to them, tell them to propagate what they know.
+
+Backwards propagation of info: start with just one version of a block, a function, anything ***
+- If some type test doesn't always come out the same, propagate a request for specialization backwards
+- Whoever branches to this block, if they have a constant type for that variable, should duplicate the successor version ***
+- Propagate further with each execution? Should slowly duplicate blocks
+
+If we have recursive functions, have some generic version that connects to many
+different call site blocks at once. The graph stops being "tree-like" with
+respect to deep recursive calls.
+
+Backwards prop of info... Compiling backwards is rather problematic seeming
+
+In theory: some facts are established once, reused many times after
+
+It's maybe not that crazy to think we could do a short interpreter tracing pass
+for each fact we establish, to determine its usefulness. Interpret forward until
+we run into a type test, check the execution frequency of the type test thus
+far in some global ranking (sorted linked list of tests with counts?) Note that
+if a type test just started to happen, it won't be important yet. Possibly could
+inform the type test of who has impact on it, so that it can request the
+information later.
+
+Alternative approach, backwards prop... Could locate hot type tests, trace until        <====
+we hit that same type test again, then go backwards in the trace to see if we can
+find where this info was established. Otherwise try to find infrequent location
+where we could place another test (move the test back?). Need some kind of relative
+measure of hotness. Blocks can have exec counts, but also maybe timestamps of when      <====
+they were first executed.
+
+Does this all boils down to moving type tests backwards in time, out of hot paths?
+With an interprocedural CFG, this could be easier. Explore backwards for locations
+to hoist the tests to. Try to avoid expensive code duplications.
+
+
+
+
+
+
+
+-------------------------------------------------------------------------------
+
 May want to keep function IR intact, but create new interprocedural CFG IR
 - Add new blocks/versions as needed
 
@@ -15,20 +72,34 @@ contexts that have a lot of information. ***
 
 -------------------------------------------------------------------------------
 
-Could we have the interpreter build a giant interprocedural IR?
-- Keep track of current block, current caller context
-- Issue: some specific cases, like deep or broad recursions might just be too big
-  - Could keep track of how deep we're expanding specific call sites, allow max depth of 2 or 3
-  - Could disallow recursive expansion of call sites
+Backward propagation seems problematic, won't lead to inlining?
 
-In theory, this is very powerful. Can access stack frames deep down if desired.
-Can propagate type information and constants deeply, analyse the entire interprocedural CFG.
-- May have invariants become invalid, however? If new callee propagated, for example
+- Want to expand our CFG when sufficient execution occurs
 
-If we reach max depth on some call site, need to call into a block with some generic context.
+Ideally, want to propagate important facts only
+Can do this based on profiling + backwards prop of info requests
 
-Backwards propagation of info: start with just one version of a block, a function, anything ***
-- If some type test doesn't always come out the same, propagate a request for specialization backwards
-- Whoever branches to this block, if they have a constant type for that variable, should duplicate the successor version ***
-- Propagate further with each execution? Should slowly duplicate blocks
+Possibly, can trace execution in interpreter for a bit?
+Say I have a fact, an important piece of information, can we trace it forward?
+- Seems impractical
+
+Ideally, record traces periodically?
+- Some branch is executed often, wants to know if x:int or !(x:int)
+- Wait until some trace hits us
+- Go backwards through trace until a point where we know the info we want (if we can find one)
+  - Tell that point in the program that it should propagate this info forwards
+- If we can't find a point where we know x, could request some test be placed at
+  a sufficiently rarely executed boundary site
+  - Gain information by testing
+
+Possibly, we can know who our predecessor blocks are in terms of execution context?
+
+-------------------------------------------------------------------------------
+
+What about a simpler approach?
+
+Can profile type tests in general, see which info is most often requested
+- If we often have tests for kinds of objects that encounter objects of type
+foobar, then we probably want to propagate that some variable is an object of
+type foobar. But propagate how far? Can get very large CFGs!
 
