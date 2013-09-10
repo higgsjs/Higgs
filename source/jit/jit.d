@@ -1640,17 +1640,14 @@ void ptr(TPtr)(Assembler as, X86Reg destReg, TPtr ptr)
 }
 
 /// Increment a global JIT stat counter variable
-void incStatCnt(string varName)(Assembler as, X86Reg scrReg)
+void incStatCnt(Assembler as, ulong* pCntVar, X86Reg scrReg)
 {
     if (!opts.stats)
         return;
 
-    mixin("auto vSize = " ~ varName ~ ".sizeof;");
-    mixin("auto vAddr = &" ~ varName ~ ";");
+    as.ptr(scrReg, pCntVar);
 
-    as.ptr(scrReg, vAddr);
-
-    as.instr(INC, new X86Mem(vSize * 8, RAX));
+    as.instr(INC, new X86Mem(8 * ulong.sizeof, RAX));
 }
 
 void getField(Assembler as, X86Reg dstReg, X86Reg baseReg, size_t fSize, size_t fOffset)

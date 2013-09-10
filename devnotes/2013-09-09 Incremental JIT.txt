@@ -8,3 +8,27 @@ could possibly be lazily mapped on the stack frame. If we use liveness info
 or some kind of interference test, can probably reuse slots and avoid growing
 the frame in most cases. Functions could have a reserve of slots to really
 minimize frame growth operations.
+
+Perhaps a generic approach is just to have customized entry blocks for all functions with
+contexts that have a lot of information. ***
+- Include constants in there too
+
+-------------------------------------------------------------------------------
+
+Could we have the interpreter build a giant interprocedural IR?
+- Keep track of current block, current caller context
+- Issue: some specific cases, like deep or broad recursions might just be too big
+  - Could keep track of how deep we're expanding specific call sites, allow max depth of 2 or 3
+  - Could disallow recursive expansion of call sites
+
+In theory, this is very powerful. Can access stack frames deep down if desired.
+Can propagate type information and constants deeply, analyse the entire interprocedural CFG.
+- May have invariants become invalid, however? If new callee propagated, for example
+
+If we reach max depth on some call site, need to call into a block with some generic context.
+
+Backwards propagation of info: start with just one version of a block, a function, anything ***
+- If some type test doesn't always come out the same, propagate a request for specialization backwards
+- Whoever branches to this block, if they have a constant type for that variable, should duplicate the successor version ***
+- Propagate further with each execution? Should slowly duplicate blocks
+

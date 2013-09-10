@@ -54,9 +54,6 @@ ulong compTimeUsecs = 0;
 /// Total size of the machine code generated in bytes
 ulong machineCodeBytes = 0;
 
-/// Number of type tests executed (dynamic)
-ulong numTypeTests = 0;
-
 /// Number of unjitted instructions executed (dynamic)
 ulong numUnjitInstrs = 0;
 
@@ -69,9 +66,31 @@ ulong numRetBailouts = 0;
 /// Number of instructions executed by the interpreter (dynamic)
 ulong numInterpCycles = 0;
 
+/// Number of type tests executed by test kind (dynamic)
+ulong* numTypeTests[string];
+
+/// Get a pointer to the counter variable associated with a type test
+ulong* getTypeTestCtr(string testOp)
+{
+    // If there is no counter for this op, allocate one
+    if (testOp !in numTypeTests)
+        numTypeTests[testOp] = new ulong;
+
+    // Return the counter for this test op
+    return numTypeTests[testOp];
+}
+
 /// Static module constructor
 static this()
 {
+    // Pre-register type test counters
+    getTypeTestCtr("is_i32");
+    getTypeTestCtr("is_i64");
+    getTypeTestCtr("is_f64");
+    getTypeTestCtr("is_const");
+    getTypeTestCtr("is_refptr");
+    getTypeTestCtr("is_rawptr");
+
     // Record the starting time
     startTimeMsecs = Clock.currAppTick().msecs();
 }
@@ -90,11 +109,18 @@ static ~this()
     writefln("exec time (ms): %s", execTimeMsecs);
     writefln("comp time (ms): %s", compTimeUsecs / 1000);
     writefln("code size (bytes): %s", machineCodeBytes);
-    writefln("type tests: %s", numTypeTests);
     writefln("unjit instrs: %s", numUnjitInstrs);
     writefln("call bailouts: %s", numCallBailouts);
     writefln("ret bailouts: %s", numRetBailouts);
     writefln("interp cycles: %s", numInterpCycles);
 
+    auto totalTypeTests = 0;
+    foreach (testOp, pCtr; numTypeTests)
+    {
+        auto ctr = *pCtr;
+        writefln("%s: %s", testOp, ctr);
+        totalTypeTests += ctr;
+    }
+    writefln("type tests: %s", totalTypeTests);
 }
 

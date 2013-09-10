@@ -39,11 +39,13 @@ Oct 11th: CC Paper Submission Deadline
 Final paper corrections
 - Can you submit early, re-submit updates/fixes?
 
-Oct 4th: CC Abstract Submission Deadline
+Oct 4th: CC Abstract Submission Deadline ***
 
 Sept 31st goal: have paper written & edited
 
-TODO: gather metrics for paper
+TODO: submit abstract
+
+TODO: write abtract
 
 ------------------------------------------------------------------------------
 
@@ -52,29 +54,17 @@ Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
 TODO: try inlining all the primitives first or all the adds/subs/muls/cmps first?
 - Does this reduce the number of type tests?
 
-TODO: try smaller growth factor for primitives, e.g.: 3x
+TODO: remove boolean propagation for consistency with analysis, or add to analysis?
+- In analysis, just one type, bool true vs bool false, not just constant... Simple
 
-TODO: intraprocedural representation analysis
+TODO: intraprocedural representation analysis (SCCP)
+- ir/typeprop.d
 - Same type model as backend
 - Must be able to gain info from type tests
 - Fixed-point
 
-TODO: breakout of specific kinds of type tests with counts
-- Try introspecting enum?
-  auto b = [ __traits(allMembers, D) ];
-  writeln(b);
-
-
-
-
-TODO: create repo for paper on github
-
-TODO: begin writing, related work, tracing
-
-TODO: find papers about flow-based type analysis, fixed-point
-
-Note, TODO: future work, keep it to ~3 paragraphs
-- Interesting research avenues that can derive from this, not too much about our own research
+TODO: try smaller growth factor for just primitives, eg: 3x
+- Still many type tests to eliminate
 
 
 
@@ -84,6 +74,8 @@ Note, TODO: future work, keep it to ~3 paragraphs
 
 
 
+
+[DONE] TODO: breakout of specific kinds of type tests with counts
 
 [DONE] TODO: try scrapping min call frac heuristic
 - See effect on global type tests, code size, exec time
