@@ -30,6 +30,7 @@ ir/peephole.d       \
 ir/slotalloc.d      \
 ir/livevars.d       \
 ir/inlining.d       \
+ir/typeprop.d       \
 interp/interp.d     \
 interp/ops.d        \
 interp/layout.d     \

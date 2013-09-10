@@ -38,11 +38,13 @@
 module jit.inlining;
 
 import std.stdio;
+import std.string;
 import std.stdint;
 import std.array;
 import std.typecons;
 import interp.interp;
 import ir.ir;
+import ir.ast;
 import ir.ops;
 import ir.inlining;
 import ir.livevars;
@@ -168,8 +170,10 @@ void inlinePass(Interp interp, IRFunction fun)
     if (stackPos is StackPos.DEEP)
         return;
 
-    // Get the number of blocks and locals before inlining
-    auto preNumBlocks = fun.numBlocks;
+    // Compute the maximum size the function may grow to
+    auto maxFunSize = GROWTH_FACTOR * fun.numBlocks;
+
+    // Get the number of locals before inlining
     auto preNumLocals = fun.numLocals;
 
     // Pre-inlining word and type stacks (temporary storage)
@@ -211,7 +215,7 @@ void inlinePass(Interp interp, IRFunction fun)
     for (;;)
     {
         // If the caller is now too big to inline into, stop
-        if (fun.numBlocks > preNumBlocks * GROWTH_FACTOR)
+        if (fun.numBlocks > maxFunSize)
             break;
 
         // Attempt to find an inlining candidate

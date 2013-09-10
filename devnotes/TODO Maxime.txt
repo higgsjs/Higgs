@@ -51,11 +51,13 @@ TODO: write abtract
 
 Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
 
-TODO: try inlining all the primitives first or all the adds/subs/muls/cmps first?
-- Does this reduce the number of type tests?
-
 TODO: remove boolean propagation for consistency with analysis, or add to analysis?
 - In analysis, just one type, bool true vs bool false, not just constant... Simple
+
+TODO: try inlining all the adds/subs/muls first
+- 3d-raytrace is very sensitive to the inlining of arithmetic primitives
+- Do it one-level only: make list of adds/subs/muls in CFG, inline them
+- Does this reduce the number of type tests? Check effect with ./benchmark
 
 TODO: intraprocedural representation analysis (SCCP)
 - ir/typeprop.d
@@ -63,17 +65,20 @@ TODO: intraprocedural representation analysis (SCCP)
 - Must be able to gain info from type tests
 - Fixed-point
 
-TODO: try smaller growth factor for just primitives, eg: 3x
+
+
+
+
+
+
+
+
+
+[DONE] TODO: try smaller growth factor for just primitives, eg: 3x
 - Still many type tests to eliminate
+- Unfortunately doesn't help at all
 
-
-
-
-
-
-
-
-
+[DONE] TODO: copy over Tachyon SCCP code into ir/typeprop.d, create bare module
 
 [DONE] TODO: breakout of specific kinds of type tests with counts
 
