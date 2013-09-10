@@ -1,3 +1,18 @@
+Lazy JIT, what are the fundamental goals?
+- Less code compiled
+- More incremental compilatiion
+- Better profiling
+- Eliminating more type tests
+
+Good ideas so far:
+- Local inlining
+- Local profiling of branches, calls
+- Propagating constants
+- Occasional forward tracing of information
+- Requests for information based on frequency of usage
+
+------------------------------------------------------------------------------
+
 Deep Interprocedural IR (DI2R)
 
 Could we have the interpreter build a giant interprocedural IR?
@@ -47,11 +62,8 @@ Does this all boils down to moving type tests backwards in time, out of hot path
 With an interprocedural CFG, this could be easier. Explore backwards for locations
 to hoist the tests to. Try to avoid expensive code duplications.
 
-
-
-
-
-
+Problem: deep interprocedural IR might just be too large? If some function is
+called in 200 places, duplicated 200 times. 
 
 -------------------------------------------------------------------------------
 
