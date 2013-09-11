@@ -85,7 +85,7 @@ var console = require('lib/console');
 // To pretty-print
 console.log("foo");
 console.log({ foo: "bar"});
-// If you pass multiple arguments, they will be printed on the same line separate by tabs
+// If you pass multiple arguments, they will be printed on the same line separated by tabs
 console.log(1, 2, 3);
 ```
 
@@ -163,7 +163,6 @@ file.writeUint8(42);
 file.writeUint16(300);
 file.writeUint32(8675309);
 file.writeFloat64(1.536);
-
 
 // Flush a file, returns true if successful or false otherwise
 myfile.flush();
