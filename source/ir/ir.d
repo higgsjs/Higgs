@@ -574,7 +574,7 @@ class IRBlock : IdObject
 /**
 Branch edge descriptor
 */
-class BranchDesc
+class BranchDesc : IdObject
 {
     /// Branch predecessor block
     IRBlock pred;

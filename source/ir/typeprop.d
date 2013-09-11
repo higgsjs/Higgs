@@ -44,94 +44,107 @@ import std.stdint;
 import ir.ir;
 import interp.interp;
 
-// TODO: determine what our output should be
-
-// TODO: what types do we need to represent
-// Basic types (Type) + augmented types for bool true and false
-// Define some type value struct we can propagate
-
-// TODO: examine SCCP algorithm, sketch out pseudocode
-
-/**
-Perform type propagation on a CFG using the sparse
-conditional constant propagation technique 
-*/
-void typeProp(IRFunction fun)
+/// Type representation, propagated by the analysis
+struct TypeVal
 {
-    // TODO
+    enum : uint
+    {
+        BOT,        // Known to be non-constant
+        KNOWN_BOOL,
+        KNOWN_TYPE,
+        TOP         // Value not yet known
+    };
 
+    uint state;
+    Type type;
+    bool val;
 
-
+    this(uint s) { state = s; }
+    this(Type t) { state = KNOWN_TYPE; type = t; }
+    this(bool v) { state = KNOWN_BOOL; type = Type.CONST; val = v; }
 }
 
+const BOT = TypeVal(TypeVal.BOT);
+const TOP = TypeVal(TypeVal.TOP);
 
+/// Analysis output, map of IR values to types
+alias TypeVal[IRDstValue] TypeMap; 
 
-
-
-
-/*
-// Constant for values not yet known
-var TOP = 'TOP';
-
-// Constant for value known to be non-constant
-var BOT = 'BOT';
-
-function constProp(cfg, params)
+/**
+Perform type propagation on an intraprocedural CFG using
+the sparse conditional constant propagation technique
+*/
+TypeMap typeProp(IRFunction fun)
 {
-    assert (
-        params instanceof CompParams,
-        'expected compilation parameters'
-    );
+    // List of CFG edges to be processed
+    BranchDesc[] cfgWorkList;
 
-    // Get the value of a constant use or instruction
-    function getValue(val)
+    // List of SSA values to be processed
+    IRDstValue[] ssaWorkList;
+
+    // Set of reachable blocks
+    bool[IRBlock] reachable;
+
+    // Set of visited edges, indexed by predecessor id, successor id
+    bool[BranchDesc] edgeVisited;
+
+    // Map of type values inferred
+    TypeVal[IRDstValue] typeMap;
+
+    // Add the entry block to the CFG work list
+    cfgWorkList ~= new BranchDesc(null, fun.entryBlock);
+
+    /// Get a type for a given IR value
+    auto getType(IRValue val)
     {
-        // If the value is a constant, return it directly
-        if (val instanceof IRConst)
+        if (auto dstVal = cast(IRDstValue)val)
+            return typeMap.get(dstVal, TOP);
+
+
+
+
+
+        // TODO: handle constants
+        return BOT;
+    }
+
+    // Separate function to evaluate phis
+    auto evalPhi(PhiNode phi)
+    {
+        TypeVal curType = TOP;
+
+        // For each incoming branch
+        for (size_t i = 0; i < phi.block.numIncoming; ++i)
         {
-            return val;
+            auto branch = phi.block.getIncoming(i);
+            auto argVal = branch.getPhiArg(phi);
+            auto argType = getType(argVal);
+
+            // If the edge from the predecessor is not reachable, ignore its value
+            if (branch !in edgeVisited)
+                continue;
+
+            // If any arg is still top, the current value is unknown
+            if (argType == TOP)
+                return TOP;
+
+            // If not all uses have the same value, return the non-constant value
+            if (argType != curType && curType != TOP)
+                return BOT;
+
+            curType = argType;
         }
-        else
-        {
-            // Get the current value we have for the instruction
-            var curVal = instrVals[val.instrId];
 
-            // Follow the chain of instruction replacement values until
-            // a non-instruction replacement value is found
-            while (
-                curVal instanceof IRInstr && 
-                instrVals[curVal.instrId] instanceof IRValue
-            )
-            {
-                curVal = instrVals[curVal.instrId];
-            }
-
-            return curVal;
-        }
-    }
-
-    // Test if a basic block is reachable
-    function isReachable(block)
-    {
-        return (reachable[block.blockId] === true);
-    }
-
-    // Test if an edge was visited
-    function edgeReachable(pred, succ)
-    {
-        return (edgeVisited[pred.blockId][succ.blockId] === true);
-    }
-
-    // Queue a CFG edge into the CFG work list
-    function queueEdge(branchInstr, succBlock)
-    {
-        var predBlock = branchInstr.parentBlock;
-        cfgWorkList.push({pred: predBlock, succ:succBlock});
+        // All uses have the same constant type
+        return curType;
     }
 
     // Evaluate an SSA instruction
-    function evalInstr(instr)
+    auto evalInstr(IRInstr instr)
     {
+        // TODO: map lookup?
+
+        /*
         // If there is a const prop function for this instruction, use it
         if (instr.constEval !== undefined)
         {
@@ -150,39 +163,11 @@ function constProp(cfg, params)
                     queueEdge(instr, instr.targets[i]);
             }
         }
+        */
 
         // By default, return the non-constant value
         return BOT;
     }
-    
-    // List of CFG blocks to be processed
-    var cfgWorkList = [];
-
-    // List of SSA edges to be processed
-    var ssaWorkList = [];
-
-    // Reachable blocks, indexed by block id
-    var reachable = [];
-
-    // Visited edges, indexed by predecessor id, successor id
-    var edgeVisited = [];
-
-    // Instruction values, indexed by instr id
-    var instrVals = [];
-
-    // Initialize all edges to unvisited
-    for (var itr = cfg.getBlockItr(); itr.valid(); itr.next())
-        edgeVisited[itr.get().blockId] = [];
-    for (var itr = cfg.getEdgeItr(); itr.valid(); itr.next())
-        edgeVisited[itr.get().pred.blockId][itr.get().succ.blockId] = undefined;
-
-    // Initialize all instruction values to top
-    for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
-        instrVals[itr.get().instrId] = TOP;
-
-    // Add the entry block to the CFG work list
-    cfgWorkList.push({pred: cfg.entry, succ:cfg.entry});
-    edgeVisited[cfg.entry.blockId][cfg.entry.blockId] = undefined;
 
     // Until a fixed point is reached
     while (cfgWorkList.length > 0 || ssaWorkList.length > 0)
@@ -190,6 +175,7 @@ function constProp(cfg, params)
         // Until the CFG work list is processed
         while (cfgWorkList.length > 0)
         {
+            /*
             // Remove an edge from the work list
             var edge = cfgWorkList.pop();
             var pred = edge.pred;
@@ -241,11 +227,13 @@ function constProp(cfg, params)
                     }
                 }
             }
+            */
         }
 
         // Until the SSA work list is processed
         while (ssaWorkList.length > 0)
         {
+            /*
             // Remove an edge from the SSA work list
             var v = ssaWorkList.pop();
 
@@ -276,104 +264,13 @@ function constProp(cfg, params)
                     }
                 }
             }
-        }
-    }
-    
-    var numConsts = 0;
-    var numBranches = 0;
-
-    // For each block in the CFG
-    for (var i = 0; i < cfg.blocks.length; ++i)
-    {
-        var block = cfg.blocks[i];
-
-        //print('processing: ' + block.getBlockName());
-
-        // If this block is not reachable, skip it
-        if (!isReachable(block))
-        {
-            //print('unreachable: ' + block.getBlockName());
-            continue;
-        }
-
-        // For each instruction in the block
-        for (var j = 0; j < block.instrs.length; ++j)
-        {
-            var instr = block.instrs[j];
-
-            //print(instr);
-
-            // Get the value for this instruction
-            var val = getValue(instr);
-
-            //print('\tval: ' + val);
-
-            // If this is an if instruction
-            if (instr instanceof IfInstr)
-            {
-                // If only one if branch is reachable, replace the if by a jump
-                if (val === true)
-                {
-                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]));
-                    ++numBranches;
-                }
-                else if (val === false)
-                {
-                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[1]));
-                    ++numBranches;
-                }
-            }
-
-            // If this is an arithmetic instruction with overflow 
-            // and we have a replacement value
-            else if (instr instanceof ArithOvfInstr && val instanceof IRValue)
-            {
-                //print(instr + ' ==> ' + val);
-                //print(instr.parentBlock.parentCFG.ownerFunc.funcName);
-
-                // Replace the instruction by a jump to the normal branch
-                block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]), val);
-                ++numBranches;
-            }
-
-            // If there is a constant value for this instruction
-            else if (val instanceof IRConst)
-            {
-                //print(instr + ' ==> ' + val);
-
-                // Replace the instruction by the constant value
-                block.replInstrAtIndex(j, undefined, val);
-                --j;
-            }
-
-            // If there is a replacement instruction value for this instruction
-            else if (val instanceof IRValue && val !== instr)
-            {
-                //print(instr + ' ==> ' + val);
-
-                // Remap the dests to the replacement instruction
-                for (var k = 0; k < instr.dests.length; ++k)
-                {
-                    var dest = instr.dests[k];
-
-                    dest.replUse(instr, val);
-                    val.addDest(dest);
-                }
-
-                // Remove the instruction
-                block.remInstrAtIndex(j, val);
-                --j;
-            }
+            */
         }
     }
 
-    //print('Constants found: ' + numConsts);
-    //print('Branches found: ' + numBranches);
-
-    // Remove basic blocks which are now unreachable from the CFG
-    cfg.remDeadBlocks();
+    // Return the type values inferred
+    return typeMap;
 }
-*/
 
 //=============================================================================
 //
@@ -382,37 +279,6 @@ function constProp(cfg, params)
 //=============================================================================
 
 /*
-PhiInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
-{
-    var curVal;
-
-    // For each incoming value
-    for (var i = 0; i < this.uses.length; ++i)
-    {
-        var useVal = getValue(this.uses[i]);
-        var pred = this.preds[i];
-
-        // If the edge from the predecessor is not executable, ignore its value
-        if (edgeReachable(pred, this.parentBlock) !== true)
-            continue;
-
-        //print('incoming: ' + this.uses[i] + ' ==> ' + useVal);
-
-        // If any use is still top, the current value is unknown
-        if (useVal === TOP)
-            return TOP;
-
-        // If not all uses have the same value, return the non-constant value
-        if (useVal !== curVal && curVal !== undefined)
-            return BOT;
-
-        curVal = useVal;
-    }
-
-    // All uses have the same constant value
-    return curVal;
-};
-
 ArithInstr.genConstEval = function (opFunc, genFunc)
 {
     function constEval(getValue, edgeReachable, queueEdge, params)
@@ -1070,3 +936,4 @@ IfInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, para
     return testVal;
 }
 */
+

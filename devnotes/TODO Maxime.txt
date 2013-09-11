@@ -54,17 +54,21 @@ Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
 TODO: remove boolean propagation for consistency with analysis, or add to analysis?
 - In analysis, just one type, bool true vs bool false, not just constant... Simple
 
-TODO: intraprocedural representation analysis (SCCP)
+TODO: implement simple type test removal pass for JIT using type prop results
+
+TODO: complete type prop
+
+
+
+
+
+
+
+[DONE] TODO: begin work on intraprocedural representation analysis (SCCP)
 - ir/typeprop.d
 - Same type model as backend
 - Must be able to gain info from type tests
 - Fixed-point
-
-
-
-
-
-
 
 [DONE] TODO: read_i8, read_i16, notify Tom
 - Ask to use load_u32 for load_i32
