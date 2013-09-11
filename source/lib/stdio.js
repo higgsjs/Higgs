@@ -134,10 +134,10 @@ Bindings for common c I/O functions
     {
         var b = c.realloc(this.buffer, size);
         if (ffi.isNull(b))
-            throw "Unable to resize buffer."
+            throw "Unable to resize buffer.";
         this.buffer = b;
         this.buf_size = size;
-    }
+    };
 
     /**
     Close this file.
@@ -158,7 +158,7 @@ Bindings for common c I/O functions
         this.handle = ffi.nullPtr;
 
         return true;
-    }
+    };
 
     /**
     Flush the file.
@@ -170,7 +170,7 @@ Bindings for common c I/O functions
             throw "Cannot flush file: " + this.name;
         var r = c.fflush(this.handle);
         return (r === 0);
-    }
+    };
 
 
     /**
@@ -181,7 +181,7 @@ Bindings for common c I/O functions
         var chr = c.fgetc(this.handle);
         c.ungetc(chr, this.handle);
         return (chr < 0);
-    }
+    };
 
     /**
     Get current position in file.
@@ -189,7 +189,7 @@ Bindings for common c I/O functions
     File.prototype.tell = function()
     {
         return c.ftell(this.handle);
-    }
+    };
 
     /**
     Seek position in file. Return true if successful, false otherwise.
@@ -199,7 +199,7 @@ Bindings for common c I/O functions
         origin = (origin > -1 && origin < 3) ? origin : 0;
         var r = c.fseek(this.handle, offset, origin);
         return (r === 0);
-    }
+    };
 
     /**
     Rewind back to beginning.
@@ -207,7 +207,7 @@ Bindings for common c I/O functions
     File.prototype.rewind = function()
     {
         c.rewind(this.handle);
-    }
+    };
 
     /**
     Get a char.
@@ -217,7 +217,51 @@ Bindings for common c I/O functions
         // TODO: skip null chars?
         var chr = c.fgetc(this.handle);
         return (chr > -1) ? String.fromCharCode(chr) : "";
-    }
+    };
+
+    /**
+    Read a uint8
+    */
+    File.prototype.readUint8 = function()
+    {
+        var len = c.fread(this.buffer, 1, 1, this.handle);
+        if (len === 0)
+            return NaN;
+        return $ir_load_u8(this.buffer, 0);
+    };
+
+    /**
+    Read a uint16
+    */
+    File.prototype.readUint16 = function()
+    {
+        var len = c.fread(this.buffer, 2, 1, this.handle);
+        if (len === 0)
+            return NaN;
+        return $ir_load_u16(this.buffer, 0);
+    };
+
+    /**
+    Read a uint32
+    */
+    File.prototype.readUint32 = function()
+    {
+        var len = c.fread(this.buffer, 4, 1, this.handle);
+        if (len === 0)
+            return NaN;
+        return $ir_load_u32(this.buffer, 0);
+    };
+
+    /**
+    Read a float64
+    */
+    File.prototype.readFloat64 = function()
+    {
+        var len = c.fread(this.buffer, 8, 1, this.handle);
+        if (len === 0)
+            return NaN;
+        return $ir_load_f64(this.buffer, 0);
+    };
 
     /**
     Read a line
@@ -257,7 +301,7 @@ Bindings for common c I/O functions
         } while ($ir_load_u8(line, len - 1) !== 10);
 
         return str;
-    }
+    };
 
     /**
     Read from a file.
@@ -287,7 +331,7 @@ Bindings for common c I/O functions
             str += ffi.string(this.buffer, len);
         } while (c.feof(this.handle) === 0);
         return str;
-    }
+    };
 
     /**
     Put char to a file.
@@ -298,7 +342,51 @@ Bindings for common c I/O functions
         var r;
         r = c.fputc(code, this.handle);
         return (r === code);
-    }
+    };
+
+    /**
+    Write a uint8
+    */
+    File.prototype.writeUint8 = function(data)
+    {
+        var size = 1;
+        $ir_store_u8(this.buffer, 0, data);
+        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        return r === size;
+    };
+
+    /**
+    Write a uint16
+    */
+    File.prototype.writeUint16 = function(data)
+    {
+        var size = 2;
+        $ir_store_u16(this.buffer, 0, data);
+        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        return r === 1;
+    };
+
+    /**
+    Write a uint32
+    */
+    File.prototype.writeUint32 = function(data)
+    {
+        var size = 4;
+        $ir_store_u32(this.buffer, 0, data);
+        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        return r === 1;
+    };
+
+    /**
+    Write a float64
+    */
+    File.prototype.writeFloat64 = function(data)
+    {
+        var size = 8;
+        $ir_store_f64(this.buffer, 0, data);
+        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        return r === 1;
+    };
 
     /**
     Write to a file.
@@ -312,7 +400,7 @@ Bindings for common c I/O functions
         ffi.jstrcpy(this.buffer, data);
         r = c.fwrite(this.buffer, 1, max, this.handle);
         return r === max;
-    }
+    };
 
     /**
     WRAPPERS/EXPORT
@@ -339,7 +427,7 @@ Bindings for common c I/O functions
     io.fopen = function(file, mode)
     {
         return new File(file, mode);
-    }
+    };
 
     /**
     Delete a file
@@ -350,7 +438,7 @@ Bindings for common c I/O functions
         var r = c.remove(name);
         c.free(name);
         return (r === 0);
-    }
+    };
 
     /**
     Rename a file
@@ -363,7 +451,7 @@ Bindings for common c I/O functions
         c.free(o);
         c.free(n);
         return (r === 0);
-    }
+    };
 
     /**
     Get a tmpfile
@@ -373,7 +461,7 @@ Bindings for common c I/O functions
         var file = c.tmpfile();
         var r;
         if(ffi.isNull(file))
-            throw "Unable to get tmp file."
+            throw "Unable to get tmp file.";
 
         r = new File(null);
         r.handle = file;
@@ -381,7 +469,7 @@ Bindings for common c I/O functions
         r.name = "TMPFILE";
         r.file = "TMPFILE";
         return r;
-    }
+    };
 
     /**
     Get a tmpnam
@@ -391,11 +479,11 @@ Bindings for common c I/O functions
         var buf = c.malloc(100);
         var name = c.tmpnam(buf);
         if(ffi.isNull(name))
-            throw "Unable to get temp name."
+            throw "Unable to get temp name.";
         name = ffi.string(buf);
         c.free(buf);
         return name;
-    }
+    };
 
     /**
     Print (without added newline)
@@ -405,10 +493,10 @@ Bindings for common c I/O functions
         var str = ffi.cstr(x);
         c.printf(str);
         c.free(str);
-    }
+    };
 
     // Default settings
-    io.BUF_SIZE = 1000;
+    io.BUF_SIZE = 2048;
 
     // Constants
     io.SEEK_SET = 0;
@@ -417,5 +505,5 @@ Bindings for common c I/O functions
 
     // Export
     exports = io;
-})()
+})();
 

@@ -706,10 +706,10 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
     );
 
     assert (
-        val.type !is Type.REFPTR || 
+        val.type !is Type.REFPTR ||
         val.word.ptrVal is null ||
         interp.inFromSpace(val.word.ptrVal),
-        "ref value stored not in from space: " ~ 
+        "ref value stored not in from space: " ~
         to!string(val.word.ptrVal)
     );
 
