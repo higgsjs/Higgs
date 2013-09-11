@@ -43,7 +43,7 @@ Oct 4th: CC Abstract Submission Deadline ***
 
 Sept 31st goal: have paper written & edited
 
-TODO: submit abstract
+TODO: submit abstract on EasyChair
 
 TODO: write abtract
 
@@ -53,11 +53,6 @@ Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
 
 TODO: remove boolean propagation for consistency with analysis, or add to analysis?
 - In analysis, just one type, bool true vs bool false, not just constant... Simple
-
-TODO: try inlining all the adds/subs/muls first
-- 3d-raytrace is very sensitive to the inlining of arithmetic primitives
-- Do it one-level only: make list of adds/subs/muls in CFG, inline them
-- Does this reduce the number of type tests? Check effect with ./benchmark
 
 TODO: intraprocedural representation analysis (SCCP)
 - ir/typeprop.d
@@ -71,8 +66,44 @@ TODO: intraprocedural representation analysis (SCCP)
 
 
 
+[DONE] TODO: read_i8, read_i16, notify Tom
+- Ask to use load_u32 for load_i32
 
-
+[DONE] TODO: try inlining all the adds/subs/muls first
+- 3d-raytrace is very sensitive to the inlining of arithmetic primitives
+- Do it one-level only: make list of adds/subs/muls in CFG, inline them
+- Does this reduce the number of type tests? Check effect with ./benchmark
+- Before, growth factor 30x:
+    is_i32: 2141245
+    is_const: 20976
+    exec time (ms): 1465
+    comp time (ms): 402
+    interp cycles: 1267749
+    code size (bytes): 138314
+    is_rawptr: 35
+    call bailouts: 7
+    is_i64: 1
+    type tests: 3717303
+    unjit instrs: 5992
+    ret bailouts: 8
+    is_refptr: 291458
+    is_f64: 10210
+- After, growth factor 30x:
+    is_i32: 2136726
+    is_const: 20977
+    exec time (ms): 1485
+    comp time (ms): 425
+    interp cycles: 1270943
+    code size (bytes): 139407
+    is_rawptr: 35
+    call bailouts: 7
+    is_i64: 1
+    type tests: 3712645
+    unjit instrs: 5997
+    ret bailouts: 8
+    is_refptr: 291435
+    is_f64: 10199
+- Doesn't do much!
 
 [DONE] TODO: try smaller growth factor for just primitives, eg: 3x
 - Still many type tests to eliminate

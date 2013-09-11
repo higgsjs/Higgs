@@ -110,7 +110,8 @@ for benchmark in BENCHMARKS:
 def geoMean(numList):
     prod = 1
     for val in numList:
-        prod *= val
+        if val != 0:
+            prod *= val
     return prod ** (1.0/len(numList))
 
 # Compute the geometric mean of values

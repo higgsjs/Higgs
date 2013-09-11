@@ -2307,7 +2307,7 @@ bool isBranchIIR(ASTExpr expr)
 /**
 Generate an inline IR instruction
 */
-IRInstr genIIR(IRGenCtx ctx, ASTExpr expr)
+IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
 {
     assert (
         isIIR(expr), 
@@ -2439,6 +2439,11 @@ IRInstr genIIR(IRGenCtx ctx, ASTExpr expr)
     if (instr.opcode.isCall)
         genCallTargets(ctx, instr);
 
+    // If this instruction has no output, return the undefined value
+    if (instr.opcode.output is false)
+        return IRConst.undefCst;
+
+    // Return the instruction's value
     return instr;
 }
 

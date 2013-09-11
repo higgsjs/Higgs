@@ -210,6 +210,52 @@ void inlinePass(Interp interp, IRFunction fun)
     // Map of inlined call sites to return phi nodes
     PhiNode[IRInstr] callSites;
 
+    /*
+    InlSite[] primCalls;
+
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        if (fun.getName.startsWith(RT_PREFIX))
+            continue;
+
+        if (block.execCount is 0)
+            continue;
+
+        auto callSite = block.lastInstr;
+        assert (callSite !is null, "last instr is null");
+
+        if (callSite.opcode !is &CALL_PRIM)
+            continue;
+
+        assert (fun.callCounts[callSite].length is 1);
+        auto callee = fun.callCounts[callSite].keys[0];
+
+        // If the callee is too big to be inlined, skip it
+        if (callee.numBlocks > MAX_CALLEE_SIZE)
+            continue;
+
+        // If this combination is not inlinable, skip it
+        if (inlinable(callSite, callee) is false)
+            continue;
+
+        primCalls ~= InlSite(callSite, callee);
+    }
+    
+    while (primCalls.length > 0)
+    {
+        auto inlSite = primCalls[$-1];
+        primCalls.length--;
+
+        auto callSite = inlSite.callSite;
+        auto block = callSite.block;
+        auto callee = inlSite.callee;
+
+        auto retPhi = inlineCall(callSite, callee);
+        callSites[callSite] = retPhi;
+        numInlinings++;
+    }
+    */
+
     // Until we have exhausted the inlining budget or
     // there are no suitable inlining candidates
     for (;;)
