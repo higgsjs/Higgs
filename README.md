@@ -90,6 +90,56 @@ console.log(1, 2, 3);
 ```
 
 
+**csv:**
+
+The csv library provides basic support for manipulating comma-separated value (CSV) files.
+
+*Importing:*
+
+```JS
+// First import the csv module:
+var csv = require('lib/csv');
+```
+
+*Writing CSV files:*
+
+```JS
+// Create a new CSV spreadsheet object
+sheet = new csv.CSV();
+
+// Data can be added to the spread sheet row by row
+sheet.addRow(['name', 'age', 'sex']);
+sheet.addRow(['Alice', '19', 'F']);
+sheet.addRow(['Bob', '22', 'M']);
+sheet.addRow(['Kirby', '1', 'N/A']);
+
+// You can set individual cell values directly using the setCell method
+// This will change Alice's name to Anna:
+sheet.setCell(1, 0, 'Anna');
+
+// Rows can also be directly addressed with the setRow method
+// This replaces the last row:
+sheet.setRow(3, ['John', '35', 'M']);
+
+// Write the data to a CSV file
+sheet.writeFile('data.csv');
+
+```
+
+*Reading CSV files:*
+
+```JS
+// Read a spreadsheet from a CSV file
+sheet = csv.readFile('data.csv');
+
+// Prints 4
+print(sheet.getNumRows());
+
+// Prints 'John'
+print(sheet.getCell(3, 0));
+```
+
+
 **stdio:**
 
 Higgs has a library to provide common I/O functionality. It is a wrapper around the C I/O functions found in [the stdio library](http://www.cplusplus.com/reference/cstdio/).
