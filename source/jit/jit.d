@@ -47,6 +47,7 @@ import std.algorithm;
 import options;
 import ir.ir;
 import ir.livevars;
+import ir.typeprop;
 import interp.interp;
 import interp.layout;
 import interp.object;
