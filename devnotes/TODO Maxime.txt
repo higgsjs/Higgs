@@ -74,6 +74,9 @@ TODO: complete type prop implementation
 
 
 
+
+[DONE] TODO: document csv module, example
+
 [DONE] TODO: begin work on intraprocedural representation analysis (SCCP)
 - ir/typeprop.d
 - Same type model as backend
