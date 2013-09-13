@@ -102,6 +102,9 @@ TypeMap typeProp(IRFunction fun)
         if (auto dstVal = cast(IRDstValue)val)
             return typeMap.get(dstVal, TOP);
 
+        if (cast(IRString)val)
+            return BOT;
+
         // Get the constant value pair for this IR value
         auto cstVal = val.cstValue();
 
@@ -163,11 +166,31 @@ TypeMap typeProp(IRFunction fun)
             return TypeVal(Type.INT64);
         }
 
+        // Set string
+        if (op is &SET_STR)
+        {
+            return TypeVal(Type.REFPTR);
+        }
+
+        // Get string
+        if (op is &GET_STR)
+        {
+            return TypeVal(Type.REFPTR);
+        }
+
+        // Get global object
+        if (op is &GET_GLOBAL_OBJ)
+        {
+            return TypeVal(Type.REFPTR);
+        }
+
         // int32 arithmetic/logical
         if (
             op is &ADD_I32 ||
             op is &SUB_I32 ||
             op is &MUL_I32 ||
+            op is &DIV_I32 ||
+            op is &MOD_I32 ||
             op is &AND_I32 ||
             op is &OR_I32 ||
             op is &NOT_I32 ||
@@ -175,6 +198,19 @@ TypeMap typeProp(IRFunction fun)
             op is &RSFT_I32 ||
             op is &URSFT_I32)
         {
+            return TypeVal(Type.INT32);
+        }
+
+        // int32 arithmetic with overflow
+        if (
+            op is &ADD_I32_OVF ||
+            op is &SUB_I32_OVF ||
+            op is &MUL_I32_OVF)
+        {
+            // Queue both targets
+            cfgWorkList ~= instr.getTarget(0);
+            cfgWorkList ~= instr.getTarget(1);
+
             return TypeVal(Type.INT32);
         }
 
@@ -188,6 +224,12 @@ TypeMap typeProp(IRFunction fun)
             return TypeVal(Type.INT32);
         }
 
+        // int to float
+        if (op is &I32_TO_F64)
+        {
+            return TypeVal(Type.FLOAT64);
+        }
+
         // Load integer
         if (
             op is &LOAD_U8 ||
@@ -195,6 +237,12 @@ TypeMap typeProp(IRFunction fun)
             op is &LOAD_U32)
         {
             return TypeVal(Type.INT32);
+        }
+
+        // Load 64-bit integer
+        if (op is &LOAD_U64)
+        {
+            return TypeVal(Type.INT64);
         }
 
         // Load f64

@@ -65,6 +65,9 @@ struct Options
     /// Maximum number of specialized versions to compile per basic block
     uint jit_maxvers = 20;
 
+    /// Enable the type propagation analysis
+    bool jit_typeprop = false;
+
     /// Disable inlining in the JIT
     bool jit_noinline = false;
 
@@ -102,6 +105,7 @@ void parseCmdArgs(ref string[] args)
 
         "jit_disable"   , &opts.jit_disable,
         "jit_maxvers"   , &opts.jit_maxvers,
+        "jit_typeprop"  , &opts.jit_typeprop,
         "jit_noinline"  , &opts.jit_noinline,
         "jit_noasmopts" , &opts.jit_noasmopts,
         "jit_dumpinfo"  , &opts.jit_dumpinfo,

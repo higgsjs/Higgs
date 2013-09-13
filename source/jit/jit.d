@@ -98,6 +98,14 @@ void compFun(Interp interp, IRFunction fun)
         writeln(fun);
     }
 
+    // If the type propagation analysis is enabled
+    TypeMap typeMap;
+    if (opts.jit_typeprop)
+    {
+        // TODO: store on ctx
+        typeMap = typeProp(fun);
+    }
+
     // Run a live variable analysis on the function
     auto liveInfo = new LiveInfo(fun);
 

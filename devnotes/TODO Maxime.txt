@@ -56,15 +56,18 @@ TODO: write abtract
 
 Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
 
-Meeting notes:
+TODO: store typeMap on CodeGenCtx, use for IsTypeOp
+
+TODO: examine typeProp code, do transfer functions all make sense?
+
+TODO: test --jit_typeprop, pass make test
+
+TODO: email Marc, notes:
 - Added type test breakout by type
 - Tried tweaking inlining heuristics to further reduce type tests, not very successful
 - Began implementing intraprocedural representation analysis, based on SCCP
 - Will add command-line flag to enable analysis
 
-TODO: add command-line option to enable type prop, --jit_typeprop
-
-TODO: implement simple type test removal pass for JIT using type prop results
 
 
 
@@ -73,6 +76,8 @@ TODO: implement simple type test removal pass for JIT using type prop results
 
 
 
+
+[DONE] TODO: add command-line option to enable type prop, --jit_typeprop
 
 [DONE] TODO: complete type prop implementation
 
