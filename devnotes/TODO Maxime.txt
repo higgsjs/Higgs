@@ -34,7 +34,7 @@ http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 TODO: IR, attach branch descs to branch instructions instead of pred blocks?
 - examine use cases
 
-Note: most JIT improvements are moot if we rewrite the JIT
+Note: most JIT improvements are moot if we rewrite the JIT!
 
 ------------------------------------------------------------------------------
 
@@ -66,7 +66,6 @@ TODO: add command-line option to enable type prop, --jit_typeprop
 
 TODO: implement simple type test removal pass for JIT using type prop results
 
-TODO: complete type prop implementation
 
 
 
@@ -74,6 +73,8 @@ TODO: complete type prop implementation
 
 
 
+
+[DONE] TODO: complete type prop implementation
 
 [DONE] TODO: document csv module, example
 

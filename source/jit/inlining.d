@@ -135,7 +135,8 @@ InlSite findInlSite(IRFunction caller)
             continue;
 
         // If there is not exactly one callee, skip it
-        if (caller.callCounts[callSite].length != 1)
+        if (callSite !in caller.callCounts ||
+            caller.callCounts[callSite].length != 1)
             continue;
 
         // Get the callee

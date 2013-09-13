@@ -149,14 +149,22 @@ TypeMap typeProp(IRFunction fun)
     {
         auto op = instr.opcode;
 
-        // Operations producing no output
-        if (op.output is false)
+        auto arg0Type = (instr.numArgs > 0)? getType(instr.getArg(0)):TOP;
+
+        // Get type
+        if (op is &GET_TYPE)
         {
-            return BOT;
+            return arg0Type;
         }
 
-        // I32 arithmetic/logical
-        else if (
+        // Get word
+        if (op is &GET_WORD)
+        {
+            return TypeVal(Type.INT64);
+        }
+
+        // int32 arithmetic/logical
+        if (
             op is &ADD_I32 ||
             op is &SUB_I32 ||
             op is &MUL_I32 ||
@@ -170,8 +178,8 @@ TypeMap typeProp(IRFunction fun)
             return TypeVal(Type.INT32);
         }
 
-        // F64 arithmetic
-        else if (
+        // float64 arithmetic
+        if (
             op is &ADD_F64 ||
             op is &SUB_F64 ||
             op is &MUL_F64 ||
@@ -181,7 +189,7 @@ TypeMap typeProp(IRFunction fun)
         }
 
         // Load integer
-        else if (
+        if (
             op is &LOAD_U8 ||
             op is &LOAD_U16 ||
             op is &LOAD_U32)
@@ -190,32 +198,25 @@ TypeMap typeProp(IRFunction fun)
         }
 
         // Load f64
-        else if (op is &LOAD_F64)
+        if (op is &LOAD_F64)
         {
             return TypeVal(Type.FLOAT64);
         }
 
         // Load refptr
-        else if (op is &LOAD_REFPTR)
+        if (op is &LOAD_REFPTR)
         {
             return TypeVal(Type.REFPTR);
         }
 
         // Load rawptr
-        else if (op is &LOAD_RAWPTR)
+        if (op is &LOAD_RAWPTR)
         {
             return TypeVal(Type.RAWPTR);
         }
 
-        // Direct branch
-        else if (op is &JUMP)
-        {
-            // Queue the jump branch edge
-            cfgWorkList ~= instr.getTarget(0);
-        }
-
         // Comparison operations
-        else if (
+        if (
             op is &LT_I32 ||
             op is &LE_I32 ||
             op is &GT_I32 ||
@@ -237,30 +238,107 @@ TypeMap typeProp(IRFunction fun)
             return TypeVal(Type.CONST);
         }
 
-        // TODO: type comparisons
+        // Read global variable
+        if (op is &GET_GLOBAL)
+        {
+            // Unknown type
+            return BOT;
+        }
 
+        // is_i32
+        if (op is &IS_I32)
+        {
+            if (arg0Type == TOP || arg0Type == BOT)
+                return arg0Type;
+            return TypeVal(arg0Type.type == Type.INT32);
+        }
 
+        // is_f64
+        if (op is &IS_F64)
+        {
+            if (arg0Type == TOP || arg0Type == BOT)
+                return arg0Type;
+            return TypeVal(arg0Type.type == Type.FLOAT64);
+        }
 
+        // is_const
+        if (op is &IS_CONST)
+        {
+            if (arg0Type == TOP || arg0Type == BOT)
+                return arg0Type;
+            return TypeVal(arg0Type.type == Type.CONST);
+        }
 
+        // is_refptr
+        if (op is &IS_REFPTR)
+        {
+            if (arg0Type == TOP || arg0Type == BOT)
+                return arg0Type;
+            return TypeVal(arg0Type.type == Type.REFPTR);
+        }
 
+        // is_rawptr
+        if (op is &IS_RAWPTR)
+        {
+            if (arg0Type == TOP || arg0Type == BOT)
+                return arg0Type;
+            return TypeVal(arg0Type.type == Type.RAWPTR);
+        }
 
-        // TODO: if_true
+        // Conditional branch
+        if (op is &IF_TRUE)
+        {
+            // If the argument is unknown, do nothing
+            if (arg0Type is TOP)
+                return TOP;
 
+            // If known true or unknown boolean or unknown type
+            if ((arg0Type.state == TypeVal.KNOWN_BOOL && arg0Type.val == true) ||
+                (arg0Type.state == TypeVal.KNOWN_TYPE) || 
+                (arg0Type == BOT))
+                cfgWorkList ~= instr.getTarget(0);
 
+            // If known false or unknown boolean or unknown type
+            if ((arg0Type.state == TypeVal.KNOWN_BOOL && arg0Type.val == false) ||
+                (arg0Type.state == TypeVal.KNOWN_TYPE) || 
+                (arg0Type == BOT))
+                cfgWorkList ~= instr.getTarget(1);
 
+            return BOT;
+        }
 
+        // Call instructions
+        if (op.isCall)
+        {
+            // Queue branch edges
+            if (instr.getTarget(0))
+                cfgWorkList ~= instr.getTarget(0);
+            if (instr.getTarget(1))
+                cfgWorkList ~= instr.getTarget(1);
 
+            // Unknown type
+            return BOT;
+        }
 
+        // Direct branch
+        if (op is &JUMP)
+        {
+            // Queue the jump branch edge
+            cfgWorkList ~= instr.getTarget(0);
+            return BOT;
+        }
 
+        // Operations producing no output
+        if (op.output is false)
+        {
+            return BOT;
+        }
 
         // Unsupported operation
-        else
-        {
-            assert (
-                op !in codeGenFns,
-                "Missing support for op: " ~ op.mnem
-            );
-        }
+        assert (
+            op !in codeGenFns,
+            "Missing support for op: " ~ op.mnem
+        );
 
         // Return the unknown type
         return BOT;
