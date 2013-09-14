@@ -102,7 +102,10 @@ TypeMap typeProp(IRFunction fun)
         if (auto dstVal = cast(IRDstValue)val)
             return typeMap.get(dstVal, TOP);
 
-        if (cast(IRString)val)
+        if (cast(IRString)val ||
+            cast(IRFunPtr)val ||
+            cast(IRLinkIdx)val ||
+            cast(IRCachedIdx)val)
             return BOT;
 
         // Get the constant value pair for this IR value
@@ -166,6 +169,12 @@ TypeMap typeProp(IRFunction fun)
             return TypeVal(Type.INT64);
         }
 
+        // Make value
+        if (op is &MAKE_VALUE)
+        {
+            return BOT;
+        }
+
         // Set string
         if (op is &SET_STR)
         {
@@ -178,8 +187,23 @@ TypeMap typeProp(IRFunction fun)
             return TypeVal(Type.REFPTR);
         }
 
-        // Get global object
-        if (op is &GET_GLOBAL_OBJ)
+        // Make link
+        if (op is &MAKE_LINK)
+        {
+            return TypeVal(Type.INT32);
+        }
+
+        // Get link
+        if (op is &GET_LINK)
+        {
+            return BOT;
+        }
+
+        // Get interpreter objects
+        if (op is &GET_GLOBAL_OBJ ||
+            op is &GET_OBJ_PROTO ||
+            op is &GET_ARR_PROTO ||
+            op is &GET_FUN_PROTO)
         {
             return TypeVal(Type.REFPTR);
         }
@@ -265,6 +289,7 @@ TypeMap typeProp(IRFunction fun)
 
         // Comparison operations
         if (
+            op is &EQ_I8 ||
             op is &LT_I32 ||
             op is &LE_I32 ||
             op is &GT_I32 ||
@@ -392,6 +417,10 @@ TypeMap typeProp(IRFunction fun)
         return BOT;
     }
 
+
+    writeln("starting typeProp");
+
+
     // Until a fixed point is reached
     while (cfgWorkList.length > 0 || ssaWorkList.length > 0)
     {
@@ -482,6 +511,12 @@ TypeMap typeProp(IRFunction fun)
             }
         }
     }
+
+
+
+    writeln("done typeProp");
+
+
 
     // Return the type values inferred
     return typeMap;
