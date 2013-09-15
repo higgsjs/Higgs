@@ -60,15 +60,16 @@ TODO: write abtract
 
 Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
 
-TODO: use typeMap in IsTypeOp
+TODO: typeProp improves upon versioning results on 3d-cube, why?
+
+TODO: test --jit_typeprop with ./benchmark.py
 
 
 
 
 
 
-
-
+[DONE] TODO: use typeMap in IsTypeOp
 
 [PASS] FIXME: programs/sunspider/crypto-aes
 - Nondeterministic behavior, decryptedText.length varies between runs

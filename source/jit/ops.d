@@ -892,18 +892,19 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
-    /*
-    // TODO
-    auto dstArg = cast(IRDstValue)argVal;
-    if (dstArg in ctx.typeMap)
+    // If type propagation determined a known type
+    import ir.typeprop;
+    auto argType = ctx.typeMap.get(cast(IRDstValue)argVal, BOT);
+    if (argType.state is TypeVal.KNOWN_TYPE)
     {
-        //writeln("arg in type map: ", dstArg, " => ", ctx.typeMap[dstArg]);
+        writeln("known type: ", argVal, " => ", argType);
 
+        // Mark the value as a known constant
+        // This will defer writing the value
+        st.setOutBool(instr, type is argType.type);
+
+        return;
     }
-    */
-
-
-
 
     //ctx.as.printStr(instr.opcode.mnem ~ " (" ~ instr.block.fun.getName ~ ")");
 
