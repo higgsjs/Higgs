@@ -31,8 +31,12 @@ TODO: --jit_trace
 TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 
+TODO: simple wav PCM output support, lib/pcm.js?
+
 TODO: IR, attach branch descs to branch instructions instead of pred blocks?
 - examine use cases
+
+FIXME: shootout/hash2, class capacity exceeded
 
 Note: most JIT improvements are moot if we rewrite the JIT!
 
@@ -44,9 +48,9 @@ Oct 11th: CC Paper Submission Deadline
 Final paper corrections
 - Can you submit early, re-submit updates/fixes?
 
-Oct 4th: CC Abstract Submission Deadline ***
+Oct 4th: CC Abstract Submission Deadline
 
-Sept 31st goal: have paper written & edited
+Sept 31st goal: have paper mostly written & edited
 
 TODO: submit abstract on EasyChair
 
@@ -56,9 +60,7 @@ TODO: write abtract
 
 Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
 
-TODO: store typeMap on CodeGenCtx, use for IsTypeOp
-
-TODO: examine typeProp code, do transfer functions all make sense?
+TODO: use typeMap in IsTypeOp
 
 
 
@@ -68,6 +70,23 @@ TODO: examine typeProp code, do transfer functions all make sense?
 
 
 
+[PASS] FIXME: programs/sunspider/crypto-aes
+- Nondeterministic behavior, decryptedText.length varies between runs
+- Does it work with --jit_disable? Same number of interp cycles, same string length?
+- Nope!
+- Problem with interpreter u16 load/store semantics?
+  - Not load, check if store changes value
+  - Store: value properly truncated, but u32 always different
+- Why are the int32 values not always the same...
+- Nondeterminism comes from usage of date, but length should be the same as V8...
+- Faulty regexp implementation may be at fault, skip for now
+
+[DONE] TODO: test typeProp with ./benchmark.py
+
+[DONE] TODO: store typeMap on CodeGenCtx
+
+[DONE] TODO: examine typeProp code, do transfer functions all make sense?
+- Found one bug
 
 [DONE] TODO: email Marc, notes:
 - Added type test breakout by type

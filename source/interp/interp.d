@@ -130,9 +130,11 @@ union Word
     static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
 
     int8    int8Val;
+    int16   int16Val;
     int32   int32Val;
     int64   int64Val;
     uint8   uint8Val;
+    uint16  uint16Val;
     uint32  uint32Val;
     uint64  uint64Val;
     float64 floatVal;
@@ -958,6 +960,7 @@ class Interp
                 IRInstr instr = ip;
 
                 //writefln("op: %s", instr.opcode.mnem);
+                //writefln("instr: %s", instr);
      
                 // Get the opcode's implementation function
                 auto opFn = instr.opcode.opFn;
