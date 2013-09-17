@@ -99,6 +99,7 @@ Bindings for common c I/O functions
     */
     function File(file, mode)
     {
+
         // The file to open
         this.file = file;
         // A name for the object, usually same as file
@@ -117,14 +118,26 @@ Bindings for common c I/O functions
         // Open
         var cfile = ffi.cstr(file);
         var cmode = ffi.cstr(mode);
-        var f = c.fopen(cfile, cmode);
+        var fh = c.fopen(cfile, cmode);
         c.free(cfile);
         c.free(cmode);
 
-        if (ffi.isNull(f))
+        if (ffi.isNull(fh))
             throw "Unable to open file. Mode: '" + mode + "' File: '" + file + "'";
 
-        this.handle = f;
+        this.handle = fh;
+    }
+
+    /**
+    Wrap a file-like stream
+    */
+    function stream(handle, name)
+    {
+        var s = new File(null);
+        s.stream = true;
+        s.name = name || "stream";
+        s.handle = handle;
+        return s;
     }
 
     /**
@@ -356,6 +369,17 @@ Bindings for common c I/O functions
     };
 
     /**
+    Write a int8
+    */
+    File.prototype.writeInt8 = function(data)
+    {
+        var size = 1;
+        $ir_store_i8(this.buffer, 0, data);
+        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        return r === size;
+    };
+
+    /**
     Write a uint16
     */
     File.prototype.writeUint16 = function(data)
@@ -363,7 +387,18 @@ Bindings for common c I/O functions
         var size = 2;
         $ir_store_u16(this.buffer, 0, data);
         var r = c.fwrite(this.buffer, size, 1, this.handle);
-        return r === 1;
+        return r === size;
+    };
+
+    /**
+    Write a int16
+    */
+    File.prototype.writeInt16 = function(data)
+    {
+        var size = 2;
+        $ir_store_i16(this.buffer, 0, data);
+        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        return r === size;
     };
 
     /**
@@ -374,7 +409,7 @@ Bindings for common c I/O functions
         var size = 4;
         $ir_store_u32(this.buffer, 0, data);
         var r = c.fwrite(this.buffer, size, 1, this.handle);
-        return r === 1;
+        return r === size;
     };
 
     /**
@@ -405,21 +440,16 @@ Bindings for common c I/O functions
     /**
     WRAPPERS/EXPORT
     **/
+    io.stream = stream;
 
     // File object for stdout
-    io.stdout = new File(null);
-    io.stdout.handle = c.stdout();
-    io.stdout.name = "STDOUT";
+    io.stdout = stream(c.stdout(), "STDOUT");
 
     // File object for stderr
-    io.stderr = new File(null);
-    io.stderr.handle = c.stderr();
-    io.stdout.name = "STDERR";
+    io.stderr = stream(c.stderr(), "STDERR");
 
     // File object for stdin
-    io.stdin = new File(null);
-    io.stdin.handle = c.stdin();
-    io.stdout.name = "STDIN";
+    io.stdin = stream(c.stdin(), "STDIN");
 
     /**
     Open a file
@@ -472,7 +502,7 @@ Bindings for common c I/O functions
     };
 
     /**
-    Get a tmpnam
+    Get a tmpname
     */
     io.tmpname = function()
     {

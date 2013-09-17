@@ -88,7 +88,42 @@ console.log({ foo: "bar"});
 // If you pass multiple arguments, they will be printed on the same line separated by tabs
 console.log(1, 2, 3);
 ```
+**stdlib:**
 
+The stdlib library provides wrappers for common functions in the C stdlib.
+
+*Importing:*
+
+```JS
+// First import the stdlib module:
+var stdlib = require('lib/stdlib');
+```
+
+The following functions are provided:
+
+```JS
+// Allocate memory with malloc
+var mem = stdlib.malloc(32);
+
+// Resize/reallocate memory
+mem = stdlib.realloc(64);
+
+// Free memory
+c.free(mem);
+
+// Get an environmental variable
+var name = stdlib.getenv("LOGNAME");
+
+// Execute a command
+stdlib.system("ls -a");
+
+// There is also popen, which will return a file-like object
+var output = stdlib.popen("ls -a", "r");
+print(output.read());
+
+// Exit with return code
+stdlib.exit(0);
+```
 
 **csv:**
 
@@ -198,7 +233,9 @@ var test = myfile.read();
 
 // There are functions for reading binary data:
 var answer = file.readUint8();
+var steps = file.readInt8();
 var spartans = file.readUint16();
+var years = file.readInt16();
 var jnumber = file.readUint32();
 var population = file.readFloat64();
 
@@ -210,7 +247,9 @@ myfile.write("Hello World.");
 
 // There are functions for writing binary data:
 file.writeUint8(42);
+file.writeInt8(8);
 file.writeUint16(300);
+file.writeInt16(100);
 file.writeUint32(8675309);
 file.writeFloat64(1.536);
 
