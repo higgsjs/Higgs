@@ -130,6 +130,10 @@ C stdlib functions
         var streamh = c.popen(c_cmd, c_mode);
         c.free(c_cmd);
         c.free(c_mode);
+
+        if (ffi.isNull(streamh))
+            throw "Error calling popen with:" + command;
+
         return io.stream(streamh, "popen_sh");
     }
 
