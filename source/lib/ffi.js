@@ -55,14 +55,14 @@ The Higgs FFI api
     function getArgString(len)
     {
         if (arg_strings[len] !== undefined)
-            return arg_strings[len]
+            return arg_strings[len];
 
         var arg_string = "a";
         for (var i = 1; i < len; i++)
             arg_string += ", " + arg_names[i];
         arg_string += " ";
         arg_strings[len] = arg_string;
-        return arg_string
+        return arg_string;
     }
 
 
@@ -96,7 +96,7 @@ The Higgs FFI api
         var sym = eval(fun)(this.handle);
         this.symbols[name] = sym;
         return sym;
-    }
+    };
 
     /**
     Generate a wrapper function to call a function in the lib.
@@ -116,7 +116,7 @@ The Higgs FFI api
                   ].join(" ");
         this.getSym(fname);
         this[fname] = eval(fun);
-    }
+    };
 
     /**
     Generate a wrapper function to lookup a value in the lib.
@@ -135,7 +135,7 @@ The Higgs FFI api
                   ].join(" ");
         this.getSym(symname);
         this[symname] = eval(fun);
-    }
+    };
 
     /**
     Take a list of C style declarations and automatically create bindings for them.
@@ -148,7 +148,7 @@ The Higgs FFI api
     FFILibrary.prototype.close = function()
     {
         $ir_close_lib(this.handle);
-    }
+    };
 
     /**
     STDLIB
@@ -307,7 +307,7 @@ The Higgs FFI api
         "short" : "short",
         // double
         "double" : "double"
-    }
+    };
 
     // Mapping of C types to the low-level FFI type markers.
     var type_map = {
@@ -322,13 +322,13 @@ The Higgs FFI api
         "long" : "i64",
         // double
         "double" : "f64"
-    }
+    };
 
     // Mapping of type to size
     var size_map = {
         // all pointers
         "*" : 8
-    }
+    };
 
 
     /**
@@ -453,6 +453,8 @@ The Higgs FFI api
         {
             return getTypeMarker(type.type);
         }
+
+        return null;
     }
 
 
@@ -677,7 +679,7 @@ The Higgs FFI api
         if (peek === "int")
             return advance("short");
         else
-            return tok
+            return tok;
     }
 
     /**
@@ -691,7 +693,7 @@ The Higgs FFI api
             return advance("long");
         else if (peek === "long")
             return parseLongType(advance());
-        
+
         if (peek === "unsigned")
         {
             parseUnsignedType(advance());
@@ -702,7 +704,7 @@ The Higgs FFI api
             parseSignedType(advance());
             return advance("long");
         }
-        
+
         return tok;
     }
 
@@ -906,6 +908,8 @@ The Higgs FFI api
             else
                 ParseError("Expected )");
         }
+
+        return null;
     }
 
     /**
@@ -952,7 +956,7 @@ The Higgs FFI api
             dec.name = tok;
             advance();
         }
-        
+
         if (tok === OPEN_CURLY)
         {
             advance();
@@ -989,7 +993,9 @@ The Higgs FFI api
         {
             ParseError("Expected { or identifier");
         }
-    }
+
+        return null;
+    };
 
 
     /**
@@ -1004,8 +1010,8 @@ The Higgs FFI api
         isNull : isNull,
         NullPtr : NullPtr,
         c : c,
-        load : function(name) { return new FFILibrary(name) }
-    }
+        load : function(name) { return new FFILibrary(name); }
+    };
 
 })();
 
