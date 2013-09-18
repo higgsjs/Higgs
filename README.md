@@ -88,42 +88,6 @@ console.log({ foo: "bar"});
 // If you pass multiple arguments, they will be printed on the same line separated by tabs
 console.log(1, 2, 3);
 ```
-**stdlib:**
-
-The stdlib library provides wrappers for common functions in the C stdlib.
-
-*Importing:*
-
-```JS
-// First import the stdlib module:
-var stdlib = require('lib/stdlib');
-```
-
-The following functions are provided:
-
-```JS
-// Allocate memory with malloc
-var mem = stdlib.malloc(32);
-
-// Resize/reallocate memory
-mem = stdlib.realloc(64);
-
-// Free memory
-c.free(mem);
-
-// Get an environmental variable
-var name = stdlib.getenv("LOGNAME");
-
-// Execute a command
-stdlib.system("ls -a");
-
-// There is also popen, which will return a file-like object
-var output = stdlib.popen("ls -a", "r");
-print(output.read());
-
-// Exit with return code
-stdlib.exit(0);
-```
 
 **csv:**
 
@@ -173,7 +137,6 @@ print(sheet.getNumRows());
 // Prints 'John'
 print(sheet.getCell(3, 0));
 ```
-
 
 **stdio:**
 
@@ -288,9 +251,44 @@ io.stdout.write("Hello!");
 io.stderr.write("Hello!");
 ```
 
+**stdlib:**
+
+The stdlib library provides wrappers for common functions in the C stdlib.
+
+*Importing:*
+
+```JS
+// First import the stdlib module:
+var stdlib = require('lib/stdlib');
+```
+
+The following functions are provided:
+
+```JS
+// Allocate memory with malloc
+var mem = stdlib.malloc(32);
+
+// Resize/reallocate memory
+mem = stdlib.realloc(64);
+
+// Free memory
+stdlib.free(mem);
+
+// Get the value of an environmental variable
+var name = stdlib.getenv("LOGNAME");
+
+// Execute a command
+stdlib.system("ls -a");
+
+// There is also popen, which will return a file-like object
+var output = stdlib.popen("ls -a", "r");
+print(output.read());
+
+// Exit with return code
+stdlib.exit(0);
+```
 
 **Notes:**
  - There is currently no support in stdio for wchar functions.
  - Functions in the stdio library must be called in the context of the stdio module.
 `var fopen = io.fopen` will not work.
-
