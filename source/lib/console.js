@@ -54,7 +54,7 @@ Console functions
     stringers.string = function(str)
     {
         return "'" + str + "'";
-    }
+    };
 
     /**
     Stringify an object
@@ -90,7 +90,7 @@ Console functions
 
         str += " }"
         return str;
-    }
+    };
 
     /**
     Stringify an array
@@ -112,7 +112,7 @@ Console functions
 
         str += " ]";
         return str;
-    }
+    };
 
     /**
     Convert argument to string.
@@ -174,7 +174,7 @@ Console functions
 
     exports = {
         log : log
-    }
+    };
 
 })();
 
