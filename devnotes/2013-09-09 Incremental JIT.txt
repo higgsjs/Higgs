@@ -8,8 +8,27 @@ Good ideas so far:
 - Local inlining
 - Local profiling of branches, calls
 - Propagating constants
-- Occasional forward tracing of information
+- Occasional forward tracing of information?
 - Requests for information based on frequency of usage
+
+------------------------------------------------------------------------------
+
+Tracing
+
+Backwards tracing might work better than forward. Locate the hot type tests and
+trace until they are hit again (full circle), then either remove the test or
+hoist it, if it makes sense. There are going to be fewer hot tests than facts
+we might want to propagate.
+
+The problem with tracing, however, is that if the information is used a long
+time in the future, or comes from a long time ago (e.g.: we are in the middle
+of a loop), there might not be too much we can do. With loops, we want to
+try and establish invariants before entering.
+
+Still, if we're in a loop, and we require some fact to be propagated, can
+compile new code, info will be propagated forward after first iteration, or
+before the loop. Ideally though, we want type tests to be placed intelligently,
+some basic IR analysis might be required.
 
 ------------------------------------------------------------------------------
 

@@ -31,6 +31,9 @@ TODO: --jit_trace
 TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 
+TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
+- Replace IRFunPtr also?
+
 TODO: IR, attach branch descs to branch instructions instead of pred blocks?
 - examine use cases
 
