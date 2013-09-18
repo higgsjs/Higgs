@@ -102,7 +102,6 @@ void compFun(Interp interp, IRFunction fun)
     TypeMap typeMap;
     if (opts.jit_typeprop)
     {
-        // TODO: store on ctx
         typeMap = typeProp(fun);
     }
 
@@ -514,6 +513,7 @@ void compFun(Interp interp, IRFunction fun)
         ol, 
         bailLabel,
         liveInfo,
+        typeMap,
         regMapping,
         genBranchEdge,
         genCallCont
@@ -1598,6 +1598,9 @@ class CodeGenCtx
     /// Liveness information for the function
     LiveInfo liveInfo;
 
+    /// Type analysis results for the function
+    TypeMap typeMap;
+
     /// Register mapping (slots->regs)
     RegMapping regMapping;
 
@@ -1616,6 +1619,7 @@ class CodeGenCtx
         Assembler ol,
         Label bailLabel,
         LiveInfo liveInfo,
+        TypeMap typeMap,
         RegMapping regMapping,
         BranchEdgeFn genBranchEdge,
         CallContFn genCallCont,
@@ -1627,6 +1631,7 @@ class CodeGenCtx
         this.ol = ol;
         this.bailLabel = bailLabel;
         this.liveInfo = liveInfo;
+        this.typeMap = typeMap;
         this.regMapping = regMapping;
         this.genBranchEdge = genBranchEdge;
         this.genCallCont = genCallCont;

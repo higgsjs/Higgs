@@ -892,6 +892,20 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
+    // If type propagation determined a known type
+    import ir.typeprop;
+    auto argType = ctx.typeMap.get(cast(IRDstValue)argVal, BOT);
+    if (argType.state is TypeVal.KNOWN_TYPE)
+    {
+        writeln("known type: ", argVal, " => ", argType);
+
+        // Mark the value as a known constant
+        // This will defer writing the value
+        st.setOutBool(instr, type is argType.type);
+
+        return;
+    }
+
     //ctx.as.printStr(instr.opcode.mnem ~ " (" ~ instr.block.fun.getName ~ ")");
 
     // Increment the stat counter for this specific kind of type test

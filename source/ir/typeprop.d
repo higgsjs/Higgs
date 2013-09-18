@@ -41,6 +41,7 @@ import std.stdio;
 import std.array;
 import std.string;
 import std.stdint;
+import std.conv;
 import ir.ir;
 import ir.ops;
 import interp.interp;
@@ -64,6 +65,27 @@ struct TypeVal
     this(uint s) { state = s; }
     this(Type t) { state = KNOWN_TYPE; type = t; }
     this(bool v) { state = KNOWN_BOOL; type = Type.CONST; val = v; }
+
+    string toString()
+    {
+        switch (state)
+        {
+            case BOT:
+            return "bot/unknown";
+            
+            case TOP:
+            return "top/uninf";
+
+            case KNOWN_TYPE:
+            return to!string(type);
+
+            case KNOWN_BOOL:
+            return to!string(val);
+
+            default:
+            assert (false);
+        }
+    }
 }
 
 const BOT = TypeVal(TypeVal.BOT);
@@ -122,6 +144,10 @@ TypeMap typeProp(IRFunction fun)
     // Separate function to evaluate phis
     auto evalPhi(PhiNode phi)
     {
+        // If this is a function parameter, unknown type
+        if (cast(FunParam)phi)
+            return BOT;
+
         TypeVal curType = TOP;
 
         // For each incoming branch
@@ -135,7 +161,7 @@ TypeMap typeProp(IRFunction fun)
             if (branch !in edgeVisited)
                 continue;
 
-            // If any arg is still top, the current value is unknown
+            // If any arg is still unevaluated, the current value is unevaluated
             if (argType == TOP)
                 return TOP;
 
@@ -172,6 +198,14 @@ TypeMap typeProp(IRFunction fun)
         // Make value
         if (op is &MAKE_VALUE)
         {
+            // Unknown type, non-constant
+            return BOT;
+        }
+
+        // Get argume nt (var arg)
+        if (op is &GET_ARG)
+        {
+            // Unknown type, non-constant
             return BOT;
         }
 
@@ -196,6 +230,7 @@ TypeMap typeProp(IRFunction fun)
         // Get link
         if (op is &GET_LINK)
         {
+            // Unknown type, non-constant
             return BOT;
         }
 
@@ -217,6 +252,7 @@ TypeMap typeProp(IRFunction fun)
             op is &MOD_I32 ||
             op is &AND_I32 ||
             op is &OR_I32 ||
+            op is &XOR_I32 ||
             op is &NOT_I32 ||
             op is &LSFT_I32 ||
             op is &RSFT_I32 ||
@@ -231,7 +267,7 @@ TypeMap typeProp(IRFunction fun)
             op is &SUB_I32_OVF ||
             op is &MUL_I32_OVF)
         {
-            // Queue both targets
+            // Queue both branch targets
             cfgWorkList ~= instr.getTarget(0);
             cfgWorkList ~= instr.getTarget(1);
 
@@ -245,13 +281,19 @@ TypeMap typeProp(IRFunction fun)
             op is &MUL_F64 ||
             op is &DIV_F64)
         {
-            return TypeVal(Type.INT32);
+            return TypeVal(Type.FLOAT64);
         }
 
         // int to float
         if (op is &I32_TO_F64)
         {
             return TypeVal(Type.FLOAT64);
+        }
+
+        // float to int
+        if (op is &F64_TO_I32)
+        {
+            return TypeVal(Type.INT32);
         }
 
         // Load integer
@@ -308,60 +350,71 @@ TypeMap typeProp(IRFunction fun)
             op is &NE_REFPTR
         )
         {
+            // Constant, boolean type
             return TypeVal(Type.CONST);
         }
 
         // Read global variable
         if (op is &GET_GLOBAL)
         {
-            // Unknown type
+            // Unknown type, non-constant
             return BOT;
         }
 
         // is_i32
         if (op is &IS_I32)
         {
-            if (arg0Type == TOP || arg0Type == BOT)
-                return arg0Type;
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
             return TypeVal(arg0Type.type == Type.INT32);
         }
 
         // is_f64
         if (op is &IS_F64)
         {
-            if (arg0Type == TOP || arg0Type == BOT)
-                return arg0Type;
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
             return TypeVal(arg0Type.type == Type.FLOAT64);
         }
 
         // is_const
         if (op is &IS_CONST)
         {
-            if (arg0Type == TOP || arg0Type == BOT)
-                return arg0Type;
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
             return TypeVal(arg0Type.type == Type.CONST);
         }
 
         // is_refptr
         if (op is &IS_REFPTR)
         {
-            if (arg0Type == TOP || arg0Type == BOT)
-                return arg0Type;
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
             return TypeVal(arg0Type.type == Type.REFPTR);
         }
 
         // is_rawptr
         if (op is &IS_RAWPTR)
         {
-            if (arg0Type == TOP || arg0Type == BOT)
-                return arg0Type;
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
             return TypeVal(arg0Type.type == Type.RAWPTR);
         }
 
         // Conditional branch
         if (op is &IF_TRUE)
         {
-            // If the argument is unknown, do nothing
+            // If the argument is unevaluated, do nothing
             if (arg0Type is TOP)
                 return TOP;
 
@@ -389,7 +442,7 @@ TypeMap typeProp(IRFunction fun)
             if (instr.getTarget(1))
                 cfgWorkList ~= instr.getTarget(1);
 
-            // Unknown type
+            // Unknown, non-constant type
             return BOT;
         }
 
@@ -416,10 +469,6 @@ TypeMap typeProp(IRFunction fun)
         // Return the unknown type
         return BOT;
     }
-
-
-    writeln("starting typeProp");
-
 
     // Until a fixed point is reached
     while (cfgWorkList.length > 0 || ssaWorkList.length > 0)
@@ -511,12 +560,6 @@ TypeMap typeProp(IRFunction fun)
             }
         }
     }
-
-
-
-    writeln("done typeProp");
-
-
 
     // Return the type values inferred
     return typeMap;

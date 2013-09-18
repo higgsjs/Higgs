@@ -1603,6 +1603,10 @@ unittest
     interp.assertInt("ack(3,2);", 29);
     interp.assertInt("tak(9,5,3);", 4);
 
+    // FIXME: bug in regexp lib?
+    //run("crypto-aes");
+    //interp.assertInt("decryptedText.length;", 1311);
+
     run("crypto-md5");
     run("crypto-sha1");
 
