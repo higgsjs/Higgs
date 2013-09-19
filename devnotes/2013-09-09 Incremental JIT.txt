@@ -1,3 +1,25 @@
+Features we want for the 3rd gen Higgs JIT:
+- On-the-fly register allocation
+- Incremental compilation, incremental inlining
+- Local profiling during compilation
+- Property access optimizations
+- Some kind of type propagation
+- Better deferring of type tag and constant writing
+
+------------------------------------------------------------------------------
+
+Loop opts
+
+For loops, if we could know how many times some type test is run inside the
+loop, could hoist tests before the loop, propagate info.
+
+For objects, arrays, can see how many times we test and match on their types,
+request that info be propagated.
+
+
+
+------------------------------------------------------------------------------
+
 Lazy JIT, what are the fundamental goals?
 - Less code compiled
 - More incremental compilatiion

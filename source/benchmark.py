@@ -95,11 +95,15 @@ for benchmark in BENCHMARKS:
             match = valPattern.match(line)
 
             # If the line doesn't match, continue
-            if match == None or len(line) > 50:
+            if match == None:
                 continue
 
-            key = match.group(1)
-            val = float(match.group(2))
+            # Try extracting a key and value
+            try:
+                key = match.group(1)
+                val = float(match.group(2))
+            except:
+                continue
 
             # Add the value to the list for this key
             if not (key in valLists):

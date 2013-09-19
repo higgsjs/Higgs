@@ -59,18 +59,29 @@ TODO: submit abstract on EasyChair
 
 TODO: write abtract
 
-------------------------------------------------------------------------------
 
-Sept 11th goal: have gathered some perf data, demonstrate gains from versioning
+
+TODO: try no integers, floating-point only?
 
 TODO: typeProp improves upon versioning results on 3d-cube, why?
-
-TODO: test --jit_typeprop with ./benchmark.py
-
+- Identify smaller benchmark where typeProp catches cases
 
 
 
 
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+[DONE] TODO: test --jit_typeprop with ./benchmark.py
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
+- Works, successfully reduces type tests
 
 [DONE] TODO: use typeMap in IsTypeOp
 
