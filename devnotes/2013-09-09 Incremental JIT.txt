@@ -16,8 +16,6 @@ loop, could hoist tests before the loop, propagate info.
 For objects, arrays, can see how many times we test and match on their types,
 request that info be propagated.
 
-
-
 ------------------------------------------------------------------------------
 
 Lazy JIT, what are the fundamental goals?

@@ -75,8 +75,6 @@
             a = 255;
         }
 
-        
-
 	    // Copy the pixel color information
 	    this.data[4 * (y * this.width + x) + 0] = r;
 	    this.data[4 * (y * this.width + x) + 1] = g;
@@ -114,6 +112,7 @@
             'no image data'
         );
 
+        // Open the file for writing
         var file = io.fopen(fileName, "w")
 
 	    // Write the appropriate values in the header
@@ -139,7 +138,7 @@
             file.writeUint8(this.data[4 * i + 0]);
 	    }
 
-	    // Close the image file
+	    // Close the file
         file.close();
     };
 

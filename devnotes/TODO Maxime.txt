@@ -10,38 +10,44 @@ Conference deadlines:
 
 Misc improvements
 
-FIXME: bug in JIT heap_alloc op
-
-TODO: return support for new? 
-- may speed up 3d-cube, 3d-raytrace, earley-boyer significantly
-- can have out of line case, need to compare ret val, get this val
-- should ideally get word and type opnds before testing opcode
-  - need more tmp regs, alloc for specific purposes
-
-TODO: reg alloc... Can we make simple improvements?
-- Alloc regs to phi nodes first, then map their args to the same regs
-- Get stats for benchmarks before implementing this
-
-TODO: asm peephole, move exported labels if a direct jump follows?
-- Move exported label after jump if there are no refs to it
-
-TODO: --jit_trace
-- trace entry and bailout in/out of specific functions
-
 TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
+- ideally requires test harness
+
+TODO: add --jit_trace command-line option
+- trace entry and bailout in/out of specific functions
+
+TODO: MAKE_CLASS, GET_PROP_IDX(class, propName) instrs
+- Make classes host/VM objects
+- Prop idx fully accessed through VM
+- Can implement inline caching, or use type inference info
+- How do we create an object? Need to cache the class ptr.
+  - CLASSPTR type tag?
+  - Also need GC support
+- Should we move whole getPropObj/setPropObj logic to VM?
+  - Less good for monitoring?
+
+TODO: make sure global obj ptr is updated when global obj is extended
+- SET_GLOBAL_OBJ?
+
+FIXME: shootout/hash2, class capacity exceeded
+- If getPropIdx moves to host VM, do we need JS implementation of class ext?
 
 TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
 - Replace IRFunPtr also?
-
-TODO: simple wav PCM output support, lib/pcm.js?
+- Look at use cases
+- Inlining?
+- Refs from compiled code?
 
 TODO: IR, attach branch descs to branch instructions instead of pred blocks?
 - examine use cases
 
-FIXME: shootout/hash2, class capacity exceeded
+TODO: add map.js, set.js to Higgs stdlib
+- Make more ES6 conformant
 
-Note: most JIT improvements are moot if we rewrite the JIT!
+TODO: complete WAV output support
+
+[DONE] TODO: add music.js to lib/
 
 ------------------------------------------------------------------------------
 
@@ -59,23 +65,27 @@ TODO: submit abstract on EasyChair
 
 TODO: write abtract
 
-
-
 TODO: try no integers, floating-point only?
 
-TODO: typeProp improves upon versioning results on 3d-cube, why?
+TODO: create cc2014 branch on github
+- put inlining limit very high, 50
+- reduce min call frac
+
+
+
+
+
+
+
+
+[DONE] TODO: typeProp improves upon versioning results on 3d-cube, why?
 - Identify smaller benchmark where typeProp catches cases
-
-
-
-
-
-
-
-
-
-
-
+./higgs --stats --jit_maxvers=50 --jit_typeprop
+- bitops-nsieve-bits also
+- beats us on phi nodes *** why???
+Flow into self might be tricky?
+- We can enter mid-loop... Have no type info
+- Very little difference when enabling type prop over versioning in practice
 
 ------------------------------------------------------------------------------
 

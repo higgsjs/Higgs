@@ -897,7 +897,7 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto argType = ctx.typeMap.get(cast(IRDstValue)argVal, BOT);
     if (argType.state is TypeVal.KNOWN_TYPE)
     {
-        writeln(argVal, " => ", argType);
+        writeln("type map: ", argVal, " => ", argType);
 
         // Mark the value as a known constant
         // This will defer writing the value
