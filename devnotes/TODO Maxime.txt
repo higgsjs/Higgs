@@ -67,6 +67,8 @@ TODO: write abtract
 
 TODO: write paper, work häärd!
 
+TODO: block replication ratio stat
+
 TODO: do we lose all types on function call returns???
 - Analysis doesn't have this horrible weakness
 - If necessary, hack some RAEntry struct, store on call instr
@@ -77,9 +79,6 @@ TODO: implement flag in analysis to ignore unexecuted blocks
 - Make interpreter invalidate code (visitStub) on first visit to blocks
   - Only if code exists for fn
 
-TODO: create cc2014 branch on github
-- put inlining limit very high, 50
-- reduce min call frac
 
 
 
@@ -87,6 +86,9 @@ TODO: create cc2014 branch on github
 
 
 
+[DONE] TODO: create cc2014 branch on github
+- put inlining limit very high, 50?
+- reduce min call frac, 10?
 
 [DONE] TODO: typeProp improves upon versioning results on 3d-cube, why?
 - Identify smaller benchmark where typeProp catches cases
