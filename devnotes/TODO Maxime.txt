@@ -61,11 +61,21 @@ Oct 4th: CC Abstract Submission Deadline
 
 Sept 31st goal: have paper mostly written & edited
 
-TODO: submit abstract on EasyChair
+TODO: submit abstract on EasyChair *before* Oct 4
 
 TODO: write abtract
 
-TODO: try no integers, floating-point only?
+TODO: write paper, work häärd!
+
+TODO: do we lose all types on function call returns???
+- Analysis doesn't have this horrible weakness
+- If necessary, hack some RAEntry struct, store on call instr
+  - put continuation blocks, JIT cont point
+
+TODO: implement flag in analysis to ignore unexecuted blocks
+- Treat them as unreachable
+- Make interpreter invalidate code (visitStub) on first visit to blocks
+  - Only if code exists for fn
 
 TODO: create cc2014 branch on github
 - put inlining limit very high, 50
