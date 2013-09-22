@@ -67,8 +67,10 @@ import util.bitset;
 /// Block execution count at which a function should be compiled
 const JIT_COMPILE_COUNT = 800;
 
+/*
 /// Number of times a stub should be visited before invalidating a function
 const STUB_INV_COUNT = 1;
+*/
 
 /**
 Compile a function to machine code
@@ -102,7 +104,7 @@ void compFun(Interp interp, IRFunction fun)
     TypeMap typeMap;
     if (opts.jit_typeprop)
     {
-        typeMap = typeProp(fun);
+        typeMap = typeProp(fun, true);
     }
 
     // Run a live variable analysis on the function
@@ -344,6 +346,11 @@ void compFun(Interp interp, IRFunction fun)
             // If the successor value is a phi node
             if (succPhi)
             {
+                /*
+                if (fun.getName == "anon(121E6)")
+                    as.printStr(succPhi.toString);
+                */
+
                 // If the phi is on the stack and the type is known,
                 // write the type to the stack to keep it in sync
                 if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
@@ -575,12 +582,14 @@ void compFun(Interp interp, IRFunction fun)
             ol.ptr(scrRegs64[0], block);
             ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
 
+            /*
             // Increment the stub visit counter
             // If the stub has not been visited enough
             // times, don't invalidate it yet
             ol.instr(INC, new X86IPRel(32, STUB_CTR));
             ol.instr(CMP, new X86IPRel(32, STUB_CTR), STUB_INV_COUNT);
             ol.instr(JB, bailLabel);
+            */
 
             // Invalidate the compiled code for this function
             ol.ptr(cargRegs[0], block);
@@ -590,9 +599,11 @@ void compFun(Interp interp, IRFunction fun)
             // Bailout to the interpreter
             ol.instr(JMP, bailLabel);
 
+            /*
             // Inline visit counter for this stub
             ol.addInstr(STUB_CTR);
             ol.addInstr(new IntData(0, 32));
+            */
 
             // Don't compile the block
             continue BLOCK_LOOP;
@@ -619,6 +630,14 @@ void compFun(Interp interp, IRFunction fun)
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
             auto opcode = instr.opcode;
+
+            /*
+            if (fun.getName == "anon(121E6)")
+            {
+                as.printStr(instr.toString());
+                as.printStr("    " ~ typeMap.get(instr, BOT).toString);
+            }
+            */
 
             as.comment(instr.toString());
 
@@ -746,14 +765,14 @@ void compFun(Interp interp, IRFunction fun)
 }
 
 /**
-Visit a stubbed (uncompiled) basic block
+Visit a stub (uncompiled) basic block
 */
 extern (C) void visitStub(IRBlock stubBlock)
 {
     auto fun = stubBlock.fun;
 
     if (opts.jit_dumpinfo)
-        writefln("invalidating %s", fun.getName());
+        writefln("invalidating stub in %s", fun.getName());
 
     // Remove entry points for this function
     for (auto block = fun.firstBlock; block !is null; block = block.next)

@@ -897,7 +897,13 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto argType = ctx.typeMap.get(cast(IRDstValue)argVal, BOT);
     if (argType.state is TypeVal.KNOWN_TYPE)
     {
-        writeln("type map: ", argVal, " => ", argType);
+        //writeln(instr);
+        //writeln("type map: ", argVal, " => ", argType);
+
+        /*
+        if (instr.block.fun.getName == "anon(121E6)")
+            ctx.as.printStr("type map: " ~ to!string(argType));
+        */
 
         // Mark the value as a known constant
         // This will defer writing the value

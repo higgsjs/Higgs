@@ -231,7 +231,7 @@ string valToString(ValuePair value)
             return "Infinity";
         if (w.floatVal == -1.0/0)
             return "-Infinity";
-        return to!string(w.floatVal);
+        return format("%.1f", w.floatVal);
 
         case Type.RAWPTR:
         return to!string(w.ptrVal);
@@ -932,6 +932,17 @@ class Interp
                 compFun(this, target.fun);
             }
 
+
+
+            // For typeProp, invalidate compiled code when first visiting blocks
+            if (target.execCount is 0 && target.fun.codeBlock !is null)
+            {
+                visitStub(target);
+            }
+
+
+
+
             // If this block has an associated entry point
             if (target.entryFn !is null)
             {
@@ -943,6 +954,10 @@ class Interp
                 //writefln("exited at fn: %s (%s)", target.fun.getName(), target.getName());
                 continue;
             }
+
+
+
+
 
             // Increment the execution count for the block
             target.execCount++;

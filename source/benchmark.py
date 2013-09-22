@@ -94,7 +94,7 @@ for benchmark in BENCHMARKS:
 
             # If this line contains the string "error" or "exception", abort
             if line.lower().find("error") != -1 or line.lower().find("exception") != -1:
-                raise Error(line)
+                raise Exception(line)
 
             match = valPattern.match(line)
 

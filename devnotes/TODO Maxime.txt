@@ -51,6 +51,8 @@ TODO: complete WAV output support
 
 ------------------------------------------------------------------------------
 
+TODO: cleanup debug comments in jit/ops code, etc.
+
 Oct 11th: CC Paper Submission Deadline
 - 20 page limit, LNCS format
 
@@ -67,24 +69,32 @@ TODO: write abtract
 
 TODO: write paper, work häärd!
 
-TODO: block replication ratio stat
-
 TODO: do we lose all types on function call returns???
 - Analysis doesn't have this horrible weakness
 - If necessary, hack some RAEntry struct, store on call instr
   - put continuation blocks, JIT cont point
 
-TODO: implement flag in analysis to ignore unexecuted blocks
+TODO: block replication ratio stat
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: get a float value passed to ge_i32...
+- Could IsTypeOp be wrong?
+- Bug in analysis wrt getType, ints 0 & 1 vs booleans
+
+[DONE] TODO: implement flag in analysis to ignore unexecuted blocks
 - Treat them as unreachable
 - Make interpreter invalidate code (visitStub) on first visit to blocks
   - Only if code exists for fn
-
-
-
-
-
-
-
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
 
 [DONE] TODO: create cc2014 branch on github
 - put inlining limit very high, 50?

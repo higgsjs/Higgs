@@ -551,7 +551,10 @@ extern (C) void CompareOp(DataType, Type typeTag, string op)(Interp interp, IRIn
 
     assert (
         vX.type == typeTag && vY.type == typeTag,
-        "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")"
+        "invalid operand types in op \"" ~ op ~ "\" (" ~ DataType.stringof ~ ")\n" ~
+        to!string(vX.type) ~ "\n" ~
+        to!string(vY.type) ~ "\n" ~
+        instr.toString()
     );
 
     // Boolean result

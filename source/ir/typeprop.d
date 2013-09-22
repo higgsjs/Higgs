@@ -98,7 +98,7 @@ alias TypeVal[IRDstValue] TypeMap;
 Perform type propagation on an intraprocedural CFG using
 the sparse conditional constant propagation technique
 */
-TypeMap typeProp(IRFunction fun)
+TypeMap typeProp(IRFunction fun, bool ignoreStubs = false)
 {
     // List of CFG edges to be processed
     BranchDesc[] cfgWorkList;
@@ -133,9 +133,9 @@ TypeMap typeProp(IRFunction fun)
         // Get the constant value pair for this IR value
         auto cstVal = val.cstValue();
 
-        if (cstVal.word == TRUE)
+        if (cstVal.type == Type.CONST && cstVal.word == TRUE)
             return TypeVal(true);
-        if (cstVal.word == FALSE)
+        if (cstVal.type == Type.CONST && cstVal.word == FALSE)
             return TypeVal(false);
 
         return TypeVal(cstVal.type);
@@ -156,6 +156,8 @@ TypeMap typeProp(IRFunction fun)
             auto branch = phi.block.getIncoming(i);
             auto argVal = branch.getPhiArg(phi);
             auto argType = getType(argVal);
+
+            //writeln(argVal, " reachable? ", branch in edgeVisited);
 
             // If the edge from the predecessor is not reachable, ignore its value
             if (branch !in edgeVisited)
@@ -179,6 +181,11 @@ TypeMap typeProp(IRFunction fun)
     // Evaluate an SSA instruction
     auto evalInstr(IRInstr instr)
     {
+        assert (
+            !(instr.block.execCount is 0 && ignoreStubs is true),
+            "evaluating stub instruction"
+        );
+
         auto op = instr.opcode;
 
         auto arg0Type = (instr.numArgs > 0)? getType(instr.getArg(0)):TOP;
@@ -368,6 +375,7 @@ TypeMap typeProp(IRFunction fun)
                 return TOP;
             if (arg0Type == BOT)
                 return TypeVal(Type.CONST);
+
             return TypeVal(arg0Type.type == Type.INT32);
         }
 
@@ -481,6 +489,10 @@ TypeMap typeProp(IRFunction fun)
             cfgWorkList.length--;
             auto pred = edge.pred;
             auto succ = edge.succ;
+
+            // If this block is unexecuted and should be ignore, skip it
+            if (succ.execCount is 0 && ignoreStubs is true)
+                continue;
 
             // If this is not the first visit of this edge, do nothing
             if (edge in edgeVisited)
