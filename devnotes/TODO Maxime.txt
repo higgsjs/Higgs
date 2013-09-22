@@ -51,6 +51,8 @@ TODO: complete WAV output support
 
 ------------------------------------------------------------------------------
 
+TODO: push benchmark.py, todo list to master branch
+
 TODO: cleanup debug comments in jit/ops code, etc.
 
 Oct 11th: CC Paper Submission Deadline
@@ -71,11 +73,9 @@ TODO: write paper, work häärd!
 
 TODO: do we lose all types on function call returns???
 - Analysis doesn't have this horrible weakness
-- If necessary, hack some RAEntry struct, store on call instr
+- Hack some RAEntry struct, store on call instr
   - put continuation blocks, JIT cont point
-
-TODO: block replication ratio stat
-
+- Generate call cont with type info but all on stack
 
 
 
@@ -85,6 +85,7 @@ TODO: block replication ratio stat
 
 
 
+[DONE] TODO: block replication ratio stat
 
 [DONE] FIXME: get a float value passed to ge_i32...
 - Could IsTypeOp be wrong?

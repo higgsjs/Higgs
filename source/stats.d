@@ -54,6 +54,12 @@ ulong compTimeUsecs = 0;
 /// Total size of the machine code generated in bytes
 ulong machineCodeBytes = 0;
 
+/// Total number of blocks compiled
+ulong numBlocks = 0;
+
+/// Total number of versions compiled
+ulong numVersions = 0;
+
 /// Number of unjitted instructions executed (dynamic)
 ulong numUnjitInstrs = 0;
 
@@ -105,10 +111,13 @@ static ~this()
     auto endTimeMsecs = Clock.currAppTick().msecs();
     auto execTimeMsecs = endTimeMsecs - startTimeMsecs;
 
+    auto versToBlocks = cast(double)numVersions / cast(double)numBlocks;
+
     writeln();
     writefln("exec time (ms): %s", execTimeMsecs);
     writefln("comp time (ms): %s", compTimeUsecs / 1000);
     writefln("code size (bytes): %s", machineCodeBytes);
+    writefln("vers / block: %s", versToBlocks);
     writefln("unjit instrs: %s", numUnjitInstrs);
     writefln("call bailouts: %s", numCallBailouts);
     writefln("ret bailouts: %s", numRetBailouts);

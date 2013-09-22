@@ -375,7 +375,6 @@ TypeMap typeProp(IRFunction fun, bool ignoreStubs = false)
                 return TOP;
             if (arg0Type == BOT)
                 return TypeVal(Type.CONST);
-
             return TypeVal(arg0Type.type == Type.INT32);
         }
 

@@ -632,11 +632,8 @@ void compFun(Interp interp, IRFunction fun)
             auto opcode = instr.opcode;
 
             /*
-            if (fun.getName == "anon(121E6)")
-            {
-                as.printStr(instr.toString());
-                as.printStr("    " ~ typeMap.get(instr, BOT).toString);
-            }
+            as.printStr(instr.toString());
+            as.printStr("    " ~ typeMap.get(instr, BOT).toString);
             */
 
             as.comment(instr.toString());
@@ -756,12 +753,16 @@ void compFun(Interp interp, IRFunction fun)
         writefln("");
     }
 
-    // Update the machine code size stat
-    stats.machineCodeBytes += codeBlock.length;
-
     // Update the compilation time stat
     auto endTimeUsecs = Clock.currAppTick().usecs();
     stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+
+    // Update the machine code size stat
+    stats.machineCodeBytes += codeBlock.length;
+
+    // Update the block and version stats
+    stats.numBlocks += versionMap.length;
+    stats.numVersions += numVersions;
 }
 
 /**

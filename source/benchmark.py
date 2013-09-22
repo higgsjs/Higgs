@@ -125,6 +125,13 @@ def geoMean(numList):
             prod *= val
     return prod ** (1.0/len(numList))
 
+# Check if all the values in a list are integer
+def valsInt(numList):
+    for val in numList:
+        if val != int(val):
+            return False
+    return True
+
 # Compute the geometric mean of values
 benchMeans = {}
 for benchmark, valLists in benchResults.items():
@@ -151,7 +158,11 @@ for benchmark, valMeans in benchMeans.items():
             valLists[key] = []
         valLists[key] += [mean]
 for key, valList in valLists.items():
-    print key + ':', int(geoMean(valList))
+    mean = geoMean(valList)
+    if valsInt(valList):
+        print "%s: %s" % (key, int(mean))
+    else:
+        print "%s: %.1f" % (key, mean)
 
 # Produce CSV output
 if options.csv_file != '':
