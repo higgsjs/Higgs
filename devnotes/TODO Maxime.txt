@@ -71,11 +71,14 @@ TODO: write abtract
 
 TODO: write paper, work häärd!
 
-TODO: do we lose all types on function call returns???
-- Analysis doesn't have this horrible weakness
-- Hack some RAEntry struct, store on call instr
-  - put continuation blocks, JIT cont point
-- Generate call cont with type info but all on stack
+TODO: modify JIT call to not lose all types on function call returns
+- Generate call cont with type info, all vars on stack
+- Store pointers in list on function
+
+TODO: implement RAEntry struct, make it work with interp, current call scheme
+- Store on call instr
+- Allocate with new
+- put continuation blocks, JIT cont pointer
 
 
 
@@ -84,6 +87,28 @@ TODO: do we lose all types on function call returns???
 
 
 
+
+
+
+
+
+[DONE] TODO: get current benchmark stats for maxvers=20
+is_i32: 2191824
+is_const: 18179
+exec time (ms): 1382
+comp time (ms): 405
+interp cycles: 1072991
+JIT calls: 1132362
+code size (bytes): 129969
+vers / block: 2.2
+call bailouts: 5
+is_i64: 1
+is_rawptr: 29
+unjit instrs: 7028
+type tests: 3772404
+ret bailouts: 5
+is_refptr: 259555
+is_f64: 11082
 
 [DONE] TODO: block replication ratio stat
 

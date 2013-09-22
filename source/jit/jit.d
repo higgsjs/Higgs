@@ -169,7 +169,6 @@ void compFun(Interp interp, IRFunction fun)
             }
         }
 
-
         // If the block version cap is hit
         if (versions.length >= opts.jit_maxvers)
         {
@@ -197,7 +196,6 @@ void compFun(Interp interp, IRFunction fun)
             predState = genState;
         }
         
-
         //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
 
         // Create a label for this new version of the block

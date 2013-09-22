@@ -1221,6 +1221,8 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Generate a JIT entry point for the call continuation
     ctx.genCallCont(instr);
 
+    ctx.as.incStatCnt(&stats.numJitCalls, scrRegs64[0]);
+
     // Find the most called callee function
     uint64_t maxCount = 0;
     IRFunction maxCallee = null;
@@ -1416,6 +1418,8 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Generate a JIT entry point for the call continuation
     ctx.genCallCont(instr);
+
+    ctx.as.incStatCnt(&stats.numJitCalls, scrRegs64[0]);
 
     // Get the cached function pointer
     auto funArg = cast(IRFunPtr)instr.getArg(1);
