@@ -80,22 +80,23 @@ Inform Marc once working
 
 FIXME: analysis doesn't gain info from IsTypeOp???
 - Need forward flow analysis... Propagate map of values to types
+- SCCP analysis gets about 600K type tests mean
 
-Inform Marc once working
 
-TODO: modify JIT call to not lose all types on function call returns
+
+
+
+
+
+
+
+
+
+[DONE] TODO: modify JIT call to not lose all types on function call returns
 - Generate call cont with type info, all vars on stack
+
+[DONE] TODO: make JIT create new RAEntry for each call cont
 - Store pointers in list on function
-- Start with custom RAEntry objects but plain context
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: earley-boyer fails with inlining enabled
 

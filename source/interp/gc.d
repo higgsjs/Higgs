@@ -536,9 +536,8 @@ Word gcForward(Interp interp, Word word, Type type)
             // Visit the function this instruction belongs to
             auto retObj = cast(RAEntry)word.ptrVal;
 
-            //writeln("ret obj: ", retObj);
-            //writeln("succ: ", retObj.targets[0].succ);
-            //writeln("call instr: ", retObj.callInstr);
+            //writeln("  targets[0] is null: ", retObj.targets[0] is null);
+            //writeln("  succ is null: ", retObj.targets[0].succ is null);
 
             if (retObj.targets[0].succ !is null)
                 visitFun(interp, retObj.targets[0].succ.fun);

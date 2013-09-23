@@ -136,7 +136,7 @@ void compFun(Interp interp, IRFunction fun)
     size_t numVersions = 0;
 
     // Map of call instructions to continuation block labels
-    Label[IRInstr] callContMap;
+    Label[RAEntry] callContMap;
 
     /// Get a label for a given block and incoming state
     auto getBlockVersion = delegate BlockVersion(
@@ -440,8 +440,9 @@ void compFun(Interp interp, IRFunction fun)
     };
 
     /// Generate the call continuation for a given call instruction
-    auto genCallCont = delegate void(
-        IRInstr callInstr
+    auto genCallCont = delegate RAEntry(
+        IRInstr callInstr,
+        CodeGenState callState
     )
     {
         assert (
@@ -449,23 +450,36 @@ void compFun(Interp interp, IRFunction fun)
             callInstr.opcode is &ir.ops.CALL_PRIM
         );
 
-        // If we already have a continuation for this call, stop
-        if (callInstr in callContMap)
-            return;
-
         // Create an exported label for the continuation
-        auto contLabel = new Label("CONT_" ~ callInstr.block.getName.toUpper, true);
-        
+        auto contLabel = new Label(
+            "CONT_" ~ callInstr.block.getName.toUpper ~
+            "_" ~ to!string(callContMap.length),
+            true
+        );
+
         // Generate the branch edge to the continuation block
         genBranchEdge(
             ol,
             contLabel,
             callInstr.getTarget(0), 
-            new CodeGenState(fun)
+            //new CodeGenState(fun)
+            new CodeGenState(callState)
         );
 
+        // Create a new RAEntry object for this continuation
+        auto raObject = new RAEntry;
+        raObject.callInstr = callInstr;
+        raObject.opcode = callInstr.opcode;
+        raObject.outSlot = callInstr.outSlot;
+        raObject.targets[0] = callInstr.getTarget(0);
+        raObject.targets[1] = callInstr.getTarget(1);
+
+        fun.jitRAs ~= raObject;
+
         // Add the label to the continuation map
-        callContMap[callInstr] = contLabel;
+        callContMap[raObject] = contLabel;
+
+        return raObject;
     };
 
     // Create a code generation context
@@ -668,10 +682,12 @@ void compFun(Interp interp, IRFunction fun)
     }
 
     // For each call instruction in the continuation map
-    foreach (instr, label; callContMap)
+    foreach (raObject, label; callContMap)
     {
+        assert (raObject.targets[0] !is null);
+
         // Set the JIT continuation entry point
-        instr.raObject.jitCont = codeBlock.getExportAddr(label.name); 
+        raObject.jitCont = codeBlock.getExportAddr(label.name);
     }
 
     if (opts.jit_dumpasm)
@@ -716,12 +732,13 @@ extern (C) void visitStub(IRBlock stubBlock)
     {
         block.entryFn = null;
         block.jitEntry = null;
-
-        if (block.lastInstr && block.lastInstr.raObject)
-            block.lastInstr.raObject.jitCont = null;
     }
 
-    fun.jitRAs.length = 0;
+    // Invalidate the JIT continuation points
+    foreach (raObject; fun.jitRAs)
+    {
+        raObject.jitCont = null;
+    }
 
     // Invalidate the compiled code for this function
     fun.codeBlock = null;
@@ -1567,7 +1584,7 @@ class CodeGenCtx
     BranchEdgeFn genBranchEdge;
 
     /// Function to generate a call instruction continuation
-    alias void delegate(IRInstr) CallContFn;
+    alias RAEntry delegate(IRInstr, CodeGenState) CallContFn;
     CallContFn genCallCont;
 
     this(

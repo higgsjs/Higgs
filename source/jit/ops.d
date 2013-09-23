@@ -1218,9 +1218,6 @@ void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // Generate a JIT entry point for the call continuation
-    ctx.genCallCont(instr);
-
     ctx.as.incStatCnt(&stats.numJitCalls, scrRegs64[0]);
 
     // Find the most called callee function
@@ -1365,11 +1362,6 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         ctx.as.setType(-numArgs - 3, Type.REFPTR);
     }
 
-    // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[2], instr.raObject);
-    ctx.as.setWord(-numArgs - 4, scrRegs64[2]);
-    ctx.as.setType(-numArgs - 4, Type.RETADDR);
-
     // Spill the values that are live after the call
     st.spillRegs(
         ctx.as,
@@ -1378,6 +1370,14 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             return ctx.liveInfo.liveAfter(val, instr);
         }
     );
+
+    // Generate a JIT entry point for the call continuation
+    auto raObject = ctx.genCallCont(instr, st);
+
+    // Write the return address
+    ctx.as.ptr(scrRegs64[2], raObject);
+    ctx.as.setWord(-numArgs - 4, scrRegs64[2]);
+    ctx.as.setType(-numArgs - 4, Type.RETADDR);
 
     // Push space for the callee arguments and locals
     ctx.as.getMember!("IRFunction", "numLocals")(scrRegs32[1], scrRegs64[1]);
@@ -1416,9 +1416,6 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // Generate a JIT entry point for the call continuation
-    ctx.genCallCont(instr);
-
     ctx.as.incStatCnt(&stats.numJitCalls, scrRegs64[0]);
 
     // Get the cached function pointer
@@ -1473,11 +1470,6 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.setWord(-numArgs - 3, NULL.int32Val);
     ctx.as.setType(-numArgs - 3, Type.REFPTR);
 
-    // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[0], instr.raObject);
-    ctx.as.setWord(-numArgs - 4, scrRegs64[0]);
-    ctx.as.setType(-numArgs - 4, Type.RETADDR);
-
     // Spill the values that are live after the call
     st.spillRegs(
         ctx.as,
@@ -1486,6 +1478,14 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             return ctx.liveInfo.liveAfter(val, instr);
         }
     );
+
+    // Generate a JIT entry point for the call continuation
+    auto raObject = ctx.genCallCont(instr, st);
+
+    // Write the return address
+    ctx.as.ptr(scrRegs64[0], raObject);
+    ctx.as.setWord(-numArgs - 4, scrRegs64[0]);
+    ctx.as.setType(-numArgs - 4, Type.RETADDR);
 
     // Push space for the callee arguments and locals
     ctx.as.ptr(scrRegs64[0], fun);
