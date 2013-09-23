@@ -845,7 +845,7 @@ class Interp
         ValuePair* argVals
     )
     {
-        //writefln("call to %s (%s)", fun.name, cast(void*)fun);
+        //writefln("call to %s (%s)", fun.getName, cast(void*)fun);
         //writefln("num args: %s", argCount);
         //writeln("clos ptr: ", closPtr);
 
@@ -889,9 +889,10 @@ class Interp
         push(Word.ptrv(closPtr), Type.REFPTR);
 
         // Push the return address (caller instruction)
-        auto retAddr = cast(rawptr)callInstr.raObject;
+        assert (!callInstr || callInstr.raObject);
+        auto retAddr = callInstr? (cast(rawptr)callInstr.raObject):null;
         push(Word.ptrv(retAddr), Type.RETADDR);
-     
+
         // Push space for the callee locals and initialize the slots to undefined
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
         push(numLocals);
@@ -912,6 +913,8 @@ class Interp
 
             caller.callCounts[callInstr][fun]++;
         }
+
+        //writeln("callFun done");
     }
 
     /**
@@ -932,16 +935,11 @@ class Interp
                 compFun(this, target.fun);
             }
 
-
-
             // For typeProp, invalidate compiled code when first visiting blocks
             if (target.execCount is 0 && target.fun.codeBlock !is null)
             {
                 visitStub(target);
             }
-
-
-
 
             // If this block has an associated entry point
             if (target.entryFn !is null)
@@ -954,10 +952,6 @@ class Interp
                 //writefln("exited at fn: %s (%s)", target.fun.getName(), target.getName());
                 continue;
             }
-
-
-
-
 
             // Increment the execution count for the block
             target.execCount++;
@@ -974,7 +968,6 @@ class Interp
                 // Get the current instruction
                 IRInstr instr = ip;
 
-                //writefln("op: %s", instr.opcode.mnem);
                 //writefln("instr: %s", instr);
      
                 // Get the opcode's implementation function
@@ -1152,7 +1145,7 @@ class Interp
 
             // Get the calling instruction for this frame
             auto raObject = cast(RAEntry)wsp[raSlot].ptrVal;
-            curInstr = raObject.callInstr;
+            curInstr = raObject? raObject.callInstr:null;
 
             // Visit this stack frame
             visitFrame(

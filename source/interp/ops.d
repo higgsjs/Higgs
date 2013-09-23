@@ -150,7 +150,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 
         // Get the calling instruction for the current stack frame
         auto raObject = cast(RAEntry)interp.wsp[raSlot].ptrVal;
-        curInstr = raObject.callInstr;
+        curInstr = raObject? raObject.callInstr:null;
 
         // Get the argument count
         auto argCount = interp.wsp[argcSlot].int32Val;
@@ -1022,15 +1022,11 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
     // Get the return value
     auto retVal = interp.getArgVal(instr, 0);
 
-    // Get the calling instruction
+    // Get the return address
     auto raObject = cast(RAEntry)interp.wsp[raSlot].ptrVal;
-    auto callInstr = raObject.callInstr;
 
-    // Get the argument count
-    auto argCount = interp.wsp[argcSlot].uint32Val;
-
-    // If the call instruction is valid
-    if (callInstr !is null)
+    // If there is a return address
+    if (raObject !is null)
     {
         /*        
         writeln("ret val: ");
@@ -1038,6 +1034,12 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         //writeln("   i32: ", retVal.word.int32Val);
         writeln("  type: ", retVal.type);
         */
+
+        // Get the calling instruction
+        auto callInstr = raObject.callInstr;
+
+        // Get the argument count
+        auto argCount = interp.wsp[argcSlot].uint32Val;
 
         // If this is a new call and the return value is undefined
         if (callInstr.opcode == &CALL_NEW && (retVal.type == Type.CONST && retVal.word == UNDEF))

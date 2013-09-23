@@ -1601,18 +1601,9 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     auto INTERP_JUMP = new Label("INTERP_JUMP");
 
     // Function to make the interpreter jump to the call continuation
-    extern (C) void interpBranch(Interp interp, IRInstr callInstr)
+    extern (C) void interpBranch(Interp interp, RAEntry raObject)
     {
-        auto desc = callInstr.getTarget(0);
-
-        /*
-        writefln(
-            "interp ret to %s (%s phis)", 
-            callInstr.block.fun.getName,
-            desc.args.length
-        );
-        */
-
+        auto desc = raObject.contTarget;
         interp.branch(desc);
     }
 

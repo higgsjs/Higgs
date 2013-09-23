@@ -52,6 +52,7 @@ TODO: complete WAV output support
 ------------------------------------------------------------------------------
 
 TODO: push benchmark.py, todo list to master branch
+- Diff the branches, move over useful stuff
 
 TODO: cleanup debug comments in jit/ops code, etc.
 
@@ -75,22 +76,27 @@ TODO: modify JIT call to not lose all types on function call returns
 - Generate call cont with type info, all vars on stack
 - Store pointers in list on function
 
-TODO: implement RAEntry struct, make it work with interp, current call scheme
+FIXME: Inlining should create new RAEntry objects
+
+FIXME: interp.interp.RunError: global property "RegExp" is not defined
+./higgs --jit_dumpinfo --jit_noinline
+
+
+
+
+
+
+
+
+[DONE] FIXME: JIT ret causes seg fault
+
+[DONE] FIXME: RAEntry causes seg fault with JIT enabled
+- bug in visitStack
+
+[DONE] TODO: implement RAEntry struct, make it work with interp, current call scheme
 - Store on call instr
 - Allocate with new
 - put continuation blocks, JIT cont pointer
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: get current benchmark stats for maxvers=20
 is_i32: 2191824
