@@ -115,6 +115,9 @@ class IRFunction : IdObject
     /// Compiled code block
     CodeBlock codeBlock = null;
 
+    /// JIT-produced return address objects
+    RAEntry[] jitRAs = [];
+
     /// Number of times this function was JIT compiled
     uint32_t jitCount = 0;
 
@@ -1171,6 +1174,24 @@ class FunParam : PhiNode
 }
 
 /**
+Return address entry object
+*/
+class RAEntry
+{
+    IRInstr callInstr;
+
+    Opcode* opcode;
+
+    LocalIdx outSlot = NULL_LOCAL;
+
+    BranchDesc contTarget;
+
+    BranchDesc excTarget;
+
+    ubyte* jitCont = null;
+}
+
+/**
 SSA instruction
 */
 class IRInstr : IRDstValue
@@ -1181,9 +1202,8 @@ class IRInstr : IRDstValue
     /// Opcode
     Opcode* opcode;
 
-    // TODO: subdivide instructions into branch and call instruction classes?
-    /// JIT code call continuation entry point
-    ubyte* jitCont = null;
+    // Return address object, for call instructions
+    RAEntry raObject = null;
 
     /// Arguments to this instruction
     private Use[] args;

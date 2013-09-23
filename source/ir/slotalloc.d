@@ -195,6 +195,11 @@ void allocSlots(IRFunction fun)
 
             // Remap the instruction's variable slot
             instr.outSlot += numTmpSlots;
+
+            if (instr.raObject !is null)
+            {
+                instr.raObject.outSlot = instr.outSlot;
+            }
         }
     }
 

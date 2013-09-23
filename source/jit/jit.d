@@ -733,7 +733,7 @@ void compFun(Interp interp, IRFunction fun)
     foreach (instr, label; callContMap)
     {
         // Set the JIT continuation entry point
-        instr.jitCont = codeBlock.getExportAddr(label.name); 
+        instr.raObject.jitCont = codeBlock.getExportAddr(label.name); 
     }
 
     if (opts.jit_dumpasm)
@@ -780,8 +780,10 @@ extern (C) void visitStub(IRBlock stubBlock)
         block.jitEntry = null;
 
         if (block.lastInstr)
-            block.lastInstr.jitCont = null;
+            block.lastInstr.raObject.jitCont = null;
     }
+
+    fun.jitRAs.length = 0;
 
     // Invalidate the compiled code for this function
     fun.codeBlock = null;

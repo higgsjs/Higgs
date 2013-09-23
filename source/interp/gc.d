@@ -527,17 +527,17 @@ Word gcForward(Interp interp, Word word, Type type)
         visitFun(interp, fun);
         return word;
 
-        // Instruction pointer (IRInstr)
-        case Type.INSPTR:
+        // Return address
+        case Type.RETADDR:
         if (word.ptrVal !is null)
         {
             // Visit the function this instruction belongs to
-            auto instr = cast(IRInstr)word.ptrVal;
-            if (instr.block !is null)
-                visitFun(interp, instr.block.fun);
+            auto retObj = cast(RAEntry)word.ptrVal;
+            assert (retObj.contTarget.succ !is null);
+            visitFun(interp, retObj.contTarget.succ.fun);
         }
         return word;
-     
+
         // Return the word unchanged
         default:
         return word;

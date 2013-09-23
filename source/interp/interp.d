@@ -167,7 +167,7 @@ enum Type : ubyte
     RAWPTR,
     CONST,
     FUNPTR,
-    INSPTR
+    RETADDR
 }
 
 /// Word and type pair
@@ -188,7 +188,7 @@ string typeToString(Type type)
         case Type.REFPTR:   return "ref pointer";
         case Type.CONST:    return "const";
         case Type.FUNPTR:   return "funptr";
-        case Type.INSPTR:   return "insptr";
+        case Type.RETADDR:  return "retaddr";
 
         default:
         assert (false, "unsupported type");
@@ -269,8 +269,8 @@ string valToString(ValuePair value)
         return "funptr";
         break;
 
-        case Type.INSPTR:
-        return "insptr";
+        case Type.RETADDR:
+        return "retaddr";
         break;
 
         default:
@@ -889,8 +889,8 @@ class Interp
         push(Word.ptrv(closPtr), Type.REFPTR);
 
         // Push the return address (caller instruction)
-        auto retAddr = cast(rawptr)callInstr;
-        push(Word.ptrv(retAddr), Type.INSPTR);
+        auto retAddr = cast(rawptr)callInstr.raObject;
+        push(Word.ptrv(retAddr), Type.RETADDR);
      
         // Push space for the callee locals and initialize the slots to undefined
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
@@ -1151,7 +1151,8 @@ class Interp
             auto frameSize = numLocals + extraArgs;
 
             // Get the calling instruction for this frame
-            curInstr = cast(IRInstr)wsp[raSlot].ptrVal;
+            auto raObject = cast(RAEntry)wsp[raSlot].ptrVal;
+            curInstr = raObject.callInstr;
 
             // Visit this stack frame
             visitFrame(

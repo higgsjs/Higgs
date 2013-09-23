@@ -2628,6 +2628,13 @@ void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
     if (auto excBlock = genExcPath(ctx, callInstr))
         callInstr.setTarget(1, excBlock);
 
+    // Create the return address object
+    auto raObject = callInstr.raObject = new RAEntry;
+    raObject.callInstr = callInstr;
+    raObject.opcode = callInstr.opcode;
+    raObject.contTarget = callInstr.getTarget(0);
+    raObject.excTarget = callInstr.getTarget(1);
+
     // Continue code generation in the continuation block
     ctx.merge(contBlock);
 }

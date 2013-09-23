@@ -149,7 +149,8 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
         auto raSlot = curInstr.block.fun.raVal.outSlot;
 
         // Get the calling instruction for the current stack frame
-        curInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
+        auto raObject = cast(RAEntry)interp.wsp[raSlot].ptrVal;
+        curInstr = raObject.callInstr;
 
         // Get the argument count
         auto argCount = interp.wsp[argcSlot].int32Val;
@@ -1022,7 +1023,8 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
     auto retVal = interp.getArgVal(instr, 0);
 
     // Get the calling instruction
-    auto callInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
+    auto raObject = cast(RAEntry)interp.wsp[raSlot].ptrVal;
+    auto callInstr = raObject.callInstr;
 
     // Get the argument count
     auto argCount = interp.wsp[argcSlot].uint32Val;

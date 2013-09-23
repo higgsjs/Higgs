@@ -1366,9 +1366,9 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     }
 
     // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[2], instr);
+    ctx.as.ptr(scrRegs64[2], instr.raObject);
     ctx.as.setWord(-numArgs - 4, scrRegs64[2]);
-    ctx.as.setType(-numArgs - 4, Type.INSPTR);
+    ctx.as.setType(-numArgs - 4, Type.RETADDR);
 
     // Spill the values that are live after the call
     st.spillRegs(
@@ -1474,9 +1474,9 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.setType(-numArgs - 3, Type.REFPTR);
 
     // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[0], instr);
+    ctx.as.ptr(scrRegs64[0], instr.raObject);
     ctx.as.setWord(-numArgs - 4, scrRegs64[0]);
-    ctx.as.setType(-numArgs - 4, Type.INSPTR);
+    ctx.as.setType(-numArgs - 4, Type.RETADDR);
 
     // Spill the values that are live after the call
     st.spillRegs(
@@ -1532,17 +1532,17 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     //ctx.as.printStr("ret from " ~ instr.block.fun.getName);
 
-    // Get the call instruction into r0
+    // Get the return address into r0
     ctx.as.getWord(scrRegs64[0], raSlot);
 
     // If this is a new/constructor call, bailout
-    ctx.as.getMember!("IRInstr", "opcode")(scrRegs64[1], scrRegs64[0]);   
+    ctx.as.getMember!("RAEntry", "opcode")(scrRegs64[1], scrRegs64[0]);   
     ctx.as.ptr(scrRegs64[2], &ir.ops.CALL_NEW);
     ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
     ctx.as.instr(JE, BAILOUT);
 
     // Get the output slot for the call instruction into scratch r1
-    ctx.as.getMember!("IRInstr", "outSlot")(scrRegs32[1], scrRegs64[0]);
+    ctx.as.getMember!("RAEntry", "outSlot")(scrRegs32[1], scrRegs64[0]);
 
     // Get the actual argument count into r2
     ctx.as.getWord(scrRegs32[2], argcSlot);
@@ -1618,7 +1618,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // If a JIT entry point exists, jump to it directly
     // Note: this will execute the phi node moves on entry
-    ctx.as.getMember!("IRInstr", "jitCont")(scrRegs64[1], scrRegs64[0]);
+    ctx.as.getMember!("RAEntry", "jitCont")(scrRegs64[1], scrRegs64[0]);
     ctx.as.instr(CMP, scrRegs64[1], 0);
     ctx.as.instr(JE, INTERP_JUMP);
     //ctx.as.printStr("jit ret");
