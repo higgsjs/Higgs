@@ -1184,9 +1184,7 @@ class RAEntry
 
     LocalIdx outSlot = NULL_LOCAL;
 
-    BranchDesc contTarget;
-
-    BranchDesc excTarget;
+    BranchDesc[IRInstr.MAX_TARGETS] targets = [null, null];
 
     ubyte* jitCont = null;
 }
@@ -1338,6 +1336,10 @@ class IRInstr : IRDstValue
 
         // Create a branch edge descriptor
         targets[idx] = desc;
+
+        // Update the RAEntry object, if present
+        if (raObject)
+            raObject.targets[idx] = desc;
 
         // Add an incoming edge to the block
         desc.succ.addIncoming(desc);

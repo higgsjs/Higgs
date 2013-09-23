@@ -167,9 +167,18 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
             // Create a new instruction (copy)
-            valMap[instr] = newBlock.addInstr(
+            auto newInstr = newBlock.addInstr(
                 new IRInstr(instr.opcode, instr.numArgs)
             );
+            valMap[instr] = newInstr;
+
+            // If this is a call instruction
+            if (instr.raObject)
+            {
+                newInstr.raObject = new RAEntry;
+                newInstr.raObject.callInstr = newInstr;
+                newInstr.raObject.opcode = newInstr.opcode;
+            }
         }
 
         // If this is the last block to inline, stop

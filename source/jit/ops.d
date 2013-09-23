@@ -1603,7 +1603,7 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Function to make the interpreter jump to the call continuation
     extern (C) void interpBranch(Interp interp, RAEntry raObject)
     {
-        auto desc = raObject.contTarget;
+        auto desc = raObject.targets[0];
         interp.branch(desc);
     }
 

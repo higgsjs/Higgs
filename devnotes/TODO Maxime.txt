@@ -72,21 +72,38 @@ TODO: write abtract
 
 TODO: write paper, work häärd!
 
+TODO: inlining, prevent recursion
+- Try disabling call frequency heuristic, callee size heuristic, budget?
+- Keep track of precise context of containing functions for each block
+
+Inform Marc once working
+
+FIXME: analysis doesn't gain info from IsTypeOp???
+- Need forward flow analysis... Propagate map of values to types
+
+Inform Marc once working
+
 TODO: modify JIT call to not lose all types on function call returns
 - Generate call cont with type info, all vars on stack
 - Store pointers in list on function
+- Start with custom RAEntry objects but plain context
 
-FIXME: Inlining should create new RAEntry objects
 
-FIXME: interp.interp.RunError: global property "RegExp" is not defined
+
+
+
+
+
+
+
+
+[DONE] FIXME: earley-boyer fails with inlining enabled
+
+[DONE] FIXME: Inlining should create new RAEntry objects
+
+[DONE] FIXME: interp.interp.RunError: global property "RegExp" is not defined
 ./higgs --jit_dumpinfo --jit_noinline
-
-
-
-
-
-
-
+- Not updating RAEntry on peephole
 
 [DONE] FIXME: JIT ret causes seg fault
 

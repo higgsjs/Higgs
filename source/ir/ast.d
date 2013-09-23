@@ -2632,8 +2632,8 @@ void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
     auto raObject = callInstr.raObject = new RAEntry;
     raObject.callInstr = callInstr;
     raObject.opcode = callInstr.opcode;
-    raObject.contTarget = callInstr.getTarget(0);
-    raObject.excTarget = callInstr.getTarget(1);
+    raObject.targets[0] = callInstr.getTarget(0);
+    raObject.targets[1] = callInstr.getTarget(1);
 
     // Continue code generation in the continuation block
     ctx.merge(contBlock);

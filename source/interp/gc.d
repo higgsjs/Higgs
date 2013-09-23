@@ -531,10 +531,19 @@ Word gcForward(Interp interp, Word word, Type type)
         case Type.RETADDR:
         if (word.ptrVal !is null)
         {
+            //writeln("ret addr");
+
             // Visit the function this instruction belongs to
             auto retObj = cast(RAEntry)word.ptrVal;
-            assert (retObj.contTarget.succ !is null);
-            visitFun(interp, retObj.contTarget.succ.fun);
+
+            //writeln("ret obj: ", retObj);
+            //writeln("succ: ", retObj.targets[0].succ);
+            //writeln("call instr: ", retObj.callInstr);
+
+            if (retObj.targets[0].succ !is null)
+                visitFun(interp, retObj.targets[0].succ.fun);
+
+            //writeln("done ret addr");
         }
         return word;
 

@@ -717,7 +717,7 @@ extern (C) void visitStub(IRBlock stubBlock)
         block.entryFn = null;
         block.jitEntry = null;
 
-        if (block.lastInstr)
+        if (block.lastInstr && block.lastInstr.raObject)
             block.lastInstr.raObject.jitCont = null;
     }
 
