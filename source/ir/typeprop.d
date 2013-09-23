@@ -86,6 +86,28 @@ struct TypeVal
             assert (false);
         }
     }
+
+    /// Compute the merge (union) with another type value
+    TypeVal merge(TypeVal that)
+    {
+        if (this.state is TOP || that.state is TOP)
+            return TypeVal(TOP);
+        if (this.state is BOT || that.state is BOT)
+            return TypeVal(BOT);
+        if (this == that)
+            return this;
+
+        // If this is a known boolean and so is the other value
+        if (this.state is KNOWN_BOOL && that.state is KNOWN_BOOL)
+        {
+            assert (this.val !is that.val);
+            return TypeVal(Type.CONST);
+        }
+
+        // The type is unknown, non-constant
+        assert (!(this.state is that.state && this.type is that.type));
+        return TypeVal(BOT);
+    }
 }
 
 const BOT = TypeVal(TypeVal.BOT);
@@ -103,13 +125,463 @@ TypeMap typeProp(IRFunction fun, bool ignoreStubs = false)
     // List of CFG edges to be processed
     BranchDesc[] cfgWorkList;
 
+    // Set of reachable blocks
+    bool[IRBlock] reachable;
+
+    // Set of visited edges
+    bool[BranchDesc] edgeVisited;
+
+    // Map of type values inferred
+    TypeMap typeMap;
+
+    // Map of branch edges to type maps
+    TypeMap[BranchDesc] exitMaps;
+
+    // Add the entry block to the CFG work list
+    auto entryEdge = new BranchDesc(null, fun.entryBlock);
+    cfgWorkList ~= entryEdge;
+
+    // TODO
+    /// Get a type for a given IR value
+    auto getType(IRValue val)
+    {
+        /*
+        if (auto dstVal = cast(IRDstValue)val)
+            return typeMap.get(dstVal, TOP);
+
+        if (cast(IRString)val ||
+            cast(IRFunPtr)val ||
+            cast(IRLinkIdx)val ||
+            cast(IRCachedIdx)val)
+            return BOT;
+
+        // Get the constant value pair for this IR value
+        auto cstVal = val.cstValue();
+
+        if (cstVal.type == Type.CONST && cstVal.word == TRUE)
+            return TypeVal(true);
+        if (cstVal.type == Type.CONST && cstVal.word == FALSE)
+            return TypeVal(false);
+
+        return TypeVal(cstVal.type);
+        */
+
+        return BOT;
+    }
+
+    // TODO
+    // Separate function to evaluate phis
+    auto evalPhi(PhiNode phi)
+    {
+        /*
+        // If this is a function parameter, unknown type
+        if (cast(FunParam)phi)
+            return BOT;
+
+        TypeVal curType = TOP;
+
+        // For each incoming branch
+        for (size_t i = 0; i < phi.block.numIncoming; ++i)
+        {
+            auto branch = phi.block.getIncoming(i);
+            auto argVal = branch.getPhiArg(phi);
+            auto argType = getType(argVal);
+
+            //writeln(argVal, " reachable? ", branch in edgeVisited);
+
+            // If the edge from the predecessor is not reachable, ignore its value
+            if (branch !in edgeVisited)
+                continue;
+
+            // If any arg is still unevaluated, the current value is unevaluated
+            if (argType == TOP)
+                return TOP;
+
+            // If not all uses have the same value, return the non-constant value
+            if (argType != curType && curType != TOP)
+                return BOT;
+
+            curType = argType;
+        }
+
+        // All uses have the same constant type
+        return curType;
+        */
+
+        return BOT;
+    }
+
+    // TODO
+    /// Evaluate an SSA instruction
+    auto evalInstr(IRInstr instr)
+    {
+        assert (
+            !(instr.block.execCount is 0 && ignoreStubs is true),
+            "evaluating stub instruction"
+        );
+
+        auto op = instr.opcode;
+
+        //auto arg0Type = (instr.numArgs > 0)? getType(instr.getArg(0)):TOP;
+
+        /*
+        // Get type
+        if (op is &GET_TYPE)
+        {
+            return arg0Type;
+        }
+        */
+
+        // Get word
+        if (op is &GET_WORD)
+        {
+            return TypeVal(Type.INT64);
+        }
+
+        // Make value
+        if (op is &MAKE_VALUE)
+        {
+            // Unknown type, non-constant
+            return BOT;
+        }
+
+        // Get argume nt (var arg)
+        if (op is &GET_ARG)
+        {
+            // Unknown type, non-constant
+            return BOT;
+        }
+
+        // Set string
+        if (op is &SET_STR)
+        {
+            return TypeVal(Type.REFPTR);
+        }
+
+        // Get string
+        if (op is &GET_STR)
+        {
+            return TypeVal(Type.REFPTR);
+        }
+
+        // Make link
+        if (op is &MAKE_LINK)
+        {
+            return TypeVal(Type.INT32);
+        }
+
+        // Get link
+        if (op is &GET_LINK)
+        {
+            // Unknown type, non-constant
+            return BOT;
+        }
+
+        // Get interpreter objects
+        if (op is &GET_GLOBAL_OBJ ||
+            op is &GET_OBJ_PROTO ||
+            op is &GET_ARR_PROTO ||
+            op is &GET_FUN_PROTO)
+        {
+            return TypeVal(Type.REFPTR);
+        }
+
+        // int32 arithmetic/logical
+        if (
+            op is &ADD_I32 ||
+            op is &SUB_I32 ||
+            op is &MUL_I32 ||
+            op is &DIV_I32 ||
+            op is &MOD_I32 ||
+            op is &AND_I32 ||
+            op is &OR_I32 ||
+            op is &XOR_I32 ||
+            op is &NOT_I32 ||
+            op is &LSFT_I32 ||
+            op is &RSFT_I32 ||
+            op is &URSFT_I32)
+        {
+            return TypeVal(Type.INT32);
+        }
+
+        /*
+        // int32 arithmetic with overflow
+        if (
+            op is &ADD_I32_OVF ||
+            op is &SUB_I32_OVF ||
+            op is &MUL_I32_OVF)
+        {
+            // Queue both branch targets
+            cfgWorkList ~= instr.getTarget(0);
+            cfgWorkList ~= instr.getTarget(1);
+
+            return TypeVal(Type.INT32);
+        }
+
+        // float64 arithmetic
+        if (
+            op is &ADD_F64 ||
+            op is &SUB_F64 ||
+            op is &MUL_F64 ||
+            op is &DIV_F64)
+        {
+            return TypeVal(Type.FLOAT64);
+        }
+
+        // int to float
+        if (op is &I32_TO_F64)
+        {
+            return TypeVal(Type.FLOAT64);
+        }
+
+        // float to int
+        if (op is &F64_TO_I32)
+        {
+            return TypeVal(Type.INT32);
+        }
+
+        // Load integer
+        if (
+            op is &LOAD_U8 ||
+            op is &LOAD_U16 ||
+            op is &LOAD_U32)
+        {
+            return TypeVal(Type.INT32);
+        }
+
+        // Load 64-bit integer
+        if (op is &LOAD_U64)
+        {
+            return TypeVal(Type.INT64);
+        }
+
+        // Load f64
+        if (op is &LOAD_F64)
+        {
+            return TypeVal(Type.FLOAT64);
+        }
+
+        // Load refptr
+        if (op is &LOAD_REFPTR)
+        {
+            return TypeVal(Type.REFPTR);
+        }
+
+        // Load rawptr
+        if (op is &LOAD_RAWPTR)
+        {
+            return TypeVal(Type.RAWPTR);
+        }
+
+        // Comparison operations
+        if (
+            op is &EQ_I8 ||
+            op is &LT_I32 ||
+            op is &LE_I32 ||
+            op is &GT_I32 ||
+            op is &GE_I32 ||
+            op is &EQ_I32 ||
+            op is &NE_I32 ||
+            op is &LT_F64 ||
+            op is &LE_F64 ||
+            op is &GT_F64 ||
+            op is &GE_F64 ||
+            op is &EQ_F64 ||
+            op is &NE_F64 ||
+            op is &EQ_CONST ||
+            op is &NE_CONST ||
+            op is &EQ_REFPTR ||
+            op is &NE_REFPTR
+        )
+        {
+            // Constant, boolean type
+            return TypeVal(Type.CONST);
+        }
+
+        // Read global variable
+        if (op is &GET_GLOBAL)
+        {
+            // Unknown type, non-constant
+            return BOT;
+        }
+
+        // is_i32
+        if (op is &IS_I32)
+        {
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
+            return TypeVal(arg0Type.type == Type.INT32);
+        }
+
+        // is_f64
+        if (op is &IS_F64)
+        {
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
+            return TypeVal(arg0Type.type == Type.FLOAT64);
+        }
+
+        // is_const
+        if (op is &IS_CONST)
+        {
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
+            return TypeVal(arg0Type.type == Type.CONST);
+        }
+
+        // is_refptr
+        if (op is &IS_REFPTR)
+        {
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
+            return TypeVal(arg0Type.type == Type.REFPTR);
+        }
+
+        // is_rawptr
+        if (op is &IS_RAWPTR)
+        {
+            if (arg0Type == TOP)
+                return TOP;
+            if (arg0Type == BOT)
+                return TypeVal(Type.CONST);
+            return TypeVal(arg0Type.type == Type.RAWPTR);
+        }
+
+        // Conditional branch
+        if (op is &IF_TRUE)
+        {
+            // If the argument is unevaluated, do nothing
+            if (arg0Type is TOP)
+                return TOP;
+
+            // If known true or unknown boolean or unknown type
+            if ((arg0Type.state == TypeVal.KNOWN_BOOL && arg0Type.val == true) ||
+                (arg0Type.state == TypeVal.KNOWN_TYPE) || 
+                (arg0Type == BOT))
+                cfgWorkList ~= instr.getTarget(0);
+
+            // If known false or unknown boolean or unknown type
+            if ((arg0Type.state == TypeVal.KNOWN_BOOL && arg0Type.val == false) ||
+                (arg0Type.state == TypeVal.KNOWN_TYPE) || 
+                (arg0Type == BOT))
+                cfgWorkList ~= instr.getTarget(1);
+
+            return BOT;
+        }
+
+        // Call instructions
+        if (op.isCall)
+        {
+            // Queue branch edges
+            if (instr.getTarget(0))
+                cfgWorkList ~= instr.getTarget(0);
+            if (instr.getTarget(1))
+                cfgWorkList ~= instr.getTarget(1);
+
+            // Unknown, non-constant type
+            return BOT;
+        }
+
+        // Direct branch
+        if (op is &JUMP)
+        {
+            // Queue the jump branch edge
+            cfgWorkList ~= instr.getTarget(0);
+            return BOT;
+        }
+
+        // Operations producing no output
+        if (op.output is false)
+        {
+            return BOT;
+        }
+
+        // Unsupported operation
+        assert (
+            op !in codeGenFns,
+            "Missing support for op: " ~ op.mnem
+        );
+        */
+
+        // Return the unknown type
+        return BOT;
+    }
+    
+    // TODO: ISSUE
+    // Phi nodes must select values from the correct predecessor
+    // Preds must be able to pass different types to succs
+    // Type maps should belong to edges, not blocks!
+
+    // Until the work list is empty
+    while (cfgWorkList.length > 0)
+    {
+        // Remove an edge from the work list
+        auto edge = cfgWorkList[$-1];
+        cfgWorkList.length--;
+        auto block = edge.succ;
+
+
+
+
+        // For each phi node
+        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
+        {
+
+            //evalPhi();
+
+
+        }
+
+        // For each instruction
+        for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
+        {
+
+            //evalInstr();
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    // Return the type values inferred
+    return typeMap;
+
+
+
+
+    /*
+    // List of CFG edges to be processed
+    BranchDesc[] cfgWorkList;
+
     // List of SSA values to be processed
     IRDstValue[] ssaWorkList;
 
     // Set of reachable blocks
     bool[IRBlock] reachable;
 
-    // Set of visited edges, indexed by predecessor id, successor id
+    // Set of visited edges
     bool[BranchDesc] edgeVisited;
 
     // Map of type values inferred
@@ -574,5 +1046,6 @@ TypeMap typeProp(IRFunction fun, bool ignoreStubs = false)
 
     // Return the type values inferred
     return typeMap;
+    */
 }
 

@@ -72,6 +72,8 @@ TODO: write abtract
 
 TODO: write paper, work häärd!
 
+TODO: identify why remaining type tests remain
+
 TODO: inlining, prevent recursion
 - Try disabling call frequency heuristic, callee size heuristic, budget?
 - Keep track of precise context of containing functions for each block
