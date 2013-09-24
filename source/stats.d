@@ -127,7 +127,7 @@ static ~this()
     writefln("interp cycles: %s", numInterpCycles);
     writefln("JIT calls: %s", numJitCalls);
 
-    auto totalTypeTests = 0;
+    ulong totalTypeTests = 0;
     foreach (testOp, pCtr; numTypeTests)
     {
         auto ctr = *pCtr;

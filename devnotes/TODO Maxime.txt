@@ -80,19 +80,25 @@ TODO: inlining, prevent recursion
 
 Inform Marc once working
 
-FIXME: analysis doesn't gain info from IsTypeOp???
+TODO: review new analysis code
+- Still about 600K type tests mean!
+- Check type map by value/ref semantics
+
+
+
+
+
+
+
+
+[DONE] FIXME: type prop causes crash in 3d-cube, others
+- Happens when info about type tests is enabled
+- Type map mutation issue
+
+[DONE] TODO: implement flow-based type analysis
+- SCCP analysis doesn't gain info from IsTypeOp
 - Need forward flow analysis... Propagate map of values to types
 - SCCP analysis gets about 600K type tests mean
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: modify JIT call to not lose all types on function call returns
 - Generate call cont with type info, all vars on stack
