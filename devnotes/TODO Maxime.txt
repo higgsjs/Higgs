@@ -73,23 +73,39 @@ TODO: write abtract
 TODO: write paper, work häärd!
 
 TODO: identify why remaining type tests remain
+- no load-store forwarding
+- no global prop types
+- no object prop types
+- no interprocedural flow
 
 TODO: inlining, prevent recursion
 - Try disabling call frequency heuristic, callee size heuristic, budget?
 - Keep track of precise context of containing functions for each block
 
-Inform Marc once working
+TODO: begin writing paper, describe basic block versioning, limitations
 
-TODO: review new analysis code
+
+
+
+
+
+
+
+[DONE] TODO: review new analysis code
 - Still about 600K type tests mean!
 - Check type map by value/ref semantics
 
+One essential failure of the type analysis is with the simple add loop:
+function foo(inc, limit)
+{
+    for (var i = 0; i < limit; i += inc)
+    {
+    }
+}
 
-
-
-
-
-
+The test for limit and inc occurs only once in the loop. When we enter the loop
+we don't know the type of limit or inc, only know it on the second iteration.
+Basic block versioning automatically hoists the tests out of the loop!
 
 [DONE] FIXME: type prop causes crash in 3d-cube, others
 - Happens when info about type tests is enabled

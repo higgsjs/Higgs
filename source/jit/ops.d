@@ -895,6 +895,10 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // If type propagation determined a known boolean for this type test
     import ir.typeprop;
     auto testType = ctx.typeMap.get(instr, BOT);
+
+    //writeln(instr);
+    //writeln("  ", testType.toString);
+
     if (testType.state is TypeVal.KNOWN_BOOL)
     {
         //writeln(instr);
@@ -907,7 +911,7 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
     }
 
-    //ctx.as.printStr(instr.opcode.mnem ~ " (" ~ instr.block.fun.getName ~ ")");
+    //ctx.as.printStr(instr.toString ~ " (" ~ instr.block.fun.getName ~ ")");
 
     // Increment the stat counter for this specific kind of type test
     ctx.as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs64[0]);

@@ -117,8 +117,11 @@ struct TypeVal
     }
 }
 
-const BOT = TypeVal(TypeVal.BOT);
+// Uninferred type value
 const TOP = TypeVal(TypeVal.TOP);
+
+// Non-constant (any type) value
+const BOT = TypeVal(TypeVal.BOT);
 
 /// Analysis output, map of IR values to types
 alias TypeVal[IRDstValue] TypeMap; 
@@ -460,13 +463,6 @@ TypeMap typeProp(IRFunction fun, bool ignoreStubs = false)
         // is_i32
         if (op is &IS_I32)
         {
-            /*
-            writeln(instr);
-            writeln("  ", instr.getArg(0));
-            writeln("  ", arg0Type.toString);
-            writeln("  ", getType(typeMap, instr.getArg(0)));
-            */
-
             if (arg0Type == TOP)
                 return TOP;
             if (arg0Type == BOT)
@@ -520,12 +516,6 @@ TypeMap typeProp(IRFunction fun, bool ignoreStubs = false)
             // If the argument is unevaluated, do nothing
             if (arg0Type is TOP)
                 return TOP;
-
-            /*
-            writeln(instr);
-            writeln("  ", instr.getArg(0));
-            writeln("  ", getType(typeMap, instr.getArg(0)));
-            */
 
             auto instrArg = cast(IRInstr)instr.getArg(0);
 
