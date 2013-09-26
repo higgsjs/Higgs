@@ -175,6 +175,9 @@ if options.csv_file != '':
     for benchmark, valMeans in benchMeans.items():
         values = []
         for key in keys:
-            values += [valMeans[key]]
+            mean = valMeans[key]
+            if int(mean) == mean:
+                mean = int(mean)
+            values += [mean]
         writer.writerow([benchmark] + values)
 
