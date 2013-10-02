@@ -67,11 +67,6 @@ import util.bitset;
 /// Block execution count at which a function should be compiled
 const JIT_COMPILE_COUNT = 800;
 
-/*
-/// Number of times a stub should be visited before invalidating a function
-const STUB_INV_COUNT = 1;
-*/
-
 /**
 Compile a function to machine code
 */
@@ -715,6 +710,11 @@ void compFun(Interp interp, IRFunction fun)
     // Update the block and version stats
     stats.numBlocks += versionMap.length;
     stats.numVersions += numVersions;
+    foreach (block, versions; versionMap)
+    {
+        auto numVers = min(versions.length, opts.jit_maxvers);
+        stats.numVerBlocks[numVers]++;
+    }
 }
 
 /**

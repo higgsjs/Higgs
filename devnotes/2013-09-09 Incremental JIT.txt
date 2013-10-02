@@ -5,6 +5,8 @@ Features we want for the 3rd gen Higgs JIT:
 - Property access optimizations
 - Some kind of type propagation
 - Better deferring of type tag and constant writing
+- JIT return address objects
+- Interpreter-to-JIT entry points on branch edges, not blocks
 
 ------------------------------------------------------------------------------
 

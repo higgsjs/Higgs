@@ -60,6 +60,9 @@ ulong numBlocks = 0;
 /// Total number of versions compiled
 ulong numVersions = 0;
 
+/// Number of blocks with specific version counts
+ulong[uint] numVerBlocks;
+
 /// Number of unjitted instructions executed
 ulong numUnjitInstrs = 0;
 
@@ -135,5 +138,12 @@ static ~this()
         totalTypeTests += ctr;
     }
     writefln("type tests: %s", totalTypeTests);
+
+    for (uint numVers = 1; numVers <= opts.jit_maxvers; numVers++)
+    {
+        auto blockCount = numVerBlocks.get(numVers, 0);
+        writefln("%s versions: %s", numVers, blockCount);
+    }
+    writefln("total blocks: %s", numBlocks);
 }
 
