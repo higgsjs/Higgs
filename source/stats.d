@@ -43,6 +43,7 @@ import std.string;
 import std.array;
 import std.stdint;
 import std.conv;
+import std.algorithm;
 import options;
 
 /// Program start time in milliseconds
