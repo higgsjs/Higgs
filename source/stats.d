@@ -139,7 +139,7 @@ static ~this()
     }
     writefln("type tests: %s", totalTypeTests);
 
-    for (uint numVers = 1; numVers <= opts.jit_maxvers; numVers++)
+    for (uint numVers = 1; numVers <= min(opts.jit_maxvers, 10); numVers++)
     {
         auto blockCount = numVerBlocks.get(numVers, 0);
         writefln("%s versions: %s", numVers, blockCount);
