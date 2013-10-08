@@ -30,7 +30,7 @@ BENCHMARKS = {
     'fannkuch':'programs/sunspider/access-fannkuch.js',  
     'nbody':'programs/sunspider/access-nbody.js',      
     'nsieve':'programs/sunspider/access-nsieve.js',
-    '3bits-in-byte':'programs/sunspider/bitops-3bit-bits-in-byte.js',
+    '3bits-byte':'programs/sunspider/bitops-3bit-bits-in-byte.js',
     'bits-in-byte':'programs/sunspider/bitops-bits-in-byte.js',  
     'bitwise-and':'programs/sunspider/bitops-bitwise-and.js',       
     'nsieve-bits':'programs/sunspider/bitops-nsieve-bits.js',        

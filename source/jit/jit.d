@@ -167,7 +167,23 @@ void compFun(Interp interp, IRFunction fun)
         // If the block version cap is hit
         if (versions.length >= opts.jit_maxvers)
         {
-            //writeln("block cap hit: ", versions.length);
+            /*
+            writeln("block cap hit in: ", fun.getName, " by ", block.getName);
+
+            foreach (ver; versions)
+            {
+                writeln(block.getName);
+
+                foreach (val, ts; ver.state.typeState)
+                {
+                    if (ts & TF_KNOWN)
+                    {
+                        auto type = cast(Type)(ts & TF_TYPE_MASK);
+                        writeln("  ", val.getName, " => ", type);
+                    }
+                }
+            }
+            */
 
             // If a compatible match was found
             if (bestDiff !is size_t.max)
