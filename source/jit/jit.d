@@ -67,6 +67,9 @@ import util.bitset;
 /// Block execution count at which a function should be compiled
 const JIT_COMPILE_COUNT = 800;
 
+/// Block execution count at which a function should inline callees
+const JIT_INLINE_COUNT = 400;
+
 /**
 Compile a function to machine code
 */
@@ -82,12 +85,14 @@ void compFun(Interp interp, IRFunction fun)
         );
     }
 
+    /*
     // If inlining is not disabled and this is the first compilation
     if (!opts.jit_noinline && fun.jitCount is 0)
     {
         // Run the inlining pass on this function
         inlinePass(interp, fun);
     }
+    */
 
     // If the IR should be output
     if (opts.jit_dumpir)
@@ -166,10 +171,11 @@ void compFun(Interp interp, IRFunction fun)
 
         // If the block version cap is hit
         if (versions.length >= opts.jit_maxvers)
-        {
-            /*
-            writeln("block cap hit in: ", fun.getName, " by ", block.getName);
+        {            
+            //writeln("block cap hit in: ", fun.getName, " by ", block.getName);
+            //writeln(fun);
 
+            /*
             foreach (ver; versions)
             {
                 writeln(block.getName);

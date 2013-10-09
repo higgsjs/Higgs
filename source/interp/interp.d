@@ -59,6 +59,7 @@ import interp.string;
 import interp.object;
 import interp.gc;
 import jit.jit;
+import jit.inlining;
 
 /**
 Run-time error
@@ -925,14 +926,29 @@ class Interp
         // While we have a target to branch to
         while (target !is null)
         {
-            // If this block was executed often enough and 
-            // JIT compilation is enabled
-            if (target.execCount > JIT_COMPILE_COUNT &&
-                target.fun.codeBlock is null &&
-                opts.jit_disable == false)
+            // If no compiled code exists for this function
+            if (target.fun.codeBlock is null)
             {
-                // Compile the function this block belongs to
-                compFun(this, target.fun);
+                // If inlining is not disabled and the function has not been compiled yet
+                if (!opts.jit_noinline && target.fun.jitCount is 0 && target.execCount == JIT_INLINE_COUNT)
+                {
+                    //writeln("inlining!");
+
+                    // Run the inlining pass on this function
+                    inlinePass(this, target.fun);
+
+                    // Reset the block execution frequencies after inlining
+                    for (auto block = target.fun.firstBlock; block !is null; block = block.next)
+                        block.execCount = 0;
+                    target.fun.jitCount++;
+                }
+
+                // If the JIT is enabled and this block was executed often enough
+                if (target.execCount > JIT_COMPILE_COUNT && opts.jit_disable == false)
+                {
+                    // Compile the function this block belongs to
+                    compFun(this, target.fun);
+                }
             }
 
             // For typeProp, invalidate compiled code when first visiting blocks

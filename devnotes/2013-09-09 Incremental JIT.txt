@@ -1,10 +1,11 @@
 Features we want for the 3rd gen Higgs JIT:
-- On-the-fly register allocation
 - Incremental compilation, incremental inlining
-- Local profiling during compilation
+  - Local profiling during compilation
+  - Leaner stubs for unexecuted blocks
+- On-the-fly register allocation
 - Property access optimizations
-- Some kind of type propagation
 - Better deferring of type tag and constant writing
+- Some kind of type propagation
 - JIT return address objects
 - Interpreter-to-JIT entry points on branch edges, not blocks
 

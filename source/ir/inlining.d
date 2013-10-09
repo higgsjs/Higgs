@@ -112,6 +112,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     // Callee basic block copying and translation
     //
 
+    /*
     // Get the execution count of the call site
     auto callCount = cast(uint64_t)callSite.block.execCount;
     assert (callCount > 0);
@@ -119,6 +120,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     // Get the execution count of the callee's entry block
     auto entryCount = cast(uint64_t)callee.entryBlock.execCount;
     assert (entryCount > 0);
+    */
 
     // Map of callee blocks to copies
     IRBlock[IRBlock] blockMap;
@@ -258,7 +260,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
         }
 
         // Adjust the block execution count
-        newBlock.execCount = (oldBlock.execCount * callCount) / entryCount;
+        //newBlock.execCount = (oldBlock.execCount * callCount) / entryCount;
     }
  
     //
