@@ -270,6 +270,9 @@ class IRBlock : IdObject
     /// Execution count, for profiling
     uint64 execCount = 0;
 
+    /// Number of versions executed
+    uint64 execVers = 0;
+
     /// JIT code entry point function
     EntryFn entryFn = null;
 

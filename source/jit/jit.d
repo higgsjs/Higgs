@@ -171,11 +171,13 @@ void compFun(Interp interp, IRFunction fun)
 
         // If the block version cap is hit
         if (versions.length >= opts.jit_maxvers)
-        {            
-            //writeln("block cap hit in: ", fun.getName, " by ", block.getName);
+        {
+            /*
+            writeln("block cap hit in: ", fun.getName, " by ", block.getName);
             //writeln(fun);
 
-            /*
+            writeln(block);
+            
             foreach (ver; versions)
             {
                 writeln(block.getName);
@@ -189,7 +191,7 @@ void compFun(Interp interp, IRFunction fun)
                     }
                 }
             }
-            */
+            */            
 
             // If a compatible match was found
             if (bestDiff !is size_t.max)
@@ -561,9 +563,6 @@ void compFun(Interp interp, IRFunction fun)
                     return false;
                 }
             );
-           
-            // Label for the stub visit counter
-            auto STUB_CTR = new Label("STUB_CTR");
 
             // Set the interpreter target to the stub block
             ol.ptr(scrRegs64[0], block);
@@ -596,6 +595,43 @@ void compFun(Interp interp, IRFunction fun)
         as.addInstr(label);
 
         //as.printStr(block.getName() ~ " (" ~ fun.getName() ~ ")\n");
+
+        /*
+        if (opts.stats)
+        {
+            auto postCtr = new Label("VISIT_CTR");
+            auto postMark = new Label("POST_MARK");
+
+            ctx.as.instr(JMP, postCtr);
+            auto ctrLabel = ctx.as.label("VISIT_CTR");
+            ctx.as.addInstr(new IntData(0, 64));
+            ctx.as.addInstr(postCtr);
+
+            ctx.as.instr(INC, new X86IPRel(64, ctrLabel));
+            ctx.as.instr(CMP, new X86IPRel(64, ctrLabel), 1);
+            ctx.as.instr(JNE, postMark);
+
+            extern (C) void markVerExecd(IRBlock block)
+            {
+                block.execVers++;
+
+                if (block.execVers > stats.maxExecVers)
+                {
+                    stats.maxExecVers = block.execVers;
+                    writeln(block.fun.getName);
+                }
+            }
+
+            ctx.as.pushRegs();            
+            ctx.as.ptr(cargRegs[0], block);
+            auto markFn = &markVerExecd;
+            ctx.as.ptr(cargRegs[1], markFn);
+            ctx.as.instr(CALL, cargRegs[1]);
+            ctx.as.popRegs();
+
+            ctx.as.addInstr(postMark);
+        }
+        */
 
         // For each instruction of the block
         INSTR_LOOP:

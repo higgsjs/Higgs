@@ -64,6 +64,9 @@ ulong numVersions = 0;
 /// Maximum number of versions compiled for a block
 ulong maxVersions = 0;
 
+/// Maximum number of versions executed for a block
+ulong maxExecVers = 0;
+
 /// Number of blocks with specific version counts
 ulong[uint] numVerBlocks;
 
@@ -129,6 +132,7 @@ static ~this()
     writefln("code size (bytes): %s", machineCodeBytes);
     writefln("vers / block: %s", versToBlocks);
     writefln("max versions: %s", maxVersions);
+    writefln("max exec vers: %s", maxExecVers);
     writefln("unjit instrs: %s", numUnjitInstrs);
     writefln("call bailouts: %s", numCallBailouts);
     writefln("ret bailouts: %s", numRetBailouts);
