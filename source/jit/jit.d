@@ -249,10 +249,6 @@ void compFun(Interp interp, IRFunction fun)
         // Copy the predecessor state
         auto succState = new CodeGenState(predState);
 
-        // Remove information about values dead at
-        // the beginning of the successor block
-        succState.removeDead(liveInfo, branch.succ);
-
         // Map each successor phi node on the stack or in its register
         // in a way that best matches the predecessor state
         for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
@@ -307,6 +303,9 @@ void compFun(Interp interp, IRFunction fun)
                 succState.typeState.remove(phi);
             }
         }
+
+        // Remove information about dead values
+        succState.removeDead(liveInfo, branch.succ);
 
         // Get a version of the successor matching the incoming state
         auto succVer = getBlockVersion(branch.succ, succState);
@@ -1589,7 +1588,7 @@ class CodeGenState
                 continue;
 
             // If the value is no longer live, remove it
-            if (liveInfo.liveAtEntry(value, block) is false)
+            if (liveInfo.liveAfterPhi(value, block) is false)
             {
                 gpRegMap[regNo] = null;
                 allocState.remove(value);
@@ -1600,14 +1599,14 @@ class CodeGenState
         // Remove dead values from the alloc state
         foreach (value; allocState.keys)
         {
-            if (liveInfo.liveAtEntry(value, block) is false)
+            if (liveInfo.liveAfterPhi(value, block) is false)
                 allocState.remove(value);
         }
 
         // Remove dead values from the type state
         foreach (value; typeState.keys)
         {
-            if (liveInfo.liveAtEntry(value, block) is false)
+            if (liveInfo.liveAfterPhi(value, block) is false)
                 typeState.remove(value);
         }
     }
