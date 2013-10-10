@@ -586,12 +586,10 @@ void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void GetValOp(string fName)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
-    // Get the output operand. This must be a 
-    // register since it's the only operand.
-    auto opndOut = cast(X86Reg)st.getOutOpnd(ctx, ctx.as, instr, 64);
-    assert (opndOut !is null, "output is not a register");
+    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
 
-    ctx.as.getMember!("Interp", fName)(opndOut, interpReg);
+    ctx.as.getMember!("Interp", fName)(scrRegs64[0], interpReg);
+    ctx.as.instr(MOV, opndOut, scrRegs64[0]);
 
     st.setOutType(ctx.as, instr, Type.REFPTR);
 }

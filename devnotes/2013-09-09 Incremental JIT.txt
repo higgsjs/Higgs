@@ -12,6 +12,7 @@ Features we want for the 3rd gen Higgs JIT:
 FIXME: version parameterization wrt phi nodes
 - Different arguments map to the same phi node, should not register as
   different type info
+- Should base versions on what is live *after* the phi nodes
 
 ------------------------------------------------------------------------------
 

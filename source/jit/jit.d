@@ -281,12 +281,12 @@ void compFun(Interp interp, IRFunction fun)
 
             // Map the phi node to its register or stack location
             TFState allocSt;
-            if (regVal is null || regVal is phi)
+            /*if (regVal is null || regVal is phi)
             {
                 allocSt = RA_GPREG | phiReg.regNo;
                 succState.gpRegMap[phiReg.regNo] = phi;
             }
-            else
+            else*/
             {
                 allocSt = RA_STACK;
             }
@@ -1153,10 +1153,8 @@ class CodeGenState
         // If the operand is a memory location
         if (auto memOpnd = cast(X86Mem)curOpnd)
         {
-            // TODO: only allocate a register if more than one use?            
-
             // Try to allocate a register for the operand
-            auto opnd = loadVal? allocReg():curOpnd;
+            auto opnd = /*loadVal? allocReg():*/curOpnd;
 
             // If the register allocation failed but a temp reg was supplied
             if (cast(X86Mem)opnd && tmpReg !is null)
@@ -1250,6 +1248,11 @@ class CodeGenState
             (instr.hasNoUses? " (no uses)":"")
         );
 
+        // Map the output slot to its stack location
+        allocState[instr] = RA_STACK;
+        return new X86Mem(numBits, wspReg, 8 * instr.outSlot);
+
+        /*
         // Get the assigned register for this instruction
         auto reg = ctx.regMapping[instr];
 
@@ -1281,6 +1284,7 @@ class CodeGenState
         allocState[instr] = RA_GPREG | reg.regNo;
         gpRegMap[reg.regNo] = instr;
         return new X86Reg(X86Reg.GP, reg.regNo, numBits);
+        */
     }
 
     /// Set the output of an instruction to a known boolean value
