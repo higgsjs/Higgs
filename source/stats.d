@@ -61,6 +61,9 @@ ulong numBlocks = 0;
 /// Total number of versions compiled
 ulong numVersions = 0;
 
+/// Maximum number of versions compiled for a block
+ulong maxVersions = 0;
+
 /// Number of blocks with specific version counts
 ulong[uint] numVerBlocks;
 
@@ -125,6 +128,7 @@ static ~this()
     writefln("comp time (ms): %s", compTimeUsecs / 1000);
     writefln("code size (bytes): %s", machineCodeBytes);
     writefln("vers / block: %s", versToBlocks);
+    writefln("max versions: %s", maxVersions);
     writefln("unjit instrs: %s", numUnjitInstrs);
     writefln("call bailouts: %s", numCallBailouts);
     writefln("ret bailouts: %s", numRetBailouts);
@@ -140,7 +144,7 @@ static ~this()
     }
     writefln("type tests: %s", totalTypeTests);
 
-    for (uint numVers = 1; numVers <= max(opts.jit_maxvers, 10); numVers++)
+    for (uint numVers = 1; numVers <= min(opts.jit_maxvers, 100); numVers++)
     {
         auto blockCount = numVerBlocks.get(numVers, 0);
         writefln("%s versions: %s", numVers, blockCount);

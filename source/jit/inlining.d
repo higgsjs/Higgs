@@ -42,6 +42,7 @@ import std.string;
 import std.stdint;
 import std.array;
 import std.typecons;
+import std.algorithm;
 import interp.interp;
 import ir.ir;
 import ir.ast;
@@ -170,6 +171,10 @@ void inlinePass(Interp interp, IRFunction fun)
     if (stackPos is StackPos.DEEP)
         return;
 
+    IRBlock[] preBlocks;
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+        preBlocks ~= block;
+
     // Compute the maximum size the function may grow to
     auto maxFunSize = GROWTH_FACTOR * fun.numBlocks;
 
@@ -209,52 +214,6 @@ void inlinePass(Interp interp, IRFunction fun)
 
     // Map of inlined call sites to return phi nodes
     PhiNode[IRInstr] callSites;
-
-    /*
-    InlSite[] primCalls;
-
-    for (auto block = fun.firstBlock; block !is null; block = block.next)
-    {
-        if (fun.getName.startsWith(RT_PREFIX))
-            continue;
-
-        if (block.execCount is 0)
-            continue;
-
-        auto callSite = block.lastInstr;
-        assert (callSite !is null, "last instr is null");
-
-        if (callSite.opcode !is &CALL_PRIM)
-            continue;
-
-        assert (fun.callCounts[callSite].length is 1);
-        auto callee = fun.callCounts[callSite].keys[0];
-
-        // If the callee is too big to be inlined, skip it
-        if (callee.numBlocks > MAX_CALLEE_SIZE)
-            continue;
-
-        // If this combination is not inlinable, skip it
-        if (inlinable(callSite, callee) is false)
-            continue;
-
-        primCalls ~= InlSite(callSite, callee);
-    }
-    
-    while (primCalls.length > 0)
-    {
-        auto inlSite = primCalls[$-1];
-        primCalls.length--;
-
-        auto callSite = inlSite.callSite;
-        auto block = callSite.block;
-        auto callee = inlSite.callee;
-
-        auto retPhi = inlineCall(callSite, callee);
-        callSites[callSite] = retPhi;
-        numInlinings++;
-    }
-    */
 
     // Until we have exhausted the inlining budget or
     // there are no suitable inlining candidates
@@ -409,6 +368,13 @@ void inlinePass(Interp interp, IRFunction fun)
         }
 
         //writeln();
+    }
+
+    // Reset execution counts for the inlined blocks
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        if (preBlocks.countUntil(block) is -1)
+            block.execCount = 0;
     }
 
     //writeln(fun);

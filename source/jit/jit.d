@@ -736,6 +736,7 @@ void compFun(Interp interp, IRFunction fun)
     {
         auto numVers = min(versions.length, opts.jit_maxvers);
         stats.numVerBlocks[numVers]++;
+        stats.maxVersions = max(stats.maxVersions, numVers);
     }
 }
 

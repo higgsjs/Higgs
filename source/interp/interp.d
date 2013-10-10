@@ -930,16 +930,13 @@ class Interp
             if (target.fun.codeBlock is null)
             {
                 // If inlining is not disabled and the function has not been compiled yet
-                if (!opts.jit_noinline && target.fun.jitCount is 0 && target.execCount == JIT_INLINE_COUNT)
+                if (target.execCount == JIT_INLINE_COUNT && opts.jit_noinline == false && target.fun.jitCount is 0)
                 {
                     //writeln("inlining!");
 
                     // Run the inlining pass on this function
                     inlinePass(this, target.fun);
 
-                    // Reset the block execution frequencies after inlining
-                    for (auto block = target.fun.firstBlock; block !is null; block = block.next)
-                        block.execCount = 0;
                     target.fun.jitCount++;
                 }
 
