@@ -683,31 +683,37 @@ JS addition operator
 */
 function $rt_add(x, y)
 {
-    // If both values are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    // If x is integer
+    if ($ir_is_i32(x))
     {
-        var r;
-        if (r = $ir_add_i32_ovf(x, y))
+        if ($ir_is_i32(y))
         {
-            return r;
+            var r;
+            if (r = $ir_add_i32_ovf(x, y))
+            {
+                return r;
+            }
+            else
+            {
+                // Handle the overflow case
+                var fx = $ir_i32_to_f64(x);
+                var fy = $ir_i32_to_f64(y);
+                return $ir_add_f64(fx, fy);
+            }
         }
-        else
-        {
-            var fx = $ir_i32_to_f64(x);
-            var fy = $ir_i32_to_f64(y);
-            return $ir_add_f64(fx, fy);
-        }
+
+        if ($ir_is_f64(y))
+            return $ir_add_f64($ir_i32_to_f64(x), y);
     }
 
-    // If either value is floating-point or integer
-    else if (
-        ($ir_is_f64(x) || $ir_is_i32(x)) &&
-        ($ir_is_f64(y) || $ir_is_i32(y)))
+    // If x is floating-point
+    if ($ir_is_f64(x))
     {
-        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_i32(y))
+            return $ir_add_f64(x, $ir_i32_to_f64(y));
 
-        return $ir_add_f64(fx, fy);
+        if ($ir_is_f64(y))
+            return $ir_add_f64(x, y);
     }
 
     // Evaluate the string value of both arguments
@@ -723,31 +729,36 @@ JS subtraction operator
 */
 function $rt_sub(x, y)
 {
-    // If both values are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    // If x is integer
+    if ($ir_is_i32(x))
     {
-        var r;
-        if (r = $ir_sub_i32_ovf(x, y))
+        if ($ir_is_i32(y))
         {
-            return r;
+            var r;
+            if (r = $ir_sub_i32_ovf(x, y))
+            {
+                return r;
+            }
+            else
+            {
+                var fx = $ir_i32_to_f64(x);
+                var fy = $ir_i32_to_f64(y);
+                return $ir_sub_f64(fx, fy);
+            }
         }
-        else
-        {
-            var fx = $ir_i32_to_f64(x);
-            var fy = $ir_i32_to_f64(y);
-            return $ir_sub_f64(fx, fy);
-        }
+
+        if ($ir_is_f64(y))
+            return $ir_sub_f64($ir_i32_to_f64(x), y);
     }
 
-    // If either value is floating-point or integer
-    else if (
-        ($ir_is_f64(x) || $ir_is_i32(x)) &&
-        ($ir_is_f64(y) || $ir_is_i32(y)))
+    // If x is floating-point
+    if ($ir_is_f64(x))
     {
-        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_i32(y))
+            return $ir_sub_f64(x, $ir_i32_to_f64(y));
 
-        return $ir_sub_f64(fx, fy);
+        if ($ir_is_f64(y))
+            return $ir_sub_f64(x, y);
     }
 
     return $rt_sub($rt_toNumber(x), $rt_toNumber(y));
@@ -758,33 +769,37 @@ JS multiplication operator
 */
 function $rt_mul(x, y)
 {
-    // If both values are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    // If x is integer
+    if ($ir_is_i32(x))
     {
-        var r;
-        if (r = $ir_mul_i32_ovf(x, y))
+        if ($ir_is_i32(y))
         {
-            return r;
+            var r;
+            if (r = $ir_mul_i32_ovf(x, y))
+            {
+                return r;
+            }
+            else
+            {
+                var fx = $ir_i32_to_f64(x);
+                var fy = $ir_i32_to_f64(y);
+                return $ir_mul_f64(fx, fy);
+            }
         }
-        else
-        {
-            var fx = $ir_i32_to_f64(x);
-            var fy = $ir_i32_to_f64(y);
-            return $ir_mul_f64(fx, fy);
-        }
+
+        if ($ir_is_f64(y))
+            return $ir_mul_f64($ir_i32_to_f64(x), y);
     }
 
-    // If either value is floating-point or integer
-    else if (
-        ($ir_is_f64(x) || $ir_is_i32(x)) &&
-        ($ir_is_f64(y) || $ir_is_i32(y)))
+    // If x is floating-point
+    if ($ir_is_f64(x))
     {
-        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_i32(y))
+            return $ir_mul_f64(x, $ir_i32_to_f64(y));
 
-        return $ir_mul_f64(fx, fy);
+        if ($ir_is_f64(y))
+            return $ir_mul_f64(x, y);
     }
-
     return $rt_mul($rt_toNumber(x), $rt_toNumber(y));
 }
 
