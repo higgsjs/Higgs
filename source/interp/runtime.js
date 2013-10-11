@@ -707,7 +707,7 @@ function $rt_add(x, y)
     }
 
     // If x is floating-point
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_add_f64(x, $ir_i32_to_f64(y));
@@ -752,7 +752,7 @@ function $rt_sub(x, y)
     }
 
     // If x is floating-point
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_sub_f64(x, $ir_i32_to_f64(y));
@@ -792,7 +792,7 @@ function $rt_mul(x, y)
     }
 
     // If x is floating-point
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_mul_f64(x, $ir_i32_to_f64(y));
@@ -800,6 +800,7 @@ function $rt_mul(x, y)
         if ($ir_is_f64(y))
             return $ir_mul_f64(x, y);
     }
+
     return $rt_mul($rt_toNumber(x), $rt_toNumber(y));
 }
 
@@ -837,7 +838,7 @@ function $rt_mod(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_f64(y))
             return $ir_mod_f64(x, y);
@@ -956,7 +957,7 @@ function $rt_lt(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_lt_f64(x, $ir_i32_to_f64(y));
@@ -993,7 +994,7 @@ function $rt_le(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_le_f64(x, $ir_i32_to_f64(y));
@@ -1030,7 +1031,7 @@ function $rt_gt(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_gt_f64(x, $ir_i32_to_f64(y));
@@ -1067,7 +1068,7 @@ function $rt_ge(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_ge_f64(x, $ir_i32_to_f64(y));
@@ -1108,7 +1109,7 @@ function $rt_eq(x, y)
     }
 
     // If x is a references
-    if ($ir_is_refptr(x))
+    else if ($ir_is_refptr(x))
     {
         // If y is a reference
         if ($ir_is_refptr(y))
@@ -1147,7 +1148,7 @@ function $rt_eq(x, y)
     }
 
     // If x is a constant
-    if ($ir_is_const(x))
+    else if ($ir_is_const(x))
     {
         if ($ir_is_const(y))
             return $ir_eq_const(x, y);
@@ -1157,7 +1158,7 @@ function $rt_eq(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_eq_f64(x, $ir_i32_to_f64(y));
