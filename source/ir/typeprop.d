@@ -256,11 +256,8 @@ TypeMap typeProp(IRFunction fun, bool ignoreStubs = false)
             if (argType == TOP)
                 return TOP;
 
-            // If not all uses have the same value, return the non-constant value
-            if (argType != curType && curType != TOP)
-                return BOT;
-
-            curType = argType;
+            // Merge the argument type with the current type
+            curType = curType.merge(argType);
         }
 
         // All uses have the same constant type
