@@ -8,24 +8,12 @@ Conference deadlines:
 
 ------------------------------------------------------------------------------
 
-Misc improvements
-
 TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 - ideally requires test harness
 
 TODO: add --jit_trace command-line option
 - trace entry and bailout in/out of specific functions
-
-TODO: MAKE_CLASS, GET_PROP_IDX(class, propName) instrs
-- Make classes host/VM objects
-- Prop idx fully accessed through VM
-- Can implement inline caching, or use type inference info
-- How do we create an object? Need to cache the class ptr.
-  - CLASSPTR type tag?
-  - Also need GC support
-- Should we move whole getPropObj/setPropObj logic to VM?
-  - Less good for monitoring?
 
 TODO: make sure global obj ptr is updated when global obj is extended
 - SET_GLOBAL_OBJ?
@@ -45,48 +33,39 @@ TODO: IR, attach branch descs to branch instructions instead of pred blocks?
 TODO: add map.js, set.js to Higgs stdlib
 - Make more ES6 conformant
 
+TODO: MAKE_CLASS, GET_PROP_IDX(class, propName) instrs
+- Make classes host/VM objects
+- Prop idx fully accessed through VM
+- Can implement inline caching, or use type inference info
+- How do we create an object? Need to cache the class ptr.
+  - CLASSPTR type tag?
+  - Also need GC support
+- Should we move whole getPropObj/setPropObj logic to VM?
+  - Less good for monitoring?
+
 TODO: complete WAV output support
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: pull changes from cc2014 branch
 
 [DONE] TODO: add music.js to lib/
 
 ------------------------------------------------------------------------------
 
-Oct 11th: CC Paper Submission Deadline
+[DONE] Oct 11th: CC Paper Submission Deadline
 - 20 page limit, LNCS format
 
-Final paper corrections
-- Can you submit early, re-submit updates/fixes?
-
-Oct 4th: CC Abstract Submission Deadline
-
-Sept 31st goal: have paper mostly written & edited
-
-TODO: submit abstract on EasyChair *before* Oct 4
-
-TODO: write abtract
-
-TODO: write paper, work häärd!
-
-TODO: do we lose all types on function call returns???
-- Analysis doesn't have this horrible weakness
-- If necessary, hack some RAEntry struct, store on call instr
-  - put continuation blocks, JIT cont point
-
-TODO: implement flag in analysis to ignore unexecuted blocks
-- Treat them as unreachable
-- Make interpreter invalidate code (visitStub) on first visit to blocks
-  - Only if code exists for fn
-
-TODO: create cc2014 branch on github
+[DONE] TODO: create cc2014 branch on github
 - put inlining limit very high, 50
 - reduce min call frac
-
-
-
-
-
-
-
 
 [DONE] TODO: typeProp improves upon versioning results on 3d-cube, why?
 - Identify smaller benchmark where typeProp catches cases

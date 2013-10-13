@@ -30,7 +30,7 @@ BENCHMARKS = {
     'fannkuch':'programs/sunspider/access-fannkuch.js',  
     'nbody':'programs/sunspider/access-nbody.js',      
     'nsieve':'programs/sunspider/access-nsieve.js',
-    '3bits-in-byte':'programs/sunspider/bitops-3bit-bits-in-byte.js',
+    '3bits-byte':'programs/sunspider/bitops-3bit-bits-in-byte.js',
     'bits-in-byte':'programs/sunspider/bitops-bits-in-byte.js',  
     'bitwise-and':'programs/sunspider/bitops-bitwise-and.js',       
     'nsieve-bits':'programs/sunspider/bitops-nsieve-bits.js',        
@@ -92,6 +92,10 @@ for benchmark in BENCHMARKS:
         # For each line of output
         for line in output:
 
+            # If this line contains the string "error" or "exception", abort
+            if line.lower().find("error") != -1 or line.lower().find("exception") != -1:
+                raise Exception(line)
+
             match = valPattern.match(line)
 
             # If the line doesn't match, continue
@@ -121,6 +125,13 @@ def geoMean(numList):
             prod *= val
     return prod ** (1.0/len(numList))
 
+# Check if all the values in a list are integer
+def valsInt(numList):
+    for val in numList:
+        if val != int(val):
+            return False
+    return True
+
 # Compute the geometric mean of values
 benchMeans = {}
 for benchmark, valLists in benchResults.items():
@@ -147,7 +158,11 @@ for benchmark, valMeans in benchMeans.items():
             valLists[key] = []
         valLists[key] += [mean]
 for key, valList in valLists.items():
-    print key + ':', int(geoMean(valList))
+    mean = geoMean(valList)
+    if valsInt(valList):
+        print "%s: %s" % (key, int(mean))
+    else:
+        print "%s: %.1f" % (key, mean)
 
 # Produce CSV output
 if options.csv_file != '':
@@ -160,6 +175,9 @@ if options.csv_file != '':
     for benchmark, valMeans in benchMeans.items():
         values = []
         for key in keys:
-            values += [valMeans[key]]
+            mean = valMeans[key]
+            if int(mean) == mean:
+                mean = int(mean)
+            values += [mean]
         writer.writerow([benchmark] + values)
 
