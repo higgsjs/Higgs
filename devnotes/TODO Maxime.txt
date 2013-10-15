@@ -21,17 +21,14 @@ TODO: make sure global obj ptr is updated when global obj is extended
 FIXME: shootout/hash2, class capacity exceeded
 - If getPropIdx moves to host VM, do we need JS implementation of class ext?
 
+TODO: add map.js, set.js to Higgs stdlib
+- Make more ES6 conformant
+
 TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
-- Replace IRFunPtr also?
+- Replace IRFunPtr also? No, IRFunction is host object?
 - Look at use cases
 - Inlining?
 - Refs from compiled code?
-
-TODO: IR, attach branch descs to branch instructions instead of pred blocks?
-- examine use cases
-
-TODO: add map.js, set.js to Higgs stdlib
-- Make more ES6 conformant
 
 TODO: MAKE_CLASS, GET_PROP_IDX(class, propName) instrs
 - Make classes host/VM objects
@@ -43,7 +40,12 @@ TODO: MAKE_CLASS, GET_PROP_IDX(class, propName) instrs
 - Should we move whole getPropObj/setPropObj logic to VM?
   - Less good for monitoring?
 
-TODO: complete WAV output support
+TODO: complete WAV output support, test it out with sine wave
+
+TODO: IR, attach branch descs to branch instructions instead of pred blocks?
+- examine use cases
+  - grep -R "\.pred" .
+- might need to rework remInstr, remBlock?
 
 
 
