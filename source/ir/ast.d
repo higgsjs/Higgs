@@ -315,7 +315,7 @@ class IRGenCtx
     /**
     Insert a jump in the current block
     */
-    BranchDesc jump(IRBlock block)
+    BranchEdge jump(IRBlock block)
     {
         auto jump = this.addInstr(new IRInstr(&JUMP));
         assert (jump.block is this.curBlock);
@@ -2721,7 +2721,7 @@ void mergeLoopEntry(
 
             for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
                 if (auto desc = branch.getTarget(tIdx))
-                    if (desc.succ == entryBlock)
+                    if (desc.target == entryBlock)
                         desc.setPhiArg(phiNode, incVal);
         }
     }
@@ -2781,7 +2781,7 @@ IRGenCtx mergeContexts(
                 // For each target of the branch instruction
                 for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
                     if (auto desc = branch.getTarget(tIdx))
-                        if (desc.succ == mergeBlock)
+                        if (desc.target == mergeBlock)
                             desc.setPhiArg(phiNode, incVal);
             }
         }

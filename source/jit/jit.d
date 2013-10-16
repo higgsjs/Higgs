@@ -215,7 +215,7 @@ void compFun(Interp interp, IRFunction fun)
     auto genBranchEdge = delegate void(
         Assembler as,
         Label edgeLabel,
-        BranchDesc branch, 
+        BranchEdge branch, 
         CodeGenState predState
     )
     {
@@ -224,13 +224,13 @@ void compFun(Interp interp, IRFunction fun)
 
         // Remove information about values dead at
         // the beginning of the successor block
-        succState.removeDead(liveInfo, branch.succ);
+        succState.removeDead(liveInfo, branch.target);
 
         // Map each successor phi node on the stack or in its register
         // in a way that best matches the predecessor state
-        for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
+        for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
         {
-            if (branch.pred is null || phi.hasNoUses)
+            if (branch.branch is null || phi.hasNoUses)
                 continue;
 
             // Get the phi argument
@@ -282,7 +282,7 @@ void compFun(Interp interp, IRFunction fun)
         }
 
         // Get a version of the successor matching the incoming state
-        auto succVer = getBlockVersion(branch.succ, succState);
+        auto succVer = getBlockVersion(branch.target, succState);
         succState = succVer.state;
 
         // List of moves to transition to the successor state
@@ -297,7 +297,7 @@ void compFun(Interp interp, IRFunction fun)
         foreach (succVal, succAS; succState.allocState)
         {
             auto succPhi = (
-                (branch.pred !is null && succVal.block is branch.succ)?
+                (branch.branch !is null && succVal.block is branch.target)?
                 cast(PhiNode)succVal:null
             );
             auto predVal = (
@@ -458,7 +458,7 @@ void compFun(Interp interp, IRFunction fun)
         genBranchEdge(
             ol,
             fastLabel,
-            new BranchDesc(null, block), 
+            new BranchEdge(null, block), 
             new CodeGenState(fun)
         );
 
@@ -1593,7 +1593,7 @@ class CodeGenCtx
     RegMapping regMapping;
 
     /// Function to get the label for a given branch edge
-    alias void delegate(Assembler as, Label edgeLabel, BranchDesc, CodeGenState) BranchEdgeFn;
+    alias void delegate(Assembler as, Label edgeLabel, BranchEdge, CodeGenState) BranchEdgeFn;
     BranchEdgeFn genBranchEdge;
 
     /// Function to generate a call instruction continuation

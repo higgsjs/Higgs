@@ -262,7 +262,7 @@ class IRBlock : IdObject
     package string name;
 
     /// List of incoming branches
-    private BranchDesc[] incoming;
+    private BranchEdge[] incoming;
 
     /// Execution count, for profiling
     uint64 execCount = 0;
@@ -421,9 +421,9 @@ class IRBlock : IdObject
             // Remove branch edges from successors
             for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)            
             {
-                auto branch = instr.getTarget(tIdx);
-                if (branch !is null)
-                    branch.succ.remIncoming(branch);
+                auto edge = instr.getTarget(tIdx);
+                if (edge !is null)
+                    edge.target.remIncoming(edge);
             }
         }
 
@@ -457,17 +457,6 @@ class IRBlock : IdObject
 
         // Add the instruction to the destination block
         dstBlock.addInstr(instr);
-
-        // If this is a branch instruction, update the branch edges
-        if (instr.opcode.isBranch)
-        {
-            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)            
-            {
-                auto desc = instr.getTarget(tIdx);
-                if (desc !is null)
-                    desc.pred = dstBlock;
-            }
-        }
     }
 
     /**
@@ -511,46 +500,46 @@ class IRBlock : IdObject
             lastPhi = phi.prev;
 
         // Remove the incoming arguments to this phi node
-        foreach (descIdx, desc; incoming)
-            desc.remPhiArg(phi);
+        foreach (edge; incoming)
+            edge.remPhiArg(phi);
 
         // Nullify the parent pointer
         phi.block = null;
     }
 
     /**
-    Register an incoming branch on this block
+    Register an incoming branch edge on this block
     */
-    void addIncoming(BranchDesc branch)
+    void addIncoming(BranchEdge edge)
     {
         debug
         {
             foreach (entry; incoming)
-                if (entry is branch)
-                    assert (false, "duplicate incoming branch");
+                if (entry is edge)
+                    assert (false, "duplicate incoming edge");
         }
 
-        incoming ~= branch;
+        incoming ~= edge;
     }
 
     /**
-    Remove (unregister) an incoming branch
+    Remove (unregister) an incoming branch edge
     */
-    void remIncoming(BranchDesc branch)
+    void remIncoming(BranchEdge edge)
     {
         foreach (idx, entry; incoming)
         {
-            if (entry is branch)
+            if (entry is edge)
             {
                 incoming[idx] = incoming[$-1];
                 incoming.length -= 1;
 
                 // Unregister the phi arguments
-                foreach (arg; branch.args)
+                foreach (arg; edge.args)
                     arg.value.remUse(arg);
 
-                branch.args = [];
-                branch.succ = null;
+                edge.args = [];
+                edge.target = null;
 
                 return;
             }
@@ -574,21 +563,21 @@ class IRBlock : IdObject
 /**
 Branch edge descriptor
 */
-class BranchDesc : IdObject
+class BranchEdge : IdObject
 {
-    /// Branch predecessor block
-    IRBlock pred;
+    /// Owner branch instruction
+    IRInstr branch;
 
-    /// Branch successor block
-    IRBlock succ;
+    /// Branch target block
+    IRBlock target;
 
     /// Mapping of incoming phi values (block arguments)
     Use args[];
 
-    this(IRBlock pred, IRBlock succ)
+    this(IRInstr branch, IRBlock target)
     {
-        this.pred = pred;
-        this.succ = succ;
+        this.branch = branch;
+        this.target = target;
     }
 
     /**
@@ -1096,30 +1085,30 @@ class PhiNode : IRDstValue
 
         output ~= getName() ~ " = phi [";          
 
-        // For each incoming branch
-        foreach (descIdx, desc; block.incoming)
+        // For each incoming branch edge
+        foreach (edgeIdx, edge; block.incoming)
         {
             // For each branch argument
-            foreach (arg; desc.args)
+            foreach (arg; edge.args)
             {
                 assert (arg !is null);
 
                 if (arg.owner is this)
                 {
-                    if (descIdx > 0)
+                    if (edgeIdx > 0)
                         output ~= ", ";
 
                     // Find the index of this branch target
-                    assert (desc.pred !is null);
-                    auto branch = desc.pred.lastInstr;
+                    auto branch = edge.branch;
                     assert (branch !is null);
                     size_t tIdx = size_t.max;
                     for (size_t idx = 0; idx < branch.MAX_TARGETS; ++idx)
-                        if (branch.getTarget(idx) is desc)
+                        if (branch.getTarget(idx) is edge)
                             tIdx = idx;
                     assert (tIdx != size_t.max);
 
-                    output ~= desc.pred.getName() ~ ":" ~ to!string(tIdx);
+                    assert (branch.block !is null);
+                    output ~= branch.block.getName() ~ ":" ~ to!string(tIdx);
                     output ~= " => " ~ arg.value.getName();
 
                     break;
@@ -1189,7 +1178,7 @@ class IRInstr : IRDstValue
     private Use[] args;
 
     /// Branch targets 
-    private BranchDesc[MAX_TARGETS] targets = [null, null];
+    private BranchEdge[MAX_TARGETS] targets = [null, null];
 
     /// Previous and next instructions (linked list)
     IRInstr prev = null;
@@ -1307,38 +1296,27 @@ class IRInstr : IRDstValue
         return false;
     }
 
-    /// Set a branch target with a branch descriptor
-    void setTarget(size_t idx, BranchDesc desc)
+    /// Set a branch target and create a new branch edge descriptor
+    BranchEdge setTarget(size_t idx, IRBlock target)
     {
-        assert (idx < targets.length);
+        assert (idx < this.targets.length);
 
         // Remove the existing target, if any
-        if (targets[idx] !is null)
-            targets[idx].succ.remIncoming(targets[idx]);
+        if (this.targets[idx] !is null)
+            this.targets[idx].target.remIncoming(targets[idx]);
 
-        // Create a branch edge descriptor
-        targets[idx] = desc;
+        auto edge = new BranchEdge(this, target);
+
+        // Set the branch edge descriptor
+        this.targets[idx] = edge;
 
         // Add an incoming edge to the block
-        desc.succ.addIncoming(desc);
+        target.addIncoming(edge);
+
+        return edge;
     }
 
-    BranchDesc setTarget(size_t idx, IRBlock succ)
-    {
-        auto pred = this.block;
-
-        assert (
-            pred !is null, 
-            "setTarget: instr is not attached to a block"
-        );
-
-        auto desc = new BranchDesc(pred, succ);
-        setTarget(idx, desc);
-
-        return desc;
-    }
-
-    BranchDesc getTarget(size_t idx)
+    BranchEdge getTarget(size_t idx)
     {
         assert (idx < targets.length);
         return targets[idx];
@@ -1369,10 +1347,10 @@ class IRInstr : IRDstValue
 
         if (targets[0] !is null)
         {
-            output ~= " => " ~ targets[0].succ.getName();
+            output ~= " => " ~ targets[0].target.getName();
 
             if (targets[1] !is null)
-                output ~= ", " ~ targets[1].succ.getName();
+                output ~= ", " ~ targets[1].target.getName();
         }
 
         return output;

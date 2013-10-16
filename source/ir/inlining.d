@@ -91,7 +91,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
 
     // Get the call continuation branch and successor block
     auto contDesc = callSite.getTarget(0);
-    auto contBlock = contDesc.succ;
+    auto contBlock = contDesc.target;
 
     // Create a block for the return value merging
     auto mergeBlock = caller.newBlock("call_merge");
@@ -204,16 +204,13 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
                 if (desc is null)
                     continue;
 
-                auto newDesc = new BranchDesc(newBlock, blockMap[desc.succ]);
-
+                auto newDesc = newInstr.setTarget(tIdx, blockMap[desc.target]);
                 foreach (arg; desc.args)
                 {
                     auto newPhi = cast(PhiNode)valMap.get(arg.owner, null);
                     auto newArg = valMap.get(arg.value, arg.value);
                     newDesc.setPhiArg(newPhi, newArg);
                 }
-
-                newInstr.setTarget(tIdx, newDesc);
             }
 
             // If this is a call instruction

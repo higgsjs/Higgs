@@ -755,7 +755,7 @@ void genCondBranch(
     auto falseLabel = new Label("IF_FALSE");
 
     // If the true branch is more often executed
-    if (trueTarget.succ.execCount > falseTarget.succ.execCount)
+    if (trueTarget.target.execCount > falseTarget.target.execCount)
     {
         if (condOps.jccF[0])
         {

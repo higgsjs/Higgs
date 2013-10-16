@@ -811,7 +811,7 @@ class Interp
     /**
     Make the execution jump to a specific block and set phi node values
     */
-    void branch(BranchDesc branch)
+    void branch(BranchEdge branch)
     {
         //writefln("branch into %s", branch.succ.fun.getName);
         //writefln("executing %s phis", branch.args.length);
@@ -828,8 +828,8 @@ class Interp
         foreach (argIdx, arg; branch.args)
             setSlot(arg.owner.outSlot, tempVals[argIdx]);
 
-        // Jump to the successor block
-        jump(branch.succ);
+        // Jump to the target block
+        jump(branch.target);
     }
 
     /**

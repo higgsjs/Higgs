@@ -228,7 +228,7 @@ class LiveInfo
 
             // Queue the predecessor blocks
             for (size_t iIdx = 0; iIdx < block.numIncoming; ++iIdx)
-                stack ~= block.getIncoming(iIdx).pred;
+                stack ~= block.getIncoming(iIdx).branch.block;
         }
 
         /**
@@ -260,7 +260,7 @@ class LiveInfo
                     auto branch = useBlock.getIncoming(iIdx);
                     auto phiArg = branch.getPhiArg(usePhi);
                     if (phiArg is defVal)
-                        stack ~= branch.pred;
+                        stack ~= branch.branch.block;
                 }
             }
 

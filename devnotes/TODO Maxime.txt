@@ -42,19 +42,23 @@ TODO: MAKE_CLASS, GET_PROP_IDX(class, propName) instrs
 
 TODO: complete WAV output support, test it out with sine wave
 
-TODO: IR, attach branch descs to branch instructions instead of pred blocks?
+
+
+
+
+
+
+
+
+
+[DONE] TODO: can we eliminate setTarget with branch desc argument, have only block arg?
+
+[DONE] TODO: IR, attach branch descs to branch instructions instead of pred blocks?
 - examine use cases
   - grep -R "\.pred" .
 - might need to rework remInstr, remBlock?
 
-
-
-
-
-
-
-
-
+[DONE] TODO: remove type prop from master branch
 
 [DONE] TODO: pull changes from cc2014 branch
 

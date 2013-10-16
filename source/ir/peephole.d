@@ -86,7 +86,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
                 {
                     auto target = branch.getTarget(tIdx);
-                    if (target !is null && target.succ is block)
+                    if (target !is null && target.target is block)
                         assert (false, "block is still target!");
                 }
             }
@@ -381,7 +381,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                     if (op is &JUMP)
                     {
                         auto branch = instr.getTarget(0);
-                        auto succ = branch.succ;
+                        auto succ = branch.target;
 
                         // If the successor has no phi nodes and only one predecessor
                         if (branch.args.length is 0 && succ.numIncoming is 1 && succ !is target)
@@ -414,7 +414,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                             for (size_t tIdx = 0; tIdx < 2; ++tIdx)
                             {
                                 auto succTarget = succIf.getTarget(tIdx);
-                                auto predTarget = predIf.setTarget(tIdx, succTarget.succ);
+                                auto predTarget = predIf.setTarget(tIdx, succTarget.target);
                                 foreach (arg; succTarget.args)
                                     predTarget.setPhiArg(cast(PhiNode)arg.owner, arg.value);
                             }
@@ -437,7 +437,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                             for (size_t pIdx = 0; pIdx < block.numIncoming; ++pIdx)
                             {
                                 auto desc = block.getIncoming(pIdx);
-                                auto pBranch = desc.pred.lastInstr;
+                                auto pBranch = desc.branch;
 
                                 // Find the target index
                                 size_t tIdx;
@@ -448,12 +448,9 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 
                                 // Make the predecessor pass the phi argument
                                 // to the successor directly
-                                auto newDesc = new BranchDesc(desc.pred, succ);
-                                newDesc.setPhiArg(
-                                    succ.firstPhi, 
-                                    desc.getPhiArg(block.firstPhi)
-                                );
-                                pBranch.setTarget(tIdx, newDesc);
+                                auto phiArg = desc.getPhiArg(block.firstPhi);
+                                auto newDesc = pBranch.setTarget(tIdx, succ);
+                                newDesc.setPhiArg(succ.firstPhi, phiArg);
                             }
 
                             changed = true;
@@ -470,12 +467,11 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                             auto desc = instr.getTarget((cstArg is IRConst.trueCst)? 0:1);
 
                             // Replace the if branch by a direct jump
-                            auto newDesc = new BranchDesc(desc.pred, desc.succ);
+                            auto jumpInstr = block.addInstr(new IRInstr(&JUMP));
+                            auto newDesc = jumpInstr.setTarget(0, desc.target);
                             foreach (arg; desc.args)
                                 newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
                             delInstr(instr);
-                            auto jumpInstr = block.addInstr(new IRInstr(&JUMP));
-                            jumpInstr.setTarget(0, newDesc);
 
                             continue INSTR_LOOP;
                         }
@@ -489,12 +485,12 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                             continue;
 
                         // Get the first instruction of the successor
-                        auto firstInstr = branch.succ.firstInstr;
+                        auto firstInstr = branch.target.firstInstr;
 
                         // If the branch has no phi args and the target is a jump
                         if (branch.args.length is 0 && firstInstr.opcode is &JUMP)
                         {
-                            assert (branch.succ.firstPhi is null);
+                            assert (branch.target.firstPhi is null);
                             auto jmpBranch = firstInstr.getTarget(0);
 
                             //writeln("instr block:\n", instr.block.toString);
@@ -502,7 +498,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                             //writeln("num phis: ", jmpBranch.args.length);
 
                             // Branch directly to the target of the jump
-                            auto newBranch = instr.setTarget(tIdx, jmpBranch.succ);
+                            auto newBranch = instr.setTarget(tIdx, jmpBranch.target);
                             foreach (arg; jmpBranch.args)
                                 newBranch.setPhiArg(cast(PhiNode)arg.owner, arg.value);
 
