@@ -49,9 +49,9 @@ immutable uint32 STR_TBL_MAX_LOAD_NUM = 3;
 immutable uint32 STR_TBL_MAX_LOAD_DENOM = 5;
 
 /**
-Extract a D string from a string object
+Extract a D wchar string from a string object
 */
-string extractStr(refptr ptr)
+wstring extractWStr(refptr ptr)
 {
     assert (
         obj_get_header(ptr) == LAYOUT_STR,
@@ -64,9 +64,15 @@ string extractStr(refptr ptr)
     for (uint32 i = 0; i < len; ++i)
         wchars[i] = str_get_data(ptr, i);
 
-    auto str = to!string(wchars);
+    return to!wstring(wchars);
+}
 
-    return str;
+/**
+Extract a D string from a string object
+*/
+string extractStr(refptr ptr)
+{
+    return to!string(extractWStr(ptr));
 }
 
 /**

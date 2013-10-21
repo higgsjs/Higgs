@@ -24,32 +24,54 @@ FIXME: shootout/hash2, class capacity exceeded
 TODO: add map.js, set.js to Higgs stdlib
 - Make more ES6 conformant
 
-TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
-- Replace IRFunPtr also? No, IRFunction is host object?
-- Look at use cases
-- Inlining?
-- Refs from compiled code?
-
-TODO: MAKE_CLASS, GET_PROP_IDX(class, propName) instrs
-- Make classes host/VM objects
-- Prop idx fully accessed through VM
-- Can implement inline caching, or use type inference info
-- How do we create an object? Need to cache the class ptr.
-  - CLASSPTR type tag?
-  - Also need GC support
-- Should we move whole getPropObj/setPropObj logic to VM?
-  - Less good for monitoring?
-
 TODO: complete WAV output support, test it out with sine wave
 
+TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
+- Inlining?
+- Refs from compiled code?
+- Links are mutable cells, used by getRegexp among others
+  - Can we come up with another mechanism for getRegexp?
+  - Caching, hash map, inside regexp constructor?
+
+TODO: re-run ./benchmark after class introduction
+
+TODO: remove map layout
+
+TODO: make MAKE_CLOS, newArr, newObj use IRMapPtr instead of IRLinkIdx
 
 
 
 
 
 
+[DONE] TODO: map accessor instructions
+- Mostly just getPropIdx for now?
 
+[DONE] TODO: gc support for maps
+- mapRefs, liveMaps
 
+[DONE] TODO: run ./benchmark before refactoring (desktop times)
+is_i32: 4981024
+is_const: 75589
+exec time (ms): 955
+comp time (ms): 220
+interp cycles: 624630
+code size (bytes): 102622
+is_rawptr: 29
+call bailouts: 6
+is_i64: 1
+type tests: 7884795
+unjit instrs: 6746
+ret bailouts: 5
+is_refptr: 299946
+is_f64: 14909
+
+[DONE] TODO: MAKE_MAP instr
+- Make classes host/VM objects
+- CLASSPTR type tag
+- needs caching, IRClassPtr
+
+[DONE] TODO: implement class map
 
 [DONE] TODO: can we eliminate setTarget with branch desc argument, have only block arg?
 

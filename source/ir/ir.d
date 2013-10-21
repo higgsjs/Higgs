@@ -50,6 +50,7 @@ import parser.ast;
 import ir.ops;
 import interp.interp;
 import interp.layout;
+import interp.object;
 import jit.codeblock;
 
 /// Local variable index type
@@ -984,6 +985,24 @@ class IRFunPtr : IRValue
     override string toString()
     {
         return "<fun:" ~ (fun? fun.getName():"NULL") ~ ">";
+    }
+}
+
+/**
+IR map pointer constant (stateful, non-constant, may be null)
+*/
+class IRMapPtr : IRValue
+{
+    ClassMap map;
+
+    this(ClassMap map)
+    {
+        this.map = map;
+    }
+
+    override string toString()
+    {
+        return "<map:" ~ /*(map? fun.getName():"NULL") ~*/ ">";
     }
 }
 

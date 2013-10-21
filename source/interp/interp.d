@@ -167,6 +167,7 @@ enum Type : ubyte
     RAWPTR,
     CONST,
     FUNPTR,
+    MAPPTR,
     INSPTR
 }
 
@@ -188,6 +189,7 @@ string typeToString(Type type)
         case Type.REFPTR:   return "ref pointer";
         case Type.CONST:    return "const";
         case Type.FUNPTR:   return "funptr";
+        case Type.MAPPTR:   return "mapptr";
         case Type.INSPTR:   return "insptr";
 
         default:
@@ -269,6 +271,10 @@ string valToString(ValuePair value)
         return "funptr";
         break;
 
+        case Type.MAPPTR:
+        return "mapptr";
+        break;
+
         case Type.INSPTR:
         return "insptr";
         break;
@@ -345,6 +351,13 @@ class Interp
 
     /// Set of functions found live by the GC during collection
     IRFunction[void*] liveFuns;
+
+    /// Set of weak references to class maps referenced in the heap
+    /// To be cleaned up by the GC
+    ClassMap[void*] mapRefs;
+
+    /// Set of maps found live by the GC during collection
+    ClassMap[void*] liveMaps;
 
     /// Garbage collection count
     size_t gcCount = 0;

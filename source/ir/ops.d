@@ -53,6 +53,7 @@ enum OpArg
     LOCAL,
     LINK,
     FUN,
+    MAP,
     CODEBLOCK
 }
 
@@ -280,6 +281,12 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &op_set_link,
 
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &op_get_link };
+
+/// Create a map object associated with this instruction
+Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP], &op_make_map };
+
+/// Get the index for a given property name in a given map
+Opcode GET_PROP_IDX = { "get_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_get_prop_idx };
 
 /// Compute the hash code for a string and
 /// try to find the string in the string table

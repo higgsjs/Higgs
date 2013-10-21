@@ -69,6 +69,21 @@ private ValuePair getArgVal(Interp interp, IRInstr instr, size_t argIdx)
 }
 
 /**
+Get a boolean argument value
+*/
+bool getArgBool(Interp interp, IRInstr instr, size_t argIdx)
+{
+    auto argVal = interp.getArgVal(instr, argIdx);
+
+    assert (
+        argVal.type == Type.CONST,
+        "expected constant value for arg " ~ to!string(argIdx)
+    );
+
+    return (argVal.word.int8Val == TRUE.int8Val);
+}
+
+/**
 Get an argument value and ensure it is an uint32
 */
 uint32_t getArgUint32(Interp interp, IRInstr instr, size_t argIdx)
@@ -773,15 +788,9 @@ extern (C) void op_jump(Interp interp, IRInstr instr)
 
 extern (C) void op_if_true(Interp interp, IRInstr instr)
 {
-    auto v0 = interp.getArgVal(instr, 0);
+    auto testVal = interp.getArgBool(instr, 0);
 
-    assert (
-        v0.type == Type.CONST,
-        "input to if_true is not constant type:\n" ~
-        instr.block.toString()
-    );
-
-    if (v0.word.int8Val == TRUE.int8Val)
+    if (testVal is true)
         interp.branch(instr.getTarget(0));
     else
         interp.branch(instr.getTarget(1));
@@ -1193,6 +1202,49 @@ extern (C) void op_get_link(Interp interp, IRInstr instr)
         instr.outSlot,
         wVal,
         tVal
+    );
+}
+
+extern (C) void op_make_map(Interp interp, IRInstr instr)
+{
+    auto mapArg = cast(IRMapPtr)instr.getArg(0);
+    assert (mapArg !is null);
+
+    if (mapArg.map is null)
+    {
+        // TODO: rsv props?
+        mapArg.map = new ClassMap();
+
+        // Register this map in the reference set
+        interp.mapRefs[cast(void*)mapArg.map] = mapArg.map;
+    }
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(cast(rawptr)mapArg.map),
+        Type.MAPPTR
+    );
+}
+
+extern (C) void op_get_prop_idx(Interp interp, IRInstr instr)
+{
+    // Get the map value
+    auto mapVal = interp.getArgVal(instr, 0);
+
+    // Get the string value
+    auto strVal = interp.getArgStr(instr, 1);
+
+    // Get the allocField flag
+    auto allocField = interp.getArgBool(instr, 2);
+
+    // Lookup the property index
+    auto map = cast(ClassMap)mapVal.word.ptrVal;
+    auto propIdx = map.getPropIdx(strVal, allocField);
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.uint32v(propIdx),
+        Type.INT32
     );
 }
 

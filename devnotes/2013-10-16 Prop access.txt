@@ -1,0 +1,74 @@
+MAKE_CLASS instr
+- Make classes host/VM objects
+- needs caching
+- Also need GC support
+- How do we create an object? Need to pass the class ptr?
+
+GC:
+- If classes are host objects, need to keep references to them
+  - CLASSPTR type tag
+  - IRClassPtr
+  - Same liveness mechanism as IRFunPtr
+- Alternative is to GC classes
+  - Must keep track of class ptrs referenced by inline caches and such
+  - Probably need to keep track of this eventually anyways!
+
+function $rt_newObj(classLink, protoPtr)
+{
+    // Get the class pointer
+    var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
+
+    // Get the number of properties to allocate from the class
+    var numProps = $rt_class_get_num_props(classPtr);
+
+    // Allocate the object
+    var objPtr = $rt_obj_alloc(numProps);
+}
+==> Change this to call make_class at the instantiation site, same for newArr
+
+-------------------------------------------------------------------------------
+
+getPropObj(obj, propName) in host
+- loops through proto hierarchy, gets class idx, reads prop
+- can implement inline caching, use it in lookup loop
+  - Inline cache tests class ptr, produces prop idx
+- can benefit from type inference, simplify access
+- ignore getters/setters for now, if present, would return get/set pair object
+- logic is more complex than getPropIdx
+
+getPropIdx(class, propName)
+- Implements inline cache
+- Can also use TI to produce prop idx
+- More complex opt would require loop unrolling in getPropObj
+
+Inline cache could potentially return multiple pieces of info at once
+- Prop idx
+- Is prop always defined, never missing?
+- Can prop possibly be a getter/setter?
+- Is proto null?
+
+Ideally, we'd like a specialized dispatch based on the class ptr
+- Don't know which class ptrs will make it into getPropObj/setPropObj ahead of time
+- Would like to test class ptr, drop into specialized version
+- Info from class is cached based on class ptr
+  - getPropIdx(class, propName) is a dependency based on the class
+  - Some could get invalidated if the class changes (invalidate code)
+
+Could have special block? if ($ir_spec_class(classptr)) {}
+- Versions based on class, class tested, then known?
+- Needs to generate new versions dynamically
+
+Potentially, could specialize based on many kinds of constant values
+- class ptr, fun ptr, integer, etc.
+- want to test the word part only
+  - $ir_spec_word(value)
+- test value, then go to version where value is assumed known
+- need implicit chain of tests and jumps, which can be extended *****
+
+Other instructions can use the known class to yield constant values, or values
+that can be invalidated dynamically.
+
+$ir_spec_word can pre-allocate some number of entries (e.g.: 10). If no match,
+go to a version where the value isn't known. May also want to trigger
+compilation of new versions.
+

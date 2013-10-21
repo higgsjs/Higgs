@@ -41,10 +41,50 @@ import std.stdio;
 import std.string;
 import std.algorithm;
 import std.stdint;
+import std.typecons;
 import ir.ir;
 import interp.interp;
 import interp.layout;
+import interp.string;
 import interp.gc;
+
+/**
+Class field map
+*/
+class ClassMap
+{
+    alias Tuple!(uint32_t, "idx") Field;
+
+    private uint32_t nextPropIdx;
+
+    private Field[wstring] fields;
+
+    this(uint32_t numRsvProps = 0)
+    {
+        this.nextPropIdx = numRsvProps;
+    }
+
+    /// Find or allocate the property index for a given property name string
+    uint32_t getPropIdx(wstring propStr, bool allocField = false)
+    {
+        if (propStr in fields)
+            return fields[propStr].idx;
+
+        if (allocField is false)
+            return uint32_t.max;
+
+        auto propIdx = nextPropIdx++;
+        fields[propStr] = Field(propIdx);
+
+        return propIdx;
+    }
+
+    /// Get a property index using a string object
+    uint32_t getPropIdx(refptr propStr, bool allocField = false)
+    {
+        return getPropIdx(extractWStr(propStr), allocField);
+    }
+}
 
 /// Initial object class size
 immutable uint32_t CLASS_INIT_SIZE = 128;

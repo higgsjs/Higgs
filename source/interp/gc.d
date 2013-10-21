@@ -395,9 +395,18 @@ void gcCollect(Interp interp, size_t heapSize = 0)
         if (ptr !in interp.liveFuns)
             collectFun(interp, fun);
 
-    // Swap the function reference maps
+    // Swap the function reference sets
     interp.funRefs = interp.liveFuns;
     interp.liveFuns.clear();
+
+    // Collect the dead maps
+    foreach (ptr, map; interp.mapRefs)
+        if (ptr !in interp.liveMaps)
+            destroy(map);
+
+    // Swap the map reference sets
+    interp.mapRefs = interp.liveMaps;
+    interp.liveMaps.clear();
 
     //writefln("new live funs count: %s", interp.funRefs.length);
 
@@ -525,6 +534,15 @@ Word gcForward(Interp interp, Word word, Type type)
         auto fun = cast(IRFunction)word.ptrVal;
         assert (fun !is null);
         visitFun(interp, fun);
+        return word;
+
+        // Map pointer (ClassMap)
+        // Return the pointer unchanged
+        case Type.MAPPTR:
+        auto map = cast(ClassMap)word.ptrVal;
+        assert (map !is null);
+        // Add the map to the live set
+        interp.liveMaps[cast(void*)map] = map;
         return word;
 
         // Instruction pointer (IRInstr)
