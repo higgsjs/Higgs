@@ -7,6 +7,7 @@ import interp.interp;
 import interp.gc;
 
 alias ubyte* funptr;
+alias ubyte* mapptr;
 alias ubyte* rawptr;
 alias ubyte* refptr;
 alias byte   int8;
@@ -248,7 +249,7 @@ extern (C) uint32 obj_ofs_cap(refptr o)
     return ((0 + 8) + 4);
 }
 
-extern (C) uint32 obj_ofs_class(refptr o)
+extern (C) uint32 obj_ofs_map(refptr o)
 {    
     return (((0 + 8) + 4) + 4);
 }
@@ -283,9 +284,9 @@ extern (C) uint32 obj_get_cap(refptr o)
     return *cast(uint32*)(o + obj_ofs_cap(o));
 }
 
-extern (C) refptr obj_get_class(refptr o)
+extern (C) mapptr obj_get_map(refptr o)
 {    
-    return *cast(refptr*)(o + obj_ofs_class(o));
+    return *cast(mapptr*)(o + obj_ofs_map(o));
 }
 
 extern (C) refptr obj_get_proto(refptr o)
@@ -318,9 +319,9 @@ extern (C) void obj_set_cap(refptr o, uint32 v)
     *cast(uint32*)(o + obj_ofs_cap(o)) = v;
 }
 
-extern (C) void obj_set_class(refptr o, refptr v)
+extern (C) void obj_set_map(refptr o, mapptr v)
 {    
-    *cast(refptr*)(o + obj_ofs_class(o)) = v;
+    *cast(mapptr*)(o + obj_ofs_map(o)) = v;
 }
 
 extern (C) void obj_set_proto(refptr o, refptr v)
@@ -368,7 +369,6 @@ extern (C) refptr obj_alloc(Interp interp, uint32 cap)
 extern (C) void obj_visit_gc(Interp interp, refptr o)
 {    
     obj_set_next(o, gcForward(interp, obj_get_next(o)));
-    obj_set_class(o, gcForward(interp, obj_get_class(o)));
     obj_set_proto(o, gcForward(interp, obj_get_proto(o)));
     auto cap = obj_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
@@ -394,7 +394,7 @@ extern (C) uint32 clos_ofs_cap(refptr o)
     return ((0 + 8) + 4);
 }
 
-extern (C) uint32 clos_ofs_class(refptr o)
+extern (C) uint32 clos_ofs_map(refptr o)
 {    
     return (((0 + 8) + 4) + 4);
 }
@@ -414,7 +414,7 @@ extern (C) uint32 clos_ofs_type(refptr o, uint32 i)
     return (((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * i));
 }
 
-extern (C) uint32 clos_ofs_ctor_class(refptr o)
+extern (C) uint32 clos_ofs_ctor_map(refptr o)
 {    
     return (((((((((0 + 8) + 4) + 4) + 8) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8);
 }
@@ -444,9 +444,9 @@ extern (C) uint32 clos_get_cap(refptr o)
     return *cast(uint32*)(o + clos_ofs_cap(o));
 }
 
-extern (C) refptr clos_get_class(refptr o)
+extern (C) mapptr clos_get_map(refptr o)
 {    
-    return *cast(refptr*)(o + clos_ofs_class(o));
+    return *cast(mapptr*)(o + clos_ofs_map(o));
 }
 
 extern (C) refptr clos_get_proto(refptr o)
@@ -464,9 +464,9 @@ extern (C) uint8 clos_get_type(refptr o, uint32 i)
     return *cast(uint8*)(o + clos_ofs_type(o, i));
 }
 
-extern (C) refptr clos_get_ctor_class(refptr o)
+extern (C) mapptr clos_get_ctor_map(refptr o)
 {    
-    return *cast(refptr*)(o + clos_ofs_ctor_class(o));
+    return *cast(mapptr*)(o + clos_ofs_ctor_map(o));
 }
 
 extern (C) uint32 clos_get_num_cells(refptr o)
@@ -494,9 +494,9 @@ extern (C) void clos_set_cap(refptr o, uint32 v)
     *cast(uint32*)(o + clos_ofs_cap(o)) = v;
 }
 
-extern (C) void clos_set_class(refptr o, refptr v)
+extern (C) void clos_set_map(refptr o, mapptr v)
 {    
-    *cast(refptr*)(o + clos_ofs_class(o)) = v;
+    *cast(mapptr*)(o + clos_ofs_map(o)) = v;
 }
 
 extern (C) void clos_set_proto(refptr o, refptr v)
@@ -514,9 +514,9 @@ extern (C) void clos_set_type(refptr o, uint32 i, uint8 v)
     *cast(uint8*)(o + clos_ofs_type(o, i)) = v;
 }
 
-extern (C) void clos_set_ctor_class(refptr o, refptr v)
+extern (C) void clos_set_ctor_map(refptr o, mapptr v)
 {    
-    *cast(refptr*)(o + clos_ofs_ctor_class(o)) = v;
+    *cast(mapptr*)(o + clos_ofs_ctor_map(o)) = v;
 }
 
 extern (C) void clos_set_num_cells(refptr o, uint32 v)
@@ -554,7 +554,7 @@ extern (C) refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
     {    
         clos_set_type(o, i, Type.CONST);
     }
-    clos_set_ctor_class(o, null);
+    clos_set_ctor_map(o, null);
     for (uint32 i = 0; i < num_cells; ++i)
     {    
         clos_set_cell(o, i, null);
@@ -565,14 +565,12 @@ extern (C) refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
 extern (C) void clos_visit_gc(Interp interp, refptr o)
 {    
     clos_set_next(o, gcForward(interp, clos_get_next(o)));
-    clos_set_class(o, gcForward(interp, clos_get_class(o)));
     clos_set_proto(o, gcForward(interp, clos_get_proto(o)));
     auto cap = clos_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
         clos_set_word(o, i, gcForward(interp, clos_get_word(o, i), clos_get_type(o, i)));
     }
-    clos_set_ctor_class(o, gcForward(interp, clos_get_ctor_class(o)));
     auto num_cells = clos_get_num_cells(o);
     for (uint32 i = 0; i < num_cells; ++i)
     {    
@@ -685,7 +683,7 @@ extern (C) uint32 arr_ofs_cap(refptr o)
     return ((0 + 8) + 4);
 }
 
-extern (C) uint32 arr_ofs_class(refptr o)
+extern (C) uint32 arr_ofs_map(refptr o)
 {    
     return (((0 + 8) + 4) + 4);
 }
@@ -730,9 +728,9 @@ extern (C) uint32 arr_get_cap(refptr o)
     return *cast(uint32*)(o + arr_ofs_cap(o));
 }
 
-extern (C) refptr arr_get_class(refptr o)
+extern (C) mapptr arr_get_map(refptr o)
 {    
-    return *cast(refptr*)(o + arr_ofs_class(o));
+    return *cast(mapptr*)(o + arr_ofs_map(o));
 }
 
 extern (C) refptr arr_get_proto(refptr o)
@@ -775,9 +773,9 @@ extern (C) void arr_set_cap(refptr o, uint32 v)
     *cast(uint32*)(o + arr_ofs_cap(o)) = v;
 }
 
-extern (C) void arr_set_class(refptr o, refptr v)
+extern (C) void arr_set_map(refptr o, mapptr v)
 {    
-    *cast(refptr*)(o + arr_ofs_class(o)) = v;
+    *cast(mapptr*)(o + arr_ofs_map(o)) = v;
 }
 
 extern (C) void arr_set_proto(refptr o, refptr v)
@@ -835,7 +833,6 @@ extern (C) refptr arr_alloc(Interp interp, uint32 cap)
 extern (C) void arr_visit_gc(Interp interp, refptr o)
 {    
     arr_set_next(o, gcForward(interp, arr_get_next(o)));
-    arr_set_class(o, gcForward(interp, arr_get_class(o)));
     arr_set_proto(o, gcForward(interp, arr_get_proto(o)));
     auto cap = arr_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
@@ -959,182 +956,6 @@ extern (C) void arrtbl_visit_gc(Interp interp, refptr o)
     }
 }
 
-const uint32 LAYOUT_CLASS = 7;
-
-extern (C) uint32 class_ofs_next(refptr o)
-{    
-    return 0;
-}
-
-extern (C) uint32 class_ofs_header(refptr o)
-{    
-    return (0 + 8);
-}
-
-extern (C) uint32 class_ofs_id(refptr o)
-{    
-    return ((0 + 8) + 4);
-}
-
-extern (C) uint32 class_ofs_cap(refptr o)
-{    
-    return (((0 + 8) + 4) + 4);
-}
-
-extern (C) uint32 class_ofs_num_props(refptr o)
-{    
-    return ((((0 + 8) + 4) + 4) + 4);
-}
-
-extern (C) uint32 class_ofs_arr_type(refptr o)
-{    
-    return (((((0 + 8) + 4) + 4) + 4) + 4);
-}
-
-extern (C) uint32 class_ofs_prop_name(refptr o, uint32 i)
-{    
-    return (((((((0 + 8) + 4) + 4) + 4) + 4) + 8) + (8 * i));
-}
-
-extern (C) uint32 class_ofs_prop_type(refptr o, uint32 i)
-{    
-    return ((((((((0 + 8) + 4) + 4) + 4) + 4) + 8) + (8 * class_get_cap(o))) + (8 * i));
-}
-
-extern (C) uint32 class_ofs_prop_idx(refptr o, uint32 i)
-{    
-    return (((((((((0 + 8) + 4) + 4) + 4) + 4) + 8) + (8 * class_get_cap(o))) + (8 * class_get_cap(o))) + (4 * i));
-}
-
-extern (C) refptr class_get_next(refptr o)
-{    
-    return *cast(refptr*)(o + class_ofs_next(o));
-}
-
-extern (C) uint32 class_get_header(refptr o)
-{    
-    return *cast(uint32*)(o + class_ofs_header(o));
-}
-
-extern (C) uint32 class_get_id(refptr o)
-{    
-    return *cast(uint32*)(o + class_ofs_id(o));
-}
-
-extern (C) uint32 class_get_cap(refptr o)
-{    
-    return *cast(uint32*)(o + class_ofs_cap(o));
-}
-
-extern (C) uint32 class_get_num_props(refptr o)
-{    
-    return *cast(uint32*)(o + class_ofs_num_props(o));
-}
-
-extern (C) rawptr class_get_arr_type(refptr o)
-{    
-    return *cast(rawptr*)(o + class_ofs_arr_type(o));
-}
-
-extern (C) refptr class_get_prop_name(refptr o, uint32 i)
-{    
-    return *cast(refptr*)(o + class_ofs_prop_name(o, i));
-}
-
-extern (C) rawptr class_get_prop_type(refptr o, uint32 i)
-{    
-    return *cast(rawptr*)(o + class_ofs_prop_type(o, i));
-}
-
-extern (C) uint32 class_get_prop_idx(refptr o, uint32 i)
-{    
-    return *cast(uint32*)(o + class_ofs_prop_idx(o, i));
-}
-
-extern (C) void class_set_next(refptr o, refptr v)
-{    
-    *cast(refptr*)(o + class_ofs_next(o)) = v;
-}
-
-extern (C) void class_set_header(refptr o, uint32 v)
-{    
-    *cast(uint32*)(o + class_ofs_header(o)) = v;
-}
-
-extern (C) void class_set_id(refptr o, uint32 v)
-{    
-    *cast(uint32*)(o + class_ofs_id(o)) = v;
-}
-
-extern (C) void class_set_cap(refptr o, uint32 v)
-{    
-    *cast(uint32*)(o + class_ofs_cap(o)) = v;
-}
-
-extern (C) void class_set_num_props(refptr o, uint32 v)
-{    
-    *cast(uint32*)(o + class_ofs_num_props(o)) = v;
-}
-
-extern (C) void class_set_arr_type(refptr o, rawptr v)
-{    
-    *cast(rawptr*)(o + class_ofs_arr_type(o)) = v;
-}
-
-extern (C) void class_set_prop_name(refptr o, uint32 i, refptr v)
-{    
-    *cast(refptr*)(o + class_ofs_prop_name(o, i)) = v;
-}
-
-extern (C) void class_set_prop_type(refptr o, uint32 i, rawptr v)
-{    
-    *cast(rawptr*)(o + class_ofs_prop_type(o, i)) = v;
-}
-
-extern (C) void class_set_prop_idx(refptr o, uint32 i, uint32 v)
-{    
-    *cast(uint32*)(o + class_ofs_prop_idx(o, i)) = v;
-}
-
-extern (C) uint32 class_comp_size(uint32 cap)
-{    
-    return (((((((((0 + 8) + 4) + 4) + 4) + 4) + 8) + (8 * cap)) + (8 * cap)) + (4 * cap));
-}
-
-extern (C) uint32 class_sizeof(refptr o)
-{    
-    return class_comp_size(class_get_cap(o));
-}
-
-extern (C) refptr class_alloc(Interp interp, uint32 cap)
-{    
-    auto o = interp.heapAlloc(class_comp_size(cap));
-    class_set_cap(o, cap);
-    class_set_next(o, null);
-    class_set_header(o, 7);
-    class_set_num_props(o, 0);
-    class_set_arr_type(o, null);
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        class_set_prop_name(o, i, null);
-    }
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        class_set_prop_type(o, i, null);
-    }
-    return o;
-}
-
-extern (C) void class_visit_gc(Interp interp, refptr o)
-{    
-    class_set_next(o, gcForward(interp, class_get_next(o)));
-    auto cap = class_get_cap(o);
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        class_set_prop_name(o, i, gcForward(interp, class_get_prop_name(o, i)));
-    }
-}
-
 extern (C) uint32 layout_sizeof(refptr o)
 {    
     auto t = obj_get_header(o);
@@ -1165,10 +986,6 @@ extern (C) uint32 layout_sizeof(refptr o)
     if ((t == LAYOUT_ARRTBL))
     {    
         return arrtbl_sizeof(o);
-    }
-    if ((t == LAYOUT_CLASS))
-    {    
-        return class_sizeof(o);
     }
     assert(false, "invalid layout in layout_sizeof");
 }
@@ -1209,11 +1026,6 @@ extern (C) void layout_visit_gc(Interp interp, refptr o)
     if ((t == LAYOUT_ARRTBL))
     {    
         arrtbl_visit_gc(interp, o);
-        return;
-    }
-    if ((t == LAYOUT_CLASS))
-    {    
-        class_visit_gc(interp, o);
         return;
     }
     assert(false, "invalid layout in layout_visit_gc");

@@ -21,6 +21,7 @@ typeSize = {
     'rawptr':8,
     'refptr':8,
     'funptr':8,
+    'mapptr':8,
 }
 
 typeShortName = {
@@ -36,6 +37,7 @@ typeShortName = {
     'rawptr':'rawptr',
     'refptr':'refptr',
     'funptr':'funptr',
+    'mapptr':'mapptr',
 }
 
 # Layout declarations
@@ -81,8 +83,8 @@ layouts = [
             # Capacity, number of property slots
             { 'name':"cap" , 'type':"uint32" },
 
-            # Class reference
-            { 'name':"class", 'type':"refptr" },
+            # Map reference
+            { 'name':"map", 'type':"mapptr" },
 
             # Prototype reference
             { 'name':"proto", 'type':"refptr" },
@@ -104,7 +106,7 @@ layouts = [
             # Note: the function pointer is stored in the first object slot
 
             # Class for objects constructed using "new" with this closure
-            { 'name':"ctor_class", 'type':"refptr", 'init':"null"  },
+            { 'name':"ctor_map", 'type':"mapptr", 'init':"null"  },
 
             # Number of closure cells
             { 'name':"num_cells" , 'type':"uint32" },
@@ -154,35 +156,6 @@ layouts = [
 
             # Element types
             { 'name':"type", 'type':"uint8", 'init':'undef_type', 'szField':"cap" },
-        ]
-    },
-
-    # Class layout
-    {
-        'name':'class',
-        'fields':
-        [
-            # Class id / source origin location
-            { 'name':"id", 'type':"uint32" },
-
-            # Capacity, total number of property slots
-            { 'name':"cap", 'type':"uint32" },
-
-            # Number of properties in class
-            { 'name':"num_props", 'type':"uint32", 'init':"0" },
-
-            # Array element type
-            { 'name':"arr_type", 'type':"rawptr", 'init':"null" },
-
-            # Property names
-            { 'name':"prop_name", 'type':"refptr", 'szField':"cap", 'init':"null" },
-
-            # Property types
-            # Pointers to host type descriptor objects
-            { 'name':"prop_type", 'type':"rawptr", 'szField':"cap", 'init':"null" },
-
-            # Property indices
-            { 'name':"prop_idx", 'type':"uint32", 'szField':"cap" },
         ]
     },
 ]
@@ -923,6 +896,7 @@ DFile.write('import interp.gc;\n')
 DFile.write('\n');
 
 DFile.write('alias ubyte* funptr;\n');
+DFile.write('alias ubyte* mapptr;\n');
 DFile.write('alias ubyte* rawptr;\n');
 DFile.write('alias ubyte* refptr;\n');
 DFile.write('alias byte   int8;\n');

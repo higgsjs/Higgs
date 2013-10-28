@@ -217,10 +217,8 @@ void throwError(
                 interp,
                     newObj(
                     interp, 
-                    null, 
-                    errProto.ptr,
-                    CLASS_INIT_SIZE,
-                    CLASS_INIT_SIZE
+                    new ObjMap(interp, 1), 
+                    errProto.ptr
                 )
             );
 
@@ -662,27 +660,25 @@ extern (C) void LoadOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
         DataType.stringof == "short" ||
         DataType.stringof == "int")
         word.int32Val = val;
-
-    static if (DataType.stringof == "long")
+    else static if (DataType.stringof == "long")
         word.int64Val = val;
-
-    static if (
+    else static if (
         DataType.stringof == "ubyte"  ||
         DataType.stringof == "ushort" ||
         DataType.stringof == "uint")
         word.uint32Val = val;
-
-    static if (DataType.stringof == "ulong")
+    else static if (DataType.stringof == "ulong")
         word.uint64Val = val;
-
-    static if (DataType.stringof == "double")
+    else static if (DataType.stringof == "double")
         word.floatVal = val;
-
-    static if (
+    else static if (
         DataType.stringof == "void*" ||
         DataType.stringof == "ubyte*" ||
-        DataType.stringof == "IRFunction")
+        DataType.stringof == "IRFunction" ||
+        DataType.stringof == "ObjMap")
         word.ptrVal = cast(refptr)val;
+    else
+        static assert (false);
 
     interp.setSlot(
         instr.outSlot,
@@ -735,27 +731,25 @@ extern (C) void StoreOp(DataType, Type typeTag)(Interp interp, IRInstr instr)
         DataType.stringof == "short" ||
         DataType.stringof == "int")
         storeVal = cast(DataType)val.word.int32Val;
-
-    static if (DataType.stringof == "long")
+    else static if (DataType.stringof == "long")
         storeVal = cast(DataType)val.word.int64Val;
-
-    static if (
+    else static if (
         DataType.stringof == "ubyte"  ||
         DataType.stringof == "ushort" ||
         DataType.stringof == "uint")
         storeVal = cast(DataType)val.word.uint32Val;
-
-    static if (DataType.stringof == "ulong")
+    else static if (DataType.stringof == "ulong")
         storeVal = cast(DataType)val.word.uint64Val;
-
-    static if (DataType.stringof == "double")
+    else static if (DataType.stringof == "double")
         storeVal = cast(DataType)val.word.floatVal;
-
-    static if (
+    else static if (
         DataType.stringof == "void*" ||
         DataType.stringof == "ubyte*" ||
-        DataType.stringof == "IRFunction")
+        DataType.stringof == "IRFunction" ||
+        DataType.stringof == "ObjMap")
         storeVal = cast(DataType)val.word.ptrVal;
+    else
+        static assert (false);
 
     *cast(DataType*)(ptr + ofs) = storeVal;
 }
@@ -770,6 +764,7 @@ alias LoadOp!(float64, Type.FLOAT64) op_load_f64;
 alias LoadOp!(refptr, Type.REFPTR) op_load_refptr;
 alias LoadOp!(rawptr, Type.RAWPTR) op_load_rawptr;
 alias LoadOp!(IRFunction, Type.FUNPTR) op_load_funptr;
+alias LoadOp!(ObjMap, Type.MAPPTR) op_load_mapptr;
 alias StoreOp!(uint8, Type.INT32) op_store_u8;
 alias StoreOp!(uint16, Type.INT32) op_store_u16;
 alias StoreOp!(uint32, Type.INT32) op_store_u32;
@@ -780,6 +775,7 @@ alias StoreOp!(float64, Type.FLOAT64) op_store_f64;
 alias StoreOp!(refptr, Type.REFPTR) op_store_refptr;
 alias StoreOp!(rawptr, Type.RAWPTR) op_store_rawptr;
 alias StoreOp!(IRFunction, Type.FUNPTR) op_store_funptr;
+alias StoreOp!(ObjMap, Type.MAPPTR) op_store_mapptr;
 
 extern (C) void op_jump(Interp interp, IRInstr instr)
 {
@@ -878,18 +874,25 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
         )
     );
 
+    // Get the "this" object map from the closure
+    auto ctorMap = cast(ObjMap)clos_get_ctor_map(clos.ptr);
+
+    // Lazily allocate the "this" object map if it doesn't already exist
+    if (ctorMap is null)
+    {
+        ctorMap = new ObjMap(interp, 0);
+        clos_set_ctor_map(clos.ptr, cast(rawptr)ctorMap);
+    }
+
     // Allocate the "this" object
     auto thisObj = GCRoot(
         interp,
         newObj(
             interp, 
-            clos_get_ctor_class(clos.ptr),
-            protoObj.ptr,
-            CLASS_INIT_SIZE,
-            2
+            ctorMap,
+            protoObj.ptr
         )
     );
-    clos_set_ctor_class(clos.ptr, obj_get_class(thisObj.ptr));
 
     // Stack-allocate an array for the argument values
     auto argCount = cast(uint32_t)instr.numArgs - 1;
@@ -1212,11 +1215,11 @@ extern (C) void op_make_map(Interp interp, IRInstr instr)
 
     if (mapArg.map is null)
     {
-        // TODO: rsv props?
-        mapArg.map = new ClassMap();
+        // Minimum number of properties to allocate
+        auto minNumProps = interp.getArgUint32(instr, 1);
 
-        // Register this map in the reference set
-        interp.mapRefs[cast(void*)mapArg.map] = mapArg.map;
+        // Allocate the map
+        mapArg.map = new ObjMap(interp, minNumProps);
     }
 
     interp.setSlot(
@@ -1226,10 +1229,41 @@ extern (C) void op_make_map(Interp interp, IRInstr instr)
     );
 }
 
-extern (C) void op_get_prop_idx(Interp interp, IRInstr instr)
+extern (C) void op_map_num_props(Interp interp, IRInstr instr)
 {
     // Get the map value
-    auto mapVal = interp.getArgVal(instr, 0);
+    auto mapArg = interp.getArgVal(instr, 0);
+    assert (mapArg.type is Type.MAPPTR);
+    auto map = mapArg.word.mapVal;
+    assert (map !is null);
+
+    // Get the number of properties to allocate
+    auto numProps = map.numProps;
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.uint32v(numProps),
+        Type.INT32
+    );
+}
+
+extern (C) void op_map_prop_idx(Interp interp, IRInstr instr)
+{
+    // Get the map value
+    auto mapArg = interp.getArgVal(instr, 0);
+
+
+    //if (mapArg.type !is Type.MAPPTR)
+    //    writeln(instr.block.fun);
+
+    if (mapArg.word.mapVal is null)
+        writeln(instr.block.fun);
+
+
+
+    assert (mapArg.type is Type.MAPPTR);
+    auto map = mapArg.word.mapVal;
+    assert (map !is null, "map is null");
 
     // Get the string value
     auto strVal = interp.getArgStr(instr, 1);
@@ -1238,14 +1272,59 @@ extern (C) void op_get_prop_idx(Interp interp, IRInstr instr)
     auto allocField = interp.getArgBool(instr, 2);
 
     // Lookup the property index
-    auto map = cast(ClassMap)mapVal.word.ptrVal;
     auto propIdx = map.getPropIdx(strVal, allocField);
 
-    interp.setSlot(
-        instr.outSlot,
-        Word.uint32v(propIdx),
-        Type.INT32
-    );
+    // If the property was not found
+    if (propIdx is uint32.max)
+    {
+        // Output the boolean false
+        interp.setSlot(
+            instr.outSlot,
+            FALSE,
+            Type.CONST
+        );
+    }
+    else
+    {
+        // Output the property index
+        interp.setSlot(
+            instr.outSlot,
+            Word.uint32v(propIdx),
+            Type.INT32
+        );
+    }
+}
+
+extern (C) void op_map_prop_name(Interp interp, IRInstr instr)
+{
+    // Get the map value
+    auto mapArg = interp.getArgVal(instr, 0);
+    auto map = mapArg.word.mapVal;
+
+    // Get the index value
+    auto idxArg = interp.getArgUint32(instr, 1);
+
+    // Get the property name
+    auto propName = map.getPropName(idxArg);
+
+    if (propName is null)
+    {
+        interp.setSlot(
+            instr.outSlot,
+            NULL,
+            Type.REFPTR
+        );
+    }
+    else
+    {
+        auto propStr = getString(interp, propName);
+
+        interp.setSlot(
+            instr.outSlot,
+            Word.ptrv(propStr),
+            Type.REFPTR
+        );
+    }
 }
 
 extern (C) void op_get_str(Interp interp, IRInstr instr)
@@ -1297,7 +1376,9 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
     auto propStr = GCRoot(interp, getString(interp, nameStr));
 
     // Lookup the property index in the class
-    propIdx = getPropIdx(interp, obj_get_class(interp.globalObj), propStr.ptr);
+    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    assert (globalMap !is null);
+    propIdx = globalMap.getPropIdx(propStr.ptr);
 
     // If the property was found, cache it
     if (propIdx != uint32.max)
@@ -1370,7 +1451,9 @@ extern (C) void op_set_global(Interp interp, IRInstr instr)
     );
 
     // Lookup the property index in the class
-    propIdx = getPropIdx(interp, obj_get_class(interp.globalObj), propStr.ptr);
+    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    assert (globalMap !is null);
+    propIdx = globalMap.getPropIdx(propStr.ptr);
 
     // If the property was found, cache it
     if (propIdx != uint32.max)
@@ -1388,63 +1471,37 @@ extern (C) void op_new_clos(Interp interp, IRInstr instr)
     assert (funArg !is null);
     auto fun = funArg.fun;
 
-    auto closLinkArg = cast(IRLinkIdx)instr.getArg(1);
-    assert (closLinkArg !is null);
-    auto closLinkIdx = &closLinkArg.linkIdx;
+    // Closure map
+    auto closMapArg = interp.getArgVal(instr, 1);
 
-    auto protLinkArg = cast(IRLinkIdx)instr.getArg(2);
-    assert (protLinkArg !is null);
-    auto protLinkIdx = &protLinkArg.linkIdx;
+    // Prototype map
+    auto protMapArg = interp.getArgVal(instr, 2);
 
-    if (*closLinkIdx is NULL_LINK)
-    {
-        *closLinkIdx = interp.allocLink();
-        interp.setLinkWord(*closLinkIdx, NULL);
-        interp.setLinkType(*closLinkIdx, Type.REFPTR);
-    }
-
-    if (*protLinkIdx is NULL_LINK)
-    {
-        *protLinkIdx = interp.allocLink();
-        interp.setLinkWord(*protLinkIdx, NULL);
-        interp.setLinkType(*protLinkIdx, Type.REFPTR);
-    }
-
-    //writefln("allocating clos");
+    //writeln("clos map numProps: ", closMapArg.word.mapVal.numProps);
 
     // Allocate the closure object
     auto closPtr = GCRoot(
         interp,
         newClos(
             interp, 
-            interp.wLinkTable[*closLinkIdx].ptrVal,
+            closMapArg.word.mapVal,
             interp.funProto,
-            CLASS_INIT_SIZE,
-            2,
             cast(uint32)fun.ast.captVars.length,
             fun
         )
     );
-    interp.wLinkTable[*closLinkIdx].ptrVal = clos_get_class(closPtr.ptr);
-
-    //writefln("allocating proto");
 
     // Allocate the prototype object
     auto objPtr = GCRoot(
         interp,
         newObj(
             interp, 
-            interp.wLinkTable[*protLinkIdx].ptrVal, 
-            interp.objProto,
-            CLASS_INIT_SIZE,
-            0
+            protMapArg.word.mapVal, 
+            interp.objProto
         )
     );
-    interp.wLinkTable[*protLinkIdx].ptrVal = obj_get_class(objPtr.ptr);
 
-    //writefln("setting proto");
-
-    // Set the prototype property on the closure object
+    // Set the "prototype" property on the closure object
     auto protoStr = GCRoot(interp, getString(interp, "prototype"));
     setProp(
         interp,

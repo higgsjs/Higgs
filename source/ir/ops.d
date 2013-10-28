@@ -200,6 +200,7 @@ Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_f64 }
 Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_refptr };
 Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_rawptr };
 Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_funptr };
+Opcode LOAD_MAPPTR = { "load_mapptr", true, [OpArg.LOCAL, OpArg.LOCAL], &op_load_mapptr };
 
 // Store instructions
 Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_u8, OpInfo.IMPURE };
@@ -212,6 +213,7 @@ Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL]
 Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_refptr, OpInfo.IMPURE };
 Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_rawptr, OpInfo.IMPURE };
 Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_funptr, OpInfo.IMPURE };
+Opcode STORE_MAPPTR = { "store_mapptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_store_mapptr, OpInfo.IMPURE };
 
 // Unconditional jump
 Opcode JUMP = { "jump", false, [], &op_jump, OpInfo.BRANCH };
@@ -283,10 +285,16 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &op_set_link,
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &op_get_link };
 
 /// Create a map object associated with this instruction
-Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP], &op_make_map };
+Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP, OpArg.LOCAL], &op_make_map };
+
+/// Get the number of properties to allocate for objects with a given map
+Opcode MAP_NUM_PROPS = { "map_num_props", true, [OpArg.LOCAL], &op_map_num_props };
 
 /// Get the index for a given property name in a given map
-Opcode GET_PROP_IDX = { "get_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_get_prop_idx };
+Opcode MAP_PROP_IDX = { "map_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &op_map_prop_idx };
+
+/// Get the name for a given property index in a given map
+Opcode MAP_PROP_NAME = { "map_prop_name", true, [OpArg.LOCAL, OpArg.LOCAL], &op_map_prop_name, OpInfo.MAY_GC };
 
 /// Compute the hash code for a string and
 /// try to find the string in the string table

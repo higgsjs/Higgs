@@ -1,0 +1,76 @@
+To discuss:
+- Lazy JIT plans
+- Local profiling
+- Inlining, should be more aggressive in hot code
+- Type representation
+- Interprocedural type prop
+- Lazy prop? How to make this practical
+
+Lazy JIT, probably want two compilation modes:
+- First pass
+  - Local profiling
+  - No reg alloc?
+  - No versioning
+- Optimized
+  - Versioning
+  - On the fly reg alloc
+- No interpreter
+  - Turn interpreter ops into library calls
+
+Register allocation:
+Since we're focusing on eliminating type tests still, do we not want to have
+any register allocation at all, or to have the allocation simply be distinct
+from the versioning? Probably the latter?
+
+Type representation:
+- Basic type tags
+- Closure, object, array, etc. for sure
+- Numerical, array element types (int array, float array)
+  - Test < length, if value is array, if only saw floats up to date, flag array
+  - Also need to know that index is always incremented by 1
+- Could technically all be implemented as type tags?
+  - May also want which map an object belongs to
+
+Interprocedural versioning:
+- Multiple function entry points, created on-demand, lazily
+  - Versioning on the function entry block
+  - Limited number allowe
+- Multiple return points?
+  - Callee usually doesn't know who the caller is
+  - Could have a few addresses for most common types (unknown, int, float, object)
+  - Can also test after return based on profiling info (if worthwhile)
+
+Local profiling:
+- Branch edge counts
+- Type test execution counts or type test history
+- Could also just maintain short block execution history buffer
+  - Last executed path
+  - Issue: optimized code doesn't provide this
+- Value profiles
+  - argument types
+  - function returns
+  - property accesses
+  - type tests
+- Callees at call sites
+
+No interpreter: what about exceptions?
+- Still need consistent stack frame layout
+
+
+
+
+Inlining?????
+- Want to inline at hottest call sites, relative hottest
+
+
+
+
+
+
+Lazy prop??????
+
+
+
+
+
+

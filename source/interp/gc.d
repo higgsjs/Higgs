@@ -402,7 +402,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     // Collect the dead maps
     foreach (ptr, map; interp.mapRefs)
         if (ptr !in interp.liveMaps)
-            destroy(map);
+            collectMap(interp, map);
 
     // Swap the map reference sets
     interp.mapRefs = interp.liveMaps;
@@ -454,10 +454,24 @@ refptr gcForward(Interp interp, refptr ptr)
     );
 
     // If this is a closure
-    if (obj_get_header(ptr) == LAYOUT_CLOS)
+    auto header = obj_get_header(ptr);
+    if (header == LAYOUT_CLOS)
     {
         auto fun = getClosFun(ptr);
+        assert (fun !is null);
         visitFun(interp, fun);
+
+        auto map = cast(ObjMap)clos_get_ctor_map(ptr);
+        if (map !is null)
+            visitMap(interp, map);
+    }
+
+    // If this is an object of some kind
+    if (header == LAYOUT_OBJ || header == LAYOUT_ARR || header == LAYOUT_CLOS)
+    {
+        auto map = cast(ObjMap)obj_get_map(ptr);
+        assert (map !is null);
+        visitMap(interp, map);
     }
    
     // Follow the next pointer chain as long as it points in the from-space
@@ -531,18 +545,17 @@ Word gcForward(Interp interp, Word word, Type type)
         // Function pointer (IRFunction)
         // Return the pointer unchanged
         case Type.FUNPTR:
-        auto fun = cast(IRFunction)word.ptrVal;
+        auto fun = word.funVal;
         assert (fun !is null);
         visitFun(interp, fun);
         return word;
 
-        // Map pointer (ClassMap)
+        // Map pointer (ObjMap)
         // Return the pointer unchanged
         case Type.MAPPTR:
-        auto map = cast(ClassMap)word.ptrVal;
+        auto map = word.mapVal;
         assert (map !is null);
-        // Add the map to the live set
-        interp.liveMaps[cast(void*)map] = map;
+        visitMap(interp, map);
         return word;
 
         // Instruction pointer (IRInstr)
@@ -715,9 +728,18 @@ void visitFun(Interp interp, IRFunction fun)
             for (size_t argIdx = 0; argIdx < instr.numArgs; ++argIdx)
             {
                 auto arg = instr.getArg(argIdx);
+
                 if (auto funArg = cast(IRFunPtr)arg)
+                {
                     if (funArg.fun !is null)
                         visitFun(interp, funArg.fun);
+                }
+
+                else if (auto mapArg = cast(IRMapPtr)arg)
+                {
+                    if (mapArg.map !is null)
+                        visitMap(interp, mapArg.map);
+                }
             }
         }
     }
@@ -757,11 +779,26 @@ void collectFun(Interp interp, IRFunction fun)
         }
     }
 
-    // TODO: delete argument type monitor objects here
-
     //writefln("destroying function: \"%s\" (%s)", fun.getName, cast(void*)fun);
 
     // Destroy the function
     destroy(fun);
+}
+
+/**
+Visit a map
+*/
+void visitMap(Interp interp, ObjMap map)
+{
+    // Add the map to the live set
+    interp.liveMaps[cast(void*)map] = map;
+}
+
+/**
+Collect resources held by a dead map
+*/
+void collectMap(Interp interp, ObjMap map)
+{
+    destroy(map);
 }
 

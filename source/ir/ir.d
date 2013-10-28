@@ -993,16 +993,16 @@ IR map pointer constant (stateful, non-constant, may be null)
 */
 class IRMapPtr : IRValue
 {
-    ClassMap map;
+    ObjMap map;
 
-    this(ClassMap map)
+    this(ObjMap map = null)
     {
         this.map = map;
     }
 
     override string toString()
     {
-        return "<map:" ~ /*(map? fun.getName():"NULL") ~*/ ">";
+        return "<map:" ~ (map? to!string(cast(void*)map):"NULL") ~ ">";
     }
 }
 

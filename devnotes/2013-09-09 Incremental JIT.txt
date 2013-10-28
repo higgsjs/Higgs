@@ -1,7 +1,28 @@
+Lazy JIT, probably want two compilation modes:
+- First pass
+  - Profiling
+  - No reg alloc?
+  - No versioning
+- Optimized
+  - Versioning
+  - On the fly reg alloc
+- No interpreter
+
+Type representation:
+- Differentiate closure, object, array, etc. for sure
+- Numerical, array element types
+  - Test < length, if value is array, if only saw floats up to date, flag array
+
+Interprocedural versioning?
+- Multiple function entry points
+- Multiple return points?
+
+------------------------------------------------------------------------------
+
 Features we want for the 3rd gen Higgs JIT:
 - Incremental compilation, incremental inlining
   - Local profiling during compilation
-  - Leaner stubs for unexecuted blocks
+  - Leaner stubs for unexecuted blocks, "functions"
 - On-the-fly register allocation
 - Property access optimizations
 - Better deferring of type tag and constant writing

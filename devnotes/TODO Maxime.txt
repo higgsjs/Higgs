@@ -13,13 +13,9 @@ http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 - ideally requires test harness
 
 TODO: add --jit_trace command-line option
-- trace entry and bailout in/out of specific functions
 
 TODO: make sure global obj ptr is updated when global obj is extended
 - SET_GLOBAL_OBJ?
-
-FIXME: shootout/hash2, class capacity exceeded
-- If getPropIdx moves to host VM, do we need JS implementation of class ext?
 
 TODO: add map.js, set.js to Higgs stdlib
 - Make more ES6 conformant
@@ -27,22 +23,94 @@ TODO: add map.js, set.js to Higgs stdlib
 TODO: complete WAV output support, test it out with sine wave
 
 TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
-- Inlining?
-- Refs from compiled code?
-- Links are mutable cells, used by getRegexp among others
-  - Can we come up with another mechanism for getRegexp?
-  - Caching, hash map, inside regexp constructor?
+- Links are mutable cells, used by getRegexp, setString
+- IRRefPtr + getRegExp?
 
-TODO: re-run ./benchmark after class introduction
+Monday meeting:
+- Unifying theme for thesis
+- Higgs roadmap
+- Benchmarks using arrays
+- Internship possibilities
 
-TODO: remove map layout
+TODO: look at benchmarks using arrays
+- How are the arrays used? Do we always loop over all elements
+- Submethods mutating elements?
 
-TODO: make MAKE_CLOS, newArr, newObj use IRMapPtr instead of IRLinkIdx
+TODO: think about unifying theme for thesis
+- Lazy compilation?
+- Versioning?
+- Dynamic compilation? Dynamic languages need dynamic compilers
+  - Versioning and laziness fit under this umbrella
+
+TODO: new document, Higgs roadmap
+- Lazy JIT plans
+- Local profiling
+- Inlining, should be more aggressive in hot code
+- Type representation
+- Interprocedural JIT
+- Lazy prop? How to make this practical
+
+TODO: custom D assert handler?
+- Even more useful if no more interpreter
+
+TODO: make print accept var arg, use $argc
+
+TODO: shootout/hash2, class capacity exceeded, should work now
+
+TODO: create dev-maxime branch
+
+TODO: re-run ./benchmark after map introduction
 
 
 
 
 
+
+
+
+
+
+[DONE] TODO: rename ClassMap to ObjMap?
+
+[DONE] FIXME: obj_get_map, need load_mapptr
+
+[DONE] FIXME: segmentation fault
+instr: ret $2 ($rt_arrtbl_alloc(14FF))
+instr: $0 = map_num_props $8 ($rt_newArr(2B3C))
+Segmentation fault (core dumped)
+
+[DONE] FIXME: interp.interp.RunError: call to non-function
+RegExp(AB62) ("stdlib/regexp.js"@864:1)
+- Probably method lookup failing?
+
+[DONE] TODO: GC must scan ctor map in closures
+
+[DONE] TODO: new ctor map, set at new_clos time? Should be the same for all "new" operators
+- Just lazily create in new
+
+[DONE] TODO: $rt_getPropEnum
+- Need way to get prop names, null if none?
+$rt_class_get_prop_name => $ir_map_prop_name
+
+[DONE] TODO: $rt_getPropIdx, IR instr should return false if not found
+
+[DONE] TODO: $rt_class_get_num_props(classPtr) => $ir_map_num_props?
+
+[DONE] TODO: look at link creation in ir/ast.d
+
+[DONE] TODO: MAKE_CLASS, minNumProps, numRsvProps
+
+[DONE] TODO: gc, when scanning IR, scan IRMapPtr, visitMap!
+
+[DONE] TODO: interp/ops, make MAKE_CLOS, newArr, newObj use IRMapPtr instead of IRLinkIdx
+
+[DONE] TODO: GC, when traversing object, visit map ptr, visitMap
+
+[DONE] TODO: rework map creation in interp.d for newObj, global obj
+- Add ref to mapRefs
+- newMap(Interp interp)? getMap?
+
+[DONE] TODO: remove map layout
 
 [DONE] TODO: map accessor instructions
 - Mostly just getPropIdx for now?

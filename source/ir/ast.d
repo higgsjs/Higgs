@@ -346,6 +346,18 @@ class IRGenCtx
     }
 
     /**
+    Create an object class map value
+    */
+    IRInstr makeMap(ulong minNumProps = 0)
+    {
+        return addInstr(new IRInstr(
+            &MAKE_MAP, 
+            new IRMapPtr(),
+            IRConst.int32Cst(cast(uint32_t)minNumProps)
+        ));
+    }
+
+    /**
     Obtain a constant string value
     */
     IRInstr strVal(wstring str)
@@ -436,12 +448,12 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     if (ast.usesArguments)
     {
         // Create the "arguments" array
-        auto linkVal = bodyCtx.makeLink();;
+        auto mapVal = bodyCtx.makeMap(1);
         auto protoVal = bodyCtx.addInstr(new IRInstr(&GET_ARR_PROTO));
         auto argObjVal = genRtCall(
             bodyCtx, 
             "newArr",
-            [linkVal, protoVal, fun.argcVal]
+            [mapVal, protoVal, fun.argcVal]
         );
 
         // Map the "arguments" identifier to the array object
@@ -553,11 +565,13 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             delegate IRValue(IRGenCtx ctx)
             {
                 // Create a closure of this function
+                auto closMap = ctx.makeMap(2);
+                auto protMap = ctx.makeMap();
                 auto newClos = ctx.addInstr(new IRInstr(
                     &NEW_CLOS,
                     new IRFunPtr(subFun),
-                    new IRLinkIdx(),
-                    new IRLinkIdx()
+                    closMap,
+                    protMap
                 ));
 
                 // Set the closure cells for the captured variables
@@ -1356,11 +1370,13 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             auto fun = new IRFunction(funExpr);
 
             // Create a closure of this function
+            auto closMap = ctx.makeMap(2);
+            auto protMap = ctx.makeMap();
             auto newClos = ctx.addInstr(new IRInstr(
                 &NEW_CLOS,
                 new IRFunPtr(fun),
-                new IRLinkIdx(),
-                new IRLinkIdx()
+                closMap,
+                protMap
             ));
 
             // Set the closure cells for the captured variables
@@ -1933,13 +1949,13 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
-        auto linkVal = ctx.makeLink();
+        auto mapVal = ctx.makeMap();
         auto protoVal = ctx.addInstr(new IRInstr(&GET_ARR_PROTO));
         auto numVal = cast(IRValue)IRConst.int32Cst(cast(int32_t)arrayExpr.exprs.length);
         auto arrVal = genRtCall(
             ctx, 
             "newArr",
-            [linkVal, protoVal, numVal]
+            [mapVal, protoVal, numVal]
         );
 
         // Evaluate the property values
@@ -1950,10 +1966,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             auto idxVal = IRConst.int32Cst(cast(int32_t)i);
             auto propVal = exprToIR(ctx, valExpr);
 
-            // Set the property on the object
+            // Set the array element
             genRtCall(
                 ctx, 
-                "setProp",
+                "setArrElem",
                 [arrVal, idxVal, propVal]
             );
         }
@@ -1964,12 +1980,12 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
     else if (auto objExpr = cast(ObjectExpr)expr)
     {
         // Create the object
-        auto linkVal = ctx.makeLink();
+        auto mapVal = ctx.makeMap(objExpr.names.length);
         auto protoVal = ctx.addInstr(new IRInstr(&GET_OBJ_PROTO));
         auto objVal = genRtCall(
             ctx, 
             "newObj",
-            [linkVal, protoVal]
+            [mapVal, protoVal]
         );
 
         // Evaluate the property values
@@ -2411,13 +2427,25 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
             argVal = new IRLinkIdx();
             break;
 
+            // Map pointer
+            case OpArg.MAP:
+            if (cast(NullExpr)argExpr is null)
+            {    
+                throw new ParseError(
+                    "expected null argument", 
+                    argExpr.pos
+                );
+            }
+            argVal = new IRMapPtr();
+            break;
+
             // Code block pointer
             case OpArg.CODEBLOCK:
             if (cast(NullExpr)argExpr is null)
             {    
                 throw new ParseError(
-                        "expected null argument", 
-                        argExpr.pos
+                    "expected null argument", 
+                    argExpr.pos
                 );
             }
             argVal = new IRCodeBlock();

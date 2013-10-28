@@ -140,6 +140,10 @@ union Word
     float64 floatVal;
     refptr  refVal;
     rawptr  ptrVal;
+
+    IRFunction  funVal;
+    IRInstr     insVal;
+    ObjMap      mapVal;
 }
 
 unittest
@@ -293,8 +297,8 @@ immutable size_t HEAP_INIT_SIZE = 2^^24;
 /// Initial link table size
 immutable size_t LINK_TBL_INIT_SIZE = 8192;
 
-/// Initial global class size
-immutable size_t GLOBAL_CLASS_INIT_SIZE = 1024;
+/// Initial base object size
+immutable size_t BASE_OBJ_INIT_SIZE = 128;
 
 /// Initial global object size
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
@@ -354,10 +358,10 @@ class Interp
 
     /// Set of weak references to class maps referenced in the heap
     /// To be cleaned up by the GC
-    ClassMap[void*] mapRefs;
+    ObjMap[void*] mapRefs;
 
     /// Set of maps found live by the GC during collection
-    ClassMap[void*] liveMaps;
+    ObjMap[void*] liveMaps;
 
     /// Garbage collection count
     size_t gcCount = 0;
@@ -481,37 +485,29 @@ class Interp
         // Allocate the object prototype object
         objProto = newObj(
             this, 
-            null, 
-            NULL.ptrVal,
-            CLASS_INIT_SIZE,
-            CLASS_INIT_SIZE
+            new ObjMap(this, BASE_OBJ_INIT_SIZE),
+            NULL.ptrVal            
         );
 
         // Allocate the array prototype object
         arrProto = newObj(
             this, 
-            null, 
-            objProto,
-            CLASS_INIT_SIZE,
-            CLASS_INIT_SIZE
+            new ObjMap(this, BASE_OBJ_INIT_SIZE),
+            objProto
         );
 
         // Allocate the function prototype object
         funProto = newObj(
             this, 
-            null, 
-            objProto,
-            CLASS_INIT_SIZE,
-            CLASS_INIT_SIZE
+            new ObjMap(this, BASE_OBJ_INIT_SIZE),
+            objProto
         );
 
         // Allocate the global object
         globalObj = newObj(
-            this, 
-            null, 
-            objProto,
-            GLOBAL_CLASS_INIT_SIZE,
-            GLOBAL_OBJ_INIT_SIZE
+            this,
+            new ObjMap(this, GLOBAL_OBJ_INIT_SIZE),
+            objProto
         );
 
         // If the runtime library should be loaded
@@ -973,7 +969,7 @@ class Interp
                 IRInstr instr = ip;
 
                 //writefln("op: %s", instr.opcode.mnem);
-                //writefln("instr: %s", instr);
+                //writefln("instr: %s (%s)", instr, instr.block.fun.getName);
      
                 // Get the opcode's implementation function
                 auto opFn = instr.opcode.opFn;

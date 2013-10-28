@@ -149,6 +149,7 @@ static this()
     addOp(LOAD_REFPTR);
     addOp(LOAD_RAWPTR);
     addOp(LOAD_FUNPTR);
+    addOp(LOAD_MAPPTR);
 
     addOp(STORE_U8);
     addOp(STORE_U16);
@@ -160,6 +161,7 @@ static this()
     addOp(STORE_REFPTR);
     addOp(STORE_RAWPTR);
     addOp(STORE_FUNPTR);
+    addOp(STORE_MAPPTR);
 
     addOp(CALL_APPLY);
 
@@ -178,6 +180,10 @@ static this()
     addOp(MAKE_LINK);
     addOp(SET_LINK);
     addOp(GET_LINK);
+    addOp(MAKE_MAP);
+    addOp(MAP_NUM_PROPS);
+    addOp(MAP_PROP_IDX);
+    addOp(MAP_PROP_NAME);
     addOp(GET_STR);
 
     addOp(LOAD_FILE);

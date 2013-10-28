@@ -149,7 +149,7 @@ Object.create = function (O, Properties)
         typeError('can only create object from object or null prototype');
     }
 
-    var newObj = $rt_newObj($ir_make_link(0), O)
+    var newObj = $rt_newObj($ir_make_map(null, 0), O);
 
     if (Properties !== undefined)
         Object.defineProperties(newObj, Properties);

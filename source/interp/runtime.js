@@ -1285,70 +1285,20 @@ function $rt_ns(x, y)
 //=============================================================================
 
 /**
-Initial class size (number of slots)
-*/
-var $rt_CLASS_INIT_SIZE = 128;
-
-/**
-Maximum class hash table load
-*/
-var $rt_CLASS_MAX_LOAD_NUM = 3;
-var $rt_CLASS_MAX_LOAD_DENOM = 5;
-
-/**
-Initial number of object properties on class allocation
-*/
-var $rt_OBJ_INIT_SIZE = 1;
-
-/**
-Lazily allocate a class object
-*/
-function $rt_getClass(classLink, classInitSize)
-{
-    // Get the class pointer
-    var classPtr = classLink? $ir_get_link(classLink):null;
-
-    //$ir_print_str("Got link\n");
-
-    // If the class is not yet allocated
-    if (classPtr === null)
-    {
-        //$ir_print_str("Getting class\n");
-
-        // Lazily allocate the class
-        classPtr = $rt_class_alloc(classInitSize);
-        $rt_class_set_id(classPtr, 0);
-
-        //$ir_print_str("Got class\n");
-
-        // Update the instruction's class pointer
-        if (classLink !== null)
-            $ir_set_link(classLink, classPtr);
-    }    
-
-    return classPtr;
-}
-
-/**
 Allocate an empty object
 */
-function $rt_newObj(classLink, protoPtr)
+function $rt_newObj(mapPtr, protoPtr)
 {
     //$ir_print_str("Allocating object\n");
 
-    // Get the class pointer
-    var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
-
-    // Get the number of properties to allocate from the class
-    var numProps = $rt_class_get_num_props(classPtr);
-    if (numProps === 0)
-        numProps = $rt_OBJ_INIT_SIZE;
+    // Get the number of properties to allocate from the map
+    var numProps = $ir_map_num_props(mapPtr);
 
     // Allocate the object
     var objPtr = $rt_obj_alloc(numProps);
 
     // Initialize the object
-    $rt_obj_set_class(objPtr, classPtr);
+    $rt_obj_set_map(objPtr, mapPtr);
     $rt_obj_set_proto(objPtr, protoPtr);
 
     //$ir_print_str("Allocated object\n");
@@ -1359,32 +1309,19 @@ function $rt_newObj(classLink, protoPtr)
 /**
 Allocate an array
 */
-function $rt_newArr(classLink, protoPtr, numElems)
+function $rt_newArr(mapPtr, protoPtr, numElems)
 {
-    //$ir_print_str("Allocating array\n");
-
-    // Get the class pointer
-    var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
-
-    //$ir_print_str("Got class\n");
-
-    // Get the number of properties to allocate from the class
-    var numProps = $rt_class_get_num_props(classPtr);
-    if (numProps === 0)
-        numProps = $rt_OBJ_INIT_SIZE;
-
-    //$ir_print_str("Allocating table\n");
-
     // Allocate the array table
     var tblPtr = $rt_arrtbl_alloc(numElems);
 
-    //$ir_print_str("Allocating array\n");
+    // Get the number of properties to allocate from the map
+    var numProps = $ir_map_num_props(mapPtr);
 
     // Allocate the array
     var objPtr = $rt_arr_alloc(numProps);
 
     // Initialize the object
-    $rt_obj_set_class(objPtr, classPtr);
+    $rt_obj_set_map(objPtr, mapPtr);
     $rt_obj_set_proto(objPtr, protoPtr);
     $rt_arr_set_tbl(objPtr, tblPtr);
     $rt_arr_set_len(objPtr, 0);
@@ -1393,40 +1330,6 @@ function $rt_newArr(classLink, protoPtr, numElems)
 
     return objPtr;
 }
-
-/**
-Create a new closure/function object
-*/
-/*
-function $rt_newClos(classLink, protoLink, numCells, funPtr)
-{
-    // Get the class pointer
-    var classPtr = $rt_getClass(classLink, $rt_CLASS_INIT_SIZE);
-
-    // Get the number of properties to allocate from the class
-    var numProps = $rt_class_get_num_props(classPtr);
-    if (numProps === 0)
-        numProps = $rt_OBJ_INIT_SIZE;
-
-    // Allocate the closure
-    var closPtr = $rt_clos_alloc(numProps, numCells);
-
-    // Initialize the closure
-    $rt_obj_set_class(closPtr, classPtr);
-    $rt_obj_set_proto(closPtr, $ir_get_fun_proto());
-
-    // Set the function pointer
-    $rt_clos_set_fptr(closPtr, funPtr);
-
-    // Allocate the prototype object
-    var objPtr = $rt_newObj(protoLink, $ir_get_obj_proto());
-
-    // Set the prototype property on the closure object
-    closPtr.prototype = objPtr;
-
-    return closPtr;
-}
-*/
 
 /**
 Get/allocate a regular expresson object
@@ -1469,77 +1372,6 @@ function $rt_shrinkHeap(freeSpace)
 //=============================================================================
 
 /**
-Find or allocate the property index for a given property name string
-*/
-function $rt_getPropIdx(classPtr, propStr, alloc)
-{
-    // Get the size of the property table
-    var tblSize = $rt_class_get_cap(classPtr);
-
-    // Get the hash code from the property string
-    var hashCode = $rt_str_get_hash(propStr);
-
-    // Get the hash table index for this hash value
-    var hashIndex = $ir_mod_i32(hashCode, tblSize);
-
-    // Until the key is found, or a free slot is encountered
-    while (true)
-    {
-        // Get the string value at this hash slot
-        var strVal = $rt_class_get_prop_name(classPtr, hashIndex);
-
-        // If this is the string we want
-        if ($ir_eq_refptr(strVal, propStr))
-        {
-            // Return the associated property index
-            return $rt_class_get_prop_idx(classPtr, hashIndex);
-        }
-
-        // If we have reached an empty slot
-        else if ($ir_eq_refptr(strVal, null))
-        {
-            // Property not found
-            break;
-        }
-
-        // Move to the next hash table slot
-        hashIndex = $ir_mod_i32($ir_add_i32(hashIndex, 1), tblSize);
-    }
-
-    // If we are not to allocate new property indices, stop
-    if ($ir_eq_const(alloc, false))
-        return false;   
-
-    // Get the number of class properties
-    var numProps = $rt_class_get_num_props(classPtr);
-
-    //print('Allocating new prop idx for: ' + propStr + ' => ' + numProps);
-
-    // Set the property name and index
-    var propIdx = numProps;
-    $rt_class_set_prop_name(classPtr, hashIndex, propStr);
-    $rt_class_set_prop_idx(classPtr, hashIndex, propIdx);
-
-    // Update the number of class properties
-    numProps = $ir_add_i32(numProps, 1);
-    $rt_class_set_num_props(classPtr, numProps);
-
-    // Test if resizing of the property table is needed
-    // numProps > ratio * tblSize
-    // numProps > num/denom * tblSize
-    // numProps * denom > tblSize * num
-    if (numProps * $rt_CLASS_MAX_LOAD_DENOM >
-        tblSize  * $rt_CLASS_MAX_LOAD_NUM)
-    {
-        // Extend the property table
-        // TODO
-        assert (false, "class capacity exceeded");
-    }
-
-    return propIdx;
-}
-
-/**
 Get a property from an object using a string as key
 */
 function $rt_getPropObj(obj, propStr)
@@ -1554,7 +1386,7 @@ function $rt_getPropObj(obj, propStr)
     }
 
     // Find the index for this property
-    var propIdx = $rt_getPropIdx($rt_obj_get_class(obj), propStr, false);
+    var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), propStr, false);
 
     //print('getProp: ' + propStr + ' => ' + propIdx);
 
@@ -1835,10 +1667,10 @@ function $rt_setPropObj(obj, propStr, val)
     }
 
     // Get the class from the object
-    var classPtr = $rt_obj_get_class(obj);
+    var classPtr = $rt_obj_get_map(obj);
 
     // Find the index for this property
-    var propIdx = $rt_getPropIdx(classPtr, propStr, true);
+    var propIdx = $ir_map_prop_idx(classPtr, propStr, true);
 
     // Get the capacity of the object
     var objCap = $rt_obj_get_cap(obj);
@@ -1876,7 +1708,7 @@ function $rt_setPropObj(obj, propStr, val)
             assert (false, "unhandled object type in setPropObj");
         }
 
-        $rt_obj_set_class(newObj, classPtr);
+        $rt_obj_set_map(newObj, classPtr);
         $rt_obj_set_proto(newObj, $rt_obj_get_proto(obj));
 
         // Copy over the property words and types
@@ -1997,10 +1829,10 @@ function $rt_delProp(base, prop)
     }
 
     // Get the class from the object
-    var classPtr = $rt_obj_get_class(obj);
+    var classPtr = $rt_obj_get_map(obj);
 
     // Find the index for this property
-    var propIdx = $rt_getPropIdx(classPtr, propStr, false);
+    var propIdx = $ir_map_prop_idx(classPtr, propStr, false);
     if (propIdx === false)
         return true;
 
@@ -2058,8 +1890,8 @@ function $rt_hasPropObj(obj, propStr)
         obj = next;
     }
 
-    var classPtr = $rt_obj_get_class(obj);
-    var propIdx = $rt_getPropIdx(classPtr, propStr, false);
+    var classPtr = $rt_obj_get_map(obj);
+    var propIdx = $ir_map_prop_idx(classPtr, propStr, false);
 
     // If the class doesn't have an index for this property slot, return false
     if (propIdx === false)
@@ -2189,14 +2021,14 @@ function $rt_getPropEnum(obj)
             // If the current object is an object or extension
             if ($rt_valIsObj(curObj))
             {
-                var classPtr = $rt_obj_get_class(curObj);
-                var tblSize = $rt_class_get_cap(classPtr);
+                var classPtr = $rt_obj_get_map(curObj);
+                var numProps = $ir_map_num_props(classPtr);
 
-                // Until the key is found, or a free slot is encountered
-                for (; curIdx < tblSize; ++curIdx)
+                // For each property slot
+                for (; curIdx < numProps; ++curIdx)
                 {
-                    // Get the key value at this hash slot
-                    var keyVal = $rt_class_get_prop_name(classPtr, curIdx);
+                    // Get the name for this property index
+                    var keyVal = $ir_map_prop_name(classPtr, curIdx);
 
                     // FIXME: until we have support for non-enumerable properties
                     if ((keyVal === 'length' || keyVal === 'callee' ) &&
@@ -2217,7 +2049,7 @@ function $rt_getPropEnum(obj)
                 // If the object is an array
                 if ($rt_valIsLayout(curObj, $rt_LAYOUT_ARR))
                 {
-                    var arrIdx = curIdx - tblSize;
+                    var arrIdx = curIdx - numProps;
                     var len = curObj.length;
 
                     if (arrIdx < len)

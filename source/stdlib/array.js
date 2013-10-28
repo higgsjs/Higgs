@@ -65,14 +65,14 @@ function Array(len)
         len = $rt_toUint32(len);
 
         // Allocate an array of the desired capacity and set its length
-        var a = $rt_newArr($ir_make_link(0), $ir_get_arr_proto(), len);
+        var a = $rt_newArr($ir_make_map(null, 0), $ir_get_arr_proto(), len);
         a.length = len;
 
         return a;
     }
 
     // Allocate an array of the desired capacity and set its length
-    var a = $rt_newArr($ir_make_link(0), $ir_get_arr_proto(), $argc);
+    var a = $rt_newArr($ir_make_map(null, 0), $ir_get_arr_proto(), $argc);
     a.length = $argc;
 
     // Copy the arguments into the array
