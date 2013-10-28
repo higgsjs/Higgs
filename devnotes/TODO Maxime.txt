@@ -55,11 +55,7 @@ TODO: custom D assert handler?
 
 TODO: make print accept var arg, use $argc
 
-TODO: shootout/hash2, class capacity exceeded, should work now
-
-TODO: create dev-maxime branch
-
-TODO: re-run ./benchmark after map introduction
+TODO: re-run ./benchmark after map introduction (on desktop)
 
 
 
@@ -69,6 +65,9 @@ TODO: re-run ./benchmark after map introduction
 
 
 
+[DONE] TODO: shootout/hash2, class capacity exceeded, should work now
+
+[DONE] TODO: create dev-maxime branch
 
 [DONE] TODO: rename ClassMap to ObjMap?
 

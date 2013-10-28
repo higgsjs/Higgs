@@ -1546,8 +1546,7 @@ unittest
     run("hash", 10);
     interp.assertInt("c", 10);
 
-    // FIXME: class capacity exceeded
-    //run("hash2", 20);
+    run("hash2", 1);
 
     run("heapsort", 4);
     interp.assertFloat("ary[n]", 0.79348136);
