@@ -1,11 +1,3 @@
-To discuss:
-- Lazy JIT plans
-- Local profiling
-- Inlining, should be more aggressive in hot code
-- Type representation
-- Interprocedural type prop
-- Lazy prop? How to make this practical
-
 Lazy JIT, probably want two compilation modes:
 - First pass
   - Local profiling
@@ -21,6 +13,8 @@ Register allocation:
 Since we're focusing on eliminating type tests still, do we not want to have
 any register allocation at all, or to have the allocation simply be distinct
 from the versioning? Probably the latter?
+- Jump to version should ignore RA at dst
+- Not factored in version compatibility
 
 Type representation:
 - Basic type tags
@@ -56,21 +50,45 @@ Local profiling:
 No interpreter: what about exceptions?
 - Still need consistent stack frame layout
 
-
-
-
-Inlining?????
+Inlining
 - Want to inline at hottest call sites, relative hottest
+  - Could we base this on a linked-list swap algorithm?
+- Want to be able to inline incrementally, hottest callees first
+- Inline in optimized mode only (hot code)
+- Inline deep. Should work better since incremental
 
+Incremental compilation:
+- Need fast assembler
+  - No assembler peepholes, no fancy encoding, mostly "one pass"
+- Dynamically allocate executable memory blocks for functions
+  - Probably in page-sized chunks?
+  - Allocate all in the same 4GB space, for relative 32-bit jumps?
+- Stubs patch jump addresses as needed
+- When re-compiling optimized code, try to order code so hot paths are linear
+- May want ability to invalidate code, kill jumps to it, replace by jump to stub
+  - If optimizing some blocks, need to re-patch jumps to these blocks
+  - In general, can re-optimize an entire linear sequence. 
+  - Re-patch jumps that aren't just fall-throughs?
+- Do we want the ability to displace code?
+  - Could possibly map whole 4GB code space, try to work in lowest addresses
+    - Not all immediately allocated by OS
+  - GC unreferenced/dead code
+  - Periodically move code based on who jumps to who, eliminate jumps
+- Probably want global code manager, not per-function memory space?
+- Code will mix optimized versions with unoptimized (profiling versions) ****
+- Need to GC old unneeded versions!
 
+Lazy prop ==> Skip for now, too much work?
+- Don't propagate info if useless
+- Propagate more precise info if useful
+  - If argument is always a constant, propagate that fact
 
-
-
-
-Lazy prop??????
-
-
-
-
-
-
+Roadmap:
+- Assembler/code block management
+- Conversion of interpreter ops into library functions
+- Implement unoptimized/profiling mode JIT first
+  - Keep versioning in mind
+  - Keep code invalidation in mind
+- Optimizing JIT with versioning, start simple
+  - First step is recompiling hot code, eliminating profiling
+  - Simple versioning

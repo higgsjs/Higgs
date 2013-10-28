@@ -26,15 +26,21 @@ TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
 - Links are mutable cells, used by getRegexp, setString
 - IRRefPtr + getRegExp?
 
+TODO: custom D assert handler?
+- Even more useful if no more interpreter
+
 Monday meeting:
-- Unifying theme for thesis
 - Higgs roadmap
 - Benchmarks using arrays
-- Internship possibilities
+- Unifying theme for thesis
+- Internship possibilities for the summer *****
 
-TODO: look at benchmarks using arrays
-- How are the arrays used? Do we always loop over all elements
-- Submethods mutating elements?
+TODO: think about code gen
+- Code gen states
+- How does lazy JIT works
+- Do we want to ditch on-demand prop for now?
+- Bailing to stub... Need to spill all?
+  - Only in optimized code, but still, not thin stubs
 
 TODO: think about unifying theme for thesis
 - Lazy compilation?
@@ -42,7 +48,40 @@ TODO: think about unifying theme for thesis
 - Dynamic compilation? Dynamic languages need dynamic compilers
   - Versioning and laziness fit under this umbrella
 
-TODO: new document, Higgs roadmap
+
+
+
+
+
+
+
+[DONE] TODO: look at benchmarks using arrays
+- How are the arrays used? Do we always loop over all elements
+- Submethods mutating elements? ***
+- SunSpider:
+    spectral norm might work
+    3d-cube, many matrix/vector ops, most not in a convenient form
+        may be able to tag on creation, however
+    3d-raytrace, has 3D vectors, but loops pre-unrolled
+        could also test on creation and write
+    fannkuch, integer arrays, but no clear "i < length"
+    nsieve, boolean array, same problem
+    cordic, float array, same problem
+    crypto benchs use byte arrays
+    string-base64 also has arrays of ints
+- V8:
+    crypto uses arrays with constants instead of .length for size
+    navier-stokes, uses width, height which aren't array length
+- Many benchmarks use arrays of integers and floats, especially in SunSpider
+- Sensible way is to test when writing to array, not when reading
+
+[DONE] Group meeting:
+- Higgs refactorings
+- Map system on the host side
+- Created a dev branch
+- Higgs roadmap
+
+[DONE] TODO: new document, Higgs roadmap
 - Lazy JIT plans
 - Local profiling
 - Inlining, should be more aggressive in hot code
@@ -50,20 +89,23 @@ TODO: new document, Higgs roadmap
 - Interprocedural JIT
 - Lazy prop? How to make this practical
 
-TODO: custom D assert handler?
-- Even more useful if no more interpreter
+[DONE] TODO: make print accept var arg, use $argc
 
-TODO: make print accept var arg, use $argc
-
-TODO: re-run ./benchmark after map introduction (on desktop)
-
-
-
-
-
-
-
-
+[DONE] TODO: re-run ./benchmark after map introduction (on desktop)
+is_i32: 4925933
+is_const: 73248
+exec time (ms): 1187
+comp time (ms): 180
+interp cycles: 535948
+code size (bytes): 90032
+is_rawptr: 28
+call bailouts: 6
+is_i64: 1
+type tests: 7825131
+unjit instrs: 55799
+ret bailouts: 5
+is_refptr: 297776
+is_f64: 14666
 
 [DONE] TODO: shootout/hash2, class capacity exceeded, should work now
 

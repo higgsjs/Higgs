@@ -92,16 +92,22 @@ function eval(codeStr)
 /**
 Print a value to the console
 */
-function print(val)
+function print()
 {
-    // Convert the value to a string
-    if (!$rt_valIsString(val))
-        val = $rt_toString(val);
-       
-    // Print the string
-    $ir_print_str(val);
+    // For each argument
+    for (var i = 0; i < $argc; ++i)
+    {
+        var arg = $ir_get_arg(i);
 
-    // Print a newline
+        // Convert the value to a string if it isn't one
+        if (!$rt_valIsString(arg))
+            arg = $rt_toString(arg);
+
+        // Print the string
+        $ir_print_str(arg);
+    }
+
+    // Print a final newline
     $ir_print_str('\n');
 }
 
