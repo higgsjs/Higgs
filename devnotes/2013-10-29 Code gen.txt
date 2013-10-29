@@ -1,0 +1,116 @@
+Use cases:
+- Will probably mix baseline and optimized code
+- Baseline compilation is straightforward:
+  - Compile as execution happens, as stubs are hit
+  - Code blocks allocated by bumping a pointer
+- Stubs call the JIT compiler
+- Optimized compilation:
+  - Once threshold is reached in a specific location (entry or loop back edge)
+  - Recompile segment at once, using profiling data to order code
+  - Stubs generated for unexecuted code
+    - These should have lower compilation priority in the queue
+  - At some point we decide to inline, do it with baseline code first 
+  - At some point inlined code gets recompiled, when entry block hits threshold
+
+Stubs:
+- Happen at conditional control flow
+  - if_true, exception target, call target, return target
+- Stubs should be in the target block, not in the branch
+  - Solves the issue of how to generate spill code
+  - Stubs always have all registers spilled
+- Stubs call the JIT compiler
+  - Pass pointer to stub entry context
+  - Compiles, rewrites stub, returns to stub
+  - No need to rewrite any incoming pointers?
+- Stubs need to be big enough to accomodate a jump to the real compiled block.
+  - This may need to be a large 64-bit jump.
+- When stubbed version gets compiled, compile to baseline/profiling mode
+  - Has threshold for recompilation
+- When stubs or blocks recompiled, allocate a new mem block, write a jump
+  over the stub
+
+Edge transitions:
+- How is the edge transition code generated?
+- May need register spills, moves, tag and value writes
+- Preferably want to write this at the end of blocks, included in blocks
+- We already know the destination context? Yes
+
+Core of the lazy JIT is genBranchEdge(assembler, edge, predState)
+- Tries to find a suitable dst version
+- Generates/finds suitable dst state
+- Inserts the necessary moves *in place* in the assembler
+    jne infrequent_moves
+    MOVES FOR FREQUENT
+    jmp frequent_version    <== should be patchable
+    infrequent_moves:
+    MOVES FOR INFREQUENT
+    jmp infrequent_version  <== should be patchable
+- Tells us if no moves were generated
+- If the frequent block can be generated immediately, don't insert a jump?
+
+When recompiling versions, can transitively eliminate patched jumps
+
+genBranchEdge needs to yield/allocate an address immediately? N
+- Probably want the JIT to compile blocks and stubs *deeply*
+  - Especially in optimized compilation mode
+- Have a queue of blocks to be generated
+- Store intermediate version of machine code with jump and move metainfo
+- As we compile, generate an ordering of blocks in memory
+- When work list is empty, finalize the writing into an executable chunk
+  - Compute block sizes
+  - Compute final block addresses
+  - Write machine code and patch all addresses
+- Possibly, while compiling, we may decide to compile some stubs
+  - Write jump over stubs when this happens
+
+Assembler: will need labels, conditional control-flow for some things
+- Want some sort of mu-assembler
+- Fast and direct, less intermediate objects, less/no encoding search
+- Write in temporary buffer, link labels, then memcpy code to destination
+- Keep track of internal labels and jumps in case jumps need to be patched?
+
+Executable memory manager:
+- List of allocated executable chunks
+- List of <address,block,state> tuples
+  - Need metainfo, outgoing jumps and moves, IRFunction? scan the heap
+  - Profiling info, most frequent successor
+  - Outgoing jumps should point to the metainfo object of the successor
+    - Important when moving/compacting
+- Some versions might have been recompiled, contain only an indirect jump
+  to an updated version
+- When running low on memory in a chunk, can try to compact it
+  - Allocate new chunk, scan and copy
+  - Patch function entry point addresses from outside (IRFunction)
+  - Reorder based on execution frequency
+- Need a map from block versions to addresses for compilation
+
+Compiled blocks: need to keep track of where the moves are, where the final
+jumps are (usually at most two). The final branching part of blocks may need
+to be rewritten when copying/compacting, or when deciding how to encode a jump
+to an immediate successor (may translate to nothing, or a small rel jump).
+
+
+
+
+
+TODO: think more about inlining and optimized recompilation
+
+
+
+
+
+
+
+
+
+
+
+
+
+TODO: CodeGenState:
+- What does the state include?
+
+
+
+
+

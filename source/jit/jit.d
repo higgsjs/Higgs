@@ -369,48 +369,6 @@ void compFun(Interp interp, IRFunction fun)
             }
         }
 
-        /*
-        for (auto phi = branch.succ.firstPhi; phi !is null; phi = phi.next)
-        {
-            auto arg = branch.getPhiArg(phi);
-
-            as.comment(phi.getName ~ " = phi " ~ arg.getName);
-
-            // Get the source and destination operands for the arg word
-            X86Opnd srcWordOpnd = predState.getWordOpnd(arg, 64);
-            X86Opnd dstWordOpnd = succState.getWordOpnd(phi, 64);
-
-            if (srcWordOpnd != dstWordOpnd)
-                moveList ~= Move(dstWordOpnd, srcWordOpnd);
-
-            // Get the source and destination operands for the phi type
-            X86Opnd srcTypeOpnd = predState.getTypeOpnd(arg);
-            X86Opnd dstTypeOpnd = succState.getTypeOpnd(phi);
-
-            if (srcTypeOpnd != dstTypeOpnd)
-                moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
-
-            // Get the allocation and type states for the phi node
-            auto allocSt = succState.allocState.get(phi, 0);
-            auto typeSt = succState.typeState.get(phi, 0);
-
-            // If the phi is on the stack and the type is known
-            if ((allocSt & RA_STACK) && (typeSt & TF_KNOWN))
-            {
-                // Write the type to the stack to keep it in sync
-                assert (typeSt & TF_SYNC);
-                moveList ~= Move(new X86Mem(8, tspReg, phi.outSlot), srcTypeOpnd);
-            }
-
-            // If the phi is in a register and the type is unknown
-            if (!(allocSt & RA_STACK) && !(typeSt & TF_KNOWN))
-            {
-                // Write 0 on the stack to avoid invalid references
-                moveList ~= Move(new X86Mem(64, wspReg, 8 * phi.outSlot), new X86Imm(0));
-            }
-        }
-        */
-
         // Insert the branch edge label, if any
         if (edgeLabel !is null)
             as.addInstr(edgeLabel);

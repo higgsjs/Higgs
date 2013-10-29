@@ -12,27 +12,21 @@ TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 - ideally requires test harness
 
-TODO: add --jit_trace command-line option
-
 TODO: make sure global obj ptr is updated when global obj is extended
 - SET_GLOBAL_OBJ?
 
-TODO: add map.js, set.js to Higgs stdlib
-- Make more ES6 conformant
-
-TODO: complete WAV output support, test it out with sine wave
+TODO: add --jit_trace command-line option
 
 TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
 - Links are mutable cells, used by getRegexp, setString
 - IRRefPtr + getRegExp?
   - Can we have a special IRRefPtr caching instruction?
 
-TODO: think about lazy code gen, make new codument
-- Code gen states, what do they include
-- How does lazy JIT work?
-- Bailing to stub... Need to spill all?
-  - Only in optimized code, but still, not thin stubs
-  - Stubs as call to compiler? Need current state
+TODO: complete WAV output support, test it out with sine wave
+
+TODO: add map.js, set.js to Higgs stdlib
+- Impact on make test time?
+- Make more ES6 conformant
 
 
 
@@ -40,10 +34,7 @@ TODO: think about lazy code gen, make new codument
 
 
 
-
-
-
-
+[DONE] TODO: think about lazy code gen, make new codument
 
 [DONE] TODO: custom D assert handler
 - Even more useful if no more interpreter
