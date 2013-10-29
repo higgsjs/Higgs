@@ -2,7 +2,8 @@ Lazy JIT, probably want two compilation modes:
 - First pass
   - Local profiling
   - No reg alloc?
-  - No versioning
+  - No versioning? Probably still want versioning to keep information
+  - Threshold to recompile
 - Optimized
   - Versioning
   - On the fly reg alloc
@@ -28,7 +29,8 @@ Type representation:
 Interprocedural versioning:
 - Multiple function entry points, created on-demand, lazily
   - Versioning on the function entry block
-  - Limited number allowe
+  - Limited number allowed
+  - GC'd when dead
 - Multiple return points?
   - Callee usually doesn't know who the caller is
   - Could have a few addresses for most common types (unknown, int, float, object)
@@ -36,13 +38,12 @@ Interprocedural versioning:
 
 Local profiling:
 - Branch edge counts
-- Type test execution counts or type test history
 - Could also just maintain short block execution history buffer
   - Last executed path
   - Issue: optimized code doesn't provide this
 - Value profiles
-  - argument types
   - function returns
+  - argument types
   - property accesses
   - type tests
 - Callees at call sites
@@ -53,9 +54,12 @@ No interpreter: what about exceptions?
 Inlining
 - Want to inline at hottest call sites, relative hottest
   - Could we base this on a linked-list swap algorithm?
+  - Or simply go through list of call sites, sort by count
+  - Probably not that many call sites
 - Want to be able to inline incrementally, hottest callees first
 - Inline in optimized mode only (hot code)
 - Inline deep. Should work better since incremental
+- Marc: call non-inlined version for some cases?
 
 Incremental compilation:
 - Need fast assembler
@@ -78,17 +82,13 @@ Incremental compilation:
 - Code will mix optimized versions with unoptimized (profiling versions) ****
 - Need to GC old unneeded versions!
 
-Lazy prop ==> Skip for now, too much work?
-- Don't propagate info if useless
-- Propagate more precise info if useful
-  - If argument is always a constant, propagate that fact
-
 Roadmap:
 - Assembler/code block management
 - Conversion of interpreter ops into library functions
 - Implement unoptimized/profiling mode JIT first
-  - Keep versioning in mind
   - Keep code invalidation in mind
 - Optimizing JIT with versioning, start simple
   - First step is recompiling hot code, eliminating profiling
   - Simple versioning
+- Interprocedural versioning
+

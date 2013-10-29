@@ -35,28 +35,36 @@
 *
 *****************************************************************************/
 
-module util.misc;
+module util.error;
 
-/// Pointer size on this platform
-immutable size_t PTR_SIZE = (void*).sizeof;
+import std.stdio;
+import core.exception;
 
 /**
-Align a pointer to a specified number of bytes
+Custom assert handler. This handler prints an error message before trying to
+unwind the stack, which ensures that the error message is printed even if the
+stack cannot be unwinded.
 */
-auto alignPtr(ubyte* ptr, size_t alignBytes = PTR_SIZE)
+void assertHandler(string file = __FILE__, size_t line = __LINE__, string msg = null) nothrow
 {
-    // Compute the pointer modulo the given alignment boundary
-    auto rem = (cast(size_t)ptr) % alignBytes;
+    try
+    {
+        write("Assertion failed");
 
-    // If the pointer is already aligned, return it
-    if (rem == 0)
-        return ptr;
+        if (msg)
+            write(": ", msg);
 
-    // Pad the pointer by the necessary amount to align it
-    auto pad = alignBytes - rem;
-    ptr += pad;
+        writeln(" (", file, "@", line, ")");
+    }
+    catch (Throwable e)
+    {
+    }
 
-    // Return the aligned pointer
-    return ptr;
+    throw new AssertError(msg, file, line);
+}
+
+static this()
+{
+    setAssertHandler(&assertHandler);
 }
 

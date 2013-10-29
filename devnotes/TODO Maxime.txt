@@ -25,35 +25,45 @@ TODO: complete WAV output support, test it out with sine wave
 TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
 - Links are mutable cells, used by getRegexp, setString
 - IRRefPtr + getRegExp?
+  - Can we have a special IRRefPtr caching instruction?
 
-TODO: custom D assert handler?
+TODO: think about lazy code gen, make new codument
+- Code gen states, what do they include
+- How does lazy JIT work?
+- Bailing to stub... Need to spill all?
+  - Only in optimized code, but still, not thin stubs
+  - Stubs as call to compiler? Need current state
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: custom D assert handler
 - Even more useful if no more interpreter
+void setAssertHandler(errorHandlerType h);
+alias AssertHandler = void function(string file, size_t line, string msg) nothrow;
+throw new AssertError( msg, file, line );
 
-Monday meeting:
+[DONE] TODO: ask StackOverflow about 4GB executable alloc
+- Want to guarantee 32 bit relative jumps always work
+- Does any OS allocate the pages you don't touch?
+=> yes, probably safe, but not clear that this is necessarily what we want
+    how will our memory GC work?
+=> limited to 2GB machine code, not that great anyways?
+=> probably want to prefer 32-bit offset, but support 64-bit if needed?
+
+[DONE] Monday meeting:
 - Higgs roadmap
 - Benchmarks using arrays
 - Unifying theme for thesis
 - Internship possibilities for the summer *****
-
-TODO: think about code gen
-- Code gen states
-- How does lazy JIT works
-- Do we want to ditch on-demand prop for now?
-- Bailing to stub... Need to spill all?
-  - Only in optimized code, but still, not thin stubs
-
-TODO: think about unifying theme for thesis
-- Lazy compilation?
-- Versioning?
-- Dynamic compilation? Dynamic languages need dynamic compilers
-  - Versioning and laziness fit under this umbrella
-
-
-
-
-
-
-
 
 [DONE] TODO: look at benchmarks using arrays
 - How are the arrays used? Do we always loop over all elements
@@ -74,6 +84,15 @@ TODO: think about unifying theme for thesis
     navier-stokes, uses width, height which aren't array length
 - Many benchmarks use arrays of integers and floats, especially in SunSpider
 - Sensible way is to test when writing to array, not when reading
+
+[DONE] TODO: think about unifying theme for thesis
+- Lazy compilation?
+- Versioning?
+- Dynamic compilation? Dynamic languages need dynamic compilers
+  - Versioning and laziness fit under this umbrella
+- Dynamic, delayed compilation for better performances
+- Many ways to be dynamic
+- Argument why this is good
 
 [DONE] Group meeting:
 - Higgs refactorings
