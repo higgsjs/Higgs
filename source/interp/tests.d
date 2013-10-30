@@ -1400,6 +1400,8 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_regexp/stdlib_regexp.js");
     interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_map/stdlib_map.js");
+    interp.assertInt("test();", 0);
 }
 
 /// Dynamic code loading and eval

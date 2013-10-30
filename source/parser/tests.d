@@ -238,6 +238,11 @@ unittest
     testParse("new Foo;");
     testParse("new Foo + 2");
 
+    testParse("a.b");
+    testParse("a.b()");
+    testParse("a.delete + 2");
+    testParse("a.delete()");
+
     // Comma operator
     testParse("1, 2");
     testParse("x = y, z");
