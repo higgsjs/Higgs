@@ -534,6 +534,7 @@ class Interp
             load("stdlib/date.js");
             load("stdlib/json.js");
             load("stdlib/regexp.js");
+            load("stdlib/map.js");
             load("stdlib/global.js");
             load("stdlib/commonjs.js");
         }

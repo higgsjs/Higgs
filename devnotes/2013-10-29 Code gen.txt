@@ -89,6 +89,9 @@ jumps are (usually at most two). The final branching part of blocks may need
 to be rewritten when copying/compacting, or when deciding how to encode a jump
 to an immediate successor (may translate to nothing, or a small rel jump).
 
+Invalidation:
+- In theory, any block can be invalidated by writing a jump over it
+- Can easily invalidate blocks making assumptions, replace by stubs
 
 
 

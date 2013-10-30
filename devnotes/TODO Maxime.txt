@@ -24,7 +24,13 @@ TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
 
 TODO: complete WAV output support, test it out with sine wave
 
-TODO: add map.js, set.js to Higgs stdlib
+FIXME: delete as property name not supported
+- Add parser test
+- Test map
+- Does Tachyon have map unit tests?
+- Push to master
+
+[DONE] TODO: add map.js to Higgs stdlib
 - Impact on make test time?
 - Make more ES6 conformant
 
