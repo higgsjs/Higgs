@@ -1686,6 +1686,9 @@ function $rt_setPropObj(obj, propStr, val)
     {
         //print("*** extending object ***");
 
+        // Compute the new object capacity
+        var newObjCap = (propIdx < 32)? (propIdx + 1):(2 * propIdx);
+
         var objType = $rt_obj_get_header(obj);
 
         var newObj;
@@ -1694,18 +1697,18 @@ function $rt_setPropObj(obj, propStr, val)
         switch (objType)
         {
             case $rt_LAYOUT_OBJ:
-            newObj = $rt_obj_alloc(propIdx+1);
+            newObj = $rt_obj_alloc(newObjCap);
             break;
 
             case $rt_LAYOUT_CLOS:
             var numCells = $rt_clos_get_num_cells(obj);
-            newObj = $rt_clos_alloc(propIdx+1, numCells);
+            newObj = $rt_clos_alloc(newObjCap, numCells);
             for (var i = 0; i < numCells; ++i)
                 $rt_clos_set_cell(newObj, i, $rt_clos_get_cell(obj, i));
             break;
 
             case $rt_LAYOUT_ARR:
-            newObj = $rt_arr_alloc(propIdx+1);
+            newObj = $rt_arr_alloc(newObjCap);
             $rt_arr_set_len(newObj, $rt_arr_get_len(obj));
             $rt_arr_set_tbl(newObj, $rt_arr_get_tbl(obj));
             break;

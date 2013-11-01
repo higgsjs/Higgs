@@ -40,6 +40,11 @@
  * _________________________________________________________________________
  */
 
+function toString()
+{
+    return 'global object';
+}
+
 function parseInt(string, radix)
 {
     var i = 0;

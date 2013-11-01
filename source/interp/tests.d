@@ -692,6 +692,8 @@ unittest
     interp.load("programs/many_globals/many_globals.js");
     interp = new InterpNoStdLib();
     interp.load("programs/many_globals/many_globals2.js");
+    interp = new InterpNoStdLib();
+    interp.load("programs/many_globals/many_globals3.js");
 }
 
 /// In-place operators
@@ -741,6 +743,9 @@ unittest
 
     // Method call
     interp.assertInt("o = {x:7, m:function() {return this.x;}}; return o.m();", 7);
+
+    // Object extension and equality
+    interp.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);  
 }
 
 /// New operator, prototype chain

@@ -1013,13 +1013,13 @@ class Interp
 
         // Setup the callee stack frame
         callFun(
-            fun,        // Function to call
-            null,       // Null return address
-            null,       // Null closure argument
-            NULL,       // Null this argument
-            Type.REFPTR,// This value is a reference
-            0,          // 0 arguments
-            null        // no argument array
+            fun,                    // Function to call (unit function)
+            null,                   // Null return address
+            null,                   // Null closure argument
+            Word.ptrv(globalObj),   // The "this" value is the global object
+            Type.REFPTR,            // The "this" value is a reference
+            0,                      // 0 arguments
+            null                    // no argument array
         );
 
         // Run the interpreter loop

@@ -277,6 +277,9 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
     {
         //writeln("*** extending object ***");
 
+        // Compute the new object capacity
+        uint32_t newObjCap = (propIdx < 32)? (propIdx + 1):(2 * propIdx);
+
         auto objType = obj_get_header(obj.ptr);
 
         refptr newObj;

@@ -33,7 +33,10 @@ TODO: begin writing classes, functions for new JIT
 - genBranchEdge(edge, predState)
 
 TODO: think of how to convert JIT ops to library of functions
+- Only need lib fns for more complex or infrequent ops
+  - No need for lib fn for core typed arith ops, comparisons
 - Convention for calls from JIT?
+  - Not really necessary, just spill all, keep as is
 
 TODO: comment out JIT code
 - Comment out contents of ops.d, assembler.d, jit.d
@@ -47,18 +50,26 @@ TODO: remove JIT entry point hooks from IR
 
 TODO: comment out interpreter unit tests
 
+
+
+
+
+
+
+
+
+
+
+
 ------------------------------------------------------------------------------
 
-TODO: unit test that checks object == and === equality after extension
+[DONE] TODO: unit test that checks object == and === equality after extension
+- Push to master once done
 
-TODO: unit test that extends global object through indirect pointer
+[DONE] TODO: unit test that extends global object through indirect pointer
 - globalObj = this; ...
 - Loop with property names to 5000
 - Once extended, try setting global prop, reading global prop
-
-
-
-
 
 [DONE] FIXME: delete as property name not supported
 - Special case of . member operator
