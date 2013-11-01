@@ -12,19 +12,49 @@ TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 - ideally requires test harness
 
-TODO: make sure global obj ptr is updated when global obj is extended
-- SET_GLOBAL_OBJ?
-
 TODO: add --jit_trace command-line option
-
-TODO: IRLinkIdx, is that necessary? Could we just have IRRefPtr?
-- Links are mutable cells, used by getRegexp, setString
-- IRRefPtr + getRegExp?
-  - Can we have a special IRRefPtr caching instruction?
 
 TODO: complete WAV output support, test it out with sine wave
 
+------------------------------------------------------------------------------
 
+TODO: begin writing classes, functions for new JIT
+- Assembler & encoding
+  - KISS, direct encoding methods? as.jmp(label), as.label(label) and as.label(name)
+  - No intermediate structures for instrs, just encode directly
+  - Arg structs for mem opnds
+  - Labels are just strings in a map!
+- Executable memory management
+  - Interp class owns executable chunk?
+- CodeGenState
+- BlockVersion
+- Stubs
+- compile(block, state)
+- genBranchEdge(edge, predState)
+
+TODO: think of how to convert JIT ops to library of functions
+- Convention for calls from JIT?
+
+TODO: comment out JIT code
+- Comment out contents of ops.d, assembler.d, jit.d
+
+TODO: add source position info for call sites
+- Map of call sites to source pos in IRFunction?
+- Do this in genCallTargets?
+- Throw instr also needs a source pos
+
+TODO: remove JIT entry point hooks from IR
+
+TODO: comment out interpreter unit tests
+
+------------------------------------------------------------------------------
+
+TODO: unit test that checks object == and === equality after extension
+
+TODO: unit test that extends global object through indirect pointer
+- globalObj = this; ...
+- Loop with property names to 5000
+- Once extended, try setting global prop, reading global prop
 
 
 

@@ -76,67 +76,24 @@
         // Open the file for writing
         var file = io.fopen(fileName, "w")
 
-        // TODO: the following code is for reading, adapt it for writing
+        // Write the chunk ID
+        file.putc('R');
+        file.putc('I');
+        file.putc('F');
+        file.putc('F');
+
+        // Write the 4 format bytes
+        file.putc('W');
+        file.putc('A');
+        file.putc('V');
+        file.putc('E');
+
+
+
+
+        // TODO: compute the wave chunk size
 
         /*
-	    // Declare variables for the RIFF header contents
-	    char  ChunkID[4] = {'\0','\0','\0','\0'};
-	    int32 ChunkSize  = 0;
-	    char  Format[4]  = {'\0','\0','\0','\0'};
-	
-	    // Read the RIFF header
-	    fread(ChunkID, sizeof(ChunkID), 1, pFile);
-	    fread(&ChunkSize, sizeof(ChunkSize), 1, pFile);
-	    fread(Format, sizeof(Format), 1, pFile);
-	
-	    // Ensure that the chunk ID is valid
-	    if (memcmp(ChunkID, "RIFF", sizeof(ChunkID)) != 0)
-	    {
-		    fclose(pFile);
-		    return false;
-	    }
-	
-	    // Ensure that the format is valid
-	    if (memcmp(Format, "WAVE", sizeof(ChunkID)) != 0)
-	    {
-		    fclose(pFile);
-		    return false;
-	    }
-
-	    // Declare variables for the wave format chunk
-	    char  SubChunk1ID[4] = {'\0','\0','\0','\0'};
-	    int32 SubChunk1Size  = 0;
-	    int16 AudioFormat    = 0;
-	    int16 NumChannels    = 0;
-	    int32 SampleRate     = 0;
-	    int32 ByteRate       = 0;
-	    int16 BlockAlign     = 0;
-	    int16 BitsPerSample  = 0;
-
-	    // Read the wave format chunk
-	    fread(SubChunk1ID, sizeof(SubChunk1ID), 1, pFile);
-	    fread(&SubChunk1Size, sizeof(SubChunk1Size), 1, pFile);
-	    fread(&AudioFormat, sizeof(AudioFormat), 1, pFile);
-	    fread(&NumChannels, sizeof(NumChannels), 1, pFile);
-	    fread(&SampleRate, sizeof(SampleRate), 1, pFile);
-	    fread(&ByteRate, sizeof(ByteRate), 1, pFile);
-	    fread(&BlockAlign, sizeof(BlockAlign), 1, pFile);
-	    fread(&BitsPerSample, sizeof(BitsPerSample), 1, pFile);
-	
-	    // Ensure that the chunk ID is valid	
-	    if (memcmp(SubChunk1ID, "fmt ", sizeof(SubChunk1ID)) != 0)
-	    {
-		    fclose(pFile);
-		    return false;
-	    }
-	
-	    // Ensure that the format is supported
-	    if (AudioFormat != 1)
-	    {
-		    fclose(pFile);
-		    return false;
-	    }
-
 	    // Ensure that the sound parameters are valid	
 	    if (NumChannels <= 0 || SampleRate <= 0 || BitsPerSample <= 0 || BitsPerSample % 8 != 0)
 	    {
@@ -150,21 +107,41 @@
 		    fclose(pFile);
 		    return false;
 	    }
-		
-	    // Declare variables for the data chunk header
-	    char SubChunk2ID[4] = {'\0','\0','\0','\0'};
-	    int32 SubChunk2Size = 0;
+        */
 
-	    // Read the data chunk header
-	    fread(SubChunk2ID, sizeof(SubChunk2ID), 1, pFile);
+
+
+
+        // Write the wave format chunk header
+        file.putc('f');
+        file.putc('m');
+        file.putc('t');
+        file.putc(' ');
+        file.writeInt32();  // Wave chunk size
+        file.writeInt16(1);  // Audio format
+        file.writeInt16();  // num channels
+        file.writeInt32();  // Sample rate
+        file.writeInt32();  // Byte rate
+        file.writeInt16();  // Block align
+        file.writeInt16();  // Bits per sample
+
+
+
+
+
+
+
+        // TODO
+        // Write the data chunk header
+        file.putc('d');
+        file.putc('a');
+        file.putc('t');
+        file.putc('a');
+
+
+
+        /*		
 	    fread(&SubChunk2Size, sizeof(SubChunk2Size), 1, pFile);
-
-	    // Ensure that the chunk ID is valid	
-	    if (memcmp(SubChunk2ID, "data", sizeof(SubChunk2ID)) != 0)
-	    {
-		    fclose(pFile);
-		    return false;
-	    }
 
 	    // Ensure that the data chunk size is valid
 	    if (SubChunk2Size < BlockAlign)
@@ -226,7 +203,12 @@
 
 	    // Close the file
 	    fclose(pFile);
-	
+        */	
+
+
+
+
+        /*
 	    // Compute the total number of blocks
 	    size_t NumBlocks = SubChunk2Size / BlockAlign;
 		
@@ -257,6 +239,12 @@
 		    }	
 	    }
         */
+
+
+
+
+
+
 
 	    // Close the file
         file.close();

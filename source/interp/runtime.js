@@ -1727,6 +1727,13 @@ function $rt_setPropObj(obj, propStr, val)
         // Set the next pointer in the old object
         $rt_obj_set_next(obj, newObj);
 
+        // If we just extended the global object, trigger garbage collection
+        if ($ir_eq_refptr(obj, $ir_get_global_obj()))
+        {
+            print('extended global object');
+            $ir_gc_collect(0);
+        }
+
         // Update the object pointer
         obj = newObj;
 

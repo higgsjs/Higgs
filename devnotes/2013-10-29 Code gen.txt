@@ -1,33 +1,44 @@
-Use cases:
-- Will probably mix baseline and optimized code
-- Baseline compilation is straightforward:
-  - Compile as execution happens, as stubs are hit
-  - Code blocks allocated by bumping a pointer
-- Stubs call the JIT compiler
-- Optimized compilation:
-  - Once threshold is reached in a specific location (entry or loop back edge)
-  - Recompile segment at once, using profiling data to order code
-  - Stubs generated for unexecuted code
-    - These should have lower compilation priority in the queue
-  - At some point we decide to inline, do it with baseline code first 
-  - At some point inlined code gets recompiled, when entry block hits threshold
+Note: no longer thinking in terms of baseline comp & optimized comp
+- Instead think in terms of recompilation
+- Blocks can request to be recompiled when this is useful
+
+Overview/Use cases:
+- Compilation starts by compiling some module entry block
+  - A default version of this block is requested
+  - All arguments on stack
+- Versions are first compiled as stubs, unless we know they will be executed
+  - Stubs call the JIT compiler
+- Compile as execution happens, as stubs are hit
+  - Versions are allocated by bumping a pointer in an executable memory chunk
+- Code is compiled following the natural flow of execution, like in tracing
+  - We expect that this will most often yield good ordering of code blocks
+- Recompilation:
+  - Recompile a block once some condition is met
+  - Used for inlining
+    - Recompile call sites when deemed worthwhile (e.g.: threshold at 10K)
+    - Profile callees for a bit
+    - Recompile entry block to jump to inlined callee entry
+  - Could be used for versioning too
+    - At first, always request/jump to generic version of a block
+    - Install threshold counter on the outgoing jump
+    - Recompile predecessor & jump to new version when executed often enough
+    - Request a new target version with more context info
+    - Could be used to compile a "baseline" version of a large function
 
 Stubs:
 - Happen at conditional control flow
-  - if_true, exception target, call target, return target
-- Stubs should be in the target block, not in the branch
-  - Solves the issue of how to generate spill code
-  - Stubs always have all registers spilled
+  - if_true, call continuation/exception targets
+- Stubs should be in the target block/version itself, not in the branch
 - Stubs call the JIT compiler
+  - Spill all registers and values
   - Pass pointer to stub entry context
   - Compiles, rewrites stub, returns to stub
-  - No need to rewrite any incoming pointers?
-- Stubs need to be big enough to accomodate a jump to the real compiled block.
-  - This may need to be a large 64-bit jump.
-- When stubbed version gets compiled, compile to baseline/profiling mode
-  - Has threshold for recompilation
-- When stubs or blocks recompiled, allocate a new mem block, write a jump
+- When stubs or versions get recompiled, allocate a new mem block, write a jump
   over the stub
+  - Replace mem manager entry by a next pointer
+- Stubs need to be big enough to accomodate a jump to the real compiled version
+  - No need to rewrite any incoming pointers
+  - This may need to be a large 64-bit jump in some cases (12 bytes)
 
 Edge transitions:
 - How is the edge transition code generated?
@@ -38,82 +49,142 @@ Edge transitions:
 Core of the lazy JIT is genBranchEdge(assembler, edge, predState)
 - Tries to find a suitable dst version
 - Generates/finds suitable dst state
-- Inserts the necessary moves *in place* in the assembler
-    jne infrequent_moves
-    MOVES FOR FREQUENT
-    jmp frequent_version    <== should be patchable
-    infrequent_moves:
-    MOVES FOR INFREQUENT
-    jmp infrequent_version  <== should be patchable
+- Inserts the necessary moves for the branch edge in a temporary buffer
+  - May be no moves in some cases
 - Tells us if no moves were generated
 - If the frequent block can be generated immediately, don't insert a jump?
-
-When recompiling versions, can transitively eliminate patched jumps
-
-genBranchEdge needs to yield/allocate an address immediately? N
-- Probably want the JIT to compile blocks and stubs *deeply*
-  - Especially in optimized compilation mode
-- Have a queue of blocks to be generated
-- Store intermediate version of machine code with jump and move metainfo
-- As we compile, generate an ordering of blocks in memory
-- When work list is empty, finalize the writing into an executable chunk
+- genBranchEdge doesn't need to yield/allocate an address immediately
+- Have a work list of versions to be generated
+- As we compile, generate a list of version instances in memory
+  - Store machine code with jump and move metainfo
+- When work list is empty, finalize the writing into executable chunk
   - Compute block sizes
   - Compute final block addresses
-  - Write machine code and patch all addresses
-- Possibly, while compiling, we may decide to compile some stubs
-  - Write jump over stubs when this happens
+  - Write machine code, jumps and patch all addresses
+- Some versions will get compiled to stubs
+- Compile(block, state)
+  - Will (re)compile the requested block version
+  - May produce two stubs if conditional branch, then stop
+  - May continue in an indefinite linear sequence if one successor
+  - Stop at conditional or if version already compiled
+  - Doesn't really need a work queue, just a current block
+  - We might be able to know that a branch will be taken, but
+    we'll never just compile both sides of a branch ahead of time
+- Logic for good ordering complicates things, and isn't really necessary
+  - Compaction will take care of it
 
 Assembler: will need labels, conditional control-flow for some things
 - Want some sort of mu-assembler
 - Fast and direct, less intermediate objects, less/no encoding search
-- Write in temporary buffer, link labels, then memcpy code to destination
-- Keep track of internal labels and jumps in case jumps need to be patched?
+- Store:
+  - Temporary buffer for block code
+  - Label positions
+  - Internal rel jump offsets
+  - Jumps (possibly conditional), target version obj, required moves
+- Should be able to compute an upper bound on the size of blocks
+  - Used to test if external jumps can fit in 8/32/64 bits
 
 Executable memory manager:
-- List of allocated executable chunks
-- List of <address,block,state> tuples
+- One big executable memory chunk
+- List of version entries
+  - <address,block,state> tuples
   - Need metainfo, outgoing jumps and moves, IRFunction? scan the heap
-  - Profiling info, most frequent successor
+  - Profiling info, most frequent or first compiled successor
   - Outgoing jumps should point to the metainfo object of the successor
     - Important when moving/compacting
+    - Versions are relocatable
 - Some versions might have been recompiled, contain only an indirect jump
   to an updated version
-- When running low on memory in a chunk, can try to compact it
+  - The corresponding entries should have a next pointer
+- When running low on executable memory, try to compact
   - Allocate new chunk, scan and copy
   - Patch function entry point addresses from outside (IRFunction)
   - Reorder based on execution frequency
-- Need a map from block versions to addresses for compilation
+- Need a map from <block,state> pairs to version entries for compilation
 
 Compiled blocks: need to keep track of where the moves are, where the final
 jumps are (usually at most two). The final branching part of blocks may need
 to be rewritten when copying/compacting, or when deciding how to encode a jump
-to an immediate successor (may translate to nothing, or a small rel jump).
+to an immediate successor (may translate to nothing if next, or small rel8 jump).
 
 Invalidation:
 - In theory, any block can be invalidated by writing a jump over it
-- Can easily invalidate blocks making assumptions, replace by stubs
+- Can easily invalidate blocks making monitoring assumptions, replace by stubs
+- Monitoring logic can keep track of versions making specific assumptions
+  - Invalidate those versions as needed
+- set global should be a branch instruction, so there is no next instruction
+  that could read the same global in the same block
 
+Out of line code:
+- Call, ret and heap_alloc are the only 3 current use cases
+- Call, if we can't predict the function call target, we use the interpreter
+- Not a huge problem for call, we're jumping off into another function anyways
+- So what if we have some special code after the jump?
+- There is no more bailing out to the interpreter
+- Don't need out of line code
 
+Stubs and regalloc:
+- Probably need to put the spill logic in the stubs themselves
+- Probably need on-the-fly reg alloc for baseline mode too
+- Can't just swap a stub with no reg alloc for one with reg alloc
+  - Incoming transitions need to do the right move ops
 
+Inlining and optimized recompilation:
+- When recompiling a call site, may decide to inline some callee
+  - Inlined callee will produce stubs when conditional branches are compiled
+- Inlining won't be deep at first, will happen in multiple steps
+  - Shallow first inlining
+  - Inlined call sites do profiling at first
+  - Optimized recompilation of callee's call sites
+  - Callee may inline sub-callees later
+- Executable memory manager may reorder and compact code later
 
-TODO: think more about inlining and optimized recompilation
+Compiled version entries, what info do we need to keep?
+- Block this is associated to
+- CodeGenState at block entry
+- Current address in executable memory
+- Don't really need IRFunction of entry blocks, can scan the Higgs heap
+- First compiled successor, for ordering when compacting
+- Compiler code chunk
+  - Must be relocatable
+  - Don't keep assembler, instr objects, internal labels
+- Final branches and associated moves
+  - May need to be specific about what conditional branches are testing?
+- Pointers to version entries of successors
+- For stub entries, need list of predecessor versions
+  - Notify them if we are the first successor compiled?
+  - Not necessary! If we're the first, we'll be first in the memory ordering!
 
+CodeGenState: what does the state include?
+- Inlining context (parent functions and call sites)
+- Live value to register/slot mapping (reg alloc state)
+- Live value to known type info mapping
+- List of delayed value writes
+- List of delayed type tag writes
 
+Alternative: have just one JIT compilation mode
+- Already said that we need versioning and reg-alloc for stubs
+- Lazy compilation will generally order blocks in the best order
+  - Should record which block is compiled first on preds, for code compactor
+- In current system, blocks can trigger their own recompilation
+- Could start without inlining, eventually either have profiling for
+  call sites (could be lightweight) to enable inlining
+- Other blocks can do the same if profiling info is beneficial
+- Call site blocks recompile themselves to enable inlining
+  - Need to run them a number of times to determine that the inling is worthwhile
+  - Once found worthwhile, profile a few times, record callees
+  - Eventually recompile inlined call block and callee blocks incrementally/lazily
+  - Old call site block is patched-over with a jump to the new block
+  - Code compactor eventually reorders blocks and eliminates superfluous jumps
 
-
-
-
-
-
-
-
-
-
-
-TODO: CodeGenState:
-- What does the state include?
-
-
-
-
+Demand-driven propagation:
+- Block has instruction that provides some piece of info
+- Info originally not propagated in first compilation
+- If info is found valuable, recompile the block, propagate the info
+  - Successors that have this info in their context will be requested
+- Issue: not always trivial to trace provenance of info
+  - Need to trace provenance of specific values that feed into hot tests
+  - If value is local in origin, this is easy
+- With conditional branches, can choose to propagate less info to the
+  sides of branches that are very rarely taken
 
