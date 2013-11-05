@@ -30,7 +30,6 @@ ir/ast.d            \
 ir/peephole.d       \
 ir/slotalloc.d      \
 ir/livevars.d       \
-ir/inlining.d       \
 interp/interp.d     \
 interp/ops.d        \
 interp/layout.d     \
@@ -44,9 +43,7 @@ jit/codeblock.d     \
 jit/assembler.d     \
 jit/moves.d         \
 jit/regalloc.d      \
-jit/inlining.d      \
 jit/ops.d           \
-jit/peephole.d      \
 jit/jit.d           \
 repl.d              \
 options.d           \

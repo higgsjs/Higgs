@@ -186,6 +186,7 @@ unittest
     assert (w0.int32Val != w1.int32Val);
 }
 
+/*
 unittest
 {
     writefln("interpreter core");
@@ -1657,4 +1658,4 @@ unittest
     // TODO: enable once faster
     //run("splay");
 }
-
+*/

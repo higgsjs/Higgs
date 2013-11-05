@@ -6,6 +6,12 @@ Conference deadlines:
 - PLDI 2014     Nov 8, Nov 15 2013
 - VEE 2014      ~November 2013
 
+Internships: Nov-Dec 2014, after paper deadlines?
+~3-4 months
+Marc advises to remain near PhD work, best for CV
+Approach Facebook
+Approach Mozilla around spring, combine with trip
+
 ------------------------------------------------------------------------------
 
 TODO: take a look at Mozilla regression tests
@@ -17,6 +23,11 @@ TODO: add --jit_trace command-line option
 TODO: complete WAV output support, test it out with sine wave
 
 ------------------------------------------------------------------------------
+
+First milestone: no interp, basic incremental codegen
+- No inlining
+- Stubs
+- Bump alloc ptr for code, no code compaction
 
 TODO: begin writing classes, functions for new JIT
 - Assembler & encoding
@@ -38,28 +49,43 @@ TODO: think of how to convert JIT ops to library of functions
 - Convention for calls from JIT?
   - Not really necessary, just spill all, keep as is
 
-TODO: comment out JIT code
-- Comment out contents of ops.d, assembler.d, jit.d
-
 TODO: add source position info for call sites
 - Map of call sites to source pos in IRFunction?
 - Do this in genCallTargets?
 - Throw instr also needs a source pos
 
-TODO: remove JIT entry point hooks from IR
+TODO: generate stack slot alloc based on liveness info
 
-TODO: comment out interpreter unit tests
+TODO: code breadth-first
+- Get basic tests working
+- Minimal mu-assembler, minimal version system only
 
-
-
-
-
-
+TODO: compute fun liveness info in ast to IR
 
 
 
 
 
+
+
+
+
+
+[DONE] TODO: remove JIT entry point, block exec count from IR
+
+[DONE] TODO: comment out JIT code
+- Comment out contents of jit.d, ops.d
+
+[DONE] TODO: comment out interpreter ops
+- Remove superfluous ops
+
+[DONE] TODO: comment out interpreter unit tests
+
+[DONE] Meeting:
+- Conference
+- Internships
+- Incremental code gen
+- Clever stack alloc & inlining
 
 ------------------------------------------------------------------------------
 

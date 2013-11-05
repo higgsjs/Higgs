@@ -1,6 +1,19 @@
-Note: no longer thinking in terms of baseline comp & optimized comp
+No longer thinking in terms of baseline comp & optimized comp
 - Instead think in terms of recompilation
 - Blocks can request to be recompiled when this is useful
+- Already said that we need versioning and reg-alloc for stubs
+- Lazy compilation will generally order blocks in the best order
+  - Should record which block is compiled first on preds, for code compactor
+- In current system, blocks can trigger their own recompilation
+- Could start without inlining, eventually either have profiling for
+  call sites (could be lightweight) to enable inlining
+- Other blocks can do the same if profiling info is beneficial
+- Call site blocks recompile themselves to enable inlining
+  - Need to run them a number of times to determine that the inling is worthwhile
+  - Once found worthwhile, profile a few times, record callees
+  - Eventually recompile inlined call block and callee blocks incrementally/lazily
+  - Old call site block is patched-over with a jump to the new block
+  - Code compactor eventually reorders blocks and eliminates superfluous jumps
 
 Overview/Use cases:
 - Compilation starts by compiling some module entry block
@@ -40,11 +53,143 @@ Stubs:
   - No need to rewrite any incoming pointers
   - This may need to be a large 64-bit jump in some cases (12 bytes)
 
-Edge transitions:
-- How is the edge transition code generated?
-- May need register spills, moves, tag and value writes
-- Preferably want to write this at the end of blocks, included in blocks
-- We already know the destination context? Yes
+Executable memory manager:
+- One big executable memory chunk
+- List of version entries
+  - <address,block,state> tuples
+  - Need metainfo, outgoing jumps and moves, IRFunction? scan the heap
+  - Profiling info, most frequent or first compiled successor
+  - Outgoing jumps should point to the metainfo object of the successor
+    - Important when moving/compacting
+    - Versions are relocatable
+- Some versions might have been recompiled, contain only an indirect jump
+  to an updated version
+  - The corresponding entries should have a next pointer
+- When running low on executable memory, try to compact
+  - Allocate new chunk, scan and copy
+  - Patch function entry point addresses from outside (IRFunction)
+  - Reorder based on execution frequency
+- Need a map from <block,state> pairs to version entries for compilation
+
+Simplifying assumptions:
+- One big executable code chunk, copying collector
+- Limit of 2GB code, all rel jumps will fit in 32 bits relative offset
+
+Compiled blocks: need to keep track of where the moves are, where the final
+jumps are (usually at most two). The final branching part of blocks may need
+to be rewritten when copying/compacting, or when deciding how to encode a jump
+to an immediate successor (may translate to nothing if next, or small rel8 jump).
+
+Invalidation:
+- In theory, any block can be invalidated by writing a jump over it
+- Can easily invalidate blocks making monitoring assumptions, replace by stubs
+- Monitoring logic can keep track of versions making specific assumptions
+  - Invalidate those versions as needed
+- set global should be a branch instruction, so there is no next instruction
+  that could read the same global in the same block
+- Must be careful here. If we make assumptions about types or values using
+  monitoring and propagate them in the CodeGenState, our successors depend
+  on these too.
+  - Should invalidate all versions using the value we propagated? No
+  - Not a problem, can only get to these successor through us! ***
+
+Stubs and regalloc:
+- Probably need to put the spill logic in the stubs themselves
+- Probably need on-the-fly reg alloc for baseline mode too
+- Can't just swap a stub with no reg alloc for one with reg alloc
+  - Incoming transitions need to do the right move ops
+
+Inlining and optimized recompilation:
+- When recompiling a call site, may decide to inline some callee
+  - Inlined callee will produce stubs when conditional branches are compiled
+- Inlining won't be deep at first, will happen in multiple steps
+  - Shallow first inlining
+  - Inlined call sites do profiling at first
+  - Optimized recompilation of callee's call sites
+  - Callee may inline sub-callees later
+- Executable memory manager may reorder and compact code later
+
+Compiled version entries, what info do we need to keep?
+- Block this is associated to
+- CodeGenCtx at block entry
+- Current address in executable memory
+- Don't really need IRFunction of entry blocks, can scan the Higgs heap
+- Compiled code chunk
+  - Must be relocatable
+  - Don't keep assembler, instr objects, internal labels
+- Final branches and associated moves
+  - May need to be specific about what conditional branches are testing?
+- Pointers to version entries of successors
+- Use offsets+len into executable chunk, not separate allocated byte vectors
+  for code, moves
+- For stub entries, need list of predecessor versions
+  - Notify them if we are the first successor compiled?
+  - Not necessary! If we're the first, we'll be first in the memory ordering!
+
+Demand-driven propagation:
+- Block has instruction that provides some piece of info
+- Info originally not propagated in first compilation
+- If info is found valuable, recompile the block, propagate the info
+  - Successors that have this info in their context will be requested
+- Issue: not always trivial to trace provenance of info
+  - Need to trace provenance of specific values that feed into hot tests
+  - If value is local in origin, this is easy
+- With conditional branches, can choose to propagate less info to the
+  sides of branches that are very rarely taken
+
+Branching:
+- Branchy part is at the end of block versions
+- For normal calls, may be direct jump (if specialized)
+  - If unexpected target, indirect jump
+- For inlined calls, do test
+  - If callee matches, direct jump
+  - If no match, regular call logic, then indirect jump
+- Call logic may need patchable outgoing jump in the middle of code
+  - Can have a patchable hole in the middle of code if necessary
+    je XXXX
+  - Only need one such hole
+- Uninlined call should probably just implement full-fledged call mechanics
+  - Just deal with all the cases directly, more direct?
+  - Could also fallback to interp fun, then do indirect jump
+- For end-of-block comparisons and conditional branches (and direct jumps),
+  would like to be able to rewrite them as needed
+  - Requires knowing what the comparison is
+    - Registers
+    - Comparison being performed (e.g.: int or fp, <, ==, ...)
+    - Which branch goes to which successor version
+  - Requires all the necessary moves to go to each of the two successors
+- Static calls and static inlinings can have direct jump at end of block
+
+Assembler: will need labels, conditional control-flow for some things
+- Want some sort of mu-assembler
+  - Reuse the same instance for all blocks
+- Fast and direct, less intermediate objects, less/no encoding search
+- Store:
+  - Temporary buffer for block code
+  - Label positions
+  - Rel jumps to internal labels
+  - Jumps (possibly conditional), target version obj, required moves
+- Should be able to compute an upper bound on the size of blocks
+  - Used to test if external jumps can fit in 8/32 bits
+- Can use an enumeration for internal labels. Not that many cases
+  - Direct array of label offsets
+- Quick linking and jump minification pass when copying/writing output
+
+------------------------------------------------------------------------------
+
+CodeGenState: what does the state include?
+- Inlining context (parent functions and call sites)
+- Live value to register/slot mapping (reg alloc state)
+- Live value to known type info mapping
+- Regs to val
+- Slot to val
+- List of delayed value writes
+- List of delayed type tag writes
+- CodeGenState might be quite massive
+  - Do we need to keep all of these?
+  - Need to keep it for stubs, blocks which may be recompiled
+  - Will some blocks never be recompiled?
+    - Probably, if it makes no special assumptions, can't self-recompile
 
 Core of the lazy JIT is genBranchEdge(assembler, edge, predState)
 - Tries to find a suitable dst version
@@ -73,47 +218,18 @@ Core of the lazy JIT is genBranchEdge(assembler, edge, predState)
 - Logic for good ordering complicates things, and isn't really necessary
   - Compaction will take care of it
 
-Assembler: will need labels, conditional control-flow for some things
-- Want some sort of mu-assembler
-- Fast and direct, less intermediate objects, less/no encoding search
-- Store:
-  - Temporary buffer for block code
-  - Label positions
-  - Internal rel jump offsets
-  - Jumps (possibly conditional), target version obj, required moves
-- Should be able to compute an upper bound on the size of blocks
-  - Used to test if external jumps can fit in 8/32/64 bits
-
-Executable memory manager:
-- One big executable memory chunk
-- List of version entries
-  - <address,block,state> tuples
-  - Need metainfo, outgoing jumps and moves, IRFunction? scan the heap
-  - Profiling info, most frequent or first compiled successor
-  - Outgoing jumps should point to the metainfo object of the successor
-    - Important when moving/compacting
-    - Versions are relocatable
-- Some versions might have been recompiled, contain only an indirect jump
-  to an updated version
-  - The corresponding entries should have a next pointer
-- When running low on executable memory, try to compact
-  - Allocate new chunk, scan and copy
-  - Patch function entry point addresses from outside (IRFunction)
-  - Reorder based on execution frequency
-- Need a map from <block,state> pairs to version entries for compilation
-
-Compiled blocks: need to keep track of where the moves are, where the final
-jumps are (usually at most two). The final branching part of blocks may need
-to be rewritten when copying/compacting, or when deciding how to encode a jump
-to an immediate successor (may translate to nothing if next, or small rel8 jump).
-
-Invalidation:
-- In theory, any block can be invalidated by writing a jump over it
-- Can easily invalidate blocks making monitoring assumptions, replace by stubs
-- Monitoring logic can keep track of versions making specific assumptions
-  - Invalidate those versions as needed
-- set global should be a branch instruction, so there is no next instruction
-  that could read the same global in the same block
+Inlining implementation:
+- May need to allocate more stack slots for callee, bump stack pointers
+- Start with arg values mapped in parent stack frame
+  - CodeGenState needs to allow for this
+- Need to be careful when spilling
+  - Must test if parent values, if so, spill
+  - Mark value as spilled in parent spill slot
+- CodeGenState
+  - map of regs to values
+  - map of slots to values
+  - values to regs and slots
+  - if parent value, slot or reg to value has parent value, not callee arg
 
 Out of line code:
 - Call, ret and heap_alloc are the only 3 current use cases
@@ -123,68 +239,37 @@ Out of line code:
 - There is no more bailing out to the interpreter
 - Don't need out of line code
 
-Stubs and regalloc:
-- Probably need to put the spill logic in the stubs themselves
-- Probably need on-the-fly reg alloc for baseline mode too
-- Can't just swap a stub with no reg alloc for one with reg alloc
-  - Incoming transitions need to do the right move ops
+------------------------------------------------------------------------------
 
-Inlining and optimized recompilation:
-- When recompiling a call site, may decide to inline some callee
-  - Inlined callee will produce stubs when conditional branches are compiled
-- Inlining won't be deep at first, will happen in multiple steps
-  - Shallow first inlining
-  - Inlined call sites do profiling at first
-  - Optimized recompilation of callee's call sites
-  - Callee may inline sub-callees later
-- Executable memory manager may reorder and compact code later
+Reg alloc:
+- Allocate regs on-the-fly
+- Values need a default register, eg: based on their id number
+  - Use default slot if available, or if all slots taken and need to spill one
+- Try to optimistically match value regs with their phi nodes
+  - Phi takes first incoming value reg
+  - Val takes phi reg, if avail
 
-Compiled version entries, what info do we need to keep?
-- Block this is associated to
-- CodeGenState at block entry
-- Current address in executable memory
-- Don't really need IRFunction of entry blocks, can scan the Higgs heap
-- First compiled successor, for ordering when compacting
-- Compiler code chunk
-  - Must be relocatable
-  - Don't keep assembler, instr objects, internal labels
-- Final branches and associated moves
-  - May need to be specific about what conditional branches are testing?
-- Pointers to version entries of successors
-- For stub entries, need list of predecessor versions
-  - Notify them if we are the first successor compiled?
-  - Not necessary! If we're the first, we'll be first in the memory ordering!
+To compile a function, need to get liveness info for it
+- Do it after IR generation
+- Should apply operand swapping pass for register allocation
+  - If operand is dead after op, put it on the left side
 
-CodeGenState: what does the state include?
-- Inlining context (parent functions and call sites)
-- Live value to register/slot mapping (reg alloc state)
-- Live value to known type info mapping
-- List of delayed value writes
-- List of delayed type tag writes
+Return addresses:
+- Need map of ret addrs to exception continuation addrs and IRFunctions
+- Regenerate map entries when collecting/compacting executable code
+- Only for versions that have function calls at the end
 
-Alternative: have just one JIT compilation mode
-- Already said that we need versioning and reg-alloc for stubs
-- Lazy compilation will generally order blocks in the best order
-  - Should record which block is compiled first on preds, for code compactor
-- In current system, blocks can trigger their own recompilation
-- Could start without inlining, eventually either have profiling for
-  call sites (could be lightweight) to enable inlining
-- Other blocks can do the same if profiling info is beneficial
-- Call site blocks recompile themselves to enable inlining
-  - Need to run them a number of times to determine that the inling is worthwhile
-  - Once found worthwhile, profile a few times, record callees
-  - Eventually recompile inlined call block and callee blocks incrementally/lazily
-  - Old call site block is patched-over with a jump to the new block
-  - Code compactor eventually reorders blocks and eliminates superfluous jumps
+KISS:
+- Allocate maxLive + k slots
+- When inlining, do a new interference analysis, try to map callee slots on
+  top of parent
+- This won't always be possible
+  - If not, allocate some new slots for callee
 
-Demand-driven propagation:
-- Block has instruction that provides some piece of info
-- Info originally not propagated in first compilation
-- If info is found valuable, recompile the block, propagate the info
-  - Successors that have this info in their context will be requested
-- Issue: not always trivial to trace provenance of info
-  - Need to trace provenance of specific values that feed into hot tests
-  - If value is local in origin, this is easy
-- With conditional branches, can choose to propagate less info to the
-  sides of branches that are very rarely taken
+Exceptions vs inlining:
+- Don't inline functions inside catch blocks
+- May need to unwind the stack while inlined
+- Different RAs can map to different objects that indicate what layout the
+  stack frame has at the moment of the call
+  - Number of temp slots, inlining context
 

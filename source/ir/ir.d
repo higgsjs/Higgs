@@ -113,12 +113,6 @@ class IRFunction : IdObject
     /// Map of call instructions to list of inlined functions
     IRFunction[][IRInstr] inlineMap;
 
-    /// Compiled code block
-    CodeBlock codeBlock = null;
-
-    /// Number of times this function was JIT compiled
-    uint32_t jitCount = 0;
-
     /// Constructor
     this(FunExpr ast)
     {
@@ -264,15 +258,6 @@ class IRBlock : IdObject
 
     /// List of incoming branches
     private BranchEdge[] incoming;
-
-    /// Execution count, for profiling
-    uint64 execCount = 0;
-
-    /// JIT code entry point function
-    EntryFn entryFn = null;
-
-    /// JIT code fast entry point
-    ubyte* jitEntry = null;
 
     /// Parent function
     IRFunction fun = null;

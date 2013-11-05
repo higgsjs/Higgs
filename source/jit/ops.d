@@ -55,10 +55,10 @@ import jit.codeblock;
 import jit.assembler;
 import jit.x86;
 import jit.encodings;
-import jit.peephole;
 import jit.regalloc;
 import jit.jit;
 
+/*
 void gen_get_arg(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Get the first argument slot
@@ -314,15 +314,6 @@ void gen_mod_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Set the output type
     st.setOutType(ctx.as, instr, Type.INT32);
-
-    /*
-    writeln();
-    writeln(instr.block);
-    writeln("opnd0: ", opnd0);
-    writeln("opnd1: ", opnd1);
-    writeln();
-    ctx.as.printTail(10);
-    */
 }
 
 void ShiftOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -683,6 +674,7 @@ void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 }
 */
 
+/*
 void gen_get_link(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Get the link index operand
@@ -707,39 +699,14 @@ void gen_get_link(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Set the output type
     st.setOutType(ctx.as, instr, scrRegs8[1]);
 }
-
-/**
-Conditional jump and move descriptor
 */
-struct CondOps
-{
-    static CondOps cmov(X86OpPtr cmovT, X86OpPtr cmovF)
-    {
-        CondOps ops;
-        ops.cmovT[0] = cmovT;
-        ops.cmovF[0] = cmovF;
-        return ops;
-    }
-
-    static CondOps jcc(X86OpPtr jccT, X86OpPtr jccF)
-    {
-        CondOps ops;
-        ops.jccT[0] = jccT;
-        ops.jccF[0] = jccF;
-        return ops;
-    }
-
-    X86OpPtr jccT[2];
-    X86OpPtr jccF[2];
-    X86OpPtr cmovT[2];
-    X86OpPtr cmovF[2];
-}
 
 /**
 Generates the conditional branch for an if_true instruction with the given
 conditional jump operations. Assumes a comparison between input operands has
 already been inserted.
 */
+/*
 void genCondBranch(
     CodeGenCtx ctx, 
     IRInstr ifInstr,
@@ -810,11 +777,13 @@ void genCondBranch(
         ctx.genBranchEdge(ctx.as, falseLabel, falseTarget, falseSt);
     }
 }
+*/
 
 /**
 Generate a boolean output value for an instruction based
 on a preceding comparison instruction's output
 */
+/*
 void genBoolOut(
     CodeGenCtx ctx,
     CodeGenState st,
@@ -852,10 +821,12 @@ void genBoolOut(
     // Set the output type
     st.setOutType(ctx.as, instr, Type.CONST);
 }
+*/
 
 /**
 Test if an instruction is followed by an if_true branching on its value
 */
+/*
 bool ifUseNext(IRInstr instr)
 {
     return (
@@ -864,10 +835,12 @@ bool ifUseNext(IRInstr instr)
         instr.next.getArg(0) is instr
     );
 }
+*/
 
 /**
 Test if our argument precedes and generates a boolean value
 */
+/*
 bool boolArgPrev(IRInstr instr)
 {
     return (
@@ -876,7 +849,9 @@ bool boolArgPrev(IRInstr instr)
         instr.prev.opcode in codeGenFns
     );
 }
+*/
 
+/*
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto argVal = instr.getArg(0);
@@ -930,7 +905,9 @@ alias IsTypeOp!(Type.RAWPTR) gen_is_rawptr;
 alias IsTypeOp!(Type.INT32) gen_is_i32;
 alias IsTypeOp!(Type.INT64) gen_is_i64;
 alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
+*/
 
+/*
 void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Check if this is a floating-point comparison
@@ -1103,7 +1080,9 @@ alias CmpOp!("flt", 64) gen_lt_f64;
 alias CmpOp!("fle", 64) gen_le_f64;
 alias CmpOp!("fgt", 64) gen_gt_f64;
 alias CmpOp!("fge", 64) gen_ge_f64;
+*/
 
+/*
 void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto argVal = instr.getArg(0);
@@ -1133,63 +1112,9 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Generate the conditional branch and targets
     ctx.genCondBranch(instr, CondOps.jcc(JE, JNE), st, st);
 }
+*/
 
-void gen_if_eq_fun(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Label for the function not equal case
-    auto NOT_EQ = new Label("FUN_NOT_EQ");
-
-    // Get the type tag for the closure value
-    auto closType = st.getTypeOpnd(
-        ctx.as, 
-        instr, 
-        0, 
-        scrRegs8[0],
-        false
-    );
-
-    // If the value is not a reference, not equal
-    ctx.as.instr(CMP, closType, Type.REFPTR);
-    ctx.as.instr(JNE, NOT_EQ);
-
-    // Get the word for the closure value
-    auto closReg = cast(X86Reg)st.getWordOpnd(
-        ctx, 
-        ctx.as, 
-        instr, 
-        0,
-        64,
-        scrRegs64[0],
-        true,
-        false
-    );
-    assert (closReg !is null);
-
-    // If the object is not a closure, not equal
-    ctx.as.instr(MOV, scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
-    ctx.as.instr(CMP, scrRegs32[1], LAYOUT_CLOS);
-    ctx.as.instr(JNE, NOT_EQ);
-
-    // Get the function pointer from the closure object
-    auto fptrMem = new X86Mem(64, closReg, CLOS_OFS_FPTR);
-    ctx.as.instr(MOV, scrRegs64[1], fptrMem);
-
-    // If this is not the closure we expect, not equal
-    auto funArg = cast(IRFunPtr)instr.getArg(1);
-    assert (funArg !is null);
-    ctx.as.ptr(scrRegs64[2], funArg.fun);
-    ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
-    ctx.as.instr(JNE, NOT_EQ);
-
-    // Generate the slow branch out of line
-    ctx.genBranchEdge(ctx.ol, NOT_EQ, instr.getTarget(1), st);
-
-    // Get the fast target label last so the fast target is
-    // more likely to get generated first (LIFO stack)
-    // The equal case is generated directly inline
-    ctx.genBranchEdge(ctx.as, null, instr.getTarget(0), st);
-}
-
+/*
 void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Jump to the target block
@@ -1487,7 +1412,9 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
     ctx.ol.instr(JMP, ctx.bailLabel);
 }
+*/
 
+/*
 void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto raSlot    = instr.block.fun.raVal.outSlot;
@@ -1580,15 +1507,6 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     extern (C) void interpBranch(Interp interp, IRInstr callInstr)
     {
         auto desc = callInstr.getTarget(0);
-
-        /*
-        writefln(
-            "interp ret to %s (%s phis)", 
-            callInstr.block.fun.getName,
-            desc.args.length
-        );
-        */
-
         interp.branch(desc);
     }
 
@@ -1622,7 +1540,9 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Call the interpreter call instruction
     defaultFn(ctx.ol, ctx, st, instr);
 }
+*/
 
+/*
 void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     //ctx.as.printStr(instr.toString);
@@ -1693,105 +1613,5 @@ void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         st.valOnStack(instr);
     }
 }
-
-alias void function(CodeGenCtx ctx, CodeGenState st, IRInstr instr) CodeGenFn;
-
-CodeGenFn[Opcode*] codeGenFns;
-
-static this()
-{
-    codeGenFns[&GET_ARG]        = &gen_get_arg;
-
-    codeGenFns[&SET_STR]        = &gen_set_str;
-
-    codeGenFns[&MAKE_VALUE]     = &gen_make_value;
-    codeGenFns[&GET_WORD]       = &gen_get_word;
-    codeGenFns[&GET_TYPE]       = &gen_get_type;
-
-    codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
-    codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
-
-    codeGenFns[&ADD_I32]        = &gen_add_i32;
-    codeGenFns[&MUL_I32]        = &gen_mul_i32;
-    codeGenFns[&AND_I32]        = &gen_and_i32;
-    codeGenFns[&OR_I32]         = &gen_or_i32;
-    codeGenFns[&XOR_I32]        = &gen_xor_i32;
-
-    codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
-    codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
-    codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
-
-    codeGenFns[&MOD_I32]        = &gen_mod_i32;
-
-    codeGenFns[&LSFT_I32]       = &gen_lsft_i32;
-    codeGenFns[&RSFT_I32]       = &gen_rsft_i32;
-
-    codeGenFns[&ADD_F64]        = &gen_add_f64;
-    codeGenFns[&SUB_F64]        = &gen_sub_f64;
-    codeGenFns[&MUL_F64]        = &gen_mul_f64;
-    codeGenFns[&DIV_F64]        = &gen_div_f64;
-
-    codeGenFns[&LOAD_U8]        = &gen_load_u8;
-    codeGenFns[&LOAD_U16]       = &gen_load_u16;
-    codeGenFns[&LOAD_U32]       = &gen_load_u32;
-    codeGenFns[&LOAD_U64]       = &gen_load_u64;
-    codeGenFns[&LOAD_F64]       = &gen_load_f64;
-    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
-    codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
-
-    codeGenFns[&STORE_U8]       = &gen_store_u8;
-    codeGenFns[&STORE_U16]      = &gen_store_u16;
-    codeGenFns[&STORE_U32]      = &gen_store_u32;
-    codeGenFns[&STORE_U64]      = &gen_store_u64;
-    codeGenFns[&STORE_F64]      = &gen_load_f64;
-    codeGenFns[&STORE_REFPTR]   = &gen_store_refptr;
-    codeGenFns[&STORE_RAWPTR]   = &gen_store_rawptr;
-
-    codeGenFns[&GET_GLOBAL]     = &gen_get_global;
-    codeGenFns[&SET_GLOBAL]     = &gen_set_global;
-
-    codeGenFns[&GET_OBJ_PROTO]  = &gen_get_obj_proto;
-    codeGenFns[&GET_ARR_PROTO]  = &gen_get_arr_proto;
-    codeGenFns[&GET_FUN_PROTO]  = &gen_get_fun_proto;
-    codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
-
-    //codeGenFns[&HEAP_ALLOC]     = &gen_heap_alloc;
-
-    codeGenFns[&GET_LINK]       = &gen_get_link;
-
-    codeGenFns[&IS_CONST]       = &gen_is_const;
-    codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
-    codeGenFns[&IS_RAWPTR]      = &gen_is_rawptr;
-    codeGenFns[&IS_I32]         = &gen_is_i32;
-    codeGenFns[&IS_I64]         = &gen_is_i64;
-    codeGenFns[&IS_F64]         = &gen_is_f64;
-
-    codeGenFns[&EQ_I8]          = &gen_eq_i8;
-    codeGenFns[&EQ_I32]         = &gen_eq_i32;
-    codeGenFns[&NE_I32]         = &gen_ne_i32;
-    codeGenFns[&LT_I32]         = &gen_lt_i32;
-    codeGenFns[&LE_I32]         = &gen_le_i32;
-    codeGenFns[&GT_I32]         = &gen_gt_i32;
-    codeGenFns[&GE_I32]         = &gen_ge_i32;
-    codeGenFns[&EQ_CONST]       = &gen_eq_const;
-    codeGenFns[&NE_CONST]       = &gen_ne_const;
-    codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
-    codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
-    codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
-
-    codeGenFns[&EQ_F64]         = &gen_eq_f64;
-    codeGenFns[&NE_F64]         = &gen_ne_f64;
-    codeGenFns[&LT_F64]         = &gen_lt_f64;
-    codeGenFns[&LE_F64]         = &gen_le_f64;
-    codeGenFns[&GE_F64]         = &gen_ge_f64;
-    codeGenFns[&GT_F64]         = &gen_gt_f64;
-
-    codeGenFns[&IF_TRUE]        = &gen_if_true;
-    codeGenFns[&IF_EQ_FUN]      = &gen_if_eq_fun;
-    codeGenFns[&JUMP]           = &gen_jump;
-
-    codeGenFns[&ir.ops.CALL]    = &gen_call;
-    codeGenFns[&CALL_PRIM]      = &gen_call_prim;
-    codeGenFns[&ir.ops.RET]     = &gen_ret;
-}
+*/
 

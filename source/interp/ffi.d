@@ -80,6 +80,7 @@ CodeBlock genFFIFn(
     size_t argCount
 )
 {
+    /*
     // Track register usage for args
     auto iArgIdx = 0;
     auto fArgIdx = 0;
@@ -205,6 +206,10 @@ CodeBlock genFFIFn(
 
     auto cb = as.assemble();
     return cb;
+    */
+
+    // TODO
+    return null;
 }
 
 // Dummy functions used for testing
