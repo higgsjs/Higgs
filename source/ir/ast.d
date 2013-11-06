@@ -602,53 +602,11 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Perform peephole optimizations on the function
     optIR(fun);
 
+    // Compute liveness information for the function
+    fun.liveInfo = new LiveInfo(fun);
+
     // Allocate stack slots for the IR instructions
     allocSlots(fun);
-
-    /*
-    auto liveQueryFn = compLiveVars(fun);
-
-    auto numInterf = 0;
-    auto numNonInterf = 0;
-    
-    for (auto block = fun.firstBlock; block !is null; block = block.next)
-    {
-        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
-        {
-            // For each phi arg
-            PHI_ARG_LOOP:
-            for (size_t tIdx = 0; tIdx < block.numIncoming; ++tIdx)
-            {
-                auto branch = block.getIncoming(tIdx);
-                auto phiArg = cast(IRDstValue)branch.getPhiArg(phi);
-
-                // If this phi argument is not 
-                if (phiArg is null)
-                    continue PHI_ARG_LOOP;
-
-                // For each instruction (live query point)
-                for (auto block2 = fun.firstBlock; block2 !is null; block2 = block2.next)
-                {
-                    for (auto instr = block2.firstInstr; instr !is null; instr = instr.next)
-                    {
-                        auto argLive = liveQueryFn(phiArg, instr);
-                        auto phiLive = liveQueryFn(phi, instr);
-
-                        if (argLive && phiLive)
-                        {
-                            numInterf++;
-                            continue PHI_ARG_LOOP;
-                        }
-                    }
-                }
-
-                numNonInterf++;
-            }
-        }
-    }
-    
-    writefln("interf: %s/%s", numInterf, (numInterf+numNonInterf));
-    */
 
     //writeln("compiled fn:");
     //writeln(fun.toString());
@@ -2437,18 +2395,6 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
                 );
             }
             argVal = new IRMapPtr();
-            break;
-
-            // Code block pointer
-            case OpArg.CODEBLOCK:
-            if (cast(NullExpr)argExpr is null)
-            {    
-                throw new ParseError(
-                    "expected null argument", 
-                    argExpr.pos
-                );
-            }
-            argVal = new IRCodeBlock();
             break;
 
             default:

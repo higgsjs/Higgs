@@ -38,11 +38,8 @@ interp/object.d     \
 interp/gc.d         \
 interp/ffi.d        \
 jit/x86.d           \
-jit/encodings.d     \
-jit/codeblock.d     \
 jit/assembler.d     \
 jit/moves.d         \
-jit/regalloc.d      \
 jit/ops.d           \
 jit/jit.d           \
 repl.d              \
@@ -53,21 +50,18 @@ jit/tests.d         \
 parser/tests.d      \
 interp/tests.d
 
-all: layout encodings
+all: layout
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
 
-test: layout encodings
+test: layout
 	$(DC) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
 	time ./$(BIN_NAME_TEST)
 
-debug: layout encodings
+debug: layout
 	$(DC) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)
 
-release: layout encodings
+release: layout
 	$(DC) $(RELOPTS) -of$(BIN_NAME) $(SRC)
-
-encodings:
-	python jit/encodings.py
 
 layout:
 	python interp/layout.py

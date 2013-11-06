@@ -48,10 +48,10 @@ import util.id;
 import util.string;
 import parser.ast;
 import ir.ops;
+import ir.livevars;
 import interp.interp;
 import interp.layout;
 import interp.object;
-import jit.codeblock;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -107,11 +107,8 @@ class IRFunction : IdObject
     /// Map of identifiers to SSA cell values (closure/shared variables)
     IRValue[IdentExpr] cellMap;
 
-    /// Callee profiling information (filled by interpreter)
-    uint64_t[IRFunction][IRInstr] callCounts;  
-
-    /// Map of call instructions to list of inlined functions
-    IRFunction[][IRInstr] inlineMap;
+    /// Liveness information
+    LiveInfo liveInfo = null;
 
     /// Constructor
     this(FunExpr ast)
@@ -1027,23 +1024,6 @@ class IRCachedIdx : IRValue
     override string toString()
     {
         return "<idx:" ~ ((idx is idx.max)? "NULL":to!string(idx)) ~ ">";
-    }
-}
-
-/**
-Code block pointer value (stateful, non-constant, initially null)
-*/
-class IRCodeBlock : IRValue
-{
-    CodeBlock codeBlock = null;
-
-    this()
-    {
-    }
-
-    override string toString()
-    {
-        return "<codeblock:" ~ ((codeBlock is null)? "NULL":"0x"~to!string(codeBlock.getAddress())) ~ ">";
     }
 }
 

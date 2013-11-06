@@ -52,8 +52,7 @@ enum OpArg
     LOCAL,
     LINK,
     FUN,
-    MAP,
-    CODEBLOCK
+    MAP
 }
 
 /// Instruction code generation function
@@ -340,5 +339,5 @@ Opcode CLOSE_LIB = { "close_lib", false, [OpArg.LOCAL], /*&op_close_lib*/null , 
 Opcode GET_SYM = { "get_sym", true, [OpArg.LOCAL, OpArg.STRING], /*&op_get_sym*/null };
 
 /// Call function in shared lib
-Opcode CALL_FFI = { "call_ffi", true, [OpArg.CODEBLOCK, OpArg.LOCAL, OpArg.STRING], /*&op_call_ffi*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.VAR_ARG };
+Opcode CALL_FFI = { "call_ffi", true, [OpArg.LOCAL, OpArg.STRING], /*&op_call_ffi*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.VAR_ARG };
 

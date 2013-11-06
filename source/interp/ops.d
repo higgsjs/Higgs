@@ -55,7 +55,6 @@ import interp.string;
 import interp.object;
 import interp.gc;
 import interp.ffi;
-import jit.codeblock;
 
 /**
 Get the value of an instruction's argument
@@ -1218,57 +1217,5 @@ extern (C) void op_get_sym(Interp interp, IRInstr instr)
         Word.ptrv(cast(rawptr)sym),
         Type.RAWPTR
     );
-}
-
-extern (C) void op_call_ffi(Interp interp, IRInstr instr)
-{
-    // Pointer to function to call
-    auto funArg = interp.getArgVal(instr, 1);
-    assert (
-        funArg.type == Type.RAWPTR,
-        "invalid rawptr value"
-    );
-
-    // Compiled code block argument
-    auto cbArg = cast(IRCodeBlock)instr.getArg(0);
-    assert (cbArg !is null);
-
-    // Get the argument count
-    auto argCount = instr.numArgs - 3;
-
-    // Check if there is a cached CodeBlock, generate one if not
-    if (cbArg.codeBlock is null)
-    {
-        // Type info (D string)
-        auto typeArg = cast(IRString)instr.getArg(2);
-        assert (typeArg !is null);
-        auto typeinfo = to!string(typeArg.str);
-        auto types = split(typeinfo, ",");
-
-        assert (
-            argCount == types.length - 1,
-            "invalid number of args in ffi call"
-        );
-
-        // Compile the call stub
-        cbArg.codeBlock = genFFIFn(interp, types, instr.outSlot, argCount);
-    }
-
-    // Allocate temporary storage for the argument values
-    if (argCount > interp.tempVals.length)
-        interp.tempVals.length = argCount;
-    auto argVals = interp.tempVals.ptr;
-
-    // Fetch the argument values
-    for (size_t i = 0; i < argCount; ++i)
-        argVals[i] = interp.getArgVal(instr, 3 + i);
-
-    // Call the call stub passing the function
-    // pointer argument array pointers as arguments
-    FFIFn callerfun = cast(FFIFn)(cbArg.codeBlock.getAddress());
-    callerfun(cast(void*)funArg.word.ptrVal, argVals);
-
-    // Branch to the continuation target of the call_ffi instruction
-    interp.branch(instr.getTarget(0));
 }
 

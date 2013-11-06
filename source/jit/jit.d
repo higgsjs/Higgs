@@ -52,11 +52,8 @@ import interp.layout;
 import interp.object;
 import interp.string;
 import interp.gc;
-import jit.codeblock;
 import jit.assembler;
 import jit.x86;
-import jit.encodings;
-import jit.regalloc;
 import jit.moves;
 import jit.ops;
 

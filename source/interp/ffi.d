@@ -44,12 +44,10 @@ import std.conv;
 import interp.interp;
 import jit.x86;
 import jit.assembler;
-import jit.codeblock;
-import jit.encodings;
-import jit.regalloc;
 import jit.jit;
 import ir.ir;
 
+/*
 Type[string] typeMap;
 X86Reg funReg;
 X86Reg argsReg;
@@ -72,7 +70,9 @@ static this()
     argsReg = R11;
     scratchReg = R10;
 }
+*/
 
+/*
 CodeBlock genFFIFn(
     Interp interp, 
     string[] types, 
@@ -80,7 +80,6 @@ CodeBlock genFFIFn(
     size_t argCount
 )
 {
-    /*
     // Track register usage for args
     auto iArgIdx = 0;
     auto fArgIdx = 0;
@@ -206,11 +205,8 @@ CodeBlock genFFIFn(
 
     auto cb = as.assemble();
     return cb;
-    */
-
-    // TODO
-    return null;
 }
+*/
 
 // Dummy functions used for testing
 extern (C) 
@@ -265,7 +261,8 @@ unittest
 {
     writefln("FFI");
 
+    // TODO
     auto interp = new Interp();
-    interp.load("programs/ffi/ffi.js");
+    //interp.load("programs/ffi/ffi.js");
 }
 

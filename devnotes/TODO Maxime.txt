@@ -22,6 +22,13 @@ TODO: add --jit_trace command-line option
 
 TODO: complete WAV output support, test it out with sine wave
 
+TODO: better stack slot allocation, based on value interference
+
+TODO: add source position info for call sites
+- Map of call sites to source pos in IRFunction?
+- Do this in genCallTargets?
+- Throw instr also needs a source pos
+
 ------------------------------------------------------------------------------
 
 First milestone: no interp, basic incremental codegen
@@ -30,38 +37,37 @@ First milestone: no interp, basic incremental codegen
 - Bump alloc ptr for code, no code compaction
 
 TODO: begin writing classes, functions for new JIT
-- Assembler & encoding
-  - KISS, direct encoding methods? as.jmp(label), as.label(label) and as.label(name)
-  - No intermediate structures for instrs, just encode directly
-  - Arg structs for mem opnds
-  - Labels are just strings in a map!
 - Executable memory management
   - Interp class owns executable chunk?
-- CodeGenState
-- BlockVersion
 - Stubs
 - compile(block, state)
 - genBranchEdge(edge, predState)
 
-TODO: think of how to convert JIT ops to library of functions
-- Only need lib fns for more complex or infrequent ops
-  - No need for lib fn for core typed arith ops, comparisons
-- Convention for calls from JIT?
-  - Not really necessary, just spill all, keep as is
+TODO: begin work on mu-assembler
+- KISS, direct encoding methods
+  as.jmp(label), as.label(label) and as.label(name)
+- No intermediate structures for instrs, just encode directly
+- Arg structs for mem opnds
+- Labels are just strings in a map!
+- writeBytes, ..., templated? How does writeln work?
+  - Need a mutable buffer pointer?
+- First goal is basic system working, don't write all encodings now
+  - But begin testing early
+- Could have instruction fns in x86.d
+  jump(CodeBlock cb, ...)
+  Maybe not assembler object, but code buffer pointer?
 
-TODO: add source position info for call sites
-- Map of call sites to source pos in IRFunction?
-- Do this in genCallTargets?
-- Throw instr also needs a source pos
+TODO: sketch BlockVersion class
 
-TODO: generate stack slot alloc based on liveness info
+TODO: CodeBlock class
 
-TODO: code breadth-first
-- Get basic tests working
-- Minimal mu-assembler, minimal version system only
-
-TODO: compute fun liveness info in ast to IR
-
+TODO: sketch CodeGenState, CodeGenCtx in jit/jit.d
+- CodeGenState has ctx object pointer
+- CodeGenCtx should have:
+  - IRFunction, 
+  - num extra locals, 
+  - parent context (for inlining)
+  - inlineSite (call site, if inlined)
 
 
 
@@ -70,6 +76,11 @@ TODO: compute fun liveness info in ast to IR
 
 
 
+
+
+[DONE] TODO: comment out assembler tests, remove encodings
+
+[DONE] TODO: compute fun liveness info in ast-to-IR
 
 [DONE] TODO: remove JIT entry point, block exec count from IR
 
