@@ -256,7 +256,7 @@ class CodeBlock
 /**
 Block internal label enumeration
 */
-enum Label
+enum Label : uint32_t
 {
     // TODO
     DONE
@@ -277,7 +277,8 @@ class Assembler
 
 
     // TODO: label refs list
-
+    // position + label pair
+    //LabelRef LabelRefs[]
 
 
 
@@ -286,8 +287,10 @@ class Assembler
 
     // TODO: target blocks/versions
 
+    /// Inner instruction code
     CodeBlock innerCode;
 
+    /// Edge transition move code
     CodeBlock moveCode[2];
 
 
@@ -295,6 +298,9 @@ class Assembler
 
     // TODO: method to copy into a code block and finalize into a BlockVersion
     // Must store offsets + length, etc
+    // Must write to code block
+
+
 
 
 }

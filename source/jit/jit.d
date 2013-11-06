@@ -62,19 +62,35 @@ Context in which code is being compiled
 */
 class CodeGenCtx
 {
+    /// Parent context (if inlined)
     CodeGenCtx parent = null;
 
-/*
-  - IRFunction, 
-  - num extra locals, 
-  - parent context (for inlining)
-  - inlineSite (call site, if inlined)
-*/
+    /// Call site inlined at (if inlined)
+    IRInstr inlineSite = null;
 
+    /// Number of extra locals (if inlined)
+    size_t extraLocals = 0;
 
-
-
+    /// Function this code belongs to
+    IRFunction fun;
 }
+
+// TODO: revise
+/// Register allocation information value
+alias uint16_t AllocState;
+const AllocState RA_STACK = (1 << 7);
+const AllocState RA_GPREG = (1 << 6);
+const AllocState RA_CONST = (1 << 5);
+const AllocState RA_REG_MASK = (0x0F);
+
+// TODO: revise
+// Type information value
+alias uint16_t TypeState;
+const TypeState TF_KNOWN = (1 << 7);
+const TypeState TF_SYNC = (1 << 6);
+const TypeState TF_BOOL_TRUE = (1 << 5);
+const TypeState TF_BOOL_FALSE = (1 << 4);
+const TypeState TF_TYPE_MASK = (0xF);
 
 /**
 Current code generation state. This includes register
@@ -85,20 +101,43 @@ class CodeGenState
     /// Code generation context object
     CodeGenCtx ctx;
 
-    /*
-    - Live value to register/slot mapping (reg alloc state)
-    - Live value to known type info mapping
-    - Regs to val
-    - Slot to val
-    - List of delayed value writes
-    - List of delayed type tag writes
-    */
+    /// Live value to register/slot mapping
+    private AllocState[IRDstValue] allocMap;
 
+    // Live value to known type info mapping
+    private TypeState[IRDstValue] typeMap;
 
+    /// Map of general-purpose registers to values
+    /// The value is null if a register is free
+    private IRDstValue[] gpRegMap;
 
+    /// Map of stack slots to values
+    private IRDstValue[LocalIdx] slotMap;
 
+    // TODO
+    /// List of delayed value writes
 
+    // TODO
+    /// List of delayed type tag writes
 
+    /// Constructor for a default/entry code generation state
+    this(IRFunction fun)
+    {
+        // All registers are initially free
+        gpRegMap.length = 16;
+        for (size_t i = 0; i < gpRegMap.length; ++i)
+            gpRegMap[i] = null;
+    }
+
+    /// Copy constructor
+    this(CodeGenState that)
+    {
+        // TODO
+        this.allocMap = that.allocMap.dup;
+        this.typeMap = that.typeMap.dup;
+        this.gpRegMap = that.gpRegMap.dup;
+        this.slotMap = that.slotMap.dup;
+    }
 }
 
 
