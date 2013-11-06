@@ -45,7 +45,7 @@ Custom assert handler. This handler prints an error message before trying to
 unwind the stack, which ensures that the error message is printed even if the
 stack cannot be unwinded.
 */
-void assertHandler(string file = __FILE__, size_t line = __LINE__, string msg = null) nothrow
+void customAssertHandler(string file = __FILE__, size_t line = __LINE__, string msg = null) nothrow
 {
     try
     {
@@ -65,6 +65,6 @@ void assertHandler(string file = __FILE__, size_t line = __LINE__, string msg = 
 
 static this()
 {
-    setAssertHandler(&assertHandler);
+    assertHandler = &customAssertHandler;
 }
 

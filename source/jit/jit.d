@@ -57,8 +57,49 @@ import jit.x86;
 import jit.moves;
 import jit.ops;
 
+/**
+Context in which code is being compiled
+*/
+class CodeGenCtx
+{
+    CodeGenCtx parent = null;
+
+/*
+  - IRFunction, 
+  - num extra locals, 
+  - parent context (for inlining)
+  - inlineSite (call site, if inlined)
+*/
 
 
+
+
+}
+
+/**
+Current code generation state. This includes register
+allocation state and known type information.
+*/
+class CodeGenState
+{
+    /// Code generation context object
+    CodeGenCtx ctx;
+
+    /*
+    - Live value to register/slot mapping (reg alloc state)
+    - Live value to known type info mapping
+    - Regs to val
+    - Slot to val
+    - List of delayed value writes
+    - List of delayed type tag writes
+    */
+
+
+
+
+
+
+}
 
 
 

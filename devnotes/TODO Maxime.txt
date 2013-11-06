@@ -46,20 +46,23 @@ TODO: begin writing classes, functions for new JIT
 TODO: begin work on mu-assembler
 - KISS, direct encoding methods
   as.jmp(label), as.label(label) and as.label(name)
-- No intermediate structures for instrs, just encode directly
-- Arg structs for mem opnds
-- Labels are just strings in a map!
-- writeBytes, ..., templated? How does writeln work?
-  - Need a mutable buffer pointer?
-- First goal is basic system working, don't write all encodings now
-  - But begin testing early
-- Could have instruction fns in x86.d
-  jump(CodeBlock cb, ...)
-  Maybe not assembler object, but code buffer pointer?
 
 TODO: sketch BlockVersion class
 
-TODO: CodeBlock class
+TODO: simple instruction encodings in x86.d
+- No intermediate structures for instrs, just encode directly
+- First goal is basic system working, don't write all encodings now
+  - But begin testing early
+nop(size_t length = 1)
+jmp(CodeBlock cb, Label label)
+
+TODO: x86 opnds
+- Want to avoid allocating big objects for mem opnds, etc.
+- Want operand structs
+- Could use regno values in mem opnds to avoid infinite rec
+- Could maybe have a big X86Opnd union for when needed?
+  - Or just one big struct implementing it all?
+  - Multiple structs are probably more expressive, more specific
 
 TODO: sketch CodeGenState, CodeGenCtx in jit/jit.d
 - CodeGenState has ctx object pointer
@@ -69,7 +72,7 @@ TODO: sketch CodeGenState, CodeGenCtx in jit/jit.d
   - parent context (for inlining)
   - inlineSite (call site, if inlined)
 
-
+TODO: CodeBlock class
 
 
 
