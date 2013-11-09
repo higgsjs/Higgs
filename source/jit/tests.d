@@ -45,7 +45,7 @@ import jit.x86;
 import jit.assembler;
 
 /// Code generation function for testing
-alias void delegate(Assembler) CodeGenFn;
+alias void delegate(CodeBlock) CodeGenFn;
 
 /**
 Test x86 instruction encodings
@@ -55,21 +55,16 @@ unittest
     writefln("machine code generation");
 
     // Test encodings for 32-bit and 64-bit
-    void test(CodeGenFn codeFunc, string enc32, string enc64 = "")
+    void test(CodeGenFn codeFunc, string enc64)
     {
-        if (enc64.length == 0)
-            enc64 = enc32;
-
         assert (
-            enc64.length % 2 == 0,
+            enc64.length > 0 && enc64.length % 2 == 0,
             "encoding string should have multiple of 2 length"
         );
 
         // Compute the number of bytes in the encoding
         auto numBytes = enc64.length / 2;
 
-        // TODO
-        /*
         // Create a code block to write the encoding into
         auto encBlock = new CodeBlock(numBytes);
 
@@ -82,28 +77,21 @@ unittest
             encBlock.writeByte(cast(ubyte)num);
         }
 
-        // Create an assembler to write code into
-        auto assembler = new Assembler();
-
-        // Produce the assembly
-        codeFunc(assembler);
-
-        // Assemble the code to a machine code block (code only, no header)
-        auto codeBlock = assembler.assemble();
+        // Generate the code to a machine code block
+        auto codeBlock = new CodeBlock(numBytes);
+        codeFunc(codeBlock);
 
         // Report an encoding error
         void encError()
         {
             throw new Error(
                 format(
-                    "invalid encoding for:\n" ~
-                    "%s\n" ~
-                    "\n" ~
+                    "invalid encoding\n" ~
+                    // TODO: list disassembly here
                     "produced:\n" ~
                     "%s (%s bytes)\n" ~
                     "expected:\n" ~
                     "%s (%s bytes)\n",
-                    assembler.toString(false),
                     codeBlock.toString(),
                     codeBlock.length,
                     encBlock.toString(),
@@ -112,84 +100,65 @@ unittest
            );
         }
 
-        // Check that the encoding length matches
-        if (codeBlock.length != encBlock.length)
-            encError();
-
         // Compare all bytes in the block
         for (size_t i = 0; i < codeBlock.length; ++i)
         {
             if (codeBlock.readByte(i) != encBlock.readByte(i))
                 encError();
         }
-        */
     }
 
-    /*
     // add
     test(
-        delegate void (Assembler a) { a.instr(ADD, AL, 3); },
-        "0403"
-    );
-    test(
-        delegate void (Assembler a) { a.instr(ADD, CL, BL); },
-        "00D9"
-    );
-    test(
-        delegate void (Assembler a) { a.instr(ADD, CL, SPL); },
-        "",
-        "4000E1"
-    );
-    test(
-        delegate void (Assembler a) { a.instr(ADD, CX, BX); },
-        "6601D9"
-    );
-    test(
-        delegate void (Assembler a) { a.instr(ADD, RAX, RBX); },
-        "",
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(RAX), X86Opnd(RBX)); },
         "4801D8"
     );
     test(
-        delegate void (Assembler a) { a.instr(ADD, RDX, R14); },
-        "",
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(ECX), X86Opnd(EDX)); },
+        "01D1"
+    );
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(R14)); },
         "4C01F2"
     );
     test(
-        delegate void (Assembler a) { a.instr(ADD, EDX, new X86Mem(32, EAX)); },
-        "0310",
-        "670310"
-    );
-    test(
-        delegate void (Assembler a) { a.instr(ADD, new X86Mem(32, EAX), EDX); },
-        "0110",
-        "670110"
-    );
-    test(
-        delegate void (Assembler a) { a.instr(ADD, new X86Mem(64, RAX), RDX); },
-        "", 
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(64, RAX), X86Opnd(RDX)); },
         "480110"
     );
     test(
-        delegate void (Assembler a) { a.instr(ADD, new X86Mem(32, RAX), EDX); },
-        "", 
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(64, RAX)); },
+        "480310"
+    );
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(64, RAX, 8)); },
+        "48035008"
+    );
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(64, RAX, 255)); },
+        "480390FF000000"
+    );
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(64, RAX, 127), X86Opnd(255)); },
+        "4881407FFF000000"
+    );
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(32, RAX), X86Opnd(EDX)); },
         "0110"
     );
     test(
-        delegate void (Assembler a) { a.instr(ADD, EAX, new X86Mem(32, ESP, 8)); }, 
-        "03442408",
-        "6703442408"
-    );
-    test(
-        delegate void (Assembler a) { a.instr(ADD, new X86Mem(32, ESP, 8), 7); },
-        "8344240807",
-        "678344240807"
-    );
-    test(
-        delegate void (Assembler a) { a.instr(ADD, RSP, 8); },
-        "",
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(RSP), X86Opnd(8)); },
         "4883C408"
     );
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(ECX), X86Opnd(8)); },
+        "83C108"
+    );
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(ECX), X86Opnd(255)); },
+        "81C1FF000000"
+    );
 
+    /*
     // addsd
     test(
         delegate void (Assembler a) { a.instr(ADDSD, XMM3, XMM5); },
@@ -774,37 +743,37 @@ unittest
         "",
         "5D"
     );
+    */
 
     // push
     test(
-        delegate void (Assembler a) { a.instr(PUSH, RAX); },
-        "",
+        delegate void (CodeBlock cb) { cb.push(RAX); },
         "50"
     );
     test(
-        delegate void (Assembler a) { a.instr(PUSH, BX); }, 
-        "6653"
-    );
-    test(
-        delegate void (Assembler a) { a.instr(PUSH, RBX); },
-        "",
+        delegate void (CodeBlock cb) { cb.push(RBX); },
         "53"
     );
+    /*
     test(
-        delegate void (Assembler a) { a.instr(PUSH, 1); },
+        delegate void (CodeBlock cb) { cb.push(1); },
         "6A01"
     );
+    */
 
     // ret
     test(
-        delegate void (Assembler a) { a.instr(RET); },
+        delegate void (CodeBlock cb) { cb.ret(); },
         "C3"
     );
+    /*
     test(
         delegate void (Assembler a) { a.instr(RET, 5); },
         "C20500"
     );
+    */
 
+    /*
     // roundsd
     test(
         delegate void (Assembler a) { a.instr(ROUNDSD, XMM2, XMM5, 0); },

@@ -38,7 +38,8 @@
 module jit.assembler;
 
 import core.sys.posix.unistd;
-import core.sys.posix.sys.mman;
+//import core.sys.posix.sys.mman;
+import core.sys.linux.sys.mman;
 import core.memory;
 import std.stdio;
 import std.array;
@@ -78,7 +79,7 @@ class CodeBlock
             null,
             size,
             PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_PRIVATE/* | MAP_ANON*/,
+            MAP_PRIVATE | MAP_ANON,
             -1,
             0
         );
@@ -288,10 +289,10 @@ class Assembler
     // TODO: target blocks/versions
 
     /// Inner instruction code
-    CodeBlock innerCode;
+    CodeBlock code;
 
     /// Edge transition move code
-    CodeBlock moveCode[2];
+    CodeBlock moves[2];
 
 
 

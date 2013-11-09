@@ -36,42 +36,67 @@ First milestone: no interp, basic incremental codegen
 - Stubs
 - Bump alloc ptr for code, no code compaction
 
-TODO: begin writing classes, functions for new JIT
-- Executable memory management
-  - Interp class owns executable chunk?
-- Stubs
-- compile(block, state)
-- genBranchEdge(edge, predState)
+TODO: Executable memory management
+- Interp class owns executable chunk?
+
+TODO: stubs
+
+TODO: optimize x86 instr encoding based on usage
+- e.g.: reg64 to mem move and vice versa?
+
+TODO: genBranchEdge(edge, predState)
+
+TODO: compile(block, state)
 
 TODO: work on mu-assembler
 - KISS, direct encoding methods
   as.jmp(label), as.label(label) and as.label(name)
 
 TODO: sketch BlockVersion class
+- state
 
-TODO: simple instruction encodings in x86.d
+TODO: should also have option to record assembly strings
+- Maybe this should be at the code block level
+- Allows carrying over when writing code block
+- Store pairs of indices and strings
+
+TODO: template encoding of add for sub/cmp/or/xor/etc
+
+
+
+
+
+
+
+
+
+[DONE] TODO: begin testing instruction encodings
+- Test with CodeBlock or with Assembler?
+- Need assembler objects if we have labels
+- Could test both kinds separately
+- Start with CodeBlock only
+
+[DONE] TODO: instruction encoding, use templated function?
+- Can have templated fn with many template parameters
+- The two arguments are the only actual parameters
+  - One of the arguments may be "none"
+
+[DONE] TODO: deny 32-bit base or index registers, for simplicity?
+- Simplify mem opnd, use reg no only, smaller size
+
+[DONE] TODO: X86Opnd struct with union inside
+- Needs a special none value
+
+[DONE] TODO: begin with simple instruction encodings in x86.d
 - No intermediate structures for instrs, just encode directly
 - First goal is basic system working, don't write all encodings now
   - But begin testing early
 - Lower-level encoding functions should work with CodeBlock objects
-- Some op like move, cmp, if should work on CodeBlock
+- Some op like move, cmp, jz should work on CodeBlock
   - But can be aliased for Assembler (possibly with an easy macro!)
 - Some ops only fit in innerCode, should apply to Assembler only
 nop(CodeBlock cb, size_t length = 1)
 jmp(CodeBlock cb, Label label)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: x86 opnds
 - Want to avoid allocating big objects for mem opnds, etc.

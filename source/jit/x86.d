@@ -206,7 +206,7 @@ string genRegCsts()
         genCst(X86Reg.XMM, "X86Reg.XMM", regNo, 128);
     }
 
-    // RIP
+    // Instruction pointer (RIP)
     genCst(X86Reg.IP, "X86Reg.IP", 5, 64);
 
     // Floating-point registers (x87)
@@ -293,35 +293,41 @@ struct X86Imm
 
 /**
 Memory location operand
+Note: we assume that the base and index are both 64-bit registers
+and that the memory operand always has a base register.
 */
 struct X86Mem
 {
-    X86Reg base; 
+    /// Base register number
+    uint8_t baseRegNo; 
 
-    X86Reg index;
-
-    /// Constant displacement from the base, not scaled
-    int32_t disp; 
+    /// Index register number
+    uint8_t idxRegNo;
 
     /// Memory location size
-    uint8_t memSize;
+    uint8_t size;
 
     /// Index scale value, zero if not using an index
     uint8_t scale;
+
+    /// Constant displacement from the base, not scaled
+    int32_t disp; 
 
     this(
         size_t size, 
         X86Reg base, 
         int32_t disp    = 0, 
         size_t scale    = 0,
-        X86Reg index    = EAX, 
+        X86Reg index    = RAX,
     )
     {
-        this.memSize = cast(uint8_t)size;
-        this.base    = base;
-        this.disp    = disp;
-        this.index   = index;
-        this.scale   = cast(uint8_t)scale;
+        assert (base.size is 64 && index.size is 64);
+
+        this.size       = cast(uint8_t)size;
+        this.baseRegNo  = base.regNo;
+        this.disp       = disp;
+        this.idxRegNo = index.regNo;
+        this.scale      = cast(uint8_t)scale;
     }
 
     /**
@@ -330,10 +336,10 @@ struct X86Mem
     bool opEquals(X86Mem that) const
     {
         return (
-            this.base is that.base &&
-            this.index is that.index &&
+            this.baseRegNo is that.baseRegNo &&
+            this.idxRegNo is that.idxRegNo &&
             this.disp is that.disp &&
-            this.memSize is that.memSize &&
+            this.size is that.size &&
             this.scale is that.scale
         );
     }
@@ -354,7 +360,7 @@ struct X86Mem
         );
         */
 
-        switch (this.memSize)
+        switch (this.size)
         {
             case 8:     str ~= "byte"; break;
             case 16:    str ~= "word"; break;
@@ -367,7 +373,7 @@ struct X86Mem
 
         if (str != "")
             str ~= " ";
-        str ~= this.base.toString();
+        str ~= X86Reg(X86Reg.GP, this.baseRegNo, 64).toString();
 
         /*
         if (label)
@@ -399,10 +405,18 @@ struct X86Mem
                 str ~= " + ";
             if (this.scale !is 1)
                 str ~= to!string(this.scale) ~ " * ";
-            str ~= this.index.toString();
+            str ~= X86Reg(X86Reg.GP, this.idxRegNo, 64).toString();
         }
 
         return '[' ~ str ~ ']';
+    }
+
+    /**
+    Test if there is an index register
+    */
+    bool hasIndex() const
+    {
+        return (scale != 0);
     }
 
     /**
@@ -410,7 +424,7 @@ struct X86Mem
     */
     bool rexNeeded() const
     {
-        return base.rexNeeded || (scale && index.rexNeeded);
+        return (baseRegNo > 7) || (hasIndex && idxRegNo > 7);
     }
 
     /**
@@ -420,9 +434,9 @@ struct X86Mem
     {
         return (
             this.scale != 0 ||
-            this.base == ESP ||
-            this.base == RSP ||
-            this.base == R12
+            this.baseRegNo == ESP.regNo ||
+            this.baseRegNo == RSP.regNo ||
+            this.baseRegNo == R12.regNo
         );
     }
 
@@ -431,9 +445,10 @@ struct X86Mem
     */
     size_t dispSize() const
     {
+        // FIXME
         // If using RIP as the base, use disp32
-        if (/*(!base && !scale) || (!base && scale) ||*/ (base == RIP))
-            return 32;
+        //if (baseRegNo == RIP.regNo)
+        //    return 32;
 
         // Compute the required displacement size
         if (disp != 0)
@@ -447,7 +462,7 @@ struct X86Mem
         }
 
         // If EBP or RBP or R13 is used as the base, displacement must be encoded
-        if (base == EBP || base == RBP || base == R13)
+        if (baseRegNo == EBP.regNo || baseRegNo == RBP.regNo || baseRegNo == R13.regNo)
             return 8;
 
         return 0;
@@ -459,6 +474,7 @@ IP-relative memory location
 */
 // TODO: reimplement without inheritance, when needed
 // just store an X86Mem inside
+// or modify X86Mem to support IP-relative mode
 /*
 class X86IPRel : X86Mem
 {
@@ -488,16 +504,559 @@ class X86IPRel : X86Mem
 }
 */
 
+/**
+Polymorphic X86 operand wrapper
+*/
+struct X86Opnd
+{
+    union
+    {
+        X86Reg reg;
+        X86Imm imm;
+        X86Mem mem;
+    }
+
+    enum Kind : uint8_t
+    {
+        NONE,
+        REG,
+        IMM,
+        MEM,
+        IPREL  
+    }
+
+    Kind kind;
+
+    static immutable X86Opnd NONE = X86Opnd(Kind.NONE);
+
+    this(Kind k) { assert (k is Kind.NONE); kind = k; }
+    this(X86Reg r) { reg = r; kind = Kind.REG; }
+    this(X86Imm i) { imm = i; kind = Kind.IMM; }
+    this(X86Mem m) { mem = m; kind = Kind.MEM; }
+
+    /// Memory operand constructor
+    this(
+        size_t size, 
+        X86Reg base, 
+        int32_t disp    = 0, 
+        size_t scale    = 0,
+        X86Reg index    = RAX,
+    )
+    {
+        this(X86Mem(size, base, disp, scale, index));
+    }
+
+    /// Immediate constructor
+    this(uint64_t i) { imm = X86Imm(i); kind = Kind.IMM; }
+
+    string toString() const
+    {
+        switch (kind)
+        {
+            case Kind.REG: return reg.toString();
+            case Kind.IMM: return imm.toString();
+            case Kind.MEM: return mem.toString();
+
+            default:
+            assert (false);
+        }
+    }
+
+    bool isNone() const { return kind is Kind.NONE; }
+    bool isReg() const { return kind is Kind.REG; }
+    bool isImm() const { return kind is Kind.IMM; }
+    bool isMem() const { return kind is Kind.MEM; }
+
+    bool rexNeeded()
+    {
+        return (kind is Kind.REG && reg.rexNeeded) || (kind is Kind.MEM && mem.rexNeeded);
+    }
+
+    bool sibNeeded()
+    {
+        return (kind is Kind.MEM && mem.sibNeeded);
+    }
+}
+
+/**
+Write the REX byte
+*/
+void writeREX(
+    CodeBlock cb, 
+    bool wFlag,
+    uint8_t regNo, 
+    uint8_t idxRegNo = 0,
+    uint8_t rmRegNo = 0
+)
+{
+    // 0 1 0 0 w r x b
+    // w - 64-bit operand size flag
+    // r - MODRM.reg extension
+    // x - SIB.index extension
+    // b - MODRM.rm or SIB.base extension
+
+    auto w = wFlag? 1:0;
+    auto r = (regNo & 8)? 1:0;
+    auto x = (idxRegNo & 8)? 1:0;
+    auto b = (rmRegNo & 8)? 1:0;
+
+    // Encode and write the REX byte
+    auto rexByte = 0x40 + (w << 3) + (r << 2) + (x << 1) + (b);
+    cb.writeByte(cast(byte)rexByte);
+}
+
+/**
+Write an opcode byte with an embedded register operand
+*/
+void writeOpcode(CodeBlock cb, ubyte opcode, X86Reg rOpnd)
+{
+    // Write the reg field into the opcode byte
+    uint8_t opByte = opcode | (rOpnd.regNo & 7);
+    cb.writeByte(opByte);
+}
+
+/**
+Encode a single operand RM instruction
+*/
+void writeRMInstr(char rmOpnd, ubyte opExt, opcode...)(CodeBlock cb, bool szPref, bool rexW, X86Opnd opnd0, X86Opnd opnd1)
+{
+    static assert (opcode.length > 0 && opcode.length <= 3);
+
+    // Flag to indicate the REX prefix is needed
+    bool rexNeeded = rexW || opnd0.rexNeeded || opnd1.rexNeeded;
+
+    // Flag to indicate SIB byte is needed
+    bool sibNeeded = opnd0.sibNeeded || opnd1.sibNeeded;
+
+    // r and r/m operands
+    X86Reg* rOpnd = null;
+    X86Mem* rmOpndM = null;
+    X86Reg* rmOpndR = null;
+
+    switch (opnd0.kind)
+    {
+        case X86Opnd.Kind.REG:
+        if (rmOpnd is 'l')
+            rmOpndR = &opnd0.reg;
+        else
+            rOpnd = &opnd0.reg;
+        break;
+
+        case X86Opnd.Kind.MEM:
+        if (rmOpnd is 'l')
+            rmOpndM = &opnd0.mem;
+        else
+            assert (false);
+        break;
+
+        default:
+        assert (false);
+    }
+
+    switch (opnd1.kind)
+    {
+        case X86Opnd.Kind.REG:
+        if (rmOpnd is 'r')
+            rmOpndR = &opnd1.reg;
+        else
+            rOpnd = &opnd1.reg;
+        break;
+
+        case X86Opnd.Kind.MEM:
+        if (rmOpnd is 'r')
+            rmOpndM = &opnd1.mem;
+        else
+            assert (false);
+        break;
+
+        case X86Opnd.Kind.NONE:
+        break;
+
+        default:
+        assert (false, "invalid second operand");
+    }
+
+    // Add the operand-size prefix, if needed
+    if (szPref == true)
+        cb.writeByte(0x66);
+
+    /*
+    // Write the prefix bytes to the code block
+    codeBlock.writeBytes(enc.prefix);
+    */
+
+    // Add the REX prefix, if needed
+    if (rexNeeded)
+    {
+        // 0 1 0 0 w r x b
+        // w - 64-bit operand size flag
+        // r - MODRM.reg extension
+        // x - SIB.index extension
+        // b - MODRM.rm or SIB.base extension
+
+        uint w = rexW? 1:0;
+
+        uint r;
+        if (rOpnd)
+            r = (rOpnd.regNo & 8)? 1:0;
+        else
+            r = 0;
+
+        uint x;
+        if (sibNeeded && rmOpndM.hasIndex)
+            x = (rmOpndM.idxRegNo & 8)? 1:0;
+        else
+            x = 0;
+
+        uint b;
+        if (rmOpndR)
+            b = (rmOpndR.regNo & 8)? 1:0;
+        else if (rmOpndM)
+            b = (rmOpndM.baseRegNo & 8)? 1:0;
+        else
+            b = 0;
+
+        // Encode and write the REX byte
+        auto rexByte = 0x40 + (w << 3) + (r << 2) + (x << 1) + (b);
+        cb.writeByte(cast(byte)rexByte);
+    }
+
+    // Write the opcode bytes to the code block
+    cb.writeBytes(opcode);
+
+    // MODRM.mod (2 bits)
+    // MODRM.reg (3 bits)
+    // MODRM.rm  (3 bits)
+
+    assert (
+        !(opExt != 0xFF && rOpnd),
+        "opcode extension and register operand present"
+    );
+
+    // Encode the mod field
+    int mod;
+    if (rmOpndR)
+    {
+        mod = 3;
+    }
+    else
+    {
+        if (rmOpndM.dispSize == 0/* || rmOpndM.baseRegNo == RIP.regNo*/)
+            mod = 0;
+        else if (rmOpndM.dispSize == 8)
+            mod = 1;
+        else if (rmOpndM.dispSize == 32)
+            mod = 2;
+    }
+
+    // Encode the reg field
+    int reg;
+    if (opExt != 0xFF)
+        reg = opExt;
+    else if (rOpnd)
+        reg = rOpnd.regNo & 7;
+    else
+        reg = 0;
+
+    // Encode the rm field
+    int rm;
+    if (rmOpndR)
+    {
+        rm = rmOpndR.regNo & 7;
+    }
+    else
+    {
+        if (sibNeeded)
+            rm = 4;
+        /*else if (rmOpndM.baseRegNo == RIP.regNo)
+            rm = 5;*/
+        else
+            rm = rmOpndM.baseRegNo & 7;
+    }
+
+    // Encode and write the ModR/M byte
+    auto rmByte = (mod << 6) + (reg << 3) + (rm);
+    cb.writeByte(cast(ubyte)rmByte);
+
+    //writefln("rmByte: %s", rmByte);
+
+    // Add the SIB byte, if needed
+    if (sibNeeded)
+    {
+        // SIB.scale (2 bits)
+        // SIB.index (3 bits)
+        // SIB.base  (3 bits)
+
+        assert (
+            rmOpndM !is null,
+            "expected r/m opnd to be mem loc"
+        );
+
+        // Encode the scale value
+        int scale;
+        switch (rmOpndM.scale)
+        {
+            case 1: scale = 0; break;
+            case 2: scale = 1; break;
+            case 4: scale = 2; break;
+            case 8: scale = 3; break;
+            default: assert (false, "invalid SIB scale");
+        }
+
+        // Encode the index value
+        int index;
+        if (rmOpndM.hasIndex is false)
+            index = 4;
+        else
+            index = rmOpndM.idxRegNo & 7;
+
+        // Encode the base register
+        auto base = rmOpndM.baseRegNo & 7;
+
+        // Encode and write the SIB byte
+        auto sibByte = (scale << 6) + (index << 3) + (base);
+        cb.writeByte(cast(uint8_t)sibByte);
+    }
+
+    // Add the displacement size
+    if (rmOpndM && rmOpndM.dispSize != 0)
+        cb.writeInt(rmOpndM.disp, rmOpndM.dispSize);
+}
+
+
+
+
+
+
+
+
+
+
+// TODO: add
 /*
-TODO: x86 encoding methods
-- First goal is basic system working, don't write all encodings now
-  - But begin testing early
-- Lower-level encoding functions should work with CodeBlock objects
-- Some op like move, cmp, if should work on CodeBlock
-  - But can be aliased for Assembler (possibly with an easy macro!)
-- Some ops only fit in innerCode, should apply to Assembler only
-nop(CodeBlock cb, size_t length = 1)
-jmp(CodeBlock cb, Label label)
+Enc(opnds=['al', 'imm8'], opcode=[0x04]),
+Enc(opnds=['ax', 'imm16'], opcode=[0x05]),
+Enc(opnds=['eax', 'imm32'], opcode=[0x05]),
+Enc(opnds=['rax', 'imm32'], opcode=[0x05]),
+Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=0),
+Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=0),
+Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=0),
+Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=0),
+Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=0),
+Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=0),
+Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=0),
+Enc(opnds=['r/m8', 'r8'], opcode=[0x00]),
+Enc(opnds=['r/m16', 'r16'], opcode=[0x01]),
+Enc(opnds=['r/m32', 'r32'], opcode=[0x01]),
+Enc(opnds=['r/m64', 'r64'], opcode=[0x01]),
+Enc(opnds=['r8', 'r/m8'], opcode=[0x02]),
+Enc(opnds=['r16', 'r/m16'], opcode=[0x03]),
+Enc(opnds=['r32', 'r/m32'], opcode=[0x03]),
+Enc(opnds=['r64', 'r/m64'], opcode=[0x03])
+*/
+
+/**
+Integer add
+*/
+void add(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+{
+    // Check the size of opnd0
+    size_t opndSize;
+    if (opnd0.isReg)
+        opndSize = opnd0.reg.size;
+    else if (opnd0.isMem)
+        opndSize = opnd0.mem.size;
+    else
+        assert (false, "invalid first operand");    
+
+    // Check the size of opnd1
+    if (opnd1.isReg)
+        assert (opnd1.reg.size is opndSize, "operand size mismatch");
+    else if (opnd1.isMem)
+        assert (opnd1.mem.size is opndSize, "operand size mismatch");
+    else if (opnd1.isImm)
+        assert (opnd1.imm.immSize <= opndSize, "immediate too large for dst");
+
+    assert (opndSize is 8 || opndSize is 16 || opndSize is 32 || opndSize is 64);
+    auto szPref = opndSize is 16;
+    auto rexW = opndSize is 64;
+
+    if ((opnd0.isReg && opnd1.isReg) || 
+        (opnd0.isMem && opnd1.isReg))
+    {
+        if (opndSize is 8)
+            cb.writeRMInstr!('l', 0xFF, 0x00)(false, false, opnd0, opnd1);
+        else
+            cb.writeRMInstr!('l', 0xFF, 0x01)(szPref, rexW, opnd0, opnd1);
+    }
+
+    else if (opnd0.isReg && opnd1.isMem)
+    {
+        if (opndSize is 8)
+            cb.writeRMInstr!('r', 0xFF, 0x02)(false, false, opnd0, opnd1);
+        else
+            cb.writeRMInstr!('r', 0xFF, 0x03)(szPref, rexW, opnd0, opnd1);
+    }
+
+    else if (opnd1.isImm)
+    {
+        if (opnd1.imm.immSize <= 8)
+        {
+            if (opndSize is 8)
+                cb.writeRMInstr!('l', 0, 0x80)(false, false, opnd0, X86Opnd.NONE);
+            else
+                cb.writeRMInstr!('l', 0, 0x83)(szPref, rexW, opnd0, X86Opnd.NONE);
+            cb.writeInt(opnd1.imm.imm, 8);
+        }
+        else if (opnd1.imm.immSize <= 32)
+        {
+            cb.writeRMInstr!('l', 0, 0x81)(szPref, rexW, opnd0, X86Opnd.NONE);
+            cb.writeInt(opnd1.imm.imm, 32);
+        }
+        else
+        {
+            assert (false, "immediate value too large");
+        }
+    }
+
+    else
+    {
+        assert (false);
+    }
+}
+
+// TODO
+/*
+# Bitwise AND
+Op(
+    'and',
+    Enc(opnds=['al', 'imm8'], opcode=[0x24]),
+    Enc(opnds=['ax', 'imm16'], opcode=[0x25]),
+    Enc(opnds=['eax', 'imm32'], opcode=[0x25]),
+    Enc(opnds=['rax', 'imm32'], opcode=[0x25]),
+    Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=4),
+    Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=4),
+    Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=4),
+    Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=4),
+    Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=4),
+    Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=4),
+    Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=4),
+    Enc(opnds=['r/m8', 'r8'], opcode=[0x20]),
+    Enc(opnds=['r/m16', 'r16'], opcode=[0x21]),
+    Enc(opnds=['r/m32', 'r32'], opcode=[0x21]),
+    Enc(opnds=['r/m64', 'r64'], opcode=[0x21]),
+    Enc(opnds=['r8', 'r/m8'], opcode=[0x22]),
+    Enc(opnds=['r16', 'r/m16'], opcode=[0x23]),
+    Enc(opnds=['r32', 'r/m32'], opcode=[0x23]),
+    Enc(opnds=['r64', 'r/m64'], opcode=[0x23]),
+),
+*/
+
+
+// TODO: call
+// For this, we will need a patchable 32-bit offset
+//Enc(opnds=['rel32'], opcode=[0xE8]),
+//void call(Assembler as, BlockVersion???);
+
+// TODO: test this
+//Enc(opnds=['r/m64'], opcode=[0xFF], opExt=2, rexW=False)
+void call(CodeBlock cb, X86Opnd opnd)
+{
+    cb.writeRMInstr!('l', 2, 0xFF)(false, false, opnd, X86Opnd.NONE);
+}
+
+
+
+
+// TODO: cmp
+/*
+Enc(opnds=['al', 'imm8'], opcode=[0x3C]),
+Enc(opnds=['ax', 'imm16'], opcode=[0x3D]),
+Enc(opnds=['eax', 'imm32'], opcode=[0x3D]),
+Enc(opnds=['rax', 'imm32'], opcode=[0x3D]),
+Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=7),
+Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=7),
+Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=7),
+Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=7),
+Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=7),
+Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=7),
+Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=7),
+Enc(opnds=['r/m8', 'r8'], opcode=[0x38]),
+Enc(opnds=['r/m16', 'r16'], opcode=[0x39]),
+Enc(opnds=['r/m32', 'r32'], opcode=[0x39]),
+Enc(opnds=['r/m64', 'r64'], opcode=[0x39]),
+Enc(opnds=['r8', 'r/m8'], opcode=[0x3A]),
+Enc(opnds=['r16', 'r/m16'], opcode=[0x3B]),
+Enc(opnds=['r32', 'r/m32'], opcode=[0x3B]),
+Enc(opnds=['r64', 'r/m64'], opcode=[0x3B]),
+*/
+
+
+
+
+
+// TODO: imul, 
+// Signed integer multiply
+/*
+Enc(opnds=['r/m8'], opcode=[0xF6], opExt=5),
+Enc(opnds=['r/m16'], opcode=[0xF7], opExt=5),
+Enc(opnds=['r/m32'], opcode=[0xF7], opExt=5),
+Enc(opnds=['r/m64'], opcode=[0xF7], opExt=5),
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0xAF]),
+Enc(opnds=['r32', 'r/m32'], opcode=[0x0F, 0xAF]),
+Enc(opnds=['r64', 'r/m64'], opcode=[0x0F, 0xAF]),
+Enc(opnds=['r16', 'r/m16', 'imm8'], opcode=[0x6B]),
+Enc(opnds=['r32', 'r/m32', 'imm8'], opcode=[0x6B]),
+Enc(opnds=['r64', 'r/m64', 'imm8'], opcode=[0x6B]),
+Enc(opnds=['r16', 'r/m16', 'imm16'], opcode=[0x69]),
+Enc(opnds=['r32', 'r/m32', 'imm32'], opcode=[0x69]),
+Enc(opnds=['r64', 'r/m64', 'imm32'], opcode=[0x69]),
+*/
+
+
+
+
+// TODO: jmp
+/*
+# Jump relative near
+Enc(opnds=['rel8'], opcode=[0xEB]),
+Enc(opnds=['rel32'], opcode=[0xE9]),
+# Jump absolute near
+Enc(opnds=['r/m64'], opcode=[0xFF], opExt=4),
+*/
+
+// TODO: relative jumps, jmp, jcc
+
+
+
+
+
+
+
+// TODO: mov
+/*
+Enc(opnds=['r/m8', 'r8'], opcode=[0x88]),
+Enc(opnds=['r/m16', 'r16'], opcode=[0x89]),
+Enc(opnds=['r/m32', 'r32'], opcode=[0x89]),
+Enc(opnds=['r/m64', 'r64'], opcode=[0x89]),
+Enc(opnds=['r8', 'r/m8'], opcode=[0x8A]),
+Enc(opnds=['r16', 'r/m16'], opcode=[0x8B]),
+Enc(opnds=['r32', 'r/m32'], opcode=[0x8B]),
+Enc(opnds=['r64', 'r/m64'], opcode=[0x8B]),
+Enc(opnds=['r8', 'imm8'], opcode=[0xB0]),
+Enc(opnds=['r16', 'imm16'], opcode=[0xB8]),
+Enc(opnds=['r32', 'imm32'], opcode=[0xB8]),
+Enc(opnds=['r64', 'imm64'], opcode=[0xB8]),
+Enc(opnds=['r/m8', 'imm8'], opcode=[0xC6]),
+Enc(opnds=['r/m16', 'imm16'], opcode=[0xC7], opExt=0),
+Enc(opnds=['r/m32', 'imm32'], opcode=[0xC7], opExt=0),
+Enc(opnds=['r/m64', 'imm32'], opcode=[0xC7], opExt=0),
+*/
+// TODO:
+/*
+void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
+{
+}
 */
 
 
@@ -506,14 +1065,155 @@ jmp(CodeBlock cb, Label label)
 
 
 
+/// Noop, one or multiple bytes long
+void nop(CodeBlock cb, size_t length = 1)
+{
+    switch (length)
+    {
+        case 0:
+        break;
+
+        case 1:
+        cb.writeByte(0x90);
+        break;
+
+        case 2:
+        cb.writeBytes(0x89, 0xf6);
+        break;
+
+        case 3:
+        cb.writeBytes(0x8d,0x76,0x00);
+        break;
+
+        case 4:
+        cb.writeBytes(0x8d,0x74,0x26,0x00);
+        break;
+
+        case 5:
+        cb.nop(1); cb.nop(4);
+        break;
+
+        case 6:
+        cb.writeBytes(0x8d,0xb6,0x00,0x00,0x00,0x00);
+        break;
+
+        case 7:
+        cb.writeBytes(0x8d,0xb4,0x26,0x00,0x00,0x00,0x00);
+        break;
+
+        case 8:
+        cb.nop(8); cb.nop(1); cb.nop(7);
+        break;
+
+        default:
+        assert (false);
+    }
+}
+
+// TODO
+/*
+# Bitwise OR
+Op(
+    'or',
+    Enc(opnds=['al', 'imm8'], opcode=[0x0C]),
+    Enc(opnds=['ax', 'imm16'], opcode=[0x0D]),
+    Enc(opnds=['eax', 'imm32'], opcode=[0x0D]),           
+    Enc(opnds=['rax', 'imm32'], opcode=[0x0D]),
+    Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=1),
+    Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=1),
+    Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=1),
+    Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=1),
+    Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=1),
+    Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=1),
+    Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=1),
+    Enc(opnds=['r/m8', 'r8'], opcode=[0x08]),
+    Enc(opnds=['r/m16', 'r16'], opcode=[0x09]),
+    Enc(opnds=['r/m32', 'r32'], opcode=[0x09]),
+    Enc(opnds=['r/m64', 'r64'], opcode=[0x09]),
+    Enc(opnds=['r8', 'r/m8'], opcode=[0x0A]),
+    Enc(opnds=['r16', 'r/m16'], opcode=[0x0B]),
+    Enc(opnds=['r32', 'r/m32'], opcode=[0x0B]),
+    Enc(opnds=['r64', 'r/m64'], opcode=[0x0B]),
+),
+*/
+
+/// Push a register on the stack
+void push(CodeBlock cb, X86Reg reg)
+{
+    assert (reg.size is 64);
+    if (reg.rexNeeded)
+        cb.writeREX(false, reg.regNo);
+    cb.writeOpcode(0x50, reg);
+}
+
+/// Pop a register off the stack
+void pop(CodeBlock cb, X86Reg reg)
+{
+    assert (reg.size is 64);
+    if (reg.rexNeeded)
+        cb.writeREX(false, reg.regNo);
+    cb.writeOpcode(0x58, reg);
+}
+
+/// Return from call, popping only the return address
+void ret(CodeBlock cb)
+{
+    cb.writeByte(0xC3);
+}
 
 
 
 
+// TODO: sub
+/*
+Enc(opnds=['al', 'imm8'], opcode=[0x2C]),
+Enc(opnds=['ax', 'imm16'], opcode=[0x2D]),
+Enc(opnds=['eax', 'imm32'], opcode=[0x2D]),
+Enc(opnds=['rax', 'imm32'], opcode=[0x2D]),
+Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=5),
+Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=5),
+Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=5),
+Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=5),
+Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=5),
+Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=5),
+Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=5),
+Enc(opnds=['r/m8', 'r8'], opcode=[0x28]),
+Enc(opnds=['r/m16', 'r16'], opcode=[0x29]),
+Enc(opnds=['r/m32', 'r32'], opcode=[0x29]),
+Enc(opnds=['r/m64', 'r64'], opcode=[0x29]),
+Enc(opnds=['r8', 'r/m8'], opcode=[0x2A]),
+Enc(opnds=['r16', 'r/m16'], opcode=[0x2B]),
+Enc(opnds=['r32', 'r/m32'], opcode=[0x2B]),
+Enc(opnds=['r64', 'r/m64'], opcode=[0x2B]),
+*/
 
 
 
 
-
-
+// TODO
+/*
+# Exclusive bitwise OR
+Op(
+    'xor',
+    Enc(opnds=['al', 'imm8'], opcode=[0x34]),
+    Enc(opnds=['ax', 'imm16'], opcode=[0x35]),
+    Enc(opnds=['eax', 'imm32'], opcode=[0x35]),
+    Enc(opnds=['rax', 'imm32'], opcode=[0x35]),
+    Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=6),
+    Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=6),
+    Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=6),
+    Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=6),
+    Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=6),
+    Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=6),
+    Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=6),
+    Enc(opnds=['r/m8', 'r8'], opcode=[0x30]),
+    Enc(opnds=['r/m16', 'r16'], opcode=[0x31]),
+    Enc(opnds=['r/m32', 'r32'], opcode=[0x31]),
+    Enc(opnds=['r/m64', 'r64'], opcode=[0x31]),
+    Enc(opnds=['r8', 'r/m8'], opcode=[0x32]),
+    Enc(opnds=['r16', 'r/m16'], opcode=[0x33]),
+    Enc(opnds=['r32', 'r/m32'], opcode=[0x33]),
+    Enc(opnds=['r64', 'r/m64'], opcode=[0x33]),
+),
+*/
 
