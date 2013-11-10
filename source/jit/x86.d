@@ -618,7 +618,11 @@ void writeOpcode(CodeBlock cb, ubyte opcode, X86Reg rOpnd)
 /**
 Encode a single operand RM instruction
 */
-void writeRMInstr(char rmOpnd, ubyte opExt, opcode...)(CodeBlock cb, bool szPref, bool rexW, X86Opnd opnd0, X86Opnd opnd1)
+void writeRMInstr(
+    char rmOpnd, 
+    ubyte opExt, 
+    opcode...)
+(CodeBlock cb, bool szPref, bool rexW, X86Opnd opnd0, X86Opnd opnd1)
 {
     static assert (opcode.length > 0 && opcode.length <= 3);
 
@@ -796,6 +800,7 @@ void writeRMInstr(char rmOpnd, ubyte opExt, opcode...)(CodeBlock cb, bool szPref
         int scale;
         switch (rmOpndM.scale)
         {
+            case 0: assert (!rmOpndM.hasIndex); scale = 0; break;
             case 1: scale = 0; break;
             case 2: scale = 1; break;
             case 4: scale = 2; break;
@@ -823,42 +828,21 @@ void writeRMInstr(char rmOpnd, ubyte opExt, opcode...)(CodeBlock cb, bool szPref
         cb.writeInt(rmOpndM.disp, rmOpndM.dispSize);
 }
 
-
-
-
-
-
-
-
-
-
-// TODO: add
-/*
-Enc(opnds=['al', 'imm8'], opcode=[0x04]),
-Enc(opnds=['ax', 'imm16'], opcode=[0x05]),
-Enc(opnds=['eax', 'imm32'], opcode=[0x05]),
-Enc(opnds=['rax', 'imm32'], opcode=[0x05]),
-Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=0),
-Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=0),
-Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=0),
-Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=0),
-Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=0),
-Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=0),
-Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=0),
-Enc(opnds=['r/m8', 'r8'], opcode=[0x00]),
-Enc(opnds=['r/m16', 'r16'], opcode=[0x01]),
-Enc(opnds=['r/m32', 'r32'], opcode=[0x01]),
-Enc(opnds=['r/m64', 'r64'], opcode=[0x01]),
-Enc(opnds=['r8', 'r/m8'], opcode=[0x02]),
-Enc(opnds=['r16', 'r/m16'], opcode=[0x03]),
-Enc(opnds=['r32', 'r/m32'], opcode=[0x03]),
-Enc(opnds=['r64', 'r/m64'], opcode=[0x03])
-*/
-
 /**
-Integer add
+Encode an add-like RM instruction with multiple possible encodings
 */
-void add(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+void writeRMMulti(
+    wstring mnem, 
+    ubyte opMemReg8, 
+    ubyte opMemRegPref, 
+    ubyte opRegMem8, 
+    ubyte opRegMemPref,
+    ubyte opMemImm8, 
+    ubyte opMemImmSml,
+    ubyte opMemImmLrg,
+    ubyte opExtImm
+)
+(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 {
     // Check the size of opnd0
     size_t opndSize;
@@ -881,85 +865,93 @@ void add(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
     auto szPref = opndSize is 16;
     auto rexW = opndSize is 64;
 
-    if ((opnd0.isReg && opnd1.isReg) || 
-        (opnd0.isMem && opnd1.isReg))
+    // R/M + Reg
+    if ((opnd0.isMem && opnd1.isReg) ||
+        (opnd0.isReg && opnd1.isReg))
     {
         if (opndSize is 8)
-            cb.writeRMInstr!('l', 0xFF, 0x00)(false, false, opnd0, opnd1);
+            cb.writeRMInstr!('l', 0xFF, opMemReg8)(false, false, opnd0, opnd1);
         else
-            cb.writeRMInstr!('l', 0xFF, 0x01)(szPref, rexW, opnd0, opnd1);
+            cb.writeRMInstr!('l', 0xFF, opMemRegPref)(szPref, rexW, opnd0, opnd1);
     }
 
+    // Reg + R/M
     else if (opnd0.isReg && opnd1.isMem)
     {
         if (opndSize is 8)
-            cb.writeRMInstr!('r', 0xFF, 0x02)(false, false, opnd0, opnd1);
+            cb.writeRMInstr!('r', 0xFF, opRegMem8)(false, false, opnd0, opnd1);
         else
-            cb.writeRMInstr!('r', 0xFF, 0x03)(szPref, rexW, opnd0, opnd1);
+            cb.writeRMInstr!('r', 0xFF, opRegMemPref)(szPref, rexW, opnd0, opnd1);
     }
 
+    // R/M + Imm
     else if (opnd1.isImm)
     {
+        // 8-bit immediate
         if (opnd1.imm.immSize <= 8)
         {
             if (opndSize is 8)
-                cb.writeRMInstr!('l', 0, 0x80)(false, false, opnd0, X86Opnd.NONE);
+                cb.writeRMInstr!('l', opExtImm, opMemImm8)(false, false, opnd0, X86Opnd.NONE);
             else
-                cb.writeRMInstr!('l', 0, 0x83)(szPref, rexW, opnd0, X86Opnd.NONE);
+                cb.writeRMInstr!('l', opExtImm, opMemImmSml)(szPref, rexW, opnd0, X86Opnd.NONE);
             cb.writeInt(opnd1.imm.imm, 8);
         }
+
+        // 32-bit immediate
         else if (opnd1.imm.immSize <= 32)
         {
-            cb.writeRMInstr!('l', 0, 0x81)(szPref, rexW, opnd0, X86Opnd.NONE);
+            cb.writeRMInstr!('l', opExtImm, opMemImmLrg)(szPref, rexW, opnd0, X86Opnd.NONE);
             cb.writeInt(opnd1.imm.imm, 32);
         }
+
+        // Immediate too large
         else
         {
             assert (false, "immediate value too large");
         }
     }
 
+    // Invalid operands
     else
     {
-        assert (false);
+        assert (false, "invalid operand combination");
     }
 }
 
-// TODO
-/*
-# Bitwise AND
-Op(
-    'and',
-    Enc(opnds=['al', 'imm8'], opcode=[0x24]),
-    Enc(opnds=['ax', 'imm16'], opcode=[0x25]),
-    Enc(opnds=['eax', 'imm32'], opcode=[0x25]),
-    Enc(opnds=['rax', 'imm32'], opcode=[0x25]),
-    Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=4),
-    Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=4),
-    Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=4),
-    Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=4),
-    Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=4),
-    Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=4),
-    Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=4),
-    Enc(opnds=['r/m8', 'r8'], opcode=[0x20]),
-    Enc(opnds=['r/m16', 'r16'], opcode=[0x21]),
-    Enc(opnds=['r/m32', 'r32'], opcode=[0x21]),
-    Enc(opnds=['r/m64', 'r64'], opcode=[0x21]),
-    Enc(opnds=['r8', 'r/m8'], opcode=[0x22]),
-    Enc(opnds=['r16', 'r/m16'], opcode=[0x23]),
-    Enc(opnds=['r32', 'r/m32'], opcode=[0x23]),
-    Enc(opnds=['r64', 'r/m64'], opcode=[0x23]),
-),
-*/
+/// Integer addition
+alias writeRMMulti!(
+    "add",
+    0x00, // opMemReg8
+    0x01, // opMemRegPref
+    0x02, // opRegMem8
+    0x03, // opRegMemPref
+    0x80, // opMemImm8
+    0x83, // opMemImmSml
+    0x81, // opMemImmLrg
+    0x00  // opExtImm
+) add;
 
+/// Bitwise AND
+alias writeRMMulti!(
+    "and",
+    0x20, // opMemReg8
+    0x21, // opMemRegPref
+    0x22, // opRegMem8
+    0x23, // opRegMemPref
+    0x80, // opMemImm8
+    0x83, // opMemImmLrg
+    0x81, // opMemImmLrg
+    0x04  // opExtImm
+) and;
 
-// TODO: call
+// TODO: call label
 // For this, we will need a patchable 32-bit offset
 //Enc(opnds=['rel32'], opcode=[0xE8]),
 //void call(Assembler as, BlockVersion???);
 
-// TODO: test this
-//Enc(opnds=['r/m64'], opcode=[0xFF], opExt=2, rexW=False)
+/**
+Indirect call with an R/M operand
+*/
 void call(CodeBlock cb, X86Opnd opnd)
 {
     cb.writeRMInstr!('l', 2, 0xFF)(false, false, opnd, X86Opnd.NONE);
@@ -998,10 +990,6 @@ Enc(opnds=['r64', 'r/m64'], opcode=[0x3B]),
 // TODO: imul, 
 // Signed integer multiply
 /*
-Enc(opnds=['r/m8'], opcode=[0xF6], opExt=5),
-Enc(opnds=['r/m16'], opcode=[0xF7], opExt=5),
-Enc(opnds=['r/m32'], opcode=[0xF7], opExt=5),
-Enc(opnds=['r/m64'], opcode=[0xF7], opExt=5),
 Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0xAF]),
 Enc(opnds=['r32', 'r/m32'], opcode=[0x0F, 0xAF]),
 Enc(opnds=['r64', 'r/m64'], opcode=[0x0F, 0xAF]),

@@ -108,7 +108,23 @@ unittest
         }
     }
 
-    // add
+    // add  
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(CL), X86Opnd(3)); },
+        "80C103"
+    );   
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(CL), X86Opnd(BL)); },
+        "00D9"
+    );
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(CL), X86Opnd(SPL)); },
+        "4000E1"
+    );
+    test(
+        delegate void (CodeBlock cb) { cb.add(X86Opnd(CX), X86Opnd(BX)); },
+        "6601D9"
+    );
     test(
         delegate void (CodeBlock cb) { cb.add(X86Opnd(RAX), X86Opnd(RBX)); },
         "4801D8"
@@ -174,20 +190,32 @@ unittest
         "",
         "F2450F583B"
     );
+    */
 
     // and
     test(
-        delegate void (Assembler a) { a.instr(AND, EBP, R12D); }, 
-        "", 
+        delegate void (CodeBlock cb) { cb.and(X86Opnd(EBP), X86Opnd(R12D)); },
         "4421E5"
     );
 
     // call
+    /*
     test(
         delegate void (Assembler a) { auto l = a.label("foo"); a.instr(CALL, l); },
         "E8FBFFFFFF"
     );
+    */
+    test(
+        delegate void (CodeBlock cb) { cb.call(X86Opnd(RAX)); },
+        "FFD0"
+    );
 
+    test(
+        delegate void (CodeBlock cb) { cb.call(X86Opnd(64, RSP, 8)); },
+        "FF542408"
+    );
+
+    /*
     // cmovcc
     test(
         delegate void (Assembler a) { a.instr(CMOVG, ESI, EDI); }, 

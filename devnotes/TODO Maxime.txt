@@ -60,7 +60,6 @@ TODO: should also have option to record assembly strings
 - Allows carrying over when writing code block
 - Store pairs of indices and strings
 
-TODO: template encoding of add for sub/cmp/or/xor/etc
 
 
 
@@ -68,7 +67,7 @@ TODO: template encoding of add for sub/cmp/or/xor/etc
 
 
 
-
+[DONE] TODO: template encoding of add for sub/cmp/or/xor/etc
 
 [DONE] TODO: begin testing instruction encodings
 - Test with CodeBlock or with Assembler?
