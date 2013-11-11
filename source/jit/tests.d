@@ -80,6 +80,7 @@ unittest
         // Generate the code to a machine code block
         auto codeBlock = new ASMBlock(numBytes, true);
         codeFunc(codeBlock);
+        codeBlock.link();
 
         // Report an encoding error
         void encError()
@@ -91,7 +92,7 @@ unittest
                     "expected:\n" ~
                     "%s (%s bytes)\n",
                     codeBlock.toString(),
-                    codeBlock.length,
+                    codeBlock.getWritePos(),
                     encBlock.toString(),
                     encBlock.length
                 )
@@ -175,16 +176,16 @@ unittest
     /*
     // addsd
     test(
-        delegate void (Assembler a) { a.instr(ADDSD, XMM3, XMM5); },
+        delegate void (ASMBlock cb) { cb.instr(ADDSD, XMM3, XMM5); },
         "F20F58DD"
     );
     test(
-        delegate void (Assembler a) { a.instr(ADDSD, XMM15, new X86Mem(64, R13, 5)); },
+        delegate void (ASMBlock cb) { cb.instr(ADDSD, XMM15, new X86Mem(64, R13, 5)); },
         "",
         "F2450F587D05"
     );
     test(
-        delegate void (Assembler a) { a.instr(ADDSD, XMM15, new X86Mem(64, R11)); },
+        delegate void (ASMBlock cb) { cb.instr(ADDSD, XMM15, new X86Mem(64, R11)); },
         "",
         "F2450F583B"
     );
@@ -199,7 +200,7 @@ unittest
     // call
     /*
     test(
-        delegate void (Assembler a) { auto l = a.label("foo"); a.instr(CALL, l); },
+        delegate void (ASMBlock cb) { auto l = cb.label("foo"); cb.instr(CALL, l); },
         "E8FBFFFFFF"
     );
     */
@@ -216,25 +217,25 @@ unittest
     /*
     // cmovcc
     test(
-        delegate void (Assembler a) { a.instr(CMOVG, ESI, EDI); }, 
+        delegate void (ASMBlock cb) { cb.instr(CMOVG, ESI, EDI); }, 
         "0F4FF7"
     );
     test(
-        delegate void (Assembler a) { a.instr(CMOVG, ESI, new X86Mem(32, EBP, 12)); }, 
+        delegate void (ASMBlock cb) { cb.instr(CMOVG, ESI, new X86Mem(32, EBP, 12)); }, 
         "0F4F750C", 
         "670F4F750C"
     );
     test(
-        delegate void (Assembler a) { a.instr(CMOVL, EAX, ECX); }, 
+        delegate void (ASMBlock cb) { cb.instr(CMOVL, EAX, ECX); }, 
         "0F4CC1"
     );
     test(
-        delegate void (Assembler a) { a.instr(CMOVL, RBX, RBP); }, 
+        delegate void (ASMBlock cb) { cb.instr(CMOVL, RBX, RBP); }, 
         "",
         "480F4CDD"
     );
     test(
-        delegate void (Assembler a) { a.instr(CMOVLE, ESI, new X86Mem(32, ESP, 4)); }, 
+        delegate void (ASMBlock cb) { cb.instr(CMOVLE, ESI, new X86Mem(32, ESP, 4)); }, 
         "0F4E742404", 
         "670F4E742404"
     );
@@ -261,117 +262,117 @@ unittest
     /*
     // cqo
     test(
-        delegate void (Assembler a) { a.instr(CQO); },
+        delegate void (ASMBlock cb) { cb.instr(CQO); },
         "",
         "4899"
     );
 
     // cvtsd2si
     test(
-        delegate void (Assembler a) { a.instr(CVTSD2SI, ECX, XMM6); }, 
+        delegate void (ASMBlock cb) { cb.instr(CVTSD2SI, ECX, XMM6); }, 
         "F20F2DCE"
     );
     test(
-        delegate void (Assembler a) { a.instr(CVTSD2SI, RDX, XMM4); },
+        delegate void (ASMBlock cb) { cb.instr(CVTSD2SI, RDX, XMM4); },
         "",
         "F2480F2DD4"
     );
 
     // cvtsi2sd
     test(
-        delegate void (Assembler a) { a.instr(CVTSI2SD, XMM7, EDI); }, 
+        delegate void (ASMBlock cb) { cb.instr(CVTSI2SD, XMM7, EDI); }, 
         "F20F2AFF"
     );
     test(
-        delegate void (Assembler a) { a.instr(CVTSI2SD, XMM7, new X86Mem(64, RCX)); },
+        delegate void (ASMBlock cb) { cb.instr(CVTSI2SD, XMM7, new X86Mem(64, RCX)); },
         "",
         "F2480F2A39"
     );
 
     // dec
     test(
-        delegate void (Assembler a) { a.instr(DEC, CX); }, 
+        delegate void (ASMBlock cb) { cb.instr(DEC, CX); }, 
         "6649",
         "66FFC9"
     );
     test(
-        delegate void (Assembler a) { a.instr(DEC, EDX); }, 
+        delegate void (ASMBlock cb) { cb.instr(DEC, EDX); }, 
         "4A",
         "FFCA"
     );
 
     // div
     test(
-        delegate void (Assembler a) { a.instr(DIV, EDX); }, 
+        delegate void (ASMBlock cb) { cb.instr(DIV, EDX); }, 
         "F7F2"
     );
     test(
-        delegate void (Assembler a) { a.instr(DIV, new X86Mem(32, ESP, -12)); }, 
+        delegate void (ASMBlock cb) { cb.instr(DIV, new X86Mem(32, ESP, -12)); }, 
         "F77424F4",
         "67F77424F4"
     );
 
     // fst
     test(
-        delegate void (Assembler a) { a.instr(FSTP, new X86Mem(64, RSP, -16)); },
+        delegate void (ASMBlock cb) { cb.instr(FSTP, new X86Mem(64, RSP, -16)); },
         "",
         "DD5C24F0"
     );
 
     // imul
     test(
-        delegate void (Assembler a) { a.instr(IMUL, EDX, ECX); },
+        delegate void (ASMBlock cb) { cb.instr(IMUL, EDX, ECX); },
         "0FAFD1"
     );
     test(
-        delegate void (Assembler a) { a.instr(IMUL, RSI, RDI); },
+        delegate void (ASMBlock cb) { cb.instr(IMUL, RSI, RDI); },
         "",
         "480FAFF7"
     );
     test(
-        delegate void (Assembler a) { a.instr(IMUL, R14, R9); }, 
+        delegate void (ASMBlock cb) { cb.instr(IMUL, R14, R9); }, 
         "", 
         "4D0FAFF1"
     );
     test(
-        delegate void (Assembler a) { a.instr(IMUL, EAX, new X86Mem(32, ESP, 8)); },
+        delegate void (ASMBlock cb) { cb.instr(IMUL, EAX, new X86Mem(32, ESP, 8)); },
         "0FAF442408",
         "670FAF442408"
     );
 
     // inc
     test(
-        delegate void (Assembler a) { a.instr(INC, BL); },
+        delegate void (ASMBlock cb) { cb.instr(INC, BL); },
         "FEC3", 
         "FEC3"
     );
     test(
-        delegate void (Assembler a) { a.instr(INC, ESP); },
+        delegate void (ASMBlock cb) { cb.instr(INC, ESP); },
         "44",
         "FFC4"
     );
     test(
-        delegate void (Assembler a) { a.instr(INC, new X86Mem(32, ESP, 0)); },
+        delegate void (ASMBlock cb) { cb.instr(INC, new X86Mem(32, ESP, 0)); },
         "FF0424",
         "67FF0424"
     );
     test(
-        delegate void (Assembler a) { a.instr(INC, new X86Mem(64, RSP, 4)); },
+        delegate void (ASMBlock cb) { cb.instr(INC, new X86Mem(64, RSP, 4)); },
         "",
         "48FF442404"
     );
 
     // jcc
     test(
-        delegate void (Assembler a) { auto l = a.label("foo"); a.instr(JGE, l); },
+        delegate void (ASMBlock cb) { auto l = cb.label("foo"); cb.instr(JGE, l); },
         "7DFE"
     );
     test(
-        delegate void (Assembler a) { auto l = a.label("foo"); a.instr(JNO, l); },
+        delegate void (ASMBlock cb) { auto l = cb.label("foo"); cb.instr(JNO, l); },
         "71FE"
     );
     test(
-        delegate void (Assembler a) { auto l = a.label("foo"); a.instr(JO, l); },
+        delegate void (ASMBlock cb) { auto l = cb.label("foo"); cb.instr(JO, l); },
         "70FE"
     );
     */
@@ -385,399 +386,403 @@ unittest
     /*
     // lea
     test(
-        delegate void (Assembler a) {a.instr(LEA, EBX, new X86Mem(32, ESP, 4)); },
+        delegate void (ASMBlock cb) {cb.instr(LEA, EBX, new X86Mem(32, ESP, 4)); },
         "8D5C2404",
         "678D5C2404"
     );
+    */
 
     // mov
+    /*
     test(
-        delegate void (Assembler a) { a.instr(MOV, EAX, 7); }, 
+        delegate void (ASMBlock cb) { cb.mov(X86Opnd(EAX), X86Opnd(7)); },
         "B807000000"
     );
+    */
+    /*
     test(
-        delegate void (Assembler a) { a.instr(MOV, EAX, -3); }, 
+        delegate void (ASMBlock cb) { cb.instr(MOV, EAX, -3); }, 
         "B8FDFFFFFF"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOV, EAX, EBX); }, 
+        delegate void (ASMBlock cb) { cb.instr(MOV, EAX, EBX); }, 
         "89D8"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOV, EAX, ECX); }, 
+        delegate void (ASMBlock cb) { cb.instr(MOV, EAX, ECX); }, 
         "89C8"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOV, ECX, new X86Mem(32, ESP, -4)); }, 
+        delegate void (ASMBlock cb) { cb.instr(MOV, ECX, new X86Mem(32, ESP, -4)); }, 
         "8B4C24FC",
         "678B4C24FC"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOV, EDX, new X86Mem(32, RBX, 128)); }, 
+        delegate void (ASMBlock cb) { cb.instr(MOV, EDX, new X86Mem(32, RBX, 128)); }, 
         "",
         "8B9380000000"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOV, AL, new X86Mem(8, RCX, 0, RDX)); }, 
+        delegate void (ASMBlock cb) { cb.instr(MOV, AL, new X86Mem(8, RCX, 0, RDX)); }, 
         "",
         "8A0411"
     );
+    */
     test(
-        delegate void (Assembler a) { a.instr(MOV, CL, R9L); }, 
-        "",
+        delegate void (ASMBlock cb) { cb.mov(X86Opnd(CL), X86Opnd(R9L)); }, 
         "4488C9"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOV, RBX, RAX); }, 
-        "",
+        delegate void (ASMBlock cb) { cb.mov(X86Opnd(RBX), X86Opnd(RAX)); }, 
         "4889C3"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOV, RDI, RBX); }, 
-        "",
+        delegate void (ASMBlock cb) { cb.mov(X86Opnd(RDI), X86Opnd(RBX)); },
         "4889DF"
     );
+    /*
     test(
-        delegate void (Assembler a) { a.instr(MOV, SIL, 11); },
+        delegate void (ASMBlock cb) { cb.instr(MOV, SIL, 11); },
         "40B60B"
     );
+    */
 
+    /*
     // movapd
     test(
-        delegate void (Assembler a) { a.instr(MOVAPD, XMM5, new X86Mem(128, ESP)); },
+        delegate void (ASMBlock cb) { cb.instr(MOVAPD, XMM5, new X86Mem(128, ESP)); },
         "660F282C24",
         "67660F282C24"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVAPD, new X86Mem(128, ESP, -8), XMM6); },
+        delegate void (ASMBlock cb) { cb.instr(MOVAPD, new X86Mem(128, ESP, -8), XMM6); },
         "660F297424F8",
         "67660F297424F8"
     );
 
     // movsd
     test(
-        delegate void (Assembler a) { a.instr(MOVSD, XMM3, XMM5); },
+        delegate void (ASMBlock cb) { cb.instr(MOVSD, XMM3, XMM5); },
         "F20F10DD"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVSD, XMM3, new X86Mem(64, ESP)); },
+        delegate void (ASMBlock cb) { cb.instr(MOVSD, XMM3, new X86Mem(64, ESP)); },
         "F20F101C24",
         "67F20F101C24"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVSD, new X86Mem(64, RSP), XMM14); },
+        delegate void (ASMBlock cb) { cb.instr(MOVSD, new X86Mem(64, RSP), XMM14); },
         "",
         "F2440F113424"
     );
 
     // movq
     test(
-        delegate void (Assembler a) { a.instr(MOVQ, XMM1, RCX); },
+        delegate void (ASMBlock cb) { cb.instr(MOVQ, XMM1, RCX); },
         ""
         "66480F6EC9"
     );
 
     // movsx
     test(
-        delegate void (Assembler a) { a.instr(MOVSX, AX, AL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVSX, AX, AL); },
         "660FBEC0"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVSX, EDX, AL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVSX, EDX, AL); },
         "0FBED0"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVSX, RAX, BL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVSX, RAX, BL); },
         "",
         "480FBEC3"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVSX, ECX, AX); },
+        delegate void (ASMBlock cb) { cb.instr(MOVSX, ECX, AX); },
         "0FBFC8"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVSX, R11, CL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVSX, R11, CL); },
         "",
         "4C0FBED9"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVSXD, R10, new X86Mem(32, ESP, 12)); },
+        delegate void (ASMBlock cb) { cb.instr(MOVSXD, R10, new X86Mem(32, ESP, 12)); },
         "",
         "674C6354240C"
     );
 
     // movupd
     test(
-        delegate void (Assembler a) { a.instr(MOVUPD, XMM7, new X86Mem(128, RSP)); },
+        delegate void (ASMBlock cb) { cb.instr(MOVUPD, XMM7, new X86Mem(128, RSP)); },
         "",
         "660F103C24"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVUPD, new X86Mem(128, RCX, -8), XMM9); },
+        delegate void (ASMBlock cb) { cb.instr(MOVUPD, new X86Mem(128, RCX, -8), XMM9); },
         "",
         "66440F1149F8"
     );
 
     // movzx
     test(
-        delegate void (Assembler a) { a.instr(MOVZX, SI, BL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVZX, SI, BL); },
         "660FB6F3"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVZX, ECX, AL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVZX, ECX, AL); },
         "0FB6C8"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVZX, EDI, AL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVZX, EDI, AL); },
         "0FB6F8"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVZX, EBP, AL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVZX, EBP, AL); },
         "0FB6E8"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVZX, RCX, BL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVZX, RCX, BL); },
         "",
         "480FB6CB"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVZX, ECX, AX); },
+        delegate void (ASMBlock cb) { cb.instr(MOVZX, ECX, AX); },
         "0FB7C8"
     );
     test(
-        delegate void (Assembler a) { a.instr(MOVZX, R11, CL); },
+        delegate void (ASMBlock cb) { cb.instr(MOVZX, R11, CL); },
         "",
         "4C0FB6D9"
     );
 
     // mul
     test(
-        delegate void (Assembler a) { a.instr(MUL, EDX); }, 
+        delegate void (ASMBlock cb) { cb.instr(MUL, EDX); }, 
         "F7E2"
     );
     test(
-        delegate void (Assembler a) { a.instr(MUL, R15); },
+        delegate void (ASMBlock cb) { cb.instr(MUL, R15); },
         "",
         "49F7E7"
     );
     test(
-        delegate void (Assembler a) { a.instr(MUL, R10D); },
+        delegate void (ASMBlock cb) { cb.instr(MUL, R10D); },
         "",
         "41F7E2"
     );
 
     // nop
     test(
-        delegate void (Assembler a) { a.instr(NOP); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOP); }, 
         "90"
     );
 
     // not
     test(
-        delegate void (Assembler a) { a.instr(NOT, AX); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, AX); }, 
         "66F7D0"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, EAX); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, EAX); }, 
         "F7D0"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, RAX); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, RAX); }, 
         "", 
         "48F7D0"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, R11); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, R11); }, 
         "", 
         "49F7D3"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EAX)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EAX)); }, 
         "F710", 
         "67F710"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, ESI)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, ESI)); },
         "F716", 
         "67F716"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EDI)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDI)); }, 
         "F717", 
         "67F717"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EDX, 55)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDX, 55)); },
         "F75237", 
         "67F75237"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EDX, 1337)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDX, 1337)); },
         "F79239050000", 
         "67F79239050000"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EDX, -55)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDX, -55)); },
         "F752C9", 
         "67F752C9"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EDX, -555)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDX, -555)); },
         "F792D5FDFFFF", 
         "67F792D5FDFFFF"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EAX, 0, EBX)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EAX, 0, EBX)); }, 
         "F71418", 
         "67F71418"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RAX, 0, RBX)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RAX, 0, RBX)); }, 
         "", 
         "F71418"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RAX, 0, R12)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RAX, 0, R12)); }, 
         "", 
         "42F71420"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, R15, 0, R12)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R15, 0, R12)); }, 
         "", 
         "43F71427"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, R15, 5, R12)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R15, 5, R12)); }, 
         "", 
         "43F7542705"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, R15, 5, R12, 8)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R15, 5, R12, 8)); }, 
         "", 
         "43F754E705"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, R15, 5, R13, 8)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R15, 5, R13, 8)); }, 
         "", 
         "43F754EF05"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(64, R12)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(64, R12)); }, 
         "",
         "49F71424"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, R12, 5, R9, 4)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R12, 5, R9, 4)); }, 
         "", 
         "43F7548C05"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, R12, 301, R9, 4)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R12, 301, R9, 4)); }, 
         "", 
         "43F7948C2D010000"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EAX, 5, EDX, 4)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EAX, 5, EDX, 4)); }, 
         "F7549005",
         "67F7549005"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(64, EAX, 0, EDX, 2)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(64, EAX, 0, EDX, 2)); },
         "",
         "6748F71450"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, ESP)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, ESP)); },
         "F71424",
         "67F71424"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, ESP, 301)); }, 
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, ESP, 301)); }, 
         "F794242D010000",
         "67F794242D010000"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RSP)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RSP)); },
         "",
         "F71424"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RSP, 0, RBX)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RSP, 0, RBX)); },
         "",
         "F7141C"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RSP, 3, RBX)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RSP, 3, RBX)); },
         "",
         "F7541C03"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RSP, 3)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RSP, 3)); },
         "",
         "F7542403"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EBP)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EBP)); },
         "F75500",
         "67F75500"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EBP, 13)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EBP, 13)); },
         "F7550D",
         "67F7550D"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, EBP, 13, EDX)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EBP, 13, EDX)); },
         "F754150D",
         "67F754150D"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RIP)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RIP)); },
         "",
         "F71500000000"
     );
     test(
-        delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, RIP, 13)); },
+        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RIP, 13)); },
         "",
         "F7150D000000"
     );
-    test(delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, null, 0, R8, 8)); }, 
+    test(delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, null, 0, R8, 8)); }, 
         "", 
         "42F714C500000000"
     );
-    test(delegate void (Assembler a) { a.instr(NOT, new X86Mem(32, null, 5)); }, 
+    test(delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, null, 5)); }, 
         "F71505000000", 
         "F7142505000000"
     );
 
     // or
     test(
-        delegate void (Assembler a) { a.instr(OR, EDX, ESI); },
+        delegate void (ASMBlock cb) { cb.instr(OR, EDX, ESI); },
         "09F2"
     );
+    */
 
     // pop
+    /*
     test(
-        delegate void (Assembler a) { a.instr(POP, RAX); }, 
+        delegate void (ASMBlock cb) { cb.instr(POP, RAX); }, 
         "",
         "58"
     );
+    */
     test(
-        delegate void (Assembler a) { a.instr(POP, RBX); },
-        "",
+        delegate void (ASMBlock cb) { cb.pop(RBX); },
         "5B"
     );
     test(
-        delegate void (Assembler a) { a.instr(POP, RSP); },
-        "",
+        delegate void (ASMBlock cb) { cb.pop(RSP); },
         "5C"
     );
     test(
-        delegate void (Assembler a) { a.instr(POP, RBP); },
-        "",
+        delegate void (ASMBlock cb) { cb.pop(RBP); },
         "5D"
     );
-    */
 
     // push
     test(
@@ -802,7 +807,7 @@ unittest
     );
     /*
     test(
-        delegate void (Assembler a) { a.instr(RET, 5); },
+        delegate void (ASMBlock cb) { cb.instr(RET, 5); },
         "C20500"
     );
     */
@@ -810,145 +815,145 @@ unittest
     /*
     // roundsd
     test(
-        delegate void (Assembler a) { a.instr(ROUNDSD, XMM2, XMM5, 0); },
+        delegate void (ASMBlock cb) { cb.instr(ROUNDSD, XMM2, XMM5, 0); },
         "660F3A0BD500"
     );
 
     // sal
     test(
-        delegate void (Assembler a) { a.instr(SAL, CX, 1); },
+        delegate void (ASMBlock cb) { cb.instr(SAL, CX, 1); },
         "66D1E1"
     );
     test(
-        delegate void (Assembler a) { a.instr(SAL, ECX, 1); },
+        delegate void (ASMBlock cb) { cb.instr(SAL, ECX, 1); },
         "D1E1"
     );
     test(
-        delegate void (Assembler a) { a.instr(SAL, AL, CL); },
+        delegate void (ASMBlock cb) { cb.instr(SAL, AL, CL); },
         "D2E0"
     );
     test(
-        delegate void (Assembler a) { a.instr(SAL, EBP, 5); },
+        delegate void (ASMBlock cb) { cb.instr(SAL, EBP, 5); },
         "C1E505"
     );
     test(
-        delegate void (Assembler a) { a.instr(SAL, new X86Mem(32, ESP, 68), 1); },
+        delegate void (ASMBlock cb) { cb.instr(SAL, new X86Mem(32, ESP, 68), 1); },
         "D1642444",
         "67D1642444"  
     );
 
     // sar
     test(
-        delegate void (Assembler a) { a.instr(SAR, EDX, 1); },
+        delegate void (ASMBlock cb) { cb.instr(SAR, EDX, 1); },
         "D1FA"
     );
 
     // shr
     test(
-        delegate void (Assembler a) { a.instr(SHR, R14, 7); },
+        delegate void (ASMBlock cb) { cb.instr(SHR, R14, 7); },
         "",
         "49C1EE07"
     );
 
     // sqrtsd
     test(
-        delegate void (Assembler a) { a.instr(SQRTSD, XMM2, XMM6); },
+        delegate void (ASMBlock cb) { cb.instr(SQRTSD, XMM2, XMM6); },
         "F20F51D6"
     );
 
     // sub
     test(
-        delegate void (Assembler a) { a.instr(SUB, EAX, 1); },
+        delegate void (ASMBlock cb) { cb.instr(SUB, EAX, 1); },
         "83E801",
         "83E801"
     );
     test(
-        delegate void (Assembler a) { a.instr(SUB, RAX, 2); },
+        delegate void (ASMBlock cb) { cb.instr(SUB, RAX, 2); },
         "",
         "4883E802"
     );
 
     // test
     test(
-        delegate void (Assembler a) { a.instr(TEST, AL, 4); },
+        delegate void (ASMBlock cb) { cb.instr(TEST, AL, 4); },
         "A804"
     );
     test(
-        delegate void (Assembler a) { a.instr(TEST, CL, 255); },
+        delegate void (ASMBlock cb) { cb.instr(TEST, CL, 255); },
         "F6C1FF"
     );
     test(
-        delegate void (Assembler a) { a.instr(TEST, DL, 7); },
+        delegate void (ASMBlock cb) { cb.instr(TEST, DL, 7); },
         "F6C207"
     );
     test(
-        delegate void (Assembler a) { a.instr(TEST, DIL, 9); },
+        delegate void (ASMBlock cb) { cb.instr(TEST, DIL, 9); },
         "",
         "40F6C709"
     );
 
     // ucomisd
     test(
-        delegate void (Assembler a) { a.instr(UCOMISD, XMM3, XMM5); },
+        delegate void (ASMBlock cb) { cb.instr(UCOMISD, XMM3, XMM5); },
         "660F2EDD"
     );
     test(
-        delegate void (Assembler a) { a.instr(UCOMISD, XMM11, XMM13); },
+        delegate void (ASMBlock cb) { cb.instr(UCOMISD, XMM11, XMM13); },
         "",
         "66450F2EDD"
     );
 
     // xchg
     test(
-        delegate void (Assembler a) { a.instr(XCHG, AX, DX); }, 
+        delegate void (ASMBlock cb) { cb.instr(XCHG, AX, DX); }, 
         "6692"
     );
     test(
-        delegate void (Assembler a) { a.instr(XCHG, EAX, EDX); }, 
+        delegate void (ASMBlock cb) { cb.instr(XCHG, EAX, EDX); }, 
         "92"
     );
     test(
-        delegate void (Assembler a) { a.instr(XCHG, RAX, R15); },
+        delegate void (ASMBlock cb) { cb.instr(XCHG, RAX, R15); },
         "",
         "4997"
     );
     test(
-        delegate void (Assembler a) { a.instr(XCHG, R14, R15); }, 
+        delegate void (ASMBlock cb) { cb.instr(XCHG, R14, R15); }, 
         "", 
         "4D87FE"
     );
 
     // xor
     test(
-        delegate void (Assembler a) { a.instr(XOR, EAX, EAX); },
+        delegate void (ASMBlock cb) { cb.instr(XOR, EAX, EAX); },
         "", 
         "31C0"
     );
 
     // Simple loop from 0 to 10
     test(
-        delegate void (Assembler a) 
+        delegate void (ASMBlock cb) 
         {
-            a.instr(MOV, EAX, 0);
-            auto LOOP = a.label("LOOP");
-            a.instr(ADD, EAX, 1);
-            a.instr(CMP, EAX, 10);
-            a.instr(JB, LOOP);
-            a.instr(RET);
+            cb.instr(MOV, EAX, 0);
+            auto LOOP = cb.label("LOOP");
+            cb.instr(ADD, EAX, 1);
+            cb.instr(CMP, EAX, 10);
+            cb.instr(JB, LOOP);
+            cb.instr(RET);
         },
         "B80000000083C00183F80A72F8C3"
     );
 
     // Simple loop from 0 to 10 (64-bit)
     test(
-        delegate void (Assembler a) 
+        delegate void (ASMBlock cb) 
         {
-            a.instr(MOV, RAX, 0);
-            auto LOOP = a.label("LOOP");
-            a.instr(ADD, RAX, 1);
-            a.instr(CMP, RAX, 10);
-            a.instr(JB, LOOP);
-            a.instr(RET);
+            cb.instr(MOV, RAX, 0);
+            auto LOOP = cb.label("LOOP");
+            cb.instr(ADD, RAX, 1);
+            cb.instr(CMP, RAX, 10);
+            cb.instr(JB, LOOP);
+            cb.instr(RET);
         },
         "48C7C0000000004883C0014883F80A72F6C3"
     );
@@ -1010,169 +1015,169 @@ unittest
     /*
     // Trivial return 3
     test(
-        delegate void (Assembler a) 
+        delegate void (ASMBlock cb) 
         {
-            a.instr(MOV, RAX, 3);
-            a.instr(RET);
+            cb.instr(MOV, RAX, 3);
+            cb.instr(RET);
         },
         3
     );
 
     // Loop until 10
     test(
-        delegate void (Assembler a) 
+        delegate void (ASMBlock cb) 
         {
-            a.instr(MOV, RAX, 0);
-            auto LOOP = a.label("LOOP");
-            a.instr(ADD, RAX, 1);
-            a.instr(CMP, RAX, 10);
-            a.instr(JB, LOOP);
-            a.instr(RET);
+            cb.instr(MOV, RAX, 0);
+            auto LOOP = cb.label("LOOP");
+            cb.instr(ADD, RAX, 1);
+            cb.instr(CMP, RAX, 10);
+            cb.instr(JB, LOOP);
+            cb.instr(RET);
         },
         10
     );
 
     // Jump with a large offset (> 8 bits)
     test(
-        delegate void (Assembler a)
+        delegate void (ASMBlock cb)
         {
-            a.instr(MOV, RAX, 0);
-            auto LOOP = a.label("LOOP");
-            a.instr(ADD, RAX, 1);
-            a.instr(CMP, RAX, 15);
+            cb.instr(MOV, RAX, 0);
+            auto LOOP = cb.label("LOOP");
+            cb.instr(ADD, RAX, 1);
+            cb.instr(CMP, RAX, 15);
             for (auto i = 0; i < 400; ++i)
-                a.instr(NOP);
-            a.instr(JB, LOOP);
-            a.instr(RET);
+                cb.instr(NOP);
+            cb.instr(JB, LOOP);
+            cb.instr(RET);
         },
         15
     );
 
     // IP-relative addressing
     test(
-        delegate void (Assembler a) 
+        delegate void (ASMBlock cb) 
         {
             auto CODE = new Label("CODE");
-            a.instr(JMP, CODE);
-            auto MEMLOC = a.label("MEMLOC");
-            a.addInstr(new IntData(77, 32));
-            a.addInstr(new IntData(55, 32));
-            a.addInstr(new IntData(11, 32));
-            a.addInstr(CODE);
-            a.instr(MOV, EAX, new X86IPRel(32, MEMLOC, 4));
-            a.instr(RET);
+            cb.instr(JMP, CODE);
+            auto MEMLOC = cb.label("MEMLOC");
+            cb.addInstr(new IntData(77, 32));
+            cb.addInstr(new IntData(55, 32));
+            cb.addInstr(new IntData(11, 32));
+            cb.addInstr(CODE);
+            cb.instr(MOV, EAX, new X86IPRel(32, MEMLOC, 4));
+            cb.instr(RET);
         },
         55
     );
 
     // Arithmetic
     test(
-        delegate void (Assembler a)
+        delegate void (ASMBlock cb)
         {
-            a.instr(PUSH, RBX);
-            a.instr(PUSH, RCX);
-            a.instr(PUSH, RDX);
+            cb.instr(PUSH, RBX);
+            cb.instr(PUSH, RCX);
+            cb.instr(PUSH, RDX);
 
-            a.instr(MOV, RAX, 4);       // a = 4
-            a.instr(MOV, RBX, 5);       // b = 5
-            a.instr(MOV, RCX, 3);       // c = 3
-            a.instr(ADD, RAX, RBX);     // a = 9
-            a.instr(SUB, RBX, RCX);     // b = 2
-            a.instr(MUL, RBX);          // a = 18, d = 0
-            a.instr(MOV, RDX, -2);      // d = -2
-            a.instr(IMUL, RDX, RAX);    // d = -36
-            a.instr(MOV, RAX, RDX);     // a = -36
+            cb.instr(MOV, RAX, 4);       // a = 4
+            cb.instr(MOV, RBX, 5);       // b = 5
+            cb.instr(MOV, RCX, 3);       // c = 3
+            cb.instr(ADD, RAX, RBX);     // a = 9
+            cb.instr(SUB, RBX, RCX);     // b = 2
+            cb.instr(MUL, RBX);          // a = 18, d = 0
+            cb.instr(MOV, RDX, -2);      // d = -2
+            cb.instr(IMUL, RDX, RAX);    // d = -36
+            cb.instr(MOV, RAX, RDX);     // a = -36
 
-            a.instr(POP, RDX);
-            a.instr(POP, RCX);
-            a.instr(POP, RBX);
+            cb.instr(POP, RDX);
+            cb.instr(POP, RCX);
+            cb.instr(POP, RBX);
 
-            a.instr(RET);
+            cb.instr(RET);
         },
         -36
     );
 
     // Stack manipulation, sign extension
     test(
-        delegate void (Assembler a)
+        delegate void (ASMBlock cb)
         {
-            a.instr(SUB, RSP, 1);
+            cb.instr(SUB, RSP, 1);
             auto sloc = new X86Mem(8, RSP, 0);
-            a.instr(MOV, sloc, -3);
-            a.instr(MOVSX, RAX, sloc);
-            a.instr(ADD, RSP, 1);
-            a.instr(RET);
+            cb.instr(MOV, sloc, -3);
+            cb.instr(MOVSX, RAX, sloc);
+            cb.instr(ADD, RSP, 1);
+            cb.instr(RET);
         },
         -3
     );
     
     // fib(20), function calls
     test(
-        delegate void (Assembler a)
+        delegate void (ASMBlock cb)
         {
             auto COMP = new Label("COMP");
             auto FIB  = new Label("FIB");
 
-            a.instr(PUSH, RBX);
-            a.instr(MOV, RAX, 20);
-            a.instr(CALL, FIB);
-            a.instr(POP, RBX);
-            a.instr(RET);
+            cb.instr(PUSH, RBX);
+            cb.instr(MOV, RAX, 20);
+            cb.instr(CALL, FIB);
+            cb.instr(POP, RBX);
+            cb.instr(RET);
 
             // FIB
-            a.addInstr(FIB);
-            a.instr(CMP, RAX, 2);
-            a.instr(JGE, COMP);
-            a.instr(RET);
+            cb.addInstr(FIB);
+            cb.instr(CMP, RAX, 2);
+            cb.instr(JGE, COMP);
+            cb.instr(RET);
 
             // COMP
-            a.addInstr(COMP);
-            a.instr(PUSH, RAX);     // store n
-            a.instr(SUB, RAX, 1);   // RAX = n-1
-            a.instr(CALL, FIB);     // fib(n-1)
-            a.instr(MOV, RBX, RAX); // RAX = fib(n-1)
-            a.instr(POP, RAX);      // RAX = n
-            a.instr(PUSH, RBX);     // store fib(n-1)
-            a.instr(SUB, RAX, 2);   // RAX = n-2
-            a.instr(CALL, FIB);     // fib(n-2)
-            a.instr(POP, RBX);      // RBX = fib(n-1)
-            a.instr(ADD, RAX, RBX); // RAX = fib(n-2) + fib(n-1)
-            a.instr(RET);
+            cb.addInstr(COMP);
+            cb.instr(PUSH, RAX);     // store n
+            cb.instr(SUB, RAX, 1);   // RAX = n-1
+            cb.instr(CALL, FIB);     // fib(n-1)
+            cb.instr(MOV, RBX, RAX); // RAX = fib(n-1)
+            cb.instr(POP, RAX);      // RAX = n
+            cb.instr(PUSH, RBX);     // store fib(n-1)
+            cb.instr(SUB, RAX, 2);   // RAX = n-2
+            cb.instr(CALL, FIB);     // fib(n-2)
+            cb.instr(POP, RBX);      // RBX = fib(n-1)
+            cb.instr(ADD, RAX, RBX); // RAX = fib(n-2) + fib(n-1)
+            cb.instr(RET);
         },
         6765
     );
 
     // SSE2 floating-point computation
     test(
-        delegate void (Assembler a)
+        delegate void (ASMBlock cb)
         {
-            a.instr(MOV, RAX, 2);
-            a.instr(CVTSI2SD, XMM0, RAX);
-            a.instr(MOV, RAX, 7);
-            a.instr(CVTSI2SD, XMM1, RAX);
-            a.instr(ADDSD, XMM0, XMM1);
-            a.instr(CVTSD2SI, RAX, XMM0);
-            a.instr(RET);
+            cb.instr(MOV, RAX, 2);
+            cb.instr(CVTSI2SD, XMM0, RAX);
+            cb.instr(MOV, RAX, 7);
+            cb.instr(CVTSI2SD, XMM1, RAX);
+            cb.instr(ADDSD, XMM0, XMM1);
+            cb.instr(CVTSD2SI, RAX, XMM0);
+            cb.instr(RET);
         },
         9
     );
 
     // Floating-point comparison
     test(
-        delegate void (Assembler a) 
+        delegate void (ASMBlock cb) 
         {
-            a.instr(MOV, RAX, 10);
-            a.instr(CVTSI2SD, XMM2, RAX);   // XMM2 = 10
-            a.instr(MOV, RAX, 1);
-            a.instr(CVTSI2SD, XMM1, RAX);   // XMM1 = 1
-            a.instr(MOV, RAX, 0);
-            a.instr(CVTSI2SD, XMM0, RAX);   // XMM0 = 0
-            auto LOOP = a.label("LOOP");
-            a.instr(ADDSD, XMM0, XMM1);
-            a.instr(UCOMISD, XMM0, XMM2);
-            a.instr(JBE, LOOP);
-            a.instr(CVTSD2SI, RAX, XMM0);
-            a.instr(RET);
+            cb.instr(MOV, RAX, 10);
+            cb.instr(CVTSI2SD, XMM2, RAX);   // XMM2 = 10
+            cb.instr(MOV, RAX, 1);
+            cb.instr(CVTSI2SD, XMM1, RAX);   // XMM1 = 1
+            cb.instr(MOV, RAX, 0);
+            cb.instr(CVTSI2SD, XMM0, RAX);   // XMM0 = 0
+            auto LOOP = cb.label("LOOP");
+            cb.instr(ADDSD, XMM0, XMM1);
+            cb.instr(UCOMISD, XMM0, XMM2);
+            cb.instr(JBE, LOOP);
+            cb.instr(CVTSD2SI, RAX, XMM0);
+            cb.instr(RET);
         },
         11
     );

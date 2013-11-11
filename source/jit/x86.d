@@ -42,6 +42,7 @@ import std.string;
 import std.array;
 import std.conv;
 import std.stdint;
+import std.algorithm;
 import jit.assembler;
 
 /**
@@ -893,21 +894,25 @@ void writeRMMulti(
     // R/M + Imm
     else if (opnd1.isImm)
     {
+        auto imm = opnd1.imm;
+
         // 8-bit immediate
-        if (opnd1.imm.immSize <= 8)
+        if (imm.immSize <= 8)
         {
             if (opndSize is 8)
                 cb.writeRMInstr!('l', opExtImm, opMemImm8)(false, false, opnd0, X86Opnd.NONE);
             else
                 cb.writeRMInstr!('l', opExtImm, opMemImmSml)(szPref, rexW, opnd0, X86Opnd.NONE);
-            cb.writeInt(opnd1.imm.imm, 8);
+            cb.writeInt(imm.imm, 8);
         }
 
         // 32-bit immediate
-        else if (opnd1.imm.immSize <= 32)
+        else if (imm.immSize <= 32)
         {
+            assert (imm.immSize <= opndSize, "immediate too large for dst");
+
             cb.writeRMInstr!('l', opExtImm, opMemImmLrg)(szPref, rexW, opnd0, X86Opnd.NONE);
-            cb.writeInt(opnd1.imm.imm, 32);
+            cb.writeInt(imm.imm, min(opndSize, 32));
         }
 
         // Immediate too large
@@ -1004,12 +1009,6 @@ void jmp(ASMBlock cb, Label label)
     cb.writeInt(0, 32);
 }
 
-// TODO
-/*
-# Jump absolute near
-Enc(opnds=['r/m64'], opcode=[0xFF], opExt=4),
-*/
-
 /// Indirect jump near to an R/M operand
 void jmp(CodeBlock cb, X86Opnd opnd)
 {
@@ -1018,32 +1017,63 @@ void jmp(CodeBlock cb, X86Opnd opnd)
 }
 
 // TODO: relative jumps, jmp, jcc
+// Pattern after jump, template this? jcc!...
 
-// TODO: mov
-/*
-Enc(opnds=['r/m8', 'r8'], opcode=[0x88]),
-Enc(opnds=['r/m16', 'r16'], opcode=[0x89]),
-Enc(opnds=['r/m32', 'r32'], opcode=[0x89]),
-Enc(opnds=['r/m64', 'r64'], opcode=[0x89]),
-Enc(opnds=['r8', 'r/m8'], opcode=[0x8A]),
-Enc(opnds=['r16', 'r/m16'], opcode=[0x8B]),
-Enc(opnds=['r32', 'r/m32'], opcode=[0x8B]),
-Enc(opnds=['r64', 'r/m64'], opcode=[0x8B]),
-Enc(opnds=['r8', 'imm8'], opcode=[0xB0]),
-Enc(opnds=['r16', 'imm16'], opcode=[0xB8]),
-Enc(opnds=['r32', 'imm32'], opcode=[0xB8]),
-Enc(opnds=['r64', 'imm64'], opcode=[0xB8]),
-Enc(opnds=['r/m8', 'imm8'], opcode=[0xC6]),
-Enc(opnds=['r/m16', 'imm16'], opcode=[0xC7], opExt=0),
-Enc(opnds=['r/m32', 'imm32'], opcode=[0xC7], opExt=0),
-Enc(opnds=['r/m64', 'imm32'], opcode=[0xC7], opExt=0),
-*/
-// TODO:
-/*
+/// Data move operation
 void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
+    // TODO: mov
+    /*
+    Enc(opnds=['r/m8', 'r8'], opcode=[0x88]),
+    Enc(opnds=['r/m16', 'r16'], opcode=[0x89]),
+    Enc(opnds=['r/m32', 'r32'], opcode=[0x89]),
+    Enc(opnds=['r/m64', 'r64'], opcode=[0x89]),
+    Enc(opnds=['r8', 'r/m8'], opcode=[0x8A]),
+    Enc(opnds=['r16', 'r/m16'], opcode=[0x8B]),
+    Enc(opnds=['r32', 'r/m32'], opcode=[0x8B]),
+    Enc(opnds=['r64', 'r/m64'], opcode=[0x8B]),
+    Enc(opnds=['r8', 'imm8'], opcode=[0xB0]),
+    Enc(opnds=['r16', 'imm16'], opcode=[0xB8]),
+    Enc(opnds=['r32', 'imm32'], opcode=[0xB8]),
+    Enc(opnds=['r64', 'imm64'], opcode=[0xB8]),
+    Enc(opnds=['r/m8', 'imm8'], opcode=[0xC6]),
+    Enc(opnds=['r/m16', 'imm16'], opcode=[0xC7], opExt=0),
+    Enc(opnds=['r/m32', 'imm32'], opcode=[0xC7], opExt=0),
+    Enc(opnds=['r/m64', 'imm32'], opcode=[0xC7], opExt=0),
+    */
+
+    // R/M + Imm
+    if (src.isImm)
+    {
+        auto imm = src.imm;
+
+        // TODO: 64-bit move to r64
+
+        if (dst.isMem)
+        {
+            auto dstSize = dst.reg.size;
+
+            assert (imm.immSize <= dstSize);
+
+            cb.writeRMInstr!('l', 0, 0xC7)(dstSize is 16, dstSize is 64, dst, X86Opnd.NONE);
+            cb.writeInt(imm.imm, min(dstSize, 32));
+        }   
+    }
+    else
+    {
+        writeRMMulti!(
+            "mov",
+            0x88, // opMemReg8
+            0x89, // opMemRegPref
+            0x8A, // opRegMem8
+            0x8B, // opRegMemPref
+            0xC6, // opMemImm8
+            0xFF, // opMemImmSml (not available)
+            0xFF, // opMemImmLrg
+            0xFF  // opExtImm
+        )(cb, dst, src);
+    }
 }
-*/
 
 /// Noop, one or multiple bytes long
 void nop(CodeBlock cb, size_t length = 1)

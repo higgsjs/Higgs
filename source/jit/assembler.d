@@ -391,6 +391,7 @@ class ASMBlock : CodeBlock
     this(size_t size, bool hasComments = false)
     {
         super(size, hasComments);
+        clear();
     }
 
     /**
