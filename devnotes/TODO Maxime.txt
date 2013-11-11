@@ -29,6 +29,11 @@ TODO: add source position info for call sites
 - Do this in genCallTargets?
 - Throw instr also needs a source pos
 
+TODO: optimize x86 instr encoding based on usage
+- e.g.: reg64 to mem move and vice versa?
+
+TODO: IP-relative addressing
+
 ------------------------------------------------------------------------------
 
 First milestone: no interp, basic incremental codegen
@@ -36,37 +41,43 @@ First milestone: no interp, basic incremental codegen
 - Stubs
 - Bump alloc ptr for code, no code compaction
 
+TODO: stub generation
+
 TODO: Executable memory management
 - Interp class owns executable chunk?
 
-TODO: stubs
-
-TODO: optimize x86 instr encoding based on usage
-- e.g.: reg64 to mem move and vice versa?
-
 TODO: genBranchEdge(edge, predState)
 
-TODO: compile(block, state)
-
-TODO: work on mu-assembler
-- KISS, direct encoding methods
-  as.jmp(label), as.label(label) and as.label(name)
-
-TODO: begin testing code execution
+TODO: begin sketching compile(block, state)
 
 TODO: sketch BlockVersion class
 - state
 - what else? see notes
 
-TODO: conditional jump, jcc encoding
+TODO: code block, remSpace function, or hasSpace(n)?
 
-TODO: mov encoding
-
-
+TODO: imul encoding
 
 
 
 
+
+
+
+
+
+
+[DONE] TODO: begin testing code execution
+
+[DONE] TODO: sub encoding
+
+[DONE] TODO: conditional jump, jcc encoding
+- Template it based on jmp
+
+[DONE] TODO: cmov encoding
+- TODO: template with opcode?
+
+[DONE] TODO: mov encoding
 
 [DONE] TODO: support for labels in assembler
 - Write code in the code block

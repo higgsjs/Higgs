@@ -322,7 +322,11 @@ struct X86Mem
         X86Reg index    = RAX,
     )
     {
-        assert (base.size is 64 && index.size is 64);
+        assert (
+            base.size is 64 &&
+            index.size is 64,
+            "base and index must be 64-bit registers"
+        );
 
         this.size       = cast(uint8_t)size;
         this.baseRegNo  = base.regNo;
@@ -929,7 +933,7 @@ void writeRMMulti(
     }
 }
 
-/// Integer addition
+/// add - Integer addition
 alias writeRMMulti!(
     "add",
     0x00, // opMemReg8
@@ -942,7 +946,7 @@ alias writeRMMulti!(
     0x00  // opExtImm
 ) add;
 
-/// Bitwise AND
+/// and - Bitwise AND
 alias writeRMMulti!(
     "and",
     0x20, // opMemReg8
@@ -955,19 +959,90 @@ alias writeRMMulti!(
     0x04  // opExtImm
 ) and;
 
-// TODO: call label
+// TODO: relative call encoding
 // For this, we will need a patchable 32-bit offset
 //Enc(opnds=['rel32'], opcode=[0xE8]),
 //void call(Assembler as, BlockVersion???);
 
-/// Indirect call with an R/M operand
+/// call - Indirect call with an R/M operand
 void call(CodeBlock cb, X86Opnd opnd)
 {
     cb.writeASM("call", opnd);
     cb.writeRMInstr!('l', 2, 0xFF)(false, false, opnd, X86Opnd.NONE);
 }
 
-/// Compare and set flags
+/**
+Encode a conditional move instruction
+*/
+void writeCmov(
+    wstring mnem,
+    ubyte opcode1)
+(CodeBlock cb, X86Reg dst, X86Opnd src)
+{
+    cb.writeASM(mnem, dst, src);
+
+    assert (src.isReg || src.isMem);
+    auto szPref = dst.size is 16;
+    auto rexW = dst.size is 64;
+
+    cb.writeRMInstr!('r', 0xFF, 0x0F, opcode1)(szPref, rexW, X86Opnd(dst), src);
+}
+
+/// cmovcc - conditional move
+alias writeCmov!("cmova", 0x47) cmova;
+alias writeCmov!("cmovae", 0x43) cmovae;
+alias writeCmov!("cmovb", 0x42) cmovb;
+alias writeCmov!("cmovbe", 0x46) cmovbe;
+alias writeCmov!("cmovc", 0x42) cmovc;
+alias writeCmov!("cmove", 0x44) cmove;
+alias writeCmov!("cmovg", 0x4F) cmovg;
+alias writeCmov!("cmovge", 0x4D) cmovge;
+alias writeCmov!("cmovl", 0x4C) cmovl;
+alias writeCmov!("cmovle", 0x4E) cmovle;
+/*
+'cmovna',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x46]),
+'cmovnae',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x42]),
+'cmovnb',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x43]),
+'cmovnbe',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x47]),
+'cmovnc',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x43]),
+'cmovne',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x45]),
+'cmovng',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4E]),
+'cmovnge',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4C]),
+'cmovnl',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4D]),
+'cmovnle',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4F]),
+'cmovno',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x41]),
+'cmovnp',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4B]),
+'cmovns',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x49]),
+'cmovnz',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x45]),
+'cmovo',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x40]),
+'cmovp',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4A]),
+'cmovpe',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4A]),
+'cmovpo',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4B]),
+'cmovs',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x48]),
+'cmovz',
+Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x44]),
+*/
+
+/// cmp - Compare and set flags
 alias writeRMMulti!(
     "cmp",
     0x38, // opMemReg8
@@ -979,6 +1054,12 @@ alias writeRMMulti!(
     0x81, // opMemImmLrg
     0x07  // opExtImm
 ) cmp;
+
+/// cqo - Convert quadword to octaword
+void cqo(CodeBlock cb)
+{
+    cb.writeBytes(0x48, 0x99);
+}
 
 // TODO: imul, 
 // Signed integer multiply
@@ -994,13 +1075,16 @@ Enc(opnds=['r32', 'r/m32', 'imm32'], opcode=[0x69]),
 Enc(opnds=['r64', 'r/m64', 'imm32'], opcode=[0x69]),
 */
 
-/// Relative jump to a label
-void jmp(ASMBlock cb, Label label)
+/**
+Encode a relative jump to a label (direct or conditional)
+Note: this always encodes a 32-bit offset
+*/
+void writeJcc(string mnem, opcode...)(ASMBlock cb, Label label)
 {
-    cb.writeASM("jmp", label);
+    cb.writeASM(mnem, label);
 
     // Write the opcode
-    cb.writeByte(0xE9);
+    cb.writeBytes(opcode);
 
     // Add a reference to the label
     cb.addLabelRef(label);
@@ -1009,55 +1093,194 @@ void jmp(ASMBlock cb, Label label)
     cb.writeInt(0, 32);
 }
 
-/// Indirect jump near to an R/M operand
+/// jcc - Conditional relative jump to a label
+alias writeJcc!("ja", 0x0F, 0x87) ja;
+alias writeJcc!("jae", 0x0F, 0x83) jae;
+alias writeJcc!("jb", 0x0F, 0x82) jb;
+alias writeJcc!("jbe", 0x0F, 0x86) jbe;
+/*
+Op(
+    'jc',
+    Enc(opnds=['rel8'], opcode=[0x72]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x82]),
+),
+Op(
+    'je',
+    Enc(opnds=['rel8'], opcode=[0x74]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x84]),
+),
+Op(
+    'jg',
+    Enc(opnds=['rel8'], opcode=[0x7F]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8F]),
+),
+*/
+alias writeJcc!("jge", 0x0F, 0x8D) jge;
+/*
+Op(
+    'jl',
+    Enc(opnds=['rel8'], opcode=[0x7C]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8C]),
+),
+Op(
+    'jle',
+    Enc(opnds=['rel8'], opcode=[0x7E]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8E]),
+),
+Op(
+    'jna',
+    Enc(opnds=['rel8'], opcode=[0x76]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x86]),
+),
+Op(
+    'jnae',
+    Enc(opnds=['rel8'], opcode=[0x72]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x82]),
+),
+Op(
+    'jnb',
+    Enc(opnds=['rel8'], opcode=[0x73]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x83]),
+),
+Op(
+    'jnbe',
+    Enc(opnds=['rel8'], opcode=[0x77]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x87]),
+),
+Op(
+    'jnc',
+    Enc(opnds=['rel8'], opcode=[0x73]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x83]),
+),
+Op(
+    'jne',
+    Enc(opnds=['rel8'], opcode=[0x75]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x85]),
+),
+Op(
+    'jng',
+    Enc(opnds=['rel8'], opcode=[0x7E]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8E]),
+),
+Op(
+    'jnge',
+    Enc(opnds=['rel8'], opcode=[0x7C]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8C]),
+),
+Op(
+    'jnl',
+    Enc(opnds=['rel8'], opcode=[0x7D]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8D]),
+),
+Op(
+    'jnle',
+    Enc(opnds=['rel8'], opcode=[0x7F]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8F]),
+),
+*/
+alias writeJcc!("jno", 0x0F, 0x81) jno;
+/*
+Op(
+    'jnp',
+    Enc(opnds=['rel8'], opcode=[0x7B]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8b]),
+),
+Op(
+    'jns',
+    Enc(opnds=['rel8'], opcode=[0x79]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x89]),
+),
+Op(
+    'jnz',
+    Enc(opnds=['rel8'], opcode=[0x75]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x85]),
+),
+Op(
+    'jo',
+    Enc(opnds=['rel8'], opcode=[0x70]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x80]),
+),
+*/
+alias writeJcc!("jo", 0x0F, 0x80) jo;
+/*
+Op(
+    'jp',
+    Enc(opnds=['rel8'], opcode=[0x7A]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8A]),
+),
+Op(
+    'jpe',
+    Enc(opnds=['rel8'], opcode=[0x7A]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8A]),
+),
+Op(
+    'jpo',
+    Enc(opnds=['rel8'], opcode=[0x7B]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x8B]),
+),
+Op(
+    'js',
+    Enc(opnds=['rel8'], opcode=[0x78]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x88]),
+),
+Op(
+    'jz',
+    Enc(opnds=['rel8'], opcode=[0x74]),
+    Enc(opnds=['rel32'], opcode=[0x0F, 0x84]),
+),
+*/
+
+/// jmp - Direct relative jump to label
+alias writeJcc!("jmp", 0xE9) jmp;
+
+/// jmp - Indirect jump near to an R/M operand
 void jmp(CodeBlock cb, X86Opnd opnd)
 {
     cb.writeASM("jmp", opnd);
     cb.writeRMInstr!('l', 4, 0xFF)(false, false, opnd, X86Opnd.NONE);
 }
 
-// TODO: relative jumps, jmp, jcc
-// Pattern after jump, template this? jcc!...
-
-/// Data move operation
+/// mov - Data move operation
 void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
-    // TODO: mov
-    /*
-    Enc(opnds=['r/m8', 'r8'], opcode=[0x88]),
-    Enc(opnds=['r/m16', 'r16'], opcode=[0x89]),
-    Enc(opnds=['r/m32', 'r32'], opcode=[0x89]),
-    Enc(opnds=['r/m64', 'r64'], opcode=[0x89]),
-    Enc(opnds=['r8', 'r/m8'], opcode=[0x8A]),
-    Enc(opnds=['r16', 'r/m16'], opcode=[0x8B]),
-    Enc(opnds=['r32', 'r/m32'], opcode=[0x8B]),
-    Enc(opnds=['r64', 'r/m64'], opcode=[0x8B]),
-    Enc(opnds=['r8', 'imm8'], opcode=[0xB0]),
-    Enc(opnds=['r16', 'imm16'], opcode=[0xB8]),
-    Enc(opnds=['r32', 'imm32'], opcode=[0xB8]),
-    Enc(opnds=['r64', 'imm64'], opcode=[0xB8]),
-    Enc(opnds=['r/m8', 'imm8'], opcode=[0xC6]),
-    Enc(opnds=['r/m16', 'imm16'], opcode=[0xC7], opExt=0),
-    Enc(opnds=['r/m32', 'imm32'], opcode=[0xC7], opExt=0),
-    Enc(opnds=['r/m64', 'imm32'], opcode=[0xC7], opExt=0),
-    */
-
     // R/M + Imm
     if (src.isImm)
     {
+        cb.writeASM("mov", dst, src); 
+
         auto imm = src.imm;
 
-        // TODO: 64-bit move to r64
+        // R + Imm
+        if (dst.isReg)
+        {
+            auto reg = dst.reg;
+            auto dstSize = reg.size;
+            assert (imm.immSize <= dstSize);
 
-        if (dst.isMem)
+            if (dstSize is 16)
+                cb.writeByte(0x66);
+            if (reg.rexNeeded || dstSize is 64)
+                cb.writeREX(dstSize is 64, reg.regNo);
+
+            cb.writeOpcode((dstSize is 8)? 0xB0:0xB8, reg);
+
+            cb.writeInt(imm.imm, dstSize);
+        }  
+
+        // M + Imm
+        else if (dst.isMem)
         {
             auto dstSize = dst.reg.size;
-
             assert (imm.immSize <= dstSize);
 
             cb.writeRMInstr!('l', 0, 0xC7)(dstSize is 16, dstSize is 64, dst, X86Opnd.NONE);
             cb.writeInt(imm.imm, min(dstSize, 32));
-        }   
+        }
+
+        else
+        {
+            assert (false);
+        }
     }
     else
     {
@@ -1075,7 +1298,21 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
     }
 }
 
-/// Noop, one or multiple bytes long
+/// mov - Move an immediate into a register
+void mov(CodeBlock cb, X86Reg reg, int64_t imm)
+{
+    // TODO: more optimized code for this case
+    cb.mov(X86Opnd(reg), X86Opnd(imm));
+}
+
+/// mov - Register to register move
+void mov(CodeBlock cb, X86Reg dst, X86Reg src)
+{
+    // TODO: more optimized code for this case
+    cb.mov(X86Opnd(dst), X86Opnd(src));
+}
+
+/// nop - Noop, one or multiple bytes long
 void nop(CodeBlock cb, size_t length = 1)
 {
     if (length > 0)
@@ -1123,34 +1360,20 @@ void nop(CodeBlock cb, size_t length = 1)
     }
 }
 
-// TODO
-/*
-# Bitwise OR
-Op(
-    'or',
-    Enc(opnds=['al', 'imm8'], opcode=[0x0C]),
-    Enc(opnds=['ax', 'imm16'], opcode=[0x0D]),
-    Enc(opnds=['eax', 'imm32'], opcode=[0x0D]),           
-    Enc(opnds=['rax', 'imm32'], opcode=[0x0D]),
-    Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=1),
-    Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=1),
-    Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=1),
-    Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=1),
-    Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=1),
-    Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=1),
-    Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=1),
-    Enc(opnds=['r/m8', 'r8'], opcode=[0x08]),
-    Enc(opnds=['r/m16', 'r16'], opcode=[0x09]),
-    Enc(opnds=['r/m32', 'r32'], opcode=[0x09]),
-    Enc(opnds=['r/m64', 'r64'], opcode=[0x09]),
-    Enc(opnds=['r8', 'r/m8'], opcode=[0x0A]),
-    Enc(opnds=['r16', 'r/m16'], opcode=[0x0B]),
-    Enc(opnds=['r32', 'r/m32'], opcode=[0x0B]),
-    Enc(opnds=['r64', 'r/m64'], opcode=[0x0B]),
-),
-*/
+/// or - Bitwise OR
+alias writeRMMulti!(
+    "or",
+    0x08, // opMemReg8
+    0x09, // opMemRegPref
+    0x0A, // opRegMem8
+    0x0B, // opRegMemPref
+    0x80, // opMemImm8
+    0x83, // opMemImmSml
+    0x81, // opMemImmLrg
+    0x01  // opExtImm
+) or;
 
-/// Push a register on the stack
+/// push - Push a register on the stack
 void push(CodeBlock cb, X86Reg reg)
 {
     assert (reg.size is 64);
@@ -1162,7 +1385,7 @@ void push(CodeBlock cb, X86Reg reg)
     cb.writeOpcode(0x50, reg);
 }
 
-/// Pop a register off the stack
+/// pop - Pop a register off the stack
 void pop(CodeBlock cb, X86Reg reg)
 {
     assert (reg.size is 64);
@@ -1174,60 +1397,36 @@ void pop(CodeBlock cb, X86Reg reg)
     cb.writeOpcode(0x58, reg);
 }
 
-/// Return from call, popping only the return address
+/// ret - Return from call, popping only the return address
 void ret(CodeBlock cb)
 {
     cb.writeASM("ret");
     cb.writeByte(0xC3);
 }
 
-// TODO: sub
-/*
-Enc(opnds=['al', 'imm8'], opcode=[0x2C]),
-Enc(opnds=['ax', 'imm16'], opcode=[0x2D]),
-Enc(opnds=['eax', 'imm32'], opcode=[0x2D]),
-Enc(opnds=['rax', 'imm32'], opcode=[0x2D]),
-Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=5),
-Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=5),
-Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=5),
-Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=5),
-Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=5),
-Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=5),
-Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=5),
-Enc(opnds=['r/m8', 'r8'], opcode=[0x28]),
-Enc(opnds=['r/m16', 'r16'], opcode=[0x29]),
-Enc(opnds=['r/m32', 'r32'], opcode=[0x29]),
-Enc(opnds=['r/m64', 'r64'], opcode=[0x29]),
-Enc(opnds=['r8', 'r/m8'], opcode=[0x2A]),
-Enc(opnds=['r16', 'r/m16'], opcode=[0x2B]),
-Enc(opnds=['r32', 'r/m32'], opcode=[0x2B]),
-Enc(opnds=['r64', 'r/m64'], opcode=[0x2B]),
-*/
+/// sub - Integer subtraction
+alias writeRMMulti!(
+    "sub",
+    0x28, // opMemReg8
+    0x29, // opMemRegPref
+    0x2A, // opRegMem8
+    0x2B, // opRegMemPref
+    0x80, // opMemImm8
+    0x83, // opMemImmSml
+    0x81, // opMemImmLrg
+    0x05  // opExtImm
+) sub;
 
-// TODO
-/*
-# Exclusive bitwise OR
-Op(
-    'xor',
-    Enc(opnds=['al', 'imm8'], opcode=[0x34]),
-    Enc(opnds=['ax', 'imm16'], opcode=[0x35]),
-    Enc(opnds=['eax', 'imm32'], opcode=[0x35]),
-    Enc(opnds=['rax', 'imm32'], opcode=[0x35]),
-    Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=6),
-    Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=6),
-    Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=6),
-    Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=6),
-    Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=6),
-    Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=6),
-    Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=6),
-    Enc(opnds=['r/m8', 'r8'], opcode=[0x30]),
-    Enc(opnds=['r/m16', 'r16'], opcode=[0x31]),
-    Enc(opnds=['r/m32', 'r32'], opcode=[0x31]),
-    Enc(opnds=['r/m64', 'r64'], opcode=[0x31]),
-    Enc(opnds=['r8', 'r/m8'], opcode=[0x32]),
-    Enc(opnds=['r16', 'r/m16'], opcode=[0x33]),
-    Enc(opnds=['r32', 'r/m32'], opcode=[0x33]),
-    Enc(opnds=['r64', 'r/m64'], opcode=[0x33]),
-),
-*/
+/// xor - Exclusive bitwise OR
+alias writeRMMulti!(
+    "xor",
+    0x30, // opMemReg8
+    0x31, // opMemRegPref
+    0x32, // opRegMem8
+    0x33, // opRegMemPref
+    0x80, // opMemImm8
+    0x83, // opMemImmSml
+    0x81, // opMemImmLrg
+    0x06  // opExtImm
+) xor;
 

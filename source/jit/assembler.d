@@ -176,6 +176,19 @@ class CodeBlock
     }
 
     /**
+    Get a direct pointer into the executable memory block
+    */
+    auto getAddress(size_t index = 0)
+    {
+        assert (
+            index < size,
+            "invalid index"
+        );
+
+        return cast(const ubyte*)&memBlock[index];
+    }
+
+    /**
     Get the size of the code block
     */
     auto length()
@@ -233,7 +246,7 @@ class CodeBlock
     /**
     Write a sequence of bytes at the current position
     */
-    void writeBytes(immutable ubyte bytes[] ...)
+    void writeBytes(T...)(T bytes)
     {
         assert (
             this.memBlock,
@@ -247,7 +260,7 @@ class CodeBlock
 
         foreach (b; bytes)
         {
-            this.memBlock[this.writePos++] = b;
+            this.memBlock[this.writePos++] = cast(ubyte)b;
         }
     }
 
@@ -408,6 +421,16 @@ class ASMBlock : CodeBlock
     }
 
     /**
+    Set the address of a label to the current write position
+    */
+    Label label(Label label)
+    {
+        assert (labelAddrs[label] is size_t.max);
+        labelAddrs[label] = getWritePos();
+        return label;
+    }
+
+    /**
     Add a label reference at the current write position
     */
     void addLabelRef(Label label)
@@ -431,8 +454,11 @@ class ASMBlock : CodeBlock
             auto labelAddr = labelAddrs[labelRef.label];
             assert (labelAddr < length);
 
+            // Compute the offset from the reference's end to the label
+            auto offset = labelAddr - (labelRef.pos + 4);
+
             setWritePos(labelRef.pos);
-            writeInt(labelAddr, 32);
+            writeInt(offset, 32);
         }
 
         writePos = origPos;
