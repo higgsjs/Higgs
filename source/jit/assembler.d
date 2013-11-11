@@ -51,6 +51,7 @@ import std.range;
 import std.typecons;
 import util.string;
 import jit.x86;
+import jit.jit;
 
 /**
 Low-level machine code block implementation.
@@ -318,7 +319,7 @@ class CodeBlock
         foreach (argIdx, arg; args)
         {
             str ~= (argIdx > 0)? ", ":" ";
-            str ~= arg.toString();
+            str ~= to!string(arg);
         }
 
         str ~= ";";
@@ -369,10 +370,72 @@ class CodeBlock
 /**
 Block internal label enumeration
 */
-enum Label : uint32_t
+enum Label : size_t
 {
     LOOP,
     DONE
+}
+
+/**
+Code block with address linking capabilities
+*/
+class ASMBlock : CodeBlock
+{
+    // Table of label addresses
+    private size_t[Label.max+1] labelAddrs;
+
+    // Label reference list
+    alias Tuple!(size_t, "pos", Label, "label") LabelRef;
+    private LabelRef labelRefs[];
+
+    this(size_t size, bool hasComments = false)
+    {
+        super(size, hasComments);
+    }
+
+    /**
+    Clear the contents of the code block
+    */
+    override void clear()
+    {
+        super.clear();
+
+        for (auto label = Label.min; label < Label.max; ++label)
+            labelAddrs[label] = size_t.max;
+
+        labelRefs = [];
+    }
+
+    /**
+    Add a label reference at the current write position
+    */
+    void addLabelRef(Label label)
+    {
+        // TODO debug {} block? Check for duplicates at same pos
+
+        labelRefs ~= LabelRef(writePos, label);
+    }
+
+    /**
+    Link internal label references
+    */
+    void link()
+    {
+        auto origPos = writePos;
+
+        // For each label reference
+        foreach (labelRef; labelRefs)
+        {
+            assert (labelRef.pos < length);
+            auto labelAddr = labelAddrs[labelRef.label];
+            assert (labelAddr < length);
+
+            setWritePos(labelRef.pos);
+            writeInt(labelAddr, 32);
+        }
+
+        writePos = origPos;
+    }
 }
 
 /**
@@ -383,18 +446,13 @@ class Assembler
     /// Inner instruction code
     CodeBlock code;
 
-    /// Edge transition move code
-    CodeBlock moves[2];
+    /// Edge transition move code for each target
+    CodeBlock branchCode[BlockVersion.MAX_TARGETS];
 
-    // TODO: branch descriptions
+    // TODO: final branch descriptors
 
-    // TODO: target blocks/versions
-
-    // TODO: label addresses table
-
-    // TODO: label refs list
-    // position + label pair
-    //LabelRef LabelRefs[]
+    // Target block versions
+    private BlockVersion targets[BlockVersion.MAX_TARGETS];
 
     this()
     {
@@ -406,10 +464,16 @@ class Assembler
     */
     void clear()
     {
-        // TODO
-    }
+        code.clear();
 
-    // TODO: linkage pass method
+        foreach (code; branchCode)
+            code.clear();
+
+        // TODO: clear branch descriptors
+
+        for (size_t tIdx = 0; tIdx < targets.length; ++tIdx)
+            targets[tIdx] = null;
+    }
 
     // TODO: method to copy into a code block and finalize into a BlockVersion
     // Must store offsets + length, etc

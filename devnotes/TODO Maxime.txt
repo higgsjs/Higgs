@@ -54,22 +54,19 @@ TODO: work on mu-assembler
 
 TODO: sketch BlockVersion class
 - state
+- what else? see notes
 
-TODO: support for labels in assembler
+
+
+
+
+
+
+[DONE] TODO: support for labels in assembler
 - Write code in the code block
 - Write empty patchable gap for address
 - Store label ref in a list in the assembler object
 - Need linkage pass to match refs to labels in table
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: should also have option to record assembly strings
 - Maybe this should be at the code block level

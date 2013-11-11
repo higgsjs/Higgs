@@ -45,7 +45,7 @@ import jit.x86;
 import jit.assembler;
 
 /// Code generation function for testing
-alias void delegate(CodeBlock) CodeGenFn;
+alias void delegate(ASMBlock) CodeGenFn;
 
 /**
 Test x86 instruction encodings
@@ -78,7 +78,7 @@ unittest
         }
 
         // Generate the code to a machine code block
-        auto codeBlock = new CodeBlock(numBytes, true);
+        auto codeBlock = new ASMBlock(numBytes, true);
         codeFunc(codeBlock);
 
         // Report an encoding error
@@ -108,67 +108,67 @@ unittest
 
     // add  
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(CL), X86Opnd(3)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(CL), X86Opnd(3)); },
         "80C103"
     );   
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(CL), X86Opnd(BL)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(CL), X86Opnd(BL)); },
         "00D9"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(CL), X86Opnd(SPL)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(CL), X86Opnd(SPL)); },
         "4000E1"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(CX), X86Opnd(BX)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(CX), X86Opnd(BX)); },
         "6601D9"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(RAX), X86Opnd(RBX)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(RAX), X86Opnd(RBX)); },
         "4801D8"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(ECX), X86Opnd(EDX)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(ECX), X86Opnd(EDX)); },
         "01D1"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(R14)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(R14)); },
         "4C01F2"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(64, RAX), X86Opnd(RDX)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(64, RAX), X86Opnd(RDX)); },
         "480110"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(64, RAX)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(64, RAX)); },
         "480310"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(64, RAX, 8)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(64, RAX, 8)); },
         "48035008"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(64, RAX, 255)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(RDX), X86Opnd(64, RAX, 255)); },
         "480390FF000000"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(64, RAX, 127), X86Opnd(255)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(64, RAX, 127), X86Opnd(255)); },
         "4881407FFF000000"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(32, RAX), X86Opnd(EDX)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(32, RAX), X86Opnd(EDX)); },
         "0110"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(RSP), X86Opnd(8)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(RSP), X86Opnd(8)); },
         "4883C408"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(ECX), X86Opnd(8)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(ECX), X86Opnd(8)); },
         "83C108"
     );
     test(
-        delegate void (CodeBlock cb) { cb.add(X86Opnd(ECX), X86Opnd(255)); },
+        delegate void (ASMBlock cb) { cb.add(X86Opnd(ECX), X86Opnd(255)); },
         "81C1FF000000"
     );
 
@@ -192,7 +192,7 @@ unittest
 
     // and
     test(
-        delegate void (CodeBlock cb) { cb.and(X86Opnd(EBP), X86Opnd(R12D)); },
+        delegate void (ASMBlock cb) { cb.and(X86Opnd(EBP), X86Opnd(R12D)); },
         "4421E5"
     );
 
@@ -204,12 +204,12 @@ unittest
     );
     */
     test(
-        delegate void (CodeBlock cb) { cb.call(X86Opnd(RAX)); },
+        delegate void (ASMBlock cb) { cb.call(X86Opnd(RAX)); },
         "FFD0"
     );
 
     test(
-        delegate void (CodeBlock cb) { cb.call(X86Opnd(64, RSP, 8)); },
+        delegate void (ASMBlock cb) { cb.call(X86Opnd(64, RSP, 8)); },
         "FF542408"
     );
 
@@ -242,19 +242,19 @@ unittest
 
     // cmp
     test(
-        delegate void (CodeBlock cb) { cb.cmp(X86Opnd(CL), X86Opnd(DL)); },
+        delegate void (ASMBlock cb) { cb.cmp(X86Opnd(CL), X86Opnd(DL)); },
         "38D1"
     );   
     test(
-        delegate void (CodeBlock cb) { cb.cmp(X86Opnd(ECX), X86Opnd(EDI)); },
+        delegate void (ASMBlock cb) { cb.cmp(X86Opnd(ECX), X86Opnd(EDI)); },
         "39F9"
     );   
     test(
-        delegate void (CodeBlock cb) { cb.cmp(X86Opnd(RDX), X86Opnd(64, R12)); },
+        delegate void (ASMBlock cb) { cb.cmp(X86Opnd(RDX), X86Opnd(64, R12)); },
         "493B1424"
     );
     test(
-        delegate void (CodeBlock cb) { cb.cmp(X86Opnd(RAX), X86Opnd(2)); },
+        delegate void (ASMBlock cb) { cb.cmp(X86Opnd(RAX), X86Opnd(2)); },
         "4883F802"
     );   
 
@@ -374,7 +374,15 @@ unittest
         delegate void (Assembler a) { auto l = a.label("foo"); a.instr(JO, l); },
         "70FE"
     );
+    */
 
+    // jmp
+    test(
+        delegate void (ASMBlock cb) { cb.jmp(X86Opnd(R12)); },
+        "41FFE4"
+    );
+
+    /*
     // lea
     test(
         delegate void (Assembler a) {a.instr(LEA, EBX, new X86Mem(32, ESP, 4)); },
@@ -773,23 +781,23 @@ unittest
 
     // push
     test(
-        delegate void (CodeBlock cb) { cb.push(RAX); },
+        delegate void (ASMBlock cb) { cb.push(RAX); },
         "50"
     );
     test(
-        delegate void (CodeBlock cb) { cb.push(RBX); },
+        delegate void (ASMBlock cb) { cb.push(RBX); },
         "53"
     );
     /*
     test(
-        delegate void (CodeBlock cb) { cb.push(1); },
+        delegate void (ASMBlock cb) { cb.push(1); },
         "6A01"
     );
     */
 
     // ret
     test(
-        delegate void (CodeBlock cb) { cb.ret(); },
+        delegate void (ASMBlock cb) { cb.ret(); },
         "C3"
     );
     /*

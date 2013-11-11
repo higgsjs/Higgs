@@ -140,6 +140,24 @@ class CodeGenState
     }
 }
 
+/**
+Basic-block version
+*/
+class BlockVersion
+{
+    static const size_t MAX_TARGETS = 2;
+
+    /// Associated code generation state
+    CodeGenState state;
+
+
+    // TODO: code indices
+
+
+
+
+
+}
 
 
 

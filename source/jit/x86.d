@@ -955,9 +955,7 @@ alias writeRMMulti!(
 //Enc(opnds=['rel32'], opcode=[0xE8]),
 //void call(Assembler as, BlockVersion???);
 
-/**
-Indirect call with an R/M operand
-*/
+/// Indirect call with an R/M operand
 void call(CodeBlock cb, X86Opnd opnd)
 {
     cb.writeASM("call", opnd);
@@ -991,25 +989,35 @@ Enc(opnds=['r32', 'r/m32', 'imm32'], opcode=[0x69]),
 Enc(opnds=['r64', 'r/m64', 'imm32'], opcode=[0x69]),
 */
 
+/// Relative jump to a label
+void jmp(ASMBlock cb, Label label)
+{
+    cb.writeASM("jmp", label);
 
+    // Write the opcode
+    cb.writeByte(0xE9);
 
+    // Add a reference to the label
+    cb.addLabelRef(label);
 
-// TODO: jmp
+    // Relative 32-bit offset to be patched
+    cb.writeInt(0, 32);
+}
+
+// TODO
 /*
-# Jump relative near
-Enc(opnds=['rel8'], opcode=[0xEB]),
-Enc(opnds=['rel32'], opcode=[0xE9]),
 # Jump absolute near
 Enc(opnds=['r/m64'], opcode=[0xFF], opExt=4),
 */
 
+/// Indirect jump near to an R/M operand
+void jmp(CodeBlock cb, X86Opnd opnd)
+{
+    cb.writeASM("jmp", opnd);
+    cb.writeRMInstr!('l', 4, 0xFF)(false, false, opnd, X86Opnd.NONE);
+}
+
 // TODO: relative jumps, jmp, jcc
-
-
-
-
-
-
 
 // TODO: mov
 /*
