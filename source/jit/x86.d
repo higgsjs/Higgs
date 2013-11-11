@@ -844,6 +844,12 @@ void writeRMMulti(
 )
 (CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 {
+    // Write a disassembly string
+    if (!opnd1.isNone)
+        cb.writeASM(mnem, opnd0, opnd1);
+    else
+        cb.writeASM(mnem, opnd0);
+
     // Check the size of opnd0
     size_t opndSize;
     if (opnd0.isReg)
@@ -939,7 +945,7 @@ alias writeRMMulti!(
     0x22, // opRegMem8
     0x23, // opRegMemPref
     0x80, // opMemImm8
-    0x83, // opMemImmLrg
+    0x83, // opMemImmSml
     0x81, // opMemImmLrg
     0x04  // opExtImm
 ) and;
@@ -954,38 +960,22 @@ Indirect call with an R/M operand
 */
 void call(CodeBlock cb, X86Opnd opnd)
 {
+    cb.writeASM("call", opnd);
     cb.writeRMInstr!('l', 2, 0xFF)(false, false, opnd, X86Opnd.NONE);
 }
 
-
-
-
-// TODO: cmp
-/*
-Enc(opnds=['al', 'imm8'], opcode=[0x3C]),
-Enc(opnds=['ax', 'imm16'], opcode=[0x3D]),
-Enc(opnds=['eax', 'imm32'], opcode=[0x3D]),
-Enc(opnds=['rax', 'imm32'], opcode=[0x3D]),
-Enc(opnds=['r/m8', 'imm8'], opcode=[0x80], opExt=7),
-Enc(opnds=['r/m16', 'imm16'], opcode=[0x81], opExt=7),
-Enc(opnds=['r/m32', 'imm32'], opcode=[0x81], opExt=7),
-Enc(opnds=['r/m64', 'imm32'], opcode=[0x81], opExt=7),
-Enc(opnds=['r/m16', 'imm8'], opcode=[0x83], opExt=7),
-Enc(opnds=['r/m32', 'imm8'], opcode=[0x83], opExt=7),
-Enc(opnds=['r/m64', 'imm8'], opcode=[0x83], opExt=7),
-Enc(opnds=['r/m8', 'r8'], opcode=[0x38]),
-Enc(opnds=['r/m16', 'r16'], opcode=[0x39]),
-Enc(opnds=['r/m32', 'r32'], opcode=[0x39]),
-Enc(opnds=['r/m64', 'r64'], opcode=[0x39]),
-Enc(opnds=['r8', 'r/m8'], opcode=[0x3A]),
-Enc(opnds=['r16', 'r/m16'], opcode=[0x3B]),
-Enc(opnds=['r32', 'r/m32'], opcode=[0x3B]),
-Enc(opnds=['r64', 'r/m64'], opcode=[0x3B]),
-*/
-
-
-
-
+/// Compare and set flags
+alias writeRMMulti!(
+    "cmp",
+    0x38, // opMemReg8
+    0x39, // opMemRegPref
+    0x3A, // opRegMem8
+    0x3B, // opRegMemPref
+    0x80, // opMemImm8
+    0x83, // opMemImmSml
+    0x81, // opMemImmLrg
+    0x07  // opExtImm
+) cmp;
 
 // TODO: imul, 
 // Signed integer multiply
@@ -1047,15 +1037,12 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
 }
 */
 
-
-
-
-
-
-
 /// Noop, one or multiple bytes long
 void nop(CodeBlock cb, size_t length = 1)
 {
+    if (length > 0)
+        cb.writeASM("nop" ~ to!string(length));
+
     switch (length)
     {
         case 0:
@@ -1129,6 +1116,9 @@ Op(
 void push(CodeBlock cb, X86Reg reg)
 {
     assert (reg.size is 64);
+
+    cb.writeASM("push", reg); 
+
     if (reg.rexNeeded)
         cb.writeREX(false, reg.regNo);
     cb.writeOpcode(0x50, reg);
@@ -1138,6 +1128,9 @@ void push(CodeBlock cb, X86Reg reg)
 void pop(CodeBlock cb, X86Reg reg)
 {
     assert (reg.size is 64);
+
+    cb.writeASM("pop", reg);
+
     if (reg.rexNeeded)
         cb.writeREX(false, reg.regNo);
     cb.writeOpcode(0x58, reg);
@@ -1146,11 +1139,9 @@ void pop(CodeBlock cb, X86Reg reg)
 /// Return from call, popping only the return address
 void ret(CodeBlock cb)
 {
+    cb.writeASM("ret");
     cb.writeByte(0xC3);
 }
-
-
-
 
 // TODO: sub
 /*
@@ -1174,9 +1165,6 @@ Enc(opnds=['r16', 'r/m16'], opcode=[0x2B]),
 Enc(opnds=['r32', 'r/m32'], opcode=[0x2B]),
 Enc(opnds=['r64', 'r/m64'], opcode=[0x2B]),
 */
-
-
-
 
 // TODO
 /*

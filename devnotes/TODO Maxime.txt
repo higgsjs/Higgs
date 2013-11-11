@@ -55,17 +55,31 @@ TODO: work on mu-assembler
 TODO: sketch BlockVersion class
 - state
 
-TODO: should also have option to record assembly strings
+TODO: support for labels in assembler
+- Write code in the code block
+- Write empty patchable gap for address
+- Store label ref in a list in the assembler object
+- Need linkage pass to match refs to labels in table
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: should also have option to record assembly strings
 - Maybe this should be at the code block level
 - Allows carrying over when writing code block
 - Store pairs of indices and strings
-
-
-
-
-
-
-
+- Have some asmComment function that checks for jit_dumpasm
+  - Should take mnem and args as params
+  - Could have 4 versions for different arities (0,1,2,3)
+    - Template that, yo
+  - Should also disable if not in debug mode
 
 [DONE] TODO: template encoding of add for sub/cmp/or/xor/etc
 

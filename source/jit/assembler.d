@@ -45,7 +45,10 @@ import std.stdio;
 import std.array;
 import std.stdint;
 import std.string;
+import std.conv;
 import std.array;
+import std.range;
+import std.typecons;
 import util.string;
 import jit.x86;
 
@@ -64,10 +67,14 @@ class CodeBlock
     /// Current writing position
     private size_t writePos;
 
-    /// Exported labels in this block
-    private size_t exports[string];
+    /// Disassembly/comment strings
+    alias Tuple!(size_t, "pos", string, "str") CommentStr;
+    private CommentStr[] strings;
 
-    this(size_t size)
+    /// Flag to enable or disable comments
+    private bool hasComments;
+
+    this(size_t size, bool hasComments = false)
     {
         assert (
             size > 0,
@@ -94,6 +101,8 @@ class CodeBlock
         this.size = size;
 
         this.writePos = 0;
+
+        this.hasComments = hasComments;
     }
 
     ~this()
@@ -113,14 +122,53 @@ class CodeBlock
     {
         auto app = appender!string();
 
-        for (size_t i = 0; i < this.writePos; ++i)
+        // If there are comment/disassembly strings
+        if (strings.length > 0)
         {
-            auto b = this.memBlock[i];
+            size_t curPos = 0;
+            string line = "";
 
-            if (i != 0)
-                app.put(' ');
+            // For each string
+            foreach (strIdx, str; strings)
+            {
+                // Start a new line for this string
+                line = str.str;
 
-            app.put(format("%02X", b));
+                auto nextStrPos = (strIdx < strings.length - 1)? strings[strIdx+1].pos:this.writePos;
+
+                // If the next string is past the current position
+                if (nextStrPos > curPos)
+                {
+                    // Add padding space before the hex printout
+                    line = rightPadStr(line, " ", 40);
+
+                    // Print all the bytes until the next string
+                    for (; curPos < nextStrPos; ++curPos)
+                        line ~= format("%02X", this.memBlock[curPos]);
+                }
+
+                // Write the current line
+                app.put(line);
+
+                // If we are past the current write position, stop
+                if (curPos >= this.writePos)
+                    break;
+
+                app.put("\n");
+            }
+        }
+        else
+        {
+            // Produce a raw dump of the binary data
+            for (size_t i = 0; i < this.writePos; ++i)
+            {
+                auto b = this.memBlock[i];
+
+                if (i != 0)
+                    app.put(' ');
+
+                app.put(format("%02X", b));
+            }
         }
 
         return app.data;
@@ -227,6 +275,58 @@ class CodeBlock
     }
 
     /**
+    Write a disassembly/comment string at the current position
+    */
+    void writeStr(string str)
+    {
+        auto newStr = CommentStr(writePos, str);
+
+        if (strings.length is 0 || strings[$-1].pos <= writePos)
+        {
+            strings ~= newStr;
+        }
+        else
+        {
+            // Replace other strings of equal position by the new string
+            auto r = assumeSorted!"a.pos < b.pos"(strings).trisect(newStr);
+            //auto newRange = assumeSorted!"a.pos < b.pos"([newStr]);
+            strings = r[0].release() ~ newStr ~ r[2].release();
+        }
+    }
+
+    /**
+    Write a comment string. Does nothing if ASM dump is not enabled.
+    */
+    void writeComment(string str)
+    {
+        if (!hasComments)
+            return;
+
+        return writeStr(str);
+    }
+
+    /**
+    Write a formatted disassembly string
+    */
+    void writeASM(T...)(string mnem, T args)
+    {
+        if (!hasComments)
+            return;
+
+        auto str = mnem;
+
+        foreach (argIdx, arg; args)
+        {
+            str ~= (argIdx > 0)? ", ":" ";
+            str ~= arg.toString();
+        }
+
+        str ~= ";";
+
+        return writeStr(str);
+    }
+
+    /**
     Write the contents of another code block at the given position
     */
     void writeBlock(CodeBlock cb)
@@ -236,9 +336,21 @@ class CodeBlock
             "cannot write code block, size too large"
         );
 
+        // If the other block has comment strings
+        if (cb.strings.length > 0)
+        {
+            // Get the strings that come before and after the other block's
+            auto range = assumeSorted!"a.pos < b.pos"(strings);
+            auto lower = range.lowerBound(cb.strings.front);
+            auto upper = range.lowerBound(cb.strings.back);
+
+            // Insert the block's strings in between
+            strings = lower.release() ~ cb.strings ~ upper.release();
+        }
+
         // Copy the bytes from the other code block
         this.memBlock[this.writePos..this.writePos+cb.size] = cb.memBlock[0..cb.size];
-        this.writePos += cb.size;        
+        this.writePos += cb.size;   
     }
 
     /**
@@ -259,50 +371,48 @@ Block internal label enumeration
 */
 enum Label : uint32_t
 {
-    // TODO
+    LOOP,
     DONE
 }
 
 /**
 Micro-assembler for code generation
-
-TODO: wait until closer to generating actual machine code
-Not clear how this will integrate with BlockVersion, etc.
-What we mostly want from this is temporary code block objects,
-list of label refs and addresses
 */
 class Assembler
 {
-
-    // TODO: label addresses table
-
-
-    // TODO: label refs list
-    // position + label pair
-    //LabelRef LabelRefs[]
-
-
-
-
-    // TODO: branch descriptions
-
-    // TODO: target blocks/versions
-
     /// Inner instruction code
     CodeBlock code;
 
     /// Edge transition move code
     CodeBlock moves[2];
 
+    // TODO: branch descriptions
 
+    // TODO: target blocks/versions
 
+    // TODO: label addresses table
+
+    // TODO: label refs list
+    // position + label pair
+    //LabelRef LabelRefs[]
+
+    this()
+    {
+        clear();
+    }
+
+    /**
+    Clear the contents of the assembler
+    */
+    void clear()
+    {
+        // TODO
+    }
+
+    // TODO: linkage pass method
 
     // TODO: method to copy into a code block and finalize into a BlockVersion
     // Must store offsets + length, etc
     // Must write to code block
-
-
-
-
 }
 

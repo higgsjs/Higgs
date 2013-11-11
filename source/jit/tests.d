@@ -78,7 +78,7 @@ unittest
         }
 
         // Generate the code to a machine code block
-        auto codeBlock = new CodeBlock(numBytes);
+        auto codeBlock = new CodeBlock(numBytes, true);
         codeFunc(codeBlock);
 
         // Report an encoding error
@@ -86,9 +86,7 @@ unittest
         {
             throw new Error(
                 format(
-                    "invalid encoding\n" ~
-                    // TODO: list disassembly here
-                    "produced:\n" ~
+                    "invalid encoding, produced:\n" ~
                     "%s (%s bytes)\n" ~
                     "expected:\n" ~
                     "%s (%s bytes)\n",
@@ -240,27 +238,27 @@ unittest
         "0F4E742404", 
         "670F4E742404"
     );
+    */
 
     // cmp
     test(
-        delegate void (Assembler a) { a.instr(CMP, CL, DL); },
+        delegate void (CodeBlock cb) { cb.cmp(X86Opnd(CL), X86Opnd(DL)); },
         "38D1"
     );   
     test(
-        delegate void (Assembler a) { a.instr(CMP, ECX, EDI); },
+        delegate void (CodeBlock cb) { cb.cmp(X86Opnd(ECX), X86Opnd(EDI)); },
         "39F9"
     );   
     test(
-        delegate void (Assembler a) { a.instr(CMP, RDX, new X86Mem(64, R12)); },
-        "",
+        delegate void (CodeBlock cb) { cb.cmp(X86Opnd(RDX), X86Opnd(64, R12)); },
         "493B1424"
     );
     test(
-        delegate void (Assembler a) { a.instr(CMP, RAX, 2); },
-        "",
+        delegate void (CodeBlock cb) { cb.cmp(X86Opnd(RAX), X86Opnd(2)); },
         "4883F802"
     );   
 
+    /*
     // cqo
     test(
         delegate void (Assembler a) { a.instr(CQO); },
