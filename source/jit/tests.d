@@ -312,28 +312,35 @@ unittest
         "",
         "DD5C24F0"
     );
+    */
 
     // imul
     test(
-        delegate void (ASMBlock cb) { cb.instr(IMUL, EDX, ECX); },
+        delegate void (ASMBlock cb) { cb.imul(X86Opnd(EDX), X86Opnd(ECX)); },
         "0FAFD1"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(IMUL, RSI, RDI); },
-        "",
+        delegate void (ASMBlock cb) { cb.imul(X86Opnd(RSI), X86Opnd(RDI)); },
         "480FAFF7"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(IMUL, R14, R9); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.imul(X86Opnd(R14), X86Opnd(R9)); }, 
         "4D0FAFF1"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(IMUL, EAX, new X86Mem(32, ESP, 8)); },
-        "0FAF442408",
-        "670FAF442408"
+        delegate void (ASMBlock cb) { cb.imul(X86Opnd(EAX), X86Opnd(32, RSP, 8)); },
+        "0FAF442408"
+    );
+    test(
+        delegate void (ASMBlock cb) { cb.imul(X86Opnd(RCX), X86Opnd(RAX), X86Opnd(3)); },
+        "486BC803"
+    );
+    test(
+        delegate void (ASMBlock cb) { cb.imul(X86Opnd(RCX), X86Opnd(RAX), X86Opnd(255)); },
+        "4869C8FF000000"
     );
 
+    /*
     // inc
     test(
         delegate void (ASMBlock cb) { cb.instr(INC, BL); },
@@ -1022,8 +1029,7 @@ unittest
             cb.sub(X86Opnd(RAX), X86Opnd(RBX)); // a = -1
 
             cb.mov(RDX, -2);                    // d = -2
-            // TODO: implement imul
-            //cb.imul(X86Opnd(RDX), X86Opnd(RAX));// d = 2
+            cb.imul(X86Opnd(RDX), X86Opnd(RAX));// d = 2
 
             cb.mov(RAX, RDX);                   // a = 2
 

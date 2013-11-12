@@ -750,6 +750,7 @@ void writeRMInstr(
     }
     else
     {
+        // FIXME
         if (rmOpndM.dispSize == 0/* || rmOpndM.baseRegNo == RIP.regNo*/)
             mod = 0;
         else if (rmOpndM.dispSize == 8)
@@ -777,6 +778,7 @@ void writeRMInstr(
     {
         if (sibNeeded)
             rm = 4;
+        // FIXME
         /*else if (rmOpndM.baseRegNo == RIP.regNo)
             rm = 5;*/
         else
@@ -1061,19 +1063,69 @@ void cqo(CodeBlock cb)
     cb.writeBytes(0x48, 0x99);
 }
 
-// TODO: imul, 
-// Signed integer multiply
-/*
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0xAF]),
-Enc(opnds=['r32', 'r/m32'], opcode=[0x0F, 0xAF]),
-Enc(opnds=['r64', 'r/m64'], opcode=[0x0F, 0xAF]),
-Enc(opnds=['r16', 'r/m16', 'imm8'], opcode=[0x6B]),
-Enc(opnds=['r32', 'r/m32', 'imm8'], opcode=[0x6B]),
-Enc(opnds=['r64', 'r/m64', 'imm8'], opcode=[0x6B]),
-Enc(opnds=['r16', 'r/m16', 'imm16'], opcode=[0x69]),
-Enc(opnds=['r32', 'r/m32', 'imm32'], opcode=[0x69]),
-Enc(opnds=['r64', 'r/m64', 'imm32'], opcode=[0x69]),
-*/
+/// imul - Signed integer multiplication with two operands
+void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+{
+    cb.writeASM("imul", opnd0, opnd1);
+
+    assert (opnd0.isReg, "invalid first operand");
+    auto opndSize = opnd0.reg.size;
+
+    // Check the size of opnd1
+    if (opnd1.isReg)
+        assert (opnd1.reg.size is opndSize, "operand size mismatch");
+    else if (opnd1.isMem)
+        assert (opnd1.mem.size is opndSize, "operand size mismatch");
+
+    assert (opndSize is 16 || opndSize is 32 || opndSize is 64);
+    auto szPref = opndSize is 16;
+    auto rexW = opndSize is 64;
+
+    cb.writeRMInstr!('r', 0xFF, 0x0F, 0xAF)(szPref, rexW, opnd0, opnd1);
+}
+
+/// imul - Signed integer multiplication with three operands (one immediate)
+void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
+{
+    cb.writeASM("imul", opnd0, opnd1);
+
+    assert (opnd0.isReg, "invalid first operand");
+    auto opndSize = opnd0.reg.size;
+
+    // Check the size of opnd1
+    if (opnd1.isReg)
+        assert (opnd1.reg.size is opndSize, "operand size mismatch");
+    else if (opnd1.isMem)
+        assert (opnd1.mem.size is opndSize, "operand size mismatch");
+
+    assert (opndSize is 16 || opndSize is 32 || opndSize is 64);
+    auto szPref = opndSize is 16;
+    auto rexW = opndSize is 64;
+
+    assert (opnd2.isImm, "invalid third operand");
+    auto imm = opnd2.imm;
+
+    // 8-bit immediate
+    if (imm.immSize <= 8)
+    {
+        cb.writeRMInstr!('r', 0xFF, 0x6B)(szPref, rexW, opnd0, opnd1);
+        cb.writeInt(imm.imm, 8);
+    }
+
+    // 32-bit immediate
+    else if (imm.immSize <= 32)
+    {
+        assert (imm.immSize <= opndSize, "immediate too large for dst");
+        cb.writeRMInstr!('r', 0xFF, 0x69)(szPref, rexW, opnd0, opnd1);
+        cb.writeInt(imm.imm, min(opndSize, 32));
+    }
+
+    // Immediate too large
+    else
+    {
+        assert (false, "immediate value too large");
+    }
+}
 
 /**
 Encode a relative jump to a label (direct or conditional)
@@ -1094,39 +1146,17 @@ void writeJcc(string mnem, opcode...)(ASMBlock cb, Label label)
 }
 
 /// jcc - Conditional relative jump to a label
-alias writeJcc!("ja", 0x0F, 0x87) ja;
+alias writeJcc!("ja" , 0x0F, 0x87) ja;
 alias writeJcc!("jae", 0x0F, 0x83) jae;
-alias writeJcc!("jb", 0x0F, 0x82) jb;
+alias writeJcc!("jb" , 0x0F, 0x82) jb;
 alias writeJcc!("jbe", 0x0F, 0x86) jbe;
-/*
-Op(
-    'jc',
-    Enc(opnds=['rel8'], opcode=[0x72]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x82]),
-),
-Op(
-    'je',
-    Enc(opnds=['rel8'], opcode=[0x74]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x84]),
-),
-Op(
-    'jg',
-    Enc(opnds=['rel8'], opcode=[0x7F]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8F]),
-),
-*/
+alias writeJcc!("jc" , 0x0F, 0x82) jc;
+alias writeJcc!("je" , 0x0F, 0x84) je;
+alias writeJcc!("jg" , 0x0F, 0x8F) jg;
 alias writeJcc!("jge", 0x0F, 0x8D) jge;
+alias writeJcc!("jl" , 0x0F, 0x8C) jl;
+alias writeJcc!("jle", 0x0F, 0x8E) jle;
 /*
-Op(
-    'jl',
-    Enc(opnds=['rel8'], opcode=[0x7C]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8C]),
-),
-Op(
-    'jle',
-    Enc(opnds=['rel8'], opcode=[0x7E]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8E]),
-),
 Op(
     'jna',
     Enc(opnds=['rel8'], opcode=[0x76]),
@@ -1179,56 +1209,15 @@ Op(
 ),
 */
 alias writeJcc!("jno", 0x0F, 0x81) jno;
-/*
-Op(
-    'jnp',
-    Enc(opnds=['rel8'], opcode=[0x7B]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8b]),
-),
-Op(
-    'jns',
-    Enc(opnds=['rel8'], opcode=[0x79]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x89]),
-),
-Op(
-    'jnz',
-    Enc(opnds=['rel8'], opcode=[0x75]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x85]),
-),
-Op(
-    'jo',
-    Enc(opnds=['rel8'], opcode=[0x70]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x80]),
-),
-*/
-alias writeJcc!("jo", 0x0F, 0x80) jo;
-/*
-Op(
-    'jp',
-    Enc(opnds=['rel8'], opcode=[0x7A]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8A]),
-),
-Op(
-    'jpe',
-    Enc(opnds=['rel8'], opcode=[0x7A]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8A]),
-),
-Op(
-    'jpo',
-    Enc(opnds=['rel8'], opcode=[0x7B]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8B]),
-),
-Op(
-    'js',
-    Enc(opnds=['rel8'], opcode=[0x78]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x88]),
-),
-Op(
-    'jz',
-    Enc(opnds=['rel8'], opcode=[0x74]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x84]),
-),
-*/
+alias writeJcc!("jnp", 0x0F, 0x8b) jnp;
+alias writeJcc!("jns", 0x0F, 0x89) jns;
+alias writeJcc!("jnz", 0x0F, 0x85) jnz;
+alias writeJcc!("jo" , 0x0F, 0x80) jo;
+alias writeJcc!("jp" , 0x0F, 0x8A) jp;
+alias writeJcc!("jpe", 0x0F, 0x8A) jpe;
+alias writeJcc!("jpo", 0x0F, 0x8B) jpo;
+alias writeJcc!("js" , 0x0F, 0x88) js;
+alias writeJcc!("jz" , 0x0F, 0x84) jz;
 
 /// jmp - Direct relative jump to label
 alias writeJcc!("jmp", 0xE9) jmp;

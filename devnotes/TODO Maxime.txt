@@ -41,31 +41,37 @@ First milestone: no interp, basic incremental codegen
 - Stubs
 - Bump alloc ptr for code, no code compaction
 
-TODO: stub generation
-
 TODO: Executable memory management
-- Interp class owns executable chunk?
+- Interp class owns executable chunk, CodeBlock?
 
 TODO: genBranchEdge(edge, predState)
 
+TODO: stub generation
+- stubs call the JIT with their state object
+  - or with BlockVersion object?
+
 TODO: begin sketching compile(block, state)
 
-TODO: sketch BlockVersion class
-- state
-- what else? see notes
+TODO: sketch BlockVersion class in jit.d
+- Block this is associated to
+- CodeGenCtx at block entry
+- Current address in executable memory
+- Use offsets+len into executable chunk, not separate allocated byte vectors
+  for code, moves
+- Final branches and associated moves
+  - May need to be specific about what conditional branches are testing?
+- Pointers to version entries of successors
 
-TODO: code block, remSpace function, or hasSpace(n)?
-
-TODO: imul encoding
-
-
-
-
-
-
+TODO: hasSpace(n) function?
 
 
 
+
+
+
+
+
+[DONE] TODO: imul encoding
 
 [DONE] TODO: begin testing code execution
 

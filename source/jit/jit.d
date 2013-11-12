@@ -101,6 +101,7 @@ class CodeGenState
     /// Code generation context object
     CodeGenCtx ctx;
 
+    // TODO: use X86Opnd directly for this?
     /// Live value to register/slot mapping
     private AllocState[IRDstValue] allocMap;
 
