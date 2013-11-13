@@ -75,7 +75,13 @@ class CodeGenCtx
     IRFunction fun;
 }
 
-// TODO: revise
+
+
+
+// TODO: use a struct with methods for this?
+// TODO: combine allocMap + typeMap? Might be simpler!
+
+
 /// Register allocation information value
 alias uint16_t AllocState;
 const AllocState RA_STACK = (1 << 7);
@@ -92,6 +98,10 @@ const TypeState TF_BOOL_TRUE = (1 << 5);
 const TypeState TF_BOOL_FALSE = (1 << 4);
 const TypeState TF_TYPE_MASK = (0xF);
 
+
+
+
+
 /**
 Current code generation state. This includes register
 allocation state and known type information.
@@ -101,7 +111,7 @@ class CodeGenState
     /// Code generation context object
     CodeGenCtx ctx;
 
-    // TODO: use X86Opnd directly for this?
+    // TODO: use X86Opnd directly for this? That would be bigger
     /// Live value to register/slot mapping
     private AllocState[IRDstValue] allocMap;
 
@@ -142,23 +152,45 @@ class CodeGenState
 }
 
 /**
-Basic-block version
+Base class for basic block versions
 */
 class BlockVersion
 {
+    /// Maximum number of branch targets
     static const size_t MAX_TARGETS = 2;
 
-    /// Associated code generation state
+    /// Code generation state at block entry
     CodeGenState state;
 
-
-    // TODO: code indices
-
-
-
-
-
+    /// Starting index in the executable code block
+    size_t startIdx;
 }
+
+/**
+Stubbed block version
+*/
+class VersionStub : BlockVersion
+{
+    // Compiled instance (initially null, non-null if stub patched)
+    VersionInst inst = null;
+}
+
+/**
+Compiled block version instance
+*/
+class VersionInst : BlockVersion
+{
+    // TODO: final branch descriptors (see Assembler object)
+    //branch descs, move code idxs
+
+    // TODO: move code idxs
+
+    // TODO: target BlockVersions
+    BlockVersion targets[MAX_TARGETS];
+}
+
+
+
 
 
 

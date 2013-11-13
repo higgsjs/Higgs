@@ -47,22 +47,26 @@ TODO: Executable memory management
 TODO: genBranchEdge(edge, predState)
 
 TODO: stub generation
-- stubs call the JIT with their state object
-  - or with BlockVersion object?
+- stubs call the JIT with block and state object ptrs
+- Need special class for stubs
 
 TODO: begin sketching compile(block, state)
+- Probably should start with all values always on the stack
+
+TODO: rename Interp to VM?
+- Also add execHeap, blockVersions fields
+
+TODO: CodeBlock, hasSpace(n) function?
 
 TODO: sketch BlockVersion class in jit.d
-- Block this is associated to
-- CodeGenCtx at block entry
-- Current address in executable memory
-- Use offsets+len into executable chunk, not separate allocated byte vectors
-  for code, moves
-- Final branches and associated moves
-  - May need to be specific about what conditional branches are testing?
-- Pointers to version entries of successors
+- BlockVersion: block, state, startIdx
+  - state at entry
+- VersionStub: no length, instance ref
+- VersionInst: branch descs, move code idxs
+  - Final branches and associated moves
+  - May need to be specific about what conditional branches are testing
+  - Target BlockVersion objs
 
-TODO: hasSpace(n) function?
 
 
 

@@ -1156,58 +1156,16 @@ alias writeJcc!("jg" , 0x0F, 0x8F) jg;
 alias writeJcc!("jge", 0x0F, 0x8D) jge;
 alias writeJcc!("jl" , 0x0F, 0x8C) jl;
 alias writeJcc!("jle", 0x0F, 0x8E) jle;
-/*
-Op(
-    'jna',
-    Enc(opnds=['rel8'], opcode=[0x76]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x86]),
-),
-Op(
-    'jnae',
-    Enc(opnds=['rel8'], opcode=[0x72]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x82]),
-),
-Op(
-    'jnb',
-    Enc(opnds=['rel8'], opcode=[0x73]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x83]),
-),
-Op(
-    'jnbe',
-    Enc(opnds=['rel8'], opcode=[0x77]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x87]),
-),
-Op(
-    'jnc',
-    Enc(opnds=['rel8'], opcode=[0x73]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x83]),
-),
-Op(
-    'jne',
-    Enc(opnds=['rel8'], opcode=[0x75]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x85]),
-),
-Op(
-    'jng',
-    Enc(opnds=['rel8'], opcode=[0x7E]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8E]),
-),
-Op(
-    'jnge',
-    Enc(opnds=['rel8'], opcode=[0x7C]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8C]),
-),
-Op(
-    'jnl',
-    Enc(opnds=['rel8'], opcode=[0x7D]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8D]),
-),
-Op(
-    'jnle',
-    Enc(opnds=['rel8'], opcode=[0x7F]),
-    Enc(opnds=['rel32'], opcode=[0x0F, 0x8F]),
-),
-*/
+alias writeJcc!("jna" , 0x0F, 0x86) jna;
+alias writeJcc!("jnae", 0x0F, 0x82) jnae;
+alias writeJcc!("jnb" , 0x0F, 0x83) jnb;
+alias writeJcc!("jnbe", 0x0F, 0x87) jnbe;
+alias writeJcc!("jnc" , 0x0F, 0x83) jnc;
+alias writeJcc!("jne" , 0x0F, 0x85) jne;
+alias writeJcc!("jng" , 0x0F, 0x8E) jng;
+alias writeJcc!("jnge", 0x0F, 0x8C) jnge;
+alias writeJcc!("jnl" , 0x0F, 0x8D) jnl;
+alias writeJcc!("jnle", 0x0F, 0x8F) jnle;
 alias writeJcc!("jno", 0x0F, 0x81) jno;
 alias writeJcc!("jnp", 0x0F, 0x8b) jnp;
 alias writeJcc!("jns", 0x0F, 0x89) jns;
