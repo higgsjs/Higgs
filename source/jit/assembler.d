@@ -354,7 +354,9 @@ Block internal label enumeration
 enum Label : size_t
 {
     LOOP,
-    DONE
+    DONE,
+    FUN1,
+    FUN2
 }
 
 /**
@@ -395,7 +397,7 @@ class ASMBlock : CodeBlock
     {
         super.clear();
 
-        for (auto label = Label.min; label < Label.max; ++label)
+        for (auto label = Label.min; label <= Label.max; ++label)
             labelAddrs[label] = size_t.max;
 
         labelRefs = [];
@@ -438,7 +440,15 @@ class ASMBlock : CodeBlock
     */
     Label label(Label label)
     {
-        assert (labelAddrs[label] is size_t.max);
+        auto labelAddr = labelAddrs[label];
+
+        assert (
+            labelAddr is size_t.max,
+            "label \"" ~ to!string(label) ~ 
+            "\" already defined at position " ~
+            to!string(labelAddr)
+        );
+
         labelAddrs[label] = getWritePos();
         return label;
     }

@@ -999,6 +999,21 @@ alias writeRMMulti!(
 //Enc(opnds=['rel32'], opcode=[0xE8]),
 //void call(Assembler as, BlockVersion???);
 
+/// call - Call to label with 32-bit offset
+void call(ASMBlock cb, Label label)
+{
+    cb.writeASM("call", label);
+
+    // Write the opcode
+    cb.writeByte(0xE8);
+
+    // Add a reference to the label
+    cb.addLabelRef(label);
+
+    // Relative 32-bit offset to be patched
+    cb.writeInt(0, 32);
+}
+
 /// call - Indirect call with an R/M operand
 void call(ASMBlock cb, X86Opnd opnd)
 {

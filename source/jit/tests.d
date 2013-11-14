@@ -1016,43 +1016,43 @@ unittest
         -3
     );
     
-    /*
     // fib(20), function calls
     test(
         delegate void (ASMBlock cb)
         {
-            auto COMP = new Label("COMP");
-            auto FIB  = new Label("FIB");
+            auto COMP = Label.FUN1;
+            auto FIB  = Label.FUN2;
 
             cb.push(RBX);
-            cb.mov(RAX, 20);
-            cb.instr(CALL, FIB);
+            cb.mov(X86Opnd(RAX), X86Opnd(20));
+            cb.call(FIB);
             cb.pop(RBX);
-            cb.instr(RET);
+            cb.ret();
 
             // FIB
-            cb.addInstr(FIB);
-            cb.instr(CMP, RAX, 2);
-            cb.instr(JGE, COMP);
-            cb.instr(RET);
+            cb.label(FIB);
+            cb.cmp(X86Opnd(RAX), X86Opnd(2));
+            cb.jge(COMP);
+            cb.ret();
 
             // COMP
-            cb.addInstr(COMP);
-            cb.push(RAX);     // store n
-            cb.instr(SUB, RAX, 1);   // RAX = n-1
-            cb.instr(CALL, FIB);     // fib(n-1)
-            cb.mov(RBX, RAX); // RAX = fib(n-1)
-            cb.pop(RAX);      // RAX = n
-            cb.push(RBX);     // store fib(n-1)
-            cb.instr(SUB, RAX, 2);   // RAX = n-2
-            cb.instr(CALL, FIB);     // fib(n-2)
-            cb.pop(RBX);            // RBX = fib(n-1)
-            cb.instr(ADD, RAX, RBX); // RAX = fib(n-2) + fib(n-1)
-            cb.instr(RET);
+            cb.label(COMP);
+            cb.push(RAX);                       // store n
+            cb.sub(X86Opnd(RAX), X86Opnd(1));   // RAX = n-1
+            cb.call(FIB);                       // fib(n-1)
+            cb.mov(X86Opnd(RBX), X86Opnd(RAX)); // RAX = fib(n-1)
+            cb.pop(RAX);                        // RAX = n
+            cb.push(RBX);                       // store fib(n-1)
+            cb.sub(X86Opnd(RAX), X86Opnd(2));   // RAX = n-2
+            cb.call(FIB);                       // fib(n-2)
+            cb.pop(RBX);                        // RBX = fib(n-1)
+            cb.add(X86Opnd(RAX), X86Opnd(RBX)); // RAX = fib(n-2) + fib(n-1)
+            cb.ret();
         },
         6765
     );
 
+    /*
     // SSE2 floating-point computation
     test(
         delegate void (ASMBlock cb)
