@@ -1236,7 +1236,7 @@ void mov(ASMBlock cb, X86Opnd dst, X86Opnd src)
     // R/M + Imm
     if (src.isImm)
     {
-        cb.writeASM("mov", dst, src); 
+        cb.writeASM("mov", dst, src);
 
         auto imm = src.imm;
 
@@ -1263,7 +1263,11 @@ void mov(ASMBlock cb, X86Opnd dst, X86Opnd src)
             auto dstSize = dst.reg.size;
             assert (imm.immSize <= dstSize);
 
-            cb.writeRMInstr!('l', 0, 0xC7)(dstSize is 16, dstSize is 64, dst, X86Opnd.NONE);
+            if (dstSize is 8)
+                cb.writeRMInstr!('l', 0xFF, 0xC6)(false, false, dst, X86Opnd.NONE);
+            else
+                cb.writeRMInstr!('l', 0, 0xC7)(dstSize is 16, dstSize is 64, dst, X86Opnd.NONE);
+
             cb.writeInt(imm.imm, min(dstSize, 32));
         }
 
@@ -1300,6 +1304,80 @@ void mov(ASMBlock cb, X86Reg dst, X86Reg src)
 {
     // TODO: more optimized code for this case
     cb.mov(X86Opnd(dst), X86Opnd(src));
+}
+
+/// movsx - Move with sign extension
+void movsx(ASMBlock cb, X86Opnd dst, X86Opnd src)
+{
+    cb.writeASM("movsx", dst, src);
+
+    size_t dstSize;
+    if (dst.isReg)
+        dstSize = dst.reg.size;
+    else
+        assert (false);
+
+    size_t srcSize;
+    if (src.isReg)
+        srcSize = src.reg.size;
+    else if (src.isMem)
+        srcSize = src.mem.size;
+    else
+        assert (false);
+
+    assert (srcSize < dstSize);
+
+    if (srcSize is 8)
+    {
+        cb.writeRMInstr!('r', 0xFF, 0x0F, 0xBE)(dstSize is 16, dstSize is 64, dst, src);
+    }
+    else if (srcSize is 16)
+    {
+        cb.writeRMInstr!('r', 0xFF, 0x0F, 0xBF)(dstSize is 16, dstSize is 64, dst, src);
+    }
+    else if (srcSize is 32)
+    {
+        cb.writeRMInstr!('r', 0xFF, 0x063)(false, true, dst, src);
+    }
+    else
+    {
+        assert (false);
+    }
+}
+
+/// movzx - Move with zero extension (unsigned)
+void movzx(ASMBlock cb, X86Opnd dst, X86Opnd src)
+{
+    cb.writeASM("movzx", dst, src);
+
+    size_t dstSize;
+    if (dst.isReg)
+        dstSize = dst.reg.size;
+    else
+        assert (false);
+
+    size_t srcSize;
+    if (src.isReg)
+        srcSize = src.reg.size;
+    else if (src.isMem)
+        srcSize = src.mem.size;
+    else
+        assert (false);
+
+    assert (srcSize < dstSize);
+
+    if (srcSize is 8)
+    {
+        cb.writeRMInstr!('r', 0xFF, 0x0F, 0xB6)(dstSize is 16, dstSize is 64, dst, src);
+    }
+    else if (srcSize is 16)
+    {
+        cb.writeRMInstr!('r', 0xFF, 0x0F, 0xB7)(dstSize is 16, dstSize is 64, dst, src);
+    }
+    else
+    {
+        assert (false);
+    }
 }
 
 // mul - Unsigned integer multiply

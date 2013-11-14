@@ -426,6 +426,10 @@ unittest
         delegate void (ASMBlock cb) { cb.mov(X86Opnd(SIL), X86Opnd(11)); },
         "40B60B"
     );
+    test(
+        delegate void (ASMBlock cb) { cb.mov(X86Opnd(8, RSP), X86Opnd(-3)); },
+        "C60424FD"
+    );
 
     /*
     // movapd
@@ -462,36 +466,39 @@ unittest
         ""
         "66480F6EC9"
     );
+    */
 
     // movsx
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSX, AX, AL); },
+        delegate void (ASMBlock cb) { cb.movsx(X86Opnd(AX), X86Opnd(AL)); },
         "660FBEC0"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSX, EDX, AL); },
+        delegate void (ASMBlock cb) { cb.movsx(X86Opnd(EDX), X86Opnd(AL)); },
         "0FBED0"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSX, RAX, BL); },
-        "",
+        delegate void (ASMBlock cb) { cb.movsx(X86Opnd(RAX), X86Opnd(BL)); },
         "480FBEC3"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSX, ECX, AX); },
+        delegate void (ASMBlock cb) { cb.movsx(X86Opnd(ECX), X86Opnd(AX)); },
         "0FBFC8"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSX, R11, CL); },
-        "",
+        delegate void (ASMBlock cb) { cb.movsx(X86Opnd(R11), X86Opnd(CL)); },
         "4C0FBED9"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSXD, R10, new X86Mem(32, ESP, 12)); },
-        "",
-        "674C6354240C"
+        delegate void (ASMBlock cb) { cb.movsx(X86Opnd(R10), X86Opnd(32, RSP, 12)); },
+        "4C6354240C"
+    );
+    test(
+        delegate void (ASMBlock cb) { cb.movsx(X86Opnd(RAX), X86Opnd(8, RSP, 0)); },
+        "480FBE0424"
     );
 
+    /*
     // movupd
     test(
         delegate void (ASMBlock cb) { cb.instr(MOVUPD, XMM7, new X86Mem(128, RSP)); },
@@ -503,39 +510,37 @@ unittest
         "",
         "66440F1149F8"
     );
+    */
 
     // movzx
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVZX, SI, BL); },
+        delegate void (ASMBlock cb) { cb.movzx(X86Opnd(SI), X86Opnd(BL)); },
         "660FB6F3"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVZX, ECX, AL); },
+        delegate void (ASMBlock cb) { cb.movzx(X86Opnd(ECX), X86Opnd(AL)); },
         "0FB6C8"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVZX, EDI, AL); },
+        delegate void (ASMBlock cb) { cb.movzx(X86Opnd(EDI), X86Opnd(AL)); },
         "0FB6F8"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVZX, EBP, AL); },
+        delegate void (ASMBlock cb) { cb.movzx(X86Opnd(EBP), X86Opnd(AL)); },
         "0FB6E8"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVZX, RCX, BL); },
-        "",
+        delegate void (ASMBlock cb) { cb.movzx(X86Opnd(RCX), X86Opnd(BL)); },
         "480FB6CB"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVZX, ECX, AX); },
+        delegate void (ASMBlock cb) { cb.movzx(X86Opnd(ECX), X86Opnd(AX)); },
         "0FB7C8"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVZX, R11, CL); },
-        "",
+        delegate void (ASMBlock cb) { cb.movzx(X86Opnd(R11), X86Opnd(CL)); },
         "4C0FB6D9"
     );
-    */
 
     // mul
     test(
@@ -898,11 +903,14 @@ unittest
         auto execBlock = new ExecBlock(asmBlock.getWritePos());
         execBlock.writeBlock(asmBlock);
 
+        //writeln("\n", execBlock, "\n");
+
         // Execute the generated code
         auto testFun = cast(TestFn)execBlock.getAddress();
         //writefln("calling %s", testFun);
         auto ret = testFun();
-        
+        //writefln("returned");
+
         //writefln("ret: %s", ret);
 
         if (ret != retVal)
@@ -994,21 +1002,21 @@ unittest
         2
     );
 
-    /*
     // Stack manipulation, sign extension
     test(
         delegate void (ASMBlock cb)
         {
-            cb.instr(SUB, RSP, 1);
-            auto sloc = new X86Mem(8, RSP, 0);
-            cb.mov(sloc, -3);
-            cb.instr(MOVSX, RAX, sloc);
-            cb.instr(ADD, RSP, 1);
-            cb.instr(RET);
+            cb.sub(X86Opnd(RSP), X86Opnd(1));
+            auto sloc = X86Opnd(8, RSP, 0);
+            cb.mov(sloc, X86Opnd(-3));
+            cb.movsx(X86Opnd(RAX), sloc);
+            cb.add(X86Opnd(RSP), X86Opnd(1));
+            cb.ret();
         },
         -3
     );
     
+    /*
     // fib(20), function calls
     test(
         delegate void (ASMBlock cb)
