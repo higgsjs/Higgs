@@ -73,6 +73,9 @@ class CodeGenCtx
 
     /// Function this code belongs to
     IRFunction fun;
+
+    /// Associated interpreter object
+    Interp interp;
 }
 
 
@@ -187,10 +190,34 @@ class VersionInst : BlockVersion
 
     // TODO: target BlockVersions
     BlockVersion targets[MAX_TARGETS];
+
+
+    /// Get a pointer to the executable code for this block
+    auto getCodePtr(ExecBlock cb)
+    {
+        return cb.getAddress(startIdx);
+    }
 }
 
+// TODO: getBlockVersion(Interp interp, IRBlock block, CodeGenState state)?
+
+/**
+Compile a basic block version instance
+*/
+extern (C) const ubyte* compile(IRBlock block, CodeGenState state)
+{
+    //auto interp = state.ctx.interp;
+    auto fun = state.ctx.fun;
+
+    // TODO: do we need a loop here? probably yes
+    // - queue blocks for compilation
+    // - As blocks are compiled, finalize into execHeap
 
 
+
+
+    return null;
+}
 
 
 

@@ -49,71 +49,44 @@ import std.conv;
 import std.array;
 import std.range;
 import std.typecons;
+import std.algorithm;
 import util.string;
 import jit.x86;
 import jit.jit;
+import options;
 
 /**
-Low-level machine code block implementation.
-Stores generated machine code, external references and exposed labels.
+Low-level machine code block implementation. Stores generated machine code.
 */
 class CodeBlock
 {
-    /// Memory block size
-    private size_t size;
-
     /// Memory block
     private ubyte* memBlock;
 
+    /// Memory block size
+    private size_t memSize;
+
     /// Current writing position
-    private size_t writePos;
+    private size_t writePos = 0;
 
     /// Disassembly/comment strings
     alias Tuple!(size_t, "pos", string, "str") CommentStr;
     private CommentStr[] strings;
 
-    /// Flag to enable or disable comments
-    private bool hasComments;
-
-    this(size_t size, bool hasComments = false)
+    this(ubyte* memBlock, size_t memSize)
     {
         assert (
-            size > 0,
+            memBlock !is null,
+            "invalid memory block"
+        );
+
+        assert (
+            memSize > 0,
             "cannot create zero-sized memory block"
         );
 
-        // Map the memory as executable
-        this.memBlock = cast(ubyte*)mmap(
-            null,
-            size,
-            PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_PRIVATE | MAP_ANON,
-            -1,
-            0
-        );
-
-        // Check that the memory mapping was successful
-        if (this.memBlock == MAP_FAILED)
-            throw new Error("mmap call failed");
-
-        //writefln("memBlock: %s", this.memBlock);
-        //writefln("pa: %s", pa);
-
-        this.size = size;
-
-        this.writePos = 0;
-
-        this.hasComments = hasComments;
-    }
-
-    ~this()
-    {
-        //writefln("freeing executable memory: %s", this.memBlock);
-
-        auto ret = munmap(this.memBlock, this.size);
-
-        if (ret != 0)
-            throw new Error("munmap call failed");
+        this.memBlock = memBlock;
+        this.memSize = memSize;
     }
 
     /**
@@ -176,27 +149,6 @@ class CodeBlock
     }
 
     /**
-    Get a direct pointer into the executable memory block
-    */
-    auto getAddress(size_t index = 0)
-    {
-        assert (
-            index < size,
-            "invalid index"
-        );
-
-        return cast(const ubyte*)&memBlock[index];
-    }
-
-    /**
-    Get the size of the code block
-    */
-    auto length()
-    {
-        return size;
-    }
-
-    /**
     Clear the contents of the code block
     */
     void clear()
@@ -205,12 +157,25 @@ class CodeBlock
     }
 
     /**
+    Get a direct pointer into the executable memory block
+    */
+    auto getAddress(size_t index = 0)
+    {
+        assert (
+            index < memSize,
+            "invalid index"
+        );
+
+        return cast(const ubyte*)&memBlock[index];
+    }
+
+    /**
     Set the current write position
     */
     void setWritePos(size_t pos)
     {
         assert (
-            pos < size,
+            pos < memSize,
             "invalid code block position"
         );
 
@@ -235,10 +200,8 @@ class CodeBlock
             "invalid memory block"
         );
 
-        assert (
-            this.writePos + 1 <= this.size,
-            "no space to write byte in code block"
-        );
+        if (this.writePos + 1 > this.memSize)
+            noSpace(this.writePos + 1);
 
         this.memBlock[this.writePos++] = val;
     }
@@ -248,15 +211,8 @@ class CodeBlock
     */
     void writeBytes(T...)(T bytes)
     {
-        assert (
-            this.memBlock,
-            "invalid memory block"
-        );
-
-        assert (
-            this.writePos + bytes.length <= this.size,
-            "no space to write bytes in code block"
-        );
+        if (this.writePos + bytes.length > this.memSize)
+            noSpace(this.writePos + bytes.length);
 
         foreach (b; bytes)
         {
@@ -276,6 +232,8 @@ class CodeBlock
 
         // Compute the size in bytes
         auto numBytes = numBits / 8;
+
+        // TODO: use a switch and writeBytes
 
         // Write out the bytes
         for (size_t i = 0; i < numBytes; ++i)
@@ -306,6 +264,141 @@ class CodeBlock
             //auto newRange = assumeSorted!"a.pos < b.pos"([newStr]);
             strings = r[0].release() ~ newStr ~ r[2].release();
         }
+    }
+    /**
+    Write the contents of another code block at the given position
+    */
+    void writeBlock(CodeBlock cb)
+    {
+        if (this.writePos + cb.writePos > this.memSize)
+            noSpace(this.writePos + cb.writePos);
+
+        // If the other block has comment strings
+        if (cb.strings.length > 0)
+        {
+            // Get the strings that come before and after the other block's
+            auto range = assumeSorted!"a.pos < b.pos"(strings);
+            auto lower = range.lowerBound(cb.strings.front);
+            auto upper = range.lowerBound(cb.strings.back);
+
+            // Insert the block's strings in between
+            strings = lower.release() ~ cb.strings ~ upper.release();
+        }
+
+        // Copy the bytes from the other code block
+        this.memBlock[this.writePos..this.writePos+cb.writePos] = cb.memBlock[0..cb.writePos];
+        this.writePos += cb.writePos;   
+    }
+
+    /**
+    Read the byte at the given index
+    */
+    ubyte readByte(size_t index)
+    {
+        assert (
+            index < memSize
+        );
+
+        return memBlock[index];
+    }
+
+    /**
+    Called when memory space is exhausted
+    */
+    void noSpace(size_t sizeNeeded)
+    {
+        assert (false, "no space for write");
+    }
+}
+
+/**
+Executable code block
+*/
+class ExecBlock : CodeBlock
+{
+    this(size_t memSize)
+    {
+        // Map the memory as executable
+        auto memBlock = cast(ubyte*)mmap(
+            null,
+            memSize,
+            PROT_READ | PROT_WRITE | PROT_EXEC,
+            MAP_PRIVATE | MAP_ANON,
+            -1,
+            0
+        );
+
+        // Check that the memory mapping was successful
+        if (this.memBlock == MAP_FAILED)
+            throw new Error("mmap call failed");
+
+        //writefln("memBlock: %s", this.memBlock);
+
+        super(memBlock, memSize);
+    }
+
+    ~this()
+    {
+        //writefln("freeing executable memory: %s", this.memBlock);
+
+        auto ret = munmap(this.memBlock, this.memSize);
+
+        if (ret != 0)
+            throw new Error("munmap call failed");
+    }
+}
+
+/**
+Block internal label enumeration
+*/
+enum Label : size_t
+{
+    LOOP,
+    DONE
+}
+
+/**
+Code block with address linking capabilities
+*/
+class ASMBlock : CodeBlock
+{
+    const size_t ASM_BLOCK_INIT_SIZE = 512;
+
+    // Table of label addresses
+    private size_t[Label.max+1] labelAddrs;
+
+    // Label reference list
+    alias Tuple!(size_t, "pos", Label, "label") LabelRef;
+    private LabelRef labelRefs[];
+
+    /// Flag to enable or disable comments
+    private bool hasComments;
+
+    this(bool hasComments = false)
+    {
+        auto memBlock = cast(ubyte*)GC.malloc(
+            ubyte.sizeof * ASM_BLOCK_INIT_SIZE,
+            GC.BlkAttr.NO_SCAN |
+            GC.BlkAttr.NO_INTERIOR
+        );
+
+        this.hasComments = hasComments;
+
+        super(memBlock, ASM_BLOCK_INIT_SIZE);
+        clear();
+    }
+
+    /**
+    Clear the contents of the code block
+    */
+    override void clear()
+    {
+        super.clear();
+
+        for (auto label = Label.min; label < Label.max; ++label)
+            labelAddrs[label] = size_t.max;
+
+        labelRefs = [];
     }
 
     /**
@@ -341,86 +434,6 @@ class CodeBlock
     }
 
     /**
-    Write the contents of another code block at the given position
-    */
-    void writeBlock(CodeBlock cb)
-    {
-        assert (
-            this.writePos + cb.size <= this.size,
-            "cannot write code block, size too large"
-        );
-
-        // If the other block has comment strings
-        if (cb.strings.length > 0)
-        {
-            // Get the strings that come before and after the other block's
-            auto range = assumeSorted!"a.pos < b.pos"(strings);
-            auto lower = range.lowerBound(cb.strings.front);
-            auto upper = range.lowerBound(cb.strings.back);
-
-            // Insert the block's strings in between
-            strings = lower.release() ~ cb.strings ~ upper.release();
-        }
-
-        // Copy the bytes from the other code block
-        this.memBlock[this.writePos..this.writePos+cb.size] = cb.memBlock[0..cb.size];
-        this.writePos += cb.size;   
-    }
-
-    /**
-    Read the byte at the given index
-    */
-    ubyte readByte(size_t index)
-    {
-        assert (
-            index < size
-        );
-
-        return memBlock[index];
-    }
-}
-
-/**
-Block internal label enumeration
-*/
-enum Label : size_t
-{
-    LOOP,
-    DONE
-}
-
-/**
-Code block with address linking capabilities
-*/
-class ASMBlock : CodeBlock
-{
-    // Table of label addresses
-    private size_t[Label.max+1] labelAddrs;
-
-    // Label reference list
-    alias Tuple!(size_t, "pos", Label, "label") LabelRef;
-    private LabelRef labelRefs[];
-
-    this(size_t size, bool hasComments = false)
-    {
-        super(size, hasComments);
-        clear();
-    }
-
-    /**
-    Clear the contents of the code block
-    */
-    override void clear()
-    {
-        super.clear();
-
-        for (auto label = Label.min; label < Label.max; ++label)
-            labelAddrs[label] = size_t.max;
-
-        labelRefs = [];
-    }
-
-    /**
     Set the address of a label to the current write position
     */
     Label label(Label label)
@@ -450,9 +463,9 @@ class ASMBlock : CodeBlock
         // For each label reference
         foreach (labelRef; labelRefs)
         {
-            assert (labelRef.pos < length);
+            assert (labelRef.pos < memSize);
             auto labelAddr = labelAddrs[labelRef.label];
-            assert (labelAddr < length);
+            assert (labelAddr < memSize);
 
             // Compute the offset from the reference's end to the label
             auto offset = labelAddr - (labelRef.pos + 4);
@@ -463,6 +476,25 @@ class ASMBlock : CodeBlock
 
         writePos = origPos;
     }
+
+    /**
+    Called when memory space is exhausted
+    */
+    private void noSpace(size_t sizeNeeded)
+    {
+        assert (sizeNeeded > memSize);
+
+        auto newSize = max(sizeNeeded, 2 * memSize);
+
+        auto newMem = cast(ubyte*)GC.malloc(
+            ubyte.sizeof * newSize,
+            GC.BlkAttr.NO_SCAN |
+            GC.BlkAttr.NO_INTERIOR
+        );
+
+        this.memBlock = newMem;
+        this.memSize = newSize;
+    }
 }
 
 /**
@@ -471,18 +503,31 @@ Micro-assembler for code generation
 class Assembler
 {
     /// Inner instruction code
-    CodeBlock code;
+    ASMBlock code;
 
     /// Edge transition move code for each target
-    CodeBlock branchCode[BlockVersion.MAX_TARGETS];
+    ASMBlock branchCode[BlockVersion.MAX_TARGETS];
+
 
     // TODO: final branch descriptors
+
+
+
+
+
+
+
 
     // Target block versions
     private BlockVersion targets[BlockVersion.MAX_TARGETS];
 
     this()
     {
+        // Allocate the code blocks
+        code = new ASMBlock(opts.jit_dumpasm);
+        for (size_t tIdx = 0; tIdx < branchCode.length; ++tIdx)
+            new ASMBlock(opts.jit_dumpasm);
+
         clear();
     }
 
@@ -505,5 +550,17 @@ class Assembler
     // TODO: method to copy into a code block and finalize into a BlockVersion
     // Must store offsets + length, etc
     // Must write to code block
+
+
+
+
+
+
+
+
+
+
+
+
 }
 

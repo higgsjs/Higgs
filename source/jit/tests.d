@@ -66,7 +66,7 @@ unittest
         auto numBytes = enc64.length / 2;
 
         // Create a code block to write the encoding into
-        auto encBlock = new CodeBlock(numBytes);
+        auto encBlock = new ASMBlock();
 
         // Write the encoding bytes into the code block
         for (size_t i = 0; i < numBytes; ++i)
@@ -78,7 +78,7 @@ unittest
         }
 
         // Generate the code to a machine code block
-        auto codeBlock = new ASMBlock(numBytes, true);
+        auto codeBlock = new ASMBlock(true);
         codeFunc(codeBlock);
         codeBlock.link();
 
@@ -94,13 +94,17 @@ unittest
                     codeBlock.toString(),
                     codeBlock.getWritePos(),
                     encBlock.toString(),
-                    encBlock.length
+                    encBlock.getWritePos()
                 )
            );
         }
 
-        // Compare all bytes in the block
-        for (size_t i = 0; i < codeBlock.length; ++i)
+        // Compare the encoding sizes
+        if (codeBlock.getWritePos() != encBlock.getWritePos())
+            encError();
+
+        // Compare all bytes in the encoding
+        for (size_t i = 0; i < encBlock.getWritePos(); ++i)
         {
             if (codeBlock.readByte(i) != encBlock.readByte(i))
                 encError();
@@ -282,30 +286,29 @@ unittest
         "",
         "F2480F2A39"
     );
+    */
 
     // dec
     test(
-        delegate void (ASMBlock cb) { cb.instr(DEC, CX); }, 
-        "6649",
+        delegate void (ASMBlock cb) { cb.dec(X86Opnd(CX)); }, 
         "66FFC9"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(DEC, EDX); }, 
-        "4A",
+        delegate void (ASMBlock cb) { cb.dec(X86Opnd(EDX)); }, 
         "FFCA"
     );
 
     // div
     test(
-        delegate void (ASMBlock cb) { cb.instr(DIV, EDX); }, 
+        delegate void (ASMBlock cb) { cb.div(X86Opnd(EDX)); }, 
         "F7F2"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(DIV, new X86Mem(32, ESP, -12)); }, 
-        "F77424F4",
-        "67F77424F4"
+        delegate void (ASMBlock cb) { cb.div(X86Opnd(32, RSP, -12)); }, 
+        "F77424F4"
     );
 
+    /*
     // fst
     test(
         delegate void (ASMBlock cb) { cb.instr(FSTP, new X86Mem(64, RSP, -16)); },
@@ -340,29 +343,23 @@ unittest
         "4869C8FF000000"
     );
 
-    /*
     // inc
     test(
-        delegate void (ASMBlock cb) { cb.instr(INC, BL); },
-        "FEC3", 
+        delegate void (ASMBlock cb) { cb.inc(X86Opnd(BL)); },
         "FEC3"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(INC, ESP); },
-        "44",
+        delegate void (ASMBlock cb) { cb.inc(X86Opnd(ESP)); },
         "FFC4"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(INC, new X86Mem(32, ESP, 0)); },
-        "FF0424",
-        "67FF0424"
+        delegate void (ASMBlock cb) { cb.inc(X86Opnd(32, RSP, 0)); },
+        "FF0424"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(INC, new X86Mem(64, RSP, 4)); },
-        "",
+        delegate void (ASMBlock cb) { cb.inc(X86Opnd(64, RSP, 4)); },
         "48FF442404"
     );
-    */
 
     // jcc
     test(
@@ -538,205 +535,157 @@ unittest
         "",
         "4C0FB6D9"
     );
+    */
 
     // mul
     test(
-        delegate void (ASMBlock cb) { cb.instr(MUL, EDX); }, 
+        delegate void (ASMBlock cb) { cb.mul(X86Opnd(EDX)); }, 
         "F7E2"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MUL, R15); },
-        "",
+        delegate void (ASMBlock cb) { cb.mul(X86Opnd(R15)); },
         "49F7E7"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MUL, R10D); },
-        "",
+        delegate void (ASMBlock cb) { cb.mul(X86Opnd(R10D)); },
         "41F7E2"
     );
 
     // nop
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOP); }, 
+        delegate void (ASMBlock cb) { cb.nop(); }, 
         "90"
     );
 
     // not
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, AX); }, 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(AX)); }, 
         "66F7D0"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, EAX); }, 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(EAX)); }, 
         "F7D0"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, RAX); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(RAX)); }, 
         "48F7D0"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, R11); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(R11)); }, 
         "49F7D3"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EAX)); }, 
-        "F710", 
-        "67F710"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RAX)); }, 
+        "F710"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, ESI)); },
-        "F716", 
-        "67F716"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RSI)); },
+        "F716"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDI)); }, 
-        "F717", 
-        "67F717"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RDI)); }, 
+        "F717"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDX, 55)); },
-        "F75237", 
-        "67F75237"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RDX, 55)); },
+        "F75237"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDX, 1337)); },
-        "F79239050000", 
-        "67F79239050000"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RDX, 1337)); },
+        "F79239050000"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDX, -55)); },
-        "F752C9", 
-        "67F752C9"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RDX, -55)); },
+        "F752C9"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EDX, -555)); },
-        "F792D5FDFFFF", 
-        "67F792D5FDFFFF"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RDX, -555)); },
+        "F792D5FDFFFF"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EAX, 0, EBX)); }, 
-        "F71418", 
-        "67F71418"
-    );
-    test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RAX, 0, RBX)); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RAX, 0, 1, RBX)); }, 
         "F71418"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RAX, 0, R12)); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RAX, 0, 1, R12)); }, 
         "42F71420"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R15, 0, R12)); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, R15, 0, 1, R12)); }, 
         "43F71427"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R15, 5, R12)); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, R15, 5, 1, R12)); }, 
         "43F7542705"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R15, 5, R12, 8)); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, R15, 5, 8, R12)); }, 
         "43F754E705"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R15, 5, R13, 8)); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, R15, 5, 8, R13)); }, 
         "43F754EF05"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(64, R12)); }, 
-        "",
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(64, R12)); }, 
         "49F71424"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R12, 5, R9, 4)); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, R12, 5, 4, R9)); }, 
         "43F7548C05"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, R12, 301, R9, 4)); }, 
-        "", 
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, R12, 301, 4, R9)); }, 
         "43F7948C2D010000"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EAX, 5, EDX, 4)); }, 
-        "F7549005",
-        "67F7549005"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RAX, 5, 4, RDX)); }, 
+        "F7549005"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(64, EAX, 0, EDX, 2)); },
-        "",
-        "6748F71450"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(64, RAX, 0, 2, RDX)); },
+        "48F71450"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, ESP)); },
-        "F71424",
-        "67F71424"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RSP, 301)); },
+        "F794242D010000"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, ESP, 301)); }, 
-        "F794242D010000",
-        "67F794242D010000"
-    );
-    test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RSP)); },
-        "",
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RSP)); },
         "F71424"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RSP, 0, RBX)); },
-        "",
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RSP, 0, 1, RBX)); },
         "F7141C"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RSP, 3, RBX)); },
-        "",
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RSP, 3, 1, RBX)); },
         "F7541C03"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RSP, 3)); },
-        "",
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RSP, 3)); },
         "F7542403"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EBP)); },
-        "F75500",
-        "67F75500"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RBP)); },
+        "F75500"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EBP, 13)); },
-        "F7550D",
-        "67F7550D"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RBP, 13)); },
+        "F7550D"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, EBP, 13, EDX)); },
-        "F754150D",
-        "67F754150D"
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RBP, 13, 1, RDX)); },
+        "F754150D"
     );
+    /*
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RIP)); },
-        "",
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RIP)); },
         "F71500000000"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, RIP, 13)); },
-        "",
+        delegate void (ASMBlock cb) { cb.not(X86Opnd(32, RIP, 13)); },
         "F7150D000000"
-    );
-    test(delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, null, 0, R8, 8)); }, 
-        "", 
-        "42F714C500000000"
-    );
-    test(delegate void (ASMBlock cb) { cb.instr(NOT, new X86Mem(32, null, 5)); }, 
-        "F71505000000", 
-        "F7142505000000"
     );
     */
 
@@ -941,14 +890,17 @@ unittest
     void test(CodeGenFn genFunc, int64_t retVal)
     {
         // Generate the code to a machine code block
-        auto codeBlock = new ASMBlock(4096, true);
-        genFunc(codeBlock);
-        codeBlock.link();
+        auto asmBlock = new ASMBlock(true);
+        genFunc(asmBlock);
+        asmBlock.link();
 
-        auto testFun = cast(TestFn)codeBlock.getAddress();
+        // Copy the machine code to an executable block
+        auto execBlock = new ExecBlock(asmBlock.getWritePos());
+        execBlock.writeBlock(asmBlock);
 
+        // Execute the generated code
+        auto testFun = cast(TestFn)execBlock.getAddress();
         //writefln("calling %s", testFun);
-
         auto ret = testFun();
         
         //writefln("ret: %s", ret);
@@ -965,7 +917,7 @@ unittest
                     "%s\n" ~
                     "expected:\n" ~
                     "%s",
-                    codeBlock.toString(),
+                    execBlock.toString(),
                     ret,
                     retVal
                 )

@@ -34,6 +34,8 @@ TODO: optimize x86 instr encoding based on usage
 
 TODO: IP-relative addressing
 
+TODO: rename Interp to VM?
+
 ------------------------------------------------------------------------------
 
 First milestone: no interp, basic incremental codegen
@@ -41,24 +43,50 @@ First milestone: no interp, basic incremental codegen
 - Stubs
 - Bump alloc ptr for code, no code compaction
 
-TODO: Executable memory management
-- Interp class owns executable chunk, CodeBlock?
-
 TODO: genBranchEdge(edge, predState)
+
+TODO: interp, add new fields
+- execHeap
+- blockVersions list
+- map of blocks to versions
 
 TODO: stub generation
 - stubs call the JIT with block and state object ptrs
 - Need special class for stubs
+call compile
+jmp RAX
 
 TODO: begin sketching compile(block, state)
-- Probably should start with all values always on the stack
+- Should start with all values always on the stack, no type info
+- How do we deal with requests for other versions?
+  - Compilation queue?
+  - Finalize blocks into execHeap at the end?
 
-TODO: rename Interp to VM?
-- Also add execHeap, blockVersions fields
+TODO: think about how compilation starts in interpreter
+- Setup call stack
+- Create ctx for unit function
+- Create state for entry block
+- Call compile(bloc, state)
+  - returns code ptr
+- Call into entry block
+- Call and return from unit functions can be special
+  - Setup stack properly, use ret instr on return
 
-TODO: CodeBlock, hasSpace(n) function?
 
-TODO: sketch BlockVersion class in jit.d
+
+
+
+
+
+
+
+[DONE] TODO: idiv, not, inc, dec encoding
+- Make template for this, writeRMUnary
+
+[DONE] TODO: CodeBlock, specialize into ASMBlock and ExecBlock
+- ASMBlock has auto-expansion
+
+[DONE] TODO: sketch BlockVersion class in jit.d
 - BlockVersion: block, state, startIdx
   - state at entry
 - VersionStub: no length, instance ref
@@ -66,14 +94,6 @@ TODO: sketch BlockVersion class in jit.d
   - Final branches and associated moves
   - May need to be specific about what conditional branches are testing
   - Target BlockVersion objs
-
-
-
-
-
-
-
-
 
 [DONE] TODO: imul encoding
 

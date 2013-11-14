@@ -587,7 +587,7 @@ struct X86Opnd
 Write the REX byte
 */
 void writeREX(
-    CodeBlock cb, 
+    ASMBlock cb, 
     bool wFlag,
     uint8_t regNo, 
     uint8_t idxRegNo = 0,
@@ -613,7 +613,7 @@ void writeREX(
 /**
 Write an opcode byte with an embedded register operand
 */
-void writeOpcode(CodeBlock cb, ubyte opcode, X86Reg rOpnd)
+void writeOpcode(ASMBlock cb, ubyte opcode, X86Reg rOpnd)
 {
     // Write the reg field into the opcode byte
     uint8_t opByte = opcode | (rOpnd.regNo & 7);
@@ -627,7 +627,7 @@ void writeRMInstr(
     char rmOpnd, 
     ubyte opExt, 
     opcode...)
-(CodeBlock cb, bool szPref, bool rexW, X86Opnd opnd0, X86Opnd opnd1)
+(ASMBlock cb, bool szPref, bool rexW, X86Opnd opnd0, X86Opnd opnd1)
 {
     static assert (opcode.length > 0 && opcode.length <= 3);
 
@@ -849,7 +849,7 @@ void writeRMMulti(
     ubyte opMemImmLrg,
     ubyte opExtImm
 )
-(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 {
     // Write a disassembly string
     if (!opnd1.isNone)
@@ -935,6 +935,39 @@ void writeRMMulti(
     }
 }
 
+/**
+Encode a mul-like single-operand RM instruction
+*/
+void writeRMUnary(
+    wstring mnem, 
+    ubyte opMemReg8, 
+    ubyte opMemRegPref,
+    ubyte opExt
+)
+(ASMBlock cb, X86Opnd opnd)
+{
+    // Write a disassembly string
+    cb.writeASM(mnem, opnd);
+
+    // Check the size of opnd0
+    size_t opndSize;
+    if (opnd.isReg)
+        opndSize = opnd.reg.size;
+    else if (opnd.isMem)
+        opndSize = opnd.mem.size;
+    else
+        assert (false, "invalid first operand");    
+
+    assert (opndSize is 8 || opndSize is 16 || opndSize is 32 || opndSize is 64);
+    auto szPref = opndSize is 16;
+    auto rexW = opndSize is 64;
+
+    if (opndSize is 8)
+        cb.writeRMInstr!('l', opExt, opMemReg8)(false, false, opnd, X86Opnd.NONE);
+    else
+        cb.writeRMInstr!('l', opExt, opMemRegPref)(szPref, rexW, opnd, X86Opnd.NONE);
+}
+
 /// add - Integer addition
 alias writeRMMulti!(
     "add",
@@ -967,7 +1000,7 @@ alias writeRMMulti!(
 //void call(Assembler as, BlockVersion???);
 
 /// call - Indirect call with an R/M operand
-void call(CodeBlock cb, X86Opnd opnd)
+void call(ASMBlock cb, X86Opnd opnd)
 {
     cb.writeASM("call", opnd);
     cb.writeRMInstr!('l', 2, 0xFF)(false, false, opnd, X86Opnd.NONE);
@@ -979,7 +1012,7 @@ Encode a conditional move instruction
 void writeCmov(
     wstring mnem,
     ubyte opcode1)
-(CodeBlock cb, X86Reg dst, X86Opnd src)
+(ASMBlock cb, X86Reg dst, X86Opnd src)
 {
     cb.writeASM(mnem, dst, src);
 
@@ -990,59 +1023,37 @@ void writeCmov(
     cb.writeRMInstr!('r', 0xFF, 0x0F, opcode1)(szPref, rexW, X86Opnd(dst), src);
 }
 
-/// cmovcc - conditional move
-alias writeCmov!("cmova", 0x47) cmova;
-alias writeCmov!("cmovae", 0x43) cmovae;
-alias writeCmov!("cmovb", 0x42) cmovb;
-alias writeCmov!("cmovbe", 0x46) cmovbe;
-alias writeCmov!("cmovc", 0x42) cmovc;
-alias writeCmov!("cmove", 0x44) cmove;
-alias writeCmov!("cmovg", 0x4F) cmovg;
-alias writeCmov!("cmovge", 0x4D) cmovge;
-alias writeCmov!("cmovl", 0x4C) cmovl;
-alias writeCmov!("cmovle", 0x4E) cmovle;
-/*
-'cmovna',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x46]),
-'cmovnae',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x42]),
-'cmovnb',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x43]),
-'cmovnbe',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x47]),
-'cmovnc',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x43]),
-'cmovne',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x45]),
-'cmovng',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4E]),
-'cmovnge',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4C]),
-'cmovnl',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4D]),
-'cmovnle',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4F]),
-'cmovno',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x41]),
-'cmovnp',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4B]),
-'cmovns',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x49]),
-'cmovnz',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x45]),
-'cmovo',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x40]),
-'cmovp',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4A]),
-'cmovpe',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4A]),
-'cmovpo',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x4B]),
-'cmovs',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x48]),
-'cmovz',
-Enc(opnds=['r16', 'r/m16'], opcode=[0x0F, 0x44]),
-*/
+/// cmovcc - Conditional move
+alias writeCmov!("cmova"  , 0x47) cmova;
+alias writeCmov!("cmovae" , 0x43) cmovae;
+alias writeCmov!("cmovb"  , 0x42) cmovb;
+alias writeCmov!("cmovbe" , 0x46) cmovbe;
+alias writeCmov!("cmovc"  , 0x42) cmovc;
+alias writeCmov!("cmove"  , 0x44) cmove;
+alias writeCmov!("cmovg"  , 0x4F) cmovg;
+alias writeCmov!("cmovge" , 0x4D) cmovge;
+alias writeCmov!("cmovl"  , 0x4C) cmovl;
+alias writeCmov!("cmovle" , 0x4E) cmovle;
+alias writeCmov!("cmovna" , 0x46) cmovna;
+alias writeCmov!("cmovnae", 0x42) cmovnae;
+alias writeCmov!("cmovnb" , 0x43) cmovnb;
+alias writeCmov!("cmovnbe", 0x47) cmovnbe;
+alias writeCmov!("cmovnc" , 0x43) cmovnc;
+alias writeCmov!("cmovne" , 0x45) cmovne;
+alias writeCmov!("cmovng" , 0x4E) cmovnge;
+alias writeCmov!("cmovnge", 0x4C) cmovnge;
+alias writeCmov!("cmovnl" , 0x4D) cmovnl;
+alias writeCmov!("cmovnle", 0x4F) cmovnle;
+alias writeCmov!("cmovno" , 0x41) cmovno;
+alias writeCmov!("cmovnp" , 0x4B) cmovnp;
+alias writeCmov!("cmovns" , 0x49) cmovns;
+alias writeCmov!("cmovnz" , 0x45) cmovnz;
+alias writeCmov!("cmovno" , 0x40) cmovo;
+alias writeCmov!("cmovp"  , 0x4A) cmovp;
+alias writeCmov!("cmovpe" , 0x4A) cmovpe;
+alias writeCmov!("cmovpo" , 0x4B) cmovpo;
+alias writeCmov!("cmovs"  , 0x48) cmovs;
+alias writeCmov!("cmovz"  , 0x44) cmovz;
 
 /// cmp - Compare and set flags
 alias writeRMMulti!(
@@ -1058,13 +1069,37 @@ alias writeRMMulti!(
 ) cmp;
 
 /// cqo - Convert quadword to octaword
-void cqo(CodeBlock cb)
+void cqo(ASMBlock cb)
 {
     cb.writeBytes(0x48, 0x99);
 }
 
+// dec - Decrement integer by 1
+alias writeRMUnary!(
+    "dec", 
+    0xFE, // opMemReg8 
+    0xFF, // opMemRegPref
+    0x01  // opExt
+) dec;
+
+// div - Unsigned integer division
+alias writeRMUnary!(
+    "div", 
+    0xF6, // opMemReg8 
+    0xF7, // opMemRegPref
+    0x06  // opExt
+) div;
+
+// div - Signed integer division
+alias writeRMUnary!(
+    "idiv", 
+    0xF6, // opMemReg8 
+    0xF7, // opMemRegPref
+    0x07  // opExt
+) idiv;
+
 /// imul - Signed integer multiplication with two operands
-void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+void imul(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 {
     cb.writeASM("imul", opnd0, opnd1);
 
@@ -1085,7 +1120,7 @@ void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 }
 
 /// imul - Signed integer multiplication with three operands (one immediate)
-void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
+void imul(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
 {
     cb.writeASM("imul", opnd0, opnd1);
 
@@ -1126,6 +1161,14 @@ void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
         assert (false, "immediate value too large");
     }
 }
+
+// inc - Increment integer by 1
+alias writeRMUnary!(
+    "inc", 
+    0xFE, // opMemReg8 
+    0xFF, // opMemRegPref
+    0x00  // opExt
+) inc;
 
 /**
 Encode a relative jump to a label (direct or conditional)
@@ -1181,14 +1224,14 @@ alias writeJcc!("jz" , 0x0F, 0x84) jz;
 alias writeJcc!("jmp", 0xE9) jmp;
 
 /// jmp - Indirect jump near to an R/M operand
-void jmp(CodeBlock cb, X86Opnd opnd)
+void jmp(ASMBlock cb, X86Opnd opnd)
 {
     cb.writeASM("jmp", opnd);
     cb.writeRMInstr!('l', 4, 0xFF)(false, false, opnd, X86Opnd.NONE);
 }
 
 /// mov - Data move operation
-void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
+void mov(ASMBlock cb, X86Opnd dst, X86Opnd src)
 {
     // R/M + Imm
     if (src.isImm)
@@ -1246,21 +1289,37 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
 }
 
 /// mov - Move an immediate into a register
-void mov(CodeBlock cb, X86Reg reg, int64_t imm)
+void mov(ASMBlock cb, X86Reg reg, int64_t imm)
 {
     // TODO: more optimized code for this case
     cb.mov(X86Opnd(reg), X86Opnd(imm));
 }
 
 /// mov - Register to register move
-void mov(CodeBlock cb, X86Reg dst, X86Reg src)
+void mov(ASMBlock cb, X86Reg dst, X86Reg src)
 {
     // TODO: more optimized code for this case
     cb.mov(X86Opnd(dst), X86Opnd(src));
 }
 
+// mul - Unsigned integer multiply
+alias writeRMUnary!(
+    "mul", 
+    0xF6, // opMemReg8 
+    0xF7, // opMemRegPref
+    0x04  // opExt
+) mul;
+
+// neg - Integer negation (multiplication by -1)
+alias writeRMUnary!(
+    "neg",
+    0xF6, // opMemReg8 
+    0xF7, // opMemRegPref
+    0x03  // opExt
+) neg;
+
 /// nop - Noop, one or multiple bytes long
-void nop(CodeBlock cb, size_t length = 1)
+void nop(ASMBlock cb, size_t length = 1)
 {
     if (length > 0)
         cb.writeASM("nop" ~ to!string(length));
@@ -1307,6 +1366,14 @@ void nop(CodeBlock cb, size_t length = 1)
     }
 }
 
+// not - Bitwise NOT
+alias writeRMUnary!(
+    "not",
+    0xF6, // opMemReg8 
+    0xF7, // opMemRegPref
+    0x02  // opExt
+) not;
+
 /// or - Bitwise OR
 alias writeRMMulti!(
     "or",
@@ -1321,7 +1388,7 @@ alias writeRMMulti!(
 ) or;
 
 /// push - Push a register on the stack
-void push(CodeBlock cb, X86Reg reg)
+void push(ASMBlock cb, X86Reg reg)
 {
     assert (reg.size is 64);
 
@@ -1333,7 +1400,7 @@ void push(CodeBlock cb, X86Reg reg)
 }
 
 /// pop - Pop a register off the stack
-void pop(CodeBlock cb, X86Reg reg)
+void pop(ASMBlock cb, X86Reg reg)
 {
     assert (reg.size is 64);
 
@@ -1345,7 +1412,7 @@ void pop(CodeBlock cb, X86Reg reg)
 }
 
 /// ret - Return from call, popping only the return address
-void ret(CodeBlock cb)
+void ret(ASMBlock cb)
 {
     cb.writeASM("ret");
     cb.writeByte(0xC3);
