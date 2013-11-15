@@ -38,8 +38,6 @@ TODO: rename Interp to VM?
 
 TODO: xmm op encoding
 
-TODO: shift encoding
-
 ------------------------------------------------------------------------------
 
 First milestone: no interp, basic incremental codegen
@@ -73,6 +71,9 @@ TODO: begin sketching compile(block, state)
 
 
 
+
+
+[DONE] TODO: shift encoding
 
 [DONE] FIXME: crash bug in movsx test
 - code causes crash

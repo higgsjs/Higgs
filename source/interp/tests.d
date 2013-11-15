@@ -186,9 +186,9 @@ unittest
     assert (w0.int32Val != w1.int32Val);
 }
 
-/*
 unittest
 {
+    /*
     writefln("interpreter core");
 
     // Create an interpreter without a runtime or stdlib
@@ -203,8 +203,10 @@ unittest
 
     // Global property access (needed by runtime lib)
     interp.assertInt("x = 7; return x;", 7);
+    */
 }
 
+/*
 /// Global expression tests
 unittest
 {

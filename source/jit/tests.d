@@ -752,43 +752,39 @@ unittest
         delegate void (ASMBlock cb) { cb.instr(ROUNDSD, XMM2, XMM5, 0); },
         "660F3A0BD500"
     );
+    */
 
     // sal
     test(
-        delegate void (ASMBlock cb) { cb.instr(SAL, CX, 1); },
+        delegate void (ASMBlock cb) { cb.sal(X86Opnd(CX), X86Opnd(1)); },
         "66D1E1"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(SAL, ECX, 1); },
+        delegate void (ASMBlock cb) { cb.sal(X86Opnd(ECX), X86Opnd(1)); },
         "D1E1"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(SAL, AL, CL); },
-        "D2E0"
-    );
-    test(
-        delegate void (ASMBlock cb) { cb.instr(SAL, EBP, 5); },
+        delegate void (ASMBlock cb) { cb.sal(X86Opnd(EBP), X86Opnd(5)); },
         "C1E505"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(SAL, new X86Mem(32, ESP, 68), 1); },
-        "D1642444",
-        "67D1642444"  
+        delegate void (ASMBlock cb) { cb.sal(X86Opnd(32, RSP, 68), X86Opnd(1)); },
+        "D1642444"  
     );
 
     // sar
     test(
-        delegate void (ASMBlock cb) { cb.instr(SAR, EDX, 1); },
+        delegate void (ASMBlock cb) { cb.sar(X86Opnd(EDX), X86Opnd(1)); },
         "D1FA"
     );
 
     // shr
     test(
-        delegate void (ASMBlock cb) { cb.instr(SHR, R14, 7); },
-        "",
+        delegate void (ASMBlock cb) { cb.shr(X86Opnd(R14), X86Opnd(7)); },
         "49C1EE07"
     );
 
+    /*
     // sqrtsd
     test(
         delegate void (ASMBlock cb) { cb.instr(SQRTSD, XMM2, XMM6); },

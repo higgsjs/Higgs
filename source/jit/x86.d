@@ -1511,6 +1511,94 @@ void ret(ASMBlock cb)
     cb.writeByte(0xC3);
 }
 
+/**
+Encode a single-operand shift instruction
+*/
+void writeShift(
+    wstring mnem, 
+    ubyte opMemOnePref,
+    ubyte opMemClPref,
+    ubyte opMemImmPref,
+    ubyte opExt
+)
+(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+{
+    // Write a disassembly string
+    cb.writeASM(mnem, opnd0, opnd1);
+
+    // Check the size of opnd0
+    size_t opndSize;
+    if (opnd0.isReg)
+        opndSize = opnd0.reg.size;
+    else if (opnd0.isMem)
+        opndSize = opnd0.mem.size;
+    else
+        assert (false, "invalid first operand");   
+    
+    assert (opndSize is 16 || opndSize is 32 || opndSize is 64);
+    auto szPref = opndSize is 16;
+    auto rexW = opndSize is 64;
+
+    if (opnd1.isImm)
+    {
+        if (opnd1.imm.imm == 1)
+        {
+            cb.writeRMInstr!('l', opExt, opMemOnePref)(szPref, rexW, opnd0, X86Opnd.NONE);
+        }
+        else
+        {
+            assert (opnd1.imm.immSize <= 8);
+            cb.writeRMInstr!('l', opExt, opMemImmPref)(szPref, rexW, opnd0, X86Opnd.NONE);
+            cb.writeByte(cast(ubyte)opnd1.imm.imm);
+        }
+    }    
+    else if (opnd1.isReg && opnd1.reg == CL)
+    {
+        cb.writeRMInstr!('l', opExt, opMemClPref)(szPref, rexW, opnd0, opnd1);
+    }
+    else
+    {
+        assert (false);
+    }
+}
+
+
+/// sal - Shift arithmetic left
+alias writeShift!(
+    "sal", 
+    0xD1, // opMemOnePref,
+    0xD3, // opMemClPref,
+    0xC1, // opMemImmPref,
+    0x04
+) sal;
+
+/// shl - Shift logical left
+alias writeShift!(
+    "shl", 
+    0xD1, // opMemOnePref,
+    0xD3, // opMemClPref,
+    0xC1, // opMemImmPref,
+    0x04
+) shl;
+
+/// sar - Shift arithmetic right (signed)
+alias writeShift!(
+    "sar", 
+    0xD1, // opMemOnePref,
+    0xD3, // opMemClPref,
+    0xC1, // opMemImmPref,
+    0x07
+) sar;
+
+/// shr - Shift logical right (unsigned)
+alias writeShift!(
+    "shr", 
+    0xD1, // opMemOnePref,
+    0xD3, // opMemClPref,
+    0xC1, // opMemImmPref,
+    0x05
+) shr;
+
 /// sub - Integer subtraction
 alias writeRMMulti!(
     "sub",
