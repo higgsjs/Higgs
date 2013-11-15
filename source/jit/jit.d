@@ -152,21 +152,64 @@ class CodeGenState
         this.gpRegMap = that.gpRegMap.dup;
         this.slotMap = that.slotMap.dup;
     }
+
+    /**
+    Remove information about values dead at the beginning of
+    a given block
+    */
+    void removeDead(LiveInfo liveInfo, IRBlock block)
+    {
+        // TODO
+        /*
+        // For each general-purpose register
+        foreach (regNo, value; gpRegMap)
+        {
+            // If nothing is mapped to this register, skip it
+            if (value is null)
+                continue;
+
+            // If the value is no longer live, remove it
+            if (liveInfo.liveAtEntry(value, block) is false)
+            {
+                gpRegMap[regNo] = null;
+                allocState.remove(value);
+                typeState.remove(value);
+            }
+        }
+
+        // Remove dead values from the alloc state
+        foreach (value; allocState.keys)
+        {
+            if (liveInfo.liveAtEntry(value, block) is false)
+                allocState.remove(value);
+        }
+
+        // Remove dead values from the type state
+        foreach (value; typeState.keys)
+        {
+            if (liveInfo.liveAtEntry(value, block) is false)
+                typeState.remove(value);
+        }
+        */
+    }
 }
 
 /**
 Base class for basic block versions
 */
-class BlockVersion
+abstract class BlockVersion
 {
     /// Maximum number of branch targets
     static const size_t MAX_TARGETS = 2;
+
+    // Associated block
+    IRBlock block;
 
     /// Code generation state at block entry
     CodeGenState state;
 
     /// Starting index in the executable code block
-    size_t startIdx;
+    size_t startIdx = size_t.max;
 }
 
 /**
@@ -176,6 +219,12 @@ class VersionStub : BlockVersion
 {
     // Compiled instance (initially null, non-null if stub patched)
     VersionInst inst = null;
+
+    this(IRBlock block, CodeGenState state)
+    {
+        this.block = block;
+        this.state = state;
+    }
 }
 
 /**
@@ -191,6 +240,11 @@ class VersionInst : BlockVersion
     // TODO: target BlockVersions
     BlockVersion targets[MAX_TARGETS];
 
+    this(IRBlock block, CodeGenState state)
+    {
+        this.block = block;
+        this.state = state;
+    }
 
     /// Get a pointer to the executable code for this block
     auto getCodePtr(ExecBlock cb)
@@ -199,24 +253,292 @@ class VersionInst : BlockVersion
     }
 }
 
-// TODO: getBlockVersion(Interp interp, IRBlock block, CodeGenState state)?
+/**
+Get a label for a given block and incoming state
+*/
+BlockVersion getBlockVersion(
+    IRBlock block, 
+    CodeGenState state, 
+    bool noStub
+)
+{
+    auto interp = state.ctx.interp;
+
+    /*
+    // Get the list of versions for this block
+    auto versions = versionMap.get(block, []);
+
+    // Best version found
+    BlockVersion bestVer;
+    size_t bestDiff = size_t.max;
+
+    // For each successor version available
+    foreach (ver; versions)
+    {
+        // Compute the difference with the predecessor state
+        auto diff = predState.diff(ver.state);
+
+        // If this is a perfect match, return it
+        if (diff is 0)
+            return ver;
+
+        // Update the best version found
+        if (diff < bestDiff)
+        {
+            bestDiff = diff;
+            bestVer = ver;
+        }
+    }
+
+    // If the block version cap is hit
+    if (versions.length >= opts.jit_maxvers)
+    {
+        //writeln("block cap hit: ", versions.length);
+
+        // If a compatible match was found
+        if (bestDiff !is size_t.max)
+        {
+            // Return the best match found
+            return bestVer;
+        }
+
+        //writeln("producing general version for: ", block.getName);
+
+        // Strip the state of all known types and constants
+        auto genState = new CodeGenState(predState);
+        genState.typeState = genState.typeState.init;
+        foreach (val, allocSt; genState.allocState)
+            if (allocSt & RA_CONST)
+                genState.allocState[val] = RA_STACK;
+
+        // Ensure that the general version matches
+        assert(predState.diff(genState) !is size_t.max);
+
+        predState = genState;
+    }
+    
+    //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
+
+    // Create a label for this new version of the block
+    auto label = new Label(block.getName().toUpper());
+
+    // Create a new block version object using the predecessor's state
+    BlockVersion ver = { block, predState, label };
+
+    // Add the new version to the list for this block
+    versionMap[block] ~= ver;
+
+    //writefln("%s num versions: %s", block.getName(), versionMap[block].length);
+
+    // Queue the new version to be compiled
+    workList ~= ver;
+
+    // Increment the total number of versions
+    numVersions++;
+
+    // Return the newly created block version
+    return ver;
+    */
+
+    // TODO
+    return null;
+}
+
+/**
+Generate moves for a given branch edge transition
+*/
+void genBranchEdge(
+    //Assembler as,
+    //Label edgeLabel,
+    BranchEdge branch, 
+    CodeGenState predState,
+    bool noStub
+)
+{
+    auto liveInfo = predState.ctx.fun.liveInfo;
+
+    // Copy the predecessor state
+    auto succState = new CodeGenState(predState);
+
+    // Remove information about values dead at
+    // the beginning of the successor block
+    succState.removeDead(liveInfo, branch.target);
+
+    /*
+    // Map each successor phi node on the stack or in its register
+    // in a way that best matches the predecessor state
+    for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
+    {
+        if (branch.branch is null || phi.hasNoUses)
+            continue;
+
+        // Get the phi argument
+        auto arg = branch.getPhiArg(phi);
+        assert (
+            arg !is null, 
+            "missing phi argument for:\n" ~
+            phi.toString() ~
+            "\nin block:\n" ~
+            phi.block.toString()
+        );
+
+        // Get the register the phi is mapped to
+        auto phiReg = regMapping[phi];
+        assert (phiReg !is null);
+
+        // If value mapped to reg isn't live, use reg
+        // Note: we are querying succState here because the
+        // register might be used by a phi node we just mapped
+        auto regVal = succState.gpRegMap[phiReg.regNo];
+
+        // Map the phi node to its register or stack location
+        TFState allocSt;
+        if (regVal is null || regVal is phi)
+        {
+            allocSt = RA_GPREG | phiReg.regNo;
+            succState.gpRegMap[phiReg.regNo] = phi;
+        }
+        else
+        {
+            allocSt = RA_STACK;
+        }
+        succState.allocState[phi] = allocSt;
+
+        // If the type of the phi argument is known
+        if (succState.typeKnown(arg))
+        {
+            auto type = succState.getType(arg);
+            auto onStack = allocSt & RA_STACK;
+
+            // Mark the type as known
+            succState.typeState[phi] = TF_KNOWN | (onStack? TF_SYNC:0) | type;
+        }
+        else
+        {
+            // The phi type is unknown
+            succState.typeState.remove(phi);
+        }
+    }
+    */
+
+    // Get a version of the successor matching the incoming state
+    auto succVer = getBlockVersion(branch.target, succState, noStub);
+    succState = succVer.state;
+
+    // List of moves to transition to the successor state
+    Move[] moveList;
+
+    /*
+    // For each value in the successor state
+    foreach (succVal, succAS; succState.allocState)
+    {
+        auto succPhi = (
+            (branch.branch !is null && succVal.block is branch.target)?
+            cast(PhiNode)succVal:null
+        );
+        auto predVal = (
+            succPhi?
+            branch.getPhiArg(succPhi):succVal
+        );
+        assert (succVal !is null);
+        assert (predVal !is null);
+
+        if (succPhi)
+            as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
+        else
+            as.comment("move " ~ succVal.getName);
+
+        // Get the source and destination operands for the arg word
+        X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
+        X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
+
+        if (srcWordOpnd != dstWordOpnd)
+            moveList ~= Move(dstWordOpnd, srcWordOpnd);
+
+        // Get the source and destination operands for the phi type
+        X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
+        X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
+
+        if (srcTypeOpnd != dstTypeOpnd)
+            moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
+
+        // Get the predecessor and successor type states
+        auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
+        auto succTS = succState.typeState.get(succVal, 0);
+
+        // Get the predecessor allocation state
+        auto predAS = predState.allocState.get(cast(IRDstValue)predVal, 0);
+
+        // If the successor value is a phi node
+        if (succPhi)
+        {
+            // If the phi is on the stack and the type is known,
+            // write the type to the stack to keep it in sync
+            if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
+            {
+                assert (succTS & TF_SYNC);
+                moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
+            }
+
+            // If the phi is in a register and the type is unknown,
+            // write 0 on the stack to avoid invalid references
+            if (!(succAS & RA_STACK) && !(succTS & TF_KNOWN))
+            {
+                moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
+            }
+        }
+        else
+        {
+            // If the value wasn't before in a register, now is, and the type is unknown
+            // write 0 on the stack to avoid invalid references
+            if ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && (succAS & RA_GPREG) && !(succTS & TF_KNOWN))
+            {
+                moveList ~= Move(new X86Mem(64, wspReg, 8 * succVal.outSlot), new X86Imm(0));
+            }
+
+            // If the type was not in sync in the predecessor and is now
+            // in sync in the successor, write the type to the type stack
+            if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
+            {
+                moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
+            }
+        }
+    }
+
+    // Execute the moves
+    execMoves(as, moveList, scrRegs64[0], scrRegs64[1]);
+    */
+}
 
 /**
 Compile a basic block version instance
 */
-extern (C) const ubyte* compile(IRBlock block, CodeGenState state)
+extern (C) const (ubyte*) compile(IRBlock block, CodeGenState state)
 {
-    //auto interp = state.ctx.interp;
+    auto interp = state.ctx.interp;
     auto fun = state.ctx.fun;
 
-    // TODO: do we need a loop here? probably yes
-    // - queue blocks for compilation
-    // - As blocks are compiled, finalize into execHeap
+    // Create a version instance for the first version to compile
+    VersionInst startInst = new VersionInst(block, state);
+
+    // Add the version to the compilation queue
+    VersionInst[] compQueue = [startInst];
+
+    // Until the compilation queue is empty
+    while (compQueue.length > 0)
+    {
 
 
 
 
-    return null;
+
+
+        // TODO: finalize blocks into execHeap as they are compiled
+        //interp.execHeap
+    }
+
+    // Return the address of the first version compiled
+    return startInst.getCodePtr(/*TODO*/null);
 }
 
 
@@ -329,37 +651,37 @@ void setType(Assembler as, int32_t idx, Type type)
 {
     as.instr(MOV, new X86Mem(8, tspReg, idx), type);
 }
+*/
 
 /// Save caller-save registers on the stack before a C call
-void pushRegs(Assembler as)
+void pushRegs(ASMBlock as)
 {
-    as.instr(PUSH, RAX);
-    as.instr(PUSH, RCX);
-    as.instr(PUSH, RDX);
-    as.instr(PUSH, RSI);
-    as.instr(PUSH, RDI);
-    as.instr(PUSH, R8);
-    as.instr(PUSH, R9);
-    as.instr(PUSH, R10);
-    as.instr(PUSH, R11);
-    as.instr(PUSH, R11);
+    as.push(RAX);
+    as.push(RCX);
+    as.push(RDX);
+    as.push(RSI);
+    as.push(RDI);
+    as.push(R8);
+    as.push(R9);
+    as.push(R10);
+    as.push(R11);
+    as.push(R11);
 }
 
 /// Restore caller-save registers from the after before a C call
-void popRegs(Assembler as)
+void popRegs(ASMBlock as)
 {
-    as.instr(POP, R11);
-    as.instr(POP, R11);
-    as.instr(POP, R10);
-    as.instr(POP, R9);
-    as.instr(POP, R8);
-    as.instr(POP, RDI);
-    as.instr(POP, RSI);
-    as.instr(POP, RDX);
-    as.instr(POP, RCX);
-    as.instr(POP, RAX);
+    as.pop(R11);
+    as.pop(R11);
+    as.pop(R10);
+    as.pop(R9);
+    as.pop(R8);
+    as.pop(RDI);
+    as.pop(RSI);
+    as.pop(RDX);
+    as.pop(RCX);
+    as.pop(RAX);
 }
-*/
 
 /*
 void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)

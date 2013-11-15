@@ -177,23 +177,19 @@ unittest
         "81C1FF000000"
     );
 
-    /*
     // addsd
     test(
-        delegate void (ASMBlock cb) { cb.instr(ADDSD, XMM3, XMM5); },
+        delegate void (ASMBlock cb) { cb.addsd(X86Opnd(XMM3), X86Opnd(XMM5)); },
         "F20F58DD"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(ADDSD, XMM15, new X86Mem(64, R13, 5)); },
-        "",
+        delegate void (ASMBlock cb) { cb.addsd(X86Opnd(XMM15), X86Opnd(64, R13, 5)); },
         "F2450F587D05"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(ADDSD, XMM15, new X86Mem(64, R11)); },
-        "",
+        delegate void (ASMBlock cb) { cb.addsd(X86Opnd(XMM15), X86Opnd(64, R11)); },
         "F2450F583B"
     );
-    */
 
     // and
     test(
@@ -264,29 +260,25 @@ unittest
         "4899"
     );
 
-    /*
     // cvtsd2si
     test(
-        delegate void (ASMBlock cb) { cb.instr(CVTSD2SI, ECX, XMM6); }, 
+        delegate void (ASMBlock cb) { cb.cvtsd2si(X86Opnd(ECX), X86Opnd(XMM6)); }, 
         "F20F2DCE"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(CVTSD2SI, RDX, XMM4); },
-        "",
+        delegate void (ASMBlock cb) { cb.cvtsd2si(X86Opnd(RDX), X86Opnd(XMM4)); },
         "F2480F2DD4"
     );
 
     // cvtsi2sd
     test(
-        delegate void (ASMBlock cb) { cb.instr(CVTSI2SD, XMM7, EDI); }, 
+        delegate void (ASMBlock cb) { cb.cvtsi2sd(X86Opnd(XMM7), X86Opnd(EDI)); }, 
         "F20F2AFF"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(CVTSI2SD, XMM7, new X86Mem(64, RCX)); },
-        "",
+        delegate void (ASMBlock cb) { cb.cvtsi2sd(X86Opnd(XMM7), X86Opnd(64, RCX)); },
         "F2480F2A39"
     );
-    */
 
     // dec
     test(
@@ -443,30 +435,33 @@ unittest
         "660F297424F8",
         "67660F297424F8"
     );
+    */
 
+    /*
     // movsd
     test(
         delegate void (ASMBlock cb) { cb.instr(MOVSD, XMM3, XMM5); },
         "F20F10DD"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSD, XMM3, new X86Mem(64, ESP)); },
-        "F20F101C24",
-        "67F20F101C24"
+        delegate void (ASMBlock cb) { cb.instr(MOVSD, XMM3, new X86Mem(64, RSP)); },
+        "F20F101C24"
     );
     test(
         delegate void (ASMBlock cb) { cb.instr(MOVSD, new X86Mem(64, RSP), XMM14); },
-        "",
         "F2440F113424"
     );
+    */
 
     // movq
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVQ, XMM1, RCX); },
-        ""
+        delegate void (ASMBlock cb) { cb.movq(X86Opnd(XMM1), X86Opnd(RCX)); },
         "66480F6EC9"
     );
-    */
+    test(
+        delegate void (ASMBlock cb) { cb.movq(X86Opnd(R12), X86Opnd(XMM8)); },
+        "664D0F7EC4"
+    );
 
     // movsx
     test(
@@ -502,12 +497,10 @@ unittest
     // movupd
     test(
         delegate void (ASMBlock cb) { cb.instr(MOVUPD, XMM7, new X86Mem(128, RSP)); },
-        "",
         "660F103C24"
     );
     test(
         delegate void (ASMBlock cb) { cb.instr(MOVUPD, new X86Mem(128, RCX, -8), XMM9); },
-        "",
         "66440F1149F8"
     );
     */
@@ -784,13 +777,11 @@ unittest
         "49C1EE07"
     );
 
-    /*
     // sqrtsd
     test(
-        delegate void (ASMBlock cb) { cb.instr(SQRTSD, XMM2, XMM6); },
+        delegate void (ASMBlock cb) { cb.sqrtsd(X86Opnd(XMM2), X86Opnd(XMM6)); },
         "F20F51D6"
     );
-    */
 
     // sub
     test(
@@ -821,18 +812,19 @@ unittest
         "",
         "40F6C709"
     );
+    */
 
     // ucomisd
     test(
-        delegate void (ASMBlock cb) { cb.instr(UCOMISD, XMM3, XMM5); },
+        delegate void (ASMBlock cb) { cb.ucomisd(X86Opnd(XMM3), X86Opnd(XMM5)); },
         "660F2EDD"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(UCOMISD, XMM11, XMM13); },
-        "",
+        delegate void (ASMBlock cb) { cb.ucomisd(X86Opnd(XMM11), X86Opnd(XMM13)); },
         "66450F2EDD"
     );
 
+    /*
     // xchg
     test(
         delegate void (ASMBlock cb) { cb.instr(XCHG, AX, DX); }, 
@@ -844,12 +836,10 @@ unittest
     );
     test(
         delegate void (ASMBlock cb) { cb.instr(XCHG, RAX, R15); },
-        "",
         "4997"
     );
     test(
         delegate void (ASMBlock cb) { cb.instr(XCHG, R14, R15); }, 
-        "", 
         "4D87FE"
     );
     */
@@ -859,22 +849,6 @@ unittest
         delegate void (ASMBlock cb) { cb.xor(X86Opnd(EAX), X86Opnd(EAX)); },
         "31C0"
     );
-
-    /*
-    // Simple loop from 0 to 10 (64-bit)
-    test(
-        delegate void (ASMBlock cb) 
-        {
-            cb.mov(RAX, 0);
-            auto LOOP = cb.label("LOOP");
-            cb.instr(ADD, RAX, 1);
-            cb.instr(CMP, RAX, 10);
-            cb.instr(JB, LOOP);
-            cb.instr(RET);
-        },
-        "48C7C0000000004883C0014883F80A72F6C3"
-    );
-    */
 }
 
 /// Test function pointer type
@@ -1048,18 +1022,17 @@ unittest
         6765
     );
 
-    /*
     // SSE2 floating-point computation
     test(
         delegate void (ASMBlock cb)
         {
-            cb.mov(RAX, 2);
-            cb.instr(CVTSI2SD, XMM0, RAX);
-            cb.mov(RAX, 7);
-            cb.instr(CVTSI2SD, XMM1, RAX);
-            cb.instr(ADDSD, XMM0, XMM1);
-            cb.instr(CVTSD2SI, RAX, XMM0);
-            cb.instr(RET);
+            cb.mov(X86Opnd(RAX), X86Opnd(2));
+            cb.cvtsi2sd(X86Opnd(XMM0), X86Opnd(RAX));
+            cb.mov(X86Opnd(RAX), X86Opnd(7));
+            cb.cvtsi2sd(X86Opnd(XMM1), X86Opnd(RAX));
+            cb.addsd(X86Opnd(XMM0), X86Opnd(XMM1));
+            cb.cvtsd2si(X86Opnd(RAX), X86Opnd(XMM0));
+            cb.ret();
         },
         9
     );
@@ -1068,21 +1041,20 @@ unittest
     test(
         delegate void (ASMBlock cb) 
         {
-            cb.mov(RAX, 10);
-            cb.instr(CVTSI2SD, XMM2, RAX);   // XMM2 = 10
-            cb.mov(RAX, 1);
-            cb.instr(CVTSI2SD, XMM1, RAX);   // XMM1 = 1
-            cb.mov(RAX, 0);
-            cb.instr(CVTSI2SD, XMM0, RAX);   // XMM0 = 0
-            auto LOOP = cb.label("LOOP");
-            cb.instr(ADDSD, XMM0, XMM1);
-            cb.instr(UCOMISD, XMM0, XMM2);
-            cb.instr(JBE, LOOP);
-            cb.instr(CVTSD2SI, RAX, XMM0);
-            cb.instr(RET);
+            cb.mov(X86Opnd(RAX), X86Opnd(10));
+            cb.cvtsi2sd(X86Opnd(XMM2), X86Opnd(RAX));   // XMM2 = 10
+            cb.mov(X86Opnd(RAX), X86Opnd(1));
+            cb.cvtsi2sd(X86Opnd(XMM1), X86Opnd(RAX));   // XMM1 = 1
+            cb.mov(X86Opnd(RAX), X86Opnd(0));
+            cb.cvtsi2sd(X86Opnd(XMM0), X86Opnd(RAX));   // XMM0 = 0
+            cb.label(Label.LOOP);
+            cb.addsd(X86Opnd(XMM0), X86Opnd(XMM1));
+            cb.ucomisd(X86Opnd(XMM0), X86Opnd(XMM2));
+            cb.jbe(Label.LOOP);
+            cb.cvtsd2si(X86Opnd(RAX), X86Opnd(XMM0));
+            cb.ret();
         },
         11
     );
-    */
 }
 

@@ -36,8 +36,6 @@ TODO: IP-relative addressing
 
 TODO: rename Interp to VM?
 
-TODO: xmm op encoding
-
 ------------------------------------------------------------------------------
 
 First milestone: no interp, basic incremental codegen
@@ -46,11 +44,6 @@ First milestone: no interp, basic incremental codegen
 - Bump alloc ptr for code, no code compaction
 
 TODO: genBranchEdge(edge, predState)
-
-TODO: interp, add new fields
-- execHeap
-- blockVersions list
-- map of blocks to versions
 
 TODO: stub generation
 - stubs call the JIT with block and state object ptrs
@@ -72,6 +65,18 @@ TODO: begin sketching compile(block, state)
 
 
 
+[DONE] TODO: interp, add new fields
+- execHeap
+- blockVersions list
+- map of blocks to versions
+
+[DONE] TODO: xmm arith op encoding
+- No immediates
+- Some have L vs R encoding
+- Some have two opnd sizes supported
+- Do template but keep it limited
+  - add, mul, sub, sqrt, ucomisd
+  - writeXMM64
 
 [DONE] TODO: shift encoding
 

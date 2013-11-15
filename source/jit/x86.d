@@ -572,6 +572,13 @@ struct X86Opnd
     bool isImm() const { return kind is Kind.IMM; }
     bool isMem() const { return kind is Kind.MEM; }
 
+    bool isXMM() const { return kind is Kind.REG && reg.type is X86Reg.XMM; }
+    bool isGPR() const { return kind is Kind.REG && reg.type is X86Reg.GP; }
+    bool isGPR32() const { return isGPR && reg.size is 32; }
+    bool isGPR64() const { return isGPR && reg.size is 64; }
+    bool isMem32() const { return isMem && mem.size is 32; }
+    bool isMem64() const { return isMem && mem.size is 64; }
+
     bool rexNeeded()
     {
         return (kind is Kind.REG && reg.rexNeeded) || (kind is Kind.MEM && mem.rexNeeded);
@@ -936,6 +943,34 @@ void writeRMMulti(
 }
 
 /**
+Encode an XMM instruction on 64-bit XMM/M operands
+*/
+void writeXMM64(
+    wstring mnem, 
+    ubyte prefix, 
+    ubyte opRegMem0, 
+    ubyte opRegMem1
+)
+(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+{
+    // Write a disassembly string
+    cb.writeASM(mnem, opnd0, opnd1);
+
+    assert (
+        opnd0.isXMM,
+        "invalid first operand"
+    );
+
+    assert (
+        opnd1.isXMM || (opnd1.isMem && opnd1.mem.size is 64),
+        "invalid second operand"
+    );
+
+    cb.writeByte(prefix);
+    cb.writeRMInstr!('r', 0xFF, opRegMem0, opRegMem1)(false, false, opnd0, opnd1);
+}
+
+/**
 Encode a mul-like single-operand RM instruction
 */
 void writeRMUnary(
@@ -980,6 +1015,14 @@ alias writeRMMulti!(
     0x81, // opMemImmLrg
     0x00  // opExtImm
 ) add;
+
+// addsd - Add scalar double
+alias writeXMM64!(
+    "addsd", 
+    0xF2, // prefix
+    0x0F, // opRegMem0
+    0x58  // opRegMem1
+) addsd;
 
 /// and - Bitwise AND
 alias writeRMMulti!(
@@ -1087,6 +1130,45 @@ alias writeRMMulti!(
 void cqo(ASMBlock cb)
 {
     cb.writeBytes(0x48, 0x99);
+}
+
+//// cvtsd2si - Convert integer to scalar double
+void cvtsd2si(ASMBlock cb, X86Opnd dst, X86Opnd src)
+{
+    cb.writeASM("cvtsd2si", dst, src);
+
+    assert (dst.isGPR);
+    assert (dst.reg.size is 32 || dst.reg.size is 64);
+    assert (src.isXMM || src.isMem64);
+
+    auto rexW = dst.reg.size is 64;
+
+    cb.writeByte(0xF2);
+    cb.writeRMInstr!('r', 0xFF, 0x0F, 0x2D)(false, rexW, dst, src);
+}
+
+//// cvtsi2sd - Convert integer to scalar double
+void cvtsi2sd(ASMBlock cb, X86Opnd dst, X86Opnd src)
+{
+    cb.writeASM("cvtsi2sd", dst, src);
+
+    //Enc(opnds=['xmm', 'r/m32'], prefix=[0xF2], opcode=[0x0F, 0x2A]),
+    //Enc(opnds=['xmm', 'r/m64'], prefix=[0xF2], opcode=[0x0F, 0x2A]),
+
+    assert (dst.isXMM);
+
+    size_t opndSize;
+    if (src.isReg)
+        opndSize = src.reg.size;
+    else if (src.isMem)
+        opndSize = src.mem.size;
+    else
+        assert (false);
+    assert (opndSize is 32 || opndSize is 64);
+    auto rexW = opndSize is 64;
+
+    cb.writeByte(0xF2);
+    cb.writeRMInstr!('r', 0xFF, 0x0F, 0x2A)(false, rexW, dst, src);
 }
 
 // dec - Decrement integer by 1
@@ -1321,6 +1403,29 @@ void mov(ASMBlock cb, X86Reg dst, X86Reg src)
     cb.mov(X86Opnd(dst), X86Opnd(src));
 }
 
+/// movq - Move quadword
+void movq(ASMBlock cb, X86Opnd dst, X86Opnd src)
+{
+    cb.writeASM("movq", dst, src);
+
+    if (dst.isXMM)
+    {
+        assert (src.isGPR64 || src.isMem64);
+        cb.writeByte(0x66);
+        cb.writeRMInstr!('r', 0xFF, 0x0F, 0x6E)(false, true, dst, src);
+    }
+    else if (dst.isGPR64 || dst.isMem64)
+    {
+        assert (src.isXMM);
+        cb.writeByte(0x66);
+        cb.writeRMInstr!('l', 0xFF, 0x0F, 0x7E)(false, true, dst, src);
+    }
+    else
+    {
+        assert (false, "invalid dst operand");
+    }
+}
+
 /// movsx - Move with sign extension
 void movsx(ASMBlock cb, X86Opnd dst, X86Opnd src)
 {
@@ -1403,6 +1508,14 @@ alias writeRMUnary!(
     0x04  // opExt
 ) mul;
 
+// mulsd - Multiply scalar double
+alias writeXMM64!(
+    "mulsd", 
+    0xF2, // prefix
+    0x0F, // opRegMem0
+    0x59  // opRegMem1
+) mulsd;
+
 // neg - Integer negation (multiplication by -1)
 alias writeRMUnary!(
     "neg",
@@ -1481,7 +1594,7 @@ alias writeRMMulti!(
 ) or;
 
 /// push - Push a register on the stack
-void push(ASMBlock cb, X86Reg reg)
+void push(ASMBlock cb, immutable X86Reg reg)
 {
     assert (reg.size is 64);
 
@@ -1493,7 +1606,7 @@ void push(ASMBlock cb, X86Reg reg)
 }
 
 /// pop - Pop a register off the stack
-void pop(ASMBlock cb, X86Reg reg)
+void pop(ASMBlock cb, immutable X86Reg reg)
 {
     assert (reg.size is 64);
 
@@ -1562,7 +1675,6 @@ void writeShift(
     }
 }
 
-
 /// sal - Shift arithmetic left
 alias writeShift!(
     "sal", 
@@ -1599,6 +1711,14 @@ alias writeShift!(
     0x05
 ) shr;
 
+// sqrtsd - Square root of scalar double (SSE2)
+alias writeXMM64!(
+    "sqrtsd", 
+    0xF2, // prefix
+    0x0F, // opRegMem0
+    0x51  // opRegMem1
+) sqrtsd;
+
 /// sub - Integer subtraction
 alias writeRMMulti!(
     "sub",
@@ -1611,6 +1731,22 @@ alias writeRMMulti!(
     0x81, // opMemImmLrg
     0x05  // opExtImm
 ) sub;
+
+// subsd - Subtract scalar double
+alias writeXMM64!(
+    "subsd", 
+    0xF2, // prefix
+    0x0F, // opRegMem0
+    0x5C  // opRegMem1
+) subsd;
+
+// ucomisd - Unordered compare scalar double
+alias writeXMM64!(
+    "ucomisd", 
+    0x66, // prefix
+    0x0F, // opRegMem0
+    0x2E  // opRegMem1
+) ucomisd;
 
 /// xor - Exclusive bitwise OR
 alias writeRMMulti!(

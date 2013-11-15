@@ -230,19 +230,42 @@ class CodeBlock
             "the number of bits must be a positive multiple of 8"
         );
 
-        // Compute the size in bytes
-        auto numBytes = numBits / 8;
-
-        // TODO: use a switch and writeBytes
-
-        // Write out the bytes
-        for (size_t i = 0; i < numBytes; ++i)
+        // Switch on the number of bits
+        switch (numBits)
         {
-            auto byteVal = cast(ubyte)(val & 0xFF);
+            case 8:
+            this.writeByte(cast(ubyte)val);
+            break;
 
-            this.writeByte(byteVal);
+            case 16:
+            this.writeBytes(
+                cast(ubyte)((val >> 0) & 0xFF),
+                cast(ubyte)((val >> 8) & 0xFF),
+            );
+            break;
 
-            val >>= 8;
+            case 32:
+            this.writeBytes(
+                cast(ubyte)((val >>  0) & 0xFF),
+                cast(ubyte)((val >>  8) & 0xFF),
+                cast(ubyte)((val >> 16) & 0xFF),
+                cast(ubyte)((val >> 24) & 0xFF),
+            );
+            break;
+
+            default:
+            {
+                // Compute the size in bytes
+                auto numBytes = numBits / 8;
+
+                // Write out the bytes
+                for (size_t i = 0; i < numBytes; ++i)
+                {
+                    auto byteVal = cast(ubyte)(val & 0xFF);
+                    this.writeByte(byteVal);
+                    val >>= 8;
+                }
+            }
         }
     }
 

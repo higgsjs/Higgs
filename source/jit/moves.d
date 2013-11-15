@@ -45,7 +45,7 @@ import ir.ir;
 import jit.assembler;
 import jit.x86;
 
-//alias Tuple!(X86Opnd, "dst", X86Opnd, "src") Move;
+alias Tuple!(X86Opnd, "dst", X86Opnd, "src") Move;
 
 /**
 Execute a list of moves as if occurring simultaneously,

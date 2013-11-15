@@ -58,6 +58,7 @@ import interp.layout;
 import interp.string;
 import interp.object;
 import interp.gc;
+import jit.assembler;
 import jit.jit;
 
 /**
@@ -303,6 +304,9 @@ immutable size_t BASE_OBJ_INIT_SIZE = 128;
 /// Initial global object size
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
 
+/// Initial executable heap size, 16M bytes
+immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
+
 /**
 Interpreter
 */
@@ -339,15 +343,15 @@ class Interp
     ubyte* allocPtr;
 
     /// To-space heap pointers, for garbage collection
-    ubyte* toStart = null;
-    ubyte* toLimit = null;
-    ubyte* toAlloc = null;
+    ubyte* toStart;
+    ubyte* toLimit;
+    ubyte* toAlloc;
 
     /// Linked list of GC roots
-    GCRoot* firstRoot = null;
+    GCRoot* firstRoot;
 
     /// Linked list of type sets
-    TypeSet* firstSet = null;
+    TypeSet* firstSet;
 
     /// Set of weak references to functions referenced in the heap
     /// To be cleaned up by the GC
@@ -401,6 +405,15 @@ class Interp
 
     /// Global object reference
     refptr globalObj;
+
+    /// Executable heap
+    ExecBlock execHeap;
+
+    /// List of block versions, in memory order
+    BlockVersion[] versionList;
+
+    /// Map of blocks to lists of existing versions
+    BlockVersion[IRBlock][] versionMap;
 
     /**
     Constructor, initializes/resets the interpreter state
@@ -509,6 +522,9 @@ class Interp
             new ObjMap(this, GLOBAL_OBJ_INIT_SIZE),
             objProto
         );
+
+        // Allocate the executable heap
+        execHeap = new ExecBlock(EXEC_HEAP_INIT_SIZE);
 
         // If the runtime library should be loaded
         if (loadRuntime)
