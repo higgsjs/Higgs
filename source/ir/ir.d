@@ -133,7 +133,12 @@ class IRFunction : IdObject
         }
     }
 
-    string getName()
+    bool isUnit() const
+    {
+        return cast(ASTProgram)ast !is null;
+    }
+
+    string getName() const
     {
         return this.name ~ "(" ~ idString() ~ ")";
     }

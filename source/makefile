@@ -38,7 +38,7 @@ interp/object.d     \
 interp/gc.d         \
 interp/ffi.d        \
 jit/x86.d           \
-jit/assembler.d     \
+jit/codeblock.d     \
 jit/moves.d         \
 jit/ops.d           \
 jit/jit.d           \

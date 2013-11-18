@@ -43,7 +43,7 @@ import std.stdint;
 import std.conv;
 import interp.interp;
 import jit.x86;
-import jit.assembler;
+import jit.codeblock;
 import jit.jit;
 import ir.ir;
 

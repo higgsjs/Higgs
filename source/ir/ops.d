@@ -38,6 +38,7 @@
 module ir.ops;
 
 import ir.ir;
+import jit.codeblock;
 import jit.ops;
 
 /**
@@ -54,9 +55,6 @@ enum OpArg
     FUN,
     MAP
 }
-
-/// Instruction code generation function
-alias extern (C) void function(IRInstr instr) GenFn;
 
 /**
 Opcode information

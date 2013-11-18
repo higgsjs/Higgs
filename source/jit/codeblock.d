@@ -35,7 +35,7 @@
 *
 *****************************************************************************/
 
-module jit.assembler;
+module jit.codeblock;
 
 import core.sys.posix.unistd;
 //import core.sys.posix.sys.mman;
@@ -185,9 +185,17 @@ class CodeBlock
     /**
     Get the current write position
     */
-    size_t getWritePos()
+    size_t getWritePos() const
     {
         return writePos;
+    }
+
+    /**
+    Test if the code block is empty
+    */
+    bool empty() const
+    {
+        return writePos is 0;
     }
 
     /**
@@ -427,17 +435,6 @@ class ASMBlock : CodeBlock
     }
 
     /**
-    Write a comment string. Does nothing if ASM dump is not enabled.
-    */
-    void writeComment(string str)
-    {
-        if (!hasComments)
-            return;
-
-        return writeStr(str);
-    }
-
-    /**
     Write a formatted disassembly string
     */
     void writeASM(T...)(string mnem, T args)
@@ -454,6 +451,17 @@ class ASMBlock : CodeBlock
         }
 
         str ~= ";";
+
+        return writeStr(str);
+    }
+
+    /**
+    Write a comment string. Does nothing if ASM dump is not enabled.
+    */
+    void comment(string str)
+    {
+        if (!hasComments)
+            return;
 
         return writeStr(str);
     }
@@ -528,72 +536,5 @@ class ASMBlock : CodeBlock
         this.memBlock = newMem;
         this.memSize = newSize;
     }
-}
-
-/**
-Micro-assembler for code generation
-*/
-class Assembler
-{
-    /// Inner instruction code
-    ASMBlock code;
-
-    /// Edge transition move code for each target
-    ASMBlock branchCode[BlockVersion.MAX_TARGETS];
-
-
-    // TODO: final branch descriptors
-
-
-
-
-
-
-
-
-    // Target block versions
-    private BlockVersion targets[BlockVersion.MAX_TARGETS];
-
-    this()
-    {
-        // Allocate the code blocks
-        code = new ASMBlock(opts.jit_dumpasm);
-        for (size_t tIdx = 0; tIdx < branchCode.length; ++tIdx)
-            new ASMBlock(opts.jit_dumpasm);
-
-        clear();
-    }
-
-    /**
-    Clear the contents of the assembler
-    */
-    void clear()
-    {
-        code.clear();
-
-        foreach (code; branchCode)
-            code.clear();
-
-        // TODO: clear branch descriptors
-
-        for (size_t tIdx = 0; tIdx < targets.length; ++tIdx)
-            targets[tIdx] = null;
-    }
-
-    // TODO: method to copy into a code block and finalize into a BlockVersion
-    // Must store offsets + length, etc
-    // Must write to code block
-
-
-
-
-
-
-
-
-
-
-
-
 }
 

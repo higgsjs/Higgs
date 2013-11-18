@@ -43,7 +43,7 @@ import std.array;
 import std.conv;
 import std.stdint;
 import std.algorithm;
-import jit.assembler;
+import jit.codeblock;
 
 /**
 Representation of an x86 register
@@ -182,19 +182,16 @@ struct X86Reg
 string genRegCsts()
 {
     auto decls = appender!string();
-    auto init = appender!string();
-
-    init.put("static this()\n");
-    init.put("{\n");
 
     void genCst(ubyte type, string typeStr, ubyte regNo, ubyte numBits)
     {
         auto regName = (new X86Reg(type, regNo, numBits)).toString();
         auto upName = regName.toUpper();
 
-        decls.put("immutable X86Reg " ~ upName ~ ";\n");
-
-        init.put(upName ~ " = X86Reg(" ~ typeStr ~ ", " ~ to!string(regNo) ~ ", " ~ to!string(numBits) ~ ");\n");
+        decls.put(
+            "immutable X86Reg " ~ upName ~ " = X86Reg(" ~ typeStr ~ ", " ~ 
+            to!string(regNo) ~ ", " ~ to!string(numBits) ~ ");\n"
+        );
     }
 
     for (ubyte regNo = 0; regNo < 16; ++regNo)
@@ -213,9 +210,7 @@ string genRegCsts()
     // Floating-point registers (x87)
     genCst(X86Reg.FP, "X86Reg.FP", 0, 80);
 
-    init.put("}\n");
-
-    return decls.data ~ "\n" ~ init.data;
+    return decls.data;
 }
 mixin(genRegCsts());
 

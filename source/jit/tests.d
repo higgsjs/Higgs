@@ -42,7 +42,7 @@ import std.string;
 import std.format;
 import std.stdint;
 import jit.x86;
-import jit.assembler;
+import jit.codeblock;
 
 /// Code generation function for testing
 alias void delegate(ASMBlock) CodeGenFn;

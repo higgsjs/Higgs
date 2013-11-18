@@ -58,7 +58,7 @@ import interp.layout;
 import interp.string;
 import interp.object;
 import interp.gc;
-import jit.assembler;
+import jit.codeblock;
 import jit.jit;
 
 /**
@@ -406,6 +406,12 @@ class Interp
     /// Global object reference
     refptr globalObj;
 
+    /// Inner block code assembler
+    ASMBlock blockAs;
+
+    /// Branch code assemblers
+    ASMBlock branchAs[BlockVersion.MAX_TARGETS];
+
     /// Executable heap
     ExecBlock execHeap;
 
@@ -413,7 +419,7 @@ class Interp
     BlockVersion[] versionList;
 
     /// Map of blocks to lists of existing versions
-    BlockVersion[IRBlock][] versionMap;
+    BlockVersion[][IRBlock] versionMap;
 
     /**
     Constructor, initializes/resets the interpreter state

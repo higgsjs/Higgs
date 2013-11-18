@@ -53,23 +53,23 @@ class IdObject
         id = nextId++;
     }
 
-    string idString()
+    string idString() const
     {
         return format("%X", this.id);
     }
 
-    override hash_t toHash()
+    override hash_t toHash() const
     {
         return cast(hash_t)id;
     }
 
-    override bool opEquals(Object o)
+    override bool opEquals(Object o) const
     {
         IdObject that = cast(IdObject)o;
         return that && (this.id is that.id);
     }
 
-    override int opCmp(Object o)
+    override int opCmp(Object o) const
     {
         IdObject that = cast(IdObject)o;
 

@@ -51,9 +51,18 @@ import interp.interp;
 import interp.layout;
 import interp.object;
 import interp.string;
-import jit.assembler;
+import jit.codeblock;
 import jit.x86;
 import jit.jit;
+
+/// Instruction code generation function
+alias extern (C) void function(
+    VersionInst ver, 
+    CodeGenState state, 
+    ASMBlock as, 
+    ASMBlock[] branchCode,
+    IRInstr instr
+) GenFn;
 
 /*
 void gen_get_arg(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -1411,14 +1420,52 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 }
 */
 
-/*
-void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_ret(
+    VersionInst ver, 
+    CodeGenState state,
+    ASMBlock as, 
+    ASMBlock[] branchCode,
+    IRInstr instr
+)
 {
     auto raSlot    = instr.block.fun.raVal.outSlot;
     auto argcSlot  = instr.block.fun.argcVal.outSlot;
     auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
+    // If this is a unit-level function
+    if (instr.block.fun.isUnit)
+    {
+        // Store the stack pointers back in the interpreter
+        as.setMember!("Interp.wsp")(interpReg, wspReg);
+        as.setMember!("Interp.tsp")(interpReg, tspReg);
+
+        // Restore the callee-save GP registers
+        as.pop(R15);
+        as.pop(R14);
+        as.pop(R13);
+        as.pop(R12);
+        as.pop(RBP);
+        as.pop(RBX);
+
+        // Pop the stack alignment padding
+        as.add(X86Opnd(RSP), X86Opnd(8));
+
+        // Return to the interpreter
+        as.ret();
+
+
+        // TODO: pop stack space, place return value on stack
+
+
+
+        return;
+    }
+
+    // TODO
+    assert (false);
+
+    /*
     // Find an extra scratch register
     auto curWordOpnd = st.getWordOpnd(instr.getArg(0), 64);
     X86Reg scrReg3;
@@ -1536,8 +1583,8 @@ void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Spill all values, including arguments
     // Call the interpreter call instruction
     defaultFn(ctx.ol, ctx, st, instr);
+    */
 }
-*/
 
 /*
 void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)

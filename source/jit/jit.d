@@ -44,6 +44,7 @@ import std.array;
 import std.stdint;
 import std.conv;
 import std.algorithm;
+import std.typecons;
 import options;
 import ir.ir;
 import ir.livevars;
@@ -52,10 +53,39 @@ import interp.layout;
 import interp.object;
 import interp.string;
 import interp.gc;
-import jit.assembler;
+import jit.codeblock;
 import jit.x86;
 import jit.moves;
 import jit.ops;
+
+/// R15: interpreter object pointer (C callee-save) 
+alias R15 interpReg;
+
+/// R14: word stack pointer (C callee-save)
+alias R14 wspReg;
+
+/// R13: type stack pointer (C callee-save)
+alias R13 tspReg;
+
+// RSP: C stack pointer (used for C calls only)
+alias RSP cspReg;
+
+/// C argument registers
+immutable X86Reg[] cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
+
+/// C fp argument registers
+immutable X86Reg[] cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
+
+/// RAX: scratch register, C return value
+/// RDI: scratch register, first C argument register
+/// RSI: scratch register, second C argument register
+immutable X86Reg[] scrRegs64 = [RAX, RDI, RSI];
+immutable X86Reg[] scrRegs32 = [EAX, EDI, ESI];
+immutable X86Reg[] scrRegs16 = [AX , DI , SI ];
+immutable X86Reg[] scrRegs8  = [AL , DIL, SIL];
+
+/// RCX, RBX, RBP, R8-R12: 9 allocatable registers
+immutable X86Reg[] allocRegs = [RCX, RDX, RBX, RBP, R8, R9, R10, R11, R12];
 
 /**
 Context in which code is being compiled
@@ -78,12 +108,8 @@ class CodeGenCtx
     Interp interp;
 }
 
-
-
-
 // TODO: use a struct with methods for this?
 // TODO: combine allocMap + typeMap? Might be simpler!
-
 
 /// Register allocation information value
 alias uint16_t AllocState;
@@ -100,10 +126,6 @@ const TypeState TF_SYNC = (1 << 6);
 const TypeState TF_BOOL_TRUE = (1 << 5);
 const TypeState TF_BOOL_FALSE = (1 << 4);
 const TypeState TF_TYPE_MASK = (0xF);
-
-
-
-
 
 /**
 Current code generation state. This includes register
@@ -192,6 +214,98 @@ class CodeGenState
         }
         */
     }
+
+    /**
+    Compute the difference (similarity) between this state and another
+    - If states are identical, 0 will be returned
+    - If states are incompatible, size_t.max will be returned
+    */
+    size_t diff(CodeGenState succ)
+    {
+        auto pred = this;
+
+        // Difference (penalty) sum
+        size_t diff = 0;
+
+        // TODO
+        /*
+        // For each value in the predecessor alloc state map
+        foreach (value, allocSt; pred.allocState)
+        {
+            // If this value is not in the successor state,
+            // mark it as on the stack in the successor state
+            if (value !in succ.allocState)
+                succ.allocState[value] = RA_STACK;
+        }
+
+        // For each value in the successor alloc state map
+        foreach (value, allocSt; succ.allocState)
+        {
+            auto predAS = pred.allocState.get(value, 0);
+            auto succAS = succ.allocState.get(value, 0);
+
+            // If the alloc states match perfectly, no penalty
+            if (predAS is succAS)
+                continue;
+
+            // If the successor has this value as a known constant, mismatch
+            if (succAS & RA_CONST)
+                return size_t.max;
+
+            // Add a penalty for the mismatched alloc state
+            diff += 1;
+        }
+
+        // For each value in the predecessor type state map
+        foreach (value, allocSt; pred.typeState)
+        {
+            // If this value is not in the successor state,
+            // add an entry for it in the successor state
+            if (value !in succ.typeState)
+                succ.typeState[value] = 0;
+        }
+
+        // For each value in the successor type state map
+        foreach (value, allocSt; succ.typeState)
+        {
+            auto predTS = pred.typeState.get(value, 0);
+            auto succTS = succ.typeState.get(value, 0);
+
+            // If the type states match perfectly, no penalty
+            if (predTS is succTS)
+                continue;
+
+            // If the successor has a known type
+            if (succTS & TF_KNOWN)
+            {
+                // If the predecessor has no known type, mismatch
+                if (!(predTS & TF_KNOWN))
+                    return size_t.max;
+
+                auto predType = predTS & TF_TYPE_MASK;
+                auto succType = succTS & TF_TYPE_MASK;
+
+                // If the known types do not match, mismatch
+                if (predType !is succType)
+                    return size_t.max;
+
+                // If the type sync flags do not match, add a penalty
+                if ((predTS & TF_SYNC) !is (succTS & TF_SYNC))
+                    diff += 1;
+            }
+            else 
+            {
+                // If the predecessor has a known type, transitioning
+                // would lose us this known type
+                if (predTS & TF_KNOWN)
+                    diff += 1;
+            }
+        }
+        */
+
+        // Return the total difference
+        return diff;
+    }
 }
 
 /**
@@ -210,7 +324,18 @@ abstract class BlockVersion
 
     /// Starting index in the executable code block
     size_t startIdx = size_t.max;
+
+    /// Write the version into the executable heap
+    abstract void write(
+        ASMBlock code, 
+        ASMBlock[] branchCode, 
+        ExecBlock execHeap, 
+        VersionRef[]* refs
+    );
 }
+
+/// Version reference tuple
+alias Tuple!(size_t, "pos", BlockVersion, "ver") VersionRef;
 
 /**
 Stubbed block version
@@ -225,6 +350,24 @@ class VersionStub : BlockVersion
         this.block = block;
         this.state = state;
     }
+
+    /// Write the code into the executable heap
+    override void write(
+        ASMBlock code, 
+        ASMBlock[] branchCode, 
+        ExecBlock execHeap,
+        VersionRef[]* refs)
+    {
+        debug
+        {
+            foreach (branchAs; branchCode)
+                assert (branchAs.empty());
+        }
+
+        startIdx = execHeap.getWritePos();
+
+        execHeap.writeBlock(code);
+    }
 }
 
 /**
@@ -235,9 +378,13 @@ class VersionInst : BlockVersion
     // TODO: final branch descriptors (see Assembler object)
     //branch descs, move code idxs
 
-    // TODO: move code idxs
 
-    // TODO: target BlockVersions
+
+
+    /// Move code indices
+    size_t moveIdxs[MAX_TARGETS];
+
+    // Target block versions (may be stubs)
     BlockVersion targets[MAX_TARGETS];
 
     this(IRBlock block, CodeGenState state)
@@ -251,6 +398,30 @@ class VersionInst : BlockVersion
     {
         return cb.getAddress(startIdx);
     }
+
+    /// Write the code into the executable heap
+    override void write(
+        ASMBlock code, 
+        ASMBlock[] branchCode, 
+        ExecBlock execHeap,
+        VersionRef[]* refs)
+    {
+        startIdx = execHeap.getWritePos();
+
+        execHeap.writeBlock(code);
+
+        // TODO
+
+
+
+
+
+
+
+
+
+
+    }
 }
 
 /**
@@ -258,15 +429,15 @@ Get a label for a given block and incoming state
 */
 BlockVersion getBlockVersion(
     IRBlock block, 
-    CodeGenState state, 
-    bool noStub
+    CodeGenState state,
+    bool noStub,
+    BlockVersion[]* compQueue
 )
 {
     auto interp = state.ctx.interp;
 
-    /*
     // Get the list of versions for this block
-    auto versions = versionMap.get(block, []);
+    auto versions = interp.versionMap.get(block, []);
 
     // Best version found
     BlockVersion bestVer;
@@ -275,8 +446,8 @@ BlockVersion getBlockVersion(
     // For each successor version available
     foreach (ver; versions)
     {
-        // Compute the difference with the predecessor state
-        auto diff = predState.diff(ver.state);
+        // Compute the difference with the incoming state
+        auto diff = state.diff(ver.state);
 
         // If this is a perfect match, return it
         if (diff is 0)
@@ -296,7 +467,7 @@ BlockVersion getBlockVersion(
         //writeln("block cap hit: ", versions.length);
 
         // If a compatible match was found
-        if (bestDiff !is size_t.max)
+        if (bestDiff < size_t.max)
         {
             // Return the best match found
             return bestVer;
@@ -305,54 +476,50 @@ BlockVersion getBlockVersion(
         //writeln("producing general version for: ", block.getName);
 
         // Strip the state of all known types and constants
-        auto genState = new CodeGenState(predState);
+        auto genState = new CodeGenState(state);
+
+        // TODO
+        /*        
         genState.typeState = genState.typeState.init;
         foreach (val, allocSt; genState.allocState)
             if (allocSt & RA_CONST)
                 genState.allocState[val] = RA_STACK;
+        */
 
         // Ensure that the general version matches
-        assert(predState.diff(genState) !is size_t.max);
+        assert(state.diff(genState) !is size_t.max);
 
-        predState = genState;
+        state = genState;
     }
     
     //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
 
-    // Create a label for this new version of the block
-    auto label = new Label(block.getName().toUpper());
-
     // Create a new block version object using the predecessor's state
-    BlockVersion ver = { block, predState, label };
+    BlockVersion ver = (
+        noStub? 
+        new VersionInst(block, state):
+        new VersionStub(block, state)
+    );
 
     // Add the new version to the list for this block
-    versionMap[block] ~= ver;
-
-    //writefln("%s num versions: %s", block.getName(), versionMap[block].length);
+    interp.versionMap[block] ~= ver;
 
     // Queue the new version to be compiled
-    workList ~= ver;
-
-    // Increment the total number of versions
-    numVersions++;
+    *compQueue ~= ver;
 
     // Return the newly created block version
     return ver;
-    */
-
-    // TODO
-    return null;
 }
 
 /**
 Generate moves for a given branch edge transition
 */
 void genBranchEdge(
-    //Assembler as,
-    //Label edgeLabel,
-    BranchEdge branch, 
+    ASMBlock as,
+    BranchEdge branch,
     CodeGenState predState,
-    bool noStub
+    bool noStub,
+    BlockVersion[]* compQueue 
 )
 {
     auto liveInfo = predState.ctx.fun.liveInfo;
@@ -364,7 +531,6 @@ void genBranchEdge(
     // the beginning of the successor block
     succState.removeDead(liveInfo, branch.target);
 
-    /*
     // Map each successor phi node on the stack or in its register
     // in a way that best matches the predecessor state
     for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
@@ -382,6 +548,7 @@ void genBranchEdge(
             phi.block.toString()
         );
 
+        /*
         // Get the register the phi is mapped to
         auto phiReg = regMapping[phi];
         assert (phiReg !is null);
@@ -418,11 +585,16 @@ void genBranchEdge(
             // The phi type is unknown
             succState.typeState.remove(phi);
         }
+        */
     }
-    */
 
     // Get a version of the successor matching the incoming state
-    auto succVer = getBlockVersion(branch.target, succState, noStub);
+    auto succVer = getBlockVersion(
+        branch.target, 
+        succState, 
+        noStub, 
+        compQueue
+    );
     succState = succVer.state;
 
     // List of moves to transition to the successor state
@@ -504,95 +676,168 @@ void genBranchEdge(
             }
         }
     }
+    */
 
     // Execute the moves
     execMoves(as, moveList, scrRegs64[0], scrRegs64[1]);
-    */
 }
 
 /**
 Compile a basic block version instance
 */
-extern (C) const (ubyte*) compile(IRBlock block, CodeGenState state)
+extern (C) const (ubyte*) compile(bool unitFn = false)(IRBlock block, CodeGenState state)
 {
     auto interp = state.ctx.interp;
     auto fun = state.ctx.fun;
+
+    auto as = interp.blockAs;
+    auto branchCode = interp.branchAs;
 
     // Create a version instance for the first version to compile
     VersionInst startInst = new VersionInst(block, state);
 
     // Add the version to the compilation queue
-    VersionInst[] compQueue = [startInst];
+    BlockVersion[] compQueue = [startInst];
+
+    // List of references to block versions
+    VersionRef[] refList;
+
+    // If this is a unit-level function
+    static if (unitFn)
+    {
+        // Align SP to a multiple of 16 bytes
+        as.sub(X86Opnd(RSP), X86Opnd(8));
+
+        // Save the callee-save GP registers
+        as.push(RBX);
+        as.push(RBP);
+        as.push(R12);
+        as.push(R13);
+        as.push(R14);
+        as.push(R15);
+
+        // Load a pointer to the interpreter object
+        as.ptr(interpReg, interp);
+
+        // Load the stack pointers into RBX and RBP
+        as.getMember!("Interp.wsp")(wspReg, interpReg);
+        as.getMember!("Interp.tsp")(tspReg, interpReg);
+    }
 
     // Until the compilation queue is empty
     while (compQueue.length > 0)
     {
+        auto ver = compQueue.front;
+        compQueue.popFront();
 
+        // If this is a version stub
+        if (auto stub = cast(VersionStub)ver)
+        {
+            // Insert the label for this block in the out of line code
+            as.comment("Block stub for " ~ block.getName());
 
+            as.pushRegs();
 
+            // Call the JIT to compile the stub
+            auto compileFn = &compile;
+            as.ptr(RAX, compileFn);
+            as.call(X86Opnd(RAX));
 
+            as.popRegs();
 
+            // Jump to the compiled stub
+            as.jmp(X86Opnd(RAX));
+        }
+        else
+        {
+            auto inst = cast(VersionInst)ver;
+            assert (inst !is null);
 
-        // TODO: finalize blocks into execHeap as they are compiled
-        //interp.execHeap
+            // For each instruction of the block
+            for (auto instr = ver.block.firstInstr; instr !is null; instr = instr.next)
+            {
+                as.comment(instr.toString());
+
+                //as.printStr(instr.toString());
+
+                // Call the code generation function for the opcode
+                auto opcode = instr.opcode;
+                assert (opcode.genFn !is null);
+                opcode.genFn(
+                    inst,
+                    state, 
+                    as,
+                    branchCode,
+                    instr
+                );
+
+                // If we know the instruction will definitely leave 
+                // this block, stop the block compilation
+                if (opcode.isBranch)
+                    break;
+            }
+        }
+
+        // Write the version into the executable heap
+        ver.write(as, branchCode, interp.execHeap, &refList);
+
+        // Clear the assemblers
+        foreach (branchAs; branchCode)
+            branchAs.clear();
+        as.clear();
     }
 
     // Return the address of the first version compiled
-    return startInst.getCodePtr(/*TODO*/null);
+    return startInst.getCodePtr(interp.execHeap);
 }
 
+/// Compile an entry point for a unit-level function
+alias compile!(true) compileUnit;
 
-
-
-
-
-
-
-
-/*
 /// Load a pointer constant into a register
-void ptr(TPtr)(Assembler as, X86Reg destReg, TPtr ptr)
+void ptr(TPtr)(ASMBlock as, X86Reg dstReg, TPtr ptr)
 {
-    as.instr(MOV, destReg, new X86Imm(cast(void*)ptr));
+    as.mov(X86Opnd(dstReg), X86Opnd(X86Imm(cast(void*)ptr)));
 }
 
 /// Increment a global JIT stat counter variable
-void incStatCnt(Assembler as, ulong* pCntVar, X86Reg scrReg)
+void incStatCnt(ASMBlock as, ulong* pCntVar, X86Reg scrReg)
 {
     if (!opts.stats)
         return;
 
     as.ptr(scrReg, pCntVar);
 
-    as.instr(INC, new X86Mem(8 * ulong.sizeof, RAX));
+    as.inc(X86Opnd(8 * ulong.sizeof, RAX));
 }
 
-void getField(Assembler as, X86Reg dstReg, X86Reg baseReg, size_t fSize, size_t fOffset)
+void getField(ASMBlock as, X86Reg dstReg, X86Reg baseReg, size_t fSize, size_t fOffset)
 {
-    as.instr(MOV, dstReg, new X86Mem(8*fSize, baseReg, cast(int32_t)fOffset));
+    as.mov(X86Opnd(dstReg), X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset));
 }
 
-void setField(Assembler as, X86Reg baseReg, size_t fSize, size_t fOffset, X86Reg srcReg)
+void setField(ASMBlock as, X86Reg baseReg, size_t fSize, size_t fOffset, X86Reg srcReg)
 {
-    as.instr(MOV, new X86Mem(8*fSize, baseReg, cast(int32_t)fOffset), srcReg);
+    as.mov(X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset), X86Opnd(srcReg));
 }
 
-void getMember(string className, string fName)(Assembler as, X86Reg dstReg, X86Reg baseReg)
+void getMember(string fName)(ASMBlock as, X86Reg dstReg, X86Reg baseReg)
 {
-    mixin("auto fSize = " ~ className ~ "." ~ fName ~ ".sizeof;");
-    mixin("auto fOffset = " ~ className ~ "." ~ fName ~ ".offsetof;");
+    mixin("auto fSize = " ~ fName ~ ".sizeof;");
+    mixin("auto fOffset = " ~ fName ~ ".offsetof;");
 
     return as.getField(dstReg, baseReg, fSize, fOffset);
 }
 
-void setMember(string className, string fName)(Assembler as, X86Reg baseReg, X86Reg srcReg)
+void setMember(string fName)(ASMBlock as, X86Reg baseReg, X86Reg srcReg)
 {
-    mixin("auto fSize = " ~ className ~ "." ~ fName ~ ".sizeof;");
-    mixin("auto fOffset = " ~ className ~ "." ~ fName ~ ".offsetof;");
+    mixin("auto fSize = " ~ fName ~ ".sizeof;");
+    mixin("auto fOffset = " ~ fName ~ ".offsetof;");
 
     return as.setField(baseReg, fSize, fOffset, srcReg);
 }
 
+/*
 /// Read from the word stack
 void getWord(Assembler as, X86Reg dstReg, int32_t idx)
 {
@@ -726,27 +971,20 @@ extern (C) void checkValFn(Interp interp, Word word, Type type, char* errorStr)
     }
 }
 
-/*
-void printUint(Assembler as, X86Opnd opnd)
+void printUint(ASMBlock as, X86Opnd opnd)
 {
-    assert (
-        opnd !is null,
-        "invalid operand in printUint"
-    );
-
     as.pushRegs();
 
-    as.instr(MOV, cargRegs[0], opnd);
+    as.mov(X86Opnd(cargRegs[0]), opnd);
 
     // Call the print function
     alias extern (C) void function(uint64_t) PrintUintFn;
     PrintUintFn printUintFn = &printUint;
     as.ptr(RAX, printUintFn);
-    as.instr(jit.encodings.CALL, RAX);
+    as.call(X86Opnd(RAX));
 
     as.popRegs();
 }
-*/
 
 /**
 Print an unsigned integer value. Callable from the JIT
