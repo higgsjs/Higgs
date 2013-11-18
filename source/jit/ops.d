@@ -56,11 +56,11 @@ import jit.x86;
 import jit.jit;
 
 /// Instruction code generation function
-alias extern (C) void function(
+alias void function(
     VersionInst ver, 
-    CodeGenState state, 
+    CodeGenState st, 
     ASMBlock as, 
-    ASMBlock[] branchCode,
+    ASMBlock[] moves,
     IRInstr instr
 ) GenFn;
 
@@ -1422,9 +1422,9 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void gen_ret(
     VersionInst ver, 
-    CodeGenState state,
+    CodeGenState st,
     ASMBlock as, 
-    ASMBlock[] branchCode,
+    ASMBlock[] moves,
     IRInstr instr
 )
 {
@@ -1451,13 +1451,44 @@ void gen_ret(
         // Pop the stack alignment padding
         as.add(X86Opnd(RSP), X86Opnd(8));
 
+        // Pop the locals, but leave one slot for the return value
+        auto numPop = numLocals - 1;
+
+        // Copy the return value word
+        auto retOpnd = st.getWordOpnd(
+            as, 
+            instr, 
+            0,
+            64,
+            X86Opnd(scrRegs64[0]),
+            true
+        );
+        as.mov(
+            X86Opnd(64, wspReg, 8 * numPop),
+            retOpnd
+        );
+
+        // Copy the return value type
+        auto typeOpnd = st.getTypeOpnd(
+            as, 
+            instr,
+            0, 
+            X86Opnd(scrRegs8[0]),
+            true
+        );
+        as.mov(
+            X86Opnd(8, tspReg, 1 * numPop),
+            typeOpnd
+        );
+
+        // Pop local stack slots, but leave one slot for the return value
+        as.add(tspReg, 1 * numPop);
+        as.add(wspReg, 8 * numPop);
+
         // Return to the interpreter
         as.ret();
 
-
-        // TODO: pop stack space, place return value on stack
-
-
+        writeln("leaving gen_ret");
 
         return;
     }

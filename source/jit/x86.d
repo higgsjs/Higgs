@@ -1011,6 +1011,15 @@ alias writeRMMulti!(
     0x00  // opExtImm
 ) add;
 
+/// add - Add with register and immediate operand
+void add(ASMBlock as, X86Reg dst, int64_t imm)
+{
+    assert (imm >= int32_t.min && imm <= int32_t.max);
+
+    // TODO: optimize encoding
+    return add(as, X86Opnd(dst), X86Opnd(imm));
+}
+
 // addsd - Add scalar double
 alias writeXMM64!(
     "addsd", 
@@ -1382,6 +1391,13 @@ void mov(ASMBlock cb, X86Opnd dst, X86Opnd src)
             0xFF  // opExtImm
         )(cb, dst, src);
     }
+}
+
+/// mov - Move an immediate into a register
+void mov(ASMBlock cb, X86Reg reg, X86Imm imm)
+{
+    // TODO: more optimized code for this case
+    cb.mov(X86Opnd(reg), X86Opnd(imm));
 }
 
 /// mov - Move an immediate into a register

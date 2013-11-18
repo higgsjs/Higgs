@@ -382,15 +382,6 @@ class Interp
     /// Free link table entries
     uint32[] linkTblFree;
 
-    /// Temporary value array
-    ValuePair[] tempVals;
-
-    /// Branch target block
-    IRBlock target = null;
-
-    /// Instruction pointer
-    IRInstr ip = null;
-
     /// String table reference
     refptr strTbl;
 
@@ -528,6 +519,11 @@ class Interp
             new ObjMap(this, GLOBAL_OBJ_INIT_SIZE),
             objProto
         );
+
+        // Allocate the assembler objects
+        blockAs = new ASMBlock();
+        for (size_t i = 0; i < branchAs.length; ++i)
+            branchAs[i] = new ASMBlock();
 
         // Allocate the executable heap
         execHeap = new ExecBlock(EXEC_HEAP_INIT_SIZE);
@@ -829,42 +825,6 @@ class Interp
     }
 
     /**
-    Make the execution jump to a specific block
-    */
-    void jump(IRBlock block)
-    {
-        // Set the branch target block
-        target = block;
-
-        // Nullify the IP to stop the execution of the current block
-        ip = null;
-    }
-
-    /**
-    Make the execution jump to a specific block and set phi node values
-    */
-    void branch(BranchEdge branch)
-    {
-        //writefln("branch into %s", branch.succ.fun.getName);
-        //writefln("executing %s phis", branch.args.length);
-
-        // Allocate temp space for the values
-        if (tempVals.length < branch.args.length)
-            tempVals.length = branch.args.length;
-
-        // Extract the argument values into the temp array
-        foreach (argIdx, arg; branch.args)
-            tempVals[argIdx] = getValue(arg.value);
-
-        // Set the phi values from the temp array
-        foreach (argIdx, arg; branch.args)
-            setSlot(arg.owner.outSlot, tempVals[argIdx]);
-
-        // Jump to the target block
-        jump(branch.target);
-    }
-
-    /**
     Call a given IR function. Prepares the callee stack-frame.
     */
     void callFun(
@@ -928,8 +888,23 @@ class Interp
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
         push(numLocals);
 
-        // Jump to the function entry block
-        jump(fun.entryBlock);
+
+        // Create a version instance object for the function entry
+        auto entryVersion = new VersionInst(
+            fun.entryBlock, 
+            new CodeGenState(
+                new CodeGenCtx(
+                    this,
+                    fun
+                )
+            )
+        );
+
+        auto codePtr = compileUnit(entryVersion);
+
+        //call codePtr;
+
+
     }
 
     /**
@@ -957,12 +932,6 @@ class Interp
             0,                      // 0 arguments
             null                    // no argument array
         );
-
-        // TODO
-        // TODO
-        // TODO
-        // Run the interpreter loop
-        //loop();
 
         // Ensure the stack contains at least one value
         assert (
@@ -1050,6 +1019,10 @@ class Interp
         auto wsp = this.wsp;
         auto tsp = this.tsp;
 
+        // FIXME: specify current IP as argument?
+        assert (false);
+
+        /*
         IRInstr curInstr = this.target? this.target.firstInstr:this.ip;
         assert (
             curInstr !is null, 
@@ -1109,6 +1082,7 @@ class Interp
             wsp += frameSize;
             tsp += frameSize;
         }
+        */
     }
 }
 

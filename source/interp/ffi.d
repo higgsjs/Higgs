@@ -262,7 +262,7 @@ unittest
     writefln("FFI");
 
     // TODO
-    auto interp = new Interp();
+    //auto interp = new Interp();
     //interp.load("programs/ffi/ffi.js");
 }
 

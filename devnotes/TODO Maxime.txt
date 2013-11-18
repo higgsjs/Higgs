@@ -45,40 +45,33 @@ First milestone: no interp, basic incremental codegen
 
 TODO: port/fix execMoves
 
-TODO: make Interp complie/call unit functions
+TODO: think about branches at end of blocks
+- Can specifying operands to test and targets be enough?
+  - e.g.: ilt, ieq, fgt, 64-bit
+  - direct jump
+- Works for if-type branches, type tests
+- Calls are handled separately
+- Look at old jit ops
 
-TODO: return op generation for unit-level functions
+TODO: patch version refs
+
+FIXME: segfault while compiling unit entry
+- Bug in getWordOpnd
+
+
+
+
+
+
+
+[DONE] TODO: make Interp compile/call unit functions
+
+[DONE] TODO: return op generation for unit-level functions
 - Also need entry generation for unit-level functions
   - static template flag to compile?
 
-
-
-
-
-
-    // Store the stack pointers back in the interpreter
-    ol.setMember!("Interp", "wsp")(interpReg, wspReg);
-    ol.setMember!("Interp", "tsp")(interpReg, tspReg);
-
-    // Restore the callee-save GP registers
-    ol.instr(POP, R15);
-    ol.instr(POP, R14);
-    ol.instr(POP, R13);
-    ol.instr(POP, R12);
-    ol.instr(POP, RBP);
-    ol.instr(POP, RBX);
-
-    // Pop the stack alignment padding
-    ol.instr(ADD, RSP, 8);
-
-    // Return to the interpreter
-    ol.instr(jit.encodings.RET);
-
-
-
-
-
-
+[DONE] TODO: basic implementation of getWordOpnd/getTypeOpnd
+- Needed for return op, other ops
 
 [DONE] TODO: initial genBranchEdge(edge, predState)
 

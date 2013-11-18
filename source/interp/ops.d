@@ -117,6 +117,8 @@ refptr getArgStr(Interp interp, IRInstr instr, size_t argIdx)
     return strVal.word.ptrVal;
 }
 
+// FIXME
+/*
 void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
 {
     //writefln("throw");
@@ -175,6 +177,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
         interp.pop(numLocals + extraArgs);
     }
 }
+*/
 
 void throwError(
     Interp interp,
@@ -183,6 +186,10 @@ void throwError(
     string errMsg
 )
 {
+    assert (false);
+
+    // FIXME
+    /*
     auto errStr = GCRoot(interp, getString(interp, to!wstring(errMsg)));
 
     auto ctorStr = GCRoot(interp, getString(interp, to!wstring(ctorName)));
@@ -246,6 +253,7 @@ void throwError(
         instr,
         errStr.pair
     );
+    */
 }
 
 extern (C) void op_set_str(Interp interp, IRInstr instr)
@@ -331,6 +339,7 @@ extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
 }
 */
 
+/*
 extern (C) void op_call(Interp interp, IRInstr instr)
 {
     auto closVal = interp.getArgVal(instr, 0);
@@ -343,10 +352,7 @@ extern (C) void op_call(Interp interp, IRInstr instr)
     auto closPtr = closVal.word.ptrVal;
     auto fun = getClosFun(closPtr);
 
-    /*
-    write(core.memory.GC.addrOf(cast(void*)fun));
-    write("\n");
-    */
+    //writeln(core.memory.GC.addrOf(cast(void*)fun));
 
     auto argCount = cast(uint32_t)instr.numArgs - 2;
 
@@ -369,7 +375,9 @@ extern (C) void op_call(Interp interp, IRInstr instr)
         argVals
     );
 }
+*/
 
+/*
 /// JavaScript new operator (constructor call)
 extern (C) void op_call_new(Interp interp, IRInstr instr)
 {
@@ -440,7 +448,9 @@ extern (C) void op_call_new(Interp interp, IRInstr instr)
         argVals
     );
 }
+*/
 
+/*
 extern (C) void op_call_apply(Interp interp, IRInstr instr)
 {
     auto closVal = interp.getArgVal(instr, 0);
@@ -483,7 +493,9 @@ extern (C) void op_call_apply(Interp interp, IRInstr instr)
         argVals
     );
 }
+*/
 
+/*
 extern (C) void op_call_prim(Interp interp, IRInstr instr)
 {
     // Name string (D string)
@@ -541,7 +553,9 @@ extern (C) void op_call_prim(Interp interp, IRInstr instr)
         argVals
     );
 }
+*/
 
+/*
 extern (C) void op_ret(Interp interp, IRInstr instr)
 {
     //writefln("ret from %s", instr.block.fun.getName);
@@ -563,12 +577,10 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
     // If the call instruction is valid
     if (callInstr !is null)
     {
-        /*        
-        writeln("ret val: ");
-        writeln("  word: ", retVal.word.int64Val);
+        //writeln("ret val: ");
+        //writeln("  word: ", retVal.word.int64Val);
         //writeln("   i32: ", retVal.word.int32Val);
-        writeln("  type: ", retVal.type);
-        */
+        //writeln("  type: ", retVal.type);
 
         // If this is a new call and the return value is undefined
         if (callInstr.opcode == &CALL_NEW && (retVal.type == Type.CONST && retVal.word == UNDEF))
@@ -607,7 +619,9 @@ extern (C) void op_ret(Interp interp, IRInstr instr)
         interp.push(retVal);
     }
 }
+*/
 
+/*
 extern (C) void op_throw(Interp interp, IRInstr instr)
 {
     // Get the exception value
@@ -616,6 +630,7 @@ extern (C) void op_throw(Interp interp, IRInstr instr)
     // Throw the exception
     throwExc(interp, instr, excVal);
 }
+*/
 
 extern (C) void op_heap_alloc(Interp interp, IRInstr instr)
 {

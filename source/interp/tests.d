@@ -188,12 +188,15 @@ unittest
 
 unittest
 {
-    /*
     writefln("interpreter core");
 
     // Create an interpreter without a runtime or stdlib
     auto interp = new Interp(false, false);
 
+    // Do nothing
+    interp.evalString("");
+
+    /*
     // Constant integer 1
     auto v = interp.evalString("1");
     assert (v.word.int32Val == 1);

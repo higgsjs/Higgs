@@ -101,11 +101,17 @@ class CodeGenCtx
     /// Number of extra locals (if inlined)
     size_t extraLocals = 0;
 
+    /// Associated interpreter object
+    Interp interp;
+
     /// Function this code belongs to
     IRFunction fun;
 
-    /// Associated interpreter object
-    Interp interp;
+    this(Interp interp, IRFunction fun)
+    {
+        this.interp = interp;
+        this.fun = fun;
+    }
 }
 
 // TODO: use a struct with methods for this?
@@ -157,8 +163,10 @@ class CodeGenState
     /// List of delayed type tag writes
 
     /// Constructor for a default/entry code generation state
-    this(IRFunction fun)
+    this(CodeGenCtx ctx)
     {
+        this.ctx = ctx;
+
         // All registers are initially free
         gpRegMap.length = 16;
         for (size_t i = 0; i < gpRegMap.length; ++i)
@@ -169,6 +177,7 @@ class CodeGenState
     this(CodeGenState that)
     {
         // TODO
+        this.ctx = that.ctx;
         this.allocMap = that.allocMap.dup;
         this.typeMap = that.typeMap.dup;
         this.gpRegMap = that.gpRegMap.dup;
@@ -305,6 +314,309 @@ class CodeGenState
 
         // Return the total difference
         return diff;
+    }
+
+    /**
+    Get an operand for any IR value without allocating a register.
+    */
+    X86Opnd getWordOpnd(IRValue value, size_t numBits)
+    {
+        assert (
+            value !is null, 
+            "cannot get operand for null value"
+        );
+
+        auto dstVal = cast(IRDstValue)value;
+
+        // TODO
+        /*
+        // Get the current alloc flags for the argument
+        auto flags = allocState.get(dstVal, 0);
+
+        // If the argument is a known constant
+        if (flags & RA_CONST || dstVal is null)
+        {
+            auto word = getWord(value);
+
+            if (numBits is 8)
+                return new X86Imm(word.int8Val);
+            if (numBits is 32)
+                return new X86Imm(word.int32Val);
+            return new X86Imm(getWord(value).int64Val);
+        }
+
+        // If the argument already is in a general-purpose register
+        if (flags & RA_GPREG)
+        {
+            auto regNo = flags & RA_REG_MASK;
+            return new X86Reg(X86Reg.GP, regNo, numBits);
+        }
+        */
+
+        // Return the stack operand for the argument
+        return X86Opnd(numBits, wspReg, 8 * dstVal.outSlot);
+    }
+
+    /**
+    Get the word operand for an instruction argument,
+    allocating a register when possible.
+    - If tmpReg is supplied, memory operands will be loaded in the tmpReg
+    - If acceptImm is false, constant operants will be loaded into tmpReg
+    - If loadVal is false, memory operands will not be loaded
+    */
+    X86Opnd getWordOpnd(
+        ASMBlock as,
+        IRInstr instr, 
+        size_t argIdx,
+        size_t numBits,
+        X86Opnd tmpReg = X86Opnd.NONE,
+        bool acceptImm = false,
+        bool loadVal = true
+    )
+    {
+        assert (instr !is null);
+
+        assert (
+            argIdx < instr.numArgs,
+            "invalid argument index"
+        );
+
+        // Get the IR value for the argument
+        auto argVal = instr.getArg(argIdx);
+        auto dstVal = cast(IRDstValue)argVal;
+
+        /*
+        /// Allocate a register for the argument
+        X86Opnd allocReg()
+        {
+            assert (
+                dstVal !is null,
+                "cannot allocate register for constant IR value: " ~
+                argVal.toString()
+            );
+
+            // Get the assigned register for the argument
+            auto reg = ctx.regMapping[dstVal];
+
+            // Get the value mapped to this register
+            auto regVal = gpRegMap[reg.regNo];
+
+            // If the register is mapped to a value
+            if (regVal !is null)
+            {
+                // If the mapped slot belongs to another instruction argument
+                for (size_t otherIdx = 0; otherIdx < instr.numArgs; ++otherIdx)
+                {
+                    if (otherIdx != argIdx && regVal is instr.getArg(otherIdx))
+                    {
+                        // Map the argument to its stack location
+                        allocState[dstVal] = RA_STACK;
+                        return new X86Mem(numBits, wspReg, 8 * dstVal.outSlot);
+                    }
+                }
+
+                // If the currently mapped value is live, spill it
+                if (ctx.liveInfo.liveAfter(regVal, instr))
+                    spillReg(as, reg.regNo);
+                else
+                    allocState.remove(regVal);
+            }
+
+            // Load the value into the register 
+            // note: all 64 bits of it, not just the requested bits
+            as.instr(MOV, reg, getWordOpnd(argVal, 64));
+
+            // Map the argument to the register
+            allocState[dstVal] = RA_GPREG | reg.regNo;
+            gpRegMap[reg.regNo] = dstVal;
+            return new X86Reg(X86Reg.GP, reg.regNo, numBits);
+        }
+        */
+
+        // Get the current operand for the argument value
+        auto curOpnd = getWordOpnd(argVal, numBits);
+
+        // If the argument is already in a register
+        if (curOpnd.isReg)
+        {
+            return curOpnd;
+        }
+
+        // If the operand is immediate
+        if (curOpnd.isImm)
+        {
+            if (acceptImm && curOpnd.imm.immSize <= 32)
+            {
+                return curOpnd;
+            }
+
+            assert (
+                !tmpReg.isNone,
+                "immediates not accepted but no tmpReg supplied:\n" ~
+                instr.toString()
+            );
+
+            if (tmpReg.isGPR)
+            {
+                as.mov(tmpReg.reg, curOpnd.imm);
+                return tmpReg;
+            }
+
+            if (tmpReg.isXMM)
+            {
+                // FIXME
+                assert (false);
+                /*
+                auto cstLabel = ctx.ol.label("FP_CONST");
+                ctx.ol.addInstr(new IntData(immOpnd.imm, 64));
+                as.instr(MOVQ, tmpReg, new X86IPRel(64, cstLabel));
+                return tmpReg;
+                */
+            }            
+
+            assert (
+                false,
+                "unhandled immediate"
+            );
+        }
+
+        // If the operand is a memory location
+        if (curOpnd.isMem)
+        {
+            // TODO
+            return curOpnd;
+
+            /*
+            // TODO: only allocate a register if more than one use?            
+
+            // Try to allocate a register for the operand
+            auto opnd = loadVal? allocReg():curOpnd;
+
+            // If the register allocation failed but a temp reg was supplied
+            if (cast(X86Mem)opnd && tmpReg !is null)
+            {
+                as.instr(
+                    (tmpReg.type == X86Reg.XMM)? MOVSD:MOV, 
+                    tmpReg, 
+                    curOpnd
+                );
+
+                return tmpReg;
+            }
+
+            // Return the allocated operand
+            return opnd;
+            */
+        }
+
+        assert (false, "invalid cur opnd type");
+    }
+
+    /**
+    Get an x86 operand for the type of any IR value
+    */
+    X86Opnd getTypeOpnd(IRValue value) const
+    {
+        assert (value !is null);
+
+        auto dstVal = cast(IRDstValue)value;
+
+        // TODO
+        /*
+        // If the value is an IR constant or has a known type
+        if (dstVal is null || typeKnown(value) is true)
+        {
+            return new X86Imm(getType(value));
+        }
+        */
+
+        return X86Opnd(8, tspReg, dstVal.outSlot);
+    }
+
+    /**
+    Get an x86 operand for the type of an instruction argument
+    */
+    X86Opnd getTypeOpnd(
+        ASMBlock as,
+        IRInstr instr,
+        size_t argIdx,
+        X86Opnd tmpReg8 = X86Opnd.NONE,
+        bool acceptImm = false
+    ) const
+    {
+        assert (instr !is null);
+
+        assert (
+            argIdx < instr.numArgs,
+            "invalid argument index"
+        );
+
+        // Get an operand for the argument value
+        auto argVal = instr.getArg(argIdx);
+        auto curOpnd = getTypeOpnd(argVal);
+
+        if (acceptImm is true && curOpnd.isImm)
+        {
+            return curOpnd;
+        }
+
+        if (!tmpReg8.isNone)
+        {
+            assert (tmpReg8.reg.size is 8);
+            as.mov(tmpReg8, curOpnd);
+            return tmpReg8;
+        }
+
+        return curOpnd;
+    }
+
+    /// Get the operand for an instruction's output
+    X86Opnd getOutOpnd(
+        ASMBlock as, 
+        IRInstr instr, 
+        uint16_t numBits
+    )
+    {
+        assert (instr !is null);
+
+        auto opnd = getWordOpnd(instr, numBits);
+        assert (opnd.isMem);
+        return opnd;
+
+        // TODO
+        /*
+        // Get the assigned register for this instruction
+        auto reg = ctx.regMapping[instr];
+
+        // Get the value mapped to this register
+        auto regVal = gpRegMap[reg.regNo];
+
+        // If another slot is using the register
+        if (regVal !is null && regVal !is instr)
+        {
+            // If an instruction argument is using this slot
+            for (size_t argIdx = 0; argIdx < instr.numArgs; ++argIdx)
+            {
+                if (regVal is instr.getArg(argIdx))
+                {
+                    // Map the output slot to its stack location
+                    allocState[instr] = RA_STACK;
+                    return new X86Mem(numBits, wspReg, 8 * instr.outSlot);
+                }
+            }
+
+            // If the value is live, spill it
+            if (ctx.liveInfo.liveAfter(regVal, instr) is true)
+                spillReg(as, reg.regNo);
+            else
+                allocState.remove(regVal);
+        }
+
+        // Map the instruction to the register
+        allocState[instr] = RA_GPREG | reg.regNo;
+        gpRegMap[reg.regNo] = instr;
+        return new X86Reg(X86Reg.GP, reg.regNo, numBits);
+        */
     }
 }
 
@@ -683,21 +995,41 @@ void genBranchEdge(
 }
 
 /**
-Compile a basic block version instance
+Compile a basic block version
 */
-extern (C) const (ubyte*) compile(bool unitFn = false)(IRBlock block, CodeGenState state)
+extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
 {
+    writeln("entering compile");
+
+    assert (startVer !is null);
+
+    auto state = startVer.state;
+    assert (state.ctx !is null);
     auto interp = state.ctx.interp;
+    assert (interp !is null);
     auto fun = state.ctx.fun;
+    assert (fun !is null);
 
+    auto moves = interp.branchAs;
+    foreach (bas; moves)
+        assert (bas !is null);
     auto as = interp.blockAs;
-    auto branchCode = interp.branchAs;
+    assert (as !is null);
 
-    // Create a version instance for the first version to compile
-    VersionInst startInst = new VersionInst(block, state);
+    // If this is a stub to be compiled
+    if (auto stub = cast(VersionStub)startVer)
+    {
+        // Ensure that no prior code was generated for this stub
+        assert (stub.startIdx is size_t.max);
+
+        // Create a version instance object for this stub
+        // and set the instance pointer for the stub
+        stub.inst = new VersionInst(stub.block, stub.state);
+        startVer = stub.inst;
+    }
 
     // Add the version to the compilation queue
-    BlockVersion[] compQueue = [startInst];
+    BlockVersion[] compQueue = [startVer];
 
     // List of references to block versions
     VersionRef[] refList;
@@ -733,14 +1065,18 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(IRBlock block, CodeGenSta
         // If this is a version stub
         if (auto stub = cast(VersionStub)ver)
         {
+            writeln("compiling stub");
+
             // Insert the label for this block in the out of line code
-            as.comment("Block stub for " ~ block.getName());
+            as.comment("Block stub for " ~ stub.block.getName());
 
             as.pushRegs();
 
-            // Call the JIT to compile the stub
+            // Call the JIT compile function,
+            // passing it a pointer to the stub
             auto compileFn = &compile;
             as.ptr(RAX, compileFn);
+            as.ptr(cargRegs[0], stub);
             as.call(X86Opnd(RAX));
 
             as.popRegs();
@@ -750,6 +1086,8 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(IRBlock block, CodeGenSta
         }
         else
         {
+            writeln("compiling instance");
+
             auto inst = cast(VersionInst)ver;
             assert (inst !is null);
 
@@ -760,14 +1098,20 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(IRBlock block, CodeGenSta
 
                 //as.printStr(instr.toString());
 
-                // Call the code generation function for the opcode
                 auto opcode = instr.opcode;
-                assert (opcode.genFn !is null);
+                assert (opcode !is null);
+
+                assert (
+                    opcode.genFn !is null,
+                    "no codegen function for \"" ~ instr.toString() ~ "\""
+                );
+
+                // Call the code generation function for the opcode
                 opcode.genFn(
                     inst,
                     state, 
                     as,
-                    branchCode,
+                    moves,
                     instr
                 );
 
@@ -776,19 +1120,37 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(IRBlock block, CodeGenSta
                 if (opcode.isBranch)
                     break;
             }
+
+            // Link block-internal labels
+            as.link();
         }
 
+        writeln("writing to executable heap");
+
         // Write the version into the executable heap
-        ver.write(as, branchCode, interp.execHeap, &refList);
+        ver.write(as, moves, interp.execHeap, &refList);
+
+        writeln("clearing assemblers");
 
         // Clear the assemblers
-        foreach (branchAs; branchCode)
-            branchAs.clear();
+        foreach (bas; moves)
+            bas.clear();
         as.clear();
     }
 
+    // TODO: refList
+    // Link block references
+
+
+
     // Return the address of the first version compiled
-    return startInst.getCodePtr(interp.execHeap);
+    auto startInst = cast(VersionInst)startVer;
+    assert (startInst !is null);
+    auto codePtr = startInst.getCodePtr(interp.execHeap);
+
+    writeln("leaving compile");
+
+    return codePtr;
 }
 
 /// Compile an entry point for a unit-level function

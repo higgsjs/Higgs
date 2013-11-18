@@ -242,7 +242,7 @@ Opcode CALL_PRIM = { "call_prim", true, [OpArg.STRING, OpArg.FUN], /*&op_call_pr
 
 // RET <retLocal>
 // Pops the callee frame (size known by context)
-Opcode RET = { "ret", false, [OpArg.LOCAL], /*&op_ret*/null , OpInfo.BRANCH };
+Opcode RET = { "ret", false, [OpArg.LOCAL], &gen_ret, OpInfo.BRANCH };
 
 // THROW <excLocal>
 // Throws an exception, unwinds the stack
