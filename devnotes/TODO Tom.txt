@@ -1,3 +1,28 @@
+TODO: test harness 
+	- simple harness for running tests similar to what mozilla uses in their JIT tests
+	- run all the JS files in a dir, check for nonzero return indicating failure
+	- basic assertion functions
+
+TODO: improve FFI
+	- better errors in cdef (pretty even? arrows pointing to failures? arrows? lin/col?)
+	- add wrapping capability
+	- performance improvements
+	- leverage maps for looking up types?
+	- 
+
+TODO: SDL bindings
+	- move to binding for SDL2? Not as much support but more future proof
+
+TODO: libs
+	- improve stdlib
+
+
+
+
+---------------------------------------------------------------------------------------------------
+
+[DONE]: start FFI
+
 The eventual goal is to give users of Higgs easy access to various APIs.
 We will probably want to provide access to standard C APIs such as
 malloc/free as well as the C file APIs. May also want to provide BSD-type
