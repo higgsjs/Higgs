@@ -196,11 +196,12 @@ unittest
     // Do nothing
     interp.evalString("");
 
-    /*
     // Constant integer 1
     auto v = interp.evalString("1");
     assert (v.word.int32Val == 1);
+    assert (v.type is Type.INT32);
 
+    /*
     // 32-bit integer add
     interp.assertInt("$ir_add_i32(1, 2)", 3);
 

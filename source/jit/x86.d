@@ -1351,7 +1351,7 @@ void mov(ASMBlock cb, X86Opnd dst, X86Opnd src)
             if (dstSize is 16)
                 cb.writeByte(0x66);
             if (reg.rexNeeded || dstSize is 64)
-                cb.writeREX(dstSize is 64, reg.regNo);
+                cb.writeREX(dstSize is 64, 0, 0, reg.regNo);
 
             cb.writeOpcode((dstSize is 8)? 0xB0:0xB8, reg);
 
@@ -1612,7 +1612,7 @@ void push(ASMBlock cb, immutable X86Reg reg)
     cb.writeASM("push", reg); 
 
     if (reg.rexNeeded)
-        cb.writeREX(false, reg.regNo);
+        cb.writeREX(false, 0, 0, reg.regNo);
     cb.writeOpcode(0x50, reg);
 }
 
@@ -1624,7 +1624,7 @@ void pop(ASMBlock cb, immutable X86Reg reg)
     cb.writeASM("pop", reg);
 
     if (reg.rexNeeded)
-        cb.writeREX(false, reg.regNo);
+        cb.writeREX(false, 0, 0, reg.regNo);
     cb.writeOpcode(0x58, reg);
 }
 

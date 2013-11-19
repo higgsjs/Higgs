@@ -332,19 +332,21 @@ class CodeGenState
         /*
         // Get the current alloc flags for the argument
         auto flags = allocState.get(dstVal, 0);
+        */
 
         // If the argument is a known constant
-        if (flags & RA_CONST || dstVal is null)
+        if (/*flags & RA_CONST ||*/ dstVal is null)
         {
             auto word = getWord(value);
 
             if (numBits is 8)
-                return new X86Imm(word.int8Val);
+                return X86Opnd(word.int8Val);
             if (numBits is 32)
-                return new X86Imm(word.int32Val);
-            return new X86Imm(getWord(value).int64Val);
+                return X86Opnd(word.int32Val);
+            return X86Opnd(getWord(value).int64Val);
         }
 
+        /*
         // If the argument already is in a general-purpose register
         if (flags & RA_GPREG)
         {
@@ -521,14 +523,11 @@ class CodeGenState
 
         auto dstVal = cast(IRDstValue)value;
 
-        // TODO
-        /*
         // If the value is an IR constant or has a known type
-        if (dstVal is null || typeKnown(value) is true)
+        if (dstVal is null /*|| typeKnown(value) is true*/)
         {
-            return new X86Imm(getType(value));
+            return X86Opnd(getType(value));
         }
-        */
 
         return X86Opnd(8, tspReg, dstVal.outSlot);
     }
@@ -616,6 +615,57 @@ class CodeGenState
         allocState[instr] = RA_GPREG | reg.regNo;
         gpRegMap[reg.regNo] = instr;
         return new X86Reg(X86Reg.GP, reg.regNo, numBits);
+        */
+    }
+
+    /// Get the word value for a known constant local
+    Word getWord(IRValue value) const
+    {
+        assert (value !is null);
+
+        auto dstValue = cast(IRDstValue)value;
+
+        if (dstValue is null)
+            return value.cstValue.word;
+
+        // TODO
+        assert (false);
+        /*
+        auto allocSt = allocState[dstValue];
+        auto typeSt = typeState[dstValue];
+
+        assert (allocSt & RA_CONST);
+
+        if (typeSt & TF_BOOL_TRUE)
+            return TRUE;
+        else if (typeSt & TF_BOOL_FALSE)
+            return FALSE;
+        else
+            assert (false, "unknown constant");
+        */
+    }
+
+    /// Get the known type of a value
+    Type getType(IRValue value) const
+    {
+        assert (value !is null);
+
+        auto dstValue = cast(IRDstValue)value;
+
+        if (dstValue is null)
+            return value.cstValue.type;
+
+        // TODO
+        assert (false);
+        /*
+        auto typeState = typeState.get(dstValue, 0);
+
+        assert (
+            typeState & TF_KNOWN,
+            "type is unknown"
+        );
+
+        return cast(Type)(typeState & TF_TYPE_MASK);
         */
     }
 }
@@ -1053,7 +1103,7 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
 
         // Load the stack pointers into RBX and RBP
         as.getMember!("Interp.wsp")(wspReg, interpReg);
-        as.getMember!("Interp.tsp")(tspReg, interpReg);
+        //as.getMember!("Interp.tsp")(tspReg, interpReg);
     }
 
     // Until the compilation queue is empty
@@ -1094,8 +1144,9 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
             // For each instruction of the block
             for (auto instr = ver.block.firstInstr; instr !is null; instr = instr.next)
             {
-                as.comment(instr.toString());
+                //writeln("compiling instr: ", instr.toString());
 
+                as.comment(instr.toString());
                 //as.printStr(instr.toString());
 
                 auto opcode = instr.opcode;
@@ -1125,12 +1176,13 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
             as.link();
         }
 
-        writeln("writing to executable heap");
+        if (opts.jit_dumpasm)
+        {
+           writeln(as.toString);
+        }
 
         // Write the version into the executable heap
         ver.write(as, moves, interp.execHeap, &refList);
-
-        writeln("clearing assemblers");
 
         // Clear the assemblers
         foreach (bas; moves)
@@ -1140,6 +1192,11 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
 
     // TODO: refList
     // Link block references
+
+
+
+    // TODO: patch stubs once compiled
+
 
 
 

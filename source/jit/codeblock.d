@@ -154,6 +154,7 @@ class CodeBlock
     void clear()
     {
         this.writePos = 0;
+        this.strings.clear();
     }
 
     /**
@@ -463,7 +464,7 @@ class ASMBlock : CodeBlock
         if (!hasComments)
             return;
 
-        return writeStr(str);
+        return writeStr("; " ~ str);
     }
 
     /**

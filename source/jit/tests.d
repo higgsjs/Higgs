@@ -387,6 +387,10 @@ unittest
         "B8FDFFFFFF"
     );
     test(
+        delegate void (ASMBlock cb) { cb.mov(X86Opnd(R15), X86Opnd(3)); }, 
+        "49BF0300000000000000"
+    );
+    test(
         delegate void (ASMBlock cb) { cb.mov(X86Opnd(EAX), X86Opnd(EBX)); }, 
         "89D8"
     );
@@ -710,6 +714,10 @@ unittest
         delegate void (ASMBlock cb) { cb.pop(RBP); },
         "5D"
     );
+    test(
+        delegate void (ASMBlock cb) { cb.pop(R12); },
+        "415C"
+    );
 
     // push
     test(
@@ -720,6 +728,11 @@ unittest
         delegate void (ASMBlock cb) { cb.push(RBX); },
         "53"
     );
+    test(
+        delegate void (ASMBlock cb) { cb.push(R12); },
+        "4154"
+    );
+
     /*
     test(
         delegate void (ASMBlock cb) { cb.push(1); },

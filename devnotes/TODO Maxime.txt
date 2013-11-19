@@ -53,16 +53,34 @@ TODO: think about branches at end of blocks
 - Calls are handled separately
 - Look at old jit ops
 
-TODO: patch version refs
+TODO: patch stubs once compiled
+- create external compileStub and compileUnit functions?
+  - both call internal compile function, not extern (C)
 
-FIXME: segfault while compiling unit entry
+TODO: patch version refs, refList
+
+
+
+
+
+
+
+[DONE] FIXME: return 1 unit test fails
+- test more encodings
+- fixed bug in push/pop encoding
+- reading from interp object causes segfault
+- found bug in encoding of mov r15, imm
+
+[DONE] FIXME: duplicate ret asm string, missing comment string
+- Something wrong in CodeBlock.toString?
+  - dump all the strings to verify
+  - strings are as presented, ret is there twice at the same position!
+- Found bug in clear function
+
+[DONE] TODO: --jit_dumpasm
+
+[DONE] FIXME: segfault while compiling unit entry
 - Bug in getWordOpnd
-
-
-
-
-
-
 
 [DONE] TODO: make Interp compile/call unit functions
 

@@ -1436,21 +1436,6 @@ void gen_ret(
     // If this is a unit-level function
     if (instr.block.fun.isUnit)
     {
-        // Store the stack pointers back in the interpreter
-        as.setMember!("Interp.wsp")(interpReg, wspReg);
-        as.setMember!("Interp.tsp")(interpReg, tspReg);
-
-        // Restore the callee-save GP registers
-        as.pop(R15);
-        as.pop(R14);
-        as.pop(R13);
-        as.pop(R12);
-        as.pop(RBP);
-        as.pop(RBX);
-
-        // Pop the stack alignment padding
-        as.add(X86Opnd(RSP), X86Opnd(8));
-
         // Pop the locals, but leave one slot for the return value
         auto numPop = numLocals - 1;
 
@@ -1485,10 +1470,23 @@ void gen_ret(
         as.add(tspReg, 1 * numPop);
         as.add(wspReg, 8 * numPop);
 
+        // Store the stack pointers back in the interpreter
+        as.setMember!("Interp.wsp")(interpReg, wspReg);
+        as.setMember!("Interp.tsp")(interpReg, tspReg);
+
+        // Restore the callee-save GP registers
+        as.pop(R15);
+        as.pop(R14);
+        as.pop(R13);
+        as.pop(R12);
+        as.pop(RBP);
+        as.pop(RBX);
+
+        // Pop the stack alignment padding
+        as.add(X86Opnd(RSP), X86Opnd(8));
+
         // Return to the interpreter
         as.ret();
-
-        writeln("leaving gen_ret");
 
         return;
     }

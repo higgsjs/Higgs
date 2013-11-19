@@ -520,10 +520,12 @@ class Interp
             objProto
         );
 
+        opts.jit_dumpasm = true;
+
         // Allocate the assembler objects
-        blockAs = new ASMBlock();
+        blockAs = new ASMBlock(opts.jit_dumpasm);
         for (size_t i = 0; i < branchAs.length; ++i)
-            branchAs[i] = new ASMBlock();
+            branchAs[i] = new ASMBlock(opts.jit_dumpasm);
 
         // Allocate the executable heap
         execHeap = new ExecBlock(EXEC_HEAP_INIT_SIZE);
@@ -888,7 +890,6 @@ class Interp
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
         push(numLocals);
 
-
         // Create a version instance object for the function entry
         auto entryVersion = new VersionInst(
             fun.entryBlock, 
@@ -900,11 +901,17 @@ class Interp
             )
         );
 
+        // Compile the entry block of the unit function
         auto codePtr = compileUnit(entryVersion);
 
-        //call codePtr;
+        writeln("calling code at: ", codePtr);
 
+        // Call into the compiled code
+        alias extern (C) void function() CodeFn;
+        auto entryFn = cast(CodeFn)codePtr;
+        entryFn();
 
+        writeln("returned");
     }
 
     /**

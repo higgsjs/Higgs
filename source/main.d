@@ -43,12 +43,12 @@ import options;
 
 void main(string[] args)
 {
+    // Parse the command-line arguments
+    parseCmdArgs(args);
+
     // If in (unit) test mode
     if (opts.test is true)
         return;
-
-    // Parse the command-line arguments
-    parseCmdArgs(args);
 
     // Get the names of files to execute
     auto fileNames = args[1..$];
