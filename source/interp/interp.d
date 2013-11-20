@@ -890,25 +890,12 @@ class Interp
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
         push(numLocals);
 
-        // Create a version instance object for the function entry
-        auto entryVersion = new VersionInst(
-            fun.entryBlock, 
-            new CodeGenState(
-                new CodeGenCtx(
-                    this,
-                    fun
-                )
-            )
-        );
-
         // Compile the entry block of the unit function
-        auto codePtr = compileUnit(entryVersion);
+        auto entryFn = compileUnit(this, fun);
 
-        writeln("calling code at: ", codePtr);
+        writeln("calling code at: ", entryFn);
 
         // Call into the compiled code
-        alias extern (C) void function() CodeFn;
-        auto entryFn = cast(CodeFn)codePtr;
         entryFn();
 
         writeln("returned");

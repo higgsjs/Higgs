@@ -53,17 +53,20 @@ TODO: think about branches at end of blocks
 - Calls are handled separately
 - Look at old jit ops
 
-TODO: patch stubs once compiled
+TODO: look at add_i32
+- Should we implement reg alloc now?
+
+
+
+
+
+
+
+[DONE] TODO: patch stubs once compiled
 - create external compileStub and compileUnit functions?
   - both call internal compile function, not extern (C)
 
-TODO: patch version refs, refList
-
-
-
-
-
-
+[DONE] TODO: patch version refs, refList
 
 [DONE] FIXME: return 1 unit test fails
 - test more encodings

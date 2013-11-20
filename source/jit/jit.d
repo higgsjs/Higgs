@@ -1047,7 +1047,7 @@ void genBranchEdge(
 /**
 Compile a basic block version
 */
-extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
+void compile(bool unitFn = false)(BlockVersion startVer)
 {
     writeln("entering compile");
 
@@ -1065,46 +1065,14 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
         assert (bas !is null);
     auto as = interp.blockAs;
     assert (as !is null);
-
-    // If this is a stub to be compiled
-    if (auto stub = cast(VersionStub)startVer)
-    {
-        // Ensure that no prior code was generated for this stub
-        assert (stub.startIdx is size_t.max);
-
-        // Create a version instance object for this stub
-        // and set the instance pointer for the stub
-        stub.inst = new VersionInst(stub.block, stub.state);
-        startVer = stub.inst;
-    }
+    auto execHeap = interp.execHeap;
+    assert (execHeap !is null);
 
     // Add the version to the compilation queue
     BlockVersion[] compQueue = [startVer];
 
     // List of references to block versions
     VersionRef[] refList;
-
-    // If this is a unit-level function
-    static if (unitFn)
-    {
-        // Align SP to a multiple of 16 bytes
-        as.sub(X86Opnd(RSP), X86Opnd(8));
-
-        // Save the callee-save GP registers
-        as.push(RBX);
-        as.push(RBP);
-        as.push(R12);
-        as.push(R13);
-        as.push(R14);
-        as.push(R15);
-
-        // Load a pointer to the interpreter object
-        as.ptr(interpReg, interp);
-
-        // Load the stack pointers into RBX and RBP
-        as.getMember!("Interp.wsp")(wspReg, interpReg);
-        //as.getMember!("Interp.tsp")(tspReg, interpReg);
-    }
 
     // Until the compilation queue is empty
     while (compQueue.length > 0)
@@ -1117,6 +1085,9 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
         {
             writeln("compiling stub");
 
+            // Ensure that no prior code was generated for this stub
+            assert (stub.startIdx is size_t.max);
+
             // Insert the label for this block in the out of line code
             as.comment("Block stub for " ~ stub.block.getName());
 
@@ -1124,7 +1095,7 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
 
             // Call the JIT compile function,
             // passing it a pointer to the stub
-            auto compileFn = &compile;
+            auto compileFn = &compileStub;
             as.ptr(RAX, compileFn);
             as.ptr(cargRegs[0], stub);
             as.call(X86Opnd(RAX));
@@ -1182,7 +1153,7 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
         }
 
         // Write the version into the executable heap
-        ver.write(as, moves, interp.execHeap, &refList);
+        ver.write(as, moves, execHeap, &refList);
 
         // Clear the assemblers
         foreach (bas; moves)
@@ -1190,28 +1161,98 @@ extern (C) const (ubyte*) compile(bool unitFn = false)(BlockVersion startVer)
         as.clear();
     }
 
-    // TODO: refList
-    // Link block references
-
-
-
-    // TODO: patch stubs once compiled
-
-
-
-
-    // Return the address of the first version compiled
-    auto startInst = cast(VersionInst)startVer;
-    assert (startInst !is null);
-    auto codePtr = startInst.getCodePtr(interp.execHeap);
+    // Link the version references
+    auto startPos = execHeap.getWritePos();
+    foreach (refr; refList)
+    {
+        execHeap.setWritePos(refr.pos);
+        assert (refr.ver.startIdx !is size_t.max);
+        auto offset = refr.ver.startIdx - (refr.pos + 4);
+        execHeap.writeInt(offset, 32);
+    }
+    execHeap.setWritePos(startPos);
 
     writeln("leaving compile");
-
-    return codePtr;
 }
 
-/// Compile an entry point for a unit-level function
-alias compile!(true) compileUnit;
+/**
+Compile a block version instance for a stub
+*/
+extern (C) const (ubyte*) compileStub(VersionStub stub)
+{
+    writeln("entering compileStub");
+
+    auto interp = stub.state.ctx.interp;
+    auto execHeap = interp.execHeap;
+
+    assert (stub.startIdx !is size_t.max);
+    assert (stub.inst is null);
+
+    // Create a version instance object for this stub
+    // and set the instance pointer for the stub
+    stub.inst = new VersionInst(stub.block, stub.state);
+
+    // Write a relative 32-bit jump to the stub instance over the stub
+    auto startPos = execHeap.getWritePos();
+    execHeap.setWritePos(stub.startIdx);
+    execHeap.writeByte(0xE9);
+    auto offset = stub.inst.startIdx - (execHeap.getWritePos + 4);
+    execHeap.writeInt(offset, 32);
+    execHeap.setWritePos(startPos);
+
+    writeln("leaving compileStub");
+
+    // Return the address of the instance
+    return stub.inst.getCodePtr(execHeap);
+}
+
+/// Unit function entry point
+alias extern (C) void function() EntryFn;
+
+/**
+Compile an entry point for a unit-level function
+*/
+EntryFn compileUnit(Interp interp, IRFunction fun)
+{
+    assert (fun.isUnit);
+
+    auto as = interp.blockAs;
+
+    // Create a version instance object for the function entry
+    auto entryInst = new VersionInst(
+        fun.entryBlock, 
+        new CodeGenState(
+            new CodeGenCtx(
+                interp,
+                fun
+            )
+        )
+    );
+
+    // Align SP to a multiple of 16 bytes
+    as.sub(X86Opnd(RSP), X86Opnd(8));
+
+    // Save the callee-save GP registers
+    as.push(RBX);
+    as.push(RBP);
+    as.push(R12);
+    as.push(R13);
+    as.push(R14);
+    as.push(R15);
+
+    // Load a pointer to the interpreter object
+    as.ptr(interpReg, interp);
+
+    // Load the stack pointers into RBX and RBP
+    as.getMember!("Interp.wsp")(wspReg, interpReg);
+    as.getMember!("Interp.tsp")(tspReg, interpReg);
+
+    // Compile the unit entry version
+    compile(entryInst);
+
+    // Return a pointer to the entry block version's code
+    return cast(EntryFn)entryInst.getCodePtr(interp.execHeap);
+}
 
 /// Load a pointer constant into a register
 void ptr(TPtr)(ASMBlock as, X86Reg dstReg, TPtr ptr)
