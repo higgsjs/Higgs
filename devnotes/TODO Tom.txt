@@ -1,22 +1,25 @@
-TODO: test harness 
-	- simple harness for running tests similar to what mozilla uses in their JIT tests
-	- run all the JS files in a dir, check for nonzero return indicating failure
-	- basic assertion functions
+TODO: test harness
+      - simple harness for running tests similar to what mozilla uses in their JIT tests
+      - run all the JS files in a dir, check for nonzero return indicating failure
+      - basic assertion functions
 
 TODO: improve FFI
-	- better errors in cdef (pretty even? arrows pointing to failures? arrows? lin/col?)
-	- add wrapping capability
-	- performance improvements
-	- leverage maps for looking up types?
-	- 
+      - better errors in cdef (pretty, even? arrows pointing to failures? line/col?)
+      - add more wrapping capability
+      - performance improvements
+      - leverage maps() for looking up types
 
 TODO: SDL bindings
-	- move to binding for SDL2? Not as much support but more future proof
+      - move to binding for SDL2? Not as much support currently, but more future proof
 
 TODO: libs
-	- improve stdlib
+      - improve stdlib
 
+TODO: organize
+      - merge in the ridic number of feature branches you got going on bra
 
+TODO: docs
+      - more documentation needed all around
 
 
 ---------------------------------------------------------------------------------------------------
