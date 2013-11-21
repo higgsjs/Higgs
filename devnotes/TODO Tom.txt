@@ -1,25 +1,61 @@
 TODO: test harness
       - simple harness for running tests similar to what mozilla uses in their JIT tests
       - run all the JS files in a dir, check for nonzero return indicating failure
-      - basic assertion functions
+
+TODO: all libs
+      - cleaner API designs
+      - reduce c-isms? If users can access our tools they can write c-in-js to their heart's content
+        whether for perf or personal preference. We should strive for cleaner/higher level apis that
+        are convienent for common use.
+      - the "wrap a single c library" model does not seem to always map well to how users will want
+        to write code. C can get away with having filesystem related functions spread out across several
+        libs due to it's compilation model -  we have to execute and load into memory expensive high level
+        code or every module require()'d, so some focus is probably desirable. It does work somewhat
+        for really common functionality and 3rd party c libs that are pretty focused, but I want to take a
+        good look at different ways to organize "core" common functions for Higgs.
+      - Node api compatibility? Would probably be nice, but meh.
+        Perhaps Higgs should strive for it's own ecosystem. Should perhaps try to conform to CommonJS where
+        applicable. Compatibility is nice, but so is diversity to avoid stagnation.
+      - perf also needs to be a consideration; all apis/libs should be designed so that it's easy to do
+        common tasks in a performant way. Try to achieve best balance possible.
+
+TODO: test lib
+      - basic assert functions; exit abnormally on failure
+      - move to /test and have more generic unit test suite for lib/?
 
 TODO: improve FFI
       - better errors in cdef (pretty, even? arrows pointing to failures? line/col?)
       - add more wrapping capability
-      - performance improvements
+      - performance improvements (more caching/sharing, etc internally)
       - leverage maps() for looking up types
+      - c-types? While working on the FFI, it may be possible to change it's internal api
+        to something like c-types, and allow users to use it directly if they wish rather than
+        cdef();
+      - add caching for bindings created by cdef to avoid reparsing, eval(), etc each time?
 
 TODO: SDL bindings
       - move to binding for SDL2? Not as much support currently, but more future proof
 
-TODO: libs
+TODO: stdlib
       - improve stdlib
 
 TODO: organize
-      - merge in the ridic number of feature branches you got going on bra
+      - merge in the ridic number of feature branches you got going on brah
 
 TODO: docs
       - more documentation needed all around
+
+TODO: dir lib
+      - add functionality / settle api
+      - add more predicate functions - isFile etc (construct these at include time with eval? - saves lookup time)
+
+TODO: higgs-mode
+      - higgs (minor?) mode for emacs, prototype complete
+      - get prototype up on github
+      - add REPL capability
+      - higgs-dev functionality - run make targets, etc
+      - addons for js-mode and js2-mode to get correct syntax coloring, autocomplete, etc behavior for
+        Higgs globals (such as require()) and IR function names, etc.
 
 
 ---------------------------------------------------------------------------------------------------
