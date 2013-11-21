@@ -32,6 +32,8 @@ TODO: add source position info for call sites
 TODO: optimize x86 instr encoding based on usage
 - e.g.: reg64 to mem move and vice versa?
 
+TODO: increase default str table size, use power of 2 sizing, eliminate modulo
+
 TODO: IP-relative addressing
 
 TODO: rename Interp to VM?
@@ -45,6 +47,13 @@ First milestone: no interp, basic incremental codegen
 
 TODO: port/fix execMoves
 
+TODO: blog
+- conference invites
+- progress and specifics of incremental JIT
+
+TODO: BlockVersion.toString()
+- Prints disassembly from the execHeap
+
 TODO: think about branches at end of blocks
 - Can specifying operands to test and targets be enough?
   - e.g.: ilt, ieq, fgt, 64-bit
@@ -53,14 +62,30 @@ TODO: think about branches at end of blocks
 - Calls are handled separately
 - Look at old jit ops
 
-TODO: look at add_i32
+TODO: try implementing set_global, get_global
+- Seems we don't need register allocation for this
+- Problem: there is no cached global property index
+  - Need to get those at JIT time
+- Can get rid of the cached idx on the instruction
+  - Get rid of IRCachedIdx as a whole
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: odd assertion error involving comment strings
+- Happens inside writeBlock, while merging strings
+- Seems assumeSorted fails
+- execHeap is not cleared everytime
+
+[DONE] TODO: look at add_i32
 - Should we implement reg alloc now?
-
-
-
-
-
-
 
 [DONE] TODO: patch stubs once compiled
 - create external compileStub and compileUnit functions?

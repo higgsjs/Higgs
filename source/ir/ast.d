@@ -2498,30 +2498,6 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
     genCallTargets(ctx, callInstr);
 
     return callInstr;
-
-    /*
-    // Get the global function
-    auto funVal = ctx.addInstr(new IRInstr(
-        &GET_GLOBAL, 
-        new IRString(RT_PREFIX ~ to!wstring(fName)),
-        new IRCachedIdx()
-    ));
-
-    // <dstLocal> = CALL <fnLocal> <thisArg> ...
-    auto callInstr = ctx.addInstr(new IRInstr(&CALL, 2 + argVals.length));
-    callInstr.setArg(0, funVal);
-    callInstr.setArg(1, funVal);
-    foreach (argIdx, argVal; argVals)
-    {
-        assert (argVal !is null);
-        callInstr.setArg(2 + argIdx, argVal);
-    }
-
-    // Generate the call targets
-    genCallTargets(ctx, callInstr);
-
-    return callInstr;
-    */
 }
 
 /**

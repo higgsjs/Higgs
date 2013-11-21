@@ -184,77 +184,71 @@ void gen_f64_to_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     st.setOutType(ctx.as, instr, Type.INT32);
 }
+*/
 
-void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void RMMOp(string op, size_t numBits, Type typeTag)(
+    VersionInst ver, 
+    CodeGenState st, 
+    ASMBlock as, 
+    ASMBlock[] moves,
+    IRInstr instr
+)
 {
     // Should be mem or reg
     auto opnd0 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as, 
         instr, 
         0, 
         numBits, 
-        scrRegs64[0].ofSize(numBits),
+        X86Opnd(scrRegs64[0].ofSize(numBits)),
         false
     );
 
     // May be reg or immediate
     auto opnd1 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as, 
         instr, 
         1, 
         numBits,
-        scrRegs64[1].ofSize(numBits),
+        X86Opnd(scrRegs64[1].ofSize(numBits)),
         true
     );
 
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, numBits);
+    auto opndOut = st.getOutOpnd(as, instr, numBits);
 
-    X86OpPtr opPtr = null;
-    static if (op == "add")
-        opPtr = ADD;
-    static if (op == "sub")
-        opPtr = SUB;
-    static if (op == "imul")
-        opPtr = IMUL;
-    static if (op == "and")
-        opPtr = AND;
-    static if (op == "or")
-        opPtr = OR;
-    static if (op == "xor")
-        opPtr = XOR;
-    assert (opPtr !is null);
-
-    if (opPtr == IMUL)
+    if (op == "imul")
     {
-        // IMUL does not support memory operands as output
-        auto scrReg = scrRegs64[2].ofSize(numBits);
-        ctx.as.instr(MOV, scrReg, opnd1);
-        ctx.as.instr(opPtr, scrReg, opnd0);
-        ctx.as.instr(MOV, opndOut, scrReg);
+        // imul does not support memory operands as output
+        auto scrReg = X86Opnd(scrRegs64[2].ofSize(numBits));
+        as.mov(scrReg, opnd1);
+        mixin(format("as.%s(scrReg, opnd0);", op));
+        as.mov(opndOut, scrReg);
     }
     else
     {
         if (opnd0 == opndOut)
         {
-            ctx.as.instr(opPtr, opndOut, opnd1);
+            mixin(format("as.%s(opndOut, opnd1);", op));
         }
         else if (opnd1 == opndOut)
         {
-            ctx.as.instr(opPtr, opndOut, opnd0);
+            mixin(format("as.%s(opndOut, opnd0);", op));
         }
         else
         {
             // Neither input operand is the output
-            ctx.as.instr(MOV, opndOut, opnd0);
-            ctx.as.instr(opPtr, opndOut, opnd1);
+            as.mov(opndOut, opnd0);
+            mixin(format("as.%s(opndOut, opnd1);", op));
         }
     }
 
     // If the instruction has an exception/overflow target
     if (instr.getTarget(0))
     {
+        assert (false);
+
+        // TODO
+        /*
         auto overLabel = new Label("ADD_OVER");
         auto contLabel = new Label("ADD_CONT");
 
@@ -271,24 +265,27 @@ void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState
         // more likely to get generated first (LIFO stack)
         ctx.genBranchEdge(ctx.ol, overLabel, instr.getTarget(1), st);
         ctx.genBranchEdge(ctx.as, contLabel, instr.getTarget(0), st);
+        */
     }
     else
     {
+        // TODO
         // Set the output type
-        st.setOutType(ctx.as, instr, typeTag);
+        //st.setOutType(ctx.as, instr, typeTag);
     }
 }
 
 alias RMMOp!("add" , 32, Type.INT32) gen_add_i32;
-alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
-alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
-alias RMMOp!("or"  , 32, Type.INT32) gen_or_i32;
-alias RMMOp!("xor" , 32, Type.INT32) gen_xor_i32;
+//alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
+//alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
+//alias RMMOp!("or"  , 32, Type.INT32) gen_or_i32;
+//alias RMMOp!("xor" , 32, Type.INT32) gen_xor_i32;
 
-alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
-alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
-alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
+//alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
+//alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
+//alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
+/*
 void gen_mod_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, null, true);

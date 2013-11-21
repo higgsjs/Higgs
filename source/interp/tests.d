@@ -201,13 +201,11 @@ unittest
     assert (v.word.int32Val == 1);
     assert (v.type is Type.INT32);
 
-    /*
     // 32-bit integer add
     interp.assertInt("$ir_add_i32(1, 2)", 3);
 
     // Global property access (needed by runtime lib)
     interp.assertInt("x = 7; return x;", 7);
-    */
 }
 
 /*

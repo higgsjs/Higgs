@@ -308,13 +308,21 @@ class CodeBlock
         // If the other block has comment strings
         if (cb.strings.length > 0)
         {
+            //writeln("merging strings (", strings.length, ")");
+
+            // Translate the positions of the strings being written
+            auto newStrs = array(map!(s => CommentStr(writePos + s.pos, s.str))(cb.strings));
+
             // Get the strings that come before and after the other block's
             auto range = assumeSorted!"a.pos < b.pos"(strings);
-            auto lower = range.lowerBound(cb.strings.front);
-            auto upper = range.lowerBound(cb.strings.back);
+            auto lower = range.lowerBound(newStrs.front);
+            auto upper = range.upperBound(newStrs.back);
 
-            // Insert the block's strings in between
-            strings = lower.release() ~ cb.strings ~ upper.release();
+            //writeln("lower.length: ", lower.length);
+            //writeln("upper.length: ", upper.length);
+
+            // Insert the new strings in between
+            strings = lower.release() ~ newStrs ~ upper.release();
         }
 
         // Copy the bytes from the other code block
