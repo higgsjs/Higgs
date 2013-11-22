@@ -63,7 +63,7 @@
     }
 
     // Track loaded modules
-    require.loaded = {}
+    require.loaded = {};
 
     // Export
     global.require = require;

@@ -42,216 +42,6 @@ The Higgs FFI api
 {
 
     /**
-    UTILITY FUNCTIONS
-    */
-
-    // Arg strings are used in the generation of function wrappers for FFI calls
-    var arg_strings = ["", " a "];
-    var arg_names = "abcdefghijklmnopqrstuvwxyzABCDEFG";
-
-    /**
-    Generate/Get an arg string for the # of arguments
-    */
-    function getArgString(len)
-    {
-        if (arg_strings[len] !== undefined)
-            return arg_strings[len];
-
-        var arg_string = "a";
-        for (var i = 1; i < len; i++)
-            arg_string += ", " + arg_names[i];
-        arg_string += " ";
-        arg_strings[len] = arg_string;
-        return arg_string;
-    }
-
-
-    /**
-    FFILibrary
-    @Constructor
-    Wrapper for loaded shared libs.
-    */
-    function FFILibrary(name)
-    {
-        // Pass null to create a dummy library
-        if (name !== null)
-            this.handle = $ir_load_lib(name);
-        this.symbols = {};
-    }
-
-    /**
-    Lookup a symbol in the lib.
-    */
-    FFILibrary.prototype.getSym = function(name)
-    {
-        if (this.symbols.hasOwnProperty(name))
-            return this.symbols[name];
-
-        var fun = ["function(libhandle)",
-                   "{",
-                   "    return $ir_get_sym(libhandle, \"" + name + "\");",
-                   "}"
-                  ].join(" ");
-
-        var sym = eval(fun)(this.handle);
-        this.symbols[name] = sym;
-        return sym;
-    };
-
-    /**
-    Generate a wrapper function to call a function in the lib.
-    */
-    FFILibrary.prototype.fun = function(fname, sig)
-    {
-        // Some ir functions expect string constants, so they must be
-        // constructed as strings and eval'd.
-        var args = getArgString(sig.split(",").length - 1);
-        var fun = ["function(", args, ")",
-                   "{",
-                   "    var sym = this.symbols[", ('"' + fname + '"'), "];",
-                   "    return $ir_call_ffi(null, sym, ", ('"' + sig + '"'),
-                    (args === "" ? "" : (", " + args)),
-                    ");",
-                   "}"
-                  ].join(" ");
-        this.getSym(fname);
-        this[fname] = eval(fun);
-    };
-
-    /**
-    Generate a wrapper function to lookup a value in the lib.
-    */
-    FFILibrary.prototype.symbol = function(symname, sig)
-    {
-        // TODO: handle more types
-        if (sig !== "*")
-            throw "Unhandled type in symbol()"
-
-        var fun = ["function()",
-                   "{",
-                   "    var sym = this.symbols[", ('"' + symname + '"'), "];",
-                   "    return $ir_load_rawptr(sym, 0);",
-                   "}"
-                  ].join(" ");
-        this.getSym(symname);
-        this[symname] = eval(fun);
-    };
-
-    /**
-    Take a list of C style declarations and automatically create bindings for them.
-    */
-    FFILibrary.prototype.cdef = cdef;
-
-    /**
-    Close the library.
-    */
-    FFILibrary.prototype.close = function()
-    {
-        $ir_close_lib(this.handle);
-    };
-
-    /**
-    STDLIB
-    */
-
-    // A wrapper for the global symbol object is included
-    // since it will probably be used often
-    var c = new FFILibrary("");
-
-    // Functions used by the FFI library
-    c.fun("malloc", "*,i32");
-    c.fun("realloc", "*,*,i32");
-    c.fun("free", "void,*");
-    c.fun("strlen", "i32,*");
-
-    /**
-    TYPE UTILTIY FUNCTIONS
-    */
-
-    // It's common to want to pass a null ptr as an arg,
-    // so one is provided by the ffi
-    var NullPtr = $nullptr;
-
-    /**
-    Create a C string from a JS string.
-    */
-    function cstr(str, len)
-    {
-        var cstr;
-        len = len || str.length;
-        cstr = c.malloc(len + 1);
-
-        for (var i = 0; i < len; i++)
-            $ir_store_u8(cstr, i, $rt_str_get_data(str, i));
-
-        $ir_store_u8(cstr, len, 0);
-        return cstr;
-    }
-
-    /**
-    Copy a JS string to a c buffer.
-    */
-    function jstrcpy(buff, jstr, len)
-    {
-        len = len || jstr.length;
-
-        for (var i = 0; i < len; i++)
-            $ir_store_u8(buff, i, $rt_str_get_data(jstr, i));
-
-        $ir_store_u8(buff, len, 0);
-        return buff;
-    }
-
-    /**
-    Create a JS string from a C string.
-    If n is non-zero copy only n chars from the C string.
-    */
-    function string(cstr, n)
-    {
-        var s;
-        var len = 0;
-
-        // Get the length
-        if (n)
-        {
-            len = n;
-        }
-        else
-        {
-            while ($ir_load_u8(cstr, len++) !== 0);
-            len -= 1;
-        }
-
-        // Allocate string
-        s = $rt_str_alloc(len);
-
-        // Copy
-        for (var i = 0; i < len; i++)
-            $rt_str_set_data(s, i, $ir_load_u8(cstr, i));
-
-        // Attempt to find the string in the string table
-        return $ir_get_str(s);
-    }
-
-    /**
-    Create a buffer.
-    */
-    function cbuffer(len)
-    {
-        return c.malloc(len);
-    }
-
-    /**
-    Check for a null word value (useful for checking null ptrs)
-    */
-    function isNull(x)
-    {
-        return $ir_get_word(x) === 0;
-    }
-
-
-
-    /**
     CDEFS
     */
 
@@ -261,10 +51,10 @@ The Higgs FFI api
     function cdef(defs)
     {
 
-        var def, sig;
+        var def, sig, i, l;
 
         // Loop through defs
-        for (var i = 0, l = defs.length; i < l; i++)
+        for (i = 0, l = defs.length; i < l; i++)
         {
             def = defs[i];
             handleDec(def, this);
@@ -287,7 +77,7 @@ The Higgs FFI api
     // ; * ,
     var SEMI_COLON = 59;
     var STAR = 42;
-    var COMMA =44;
+    var COMMA = 44;
 
 
     /**
@@ -311,23 +101,59 @@ The Higgs FFI api
 
     // Mapping of C types to the low-level FFI type markers.
     var type_map = {
-        // all pointers
         "*" : "*",
-        // void
         "void" : "void",
-        // int types
         "char" : "i8",
         "short" : "i16",
         "int" : "i32",
         "long" : "i64",
-        // double
         "double" : "f64"
     };
 
     // Mapping of type to size
     var size_map = {
-        // all pointers
-        "*" : 8
+        "char" : 1,
+        "short" : 2,
+        "int" : 4,
+        "long" : 8,
+        "*" : 8,
+        "double" : 8
+    };
+
+    // TODO: more wrappers?
+    var load_map = {
+        "char" : function (handle, offset) { return $ir_load_u8(handle, offset); },
+        "short" : function (handle, offset) { return $ir_load_u16(handle, offset); },
+        "int" : function (handle, offset) { return $ir_load_u32(handle, offset); },
+        "long" : function (handle, offset) { return $ir_load_u64(handle, offset); },
+        "*" : function (handle, offset) { return $ir_load_rawptr(handle, offset); },
+        "double" : function (handle, offset) { return $ir_load_f64(handle, offset); }
+    };
+
+    var store_map = {
+        "char" : function (handle, offset, value) { return $ir_store_u8(handle, offset, value); }
+    };
+
+    var array_wrappers = {
+        "char" : new FFIArray("char")
+    };
+
+    var load_op_map = {
+        "char" : "$ir_load_u8",
+        "short" :"$ir_load_u16",
+        "int" : "$ir_load_u32",
+        "long" : "$ir_load_u64",
+        "*" :  "$ir_load_rawptr",
+        "double" : "$ir_load_f64"
+    };
+
+    var store_op_map = {
+        "char" : "$ir_store_u8",
+        "short" :"$ir_store_u16",
+        "int" : "$ir_store_u32",
+        "long" : "$ir_store_u64",
+        "*" :  "$ir_store_rawptr",
+        "double" : "$ir_store_f64"
     };
 
 
@@ -366,9 +192,16 @@ The Higgs FFI api
 
         // Handle
         if (dec.typedef)
-            handleTypeDef(dec);
+            handleTypeDef(dec, lib);
+        else if (dec.str_or_uni)
+        {
+            handleTypeDef(dec); // TODO: change this
+            lib[dec.type.name] = FFIStruct(dec);
+        }
         else if (dec.fun)
+        {
             lib.fun(dec.name, getFunSig(dec));
+        }
         else
             lib.symbol(dec.name, getTypeMarker(dec));
 
@@ -376,11 +209,31 @@ The Higgs FFI api
     }
 
     /**
+    Parse a declaration, used for testing.
+    */
+    function testParse(inp)
+    {
+        // Reset parser state
+        input = inp;
+        tokens = tokenize();
+        index = 0;
+        tok = tokens[index];
+
+        // Parse
+        var dec = parseDeclaration();
+        dec = getTopDec(dec);
+        return dec;
+    }
+
+    /**
     Add a type def to the list of known types.
     */
-    function handleTypeDef(dec)
+    function handleTypeDef(dec, lib)
     {
         types[dec.name] = dec.type;
+        //TODO: create array wrappers?
+        if (dec.array)
+            lib[dec.name] = FFIArray(dec.type, dec.size || 0);
     }
 
     /**
@@ -412,7 +265,7 @@ The Higgs FFI api
         else
             sig.push(getTypeMarker(getTopDec(dec.type)));
 
-        while ( ++i < l)
+        while (++i < l)
             sig.push(getTypeMarker(getTopDec(args[i])));
 
         return sig.join(',');
@@ -563,7 +416,7 @@ The Higgs FFI api
             // ; * ,
             if (chr === SEMI_COLON || chr === STAR || chr === COMMA)
             {
-                tokens.push(chr)
+                tokens.push(chr);
                 cursor += 1;
                 continue;
             }
@@ -660,8 +513,6 @@ The Higgs FFI api
     */
     function isTypeSpecifier()
     {
-        // NOTE: technically struct-or-union-specifier should he handled here,
-        //       instead it is handled as a separate check.
         return (types.hasOwnProperty(tok));
     }
 
@@ -837,6 +688,7 @@ The Higgs FFI api
     {
         var count;
         var nested_dec;
+        var num;
 
         if (isIdentifier())
         {
@@ -860,19 +712,39 @@ The Higgs FFI api
         }
         else if (!allow_abstract && !dec.str_or_uni)
         {
-            ParseError("Expected identifier or ( at " + index);
+            ParseError("Expected identifier or (");
         }
 
-        // TODO: [] - Arrays
+        // Arrays
+        if (tok === OPEN_SQUARE)
+        {
+            dec.array = true;
+            advance();
 
+            if (tok === CLOSE_SQUARE)
+                return advance();
+
+            num = Number(tok);
+            if (isNaN(num))
+                ParseError("Expected number");
+
+            dec.size = num;
+            advance();
+
+            if (tok === CLOSE_SQUARE)
+                return advance();
+            else
+                ParseError("Expected ]");
+        }
+
+        // Functions
         if (tok === OPEN_ROUND)
         {
-            // Distinguish between a function declaration and a 
-            // declaration returning a function. In the later case we don't care
+            // Distinguish between a function declaration and a
+            // declaration returning a (pointer to ) function. In the later case we don't care
             // about the signature of the returned function.
             if (dec.fun)
             {
-                // TODO: handle this
                 if (!dec.ptr)
                     ParseError("Cannot return function");
 
@@ -969,7 +841,6 @@ The Higgs FFI api
                 member_dec = {};
 
                 acceptDeclarationSpecifier(member_dec);
-                // TODO: allow abstract declarators?
                 acceptDeclarator(member_dec);
 
                 members.push(member_dec);
@@ -993,9 +864,352 @@ The Higgs FFI api
         {
             ParseError("Expected { or identifier");
         }
-
         return null;
+    }
+
+    /**
+    UTILITY FUNCTIONS
+    */
+
+    // Arg strings are used in the generation of function wrappers for FFI calls
+    var arg_strings = ["", " a "];
+    var arg_names = "abcdefghijklmnopqrstuvwxyzABCDEFG";
+
+    /**
+    Generate/Get an arg string for the # of arguments
+    */
+    function getArgString(len)
+    {
+        if (arg_strings[len] !== undefined)
+            return arg_strings[len];
+
+        var arg_string = "a";
+        for (var i = 1; i < len; i++)
+            arg_string += ", " + arg_names[i];
+        arg_string += " ";
+        arg_strings[len] = arg_string;
+        return arg_string;
+    }
+
+
+    /**
+    FFILibrary
+    @Constructor
+    Wrapper for loaded shared libs.
+    */
+    function FFILibrary(name)
+    {
+        // Pass null to create a dummy library
+        if (name !== null)
+            this.handle = $ir_load_lib(name);
+        this.symbols = {};
+    }
+
+    /**
+    Lookup a symbol in the lib.
+    */
+    FFILibrary.prototype.getSym = function(name)
+    {
+        if (this.symbols.hasOwnProperty(name))
+            return this.symbols[name];
+
+        var fun = ["function(libhandle)",
+                   "{",
+                   "    return $ir_get_sym(libhandle, \"" + name + "\");",
+                   "}"
+                  ].join(" ");
+
+        var sym = eval(fun)(this.handle);
+        this.symbols[name] = sym;
+        return sym;
     };
+
+    /**
+    Generate a wrapper function to call a function in the lib.
+    */
+    FFILibrary.prototype.fun = function(fname, sig)
+    {
+        // Some ir functions expect string constants, so they must be
+        // constructed as strings and eval'd
+        var args = getArgString(sig.split(",").length - 1);
+        var fun = ["function(", args, ")",
+                   "{",
+                   "    var sym = this.symbols[", ('"' + fname + '"'), "];",
+                   "    return $ir_call_ffi(null, sym, ", ('"' + sig + '"'),
+                    (args === "" ? args : (", " + args)),
+                    ");",
+                   "}"
+                  ].join(" ");
+        this.getSym(fname);
+        this[fname] = eval(fun);
+    };
+
+    /**
+    Generate a wrapper function to lookup a value in the lib.
+    */
+    FFILibrary.prototype.symbol = function(symname, sig)
+    {
+        // TODO: handle more types
+        if (sig !== "*")
+            throw "Unhandled type in symbol()";
+
+        var fun = ["function()",
+                   "{",
+                   "    var sym = this.symbols[", ('"' + symname + '"'), "];",
+                   "    return $ir_load_rawptr(sym, 0);",
+                   "}"
+                  ].join(" ");
+        this.getSym(symname);
+        this[symname] = eval(fun);
+    };
+
+    /**
+    Take a list of C style declarations and automatically create bindings for them.
+    */
+    FFILibrary.prototype.cdef = cdef;
+
+    /**
+    Close the library.
+    */
+    FFILibrary.prototype.close = function()
+    {
+        $ir_close_lib(this.handle);
+    };
+
+
+    /**
+    Array wrapper
+    */
+    function FFIArray(type, size)
+    {
+        size = size || 0;
+        // TODO: construct loader function dynamically using load_op_map?
+
+        var ar_proto = {};
+
+        function Ar(handle, offset)
+        {
+            var a = Object.create(ar_proto);
+            a.type = type;
+            a.type_size = size_map[type];
+            a.loader = load_map[type];
+            if (!a.type_size || !a.loader)
+                throw "Unhandled type in array constructor: " + type + ".";
+
+            if ($ir_get_type(handle) === 4)
+            {
+                a.handle = handle;
+                a.offset = offset || 0;
+            }
+            else
+            {
+                a.handle = c.malloc(size * a.type_size);
+                a.offset = 0;
+            }
+
+            return a;
+        }
+
+        ar_proto.get = function(index)
+        {
+            return this.loader(this.handle, this.offset + this.type_size * index);
+        };
+
+        return Ar;
+    }
+
+    /**
+     FFIStruct
+     Wrapper around structs.
+     */
+    function FFIStruct(def)
+    {
+        var struct_def = def.type;
+        var members = struct_def.members;
+        var i = 0;
+        var l = members.length;
+        var offset = 0;
+        var member;
+        var name;
+        var fun;
+        var type;
+        var size;
+        var d;
+        var struct_proto = {};
+
+        function struct(handle, offset)
+        {
+            var s = Object.create(struct_proto);
+            // check if a ptr was passed in
+            if ($ir_get_type(handle) === 4)
+            {
+                s.handle = handle;
+                s.offset = offset || 0;
+            }
+            else
+            {
+                s.handle = c.malloc(size);
+                s.offset = 0;
+            }
+
+            return s;
+        }
+
+        // member wrappers
+        for (; i < l; i++)
+        {
+            member = members[i];
+            name = member.name;
+            // TODO: do we want the top dec?
+            type = getTopDec(member).type;
+            // TODO: arrays, structs, etc .... sizeOf() function?
+            size = size_map[type];
+            // TODO: redesign getters?
+
+            // alignment
+            if (offset !== 0)
+            {
+                d = offset % size;
+                if (d !== 0)
+                    offset += size - d;
+            }
+
+            // return appropriate wrapper for member
+            if (member.array)
+            {
+                struct_proto["wrap_load_" + name] = array_wrappers[type];
+                size *= member.size;
+                fun = [
+                    "function ()",
+                    "{",
+                    "    var wrapper = new this['wrap_load_", name, "'](this.handle, ", offset, ");",
+                    "    this['get_", name, "'] = function() { return wrapper; };",
+                    "    return wrapper;",
+                    "}"
+                ].join("");
+                struct_proto["get_" + name] = eval(fun);
+            }
+            else
+            {
+                fun = [
+                    "function ()",
+                    "{",
+                    "    return ", load_op_map[type], "(this.handle, ", offset, ");",
+                    "};"
+                ].join("");
+                struct_proto["get_" + name] = eval(fun);
+            }
+
+            // Offset for the next member
+            offset += size;
+        }
+
+        return struct;
+    }
+
+
+    /**
+    STDLIB
+    */
+
+    // A wrapper for the global symbol object is included
+    // since it will probably be used often
+    var c = new FFILibrary("");
+
+    // Functions used by the FFI library
+    c.fun("malloc", "*,i32");
+    c.fun("realloc", "*,*,i32");
+    c.fun("free", "void,*");
+    c.fun("strlen", "i32,*");
+
+    /**
+    TYPE UTILTIY FUNCTIONS
+    */
+
+    // It's common to want to pass a null ptr as an arg,
+    // so one is provided by the ffi
+    var NullPtr = $nullptr;
+
+    /**
+    Create a C string from a JS string.
+    */
+    function cstr(str, len)
+    {
+        var cstr, i;
+        len = len || str.length;
+        cstr = c.malloc(len + 1);
+
+        for (i = 0; i < len; i++)
+            $ir_store_u8(cstr, i, $rt_str_get_data(str, i));
+
+        $ir_store_u8(cstr, len, 0);
+        return cstr;
+    }
+
+    /**
+    Copy a JS string to a c buffer.
+    */
+    function jstrcpy(buff, jstr, len)
+    {
+        len = len || jstr.length;
+        var i;
+
+        for (i = 0; i < len; i++)
+            $ir_store_u8(buff, i, $rt_str_get_data(jstr, i));
+
+        $ir_store_u8(buff, len, 0);
+        return buff;
+    }
+
+    /**
+    Create a JS string from a C string.
+    If n is non-zero copy only n chars from the C string.
+    */
+    function string(cstr, n, offset)
+    {
+        // TODO: add offset
+        var s, i;
+        var len = 0;
+
+        offset = offset || 0;
+
+        // Get the length
+        if (n)
+        {
+            len = n;
+        }
+        else
+        {
+            while ($ir_load_u8(cstr, offset + len++) !== 0);
+            len -= 1;
+        }
+
+        // Allocate string
+        s = $rt_str_alloc(len);
+
+        // Copy
+        for (i = 0; i < len; i++)
+            $rt_str_set_data(s, i, $ir_load_u8(cstr, offset + i));
+
+        // Attempt to find the string in the string table
+        return $ir_get_str(s);
+    }
+
+    /**
+    Create a buffer.
+    */
+    function cbuffer(len)
+    {
+        return c.malloc(len);
+    }
+
+    /**
+    Check for a null word value (useful for checking null ptrs)
+    */
+    function isNull(x)
+    {
+        return $ir_get_word(x) === 0;
+    }
 
 
     /**
@@ -1009,9 +1223,14 @@ The Higgs FFI api
         cbuffer : cbuffer,
         isNull : isNull,
         NullPtr : NullPtr,
+        testParse : testParse,
+        getTopDec : getTopDec,
         c : c,
+        array : FFIArray,
+        size_map : size_map,
         load : function(name) { return new FFILibrary(name); }
     };
 
 })();
+
 

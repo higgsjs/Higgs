@@ -1,7 +1,3 @@
-TODO: test harness
-      - simple harness for running tests similar to what mozilla uses in their JIT tests
-      - run all the JS files in a dir, check for nonzero return indicating failure
-
 TODO: all libs
       - cleaner API designs
       - reduce c-isms? If users can access our tools they can write c-in-js to their heart's content
@@ -20,8 +16,8 @@ TODO: all libs
         common tasks in a performant way. Try to achieve best balance possible.
 
 TODO: test lib
-      - basic assert functions; exit abnormally on failure
-      - move to /test and have more generic unit test suite for lib/?
+      - more assert/testing functions
+      X basic assert functions; exit abnormally on failure
 
 TODO: improve FFI
       - better errors in cdef (pretty, even? arrows pointing to failures? line/col?)
@@ -59,6 +55,10 @@ TODO: higgs-mode
 
 
 ---------------------------------------------------------------------------------------------------
+
+[DONE]: test harness
+      - simple harness for running tests similar to what mozilla uses in their JIT tests
+
 
 [DONE]: start FFI
 

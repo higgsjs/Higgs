@@ -43,7 +43,73 @@ If the program exits abnormally, it's a failure.
 (function()
 {
     var std = require("lib/stdlib");
+    var fs = require("lib/dir");
+    var console = require("lib/console");
+    var test = require("lib/test");
     var io = require("lib/stdio");
 
+    var tests_dir = "./test";
+    var tests_run = 0;
+    var tests_passed = 0;
+    var tests_failed = 0;
 
+    var current = "";
+
+    function runTest(file)
+    {
+        file = current + "/" + file;
+        var msg = "Running: " + file + "...";
+        var failed = false;
+        var fail_msg = null;
+
+        try
+        {
+            load(file);
+            tests_run += 1;
+        }
+        catch (e)
+        {
+            failed = true;
+            tests_failed += 1;
+            fail_msg = e;
+        }
+
+        if (failed)
+        {
+            console.log(msg, "\tFAILED!");
+            console.log("", fail_msg);
+            return;
+        }
+
+        tests_passed += 1;
+        console.log(msg, "\tPASSED!");
+    }
+
+    function runTests(dir_name)
+    {
+        var dir = fs.dir(dir_name);
+        var dirs = dir.getDirs().sort();
+        var files = dir.getFiles().sort().filter(function(name)
+        {
+            var ext = name.substr(name.length - 3);
+            return ext === ".js";
+        });
+
+        // first run tests in this dir
+        current = dir_name;
+        files.forEach(runTest);
+        dirs.forEach(function(next_dir)
+        {
+            runTests(dir_name + "/" + next_dir);
+        });
+    }
+
+    runTests(tests_dir);
+    console.log("\n---\n");
+    console.log("Tests run:", tests_run);
+    console.log("Tests passed:", tests_passed);
+    console.log("Tests failed:", tests_failed);
+
+    if (tests_failed)
+        std.exit(1);
 })();
