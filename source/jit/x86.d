@@ -1442,6 +1442,29 @@ void movq(ASMBlock cb, X86Opnd dst, X86Opnd src)
     }
 }
 
+/// movsd - Move scalar double to/from XMM
+void movsd(ASMBlock cb, X86Opnd dst, X86Opnd src)
+{
+    cb.writeASM("movsd", dst, src);
+
+    if (dst.isXMM)
+    {
+        assert (src.isXMM || src.isMem64);
+        cb.writeByte(0xF2);
+        cb.writeRMInstr!('r', 0xFF, 0x0F, 0x10)(false, false, dst, src);
+    }
+    else if (dst.isMem64)
+    {
+        assert (src.isXMM);
+        cb.writeByte(0xF2);
+        cb.writeRMInstr!('l', 0xFF, 0x0F, 0x11)(false, false, dst, src);
+    }
+    else
+    {
+        assert (false, "invalid dst operand");
+    }
+}
+
 /// movsx - Move with sign extension
 void movsx(ASMBlock cb, X86Opnd dst, X86Opnd src)
 {

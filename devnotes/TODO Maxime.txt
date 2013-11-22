@@ -59,7 +59,7 @@ TODO: make_map instr
 
 TODO: think about branches at end of blocks
 - Can specifying operands to test and targets be enough?
-  - e.g.: ilt, ieq, fgt, 64-bit
+  - e.g.: ilt, ieq, fgt, 64-bit, overflow
   - direct jump
 - Works for if-type branches, type tests
 - Calls are handled separately
@@ -67,7 +67,6 @@ TODO: think about branches at end of blocks
 
 TODO: if_true, jump
 
-TODO: movsd encoding
 
 
 
@@ -75,6 +74,10 @@ TODO: movsd encoding
 
 
 
+
+[DONE] TODO: movsd encoding
+Enc(opnds=['xmm', 'xmm/m64'], prefix=[0xF2], opcode=[0x0F, 0x10], rexW=False),
+Enc(opnds=['xmm/m64', 'xmm'], prefix=[0xF2], opcode=[0x0F, 0x11], rexW=False),
 
 [DONE] TODO: try implementing set_global, get_global
 - Seems we don't need register allocation for this

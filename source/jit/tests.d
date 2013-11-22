@@ -441,21 +441,19 @@ unittest
     );
     */
 
-    /*
     // movsd
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSD, XMM3, XMM5); },
+        delegate void (ASMBlock cb) { cb.movsd(X86Opnd(XMM3), X86Opnd(XMM5)); },
         "F20F10DD"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSD, XMM3, new X86Mem(64, RSP)); },
+        delegate void (ASMBlock cb) { cb.movsd(X86Opnd(XMM3), X86Opnd(64, RSP)); },
         "F20F101C24"
     );
     test(
-        delegate void (ASMBlock cb) { cb.instr(MOVSD, new X86Mem(64, RSP), XMM14); },
+        delegate void (ASMBlock cb) { cb.movsd(X86Opnd(64, RSP), X86Opnd(XMM14)); },
         "F2440F113424"
     );
-    */
 
     // movq
     test(
