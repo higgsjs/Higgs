@@ -205,17 +205,18 @@ unittest
     interp.assertInt("$ir_add_i32(1, 2)", 3);
 
     // Global property access (needed by runtime lib)
+    interp.evalString("x = 7");
     interp.assertInt("x = 7; return x;", 7);
 }
 
-/*
 /// Global expression tests
 unittest
 {
     writefln("global expressions");
 
-    auto interp = new InterpNoStdLib();
+    //auto interp = new InterpNoStdLib();
 
+    /*
     interp.assertInt("return 7", 7);
     interp.assertInt("return 1 + 2", 3);
     interp.assertInt("return 5 - 1", 4);
@@ -254,8 +255,10 @@ unittest
     interp.assertBool("!true", false);
     interp.assertBool("!false", true);
     interp.assertBool("!0", true);
+    */
 }
 
+/*
 /// Global function calls
 unittest
 {

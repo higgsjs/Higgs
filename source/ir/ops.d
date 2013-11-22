@@ -293,11 +293,11 @@ Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], /*&gen_get_str*/null , OpInfo
 
 /// GET_GLOBAL <propName>
 /// Note: hidden parameter is a cached global property index
-Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING, OpArg.INT32], /*&gen_get_global*/null , OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING], &gen_get_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// SET_GLOBAL <propName> <value>
 /// Note: hidden parameter is a cached global property index
-Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL, OpArg.INT32], /*&gen_set_global*/null , OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// <dstLocal> = NEW_CLOS <funExpr>
 /// Create a new closure from a function's AST node

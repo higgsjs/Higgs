@@ -1011,28 +1011,6 @@ class IRLinkIdx : IRValue
 }
 
 /**
-Cached index value (stateful, non-constant)
-*/
-class IRCachedIdx : IRValue
-{
-    uint32_t idx = uint32_t.max;
-
-    this()
-    {
-    }
-
-    bool isNull()
-    {
-        return idx == idx.max;
-    }
-
-    override string toString()
-    {
-        return "<idx:" ~ ((idx is idx.max)? "NULL":to!string(idx)) ~ ">";
-    }
-}
-
-/**
 Base class for IR values usable as destinations 
 (phi nodes, fun params, instructions)
 */

@@ -54,6 +54,9 @@ TODO: blog
 TODO: BlockVersion.toString()
 - Prints disassembly from the execHeap
 
+TODO: make_map instr
+- Needed to create a global closure?
+
 TODO: think about branches at end of blocks
 - Can specifying operands to test and targets be enough?
   - e.g.: ilt, ieq, fgt, 64-bit
@@ -62,22 +65,28 @@ TODO: think about branches at end of blocks
 - Calls are handled separately
 - Look at old jit ops
 
-TODO: try implementing set_global, get_global
+TODO: if_true, jump
+
+TODO: movsd encoding
+
+
+
+
+
+
+
+
+[DONE] TODO: try implementing set_global, get_global
 - Seems we don't need register allocation for this
 - Problem: there is no cached global property index
   - Need to get those at JIT time
 - Can get rid of the cached idx on the instruction
   - Get rid of IRCachedIdx as a whole
 
+[DONE] TODO: setOutType w/ reg arg
 
-
-
-
-
-
-
-
-
+[DONE] FIXME: return doesn't deal with mem arg
+- tmpReg not properly implemented in getWordOpnd
 
 [DONE] FIXME: odd assertion error involving comment strings
 - Happens inside writeBlock, while merging strings

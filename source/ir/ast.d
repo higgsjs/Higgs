@@ -438,8 +438,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             auto setInstr = bodyCtx.addInstr(new IRInstr(
                 &SET_GLOBAL, 
                 new IRString(ident.name),
-                IRConst.undefCst,
-                new IRCachedIdx()
+                IRConst.undefCst
             ));
         }
     }
@@ -2077,8 +2076,7 @@ IRValue refToIR(
             // Get the global value
             return ctx.addInstr(new IRInstr(
                 &GET_GLOBAL,
-                new IRString(identExpr.name),
-                new IRCachedIdx()
+                new IRString(identExpr.name)
             ));
         }
         else
@@ -2192,8 +2190,7 @@ IRValue assgToIR(
             ctx.addInstr(new IRInstr(
                 &SET_GLOBAL,
                 new IRString(identExpr.name),
-                rhsVal,
-                new IRCachedIdx()
+                rhsVal
             ));
         }
 

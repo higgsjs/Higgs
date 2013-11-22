@@ -491,93 +491,118 @@ alias StoreOp!(64, Type.INT64) gen_store_u64;
 alias StoreOp!(64, Type.FLOAT64) gen_store_f64;
 alias StoreOp!(64, Type.REFPTR) gen_store_refptr;
 alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
+*/
 
-void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_get_global(
+    VersionInst ver,
+    CodeGenState st,
+    ASMBlock as,
+    ASMBlock[] moves,
+    IRInstr instr
+)
 {
-    auto interp = ctx.interp;
+    auto interp = st.ctx.interp;
 
-    // Cached property index
-    auto idxArg = cast(IRCachedIdx)instr.getArg(1);
-    assert (idxArg !is null);
-    auto propIdx = idxArg.idx;
+    // Name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
 
-    // If no property index is cached, use the interpreter function
-    if (propIdx is idxArg.idx.max)
-    {
-        defaultFn(ctx.as, ctx, st, instr);
-        return;
-    }
+    // Lookup the property index in the class
+    // if the property slot doesn't exist, it will be allocated
+    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    assert (globalMap !is null);
+    auto propIdx = globalMap.getPropIdx(nameStr, true);
+
+
+    // TODO: if propIdx not found, need to do full lookup using getPropObj
+    assert (propIdx !is uint32_t.max);
+
+
+
+
+
+
 
     // Allocate the output operand
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
+    as.getMember!("Interp.globalObj")(scrRegs64[0], interpReg);
 
     // Get the global object size/capacity
-    ctx.as.getField(scrRegs32[1], scrRegs64[0], 4, obj_ofs_cap(interp.globalObj));
+    as.getField(scrRegs32[1], scrRegs64[0], 4, obj_ofs_cap(interp.globalObj));
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
 
     // Get the word value from the object
-    auto wordMem = new X86Mem(64, scrRegs64[0], wordOfs + 8 * propIdx);
-    if (cast(X86Reg)outOpnd)
+    auto wordMem = X86Opnd(64, scrRegs64[0], wordOfs + 8 * propIdx);
+    if (outOpnd.isReg)
     {
-        ctx.as.instr(MOV, outOpnd, wordMem);
+        as.mov(outOpnd, wordMem);
     }
     else
     {
-        ctx.as.instr(MOV, scrRegs64[2], wordMem);
-        ctx.as.instr(MOV, outOpnd, scrRegs64[2]);
+        as.mov(X86Opnd(scrRegs64[2]), wordMem);
+        as.mov(outOpnd, X86Opnd(scrRegs64[2]));
     }
 
     // Get the type value from the object
-    auto typeMem = new X86Mem(8, scrRegs64[0], wordOfs + propIdx, scrRegs64[1], 8);
-    ctx.as.instr(MOV, scrRegs8[2], typeMem);
+    auto typeMem = X86Opnd(8, scrRegs64[0], wordOfs + propIdx, 8, scrRegs64[1]);
+    as.mov(X86Opnd(scrRegs8[2]), typeMem);
 
     // Set the type value
-    st.setOutType(ctx.as, instr, scrRegs8[2]);
+    st.setOutType(as, instr, scrRegs8[2]);
 }
 
-void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_set_global(
+    VersionInst ver,
+    CodeGenState st,
+    ASMBlock as,
+    ASMBlock[] moves,
+    IRInstr instr
+)
 {
-    auto interp = ctx.interp;
+    auto interp = st.ctx.interp;
 
-    // Cached property index
-    auto idxArg = cast(IRCachedIdx)instr.getArg(2);
-    assert (idxArg !is null);
-    auto propIdx = idxArg.idx;
+    // Name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
 
-    // If no property index is cached, use the interpreter function
-    if (propIdx is idxArg.idx.max)
-    {
-        defaultFn(ctx.as, ctx, st, instr);
-        return;
-    }
+    // Lookup the property index in the class
+    // if the property slot doesn't exist, it will be allocated
+    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    assert (globalMap !is null);
+    auto propIdx = globalMap.getPropIdx(nameStr, true);
+
+    // TODO: preallocate slot in global object?
+    // this would prevent GC at execution time
 
     // Allocate the input operand
-    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 1, 64, scrRegs64[0], true);
+    auto argOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd(scrRegs64[0]), true);
 
     // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(scrRegs64[1], interpReg);
+    as.getMember!("Interp.globalObj")(scrRegs64[1], interpReg);
 
     // Get the global object size/capacity
-    ctx.as.getField(scrRegs32[2], scrRegs64[1], 4, obj_ofs_cap(interp.globalObj));
+    as.getField(scrRegs32[2], scrRegs64[1], 4, obj_ofs_cap(interp.globalObj));
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
 
     // Set the word value
-    auto wordMem = new X86Mem(64, scrRegs64[1], wordOfs + 8 * propIdx);
-    ctx.as.instr(MOV, wordMem, argOpnd);
+    auto wordMem = X86Opnd(64, scrRegs64[1], wordOfs + 8 * propIdx);
+    as.mov(wordMem, argOpnd);
 
     // Set the type value
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[0], true);
-    auto typeMem = new X86Mem(8, scrRegs64[1], wordOfs + propIdx, scrRegs64[2], 8);
-    ctx.as.instr(MOV, typeMem, typeOpnd);
+    auto typeOpnd = st.getTypeOpnd(as, instr, 1, X86Opnd(scrRegs8[0]), true);
+    auto typeMem = X86Opnd(8, scrRegs64[1], wordOfs + propIdx, 8, scrRegs64[2]);
+    as.mov(typeMem, typeOpnd);
 }
 
+/*
 void GetValOp(string fName)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Get the output operand. This must be a 
@@ -1445,6 +1470,7 @@ void gen_ret(
             X86Opnd(scrRegs64[0]),
             true
         );
+
         as.mov(
             X86Opnd(64, wspReg, 8 * numPop),
             retOpnd

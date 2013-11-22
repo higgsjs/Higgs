@@ -826,6 +826,7 @@ extern (C) void op_get_str(Interp interp, IRInstr instr)
     );
 }
 
+/*
 /// Get the value of a global variable
 extern (C) void op_get_global(Interp interp, IRInstr instr)
 {
@@ -891,7 +892,9 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
         val
     );
 }
+*/
 
+/*
 /// Set the value of a global variable
 extern (C) void op_set_global(Interp interp, IRInstr instr)
 {
@@ -943,6 +946,7 @@ extern (C) void op_set_global(Interp interp, IRInstr instr)
         idxArg.idx = propIdx;
     }
 }
+*/
 
 extern (C) void op_new_clos(Interp interp, IRInstr instr)
 {

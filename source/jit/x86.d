@@ -841,7 +841,7 @@ void writeRMInstr(
 Encode an add-like RM instruction with multiple possible encodings
 */
 void writeRMMulti(
-    wstring mnem, 
+    string mnem, 
     ubyte opMemReg8, 
     ubyte opMemRegPref, 
     ubyte opRegMem8, 
@@ -933,7 +933,12 @@ void writeRMMulti(
     // Invalid operands
     else
     {
-        assert (false, "invalid operand combination");
+        assert (
+            false, 
+            "invalid operand combination for " ~ mnem ~ ":\n" ~
+            opnd0.toString() ~ "\n" ~
+            opnd1.toString()
+        );
     }
 }
 

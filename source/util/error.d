@@ -49,12 +49,12 @@ void customAssertHandler(string file = __FILE__, size_t line = __LINE__, string 
 {
     try
     {
-        write("Assertion failed");
+        write("Assertion failed (", file, "@", line, ")");
 
         if (msg)
             write(": ", msg);
 
-        writeln(" (", file, "@", line, ")");
+        writeln();
     }
     catch (Throwable e)
     {

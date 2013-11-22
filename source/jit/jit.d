@@ -485,30 +485,31 @@ class CodeGenState
         // If the operand is a memory location
         if (curOpnd.isMem)
         {
-            // TODO
-            return curOpnd;
-
-            /*
             // TODO: only allocate a register if more than one use?            
 
+            // TODO
             // Try to allocate a register for the operand
-            auto opnd = loadVal? allocReg():curOpnd;
+            auto opnd = /*loadVal? allocReg():*/curOpnd;
 
             // If the register allocation failed but a temp reg was supplied
-            if (cast(X86Mem)opnd && tmpReg !is null)
+            if (opnd.isMem && !tmpReg.isNone)
             {
+                // TODO
+                /*
                 as.instr(
                     (tmpReg.type == X86Reg.XMM)? MOVSD:MOV, 
                     tmpReg, 
                     curOpnd
                 );
+                */
+
+                as.mov(tmpReg, curOpnd);
 
                 return tmpReg;
             }
 
             // Return the allocated operand
             return opnd;
-            */
         }
 
         assert (false, "invalid cur opnd type");
@@ -667,6 +668,28 @@ class CodeGenState
 
         return cast(Type)(typeState & TF_TYPE_MASK);
         */
+    }
+
+    /// Write the output type for an instruction's output to the type stack
+    void setOutType(ASMBlock as, IRInstr instr, X86Reg typeReg)
+    {
+        assert (
+            instr !is null,
+            "null instruction"
+        );
+
+        // TODO
+        // Mark the type value as unknown
+        //typeState.remove(instr);
+
+        // Write the type to the type stack
+        as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(typeReg));
+
+        // TODO
+        // If the output is mapped to a register, write a 0 value
+        // to the word stack to avoid invalid references
+        //if (allocState.get(instr, 0) & RA_GPREG)
+        //    as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
     }
 }
 
@@ -1091,6 +1114,8 @@ void compile(bool unitFn = false)(BlockVersion startVer)
             // Insert the label for this block in the out of line code
             as.comment("Block stub for " ~ stub.block.getName());
 
+            // TODO: properly spill registers, GC may be run during JIT
+
             as.pushRegs();
 
             // Call the JIT compile function,
@@ -1115,7 +1140,7 @@ void compile(bool unitFn = false)(BlockVersion startVer)
             // For each instruction of the block
             for (auto instr = ver.block.firstInstr; instr !is null; instr = instr.next)
             {
-                //writeln("compiling instr: ", instr.toString());
+                writeln("compiling instr: ", instr.toString());
 
                 as.comment(instr.toString());
                 //as.printStr(instr.toString());
