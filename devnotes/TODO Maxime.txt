@@ -69,6 +69,17 @@ TODO: CmpOp
 TODO: versionRefs, compQueue...
 - Create a "Compiler" struct to hold these references, add methods to it
 
+// TODO:
+// jne FALSE        need to compute offset to FALSE
+//
+// TRUE:            need to store move idx
+// moves[1]
+// jmp rel32        targets[1]
+//
+// FALSE:           need to store move idx
+// moves[0]
+// jmp rel32        targets[0]
+
 TODO: could we merge ASMBlock, ExecBlock, compile directly in the execHeap?
 - bool exec, bool comments
 - Threads: just acquire a lock
@@ -80,7 +91,7 @@ TODO: could we merge ASMBlock, ExecBlock, compile directly in the execHeap?
 - How do we deal with branch moves?
   - Could do a simple, direct encoding of final branches
   - At the same time, give block version useful annotations
-
+- gets rid of BlockVersion.write
 
 
 

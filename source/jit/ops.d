@@ -74,7 +74,7 @@ void gen_get_arg(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Get the argument index
     auto idxOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, scrRegs32[0], false);
     auto idxReg32 = cast(X86Reg)idxOpnd;
-    auto idxReg64 = idxReg32.ofSize(64);
+    auto idxReg64 = idxReg32.reg(64);
 
     // Get the output operand
     auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
@@ -411,7 +411,7 @@ void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIns
     {
         // Zero-extend the offset from 32 to 64 bits
         ctx.as.instr(MOV, regOffs, regOffs);
-        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.ofSize(64));
+        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.reg(64));
     }
     else
     {
@@ -463,7 +463,7 @@ void StoreOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIn
     auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[1], true);
 
     // The value operand may be a register or an immediate
-    auto opnd2 = st.getWordOpnd(ctx, ctx.as, instr, 2, memSize, scrRegs64[2].ofSize(memSize), true);
+    auto opnd2 = st.getWordOpnd(ctx, ctx.as, instr, 2, memSize, scrRegs64[2].reg(memSize), true);
 
     // Create the memory operand
     X86Mem memOpnd;
@@ -475,7 +475,7 @@ void StoreOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIn
     {
         // Zero-extend the offset from 32 to 64 bits
         ctx.as.instr(MOV, regOffs, regOffs);
-        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.ofSize(64));
+        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.reg(64));
     }
     else
     {
@@ -534,7 +534,7 @@ void gen_get_global(
     as.getMember!("Interp.globalObj")(scrRegs[0], interpReg);
 
     // Get the global object size/capacity
-    as.getField(scrRegs[1].ofSize(32), scrRegs[0], 4, obj_ofs_cap(interp.globalObj));
+    as.getField(scrRegs[1].reg(32), scrRegs[0], 4, obj_ofs_cap(interp.globalObj));
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
@@ -556,7 +556,7 @@ void gen_get_global(
     as.mov(scrRegs[2].opnd(8), typeMem);
 
     // Set the type value
-    st.setOutType(as, instr, scrRegs[2].ofSize(8));
+    st.setOutType(as, instr, scrRegs[2].reg(8));
 }
 
 void gen_set_global(
@@ -591,7 +591,7 @@ void gen_set_global(
     as.getMember!("Interp.globalObj")(scrRegs[1], interpReg);
 
     // Get the global object size/capacity
-    as.getField(scrRegs[2].ofSize(32), scrRegs[1], 4, obj_ofs_cap(interp.globalObj));
+    as.getField(scrRegs[2].reg(32), scrRegs[1], 4, obj_ofs_cap(interp.globalObj));
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
@@ -828,7 +828,7 @@ void genBoolOut(
     auto outReg = cast(X86Reg)opndOut;
     if (outReg is null)
         outReg = scrRegs64[0];
-    auto outReg32 = outReg.ofSize(32);
+    auto outReg32 = outReg.reg(32);
 
     if (condOps.cmovT[0])
     {
@@ -1567,9 +1567,9 @@ void gen_ret(
     auto curWordOpnd = st.getWordOpnd(instr.getArg(0), 64);
     X86Reg scrReg3;
     if (curWordOpnd == allocRegs[0])
-        scrReg3 = allocRegs[1].ofSize(32);
+        scrReg3 = allocRegs[1].reg(32);
     else
-        scrReg3 = allocRegs[0].ofSize(32);
+        scrReg3 = allocRegs[0].reg(32);
 
     // Label for the bailout to interpreter cases
     auto BAILOUT = new Label("RET_BAILOUT");
@@ -1612,7 +1612,7 @@ void gen_ret(
         instr, 
         0,
         64,
-        scrReg3.ofSize(64),
+        scrReg3.reg(64),
         true,
         false
     );
@@ -1627,7 +1627,7 @@ void gen_ret(
         ctx.as, 
         instr, 
         0, 
-        scrReg3.ofSize(8),
+        scrReg3.reg(8),
         true
     );
     ctx.as.instr(

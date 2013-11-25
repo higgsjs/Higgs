@@ -699,7 +699,7 @@ abstract class BlockVersion
     CodeGenState state;
 
     /// Starting index in the executable code block
-    size_t startIdx = size_t.max;
+    uint32_t startIdx = uint32_t.max;
 
     /// Write the version into the executable heap
     abstract void write(
@@ -740,7 +740,7 @@ class VersionStub : BlockVersion
                 assert (branchAs.empty());
         }
 
-        startIdx = execHeap.getWritePos();
+        startIdx = cast(uint32_t)execHeap.getWritePos();
 
         execHeap.writeBlock(code);
     }
@@ -779,13 +779,13 @@ class VersionInst : BlockVersion
     BlockVersion targets[MAX_TARGETS];
 
     /// Inner code length
-    size_t codeLen;
+    uint32_t codeLen;
 
     /// Move code indices
-    size_t moveIdx[MAX_TARGETS];
+    uint32_t moveIdx[MAX_TARGETS];
 
     /// Move code length
-    size_t moveLen[MAX_TARGETS];
+    uint32_t moveLen[MAX_TARGETS];
 
     this(IRBlock block, CodeGenState state)
     {
@@ -826,48 +826,8 @@ class VersionInst : BlockVersion
     )
     {
         // Note the start index and inner code length
-        startIdx = execHeap.getWritePos();
-        codeLen = code.getWritePos();
-
-        switch (branchTest)
-        {
-            // Integer equality test
-            case BranchTest.IEQ:
-            code.cmp(testOpnds[0], testOpnds[1]);
-
-
-
-
-
-            // TODO:
-            // jne FALSE        need to compute offset to FALSE
-            //
-            // TRUE:            need to store move idx
-            // moves[1]
-            // jmp rel32        targets[1]
-            //
-            // FALSE:           need to store move idx
-            // moves[0]
-            // jmp rel32        targets[0]
-
-
-
-            // TODO: insert VersionRef entries
-
-
-
-            break;
-
-            // Direct jump or no branch
-            case BranchTest.NONE:
-            // TODO
-
-
-            break;
-
-            default:
-            assert (false);
-        }
+        startIdx = cast(uint32_t)execHeap.getWritePos();
+        codeLen = cast(uint32_t)code.getWritePos();
 
         // Write the code to the executable heap
         execHeap.writeBlock(code);
@@ -1497,7 +1457,7 @@ void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)
     as.addInstr(new IntData(0, 8));
     as.addInstr(AFTER_STR);
 
-    as.instr(MOV, cargRegs[2].ofSize(8), typeOpnd);
+    as.instr(MOV, cargRegs[2].reg(8), typeOpnd);
     as.instr(MOV, cargRegs[1], wordOpnd);
     as.instr(MOV, cargRegs[0], interpReg);
     as.instr(LEA, cargRegs[3], new X86IPRel(8, STR_DATA));

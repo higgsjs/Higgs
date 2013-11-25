@@ -89,7 +89,7 @@ struct X86Reg
     Get a register with the same type and register number
     but a potentially different size
     */
-    X86Reg ofSize(size_t numBits) const
+    X86Reg reg(size_t numBits) const
     {
         if (numBits == this.size)
             return this;
@@ -102,7 +102,7 @@ struct X86Reg
     */
     X86Opnd opnd(size_t numBits) const
     {
-        return X86Opnd(ofSize(numBits));
+        return X86Opnd(reg(numBits));
     }
 
     /**
