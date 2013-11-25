@@ -406,6 +406,12 @@ class Interp
     /// Map of blocks to lists of existing versions
     BlockVersion[][IRBlock] versionMap;
 
+    /// Queue of block versions to be compiled
+    BlockVersion[] compQueue;
+
+    // List of references to block versions to be linked
+    VersionRef[] refList;
+
     /**
     Constructor, initializes/resets the interpreter state
     */

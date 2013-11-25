@@ -53,44 +53,30 @@ TODO: blog
 
 TODO: BlockVersion.toString()
 - Prints disassembly from the execHeap
+- CodeBlock toString needs start and end offsets?
 
 TODO: make_map instr
 - Needed to create a global closure?
 
-TODO: if_true, jump
-- Also need to implement IsTypeOp
-- Should implement conditional branch mechanism first?
-
 TODO: CmpOp
-- If "if_true" follows, set branch info on version inst
-  - setBranch?
-- If we must produce a boolean, do comparison locally, use cmov
-
-TODO: versionRefs, compQueue...
-- Could add to Interp object directly
-  - Assert compQueue empty when entering compile
-
-// TODO:
-// jne FALSE        need to compute offset to FALSE
-//
-// TRUE:            need to store move idx
-// moves[1]
-// jmp rel32        targets[1]
-//
-// FALSE:           need to store move idx
-// moves[0]
-// jmp rel32        targets[0]
+- For first version, always use cmov to produce a boolean
 
 
 
-TODO: where do we set codeLen?
+
+
+
+[DONE] TODO: genBranch
+- For now, just switch on test type, do jump if false
+
+[DONE] TODO: define a constant for JMP_REL32_OPCODE
+
+[DONE] TODO: where do we set codeLen?
 - Need to mark the inner code end explicitly
 
-
-
-
-
-
+[DONE] TODO: versionRefs, compQueue...
+- Add to Interp object directly
+- Assert compQueue empty when entering compile
 
 [DONE] TODO: could we merge ASMBlock, ExecBlock, compile directly in the execHeap?
 - bool exec, bool comments

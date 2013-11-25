@@ -58,10 +58,9 @@ import jit.jit;
 /// Instruction code generation function
 alias void function(
     VersionInst ver, 
-    CodeGenState st, 
-    CodeBlock as,
-    BlockVersion[]* queue,
-    IRInstr instr
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
 ) GenFn;
 
 /*
@@ -188,10 +187,9 @@ void gen_f64_to_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 void RMMOp(string op, size_t numBits, Type typeTag)(
     VersionInst ver, 
-    CodeGenState st, 
-    CodeBlock as,
-    BlockVersion[]* queue,
-    IRInstr instr
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
 )
 {
     // Should be mem or reg
@@ -494,11 +492,10 @@ alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
 */
 
 void gen_get_global(
-    VersionInst ver,
+    VersionInst ver, 
     CodeGenState st,
-    CodeBlock as,
-    BlockVersion[]* queue,
-    IRInstr instr
+    IRInstr instr,
+    CodeBlock as
 )
 {
     auto interp = st.ctx.interp;
@@ -557,11 +554,10 @@ void gen_get_global(
 }
 
 void gen_set_global(
-    VersionInst ver,
+    VersionInst ver, 
     CodeGenState st,
-    CodeBlock as,
-    BlockVersion[]* queue,
-    IRInstr instr
+    IRInstr instr,
+    CodeBlock as
 )
 {
     auto interp = st.ctx.interp;
@@ -932,10 +928,9 @@ alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 
 void CmpOp(string op, size_t numBits)(
     VersionInst ver, 
-    CodeGenState st, 
-    CodeBlock as, 
-    BlockVersion[]* queue,
-    IRInstr instr
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
 )
 {
     // Check if this is a floating-point comparison
@@ -960,6 +955,10 @@ void CmpOp(string op, size_t numBits)(
         scrRegs[1].opnd(numBits),
         isFP? false:true
     );
+
+
+    // TODO: for now, just handle the int32 comparison case, generate boolean
+
 
 
 
@@ -1101,35 +1100,30 @@ void CmpOp(string op, size_t numBits)(
 
 }
 
-/*
-alias CmpOp!("eq", 8) gen_eq_i8;
+//alias CmpOp!("eq", 8) gen_eq_i8;
 alias CmpOp!("eq", 32) gen_eq_i32;
-alias CmpOp!("ne", 32) gen_ne_i32;
-alias CmpOp!("lt", 32) gen_lt_i32;
-alias CmpOp!("le", 32) gen_le_i32;
-alias CmpOp!("gt", 32) gen_gt_i32;
-alias CmpOp!("ge", 32) gen_ge_i32;
-*/
-alias CmpOp!("eq", 8) gen_eq_const;
-/*
-alias CmpOp!("ne", 8) gen_ne_const;
-alias CmpOp!("eq", 64) gen_eq_refptr;
-alias CmpOp!("ne", 64) gen_ne_refptr;
-alias CmpOp!("eq", 64) gen_eq_rawptr;
-alias CmpOp!("feq", 64) gen_eq_f64;
-alias CmpOp!("fne", 64) gen_ne_f64;
-alias CmpOp!("flt", 64) gen_lt_f64;
-alias CmpOp!("fle", 64) gen_le_f64;
-alias CmpOp!("fgt", 64) gen_gt_f64;
-alias CmpOp!("fge", 64) gen_ge_f64;
-*/
+//alias CmpOp!("ne", 32) gen_ne_i32;
+//alias CmpOp!("lt", 32) gen_lt_i32;
+//alias CmpOp!("le", 32) gen_le_i32;
+//alias CmpOp!("gt", 32) gen_gt_i32;
+//alias CmpOp!("ge", 32) gen_ge_i32;
+//alias CmpOp!("eq", 8) gen_eq_const;
+//alias CmpOp!("ne", 8) gen_ne_const;
+//alias CmpOp!("eq", 64) gen_eq_refptr;
+//alias CmpOp!("ne", 64) gen_ne_refptr;
+//alias CmpOp!("eq", 64) gen_eq_rawptr;
+//alias CmpOp!("feq", 64) gen_eq_f64;
+//alias CmpOp!("fne", 64) gen_ne_f64;
+//alias CmpOp!("flt", 64) gen_lt_f64;
+//alias CmpOp!("fle", 64) gen_le_f64;
+//alias CmpOp!("fgt", 64) gen_gt_f64;
+//alias CmpOp!("fge", 64) gen_ge_f64;
 
 void gen_if_true(
     VersionInst ver, 
-    CodeGenState st, 
-    CodeBlock as,
-    BlockVersion[]* queue,
-    IRInstr instr
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
 )
 {
     auto argVal = instr.getArg(0);
@@ -1152,38 +1146,23 @@ void gen_if_true(
 
     // If a boolean argument immediately precedes, the
     // conditional branch has already been generated
-    if (boolArgPrev(instr) is true)
-        return;
+    //if (boolArgPrev(instr) is true)
+    //    return;
 
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
 
-
-
-    // TODO
-
-    /*
-    // Set the final comparison and branch for the block
-    ver.setBranch(
+    // Generate the final comparison and branch for the block
+    ver.genBranch(
+        as,
         BranchTest.IEQ,
         argOpnd,
         X86Opnd(TRUE.int8Val),
-        genBranchEdge(
-            moves[0],
-            instr.getTarget(0),
-            st,
-            false,
-            queue
-        ),
-        genBranchEdge(
-            moves[1],
-            instr.getTarget(1),
-            st,
-            false,
-            queue
-        )
+        st,
+        st,
+        instr.getTarget(0),
+        instr.getTarget(1),
     );
-    */
 }
 
 /*
@@ -1489,9 +1468,8 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 void gen_ret(
     VersionInst ver, 
     CodeGenState st,
-    CodeBlock as, 
-    BlockVersion[]* queue,
-    IRInstr instr
+    IRInstr instr,
+    CodeBlock as
 )
 {
     auto raSlot    = instr.block.fun.raVal.outSlot;

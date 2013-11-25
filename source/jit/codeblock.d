@@ -64,10 +64,10 @@ enum Label : size_t
     DONE,
     TRUE,
     FALSE,
-    TARGET0,
-    TARGET1,
     FUN1,
-    FUN2
+    FUN2,
+    BRANCH_TARGET0,
+    BRANCH_TARGET1
 }
 
 /**

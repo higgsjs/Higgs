@@ -1334,8 +1334,11 @@ alias writeJcc!("jpo", 0x0F, 0x8B) jpo;
 alias writeJcc!("js" , 0x0F, 0x88) js;
 alias writeJcc!("jz" , 0x0F, 0x84) jz;
 
+/// Opcode for direct jump with relative 32-bit offset
+const ubyte JMP_REL32_OPCODE = 0xE9;
+
 /// jmp - Direct relative jump to label
-alias writeJcc!("jmp", 0xE9) jmp;
+alias writeJcc!("jmp", JMP_REL32_OPCODE) jmp;
 
 /// jmp - Indirect jump near to an R/M operand
 void jmp(CodeBlock cb, X86Opnd opnd)

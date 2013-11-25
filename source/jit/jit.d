@@ -773,22 +773,88 @@ class VersionInst : BlockVersion
         return cb.getAddress(startIdx);
     }
 
-    /// Set the parameters for the final branch
-    void setBranch(
+    /// Generate code for the final test and branch
+    void genBranch(
+        CodeBlock as,
         BranchTest test,
         X86Opnd opnd0,
         X86Opnd opnd1,
-        BlockVersion target0,
-        BlockVersion target1
+        CodeGenState state0,
+        CodeGenState state1,
+        BranchEdge branch0,
+        BranchEdge branch1
     )
     {
-        assert (targets[0] is null);
+        assert (state0 !is null && branch0 !is null);
+        assert (targets[0] is null && targets[1] is null);
 
+        auto interp = state0.ctx.interp;
+        auto refList = interp.refList;
+
+        // Store the test type and operands
         branchTest = test;
         testOpnds[0] = opnd0;
         testOpnds[1] = opnd1;
-        targets[0] = target0;
-        targets[1] = target1;
+
+        // Compute the inner code length
+        assert (as.getWritePos() >= startIdx);
+        codeLen = cast(uint32_t)as.getWritePos() - startIdx;
+
+        // Switch on the branch test type
+        switch (branchTest)
+        {
+            // Integer equality
+            case BranchTest.IEQ:
+            as.cmp(opnd0, opnd1);
+            as.jne(Label.BRANCH_TARGET1);
+            break;
+
+            // Direct jump
+            case BranchTest.NONE:
+            assert (branch1 is null);
+            break;
+
+            default:
+            assert (false);
+        }
+
+        // Generate moves for the first branch
+        moveIdx[0] = cast(uint32_t)as.getWritePos();
+        targets[0] = genBranchEdge(
+            as,
+            branch0,
+            state0,
+            branch1 is null
+        );
+        moveLen[0] = cast(uint32_t)as.getWritePos() - moveIdx[0];
+
+        // Write a jump to the true target
+        as.writeASM("jmp", branch0.target.getName);
+        refList ~= VersionRef(as.getWritePos(), targets[0]);
+        as.writeByte(JMP_REL32_OPCODE);
+        as.writeInt(0, 32);
+
+        // Generate moves for the second branch
+        if (branch1 !is null)
+        {
+            // Second target label
+            as.label(Label.BRANCH_TARGET1);
+
+            moveIdx[1] = cast(uint32_t)as.getWritePos();
+            targets[1] = genBranchEdge(
+                as,
+                branch1,
+                state1,
+                false
+            );
+            moveLen[1] = cast(uint32_t)as.getWritePos() - moveIdx[1];
+
+            // Write a jump to the false target
+            as.writeASM("jmp", branch1.target.getName);
+            refList ~= VersionRef(as.getWritePos(), targets[1]);
+            as.writeByte(JMP_REL32_OPCODE);
+            as.writeInt(0, 32);
+        }
     }
 }
 
@@ -798,8 +864,7 @@ Get a label for a given block and incoming state
 BlockVersion getBlockVersion(
     IRBlock block, 
     CodeGenState state,
-    bool noStub,
-    BlockVersion[]* compQueue
+    bool noStub
 )
 {
     auto interp = state.ctx.interp;
@@ -873,7 +938,7 @@ BlockVersion getBlockVersion(
     interp.versionMap[block] ~= ver;
 
     // Queue the new version to be compiled
-    *compQueue ~= ver;
+    interp.compQueue ~= ver;
 
     // Return the newly created block version
     return ver;
@@ -886,8 +951,7 @@ BlockVersion genBranchEdge(
     CodeBlock as,
     BranchEdge branch,
     CodeGenState predState,
-    bool noStub,
-    BlockVersion[]* compQueue 
+    bool noStub
 )
 {
     auto liveInfo = predState.ctx.fun.liveInfo;
@@ -960,8 +1024,7 @@ BlockVersion genBranchEdge(
     auto succVer = getBlockVersion(
         branch.target, 
         succState, 
-        noStub, 
-        compQueue
+        noStub
     );
     succState = succVer.state;
 
@@ -1056,7 +1119,7 @@ BlockVersion genBranchEdge(
 /**
 Compile a basic block version
 */
-void compile(bool unitFn)(BlockVersion startVer)
+void compile(BlockVersion startVer)
 {
     writeln("entering compile");
 
@@ -1071,12 +1134,12 @@ void compile(bool unitFn)(BlockVersion startVer)
 
     auto as = interp.execHeap;
     assert (as !is null);
+    auto compQueue = interp.compQueue;
+    auto refList = interp.refList;
 
     // Add the version to the compilation queue
-    BlockVersion[] compQueue = [startVer];
-
-    // List of references to block versions
-    VersionRef[] refList;
+    assert (compQueue.length is 0);
+    compQueue ~= startVer;
 
     // Until the compilation queue is empty
     while (compQueue.length > 0)
@@ -1086,7 +1149,7 @@ void compile(bool unitFn)(BlockVersion startVer)
         compQueue.popFront();
 
         // Note the code start index for this version
-        static if (unitFn is false)
+        if (ver.startIdx is size_t.max)
            ver.startIdx = cast(uint32_t)as.getWritePos();
 
         // If this is a version stub
@@ -1120,6 +1183,8 @@ void compile(bool unitFn)(BlockVersion startVer)
             auto inst = cast(VersionInst)ver;
             assert (inst !is null);
 
+            as.comment("Instance of " ~ inst.block.getName());
+
             // For each instruction of the block
             for (auto instr = ver.block.firstInstr; instr !is null; instr = instr.next)
             {
@@ -1140,9 +1205,8 @@ void compile(bool unitFn)(BlockVersion startVer)
                 opcode.genFn(
                     inst,
                     state, 
-                    as,
-                    &compQueue,
-                    instr
+                    instr,
+                    as
                 );
 
                 // If we know the instruction will definitely leave 
@@ -1166,6 +1230,7 @@ void compile(bool unitFn)(BlockVersion startVer)
     auto startPos = as.getWritePos();
     foreach (refr; refList)
     {
+        writeln("linking version ref");
         as.setWritePos(refr.pos);
         assert (refr.ver.startIdx !is size_t.max);
         auto offset = refr.ver.startIdx - (refr.pos + 4);
@@ -1194,12 +1259,12 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
     stub.inst = new VersionInst(stub.block, stub.state);
 
     // Compile the version instance
-    compile!false(stub.inst);
+    compile(stub.inst);
 
     // Write a relative 32-bit jump to the stub instance over the stub
     auto startPos = execHeap.getWritePos();
     execHeap.setWritePos(stub.startIdx);
-    execHeap.writeByte(0xE9);
+    execHeap.writeByte(JMP_REL32_OPCODE);
     auto offset = stub.inst.startIdx - (execHeap.getWritePos + 4);
     execHeap.writeInt(offset, 32);
     execHeap.setWritePos(startPos);
@@ -1255,7 +1320,7 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
     as.getMember!("Interp.tsp")(tspReg, interpReg);
 
     // Compile the unit entry version
-    compile!true(entryInst);
+    compile(entryInst);
 
     // Return a pointer to the entry block version's code
     return cast(EntryFn)entryInst.getCodePtr(interp.execHeap);
