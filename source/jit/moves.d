@@ -51,7 +51,7 @@ alias Tuple!(X86Opnd, "dst", X86Opnd, "src") Move;
 Execute a list of moves as if occurring simultaneously,
 preventing memory locations from being overwritten
 */
-void execMoves(ASMBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
+void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
 {
     /*
     void execMove(Move move)

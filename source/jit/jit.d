@@ -364,7 +364,7 @@ class CodeGenState
     - If loadVal is false, memory operands will not be loaded
     */
     X86Opnd getWordOpnd(
-        ASMBlock as,
+        CodeBlock as,
         IRInstr instr, 
         size_t argIdx,
         size_t numBits,
@@ -528,7 +528,7 @@ class CodeGenState
     Get an x86 operand for the type of an instruction argument
     */
     X86Opnd getTypeOpnd(
-        ASMBlock as,
+        CodeBlock as,
         IRInstr instr,
         size_t argIdx,
         X86Opnd tmpReg8 = X86Opnd.NONE,
@@ -563,7 +563,7 @@ class CodeGenState
 
     /// Get the operand for an instruction's output
     X86Opnd getOutOpnd(
-        ASMBlock as, 
+        CodeBlock as, 
         IRInstr instr, 
         uint16_t numBits
     )
@@ -662,7 +662,7 @@ class CodeGenState
     }
 
     /// Write the output type for an instruction's output to the type stack
-    void setOutType(ASMBlock as, IRInstr instr, X86Reg typeReg)
+    void setOutType(CodeBlock as, IRInstr instr, X86Reg typeReg)
     {
         assert (
             instr !is null,
@@ -700,14 +700,6 @@ abstract class BlockVersion
 
     /// Starting index in the executable code block
     uint32_t startIdx = uint32_t.max;
-
-    /// Write the version into the executable heap
-    abstract void write(
-        ASMBlock code, 
-        ASMBlock[] branchCode, 
-        ExecBlock execHeap, 
-        VersionRef[]* refs
-    );
 }
 
 /// Version reference tuple
@@ -725,24 +717,6 @@ class VersionStub : BlockVersion
     {
         this.block = block;
         this.state = state;
-    }
-
-    /// Write the code into the executable heap
-    override void write(
-        ASMBlock code, 
-        ASMBlock[] branchCode, 
-        ExecBlock execHeap,
-        VersionRef[]* refs)
-    {
-        debug
-        {
-            foreach (branchAs; branchCode)
-                assert (branchAs.empty());
-        }
-
-        startIdx = cast(uint32_t)execHeap.getWritePos();
-
-        execHeap.writeBlock(code);
     }
 }
 
@@ -794,7 +768,7 @@ class VersionInst : BlockVersion
     }
 
     /// Get a pointer to the executable code for this block
-    auto getCodePtr(ExecBlock cb)
+    auto getCodePtr(CodeBlock cb)
     {
         return cb.getAddress(startIdx);
     }
@@ -815,22 +789,6 @@ class VersionInst : BlockVersion
         testOpnds[1] = opnd1;
         targets[0] = target0;
         targets[1] = target1;
-    }
-
-    /// Write the code into the executable heap
-    override void write(
-        ASMBlock code, 
-        ASMBlock[] branchCode, 
-        ExecBlock execHeap,
-        VersionRef[]* refs
-    )
-    {
-        // Note the start index and inner code length
-        startIdx = cast(uint32_t)execHeap.getWritePos();
-        codeLen = cast(uint32_t)code.getWritePos();
-
-        // Write the code to the executable heap
-        execHeap.writeBlock(code);
     }
 }
 
@@ -925,7 +883,7 @@ BlockVersion getBlockVersion(
 Generate moves for a given branch edge transition
 */
 BlockVersion genBranchEdge(
-    ASMBlock as,
+    CodeBlock as,
     BranchEdge branch,
     CodeGenState predState,
     bool noStub,
@@ -1098,7 +1056,7 @@ BlockVersion genBranchEdge(
 /**
 Compile a basic block version
 */
-void compile(bool unitFn = false)(BlockVersion startVer)
+void compile(bool unitFn)(BlockVersion startVer)
 {
     writeln("entering compile");
 
@@ -1111,13 +1069,8 @@ void compile(bool unitFn = false)(BlockVersion startVer)
     auto fun = state.ctx.fun;
     assert (fun !is null);
 
-    auto moves = interp.branchAs;
-    foreach (bas; moves)
-        assert (bas !is null);
-    auto as = interp.blockAs;
+    auto as = interp.execHeap;
     assert (as !is null);
-    auto execHeap = interp.execHeap;
-    assert (execHeap !is null);
 
     // Add the version to the compilation queue
     BlockVersion[] compQueue = [startVer];
@@ -1128,16 +1081,18 @@ void compile(bool unitFn = false)(BlockVersion startVer)
     // Until the compilation queue is empty
     while (compQueue.length > 0)
     {
+        // Get a version to compile from the queue
         auto ver = compQueue.front;
         compQueue.popFront();
+
+        // Note the code start index for this version
+        static if (unitFn is false)
+           ver.startIdx = cast(uint32_t)as.getWritePos();
 
         // If this is a version stub
         if (auto stub = cast(VersionStub)ver)
         {
             writeln("compiling stub");
-
-            // Ensure that no prior code was generated for this stub
-            assert (stub.startIdx is size_t.max);
 
             // Insert the label for this block in the out of line code
             as.comment("Block stub for " ~ stub.block.getName());
@@ -1186,7 +1141,6 @@ void compile(bool unitFn = false)(BlockVersion startVer)
                     inst,
                     state, 
                     as,
-                    moves,
                     &compQueue,
                     instr
                 );
@@ -1198,33 +1152,26 @@ void compile(bool unitFn = false)(BlockVersion startVer)
             }
 
             // Link block-internal labels
-            as.link();
+            as.linkLabels();
         }
 
-        if (opts.jit_dumpasm)
+        // TODO
+        //if (opts.jit_dumpasm)
         {
            writeln(as.toString);
         }
-
-        // Write the version into the executable heap
-        ver.write(as, moves, execHeap, &refList);
-
-        // Clear the assemblers
-        foreach (bas; moves)
-            bas.clear();
-        as.clear();
     }
 
     // Link the version references
-    auto startPos = execHeap.getWritePos();
+    auto startPos = as.getWritePos();
     foreach (refr; refList)
     {
-        execHeap.setWritePos(refr.pos);
+        as.setWritePos(refr.pos);
         assert (refr.ver.startIdx !is size_t.max);
         auto offset = refr.ver.startIdx - (refr.pos + 4);
-        execHeap.writeInt(offset, 32);
+        as.writeInt(offset, 32);
     }
-    execHeap.setWritePos(startPos);
+    as.setWritePos(startPos);
 
     writeln("leaving compile");
 }
@@ -1245,6 +1192,9 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
     // Create a version instance object for this stub
     // and set the instance pointer for the stub
     stub.inst = new VersionInst(stub.block, stub.state);
+
+    // Compile the version instance
+    compile!false(stub.inst);
 
     // Write a relative 32-bit jump to the stub instance over the stub
     auto startPos = execHeap.getWritePos();
@@ -1270,7 +1220,7 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
 {
     assert (fun.isUnit);
 
-    auto as = interp.blockAs;
+    auto as = interp.execHeap;
 
     // Create a version instance object for the function entry
     auto entryInst = new VersionInst(
@@ -1282,6 +1232,9 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
             )
         )
     );
+
+    // Note the code start index for this version
+    entryInst.startIdx = cast(uint32_t)as.getWritePos();
 
     // Align SP to a multiple of 16 bytes
     as.sub(X86Opnd(RSP), X86Opnd(8));
@@ -1302,20 +1255,20 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
     as.getMember!("Interp.tsp")(tspReg, interpReg);
 
     // Compile the unit entry version
-    compile(entryInst);
+    compile!true(entryInst);
 
     // Return a pointer to the entry block version's code
     return cast(EntryFn)entryInst.getCodePtr(interp.execHeap);
 }
 
 /// Load a pointer constant into a register
-void ptr(TPtr)(ASMBlock as, X86Reg dstReg, TPtr ptr)
+void ptr(TPtr)(CodeBlock as, X86Reg dstReg, TPtr ptr)
 {
     as.mov(X86Opnd(dstReg), X86Opnd(X86Imm(cast(void*)ptr)));
 }
 
 /// Increment a global JIT stat counter variable
-void incStatCnt(ASMBlock as, ulong* pCntVar, X86Reg scrReg)
+void incStatCnt(CodeBlock as, ulong* pCntVar, X86Reg scrReg)
 {
     if (!opts.stats)
         return;
@@ -1325,17 +1278,17 @@ void incStatCnt(ASMBlock as, ulong* pCntVar, X86Reg scrReg)
     as.inc(X86Opnd(8 * ulong.sizeof, RAX));
 }
 
-void getField(ASMBlock as, X86Reg dstReg, X86Reg baseReg, size_t fSize, size_t fOffset)
+void getField(CodeBlock as, X86Reg dstReg, X86Reg baseReg, size_t fSize, size_t fOffset)
 {
     as.mov(X86Opnd(dstReg), X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset));
 }
 
-void setField(ASMBlock as, X86Reg baseReg, size_t fSize, size_t fOffset, X86Reg srcReg)
+void setField(CodeBlock as, X86Reg baseReg, size_t fSize, size_t fOffset, X86Reg srcReg)
 {
     as.mov(X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset), X86Opnd(srcReg));
 }
 
-void getMember(string fName)(ASMBlock as, X86Reg dstReg, X86Reg baseReg)
+void getMember(string fName)(CodeBlock as, X86Reg dstReg, X86Reg baseReg)
 {
     mixin("auto fSize = " ~ fName ~ ".sizeof;");
     mixin("auto fOffset = " ~ fName ~ ".offsetof;");
@@ -1343,7 +1296,7 @@ void getMember(string fName)(ASMBlock as, X86Reg dstReg, X86Reg baseReg)
     return as.getField(dstReg, baseReg, fSize, fOffset);
 }
 
-void setMember(string fName)(ASMBlock as, X86Reg baseReg, X86Reg srcReg)
+void setMember(string fName)(CodeBlock as, X86Reg baseReg, X86Reg srcReg)
 {
     mixin("auto fSize = " ~ fName ~ ".sizeof;");
     mixin("auto fOffset = " ~ fName ~ ".offsetof;");
@@ -1413,7 +1366,7 @@ void setType(Assembler as, int32_t idx, Type type)
 */
 
 /// Save caller-save registers on the stack before a C call
-void pushRegs(ASMBlock as)
+void pushRegs(CodeBlock as)
 {
     as.push(RAX);
     as.push(RCX);
@@ -1428,7 +1381,7 @@ void pushRegs(ASMBlock as)
 }
 
 /// Restore caller-save registers from the after before a C call
-void popRegs(ASMBlock as)
+void popRegs(CodeBlock as)
 {
     as.pop(R11);
     as.pop(R11);
@@ -1485,7 +1438,7 @@ extern (C) void checkValFn(Interp interp, Word word, Type type, char* errorStr)
     }
 }
 
-void printUint(ASMBlock as, X86Opnd opnd)
+void printUint(CodeBlock as, X86Opnd opnd)
 {
     as.pushRegs();
 

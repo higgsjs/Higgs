@@ -597,7 +597,7 @@ struct X86Opnd
 Write the REX byte
 */
 void writeREX(
-    ASMBlock cb, 
+    CodeBlock cb, 
     bool wFlag,
     uint8_t regNo, 
     uint8_t idxRegNo = 0,
@@ -623,7 +623,7 @@ void writeREX(
 /**
 Write an opcode byte with an embedded register operand
 */
-void writeOpcode(ASMBlock cb, ubyte opcode, X86Reg rOpnd)
+void writeOpcode(CodeBlock cb, ubyte opcode, X86Reg rOpnd)
 {
     // Write the reg field into the opcode byte
     uint8_t opByte = opcode | (rOpnd.regNo & 7);
@@ -637,7 +637,7 @@ void writeRMInstr(
     char rmOpnd, 
     ubyte opExt, 
     opcode...)
-(ASMBlock cb, bool szPref, bool rexW, X86Opnd opnd0, X86Opnd opnd1)
+(CodeBlock cb, bool szPref, bool rexW, X86Opnd opnd0, X86Opnd opnd1)
 {
     static assert (opcode.length > 0 && opcode.length <= 3);
 
@@ -859,7 +859,7 @@ void writeRMMulti(
     ubyte opMemImmLrg,
     ubyte opExtImm
 )
-(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 {
     // Write a disassembly string
     if (!opnd1.isNone)
@@ -959,7 +959,7 @@ void writeXMM64(
     ubyte opRegMem0, 
     ubyte opRegMem1
 )
-(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 {
     // Write a disassembly string
     cb.writeASM(mnem, opnd0, opnd1);
@@ -987,7 +987,7 @@ void writeRMUnary(
     ubyte opMemRegPref,
     ubyte opExt
 )
-(ASMBlock cb, X86Opnd opnd)
+(CodeBlock cb, X86Opnd opnd)
 {
     // Write a disassembly string
     cb.writeASM(mnem, opnd);
@@ -1025,7 +1025,7 @@ alias writeRMMulti!(
 ) add;
 
 /// add - Add with register and immediate operand
-void add(ASMBlock as, X86Reg dst, int64_t imm)
+void add(CodeBlock as, X86Reg dst, int64_t imm)
 {
     assert (imm >= int32_t.min && imm <= int32_t.max);
 
@@ -1060,7 +1060,7 @@ alias writeRMMulti!(
 //void call(Assembler as, BlockVersion???);
 
 /// call - Call to label with 32-bit offset
-void call(ASMBlock cb, Label label)
+void call(CodeBlock cb, Label label)
 {
     cb.writeASM("call", label);
 
@@ -1075,7 +1075,7 @@ void call(ASMBlock cb, Label label)
 }
 
 /// call - Indirect call with an R/M operand
-void call(ASMBlock cb, X86Opnd opnd)
+void call(CodeBlock cb, X86Opnd opnd)
 {
     cb.writeASM("call", opnd);
     cb.writeRMInstr!('l', 2, 0xFF)(false, false, opnd, X86Opnd.NONE);
@@ -1087,7 +1087,7 @@ Encode a conditional move instruction
 void writeCmov(
     wstring mnem,
     ubyte opcode1)
-(ASMBlock cb, X86Reg dst, X86Opnd src)
+(CodeBlock cb, X86Reg dst, X86Opnd src)
 {
     cb.writeASM(mnem, dst, src);
 
@@ -1144,13 +1144,13 @@ alias writeRMMulti!(
 ) cmp;
 
 /// cqo - Convert quadword to octaword
-void cqo(ASMBlock cb)
+void cqo(CodeBlock cb)
 {
     cb.writeBytes(0x48, 0x99);
 }
 
 //// cvtsd2si - Convert integer to scalar double
-void cvtsd2si(ASMBlock cb, X86Opnd dst, X86Opnd src)
+void cvtsd2si(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("cvtsd2si", dst, src);
 
@@ -1165,7 +1165,7 @@ void cvtsd2si(ASMBlock cb, X86Opnd dst, X86Opnd src)
 }
 
 //// cvtsi2sd - Convert integer to scalar double
-void cvtsi2sd(ASMBlock cb, X86Opnd dst, X86Opnd src)
+void cvtsi2sd(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("cvtsi2sd", dst, src);
 
@@ -1213,7 +1213,7 @@ alias writeRMUnary!(
 ) idiv;
 
 /// imul - Signed integer multiplication with two operands
-void imul(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 {
     cb.writeASM("imul", opnd0, opnd1);
 
@@ -1234,7 +1234,7 @@ void imul(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 }
 
 /// imul - Signed integer multiplication with three operands (one immediate)
-void imul(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
+void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
 {
     cb.writeASM("imul", opnd0, opnd1);
 
@@ -1288,7 +1288,7 @@ alias writeRMUnary!(
 Encode a relative jump to a label (direct or conditional)
 Note: this always encodes a 32-bit offset
 */
-void writeJcc(string mnem, opcode...)(ASMBlock cb, Label label)
+void writeJcc(string mnem, opcode...)(CodeBlock cb, Label label)
 {
     cb.writeASM(mnem, label);
 
@@ -1338,14 +1338,14 @@ alias writeJcc!("jz" , 0x0F, 0x84) jz;
 alias writeJcc!("jmp", 0xE9) jmp;
 
 /// jmp - Indirect jump near to an R/M operand
-void jmp(ASMBlock cb, X86Opnd opnd)
+void jmp(CodeBlock cb, X86Opnd opnd)
 {
     cb.writeASM("jmp", opnd);
     cb.writeRMInstr!('l', 4, 0xFF)(false, false, opnd, X86Opnd.NONE);
 }
 
 /// mov - Data move operation
-void mov(ASMBlock cb, X86Opnd dst, X86Opnd src)
+void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     // R/M + Imm
     if (src.isImm)
@@ -1407,28 +1407,28 @@ void mov(ASMBlock cb, X86Opnd dst, X86Opnd src)
 }
 
 /// mov - Move an immediate into a register
-void mov(ASMBlock cb, X86Reg reg, X86Imm imm)
+void mov(CodeBlock cb, X86Reg reg, X86Imm imm)
 {
     // TODO: more optimized code for this case
     cb.mov(X86Opnd(reg), X86Opnd(imm));
 }
 
 /// mov - Move an immediate into a register
-void mov(ASMBlock cb, X86Reg reg, int64_t imm)
+void mov(CodeBlock cb, X86Reg reg, int64_t imm)
 {
     // TODO: more optimized code for this case
     cb.mov(X86Opnd(reg), X86Opnd(imm));
 }
 
 /// mov - Register to register move
-void mov(ASMBlock cb, X86Reg dst, X86Reg src)
+void mov(CodeBlock cb, X86Reg dst, X86Reg src)
 {
     // TODO: more optimized code for this case
     cb.mov(X86Opnd(dst), X86Opnd(src));
 }
 
 /// movq - Move quadword
-void movq(ASMBlock cb, X86Opnd dst, X86Opnd src)
+void movq(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("movq", dst, src);
 
@@ -1451,7 +1451,7 @@ void movq(ASMBlock cb, X86Opnd dst, X86Opnd src)
 }
 
 /// movsd - Move scalar double to/from XMM
-void movsd(ASMBlock cb, X86Opnd dst, X86Opnd src)
+void movsd(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("movsd", dst, src);
 
@@ -1474,7 +1474,7 @@ void movsd(ASMBlock cb, X86Opnd dst, X86Opnd src)
 }
 
 /// movsx - Move with sign extension
-void movsx(ASMBlock cb, X86Opnd dst, X86Opnd src)
+void movsx(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("movsx", dst, src);
 
@@ -1513,7 +1513,7 @@ void movsx(ASMBlock cb, X86Opnd dst, X86Opnd src)
 }
 
 /// movzx - Move with zero extension (unsigned)
-void movzx(ASMBlock cb, X86Opnd dst, X86Opnd src)
+void movzx(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("movzx", dst, src);
 
@@ -1572,7 +1572,7 @@ alias writeRMUnary!(
 ) neg;
 
 /// nop - Noop, one or multiple bytes long
-void nop(ASMBlock cb, size_t length = 1)
+void nop(CodeBlock cb, size_t length = 1)
 {
     if (length > 0)
         cb.writeASM("nop" ~ to!string(length));
@@ -1641,7 +1641,7 @@ alias writeRMMulti!(
 ) or;
 
 /// push - Push a register on the stack
-void push(ASMBlock cb, immutable X86Reg reg)
+void push(CodeBlock cb, immutable X86Reg reg)
 {
     assert (reg.size is 64);
 
@@ -1653,7 +1653,7 @@ void push(ASMBlock cb, immutable X86Reg reg)
 }
 
 /// pop - Pop a register off the stack
-void pop(ASMBlock cb, immutable X86Reg reg)
+void pop(CodeBlock cb, immutable X86Reg reg)
 {
     assert (reg.size is 64);
 
@@ -1665,7 +1665,7 @@ void pop(ASMBlock cb, immutable X86Reg reg)
 }
 
 /// ret - Return from call, popping only the return address
-void ret(ASMBlock cb)
+void ret(CodeBlock cb)
 {
     cb.writeASM("ret");
     cb.writeByte(0xC3);
@@ -1681,7 +1681,7 @@ void writeShift(
     ubyte opMemImmPref,
     ubyte opExt
 )
-(ASMBlock cb, X86Opnd opnd0, X86Opnd opnd1)
+(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 {
     // Write a disassembly string
     cb.writeASM(mnem, opnd0, opnd1);

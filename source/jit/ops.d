@@ -59,8 +59,7 @@ import jit.jit;
 alias void function(
     VersionInst ver, 
     CodeGenState st, 
-    ASMBlock as, 
-    ASMBlock[] moves,
+    CodeBlock as,
     BlockVersion[]* queue,
     IRInstr instr
 ) GenFn;
@@ -190,8 +189,7 @@ void gen_f64_to_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 void RMMOp(string op, size_t numBits, Type typeTag)(
     VersionInst ver, 
     CodeGenState st, 
-    ASMBlock as, 
-    ASMBlock[] moves,
+    CodeBlock as,
     BlockVersion[]* queue,
     IRInstr instr
 )
@@ -498,8 +496,7 @@ alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
 void gen_get_global(
     VersionInst ver,
     CodeGenState st,
-    ASMBlock as,
-    ASMBlock[] moves,
+    CodeBlock as,
     BlockVersion[]* queue,
     IRInstr instr
 )
@@ -562,8 +559,7 @@ void gen_get_global(
 void gen_set_global(
     VersionInst ver,
     CodeGenState st,
-    ASMBlock as,
-    ASMBlock[] moves,
+    CodeBlock as,
     BlockVersion[]* queue,
     IRInstr instr
 )
@@ -937,8 +933,7 @@ alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 void CmpOp(string op, size_t numBits)(
     VersionInst ver, 
     CodeGenState st, 
-    ASMBlock as, 
-    ASMBlock[] moves,
+    CodeBlock as, 
     BlockVersion[]* queue,
     IRInstr instr
 )
@@ -1132,8 +1127,7 @@ alias CmpOp!("fge", 64) gen_ge_f64;
 void gen_if_true(
     VersionInst ver, 
     CodeGenState st, 
-    ASMBlock as, 
-    ASMBlock[] moves,
+    CodeBlock as,
     BlockVersion[]* queue,
     IRInstr instr
 )
@@ -1164,6 +1158,11 @@ void gen_if_true(
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
 
+
+
+    // TODO
+
+    /*
     // Set the final comparison and branch for the block
     ver.setBranch(
         BranchTest.IEQ,
@@ -1184,6 +1183,7 @@ void gen_if_true(
             queue
         )
     );
+    */
 }
 
 /*
@@ -1489,8 +1489,7 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 void gen_ret(
     VersionInst ver, 
     CodeGenState st,
-    ASMBlock as, 
-    ASMBlock[] moves,
+    CodeBlock as, 
     BlockVersion[]* queue,
     IRInstr instr
 )

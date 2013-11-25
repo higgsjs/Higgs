@@ -397,14 +397,8 @@ class Interp
     /// Global object reference
     refptr globalObj;
 
-    /// Inner block code assembler
-    ASMBlock blockAs;
-
-    /// Branch code assemblers
-    ASMBlock branchAs[BlockVersion.MAX_TARGETS];
-
     /// Executable heap
-    ExecBlock execHeap;
+    CodeBlock execHeap;
 
     /// List of block versions, in memory order
     BlockVersion[] versionList;
@@ -520,15 +514,8 @@ class Interp
             objProto
         );
 
-        opts.jit_dumpasm = true;
-
-        // Allocate the assembler objects
-        blockAs = new ASMBlock(opts.jit_dumpasm);
-        for (size_t i = 0; i < branchAs.length; ++i)
-            branchAs[i] = new ASMBlock(opts.jit_dumpasm);
-
         // Allocate the executable heap
-        execHeap = new ExecBlock(EXEC_HEAP_INIT_SIZE);
+        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, /*opts.jit_dumpasm*/true);
 
         // If the runtime library should be loaded
         if (loadRuntime)
