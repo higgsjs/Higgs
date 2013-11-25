@@ -207,6 +207,9 @@ unittest
     // Global property access (needed by runtime lib)
     interp.evalString("x = 7");
     interp.assertInt("x = 7; return x;", 7);
+
+    // Comparison and conditional branching
+    //interp.assertInt("x = 7; if ($ir_eq_i32(x, 7)) return 1; else return 0;", 1);
 }
 
 /// Global expression tests

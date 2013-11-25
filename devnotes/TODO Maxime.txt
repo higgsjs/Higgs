@@ -57,23 +57,47 @@ TODO: BlockVersion.toString()
 TODO: make_map instr
 - Needed to create a global closure?
 
-TODO: think about branches at end of blocks
+TODO: if_true, jump
+- Also need to implement IsTypeOp
+- Should implement conditional branch mechanism first?
+
+TODO: CmpOp
+- If "if_true" follows, set branch info on version inst
+  - setBranch?
+- If we must produce a boolean, do comparison locally, use cmov
+
+TODO: versionRefs, compQueue...
+- Create a "Compiler" struct to hold these references, add methods to it
+
+TODO: could we merge ASMBlock, ExecBlock, compile directly in the execHeap?
+- bool exec, bool comments
+- Threads: just acquire a lock
+- What if we exceed the bounds of the exec heap?
+  - Need to do an exec heap compaction
+  - This could conceptually happen mid-codegen
+  - Could overestimate the max size of instructions + moves? Not obvious?
+    - Can h4xx it, fix threshold at 1MB
+- How do we deal with branch moves?
+  - Could do a simple, direct encoding of final branches
+  - At the same time, give block version useful annotations
+
+
+
+
+
+
+
+
+
+[DONE] TODO: X86Reg.opnd(size)
+
+[DONE] TODO: think about branches at end of blocks
 - Can specifying operands to test and targets be enough?
   - e.g.: ilt, ieq, fgt, 64-bit, overflow
   - direct jump
 - Works for if-type branches, type tests
 - Calls are handled separately
 - Look at old jit ops
-
-TODO: if_true, jump
-
-
-
-
-
-
-
-
 
 [DONE] TODO: movsd encoding
 Enc(opnds=['xmm', 'xmm/m64'], prefix=[0xF2], opcode=[0x0F, 0x10], rexW=False),

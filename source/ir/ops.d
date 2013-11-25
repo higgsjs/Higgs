@@ -215,7 +215,7 @@ Opcode STORE_MAPPTR = { "store_mapptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.
 Opcode JUMP = { "jump", false, [], /*&gen_jump*/null , OpInfo.BRANCH };
 
 // Branch based on a boolean value
-Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], /*&gen_if_true*/null , OpInfo.BRANCH };
+Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &gen_if_true, OpInfo.BRANCH };
 
 // <dstLocal> = CALL <closLocal> <thisArg> ...
 // Makes the execution go to the callee entry

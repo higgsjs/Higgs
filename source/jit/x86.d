@@ -98,6 +98,14 @@ struct X86Reg
     }
 
     /**
+    Get an operand object for a register of the requested size
+    */
+    X86Opnd opnd(size_t numBits) const
+    {
+        return X86Opnd(ofSize(numBits));
+    }
+
+    /**
     Produce a string representation of the register
     */
     string toString() const

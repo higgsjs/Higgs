@@ -61,6 +61,7 @@ alias void function(
     CodeGenState st, 
     ASMBlock as, 
     ASMBlock[] moves,
+    BlockVersion[]* queue,
     IRInstr instr
 ) GenFn;
 
@@ -191,6 +192,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
     CodeGenState st, 
     ASMBlock as, 
     ASMBlock[] moves,
+    BlockVersion[]* queue,
     IRInstr instr
 )
 {
@@ -200,7 +202,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         instr, 
         0, 
         numBits, 
-        X86Opnd(scrRegs64[0].ofSize(numBits)),
+        scrRegs[0].opnd(numBits),
         false
     );
 
@@ -210,7 +212,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         instr, 
         1, 
         numBits,
-        X86Opnd(scrRegs64[1].ofSize(numBits)),
+        scrRegs[1].opnd(numBits),
         true
     );
 
@@ -219,7 +221,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
     if (op == "imul")
     {
         // imul does not support memory operands as output
-        auto scrReg = X86Opnd(scrRegs64[2].ofSize(numBits));
+        auto scrReg = scrRegs[2].opnd(numBits);
         as.mov(scrReg, opnd1);
         mixin(format("as.%s(scrReg, opnd0);", op));
         as.mov(opndOut, scrReg);
@@ -498,6 +500,7 @@ void gen_get_global(
     CodeGenState st,
     ASMBlock as,
     ASMBlock[] moves,
+    BlockVersion[]* queue,
     IRInstr instr
 )
 {
@@ -528,32 +531,32 @@ void gen_get_global(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Get the global object pointer
-    as.getMember!("Interp.globalObj")(scrRegs64[0], interpReg);
+    as.getMember!("Interp.globalObj")(scrRegs[0], interpReg);
 
     // Get the global object size/capacity
-    as.getField(scrRegs32[1], scrRegs64[0], 4, obj_ofs_cap(interp.globalObj));
+    as.getField(scrRegs[1].ofSize(32), scrRegs[0], 4, obj_ofs_cap(interp.globalObj));
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
 
     // Get the word value from the object
-    auto wordMem = X86Opnd(64, scrRegs64[0], wordOfs + 8 * propIdx);
+    auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
     if (outOpnd.isReg)
     {
         as.mov(outOpnd, wordMem);
     }
     else
     {
-        as.mov(X86Opnd(scrRegs64[2]), wordMem);
-        as.mov(outOpnd, X86Opnd(scrRegs64[2]));
+        as.mov(X86Opnd(scrRegs[2]), wordMem);
+        as.mov(outOpnd, X86Opnd(scrRegs[2]));
     }
 
     // Get the type value from the object
-    auto typeMem = X86Opnd(8, scrRegs64[0], wordOfs + propIdx, 8, scrRegs64[1]);
-    as.mov(X86Opnd(scrRegs8[2]), typeMem);
+    auto typeMem = X86Opnd(8, scrRegs[0], wordOfs + propIdx, 8, scrRegs[1]);
+    as.mov(scrRegs[2].opnd(8), typeMem);
 
     // Set the type value
-    st.setOutType(as, instr, scrRegs8[2]);
+    st.setOutType(as, instr, scrRegs[2].ofSize(8));
 }
 
 void gen_set_global(
@@ -561,6 +564,7 @@ void gen_set_global(
     CodeGenState st,
     ASMBlock as,
     ASMBlock[] moves,
+    BlockVersion[]* queue,
     IRInstr instr
 )
 {
@@ -581,24 +585,24 @@ void gen_set_global(
     // this would prevent GC at execution time
 
     // Allocate the input operand
-    auto argOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd(scrRegs64[0]), true);
+    auto argOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd(64), true);
 
     // Get the global object pointer
-    as.getMember!("Interp.globalObj")(scrRegs64[1], interpReg);
+    as.getMember!("Interp.globalObj")(scrRegs[1], interpReg);
 
     // Get the global object size/capacity
-    as.getField(scrRegs32[2], scrRegs64[1], 4, obj_ofs_cap(interp.globalObj));
+    as.getField(scrRegs[2].ofSize(32), scrRegs[1], 4, obj_ofs_cap(interp.globalObj));
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(interp.globalObj, 0);
 
     // Set the word value
-    auto wordMem = X86Opnd(64, scrRegs64[1], wordOfs + 8 * propIdx);
+    auto wordMem = X86Opnd(64, scrRegs[1], wordOfs + 8 * propIdx);
     as.mov(wordMem, argOpnd);
 
     // Set the type value
-    auto typeOpnd = st.getTypeOpnd(as, instr, 1, X86Opnd(scrRegs8[0]), true);
-    auto typeMem = X86Opnd(8, scrRegs64[1], wordOfs + propIdx, 8, scrRegs64[2]);
+    auto typeOpnd = st.getTypeOpnd(as, instr, 1, scrRegs[0].opnd(8), true);
+    auto typeMem = X86Opnd(8, scrRegs[1], wordOfs + propIdx, 8, scrRegs[2]);
     as.mov(typeMem, typeOpnd);
 }
 
@@ -854,7 +858,6 @@ void genBoolOut(
 /**
 Test if an instruction is followed by an if_true branching on its value
 */
-/*
 bool ifUseNext(IRInstr instr)
 {
     return (
@@ -863,21 +866,17 @@ bool ifUseNext(IRInstr instr)
         instr.next.getArg(0) is instr
     );
 }
-*/
 
 /**
 Test if our argument precedes and generates a boolean value
 */
-/*
 bool boolArgPrev(IRInstr instr)
 {
     return (
         instr.getArg(0) is instr.prev &&
-        instr.prev.opcode.boolVal &&
-        instr.prev.opcode in codeGenFns
+        instr.prev.opcode.boolVal
     );
 }
-*/
 
 /*
 void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -935,34 +934,46 @@ alias IsTypeOp!(Type.INT64) gen_is_i64;
 alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 */
 
-/*
-void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void CmpOp(string op, size_t numBits)(
+    VersionInst ver, 
+    CodeGenState st, 
+    ASMBlock as, 
+    ASMBlock[] moves,
+    BlockVersion[]* queue,
+    IRInstr instr
+)
 {
     // Check if this is a floating-point comparison
     static bool isFP = op.startsWith("f");
 
     // The first operand must be memory or register, but not immediate
     auto opnd0 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as, 
         instr, 
         0,
         numBits,
-        scrRegs64[0].ofSize(numBits),
+        scrRegs[0].opnd(numBits),
         false
     );
 
     // The second operand may be an immediate, unless FP comparison
     auto opnd1 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as,
         instr, 
         1, 
         numBits, 
-        scrRegs64[1].ofSize(numBits),
+        scrRegs[1].opnd(numBits),
         isFP? false:true
     );
 
+
+
+
+
+
+    // TODO
+
+    /*
     // If this is an FP comparison
     if (isFP)
     {
@@ -1088,8 +1099,14 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
         // Generate the conditional branch and targets here
         ctx.genCondBranch(instr.next, condOps, st, st);
     }
+    */
+
+
+
+
 }
 
+/*
 alias CmpOp!("eq", 8) gen_eq_i8;
 alias CmpOp!("eq", 32) gen_eq_i32;
 alias CmpOp!("ne", 32) gen_ne_i32;
@@ -1097,7 +1114,9 @@ alias CmpOp!("lt", 32) gen_lt_i32;
 alias CmpOp!("le", 32) gen_le_i32;
 alias CmpOp!("gt", 32) gen_gt_i32;
 alias CmpOp!("ge", 32) gen_ge_i32;
+*/
 alias CmpOp!("eq", 8) gen_eq_const;
+/*
 alias CmpOp!("ne", 8) gen_ne_const;
 alias CmpOp!("eq", 64) gen_eq_refptr;
 alias CmpOp!("ne", 64) gen_ne_refptr;
@@ -1110,11 +1129,19 @@ alias CmpOp!("fgt", 64) gen_gt_f64;
 alias CmpOp!("fge", 64) gen_ge_f64;
 */
 
-/*
-void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_if_true(
+    VersionInst ver, 
+    CodeGenState st, 
+    ASMBlock as, 
+    ASMBlock[] moves,
+    BlockVersion[]* queue,
+    IRInstr instr
+)
 {
     auto argVal = instr.getArg(0);
 
+    // TODO
+    /*
     // If the argument is a known constant
     if (st.wordKnown(argVal))
     {
@@ -1127,6 +1154,7 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
         return;
     }
+    */
 
     // If a boolean argument immediately precedes, the
     // conditional branch has already been generated
@@ -1134,13 +1162,29 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
 
     // Compare the argument to the true boolean value
-    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 8);
-    ctx.as.instr(CMP, argOpnd, TRUE.int8Val);
+    auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
 
-    // Generate the conditional branch and targets
-    ctx.genCondBranch(instr, CondOps.jcc(JE, JNE), st, st);
+    // Set the final comparison and branch for the block
+    ver.setBranch(
+        BranchTest.IEQ,
+        argOpnd,
+        X86Opnd(TRUE.int8Val),
+        genBranchEdge(
+            moves[0],
+            instr.getTarget(0),
+            st,
+            false,
+            queue
+        ),
+        genBranchEdge(
+            moves[1],
+            instr.getTarget(1),
+            st,
+            false,
+            queue
+        )
+    );
 }
-*/
 
 /*
 void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -1447,6 +1491,7 @@ void gen_ret(
     CodeGenState st,
     ASMBlock as, 
     ASMBlock[] moves,
+    BlockVersion[]* queue,
     IRInstr instr
 )
 {
@@ -1467,7 +1512,7 @@ void gen_ret(
             instr, 
             0,
             64,
-            X86Opnd(scrRegs64[0]),
+            scrRegs[0].opnd(64),
             true
         );
 
@@ -1481,7 +1526,7 @@ void gen_ret(
             as, 
             instr,
             0, 
-            X86Opnd(scrRegs8[0]),
+            scrRegs[0].opnd(8),
             true
         );
         as.mov(

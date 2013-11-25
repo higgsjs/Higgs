@@ -79,10 +79,7 @@ immutable X86Reg[] cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7]
 /// RAX: scratch register, C return value
 /// RDI: scratch register, first C argument register
 /// RSI: scratch register, second C argument register
-immutable X86Reg[] scrRegs64 = [RAX, RDI, RSI];
-immutable X86Reg[] scrRegs32 = [EAX, EDI, ESI];
-immutable X86Reg[] scrRegs16 = [AX , DI , SI ];
-immutable X86Reg[] scrRegs8  = [AL , DIL, SIL];
+immutable X86Reg[] scrRegs = [RAX, RDI, RSI];
 
 /// RCX, RBX, RBP, R8-R12: 9 allocatable registers
 immutable X86Reg[] allocRegs = [RCX, RDX, RBX, RBP, R8, R9, R10, R11, R12];
@@ -494,16 +491,10 @@ class CodeGenState
             // If the register allocation failed but a temp reg was supplied
             if (opnd.isMem && !tmpReg.isNone)
             {
-                // TODO
-                /*
-                as.instr(
-                    (tmpReg.type == X86Reg.XMM)? MOVSD:MOV, 
-                    tmpReg, 
-                    curOpnd
-                );
-                */
-
-                as.mov(tmpReg, curOpnd);
+                if (tmpReg.isXMM)
+                    as.movsd(tmpReg, curOpnd);
+                else
+                    as.mov(tmpReg, curOpnd);
 
                 return tmpReg;
             }
@@ -755,22 +746,46 @@ class VersionStub : BlockVersion
     }
 }
 
+/// Branch test type enum
+enum BranchTest
+{
+    ILT,
+    ILE,
+    IGT,
+    IGE,
+    IEQ,
+    INE,
+    FLT,
+    FLE,
+    FGT,
+    FGE,
+    FEQ,
+    FNE,
+    NONE
+}
+
 /**
 Compiled block version instance
 */
 class VersionInst : BlockVersion
 {
-    // TODO: final branch descriptors (see Assembler object)
-    //branch descs, move code idxs
+    /// Final branch test type
+    BranchTest branchTest = BranchTest.NONE;
 
-
-
-
-    /// Move code indices
-    size_t moveIdxs[MAX_TARGETS];
+    /// Branch test operands
+    X86Opnd testOpnds[2];
 
     // Target block versions (may be stubs)
     BlockVersion targets[MAX_TARGETS];
+
+    /// Inner code length
+    size_t codeLen;
+
+    /// Move code indices
+    size_t moveIdx[MAX_TARGETS];
+
+    /// Move code length
+    size_t moveLen[MAX_TARGETS];
 
     this(IRBlock block, CodeGenState state)
     {
@@ -784,28 +799,78 @@ class VersionInst : BlockVersion
         return cb.getAddress(startIdx);
     }
 
+    /// Set the parameters for the final branch
+    void setBranch(
+        BranchTest test,
+        X86Opnd opnd0,
+        X86Opnd opnd1,
+        BlockVersion target0,
+        BlockVersion target1
+    )
+    {
+        assert (targets[0] is null);
+
+        branchTest = test;
+        testOpnds[0] = opnd0;
+        testOpnds[1] = opnd1;
+        targets[0] = target0;
+        targets[1] = target1;
+    }
+
     /// Write the code into the executable heap
     override void write(
         ASMBlock code, 
         ASMBlock[] branchCode, 
         ExecBlock execHeap,
-        VersionRef[]* refs)
+        VersionRef[]* refs
+    )
     {
+        // Note the start index and inner code length
         startIdx = execHeap.getWritePos();
+        codeLen = code.getWritePos();
 
+        switch (branchTest)
+        {
+            // Integer equality test
+            case BranchTest.IEQ:
+            code.cmp(testOpnds[0], testOpnds[1]);
+
+
+
+
+
+            // TODO:
+            // jne FALSE        need to compute offset to FALSE
+            //
+            // TRUE:            need to store move idx
+            // moves[1]
+            // jmp rel32        targets[1]
+            //
+            // FALSE:           need to store move idx
+            // moves[0]
+            // jmp rel32        targets[0]
+
+
+
+            // TODO: insert VersionRef entries
+
+
+
+            break;
+
+            // Direct jump or no branch
+            case BranchTest.NONE:
+            // TODO
+
+
+            break;
+
+            default:
+            assert (false);
+        }
+
+        // Write the code to the executable heap
         execHeap.writeBlock(code);
-
-        // TODO
-
-
-
-
-
-
-
-
-
-
     }
 }
 
@@ -899,7 +964,7 @@ BlockVersion getBlockVersion(
 /**
 Generate moves for a given branch edge transition
 */
-void genBranchEdge(
+BlockVersion genBranchEdge(
     ASMBlock as,
     BranchEdge branch,
     CodeGenState predState,
@@ -1064,7 +1129,10 @@ void genBranchEdge(
     */
 
     // Execute the moves
-    execMoves(as, moveList, scrRegs64[0], scrRegs64[1]);
+    execMoves(as, moveList, scrRegs[0], scrRegs[1]);
+
+    // Return the successor block version
+    return succVer;
 }
 
 /**
@@ -1159,6 +1227,7 @@ void compile(bool unitFn = false)(BlockVersion startVer)
                     state, 
                     as,
                     moves,
+                    &compQueue,
                     instr
                 );
 

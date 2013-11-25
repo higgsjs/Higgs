@@ -395,6 +395,10 @@ enum Label : size_t
 {
     LOOP,
     DONE,
+    TRUE,
+    FALSE,
+    TARGET0,
+    TARGET1,
     FUN1,
     FUN2
 }
