@@ -215,7 +215,7 @@ class CodeBlock
     {
         assert (
             pos < memSize,
-            "invalid code block position"
+            "invalid code block position: " ~ to!string(pos)
         );
 
         writePos = pos;
@@ -424,6 +424,9 @@ class CodeBlock
     Label label(Label label)
     {
         auto labelAddr = labelAddrs[label];
+
+        if (hasComments)
+            writeStr(to!string(label) ~ ":");
 
         assert (
             labelAddr is size_t.max,

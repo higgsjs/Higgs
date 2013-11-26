@@ -108,7 +108,7 @@ Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], /*&gen_get_word*/null };
 Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], /*&gen_get_type*/null };
 
 // Type tag test
-Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], /*&gen_is_i32*/null , OpInfo.BOOL_VAL };
+Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &gen_is_i32, OpInfo.BOOL_VAL };
 Opcode IS_I64 = { "is_i64", true, [OpArg.LOCAL], /*&gen_is_i64*/null , OpInfo.BOOL_VAL };
 Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], /*&gen_is_f64*/null , OpInfo.BOOL_VAL };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], /*&gen_is_refptr*/null , OpInfo.BOOL_VAL };
@@ -159,7 +159,7 @@ Opcode MUL_I32_OVF = { "mul_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_m
 Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lsft_i32_ovf*/null , OpInfo.BRANCH };
 
 // Integer comparison instructions
-Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_eq_i32*/null , OpInfo.BOOL_VAL };
+Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i32, OpInfo.BOOL_VAL };
 Opcode NE_I32 = { "ne_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ne_i32*/null , OpInfo.BOOL_VAL };
 Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lt_i32*/null , OpInfo.BOOL_VAL };
 Opcode GT_I32 = { "gt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_gt_i32*/null , OpInfo.BOOL_VAL };
@@ -212,7 +212,7 @@ Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.
 Opcode STORE_MAPPTR = { "store_mapptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_mapptr*/null , OpInfo.IMPURE };
 
 // Unconditional jump
-Opcode JUMP = { "jump", false, [], /*&gen_jump*/null , OpInfo.BRANCH };
+Opcode JUMP = { "jump", false, [], &gen_jump, OpInfo.BRANCH };
 
 // Branch based on a boolean value
 Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &gen_if_true, OpInfo.BRANCH };

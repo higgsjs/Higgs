@@ -40,10 +40,7 @@ TODO: rename Interp to VM?
 
 ------------------------------------------------------------------------------
 
-First milestone: no interp, basic incremental codegen
-- No inlining
-- Stubs
-- Bump write pos to allocate, no code compaction
+Second milestone: load runtime, working REPL with --nostdlib
 
 TODO: port/fix execMoves
 
@@ -54,17 +51,41 @@ TODO: blog
 TODO: BlockVersion.toString()
 - Prints disassembly from the execHeap
 - CodeBlock toString needs start and end offsets?
+- Also print 32-bit offsets
+
+TODO: make_clos instr
 
 TODO: make_map instr
 - Needed to create a global closure?
 
-TODO: CmpOp
+TODO: assert minimal space before compiling block
+- 1 << 18 bytes (256KB)
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+[DONE] First milestone: no interp, basic incremental codegen
+- No inlining
+- Stubs
+- Bump write pos to allocate, no code compaction
+
+[DONE] TODO: IsTypeOp + unit test
+
+[DONE] TODO: direct jump, add new if test for this
+
+[DONE] FIXME: stub code not getting generated
+- compQueue not mutated properly?
+
+[DONE] TODO: CodeBlock.label should add a comment
+
+[DONE] TODO: CmpOp
 - For first version, always use cmov to produce a boolean
 
-
-
-
-
+[DONE] TODO: setOutType with constant Type value
 
 [DONE] TODO: genBranch
 - For now, just switch on test type, do jump if false

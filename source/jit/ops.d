@@ -870,11 +870,16 @@ bool boolArgPrev(IRInstr instr)
     );
 }
 
-/*
-void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void IsTypeOp(Type type)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     auto argVal = instr.getArg(0);
 
+    /*
     // If the type of the argument is known
     if (st.typeKnown(argVal))
     {
@@ -885,18 +890,44 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
         return;
     }
+    */
 
     //ctx.as.printStr(instr.opcode.mnem ~ " (" ~ instr.block.fun.getName ~ ")");
 
     // Increment the stat counter for this specific kind of type test
-    ctx.as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs64[0]);
+    as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs[0]);
 
     // Get an operand for the value's type
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0);
+    auto typeOpnd = st.getTypeOpnd(as, instr, 0);
+
+
+
+
+    // We must have a register for the output (so we can use cmov)
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    X86Opnd outReg = outOpnd.isReg? outOpnd:scrRegs[0].opnd(64);
 
     // Compare against the tested type
-    ctx.as.instr(CMP, typeOpnd, type);
+    as.cmp(typeOpnd, X86Opnd(type));
 
+    // Generate a boolean output value
+    as.mov(outReg, X86Opnd(FALSE.int8Val));
+    as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
+    as.cmove(outReg.reg, scrRegs[1].opnd(64));
+
+    // If the output register is not the output operand
+    if (outReg != outOpnd)
+        as.mov(outOpnd, outReg);
+
+    // Set the output type
+    st.setOutType(as, instr, Type.CONST);
+
+
+
+
+
+
+    /*
     // If this instruction has many uses or is not followed by an if
     if (instr.hasManyUses || ifUseNext(instr) is false)
     {
@@ -916,6 +947,7 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         // Generate the conditional branch and targets here
         ctx.genCondBranch(instr.next, CondOps.jcc(JE, JNE), trueSt, st);
     }
+    */
 }
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
@@ -924,7 +956,6 @@ alias IsTypeOp!(Type.RAWPTR) gen_is_rawptr;
 alias IsTypeOp!(Type.INT32) gen_is_i32;
 alias IsTypeOp!(Type.INT64) gen_is_i64;
 alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
-*/
 
 void CmpOp(string op, size_t numBits)(
     VersionInst ver, 
@@ -956,39 +987,35 @@ void CmpOp(string op, size_t numBits)(
         isFP? false:true
     );
 
-
-    // TODO: for now, just handle the int32 comparison case, generate boolean
-
-
-
-
-
-
-
-    // TODO
-
-    /*
     // If this is an FP comparison
     if (isFP)
     {
         // Move the operands into XMM registers
-        ctx.as.instr(MOVQ, XMM0, opnd0);
-        ctx.as.instr(MOVQ, XMM1, opnd1);
-        opnd0 = XMM0;
-        opnd1 = XMM1;
+        as.movq(X86Opnd(XMM0), opnd0);
+        as.movq(X86Opnd(XMM1), opnd1);
+        opnd0 = X86Opnd(XMM0);
+        opnd1 = X86Opnd(XMM1);
     }
 
-    // Conditional operations to implement the comparison
-    CondOps condOps;
+
+
+
+
+
+
+    // We must have a register for the output (so we can use cmov)
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    X86Opnd outReg = outOpnd.isReg? outOpnd:scrRegs[0].opnd(64);
 
     // Integer comparison
     static if (op == "eq")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVE;
-        condOps.jccT [0] = JE;
-        condOps.jccF [0] = JNE;
+        as.cmp(opnd0, opnd1);
+        as.mov(outReg, X86Opnd(FALSE.int8Val));
+        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
+        as.cmove(outReg.reg, scrRegs[1].opnd(64));
     }
+    /*
     static if (op == "ne")
     {
         ctx.as.instr(CMP, opnd0, opnd1);
@@ -1079,7 +1106,25 @@ void CmpOp(string op, size_t numBits)(
         condOps.jccT [0] = JAE;
         condOps.jccF [0] = JNAE;
     }
+    */
 
+    else
+    {
+        assert (false);
+    }
+
+    // If the output register is not the output operand
+    if (outReg != outOpnd)
+        as.mov(outOpnd, outReg);
+
+    // Set the output type
+    st.setOutType(as, instr, Type.CONST);
+
+
+
+
+
+    /*
     // If this instruction has many uses or is not followed by an if
     if (instr.hasManyUses || ifUseNext(instr) is false)
     {
@@ -1094,10 +1139,6 @@ void CmpOp(string op, size_t numBits)(
         ctx.genCondBranch(instr.next, condOps, st, st);
     }
     */
-
-
-
-
 }
 
 //alias CmpOp!("eq", 8) gen_eq_i8;
@@ -1165,13 +1206,27 @@ void gen_if_true(
     );
 }
 
-/*
-void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_jump(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    // Jump to the target block
-    ctx.genBranchEdge(ctx.as, null, instr.getTarget(0), st);
+    // Jump to the target block directly
+    ver.genBranch(
+        as,
+        BranchTest.NONE,
+        X86Opnd.NONE,
+        X86Opnd.NONE,
+        st,
+        null,
+        instr.getTarget(0),
+        null,
+    );
 }
 
+/*
 void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Generate a JIT entry point for the call continuation

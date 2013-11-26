@@ -209,7 +209,9 @@ unittest
     interp.assertInt("x = 7; return x;", 7);
 
     // Comparison and conditional branching
-    //interp.assertInt("x = 7; if ($ir_eq_i32(x, 7)) return 1; else return 0;", 1);
+    interp.assertInt("x = 7; if ($ir_eq_i32(x, 7)) return 1; else return 0;", 1);
+    interp.assertInt("x = 3; if ($ir_eq_i32(x, 2)) x = 1; return x;", 3);
+    interp.assertInt("x = 5; if ($ir_is_i32(x)) x = 1; else x = 0; return x;", 1);
 }
 
 /// Global expression tests

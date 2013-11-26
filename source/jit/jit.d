@@ -661,6 +661,48 @@ class CodeGenState
         */
     }
 
+    /// Set the output type value for an instruction's output
+    void setOutType(CodeBlock as, IRInstr instr, Type type)
+    {
+        assert (
+            instr !is null,
+            "null instruction"
+        );
+
+        /*
+        assert (
+            (type & TF_TYPE_MASK) == type,
+            "type mask corrupts type tag"
+        );
+
+        // Get the previous type state
+        auto prevState = typeState.get(instr, 0);
+
+        // Check if the type is still in sync
+        auto inSync = (
+            (prevState & TF_SYNC) &&
+            (prevState & TF_KNOWN) &&
+            ((prevState & TF_TYPE_MASK) == type)
+        );
+
+        // Set the type known flag and update the type
+        typeState[instr] = TF_KNOWN | (inSync? TF_SYNC:0) | type;
+
+        // If the output operand is on the stack
+        if (allocState.get(instr, 0) & RA_STACK)
+        {
+            // Write the type value to the type stack
+            as.instr(MOV, new X86Mem(8, tspReg, instr.outSlot), type);
+
+            // Mark the type as in sync, so we don't spill the type later
+            typeState[instr] |= TF_SYNC;
+        }
+        */
+
+        // Write the type value to the type stack
+        as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(type));
+    }
+
     /// Write the output type for an instruction's output to the type stack
     void setOutType(CodeBlock as, IRInstr instr, X86Reg typeReg)
     {
@@ -789,7 +831,7 @@ class VersionInst : BlockVersion
         assert (targets[0] is null && targets[1] is null);
 
         auto interp = state0.ctx.interp;
-        auto refList = interp.refList;
+        assert (interp !is null);
 
         // Store the test type and operands
         branchTest = test;
@@ -830,8 +872,8 @@ class VersionInst : BlockVersion
 
         // Write a jump to the true target
         as.writeASM("jmp", branch0.target.getName);
-        refList ~= VersionRef(as.getWritePos(), targets[0]);
         as.writeByte(JMP_REL32_OPCODE);
+        interp.refList ~= VersionRef(as.getWritePos(), targets[0]);
         as.writeInt(0, 32);
 
         // Generate moves for the second branch
@@ -851,8 +893,8 @@ class VersionInst : BlockVersion
 
             // Write a jump to the false target
             as.writeASM("jmp", branch1.target.getName);
-            refList ~= VersionRef(as.getWritePos(), targets[1]);
             as.writeByte(JMP_REL32_OPCODE);
+            interp.refList ~= VersionRef(as.getWritePos(), targets[1]);
             as.writeInt(0, 32);
         }
     }
@@ -939,6 +981,8 @@ BlockVersion getBlockVersion(
 
     // Queue the new version to be compiled
     interp.compQueue ~= ver;
+
+    writeln("comp queue len: ", interp.compQueue.length);
 
     // Return the newly created block version
     return ver;
@@ -1134,22 +1178,20 @@ void compile(BlockVersion startVer)
 
     auto as = interp.execHeap;
     assert (as !is null);
-    auto compQueue = interp.compQueue;
-    auto refList = interp.refList;
 
     // Add the version to the compilation queue
-    assert (compQueue.length is 0);
-    compQueue ~= startVer;
+    assert (interp.compQueue.length is 0);
+    interp.compQueue ~= startVer;
 
     // Until the compilation queue is empty
-    while (compQueue.length > 0)
+    while (interp.compQueue.length > 0)
     {
         // Get a version to compile from the queue
-        auto ver = compQueue.front;
-        compQueue.popFront();
+        auto ver = interp.compQueue.front;
+        interp.compQueue.popFront();
 
         // Note the code start index for this version
-        if (ver.startIdx is size_t.max)
+        if (ver.startIdx is ver.startIdx.max)
            ver.startIdx = cast(uint32_t)as.getWritePos();
 
         // If this is a version stub
@@ -1158,11 +1200,14 @@ void compile(BlockVersion startVer)
             writeln("compiling stub");
 
             // Insert the label for this block in the out of line code
-            as.comment("Block stub for " ~ stub.block.getName());
+            as.comment("Stub of " ~ stub.block.getName());
 
             // TODO: properly spill registers, GC may be run during JIT
 
-            as.pushRegs();
+            as.push(tspReg);
+            as.push(wspReg);
+            as.push(interpReg);
+            as.push(interpReg);
 
             // Call the JIT compile function,
             // passing it a pointer to the stub
@@ -1171,7 +1216,10 @@ void compile(BlockVersion startVer)
             as.ptr(cargRegs[0], stub);
             as.call(X86Opnd(RAX));
 
-            as.popRegs();
+            as.pop(interpReg);
+            as.pop(interpReg);
+            as.pop(wspReg);
+            as.pop(tspReg);
 
             // Jump to the compiled stub
             as.jmp(X86Opnd(RAX));
@@ -1226,15 +1274,17 @@ void compile(BlockVersion startVer)
         }
     }
 
+    assert (interp.compQueue.length is 0);
+
     // Link the version references
     auto startPos = as.getWritePos();
-    foreach (refr; refList)
+    foreach (refr; interp.refList)
     {
-        writeln("linking version ref");
-        as.setWritePos(refr.pos);
-        assert (refr.ver.startIdx !is size_t.max);
+        assert (refr.ver.startIdx !is refr.ver.startIdx.max);
         auto offset = refr.ver.startIdx - (refr.pos + 4);
+        as.setWritePos(refr.pos);
         as.writeInt(offset, 32);
+        writeln("linking version ref, offset=", offset);
     }
     as.setWritePos(startPos);
 
@@ -1251,7 +1301,7 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
     auto interp = stub.state.ctx.interp;
     auto execHeap = interp.execHeap;
 
-    assert (stub.startIdx !is size_t.max);
+    assert (stub.startIdx !is stub.startIdx.max);
     assert (stub.inst is null);
 
     // Create a version instance object for this stub
@@ -1260,6 +1310,7 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
 
     // Compile the version instance
     compile(stub.inst);
+    assert (stub.inst.startIdx !is stub.inst.startIdx.max);
 
     // Write a relative 32-bit jump to the stub instance over the stub
     auto startPos = execHeap.getWritePos();
@@ -1300,6 +1351,8 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
 
     // Note the code start index for this version
     entryInst.startIdx = cast(uint32_t)as.getWritePos();
+
+    as.comment("Unit function entry for " ~ fun.getName);
 
     // Align SP to a multiple of 16 bytes
     as.sub(X86Opnd(RSP), X86Opnd(8));
