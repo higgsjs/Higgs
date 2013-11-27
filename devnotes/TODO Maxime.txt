@@ -34,15 +34,15 @@ TODO: optimize x86 instr encoding based on usage
 
 TODO: increase default str table size, use power of 2 sizing, eliminate modulo
 
-TODO: IP-relative addressing
+TODO: rename Interp class to VM?
 
-TODO: rename Interp to VM?
+TODO: port/fix execMoves
 
 ------------------------------------------------------------------------------
 
 Second milestone: load runtime, working REPL with --nostdlib
-
-TODO: port/fix execMoves
+- No GC yet
+- Still no reg alloc
 
 TODO: blog
 - conference invites
@@ -53,18 +53,44 @@ TODO: BlockVersion.toString()
 - CodeBlock toString needs start and end offsets?
 - Also print 32-bit offsets
 
-TODO: make_clos instr
+TODO: support for call_prim
 
-TODO: make_map instr
-- Needed to create a global closure?
+TODO: basic int operators
 
-TODO: assert minimal space before compiling block
+
+
+
+
+
+
+
+[DONE] TODO: need support for loading f64 imm to XMM
+- Could use move to r64, then movq?
+- For now, special case for zeroing out?
+- pxor xmm, xmm?
+66 0F EF /r PXOR xmm1, xmm2/m128
+- general case, can jump over an inline constant
+  - need one constant for our usage!
+- try implementing limited IPR?
+  movq(XMM0, X86Opnd(64, RIP, 2))
+  jmp8(8) ; 2 bytes long
+  ...64-bit imm...
+  ...code resumes...
+
+[DONE] TODO: limited IP-relative addressing, RIP + offset
+- Use bit fields to pack mem loc representation
+
+[DONE] TODO: jmp8
+
+[DONE] TODO: div_f64, needed for NaN
+
+[DONE] TODO: make_clos instr
+
+[DONE] TODO: make_map instr
+- Can allocate the map at JIT time!
+
+[DONE] TODO: assert minimal space before compiling block
 - 1 << 18 bytes (256KB)
-
-
-
-
-
 
 ------------------------------------------------------------------------------
 

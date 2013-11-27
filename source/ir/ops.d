@@ -109,11 +109,11 @@ Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], /*&gen_get_type*/null };
 
 // Type tag test
 Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &gen_is_i32, OpInfo.BOOL_VAL };
-Opcode IS_I64 = { "is_i64", true, [OpArg.LOCAL], /*&gen_is_i64*/null , OpInfo.BOOL_VAL };
-Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], /*&gen_is_f64*/null , OpInfo.BOOL_VAL };
-Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], /*&gen_is_refptr*/null , OpInfo.BOOL_VAL };
-Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], /*&gen_is_rawptr*/null , OpInfo.BOOL_VAL };
-Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], /*&gen_is_const*/null , OpInfo.BOOL_VAL };
+Opcode IS_I64 = { "is_i64", true, [OpArg.LOCAL], &gen_is_i64, OpInfo.BOOL_VAL };
+Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], &gen_is_f64, OpInfo.BOOL_VAL };
+Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BOOL_VAL };
+Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &gen_is_rawptr, OpInfo.BOOL_VAL };
+Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &gen_is_const, OpInfo.BOOL_VAL };
 
 // Type conversion
 Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], /*&gen_i32_to_f64*/null };
@@ -139,7 +139,7 @@ Opcode NOT_I32 = { "not_i32", true, [OpArg.LOCAL], /*&gen_not_i32*/null };
 Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_add_f64*/null };
 Opcode SUB_F64 = { "sub_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_sub_f64*/null };
 Opcode MUL_F64 = { "mul_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mul_f64*/null };
-Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_div_f64*/null };
+Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_div_f64 };
 Opcode MOD_F64 = { "mod_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mod_f64*/null };
 
 // Higher-level floating-point functions
@@ -276,7 +276,7 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_set_li
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], /*&gen_get_link*/null };
 
 /// Create a map object associated with this instruction
-Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP, OpArg.LOCAL], /*&gen_make_map*/null };
+Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP, OpArg.LOCAL], &gen_make_map };
 
 /// Get the number of properties to allocate for objects with a given map
 Opcode MAP_NUM_PROPS = { "map_num_props", true, [OpArg.LOCAL], /*&gen_map_num_props*/null };
@@ -301,7 +301,7 @@ Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set
 
 /// <dstLocal> = NEW_CLOS <funExpr>
 /// Create a new closure from a function's AST node
-Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LINK, OpArg.LINK], /*&gen_new_clos*/null , OpInfo.MAY_GC };
+Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LOCAL, OpArg.LOCAL], &gen_new_clos, OpInfo.MAY_GC };
 
 /// Load a source code unit from a file
 Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], /*&gen_load_file*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };

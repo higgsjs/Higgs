@@ -51,6 +51,7 @@ import interp.interp;
 import interp.layout;
 import interp.object;
 import interp.string;
+import interp.gc;
 import jit.codeblock;
 import jit.x86;
 import jit.jit;
@@ -349,44 +350,49 @@ void ShiftOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
 alias ShiftOp!("sal") gen_lsft_i32;
 alias ShiftOp!("sar") gen_rsft_i32;
+*/
 
-void FPOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void FPOp(string op)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    X86Reg opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0);
-    X86Reg opnd1 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 1, 64, XMM1);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    X86Opnd opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd(XMM0));
+    X86Opnd opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd(XMM1));
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    assert (opnd0 && opnd1);
+    assert (opnd0.isReg && opnd1.isReg);
 
-    if (opnd0.type == X86Reg.GP)
-        ctx.as.instr(MOVQ, XMM0, opnd0);
-    if (opnd1.type == X86Reg.GP)
-        ctx.as.instr(MOVQ, XMM1, opnd1);
+    if (opnd0.isGPR)
+        as.movq(X86Opnd(XMM0), opnd0);
+    if (opnd1.isGPR)
+        as.movq(X86Opnd(XMM1), opnd1);
 
-    X86OpPtr opPtr = null;
-    static if (op == "add")
-        opPtr = ADDSD;
-    static if (op == "sub")
-        opPtr = SUBSD;
-    static if (op == "mul")
-        opPtr = MULSD;
+    //static if (op == "add")
+    //    opPtr = ADDSD;
+    //static if (op == "sub")
+    //    opPtr = SUBSD;
+    //static if (op == "mul")
+    //    opPtr = MULSD;
     static if (op == "div")
-        opPtr = DIVSD;
-    assert (opPtr !is null);
+        as.divsd(X86Opnd(XMM0), X86Opnd(XMM1));
+    else
+        assert (false);
 
-    ctx.as.instr(opPtr, XMM0, XMM1);
-
-    ctx.as.instr(cast(X86Reg)opndOut? MOVQ:MOVSD, opndOut, XMM0);
+    as.movq(outOpnd, X86Opnd(XMM0));
 
     // Set the output type
-    st.setOutType(ctx.as, instr, Type.FLOAT64);
+    st.setOutType(as, instr, Type.FLOAT64);
 }
 
-alias FPOp!("add") gen_add_f64;
-alias FPOp!("sub") gen_sub_f64;
-alias FPOp!("mul") gen_mul_f64;
+//alias FPOp!("add") gen_add_f64;
+//alias FPOp!("sub") gen_sub_f64;
+//alias FPOp!("mul") gen_mul_f64;
 alias FPOp!("div") gen_div_f64;
 
+/*
 void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // The pointer operand must be a register
@@ -598,6 +604,84 @@ void gen_set_global(
     as.mov(typeMem, typeOpnd);
 }
 
+extern (C) refptr op_new_clos(
+    Interp interp, 
+    IRFunction fun, 
+    ObjMap closMap, 
+    ObjMap protMap
+)
+{
+    // Allocate the closure object
+    auto closPtr = GCRoot(
+        interp,
+        newClos(
+            interp, 
+            closMap,
+            interp.funProto,
+            cast(uint32)fun.ast.captVars.length,
+            fun
+        )
+    );
+
+    // Allocate the prototype object
+    auto objPtr = GCRoot(
+        interp,
+        newObj(
+            interp, 
+            protMap,
+            interp.objProto
+        )
+    );
+
+    // Set the "prototype" property on the closure object
+    auto protoStr = GCRoot(interp, getString(interp, "prototype"));
+    setProp(
+        interp,
+        closPtr.ptr,
+        protoStr.ptr,
+        objPtr.pair
+    );
+
+    assert (
+        clos_get_next(closPtr.ptr) == null,
+        "closure next pointer is not null"
+    );
+
+    //writeln("final clos ptr: ", closPtr.ptr);
+
+    return closPtr.ptr;
+}
+
+void gen_new_clos(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // TODO: make sure regs are properly spilled, this may trigger GC
+    // c arg regs may also overlap allocated regs, args should be on stack
+
+    auto funArg = cast(IRFunPtr)instr.getArg(0);
+    assert (funArg !is null);
+
+    auto closMapOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+    auto protMapOpnd = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
+
+    as.ptr(cargRegs[0], st.ctx.interp);
+    as.ptr(cargRegs[1], funArg.fun);
+    as.mov(cargRegs[2].opnd(64), closMapOpnd);
+    as.mov(cargRegs[3].opnd(64), protMapOpnd);
+
+    as.ptr(RAX, &op_new_clos);
+    as.call(RAX);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
 /*
 void GetValOp(string fName)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
@@ -724,6 +808,34 @@ void gen_get_link(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     st.setOutType(ctx.as, instr, scrRegs8[1]);
 }
 */
+
+void gen_make_map(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto mapArg = cast(IRMapPtr)instr.getArg(0);
+    assert (mapArg !is null);
+
+    auto numPropArg = cast(IRConst)instr.getArg(1);
+    assert (numPropArg !is null);
+
+    // Allocate the map
+    if (mapArg.map is null)
+        mapArg.map = new ObjMap(st.ctx.interp, numPropArg.int32Val);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outReg = outOpnd.isReg? outOpnd.reg:scrRegs[0];
+
+    as.ptr(outReg, mapArg.map);
+    if (!outOpnd.isReg)
+        as.mov(outOpnd, X86Opnd(outReg));
+
+    // Set the output type
+    st.setOutType(as, instr, Type.MAPPTR);
+}
 
 /**
 Generates the conditional branch for an if_true instruction with the given
@@ -1141,18 +1253,18 @@ void CmpOp(string op, size_t numBits)(
     */
 }
 
-//alias CmpOp!("eq", 8) gen_eq_i8;
+alias CmpOp!("eq", 8) gen_eq_i8;
 alias CmpOp!("eq", 32) gen_eq_i32;
 //alias CmpOp!("ne", 32) gen_ne_i32;
 //alias CmpOp!("lt", 32) gen_lt_i32;
 //alias CmpOp!("le", 32) gen_le_i32;
 //alias CmpOp!("gt", 32) gen_gt_i32;
 //alias CmpOp!("ge", 32) gen_ge_i32;
-//alias CmpOp!("eq", 8) gen_eq_const;
+alias CmpOp!("eq", 8) gen_eq_const;
 //alias CmpOp!("ne", 8) gen_ne_const;
-//alias CmpOp!("eq", 64) gen_eq_refptr;
+alias CmpOp!("eq", 64) gen_eq_refptr;
 //alias CmpOp!("ne", 64) gen_ne_refptr;
-//alias CmpOp!("eq", 64) gen_eq_rawptr;
+alias CmpOp!("eq", 64) gen_eq_rawptr;
 //alias CmpOp!("feq", 64) gen_eq_f64;
 //alias CmpOp!("fne", 64) gen_ne_f64;
 //alias CmpOp!("flt", 64) gen_lt_f64;

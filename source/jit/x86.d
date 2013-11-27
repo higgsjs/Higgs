@@ -42,6 +42,7 @@ import std.string;
 import std.array;
 import std.conv;
 import std.stdint;
+import std.bitmanip;
 import std.algorithm;
 import jit.codeblock;
 
@@ -302,17 +303,29 @@ and that the memory operand always has a base register.
 */
 struct X86Mem
 {
-    /// Base register number
-    uint8_t baseRegNo; 
+    // Bit field for compact encoding
+    mixin(bitfields!(
+        /// Memory location size
+        uint, "size"     , 10,
 
-    /// Index register number
-    uint8_t idxRegNo;
+        /// Base register number
+        uint, "baseRegNo", 4,
 
-    /// Memory location size
-    uint8_t size;
+        /// Index register number
+        uint, "idxRegNo" , 4,
 
-    /// Index scale value, zero if not using an index
-    uint8_t scale;
+        /// SIB scale exponent value (power of two)
+        uint, "scaleExp" , 2,
+
+        /// Has index register flag
+        bool, "hasIdx"   , 1,
+
+        /// IP-relative addressing flag
+        bool, "isIPRel"  , 1,
+
+        /// Padding bits
+        uint, "", 10
+    ));
 
     /// Constant displacement from the base, not scaled
     int32_t disp; 
@@ -334,22 +347,19 @@ struct X86Mem
         this.size       = cast(uint8_t)size;
         this.baseRegNo  = base.regNo;
         this.disp       = disp;
-        this.idxRegNo = index.regNo;
-        this.scale      = cast(uint8_t)scale;
-    }
+        this.idxRegNo   = index.regNo;
+        this.hasIdx     = scale !is 0;
+        this.isIPRel    = base.type is X86Reg.IP;
 
-    /**
-    Equality comparison operator
-    */
-    bool opEquals(X86Mem that) const
-    {
-        return (
-            this.baseRegNo is that.baseRegNo &&
-            this.idxRegNo is that.idxRegNo &&
-            this.disp is that.disp &&
-            this.size is that.size &&
-            this.scale is that.scale
-        );
+        switch (scale)
+        {
+            case 0: break;
+            case 1: this.scaleExp = 0; break;
+            case 2: this.scaleExp = 1; break;
+            case 4: this.scaleExp = 2; break;
+            case 8: this.scaleExp = 3; break;
+            default: assert (false);
+        }
     }
 
     string toString() const
@@ -381,7 +391,7 @@ struct X86Mem
 
         if (str != "")
             str ~= " ";
-        str ~= X86Reg(X86Reg.GP, this.baseRegNo, 64).toString();
+        str ~= X86Reg(isIPRel? X86Reg.IP:X86Reg.GP, this.baseRegNo, 64).toString();
 
         /*
         if (label)
@@ -407,12 +417,12 @@ struct X86Mem
             }
         }
 
-        if (this.scale !is 0)
+        if (this.hasIdx)
         {
             if (str != "")
                 str ~= " + ";
-            if (this.scale !is 1)
-                str ~= to!string(this.scale) ~ " * ";
+            if (this.scaleExp !is 0)
+                str ~= to!string(1 << this.scaleExp) ~ " * ";
             str ~= X86Reg(X86Reg.GP, this.idxRegNo, 64).toString();
         }
 
@@ -420,19 +430,11 @@ struct X86Mem
     }
 
     /**
-    Test if there is an index register
-    */
-    bool hasIndex() const
-    {
-        return (scale != 0);
-    }
-
-    /**
     Test if the REX prefix is needed to encode this operand
     */
     bool rexNeeded() const
     {
-        return (baseRegNo > 7) || (hasIndex && idxRegNo > 7);
+        return (baseRegNo > 7) || (hasIdx && idxRegNo > 7);
     }
 
     /**
@@ -441,7 +443,7 @@ struct X86Mem
     bool sibNeeded() const
     {
         return (
-            this.scale != 0 ||
+            this.hasIdx ||
             this.baseRegNo == ESP.regNo ||
             this.baseRegNo == RSP.regNo ||
             this.baseRegNo == R12.regNo
@@ -453,10 +455,9 @@ struct X86Mem
     */
     size_t dispSize() const
     {
-        // FIXME
         // If using RIP as the base, use disp32
-        //if (baseRegNo == RIP.regNo)
-        //    return 32;
+        if (isIPRel)
+            return 32;
 
         // Compute the required displacement size
         if (disp != 0)
@@ -722,7 +723,7 @@ void writeRMInstr(
             r = 0;
 
         uint x;
-        if (sibNeeded && rmOpndM.hasIndex)
+        if (sibNeeded && rmOpndM.hasIdx)
             x = (rmOpndM.idxRegNo & 8)? 1:0;
         else
             x = 0;
@@ -760,8 +761,7 @@ void writeRMInstr(
     }
     else
     {
-        // FIXME
-        if (rmOpndM.dispSize == 0/* || rmOpndM.baseRegNo == RIP.regNo*/)
+        if (rmOpndM.dispSize == 0 || rmOpndM.isIPRel)
             mod = 0;
         else if (rmOpndM.dispSize == 8)
             mod = 1;
@@ -788,9 +788,6 @@ void writeRMInstr(
     {
         if (sibNeeded)
             rm = 4;
-        // FIXME
-        /*else if (rmOpndM.baseRegNo == RIP.regNo)
-            rm = 5;*/
         else
             rm = rmOpndM.baseRegNo & 7;
     }
@@ -814,20 +811,11 @@ void writeRMInstr(
         );
 
         // Encode the scale value
-        int scale;
-        switch (rmOpndM.scale)
-        {
-            case 0: assert (!rmOpndM.hasIndex); scale = 0; break;
-            case 1: scale = 0; break;
-            case 2: scale = 1; break;
-            case 4: scale = 2; break;
-            case 8: scale = 3; break;
-            default: assert (false, "invalid SIB scale");
-        }
+        int scale = rmOpndM.scaleExp;
 
         // Encode the index value
         int index;
-        if (rmOpndM.hasIndex is false)
+        if (rmOpndM.hasIdx is false)
             index = 4;
         else
             index = rmOpndM.idxRegNo & 7;
@@ -1033,7 +1021,7 @@ void add(CodeBlock as, X86Reg dst, int64_t imm)
     return add(as, X86Opnd(dst), X86Opnd(imm));
 }
 
-// addsd - Add scalar double
+/// addsd - Add scalar double
 alias writeXMM64!(
     "addsd", 
     0xF2, // prefix
@@ -1079,6 +1067,13 @@ void call(CodeBlock cb, X86Opnd opnd)
 {
     cb.writeASM("call", opnd);
     cb.writeRMInstr!('l', 2, 0xFF)(false, false, opnd, X86Opnd.NONE);
+}
+
+/// call - Indirect call with a register operand
+void call(CodeBlock cb, X86Reg reg)
+{
+    cb.writeASM("call", reg);
+    cb.writeRMInstr!('l', 2, 0xFF)(false, false, X86Opnd(reg), X86Opnd.NONE);
 }
 
 /**
@@ -1204,7 +1199,15 @@ alias writeRMUnary!(
     0x06  // opExt
 ) div;
 
-// div - Signed integer division
+/// divsd - Divide scalar double
+alias writeXMM64!(
+    "divsd", 
+    0xF2, // prefix
+    0x0F, // opRegMem0
+    0x5E  // opRegMem1
+) divsd;
+
+// idiv - Signed integer division
 alias writeRMUnary!(
     "idiv", 
     0xF6, // opMemReg8 
@@ -1334,6 +1337,9 @@ alias writeJcc!("jpo", 0x0F, 0x8B) jpo;
 alias writeJcc!("js" , 0x0F, 0x88) js;
 alias writeJcc!("jz" , 0x0F, 0x84) jz;
 
+/// Opcode for direct jump with relative 8-bit offset
+const ubyte JMP_REL8_OPCODE = 0xEB;
+
 /// Opcode for direct jump with relative 32-bit offset
 const ubyte JMP_REL32_OPCODE = 0xE9;
 
@@ -1345,6 +1351,15 @@ void jmp(CodeBlock cb, X86Opnd opnd)
 {
     cb.writeASM("jmp", opnd);
     cb.writeRMInstr!('l', 4, 0xFF)(false, false, opnd, X86Opnd.NONE);
+}
+
+/// jmp - Jump with relative 8-bit offset
+void jmp8(CodeBlock cb, int8_t offset)
+{
+    cb.writeASM("jmp", ((offset > 0)? "+":"-") ~ to!string(offset));
+
+    cb.writeByte(JMP_REL8_OPCODE);
+    cb.writeByte(offset);
 }
 
 /// mov - Data move operation
@@ -1377,7 +1392,7 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
         // M + Imm
         else if (dst.isMem)
         {
-            auto dstSize = dst.reg.size;
+            auto dstSize = dst.mem.size;
             assert (imm.immSize <= dstSize);
 
             if (dstSize is 8)

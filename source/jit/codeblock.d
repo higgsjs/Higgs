@@ -230,6 +230,22 @@ class CodeBlock
     }
 
     /**
+    Get the size of the code block
+    */
+    size_t getSize() const
+    {
+        return memSize;
+    }
+
+    /**
+    Get the remaining space available
+    */
+    size_t getRemSpace() const
+    {
+        return memSize - writePos;
+    }
+
+    /**
     Test if the code block is empty
     */
     bool empty() const

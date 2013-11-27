@@ -84,6 +84,9 @@ immutable X86Reg[] scrRegs = [RAX, RDI, RSI];
 /// RCX, RBX, RBP, R8-R12: 9 allocatable registers
 immutable X86Reg[] allocRegs = [RCX, RDX, RBX, RBP, R8, R9, R10, R11, R12];
 
+/// Minimum space required to compile a block (256KB)
+const size_t JIT_MIN_BLOCK_SPACE = 1 << 18; 
+
 /**
 Context in which code is being compiled
 */
@@ -463,14 +466,11 @@ class CodeGenState
 
             if (tmpReg.isXMM)
             {
-                // FIXME
-                assert (false);
-                /*
-                auto cstLabel = ctx.ol.label("FP_CONST");
-                ctx.ol.addInstr(new IntData(immOpnd.imm, 64));
-                as.instr(MOVQ, tmpReg, new X86IPRel(64, cstLabel));
+                // Write the FP constant in the code stream and load it
+                as.movq(tmpReg, X86Opnd(64, RIP, 2));
+                as.jmp8(8);
+                as.writeInt(curOpnd.imm.imm, 64);
                 return tmpReg;
-                */
             }            
 
             assert (
@@ -1186,6 +1186,11 @@ void compile(BlockVersion startVer)
     // Until the compilation queue is empty
     while (interp.compQueue.length > 0)
     {
+        assert (
+            as.getRemSpace() >= JIT_MIN_BLOCK_SPACE,
+            "insufficient space to compile version"
+        );
+
         // Get a version to compile from the queue
         auto ver = interp.compQueue.front;
         interp.compQueue.popFront();
@@ -1214,7 +1219,7 @@ void compile(BlockVersion startVer)
             auto compileFn = &compileStub;
             as.ptr(RAX, compileFn);
             as.ptr(cargRegs[0], stub);
-            as.call(X86Opnd(RAX));
+            as.call(RAX);
 
             as.pop(interpReg);
             as.pop(interpReg);
@@ -1289,6 +1294,7 @@ void compile(BlockVersion startVer)
     as.setWritePos(startPos);
 
     writeln("leaving compile");
+    writeln("write pos: ", as.getWritePos, " / ", as.getRemSpace);
 }
 
 /**
@@ -1566,7 +1572,7 @@ void printUint(CodeBlock as, X86Opnd opnd)
     alias extern (C) void function(uint64_t) PrintUintFn;
     PrintUintFn printUintFn = &printUint;
     as.ptr(RAX, printUintFn);
-    as.call(X86Opnd(RAX));
+    as.call(RAX);
 
     as.popRegs();
 }

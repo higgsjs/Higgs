@@ -699,27 +699,6 @@ extern (C) void op_get_link(Interp interp, IRInstr instr)
     );
 }
 
-extern (C) void op_make_map(Interp interp, IRInstr instr)
-{
-    auto mapArg = cast(IRMapPtr)instr.getArg(0);
-    assert (mapArg !is null);
-
-    if (mapArg.map is null)
-    {
-        // Minimum number of properties to allocate
-        auto minNumProps = interp.getArgUint32(instr, 1);
-
-        // Allocate the map
-        mapArg.map = new ObjMap(interp, minNumProps);
-    }
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(cast(rawptr)mapArg.map),
-        Type.MAPPTR
-    );
-}
-
 extern (C) void op_map_num_props(Interp interp, IRInstr instr)
 {
     // Get the map value
@@ -947,70 +926,6 @@ extern (C) void op_set_global(Interp interp, IRInstr instr)
     }
 }
 */
-
-extern (C) void op_new_clos(Interp interp, IRInstr instr)
-{
-    //writefln("entering newclos");
-
-    auto funArg = cast(IRFunPtr)instr.getArg(0);
-    assert (funArg !is null);
-    auto fun = funArg.fun;
-
-    // Closure map
-    auto closMapArg = interp.getArgVal(instr, 1);
-
-    // Prototype map
-    auto protMapArg = interp.getArgVal(instr, 2);
-
-    //writeln("clos map numProps: ", closMapArg.word.mapVal.numProps);
-
-    // Allocate the closure object
-    auto closPtr = GCRoot(
-        interp,
-        newClos(
-            interp, 
-            closMapArg.word.mapVal,
-            interp.funProto,
-            cast(uint32)fun.ast.captVars.length,
-            fun
-        )
-    );
-
-    // Allocate the prototype object
-    auto objPtr = GCRoot(
-        interp,
-        newObj(
-            interp, 
-            protMapArg.word.mapVal, 
-            interp.objProto
-        )
-    );
-
-    // Set the "prototype" property on the closure object
-    auto protoStr = GCRoot(interp, getString(interp, "prototype"));
-    setProp(
-        interp,
-        closPtr.ptr,
-        protoStr.ptr,
-        objPtr.pair
-    );
-
-    assert (
-        clos_get_next(closPtr.ptr) == null,
-        "closure next pointer is not null"
-    );
-
-    //writeln("final clos ptr: ", closPtr.ptr);
-
-    // Output a pointer to the closure
-    interp.setSlot(
-        instr.outSlot,
-        closPtr.word,
-        Type.REFPTR
-    );
-
-    //writefln("leaving newclos");
-}
 
 extern (C) void op_load_file(Interp interp, IRInstr instr)
 {

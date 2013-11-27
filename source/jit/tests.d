@@ -300,6 +300,12 @@ unittest
         "F77424F4"
     );
 
+    // divsd
+    test(
+        delegate void (CodeBlock cb) { cb.divsd(X86Opnd(XMM0), X86Opnd(XMM1)); },
+        "F20F5EC1"
+    );
+
     /*
     // fst
     test(
