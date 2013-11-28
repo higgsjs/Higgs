@@ -742,6 +742,12 @@ abstract class BlockVersion
 
     /// Starting index in the executable code block
     uint32_t startIdx = uint32_t.max;
+
+    /// Get a pointer to the executable code for this version
+    auto getCodePtr(CodeBlock cb)
+    {
+        return cb.getAddress(startIdx);
+    }
 }
 
 /// Version reference tuple
@@ -762,8 +768,8 @@ class VersionStub : BlockVersion
     }
 }
 
-/// Branch test type enum
-enum BranchTest
+/// Branch type enum
+enum BranchType
 {
     ILT,
     ILE,
@@ -777,7 +783,8 @@ enum BranchTest
     FGE,
     FEQ,
     FNE,
-    NONE
+    OVF,
+    JUMP
 }
 
 /**
@@ -786,7 +793,7 @@ Compiled block version instance
 class VersionInst : BlockVersion
 {
     /// Final branch test type
-    BranchTest branchTest = BranchTest.NONE;
+    BranchType branchType;
 
     /// Branch test operands
     X86Opnd testOpnds[2];
@@ -809,16 +816,10 @@ class VersionInst : BlockVersion
         this.state = state;
     }
 
-    /// Get a pointer to the executable code for this block
-    auto getCodePtr(CodeBlock cb)
-    {
-        return cb.getAddress(startIdx);
-    }
-
     /// Generate code for the final test and branch
     void genBranch(
         CodeBlock as,
-        BranchTest test,
+        BranchType branchType,
         X86Opnd opnd0,
         X86Opnd opnd1,
         CodeGenState state0,
@@ -833,8 +834,8 @@ class VersionInst : BlockVersion
         auto interp = state0.ctx.interp;
         assert (interp !is null);
 
-        // Store the test type and operands
-        branchTest = test;
+        // Store the branch type and operands
+        this.branchType = branchType;
         testOpnds[0] = opnd0;
         testOpnds[1] = opnd1;
 
@@ -842,17 +843,22 @@ class VersionInst : BlockVersion
         assert (as.getWritePos() >= startIdx);
         codeLen = cast(uint32_t)as.getWritePos() - startIdx;
 
-        // Switch on the branch test type
-        switch (branchTest)
+        // Switch on the branch type
+        switch (branchType)
         {
             // Integer equality
-            case BranchTest.IEQ:
+            case BranchType.IEQ:
             as.cmp(opnd0, opnd1);
             as.jne(Label.BRANCH_TARGET1);
             break;
 
+            // Overflow test
+            case BranchType.OVF:
+            as.jo(Label.BRANCH_TARGET1);
+            break;
+
             // Direct jump
-            case BranchTest.NONE:
+            case BranchType.JUMP:
             assert (branch1 is null);
             break;
 
@@ -901,7 +907,7 @@ class VersionInst : BlockVersion
 }
 
 /**
-Get a label for a given block and incoming state
+Request a block version matching the incoming state
 */
 BlockVersion getBlockVersion(
     IRBlock block, 
@@ -1318,7 +1324,14 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
     compile(stub.inst);
     assert (stub.inst.startIdx !is stub.inst.startIdx.max);
 
-    // Write a relative 32-bit jump to the stub instance over the stub
+    // Replace the stub by its instance in the version map
+    auto versions = interp.versionMap[stub.block];
+    auto stubIdx = versions.countUntil(stub);
+    assert (stubIdx !is -1);
+    versions[stubIdx] = stub.inst;
+    assert (versions.countUntil(stub) is -1);
+
+    // Write a relative 32-bit jump to the instance over the stub code
     auto startPos = execHeap.getWritePos();
     execHeap.setWritePos(stub.startIdx);
     execHeap.writeByte(JMP_REL32_OPCODE);
@@ -1445,49 +1458,40 @@ void getType(Assembler as, X86Reg dstReg, int32_t idx)
 {
     as.instr(MOV, dstReg, new X86Mem(8, tspReg, idx));
 }
+*/
 
 /// Write to the word stack
-void setWord(Assembler as, int32_t idx, X86Opnd src)
+void setWord(CodeBlock as, int32_t idx, X86Opnd src)
 {
-    auto memOpnd = new X86Mem(64, wspReg, 8 * idx);
+    auto memOpnd = X86Opnd(64, wspReg, 8 * idx);
 
-    if (auto srcReg = cast(X86Reg)src)
-    {
-        if (srcReg.type == X86Reg.GP)
-            as.instr(MOV, memOpnd, srcReg);
-        else if (srcReg.type == X86Reg.XMM)
-            as.instr(MOVSD, memOpnd, srcReg);
-        else
-            assert (false, "unsupported register type");
-    }
-    else if (auto srcImm = cast(X86Imm)src)
-    {
-        as.instr(MOV, memOpnd, srcImm);
-    }
+    if (src.isGPR)
+        as.mov(memOpnd, src);
+    else if (src.isXMM)
+        as.movsd(memOpnd, src);
+    else if (src.isImm)
+        as.mov(memOpnd, src);
     else
-    {
         assert (false, "unsupported src operand type");
-    }
 }
 
 // Write a constant to the word type
-void setWord(Assembler as, int32_t idx, int32_t imm)
+void setWord(CodeBlock as, int32_t idx, int32_t imm)
 {
-    as.instr(MOV, new X86Mem(64, wspReg, 8 * idx), imm);
+    as.mov(X86Opnd(64, wspReg, 8 * idx), X86Opnd(imm));
 }
 
 /// Write to the type stack
-void setType(Assembler as, int32_t idx, X86Opnd srcOpnd)
+void setType(CodeBlock as, int32_t idx, X86Opnd srcOpnd)
 {
-    as.instr(MOV, new X86Mem(8, tspReg, idx), srcOpnd);
+    as.mov(X86Opnd(8, tspReg, idx), srcOpnd);
 }
 
 /// Write a constant to the type stack
-void setType(Assembler as, int32_t idx, Type type)
+void setType(CodeBlock as, int32_t idx, Type type)
 {
-    as.instr(MOV, new X86Mem(8, tspReg, idx), type);
+    as.mov(X86Opnd(8, tspReg, idx), X86Opnd(type));
 }
-*/
 
 /// Save caller-save registers on the stack before a C call
 void pushRegs(CodeBlock as)

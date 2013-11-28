@@ -47,6 +47,7 @@ import options;
 import stats;
 import ir.ir;
 import ir.ops;
+import ir.ast;
 import interp.interp;
 import interp.layout;
 import interp.object;
@@ -241,48 +242,36 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         }
     }
 
+    // Set the output type
+    st.setOutType(as, instr, typeTag);
+
     // If the instruction has an exception/overflow target
     if (instr.getTarget(0))
     {
-        assert (false);
-
-        // TODO
-        /*
-        auto overLabel = new Label("ADD_OVER");
-        auto contLabel = new Label("ADD_CONT");
-
-        // On overflow, jump to the overflow target
-        ctx.as.instr(JO, overLabel);
-
-        // Set the output type
-        st.setOutType(ctx.as, instr, typeTag);
-
-        // Jump to the normal path
-        ctx.as.instr(JMP, contLabel);
-
-        // Get the fast target label last so the fast target is
-        // more likely to get generated first (LIFO stack)
-        ctx.genBranchEdge(ctx.ol, overLabel, instr.getTarget(1), st);
-        ctx.genBranchEdge(ctx.as, contLabel, instr.getTarget(0), st);
-        */
-    }
-    else
-    {
-        // TODO
-        // Set the output type
-        //st.setOutType(ctx.as, instr, typeTag);
+        // Generate the overflow test and branch
+        ver.genBranch(
+            as,
+            BranchType.OVF,
+            X86Opnd.NONE,
+            X86Opnd.NONE,
+            st,
+            st,
+            instr.getTarget(0),
+            instr.getTarget(1),
+        );
     }
 }
 
 alias RMMOp!("add" , 32, Type.INT32) gen_add_i32;
-//alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
-//alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
-//alias RMMOp!("or"  , 32, Type.INT32) gen_or_i32;
-//alias RMMOp!("xor" , 32, Type.INT32) gen_xor_i32;
+alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32;
+alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
+alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
+alias RMMOp!("or"  , 32, Type.INT32) gen_or_i32;
+alias RMMOp!("xor" , 32, Type.INT32) gen_xor_i32;
 
-//alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
-//alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
-//alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
+alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
+alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
+alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
 /*
 void gen_mod_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -387,9 +376,9 @@ void FPOp(string op)(
     st.setOutType(as, instr, Type.FLOAT64);
 }
 
-//alias FPOp!("add") gen_add_f64;
-//alias FPOp!("sub") gen_sub_f64;
-//alias FPOp!("mul") gen_mul_f64;
+alias FPOp!("add") gen_add_f64;
+alias FPOp!("sub") gen_sub_f64;
+alias FPOp!("mul") gen_mul_f64;
 alias FPOp!("div") gen_div_f64;
 
 /*
@@ -682,17 +671,25 @@ void gen_new_clos(
     st.setOutType(as, instr, Type.REFPTR);
 }
 
-/*
-void GetValOp(string fName)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void GetValOp(string fName)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // Get the output operand. This must be a 
     // register since it's the only operand.
-    auto opndOut = cast(X86Reg)st.getOutOpnd(ctx, ctx.as, instr, 64);
-    assert (opndOut !is null, "output is not a register");
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    ctx.as.getMember!("Interp", fName)(opndOut, interpReg);
+    // FIXME
+    //assert (outOpnd.isReg, "output is not a register");
+    //ctx.as.getMember!("Interp", fName)(outOpnd, interpReg);
 
-    st.setOutType(ctx.as, instr, Type.REFPTR);
+    as.getMember!("Interp." ~ fName)(scrRegs[0], interpReg);
+    as.mov(outOpnd, scrRegs[0].opnd(64));
+
+    st.setOutType(as, instr, Type.REFPTR);
 }
 
 alias GetValOp!("objProto") gen_get_obj_proto;
@@ -1308,7 +1305,7 @@ void gen_if_true(
     // Generate the final comparison and branch for the block
     ver.genBranch(
         as,
-        BranchTest.IEQ,
+        BranchType.IEQ,
         argOpnd,
         X86Opnd(TRUE.int8Val),
         st,
@@ -1328,7 +1325,7 @@ void gen_jump(
     // Jump to the target block directly
     ver.genBranch(
         as,
-        BranchTest.NONE,
+        BranchType.JUMP,
         X86Opnd.NONE,
         X86Opnd.NONE,
         st,
@@ -1534,21 +1531,43 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     // Call the interpreter call instruction
     defaultFn(ctx.ol, ctx, entrySt, instr);
 }
+*/
 
-void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_call_prim(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    // Generate a JIT entry point for the call continuation
-    ctx.genCallCont(instr);
+    auto interp = st.ctx.interp;
 
-    // Get the cached function pointer
-    auto funArg = cast(IRFunPtr)instr.getArg(1);
-    assert (funArg !is null);
-    auto fun = funArg.fun;
-    assert (fun !is null);
+    // Function name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Get the primitve function from the global object
+    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    assert (globalMap !is null);
+    auto propIdx = globalMap.getPropIdx(nameStr, true);
+    assert (propIdx !is uint32_t.max);
+    assert (propIdx < obj_get_cap(interp.globalObj));
+    auto closPtr = cast(refptr)obj_get_word(interp.globalObj, propIdx);
+    assert (valIsLayout(Word.ptrv(closPtr), LAYOUT_CLOS));
+    auto fun = getClosFun(closPtr);
 
     // Check that the argument count matches
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     assert (numArgs is fun.numParams);
+
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+    {
+        //writeln("compiling");
+        //writeln(core.memory.GC.addrOf(cast(void*)fun.ast));
+        astToIR(fun.ast, fun);
+    }
 
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
@@ -1558,45 +1577,41 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
         // Copy the argument word
         auto argOpnd = st.getWordOpnd(
-            ctx, 
-            ctx.as, 
+            as, 
             instr, 
             instrArgIdx,
             64,
-            scrRegs64[1],
+            scrRegs[1].opnd(64),
             true,
             false
         );
-        ctx.as.setWord(dstIdx, argOpnd);
+        as.setWord(dstIdx, argOpnd);
 
         // Copy the argument type
         auto typeOpnd = st.getTypeOpnd(
-            ctx.as, 
+            as, 
             instr, 
             instrArgIdx, 
-            scrRegs8[1], 
+            scrRegs[1].opnd(8), 
             true
         );
-        ctx.as.setType(dstIdx, typeOpnd);
+        as.setType(dstIdx, typeOpnd);
     }
 
     // Write the argument count
-    ctx.as.setWord(-numArgs - 1, numArgs);
-    ctx.as.setType(-numArgs - 1, Type.INT32);
+    as.setWord(-numArgs - 1, numArgs);
+    as.setType(-numArgs - 1, Type.INT32);
 
     // Set the "this" argument to null
-    ctx.as.setWord(-numArgs - 2, NULL.int32Val);
-    ctx.as.setType(-numArgs - 2, Type.REFPTR);
+    as.setWord(-numArgs - 2, NULL.int32Val);
+    as.setType(-numArgs - 2, Type.REFPTR);
 
     // Set the closure argument to null
-    ctx.as.setWord(-numArgs - 3, NULL.int32Val);
-    ctx.as.setType(-numArgs - 3, Type.REFPTR);
+    as.setWord(-numArgs - 3, NULL.int32Val);
+    as.setType(-numArgs - 3, Type.REFPTR);
 
-    // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[0], instr);
-    ctx.as.setWord(-numArgs - 4, scrRegs64[0]);
-    ctx.as.setType(-numArgs - 4, Type.INSPTR);
-
+    // TODO
+    /*
     // Spill the values that are live after the call
     st.spillRegs(
         ctx.as,
@@ -1605,32 +1620,82 @@ void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             return ctx.liveInfo.liveAfter(val, instr);
         }
     );
+    */
 
     // Push space for the callee arguments and locals
-    ctx.as.ptr(scrRegs64[0], fun);
-    ctx.as.getMember!("IRFunction", "numLocals")(scrRegs32[0], scrRegs64[0]);
-    ctx.as.instr(SUB, tspReg, scrRegs64[0]);
-    ctx.as.instr(SHL, scrRegs64[0], 3);
-    ctx.as.instr(SUB, wspReg, scrRegs64[0]);
+    as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
+    as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
 
-    // Label for the interpreter jump
-    auto INTERP_JUMP = new Label("INTERP_JUMP");
+    // Request an instance for the function entry block
+    auto entryVer = getBlockVersion(
+        fun.entryBlock, 
+        new CodeGenState(
+            new CodeGenCtx(
+                interp,
+                fun
+            )
+        ),
+        true
+    );
 
-    // Get a pointer to the branch target
-    ctx.as.ptr(scrRegs64[0], fun.entryBlock);
+    // Request a stub for the call continuation
+    auto contVer = getBlockVersion(
+        instr.getTarget(0).target,
+        st,
+        false
+    );
 
-    // If a JIT entry point exists, jump to it directly
-    ctx.as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], scrRegs64[0]);
-    ctx.as.instr(CMP, scrRegs64[1], 0);
-    ctx.as.instr(JE, INTERP_JUMP);
-    ctx.as.instr(JMP, scrRegs64[1]);
 
-    // Make the interpreter jump to the target
-    ctx.ol.addInstr(INTERP_JUMP);
-    ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
-    ctx.ol.instr(JMP, ctx.bailLabel);
+
+
+
+
+
+
+
+    // TODO: integrate this into genBranch somehow?
+    // probably need specialized logic
+    // genCall?
+    // rename branchTest to branchType ****
+    // CALL
+    // DIRECT
+
+    // raSlot (to write RA in)
+    // two targets
+
+    /*
+    ver.genCall(
+        entryVer,
+        contVer
+    );
+    */
+
+
+
+    // TODO: correct stack offsets
+    // Write the return address (caller instruction)
+    // TODO: encode mov scrRegs[0], size_t.max, add VersionRef? noper
+    // may need to modify VersionRef to specify rel32, abs64...? size param
+    as.setWord(fun.raVal.outSlot, scrRegs[0].opnd(64));
+    as.setType(fun.raVal.outSlot, Type.INSPTR);
+
+
+
+
+    // Jump to the function entry block
+    as.writeByte(JMP_REL32_OPCODE);
+    as.writeInt(0, 32);
+    // TODO: add VersionRef for the jump to the function entry
+
+
+
+
+
+
+
+
+
 }
-*/
 
 void gen_ret(
     VersionInst ver, 

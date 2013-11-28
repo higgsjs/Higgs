@@ -22,8 +22,6 @@ TODO: add --jit_trace command-line option
 
 TODO: complete WAV output support, test it out with sine wave
 
-TODO: better stack slot allocation, based on value interference
-
 TODO: add source position info for call sites
 - Map of call sites to source pos in IRFunction?
 - Do this in genCallTargets?
@@ -34,28 +32,52 @@ TODO: optimize x86 instr encoding based on usage
 
 TODO: increase default str table size, use power of 2 sizing, eliminate modulo
 
-TODO: rename Interp class to VM?
+TODO: function call inlining
+
+TODO: execHeap collection/expansion
+
+TODO: type propagation
+
+TODO: register allocation
 
 TODO: port/fix execMoves
+
+TODO: rename Interp class to VM
+- rename uses and interp directory as well
+
+TODO: unit test for global property access of prop from Object.prototype
 
 ------------------------------------------------------------------------------
 
 Second milestone: load runtime, working REPL with --nostdlib
 - No GC yet
 - Still no reg alloc
+- Support for runtime primitives
 
 TODO: blog
 - conference invites
 - progress and specifics of incremental JIT
 
-TODO: BlockVersion.toString()
-- Prints disassembly from the execHeap
-- CodeBlock toString needs start and end offsets?
-- Also print 32-bit offsets
+TODO: CodeBlock toString needs start and end offsets
+- Also print 32-bit offsets/addresses
+
+TODO: work towards object property access?
+- load/store
+- make_value
+- map info access
+
+TODO: regular function calls
+- Need to do AST->IR conversion
+  - May need special kind of stub?
+- Should also store code ptr on IRFunction
+
+TODO: enable working unit tests
+
+TODO: more complete return support
+- but not yet return from new
 
 TODO: support for call_prim
 
-TODO: basic int operators
 
 
 
@@ -63,6 +85,18 @@ TODO: basic int operators
 
 
 
+[DONE] TODO: implement setWord, setType
+
+[DONE] FIXME: when compiling stub, should not be creating new block version in list
+- replace stub entry instead
+- don't use getBlockVersion
+- array replace function?
+
+[DONE] TODO: support for add_i32_ovf
+- sufficient to compile basic add lazily
+- add simple unit test
+
+[DONE] TODO: low-level int & FP instructions
 
 [DONE] TODO: need support for loading f64 imm to XMM
 - Could use move to r64, then movq?
@@ -84,7 +118,7 @@ TODO: basic int operators
 
 [DONE] TODO: div_f64, needed for NaN
 
-[DONE] TODO: make_clos instr
+[DONE] TODO: new_clos instr
 
 [DONE] TODO: make_map instr
 - Can allocate the map at JIT time!

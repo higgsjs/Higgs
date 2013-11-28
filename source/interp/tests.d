@@ -208,10 +208,18 @@ unittest
     interp.evalString("x = 7");
     interp.assertInt("x = 7; return x;", 7);
 
+    // Integer arithmetic
+    interp.assertInt("x = 3; return $ir_add_i32(x, 2)", 5);
+    interp.assertInt("x = 3; return $ir_sub_i32(x, 1)", 2);
+    interp.assertInt("x = 3; return $ir_mul_i32(x, 2)", 6);
+
     // Comparison and conditional branching
     interp.assertInt("x = 7; if ($ir_eq_i32(x, 7)) return 1; else return 0;", 1);
     interp.assertInt("x = 3; if ($ir_eq_i32(x, 2)) x = 1; return x;", 3);
     interp.assertInt("x = 5; if ($ir_is_i32(x)) x = 1; else x = 0; return x;", 1);
+
+    // Add with overflow test
+    interp.assertInt("x = 3; if ($ir_add_i32_ovf(x, 1)) return x; else return -1;", 3);
 }
 
 /// Global expression tests
@@ -219,10 +227,10 @@ unittest
 {
     writefln("global expressions");
 
-    //auto interp = new InterpNoStdLib();
+    auto interp = new InterpNoStdLib();
 
-    /*
     interp.assertInt("return 7", 7);
+    /*
     interp.assertInt("return 1 + 2", 3);
     interp.assertInt("return 5 - 1", 4);
     interp.assertInt("return 8 % 5", 3);

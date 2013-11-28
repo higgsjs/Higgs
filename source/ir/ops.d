@@ -121,24 +121,24 @@ Opcode F64_TO_I32 = { "f64_to_i32", true, [OpArg.LOCAL], /*&gen_f64_to_i32*/null
 
 // Integer arithmetic
 Opcode ADD_I32 = { "add_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_i32 };
-Opcode SUB_I32 = { "sub_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_sub_i32*/null };
-Opcode MUL_I32 = { "mul_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mul_i32*/null };
+Opcode SUB_I32 = { "sub_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_sub_i32 };
+Opcode MUL_I32 = { "mul_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mul_i32 };
 Opcode DIV_I32 = { "div_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_div_i32*/null };
 Opcode MOD_I32 = { "mod_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mod_i32*/null };
 
 // Bitwise operations
-Opcode AND_I32 = { "and_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_and_i32*/null };
-Opcode OR_I32 = { "or_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_or_i32*/null };
-Opcode XOR_I32 = { "xor_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_xor_i32*/null };
+Opcode AND_I32 = { "and_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_and_i32 };
+Opcode OR_I32 = { "or_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_or_i32 };
+Opcode XOR_I32 = { "xor_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_xor_i32 };
 Opcode LSFT_I32 = { "lsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lsft_i32*/null };
 Opcode RSFT_I32 = { "rsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_rsft_i32*/null };
 Opcode URSFT_I32 = { "ursft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ursft_i32*/null };
 Opcode NOT_I32 = { "not_i32", true, [OpArg.LOCAL], /*&gen_not_i32*/null };
 
 // Floating-point arithmetic
-Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_add_f64*/null };
-Opcode SUB_F64 = { "sub_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_sub_f64*/null };
-Opcode MUL_F64 = { "mul_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mul_f64*/null };
+Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_f64 };
+Opcode SUB_F64 = { "sub_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_sub_f64 };
+Opcode MUL_F64 = { "mul_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mul_f64 };
 Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_div_f64 };
 Opcode MOD_F64 = { "mod_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mod_f64*/null };
 
@@ -153,9 +153,9 @@ Opcode EXP_F64 = { "exp_f64", true, [OpArg.LOCAL], /*&gen_exp_f64*/null };
 Opcode POW_F64 = { "pow_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_pow_f64*/null };
 
 // Integer operations with overflow handling
-Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_add_i32_ovf*/null , OpInfo.BRANCH };
-Opcode SUB_I32_OVF = { "sub_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_sub_i32_ovf*/null , OpInfo.BRANCH };
-Opcode MUL_I32_OVF = { "mul_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mul_i32_ovf*/null , OpInfo.BRANCH };
+Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_i32_ovf, OpInfo.BRANCH };
+Opcode SUB_I32_OVF = { "sub_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_sub_i32_ovf, OpInfo.BRANCH };
+Opcode MUL_I32_OVF = { "mul_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mul_i32_ovf, OpInfo.BRANCH };
 Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lsft_i32_ovf*/null , OpInfo.BRANCH };
 
 // Integer comparison instructions
@@ -238,7 +238,7 @@ Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL
 // <dstLocal> = CALL_PRIM <primName> <primFun> ...
 // Call a primitive function by name
 // Note: the second argument is a cached function reference
-Opcode CALL_PRIM = { "call_prim", true, [OpArg.STRING, OpArg.FUN], /*&gen_call_prim*/null , OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
+Opcode CALL_PRIM = { "call_prim", true, [OpArg.STRING, OpArg.FUN], &gen_call_prim, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
 
 // RET <retLocal>
 // Pops the callee frame (size known by context)
@@ -252,10 +252,10 @@ Opcode THROW = { "throw", false, [OpArg.LOCAL], /*&gen_throw*/null , OpInfo.BRAN
 Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], /*&gen_get_arg*/null };
 
 // Special implementation object/value access instructions
-Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], /*&gen_get_obj_proto*/null };
-Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], /*&gen_get_arr_proto*/null };
-Opcode GET_FUN_PROTO = { "get_fun_proto", true, [], /*&gen_get_fun_proto*/null };
-Opcode GET_GLOBAL_OBJ = { "get_global_obj", true, [], /*&gen_get_global_obj*/null };
+Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &gen_get_obj_proto };
+Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], &gen_get_arr_proto };
+Opcode GET_FUN_PROTO = { "get_fun_proto", true, [], &gen_get_fun_proto };
+Opcode GET_GLOBAL_OBJ = { "get_global_obj", true, [], &gen_get_global_obj };
 Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], /*&gen_get_heap_size*/null };
 Opcode GET_HEAP_FREE = { "get_heap_free", true, [], /*&gen_get_heap_free*/null };
 Opcode GET_GC_COUNT = { "get_gc_count", true, [], /*&gen_get_gc_count*/null };
