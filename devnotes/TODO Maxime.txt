@@ -40,6 +40,10 @@ TODO: type propagation
 
 TODO: register allocation
 
+TODO: exception support
+
+TODO: GC support
+
 TODO: port/fix execMoves
 
 TODO: rename Interp class to VM
@@ -55,7 +59,9 @@ Second milestone: load runtime, working REPL with --nostdlib
 - Support for runtime primitives
 
 TODO: blog
-- conference invites
+- compilers architect may be a great career move
+- conference invites (mloc.js, Web Directions Code)
+- book invite
 - progress and specifics of incremental JIT
 
 TODO: CodeBlock toString needs start and end offsets
@@ -71,19 +77,63 @@ TODO: regular function calls
   - May need special kind of stub?
 - Should also store code ptr on IRFunction
 
+TODO: support for print(), useful for debugging
+
+TODO: phi node handling
+- without reg alloc, everything on stack
+
 TODO: enable working unit tests
 
 TODO: more complete return support
 - but not yet return from new
+- start with very plain return
 
 TODO: support for call_prim
 
+TODO: getCtx(IRFunction fun, bool newCall)
+- Add ctx equality to state comparison
 
 
 
 
 
 
+
+
+[DONE] TODO: reimplement add_i32_ovf, etc.
+
+[DONE] TODO: reimplement if_true
+
+[DONE] TODO: jcc instructions using reflist... Need to template this
+
+[DONE] TODO: add compiled fragments to fragList
+- Add compiled versions and also branch code
+
+[DONE] TODO: reimplement gen_jump
+
+[DONE] TODO: For end of block encoding, may be able to just use a function pointer (not a closure)
+- Function takes enum indicating target 0 next, 1 next or neither next
+- Function does the encoding of necessary branches
+- Creates version refs as appropriate
+- For call, can do the RA push, then jump to call entry
+- Should simplify things, expose the logic in the appropriate places!
+
+[DONE] TODO: May want to have branch edge moves in their own "code fragment" objects
+- More flexible, these then become movable
+- More efficient
+- Can handle unit call/return more elegantly
+- For return, can place ret word/type in special registers
+- Return address is return branch edge
+- Return branch edge moves ret val into stack slot (or not)
+Fragment
+BranchCode
+BlockVersion
+VersionStub
+VersionInst
+
+[DONE] TODO: genBranchEdge could return a BranchCode object?
+- Can call method genCode(as, predState) at end of block?
+- For return, write special moves, then call genCode
 
 [DONE] TODO: implement setWord, setType
 

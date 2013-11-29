@@ -248,17 +248,31 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
     // If the instruction has an exception/overflow target
     if (instr.getTarget(0))
     {
-        // Generate the overflow test and branch
+        auto branchNO = getBranchEdge(as, instr.getTarget(0), st, false);
+        auto branchOV = getBranchEdge(as, instr.getTarget(1), st, false);
+
+        // Generate the branch code
         ver.genBranch(
             as,
-            BranchType.OVF,
-            X86Opnd.NONE,
-            X86Opnd.NONE,
-            st,
-            st,
-            instr.getTarget(0),
-            instr.getTarget(1),
+            branchNO,
+            branchOV,
+            BranchShape.DEFAULT,
+            function void(
+                CodeBlock as,
+                FragmentRef[]* refList,
+                BranchCode branch0,
+                BranchCode branch1,
+                BranchShape shape
+            )
+            {
+                jno32Ref(as, refList, branch0);
+                jmp32Ref(as, refList, branch1);
+            }
         );
+
+        // Generate the edge code
+        branchNO.genCode(as, st);
+        branchOV.genCode(as, st);
     }
 }
 
@@ -1301,18 +1315,33 @@ void gen_if_true(
 
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
+    as.cmp(argOpnd, X86Opnd(TRUE.int8Val));
 
-    // Generate the final comparison and branch for the block
+    auto branchT = getBranchEdge(as, instr.getTarget(0), st, false);
+    auto branchF = getBranchEdge(as, instr.getTarget(1), st, false);
+
+    // Generate the branch code
     ver.genBranch(
         as,
-        BranchType.IEQ,
-        argOpnd,
-        X86Opnd(TRUE.int8Val),
-        st,
-        st,
-        instr.getTarget(0),
-        instr.getTarget(1),
+        branchT,
+        branchF,
+        BranchShape.DEFAULT,
+        function void(
+            CodeBlock as,
+            FragmentRef[]* refList,
+            BranchCode branch0,
+            BranchCode branch1,
+            BranchShape shape
+        )
+        {
+            je32Ref(as, refList, branch0);
+            jmp32Ref(as, refList, branch1);
+        }
     );
+
+    // Generate the edge code
+    branchT.genCode(as, st);
+    branchF.genCode(as, st);
 }
 
 void gen_jump(
@@ -1322,17 +1351,33 @@ void gen_jump(
     CodeBlock as
 )
 {
+    auto branch = getBranchEdge(
+        as,
+        instr.getTarget(0),
+        st,
+        true
+    );
+
     // Jump to the target block directly
     ver.genBranch(
         as,
-        BranchType.JUMP,
-        X86Opnd.NONE,
-        X86Opnd.NONE,
-        st,
+        branch,
         null,
-        instr.getTarget(0),
-        null,
+        BranchShape.DEFAULT,
+        function void(
+            CodeBlock as,
+            FragmentRef[]* refList,
+            BranchCode branch0,
+            BranchCode branch1,
+            BranchShape shape
+        )
+        {
+            jmp32Ref(as, refList, branch0);
+        }
     );
+
+    // Generate the branch edge code
+    branch.genCode(as, st);
 }
 
 /*
@@ -1646,46 +1691,34 @@ void gen_call_prim(
     );
 
 
-
-
-
-
-
-
-
-    // TODO: integrate this into genBranch somehow?
-    // probably need specialized logic
-    // genCall?
-    // rename branchTest to branchType ****
-    // CALL
-    // DIRECT
-
-    // raSlot (to write RA in)
-    // two targets
-
+    // TODO
     /*
+    /// Generate code for the final call branch
     ver.genCall(
+        as,
+        fun,
         entryVer,
         contVer
     );
     */
 
+    /*
+        // Write the return address on the stack
+        as.writeASM("mov", scrRegs[0], targets[0].block.getName);
+        as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
+        interp.refList ~= VersionRef(as.getWritePos() - 8, targets[0], 64);
+        as.setWord(raSlot, scrRegs[0].opnd(64));
+        as.setType(raSlot, Type.INSPTR);
+
+        // Jump to the function entry block
+        as.writeASM("jmp", targets[1].block.getName);
+        as.writeByte(JMP_REL32_OPCODE);
+        as.writeInt(0, 32);
+        interp.refList ~= VersionRef(as.getWritePos(), targets[1], 32);
+    */
 
 
-    // TODO: correct stack offsets
-    // Write the return address (caller instruction)
-    // TODO: encode mov scrRegs[0], size_t.max, add VersionRef? noper
-    // may need to modify VersionRef to specify rel32, abs64...? size param
-    as.setWord(fun.raVal.outSlot, scrRegs[0].opnd(64));
-    as.setType(fun.raVal.outSlot, Type.INSPTR);
 
-
-
-
-    // Jump to the function entry block
-    as.writeByte(JMP_REL32_OPCODE);
-    as.writeInt(0, 32);
-    // TODO: add VersionRef for the jump to the function entry
 
 
 
@@ -1768,26 +1801,28 @@ void gen_ret(
         return;
     }
 
+
+
+
     // TODO
     assert (false);
 
+    //as.printStr("ret from " ~ instr.block.fun.getName);
+
+
+
+
+
+
+
+
+
+
+
+    // Get the return address into r0
+    //as.getWord(scrRegs64[0], raSlot);
+
     /*
-    // Find an extra scratch register
-    auto curWordOpnd = st.getWordOpnd(instr.getArg(0), 64);
-    X86Reg scrReg3;
-    if (curWordOpnd == allocRegs[0])
-        scrReg3 = allocRegs[1].reg(32);
-    else
-        scrReg3 = allocRegs[0].reg(32);
-
-    // Label for the bailout to interpreter cases
-    auto BAILOUT = new Label("RET_BAILOUT");
-
-    //ctx.as.printStr("ret from " ~ instr.block.fun.getName);
-
-    // Get the call instruction into r0
-    ctx.as.getWord(scrRegs64[0], raSlot);
-
     // If this is a new/constructor call, bailout
     ctx.as.getMember!("IRInstr", "opcode")(scrRegs64[1], scrRegs64[0]);   
     ctx.as.ptr(scrRegs64[2], &ir.ops.CALL_NEW);
@@ -1850,118 +1885,17 @@ void gen_ret(
     ctx.as.instr(SHL, scrRegs64[2], 3);
     ctx.as.instr(ADD, wspReg, scrRegs64[2]);
 
-    // Label for the interpreter jump
-    auto INTERP_JUMP = new Label("INTERP_JUMP");
-
-    // Function to make the interpreter jump to the call continuation
-    extern (C) void interpBranch(Interp interp, IRInstr callInstr)
-    {
-        auto desc = callInstr.getTarget(0);
-        interp.branch(desc);
-    }
-
     // If a JIT entry point exists, jump to it directly
     // Note: this will execute the phi node moves on entry
     ctx.as.getMember!("IRInstr", "jitCont")(scrRegs64[1], scrRegs64[0]);
-    ctx.as.instr(CMP, scrRegs64[1], 0);
-    ctx.as.instr(JE, INTERP_JUMP);
     //ctx.as.printStr("jit ret");
     ctx.as.instr(JMP, scrRegs64[1]);
-
-    // Make the interpreter jump to the call continuation and bailout
-    ctx.ol.addInstr(INTERP_JUMP);
-    //ctx.ol.printStr("interp ret");
-    ctx.ol.setMember!("Interp", "wsp")(interpReg, wspReg);
-    ctx.ol.setMember!("Interp", "tsp")(interpReg, tspReg);
-    ctx.ol.instr(MOV, RDI, interpReg);
-    ctx.ol.instr(MOV, RSI, scrRegs64[0]);
-    ctx.ol.ptr(scrRegs64[0], &interpBranch);
-    ctx.ol.instr(jit.encodings.CALL, scrRegs64[0]);
-    ctx.ol.instr(JMP, ctx.bailLabel);
-
-    // Bailout to the interpreter (out of line)
-    ctx.ol.addInstr(BAILOUT);
-    //ctx.ol.printStr("ret bailout in " ~ instr.block.fun.getName ~ " (" ~ instr.block.getName ~ ")");
-
-    ctx.ol.incStatCnt(&stats.numRetBailouts, scrRegs64[0]);
-
-    // Fallback to interpreter execution
-    // Spill all values, including arguments
-    // Call the interpreter call instruction
-    defaultFn(ctx.ol, ctx, st, instr);
     */
+
+
+
+
+
+
 }
-
-/*
-void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    //ctx.as.printStr(instr.toString);
-
-    // Spill all live values and instruction arguments
-    st.spillRegs(
-        as,
-        delegate bool(IRDstValue value)
-        {
-            if (instr.hasArg(value))
-                return true;
-
-            if (ctx.liveInfo.liveAfter(value, instr))
-                return true;
-
-            return false;
-        }
-    );
-
-    // Increment the unjitted instruction counter
-    as.incStatCnt(&stats.numUnjitInstrs, scrRegs64[0]);
-
-    // Get the function corresponding to this instruction
-    // alias void function(Interp interp, IRInstr instr) OpFn;
-    // RDI: first argument (interp)
-    // RSI: second argument (instr)
-    auto opFn = instr.opcode.opFn;
-
-    // Move the interpreter pointer into the first argument
-    as.instr(MOV, cargRegs[0], interpReg);
-    
-    // Load a pointer to the instruction in the second argument
-    as.ptr(cargRegs[1], instr);
-
-    // Set the interpreter's IP
-    // Only necessary if we may branch or allocate
-    if (instr.opcode.isBranch || instr.opcode.mayGC)
-    {
-        as.setMember!("Interp", "ip")(interpReg, cargRegs[1]);
-    }
-
-    // Store the stack pointers back in the interpreter
-    as.setMember!("Interp", "wsp")(interpReg, wspReg);
-    as.setMember!("Interp", "tsp")(interpReg, tspReg);
-
-    // Call the op function
-    as.ptr(scrRegs64[0], opFn);
-    as.instr(jit.encodings.CALL, scrRegs64[0]);
-
-    // If this is a branch instruction
-    if (instr.opcode.isBranch == true)
-    {
-        // Reload the stack pointers, the instruction may have changed them
-        as.getMember!("Interp", "wsp")(wspReg, interpReg);
-        as.getMember!("Interp", "tsp")(tspReg, interpReg);
-
-        // Bailout to the interpreter
-        as.instr(JMP, ctx.bailLabel);
-
-        if (opts.jit_dumpinfo)
-            writefln("interpreter bailout");
-    }
-
-    // If the instruction has an output slot, mark its
-    // output as being on the stack
-    if (instr.outSlot !is NULL_LOCAL)
-    {
-        st.valOnStack(instr);
-    }
-}
-*/
 

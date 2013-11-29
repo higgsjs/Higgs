@@ -352,7 +352,7 @@ class CodeBlock
             // Replace other strings of equal position by the new string
             auto r = assumeSorted!"a.pos < b.pos"(strings).trisect(newStr);
             //auto newRange = assumeSorted!"a.pos < b.pos"([newStr]);
-            strings = r[0].release() ~ newStr ~ r[2].release();
+            strings = r[0].release() ~ r[1].release() ~ newStr ~ r[2].release();
         }
     }
     /**

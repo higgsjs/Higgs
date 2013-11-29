@@ -726,32 +726,238 @@ class CodeGenState
     }
 }
 
+/// Fragment reference tuple
+alias Tuple!(size_t, "pos", CodeFragment, "frag", size_t, "size") FragmentRef;
+
+/**
+Create a relative 32-bit jump to a code fragment
+*/
+void writeJcc32Ref(string mnem, opcode...)(
+    CodeBlock as, 
+    FragmentRef[]* refList, 
+    CodeFragment frag
+)
+{
+    // Write an asm comment
+    as.writeASM(mnem, frag.getName);
+
+    as.writeBytes(opcode);
+
+    *refList ~= FragmentRef(as.getWritePos(), frag, 32);
+
+    as.writeInt(0, 32);
+}
+
+/// 32-bit relative jumps with fragment references
+/*
+alias writeJcc!("ja" , 0x0F, 0x87) ja;
+alias writeJcc!("jae", 0x0F, 0x83) jae;
+alias writeJcc!("jb" , 0x0F, 0x82) jb;
+alias writeJcc!("jbe", 0x0F, 0x86) jbe;
+alias writeJcc!("jc" , 0x0F, 0x82) jc;
+*/
+alias writeJcc32Ref!("je" , 0x0F, 0x84) je32Ref;
+/*
+alias writeJcc!("jg" , 0x0F, 0x8F) jg;
+alias writeJcc!("jge", 0x0F, 0x8D) jge;
+alias writeJcc!("jl" , 0x0F, 0x8C) jl;
+alias writeJcc!("jle", 0x0F, 0x8E) jle;
+alias writeJcc!("jna" , 0x0F, 0x86) jna;
+alias writeJcc!("jnae", 0x0F, 0x82) jnae;
+alias writeJcc!("jnb" , 0x0F, 0x83) jnb;
+alias writeJcc!("jnbe", 0x0F, 0x87) jnbe;
+alias writeJcc!("jnc" , 0x0F, 0x83) jnc;
+*/
+alias writeJcc32Ref!("jne" , 0x0F, 0x85) jne32Ref;
+/*
+alias writeJcc!("jng" , 0x0F, 0x8E) jng;
+alias writeJcc!("jnge", 0x0F, 0x8C) jnge;
+alias writeJcc!("jnl" , 0x0F, 0x8D) jnl;
+alias writeJcc!("jnle", 0x0F, 0x8F) jnle;
+*/
+alias writeJcc32Ref!("jno", 0x0F, 0x81) jno32Ref;
+/*
+alias writeJcc!("jnp", 0x0F, 0x8b) jnp;
+alias writeJcc!("jns", 0x0F, 0x89) jns;
+alias writeJcc!("jnz", 0x0F, 0x85) jnz;
+alias writeJcc!("jo" , 0x0F, 0x80) jo;
+alias writeJcc!("jp" , 0x0F, 0x8A) jp;
+alias writeJcc!("jpe", 0x0F, 0x8A) jpe;
+alias writeJcc!("jpo", 0x0F, 0x8B) jpo;
+alias writeJcc!("js" , 0x0F, 0x88) js;
+alias writeJcc!("jz" , 0x0F, 0x84) jz;
+*/
+alias writeJcc32Ref!("jmp", 0xE9) jmp32Ref;
+
+/**
+Executable code fragment
+*/
+abstract class CodeFragment
+{
+    /// Starting index in the executable heap
+    uint32_t startIdx = uint32_t.max;
+
+    /// Get a pointer to the executable code for this version
+    final auto getCodePtr(CodeBlock cb)
+    {
+        return cb.getAddress(startIdx);
+    }
+
+    /// Get the name string for this fragment
+    final string getName()
+    {
+        if (auto ver = cast(BlockVersion)this)
+            return ver.block.getName;
+        else if (auto branch = cast(BranchCode)this)
+            return "branch_" ~ branch.target.block.getName;
+        else
+            assert (false);
+    }
+}
+
+/**
+Branch edge transition code
+*/
+class BranchCode : CodeFragment
+{
+    /// Target block version (may be a stub)
+    BlockVersion target;
+
+    /// Code length, excluding the optional final jump
+    uint32_t codeLen;
+
+    this(BlockVersion target)
+    {
+        this.target = target;
+    }
+
+    /**
+    Generate move code for this branch edge
+    */
+    void genCode(CodeBlock as, CodeGenState predState, uint32_t startIdx = uint32_t.max)
+    {
+        assert (target !is null);
+        auto succState = target.state;
+        assert (succState !is null);
+        auto interp = succState.ctx.interp;
+        assert (interp !is null);
+
+        // Store the code start index
+        if (startIdx is uint32.max)
+           this.startIdx = cast(uint32_t)as.getWritePos();
+        else
+            this.startIdx = startIdx;
+
+        // List of moves to transition to the successor state
+        Move[] moveList;
+
+        /*
+        // For each value in the successor state
+        foreach (succVal, succAS; succState.allocState)
+        {
+            auto succPhi = (
+                (branch.branch !is null && succVal.block is branch.target)?
+                cast(PhiNode)succVal:null
+            );
+            auto predVal = (
+                succPhi?
+                branch.getPhiArg(succPhi):succVal
+            );
+            assert (succVal !is null);
+            assert (predVal !is null);
+
+            if (succPhi)
+                as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
+            else
+                as.comment("move " ~ succVal.getName);
+
+            // Get the source and destination operands for the arg word
+            X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
+            X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
+
+            if (srcWordOpnd != dstWordOpnd)
+                moveList ~= Move(dstWordOpnd, srcWordOpnd);
+
+            // Get the source and destination operands for the phi type
+            X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
+            X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
+
+            if (srcTypeOpnd != dstTypeOpnd)
+                moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
+
+            // Get the predecessor and successor type states
+            auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
+            auto succTS = succState.typeState.get(succVal, 0);
+
+            // Get the predecessor allocation state
+            auto predAS = predState.allocState.get(cast(IRDstValue)predVal, 0);
+
+            // If the successor value is a phi node
+            if (succPhi)
+            {
+                // If the phi is on the stack and the type is known,
+                // write the type to the stack to keep it in sync
+                if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
+                {
+                    assert (succTS & TF_SYNC);
+                    moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
+                }
+
+                // If the phi is in a register and the type is unknown,
+                // write 0 on the stack to avoid invalid references
+                if (!(succAS & RA_STACK) && !(succTS & TF_KNOWN))
+                {
+                    moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
+                }
+            }
+            else
+            {
+                // If the value wasn't before in a register, now is, and the type is unknown
+                // write 0 on the stack to avoid invalid references
+                if ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && (succAS & RA_GPREG) && !(succTS & TF_KNOWN))
+                {
+                    moveList ~= Move(new X86Mem(64, wspReg, 8 * succVal.outSlot), new X86Imm(0));
+                }
+
+                // If the type was not in sync in the predecessor and is now
+                // in sync in the successor, write the type to the type stack
+                if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
+                {
+                    moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
+                }
+            }
+        }
+        */
+
+        // Add a label string comment
+        as.writeStr(this.getName ~ ":");
+
+        // Execute the moves
+        execMoves(as, moveList, scrRegs[0], scrRegs[1]);
+
+        // Compute the inner code length
+        assert (as.getWritePos() >= this.startIdx);
+        codeLen = cast(uint32_t)as.getWritePos() - this.startIdx;
+        
+        // Encode the final jump and version reference
+        as.jmp32Ref(&interp.refList, this.target);
+
+        // Add the compiled fragment to the fragment list
+        interp.fragList ~= this;
+    }
+}
+
 /**
 Base class for basic block versions
 */
-abstract class BlockVersion
+abstract class BlockVersion : CodeFragment
 {
-    /// Maximum number of branch targets
-    static const size_t MAX_TARGETS = 2;
-
     // Associated block
     IRBlock block;
 
     /// Code generation state at block entry
     CodeGenState state;
-
-    /// Starting index in the executable code block
-    uint32_t startIdx = uint32_t.max;
-
-    /// Get a pointer to the executable code for this version
-    auto getCodePtr(CodeBlock cb)
-    {
-        return cb.getAddress(startIdx);
-    }
 }
-
-/// Version reference tuple
-alias Tuple!(size_t, "pos", BlockVersion, "ver") VersionRef;
 
 /**
 Stubbed block version
@@ -768,141 +974,70 @@ class VersionStub : BlockVersion
     }
 }
 
-/// Branch type enum
-enum BranchType
+/// Branch code shape enumeration
+enum BranchShape
 {
-    ILT,
-    ILE,
-    IGT,
-    IGE,
-    IEQ,
-    INE,
-    FLT,
-    FLE,
-    FGT,
-    FGE,
-    FEQ,
-    FNE,
-    OVF,
-    JUMP
+    NEXT0,  // Target 0 is next
+    NEXT1,  // Target 1 is next
+    DEFAULT // Neither target is next
 }
+
+/// Instruction code generation function
+alias void function(
+    CodeBlock as,
+    FragmentRef[]* refList,
+    BranchCode branch0,
+    BranchCode branch1,
+    BranchShape shape
+) BranchGenFn;
 
 /**
 Compiled block version instance
 */
 class VersionInst : BlockVersion
 {
-    /// Final branch test type
-    BranchType branchType;
+    /// Branch code fragments
+    BranchCode branchCode[2];
 
-    /// Branch test operands
-    X86Opnd testOpnds[2];
+    /// Final branch code generation function
+    BranchGenFn branchGenFn;
 
-    // Target block versions (may be stubs)
-    BlockVersion targets[MAX_TARGETS];
-
-    /// Inner code length
+    /// Inner code length, excluding final branches
     uint32_t codeLen;
-
-    /// Move code indices
-    uint32_t moveIdx[MAX_TARGETS];
-
-    /// Move code length
-    uint32_t moveLen[MAX_TARGETS];
 
     this(IRBlock block, CodeGenState state)
     {
         this.block = block;
         this.state = state;
     }
-
-    /// Generate code for the final test and branch
+   
+    /**
+    Generate the final branch for the block
+    */
     void genBranch(
         CodeBlock as,
-        BranchType branchType,
-        X86Opnd opnd0,
-        X86Opnd opnd1,
-        CodeGenState state0,
-        CodeGenState state1,
-        BranchEdge branch0,
-        BranchEdge branch1
+        BranchCode branch0,
+        BranchCode branch1,
+        BranchShape shape,
+        BranchGenFn genFn
     )
     {
-        assert (state0 !is null && branch0 !is null);
-        assert (targets[0] is null && targets[1] is null);
-
-        auto interp = state0.ctx.interp;
-        assert (interp !is null);
-
-        // Store the branch type and operands
-        this.branchType = branchType;
-        testOpnds[0] = opnd0;
-        testOpnds[1] = opnd1;
+        // Store the branch generation function and targets
+        this.branchGenFn = genFn;
+        this.branchCode = [branch0, branch1];
 
         // Compute the inner code length
-        assert (as.getWritePos() >= startIdx);
-        codeLen = cast(uint32_t)as.getWritePos() - startIdx;
+        assert (as.getWritePos() >= this.startIdx);
+        codeLen = cast(uint32_t)as.getWritePos() - this.startIdx;
 
-        // Switch on the branch type
-        switch (branchType)
-        {
-            // Integer equality
-            case BranchType.IEQ:
-            as.cmp(opnd0, opnd1);
-            as.jne(Label.BRANCH_TARGET1);
-            break;
-
-            // Overflow test
-            case BranchType.OVF:
-            as.jo(Label.BRANCH_TARGET1);
-            break;
-
-            // Direct jump
-            case BranchType.JUMP:
-            assert (branch1 is null);
-            break;
-
-            default:
-            assert (false);
-        }
-
-        // Generate moves for the first branch
-        moveIdx[0] = cast(uint32_t)as.getWritePos();
-        targets[0] = genBranchEdge(
+        // Generate the final branch
+        genFn(
             as,
-            branch0,
-            state0,
-            branch1 is null
+            &state.ctx.interp.refList,
+            branch0, 
+            branch1, 
+            shape
         );
-        moveLen[0] = cast(uint32_t)as.getWritePos() - moveIdx[0];
-
-        // Write a jump to the true target
-        as.writeASM("jmp", branch0.target.getName);
-        as.writeByte(JMP_REL32_OPCODE);
-        interp.refList ~= VersionRef(as.getWritePos(), targets[0]);
-        as.writeInt(0, 32);
-
-        // Generate moves for the second branch
-        if (branch1 !is null)
-        {
-            // Second target label
-            as.label(Label.BRANCH_TARGET1);
-
-            moveIdx[1] = cast(uint32_t)as.getWritePos();
-            targets[1] = genBranchEdge(
-                as,
-                branch1,
-                state1,
-                false
-            );
-            moveLen[1] = cast(uint32_t)as.getWritePos() - moveIdx[1];
-
-            // Write a jump to the false target
-            as.writeASM("jmp", branch1.target.getName);
-            as.writeByte(JMP_REL32_OPCODE);
-            interp.refList ~= VersionRef(as.getWritePos(), targets[1]);
-            as.writeInt(0, 32);
-        }
     }
 }
 
@@ -988,16 +1123,14 @@ BlockVersion getBlockVersion(
     // Queue the new version to be compiled
     interp.compQueue ~= ver;
 
-    writeln("comp queue len: ", interp.compQueue.length);
-
     // Return the newly created block version
     return ver;
 }
 
 /**
-Generate moves for a given branch edge transition
+Request a branch edge transition matching the incoming state
 */
-BlockVersion genBranchEdge(
+BranchCode getBranchEdge(
     CodeBlock as,
     BranchEdge branch,
     CodeGenState predState,
@@ -1076,94 +1209,9 @@ BlockVersion genBranchEdge(
         succState, 
         noStub
     );
-    succState = succVer.state;
 
-    // List of moves to transition to the successor state
-    Move[] moveList;
-
-    /*
-    // For each value in the successor state
-    foreach (succVal, succAS; succState.allocState)
-    {
-        auto succPhi = (
-            (branch.branch !is null && succVal.block is branch.target)?
-            cast(PhiNode)succVal:null
-        );
-        auto predVal = (
-            succPhi?
-            branch.getPhiArg(succPhi):succVal
-        );
-        assert (succVal !is null);
-        assert (predVal !is null);
-
-        if (succPhi)
-            as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
-        else
-            as.comment("move " ~ succVal.getName);
-
-        // Get the source and destination operands for the arg word
-        X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
-        X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
-
-        if (srcWordOpnd != dstWordOpnd)
-            moveList ~= Move(dstWordOpnd, srcWordOpnd);
-
-        // Get the source and destination operands for the phi type
-        X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
-        X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
-
-        if (srcTypeOpnd != dstTypeOpnd)
-            moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
-
-        // Get the predecessor and successor type states
-        auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
-        auto succTS = succState.typeState.get(succVal, 0);
-
-        // Get the predecessor allocation state
-        auto predAS = predState.allocState.get(cast(IRDstValue)predVal, 0);
-
-        // If the successor value is a phi node
-        if (succPhi)
-        {
-            // If the phi is on the stack and the type is known,
-            // write the type to the stack to keep it in sync
-            if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
-            {
-                assert (succTS & TF_SYNC);
-                moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
-            }
-
-            // If the phi is in a register and the type is unknown,
-            // write 0 on the stack to avoid invalid references
-            if (!(succAS & RA_STACK) && !(succTS & TF_KNOWN))
-            {
-                moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
-            }
-        }
-        else
-        {
-            // If the value wasn't before in a register, now is, and the type is unknown
-            // write 0 on the stack to avoid invalid references
-            if ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && (succAS & RA_GPREG) && !(succTS & TF_KNOWN))
-            {
-                moveList ~= Move(new X86Mem(64, wspReg, 8 * succVal.outSlot), new X86Imm(0));
-            }
-
-            // If the type was not in sync in the predecessor and is now
-            // in sync in the successor, write the type to the type stack
-            if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
-            {
-                moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
-            }
-        }
-    }
-    */
-
-    // Execute the moves
-    execMoves(as, moveList, scrRegs[0], scrRegs[1]);
-
-    // Return the successor block version
-    return succVer;
+    // Return a branch edge code object for the successor
+    return new BranchCode(succVer);
 }
 
 /**
@@ -1201,7 +1249,7 @@ void compile(BlockVersion startVer)
         auto ver = interp.compQueue.front;
         interp.compQueue.popFront();
 
-        // Note the code start index for this version
+        // Note the code start index for this fragment
         if (ver.startIdx is ver.startIdx.max)
            ver.startIdx = cast(uint32_t)as.getWritePos();
 
@@ -1235,17 +1283,19 @@ void compile(BlockVersion startVer)
             // Jump to the compiled stub
             as.jmp(X86Opnd(RAX));
         }
-        else
+
+        // If this is a version instance
+        else if (auto inst = cast(VersionInst)ver)
         {
             writeln("compiling instance");
 
-            auto inst = cast(VersionInst)ver;
-            assert (inst !is null);
+            auto block = inst.block;
+            assert (inst.block !is null);
 
-            as.comment("Instance of " ~ inst.block.getName());
+            as.comment("Instance of " ~ block.getName());
 
             // For each instruction of the block
-            for (auto instr = ver.block.firstInstr; instr !is null; instr = instr.next)
+            for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             {
                 writeln("compiling instr: ", instr.toString());
 
@@ -1278,24 +1328,49 @@ void compile(BlockVersion startVer)
             as.linkLabels();
         }
 
+        else
+        {
+            assert (false, "invalid code fragment");
+        }
+
         // TODO
         //if (opts.jit_dumpasm)
         {
            writeln(as.toString);
         }
+
+        // Add the compiled version to the fragment
+        // list in the order they were compiled in
+        interp.fragList ~= ver;
     }
 
     assert (interp.compQueue.length is 0);
 
-    // Link the version references
+    // For each fragment reference
     auto startPos = as.getWritePos();
     foreach (refr; interp.refList)
     {
-        assert (refr.ver.startIdx !is refr.ver.startIdx.max);
-        auto offset = refr.ver.startIdx - (refr.pos + 4);
+        assert (refr.frag.startIdx !is refr.frag.startIdx.max);
         as.setWritePos(refr.pos);
-        as.writeInt(offset, 32);
-        writeln("linking version ref, offset=", offset);
+
+        // Switch on the reference size/type
+        switch (refr.size)
+        {
+            case 32:
+            auto offset = refr.frag.startIdx - (refr.pos + 4);
+            as.writeInt(offset, 32);
+            writeln("linking fragment ref, offset=", offset);
+            break;
+
+            case 64:
+            as.writeInt(cast(int64_t)refr.frag.getCodePtr(as), 64);
+            writeln("linking absolute ref");
+            break;
+
+            default:
+            assert (false);
+        }
+
     }
     as.setWritePos(startPos);
 
@@ -1334,12 +1409,17 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
     // Write a relative 32-bit jump to the instance over the stub code
     auto startPos = execHeap.getWritePos();
     execHeap.setWritePos(stub.startIdx);
+    execHeap.writeASM("jmp", stub.inst.getName);
     execHeap.writeByte(JMP_REL32_OPCODE);
     auto offset = stub.inst.startIdx - (execHeap.getWritePos + 4);
     execHeap.writeInt(offset, 32);
     execHeap.setWritePos(startPos);
 
     writeln("leaving compileStub");
+
+
+    writeln(execHeap.toString);
+
 
     // Return the address of the instance
     return stub.inst.getCodePtr(execHeap);

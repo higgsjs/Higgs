@@ -400,8 +400,8 @@ class Interp
     /// Executable heap
     CodeBlock execHeap;
 
-    /// List of block versions, in memory order
-    BlockVersion[] versionList;
+    /// List of code fragments, in memory order
+    CodeFragment[] fragList;
 
     /// Map of blocks to lists of existing versions
     BlockVersion[][IRBlock] versionMap;
@@ -409,8 +409,8 @@ class Interp
     /// Queue of block versions to be compiled
     BlockVersion[] compQueue;
 
-    // List of references to block versions to be linked
-    VersionRef[] refList;
+    // List of references to code fragments to be linked
+    FragmentRef[] refList;
 
     /**
     Constructor, initializes/resets the interpreter state
