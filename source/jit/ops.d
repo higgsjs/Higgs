@@ -260,13 +260,13 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
             function void(
                 CodeBlock as,
                 FragmentRef[]* refList,
-                BranchCode branch0,
-                BranchCode branch1,
+                CodeFragment target0,
+                CodeFragment target1,
                 BranchShape shape
             )
             {
-                jno32Ref(as, refList, branch0);
-                jmp32Ref(as, refList, branch1);
+                jno32Ref(as, refList, target0);
+                jmp32Ref(as, refList, target1);
             }
         );
 
@@ -1329,13 +1329,13 @@ void gen_if_true(
         function void(
             CodeBlock as,
             FragmentRef[]* refList,
-            BranchCode branch0,
-            BranchCode branch1,
+            CodeFragment target0,
+            CodeFragment target1,
             BranchShape shape
         )
         {
-            je32Ref(as, refList, branch0);
-            jmp32Ref(as, refList, branch1);
+            je32Ref(as, refList, target0);
+            jmp32Ref(as, refList, target1);
         }
     );
 
@@ -1367,12 +1367,12 @@ void gen_jump(
         function void(
             CodeBlock as,
             FragmentRef[]* refList,
-            BranchCode branch0,
-            BranchCode branch1,
+            CodeFragment target0,
+            CodeFragment target1,
             BranchShape shape
         )
         {
-            jmp32Ref(as, refList, branch0);
+            jmp32Ref(as, refList, target0);
         }
     );
 
@@ -1674,60 +1674,59 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
         fun.entryBlock, 
-        new CodeGenState(
-            new CodeGenCtx(
-                interp,
-                fun
-            )
-        ),
+        new CodeGenState(fun.getCtx(false, interp)),
         true
     );
 
-    // Request a stub for the call continuation
-    auto contVer = getBlockVersion(
-        instr.getTarget(0).target,
+    // Request a branch object for the continuation
+    auto contBranch = getBranchEdge(
+        as,
+        instr.getTarget(0),
         st,
         false
     );
 
+    // TODO: exception branch, if any
 
-    // TODO
-    /*
-    /// Generate code for the final call branch
-    ver.genCall(
+    // Jump to the target block directly
+    ver.genBranch(
         as,
-        fun,
+        contBranch,
         entryVer,
-        contVer
+        BranchShape.DEFAULT,
+        function void(
+            CodeBlock as,
+            FragmentRef[]* refList,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            // Get the return address slot of the callee
+            auto entryVer = cast(BlockVersion)target0;
+            assert (entryVer !is null);
+            auto raSlot = entryVer.block.fun.raVal.outSlot;
+            assert (raSlot !is NULL_LOCAL);
+
+            // Write the return address on the stack
+            as.writeASM("mov", scrRegs[0], target0.getName);
+            as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
+            *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
+            as.setWord(raSlot, scrRegs[0].opnd(64));
+            as.setType(raSlot, Type.INSPTR);
+
+            // Jump to the function entry block
+            jmp32Ref(as, refList, target1);
+        }
     );
-    */
 
-    /*
-        // Write the return address on the stack
-        as.writeASM("mov", scrRegs[0], targets[0].block.getName);
-        as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
-        interp.refList ~= VersionRef(as.getWritePos() - 8, targets[0], 64);
-        as.setWord(raSlot, scrRegs[0].opnd(64));
-        as.setType(raSlot, Type.INSPTR);
+    // Add the return value move code to the continuation branch
+    contBranch.startIdx = cast(uint32_t)as.getWritePos();
+    as.setWord(instr.outSlot, retWordReg.opnd(64));
+    as.setType(instr.outSlot, retTypeReg.opnd(8));
 
-        // Jump to the function entry block
-        as.writeASM("jmp", targets[1].block.getName);
-        as.writeByte(JMP_REL32_OPCODE);
-        as.writeInt(0, 32);
-        interp.refList ~= VersionRef(as.getWritePos(), targets[1], 32);
-    */
-
-
-
-
-
-
-
-
-
-
-
-
+    // Generate the continuation branch edge code
+    contBranch.genCode(as, st);
 }
 
 void gen_ret(
@@ -1801,101 +1800,56 @@ void gen_ret(
         return;
     }
 
-
-
-
-    // TODO
-    assert (false);
-
     //as.printStr("ret from " ~ instr.block.fun.getName);
 
+    // TODO: support for return from new
+    assert (st.ctx.newCall is false);
 
-
-
-
-
-
-
-
-
-
-    // Get the return address into r0
-    //as.getWord(scrRegs64[0], raSlot);
-
-    /*
-    // If this is a new/constructor call, bailout
-    ctx.as.getMember!("IRInstr", "opcode")(scrRegs64[1], scrRegs64[0]);   
-    ctx.as.ptr(scrRegs64[2], &ir.ops.CALL_NEW);
-    ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
-    ctx.as.instr(JE, BAILOUT);
-
-    // Get the output slot for the call instruction into scratch r1
-    ctx.as.getMember!("IRInstr", "outSlot")(scrRegs32[1], scrRegs64[0]);
-
-    // Get the actual argument count into r2
-    ctx.as.getWord(scrRegs32[2], argcSlot);
+    // Get the actual argument count into r0
+    as.getWord(scrRegs[0], argcSlot);
 
     // Compare the arg count against the expected count
-    ctx.as.instr(CMP, scrRegs32[2], numParams);
+    as.cmp(scrRegs[0].opnd(32), X86Opnd(numParams));
 
-    // Compute the number of extra arguments into r2
-    ctx.as.instr(SUB, scrRegs32[2], numParams);
-    ctx.as.instr(MOV, scrReg3, 0);
-    ctx.as.instr(CMOVL, scrRegs32[2], scrReg3);
+    // Compute the number of extra arguments into r0
+    as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
+    as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
+    as.cmovl(scrRegs[0], scrRegs[1].opnd(32));
 
-    // Adjust the output slot for extra arguments
-    ctx.as.instr(ADD, scrRegs32[1], scrRegs32[2]);
-
-    // Compute the number of stack slots to pop into r2
-    ctx.as.instr(ADD, scrRegs32[2], numLocals);
+    // Compute the number of stack slots to pop into r0
+    as.add(scrRegs[0].opnd(32), X86Opnd(numLocals));
 
     // Copy the return value word
     auto retOpnd = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as, 
         instr, 
         0,
         64,
-        scrReg3.reg(64),
+        scrRegs[1].opnd(64),
         true,
         false
     );
-    ctx.as.instr(
-        MOV, 
-        new X86Mem(64, wspReg, 8 * numLocals, scrRegs64[1], 8),
-        retOpnd
-    );
+    as.mov(retWordReg.opnd(64),retOpnd);
 
     // Copy the return value type
     auto typeOpnd = st.getTypeOpnd(
-        ctx.as, 
+        as,
         instr, 
         0, 
-        scrReg3.reg(8),
+        scrRegs[1].opnd(8),
         true
     );
-    ctx.as.instr(
-        MOV, 
-        new X86Mem(8, tspReg, numLocals, scrRegs64[1]),
-        typeOpnd
-    );
+    as.mov(retTypeReg.opnd(8), typeOpnd);
+
+    // Get the return address into r1
+    as.getWord(scrRegs[0], raSlot);
 
     // Pop all local stack slots and arguments
-    ctx.as.instr(ADD, tspReg, scrRegs64[2]);
-    ctx.as.instr(SHL, scrRegs64[2], 3);
-    ctx.as.instr(ADD, wspReg, scrRegs64[2]);
+    as.add(tspReg.opnd(64), scrRegs[0].opnd(64));
+    as.shl(scrRegs[1].opnd(64), X86Opnd(3));
+    as.add(wspReg.opnd(64), scrRegs[0].opnd(64));
 
-    // If a JIT entry point exists, jump to it directly
-    // Note: this will execute the phi node moves on entry
-    ctx.as.getMember!("IRInstr", "jitCont")(scrRegs64[1], scrRegs64[0]);
-    //ctx.as.printStr("jit ret");
-    ctx.as.instr(JMP, scrRegs64[1]);
-    */
-
-
-
-
-
-
+    // Jump to the return address
+    as.jmp(scrRegs[0].opnd(64));
 }
 

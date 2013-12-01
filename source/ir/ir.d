@@ -52,6 +52,7 @@ import ir.livevars;
 import interp.interp;
 import interp.layout;
 import interp.object;
+import jit.jit;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -109,6 +110,12 @@ class IRFunction : IdObject
 
     /// Liveness information
     LiveInfo liveInfo = null;
+
+    /// Code generation context for this function
+    CodeGenCtx ctx = null;
+
+    /// Code generation context for new calls
+    CodeGenCtx newCtx = null;
 
     /// Constructor
     this(FunExpr ast)

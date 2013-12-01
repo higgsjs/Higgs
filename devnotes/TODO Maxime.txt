@@ -82,23 +82,33 @@ TODO: support for print(), useful for debugging
 TODO: phi node handling
 - without reg alloc, everything on stack
 
+TODO: add(reg, int)
+
 TODO: enable working unit tests
 
-TODO: more complete return support
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: more complete return support
 - but not yet return from new
-- start with very plain return
+- start with plain return, no return from new
 
-TODO: support for call_prim
+[DONE] TODO: support for call_prim
+- retWordReg, retTypeReg
+- Return BranchCode object
 
-TODO: getCtx(IRFunction fun, bool newCall)
+[DONE] TODO: getCtx(IRFunction fun, bool newCall)
 - Add ctx equality to state comparison
-
-
-
-
-
-
-
+- Problem: two generic contexts?
+  - Examine getBlockVersion
+  - When does the generic state get created? Can we create one with matching ctx?
 
 [DONE] TODO: reimplement add_i32_ovf, etc.
 

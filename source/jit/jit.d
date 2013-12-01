@@ -84,6 +84,12 @@ immutable X86Reg[] scrRegs = [RAX, RDI, RSI];
 /// RCX, RBX, RBP, R8-R12: 9 allocatable registers
 immutable X86Reg[] allocRegs = [RCX, RDX, RBX, RBP, R8, R9, R10, R11, R12];
 
+/// Return word register
+alias RCX retWordReg;
+
+/// Return type register
+alias DL retTypeReg;
+
 /// Minimum space required to compile a block (256KB)
 const size_t JIT_MIN_BLOCK_SPACE = 1 << 18; 
 
@@ -107,10 +113,33 @@ class CodeGenCtx
     /// Function this code belongs to
     IRFunction fun;
 
-    this(Interp interp, IRFunction fun)
+    /// New call flag
+    bool newCall;
+
+    this(IRFunction fun, bool newCall, Interp interp)
     {
-        this.interp = interp;
         this.fun = fun;
+        this.newCall = newCall;
+        this.interp = interp;
+    }
+}
+
+/**
+Get a code generation context for a given function
+*/
+CodeGenCtx getCtx(IRFunction fun, bool newCall, Interp interp)
+{
+    if (newCall is false)
+    {
+        if (fun.ctx is null)
+            fun.ctx = new CodeGenCtx(fun, false, interp);
+        return fun.ctx;     
+    }
+    else
+    {
+        if (fun.newCtx is null)
+            fun.newCtx = new CodeGenCtx(fun, true, interp);
+        return fun.newCtx;
     }
 }
 
@@ -235,6 +264,10 @@ class CodeGenState
 
         // Difference (penalty) sum
         size_t diff = 0;
+
+        // If the contexts are different, the states are incompatible
+        if (pred.ctx !is succ.ctx)
+            return size_t.max;
 
         // TODO
         /*
@@ -986,8 +1019,8 @@ enum BranchShape
 alias void function(
     CodeBlock as,
     FragmentRef[]* refList,
-    BranchCode branch0,
-    BranchCode branch1,
+    CodeFragment target0,
+    CodeFragment target1,
     BranchShape shape
 ) BranchGenFn;
 
@@ -996,8 +1029,8 @@ Compiled block version instance
 */
 class VersionInst : BlockVersion
 {
-    /// Branch code fragments
-    BranchCode branchCode[2];
+    /// Branch targets
+    CodeFragment targets[2];
 
     /// Final branch code generation function
     BranchGenFn branchGenFn;
@@ -1016,26 +1049,26 @@ class VersionInst : BlockVersion
     */
     void genBranch(
         CodeBlock as,
-        BranchCode branch0,
-        BranchCode branch1,
+        CodeFragment target0,
+        CodeFragment target1,
         BranchShape shape,
         BranchGenFn genFn
     )
     {
         // Store the branch generation function and targets
         this.branchGenFn = genFn;
-        this.branchCode = [branch0, branch1];
+        this.targets = [target0, target1];
 
         // Compute the inner code length
         assert (as.getWritePos() >= this.startIdx);
         codeLen = cast(uint32_t)as.getWritePos() - this.startIdx;
 
-        // Generate the final branch
+        // Generate the final branch code
         genFn(
             as,
             &state.ctx.interp.refList,
-            branch0, 
-            branch1, 
+            target0, 
+            target1, 
             shape
         );
     }
@@ -1440,12 +1473,7 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
     // Create a version instance object for the function entry
     auto entryInst = new VersionInst(
         fun.entryBlock, 
-        new CodeGenState(
-            new CodeGenCtx(
-                interp,
-                fun
-            )
-        )
+        new CodeGenState(fun.getCtx(false, interp))
     );
 
     // Note the code start index for this version
@@ -1521,24 +1549,22 @@ void setMember(string fName)(CodeBlock as, X86Reg baseReg, X86Reg srcReg)
     return as.setField(baseReg, fSize, fOffset, srcReg);
 }
 
-/*
 /// Read from the word stack
-void getWord(Assembler as, X86Reg dstReg, int32_t idx)
+void getWord(CodeBlock as, X86Reg dstReg, int32_t idx)
 {
-    if (dstReg.type == X86Reg.GP)
-        as.instr(MOV, dstReg, new X86Mem(dstReg.size, wspReg, 8 * idx));
-    else if (dstReg.type == X86Reg.XMM)
-        as.instr(MOVSD, dstReg, new X86Mem(64, wspReg, 8 * idx));
+    if (dstReg.type is X86Reg.GP)
+        as.mov(X86Opnd(dstReg), X86Opnd(dstReg.size, wspReg, 8 * idx));
+    else if (dstReg.type is X86Reg.XMM)
+        as.movsd(X86Opnd(dstReg), X86Opnd(64, wspReg, 8 * idx));
     else
         assert (false, "unsupported register type");
 }
 
 /// Read from the type stack
-void getType(Assembler as, X86Reg dstReg, int32_t idx)
+void getType(CodeBlock as, X86Reg dstReg, int32_t idx)
 {
-    as.instr(MOV, dstReg, new X86Mem(8, tspReg, idx));
+    as.mov(X86Opnd(dstReg), X86Opnd(8, tspReg, idx));
 }
-*/
 
 /// Write to the word stack
 void setWord(CodeBlock as, int32_t idx, X86Opnd src)
