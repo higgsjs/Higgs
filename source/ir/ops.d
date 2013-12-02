@@ -116,24 +116,24 @@ Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &gen_is_rawptr, OpInfo.BO
 Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &gen_is_const, OpInfo.BOOL_VAL };
 
 // Type conversion
-Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], /*&gen_i32_to_f64*/null };
-Opcode F64_TO_I32 = { "f64_to_i32", true, [OpArg.LOCAL], /*&gen_f64_to_i32*/null };
+Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &gen_i32_to_f64 };
+Opcode F64_TO_I32 = { "f64_to_i32", true, [OpArg.LOCAL], &gen_f64_to_i32 };
 
 // Integer arithmetic
 Opcode ADD_I32 = { "add_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_i32 };
 Opcode SUB_I32 = { "sub_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_sub_i32 };
 Opcode MUL_I32 = { "mul_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mul_i32 };
-Opcode DIV_I32 = { "div_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_div_i32*/null };
-Opcode MOD_I32 = { "mod_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mod_i32*/null };
+//Opcode DIV_I32 = { "div_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_div_i32*/null };
+Opcode MOD_I32 = { "mod_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mod_i32 };
 
 // Bitwise operations
 Opcode AND_I32 = { "and_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_and_i32 };
 Opcode OR_I32 = { "or_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_or_i32 };
 Opcode XOR_I32 = { "xor_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_xor_i32 };
-Opcode LSFT_I32 = { "lsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lsft_i32*/null };
-Opcode RSFT_I32 = { "rsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_rsft_i32*/null };
-Opcode URSFT_I32 = { "ursft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ursft_i32*/null };
-Opcode NOT_I32 = { "not_i32", true, [OpArg.LOCAL], /*&gen_not_i32*/null };
+Opcode LSFT_I32 = { "lsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_lsft_i32 };
+Opcode RSFT_I32 = { "rsft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_rsft_i32 };
+Opcode URSFT_I32 = { "ursft_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ursft_i32 };
+Opcode NOT_I32 = { "not_i32", true, [OpArg.LOCAL], &gen_not_i32 };
 
 // Floating-point arithmetic
 Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_f64 };
@@ -156,26 +156,26 @@ Opcode POW_F64 = { "pow_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_pow_f64*/
 Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_i32_ovf, OpInfo.BRANCH };
 Opcode SUB_I32_OVF = { "sub_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_sub_i32_ovf, OpInfo.BRANCH };
 Opcode MUL_I32_OVF = { "mul_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mul_i32_ovf, OpInfo.BRANCH };
-Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lsft_i32_ovf*/null , OpInfo.BRANCH };
+//Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lsft_i32_ovf*/null , OpInfo.BRANCH };
 
 // Integer comparison instructions
 Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i32, OpInfo.BOOL_VAL };
 Opcode NE_I32 = { "ne_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_i32, OpInfo.BOOL_VAL };
-Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lt_i32*/null , OpInfo.BOOL_VAL };
-Opcode GT_I32 = { "gt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_gt_i32*/null , OpInfo.BOOL_VAL };
-Opcode LE_I32 = { "le_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_le_i32*/null , OpInfo.BOOL_VAL };
-Opcode GE_I32 = { "ge_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ge_i32*/null , OpInfo.BOOL_VAL };
-Opcode EQ_I8 = { "eq_i8", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_eq_i8*/null , OpInfo.BOOL_VAL };
+Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_lt_i32, OpInfo.BOOL_VAL };
+Opcode GT_I32 = { "gt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_gt_i32, OpInfo.BOOL_VAL };
+Opcode LE_I32 = { "le_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_le_i32, OpInfo.BOOL_VAL };
+Opcode GE_I32 = { "ge_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ge_i32, OpInfo.BOOL_VAL };
+Opcode EQ_I8 = { "eq_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i8, OpInfo.BOOL_VAL };
 
 // Pointer comparison instructions
-Opcode EQ_REFPTR = { "eq_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_eq_refptr*/null , OpInfo.BOOL_VAL };
-Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ne_refptr*/null , OpInfo.BOOL_VAL };
-Opcode EQ_RAWPTR = { "eq_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_eq_rawptr*/null , OpInfo.BOOL_VAL };
-Opcode NE_RAWPTR = { "ne_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ne_rawptr*/null , OpInfo.BOOL_VAL };
+Opcode EQ_REFPTR = { "eq_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_refptr, OpInfo.BOOL_VAL };
+Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_refptr, OpInfo.BOOL_VAL };
+Opcode EQ_RAWPTR = { "eq_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_rawptr, OpInfo.BOOL_VAL };
+Opcode NE_RAWPTR = { "ne_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_rawptr, OpInfo.BOOL_VAL };
 
 // Constant comparison instructions
-Opcode EQ_CONST = { "eq_const", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_eq_const*/null , OpInfo.BOOL_VAL };
-Opcode NE_CONST = { "ne_const", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ne_const*/null , OpInfo.BOOL_VAL };
+Opcode EQ_CONST = { "eq_const", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_const, OpInfo.BOOL_VAL };
+Opcode NE_CONST = { "ne_const", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_const, OpInfo.BOOL_VAL };
 
 // Floating-point comparison instructions
 Opcode EQ_F64 = { "eq_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_eq_f64*/null , OpInfo.BOOL_VAL };

@@ -1138,9 +1138,17 @@ alias writeRMMulti!(
     0x07  // opExtImm
 ) cmp;
 
+/// cdq - Convert doubleword to quadword
+void cdq(CodeBlock cb)
+{
+    cb.writeASM("cdq");
+    cb.writeBytes(0x99);
+}
+
 /// cqo - Convert quadword to octaword
 void cqo(CodeBlock cb)
 {
+    cb.writeASM("cqo");
     cb.writeBytes(0x48, 0x99);
 }
 
@@ -1732,7 +1740,7 @@ void writeShift(
     }    
     else if (opnd1.isReg && opnd1.reg == CL)
     {
-        cb.writeRMInstr!('l', opExt, opMemClPref)(szPref, rexW, opnd0, opnd1);
+        cb.writeRMInstr!('l', opExt, opMemClPref)(szPref, rexW, opnd0, X86Opnd.NONE);
     }
     else
     {

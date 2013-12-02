@@ -22,15 +22,17 @@ TODO: add --jit_trace command-line option
 
 TODO: complete WAV output support, test it out with sine wave
 
-TODO: add source position info for call sites
-- Map of call sites to source pos in IRFunction?
-- Do this in genCallTargets?
-- Throw instr also needs a source pos
-
 TODO: optimize x86 instr encoding based on usage
 - e.g.: reg64 to mem move and vice versa?
 
 TODO: increase default str table size, use power of 2 sizing, eliminate modulo
+
+------------------------------------------------------------------------------
+
+TODO: add source position info for call sites
+- Map of call sites to source pos in IRFunction?
+- Do this in genCallTargets?
+- Throw instr also needs a source pos
 
 TODO: function call inlining
 
@@ -51,6 +53,16 @@ TODO: rename Interp class to VM
 
 TODO: unit test for global property access of prop from Object.prototype
 
+TODO: work towards object property access?
+- load/store
+- make_value
+- map info access
+
+TODO: regular function calls
+- Need to do AST->IR conversion
+  - May need special kind of stub?
+- Should also store code ptr on IRFunction
+
 ------------------------------------------------------------------------------
 
 Second milestone: load runtime, working REPL with --nostdlib
@@ -63,44 +75,44 @@ TODO: blog
 - conference invites (mloc.js, Web Directions Code)
 - book invite
 - progress and specifics of incremental JIT
+- stress/discomfort of having to take many important design decisions at once
+  - exploratory programming
 
-TODO: work towards object property access?
-- load/store
-- make_value
-- map info access
-
-TODO: regular function calls
-- Need to do AST->IR conversion
-  - May need special kind of stub?
-- Should also store code ptr on IRFunction
+TODO: set_str
 
 TODO: support for print(), useful for debugging
 
 TODO: phi node handling
 - without reg alloc, everything on stack
-
-TODO: enable all working unit tests
-
-TODO: add(reg, int)
-
-TODO: set_str
+- need to implement allocState
 
 TODO: jit_dumpasm, print only compiled code
+- CodeFragment.toString
 
 TODO: CodeBlock toString needs start and end offsets
 - Also print 32-bit offsets/addresses
 
-TODO: less-than comparison
-
-TODO: mod_i32
-
-
+FIXME: !0 should produce true, not infinity
+- same for 0 && 2
+- phi node problem? No?
 
 
 
 
 
 
+
+[DONE] TODO: enable all working unit tests
+
+[DONE] TODO: log when phi nodes are used
+
+[DONE] TODO: not_i32
+
+[DONE] TODO: left shift, right shift
+
+[DONE] TODO: less-than comparison
+
+[DONE] TODO: mod_i32
 
 [DONE] FIXME: invalid offsets
 linking fragment ref, offset=18446744073709549282

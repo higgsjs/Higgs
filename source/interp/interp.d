@@ -883,17 +883,17 @@ class Interp
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
         push(numLocals);
 
-        writeln(fun);
+        //writeln(fun);
 
         // Compile the entry block of the unit function
         auto entryFn = compileUnit(this, fun);
 
-        writeln("calling code at: ", entryFn);
+        //writeln("calling code at: ", entryFn);
 
         // Call into the compiled code
         entryFn();
 
-        writeln("returned");
+        //writeln("returned");
     }
 
     /**

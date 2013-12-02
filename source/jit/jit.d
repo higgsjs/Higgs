@@ -891,7 +891,7 @@ class BranchCode : CodeFragment
         // List of moves to transition to the successor state
         Move[] moveList;
 
-        /*
+        /*        
         // For each value in the successor state
         foreach (succVal, succAS; succState.allocState)
         {
@@ -1194,6 +1194,8 @@ BranchCode getBranchEdge(
         if (branch.branch is null || phi.hasNoUses)
             continue;
 
+        writeln("phi node in ", phi.block.fun.getName);
+
         // Get the phi argument
         auto arg = branch.getPhiArg(phi);
         assert (
@@ -1297,7 +1299,7 @@ void compile(BlockVersion startVer)
         // If this is a version stub
         if (auto stub = cast(VersionStub)ver)
         {
-            writeln("compiling stub");
+            //writeln("compiling stub");
 
             // Insert the label for this block in the out of line code
             as.comment("Stub of " ~ stub.block.getName());
@@ -1328,7 +1330,7 @@ void compile(BlockVersion startVer)
         // If this is a version instance
         else if (auto inst = cast(VersionInst)ver)
         {
-            writeln("compiling instance");
+            //writeln("compiling instance");
 
             auto block = inst.block;
             assert (inst.block !is null);
@@ -1338,7 +1340,8 @@ void compile(BlockVersion startVer)
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             {
-                writeln("compiling instr: ", instr.toString());
+                if (opts.jit_dumpinfo)
+                    writeln("compiling instr: ", instr.toString());
 
                 as.comment(instr.toString());
                 //as.printStr(instr.toString());
@@ -1403,12 +1406,14 @@ void compile(BlockVersion startVer)
             case 32:
             auto offset = cast(int32_t)frag.startIdx - (cast(int32_t)refr.pos + 4);
             as.writeInt(offset, 32);
-            writefln("linking ref to %s, offset=%s", frag.getName, offset);
+            if (opts.jit_dumpinfo)
+                writefln("linking ref to %s, offset=%s", frag.getName, offset);
             break;
 
             case 64:
             as.writeInt(cast(int64_t)frag.getCodePtr(as), 64);
-            writefln("linking absolute ref to %s", frag.getName);
+            if (opts.jit_dumpinfo)
+                writefln("linking absolute ref to %s", frag.getName);
             break;
 
             default:
@@ -1427,7 +1432,7 @@ Compile a block version instance for a stub
 */
 extern (C) const (ubyte*) compileStub(VersionStub stub)
 {
-    writeln("entering compileStub");
+    //writeln("entering compileStub");
 
     auto interp = stub.state.ctx.interp;
     auto execHeap = interp.execHeap;
@@ -1459,7 +1464,7 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
     execHeap.writeInt(offset, 32);
     execHeap.setWritePos(startPos);
 
-    writeln("leaving compileStub");
+    //writeln("leaving compileStub");
 
     // Return the address of the instance
     return stub.inst.getCodePtr(execHeap);

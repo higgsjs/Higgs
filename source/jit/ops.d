@@ -156,36 +156,47 @@ void gen_get_type(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     st.setOutType(ctx.as, instr, Type.INT32);
 }
+*/
 
-void gen_i32_to_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_i32_to_f64(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 32, scrRegs32[0], false, false);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), false, false);
+    assert (opnd0.isReg);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Sign-extend the 32-bit integer to 64-bit
-    ctx.as.instr(MOVSXD, scrRegs64[1], opnd0);
+    as.movsx(scrRegs[1].opnd(64), opnd0);
 
-    ctx.as.instr(CVTSI2SD, XMM0, opnd0);
+    as.cvtsi2sd(X86Opnd(XMM0), opnd0);
 
-    ctx.as.instr(MOVQ, opndOut, XMM0);
-    st.setOutType(ctx.as, instr, Type.FLOAT64);
+    as.movq(outOpnd, X86Opnd(XMM0));
+    st.setOutType(as, instr, Type.FLOAT64);
 }
 
-void gen_f64_to_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_f64_to_i32(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto opndReg = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0, false, false);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd(XMM0), false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    if (opndReg.type !is X86Reg.XMM)
-        ctx.as.instr(MOVQ, XMM0, opndReg);
+    if (!opnd0.isXMM)
+        as.movq(X86Opnd(XMM0), opnd0);
 
     // Cast to int64 and truncate to int32 (to match JS semantics)
-    ctx.as.instr(CVTSD2SI, scrRegs64[0], XMM0);
-    ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+    as.cvtsd2si(scrRegs[0].opnd(64), X86Opnd(XMM0));
+    as.mov(outOpnd, scrRegs[0].opnd(32));
 
-    st.setOutType(ctx.as, instr, Type.INT32);
+    st.setOutType(as, instr, Type.INT32);
 }
-*/
 
 void RMMOp(string op, size_t numBits, Type typeTag)(
     VersionInst ver, 
@@ -287,73 +298,99 @@ alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
 alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
-/*
-void gen_mod_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_mod_i32(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, null, true);
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[2], false, true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[2].opnd(32), false, true);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
     // Save RDX
-    ctx.as.instr(MOV, scrRegs64[1], RDX);
-    if (opnd1 == EDX)
-        opnd1 = scrRegs32[1];
+    as.mov(scrRegs[1].opnd(64), X86Opnd(RDX));
+    if (opnd1.isReg && opnd1.reg == EDX)
+        opnd1 = scrRegs[1].opnd(32);
 
     // Move the dividend into EAX
-    ctx.as.instr(MOV, EAX, opnd0);
+    as.mov(X86Opnd(EAX), opnd0);
 
     // Sign-extend EAX into EDX:EAX
-    ctx.as.instr(CDQ);
+    as.cdq();
 
     // Signed divide/quotient EDX:EAX by r/m32
-    ctx.as.instr(IDIV, opnd1);
+    as.idiv(opnd1);
 
-    if (opndOut != EDX)
+    if (!outOpnd.isReg || outOpnd.reg != EDX)
     {
         // Store the remainder into the output operand
-        ctx.as.instr(MOV, opndOut, EDX);
+        as.mov(outOpnd, X86Opnd(EDX));
 
         // Restore RDX
-        ctx.as.instr(MOV, RDX, scrRegs64[1]);
+        as.mov(X86Opnd(RDX), scrRegs[1].opnd(64));
     }
 
     // Set the output type
-    st.setOutType(ctx.as, instr, Type.INT32);
+    st.setOutType(as, instr, Type.INT32);
 }
 
-void ShiftOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_not_i32(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, null, true);
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 8, null, true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), true);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    X86OpPtr opPtr = null;
-    static if (op == "sal")
-        opPtr = SAL;
-    static if (op == "sar")
-        opPtr = SAR;
-    assert (opPtr !is null);
-
-    // Save RCX
-    ctx.as.instr(MOV, scrRegs64[1], RCX);
-
-    ctx.as.instr(MOV, scrRegs32[0], opnd0);
-    ctx.as.instr(MOV, CL, opnd1);
-
-    ctx.as.instr(opPtr, scrRegs32[0], CL);
-
-    // Restore RCX
-    ctx.as.instr(MOV, RCX, scrRegs64[1]);
-
-    ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+    as.mov(outOpnd, opnd0);
+    as.not(outOpnd);
 
     // Set the output type
-    st.setOutType(ctx.as, instr, Type.INT32);
+    st.setOutType(as, instr, Type.INT32);
+}
+
+void ShiftOp(string op)(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 8, X86Opnd.NONE, true);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
+
+    // Save RCX
+    as.mov(scrRegs[1].opnd(64), X86Opnd(RCX));
+
+    as.mov(scrRegs[0].opnd(32), opnd0);
+    as.mov(X86Opnd(CL), opnd1);
+
+    static if (op == "sal")
+        as.sal(scrRegs[0].opnd(32), X86Opnd(CL));
+    else if (op == "sar")
+        as.sar(scrRegs[0].opnd(32), X86Opnd(CL));
+    else if (op == "shr")
+        as.shr(scrRegs[0].opnd(32), X86Opnd(CL));
+    else
+        assert (false);
+
+    // Restore RCX
+    as.mov(X86Opnd(RCX), scrRegs[1].opnd(64));
+
+    as.mov(outOpnd, scrRegs[0].opnd(32));
+
+    // Set the output type
+    st.setOutType(as, instr, Type.INT32);
 }
 
 alias ShiftOp!("sal") gen_lsft_i32;
 alias ShiftOp!("sar") gen_rsft_i32;
-*/
+alias ShiftOp!("shr") gen_ursft_i32;
 
 void FPOp(string op)(
     VersionInst ver, 
@@ -1145,34 +1182,34 @@ void CmpOp(string op, size_t numBits)(
         as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
         as.cmovne(outReg.reg, scrRegs[1].opnd(64));
     }
-    /*
-    static if (op == "lt")
+    else if (op == "lt")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVL;
-        condOps.jccT [0] = JL;
-        condOps.jccF [0] = JGE;
+        as.cmp(opnd0, opnd1);
+        as.mov(outReg, X86Opnd(FALSE.int8Val));
+        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
+        as.cmovl(outReg.reg, scrRegs[1].opnd(64));
     }
-    static if (op == "le")
+
+    else if (op == "le")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVLE;
-        condOps.jccT [0] = JLE;
-        condOps.jccF [0] = JG;
+        as.cmp(opnd0, opnd1);
+        as.mov(outReg, X86Opnd(FALSE.int8Val));
+        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
+        as.cmovle(outReg.reg, scrRegs[1].opnd(64));
     }
-    static if (op == "gt")
+    else if (op == "gt")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVG;
-        condOps.jccT [0] = JG;
-        condOps.jccF [0] = JLE;
+        as.cmp(opnd0, opnd1);
+        as.mov(outReg, X86Opnd(FALSE.int8Val));
+        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
+        as.cmovg(outReg.reg, scrRegs[1].opnd(64));
     }
-    static if (op == "ge")
+    else if (op == "ge")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVGE;
-        condOps.jccT [0] = JGE;
-        condOps.jccF [0] = JL;
+        as.cmp(opnd0, opnd1);
+        as.mov(outReg, X86Opnd(FALSE.int8Val));
+        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
+        as.cmovge(outReg.reg, scrRegs[1].opnd(64));
     }
 
     // Floating-point comparisons
@@ -1181,6 +1218,7 @@ void CmpOp(string op, size_t numBits)(
     // GREATER_THAN: ZF, PF, CF ← 000;
     // LESS_THAN:    ZF, PF, CF ← 001;
     // EQUAL:        ZF, PF, CF ← 100;
+    /*
     static if (op == "feq")
     {
         // feq:
@@ -1267,15 +1305,16 @@ void CmpOp(string op, size_t numBits)(
 alias CmpOp!("eq", 8) gen_eq_i8;
 alias CmpOp!("eq", 32) gen_eq_i32;
 alias CmpOp!("ne", 32) gen_ne_i32;
-//alias CmpOp!("lt", 32) gen_lt_i32;
-//alias CmpOp!("le", 32) gen_le_i32;
-//alias CmpOp!("gt", 32) gen_gt_i32;
-//alias CmpOp!("ge", 32) gen_ge_i32;
+alias CmpOp!("lt", 32) gen_lt_i32;
+alias CmpOp!("le", 32) gen_le_i32;
+alias CmpOp!("gt", 32) gen_gt_i32;
+alias CmpOp!("ge", 32) gen_ge_i32;
 alias CmpOp!("eq", 8) gen_eq_const;
 alias CmpOp!("ne", 8) gen_ne_const;
 alias CmpOp!("eq", 64) gen_eq_refptr;
 alias CmpOp!("ne", 64) gen_ne_refptr;
 alias CmpOp!("eq", 64) gen_eq_rawptr;
+alias CmpOp!("ne", 64) gen_ne_rawptr;
 //alias CmpOp!("feq", 64) gen_eq_f64;
 //alias CmpOp!("fne", 64) gen_ne_f64;
 //alias CmpOp!("flt", 64) gen_lt_f64;
