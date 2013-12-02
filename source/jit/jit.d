@@ -865,21 +865,28 @@ class BranchCode : CodeFragment
     }
 
     /**
+    Store the start position of the code
+    */
+    void startCode(CodeBlock as)
+    {
+        assert (startIdx is startIdx.max);
+
+        startIdx = cast(uint32_t)as.getWritePos();
+
+        // Add a label string comment
+        as.writeStr(this.getName ~ ":");
+    }
+
+    /**
     Generate move code for this branch edge
     */
-    void genCode(CodeBlock as, CodeGenState predState, uint32_t startIdx = uint32_t.max)
+    void genCode(CodeBlock as, CodeGenState predState)
     {
         assert (target !is null);
         auto succState = target.state;
         assert (succState !is null);
         auto interp = succState.ctx.interp;
         assert (interp !is null);
-
-        // Store the code start index
-        if (startIdx is uint32.max)
-           this.startIdx = cast(uint32_t)as.getWritePos();
-        else
-            this.startIdx = startIdx;
 
         // List of moves to transition to the successor state
         Move[] moveList;
@@ -962,8 +969,9 @@ class BranchCode : CodeFragment
         }
         */
 
-        // Add a label string comment
-        as.writeStr(this.getName ~ ":");
+        // Store the code start index
+        if (startIdx is startIdx.max)
+            startCode(as);
 
         // Execute the moves
         execMoves(as, moveList, scrRegs[0], scrRegs[1]);
@@ -1252,7 +1260,7 @@ Compile a basic block version
 */
 void compile(BlockVersion startVer)
 {
-    writeln("entering compile");
+    //writeln("entering compile");
 
     assert (startVer !is null);
 
@@ -1367,10 +1375,12 @@ void compile(BlockVersion startVer)
         }
 
         // TODO
-        //if (opts.jit_dumpasm)
+        if (opts.jit_dumpasm)
         {
-           writeln(as.toString);
+           //writeln(as.toString);
         }
+
+        // TODO: print write pos too
 
         // Add the compiled version to the fragment
         // list in the order they were compiled in
@@ -1383,21 +1393,22 @@ void compile(BlockVersion startVer)
     auto startPos = as.getWritePos();
     foreach (refr; interp.refList)
     {
-        assert (refr.frag.startIdx !is refr.frag.startIdx.max);
+        auto frag = refr.frag;
+        assert (frag.startIdx !is refr.frag.startIdx.max);
         as.setWritePos(refr.pos);
 
         // Switch on the reference size/type
         switch (refr.size)
         {
             case 32:
-            auto offset = refr.frag.startIdx - (refr.pos + 4);
+            auto offset = cast(int32_t)frag.startIdx - (cast(int32_t)refr.pos + 4);
             as.writeInt(offset, 32);
-            writeln("linking fragment ref, offset=", offset);
+            writefln("linking ref to %s, offset=%s", frag.getName, offset);
             break;
 
             case 64:
-            as.writeInt(cast(int64_t)refr.frag.getCodePtr(as), 64);
-            writeln("linking absolute ref");
+            as.writeInt(cast(int64_t)frag.getCodePtr(as), 64);
+            writefln("linking absolute ref to %s", frag.getName);
             break;
 
             default:
@@ -1407,8 +1418,8 @@ void compile(BlockVersion startVer)
     }
     as.setWritePos(startPos);
 
-    writeln("leaving compile");
-    writeln("write pos: ", as.getWritePos, " / ", as.getRemSpace);
+    //writeln("leaving compile");
+    //writeln("write pos: ", as.getWritePos, " / ", as.getRemSpace);
 }
 
 /**
@@ -1449,10 +1460,6 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
     execHeap.setWritePos(startPos);
 
     writeln("leaving compileStub");
-
-
-    writeln(execHeap.toString);
-
 
     // Return the address of the instance
     return stub.inst.getCodePtr(execHeap);

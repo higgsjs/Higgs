@@ -64,9 +64,6 @@ TODO: blog
 - book invite
 - progress and specifics of incremental JIT
 
-TODO: CodeBlock toString needs start and end offsets
-- Also print 32-bit offsets/addresses
-
 TODO: work towards object property access?
 - load/store
 - make_value
@@ -82,9 +79,20 @@ TODO: support for print(), useful for debugging
 TODO: phi node handling
 - without reg alloc, everything on stack
 
+TODO: enable all working unit tests
+
 TODO: add(reg, int)
 
-TODO: enable working unit tests
+TODO: set_str
+
+TODO: jit_dumpasm, print only compiled code
+
+TODO: CodeBlock toString needs start and end offsets
+- Also print 32-bit offsets/addresses
+
+TODO: less-than comparison
+
+TODO: mod_i32
 
 
 
@@ -94,7 +102,10 @@ TODO: enable working unit tests
 
 
 
-
+[DONE] FIXME: invalid offsets
+linking fragment ref, offset=18446744073709549282
+- Log what the reference is to
+- Negative offsets
 
 [DONE] TODO: more complete return support
 - but not yet return from new

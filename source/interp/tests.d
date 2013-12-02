@@ -230,19 +230,19 @@ unittest
     auto interp = new InterpNoStdLib();
 
     interp.assertInt("return 7", 7);
-    /*
     interp.assertInt("return 1 + 2", 3);
     interp.assertInt("return 5 - 1", 4);
-    interp.assertInt("return 8 % 5", 3);
+    //interp.assertInt("return 8 % 5", 3);
     interp.assertInt("return -3", -3);
     interp.assertInt("return +7", 7);
 
     interp.assertInt("return 2 + 3 * 4", 14);
-    interp.assertInt("return 5 % 3", 2);
+    //interp.assertInt("return 5 % 3", 2);
     interp.assertInt("return 1 - (2+3)", -4);
     interp.assertInt("return 6 - (3-3)", 6);
     interp.assertInt("return 3 - 3 - 3", -3);
 
+    /*
     interp.assertInt("return 5 | 3", 7);
     interp.assertInt("return 5 & 3", 1);
     interp.assertInt("return 5 ^ 3", 6);
@@ -251,7 +251,9 @@ unittest
     interp.assertInt("return 7 >>> 1", 3);
     interp.assertInt("return ~2", -3);
     interp.assertInt("return undefined | 1", 1);
+    */
 
+    /*
     interp.assertFloat("return 3.5", 3.5);
     interp.assertFloat("return 2.5 + 2", 4.5);
     interp.assertFloat("return 2.5 + 2.5", 5);
@@ -261,14 +263,14 @@ unittest
     interp.assertFloat("return 0.5 % 0.2", 0.1);
     interp.assertFloat("return 6/2/2", 1.5);
     interp.assertFloat("return 6/2*2", 6);
-
-    interp.assertFloat("return 100 * '5'", 500);
-    interp.assertFloat("return 100 / '5'", 20);
-
-    interp.assertBool("!true", false);
-    interp.assertBool("!false", true);
-    interp.assertBool("!0", true);
     */
+
+    //interp.assertFloat("return 100 * '5'", 500);
+    //interp.assertFloat("return 100 / '5'", 20);
+
+    //interp.assertBool("!true", false);
+    //interp.assertBool("!false", true);
+    //interp.assertBool("!0", true);
 }
 
 /*
@@ -320,6 +322,7 @@ unittest
     interp.assertInt("return function () { var x = 1; return x = x++ % 2; } ()", 1);
     interp.assertBool("return function () { var x; return (x === undefined); } ()", true);
 }
+*/
 
 /// Comparison and branching
 unittest
@@ -330,20 +333,21 @@ unittest
 
     interp.assertInt("if (true) return 1; else return 0;", 1);
     interp.assertInt("if (false) return 1; else return 0;", 0);
-    interp.assertInt("if (3 < 7) return 1; else return 0;", 1);
-    interp.assertInt("if (5 < 2) return 1; else return 0;", 0);
-    interp.assertInt("if (1 < 1.5) return 1; else return 0;", 1);
+    //interp.assertInt("if (3 < 7) return 1; else return 0;", 1);
+    //interp.assertInt("if (5 < 2) return 1; else return 0;", 0);
+    //interp.assertInt("if (1 < 1.5) return 1; else return 0;", 1);
 
-    interp.assertBool("3 <= 5", true);
-    interp.assertBool("5 <= 5", true);
-    interp.assertBool("7 <= 5", false);
-    interp.assertBool("7 > 5", true);
-    interp.assertBool("true == false", false);
-    interp.assertBool("true === true", true);
-    interp.assertBool("true !== false", true);
-    interp.assertBool("3 === 3.0", true);
-    interp.assertBool("3 !== 3.5", true);
+    //interp.assertBool("3 <= 5", true);
+    //interp.assertBool("5 <= 5", true);
+    //interp.assertBool("7 <= 5", false);
+    //interp.assertBool("7 > 5", true);
+    //interp.assertBool("true == false", false);
+    //interp.assertBool("true === true", true);
+    //interp.assertBool("true !== false", true);
+    //interp.assertBool("3 === 3.0", true);
+    //interp.assertBool("3 !== 3.5", true);
 
+    /*
     interp.assertBool("return 1 < undefined", false);
     interp.assertBool("return 1 > undefined", false);
     interp.assertBool("return 0.5 == null", false);
@@ -373,8 +377,10 @@ unittest
     interp.assertInt("return 1 && 0 && 3", 0);
     interp.assertInt("if (0 && 2) return 1; else return 0;", 0);
     interp.assertInt("if (1 && 2) return 1; else return 0;", 1);
+    */
 }
 
+/*
 /// Recursion
 unittest
 {

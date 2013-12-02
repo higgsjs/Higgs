@@ -160,7 +160,7 @@ Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen
 
 // Integer comparison instructions
 Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i32, OpInfo.BOOL_VAL };
-Opcode NE_I32 = { "ne_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ne_i32*/null , OpInfo.BOOL_VAL };
+Opcode NE_I32 = { "ne_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_i32, OpInfo.BOOL_VAL };
 Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lt_i32*/null , OpInfo.BOOL_VAL };
 Opcode GT_I32 = { "gt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_gt_i32*/null , OpInfo.BOOL_VAL };
 Opcode LE_I32 = { "le_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_le_i32*/null , OpInfo.BOOL_VAL };

@@ -1138,14 +1138,14 @@ void CmpOp(string op, size_t numBits)(
         as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
         as.cmove(outReg.reg, scrRegs[1].opnd(64));
     }
-    /*
-    static if (op == "ne")
+    else if (op == "ne")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVNE;
-        condOps.jccT [0] = JNE;
-        condOps.jccF [0] = JE;
+        as.cmp(opnd0, opnd1);
+        as.mov(outReg, X86Opnd(FALSE.int8Val));
+        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
+        as.cmovne(outReg.reg, scrRegs[1].opnd(64));
     }
+    /*
     static if (op == "lt")
     {
         ctx.as.instr(CMP, opnd0, opnd1);
@@ -1266,15 +1266,15 @@ void CmpOp(string op, size_t numBits)(
 
 alias CmpOp!("eq", 8) gen_eq_i8;
 alias CmpOp!("eq", 32) gen_eq_i32;
-//alias CmpOp!("ne", 32) gen_ne_i32;
+alias CmpOp!("ne", 32) gen_ne_i32;
 //alias CmpOp!("lt", 32) gen_lt_i32;
 //alias CmpOp!("le", 32) gen_le_i32;
 //alias CmpOp!("gt", 32) gen_gt_i32;
 //alias CmpOp!("ge", 32) gen_ge_i32;
 alias CmpOp!("eq", 8) gen_eq_const;
-//alias CmpOp!("ne", 8) gen_ne_const;
+alias CmpOp!("ne", 8) gen_ne_const;
 alias CmpOp!("eq", 64) gen_eq_refptr;
-//alias CmpOp!("ne", 64) gen_ne_refptr;
+alias CmpOp!("ne", 64) gen_ne_refptr;
 alias CmpOp!("eq", 64) gen_eq_rawptr;
 //alias CmpOp!("feq", 64) gen_eq_f64;
 //alias CmpOp!("fne", 64) gen_ne_f64;
@@ -1703,7 +1703,7 @@ void gen_call_prim(
         )
         {
             // Get the return address slot of the callee
-            auto entryVer = cast(BlockVersion)target0;
+            auto entryVer = cast(BlockVersion)target1;
             assert (entryVer !is null);
             auto raSlot = entryVer.block.fun.raVal.outSlot;
             assert (raSlot !is NULL_LOCAL);
@@ -1721,7 +1721,7 @@ void gen_call_prim(
     );
 
     // Add the return value move code to the continuation branch
-    contBranch.startIdx = cast(uint32_t)as.getWritePos();
+    contBranch.startCode(as);
     as.setWord(instr.outSlot, retWordReg.opnd(64));
     as.setType(instr.outSlot, retTypeReg.opnd(8));
 
@@ -1842,14 +1842,14 @@ void gen_ret(
     as.mov(retTypeReg.opnd(8), typeOpnd);
 
     // Get the return address into r1
-    as.getWord(scrRegs[0], raSlot);
+    as.getWord(scrRegs[1], raSlot);
 
     // Pop all local stack slots and arguments
     as.add(tspReg.opnd(64), scrRegs[0].opnd(64));
-    as.shl(scrRegs[1].opnd(64), X86Opnd(3));
+    as.shl(scrRegs[0].opnd(64), X86Opnd(3));
     as.add(wspReg.opnd(64), scrRegs[0].opnd(64));
 
     // Jump to the return address
-    as.jmp(scrRegs[0].opnd(64));
+    as.jmp(scrRegs[1].opnd(64));
 }
 
