@@ -27,16 +27,17 @@ TODO: optimize x86 instr encoding based on usage
 
 TODO: increase default str table size, use power of 2 sizing, eliminate modulo
 
-------------------------------------------------------------------------------
-
 TODO: add source position info for call sites
 - Map of call sites to source pos in IRFunction?
 - Do this in genCallTargets?
 - Throw instr also needs a source pos
 
-TODO: function call inlining
+------------------------------------------------------------------------------
 
 TODO: execHeap collection/expansion
+- Marc says: not on critical path for paper
+
+TODO: function call inlining
 
 TODO: type propagation
 
@@ -48,6 +49,12 @@ TODO: GC support
 
 TODO: port/fix execMoves
 
+------------------------------------------------------------------------------
+
+Third milestone: standard library initialization
+- Can simplify if needed, disable regexp init for now
+  - May also want to look into why this is so slow/complex
+
 TODO: rename Interp class to VM
 - rename uses and interp directory as well
 
@@ -58,10 +65,22 @@ TODO: work towards object property access?
 - make_value
 - map info access
 
+TODO: support for print(), useful for debugging
+- Needs regular calls, string functions
+
 TODO: regular function calls
 - Need to do AST->IR conversion
   - May need special kind of stub?
 - Should also store code ptr on IRFunction
+- Entry stub?
+
+TODO: $ir_print_str
+- Do we want some mechanism to spill all, access stack vars?
+- See new_clos, complex and impractical logic, lack of safety assertions?
+- Could we just pattern all this a little more safely?
+- In the end, not that many functions needing this mechanism
+
+TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
 ------------------------------------------------------------------------------
 
@@ -78,29 +97,32 @@ TODO: blog
 - stress/discomfort of having to take many important design decisions at once
   - exploratory programming
 
-TODO: set_str
-
-TODO: support for print(), useful for debugging
+FIXME: !0 should produce true, not infinity
+- same for 0 && 2
+- phi node problem? All of these have phi nodes
 
 TODO: phi node handling
 - without reg alloc, everything on stack
 - need to implement allocState
 
-TODO: jit_dumpasm, print only compiled code
+
+
+
+
+
+
+
+
+[DONE] TODO: set_str
+
+[DONE] TODO: --jit_dumpinfo, write the exec heap position / size
+- Do we have stat counter for total number of stubs and number of versions?
+- Should log all this at end of compile() invocations
+
+[DONE] TODO: CodeBlock toString needs start and end offsets
+
+[DONE] TODO: jit_dumpasm, print only compiled code
 - CodeFragment.toString
-
-TODO: CodeBlock toString needs start and end offsets
-- Also print 32-bit offsets/addresses
-
-FIXME: !0 should produce true, not infinity
-- same for 0 && 2
-- phi node problem? No?
-
-
-
-
-
-
 
 [DONE] TODO: enable all working unit tests
 

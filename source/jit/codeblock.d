@@ -141,6 +141,17 @@ class CodeBlock
     */
     override string toString()
     {
+        return toString(0, memSize);
+    }
+
+    /**
+    Print the code block as a string
+    */
+    string toString(size_t startIdx, size_t endIdx)
+    {
+        assert (startIdx <= endIdx);
+        assert (endIdx <= writePos);
+
         auto app = appender!string();
 
         // If there are comment/disassembly strings
@@ -149,8 +160,12 @@ class CodeBlock
             size_t curPos = 0;
             string line = "";
 
+            // Find the first string at/after the start index
+            auto sortedRange = assumeSorted!"a.pos <= b.pos"(strings);
+            auto strRange = sortedRange.upperBound(CommentStr(startIdx, "")).release();
+
             // For each string
-            foreach (strIdx, str; strings)
+            foreach (strIdx, str; strRange)
             {
                 // Start a new line for this string
                 line = str.str;
@@ -171,8 +186,8 @@ class CodeBlock
                 // Write the current line
                 app.put(line);
 
-                // If we are past the current write position, stop
-                if (curPos >= this.writePos)
+                // If we are past the end index, stop
+                if (curPos >= endIdx)
                     break;
 
                 app.put("\n");
@@ -181,7 +196,7 @@ class CodeBlock
         else
         {
             // Produce a raw dump of the binary data
-            for (size_t i = 0; i < this.writePos; ++i)
+            for (size_t i = startIdx; i < endIdx; ++i)
             {
                 auto b = this.memBlock[i];
 

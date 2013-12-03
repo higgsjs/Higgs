@@ -54,20 +54,14 @@ ulong compTimeUsecs = 0;
 /// Total size of the machine code generated in bytes
 ulong machineCodeBytes = 0;
 
-/// Number of unjitted instructions executed (dynamic)
-ulong numUnjitInstrs = 0;
-
-/// Number of call instruction bailouts (dynamic)
-ulong numCallBailouts = 0;
-
-/// Number of return instruction bailouts (dynamic)
-ulong numRetBailouts = 0;
-
-/// Number of instructions executed by the interpreter (dynamic)
-ulong numInterpCycles = 0;
-
 /// Number of type tests executed by test kind (dynamic)
 ulong* numTypeTests[string];
+
+/// Number of block versions for which code was generated (stubbed or not)
+ulong numVersions = 0;
+
+/// Number of versions instantiated
+ulong numInsts = 0;
 
 /// Get a pointer to the counter variable associated with a type test
 ulong* getTypeTestCtr(string testOp)
@@ -109,10 +103,8 @@ static ~this()
     writefln("exec time (ms): %s", execTimeMsecs);
     writefln("comp time (ms): %s", compTimeUsecs / 1000);
     writefln("code size (bytes): %s", machineCodeBytes);
-    writefln("unjit instrs: %s", numUnjitInstrs);
-    writefln("call bailouts: %s", numCallBailouts);
-    writefln("ret bailouts: %s", numRetBailouts);
-    writefln("interp cycles: %s", numInterpCycles);
+    writefln("num versions: %s", numVersions);
+    writefln("num instances: %s", numInsts);    
 
     auto totalTypeTests = 0;
     foreach (testOp, pCtr; numTypeTests)

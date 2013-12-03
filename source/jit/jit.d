@@ -827,8 +827,17 @@ Executable code fragment
 */
 abstract class CodeFragment
 {
-    /// Starting index in the executable heap
+    /// Start index in the executable heap
     uint32_t startIdx = uint32_t.max;
+
+    /// End index in the executable heap
+    uint32_t endIdx = uint32_t.max;
+
+    /// Produce a string representation of this blocks's code
+    final string genString(CodeBlock cb)
+    {
+        return cb.toString(startIdx, endIdx);
+    }
 
     /// Get a pointer to the executable code for this version
     final auto getCodePtr(CodeBlock cb)
@@ -982,6 +991,9 @@ class BranchCode : CodeFragment
         
         // Encode the final jump and version reference
         as.jmp32Ref(&interp.refList, this.target);
+
+        // Store the code end index
+        endIdx = cast(uint32_t)as.getWritePos();
 
         // Add the compiled fragment to the fragment list
         interp.fragList ~= this;
@@ -1191,10 +1203,10 @@ BranchCode getBranchEdge(
     // in a way that best matches the predecessor state
     for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
     {
+        writeln("phi node in ", phi.block.fun.getName);
+
         if (branch.branch is null || phi.hasNoUses)
             continue;
-
-        writeln("phi node in ", phi.block.fun.getName);
 
         // Get the phi argument
         auto arg = branch.getPhiArg(phi);
@@ -1292,7 +1304,7 @@ void compile(BlockVersion startVer)
         auto ver = interp.compQueue.front;
         interp.compQueue.popFront();
 
-        // Note the code start index for this fragment
+        // Store the code start index for this fragment
         if (ver.startIdx is ver.startIdx.max)
            ver.startIdx = cast(uint32_t)as.getWritePos();
 
@@ -1370,6 +1382,8 @@ void compile(BlockVersion startVer)
 
             // Link block-internal labels
             as.linkLabels();
+
+            stats.numInsts++;
         }
 
         else
@@ -1377,17 +1391,19 @@ void compile(BlockVersion startVer)
             assert (false, "invalid code fragment");
         }
 
-        // TODO
-        if (opts.jit_dumpasm)
-        {
-           //writeln(as.toString);
-        }
-
-        // TODO: print write pos too
+        // Store the code end index
+        ver.endIdx = cast(uint32_t)as.getWritePos();
 
         // Add the compiled version to the fragment
         // list in the order they were compiled in
         interp.fragList ~= ver;
+
+        stats.numVersions++;
+
+        if (opts.jit_dumpasm)
+        {
+            writeln(ver.genString(as));
+        }
     }
 
     assert (interp.compQueue.length is 0);
@@ -1423,8 +1439,12 @@ void compile(BlockVersion startVer)
     }
     as.setWritePos(startPos);
 
-    //writeln("leaving compile");
-    //writeln("write pos: ", as.getWritePos, " / ", as.getRemSpace);
+    if (opts.jit_dumpinfo)
+    {
+        writeln("write pos: ", as.getWritePos, " / ", as.getRemSpace);
+        writeln("num versions: ", stats.numVersions);
+        writeln("num instances: ", stats.numInsts);
+    }
 }
 
 /**

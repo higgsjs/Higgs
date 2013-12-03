@@ -93,26 +93,45 @@ void gen_get_arg(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     ctx.as.instr(MOV, scrRegs8[1], typeSlot);
     st.setOutType(ctx.as, instr, scrRegs8[1]);
 }
+*/
 
-void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_set_str(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     auto linkVal = cast(IRLinkIdx)instr.getArg(1);
     assert (linkVal !is null);
     auto linkIdx = linkVal.linkIdx;
 
-    assert (
-        linkIdx !is NULL_LINK,
-        "link not allocated for set_str"
-    );
+    if (linkVal.linkIdx is NULL_LINK)
+    {
+        auto interp = st.ctx.interp;
 
-    ctx.as.getMember!("Interp", "wLinkTable")(scrRegs64[0], interpReg);
-    ctx.as.instr(MOV, scrRegs64[0], new X86Mem(64, scrRegs64[0], 8 * linkIdx));
+        // Find the string in the string table
+        auto strArg = cast(IRString)instr.getArg(0);
+        assert (strArg !is null);
+        auto strPtr = getString(interp, strArg.str);
 
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
-    st.setOutType(ctx.as, instr, Type.REFPTR);
+        // Allocate a link table entry
+        linkVal.linkIdx = interp.allocLink();
+
+        interp.setLinkWord(linkVal.linkIdx, Word.ptrv(strPtr));
+        interp.setLinkType(linkVal.linkIdx, Type.REFPTR);
+    }
+
+    as.getMember!("Interp.wLinkTable")(scrRegs[0], interpReg);
+    as.mov(scrRegs[0].opnd(64), X86Opnd(64, scrRegs[0], 8 * linkIdx));
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, scrRegs[0].opnd(64));
+
+    st.setOutType(as, instr, Type.REFPTR);
 }
 
+/*
 void gen_make_value(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // Move the word value into the output word
