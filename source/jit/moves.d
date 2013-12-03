@@ -53,56 +53,53 @@ preventing memory locations from being overwritten
 */
 void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
 {
-    /*
     void execMove(Move move)
     {
         assert (
-            cast(X86Imm)move.dst is null,
+            !move.dst.isImm,
             "move dst is an immediate"
         );
 
-        auto immSrc = cast(X86Imm)move.src;
-        auto memSrc = cast(X86Mem)move.src;
-        auto regDst = cast(X86Reg)move.dst;
-        auto memDst = cast(X86Mem)move.dst;
+        auto src = move.src;
+        auto dst = move.dst;
 
-        if (memSrc && memDst)
+        if (src.isMem && dst.isMem)
         {
-            assert (memSrc.memSize == memDst.memSize);
-            auto tmpReg = tmp1.ofSize(memSrc.memSize);
-            as.instr(MOV, tmpReg, memSrc);
-            as.instr(MOV, memDst, tmpReg);
+            assert (src.mem.size == dst.mem.size);
+            auto tmpReg = tmp1.opnd(src.mem.size);
+            as.mov(tmpReg, src);
+            as.mov(dst, tmpReg);
             return;
         }
 
-        if (immSrc && immSrc.immSize > 32 && memDst)
+        if (src.isImm && src.imm.immSize > 32 && dst.isMem)
         {
-            assert (memDst.memSize == 64);
-            as.instr(MOV, tmp1, immSrc);
-            as.instr(MOV, memDst, tmp1);
+            assert (dst.mem.size == 64);
+            as.mov(tmp1.opnd(64), src);
+            as.mov(dst, tmp1.opnd(64));
             return;
         }
 
-        if (regDst && immSrc)
+        if (dst.isReg && src.isImm)
         {
-            auto regDst32 = regDst.ofSize(32);
+            auto regDst32 = dst.reg.opnd(32);
 
             // xor rXX, rXX is the shortest way to zero-out a register
-            if (immSrc.imm is 0)
+            if (src.imm.imm is 0)
             {
-                as.instr(XOR, regDst32, regDst32);
+                as.xor(regDst32, regDst32);
                 return;
             }
 
             // Take advantage of zero-extension to save REX bytes
-            if (regDst.size is 64 && immSrc.imm > 0 && immSrc.unsgSize <= 32)
+            if (dst.reg.size is 64 && src.imm.imm > 0 && src.imm.unsgSize <= 32)
             {
-                as.instr(MOV, regDst32, immSrc);
+                as.mov(regDst32, src);
                 return;
             }
         }
 
-        as.instr(MOV, move.dst, move.src);  
+        as.mov(move.dst, move.src);  
     }
 
     // Remove identity moves from the list
@@ -153,17 +150,19 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
         // add (A->tmp), (tmp->B) to list
         Move move = moveList[$-1];
         moveList.length -= 1;
+        auto src = move.src;
+        auto dst = move.dst;
 
-        X86Reg tmpReg;
-        if (auto regSrc = cast(X86Reg)move.src)
-            tmpReg = tmp0.ofSize(regSrc.size);
-        else if (auto memSrc = cast(X86Mem)move.src)
-            tmpReg = tmp0.ofSize(memSrc.memSize);
+        X86Opnd tmpReg;
+        if (src.isReg)
+            tmpReg = tmp0.opnd(src.reg.size);
+        else if (src.isMem)
+            tmpReg = tmp0.opnd(src.mem.size);
         else
-            tmpReg = tmp0;
+            tmpReg = X86Opnd(tmp0);
 
-        moveList ~= Move(tmpReg, move.src);
-        moveList ~= Move(move.dst, tmpReg);
+        moveList ~= Move(tmpReg, src);
+        moveList ~= Move(dst, tmpReg);
     }
-    */
 }
+

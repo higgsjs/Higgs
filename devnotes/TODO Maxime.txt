@@ -47,7 +47,7 @@ TODO: exception support
 
 TODO: GC support
 
-TODO: port/fix execMoves
+TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
 ------------------------------------------------------------------------------
 
@@ -57,6 +57,8 @@ Third milestone: standard library initialization
 
 TODO: rename Interp class to VM
 - rename uses and interp directory as well
+
+TODO: remove interp/ops.d
 
 TODO: unit test for global property access of prop from Object.prototype
 
@@ -74,44 +76,44 @@ TODO: regular function calls
 - Should also store code ptr on IRFunction
 - Entry stub?
 
-TODO: $ir_print_str
-- Do we want some mechanism to spill all, access stack vars?
-- See new_clos, complex and impractical logic, lack of safety assertions?
-- Could we just pattern all this a little more safely?
-- In the end, not that many functions needing this mechanism
-
-TODO: produce 32-bit offsets/addresses in CodeBlock.toString
-
-------------------------------------------------------------------------------
-
-Second milestone: load runtime, working REPL with --nostdlib
-- No GC yet
-- Still no reg alloc
-- Support for runtime primitives
-
 TODO: blog
 - compilers architect may be a great career move
 - conference invites (mloc.js, Web Directions Code)
-- book invite
+- book invite, vol 4
 - progress and specifics of incremental JIT
 - stress/discomfort of having to take many important design decisions at once
   - exploratory programming
 
-FIXME: !0 should produce true, not infinity
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+[DONE] Second milestone: load runtime, working REPL with --nostdlib
+- No GC yet
+- Still no reg alloc
+- Support for runtime primitives
+
+[DONE] TODO: $ir_print_str
+
+[DONE] FIXME: !0 should produce true, not infinity
 - same for 0 && 2
 - phi node problem? All of these have phi nodes
+- execMoves is unimplemented!
 
-TODO: phi node handling
+[DONE] TODO: port/fix execMoves
+
+[DONE] TODO: basic phi node handling
 - without reg alloc, everything on stack
 - need to implement allocState
 
-
-
-
-
-
-
-
+[DONE] TODO: combine allocMap + typeMap
+- Use struct with bit field inside, enum?
 
 [DONE] TODO: set_str
 

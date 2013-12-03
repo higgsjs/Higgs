@@ -104,7 +104,6 @@ void gen_set_str(
 {
     auto linkVal = cast(IRLinkIdx)instr.getArg(1);
     assert (linkVal !is null);
-    auto linkIdx = linkVal.linkIdx;
 
     if (linkVal.linkIdx is NULL_LINK)
     {
@@ -123,7 +122,7 @@ void gen_set_str(
     }
 
     as.getMember!("Interp.wLinkTable")(scrRegs[0], interpReg);
-    as.mov(scrRegs[0].opnd(64), X86Opnd(64, scrRegs[0], 8 * linkIdx));
+    as.mov(scrRegs[0].opnd(64), X86Opnd(64, scrRegs[0], 8 * linkVal.linkIdx));
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, scrRegs[0].opnd(64));
@@ -663,84 +662,6 @@ void gen_set_global(
     as.mov(typeMem, typeOpnd);
 }
 
-extern (C) refptr op_new_clos(
-    Interp interp, 
-    IRFunction fun, 
-    ObjMap closMap, 
-    ObjMap protMap
-)
-{
-    // Allocate the closure object
-    auto closPtr = GCRoot(
-        interp,
-        newClos(
-            interp, 
-            closMap,
-            interp.funProto,
-            cast(uint32)fun.ast.captVars.length,
-            fun
-        )
-    );
-
-    // Allocate the prototype object
-    auto objPtr = GCRoot(
-        interp,
-        newObj(
-            interp, 
-            protMap,
-            interp.objProto
-        )
-    );
-
-    // Set the "prototype" property on the closure object
-    auto protoStr = GCRoot(interp, getString(interp, "prototype"));
-    setProp(
-        interp,
-        closPtr.ptr,
-        protoStr.ptr,
-        objPtr.pair
-    );
-
-    assert (
-        clos_get_next(closPtr.ptr) == null,
-        "closure next pointer is not null"
-    );
-
-    //writeln("final clos ptr: ", closPtr.ptr);
-
-    return closPtr.ptr;
-}
-
-void gen_new_clos(
-    VersionInst ver, 
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    // TODO: make sure regs are properly spilled, this may trigger GC
-    // c arg regs may also overlap allocated regs, args should be on stack
-
-    auto funArg = cast(IRFunPtr)instr.getArg(0);
-    assert (funArg !is null);
-
-    auto closMapOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-    auto protMapOpnd = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
-
-    as.ptr(cargRegs[0], st.ctx.interp);
-    as.ptr(cargRegs[1], funArg.fun);
-    as.mov(cargRegs[2].opnd(64), closMapOpnd);
-    as.mov(cargRegs[3].opnd(64), protMapOpnd);
-
-    as.ptr(RAX, &op_new_clos);
-    as.call(RAX);
-
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-    as.mov(outOpnd, X86Opnd(RAX));
-
-    st.setOutType(as, instr, Type.REFPTR);
-}
-
 void GetValOp(string fName)(
     VersionInst ver, 
     CodeGenState st,
@@ -875,34 +796,6 @@ void gen_get_link(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
     st.setOutType(ctx.as, instr, scrRegs8[1]);
 }
 */
-
-void gen_make_map(
-    VersionInst ver, 
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    auto mapArg = cast(IRMapPtr)instr.getArg(0);
-    assert (mapArg !is null);
-
-    auto numPropArg = cast(IRConst)instr.getArg(1);
-    assert (numPropArg !is null);
-
-    // Allocate the map
-    if (mapArg.map is null)
-        mapArg.map = new ObjMap(st.ctx.interp, numPropArg.int32Val);
-
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-    auto outReg = outOpnd.isReg? outOpnd.reg:scrRegs[0];
-
-    as.ptr(outReg, mapArg.map);
-    if (!outOpnd.isReg)
-        as.mov(outOpnd, X86Opnd(outReg));
-
-    // Set the output type
-    st.setOutType(as, instr, Type.MAPPTR);
-}
 
 /**
 Generates the conditional branch for an if_true instruction with the given
@@ -1909,5 +1802,139 @@ void gen_ret(
 
     // Jump to the return address
     as.jmp(scrRegs[1].opnd(64));
+}
+
+void gen_make_map(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto mapArg = cast(IRMapPtr)instr.getArg(0);
+    assert (mapArg !is null);
+
+    auto numPropArg = cast(IRConst)instr.getArg(1);
+    assert (numPropArg !is null);
+
+    // Allocate the map
+    if (mapArg.map is null)
+        mapArg.map = new ObjMap(st.ctx.interp, numPropArg.int32Val);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outReg = outOpnd.isReg? outOpnd.reg:scrRegs[0];
+
+    as.ptr(outReg, mapArg.map);
+    if (!outOpnd.isReg)
+        as.mov(outOpnd, X86Opnd(outReg));
+
+    // Set the output type
+    st.setOutType(as, instr, Type.MAPPTR);
+}
+
+void gen_new_clos(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr op_new_clos(
+        Interp interp, 
+        IRFunction fun, 
+        ObjMap closMap, 
+        ObjMap protMap
+    )
+    {
+        // Allocate the closure object
+        auto closPtr = GCRoot(
+            interp,
+            newClos(
+                interp, 
+                closMap,
+                interp.funProto,
+                cast(uint32)fun.ast.captVars.length,
+                fun
+            )
+        );
+
+        // Allocate the prototype object
+        auto objPtr = GCRoot(
+            interp,
+            newObj(
+                interp, 
+                protMap,
+                interp.objProto
+            )
+        );
+
+        // Set the "prototype" property on the closure object
+        auto protoStr = GCRoot(interp, getString(interp, "prototype"));
+        setProp(
+            interp,
+            closPtr.ptr,
+            protoStr.ptr,
+            objPtr.pair
+        );
+
+        assert (
+            clos_get_next(closPtr.ptr) == null,
+            "closure next pointer is not null"
+        );
+
+        //writeln("final clos ptr: ", closPtr.ptr);
+
+        return closPtr.ptr;
+    }
+
+    // TODO: make sure regs are properly spilled, this may trigger GC
+    // c arg regs may also overlap allocated regs, args should be on stack
+
+    auto funArg = cast(IRFunPtr)instr.getArg(0);
+    assert (funArg !is null);
+
+    auto closMapOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+    auto protMapOpnd = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
+
+    as.ptr(cargRegs[0], st.ctx.interp);
+    as.ptr(cargRegs[1], funArg.fun);
+    as.mov(cargRegs[2].opnd(64), closMapOpnd);
+    as.mov(cargRegs[3].opnd(64), protMapOpnd);
+
+    as.ptr(RAX, &op_new_clos);
+    as.call(RAX);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+void gen_print_str(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static void printStr(refptr strPtr)
+    {
+        // Extract a D string
+        auto str = extractStr(strPtr);
+
+        // Print the string to standard output
+        write(str);
+    }
+
+    auto strOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    as.pushRegs();
+
+    as.mov(cargRegs[0].opnd(64), strOpnd);
+
+    as.ptr(scrRegs[0], &printStr);
+    as.call(scrRegs[0].opnd(64));
+
+    as.popRegs();
 }
 

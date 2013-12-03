@@ -45,6 +45,7 @@ import std.stdint;
 import std.conv;
 import std.algorithm;
 import std.typecons;
+import std.bitmanip;
 import options;
 import ir.ir;
 import ir.livevars;
@@ -143,24 +144,87 @@ CodeGenCtx getCtx(IRFunction fun, bool newCall, Interp interp)
     }
 }
 
-// TODO: use a struct with methods for this?
-// TODO: combine allocMap + typeMap? Might be simpler!
+/**
+Type and allocation state of a live value
+*/
+struct ValState
+{
+    /// Bit field for compact encoding
+    mixin(bitfields!(
+        /// Known constant flag
+        bool, "isConst", 1,
 
-/// Register allocation information value
-alias uint16_t AllocState;
-const AllocState RA_STACK = (1 << 7);
-const AllocState RA_GPREG = (1 << 6);
-const AllocState RA_CONST = (1 << 5);
-const AllocState RA_REG_MASK = (0x0F);
+        /// Known type flag
+        bool, "knownType", 1,
 
-// TODO: revise
-// Type information value
-alias uint16_t TypeState;
-const TypeState TF_KNOWN = (1 << 7);
-const TypeState TF_SYNC = (1 << 6);
-const TypeState TF_BOOL_TRUE = (1 << 5);
-const TypeState TF_BOOL_FALSE = (1 << 4);
-const TypeState TF_TYPE_MASK = (0xF);
+        /// Has allocated register flag
+        bool, "hasReg", 1,
+
+        /// Is on the stack flag
+        bool, "onStack", 1,
+
+        /// Register number
+        uint, "regNo", 4,
+
+        /// Type, if known
+        Type, "type", 4,
+
+        /// Constant value, if known
+        uint, "cstVal", 4,
+
+        /// Padding bits
+        uint, "", 0
+    ));
+
+    /// Stack value constructor
+    static ValState stack()
+    {
+        ValState val;
+
+        val.isConst = false;
+        val.knownType = false;
+        val.hasReg = false;
+        val.onStack = true;
+
+        return val;
+    }
+
+    /// Register value constructor
+    static ValState reg(X86Reg reg)
+    {
+        ValState val;
+
+        val.isConst = false;
+        val.knownType = false;
+        val.hasReg = true;
+        val.onStack = false;
+        val.regNo = reg.regNo;
+
+        return val;
+    }
+
+    /// Get a word operand for this value
+    X86Opnd getWordOpnd(LocalIdx stackSlot)
+    {
+        // TODO
+        assert (isConst is false);
+        assert (hasReg || onStack);
+
+        if (hasReg)
+            return X86Opnd(X86Reg(X86Reg.GP, regNo, 64));
+
+        return X86Opnd(8, wspReg, cast(int32_t)(Word.sizeof * stackSlot));
+    }
+
+    /// Get a type operand for this value
+    X86Opnd getTypeOpnd(LocalIdx stackSlot)
+    {
+        // TODO
+        assert (knownType is false);
+
+        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * stackSlot));
+    }
+}
 
 /**
 Current code generation state. This includes register
@@ -171,12 +235,8 @@ class CodeGenState
     /// Code generation context object
     CodeGenCtx ctx;
 
-    // TODO: use X86Opnd directly for this? That would be bigger
-    /// Live value to register/slot mapping
-    private AllocState[IRDstValue] allocMap;
-
-    // Live value to known type info mapping
-    private TypeState[IRDstValue] typeMap;
+    /// Map of live values to current type/allocation states
+    private ValState[IRDstValue] valMap;
 
     /// Map of general-purpose registers to values
     /// The value is null if a register is free
@@ -205,10 +265,8 @@ class CodeGenState
     /// Copy constructor
     this(CodeGenState that)
     {
-        // TODO
         this.ctx = that.ctx;
-        this.allocMap = that.allocMap.dup;
-        this.typeMap = that.typeMap.dup;
+        this.valMap = that.valMap.dup;
         this.gpRegMap = that.gpRegMap.dup;
         this.slotMap = that.slotMap.dup;
     }
@@ -839,12 +897,6 @@ abstract class CodeFragment
         return cb.toString(startIdx, endIdx);
     }
 
-    /// Get a pointer to the executable code for this version
-    final auto getCodePtr(CodeBlock cb)
-    {
-        return cb.getAddress(startIdx);
-    }
-
     /// Get the name string for this fragment
     final string getName()
     {
@@ -855,6 +907,19 @@ abstract class CodeFragment
         else
             assert (false);
     }
+
+    /// Get the length of the code fragment
+    final auto length()
+    {
+        assert (startIdx !is startIdx.max);
+        return endIdx - startIdx;
+    }
+
+    /// Get a pointer to the executable code for this version
+    final auto getCodePtr(CodeBlock cb)
+    {
+        return cb.getAddress(startIdx);
+    }
 }
 
 /**
@@ -862,14 +927,18 @@ Branch edge transition code
 */
 class BranchCode : CodeFragment
 {
+    /// IR branch edge object
+    BranchEdge branch;
+
     /// Target block version (may be a stub)
     BlockVersion target;
 
     /// Code length, excluding the optional final jump
     uint32_t codeLen;
 
-    this(BlockVersion target)
+    this(BranchEdge branch, BlockVersion target)
     {
+        this.branch = branch;
         this.target = target;
     }
 
@@ -900,9 +969,8 @@ class BranchCode : CodeFragment
         // List of moves to transition to the successor state
         Move[] moveList;
 
-        /*        
         // For each value in the successor state
-        foreach (succVal, succAS; succState.allocState)
+        foreach (succVal, succSt; succState.valMap)
         {
             auto succPhi = (
                 (branch.branch !is null && succVal.block is branch.target)?
@@ -934,6 +1002,9 @@ class BranchCode : CodeFragment
             if (srcTypeOpnd != dstTypeOpnd)
                 moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
 
+            // TODO: handle delayed writes
+
+            /*
             // Get the predecessor and successor type states
             auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
             auto succTS = succState.typeState.get(succVal, 0);
@@ -975,8 +1046,8 @@ class BranchCode : CodeFragment
                     moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
                 }
             }
+            */
         }
-        */
 
         // Store the code start index
         if (startIdx is startIdx.max)
@@ -997,6 +1068,18 @@ class BranchCode : CodeFragment
 
         // Add the compiled fragment to the fragment list
         interp.fragList ~= this;
+
+        if (opts.jit_dumpasm)
+        {
+            writeln(this.genString(as));
+            writeln();
+        }
+
+        if (opts.jit_dumpinfo)
+        {
+            writeln("branch code length: ", length, " (", moveList.length, " moves)");
+            writeln();
+        }
     }
 }
 
@@ -1146,7 +1229,6 @@ BlockVersion getBlockVersion(
 
         // Strip the state of all known types and constants
         auto genState = new CodeGenState(state);
-
         // TODO
         /*        
         genState.typeState = genState.typeState.init;
@@ -1203,8 +1285,6 @@ BranchCode getBranchEdge(
     // in a way that best matches the predecessor state
     for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
     {
-        writeln("phi node in ", phi.block.fun.getName);
-
         if (branch.branch is null || phi.hasNoUses)
             continue;
 
@@ -1217,6 +1297,9 @@ BranchCode getBranchEdge(
             "\nin block:\n" ~
             phi.block.toString()
         );
+
+        // Map the phi node to its stack location
+        succState.valMap[phi] = ValState.stack();
 
         /*
         // Get the register the phi is mapped to
@@ -1240,7 +1323,9 @@ BranchCode getBranchEdge(
             allocSt = RA_STACK;
         }
         succState.allocState[phi] = allocSt;
+        */
 
+        /*
         // If the type of the phi argument is known
         if (succState.typeKnown(arg))
         {
@@ -1266,7 +1351,7 @@ BranchCode getBranchEdge(
     );
 
     // Return a branch edge code object for the successor
-    return new BranchCode(succVer);
+    return new BranchCode(branch, succVer);
 }
 
 /**
@@ -1444,6 +1529,7 @@ void compile(BlockVersion startVer)
         writeln("write pos: ", as.getWritePos, " / ", as.getRemSpace);
         writeln("num versions: ", stats.numVersions);
         writeln("num instances: ", stats.numInsts);
+        writeln();
     }
 }
 
@@ -1501,6 +1587,8 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
     assert (fun.isUnit);
 
     auto as = interp.execHeap;
+
+    //writeln(fun);
 
     // Create a version instance object for the function entry
     auto entryInst = new VersionInst(

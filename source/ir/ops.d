@@ -275,18 +275,6 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_set_li
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], /*&gen_get_link*/null };
 
-/// Create a map object associated with this instruction
-Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP, OpArg.LOCAL], &gen_make_map };
-
-/// Get the number of properties to allocate for objects with a given map
-Opcode MAP_NUM_PROPS = { "map_num_props", true, [OpArg.LOCAL], /*&gen_map_num_props*/null };
-
-/// Get the index for a given property name in a given map
-Opcode MAP_PROP_IDX = { "map_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_map_prop_idx*/null };
-
-/// Get the name for a given property index in a given map
-Opcode MAP_PROP_NAME = { "map_prop_name", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_map_prop_name*/null , OpInfo.MAY_GC };
-
 /// Compute the hash code for a string and
 /// try to find the string in the string table
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], /*&gen_get_str*/null , OpInfo.MAY_GC };
@@ -299,6 +287,18 @@ Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING], &gen_get_global, OpInf
 /// Note: hidden parameter is a cached global property index
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 
+/// Create a map object associated with this instruction
+Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP, OpArg.LOCAL], &gen_make_map };
+
+/// Get the number of properties to allocate for objects with a given map
+Opcode MAP_NUM_PROPS = { "map_num_props", true, [OpArg.LOCAL], /*&gen_map_num_props*/null };
+
+/// Get the index for a given property name in a given map
+Opcode MAP_PROP_IDX = { "map_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_map_prop_idx*/null };
+
+/// Get the name for a given property index in a given map
+Opcode MAP_PROP_NAME = { "map_prop_name", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_map_prop_name*/null , OpInfo.MAY_GC };
+
 /// <dstLocal> = NEW_CLOS <funExpr>
 /// Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LOCAL, OpArg.LOCAL], &gen_new_clos, OpInfo.MAY_GC };
@@ -310,7 +310,7 @@ Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], /*&gen_load_file*/null , 
 Opcode EVAL_STR = { "eval_str", true, [OpArg.LOCAL], /*&gen_eval_str*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Print a string to standard output
-Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], /*&gen_print_str*/null , OpInfo.IMPURE };
+Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &gen_print_str, OpInfo.IMPURE };
 
 /// Get a string representation of a function's AST
 Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], /*&gen_get_ast_str*/null , OpInfo.MAY_GC };

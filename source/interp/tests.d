@@ -269,7 +269,6 @@ unittest
     //interp.assertBool("!0", true);
 }
 
-/*
 /// Global function calls
 unittest
 {
@@ -277,11 +276,11 @@ unittest
 
     auto interp = new InterpNoStdLib();
 
-    interp.assertInt("return function () { return 9; } ()", 9);
-    interp.assertInt("return function () { return 2 * 3; } ()", 6);
+    //interp.assertInt("return function () { return 9; } ()", 9);
+    //interp.assertInt("return function () { return 2 * 3; } ()", 6);
 
     // Calling null as a function
-    interp.assertThrows("null()");
+    //interp.assertThrows("null()");
 }
 
 /// Argument passing test
@@ -291,16 +290,17 @@ unittest
 
     auto interp = new InterpNoStdLib();
 
-    interp.assertInt("return function (x) { return x + 3; } (5)", 8);
-    interp.assertInt("return function (x, y) { return x - y; } (5, 2)", 3);
+    //interp.assertInt("return function (x) { return x + 3; } (5)", 8);
+    //interp.assertInt("return function (x, y) { return x - y; } (5, 2)", 3);
 
     // Too many arguments
-    interp.assertInt("return function (x) { return x + 1; } (5, 9)", 6);
+    //interp.assertInt("return function (x) { return x + 1; } (5, 9)", 6);
 
     // Too few arguments
-    interp.assertInt("return function (x, y) { return x - 1; } (4)", 3);
+    //interp.assertInt("return function (x, y) { return x - 1; } (4)", 3);
 }
 
+/*
 /// Local variable assignment
 unittest
 {
@@ -346,9 +346,9 @@ unittest
     //interp.assertBool("return 1 < undefined", false);
     //interp.assertBool("return 1 > undefined", false);
     //interp.assertBool("return 0.5 == null", false);
-    //interp.assertBool("return 'Foo' != null", true);
-    //interp.assertBool("return null != null", false);
-    //interp.assertBool("return 'Foo' == null", false);
+    interp.assertBool("return 'Foo' != null", true);
+    interp.assertBool("return null != null", false);
+    interp.assertBool("return 'Foo' == null", false);
     interp.assertBool("return undefined == undefined", true);
     interp.assertBool("return undefined == null", true);
     //interp.assertBool("o = {}; return o == o", true);
@@ -357,7 +357,6 @@ unittest
     interp.assertInt("return true? 1:0", 1);
     interp.assertInt("return false? 1:0", 0);
 
-    /*
     interp.assertInt("return 0 || 2", 2);
     interp.assertInt("return 1 || 2", 1);
     interp.assertInt("1 || 2; return 3", 3);
@@ -366,14 +365,13 @@ unittest
     interp.assertInt("if (0 || 2) return 1; else return 0;", 1);
     interp.assertInt("if (1 || 2) return 1; else return 0;", 1);
     interp.assertInt("if (0 || 0) return 1; else return 0;", 0);
-    */
 
-    //interp.assertInt("return 0 && 2", 0);
-    //interp.assertInt("return 1 && 2", 2);
-    //interp.assertInt("return 1 && 2 && 3", 3);
-    //interp.assertInt("return 1 && 0 && 3", 0);
-    //interp.assertInt("if (0 && 2) return 1; else return 0;", 0);
-    //interp.assertInt("if (1 && 2) return 1; else return 0;", 1);
+    interp.assertInt("return 0 && 2", 0);
+    interp.assertInt("return 1 && 2", 2);
+    interp.assertInt("return 1 && 2 && 3", 3);
+    interp.assertInt("return 1 && 0 && 3", 0);
+    interp.assertInt("if (0 && 2) return 1; else return 0;", 0);
+    interp.assertInt("if (1 && 2) return 1; else return 0;", 1);
 }
 
 /*
