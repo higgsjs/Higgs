@@ -64,7 +64,9 @@ enum Label : size_t
     LOOP_EXIT,
     DONE,
     TRUE,
+    TRUE2,
     FALSE,
+    FALSE2,
     JOIN,
     FUN1,
     FUN2,
@@ -152,7 +154,7 @@ class CodeBlock
     string toString(size_t startIdx, size_t endIdx)
     {
         assert (startIdx <= endIdx);
-        assert (endIdx <= writePos);
+        assert (endIdx <= writePos, "endIdx=" ~ to!string(endIdx));
 
         auto app = appender!string();
 
@@ -477,7 +479,11 @@ class CodeBlock
     */
     void addLabelRef(Label label)
     {
-        // TODO debug {} block? Check for duplicates at same pos
+        debug
+        {
+            foreach (labelRef; labelRefs)
+                assert (labelRef.pos != writePos);
+        }
 
         labelRefs ~= LabelRef(writePos, label);
     }

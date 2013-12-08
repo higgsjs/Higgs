@@ -1408,31 +1408,37 @@ void gen_call(
 
     auto numArgs = cast(uint32_t)instr.numArgs - 2;
 
-    // Compute the numArgs - numParams
+    // Compute -extraArgs = numArgs - numArgs
+    // This is the negation of the number of missing arguments
+    // We use this as an offset when writing arguments to the stack
     as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
-    as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
-    as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
-
+    as.mov(scrRegs[2].opnd(64), X86Opnd(numArgs));
+    as.sub(scrRegs[2].opnd(64), scrReg3.opnd(64));
+    as.cmp(scrRegs[2].opnd(64), X86Opnd(0));
+    as.jle(Label.FALSE);
+    as.xor(scrRegs[2].opnd(32), scrRegs[2].opnd(32));
+    as.label(Label.FALSE);
 
     //writeln("numArgs=", numArgs);
-    //as.printUint(scrReg3.opnd(64));
     //as.printUint(scrRegs[2].opnd(64));
 
-
     // Initialize the missing arguments, if any
-    as.mov(scrReg3.opnd(32), scrRegs[2].opnd(32));
-    as.cmp(scrReg3.opnd(32), X86Opnd(0));
+    as.mov(scrReg3.opnd(64), scrRegs[2].opnd(64));
+    as.cmp(scrReg3.opnd(64), X86Opnd(0));
     as.jge(Label.LOOP_EXIT);
     as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.int8Val));
     as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
-    as.add(scrReg3.opnd(32), X86Opnd(1));
+    as.add(scrReg3.opnd(64), X86Opnd(1));
     as.label(Label.LOOP_EXIT);
 
-    // Compute the number of extra arguments (negative)
-    as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
-    as.jl(Label.FALSE);
-    as.xor(scrRegs[2].opnd(32), scrRegs[2].opnd(32));
-    as.label(Label.FALSE);
+
+
+    //as.printUint(scrRegs[2].opnd(64));
+
+
+
+
+
 
     static void movArgWord(CodeBlock as, size_t argIdx, X86Opnd val)
     {
@@ -1527,6 +1533,8 @@ void gen_call(
             BranchShape shape
         )
         {
+            auto scrReg3 = allocRegs[$-1];
+    
             auto numArgs = cast(uint32_t)instr.numArgs - 2;
 
             // Write the return address on the stack
@@ -1538,13 +1546,22 @@ void gen_call(
 
             //as.printUint(scrRegs[0].opnd(64));
 
-            // Push space for the callee arguments and locals
+            // Compute the total number of locals and extra arguments
             as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
-            as.sub(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
+            as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
+            as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
+            as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
+            as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
+            as.jle(Label.FALSE2);
+            as.add(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
+            as.label(Label.FALSE2);
+
+            // Adjust the type stack pointer
             as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
 
             //as.printUint(scrRegs[0].opnd(64));
 
+            // Adjust the word stack pointer
             as.shl(scrRegs[0].opnd(64), X86Opnd(3));
             as.sub(X86Opnd(wspReg), scrRegs[0].opnd(64));
 
@@ -1553,6 +1570,8 @@ void gen_call(
             as.jmp(scrRegs[0].opnd(64));
         }
     );
+
+    //writeln("call block length: ", ver.length);
 
     // Add the return value move code to the continuation branch
     contBranch.markStart(as);

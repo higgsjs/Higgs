@@ -294,14 +294,13 @@ unittest
     interp.assertInt("return function (x) { return x + 3; } (5)", 8);
     interp.assertInt("return function (x, y) { return x - y; } (5, 2)", 3);
 
-    // FIXME: segfault
     // Too many arguments
-    //interp.assertInt("return function () { return 7; } (5)", 7);
-    //interp.assertInt("return function (x) { return x + 1; } (5, 9)", 6);
+    interp.assertInt("return function () { return 7; } (5)", 7);
+    interp.assertInt("return function (x) { return x + 1; } (5, 9)", 6);
 
     // Too few arguments
-    //interp.assertInt("return function (x) { return 9; } ()", 9);
-    //interp.assertInt("return function (x, y) { return x - 1; } (4)", 3);
+    interp.assertInt("return function (x) { return 9; } ()", 9);
+    interp.assertInt("return function (x, y) { return x - 1; } (4)", 3);
 }
 
 /*

@@ -89,16 +89,23 @@ TODO: blog
 - book invite, AOSA vol 4
     http://aosabook.org/en/index.html
 
-TODO: log call block size in bytes
-
-FIXME: segfault on too many arguments
-
+TODO: try to optimize call logic a bit. Can some operations use 32-bit opnds?
+- Can we use a second scratch reg to compute extra args?
 
 
 
 
 
 
+
+
+[DONE] TODO: log call block size in bytes
+- 330 bytes
+
+[DONE] FIXME: call version has branch code marked as inside of it!
+- genBranch should do markEnd?
+
+[DONE] FIXME: segfault on too many arguments
 
 [DONE] FIXME: identity function doesn't get its argument
 - seem to be pushing the right number of locals

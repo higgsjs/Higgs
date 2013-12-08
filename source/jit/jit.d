@@ -1216,6 +1216,9 @@ class VersionInst : BlockVersion
             target1, 
             shape
         );
+
+        // Store the code end index
+        markEnd(as);
     }
 }
 
@@ -1421,14 +1424,13 @@ void compile(Interp interp)
         auto ver = interp.compQueue.front;
         interp.compQueue.popFront();
 
-        // Store the code start index for this fragment
-        if (ver.startIdx is ver.startIdx.max)
-           ver.startIdx = cast(uint32_t)as.getWritePos();
-
         // If this is a version stub
         if (auto stub = cast(VersionStub)ver)
         {
             //writeln("compiling stub");
+
+            // Store the code start index
+            stub.markStart(as);
 
             // Insert the label for this block in the out of line code
             as.comment("Stub " ~ ver.getName());
@@ -1454,6 +1456,9 @@ void compile(Interp interp)
 
             // Jump to the compiled version
             as.jmp(X86Opnd(RAX));
+
+            // Store the code end index
+            stub.markEnd(as);
         }
 
         // If this is a version instance
@@ -1466,6 +1471,10 @@ void compile(Interp interp)
 
             // Copy the instance's state object
             auto state = new CodeGenState(inst.state);
+
+            // Store the code start index for this fragment
+            if (inst.startIdx is inst.startIdx.max)
+               inst.markStart(as);
 
             as.comment("Instance " ~ ver.getName());
 
@@ -1503,6 +1512,10 @@ void compile(Interp interp)
             // Link block-internal labels
             as.linkLabels();
 
+            // Store the code end index for this fragment
+            if (inst.endIdx is inst.endIdx.max)
+                inst.markEnd(as);
+
             stats.numInsts++;
         }
 
@@ -1510,9 +1523,6 @@ void compile(Interp interp)
         {
             assert (false, "invalid code fragment");
         }
-
-        // Store the code end index
-        ver.markEnd(as);
 
         // Add the compiled version to the fragment
         // list in the order they were compiled in
@@ -1717,6 +1727,11 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
     auto newLocals = fun.numLocals - (NUM_HIDDEN_ARGS + numMissing);
     interp.push(newLocals);
     */
+
+    //auto extraArgs = (argCount > fun.numParams)? (argCount - fun.numParams):0;
+
+    writeln("fun.numLocals=", fun.numLocals);
+    writeln("origLocals=", origLocals);
 
     // Add space for the newly allocated locals
     interp.push(fun.numLocals - origLocals);
