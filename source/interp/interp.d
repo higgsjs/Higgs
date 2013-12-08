@@ -409,8 +409,14 @@ class Interp
     /// Queue of block versions to be compiled
     BlockVersion[] compQueue;
 
-    // List of references to code fragments to be linked
+    /// List of references to code fragments to be linked
     FragmentRef[] refList;
+
+    /// Function entry stub
+    EntryStub entryStub;
+
+    /// Constructor entry stub
+    EntryStub ctorStub;
 
     /**
     Constructor, initializes/resets the interpreter state

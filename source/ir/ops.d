@@ -221,7 +221,7 @@ Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &gen_if_true, OpInfo.BRANCH 
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_call*/null , OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
+Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_call, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
 
 // <dstLocal> = CALL_NEW <closLocal> ...
 // Implements the JavaScript new operator.

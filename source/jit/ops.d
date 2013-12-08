@@ -283,12 +283,14 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         // Generate the branch code
         ver.genBranch(
             as,
+            instr,
             branchNO,
             branchOV,
             BranchShape.DEFAULT,
             function void(
                 CodeBlock as,
                 FragmentRef[]* refList,
+                IRInstr instr,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -1274,12 +1276,14 @@ void gen_if_true(
     // Generate the branch code
     ver.genBranch(
         as,
+        instr,
         branchT,
         branchF,
         BranchShape.DEFAULT,
         function void(
             CodeBlock as,
             FragmentRef[]* refList,
+            IRInstr instr,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1312,12 +1316,14 @@ void gen_jump(
     // Jump to the target block directly
     ver.genBranch(
         as,
+        instr,
         branch,
         null,
         BranchShape.DEFAULT,
         function void(
             CodeBlock as,
             FragmentRef[]* refList,
+            IRInstr instr,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1331,159 +1337,21 @@ void gen_jump(
     branch.genCode(as, st);
 }
 
-/*
-void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_call(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    // Generate a JIT entry point for the call continuation
-    ctx.genCallCont(instr);
+    // TODO: just steal an allocatable reg to use as an extra temporary
+    // force its contents to be spilled if necessary
+    // maybe add State.freeReg method
+    auto scrReg3 = allocRegs[$-1];
 
-    // Find the most called callee function
-    uint64_t maxCount = 0;
-    IRFunction maxCallee = null;
-    foreach (callee, count; ctx.fun.callCounts[instr])
-    {
-        if (count > maxCount)
-        {
-            maxCallee = callee;
-            maxCount = count;
-        }
-    }
-
-    // Get the callee function
-    auto fun = maxCallee;
-    assert (fun !is null && fun.entryBlock !is null);
-
-    // If the argument count doesn't match
-    auto numArgs = cast(int32_t)instr.numArgs - 2;
-    if (numArgs != fun.numParams)
-    {
-        ctx.as.incStatCnt(&stats.numCallBailouts, scrRegs64[0]);
-
-        // Call the interpreter call instruction
-        defaultFn(ctx.as, ctx, st, instr);
-        return;
-    }
-
-    // Save the current state before any values are spilled
-    auto entrySt = new CodeGenState(st);
-
-    // Label for the bailout to interpreter cases
-    auto BAILOUT = new Label("CALL_BAILOUT");
-
-    //
-    // Function pointer extraction
-    //
-
-    // Get the type tag for the closure value
-    auto closType = st.getTypeOpnd(
-        ctx.as, 
-        instr, 
-        0, 
-        scrRegs8[0],
-        false
-    );
-
-    // If the value is not a reference, bailout to the interpreter
-    ctx.as.instr(CMP, closType, Type.REFPTR);
-    ctx.as.instr(JNE, BAILOUT);
-
-    // Get the word for the closure value
-    auto closReg = cast(X86Reg)st.getWordOpnd(
-        ctx, 
-        ctx.as, 
-        instr, 
-        0,
-        64,
-        scrRegs64[0],
-        true,
-        false
-    );
-    assert (closReg !is null);
-
-    // If the object is not a closure, bailout
-    ctx.as.instr(MOV, scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
-    ctx.as.instr(CMP, scrRegs32[1], LAYOUT_CLOS);
-    ctx.as.instr(JNE, BAILOUT);
-
-    // Get the function pointer from the closure object
-    auto fptrMem = new X86Mem(64, closReg, CLOS_OFS_FPTR);
-    ctx.as.instr(MOV, scrRegs64[1], fptrMem);
-
-    //
-    // Function call logic
-    //
-
-    // If this is not the closure we expect, bailout to the interpreter
-    ctx.as.ptr(scrRegs64[2], fun);
-    ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
-    ctx.as.instr(JNE, BAILOUT);
-
-    // Copy the function arguments in reverse order
-    for (size_t i = 0; i < numArgs; ++i)
-    {
-        auto instrArgIdx = instr.numArgs - (1+i);
-        auto dstIdx = -(cast(int32_t)i + 1);
-
-        // Copy the argument word
-        auto argOpnd = st.getWordOpnd(
-            ctx, 
-            ctx.as, 
-            instr, 
-            instrArgIdx,
-            64,
-            scrRegs64[2],
-            true,
-            false
-        );
-        ctx.as.setWord(dstIdx, argOpnd);
-
-        // Copy the argument type
-        auto typeOpnd = st.getTypeOpnd(
-            ctx.as, 
-            instr, 
-            instrArgIdx, 
-            scrRegs8[2], 
-            true
-        );
-        ctx.as.setType(dstIdx, typeOpnd);
-    }
-
-    // Write the argument count
-    ctx.as.setWord(-numArgs - 1, numArgs);
-    ctx.as.setType(-numArgs - 1, Type.INT32);
-
-    // If the callee uses its "this" argument, write it on the stack
-    if (fun.ast.usesThis == true)
-    {
-        auto thisReg = cast(X86Reg)st.getWordOpnd(
-            ctx, 
-            ctx.as, 
-            instr, 
-            1,
-            64,
-            scrRegs64[2],
-            true,
-            false
-        );
-        assert (thisReg !is null);
-        ctx.as.setWord(-numArgs - 2, thisReg);
-
-        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2], true);
-        ctx.as.setType(-numArgs - 2, typeOpnd);
-    }
-
-    // If the callee uses its closure argument, write it on the stack
-    if (fun.ast.usesClos == true)
-    {
-        ctx.as.setWord(-numArgs - 3, closReg);
-        ctx.as.setType(-numArgs - 3, Type.REFPTR);
-    }
-
-    // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[2], instr);
-    ctx.as.setWord(-numArgs - 4, scrRegs64[2]);
-    ctx.as.setType(-numArgs - 4, Type.INSPTR);
-
+    // TODO : save the state before spilling?
+    // TODO
+    /*
     // Spill the values that are live after the call
     st.spillRegs(
         ctx.as,
@@ -1492,42 +1360,211 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
             return ctx.liveInfo.liveAfter(val, instr);
         }
     );
+    */
 
-    // Push space for the callee arguments and locals
-    ctx.as.getMember!("IRFunction", "numLocals")(scrRegs32[1], scrRegs64[1]);
-    ctx.as.instr(SUB, tspReg, scrRegs64[1]);
-    ctx.as.instr(SHL, scrRegs64[1], 3);
-    ctx.as.instr(SUB, wspReg, scrRegs64[1]);
+    //
+    // Function pointer extraction
+    //
 
-    // Label for the interpreter jump
-    auto INTERP_JUMP = new Label("INTERP_JUMP");
+    // Get the type tag for the closure value
+    auto closType = st.getTypeOpnd(
+        as,
+        instr, 
+        0, 
+        scrRegs[0].opnd(8),
+        false
+    );
 
-    // Get a pointer to the branch target
-    ctx.as.ptr(scrRegs64[0], fun.entryBlock);
+    // TODO
+    // If the value is not a reference, bailout to the interpreter
+    //as.cmp(closType, Type.REFPTR);
+    //as.jne(BAILOUT);
 
-    // If a JIT entry point exists, jump to it directly
-    ctx.as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], scrRegs64[0]);
-    ctx.as.instr(CMP, scrRegs64[1], 0);
-    ctx.as.instr(JE, INTERP_JUMP);
-    ctx.as.instr(JMP, scrRegs64[1]);
+    // Get the word for the closure value
+    auto closReg = st.getWordOpnd(
+        as,
+        instr, 
+        0,
+        64,
+        scrRegs[0].opnd(64),
+        true,
+        false
+    );
+    assert (closReg.isGPR);
 
-    // Make the interpreter jump to the target
-    ctx.ol.addInstr(INTERP_JUMP);
-    ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
-    ctx.ol.instr(JMP, ctx.bailLabel);
+    // TODO
+    // If the object is not a closure, bailout
+    //as.mov(scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
+    //as.cmp(scrRegs32[1], LAYOUT_CLOS);
+    //as.jne(BAILOUT);
 
-    // Bailout to the interpreter (out of line)
-    ctx.ol.addInstr(BAILOUT);
-    //ctx.ol.printStr("call bailout in " ~ instr.block.fun.getName);
+    // Get the IRFunction pointer from the closure object
+    auto fptrMem = X86Opnd(64, closReg.reg, CLOS_OFS_FPTR);
+    as.mov(scrRegs[1].opnd(64), fptrMem);
 
-    ctx.ol.incStatCnt(&stats.numCallBailouts, scrRegs64[0]);
+    //
+    // Function call logic
+    //
 
-    // Fallback to interpreter execution
-    // Spill all values, including arguments
-    // Call the interpreter call instruction
-    defaultFn(ctx.ol, ctx, entrySt, instr);
+    auto numArgs = cast(uint32_t)instr.numArgs - 2;
+
+    // Compute the numArgs - numParams
+    as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
+    as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
+    as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
+
+
+    //writeln("numArgs=", numArgs);
+    //as.printUint(scrReg3.opnd(64));
+    //as.printUint(scrRegs[2].opnd(64));
+
+
+    // Initialize the missing arguments, if any
+    as.mov(scrReg3.opnd(32), scrRegs[2].opnd(32));
+    as.cmp(scrReg3.opnd(32), X86Opnd(0));
+    as.jge(Label.LOOP_EXIT);
+    as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.int8Val));
+    as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
+    as.add(scrReg3.opnd(32), X86Opnd(1));
+    as.label(Label.LOOP_EXIT);
+
+    // Compute the number of extra arguments (negative)
+    as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
+    as.jl(Label.FALSE);
+    as.xor(scrRegs[2].opnd(32), scrRegs[2].opnd(32));
+    as.label(Label.FALSE);
+
+    static void movArgWord(CodeBlock as, size_t argIdx, X86Opnd val)
+    {
+        as.mov(X86Opnd(64, wspReg, -8 * cast(int32_t)(argIdx+1), 8, scrRegs[2]), val);
+    }
+
+    static void movArgType(CodeBlock as, size_t argIdx, X86Opnd val)
+    {
+        as.mov(X86Opnd(8, tspReg, -1 * cast(int32_t)(argIdx+1), 1, scrRegs[2]), val);
+    }
+
+    // Copy the function arguments in reverse order
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        auto instrArgIdx = instr.numArgs - (1+i);
+
+        // Copy the argument word
+        auto argOpnd = st.getWordOpnd(
+            as, 
+            instr, 
+            instrArgIdx,
+            64,
+            scrReg3.opnd(64),
+            true,
+            false
+        );
+        movArgWord(as, i, argOpnd);
+
+        // Copy the argument type
+        auto typeOpnd = st.getTypeOpnd(
+            as, 
+            instr, 
+            instrArgIdx, 
+            scrReg3.opnd(8),
+            true
+        );
+        movArgType(as, i, typeOpnd);
+    }
+
+    // Write the argument count
+    movArgWord(as, numArgs + 0, X86Opnd(numArgs));
+    movArgType(as, numArgs + 0, X86Opnd(Type.INT32));
+
+    // Write the "this" argument
+    auto thisReg = st.getWordOpnd(
+        as, 
+        instr, 
+        1,
+        64,
+        scrReg3.opnd(64),
+        true,
+        false
+    );
+    assert (thisReg.isGPR);
+    movArgWord(as, numArgs + 1, thisReg);
+    auto typeOpnd = st.getTypeOpnd(
+        as, 
+        instr, 
+        1, 
+        scrReg3.opnd(8),
+        true
+    );
+    movArgType(as, numArgs + 1, typeOpnd);
+
+    // Write the closure argument
+    movArgWord(as, numArgs + 2, closReg);
+    movArgType(as, numArgs + 2, X86Opnd(Type.REFPTR));
+
+    // Request a branch object for the continuation
+    auto contBranch = getBranchEdge(
+        as,
+        instr.getTarget(0),
+        st,
+        false
+    );
+
+    // TODO: exception branch, if any
+
+    // Jump to the target block directly
+    ver.genBranch(
+        as,
+        instr,
+        contBranch,
+        null,
+        BranchShape.DEFAULT,
+        function void(
+            CodeBlock as,
+            FragmentRef[]* refList,
+            IRInstr instr,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            auto numArgs = cast(uint32_t)instr.numArgs - 2;
+
+            // Write the return address on the stack
+            as.writeASM("mov", scrRegs[0], target0.getName);
+            as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
+            *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
+            as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd(64));
+            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.INSPTR));
+
+            //as.printUint(scrRegs[0].opnd(64));
+
+            // Push space for the callee arguments and locals
+            as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
+            as.sub(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
+            as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
+
+            //as.printUint(scrRegs[0].opnd(64));
+
+            as.shl(scrRegs[0].opnd(64), X86Opnd(3));
+            as.sub(X86Opnd(wspReg), scrRegs[0].opnd(64));
+
+            // Jump to the function entry block
+            as.getMember!("IRFunction.entryCode")(scrRegs[0], scrRegs[1]);
+            as.jmp(scrRegs[0].opnd(64));
+        }
+    );
+
+    // Add the return value move code to the continuation branch
+    contBranch.markStart(as);
+    as.setWord(instr.outSlot, retWordReg.opnd(64));
+    as.setType(instr.outSlot, retTypeReg.opnd(8));
+
+    // Generate the continuation branch edge code
+    contBranch.genCode(as, st);
+
+    // TODO: if not closure, call function to throw an exception
+    // need to spill values before jumping to this
 }
-*/
 
 void gen_call_prim(
     VersionInst ver, 
@@ -1642,12 +1679,14 @@ void gen_call_prim(
     // Jump to the target block directly
     ver.genBranch(
         as,
+        instr,
         contBranch,
         entryVer,
         BranchShape.DEFAULT,
         function void(
             CodeBlock as,
             FragmentRef[]* refList,
+            IRInstr instr,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1672,7 +1711,7 @@ void gen_call_prim(
     );
 
     // Add the return value move code to the continuation branch
-    contBranch.startCode(as);
+    contBranch.markStart(as);
     as.setWord(instr.outSlot, retWordReg.opnd(64));
     as.setType(instr.outSlot, retTypeReg.opnd(8));
 
@@ -1754,7 +1793,7 @@ void gen_ret(
     //as.printStr("ret from " ~ instr.block.fun.getName);
 
     // TODO: support for return from new
-    assert (st.ctx.newCall is false);
+    assert (st.ctx.ctorCall is false);
 
     // Get the actual argument count into r0
     as.getWord(scrRegs[0], argcSlot);
@@ -1799,6 +1838,8 @@ void gen_ret(
     as.add(tspReg.opnd(64), scrRegs[0].opnd(64));
     as.shl(scrRegs[0].opnd(64), X86Opnd(3));
     as.add(wspReg.opnd(64), scrRegs[0].opnd(64));
+
+    //as.printUint(scrRegs[1].opnd(64));
 
     // Jump to the return address
     as.jmp(scrRegs[1].opnd(64));
@@ -1846,6 +1887,14 @@ void gen_new_clos(
         ObjMap protMap
     )
     {
+        // If the function has no entry point code
+        if (fun.entryCode is null)
+        {
+            // Store the entry code pointers
+            fun.entryCode = getEntryStub(interp, false);
+            fun.ctorCode = getEntryStub(interp, true);
+        }
+
         // Allocate the closure object
         auto closPtr = GCRoot(
             interp,

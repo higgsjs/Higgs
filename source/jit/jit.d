@@ -48,6 +48,7 @@ import std.typecons;
 import std.bitmanip;
 import options;
 import ir.ir;
+import ir.ast;
 import ir.livevars;
 import interp.interp;
 import interp.layout;
@@ -114,13 +115,13 @@ class CodeGenCtx
     /// Function this code belongs to
     IRFunction fun;
 
-    /// New call flag
-    bool newCall;
+    /// Constructor call flag
+    bool ctorCall;
 
     this(IRFunction fun, bool newCall, Interp interp)
     {
         this.fun = fun;
-        this.newCall = newCall;
+        this.ctorCall = ctorCall;
         this.interp = interp;
     }
 }
@@ -900,12 +901,22 @@ abstract class CodeFragment
     /// Get the name string for this fragment
     final string getName()
     {
+        if (auto stub = cast(EntryStub)this)
+        {
+            return "entry_stub_" ~ (stub.ctorCall? "ctor":"reg");
+        }
+
         if (auto ver = cast(BlockVersion)this)
+        {
             return ver.block.getName;
-        else if (auto branch = cast(BranchCode)this)
+        }
+
+        if (auto branch = cast(BranchCode)this)
+        {
             return "branch_" ~ branch.target.block.getName;
-        else
-            assert (false);
+        }
+
+        assert (false);
     }
 
     /// Get the length of the code fragment
@@ -919,6 +930,47 @@ abstract class CodeFragment
     final auto getCodePtr(CodeBlock cb)
     {
         return cb.getAddress(startIdx);
+    }
+
+    /**
+    Store the start position of the code
+    */
+    final void markStart(CodeBlock as)
+    {
+        assert (startIdx is startIdx.max);
+
+        startIdx = cast(uint32_t)as.getWritePos();
+
+        // Add a label string comment
+        as.writeStr(this.getName ~ ":");
+    }
+
+    /**
+    Store the end position of the code
+    */
+    final void markEnd(CodeBlock as)
+    {
+        assert (endIdx is startIdx.max);
+
+        endIdx = cast(uint32_t)as.getWritePos();
+    }
+}
+
+/**
+Function entry stub
+*/
+class EntryStub : CodeFragment
+{
+    /// Associated interpreter
+    Interp interp;
+
+    /// Constructor call flag
+    bool ctorCall;
+
+    this(Interp interp, bool ctorCall)
+    {
+        this.interp = interp;
+        this.ctorCall = ctorCall;
     }
 }
 
@@ -940,19 +992,6 @@ class BranchCode : CodeFragment
     {
         this.branch = branch;
         this.target = target;
-    }
-
-    /**
-    Store the start position of the code
-    */
-    void startCode(CodeBlock as)
-    {
-        assert (startIdx is startIdx.max);
-
-        startIdx = cast(uint32_t)as.getWritePos();
-
-        // Add a label string comment
-        as.writeStr(this.getName ~ ":");
     }
 
     /**
@@ -1051,7 +1090,7 @@ class BranchCode : CodeFragment
 
         // Store the code start index
         if (startIdx is startIdx.max)
-            startCode(as);
+            markStart(as);
 
         // Execute the moves
         execMoves(as, moveList, scrRegs[0], scrRegs[1]);
@@ -1064,7 +1103,7 @@ class BranchCode : CodeFragment
         as.jmp32Ref(&interp.refList, this.target);
 
         // Store the code end index
-        endIdx = cast(uint32_t)as.getWritePos();
+        markEnd(as);
 
         // Add the compiled fragment to the fragment list
         interp.fragList ~= this;
@@ -1088,7 +1127,7 @@ Base class for basic block versions
 */
 abstract class BlockVersion : CodeFragment
 {
-    // Associated block
+    /// Associated block
     IRBlock block;
 
     /// Code generation state at block entry
@@ -1122,6 +1161,7 @@ enum BranchShape
 alias void function(
     CodeBlock as,
     FragmentRef[]* refList,
+    IRInstr instr,
     CodeFragment target0,
     CodeFragment target1,
     BranchShape shape
@@ -1152,6 +1192,7 @@ class VersionInst : BlockVersion
     */
     void genBranch(
         CodeBlock as,
+        IRInstr instr,
         CodeFragment target0,
         CodeFragment target1,
         BranchShape shape,
@@ -1170,6 +1211,7 @@ class VersionInst : BlockVersion
         genFn(
             as,
             &state.ctx.interp.refList,
+            instr,
             target0, 
             target1, 
             shape
@@ -1355,27 +1397,17 @@ BranchCode getBranchEdge(
 }
 
 /**
-Compile a basic block version
+Compile all blocks in the compile queue
 */
-void compile(BlockVersion startVer)
+void compile(Interp interp)
 {
     //writeln("entering compile");
 
-    assert (startVer !is null);
-
-    auto state = startVer.state;
-    assert (state.ctx !is null);
-    auto interp = state.ctx.interp;
     assert (interp !is null);
-    auto fun = state.ctx.fun;
-    assert (fun !is null);
-
     auto as = interp.execHeap;
     assert (as !is null);
 
-    // Add the version to the compilation queue
-    assert (interp.compQueue.length is 0);
-    interp.compQueue ~= startVer;
+    assert (interp.compQueue.length > 0);
 
     // Until the compilation queue is empty
     while (interp.compQueue.length > 0)
@@ -1399,28 +1431,28 @@ void compile(BlockVersion startVer)
             //writeln("compiling stub");
 
             // Insert the label for this block in the out of line code
-            as.comment("Stub of " ~ stub.block.getName());
+            as.comment("Stub " ~ ver.getName());
 
-            // TODO: properly spill registers, GC may be run during JIT
+            // TODO: properly spill registers, GC may be run during compileStub
 
-            as.push(tspReg);
-            as.push(wspReg);
+            as.setMember!("Interp.wsp")(interpReg, wspReg);
+            as.setMember!("Interp.tsp")(interpReg, tspReg);
             as.push(interpReg);
             as.push(interpReg);
 
             // Call the JIT compile function,
             // passing it a pointer to the stub
             auto compileFn = &compileStub;
-            as.ptr(RAX, compileFn);
+            as.ptr(scrRegs[0], compileFn);
             as.ptr(cargRegs[0], stub);
-            as.call(RAX);
+            as.call(scrRegs[0]);
 
             as.pop(interpReg);
             as.pop(interpReg);
-            as.pop(wspReg);
-            as.pop(tspReg);
+            as.getMember!("Interp.wsp")(wspReg, interpReg);
+            as.getMember!("Interp.tsp")(tspReg, interpReg);
 
-            // Jump to the compiled stub
+            // Jump to the compiled version
             as.jmp(X86Opnd(RAX));
         }
 
@@ -1432,7 +1464,10 @@ void compile(BlockVersion startVer)
             auto block = inst.block;
             assert (inst.block !is null);
 
-            as.comment("Instance of " ~ block.getName());
+            // Copy the instance's state object
+            auto state = new CodeGenState(inst.state);
+
+            as.comment("Instance " ~ ver.getName());
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -1454,7 +1489,7 @@ void compile(BlockVersion startVer)
                 // Call the code generation function for the opcode
                 opcode.genFn(
                     inst,
-                    state, 
+                    state,
                     instr,
                     as
                 );
@@ -1477,7 +1512,7 @@ void compile(BlockVersion startVer)
         }
 
         // Store the code end index
-        ver.endIdx = cast(uint32_t)as.getWritePos();
+        ver.markEnd(as);
 
         // Add the compiled version to the fragment
         // list in the order they were compiled in
@@ -1533,49 +1568,6 @@ void compile(BlockVersion startVer)
     }
 }
 
-/**
-Compile a block version instance for a stub
-*/
-extern (C) const (ubyte*) compileStub(VersionStub stub)
-{
-    //writeln("entering compileStub");
-
-    auto interp = stub.state.ctx.interp;
-    auto execHeap = interp.execHeap;
-
-    assert (stub.startIdx !is stub.startIdx.max);
-    assert (stub.inst is null);
-
-    // Create a version instance object for this stub
-    // and set the instance pointer for the stub
-    stub.inst = new VersionInst(stub.block, stub.state);
-
-    // Compile the version instance
-    compile(stub.inst);
-    assert (stub.inst.startIdx !is stub.inst.startIdx.max);
-
-    // Replace the stub by its instance in the version map
-    auto versions = interp.versionMap[stub.block];
-    auto stubIdx = versions.countUntil(stub);
-    assert (stubIdx !is -1);
-    versions[stubIdx] = stub.inst;
-    assert (versions.countUntil(stub) is -1);
-
-    // Write a relative 32-bit jump to the instance over the stub code
-    auto startPos = execHeap.getWritePos();
-    execHeap.setWritePos(stub.startIdx);
-    execHeap.writeASM("jmp", stub.inst.getName);
-    execHeap.writeByte(JMP_REL32_OPCODE);
-    auto offset = stub.inst.startIdx - (execHeap.getWritePos + 4);
-    execHeap.writeInt(offset, 32);
-    execHeap.setWritePos(startPos);
-
-    //writeln("leaving compileStub");
-
-    // Return the address of the instance
-    return stub.inst.getCodePtr(execHeap);
-}
-
 /// Unit function entry point
 alias extern (C) void function() EntryFn;
 
@@ -1620,10 +1612,192 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
     as.getMember!("Interp.tsp")(tspReg, interpReg);
 
     // Compile the unit entry version
-    compile(entryInst);
+    interp.compQueue ~= entryInst;
+    compile(interp);
 
     // Return a pointer to the entry block version's code
     return cast(EntryFn)entryInst.getCodePtr(interp.execHeap);
+}
+
+/**
+Compile the block version instance for a stub
+*/
+extern (C) const (ubyte*) compileStub(VersionStub stub)
+{
+    //writeln("entering compileStub");
+
+    auto state = stub.state;
+    auto interp = state.ctx.interp;
+    auto as = interp.execHeap;
+
+    assert (stub.startIdx !is stub.startIdx.max);
+    assert (stub.inst is null);
+
+    // Create a version instance object for this stub
+    // and set the instance pointer for the stub
+    stub.inst = new VersionInst(stub.block, state);
+
+    // Compile the version instance
+    interp.compQueue ~= stub.inst;
+    compile(interp);
+    assert (stub.inst.startIdx !is stub.inst.startIdx.max);
+
+    // Replace the stub by its instance in the version map
+    auto versions = interp.versionMap.get(stub.block, []);
+    auto stubIdx = versions.countUntil(stub);
+    assert (stubIdx !is -1);
+    versions[stubIdx] = stub.inst;
+    assert (versions.countUntil(stub) is -1);
+
+    // Write a relative 32-bit jump to the instance over the stub code
+    auto startPos = as.getWritePos();
+    as.setWritePos(stub.startIdx);
+    as.writeASM("jmp", stub.inst.getName);
+    as.writeByte(JMP_REL32_OPCODE);
+    auto offset = stub.inst.startIdx - (as.getWritePos + 4);
+    as.writeInt(offset, 32);
+    as.setWritePos(startPos);
+
+    //writeln("leaving compileStub");
+
+    // Return a pointer to the instance's code
+    return stub.inst.getCodePtr(as);
+}
+
+/**
+Compile an entry block instance for a function
+*/
+extern (C) const (ubyte*) compileEntry(EntryStub stub)
+{
+    writeln("entering compileEntry");
+
+    auto interp = stub.interp;
+    auto ctorCall = stub.ctorCall;
+
+    // Get the closure and IRFunction pointers
+    auto argCount = interp.getWord(3).uint32Val;
+    auto closPtr = interp.getWord(1).ptrVal;
+    auto fun = getClosFun(closPtr);
+
+    writeln("closPtr=", closPtr);
+    writeln("fun=", cast(ubyte*)fun);
+    writeln("argCount=", argCount);
+
+
+    if (argCount > 0)
+        writeln("first arg: ", interp.getWord(4).uint64Val);
+
+
+
+    writeln("orig stack size: ", interp.stackSize());
+
+    // Store the original number of locals for the function
+    auto origLocals = fun.numLocals;
+
+    // Generate the IR for this function
+    assert (fun.entryBlock is null);
+    astToIR(fun.ast, fun);
+
+    /*
+    // Compute the number of missing arguments
+    auto numMissing = (fun.numParams > argCount)? (fun.numParams - argCount):0;
+
+    // Shift the existing arguments upwards
+    for (LocalIdx i = 0; i < (argCount + NUM_HIDDEN_ARGS); ++i)
+        interp.setSlot(-numMissing + i, interp.getSlot(i));
+
+    // Initialize the missing arguments to undefined
+    for (LocalIdx i = 0; i < numMissing; ++i)
+        interp.setSlot(argCount + i, ValuePair(UNDEF, Type.CONST));
+
+    // Add space for the missing arguments
+    interp.push(numMissing);
+
+    // Add space for the newly allocated locals
+    auto newLocals = fun.numLocals - (NUM_HIDDEN_ARGS + numMissing);
+    interp.push(newLocals);
+    */
+
+    // Add space for the newly allocated locals
+    interp.push(fun.numLocals - origLocals);
+
+
+
+    writeln("new stack size: ", interp.stackSize());
+
+
+
+
+    // Request an instance for the function entry blocks
+    auto entryInst = getBlockVersion(
+        fun.entryBlock, 
+        new CodeGenState(fun.getCtx(false, interp)),
+        true
+    );
+    // Request an instance for the function entry block
+    auto ctorInst = getBlockVersion(
+        fun.entryBlock, 
+        new CodeGenState(fun.getCtx(true, interp)),
+        true
+    );
+
+    // Compile the entry versions
+    compile(interp);
+
+    // Store the entry code pointer on the function
+    fun.entryCode = entryInst.getCodePtr(interp.execHeap);
+    fun.ctorCode = ctorInst.getCodePtr(interp.execHeap);
+
+    writeln("leaving compileEntry");
+
+    // Return the code pointer
+    return ctorCall? fun.entryCode:fun.ctorCode;
+}
+
+/**
+Get a function entry stub
+*/
+const(ubyte)* getEntryStub(Interp interp, bool ctorCall)
+{
+    auto as = interp.execHeap;
+
+    if (ctorCall && interp.ctorStub)
+        return interp.ctorStub.getCodePtr(as);
+    if (interp.entryStub)
+        return interp.entryStub.getCodePtr(as);
+
+    auto stub = new EntryStub(interp, ctorCall);
+
+    stub.markStart(as);
+
+    as.setMember!("Interp.wsp")(interpReg, wspReg);
+    as.setMember!("Interp.tsp")(interpReg, tspReg);
+    as.push(interpReg);
+    as.push(interpReg);
+
+    // Call the JIT compile function,
+    // passing it a pointer to the stub
+    auto compileFn = &compileEntry;
+    as.ptr(scrRegs[0], compileFn);
+    as.ptr(cargRegs[0], stub);
+    as.call(scrRegs[0]);
+
+    as.pop(interpReg);
+    as.pop(interpReg);
+    as.getMember!("Interp.wsp")(wspReg, interpReg);
+    as.getMember!("Interp.tsp")(tspReg, interpReg);
+
+    // Jump to the compiled version
+    as.jmp(X86Opnd(RAX));
+
+    stub.markEnd(as);
+
+    if (ctorCall)
+        interp.ctorStub = stub;
+    else
+        interp.entryStub = stub;
+
+    return stub.getCodePtr(as);
 }
 
 /// Load a pointer constant into a register

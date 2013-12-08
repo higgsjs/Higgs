@@ -117,12 +117,19 @@ class IRFunction : IdObject
     /// Code generation context for new calls
     CodeGenCtx newCtx = null;
 
+    /// Regular entry point code
+    const(ubyte)* entryCode = null;
+
+    /// Constructor entry point code
+    const(ubyte)* ctorCode = null;
+
     /// Constructor
     this(FunExpr ast)
     {
         this.name = ast.getName();
         this.ast = ast;
         this.numParams = cast(uint32_t)ast.params.length;
+        this.numLocals = this.numParams + NUM_HIDDEN_ARGS;
 
         // If the function is anonymous
         if (this.name == "")

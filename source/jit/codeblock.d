@@ -61,9 +61,11 @@ Block internal label enumeration
 enum Label : size_t
 {
     LOOP,
+    LOOP_EXIT,
     DONE,
     TRUE,
     FALSE,
+    JOIN,
     FUN1,
     FUN2,
     BRANCH_TARGET0,
@@ -157,12 +159,13 @@ class CodeBlock
         // If there are comment/disassembly strings
         if (strings.length > 0)
         {
-            size_t curPos = 0;
-            string line = "";
-
             // Find the first string at/after the start index
             auto sortedRange = assumeSorted!"a.pos <= b.pos"(strings);
             auto strRange = sortedRange.upperBound(CommentStr(startIdx, "")).release();
+            assert (strRange.length is 0 || strRange[0].pos >= startIdx);
+
+            size_t curPos = startIdx;
+            string line = "";
 
             // For each string
             foreach (strIdx, str; strRange)
@@ -170,7 +173,7 @@ class CodeBlock
                 // Start a new line for this string
                 line = str.str;
 
-                auto nextStrPos = (strIdx < strings.length - 1)? strings[strIdx+1].pos:this.writePos;
+                auto nextStrPos = (strIdx < strRange.length - 1)? strRange[strIdx+1].pos:endIdx;
 
                 // If the next string is past the current position
                 if (nextStrPos > curPos)
@@ -366,7 +369,6 @@ class CodeBlock
         {
             // Replace other strings of equal position by the new string
             auto r = assumeSorted!"a.pos < b.pos"(strings).trisect(newStr);
-            //auto newRange = assumeSorted!"a.pos < b.pos"([newStr]);
             strings = r[0].release() ~ r[1].release() ~ newStr ~ r[2].release();
         }
     }

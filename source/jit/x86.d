@@ -693,7 +693,7 @@ void writeRMInstr(
         break;
 
         default:
-        assert (false, "invalid second operand");
+        assert (false, "invalid second operand: " ~ opnd1.toString());
     }
 
     // Add the operand-size prefix, if needed
@@ -862,7 +862,7 @@ void writeRMMulti(
     else if (opnd0.isMem)
         opndSize = opnd0.mem.size;
     else
-        assert (false, "invalid first operand");    
+        assert (false, "invalid first operand: " ~ opnd0.toString());    
 
     // Check the size of opnd1
     if (opnd1.isReg)
@@ -1365,7 +1365,6 @@ void jmp(CodeBlock cb, X86Opnd opnd)
 void jmp8(CodeBlock cb, int8_t offset)
 {
     cb.writeASM("jmp", ((offset > 0)? "+":"-") ~ to!string(offset));
-
     cb.writeByte(JMP_REL8_OPCODE);
     cb.writeByte(offset);
 }

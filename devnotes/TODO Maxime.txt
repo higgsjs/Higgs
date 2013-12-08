@@ -56,41 +56,99 @@ Third milestone: standard library initialization
   - May also want to look into why this is so slow/complex
 
 TODO: rename Interp class to VM
-- rename uses and interp directory as well
-
-TODO: remove interp/ops.d
+- rename uses and interp directory as well (runtime dir?)
+- could also create a JIT class, have JIT.compile(), JIT.queue(version), etc.
+  - put the execHeap, compQueue, refList, etc. in there
+- reread jit.d, cleanup code
 
 TODO: unit test for global property access of prop from Object.prototype
 
-TODO: work towards object property access?
+TODO: work towards object property access
 - load/store
 - make_value
 - map info access
 
+TODO: remove interp/ops.d
+- move useful contents to jit/ops.d
+
+TODO: closure variable support, need load/store
+
 TODO: support for print(), useful for debugging
 - Needs regular calls, string functions
 
-TODO: regular function calls
+TODO: blog
+- specifics of incremental JIT
+- progress
+  - REPL, static calls, primitives, tests
+- stress/discomfort of having to take many important design decisions at once
+  - exploratory programming
+- compiler architect may be a great career move
+- conference invites (mloc.js, Web Directions Code)
+    http://mloc-js.com/
+    http://code13.webdirections.org/
+- book invite, AOSA vol 4
+    http://aosabook.org/en/index.html
+
+TODO: log call block size in bytes
+
+FIXME: segfault on too many arguments
+
+
+
+
+
+
+
+
+[DONE] FIXME: identity function doesn't get its argument
+- seem to be pushing the right number of locals
+
+[DONE] TODO: transition regular call and new stub to unique shared stubs
+- separate compileEntry function
+  - ast-to-ir
+  - adjust topmost stack frame, add undef args
+  - compile entry block
+  - set entry block ptr
+  - no stub patching
+- remove handling of null block ptr
+  - just have special EntryStub code fragment
+
+[DONE] TODO: init numLocals, numParams before ast-to-ir
+
+[DONE] FIXME: some instructions have no disassembly?
+- lost our alignment somewhere?
+  - when patching a stub?
+- try disabling rewriting of comments, see if it fixes the issue
+  - doesn't seem to fix the problem
+- seems we often get a misalignment after "jmp rax"
+- problem could be in the selection of comments for versions/fragments
+- the code being printed is some unit function entry...
+  - no matter what's being printed
+  - it's the machine code that's wrong, not the comments?
+
+[DONE] TODO: regular function calls
 - Need to do AST->IR conversion
   - May need special kind of stub?
 - Should also store code ptr on IRFunction
 - Entry stub?
+  - could have one regular call stub and one new call stub
+  - check the IRFunction, do the AST->IR?
+  - issue: num locals, clos local varies
+  - this is an issue for the GC too? Not really?
+  - stubs may have to be specific to the function
+  - how much code are we talking? everything already spilled
+- call needs to:
+  - get IRFunction ptr from clos
+  - get numArgs
+  - loop, pushing extra undef params (if not enough args)
+  - get numLocals, push space for locals
+  - push RA (linked)
+  - get entry version ptr, jump to it (not linked)
+- If not a closure, need to throw an exception ***
+  - Make sure all is spilled, call an interpreter function
+  - Can mostly ignore this for now
 
-TODO: blog
-- compilers architect may be a great career move
-- conference invites (mloc.js, Web Directions Code)
-- book invite, vol 4
-- progress and specifics of incremental JIT
-- stress/discomfort of having to take many important design decisions at once
-  - exploratory programming
-
-
-
-
-
-
-
-
+[DONE] TODO: modify new_clos to generate entry stub
 
 ------------------------------------------------------------------------------
 
