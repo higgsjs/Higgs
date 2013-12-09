@@ -65,35 +65,39 @@ alias void function(
     CodeBlock as
 ) GenFn;
 
-/*
-void gen_get_arg(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_get_arg(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // Get the first argument slot
     auto argSlot = instr.block.fun.argcVal.outSlot + 1;
 
     // Get the argument index
-    auto idxOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, scrRegs32[0], false);
-    auto idxReg32 = cast(X86Reg)idxOpnd;
-    auto idxReg64 = idxReg32.reg(64);
+    auto idxOpnd = st.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), false);
+    assert (idxOpnd.isGPR);
+    auto idxReg32 = idxOpnd.reg.opnd(32);
+    auto idxReg64 = idxOpnd.reg.opnd(64);
 
     // Get the output operand
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto opndOut = st.getOutOpnd(as, instr, 64);
 
     // Zero-extend the index to 64-bit
-    ctx.as.instr(MOV, idxReg32, idxReg32);
+    as.mov(idxReg32, idxReg32);
 
     // TODO: optimize for immediate idx, register opndOut
     // Copy the word value
-    auto wordSlot = new X86Mem(64, wspReg, argSlot * 8, idxReg64, 8);
-    ctx.as.instr(MOV, scrRegs64[1], wordSlot);
-    ctx.as.instr(MOV, opndOut, scrRegs64[1]);
+    auto wordSlot = X86Opnd(64, wspReg, 8 * argSlot, 8, idxReg64.reg);
+    as.mov(scrRegs[1].opnd(64), wordSlot);
+    as.mov(opndOut, scrRegs[1].opnd(64));
 
     // Copy the type value
-    auto typeSlot = new X86Mem(8, tspReg, argSlot * 1, idxReg64, 1);
-    ctx.as.instr(MOV, scrRegs8[1], typeSlot);
-    st.setOutType(ctx.as, instr, scrRegs8[1]);
+    auto typeSlot = X86Opnd(8, tspReg, 1 * argSlot, 1, idxReg64.reg);
+    as.mov(scrRegs[1].opnd(8), typeSlot);
+    st.setOutType(as, instr, scrRegs[1].reg(8));
 }
-*/
 
 void gen_set_str(
     VersionInst ver, 

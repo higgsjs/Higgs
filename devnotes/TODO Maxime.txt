@@ -73,8 +73,13 @@ TODO: remove interp/ops.d
 
 TODO: closure variable support, need load/store
 
-TODO: support for print(), useful for debugging
-- Needs regular calls, string functions
+TODO: try to optimize call logic. Can some operations use 32-bit opnds?
+- Can we use a second scratch reg to compute extra args?
+
+TODO: ask on dconf about closure opts?
+- Will it allocate extra objects or context if no shared variables?
+- Are closures heap-allocated, or by value?
+- see page about delegates first
 
 TODO: blog
 - specifics of incremental JIT
@@ -89,15 +94,17 @@ TODO: blog
 - book invite, AOSA vol 4
     http://aosabook.org/en/index.html
 
-TODO: try to optimize call logic a bit. Can some operations use 32-bit opnds?
-- Can we use a second scratch reg to compute extra args?
+TODO: support for print(), useful for debugging
+- Needs regular calls, string functions
+
+TODO: load, needed for print
 
 
 
 
 
 
-
+[DONE] TODO: $ir_get_arg, needed for print(), others
 
 [DONE] TODO: log call block size in bytes
 - 330 bytes

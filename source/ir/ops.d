@@ -249,7 +249,7 @@ Opcode RET = { "ret", false, [OpArg.LOCAL], &gen_ret, OpInfo.BRANCH };
 Opcode THROW = { "throw", false, [OpArg.LOCAL], /*&gen_throw*/null , OpInfo.BRANCH };
 
 // Access visible arguments by index
-Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], /*&gen_get_arg*/null };
+Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
 
 // Special implementation object/value access instructions
 Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &gen_get_obj_proto };
