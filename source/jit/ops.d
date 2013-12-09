@@ -456,60 +456,65 @@ alias FPOp!("sub") gen_sub_f64;
 alias FPOp!("mul") gen_mul_f64;
 alias FPOp!("div") gen_div_f64;
 
-/*
-void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void LoadOp(size_t memSize, Type typeTag)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // The pointer operand must be a register
-    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    assert (opnd0.isGPR);
 
     // The offset operand may be a register or an immediate
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[1], true);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Create the memory operand
-    X86Mem memOpnd;
-    if (auto immOffs = cast(X86Imm)opnd1)
+    X86Opnd memOpnd;
+    if (opnd1.isImm)
     {
-        memOpnd = new X86Mem(memSize, opnd0, cast(int32_t)immOffs.imm);
+        memOpnd = X86Opnd(memSize, opnd0.reg, cast(int32_t)opnd1.imm.imm);
     }
-    else if (auto regOffs = cast(X86Reg)opnd1)
+    else if (opnd1.isGPR)
     {
         // Zero-extend the offset from 32 to 64 bits
-        ctx.as.instr(MOV, regOffs, regOffs);
-        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.reg(64));
+        as.mov(opnd1, opnd1);
+        memOpnd = X86Opnd(memSize, opnd0.reg, 0, 1, opnd1.reg.reg(64));
     }
     else
     {
         assert (false, "invalid offset operand");
     }
 
-    // Select which load opcode to use
-    X86OpPtr loadOp;
-    static if (memSize == 8 || memSize == 16)
-        loadOp = MOVZX;
-    else
-        loadOp = MOV;
-
     // If the output operand is a memory location
-    if (cast(X86Mem)opndOut || memSize == 32)    
+    if (outOpnd.isMem || memSize == 32)    
     {
-        uint16_t scrSize = (memSize == 32)? 32:64;
-        auto scrReg64 = scrRegs64[2];
-        auto scrReg = new X86Reg(X86Reg.GP, scrReg64.regNo, scrSize);
+        size_t scrSize = (memSize == 32)? 32:64;
+        auto scrReg64 = scrRegs[2].opnd(64);
+        auto scrReg = X86Opnd(X86Reg(X86Reg.GP, scrReg64.reg.regNo, scrSize));
 
         // Load to a scratch register and then move to the output
-        ctx.as.instr(loadOp, scrReg, memOpnd);
-        ctx.as.instr(MOV, opndOut, scrReg64);
+        static if (memSize == 8 || memSize == 16)
+            as.movzx(scrReg64, memOpnd);
+        else
+            as.mov(scrReg, memOpnd);
+
+        as.mov(outOpnd, scrReg64);
     }
     else
     {
         // Load to the output register directly
-        ctx.as.instr(loadOp, opndOut, memOpnd);
+        static if (memSize == 8 || memSize == 16)
+            as.movzx(outOpnd, memOpnd);
+        else
+            as.mov(outOpnd, memOpnd);
     }
 
     // Set the output type tag
-    st.setOutType(ctx.as, instr, typeTag);
+    st.setOutType(as, instr, typeTag);
 }
 
 alias LoadOp!(8 , Type.INT32) gen_load_u8;
@@ -519,7 +524,10 @@ alias LoadOp!(64, Type.INT64) gen_load_u64;
 alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
+alias LoadOp!(64, Type.FUNPTR) gen_load_funptr;
+alias LoadOp!(64, Type.MAPPTR) gen_load_mapptr;
 
+/*
 void StoreOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 {
     // The pointer operand must be a register

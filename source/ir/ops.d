@@ -186,17 +186,17 @@ Opcode LE_F64 = { "le_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_le_f64*/nul
 Opcode GE_F64 = { "ge_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ge_f64*/null , OpInfo.BOOL_VAL };
 
 // Load instructions
-Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_u8*/null };
-Opcode LOAD_U16 = { "load_u16", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_u16*/null };
-Opcode LOAD_U32 = { "load_u32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_u32*/null };
-Opcode LOAD_U64 = { "load_u64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_u64*/null };
+Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u8 };
+Opcode LOAD_U16 = { "load_u16", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u16 };
+Opcode LOAD_U32 = { "load_u32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u32 };
+Opcode LOAD_U64 = { "load_u64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u64 };
 Opcode LOAD_I8 = { "load_i8", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_i8*/null };
 Opcode LOAD_I16 = { "load_i16", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_i16*/null };
-Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_f64*/null };
-Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_refptr*/null };
-Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_rawptr*/null };
-Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_funptr*/null };
-Opcode LOAD_MAPPTR = { "load_mapptr", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_mapptr*/null };
+Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_f64 };
+Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_refptr };
+Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_rawptr };
+Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_funptr };
+Opcode LOAD_MAPPTR = { "load_mapptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_mapptr };
 
 // Store instructions
 Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_u8*/null , OpInfo.IMPURE };

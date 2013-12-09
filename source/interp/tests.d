@@ -303,7 +303,6 @@ unittest
     interp.assertInt("return function (x, y) { return x - 1; } (4)", 3);
 }
 
-/*
 /// Local variable assignment
 unittest
 {
@@ -321,7 +320,6 @@ unittest
     interp.assertInt("return function () { var x = 1; return x = x++ % 2; } ()", 1);
     interp.assertBool("return function () { var x; return (x === undefined); } ()", true);
 }
-*/
 
 /// Comparison and branching
 unittest
@@ -377,7 +375,6 @@ unittest
     interp.assertInt("if (1 && 2) return 1; else return 0;", 1);
 }
 
-/*
 /// Recursion
 unittest
 {
@@ -626,17 +623,18 @@ unittest
     auto interp = new InterpNoStdLib();
 
     interp.assertStr("return 'foo'", "foo");
-    interp.assertStr("return 'foo' + 'bar'", "foobar");
-    interp.assertStr("return 'foo' + 1", "foo1");
-    interp.assertStr("return 'foo' + true", "footrue");
+    //interp.assertStr("return 'foo' + 'bar'", "foobar");
+    //interp.assertStr("return 'foo' + 1", "foo1");
+    //interp.assertStr("return 'foo' + true", "footrue");
     interp.assertInt("return 'foo'? 1:0", 1);
     interp.assertInt("return ''? 1:0", 0);
     interp.assertBool("return ('foo' === 'foo')", true);
-    interp.assertBool("return ('foo' === 'f' + 'oo')", true);
+    //interp.assertBool("return ('foo' === 'f' + 'oo')", true);
     interp.assertBool("return ('bar' == 'bar')", true);
-    interp.assertBool("return ('bar' != 'b')", true);
+    //interp.assertBool("return ('bar' != 'b')", true);
     interp.assertBool("return ('bar' != 'bar')", false);
 
+    /*
     interp.assertStr(
         "
         return function ()
@@ -651,6 +649,7 @@ unittest
         ",
         "01234"
     );
+    */
 }
 
 // Typeof operator
@@ -666,8 +665,8 @@ unittest
     interp.assertStr("return typeof false", "boolean");
     interp.assertStr("return typeof null", "object");
     interp.assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
-    interp.assertStr("x = 3; return typeof x;", "number");
-    interp.assertStr("delete x; return typeof x;", "undefined");
+    //interp.assertStr("x = 3; return typeof x;", "number");
+    //interp.assertStr("delete x; return typeof x;", "undefined");
 }
 
 /// Global scope, global object
@@ -691,7 +690,7 @@ unittest
     interp.assertInt("f = function() { return 7; }; return f();", 7);
     interp.assertInt("function f() { return 9; }; return f();", 9);
     interp.assertInt("(function () {}); return 0;", 0);
-    interp.assertInt("a = 7; function f() { return this.a; }; return f();", 7);
+    //interp.assertInt("a = 7; function f() { return this.a; }; return f();", 7);
 
     interp.assertInt(
         "
@@ -709,15 +708,15 @@ unittest
     );
 
     // Unresolved global
-    interp.assertThrows("foo5783");
+    //interp.assertThrows("foo5783");
 
     // Many global variables
     interp = new InterpNoStdLib();
     interp.load("programs/many_globals/many_globals.js");
-    interp = new InterpNoStdLib();
-    interp.load("programs/many_globals/many_globals2.js");
-    interp = new InterpNoStdLib();
-    interp.load("programs/many_globals/many_globals3.js");
+    //interp = new InterpNoStdLib();
+    //interp.load("programs/many_globals/many_globals2.js");
+    //interp = new InterpNoStdLib();
+    //interp.load("programs/many_globals/many_globals3.js");
 }
 
 /// In-place operators
@@ -737,6 +736,7 @@ unittest
     interp.assertInt("function f() { var a = 0; a += 2; a *= 3; return a; }; return f();", 6);
 }
 
+/*
 /// Object literals, property access, method calls
 unittest
 {
@@ -887,6 +887,7 @@ unittest
     interp.assertInt("a = [1337]; return a['0'];", 1337);
     interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
 }
+*/
 
 /// Inline IR and JS extensions
 unittest
@@ -902,7 +903,7 @@ unittest
     interp.assertInt("return $ir_add_i32(5,3);", 8);
     interp.assertInt("return $ir_sub_i32(5,3);", 2);
     interp.assertInt("return $ir_mul_i32(5,3);", 15);
-    interp.assertInt("return $ir_div_i32(5,3);", 1);
+    //interp.assertInt("return $ir_div_i32(5,3);", 1);
     interp.assertInt("return $ir_mod_i32(5,3);", 2);
     interp.assertInt("return $ir_eq_i32(3,3)? 1:0;", 1);
     interp.assertInt("return $ir_eq_i32(3,2)? 1:0;", 0);
@@ -971,6 +972,7 @@ unittest
         16
     );
 
+    /*
     interp.assertInt(
         "
         var ptr = $ir_heap_alloc(16);
@@ -1003,6 +1005,7 @@ unittest
         ",
         10
     );
+    */
 }
 
 /// Runtime functions
@@ -1020,30 +1023,33 @@ unittest
     interp.assertInt("$rt_toBool('')? 1:0", 0);
     interp.assertInt("$rt_toBool('foo')? 1:0", 1);
 
+    /*
     interp.assertStr("$rt_toString(5)", "5");
     interp.assertStr("$rt_toString('foo')", "foo");
     interp.assertStr("$rt_toString(null)", "null");
     interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
+    */
 
     interp.assertInt("$rt_add(5, 3)", 8);
-    interp.assertFloat("$rt_add(5, 3.5)", 8.5);
-    interp.assertStr("$rt_add(5, 'bar')", "5bar");
-    interp.assertStr("$rt_add('foo', 'bar')", "foobar");
+    //interp.assertFloat("$rt_add(5, 3.5)", 8.5);
+    //interp.assertStr("$rt_add(5, 'bar')", "5bar");
+    //interp.assertStr("$rt_add('foo', 'bar')", "foobar");
 
     interp.assertInt("$rt_sub(5, 3)", 2);
-    interp.assertFloat("$rt_sub(5, 3.5)", 1.5);
+    //interp.assertFloat("$rt_sub(5, 3.5)", 1.5);
 
     interp.assertInt("$rt_mul(3, 5)", 15);
-    interp.assertFloat("$rt_mul(5, 1.5)", 7.5);
-    interp.assertFloat("$rt_mul(0xFFFF, 0xFFFF)", 4294836225);
+    //interp.assertFloat("$rt_mul(5, 1.5)", 7.5);
+    //interp.assertFloat("$rt_mul(0xFFFF, 0xFFFF)", 4294836225);
 
-    interp.assertFloat("$rt_div(15, 3)", 5);
-    interp.assertFloat("$rt_div(15, 1.5)", 10);
+    //interp.assertFloat("$rt_div(15, 3)", 5);
+    //interp.assertFloat("$rt_div(15, 1.5)", 10);
 
     interp.assertBool("$rt_eq(3,3)", true);
     interp.assertBool("$rt_eq(3,5)", false);
     interp.assertBool("$rt_eq('foo','foo')", true);
 
+    /*
     interp.assertInt("isNaN(3)? 1:0", 0);
     interp.assertInt("isNaN(3.5)? 1:0", 0);
     interp.assertInt("isNaN(NaN)? 1:0", 1);
@@ -1072,8 +1078,10 @@ unittest
     interp.assertThrows("false instanceof false");
     interp.assertThrows("2 in null");
     interp.assertBool("'foo' in {}", false);
+    */
 }
 
+/*
 /// Closures, captured and escaping variables
 unittest
 {

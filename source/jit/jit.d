@@ -1433,7 +1433,7 @@ void compile(Interp interp)
             stub.markStart(as);
 
             // Insert the label for this block in the out of line code
-            as.comment("Stub " ~ ver.getName());
+            as.comment("Stub of " ~ ver.getName());
 
             // TODO: properly spill registers, GC may be run during compileStub
 
@@ -1476,7 +1476,7 @@ void compile(Interp interp)
             if (inst.startIdx is inst.startIdx.max)
                inst.markStart(as);
 
-            as.comment("Instance " ~ ver.getName());
+            as.comment("Instance of " ~ ver.getName());
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -1533,6 +1533,7 @@ void compile(Interp interp)
         if (opts.jit_dumpasm)
         {
             writeln(ver.genString(as));
+            writeln();
         }
     }
 
@@ -1568,6 +1569,7 @@ void compile(Interp interp)
 
     }
     as.setWritePos(startPos);
+    interp.refList.length = 0;
 
     if (opts.jit_dumpinfo)
     {
@@ -1679,7 +1681,7 @@ Compile an entry block instance for a function
 */
 extern (C) const (ubyte*) compileEntry(EntryStub stub)
 {
-    writeln("entering compileEntry");
+    //writeln("entering compileEntry");
 
     auto interp = stub.interp;
     auto ctorCall = stub.ctorCall;
@@ -1687,19 +1689,21 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
     // Get the closure and IRFunction pointers
     auto argCount = interp.getWord(3).uint32Val;
     auto closPtr = interp.getWord(1).ptrVal;
+    assert (closPtr !is null);
     auto fun = getClosFun(closPtr);
+    assert (fun !is null);
 
+    if (opts.jit_dumpinfo)
+        writeln("compiling entry for " ~ fun.getName);
+
+    /*
     writeln("closPtr=", closPtr);
     writeln("fun=", cast(ubyte*)fun);
     writeln("argCount=", argCount);
-
-
     if (argCount > 0)
         writeln("first arg: ", interp.getWord(4).uint64Val);
-
-
-
     writeln("orig stack size: ", interp.stackSize());
+    */
 
     // Store the original number of locals for the function
     auto origLocals = fun.numLocals;
@@ -1708,40 +1712,14 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
     assert (fun.entryBlock is null);
     astToIR(fun.ast, fun);
 
-    /*
-    // Compute the number of missing arguments
-    auto numMissing = (fun.numParams > argCount)? (fun.numParams - argCount):0;
-
-    // Shift the existing arguments upwards
-    for (LocalIdx i = 0; i < (argCount + NUM_HIDDEN_ARGS); ++i)
-        interp.setSlot(-numMissing + i, interp.getSlot(i));
-
-    // Initialize the missing arguments to undefined
-    for (LocalIdx i = 0; i < numMissing; ++i)
-        interp.setSlot(argCount + i, ValuePair(UNDEF, Type.CONST));
-
-    // Add space for the missing arguments
-    interp.push(numMissing);
-
-    // Add space for the newly allocated locals
-    auto newLocals = fun.numLocals - (NUM_HIDDEN_ARGS + numMissing);
-    interp.push(newLocals);
-    */
-
-    //auto extraArgs = (argCount > fun.numParams)? (argCount - fun.numParams):0;
-
-    writeln("fun.numLocals=", fun.numLocals);
-    writeln("origLocals=", origLocals);
-
     // Add space for the newly allocated locals
     interp.push(fun.numLocals - origLocals);
 
-
-
+    /*
+    writeln("fun.numLocals=", fun.numLocals);
+    writeln("origLocals=", origLocals);
     writeln("new stack size: ", interp.stackSize());
-
-
-
+    */
 
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
@@ -1763,7 +1741,7 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
     fun.entryCode = entryInst.getCodePtr(interp.execHeap);
     fun.ctorCode = ctorInst.getCodePtr(interp.execHeap);
 
-    writeln("leaving compileEntry");
+    //writeln("leaving compileEntry");
 
     // Return the code pointer
     return ctorCall? fun.entryCode:fun.ctorCode;
