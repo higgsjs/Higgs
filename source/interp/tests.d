@@ -252,17 +252,17 @@ unittest
     //interp.assertInt("return undefined | 1", 1);
 
     interp.assertFloat("return 3.5", 3.5);
-    //interp.assertFloat("return 2.5 + 2", 4.5);
-    //interp.assertFloat("return 2.5 + 2.5", 5);
-    //interp.assertFloat("return 2.5 - 1", 1.5);
-    //interp.assertFloat("return 2 * 1.5", 3);
-    //interp.assertFloat("return 6 / 2.5", 2.4);
+    interp.assertFloat("return 2.5 + 2", 4.5);
+    interp.assertFloat("return 2.5 + 2.5", 5);
+    interp.assertFloat("return 2.5 - 1", 1.5);
+    interp.assertFloat("return 2 * 1.5", 3);
+    interp.assertFloat("return 6 / 2.5", 2.4);
     //interp.assertFloat("return 0.5 % 0.2", 0.1);
-    //interp.assertFloat("return 6/2/2", 1.5);
-    //interp.assertFloat("return 6/2*2", 6);
+    interp.assertFloat("return 6/2/2", 1.5);
+    interp.assertFloat("return 6/2*2", 6);
 
-    //interp.assertFloat("return 100 * '5'", 500);
-    //interp.assertFloat("return 100 / '5'", 20);
+    interp.assertFloat("return 100 * '5'", 500);
+    interp.assertFloat("return 100 / '5'", 20);
 
     interp.assertBool("!true", false);
     interp.assertBool("!false", true);
@@ -624,7 +624,7 @@ unittest
 
     interp.assertStr("return 'foo'", "foo");
     interp.assertStr("return 'foo' + 'bar'", "foobar");
-    //interp.assertStr("return 'foo' + 1", "foo1");
+    interp.assertStr("return 'foo' + 1", "foo1");
     interp.assertStr("return 'foo' + true", "footrue");
     interp.assertInt("return 'foo'? 1:0", 1);
     interp.assertInt("return ''? 1:0", 0);
@@ -634,7 +634,6 @@ unittest
     interp.assertBool("return ('bar' != 'b')", true);
     interp.assertBool("return ('bar' != 'bar')", false);
 
-    /*
     interp.assertStr(
         "
         return function ()
@@ -649,7 +648,6 @@ unittest
         ",
         "01234"
     );
-    */
 }
 
 // Typeof operator
@@ -1023,14 +1021,14 @@ unittest
     interp.assertInt("$rt_toBool('')? 1:0", 0);
     interp.assertInt("$rt_toBool('foo')? 1:0", 1);
 
-    //interp.assertStr("$rt_toString(5)", "5");
+    interp.assertStr("$rt_toString(5)", "5");
     interp.assertStr("$rt_toString('foo')", "foo");
     interp.assertStr("$rt_toString(null)", "null");
     //interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     interp.assertInt("$rt_add(5, 3)", 8);
     //interp.assertFloat("$rt_add(5, 3.5)", 8.5);
-    //interp.assertStr("$rt_add(5, 'bar')", "5bar");
+    interp.assertStr("$rt_add(5, 'bar')", "5bar");
     interp.assertStr("$rt_add('foo', 'bar')", "foobar");
 
     interp.assertInt("$rt_sub(5, 3)", 2);

@@ -84,7 +84,7 @@ static this()
     addOp(ADD_I32);
     addOp(SUB_I32);
     addOp(MUL_I32);
-    //addOp(DIV_I32);
+    addOp(DIV_I32);
     addOp(MOD_I32);
 
     addOp(AND_I32);

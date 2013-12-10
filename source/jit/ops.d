@@ -336,7 +336,7 @@ alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
 alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
-void gen_mod_i32(
+void divOp(string op)(
     VersionInst ver, 
     CodeGenState st,
     IRInstr instr,
@@ -363,8 +363,13 @@ void gen_mod_i32(
 
     if (!outOpnd.isReg || outOpnd.reg != EDX)
     {
-        // Store the remainder into the output operand
-        as.mov(outOpnd, X86Opnd(EDX));
+        // Store the divisor or remainder into the output operand
+        static if (op == "div")
+            as.mov(outOpnd, X86Opnd(EAX));
+        else if (op == "mod")
+            as.mov(outOpnd, X86Opnd(EDX));
+        else
+            assert (false);
 
         // Restore RDX
         as.mov(X86Opnd(RDX), scrRegs[1].opnd(64));
@@ -373,6 +378,9 @@ void gen_mod_i32(
     // Set the output type
     st.setOutType(as, instr, Type.INT32);
 }
+
+alias divOp!("div") gen_div_i32;
+alias divOp!("mod") gen_mod_i32;
 
 void gen_not_i32(
     VersionInst ver,
@@ -448,13 +456,13 @@ void FPOp(string op)(
     if (opnd1.isGPR)
         as.movq(X86Opnd(XMM1), opnd1);
 
-    //static if (op == "add")
-    //    opPtr = ADDSD;
-    //static if (op == "sub")
-    //    opPtr = SUBSD;
-    //static if (op == "mul")
-    //    opPtr = MULSD;
-    static if (op == "div")
+    static if (op == "add")
+        as.addsd(X86Opnd(XMM0), X86Opnd(XMM1));
+    else if (op == "sub")
+        as.subsd(X86Opnd(XMM0), X86Opnd(XMM1));
+    else if (op == "mul")
+        as.mulsd(X86Opnd(XMM0), X86Opnd(XMM1));
+    else if (op == "div")
         as.divsd(X86Opnd(XMM0), X86Opnd(XMM1));
     else
         assert (false);

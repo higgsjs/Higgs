@@ -123,7 +123,7 @@ Opcode F64_TO_I32 = { "f64_to_i32", true, [OpArg.LOCAL], &gen_f64_to_i32 };
 Opcode ADD_I32 = { "add_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_i32 };
 Opcode SUB_I32 = { "sub_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_sub_i32 };
 Opcode MUL_I32 = { "mul_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mul_i32 };
-//Opcode DIV_I32 = { "div_i32", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_div_i32*/null };
+Opcode DIV_I32 = { "div_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_div_i32 };
 Opcode MOD_I32 = { "mod_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mod_i32 };
 
 // Bitwise operations
