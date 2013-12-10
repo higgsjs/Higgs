@@ -103,9 +103,9 @@ alias static immutable(OpInfo) Opcode;
 Opcode SET_STR = { "set_str", true, [OpArg.STRING, OpArg.LINK], &gen_set_str };
 
 // Word/type manipulation primitives
-Opcode MAKE_VALUE = { "make_value", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_make_value*/null };
-Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], /*&gen_get_word*/null };
-Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], /*&gen_get_type*/null };
+Opcode MAKE_VALUE = { "make_value", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_make_value };
+Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &gen_get_word };
+Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &gen_get_type };
 
 // Type tag test
 Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &gen_is_i32, OpInfo.BOOL_VAL };
@@ -199,17 +199,17 @@ Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_loa
 Opcode LOAD_MAPPTR = { "load_mapptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_mapptr };
 
 // Store instructions
-Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_u8*/null , OpInfo.IMPURE };
-Opcode STORE_U16 = { "store_u16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_u16*/null , OpInfo.IMPURE };
-Opcode STORE_U32 = { "store_u32", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_u32*/null , OpInfo.IMPURE };
-Opcode STORE_U64 = { "store_u64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_u64*/null , OpInfo.IMPURE };
-Opcode STORE_I8 = { "store_i8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_i8*/null , OpInfo.IMPURE };
-Opcode STORE_I16 = { "store_i16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_i16*/null , OpInfo.IMPURE };
-Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_f64*/null , OpInfo.IMPURE };
-Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_refptr*/null , OpInfo.IMPURE };
-Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_rawptr*/null , OpInfo.IMPURE };
-Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_funptr*/null , OpInfo.IMPURE };
-Opcode STORE_MAPPTR = { "store_mapptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_store_mapptr*/null , OpInfo.IMPURE };
+Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_u8, OpInfo.IMPURE };
+Opcode STORE_U16 = { "store_u16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_u16, OpInfo.IMPURE };
+Opcode STORE_U32 = { "store_u32", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_u32, OpInfo.IMPURE };
+Opcode STORE_U64 = { "store_u64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_u64, OpInfo.IMPURE };
+Opcode STORE_I8 = { "store_i8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_i8, OpInfo.IMPURE };
+Opcode STORE_I16 = { "store_i16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_i16, OpInfo.IMPURE };
+Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_f64, OpInfo.IMPURE };
+Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_refptr, OpInfo.IMPURE };
+Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_rawptr, OpInfo.IMPURE };
+Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_funptr, OpInfo.IMPURE };
+Opcode STORE_MAPPTR = { "store_mapptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_mapptr, OpInfo.IMPURE };
 
 // Unconditional jump
 Opcode JUMP = { "jump", false, [], &gen_jump, OpInfo.BRANCH };
@@ -261,7 +261,7 @@ Opcode GET_HEAP_FREE = { "get_heap_free", true, [], /*&gen_get_heap_free*/null }
 Opcode GET_GC_COUNT = { "get_gc_count", true, [], /*&gen_get_gc_count*/null };
 
 /// Allocate a block of memory on the heap
-Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], /*&gen_heap_alloc*/null , OpInfo.MAY_GC };
+Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &gen_heap_alloc, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection
 Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], /*&gen_gc_collect*/null , OpInfo.MAY_GC | OpInfo.IMPURE };

@@ -632,19 +632,6 @@ extern (C) void op_throw(Interp interp, IRInstr instr)
 }
 */
 
-extern (C) void op_heap_alloc(Interp interp, IRInstr instr)
-{
-    auto allocSize = interp.getArgUint32(instr, 0);
-
-    auto ptr = heapAlloc(interp, allocSize);
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(ptr),
-        Type.REFPTR
-    );
-}
-
 extern (C) void op_gc_collect(Interp interp, IRInstr instr)
 {
     auto heapSize = interp.getArgUint32(instr, 0);

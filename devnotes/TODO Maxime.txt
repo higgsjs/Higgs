@@ -32,6 +32,11 @@ TODO: add source position info for call sites
 - Do this in genCallTargets?
 - Throw instr also needs a source pos
 
+TODO: unit test for global property access of prop from Object.prototype
+- Need simple fallback for when prop isn't on global obj
+- Won't this require spilling everything?
+- Property could get deleted
+
 ------------------------------------------------------------------------------
 
 TODO: execHeap collection/expansion
@@ -63,8 +68,6 @@ TODO: rename Interp class to VM
 
 TODO: try supporting simpler std libs, like stdlib/math.js
 
-TODO: unit test for global property access of prop from Object.prototype
-
 TODO: work towards object property access
 - load/store
 - make_value
@@ -84,12 +87,28 @@ TODO: ask on dconf about closure opts?
 TODO: support for div_i32
 - Needed for int to string conversion
 
-TODO: closure variable support, need load/store
+TODO: get_str
+- try enabling string concat tests, try in the REPL first
 
-TODO: store op
-- try enabling string concat tests
+FIXME: fix as.printStr
+- test with heapAlloc
 
-TODO: blog
+
+
+
+
+
+
+
+[DONE] TODO: closure variable support
+- needs heap_alloc
+
+[DONE] TODO: get_word, get_type, make_value
+- needed for closure cells
+
+[DONE] TODO: heap_alloc
+
+[DONE] TODO: blog
 - specifics of incremental JIT
 - progress
   - REPL, static calls, primitives, tests
@@ -102,20 +121,7 @@ TODO: blog
 - book invite, AOSA vol 4
     http://aosabook.org/en/index.html
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: store op
 
 [DONE] TODO: support for print(), useful for debugging
 - Needs regular calls, string functions

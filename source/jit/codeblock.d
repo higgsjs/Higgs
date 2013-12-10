@@ -61,6 +61,7 @@ Block internal label enumeration
 enum Label : size_t
 {
     LOOP,
+    LOOP_TEST,
     LOOP_EXIT,
     DONE,
     TRUE,
@@ -68,6 +69,7 @@ enum Label : size_t
     FALSE,
     FALSE2,
     JOIN,
+    FALLBACK,
     FUN1,
     FUN2,
     BRANCH_TARGET0,

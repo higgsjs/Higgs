@@ -134,51 +134,65 @@ void gen_set_str(
     st.setOutType(as, instr, Type.REFPTR);
 }
 
-/*
-void gen_make_value(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_make_value(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // Move the word value into the output word
-    auto wordOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0], true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, opndOut, wordOpnd);
+    auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, wordOpnd);
 
     // Get the type value from the second operand
-    auto typeOpnd = st.getWordOpnd(ctx, ctx.as, instr, 1, 8, scrRegs8[0]);
-    st.setOutType(ctx.as, instr, cast(X86Reg)typeOpnd);
+    auto typeOpnd = st.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
+    assert (typeOpnd.isGPR);
+    st.setOutType(as, instr, typeOpnd.reg);
 }
 
-void gen_get_word(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_get_word(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto wordOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0], true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    ctx.as.instr(MOV, opndOut, wordOpnd);
+    as.mov(outOpnd, wordOpnd);
 
-    st.setOutType(ctx.as, instr, Type.INT64);
+    st.setOutType(as, instr, Type.INT64);
 }
 
-void gen_get_type(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_get_type(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0, scrRegs8[0], true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    auto typeOpnd = st.getTypeOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    if (cast(X86Imm)typeOpnd)
+    if (typeOpnd.isImm)
     {
-        ctx.as.instr(MOV, opndOut, typeOpnd);
+        as.mov(outOpnd, typeOpnd);
     }
-    else if (cast(X86Reg)opndOut)
+    else if (outOpnd.isGPR)
     {
-        ctx.as.instr(MOVZX, opndOut, typeOpnd);
+        as.movzx(outOpnd, typeOpnd);
     }
     else
     {
-        ctx.as.instr(MOVZX, scrRegs32[0], typeOpnd);
-        ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+        as.movzx(scrRegs[0].opnd(32), typeOpnd);
+        as.mov(outOpnd, scrRegs[0].opnd(32));
     }
 
-    st.setOutType(ctx.as, instr, Type.INT32);
+    st.setOutType(as, instr, Type.INT32);
 }
-*/
 
 void gen_i32_to_f64(
     VersionInst ver, 
@@ -527,29 +541,34 @@ alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
 alias LoadOp!(64, Type.FUNPTR) gen_load_funptr;
 alias LoadOp!(64, Type.MAPPTR) gen_load_mapptr;
 
-/*
-void StoreOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void StoreOp(size_t memSize, Type typeTag)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // The pointer operand must be a register
-    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    assert (opnd0.isGPR);
 
     // The offset operand may be a register or an immediate
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[1], true);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
     // The value operand may be a register or an immediate
-    auto opnd2 = st.getWordOpnd(ctx, ctx.as, instr, 2, memSize, scrRegs64[2].reg(memSize), true);
+    auto opnd2 = st.getWordOpnd(as, instr, 2, memSize, scrRegs[2].opnd(memSize), true);
 
     // Create the memory operand
-    X86Mem memOpnd;
-    if (auto immOffs = cast(X86Imm)opnd1)
+    X86Opnd memOpnd;
+    if (opnd1.isImm)
     {
-        memOpnd = new X86Mem(memSize, opnd0, cast(int32_t)immOffs.imm);
+        memOpnd = X86Opnd(memSize, opnd0.reg, cast(int32_t)opnd1.imm.imm);
     }
-    else if (auto regOffs = cast(X86Reg)opnd1)
+    else if (opnd1.isGPR)
     {
         // Zero-extend the offset from 32 to 64 bits
-        ctx.as.instr(MOV, regOffs, regOffs);
-        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.reg(64));
+        as.mov(opnd1, opnd1);
+        memOpnd = X86Opnd(memSize, opnd0.reg, 0, 1, opnd1.reg.reg(64));
     }
     else
     {
@@ -557,17 +576,20 @@ void StoreOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIn
     }
 
     // Store the value into the memory location
-    ctx.as.instr(MOV, memOpnd, opnd2);
+    as.mov(memOpnd, opnd2);
 }
 
 alias StoreOp!(8 , Type.INT32) gen_store_u8;
 alias StoreOp!(16, Type.INT32) gen_store_u16;
 alias StoreOp!(32, Type.INT32) gen_store_u32;
 alias StoreOp!(64, Type.INT64) gen_store_u64;
+alias StoreOp!(8 , Type.INT32) gen_store_i8;
+alias StoreOp!(16, Type.INT32) gen_store_i16;
 alias StoreOp!(64, Type.FLOAT64) gen_store_f64;
 alias StoreOp!(64, Type.REFPTR) gen_store_refptr;
 alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
-*/
+alias StoreOp!(64, Type.FUNPTR) gen_store_funptr;
+alias StoreOp!(64, Type.MAPPTR) gen_store_mapptr;
 
 void gen_get_global(
     VersionInst ver, 
@@ -702,87 +724,85 @@ alias GetValOp!("arrProto") gen_get_arr_proto;
 alias GetValOp!("funProto") gen_get_fun_proto;
 alias GetValOp!("globalObj") gen_get_global_obj;
 
-/*
-void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_heap_alloc(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    // Label for the bailout case
-    auto BAILOUT = new Label("ALLOC_BAILOUT");
-
-    // Label for the exit
-    auto DONE = new Label("ALLOC_DONE");
+    extern (C) static refptr allocFallback(Interp interp, uint32_t allocSize)
+    {
+        return heapAlloc(interp, allocSize);
+    }
 
     // Get the allocation size operand
-    auto szOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, null, true);
+    auto szOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true);
 
-    ctx.as.getMember!("Interp", "allocPtr")(scrRegs64[0], interpReg);
-    ctx.as.getMember!("Interp", "heapLimit")(scrRegs64[1], interpReg);
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.getMember!("Interp.allocPtr")(scrRegs[0], interpReg);
+    as.getMember!("Interp.heapLimit")(scrRegs[1], interpReg);
 
     // r2 = allocPtr + size
-    ctx.as.instr(MOV, scrRegs64[2], scrRegs64[0]);
-    ctx.as.instr(ADD, scrRegs64[2], szOpnd);
+    as.mov(scrRegs[2].opnd(64), scrRegs[0].opnd(64));
+    as.add(scrRegs[2].opnd(64), szOpnd);
 
-    // if (allocPtr + size > heapLimit) bailout
-    ctx.as.instr(CMP, scrRegs64[2], scrRegs64[1]);
-    ctx.as.instr(JG, BAILOUT);
+    // if (allocPtr + size > heapLimit) fallback
+    as.cmp(scrRegs[2].opnd(64), scrRegs[1].opnd(64));
+    as.jg(Label.FALLBACK);
 
     // Clone the state for the bailout case, which will spill for GC
     auto bailSt = new CodeGenState(st);
 
-    // Get the output operand
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
     // Move the allocation pointer to the output
-    ctx.as.instr(MOV, opndOut, scrRegs64[0]);
+    as.mov(outOpnd, scrRegs[0].opnd(64));
 
     // Align the incremented allocation pointer
-    ctx.as.instr(ADD, scrRegs64[2], 7);
-    ctx.as.instr(AND, scrRegs64[2], -8);
+    as.add(scrRegs[2].opnd(64), X86Opnd(7));
+    as.and(scrRegs[2].opnd(64), X86Opnd(-8));
 
     // Store the incremented and aligned allocation pointer
-    ctx.as.setMember!("Interp", "allocPtr")(interpReg, scrRegs64[2]);
+    as.setMember!("Interp.allocPtr")(interpReg, scrRegs[2]);
 
-    // Allocation done
-    ctx.as.addInstr(DONE);
+    // Allocation fallback
+    as.label(Label.FALLBACK);
 
-    // The output is a reference pointer
-    st.setOutType(ctx.as, instr, Type.REFPTR);
+    // TODO: proper spilling logic
+    // need to spill delayed writes too
 
-    // Bailout to the interpreter (out of line)
-    ctx.ol.addInstr(BAILOUT);
-
-    // Save our allocated registers
+    // Save our allocated registers before the C call
     if (allocRegs.length % 2 != 0)
-        ctx.ol.instr(PUSH, allocRegs[0]);
+        as.push(allocRegs[0]);
     foreach (reg; allocRegs)
-        ctx.ol.instr(PUSH, reg);
+        as.push(reg);
 
-    ctx.ol.printStr("alloc bailout ***");
+    //as.printStr("alloc bailout ***");
 
-    // Fallback to interpreter execution
-    // Spill all values, including arguments
-    // Call the interpreter alloc instruction
-    defaultFn(ctx.ol, ctx, bailSt, instr);
+    // Call the fallback implementation
+    as.ptr(cargRegs[0], st.ctx.interp);
+    as.mov(cargRegs[1].opnd(64), szOpnd);
+    as.ptr(RAX, &allocFallback);
+    as.call(RAX);
 
-    //ctx.ol.printStr("alloc bailout done ***");
+    //as.printStr("alloc bailout done ***");
 
     // Restore the allocated registers
     foreach_reverse(reg; allocRegs)
-        ctx.ol.instr(POP, reg);
+        as.pop(reg);
     if (allocRegs.length % 2 != 0)
-        ctx.ol.instr(POP, allocRegs[0]);
+        as.pop(allocRegs[0]);
 
-    // If the output operand is a register
-    if (cast(X86Reg)opndOut)
-    {
-        // Load the stack value into the register
-        auto stackOpnd = bailSt.getWordOpnd(instr, 64);
-        ctx.ol.instr(MOV, opndOut, stackOpnd);
-    }
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
 
     // Allocation done
-    ctx.ol.instr(JMP, DONE);
+    as.label(Label.DONE);
+
+    // The output is a reference pointer
+    st.setOutType(as, instr, Type.REFPTR);
 }
-*/
 
 /*
 void gen_get_link(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
@@ -1911,7 +1931,7 @@ void gen_new_clos(
     CodeBlock as
 )
 {
-    extern (C) static refptr op_new_clos(
+    extern (C) static refptr newClosImpl(
         Interp interp, 
         IRFunction fun, 
         ObjMap closMap, 
@@ -1980,8 +2000,7 @@ void gen_new_clos(
     as.ptr(cargRegs[1], funArg.fun);
     as.mov(cargRegs[2].opnd(64), closMapOpnd);
     as.mov(cargRegs[3].opnd(64), protMapOpnd);
-
-    as.ptr(RAX, &op_new_clos);
+    as.ptr(RAX, &newClosImpl);
     as.call(RAX);
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);

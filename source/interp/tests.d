@@ -1081,7 +1081,6 @@ unittest
     */
 }
 
-/*
 /// Closures, captured and escaping variables
 unittest
 {
@@ -1138,6 +1137,7 @@ unittest
     );
 }
 
+/*
 /// Stdlib Math library
 unittest
 {
