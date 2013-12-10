@@ -686,7 +686,7 @@ void writeRMInstr(
         if (rmOpnd is 'r')
             rmOpndM = &opnd1.mem;
         else
-            assert (false);
+            assert (false, "mem opnd but right-opnd is not r/m");
         break;
 
         case X86Opnd.Kind.NONE:
@@ -1367,6 +1367,23 @@ void jmp8(CodeBlock cb, int8_t offset)
     cb.writeASM("jmp", ((offset > 0)? "+":"-") ~ to!string(offset));
     cb.writeByte(JMP_REL8_OPCODE);
     cb.writeByte(offset);
+}
+
+/// jmp - Jump with relative 32-bit offset
+void jmp32(CodeBlock cb, int32_t offset)
+{
+    cb.writeASM("jmp", ((offset > 0)? "+":"-") ~ to!string(offset));
+    cb.writeByte(JMP_REL32_OPCODE);
+    cb.writeInt(offset, 32);
+}
+
+/// lea - Load Effective Address
+void lea(CodeBlock cb, X86Reg dst, X86Mem src)
+{
+    cb.writeASM("lea", dst, src);
+
+    assert (dst.size is 64);
+    cb.writeRMInstr!('r', 0xFF, 0x8D)(false, true, X86Opnd(dst), X86Opnd(src));
 }
 
 /// mov - Data move operation

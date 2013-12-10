@@ -774,24 +774,6 @@ extern (C) void op_map_prop_name(Interp interp, IRInstr instr)
     }
 }
 
-extern (C) void op_get_str(Interp interp, IRInstr instr)
-{
-    auto strPtr = interp.getArgStr(instr, 0);
-
-    // Compute and set the hash code for the string
-    auto hashCode = compStrHash(strPtr);
-    str_set_hash(strPtr, hashCode);
-
-    // Find the corresponding string in the string table
-    strPtr = getTableStr(interp, strPtr);
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(strPtr),
-        Type.REFPTR
-    );
-}
-
 /*
 /// Get the value of a global variable
 extern (C) void op_get_global(Interp interp, IRInstr instr)

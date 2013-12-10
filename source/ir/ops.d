@@ -277,7 +277,7 @@ Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], /*&gen_get_link*/null };
 
 /// Compute the hash code for a string and
 /// try to find the string in the string table
-Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], /*&gen_get_str*/null , OpInfo.MAY_GC };
+Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &gen_get_str, OpInfo.MAY_GC };
 
 /// GET_GLOBAL <propName>
 /// Note: hidden parameter is a cached global property index

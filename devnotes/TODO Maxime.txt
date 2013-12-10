@@ -75,6 +75,7 @@ TODO: work towards object property access
 
 TODO: remove interp/ops.d
 - move useful contents to jit/ops.d
+- move value access ops to interp/interp.d?
 
 TODO: try to optimize call logic. Can some operations use 32-bit opnds?
 - Can we use a second scratch reg to compute extra args?
@@ -87,18 +88,24 @@ TODO: ask on dconf about closure opts?
 TODO: support for div_i32
 - Needed for int to string conversion
 
-TODO: get_str
-- try enabling string concat tests, try in the REPL first
 
-FIXME: fix as.printStr
+
+
+
+
+
+
+[DONE] TODO: get_str
+- try enabling string concat tests, try in the REPL first
+- template one arg instructions like this? not yet
+
+[DONE] TODO: function to save special jit registers
+
+[DONE] FIXME: fix as.printStr
 - test with heapAlloc
 
-
-
-
-
-
-
+[DONE] TODO: lea instruction encoding
+- only need to support 64-bit version
 
 [DONE] TODO: closure variable support
 - needs heap_alloc

@@ -623,15 +623,15 @@ unittest
     auto interp = new InterpNoStdLib();
 
     interp.assertStr("return 'foo'", "foo");
-    //interp.assertStr("return 'foo' + 'bar'", "foobar");
+    interp.assertStr("return 'foo' + 'bar'", "foobar");
     //interp.assertStr("return 'foo' + 1", "foo1");
-    //interp.assertStr("return 'foo' + true", "footrue");
+    interp.assertStr("return 'foo' + true", "footrue");
     interp.assertInt("return 'foo'? 1:0", 1);
     interp.assertInt("return ''? 1:0", 0);
     interp.assertBool("return ('foo' === 'foo')", true);
-    //interp.assertBool("return ('foo' === 'f' + 'oo')", true);
+    interp.assertBool("return ('foo' === 'f' + 'oo')", true);
     interp.assertBool("return ('bar' == 'bar')", true);
-    //interp.assertBool("return ('bar' != 'b')", true);
+    interp.assertBool("return ('bar' != 'b')", true);
     interp.assertBool("return ('bar' != 'bar')", false);
 
     /*
@@ -1023,17 +1023,15 @@ unittest
     interp.assertInt("$rt_toBool('')? 1:0", 0);
     interp.assertInt("$rt_toBool('foo')? 1:0", 1);
 
-    /*
-    interp.assertStr("$rt_toString(5)", "5");
+    //interp.assertStr("$rt_toString(5)", "5");
     interp.assertStr("$rt_toString('foo')", "foo");
     interp.assertStr("$rt_toString(null)", "null");
-    interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
-    */
+    //interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     interp.assertInt("$rt_add(5, 3)", 8);
     //interp.assertFloat("$rt_add(5, 3.5)", 8.5);
     //interp.assertStr("$rt_add(5, 'bar')", "5bar");
-    //interp.assertStr("$rt_add('foo', 'bar')", "foobar");
+    interp.assertStr("$rt_add('foo', 'bar')", "foobar");
 
     interp.assertInt("$rt_sub(5, 3)", 2);
     //interp.assertFloat("$rt_sub(5, 3.5)", 1.5);

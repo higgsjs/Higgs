@@ -591,6 +591,48 @@ alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
 alias StoreOp!(64, Type.FUNPTR) gen_store_funptr;
 alias StoreOp!(64, Type.MAPPTR) gen_store_mapptr;
 
+void gen_get_str(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) refptr getStr(Interp interp, refptr strPtr)
+    {
+        // Compute and set the hash code for the string
+        auto hashCode = compStrHash(strPtr);
+        str_set_hash(strPtr, hashCode);
+
+        // Find the corresponding string in the string table
+        return getTableStr(interp, strPtr);
+    }
+
+    // Get the string pointer
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+
+    // TODO: spill regs, may GC
+
+    // Allocate the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the fallback implementation
+    as.ptr(cargRegs[0], st.ctx.interp);
+    as.mov(cargRegs[1].opnd(64), opnd0);
+    as.ptr(scrRegs[0], &getStr);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    // The output is a reference pointer
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
 void gen_get_global(
     VersionInst ver, 
     CodeGenState st,
@@ -737,7 +779,7 @@ void gen_heap_alloc(
     }
 
     // Get the allocation size operand
-    auto szOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true);
+    auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
 
     // Get the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -746,15 +788,13 @@ void gen_heap_alloc(
     as.getMember!("Interp.heapLimit")(scrRegs[1], interpReg);
 
     // r2 = allocPtr + size
-    as.mov(scrRegs[2].opnd(64), scrRegs[0].opnd(64));
-    as.add(scrRegs[2].opnd(64), szOpnd);
+    // Note: we zero extend the size operand to 64-bits
+    as.mov(scrRegs[2].opnd(32), szOpnd);
+    as.add(scrRegs[2].opnd(64), scrRegs[0].opnd(64));
 
     // if (allocPtr + size > heapLimit) fallback
     as.cmp(scrRegs[2].opnd(64), scrRegs[1].opnd(64));
     as.jg(Label.FALLBACK);
-
-    // Clone the state for the bailout case, which will spill for GC
-    auto bailSt = new CodeGenState(st);
 
     // Move the allocation pointer to the output
     as.mov(outOpnd, scrRegs[0].opnd(64));
@@ -765,6 +805,12 @@ void gen_heap_alloc(
 
     // Store the incremented and aligned allocation pointer
     as.setMember!("Interp.allocPtr")(interpReg, scrRegs[2]);
+
+    // Done allocating
+    as.jmp(Label.DONE);
+
+    // Clone the state for the bailout case, which will spill for GC
+    auto bailSt = new CodeGenState(st);
 
     // Allocation fallback
     as.label(Label.FALLBACK);
@@ -778,15 +824,15 @@ void gen_heap_alloc(
     foreach (reg; allocRegs)
         as.push(reg);
 
-    //as.printStr("alloc bailout ***");
+    as.printStr("alloc bailout ***");
 
     // Call the fallback implementation
     as.ptr(cargRegs[0], st.ctx.interp);
-    as.mov(cargRegs[1].opnd(64), szOpnd);
+    as.mov(cargRegs[1].opnd(32), szOpnd);
     as.ptr(RAX, &allocFallback);
     as.call(RAX);
 
-    //as.printStr("alloc bailout done ***");
+    as.printStr("alloc bailout done ***");
 
     // Restore the allocated registers
     foreach_reverse(reg; allocRegs)
@@ -2030,7 +2076,6 @@ void gen_print_str(
     as.pushRegs();
 
     as.mov(cargRegs[0].opnd(64), strOpnd);
-
     as.ptr(scrRegs[0], &printStr);
     as.call(scrRegs[0].opnd(64));
 

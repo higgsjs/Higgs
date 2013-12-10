@@ -1437,10 +1437,7 @@ void compile(Interp interp)
 
             // TODO: properly spill registers, GC may be run during compileStub
 
-            as.setMember!("Interp.wsp")(interpReg, wspReg);
-            as.setMember!("Interp.tsp")(interpReg, tspReg);
-            as.push(interpReg);
-            as.push(interpReg);
+            as.pushJITRegs();
 
             // Call the JIT compile function,
             // passing it a pointer to the stub
@@ -1449,10 +1446,7 @@ void compile(Interp interp)
             as.ptr(cargRegs[0], stub);
             as.call(scrRegs[0]);
 
-            as.pop(interpReg);
-            as.pop(interpReg);
-            as.getMember!("Interp.wsp")(wspReg, interpReg);
-            as.getMember!("Interp.tsp")(tspReg, interpReg);
+            as.popJITRegs();
 
             // Jump to the compiled version
             as.jmp(X86Opnd(RAX));
@@ -1763,10 +1757,7 @@ const(ubyte)* getEntryStub(Interp interp, bool ctorCall)
 
     stub.markStart(as);
 
-    as.setMember!("Interp.wsp")(interpReg, wspReg);
-    as.setMember!("Interp.tsp")(interpReg, tspReg);
-    as.push(interpReg);
-    as.push(interpReg);
+    as.pushJITRegs();
 
     // Call the JIT compile function,
     // passing it a pointer to the stub
@@ -1775,10 +1766,7 @@ const(ubyte)* getEntryStub(Interp interp, bool ctorCall)
     as.ptr(cargRegs[0], stub);
     as.call(scrRegs[0]);
 
-    as.pop(interpReg);
-    as.pop(interpReg);
-    as.getMember!("Interp.wsp")(wspReg, interpReg);
-    as.getMember!("Interp.tsp")(tspReg, interpReg);
+    as.popJITRegs();
 
     // Jump to the compiled version
     as.jmp(X86Opnd(RAX));
@@ -1886,6 +1874,30 @@ void setType(CodeBlock as, int32_t idx, Type type)
     as.mov(X86Opnd(8, tspReg, idx), X86Opnd(type));
 }
 
+/// Store/save the JIT state register
+void pushJITRegs(CodeBlock as)
+{
+    // Save word and type stack pointers on the VM object
+    as.setMember!("Interp.wsp")(interpReg, wspReg);
+    as.setMember!("Interp.tsp")(interpReg, tspReg);
+
+    // Push the VM register on the stack
+    as.push(interpReg);
+    as.push(interpReg);
+}
+
+// Load/restore the JIT state registers
+void popJITRegs(CodeBlock as)
+{
+    // Pop the VM register from the stack
+    as.pop(interpReg);
+    as.pop(interpReg);
+
+    // Load the word and type stack pointers from the VM object
+    as.getMember!("Interp.wsp")(wspReg, interpReg);
+    as.getMember!("Interp.tsp")(tspReg, interpReg);
+}
+
 /// Save caller-save registers on the stack before a C call
 void pushRegs(CodeBlock as)
 {
@@ -1961,60 +1973,45 @@ extern (C) void checkValFn(Interp interp, Word word, Type type, char* errorStr)
 
 void printUint(CodeBlock as, X86Opnd opnd)
 {
+    extern (C) void printUintFn(uint64_t v)
+    {
+        writefln("%s", v);
+    }
+
     as.pushRegs();
 
     as.mov(X86Opnd(cargRegs[0]), opnd);
 
     // Call the print function
-    alias extern (C) void function(uint64_t) PrintUintFn;
-    PrintUintFn printUintFn = &printUint;
-    as.ptr(RAX, printUintFn);
-    as.call(RAX);
+    as.ptr(scrRegs[0], &printUintFn);
+    as.call(scrRegs[0]);
 
     as.popRegs();
 }
 
-/**
-Print an unsigned integer value. Callable from the JIT
-*/
-extern (C) void printUint(uint64_t v)
+void printStr(CodeBlock as, string str)
 {
-    writefln("%s", v);
-}
+    extern (C) static void printStrFn(char* pStr)
+    {
+        printf("%s\n", pStr);
+    }
 
-/*
-void printStr(Assembler as, string str)
-{
     as.comment("printStr(\"" ~ str ~ "\")");
 
     as.pushRegs();
 
-    auto STR_DATA = new Label("STR_DATA");
-    auto AFTER_STR = new Label("AFTER_STR");
+    // Load the string address and jump over the string data
+    as.lea(cargRegs[0], X86Mem(8, RIP, 5));
+    as.jmp32(cast(int32_t)str.length + 1);
 
-    as.instr(JMP, AFTER_STR);
-    as.addInstr(STR_DATA);
+    // Write the string chars and a null terminator
     foreach (ch; str)
-        as.addInstr(new IntData(cast(uint)ch, 8));    
-    as.addInstr(new IntData(0, 8));
-    as.addInstr(AFTER_STR);
+        as.writeInt(cast(uint)ch, 8);
+    as.writeInt(0, 8);
 
-    as.instr(LEA, cargRegs[0], new X86IPRel(8, STR_DATA));
-
-    alias extern (C) void function(char*) PrintStrFn;
-    PrintStrFn printStrFn = &printStr;
-    as.ptr(scrRegs64[0], printStrFn);
-    as.instr(jit.encodings.CALL, scrRegs64[0]);
+    as.ptr(scrRegs[0], &printStrFn);
+    as.call(scrRegs[0].opnd(64));
 
     as.popRegs();
-}
-*/
-
-/**
-Print a C string value. Callable from the JIT
-*/
-extern (C) void printStr(char* pStr)
-{
-    printf("%s\n", pStr);
 }
 
