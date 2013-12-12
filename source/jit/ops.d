@@ -301,14 +301,12 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         // Generate the branch code
         ver.genBranch(
             as,
-            instr,
             branchNO,
             branchOV,
             BranchShape.DEFAULT,
-            function void(
+            delegate void(
                 CodeBlock as,
                 FragmentRef[]* refList,
-                IRInstr instr,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -886,128 +884,6 @@ void gen_get_link(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 */
 
 /**
-Generates the conditional branch for an if_true instruction with the given
-conditional jump operations. Assumes a comparison between input operands has
-already been inserted.
-*/
-/*
-void genCondBranch(
-    CodeGenCtx ctx, 
-    IRInstr ifInstr,
-    CondOps condOps,
-    CodeGenState trueSt,
-    CodeGenState falseSt
-)
-{
-    auto trueTarget = ifInstr.getTarget(0);
-    auto falseTarget = ifInstr.getTarget(1);
-
-    auto trueLabel = new Label("IF_TRUE");
-    auto falseLabel = new Label("IF_FALSE");
-
-    // If the true branch is more often executed
-    if (trueTarget.target.execCount > falseTarget.target.execCount)
-    {
-        if (condOps.jccF[0])
-        {
-            // Jump out of line to the false case
-            foreach (jccF; condOps.jccF)
-                if (jccF) ctx.as.instr(jccF, falseLabel);
-
-            // Jump directly to the true case
-            ctx.as.instr(JMP, trueLabel);
-        }
-        else
-        {
-            // Jump conditionally to the true case
-            assert (condOps.jccF[0]);
-            foreach (jccT; condOps.jccT)
-                if (jccT) ctx.as.instr(jccT, trueLabel);
-
-            // Jump to the false case
-            ctx.as.instr(JMP, falseLabel);
-        }
-
-        // Get the fast target label last so the fast target is
-        // more likely to get generated first (LIFO stack)
-        ctx.genBranchEdge(ctx.as, falseLabel, falseTarget, falseSt);
-        ctx.genBranchEdge(ctx.as, trueLabel, trueTarget, trueSt);
-    }
-    else
-    {
-        if (condOps.jccT[0])
-        {
-            // Jump out of line to the true case
-            foreach (jccT; condOps.jccT)
-                if (jccT) ctx.as.instr(jccT, trueLabel);
-
-            // Jump directly to the false case
-            ctx.as.instr(JMP, falseLabel);
-        }
-        else
-        {
-            // Jump conditionally to the false case
-            assert (condOps.jccF[0]);
-            foreach (jccF; condOps.jccF)
-                if (jccF) ctx.as.instr(jccF, falseLabel);
-
-            // Jump to the true case
-            ctx.as.instr(JMP, trueLabel);
-        }
-
-        // Get the fast target label last so the fast target is
-        // more likely to get generated first (LIFO stack)
-        ctx.genBranchEdge(ctx.as, trueLabel, trueTarget, trueSt);
-        ctx.genBranchEdge(ctx.as, falseLabel, falseTarget, falseSt);
-    }
-}
-*/
-
-/**
-Generate a boolean output value for an instruction based
-on a preceding comparison instruction's output
-*/
-/*
-void genBoolOut(
-    CodeGenCtx ctx,
-    CodeGenState st,
-    IRInstr instr,
-    CondOps condOps,
-)
-{
-    // We must have a register for the output (so we can use cmov)
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    auto outReg = cast(X86Reg)opndOut;
-    if (outReg is null)
-        outReg = scrRegs64[0];
-    auto outReg32 = outReg.reg(32);
-
-    if (condOps.cmovT[0])
-    {
-        ctx.as.instr(MOV, outReg32, FALSE.int8Val);
-        ctx.as.instr(MOV, scrRegs32[1], TRUE.int8Val);
-        foreach (cmovT; condOps.cmovT)
-            if (cmovT) ctx.as.instr(cmovT, outReg32, scrRegs32[1]);
-    }
-    else
-    {
-        assert (condOps.cmovF[0]);
-        ctx.as.instr(MOV, outReg32, TRUE.int8Val);
-        ctx.as.instr(MOV, scrRegs32[1], FALSE.int8Val);
-        foreach (cmovF; condOps.cmovF)
-            if (cmovF) ctx.as.instr(cmovF, outReg32, scrRegs32[1]);
-    }
-
-    // If the output is not a register
-    if (opndOut !is outReg)
-        ctx.as.instr(MOV, opndOut, outReg);
-
-    // Set the output type
-    st.setOutType(ctx.as, instr, Type.CONST);
-}
-*/
-
-/**
 Test if an instruction is followed by an if_true branching on its value
 */
 bool ifUseNext(IRInstr instr)
@@ -1060,54 +936,59 @@ void IsTypeOp(Type type)(
     // Get an operand for the value's type
     auto typeOpnd = st.getTypeOpnd(as, instr, 0);
 
-
-
-
-    // We must have a register for the output (so we can use cmov)
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-    X86Opnd outReg = outOpnd.isReg? outOpnd:scrRegs[0].opnd(64);
-
     // Compare against the tested type
     as.cmp(typeOpnd, X86Opnd(type));
 
-    // Generate a boolean output value
-    as.mov(outReg, X86Opnd(FALSE.int8Val));
-    as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
-    as.cmove(outReg.reg, scrRegs[1].opnd(64));
-
-    // If the output register is not the output operand
-    if (outReg != outOpnd)
-        as.mov(outOpnd, outReg);
-
-    // Set the output type
-    st.setOutType(as, instr, Type.CONST);
-
-
-
-
-
-
-    /*
     // If this instruction has many uses or is not followed by an if
     if (instr.hasManyUses || ifUseNext(instr) is false)
     {
-        // Generate a boolean output
-        ctx.genBoolOut(st, instr, CondOps.cmov(CMOVE, CMOVNE));
+        // We must have a register for the output (so we can use cmov)
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        X86Opnd outReg = outOpnd.isReg? outOpnd.reg.opnd(32):scrRegs[0].opnd(32);
+
+        // Generate a boolean output value
+        as.mov(outReg, X86Opnd(FALSE.int8Val));
+        as.mov(scrRegs[1].opnd(32), X86Opnd(TRUE.int8Val));
+        as.cmove(outReg.reg, scrRegs[1].opnd(32));
+
+        // If the output register is not the output operand
+        if (outReg != outOpnd)
+            as.mov(outOpnd, outReg.reg.opnd(64));
+
+        // Set the output type
+        st.setOutType(as, instr, Type.CONST);
     }
 
     // If our only use is an immediately following if_true
     if (ifUseNext(instr) is true)
     {
-        // If the test is true, we now known the value's type
-        auto dstValue = cast(IRDstValue)argVal;
-        assert (dstValue !is null);
-        auto trueSt = new CodeGenState(st);
-        trueSt.setKnownType(dstValue, type);
+        // Get branch edges for the true and false branches
+        auto branchT = getBranchEdge(as, instr.next.getTarget(0), st, false);
+        auto branchF = getBranchEdge(as, instr.next.getTarget(1), st, false);
 
-        // Generate the conditional branch and targets here
-        ctx.genCondBranch(instr.next, CondOps.jcc(JE, JNE), trueSt, st);
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            BranchShape.DEFAULT,
+            delegate void(
+                CodeBlock as,
+                FragmentRef[]* refList,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                je32Ref(as, refList, target0);
+                jmp32Ref(as, refList, target1);
+            }
+        );
+
+        // Generate the edge code
+        branchT.genCode(as, st);
+        branchF.genCode(as, st);
     }
-    */
 }
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
@@ -1167,14 +1048,12 @@ void CmpOp(string op, size_t numBits)(
 
     // Generate a boolean output only if this instruction has
     // many uses or is not followed by an if
-    //bool genOutput = (instr.hasManyUses || ifUseNext(instr) is false);
-    bool genOutput = true;
+    bool genOutput = (instr.hasManyUses || ifUseNext(instr) is false);
 
     // Integer comparison
     static if (op == "eq")
     {
         as.cmp(opnd0, opnd1);
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1185,7 +1064,6 @@ void CmpOp(string op, size_t numBits)(
     else if (op == "ne")
     {
         as.cmp(opnd0, opnd1);
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1196,7 +1074,6 @@ void CmpOp(string op, size_t numBits)(
     else if (op == "lt")
     {
         as.cmp(opnd0, opnd1);
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1204,11 +1081,9 @@ void CmpOp(string op, size_t numBits)(
             as.cmovl(outReg.reg, tmpReg);
         }
     }
-
     else if (op == "le")
     {
         as.cmp(opnd0, opnd1);
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1219,7 +1094,6 @@ void CmpOp(string op, size_t numBits)(
     else if (op == "gt")
     {
         as.cmp(opnd0, opnd1);
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1230,7 +1104,6 @@ void CmpOp(string op, size_t numBits)(
     else if (op == "ge")
     {
         as.cmp(opnd0, opnd1);
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1252,9 +1125,6 @@ void CmpOp(string op, size_t numBits)(
         // False: 111 or 000 or 001
         // False: JNE + JP
         as.ucomisd(opnd0, opnd1);
-        //condOps.cmovF = [CMOVNE, CMOVP];
-        //condOps.jccF  = [JNE, JP];
-
         if (genOutput)
         {
             as.mov(outReg, trueOpnd);
@@ -1270,9 +1140,6 @@ void CmpOp(string op, size_t numBits)(
         // False: 100
         // True: JNE + JP
         as.ucomisd(opnd0, opnd1);
-        //condOps.cmovT = [CMOVNE, CMOVP];
-        //condOps.jccT  = [JNE, JP];
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1284,10 +1151,6 @@ void CmpOp(string op, size_t numBits)(
     else if (op == "flt")
     {
         as.ucomisd(opnd1, opnd0);
-        //condOps.cmovT[0] = CMOVA;
-        //condOps.jccT [0] = JA;
-        //condOps.jccF [0] = JNA;
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1298,10 +1161,6 @@ void CmpOp(string op, size_t numBits)(
     else if (op == "fle")
     {
         as.ucomisd(opnd1, opnd0);
-        //condOps.cmovT[0] = CMOVAE;
-        //condOps.jccT [0] = JAE;
-        //condOps.jccF [0] = JNAE;
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1312,10 +1171,6 @@ void CmpOp(string op, size_t numBits)(
     else if (op == "fgt")
     {
         as.ucomisd(opnd0, opnd1);
-        //condOps.cmovT[0] = CMOVA;
-        //condOps.jccT [0] = JA;
-        //condOps.jccF [0] = JNA;
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1326,10 +1181,6 @@ void CmpOp(string op, size_t numBits)(
     else if (op == "fge")
     {
         as.ucomisd(opnd0, opnd1);
-        //condOps.cmovT[0] = CMOVAE;
-        //condOps.jccT [0] = JAE;
-        //condOps.jccF [0] = JNAE;
-
         if (genOutput)
         {
             as.mov(outReg, falseOpnd);
@@ -1357,18 +1208,103 @@ void CmpOp(string op, size_t numBits)(
     // If there is an immediately following if_true using this value
     if (ifUseNext(instr) is true)
     {
-        // Generate the conditional branch and targets here
-        //ctx.genCondBranch(instr.next, condOps, st, st);
+        // Get branch edges for the true and false branches
+        auto branchT = getBranchEdge(as, instr.next.getTarget(0), st, false);
+        auto branchF = getBranchEdge(as, instr.next.getTarget(1), st, false);
 
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            BranchShape.DEFAULT,
+            delegate void(
+                CodeBlock as,
+                FragmentRef[]* refList,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                // Integer comparison
+                static if (op == "eq")
+                {
+                    je32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+                else if (op == "ne")
+                {
+                    jne32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+                else if (op == "lt")
+                {
+                    jl32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+                else if (op == "le")
+                {
+                    jle32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+                else if (op == "gt")
+                {
+                    jg32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+                else if (op == "ge")
+                {
+                    jge32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
 
-        // TODO: put ver.genBranch logic here, assume comparison is already done
+                // Floating-point comparisons
+                else if (op == "feq")
+                {
+                    // feq:
+                    // True: 100
+                    // False: 111 or 000 or 001
+                    // False: JNE + JP
+                    jne32Ref(as, refList, target1);
+                    jp32Ref(as, refList, target1);
+                    jmp32Ref(as, refList, target0);
+                }
+                else if (op == "fne")
+                {
+                    // fne: 
+                    // True: 111 or 000 or 001
+                    // False: 100
+                    // True: JNE + JP
+                    jne32Ref(as, refList, target0);
+                    jp32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+                else if (op == "flt")
+                {
+                    ja32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+                else if (op == "fle")
+                {
+                    jae32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+                else if (op == "fgt")
+                {
+                    ja32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+                else if (op == "fge")
+                {
+                    jae32Ref(as, refList, target0);
+                    jmp32Ref(as, refList, target1);
+                }
+            }
+        );
 
-
-
-
-
-
-
+        // Generate the edge code
+        branchT.genCode(as, st);
+        branchF.genCode(as, st);
     }
 }
 
@@ -1419,8 +1355,8 @@ void gen_if_true(
 
     // If a boolean argument immediately precedes, the
     // conditional branch has already been generated
-    //if (boolArgPrev(instr) is true)
-    //    return;
+    if (boolArgPrev(instr) is true)
+        return;
 
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
@@ -1432,14 +1368,12 @@ void gen_if_true(
     // Generate the branch code
     ver.genBranch(
         as,
-        instr,
         branchT,
         branchF,
         BranchShape.DEFAULT,
-        function void(
+        delegate void(
             CodeBlock as,
             FragmentRef[]* refList,
-            IRInstr instr,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1472,14 +1406,12 @@ void gen_jump(
     // Jump to the target block directly
     ver.genBranch(
         as,
-        instr,
         branch,
         null,
         BranchShape.DEFAULT,
-        function void(
+        delegate void(
             CodeBlock as,
             FragmentRef[]* refList,
-            IRInstr instr,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1676,14 +1608,12 @@ void gen_call(
     // Jump to the target block directly
     ver.genBranch(
         as,
-        instr,
         contBranch,
         null,
         BranchShape.DEFAULT,
-        function void(
+        delegate void(
             CodeBlock as,
             FragmentRef[]* refList,
-            IRInstr instr,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1854,14 +1784,12 @@ void gen_call_prim(
     // Jump to the target block directly
     ver.genBranch(
         as,
-        instr,
         contBranch,
         entryVer,
         BranchShape.DEFAULT,
-        function void(
+        delegate void(
             CodeBlock as,
             FragmentRef[]* refList,
-            IRInstr instr,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape

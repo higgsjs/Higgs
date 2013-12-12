@@ -841,45 +841,37 @@ void writeJcc32Ref(string mnem, opcode...)(
 }
 
 /// 32-bit relative jumps with fragment references
-/*
-alias writeJcc!("ja" , 0x0F, 0x87) ja;
-alias writeJcc!("jae", 0x0F, 0x83) jae;
-alias writeJcc!("jb" , 0x0F, 0x82) jb;
-alias writeJcc!("jbe", 0x0F, 0x86) jbe;
-alias writeJcc!("jc" , 0x0F, 0x82) jc;
-*/
-alias writeJcc32Ref!("je" , 0x0F, 0x84) je32Ref;
-/*
-alias writeJcc!("jg" , 0x0F, 0x8F) jg;
-alias writeJcc!("jge", 0x0F, 0x8D) jge;
-alias writeJcc!("jl" , 0x0F, 0x8C) jl;
-alias writeJcc!("jle", 0x0F, 0x8E) jle;
-alias writeJcc!("jna" , 0x0F, 0x86) jna;
-alias writeJcc!("jnae", 0x0F, 0x82) jnae;
-alias writeJcc!("jnb" , 0x0F, 0x83) jnb;
-alias writeJcc!("jnbe", 0x0F, 0x87) jnbe;
-alias writeJcc!("jnc" , 0x0F, 0x83) jnc;
-*/
+alias writeJcc32Ref!("ja"  , 0x0F, 0x87) ja32Ref;
+alias writeJcc32Ref!("jae" , 0x0F, 0x83) jae32Ref;
+alias writeJcc32Ref!("jb"  , 0x0F, 0x82) jb32Ref;
+alias writeJcc32Ref!("jbe" , 0x0F, 0x86) jbe32Ref;
+alias writeJcc32Ref!("jc"  , 0x0F, 0x82) jc32Ref;
+alias writeJcc32Ref!("je"  , 0x0F, 0x84) je32Ref;
+alias writeJcc32Ref!("jg"  , 0x0F, 0x8F) jg32Ref;
+alias writeJcc32Ref!("jge" , 0x0F, 0x8D) jge32Ref;
+alias writeJcc32Ref!("jl"  , 0x0F, 0x8C) jl32Ref;
+alias writeJcc32Ref!("jle" , 0x0F, 0x8E) jle32Ref;
+alias writeJcc32Ref!("jna" , 0x0F, 0x86) jna32Ref;
+alias writeJcc32Ref!("jnae", 0x0F, 0x82) jnae32Ref;
+alias writeJcc32Ref!("jnb" , 0x0F, 0x83) jnb32Ref;
+alias writeJcc32Ref!("jnbe", 0x0F, 0x87) jnbe32Ref;
+alias writeJcc32Ref!("jnc" , 0x0F, 0x83) jnc32Ref;
 alias writeJcc32Ref!("jne" , 0x0F, 0x85) jne32Ref;
-/*
-alias writeJcc!("jng" , 0x0F, 0x8E) jng;
-alias writeJcc!("jnge", 0x0F, 0x8C) jnge;
-alias writeJcc!("jnl" , 0x0F, 0x8D) jnl;
-alias writeJcc!("jnle", 0x0F, 0x8F) jnle;
-*/
-alias writeJcc32Ref!("jno", 0x0F, 0x81) jno32Ref;
-/*
-alias writeJcc!("jnp", 0x0F, 0x8b) jnp;
-alias writeJcc!("jns", 0x0F, 0x89) jns;
-alias writeJcc!("jnz", 0x0F, 0x85) jnz;
-alias writeJcc!("jo" , 0x0F, 0x80) jo;
-alias writeJcc!("jp" , 0x0F, 0x8A) jp;
-alias writeJcc!("jpe", 0x0F, 0x8A) jpe;
-alias writeJcc!("jpo", 0x0F, 0x8B) jpo;
-alias writeJcc!("js" , 0x0F, 0x88) js;
-alias writeJcc!("jz" , 0x0F, 0x84) jz;
-*/
-alias writeJcc32Ref!("jmp", 0xE9) jmp32Ref;
+alias writeJcc32Ref!("jng" , 0x0F, 0x8E) jng32Ref;
+alias writeJcc32Ref!("jnge", 0x0F, 0x8C) jnge32Ref;
+alias writeJcc32Ref!("jnl" , 0x0F, 0x8D) jnl32Ref;
+alias writeJcc32Ref!("jnle", 0x0F, 0x8F) jnle32Ref;
+alias writeJcc32Ref!("jno" , 0x0F, 0x81) jno32Ref;
+alias writeJcc32Ref!("jnp" , 0x0F, 0x8b) jnp32Ref;
+alias writeJcc32Ref!("jns" , 0x0F, 0x89) jns32Ref;
+alias writeJcc32Ref!("jnz" , 0x0F, 0x85) jnz32Ref;
+alias writeJcc32Ref!("jo"  , 0x0F, 0x80) jo32Ref;
+alias writeJcc32Ref!("jp"  , 0x0F, 0x8A) jp32Ref;
+alias writeJcc32Ref!("jpe" , 0x0F, 0x8A) jpe32Ref;
+alias writeJcc32Ref!("jpo" , 0x0F, 0x8B) jpo32Ref;
+alias writeJcc32Ref!("js"  , 0x0F, 0x88) js32Ref;
+alias writeJcc32Ref!("jz"  , 0x0F, 0x84) jz32Ref;
+alias writeJcc32Ref!("jmp" , 0xE9) jmp32Ref;
 
 /**
 Executable code fragment
@@ -1157,11 +1149,10 @@ enum BranchShape
     DEFAULT // Neither target is next
 }
 
-/// Instruction code generation function
-alias void function(
+/// Instruction code generation delegate
+alias void delegate(
     CodeBlock as,
     FragmentRef[]* refList,
-    IRInstr instr,
     CodeFragment target0,
     CodeFragment target1,
     BranchShape shape
@@ -1192,7 +1183,6 @@ class VersionInst : BlockVersion
     */
     void genBranch(
         CodeBlock as,
-        IRInstr instr,
         CodeFragment target0,
         CodeFragment target1,
         BranchShape shape,
@@ -1211,7 +1201,6 @@ class VersionInst : BlockVersion
         genFn(
             as,
             &state.ctx.interp.refList,
-            instr,
             target0, 
             target1, 
             shape
@@ -1317,6 +1306,11 @@ BranchCode getBranchEdge(
     bool noStub
 )
 {
+    assert (
+        branch !is null,
+        "branch edge is null"
+    );
+
     auto liveInfo = predState.ctx.fun.liveInfo;
 
     // Copy the predecessor state

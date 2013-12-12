@@ -83,24 +83,35 @@ TODO: work towards object property access
 - getPropIdx
 - map info access
 
+TODO: implement wrapper for static function ops
+import std.traits;
+static assert( isFunctionPointer!t1 || isDelegate!t1 );
+isSomeFunction(T...)
+ParameterTypeTuple!foo
+ReturnType!foo
+arity!foo
+alias ParameterTypeTuple!(t1) a1;
+alias ReturnType!(t1) r1;
+static if( i < T.length - 1 && is( r1 == void ) )
+static assert( a1.length != 1 || !is( a1[0] == Variant ),
+
 TODO: try to optimize call logic. Can some operations use 32-bit opnds?
 - Can we use a second scratch reg to compute extra args?
+- Can now count on delegate for scratch regs
 
-TODO: reimplement test-then-if optimization
+
+
+
+
+
+
+[DONE] TODO: use delegates for the branch generation function
+- No context object if no variables captured
+- remove instr argument
+
+[DONE] TODO: reimplement test-then-if optimization
 - Test needs to generate the branching directly
 - If suppresses its own code generation
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: eq_f64, ne_f64, lt_f64
 
