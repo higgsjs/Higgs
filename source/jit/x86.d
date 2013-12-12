@@ -1563,7 +1563,7 @@ void movzx(CodeBlock cb, X86Opnd dst, X86Opnd src)
     if (dst.isReg)
         dstSize = dst.reg.size;
     else
-        assert (false);
+        assert (false, "movzx dst must be a register");
 
     size_t srcSize;
     if (src.isReg)

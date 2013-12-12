@@ -126,7 +126,7 @@ void assertBool(Interp interp, string input, bool boolVal)
         format(
             "Test failed:\n" ~
             "%s" ~ "\n" ~
-            "incorrect boolan value: %s, expected: %s",
+            "incorrect boolean value: %s, expected: %s",
             input,
             valToString(ret), 
             boolVal
@@ -249,7 +249,7 @@ unittest
     interp.assertInt("return 7 >> 1", 3);
     interp.assertInt("return 7 >>> 1", 3);
     interp.assertInt("return ~2", -3);
-    //interp.assertInt("return undefined | 1", 1);
+    interp.assertInt("return undefined | 1", 1);
 
     interp.assertFloat("return 3.5", 3.5);
     interp.assertFloat("return 2.5 + 2", 4.5);
@@ -332,7 +332,7 @@ unittest
     interp.assertInt("if (false) return 1; else return 0;", 0);
     interp.assertInt("if (3 < 7) return 1; else return 0;", 1);
     interp.assertInt("if (5 < 2) return 1; else return 0;", 0);
-    //interp.assertInt("if (1 < 1.5) return 1; else return 0;", 1);
+    interp.assertInt("if (1 < 1.5) return 1; else return 0;", 1);
 
     interp.assertBool("3 <= 5", true);
     interp.assertBool("5 <= 5", true);
@@ -341,12 +341,12 @@ unittest
     interp.assertBool("true == false", false);
     interp.assertBool("true === true", true);
     interp.assertBool("true !== false", true);
-    //interp.assertBool("3 === 3.0", true);
-    //interp.assertBool("3 !== 3.5", true);
+    interp.assertBool("3 === 3.0", true);
+    interp.assertBool("3 !== 3.5", true);
 
-    //interp.assertBool("return 1 < undefined", false);
-    //interp.assertBool("return 1 > undefined", false);
-    //interp.assertBool("return 0.5 == null", false);
+    interp.assertBool("return 1 < undefined", false);
+    interp.assertBool("return 1 > undefined", false);
+    interp.assertBool("return 0.5 == null", false);
     interp.assertBool("return 'Foo' != null", true);
     interp.assertBool("return null != null", false);
     interp.assertBool("return 'Foo' == null", false);
@@ -734,7 +734,6 @@ unittest
     interp.assertInt("function f() { var a = 0; a += 2; a *= 3; return a; }; return f();", 6);
 }
 
-/*
 /// Object literals, property access, method calls
 unittest
 {
@@ -743,6 +742,7 @@ unittest
     auto interp = new InterpNoStdLib();
 
     interp.assertInt("{}; return 1;", 1);
+    /*
     interp.assertInt("{x: 7}; return 1;", 1);
     interp.assertInt("o = {}; o.x = 7; return 1;", 1);
     interp.assertInt("o = {}; o.x = 7; return o.x;", 7);
@@ -768,8 +768,10 @@ unittest
 
     // Object extension and equality
     interp.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);  
+    */
 }
 
+/*
 /// New operator, prototype chain
 unittest
 {
@@ -866,6 +868,7 @@ unittest
         12
     );
 }
+*/
 
 /// Array literals, array operations
 unittest
@@ -874,7 +877,8 @@ unittest
 
     auto interp = new InterpNoStdLib();
  
-    interp.assertInt("a = []; return 0", 0);
+    //interp.assertInt("a = []; return 0", 0);
+    /*
     interp.assertInt("a = [1]; return 0", 0);
     interp.assertInt("a = [1,2]; return 0", 0);
     interp.assertInt("a = [1,2]; return a[0]", 1);
@@ -884,8 +888,8 @@ unittest
     interp.assertInt("a = [1,2]; return a[3]? 1:0;", 0);
     interp.assertInt("a = [1337]; return a['0'];", 1337);
     interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
+    */
 }
-*/
 
 /// Inline IR and JS extensions
 unittest
@@ -901,7 +905,7 @@ unittest
     interp.assertInt("return $ir_add_i32(5,3);", 8);
     interp.assertInt("return $ir_sub_i32(5,3);", 2);
     interp.assertInt("return $ir_mul_i32(5,3);", 15);
-    //interp.assertInt("return $ir_div_i32(5,3);", 1);
+    interp.assertInt("return $ir_div_i32(5,3);", 1);
     interp.assertInt("return $ir_mod_i32(5,3);", 2);
     interp.assertInt("return $ir_eq_i32(3,3)? 1:0;", 1);
     interp.assertInt("return $ir_eq_i32(3,2)? 1:0;", 0);
@@ -970,7 +974,6 @@ unittest
         16
     );
 
-    /*
     interp.assertInt(
         "
         var ptr = $ir_heap_alloc(16);
@@ -980,6 +983,7 @@ unittest
         77
     );
 
+    /*
     interp.assertInt(
         "
         var link = $ir_make_link(0);
@@ -1027,30 +1031,30 @@ unittest
     //interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     interp.assertInt("$rt_add(5, 3)", 8);
-    //interp.assertFloat("$rt_add(5, 3.5)", 8.5);
+    interp.assertFloat("$rt_add(5, 3.5)", 8.5);
     interp.assertStr("$rt_add(5, 'bar')", "5bar");
     interp.assertStr("$rt_add('foo', 'bar')", "foobar");
 
     interp.assertInt("$rt_sub(5, 3)", 2);
-    //interp.assertFloat("$rt_sub(5, 3.5)", 1.5);
+    interp.assertFloat("$rt_sub(5, 3.5)", 1.5);
 
     interp.assertInt("$rt_mul(3, 5)", 15);
-    //interp.assertFloat("$rt_mul(5, 1.5)", 7.5);
-    //interp.assertFloat("$rt_mul(0xFFFF, 0xFFFF)", 4294836225);
+    interp.assertFloat("$rt_mul(5, 1.5)", 7.5);
+    interp.assertFloat("$rt_mul(0xFFFF, 0xFFFF)", 4294836225);
 
-    //interp.assertFloat("$rt_div(15, 3)", 5);
-    //interp.assertFloat("$rt_div(15, 1.5)", 10);
+    interp.assertFloat("$rt_div(15, 3)", 5);
+    interp.assertFloat("$rt_div(15, 1.5)", 10);
 
     interp.assertBool("$rt_eq(3,3)", true);
     interp.assertBool("$rt_eq(3,5)", false);
     interp.assertBool("$rt_eq('foo','foo')", true);
 
-    /*
     interp.assertInt("isNaN(3)? 1:0", 0);
     interp.assertInt("isNaN(3.5)? 1:0", 0);
     interp.assertInt("isNaN(NaN)? 1:0", 1);
     interp.assertStr("$rt_toString(NaN);", "NaN");
 
+    /*
     interp.assertInt("$rt_getProp('foo', 'length')", 3);
     interp.assertStr("$rt_getProp('foo', 0)", "f");
     interp.assertInt("$rt_getProp([0,1], 'length')", 2);

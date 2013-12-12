@@ -1157,59 +1157,86 @@ void CmpOp(string op, size_t numBits)(
         opnd1 = X86Opnd(XMM1);
     }
 
-
-
-
-
-
-
     // We must have a register for the output (so we can use cmov)
     auto outOpnd = st.getOutOpnd(as, instr, 64);
-    X86Opnd outReg = outOpnd.isReg? outOpnd:scrRegs[0].opnd(64);
+    X86Opnd outReg = outOpnd.isReg? outOpnd.reg.opnd(32):scrRegs[0].opnd(32);
+
+    auto tmpReg = scrRegs[1].opnd(32);
+    auto trueOpnd = X86Opnd(TRUE.int8Val);
+    auto falseOpnd = X86Opnd(FALSE.int8Val);
+
+    // Generate a boolean output only if this instruction has
+    // many uses or is not followed by an if
+    //bool genOutput = (instr.hasManyUses || ifUseNext(instr) is false);
+    bool genOutput = true;
 
     // Integer comparison
     static if (op == "eq")
     {
         as.cmp(opnd0, opnd1);
-        as.mov(outReg, X86Opnd(FALSE.int8Val));
-        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
-        as.cmove(outReg.reg, scrRegs[1].opnd(64));
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmove(outReg.reg, tmpReg);
+        }
     }
     else if (op == "ne")
     {
         as.cmp(opnd0, opnd1);
-        as.mov(outReg, X86Opnd(FALSE.int8Val));
-        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
-        as.cmovne(outReg.reg, scrRegs[1].opnd(64));
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovne(outReg.reg, tmpReg);
+        }
     }
     else if (op == "lt")
     {
         as.cmp(opnd0, opnd1);
-        as.mov(outReg, X86Opnd(FALSE.int8Val));
-        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
-        as.cmovl(outReg.reg, scrRegs[1].opnd(64));
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovl(outReg.reg, tmpReg);
+        }
     }
 
     else if (op == "le")
     {
         as.cmp(opnd0, opnd1);
-        as.mov(outReg, X86Opnd(FALSE.int8Val));
-        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
-        as.cmovle(outReg.reg, scrRegs[1].opnd(64));
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovle(outReg.reg, tmpReg);
+        }
     }
     else if (op == "gt")
     {
         as.cmp(opnd0, opnd1);
-        as.mov(outReg, X86Opnd(FALSE.int8Val));
-        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
-        as.cmovg(outReg.reg, scrRegs[1].opnd(64));
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovg(outReg.reg, tmpReg);
+        }
     }
     else if (op == "ge")
     {
         as.cmp(opnd0, opnd1);
-        as.mov(outReg, X86Opnd(FALSE.int8Val));
-        as.mov(scrRegs[1].opnd(64), X86Opnd(TRUE.int8Val));
-        as.cmovge(outReg.reg, scrRegs[1].opnd(64));
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovge(outReg.reg, tmpReg);
+        }
     }
 
     // Floating-point comparisons
@@ -1218,88 +1245,131 @@ void CmpOp(string op, size_t numBits)(
     // GREATER_THAN: ZF, PF, CF ← 000;
     // LESS_THAN:    ZF, PF, CF ← 001;
     // EQUAL:        ZF, PF, CF ← 100;
-    /*
-    static if (op == "feq")
+    else if (op == "feq")
     {
         // feq:
         // True: 100
         // False: 111 or 000 or 001
         // False: JNE + JP
-        ctx.as.instr(UCOMISD, opnd0, opnd1);
-        condOps.cmovF = [CMOVNE, CMOVP];
-        condOps.jccF  = [JNE, JP];
+        as.ucomisd(opnd0, opnd1);
+        //condOps.cmovF = [CMOVNE, CMOVP];
+        //condOps.jccF  = [JNE, JP];
+
+        if (genOutput)
+        {
+            as.mov(outReg, trueOpnd);
+            as.mov(tmpReg, falseOpnd);
+            as.cmovne(outReg.reg, tmpReg);
+            as.cmovp(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "fne")
+    else if (op == "fne")
     {
         // fne: 
         // True: 111 or 000 or 001
         // False: 100
         // True: JNE + JP
-        ctx.as.instr(UCOMISD, opnd0, opnd1);
-        condOps.cmovT = [CMOVNE, CMOVP];
-        condOps.jccT  = [JNE, JP];
+        as.ucomisd(opnd0, opnd1);
+        //condOps.cmovT = [CMOVNE, CMOVP];
+        //condOps.jccT  = [JNE, JP];
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovne(outReg.reg, tmpReg);
+            as.cmovp(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "flt")
+    else if (op == "flt")
     {
-        ctx.as.instr(UCOMISD, opnd1, opnd0);
-        condOps.cmovT[0] = CMOVA;
-        condOps.jccT [0] = JA;
-        condOps.jccF [0] = JNA;
+        as.ucomisd(opnd1, opnd0);
+        //condOps.cmovT[0] = CMOVA;
+        //condOps.jccT [0] = JA;
+        //condOps.jccF [0] = JNA;
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmova(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "fle")
+    else if (op == "fle")
     {
-        ctx.as.instr(UCOMISD, opnd1, opnd0);
-        condOps.cmovT[0] = CMOVAE;
-        condOps.jccT [0] = JAE;
-        condOps.jccF [0] = JNAE;
+        as.ucomisd(opnd1, opnd0);
+        //condOps.cmovT[0] = CMOVAE;
+        //condOps.jccT [0] = JAE;
+        //condOps.jccF [0] = JNAE;
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovae(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "fgt")
+    else if (op == "fgt")
     {
-        ctx.as.instr(UCOMISD, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVA;
-        condOps.jccT [0] = JA;
-        condOps.jccF [0] = JNA;
+        as.ucomisd(opnd0, opnd1);
+        //condOps.cmovT[0] = CMOVA;
+        //condOps.jccT [0] = JA;
+        //condOps.jccF [0] = JNA;
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmova(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "fge")
+    else if (op == "fge")
     {
-        ctx.as.instr(UCOMISD, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVAE;
-        condOps.jccT [0] = JAE;
-        condOps.jccF [0] = JNAE;
+        as.ucomisd(opnd0, opnd1);
+        //condOps.cmovT[0] = CMOVAE;
+        //condOps.jccT [0] = JAE;
+        //condOps.jccF [0] = JNAE;
+
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovae(outReg.reg, tmpReg);
+        }
     }
-    */
 
     else
     {
         assert (false);
     }
 
-    // If the output register is not the output operand
-    if (outReg != outOpnd)
-        as.mov(outOpnd, outReg);
+    // If we are to generate output
+    if (genOutput)
+    {
+        // If the output register is not the output operand
+        if (outReg != outOpnd)
+            as.mov(outOpnd, outReg.reg.opnd(64));
+    }
 
     // Set the output type
     st.setOutType(as, instr, Type.CONST);
 
-
-
-
-
-    /*
-    // If this instruction has many uses or is not followed by an if
-    if (instr.hasManyUses || ifUseNext(instr) is false)
-    {
-        // Generate a boolean output
-        ctx.genBoolOut(st, instr, condOps);
-    }
-
-    // If our only use is an immediately following if_true
+    // If there is an immediately following if_true using this value
     if (ifUseNext(instr) is true)
     {
         // Generate the conditional branch and targets here
-        ctx.genCondBranch(instr.next, condOps, st, st);
+        //ctx.genCondBranch(instr.next, condOps, st, st);
+
+
+        // TODO: put ver.genBranch logic here, assume comparison is already done
+
+
+
+
+
+
+
     }
-    */
 }
 
 alias CmpOp!("eq", 8) gen_eq_i8;
@@ -1315,12 +1385,12 @@ alias CmpOp!("eq", 64) gen_eq_refptr;
 alias CmpOp!("ne", 64) gen_ne_refptr;
 alias CmpOp!("eq", 64) gen_eq_rawptr;
 alias CmpOp!("ne", 64) gen_ne_rawptr;
-//alias CmpOp!("feq", 64) gen_eq_f64;
-//alias CmpOp!("fne", 64) gen_ne_f64;
-//alias CmpOp!("flt", 64) gen_lt_f64;
-//alias CmpOp!("fle", 64) gen_le_f64;
-//alias CmpOp!("fgt", 64) gen_gt_f64;
-//alias CmpOp!("fge", 64) gen_ge_f64;
+alias CmpOp!("feq", 64) gen_eq_f64;
+alias CmpOp!("fne", 64) gen_ne_f64;
+alias CmpOp!("flt", 64) gen_lt_f64;
+alias CmpOp!("fle", 64) gen_le_f64;
+alias CmpOp!("fgt", 64) gen_gt_f64;
+alias CmpOp!("fge", 64) gen_ge_f64;
 
 void gen_if_true(
     VersionInst ver, 

@@ -24,6 +24,9 @@ TODO: complete WAV output support, test it out with sine wave
 
 TODO: optimize x86 instr encoding based on usage
 - e.g.: reg64 to mem move and vice versa?
+- do profiling first
+
+TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
 TODO: increase default str table size, use power of 2 sizing, eliminate modulo
 
@@ -52,7 +55,9 @@ TODO: exception support
 
 TODO: GC support
 
-TODO: produce 32-bit offsets/addresses in CodeBlock.toString
+TODO: new/constructor support
+- Implement using host function first
+= Also need return from new
 
 ------------------------------------------------------------------------------
 
@@ -75,21 +80,15 @@ TODO: try supporting simpler std libs, like stdlib/math.js
 TODO: array element access
 
 TODO: work towards object property access
-- load/store
-- make_value
+- getPropIdx
 - map info access
-
-TODO: eq_f64, ne_f64, lt_f64
 
 TODO: try to optimize call logic. Can some operations use 32-bit opnds?
 - Can we use a second scratch reg to compute extra args?
 
-TODO: look into D traits, function pointers
-
-TODO: ask on dconf about closure opts?
-- Will it allocate extra objects or context if no shared variables?
-- Are closures heap-allocated, or by value?
-- see page about delegates first
+TODO: reimplement test-then-if optimization
+- Test needs to generate the branching directly
+- If suppresses its own code generation
 
 
 
@@ -99,6 +98,19 @@ TODO: ask on dconf about closure opts?
 
 
 
+
+
+
+
+[DONE] TODO: eq_f64, ne_f64, lt_f64
+
+[DONE] TODO: look into D traits for function pointers
+- Not clear from traits page, ask on D forum
+
+[DONE] TODO: ask on dconf about closure opts
+- make thread: Memory usage of delegates
+  - Will it allocate extra objects or context if no shared variables?
+  - Are closures heap-allocated, or by value?
 
 [DONE] TODO: support for div_i32
 - Needed for int to string conversion

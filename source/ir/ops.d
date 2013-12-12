@@ -178,12 +178,12 @@ Opcode EQ_CONST = { "eq_const", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_const,
 Opcode NE_CONST = { "ne_const", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_const, OpInfo.BOOL_VAL };
 
 // Floating-point comparison instructions
-Opcode EQ_F64 = { "eq_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_eq_f64*/null , OpInfo.BOOL_VAL };
-Opcode NE_F64 = { "ne_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ne_f64*/null , OpInfo.BOOL_VAL };
-Opcode LT_F64 = { "lt_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lt_f64*/null , OpInfo.BOOL_VAL };
-Opcode GT_F64 = { "gt_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_gt_f64*/null , OpInfo.BOOL_VAL };
-Opcode LE_F64 = { "le_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_le_f64*/null , OpInfo.BOOL_VAL };
-Opcode GE_F64 = { "ge_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_ge_f64*/null , OpInfo.BOOL_VAL };
+Opcode EQ_F64 = { "eq_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_f64, OpInfo.BOOL_VAL };
+Opcode NE_F64 = { "ne_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_f64, OpInfo.BOOL_VAL };
+Opcode LT_F64 = { "lt_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_lt_f64, OpInfo.BOOL_VAL };
+Opcode GT_F64 = { "gt_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_gt_f64, OpInfo.BOOL_VAL };
+Opcode LE_F64 = { "le_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_le_f64, OpInfo.BOOL_VAL };
+Opcode GE_F64 = { "ge_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ge_f64, OpInfo.BOOL_VAL };
 
 // Load instructions
 Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u8 };
