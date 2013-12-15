@@ -67,25 +67,40 @@ TODO: remove interp/ops.d
 
 ------------------------------------------------------------------------------
 
-Third milestone: partial standard library initialization
+Third milestone: standard library initialization
 - Can simplify if needed, disable regexp init for now
   - May also want to look into why this is so slow/complex
 
+TODO: make_link, needed by commonjs lib
+- Why is it needed?
+
 TODO: new/constructor support
 - Implement using host function first
-= Also need return from new
+- Also need return from new
+- enable unit tests
 
-TODO: try enabling stdlib/math.js
+FIXME: higgs init time is quite slow
+- profile it
+
+FIXME: bug in merge sort test?
+- has to do with cycle resolution in moves.d?
+- issue with regress/loop_swap too?
+
+TODO: cos_f64, sin_f64, sqrt_f64, log_f64, exp_f64, mod_f64, ceil_f64, floor_f64, f64_to_str
+- template unary FP host fun? HostFPOp(fun)
+
+FIXME: assertion failed in stdlib/number test
+
+FIXME: arg_obj test segfaults
+
+
+
+
+
+
+
+[DONE] TODO: try enabling stdlib/math.js
 - comment out loading of other libs for now
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: array element access
 
