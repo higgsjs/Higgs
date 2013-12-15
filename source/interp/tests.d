@@ -302,6 +302,7 @@ unittest
     // Too few arguments
     interp.assertInt("return function (x) { return 9; } ()", 9);
     interp.assertInt("return function (x, y) { return x - 1; } (4)", 3);
+    interp.assertInt("return function (x,y,z,w) { return 0; } (1,2,3)", 0);
 }
 
 /// Local variable assignment
@@ -1186,7 +1187,6 @@ unittest
     interp.assertBool("o = {k:3}; p = Object.create(o); return 'k' in p;", true);
 }
 
-/*
 /// Stdlib Number library
 unittest
 {
@@ -1200,7 +1200,6 @@ unittest
 
     interp.assertStr("(10).toString()", "10");
 }
-*/
 
 /// Stdlib Array library
 unittest
@@ -1329,7 +1328,7 @@ unittest
     interp.load("programs/regress/jit_inlining.js");
     interp.load("programs/regress/jit_inlining2.js");
 
-    // FIXME: segfault
+    // TODO: needs new operator
     //interp.load("programs/regress/delta.js");
     //interp.load("programs/regress/raytrace.js");
 
@@ -1363,13 +1362,10 @@ unittest
 
     auto interp = new Interp();
 
-    // FIXME: segfault
-    /*
     // ES5 comparison operator test
     writeln("es5 comparisons");
     interp.load("programs/es5_cmp/es5_cmp.js");
     interp.assertInt("test();", 0);
-    */
 
     // Recursive Fibonacci computation
     writeln("fib");
@@ -1422,14 +1418,11 @@ unittest
     interp.assertInt("test();", 0);
     */
 
-    // FIXME: segfault
-    /*
     writefln("arguments");
 
     // Arguments object
     interp.load("programs/arg_obj/arg_obj.js");
     interp.assertInt("test();", 0);
-    */
 
     /*
     writefln("for-in");

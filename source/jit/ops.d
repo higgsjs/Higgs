@@ -1497,19 +1497,21 @@ void gen_call(
 
     auto numArgs = cast(uint32_t)instr.numArgs - 2;
 
-    // Compute -extraArgs = numArgs - numArgs
+    // Compute -missingArgs = numArgs - numParams
     // This is the negation of the number of missing arguments
     // We use this as an offset when writing arguments to the stack
     as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
     as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
-    as.sub(scrRegs[2].opnd(64), scrReg3.opnd(64));
-    as.cmp(scrRegs[2].opnd(64), X86Opnd(0));
+    as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
+    as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
     as.jle(Label.FALSE);
     as.xor(scrRegs[2].opnd(32), scrRegs[2].opnd(32));
     as.label(Label.FALSE);
+    as.movsx(scrRegs[2].opnd(64), scrRegs[2].opnd(32));
 
-    //writeln("numArgs=", numArgs);
-    //as.printUint(scrRegs[2].opnd(64));
+    //as.printStr("missing args");
+    //as.printInt(scrRegs[2].opnd(64));
+    //as.printInt(scrRegs[2].opnd(32));
 
     // Initialize the missing arguments, if any
     as.mov(scrReg3.opnd(64), scrRegs[2].opnd(64));
@@ -1519,8 +1521,6 @@ void gen_call(
     as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
     as.add(scrReg3.opnd(64), X86Opnd(1));
     as.label(Label.LOOP_EXIT);
-
-    //as.printUint(scrRegs[2].opnd(64));
 
     static void movArgWord(CodeBlock as, size_t argIdx, X86Opnd val)
     {
@@ -1574,7 +1574,6 @@ void gen_call(
         true,
         false
     );
-    assert (thisReg.isGPR);
     movArgWord(as, numArgs + 1, thisReg);
     auto typeOpnd = st.getTypeOpnd(
         as, 
@@ -1635,6 +1634,7 @@ void gen_call(
             // Adjust the type stack pointer
             as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
 
+            //as.printStr("pushing");
             //as.printUint(scrRegs[0].opnd(64));
 
             // Adjust the word stack pointer
@@ -1891,13 +1891,17 @@ void gen_ret(
     // Get the actual argument count into r0
     as.getWord(scrRegs[0], argcSlot);
 
-    // Compare the arg count against the expected count
-    as.cmp(scrRegs[0].opnd(32), X86Opnd(numParams));
+    //as.printStr("argc=");
+    //as.printInt(scrRegs[0].opnd(64));
 
     // Compute the number of extra arguments into r0
-    as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
     as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
-    as.cmovl(scrRegs[0], scrRegs[1].opnd(32));
+    as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
+    as.cmp(scrRegs[0].opnd(32), X86Opnd(0));
+    as.cmovl(scrRegs[0].reg(32), scrRegs[1].opnd(32));
+
+    //as.printStr("numExtra=");
+    //as.printInt(scrRegs[0].opnd(32));
 
     // Compute the number of stack slots to pop into r0
     as.add(scrRegs[0].opnd(32), X86Opnd(numLocals));
@@ -1912,7 +1916,7 @@ void gen_ret(
         true,
         false
     );
-    as.mov(retWordReg.opnd(64),retOpnd);
+    as.mov(retWordReg.opnd(64), retOpnd);
 
     // Copy the return value type
     auto typeOpnd = st.getTypeOpnd(
@@ -1929,10 +1933,10 @@ void gen_ret(
 
     // Pop all local stack slots and arguments
     as.add(tspReg.opnd(64), scrRegs[0].opnd(64));
+    //as.printStr("popping");
+    //as.printUint(scrRegs[0].opnd(64));
     as.shl(scrRegs[0].opnd(64), X86Opnd(3));
     as.add(wspReg.opnd(64), scrRegs[0].opnd(64));
-
-    //as.printUint(scrRegs[1].opnd(64));
 
     // Jump to the return address
     as.jmp(scrRegs[1].opnd(64));

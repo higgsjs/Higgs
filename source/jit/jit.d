@@ -1925,6 +1925,21 @@ void popRegs(CodeBlock as)
 /*
 void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)
 {
+    extern (C) static void checkValFn(Interp interp, Word word, Type type, char* errorStr)
+    {
+        if (type != Type.REFPTR)
+            return;
+
+        if (interp.inFromSpace(word.ptrVal) is false)
+        {
+            writefln(
+                "pointer not in from-space: %s\n%s",
+                word.ptrVal,
+                to!string(errorStr)
+            );
+        }
+    }
+
     as.pushRegs();
 
     auto STR_DATA = new Label("STR_DATA");
@@ -1950,21 +1965,6 @@ void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)
 }
 */
 
-extern (C) void checkValFn(Interp interp, Word word, Type type, char* errorStr)
-{
-    if (type != Type.REFPTR)
-        return;
-
-    if (interp.inFromSpace(word.ptrVal) is false)
-    {
-        writefln(
-            "pointer not in from-space: %s\n%s",
-            word.ptrVal,
-            to!string(errorStr)
-        );
-    }
-}
-
 void printUint(CodeBlock as, X86Opnd opnd)
 {
     extern (C) void printUintFn(uint64_t v)
@@ -1972,12 +1972,54 @@ void printUint(CodeBlock as, X86Opnd opnd)
         writefln("%s", v);
     }
 
+    size_t opndSz;
+    if (opnd.isImm)
+        opndSz = 64;
+    else if (opnd.isGPR)
+        opndSz = opnd.reg.size;
+    else if (opnd.isMem)
+        opndSz = opnd.mem.size;
+    else
+        assert (false);
+
     as.pushRegs();
 
-    as.mov(X86Opnd(cargRegs[0]), opnd);
+    as.mov(cargRegs[0].opnd(64), X86Opnd(0));
+    as.mov(cargRegs[0].opnd(opndSz), opnd);
 
     // Call the print function
     as.ptr(scrRegs[0], &printUintFn);
+    as.call(scrRegs[0]);
+
+    as.popRegs();
+}
+
+void printInt(CodeBlock as, X86Opnd opnd)
+{
+    extern (C) void printIntFn(int64_t v)
+    {
+        writefln("%s", v);
+    }
+
+    size_t opndSz;
+    if (opnd.isImm)
+        opndSz = 64;
+    else if (opnd.isGPR)
+        opndSz = opnd.reg.size;
+    else if (opnd.isMem)
+        opndSz = opnd.mem.size;
+    else
+        assert (false);
+
+    as.pushRegs();
+
+    if (opndSz < 64)
+        as.movsx(cargRegs[0].opnd(64), opnd);
+    else
+        as.mov(cargRegs[0].opnd(64), opnd);
+
+    // Call the print function
+    as.ptr(scrRegs[0], &printIntFn);
     as.call(scrRegs[0]);
 
     as.popRegs();

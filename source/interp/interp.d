@@ -527,7 +527,7 @@ class Interp
         );
 
         // Allocate the executable heap
-        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, /*opts.jit_dumpasm*/true);
+        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_dumpasm);
 
         // If the runtime library should be loaded
         if (loadRuntime)
