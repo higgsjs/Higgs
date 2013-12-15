@@ -43,6 +43,7 @@ import std.array;
 import std.stdint;
 import std.conv;
 import std.algorithm;
+import std.traits;
 import options;
 import stats;
 import ir.ir;
@@ -1500,7 +1501,7 @@ void gen_call(
     // This is the negation of the number of missing arguments
     // We use this as an offset when writing arguments to the stack
     as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
-    as.mov(scrRegs[2].opnd(64), X86Opnd(numArgs));
+    as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
     as.sub(scrRegs[2].opnd(64), scrReg3.opnd(64));
     as.cmp(scrRegs[2].opnd(64), X86Opnd(0));
     as.jle(Label.FALSE);
@@ -1519,14 +1520,7 @@ void gen_call(
     as.add(scrReg3.opnd(64), X86Opnd(1));
     as.label(Label.LOOP_EXIT);
 
-
-
     //as.printUint(scrRegs[2].opnd(64));
-
-
-
-
-
 
     static void movArgWord(CodeBlock as, size_t argIdx, X86Opnd val)
     {
@@ -1619,10 +1613,6 @@ void gen_call(
             BranchShape shape
         )
         {
-            auto scrReg3 = allocRegs[$-1];
-    
-            auto numArgs = cast(uint32_t)instr.numArgs - 2;
-
             // Write the return address on the stack
             as.writeASM("mov", scrRegs[0], target0.getName);
             as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
@@ -1974,6 +1964,87 @@ void gen_make_map(
 
     // Set the output type
     st.setOutType(as, instr, Type.MAPPTR);
+}
+
+void gen_map_num_props(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static uint32_t op_map_num_props(ObjMap map)
+    {
+        // Get the number of properties to allocate
+        assert (map !is null, "map is null");
+        return map.numProps;
+    }
+
+    // TODO: this won't GC, but spill C caller-save registers
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), opnd0);
+    as.ptr(scrRegs[0], &op_map_num_props);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.INT32);
+}
+
+void gen_map_prop_idx(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static uint32_t op_map_prop_idx(ObjMap map, refptr strPtr, bool allocField)
+    {
+        // Lookup the property index
+        assert (map !is null, "map is null");
+        return map.getPropIdx(strPtr, allocField);
+    }
+
+    // TODO: this won't GC, but spill C caller-save registers
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+
+    bool allocField;
+    if (instr.getArg(2) is IRConst.trueCst)
+        allocField = true;
+    else if (instr.getArg(2) is IRConst.falseCst)
+        allocField = false;
+    else
+        assert (false);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), opnd0);
+    as.mov(cargRegs[1].opnd(64), opnd1);
+    as.mov(cargRegs[2].opnd(64), X86Opnd(allocField? 1:0));
+    as.ptr(scrRegs[0], &op_map_prop_idx);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.INT32);
 }
 
 void gen_new_clos(

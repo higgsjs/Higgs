@@ -51,19 +51,9 @@ TODO: type propagation
 
 TODO: register allocation
 
-TODO: exception support
-
 TODO: GC support
 
-TODO: new/constructor support
-- Implement using host function first
-= Also need return from new
-
-------------------------------------------------------------------------------
-
-Third milestone: standard library initialization
-- Can simplify if needed, disable regexp init for now
-  - May also want to look into why this is so slow/complex
+TODO: exception support
 
 TODO: rename Interp class to VM
 - rename uses and interp directory as well (runtime dir?)
@@ -75,35 +65,42 @@ TODO: remove interp/ops.d
 - move useful contents to jit/ops.d
 - move value access ops to interp/interp.d?
 
-TODO: try supporting simpler std libs, like stdlib/math.js
+------------------------------------------------------------------------------
 
-TODO: array element access
+Third milestone: partial standard library initialization
+- Can simplify if needed, disable regexp init for now
+  - May also want to look into why this is so slow/complex
 
-TODO: work towards object property access
-- getPropIdx
-- map info access
+TODO: new/constructor support
+- Implement using host function first
+= Also need return from new
 
-TODO: implement wrapper for static function ops
-import std.traits;
-static assert( isFunctionPointer!t1 || isDelegate!t1 );
-isSomeFunction(T...)
-ParameterTypeTuple!foo
-ReturnType!foo
-arity!foo
-alias ParameterTypeTuple!(t1) a1;
-alias ReturnType!(t1) r1;
+TODO: try enabling stdlib/math.js
+- comment out loading of other libs for now
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: array element access
+
+[DONE] TODO: work towards object property access
+- gen_map_num_props
+- gen_map_prop_idx
+
+[PASS] TODO: implement wrapper for static function ops
+- HostOp(alias op, alias fun)(...)
 static if( i < T.length - 1 && is( r1 == void ) )
 static assert( a1.length != 1 || !is( a1[0] == Variant ),
 
-TODO: try to optimize call logic. Can some operations use 32-bit opnds?
+[DONE] TODO: try to optimize call logic. Can some operations use 32-bit opnds?
 - Can we use a second scratch reg to compute extra args?
 - Can now count on delegate for scratch regs
-
-
-
-
-
-
 
 [DONE] TODO: use delegates for the branch generation function
 - No context object if no variables captured

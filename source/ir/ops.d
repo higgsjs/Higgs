@@ -291,10 +291,10 @@ Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set
 Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP, OpArg.LOCAL], &gen_make_map };
 
 /// Get the number of properties to allocate for objects with a given map
-Opcode MAP_NUM_PROPS = { "map_num_props", true, [OpArg.LOCAL], /*&gen_map_num_props*/null };
+Opcode MAP_NUM_PROPS = { "map_num_props", true, [OpArg.LOCAL], &gen_map_num_props };
 
 /// Get the index for a given property name in a given map
-Opcode MAP_PROP_IDX = { "map_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_map_prop_idx*/null };
+Opcode MAP_PROP_IDX = { "map_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_map_prop_idx };
 
 /// Get the name for a given property index in a given map
 Opcode MAP_PROP_NAME = { "map_prop_name", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_map_prop_name*/null , OpInfo.MAY_GC };

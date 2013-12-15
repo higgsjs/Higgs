@@ -686,62 +686,6 @@ extern (C) void op_get_link(Interp interp, IRInstr instr)
     );
 }
 
-extern (C) void op_map_num_props(Interp interp, IRInstr instr)
-{
-    // Get the map value
-    auto mapArg = interp.getArgVal(instr, 0);
-    assert (mapArg.type is Type.MAPPTR);
-    auto map = mapArg.word.mapVal;
-    assert (map !is null);
-
-    // Get the number of properties to allocate
-    auto numProps = map.numProps;
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.uint32v(numProps),
-        Type.INT32
-    );
-}
-
-extern (C) void op_map_prop_idx(Interp interp, IRInstr instr)
-{
-    // Get the map value
-    auto mapArg = interp.getArgVal(instr, 0);
-    assert (mapArg.type is Type.MAPPTR);
-    auto map = mapArg.word.mapVal;
-    assert (map !is null, "map is null");
-
-    // Get the string value
-    auto strVal = interp.getArgStr(instr, 1);
-
-    // Get the allocField flag
-    auto allocField = interp.getArgBool(instr, 2);
-
-    // Lookup the property index
-    auto propIdx = map.getPropIdx(strVal, allocField);
-
-    // If the property was not found
-    if (propIdx is uint32.max)
-    {
-        // Output the boolean false
-        interp.setSlot(
-            instr.outSlot,
-            FALSE,
-            Type.CONST
-        );
-    }
-    else
-    {
-        // Output the property index
-        interp.setSlot(
-            instr.outSlot,
-            Word.uint32v(propIdx),
-            Type.INT32
-        );
-    }
-}
-
 extern (C) void op_map_prop_name(Interp interp, IRInstr instr)
 {
     // Get the map value

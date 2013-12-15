@@ -1400,7 +1400,7 @@ function $rt_getPropObj(obj, propStr)
     var objCap = $rt_obj_get_cap(obj);
 
     // If the property was found and is present in the object
-    if ($ir_is_i32(propIdx) && propIdx < objCap)
+    if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
     {
         var word = $rt_obj_get_word(obj, propIdx);
         var type = $rt_obj_get_type(obj, propIdx);
@@ -1849,7 +1849,7 @@ function $rt_delProp(base, prop)
 
     // Find the index for this property
     var propIdx = $ir_map_prop_idx(classPtr, propStr, false);
-    if (propIdx === false)
+    if ($ir_eq_i32(propIdx, -1))
         return true;
 
     // Set the property slot to missing in the object
@@ -1910,14 +1910,14 @@ function $rt_hasPropObj(obj, propStr)
     var propIdx = $ir_map_prop_idx(classPtr, propStr, false);
 
     // If the class doesn't have an index for this property slot, return false
-    if (propIdx === false)
+    if ($ir_eq_i32(propIdx, -1))
         return false;
 
     // Get the capacity of the object
     var objCap = $rt_obj_get_cap(obj);
 
     // If the object doesn't have space for this property, return false
-    if (propIdx >= objCap)
+    if ($ir_ge_i32(propIdx, objCap))
         return false
 
     // Check that the property is not missing

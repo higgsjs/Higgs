@@ -279,6 +279,7 @@ unittest
     interp.assertInt("return function () { return 9; } ()", 9);
     interp.assertInt("return function () { return 2 * 3; } ()", 6);
 
+    // TODO
     // Calling null as a function
     //interp.assertThrows("null()");
 }
@@ -352,8 +353,8 @@ unittest
     interp.assertBool("return 'Foo' == null", false);
     interp.assertBool("return undefined == undefined", true);
     interp.assertBool("return undefined == null", true);
-    //interp.assertBool("o = {}; return o == o", true);
-    //interp.assertBool("oa = {}; ob = {}; return oa == ob", false);
+    interp.assertBool("o = {}; return o == o", true);
+    interp.assertBool("oa = {}; ob = {}; return oa == ob", false);
 
     interp.assertInt("return true? 1:0", 1);
     interp.assertInt("return false? 1:0", 0);
@@ -663,8 +664,8 @@ unittest
     interp.assertStr("return typeof false", "boolean");
     interp.assertStr("return typeof null", "object");
     interp.assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
-    //interp.assertStr("x = 3; return typeof x;", "number");
-    //interp.assertStr("delete x; return typeof x;", "undefined");
+    interp.assertStr("x = 3; return typeof x;", "number");
+    interp.assertStr("delete x; return typeof x;", "undefined");
 }
 
 /// Global scope, global object
@@ -688,7 +689,7 @@ unittest
     interp.assertInt("f = function() { return 7; }; return f();", 7);
     interp.assertInt("function f() { return 9; }; return f();", 9);
     interp.assertInt("(function () {}); return 0;", 0);
-    //interp.assertInt("a = 7; function f() { return this.a; }; return f();", 7);
+    interp.assertInt("a = 7; function f() { return this.a; }; return f();", 7);
 
     interp.assertInt(
         "
@@ -711,8 +712,9 @@ unittest
     // Many global variables
     interp = new InterpNoStdLib();
     interp.load("programs/many_globals/many_globals.js");
-    //interp = new InterpNoStdLib();
-    //interp.load("programs/many_globals/many_globals2.js");
+    interp = new InterpNoStdLib();
+    interp.load("programs/many_globals/many_globals2.js");
+    // TODO: requires gc_collect
     //interp = new InterpNoStdLib();
     //interp.load("programs/many_globals/many_globals3.js");
 }
@@ -742,7 +744,6 @@ unittest
     auto interp = new InterpNoStdLib();
 
     interp.assertInt("{}; return 1;", 1);
-    /*
     interp.assertInt("{x: 7}; return 1;", 1);
     interp.assertInt("o = {}; o.x = 7; return 1;", 1);
     interp.assertInt("o = {}; o.x = 7; return o.x;", 7);
@@ -758,7 +759,8 @@ unittest
     // Delete operator
     interp.assertBool("o = {x: 5}; delete o.x; return 'x' in o;", false);
     interp.assertBool("o = {x: 5}; delete o.x; return !o.x;", true);
-    interp.assertThrows("a = 5; delete a; a;");
+    // TODO
+    //interp.assertThrows("a = 5; delete a; a;");
 
     // Function object property
     interp.assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
@@ -768,7 +770,6 @@ unittest
 
     // Object extension and equality
     interp.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);  
-    */
 }
 
 /*
@@ -877,8 +878,7 @@ unittest
 
     auto interp = new InterpNoStdLib();
  
-    //interp.assertInt("a = []; return 0", 0);
-    /*
+    interp.assertInt("a = []; return 0", 0);
     interp.assertInt("a = [1]; return 0", 0);
     interp.assertInt("a = [1,2]; return 0", 0);
     interp.assertInt("a = [1,2]; return a[0]", 1);
@@ -888,7 +888,6 @@ unittest
     interp.assertInt("a = [1,2]; return a[3]? 1:0;", 0);
     interp.assertInt("a = [1337]; return a['0'];", 1337);
     interp.assertInt("a = []; a['0'] = 55; return a[0];", 55);
-    */
 }
 
 /// Inline IR and JS extensions
@@ -1028,7 +1027,7 @@ unittest
     interp.assertStr("$rt_toString(5)", "5");
     interp.assertStr("$rt_toString('foo')", "foo");
     interp.assertStr("$rt_toString(null)", "null");
-    //interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
+    interp.assertStr("$rt_toString({toString: function(){return 's';}})", "s");
 
     interp.assertInt("$rt_add(5, 3)", 8);
     interp.assertFloat("$rt_add(5, 3.5)", 8.5);
@@ -1054,7 +1053,6 @@ unittest
     interp.assertInt("isNaN(NaN)? 1:0", 1);
     interp.assertStr("$rt_toString(NaN);", "NaN");
 
-    /*
     interp.assertInt("$rt_getProp('foo', 'length')", 3);
     interp.assertStr("$rt_getProp('foo', 0)", "f");
     interp.assertInt("$rt_getProp([0,1], 'length')", 2);
@@ -1075,10 +1073,10 @@ unittest
         3
     );
 
-    interp.assertThrows("false instanceof false");
-    interp.assertThrows("2 in null");
+    // TODO: exception support
+    //interp.assertThrows("false instanceof false");
+    //interp.assertThrows("2 in null");
     interp.assertBool("'foo' in {}", false);
-    */
 }
 
 /// Closures, captured and escaping variables
