@@ -508,7 +508,6 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
 
     as.popJITRegs();
 
-    // TODO: is the output actually in RAX?
     // Store the output value into the output operand
     as.movq(outOpnd, X86Opnd(XMM0));
 
@@ -524,11 +523,43 @@ alias HostFPOp!(std.c.math.log) gen_log_f64;
 alias HostFPOp!(std.c.math.exp) gen_exp_f64;
 alias HostFPOp!(std.c.math.pow, 2) gen_pow_f64;
 
+void FPToStr(string fmt)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr toStrFn(Interp interp, double f)
+    {
+        auto str = format(fmt, f);
+        return getString(interp, to!wstring(str));
+    }
 
+    // TODO: spill all for GC
 
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
+    as.pushJITRegs();
 
+    // Call the host function
+    as.mov(cargRegs[0], interpReg);
+    as.movq(X86Opnd(XMM0), opnd0);
+    as.ptr(scrRegs[0], &toStrFn);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+alias FPToStr!("%G") gen_f64_to_str;
+alias FPToStr!("%.9f") gen_f64_to_str_lng;
 
 void LoadOp(size_t memSize, Type typeTag)(
     VersionInst ver, 

@@ -256,89 +256,6 @@ void throwError(
     */
 }
 
-extern (C) void op_set_str(Interp interp, IRInstr instr)
-{
-    auto linkArg = cast(IRLinkIdx)instr.getArg(1);
-    assert (linkArg !is null);
-    auto linkIdx = &linkArg.linkIdx;
-
-    if (*linkIdx is NULL_LINK)
-    {
-        // Find the string in the string table
-        auto strArg = cast(IRString)instr.getArg(0);
-        assert (strArg !is null);
-        auto strPtr = getString(interp, strArg.str);
-
-        // Allocate a link table entry
-        *linkIdx = interp.allocLink();
-
-        interp.setLinkWord(*linkIdx, Word.ptrv(strPtr));
-        interp.setLinkType(*linkIdx, Type.REFPTR);
-    }
-
-    //writefln("setting str %s", (cast(IRString)instr.getArg(0)).str);
-
-    interp.setSlot(
-        instr.outSlot,
-        interp.getLinkWord(*linkIdx),
-        Type.REFPTR
-    );
-}
-
-/*
-extern (C) void op_floor_f64(Interp interp, IRInstr instr)
-{
-    auto v0 = interp.getArgVal(instr, 0);
-
-    assert (v0.type == Type.FLOAT64, "invalid operand type in floor");
-
-    auto r = floor(v0.word.floatVal);
-
-    if (r >= int32.min && r <= int32.max)
-    {
-        interp.setSlot(
-            instr.outSlot,
-            Word.int32v(cast(int32)r),
-            Type.INT32
-        );
-    }
-    else
-    {
-        interp.setSlot(
-            instr.outSlot,
-            Word.float64v(r),
-            Type.FLOAT64
-        );
-    }
-}
-
-extern (C) void op_ceil_f64(Interp interp, IRInstr instr)
-{
-    auto v0 = interp.getArgVal(instr, 0);
-
-    assert (v0.type == Type.FLOAT64, "invalid operand type in ceil");
-
-    auto r = ceil(v0.word.floatVal);
-
-    if (r >= int32.min && r <= int32.max)
-    {
-        interp.setSlot(
-            instr.outSlot,
-            Word.int32v(cast(int32)r),
-            Type.INT32
-        );
-    }
-    else
-    {
-        interp.setSlot(
-            instr.outSlot,
-            Word.float64v(r),
-            Type.FLOAT64
-        );
-    }
-}
-*/
-
 /*
 extern (C) void op_call(Interp interp, IRInstr instr)
 {
@@ -942,45 +859,6 @@ extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
         astToIR(fun.ast, fun);
 
     auto str = fun.toString();
-    auto strObj = getString(interp, to!wstring(str));
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(strObj),
-        Type.REFPTR
-    );
-}
-
-extern (C) void op_f64_to_str(Interp interp, IRInstr instr)
-{
-    auto argVal = interp.getArgVal(instr, 0);
-
-    assert (
-        argVal.type == Type.FLOAT64,
-        "invalid float value"
-    );
-
-    auto str = format("%G", argVal.word.floatVal);
-    auto strObj = getString(interp, to!wstring(str));
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(strObj),
-        Type.REFPTR
-    );
-}
-
-extern (C) void op_f64_to_str_lng(Interp interp, IRInstr instr)
-{
-    auto argVal = interp.getArgVal(instr, 0);
-
-    assert (
-        argVal.type == Type.FLOAT64,
-        "invalid float value"
-    );
-
-    enum fmt = format("%%.%df", float64.dig);
-    auto str = format(fmt, argVal.word.floatVal);
     auto strObj = getString(interp, to!wstring(str));
 
     interp.setSlot(

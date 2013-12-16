@@ -319,10 +319,10 @@ Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], /*&gen_get_ast_str*/n
 Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], /*&gen_get_ir_str*/null , OpInfo.MAY_GC };
 
 /// Format a floating-point value as a string
-Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], /*&gen_f64_to_str*/null , OpInfo.MAY_GC };
+Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &gen_f64_to_str, OpInfo.MAY_GC };
 
 /// Format a floating-point value as a string (long)
-Opcode F64_TO_STR_LNG = { "f64_to_str_lng", true, [OpArg.LOCAL], /*&gen_f64_to_str_lng*/null , OpInfo.MAY_GC };
+Opcode F64_TO_STR_LNG = { "f64_to_str_lng", true, [OpArg.LOCAL], &gen_f64_to_str_lng, OpInfo.MAY_GC };
 
 /// Get the time in milliseconds since process start
 Opcode GET_TIME_MS = { "get_time_ms", true, [], /*&gen_get_time_ms*/null };

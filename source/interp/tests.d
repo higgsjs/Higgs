@@ -1221,11 +1221,12 @@ unittest
     auto interp = new Interp();
 
     interp.assertStr("String(10)", "10");
-    //interp.assertStr("String(1.5)", "1.5");
+    interp.assertStr("String(1.5)", "1.5");
     interp.assertStr("String([0,1,2])", "0,1,2");
 
     interp.assertStr("'foobar'.substring(0,3)", "foo");
 
+    // TODO: need new
     //interp.assertInt("'f,o,o'.split(',').length", 3);
 }
 
@@ -1618,7 +1619,7 @@ unittest
 
     //run("objinst", 10);
 
-    // TODO: need f64_to_str_lng
+    // TODO: need call_apply
     //run("random", 10);
     //interp.assertInt("last", 75056);
 }

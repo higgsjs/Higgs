@@ -1482,7 +1482,7 @@ void movq(CodeBlock cb, X86Opnd dst, X86Opnd src)
     }
     else if (dst.isGPR64 || dst.isMem64)
     {
-        assert (src.isXMM);
+        assert (src.isXMM, "src should be XMM");
         cb.writeByte(0x66);
         cb.writeRMInstr!('l', 0xFF, 0x0F, 0x7E)(false, true, dst, src);
     }
