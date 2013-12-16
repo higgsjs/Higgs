@@ -143,14 +143,14 @@ Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_div_f64 };
 Opcode MOD_F64 = { "mod_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mod_f64*/null };
 
 // Higher-level floating-point functions
-Opcode SIN_F64 = { "sin_f64", true, [OpArg.LOCAL], /*&gen_sin_f64*/null };
-Opcode COS_F64 = { "cos_f64", true, [OpArg.LOCAL], /*&gen_cos_f64*/null };
-Opcode SQRT_F64 = { "sqrt_f64", true, [OpArg.LOCAL], /*&gen_sqrt_f64*/null };
-Opcode CEIL_F64 = { "ceil_f64", true, [OpArg.LOCAL], /*&gen_ceil_f64*/null };
-Opcode FLOOR_F64 = { "floor_f64", true, [OpArg.LOCAL], /*&gen_floor_f64*/null };
-Opcode LOG_F64 = { "log_f64", true, [OpArg.LOCAL], /*&gen_log_f64*/null };
-Opcode EXP_F64 = { "exp_f64", true, [OpArg.LOCAL], /*&gen_exp_f64*/null };
-Opcode POW_F64 = { "pow_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_pow_f64*/null };
+Opcode SIN_F64 = { "sin_f64", true, [OpArg.LOCAL], &gen_sin_f64 };
+Opcode COS_F64 = { "cos_f64", true, [OpArg.LOCAL], &gen_cos_f64 };
+Opcode SQRT_F64 = { "sqrt_f64", true, [OpArg.LOCAL], &gen_sqrt_f64 };
+Opcode CEIL_F64 = { "ceil_f64", true, [OpArg.LOCAL], &gen_ceil_f64 };
+Opcode FLOOR_F64 = { "floor_f64", true, [OpArg.LOCAL], &gen_floor_f64 };
+Opcode LOG_F64 = { "log_f64", true, [OpArg.LOCAL], &gen_log_f64 };
+Opcode EXP_F64 = { "exp_f64", true, [OpArg.LOCAL], &gen_exp_f64 };
+Opcode POW_F64 = { "pow_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_pow_f64 };
 
 // Integer operations with overflow handling
 Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_i32_ovf, OpInfo.BRANCH };

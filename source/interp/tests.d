@@ -1147,29 +1147,29 @@ unittest
     interp.assertInt("Math.max(5,1,2);", 5);
     interp.assertInt("Math.min(5,-1,2);", -1);
 
-    //interp.assertFloat("Math.cos(0)", 1);
-    //interp.assertFloat("Math.cos(Math.PI)", -1);
-    //interp.assertInt("isNaN(Math.cos('f'))? 1:0", 1);
+    interp.assertFloat("Math.cos(0)", 1);
+    interp.assertFloat("Math.cos(Math.PI)", -1);
+    interp.assertInt("isNaN(Math.cos('f'))? 1:0", 1);
 
-    //interp.assertFloat("Math.sin(0)", 0);
-    //interp.assertFloat("Math.sin(Math.PI)", 0);
+    interp.assertFloat("Math.sin(0)", 0);
+    interp.assertFloat("Math.sin(Math.PI)", 0);
 
-    //interp.assertFloat("Math.sqrt(4)", 2);
+    interp.assertFloat("Math.sqrt(4)", 2);
 
     interp.assertInt("Math.pow(2, 0)", 1);
     interp.assertInt("Math.pow(2, 4)", 16);
     interp.assertInt("Math.pow(2, 8)", 256);
 
-    //interp.assertFloat("Math.log(Math.E)", 1);
-    //interp.assertFloat("Math.log(1)", 0);
+    interp.assertFloat("Math.log(Math.E)", 1);
+    interp.assertFloat("Math.log(1)", 0);
 
-    //interp.assertFloat("Math.exp(0)", 1);
+    interp.assertFloat("Math.exp(0)", 1);
 
-    //interp.assertFloat("Math.ceil(1.5)", 2);
-    //interp.assertInt("Math.ceil(2)", 2);
+    interp.assertFloat("Math.ceil(1.5)", 2);
+    interp.assertInt("Math.ceil(2)", 2);
 
-    //interp.assertFloat("Math.floor(1.5)", 1);
-    //interp.assertInt("Math.floor(2)", 2);
+    interp.assertFloat("Math.floor(1.5)", 1);
+    interp.assertInt("Math.floor(2)", 2);
 
     interp.assertBool("r = Math.random(); return r >= 0 && r < 1;", true);
     interp.assertBool("r0 = Math.random(); r1 = Math.random(); return r0 !== r1;", true);
@@ -1422,8 +1422,8 @@ unittest
     writefln("stdlib");
 
     // Standard library
-    //interp.load("programs/stdlib_math/stdlib_math.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_math/stdlib_math.js");
+    interp.assertInt("test();", 0);
     //interp.load("programs/stdlib_boolean/stdlib_boolean.js");
     //interp.assertInt("test();", 0);
     //interp.load("programs/stdlib_number/stdlib_number.js");
@@ -1589,6 +1589,7 @@ unittest
         interp.load("programs/shootout/" ~ name ~ ".js");
     }
 
+    // TODO: need new
     //run("hash", 10);
     //interp.assertInt("c", 10);
 
@@ -1601,6 +1602,7 @@ unittest
     // TODO: too slow for now
     //run(lists, 1);
 
+    // TODO: need call_apply
     //run("mandelbrot", 10);
 
     // TODO: need new
@@ -1608,6 +1610,7 @@ unittest
     //interp.assertInt("mm[0][0]", 270165);
     //interp.assertInt("mm[4][4]", 1856025);
 
+    // TODO: need new
     //run("methcall", 10);
 
     run("nestedloop", 10);
@@ -1615,7 +1618,7 @@ unittest
 
     //run("objinst", 10);
 
-    // TODO: need floor
+    // TODO: need f64_to_str_lng
     //run("random", 10);
     //interp.assertInt("last", 75056);
 }

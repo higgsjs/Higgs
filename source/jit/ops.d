@@ -37,6 +37,7 @@
 
 module jit.ops;
 
+import std.c.math;
 import std.stdio;
 import std.string;
 import std.array;
@@ -476,6 +477,58 @@ alias FPOp!("add") gen_add_f64;
 alias FPOp!("sub") gen_sub_f64;
 alias FPOp!("mul") gen_mul_f64;
 alias FPOp!("div") gen_div_f64;
+
+void HostFPOp(alias cFPFun, size_t arity = 1)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // TODO: this won't GC, but spill C caller-save registers
+
+    assert (arity is 1 || arity is 2);
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    as.movq(X86Opnd(XMM0), opnd0);
+
+    static if (arity is 2)
+    {
+        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+        as.movq(X86Opnd(XMM1), opnd1);
+    }
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the host function
+    as.ptr(scrRegs[0], &cFPFun);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // TODO: is the output actually in RAX?
+    // Store the output value into the output operand
+    as.movq(outOpnd, X86Opnd(XMM0));
+
+    st.setOutType(as, instr, Type.FLOAT64);
+}
+
+alias HostFPOp!(std.c.math.sin) gen_sin_f64;
+alias HostFPOp!(std.c.math.cos) gen_cos_f64;
+alias HostFPOp!(std.c.math.sqrt) gen_sqrt_f64;
+alias HostFPOp!(std.c.math.ceil) gen_ceil_f64;
+alias HostFPOp!(std.c.math.floor) gen_floor_f64;
+alias HostFPOp!(std.c.math.log) gen_log_f64;
+alias HostFPOp!(std.c.math.exp) gen_exp_f64;
+alias HostFPOp!(std.c.math.pow, 2) gen_pow_f64;
+
+
+
+
+
+
 
 void LoadOp(size_t memSize, Type typeTag)(
     VersionInst ver, 
