@@ -65,6 +65,8 @@ TODO: remove interp/ops.d
 - move useful contents to jit/ops.d
 - move value access ops to interp/interp.d?
 
+TODO: call_apply
+
 ------------------------------------------------------------------------------
 
 Third milestone: standard library initialization
@@ -79,14 +81,21 @@ TODO: new/constructor support
 - Also need return from new
 - enable unit tests
 
-FIXME: bug in merge sort test?
-- has to do with cycle resolution in moves.d?
-- issue with regress/loop_swap too?
-
 TODO: talk to Tom about JITted FFI
 
 TODO: cos_f64, sin_f64, sqrt_f64, log_f64, exp_f64, mod_f64, ceil_f64, floor_f64, f64_to_str
 - template unary FP host fun? HostFPOp(fun)
+- enable unit tests
+
+Meeting:
+- Objects, arrays, closures, argument object, floating-point
+- Fixed various bugs
+- Almost all of stdlib loading
+- Most unit tests working
+- Missing features: exceptions, GC
+- Higgs init time comparable to before, with interpreter
+- Compiling ~300KB of code to init
+- Idea: can recompile inline caches (at Moz, inline caches are linked-lists)
 
 
 
@@ -99,6 +108,10 @@ TODO: cos_f64, sin_f64, sqrt_f64, log_f64, exp_f64, mod_f64, ceil_f64, floor_f64
 
 
 
+
+[DONE] FIXME: bug in merge sort test?
+- has to do with cycle resolution in moves.d?
+- issue with regress/loop_swap too?
 
 [DONE] FIXME: higgs init time is quite slow
 - profile it

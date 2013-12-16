@@ -120,11 +120,12 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
         // Find a move that doesn't overwrite an src and execute it
         //
         // if no move doesn't overwrite an src,
-        //      take pair (A->B) and remove from list
-        //      add (A->tmp), (tmp->B) to list
+        //      take pair (B<-A) and remove from list
+        //      execute the move (tmp<-A)
+        //      add (B<-tmp) to list
         //
-        // We've removed A from the src list
-        // move that goes into A can get executed
+        // We've removed A from the src list, breaking the cycle
+        // move that goes into A can now get executed
 
         MOVE_LOOP:
         foreach (idx0, move0; moveList)
@@ -143,13 +144,15 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             continue EXEC_LOOP;
         }
 
-        writeln("cycle occurs ***");
+        writefln("cycle occurs, list length=%s ***", moveList.length);
+        foreach (move; moveList)
+            writeln(move.dst, " <= ", move.src);
 
         // No safe move was found
-        // take a pair (A->B) and remove it from list
-        // add (A->tmp), (tmp->B) to list
+        // take a pair (dst<-src) and remove it from list
         Move move = moveList[$-1];
         moveList.length -= 1;
+
         auto src = move.src;
         auto dst = move.dst;
 
@@ -161,7 +164,17 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
         else
             tmpReg = X86Opnd(tmp0);
 
-        moveList ~= Move(tmpReg, src);
+        // Ensure that the tmp reg is not already used in the move list
+        debug
+        {
+            foreach (m; moveList)
+                assert (!(m.src.isGPR && m.src.reg.regNo is tmpReg.reg.regNo));
+        }
+
+        // Execute (tmp<-src)
+        execMove(Move(tmpReg, src));
+
+        // Add (dst<-tmp) to the list
         moveList ~= Move(dst, tmpReg);
     }
 }

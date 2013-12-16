@@ -1317,8 +1317,16 @@ unittest
     interp.load("programs/regress/tostring.js");
     //interp.load("programs/regress/new_array.js");
     interp.load("programs/regress/loop_labels.js");
-    //interp.load("programs/regress/loop_swap.js");
+    interp.load("programs/regress/loop_swap.js");
+    interp.load("programs/regress/loop_lt.js");
+    interp.load("programs/regress/loop_lessargs.js");
+    //interp.load("programs/regress/loop_new.js");
+    interp.load("programs/regress/loop_argc.js");
+    interp.load("programs/regress/loop_bool.js");
+    interp.load("programs/regress/loop_decr_sum.js");
     interp.load("programs/regress/dowhile_cont.js");
+    interp.load("programs/regress/vers_pathos.js");
+
     interp.load("programs/regress/jit_se_cmp.js");
     interp.load("programs/regress/jit_float_cmp.js");
     interp.load("programs/regress/jit_getprop_arr.js");
@@ -1335,25 +1343,6 @@ unittest
     //interp = new Interp();
     //interp.load("programs/regress/boyer.js");
 }
-
-/*
-// TODO: move into regression tests
-/// JIT-specific tests
-unittest
-{
-    writefln("jit");
-
-    auto interp = new Interp();
-
-    interp.load("programs/jit/loop_lt.js");
-    interp.load("programs/jit/loop_lessargs.js");
-    interp.load("programs/jit/loop_new.js");
-    interp.load("programs/jit/loop_argc.js");
-    interp.load("programs/jit/loop_bool.js");
-    interp.load("programs/jit/loop_decr_sum.js");
-    interp.load("programs/jit/vers_pathos.js");
-}
-*/
 
 /// Tachyon tests
 unittest
@@ -1385,11 +1374,9 @@ unittest
     interp.load("programs/nqueens/nqueens.js");
     interp.assertInt("test();", 0);
 
-    /*
     writeln("merge sort");
     interp.load("programs/merge_sort/merge_sort.js");
     interp.assertInt("test();", 0);
-    */
 
     // TODO: new operator
     /*
@@ -1658,6 +1645,7 @@ unittest
     run("bitops-bitwise-and");
     run("bitops-bits-in-byte");
     run("bitops-3bit-bits-in-byte");
+    // TODO: needs new
     //run("bitops-nsieve-bits");
 
     run("controlflow-recursive");
@@ -1682,7 +1670,6 @@ unittest
     //run("string-fasta");
 }
 
-/*
 /// V8 benchmarks
 unittest
 {
@@ -1698,6 +1685,7 @@ unittest
         interp.load("programs/v8bench/drv-" ~ name ~ ".js");
     }
 
+    /*
     run("crypto");
 
     run("deltablue");
@@ -1712,5 +1700,6 @@ unittest
 
     // TODO: enable once faster
     //run("splay");
+    */
 }
-*/
+
