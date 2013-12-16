@@ -257,7 +257,7 @@ unittest
     interp.assertFloat("return 2.5 - 1", 1.5);
     interp.assertFloat("return 2 * 1.5", 3);
     interp.assertFloat("return 6 / 2.5", 2.4);
-    //interp.assertFloat("return 0.5 % 0.2", 0.1);
+    interp.assertFloat("return 0.5 % 0.2", 0.1);
     interp.assertFloat("return 6/2/2", 1.5);
     interp.assertFloat("return 6/2*2", 6);
 

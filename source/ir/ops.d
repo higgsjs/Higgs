@@ -140,7 +140,7 @@ Opcode ADD_F64 = { "add_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_f64 };
 Opcode SUB_F64 = { "sub_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_sub_f64 };
 Opcode MUL_F64 = { "mul_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mul_f64 };
 Opcode DIV_F64 = { "div_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_div_f64 };
-Opcode MOD_F64 = { "mod_f64", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_mod_f64*/null };
+Opcode MOD_F64 = { "mod_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mod_f64 };
 
 // Higher-level floating-point functions
 Opcode SIN_F64 = { "sin_f64", true, [OpArg.LOCAL], &gen_sin_f64 };

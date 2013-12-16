@@ -103,6 +103,9 @@ Meeting:
 
 
 
+
+[DONE] TODO: mod_f64, using fmod
+
 [DONE] TODO: f64_to_str, f64_to_str_lng
 
 [DONE] TODO: cos_f64, sin_f64, sqrt_f64, log_f64, exp_f64, mod_f64, ceil_f64, floor_f64

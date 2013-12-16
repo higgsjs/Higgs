@@ -522,6 +522,7 @@ alias HostFPOp!(std.c.math.floor) gen_floor_f64;
 alias HostFPOp!(std.c.math.log) gen_log_f64;
 alias HostFPOp!(std.c.math.exp) gen_exp_f64;
 alias HostFPOp!(std.c.math.pow, 2) gen_pow_f64;
+alias HostFPOp!(std.c.math.fmod, 2) gen_mod_f64;
 
 void FPToStr(string fmt)(
     VersionInst ver, 
