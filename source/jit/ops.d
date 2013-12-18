@@ -1717,6 +1717,8 @@ void gen_call(
     );
     assert (closReg.isGPR);
 
+    //as.printUint(closReg);
+
     // TODO
     // If the object is not a closure, bailout
     //as.mov(scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
@@ -1751,11 +1753,13 @@ void gen_call(
 
     // Initialize the missing arguments, if any
     as.mov(scrReg3.opnd(64), scrRegs[2].opnd(64));
+    as.label(Label.LOOP);
     as.cmp(scrReg3.opnd(64), X86Opnd(0));
     as.jge(Label.LOOP_EXIT);
     as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.int8Val));
     as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
     as.add(scrReg3.opnd(64), X86Opnd(1));
+    as.jmp(Label.LOOP);
     as.label(Label.LOOP_EXIT);
 
     static void movArgWord(CodeBlock as, size_t argIdx, X86Opnd val)
@@ -2004,6 +2008,9 @@ void gen_call_new(
 
     auto numArgs = cast(uint32_t)instr.numArgs - 1;
 
+    //writeln(instr.toString);
+    //writeln("numArgs=", numArgs);
+
     // Compute -missingArgs = numArgs - numParams
     // This is the negation of the number of missing arguments
     // We use this as an offset when writing arguments to the stack
@@ -2018,15 +2025,16 @@ void gen_call_new(
 
     //as.printStr("missing args");
     //as.printInt(scrRegs[2].opnd(64));
-    //as.printInt(scrRegs[2].opnd(32));
 
     // Initialize the missing arguments, if any
     as.mov(scrReg3.opnd(64), scrRegs[2].opnd(64));
+    as.label(Label.LOOP);
     as.cmp(scrReg3.opnd(64), X86Opnd(0));
     as.jge(Label.LOOP_EXIT);
     as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.int8Val));
     as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
     as.add(scrReg3.opnd(64), X86Opnd(1));
+    as.jmp(Label.LOOP);
     as.label(Label.LOOP_EXIT);
 
     static void movArgWord(CodeBlock as, size_t argIdx, X86Opnd val)

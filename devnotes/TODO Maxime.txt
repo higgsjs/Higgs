@@ -91,21 +91,20 @@ Third milestone: standard library initialization
 TODO: make_link, needed by commonjs lib
 - Why is it needed?
 
-FIXME: segfault on ./higgs --e "test()" programs/stdlib_map/stdlib_map.js
+
+
+
+
+
+
+[DONE] TODO: add test for ctor with less args than needed, test for undef
+
+[DONE] FIXME: segfault on ./higgs --e "test()" programs/stdlib_map/stdlib_map.js
 - try with --jit_dumpinfo
 - trace instructions
-
-TODO: unit function return, create call continuation edge fragment?
-
-
-
-
-
-
-
-
-
-
+- Fails in Map.prototype.set
+- call with integer 1 for closure value
+- Missing argument init was wrong for new and regular call
 
 [DONE] TODO: support for return from new
 - enable unit tests

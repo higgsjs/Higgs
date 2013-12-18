@@ -1468,6 +1468,8 @@ void compile(Interp interp)
                inst.markStart(as);
 
             as.comment("Instance of " ~ ver.getName());
+            //as.printStr(block.fun.getName);
+            //as.printStr(block.toString());
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -1475,7 +1477,7 @@ void compile(Interp interp)
                 if (opts.jit_dumpinfo)
                     writeln("compiling instr: ", instr.toString());
 
-                as.comment(instr.toString());
+                //as.comment(instr.toString());
                 //as.printStr(instr.toString());
 
                 auto opcode = instr.opcode;
@@ -1483,7 +1485,8 @@ void compile(Interp interp)
 
                 assert (
                     opcode.genFn !is null,
-                    "no codegen function for \"" ~ instr.toString() ~ "\""
+                    "no codegen function for \"" ~ instr.toString() ~ "\" in " ~
+                    block.fun.getName()
                 );
 
                 // Call the code generation function for the opcode

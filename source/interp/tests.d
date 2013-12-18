@@ -303,6 +303,8 @@ unittest
     interp.assertInt("return function (x) { return 9; } ()", 9);
     interp.assertInt("return function (x, y) { return x - 1; } (4)", 3);
     interp.assertInt("return function (x,y,z,w) { return 0; } (1,2,3)", 0);
+    interp.assertBool("return function (x) { return x === undefined; } ()", true);
+    interp.assertBool("return function (x,y) { return y === undefined; } ()", true);
 }
 
 /// Local variable assignment
@@ -785,6 +787,8 @@ unittest
     interp.assertInt("function f() { g = this; }; o = new f(); return g? 1:0", 1);
     interp.assertInt("function f() { this.x = 3 }; o = new f(); return o.x", 3);
     interp.assertInt("function f() { return {y:7}; }; o = new f(); return o.y", 7);
+
+    interp.assertBool("function f(x,y) { return y === undefined; }; return new f;", true);
 
     interp.assertInt("function f() {}; return f.prototype? 1:0", 1);
     interp.assertInt("function f() {}; f.prototype.x = 9; return f.prototype.x", 9);
@@ -1438,12 +1442,10 @@ unittest
     // TODO: need map_prop_name
     //interp.load("programs/stdlib_json/stdlib_json.js");
     //interp.assertInt("test();", 0);
-    // TODO: throw
-    //interp.load("programs/stdlib_regexp/stdlib_regexp.js");
-    //interp.assertInt("test();", 0);
-    // FIXME: segmentation fault
-    //interp.load("programs/stdlib_map/stdlib_map.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_regexp/stdlib_regexp.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_map/stdlib_map.js");
+    interp.assertInt("test();", 0);
 }
 
 /*
@@ -1561,6 +1563,7 @@ unittest
     interp.load("programs/gc/load.js");
     interp.assertInt("theFlag;", 1337);
 }
+*/
 
 /// Misc benchmarks
 unittest
@@ -1570,7 +1573,6 @@ unittest
     writefln("misc/bones");
     interp.load("programs/bones/bones.js");
 }
-*/
 
 /// Computer Language Shootout benchmarks
 unittest
