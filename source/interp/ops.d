@@ -558,51 +558,6 @@ extern (C) void op_gc_collect(Interp interp, IRInstr instr)
     gcCollect(interp, heapSize);
 }
 
-extern (C) void op_make_link(Interp interp, IRInstr instr)
-{
-    auto linkArg = cast(IRLinkIdx)instr.getArg(0);
-    assert (linkArg !is null);
-    auto linkIdx = &linkArg.linkIdx;
-
-    if (*linkIdx is NULL_LINK)
-    {
-        *linkIdx = interp.allocLink();
-
-        interp.setLinkWord(*linkIdx, NULL);
-        interp.setLinkType(*linkIdx, Type.REFPTR);
-    }
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.uint32v(*linkIdx),
-        Type.INT32
-    );
-}
-
-extern (C) void op_set_link(Interp interp, IRInstr instr)
-{
-    auto linkIdx = interp.getArgUint32(instr, 0);
-
-    auto val = interp.getArgVal(instr, 1);
-
-    interp.setLinkWord(linkIdx, val.word);
-    interp.setLinkType(linkIdx, val.type);
-}
-
-extern (C) void op_get_link(Interp interp, IRInstr instr)
-{
-    auto linkIdx = interp.getArgUint32(instr, 0);
-
-    auto wVal = interp.getLinkWord(linkIdx);
-    auto tVal = interp.getLinkType(linkIdx);
-
-    interp.setSlot(
-        instr.outSlot,
-        wVal,
-        tVal
-    );
-}
-
 extern (C) void op_map_prop_name(Interp interp, IRInstr instr)
 {
     // Get the map value

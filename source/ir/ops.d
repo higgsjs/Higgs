@@ -99,6 +99,9 @@ struct OpInfo
 /// Instruction type (opcode) alias
 alias static immutable(OpInfo) Opcode;
 
+// Access visible arguments by index
+Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
+
 // Set a local slot to a constant value    
 Opcode SET_STR = { "set_str", true, [OpArg.STRING, OpArg.LINK], &gen_set_str };
 
@@ -248,9 +251,6 @@ Opcode RET = { "ret", false, [OpArg.LOCAL], &gen_ret, OpInfo.BRANCH };
 // Throws an exception, unwinds the stack
 Opcode THROW = { "throw", false, [OpArg.LOCAL], /*&gen_throw*/null , OpInfo.BRANCH };
 
-// Access visible arguments by index
-Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
-
 // Special implementation object/value access instructions
 Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &gen_get_obj_proto };
 Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], &gen_get_arr_proto };
@@ -266,19 +266,6 @@ Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &gen_heap_alloc, OpInfo
 /// Trigger a garbage collection
 Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], /*&gen_gc_collect*/null , OpInfo.MAY_GC | OpInfo.IMPURE };
 
-/// Create a link table entry associated with this instruction
-Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], /*&gen_make_link*/null };
-
-/// Set the value of a link table entry
-Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_set_link*/null , OpInfo.IMPURE };
-
-/// Get the value of a link table entry
-Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], /*&gen_get_link*/null };
-
-/// Compute the hash code for a string and
-/// try to find the string in the string table
-Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &gen_get_str, OpInfo.MAY_GC };
-
 /// GET_GLOBAL <propName>
 /// Note: hidden parameter is a cached global property index
 Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING], &gen_get_global, OpInfo.MAY_GC | OpInfo.IMPURE };
@@ -286,6 +273,19 @@ Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING], &gen_get_global, OpInf
 /// SET_GLOBAL <propName> <value>
 /// Note: hidden parameter is a cached global property index
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
+
+/// Compute the hash code for a string and
+/// try to find the string in the string table
+Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &gen_get_str, OpInfo.MAY_GC };
+
+/// Create a link table entry associated with this instruction
+Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], &gen_make_link };
+
+/// Set the value of a link table entry
+Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link, OpInfo.IMPURE };
+
+/// Get the value of a link table entry
+Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 
 /// Create a map object associated with this instruction
 Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP, OpArg.LOCAL], &gen_make_map };
@@ -297,7 +297,7 @@ Opcode MAP_NUM_PROPS = { "map_num_props", true, [OpArg.LOCAL], &gen_map_num_prop
 Opcode MAP_PROP_IDX = { "map_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_map_prop_idx };
 
 /// Get the name for a given property index in a given map
-Opcode MAP_PROP_NAME = { "map_prop_name", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_map_prop_name*/null , OpInfo.MAY_GC };
+Opcode MAP_PROP_NAME = { "map_prop_name", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_map_prop_name, OpInfo.MAY_GC };
 
 /// <dstLocal> = NEW_CLOS <funExpr>
 /// Create a new closure from a function's AST node

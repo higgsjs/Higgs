@@ -555,8 +555,7 @@ class Interp
             load("stdlib/regexp.js");
             load("stdlib/map.js");
             load("stdlib/global.js");
-            // TODO: need make_link
-            //load("stdlib/commonjs.js");
+            load("stdlib/commonjs.js");
         }
     }
 

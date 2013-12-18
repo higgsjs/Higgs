@@ -47,8 +47,6 @@ TODO: unit test for global property access of prop from Object.prototype
 - Won't this require spilling everything?
 - Property could get deleted
 
-TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
-
 ------------------------------------------------------------------------------
 
 TODO: execHeap collection/expansion
@@ -59,6 +57,11 @@ TODO: function call inlining
 TODO: type propagation
 
 TODO: register allocation
+
+------------------------------------------------------------------------------
+
+Milestone IV: All benchmarks working
+- Will require GC
 
 TODO: GC support
 
@@ -76,26 +79,37 @@ TODO: remove interp/ops.d
 - move useful contents to jit/ops.d
 - move value access ops to interp/interp.d?
 
-TODO: talk to Tom about JITted FFI
+TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
 
-TODO: call_apply
+TODO: talk to Tom about JITted FFI
 
 TODO: get_time_ms
 
-TODO: map_prop_name
+TODO: call_apply
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: map_prop_name
+
+[DONE] TODO: establish fourth milestone
+- All benchmarks running?
 
 ------------------------------------------------------------------------------
 
-Third milestone: standard library initialization
+[DONE] Third milestone: standard library initialization
 
-TODO: make_link, needed by commonjs lib
-- Why is it needed?
-
-
-
-
-
-
+[DONE] TODO: make_link, needed by commonjs lib
+- Why is it needed? What uses it?
+  - set_str
+  - regexp
+- Easier to just keep supporting this for now
 
 [DONE] TODO: add test for ctor with less args than needed, test for undef
 

@@ -683,292 +683,6 @@ alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
 alias StoreOp!(64, Type.FUNPTR) gen_store_funptr;
 alias StoreOp!(64, Type.MAPPTR) gen_store_mapptr;
 
-void gen_get_str(
-    VersionInst ver, 
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) refptr getStr(Interp interp, refptr strPtr)
-    {
-        // Compute and set the hash code for the string
-        auto hashCode = compStrHash(strPtr);
-        str_set_hash(strPtr, hashCode);
-
-        // Find the corresponding string in the string table
-        return getTableStr(interp, strPtr);
-    }
-
-    // Get the string pointer
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
-
-    // TODO: spill regs, may GC
-
-    // Allocate the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    as.pushJITRegs();
-
-    // Call the fallback implementation
-    as.ptr(cargRegs[0], st.ctx.interp);
-    as.mov(cargRegs[1].opnd(64), opnd0);
-    as.ptr(scrRegs[0], &getStr);
-    as.call(scrRegs[0]);
-
-    as.popJITRegs();
-
-    // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
-
-    // The output is a reference pointer
-    st.setOutType(as, instr, Type.REFPTR);
-}
-
-void gen_get_global(
-    VersionInst ver, 
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    auto interp = st.ctx.interp;
-
-    // Name string (D string)
-    auto strArg = cast(IRString)instr.getArg(0);
-    assert (strArg !is null);
-    auto nameStr = strArg.str;
-
-    // Lookup the property index in the class
-    // if the property slot doesn't exist, it will be allocated
-    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
-    assert (globalMap !is null);
-    auto propIdx = globalMap.getPropIdx(nameStr, true);
-
-
-    // TODO: if propIdx not found, need to do full lookup using getPropObj
-    assert (propIdx !is uint32_t.max);
-
-
-
-
-
-
-
-    // Allocate the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    // Get the global object pointer
-    as.getMember!("Interp.globalObj")(scrRegs[0], interpReg);
-
-    // Get the global object size/capacity
-    as.getField(scrRegs[1].reg(32), scrRegs[0], 4, obj_ofs_cap(interp.globalObj));
-
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
-
-    // Get the word value from the object
-    auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
-    if (outOpnd.isReg)
-    {
-        as.mov(outOpnd, wordMem);
-    }
-    else
-    {
-        as.mov(X86Opnd(scrRegs[2]), wordMem);
-        as.mov(outOpnd, X86Opnd(scrRegs[2]));
-    }
-
-    // Get the type value from the object
-    auto typeMem = X86Opnd(8, scrRegs[0], wordOfs + propIdx, 8, scrRegs[1]);
-    as.mov(scrRegs[2].opnd(8), typeMem);
-
-    // Set the type value
-    st.setOutType(as, instr, scrRegs[2].reg(8));
-}
-
-void gen_set_global(
-    VersionInst ver, 
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    auto interp = st.ctx.interp;
-
-    // Name string (D string)
-    auto strArg = cast(IRString)instr.getArg(0);
-    assert (strArg !is null);
-    auto nameStr = strArg.str;
-
-    // Lookup the property index in the class
-    // if the property slot doesn't exist, it will be allocated
-    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
-    assert (globalMap !is null);
-    auto propIdx = globalMap.getPropIdx(nameStr, true);
-
-    // TODO: preallocate slot in global object?
-    // this would prevent GC at execution time
-
-    // Allocate the input operand
-    auto argOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd(64), true);
-
-    // Get the global object pointer
-    as.getMember!("Interp.globalObj")(scrRegs[1], interpReg);
-
-    // Get the global object size/capacity
-    as.getField(scrRegs[2].reg(32), scrRegs[1], 4, obj_ofs_cap(interp.globalObj));
-
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
-
-    // Set the word value
-    auto wordMem = X86Opnd(64, scrRegs[1], wordOfs + 8 * propIdx);
-    as.mov(wordMem, argOpnd);
-
-    // Set the type value
-    auto typeOpnd = st.getTypeOpnd(as, instr, 1, scrRegs[0].opnd(8), true);
-    auto typeMem = X86Opnd(8, scrRegs[1], wordOfs + propIdx, 8, scrRegs[2]);
-    as.mov(typeMem, typeOpnd);
-}
-
-void GetValOp(string fName)(
-    VersionInst ver, 
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    // Get the output operand. This must be a 
-    // register since it's the only operand.
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    // FIXME
-    //assert (outOpnd.isReg, "output is not a register");
-    //ctx.as.getMember!("Interp", fName)(outOpnd, interpReg);
-
-    as.getMember!("Interp." ~ fName)(scrRegs[0], interpReg);
-    as.mov(outOpnd, scrRegs[0].opnd(64));
-
-    st.setOutType(as, instr, Type.REFPTR);
-}
-
-alias GetValOp!("objProto") gen_get_obj_proto;
-alias GetValOp!("arrProto") gen_get_arr_proto;
-alias GetValOp!("funProto") gen_get_fun_proto;
-alias GetValOp!("globalObj") gen_get_global_obj;
-
-void gen_heap_alloc(
-    VersionInst ver, 
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) static refptr allocFallback(Interp interp, uint32_t allocSize)
-    {
-        return heapAlloc(interp, allocSize);
-    }
-
-    // Get the allocation size operand
-    auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
-
-    // Get the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    as.getMember!("Interp.allocPtr")(scrRegs[0], interpReg);
-    as.getMember!("Interp.heapLimit")(scrRegs[1], interpReg);
-
-    // r2 = allocPtr + size
-    // Note: we zero extend the size operand to 64-bits
-    as.mov(scrRegs[2].opnd(32), szOpnd);
-    as.add(scrRegs[2].opnd(64), scrRegs[0].opnd(64));
-
-    // if (allocPtr + size > heapLimit) fallback
-    as.cmp(scrRegs[2].opnd(64), scrRegs[1].opnd(64));
-    as.jg(Label.FALLBACK);
-
-    // Move the allocation pointer to the output
-    as.mov(outOpnd, scrRegs[0].opnd(64));
-
-    // Align the incremented allocation pointer
-    as.add(scrRegs[2].opnd(64), X86Opnd(7));
-    as.and(scrRegs[2].opnd(64), X86Opnd(-8));
-
-    // Store the incremented and aligned allocation pointer
-    as.setMember!("Interp.allocPtr")(interpReg, scrRegs[2]);
-
-    // Done allocating
-    as.jmp(Label.DONE);
-
-    // Clone the state for the bailout case, which will spill for GC
-    auto bailSt = new CodeGenState(st);
-
-    // Allocation fallback
-    as.label(Label.FALLBACK);
-
-    // TODO: proper spilling logic
-    // need to spill delayed writes too
-
-    // Save our allocated registers before the C call
-    if (allocRegs.length % 2 != 0)
-        as.push(allocRegs[0]);
-    foreach (reg; allocRegs)
-        as.push(reg);
-
-    as.printStr("alloc bailout ***");
-
-    // Call the fallback implementation
-    as.ptr(cargRegs[0], st.ctx.interp);
-    as.mov(cargRegs[1].opnd(32), szOpnd);
-    as.ptr(RAX, &allocFallback);
-    as.call(RAX);
-
-    as.printStr("alloc bailout done ***");
-
-    // Restore the allocated registers
-    foreach_reverse(reg; allocRegs)
-        as.pop(reg);
-    if (allocRegs.length % 2 != 0)
-        as.pop(allocRegs[0]);
-
-    // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
-
-    // Allocation done
-    as.label(Label.DONE);
-
-    // The output is a reference pointer
-    st.setOutType(as, instr, Type.REFPTR);
-}
-
-/*
-void gen_get_link(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Get the link index operand
-    auto idxReg = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
-
-    // Get the output operand
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
-    // Read the link word
-    ctx.as.getMember!("Interp", "wLinkTable")(scrRegs64[1], interpReg);
-    auto wordMem = new X86Mem(64, scrRegs64[1], 0, idxReg, Word.sizeof);
-    ctx.as.instr(MOV, scrRegs64[1], wordMem);
-
-    // Move the link word into the output operand
-    ctx.as.instr(MOV, outOpnd, scrRegs64[1]);
-
-    // Read the link type
-    ctx.as.getMember!("Interp", "tLinkTable")(scrRegs64[1], interpReg);
-    auto typeMem = new X86Mem(8, scrRegs64[1], 0, idxReg, Type.sizeof);
-    ctx.as.instr(MOV, scrRegs8[1], typeMem);
-
-    // Set the output type
-    st.setOutType(ctx.as, instr, scrRegs8[1]);
-}
-*/
-
 /**
 Test if an instruction is followed by an if_true branching on its value
 */
@@ -2331,6 +2045,348 @@ void gen_ret(
     as.jmp(scrRegs[1].opnd(64));
 }
 
+//
+// TODO: gen_throw
+//
+
+void GetValOp(string fName)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // Get the output operand. This must be a 
+    // register since it's the only operand.
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    // FIXME
+    //assert (outOpnd.isReg, "output is not a register");
+    //ctx.as.getMember!("Interp", fName)(outOpnd, interpReg);
+
+    as.getMember!("Interp." ~ fName)(scrRegs[0], interpReg);
+    as.mov(outOpnd, scrRegs[0].opnd(64));
+
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+alias GetValOp!("objProto") gen_get_obj_proto;
+alias GetValOp!("arrProto") gen_get_arr_proto;
+alias GetValOp!("funProto") gen_get_fun_proto;
+alias GetValOp!("globalObj") gen_get_global_obj;
+
+void gen_heap_alloc(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr allocFallback(Interp interp, uint32_t allocSize)
+    {
+        return heapAlloc(interp, allocSize);
+    }
+
+    // Get the allocation size operand
+    auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
+
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.getMember!("Interp.allocPtr")(scrRegs[0], interpReg);
+    as.getMember!("Interp.heapLimit")(scrRegs[1], interpReg);
+
+    // r2 = allocPtr + size
+    // Note: we zero extend the size operand to 64-bits
+    as.mov(scrRegs[2].opnd(32), szOpnd);
+    as.add(scrRegs[2].opnd(64), scrRegs[0].opnd(64));
+
+    // if (allocPtr + size > heapLimit) fallback
+    as.cmp(scrRegs[2].opnd(64), scrRegs[1].opnd(64));
+    as.jg(Label.FALLBACK);
+
+    // Move the allocation pointer to the output
+    as.mov(outOpnd, scrRegs[0].opnd(64));
+
+    // Align the incremented allocation pointer
+    as.add(scrRegs[2].opnd(64), X86Opnd(7));
+    as.and(scrRegs[2].opnd(64), X86Opnd(-8));
+
+    // Store the incremented and aligned allocation pointer
+    as.setMember!("Interp.allocPtr")(interpReg, scrRegs[2]);
+
+    // Done allocating
+    as.jmp(Label.DONE);
+
+    // Clone the state for the bailout case, which will spill for GC
+    auto bailSt = new CodeGenState(st);
+
+    // Allocation fallback
+    as.label(Label.FALLBACK);
+
+    // TODO: proper spilling logic
+    // need to spill delayed writes too
+
+    // Save our allocated registers before the C call
+    if (allocRegs.length % 2 != 0)
+        as.push(allocRegs[0]);
+    foreach (reg; allocRegs)
+        as.push(reg);
+
+    as.printStr("alloc bailout ***");
+
+    // Call the fallback implementation
+    as.ptr(cargRegs[0], st.ctx.interp);
+    as.mov(cargRegs[1].opnd(32), szOpnd);
+    as.ptr(RAX, &allocFallback);
+    as.call(RAX);
+
+    as.printStr("alloc bailout done ***");
+
+    // Restore the allocated registers
+    foreach_reverse(reg; allocRegs)
+        as.pop(reg);
+    if (allocRegs.length % 2 != 0)
+        as.pop(allocRegs[0]);
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    // Allocation done
+    as.label(Label.DONE);
+
+    // The output is a reference pointer
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+void gen_get_global(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto interp = st.ctx.interp;
+
+    // Name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Lookup the property index in the class
+    // if the property slot doesn't exist, it will be allocated
+    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    assert (globalMap !is null);
+    auto propIdx = globalMap.getPropIdx(nameStr, true);
+
+
+    // TODO: if propIdx not found, need to do full lookup using getPropObj
+    assert (propIdx !is uint32_t.max);
+
+
+
+
+
+
+
+    // Allocate the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    // Get the global object pointer
+    as.getMember!("Interp.globalObj")(scrRegs[0], interpReg);
+
+    // Get the global object size/capacity
+    as.getField(scrRegs[1].reg(32), scrRegs[0], 4, obj_ofs_cap(interp.globalObj));
+
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
+
+    // Get the word value from the object
+    auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
+    if (outOpnd.isReg)
+    {
+        as.mov(outOpnd, wordMem);
+    }
+    else
+    {
+        as.mov(X86Opnd(scrRegs[2]), wordMem);
+        as.mov(outOpnd, X86Opnd(scrRegs[2]));
+    }
+
+    // Get the type value from the object
+    auto typeMem = X86Opnd(8, scrRegs[0], wordOfs + propIdx, 8, scrRegs[1]);
+    as.mov(scrRegs[2].opnd(8), typeMem);
+
+    // Set the type value
+    st.setOutType(as, instr, scrRegs[2].reg(8));
+}
+
+void gen_set_global(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto interp = st.ctx.interp;
+
+    // Name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Lookup the property index in the class
+    // if the property slot doesn't exist, it will be allocated
+    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    assert (globalMap !is null);
+    auto propIdx = globalMap.getPropIdx(nameStr, true);
+
+    // TODO: preallocate slot in global object?
+    // this would prevent GC at execution time
+
+    // Allocate the input operand
+    auto argOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd(64), true);
+
+    // Get the global object pointer
+    as.getMember!("Interp.globalObj")(scrRegs[1], interpReg);
+
+    // Get the global object size/capacity
+    as.getField(scrRegs[2].reg(32), scrRegs[1], 4, obj_ofs_cap(interp.globalObj));
+
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
+
+    // Set the word value
+    auto wordMem = X86Opnd(64, scrRegs[1], wordOfs + 8 * propIdx);
+    as.mov(wordMem, argOpnd);
+
+    // Set the type value
+    auto typeOpnd = st.getTypeOpnd(as, instr, 1, scrRegs[0].opnd(8), true);
+    auto typeMem = X86Opnd(8, scrRegs[1], wordOfs + propIdx, 8, scrRegs[2]);
+    as.mov(typeMem, typeOpnd);
+}
+
+void gen_get_str(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) refptr getStr(Interp interp, refptr strPtr)
+    {
+        // Compute and set the hash code for the string
+        auto hashCode = compStrHash(strPtr);
+        str_set_hash(strPtr, hashCode);
+
+        // Find the corresponding string in the string table
+        return getTableStr(interp, strPtr);
+    }
+
+    // Get the string pointer
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+
+    // TODO: spill regs, may GC
+
+    // Allocate the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the fallback implementation
+    as.ptr(cargRegs[0], st.ctx.interp);
+    as.mov(cargRegs[1].opnd(64), opnd0);
+    as.ptr(scrRegs[0], &getStr);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    // The output is a reference pointer
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+void gen_make_link(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto interp = st.ctx.interp;
+
+    auto linkArg = cast(IRLinkIdx)instr.getArg(0);
+    assert (linkArg !is null);
+
+    if (linkArg.linkIdx is NULL_LINK)
+    {
+        linkArg.linkIdx = interp.allocLink();
+
+        interp.setLinkWord(linkArg.linkIdx, NULL);
+        interp.setLinkType(linkArg.linkIdx, Type.REFPTR);
+    }
+
+    // Set the output value
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(linkArg.linkIdx));
+
+    // Set the output type
+    st.setOutType(as, instr, Type.INT32);
+}
+
+void gen_set_link(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // Get the link index operand
+    auto idxReg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    assert (idxReg.isGPR);
+
+    // Set the link word
+    auto valWord = st.getWordOpnd(as, instr, 1, 64, scrRegs[1].opnd(64));
+    as.getMember!("Interp.wLinkTable")(scrRegs[2], interpReg);
+    auto wordMem = X86Opnd(64, scrRegs[2], 0, Word.sizeof, idxReg.reg);
+    as.mov(wordMem, valWord);
+
+    // Set the link type
+    auto valType = st.getTypeOpnd(as, instr, 0, scrRegs[1].opnd(8));
+    as.getMember!("Interp.tLinkTable")(scrRegs[2], interpReg);
+    auto typeMem = X86Opnd(8, scrRegs[2], 0, Type.sizeof, idxReg.reg);
+    as.mov(typeMem, valType);
+}
+
+void gen_get_link(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // Get the link index operand
+    auto idxReg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    assert (idxReg.isGPR);
+
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    // Read the link word
+    as.getMember!("Interp.wLinkTable")(scrRegs[1], interpReg);
+    auto wordMem = X86Opnd(64, scrRegs[1], 0, Word.sizeof, idxReg.reg);
+    as.mov(scrRegs[1].opnd(64), wordMem);
+    as.mov(outOpnd, scrRegs[1].opnd(64));
+
+    // Read the link type
+    as.getMember!("Interp.tLinkTable")(scrRegs[1], interpReg);
+    auto typeMem = X86Opnd(8, scrRegs[1], 0, Type.sizeof, idxReg.reg);
+    as.mov(scrRegs[1].opnd(8), typeMem);
+    st.setOutType(as, instr, scrRegs[1].reg(8));
+}
+
 void gen_make_map(
     VersionInst ver, 
     CodeGenState st,
@@ -2438,6 +2494,48 @@ void gen_map_prop_idx(
     as.mov(outOpnd, X86Opnd(RAX));
 
     st.setOutType(as, instr, Type.INT32);
+}
+
+void gen_map_prop_name(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr op_map_prop_name(Interp interp, ObjMap map, uint32_t propIdx)
+    {
+        assert (map !is null, "map is null");
+        auto propName = map.getPropName(propIdx);
+
+        if (propName is null)
+            return null;
+        else
+            return getString(interp, propName);
+    }
+
+    // TODO: spill all, this may GC
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, X86Opnd.NONE, false, false);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), interpReg.opnd(64));
+    as.mov(cargRegs[1].opnd(64), opnd0);
+    as.mov(cargRegs[2].opnd(32), opnd1);
+    as.ptr(scrRegs[0], &op_map_prop_name);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.REFPTR);
 }
 
 void gen_new_clos(

@@ -985,7 +985,6 @@ unittest
         77
     );
 
-    /*
     interp.assertInt(
         "
         var link = $ir_make_link(0);
@@ -1009,7 +1008,6 @@ unittest
         ",
         10
     );
-    */
 }
 
 /// Runtime functions
@@ -1409,13 +1407,11 @@ unittest
     interp.load("programs/arg_obj/arg_obj.js");
     interp.assertInt("test();", 0);
 
-    /*
     writefln("for-in");
 
     // For-in loop
     interp.load("programs/for_in/for_in.js");
     interp.assertInt("test();", 0);
-    */
 
     writefln("stdlib");
 
@@ -1430,16 +1426,15 @@ unittest
     // TODO: needs apply
     //interp.load("programs/stdlib_function/stdlib_function.js");
     //interp.assertInt("test();", 0);
-    // TODO: need map_prop_name
-    //interp.load("programs/stdlib_object/stdlib_object.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_object/stdlib_object.js");
+    interp.assertInt("test();", 0);
     // TODO: needs apply
     //interp.load("programs/stdlib_array/stdlib_array.js");
     //interp.assertInt("test();", 0);
     // TODO: needs apply
     //interp.load("programs/stdlib_string/stdlib_string.js");
     //interp.assertInt("test();", 0);
-    // TODO: need map_prop_name
+    // TODO: needs apply
     //interp.load("programs/stdlib_json/stdlib_json.js");
     //interp.assertInt("test();", 0);
     interp.load("programs/stdlib_regexp/stdlib_regexp.js");
