@@ -115,7 +115,7 @@ class IRFunction : IdObject
     CodeGenCtx ctx = null;
 
     /// Code generation context for new calls
-    CodeGenCtx newCtx = null;
+    CodeGenCtx ctorCtx = null;
 
     /// Regular entry point code
     const(ubyte)* entryCode = null;

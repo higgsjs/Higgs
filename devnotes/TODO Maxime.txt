@@ -1,4 +1,5 @@
 Conference deadlines:
+- ISMM          Feb 8?
 - DLS 2013      June 8, 2013
 - VMIL 2013     ~August 2013
 - CGO 2014      ~September 2013
@@ -11,6 +12,12 @@ Internships: Nov-Dec 2014, after paper deadlines?
 Marc advises to remain near PhD work, best for CV
 Approach Facebook
 Approach Mozilla around spring, combine with trip
+
+List of possible contributions:
+- Type tagging scheme
+- Register allocation
+- Lazy/incremental JIT
+- Basic block versioning
 
 ------------------------------------------------------------------------------
 
@@ -40,6 +47,8 @@ TODO: unit test for global property access of prop from Object.prototype
 - Won't this require spilling everything?
 - Property could get deleted
 
+TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
+
 ------------------------------------------------------------------------------
 
 TODO: execHeap collection/expansion
@@ -55,35 +64,56 @@ TODO: GC support
 
 TODO: exception support
 
+TODO: create JIT class
+- Have JIT.compile(), JIT.queue(version), etc.
+  - put the execHeap, compQueue, refList, etc. in there
+- reread jit.d, cleanup code, create jit/util.d?
+
 TODO: rename Interp class to VM
 - rename uses and interp directory as well (runtime dir?)
-- could also create a JIT class, have JIT.compile(), JIT.queue(version), etc.
-  - put the execHeap, compQueue, refList, etc. in there
-- reread jit.d, cleanup code
 
 TODO: remove interp/ops.d
 - move useful contents to jit/ops.d
 - move value access ops to interp/interp.d?
 
+TODO: talk to Tom about JITted FFI
+
 TODO: call_apply
+
+TODO: get_time_ms
+
+TODO: map_prop_name
 
 ------------------------------------------------------------------------------
 
 Third milestone: standard library initialization
-- Can simplify if needed, disable regexp init for now
-  - May also want to look into why this is so slow/complex
 
 TODO: make_link, needed by commonjs lib
 - Why is it needed?
 
-TODO: talk to Tom about JITted FFI
+FIXME: segfault on ./higgs --e "test()" programs/stdlib_map/stdlib_map.js
+- try with --jit_dumpinfo
+- trace instructions
 
-TODO: new/constructor support
-- Implement using host function first
-- Also need return from new
+TODO: unit function return, create call continuation edge fragment?
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: support for return from new
 - enable unit tests
 
-Meeting:
+[DONE] TODO: new/constructor support
+- Implement using host function first
+
+[DONE] Meeting:
 - Objects, arrays, closures, argument object, floating-point
 - Fixed various bugs
 - Almost all of stdlib loading
@@ -92,17 +122,6 @@ Meeting:
 - Higgs init time comparable to before, with interpreter
 - Compiling ~300KB of code to init
 - Idea: can recompile inline caches (at Moz, inline caches are linked-lists)
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: mod_f64, using fmod
 

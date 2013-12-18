@@ -229,7 +229,7 @@ Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_call, OpInfo.VAR_
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
 // Pushes the return address word
-Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], /*&gen_call_new*/null , OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
+Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &gen_call_new, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
 
 // <dstLocal> = CALL_APPLY <closArg> <thisArg> <argTable> <numArgs>
 // Call with an array of arguments

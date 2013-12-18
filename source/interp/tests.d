@@ -773,7 +773,6 @@ unittest
     interp.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);  
 }
 
-/*
 /// New operator, prototype chain
 unittest
 {
@@ -782,7 +781,7 @@ unittest
     auto interp = new InterpNoStdLib();
 
     interp.assertInt("function f() {}; o = new f(); return 0", 0);
-    interp.assertInt("function f() {}; o = new f(); return o? 1:0", 1);
+    interp.assertInt("function f() {}; o = new f(); return (o? 1:0)", 1);
     interp.assertInt("function f() { g = this; }; o = new f(); return g? 1:0", 1);
     interp.assertInt("function f() { this.x = 3 }; o = new f(); return o.x", 3);
     interp.assertInt("function f() { return {y:7}; }; o = new f(); return o.y", 7);
@@ -870,7 +869,6 @@ unittest
         12
     );
 }
-*/
 
 /// Array literals, array operations
 unittest
@@ -1225,9 +1223,7 @@ unittest
     interp.assertStr("String([0,1,2])", "0,1,2");
 
     interp.assertStr("'foobar'.substring(0,3)", "foo");
-
-    // TODO: need new
-    //interp.assertInt("'f,o,o'.split(',').length", 3);
+    interp.assertInt("'f,o,o'.split(',').length", 3);
 }
 
 /// Stdlib global functions
@@ -1237,12 +1233,9 @@ unittest
 
     auto interp = new Interp();
 
-    // TODO: need new operator
-    /*
     interp.assertInt("parseInt(10)", 10);
     interp.assertInt("parseInt(-1)", -1);
     interp.assertBool("isNaN(parseInt('zux'))", true);
-    */
 }
 
 /*
@@ -1314,14 +1307,15 @@ unittest
     interp.assertBool("4294967295.0 === 0xFFFFFFFF", true);
 
     interp.load("programs/regress/post_incr.js");
-    //interp.load("programs/regress/in_operator.js");
+    interp.load("programs/regress/in_operator.js");
     interp.load("programs/regress/tostring.js");
+    // TODO: needs throw
     //interp.load("programs/regress/new_array.js");
     interp.load("programs/regress/loop_labels.js");
     interp.load("programs/regress/loop_swap.js");
     interp.load("programs/regress/loop_lt.js");
     interp.load("programs/regress/loop_lessargs.js");
-    //interp.load("programs/regress/loop_new.js");
+    interp.load("programs/regress/loop_new.js");
     interp.load("programs/regress/loop_argc.js");
     interp.load("programs/regress/loop_bool.js");
     interp.load("programs/regress/loop_decr_sum.js");
@@ -1331,16 +1325,18 @@ unittest
     interp.load("programs/regress/jit_se_cmp.js");
     interp.load("programs/regress/jit_float_cmp.js");
     interp.load("programs/regress/jit_getprop_arr.js");
+    // TODO: needs exceptions
     //interp.load("programs/regress/jit_call_exc.js");
-    //interp.load("programs/regress/jit_ctor.js");
+    interp.load("programs/regress/jit_ctor.js");
+    // TODO: needs gc_collect
     //interp.load("programs/regress/jit_set_global.js");
     interp.load("programs/regress/jit_inlining.js");
     interp.load("programs/regress/jit_inlining2.js");
 
-    // TODO: needs new operator
-    //interp.load("programs/regress/delta.js");
-    //interp.load("programs/regress/raytrace.js");
+    interp.load("programs/regress/delta.js");
+    interp.load("programs/regress/raytrace.js");
 
+    // TODO: needs gc_collect
     //interp = new Interp();
     //interp.load("programs/regress/boyer.js");
 }
@@ -1379,12 +1375,9 @@ unittest
     interp.load("programs/merge_sort/merge_sort.js");
     interp.assertInt("test();", 0);
 
-    // TODO: new operator
-    /*
     writeln("matrix comp");
     interp.load("programs/matrix_comp/matrix_comp.js");
     interp.assertInt("test();", 10);
-    */
 
     writefln("closures");
 
@@ -1425,26 +1418,32 @@ unittest
     // Standard library
     interp.load("programs/stdlib_math/stdlib_math.js");
     interp.assertInt("test();", 0);
-    //interp.load("programs/stdlib_boolean/stdlib_boolean.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_boolean/stdlib_boolean.js");
+    interp.assertInt("test();", 0);
+    // TODO: needs apply
     //interp.load("programs/stdlib_number/stdlib_number.js");
     //interp.assertInt("test();", 0);
+    // TODO: needs apply
     //interp.load("programs/stdlib_function/stdlib_function.js");
     //interp.assertInt("test();", 0);
+    // TODO: need map_prop_name
     //interp.load("programs/stdlib_object/stdlib_object.js");
     //interp.assertInt("test();", 0);
-    /*
-    interp.load("programs/stdlib_array/stdlib_array.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_string/stdlib_string.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_json/stdlib_json.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_regexp/stdlib_regexp.js");
-    interp.assertInt("test();", 0);
-    interp.load("programs/stdlib_map/stdlib_map.js");
-    interp.assertInt("test();", 0);
-    */
+    // TODO: needs apply
+    //interp.load("programs/stdlib_array/stdlib_array.js");
+    //interp.assertInt("test();", 0);
+    // TODO: needs apply
+    //interp.load("programs/stdlib_string/stdlib_string.js");
+    //interp.assertInt("test();", 0);
+    // TODO: need map_prop_name
+    //interp.load("programs/stdlib_json/stdlib_json.js");
+    //interp.assertInt("test();", 0);
+    // TODO: throw
+    //interp.load("programs/stdlib_regexp/stdlib_regexp.js");
+    //interp.assertInt("test();", 0);
+    // FIXME: segmentation fault
+    //interp.load("programs/stdlib_map/stdlib_map.js");
+    //interp.assertInt("test();", 0);
 }
 
 /*
@@ -1590,13 +1589,12 @@ unittest
         interp.load("programs/shootout/" ~ name ~ ".js");
     }
 
-    // TODO: need new
-    //run("hash", 10);
-    //interp.assertInt("c", 10);
+    run("hash", 10);
+    interp.assertInt("c", 10);
 
-    //run("hash2", 1);
+    run("hash2", 1);
 
-    // TODO: need new
+    // TODO: need apply
     //run("heapsort", 4);
     //interp.assertFloat("ary[n]", 0.79348136);
 
@@ -1606,17 +1604,17 @@ unittest
     // TODO: need call_apply
     //run("mandelbrot", 10);
 
-    // TODO: need new
-    //run("matrix", 4);
-    //interp.assertInt("mm[0][0]", 270165);
-    //interp.assertInt("mm[4][4]", 1856025);
+    run("matrix", 4);
+    interp.assertInt("mm[0][0]", 270165);
+    interp.assertInt("mm[4][4]", 1856025);
 
-    // TODO: need new
+    // TODO: need call_apply
     //run("methcall", 10);
 
     run("nestedloop", 10);
     interp.assertInt("x", 1000000);
 
+    // TODO: need call_apply
     //run("objinst", 10);
 
     // TODO: need call_apply
@@ -1637,20 +1635,21 @@ unittest
         interp.load("programs/sunspider/" ~ name ~ ".js");
     }
 
-    //run("3d-cube");
-    //run("3d-morph");
+    run("3d-cube");
+    run("3d-morph");
+    // TODO: need get_time_ms
     //run("3d-raytrace");
 
-    //run("access-binary-trees");
-    //run("access-fannkuch");
+    run("access-binary-trees");
+    run("access-fannkuch");
+    // TODO: need get_time_ms
     //run("access-nbody");
     run("access-nsieve");
 
     run("bitops-bitwise-and");
     run("bitops-bits-in-byte");
     run("bitops-3bit-bits-in-byte");
-    // TODO: needs new
-    //run("bitops-nsieve-bits");
+    run("bitops-nsieve-bits");
 
     run("controlflow-recursive");
     interp.assertInt("ack(3,2);", 29);
@@ -1659,13 +1658,13 @@ unittest
     // FIXME: bug in regexp lib?
     //run("crypto-aes");
     //interp.assertInt("decryptedText.length;", 1311);
-
     //run("crypto-md5");
     //run("crypto-sha1");
 
+    // TODO: need get_time_ms
     //run("math-cordic");
-    //run("math-partial-sums");
-    //run("math-spectral-norm");
+    run("math-partial-sums");
+    run("math-spectral-norm");
 
     // TODO: enable once faster
     //run("string-base64");
@@ -1689,21 +1688,21 @@ unittest
         interp.load("programs/v8bench/drv-" ~ name ~ ".js");
     }
 
-    /*
-    run("crypto");
+    //run("crypto");
 
-    run("deltablue");
+    // TODO: need apply
+    //run("deltablue");
 
-    run("earley-boyer");
+    //run("earley-boyer");
 
     run("navier-stokes");
 
-    run("raytrace");
+    // TODO: need apply
+    //run("raytrace");
 
     run("richards");
 
     // TODO: enable once faster
     //run("splay");
-    */
 }
 

@@ -118,7 +118,7 @@ class CodeGenCtx
     /// Constructor call flag
     bool ctorCall;
 
-    this(IRFunction fun, bool newCall, Interp interp)
+    this(IRFunction fun, bool ctorCall, Interp interp)
     {
         this.fun = fun;
         this.ctorCall = ctorCall;
@@ -129,9 +129,9 @@ class CodeGenCtx
 /**
 Get a code generation context for a given function
 */
-CodeGenCtx getCtx(IRFunction fun, bool newCall, Interp interp)
+CodeGenCtx getCtx(IRFunction fun, bool ctorCall, Interp interp)
 {
-    if (newCall is false)
+    if (ctorCall is false)
     {
         if (fun.ctx is null)
             fun.ctx = new CodeGenCtx(fun, false, interp);
@@ -139,9 +139,9 @@ CodeGenCtx getCtx(IRFunction fun, bool newCall, Interp interp)
     }
     else
     {
-        if (fun.newCtx is null)
-            fun.newCtx = new CodeGenCtx(fun, true, interp);
-        return fun.newCtx;
+        if (fun.ctorCtx is null)
+            fun.ctorCtx = new CodeGenCtx(fun, true, interp);
+        return fun.ctorCtx;
     }
 }
 
@@ -1250,12 +1250,13 @@ BlockVersion getBlockVersion(
     // If the block version cap is hit
     if (versions.length >= opts.jit_maxvers)
     {
-        //writeln("block cap hit: ", versions.length);
+        writeln("block cap hit: ", versions.length);
 
         // If a compatible match was found
         if (bestDiff < size_t.max)
         {
             // Return the best match found
+            assert (bestVer.state.ctx is state.ctx);
             return bestVer;
         }
 
@@ -1274,6 +1275,7 @@ BlockVersion getBlockVersion(
         // Ensure that the general version matches
         assert(state.diff(genState) !is size_t.max);
 
+        assert (genState.ctx is state.ctx);
         state = genState;
     }
     
@@ -1293,6 +1295,7 @@ BlockVersion getBlockVersion(
     interp.compQueue ~= ver;
 
     // Return the newly created block version
+    assert (ver.state.ctx is state.ctx);
     return ver;
 }
 
@@ -1728,11 +1731,11 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
     // Store the entry code pointer on the function
     fun.entryCode = entryInst.getCodePtr(interp.execHeap);
     fun.ctorCode = ctorInst.getCodePtr(interp.execHeap);
+    assert (fun.entryCode !is fun.ctorCode);
 
     //writeln("leaving compileEntry");
 
-    // Return the code pointer
-    return ctorCall? fun.entryCode:fun.ctorCode;
+    return ctorCall? fun.ctorCode:fun.entryCode;
 }
 
 /**
@@ -1742,9 +1745,9 @@ const(ubyte)* getEntryStub(Interp interp, bool ctorCall)
 {
     auto as = interp.execHeap;
 
-    if (ctorCall && interp.ctorStub)
+    if (ctorCall is true && interp.ctorStub)
         return interp.ctorStub.getCodePtr(as);
-    if (interp.entryStub)
+    if (ctorCall is false && interp.entryStub)
         return interp.entryStub.getCodePtr(as);
 
     auto stub = new EntryStub(interp, ctorCall);

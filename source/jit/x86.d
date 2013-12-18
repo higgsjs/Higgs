@@ -1401,7 +1401,7 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
         {
             auto reg = dst.reg;
             auto dstSize = reg.size;
-            assert (imm.immSize <= dstSize);
+            assert (imm.immSize <= dstSize, "immediate too large for dst reg");
 
             if (dstSize is 16)
                 cb.writeByte(0x66);
