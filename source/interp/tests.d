@@ -1418,9 +1418,8 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_boolean/stdlib_boolean.js");
     interp.assertInt("test();", 0);
-    // FIXME
-    //interp.load("programs/stdlib_number/stdlib_number.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_number/stdlib_number.js");
+    interp.assertInt("test();", 0);
     // TODO: needs get_ast_str
     //interp.load("programs/stdlib_function/stdlib_function.js");
     //interp.assertInt("test();", 0);

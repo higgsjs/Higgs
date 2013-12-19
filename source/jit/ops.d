@@ -561,7 +561,7 @@ void FPToStr(string fmt)(
 }
 
 alias FPToStr!("%G") gen_f64_to_str;
-alias FPToStr!("%.9f") gen_f64_to_str_lng;
+alias FPToStr!(format("%%.%sf", float64.dig)) gen_f64_to_str_lng;
 
 void LoadOp(size_t memSize, Type typeTag)(
     VersionInst ver, 

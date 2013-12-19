@@ -67,6 +67,9 @@ TODO: GC support
 
 TODO: exception support
 
+TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
+TODO: talk to Tom about JITted FFI
+
 TODO: create JIT class
 - Have JIT.compile(), JIT.queue(version), etc.
   - put the execHeap, compQueue, refList, etc. in there
@@ -78,13 +81,8 @@ TODO: rename Interp class to VM
 TODO: remove interp/ops.d
 - move useful contents to jit/ops.d and interp/interp.d
 
-TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
-
-TODO: talk to Tom about JITted FFI
-
 TODO: get_time_ms
 
-FIXME: stdlib_number test returns 402
 
 
 
@@ -92,6 +90,10 @@ FIXME: stdlib_number test returns 402
 
 
 
+
+
+[DONE] FIXME: stdlib_number test returns 402
+if ((0.5).toFixed() !== "1")
 
 [DONE] TODO: call_apply
 - Change callFun return address? Currently expects IRInstr
