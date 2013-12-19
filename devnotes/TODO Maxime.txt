@@ -81,7 +81,10 @@ TODO: rename Interp class to VM
 TODO: remove interp/ops.d
 - move useful contents to jit/ops.d and interp/interp.d
 
-TODO: get_time_ms
+TODO: get_ast_str
+
+TODO: re-add compilation time stat
+- try on 3d-raytrace, v8/raytrace
 
 
 
@@ -90,7 +93,7 @@ TODO: get_time_ms
 
 
 
-
+[DONE] TODO: get_time_ms
 
 [DONE] FIXME: stdlib_number test returns 402
 if ((0.5).toFixed() !== "1")

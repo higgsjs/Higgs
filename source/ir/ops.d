@@ -325,7 +325,7 @@ Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &gen_f64_to_str, OpInfo
 Opcode F64_TO_STR_LNG = { "f64_to_str_lng", true, [OpArg.LOCAL], &gen_f64_to_str_lng, OpInfo.MAY_GC };
 
 /// Get the time in milliseconds since process start
-Opcode GET_TIME_MS = { "get_time_ms", true, [], /*&gen_get_time_ms*/null };
+Opcode GET_TIME_MS = { "get_time_ms", true, [], &gen_get_time_ms };
 
 /// Load a shared lib
 Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], /*&gen_load_lib*/null };

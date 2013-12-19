@@ -46,6 +46,7 @@ import std.stdint;
 import std.conv;
 import std.algorithm;
 import std.traits;
+import std.datetime;
 import options;
 import stats;
 import ir.ir;
@@ -2157,9 +2158,19 @@ void gen_ret(
     as.jmp(scrRegs[1].opnd(64));
 }
 
-//
+// TODO
 // TODO: gen_throw
-//
+// TODO
+/*
+extern (C) void op_throw(Interp interp, IRInstr instr)
+{
+    // Get the exception value
+    auto excVal = interp.getArgVal(instr, 0);
+
+    // Throw the exception
+    throwExc(interp, instr, excVal);
+}
+*/
 
 void GetValOp(string fName)(
     VersionInst ver, 
@@ -2271,6 +2282,20 @@ void gen_heap_alloc(
     st.setOutType(as, instr, Type.REFPTR);
 }
 
+// TODO
+// TODO
+// TODO
+/*
+extern (C) void op_gc_collect(Interp interp, IRInstr instr)
+{
+    auto heapSize = interp.getArgUint32(instr, 0);
+
+    writeln("triggering gc");
+
+    gcCollect(interp, heapSize);
+}
+*/
+
 void gen_get_global(
     VersionInst ver, 
     CodeGenState st,
@@ -2377,6 +2402,128 @@ void gen_set_global(
     auto typeMem = X86Opnd(8, scrRegs[1], wordOfs + propIdx, 8, scrRegs[2]);
     as.mov(typeMem, typeOpnd);
 }
+
+/*
+/// Get the value of a global variable
+extern (C) void op_get_global(Interp interp, IRInstr instr)
+{
+    // Name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Cached property index
+    auto idxArg = cast(IRCachedIdx)instr.getArg(1);
+    assert (idxArg !is null);
+    auto propIdx = idxArg.idx;
+
+    // If a property index was cached
+    if (propIdx !is idxArg.idx.max)
+    {
+        auto wVal = obj_get_word(interp.globalObj, propIdx);
+        auto tVal = obj_get_type(interp.globalObj, propIdx);
+
+        interp.setSlot(
+            instr.outSlot,
+            Word.uint64v(wVal),
+            cast(Type)tVal
+        );
+
+        return;
+    }
+
+    auto propStr = GCRoot(interp, getString(interp, nameStr));
+
+    // Lookup the property index in the class
+    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    assert (globalMap !is null);
+    propIdx = globalMap.getPropIdx(propStr.ptr);
+
+    // If the property was found, cache it
+    if (propIdx != uint32.max)
+    {
+        // Cache the property index
+        idxArg.idx = propIdx;
+    }
+
+    // Lookup the property
+    ValuePair val = getProp(
+        interp,
+        interp.globalObj,
+        propStr.ptr
+    );
+
+    // If the property is not defined
+    if (val.type == Type.CONST && val.word == MISSING)
+    {
+        return throwError(
+            interp,
+            instr, 
+            "ReferenceError", "global property \"" ~ 
+            to!string(nameStr) ~ "\" is not defined"
+        );
+    }
+
+    interp.setSlot(
+        instr.outSlot,
+        val
+    );
+}
+*/
+
+/*
+/// Set the value of a global variable
+extern (C) void op_set_global(Interp interp, IRInstr instr)
+{
+    // Name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Get the property value argument
+    auto propVal = interp.getArgVal(instr, 1);
+
+    // Cached property index
+    auto idxArg = cast(IRCachedIdx)instr.getArg(2);
+    assert (idxArg !is null);
+    auto propIdx = idxArg.idx;
+
+    // If a property index was cached
+    if (propIdx !is idxArg.idx.max)
+    {
+        obj_set_word(interp.globalObj, cast(uint32)propIdx, propVal.word.uint64Val);
+        obj_set_type(interp.globalObj, cast(uint32)propIdx, propVal.type);
+
+        return;
+    }
+
+    // Save the value in a GC root
+    auto val = GCRoot(interp, propVal);
+
+    // Get the property string
+    auto propStr = GCRoot(interp, getString(interp, nameStr));
+
+    // Set the property value
+    setProp(
+        interp,
+        interp.globalObj,
+        propStr.ptr,
+        val.pair
+    );
+
+    // Lookup the property index in the class
+    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    assert (globalMap !is null);
+    propIdx = globalMap.getPropIdx(propStr.ptr);
+
+    // If the property was found, cache it
+    if (propIdx != uint32.max)
+    {
+        // Cache the property index
+        idxArg.idx = propIdx;
+    }
+}
+*/
 
 void gen_get_str(
     VersionInst ver, 
@@ -2762,4 +2909,214 @@ void gen_print_str(
 
     as.popRegs();
 }
+
+void gen_get_time_ms(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static int32 op_get_time_ms()
+    {
+        return cast(int32_t)Clock.currAppTick().msecs();
+    }
+
+    as.pushRegs();
+
+    as.ptr(scrRegs[0], &op_get_time_ms);
+    as.call(scrRegs[0].opnd(64));
+
+    as.popRegs();
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(RAX));
+}
+
+// TODO
+// TODO
+// TODO
+extern (C) void op_load_file(Interp interp, IRInstr instr)
+{
+    /*
+    auto strPtr = interp.getArgStr(instr, 0);
+    auto fileName = interp.getLoadPath(extractStr(strPtr));
+
+    try
+    {
+        // Parse the source file and generate IR
+        auto ast = parseFile(fileName);
+        auto fun = astToIR(ast);
+
+        // Register this function in the function reference set
+        interp.funRefs[cast(void*)fun] = fun;
+
+        // Setup the callee stack frame
+        interp.callFun(
+            fun,
+            instr,      // Calling instruction
+            null,       // Null closure argument
+            NULL,       // Null this argument
+            Type.REFPTR,// This value is a reference
+            0,          // 0 arguments
+            null        // 0 arguments
+        );
+    }
+
+    catch (Exception err)
+    {
+        throwError(interp, instr, "RuntimeError", err.msg);
+    }
+    */
+}
+
+// TODO
+// TODO
+// TODO
+extern (C) void op_eval_str(Interp interp, IRInstr instr)
+{
+    /*
+    auto strPtr = interp.getArgStr(instr, 0);
+    auto codeStr = extractStr(strPtr);
+
+    // Parse the source file and generate IR
+    auto ast = parseString(codeStr, "eval_str");
+    auto fun = astToIR(ast);
+
+    // Register this function in the function reference set
+    interp.funRefs[cast(void*)fun] = fun;
+
+    // Setup the callee stack frame
+    interp.callFun(
+        fun,
+        instr,      // Calling instruction
+        null,       // Null closure argument
+        NULL,       // Null this argument
+        Type.REFPTR,// This value is a reference
+        0,          // 0 arguments
+        null        // 0 arguments
+    );
+    */
+}
+
+/*
+extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
+{
+    auto funArg = interp.getArgVal(instr, 0);
+
+    assert (
+        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
+        "invalid closure object"
+    );
+
+    auto fun = getClosFun(funArg.word.ptrVal);
+
+    auto str = fun.ast.toString();
+    auto strObj = getString(interp, to!wstring(str));
+   
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(strObj),
+        Type.REFPTR
+    );
+}
+*/
+
+/*
+extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
+{
+    auto funArg = interp.getArgVal(instr, 0);
+
+    assert (
+        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
+        "invalid closure object"
+    );
+
+    auto fun = getClosFun(funArg.word.ptrVal);
+
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+        astToIR(fun.ast, fun);
+
+    auto str = fun.toString();
+    auto strObj = getString(interp, to!wstring(str));
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(strObj),
+        Type.REFPTR
+    );
+}
+*/
+
+/*
+extern (C) void op_load_lib(Interp interp, IRInstr instr)
+{
+    // Library to load (JS string)
+    auto strPtr = interp.getArgStr(instr, 0);
+
+    // Library to load (D string)
+    auto libname = extractStr(strPtr);
+
+    // String must be null terminated
+    libname ~= '\0';
+
+    auto lib = dlopen(libname.ptr, RTLD_LAZY | RTLD_LOCAL);
+
+    if (lib is null)
+        return throwError(interp, instr, "RuntimeError", to!string(dlerror()));
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(cast(rawptr)lib),
+        Type.RAWPTR
+    );
+}
+*/
+
+/*
+extern (C) void op_close_lib(Interp interp, IRInstr instr)
+{
+    auto libArg = interp.getArgVal(instr, 0);
+
+    assert (
+        libArg.type == Type.RAWPTR,
+        "invalid rawptr value"
+    );
+
+    if (dlclose(libArg.word.ptrVal) != 0)
+         return throwError(interp, instr, "RuntimeError", "could not close lib.");
+}
+*/
+
+/*
+extern (C) void op_get_sym(Interp interp, IRInstr instr)
+{
+    auto libArg = interp.getArgVal(instr, 0);
+
+    assert (
+        libArg.type == Type.RAWPTR,
+        "invalid rawptr value"
+    );
+
+    // Symbol name (D string)
+    auto strArg = cast(IRString)instr.getArg(1);
+    assert (strArg !is null);   
+    auto symname = to!string(strArg.str);
+
+    // String must be null terminated
+    symname ~= '\0';
+
+    auto sym = dlsym(libArg.word.ptrVal, symname.ptr);
+
+    if (sym is null)
+        return throwError(interp, instr, "RuntimeError", to!string(dlerror()));
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(cast(rawptr)sym),
+        Type.RAWPTR
+    );
+}
+*/
 

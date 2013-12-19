@@ -1625,13 +1625,15 @@ unittest
 
     run("3d-cube");
     run("3d-morph");
-    // TODO: need get_time_ms
-    //run("3d-raytrace");
+    // FIXME: need GC
+    interp = new Interp();
+    run("3d-raytrace");
 
+    // FIXME: need GC
+    interp = new Interp();
     run("access-binary-trees");
     run("access-fannkuch");
-    // TODO: need get_time_ms
-    //run("access-nbody");
+    run("access-nbody");
     run("access-nsieve");
 
     run("bitops-bitwise-and");
@@ -1651,8 +1653,7 @@ unittest
     // FIXME: throw
     //run("crypto-sha1");
 
-    // TODO: need get_time_ms
-    //run("math-cordic");
+    run("math-cordic");
     run("math-partial-sums");
     run("math-spectral-norm");
 
