@@ -172,8 +172,7 @@ enum Type : ubyte
     RAWPTR,
     CONST,
     FUNPTR,
-    MAPPTR,
-    INSPTR
+    MAPPTR
 }
 
 /// Word and type pair
@@ -195,7 +194,6 @@ string typeToString(Type type)
         case Type.CONST:    return "const";
         case Type.FUNPTR:   return "funptr";
         case Type.MAPPTR:   return "mapptr";
-        case Type.INSPTR:   return "insptr";
 
         default:
         assert (false, "unsupported type");
@@ -278,10 +276,6 @@ string valToString(ValuePair value)
 
         case Type.MAPPTR:
         return "mapptr";
-        break;
-
-        case Type.INSPTR:
-        return "insptr";
         break;
 
         default:
@@ -826,11 +820,72 @@ class Interp
     }
 
     /**
-    Call a given IR function. Prepares the callee stack-frame.
+    Get the value of an instruction's argument
+    */
+    ValuePair getArgVal(IRInstr instr, size_t argIdx)
+    {
+        // Get the argument IRValue
+        auto val = instr.getArg(argIdx);
+
+        return getValue(val);
+    }
+
+    /**
+    Get a boolean argument value
+    */
+    bool getArgBool(IRInstr instr, size_t argIdx)
+    {
+        auto argVal = getArgVal(instr, argIdx);
+
+        assert (
+            argVal.type == Type.CONST,
+            "expected constant value for arg " ~ to!string(argIdx)
+        );
+
+        return (argVal.word.int8Val == TRUE.int8Val);
+    }
+
+    /**
+    Get an argument value and ensure it is an uint32
+    */
+    uint32_t getArgUint32(IRInstr instr, size_t argIdx)
+    {
+        auto argVal = getArgVal(instr, argIdx);
+
+        assert (
+            argVal.type == Type.INT32,
+            "expected uint32 value for arg " ~ to!string(argIdx)
+        );
+
+        assert (
+            argVal.word.int32Val >= 0,
+            "expected positive value"
+        );
+
+        return argVal.word.uint32Val;
+    }
+
+    /**
+    Get an argument value and ensure it is a string object pointer
+    */
+    refptr getArgStr(IRInstr instr, size_t argIdx)
+    {
+        auto strVal = getArgVal(instr, argIdx);
+
+        assert (
+            valIsString(strVal.word, strVal.type),
+            "expected string value for arg " ~ to!string(argIdx)
+        );
+
+        return strVal.word.ptrVal;
+    }
+
+    /**
+    Prepares the callee stack-frame for a call
     */
     void callFun(
         IRFunction fun,         // Function to call
-        IRInstr callInstr,      // Return address
+        refptr retAddr,         // Return address
         refptr closPtr,         // Closure pointer
         Word thisWord,          // This value word
         Type thisType,          // This value type
@@ -846,17 +901,6 @@ class Interp
             fun !is null, 
             "null IRFunction pointer"
         );
-
-        // If the function is not yet compiled, compile it now
-        if (fun.entryBlock is null)
-        {
-            //writeln("compiling");
-            //writeln(core.memory.GC.addrOf(cast(void*)fun.ast));
-
-            astToIR(fun.ast, fun);
-
-            //writeln("compiled");
-        }
 
         // Compute the number of missing arguments
         size_t argDiff = (fun.numParams > argCount)? (fun.numParams - argCount):0;
@@ -881,25 +925,12 @@ class Interp
         // Push the closure argument
         push(Word.ptrv(closPtr), Type.REFPTR);
 
-        // Push the return address (caller instruction)
-        auto retAddr = cast(rawptr)callInstr;
-        push(Word.ptrv(retAddr), Type.INSPTR);
+        // Push the return address
+        push(Word.ptrv(retAddr), Type.RAWPTR);
      
         // Push space for the callee locals and initialize the slots to undefined
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
         push(numLocals);
-
-        //writeln(fun);
-
-        // Compile the entry block of the unit function
-        auto entryFn = compileUnit(this, fun);
-
-        //writeln("calling code at: ", entryFn);
-
-        // Call into the compiled code
-        entryFn();
-
-        //writeln("returned");
     }
 
     /**
@@ -927,6 +958,14 @@ class Interp
             0,                      // 0 arguments
             null                    // no argument array
         );
+
+        // Compile the entry block of the unit function
+        auto entryFn = compileUnit(this, fun);
+
+        //writeln("calling code at: ", entryFn);
+
+        // Call into the compiled code
+        entryFn();
 
         // Ensure the stack contains at least one value
         assert (

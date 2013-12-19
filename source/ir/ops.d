@@ -236,7 +236,7 @@ Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &gen_call_new, OpInfo.VAR_A
 
 // <dstLocal> = CALL_APPLY <closArg> <thisArg> <argTable> <numArgs>
 // Call with an array of arguments
-Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], /*&gen_call_apply*/null , OpInfo.BRANCH | OpInfo.CALL };
+Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_call_apply, OpInfo.BRANCH | OpInfo.CALL };
 
 // <dstLocal> = CALL_PRIM <primName> <primFun> ...
 // Call a primitive function by name

@@ -1582,7 +1582,7 @@ Compile an entry point for a unit-level function
 */
 EntryFn compileUnit(Interp interp, IRFunction fun)
 {
-    assert (fun.isUnit);
+    assert (fun.isUnit, "compileUnit on non-unit function");
 
     auto as = interp.execHeap;
 

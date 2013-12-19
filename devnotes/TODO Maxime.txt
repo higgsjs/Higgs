@@ -76,8 +76,7 @@ TODO: rename Interp class to VM
 - rename uses and interp directory as well (runtime dir?)
 
 TODO: remove interp/ops.d
-- move useful contents to jit/ops.d
-- move value access ops to interp/interp.d?
+- move useful contents to jit/ops.d and interp/interp.d
 
 TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
 
@@ -85,7 +84,7 @@ TODO: talk to Tom about JITted FFI
 
 TODO: get_time_ms
 
-TODO: call_apply
+FIXME: stdlib_number test returns 402
 
 
 
@@ -94,7 +93,8 @@ TODO: call_apply
 
 
 
-
+[DONE] TODO: call_apply
+- Change callFun return address? Currently expects IRInstr
 
 [DONE] TODO: map_prop_name
 

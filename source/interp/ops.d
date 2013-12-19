@@ -56,67 +56,6 @@ import interp.object;
 import interp.gc;
 import interp.ffi;
 
-/**
-Get the value of an instruction's argument
-*/
-private ValuePair getArgVal(Interp interp, IRInstr instr, size_t argIdx)
-{
-    // Get the argument IRValue
-    auto val = instr.getArg(argIdx);
-
-    return interp.getValue(val);
-}
-
-/**
-Get a boolean argument value
-*/
-bool getArgBool(Interp interp, IRInstr instr, size_t argIdx)
-{
-    auto argVal = interp.getArgVal(instr, argIdx);
-
-    assert (
-        argVal.type == Type.CONST,
-        "expected constant value for arg " ~ to!string(argIdx)
-    );
-
-    return (argVal.word.int8Val == TRUE.int8Val);
-}
-
-/**
-Get an argument value and ensure it is an uint32
-*/
-uint32_t getArgUint32(Interp interp, IRInstr instr, size_t argIdx)
-{
-    auto argVal = interp.getArgVal(instr, argIdx);
-
-    assert (
-        argVal.type == Type.INT32,
-        "expected uint32 value for arg " ~ to!string(argIdx)
-    );
-
-    assert (
-        argVal.word.int32Val >= 0,
-        "expected positive value"
-    );
-
-    return argVal.word.uint32Val;
-}
-
-/**
-Get an argument value and ensure it is a string object pointer
-*/
-refptr getArgStr(Interp interp, IRInstr instr, size_t argIdx)
-{
-    auto strVal = interp.getArgVal(instr, argIdx);
-
-    assert (
-        valIsString(strVal.word, strVal.type),
-        "expected string value for arg " ~ to!string(argIdx)
-    );
-
-    return strVal.word.ptrVal;
-}
-
 // FIXME
 /*
 void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
@@ -257,288 +196,6 @@ void throwError(
 }
 
 /*
-extern (C) void op_call(Interp interp, IRInstr instr)
-{
-    auto closVal = interp.getArgVal(instr, 0);
-    auto thisVal = interp.getArgVal(instr, 1);
-
-    if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
-        return throwError(interp, instr, "TypeError", "call to non-function");
-
-    // Get the function object from the closure
-    auto closPtr = closVal.word.ptrVal;
-    auto fun = getClosFun(closPtr);
-
-    //writeln(core.memory.GC.addrOf(cast(void*)fun));
-
-    auto argCount = cast(uint32_t)instr.numArgs - 2;
-
-    // Allocate temporary storage for the argument values
-    if (argCount > interp.tempVals.length)
-        interp.tempVals.length = argCount;
-    auto argVals = interp.tempVals.ptr;
-
-    // Fetch the argument values
-    for (size_t i = 0; i < argCount; ++i)
-        argVals[i] = interp.getArgVal(instr, 2 + i);
-
-    interp.callFun(
-        fun,
-        instr,
-        closPtr,
-        thisVal.word,
-        thisVal.type,
-        argCount,
-        argVals
-    );
-}
-*/
-
-/*
-/// JavaScript new operator (constructor call)
-extern (C) void op_call_new(Interp interp, IRInstr instr)
-{
-    auto closVal = interp.getArgVal(instr, 0);
-
-    if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
-        return throwError(interp, instr, "TypeError", "call to non-function");
-
-    // Get the function object from the closure
-    auto clos = GCRoot(interp, closVal.word.ptrVal);
-    auto fun = getClosFun(clos.ptr);
-
-    assert (
-        fun !is null,
-        "null IRFunction pointer"
-    );
-
-    // Lookup the "prototype" property on the closure
-    auto protoStr = GCRoot(interp, getString(interp, "prototype"));
-    auto protoObj = GCRoot(
-        interp,
-        getProp(
-            interp, 
-            clos.ptr,
-            protoStr.ptr
-        )
-    );
-
-    // Get the "this" object map from the closure
-    auto ctorMap = cast(ObjMap)clos_get_ctor_map(clos.ptr);
-
-    // Lazily allocate the "this" object map if it doesn't already exist
-    if (ctorMap is null)
-    {
-        ctorMap = new ObjMap(interp, 0);
-        clos_set_ctor_map(clos.ptr, cast(rawptr)ctorMap);
-    }
-
-    // Allocate the "this" object
-    auto thisObj = GCRoot(
-        interp,
-        newObj(
-            interp, 
-            ctorMap,
-            protoObj.ptr
-        )
-    );
-
-    // Stack-allocate an array for the argument values
-    auto argCount = cast(uint32_t)instr.numArgs - 1;
-
-    // Allocate temporary storage for the argument values
-    if (argCount > interp.tempVals.length)
-        interp.tempVals.length = argCount;
-    auto argVals = interp.tempVals.ptr;
-
-    // Fetch the argument values
-    for (size_t i = 0; i < argCount; ++i)
-        argVals[i] = interp.getArgVal(instr, 1 + i);
-
-    interp.callFun(
-        fun,
-        instr,
-        clos.ptr,
-        thisObj.word,
-        Type.REFPTR,
-        argCount,
-        argVals
-    );
-}
-*/
-
-/*
-extern (C) void op_call_apply(Interp interp, IRInstr instr)
-{
-    auto closVal = interp.getArgVal(instr, 0);
-    auto thisVal = interp.getArgVal(instr, 1);
-    auto tblVal = interp.getArgVal(instr, 2);
-    auto argCount = interp.getArgUint32(instr, 3);
-
-    if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
-        return throwError(interp, instr, "TypeError", "call to non-function");
-
-    if (tblVal.type != Type.REFPTR || !valIsLayout(tblVal.word, LAYOUT_ARRTBL))
-        return throwError(interp, instr, "TypeError", "invalid argument table");
-
-    // Get the function object from the closure
-    auto closPtr = closVal.word.ptrVal;
-    auto fun = getClosFun(closPtr);
-
-    // Get the array table pointer
-    auto tblPtr = tblVal.word.ptrVal;
-
-    // Allocate temporary storage for the argument values
-    if (argCount > interp.tempVals.length)
-        interp.tempVals.length = argCount;
-    auto argVals = interp.tempVals.ptr;
-
-    // Fetch the argument values from the array table
-    for (uint32_t i = 0; i < argCount; ++i)
-    {
-        argVals[i].word.uint64Val = arrtbl_get_word(tblPtr, i);
-        argVals[i].type = cast(Type)arrtbl_get_type(tblPtr, i);
-    }
-
-    interp.callFun(
-        fun,
-        instr,
-        closPtr,
-        thisVal.word,
-        thisVal.type,
-        argCount,
-        argVals
-    );
-}
-*/
-
-/*
-extern (C) void op_call_prim(Interp interp, IRInstr instr)
-{
-    // Name string (D string)
-    auto strArg = cast(IRString)instr.getArg(0);
-    assert (strArg !is null);
-    auto nameStr = strArg.str;
-
-    // Cached function pointer
-    auto funArg = cast(IRFunPtr)instr.getArg(1);
-    assert (funArg !is null);
-
-    // If the function pointer is not yet cached
-    if (funArg.fun is null)
-    {
-        auto propStr = GCRoot(interp, getString(interp, nameStr));
-        ValuePair val = getProp(
-            interp,
-            interp.globalObj,
-            propStr.ptr
-        );
-
-        assert (
-            val.type is Type.REFPTR &&
-            valIsLayout(val.word, LAYOUT_CLOS)
-        );
-
-        funArg.fun = getClosFun(val.word.ptrVal);
-
-        assert (
-            funArg.fun.ast.usesClos == 0,
-            "primitive function uses its closure argument: " ~
-            to!string(strArg.str)
-        );
-    }
-
-    auto argCount = cast(uint32_t)instr.numArgs - 2;
-
-    // Allocate temporary storage for the argument values
-    if (argCount > interp.tempVals.length)
-        interp.tempVals.length = argCount;
-    auto argVals = interp.tempVals.ptr;
-
-    // Fetch the argument values
-    for (size_t i = 0; i < argCount; ++i)
-        argVals[i] = interp.getArgVal(instr, 2 + i);
-
-    // Call the function with null closure and this values
-    interp.callFun(
-        funArg.fun,
-        instr,
-        NULL.ptrVal,
-        NULL,
-        Type.REFPTR,
-        argCount,
-        argVals
-    );
-}
-*/
-
-/*
-extern (C) void op_ret(Interp interp, IRInstr instr)
-{
-    //writefln("ret from %s", instr.block.fun.getName);
-
-    auto raSlot    = instr.block.fun.raVal.outSlot;
-    auto argcSlot  = instr.block.fun.argcVal.outSlot;
-    auto numParams = instr.block.fun.numParams;
-    auto numLocals = instr.block.fun.numLocals;
-
-    // Get the return value
-    auto retVal = interp.getArgVal(instr, 0);
-
-    // Get the calling instruction
-    auto callInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
-
-    // Get the argument count
-    auto argCount = interp.wsp[argcSlot].uint32Val;
-
-    // If the call instruction is valid
-    if (callInstr !is null)
-    {
-        //writeln("ret val: ");
-        //writeln("  word: ", retVal.word.int64Val);
-        //writeln("   i32: ", retVal.word.int32Val);
-        //writeln("  type: ", retVal.type);
-
-        // If this is a new call and the return value is undefined
-        if (callInstr.opcode == &CALL_NEW && (retVal.type == Type.CONST && retVal.word == UNDEF))
-        {
-            // Use the this value as the return value
-            retVal = interp.getSlot(instr.block.fun.thisVal.outSlot);
-        }
-
-        // Compute the actual number of extra arguments to pop
-        size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
-
-        //writefln("argCount: %s", argCount);
-        //writefln("popping %s", numLocals + extraArgs);
-
-        // Pop all local stack slots and arguments
-        interp.pop(numLocals + extraArgs);
-
-        // Leave the return value in the call instruction's output slot
-        interp.setSlot(
-            callInstr.outSlot,
-            retVal
-        );
-
-        // Set the instruction pointer to the call continuation instruction
-        interp.branch(callInstr.getTarget(0));
-    }
-    else
-    {
-        // Pop all local stack slots
-        interp.pop(numLocals);
-
-        // Terminate the execution
-        interp.jump(null);
-
-        // Leave the return value on top of the stack
-        interp.push(retVal);
-    }
-}
-*/
-
-/*
 extern (C) void op_throw(Interp interp, IRInstr instr)
 {
     // Get the exception value
@@ -556,38 +213,6 @@ extern (C) void op_gc_collect(Interp interp, IRInstr instr)
     writeln("triggering gc");
 
     gcCollect(interp, heapSize);
-}
-
-extern (C) void op_map_prop_name(Interp interp, IRInstr instr)
-{
-    // Get the map value
-    auto mapArg = interp.getArgVal(instr, 0);
-    auto map = mapArg.word.mapVal;
-
-    // Get the index value
-    auto idxArg = interp.getArgUint32(instr, 1);
-
-    // Get the property name
-    auto propName = map.getPropName(idxArg);
-
-    if (propName is null)
-    {
-        interp.setSlot(
-            instr.outSlot,
-            NULL,
-            Type.REFPTR
-        );
-    }
-    else
-    {
-        auto propStr = getString(interp, propName);
-
-        interp.setSlot(
-            instr.outSlot,
-            Word.ptrv(propStr),
-            Type.REFPTR
-        );
-    }
 }
 
 /*
@@ -726,6 +351,8 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
         // Register this function in the function reference set
         interp.funRefs[cast(void*)fun] = fun;
 
+        // FIXME
+        /*
         // Setup the callee stack frame
         interp.callFun(
             fun,
@@ -736,6 +363,7 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
             0,          // 0 arguments
             null        // 0 arguments
         );
+        */
     }
 
     catch (Exception err)
@@ -756,6 +384,8 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
     // Register this function in the function reference set
     interp.funRefs[cast(void*)fun] = fun;
 
+    // FIXME
+    /*
     // Setup the callee stack frame
     interp.callFun(
         fun,
@@ -766,6 +396,7 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
         0,          // 0 arguments
         null        // 0 arguments
     );
+    */
 }
 
 extern (C) void op_print_str(Interp interp, IRInstr instr)

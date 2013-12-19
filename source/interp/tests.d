@@ -1393,13 +1393,11 @@ unittest
     interp.load("programs/clos_xcall/clos_xcall.js");
     interp.assertInt("test(5);", 5);
 
-    /*
     writefln("apply");
 
     // Call with apply
     interp.load("programs/apply/apply.js");
     interp.assertInt("test();", 0);
-    */
 
     writefln("arguments");
 
@@ -1420,23 +1418,20 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_boolean/stdlib_boolean.js");
     interp.assertInt("test();", 0);
-    // TODO: needs apply
+    // FIXME
     //interp.load("programs/stdlib_number/stdlib_number.js");
     //interp.assertInt("test();", 0);
-    // TODO: needs apply
+    // TODO: needs get_ast_str
     //interp.load("programs/stdlib_function/stdlib_function.js");
     //interp.assertInt("test();", 0);
     interp.load("programs/stdlib_object/stdlib_object.js");
     interp.assertInt("test();", 0);
-    // TODO: needs apply
-    //interp.load("programs/stdlib_array/stdlib_array.js");
-    //interp.assertInt("test();", 0);
-    // TODO: needs apply
-    //interp.load("programs/stdlib_string/stdlib_string.js");
-    //interp.assertInt("test();", 0);
-    // TODO: needs apply
-    //interp.load("programs/stdlib_json/stdlib_json.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_array/stdlib_array.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_string/stdlib_string.js");
+    interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_json/stdlib_json.js");
+    interp.assertInt("test();", 0);
     interp.load("programs/stdlib_regexp/stdlib_regexp.js");
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_map/stdlib_map.js");
@@ -1460,7 +1455,9 @@ unittest
     // Eval
     interp.load("programs/eval/eval.js");
 }
+*/
 
+/*
 /// Garbage collector tests
 unittest
 {
@@ -1591,32 +1588,27 @@ unittest
 
     run("hash2", 1);
 
-    // TODO: need apply
-    //run("heapsort", 4);
-    //interp.assertFloat("ary[n]", 0.79348136);
+    run("heapsort", 4);
+    interp.assertFloat("ary[n]", 0.79348136);
 
     // TODO: too slow for now
     //run(lists, 1);
 
-    // TODO: need call_apply
-    //run("mandelbrot", 10);
+    run("mandelbrot", 10);
 
     run("matrix", 4);
     interp.assertInt("mm[0][0]", 270165);
     interp.assertInt("mm[4][4]", 1856025);
 
-    // TODO: need call_apply
-    //run("methcall", 10);
+    run("methcall", 10);
 
     run("nestedloop", 10);
     interp.assertInt("x", 1000000);
 
-    // TODO: need call_apply
-    //run("objinst", 10);
+    run("objinst", 10);
 
-    // TODO: need call_apply
-    //run("random", 10);
-    //interp.assertInt("last", 75056);
+    run("random", 10);
+    interp.assertInt("last", 75056);
 }
 
 /// SunSpider benchmarks
@@ -1655,7 +1647,9 @@ unittest
     // FIXME: bug in regexp lib?
     //run("crypto-aes");
     //interp.assertInt("decryptedText.length;", 1311);
+    // FIXME: throw
     //run("crypto-md5");
+    // FIXME: throw
     //run("crypto-sha1");
 
     // TODO: need get_time_ms
@@ -1685,17 +1679,19 @@ unittest
         interp.load("programs/v8bench/drv-" ~ name ~ ".js");
     }
 
+    // FIXME: throw?
     //run("crypto");
 
-    // TODO: need apply
-    //run("deltablue");
+    run("deltablue");
 
     //run("earley-boyer");
 
     run("navier-stokes");
 
-    // TODO: need apply
-    //run("raytrace");
+    // FIXME: need GC
+    interp = new Interp();
+    interp.load("programs/v8bench/base.js");
+    run("raytrace");
 
     run("richards");
 

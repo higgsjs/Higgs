@@ -37,6 +37,7 @@
 
 module jit.ops;
 
+import core.memory;
 import std.c.math;
 import std.stdio;
 import std.string;
@@ -1335,7 +1336,6 @@ void gen_call_prim(
 
     // TODO: exception branch, if any
 
-    // Jump to the target block directly
     ver.genBranch(
         as,
         contBranch,
@@ -1360,7 +1360,7 @@ void gen_call_prim(
             as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
             *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
             as.setWord(raSlot, scrRegs[0].opnd(64));
-            as.setType(raSlot, Type.INSPTR);
+            as.setType(raSlot, Type.RAWPTR);
 
             // Jump to the function entry block
             jmp32Ref(as, refList, target1);
@@ -1552,7 +1552,6 @@ void gen_call(
 
     // TODO: exception branch, if any
 
-    // Jump to the target block directly
     ver.genBranch(
         as,
         contBranch,
@@ -1571,7 +1570,7 @@ void gen_call(
             as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
             *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
             as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd(64));
-            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.INSPTR));
+            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RAWPTR));
 
             //as.printUint(scrRegs[0].opnd(64));
 
@@ -1833,7 +1832,6 @@ void gen_call_new(
 
     // TODO: exception branch, if any
 
-    // Jump to the target block directly
     ver.genBranch(
         as,
         contBranch,
@@ -1852,7 +1850,7 @@ void gen_call_new(
             as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
             *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
             as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd(64));
-            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.INSPTR));
+            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RAWPTR));
 
             //as.printUint(scrRegs[0].opnd(64));
 
@@ -1894,6 +1892,120 @@ void gen_call_new(
 
     // TODO: if not closure, call function to throw an exception
     // need to spill values before jumping to this
+}
+
+void gen_call_apply(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) auto op_call_apply(Interp interp, IRInstr instr, refptr retAddr)
+    {
+        auto closVal = interp.getArgVal(instr, 0);
+        auto thisVal = interp.getArgVal(instr, 1);
+        auto tblVal  = interp.getArgVal(instr, 2);
+        auto argcVal = interp.getArgUint32(instr, 3);
+
+        // TODO
+        /*
+        if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
+            return throwError(interp, instr, "TypeError", "call to non-function");
+
+        if (tblVal.type != Type.REFPTR || !valIsLayout(tblVal.word, LAYOUT_ARRTBL))
+            return throwError(interp, instr, "TypeError", "invalid argument table");
+        */
+
+        // Get the function object from the closure
+        auto closPtr = closVal.word.ptrVal;
+        auto fun = getClosFun(closPtr);
+
+        // Get the array table pointer
+        auto tblPtr = tblVal.word.ptrVal;
+
+        auto argVals = cast(ValuePair*)GC.malloc(ValuePair.sizeof * argcVal);
+
+        // Fetch the argument values from the array table
+        for (uint32_t i = 0; i < argcVal; ++i)
+        {
+            argVals[i].word.uint64Val = arrtbl_get_word(tblPtr, i);
+            argVals[i].type = cast(Type)arrtbl_get_type(tblPtr, i);
+        }
+
+        // Prepare the callee stack frame
+        interp.callFun(
+            fun,
+            retAddr,
+            closPtr,
+            thisVal.word,
+            thisVal.type,
+            argcVal,
+            argVals
+        );
+
+        GC.free(argVals);
+
+        // Return the function entry point code
+        return fun.entryCode;
+    }
+
+    // TODO: spill all
+
+    // Request a branch object for the continuation
+    auto contBranch = getBranchEdge(
+        as,
+        instr.getTarget(0),
+        st,
+        false
+    );
+
+    // TODO: exception branch, if any
+
+    ver.genBranch(
+        as,
+        contBranch,
+        null,
+        BranchShape.DEFAULT,
+        delegate void(
+            CodeBlock as,
+            FragmentRef[]* refList,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            as.pushJITRegs();
+
+            // Pass the interpreter and instruction as first two arguments
+            as.mov(cargRegs[0].opnd(64), interpReg.opnd(64));
+            as.ptr(cargRegs[1], instr);
+
+            // Write the return address on the stack
+            as.writeASM("mov", cargRegs[2], target0.getName);
+            as.mov(cargRegs[2].opnd(64), X86Opnd(uint64_t.max));
+            *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
+
+            // Call the host function
+            as.ptr(scrRegs[0], &op_call_apply);
+            as.call(scrRegs[0]);
+
+            as.popJITRegs();
+
+            // Jump to the address returned by the host function
+            as.jmp(X86Opnd(RAX));
+        }
+    );
+
+    //writeln("call block length: ", ver.length);
+
+    // Add the return value move code to the continuation branch
+    contBranch.markStart(as);
+    as.setWord(instr.outSlot, retWordReg.opnd(64));
+    as.setType(instr.outSlot, retTypeReg.opnd(8));
+
+    // Generate the continuation branch edge code
+    contBranch.genCode(as, st);
 }
 
 void gen_ret(

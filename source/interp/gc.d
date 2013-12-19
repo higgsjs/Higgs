@@ -558,6 +558,8 @@ Word gcForward(Interp interp, Word word, Type type)
         visitMap(interp, map);
         return word;
 
+        // FIXME
+        /*
         // Instruction pointer (IRInstr)
         case Type.INSPTR:
         if (word.ptrVal !is null)
@@ -568,6 +570,7 @@ Word gcForward(Interp interp, Word word, Type type)
                 visitFun(interp, instr.block.fun);
         }
         return word;
+        */
      
         // Return the word unchanged
         default:
