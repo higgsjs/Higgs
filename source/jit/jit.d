@@ -50,7 +50,7 @@ import options;
 import ir.ir;
 import ir.ast;
 import ir.livevars;
-import runtime.interp;
+import runtime.vm;
 import runtime.layout;
 import runtime.object;
 import runtime.string;
@@ -60,8 +60,8 @@ import jit.x86;
 import jit.moves;
 import jit.ops;
 
-/// R15: interpreter object pointer (C callee-save) 
-alias R15 interpReg;
+/// R15: VM object pointer (C callee-save) 
+alias R15 vmReg;
 
 /// R14: word stack pointer (C callee-save)
 alias R14 wspReg;
@@ -109,8 +109,8 @@ class CodeGenCtx
     /// Number of extra locals (if inlined)
     size_t extraLocals = 0;
 
-    /// Associated interpreter object
-    Interp interp;
+    /// Associated VM object
+    VM vm;
 
     /// Function this code belongs to
     IRFunction fun;
@@ -118,29 +118,29 @@ class CodeGenCtx
     /// Constructor call flag
     bool ctorCall;
 
-    this(IRFunction fun, bool ctorCall, Interp interp)
+    this(IRFunction fun, bool ctorCall, VM vm)
     {
         this.fun = fun;
         this.ctorCall = ctorCall;
-        this.interp = interp;
+        this.vm = vm;
     }
 }
 
 /**
 Get a code generation context for a given function
 */
-CodeGenCtx getCtx(IRFunction fun, bool ctorCall, Interp interp)
+CodeGenCtx getCtx(IRFunction fun, bool ctorCall, VM vm)
 {
     if (ctorCall is false)
     {
         if (fun.ctx is null)
-            fun.ctx = new CodeGenCtx(fun, false, interp);
+            fun.ctx = new CodeGenCtx(fun, false, vm);
         return fun.ctx;     
     }
     else
     {
         if (fun.ctorCtx is null)
-            fun.ctorCtx = new CodeGenCtx(fun, true, interp);
+            fun.ctorCtx = new CodeGenCtx(fun, true, vm);
         return fun.ctorCtx;
     }
 }
@@ -953,15 +953,15 @@ Function entry stub
 */
 class EntryStub : CodeFragment
 {
-    /// Associated interpreter
-    Interp interp;
+    /// Associated VM
+    VM vm;
 
     /// Constructor call flag
     bool ctorCall;
 
-    this(Interp interp, bool ctorCall)
+    this(VM vm, bool ctorCall)
     {
-        this.interp = interp;
+        this.vm = vm;
         this.ctorCall = ctorCall;
     }
 }
@@ -994,8 +994,8 @@ class BranchCode : CodeFragment
         assert (target !is null);
         auto succState = target.state;
         assert (succState !is null);
-        auto interp = succState.ctx.interp;
-        assert (interp !is null);
+        auto vm = succState.ctx.vm;
+        assert (vm !is null);
 
         // List of moves to transition to the successor state
         Move[] moveList;
@@ -1092,13 +1092,13 @@ class BranchCode : CodeFragment
         codeLen = cast(uint32_t)as.getWritePos() - this.startIdx;
         
         // Encode the final jump and version reference
-        as.jmp32Ref(&interp.refList, this.target);
+        as.jmp32Ref(&vm.refList, this.target);
 
         // Store the code end index
         markEnd(as);
 
         // Add the compiled fragment to the fragment list
-        interp.fragList ~= this;
+        vm.fragList ~= this;
 
         if (opts.jit_dumpasm)
         {
@@ -1200,7 +1200,7 @@ class VersionInst : BlockVersion
         // Generate the final branch code
         genFn(
             as,
-            &state.ctx.interp.refList,
+            &state.ctx.vm.refList,
             target0, 
             target1, 
             shape
@@ -1220,10 +1220,10 @@ BlockVersion getBlockVersion(
     bool noStub
 )
 {
-    auto interp = state.ctx.interp;
+    auto vm = state.ctx.vm;
 
     // Get the list of versions for this block
-    auto versions = interp.versionMap.get(block, []);
+    auto versions = vm.versionMap.get(block, []);
 
     // Best version found
     BlockVersion bestVer;
@@ -1289,10 +1289,10 @@ BlockVersion getBlockVersion(
     );
 
     // Add the new version to the list for this block
-    interp.versionMap[block] ~= ver;
+    vm.versionMap[block] ~= ver;
 
     // Queue the new version to be compiled
-    interp.compQueue ~= ver;
+    vm.compQueue ~= ver;
 
     // Return the newly created block version
     assert (ver.state.ctx is state.ctx);
@@ -1399,18 +1399,18 @@ BranchCode getBranchEdge(
 /**
 Compile all blocks in the compile queue
 */
-void compile(Interp interp)
+void compile(VM vm)
 {
     //writeln("entering compile");
 
-    assert (interp !is null);
-    auto as = interp.execHeap;
+    assert (vm !is null);
+    auto as = vm.execHeap;
     assert (as !is null);
 
-    assert (interp.compQueue.length > 0);
+    assert (vm.compQueue.length > 0);
 
     // Until the compilation queue is empty
-    while (interp.compQueue.length > 0)
+    while (vm.compQueue.length > 0)
     {
         assert (
             as.getRemSpace() >= JIT_MIN_BLOCK_SPACE,
@@ -1418,8 +1418,8 @@ void compile(Interp interp)
         );
 
         // Get a version to compile from the queue
-        auto ver = interp.compQueue.front;
-        interp.compQueue.popFront();
+        auto ver = vm.compQueue.front;
+        vm.compQueue.popFront();
 
         // If this is a version stub
         if (auto stub = cast(VersionStub)ver)
@@ -1520,7 +1520,7 @@ void compile(Interp interp)
 
         // Add the compiled version to the fragment
         // list in the order they were compiled in
-        interp.fragList ~= ver;
+        vm.fragList ~= ver;
 
         stats.numVersions++;
 
@@ -1531,11 +1531,11 @@ void compile(Interp interp)
         }
     }
 
-    assert (interp.compQueue.length is 0);
+    assert (vm.compQueue.length is 0);
 
     // For each fragment reference
     auto startPos = as.getWritePos();
-    foreach (refr; interp.refList)
+    foreach (refr; vm.refList)
     {
         auto frag = refr.frag;
         assert (frag.startIdx !is refr.frag.startIdx.max);
@@ -1563,7 +1563,7 @@ void compile(Interp interp)
 
     }
     as.setWritePos(startPos);
-    interp.refList.length = 0;
+    vm.refList.length = 0;
 
     if (opts.jit_dumpinfo)
     {
@@ -1580,20 +1580,20 @@ alias extern (C) void function() EntryFn;
 /**
 Compile an entry point for a unit-level function
 */
-EntryFn compileUnit(Interp interp, IRFunction fun)
+EntryFn compileUnit(VM vm, IRFunction fun)
 {
     auto startTimeUsecs = Clock.currAppTick().usecs();
 
     assert (fun.isUnit, "compileUnit on non-unit function");
 
-    auto as = interp.execHeap;
+    auto as = vm.execHeap;
 
     //writeln(fun);
 
     // Create a version instance object for the function entry
     auto entryInst = new VersionInst(
         fun.entryBlock, 
-        new CodeGenState(fun.getCtx(false, interp))
+        new CodeGenState(fun.getCtx(false, vm))
     );
 
     // Note the code start index for this version
@@ -1612,23 +1612,23 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
     as.push(R14);
     as.push(R15);
 
-    // Load a pointer to the interpreter object
-    as.ptr(interpReg, interp);
+    // Load a pointer to the VM object
+    as.ptr(vmReg, vm);
 
     // Load the stack pointers into RBX and RBP
-    as.getMember!("Interp.wsp")(wspReg, interpReg);
-    as.getMember!("Interp.tsp")(tspReg, interpReg);
+    as.getMember!("VM.wsp")(wspReg, vmReg);
+    as.getMember!("VM.tsp")(tspReg, vmReg);
 
     // Compile the unit entry version
-    interp.compQueue ~= entryInst;
-    compile(interp);
+    vm.compQueue ~= entryInst;
+    compile(vm);
 
     // Update the compilation time stat
     auto endTimeUsecs = Clock.currAppTick().usecs();
     stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 
     // Return a pointer to the entry block version's code
-    return cast(EntryFn)entryInst.getCodePtr(interp.execHeap);
+    return cast(EntryFn)entryInst.getCodePtr(vm.execHeap);
 }
 
 /**
@@ -1641,8 +1641,8 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
     //writeln("entering compileStub");
 
     auto state = stub.state;
-    auto interp = state.ctx.interp;
-    auto as = interp.execHeap;
+    auto vm = state.ctx.vm;
+    auto as = vm.execHeap;
 
     assert (stub.startIdx !is stub.startIdx.max);
     assert (stub.inst is null);
@@ -1652,12 +1652,12 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
     stub.inst = new VersionInst(stub.block, state);
 
     // Compile the version instance
-    interp.compQueue ~= stub.inst;
-    compile(interp);
+    vm.compQueue ~= stub.inst;
+    compile(vm);
     assert (stub.inst.startIdx !is stub.inst.startIdx.max);
 
     // Replace the stub by its instance in the version map
-    auto versions = interp.versionMap.get(stub.block, []);
+    auto versions = vm.versionMap.get(stub.block, []);
     auto stubIdx = versions.countUntil(stub);
     assert (stubIdx !is -1);
     versions[stubIdx] = stub.inst;
@@ -1691,12 +1691,12 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
 
     //writeln("entering compileEntry");
 
-    auto interp = stub.interp;
+    auto vm = stub.vm;
     auto ctorCall = stub.ctorCall;
 
     // Get the closure and IRFunction pointers
-    auto argCount = interp.getWord(3).uint32Val;
-    auto closPtr = interp.getWord(1).ptrVal;
+    auto argCount = vm.getWord(3).uint32Val;
+    auto closPtr = vm.getWord(1).ptrVal;
     assert (closPtr !is null);
     auto fun = getClosFun(closPtr);
     assert (fun !is null);
@@ -1709,8 +1709,8 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
     writeln("fun=", cast(ubyte*)fun);
     writeln("argCount=", argCount);
     if (argCount > 0)
-        writeln("first arg: ", interp.getWord(4).uint64Val);
-    writeln("orig stack size: ", interp.stackSize());
+        writeln("first arg: ", vm.getWord(4).uint64Val);
+    writeln("orig stack size: ", vm.stackSize());
     */
 
     // Store the original number of locals for the function
@@ -1721,33 +1721,33 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
     astToIR(fun.ast, fun);
 
     // Add space for the newly allocated locals
-    interp.push(fun.numLocals - origLocals);
+    vm.push(fun.numLocals - origLocals);
 
     /*
     writeln("fun.numLocals=", fun.numLocals);
     writeln("origLocals=", origLocals);
-    writeln("new stack size: ", interp.stackSize());
+    writeln("new stack size: ", vm.stackSize());
     */
 
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
         fun.entryBlock, 
-        new CodeGenState(fun.getCtx(false, interp)),
+        new CodeGenState(fun.getCtx(false, vm)),
         true
     );
     // Request an instance for the function entry block
     auto ctorInst = getBlockVersion(
         fun.entryBlock, 
-        new CodeGenState(fun.getCtx(true, interp)),
+        new CodeGenState(fun.getCtx(true, vm)),
         true
     );
 
     // Compile the entry versions
-    compile(interp);
+    compile(vm);
 
     // Store the entry code pointer on the function
-    fun.entryCode = entryInst.getCodePtr(interp.execHeap);
-    fun.ctorCode = ctorInst.getCodePtr(interp.execHeap);
+    fun.entryCode = entryInst.getCodePtr(vm.execHeap);
+    fun.ctorCode = ctorInst.getCodePtr(vm.execHeap);
     assert (fun.entryCode !is fun.ctorCode);
 
     //writeln("leaving compileEntry");
@@ -1762,16 +1762,16 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
 /**
 Get a function entry stub
 */
-const(ubyte)* getEntryStub(Interp interp, bool ctorCall)
+const(ubyte)* getEntryStub(VM vm, bool ctorCall)
 {
-    auto as = interp.execHeap;
+    auto as = vm.execHeap;
 
-    if (ctorCall is true && interp.ctorStub)
-        return interp.ctorStub.getCodePtr(as);
-    if (ctorCall is false && interp.entryStub)
-        return interp.entryStub.getCodePtr(as);
+    if (ctorCall is true && vm.ctorStub)
+        return vm.ctorStub.getCodePtr(as);
+    if (ctorCall is false && vm.entryStub)
+        return vm.entryStub.getCodePtr(as);
 
-    auto stub = new EntryStub(interp, ctorCall);
+    auto stub = new EntryStub(vm, ctorCall);
 
     stub.markStart(as);
 
@@ -1792,9 +1792,9 @@ const(ubyte)* getEntryStub(Interp interp, bool ctorCall)
     stub.markEnd(as);
 
     if (ctorCall)
-        interp.ctorStub = stub;
+        vm.ctorStub = stub;
     else
-        interp.entryStub = stub;
+        vm.entryStub = stub;
 
     return stub.getCodePtr(as);
 }
@@ -1896,24 +1896,24 @@ void setType(CodeBlock as, int32_t idx, Type type)
 void pushJITRegs(CodeBlock as)
 {
     // Save word and type stack pointers on the VM object
-    as.setMember!("Interp.wsp")(interpReg, wspReg);
-    as.setMember!("Interp.tsp")(interpReg, tspReg);
+    as.setMember!("VM.wsp")(vmReg, wspReg);
+    as.setMember!("VM.tsp")(vmReg, tspReg);
 
     // Push the VM register on the stack
-    as.push(interpReg);
-    as.push(interpReg);
+    as.push(vmReg);
+    as.push(vmReg);
 }
 
 // Load/restore the JIT state registers
 void popJITRegs(CodeBlock as)
 {
     // Pop the VM register from the stack
-    as.pop(interpReg);
-    as.pop(interpReg);
+    as.pop(vmReg);
+    as.pop(vmReg);
 
     // Load the word and type stack pointers from the VM object
-    as.getMember!("Interp.wsp")(wspReg, interpReg);
-    as.getMember!("Interp.tsp")(tspReg, interpReg);
+    as.getMember!("VM.wsp")(wspReg, vmReg);
+    as.getMember!("VM.tsp")(tspReg, vmReg);
 }
 
 /// Save caller-save registers on the stack before a C call
@@ -1949,12 +1949,12 @@ void popRegs(CodeBlock as)
 /*
 void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)
 {
-    extern (C) static void checkValFn(Interp interp, Word word, Type type, char* errorStr)
+    extern (C) static void checkValFn(VM vm, Word word, Type type, char* errorStr)
     {
         if (type != Type.REFPTR)
             return;
 
-        if (interp.inFromSpace(word.ptrVal) is false)
+        if (vm.inFromSpace(word.ptrVal) is false)
         {
             writefln(
                 "pointer not in from-space: %s\n%s",
@@ -1978,7 +1978,7 @@ void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)
 
     as.instr(MOV, cargRegs[2].reg(8), typeOpnd);
     as.instr(MOV, cargRegs[1], wordOpnd);
-    as.instr(MOV, cargRegs[0], interpReg);
+    as.instr(MOV, cargRegs[0], vmReg);
     as.instr(LEA, cargRegs[3], new X86IPRel(8, STR_DATA));
 
     auto checkFn = &checkValFn;

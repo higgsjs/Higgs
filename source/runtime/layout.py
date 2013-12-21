@@ -256,7 +256,7 @@ class Function:
         out = ''
         out += 'function ' + JS_DEF_PREFIX + self.name + '('
         params = self.params
-        if len(params) >= 1 and params[0].name == 'interp':
+        if len(params) >= 1 and params[0].name == 'vm':
             params = params[1:]
         out += sepList(map(lambda v:v.genJS(), params))
         out += ')\n'
@@ -449,7 +449,7 @@ class AllocExpr:
         return '$ir_heap_alloc(' + self.size.genJS() + ')'
 
     def genD(self):
-        return 'interp.heapAlloc(' + self.size.genD() + ')'
+        return 'vm.heapAlloc(' + self.size.genD() + ')'
 
 class CallExpr:
 
@@ -765,7 +765,7 @@ for layout in layouts:
     decls += [fun]
 
     # Generate the allocation function
-    fun = Function('refptr', layout['name'] + '_alloc', [Var('Interp', 'interp')])
+    fun = Function('refptr', layout['name'] + '_alloc', [Var('VM', 'vm')])
     szVars = {}
     for szField in layout['szFields']:
         szVar = Var(szField['type'], szField['name'])
@@ -800,8 +800,8 @@ for layout in layouts:
     decls += [fun]
 
     # Generate the GC visit function
-    fun = Function('void', layout['name'] + '_visit_gc', [Var('Interp', 'interp'), Var('refptr', 'o')])
-    interpVar = fun.params[0]
+    fun = Function('void', layout['name'] + '_visit_gc', [Var('VM', 'vm'), Var('refptr', 'o')])
+    vmVar = fun.params[0]
     objVar = fun.params[1]
 
     for field in layout['fields']:
@@ -823,10 +823,10 @@ for layout in layouts:
             if 'tpField' in field:
                 getWCall = CallExpr(getPref + field['name'], [objVar, loopVar])
                 getTCall = CallExpr(getPref + field['tpField']['name'], [objVar, loopVar])
-                fwdCall = CallExpr('gcForward', [interpVar, getWCall, getTCall])
+                fwdCall = CallExpr('gcForward', [vmVar, getWCall, getTCall])
             else:
                 getCall = CallExpr(getPref + field['name'], [objVar, loopVar])
-                fwdCall = CallExpr('gcForward', [interpVar, getCall])
+                fwdCall = CallExpr('gcForward', [vmVar, getCall])
 
             setCall = CallExpr(setPref + field['name'], [objVar, loopVar, fwdCall])
             fun.stmts += [ForLoop(loopVar, szVar, [ExprStmt(setCall)])]
@@ -837,10 +837,10 @@ for layout in layouts:
             if 'tpField' in field:
                 getWCall = CallExpr(getPref + field['name'], [objVar])
                 getTCall = CallExpr(getPref + field['tpField']['name'], [objVar])
-                fwdCall = CallExpr('gcForward', [interpVar, getWCall, getTCall])
+                fwdCall = CallExpr('gcForward', [vmVar, getWCall, getTCall])
             else:
                 getCall = CallExpr(getPref + field['name'], [objVar])
-                fwdCall = CallExpr('gcForward', [interpVar, getCall])
+                fwdCall = CallExpr('gcForward', [vmVar, getCall])
 
             setCall = CallExpr(setPref + field['name'], [objVar, fwdCall])
             fun.stmts += [ExprStmt(setCall)]
@@ -863,7 +863,7 @@ fun.stmts += [ExprStmt(CallExpr('assert', [Cst('false'), Cst('"invalid layout in
 decls += [fun]
 
 # Generate the GC visit dispatch method
-fun = Function('void', 'layout_visit_gc', [Var('Interp', 'interp'), Var('refptr', 'o')])
+fun = Function('void', 'layout_visit_gc', [Var('VM', 'vm'), Var('refptr', 'o')])
 
 typeVar = Var('uint32', 't')
 fun.stmts += [DeclStmt(typeVar, CallExpr('obj_get_header', [fun.params[1]]))]
@@ -892,7 +892,7 @@ JSFile.write(comment)
 
 DFile.write('module runtime.layout;\n')
 DFile.write('\n');
-DFile.write('import runtime.interp;\n')
+DFile.write('import runtime.vm;\n')
 DFile.write('import runtime.gc;\n')
 DFile.write('\n');
 

@@ -42,7 +42,7 @@ import std.conv;
 import std.math;
 import std.string;
 import std.algorithm;
-import runtime.interp;
+import runtime.vm;
 import runtime.layout;
 import runtime.gc;
 
@@ -115,19 +115,19 @@ struct TypeSet
     Construct a new type set
     */
     this(
-        Interp interp, 
+        VM vm, 
         TypeFlags flags = TYPE_EMPTY,
         double rangeMin = 0,
         double rangeMax = 0,
         refptr[MAX_OBJ_SET_SIZE]* objSet = null
     )
     {
-        this.interp = interp;
+        this.vm = vm;
 
         // Add this type set to the linked list
         this.prev = null;
-        this.next = interp.firstSet;
-        interp.firstSet = &this;
+        this.next = vm.firstSet;
+        vm.firstSet = &this;
 
         this.flags = flags;
 
@@ -143,9 +143,9 @@ struct TypeSet
     /**
     Construct a type set from a value
     */
-    this(Interp interp, ValuePair val)
+    this(VM vm, ValuePair val)
     {
-        this(interp);
+        this(vm);
 
         auto word = val.word;
 
@@ -206,14 +206,14 @@ struct TypeSet
     ~this()
     {
         assert (
-            interp !is null,
-            "interp is null"
+            vm !is null,
+            "VM is null"
         );
 
         if (prev)
             prev.next = next;
         else
-            this.interp.firstSet = next;
+            this.vm.firstSet = next;
 
         if (next)
             next.prev = prev;
@@ -279,7 +279,7 @@ struct TypeSet
         }
 
         return TypeSet(
-            interp,
+            vm,
             flags,
             rangeMin,
             rangeMax,
@@ -415,8 +415,8 @@ struct TypeSet
     //{
     //}
 
-    /// Associated interpreter
-    private Interp interp;
+    /// Associated VM
+    private VM vm;
 
     /// Linked list pointers, type sets contain 
     /// heap refs and must be tracked by the GC

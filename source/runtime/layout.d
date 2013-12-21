@@ -4,7 +4,7 @@
 
 module runtime.layout;
 
-import runtime.interp;
+import runtime.vm;
 import runtime.gc;
 
 alias ubyte* funptr;
@@ -108,18 +108,18 @@ extern (C) uint32 str_sizeof(refptr o)
     return str_comp_size(str_get_len(o));
 }
 
-extern (C) refptr str_alloc(Interp interp, uint32 len)
+extern (C) refptr str_alloc(VM vm, uint32 len)
 {    
-    auto o = interp.heapAlloc(str_comp_size(len));
+    auto o = vm.heapAlloc(str_comp_size(len));
     str_set_len(o, len);
     str_set_next(o, null);
     str_set_header(o, 0);
     return o;
 }
 
-extern (C) void str_visit_gc(Interp interp, refptr o)
+extern (C) void str_visit_gc(VM vm, refptr o)
 {    
-    str_set_next(o, gcForward(interp, str_get_next(o)));
+    str_set_next(o, gcForward(vm, str_get_next(o)));
 }
 
 const uint32 LAYOUT_STRTBL = 1;
@@ -209,9 +209,9 @@ extern (C) uint32 strtbl_sizeof(refptr o)
     return strtbl_comp_size(strtbl_get_cap(o));
 }
 
-extern (C) refptr strtbl_alloc(Interp interp, uint32 cap)
+extern (C) refptr strtbl_alloc(VM vm, uint32 cap)
 {    
-    auto o = interp.heapAlloc(strtbl_comp_size(cap));
+    auto o = vm.heapAlloc(strtbl_comp_size(cap));
     strtbl_set_cap(o, cap);
     strtbl_set_next(o, null);
     strtbl_set_header(o, 1);
@@ -223,13 +223,13 @@ extern (C) refptr strtbl_alloc(Interp interp, uint32 cap)
     return o;
 }
 
-extern (C) void strtbl_visit_gc(Interp interp, refptr o)
+extern (C) void strtbl_visit_gc(VM vm, refptr o)
 {    
-    strtbl_set_next(o, gcForward(interp, strtbl_get_next(o)));
+    strtbl_set_next(o, gcForward(vm, strtbl_get_next(o)));
     auto cap = strtbl_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        strtbl_set_str(o, i, gcForward(interp, strtbl_get_str(o, i)));
+        strtbl_set_str(o, i, gcForward(vm, strtbl_get_str(o, i)));
     }
 }
 
@@ -350,9 +350,9 @@ extern (C) uint32 obj_sizeof(refptr o)
     return obj_comp_size(obj_get_cap(o));
 }
 
-extern (C) refptr obj_alloc(Interp interp, uint32 cap)
+extern (C) refptr obj_alloc(VM vm, uint32 cap)
 {    
-    auto o = interp.heapAlloc(obj_comp_size(cap));
+    auto o = vm.heapAlloc(obj_comp_size(cap));
     obj_set_cap(o, cap);
     obj_set_next(o, null);
     obj_set_header(o, 2);
@@ -367,14 +367,14 @@ extern (C) refptr obj_alloc(Interp interp, uint32 cap)
     return o;
 }
 
-extern (C) void obj_visit_gc(Interp interp, refptr o)
+extern (C) void obj_visit_gc(VM vm, refptr o)
 {    
-    obj_set_next(o, gcForward(interp, obj_get_next(o)));
-    obj_set_proto(o, gcForward(interp, obj_get_proto(o)));
+    obj_set_next(o, gcForward(vm, obj_get_next(o)));
+    obj_set_proto(o, gcForward(vm, obj_get_proto(o)));
     auto cap = obj_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        obj_set_word(o, i, gcForward(interp, obj_get_word(o, i), obj_get_type(o, i)));
+        obj_set_word(o, i, gcForward(vm, obj_get_word(o, i), obj_get_type(o, i)));
     }
 }
 
@@ -540,9 +540,9 @@ extern (C) uint32 clos_sizeof(refptr o)
     return clos_comp_size(clos_get_cap(o), clos_get_num_cells(o));
 }
 
-extern (C) refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
+extern (C) refptr clos_alloc(VM vm, uint32 cap, uint32 num_cells)
 {    
-    auto o = interp.heapAlloc(clos_comp_size(cap, num_cells));
+    auto o = vm.heapAlloc(clos_comp_size(cap, num_cells));
     clos_set_cap(o, cap);
     clos_set_num_cells(o, num_cells);
     clos_set_next(o, null);
@@ -563,19 +563,19 @@ extern (C) refptr clos_alloc(Interp interp, uint32 cap, uint32 num_cells)
     return o;
 }
 
-extern (C) void clos_visit_gc(Interp interp, refptr o)
+extern (C) void clos_visit_gc(VM vm, refptr o)
 {    
-    clos_set_next(o, gcForward(interp, clos_get_next(o)));
-    clos_set_proto(o, gcForward(interp, clos_get_proto(o)));
+    clos_set_next(o, gcForward(vm, clos_get_next(o)));
+    clos_set_proto(o, gcForward(vm, clos_get_proto(o)));
     auto cap = clos_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        clos_set_word(o, i, gcForward(interp, clos_get_word(o, i), clos_get_type(o, i)));
+        clos_set_word(o, i, gcForward(vm, clos_get_word(o, i), clos_get_type(o, i)));
     }
     auto num_cells = clos_get_num_cells(o);
     for (uint32 i = 0; i < num_cells; ++i)
     {    
-        clos_set_cell(o, i, gcForward(interp, clos_get_cell(o, i)));
+        clos_set_cell(o, i, gcForward(vm, clos_get_cell(o, i)));
     }
 }
 
@@ -651,9 +651,9 @@ extern (C) uint32 cell_sizeof(refptr o)
     return cell_comp_size();
 }
 
-extern (C) refptr cell_alloc(Interp interp)
+extern (C) refptr cell_alloc(VM vm)
 {    
-    auto o = interp.heapAlloc(cell_comp_size());
+    auto o = vm.heapAlloc(cell_comp_size());
     cell_set_next(o, null);
     cell_set_header(o, 4);
     cell_set_word(o, UNDEF.uint64Val);
@@ -661,10 +661,10 @@ extern (C) refptr cell_alloc(Interp interp)
     return o;
 }
 
-extern (C) void cell_visit_gc(Interp interp, refptr o)
+extern (C) void cell_visit_gc(VM vm, refptr o)
 {    
-    cell_set_next(o, gcForward(interp, cell_get_next(o)));
-    cell_set_word(o, gcForward(interp, cell_get_word(o), cell_get_type(o)));
+    cell_set_next(o, gcForward(vm, cell_get_next(o)));
+    cell_set_word(o, gcForward(vm, cell_get_word(o), cell_get_type(o)));
 }
 
 const uint32 LAYOUT_ARR = 5;
@@ -814,9 +814,9 @@ extern (C) uint32 arr_sizeof(refptr o)
     return arr_comp_size(arr_get_cap(o));
 }
 
-extern (C) refptr arr_alloc(Interp interp, uint32 cap)
+extern (C) refptr arr_alloc(VM vm, uint32 cap)
 {    
-    auto o = interp.heapAlloc(arr_comp_size(cap));
+    auto o = vm.heapAlloc(arr_comp_size(cap));
     arr_set_cap(o, cap);
     arr_set_next(o, null);
     arr_set_header(o, 5);
@@ -831,16 +831,16 @@ extern (C) refptr arr_alloc(Interp interp, uint32 cap)
     return o;
 }
 
-extern (C) void arr_visit_gc(Interp interp, refptr o)
+extern (C) void arr_visit_gc(VM vm, refptr o)
 {    
-    arr_set_next(o, gcForward(interp, arr_get_next(o)));
-    arr_set_proto(o, gcForward(interp, arr_get_proto(o)));
+    arr_set_next(o, gcForward(vm, arr_get_next(o)));
+    arr_set_proto(o, gcForward(vm, arr_get_proto(o)));
     auto cap = arr_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        arr_set_word(o, i, gcForward(interp, arr_get_word(o, i), arr_get_type(o, i)));
+        arr_set_word(o, i, gcForward(vm, arr_get_word(o, i), arr_get_type(o, i)));
     }
-    arr_set_tbl(o, gcForward(interp, arr_get_tbl(o)));
+    arr_set_tbl(o, gcForward(vm, arr_get_tbl(o)));
 }
 
 const uint32 LAYOUT_ARRTBL = 6;
@@ -930,9 +930,9 @@ extern (C) uint32 arrtbl_sizeof(refptr o)
     return arrtbl_comp_size(arrtbl_get_cap(o));
 }
 
-extern (C) refptr arrtbl_alloc(Interp interp, uint32 cap)
+extern (C) refptr arrtbl_alloc(VM vm, uint32 cap)
 {    
-    auto o = interp.heapAlloc(arrtbl_comp_size(cap));
+    auto o = vm.heapAlloc(arrtbl_comp_size(cap));
     arrtbl_set_cap(o, cap);
     arrtbl_set_next(o, null);
     arrtbl_set_header(o, 6);
@@ -947,13 +947,13 @@ extern (C) refptr arrtbl_alloc(Interp interp, uint32 cap)
     return o;
 }
 
-extern (C) void arrtbl_visit_gc(Interp interp, refptr o)
+extern (C) void arrtbl_visit_gc(VM vm, refptr o)
 {    
-    arrtbl_set_next(o, gcForward(interp, arrtbl_get_next(o)));
+    arrtbl_set_next(o, gcForward(vm, arrtbl_get_next(o)));
     auto cap = arrtbl_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        arrtbl_set_word(o, i, gcForward(interp, arrtbl_get_word(o, i), arrtbl_get_type(o, i)));
+        arrtbl_set_word(o, i, gcForward(vm, arrtbl_get_word(o, i), arrtbl_get_type(o, i)));
     }
 }
 
@@ -991,42 +991,42 @@ extern (C) uint32 layout_sizeof(refptr o)
     assert(false, "invalid layout in layout_sizeof");
 }
 
-extern (C) void layout_visit_gc(Interp interp, refptr o)
+extern (C) void layout_visit_gc(VM vm, refptr o)
 {    
     auto t = obj_get_header(o);
     if ((t == LAYOUT_STR))
     {    
-        str_visit_gc(interp, o);
+        str_visit_gc(vm, o);
         return;
     }
     if ((t == LAYOUT_STRTBL))
     {    
-        strtbl_visit_gc(interp, o);
+        strtbl_visit_gc(vm, o);
         return;
     }
     if ((t == LAYOUT_OBJ))
     {    
-        obj_visit_gc(interp, o);
+        obj_visit_gc(vm, o);
         return;
     }
     if ((t == LAYOUT_CLOS))
     {    
-        clos_visit_gc(interp, o);
+        clos_visit_gc(vm, o);
         return;
     }
     if ((t == LAYOUT_CELL))
     {    
-        cell_visit_gc(interp, o);
+        cell_visit_gc(vm, o);
         return;
     }
     if ((t == LAYOUT_ARR))
     {    
-        arr_visit_gc(interp, o);
+        arr_visit_gc(vm, o);
         return;
     }
     if ((t == LAYOUT_ARRTBL))
     {    
-        arrtbl_visit_gc(interp, o);
+        arrtbl_visit_gc(vm, o);
         return;
     }
     assert(false, "invalid layout in layout_visit_gc");

@@ -49,7 +49,7 @@ import util.string;
 import parser.ast;
 import ir.ops;
 import ir.livevars;
-import runtime.interp;
+import runtime.vm;
 import runtime.layout;
 import runtime.object;
 import jit.jit;

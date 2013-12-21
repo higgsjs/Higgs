@@ -35,7 +35,7 @@
 *
 *****************************************************************************/
 
-module runtime.interp;
+module runtime.vm;
 
 import core.memory;
 import std.stdio;
@@ -66,8 +66,8 @@ Run-time error
 */
 class RunError : Error
 {
-    /// Associated interpreter
-    Interp interp;
+    /// Associated virtual machine
+    VM vm;
 
     /// Exception value
     ValuePair excVal;
@@ -78,9 +78,9 @@ class RunError : Error
     /// Stack trace
     IRInstr[] trace;
 
-    this(Interp interp, ValuePair excVal, IRInstr[] trace)
+    this(VM vm, ValuePair excVal, IRInstr[] trace)
     {
-        this.interp = interp;
+        this.vm = vm;
         this.excVal = excVal;
         this.trace = trace;
 
@@ -88,9 +88,9 @@ class RunError : Error
             valIsLayout(excVal.word, LAYOUT_OBJ))
         {
             auto msgStr = getProp(
-                interp, 
+                vm, 
                 excVal.word.ptrVal,
-                getString(interp, "message")
+                getString(vm, "message")
             );
 
             this.message = valToString(msgStr);
@@ -302,9 +302,9 @@ immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
 immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
 
 /**
-Interpreter
+Virtual Machine (VM) instance
 */
-class Interp
+class VM
 {
     /// Word stack
     Word* wStack;
@@ -413,7 +413,7 @@ class Interp
     EntryStub ctorStub;
 
     /**
-    Constructor, initializes/resets the interpreter state
+    Constructor, initializes the VM state
     */
     this(bool loadRuntime = true, bool loadStdLib = true)
     {
@@ -687,7 +687,7 @@ class Interp
         tsp -= numWords;
 
         if (wsp < wStack)
-            throw new Error("interpreter stack overflow");
+            throw new Error("stack overflow");
     }
 
     /**
@@ -699,7 +699,7 @@ class Interp
         tsp += numWords;
 
         if (wsp > wUpperLimit)
-            throw new Error("interpreter stack underflow");
+            throw new Error("stack underflow");
     }
 
     /**
@@ -1122,7 +1122,7 @@ class Interp
 
 // FIXME
 /*
-void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
+void throwExc(VM vm, IRInstr instr, ValuePair excVal)
 {
     //writefln("throw");
 
@@ -1138,7 +1138,7 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
             //writefln("reached bottom of stack");
 
             // Throw run-time error exception
-            throw new RunError(interp, excVal, trace);
+            throw new RunError(vm, excVal, trace);
         }
 
         // Add the current instruction to the stack trace
@@ -1150,13 +1150,13 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
             //writefln("found exception target");
 
             // Set the return value slot to the exception value
-            interp.setSlot(
+            vm.setSlot(
                 curInstr.outSlot, 
                 excVal
             );
 
             // Go to the exception target
-            interp.branch(curInstr.getTarget(1));
+            vm.branch(curInstr.getTarget(1));
 
             // Stop unwinding the stack
             return;
@@ -1168,22 +1168,22 @@ void throwExc(Interp interp, IRInstr instr, ValuePair excVal)
         auto raSlot = curInstr.block.fun.raVal.outSlot;
 
         // Get the calling instruction for the current stack frame
-        curInstr = cast(IRInstr)interp.wsp[raSlot].ptrVal;
+        curInstr = cast(IRInstr)vm.wsp[raSlot].ptrVal;
 
         // Get the argument count
-        auto argCount = interp.wsp[argcSlot].int32Val;
+        auto argCount = vm.wsp[argcSlot].int32Val;
 
         // Compute the actual number of extra arguments to pop
         size_t extraArgs = (argCount > numParams)? (argCount - numParams):0;
 
         // Pop all local stack slots and arguments
-        interp.pop(numLocals + extraArgs);
+        vm.pop(numLocals + extraArgs);
     }
 }
 */
 
 void throwError(
-    Interp interp,
+    VM vm,
     IRInstr instr,
     string ctorName, 
     string errMsg
@@ -1193,14 +1193,14 @@ void throwError(
 
     // FIXME
     /*
-    auto errStr = GCRoot(interp, getString(interp, to!wstring(errMsg)));
+    auto errStr = GCRoot(vm, getString(vm, to!wstring(errMsg)));
 
-    auto ctorStr = GCRoot(interp, getString(interp, to!wstring(ctorName)));
+    auto ctorStr = GCRoot(vm, getString(vm, to!wstring(ctorName)));
     auto errCtor = GCRoot(
-        interp,
+        vm,
         getProp(
-            interp,
-            interp.globalObj,
+            vm,
+            vm.globalObj,
             ctorStr.ptr
         )
     );
@@ -1208,11 +1208,11 @@ void throwError(
     if (errCtor.type == Type.REFPTR &&
         valIsLayout(errCtor.word, LAYOUT_OBJ))
     {
-        auto protoStr = GCRoot(interp, getString(interp, "prototype"w));
+        auto protoStr = GCRoot(vm, getString(vm, "prototype"w));
         auto errProto = GCRoot(
-            interp,
+            vm,
             getProp(
-                interp,
+                vm,
                 errCtor.ptr,
                 protoStr.ptr
             )
@@ -1223,25 +1223,25 @@ void throwError(
         {
             // Create the error object
             auto excObj = GCRoot(
-                interp,
+                vm,
                     newObj(
-                    interp, 
-                    new ObjMap(interp, 1), 
+                    vm, 
+                    new ObjMap(vm, 1), 
                     errProto.ptr
                 )
             );
 
             // Set the error "message" property
-            auto msgStr = GCRoot(interp, getString(interp, "message"w));
+            auto msgStr = GCRoot(vm, getString(vm, "message"w));
             setProp(
-                interp,
+                vm,
                 excObj.ptr,
                 msgStr.ptr,
                 errStr.pair
             );
 
             throwExc(
-                interp,
+                vm,
                 instr,
                 excObj.pair
             );
@@ -1252,7 +1252,7 @@ void throwError(
 
     // Throw the error string directly
     throwExc(
-        interp,
+        vm,
         instr,
         errStr.pair
     );

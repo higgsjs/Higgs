@@ -37,7 +37,7 @@
 
 import std.stdio;
 import parser.parser;
-import runtime.interp;
+import runtime.vm;
 import repl;
 import options;
 
@@ -53,8 +53,8 @@ void main(string[] args)
     // Get the names of files to execute
     auto fileNames = args[1..$];
 
-    // Interpreter instance
-    auto interp = new Interp(true, !opts.nostdlib);
+    // VM instance
+    auto vm = new VM(true, !opts.nostdlib);
 
     // If file arguments were passed or there is 
     // a string of code to be executed
@@ -63,10 +63,10 @@ void main(string[] args)
         try
         {
             foreach (fileName; fileNames)
-                interp.load(fileName);
+                vm.load(fileName);
 
             if (opts.execString)
-                interp.evalString(opts.execString);
+                vm.evalString(opts.execString);
         }
 
         catch (ParseError e)
@@ -84,7 +84,7 @@ void main(string[] args)
     if (opts.repl || (fileNames.length == 0 && opts.execString is null))
     {
         // Start the REPL
-        repl.repl(interp);
+        repl.repl(vm);
     }
 }
 

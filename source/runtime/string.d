@@ -40,7 +40,7 @@ module runtime.string;
 import std.stdio;
 import std.string;
 import std.conv;
-import runtime.interp;
+import runtime.vm;
 import runtime.layout;
 import runtime.gc;
 
@@ -119,9 +119,9 @@ bool streq(refptr strA, refptr strB)
 /**
 Find a string in the string table if duplicate, or add it to the string table
 */
-refptr getTableStr(Interp interp, refptr str)
+refptr getTableStr(VM vm, refptr str)
 {
-    auto strTbl = interp.strTbl;
+    auto strTbl = vm.strTbl;
 
     // Get the size of the string table
     auto tblSize = strtbl_get_cap(strTbl);
@@ -176,10 +176,10 @@ refptr getTableStr(Interp interp, refptr str)
         tblSize * STR_TBL_MAX_LOAD_NUM)
     {
         // Store the string pointer in a GC root object
-        auto strRoot = GCRoot(interp, str);
+        auto strRoot = GCRoot(vm, str);
 
         // Extend the string table
-        extStrTable(interp, strTbl, tblSize, numStrings);
+        extStrTable(vm, strTbl, tblSize, numStrings);
 
         // Restore the string pointer
         str = strRoot.ptr;
@@ -192,7 +192,7 @@ refptr getTableStr(Interp interp, refptr str)
 /**
 Extend the string table's capacity
 */
-void extStrTable(Interp interp, refptr curTbl, uint32 curSize, uint32 numStrings)
+void extStrTable(VM vm, refptr curTbl, uint32 curSize, uint32 numStrings)
 {
     // Compute the new table size
     auto newSize = curSize * 2 + 1;
@@ -203,7 +203,7 @@ void extStrTable(Interp interp, refptr curTbl, uint32 curSize, uint32 numStrings
     //printInt(newSize);
 
     // Allocate a new, larger hash table
-    auto newTbl = strtbl_alloc(interp, newSize);
+    auto newTbl = strtbl_alloc(vm, newSize);
 
     // Set the number of strings stored
     strtbl_set_num_strs(newTbl, numStrings);
@@ -257,15 +257,15 @@ void extStrTable(Interp interp, refptr curTbl, uint32 curSize, uint32 numStrings
     }
 
     // Update the string table reference
-    interp.strTbl = newTbl;
+    vm.strTbl = newTbl;
 }
 
 /**
 Get the string object for a given string
 */
-refptr getString(Interp interp, wstring str)
+refptr getString(VM vm, wstring str)
 {
-    auto objPtr = str_alloc(interp, cast(uint32)str.length);
+    auto objPtr = str_alloc(vm, cast(uint32)str.length);
 
     for (uint32 i = 0; i < str.length; ++i)
         str_set_data(objPtr, i, str[i]);
@@ -274,7 +274,7 @@ refptr getString(Interp interp, wstring str)
     compStrHash(objPtr);
 
     // Find/add the string in the string table
-    objPtr = getTableStr(interp, objPtr);
+    objPtr = getTableStr(vm, objPtr);
 
     return objPtr;
 }

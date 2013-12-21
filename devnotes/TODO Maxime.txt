@@ -47,6 +47,8 @@ TODO: unit test for global property access of prop from Object.prototype
 - Won't this require spilling everything?
 - Property could get deleted
 
+TODO: assertThrows should be able to check the exception classname
+
 ------------------------------------------------------------------------------
 
 TODO: execHeap collection/expansion
@@ -80,9 +82,8 @@ TODO: exception support
 - const(ubyte)* getExcExit(VM vm)
 - Exception traversal needs current IRFunction
 
-TODO: rename Interp class to VM
-- rename uses and interp directory as well
-- Have VM.compile(), VM.queue(version), VM.addVerRef(), etc?
+TODO: VM.compile(), VM.queue(version), VM.addVerRef(), etc?
+- grep for .refList, .compQueue
 - split jit.d into jit/state, jit/util, etc?
 
 
@@ -93,6 +94,12 @@ TODO: rename Interp class to VM
 
 
 
+
+
+
+[DONE] TODO: rename Interp class to VM
+- rename uses and interp directory as well
+- Grep for interp, Interp, interpreter
 
 [DONE] TODO: get_ast_str
 

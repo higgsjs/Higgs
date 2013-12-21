@@ -52,7 +52,7 @@ import stats;
 import ir.ir;
 import ir.ops;
 import ir.ast;
-import runtime.interp;
+import runtime.vm;
 import runtime.layout;
 import runtime.object;
 import runtime.string;
@@ -115,21 +115,21 @@ void gen_set_str(
 
     if (linkVal.linkIdx is NULL_LINK)
     {
-        auto interp = st.ctx.interp;
+        auto vm = st.ctx.vm;
 
         // Find the string in the string table
         auto strArg = cast(IRString)instr.getArg(0);
         assert (strArg !is null);
-        auto strPtr = getString(interp, strArg.str);
+        auto strPtr = getString(vm, strArg.str);
 
         // Allocate a link table entry
-        linkVal.linkIdx = interp.allocLink();
+        linkVal.linkIdx = vm.allocLink();
 
-        interp.setLinkWord(linkVal.linkIdx, Word.ptrv(strPtr));
-        interp.setLinkType(linkVal.linkIdx, Type.REFPTR);
+        vm.setLinkWord(linkVal.linkIdx, Word.ptrv(strPtr));
+        vm.setLinkType(linkVal.linkIdx, Type.REFPTR);
     }
 
-    as.getMember!("Interp.wLinkTable")(scrRegs[0], interpReg);
+    as.getMember!("VM.wLinkTable")(scrRegs[0], vmReg);
     as.mov(scrRegs[0].opnd(64), X86Opnd(64, scrRegs[0], 8 * linkVal.linkIdx));
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -533,10 +533,10 @@ void FPToStr(string fmt)(
     CodeBlock as
 )
 {
-    extern (C) static refptr toStrFn(Interp interp, double f)
+    extern (C) static refptr toStrFn(VM vm, double f)
     {
         auto str = format(fmt, f);
-        return getString(interp, to!wstring(str));
+        return getString(vm, to!wstring(str));
     }
 
     // TODO: spill all for GC
@@ -548,7 +548,7 @@ void FPToStr(string fmt)(
     as.pushJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0], interpReg);
+    as.mov(cargRegs[0], vmReg);
     as.movq(X86Opnd(XMM0), opnd0);
     as.ptr(scrRegs[0], &toStrFn);
     as.call(scrRegs[0]);
@@ -1234,7 +1234,7 @@ void gen_call_prim(
     CodeBlock as
 )
 {
-    auto interp = st.ctx.interp;
+    auto vm = st.ctx.vm;
 
     // Function name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
@@ -1242,12 +1242,12 @@ void gen_call_prim(
     auto nameStr = strArg.str;
 
     // Get the primitve function from the global object
-    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
     assert (globalMap !is null);
     auto propIdx = globalMap.getPropIdx(nameStr, true);
     assert (propIdx !is uint32_t.max);
-    assert (propIdx < obj_get_cap(interp.globalObj));
-    auto closPtr = cast(refptr)obj_get_word(interp.globalObj, propIdx);
+    assert (propIdx < obj_get_cap(vm.globalObj));
+    auto closPtr = cast(refptr)obj_get_word(vm.globalObj, propIdx);
     assert (valIsLayout(Word.ptrv(closPtr), LAYOUT_CLOS));
     auto fun = getClosFun(closPtr);
 
@@ -1323,7 +1323,7 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
         fun.entryBlock, 
-        new CodeGenState(fun.getCtx(false, interp)),
+        new CodeGenState(fun.getCtx(false, vm)),
         true
     );
 
@@ -1416,7 +1416,7 @@ void gen_call(
     );
 
     // TODO
-    // If the value is not a reference, bailout to the interpreter
+    // If the value is not a reference, bailout
     //as.cmp(closType, Type.REFPTR);
     //as.jne(BAILOUT);
 
@@ -1624,10 +1624,10 @@ void gen_call_new(
 )
 {
     /// Host function to allocate the "this" object
-    extern (C) refptr makeThisObj(Interp interp, refptr closPtr)
+    extern (C) refptr makeThisObj(VM vm, refptr closPtr)
     {
         // Get the function object from the closure
-        auto clos = GCRoot(interp, closPtr);
+        auto clos = GCRoot(vm, closPtr);
         auto fun = getClosFun(clos.ptr);
 
         assert (
@@ -1636,11 +1636,11 @@ void gen_call_new(
         );
 
         // Lookup the "prototype" property on the closure
-        auto protoStr = GCRoot(interp, getString(interp, "prototype"));
+        auto protoStr = GCRoot(vm, getString(vm, "prototype"));
         auto protoObj = GCRoot(
-            interp,
+            vm,
             getProp(
-                interp, 
+                vm, 
                 clos.ptr,
                 protoStr.ptr
             )
@@ -1652,15 +1652,15 @@ void gen_call_new(
         // Lazily allocate the "this" object map if it doesn't already exist
         if (ctorMap is null)
         {
-            ctorMap = new ObjMap(interp, 0);
+            ctorMap = new ObjMap(vm, 0);
             clos_set_ctor_map(clos.ptr, cast(rawptr)ctorMap);
         }
 
         // Allocate the "this" object
         auto thisObj = GCRoot(
-            interp,
+            vm,
             newObj(
-                interp, 
+                vm, 
                 ctorMap,
                 protoObj.ptr
             )
@@ -1690,7 +1690,7 @@ void gen_call_new(
     );
 
     // TODO
-    // If the value is not a reference, bailout to the interpreter
+    // If the value is not a reference, bailout
     //as.cmp(closType, Type.REFPTR);
     //as.jne(BAILOUT);
 
@@ -1806,7 +1806,7 @@ void gen_call_new(
     as.push(scrRegs[2]);
 
     // Call a host function to allocate the "this" object
-    as.mov(cargRegs[0].opnd(64), interpReg.opnd(64));
+    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
     as.mov(cargRegs[1].opnd(64), closReg);
     as.ptr(scrRegs[0], &makeThisObj);
     as.call(scrRegs[0].opnd(64));
@@ -1902,20 +1902,20 @@ void gen_call_apply(
     CodeBlock as
 )
 {
-    extern (C) auto op_call_apply(Interp interp, IRInstr instr, refptr retAddr)
+    extern (C) auto op_call_apply(VM vm, IRInstr instr, refptr retAddr)
     {
-        auto closVal = interp.getArgVal(instr, 0);
-        auto thisVal = interp.getArgVal(instr, 1);
-        auto tblVal  = interp.getArgVal(instr, 2);
-        auto argcVal = interp.getArgUint32(instr, 3);
+        auto closVal = vm.getArgVal(instr, 0);
+        auto thisVal = vm.getArgVal(instr, 1);
+        auto tblVal  = vm.getArgVal(instr, 2);
+        auto argcVal = vm.getArgUint32(instr, 3);
 
         // TODO
         /*
         if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
-            return throwError(interp, instr, "TypeError", "call to non-function");
+            return throwError(vm, instr, "TypeError", "call to non-function");
 
         if (tblVal.type != Type.REFPTR || !valIsLayout(tblVal.word, LAYOUT_ARRTBL))
-            return throwError(interp, instr, "TypeError", "invalid argument table");
+            return throwError(vm, instr, "TypeError", "invalid argument table");
         */
 
         // Get the function object from the closure
@@ -1935,7 +1935,7 @@ void gen_call_apply(
         }
 
         // Prepare the callee stack frame
-        interp.callFun(
+        vm.callFun(
             fun,
             retAddr,
             closPtr,
@@ -1978,8 +1978,8 @@ void gen_call_apply(
         {
             as.pushJITRegs();
 
-            // Pass the interpreter and instruction as first two arguments
-            as.mov(cargRegs[0].opnd(64), interpReg.opnd(64));
+            // Pass the VM and instruction as first two arguments
+            as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
             as.ptr(cargRegs[1], instr);
 
             // Write the return address on the stack
@@ -2059,9 +2059,9 @@ void gen_ret(
         as.add(tspReg, 1 * numPop);
         as.add(wspReg, 8 * numPop);
 
-        // Store the stack pointers back in the interpreter
-        as.setMember!("Interp.wsp")(interpReg, wspReg);
-        as.setMember!("Interp.tsp")(interpReg, tspReg);
+        // Store the stack pointers back in the VM
+        as.setMember!("VM.wsp")(vmReg, wspReg);
+        as.setMember!("VM.tsp")(vmReg, tspReg);
 
         // Restore the callee-save GP registers
         as.pop(R15);
@@ -2074,7 +2074,7 @@ void gen_ret(
         // Pop the stack alignment padding
         as.add(X86Opnd(RSP), X86Opnd(8));
 
-        // Return to the interpreter
+        // Return to the host
         as.ret();
 
         return;
@@ -2162,13 +2162,13 @@ void gen_ret(
 // TODO: gen_throw
 // TODO
 /*
-extern (C) void op_throw(Interp interp, IRInstr instr)
+extern (C) void op_throw(VM vm, IRInstr instr)
 {
     // Get the exception value
-    auto excVal = interp.getArgVal(instr, 0);
+    auto excVal = vm.getArgVal(instr, 0);
 
     // Throw the exception
-    throwExc(interp, instr, excVal);
+    throwExc(vm, instr, excVal);
 }
 */
 
@@ -2185,9 +2185,9 @@ void GetValOp(string fName)(
 
     // FIXME
     //assert (outOpnd.isReg, "output is not a register");
-    //ctx.as.getMember!("Interp", fName)(outOpnd, interpReg);
+    //ctx.as.getMember!("VM", fName)(outOpnd, vmReg);
 
-    as.getMember!("Interp." ~ fName)(scrRegs[0], interpReg);
+    as.getMember!("VM." ~ fName)(scrRegs[0], vmReg);
     as.mov(outOpnd, scrRegs[0].opnd(64));
 
     st.setOutType(as, instr, Type.REFPTR);
@@ -2205,9 +2205,9 @@ void gen_heap_alloc(
     CodeBlock as
 )
 {
-    extern (C) static refptr allocFallback(Interp interp, uint32_t allocSize)
+    extern (C) static refptr allocFallback(VM vm, uint32_t allocSize)
     {
-        return heapAlloc(interp, allocSize);
+        return heapAlloc(vm, allocSize);
     }
 
     // Get the allocation size operand
@@ -2216,8 +2216,8 @@ void gen_heap_alloc(
     // Get the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.getMember!("Interp.allocPtr")(scrRegs[0], interpReg);
-    as.getMember!("Interp.heapLimit")(scrRegs[1], interpReg);
+    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
+    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
 
     // r2 = allocPtr + size
     // Note: we zero extend the size operand to 64-bits
@@ -2236,7 +2236,7 @@ void gen_heap_alloc(
     as.and(scrRegs[2].opnd(64), X86Opnd(-8));
 
     // Store the incremented and aligned allocation pointer
-    as.setMember!("Interp.allocPtr")(interpReg, scrRegs[2]);
+    as.setMember!("VM.allocPtr")(vmReg, scrRegs[2]);
 
     // Done allocating
     as.jmp(Label.DONE);
@@ -2259,7 +2259,7 @@ void gen_heap_alloc(
     as.printStr("alloc bailout ***");
 
     // Call the fallback implementation
-    as.ptr(cargRegs[0], st.ctx.interp);
+    as.ptr(cargRegs[0], st.ctx.vm);
     as.mov(cargRegs[1].opnd(32), szOpnd);
     as.ptr(RAX, &allocFallback);
     as.call(RAX);
@@ -2286,13 +2286,13 @@ void gen_heap_alloc(
 // TODO
 // TODO
 /*
-extern (C) void op_gc_collect(Interp interp, IRInstr instr)
+extern (C) void op_gc_collect(VM vm, IRInstr instr)
 {
-    auto heapSize = interp.getArgUint32(instr, 0);
+    auto heapSize = vm.getArgUint32(instr, 0);
 
     writeln("triggering gc");
 
-    gcCollect(interp, heapSize);
+    gcCollect(vm, heapSize);
 }
 */
 
@@ -2303,7 +2303,7 @@ void gen_get_global(
     CodeBlock as
 )
 {
-    auto interp = st.ctx.interp;
+    auto vm = st.ctx.vm;
 
     // Name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
@@ -2312,7 +2312,7 @@ void gen_get_global(
 
     // Lookup the property index in the class
     // if the property slot doesn't exist, it will be allocated
-    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
     assert (globalMap !is null);
     auto propIdx = globalMap.getPropIdx(nameStr, true);
 
@@ -2330,13 +2330,13 @@ void gen_get_global(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Get the global object pointer
-    as.getMember!("Interp.globalObj")(scrRegs[0], interpReg);
+    as.getMember!("VM.globalObj")(scrRegs[0], vmReg);
 
     // Get the global object size/capacity
-    as.getField(scrRegs[1].reg(32), scrRegs[0], 4, obj_ofs_cap(interp.globalObj));
+    as.getField(scrRegs[1].reg(32), scrRegs[0], 4, obj_ofs_cap(vm.globalObj));
 
     // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
+    auto wordOfs = obj_ofs_word(vm.globalObj, 0);
 
     // Get the word value from the object
     auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
@@ -2365,7 +2365,7 @@ void gen_set_global(
     CodeBlock as
 )
 {
-    auto interp = st.ctx.interp;
+    auto vm = st.ctx.vm;
 
     // Name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
@@ -2374,7 +2374,7 @@ void gen_set_global(
 
     // Lookup the property index in the class
     // if the property slot doesn't exist, it will be allocated
-    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
     assert (globalMap !is null);
     auto propIdx = globalMap.getPropIdx(nameStr, true);
 
@@ -2385,13 +2385,13 @@ void gen_set_global(
     auto argOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd(64), true);
 
     // Get the global object pointer
-    as.getMember!("Interp.globalObj")(scrRegs[1], interpReg);
+    as.getMember!("VM.globalObj")(scrRegs[1], vmReg);
 
     // Get the global object size/capacity
-    as.getField(scrRegs[2].reg(32), scrRegs[1], 4, obj_ofs_cap(interp.globalObj));
+    as.getField(scrRegs[2].reg(32), scrRegs[1], 4, obj_ofs_cap(vm.globalObj));
 
     // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
+    auto wordOfs = obj_ofs_word(vm.globalObj, 0);
 
     // Set the word value
     auto wordMem = X86Opnd(64, scrRegs[1], wordOfs + 8 * propIdx);
@@ -2405,7 +2405,7 @@ void gen_set_global(
 
 /*
 /// Get the value of a global variable
-extern (C) void op_get_global(Interp interp, IRInstr instr)
+extern (C) void op_get_global(VM vm, IRInstr instr)
 {
     // Name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
@@ -2420,10 +2420,10 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
     // If a property index was cached
     if (propIdx !is idxArg.idx.max)
     {
-        auto wVal = obj_get_word(interp.globalObj, propIdx);
-        auto tVal = obj_get_type(interp.globalObj, propIdx);
+        auto wVal = obj_get_word(vm.globalObj, propIdx);
+        auto tVal = obj_get_type(vm.globalObj, propIdx);
 
-        interp.setSlot(
+        vm.setSlot(
             instr.outSlot,
             Word.uint64v(wVal),
             cast(Type)tVal
@@ -2432,10 +2432,10 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
         return;
     }
 
-    auto propStr = GCRoot(interp, getString(interp, nameStr));
+    auto propStr = GCRoot(vm, getString(vm, nameStr));
 
     // Lookup the property index in the class
-    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
     assert (globalMap !is null);
     propIdx = globalMap.getPropIdx(propStr.ptr);
 
@@ -2448,8 +2448,8 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
 
     // Lookup the property
     ValuePair val = getProp(
-        interp,
-        interp.globalObj,
+        vm,
+        vm.globalObj,
         propStr.ptr
     );
 
@@ -2457,14 +2457,14 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
     if (val.type == Type.CONST && val.word == MISSING)
     {
         return throwError(
-            interp,
+            vm,
             instr, 
             "ReferenceError", "global property \"" ~ 
             to!string(nameStr) ~ "\" is not defined"
         );
     }
 
-    interp.setSlot(
+    vm.setSlot(
         instr.outSlot,
         val
     );
@@ -2473,7 +2473,7 @@ extern (C) void op_get_global(Interp interp, IRInstr instr)
 
 /*
 /// Set the value of a global variable
-extern (C) void op_set_global(Interp interp, IRInstr instr)
+extern (C) void op_set_global(VM vm, IRInstr instr)
 {
     // Name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
@@ -2481,7 +2481,7 @@ extern (C) void op_set_global(Interp interp, IRInstr instr)
     auto nameStr = strArg.str;
 
     // Get the property value argument
-    auto propVal = interp.getArgVal(instr, 1);
+    auto propVal = vm.getArgVal(instr, 1);
 
     // Cached property index
     auto idxArg = cast(IRCachedIdx)instr.getArg(2);
@@ -2491,28 +2491,28 @@ extern (C) void op_set_global(Interp interp, IRInstr instr)
     // If a property index was cached
     if (propIdx !is idxArg.idx.max)
     {
-        obj_set_word(interp.globalObj, cast(uint32)propIdx, propVal.word.uint64Val);
-        obj_set_type(interp.globalObj, cast(uint32)propIdx, propVal.type);
+        obj_set_word(vm.globalObj, cast(uint32)propIdx, propVal.word.uint64Val);
+        obj_set_type(vm.globalObj, cast(uint32)propIdx, propVal.type);
 
         return;
     }
 
     // Save the value in a GC root
-    auto val = GCRoot(interp, propVal);
+    auto val = GCRoot(vm, propVal);
 
     // Get the property string
-    auto propStr = GCRoot(interp, getString(interp, nameStr));
+    auto propStr = GCRoot(vm, getString(vm, nameStr));
 
     // Set the property value
     setProp(
-        interp,
-        interp.globalObj,
+        vm,
+        vm.globalObj,
         propStr.ptr,
         val.pair
     );
 
     // Lookup the property index in the class
-    auto globalMap = cast(ObjMap)obj_get_map(interp.globalObj);
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
     assert (globalMap !is null);
     propIdx = globalMap.getPropIdx(propStr.ptr);
 
@@ -2532,14 +2532,14 @@ void gen_get_str(
     CodeBlock as
 )
 {
-    extern (C) refptr getStr(Interp interp, refptr strPtr)
+    extern (C) refptr getStr(VM vm, refptr strPtr)
     {
         // Compute and set the hash code for the string
         auto hashCode = compStrHash(strPtr);
         str_set_hash(strPtr, hashCode);
 
         // Find the corresponding string in the string table
-        return getTableStr(interp, strPtr);
+        return getTableStr(vm, strPtr);
     }
 
     // Get the string pointer
@@ -2553,7 +2553,7 @@ void gen_get_str(
     as.pushJITRegs();
 
     // Call the fallback implementation
-    as.ptr(cargRegs[0], st.ctx.interp);
+    as.ptr(cargRegs[0], st.ctx.vm);
     as.mov(cargRegs[1].opnd(64), opnd0);
     as.ptr(scrRegs[0], &getStr);
     as.call(scrRegs[0]);
@@ -2574,17 +2574,17 @@ void gen_make_link(
     CodeBlock as
 )
 {
-    auto interp = st.ctx.interp;
+    auto vm = st.ctx.vm;
 
     auto linkArg = cast(IRLinkIdx)instr.getArg(0);
     assert (linkArg !is null);
 
     if (linkArg.linkIdx is NULL_LINK)
     {
-        linkArg.linkIdx = interp.allocLink();
+        linkArg.linkIdx = vm.allocLink();
 
-        interp.setLinkWord(linkArg.linkIdx, NULL);
-        interp.setLinkType(linkArg.linkIdx, Type.REFPTR);
+        vm.setLinkWord(linkArg.linkIdx, NULL);
+        vm.setLinkType(linkArg.linkIdx, Type.REFPTR);
     }
 
     // Set the output value
@@ -2608,13 +2608,13 @@ void gen_set_link(
 
     // Set the link word
     auto valWord = st.getWordOpnd(as, instr, 1, 64, scrRegs[1].opnd(64));
-    as.getMember!("Interp.wLinkTable")(scrRegs[2], interpReg);
+    as.getMember!("VM.wLinkTable")(scrRegs[2], vmReg);
     auto wordMem = X86Opnd(64, scrRegs[2], 0, Word.sizeof, idxReg.reg);
     as.mov(wordMem, valWord);
 
     // Set the link type
     auto valType = st.getTypeOpnd(as, instr, 0, scrRegs[1].opnd(8));
-    as.getMember!("Interp.tLinkTable")(scrRegs[2], interpReg);
+    as.getMember!("VM.tLinkTable")(scrRegs[2], vmReg);
     auto typeMem = X86Opnd(8, scrRegs[2], 0, Type.sizeof, idxReg.reg);
     as.mov(typeMem, valType);
 }
@@ -2634,13 +2634,13 @@ void gen_get_link(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Read the link word
-    as.getMember!("Interp.wLinkTable")(scrRegs[1], interpReg);
+    as.getMember!("VM.wLinkTable")(scrRegs[1], vmReg);
     auto wordMem = X86Opnd(64, scrRegs[1], 0, Word.sizeof, idxReg.reg);
     as.mov(scrRegs[1].opnd(64), wordMem);
     as.mov(outOpnd, scrRegs[1].opnd(64));
 
     // Read the link type
-    as.getMember!("Interp.tLinkTable")(scrRegs[1], interpReg);
+    as.getMember!("VM.tLinkTable")(scrRegs[1], vmReg);
     auto typeMem = X86Opnd(8, scrRegs[1], 0, Type.sizeof, idxReg.reg);
     as.mov(scrRegs[1].opnd(8), typeMem);
     st.setOutType(as, instr, scrRegs[1].reg(8));
@@ -2661,7 +2661,7 @@ void gen_make_map(
 
     // Allocate the map
     if (mapArg.map is null)
-        mapArg.map = new ObjMap(st.ctx.interp, numPropArg.int32Val);
+        mapArg.map = new ObjMap(st.ctx.vm, numPropArg.int32Val);
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     auto outReg = outOpnd.isReg? outOpnd.reg:scrRegs[0];
@@ -2762,7 +2762,7 @@ void gen_map_prop_name(
     CodeBlock as
 )
 {
-    extern (C) static refptr op_map_prop_name(Interp interp, ObjMap map, uint32_t propIdx)
+    extern (C) static refptr op_map_prop_name(VM vm, ObjMap map, uint32_t propIdx)
     {
         assert (map !is null, "map is null");
         auto propName = map.getPropName(propIdx);
@@ -2770,7 +2770,7 @@ void gen_map_prop_name(
         if (propName is null)
             return null;
         else
-            return getString(interp, propName);
+            return getString(vm, propName);
     }
 
     // TODO: spill all, this may GC
@@ -2783,7 +2783,7 @@ void gen_map_prop_name(
     as.pushJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), interpReg.opnd(64));
+    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
     as.mov(cargRegs[1].opnd(64), opnd0);
     as.mov(cargRegs[2].opnd(32), opnd1);
     as.ptr(scrRegs[0], &op_map_prop_name);
@@ -2805,7 +2805,7 @@ void gen_new_clos(
 )
 {
     extern (C) static refptr newClosImpl(
-        Interp interp, 
+        VM vm, 
         IRFunction fun, 
         ObjMap closMap, 
         ObjMap protMap
@@ -2815,18 +2815,18 @@ void gen_new_clos(
         if (fun.entryCode is null)
         {
             // Store the entry code pointers
-            fun.entryCode = getEntryStub(interp, false);
-            fun.ctorCode = getEntryStub(interp, true);
+            fun.entryCode = getEntryStub(vm, false);
+            fun.ctorCode = getEntryStub(vm, true);
             assert (fun.entryCode !is fun.ctorCode);
         }
 
         // Allocate the closure object
         auto closPtr = GCRoot(
-            interp,
+            vm,
             newClos(
-                interp, 
+                vm, 
                 closMap,
-                interp.funProto,
+                vm.funProto,
                 cast(uint32)fun.ast.captVars.length,
                 fun
             )
@@ -2834,18 +2834,18 @@ void gen_new_clos(
 
         // Allocate the prototype object
         auto objPtr = GCRoot(
-            interp,
+            vm,
             newObj(
-                interp, 
+                vm, 
                 protMap,
-                interp.objProto
+                vm.objProto
             )
         );
 
         // Set the "prototype" property on the closure object
-        auto protoStr = GCRoot(interp, getString(interp, "prototype"));
+        auto protoStr = GCRoot(vm, getString(vm, "prototype"));
         setProp(
-            interp,
+            vm,
             closPtr.ptr,
             protoStr.ptr,
             objPtr.pair
@@ -2870,7 +2870,7 @@ void gen_new_clos(
     auto closMapOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
     auto protMapOpnd = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
 
-    as.ptr(cargRegs[0], st.ctx.interp);
+    as.ptr(cargRegs[0], st.ctx.vm);
     as.ptr(cargRegs[1], funArg.fun);
     as.mov(cargRegs[2].opnd(64), closMapOpnd);
     as.mov(cargRegs[3].opnd(64), protMapOpnd);
@@ -2940,7 +2940,7 @@ void gen_get_ast_str(
     CodeBlock as
 )
 {
-    extern (C) refptr op_get_ast_str(Interp interp, refptr closPtr)
+    extern (C) refptr op_get_ast_str(VM vm, refptr closPtr)
     {
         assert (
             valIsLayout(Word.ptrv(closPtr), LAYOUT_CLOS),
@@ -2950,7 +2950,7 @@ void gen_get_ast_str(
         auto fun = getClosFun(closPtr);
 
         auto str = fun.ast.toString();
-        auto strObj = getString(interp, to!wstring(str));
+        auto strObj = getString(vm, to!wstring(str));
        
         return strObj;
     }
@@ -2961,7 +2961,7 @@ void gen_get_ast_str(
 
     as.pushJITRegs();
 
-    as.mov(cargRegs[0].opnd, interpReg.opnd);
+    as.mov(cargRegs[0].opnd, vmReg.opnd);
     as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_ast_str);
     as.call(scrRegs[0].opnd);
@@ -2973,9 +2973,9 @@ void gen_get_ast_str(
 }
 
 /*
-extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
+extern (C) void op_get_ir_str(VM vm, IRInstr instr)
 {
-    auto funArg = interp.getArgVal(instr, 0);
+    auto funArg = vm.getArgVal(instr, 0);
 
     assert (
         funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
@@ -2989,9 +2989,9 @@ extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
         astToIR(fun.ast, fun);
 
     auto str = fun.toString();
-    auto strObj = getString(interp, to!wstring(str));
+    auto strObj = getString(vm, to!wstring(str));
 
-    interp.setSlot(
+    vm.setSlot(
         instr.outSlot,
         Word.ptrv(strObj),
         Type.REFPTR
@@ -3002,11 +3002,11 @@ extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
 // TODO
 // TODO
 // TODO
-extern (C) void op_load_file(Interp interp, IRInstr instr)
+extern (C) void op_load_file(VM vm, IRInstr instr)
 {
     /*
-    auto strPtr = interp.getArgStr(instr, 0);
-    auto fileName = interp.getLoadPath(extractStr(strPtr));
+    auto strPtr = vm.getArgStr(instr, 0);
+    auto fileName = vm.getLoadPath(extractStr(strPtr));
 
     try
     {
@@ -3015,10 +3015,10 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
         auto fun = astToIR(ast);
 
         // Register this function in the function reference set
-        interp.funRefs[cast(void*)fun] = fun;
+        vm.funRefs[cast(void*)fun] = fun;
 
         // Setup the callee stack frame
-        interp.callFun(
+        vm.callFun(
             fun,
             instr,      // Calling instruction
             null,       // Null closure argument
@@ -3031,7 +3031,7 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
 
     catch (Exception err)
     {
-        throwError(interp, instr, "RuntimeError", err.msg);
+        throwError(vm, instr, "RuntimeError", err.msg);
     }
     */
 }
@@ -3039,10 +3039,10 @@ extern (C) void op_load_file(Interp interp, IRInstr instr)
 // TODO
 // TODO
 // TODO
-extern (C) void op_eval_str(Interp interp, IRInstr instr)
+extern (C) void op_eval_str(VM vm, IRInstr instr)
 {
     /*
-    auto strPtr = interp.getArgStr(instr, 0);
+    auto strPtr = vm.getArgStr(instr, 0);
     auto codeStr = extractStr(strPtr);
 
     // Parse the source file and generate IR
@@ -3050,10 +3050,10 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
     auto fun = astToIR(ast);
 
     // Register this function in the function reference set
-    interp.funRefs[cast(void*)fun] = fun;
+    vm.funRefs[cast(void*)fun] = fun;
 
     // Setup the callee stack frame
-    interp.callFun(
+    vm.callFun(
         fun,
         instr,      // Calling instruction
         null,       // Null closure argument
@@ -3066,10 +3066,10 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
 }
 
 /*
-extern (C) void op_load_lib(Interp interp, IRInstr instr)
+extern (C) void op_load_lib(VM vm, IRInstr instr)
 {
     // Library to load (JS string)
-    auto strPtr = interp.getArgStr(instr, 0);
+    auto strPtr = vm.getArgStr(instr, 0);
 
     // Library to load (D string)
     auto libname = extractStr(strPtr);
@@ -3080,9 +3080,9 @@ extern (C) void op_load_lib(Interp interp, IRInstr instr)
     auto lib = dlopen(libname.ptr, RTLD_LAZY | RTLD_LOCAL);
 
     if (lib is null)
-        return throwError(interp, instr, "RuntimeError", to!string(dlerror()));
+        return throwError(vm, instr, "RuntimeError", to!string(dlerror()));
 
-    interp.setSlot(
+    vm.setSlot(
         instr.outSlot,
         Word.ptrv(cast(rawptr)lib),
         Type.RAWPTR
@@ -3091,9 +3091,9 @@ extern (C) void op_load_lib(Interp interp, IRInstr instr)
 */
 
 /*
-extern (C) void op_close_lib(Interp interp, IRInstr instr)
+extern (C) void op_close_lib(VM vm, IRInstr instr)
 {
-    auto libArg = interp.getArgVal(instr, 0);
+    auto libArg = vm.getArgVal(instr, 0);
 
     assert (
         libArg.type == Type.RAWPTR,
@@ -3101,14 +3101,14 @@ extern (C) void op_close_lib(Interp interp, IRInstr instr)
     );
 
     if (dlclose(libArg.word.ptrVal) != 0)
-         return throwError(interp, instr, "RuntimeError", "could not close lib.");
+         return throwError(vm, instr, "RuntimeError", "could not close lib.");
 }
 */
 
 /*
-extern (C) void op_get_sym(Interp interp, IRInstr instr)
+extern (C) void op_get_sym(VM vm, IRInstr instr)
 {
-    auto libArg = interp.getArgVal(instr, 0);
+    auto libArg = vm.getArgVal(instr, 0);
 
     assert (
         libArg.type == Type.RAWPTR,
@@ -3126,9 +3126,9 @@ extern (C) void op_get_sym(Interp interp, IRInstr instr)
     auto sym = dlsym(libArg.word.ptrVal, symname.ptr);
 
     if (sym is null)
-        return throwError(interp, instr, "RuntimeError", to!string(dlerror()));
+        return throwError(vm, instr, "RuntimeError", to!string(dlerror()));
 
-    interp.setSlot(
+    vm.setSlot(
         instr.outSlot,
         Word.ptrv(cast(rawptr)sym),
         Type.RAWPTR

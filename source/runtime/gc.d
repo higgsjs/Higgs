@@ -42,8 +42,8 @@ import std.stdio;
 import std.string;
 import ir.ir;
 import ir.ops;
+import runtime.vm;
 import runtime.layout;
-import runtime.interp;
 import runtime.string;
 import runtime.object;
 import util.misc;
@@ -53,25 +53,25 @@ GC root object
 */
 struct GCRoot
 {
-    this(Interp interp, ValuePair pair)
+    this(VM vm, ValuePair pair)
     {
-        this.interp = interp;
+        this.vm = vm;
 
         this.prev = null;
-        this.next = interp.firstRoot;
-        interp.firstRoot = &this;
+        this.next = vm.firstRoot;
+        vm.firstRoot = &this;
 
         this.pair = pair;
     }
 
-    this(Interp interp, Word w, Type t)
+    this(VM vm, Word w, Type t)
     {
-        this(interp, ValuePair(w, t));
+        this(vm, ValuePair(w, t));
     }
 
-    this(Interp interp, refptr p = null)
+    this(VM vm, refptr p = null)
     {
-        this(interp, Word.ptrv(p), Type.REFPTR);
+        this(vm, Word.ptrv(p), Type.REFPTR);
     }
 
     @disable this();
@@ -79,14 +79,14 @@ struct GCRoot
     ~this()
     {
         assert (
-            interp !is null,
-            "interp is null"
+            vm !is null,
+            "vm is null"
         );
 
         if (prev)
             prev.next = next;
         else
-            this.interp.firstRoot = next;
+            this.vm.firstRoot = next;
 
         if (next)
             next.prev = prev;
@@ -126,7 +126,7 @@ struct GCRoot
         return pair.word.ptrVal;
     }
 
-    private Interp interp;
+    private VM vm;
 
     private GCRoot* prev;
     private GCRoot* next;
@@ -135,19 +135,19 @@ struct GCRoot
 }
 
 /**
-Check that a pointer points in an interpreter's from-space heap
+Check that a pointer points in a VM's from-space heap
 */
-bool inFromSpace(Interp interp, refptr ptr)
+bool inFromSpace(VM vm, refptr ptr)
 {
-    return (ptr >= interp.heapStart && ptr < interp.heapLimit);
+    return (ptr >= vm.heapStart && ptr < vm.heapLimit);
 }
 
 /**
-Check that a pointer points in an interpreter's to-space heap
+Check that a pointer points in a VM's to-space heap
 */
-bool inToSpace(Interp interp, refptr ptr)
+bool inToSpace(VM vm, refptr ptr)
 {
-    return (ptr >= interp.toStart && ptr < interp.toLimit);
+    return (ptr >= vm.toStart && ptr < vm.toLimit);
 }
 
 /**
@@ -162,33 +162,33 @@ bool ptrValid(refptr ptr)
 /**
 Allocate an object in the heap
 */
-refptr heapAlloc(Interp interp, size_t size)
+refptr heapAlloc(VM vm, size_t size)
 {
     // If this allocation exceeds the heap limit
-    if (interp.allocPtr + size > interp.heapLimit)
+    if (vm.allocPtr + size > vm.heapLimit)
     {
         writefln("gc on alloc of size %s", size);
 
         // Perform garbage collection
-        gcCollect(interp);
+        gcCollect(vm);
 
         //writefln("gc done");
 
         // While this allocation exceeds the heap limit
-        while (interp.allocPtr + size > interp.heapLimit)
+        while (vm.allocPtr + size > vm.heapLimit)
         {
             writefln("heap space exhausted, expanding heap");
 
             // Double the size of the heap
-            gcCollect(interp, 2 * interp.heapSize);
+            gcCollect(vm, 2 * vm.heapSize);
         }
     }
 
     // Store the pointer to the new object
-    refptr ptr = interp.allocPtr;
+    refptr ptr = vm.allocPtr;
 
     // Update and align the allocation pointer
-    interp.allocPtr = alignPtr(interp.allocPtr + size);
+    vm.allocPtr = alignPtr(vm.allocPtr + size);
 
     // Return the object pointer
     return ptr;
@@ -197,7 +197,7 @@ refptr heapAlloc(Interp interp, size_t size)
 /**
 Perform a garbage collection
 */
-void gcCollect(Interp interp, size_t heapSize = 0)
+void gcCollect(VM vm, size_t heapSize = 0)
 {
     /*
     Cheney's Algorithm:
@@ -227,63 +227,63 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     */
 
     //writeln("entering gcCollect");
-    //writefln("from-space address: %s", interp.heapStart);
+    //writefln("from-space address: %s", vm.heapStart);
 
     if (heapSize != 0)
-        interp.heapSize = heapSize;
+        vm.heapSize = heapSize;
 
-    //writefln("allocating to-space heap of size: %s", interp.heapSize);
+    //writefln("allocating to-space heap of size: %s", vm.heapSize);
 
     // Allocate a memory block for the to-space
-    interp.toStart = cast(ubyte*)GC.malloc(
-        interp.heapSize, 
+    vm.toStart = cast(ubyte*)GC.malloc(
+        vm.heapSize, 
         GC.BlkAttr.NO_SCAN |
         GC.BlkAttr.NO_INTERIOR
     );
 
-    //writefln("allocated to-space block: %s", interp.toStart);
+    //writefln("allocated to-space block: %s", vm.toStart);
 
     assert (
-        interp.toStart != null,
+        vm.toStart != null,
         "failed to allocate to-space heap"
     );
 
     // Compute the to-space heap limit
-    interp.toLimit = interp.toStart + interp.heapSize;
+    vm.toLimit = vm.toStart + vm.heapSize;
 
     // Initialize the to-space allocation pointer
-    interp.toAlloc = interp.toStart;
+    vm.toAlloc = vm.toStart;
     
-    //writeln("visiting interpreter roots");
+    //writeln("visiting root objects");
 
-    // Forward the interpreter root objects
-    interp.objProto     = gcForward(interp, interp.objProto);
-    interp.arrProto     = gcForward(interp, interp.arrProto);
-    interp.funProto     = gcForward(interp, interp.funProto);
-    interp.globalObj    = gcForward(interp, interp.globalObj);
+    // Forward the root objects
+    vm.objProto     = gcForward(vm, vm.objProto);
+    vm.arrProto     = gcForward(vm, vm.arrProto);
+    vm.funProto     = gcForward(vm, vm.funProto);
+    vm.globalObj    = gcForward(vm, vm.globalObj);
 
     //writeln("visiting stack roots");
 
     // Visit the stack roots
-    visitStackRoots(interp);
+    visitStackRoots(vm);
 
     //writeln("visiting link table");
 
     // Visit the link table cells
-    for (size_t i = 0; i < interp.linkTblSize; ++i)
+    for (size_t i = 0; i < vm.linkTblSize; ++i)
     {
-        interp.wLinkTable[i] = gcForward(
-            interp,
-            interp.wLinkTable[i],
-            interp.tLinkTable[i]
+        vm.wLinkTable[i] = gcForward(
+            vm,
+            vm.wLinkTable[i],
+            vm.tLinkTable[i]
         );
     }
 
     //writeln("visiting GC root objects");
 
     // Visit the root objects
-    for (GCRoot* pRoot = interp.firstRoot; pRoot !is null; pRoot = pRoot.next)
-        pRoot.pair.word = gcForward(interp, pRoot.pair.word, pRoot.pair.type);    
+    for (GCRoot* pRoot = vm.firstRoot; pRoot !is null; pRoot = pRoot.next)
+        pRoot.pair.word = gcForward(vm, pRoot.pair.word, pRoot.pair.type);    
 
     //writeln("scanning to-space");
 
@@ -292,18 +292,18 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     // Free Pointer: All copied objects are behind it; Space to its right is free
 
     // Initialize the scan pointer at the to-space heap start
-    auto scanPtr = interp.toStart;
+    auto scanPtr = vm.toStart;
 
     // Until the to-space scan is complete
     size_t numObjs;
     for (numObjs = 0;; ++numObjs)
     {
         // If we are past the free pointer, scanning done
-        if (scanPtr >= interp.toAlloc)
+        if (scanPtr >= vm.toAlloc)
             break;
 
         assert (
-            interp.inToSpace(scanPtr),
+            vm.inToSpace(scanPtr),
             "scan pointer past to-space limit"
         );
 
@@ -311,7 +311,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
         auto objSize = layout_sizeof(scanPtr);
 
         assert (
-            scanPtr + objSize <= interp.toLimit,
+            scanPtr + objSize <= vm.toLimit,
             "object extends past to-space limit"
         );
 
@@ -320,7 +320,7 @@ void gcCollect(Interp interp, size_t heapSize = 0)
         //writefln("obj header: %s", obj_get_header(scanPtr));
 
         // Visit the object layout, forward its references
-        layout_visit_gc(interp, scanPtr);
+        layout_visit_gc(vm, scanPtr);
 
         //writeln("visited layout");
 
@@ -331,27 +331,27 @@ void gcCollect(Interp interp, size_t heapSize = 0)
     //writefln("objects copied/scanned: %s", numObjs);
 
     // Store a pointer to the from-space heap
-    auto fromStart = interp.heapStart;
-    auto fromLimit = interp.heapLimit;
+    auto fromStart = vm.heapStart;
+    auto fromLimit = vm.heapLimit;
 
     // Flip the from-space and to-space
-    interp.heapStart = interp.toStart;
-    interp.heapLimit = interp.toLimit;
-    interp.allocPtr = interp.toAlloc;
+    vm.heapStart = vm.toStart;
+    vm.heapLimit = vm.toLimit;
+    vm.allocPtr = vm.toAlloc;
 
     // Clear the to-space information
-    interp.toStart = null;
-    interp.toLimit = null;
-    interp.toAlloc = null;
+    vm.toStart = null;
+    vm.toLimit = null;
+    vm.toAlloc = null;
 
     //writefln("rebuilding string table");
 
     // Store a pointer to the old string table
-    auto oldStrTbl = interp.strTbl;
+    auto oldStrTbl = vm.strTbl;
     auto strTblCap = strtbl_get_cap(oldStrTbl);
 
     // Allocate a new string table
-    interp.strTbl = strtbl_alloc(interp, strTblCap);
+    vm.strTbl = strtbl_alloc(vm, strTblCap);
 
     // Add the forwarded strings to the new string table
     for (uint32 i = 0; i < strTblCap; ++i)
@@ -366,11 +366,11 @@ void gcCollect(Interp interp, size_t heapSize = 0)
         if (next is null)
             continue;
 
-        getTableStr(interp, next);
+        getTableStr(vm, next);
     }
 
     //writefln("old string count: %s", strtbl_get_num_strs(oldStrTbl));
-    //writefln("new string count: %s", strtbl_get_num_strs(interp.strTbl));
+    //writefln("new string count: %s", strtbl_get_num_strs(vm.strTbl));
 
     //writefln("clearing from-space heap");
 
@@ -383,44 +383,44 @@ void gcCollect(Interp interp, size_t heapSize = 0)
 
     // Zero out the stack space below the stack pointers (free space)
     // to eliminate any unprocessed references to the from space
-    for (int64* p = cast(int64*)interp.wStack; p < cast(int64*)interp.wsp; p++)
+    for (int64* p = cast(int64*)vm.wStack; p < cast(int64*)vm.wsp; p++)
         *p = 0;
-    for (int8* p = cast(int8*)interp.tStack; p < cast(int8*)interp.tsp; p++)
+    for (int8* p = cast(int8*)vm.tStack; p < cast(int8*)vm.tsp; p++)
         *p = 0;
 
-    //writefln("old live funs count: %s", interp.funRefs.length);
+    //writefln("old live funs count: %s", vm.funRefs.length);
 
     // Collect the dead functions
-    foreach (ptr, fun; interp.funRefs)
-        if (ptr !in interp.liveFuns)
-            collectFun(interp, fun);
+    foreach (ptr, fun; vm.funRefs)
+        if (ptr !in vm.liveFuns)
+            collectFun(vm, fun);
 
     // Swap the function reference sets
-    interp.funRefs = interp.liveFuns;
-    interp.liveFuns.clear();
+    vm.funRefs = vm.liveFuns;
+    vm.liveFuns.clear();
 
     // Collect the dead maps
-    foreach (ptr, map; interp.mapRefs)
-        if (ptr !in interp.liveMaps)
-            collectMap(interp, map);
+    foreach (ptr, map; vm.mapRefs)
+        if (ptr !in vm.liveMaps)
+            collectMap(vm, map);
 
     // Swap the map reference sets
-    interp.mapRefs = interp.liveMaps;
-    interp.liveMaps.clear();
+    vm.mapRefs = vm.liveMaps;
+    vm.liveMaps.clear();
 
-    //writefln("new live funs count: %s", interp.funRefs.length);
+    //writefln("new live funs count: %s", vm.funRefs.length);
 
     // Increment the garbage collection count
-    interp.gcCount++;
+    vm.gcCount++;
 
     writeln("leaving gcCollect");
-    //writefln("free space: %s", (interp.heapLimit - interp.allocPtr));
+    //writefln("free space: %s", (vm.heapLimit - vm.allocPtr));
 }
 
 /**
 Function to forward a memory object. The argument is an unboxed reference.
 */
-refptr gcForward(Interp interp, refptr ptr)
+refptr gcForward(VM vm, refptr ptr)
 {
     // Pseudocode:
     //
@@ -436,10 +436,10 @@ refptr gcForward(Interp interp, refptr ptr)
     if (ptr is null)
         return null;
 
-    //writefln("forwarding object %s (%s)", ptr, interp.inFromSpace(ptr));
+    //writefln("forwarding object %s (%s)", ptr, vm.inFromSpace(ptr));
 
     assert (
-        interp.inFromSpace(ptr),
+        vm.inFromSpace(ptr),
         format(
             "gcForward: object not in from-space heap\n" ~
             "ptr   : %s\n" ~
@@ -447,8 +447,8 @@ refptr gcForward(Interp interp, refptr ptr)
             "limit : %s\n" ~
             "header: %s",
             ptr,
-            interp.heapStart,
-            interp.heapLimit,
+            vm.heapStart,
+            vm.heapLimit,
             (ptrValid(ptr)? obj_get_header(ptr):0xFFFF)
         )
     );
@@ -459,11 +459,11 @@ refptr gcForward(Interp interp, refptr ptr)
     {
         auto fun = getClosFun(ptr);
         assert (fun !is null);
-        visitFun(interp, fun);
+        visitFun(vm, fun);
 
         auto map = cast(ObjMap)clos_get_ctor_map(ptr);
         if (map !is null)
-            visitMap(interp, map);
+            visitMap(vm, map);
     }
 
     // If this is an object of some kind
@@ -471,7 +471,7 @@ refptr gcForward(Interp interp, refptr ptr)
     {
         auto map = cast(ObjMap)obj_get_map(ptr);
         assert (map !is null);
-        visitMap(interp, map);
+        visitMap(vm, map);
     }
    
     // Follow the next pointer chain as long as it points in the from-space
@@ -482,7 +482,7 @@ refptr gcForward(Interp interp, refptr ptr)
         nextPtr = obj_get_next(nextPtr);
 
         // If the next pointer is outside of the from-space
-        if (interp.inFromSpace(nextPtr) is false)
+        if (vm.inFromSpace(nextPtr) is false)
             break;
 
         // Follow the next pointer chain
@@ -500,7 +500,7 @@ refptr gcForward(Interp interp, refptr ptr)
         //writefln("copying");
 
         // Copy the object into the to-space
-        nextPtr = gcCopy(interp, ptr, layout_sizeof(ptr));
+        nextPtr = gcCopy(vm, ptr, layout_sizeof(ptr));
 
         assert (
             obj_get_next(ptr) == nextPtr, 
@@ -509,7 +509,7 @@ refptr gcForward(Interp interp, refptr ptr)
     }
 
     assert (
-        interp.inToSpace(nextPtr),
+        vm.inToSpace(nextPtr),
         format(
             "gcForward: next pointer is outside of to-space\n" ~
             "objPtr  : %s\n" ~
@@ -518,8 +518,8 @@ refptr gcForward(Interp interp, refptr ptr)
             "to-limit: %s\n",
             ptr,
             nextPtr,
-            interp.toStart,
-            interp.toLimit,
+            vm.toStart,
+            vm.toLimit,
         )
     );
 
@@ -532,7 +532,7 @@ refptr gcForward(Interp interp, refptr ptr)
 /**
 Forward a word/value pair
 */
-Word gcForward(Interp interp, Word word, Type type)
+Word gcForward(VM vm, Word word, Type type)
 {
     // Switch on the type tag
     switch (type)
@@ -540,14 +540,14 @@ Word gcForward(Interp interp, Word word, Type type)
         // Heap reference pointer
         // Forward the pointer
         case Type.REFPTR:
-        return Word.ptrv(gcForward(interp, word.ptrVal));
+        return Word.ptrv(gcForward(vm, word.ptrVal));
 
         // Function pointer (IRFunction)
         // Return the pointer unchanged
         case Type.FUNPTR:
         auto fun = word.funVal;
         assert (fun !is null);
-        visitFun(interp, fun);
+        visitFun(vm, fun);
         return word;
 
         // Map pointer (ObjMap)
@@ -555,7 +555,7 @@ Word gcForward(Interp interp, Word word, Type type)
         case Type.MAPPTR:
         auto map = word.mapVal;
         assert (map !is null);
-        visitMap(interp, map);
+        visitMap(vm, map);
         return word;
 
         // FIXME
@@ -567,7 +567,7 @@ Word gcForward(Interp interp, Word word, Type type)
             // Visit the function this instruction belongs to
             auto instr = cast(IRInstr)word.ptrVal;
             if (instr.block !is null)
-                visitFun(interp, instr.block.fun);
+                visitFun(vm, instr.block.fun);
         }
         return word;
         */
@@ -581,19 +581,19 @@ Word gcForward(Interp interp, Word word, Type type)
 /**
 Forward a word/value pair
 */
-uint64 gcForward(Interp interp, uint64 word, uint8 type)
+uint64 gcForward(VM vm, uint64 word, uint8 type)
 {
     // Forward the pointer
-    return gcForward(interp, Word.uint64v(word), cast(Type)type).uint64Val;
+    return gcForward(vm, Word.uint64v(word), cast(Type)type).uint64Val;
 }
 
 /**
 Copy a live object into the to-space.
 */
-refptr gcCopy(Interp interp, refptr ptr, size_t size)
+refptr gcCopy(VM vm, refptr ptr, size_t size)
 {
     assert (
-        interp.inFromSpace(ptr),
+        vm.inFromSpace(ptr),
         format(
             "gcCopy: object not in from-space heap\n" ~
             "ptr   : %s\n" ~
@@ -601,8 +601,8 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
             "limit : %s\n" ~
             "header: %s",
             ptr,
-            interp.heapStart,
-            interp.heapLimit,
+            vm.heapStart,
+            vm.heapLimit,
             obj_get_header(ptr)
         )        
     );
@@ -613,10 +613,10 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
     );
     
     // The object will be copied at the to-space allocation pointer
-    auto nextPtr = interp.toAlloc;
+    auto nextPtr = vm.toAlloc;
 
     assert (
-        nextPtr + size <= interp.toLimit,
+        nextPtr + size <= vm.toLimit,
         format(
             "cannot copy in to-space, heap limit exceeded\n" ~
             "ptr     : %s\n" ~
@@ -627,23 +627,23 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
             "header  : %s",
             ptr,
             size,
-            interp.heapLimit,
-            interp.toAlloc,
-            interp.toLimit,
+            vm.heapLimit,
+            vm.toAlloc,
+            vm.toLimit,
             obj_get_header(ptr)
         )
     );
 
     // Update the allocation pointer
-    interp.toAlloc += size;
-    interp.toAlloc = alignPtr(interp.toAlloc);
+    vm.toAlloc += size;
+    vm.toAlloc = alignPtr(vm.toAlloc);
 
     // Copy the object to the to-space
     for (size_t i = 0; i < size; ++i)
         nextPtr[i] = ptr[i];
 
     assert (
-        interp.inToSpace(nextPtr),
+        vm.inToSpace(nextPtr),
         "gcCopy: next pointer is outside of to-space"
     );
 
@@ -657,7 +657,7 @@ refptr gcCopy(Interp interp, refptr ptr, size_t size)
 /**
 Walk the stack and forward references to the to-space
 */
-void visitStackRoots(Interp interp)
+void visitStackRoots(VM vm)
 {
     auto visitFrame = delegate void(
         IRFunction fun, 
@@ -669,7 +669,7 @@ void visitStackRoots(Interp interp)
     )
     {
         // Visit the function this stack frame belongs to
-        visitFun(interp, fun);
+        visitFun(vm, fun);
 
         //writeln("visiting frame for: ", fun.getName());
         //writeln("frame size: ", frameSize);
@@ -683,22 +683,22 @@ void visitStackRoots(Interp interp)
             Type type = tsp[idx];
 
             // If this is a pointer, forward it
-            wsp[idx] = gcForward(interp, word, type);
+            wsp[idx] = gcForward(vm, word, type);
 
             auto fwdPtr = wsp[idx].ptrVal;
 
             assert (
                 type != Type.REFPTR ||
                 fwdPtr == null ||
-                interp.inToSpace(fwdPtr),
+                vm.inToSpace(fwdPtr),
                 format(
                     "invalid forwarded stack pointer\n" ~
                     "ptr     : %s\n" ~
                     "to-alloc: %s\n" ~
                     "to-limit: %s",
                     fwdPtr,
-                    interp.toStart,
-                    interp.toLimit
+                    vm.toStart,
+                    vm.toLimit
                 )
             );
         }
@@ -706,7 +706,7 @@ void visitStackRoots(Interp interp)
         //writeln("done visiting frame");
     };
 
-    interp.visitStack(visitFrame);
+    vm.visitStack(visitFrame);
 
     //writefln("done scanning stack");
 }
@@ -714,14 +714,14 @@ void visitStackRoots(Interp interp)
 /**
 Visit a function and its sub-functions
 */
-void visitFun(Interp interp, IRFunction fun)
+void visitFun(VM vm, IRFunction fun)
 {
     // If this function was already visited, stop
-    if (cast(void*)fun in interp.liveFuns)
+    if (cast(void*)fun in vm.liveFuns)
         return;
 
     // Add the function to the set of live functions
-    interp.liveFuns[cast(void*)fun] = fun;
+    vm.liveFuns[cast(void*)fun] = fun;
 
     // Transitively find live function references inside the function
     for (IRBlock block = fun.firstBlock; block !is null; block = block.next)
@@ -735,13 +735,13 @@ void visitFun(Interp interp, IRFunction fun)
                 if (auto funArg = cast(IRFunPtr)arg)
                 {
                     if (funArg.fun !is null)
-                        visitFun(interp, funArg.fun);
+                        visitFun(vm, funArg.fun);
                 }
 
                 else if (auto mapArg = cast(IRMapPtr)arg)
                 {
                     if (mapArg.map !is null)
-                        visitMap(interp, mapArg.map);
+                        visitMap(vm, mapArg.map);
                 }
             }
         }
@@ -751,7 +751,7 @@ void visitFun(Interp interp, IRFunction fun)
 /**
 Collect resources held by a dead function
 */
-void collectFun(Interp interp, IRFunction fun)
+void collectFun(VM vm, IRFunction fun)
 {
     //writefln("freeing dead function: \"%s\"", fun.name);
 
@@ -772,7 +772,7 @@ void collectFun(Interp interp, IRFunction fun)
                     if (linkArg.hasOneUse && linkArg.linkIdx != NULL_LINK)
                     {
                         //writefln("freeing link table entry %s", arg.linkIdx);
-                        interp.freeLink(linkArg.linkIdx);
+                        vm.freeLink(linkArg.linkIdx);
                     }
                 }
 
@@ -791,16 +791,16 @@ void collectFun(Interp interp, IRFunction fun)
 /**
 Visit a map
 */
-void visitMap(Interp interp, ObjMap map)
+void visitMap(VM vm, ObjMap map)
 {
     // Add the map to the live set
-    interp.liveMaps[cast(void*)map] = map;
+    vm.liveMaps[cast(void*)map] = map;
 }
 
 /**
 Collect resources held by a dead map
 */
-void collectMap(Interp interp, ObjMap map)
+void collectMap(VM vm, ObjMap map)
 {
     destroy(map);
 }

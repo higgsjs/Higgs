@@ -43,7 +43,7 @@ import std.algorithm;
 import std.stdint;
 import std.typecons;
 import ir.ir;
-import runtime.interp;
+import runtime.vm;
 import runtime.layout;
 import runtime.string;
 import runtime.gc;
@@ -66,10 +66,10 @@ class ObjMap : IdObject
     /// Map of property indices to field names
     private wstring[] fieldNames;
 
-    this(Interp interp, uint32_t minNumProps)
+    this(VM vm, uint32_t minNumProps)
     {
         // Register this map reference in the live set
-        interp.mapRefs[cast(void*)this] = this;
+        vm.mapRefs[cast(void*)this] = this;
 
         this.nextPropIdx = 0;
         this.minNumProps = minNumProps;
@@ -128,7 +128,7 @@ class ObjMap : IdObject
 }
 
 refptr newObj(
-    Interp interp, 
+    VM vm, 
     ObjMap map,
     refptr protoPtr
 )
@@ -136,10 +136,10 @@ refptr newObj(
     assert (map !is null);
 
     // Create a root for the prototype object
-    auto protoObj = GCRoot(interp, protoPtr);
+    auto protoObj = GCRoot(vm, protoPtr);
 
     // Allocate the object
-    auto objPtr = obj_alloc(interp, map.numProps);
+    auto objPtr = obj_alloc(vm, map.numProps);
 
     // Initialize the object
     obj_set_map(objPtr, cast(rawptr)map);
@@ -149,7 +149,7 @@ refptr newObj(
 }
 
 refptr newClos(
-    Interp interp, 
+    VM vm, 
     ObjMap closMap,
     refptr protoPtr,
     uint32_t allocNumCells,
@@ -162,13 +162,13 @@ refptr newClos(
     closMap.reserveSlots(1);
 
     // Create a root for the prototype object
-    auto protoObj = GCRoot(interp, protoPtr);
+    auto protoObj = GCRoot(vm, protoPtr);
 
     // Register this function in the function reference set
-    interp.funRefs[cast(void*)fun] = fun;
+    vm.funRefs[cast(void*)fun] = fun;
 
     // Allocate the closure object
-    auto objPtr = clos_alloc(interp, closMap.numProps, allocNumCells);
+    auto objPtr = clos_alloc(vm, closMap.numProps, allocNumCells);
 
     // Initialize the object
     obj_set_map(objPtr, cast(rawptr)closMap);
@@ -201,7 +201,7 @@ IRFunction getClosFun(refptr closPtr)
 /// Static offset for the function pointer in a closure object
 immutable size_t CLOS_OFS_FPTR = clos_ofs_word(null, 0);
 
-ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
+ValuePair getProp(VM vm, refptr objPtr, refptr propStr)
 {
     // Follow the next link chain
     for (;;)
@@ -239,17 +239,17 @@ ValuePair getProp(Interp interp, refptr objPtr, refptr propStr)
 
     // Do a recursive lookup on the prototype
     return getProp(
-        interp,
+        vm,
         protoPtr,
         propStr
     );
 }
 
-void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
+void setProp(VM vm, refptr objPtr, refptr propStr, ValuePair valPair)
 {
-    auto obj  = GCRoot(interp, objPtr);
-    auto prop = GCRoot(interp, propStr);
-    auto val  = GCRoot(interp, valPair);
+    auto obj  = GCRoot(vm, objPtr);
+    auto prop = GCRoot(vm, propStr);
+    auto val  = GCRoot(vm, valPair);
 
     // Follow the next link chain
     for (;;)
@@ -288,12 +288,12 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
         switch (objType)
         {
             case LAYOUT_OBJ:
-            newObj = obj_alloc(interp, objCap+1);
+            newObj = obj_alloc(vm, objCap+1);
             break;
 
             case LAYOUT_CLOS:
             auto numCells = clos_get_num_cells(obj.ptr);
-            newObj = clos_alloc(interp, objCap+1, numCells);
+            newObj = clos_alloc(vm, objCap+1, numCells);
             for (uint32_t i = 0; i < numCells; ++i)
                 clos_set_cell(newObj, i, clos_get_cell(obj.ptr, i));
             break;
@@ -317,8 +317,8 @@ void setProp(Interp interp, refptr objPtr, refptr propStr, ValuePair valPair)
 
         // If this is the global object, update
         // the global object pointer
-        if (obj.ptr == interp.globalObj)
-            interp.globalObj = newObj;
+        if (obj.ptr == vm.globalObj)
+            vm.globalObj = newObj;
 
         // Update the object pointer
         obj = newObj;

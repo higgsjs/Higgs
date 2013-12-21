@@ -52,7 +52,7 @@ struct Options
     /// Gather and report various statistics about program execution
     bool stats = false;
 
-    /* Interpreter options */
+    /* VM options */
 
     /// Disable loading of the standard library
     bool nostdlib = false;

@@ -41,7 +41,7 @@ import std.stdio;
 import std.string;
 import std.stdint;
 import std.conv;
-import runtime.interp;
+import runtime.vm;
 import jit.x86;
 import jit.codeblock;
 import jit.jit;
@@ -74,7 +74,7 @@ static this()
 
 /*
 CodeBlock genFFIFn(
-    Interp interp, 
+    VM vm, 
     string[] types, 
     LocalIdx outSlot, 
     size_t argCount
@@ -100,8 +100,8 @@ CodeBlock genFFIFn(
     as.instr(PUSH, R14);
     as.instr(PUSH, R15);
 
-    // Store a pointer to the interpreter in interpReg
-    as.instr(MOV, interpReg, new X86Imm(cast(void*)interp));
+    // Store a pointer to the VM in vmReg
+    as.instr(MOV, vmReg, new X86Imm(cast(void*)vm));
 
     // Fun* goes in R12
     as.instr(MOV, funReg, RDI);
@@ -110,8 +110,8 @@ CodeBlock genFFIFn(
     as.instr(MOV, argsReg, RSI);
 
     // Load the stack pointers into wspReg and tspReg
-    as.getMember!("Interp", "wsp")(wspReg, interpReg);
-    as.getMember!("Interp", "tsp")(tspReg, interpReg);
+    as.getMember!("VM", "wsp")(wspReg, vmReg);
+    as.getMember!("VM", "tsp")(tspReg, vmReg);
 
     // Indices of arguments to be pushed on the stack
     size_t stackArgs[];
@@ -164,7 +164,7 @@ CodeBlock genFFIFn(
     // Call the C function
     as.instr(jit.encodings.CALL, funReg);
 
-    // Send return value/type to interpreter
+    // Send return value/type
     if (retType == "f64")
     {
         as.setWord(outSlot, XMM0);
@@ -189,9 +189,9 @@ CodeBlock genFFIFn(
     if (stackArgs.length % 2 != 0)
         as.instr(POP, scratchReg);
 
-    // Store the stack pointers back in the interpreter
-    as.setMember!("Interp", "wsp")(interpReg, wspReg);
-    as.setMember!("Interp", "tsp")(interpReg, tspReg);
+    // Store the stack pointers back in the VM
+    as.setMember!("VM", "wsp")(vmReg, wspReg);
+    as.setMember!("VM", "tsp")(vmReg, tspReg);
 
     // Restore the GP registers & return
     as.instr(POP, R15);
@@ -262,7 +262,7 @@ unittest
     writefln("FFI");
 
     // TODO
-    //auto interp = new Interp();
-    //interp.load("programs/ffi/ffi.js");
+    //auto vm = new VM();
+    //vm.load("programs/ffi/ffi.js");
 }
 
