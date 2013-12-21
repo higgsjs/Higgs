@@ -59,6 +59,7 @@ import runtime.string;
 import runtime.gc;
 import jit.codeblock;
 import jit.x86;
+import jit.util;
 import jit.jit;
 
 /// Instruction code generation function
@@ -310,14 +311,14 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
             BranchShape.DEFAULT,
             delegate void(
                 CodeBlock as,
-                FragmentRef[]* refList,
+                VM vm,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
             )
             {
-                jno32Ref(as, refList, target0);
-                jmp32Ref(as, refList, target1);
+                jno32Ref(as, vm, target0);
+                jmp32Ref(as, vm, target1);
             }
         );
 
@@ -776,14 +777,14 @@ void IsTypeOp(Type type)(
             BranchShape.DEFAULT,
             delegate void(
                 CodeBlock as,
-                FragmentRef[]* refList,
+                VM vm,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
             )
             {
-                je32Ref(as, refList, target0);
-                jmp32Ref(as, refList, target1);
+                je32Ref(as, vm, target0);
+                jmp32Ref(as, vm, target1);
             }
         );
 
@@ -1022,7 +1023,7 @@ void CmpOp(string op, size_t numBits)(
             BranchShape.DEFAULT,
             delegate void(
                 CodeBlock as,
-                FragmentRef[]* refList,
+                VM vm,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -1031,33 +1032,33 @@ void CmpOp(string op, size_t numBits)(
                 // Integer comparison
                 static if (op == "eq")
                 {
-                    je32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    je32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
                 else if (op == "ne")
                 {
-                    jne32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    jne32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
                 else if (op == "lt")
                 {
-                    jl32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    jl32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
                 else if (op == "le")
                 {
-                    jle32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    jle32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
                 else if (op == "gt")
                 {
-                    jg32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    jg32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
                 else if (op == "ge")
                 {
-                    jge32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    jge32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
 
                 // Floating-point comparisons
@@ -1067,9 +1068,9 @@ void CmpOp(string op, size_t numBits)(
                     // True: 100
                     // False: 111 or 000 or 001
                     // False: JNE + JP
-                    jne32Ref(as, refList, target1);
-                    jp32Ref(as, refList, target1);
-                    jmp32Ref(as, refList, target0);
+                    jne32Ref(as, vm, target1);
+                    jp32Ref(as, vm, target1);
+                    jmp32Ref(as, vm, target0);
                 }
                 else if (op == "fne")
                 {
@@ -1077,29 +1078,29 @@ void CmpOp(string op, size_t numBits)(
                     // True: 111 or 000 or 001
                     // False: 100
                     // True: JNE + JP
-                    jne32Ref(as, refList, target0);
-                    jp32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    jne32Ref(as, vm, target0);
+                    jp32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
                 else if (op == "flt")
                 {
-                    ja32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    ja32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
                 else if (op == "fle")
                 {
-                    jae32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    jae32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
                 else if (op == "fgt")
                 {
-                    ja32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    ja32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
                 else if (op == "fge")
                 {
-                    jae32Ref(as, refList, target0);
-                    jmp32Ref(as, refList, target1);
+                    jae32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
                 }
             }
         );
@@ -1175,14 +1176,14 @@ void gen_if_true(
         BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
-            FragmentRef[]* refList,
+            VM vm,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
         )
         {
-            je32Ref(as, refList, target0);
-            jmp32Ref(as, refList, target1);
+            je32Ref(as, vm, target0);
+            jmp32Ref(as, vm, target1);
         }
     );
 
@@ -1213,13 +1214,13 @@ void gen_jump(
         BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
-            FragmentRef[]* refList,
+            VM vm,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
         )
         {
-            jmp32Ref(as, refList, target0);
+            jmp32Ref(as, vm, target0);
         }
     );
 
@@ -1344,7 +1345,7 @@ void gen_call_prim(
         BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
-            FragmentRef[]* refList,
+            VM vm,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1359,12 +1360,12 @@ void gen_call_prim(
             // Write the return address on the stack
             as.writeASM("mov", scrRegs[0], target0.getName);
             as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
-            *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
+            vm.addFragRef(as.getWritePos() - 8, target0, 64);
             as.setWord(raSlot, scrRegs[0].opnd(64));
             as.setType(raSlot, Type.RAWPTR);
 
             // Jump to the function entry block
-            jmp32Ref(as, refList, target1);
+            jmp32Ref(as, vm, target1);
         }
     );
 
@@ -1560,7 +1561,7 @@ void gen_call(
         BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
-            FragmentRef[]* refList,
+            VM vm,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1569,7 +1570,7 @@ void gen_call(
             // Write the return address on the stack
             as.writeASM("mov", scrRegs[0], target0.getName);
             as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
-            *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
+            vm.addFragRef(as.getWritePos() - 8, target0, 64);
             as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd(64));
             as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RAWPTR));
 
@@ -1840,17 +1841,15 @@ void gen_call_new(
         BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
-            FragmentRef[]* refList,
+            VM vm,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
         )
         {
             // Write the return address on the stack
-            as.writeASM("mov", scrRegs[0], target0.getName);
-            as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
-            *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
-            as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd(64));
+            as.movAbsRef(vm, scrRegs[0], target0);
+            as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd);
             as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RAWPTR));
 
             //as.printUint(scrRegs[0].opnd(64));
@@ -1970,7 +1969,7 @@ void gen_call_apply(
         BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
-            FragmentRef[]* refList,
+            VM vm,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1979,13 +1978,11 @@ void gen_call_apply(
             as.pushJITRegs();
 
             // Pass the VM and instruction as first two arguments
-            as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
+            as.mov(cargRegs[0].opnd, vmReg.opnd);
             as.ptr(cargRegs[1], instr);
 
-            // Write the return address on the stack
-            as.writeASM("mov", cargRegs[2], target0.getName);
-            as.mov(cargRegs[2].opnd(64), X86Opnd(uint64_t.max));
-            *refList ~= FragmentRef(as.getWritePos() - 8, target0, 64);
+            // Pass the target address as third argument
+            as.movAbsRef(vm, cargRegs[2], target0);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_call_apply);

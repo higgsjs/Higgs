@@ -38,6 +38,7 @@ runtime/gc.d        \
 runtime/ffi.d       \
 jit/x86.d           \
 jit/codeblock.d     \
+jit/util.d          \
 jit/moves.d         \
 jit/ops.d           \
 jit/jit.d           \

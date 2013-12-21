@@ -80,22 +80,20 @@ TODO: GC support
 
 TODO: exception support
 - const(ubyte)* getExcExit(VM vm)
+- Generate exception branch code (ret moves?)
 - Exception traversal needs current IRFunction
 
-TODO: VM.compile(), VM.queue(version), VM.addVerRef(), etc?
+
+
+
+
+
+
+
+
+[DONE] TODO: VM.compile(), VM.queue(version), VM.addVerRef(), etc?
 - grep for .refList, .compQueue
-- split jit.d into jit/state, jit/util, etc?
-
-
-
-
-
-
-
-
-
-
-
+- split jit.d into jit/state, jit/util, etc
 
 [DONE] TODO: rename Interp class to VM
 - rename uses and interp directory as well
