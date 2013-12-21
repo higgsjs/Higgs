@@ -1358,11 +1358,9 @@ void gen_call_prim(
             assert (raSlot !is NULL_LOCAL);
 
             // Write the return address on the stack
-            as.writeASM("mov", scrRegs[0], target0.getName);
-            as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
-            vm.addFragRef(as.getWritePos() - 8, target0, 64);
+            as.movAbsRef(vm, scrRegs[0], target0);
             as.setWord(raSlot, scrRegs[0].opnd(64));
-            as.setType(raSlot, Type.RAWPTR);
+            as.setType(raSlot, Type.RETADDR);
 
             // Jump to the function entry block
             jmp32Ref(as, vm, target1);
@@ -1568,11 +1566,9 @@ void gen_call(
         )
         {
             // Write the return address on the stack
-            as.writeASM("mov", scrRegs[0], target0.getName);
-            as.mov(scrRegs[0].opnd(64), X86Opnd(uint64_t.max));
-            vm.addFragRef(as.getWritePos() - 8, target0, 64);
-            as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd(64));
-            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RAWPTR));
+            as.movAbsRef(vm, scrRegs[0], target0);
+            as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd);
+            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RETADDR));
 
             //as.printUint(scrRegs[0].opnd(64));
 
@@ -1850,7 +1846,7 @@ void gen_call_new(
             // Write the return address on the stack
             as.movAbsRef(vm, scrRegs[0], target0);
             as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd);
-            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RAWPTR));
+            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RETADDR));
 
             //as.printUint(scrRegs[0].opnd(64));
 
@@ -2018,65 +2014,6 @@ void gen_ret(
     auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
-    // If this is a unit-level function
-    if (instr.block.fun.isUnit)
-    {
-        // Pop the locals, but leave one slot for the return value
-        auto numPop = numLocals - 1;
-
-        // Copy the return value word
-        auto retOpnd = st.getWordOpnd(
-            as, 
-            instr, 
-            0,
-            64,
-            scrRegs[0].opnd(64),
-            true
-        );
-
-        as.mov(
-            X86Opnd(64, wspReg, 8 * numPop),
-            retOpnd
-        );
-
-        // Copy the return value type
-        auto typeOpnd = st.getTypeOpnd(
-            as, 
-            instr,
-            0, 
-            scrRegs[0].opnd(8),
-            true
-        );
-        as.mov(
-            X86Opnd(8, tspReg, 1 * numPop),
-            typeOpnd
-        );
-
-        // Pop local stack slots, but leave one slot for the return value
-        as.add(tspReg, 1 * numPop);
-        as.add(wspReg, 8 * numPop);
-
-        // Store the stack pointers back in the VM
-        as.setMember!("VM.wsp")(vmReg, wspReg);
-        as.setMember!("VM.tsp")(vmReg, tspReg);
-
-        // Restore the callee-save GP registers
-        as.pop(R15);
-        as.pop(R14);
-        as.pop(R13);
-        as.pop(R12);
-        as.pop(RBP);
-        as.pop(RBX);
-
-        // Pop the stack alignment padding
-        as.add(X86Opnd(RSP), X86Opnd(8));
-
-        // Return to the host
-        as.ret();
-
-        return;
-    }
-
     //as.printStr("ret from " ~ instr.block.fun.getName);
 
     // Copy the return value word
@@ -2125,7 +2062,6 @@ void gen_ret(
 
     // Get the actual argument count into r0
     as.getWord(scrRegs[0], argcSlot);
-
     //as.printStr("argc=");
     //as.printInt(scrRegs[0].opnd(64));
 
@@ -2145,14 +2081,16 @@ void gen_ret(
     as.getWord(scrRegs[1], raSlot);
 
     // Pop all local stack slots and arguments
-    as.add(tspReg.opnd(64), scrRegs[0].opnd(64));
     //as.printStr("popping");
-    //as.printUint(scrRegs[0].opnd(64));
-    as.shl(scrRegs[0].opnd(64), X86Opnd(3));
-    as.add(wspReg.opnd(64), scrRegs[0].opnd(64));
+    //as.printUint(scrRegs[0].opnd);
+    as.add(tspReg.opnd(64), scrRegs[0].opnd);
+    as.shl(scrRegs[0].opnd, X86Opnd(3));
+    as.add(wspReg.opnd(64), scrRegs[0].opnd);
 
     // Jump to the return address
-    as.jmp(scrRegs[1].opnd(64));
+    //as.printStr("ra=");
+    //as.printUint(scrRegs[1].opnd);
+    as.jmp(scrRegs[1].opnd);
 }
 
 // TODO

@@ -78,18 +78,43 @@ TODO: talk to Tom about JITted FFI
 
 TODO: GC support
 
-TODO: exception support
-- const(ubyte)* getExcExit(VM vm)
-- Generate exception branch code (ret moves?)
+TODO: make call throw on non-closure work
+- enable tests
+
+TODO: implement throw
+
+TODO: make call instructions do vm.setRetEntry
+
+TODO: throwExc needs to set exc object
+- If call instr is null, set exc object, use return branch
+
+
+
+
+
+
+
+
+[DONE] TODO: refactor compileUnit
+- KISS, return CodePtr for entry branch edge
+  - setup stack manually
+  - callable only once
+- No longer need callFun in VM.exec
+- set return address, exc handler at end of compileUnit
+  - ra should be custom return BranchEdge
+  - exc handler is also custom BranchEdge
+
+[DONE] TODO: rewrite throwExc
+- Need map of RAs to <VersionInst callVer, CodeFragment excHandler>
 - Exception traversal needs current IRFunction
+  - Throw/unwind code returns exc handler addr to jump to
+  - If stack fully unwound, set exc value ptr in VM
+  - Value passed to host is a D RunError object
+- Normal call exc handler generates moves
+  - Host places exc value on VM stacks before returning
+  - Handler removes ret value, places in callInstr.outSlot
 
-
-
-
-
-
-
-
+[DONE] TODO: define CodePtr type in CodeBlock
 
 [DONE] TODO: VM.compile(), VM.queue(version), VM.addVerRef(), etc?
 - grep for .refList, .compQueue

@@ -76,6 +76,9 @@ enum Label : size_t
     BRANCH_TARGET1
 }
 
+/// Code pointer type definition
+alias const(ubyte)* CodePtr;
+
 /**
 Low-level machine code block implementation. Stores generated machine code.
 */
@@ -220,14 +223,14 @@ class CodeBlock
     /**
     Get a direct pointer into the executable memory block
     */
-    auto getAddress(size_t index = 0)
+    CodePtr getAddress(size_t index = 0)
     {
         assert (
             index < memSize,
             "invalid index in getAddress: " ~ to!string(index)
         );
 
-        return cast(const ubyte*)&memBlock[index];
+        return cast(CodePtr)&memBlock[index];
     }
 
     /**

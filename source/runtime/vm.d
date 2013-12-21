@@ -170,6 +170,7 @@ enum Type : ubyte
     FLOAT64,
     REFPTR,
     RAWPTR,
+    RETADDR,
     CONST,
     FUNPTR,
     MAPPTR
@@ -191,6 +192,7 @@ string typeToString(Type type)
         case Type.FLOAT64:  return "float64";
         case Type.RAWPTR:   return "raw pointer";
         case Type.REFPTR:   return "ref pointer";
+        case Type.RETADDR:  return "return address";
         case Type.CONST:    return "const";
         case Type.FUNPTR:   return "funptr";
         case Type.MAPPTR:   return "mapptr";
@@ -255,6 +257,9 @@ string valToString(ValuePair value)
         if (valIsString(w, value.type))
             return extractStr(w.ptrVal);
         return "refptr";
+
+        case Type.RETADDR:
+        return to!string(w.ptrVal);
 
         case Type.CONST:
         if (w == TRUE)
@@ -393,6 +398,9 @@ class VM
 
     /// Executable heap
     CodeBlock execHeap;
+
+    /// Map of return addresses to return entries
+    RetEntry[CodePtr] retAddrMap;
 
     /// List of code fragments, in memory order
     CodeFragment[] fragList;
@@ -926,9 +934,9 @@ class VM
         push(Word.ptrv(closPtr), Type.REFPTR);
 
         // Push the return address
-        push(Word.ptrv(retAddr), Type.RAWPTR);
+        push(Word.ptrv(retAddr), Type.RETADDR);
      
-        // Push space for the callee locals and initialize the slots to undefined
+        // Push space for the callee locals
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
         push(numLocals);
     }
@@ -948,21 +956,8 @@ class VM
         // Register this function in the function reference set
         funRefs[cast(void*)fun] = fun;
 
-        // Setup the callee stack frame
-        callFun(
-            fun,                    // Function to call (unit function)
-            null,                   // Null return address
-            null,                   // Null closure argument
-            Word.ptrv(globalObj),   // The "this" value is the global object
-            Type.REFPTR,            // The "this" value is a reference
-            0,                      // 0 arguments
-            null                    // no argument array
-        );
-
         // Compile the entry block of the unit function
         auto entryFn = compileUnit(this, fun);
-
-        //writeln("calling code at: ", entryFn);
 
         // Call into the compiled code
         entryFn();
@@ -1120,55 +1115,66 @@ class VM
     }
 }
 
-// FIXME
-/*
-void throwExc(VM vm, IRInstr instr, ValuePair excVal)
+/**
+Throw an exception, unwinding the stack until an exception handler
+is found. Returns a pointer to the exception handler code.
+*/
+extern (C) CodePtr throwExc(
+    VM vm, 
+    IRInstr throwInstr,
+    CodeFragment throwHandler,
+    Word excWord,
+    Type excType
+)
 {
     //writefln("throw");
 
     // Stack trace (call instructions and throwing instruction)
     IRInstr[] trace;
 
-    // Until we're done unwinding the stack
-    for (IRInstr curInstr = instr;;)
-    {
-        // If we have reached the bottom of the stack
-        if (curInstr is null)
-        {
-            //writefln("reached bottom of stack");
+    // Get the exception handler code, if supplied
+    CodePtr curHandler = throwHandler? throwHandler.getCodePtr(vm.execHeap):null;
 
-            // Throw run-time error exception
-            throw new RunError(vm, excVal, trace);
-        }
+    // Until we're done unwinding the stack
+    for (IRInstr curInstr = throwInstr;;)
+    {
+        assert (curInstr !is null);
 
         // Add the current instruction to the stack trace
         trace ~= curInstr;
 
-        // If this is a call instruction and it has an exception target
-        if (curInstr.opcode is &CALL && curInstr.getTarget(1) !is null)
+        // If the current instruction has an exception handler
+        if (curHandler !is null)
         {
-            //writefln("found exception target");
+            //writefln("found exception handler");
 
-            // Set the return value slot to the exception value
-            vm.setSlot(
-                curInstr.outSlot, 
-                excVal
-            );
+            // Push the exception value on the stack
+            vm.push(excWord, excType);
 
-            // Go to the exception target
-            vm.branch(curInstr.getTarget(1));
-
-            // Stop unwinding the stack
-            return;
+            // Return the exception handler address
+            return curHandler;
         }
 
-        auto numLocals = curInstr.block.fun.numLocals;
-        auto numParams = curInstr.block.fun.numParams;
-        auto argcSlot = curInstr.block.fun.argcVal.outSlot;
-        auto raSlot = curInstr.block.fun.raVal.outSlot;
+        auto curFun = curInstr.block.fun;
+        assert (curFun !is null);
+
+        auto numLocals = curFun.numLocals;
+        auto numParams = curFun.numParams;
+        auto argcSlot  = curFun.argcVal.outSlot;
+        auto raSlot    = curFun.raVal.outSlot;
+
+        // Get the return address
+        auto retAddr = cast(CodePtr)vm.wsp[raSlot].ptrVal;
+
+        // Find the return address entry
+        assert (retAddr in vm.retAddrMap);
+        auto retEntry = vm.retAddrMap[retAddr];
 
         // Get the calling instruction for the current stack frame
-        curInstr = cast(IRInstr)vm.wsp[raSlot].ptrVal;
+        curInstr = retEntry.callInstr;
+
+        // Get the exception handler code for the calling instruction
+        curHandler = retEntry.excCode? retEntry.excCode.getCodePtr(vm.execHeap):null;
 
         // Get the argument count
         auto argCount = vm.wsp[argcSlot].int32Val;
@@ -1179,20 +1185,23 @@ void throwExc(VM vm, IRInstr instr, ValuePair excVal)
         // Pop all local stack slots and arguments
         vm.pop(numLocals + extraArgs);
     }
-}
-*/
 
+    assert (false);
+}
+
+/**
+Throw a JavaScript error object as an exception
+*/
 void throwError(
     VM vm,
-    IRInstr instr,
+    IRInstr throwInstr,
+    CodeFragment throwHandler,
     string ctorName, 
     string errMsg
 )
 {
     assert (false);
 
-    // FIXME
-    /*
     auto errStr = GCRoot(vm, getString(vm, to!wstring(errMsg)));
 
     auto ctorStr = GCRoot(vm, getString(vm, to!wstring(ctorName)));
@@ -1242,8 +1251,10 @@ void throwError(
 
             throwExc(
                 vm,
-                instr,
-                excObj.pair
+                throwInstr,
+                throwHandler,
+                excObj.word,
+                excObj.type
             );
 
             return;
@@ -1253,9 +1264,10 @@ void throwError(
     // Throw the error string directly
     throwExc(
         vm,
-        instr,
-        errStr.pair
+        throwInstr,
+        throwHandler,
+        errStr.word,
+        errStr.type,
     );
-    */
 }
 

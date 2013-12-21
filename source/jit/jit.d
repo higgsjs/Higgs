@@ -839,11 +839,6 @@ abstract class CodeFragment
     /// Get the name string for this fragment
     final string getName()
     {
-        if (auto stub = cast(EntryStub)this)
-        {
-            return "entry_stub_" ~ (stub.ctorCall? "ctor":"reg");
-        }
-
         if (auto ver = cast(BlockVersion)this)
         {
             return ver.block.getName;
@@ -852,6 +847,16 @@ abstract class CodeFragment
         if (auto branch = cast(BranchCode)this)
         {
             return "branch_" ~ branch.target.block.getName;
+        }
+
+        if (auto stub = cast(EntryStub)this)
+        {
+            return "entry_stub_" ~ (stub.ctorCall? "ctor":"reg");
+        }
+
+        if (auto exit = cast(ExitCode)this)
+        {
+            return "unit_exit_" ~ exit.fun.getName;
         }
 
         assert (false);
@@ -909,6 +914,19 @@ class EntryStub : CodeFragment
     {
         this.vm = vm;
         this.ctorCall = ctorCall;
+    }
+}
+
+/**
+Unit exit code
+*/
+class ExitCode : CodeFragment
+{
+    IRFunction fun;
+
+    this(IRFunction fun)
+    {
+        this.fun = fun;
     }
 }
 
@@ -1342,8 +1360,19 @@ BranchCode getBranchEdge(
     return new BranchCode(branch, succVer);
 }
 
+/// Return address entry
+alias Tuple!(
+    IRInstr, "callInstr", 
+    CodeFragment, "retCode", 
+    CodeFragment, "excCode"
+) RetEntry;
+
 /// Fragment reference tuple
-alias Tuple!(size_t, "pos", CodeFragment, "frag", size_t, "size") FragmentRef;
+alias Tuple!(
+    size_t, "pos", 
+    CodeFragment, "frag", 
+    size_t, "size"
+) FragmentRef;
 
 /**
 Add a fragment reference to the reference list
@@ -1359,6 +1388,20 @@ Queue a block version to be compiled
 void queue(VM vm, BlockVersion ver)
 {
     vm.compQueue ~= ver;
+}
+
+/**
+Set the return address entry for a call instruction
+*/
+void setRetEntry(
+    VM vm, 
+    CodePtr retAddr, 
+    IRInstr callInstr, 
+    CodeFragment retCode, 
+    CodeFragment excCode
+)
+{
+    vm.retAddrMap[retAddr] = RetEntry(callInstr, retCode, excCode);
 }
 
 /**
@@ -1553,7 +1596,50 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     auto as = vm.execHeap;
 
-    //writeln(fun);
+    //
+    // Create the return branch code
+    //
+
+    auto retEdge = new ExitCode(fun);
+    retEdge.markStart(as);
+
+    // Push one slot for the return value
+    as.sub(tspReg.opnd, X86Opnd(1));
+    as.sub(wspReg.opnd, X86Opnd(8));
+
+    // Place the return value on top of the stack
+    as.setWord(0, retWordReg.opnd);
+    as.setType(0, retTypeReg.opnd);
+
+    // Store the stack pointers back in the VM
+    as.setMember!("VM.wsp")(vmReg, wspReg);
+    as.setMember!("VM.tsp")(vmReg, tspReg);
+
+    // Restore the callee-save GP registers
+    as.pop(R15);
+    as.pop(R14);
+    as.pop(R13);
+    as.pop(R12);
+    as.pop(RBP);
+    as.pop(RBX);
+
+    // Pop the stack alignment padding
+    as.add(X86Opnd(RSP), X86Opnd(8));
+
+    // Return to the host
+    as.ret();
+
+    retEdge.markEnd(as);
+
+    // Get the return code address
+    auto retAddr = retEdge.getCodePtr(as);
+
+    // Set the return address entry for this call
+    vm.setRetEntry(retAddr, null, retEdge, null);
+
+    //
+    // Compile the unit entry
+    //
 
     // Create a version instance object for the function entry
     auto entryInst = new VersionInst(
@@ -1563,8 +1649,6 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     // Note the code start index for this version
     entryInst.startIdx = cast(uint32_t)as.getWritePos();
-
-    as.comment("Unit function entry for " ~ fun.getName);
 
     // Align SP to a multiple of 16 bytes
     as.sub(X86Opnd(RSP), X86Opnd(8));
@@ -1584,22 +1668,47 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     as.getMember!("VM.wsp")(wspReg, vmReg);
     as.getMember!("VM.tsp")(tspReg, vmReg);
 
+    // Set the argument count (0)
+    as.setWord(-1, X86Opnd(0));
+    as.setType(-1, Type.INT32);
+
+    // Set the "this" argument (global object)
+    as.getMember!("VM.globalObj")(scrRegs[0], vmReg);
+    as.setWord(-2, scrRegs[0].opnd);
+    as.setType(-2, Type.REFPTR);
+
+    // Set the closure argument (null)
+    as.setWord(-3, X86Opnd(0));
+    as.setType(-3, Type.REFPTR);
+
+    // Set the return address
+    as.ptr(scrRegs[0], retAddr);
+    as.setWord(-4, scrRegs[0].opnd);
+    as.setType(-4, Type.RETADDR);
+
+    // Push space for the callee locals
+    as.sub(tspReg.opnd, X86Opnd(1 * fun.numLocals));
+    as.sub(wspReg.opnd, X86Opnd(8 * fun.numLocals));
+
     // Compile the unit entry version
     vm.queue(entryInst);
     vm.compile();
+
+    // Get a pointer to the entry block version's code
+    auto entryFn = cast(EntryFn)entryInst.getCodePtr(vm.execHeap);
 
     // Update the compilation time stat
     auto endTimeUsecs = Clock.currAppTick().usecs();
     stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 
-    // Return a pointer to the entry block version's code
-    return cast(EntryFn)entryInst.getCodePtr(vm.execHeap);
+    // Return the unit entry function
+    return entryFn;
 }
 
 /**
 Compile the block version instance for a stub
 */
-extern (C) const (ubyte*) compileStub(VersionStub stub)
+extern (C) CodePtr compileStub(VersionStub stub)
 {
     auto startTimeUsecs = Clock.currAppTick().usecs();
 
@@ -1650,7 +1759,7 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
 /**
 Compile an entry block instance for a function
 */
-extern (C) const (ubyte*) compileEntry(EntryStub stub)
+extern (C) CodePtr compileEntry(EntryStub stub)
 {
     auto startTimeUsecs = Clock.currAppTick().usecs();
 
@@ -1727,7 +1836,7 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
 /**
 Get a function entry stub
 */
-const(ubyte)* getEntryStub(VM vm, bool ctorCall)
+CodePtr getEntryStub(VM vm, bool ctorCall)
 {
     auto as = vm.execHeap;
 

@@ -280,8 +280,9 @@ unittest
     vm.assertInt("return function () { return 2 * 3; } ()", 6);
 
     // TODO
-    // Calling null as a function
-    //vm.assertThrows("null()");
+    // Calling a non-function
+    //vm.assertThrows("null());
+    //vm.assertThrows("undefined());
 }
 
 /// Argument passing test
