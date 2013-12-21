@@ -49,9 +49,9 @@ import util.string;
 import parser.ast;
 import ir.ops;
 import ir.livevars;
-import interp.interp;
-import interp.layout;
-import interp.object;
+import runtime.interp;
+import runtime.layout;
+import runtime.object;
 import jit.jit;
 
 /// Local variable index type

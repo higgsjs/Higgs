@@ -35,13 +35,13 @@
 *
 *****************************************************************************/
 
-module interp.ffi;
+module runtime.ffi;
 
 import std.stdio;
 import std.string;
 import std.stdint;
 import std.conv;
-import interp.interp;
+import runtime.interp;
 import jit.x86;
 import jit.codeblock;
 import jit.jit;

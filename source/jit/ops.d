@@ -52,11 +52,11 @@ import stats;
 import ir.ir;
 import ir.ops;
 import ir.ast;
-import interp.interp;
-import interp.layout;
-import interp.object;
-import interp.string;
-import interp.gc;
+import runtime.interp;
+import runtime.layout;
+import runtime.object;
+import runtime.string;
+import runtime.gc;
 import jit.codeblock;
 import jit.x86;
 import jit.jit;
@@ -2933,6 +2933,72 @@ void gen_get_time_ms(
     as.mov(outOpnd, X86Opnd(RAX));
 }
 
+void gen_get_ast_str(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) refptr op_get_ast_str(Interp interp, refptr closPtr)
+    {
+        assert (
+            valIsLayout(Word.ptrv(closPtr), LAYOUT_CLOS),
+            "invalid closure object"
+        );
+
+        auto fun = getClosFun(closPtr);
+
+        auto str = fun.ast.toString();
+        auto strObj = getString(interp, to!wstring(str));
+       
+        return strObj;
+    }
+
+    // TODO: spill all for GC
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    as.pushJITRegs();
+
+    as.mov(cargRegs[0].opnd, interpReg.opnd);
+    as.mov(cargRegs[1].opnd, opnd0);
+    as.ptr(scrRegs[0], &op_get_ast_str);
+    as.call(scrRegs[0].opnd);
+
+    as.popJITRegs();
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(RAX));
+}
+
+/*
+extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
+{
+    auto funArg = interp.getArgVal(instr, 0);
+
+    assert (
+        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
+        "invalid closure object"
+    );
+
+    auto fun = getClosFun(funArg.word.ptrVal);
+
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+        astToIR(fun.ast, fun);
+
+    auto str = fun.toString();
+    auto strObj = getString(interp, to!wstring(str));
+
+    interp.setSlot(
+        instr.outSlot,
+        Word.ptrv(strObj),
+        Type.REFPTR
+    );
+}
+*/
+
 // TODO
 // TODO
 // TODO
@@ -2998,56 +3064,6 @@ extern (C) void op_eval_str(Interp interp, IRInstr instr)
     );
     */
 }
-
-/*
-extern (C) void op_get_ast_str(Interp interp, IRInstr instr)
-{
-    auto funArg = interp.getArgVal(instr, 0);
-
-    assert (
-        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
-        "invalid closure object"
-    );
-
-    auto fun = getClosFun(funArg.word.ptrVal);
-
-    auto str = fun.ast.toString();
-    auto strObj = getString(interp, to!wstring(str));
-   
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(strObj),
-        Type.REFPTR
-    );
-}
-*/
-
-/*
-extern (C) void op_get_ir_str(Interp interp, IRInstr instr)
-{
-    auto funArg = interp.getArgVal(instr, 0);
-
-    assert (
-        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
-        "invalid closure object"
-    );
-
-    auto fun = getClosFun(funArg.word.ptrVal);
-
-    // If the function is not yet compiled, compile it now
-    if (fun.entryBlock is null)
-        astToIR(fun.ast, fun);
-
-    auto str = fun.toString();
-    auto strObj = getString(interp, to!wstring(str));
-
-    interp.setSlot(
-        instr.outSlot,
-        Word.ptrv(strObj),
-        Type.REFPTR
-    );
-}
-*/
 
 /*
 extern (C) void op_load_lib(Interp interp, IRInstr instr)

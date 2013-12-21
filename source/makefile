@@ -30,13 +30,12 @@ ir/ast.d            \
 ir/peephole.d       \
 ir/slotalloc.d      \
 ir/livevars.d       \
-interp/interp.d     \
-interp/ops.d        \
-interp/layout.d     \
-interp/string.d     \
-interp/object.d     \
-interp/gc.d         \
-interp/ffi.d        \
+runtime/interp.d     \
+runtime/layout.d     \
+runtime/string.d     \
+runtime/object.d     \
+runtime/gc.d         \
+runtime/ffi.d        \
 jit/x86.d           \
 jit/codeblock.d     \
 jit/moves.d         \
@@ -48,7 +47,7 @@ stats.d             \
 main.d              \
 jit/tests.d         \
 parser/tests.d      \
-interp/tests.d
+runtime/tests.d
 
 all: layout
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
@@ -64,17 +63,17 @@ release: layout
 	$(DC) $(RELOPTS) -of$(BIN_NAME) $(SRC)
 
 layout:
-	python interp/layout.py
+	python runtime/layout.py
 
 clean:
 	rm -f $(BIN_NAME) $(BIN_NAME_TEST) $(BIN_NAME_DEBUG) *.o
 
 install:
 	@if [ ! -d $(LIB_DIR) ] ; then echo "mkdir $(LIB_DIR)" ; mkdir $(LIB_DIR) ; fi
-	@if [ ! -d $(LIB_DIR)/interp ] ; then echo "mkdir $(LIB_DIR)/interp" ; mkdir $(LIB_DIR)/interp ; fi
+	@if [ ! -d $(LIB_DIR)/runtime ] ; then echo "mkdir $(LIB_DIR)/runtime" ; mkdir $(LIB_DIR)/runtime ; fi
 	@if [ ! -d $(LIB_DIR)/stdlib ] ; then echo "mkdir $(LIB_DIR)/stdlib" ; mkdir $(LIB_DIR)/stdlib ; fi
 	@if [ ! -d $(LIB_DIR)/lib ] ; then echo "mkdir $(LIB_DIR)/lib" ; mkdir $(LIB_DIR)/lib ; fi
-	cp ./interp/*.js $(LIB_DIR)/interp
+	cp ./runtime/*.js $(LIB_DIR)/runtime
 	cp ./stdlib/*.js $(LIB_DIR)/stdlib
 	cp ./lib/*.js $(LIB_DIR)/lib
 	cp $(BIN_NAME) $(BIN_DIR)

@@ -303,20 +303,11 @@ Opcode MAP_PROP_NAME = { "map_prop_name", true, [OpArg.LOCAL, OpArg.LOCAL], &gen
 /// Create a new closure from a function's AST node
 Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LOCAL, OpArg.LOCAL], &gen_new_clos, OpInfo.MAY_GC };
 
-/// Load a source code unit from a file
-Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], /*&gen_load_file*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
-
-/// Evaluate a source string in the global scope
-Opcode EVAL_STR = { "eval_str", true, [OpArg.LOCAL], /*&gen_eval_str*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
-
 /// Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &gen_print_str, OpInfo.IMPURE };
 
-/// Get a string representation of a function's AST
-Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], /*&gen_get_ast_str*/null , OpInfo.MAY_GC };
-
-/// Get a string representation of a function's IR
-Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], /*&gen_get_ir_str*/null , OpInfo.MAY_GC };
+/// Get the time in milliseconds since process start
+Opcode GET_TIME_MS = { "get_time_ms", true, [], &gen_get_time_ms };
 
 /// Format a floating-point value as a string
 Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &gen_f64_to_str, OpInfo.MAY_GC };
@@ -324,8 +315,17 @@ Opcode F64_TO_STR = { "f64_to_str", true, [OpArg.LOCAL], &gen_f64_to_str, OpInfo
 /// Format a floating-point value as a string (long)
 Opcode F64_TO_STR_LNG = { "f64_to_str_lng", true, [OpArg.LOCAL], &gen_f64_to_str_lng, OpInfo.MAY_GC };
 
-/// Get the time in milliseconds since process start
-Opcode GET_TIME_MS = { "get_time_ms", true, [], &gen_get_time_ms };
+/// Get a string representation of a function's AST
+Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &gen_get_ast_str, OpInfo.MAY_GC };
+
+/// Get a string representation of a function's IR
+Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], /*&gen_get_ir_str*/null , OpInfo.MAY_GC };
+
+/// Load a source code unit from a file
+Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], /*&gen_load_file*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
+
+/// Evaluate a source string in the global scope
+Opcode EVAL_STR = { "eval_str", true, [OpArg.LOCAL], /*&gen_eval_str*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Load a shared lib
 Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], /*&gen_load_lib*/null };

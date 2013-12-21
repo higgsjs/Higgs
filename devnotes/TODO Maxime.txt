@@ -63,35 +63,53 @@ TODO: register allocation
 Milestone IV: All benchmarks working
 - Will require GC
 
-TODO: GC support
+Marc is back after Jan 7, busy 10-11-12 with CEGEP students
 
-TODO: exception support
+TODO: big blog post about basic block versioning, incremental JIT
+
+TODO: put paper on archive.org
+
+TODO: think about resubmitting to Usenix
 
 TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
 TODO: talk to Tom about JITted FFI
 
-TODO: create JIT class
-- Have JIT.compile(), JIT.queue(version), etc.
-  - put the execHeap, compQueue, refList, etc. in there
-- reread jit.d, cleanup code, create jit/util.d?
+TODO: GC support
+
+TODO: exception support
+- const(ubyte)* getExcExit(VM vm)
+- Exception traversal needs current IRFunction
 
 TODO: rename Interp class to VM
-- rename uses and interp directory as well (runtime dir?)
+- rename uses and interp directory as well
+- Have VM.compile(), VM.queue(version), VM.addVerRef(), etc?
+- split jit.d into jit/state, jit/util, etc?
 
-TODO: remove interp/ops.d
+
+
+
+
+
+
+
+
+
+[DONE] TODO: get_ast_str
+
+[DONE] TODO: remove interp/ops.d
 - move useful contents to jit/ops.d and interp/interp.d
 
-TODO: get_ast_str
+[DONE] Meeting:
+- new, apply working
+- all of stdlib initializing
+- all stdlib tests working
+- most benchmarks working
+  - missing some because of GC, exceptions
+- compilation time stat, about twice as fast
 
-TODO: re-add compilation time stat
+[DONE] TODO: re-add compilation time stat
 - try on 3d-raytrace, v8/raytrace
-
-
-
-
-
-
-
+- about twice faster
 
 [DONE] TODO: get_time_ms
 

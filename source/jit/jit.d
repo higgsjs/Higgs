@@ -50,11 +50,11 @@ import options;
 import ir.ir;
 import ir.ast;
 import ir.livevars;
-import interp.interp;
-import interp.layout;
-import interp.object;
-import interp.string;
-import interp.gc;
+import runtime.interp;
+import runtime.layout;
+import runtime.object;
+import runtime.string;
+import runtime.gc;
 import jit.codeblock;
 import jit.x86;
 import jit.moves;
@@ -1582,6 +1582,8 @@ Compile an entry point for a unit-level function
 */
 EntryFn compileUnit(Interp interp, IRFunction fun)
 {
+    auto startTimeUsecs = Clock.currAppTick().usecs();
+
     assert (fun.isUnit, "compileUnit on non-unit function");
 
     auto as = interp.execHeap;
@@ -1621,6 +1623,10 @@ EntryFn compileUnit(Interp interp, IRFunction fun)
     interp.compQueue ~= entryInst;
     compile(interp);
 
+    // Update the compilation time stat
+    auto endTimeUsecs = Clock.currAppTick().usecs();
+    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+
     // Return a pointer to the entry block version's code
     return cast(EntryFn)entryInst.getCodePtr(interp.execHeap);
 }
@@ -1630,6 +1636,8 @@ Compile the block version instance for a stub
 */
 extern (C) const (ubyte*) compileStub(VersionStub stub)
 {
+    auto startTimeUsecs = Clock.currAppTick().usecs();
+
     //writeln("entering compileStub");
 
     auto state = stub.state;
@@ -1666,6 +1674,10 @@ extern (C) const (ubyte*) compileStub(VersionStub stub)
 
     //writeln("leaving compileStub");
 
+    // Update the compilation time stat
+    auto endTimeUsecs = Clock.currAppTick().usecs();
+    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+
     // Return a pointer to the instance's code
     return stub.inst.getCodePtr(as);
 }
@@ -1675,6 +1687,8 @@ Compile an entry block instance for a function
 */
 extern (C) const (ubyte*) compileEntry(EntryStub stub)
 {
+    auto startTimeUsecs = Clock.currAppTick().usecs();
+
     //writeln("entering compileEntry");
 
     auto interp = stub.interp;
@@ -1737,6 +1751,10 @@ extern (C) const (ubyte*) compileEntry(EntryStub stub)
     assert (fun.entryCode !is fun.ctorCode);
 
     //writeln("leaving compileEntry");
+
+    // Update the compilation time stat
+    auto endTimeUsecs = Clock.currAppTick().usecs();
+    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 
     return ctorCall? fun.ctorCode:fun.entryCode;
 }

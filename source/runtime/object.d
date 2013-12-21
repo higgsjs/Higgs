@@ -35,7 +35,7 @@
 *
 *****************************************************************************/
 
-module interp.object;
+module runtime.object;
 
 import std.stdio;
 import std.string;
@@ -43,10 +43,10 @@ import std.algorithm;
 import std.stdint;
 import std.typecons;
 import ir.ir;
-import interp.interp;
-import interp.layout;
-import interp.string;
-import interp.gc;
+import runtime.interp;
+import runtime.layout;
+import runtime.string;
+import runtime.gc;
 import util.id;
 
 /**

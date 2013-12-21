@@ -37,7 +37,7 @@
 
 import std.stdio;
 import parser.parser;
-import interp.interp;
+import runtime.interp;
 import repl;
 import options;
 

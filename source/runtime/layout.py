@@ -2,8 +2,8 @@ import sys
 import string
 from copy import deepcopy
 
-D_OUT_FILE = 'interp/layout.d'
-JS_OUT_FILE = 'interp/layout.js'
+D_OUT_FILE = 'runtime/layout.d'
+JS_OUT_FILE = 'runtime/layout.js'
 
 JS_DEF_PREFIX = '$rt_'
 
@@ -890,9 +890,10 @@ comment =                                                               \
 DFile.write(comment)
 JSFile.write(comment)
 
-DFile.write('module interp.layout;\n')
-DFile.write('import interp.interp;\n')
-DFile.write('import interp.gc;\n')
+DFile.write('module runtime.layout;\n')
+DFile.write('\n');
+DFile.write('import runtime.interp;\n')
+DFile.write('import runtime.gc;\n')
 DFile.write('\n');
 
 DFile.write('alias ubyte* funptr;\n');

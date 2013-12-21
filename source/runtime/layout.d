@@ -1,10 +1,11 @@
 //
-// Code auto-generated from "interp/layout.py". Do not modify.
+// Code auto-generated from "runtime/layout.py". Do not modify.
 //
 
-module interp.layout;
-import interp.interp;
-import interp.gc;
+module runtime.layout;
+
+import runtime.interp;
+import runtime.gc;
 
 alias ubyte* funptr;
 alias ubyte* mapptr;

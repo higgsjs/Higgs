@@ -42,9 +42,9 @@ import std.conv;
 import std.math;
 import std.string;
 import std.algorithm;
-import interp.interp;
-import interp.layout;
-import interp.gc;
+import runtime.interp;
+import runtime.layout;
+import runtime.gc;
 
 alias uint TypeFlags;
 

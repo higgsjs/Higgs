@@ -35,17 +35,17 @@
 *
 *****************************************************************************/
 
-module interp.gc;
+module runtime.gc;
 
 import core.memory;
 import std.stdio;
 import std.string;
 import ir.ir;
 import ir.ops;
-import interp.layout;
-import interp.interp;
-import interp.string;
-import interp.object;
+import runtime.layout;
+import runtime.interp;
+import runtime.string;
+import runtime.object;
 import util.misc;
 
 /**

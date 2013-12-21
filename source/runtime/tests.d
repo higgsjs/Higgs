@@ -35,7 +35,7 @@
 *
 *****************************************************************************/
 
-module interp.tests;
+module runtime.tests;
 
 import std.stdio;
 import std.string;
@@ -43,8 +43,8 @@ import std.math;
 import std.conv;
 import parser.parser;
 import ir.ast;
-import interp.layout;
-import interp.interp;
+import runtime.layout;
+import runtime.interp;
 import repl;
 
 /**
@@ -1420,9 +1420,8 @@ unittest
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_number/stdlib_number.js");
     interp.assertInt("test();", 0);
-    // TODO: needs get_ast_str
-    //interp.load("programs/stdlib_function/stdlib_function.js");
-    //interp.assertInt("test();", 0);
+    interp.load("programs/stdlib_function/stdlib_function.js");
+    interp.assertInt("test();", 0);
     interp.load("programs/stdlib_object/stdlib_object.js");
     interp.assertInt("test();", 0);
     interp.load("programs/stdlib_array/stdlib_array.js");

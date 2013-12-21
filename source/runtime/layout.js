@@ -1,5 +1,5 @@
 //
-// Code auto-generated from "interp/layout.py". Do not modify.
+// Code auto-generated from "runtime/layout.py". Do not modify.
 //
 
 var $rt_LAYOUT_STR = 0;

@@ -40,7 +40,7 @@ import std.string;
 import parser.ast;
 import parser.parser;
 import ir.ast;
-import interp.interp;
+import runtime.interp;
 
 void repl(Interp interp)
 {

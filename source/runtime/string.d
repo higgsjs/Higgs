@@ -35,14 +35,14 @@
 *
 *****************************************************************************/
 
-module interp.string;
+module runtime.string;
 
 import std.stdio;
 import std.string;
 import std.conv;
-import interp.interp;
-import interp.layout;
-import interp.gc;
+import runtime.interp;
+import runtime.layout;
+import runtime.gc;
 
 immutable uint32 STR_TBL_INIT_SIZE = 997;
 immutable uint32 STR_TBL_MAX_LOAD_NUM = 3;
