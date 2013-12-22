@@ -1241,7 +1241,6 @@ unittest
     vm.assertBool("isNaN(parseInt('zux'))", true);
 }
 
-/*
 /// Exceptions
 unittest
 {
@@ -1271,10 +1270,10 @@ unittest
     vm.assertInt("test();", 0);
     vm.load("programs/exceptions/throw_inter_fnl.js");
     vm.assertStr("str;", "abcdef");
-    vm.load("programs/exceptions/try_call.js");
-    vm.assertStr("str;", "abc");
+    // FIXME: needs invalid closure exception
+    //vm.load("programs/exceptions/try_call.js");
+    //vm.assertStr("str;", "abc");
 }
-*/
 
 /// Basic test programs
 unittest
@@ -1312,7 +1311,7 @@ unittest
     vm.load("programs/regress/post_incr.js");
     vm.load("programs/regress/in_operator.js");
     vm.load("programs/regress/tostring.js");
-    // TODO: needs throw
+    // FIXME: bug in toUint32
     //vm.load("programs/regress/new_array.js");
     vm.load("programs/regress/loop_labels.js");
     vm.load("programs/regress/loop_swap.js");
@@ -1328,7 +1327,7 @@ unittest
     vm.load("programs/regress/jit_se_cmp.js");
     vm.load("programs/regress/jit_float_cmp.js");
     vm.load("programs/regress/jit_getprop_arr.js");
-    // TODO: needs exceptions
+    // FIXME: needs closure call support
     //vm.load("programs/regress/jit_call_exc.js");
     vm.load("programs/regress/jit_ctor.js");
     // TODO: needs gc_collect

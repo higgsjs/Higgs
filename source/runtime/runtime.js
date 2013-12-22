@@ -627,12 +627,12 @@ function $rt_toUint32(x)
     if (isNaN(x) || x === Infinity || x === -Infinity)
         x = 0.0;
 
-    var x = (x>0)? $ir_floor_f64(x):$ir_floor_f64(-x);
+    var x = (x > 0)? $ir_floor_f64(x):$ir_floor_f64(-x);
 
     if ($ir_is_i32(x))
         return x;
 
-    assert (false, "unsupported value in toUInt32: " + x);
+    assert (false, "unsupported value in toUint32: " + x);
 }
 
 /**

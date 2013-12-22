@@ -1395,12 +1395,12 @@ Set the return address entry for a call instruction
 */
 void setRetEntry(
     VM vm, 
-    CodePtr retAddr, 
     IRInstr callInstr, 
     CodeFragment retCode, 
     CodeFragment excCode
 )
 {
+    auto retAddr = retCode.getCodePtr(vm.execHeap);
     vm.retAddrMap[retAddr] = RetEntry(callInstr, retCode, excCode);
 }
 
@@ -1635,7 +1635,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     auto retAddr = retEdge.getCodePtr(as);
 
     // Set the return address entry for this call
-    vm.setRetEntry(retAddr, null, retEdge, null);
+    vm.setRetEntry(null, retEdge, null);
 
     //
     // Compile the unit entry

@@ -396,6 +396,9 @@ class VM
     /// Global object reference
     refptr globalObj;
 
+    /// Runtime error value (uncaught exceptions)
+    RunError runError;
+
     /// Executable heap
     CodeBlock execHeap;
 
@@ -962,6 +965,10 @@ class VM
         // Call into the compiled code
         entryFn();
 
+        // If a runtime error occurred, throw the exception object
+        if (runError)
+            throw runError;
+
         // Ensure the stack contains at least one value
         assert (
             stackSize() >= 1,
@@ -1143,6 +1150,8 @@ extern (C) CodePtr throwExc(
         // Add the current instruction to the stack trace
         trace ~= curInstr;
 
+        
+
         // If the current instruction has an exception handler
         if (curHandler !is null)
         {
@@ -1167,11 +1176,26 @@ extern (C) CodePtr throwExc(
         auto retAddr = cast(CodePtr)vm.wsp[raSlot].ptrVal;
 
         // Find the return address entry
-        assert (retAddr in vm.retAddrMap);
+        assert (
+            retAddr in vm.retAddrMap,
+            "no return entry for return address " ~ to!string(retAddr)
+        );
         auto retEntry = vm.retAddrMap[retAddr];
 
         // Get the calling instruction for the current stack frame
         curInstr = retEntry.callInstr;
+
+        // If we have reached the bottom of the stack
+        if (curInstr is null)
+        {
+            assert (retEntry.retCode !is null);
+
+            // Set the runtime error value
+            vm.runError = new RunError(vm, ValuePair(excWord, excType), trace);
+
+            // Return the return code branch
+            return retEntry.retCode.getCodePtr(vm.execHeap);
+        }
 
         // Get the exception handler code for the calling instruction
         curHandler = retEntry.excCode? retEntry.excCode.getCodePtr(vm.execHeap):null;

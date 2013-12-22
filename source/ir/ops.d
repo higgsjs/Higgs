@@ -249,7 +249,7 @@ Opcode RET = { "ret", false, [OpArg.LOCAL], &gen_ret, OpInfo.BRANCH };
 
 // THROW <excLocal>
 // Throws an exception, unwinds the stack
-Opcode THROW = { "throw", false, [OpArg.LOCAL], /*&gen_throw*/null , OpInfo.BRANCH };
+Opcode THROW = { "throw", false, [OpArg.LOCAL], &gen_throw, OpInfo.BRANCH };
 
 // Special implementation object/value access instructions
 Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &gen_get_obj_proto };

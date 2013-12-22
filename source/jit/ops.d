@@ -1336,7 +1336,17 @@ void gen_call_prim(
         false
     );
 
-    // TODO: exception branch, if any
+    // Create the continuation branch object
+    BranchCode excBranch;
+    if (instr.getTarget(1))
+    {
+        excBranch = getBranchEdge(
+            as,
+            instr.getTarget(1),
+            st,
+            false
+        );
+    }
 
     ver.genBranch(
         as,
@@ -1371,9 +1381,23 @@ void gen_call_prim(
     contBranch.markStart(as);
     as.setWord(instr.outSlot, retWordReg.opnd(64));
     as.setType(instr.outSlot, retTypeReg.opnd(8));
-
-    // Generate the continuation branch edge code
     contBranch.genCode(as, st);
+
+    // Add the exception value move code to the exception branch
+    if (excBranch)
+    {
+        excBranch.markStart(as);
+        as.add(tspReg, Type.sizeof);
+        as.add(wspReg, Word.sizeof);
+        as.getWord(scrRegs[0], -1);
+        as.setWord(instr.outSlot, scrRegs[0].opnd(64));
+        as.getType(scrRegs[0].reg(8), -1);
+        as.setType(instr.outSlot, scrRegs[0].opnd(8));
+        excBranch.genCode(as, st);
+    }
+
+    // Set the return address entry for this call
+    vm.setRetEntry(instr, contBranch, excBranch);
 }
 
 void gen_call(
@@ -1383,6 +1407,8 @@ void gen_call(
     CodeBlock as
 )
 {
+    auto vm = st.ctx.vm;
+
     // TODO: just steal an allocatable reg to use as an extra temporary
     // force its contents to be spilled if necessary
     // maybe add State.freeReg method
@@ -1550,7 +1576,17 @@ void gen_call(
         false
     );
 
-    // TODO: exception branch, if any
+    // Create the continuation branch object
+    BranchCode excBranch;
+    if (instr.getTarget(1))
+    {
+        excBranch = getBranchEdge(
+            as,
+            instr.getTarget(1),
+            st,
+            false
+        );
+    }
 
     ver.genBranch(
         as,
@@ -1567,10 +1603,8 @@ void gen_call(
         {
             // Write the return address on the stack
             as.movAbsRef(vm, scrRegs[0], target0);
-            as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd);
-            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RETADDR));
-
-            //as.printUint(scrRegs[0].opnd(64));
+            movArgWord(as, numArgs + 3, scrRegs[0].opnd);
+            movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
 
             // Compute the total number of locals and extra arguments
             as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
@@ -1582,11 +1616,10 @@ void gen_call(
             as.add(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
             as.label(Label.FALSE2);
 
-            // Adjust the type stack pointer
-            as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
-
+            // Adjust the stack pointers
             //as.printStr("pushing");
             //as.printUint(scrRegs[0].opnd(64));
+            as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
 
             // Adjust the word stack pointer
             as.shl(scrRegs[0].opnd(64), X86Opnd(3));
@@ -1608,6 +1641,22 @@ void gen_call(
     // Generate the continuation branch edge code
     contBranch.genCode(as, st);
 
+    // Add the exception value move code to the exception branch
+    if (excBranch)
+    {
+        excBranch.markStart(as);
+        as.add(tspReg, Type.sizeof);
+        as.add(wspReg, Word.sizeof);
+        as.getWord(scrRegs[0], -1);
+        as.setWord(instr.outSlot, scrRegs[0].opnd(64));
+        as.getType(scrRegs[0].reg(8), -1);
+        as.setType(instr.outSlot, scrRegs[0].opnd(8));
+        excBranch.genCode(as, st);
+    }
+
+    // Set the return address entry for this call
+    vm.setRetEntry(instr, contBranch, excBranch);
+
     // TODO: if not closure, call function to throw an exception
     // need to spill values before jumping to this
 }
@@ -1620,6 +1669,8 @@ void gen_call_new(
     CodeBlock as
 )
 {
+    auto vm = st.ctx.vm;
+
     /// Host function to allocate the "this" object
     extern (C) refptr makeThisObj(VM vm, refptr closPtr)
     {
@@ -1828,7 +1879,17 @@ void gen_call_new(
         false
     );
 
-    // TODO: exception branch, if any
+    // Create the continuation branch object
+    BranchCode excBranch;
+    if (instr.getTarget(1))
+    {
+        excBranch = getBranchEdge(
+            as,
+            instr.getTarget(1),
+            st,
+            false
+        );
+    }
 
     ver.genBranch(
         as,
@@ -1845,10 +1906,8 @@ void gen_call_new(
         {
             // Write the return address on the stack
             as.movAbsRef(vm, scrRegs[0], target0);
-            as.mov(X86Opnd(64, wspReg, -8 * (numArgs + 4), 8, scrRegs[2]), scrRegs[0].opnd);
-            as.mov(X86Opnd(8 , tspReg, -1 * (numArgs + 4), 1, scrRegs[2]), X86Opnd(Type.RETADDR));
-
-            //as.printUint(scrRegs[0].opnd(64));
+            movArgWord(as, numArgs + 3, scrRegs[0].opnd);
+            movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
 
             // Compute the total number of locals and extra arguments
             as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
@@ -1860,13 +1919,10 @@ void gen_call_new(
             as.add(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
             as.label(Label.FALSE2);
 
-            // Adjust the type stack pointer
-            as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
-
+            // Adjust the stack pointers
             //as.printStr("pushing");
             //as.printUint(scrRegs[0].opnd(64));
-
-            // Adjust the word stack pointer
+            as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
             as.shl(scrRegs[0].opnd(64), X86Opnd(3));
             as.sub(X86Opnd(wspReg), scrRegs[0].opnd(64));
 
@@ -1885,6 +1941,22 @@ void gen_call_new(
 
     // Generate the continuation branch edge code
     contBranch.genCode(as, st);
+
+    // Add the exception value move code to the exception branch
+    if (excBranch)
+    {
+        excBranch.markStart(as);
+        as.add(tspReg, Type.sizeof);
+        as.add(wspReg, Word.sizeof);
+        as.getWord(scrRegs[0], -1);
+        as.setWord(instr.outSlot, scrRegs[0].opnd(64));
+        as.getType(scrRegs[0].reg(8), -1);
+        as.setType(instr.outSlot, scrRegs[0].opnd(8));
+        excBranch.genCode(as, st);
+    }
+
+    // Set the return address entry for this call
+    vm.setRetEntry(instr, contBranch, excBranch);
 
     // TODO: if not closure, call function to throw an exception
     // need to spill values before jumping to this
@@ -2093,19 +2165,35 @@ void gen_ret(
     as.jmp(scrRegs[1].opnd);
 }
 
-// TODO
-// TODO: gen_throw
-// TODO
-/*
-extern (C) void op_throw(VM vm, IRInstr instr)
+void gen_throw(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    // Get the exception value
-    auto excVal = vm.getArgVal(instr, 0);
+    // Get the string pointer
+    auto excWordOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+    auto excTypeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
-    // Throw the exception
-    throwExc(vm, instr, excVal);
+    // TODO: spill regs, may GC
+
+    as.pushJITRegs();
+
+    // Call the fallback implementation
+    as.mov(cargRegs[0].opnd, vmReg.opnd);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd, X86Opnd(0));
+    as.mov(cargRegs[3].opnd, excWordOpnd);
+    as.mov(cargRegs[4].opnd(8), excTypeOpnd);
+    as.ptr(scrRegs[0], &throwExc);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Jump to the exception handler
+    as.jmp(X86Opnd(RAX));
 }
-*/
 
 void GetValOp(string fName)(
     VersionInst ver, 
@@ -2857,15 +2945,18 @@ void gen_get_time_ms(
         return cast(int32_t)Clock.currAppTick().msecs();
     }
 
-    as.pushRegs();
+    // FIXME: don't push RAX
+    as.pushJITRegs();
 
     as.ptr(scrRegs[0], &op_get_time_ms);
     as.call(scrRegs[0].opnd(64));
 
-    as.popRegs();
+    as.popJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.INT32);
 }
 
 void gen_get_ast_str(
