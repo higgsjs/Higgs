@@ -84,13 +84,12 @@ class RunError : Error
         this.excVal = excVal;
         this.trace = trace;
 
-        if (excVal.type == Type.REFPTR && 
-            valIsLayout(excVal.word, LAYOUT_OBJ))
+        if (excVal.type is Type.REFPTR && valIsLayout(excVal.word, LAYOUT_OBJ))
         {
             auto msgStr = getProp(
                 vm, 
                 excVal.word.ptrVal,
-                getString(vm, "message")
+                "message"w
             );
 
             this.message = valToString(msgStr);
@@ -1148,9 +1147,7 @@ extern (C) CodePtr throwExc(
         assert (curInstr !is null);
 
         // Add the current instruction to the stack trace
-        trace ~= curInstr;
-
-        
+        trace ~= curInstr;    
 
         // If the current instruction has an exception handler
         if (curHandler !is null)
@@ -1178,7 +1175,7 @@ extern (C) CodePtr throwExc(
         // Find the return address entry
         assert (
             retAddr in vm.retAddrMap,
-            "no return entry for return address " ~ to!string(retAddr)
+            "no return entry for return address: " ~ to!string(retAddr)
         );
         auto retEntry = vm.retAddrMap[retAddr];
 
@@ -1216,7 +1213,7 @@ extern (C) CodePtr throwExc(
 /**
 Throw a JavaScript error object as an exception
 */
-void throwError(
+extern (C) CodePtr throwError(
     VM vm,
     IRInstr throwInstr,
     CodeFragment throwHandler,
@@ -1224,30 +1221,25 @@ void throwError(
     string errMsg
 )
 {
-    assert (false);
-
     auto errStr = GCRoot(vm, getString(vm, to!wstring(errMsg)));
 
-    auto ctorStr = GCRoot(vm, getString(vm, to!wstring(ctorName)));
     auto errCtor = GCRoot(
         vm,
         getProp(
             vm,
             vm.globalObj,
-            ctorStr.ptr
+            to!wstring(ctorName)
         )
     );
 
-    if (errCtor.type == Type.REFPTR &&
-        valIsLayout(errCtor.word, LAYOUT_OBJ))
+    if (errCtor.type is Type.REFPTR && valIsLayout(errCtor.word, LAYOUT_OBJ))
     {
-        auto protoStr = GCRoot(vm, getString(vm, "prototype"w));
         auto errProto = GCRoot(
             vm,
             getProp(
                 vm,
                 errCtor.ptr,
-                protoStr.ptr
+                "prototype"w
             )
         );
 
@@ -1265,28 +1257,25 @@ void throwError(
             );
 
             // Set the error "message" property
-            auto msgStr = GCRoot(vm, getString(vm, "message"w));
             setProp(
                 vm,
                 excObj.ptr,
-                msgStr.ptr,
+                "message"w,
                 errStr.pair
             );
 
-            throwExc(
+            return throwExc(
                 vm,
                 throwInstr,
                 throwHandler,
                 excObj.word,
                 excObj.type
             );
-
-            return;
         }
     }
 
     // Throw the error string directly
-    throwExc(
+    return throwExc(
         vm,
         throwInstr,
         throwHandler,

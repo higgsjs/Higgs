@@ -52,6 +52,7 @@ import ir.livevars;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
+import jit.codeblock;
 import jit.jit;
 
 /// Local variable index type
@@ -118,10 +119,10 @@ class IRFunction : IdObject
     CodeGenCtx ctorCtx = null;
 
     /// Regular entry point code
-    const(ubyte)* entryCode = null;
+    CodePtr entryCode = null;
 
     /// Constructor entry point code
-    const(ubyte)* ctorCode = null;
+    CodePtr ctorCode = null;
 
     /// Constructor
     this(FunExpr ast)

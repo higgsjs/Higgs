@@ -83,24 +83,42 @@ run-time error: unsupported value in toUInt32: 128
 
 TODO: factorize a genCallBranch wrapper for genBranch
 - in jit/ops, before all the call instructions
+- pass call instr, exc handler object
+- boolean flag to generate call throw path
 
 TODO: add exception tests to runtime tests
 - check exception classname
 
 TODO: assertThrows should be able to check the exception classname
 
-TODO: make call throw on non-closure work
+FIXME: unresolved global, no exception thrown
+
+FIXME: segfault on null() call
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: make call throw on non-closure work
 - needed by 4 tests
+- spill all, call throwExc
+- jump over this code normally?
+- how do we get the exc version addr?
+  - could have wrapper host function with less arguments
+    - actually want to call throwError anyways, not throwExc
+  - pass vm, call instr, exc handler version
+- define a throwCallExc function
 
+[DONE] FIXME: many_globals test produces call to non-function
+- check what type comes out of get_global
 
-
-
-
-
-
-
-
-
+[DONE] TODO: refactor getProp/putProp to use wstring for propName
 
 [DONE] TODO: test basic exceptions, throw
 

@@ -129,30 +129,30 @@ void incStatCnt(CodeBlock as, ulong* pCntVar, X86Reg scrReg)
     as.inc(X86Opnd(8 * ulong.sizeof, RAX));
 }
 
-void getField(CodeBlock as, X86Reg dstReg, X86Reg baseReg, size_t fSize, size_t fOffset)
+void getField(CodeBlock as, X86Reg dstReg, X86Reg baseReg, size_t fOffset)
 {
-    as.mov(X86Opnd(dstReg), X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset));
+    assert (dstReg.type is X86Reg.GP);
+    as.mov(X86Opnd(dstReg), X86Opnd(dstReg.size, baseReg, cast(int32_t)fOffset));
 }
 
-void setField(CodeBlock as, X86Reg baseReg, size_t fSize, size_t fOffset, X86Reg srcReg)
+void setField(CodeBlock as, X86Reg baseReg, size_t fOffset, X86Reg srcReg)
 {
-    as.mov(X86Opnd(8*fSize, baseReg, cast(int32_t)fOffset), X86Opnd(srcReg));
+    assert (srcReg.type is X86Reg.GP);
+    as.mov(X86Opnd(srcReg.size, baseReg, cast(int32_t)fOffset), X86Opnd(srcReg));
 }
 
 void getMember(string fName)(CodeBlock as, X86Reg dstReg, X86Reg baseReg)
 {
-    mixin("auto fSize = " ~ fName ~ ".sizeof;");
     mixin("auto fOffset = " ~ fName ~ ".offsetof;");
 
-    return as.getField(dstReg, baseReg, fSize, fOffset);
+    as.getField(dstReg, baseReg, fOffset);
 }
 
 void setMember(string fName)(CodeBlock as, X86Reg baseReg, X86Reg srcReg)
 {
-    mixin("auto fSize = " ~ fName ~ ".sizeof;");
     mixin("auto fOffset = " ~ fName ~ ".offsetof;");
 
-    return as.setField(baseReg, fSize, fOffset, srcReg);
+    as.setField(baseReg, fOffset, srcReg);
 }
 
 /// Read from the word stack
@@ -321,8 +321,10 @@ void printUint(CodeBlock as, X86Opnd opnd)
 
     as.pushRegs();
 
-    as.mov(cargRegs[0].opnd(64), X86Opnd(0));
-    as.mov(cargRegs[0].opnd(opndSz), opnd);
+    if (opndSz < 64)
+        as.movzx(cargRegs[0].opnd(64), opnd);
+    else
+        as.mov(cargRegs[0].opnd(opndSz), opnd);
 
     // Call the print function
     as.ptr(scrRegs[0], &printUintFn);

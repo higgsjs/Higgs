@@ -1228,6 +1228,21 @@ void gen_jump(
     branch.genCode(as, st);
 }
 
+/**
+Throw an exception and unwind the stack when one calls a non-function.
+Returns a pointer to an exception handler.
+*/
+extern (C) CodePtr throwCallExc(VM vm, IRInstr instr, BranchCode excHandler)
+{
+    return throwError(
+        vm,
+        instr,
+        excHandler,
+        "TypeError", 
+        "call to non-function"
+    );
+}
+
 void gen_call_prim(
     VersionInst ver, 
     CodeGenState st,
@@ -1440,10 +1455,9 @@ void gen_call(
         false
     );
 
-    // TODO
     // If the value is not a reference, bailout
-    //as.cmp(closType, Type.REFPTR);
-    //as.jne(BAILOUT);
+    as.cmp(closType, X86Opnd(Type.REFPTR));
+    as.jne(Label.THROW);
 
     // Get the word for the closure value
     auto closReg = st.getWordOpnd(
@@ -1452,18 +1466,15 @@ void gen_call(
         0,
         64,
         scrRegs[0].opnd(64),
-        true,
+        false,
         false
     );
     assert (closReg.isGPR);
 
-    //as.printUint(closReg);
-
-    // TODO
     // If the object is not a closure, bailout
-    //as.mov(scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
-    //as.cmp(scrRegs32[1], LAYOUT_CLOS);
-    //as.jne(BAILOUT);
+    as.mov(scrRegs[1].opnd(32), X86Opnd(32, closReg.reg, obj_ofs_header(null)));
+    as.cmp(scrRegs[1].opnd(32), X86Opnd(LAYOUT_CLOS));
+    as.jne(Label.THROW);
 
     // Get the IRFunction pointer from the closure object
     auto fptrMem = X86Opnd(64, closReg.reg, CLOS_OFS_FPTR);
@@ -1588,6 +1599,34 @@ void gen_call(
         );
     }
 
+
+
+
+    as.jmp(Label.SKIP);
+
+    as.label(Label.THROW);
+    as.printStr("call throw!");
+
+    as.pushJITRegs();
+
+    as.mov(cargRegs[0].opnd, vmReg.opnd);
+    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[2], excBranch);
+    as.ptr(scrRegs[0], &throwCallExc);
+    as.call(scrRegs[0].opnd);
+
+    as.popJITRegs();
+
+    as.jmp(X86Opnd(RAX));
+
+    as.label(Label.SKIP);
+
+
+
+
+
+
+
     ver.genBranch(
         as,
         contBranch,
@@ -1684,13 +1723,12 @@ void gen_call_new(
         );
 
         // Lookup the "prototype" property on the closure
-        auto protoStr = GCRoot(vm, getString(vm, "prototype"));
         auto protoObj = GCRoot(
             vm,
             getProp(
                 vm, 
                 clos.ptr,
-                protoStr.ptr
+                "prototype"w
             )
         );
 
@@ -1749,7 +1787,7 @@ void gen_call_new(
         0,
         64,
         scrRegs[0].opnd(64),
-        true,
+        false,
         false
     );
     assert (closReg.isGPR);
@@ -1969,21 +2007,25 @@ void gen_call_apply(
     CodeBlock as
 )
 {
-    extern (C) auto op_call_apply(VM vm, IRInstr instr, refptr retAddr)
+    extern (C) CodePtr op_call_apply(
+        VM vm, 
+        IRInstr instr, 
+        refptr retAddr, 
+        CodeFragment excHandler
+    )
     {
         auto closVal = vm.getArgVal(instr, 0);
         auto thisVal = vm.getArgVal(instr, 1);
         auto tblVal  = vm.getArgVal(instr, 2);
         auto argcVal = vm.getArgUint32(instr, 3);
 
-        // TODO
-        /*
-        if (closVal.type != Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
-            return throwError(vm, instr, "TypeError", "call to non-function");
+        assert (
+            tblVal.type is Type.REFPTR || valIsLayout(tblVal.word, LAYOUT_ARRTBL),
+            "invalid argument table"
+        );
 
-        if (tblVal.type != Type.REFPTR || !valIsLayout(tblVal.word, LAYOUT_ARRTBL))
-            return throwError(vm, instr, "TypeError", "invalid argument table");
-        */
+        if (closVal.type !is Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
+            return throwError(vm, instr, excHandler, "TypeError", "apply call to non-function");
 
         // Get the function object from the closure
         auto closPtr = closVal.word.ptrVal;
@@ -2051,6 +2093,12 @@ void gen_call_apply(
 
             // Pass the target address as third argument
             as.movAbsRef(vm, cargRegs[2], target0);
+
+
+            // TODO: pass exc handler as fourth argument
+
+
+
 
             // Call the host function
             as.ptr(scrRegs[0], &op_call_apply);
@@ -2348,7 +2396,6 @@ void gen_get_global(
 
 
 
-
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
@@ -2356,7 +2403,7 @@ void gen_get_global(
     as.getMember!("VM.globalObj")(scrRegs[0], vmReg);
 
     // Get the global object size/capacity
-    as.getField(scrRegs[1].reg(32), scrRegs[0], 4, obj_ofs_cap(vm.globalObj));
+    as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(vm.globalObj, 0);
@@ -2396,13 +2443,18 @@ void gen_set_global(
     auto nameStr = strArg.str;
 
     // Lookup the property index in the class
-    // if the property slot doesn't exist, it will be allocated
     auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
     assert (globalMap !is null);
-    auto propIdx = globalMap.getPropIdx(nameStr, true);
+    auto propIdx = globalMap.getPropIdx(nameStr, false);
 
-    // TODO: preallocate slot in global object?
-    // this would prevent GC at execution time
+    // If the property was not found
+    if (propIdx is uint32.max)
+    {
+        // Initialize the property, this may extend the object
+        setProp(vm, vm.globalObj, nameStr, ValuePair(MISSING, Type.CONST));
+        propIdx = globalMap.getPropIdx(nameStr, false);
+        assert (propIdx !is uint32.max);
+    }
 
     // Allocate the input operand
     auto argOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd(64), true);
@@ -2411,7 +2463,7 @@ void gen_set_global(
     as.getMember!("VM.globalObj")(scrRegs[1], vmReg);
 
     // Get the global object size/capacity
-    as.getField(scrRegs[2].reg(32), scrRegs[1], 4, obj_ofs_cap(vm.globalObj));
+    as.getField(scrRegs[2].reg(32), scrRegs[1], obj_ofs_cap(null));
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(vm.globalObj, 0);
@@ -2866,11 +2918,10 @@ void gen_new_clos(
         );
 
         // Set the "prototype" property on the closure object
-        auto protoStr = GCRoot(vm, getString(vm, "prototype"));
         setProp(
             vm,
             closPtr.ptr,
-            protoStr.ptr,
+            "prototype"w,
             objPtr.pair
         );
 

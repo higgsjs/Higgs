@@ -201,7 +201,7 @@ IRFunction getClosFun(refptr closPtr)
 /// Static offset for the function pointer in a closure object
 immutable size_t CLOS_OFS_FPTR = clos_ofs_word(null, 0);
 
-ValuePair getProp(VM vm, refptr objPtr, refptr propStr)
+ValuePair getProp(VM vm, refptr objPtr, wstring propStr)
 {
     // Follow the next link chain
     for (;;)
@@ -245,11 +245,10 @@ ValuePair getProp(VM vm, refptr objPtr, refptr propStr)
     );
 }
 
-void setProp(VM vm, refptr objPtr, refptr propStr, ValuePair valPair)
+void setProp(VM vm, refptr objPtr, wstring propStr, ValuePair valPair)
 {
-    auto obj  = GCRoot(vm, objPtr);
-    auto prop = GCRoot(vm, propStr);
-    auto val  = GCRoot(vm, valPair);
+    auto obj = GCRoot(vm, objPtr);
+    auto val = GCRoot(vm, valPair);
 
     // Follow the next link chain
     for (;;)
@@ -265,7 +264,7 @@ void setProp(VM vm, refptr objPtr, refptr propStr, ValuePair valPair)
     assert (map !is null);
 
     // Find/allocate the property index in the class
-    auto propIdx = map.getPropIdx(prop.ptr, true);
+    auto propIdx = map.getPropIdx(propStr, true);
 
     //writeln("propIdx: ", propIdx);
 
@@ -275,8 +274,6 @@ void setProp(VM vm, refptr objPtr, refptr propStr, ValuePair valPair)
     // If the object needs to be extended
     if (propIdx >= objCap)
     {
-        //writeln("*** extending object ***");
-
         // Compute the new object capacity
         uint32_t newObjCap = (propIdx < 32)? (propIdx + 1):(2 * propIdx);
 
@@ -288,12 +285,12 @@ void setProp(VM vm, refptr objPtr, refptr propStr, ValuePair valPair)
         switch (objType)
         {
             case LAYOUT_OBJ:
-            newObj = obj_alloc(vm, objCap+1);
+            newObj = obj_alloc(vm, newObjCap);
             break;
 
             case LAYOUT_CLOS:
             auto numCells = clos_get_num_cells(obj.ptr);
-            newObj = clos_alloc(vm, objCap+1, numCells);
+            newObj = clos_alloc(vm, newObjCap, numCells);
             for (uint32_t i = 0; i < numCells; ++i)
                 clos_set_cell(newObj, i, clos_get_cell(obj.ptr, i));
             break;

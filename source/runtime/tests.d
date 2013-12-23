@@ -281,8 +281,8 @@ unittest
 
     // TODO
     // Calling a non-function
-    //vm.assertThrows("null());
-    //vm.assertThrows("undefined());
+    //vm.assertThrows("null()");
+    //vm.assertThrows("undefined()");
 }
 
 /// Argument passing test

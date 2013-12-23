@@ -2004,5 +2004,7 @@ v1997 = 1997;
 v1998 = 1998;
 v1999 = 1999;
 
+assert (v1 === 1, "wrong integer value");
+
 assert (foo() === 777, "wrong return value");
 
