@@ -1312,8 +1312,7 @@ unittest
     vm.load("programs/regress/post_incr.js");
     vm.load("programs/regress/in_operator.js");
     vm.load("programs/regress/tostring.js");
-    // FIXME: bug in toUint32
-    //vm.load("programs/regress/new_array.js");
+    vm.load("programs/regress/new_array.js");
     vm.load("programs/regress/loop_labels.js");
     vm.load("programs/regress/loop_swap.js");
     vm.load("programs/regress/loop_lt.js");
@@ -1328,8 +1327,7 @@ unittest
     vm.load("programs/regress/jit_se_cmp.js");
     vm.load("programs/regress/jit_float_cmp.js");
     vm.load("programs/regress/jit_getprop_arr.js");
-    // FIXME: needs closure call support
-    //vm.load("programs/regress/jit_call_exc.js");
+    vm.load("programs/regress/jit_call_exc.js");
     vm.load("programs/regress/jit_ctor.js");
     // TODO: needs gc_collect
     //vm.load("programs/regress/jit_set_global.js");
@@ -1648,10 +1646,8 @@ unittest
     // FIXME: bug in regexp lib?
     //run("crypto-aes");
     //vm.assertInt("decryptedText.length;", 1311);
-    // FIXME: throw
-    //run("crypto-md5");
-    // FIXME: throw
-    //run("crypto-sha1");
+    run("crypto-md5");
+    run("crypto-sha1");
 
     run("math-cordic");
     run("math-partial-sums");
@@ -1679,11 +1675,11 @@ unittest
         vm.load("programs/v8bench/drv-" ~ name ~ ".js");
     }
 
-    // FIXME: throw?
-    //run("crypto");
+    run("crypto");
 
     run("deltablue");
 
+    // FIXME: need GC
     //run("earley-boyer");
 
     run("navier-stokes");
