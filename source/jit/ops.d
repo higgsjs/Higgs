@@ -1243,8 +1243,103 @@ extern (C) CodePtr throwCallExc(VM vm, IRInstr instr, BranchCode excHandler)
     );
 }
 
+/**
+Generate the final branch and exception handler for a call instruction
+*/
+void genCallBranch(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as,
+    BranchGenFn genFn,
+    bool mayThrow
+)
+{
+    auto vm = st.ctx.vm;
+
+    // Request a branch object for the continuation
+    auto contBranch = getBranchEdge(
+        as,
+        instr.getTarget(0),
+        st,
+        false
+    );
+
+    // Create the continuation branch object
+    BranchCode excBranch;
+    if (instr.getTarget(1))
+    {
+        excBranch = getBranchEdge(
+            as,
+            instr.getTarget(1),
+            st,
+            false
+        );
+    }
+
+    // If the call may throw an exception
+    if (mayThrow)
+    {
+        as.jmp(Label.SKIP);
+
+        as.label(Label.THROW);
+
+        as.pushJITRegs();
+
+        // Throw the call exception, unwind the stack,
+        // find the topmost exception handler
+        as.mov(cargRegs[0].opnd, vmReg.opnd);
+        as.ptr(cargRegs[1], instr);
+        as.ptr(cargRegs[2], excBranch);
+        as.ptr(scrRegs[0], &throwCallExc);
+        as.call(scrRegs[0].opnd);
+
+        as.popJITRegs();
+
+        // Jump to the exception handler
+        as.jmp(X86Opnd(RAX));
+
+        as.label(Label.SKIP);
+    }
+
+    // Generate the call branch code
+    ver.genBranch(
+        as,
+        contBranch,
+        excBranch,
+        BranchShape.DEFAULT,
+        genFn
+    );
+
+    //writeln("call block length: ", ver.length);
+
+    // Add the return value move code to the continuation branch
+    contBranch.markStart(as);
+    as.setWord(instr.outSlot, retWordReg.opnd(64));
+    as.setType(instr.outSlot, retTypeReg.opnd(8));
+
+    // Generate the continuation branch edge code
+    contBranch.genCode(as, st);
+
+    // Add the exception value move code to the exception branch
+    if (excBranch)
+    {
+        excBranch.markStart(as);
+        as.add(tspReg, Type.sizeof);
+        as.add(wspReg, Word.sizeof);
+        as.getWord(scrRegs[0], -1);
+        as.setWord(instr.outSlot, scrRegs[0].opnd(64));
+        as.getType(scrRegs[0].reg(8), -1);
+        as.setType(instr.outSlot, scrRegs[0].opnd(8));
+        excBranch.genCode(as, st);
+    }
+
+    // Set the return address entry for this call
+    vm.setRetEntry(instr, contBranch, excBranch);
+}
+
 void gen_call_prim(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -1343,31 +1438,10 @@ void gen_call_prim(
         true
     );
 
-    // Request a branch object for the continuation
-    auto contBranch = getBranchEdge(
-        as,
-        instr.getTarget(0),
+    ver.genCallBranch(
         st,
-        false
-    );
-
-    // Create the continuation branch object
-    BranchCode excBranch;
-    if (instr.getTarget(1))
-    {
-        excBranch = getBranchEdge(
-            as,
-            instr.getTarget(1),
-            st,
-            false
-        );
-    }
-
-    ver.genBranch(
+        instr,
         as,
-        contBranch,
-        entryVer,
-        BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
             VM vm,
@@ -1377,8 +1451,6 @@ void gen_call_prim(
         )
         {
             // Get the return address slot of the callee
-            auto entryVer = cast(BlockVersion)target1;
-            assert (entryVer !is null);
             auto raSlot = entryVer.block.fun.raVal.outSlot;
             assert (raSlot !is NULL_LOCAL);
 
@@ -1388,31 +1460,10 @@ void gen_call_prim(
             as.setType(raSlot, Type.RETADDR);
 
             // Jump to the function entry block
-            jmp32Ref(as, vm, target1);
-        }
+            jmp32Ref(as, vm, entryVer);
+        },
+        false
     );
-
-    // Add the return value move code to the continuation branch
-    contBranch.markStart(as);
-    as.setWord(instr.outSlot, retWordReg.opnd(64));
-    as.setType(instr.outSlot, retTypeReg.opnd(8));
-    contBranch.genCode(as, st);
-
-    // Add the exception value move code to the exception branch
-    if (excBranch)
-    {
-        excBranch.markStart(as);
-        as.add(tspReg, Type.sizeof);
-        as.add(wspReg, Word.sizeof);
-        as.getWord(scrRegs[0], -1);
-        as.setWord(instr.outSlot, scrRegs[0].opnd(64));
-        as.getType(scrRegs[0].reg(8), -1);
-        as.setType(instr.outSlot, scrRegs[0].opnd(8));
-        excBranch.genCode(as, st);
-    }
-
-    // Set the return address entry for this call
-    vm.setRetEntry(instr, contBranch, excBranch);
 }
 
 void gen_call(
@@ -1472,6 +1523,8 @@ void gen_call(
     assert (closReg.isGPR);
 
     // If the object is not a closure, bailout
+    as.cmp(closReg, X86Opnd(0));
+    as.je(Label.THROW);
     as.mov(scrRegs[1].opnd(32), X86Opnd(32, closReg.reg, obj_ofs_header(null)));
     as.cmp(scrRegs[1].opnd(32), X86Opnd(LAYOUT_CLOS));
     as.jne(Label.THROW);
@@ -1579,59 +1632,10 @@ void gen_call(
     movArgWord(as, numArgs + 2, closReg);
     movArgType(as, numArgs + 2, X86Opnd(Type.REFPTR));
 
-    // Request a branch object for the continuation
-    auto contBranch = getBranchEdge(
-        as,
-        instr.getTarget(0),
+    ver.genCallBranch(
         st,
-        false
-    );
-
-    // Create the continuation branch object
-    BranchCode excBranch;
-    if (instr.getTarget(1))
-    {
-        excBranch = getBranchEdge(
-            as,
-            instr.getTarget(1),
-            st,
-            false
-        );
-    }
-
-
-
-
-    as.jmp(Label.SKIP);
-
-    as.label(Label.THROW);
-    as.printStr("call throw!");
-
-    as.pushJITRegs();
-
-    as.mov(cargRegs[0].opnd, vmReg.opnd);
-    as.ptr(cargRegs[1], instr);
-    as.ptr(cargRegs[2], excBranch);
-    as.ptr(scrRegs[0], &throwCallExc);
-    as.call(scrRegs[0].opnd);
-
-    as.popJITRegs();
-
-    as.jmp(X86Opnd(RAX));
-
-    as.label(Label.SKIP);
-
-
-
-
-
-
-
-    ver.genBranch(
+        instr,
         as,
-        contBranch,
-        null,
-        BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
             VM vm,
@@ -1667,37 +1671,9 @@ void gen_call(
             // Jump to the function entry block
             as.getMember!("IRFunction.entryCode")(scrRegs[0], scrRegs[1]);
             as.jmp(scrRegs[0].opnd(64));
-        }
+        },
+        true
     );
-
-    //writeln("call block length: ", ver.length);
-
-    // Add the return value move code to the continuation branch
-    contBranch.markStart(as);
-    as.setWord(instr.outSlot, retWordReg.opnd(64));
-    as.setType(instr.outSlot, retTypeReg.opnd(8));
-
-    // Generate the continuation branch edge code
-    contBranch.genCode(as, st);
-
-    // Add the exception value move code to the exception branch
-    if (excBranch)
-    {
-        excBranch.markStart(as);
-        as.add(tspReg, Type.sizeof);
-        as.add(wspReg, Word.sizeof);
-        as.getWord(scrRegs[0], -1);
-        as.setWord(instr.outSlot, scrRegs[0].opnd(64));
-        as.getType(scrRegs[0].reg(8), -1);
-        as.setType(instr.outSlot, scrRegs[0].opnd(8));
-        excBranch.genCode(as, st);
-    }
-
-    // Set the return address entry for this call
-    vm.setRetEntry(instr, contBranch, excBranch);
-
-    // TODO: if not closure, call function to throw an exception
-    // need to spill values before jumping to this
 }
 
 /// JavaScript new operator (constructor call)
@@ -1775,10 +1751,9 @@ void gen_call_new(
         false
     );
 
-    // TODO
     // If the value is not a reference, bailout
-    //as.cmp(closType, Type.REFPTR);
-    //as.jne(BAILOUT);
+    as.cmp(closType, X86Opnd(Type.REFPTR));
+    as.jne(Label.THROW);
 
     // Get the word for the closure value
     auto closReg = st.getWordOpnd(
@@ -1792,11 +1767,12 @@ void gen_call_new(
     );
     assert (closReg.isGPR);
 
-    // TODO
     // If the object is not a closure, bailout
-    //as.mov(scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
-    //as.cmp(scrRegs32[1], LAYOUT_CLOS);
-    //as.jne(BAILOUT);
+    as.cmp(closReg, X86Opnd(0));
+    as.je(Label.THROW);
+    as.mov(scrRegs[1].opnd(32), X86Opnd(32, closReg.reg, obj_ofs_header(null)));
+    as.cmp(scrRegs[1].opnd(32), X86Opnd(LAYOUT_CLOS));
+    as.jne(Label.THROW);
 
     // Get the IRFunction pointer from the closure object
     auto fptrMem = X86Opnd(64, closReg.reg, CLOS_OFS_FPTR);
@@ -1909,31 +1885,10 @@ void gen_call_new(
     // Final branch generation
     //
 
-    // Request a branch object for the continuation
-    auto contBranch = getBranchEdge(
-        as,
-        instr.getTarget(0),
+    ver.genCallBranch(
         st,
-        false
-    );
-
-    // Create the continuation branch object
-    BranchCode excBranch;
-    if (instr.getTarget(1))
-    {
-        excBranch = getBranchEdge(
-            as,
-            instr.getTarget(1),
-            st,
-            false
-        );
-    }
-
-    ver.genBranch(
+        instr,
         as,
-        contBranch,
-        null,
-        BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
             VM vm,
@@ -1967,37 +1922,9 @@ void gen_call_new(
             // Jump to the function entry block
             as.getMember!("IRFunction.ctorCode")(scrRegs[0], scrRegs[1]);
             as.jmp(scrRegs[0].opnd(64));
-        }
+        },
+        true
     );
-
-    //writeln("call block length: ", ver.length);
-
-    // Add the return value move code to the continuation branch
-    contBranch.markStart(as);
-    as.setWord(instr.outSlot, retWordReg.opnd(64));
-    as.setType(instr.outSlot, retTypeReg.opnd(8));
-
-    // Generate the continuation branch edge code
-    contBranch.genCode(as, st);
-
-    // Add the exception value move code to the exception branch
-    if (excBranch)
-    {
-        excBranch.markStart(as);
-        as.add(tspReg, Type.sizeof);
-        as.add(wspReg, Word.sizeof);
-        as.getWord(scrRegs[0], -1);
-        as.setWord(instr.outSlot, scrRegs[0].opnd(64));
-        as.getType(scrRegs[0].reg(8), -1);
-        as.setType(instr.outSlot, scrRegs[0].opnd(8));
-        excBranch.genCode(as, st);
-    }
-
-    // Set the return address entry for this call
-    vm.setRetEntry(instr, contBranch, excBranch);
-
-    // TODO: if not closure, call function to throw an exception
-    // need to spill values before jumping to this
 }
 
 void gen_call_apply(
@@ -2010,8 +1937,7 @@ void gen_call_apply(
     extern (C) CodePtr op_call_apply(
         VM vm, 
         IRInstr instr, 
-        refptr retAddr, 
-        CodeFragment excHandler
+        refptr retAddr
     )
     {
         auto closVal = vm.getArgVal(instr, 0);
@@ -2020,12 +1946,14 @@ void gen_call_apply(
         auto argcVal = vm.getArgUint32(instr, 3);
 
         assert (
-            tblVal.type is Type.REFPTR || valIsLayout(tblVal.word, LAYOUT_ARRTBL),
+            tblVal.type is Type.REFPTR && valIsLayout(tblVal.word, LAYOUT_ARRTBL),
             "invalid argument table"
         );
 
-        if (closVal.type !is Type.REFPTR || !valIsLayout(closVal.word, LAYOUT_CLOS))
-            return throwError(vm, instr, excHandler, "TypeError", "apply call to non-function");
+        assert (
+            closVal.type is Type.REFPTR && valIsLayout(closVal.word, LAYOUT_CLOS),
+            "apply call on to non-function"
+        );
 
         // Get the function object from the closure
         auto closPtr = closVal.word.ptrVal;
@@ -2062,21 +1990,10 @@ void gen_call_apply(
 
     // TODO: spill all
 
-    // Request a branch object for the continuation
-    auto contBranch = getBranchEdge(
-        as,
-        instr.getTarget(0),
+    ver.genCallBranch(
         st,
-        false
-    );
-
-    // TODO: exception branch, if any
-
-    ver.genBranch(
+        instr,
         as,
-        contBranch,
-        null,
-        BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
             VM vm,
@@ -2091,14 +2008,8 @@ void gen_call_apply(
             as.mov(cargRegs[0].opnd, vmReg.opnd);
             as.ptr(cargRegs[1], instr);
 
-            // Pass the target address as third argument
+            // Pass the return address as third argument
             as.movAbsRef(vm, cargRegs[2], target0);
-
-
-            // TODO: pass exc handler as fourth argument
-
-
-
 
             // Call the host function
             as.ptr(scrRegs[0], &op_call_apply);
@@ -2108,18 +2019,9 @@ void gen_call_apply(
 
             // Jump to the address returned by the host function
             as.jmp(X86Opnd(RAX));
-        }
+        },
+        false
     );
-
-    //writeln("call block length: ", ver.length);
-
-    // Add the return value move code to the continuation branch
-    contBranch.markStart(as);
-    as.setWord(instr.outSlot, retWordReg.opnd(64));
-    as.setType(instr.outSlot, retTypeReg.opnd(8));
-
-    // Generate the continuation branch edge code
-    contBranch.genCode(as, st);
 }
 
 void gen_ret(

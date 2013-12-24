@@ -53,19 +53,21 @@ TODO: execHeap collection/expansion
 - Marc says: not on critical path for paper
 
 TODO: function call inlining
+- This is critical for performance
+- Work on inlining before dweldving into type prop opts too much
 
 TODO: type propagation
+
+TODO: have map idx system, instead of map pointers?
+
+TODO: think about type representation
+- types need to encode obj vs clos vs array
+- int array, float array
+- use one whole word for cst value, encode map idx in there too?
 
 TODO: better register spilling mechanism for C calls
 
 TODO: register allocation
-
-------------------------------------------------------------------------------
-
-Milestone IV: All benchmarks working
-- Will require GC
-
-Marc is back after Jan 7, busy 10-11-12 with CEGEP students
 
 TODO: big blog post about basic block versioning, incremental JIT
 
@@ -76,34 +78,43 @@ TODO: think about resubmitting to Usenix
 TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
 TODO: talk to Tom about JITted FFI
 
+------------------------------------------------------------------------------
+
+Milestone IV: All benchmarks working
+- Will require GC
+
+Marc is back after Jan 7, busy 10-11-12 with CEGEP students
+
 TODO: GC support
+
+FIXME: unresolved global, no exception thrown
+- We aren't checking for that...
+- Default can spill all, have fallback
 
 FIXME: programs/regress/new_array, bug in toUint32
 run-time error: unsupported value in toUInt32: 128
 
-TODO: factorize a genCallBranch wrapper for genBranch
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: factorize a genCallBranch wrapper for genBranch
 - in jit/ops, before all the call instructions
-- pass call instr, exc handler object
 - boolean flag to generate call throw path
 
-TODO: add exception tests to runtime tests
-- check exception classname
+[DONE] TODO: add new null(), new undefined() tests
 
-TODO: assertThrows should be able to check the exception classname
-
-FIXME: unresolved global, no exception thrown
-
-FIXME: segfault on null() call
-
-
-
-
-
-
-
-
-
-
+[DONE] FIXME: segfault on null() call
 
 [DONE] TODO: make call throw on non-closure work
 - needed by 4 tests

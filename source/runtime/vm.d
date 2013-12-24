@@ -966,7 +966,11 @@ class VM
 
         // If a runtime error occurred, throw the exception object
         if (runError)
-            throw runError;
+        {
+            auto error = runError;
+            runError = null;
+            throw error;
+        }
 
         // Ensure the stack contains at least one value
         assert (

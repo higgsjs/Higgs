@@ -279,10 +279,9 @@ unittest
     vm.assertInt("return function () { return 9; } ()", 9);
     vm.assertInt("return function () { return 2 * 3; } ()", 6);
 
-    // TODO
     // Calling a non-function
-    //vm.assertThrows("null()");
-    //vm.assertThrows("undefined()");
+    vm.assertThrows("null()");
+    vm.assertThrows("undefined()");
 }
 
 /// Argument passing test
@@ -873,6 +872,10 @@ unittest
         ",
         12
     );
+
+    // New on non-function
+    vm.assertThrows("new null()");
+    vm.assertThrows("new undefined()");
 }
 
 /// Array literals, array operations
@@ -1075,9 +1078,8 @@ unittest
         3
     );
 
-    // TODO: exception support
-    //vm.assertThrows("false instanceof false");
-    //vm.assertThrows("2 in null");
+    vm.assertThrows("false instanceof false");
+    vm.assertThrows("2 in null");
     vm.assertBool("'foo' in {}", false);
 }
 
@@ -1270,9 +1272,8 @@ unittest
     vm.assertInt("test();", 0);
     vm.load("programs/exceptions/throw_inter_fnl.js");
     vm.assertStr("str;", "abcdef");
-    // FIXME: needs invalid closure exception
-    //vm.load("programs/exceptions/try_call.js");
-    //vm.assertStr("str;", "abc");
+    vm.load("programs/exceptions/try_call.js");
+    vm.assertStr("str;", "abc");
 }
 
 /// Basic test programs
