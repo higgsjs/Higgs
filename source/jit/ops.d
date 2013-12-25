@@ -2287,16 +2287,42 @@ void gen_get_global(
     // if the property slot doesn't exist, it will be allocated
     auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
     assert (globalMap !is null);
-    auto propIdx = globalMap.getPropIdx(nameStr, true);
+    auto propIdx = globalMap.getPropIdx(nameStr, false);
 
+    // If the property was not found
+    if (propIdx is uint32.max)
+    {
+        // Initialize the property, this may extend the global object
+        setProp(vm, vm.globalObj, nameStr, ValuePair(MISSING, Type.CONST));
+        propIdx = globalMap.getPropIdx(nameStr, false);
+        assert (propIdx !is uint32.max);
+    }
 
-    // TODO: if propIdx not found, need to do full lookup using getPropObj
-    assert (propIdx !is uint32_t.max);
+    extern (C) static CodePtr hostGetProp(VM vm, IRInstr instr, const(wchar)* propName)
+    {
+        auto propVal = getProp(
+            vm,
+            vm.globalObj,
+            to!wstring(propName)
+        );
 
+        if (propVal.word == MISSING && propVal.type == Type.CONST)
+        {
+            return throwError(
+                vm,
+                instr,
+                null,
+                "TypeError", 
+                "call to non-function"
+            );
+        }
 
+        vm.push(propVal);
 
+        return null;
+    }
 
-
+    // TODO: spill all for potential host call 
 
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -2310,8 +2336,43 @@ void gen_get_global(
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(vm.globalObj, 0);
 
-    // Get the word value from the object
+    // Define memory operands for the word and type values
     auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
+    auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + propIdx, 8, scrRegs[1]);
+
+    // If the value is not "missing", skip the fallback code
+    as.cmp(typeMem, X86Opnd(Type.CONST));
+    as.jne(Label.SKIP);
+    as.cmp(wordMem, X86Opnd(MISSING.int8Val));
+    as.jne(Label.SKIP);
+
+    // If the value is missing, call the host fallback code
+    as.pushJITRegs();
+    as.mov(cargRegs[0].opnd, vmReg.opnd);
+    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[2], nameStr.ptr);
+    as.ptr(scrRegs[0], &hostGetProp);
+    as.call(scrRegs[0].opnd);
+    as.popJITRegs();
+
+    // If an exception was thrown, jump to the exception handler
+    as.cmp(cretReg.opnd, X86Opnd(0));
+    as.je(Label.FALSE);
+    as.jmp(cretReg.opnd);
+    as.label(Label.FALSE);
+
+    // Get the property value from the stack
+    as.getWord(scrRegs[0], 0);
+    as.mov(outOpnd, scrRegs[0].opnd);
+    as.getType(scrRegs[0].reg(8), 0);
+    as.add(wspReg, Word.sizeof);
+    as.add(tspReg, Type.sizeof);
+    st.setOutType(as, instr, scrRegs[0].reg(8));
+    as.jmp(Label.DONE);
+
+    as.label(Label.SKIP);
+
+    // Set the output word
     if (outOpnd.isReg)
     {
         as.mov(outOpnd, wordMem);
@@ -2322,12 +2383,11 @@ void gen_get_global(
         as.mov(outOpnd, X86Opnd(scrRegs[2]));
     }
 
-    // Get the type value from the object
-    auto typeMem = X86Opnd(8, scrRegs[0], wordOfs + propIdx, 8, scrRegs[1]);
-    as.mov(scrRegs[2].opnd(8), typeMem);
-
     // Set the type value
+    as.mov(scrRegs[2].opnd(8), typeMem);
     st.setOutType(as, instr, scrRegs[2].reg(8));
+
+    as.label(Label.DONE);
 }
 
 void gen_set_global(
@@ -2352,7 +2412,7 @@ void gen_set_global(
     // If the property was not found
     if (propIdx is uint32.max)
     {
-        // Initialize the property, this may extend the object
+        // Initialize the property, this may extend the global object
         setProp(vm, vm.globalObj, nameStr, ValuePair(MISSING, Type.CONST));
         propIdx = globalMap.getPropIdx(nameStr, false);
         assert (propIdx !is uint32.max);

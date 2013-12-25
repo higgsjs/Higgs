@@ -710,7 +710,7 @@ unittest
     );
 
     // Unresolved global
-    //vm.assertThrows("foo5783");
+    vm.assertThrows("foo5783");
 
     // Many global variables
     vm = new VMNoStdLib();
@@ -762,8 +762,7 @@ unittest
     // Delete operator
     vm.assertBool("o = {x: 5}; delete o.x; return 'x' in o;", false);
     vm.assertBool("o = {x: 5}; delete o.x; return !o.x;", true);
-    // TODO
-    //vm.assertThrows("a = 5; delete a; a;");
+    vm.assertThrows("a = 5; delete a; a;");
 
     // Function object property
     vm.assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
@@ -1078,9 +1077,9 @@ unittest
         3
     );
 
-    vm.assertThrows("false instanceof false");
-    vm.assertThrows("2 in null");
     vm.assertBool("'foo' in {}", false);
+    vm.assertThrows("2 in null");
+    vm.assertThrows("false instanceof false");
 }
 
 /// Closures, captured and escaping variables

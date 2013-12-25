@@ -1153,6 +1153,9 @@ extern (C) CodePtr throwExc(
         // Add the current instruction to the stack trace
         trace ~= curInstr;    
 
+        //writeln("unwinding: ", curInstr.toString, " in ", curInstr.block.fun.getName);
+        //writeln("stack size: ", vm.stackSize);
+
         // If the current instruction has an exception handler
         if (curHandler !is null)
         {
@@ -1189,6 +1192,8 @@ extern (C) CodePtr throwExc(
         // If we have reached the bottom of the stack
         if (curInstr is null)
         {
+            //writeln("reached stack bottom");
+
             assert (retEntry.retCode !is null);
 
             // Set the runtime error value

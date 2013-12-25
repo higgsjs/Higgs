@@ -144,9 +144,11 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             continue EXEC_LOOP;
         }
 
+        /*
         writefln("cycle occurs, list length=%s ***", moveList.length);
         foreach (move; moveList)
             writeln(move.dst, " <= ", move.src);
+        */
 
         // No safe move was found
         // take a pair (dst<-src) and remove it from list

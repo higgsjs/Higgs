@@ -79,6 +79,9 @@ immutable X86Reg[] cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
 /// C fp argument registers
 immutable X86Reg[] cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
 
+/// C return value register
+alias RAX cretReg;
+
 /// RAX: scratch register, C return value
 /// RDI: scratch register, first C argument register
 /// RSI: scratch register, second C argument register
@@ -1505,14 +1508,14 @@ void compile(VM vm)
                     as
                 );
 
+                // Link block-internal labels
+                as.linkLabels();
+
                 // If we know the instruction will definitely leave 
                 // this block, stop the block compilation
                 if (opcode.isBranch)
                     break;
             }
-
-            // Link block-internal labels
-            as.linkLabels();
 
             // Store the code end index for this fragment
             if (inst.endIdx is inst.endIdx.max)
