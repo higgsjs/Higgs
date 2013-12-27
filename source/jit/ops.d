@@ -2024,6 +2024,91 @@ void gen_call_apply(
     );
 }
 
+// TODO
+// TODO
+// TODO
+void gen_load_file(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) void op_load_file(VM vm, IRInstr instr)
+    {
+        /*
+        auto strPtr = vm.getArgStr(instr, 0);
+        auto fileName = vm.getLoadPath(extractStr(strPtr));
+
+        try
+        {
+            // Parse the source file and generate IR
+            auto ast = parseFile(fileName);
+            auto fun = astToIR(ast);
+
+            // Register this function in the function reference set
+            vm.funRefs[cast(void*)fun] = fun;
+
+            // Setup the callee stack frame
+            vm.callFun(
+                fun,
+                instr,      // Calling instruction
+                null,       // Null closure argument
+                NULL,       // Null this argument
+                Type.REFPTR,// This value is a reference
+                0,          // 0 arguments
+                null        // 0 arguments
+            );
+        }
+
+        catch (Exception err)
+        {
+            throwError(vm, instr, "RuntimeError", err.msg);
+        }
+        */
+    }
+
+
+
+
+
+
+
+
+
+
+
+}
+
+// TODO
+// TODO
+// TODO
+extern (C) void op_eval_str(VM vm, IRInstr instr)
+{
+    /*
+    auto strPtr = vm.getArgStr(instr, 0);
+    auto codeStr = extractStr(strPtr);
+
+    // Parse the source file and generate IR
+    auto ast = parseString(codeStr, "eval_str");
+    auto fun = astToIR(ast);
+
+    // Register this function in the function reference set
+    vm.funRefs[cast(void*)fun] = fun;
+
+    // Setup the callee stack frame
+    vm.callFun(
+        fun,
+        instr,      // Calling instruction
+        null,       // Null closure argument
+        NULL,       // Null this argument
+        Type.REFPTR,// This value is a reference
+        0,          // 0 arguments
+        null        // 0 arguments
+    );
+    */
+}
+
 void gen_ret(
     VersionInst ver, 
     CodeGenState st,
@@ -2298,12 +2383,18 @@ void gen_get_global(
         assert (propIdx !is uint32.max);
     }
 
-    extern (C) static CodePtr hostGetProp(VM vm, IRInstr instr, const(wchar)* propName)
+    extern (C) static CodePtr hostGetProp(
+        VM vm, 
+        IRInstr instr, 
+        immutable(wchar)* nameChars,
+        size_t nameLen
+    )
     {
+        auto propName = nameChars[0..nameLen];
         auto propVal = getProp(
             vm,
             vm.globalObj,
-            to!wstring(propName)
+            propName
         );
 
         if (propVal.word == MISSING && propVal.type == Type.CONST)
@@ -2313,7 +2404,7 @@ void gen_get_global(
                 instr,
                 null,
                 "TypeError", 
-                "call to non-function"
+                "global property not defined \"" ~ to!string(propName) ~ "\""
             );
         }
 
@@ -2351,6 +2442,7 @@ void gen_get_global(
     as.mov(cargRegs[0].opnd, vmReg.opnd);
     as.ptr(cargRegs[1], instr);
     as.ptr(cargRegs[2], nameStr.ptr);
+    as.mov(cargRegs[3].opnd, X86Opnd(nameStr.length));
     as.ptr(scrRegs[0], &hostGetProp);
     as.call(scrRegs[0].opnd);
     as.popJITRegs();
@@ -2363,13 +2455,14 @@ void gen_get_global(
 
     // Get the property value from the stack
     as.getWord(scrRegs[0], 0);
-    as.mov(outOpnd, scrRegs[0].opnd);
-    as.getType(scrRegs[0].reg(8), 0);
+    as.getType(scrRegs[1].reg(8), 0);
     as.add(wspReg, Word.sizeof);
     as.add(tspReg, Type.sizeof);
-    st.setOutType(as, instr, scrRegs[0].reg(8));
+    as.mov(outOpnd, scrRegs[0].opnd);
+    st.setOutType(as, instr, scrRegs[1].reg(8));
     as.jmp(Label.DONE);
 
+    // If skipping the fallback code
     as.label(Label.SKIP);
 
     // Set the output word
@@ -2439,128 +2532,6 @@ void gen_set_global(
     auto typeMem = X86Opnd(8, scrRegs[1], wordOfs + propIdx, 8, scrRegs[2]);
     as.mov(typeMem, typeOpnd);
 }
-
-/*
-/// Get the value of a global variable
-extern (C) void op_get_global(VM vm, IRInstr instr)
-{
-    // Name string (D string)
-    auto strArg = cast(IRString)instr.getArg(0);
-    assert (strArg !is null);
-    auto nameStr = strArg.str;
-
-    // Cached property index
-    auto idxArg = cast(IRCachedIdx)instr.getArg(1);
-    assert (idxArg !is null);
-    auto propIdx = idxArg.idx;
-
-    // If a property index was cached
-    if (propIdx !is idxArg.idx.max)
-    {
-        auto wVal = obj_get_word(vm.globalObj, propIdx);
-        auto tVal = obj_get_type(vm.globalObj, propIdx);
-
-        vm.setSlot(
-            instr.outSlot,
-            Word.uint64v(wVal),
-            cast(Type)tVal
-        );
-
-        return;
-    }
-
-    auto propStr = GCRoot(vm, getString(vm, nameStr));
-
-    // Lookup the property index in the class
-    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
-    assert (globalMap !is null);
-    propIdx = globalMap.getPropIdx(propStr.ptr);
-
-    // If the property was found, cache it
-    if (propIdx != uint32.max)
-    {
-        // Cache the property index
-        idxArg.idx = propIdx;
-    }
-
-    // Lookup the property
-    ValuePair val = getProp(
-        vm,
-        vm.globalObj,
-        propStr.ptr
-    );
-
-    // If the property is not defined
-    if (val.type == Type.CONST && val.word == MISSING)
-    {
-        return throwError(
-            vm,
-            instr, 
-            "ReferenceError", "global property \"" ~ 
-            to!string(nameStr) ~ "\" is not defined"
-        );
-    }
-
-    vm.setSlot(
-        instr.outSlot,
-        val
-    );
-}
-*/
-
-/*
-/// Set the value of a global variable
-extern (C) void op_set_global(VM vm, IRInstr instr)
-{
-    // Name string (D string)
-    auto strArg = cast(IRString)instr.getArg(0);
-    assert (strArg !is null);
-    auto nameStr = strArg.str;
-
-    // Get the property value argument
-    auto propVal = vm.getArgVal(instr, 1);
-
-    // Cached property index
-    auto idxArg = cast(IRCachedIdx)instr.getArg(2);
-    assert (idxArg !is null);
-    auto propIdx = idxArg.idx;
-
-    // If a property index was cached
-    if (propIdx !is idxArg.idx.max)
-    {
-        obj_set_word(vm.globalObj, cast(uint32)propIdx, propVal.word.uint64Val);
-        obj_set_type(vm.globalObj, cast(uint32)propIdx, propVal.type);
-
-        return;
-    }
-
-    // Save the value in a GC root
-    auto val = GCRoot(vm, propVal);
-
-    // Get the property string
-    auto propStr = GCRoot(vm, getString(vm, nameStr));
-
-    // Set the property value
-    setProp(
-        vm,
-        vm.globalObj,
-        propStr.ptr,
-        val.pair
-    );
-
-    // Lookup the property index in the class
-    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
-    assert (globalMap !is null);
-    propIdx = globalMap.getPropIdx(propStr.ptr);
-
-    // If the property was found, cache it
-    if (propIdx != uint32.max)
-    {
-        // Cache the property index
-        idxArg.idx = propIdx;
-    }
-}
-*/
 
 void gen_get_str(
     VersionInst ver, 
@@ -3037,72 +3008,6 @@ extern (C) void op_get_ir_str(VM vm, IRInstr instr)
     );
 }
 */
-
-// TODO
-// TODO
-// TODO
-extern (C) void op_load_file(VM vm, IRInstr instr)
-{
-    /*
-    auto strPtr = vm.getArgStr(instr, 0);
-    auto fileName = vm.getLoadPath(extractStr(strPtr));
-
-    try
-    {
-        // Parse the source file and generate IR
-        auto ast = parseFile(fileName);
-        auto fun = astToIR(ast);
-
-        // Register this function in the function reference set
-        vm.funRefs[cast(void*)fun] = fun;
-
-        // Setup the callee stack frame
-        vm.callFun(
-            fun,
-            instr,      // Calling instruction
-            null,       // Null closure argument
-            NULL,       // Null this argument
-            Type.REFPTR,// This value is a reference
-            0,          // 0 arguments
-            null        // 0 arguments
-        );
-    }
-
-    catch (Exception err)
-    {
-        throwError(vm, instr, "RuntimeError", err.msg);
-    }
-    */
-}
-
-// TODO
-// TODO
-// TODO
-extern (C) void op_eval_str(VM vm, IRInstr instr)
-{
-    /*
-    auto strPtr = vm.getArgStr(instr, 0);
-    auto codeStr = extractStr(strPtr);
-
-    // Parse the source file and generate IR
-    auto ast = parseString(codeStr, "eval_str");
-    auto fun = astToIR(ast);
-
-    // Register this function in the function reference set
-    vm.funRefs[cast(void*)fun] = fun;
-
-    // Setup the callee stack frame
-    vm.callFun(
-        fun,
-        instr,      // Calling instruction
-        null,       // Null closure argument
-        NULL,       // Null this argument
-        Type.REFPTR,// This value is a reference
-        0,          // 0 arguments
-        null        // 0 arguments
-    );
-    */
-}
 
 /*
 extern (C) void op_load_lib(VM vm, IRInstr instr)

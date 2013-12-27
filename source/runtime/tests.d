@@ -712,6 +712,9 @@ unittest
     // Unresolved global
     vm.assertThrows("foo5783");
 
+    // Accessing a property from Object.prototype
+    vm.assertInt("delete x; ($ir_get_obj_proto()).x = 777; return x;", 777);
+
     // Many global variables
     vm = new VMNoStdLib();
     vm.load("programs/many_globals/many_globals.js");
@@ -1307,6 +1310,8 @@ unittest
     vm = new VM();
 
     vm.assertBool("4294967295.0 === 0xFFFFFFFF", true);
+
+    vm.assertStr("typeof ([] + [])", "string");
 
     vm.load("programs/regress/post_incr.js");
     vm.load("programs/regress/in_operator.js");

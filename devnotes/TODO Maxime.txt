@@ -35,18 +35,12 @@ TODO: optimize x86 instr encoding based on usage
 
 TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
-TODO: increase default str table size, use power of 2 sizing, eliminate modulo
-- Initial size should be 16K
+TODO: arrays, functions, have obj ptr inside, drop object inheritance system
 
 TODO: add source position info for call sites
 - Map of call sites to source pos in IRFunction?
 - Do this in genCallTargets?
 - Throw instr also needs a source pos
-
-TODO: unit test for global property access of prop from Object.prototype
-- Need simple fallback for when prop isn't on global obj
-- Won't this require spilling everything?
-- Property could get deleted
 
 ------------------------------------------------------------------------------
 
@@ -81,6 +75,14 @@ TODO: think about resubmitting to Usenix
 TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
 TODO: talk to Tom about JITted FFI
 
+Idea: global table of property names with type monitoring
+- current index, if always same
+- current type
+- can it be a getter/setter?
+- discuss with Marc
+  - would most probably work well for benchmarks
+- if foobar property always has same offset, don't even care what the map is
+  - fair game?
 
 ------------------------------------------------------------------------------
 
@@ -102,6 +104,9 @@ set a curCtx pointer in the VM
 
 TODO: RAEntry should have CodeGenCtx pointer
 
+TODO: increase default str table size, use power of 2 sizing, eliminate modulo
+- Initial size should be 16K
+
 TODO: load, eval instructions
 
 
@@ -112,6 +117,12 @@ TODO: load, eval instructions
 
 
 
+
+
+[DONE] TODO: unit test for global property access of prop from Object.prototype
+- Need simple fallback for when prop isn't on global obj
+- Won't this require spilling everything?
+- Property could get deleted
 
 [DONE] FIXME: unresolved global, no exception thrown
 - We aren't checking for that...
