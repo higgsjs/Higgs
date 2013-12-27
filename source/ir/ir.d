@@ -262,9 +262,6 @@ class IRFunction : IdObject
     }
 }
 
-/// Compiled function entry point
-alias void function() EntryFn;
-
 /**
 SSA IR basic block
 */

@@ -895,7 +895,7 @@ class VM
     */
     void callFun(
         IRFunction fun,         // Function to call
-        refptr retAddr,         // Return address
+        CodePtr retAddr,        // Return address
         refptr closPtr,         // Closure pointer
         Word thisWord,          // This value word
         Type thisType,          // This value type
@@ -936,7 +936,7 @@ class VM
         push(Word.ptrv(closPtr), Type.REFPTR);
 
         // Push the return address
-        push(Word.ptrv(retAddr), Type.RETADDR);
+        push(Word.ptrv(cast(rawptr)retAddr), Type.RETADDR);
      
         // Push space for the callee locals
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;

@@ -83,6 +83,10 @@ Idea: global table of property names with type monitoring
   - would most probably work well for benchmarks
 - if foobar property always has same offset, don't even care what the map is
   - fair game?
+- issue: can know that x is always at some index, but doesn't mean that your
+  object has a property x
+- can do monitoring per-map, and get great perf gains on the global object
+- how often are object types monomorphic?
 
 ------------------------------------------------------------------------------
 
@@ -107,7 +111,6 @@ TODO: RAEntry should have CodeGenCtx pointer
 TODO: increase default str table size, use power of 2 sizing, eliminate modulo
 - Initial size should be 16K
 
-TODO: load, eval instructions
 
 
 
@@ -115,9 +118,14 @@ TODO: load, eval instructions
 
 
 
+[DONE] TODO: eval a throw test
 
-
-
+[DONE] TODO: load, eval instructions
+- Need to compile a new unit, then jump to it, return to caller continuation
+- May want to split compileUnit, generate special return code separately?
+- Want a callUnit function?
+- compileUnit could do a more minimal compilation of a unit, return VersionInst
+- or maybe don't use compileUnit at all!
 
 [DONE] TODO: unit test for global property access of prop from Object.prototype
 - Need simple fallback for when prop isn't on global obj

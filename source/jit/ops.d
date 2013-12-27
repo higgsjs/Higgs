@@ -49,6 +49,7 @@ import std.traits;
 import std.datetime;
 import options;
 import stats;
+import parser.parser;
 import ir.ir;
 import ir.ops;
 import ir.ast;
@@ -1937,7 +1938,7 @@ void gen_call_apply(
     extern (C) CodePtr op_call_apply(
         VM vm, 
         IRInstr instr, 
-        refptr retAddr
+        CodePtr retAddr
     )
     {
         auto closVal = vm.getArgVal(instr, 0);
@@ -2018,15 +2019,12 @@ void gen_call_apply(
             as.popJITRegs();
 
             // Jump to the address returned by the host function
-            as.jmp(X86Opnd(RAX));
+            as.jmp(cretReg.opnd);
         },
         false
     );
 }
 
-// TODO
-// TODO
-// TODO
 void gen_load_file(
     VersionInst ver, 
     CodeGenState st,
@@ -2034,9 +2032,13 @@ void gen_load_file(
     CodeBlock as
 )
 {
-    extern (C) void op_load_file(VM vm, IRInstr instr)
+    extern (C) CodePtr op_load_file(
+        VM vm, 
+        IRInstr instr,
+        CodeFragment retTarget,
+        CodeFragment excTarget
+    )
     {
-        /*
         auto strPtr = vm.getArgStr(instr, 0);
         auto fileName = vm.getLoadPath(extractStr(strPtr));
 
@@ -2049,64 +2051,184 @@ void gen_load_file(
             // Register this function in the function reference set
             vm.funRefs[cast(void*)fun] = fun;
 
-            // Setup the callee stack frame
+            // Create a version instance object for the unit function entry
+            auto entryInst = new VersionInst(
+                fun.entryBlock, 
+                new CodeGenState(fun.getCtx(false, vm))
+            );
+
+            // Compile the unit entry version
+            vm.queue(entryInst);
+            vm.compile();
+
+            // Get the return address for the continuation target
+            auto retAddr = retTarget.getCodePtr(vm.execHeap);
+
+            // Prepare the callee stack frame
             vm.callFun(
                 fun,
-                instr,      // Calling instruction
-                null,       // Null closure argument
-                NULL,       // Null this argument
-                Type.REFPTR,// This value is a reference
-                0,          // 0 arguments
-                null        // 0 arguments
+                retAddr,
+                null,
+                Word.ptrv(vm.globalObj),
+                Type.REFPTR,
+                0,
+                null
             );
+
+            // Return the function entry point code
+            return entryInst.getCodePtr(vm.execHeap);
         }
 
         catch (Exception err)
         {
-            throwError(vm, instr, "RuntimeError", err.msg);
+            return throwError(
+                vm,
+                instr,
+                excTarget,
+                "SyntaxError",
+                "failed to load unit \"" ~ to!string(fileName) ~ "\""
+            );
         }
-        */
     }
 
+    // TODO: spill all
 
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            as.pushJITRegs();
 
+            // Pass the VM and instruction as first two arguments
+            as.mov(cargRegs[0].opnd, vmReg.opnd);
+            as.ptr(cargRegs[1], instr);
 
+            // Pass the return and exception addresses as third arguments
+            as.ptr(cargRegs[2], target0);
+            as.ptr(cargRegs[3], target1);            
 
+            // Call the host function
+            as.ptr(scrRegs[0], &op_load_file);
+            as.call(scrRegs[0]);
 
+            as.popJITRegs();
 
-
-
-
-
+            // Jump to the address returned by the host function
+            as.jmp(cretReg.opnd);
+        },
+        false
+    );
 }
 
-// TODO
-// TODO
-// TODO
-extern (C) void op_eval_str(VM vm, IRInstr instr)
+void gen_eval_str(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    /*
-    auto strPtr = vm.getArgStr(instr, 0);
-    auto codeStr = extractStr(strPtr);
+    extern (C) CodePtr op_eval_str(
+        VM vm, 
+        IRInstr instr,
+        CodeFragment retTarget,
+        CodeFragment excTarget
+    )
+    {
+        auto strPtr = vm.getArgStr(instr, 0);
+        auto codeStr = extractStr(strPtr);
 
-    // Parse the source file and generate IR
-    auto ast = parseString(codeStr, "eval_str");
-    auto fun = astToIR(ast);
+        try
+        {
+            // Parse the source file and generate IR
+            auto ast = parseString(codeStr, "eval_str");
+            auto fun = astToIR(ast);
 
-    // Register this function in the function reference set
-    vm.funRefs[cast(void*)fun] = fun;
+            // Register this function in the function reference set
+            vm.funRefs[cast(void*)fun] = fun;
 
-    // Setup the callee stack frame
-    vm.callFun(
-        fun,
-        instr,      // Calling instruction
-        null,       // Null closure argument
-        NULL,       // Null this argument
-        Type.REFPTR,// This value is a reference
-        0,          // 0 arguments
-        null        // 0 arguments
+            // Create a version instance object for the unit function entry
+            auto entryInst = new VersionInst(
+                fun.entryBlock, 
+                new CodeGenState(fun.getCtx(false, vm))
+            );
+
+            // Compile the unit entry version
+            vm.queue(entryInst);
+            vm.compile();
+
+            // Get the return address for the continuation target
+            auto retAddr = retTarget.getCodePtr(vm.execHeap);
+
+            // Prepare the callee stack frame
+            vm.callFun(
+                fun,
+                retAddr,
+                null,
+                Word.ptrv(vm.globalObj),
+                Type.REFPTR,
+                0,
+                null
+            );
+
+            // Return the function entry point code
+            return entryInst.getCodePtr(vm.execHeap);
+        }
+
+        catch (Exception err)
+        {
+            return throwError(
+                vm,
+                instr,
+                excTarget,
+                "SyntaxError",
+                "error while evaluating string"
+            );
+        }
+    }
+
+    // TODO: spill all
+
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            as.pushJITRegs();
+
+            // Pass the VM and instruction as first two arguments
+            as.mov(cargRegs[0].opnd, vmReg.opnd);
+            as.ptr(cargRegs[1], instr);
+
+            // Pass the return and exception addresses as third arguments
+            as.ptr(cargRegs[2], target0);
+            as.ptr(cargRegs[3], target1);            
+
+            // Call the host function
+            as.ptr(scrRegs[0], &op_eval_str);
+            as.call(scrRegs[0]);
+
+            as.popJITRegs();
+
+            // Jump to the address returned by the host function
+            as.jmp(cretReg.opnd);
+        },
+        false
     );
-    */
 }
 
 void gen_ret(

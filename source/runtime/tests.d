@@ -1439,7 +1439,6 @@ unittest
     vm.assertInt("test();", 0);
 }
 
-/*
 /// Dynamic code loading and eval
 unittest
 {
@@ -1455,8 +1454,10 @@ unittest
 
     // Eval
     vm.load("programs/eval/eval.js");
+
+    // Eval throwing an exception
+    vm.assertThrows("eval('throw 1')");
 }
-*/
 
 /*
 /// Garbage collector tests

@@ -220,6 +220,11 @@ Opcode JUMP = { "jump", false, [], &gen_jump, OpInfo.BRANCH };
 // Branch based on a boolean value
 Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &gen_if_true, OpInfo.BRANCH };
 
+// <dstLocal> = CALL_PRIM <primName> <primFun> ...
+// Call a primitive function by name (compile-time lookup)
+// Note: the second argument is a cached function reference
+Opcode CALL_PRIM = { "call_prim", true, [OpArg.STRING, OpArg.FUN], &gen_call_prim, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
+
 // <dstLocal> = CALL <closLocal> <thisArg> ...
 // Makes the execution go to the callee entry
 // Sets the frame pointer to the new frame's base
@@ -238,10 +243,11 @@ Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &gen_call_new, OpInfo.VAR_A
 // Call with an array of arguments
 Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_call_apply, OpInfo.BRANCH | OpInfo.CALL };
 
-// <dstLocal> = CALL_PRIM <primName> <primFun> ...
-// Call a primitive function by name
-// Note: the second argument is a cached function reference
-Opcode CALL_PRIM = { "call_prim", true, [OpArg.STRING, OpArg.FUN], &gen_call_prim, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
+/// Load a source code unit from a file
+Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], &gen_load_file, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
+
+/// Evaluate a source string in the global scope
+Opcode EVAL_STR = { "eval_str", true, [OpArg.LOCAL], &gen_eval_str, OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
 
 // RET <retLocal>
 // Pops the callee frame (size known by context)
@@ -320,12 +326,6 @@ Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &gen_get_ast_str, OpI
 
 /// Get a string representation of a function's IR
 Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], /*&gen_get_ir_str*/null , OpInfo.MAY_GC };
-
-/// Load a source code unit from a file
-Opcode LOAD_FILE = { "load_file", true, [OpArg.LOCAL], /*&gen_load_file*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
-
-/// Evaluate a source string in the global scope
-Opcode EVAL_STR = { "eval_str", true, [OpArg.LOCAL], /*&gen_eval_str*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Load a shared lib
 Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], /*&gen_load_lib*/null };
