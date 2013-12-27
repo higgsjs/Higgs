@@ -37,11 +37,6 @@ TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
 TODO: arrays, functions, have obj ptr inside, drop object inheritance system
 
-TODO: add source position info for call sites
-- Map of call sites to source pos in IRFunction?
-- Do this in genCallTargets?
-- Throw instr also needs a source pos
-
 ------------------------------------------------------------------------------
 
 TODO: execHeap collection/expansion
@@ -88,6 +83,11 @@ Idea: global table of property names with type monitoring
 - can do monitoring per-map, and get great perf gains on the global object
 - how often are object types monomorphic?
 
+TODO: add source position info for call instructions and throw instruction
+- Map of call sites to source pos in IRFunction
+- Do this in genCallTargets?
+- Modify stack trace code to show source positions
+
 ------------------------------------------------------------------------------
 
 Milestone IV: All tests and benchmarks working
@@ -108,15 +108,17 @@ set a curCtx pointer in the VM
 
 TODO: RAEntry should have CodeGenCtx pointer
 
-TODO: increase default str table size, use power of 2 sizing, eliminate modulo
+
+
+
+
+
+
+
+
+
+[DONE] TODO: increase default str table size, use power of 2 sizing, eliminate modulo
 - Initial size should be 16K
-
-
-
-
-
-
-
 
 [DONE] TODO: eval a throw test
 

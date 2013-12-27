@@ -44,9 +44,9 @@ import runtime.vm;
 import runtime.layout;
 import runtime.gc;
 
-immutable uint32 STR_TBL_INIT_SIZE = 997;
+immutable uint32 STR_TBL_INIT_SIZE = 16384;
 immutable uint32 STR_TBL_MAX_LOAD_NUM = 3;
-immutable uint32 STR_TBL_MAX_LOAD_DENOM = 5;
+immutable uint32 STR_TBL_MAX_LOAD_DEN = 5;
 
 /**
 Extract a D wchar string from a string object
@@ -130,7 +130,7 @@ refptr getTableStr(VM vm, refptr str)
     auto hashCode = str_get_hash(str);
 
     // Get the hash table index for this hash value
-    auto hashIndex = hashCode % tblSize;
+    auto hashIndex = hashCode & (tblSize - 1);
 
     // Until the key is found, or a free slot is encountered
     while (true)
@@ -153,7 +153,7 @@ refptr getTableStr(VM vm, refptr str)
         }
 
         // Move to the next hash table slot
-        hashIndex = (hashIndex + 1) % tblSize;
+        hashIndex = (hashIndex + 1) & (tblSize - 1);
     }
 
     //
@@ -170,9 +170,9 @@ refptr getTableStr(VM vm, refptr str)
 
     // Test if resizing of the string table is needed
     // numStrings > ratio * tblSize
-    // numStrings > num/denom * tblSize
-    // numStrings * denom > tblSize * num
-    if (numStrings * STR_TBL_MAX_LOAD_DENOM >
+    // numStrings > num/den * tblSize
+    // numStrings * den > tblSize * num
+    if (numStrings * STR_TBL_MAX_LOAD_DEN >
         tblSize * STR_TBL_MAX_LOAD_NUM)
     {
         // Store the string pointer in a GC root object
@@ -195,7 +195,7 @@ Extend the string table's capacity
 void extStrTable(VM vm, refptr curTbl, uint32 curSize, uint32 numStrings)
 {
     // Compute the new table size
-    auto newSize = curSize * 2 + 1;
+    auto newSize = 2 * curSize;
 
     writefln("extending string table, old size: %s, new size: %s", curSize, newSize);
 
@@ -226,7 +226,7 @@ void extStrTable(VM vm, refptr curTbl, uint32 curSize, uint32 numStrings)
         auto valHash = str_get_hash(slotVal);
 
         // Get the hash table index for this hash value in the new table
-        auto startHashIndex = valHash % newSize;
+        auto startHashIndex = valHash & (newSize - 1);
         auto hashIndex = startHashIndex;
 
         // Until a free slot is encountered
@@ -246,7 +246,7 @@ void extStrTable(VM vm, refptr curTbl, uint32 curSize, uint32 numStrings)
             }
 
             // Move to the next hash table slot
-            hashIndex = (hashIndex + 1) % newSize;
+            hashIndex = (hashIndex + 1) & (newSize - 1);
 
             // Ensure that a free slot was found for this key
             assert (
