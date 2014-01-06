@@ -401,6 +401,9 @@ class VM
     /// Executable heap
     CodeBlock execHeap;
 
+    /// Topmost call context (when calling host code)
+    CallCtx callCtx;
+
     /// Map of return addresses to return entries
     RetEntry[CodePtr] retAddrMap;
 

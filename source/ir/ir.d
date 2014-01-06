@@ -112,11 +112,11 @@ class IRFunction : IdObject
     /// Liveness information
     LiveInfo liveInfo = null;
 
-    /// Code generation context for this function
-    CodeGenCtx ctx = null;
+    /// Call context context for this function
+    CallCtx ctx = null;
 
-    /// Code generation context for new calls
-    CodeGenCtx ctorCtx = null;
+    /// Constructor context for this function
+    CallCtx ctorCtx = null;
 
     /// Regular entry point code
     CodePtr entryCode = null;
@@ -148,6 +148,7 @@ class IRFunction : IdObject
         }
     }
 
+    /// Test if this is a unit-level function
     bool isUnit() const
     {
         return cast(ASTProgram)ast !is null;
@@ -259,6 +260,56 @@ class IRFunction : IdObject
         block.fun = null;
 
         numBlocks--;
+    }
+
+    /**
+    Get a code generation context for a given function
+    */
+    CallCtx getCtx(bool ctorCall, VM vm)
+    {
+        if (ctorCall is false)
+        {
+            if (this.ctx is null)
+                this.ctx = new CallCtx(this, false, vm);
+            return this.ctx;     
+        }
+        else
+        {
+            if (this.ctorCtx is null)
+                this.ctorCtx = new CallCtx(this, true, vm);
+            return this.ctorCtx;
+        }
+    }
+}
+
+/**
+Calling context of a piece of code
+*/
+class CallCtx
+{
+    /// Parent context (if inlined)
+    CallCtx parent = null;
+
+    /// Call site inlined at (if inlined)
+    IRInstr inlineSite = null;
+
+    /// Number of extra locals (if inlined)
+    size_t extraLocals = 0;
+
+    /// Associated VM object
+    VM vm;
+
+    /// Function this code belongs to
+    IRFunction fun;
+
+    /// Constructor call flag
+    bool ctorCall;
+
+    this(IRFunction fun, bool ctorCall, VM vm)
+    {
+        this.fun = fun;
+        this.ctorCall = ctorCall;
+        this.vm = vm;
     }
 }
 

@@ -67,9 +67,6 @@ TODO: put paper on archive.org?
 
 TODO: think about resubmitting to Usenix
 
-TODO: talk to Tom about Octane 2.0? Could use help testing/fixing
-TODO: talk to Tom about JITted FFI
-
 Idea: global table of property names with type monitoring
 - current index, if always same
 - current type
@@ -83,6 +80,14 @@ Idea: global table of property names with type monitoring
 - can do monitoring per-map, and get great perf gains on the global object
 - how often are object types monomorphic?
 
+TODO: getters/setters + never used opt?
+- Need to be able to invalidate code depending on this
+- segregate by property name, much more effective
+
+TODO: pixel plotting, canvas window lib? lib/canvas
+
+TODO: talk to Tom about JITted FFI
+
 TODO: add source position info for call instructions and throw instruction
 - Map of call sites to source pos in IRFunction
 - Do this in genCallTargets?
@@ -95,27 +100,65 @@ Milestone IV: All tests and benchmarks working
 
 Marc is back after Jan 7, busy 10-11-12 with CEGEP students
 
+TODO: push to master branch once all benchmarks working
+
 TODO: GC support
 
 TODO: inform Marc of progress
 
-TODO: when entering compileStub, compileEntry, or host function, should
-set a curCtx pointer in the VM
+TODO: blog, Contribute to the Higgs JS Compiler
+- No need to know how to program in D
+- List of things people can contribute
+  - Trying it out, finding bugs
+  - Writing useful libraries
+  - Implementing new JS features
+  - Profiling to improve compilation speed
+  - Support for ES6 features
+- Link to wiki
+https://github.com/maximecb/Higgs/wiki
+- Link to issues page, link to wiki in post and in Higgs page
+- Open issues on GitHub for
+  JIT compilation time profiling
+  Finding new benchmarks, adding them to "make test"
+  Repackaging JS libs to be shipped with Higgs
+- Link to contribution instructions on wiki
+- Explain the Higgs roadmap
+  Batteries included, easy canvas window, easy input lib
+
+TODO: split /programs into /benchmarks and /tests
+
+TODO: fix to use setCallCtx
+gen_get_str, gen_map_prop_name, gen_new_clos, op_get_ast_str, FPToStr, gen_call_new
+
+TODO: use setCallCtx for exception handling
+
+TODO: modify throwExc to take CallCtx argument
+
+
+
+
+
+
+
+[DONE] TODO: when entering compileStub or compileEntry, set callCtx pointer in the VM
 - could use a function to set/unset, enforce null on entry, non-null on exit
-  setCurCtx(ctx)
-  setCurCtx()
-- should use this system for exceptions as well
+  setCallCtx(ctx)
+  setCallCtx()
 
-TODO: RAEntry should have CodeGenCtx pointer
+[DONE] TODO: RAEntry should have CodeGenCtx pointer
+- Rename to CallCtx, move to ir/ir?
 
+[DONE] TODO: add canvas lib to open issues
+- Detail some basic sample usage
 
+[DONE] TODO: Supported JavaScript Features page on wiki
+- link on PGW
 
+[DONE] TODO: link to Quickstart guide, wiki on PGW
 
+[DONE] TODO: reporting bugs Wiki page
 
-
-
-
-
+[DONE] TODO: fill in stdlibs in list of libraries on wiki
 
 [DONE] TODO: increase default str table size, use power of 2 sizing, eliminate modulo
 - Initial size should be 16K

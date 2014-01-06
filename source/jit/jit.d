@@ -96,58 +96,8 @@ alias RCX retWordReg;
 /// Return type register
 alias DL retTypeReg;
 
-/// Minimum space required to compile a block (256KB)
+/// Minimum heap space required to compile a block (256KB)
 const size_t JIT_MIN_BLOCK_SPACE = 1 << 18; 
-
-/**
-Context in which code is being compiled
-*/
-class CodeGenCtx
-{
-    /// Parent context (if inlined)
-    CodeGenCtx parent = null;
-
-    /// Call site inlined at (if inlined)
-    IRInstr inlineSite = null;
-
-    /// Number of extra locals (if inlined)
-    size_t extraLocals = 0;
-
-    /// Associated VM object
-    VM vm;
-
-    /// Function this code belongs to
-    IRFunction fun;
-
-    /// Constructor call flag
-    bool ctorCall;
-
-    this(IRFunction fun, bool ctorCall, VM vm)
-    {
-        this.fun = fun;
-        this.ctorCall = ctorCall;
-        this.vm = vm;
-    }
-}
-
-/**
-Get a code generation context for a given function
-*/
-CodeGenCtx getCtx(IRFunction fun, bool ctorCall, VM vm)
-{
-    if (ctorCall is false)
-    {
-        if (fun.ctx is null)
-            fun.ctx = new CodeGenCtx(fun, false, vm);
-        return fun.ctx;     
-    }
-    else
-    {
-        if (fun.ctorCtx is null)
-            fun.ctorCtx = new CodeGenCtx(fun, true, vm);
-        return fun.ctorCtx;
-    }
-}
 
 /**
 Type and allocation state of a live value
@@ -237,8 +187,8 @@ allocation state and known type information.
 */
 class CodeGenState
 {
-    /// Code generation context object
-    CodeGenCtx ctx;
+    /// Calling context object
+    CallCtx ctx;
 
     /// Map of live values to current type/allocation states
     private ValState[IRDstValue] valMap;
@@ -257,7 +207,7 @@ class CodeGenState
     /// List of delayed type tag writes
 
     /// Constructor for a default/entry code generation state
-    this(CodeGenCtx ctx)
+    this(CallCtx ctx)
     {
         this.ctx = ctx;
 
@@ -1365,8 +1315,9 @@ BranchCode getBranchEdge(
 
 /// Return address entry
 alias Tuple!(
-    IRInstr, "callInstr", 
-    CodeFragment, "retCode", 
+    IRInstr, "callInstr",
+    CallCtx, "callCtx",
+    CodeFragment, "retCode",
     CodeFragment, "excCode"
 ) RetEntry;
 
@@ -1394,29 +1345,45 @@ void queue(VM vm, BlockVersion ver)
 }
 
 /**
+Set the current calling context when calling host code from JITted code.
+Must set the call context to null when returning from host code.
+*/
+void setCallCtx(VM vm, CallCtx callCtx)
+{
+    // Ensure proper usage
+    assert (vm.callCtx is null || callCtx is null);
+
+    vm.callCtx = callCtx;
+}
+
+/**
 Set the return address entry for a call instruction
 */
 void setRetEntry(
     VM vm, 
-    IRInstr callInstr, 
+    IRInstr callInstr,
+    CallCtx callCtx,
     CodeFragment retCode, 
     CodeFragment excCode
 )
 {
     auto retAddr = retCode.getCodePtr(vm.execHeap);
-    vm.retAddrMap[retAddr] = RetEntry(callInstr, retCode, excCode);
+    vm.retAddrMap[retAddr] = RetEntry(callInstr, callCtx, retCode, excCode);
 }
 
 /**
 Compile all blocks in the compile queue
 */
-void compile(VM vm)
+void compile(VM vm, CallCtx callCtx)
 {
     //writeln("entering compile");
 
     assert (vm !is null);
     auto as = vm.execHeap;
     assert (as !is null);
+
+    // Set the call context
+    vm.setCallCtx(callCtx);
 
     assert (vm.compQueue.length > 0);
 
@@ -1583,6 +1550,9 @@ void compile(VM vm)
         writeln("num instances: ", stats.numInsts);
         writeln();
     }
+
+    // Unset the call context
+    vm.setCallCtx(null);
 }
 
 /// Unit function entry point
@@ -1636,9 +1606,6 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     // Get the return code address
     auto retAddr = retEdge.getCodePtr(as);
-
-    // Set the return address entry for this call
-    vm.setRetEntry(null, retEdge, null);
 
     //
     // Compile the unit entry
@@ -1695,7 +1662,10 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     // Compile the unit entry version
     vm.queue(entryInst);
-    vm.compile();
+    vm.compile(null);
+
+    // Set the return address entry for this call
+    vm.setRetEntry(null, entryInst.state.ctx, retEdge, null);
 
     // Get a pointer to the entry block version's code
     auto entryFn = cast(EntryFn)entryInst.getCodePtr(vm.execHeap);
@@ -1730,7 +1700,7 @@ extern (C) CodePtr compileStub(VersionStub stub)
 
     // Compile the version instance
     vm.queue(stub.inst);
-    vm.compile();
+    vm.compile(state.ctx);
     assert (stub.inst.startIdx !is stub.inst.startIdx.max);
 
     // Replace the stub by its instance in the version map
@@ -1820,7 +1790,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     );
 
     // Compile the entry versions
-    compile(vm);
+    vm.compile(fun.getCtx(ctorCall, vm));
 
     // Store the entry code pointer on the function
     fun.entryCode = entryInst.getCodePtr(vm.execHeap);

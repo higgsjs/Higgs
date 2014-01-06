@@ -1336,7 +1336,7 @@ void genCallBranch(
     }
 
     // Set the return address entry for this call
-    vm.setRetEntry(instr, contBranch, excBranch);
+    vm.setRetEntry(instr, st.ctx, contBranch, excBranch);
 }
 
 void gen_call_prim(
@@ -2035,6 +2035,7 @@ void gen_load_file(
     extern (C) CodePtr op_load_file(
         VM vm, 
         IRInstr instr,
+        CallCtx callCtx,
         CodeFragment retTarget,
         CodeFragment excTarget
     )
@@ -2059,7 +2060,7 @@ void gen_load_file(
 
             // Compile the unit entry version
             vm.queue(entryInst);
-            vm.compile();
+            vm.compile(callCtx);
 
             // Get the return address for the continuation target
             auto retAddr = retTarget.getCodePtr(vm.execHeap);
@@ -2111,9 +2112,12 @@ void gen_load_file(
             as.mov(cargRegs[0].opnd, vmReg.opnd);
             as.ptr(cargRegs[1], instr);
 
+            // Pass the current call context
+            as.ptr(cargRegs[2], st.ctx);
+
             // Pass the return and exception addresses as third arguments
-            as.ptr(cargRegs[2], target0);
-            as.ptr(cargRegs[3], target1);            
+            as.ptr(cargRegs[3], target0);
+            as.ptr(cargRegs[4], target1);            
 
             // Call the host function
             as.ptr(scrRegs[0], &op_load_file);
@@ -2138,6 +2142,7 @@ void gen_eval_str(
     extern (C) CodePtr op_eval_str(
         VM vm, 
         IRInstr instr,
+        CallCtx callCtx,
         CodeFragment retTarget,
         CodeFragment excTarget
     )
@@ -2162,7 +2167,7 @@ void gen_eval_str(
 
             // Compile the unit entry version
             vm.queue(entryInst);
-            vm.compile();
+            vm.compile(callCtx);
 
             // Get the return address for the continuation target
             auto retAddr = retTarget.getCodePtr(vm.execHeap);
@@ -2214,9 +2219,12 @@ void gen_eval_str(
             as.mov(cargRegs[0].opnd, vmReg.opnd);
             as.ptr(cargRegs[1], instr);
 
-            // Pass the return and exception addresses as third arguments
-            as.ptr(cargRegs[2], target0);
-            as.ptr(cargRegs[3], target1);            
+            // Pass the current call context
+            as.ptr(cargRegs[2], st.ctx);
+
+            // Pass the return and exception addresses
+            as.ptr(cargRegs[3], target0);
+            as.ptr(cargRegs[4], target1);            
 
             // Call the host function
             as.ptr(scrRegs[0], &op_eval_str);
@@ -2337,7 +2345,7 @@ void gen_throw(
 
     as.pushJITRegs();
 
-    // Call the fallback implementation
+    // Call the host throwExc function
     as.mov(cargRegs[0].opnd, vmReg.opnd);
     as.ptr(cargRegs[1], instr);
     as.mov(cargRegs[2].opnd, X86Opnd(0));
@@ -2934,7 +2942,7 @@ void gen_new_clos(
     CodeBlock as
 )
 {
-    extern (C) static refptr newClosImpl(
+    extern (C) static refptr op_new_clos(
         VM vm, 
         IRFunction fun, 
         ObjMap closMap, 
@@ -3003,7 +3011,7 @@ void gen_new_clos(
     as.ptr(cargRegs[1], funArg.fun);
     as.mov(cargRegs[2].opnd(64), closMapOpnd);
     as.mov(cargRegs[3].opnd(64), protMapOpnd);
-    as.ptr(RAX, &newClosImpl);
+    as.ptr(RAX, &op_new_clos);
     as.call(RAX);
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
