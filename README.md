@@ -5,10 +5,10 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 
 **Requirements:**
 
-- D compiler (DMD recommended)
+- D compiler ([DMD](http://dlang.org/dmd-linux.html) recommended)
 - POSIX compliant OS (Linux, Unix, MacOS X)
-- x86 64-bit CPU (if using the JIT compiler)
-- Python 2.7 (if regenerating object layouts or instruction encodings)
+- Python 2.7 (if regenerating object layouts)
+- x86 64-bit CPU
 
 **Quickstart:**
 
