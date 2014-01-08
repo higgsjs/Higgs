@@ -1,8 +1,6 @@
 Higgs
 =====
 
-Higgs JavaScript Virtual Machine
-
 A JIT compiler for JavaScript targetting x86-64 platforms.
 
 **Requirements:**
