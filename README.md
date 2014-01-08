@@ -71,3 +71,5 @@ More
 Documentation for Higgs and included libraries can be found in the [Higgs Wiki](https://github.com/maximecb/Higgs/wiki)
 
 You can follow the development of Higgs on [Maxime's blog](http://pointersgonewild.wordpress.com/category/higgs/).
+
+#higgsjs on [Freenode](http://freenode.net/)
