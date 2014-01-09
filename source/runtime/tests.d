@@ -722,12 +722,12 @@ unittest
 
     // Many global variables
     vm = new VMNoStdLib();
-    vm.load("programs/many_globals/many_globals.js");
+    vm.load("tests/many_globals/many_globals.js");
     vm = new VMNoStdLib();
-    vm.load("programs/many_globals/many_globals2.js");
+    vm.load("tests/many_globals/many_globals2.js");
     // TODO: requires gc_collect
     //vm = new VMNoStdLib();
-    //vm.load("programs/many_globals/many_globals3.js");
+    //vm.load("tests/many_globals/many_globals3.js");
 }
 
 /// In-place operators
@@ -1258,28 +1258,28 @@ unittest
     auto vm = new VM();
 
     // Intraprocedural tests
-    vm.load("programs/exceptions/throw_intra.js");
+    vm.load("tests/exceptions/throw_intra.js");
     vm.assertStr("str;", "abc");
-    vm.load("programs/exceptions/finally_ret.js");
+    vm.load("tests/exceptions/finally_ret.js");
     vm.assertStr("test();", "abcd");
     vm.assertStr("str;", "abcdef");
-    vm.load("programs/exceptions/finally_break.js");
+    vm.load("tests/exceptions/finally_break.js");
     vm.assertStr("test(); return str;", "abcdefg");
-    vm.load("programs/exceptions/finally_cont.js");
+    vm.load("tests/exceptions/finally_cont.js");
     vm.assertStr("test(); return str;", "abcdefbcdefg");
-    vm.load("programs/exceptions/finally_throw.js");
+    vm.load("tests/exceptions/finally_throw.js");
     vm.assertStr("test(); return str;", "abcdefghijk");
-    vm.load("programs/exceptions/throw_in_finally.js");
+    vm.load("tests/exceptions/throw_in_finally.js");
     vm.assertStr("str;", "abcdef");
-    vm.load("programs/exceptions/throw_in_catch.js");
+    vm.load("tests/exceptions/throw_in_catch.js");
     vm.assertStr("str;", "abcdefg");
 
     // Interprocedural tests
-    vm.load("programs/exceptions/throw_inter.js");
+    vm.load("tests/exceptions/throw_inter.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/exceptions/throw_inter_fnl.js");
+    vm.load("tests/exceptions/throw_inter_fnl.js");
     vm.assertStr("str;", "abcdef");
-    vm.load("programs/exceptions/try_call.js");
+    vm.load("tests/exceptions/try_call.js");
     vm.assertStr("str;", "abc");
 }
 
@@ -1291,17 +1291,17 @@ unittest
     auto vm = new VM();
 
     // Basic suite
-    vm.load("programs/basic_arith/basic_arith.js");
+    vm.load("tests/basic_arith/basic_arith.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/basic_shift/basic_shift.js");
+    vm.load("tests/basic_shift/basic_shift.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/basic_bitops/basic_bitops.js");
+    vm.load("tests/basic_bitops/basic_bitops.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/basic_assign/basic_assign.js");
+    vm.load("tests/basic_assign/basic_assign.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/basic_cmp/basic_cmp.js");
+    vm.load("tests/basic_cmp/basic_cmp.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/basic_bool_eval/basic_bool_eval.js");
+    vm.load("tests/basic_bool_eval/basic_bool_eval.js");
     vm.assertInt("test();", 0);
 }
 
@@ -1318,37 +1318,37 @@ unittest
 
     vm.assertStr("typeof ([] + [])", "string");
 
-    vm.load("programs/regress/post_incr.js");
-    vm.load("programs/regress/in_operator.js");
-    vm.load("programs/regress/tostring.js");
-    vm.load("programs/regress/new_array.js");
-    vm.load("programs/regress/loop_labels.js");
-    vm.load("programs/regress/loop_swap.js");
-    vm.load("programs/regress/loop_lt.js");
-    vm.load("programs/regress/loop_lessargs.js");
-    vm.load("programs/regress/loop_new.js");
-    vm.load("programs/regress/loop_argc.js");
-    vm.load("programs/regress/loop_bool.js");
-    vm.load("programs/regress/loop_decr_sum.js");
-    vm.load("programs/regress/dowhile_cont.js");
-    vm.load("programs/regress/vers_pathos.js");
+    vm.load("tests/regress/post_incr.js");
+    vm.load("tests/regress/in_operator.js");
+    vm.load("tests/regress/tostring.js");
+    vm.load("tests/regress/new_array.js");
+    vm.load("tests/regress/loop_labels.js");
+    vm.load("tests/regress/loop_swap.js");
+    vm.load("tests/regress/loop_lt.js");
+    vm.load("tests/regress/loop_lessargs.js");
+    vm.load("tests/regress/loop_new.js");
+    vm.load("tests/regress/loop_argc.js");
+    vm.load("tests/regress/loop_bool.js");
+    vm.load("tests/regress/loop_decr_sum.js");
+    vm.load("tests/regress/dowhile_cont.js");
+    vm.load("tests/regress/vers_pathos.js");
 
-    vm.load("programs/regress/jit_se_cmp.js");
-    vm.load("programs/regress/jit_float_cmp.js");
-    vm.load("programs/regress/jit_getprop_arr.js");
-    vm.load("programs/regress/jit_call_exc.js");
-    vm.load("programs/regress/jit_ctor.js");
+    vm.load("tests/regress/jit_se_cmp.js");
+    vm.load("tests/regress/jit_float_cmp.js");
+    vm.load("tests/regress/jit_getprop_arr.js");
+    vm.load("tests/regress/jit_call_exc.js");
+    vm.load("tests/regress/jit_ctor.js");
     // TODO: needs gc_collect
-    //vm.load("programs/regress/jit_set_global.js");
-    vm.load("programs/regress/jit_inlining.js");
-    vm.load("programs/regress/jit_inlining2.js");
+    //vm.load("tests/regress/jit_set_global.js");
+    vm.load("tests/regress/jit_inlining.js");
+    vm.load("tests/regress/jit_inlining2.js");
 
-    vm.load("programs/regress/delta.js");
-    vm.load("programs/regress/raytrace.js");
+    vm.load("tests/regress/delta.js");
+    vm.load("tests/regress/raytrace.js");
 
     // TODO: needs gc_collect
     //vm = new VM();
-    //vm.load("programs/regress/boyer.js");
+    //vm.load("tests/regress/boyer.js");
 }
 
 /// Tachyon tests
@@ -1360,87 +1360,87 @@ unittest
 
     // ES5 comparison operator test
     writeln("es5 comparisons");
-    vm.load("programs/es5_cmp/es5_cmp.js");
+    vm.load("tests/es5_cmp/es5_cmp.js");
     vm.assertInt("test();", 0);
 
     // Recursive Fibonacci computation
     writeln("fib");
-    vm.load("programs/fib/fib.js");
+    vm.load("tests/fib/fib.js");
     vm.assertInt("fib(8);", 21);
 
     writeln("nested loops");
-    vm.load("programs/nested_loops/nested_loops.js");
+    vm.load("tests/nested_loops/nested_loops.js");
     vm.assertInt("foo(10);", 510);
 
     writeln("bubble sort");
-    vm.load("programs/bubble_sort/bubble_sort.js");
+    vm.load("tests/bubble_sort/bubble_sort.js");
     vm.assertInt("test();", 0);
 
     // N-queens solver
     writeln("n-queens");
-    vm.load("programs/nqueens/nqueens.js");
+    vm.load("tests/nqueens/nqueens.js");
     vm.assertInt("test();", 0);
 
     writeln("merge sort");
-    vm.load("programs/merge_sort/merge_sort.js");
+    vm.load("tests/merge_sort/merge_sort.js");
     vm.assertInt("test();", 0);
 
     writeln("matrix comp");
-    vm.load("programs/matrix_comp/matrix_comp.js");
+    vm.load("tests/matrix_comp/matrix_comp.js");
     vm.assertInt("test();", 10);
 
     writefln("closures");
 
     // Closures
-    vm.load("programs/clos_capt/clos_capt.js");
+    vm.load("tests/clos_capt/clos_capt.js");
     vm.assertInt("foo(5);", 8);
-    vm.load("programs/clos_access/clos_access.js");
+    vm.load("tests/clos_access/clos_access.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/clos_globals/clos_globals.js");
+    vm.load("tests/clos_globals/clos_globals.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/clos_xcall/clos_xcall.js");
+    vm.load("tests/clos_xcall/clos_xcall.js");
     vm.assertInt("test(5);", 5);
 
     writefln("apply");
 
     // Call with apply
-    vm.load("programs/apply/apply.js");
+    vm.load("tests/apply/apply.js");
     vm.assertInt("test();", 0);
 
     writefln("arguments");
 
     // Arguments object
-    vm.load("programs/arg_obj/arg_obj.js");
+    vm.load("tests/arg_obj/arg_obj.js");
     vm.assertInt("test();", 0);
 
     writefln("for-in");
 
     // For-in loop
-    vm.load("programs/for_in/for_in.js");
+    vm.load("tests/for_in/for_in.js");
     vm.assertInt("test();", 0);
 
     writefln("stdlib");
 
     // Standard library
-    vm.load("programs/stdlib_math/stdlib_math.js");
+    vm.load("tests/stdlib_math/stdlib_math.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/stdlib_boolean/stdlib_boolean.js");
+    vm.load("tests/stdlib_boolean/stdlib_boolean.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/stdlib_number/stdlib_number.js");
+    vm.load("tests/stdlib_number/stdlib_number.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/stdlib_function/stdlib_function.js");
+    vm.load("tests/stdlib_function/stdlib_function.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/stdlib_object/stdlib_object.js");
+    vm.load("tests/stdlib_object/stdlib_object.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/stdlib_array/stdlib_array.js");
+    vm.load("tests/stdlib_array/stdlib_array.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/stdlib_string/stdlib_string.js");
+    vm.load("tests/stdlib_string/stdlib_string.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/stdlib_json/stdlib_json.js");
+    vm.load("tests/stdlib_json/stdlib_json.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/stdlib_regexp/stdlib_regexp.js");
+    vm.load("tests/stdlib_regexp/stdlib_regexp.js");
     vm.assertInt("test();", 0);
-    vm.load("programs/stdlib_map/stdlib_map.js");
+    vm.load("tests/stdlib_map/stdlib_map.js");
     vm.assertInt("test();", 0);
 }
 
@@ -1452,13 +1452,13 @@ unittest
     writefln("load");
 
     // Dynamic code loading
-    vm.load("programs/load/loader.js");
+    vm.load("tests/load/loader.js");
 
     // Loading a missing file
     vm.assertThrows("load('_filethatdoesntexist123_')");
 
     // Eval
-    vm.load("programs/eval/eval.js");
+    vm.load("tests/eval/eval.js");
 
     // Eval throwing an exception
     vm.assertThrows("eval('throw 1')");
@@ -1491,75 +1491,75 @@ unittest
     writefln("gc/collect");
 
     vm = new VM();
-    vm.load("programs/gc/collect.js");
+    vm.load("tests/gc/collect.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/objects");
 
     vm = new VM();
-    vm.load("programs/gc/objects.js");
+    vm.load("tests/gc/objects.js");
 
     writefln("gc/arrays");
 
     vm = new VM();
-    vm.load("programs/gc/arrays.js");
+    vm.load("tests/gc/arrays.js");
 
     writefln("gc/closures");
 
     vm = new VM();
-    vm.load("programs/gc/closures.js");
+    vm.load("tests/gc/closures.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/objext");
 
     vm = new VM();
-    vm.load("programs/gc/objext.js");
+    vm.load("tests/gc/objext.js");
 
     writefln("gc/deepstack");
   
     vm = new VM();
-    vm.load("programs/gc/deepstack.js");
+    vm.load("tests/gc/deepstack.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/bigloop");
 
     vm = new VM();
-    vm.load("programs/gc/bigloop.js");
+    vm.load("tests/gc/bigloop.js");
 
     writefln("gc/apply");
 
     vm = new VM();
-    vm.load("programs/gc/apply.js");
+    vm.load("tests/gc/apply.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/arguments");
 
     vm = new VM();
-    vm.load("programs/gc/arguments.js");
+    vm.load("tests/gc/arguments.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/strcat");
 
     vm = new VM();
-    vm.load("programs/gc/strcat.js");
+    vm.load("tests/gc/strcat.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/graph");
 
     vm = new VM();
-    vm.load("programs/gc/graph.js");
+    vm.load("tests/gc/graph.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/stackvm");
 
     vm = new VM();
-    vm.load("programs/gc/stackvm.js");
+    vm.load("tests/gc/stackvm.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/load");
 
     vm = new VM();
-    vm.load("programs/gc/load.js");
+    vm.load("tests/gc/load.js");
     vm.assertInt("theFlag;", 1337);
 }
 */
@@ -1570,10 +1570,10 @@ unittest
     auto vm = new VM();
 
     writefln("misc/bones");
-    vm.load("programs/bones/bones.js");
+    vm.load("benchmarks/bones/bones.js");
 
     writefln("misc/chess");
-    vm.load("programs/chess/toledo_chess.js");
+    vm.load("benchmarks/chess/toledo_chess.js");
 }
 
 /// Computer Language Shootout benchmarks
@@ -1590,7 +1590,7 @@ unittest
     {
         writefln("shootout/%s", name);
         vm.evalString("arguments = [" ~ to!string(n) ~ "];");
-        vm.load("programs/shootout/" ~ name ~ ".js");
+        vm.load("benchmarks/shootout/" ~ name ~ ".js");
     }
 
     run("hash", 10);
@@ -1631,7 +1631,7 @@ unittest
     void run(string name)
     {
         writefln("sunspider/%s", name);
-        vm.load("programs/sunspider/" ~ name ~ ".js");
+        vm.load("benchmarks/sunspider/" ~ name ~ ".js");
     }
 
     run("3d-cube");
@@ -1679,13 +1679,13 @@ unittest
     writefln("v8bench");
 
     auto vm = new VM();
-    vm.load("programs/v8bench/base.js");
+    vm.load("benchmarks/v8bench/base.js");
 
     void run(string name)
     {
         writefln("v8bench/%s", name);
-        vm.load("programs/v8bench/" ~ name ~ ".js");
-        vm.load("programs/v8bench/drv-" ~ name ~ ".js");
+        vm.load("benchmarks/v8bench/" ~ name ~ ".js");
+        vm.load("benchmarks/v8bench/drv-" ~ name ~ ".js");
     }
 
     run("crypto");
@@ -1699,7 +1699,7 @@ unittest
 
     // FIXME: need GC
     vm = new VM();
-    vm.load("programs/v8bench/base.js");
+    vm.load("benchmarks/v8bench/base.js");
     run("raytrace");
 
     run("richards");

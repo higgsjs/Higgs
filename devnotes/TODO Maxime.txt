@@ -125,9 +125,9 @@ https://github.com/maximecb/Higgs/wiki
 - Explain the Higgs roadmap
   Batteries included, easy canvas window, easy input lib
 
-TODO: split /programs into /benchmarks and /tests
+TODO: do any kraken-1.1 tests work?
 
-TODO: fix to use setCallCtx
+TODO: fix ops to use setCallCtx
 gen_get_str, gen_map_prop_name, gen_new_clos, op_get_ast_str, FPToStr, gen_call_new
 
 
@@ -136,11 +136,7 @@ gen_get_str, gen_map_prop_name, gen_new_clos, op_get_ast_str, FPToStr, gen_call_
 
 
 
-
-
-
-
-
+[DONE] TODO: split /programs into /benchmarks and /tests
 
 [DONE] TODO: valIsLayout vs refIsLayout
 
