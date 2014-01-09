@@ -84,7 +84,7 @@ class RunError : Error
         this.excVal = excVal;
         this.trace = trace;
 
-        if (excVal.type is Type.REFPTR && valIsLayout(excVal.word, LAYOUT_OBJ))
+        if (valIsLayout(excVal, LAYOUT_OBJ))
         {
             auto msgStr = getProp(
                 vm, 
@@ -202,19 +202,30 @@ string typeToString(Type type)
 }
 
 /**
-Test if a heap object has a given layout
+Test if a reference points to an object of a given layout
 */
-bool valIsLayout(Word w, uint32 layoutId)
+bool refIsLayout(refptr ptr, uint32 layoutId)
 {
-    return (w != NULL && obj_get_header(w.ptrVal) == layoutId);
+    return (ptr !is null && obj_get_header(ptr) == layoutId);
+}
+
+/**
+Test if a value is an object of a given layout
+*/
+bool valIsLayout(ValuePair val, uint32 layoutId)
+{
+    return (
+        val.type is Type.REFPTR && 
+        refIsLayout(val.word.ptrVal, layoutId)
+    );
 }
 
 /**
 Test if a value is a string
 */
-bool valIsString(Word w, Type t)
+bool valIsString(ValuePair val)
 {
-    return (t == Type.REFPTR && valIsLayout(w, LAYOUT_STR));
+    return valIsLayout(val, LAYOUT_STR);
 }
 
 /**
@@ -247,13 +258,13 @@ string valToString(ValuePair value)
             return "null";
         if (ptrValid(w.ptrVal) is false)
             return "invalid refptr";
-        if (valIsLayout(w, LAYOUT_OBJ))
+        if (valIsLayout(value, LAYOUT_OBJ))
             return "object";
-        if (valIsLayout(w, LAYOUT_CLOS))
+        if (valIsLayout(value, LAYOUT_CLOS))
             return "function";
-        if (valIsLayout(w, LAYOUT_ARR))
+        if (valIsLayout(value, LAYOUT_ARR))
             return "array";
-        if (valIsString(w, value.type))
+        if (valIsString(value))
             return extractStr(w.ptrVal);
         return "refptr";
 
@@ -886,7 +897,7 @@ class VM
         auto strVal = getArgVal(instr, argIdx);
 
         assert (
-            valIsString(strVal.word, strVal.type),
+            valIsString(strVal),
             "expected string value for arg " ~ to!string(argIdx)
         );
 
@@ -1133,7 +1144,8 @@ Throw an exception, unwinding the stack until an exception handler
 is found. Returns a pointer to the exception handler code.
 */
 extern (C) CodePtr throwExc(
-    VM vm, 
+    VM vm,
+    CallCtx callCtx,
     IRInstr throwInstr,
     CodeFragment throwHandler,
     Word excWord,
@@ -1142,11 +1154,14 @@ extern (C) CodePtr throwExc(
 {
     //writefln("throw");
 
-    // Stack trace (call instructions and throwing instruction)
+    // Stack trace (throwing instruction and call instructions)
     IRInstr[] trace;
 
+    // Current call context when the exception was thrown
+    auto curCtx = callCtx;
+
     // Get the exception handler code, if supplied
-    CodePtr curHandler = throwHandler? throwHandler.getCodePtr(vm.execHeap):null;
+    auto curHandler = throwHandler? throwHandler.getCodePtr(vm.execHeap):null;
 
     // Until we're done unwinding the stack
     for (IRInstr curInstr = throwInstr;;)
@@ -1171,10 +1186,10 @@ extern (C) CodePtr throwExc(
             return curHandler;
         }
 
-        auto curFun = curInstr.block.fun;
+        auto curFun = curCtx.fun;
         assert (curFun !is null);
 
-        auto numLocals = curFun.numLocals;
+        auto numLocals = curFun.numLocals + curCtx.extraLocals;
         auto numParams = curFun.numParams;
         auto argcSlot  = curFun.argcVal.outSlot;
         auto raSlot    = curFun.raVal.outSlot;
@@ -1189,8 +1204,9 @@ extern (C) CodePtr throwExc(
         );
         auto retEntry = vm.retAddrMap[retAddr];
 
-        // Get the calling instruction for the current stack frame
+        // Get the calling instruction and context for this stack frame
         curInstr = retEntry.callInstr;
+        curCtx = retEntry.callCtx;
 
         // If we have reached the bottom of the stack
         if (curInstr is null)
@@ -1227,6 +1243,7 @@ Throw a JavaScript error object as an exception
 */
 extern (C) CodePtr throwError(
     VM vm,
+    CallCtx callCtx,
     IRInstr throwInstr,
     CodeFragment throwHandler,
     string ctorName, 
@@ -1244,7 +1261,8 @@ extern (C) CodePtr throwError(
         )
     );
 
-    if (errCtor.type is Type.REFPTR && valIsLayout(errCtor.word, LAYOUT_OBJ))
+    // If the error constructor is an object
+    if (valIsLayout(errCtor.pair, LAYOUT_OBJ))
     {
         auto errProto = GCRoot(
             vm,
@@ -1255,8 +1273,8 @@ extern (C) CodePtr throwError(
             )
         );
 
-        if (errProto.type == Type.REFPTR &&
-            valIsLayout(errCtor.word, LAYOUT_OBJ))
+        // If the error prototype is an object
+        if (valIsLayout(errCtor.pair, LAYOUT_OBJ))
         {
             // Create the error object
             auto excObj = GCRoot(
@@ -1278,6 +1296,7 @@ extern (C) CodePtr throwError(
 
             return throwExc(
                 vm,
+                callCtx,
                 throwInstr,
                 throwHandler,
                 excObj.word,
@@ -1289,6 +1308,7 @@ extern (C) CodePtr throwError(
     // Throw the error string directly
     return throwExc(
         vm,
+        callCtx,
         throwInstr,
         throwHandler,
         errStr.word,

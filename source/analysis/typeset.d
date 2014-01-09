@@ -160,13 +160,13 @@ struct TypeSet
             }
             this.objSet[0] = word.ptrVal;
             this.numObjs = 1;
-            if (valIsLayout(word, LAYOUT_STR))
+            if (refIsLayout(word.ptrVal, LAYOUT_STR))
                 flags = TYPE_STRING;
-            else if (valIsLayout(word, LAYOUT_OBJ))
+            else if (refIsLayout(word.ptrVal, LAYOUT_OBJ))
                 flags = TYPE_OBJECT;
-            else if (valIsLayout(word, LAYOUT_ARR))
+            else if (refIsLayout(word.ptrVal, LAYOUT_ARR))
                 flags = TYPE_ARRAY;
-            else if (valIsLayout(word, LAYOUT_CLOS))
+            else if (refIsLayout(word.ptrVal, LAYOUT_CLOS))
                 flags = TYPE_CLOS;
             else // TODO: misc object type?
                 assert (false, "unknown layout type");
@@ -389,7 +389,7 @@ struct TypeSet
                 auto objPtr = this.objSet[i];
                 auto word = Word.ptrv(objPtr);
 
-                if (valIsLayout(word, LAYOUT_STR))
+                if (refIsLayout(objPtr, LAYOUT_STR))
                 {
                     output ~= valToString(ValuePair(word, Type.REFPTR));
                 }

@@ -188,7 +188,7 @@ allocation state and known type information.
 class CodeGenState
 {
     /// Calling context object
-    CallCtx ctx;
+    CallCtx callCtx;
 
     /// Map of live values to current type/allocation states
     private ValState[IRDstValue] valMap;
@@ -207,9 +207,9 @@ class CodeGenState
     /// List of delayed type tag writes
 
     /// Constructor for a default/entry code generation state
-    this(CallCtx ctx)
+    this(CallCtx callCtx)
     {
-        this.ctx = ctx;
+        this.callCtx = callCtx;
 
         // All registers are initially free
         gpRegMap.length = 16;
@@ -220,7 +220,7 @@ class CodeGenState
     /// Copy constructor
     this(CodeGenState that)
     {
-        this.ctx = that.ctx;
+        this.callCtx = that.callCtx;
         this.valMap = that.valMap.dup;
         this.gpRegMap = that.gpRegMap.dup;
         this.slotMap = that.slotMap.dup;
@@ -279,7 +279,7 @@ class CodeGenState
         size_t diff = 0;
 
         // If the contexts are different, the states are incompatible
-        if (pred.ctx !is succ.ctx)
+        if (pred.callCtx !is succ.callCtx)
             return size_t.max;
 
         // TODO
@@ -911,7 +911,7 @@ class BranchCode : CodeFragment
         assert (target !is null);
         auto succState = target.state;
         assert (succState !is null);
-        auto vm = succState.ctx.vm;
+        auto vm = succState.callCtx.vm;
         assert (vm !is null);
 
         // List of moves to transition to the successor state
@@ -1117,7 +1117,7 @@ class VersionInst : BlockVersion
         // Generate the final branch code
         genFn(
             as,
-            state.ctx.vm,
+            state.callCtx.vm,
             target0, 
             target1, 
             shape
@@ -1137,7 +1137,7 @@ BlockVersion getBlockVersion(
     bool noStub
 )
 {
-    auto vm = state.ctx.vm;
+    auto vm = state.callCtx.vm;
 
     // Get the list of versions for this block
     auto versions = vm.versionMap.get(block, []);
@@ -1173,7 +1173,7 @@ BlockVersion getBlockVersion(
         if (bestDiff < size_t.max)
         {
             // Return the best match found
-            assert (bestVer.state.ctx is state.ctx);
+            assert (bestVer.state.callCtx is state.callCtx);
             return bestVer;
         }
 
@@ -1192,7 +1192,7 @@ BlockVersion getBlockVersion(
         // Ensure that the general version matches
         assert(state.diff(genState) !is size_t.max);
 
-        assert (genState.ctx is state.ctx);
+        assert (genState.callCtx is state.callCtx);
         state = genState;
     }
     
@@ -1212,7 +1212,7 @@ BlockVersion getBlockVersion(
     vm.queue(ver);
 
     // Return the newly created block version
-    assert (ver.state.ctx is state.ctx);
+    assert (ver.state.callCtx is state.callCtx);
     return ver;
 }
 
@@ -1231,7 +1231,7 @@ BranchCode getBranchEdge(
         "branch edge is null"
     );
 
-    auto liveInfo = predState.ctx.fun.liveInfo;
+    auto liveInfo = predState.callCtx.fun.liveInfo;
 
     // Copy the predecessor state
     auto succState = new CodeGenState(predState);
@@ -1665,7 +1665,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     vm.compile(null);
 
     // Set the return address entry for this call
-    vm.setRetEntry(null, entryInst.state.ctx, retEdge, null);
+    vm.setRetEntry(null, entryInst.state.callCtx, retEdge, null);
 
     // Get a pointer to the entry block version's code
     auto entryFn = cast(EntryFn)entryInst.getCodePtr(vm.execHeap);
@@ -1688,7 +1688,7 @@ extern (C) CodePtr compileStub(VersionStub stub)
     //writeln("entering compileStub");
 
     auto state = stub.state;
-    auto vm = state.ctx.vm;
+    auto vm = state.callCtx.vm;
     auto as = vm.execHeap;
 
     assert (stub.startIdx !is stub.startIdx.max);
@@ -1700,7 +1700,7 @@ extern (C) CodePtr compileStub(VersionStub stub)
 
     // Compile the version instance
     vm.queue(stub.inst);
-    vm.compile(state.ctx);
+    vm.compile(state.callCtx);
     assert (stub.inst.startIdx !is stub.inst.startIdx.max);
 
     // Replace the stub by its instance in the version map

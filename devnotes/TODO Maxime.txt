@@ -130,26 +130,30 @@ TODO: split /programs into /benchmarks and /tests
 TODO: fix to use setCallCtx
 gen_get_str, gen_map_prop_name, gen_new_clos, op_get_ast_str, FPToStr, gen_call_new
 
-TODO: modify throwExc to take CallCtx argument
 
 
 
-FIXME: "function() {} b = 0" fails to parse
+
+
+
+
+
+
+
+
+
+[DONE] TODO: valIsLayout vs refIsLayout
+
+[DONE] TODO: rename state.ctx to state.callCtx
+
+[DONE] TODO: modify throwExc to take CallCtx argument
+
+[DONE] TODO: test undef | 0, shift by undef, etc
+
+[DONE] FIXME: "function() {} b = 0" fails to parse
 - function is parsed as expression statement
 - could we check that last tok was } ?
 - the closing brace should end the statement parsing
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: when entering compileStub or compileEntry, set callCtx pointer in the VM
 - could use a function to set/unset, enforce null on entry, non-null on exit

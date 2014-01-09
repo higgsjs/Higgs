@@ -161,7 +161,7 @@ void assertStr(VM vm, string input, string strVal)
     auto ret = vm.evalString(input);
 
     assert (
-        valIsString(ret.word, ret.type),
+        valIsString(ret),
         "non-string value: " ~ valToString(ret)
     );
 
@@ -249,7 +249,12 @@ unittest
     vm.assertInt("return 7 >> 1", 3);
     vm.assertInt("return 7 >>> 1", 3);
     vm.assertInt("return ~2", -3);
+    vm.assertInt("return ~undefined", -1);
     vm.assertInt("return undefined | 1", 1);
+    vm.assertInt("return undefined & 1", 0);
+    vm.assertInt("return undefined ^ 1", 1);
+    vm.assertInt("return 1 << undefined", 1);
+    vm.assertInt("return 1 >> undefined", 1);
 
     vm.assertFloat("return 3.5", 3.5);
     vm.assertFloat("return 2.5 + 2", 4.5);
