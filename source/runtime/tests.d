@@ -1566,6 +1566,9 @@ unittest
 
     writefln("misc/bones");
     vm.load("programs/bones/bones.js");
+
+    writefln("misc/chess");
+    vm.load("programs/chess/toledo_chess.js");
 }
 
 /// Computer Language Shootout benchmarks

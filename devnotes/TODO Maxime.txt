@@ -130,9 +130,20 @@ TODO: split /programs into /benchmarks and /tests
 TODO: fix to use setCallCtx
 gen_get_str, gen_map_prop_name, gen_new_clos, op_get_ast_str, FPToStr, gen_call_new
 
-TODO: use setCallCtx for exception handling
-
 TODO: modify throwExc to take CallCtx argument
+
+
+
+FIXME: "function() {} b = 0" fails to parse
+- function is parsed as expression statement
+- could we check that last tok was } ?
+- the closing brace should end the statement parsing
+
+
+
+
+
+
 
 
 

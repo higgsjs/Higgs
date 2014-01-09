@@ -190,6 +190,7 @@ unittest
     testParse("1");
     testParse("1;");
     testParse("3.0;");
+    testParse(".5;");
     testParse("1E15;");
     testParse("1E-15;");
     testParse("0x09ABCD;");
@@ -546,6 +547,7 @@ unittest
     testParse("function (x,y) {};");
     testParse("function (x,) {};", false);
     testParse("function (x) { if (x) return 1; else return 2; };",);
+    testParse("function () {} x = 0");
 
     testExprAST("function () { return 1; };",
         new FunExpr(
