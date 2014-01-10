@@ -537,8 +537,14 @@ void FPToStr(string fmt)(
 {
     extern (C) static refptr toStrFn(CallCtx callCtx, double f)
     {
-        auto str = format(fmt, f);
-        return getString(callCtx.vm, to!wstring(str));
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        auto str = getString(vm, to!wstring(format(fmt, f)));
+
+        vm.setCallCtx(null);
+
+        return str;
     }
 
     // TODO: spill all for GC
@@ -1692,8 +1698,7 @@ void gen_call_new(
     extern (C) refptr makeThisObj(CallCtx callCtx, refptr closPtr)
     {
         auto vm = callCtx.vm;
-
-        // TODO: setCallCtx
+        vm.setCallCtx(callCtx);
 
         // Get the function object from the closure
         auto clos = GCRoot(vm, closPtr);
@@ -1733,6 +1738,8 @@ void gen_call_new(
                 protoObj.ptr
             )
         );
+
+        vm.setCallCtx(null);
 
         return thisObj.ptr;
     }
@@ -1947,6 +1954,7 @@ void gen_call_apply(
     )
     {
         auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
 
         auto closVal = vm.getArgVal(instr, 0);
         auto thisVal = vm.getArgVal(instr, 1);
@@ -1991,6 +1999,8 @@ void gen_call_apply(
         );
 
         GC.free(argVals);
+
+        vm.setCallCtx(null);
 
         // Return the function entry point code
         return fun.entryCode;
@@ -2098,7 +2108,7 @@ void gen_load_file(
                 "SyntaxError",
                 "failed to load unit \"" ~ to!string(fileName) ~ "\""
             );
-        }
+        }     
     }
 
     // TODO: spill all
@@ -2401,9 +2411,14 @@ void gen_heap_alloc(
 {
     extern (C) static refptr allocFallback(CallCtx callCtx, uint32_t allocSize)
     {
-        // TODO: setCallCtx
         auto vm = callCtx.vm;
-        return heapAlloc(vm, allocSize);
+        vm.setCallCtx(callCtx);
+
+        auto ptr = heapAlloc(vm, allocSize);
+
+        vm.setCallCtx(null);
+
+        return ptr;
     }
 
     // Get the allocation size operand
@@ -2684,15 +2699,18 @@ void gen_get_str(
     extern (C) refptr getStr(CallCtx callCtx, refptr strPtr)
     {
         auto vm = callCtx.vm;
-
-        // TODO: setCallCtx
+        vm.setCallCtx(callCtx);
 
         // Compute and set the hash code for the string
         auto hashCode = compStrHash(strPtr);
         str_set_hash(strPtr, hashCode);
 
         // Find the corresponding string in the string table
-        return getTableStr(vm, strPtr);
+        auto str = getTableStr(vm, strPtr);
+
+        vm.setCallCtx(null);
+
+        return str;
     }
 
     // Get the string pointer
@@ -2921,13 +2939,17 @@ void gen_map_prop_name(
         uint32_t propIdx
     )
     {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
         assert (map !is null, "map is null");
         auto propName = map.getPropName(propIdx);
 
-        if (propName is null)
-            return null;
-        else
-            return getString(callCtx.vm, propName);
+        auto str = (propName !is null)? getString(vm, propName):null;
+
+        vm.setCallCtx(null);
+
+        return str;
     }
 
     // TODO: spill all, this may GC
@@ -2969,6 +2991,7 @@ void gen_new_clos(
     )
     {
         auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
 
         // If the function has no entry point code
         if (fun.entryCode is null)
@@ -3015,6 +3038,8 @@ void gen_new_clos(
         );
 
         //writeln("final clos ptr: ", closPtr.ptr);
+
+        vm.setCallCtx(null);
 
         return closPtr.ptr;
     }
@@ -3104,6 +3129,7 @@ void gen_get_ast_str(
     extern (C) refptr op_get_ast_str(CallCtx callCtx, refptr closPtr)
     {
         auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
 
         assert (
             refIsLayout(closPtr, LAYOUT_CLOS),
@@ -3114,6 +3140,8 @@ void gen_get_ast_str(
 
         auto str = fun.ast.toString();
         auto strObj = getString(vm, to!wstring(str));
+
+        vm.setCallCtx(null);
        
         return strObj;
     }

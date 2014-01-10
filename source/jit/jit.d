@@ -1351,7 +1351,11 @@ Must set the call context to null when returning from host code.
 void setCallCtx(VM vm, CallCtx callCtx)
 {
     // Ensure proper usage
-    assert (vm.callCtx is null || callCtx is null);
+    assert (
+        !(vm.callCtx !is null && callCtx !is null),
+        "VM call ctx is not null: " ~
+        vm.callCtx.fun.getName
+    );
 
     vm.callCtx = callCtx;
 }

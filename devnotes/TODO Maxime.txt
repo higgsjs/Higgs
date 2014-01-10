@@ -102,11 +102,19 @@ Marc is back after Jan 7, busy 10-11-12 with CEGEP students
 
 TODO: push to master branch once all benchmarks working
 
-TODO: GC support
-
 TODO: inform Marc of progress
 
-TODO: blog, Contribute to the Higgs JS Compiler
+TODO: GC support
+
+
+
+
+
+
+
+
+
+[DONE] TODO: blog, Contribute to the Higgs JS Compiler
 - No need to know how to program in D
 - List of things people can contribute
   - Trying it out, finding bugs
@@ -125,16 +133,10 @@ https://github.com/maximecb/Higgs/wiki
 - Explain the Higgs roadmap
   Batteries included, easy canvas window, easy input lib
 
-TODO: do any kraken-1.1 tests work?
-
-TODO: fix ops to use setCallCtx
+[DONE] TODO: fix ops to use setCallCtx
 gen_get_str, gen_map_prop_name, gen_new_clos, op_get_ast_str, FPToStr, gen_call_new
 
-
-
-
-
-
+[DONE] TODO: update wiki, reporting bugs, mention source/tests directory, PR
 
 [DONE] TODO: split /programs into /benchmarks and /tests
 
