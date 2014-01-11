@@ -1337,8 +1337,7 @@ unittest
     vm.load("tests/regress/jit_getprop_arr.js");
     vm.load("tests/regress/jit_call_exc.js");
     vm.load("tests/regress/jit_ctor.js");
-    // TODO: needs gc_collect
-    //vm.load("tests/regress/jit_set_global.js");
+    vm.load("tests/regress/jit_set_global.js");
     vm.load("tests/regress/jit_inlining.js");
     vm.load("tests/regress/jit_inlining2.js");
 
@@ -1497,7 +1496,6 @@ unittest
     vm = new VM();
     vm.load("tests/gc/objects.js");
 
-    /*
     writefln("gc/arrays");
 
     vm = new VM();
@@ -1514,6 +1512,7 @@ unittest
     vm = new VM();
     vm.load("tests/gc/objext.js");
 
+    /*
     writefln("gc/deepstack");
   
     vm = new VM();

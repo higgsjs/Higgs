@@ -60,6 +60,7 @@ TODO: better register spilling mechanism for C calls
 TODO: register allocation
 - peephole pass should swap operands to favor reg alloc?
   - or do this on demand?
+- unified spilling function? params to spill tsp/wsp, vm reg
 
 TODO: big blog post about basic block versioning, incremental JIT
 
@@ -115,6 +116,14 @@ TODO: pass all GC tests
 
 
 
+
+
+
+[DONE] FIXME: GC during array allocation fails
+- pushJITRegs not done, wsp/tsp not set
+
+[DONE] TODO: implement get_heap_free instruction
+- Generalize GetValOp? Not for this, need to compute value
 
 [DONE] TODO: pass basic gc_collect test
 

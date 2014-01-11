@@ -262,9 +262,9 @@ Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &gen_get_obj_proto };
 Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], &gen_get_arr_proto };
 Opcode GET_FUN_PROTO = { "get_fun_proto", true, [], &gen_get_fun_proto };
 Opcode GET_GLOBAL_OBJ = { "get_global_obj", true, [], &gen_get_global_obj };
-Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], /*&gen_get_heap_size*/null };
-Opcode GET_HEAP_FREE = { "get_heap_free", true, [], /*&gen_get_heap_free*/null };
-Opcode GET_GC_COUNT = { "get_gc_count", true, [], /*&gen_get_gc_count*/null };
+Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], &gen_get_heap_size };
+Opcode GET_HEAP_FREE = { "get_heap_free", true, [], &gen_get_heap_free };
+Opcode GET_GC_COUNT = { "get_gc_count", true, [], &gen_get_gc_count };
 
 /// Allocate a block of memory on the heap
 Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &gen_heap_alloc, OpInfo.MAY_GC };

@@ -2376,31 +2376,48 @@ void gen_throw(
     as.jmp(X86Opnd(RAX));
 }
 
-void GetValOp(string fName)(
+void GetValOp(Type typeTag, string fName)(
     VersionInst ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    // Get the output operand. This must be a 
-    // register since it's the only operand.
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto fSize = 8 * mixin("VM." ~ fName ~ ".sizeof");
 
-    // FIXME
-    //assert (outOpnd.isReg, "output is not a register");
-    //ctx.as.getMember!("VM", fName)(outOpnd, vmReg);
+    auto outOpnd = st.getOutOpnd(as, instr, fSize);
 
-    as.getMember!("VM." ~ fName)(scrRegs[0], vmReg);
-    as.mov(outOpnd, scrRegs[0].opnd(64));
+    as.getMember!("VM." ~ fName)(scrRegs[0].reg(fSize), vmReg);
+    as.mov(outOpnd, scrRegs[0].opnd(fSize));
 
-    st.setOutType(as, instr, Type.REFPTR);
+    st.setOutType(as, instr, typeTag);
 }
 
-alias GetValOp!("objProto") gen_get_obj_proto;
-alias GetValOp!("arrProto") gen_get_arr_proto;
-alias GetValOp!("funProto") gen_get_fun_proto;
-alias GetValOp!("globalObj") gen_get_global_obj;
+alias GetValOp!(Type.REFPTR, "objProto") gen_get_obj_proto;
+alias GetValOp!(Type.REFPTR, "arrProto") gen_get_arr_proto;
+alias GetValOp!(Type.REFPTR, "funProto") gen_get_fun_proto;
+alias GetValOp!(Type.REFPTR, "globalObj") gen_get_global_obj;
+alias GetValOp!(Type.INT32, "heapSize") gen_get_heap_size;
+alias GetValOp!(Type.INT32, "gcCount") gen_get_gc_count;
+
+void gen_get_heap_free(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
+
+    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
+    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
+
+    as.sub(scrRegs[1].opnd, scrRegs[0].opnd);
+
+    as.mov(outOpnd, scrRegs[1].opnd(32));
+
+    st.setOutType(as, instr, Type.INT32);
+}
 
 void gen_heap_alloc(
     VersionInst ver, 
@@ -2413,6 +2430,8 @@ void gen_heap_alloc(
     {
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
+
+        writeln(callCtx.fun.getName);
 
         auto ptr = heapAlloc(vm, allocSize);
 
@@ -2467,6 +2486,8 @@ void gen_heap_alloc(
     foreach (reg; allocRegs)
         as.push(reg);
 
+    as.pushJITRegs();
+
     as.printStr("alloc bailout ***");
 
     // Call the fallback implementation
@@ -2476,6 +2497,8 @@ void gen_heap_alloc(
     as.call(RAX);
 
     as.printStr("alloc bailout done ***");
+
+    as.popJITRegs();
 
     // Restore the allocated registers
     foreach_reverse(reg; allocRegs)
@@ -3074,15 +3097,19 @@ void gen_new_clos(
     auto closMapOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
     auto protMapOpnd = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
 
+    as.pushJITRegs();
+
     as.ptr(cargRegs[0], st.callCtx);
     as.ptr(cargRegs[1], funArg.fun);
     as.mov(cargRegs[2].opnd(64), closMapOpnd);
     as.mov(cargRegs[3].opnd(64), protMapOpnd);
-    as.ptr(RAX, &op_new_clos);
-    as.call(RAX);
+    as.ptr(scrRegs[0], &op_new_clos);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, X86Opnd(cretReg));
 
     st.setOutType(as, instr, Type.REFPTR);
 }

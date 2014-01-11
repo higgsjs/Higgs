@@ -611,7 +611,7 @@ class CodeGenState
     X86Opnd getOutOpnd(
         CodeBlock as, 
         IRInstr instr, 
-        uint16_t numBits
+        size_t numBits
     )
     {
         assert (instr !is null);
