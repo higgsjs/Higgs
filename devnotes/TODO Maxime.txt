@@ -107,9 +107,9 @@ TODO: push to master branch once all benchmarks working
 
 TODO: inform Marc of progress
 
-TODO: pass all GC tests
+TODO: pass all tests
 
-
+FIXME: earley-boyer fails after GC
 
 
 

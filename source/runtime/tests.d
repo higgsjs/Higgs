@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -1344,9 +1344,8 @@ unittest
     vm.load("tests/regress/delta.js");
     vm.load("tests/regress/raytrace.js");
 
-    // TODO: needs gc_collect
-    //vm = new VM();
-    //vm.load("tests/regress/boyer.js");
+    vm = new VM();
+    vm.load("tests/regress/boyer.js");
 }
 
 /// Tachyon tests
@@ -1512,7 +1511,6 @@ unittest
     vm = new VM();
     vm.load("tests/gc/objext.js");
 
-    /*
     writefln("gc/deepstack");
   
     vm = new VM();
@@ -1559,7 +1557,6 @@ unittest
     vm = new VM();
     vm.load("tests/gc/load.js");
     vm.assertInt("theFlag;", 1337);
-    */
 }
 
 /// Misc benchmarks
@@ -1634,12 +1631,8 @@ unittest
 
     run("3d-cube");
     run("3d-morph");
-    // FIXME: need GC
-    vm = new VM();
     run("3d-raytrace");
 
-    // FIXME: need GC
-    vm = new VM();
     run("access-binary-trees");
     run("access-fannkuch");
     run("access-nbody");
@@ -1690,14 +1683,11 @@ unittest
 
     run("deltablue");
 
-    // FIXME: need GC
+    // FIXME: fails after GC
     //run("earley-boyer");
 
     run("navier-stokes");
 
-    // FIXME: need GC
-    vm = new VM();
-    vm.load("benchmarks/v8bench/base.js");
     run("raytrace");
 
     run("richards");

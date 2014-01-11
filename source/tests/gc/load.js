@@ -1,6 +1,6 @@
 theFlag = 1300;
 
-load('programs/gc/loaded.js');
+load('tests/gc/loaded.js');
 
 theFlag += 7;
 
