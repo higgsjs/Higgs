@@ -725,9 +725,8 @@ unittest
     vm.load("tests/many_globals/many_globals.js");
     vm = new VMNoStdLib();
     vm.load("tests/many_globals/many_globals2.js");
-    // TODO: requires gc_collect
-    //vm = new VMNoStdLib();
-    //vm.load("tests/many_globals/many_globals3.js");
+    vm = new VMNoStdLib();
+    vm.load("tests/many_globals/many_globals3.js");
 }
 
 /// In-place operators
@@ -1464,7 +1463,6 @@ unittest
     vm.assertThrows("eval('throw 1')");
 }
 
-/*
 /// Garbage collector tests
 unittest
 {
@@ -1499,6 +1497,7 @@ unittest
     vm = new VM();
     vm.load("tests/gc/objects.js");
 
+    /*
     writefln("gc/arrays");
 
     vm = new VM();
@@ -1561,8 +1560,8 @@ unittest
     vm = new VM();
     vm.load("tests/gc/load.js");
     vm.assertInt("theFlag;", 1337);
+    */
 }
-*/
 
 /// Misc benchmarks
 unittest

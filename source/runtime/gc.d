@@ -558,19 +558,12 @@ Word gcForward(VM vm, Word word, Type type)
         visitMap(vm, map);
         return word;
 
-        // FIXME
-        /*
-        // Instruction pointer (IRInstr)
-        case Type.INSPTR:
-        if (word.ptrVal !is null)
-        {
-            // Visit the function this instruction belongs to
-            auto instr = cast(IRInstr)word.ptrVal;
-            if (instr.block !is null)
-                visitFun(vm, instr.block.fun);
-        }
+        // Return address
+        case Type.RETADDR:
+        auto retEntry = vm.retAddrMap[word.ptrVal];
+        auto fun = retEntry.callCtx.fun;
+        visitFun(vm, fun);
         return word;
-        */
      
         // Return the word unchanged
         default:

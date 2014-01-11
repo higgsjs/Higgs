@@ -1072,29 +1072,20 @@ class VM
         auto wsp = this.wsp;
         auto tsp = this.tsp;
 
-        // FIXME: specify current IP as argument?
-        assert (false);
-
-        /*
-        IRInstr curInstr = this.target? this.target.firstInstr:this.ip;
-        assert (
-            curInstr !is null, 
-            "curInstr is null"
-        );
-
-        auto curFun = curInstr.block.fun;
-        assert (
-            curFun !is null, 
-            "curFun is null"
-        );
+        // Current call context
+        auto curCtx = callCtx;
 
         // For each stack frame, starting from the topmost
         for (size_t depth = 0;; depth++)
         {
+            assert (curCtx !is null);
+            auto curFun = curCtx.fun;
+            assert (curFun !is null);
+
+            auto numLocals = curFun.numLocals + curCtx.extraLocals;
             auto numParams = curFun.numParams;
-            auto numLocals = curFun.numLocals;
-            auto raSlot = curFun.raVal.outSlot;
-            auto argcSlot = curFun.argcVal.outSlot;
+            auto argcSlot  = curFun.argcVal.outSlot;
+            auto raSlot    = curFun.raVal.outSlot;
 
             assert (
                 wsp + numLocals <= this.wUpperLimit, 
@@ -1110,8 +1101,24 @@ class VM
             // Compute the number of locals in this frame
             auto frameSize = numLocals + extraArgs;
 
-            // Get the calling instruction for this frame
-            curInstr = cast(IRInstr)wsp[raSlot].ptrVal;
+            writeln("numLocals=", numLocals);
+            writeln("argCount=", argCount);
+            writeln("frameSize=", frameSize);
+            writeln("raSlot=", raSlot);
+
+            // Get the return address
+            assert (
+                tsp[raSlot] is Type.RETADDR,
+                "invalid type tag at return address slot"
+            );
+            auto retAddr = cast(CodePtr)wsp[raSlot].ptrVal;
+
+            // Find the return address entry
+            assert (
+                retAddr in retAddrMap,
+                "no return entry for return address: " ~ to!string(retAddr)
+            );
+            auto retEntry = retAddrMap[retAddr];
 
             // Visit this stack frame
             visitFrame(
@@ -1120,22 +1127,20 @@ class VM
                 tsp,
                 depth,
                 frameSize,
-                curInstr
+                retEntry.callInstr
             );
 
             // If we reached the bottom of the stack, stop
-            if (curInstr is null)
+            if (retEntry.callInstr is null)
                 break;
 
-            // Move to the caller function
-            curFun = curInstr.block.fun;
-            assert (curFun !is null);
-
-            // Move to the next stack frame
+            // Pop the stack frame
             wsp += frameSize;
             tsp += frameSize;
+
+            // Move to the caller frame's context
+            curCtx = retEntry.callCtx;
         }
-        */
     }
 }
 

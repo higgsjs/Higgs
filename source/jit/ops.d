@@ -2493,19 +2493,40 @@ void gen_heap_alloc(
     st.setOutType(as, instr, Type.REFPTR);
 }
 
-// TODO
-// TODO
-// TODO
-/*
-extern (C) void op_gc_collect(VM vm, IRInstr instr)
+void gen_gc_collect(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto heapSize = vm.getArgUint32(instr, 0);
+    extern (C) void op_gc_collect(CallCtx callCtx, uint32_t heapSize)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
 
-    writeln("triggering gc");
+        writeln("triggering gc");
 
-    gcCollect(vm, heapSize);
+        gcCollect(vm, heapSize);
+
+        vm.setCallCtx(null);
+    }
+
+    // Get the string pointer
+    auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+
+    // TODO: spill regs, may GC
+
+    as.pushJITRegs();
+
+    // Call the host throwExc function
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd, heapSizeOpnd);
+    as.ptr(scrRegs[0], &op_gc_collect);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
 }
-*/
 
 void gen_get_global(
     VersionInst ver, 

@@ -270,7 +270,7 @@ Opcode GET_GC_COUNT = { "get_gc_count", true, [], /*&gen_get_gc_count*/null };
 Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &gen_heap_alloc, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection
-Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], /*&gen_gc_collect*/null , OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &gen_gc_collect, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// GET_GLOBAL <propName>
 /// Note: hidden parameter is a cached global property index

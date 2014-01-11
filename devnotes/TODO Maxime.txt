@@ -100,11 +100,13 @@ Milestone IV: All tests and benchmarks working
 
 Marc is back after Jan 7, busy 10-11-12 with CEGEP students
 
+TODO: run ./benchmark.py, get first results, compare to past
+
 TODO: push to master branch once all benchmarks working
 
 TODO: inform Marc of progress
 
-TODO: GC support
+TODO: pass all GC tests
 
 
 
@@ -113,6 +115,12 @@ TODO: GC support
 
 
 
+
+[DONE] TODO: pass basic gc_collect test
+
+[DONE] TODO: implement gc_collect instruction
+
+[DONE] TODO: fixup GC code
 
 [DONE] TODO: blog, Contribute to the Higgs JS Compiler
 - No need to know how to program in D
