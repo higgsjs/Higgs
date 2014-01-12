@@ -32,6 +32,8 @@ TODO: add --jit_trace command-line option
 
 TODO: complete WAV output support, test it out with sine wave
 
+TODO: pixel plotting, canvas window lib? lib/canvas
+
 TODO: optimize x86 instr encoding based on usage
 - e.g.: reg64 to mem move and vice versa?
 - do profiling first
@@ -57,7 +59,10 @@ TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
 TODO: arrays, functions, have obj ptr inside, drop object inheritance system
 
-TODO: pixel plotting, canvas window lib? lib/canvas
+TODO: add source position info for call instructions and throw instruction
+- Map of call sites to source pos in IRFunction
+- Do this in genCallTargets?
+- Modify stack trace code to show source positions
 
 ------------------------------------------------------------------------------
 
@@ -68,14 +73,18 @@ TODO: function call inlining
 - This is critical for performance
 - Work on inlining before dweldving into type prop opts too much
 
-TODO: type propagation
-
-TODO: have map idx system, instead of map pointers?
+TODO: type propagation & type test removal
 
 TODO: think about type representation
 - types need to encode obj vs clos vs array
 - int array, float array
 - use one whole word for cst value, encode map idx in there too?
+
+TODO: have map idx system, instead of map pointers?
+- smaller comparison instr
+- avoids issue of maps reallocated at same addr
+- smaller type representation
+- what else?
 
 TODO: better register spilling mechanism for C calls
 
@@ -84,40 +93,42 @@ TODO: register allocation
   - or do this on demand?
 - unified spilling function? params to spill tsp/wsp, vm reg
 
-TODO: talk to Tom about JITted FFI
-
-TODO: add source position info for call instructions and throw instruction
-- Map of call sites to source pos in IRFunction
-- Do this in genCallTargets?
-- Modify stack trace code to show source positions
-
 TODO: big blog post about basic block versioning, incremental JIT
 
 TODO: put paper on archive.org?
-
 TODO: think about resubmitting to Usenix
+- Deadline?
+
+TODO: think about reg alloc, delayed writes
+
+TODO: talk to Tom about JITted FFI
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: make dummy codegen function for JITted FFI
 
 ------------------------------------------------------------------------------
 
-Milestone IV: All tests and benchmarks working
+[DONE] Milestone IV: All tests and benchmarks working
 - Will require GC
 
-Marc is back after Jan 7, busy 10-11-12 with CEGEP students
+[DONE] TODO: push to master branch once all benchmarks working
 
-TODO: push to master branch once all benchmarks working
+[DONE] TODO: inform Marc of progress
 
-TODO: inform Marc of progress
+[DONE] TODO: run ./benchmark.py, get first results, compare to past
+- comp time slightly slower, but more inclusive (ast to IR)
+- bigger benchmarks generally faster
+- this is with no inlining!
 
-TODO: run ./benchmark.py, get first results, compare to past
-
-TODO: pass all tests
-
-
-
-
-
-
-
+[DONE] TODO: pass all tests
 
 [DONE] FIXME: earley-boyer fails after GC
 ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 

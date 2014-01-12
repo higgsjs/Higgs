@@ -3195,7 +3195,7 @@ void gen_get_ast_str(
     CodeBlock as
 )
 {
-    extern (C) refptr op_get_ast_str(CallCtx callCtx, refptr closPtr)
+    extern (C) static refptr op_get_ast_str(CallCtx callCtx, refptr closPtr)
     {
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
@@ -3259,74 +3259,151 @@ extern (C) void op_get_ir_str(VM vm, IRInstr instr)
 }
 */
 
-/*
-extern (C) void op_load_lib(VM vm, IRInstr instr)
+void gen_load_lib(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    // Library to load (JS string)
-    auto strPtr = vm.getArgStr(instr, 0);
+    /*
+    extern (C) static void op_load_lib(VM vm, IRInstr instr)
+    {
+        // Library to load (JS string)
+        auto strPtr = vm.getArgStr(instr, 0);
 
-    // Library to load (D string)
-    auto libname = extractStr(strPtr);
+        // Library to load (D string)
+        auto libname = extractStr(strPtr);
 
-    // String must be null terminated
-    libname ~= '\0';
+        // String must be null terminated
+        libname ~= '\0';
 
-    auto lib = dlopen(libname.ptr, RTLD_LAZY | RTLD_LOCAL);
+        auto lib = dlopen(libname.ptr, RTLD_LAZY | RTLD_LOCAL);
 
-    if (lib is null)
-        return throwError(vm, instr, "RuntimeError", to!string(dlerror()));
+        if (lib is null)
+            return throwError(vm, instr, "RuntimeError", to!string(dlerror()));
 
-    vm.setSlot(
-        instr.outSlot,
-        Word.ptrv(cast(rawptr)lib),
-        Type.RAWPTR
-    );
+        vm.setSlot(
+            instr.outSlot,
+            Word.ptrv(cast(rawptr)lib),
+            Type.RAWPTR
+        );
+    }
+    */
+
+    // TODO: implement this. I suggest calling the extern (C) function for simplicity.
+    // see gen_map_num_props
+    assert (false);
+
+
+
+
+
 }
-*/
 
-/*
-extern (C) void op_close_lib(VM vm, IRInstr instr)
+void gen_close_lib(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto libArg = vm.getArgVal(instr, 0);
+    /*
+    extern (C) static void op_close_lib(VM vm, IRInstr instr)
+    {
+        auto libArg = vm.getArgVal(instr, 0);
 
-    assert (
-        libArg.type == Type.RAWPTR,
-        "invalid rawptr value"
-    );
+        assert (
+            libArg.type == Type.RAWPTR,
+            "invalid rawptr value"
+        );
 
-    if (dlclose(libArg.word.ptrVal) != 0)
-         return throwError(vm, instr, "RuntimeError", "could not close lib.");
+        if (dlclose(libArg.word.ptrVal) != 0)
+             return throwError(vm, instr, "RuntimeError", "could not close lib.");
+    }
+    */
+
+    // TODO: implement this. I suggest calling the extern (C) function for simplicity.
+    // see gen_map_num_props
+    assert (false);
+
+
+
+
+
 }
-*/
 
-/*
-extern (C) void op_get_sym(VM vm, IRInstr instr)
+void gen_get_sym(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto libArg = vm.getArgVal(instr, 0);
+    /*
+    extern (C) static void op_get_sym(VM vm, IRInstr instr)
+    {
+        auto libArg = vm.getArgVal(instr, 0);
 
-    assert (
-        libArg.type == Type.RAWPTR,
-        "invalid rawptr value"
-    );
+        assert (
+            libArg.type == Type.RAWPTR,
+            "invalid rawptr value"
+        );
 
-    // Symbol name (D string)
-    auto strArg = cast(IRString)instr.getArg(1);
-    assert (strArg !is null);   
-    auto symname = to!string(strArg.str);
+        // Symbol name (D string)
+        auto strArg = cast(IRString)instr.getArg(1);
+        assert (strArg !is null);   
+        auto symname = to!string(strArg.str);
 
-    // String must be null terminated
-    symname ~= '\0';
+        // String must be null terminated
+        symname ~= '\0';
 
-    auto sym = dlsym(libArg.word.ptrVal, symname.ptr);
+        auto sym = dlsym(libArg.word.ptrVal, symname.ptr);
 
-    if (sym is null)
-        return throwError(vm, instr, "RuntimeError", to!string(dlerror()));
+        if (sym is null)
+            return throwError(vm, instr, "RuntimeError", to!string(dlerror()));
 
-    vm.setSlot(
-        instr.outSlot,
-        Word.ptrv(cast(rawptr)sym),
-        Type.RAWPTR
-    );
+        vm.setSlot(
+            instr.outSlot,
+            Word.ptrv(cast(rawptr)sym),
+            Type.RAWPTR
+        );
+    }
+    */
+
+    // TODO: implement this. I suggest calling the extern (C) function for simplicity.
+    // see gen_map_num_props
+    assert (false);
+
+
+
+
 }
-*/
+
+void gen_call_ffi(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    assert (false, "LOL, call_ffi isn't implemented in the new JIT yet");
+
+    // TODO: move arguments from the stack into the proper cargRegs and C
+    // stack locations
+
+
+
+
+
+
+
+    // TODO: request that code be generated for the call continuation block
+    // see genCallBranch. Note that FFI calls won't throw exceptions, but they
+    // still need an exception handler for proper exception catching when they
+    // are inside a try block.
+
+    // TODO: after the C call, need to put the return value and type into
+    // retWordReg/retTypeReg and jump to the call continuation block
+}
 
