@@ -1741,10 +1741,17 @@ void gen_call_new(
 
         vm.setCallCtx(null);
 
+        assert(
+            vm.inFromSpace(thisObj.ptr) && ptrValid(thisObj.ptr)
+        );
+
         return thisObj.ptr;
     }
 
     // TODO: spill everything
+    // spill args in the current stack frame so that if the GC runs during
+    // makeThisObj, it will examine the args
+    // eventually, could split makeThisObj into its own instr if problematic
 
     // TODO: just steal an allocatable reg to use as an extra temporary
     // force its contents to be spilled if necessary
@@ -1836,6 +1843,50 @@ void gen_call_new(
         as.mov(X86Opnd(8, tspReg, -1 * cast(int32_t)(argIdx+1), 1, scrRegs[2]), val);
     }
 
+    //
+    // "this" object allocation
+    //
+
+    as.pushJITRegs();
+    as.push(scrRegs[1]);
+    as.push(scrRegs[2]);
+
+    // Call a host function to allocate the "this" object
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd(64), closReg);
+    as.ptr(scrRegs[0], &makeThisObj);
+    as.call(scrRegs[0].opnd(64));
+
+    as.pop(scrRegs[2]);
+    as.pop(scrRegs[1]);
+    as.popJITRegs();
+
+    // Write the "this" argument
+    movArgWord(as, numArgs + 1, X86Opnd(RAX));
+    movArgType(as, numArgs + 1, X86Opnd(Type.REFPTR));
+
+    //
+    // Argument copying
+    //
+
+    // Write the argument count
+    movArgWord(as, numArgs + 0, X86Opnd(numArgs));
+    movArgType(as, numArgs + 0, X86Opnd(Type.INT32));
+
+    // Write the closure argument
+    // Note: the closure may have been moved during GC
+    closReg = st.getWordOpnd(
+        as,
+        instr, 
+        0,
+        64,
+        scrRegs[0].opnd(64),
+        false,
+        false
+    );
+    movArgWord(as, numArgs + 2, closReg);
+    movArgType(as, numArgs + 2, X86Opnd(Type.REFPTR));
+
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
     {
@@ -1863,36 +1914,6 @@ void gen_call_new(
         );
         movArgType(as, i, typeOpnd);
     }
-
-    // Write the argument count
-    movArgWord(as, numArgs + 0, X86Opnd(numArgs));
-    movArgType(as, numArgs + 0, X86Opnd(Type.INT32));
-
-    // Write the closure argument
-    movArgWord(as, numArgs + 2, closReg);
-    movArgType(as, numArgs + 2, X86Opnd(Type.REFPTR));
-
-    //
-    // "this" object allocation
-    //
-
-    as.pushJITRegs();
-    as.push(scrRegs[1]);
-    as.push(scrRegs[2]);
-
-    // Call a host function to allocate the "this" object
-    as.ptr(cargRegs[0], st.callCtx);
-    as.mov(cargRegs[1].opnd(64), closReg);
-    as.ptr(scrRegs[0], &makeThisObj);
-    as.call(scrRegs[0].opnd(64));
-
-    as.pop(scrRegs[2]);
-    as.pop(scrRegs[1]);
-    as.popJITRegs();
-
-    // Write the "this" argument
-    movArgWord(as, numArgs + 1, X86Opnd(RAX));
-    movArgType(as, numArgs + 1, X86Opnd(Type.REFPTR));
 
     //
     // Final branch generation

@@ -21,6 +21,9 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
+Wishlist
+--------
+
 TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 - ideally requires test harness
@@ -33,9 +36,28 @@ TODO: optimize x86 instr encoding based on usage
 - e.g.: reg64 to mem move and vice versa?
 - do profiling first
 
+Idea: global table of property names with type monitoring
+- current index, if always same
+- current type
+- can it be a getter/setter?
+- discuss with Marc
+  - would most probably work well for benchmarks
+- if foobar property always has same offset, don't even care what the map is
+  - fair game?
+- issue: can know that x is always at some index, but doesn't mean that your
+  object has a property x
+- can do monitoring per-map, and get great perf gains on the global object
+- how often are object types monomorphic?
+
+Idea: getters/setters + never used opt?
+- Need to be able to invalidate code depending on this
+- segregate by property name, much more effective
+
 TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
 TODO: arrays, functions, have obj ptr inside, drop object inheritance system
+
+TODO: pixel plotting, canvas window lib? lib/canvas
 
 ------------------------------------------------------------------------------
 
@@ -62,37 +84,18 @@ TODO: register allocation
   - or do this on demand?
 - unified spilling function? params to spill tsp/wsp, vm reg
 
-TODO: big blog post about basic block versioning, incremental JIT
-
-TODO: put paper on archive.org?
-
-TODO: think about resubmitting to Usenix
-
-Idea: global table of property names with type monitoring
-- current index, if always same
-- current type
-- can it be a getter/setter?
-- discuss with Marc
-  - would most probably work well for benchmarks
-- if foobar property always has same offset, don't even care what the map is
-  - fair game?
-- issue: can know that x is always at some index, but doesn't mean that your
-  object has a property x
-- can do monitoring per-map, and get great perf gains on the global object
-- how often are object types monomorphic?
-
-TODO: getters/setters + never used opt?
-- Need to be able to invalidate code depending on this
-- segregate by property name, much more effective
-
-TODO: pixel plotting, canvas window lib? lib/canvas
-
 TODO: talk to Tom about JITted FFI
 
 TODO: add source position info for call instructions and throw instruction
 - Map of call sites to source pos in IRFunction
 - Do this in genCallTargets?
 - Modify stack trace code to show source positions
+
+TODO: big blog post about basic block versioning, incremental JIT
+
+TODO: put paper on archive.org?
+
+TODO: think about resubmitting to Usenix
 
 ------------------------------------------------------------------------------
 
@@ -101,15 +104,14 @@ Milestone IV: All tests and benchmarks working
 
 Marc is back after Jan 7, busy 10-11-12 with CEGEP students
 
-TODO: run ./benchmark.py, get first results, compare to past
-
 TODO: push to master branch once all benchmarks working
 
 TODO: inform Marc of progress
 
+TODO: run ./benchmark.py, get first results, compare to past
+
 TODO: pass all tests
 
-FIXME: earley-boyer fails after GC
 
 
 
@@ -117,7 +119,22 @@ FIXME: earley-boyer fails after GC
 
 
 
-
+[DONE] FIXME: earley-boyer fails after GC
+./higgs benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 
+run-time error: undefined base in read of property "car"
+- GC triggered by makeThisObj
+- Create a new regression test
+- Bug does seem to have to do with GC
+- If we get undefined base, it's probably cause we got a getProp producing undefined
+  - confirmed, both car and cdr are missing
+  - propIdx is -1
+The value we get for the base seems to be a number?
+lst gets the number 0 as argument...
+This should probably be the null value
+Changing the code seems to affect when the bug happens!
+- Changing the frame size?
+Hypothesis: we write args above wsp/tsp before creating the this object
+- These args do not get forwarded
 
 [DONE] FIXME: GC during array allocation fails
 - pushJITRegs not done, wsp/tsp not set

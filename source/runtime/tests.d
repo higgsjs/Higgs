@@ -1683,8 +1683,7 @@ unittest
 
     run("deltablue");
 
-    // FIXME: fails after GC
-    //run("earley-boyer");
+    run("earley-boyer");
 
     run("navier-stokes");
 

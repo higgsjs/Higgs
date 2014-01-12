@@ -1101,12 +1101,14 @@ class VM
             // Compute the number of locals in this frame
             auto frameSize = numLocals + extraArgs;
 
+            /*
             writeln("curFun: ", curFun.getName);
             writeln("numLocals=", numLocals);
             writeln("argcSlot=", argcSlot);
             writeln("raSlot=", raSlot);
             writeln("argCount=", argCount);
             writeln("frameSize=", frameSize);
+            */
 
             // Get the return address
             assert (
