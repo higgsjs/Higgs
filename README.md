@@ -70,4 +70,4 @@ Documentation for Higgs and included libraries can be found in the [Higgs Wiki](
 
 You can follow the development of Higgs on [Maxime's blog](http://pointersgonewild.wordpress.com/category/higgs/).
 
-Come chat with us in \#higgsjs on [Freenode](http://freenode.net/)
+Come chat with us in [\#higgsjs](http://webchat.freenode.net/?channels=higgsjs) on [Freenode](http://freenode.net/)
