@@ -246,9 +246,9 @@ The Higgs FFI api
     */
     function isNull(x)
     {
-        return $ir_get_word(x) === 0;
+        //return $ir_get_word(x) === 0;
+        return x === $nullptr;
     }
-
 
 
     /**

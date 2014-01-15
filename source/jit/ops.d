@@ -2482,7 +2482,7 @@ void gen_heap_alloc(
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
 
-        writeln(callCtx.fun.getName);
+        //writeln(callCtx.fun.getName);
 
         auto ptr = heapAlloc(vm, allocSize);
 

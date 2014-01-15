@@ -1768,7 +1768,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     auto origLocals = fun.numLocals;
 
     // Generate the IR for this function
-    assert (fun.entryBlock is null);
+    assert (
+        fun.entryBlock is null,
+        "IR already generated for function: " ~ fun.getName
+    );
     astToIR(fun.ast, fun);
 
     // Add space for the newly allocated locals

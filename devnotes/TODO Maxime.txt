@@ -113,7 +113,8 @@ in a new inlined CallCtx
 
 What about inlined call arguments?
 
-
+TODO: add some basic lib tests that just do require('lib/stdio') and stdlib...
+- easy to call stdlib/stdio fn?
 
 FIXME: Number + Boolean fails, 0+true generates "0true" instead of 1
 - check every operator where Boolean can be used with Number
@@ -126,7 +127,7 @@ FIXME: Number + Boolean fails, 0+true generates "0true" instead of 1
   true + undefined == NaN
 - push to master once working
 
-
+TODO: re-fetch improved $rt_add, $rt_sub, etc from cc2014
 
 
 

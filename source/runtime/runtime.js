@@ -1221,6 +1221,15 @@ function $rt_se(x, y)
         return false;
     }
 
+    // If x is a raw pointer
+    else if ($ir_is_rawptr(x))
+    {
+        if ($ir_is_rawptr(y))
+            return $ir_eq_rawptr(x, y);
+
+        return false;
+    }
+
     throw TypeError("unsupported types in strict equality comparison");
 }
 
