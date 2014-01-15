@@ -2613,9 +2613,9 @@ void gen_get_global(
 
         auto propName = nameChars[0..nameLen];
         auto propVal = getProp(
-           vm,
-           vm.globalObj,
-           propName
+            vm,
+            vm.globalObj,
+            propName
         );
 
         if (propVal.word == MISSING && propVal.type == Type.CONST)
