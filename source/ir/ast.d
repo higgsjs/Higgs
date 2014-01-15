@@ -2362,7 +2362,7 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
             if (strExpr is null)
             {
                 throw new ParseError(
-                    "expected int argument", 
+                    "expected string argument", 
                     argExpr.pos
                 );
             }

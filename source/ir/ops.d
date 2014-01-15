@@ -328,14 +328,14 @@ Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &gen_get_ast_str, OpI
 Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], /*&gen_get_ir_str*/null , OpInfo.MAY_GC };
 
 /// Load a shared lib
-Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], /*&gen_load_lib*/null };
+Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], &gen_load_lib };
 
 /// Close shared lib
-Opcode CLOSE_LIB = { "close_lib", false, [OpArg.LOCAL], /*&gen_close_lib*/null , OpInfo.IMPURE };
+Opcode CLOSE_LIB = { "close_lib", false, [OpArg.LOCAL], &gen_close_lib, OpInfo.IMPURE };
 
 /// Lookup symbol in shared lib
-Opcode GET_SYM = { "get_sym", true, [OpArg.LOCAL, OpArg.STRING], /*&gen_get_sym*/null };
+Opcode GET_SYM = { "get_sym", true, [OpArg.LOCAL, OpArg.STRING], &gen_get_sym };
 
 /// Call function in shared lib
-Opcode CALL_FFI = { "call_ffi", true, [OpArg.LOCAL, OpArg.STRING], /*&gen_call_ffi*/null , OpInfo.BRANCH | OpInfo.CALL | OpInfo.VAR_ARG };
+Opcode CALL_FFI = { "call_ffi", true, [OpArg.LOCAL, OpArg.STRING], &gen_call_ffi, OpInfo.BRANCH | OpInfo.CALL | OpInfo.VAR_ARG };
 
