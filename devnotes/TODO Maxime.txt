@@ -127,7 +127,6 @@ FIXME: Number + Boolean fails, 0+true generates "0true" instead of 1
   true + undefined == NaN
 - push to master once working
 
-TODO: re-fetch improved $rt_add, $rt_sub, etc from cc2014
 
 
 
@@ -139,6 +138,10 @@ TODO: re-fetch improved $rt_add, $rt_sub, etc from cc2014
 
 
 
+
+
+
+[DONE] TODO: re-fetch improved $rt_add, $rt_sub, etc from cc2014
 
 [DONE] TODO: Inlining heuristic... counter?
 - could have inline counter with threshold, eg: 10K
