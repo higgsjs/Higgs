@@ -74,9 +74,9 @@ static this()
 
 /*
 CodeBlock genFFIFn(
-    VM vm, 
-    string[] types, 
-    LocalIdx outSlot, 
+    VM vm,
+    string[] types,
+    LocalIdx outSlot,
     size_t argCount
 )
 {
@@ -262,7 +262,7 @@ unittest
     writefln("FFI");
 
     // TODO
-    //auto vm = new VM();
-    //vm.load("programs/ffi/ffi.js");
+    auto vm = new VM();
+    vm.load("tests/ffi/ffi.js");
 }
 
