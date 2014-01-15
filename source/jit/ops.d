@@ -3546,8 +3546,8 @@ void gen_call_ffi(
         }
         else if (argTypes[idx] != "f64" && iArgIdx < cargRegs.length)
         {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
-            as.mov(X86Opnd(cargRegs[iArgIdx++]), argOpnd);
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 32, scrRegs[0].opnd(32), true);
+            as.mov(cargRegs[iArgIdx++].reg.opnd(32), argOpnd);
         }
         else
         {
