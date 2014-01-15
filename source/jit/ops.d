@@ -2603,31 +2603,31 @@ void gen_get_global(
     }
 
     extern (C) static CodePtr hostGetProp(
-                                          CallCtx callCtx,
-                                          IRInstr instr, 
-                                          immutable(wchar)* nameChars,
-                                          size_t nameLen
-                                          )
+        CallCtx callCtx,
+        IRInstr instr,
+        immutable(wchar)* nameChars,
+        size_t nameLen
+    )
     {
         auto vm = callCtx.vm;
 
         auto propName = nameChars[0..nameLen];
         auto propVal = getProp(
-                               vm,
-                               vm.globalObj,
-                               propName
-                               );
+           vm,
+           vm.globalObj,
+           propName
+        );
 
         if (propVal.word == MISSING && propVal.type == Type.CONST)
         {
             return throwError(
-                              vm,
-                              callCtx,
-                              instr,
-                              null,
-                              "TypeError", 
-                              "global property not defined \"" ~ to!string(propName) ~ "\""
-                              );
+               vm,
+               callCtx,
+               instr,
+               null,
+               "TypeError",
+               "global property not defined \"" ~ to!string(propName) ~ "\""
+            );
         }
 
         vm.push(propVal);
