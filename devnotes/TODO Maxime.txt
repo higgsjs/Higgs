@@ -57,8 +57,6 @@ Idea: getters/setters + never used opt?
 
 TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
-TODO: arrays, functions, have obj ptr inside, drop object inheritance system
-
 TODO: add source position info for call instructions and throw instruction
 - Map of call sites to source pos in IRFunction
 - Do this in genCallTargets?
@@ -69,11 +67,7 @@ TODO: add source position info for call instructions and throw instruction
 TODO: execHeap collection/expansion
 - Marc says: not on critical path for paper
 
-TODO: function call inlining
-- This is critical for performance
-- Work on inlining before dweldving into type prop opts too much
-
-TODO: type propagation & type test removal
+TODO: arrays, functions, have obj ptr inside, drop object inheritance system
 
 TODO: think about type representation
 - types need to encode obj vs clos vs array
@@ -92,16 +86,45 @@ TODO: register allocation
 - peephole pass should swap operands to favor reg alloc?
   - or do this on demand?
 - unified spilling function? params to spill tsp/wsp, vm reg
+- delayed writes
+
+TODO: basic type prop, without reg alloc, type test removal
 
 TODO: big blog post about basic block versioning, incremental JIT
 
-TODO: put paper on archive.org?
-TODO: think about resubmitting to Usenix
-- Deadline?
+TODO: reduce code size by using calls for fallback type code,
+eg: global access, call_prim inlining/recompilation, others?
 
-TODO: think about reg alloc, delayed writes
+TODO: skip empty branch edges, see perf impact?
+- can we integrate this in genBranchEdge?
 
-TODO: talk to Tom about JITted FFI
+TODO: work on inlining
+- This is critical for performance
+- Work on inlining before dweldving into type prop opts too much
+- Marc: write on other side of sp for inlined locals?
+- start by inlining primitive calls only, will make a huge difference
+
+First problems first: where do we put the counter? On the version inst object?
+
+When inlining, we recompile the call block, jump to an inlined entry block
+in a new inlined CallCtx
+- For now, could try just adding numLocals as extraLocals
+- Ret needs special handling of inlined calls too
+
+What about inlined call arguments?
+
+
+
+FIXME: Number + Boolean fails, 0+true generates "0true" instead of 1
+- check every operator where Boolean can be used with Number
+  0 + true == 1
+  1 + null == 1
+  1 + false == 1
+  null + true == 1
+  true + null == 1
+  true + true == 2
+  true + undefined == NaN
+- push to master once working
 
 
 
@@ -111,6 +134,46 @@ TODO: talk to Tom about JITted FFI
 
 
 
+
+
+
+
+
+[DONE] TODO: Inlining heuristic... counter?
+- could have inline counter with threshold, eg: 10K
+  3d-raytrace does 68M call_prim
+  assuming 500 main ops, 136K calls per op on average
+  10K probably reasonable
+- Try instantiating counter, and logging how many times it gets hit, source location
+  - for 3d-raytrace, 10K gets us around 190 call_prim instances, 20K gets 122, 5K 221
+  - hot call sites fairly well spread, may need to put threshold lower
+    - find optimal threshold based on benchmarks
+
+[DONE] TODO: how many getPropIdx calls do we do in big benchmarks, how many calls?
+- add counter for getPropIdx, call_prim, call
+- much less getPropIdxs than type tests, but these are probably much slower
+- number of call_prim dwarves even number of type tests
+  - over 100x as much as dynamic calls
+- counters make a noticeable difference in execution time, good news
+
+[DONE] TODO: put paper on arxiv.org? Yes
+
+[DONE] Meeting:
+- next priority: type prop, inlining, reg alloc, jump opts, inline cache
+- next paper will probably be about type prop... but would also like better perf
+- how many getPropIdx calls do we do in big benchmarks, how many calls?
+- usenix
+- Mackenzie scholarship, possibly
+- going to need to start on mloc.js talk soon, beta due by end of month
+  - Marc: give practice talk at MiDiro
+
+[DONE] TODO: create wiki FAQ page, why D
+https://www.youtube.com/watch?v=hJUNHX0vakI&feature=youtu.be&t=20m12s
+
+[DONE] TODO: add benchmarks/kraken-1.1/ai-astar.js to parser tests
+- can we also parse ai-astar-data.js reasonably fast? yes
+
+[DONE] TODO: talk to Tom about JITted FFI
 
 [DONE] TODO: make dummy codegen function for JITted FFI
 

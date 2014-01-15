@@ -126,6 +126,36 @@ function test()
     if (test_3add(2) !== 5)
         return 4;
 
+
+    // TODO
+    /*
+    0 + true == 1
+    1 + null == 1
+    1 + false == 1
+    null + true == 1
+    true + null == 1
+    true + true == 2
+    true + undefined == NaN
+    */
+
+    // Add with non-integer values
+    //if (test_add(0, true) !== 1)
+    //    return 4;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     if (test_sub(3, 2) !== 1)
         return 5;
     if (test_sub3(7) !== 4)

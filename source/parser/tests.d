@@ -602,6 +602,10 @@ unittest
     testParseFile("benchmarks/v8bench/raytrace.js");
     testParseFile("benchmarks/v8bench/earley-boyer.js");
 
+    // Kraken 1.1 benchmarks
+    testParseFile("benchmarks/kraken-1.1/ai-astar.js");
+    testParseFile("benchmarks/kraken-1.1/ai-astar-data.js");
+
     // Bones benchmark
     testParseFile("benchmarks/bones/bones.js");
 

@@ -1357,6 +1357,33 @@ void gen_call_prim(
     CodeBlock as
 )
 {
+    as.incStatCnt(&stats.numCallPrim, scrRegs[0]);
+
+
+
+    // TODO: use non-inline counter, messing with the i-cache is bad
+    /*
+    as.lea(scrRegs[0], X86Mem(32, RIP, 2));
+    as.jmp8(4);
+    as.writeInt(0, 32);
+
+    auto cntMem = X86Opnd(32, scrRegs[0]);
+    
+    //as.mov(scrRegs[1].opnd(32), cntMem);
+    //as.inc(scrRegs[1].opnd(32));
+    //as.mov(cntMem, scrRegs[1].opnd(32));
+    as.mov(cntMem, X86Opnd(5));
+
+    //as.inc(cntMem);
+    //as.cmp(cntMem, X86Opnd(5000));
+    //as.jne(Label.FALSE);
+    //as.label(Label.FALSE);
+    */
+
+
+
+
+
     auto vm = st.callCtx.vm;
 
     // Function name string (D string)
@@ -1485,6 +1512,8 @@ void gen_call(
     CodeBlock as
 )
 {
+    as.incStatCnt(&stats.numCall, scrRegs[0]);
+
     // TODO: just steal an allocatable reg to use as an extra temporary
     // force its contents to be spilled if necessary
     // maybe add State.freeReg method
@@ -2129,7 +2158,7 @@ void gen_load_file(
                 "SyntaxError",
                 "failed to load unit \"" ~ to!string(fileName) ~ "\""
             );
-        }     
+        }
     }
 
     // TODO: spill all
@@ -2154,7 +2183,7 @@ void gen_load_file(
 
             // Pass the return and exception addresses as third arguments
             as.ptr(cargRegs[2], target0);
-            as.ptr(cargRegs[3], target1);            
+            as.ptr(cargRegs[3], target1);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_load_file);
@@ -2952,6 +2981,8 @@ void gen_map_prop_idx(
     CodeBlock as
 )
 {
+    as.incStatCnt(&stats.numMapPropIdx, scrRegs[0]);
+
     extern (C) static uint32_t op_map_prop_idx(ObjMap map, refptr strPtr, bool allocField)
     {
         // Lookup the property index

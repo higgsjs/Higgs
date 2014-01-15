@@ -517,7 +517,7 @@ class CodeGenState
                 as.jmp8(8);
                 as.writeInt(curOpnd.imm.imm, 64);
                 return tmpReg;
-            }            
+            }
 
             assert (
                 false,
