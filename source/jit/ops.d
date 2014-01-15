@@ -2621,12 +2621,12 @@ void gen_get_global(
         if (propVal.word == MISSING && propVal.type == Type.CONST)
         {
             return throwError(
-               vm,
-               callCtx,
-               instr,
-               null,
-               "TypeError",
-               "global property not defined \"" ~ to!string(propName) ~ "\""
+                vm,
+                callCtx,
+                instr,
+                null,
+                "TypeError",
+                "global property not defined \"" ~ to!string(propName) ~ "\""
             );
         }
 
