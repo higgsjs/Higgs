@@ -109,7 +109,7 @@ The Higgs FFI api
         var fun = ["function(", args, ")",
                    "{",
                    "    var sym = this.symbols[", ('"' + fname + '"'), "];",
-                   "    return $ir_call_ffi(null, sym, ", ('"' + sig + '"'),
+                   "    return $ir_call_ffi(sym, ", ('"' + sig + '"'),
                     (args === "" ? "" : (", " + args)),
                     ");",
                    "}"
