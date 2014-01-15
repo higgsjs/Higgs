@@ -62,6 +62,7 @@ import jit.codeblock;
 import jit.x86;
 import jit.util;
 import jit.jit;
+import core.sys.posix.dlfcn;
 
 /// Instruction code generation function
 alias void function(
@@ -1250,7 +1251,7 @@ extern (C) CodePtr throwCallExc(
         callCtx,
         instr,
         excHandler,
-        "TypeError", 
+        "TypeError",
         "call to non-function"
     );
 }
@@ -2199,7 +2200,7 @@ void gen_load_file(
 }
 
 void gen_eval_str(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2228,7 +2229,7 @@ void gen_eval_str(
 
             // Create a version instance object for the unit function entry
             auto entryInst = new VersionInst(
-                fun.entryBlock, 
+                fun.entryBlock,
                 new CodeGenState(fun.getCtx(false, vm))
             );
 
@@ -2289,7 +2290,7 @@ void gen_eval_str(
 
             // Pass the return and exception addresses
             as.ptr(cargRegs[2], target0);
-            as.ptr(cargRegs[3], target1);            
+            as.ptr(cargRegs[3], target1);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_eval_str);
@@ -2538,7 +2539,7 @@ void gen_heap_alloc(
 
     as.pushJITRegs();
 
-    as.printStr("alloc bailout ***");
+    //as.printStr("alloc bailout ***");
 
     // Call the fallback implementation
     as.ptr(cargRegs[0], st.callCtx);
@@ -2546,7 +2547,7 @@ void gen_heap_alloc(
     as.ptr(RAX, &allocFallback);
     as.call(RAX);
 
-    as.printStr("alloc bailout done ***");
+    //as.printStr("alloc bailout done ***");
 
     as.popJITRegs();
 
@@ -2602,7 +2603,7 @@ void gen_gc_collect(
 }
 
 void gen_get_global(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2632,7 +2633,7 @@ void gen_get_global(
 
     extern (C) static CodePtr hostGetProp(
         CallCtx callCtx,
-        IRInstr instr, 
+        IRInstr instr,
         immutable(wchar)* nameChars,
         size_t nameLen
     )
@@ -2653,7 +2654,7 @@ void gen_get_global(
                 callCtx,
                 instr,
                 null,
-                "TypeError", 
+                "TypeError",
                 "global property not defined \"" ~ to!string(propName) ~ "\""
             );
         }
@@ -2732,6 +2733,7 @@ void gen_get_global(
 
     as.label(Label.DONE);
 }
+
 
 void gen_set_global(
     VersionInst ver, 
@@ -2940,7 +2942,7 @@ void gen_make_map(
 }
 
 void gen_map_num_props(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3220,7 +3222,7 @@ void gen_get_time_ms(
 }
 
 void gen_get_ast_str(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3242,7 +3244,7 @@ void gen_get_ast_str(
         auto strObj = getString(vm, to!wstring(str));
 
         vm.setCallCtx(null);
-       
+
         return strObj;
     }
 
@@ -3291,15 +3293,19 @@ extern (C) void op_get_ir_str(VM vm, IRInstr instr)
 */
 
 void gen_load_lib(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    /*
-    extern (C) static void op_load_lib(VM vm, IRInstr instr)
+    extern (C) static CodePtr op_load_lib(
+        CallCtx callCtx,
+        IRInstr instr
+    )
     {
+        auto vm = callCtx.vm;
+
         // Library to load (JS string)
         auto strPtr = vm.getArgStr(instr, 0);
 
@@ -3312,36 +3318,59 @@ void gen_load_lib(
         auto lib = dlopen(libname.ptr, RTLD_LAZY | RTLD_LOCAL);
 
         if (lib is null)
-            return throwError(vm, instr, "RuntimeError", to!string(dlerror()));
+        {
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                null,
+                "RuntimeError",
+                to!string(dlerror())
+            );
+        }
 
-        vm.setSlot(
-            instr.outSlot,
-            Word.ptrv(cast(rawptr)lib),
-            Type.RAWPTR
-        );
+        vm.push(Word.ptrv(cast(rawptr)lib), Type.RAWPTR);
+
+        return null;
+
     }
-    */
 
-    // TODO: implement this. I suggest calling the extern (C) function for simplicity.
-    // see gen_map_num_props
-    assert (false);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
+    as.pushJITRegs();
+    as.ptr(cargRegs[0], st.callCtx);
+    as.ptr(cargRegs[1], instr);
+    as.ptr(scrRegs[0], &op_load_lib);
+    as.call(scrRegs[0].opnd);
+    as.popJITRegs();
 
+    // If an exception was thrown, jump to the exception handler
+    as.cmp(cretReg.opnd, X86Opnd(0));
+    as.je(Label.FALSE);
+    as.jmp(cretReg.opnd);
+    as.label(Label.FALSE);
 
-
-
+    // Get the lib handle from the stack
+    as.getWord(scrRegs[0], 0);
+    as.add(wspReg, Word.sizeof);
+    as.add(tspReg, Type.sizeof);
+    as.mov(outOpnd, scrRegs[0].opnd);
+    st.setOutType(as, instr, Type.RAWPTR);
 }
 
 void gen_close_lib(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    /*
-    extern (C) static void op_close_lib(VM vm, IRInstr instr)
+    extern (C) static CodePtr op_close_lib(
+        CallCtx callCtx,
+        IRInstr instr
+    )
     {
+        auto vm = callCtx.vm;
         auto libArg = vm.getArgVal(instr, 0);
 
         assert (
@@ -3350,30 +3379,48 @@ void gen_close_lib(
         );
 
         if (dlclose(libArg.word.ptrVal) != 0)
-             return throwError(vm, instr, "RuntimeError", "could not close lib.");
+        {
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                null,
+                "RuntimeError",
+                "Could not close lib."
+            );
+        }
+
+        return null;
     }
-    */
 
-    // TODO: implement this. I suggest calling the extern (C) function for simplicity.
-    // see gen_map_num_props
-    assert (false);
+    as.pushJITRegs();
+    as.ptr(cargRegs[0], st.callCtx);
+    as.ptr(cargRegs[1], instr);
+    as.ptr(scrRegs[0], &op_close_lib);
+    as.call(scrRegs[0].opnd);
+    as.popJITRegs();
 
-
-
-
-
+    // If an exception was thrown, jump to the exception handler
+    as.cmp(cretReg.opnd, X86Opnd(0));
+    as.je(Label.FALSE);
+    as.jmp(cretReg.opnd);
+    as.label(Label.FALSE);
 }
 
 void gen_get_sym(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    /*
-    extern (C) static void op_get_sym(VM vm, IRInstr instr)
+    extern (C) static CodePtr op_get_sym(
+        CallCtx callCtx,
+        IRInstr instr
+    )
     {
+
+        auto vm = callCtx.vm;
         auto libArg = vm.getArgVal(instr, 0);
 
         assert (
@@ -3383,7 +3430,7 @@ void gen_get_sym(
 
         // Symbol name (D string)
         auto strArg = cast(IRString)instr.getArg(1);
-        assert (strArg !is null);   
+        assert (strArg !is null);
         auto symname = to!string(strArg.str);
 
         // String must be null terminated
@@ -3392,49 +3439,198 @@ void gen_get_sym(
         auto sym = dlsym(libArg.word.ptrVal, symname.ptr);
 
         if (sym is null)
-            return throwError(vm, instr, "RuntimeError", to!string(dlerror()));
+        {
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                null,
+                "RuntimeError",
+                to!string(dlerror())
+            );
+        }
 
-        vm.setSlot(
-            instr.outSlot,
-            Word.ptrv(cast(rawptr)sym),
-            Type.RAWPTR
-        );
+        vm.push(Word.ptrv(cast(rawptr)sym), Type.RAWPTR);
+
+        return null;
     }
-    */
 
-    // TODO: implement this. I suggest calling the extern (C) function for simplicity.
-    // see gen_map_num_props
-    assert (false);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
+    as.pushJITRegs();
+    as.ptr(cargRegs[0], st.callCtx);
+    as.ptr(cargRegs[1], instr);
+    as.ptr(scrRegs[0], &op_get_sym);
+    as.call(scrRegs[0].opnd);
+    as.popJITRegs();
 
+    // If an exception was thrown, jump to the exception handler
+    as.cmp(cretReg.opnd, X86Opnd(0));
+    as.je(Label.FALSE);
+    as.jmp(cretReg.opnd);
+    as.label(Label.FALSE);
 
+    // Get the sym handle from the stack
+    as.getWord(scrRegs[0], 0);
+    as.add(wspReg, Word.sizeof);
+    as.add(tspReg, Type.sizeof);
+    as.mov(outOpnd, scrRegs[0].opnd);
+    st.setOutType(as, instr, Type.RAWPTR);
 
 }
 
+// Mappings for arguments/return values
+Type[string] typeMap;
+
+static this()
+{
+    typeMap = [
+        "i8" : Type.INT32,
+        "i16" : Type.INT32,
+        "i32" : Type.INT32,
+        "i64" : Type.INT64,
+        "f64" : Type.FLOAT64,
+        "*" : Type.RAWPTR
+    ];
+}
+
 void gen_call_ffi(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    assert (false, "LOL, call_ffi isn't implemented in the new JIT yet");
+    auto vm = st.callCtx.vm;
 
-    // TODO: move arguments from the stack into the proper cargRegs and C
-    // stack locations
+    // Get the function signature
+    auto sigStr = cast(IRString)instr.getArg(1);
+    assert (sigStr !is null, "null sigStr in call_ffi.");
+    auto typeinfo = to!string(sigStr.str);
+    auto types = split(typeinfo, ",");
 
+    // Track register usage for args
+    auto iArgIdx = 0;
+    auto fArgIdx = 0;
 
+    // Return type of the FFI call
+    auto retType = types[0];
 
+    // Argument types the call expects
+    auto argTypes = types[1..$];
 
+    // outOpnd
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
+    // The number of args actually passed
+    auto argCount = cast(uint32_t)instr.numArgs - 2;
+    assert(argTypes.length == argCount, "Incorrect arg count in call_ffi.");
 
+    as.pushJITRegs();
 
-    // TODO: request that code be generated for the call continuation block
-    // see genCallBranch. Note that FFI calls won't throw exceptions, but they
-    // still need an exception handler for proper exception catching when they
-    // are inside a try block.
+    // x86Opnd for args
+    X86Opnd argOpnd;
 
-    // TODO: after the C call, need to put the return value and type into
-    // retWordReg/retTypeReg and jump to the call continuation block
+    // Indices of arguments to be pushed on the stack
+    size_t stackArgs[];
+
+    // Set up arguments
+    for (size_t idx = 0; idx < argCount; ++idx)
+    {
+        // Either put the arg in the appropriate register
+        // or set it to be pushed to the stack later
+        if (argTypes[idx] == "f64" && fArgIdx < cfpArgRegs.length)
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
+            as.movq(X86Opnd(cfpArgRegs[fArgIdx++]), argOpnd);
+        }
+        else if (argTypes[idx] != "f64" && iArgIdx < cargRegs.length)
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
+            as.mov(X86Opnd(cargRegs[iArgIdx++]), argOpnd);
+        }
+        else
+        {
+            stackArgs ~= idx;
+        }
+    }
+
+    // Make sure there is an even number of pushes
+    if (stackArgs.length % 2 != 0)
+        as.push(scrRegs[0]);
+
+    // Push the stack arguments, in reverse order
+    foreach_reverse (arg; stackArgs)
+    {
+        argOpnd = st.getWordOpnd(as, instr, arg + 2, 64, scrRegs[0].opnd(64), true);
+        as.mov(X86Opnd(scrRegs[0]), argOpnd);
+        as.push(scrRegs[0]);
+    }
+
+    // Pointer to function to call
+    auto funArg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false);
+
+    // call the function
+    as.mov(X86Opnd(scrRegs[0]), funArg);
+    as.call(scrRegs[0].opnd);
+
+    // Send return value/type
+    if (retType == "f64")
+    {
+        as.movq(outOpnd, X86Opnd(XMM0));
+        st.setOutType(as, instr, typeMap[retType]);
+    }
+    else if (retType == "void")
+    {
+        as.mov(outOpnd, X86Opnd(UNDEF.int8Val));
+        st.setOutType(as, instr, Type.CONST);
+    }
+    else
+    {
+        as.mov(outOpnd, X86Opnd(RAX));
+        st.setOutType(as, instr, typeMap[retType]);
+    }
+
+    // Pop the stack arguments
+    foreach (idx; stackArgs)
+        as.pop(scrRegs[1]);
+
+    // Make sure there is an even number of pops
+    if (stackArgs.length % 2 != 0)
+        as.pop(scrRegs[1]);
+
+    as.popJITRegs();
+
+    // Request a branch object for the continuation
+    auto contBranch = getBranchEdge(
+        as,
+        instr.getTarget(0),
+        st,
+        false
+    );
+
+    contBranch.markStart(as);
+
+    // Generate the continuation branch edge code
+    contBranch.genCode(as, st);
+
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            // Jump to the function entry block
+            jmp32Ref(as, vm, contBranch);
+        },
+        false
+    );
+
 }
 

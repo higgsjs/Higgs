@@ -35,7 +35,6 @@ runtime/layout.d    \
 runtime/string.d    \
 runtime/object.d    \
 runtime/gc.d        \
-runtime/ffi.d       \
 jit/x86.d           \
 jit/codeblock.d     \
 jit/util.d          \
