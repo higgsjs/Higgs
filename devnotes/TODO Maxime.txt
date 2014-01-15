@@ -116,7 +116,21 @@ What about inlined call arguments?
 TODO: add some basic lib tests that just do require('lib/stdio') and stdlib...
 - easy to call stdlib/stdio fn?
 
-FIXME: Number + Boolean fails, 0+true generates "0true" instead of 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: Number + Boolean fails, 0+true generates "0true" instead of 1
 - check every operator where Boolean can be used with Number
   0 + true == 1
   1 + null == 1
@@ -125,21 +139,7 @@ FIXME: Number + Boolean fails, 0+true generates "0true" instead of 1
   true + null == 1
   true + true == 2
   true + undefined == NaN
-- push to master once working
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- once working, push to master, notify Oscar Toledo
 
 [DONE] TODO: re-fetch improved $rt_add, $rt_sub, etc from cc2014
 

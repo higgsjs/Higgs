@@ -162,7 +162,8 @@ void assertStr(VM vm, string input, string strVal)
 
     assert (
         valIsString(ret),
-        "non-string value: " ~ valToString(ret)
+        "non-string value: " ~ valToString(ret) ~ "\n" ~
+        "for eval string \"" ~ input ~ "\""
     );
 
     auto outStr = valToString(ret);

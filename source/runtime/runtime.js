@@ -719,12 +719,24 @@ function $rt_add(x, y)
             return $ir_add_f64(x, y);
     }
 
-    // Evaluate the string value of both arguments
-    var sx = $rt_toString(x);
-    var sy = $rt_toString(y);
+    // Convert x and y to primitives
+    var px = $rt_toPrim(x);
+    var py = $rt_toPrim(y);
 
-    // Concatenate the strings
-    return $rt_strcat(sx, sy);
+    // If x is a string
+    if ($rt_valIsString(px))
+    {
+        return $rt_strcat(px, $rt_toString(y));
+    }
+
+    // If y is a string
+    if ($rt_valIsString(py))
+    {
+        return $rt_strcat($rt_toString(x), py);
+    }
+
+    // Convert both values to numbers and add them
+    return $rt_add($rt_toNumber(x), $rt_toNumber(y));
 }
 
 /**
