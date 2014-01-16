@@ -1762,8 +1762,7 @@ unittest
     vm.evalString("stdio = require('lib/stdio')");
     vm.evalString("tmpName = stdio.tmpname()");
 
-    // FIXME: segfaults
-    //vm.evalString("stdlib = require('lib/stdlib')");
-    // TODO: test at least one stdlib fn
+    vm.evalString("stdlib = require('lib/stdlib')");
+    vm.evalString("mem = stdlib.malloc(32); stdlib.free(mem)");
 }
 

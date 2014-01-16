@@ -113,22 +113,25 @@ in a new inlined CallCtx
 
 What about inlined call arguments?
 
-TODO: add some basic lib tests that just do require('lib/stdio') and stdlib...
+TODO: look at notes on incremental inlining, open new notes file specifically
+about this
+- what did we say wrt fn arguments?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: add some basic lib tests that just do require('lib/stdio') and stdlib...
 - easy to call stdlib/stdio fn?
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: Number + Boolean fails, 0+true generates "0true" instead of 1
 - check every operator where Boolean can be used with Number

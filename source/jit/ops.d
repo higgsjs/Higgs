@@ -3609,8 +3609,6 @@ void gen_call_ffi(
         false
     );
 
-    contBranch.markStart(as);
-
     // Generate the continuation branch edge code
     contBranch.genCode(as, st);
 
