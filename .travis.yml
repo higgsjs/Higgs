@@ -1,0 +1,19 @@
+# get latest version of dmd
+before_install:
+ - wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb"
+ - sudo dpkg -i dmd_2.064.2-0_amd64.deb
+
+# skip dependency install step
+install: true
+
+# need to get to the makefile/tests
+before_script:
+  - cd source
+
+# build a test binary and run tests
+script:
+  - make test
+
+# notify the irc channle
+notifications:
+  irc: "chat.freenode.net##higgsjs"
