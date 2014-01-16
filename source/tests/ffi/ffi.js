@@ -17,6 +17,19 @@ while (limit--)
 }
 assert ( result == undefined, "Failed testVoidFun");
 
+// testShortFun
+var shortFun = $ir_get_sym(higgs, "testShortFun");
+result = $ir_call_ffi(shortFun, "i16");
+assert (result == 2, "Failed testShortFun");
+
+limit = iters;
+while (limit--)
+{
+    result = $ir_call_ffi(shortFun, "i16");
+    assert (result == 2, "Failed testShortFun");
+}
+assert (result == 2, "Failed testShortFun");
+
 // testIntFun
 var intFun = $ir_get_sym(higgs, "testIntFun");
 result = $ir_call_ffi(intFun, "i32");
@@ -113,6 +126,21 @@ while (limit--)
     assert (result == 10, "Failed testPtrFun");
 }
 assert (result == 10, "Failed testPtrFun");
+
+// testPtrArgFun
+var ptrArgFun = $ir_get_sym(higgs, "testPtrArgFun");
+result = $ir_call_ffi(ptrArgFun, "*,*", intAddFun);
+result = $ir_call_ffi(result, "i32,i32,i32", 6, 4);
+assert (result == 10, "Failed testPtrArgFun");
+
+limit = iters;
+while (limit--)
+{
+    result = $ir_call_ffi(ptrArgFun, "*,*", intAddFun);
+    result = $ir_call_ffi(result, "i32,i32,i32", 6, 4);
+    assert (result == 10, "Failed testPtrArgFun");
+}
+assert (result == 10, "Failed testPtrArgFun");
 
 // testMixedArgsFun
 var mixedArgsFun = $ir_get_sym(higgs, "testMixedArgsFun");
