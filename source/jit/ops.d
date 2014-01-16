@@ -3544,10 +3544,25 @@ void gen_call_ffi(
             argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
             as.movq(X86Opnd(cfpArgRegs[fArgIdx++]), argOpnd);
         }
-        else if (argTypes[idx] != "f64" && iArgIdx < cargRegs.length)
+        else if ((argTypes[idx] == "*" || argTypes[idx] == "i64") && iArgIdx < cargRegs.length)
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
+            as.mov(X86Opnd(cargRegs[iArgIdx++]), argOpnd);
+        }
+        else if (argTypes[idx] == "i32" && iArgIdx < cargRegs.length)
         {
             argOpnd = st.getWordOpnd(as, instr, idx + 2, 32, scrRegs[0].opnd(32), true);
             as.mov(cargRegs[iArgIdx++].reg.opnd(32), argOpnd);
+        }
+        else if (argTypes[idx] == "i16" && iArgIdx < cargRegs.length)
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 16, scrRegs[0].opnd(16), true);
+            as.mov(cargRegs[iArgIdx++].reg.opnd(16), argOpnd);
+        }
+        else if (argTypes[idx] == "i8" && iArgIdx < cargRegs.length)
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 8, scrRegs[0].opnd(8), true);
+            as.mov(cargRegs[iArgIdx++].reg.opnd(8), argOpnd);
         }
         else
         {
@@ -3560,9 +3575,9 @@ void gen_call_ffi(
         as.push(scrRegs[0]);
 
     // Push the stack arguments, in reverse order
-    foreach_reverse (arg; stackArgs)
+    foreach_reverse (idx; stackArgs)
     {
-        argOpnd = st.getWordOpnd(as, instr, arg + 2, 64, scrRegs[0].opnd(64), true);
+        argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
         as.mov(X86Opnd(scrRegs[0]), argOpnd);
         as.push(scrRegs[0]);
     }

@@ -1561,11 +1561,16 @@ unittest
 }
 
 // Dummy functions used for FFI tests
-extern (C) 
+extern (C)
 {
     void testVoidFun()
     {
         return;
+    }
+
+    short testShortFun()
+    {
+        return 2;
     }
 
     int testIntFun()
@@ -1601,6 +1606,11 @@ extern (C)
     void* testPtrFun()
     {
         return &testIntAddFun;
+    }
+
+    void* testPtrArgFun(void* ptrArg)
+    {
+        return ptrArg;
     }
 
     double testMixedArgsFun(int a, double b, int c, double d, int e, double f, int g)
