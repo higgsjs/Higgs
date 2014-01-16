@@ -1,5 +1,7 @@
 # get latest version of dmd
 before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq gcc-multilib
  - wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb"
  - sudo dpkg -i dmd_2.064.2-0_amd64.deb
 
@@ -16,4 +18,4 @@ script:
 
 # notify the irc channle
 notifications:
-  irc: "chat.freenode.net##higgsjs"
+  irc: "chat.freenode.net#higgsjs"
