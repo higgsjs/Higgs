@@ -3577,7 +3577,28 @@ void gen_call_ffi(
     // Push the stack arguments, in reverse order
     foreach_reverse (idx; stackArgs)
     {
-        argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
+
+        if (argTypes[idx] == "f64")
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
+        }
+        else if (argTypes[idx] == "*")
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
+        }
+        else if (argTypes[idx] == "i32")
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 32, scrRegs[0].opnd(32), true);
+        }
+        else if (argTypes[idx] == "i16")
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 16, scrRegs[0].opnd(16), true);
+        }
+        else if (argTypes[idx] == "i8")
+        {
+            argOpnd = st.getWordOpnd(as, instr, idx + 2, 8, scrRegs[0].opnd(8), true);
+        }
+
         as.mov(X86Opnd(scrRegs[0]), argOpnd);
         as.push(scrRegs[0]);
     }
