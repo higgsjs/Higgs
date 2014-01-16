@@ -1,3 +1,5 @@
+# This is the config file for travis-ci which runs our tests upon pushing to GitHub
+
 # not really, but meh
 language: python
 
@@ -19,6 +21,6 @@ before_script:
 script:
   - make test
 
-# notify the irc channle
+# notify the irc channel
 notifications:
   irc: "chat.freenode.net#higgsjs"
