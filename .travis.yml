@@ -1,7 +1,7 @@
 # This is the config file for travis-ci which runs our tests upon pushing to GitHub
 
 # not really, but meh
-language: python
+language: c
 
 # get latest version of dmd and dependencies
 before_install:

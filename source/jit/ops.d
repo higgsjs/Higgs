@@ -3481,7 +3481,7 @@ void gen_get_sym(
 
 // Mappings for arguments/return values
 Type[string] typeMap;
-
+size_t[string] sizeMap;
 static this()
 {
     typeMap = [
@@ -3491,6 +3491,15 @@ static this()
         "i64" : Type.INT64,
         "f64" : Type.FLOAT64,
         "*" : Type.RAWPTR
+    ];
+
+    sizeMap = [
+        "i8" : 8,
+        "i16" : 16,
+        "i32" : 32,
+        "i64" : 64,
+        "f64" : 64,
+        "*" : 64
     ];
 }
 
@@ -3575,30 +3584,11 @@ void gen_call_ffi(
         as.push(scrRegs[0]);
 
     // Push the stack arguments, in reverse order
+    size_t ars;
     foreach_reverse (idx; stackArgs)
     {
-
-        if (argTypes[idx] == "f64")
-        {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
-        }
-        else if (argTypes[idx] == "*")
-        {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
-        }
-        else if (argTypes[idx] == "i32")
-        {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 32, scrRegs[0].opnd(32), true);
-        }
-        else if (argTypes[idx] == "i16")
-        {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 16, scrRegs[0].opnd(16), true);
-        }
-        else if (argTypes[idx] == "i8")
-        {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 8, scrRegs[0].opnd(8), true);
-        }
-
+        ars = sizeMap[argTypes[idx]];
+        argOpnd = st.getWordOpnd(as, instr, idx + 2, ars, scrRegs[0].opnd(ars), true);
         as.mov(X86Opnd(scrRegs[0]), argOpnd);
         as.push(scrRegs[0]);
     }
