@@ -1697,7 +1697,7 @@ alias writeRMMulti!(
 /// push - Push a register on the stack
 void push(CodeBlock cb, immutable X86Reg reg)
 {
-    assert (reg.size is 64);
+    assert (reg.size is 64, "can only push 64-bit registers");
 
     cb.writeASM("push", reg); 
 
@@ -1748,7 +1748,7 @@ void writeShift(
         opndSize = opnd0.mem.size;
     else
         assert (false, "invalid first operand");   
-    
+
     assert (opndSize is 16 || opndSize is 32 || opndSize is 64);
     auto szPref = opndSize is 16;
     auto rexW = opndSize is 64;

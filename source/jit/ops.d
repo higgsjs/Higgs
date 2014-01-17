@@ -3537,9 +3537,6 @@ void gen_call_ffi(
 
     as.pushJITRegs();
 
-    // x86Opnd for args
-    X86Opnd argOpnd;
-
     // Indices of arguments to be pushed on the stack
     size_t stackArgs[];
 
@@ -3550,28 +3547,29 @@ void gen_call_ffi(
         // or set it to be pushed to the stack later
         if (argTypes[idx] == "f64" && fArgIdx < cfpArgRegs.length)
         {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
-            as.movq(X86Opnd(cfpArgRegs[fArgIdx++]), argOpnd);
+            auto argOpnd = st.getWordOpnd(
+                as,
+                instr,
+                idx + 2,
+                64,
+                scrRegs[0].opnd(64),
+                true
+            );
+            as.movq(cfpArgRegs[fArgIdx++].opnd, argOpnd);
         }
-        else if ((argTypes[idx] == "*" || argTypes[idx] == "i64") && iArgIdx < cargRegs.length)
+        else if (iArgIdx < cargRegs.length)
         {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 64, scrRegs[0].opnd(64), true);
-            as.mov(X86Opnd(cargRegs[iArgIdx++]), argOpnd);
-        }
-        else if (argTypes[idx] == "i32" && iArgIdx < cargRegs.length)
-        {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 32, scrRegs[0].opnd(32), true);
-            as.mov(cargRegs[iArgIdx++].reg.opnd(32), argOpnd);
-        }
-        else if (argTypes[idx] == "i16" && iArgIdx < cargRegs.length)
-        {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 16, scrRegs[0].opnd(16), true);
-            as.mov(cargRegs[iArgIdx++].reg.opnd(16), argOpnd);
-        }
-        else if (argTypes[idx] == "i8" && iArgIdx < cargRegs.length)
-        {
-            argOpnd = st.getWordOpnd(as, instr, idx + 2, 8, scrRegs[0].opnd(8), true);
-            as.mov(cargRegs[iArgIdx++].reg.opnd(8), argOpnd);
+            auto argSize = sizeMap[argTypes[idx]];
+            auto argOpnd = st.getWordOpnd(
+                as, 
+                instr,
+                idx + 2,
+                argSize,
+                scrRegs[0].opnd(argSize),
+                 true
+            );
+            auto cargOpnd = cargRegs[iArgIdx++].opnd(argSize);
+            as.mov(cargOpnd, argOpnd);
         }
         else
         {
@@ -3584,12 +3582,18 @@ void gen_call_ffi(
         as.push(scrRegs[0]);
 
     // Push the stack arguments, in reverse order
-    size_t ars;
     foreach_reverse (idx; stackArgs)
     {
-        ars = sizeMap[argTypes[idx]];
-        argOpnd = st.getWordOpnd(as, instr, idx + 2, ars, scrRegs[0].opnd(ars), true);
-        as.mov(X86Opnd(scrRegs[0]), argOpnd);
+        auto argSize = sizeMap[argTypes[idx]];
+        auto argOpnd = st.getWordOpnd(
+            as,
+            instr,
+            idx + 2, 
+            argSize, 
+            scrRegs[0].opnd(argSize),
+            true
+        );
+        as.mov(scrRegs[0].opnd(argSize), argOpnd);
         as.push(scrRegs[0]);
     }
 
@@ -3635,9 +3639,7 @@ void gen_call_ffi(
         false
     );
 
-    // Generate the continuation branch edge code
-    contBranch.genCode(as, st);
-
+    // Generate the final call continuation branch
     ver.genCallBranch(
         st,
         instr,
@@ -3650,11 +3652,12 @@ void gen_call_ffi(
             BranchShape shape
         )
         {
-            // Jump to the function entry block
             jmp32Ref(as, vm, contBranch);
         },
         false
     );
 
+    // Generate the continuation branch edge code
+    contBranch.genCode(as, st);
 }
 
