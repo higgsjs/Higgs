@@ -235,7 +235,7 @@ void gen_f64_to_i32(
         as.movq(X86Opnd(XMM0), opnd0);
 
     // Cast to int64 and truncate to int32 (to match JS semantics)
-    as.cvtsd2si(scrRegs[0].opnd(64), X86Opnd(XMM0));
+    as.cvttsd2si(scrRegs[0].opnd(64), X86Opnd(XMM0));
     as.mov(outOpnd, scrRegs[0].opnd(32));
 
     st.setOutType(as, instr, Type.INT32);

@@ -627,9 +627,7 @@ function $rt_toUint32(x)
     if (isNaN(x) || x === Infinity || x === -Infinity)
         return 0;
 
-    var x = (x > 0)? $ir_floor_f64(x):$ir_floor_f64(-x);
-
-    return $ir_f64_to_i32(x);
+    return $ir_f64_to_i32((x > 0)? x:-x);
 }
 
 /**

@@ -1167,13 +1167,10 @@ void cvtsd2si(CodeBlock cb, X86Opnd dst, X86Opnd src)
     cb.writeRMInstr!('r', 0xFF, 0x0F, 0x2D)(false, rexW, dst, src);
 }
 
-//// cvtsi2sd - Convert integer to scalar double
+//// cvtsi2sd - Convert scalar double to integer with rounding
 void cvtsi2sd(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("cvtsi2sd", dst, src);
-
-    //Enc(opnds=['xmm', 'r/m32'], prefix=[0xF2], opcode=[0x0F, 0x2A]),
-    //Enc(opnds=['xmm', 'r/m64'], prefix=[0xF2], opcode=[0x0F, 0x2A]),
 
     assert (dst.isXMM);
 
@@ -1189,6 +1186,21 @@ void cvtsi2sd(CodeBlock cb, X86Opnd dst, X86Opnd src)
 
     cb.writeByte(0xF2);
     cb.writeRMInstr!('r', 0xFF, 0x0F, 0x2A)(false, rexW, dst, src);
+}
+
+//// cvttsd2si - Convert scalar double to integer with truncation
+void cvttsd2si(CodeBlock cb, X86Opnd dst, X86Opnd src)
+{
+    cb.writeASM("cvttsd2si", dst, src);
+
+    assert (dst.isGPR);
+    assert (dst.reg.size is 32 || dst.reg.size is 64);
+    assert (src.isXMM || src.isMem64);
+
+    auto rexW = dst.reg.size is 64;
+
+    cb.writeByte(0xF2);
+    cb.writeRMInstr!('r', 0xFF, 0x0F, 0x2C)(false, rexW, dst, src);
 }
 
 // dec - Decrement integer by 1

@@ -34,9 +34,9 @@ i = I[B] & z;     // D2-D4
 // Here increase ply as needed for more computational process usage
 ply = 1;
 
-X(0,0,0,21,u,1);        // Do move
+X(0,0,0,21,u,2);        // Do move
 X(0,0,0,21,u,ply);      // Calculate answer from computer
-X(0,0,0,21,u,1);        // Do move
+X(0,0,0,21,u,2);        // Do move
 
 //
 // Print final board
@@ -44,9 +44,22 @@ X(0,0,0,21,u,1);        // Do move
 for (p = 20; p <= 99; ++p) 
 {
   if (p % 10 == 9)
-    /*print(q);*/;
+    /*print(q)*/;
   else if (p % 10 == 0)
     q = "";
   else q += ".pknbrq  PKNBRQ".charAt(I[p]&z)+" ";
+}
+
+//for (var i = 0; i < I.length; ++i)
+//    print(i + ': ' + I[i]);
+
+if (
+    I[20] != 7  ||
+    I[21] != 21 ||
+    I[98] != 29 ||
+    I[99] != 7
+    )
+{
+    throw Error("invalid final chess board");
 }
 

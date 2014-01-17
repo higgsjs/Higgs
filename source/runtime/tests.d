@@ -267,6 +267,11 @@ unittest
     vm.assertFloat("return 6/2/2", 1.5);
     vm.assertFloat("return 6/2*2", 6);
 
+    vm.assertInt("~1.6", -2);
+    vm.assertInt("3.5 | 0", 3);
+    vm.assertInt("-3.5 | 0", -3);
+    vm.assertInt("1 << 1.5", 2);
+
     vm.assertFloat("return 100 * '5'", 500);
     vm.assertFloat("return 100 / '5'", 20);
 

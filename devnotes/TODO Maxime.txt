@@ -113,8 +113,8 @@ in a new inlined CallCtx
 
 What about inlined call arguments?
 
-TODO: look at notes on incremental inlining, open new notes file specifically
-about this
+TODO: look at incremental inlining notes, new notes file specifically on this
+2014-01-16 Inlining.txt
 - what did we say wrt fn arguments?
 
 
@@ -129,6 +129,21 @@ about this
 
 
 
+
+[DONE] FIXME: chess program, The other bug is because you changed the 'ply' variable
+to be 1 (validate legal movement) instead of 2, the chess program only does
+search when ply is 2 or higher. So the game works after changing it to 2 and
+solving the other bug temporarily (using Math.floor(B/x))
+
+[DONE] FIXME: bitwise operators OR, AND and XOR, your compiler rounds the operands
+with Math.round instead of Math.floor
+also happens with the bitwise complement operator
+For example, 3.5|0 gives result 4
+
+[DONE] TODO: double to signed integer conversion using truncation
+F2 REX.W 0F 2C /r
+CVTTSD2SI r32, xmm/m64
+- revise toInt32, toUint32
 
 [DONE] TODO: add some basic lib tests that just do require('lib/stdio') and stdlib...
 - easy to call stdlib/stdio fn?
