@@ -144,6 +144,8 @@ void setField(CodeBlock as, X86Reg baseReg, size_t fOffset, X86Reg srcReg)
 void getMember(string fName)(CodeBlock as, X86Reg dstReg, X86Reg baseReg)
 {
     mixin("auto fOffset = " ~ fName ~ ".offsetof;");
+    mixin("auto fSize = " ~ fName ~ ".sizeof;");
+    assert (dstReg.size is 8 * fSize);
 
     as.getField(dstReg, baseReg, fOffset);
 }
@@ -151,6 +153,8 @@ void getMember(string fName)(CodeBlock as, X86Reg dstReg, X86Reg baseReg)
 void setMember(string fName)(CodeBlock as, X86Reg baseReg, X86Reg srcReg)
 {
     mixin("auto fOffset = " ~ fName ~ ".offsetof;");
+    mixin("auto fSize = " ~ fName ~ ".sizeof;");
+    assert (srcReg.size is 8 * fSize);
 
     as.setField(baseReg, fOffset, srcReg);
 }

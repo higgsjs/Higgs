@@ -1358,32 +1358,62 @@ void gen_call_prim(
     CodeBlock as
 )
 {
+    /// Inlining execution count threshold
+    const uint32_t INLINE_THRESHOLD = 5000;
+
     as.incStatCnt(&stats.numCallPrim, scrRegs[0]);
 
+    extern (C) static recompile(VersionInst ver)
+    {
+        auto block = ver.block;
+        auto state = ver.state;
+        auto callCtx = state.callCtx;
+        auto vm = callCtx.vm;
+
+        /*
+        writeln("recompiling for call instr: ", block.lastInstr);
+
+        // Create a new version of this block
+        auto newInst = new VersionInst(block, ver.state);
+
+        // Recompile the new call block with inlining
+        vm.queue(newInst);
+        vm.compile(callCtx);
+        */
 
 
-    // TODO: use non-inline counter, messing with the i-cache is bad
-    /*
-    as.lea(scrRegs[0], X86Mem(32, RIP, 2));
-    as.jmp8(4);
-    as.writeInt(0, 32);
+        // TODO: should this be done in the patching function?
+        // Replace the block version in the version map
+        //vm.versionMap[block].replace(ver, newInst);
 
-    auto cntMem = X86Opnd(32, scrRegs[0]);
-    
-    //as.mov(scrRegs[1].opnd(32), cntMem);
-    //as.inc(scrRegs[1].opnd(32));
-    //as.mov(cntMem, scrRegs[1].opnd(32));
-    as.mov(cntMem, X86Opnd(5));
-
-    //as.inc(cntMem);
-    //as.cmp(cntMem, X86Opnd(5000));
-    //as.jne(Label.FALSE);
-    //as.label(Label.FALSE);
-    */
+        // TODO: also want to patch the existing version once compiled
+        // set the next pointer as well
 
 
 
 
+
+
+    }
+
+    // Fetch and increment the execution counter
+    as.ptr(scrRegs[0], ver);
+    as.getMember!("VersionInst.counter")(scrRegs[1].reg(32), scrRegs[0]);
+    as.inc(scrRegs[1].opnd(32));
+    as.setMember!("VersionInst.counter")(scrRegs[0], scrRegs[1].reg(32));
+
+    // Compare the counter against the threshold
+    as.cmp(scrRegs[1].opnd(32), X86Opnd(INLINE_THRESHOLD));
+    as.jne(Label.FALSE);
+
+    // Call the recompilation function
+    as.pushJITRegs();
+    as.ptr(cargRegs[0], ver);
+    as.ptr(scrRegs[0], &recompile);
+    as.call(scrRegs[0].opnd);
+    as.popJITRegs();
+
+    as.label(Label.FALSE);
 
     auto vm = st.callCtx.vm;
 
@@ -1405,6 +1435,35 @@ void gen_call_prim(
     // Check that the argument count matches
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     assert (numArgs is fun.numParams);
+
+
+
+
+
+    // TODO: check if the execution count threshold for inlining was reached
+    // INLINE_THRESHOLD
+    //
+    // Create new CallCtx for inlined callee
+    // new CodeGenState, map arg values to parent values
+    //
+    // Queue new entry block for compilation
+    // Jump to new entry block
+    //
+    // Branch code should add space for extra locals?
+    //
+    // What about return branch, exc branch, do we need these?
+    // - return needs to find return branch
+    // - exceptions thrown should go to exception branch if present
+    //
+    // Return branch should pop extra locals
+
+
+
+
+
+
+
+
 
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)

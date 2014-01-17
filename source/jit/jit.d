@@ -833,7 +833,10 @@ abstract class CodeFragment
     */
     final void markStart(CodeBlock as)
     {
-        assert (startIdx is startIdx.max);
+        assert (
+            startIdx is startIdx.max,
+            "start position is already marked"
+        );
 
         startIdx = cast(uint32_t)as.getWritePos();
 
@@ -846,9 +849,15 @@ abstract class CodeFragment
     */
     final void markEnd(CodeBlock as)
     {
-        assert (endIdx is startIdx.max);
+        assert (
+            endIdx is startIdx.max,
+            "end position is already marked"
+        );
 
         endIdx = cast(uint32_t)as.getWritePos();
+
+        // Update the generated code size stat
+        stats.genCodeSize += this.length();
     }
 }
 
@@ -1041,6 +1050,9 @@ abstract class BlockVersion : CodeFragment
 
     /// Code generation state at block entry
     CodeGenState state;
+
+    // (Re)compiled instance (initially null, non-null if patched)
+    VersionInst next = null;
 }
 
 /**
@@ -1048,9 +1060,6 @@ Stubbed block version
 */
 class VersionStub : BlockVersion
 {
-    // Compiled instance (initially null, non-null if stub patched)
-    VersionInst inst = null;
-
     this(IRBlock block, CodeGenState state)
     {
         this.block = block;
@@ -1080,9 +1089,6 @@ Compiled block version instance
 */
 class VersionInst : BlockVersion
 {
-    /// Recompiled version
-    VersionInst next = null;
-
     /// Branch targets
     CodeFragment targets[2];
 
@@ -1702,30 +1708,30 @@ extern (C) CodePtr compileStub(VersionStub stub)
     auto as = vm.execHeap;
 
     assert (stub.startIdx !is stub.startIdx.max);
-    assert (stub.inst is null);
+    assert (stub.next is null);
 
     // Create a version instance object for this stub
     // and set the instance pointer for the stub
-    stub.inst = new VersionInst(stub.block, state);
+    stub.next = new VersionInst(stub.block, state);
 
     // Compile the version instance
-    vm.queue(stub.inst);
+    vm.queue(stub.next);
     vm.compile(state.callCtx);
-    assert (stub.inst.startIdx !is stub.inst.startIdx.max);
+    assert (stub.next.startIdx !is stub.next.startIdx.max);
 
     // Replace the stub by its instance in the version map
     auto versions = vm.versionMap.get(stub.block, []);
     auto stubIdx = versions.countUntil(stub);
     assert (stubIdx !is -1);
-    versions[stubIdx] = stub.inst;
+    versions[stubIdx] = stub.next;
     assert (versions.countUntil(stub) is -1);
 
     // Write a relative 32-bit jump to the instance over the stub code
     auto startPos = as.getWritePos();
     as.setWritePos(stub.startIdx);
-    as.writeASM("jmp", stub.inst.getName);
+    as.writeASM("jmp", stub.next.getName);
     as.writeByte(JMP_REL32_OPCODE);
-    auto offset = stub.inst.startIdx - (as.getWritePos + 4);
+    auto offset = stub.next.startIdx - (as.getWritePos + 4);
     as.writeInt(offset, 32);
     as.setWritePos(startPos);
 
@@ -1736,7 +1742,7 @@ extern (C) CodePtr compileStub(VersionStub stub)
     stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 
     // Return a pointer to the instance's code
-    return stub.inst.getCodePtr(as);
+    return stub.next.getCodePtr(as);
 }
 
 /**

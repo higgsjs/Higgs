@@ -97,12 +97,28 @@ eg: global access, call_prim inlining/recompilation, others?
 
 TODO: skip empty branch edges, see perf impact?
 - can we integrate this in genBranchEdge?
+- could also have quick reoptimization pass with basic asm pattern matching
+- repatch stub jumps, etc.
 
-TODO: work on inlining
-- This is critical for performance
-- Work on inlining before dweldving into type prop opts too much
-- Marc: write on other side of sp for inlined locals?
-- start by inlining primitive calls only, will make a huge difference
+TODO: blog
+- incremental JIT in master branch, no reg alloc, perf about the same
+- working on incremental inlining
+- bug fixes, thanks to toledo chess
+- travis test system
+- contribuse OSS, DOM-free JS code, help us test & debug Higgs
+  - always looking to grow our collection of tests
+- paper on arxiv
+- Budapest talk imminently
+
+Meeting:
+- added generated code size stat
+- began inlining work
+- large majority of calls are primitive calls (100x more)
+
+TODO: test, long loop with getProp and try, eventually set base to null,
+throws an exception in an inlined context
+
+TODO: system to handle exceptions & return in inlined context
 
 TODO: proper system to map values to stack slots in CodeGenState
 - Needed for handling of inlined args
@@ -112,19 +128,29 @@ TODO: patching mechanism for when recompiling
 - BlockVersion method for patching?
   - put next var in base class?
 
-TODO: ask on Twitter if people have DOM-free JS code to help test & benchmark the Higgs JS JIT
-Do you have any DOM-free JS code to help test & benchmark the Higgs JS JIT? https://github.com/maximecb/Higgs
 
-TODO: add counter variable (uint32) on VersionInst
+
+
+
+
+
+
+
+
+
+[DONE] TODO: sketch recompilation mechanism for inlining
+- spill regs, call?
+- need to set the CallCtx, contained in BlockVersion
+
+[DONE] FIXME: code size statistic, sum up generated code
+- markEnd should do this?
+- adding counter/recompilation code makes code size go from to 0.9 to 1.15MB
+
+[DONE] TODO: add counter variable (uint32) on VersionInst
 - Implement incrementation code in call_prim, test performance
 
-
-
-
-
-
-
-
+[DONE] TODO: ask on Twitter if people have DOM-free JS code to help test & benchmark the Higgs JS JIT
+Do you have any DOM-free JS code to help test & benchmark the Higgs JS JIT? https://github.com/maximecb/Higgs
 
 [DONE] TODO: look at incremental inlining notes, new notes file specifically on this
 2014-01-16 Inlining.txt

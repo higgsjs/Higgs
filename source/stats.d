@@ -51,8 +51,8 @@ private ulong startTimeMsecs = 0;
 /// Total compilation time in microseconds
 ulong compTimeUsecs = 0;
 
-/// Total size of the machine code generated in bytes
-ulong machineCodeBytes = 0;
+/// Total size of the machine code generated (in bytes)
+ulong genCodeSize = 0;
 
 /// Number of block versions for which code was generated (stubbed or not)
 ulong numVersions = 0;
@@ -107,7 +107,7 @@ static ~this()
     writeln();
     writefln("exec time (ms): %s", execTimeMsecs);
     writefln("comp time (ms): %s", compTimeUsecs / 1000);
-    writefln("code size (bytes): %s", machineCodeBytes);
+    writefln("code size (bytes): %s", genCodeSize);
     writefln("num versions: %s", numVersions);
     writefln("num instances: %s", numInsts);    
 
