@@ -104,31 +104,31 @@ TODO: work on inlining
 - Marc: write on other side of sp for inlined locals?
 - start by inlining primitive calls only, will make a huge difference
 
-First problems first: where do we put the counter? On the version inst object?
+TODO: proper system to map values to stack slots in CodeGenState
+- Needed for handling of inlined args
 
-When inlining, we recompile the call block, jump to an inlined entry block
-in a new inlined CallCtx
-- For now, could try just adding numLocals as extraLocals
-- Ret needs special handling of inlined calls too
+TODO: patching mechanism for when recompiling 
+- VersionInst needs a next version var
+- BlockVersion method for patching?
+  - put next var in base class?
 
-What about inlined call arguments?
+TODO: ask on Twitter if people have DOM-free JS code to help test & benchmark the Higgs JS JIT
+Do you have any DOM-free JS code to help test & benchmark the Higgs JS JIT? https://github.com/maximecb/Higgs
 
-TODO: look at incremental inlining notes, new notes file specifically on this
+TODO: add counter variable (uint32) on VersionInst
+- Implement incrementation code in call_prim, test performance
+
+
+
+
+
+
+
+
+
+[DONE] TODO: look at incremental inlining notes, new notes file specifically on this
 2014-01-16 Inlining.txt
 - what did we say wrt fn arguments?
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: chess program, The other bug is because you changed the 'ply' variable
 to be 1 (validate legal movement) instead of 2, the chess program only does

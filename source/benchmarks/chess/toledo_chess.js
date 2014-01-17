@@ -32,11 +32,17 @@ b = 64;
 i = I[B] & z;     // D2-D4
 
 // Here increase ply as needed for more computational process usage
-ply = 1;
+ply = 2;
 
-X(0,0,0,21,u,2);        // Do move
-X(0,0,0,21,u,ply);      // Calculate answer from computer
-X(0,0,0,21,u,2);        // Do move
+// Previously loaded B and b to do D2-D4 (queen pawn advance)
+// Do move (from B to b)
+X(0,0,0,21,u,1);
+
+// Calculate answer from computer (new move in B,b)
+X(0,0,0,21,u,ply);
+
+// Do move (from B to b)
+X(0,0,0,21,u,1);
 
 //
 // Print final board

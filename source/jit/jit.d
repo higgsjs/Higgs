@@ -1080,6 +1080,9 @@ Compiled block version instance
 */
 class VersionInst : BlockVersion
 {
+    /// Recompiled version
+    VersionInst next = null;
+
     /// Branch targets
     CodeFragment targets[2];
 
@@ -1088,6 +1091,9 @@ class VersionInst : BlockVersion
 
     /// Inner code length, excluding final branches
     uint32_t codeLen;
+
+    /// Execution frequency counter
+    uint32_t counter;
 
     this(IRBlock block, CodeGenState state)
     {
