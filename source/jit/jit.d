@@ -819,6 +819,8 @@ abstract class CodeFragment
     final auto length()
     {
         assert (startIdx !is startIdx.max);
+        assert (endIdx !is endIdx.max);
+        assert (endIdx > startIdx);
         return endIdx - startIdx;
     }
 
@@ -902,9 +904,6 @@ class BranchCode : CodeFragment
 
     /// Target block version (may be a stub)
     BlockVersion target;
-
-    /// Code length, excluding the optional final jump
-    uint32_t codeLen;
 
     this(BranchEdge branch, BlockVersion target)
     {
@@ -1013,10 +1012,6 @@ class BranchCode : CodeFragment
         // Execute the moves
         execMoves(as, moveList, scrRegs[0], scrRegs[1]);
 
-        // Compute the inner code length
-        assert (as.getWritePos() >= this.startIdx);
-        codeLen = cast(uint32_t)as.getWritePos() - this.startIdx;
-        
         // Encode the final jump and version reference
         as.jmp32Ref(vm, this.target);
 
@@ -1051,8 +1046,40 @@ abstract class BlockVersion : CodeFragment
     /// Code generation state at block entry
     CodeGenState state;
 
-    // (Re)compiled instance (initially null, non-null if patched)
+    // (Re)compiled version (initially null, non-null if patched)
     VersionInst next = null;
+
+    /**
+    Patch this code fragment to jump to a newer version
+    */
+    void patch(VM vm, VersionInst next)
+    {
+        auto as = vm.execHeap;
+
+        // Write a relative 32-bit jump to the instance over the stub code
+        auto startPos = as.getWritePos();
+        as.setWritePos(this.startIdx);
+        as.writeASM("jmp", next.getName);
+        as.writeByte(JMP_REL32_OPCODE);
+        auto offset = next.startIdx - (as.getWritePos + 4);
+        as.writeInt(offset, 32);
+
+        // Ensure that we did not overrun the code fragment length
+        assert (as.getWritePos() <= this.endIdx);
+
+        // Return to the original write position
+        as.setWritePos(startPos);
+
+        // Set next pointer
+        this.next = next;
+
+        // Replace the current version by the new one in the version map
+        auto versions = vm.versionMap.get(this.block, []);
+        auto idx = versions.countUntil(this);
+        assert (idx !is -1);
+        versions[idx] = next;
+        assert (versions.countUntil(this) is -1);
+    }
 }
 
 /**
@@ -1106,7 +1133,7 @@ class VersionInst : BlockVersion
         this.block = block;
         this.state = state;
     }
-   
+
     /**
     Generate the final branch for the block
     */
@@ -1121,10 +1148,6 @@ class VersionInst : BlockVersion
         // Store the branch generation function and targets
         this.branchGenFn = genFn;
         this.targets = [target0, target1];
-
-        // Compute the inner code length
-        assert (as.getWritePos() >= this.startIdx);
-        codeLen = cast(uint32_t)as.getWritePos() - this.startIdx;
 
         // Generate the final branch code
         genFn(
@@ -1207,7 +1230,7 @@ BlockVersion getBlockVersion(
         assert (genState.callCtx is state.callCtx);
         state = genState;
     }
-    
+
     //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
 
     // Create a new block version object using the predecessor's state
@@ -1705,35 +1728,20 @@ extern (C) CodePtr compileStub(VersionStub stub)
 
     auto state = stub.state;
     auto vm = state.callCtx.vm;
-    auto as = vm.execHeap;
 
     assert (stub.startIdx !is stub.startIdx.max);
     assert (stub.next is null);
 
     // Create a version instance object for this stub
     // and set the instance pointer for the stub
-    stub.next = new VersionInst(stub.block, state);
+    auto inst = new VersionInst(stub.block, state);
 
     // Compile the version instance
-    vm.queue(stub.next);
+    vm.queue(inst);
     vm.compile(state.callCtx);
-    assert (stub.next.startIdx !is stub.next.startIdx.max);
 
-    // Replace the stub by its instance in the version map
-    auto versions = vm.versionMap.get(stub.block, []);
-    auto stubIdx = versions.countUntil(stub);
-    assert (stubIdx !is -1);
-    versions[stubIdx] = stub.next;
-    assert (versions.countUntil(stub) is -1);
-
-    // Write a relative 32-bit jump to the instance over the stub code
-    auto startPos = as.getWritePos();
-    as.setWritePos(stub.startIdx);
-    as.writeASM("jmp", stub.next.getName);
-    as.writeByte(JMP_REL32_OPCODE);
-    auto offset = stub.next.startIdx - (as.getWritePos + 4);
-    as.writeInt(offset, 32);
-    as.setWritePos(startPos);
+    // Patch the stub to jump to the compiled instance
+    stub.patch(vm, inst);
 
     //writeln("leaving compileStub");
 
@@ -1742,7 +1750,7 @@ extern (C) CodePtr compileStub(VersionStub stub)
     stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 
     // Return a pointer to the instance's code
-    return stub.next.getCodePtr(as);
+    return inst.getCodePtr(vm.execHeap);
 }
 
 /**

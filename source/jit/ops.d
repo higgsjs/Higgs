@@ -1379,21 +1379,10 @@ void gen_call_prim(
         // Recompile the new call block with inlining
         vm.queue(newInst);
         vm.compile(callCtx);
+
+        // Patch the current versiont to jump to the inlined version
+        ver.patch(vm, newInst);
         */
-
-
-        // TODO: should this be done in the patching function?
-        // Replace the block version in the version map
-        //vm.versionMap[block].replace(ver, newInst);
-
-        // TODO: also want to patch the existing version once compiled
-        // set the next pointer as well
-
-
-
-
-
-
     }
 
     // Fetch and increment the execution counter

@@ -111,32 +111,38 @@ TODO: blog
 - Budapest talk imminently
 
 Meeting:
-- added generated code size stat
+- added generated code size stat, num call_prim, num dynamic calls
+- large majority of calls are primitive calls (100x more) in raytracing benchmark
 - began inlining work
-- large majority of calls are primitive calls (100x more)
-
-TODO: test, long loop with getProp and try, eventually set base to null,
-throws an exception in an inlined context
-
-TODO: system to handle exceptions & return in inlined context
+- have system to trigger recompilation of call sites on inlining, code patching
 
 TODO: proper system to map values to stack slots in CodeGenState
 - Needed for handling of inlined args
 
-TODO: patching mechanism for when recompiling 
+TODO: system to handle exceptions & return in inlined context
+
+TODO: --jit_noinline flag
+
+TODO: test, long loop with getProp and try, eventually set base to null,
+throws an exception in an inlined context
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: patching mechanism for when recompiling
 - VersionInst needs a next version var
 - BlockVersion method for patching?
-  - put next var in base class?
-
-
-
-
-
-
-
-
-
-
+- put next var in base class?
+- should assert that the patch code can fit within the current block length
+- assert that the endIdx is set in length computation
 
 [DONE] TODO: sketch recompilation mechanism for inlining
 - spill regs, call?
