@@ -243,6 +243,10 @@ class CodeGenState
         // presence of inlined calls
         foreach (value; valMap.keys)
         {
+            // If this value is not from this function, skip it
+            if (value.block.fun !is block.fun)
+                continue;
+
             if (liveInfo.liveAtEntry(value, block) is false)
                 valMap.remove(value);
         }
@@ -254,6 +258,10 @@ class CodeGenState
             if (value is null)
                 continue;
 
+            // If this value is not from this function, skip it
+            if (value.block.fun !is block.fun)
+                continue;
+
             // If the value is no longer live, remove it
             if (liveInfo.liveAtEntry(value, block) is false)
                 gpRegMap[regNo] = null;
@@ -263,6 +271,10 @@ class CodeGenState
         foreach (idx; slotMap.keys)
         {
             auto value = slotMap[idx];
+
+            // If this value is not from this function, skip it
+            if (value.block.fun !is block.fun)
+                continue;
 
             // If the value is no longer live, remove it
             if (liveInfo.liveAtEntry(value, block) is false)

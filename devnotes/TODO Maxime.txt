@@ -109,14 +109,11 @@ TODO: blog
   - always looking to grow our collection of tests
 - paper on arxiv
 - Budapest talk imminently
+  - expect detailed blog post on BBV & incremental JIT
+- DConf 2014
 
-Meeting:
-- added generated code size stat, num call_prim, num dynamic calls
-- large majority of calls are primitive calls (>70x more) in several benchmark
-- began inlining work
-- have system to trigger recompilation of call sites on inlining, code patching
-- working on stack value tracking in inlined calls, branch and exc edges
-  - all managed in backend, IR not transformed
+TODO: connect the inlining bits in call_prim
+- setup new CallCtx, adding of extraLocals
 
 TODO: system to handle exceptions & return in inlined context
 - Probably don't want to jump to regular return branch from inlined call
@@ -128,8 +125,11 @@ TODO: system to handle exceptions & return in inlined context
   - This is a BranchCode object
   - Could also just generate our own, avoids need to keep JIT objects in CallCtx
 
-TODO: liveness information during inlining
-- fix removeDead
+TODO: fill in submission for DConf, title + abstract
+- Deadline Jan 31st
+- 21-23 May, Menlo Park
+
+FIXME: +{} should be NaN, +[] should be integer 0
 
 TODO: proper system to map values to stack slots in CodeGenState
 - Needed for handling of inlined args
@@ -145,6 +145,26 @@ TODO: proper system to map values to stack slots in CodeGenState
 
 
 
+
+
+
+[DONE] TODO: inform Andrei
+- Marc willing to pay for travel + hotel
+
+[DONE] TODO: liveness information during inlining
+- fix removeDead
+- Do we even need to query this??? Can probably ignore parent values in removeDead
+
+[DONE] TODO: send toledo chess link to Marc
+
+[DONE] Meeting:
+- added generated code size stat, num call_prim, num dynamic calls
+- large majority of calls are primitive calls (>70x more) in several benchmark
+- began inlining work
+- have system to trigger recompilation of call sites on inlining, code patching
+- working on stack value tracking in inlined calls, branch and exc edges
+  - all managed in backend, IR not transformed
+- DConf 2014. Could replace Australian conf, coincide with Mozilla visit?
 
 [DONE] TODO: --jit_noinline flag
 - 3d-raytrace inline:
