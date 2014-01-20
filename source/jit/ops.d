@@ -1156,6 +1156,7 @@ void gen_if_true(
         auto targetT = instr.getTarget(0);
         auto targetF = instr.getTarget(1);
 
+        // TODO: use getWordOpnd
         auto argWord = st.getWord(argVal);
         auto target = (argWord == TRUE)? targetT:targetF;
         ctx.genBranchEdge(ctx.as, null, target, st);
@@ -1385,24 +1386,28 @@ void gen_call_prim(
         */
     }
 
-    // Fetch and increment the execution counter
-    as.ptr(scrRegs[0], ver);
-    as.getMember!("VersionInst.counter")(scrRegs[1].reg(32), scrRegs[0]);
-    as.inc(scrRegs[1].opnd(32));
-    as.setMember!("VersionInst.counter")(scrRegs[0], scrRegs[1].reg(32));
+    // If inlining is not disabled
+    if (opts.jit_noinline is false)
+    {
+        // Fetch and increment the execution counter
+        as.ptr(scrRegs[0], ver);
+        as.getMember!("VersionInst.counter")(scrRegs[1].reg(32), scrRegs[0]);
+        as.inc(scrRegs[1].opnd(32));
+        as.setMember!("VersionInst.counter")(scrRegs[0], scrRegs[1].reg(32));
 
-    // Compare the counter against the threshold
-    as.cmp(scrRegs[1].opnd(32), X86Opnd(INLINE_THRESHOLD));
-    as.jne(Label.FALSE);
+        // Compare the counter against the threshold
+        as.cmp(scrRegs[1].opnd(32), X86Opnd(INLINE_THRESHOLD));
+        as.jne(Label.FALSE);
 
-    // Call the recompilation function
-    as.pushJITRegs();
-    as.ptr(cargRegs[0], ver);
-    as.ptr(scrRegs[0], &recompile);
-    as.call(scrRegs[0].opnd);
-    as.popJITRegs();
+        // Call the recompilation function
+        as.pushJITRegs();
+        as.ptr(cargRegs[0], ver);
+        as.ptr(scrRegs[0], &recompile);
+        as.call(scrRegs[0].opnd);
+        as.popJITRegs();
 
-    as.label(Label.FALSE);
+        as.label(Label.FALSE);
+    }
 
     auto vm = st.callCtx.vm;
 

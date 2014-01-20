@@ -104,42 +104,41 @@ Type and allocation state of a live value
 */
 struct ValState
 {
+    /// Value kind
+    enum Kind
+    {
+        STACK,
+        REG,
+        CONST
+    }
+
     /// Bit field for compact encoding
     mixin(bitfields!(
-        /// Known constant flag
-        bool, "isConst", 1,
+
+        /// Value kind
+        Kind, "kind", 2,
 
         /// Known type flag
         bool, "knownType", 1,
 
-        /// Has allocated register flag
-        bool, "hasReg", 1,
-
-        /// Is on the stack flag
-        bool, "onStack", 1,
-
-        /// Register number
-        uint, "regNo", 4,
-
         /// Type, if known
         Type, "type", 4,
 
-        /// Constant value, if known
-        uint, "cstVal", 4,
+        /// Local index, or register number, or constant value
+        int, "val", 25,
 
         /// Padding bits
         uint, "", 0
     ));
 
     /// Stack value constructor
-    static ValState stack()
+    static ValState stack(LocalIdx idx)
     {
         ValState val;
 
-        val.isConst = false;
+        val.kind = Kind.STACK;
         val.knownType = false;
-        val.hasReg = false;
-        val.onStack = true;
+        val.val = cast(int)idx;
 
         return val;
     }
@@ -149,35 +148,40 @@ struct ValState
     {
         ValState val;
 
-        val.isConst = false;
+        val.kind = Kind.STACK;
         val.knownType = false;
-        val.hasReg = true;
-        val.onStack = false;
-        val.regNo = reg.regNo;
+        val.val = reg.regNo;
 
         return val;
     }
 
+    bool isStack() const { return kind is Kind.STACK; }
+    bool isReg() const { return kind is Kind.REG; }
+    bool isConst() const { return kind is Kind.CONST; }
+
     /// Get a word operand for this value
-    X86Opnd getWordOpnd(LocalIdx stackSlot)
+    X86Opnd getWordOpnd()
     {
-        // TODO
-        assert (isConst is false);
-        assert (hasReg || onStack);
+        switch (kind)
+        {
+            case Kind.STACK:
+            return X86Opnd(8, wspReg, cast(int32_t)(Word.sizeof * val));
 
-        if (hasReg)
-            return X86Opnd(X86Reg(X86Reg.GP, regNo, 64));
+            case Kind.REG:
+            return X86Opnd(X86Reg(X86Reg.GP, val, 64));
 
-        return X86Opnd(8, wspReg, cast(int32_t)(Word.sizeof * stackSlot));
+            default:
+            assert (false);
+        }
     }
 
     /// Get a type operand for this value
-    X86Opnd getTypeOpnd(LocalIdx stackSlot)
+    X86Opnd getTypeOpnd()
     {
         // TODO
         assert (knownType is false);
 
-        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * stackSlot));
+        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * val));
     }
 }
 
@@ -194,10 +198,11 @@ class CodeGenState
     private ValState[IRDstValue] valMap;
 
     /// Map of general-purpose registers to values
-    /// The value is null if a register is free
+    /// If a register is free, its value is null
     private IRDstValue[] gpRegMap;
 
     /// Map of stack slots to values
+    /// Unmapped slots have no associated value
     private IRDstValue[LocalIdx] slotMap;
 
     // TODO
@@ -232,8 +237,16 @@ class CodeGenState
     */
     void removeDead(LiveInfo liveInfo, IRBlock block)
     {
-        // TODO
-        /*
+        // For each value in the value map
+        // Note: a value being mapped to a register/slot does not mean that
+        // this register/slot is necessarily mapped to that value in the
+        // presence of inlined calls
+        foreach (value; valMap.keys)
+        {
+            if (liveInfo.liveAtEntry(value, block) is false)
+                valMap.remove(value);
+        }
+
         // For each general-purpose register
         foreach (regNo, value; gpRegMap)
         {
@@ -243,27 +256,18 @@ class CodeGenState
 
             // If the value is no longer live, remove it
             if (liveInfo.liveAtEntry(value, block) is false)
-            {
                 gpRegMap[regNo] = null;
-                allocState.remove(value);
-                typeState.remove(value);
-            }
         }
 
-        // Remove dead values from the alloc state
-        foreach (value; allocState.keys)
+        // For each slot for which we have an assigned value
+        foreach (idx; slotMap.keys)
         {
-            if (liveInfo.liveAtEntry(value, block) is false)
-                allocState.remove(value);
-        }
+            auto value = slotMap[idx];
 
-        // Remove dead values from the type state
-        foreach (value; typeState.keys)
-        {
+            // If the value is no longer live, remove it
             if (liveInfo.liveAtEntry(value, block) is false)
-                typeState.remove(value);
+                slotMap.remove(idx);
         }
-        */
     }
 
     /**
@@ -374,11 +378,29 @@ class CodeGenState
 
         auto dstVal = cast(IRDstValue)value;
 
-        // TODO
+        // If the value is an IR constant
+        if (dstVal is null)
+        {
+            //return value.cstValue.word;
+
+
+        }
+
+
+
+
+        // FIXME, fails on null dstVal...
         /*
-        // Get the current alloc flags for the argument
-        auto flags = allocState.get(dstVal, 0);
+        // Get the state for this value
+        auto state = valMap.get(
+            dstVal,
+            ValState.stack(dstVal.outSlot)
+        );
         */
+
+        // TODO: bring the logic of getWord into here... Nobody else uses it
+
+
 
         // If the argument is a known constant
         if (/*flags & RA_CONST ||*/ dstVal is null)
@@ -1293,7 +1315,7 @@ BranchCode getBranchEdge(
         );
 
         // Map the phi node to its stack location
-        succState.valMap[phi] = ValState.stack();
+        succState.valMap[phi] = ValState.stack(phi.outSlot);
 
         /*
         // Get the register the phi is mapped to

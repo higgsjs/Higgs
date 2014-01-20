@@ -112,30 +112,52 @@ TODO: blog
 
 Meeting:
 - added generated code size stat, num call_prim, num dynamic calls
-- large majority of calls are primitive calls (100x more) in raytracing benchmark
+- large majority of calls are primitive calls (>70x more) in several benchmark
 - began inlining work
 - have system to trigger recompilation of call sites on inlining, code patching
+- working on stack value tracking in inlined calls, branch and exc edges
+  - all managed in backend, IR not transformed
+
+TODO: system to handle exceptions & return in inlined context
+- Probably don't want to jump to regular return branch from inlined call
+  - Don't want to use the move register, want to get a branch edge for the call cont
+  - Need to track the IR branch edge object
+  - Generate efficient code upon return
+- Can use regular exception handler, however? Yes
+  - Takes the exc value off the stack
+  - This is a BranchCode object
+  - Could also just generate our own, avoids need to keep JIT objects in CallCtx
+
+TODO: liveness information during inlining
+- fix removeDead
 
 TODO: proper system to map values to stack slots in CodeGenState
 - Needed for handling of inlined args
+- Need to be able to map a value to a specific stack slot ***
 
-TODO: system to handle exceptions & return in inlined context
 
-TODO: --jit_noinline flag
 
-TODO: test, long loop with getProp and try, eventually set base to null,
+
+
+
+
+
+
+
+
+
+[DONE] TODO: --jit_noinline flag
+- 3d-raytrace inline:
+exec time (ms): 2698
+comp time (ms): 436
+code size (bytes): 1151903
+- noinline:
+exec time (ms): 2528
+comp time (ms): 420
+code size (bytes): 919875
+
+[DONE] TODO: test, long loop with getProp and try, eventually set base to null,
 throws an exception in an inlined context
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: patching mechanism for when recompiling
 - VersionInst needs a next version var

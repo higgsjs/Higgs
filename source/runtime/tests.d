@@ -1286,6 +1286,8 @@ unittest
     vm.assertStr("str;", "abcdef");
     vm.load("tests/exceptions/try_call.js");
     vm.assertStr("str;", "abc");
+    vm.load("tests/exceptions/try_loop_getprop.js");
+    vm.assertStr("str;", "abcd");
 }
 
 /// Basic test programs
