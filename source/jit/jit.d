@@ -160,23 +160,24 @@ struct ValState
     bool isConst() const { return kind is Kind.CONST; }
 
     /// Get a word operand for this value
-    X86Opnd getWordOpnd()
+    X86Opnd getWordOpnd(size_t numBits) const
     {
         switch (kind)
         {
             case Kind.STACK:
-            return X86Opnd(8, wspReg, cast(int32_t)(Word.sizeof * val));
+            return X86Opnd(numBits, wspReg, cast(int32_t)(Word.sizeof * val));
 
             case Kind.REG:
-            return X86Opnd(X86Reg(X86Reg.GP, val, 64));
+            return X86Reg(X86Reg.GP, val, numBits).opnd;
 
+            // TODO: const kind
             default:
             assert (false);
         }
     }
 
     /// Get a type operand for this value
-    X86Opnd getTypeOpnd()
+    X86Opnd getTypeOpnd() const
     {
         // TODO
         assert (knownType is false);
@@ -393,50 +394,21 @@ class CodeGenState
         // If the value is an IR constant
         if (dstVal is null)
         {
-            //return value.cstValue.word;
-
-
+            auto word = value.cstValue.word;
+            if (numBits is 8)
+                return X86Opnd(word.int8Val);
+            if (numBits is 32)
+                return X86Opnd(word.int32Val);
+            return X86Opnd(word.int64Val);
         }
 
-
-
-
-        // FIXME, fails on null dstVal...
-        /*
         // Get the state for this value
         auto state = valMap.get(
             dstVal,
             ValState.stack(dstVal.outSlot)
         );
-        */
 
-        // TODO: bring the logic of getWord into here... Nobody else uses it
-
-
-
-        // If the argument is a known constant
-        if (/*flags & RA_CONST ||*/ dstVal is null)
-        {
-            auto word = getWord(value);
-
-            if (numBits is 8)
-                return X86Opnd(word.int8Val);
-            if (numBits is 32)
-                return X86Opnd(word.int32Val);
-            return X86Opnd(getWord(value).int64Val);
-        }
-
-        /*
-        // If the argument already is in a general-purpose register
-        if (flags & RA_GPREG)
-        {
-            auto regNo = flags & RA_REG_MASK;
-            return new X86Reg(X86Reg.GP, regNo, numBits);
-        }
-        */
-
-        // Return the stack operand for the argument
-        return X86Opnd(numBits, wspReg, 8 * dstVal.outSlot);
+        return state.getWordOpnd(numBits);
     }
 
     /**
@@ -562,7 +534,8 @@ class CodeGenState
         // If the operand is a memory location
         if (curOpnd.isMem)
         {
-            // TODO: only allocate a register if more than one use?            
+            // TODO: only allocate a register if more than one use?
+            // should benchmark this idea
 
             // TODO
             // Try to allocate a register for the operand
@@ -596,12 +569,18 @@ class CodeGenState
         auto dstVal = cast(IRDstValue)value;
 
         // If the value is an IR constant or has a known type
-        if (dstVal is null /*|| typeKnown(value) is true*/)
+        if (dstVal is null)
         {
-            return X86Opnd(getType(value));
+            return X86Opnd(value.cstValue.type);
         }
 
-        return X86Opnd(8, tspReg, dstVal.outSlot);
+        // Get the state for this value
+        auto state = valMap.get(
+            dstVal,
+            ValState.stack(dstVal.outSlot)
+        );
+
+        return state.getTypeOpnd();
     }
 
     /**
@@ -687,57 +666,6 @@ class CodeGenState
         allocState[instr] = RA_GPREG | reg.regNo;
         gpRegMap[reg.regNo] = instr;
         return new X86Reg(X86Reg.GP, reg.regNo, numBits);
-        */
-    }
-
-    /// Get the word value for a known constant local
-    Word getWord(IRValue value) const
-    {
-        assert (value !is null);
-
-        auto dstValue = cast(IRDstValue)value;
-
-        if (dstValue is null)
-            return value.cstValue.word;
-
-        // TODO
-        assert (false);
-        /*
-        auto allocSt = allocState[dstValue];
-        auto typeSt = typeState[dstValue];
-
-        assert (allocSt & RA_CONST);
-
-        if (typeSt & TF_BOOL_TRUE)
-            return TRUE;
-        else if (typeSt & TF_BOOL_FALSE)
-            return FALSE;
-        else
-            assert (false, "unknown constant");
-        */
-    }
-
-    /// Get the known type of a value
-    Type getType(IRValue value) const
-    {
-        assert (value !is null);
-
-        auto dstValue = cast(IRDstValue)value;
-
-        if (dstValue is null)
-            return value.cstValue.type;
-
-        // TODO
-        assert (false);
-        /*
-        auto typeState = typeState.get(dstValue, 0);
-
-        assert (
-            typeState & TF_KNOWN,
-            "type is unknown"
-        );
-
-        return cast(Type)(typeState & TF_TYPE_MASK);
         */
     }
 

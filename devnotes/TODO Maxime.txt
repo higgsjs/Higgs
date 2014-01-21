@@ -113,7 +113,9 @@ TODO: blog
 - DConf 2014
 
 TODO: connect the inlining bits in call_prim
-- setup new CallCtx, adding of extraLocals
+- setup new CallCtx
+- adding of extraLocals
+- map args to parent values
 
 TODO: system to handle exceptions & return in inlined context
 - Probably don't want to jump to regular return branch from inlined call
@@ -125,28 +127,28 @@ TODO: system to handle exceptions & return in inlined context
   - This is a BranchCode object
   - Could also just generate our own, avoids need to keep JIT objects in CallCtx
 
-TODO: fill in submission for DConf, title + abstract
+TODO: write/send submission for DConf 2014, title + abstract
 - Deadline Jan 31st
 - 21-23 May, Menlo Park
 
 FIXME: +{} should be NaN, +[] should be integer 0
 
-TODO: proper system to map values to stack slots in CodeGenState
+FIXME: X86Opnd(-1) doesn't fit in 8 bits?
+- see getWordOpnd
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: proper system to map values to stack slots in CodeGenState
 - Needed for handling of inlined args
 - Need to be able to map a value to a specific stack slot ***
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: inform Andrei
 - Marc willing to pay for travel + hotel

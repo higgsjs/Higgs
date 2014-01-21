@@ -730,6 +730,9 @@ void IsTypeOp(Type type)(
     // If the type of the argument is known
     if (st.typeKnown(argVal))
     {
+        // TODO: use getTypeOpnd
+        // get rid of typeKnown?
+
         // Mark the value as a known constant
         // This will defer writing the value
         auto knownType = st.getType(argVal);
