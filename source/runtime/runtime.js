@@ -680,6 +680,46 @@ function $rt_typeof(v)
 //=============================================================================
 
 /**
+JS unary plus (+) operator
+*/
+function $rt_plus(x)
+{
+    // If x is integer
+    if ($ir_is_i32(x))
+    {
+        return x;
+    }
+
+    // If x is floating-point
+    if ($ir_is_f64(x))
+    {
+        return x;
+    }
+
+    return $rt_toNumber(x);
+}
+
+/**
+JS unary minus (-) operator
+*/
+function $rt_minus(x)
+{
+    // If x is integer
+    if ($ir_is_i32(x))
+    {
+        return 0 - x;
+    }
+
+    // If x is floating-point
+    if ($ir_is_f64(x))
+    {
+        return 0.0 - x;
+    }
+
+    return 0 - $rt_toNumber(x);
+}
+
+/**
 JS addition operator
 */
 function $rt_add(x, y)

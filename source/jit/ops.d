@@ -1149,10 +1149,17 @@ void gen_if_true(
     CodeBlock as
 )
 {
-    auto argVal = instr.getArg(0);
+    // If a boolean argument immediately precedes, the
+    // conditional branch has already been generated
+    if (boolArgPrev(instr) is true)
+        return;
+
+
 
     // TODO
     /*
+    auto argVal = instr.getArg(0);
+
     // If the argument is a known constant
     if (st.wordKnown(argVal))
     {
@@ -1160,6 +1167,7 @@ void gen_if_true(
         auto targetF = instr.getTarget(1);
 
         // TODO: use getWordOpnd
+        // TODO: get rid of wordKnown?
         auto argWord = st.getWord(argVal);
         auto target = (argWord == TRUE)? targetT:targetF;
         ctx.genBranchEdge(ctx.as, null, target, st);
@@ -1168,10 +1176,8 @@ void gen_if_true(
     }
     */
 
-    // If a boolean argument immediately precedes, the
-    // conditional branch has already been generated
-    if (boolArgPrev(instr) is true)
-        return;
+
+
 
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
@@ -3321,32 +3327,53 @@ void gen_get_ast_str(
     as.mov(outOpnd, X86Opnd(RAX));
 }
 
-/*
-extern (C) void op_get_ir_str(VM vm, IRInstr instr)
+void gen_get_ir_str(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto funArg = vm.getArgVal(instr, 0);
+    extern (C) static refptr op_get_ir_str(CallCtx callCtx, refptr closPtr)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
 
-    assert (
-        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
-        "invalid closure object"
-    );
+        assert (
+            refIsLayout(closPtr, LAYOUT_CLOS),
+            "invalid closure object"
+        );
 
-    auto fun = getClosFun(funArg.word.ptrVal);
+        auto fun = getClosFun(closPtr);
 
-    // If the function is not yet compiled, compile it now
-    if (fun.entryBlock is null)
-        astToIR(fun.ast, fun);
+        // If the function is not yet compiled, compile it now
+        if (fun.entryBlock is null)
+            astToIR(fun.ast, fun);
 
-    auto str = fun.toString();
-    auto strObj = getString(vm, to!wstring(str));
+        auto str = fun.toString();
+        auto strObj = getString(vm, to!wstring(str));
 
-    vm.setSlot(
-        instr.outSlot,
-        Word.ptrv(strObj),
-        Type.REFPTR
-    );
+        vm.setCallCtx(null);
+
+        return strObj;
+    }
+
+    // TODO: spill all for GC
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    as.pushJITRegs();
+
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd, opnd0);
+    as.ptr(scrRegs[0], &op_get_ir_str);
+    as.call(scrRegs[0].opnd);
+
+    as.popJITRegs();
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(RAX));
 }
-*/
 
 void gen_load_lib(
     VersionInst ver,

@@ -556,7 +556,7 @@ struct X86Opnd
     }
 
     /// Immediate constructor
-    this(uint64_t i) { imm = X86Imm(i); kind = Kind.IMM; }
+    this(int64_t i) { imm = X86Imm(i); kind = Kind.IMM; }
 
     string toString() const
     {
@@ -862,7 +862,7 @@ void writeRMMulti(
     else if (opnd0.isMem)
         opndSize = opnd0.mem.size;
     else
-        assert (false, "invalid first operand: " ~ opnd0.toString());    
+        assert (false, "invalid first operand: " ~ opnd0.toString());
 
     // Check the size of opnd1
     if (opnd1.isReg)
@@ -1413,6 +1413,7 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
         {
             auto reg = dst.reg;
             auto dstSize = reg.size;
+
             assert (imm.immSize <= dstSize, "immediate too large for dst reg");
 
             if (dstSize is 16)

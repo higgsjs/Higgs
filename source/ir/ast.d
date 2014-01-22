@@ -1544,25 +1544,27 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
     {
         auto op = unExpr.op;
 
+        // Unary plus
         if (op.str == "+")
-        {   
+        {
             auto subVal = exprToIR(ctx, unExpr.expr);
 
             return genRtCall(
                 ctx, 
-                "add",
-                [IRConst.int32Cst(0), subVal]
+                "plus",
+                [subVal]
             );
         }
 
+        // Unary minus
         else if (op.str == "-")
         {
             auto subVal = exprToIR(ctx, unExpr.expr);
 
             return genRtCall(
                 ctx, 
-                "sub",
-                [IRConst.int32Cst(0), subVal]
+                "minus",
+                [subVal]
             );
         }
 
@@ -1570,7 +1572,6 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "~")
         {
             auto subVal = exprToIR(ctx, unExpr.expr);
-
             return genRtCall(
                 ctx, 
                 "not", 
@@ -1687,7 +1688,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 }
             );
         }
-        
+
         // Post-incrementation and post-decrementation (x++, x--)
         else if ((op.str == "++" || op.str == "--") && op.assoc == 'l')
         {

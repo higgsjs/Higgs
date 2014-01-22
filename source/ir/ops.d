@@ -159,7 +159,6 @@ Opcode POW_F64 = { "pow_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_pow_f64 };
 Opcode ADD_I32_OVF = { "add_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_add_i32_ovf, OpInfo.BRANCH };
 Opcode SUB_I32_OVF = { "sub_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_sub_i32_ovf, OpInfo.BRANCH };
 Opcode MUL_I32_OVF = { "mul_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_mul_i32_ovf, OpInfo.BRANCH };
-//Opcode LSFT_I32_OVF = { "lsft_i32_ovf", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_lsft_i32_ovf*/null , OpInfo.BRANCH };
 
 // Integer comparison instructions
 Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i32, OpInfo.BOOL_VAL };
@@ -325,7 +324,7 @@ Opcode F64_TO_STR_LNG = { "f64_to_str_lng", true, [OpArg.LOCAL], &gen_f64_to_str
 Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &gen_get_ast_str, OpInfo.MAY_GC };
 
 /// Get a string representation of a function's IR
-Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], /*&gen_get_ir_str*/null , OpInfo.MAY_GC };
+Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &gen_get_ir_str, OpInfo.MAY_GC };
 
 /// Load a shared lib
 Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], &gen_load_lib };

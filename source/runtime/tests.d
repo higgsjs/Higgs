@@ -1325,10 +1325,8 @@ unittest
 
     vm.assertInt("return ~[]", -1);
     vm.assertInt("return ~{}", -1);
-    // FIXME: produces a string
-    //vm.assertInt(+[]", 0);
-    // FIXME: produces a string, 0object
-    //vm.assertStr("String(+{})", "NaN");
+    vm.assertInt("+[]", 0);
+    vm.assertStr("String(+{})", "NaN");
 
     vm.assertStr("typeof ([] + [])", "string");
     vm.assertStr("typeof ([] + {})", "string");

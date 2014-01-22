@@ -395,11 +395,16 @@ class CodeGenState
         if (dstVal is null)
         {
             auto word = value.cstValue.word;
+
+            // Note: the sequence below is necessary because the 64-bit
+            // value of a 32-bit negative integer is positive as the
+            // higher bits are all zeros.
             if (numBits is 8)
                 return X86Opnd(word.int8Val);
             if (numBits is 32)
                 return X86Opnd(word.int32Val);
-            return X86Opnd(word.int64Val);
+            else
+                return X86Opnd(word.int64Val);
         }
 
         // Get the state for this value
