@@ -113,7 +113,6 @@ static this()
     addOp(ADD_I32_OVF);
     addOp(SUB_I32_OVF);
     addOp(MUL_I32_OVF);
-    addOp(LSFT_I32_OVF);
 
     addOp(EQ_I32);
     addOp(NE_I32);

@@ -113,7 +113,7 @@ FIXME: for now, no property attributes
 Object.getOwnPropertyDescriptor = function (O, P)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in getOwnPropertyDescriptor');
+        throw TypeError('invalid object in getOwnPropertyDescriptor');
 
     name = String(P);
 
@@ -126,7 +126,7 @@ Object.getOwnPropertyDescriptor = function (O, P)
 Object.getOwnPropertyNames = function (O)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in getOwnPropertyNames');
+        throw TypeError('invalid object in getOwnPropertyNames');
 
     var propNames = [];
 
@@ -145,9 +145,7 @@ Object.getOwnPropertyNames = function (O)
 Object.create = function (O, Properties)
 {
     if ($rt_valIsObj(O) === false && O !== null)
-    {
-        typeError('can only create object from object or null prototype');
-    }
+        throw TypeError('can only create object from object or null prototype');
 
     var newObj = $rt_newObj($ir_make_map(null, 0), O);
 
@@ -178,7 +176,7 @@ Object.defineProperty = function (obj, prop, attribs)
 Object.defineProperties = function (O, Properties)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in defineProperties');
+        throw TypeError('invalid object in defineProperties');
 
     for (name in Properties)
     {
@@ -193,7 +191,7 @@ FIXME: noop function for now
 Object.seal = function (O)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in seal');
+        throw TypeError('invalid object in seal');
 
     return O;
 };
@@ -205,7 +203,7 @@ FIXME: noop function for now
 Object.freeze = function (O)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in freeze');
+        throw TypeError('invalid object in freeze');
 
     return O;
 };
@@ -217,7 +215,7 @@ FIXME: noop function for now
 Object.preventExtensions = function (O)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in preventExtensions');
+        throw TypeError('invalid object in preventExtensions');
 
     return O;
 };
@@ -229,7 +227,7 @@ FIXME: noop function for now
 Object.isSealed = function (O)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in isSealed');
+        throw TypeError('invalid object in isSealed');
 
     return false; 
 };
@@ -241,7 +239,7 @@ FIXME: for now, all objects are extensible
 Object.isFrozen = function (O)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in isFrozen');
+        throw TypeError('invalid object in isFrozen');
 
     return false;
 };
@@ -253,7 +251,7 @@ FIXME: for now, all objects are extensible
 Object.isExtensible = function (O)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in isExtensible');
+        throw TypeError('invalid object in isExtensible');
 
     return true;
 };
@@ -264,7 +262,7 @@ Object.isExtensible = function (O)
 Object.keys = function (O)
 {
     if ($rt_valIsObj(O) === false)
-        typeError('invalid object in keys');
+        throw TypeError('invalid object in keys');
 
     var propNames = [];
 

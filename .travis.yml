@@ -1,0 +1,26 @@
+# This is the config file for travis-ci which runs our tests upon pushing to GitHub
+
+# not really, but meh
+language: c
+
+# get latest version of dmd and dependencies
+before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq gcc-multilib time
+ - wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb"
+ - sudo dpkg -i dmd_2.064.2-0_amd64.deb
+
+# skip dependency install step
+install: true
+
+# need to get to the makefile/tests
+before_script:
+  - cd source
+
+# build a test binary and run tests
+script:
+  - make test
+
+# notify the irc channel
+notifications:
+  irc: "chat.freenode.net#higgsjs"

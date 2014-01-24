@@ -42,9 +42,9 @@ import std.conv;
 import std.math;
 import std.string;
 import std.algorithm;
-import interp.interp;
-import interp.layout;
-import interp.gc;
+import runtime.vm;
+import runtime.layout;
+import runtime.gc;
 
 alias uint TypeFlags;
 
@@ -115,19 +115,19 @@ struct TypeSet
     Construct a new type set
     */
     this(
-        Interp interp, 
+        VM vm, 
         TypeFlags flags = TYPE_EMPTY,
         double rangeMin = 0,
         double rangeMax = 0,
         refptr[MAX_OBJ_SET_SIZE]* objSet = null
     )
     {
-        this.interp = interp;
+        this.vm = vm;
 
         // Add this type set to the linked list
         this.prev = null;
-        this.next = interp.firstSet;
-        interp.firstSet = &this;
+        this.next = vm.firstSet;
+        vm.firstSet = &this;
 
         this.flags = flags;
 
@@ -143,9 +143,9 @@ struct TypeSet
     /**
     Construct a type set from a value
     */
-    this(Interp interp, ValuePair val)
+    this(VM vm, ValuePair val)
     {
-        this(interp);
+        this(vm);
 
         auto word = val.word;
 
@@ -160,13 +160,13 @@ struct TypeSet
             }
             this.objSet[0] = word.ptrVal;
             this.numObjs = 1;
-            if (valIsLayout(word, LAYOUT_STR))
+            if (refIsLayout(word.ptrVal, LAYOUT_STR))
                 flags = TYPE_STRING;
-            else if (valIsLayout(word, LAYOUT_OBJ))
+            else if (refIsLayout(word.ptrVal, LAYOUT_OBJ))
                 flags = TYPE_OBJECT;
-            else if (valIsLayout(word, LAYOUT_ARR))
+            else if (refIsLayout(word.ptrVal, LAYOUT_ARR))
                 flags = TYPE_ARRAY;
-            else if (valIsLayout(word, LAYOUT_CLOS))
+            else if (refIsLayout(word.ptrVal, LAYOUT_CLOS))
                 flags = TYPE_CLOS;
             else // TODO: misc object type?
                 assert (false, "unknown layout type");
@@ -206,14 +206,14 @@ struct TypeSet
     ~this()
     {
         assert (
-            interp !is null,
-            "interp is null"
+            vm !is null,
+            "VM is null"
         );
 
         if (prev)
             prev.next = next;
         else
-            this.interp.firstSet = next;
+            this.vm.firstSet = next;
 
         if (next)
             next.prev = prev;
@@ -279,7 +279,7 @@ struct TypeSet
         }
 
         return TypeSet(
-            interp,
+            vm,
             flags,
             rangeMin,
             rangeMax,
@@ -389,7 +389,7 @@ struct TypeSet
                 auto objPtr = this.objSet[i];
                 auto word = Word.ptrv(objPtr);
 
-                if (valIsLayout(word, LAYOUT_STR))
+                if (refIsLayout(objPtr, LAYOUT_STR))
                 {
                     output ~= valToString(ValuePair(word, Type.REFPTR));
                 }
@@ -415,8 +415,8 @@ struct TypeSet
     //{
     //}
 
-    /// Associated interpreter
-    private Interp interp;
+    /// Associated VM
+    private VM vm;
 
     /// Linked list pointers, type sets contain 
     /// heap refs and must be tracked by the GC

@@ -1,0 +1,42 @@
+KISS: start by inlining only for call_prim
+- Huge majority of call sites are for primitive calls
+
+First problems first: where do we put the call site counter? 
+- On the version inst object?
+- Seems suitable for now
+
+When inlining, we recompile the call block, jump to an inlined entry block
+in a new inlined CallCtx
+- For now, could try just adding numLocals as extraLocals
+- Ret needs special handling of inlined calls too
+
+What about inlined call arguments???
+- Map the values to the caller arg slot, but map the slot to the parent val?
+- Requesting location for value yields parent slot/reg
+- This remains valid so long as we don't overwrite the slot with something else
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+Inlining implementation:
+- May need to allocate more stack slots for callee, bump stack pointers
+- Start with arg values mapped in parent stack frame
+  - CodeGenState needs to allow for this
+- Need to be careful when spilling
+  - Must test if parent values, if so, spill
+  - Mark value as spilled in parent spill slot
+- CodeGenState
+  - map of regs to values
+  - map of slots to values
+  - values to regs and slots
+  - if parent value, slot or reg to value has parent value, not callee arg
+
+
+What do you mean by "test if parent value?" for arguments

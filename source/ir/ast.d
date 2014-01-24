@@ -438,8 +438,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             auto setInstr = bodyCtx.addInstr(new IRInstr(
                 &SET_GLOBAL, 
                 new IRString(ident.name),
-                IRConst.undefCst,
-                new IRCachedIdx()
+                IRConst.undefCst
             ));
         }
     }
@@ -602,53 +601,11 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // Perform peephole optimizations on the function
     optIR(fun);
 
+    // Compute liveness information for the function
+    fun.liveInfo = new LiveInfo(fun);
+
     // Allocate stack slots for the IR instructions
     allocSlots(fun);
-
-    /*
-    auto liveQueryFn = compLiveVars(fun);
-
-    auto numInterf = 0;
-    auto numNonInterf = 0;
-    
-    for (auto block = fun.firstBlock; block !is null; block = block.next)
-    {
-        for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
-        {
-            // For each phi arg
-            PHI_ARG_LOOP:
-            for (size_t tIdx = 0; tIdx < block.numIncoming; ++tIdx)
-            {
-                auto branch = block.getIncoming(tIdx);
-                auto phiArg = cast(IRDstValue)branch.getPhiArg(phi);
-
-                // If this phi argument is not 
-                if (phiArg is null)
-                    continue PHI_ARG_LOOP;
-
-                // For each instruction (live query point)
-                for (auto block2 = fun.firstBlock; block2 !is null; block2 = block2.next)
-                {
-                    for (auto instr = block2.firstInstr; instr !is null; instr = instr.next)
-                    {
-                        auto argLive = liveQueryFn(phiArg, instr);
-                        auto phiLive = liveQueryFn(phi, instr);
-
-                        if (argLive && phiLive)
-                        {
-                            numInterf++;
-                            continue PHI_ARG_LOOP;
-                        }
-                    }
-                }
-
-                numNonInterf++;
-            }
-        }
-    }
-    
-    writefln("interf: %s/%s", numInterf, (numInterf+numNonInterf));
-    */
 
     //writeln("compiled fn:");
     //writeln(fun.toString());
@@ -2119,8 +2076,7 @@ IRValue refToIR(
             // Get the global value
             return ctx.addInstr(new IRInstr(
                 &GET_GLOBAL,
-                new IRString(identExpr.name),
-                new IRCachedIdx()
+                new IRString(identExpr.name)
             ));
         }
         else
@@ -2234,8 +2190,7 @@ IRValue assgToIR(
             ctx.addInstr(new IRInstr(
                 &SET_GLOBAL,
                 new IRString(identExpr.name),
-                rhsVal,
-                new IRCachedIdx()
+                rhsVal
             ));
         }
 
@@ -2407,7 +2362,7 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
             if (strExpr is null)
             {
                 throw new ParseError(
-                    "expected int argument", 
+                    "expected string argument", 
                     argExpr.pos
                 );
             }
@@ -2437,18 +2392,6 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
                 );
             }
             argVal = new IRMapPtr();
-            break;
-
-            // Code block pointer
-            case OpArg.CODEBLOCK:
-            if (cast(NullExpr)argExpr is null)
-            {    
-                throw new ParseError(
-                    "expected null argument", 
-                    argExpr.pos
-                );
-            }
-            argVal = new IRCodeBlock();
             break;
 
             default:
@@ -2552,30 +2495,6 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
     genCallTargets(ctx, callInstr);
 
     return callInstr;
-
-    /*
-    // Get the global function
-    auto funVal = ctx.addInstr(new IRInstr(
-        &GET_GLOBAL, 
-        new IRString(RT_PREFIX ~ to!wstring(fName)),
-        new IRCachedIdx()
-    ));
-
-    // <dstLocal> = CALL <fnLocal> <thisArg> ...
-    auto callInstr = ctx.addInstr(new IRInstr(&CALL, 2 + argVals.length));
-    callInstr.setArg(0, funVal);
-    callInstr.setArg(1, funVal);
-    foreach (argIdx, argVal; argVals)
-    {
-        assert (argVal !is null);
-        callInstr.setArg(2 + argIdx, argVal);
-    }
-
-    // Generate the call targets
-    genCallTargets(ctx, callInstr);
-
-    return callInstr;
-    */
 }
 
 /**

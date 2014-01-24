@@ -48,10 +48,12 @@ import util.id;
 import util.string;
 import parser.ast;
 import ir.ops;
-import interp.interp;
-import interp.layout;
-import interp.object;
+import ir.livevars;
+import runtime.vm;
+import runtime.layout;
+import runtime.object;
 import jit.codeblock;
+import jit.jit;
 
 /// Local variable index type
 alias uint32 LocalIdx;
@@ -107,17 +109,20 @@ class IRFunction : IdObject
     /// Map of identifiers to SSA cell values (closure/shared variables)
     IRValue[IdentExpr] cellMap;
 
-    /// Callee profiling information (filled by interpreter)
-    uint64_t[IRFunction][IRInstr] callCounts;  
+    /// Liveness information
+    LiveInfo liveInfo = null;
 
-    /// Map of call instructions to list of inlined functions
-    IRFunction[][IRInstr] inlineMap;
+    /// Call context context for this function
+    CallCtx ctx = null;
 
-    /// Compiled code block
-    CodeBlock codeBlock = null;
+    /// Constructor context for this function
+    CallCtx ctorCtx = null;
 
-    /// Number of times this function was JIT compiled
-    uint32_t jitCount = 0;
+    /// Regular entry point code
+    CodePtr entryCode = null;
+
+    /// Constructor entry point code
+    CodePtr ctorCode = null;
 
     /// Constructor
     this(FunExpr ast)
@@ -125,6 +130,7 @@ class IRFunction : IdObject
         this.name = ast.getName();
         this.ast = ast;
         this.numParams = cast(uint32_t)ast.params.length;
+        this.numLocals = this.numParams + NUM_HIDDEN_ARGS;
 
         // If the function is anonymous
         if (this.name == "")
@@ -142,7 +148,13 @@ class IRFunction : IdObject
         }
     }
 
-    string getName()
+    /// Test if this is a unit-level function
+    bool isUnit() const
+    {
+        return cast(ASTProgram)ast !is null;
+    }
+
+    string getName() const
     {
         return this.name ~ "(" ~ idString() ~ ")";
     }
@@ -249,10 +261,57 @@ class IRFunction : IdObject
 
         numBlocks--;
     }
+
+    /**
+    Get a code generation context for a given function
+    */
+    CallCtx getCtx(bool ctorCall, VM vm)
+    {
+        if (ctorCall is false)
+        {
+            if (this.ctx is null)
+                this.ctx = new CallCtx(this, false, vm);
+            return this.ctx;     
+        }
+        else
+        {
+            if (this.ctorCtx is null)
+                this.ctorCtx = new CallCtx(this, true, vm);
+            return this.ctorCtx;
+        }
+    }
 }
 
-/// Compiled function entry point
-alias void function() EntryFn;
+/**
+Calling context of a piece of code
+*/
+class CallCtx
+{
+    /// Parent context (if inlined)
+    CallCtx parent = null;
+
+    /// Call site inlined at (if inlined)
+    IRInstr inlineSite = null;
+
+    /// Number of extra locals (if inlined)
+    size_t extraLocals = 0;
+
+    /// Associated VM object
+    VM vm;
+
+    /// Function this code belongs to
+    IRFunction fun;
+
+    /// Constructor call flag
+    bool ctorCall;
+
+    this(IRFunction fun, bool ctorCall, VM vm)
+    {
+        this.fun = fun;
+        this.ctorCall = ctorCall;
+        this.vm = vm;
+    }
+}
 
 /**
 SSA IR basic block
@@ -264,15 +323,6 @@ class IRBlock : IdObject
 
     /// List of incoming branches
     private BranchEdge[] incoming;
-
-    /// Execution count, for profiling
-    uint64 execCount = 0;
-
-    /// JIT code entry point function
-    EntryFn entryFn = null;
-
-    /// JIT code fast entry point
-    ubyte* jitEntry = null;
 
     /// Parent function
     IRFunction fun = null;
@@ -1020,45 +1070,6 @@ class IRLinkIdx : IRValue
     override string toString()
     {
         return "<link:" ~ ((linkIdx is NULL_LINK)? "NULL":to!string(linkIdx)) ~ ">";
-    }
-}
-
-/**
-Cached index value (stateful, non-constant)
-*/
-class IRCachedIdx : IRValue
-{
-    uint32_t idx = uint32_t.max;
-
-    this()
-    {
-    }
-
-    bool isNull()
-    {
-        return idx == idx.max;
-    }
-
-    override string toString()
-    {
-        return "<idx:" ~ ((idx is idx.max)? "NULL":to!string(idx)) ~ ">";
-    }
-}
-
-/**
-Code block pointer value (stateful, non-constant, initially null)
-*/
-class IRCodeBlock : IRValue
-{
-    CodeBlock codeBlock = null;
-
-    this()
-    {
-    }
-
-    override string toString()
-    {
-        return "<codeblock:" ~ ((codeBlock is null)? "NULL":"0x"~to!string(codeBlock.getAddress())) ~ ">";
     }
 }
 

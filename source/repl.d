@@ -40,9 +40,9 @@ import std.string;
 import parser.ast;
 import parser.parser;
 import ir.ast;
-import interp.interp;
+import runtime.vm;
 
-void repl(Interp interp)
+void repl(VM vm)
 {
 
     writeln("Entering read-eval-print loop");
@@ -63,7 +63,7 @@ void repl(Interp interp)
         try 
         {
             // Evaluate the input
-            auto output = interp.evalString(input, "repl");
+            auto output = vm.evalString(input, "repl");
 
             // Print the output if it isn't "undefined"
             if (!(output.type == Type.CONST && output.word == UNDEF))

@@ -190,6 +190,7 @@ unittest
     testParse("1");
     testParse("1;");
     testParse("3.0;");
+    testParse(".5;");
     testParse("1E15;");
     testParse("1E-15;");
     testParse("0x09ABCD;");
@@ -546,6 +547,7 @@ unittest
     testParse("function (x,y) {};");
     testParse("function (x,) {};", false);
     testParse("function (x) { if (x) return 1; else return 2; };",);
+    testParse("function () {} x = 0");
 
     testExprAST("function () { return 1; };",
         new FunExpr(
@@ -574,34 +576,38 @@ unittest
     writefln("source file parsing");
 
     // Sunspider benchmarks
-    testParseFile("programs/sunspider/controlflow-recursive.js");
-    testParseFile("programs/sunspider/bitops-bits-in-byte.js");
-    testParseFile("programs/sunspider/bitops-nsieve-bits.js");
-    testParseFile("programs/sunspider/3d-cube.js");    
-    testParseFile("programs/sunspider/3d-morph.js");
-    testParseFile("programs/sunspider/3d-raytrace.js");
-    testParseFile("programs/sunspider/access-nsieve.js");
-    testParseFile("programs/sunspider/access-fannkuch.js");
-    testParseFile("programs/sunspider/access-binary-trees.js");
-    testParseFile("programs/sunspider/access-nbody.js");
-    testParseFile("programs/sunspider/math-cordic.js");
-    testParseFile("programs/sunspider/string-fasta.js");
-    testParseFile("programs/sunspider/string-base64.js");
-    testParseFile("programs/sunspider/crypto-sha1.js");
-    testParseFile("programs/sunspider/3d-cube.js");
-    testParseFile("programs/sunspider/crypto-md5.js");
+    testParseFile("benchmarks/sunspider/controlflow-recursive.js");
+    testParseFile("benchmarks/sunspider/bitops-bits-in-byte.js");
+    testParseFile("benchmarks/sunspider/bitops-nsieve-bits.js");
+    testParseFile("benchmarks/sunspider/3d-cube.js");    
+    testParseFile("benchmarks/sunspider/3d-morph.js");
+    testParseFile("benchmarks/sunspider/3d-raytrace.js");
+    testParseFile("benchmarks/sunspider/access-nsieve.js");
+    testParseFile("benchmarks/sunspider/access-fannkuch.js");
+    testParseFile("benchmarks/sunspider/access-binary-trees.js");
+    testParseFile("benchmarks/sunspider/access-nbody.js");
+    testParseFile("benchmarks/sunspider/math-cordic.js");
+    testParseFile("benchmarks/sunspider/string-fasta.js");
+    testParseFile("benchmarks/sunspider/string-base64.js");
+    testParseFile("benchmarks/sunspider/crypto-sha1.js");
+    testParseFile("benchmarks/sunspider/3d-cube.js");
+    testParseFile("benchmarks/sunspider/crypto-md5.js");
 
     // V8 benchmarks
-    testParseFile("programs/v8bench/navier-stokes.js");
-    testParseFile("programs/v8bench/splay.js");
-    testParseFile("programs/v8bench/richards.js");
-    testParseFile("programs/v8bench/crypto.js");
-    testParseFile("programs/v8bench/deltablue.js");
-    testParseFile("programs/v8bench/raytrace.js");
-    testParseFile("programs/v8bench/earley-boyer.js");
+    testParseFile("benchmarks/v8bench/navier-stokes.js");
+    testParseFile("benchmarks/v8bench/splay.js");
+    testParseFile("benchmarks/v8bench/richards.js");
+    testParseFile("benchmarks/v8bench/crypto.js");
+    testParseFile("benchmarks/v8bench/deltablue.js");
+    testParseFile("benchmarks/v8bench/raytrace.js");
+    testParseFile("benchmarks/v8bench/earley-boyer.js");
+
+    // Kraken 1.1 benchmarks
+    testParseFile("benchmarks/kraken-1.1/ai-astar.js");
+    testParseFile("benchmarks/kraken-1.1/ai-astar-data.js");
 
     // Bones benchmark
-    testParseFile("programs/bones/bones.js");
+    testParseFile("benchmarks/bones/bones.js");
 
     // Standard library
     testParseFile("stdlib/math.js");

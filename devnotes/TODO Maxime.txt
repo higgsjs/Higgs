@@ -1,4 +1,5 @@
 Conference deadlines:
+- ISMM          Feb 8?
 - DLS 2013      June 8, 2013
 - VMIL 2013     ~August 2013
 - CGO 2014      ~September 2013
@@ -6,7 +7,22 @@ Conference deadlines:
 - PLDI 2014     Nov 8, Nov 15 2013
 - VEE 2014      ~November 2013
 
+Internships: Nov-Dec 2014, after paper deadlines?
+~3-4 months
+Marc advises to remain near PhD work, best for CV
+Approach Facebook
+Approach Mozilla around spring, combine with trip
+
+List of possible contributions:
+- Type tagging scheme
+- Register allocation
+- Lazy/incremental JIT
+- Basic block versioning
+
 ------------------------------------------------------------------------------
+
+Wishlist
+--------
 
 TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
@@ -16,50 +32,1015 @@ TODO: add --jit_trace command-line option
 
 TODO: complete WAV output support, test it out with sine wave
 
+TODO: pixel plotting, canvas window lib? lib/canvas
+
+TODO: optimize x86 instr encoding based on usage
+- e.g.: reg64 to mem move and vice versa?
+- do profiling first
+
+Idea: global table of property names with type monitoring
+- current index, if always same
+- current type
+- can it be a getter/setter?
+- discuss with Marc
+  - would most probably work well for benchmarks
+- if foobar property always has same offset, don't even care what the map is
+  - fair game?
+- issue: can know that x is always at some index, but doesn't mean that your
+  object has a property x
+- can do monitoring per-map, and get great perf gains on the global object
+- how often are object types monomorphic?
+
+Idea: getters/setters + never used opt?
+- Need to be able to invalidate code depending on this
+- segregate by property name, much more effective
+
+TODO: produce 32-bit offsets/addresses in CodeBlock.toString
+
+TODO: add source position info for call instructions and throw instruction
+- Map of call sites to source pos in IRFunction
+- Do this in genCallTargets?
+- Modify stack trace code to show source positions
+
 ------------------------------------------------------------------------------
 
-TODO: begin writing classes, functions for new JIT
-- Assembler & encoding
-  - KISS, direct encoding methods? as.jmp(label), as.label(label) and as.label(name)
-  - No intermediate structures for instrs, just encode directly
-  - Arg structs for mem opnds
-  - Labels are just strings in a map!
-- Executable memory management
-  - Interp class owns executable chunk?
-- CodeGenState
-- BlockVersion
+TODO: execHeap collection/expansion
+- Marc says: not on critical path for paper
+
+TODO: arrays, functions, have obj ptr inside, drop object inheritance system
+
+TODO: think about type representation
+- types need to encode obj vs clos vs array
+- int array, float array
+- use one whole word for cst value, encode map idx in there too?
+
+TODO: have map idx system, instead of map pointers?
+- smaller comparison instr
+- avoids issue of maps reallocated at same addr
+- smaller type representation
+- what else?
+
+TODO: better register spilling mechanism for C calls
+
+TODO: register allocation
+- peephole pass should swap operands to favor reg alloc?
+  - or do this on demand?
+- unified spilling function? params to spill tsp/wsp, vm reg
+- delayed writes
+
+TODO: basic type prop, without reg alloc, type test removal
+
+TODO: big blog post about basic block versioning, incremental JIT
+
+TODO: reduce code size by using calls for fallback type code,
+eg: global access, call_prim inlining/recompilation, others?
+
+TODO: skip empty branch edges, see perf impact?
+- can we integrate this in genBranchEdge?
+
+TODO: work on inlining
+- This is critical for performance
+- Work on inlining before dweldving into type prop opts too much
+- Marc: write on other side of sp for inlined locals?
+- start by inlining primitive calls only, will make a huge difference
+
+TODO: proper system to map values to stack slots in CodeGenState
+- Needed for handling of inlined args
+
+TODO: patching mechanism for when recompiling 
+- VersionInst needs a next version var
+- BlockVersion method for patching?
+  - put next var in base class?
+
+TODO: ask on Twitter if people have DOM-free JS code to help test & benchmark the Higgs JS JIT
+Do you have any DOM-free JS code to help test & benchmark the Higgs JS JIT? https://github.com/maximecb/Higgs
+
+TODO: add counter variable (uint32) on VersionInst
+- Implement incrementation code in call_prim, test performance
+
+
+
+
+
+
+
+
+
+[DONE] TODO: look at incremental inlining notes, new notes file specifically on this
+2014-01-16 Inlining.txt
+- what did we say wrt fn arguments?
+
+[DONE] FIXME: chess program, The other bug is because you changed the 'ply' variable
+to be 1 (validate legal movement) instead of 2, the chess program only does
+search when ply is 2 or higher. So the game works after changing it to 2 and
+solving the other bug temporarily (using Math.floor(B/x))
+
+[DONE] FIXME: bitwise operators OR, AND and XOR, your compiler rounds the operands
+with Math.round instead of Math.floor
+also happens with the bitwise complement operator
+For example, 3.5|0 gives result 4
+
+[DONE] TODO: double to signed integer conversion using truncation
+F2 REX.W 0F 2C /r
+CVTTSD2SI r32, xmm/m64
+- revise toInt32, toUint32
+
+[DONE] TODO: add some basic lib tests that just do require('lib/stdio') and stdlib...
+- easy to call stdlib/stdio fn?
+
+[DONE] FIXME: Number + Boolean fails, 0+true generates "0true" instead of 1
+- check every operator where Boolean can be used with Number
+  0 + true == 1
+  1 + null == 1
+  1 + false == 1
+  null + true == 1
+  true + null == 1
+  true + true == 2
+  true + undefined == NaN
+- once working, push to master, notify Oscar Toledo
+
+[DONE] TODO: re-fetch improved $rt_add, $rt_sub, etc from cc2014
+
+[DONE] TODO: Inlining heuristic... counter?
+- could have inline counter with threshold, eg: 10K
+  3d-raytrace does 68M call_prim
+  assuming 500 main ops, 136K calls per op on average
+  10K probably reasonable
+- Try instantiating counter, and logging how many times it gets hit, source location
+  - for 3d-raytrace, 10K gets us around 190 call_prim instances, 20K gets 122, 5K 221
+  - hot call sites fairly well spread, may need to put threshold lower
+    - find optimal threshold based on benchmarks
+
+[DONE] TODO: how many getPropIdx calls do we do in big benchmarks, how many calls?
+- add counter for getPropIdx, call_prim, call
+- much less getPropIdxs than type tests, but these are probably much slower
+- number of call_prim dwarves even number of type tests
+  - over 100x as much as dynamic calls
+- counters make a noticeable difference in execution time, good news
+
+[DONE] TODO: put paper on arxiv.org? Yes
+
+[DONE] Meeting:
+- next priority: type prop, inlining, reg alloc, jump opts, inline cache
+- next paper will probably be about type prop... but would also like better perf
+- how many getPropIdx calls do we do in big benchmarks, how many calls?
+- usenix
+- Mackenzie scholarship, possibly
+- going to need to start on mloc.js talk soon, beta due by end of month
+  - Marc: give practice talk at MiDiro
+
+[DONE] TODO: create wiki FAQ page, why D
+https://www.youtube.com/watch?v=hJUNHX0vakI&feature=youtu.be&t=20m12s
+
+[DONE] TODO: add benchmarks/kraken-1.1/ai-astar.js to parser tests
+- can we also parse ai-astar-data.js reasonably fast? yes
+
+[DONE] TODO: talk to Tom about JITted FFI
+
+[DONE] TODO: make dummy codegen function for JITted FFI
+
+------------------------------------------------------------------------------
+
+[DONE] Milestone IV: All tests and benchmarks working
+- Will require GC
+
+[DONE] TODO: push to master branch once all benchmarks working
+
+[DONE] TODO: inform Marc of progress
+
+[DONE] TODO: run ./benchmark.py, get first results, compare to past
+- comp time slightly slower, but more inclusive (ast to IR)
+- bigger benchmarks generally faster
+- this is with no inlining!
+
+[DONE] TODO: pass all tests
+
+[DONE] FIXME: earley-boyer fails after GC
+./higgs benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 
+run-time error: undefined base in read of property "car"
+- GC triggered by makeThisObj
+- Create a new regression test
+- Bug does seem to have to do with GC
+- If we get undefined base, it's probably cause we got a getProp producing undefined
+  - confirmed, both car and cdr are missing
+  - propIdx is -1
+The value we get for the base seems to be a number?
+lst gets the number 0 as argument...
+This should probably be the null value
+Changing the code seems to affect when the bug happens!
+- Changing the frame size?
+Hypothesis: we write args above wsp/tsp before creating the this object
+- These args do not get forwarded
+
+[DONE] FIXME: GC during array allocation fails
+- pushJITRegs not done, wsp/tsp not set
+
+[DONE] TODO: implement get_heap_free instruction
+- Generalize GetValOp? Not for this, need to compute value
+
+[DONE] TODO: pass basic gc_collect test
+
+[DONE] TODO: implement gc_collect instruction
+
+[DONE] TODO: fixup GC code
+
+[DONE] TODO: blog, Contribute to the Higgs JS Compiler
+- No need to know how to program in D
+- List of things people can contribute
+  - Trying it out, finding bugs
+  - Writing useful libraries
+  - Implementing new JS features
+  - Profiling to improve compilation speed
+  - Support for ES6 features
+- Link to wiki
+https://github.com/maximecb/Higgs/wiki
+- Link to issues page, link to wiki in post and in Higgs page
+- Open issues on GitHub for
+  JIT compilation time profiling
+  Finding new benchmarks, adding them to "make test"
+  Repackaging JS libs to be shipped with Higgs
+- Link to contribution instructions on wiki
+- Explain the Higgs roadmap
+  Batteries included, easy canvas window, easy input lib
+
+[DONE] TODO: fix ops to use setCallCtx
+gen_get_str, gen_map_prop_name, gen_new_clos, op_get_ast_str, FPToStr, gen_call_new
+
+[DONE] TODO: update wiki, reporting bugs, mention source/tests directory, PR
+
+[DONE] TODO: split /programs into /benchmarks and /tests
+
+[DONE] TODO: valIsLayout vs refIsLayout
+
+[DONE] TODO: rename state.ctx to state.callCtx
+
+[DONE] TODO: modify throwExc to take CallCtx argument
+
+[DONE] TODO: test undef | 0, shift by undef, etc
+
+[DONE] FIXME: "function() {} b = 0" fails to parse
+- function is parsed as expression statement
+- could we check that last tok was } ?
+- the closing brace should end the statement parsing
+
+[DONE] TODO: when entering compileStub or compileEntry, set callCtx pointer in the VM
+- could use a function to set/unset, enforce null on entry, non-null on exit
+  setCallCtx(ctx)
+  setCallCtx()
+
+[DONE] TODO: RAEntry should have CodeGenCtx pointer
+- Rename to CallCtx, move to ir/ir?
+
+[DONE] TODO: add canvas lib to open issues
+- Detail some basic sample usage
+
+[DONE] TODO: Supported JavaScript Features page on wiki
+- link on PGW
+
+[DONE] TODO: link to Quickstart guide, wiki on PGW
+
+[DONE] TODO: reporting bugs Wiki page
+
+[DONE] TODO: fill in stdlibs in list of libraries on wiki
+
+[DONE] TODO: increase default str table size, use power of 2 sizing, eliminate modulo
+- Initial size should be 16K
+
+[DONE] TODO: eval a throw test
+
+[DONE] TODO: load, eval instructions
+- Need to compile a new unit, then jump to it, return to caller continuation
+- May want to split compileUnit, generate special return code separately?
+- Want a callUnit function?
+- compileUnit could do a more minimal compilation of a unit, return VersionInst
+- or maybe don't use compileUnit at all!
+
+[DONE] TODO: unit test for global property access of prop from Object.prototype
+- Need simple fallback for when prop isn't on global obj
+- Won't this require spilling everything?
+- Property could get deleted
+
+[DONE] FIXME: unresolved global, no exception thrown
+- We aren't checking for that...
+- Default can spill all, have fallback
+
+[DONE] FIXME: programs/regress/new_array, bug in toUint32
+run-time error: unsupported value in toUInt32: 128
+- Does this fix crypto benchmarks?
+
+[DONE] TODO: factorize a genCallBranch wrapper for genBranch
+- in jit/ops, before all the call instructions
+- boolean flag to generate call throw path
+
+[DONE] TODO: add new null(), new undefined() tests
+
+[DONE] FIXME: segfault on null() call
+
+[DONE] TODO: make call throw on non-closure work
+- needed by 4 tests
+- spill all, call throwExc
+- jump over this code normally?
+- how do we get the exc version addr?
+  - could have wrapper host function with less arguments
+    - actually want to call throwError anyways, not throwExc
+  - pass vm, call instr, exc handler version
+- define a throwCallExc function
+
+[DONE] FIXME: many_globals test produces call to non-function
+- check what type comes out of get_global
+
+[DONE] TODO: refactor getProp/putProp to use wstring for propName
+
+[DONE] TODO: test basic exceptions, throw
+
+[DONE] TODO: implement throw
+- calls throwExc, passing exc val, then jumps to address returned
+
+[DONE] TODO: make call instructions do vm.setRetEntry
+- Also need to generate exc path
+
+[DONE] TODO: throwExc needs to set exc object
+- If call instr is null, set exc object, use return branch
+
+[DONE] TODO: refactor compileUnit
+- KISS, return CodePtr for entry branch edge
+  - setup stack manually
+  - callable only once
+- No longer need callFun in VM.exec
+- set return address, exc handler at end of compileUnit
+  - ra should be custom return BranchEdge
+  - exc handler is also custom BranchEdge
+
+[DONE] TODO: rewrite throwExc
+- Need map of RAs to <VersionInst callVer, CodeFragment excHandler>
+- Exception traversal needs current IRFunction
+  - Throw/unwind code returns exc handler addr to jump to
+  - If stack fully unwound, set exc value ptr in VM
+  - Value passed to host is a D RunError object
+- Normal call exc handler generates moves
+  - Host places exc value on VM stacks before returning
+  - Handler removes ret value, places in callInstr.outSlot
+
+[DONE] TODO: define CodePtr type in CodeBlock
+
+[DONE] TODO: VM.compile(), VM.queue(version), VM.addVerRef(), etc?
+- grep for .refList, .compQueue
+- split jit.d into jit/state, jit/util, etc
+
+[DONE] TODO: rename Interp class to VM
+- rename uses and interp directory as well
+- Grep for interp, Interp, interpreter
+
+[DONE] TODO: get_ast_str
+
+[DONE] TODO: remove interp/ops.d
+- move useful contents to jit/ops.d and interp/interp.d
+
+[DONE] Meeting:
+- new, apply working
+- all of stdlib initializing
+- all stdlib tests working
+- most benchmarks working
+  - missing some because of GC, exceptions
+- compilation time stat, about twice as fast
+
+[DONE] TODO: re-add compilation time stat
+- try on 3d-raytrace, v8/raytrace
+- about twice faster
+
+[DONE] TODO: get_time_ms
+
+[DONE] FIXME: stdlib_number test returns 402
+if ((0.5).toFixed() !== "1")
+
+[DONE] TODO: call_apply
+- Change callFun return address? Currently expects IRInstr
+
+[DONE] TODO: map_prop_name
+
+[DONE] TODO: establish fourth milestone
+- All benchmarks running?
+
+------------------------------------------------------------------------------
+
+[DONE] Third milestone: standard library initialization
+
+[DONE] TODO: make_link, needed by commonjs lib
+- Why is it needed? What uses it?
+  - set_str
+  - regexp
+- Easier to just keep supporting this for now
+
+[DONE] TODO: add test for ctor with less args than needed, test for undef
+
+[DONE] FIXME: segfault on ./higgs --e "test()" programs/stdlib_map/stdlib_map.js
+- try with --jit_dumpinfo
+- trace instructions
+- Fails in Map.prototype.set
+- call with integer 1 for closure value
+- Missing argument init was wrong for new and regular call
+
+[DONE] TODO: support for return from new
+- enable unit tests
+
+[DONE] TODO: new/constructor support
+- Implement using host function first
+
+[DONE] Meeting:
+- Objects, arrays, closures, argument object, floating-point
+- Fixed various bugs
+- Almost all of stdlib loading
+- Most unit tests working
+- Missing features: exceptions, GC
+- Higgs init time comparable to before, with interpreter
+- Compiling ~300KB of code to init
+- Idea: can recompile inline caches (at Moz, inline caches are linked-lists)
+
+[DONE] TODO: mod_f64, using fmod
+
+[DONE] TODO: f64_to_str, f64_to_str_lng
+
+[DONE] TODO: cos_f64, sin_f64, sqrt_f64, log_f64, exp_f64, mod_f64, ceil_f64, floor_f64
+- template unary FP host fun? HostFPOp(fun)
+- enable unit tests
+import std.c.math;
+
+[DONE] FIXME: bug in merge sort test?
+- has to do with cycle resolution in moves.d?
+- issue with regress/loop_swap too?
+
+[DONE] FIXME: higgs init time is quite slow
+- profile it
+- how much faster if we don't load regexp lib?
+- add options to log functions being compiled?
+execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, /*opts.jit_dumpasm*/true);
+- Disabling ASM comments gives us a huge speedup
+
+[DONE] FIXME: arg_obj test segfaults
+make; ./higgs --jit_dumpinfo --e "print(test())" argobj.js
+- ret 0 instruction from test() segfaults
+- is it return with extra args that's defective?
+  - pushing 8 slots, as expected
+  - popping wrong number of values
+  - argc is way off... 64-bit issue? no
+- Popping wrong number of args... 7 instead of 8
+- extra args computation in gen_ret was wrong
+
+[DONE] FIXME: assertion failed in stdlib/number test
+
+[DONE] TODO: try enabling stdlib/math.js
+- comment out loading of other libs for now
+
+[DONE] TODO: array element access
+
+[DONE] TODO: work towards object property access
+- gen_map_num_props
+- gen_map_prop_idx
+
+[PASS] TODO: implement wrapper for static function ops
+- HostOp(alias op, alias fun)(...)
+static if( i < T.length - 1 && is( r1 == void ) )
+static assert( a1.length != 1 || !is( a1[0] == Variant ),
+
+[DONE] TODO: try to optimize call logic. Can some operations use 32-bit opnds?
+- Can we use a second scratch reg to compute extra args?
+- Can now count on delegate for scratch regs
+
+[DONE] TODO: use delegates for the branch generation function
+- No context object if no variables captured
+- remove instr argument
+
+[DONE] TODO: reimplement test-then-if optimization
+- Test needs to generate the branching directly
+- If suppresses its own code generation
+
+[DONE] TODO: eq_f64, ne_f64, lt_f64
+
+[DONE] TODO: look into D traits for function pointers
+- Not clear from traits page, ask on D forum
+
+[DONE] TODO: ask on dconf about closure opts
+- make thread: Memory usage of delegates
+  - Will it allocate extra objects or context if no shared variables?
+  - Are closures heap-allocated, or by value?
+
+[DONE] TODO: support for div_i32
+- Needed for int to string conversion
+- enable corresponding tests
+
+[DONE] TODO: get_str
+- try enabling string concat tests, try in the REPL first
+- template one arg instructions like this? not yet
+
+[DONE] TODO: function to save special jit registers
+
+[DONE] FIXME: fix as.printStr
+- test with heapAlloc
+
+[DONE] TODO: lea instruction encoding
+- only need to support 64-bit version
+
+[DONE] TODO: closure variable support
+- needs heap_alloc
+
+[DONE] TODO: get_word, get_type, make_value
+- needed for closure cells
+
+[DONE] TODO: heap_alloc
+
+[DONE] TODO: blog
+- specifics of incremental JIT
+- progress
+  - REPL, static calls, primitives, tests
+- stress/discomfort of having to take many important design decisions at once
+  - exploratory programming
+- compiler architect may be a great career move
+- conference invites (mloc.js, Web Directions Code)
+    http://mloc-js.com/
+    http://code13.webdirections.org/
+- book invite, AOSA vol 4
+    http://aosabook.org/en/index.html
+
+[DONE] TODO: store op
+
+[DONE] TODO: support for print(), useful for debugging
+- Needs regular calls, string functions
+
+[DONE] TODO: load, needed for print
+
+[DONE] TODO: compileEntry, log function being compiled for --jit_dumpinfo
+
+[DONE] TODO: $ir_get_arg, needed for print(), others
+
+[DONE] TODO: log call block size in bytes
+- 330 bytes
+
+[DONE] FIXME: call version has branch code marked as inside of it!
+- genBranch should do markEnd?
+
+[DONE] FIXME: segfault on too many arguments
+
+[DONE] FIXME: identity function doesn't get its argument
+- seem to be pushing the right number of locals
+
+[DONE] TODO: transition regular call and new stub to unique shared stubs
+- separate compileEntry function
+  - ast-to-ir
+  - adjust topmost stack frame, add undef args
+  - compile entry block
+  - set entry block ptr
+  - no stub patching
+- remove handling of null block ptr
+  - just have special EntryStub code fragment
+
+[DONE] TODO: init numLocals, numParams before ast-to-ir
+
+[DONE] FIXME: some instructions have no disassembly?
+- lost our alignment somewhere?
+  - when patching a stub?
+- try disabling rewriting of comments, see if it fixes the issue
+  - doesn't seem to fix the problem
+- seems we often get a misalignment after "jmp rax"
+- problem could be in the selection of comments for versions/fragments
+- the code being printed is some unit function entry...
+  - no matter what's being printed
+  - it's the machine code that's wrong, not the comments?
+
+[DONE] TODO: regular function calls
+- Need to do AST->IR conversion
+  - May need special kind of stub?
+- Should also store code ptr on IRFunction
+- Entry stub?
+  - could have one regular call stub and one new call stub
+  - check the IRFunction, do the AST->IR?
+  - issue: num locals, clos local varies
+  - this is an issue for the GC too? Not really?
+  - stubs may have to be specific to the function
+  - how much code are we talking? everything already spilled
+- call needs to:
+  - get IRFunction ptr from clos
+  - get numArgs
+  - loop, pushing extra undef params (if not enough args)
+  - get numLocals, push space for locals
+  - push RA (linked)
+  - get entry version ptr, jump to it (not linked)
+- If not a closure, need to throw an exception ***
+  - Make sure all is spilled, call an interpreter function
+  - Can mostly ignore this for now
+
+[DONE] TODO: modify new_clos to generate entry stub
+
+------------------------------------------------------------------------------
+
+[DONE] Second milestone: load runtime, working REPL with --nostdlib
+- No GC yet
+- Still no reg alloc
+- Support for runtime primitives
+
+[DONE] TODO: $ir_print_str
+
+[DONE] FIXME: !0 should produce true, not infinity
+- same for 0 && 2
+- phi node problem? All of these have phi nodes
+- execMoves is unimplemented!
+
+[DONE] TODO: port/fix execMoves
+
+[DONE] TODO: basic phi node handling
+- without reg alloc, everything on stack
+- need to implement allocState
+
+[DONE] TODO: combine allocMap + typeMap
+- Use struct with bit field inside, enum?
+
+[DONE] TODO: set_str
+
+[DONE] TODO: --jit_dumpinfo, write the exec heap position / size
+- Do we have stat counter for total number of stubs and number of versions?
+- Should log all this at end of compile() invocations
+
+[DONE] TODO: CodeBlock toString needs start and end offsets
+
+[DONE] TODO: jit_dumpasm, print only compiled code
+- CodeFragment.toString
+
+[DONE] TODO: enable all working unit tests
+
+[DONE] TODO: log when phi nodes are used
+
+[DONE] TODO: not_i32
+
+[DONE] TODO: left shift, right shift
+
+[DONE] TODO: less-than comparison
+
+[DONE] TODO: mod_i32
+
+[DONE] FIXME: invalid offsets
+linking fragment ref, offset=18446744073709549282
+- Log what the reference is to
+- Negative offsets
+
+[DONE] TODO: more complete return support
+- but not yet return from new
+- start with plain return, no return from new
+
+[DONE] TODO: support for call_prim
+- retWordReg, retTypeReg
+- Return BranchCode object
+
+[DONE] TODO: getCtx(IRFunction fun, bool newCall)
+- Add ctx equality to state comparison
+- Problem: two generic contexts?
+  - Examine getBlockVersion
+  - When does the generic state get created? Can we create one with matching ctx?
+
+[DONE] TODO: reimplement add_i32_ovf, etc.
+
+[DONE] TODO: reimplement if_true
+
+[DONE] TODO: jcc instructions using reflist... Need to template this
+
+[DONE] TODO: add compiled fragments to fragList
+- Add compiled versions and also branch code
+
+[DONE] TODO: reimplement gen_jump
+
+[DONE] TODO: For end of block encoding, may be able to just use a function pointer (not a closure)
+- Function takes enum indicating target 0 next, 1 next or neither next
+- Function does the encoding of necessary branches
+- Creates version refs as appropriate
+- For call, can do the RA push, then jump to call entry
+- Should simplify things, expose the logic in the appropriate places!
+
+[DONE] TODO: May want to have branch edge moves in their own "code fragment" objects
+- More flexible, these then become movable
+- More efficient
+- Can handle unit call/return more elegantly
+- For return, can place ret word/type in special registers
+- Return address is return branch edge
+- Return branch edge moves ret val into stack slot (or not)
+Fragment
+BranchCode
+BlockVersion
+VersionStub
+VersionInst
+
+[DONE] TODO: genBranchEdge could return a BranchCode object?
+- Can call method genCode(as, predState) at end of block?
+- For return, write special moves, then call genCode
+
+[DONE] TODO: implement setWord, setType
+
+[DONE] FIXME: when compiling stub, should not be creating new block version in list
+- replace stub entry instead
+- don't use getBlockVersion
+- array replace function?
+
+[DONE] TODO: support for add_i32_ovf
+- sufficient to compile basic add lazily
+- add simple unit test
+
+[DONE] TODO: low-level int & FP instructions
+
+[DONE] TODO: need support for loading f64 imm to XMM
+- Could use move to r64, then movq?
+- For now, special case for zeroing out?
+- pxor xmm, xmm?
+66 0F EF /r PXOR xmm1, xmm2/m128
+- general case, can jump over an inline constant
+  - need one constant for our usage!
+- try implementing limited IPR?
+  movq(XMM0, X86Opnd(64, RIP, 2))
+  jmp8(8) ; 2 bytes long
+  ...64-bit imm...
+  ...code resumes...
+
+[DONE] TODO: limited IP-relative addressing, RIP + offset
+- Use bit fields to pack mem loc representation
+
+[DONE] TODO: jmp8
+
+[DONE] TODO: div_f64, needed for NaN
+
+[DONE] TODO: new_clos instr
+
+[DONE] TODO: make_map instr
+- Can allocate the map at JIT time!
+
+[DONE] TODO: assert minimal space before compiling block
+- 1 << 18 bytes (256KB)
+
+------------------------------------------------------------------------------
+
+[DONE] First milestone: no interp, basic incremental codegen
+- No inlining
 - Stubs
-- compile(block, state)
-- genBranchEdge(edge, predState)
+- Bump write pos to allocate, no code compaction
 
-TODO: think of how to convert JIT ops to library of functions
-- Only need lib fns for more complex or infrequent ops
-  - No need for lib fn for core typed arith ops, comparisons
-- Convention for calls from JIT?
-  - Not really necessary, just spill all, keep as is
+[DONE] TODO: IsTypeOp + unit test
 
-TODO: comment out JIT code
-- Comment out contents of ops.d, assembler.d, jit.d
+[DONE] TODO: direct jump, add new if test for this
 
-TODO: add source position info for call sites
-- Map of call sites to source pos in IRFunction?
-- Do this in genCallTargets?
-- Throw instr also needs a source pos
+[DONE] FIXME: stub code not getting generated
+- compQueue not mutated properly?
 
-TODO: remove JIT entry point hooks from IR
+[DONE] TODO: CodeBlock.label should add a comment
 
-TODO: comment out interpreter unit tests
+[DONE] TODO: CmpOp
+- For first version, always use cmov to produce a boolean
 
+[DONE] TODO: setOutType with constant Type value
 
+[DONE] TODO: genBranch
+- For now, just switch on test type, do jump if false
 
+[DONE] TODO: define a constant for JMP_REL32_OPCODE
 
+[DONE] TODO: where do we set codeLen?
+- Need to mark the inner code end explicitly
 
+[DONE] TODO: versionRefs, compQueue...
+- Add to Interp object directly
+- Assert compQueue empty when entering compile
 
+[DONE] TODO: could we merge ASMBlock, ExecBlock, compile directly in the execHeap?
+- bool exec, bool comments
+- Threads: just acquire a lock
+- What if we exceed the bounds of the exec heap?
+  - Need to do an exec heap compaction
+  - This could conceptually happen mid-codegen
+  - Could overestimate the max size of instructions + moves? Not obvious?
+    - Can h4xx it, fix threshold at 1MB
+- How do we deal with branch moves?
+  - Could do a simple, direct encoding of final branches
+  - At the same time, give block version useful annotations
+- get rid of BlockVersion.write
 
+[DONE] TODO: X86Reg.opnd(size)
 
+[DONE] TODO: think about branches at end of blocks
+- Can specifying operands to test and targets be enough?
+  - e.g.: ilt, ieq, fgt, 64-bit, overflow
+  - direct jump
+- Works for if-type branches, type tests
+- Calls are handled separately
+- Look at old jit ops
 
+[DONE] TODO: movsd encoding
+Enc(opnds=['xmm', 'xmm/m64'], prefix=[0xF2], opcode=[0x0F, 0x10], rexW=False),
+Enc(opnds=['xmm/m64', 'xmm'], prefix=[0xF2], opcode=[0x0F, 0x11], rexW=False),
 
+[DONE] TODO: try implementing set_global, get_global
+- Seems we don't need register allocation for this
+- Problem: there is no cached global property index
+  - Need to get those at JIT time
+- Can get rid of the cached idx on the instruction
+  - Get rid of IRCachedIdx as a whole
 
+[DONE] TODO: setOutType w/ reg arg
+
+[DONE] FIXME: return doesn't deal with mem arg
+- tmpReg not properly implemented in getWordOpnd
+
+[DONE] FIXME: odd assertion error involving comment strings
+- Happens inside writeBlock, while merging strings
+- Seems assumeSorted fails
+- execHeap is not cleared everytime
+
+[DONE] TODO: look at add_i32
+- Should we implement reg alloc now?
+
+[DONE] TODO: patch stubs once compiled
+- create external compileStub and compileUnit functions?
+  - both call internal compile function, not extern (C)
+
+[DONE] TODO: patch version refs, refList
+
+[DONE] FIXME: return 1 unit test fails
+- test more encodings
+- fixed bug in push/pop encoding
+- reading from interp object causes segfault
+- found bug in encoding of mov r15, imm
+
+[DONE] FIXME: duplicate ret asm string, missing comment string
+- Something wrong in CodeBlock.toString?
+  - dump all the strings to verify
+  - strings are as presented, ret is there twice at the same position!
+- Found bug in clear function
+
+[DONE] TODO: --jit_dumpasm
+
+[DONE] FIXME: segfault while compiling unit entry
+- Bug in getWordOpnd
+
+[DONE] TODO: make Interp compile/call unit functions
+
+[DONE] TODO: return op generation for unit-level functions
+- Also need entry generation for unit-level functions
+  - static template flag to compile?
+
+[DONE] TODO: basic implementation of getWordOpnd/getTypeOpnd
+- Needed for return op, other ops
+
+[DONE] TODO: initial genBranchEdge(edge, predState)
+
+[DONE] TODO: stub generation
+- stubs call the JIT with block and state object ptrs
+- Need special class for stubs
+call compile
+jmp RAX
+
+[DONE] TODO: begin sketching compile(block, state)
+- Should start with all values always on the stack, no type info
+- How do we deal with requests for other versions?
+  - Compilation queue?
+  - Finalize blocks into execHeap at the end?
+
+[DONE] TODO: interp, add new fields
+- execHeap
+- blockVersions list
+- map of blocks to versions
+
+[DONE] TODO: xmm arith op encoding
+- No immediates
+- Some have L vs R encoding
+- Some have two opnd sizes supported
+- Do template but keep it limited
+  - add, mul, sub, sqrt, ucomisd
+  - writeXMM64
+
+[DONE] TODO: shift encoding
+
+[DONE] FIXME: crash bug in movsx test
+- code causes crash
+- bug in mov mem8, imm8 encoding
+
+[DONE] TODO: movsx, movzx encoding
+
+[DONE] TODO: think about how compilation starts in interpreter
+- Setup call stack
+- Create ctx for unit function
+- Create state for entry block
+- Call compile(bloc, state)
+  - returns code ptr
+- Call into entry block
+- Call and return from unit functions can be special
+  - Setup stack properly, use ret instr on return
+- When stubs are hit, further compilation occurs
+
+[DONE] TODO: idiv, not, inc, dec encoding
+- Make template for this, writeRMUnary
+
+[DONE] TODO: CodeBlock, specialize into ASMBlock and ExecBlock
+- ASMBlock has auto-expansion
+
+[DONE] TODO: sketch BlockVersion class in jit.d
+- BlockVersion: block, state, startIdx
+  - state at entry
+- VersionStub: no length, instance ref
+- VersionInst: branch descs, move code idxs
+  - Final branches and associated moves
+  - May need to be specific about what conditional branches are testing
+  - Target BlockVersion objs
+
+[DONE] TODO: imul encoding
+
+[DONE] TODO: begin testing code execution
+
+[DONE] TODO: sub encoding
+
+[DONE] TODO: conditional jump, jcc encoding
+- Template it based on jmp
+
+[DONE] TODO: cmov encoding
+- TODO: template with opcode?
+
+[DONE] TODO: mov encoding
+
+[DONE] TODO: support for labels in assembler
+- Write code in the code block
+- Write empty patchable gap for address
+- Store label ref in a list in the assembler object
+- Need linkage pass to match refs to labels in table
+
+[DONE] TODO: should also have option to record assembly strings
+- Maybe this should be at the code block level
+- Allows carrying over when writing code block
+- Store pairs of indices and strings
+- Have some asmComment function that checks for jit_dumpasm
+  - Should take mnem and args as params
+  - Could have 4 versions for different arities (0,1,2,3)
+    - Template that, yo
+  - Should also disable if not in debug mode
+
+[DONE] TODO: template encoding of add for sub/cmp/or/xor/etc
+
+[DONE] TODO: begin testing instruction encodings
+- Test with CodeBlock or with Assembler?
+- Need assembler objects if we have labels
+- Could test both kinds separately
+- Start with CodeBlock only
+
+[DONE] TODO: instruction encoding, use templated function?
+- Can have templated fn with many template parameters
+- The two arguments are the only actual parameters
+  - One of the arguments may be "none"
+
+[DONE] TODO: deny 32-bit base or index registers, for simplicity?
+- Simplify mem opnd, use reg no only, smaller size
+
+[DONE] TODO: X86Opnd struct with union inside
+- Needs a special none value
+
+[DONE] TODO: begin with simple instruction encodings in x86.d
+- No intermediate structures for instrs, just encode directly
+- First goal is basic system working, don't write all encodings now
+  - But begin testing early
+- Lower-level encoding functions should work with CodeBlock objects
+- Some op like move, cmp, jz should work on CodeBlock
+  - But can be aliased for Assembler (possibly with an easy macro!)
+- Some ops only fit in innerCode, should apply to Assembler only
+nop(CodeBlock cb, size_t length = 1)
+jmp(CodeBlock cb, Label label)
+
+[DONE] TODO: x86 opnds
+- Want to avoid allocating big objects for mem opnds, etc.
+- Want operand structs
+- Could use regno values in mem opnds to avoid infinite rec
+- Could maybe have a big X86Opnd union for when needed?
+  - Or just one big struct implementing it all?
+  - Multiple structs are probably more expressive, more specific
+
+[DONE] TODO: sketch CodeGenState, CodeGenCtx in jit/jit.d
+- CodeGenState has ctx object pointer
+- CodeGenCtx should have:
+  - IRFunction, 
+  - num extra locals, 
+  - parent context (for inlining)
+  - inlineSite (call site, if inlined)
+
+[DONE] TODO: CodeBlock class
+
+[DONE] TODO: comment out assembler tests, remove encodings
+
+[DONE] TODO: compute fun liveness info in ast-to-IR
+
+[DONE] TODO: remove JIT entry point, block exec count from IR
+
+[DONE] TODO: comment out JIT code
+- Comment out contents of jit.d, ops.d
+
+[DONE] TODO: comment out interpreter ops
+- Remove superfluous ops
+
+[DONE] TODO: comment out interpreter unit tests
+
+[DONE] Meeting:
+- Conference
+- Internships
+- Incremental code gen
+- Clever stack alloc & inlining
 
 ------------------------------------------------------------------------------
 

@@ -37,243 +37,301 @@
 
 module jit.ops;
 
+import core.memory;
+import std.c.math;
 import std.stdio;
 import std.string;
 import std.array;
 import std.stdint;
 import std.conv;
 import std.algorithm;
+import std.traits;
+import std.datetime;
 import options;
 import stats;
+import parser.parser;
 import ir.ir;
 import ir.ops;
-import interp.interp;
-import interp.layout;
-import interp.object;
-import interp.string;
+import ir.ast;
+import runtime.vm;
+import runtime.layout;
+import runtime.object;
+import runtime.string;
+import runtime.gc;
 import jit.codeblock;
-import jit.assembler;
 import jit.x86;
-import jit.encodings;
-import jit.peephole;
-import jit.regalloc;
+import jit.util;
 import jit.jit;
+import core.sys.posix.dlfcn;
 
-void gen_get_arg(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+/// Instruction code generation function
+alias void function(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+) GenFn;
+
+void gen_get_arg(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // Get the first argument slot
     auto argSlot = instr.block.fun.argcVal.outSlot + 1;
 
     // Get the argument index
-    auto idxOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, scrRegs32[0], false);
-    auto idxReg32 = cast(X86Reg)idxOpnd;
-    auto idxReg64 = idxReg32.ofSize(64);
+    auto idxOpnd = st.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), false);
+    assert (idxOpnd.isGPR);
+    auto idxReg32 = idxOpnd.reg.opnd(32);
+    auto idxReg64 = idxOpnd.reg.opnd(64);
 
     // Get the output operand
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto opndOut = st.getOutOpnd(as, instr, 64);
 
     // Zero-extend the index to 64-bit
-    ctx.as.instr(MOV, idxReg32, idxReg32);
+    as.mov(idxReg32, idxReg32);
 
     // TODO: optimize for immediate idx, register opndOut
     // Copy the word value
-    auto wordSlot = new X86Mem(64, wspReg, argSlot * 8, idxReg64, 8);
-    ctx.as.instr(MOV, scrRegs64[1], wordSlot);
-    ctx.as.instr(MOV, opndOut, scrRegs64[1]);
+    auto wordSlot = X86Opnd(64, wspReg, 8 * argSlot, 8, idxReg64.reg);
+    as.mov(scrRegs[1].opnd(64), wordSlot);
+    as.mov(opndOut, scrRegs[1].opnd(64));
 
     // Copy the type value
-    auto typeSlot = new X86Mem(8, tspReg, argSlot * 1, idxReg64, 1);
-    ctx.as.instr(MOV, scrRegs8[1], typeSlot);
-    st.setOutType(ctx.as, instr, scrRegs8[1]);
+    auto typeSlot = X86Opnd(8, tspReg, 1 * argSlot, 1, idxReg64.reg);
+    as.mov(scrRegs[1].opnd(8), typeSlot);
+    st.setOutType(as, instr, scrRegs[1].reg(8));
 }
 
-void gen_set_str(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_set_str(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     auto linkVal = cast(IRLinkIdx)instr.getArg(1);
     assert (linkVal !is null);
-    auto linkIdx = linkVal.linkIdx;
 
-    assert (
-        linkIdx !is NULL_LINK,
-        "link not allocated for set_str"
-    );
+    if (linkVal.linkIdx is NULL_LINK)
+    {
+        auto vm = st.callCtx.vm;
 
-    ctx.as.getMember!("Interp", "wLinkTable")(scrRegs64[0], interpReg);
-    ctx.as.instr(MOV, scrRegs64[0], new X86Mem(64, scrRegs64[0], 8 * linkIdx));
+        // Find the string in the string table
+        auto strArg = cast(IRString)instr.getArg(0);
+        assert (strArg !is null);
+        auto strPtr = getString(vm, strArg.str);
 
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, outOpnd, scrRegs64[0]);
-    st.setOutType(ctx.as, instr, Type.REFPTR);
+        // Allocate a link table entry
+        linkVal.linkIdx = vm.allocLink();
+
+        vm.setLinkWord(linkVal.linkIdx, Word.ptrv(strPtr));
+        vm.setLinkType(linkVal.linkIdx, Type.REFPTR);
+    }
+
+    as.getMember!("VM.wLinkTable")(scrRegs[0], vmReg);
+    as.mov(scrRegs[0].opnd(64), X86Opnd(64, scrRegs[0], 8 * linkVal.linkIdx));
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, scrRegs[0].opnd(64));
+
+    st.setOutType(as, instr, Type.REFPTR);
 }
 
-void gen_make_value(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_make_value(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // Move the word value into the output word
-    auto wordOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0], true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    ctx.as.instr(MOV, opndOut, wordOpnd);
+    auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, wordOpnd);
 
     // Get the type value from the second operand
-    auto typeOpnd = st.getWordOpnd(ctx, ctx.as, instr, 1, 8, scrRegs8[0]);
-    st.setOutType(ctx.as, instr, cast(X86Reg)typeOpnd);
+    auto typeOpnd = st.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
+    assert (typeOpnd.isGPR);
+    st.setOutType(as, instr, typeOpnd.reg);
 }
 
-void gen_get_word(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_get_word(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto wordOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0], true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    ctx.as.instr(MOV, opndOut, wordOpnd);
+    as.mov(outOpnd, wordOpnd);
 
-    st.setOutType(ctx.as, instr, Type.INT64);
+    st.setOutType(as, instr, Type.INT64);
 }
 
-void gen_get_type(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_get_type(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0, scrRegs8[0], true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    auto typeOpnd = st.getTypeOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    if (cast(X86Imm)typeOpnd)
+    if (typeOpnd.isImm)
     {
-        ctx.as.instr(MOV, opndOut, typeOpnd);
+        as.mov(outOpnd, typeOpnd);
     }
-    else if (cast(X86Reg)opndOut)
+    else if (outOpnd.isGPR)
     {
-        ctx.as.instr(MOVZX, opndOut, typeOpnd);
+        as.movzx(outOpnd, typeOpnd);
     }
     else
     {
-        ctx.as.instr(MOVZX, scrRegs32[0], typeOpnd);
-        ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+        as.movzx(scrRegs[0].opnd(32), typeOpnd);
+        as.mov(outOpnd, scrRegs[0].opnd(32));
     }
 
-    st.setOutType(ctx.as, instr, Type.INT32);
+    st.setOutType(as, instr, Type.INT32);
 }
 
-void gen_i32_to_f64(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_i32_to_f64(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 32, scrRegs32[0], false, false);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), false, false);
+    assert (opnd0.isReg);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Sign-extend the 32-bit integer to 64-bit
-    ctx.as.instr(MOVSXD, scrRegs64[1], opnd0);
+    as.movsx(scrRegs[1].opnd(64), opnd0);
 
-    ctx.as.instr(CVTSI2SD, XMM0, opnd0);
+    as.cvtsi2sd(X86Opnd(XMM0), opnd0);
 
-    ctx.as.instr(MOVQ, opndOut, XMM0);
-    st.setOutType(ctx.as, instr, Type.FLOAT64);
+    as.movq(outOpnd, X86Opnd(XMM0));
+    st.setOutType(as, instr, Type.FLOAT64);
 }
 
-void gen_f64_to_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_f64_to_i32(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto opndReg = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0, false, false);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd(XMM0), false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    if (opndReg.type !is X86Reg.XMM)
-        ctx.as.instr(MOVQ, XMM0, opndReg);
+    if (!opnd0.isXMM)
+        as.movq(X86Opnd(XMM0), opnd0);
 
     // Cast to int64 and truncate to int32 (to match JS semantics)
-    ctx.as.instr(CVTSD2SI, scrRegs64[0], XMM0);
-    ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+    as.cvttsd2si(scrRegs[0].opnd(64), X86Opnd(XMM0));
+    as.mov(outOpnd, scrRegs[0].opnd(32));
 
-    st.setOutType(ctx.as, instr, Type.INT32);
+    st.setOutType(as, instr, Type.INT32);
 }
 
-void RMMOp(string op, size_t numBits, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void RMMOp(string op, size_t numBits, Type typeTag)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // Should be mem or reg
     auto opnd0 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as, 
         instr, 
         0, 
         numBits, 
-        scrRegs64[0].ofSize(numBits),
+        scrRegs[0].opnd(numBits),
         false
     );
 
     // May be reg or immediate
     auto opnd1 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as, 
         instr, 
         1, 
         numBits,
-        scrRegs64[1].ofSize(numBits),
+        scrRegs[1].opnd(numBits),
         true
     );
 
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, numBits);
+    auto opndOut = st.getOutOpnd(as, instr, numBits);
 
-    X86OpPtr opPtr = null;
-    static if (op == "add")
-        opPtr = ADD;
-    static if (op == "sub")
-        opPtr = SUB;
-    static if (op == "imul")
-        opPtr = IMUL;
-    static if (op == "and")
-        opPtr = AND;
-    static if (op == "or")
-        opPtr = OR;
-    static if (op == "xor")
-        opPtr = XOR;
-    assert (opPtr !is null);
-
-    if (opPtr == IMUL)
+    if (op == "imul")
     {
-        // IMUL does not support memory operands as output
-        auto scrReg = scrRegs64[2].ofSize(numBits);
-        ctx.as.instr(MOV, scrReg, opnd1);
-        ctx.as.instr(opPtr, scrReg, opnd0);
-        ctx.as.instr(MOV, opndOut, scrReg);
+        // imul does not support memory operands as output
+        auto scrReg = scrRegs[2].opnd(numBits);
+        as.mov(scrReg, opnd1);
+        mixin(format("as.%s(scrReg, opnd0);", op));
+        as.mov(opndOut, scrReg);
     }
     else
     {
         if (opnd0 == opndOut)
         {
-            ctx.as.instr(opPtr, opndOut, opnd1);
+            mixin(format("as.%s(opndOut, opnd1);", op));
         }
         else if (opnd1 == opndOut)
         {
-            ctx.as.instr(opPtr, opndOut, opnd0);
+            mixin(format("as.%s(opndOut, opnd0);", op));
         }
         else
         {
             // Neither input operand is the output
-            ctx.as.instr(MOV, opndOut, opnd0);
-            ctx.as.instr(opPtr, opndOut, opnd1);
+            as.mov(opndOut, opnd0);
+            mixin(format("as.%s(opndOut, opnd1);", op));
         }
     }
+
+    // Set the output type
+    st.setOutType(as, instr, typeTag);
 
     // If the instruction has an exception/overflow target
     if (instr.getTarget(0))
     {
-        auto overLabel = new Label("ADD_OVER");
-        auto contLabel = new Label("ADD_CONT");
+        auto branchNO = getBranchEdge(as, instr.getTarget(0), st, false);
+        auto branchOV = getBranchEdge(as, instr.getTarget(1), st, false);
 
-        // On overflow, jump to the overflow target
-        ctx.as.instr(JO, overLabel);
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchNO,
+            branchOV,
+            BranchShape.DEFAULT,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                jno32Ref(as, vm, target0);
+                jmp32Ref(as, vm, target1);
+            }
+        );
 
-        // Set the output type
-        st.setOutType(ctx.as, instr, typeTag);
-
-        // Jump to the normal path
-        ctx.as.instr(JMP, contLabel);
-
-        // Get the fast target label last so the fast target is
-        // more likely to get generated first (LIFO stack)
-        ctx.genBranchEdge(ctx.ol, overLabel, instr.getTarget(1), st);
-        ctx.genBranchEdge(ctx.as, contLabel, instr.getTarget(0), st);
-    }
-    else
-    {
-        // Set the output type
-        st.setOutType(ctx.as, instr, typeTag);
+        // Generate the edge code
+        branchNO.genCode(as, st);
+        branchOV.genCode(as, st);
     }
 }
 
 alias RMMOp!("add" , 32, Type.INT32) gen_add_i32;
+alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
 alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
 alias RMMOp!("or"  , 32, Type.INT32) gen_or_i32;
@@ -283,111 +341,141 @@ alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
 alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
-void gen_mod_i32(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void divOp(string op)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, null, true);
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[2], false, true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[2].opnd(32), false, true);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
     // Save RDX
-    ctx.as.instr(MOV, scrRegs64[1], RDX);
-    if (opnd1 == EDX)
-        opnd1 = scrRegs32[1];
+    as.mov(scrRegs[1].opnd(64), X86Opnd(RDX));
+    if (opnd1.isReg && opnd1.reg == EDX)
+        opnd1 = scrRegs[1].opnd(32);
 
     // Move the dividend into EAX
-    ctx.as.instr(MOV, EAX, opnd0);
+    as.mov(X86Opnd(EAX), opnd0);
 
     // Sign-extend EAX into EDX:EAX
-    ctx.as.instr(CDQ);
+    as.cdq();
 
     // Signed divide/quotient EDX:EAX by r/m32
-    ctx.as.instr(IDIV, opnd1);
+    as.idiv(opnd1);
 
-    if (opndOut != EDX)
+    if (!outOpnd.isReg || outOpnd.reg != EDX)
     {
-        // Store the remainder into the output operand
-        ctx.as.instr(MOV, opndOut, EDX);
+        // Store the divisor or remainder into the output operand
+        static if (op == "div")
+            as.mov(outOpnd, X86Opnd(EAX));
+        else if (op == "mod")
+            as.mov(outOpnd, X86Opnd(EDX));
+        else
+            assert (false);
 
         // Restore RDX
-        ctx.as.instr(MOV, RDX, scrRegs64[1]);
+        as.mov(X86Opnd(RDX), scrRegs[1].opnd(64));
     }
 
     // Set the output type
-    st.setOutType(ctx.as, instr, Type.INT32);
-
-    /*
-    writeln();
-    writeln(instr.block);
-    writeln("opnd0: ", opnd0);
-    writeln("opnd1: ", opnd1);
-    writeln();
-    ctx.as.printTail(10);
-    */
+    st.setOutType(as, instr, Type.INT32);
 }
 
-void ShiftOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+alias divOp!("div") gen_div_i32;
+alias divOp!("mod") gen_mod_i32;
+
+void gen_not_i32(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto opnd0 = st.getWordOpnd(ctx, ctx.as, instr, 0, 32, null, true);
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 8, null, true);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 32);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), true);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    X86OpPtr opPtr = null;
-    static if (op == "sal")
-        opPtr = SAL;
-    static if (op == "sar")
-        opPtr = SAR;
-    assert (opPtr !is null);
-
-    // Save RCX
-    ctx.as.instr(MOV, scrRegs64[1], RCX);
-
-    ctx.as.instr(MOV, scrRegs32[0], opnd0);
-    ctx.as.instr(MOV, CL, opnd1);
-
-    ctx.as.instr(opPtr, scrRegs32[0], CL);
-
-    // Restore RCX
-    ctx.as.instr(MOV, RCX, scrRegs64[1]);
-
-    ctx.as.instr(MOV, opndOut, scrRegs32[0]);
+    as.mov(outOpnd, opnd0);
+    as.not(outOpnd);
 
     // Set the output type
-    st.setOutType(ctx.as, instr, Type.INT32);
+    st.setOutType(as, instr, Type.INT32);
+}
+
+void ShiftOp(string op)(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 8, X86Opnd.NONE, true);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
+
+    // Save RCX
+    as.mov(scrRegs[1].opnd(64), X86Opnd(RCX));
+
+    as.mov(scrRegs[0].opnd(32), opnd0);
+    as.mov(X86Opnd(CL), opnd1);
+
+    static if (op == "sal")
+        as.sal(scrRegs[0].opnd(32), X86Opnd(CL));
+    else if (op == "sar")
+        as.sar(scrRegs[0].opnd(32), X86Opnd(CL));
+    else if (op == "shr")
+        as.shr(scrRegs[0].opnd(32), X86Opnd(CL));
+    else
+        assert (false);
+
+    // Restore RCX
+    as.mov(X86Opnd(RCX), scrRegs[1].opnd(64));
+
+    as.mov(outOpnd, scrRegs[0].opnd(32));
+
+    // Set the output type
+    st.setOutType(as, instr, Type.INT32);
 }
 
 alias ShiftOp!("sal") gen_lsft_i32;
 alias ShiftOp!("sar") gen_rsft_i32;
+alias ShiftOp!("shr") gen_ursft_i32;
 
-void FPOp(string op)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void FPOp(string op)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    X86Reg opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, XMM0);
-    X86Reg opnd1 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 1, 64, XMM1);
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    X86Opnd opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd(XMM0));
+    X86Opnd opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd(XMM1));
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    assert (opnd0 && opnd1);
+    assert (opnd0.isReg && opnd1.isReg);
 
-    if (opnd0.type == X86Reg.GP)
-        ctx.as.instr(MOVQ, XMM0, opnd0);
-    if (opnd1.type == X86Reg.GP)
-        ctx.as.instr(MOVQ, XMM1, opnd1);
+    if (opnd0.isGPR)
+        as.movq(X86Opnd(XMM0), opnd0);
+    if (opnd1.isGPR)
+        as.movq(X86Opnd(XMM1), opnd1);
 
-    X86OpPtr opPtr = null;
     static if (op == "add")
-        opPtr = ADDSD;
-    static if (op == "sub")
-        opPtr = SUBSD;
-    static if (op == "mul")
-        opPtr = MULSD;
-    static if (op == "div")
-        opPtr = DIVSD;
-    assert (opPtr !is null);
+        as.addsd(X86Opnd(XMM0), X86Opnd(XMM1));
+    else if (op == "sub")
+        as.subsd(X86Opnd(XMM0), X86Opnd(XMM1));
+    else if (op == "mul")
+        as.mulsd(X86Opnd(XMM0), X86Opnd(XMM1));
+    else if (op == "div")
+        as.divsd(X86Opnd(XMM0), X86Opnd(XMM1));
+    else
+        assert (false);
 
-    ctx.as.instr(opPtr, XMM0, XMM1);
-
-    ctx.as.instr(cast(X86Reg)opndOut? MOVQ:MOVSD, opndOut, XMM0);
+    as.movq(outOpnd, X86Opnd(XMM0));
 
     // Set the output type
-    st.setOutType(ctx.as, instr, Type.FLOAT64);
+    st.setOutType(as, instr, Type.FLOAT64);
 }
 
 alias FPOp!("add") gen_add_f64;
@@ -395,59 +483,155 @@ alias FPOp!("sub") gen_sub_f64;
 alias FPOp!("mul") gen_mul_f64;
 alias FPOp!("div") gen_div_f64;
 
-void LoadOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void HostFPOp(alias cFPFun, size_t arity = 1)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // TODO: this won't GC, but spill C caller-save registers
+
+    assert (arity is 1 || arity is 2);
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    as.movq(X86Opnd(XMM0), opnd0);
+
+    static if (arity is 2)
+    {
+        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+        as.movq(X86Opnd(XMM1), opnd1);
+    }
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the host function
+    as.ptr(scrRegs[0], &cFPFun);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.movq(outOpnd, X86Opnd(XMM0));
+
+    st.setOutType(as, instr, Type.FLOAT64);
+}
+
+alias HostFPOp!(std.c.math.sin) gen_sin_f64;
+alias HostFPOp!(std.c.math.cos) gen_cos_f64;
+alias HostFPOp!(std.c.math.sqrt) gen_sqrt_f64;
+alias HostFPOp!(std.c.math.ceil) gen_ceil_f64;
+alias HostFPOp!(std.c.math.floor) gen_floor_f64;
+alias HostFPOp!(std.c.math.log) gen_log_f64;
+alias HostFPOp!(std.c.math.exp) gen_exp_f64;
+alias HostFPOp!(std.c.math.pow, 2) gen_pow_f64;
+alias HostFPOp!(std.c.math.fmod, 2) gen_mod_f64;
+
+void FPToStr(string fmt)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr toStrFn(CallCtx callCtx, double f)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        auto str = getString(vm, to!wstring(format(fmt, f)));
+
+        vm.setCallCtx(null);
+
+        return str;
+    }
+
+    // TODO: spill all for GC
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the host function
+    as.ptr(cargRegs[0], st.callCtx);
+    as.movq(X86Opnd(XMM0), opnd0);
+    as.ptr(scrRegs[0], &toStrFn);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+alias FPToStr!("%G") gen_f64_to_str;
+alias FPToStr!(format("%%.%sf", float64.dig)) gen_f64_to_str_lng;
+
+void LoadOp(size_t memSize, Type typeTag)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // The pointer operand must be a register
-    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    assert (opnd0.isGPR);
 
     // The offset operand may be a register or an immediate
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[1], true);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Create the memory operand
-    X86Mem memOpnd;
-    if (auto immOffs = cast(X86Imm)opnd1)
+    X86Opnd memOpnd;
+    if (opnd1.isImm)
     {
-        memOpnd = new X86Mem(memSize, opnd0, cast(int32_t)immOffs.imm);
+        memOpnd = X86Opnd(memSize, opnd0.reg, cast(int32_t)opnd1.imm.imm);
     }
-    else if (auto regOffs = cast(X86Reg)opnd1)
+    else if (opnd1.isGPR)
     {
         // Zero-extend the offset from 32 to 64 bits
-        ctx.as.instr(MOV, regOffs, regOffs);
-        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.ofSize(64));
+        as.mov(opnd1, opnd1);
+        memOpnd = X86Opnd(memSize, opnd0.reg, 0, 1, opnd1.reg.reg(64));
     }
     else
     {
         assert (false, "invalid offset operand");
     }
 
-    // Select which load opcode to use
-    X86OpPtr loadOp;
-    static if (memSize == 8 || memSize == 16)
-        loadOp = MOVZX;
-    else
-        loadOp = MOV;
-
     // If the output operand is a memory location
-    if (cast(X86Mem)opndOut || memSize == 32)    
+    if (outOpnd.isMem || memSize == 32)    
     {
-        uint16_t scrSize = (memSize == 32)? 32:64;
-        auto scrReg64 = scrRegs64[2];
-        auto scrReg = new X86Reg(X86Reg.GP, scrReg64.regNo, scrSize);
+        size_t scrSize = (memSize == 32)? 32:64;
+        auto scrReg64 = scrRegs[2].opnd(64);
+        auto scrReg = X86Opnd(X86Reg(X86Reg.GP, scrReg64.reg.regNo, scrSize));
 
         // Load to a scratch register and then move to the output
-        ctx.as.instr(loadOp, scrReg, memOpnd);
-        ctx.as.instr(MOV, opndOut, scrReg64);
+        static if (memSize == 8 || memSize == 16)
+            as.movzx(scrReg64, memOpnd);
+        else
+            as.mov(scrReg, memOpnd);
+
+        as.mov(outOpnd, scrReg64);
     }
     else
     {
         // Load to the output register directly
-        ctx.as.instr(loadOp, opndOut, memOpnd);
+        static if (memSize == 8 || memSize == 16)
+            as.movzx(outOpnd, memOpnd);
+        else
+            as.mov(outOpnd, memOpnd);
     }
 
     // Set the output type tag
-    st.setOutType(ctx.as, instr, typeTag);
+    st.setOutType(as, instr, typeTag);
 }
 
 alias LoadOp!(8 , Type.INT32) gen_load_u8;
@@ -457,29 +641,37 @@ alias LoadOp!(64, Type.INT64) gen_load_u64;
 alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
 alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
+alias LoadOp!(64, Type.FUNPTR) gen_load_funptr;
+alias LoadOp!(64, Type.MAPPTR) gen_load_mapptr;
 
-void StoreOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void StoreOp(size_t memSize, Type typeTag)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // The pointer operand must be a register
-    auto opnd0 = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    assert (opnd0.isGPR);
 
     // The offset operand may be a register or an immediate
-    auto opnd1 = st.getWordOpnd(ctx, ctx.as, instr, 1, 32, scrRegs32[1], true);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
     // The value operand may be a register or an immediate
-    auto opnd2 = st.getWordOpnd(ctx, ctx.as, instr, 2, memSize, scrRegs64[2].ofSize(memSize), true);
+    auto opnd2 = st.getWordOpnd(as, instr, 2, memSize, scrRegs[2].opnd(memSize), true);
 
     // Create the memory operand
-    X86Mem memOpnd;
-    if (auto immOffs = cast(X86Imm)opnd1)
+    X86Opnd memOpnd;
+    if (opnd1.isImm)
     {
-        memOpnd = new X86Mem(memSize, opnd0, cast(int32_t)immOffs.imm);
+        memOpnd = X86Opnd(memSize, opnd0.reg, cast(int32_t)opnd1.imm.imm);
     }
-    else if (auto regOffs = cast(X86Reg)opnd1)
+    else if (opnd1.isGPR)
     {
         // Zero-extend the offset from 32 to 64 bits
-        ctx.as.instr(MOV, regOffs, regOffs);
-        memOpnd = new X86Mem(memSize, opnd0, 0, regOffs.ofSize(64));
+        as.mov(opnd1, opnd1);
+        memOpnd = X86Opnd(memSize, opnd0.reg, 0, 1, opnd1.reg.reg(64));
     }
     else
     {
@@ -487,371 +679,20 @@ void StoreOp(size_t memSize, Type typeTag)(CodeGenCtx ctx, CodeGenState st, IRIn
     }
 
     // Store the value into the memory location
-    ctx.as.instr(MOV, memOpnd, opnd2);
+    as.mov(memOpnd, opnd2);
 }
 
 alias StoreOp!(8 , Type.INT32) gen_store_u8;
 alias StoreOp!(16, Type.INT32) gen_store_u16;
 alias StoreOp!(32, Type.INT32) gen_store_u32;
 alias StoreOp!(64, Type.INT64) gen_store_u64;
+alias StoreOp!(8 , Type.INT32) gen_store_i8;
+alias StoreOp!(16, Type.INT32) gen_store_i16;
 alias StoreOp!(64, Type.FLOAT64) gen_store_f64;
 alias StoreOp!(64, Type.REFPTR) gen_store_refptr;
 alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
-
-void gen_get_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto interp = ctx.interp;
-
-    // Cached property index
-    auto idxArg = cast(IRCachedIdx)instr.getArg(1);
-    assert (idxArg !is null);
-    auto propIdx = idxArg.idx;
-
-    // If no property index is cached, use the interpreter function
-    if (propIdx is idxArg.idx.max)
-    {
-        defaultFn(ctx.as, ctx, st, instr);
-        return;
-    }
-
-    // Allocate the output operand
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
-    // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(scrRegs64[0], interpReg);
-
-    // Get the global object size/capacity
-    ctx.as.getField(scrRegs32[1], scrRegs64[0], 4, obj_ofs_cap(interp.globalObj));
-
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
-
-    // Get the word value from the object
-    auto wordMem = new X86Mem(64, scrRegs64[0], wordOfs + 8 * propIdx);
-    if (cast(X86Reg)outOpnd)
-    {
-        ctx.as.instr(MOV, outOpnd, wordMem);
-    }
-    else
-    {
-        ctx.as.instr(MOV, scrRegs64[2], wordMem);
-        ctx.as.instr(MOV, outOpnd, scrRegs64[2]);
-    }
-
-    // Get the type value from the object
-    auto typeMem = new X86Mem(8, scrRegs64[0], wordOfs + propIdx, scrRegs64[1], 8);
-    ctx.as.instr(MOV, scrRegs8[2], typeMem);
-
-    // Set the type value
-    st.setOutType(ctx.as, instr, scrRegs8[2]);
-}
-
-void gen_set_global(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    auto interp = ctx.interp;
-
-    // Cached property index
-    auto idxArg = cast(IRCachedIdx)instr.getArg(2);
-    assert (idxArg !is null);
-    auto propIdx = idxArg.idx;
-
-    // If no property index is cached, use the interpreter function
-    if (propIdx is idxArg.idx.max)
-    {
-        defaultFn(ctx.as, ctx, st, instr);
-        return;
-    }
-
-    // Allocate the input operand
-    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 1, 64, scrRegs64[0], true);
-
-    // Get the global object pointer
-    ctx.as.getMember!("Interp", "globalObj")(scrRegs64[1], interpReg);
-
-    // Get the global object size/capacity
-    ctx.as.getField(scrRegs32[2], scrRegs64[1], 4, obj_ofs_cap(interp.globalObj));
-
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(interp.globalObj, 0);
-
-    // Set the word value
-    auto wordMem = new X86Mem(64, scrRegs64[1], wordOfs + 8 * propIdx);
-    ctx.as.instr(MOV, wordMem, argOpnd);
-
-    // Set the type value
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[0], true);
-    auto typeMem = new X86Mem(8, scrRegs64[1], wordOfs + propIdx, scrRegs64[2], 8);
-    ctx.as.instr(MOV, typeMem, typeOpnd);
-}
-
-void GetValOp(string fName)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Get the output operand. This must be a 
-    // register since it's the only operand.
-    auto opndOut = cast(X86Reg)st.getOutOpnd(ctx, ctx.as, instr, 64);
-    assert (opndOut !is null, "output is not a register");
-
-    ctx.as.getMember!("Interp", fName)(opndOut, interpReg);
-
-    st.setOutType(ctx.as, instr, Type.REFPTR);
-}
-
-alias GetValOp!("objProto") gen_get_obj_proto;
-alias GetValOp!("arrProto") gen_get_arr_proto;
-alias GetValOp!("funProto") gen_get_fun_proto;
-alias GetValOp!("globalObj") gen_get_global_obj;
-
-/*
-void gen_heap_alloc(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Label for the bailout case
-    auto BAILOUT = new Label("ALLOC_BAILOUT");
-
-    // Label for the exit
-    auto DONE = new Label("ALLOC_DONE");
-
-    // Get the allocation size operand
-    auto szOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 64, null, true);
-
-    ctx.as.getMember!("Interp", "allocPtr")(scrRegs64[0], interpReg);
-    ctx.as.getMember!("Interp", "heapLimit")(scrRegs64[1], interpReg);
-
-    // r2 = allocPtr + size
-    ctx.as.instr(MOV, scrRegs64[2], scrRegs64[0]);
-    ctx.as.instr(ADD, scrRegs64[2], szOpnd);
-
-    // if (allocPtr + size > heapLimit) bailout
-    ctx.as.instr(CMP, scrRegs64[2], scrRegs64[1]);
-    ctx.as.instr(JG, BAILOUT);
-
-    // Clone the state for the bailout case, which will spill for GC
-    auto bailSt = new CodeGenState(st);
-
-    // Get the output operand
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
-    // Move the allocation pointer to the output
-    ctx.as.instr(MOV, opndOut, scrRegs64[0]);
-
-    // Align the incremented allocation pointer
-    ctx.as.instr(ADD, scrRegs64[2], 7);
-    ctx.as.instr(AND, scrRegs64[2], -8);
-
-    // Store the incremented and aligned allocation pointer
-    ctx.as.setMember!("Interp", "allocPtr")(interpReg, scrRegs64[2]);
-
-    // Allocation done
-    ctx.as.addInstr(DONE);
-
-    // The output is a reference pointer
-    st.setOutType(ctx.as, instr, Type.REFPTR);
-
-    // Bailout to the interpreter (out of line)
-    ctx.ol.addInstr(BAILOUT);
-
-    // Save our allocated registers
-    if (allocRegs.length % 2 != 0)
-        ctx.ol.instr(PUSH, allocRegs[0]);
-    foreach (reg; allocRegs)
-        ctx.ol.instr(PUSH, reg);
-
-    ctx.ol.printStr("alloc bailout ***");
-
-    // Fallback to interpreter execution
-    // Spill all values, including arguments
-    // Call the interpreter alloc instruction
-    defaultFn(ctx.ol, ctx, bailSt, instr);
-
-    //ctx.ol.printStr("alloc bailout done ***");
-
-    // Restore the allocated registers
-    foreach_reverse(reg; allocRegs)
-        ctx.ol.instr(POP, reg);
-    if (allocRegs.length % 2 != 0)
-        ctx.ol.instr(POP, allocRegs[0]);
-
-    // If the output operand is a register
-    if (cast(X86Reg)opndOut)
-    {
-        // Load the stack value into the register
-        auto stackOpnd = bailSt.getWordOpnd(instr, 64);
-        ctx.ol.instr(MOV, opndOut, stackOpnd);
-    }
-
-    // Allocation done
-    ctx.ol.instr(JMP, DONE);
-}
-*/
-
-void gen_get_link(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Get the link index operand
-    auto idxReg = cast(X86Reg)st.getWordOpnd(ctx, ctx.as, instr, 0, 64, scrRegs64[0]);
-
-    // Get the output operand
-    auto outOpnd = st.getOutOpnd(ctx, ctx.as, instr, 64);
-
-    // Read the link word
-    ctx.as.getMember!("Interp", "wLinkTable")(scrRegs64[1], interpReg);
-    auto wordMem = new X86Mem(64, scrRegs64[1], 0, idxReg, Word.sizeof);
-    ctx.as.instr(MOV, scrRegs64[1], wordMem);
-
-    // Move the link word into the output operand
-    ctx.as.instr(MOV, outOpnd, scrRegs64[1]);
-
-    // Read the link type
-    ctx.as.getMember!("Interp", "tLinkTable")(scrRegs64[1], interpReg);
-    auto typeMem = new X86Mem(8, scrRegs64[1], 0, idxReg, Type.sizeof);
-    ctx.as.instr(MOV, scrRegs8[1], typeMem);
-
-    // Set the output type
-    st.setOutType(ctx.as, instr, scrRegs8[1]);
-}
-
-/**
-Conditional jump and move descriptor
-*/
-struct CondOps
-{
-    static CondOps cmov(X86OpPtr cmovT, X86OpPtr cmovF)
-    {
-        CondOps ops;
-        ops.cmovT[0] = cmovT;
-        ops.cmovF[0] = cmovF;
-        return ops;
-    }
-
-    static CondOps jcc(X86OpPtr jccT, X86OpPtr jccF)
-    {
-        CondOps ops;
-        ops.jccT[0] = jccT;
-        ops.jccF[0] = jccF;
-        return ops;
-    }
-
-    X86OpPtr jccT[2];
-    X86OpPtr jccF[2];
-    X86OpPtr cmovT[2];
-    X86OpPtr cmovF[2];
-}
-
-/**
-Generates the conditional branch for an if_true instruction with the given
-conditional jump operations. Assumes a comparison between input operands has
-already been inserted.
-*/
-void genCondBranch(
-    CodeGenCtx ctx, 
-    IRInstr ifInstr,
-    CondOps condOps,
-    CodeGenState trueSt,
-    CodeGenState falseSt
-)
-{
-    auto trueTarget = ifInstr.getTarget(0);
-    auto falseTarget = ifInstr.getTarget(1);
-
-    auto trueLabel = new Label("IF_TRUE");
-    auto falseLabel = new Label("IF_FALSE");
-
-    // If the true branch is more often executed
-    if (trueTarget.target.execCount > falseTarget.target.execCount)
-    {
-        if (condOps.jccF[0])
-        {
-            // Jump out of line to the false case
-            foreach (jccF; condOps.jccF)
-                if (jccF) ctx.as.instr(jccF, falseLabel);
-
-            // Jump directly to the true case
-            ctx.as.instr(JMP, trueLabel);
-        }
-        else
-        {
-            // Jump conditionally to the true case
-            assert (condOps.jccF[0]);
-            foreach (jccT; condOps.jccT)
-                if (jccT) ctx.as.instr(jccT, trueLabel);
-
-            // Jump to the false case
-            ctx.as.instr(JMP, falseLabel);
-        }
-
-        // Get the fast target label last so the fast target is
-        // more likely to get generated first (LIFO stack)
-        ctx.genBranchEdge(ctx.as, falseLabel, falseTarget, falseSt);
-        ctx.genBranchEdge(ctx.as, trueLabel, trueTarget, trueSt);
-    }
-    else
-    {
-        if (condOps.jccT[0])
-        {
-            // Jump out of line to the true case
-            foreach (jccT; condOps.jccT)
-                if (jccT) ctx.as.instr(jccT, trueLabel);
-
-            // Jump directly to the false case
-            ctx.as.instr(JMP, falseLabel);
-        }
-        else
-        {
-            // Jump conditionally to the false case
-            assert (condOps.jccF[0]);
-            foreach (jccF; condOps.jccF)
-                if (jccF) ctx.as.instr(jccF, falseLabel);
-
-            // Jump to the true case
-            ctx.as.instr(JMP, trueLabel);
-        }
-
-        // Get the fast target label last so the fast target is
-        // more likely to get generated first (LIFO stack)
-        ctx.genBranchEdge(ctx.as, trueLabel, trueTarget, trueSt);
-        ctx.genBranchEdge(ctx.as, falseLabel, falseTarget, falseSt);
-    }
-}
-
-/**
-Generate a boolean output value for an instruction based
-on a preceding comparison instruction's output
-*/
-void genBoolOut(
-    CodeGenCtx ctx,
-    CodeGenState st,
-    IRInstr instr,
-    CondOps condOps,
-)
-{
-    // We must have a register for the output (so we can use cmov)
-    auto opndOut = st.getOutOpnd(ctx, ctx.as, instr, 64);
-    auto outReg = cast(X86Reg)opndOut;
-    if (outReg is null)
-        outReg = scrRegs64[0];
-    auto outReg32 = outReg.ofSize(32);
-
-    if (condOps.cmovT[0])
-    {
-        ctx.as.instr(MOV, outReg32, FALSE.int8Val);
-        ctx.as.instr(MOV, scrRegs32[1], TRUE.int8Val);
-        foreach (cmovT; condOps.cmovT)
-            if (cmovT) ctx.as.instr(cmovT, outReg32, scrRegs32[1]);
-    }
-    else
-    {
-        assert (condOps.cmovF[0]);
-        ctx.as.instr(MOV, outReg32, TRUE.int8Val);
-        ctx.as.instr(MOV, scrRegs32[1], FALSE.int8Val);
-        foreach (cmovF; condOps.cmovF)
-            if (cmovF) ctx.as.instr(cmovF, outReg32, scrRegs32[1]);
-    }
-
-    // If the output is not a register
-    if (opndOut !is outReg)
-        ctx.as.instr(MOV, opndOut, outReg);
-
-    // Set the output type
-    st.setOutType(ctx.as, instr, Type.CONST);
-}
+alias StoreOp!(64, Type.FUNPTR) gen_store_funptr;
+alias StoreOp!(64, Type.MAPPTR) gen_store_mapptr;
 
 /**
 Test if an instruction is followed by an if_true branching on its value
@@ -872,15 +713,20 @@ bool boolArgPrev(IRInstr instr)
 {
     return (
         instr.getArg(0) is instr.prev &&
-        instr.prev.opcode.boolVal &&
-        instr.prev.opcode in codeGenFns
+        instr.prev.opcode.boolVal
     );
 }
 
-void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void IsTypeOp(Type type)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     auto argVal = instr.getArg(0);
 
+    /*
     // If the type of the argument is known
     if (st.typeKnown(argVal))
     {
@@ -891,36 +737,68 @@ void IsTypeOp(Type type)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
         return;
     }
+    */
 
     //ctx.as.printStr(instr.opcode.mnem ~ " (" ~ instr.block.fun.getName ~ ")");
 
     // Increment the stat counter for this specific kind of type test
-    ctx.as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs64[0]);
+    as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs[0]);
 
     // Get an operand for the value's type
-    auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 0);
+    auto typeOpnd = st.getTypeOpnd(as, instr, 0);
 
     // Compare against the tested type
-    ctx.as.instr(CMP, typeOpnd, type);
+    as.cmp(typeOpnd, X86Opnd(type));
 
     // If this instruction has many uses or is not followed by an if
     if (instr.hasManyUses || ifUseNext(instr) is false)
     {
-        // Generate a boolean output
-        ctx.genBoolOut(st, instr, CondOps.cmov(CMOVE, CMOVNE));
+        // We must have a register for the output (so we can use cmov)
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        X86Opnd outReg = outOpnd.isReg? outOpnd.reg.opnd(32):scrRegs[0].opnd(32);
+
+        // Generate a boolean output value
+        as.mov(outReg, X86Opnd(FALSE.int8Val));
+        as.mov(scrRegs[1].opnd(32), X86Opnd(TRUE.int8Val));
+        as.cmove(outReg.reg, scrRegs[1].opnd(32));
+
+        // If the output register is not the output operand
+        if (outReg != outOpnd)
+            as.mov(outOpnd, outReg.reg.opnd(64));
+
+        // Set the output type
+        st.setOutType(as, instr, Type.CONST);
     }
 
     // If our only use is an immediately following if_true
     if (ifUseNext(instr) is true)
     {
-        // If the test is true, we now known the value's type
-        auto dstValue = cast(IRDstValue)argVal;
-        assert (dstValue !is null);
-        auto trueSt = new CodeGenState(st);
-        trueSt.setKnownType(dstValue, type);
+        // Get branch edges for the true and false branches
+        auto branchT = getBranchEdge(as, instr.next.getTarget(0), st, false);
+        auto branchF = getBranchEdge(as, instr.next.getTarget(1), st, false);
 
-        // Generate the conditional branch and targets here
-        ctx.genCondBranch(instr.next, CondOps.jcc(JE, JNE), trueSt, st);
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            BranchShape.DEFAULT,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                je32Ref(as, vm, target0);
+                jmp32Ref(as, vm, target1);
+            }
+        );
+
+        // Generate the edge code
+        branchT.genCode(as, st);
+        branchF.genCode(as, st);
     }
 }
 
@@ -931,30 +809,33 @@ alias IsTypeOp!(Type.INT32) gen_is_i32;
 alias IsTypeOp!(Type.INT64) gen_is_i64;
 alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 
-void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void CmpOp(string op, size_t numBits)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     // Check if this is a floating-point comparison
     static bool isFP = op.startsWith("f");
 
     // The first operand must be memory or register, but not immediate
     auto opnd0 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as, 
         instr, 
         0,
         numBits,
-        scrRegs64[0].ofSize(numBits),
+        scrRegs[0].opnd(numBits),
         false
     );
 
     // The second operand may be an immediate, unless FP comparison
     auto opnd1 = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as,
         instr, 
         1, 
         numBits, 
-        scrRegs64[1].ofSize(numBits),
+        scrRegs[1].opnd(numBits),
         isFP? false:true
     );
 
@@ -962,57 +843,84 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
     if (isFP)
     {
         // Move the operands into XMM registers
-        ctx.as.instr(MOVQ, XMM0, opnd0);
-        ctx.as.instr(MOVQ, XMM1, opnd1);
-        opnd0 = XMM0;
-        opnd1 = XMM1;
+        as.movq(X86Opnd(XMM0), opnd0);
+        as.movq(X86Opnd(XMM1), opnd1);
+        opnd0 = X86Opnd(XMM0);
+        opnd1 = X86Opnd(XMM1);
     }
 
-    // Conditional operations to implement the comparison
-    CondOps condOps;
+    // We must have a register for the output (so we can use cmov)
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    X86Opnd outReg = outOpnd.isReg? outOpnd.reg.opnd(32):scrRegs[0].opnd(32);
+
+    auto tmpReg = scrRegs[1].opnd(32);
+    auto trueOpnd = X86Opnd(TRUE.int8Val);
+    auto falseOpnd = X86Opnd(FALSE.int8Val);
+
+    // Generate a boolean output only if this instruction has
+    // many uses or is not followed by an if
+    bool genOutput = (instr.hasManyUses || ifUseNext(instr) is false);
 
     // Integer comparison
     static if (op == "eq")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVE;
-        condOps.jccT [0] = JE;
-        condOps.jccF [0] = JNE;
+        as.cmp(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmove(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "ne")
+    else if (op == "ne")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVNE;
-        condOps.jccT [0] = JNE;
-        condOps.jccF [0] = JE;
+        as.cmp(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovne(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "lt")
+    else if (op == "lt")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVL;
-        condOps.jccT [0] = JL;
-        condOps.jccF [0] = JGE;
+        as.cmp(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovl(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "le")
+    else if (op == "le")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVLE;
-        condOps.jccT [0] = JLE;
-        condOps.jccF [0] = JG;
+        as.cmp(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovle(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "gt")
+    else if (op == "gt")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVG;
-        condOps.jccT [0] = JG;
-        condOps.jccF [0] = JLE;
+        as.cmp(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovg(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "ge")
+    else if (op == "ge")
     {
-        ctx.as.instr(CMP, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVGE;
-        condOps.jccT [0] = JGE;
-        condOps.jccF [0] = JL;
+        as.cmp(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovge(outReg.reg, tmpReg);
+        }
     }
 
     // Floating-point comparisons
@@ -1021,67 +929,193 @@ void CmpOp(string op, size_t numBits)(CodeGenCtx ctx, CodeGenState st, IRInstr i
     // GREATER_THAN: ZF, PF, CF ← 000;
     // LESS_THAN:    ZF, PF, CF ← 001;
     // EQUAL:        ZF, PF, CF ← 100;
-    static if (op == "feq")
+    else if (op == "feq")
     {
         // feq:
         // True: 100
         // False: 111 or 000 or 001
         // False: JNE + JP
-        ctx.as.instr(UCOMISD, opnd0, opnd1);
-        condOps.cmovF = [CMOVNE, CMOVP];
-        condOps.jccF  = [JNE, JP];
+        as.ucomisd(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, trueOpnd);
+            as.mov(tmpReg, falseOpnd);
+            as.cmovne(outReg.reg, tmpReg);
+            as.cmovp(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "fne")
+    else if (op == "fne")
     {
         // fne: 
         // True: 111 or 000 or 001
         // False: 100
         // True: JNE + JP
-        ctx.as.instr(UCOMISD, opnd0, opnd1);
-        condOps.cmovT = [CMOVNE, CMOVP];
-        condOps.jccT  = [JNE, JP];
+        as.ucomisd(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovne(outReg.reg, tmpReg);
+            as.cmovp(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "flt")
+    else if (op == "flt")
     {
-        ctx.as.instr(UCOMISD, opnd1, opnd0);
-        condOps.cmovT[0] = CMOVA;
-        condOps.jccT [0] = JA;
-        condOps.jccF [0] = JNA;
+        as.ucomisd(opnd1, opnd0);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmova(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "fle")
+    else if (op == "fle")
     {
-        ctx.as.instr(UCOMISD, opnd1, opnd0);
-        condOps.cmovT[0] = CMOVAE;
-        condOps.jccT [0] = JAE;
-        condOps.jccF [0] = JNAE;
+        as.ucomisd(opnd1, opnd0);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovae(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "fgt")
+    else if (op == "fgt")
     {
-        ctx.as.instr(UCOMISD, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVA;
-        condOps.jccT [0] = JA;
-        condOps.jccF [0] = JNA;
+        as.ucomisd(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmova(outReg.reg, tmpReg);
+        }
     }
-    static if (op == "fge")
+    else if (op == "fge")
     {
-        ctx.as.instr(UCOMISD, opnd0, opnd1);
-        condOps.cmovT[0] = CMOVAE;
-        condOps.jccT [0] = JAE;
-        condOps.jccF [0] = JNAE;
+        as.ucomisd(opnd0, opnd1);
+        if (genOutput)
+        {
+            as.mov(outReg, falseOpnd);
+            as.mov(tmpReg, trueOpnd);
+            as.cmovae(outReg.reg, tmpReg);
+        }
     }
 
-    // If this instruction has many uses or is not followed by an if
-    if (instr.hasManyUses || ifUseNext(instr) is false)
+    else
     {
-        // Generate a boolean output
-        ctx.genBoolOut(st, instr, condOps);
+        assert (false);
     }
 
-    // If our only use is an immediately following if_true
+    // If we are to generate output
+    if (genOutput)
+    {
+        // If the output register is not the output operand
+        if (outReg != outOpnd)
+            as.mov(outOpnd, outReg.reg.opnd(64));
+    }
+
+    // Set the output type
+    st.setOutType(as, instr, Type.CONST);
+
+    // If there is an immediately following if_true using this value
     if (ifUseNext(instr) is true)
     {
-        // Generate the conditional branch and targets here
-        ctx.genCondBranch(instr.next, condOps, st, st);
+        // Get branch edges for the true and false branches
+        auto branchT = getBranchEdge(as, instr.next.getTarget(0), st, false);
+        auto branchF = getBranchEdge(as, instr.next.getTarget(1), st, false);
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            BranchShape.DEFAULT,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                // Integer comparison
+                static if (op == "eq")
+                {
+                    je32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+                else if (op == "ne")
+                {
+                    jne32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+                else if (op == "lt")
+                {
+                    jl32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+                else if (op == "le")
+                {
+                    jle32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+                else if (op == "gt")
+                {
+                    jg32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+                else if (op == "ge")
+                {
+                    jge32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+
+                // Floating-point comparisons
+                else if (op == "feq")
+                {
+                    // feq:
+                    // True: 100
+                    // False: 111 or 000 or 001
+                    // False: JNE + JP
+                    jne32Ref(as, vm, target1);
+                    jp32Ref(as, vm, target1);
+                    jmp32Ref(as, vm, target0);
+                }
+                else if (op == "fne")
+                {
+                    // fne: 
+                    // True: 111 or 000 or 001
+                    // False: 100
+                    // True: JNE + JP
+                    jne32Ref(as, vm, target0);
+                    jp32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+                else if (op == "flt")
+                {
+                    ja32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+                else if (op == "fle")
+                {
+                    jae32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+                else if (op == "fgt")
+                {
+                    ja32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+                else if (op == "fge")
+                {
+                    jae32Ref(as, vm, target0);
+                    jmp32Ref(as, vm, target1);
+                }
+            }
+        );
+
+        // Generate the edge code
+        branchT.genCode(as, st);
+        branchF.genCode(as, st);
     }
 }
 
@@ -1097,6 +1131,7 @@ alias CmpOp!("ne", 8) gen_ne_const;
 alias CmpOp!("eq", 64) gen_eq_refptr;
 alias CmpOp!("ne", 64) gen_ne_refptr;
 alias CmpOp!("eq", 64) gen_eq_rawptr;
+alias CmpOp!("ne", 64) gen_ne_rawptr;
 alias CmpOp!("feq", 64) gen_eq_f64;
 alias CmpOp!("fne", 64) gen_ne_f64;
 alias CmpOp!("flt", 64) gen_lt_f64;
@@ -1104,10 +1139,17 @@ alias CmpOp!("fle", 64) gen_le_f64;
 alias CmpOp!("fgt", 64) gen_gt_f64;
 alias CmpOp!("fge", 64) gen_ge_f64;
 
-void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_if_true(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     auto argVal = instr.getArg(0);
 
+    // TODO
+    /*
     // If the argument is a known constant
     if (st.wordKnown(argVal))
     {
@@ -1120,6 +1162,7 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
         return;
     }
+    */
 
     // If a boolean argument immediately precedes, the
     // conditional branch has already been generated
@@ -1127,112 +1170,368 @@ void gen_if_true(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
         return;
 
     // Compare the argument to the true boolean value
-    auto argOpnd = st.getWordOpnd(ctx, ctx.as, instr, 0, 8);
-    ctx.as.instr(CMP, argOpnd, TRUE.int8Val);
+    auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
+    as.cmp(argOpnd, X86Opnd(TRUE.int8Val));
 
-    // Generate the conditional branch and targets
-    ctx.genCondBranch(instr, CondOps.jcc(JE, JNE), st, st);
-}
+    auto branchT = getBranchEdge(as, instr.getTarget(0), st, false);
+    auto branchF = getBranchEdge(as, instr.getTarget(1), st, false);
 
-void gen_if_eq_fun(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Label for the function not equal case
-    auto NOT_EQ = new Label("FUN_NOT_EQ");
-
-    // Get the type tag for the closure value
-    auto closType = st.getTypeOpnd(
-        ctx.as, 
-        instr, 
-        0, 
-        scrRegs8[0],
-        false
-    );
-
-    // If the value is not a reference, not equal
-    ctx.as.instr(CMP, closType, Type.REFPTR);
-    ctx.as.instr(JNE, NOT_EQ);
-
-    // Get the word for the closure value
-    auto closReg = cast(X86Reg)st.getWordOpnd(
-        ctx, 
-        ctx.as, 
-        instr, 
-        0,
-        64,
-        scrRegs64[0],
-        true,
-        false
-    );
-    assert (closReg !is null);
-
-    // If the object is not a closure, not equal
-    ctx.as.instr(MOV, scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
-    ctx.as.instr(CMP, scrRegs32[1], LAYOUT_CLOS);
-    ctx.as.instr(JNE, NOT_EQ);
-
-    // Get the function pointer from the closure object
-    auto fptrMem = new X86Mem(64, closReg, CLOS_OFS_FPTR);
-    ctx.as.instr(MOV, scrRegs64[1], fptrMem);
-
-    // If this is not the closure we expect, not equal
-    auto funArg = cast(IRFunPtr)instr.getArg(1);
-    assert (funArg !is null);
-    ctx.as.ptr(scrRegs64[2], funArg.fun);
-    ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
-    ctx.as.instr(JNE, NOT_EQ);
-
-    // Generate the slow branch out of line
-    ctx.genBranchEdge(ctx.ol, NOT_EQ, instr.getTarget(1), st);
-
-    // Get the fast target label last so the fast target is
-    // more likely to get generated first (LIFO stack)
-    // The equal case is generated directly inline
-    ctx.genBranchEdge(ctx.as, null, instr.getTarget(0), st);
-}
-
-void gen_jump(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Jump to the target block
-    ctx.genBranchEdge(ctx.as, null, instr.getTarget(0), st);
-}
-
-void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
-{
-    // Generate a JIT entry point for the call continuation
-    ctx.genCallCont(instr);
-
-    // Find the most called callee function
-    uint64_t maxCount = 0;
-    IRFunction maxCallee = null;
-    foreach (callee, count; ctx.fun.callCounts[instr])
-    {
-        if (count > maxCount)
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branchT,
+        branchF,
+        BranchShape.DEFAULT,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
         {
-            maxCallee = callee;
-            maxCount = count;
+            je32Ref(as, vm, target0);
+            jmp32Ref(as, vm, target1);
         }
-    }
+    );
 
-    // Get the callee function
-    auto fun = maxCallee;
-    assert (fun !is null && fun.entryBlock !is null);
+    // Generate the edge code
+    branchT.genCode(as, st);
+    branchF.genCode(as, st);
+}
 
-    // If the argument count doesn't match
-    auto numArgs = cast(int32_t)instr.numArgs - 2;
-    if (numArgs != fun.numParams)
+void gen_jump(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto branch = getBranchEdge(
+        as,
+        instr.getTarget(0),
+        st,
+        true
+    );
+
+    // Jump to the target block directly
+    ver.genBranch(
+        as,
+        branch,
+        null,
+        BranchShape.DEFAULT,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            jmp32Ref(as, vm, target0);
+        }
+    );
+
+    // Generate the branch edge code
+    branch.genCode(as, st);
+}
+
+/**
+Throw an exception and unwind the stack when one calls a non-function.
+Returns a pointer to an exception handler.
+*/
+extern (C) CodePtr throwCallExc(
+    CallCtx callCtx,
+    IRInstr instr, 
+    BranchCode excHandler
+)
+{
+    return throwError(
+        callCtx.vm,
+        callCtx,
+        instr,
+        excHandler,
+        "TypeError",
+        "call to non-function"
+    );
+}
+
+/**
+Generate the final branch and exception handler for a call instruction
+*/
+void genCallBranch(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as,
+    BranchGenFn genFn,
+    bool mayThrow
+)
+{
+    auto vm = st.callCtx.vm;
+
+    // Request a branch object for the continuation
+    auto contBranch = getBranchEdge(
+        as,
+        instr.getTarget(0),
+        st,
+        false
+    );
+
+    // Create the continuation branch object
+    BranchCode excBranch;
+    if (instr.getTarget(1))
     {
-        ctx.as.incStatCnt(&stats.numCallBailouts, scrRegs64[0]);
-
-        // Call the interpreter call instruction
-        defaultFn(ctx.as, ctx, st, instr);
-        return;
+        excBranch = getBranchEdge(
+            as,
+            instr.getTarget(1),
+            st,
+            false
+        );
     }
 
-    // Save the current state before any values are spilled
-    auto entrySt = new CodeGenState(st);
+    // If the call may throw an exception
+    if (mayThrow)
+    {
+        as.jmp(Label.SKIP);
 
-    // Label for the bailout to interpreter cases
-    auto BAILOUT = new Label("CALL_BAILOUT");
+        as.label(Label.THROW);
+
+        as.pushJITRegs();
+
+        // Throw the call exception, unwind the stack,
+        // find the topmost exception handler
+        as.ptr(cargRegs[0], st.callCtx);
+        as.ptr(cargRegs[1], instr);
+        as.ptr(cargRegs[2], excBranch);
+        as.ptr(scrRegs[0], &throwCallExc);
+        as.call(scrRegs[0].opnd);
+
+        as.popJITRegs();
+
+        // Jump to the exception handler
+        as.jmp(X86Opnd(RAX));
+
+        as.label(Label.SKIP);
+    }
+
+    // Generate the call branch code
+    ver.genBranch(
+        as,
+        contBranch,
+        excBranch,
+        BranchShape.DEFAULT,
+        genFn
+    );
+
+    //writeln("call block length: ", ver.length);
+
+    // Add the return value move code to the continuation branch
+    contBranch.markStart(as);
+    as.setWord(instr.outSlot, retWordReg.opnd(64));
+    as.setType(instr.outSlot, retTypeReg.opnd(8));
+
+    // Generate the continuation branch edge code
+    contBranch.genCode(as, st);
+
+    // Add the exception value move code to the exception branch
+    if (excBranch)
+    {
+        excBranch.markStart(as);
+        as.add(tspReg, Type.sizeof);
+        as.add(wspReg, Word.sizeof);
+        as.getWord(scrRegs[0], -1);
+        as.setWord(instr.outSlot, scrRegs[0].opnd(64));
+        as.getType(scrRegs[0].reg(8), -1);
+        as.setType(instr.outSlot, scrRegs[0].opnd(8));
+        excBranch.genCode(as, st);
+    }
+
+    // Set the return address entry for this call
+    vm.setRetEntry(instr, st.callCtx, contBranch, excBranch);
+}
+
+void gen_call_prim(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    as.incStatCnt(&stats.numCallPrim, scrRegs[0]);
+
+
+
+    // TODO: use non-inline counter, messing with the i-cache is bad
+    /*
+    as.lea(scrRegs[0], X86Mem(32, RIP, 2));
+    as.jmp8(4);
+    as.writeInt(0, 32);
+
+    auto cntMem = X86Opnd(32, scrRegs[0]);
+    
+    //as.mov(scrRegs[1].opnd(32), cntMem);
+    //as.inc(scrRegs[1].opnd(32));
+    //as.mov(cntMem, scrRegs[1].opnd(32));
+    as.mov(cntMem, X86Opnd(5));
+
+    //as.inc(cntMem);
+    //as.cmp(cntMem, X86Opnd(5000));
+    //as.jne(Label.FALSE);
+    //as.label(Label.FALSE);
+    */
+
+
+
+
+
+    auto vm = st.callCtx.vm;
+
+    // Function name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Get the primitve function from the global object
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
+    assert (globalMap !is null);
+    auto propIdx = globalMap.getPropIdx(nameStr, true);
+    assert (propIdx !is uint32_t.max);
+    assert (propIdx < obj_get_cap(vm.globalObj));
+    auto closPtr = cast(refptr)obj_get_word(vm.globalObj, propIdx);
+    assert (refIsLayout(closPtr, LAYOUT_CLOS));
+    auto fun = getClosFun(closPtr);
+
+    // Check that the argument count matches
+    auto numArgs = cast(int32_t)instr.numArgs - 2;
+    assert (numArgs is fun.numParams);
+
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+    {
+        //writeln("compiling");
+        //writeln(core.memory.GC.addrOf(cast(void*)fun.ast));
+        astToIR(fun.ast, fun);
+    }
+
+    // Copy the function arguments in reverse order
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        auto instrArgIdx = instr.numArgs - (1+i);
+        auto dstIdx = -(cast(int32_t)i + 1);
+
+        // Copy the argument word
+        auto argOpnd = st.getWordOpnd(
+            as, 
+            instr, 
+            instrArgIdx,
+            64,
+            scrRegs[1].opnd(64),
+            true,
+            false
+        );
+        as.setWord(dstIdx, argOpnd);
+
+        // Copy the argument type
+        auto typeOpnd = st.getTypeOpnd(
+            as, 
+            instr, 
+            instrArgIdx, 
+            scrRegs[1].opnd(8), 
+            true
+        );
+        as.setType(dstIdx, typeOpnd);
+    }
+
+    // Write the argument count
+    as.setWord(-numArgs - 1, numArgs);
+    as.setType(-numArgs - 1, Type.INT32);
+
+    // Set the "this" argument to null
+    as.setWord(-numArgs - 2, NULL.int32Val);
+    as.setType(-numArgs - 2, Type.REFPTR);
+
+    // Set the closure argument to null
+    as.setWord(-numArgs - 3, NULL.int32Val);
+    as.setType(-numArgs - 3, Type.REFPTR);
+
+    // TODO
+    /*
+    // Spill the values that are live after the call
+    st.spillRegs(
+        ctx.as,
+        delegate bool(IRDstValue val)
+        {
+            return ctx.liveInfo.liveAfter(val, instr);
+        }
+    );
+    */
+
+    // Push space for the callee arguments and locals
+    as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
+    as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
+
+    // Request an instance for the function entry block
+    auto entryVer = getBlockVersion(
+        fun.entryBlock, 
+        new CodeGenState(fun.getCtx(false, vm)),
+        true
+    );
+
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            // Get the return address slot of the callee
+            auto raSlot = entryVer.block.fun.raVal.outSlot;
+            assert (raSlot !is NULL_LOCAL);
+
+            // Write the return address on the stack
+            as.movAbsRef(vm, scrRegs[0], target0);
+            as.setWord(raSlot, scrRegs[0].opnd(64));
+            as.setType(raSlot, Type.RETADDR);
+
+            // Jump to the function entry block
+            jmp32Ref(as, vm, entryVer);
+        },
+        false
+    );
+}
+
+void gen_call(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    as.incStatCnt(&stats.numCall, scrRegs[0]);
+
+    // TODO: just steal an allocatable reg to use as an extra temporary
+    // force its contents to be spilled if necessary
+    // maybe add State.freeReg method
+    auto scrReg3 = allocRegs[$-1];
+
+    // TODO : save the state before spilling?
+    // TODO
+    /*
+    // Spill the values that are live after the call
+    st.spillRegs(
+        ctx.as,
+        delegate bool(IRDstValue val)
+        {
+            return ctx.liveInfo.liveAfter(val, instr);
+        }
+    );
+    */
 
     //
     // Function pointer extraction
@@ -1240,558 +1539,2125 @@ void gen_call(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
 
     // Get the type tag for the closure value
     auto closType = st.getTypeOpnd(
-        ctx.as, 
+        as,
         instr, 
         0, 
-        scrRegs8[0],
+        scrRegs[0].opnd(8),
         false
     );
 
-    // If the value is not a reference, bailout to the interpreter
-    ctx.as.instr(CMP, closType, Type.REFPTR);
-    ctx.as.instr(JNE, BAILOUT);
+    // If the value is not a reference, bailout
+    as.cmp(closType, X86Opnd(Type.REFPTR));
+    as.jne(Label.THROW);
 
     // Get the word for the closure value
-    auto closReg = cast(X86Reg)st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+    auto closReg = st.getWordOpnd(
+        as,
         instr, 
         0,
         64,
-        scrRegs64[0],
-        true,
+        scrRegs[0].opnd(64),
+        false,
         false
     );
-    assert (closReg !is null);
+    assert (closReg.isGPR);
 
     // If the object is not a closure, bailout
-    ctx.as.instr(MOV, scrRegs32[1], new X86Mem(32, closReg, obj_ofs_header(null)));
-    ctx.as.instr(CMP, scrRegs32[1], LAYOUT_CLOS);
-    ctx.as.instr(JNE, BAILOUT);
+    as.cmp(closReg, X86Opnd(0));
+    as.je(Label.THROW);
+    as.mov(scrRegs[1].opnd(32), X86Opnd(32, closReg.reg, obj_ofs_header(null)));
+    as.cmp(scrRegs[1].opnd(32), X86Opnd(LAYOUT_CLOS));
+    as.jne(Label.THROW);
 
-    // Get the function pointer from the closure object
-    auto fptrMem = new X86Mem(64, closReg, CLOS_OFS_FPTR);
-    ctx.as.instr(MOV, scrRegs64[1], fptrMem);
+    // Get the IRFunction pointer from the closure object
+    auto fptrMem = X86Opnd(64, closReg.reg, CLOS_OFS_FPTR);
+    as.mov(scrRegs[1].opnd(64), fptrMem);
 
     //
     // Function call logic
     //
 
-    // If this is not the closure we expect, bailout to the interpreter
-    ctx.as.ptr(scrRegs64[2], fun);
-    ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
-    ctx.as.instr(JNE, BAILOUT);
+    auto numArgs = cast(uint32_t)instr.numArgs - 2;
+
+    // Compute -missingArgs = numArgs - numParams
+    // This is the negation of the number of missing arguments
+    // We use this as an offset when writing arguments to the stack
+    as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
+    as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
+    as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
+    as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
+    as.jle(Label.FALSE);
+    as.xor(scrRegs[2].opnd(32), scrRegs[2].opnd(32));
+    as.label(Label.FALSE);
+    as.movsx(scrRegs[2].opnd(64), scrRegs[2].opnd(32));
+
+    //as.printStr("missing args");
+    //as.printInt(scrRegs[2].opnd(64));
+    //as.printInt(scrRegs[2].opnd(32));
+
+    // Initialize the missing arguments, if any
+    as.mov(scrReg3.opnd(64), scrRegs[2].opnd(64));
+    as.label(Label.LOOP);
+    as.cmp(scrReg3.opnd(64), X86Opnd(0));
+    as.jge(Label.LOOP_EXIT);
+    as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.int8Val));
+    as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
+    as.add(scrReg3.opnd(64), X86Opnd(1));
+    as.jmp(Label.LOOP);
+    as.label(Label.LOOP_EXIT);
+
+    static void movArgWord(CodeBlock as, size_t argIdx, X86Opnd val)
+    {
+        as.mov(X86Opnd(64, wspReg, -8 * cast(int32_t)(argIdx+1), 8, scrRegs[2]), val);
+    }
+
+    static void movArgType(CodeBlock as, size_t argIdx, X86Opnd val)
+    {
+        as.mov(X86Opnd(8, tspReg, -1 * cast(int32_t)(argIdx+1), 1, scrRegs[2]), val);
+    }
 
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
     {
         auto instrArgIdx = instr.numArgs - (1+i);
-        auto dstIdx = -(cast(int32_t)i + 1);
 
         // Copy the argument word
         auto argOpnd = st.getWordOpnd(
-            ctx, 
-            ctx.as, 
+            as, 
             instr, 
             instrArgIdx,
             64,
-            scrRegs64[2],
+            scrReg3.opnd(64),
             true,
             false
         );
-        ctx.as.setWord(dstIdx, argOpnd);
+        movArgWord(as, i, argOpnd);
 
         // Copy the argument type
         auto typeOpnd = st.getTypeOpnd(
-            ctx.as, 
+            as, 
             instr, 
             instrArgIdx, 
-            scrRegs8[2], 
+            scrReg3.opnd(8),
             true
         );
-        ctx.as.setType(dstIdx, typeOpnd);
+        movArgType(as, i, typeOpnd);
     }
 
     // Write the argument count
-    ctx.as.setWord(-numArgs - 1, numArgs);
-    ctx.as.setType(-numArgs - 1, Type.INT32);
+    movArgWord(as, numArgs + 0, X86Opnd(numArgs));
+    movArgType(as, numArgs + 0, X86Opnd(Type.INT32));
 
-    // If the callee uses its "this" argument, write it on the stack
-    if (fun.ast.usesThis == true)
-    {
-        auto thisReg = cast(X86Reg)st.getWordOpnd(
-            ctx, 
-            ctx.as, 
-            instr, 
-            1,
-            64,
-            scrRegs64[2],
-            true,
-            false
-        );
-        assert (thisReg !is null);
-        ctx.as.setWord(-numArgs - 2, thisReg);
-
-        auto typeOpnd = st.getTypeOpnd(ctx.as, instr, 1, scrRegs8[2], true);
-        ctx.as.setType(-numArgs - 2, typeOpnd);
-    }
-
-    // If the callee uses its closure argument, write it on the stack
-    if (fun.ast.usesClos == true)
-    {
-        ctx.as.setWord(-numArgs - 3, closReg);
-        ctx.as.setType(-numArgs - 3, Type.REFPTR);
-    }
-
-    // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[2], instr);
-    ctx.as.setWord(-numArgs - 4, scrRegs64[2]);
-    ctx.as.setType(-numArgs - 4, Type.INSPTR);
-
-    // Spill the values that are live after the call
-    st.spillRegs(
-        ctx.as,
-        delegate bool(IRDstValue val)
-        {
-            return ctx.liveInfo.liveAfter(val, instr);
-        }
+    // Write the "this" argument
+    auto thisReg = st.getWordOpnd(
+        as, 
+        instr, 
+        1,
+        64,
+        scrReg3.opnd(64),
+        true,
+        false
     );
+    movArgWord(as, numArgs + 1, thisReg);
+    auto typeOpnd = st.getTypeOpnd(
+        as, 
+        instr, 
+        1, 
+        scrReg3.opnd(8),
+        true
+    );
+    movArgType(as, numArgs + 1, typeOpnd);
 
-    // Push space for the callee arguments and locals
-    ctx.as.getMember!("IRFunction", "numLocals")(scrRegs32[1], scrRegs64[1]);
-    ctx.as.instr(SUB, tspReg, scrRegs64[1]);
-    ctx.as.instr(SHL, scrRegs64[1], 3);
-    ctx.as.instr(SUB, wspReg, scrRegs64[1]);
+    // Write the closure argument
+    movArgWord(as, numArgs + 2, closReg);
+    movArgType(as, numArgs + 2, X86Opnd(Type.REFPTR));
 
-    // Label for the interpreter jump
-    auto INTERP_JUMP = new Label("INTERP_JUMP");
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            // Write the return address on the stack
+            as.movAbsRef(vm, scrRegs[0], target0);
+            movArgWord(as, numArgs + 3, scrRegs[0].opnd);
+            movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
 
-    // Get a pointer to the branch target
-    ctx.as.ptr(scrRegs64[0], fun.entryBlock);
+            // Compute the total number of locals and extra arguments
+            as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
+            as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
+            as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
+            as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
+            as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
+            as.jle(Label.FALSE2);
+            as.add(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
+            as.label(Label.FALSE2);
 
-    // If a JIT entry point exists, jump to it directly
-    ctx.as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], scrRegs64[0]);
-    ctx.as.instr(CMP, scrRegs64[1], 0);
-    ctx.as.instr(JE, INTERP_JUMP);
-    ctx.as.instr(JMP, scrRegs64[1]);
+            // Adjust the stack pointers
+            //as.printStr("pushing");
+            //as.printUint(scrRegs[0].opnd(64));
+            as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
 
-    // Make the interpreter jump to the target
-    ctx.ol.addInstr(INTERP_JUMP);
-    ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
-    ctx.ol.instr(JMP, ctx.bailLabel);
+            // Adjust the word stack pointer
+            as.shl(scrRegs[0].opnd(64), X86Opnd(3));
+            as.sub(X86Opnd(wspReg), scrRegs[0].opnd(64));
 
-    // Bailout to the interpreter (out of line)
-    ctx.ol.addInstr(BAILOUT);
-    //ctx.ol.printStr("call bailout in " ~ instr.block.fun.getName);
-
-    ctx.ol.incStatCnt(&stats.numCallBailouts, scrRegs64[0]);
-
-    // Fallback to interpreter execution
-    // Spill all values, including arguments
-    // Call the interpreter call instruction
-    defaultFn(ctx.ol, ctx, entrySt, instr);
+            // Jump to the function entry block
+            as.getMember!("IRFunction.entryCode")(scrRegs[0], scrRegs[1]);
+            as.jmp(scrRegs[0].opnd(64));
+        },
+        true
+    );
 }
 
-void gen_call_prim(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+/// JavaScript new operator (constructor call)
+void gen_call_new(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    // Generate a JIT entry point for the call continuation
-    ctx.genCallCont(instr);
+    /// Host function to allocate the "this" object
+    extern (C) refptr makeThisObj(CallCtx callCtx, refptr closPtr)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
 
-    // Get the cached function pointer
-    auto funArg = cast(IRFunPtr)instr.getArg(1);
-    assert (funArg !is null);
-    auto fun = funArg.fun;
-    assert (fun !is null);
+        // Get the function object from the closure
+        auto clos = GCRoot(vm, closPtr);
+        auto fun = getClosFun(clos.ptr);
 
-    // Check that the argument count matches
-    auto numArgs = cast(int32_t)instr.numArgs - 2;
-    assert (numArgs is fun.numParams);
+        assert (
+            fun !is null,
+            "null IRFunction pointer"
+        );
+
+        // Lookup the "prototype" property on the closure
+        auto protoObj = GCRoot(
+            vm,
+            getProp(
+                vm, 
+                clos.ptr,
+                "prototype"w
+            )
+        );
+
+        // Get the "this" object map from the closure
+        auto ctorMap = cast(ObjMap)clos_get_ctor_map(clos.ptr);
+
+        // Lazily allocate the "this" object map if it doesn't already exist
+        if (ctorMap is null)
+        {
+            ctorMap = new ObjMap(vm, 0);
+            clos_set_ctor_map(clos.ptr, cast(rawptr)ctorMap);
+        }
+
+        // Allocate the "this" object
+        auto thisObj = GCRoot(
+            vm,
+            newObj(
+                vm, 
+                ctorMap,
+                protoObj.ptr
+            )
+        );
+
+        vm.setCallCtx(null);
+
+        assert(
+            vm.inFromSpace(thisObj.ptr) && ptrValid(thisObj.ptr)
+        );
+
+        return thisObj.ptr;
+    }
+
+    // TODO: spill everything
+    // spill args in the current stack frame so that if the GC runs during
+    // makeThisObj, it will examine the args
+    // eventually, could split makeThisObj into its own instr if problematic
+
+    // TODO: just steal an allocatable reg to use as an extra temporary
+    // force its contents to be spilled if necessary
+    // maybe add State.freeReg method
+    auto scrReg3 = allocRegs[$-1];
+
+    //
+    // Function pointer extraction
+    //
+
+    // Get the type tag for the closure value
+    auto closType = st.getTypeOpnd(
+        as,
+        instr, 
+        0, 
+        scrRegs[0].opnd(8),
+        false
+    );
+
+    // If the value is not a reference, bailout
+    as.cmp(closType, X86Opnd(Type.REFPTR));
+    as.jne(Label.THROW);
+
+    // Get the word for the closure value
+    auto closReg = st.getWordOpnd(
+        as,
+        instr, 
+        0,
+        64,
+        scrRegs[0].opnd(64),
+        false,
+        false
+    );
+    assert (closReg.isGPR);
+
+    // If the object is not a closure, bailout
+    as.cmp(closReg, X86Opnd(0));
+    as.je(Label.THROW);
+    as.mov(scrRegs[1].opnd(32), X86Opnd(32, closReg.reg, obj_ofs_header(null)));
+    as.cmp(scrRegs[1].opnd(32), X86Opnd(LAYOUT_CLOS));
+    as.jne(Label.THROW);
+
+    // Get the IRFunction pointer from the closure object
+    auto fptrMem = X86Opnd(64, closReg.reg, CLOS_OFS_FPTR);
+    as.mov(scrRegs[1].opnd(64), fptrMem);
+
+    //
+    // Function call logic
+    //
+
+    auto numArgs = cast(uint32_t)instr.numArgs - 1;
+
+    //writeln(instr.toString);
+    //writeln("numArgs=", numArgs);
+
+    // Compute -missingArgs = numArgs - numParams
+    // This is the negation of the number of missing arguments
+    // We use this as an offset when writing arguments to the stack
+    as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
+    as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
+    as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
+    as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
+    as.jle(Label.FALSE);
+    as.xor(scrRegs[2].opnd(32), scrRegs[2].opnd(32));
+    as.label(Label.FALSE);
+    as.movsx(scrRegs[2].opnd(64), scrRegs[2].opnd(32));
+
+    //as.printStr("missing args");
+    //as.printInt(scrRegs[2].opnd(64));
+
+    // Initialize the missing arguments, if any
+    as.mov(scrReg3.opnd(64), scrRegs[2].opnd(64));
+    as.label(Label.LOOP);
+    as.cmp(scrReg3.opnd(64), X86Opnd(0));
+    as.jge(Label.LOOP_EXIT);
+    as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.int8Val));
+    as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
+    as.add(scrReg3.opnd(64), X86Opnd(1));
+    as.jmp(Label.LOOP);
+    as.label(Label.LOOP_EXIT);
+
+    static void movArgWord(CodeBlock as, size_t argIdx, X86Opnd val)
+    {
+        as.mov(X86Opnd(64, wspReg, -8 * cast(int32_t)(argIdx+1), 8, scrRegs[2]), val);
+    }
+
+    static void movArgType(CodeBlock as, size_t argIdx, X86Opnd val)
+    {
+        as.mov(X86Opnd(8, tspReg, -1 * cast(int32_t)(argIdx+1), 1, scrRegs[2]), val);
+    }
+
+    //
+    // "this" object allocation
+    //
+
+    as.pushJITRegs();
+    as.push(scrRegs[1]);
+    as.push(scrRegs[2]);
+
+    // Call a host function to allocate the "this" object
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd(64), closReg);
+    as.ptr(scrRegs[0], &makeThisObj);
+    as.call(scrRegs[0].opnd(64));
+
+    as.pop(scrRegs[2]);
+    as.pop(scrRegs[1]);
+    as.popJITRegs();
+
+    // Write the "this" argument
+    movArgWord(as, numArgs + 1, X86Opnd(RAX));
+    movArgType(as, numArgs + 1, X86Opnd(Type.REFPTR));
+
+    //
+    // Argument copying
+    //
+
+    // Write the argument count
+    movArgWord(as, numArgs + 0, X86Opnd(numArgs));
+    movArgType(as, numArgs + 0, X86Opnd(Type.INT32));
+
+    // Write the closure argument
+    // Note: the closure may have been moved during GC
+    closReg = st.getWordOpnd(
+        as,
+        instr, 
+        0,
+        64,
+        scrRegs[0].opnd(64),
+        false,
+        false
+    );
+    movArgWord(as, numArgs + 2, closReg);
+    movArgType(as, numArgs + 2, X86Opnd(Type.REFPTR));
 
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
     {
         auto instrArgIdx = instr.numArgs - (1+i);
-        auto dstIdx = -(cast(int32_t)i + 1);
 
         // Copy the argument word
         auto argOpnd = st.getWordOpnd(
-            ctx, 
-            ctx.as, 
+            as, 
             instr, 
             instrArgIdx,
             64,
-            scrRegs64[1],
+            scrReg3.opnd(64),
             true,
             false
         );
-        ctx.as.setWord(dstIdx, argOpnd);
+        movArgWord(as, i, argOpnd);
 
         // Copy the argument type
         auto typeOpnd = st.getTypeOpnd(
-            ctx.as, 
+            as, 
             instr, 
             instrArgIdx, 
-            scrRegs8[1], 
+            scrReg3.opnd(8),
             true
         );
-        ctx.as.setType(dstIdx, typeOpnd);
+        movArgType(as, i, typeOpnd);
     }
 
-    // Write the argument count
-    ctx.as.setWord(-numArgs - 1, numArgs);
-    ctx.as.setType(-numArgs - 1, Type.INT32);
+    //
+    // Final branch generation
+    //
 
-    // Set the "this" argument to null
-    ctx.as.setWord(-numArgs - 2, NULL.int32Val);
-    ctx.as.setType(-numArgs - 2, Type.REFPTR);
-
-    // Set the closure argument to null
-    ctx.as.setWord(-numArgs - 3, NULL.int32Val);
-    ctx.as.setType(-numArgs - 3, Type.REFPTR);
-
-    // Write the return address (caller instruction)
-    ctx.as.ptr(scrRegs64[0], instr);
-    ctx.as.setWord(-numArgs - 4, scrRegs64[0]);
-    ctx.as.setType(-numArgs - 4, Type.INSPTR);
-
-    // Spill the values that are live after the call
-    st.spillRegs(
-        ctx.as,
-        delegate bool(IRDstValue val)
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
         {
-            return ctx.liveInfo.liveAfter(val, instr);
-        }
+            // Write the return address on the stack
+            as.movAbsRef(vm, scrRegs[0], target0);
+            movArgWord(as, numArgs + 3, scrRegs[0].opnd);
+            movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
+
+            // Compute the total number of locals and extra arguments
+            as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
+            as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
+            as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
+            as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
+            as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
+            as.jle(Label.FALSE2);
+            as.add(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
+            as.label(Label.FALSE2);
+
+            // Adjust the stack pointers
+            //as.printStr("pushing");
+            //as.printUint(scrRegs[0].opnd(64));
+            as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
+            as.shl(scrRegs[0].opnd(64), X86Opnd(3));
+            as.sub(X86Opnd(wspReg), scrRegs[0].opnd(64));
+
+            // Jump to the function entry block
+            as.getMember!("IRFunction.ctorCode")(scrRegs[0], scrRegs[1]);
+            as.jmp(scrRegs[0].opnd(64));
+        },
+        true
     );
-
-    // Push space for the callee arguments and locals
-    ctx.as.ptr(scrRegs64[0], fun);
-    ctx.as.getMember!("IRFunction", "numLocals")(scrRegs32[0], scrRegs64[0]);
-    ctx.as.instr(SUB, tspReg, scrRegs64[0]);
-    ctx.as.instr(SHL, scrRegs64[0], 3);
-    ctx.as.instr(SUB, wspReg, scrRegs64[0]);
-
-    // Label for the interpreter jump
-    auto INTERP_JUMP = new Label("INTERP_JUMP");
-
-    // Get a pointer to the branch target
-    ctx.as.ptr(scrRegs64[0], fun.entryBlock);
-
-    // If a JIT entry point exists, jump to it directly
-    ctx.as.getMember!("IRBlock", "jitEntry")(scrRegs64[1], scrRegs64[0]);
-    ctx.as.instr(CMP, scrRegs64[1], 0);
-    ctx.as.instr(JE, INTERP_JUMP);
-    ctx.as.instr(JMP, scrRegs64[1]);
-
-    // Make the interpreter jump to the target
-    ctx.ol.addInstr(INTERP_JUMP);
-    ctx.ol.setMember!("Interp", "target")(interpReg, scrRegs64[0]);
-    ctx.ol.instr(JMP, ctx.bailLabel);
 }
 
-void gen_ret(CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_call_apply(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) CodePtr op_call_apply(
+        CallCtx callCtx,
+        IRInstr instr, 
+        CodePtr retAddr
+    )
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        auto closVal = vm.getArgVal(instr, 0);
+        auto thisVal = vm.getArgVal(instr, 1);
+        auto tblVal  = vm.getArgVal(instr, 2);
+        auto argcVal = vm.getArgUint32(instr, 3);
+
+        assert (
+            valIsLayout(tblVal, LAYOUT_ARRTBL),
+            "invalid argument table"
+        );
+
+        assert (
+            valIsLayout(closVal, LAYOUT_CLOS),
+            "apply call on to non-function"
+        );
+
+        // Get the function object from the closure
+        auto closPtr = closVal.word.ptrVal;
+        auto fun = getClosFun(closPtr);
+
+        // Get the array table pointer
+        auto tblPtr = tblVal.word.ptrVal;
+
+        auto argVals = cast(ValuePair*)GC.malloc(ValuePair.sizeof * argcVal);
+
+        // Fetch the argument values from the array table
+        for (uint32_t i = 0; i < argcVal; ++i)
+        {
+            argVals[i].word.uint64Val = arrtbl_get_word(tblPtr, i);
+            argVals[i].type = cast(Type)arrtbl_get_type(tblPtr, i);
+        }
+
+        // Prepare the callee stack frame
+        vm.callFun(
+            fun,
+            retAddr,
+            closPtr,
+            thisVal.word,
+            thisVal.type,
+            argcVal,
+            argVals
+        );
+
+        GC.free(argVals);
+
+        vm.setCallCtx(null);
+
+        // Return the function entry point code
+        return fun.entryCode;
+    }
+
+    // TODO: spill all
+
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            as.pushJITRegs();
+
+            // Pass the call context and instruction as first two arguments
+            as.ptr(cargRegs[0], st.callCtx);
+            as.ptr(cargRegs[1], instr);
+
+            // Pass the return address as third argument
+            as.movAbsRef(vm, cargRegs[2], target0);
+
+            // Call the host function
+            as.ptr(scrRegs[0], &op_call_apply);
+            as.call(scrRegs[0]);
+
+            as.popJITRegs();
+
+            // Jump to the address returned by the host function
+            as.jmp(cretReg.opnd);
+        },
+        false
+    );
+}
+
+void gen_load_file(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) CodePtr op_load_file(
+        CallCtx callCtx,
+        IRInstr instr,
+        CodeFragment retTarget,
+        CodeFragment excTarget
+    )
+    {
+        auto vm = callCtx.vm;
+
+        auto strPtr = vm.getArgStr(instr, 0);
+        auto fileName = vm.getLoadPath(extractStr(strPtr));
+
+        try
+        {
+            // Parse the source file and generate IR
+            auto ast = parseFile(fileName);
+            auto fun = astToIR(ast);
+
+            // Register this function in the function reference set
+            vm.funRefs[cast(void*)fun] = fun;
+
+            // Create a version instance object for the unit function entry
+            auto entryInst = new VersionInst(
+                fun.entryBlock, 
+                new CodeGenState(fun.getCtx(false, vm))
+            );
+
+            // Compile the unit entry version
+            vm.queue(entryInst);
+            vm.compile(callCtx);
+
+            // Get the return address for the continuation target
+            auto retAddr = retTarget.getCodePtr(vm.execHeap);
+
+            // Prepare the callee stack frame
+            vm.callFun(
+                fun,
+                retAddr,
+                null,
+                Word.ptrv(vm.globalObj),
+                Type.REFPTR,
+                0,
+                null
+            );
+
+            // Return the function entry point code
+            return entryInst.getCodePtr(vm.execHeap);
+        }
+
+        catch (Exception err)
+        {
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                excTarget,
+                "SyntaxError",
+                "failed to load unit \"" ~ to!string(fileName) ~ "\""
+            );
+        }
+    }
+
+    // TODO: spill all
+
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            as.pushJITRegs();
+
+            // Pass the call context and instruction as first two arguments
+            as.ptr(cargRegs[0], st.callCtx);
+            as.ptr(cargRegs[1], instr);
+
+            // Pass the return and exception addresses as third arguments
+            as.ptr(cargRegs[2], target0);
+            as.ptr(cargRegs[3], target1);
+
+            // Call the host function
+            as.ptr(scrRegs[0], &op_load_file);
+            as.call(scrRegs[0]);
+
+            as.popJITRegs();
+
+            // Jump to the address returned by the host function
+            as.jmp(cretReg.opnd);
+        },
+        false
+    );
+}
+
+void gen_eval_str(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) CodePtr op_eval_str(
+        CallCtx callCtx,
+        IRInstr instr,
+        CodeFragment retTarget,
+        CodeFragment excTarget
+    )
+    {
+        auto vm = callCtx.vm;
+
+        auto strPtr = vm.getArgStr(instr, 0);
+        auto codeStr = extractStr(strPtr);
+
+        try
+        {
+            // Parse the source file and generate IR
+            auto ast = parseString(codeStr, "eval_str");
+            auto fun = astToIR(ast);
+
+            // Register this function in the function reference set
+            vm.funRefs[cast(void*)fun] = fun;
+
+            // Create a version instance object for the unit function entry
+            auto entryInst = new VersionInst(
+                fun.entryBlock,
+                new CodeGenState(fun.getCtx(false, vm))
+            );
+
+            // Compile the unit entry version
+            vm.queue(entryInst);
+            vm.compile(callCtx);
+
+            // Get the return address for the continuation target
+            auto retAddr = retTarget.getCodePtr(vm.execHeap);
+
+            // Prepare the callee stack frame
+            vm.callFun(
+                fun,
+                retAddr,
+                null,
+                Word.ptrv(vm.globalObj),
+                Type.REFPTR,
+                0,
+                null
+            );
+
+            // Return the function entry point code
+            return entryInst.getCodePtr(vm.execHeap);
+        }
+
+        catch (Exception err)
+        {
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                excTarget,
+                "SyntaxError",
+                "error while evaluating string"
+            );
+        }
+    }
+
+    // TODO: spill all
+
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            as.pushJITRegs();
+
+            // Pass the call context and instruction as first two arguments
+            as.ptr(cargRegs[0], st.callCtx);
+            as.ptr(cargRegs[1], instr);
+
+            // Pass the return and exception addresses
+            as.ptr(cargRegs[2], target0);
+            as.ptr(cargRegs[3], target1);
+
+            // Call the host function
+            as.ptr(scrRegs[0], &op_eval_str);
+            as.call(scrRegs[0]);
+
+            as.popJITRegs();
+
+            // Jump to the address returned by the host function
+            as.jmp(cretReg.opnd);
+        },
+        false
+    );
+}
+
+void gen_ret(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
     auto raSlot    = instr.block.fun.raVal.outSlot;
     auto argcSlot  = instr.block.fun.argcVal.outSlot;
     auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
-    // Find an extra scratch register
-    auto curWordOpnd = st.getWordOpnd(instr.getArg(0), 64);
-    X86Reg scrReg3;
-    if (curWordOpnd == allocRegs[0])
-        scrReg3 = allocRegs[1].ofSize(32);
-    else
-        scrReg3 = allocRegs[0].ofSize(32);
-
-    // Label for the bailout to interpreter cases
-    auto BAILOUT = new Label("RET_BAILOUT");
-
-    //ctx.as.printStr("ret from " ~ instr.block.fun.getName);
-
-    // Get the call instruction into r0
-    ctx.as.getWord(scrRegs64[0], raSlot);
-
-    // If this is a new/constructor call, bailout
-    ctx.as.getMember!("IRInstr", "opcode")(scrRegs64[1], scrRegs64[0]);   
-    ctx.as.ptr(scrRegs64[2], &ir.ops.CALL_NEW);
-    ctx.as.instr(CMP, scrRegs64[1], scrRegs64[2]);
-    ctx.as.instr(JE, BAILOUT);
-
-    // Get the output slot for the call instruction into scratch r1
-    ctx.as.getMember!("IRInstr", "outSlot")(scrRegs32[1], scrRegs64[0]);
-
-    // Get the actual argument count into r2
-    ctx.as.getWord(scrRegs32[2], argcSlot);
-
-    // Compare the arg count against the expected count
-    ctx.as.instr(CMP, scrRegs32[2], numParams);
-
-    // Compute the number of extra arguments into r2
-    ctx.as.instr(SUB, scrRegs32[2], numParams);
-    ctx.as.instr(MOV, scrReg3, 0);
-    ctx.as.instr(CMOVL, scrRegs32[2], scrReg3);
-
-    // Adjust the output slot for extra arguments
-    ctx.as.instr(ADD, scrRegs32[1], scrRegs32[2]);
-
-    // Compute the number of stack slots to pop into r2
-    ctx.as.instr(ADD, scrRegs32[2], numLocals);
+    //as.printStr("ret from " ~ instr.block.fun.getName);
 
     // Copy the return value word
     auto retOpnd = st.getWordOpnd(
-        ctx, 
-        ctx.as, 
+        as, 
         instr, 
         0,
         64,
-        scrReg3.ofSize(64),
+        scrRegs[1].opnd(64),
         true,
         false
     );
-    ctx.as.instr(
-        MOV, 
-        new X86Mem(64, wspReg, 8 * numLocals, scrRegs64[1], 8),
-        retOpnd
-    );
+    as.mov(retWordReg.opnd(64), retOpnd);
 
     // Copy the return value type
     auto typeOpnd = st.getTypeOpnd(
-        ctx.as, 
+        as,
         instr, 
         0, 
-        scrReg3.ofSize(8),
+        scrRegs[1].opnd(8),
         true
     );
-    ctx.as.instr(
-        MOV, 
-        new X86Mem(8, tspReg, numLocals, scrRegs64[1]),
-        typeOpnd
-    );
+    as.mov(retTypeReg.opnd(8), typeOpnd);
+
+    // If we are in a constructor (new) call
+    if (st.callCtx.ctorCall is true)
+    {
+        // TODO: optimize for case where instr.getArg(0) is IRConst.undefCst
+
+        // If the return value is not undefined (test word and type),
+        // then skip over. If it is undefined, then fetch the "this"
+        // value and return that instead.
+        as.cmp(retTypeReg.opnd(8), X86Opnd(Type.CONST));
+        as.jne(Label.FALSE);
+        as.cmp(retWordReg.opnd(8), X86Opnd(UNDEF.int8Val));
+        as.jne(Label.FALSE);
+
+        // Use the "this" value as a return value
+        auto thisWord = st.getWordOpnd(st.callCtx.fun.thisVal, 64);
+        as.mov(retWordReg.opnd(64), thisWord);
+        auto thisType = st.getTypeOpnd(st.callCtx.fun.thisVal);
+        as.mov(retTypeReg.opnd(8), thisType);
+
+        as.label(Label.FALSE);
+    }
+
+    // Get the actual argument count into r0
+    as.getWord(scrRegs[0], argcSlot);
+    //as.printStr("argc=");
+    //as.printInt(scrRegs[0].opnd(64));
+
+    // Compute the number of extra arguments into r0
+    as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
+    as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
+    as.cmp(scrRegs[0].opnd(32), X86Opnd(0));
+    as.cmovl(scrRegs[0].reg(32), scrRegs[1].opnd(32));
+
+    //as.printStr("numExtra=");
+    //as.printInt(scrRegs[0].opnd(32));
+
+    // Compute the number of stack slots to pop into r0
+    as.add(scrRegs[0].opnd(32), X86Opnd(numLocals));
+
+    // Get the return address into r1
+    as.getWord(scrRegs[1], raSlot);
 
     // Pop all local stack slots and arguments
-    ctx.as.instr(ADD, tspReg, scrRegs64[2]);
-    ctx.as.instr(SHL, scrRegs64[2], 3);
-    ctx.as.instr(ADD, wspReg, scrRegs64[2]);
+    //as.printStr("popping");
+    //as.printUint(scrRegs[0].opnd);
+    as.add(tspReg.opnd(64), scrRegs[0].opnd);
+    as.shl(scrRegs[0].opnd, X86Opnd(3));
+    as.add(wspReg.opnd(64), scrRegs[0].opnd);
 
-    // Label for the interpreter jump
-    auto INTERP_JUMP = new Label("INTERP_JUMP");
-
-    // Function to make the interpreter jump to the call continuation
-    extern (C) void interpBranch(Interp interp, IRInstr callInstr)
-    {
-        auto desc = callInstr.getTarget(0);
-
-        /*
-        writefln(
-            "interp ret to %s (%s phis)", 
-            callInstr.block.fun.getName,
-            desc.args.length
-        );
-        */
-
-        interp.branch(desc);
-    }
-
-    // If a JIT entry point exists, jump to it directly
-    // Note: this will execute the phi node moves on entry
-    ctx.as.getMember!("IRInstr", "jitCont")(scrRegs64[1], scrRegs64[0]);
-    ctx.as.instr(CMP, scrRegs64[1], 0);
-    ctx.as.instr(JE, INTERP_JUMP);
-    //ctx.as.printStr("jit ret");
-    ctx.as.instr(JMP, scrRegs64[1]);
-
-    // Make the interpreter jump to the call continuation and bailout
-    ctx.ol.addInstr(INTERP_JUMP);
-    //ctx.ol.printStr("interp ret");
-    ctx.ol.setMember!("Interp", "wsp")(interpReg, wspReg);
-    ctx.ol.setMember!("Interp", "tsp")(interpReg, tspReg);
-    ctx.ol.instr(MOV, RDI, interpReg);
-    ctx.ol.instr(MOV, RSI, scrRegs64[0]);
-    ctx.ol.ptr(scrRegs64[0], &interpBranch);
-    ctx.ol.instr(jit.encodings.CALL, scrRegs64[0]);
-    ctx.ol.instr(JMP, ctx.bailLabel);
-
-    // Bailout to the interpreter (out of line)
-    ctx.ol.addInstr(BAILOUT);
-    //ctx.ol.printStr("ret bailout in " ~ instr.block.fun.getName ~ " (" ~ instr.block.getName ~ ")");
-
-    ctx.ol.incStatCnt(&stats.numRetBailouts, scrRegs64[0]);
-
-    // Fallback to interpreter execution
-    // Spill all values, including arguments
-    // Call the interpreter call instruction
-    defaultFn(ctx.ol, ctx, st, instr);
+    // Jump to the return address
+    //as.printStr("ra=");
+    //as.printUint(scrRegs[1].opnd);
+    as.jmp(scrRegs[1].opnd);
 }
 
-void defaultFn(Assembler as, CodeGenCtx ctx, CodeGenState st, IRInstr instr)
+void gen_throw(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    //ctx.as.printStr(instr.toString);
+    // Get the string pointer
+    auto excWordOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+    auto excTypeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
-    // Spill all live values and instruction arguments
-    st.spillRegs(
-        as,
-        delegate bool(IRDstValue value)
+    // TODO: spill regs, may GC
+
+    as.pushJITRegs();
+
+    // Call the host throwExc function
+    as.mov(cargRegs[0].opnd, vmReg.opnd);
+    as.ptr(cargRegs[1], st.callCtx);
+    as.ptr(cargRegs[2], instr);
+    as.mov(cargRegs[3].opnd, X86Opnd(0));
+    as.mov(cargRegs[4].opnd, excWordOpnd);
+    as.mov(cargRegs[5].opnd(8), excTypeOpnd);
+    as.ptr(scrRegs[0], &throwExc);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Jump to the exception handler
+    as.jmp(X86Opnd(RAX));
+}
+
+void GetValOp(Type typeTag, string fName)(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto fSize = 8 * mixin("VM." ~ fName ~ ".sizeof");
+
+    auto outOpnd = st.getOutOpnd(as, instr, fSize);
+
+    as.getMember!("VM." ~ fName)(scrRegs[0].reg(fSize), vmReg);
+    as.mov(outOpnd, scrRegs[0].opnd(fSize));
+
+    st.setOutType(as, instr, typeTag);
+}
+
+alias GetValOp!(Type.REFPTR, "objProto") gen_get_obj_proto;
+alias GetValOp!(Type.REFPTR, "arrProto") gen_get_arr_proto;
+alias GetValOp!(Type.REFPTR, "funProto") gen_get_fun_proto;
+alias GetValOp!(Type.REFPTR, "globalObj") gen_get_global_obj;
+alias GetValOp!(Type.INT32, "heapSize") gen_get_heap_size;
+alias GetValOp!(Type.INT32, "gcCount") gen_get_gc_count;
+
+void gen_get_heap_free(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
+
+    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
+    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
+
+    as.sub(scrRegs[1].opnd, scrRegs[0].opnd);
+
+    as.mov(outOpnd, scrRegs[1].opnd(32));
+
+    st.setOutType(as, instr, Type.INT32);
+}
+
+void gen_heap_alloc(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr allocFallback(CallCtx callCtx, uint32_t allocSize)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        //writeln(callCtx.fun.getName);
+
+        auto ptr = heapAlloc(vm, allocSize);
+
+        vm.setCallCtx(null);
+
+        return ptr;
+    }
+
+    // Get the allocation size operand
+    auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
+
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
+    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
+
+    // r2 = allocPtr + size
+    // Note: we zero extend the size operand to 64-bits
+    as.mov(scrRegs[2].opnd(32), szOpnd);
+    as.add(scrRegs[2].opnd(64), scrRegs[0].opnd(64));
+
+    // if (allocPtr + size > heapLimit) fallback
+    as.cmp(scrRegs[2].opnd(64), scrRegs[1].opnd(64));
+    as.jg(Label.FALLBACK);
+
+    // Move the allocation pointer to the output
+    as.mov(outOpnd, scrRegs[0].opnd(64));
+
+    // Align the incremented allocation pointer
+    as.add(scrRegs[2].opnd(64), X86Opnd(7));
+    as.and(scrRegs[2].opnd(64), X86Opnd(-8));
+
+    // Store the incremented and aligned allocation pointer
+    as.setMember!("VM.allocPtr")(vmReg, scrRegs[2]);
+
+    // Done allocating
+    as.jmp(Label.DONE);
+
+    // Clone the state for the bailout case, which will spill for GC
+    auto bailSt = new CodeGenState(st);
+
+    // Allocation fallback
+    as.label(Label.FALLBACK);
+
+    // TODO: proper spilling logic
+    // need to spill delayed writes too
+
+    // Save our allocated registers before the C call
+    if (allocRegs.length % 2 != 0)
+        as.push(allocRegs[0]);
+    foreach (reg; allocRegs)
+        as.push(reg);
+
+    as.pushJITRegs();
+
+    //as.printStr("alloc bailout ***");
+
+    // Call the fallback implementation
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd(32), szOpnd);
+    as.ptr(RAX, &allocFallback);
+    as.call(RAX);
+
+    //as.printStr("alloc bailout done ***");
+
+    as.popJITRegs();
+
+    // Restore the allocated registers
+    foreach_reverse(reg; allocRegs)
+        as.pop(reg);
+    if (allocRegs.length % 2 != 0)
+        as.pop(allocRegs[0]);
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    // Allocation done
+    as.label(Label.DONE);
+
+    // The output is a reference pointer
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+void gen_gc_collect(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) void op_gc_collect(CallCtx callCtx, uint32_t heapSize)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        writeln("triggering gc");
+
+        gcCollect(vm, heapSize);
+
+        vm.setCallCtx(null);
+    }
+
+    // Get the string pointer
+    auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+
+    // TODO: spill regs, may GC
+
+    as.pushJITRegs();
+
+    // Call the host throwExc function
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd, heapSizeOpnd);
+    as.ptr(scrRegs[0], &op_gc_collect);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+}
+
+void gen_get_global(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto vm = st.callCtx.vm;
+
+    // Name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Lookup the property index in the class
+    // if the property slot doesn't exist, it will be allocated
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
+    assert (globalMap !is null);
+    auto propIdx = globalMap.getPropIdx(nameStr, false);
+
+    // If the property was not found
+    if (propIdx is uint32.max)
+    {
+        // Initialize the property, this may extend the global object
+        setProp(vm, vm.globalObj, nameStr, ValuePair(MISSING, Type.CONST));
+        propIdx = globalMap.getPropIdx(nameStr, false);
+        assert (propIdx !is uint32.max);
+    }
+
+    extern (C) static CodePtr hostGetProp(
+        CallCtx callCtx,
+        IRInstr instr,
+        immutable(wchar)* nameChars,
+        size_t nameLen
+    )
+    {
+        auto vm = callCtx.vm;
+
+        auto propName = nameChars[0..nameLen];
+        auto propVal = getProp(
+            vm,
+            vm.globalObj,
+            propName
+        );
+
+        if (propVal.word == MISSING && propVal.type == Type.CONST)
         {
-            if (instr.hasArg(value))
-                return true;
-
-            if (ctx.liveInfo.liveAfter(value, instr))
-                return true;
-
-            return false;
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                null,
+                "TypeError",
+                "global property not defined \"" ~ to!string(propName) ~ "\""
+            );
         }
+
+        vm.push(propVal);
+
+        return null;
+    }
+
+    // TODO: spill all for potential host call 
+
+    // Allocate the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    // Get the global object pointer
+    as.getMember!("VM.globalObj")(scrRegs[0], vmReg);
+
+    // Get the global object size/capacity
+    as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
+
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(vm.globalObj, 0);
+
+    // Define memory operands for the word and type values
+    auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
+    auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + propIdx, 8, scrRegs[1]);
+
+    // If the value is not "missing", skip the fallback code
+    as.cmp(typeMem, X86Opnd(Type.CONST));
+    as.jne(Label.SKIP);
+    as.cmp(wordMem, X86Opnd(MISSING.int8Val));
+    as.jne(Label.SKIP);
+
+    // If the value is missing, call the host fallback code
+    as.pushJITRegs();
+    as.ptr(cargRegs[0], st.callCtx);
+    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[2], nameStr.ptr);
+    as.mov(cargRegs[3].opnd, X86Opnd(nameStr.length));
+    as.ptr(scrRegs[0], &hostGetProp);
+    as.call(scrRegs[0].opnd);
+    as.popJITRegs();
+
+    // If an exception was thrown, jump to the exception handler
+    as.cmp(cretReg.opnd, X86Opnd(0));
+    as.je(Label.FALSE);
+    as.jmp(cretReg.opnd);
+    as.label(Label.FALSE);
+
+    // Get the property value from the stack
+    as.getWord(scrRegs[0], 0);
+    as.getType(scrRegs[1].reg(8), 0);
+    as.add(wspReg, Word.sizeof);
+    as.add(tspReg, Type.sizeof);
+    as.mov(outOpnd, scrRegs[0].opnd);
+    st.setOutType(as, instr, scrRegs[1].reg(8));
+    as.jmp(Label.DONE);
+
+    // If skipping the fallback code
+    as.label(Label.SKIP);
+
+    // Set the output word
+    if (outOpnd.isReg)
+    {
+        as.mov(outOpnd, wordMem);
+    }
+    else
+    {
+        as.mov(X86Opnd(scrRegs[2]), wordMem);
+        as.mov(outOpnd, X86Opnd(scrRegs[2]));
+    }
+
+    // Set the type value
+    as.mov(scrRegs[2].opnd(8), typeMem);
+    st.setOutType(as, instr, scrRegs[2].reg(8));
+
+    as.label(Label.DONE);
+}
+
+
+void gen_set_global(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto vm = st.callCtx.vm;
+
+    // Name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Lookup the property index in the class
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
+    assert (globalMap !is null);
+    auto propIdx = globalMap.getPropIdx(nameStr, false);
+
+    // If the property was not found
+    if (propIdx is uint32.max)
+    {
+        // Initialize the property, this may extend the global object
+        setProp(vm, vm.globalObj, nameStr, ValuePair(MISSING, Type.CONST));
+        propIdx = globalMap.getPropIdx(nameStr, false);
+        assert (propIdx !is uint32.max);
+    }
+
+    // Allocate the input operand
+    auto argOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd(64), true);
+
+    // Get the global object pointer
+    as.getMember!("VM.globalObj")(scrRegs[1], vmReg);
+
+    // Get the global object size/capacity
+    as.getField(scrRegs[2].reg(32), scrRegs[1], obj_ofs_cap(null));
+
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(vm.globalObj, 0);
+
+    // Set the word value
+    auto wordMem = X86Opnd(64, scrRegs[1], wordOfs + 8 * propIdx);
+    as.mov(wordMem, argOpnd);
+
+    // Set the type value
+    auto typeOpnd = st.getTypeOpnd(as, instr, 1, scrRegs[0].opnd(8), true);
+    auto typeMem = X86Opnd(8, scrRegs[1], wordOfs + propIdx, 8, scrRegs[2]);
+    as.mov(typeMem, typeOpnd);
+}
+
+void gen_get_str(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) refptr getStr(CallCtx callCtx, refptr strPtr)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        // Compute and set the hash code for the string
+        auto hashCode = compStrHash(strPtr);
+        str_set_hash(strPtr, hashCode);
+
+        // Find the corresponding string in the string table
+        auto str = getTableStr(vm, strPtr);
+
+        vm.setCallCtx(null);
+
+        return str;
+    }
+
+    // Get the string pointer
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+
+    // TODO: spill regs, may GC
+
+    // Allocate the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the fallback implementation
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd, opnd0);
+    as.ptr(scrRegs[0], &getStr);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    // The output is a reference pointer
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+void gen_make_link(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto vm = st.callCtx.vm;
+
+    auto linkArg = cast(IRLinkIdx)instr.getArg(0);
+    assert (linkArg !is null);
+
+    if (linkArg.linkIdx is NULL_LINK)
+    {
+        linkArg.linkIdx = vm.allocLink();
+
+        vm.setLinkWord(linkArg.linkIdx, NULL);
+        vm.setLinkType(linkArg.linkIdx, Type.REFPTR);
+    }
+
+    // Set the output value
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(linkArg.linkIdx));
+
+    // Set the output type
+    st.setOutType(as, instr, Type.INT32);
+}
+
+void gen_set_link(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // Get the link index operand
+    auto idxReg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    assert (idxReg.isGPR);
+
+    // Set the link word
+    auto valWord = st.getWordOpnd(as, instr, 1, 64, scrRegs[1].opnd(64));
+    as.getMember!("VM.wLinkTable")(scrRegs[2], vmReg);
+    auto wordMem = X86Opnd(64, scrRegs[2], 0, Word.sizeof, idxReg.reg);
+    as.mov(wordMem, valWord);
+
+    // Set the link type
+    auto valType = st.getTypeOpnd(as, instr, 0, scrRegs[1].opnd(8));
+    as.getMember!("VM.tLinkTable")(scrRegs[2], vmReg);
+    auto typeMem = X86Opnd(8, scrRegs[2], 0, Type.sizeof, idxReg.reg);
+    as.mov(typeMem, valType);
+}
+
+void gen_get_link(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // Get the link index operand
+    auto idxReg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    assert (idxReg.isGPR);
+
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    // Read the link word
+    as.getMember!("VM.wLinkTable")(scrRegs[1], vmReg);
+    auto wordMem = X86Opnd(64, scrRegs[1], 0, Word.sizeof, idxReg.reg);
+    as.mov(scrRegs[1].opnd(64), wordMem);
+    as.mov(outOpnd, scrRegs[1].opnd(64));
+
+    // Read the link type
+    as.getMember!("VM.tLinkTable")(scrRegs[1], vmReg);
+    auto typeMem = X86Opnd(8, scrRegs[1], 0, Type.sizeof, idxReg.reg);
+    as.mov(scrRegs[1].opnd(8), typeMem);
+    st.setOutType(as, instr, scrRegs[1].reg(8));
+}
+
+void gen_make_map(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto mapArg = cast(IRMapPtr)instr.getArg(0);
+    assert (mapArg !is null);
+
+    auto numPropArg = cast(IRConst)instr.getArg(1);
+    assert (numPropArg !is null);
+
+    // Allocate the map
+    if (mapArg.map is null)
+        mapArg.map = new ObjMap(st.callCtx.vm, numPropArg.int32Val);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outReg = outOpnd.isReg? outOpnd.reg:scrRegs[0];
+
+    as.ptr(outReg, mapArg.map);
+    if (!outOpnd.isReg)
+        as.mov(outOpnd, X86Opnd(outReg));
+
+    // Set the output type
+    st.setOutType(as, instr, Type.MAPPTR);
+}
+
+void gen_map_num_props(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static uint32_t op_map_num_props(ObjMap map)
+    {
+        // Get the number of properties to allocate
+        assert (map !is null, "map is null");
+        return map.numProps;
+    }
+
+    // TODO: this won't GC, but spill C caller-save registers
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), opnd0);
+    as.ptr(scrRegs[0], &op_map_num_props);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.INT32);
+}
+
+void gen_map_prop_idx(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    as.incStatCnt(&stats.numMapPropIdx, scrRegs[0]);
+
+    extern (C) static uint32_t op_map_prop_idx(ObjMap map, refptr strPtr, bool allocField)
+    {
+        // Lookup the property index
+        assert (map !is null, "map is null");
+        return map.getPropIdx(strPtr, allocField);
+    }
+
+    // TODO: this won't GC, but spill C caller-save registers
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+
+    bool allocField;
+    if (instr.getArg(2) is IRConst.trueCst)
+        allocField = true;
+    else if (instr.getArg(2) is IRConst.falseCst)
+        allocField = false;
+    else
+        assert (false);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), opnd0);
+    as.mov(cargRegs[1].opnd(64), opnd1);
+    as.mov(cargRegs[2].opnd(64), X86Opnd(allocField? 1:0));
+    as.ptr(scrRegs[0], &op_map_prop_idx);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.INT32);
+}
+
+void gen_map_prop_name(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr op_map_prop_name(
+        CallCtx callCtx, 
+        ObjMap map,
+        uint32_t propIdx
+    )
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        assert (map !is null, "map is null");
+        auto propName = map.getPropName(propIdx);
+
+        auto str = (propName !is null)? getString(vm, propName):null;
+
+        vm.setCallCtx(null);
+
+        return str;
+    }
+
+    // TODO: spill all, this may GC
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, X86Opnd.NONE, false, false);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+
+    // Call the host function
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd(64), opnd0);
+    as.mov(cargRegs[2].opnd(32), opnd1);
+    as.ptr(scrRegs[0], &op_map_prop_name);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+void gen_new_clos(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr op_new_clos(
+        CallCtx callCtx,
+        IRFunction fun, 
+        ObjMap closMap, 
+        ObjMap protMap
+    )
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        // If the function has no entry point code
+        if (fun.entryCode is null)
+        {
+            // Store the entry code pointers
+            fun.entryCode = getEntryStub(vm, false);
+            fun.ctorCode = getEntryStub(vm, true);
+            assert (fun.entryCode !is fun.ctorCode);
+        }
+
+        // Allocate the closure object
+        auto closPtr = GCRoot(
+            vm,
+            newClos(
+                vm, 
+                closMap,
+                vm.funProto,
+                cast(uint32)fun.ast.captVars.length,
+                fun
+            )
+        );
+
+        // Allocate the prototype object
+        auto objPtr = GCRoot(
+            vm,
+            newObj(
+                vm, 
+                protMap,
+                vm.objProto
+            )
+        );
+
+        // Set the "prototype" property on the closure object
+        setProp(
+            vm,
+            closPtr.ptr,
+            "prototype"w,
+            objPtr.pair
+        );
+
+        assert (
+            clos_get_next(closPtr.ptr) == null,
+            "closure next pointer is not null"
+        );
+
+        //writeln("final clos ptr: ", closPtr.ptr);
+
+        vm.setCallCtx(null);
+
+        return closPtr.ptr;
+    }
+
+    // TODO: make sure regs are properly spilled, this may trigger GC
+    // c arg regs may also overlap allocated regs, args should be on stack
+
+    auto funArg = cast(IRFunPtr)instr.getArg(0);
+    assert (funArg !is null);
+
+    auto closMapOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+    auto protMapOpnd = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
+
+    as.pushJITRegs();
+
+    as.ptr(cargRegs[0], st.callCtx);
+    as.ptr(cargRegs[1], funArg.fun);
+    as.mov(cargRegs[2].opnd(64), closMapOpnd);
+    as.mov(cargRegs[3].opnd(64), protMapOpnd);
+    as.ptr(scrRegs[0], &op_new_clos);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(cretReg));
+
+    st.setOutType(as, instr, Type.REFPTR);
+}
+
+void gen_print_str(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static void printStr(refptr strPtr)
+    {
+        // Extract a D string
+        auto str = extractStr(strPtr);
+
+        // Print the string to standard output
+        write(str);
+    }
+
+    auto strOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    as.pushRegs();
+
+    as.mov(cargRegs[0].opnd(64), strOpnd);
+    as.ptr(scrRegs[0], &printStr);
+    as.call(scrRegs[0].opnd(64));
+
+    as.popRegs();
+}
+
+void gen_get_time_ms(
+    VersionInst ver, 
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static int32 op_get_time_ms()
+    {
+        return cast(int32_t)Clock.currAppTick().msecs();
+    }
+
+    // FIXME: don't push RAX
+    as.pushJITRegs();
+
+    as.ptr(scrRegs[0], &op_get_time_ms);
+    as.call(scrRegs[0].opnd(64));
+
+    as.popJITRegs();
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(RAX));
+
+    st.setOutType(as, instr, Type.INT32);
+}
+
+void gen_get_ast_str(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr op_get_ast_str(CallCtx callCtx, refptr closPtr)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        assert (
+            refIsLayout(closPtr, LAYOUT_CLOS),
+            "invalid closure object"
+        );
+
+        auto fun = getClosFun(closPtr);
+
+        auto str = fun.ast.toString();
+        auto strObj = getString(vm, to!wstring(str));
+
+        vm.setCallCtx(null);
+
+        return strObj;
+    }
+
+    // TODO: spill all for GC
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    as.pushJITRegs();
+
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd, opnd0);
+    as.ptr(scrRegs[0], &op_get_ast_str);
+    as.call(scrRegs[0].opnd);
+
+    as.popJITRegs();
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(RAX));
+}
+
+/*
+extern (C) void op_get_ir_str(VM vm, IRInstr instr)
+{
+    auto funArg = vm.getArgVal(instr, 0);
+
+    assert (
+        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
+        "invalid closure object"
     );
 
-    // Increment the unjitted instruction counter
-    as.incStatCnt(&stats.numUnjitInstrs, scrRegs64[0]);
+    auto fun = getClosFun(funArg.word.ptrVal);
 
-    // Get the function corresponding to this instruction
-    // alias void function(Interp interp, IRInstr instr) OpFn;
-    // RDI: first argument (interp)
-    // RSI: second argument (instr)
-    auto opFn = instr.opcode.opFn;
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
+        astToIR(fun.ast, fun);
 
-    // Move the interpreter pointer into the first argument
-    as.instr(MOV, cargRegs[0], interpReg);
-    
-    // Load a pointer to the instruction in the second argument
+    auto str = fun.toString();
+    auto strObj = getString(vm, to!wstring(str));
+
+    vm.setSlot(
+        instr.outSlot,
+        Word.ptrv(strObj),
+        Type.REFPTR
+    );
+}
+*/
+
+void gen_load_lib(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static CodePtr op_load_lib(
+        CallCtx callCtx,
+        IRInstr instr
+    )
+    {
+        auto vm = callCtx.vm;
+
+        // Library to load (JS string)
+        auto strPtr = vm.getArgStr(instr, 0);
+
+        // Library to load (D string)
+        auto libname = extractStr(strPtr);
+
+        // String must be null terminated
+        libname ~= '\0';
+
+        auto lib = dlopen(libname.ptr, RTLD_LAZY | RTLD_LOCAL);
+
+        if (lib is null)
+        {
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                null,
+                "RuntimeError",
+                to!string(dlerror())
+            );
+        }
+
+        vm.push(Word.ptrv(cast(rawptr)lib), Type.RAWPTR);
+
+        return null;
+
+    }
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+    as.ptr(cargRegs[0], st.callCtx);
     as.ptr(cargRegs[1], instr);
+    as.ptr(scrRegs[0], &op_load_lib);
+    as.call(scrRegs[0].opnd);
+    as.popJITRegs();
 
-    // Set the interpreter's IP
-    // Only necessary if we may branch or allocate
-    if (instr.opcode.isBranch || instr.opcode.mayGC)
-    {
-        as.setMember!("Interp", "ip")(interpReg, cargRegs[1]);
-    }
+    // If an exception was thrown, jump to the exception handler
+    as.cmp(cretReg.opnd, X86Opnd(0));
+    as.je(Label.FALSE);
+    as.jmp(cretReg.opnd);
+    as.label(Label.FALSE);
 
-    // Store the stack pointers back in the interpreter
-    as.setMember!("Interp", "wsp")(interpReg, wspReg);
-    as.setMember!("Interp", "tsp")(interpReg, tspReg);
-
-    // Call the op function
-    as.ptr(scrRegs64[0], opFn);
-    as.instr(jit.encodings.CALL, scrRegs64[0]);
-
-    // If this is a branch instruction
-    if (instr.opcode.isBranch == true)
-    {
-        // Reload the stack pointers, the instruction may have changed them
-        as.getMember!("Interp", "wsp")(wspReg, interpReg);
-        as.getMember!("Interp", "tsp")(tspReg, interpReg);
-
-        // Bailout to the interpreter
-        as.instr(JMP, ctx.bailLabel);
-
-        if (opts.jit_dumpinfo)
-            writefln("interpreter bailout");
-    }
-
-    // If the instruction has an output slot, mark its
-    // output as being on the stack
-    if (instr.outSlot !is NULL_LOCAL)
-    {
-        st.valOnStack(instr);
-    }
+    // Get the lib handle from the stack
+    as.getWord(scrRegs[0], 0);
+    as.add(wspReg, Word.sizeof);
+    as.add(tspReg, Type.sizeof);
+    as.mov(outOpnd, scrRegs[0].opnd);
+    st.setOutType(as, instr, Type.RAWPTR);
 }
 
-alias void function(CodeGenCtx ctx, CodeGenState st, IRInstr instr) CodeGenFn;
+void gen_close_lib(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static CodePtr op_close_lib(
+        CallCtx callCtx,
+        IRInstr instr
+    )
+    {
+        auto vm = callCtx.vm;
+        auto libArg = vm.getArgVal(instr, 0);
 
-CodeGenFn[Opcode*] codeGenFns;
+        assert (
+            libArg.type == Type.RAWPTR,
+            "invalid rawptr value"
+        );
 
+        if (dlclose(libArg.word.ptrVal) != 0)
+        {
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                null,
+                "RuntimeError",
+                "Could not close lib."
+            );
+        }
+
+        return null;
+    }
+
+    as.pushJITRegs();
+    as.ptr(cargRegs[0], st.callCtx);
+    as.ptr(cargRegs[1], instr);
+    as.ptr(scrRegs[0], &op_close_lib);
+    as.call(scrRegs[0].opnd);
+    as.popJITRegs();
+
+    // If an exception was thrown, jump to the exception handler
+    as.cmp(cretReg.opnd, X86Opnd(0));
+    as.je(Label.FALSE);
+    as.jmp(cretReg.opnd);
+    as.label(Label.FALSE);
+}
+
+void gen_get_sym(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static CodePtr op_get_sym(
+        CallCtx callCtx,
+        IRInstr instr
+    )
+    {
+
+        auto vm = callCtx.vm;
+        auto libArg = vm.getArgVal(instr, 0);
+
+        assert (
+            libArg.type == Type.RAWPTR,
+            "invalid rawptr value"
+        );
+
+        // Symbol name (D string)
+        auto strArg = cast(IRString)instr.getArg(1);
+        assert (strArg !is null);
+        auto symname = to!string(strArg.str);
+
+        // String must be null terminated
+        symname ~= '\0';
+
+        auto sym = dlsym(libArg.word.ptrVal, symname.ptr);
+
+        if (sym is null)
+        {
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                null,
+                "RuntimeError",
+                to!string(dlerror())
+            );
+        }
+
+        vm.push(Word.ptrv(cast(rawptr)sym), Type.RAWPTR);
+
+        return null;
+    }
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.pushJITRegs();
+    as.ptr(cargRegs[0], st.callCtx);
+    as.ptr(cargRegs[1], instr);
+    as.ptr(scrRegs[0], &op_get_sym);
+    as.call(scrRegs[0].opnd);
+    as.popJITRegs();
+
+    // If an exception was thrown, jump to the exception handler
+    as.cmp(cretReg.opnd, X86Opnd(0));
+    as.je(Label.FALSE);
+    as.jmp(cretReg.opnd);
+    as.label(Label.FALSE);
+
+    // Get the sym handle from the stack
+    as.getWord(scrRegs[0], 0);
+    as.add(wspReg, Word.sizeof);
+    as.add(tspReg, Type.sizeof);
+    as.mov(outOpnd, scrRegs[0].opnd);
+    st.setOutType(as, instr, Type.RAWPTR);
+
+}
+
+// Mappings for arguments/return values
+Type[string] typeMap;
+size_t[string] sizeMap;
 static this()
 {
-    codeGenFns[&GET_ARG]        = &gen_get_arg;
+    typeMap = [
+        "i8" : Type.INT32,
+        "i16" : Type.INT32,
+        "i32" : Type.INT32,
+        "i64" : Type.INT64,
+        "f64" : Type.FLOAT64,
+        "*" : Type.RAWPTR
+    ];
 
-    codeGenFns[&SET_STR]        = &gen_set_str;
+    sizeMap = [
+        "i8" : 8,
+        "i16" : 16,
+        "i32" : 32,
+        "i64" : 64,
+        "f64" : 64,
+        "*" : 64
+    ];
+}
 
-    codeGenFns[&MAKE_VALUE]     = &gen_make_value;
-    codeGenFns[&GET_WORD]       = &gen_get_word;
-    codeGenFns[&GET_TYPE]       = &gen_get_type;
+void gen_call_ffi(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto vm = st.callCtx.vm;
 
-    codeGenFns[&I32_TO_F64]     = &gen_i32_to_f64;
-    codeGenFns[&F64_TO_I32]     = &gen_f64_to_i32;
+    // Get the function signature
+    auto sigStr = cast(IRString)instr.getArg(1);
+    assert (sigStr !is null, "null sigStr in call_ffi.");
+    auto typeinfo = to!string(sigStr.str);
+    auto types = split(typeinfo, ",");
 
-    codeGenFns[&ADD_I32]        = &gen_add_i32;
-    codeGenFns[&MUL_I32]        = &gen_mul_i32;
-    codeGenFns[&AND_I32]        = &gen_and_i32;
-    codeGenFns[&OR_I32]         = &gen_or_i32;
-    codeGenFns[&XOR_I32]        = &gen_xor_i32;
+    // Track register usage for args
+    auto iArgIdx = 0;
+    auto fArgIdx = 0;
 
-    codeGenFns[&ADD_I32_OVF]    = &gen_add_i32_ovf;
-    codeGenFns[&SUB_I32_OVF]    = &gen_sub_i32_ovf;
-    codeGenFns[&MUL_I32_OVF]    = &gen_mul_i32_ovf;
+    // Return type of the FFI call
+    auto retType = types[0];
 
-    codeGenFns[&MOD_I32]        = &gen_mod_i32;
+    // Argument types the call expects
+    auto argTypes = types[1..$];
 
-    codeGenFns[&LSFT_I32]       = &gen_lsft_i32;
-    codeGenFns[&RSFT_I32]       = &gen_rsft_i32;
+    // outOpnd
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    codeGenFns[&ADD_F64]        = &gen_add_f64;
-    codeGenFns[&SUB_F64]        = &gen_sub_f64;
-    codeGenFns[&MUL_F64]        = &gen_mul_f64;
-    codeGenFns[&DIV_F64]        = &gen_div_f64;
+    // The number of args actually passed
+    auto argCount = cast(uint32_t)instr.numArgs - 2;
+    assert(argTypes.length == argCount, "Incorrect arg count in call_ffi.");
 
-    codeGenFns[&LOAD_U8]        = &gen_load_u8;
-    codeGenFns[&LOAD_U16]       = &gen_load_u16;
-    codeGenFns[&LOAD_U32]       = &gen_load_u32;
-    codeGenFns[&LOAD_U64]       = &gen_load_u64;
-    codeGenFns[&LOAD_F64]       = &gen_load_f64;
-    codeGenFns[&LOAD_REFPTR]    = &gen_load_refptr;
-    codeGenFns[&LOAD_RAWPTR]    = &gen_load_rawptr;
+    as.pushJITRegs();
 
-    codeGenFns[&STORE_U8]       = &gen_store_u8;
-    codeGenFns[&STORE_U16]      = &gen_store_u16;
-    codeGenFns[&STORE_U32]      = &gen_store_u32;
-    codeGenFns[&STORE_U64]      = &gen_store_u64;
-    codeGenFns[&STORE_F64]      = &gen_load_f64;
-    codeGenFns[&STORE_REFPTR]   = &gen_store_refptr;
-    codeGenFns[&STORE_RAWPTR]   = &gen_store_rawptr;
+    // Indices of arguments to be pushed on the stack
+    size_t stackArgs[];
 
-    codeGenFns[&GET_GLOBAL]     = &gen_get_global;
-    codeGenFns[&SET_GLOBAL]     = &gen_set_global;
+    // Set up arguments
+    for (size_t idx = 0; idx < argCount; ++idx)
+    {
+        // Either put the arg in the appropriate register
+        // or set it to be pushed to the stack later
+        if (argTypes[idx] == "f64" && fArgIdx < cfpArgRegs.length)
+        {
+            auto argOpnd = st.getWordOpnd(
+                as,
+                instr,
+                idx + 2,
+                64,
+                scrRegs[0].opnd(64),
+                true
+            );
+            as.movq(cfpArgRegs[fArgIdx++].opnd, argOpnd);
+        }
+        else if (iArgIdx < cargRegs.length)
+        {
+            auto argSize = sizeMap[argTypes[idx]];
+            auto argOpnd = st.getWordOpnd(
+                as, 
+                instr,
+                idx + 2,
+                argSize,
+                scrRegs[0].opnd(argSize),
+                 true
+            );
+            auto cargOpnd = cargRegs[iArgIdx++].opnd(argSize);
+            as.mov(cargOpnd, argOpnd);
+        }
+        else
+        {
+            stackArgs ~= idx;
+        }
+    }
 
-    codeGenFns[&GET_OBJ_PROTO]  = &gen_get_obj_proto;
-    codeGenFns[&GET_ARR_PROTO]  = &gen_get_arr_proto;
-    codeGenFns[&GET_FUN_PROTO]  = &gen_get_fun_proto;
-    codeGenFns[&GET_GLOBAL_OBJ] = &gen_get_global_obj;
+    // Make sure there is an even number of pushes
+    if (stackArgs.length % 2 != 0)
+        as.push(scrRegs[0]);
 
-    //codeGenFns[&HEAP_ALLOC]     = &gen_heap_alloc;
+    // Push the stack arguments, in reverse order
+    foreach_reverse (idx; stackArgs)
+    {
+        auto argSize = sizeMap[argTypes[idx]];
+        auto argOpnd = st.getWordOpnd(
+            as,
+            instr,
+            idx + 2, 
+            argSize, 
+            scrRegs[0].opnd(argSize),
+            true
+        );
+        as.mov(scrRegs[0].opnd(argSize), argOpnd);
+        as.push(scrRegs[0]);
+    }
 
-    codeGenFns[&GET_LINK]       = &gen_get_link;
+    // Pointer to function to call
+    auto funArg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false);
 
-    codeGenFns[&IS_CONST]       = &gen_is_const;
-    codeGenFns[&IS_REFPTR]      = &gen_is_refptr;
-    codeGenFns[&IS_RAWPTR]      = &gen_is_rawptr;
-    codeGenFns[&IS_I32]         = &gen_is_i32;
-    codeGenFns[&IS_I64]         = &gen_is_i64;
-    codeGenFns[&IS_F64]         = &gen_is_f64;
+    // call the function
+    as.mov(X86Opnd(scrRegs[0]), funArg);
+    as.call(scrRegs[0].opnd);
 
-    codeGenFns[&EQ_I8]          = &gen_eq_i8;
-    codeGenFns[&EQ_I32]         = &gen_eq_i32;
-    codeGenFns[&NE_I32]         = &gen_ne_i32;
-    codeGenFns[&LT_I32]         = &gen_lt_i32;
-    codeGenFns[&LE_I32]         = &gen_le_i32;
-    codeGenFns[&GT_I32]         = &gen_gt_i32;
-    codeGenFns[&GE_I32]         = &gen_ge_i32;
-    codeGenFns[&EQ_CONST]       = &gen_eq_const;
-    codeGenFns[&NE_CONST]       = &gen_ne_const;
-    codeGenFns[&EQ_REFPTR]      = &gen_eq_refptr;
-    codeGenFns[&NE_REFPTR]      = &gen_ne_refptr;
-    codeGenFns[&EQ_RAWPTR]      = &gen_eq_rawptr;
+    // Send return value/type
+    if (retType == "f64")
+    {
+        as.movq(outOpnd, X86Opnd(XMM0));
+        st.setOutType(as, instr, typeMap[retType]);
+    }
+    else if (retType == "void")
+    {
+        as.mov(outOpnd, X86Opnd(UNDEF.int8Val));
+        st.setOutType(as, instr, Type.CONST);
+    }
+    else
+    {
+        as.mov(outOpnd, X86Opnd(RAX));
+        st.setOutType(as, instr, typeMap[retType]);
+    }
 
-    codeGenFns[&EQ_F64]         = &gen_eq_f64;
-    codeGenFns[&NE_F64]         = &gen_ne_f64;
-    codeGenFns[&LT_F64]         = &gen_lt_f64;
-    codeGenFns[&LE_F64]         = &gen_le_f64;
-    codeGenFns[&GE_F64]         = &gen_ge_f64;
-    codeGenFns[&GT_F64]         = &gen_gt_f64;
+    // Pop the stack arguments
+    foreach (idx; stackArgs)
+        as.pop(scrRegs[1]);
 
-    codeGenFns[&IF_TRUE]        = &gen_if_true;
-    codeGenFns[&IF_EQ_FUN]      = &gen_if_eq_fun;
-    codeGenFns[&JUMP]           = &gen_jump;
+    // Make sure there is an even number of pops
+    if (stackArgs.length % 2 != 0)
+        as.pop(scrRegs[1]);
 
-    codeGenFns[&ir.ops.CALL]    = &gen_call;
-    codeGenFns[&CALL_PRIM]      = &gen_call_prim;
-    codeGenFns[&ir.ops.RET]     = &gen_ret;
+    as.popJITRegs();
+
+    // Request a branch object for the continuation
+    auto contBranch = getBranchEdge(
+        as,
+        instr.getTarget(0),
+        st,
+        false
+    );
+
+    // Generate the final call continuation branch
+    ver.genCallBranch(
+        st,
+        instr,
+        as,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            jmp32Ref(as, vm, contBranch);
+        },
+        false
+    );
+
+    // Generate the continuation branch edge code
+    contBranch.genCode(as, st);
 }
 

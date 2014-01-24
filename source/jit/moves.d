@@ -42,9 +42,8 @@ import std.array;
 import std.stdint;
 import std.typecons;
 import ir.ir;
-import jit.assembler;
+import jit.codeblock;
 import jit.x86;
-import jit.encodings;
 
 alias Tuple!(X86Opnd, "dst", X86Opnd, "src") Move;
 
@@ -52,57 +51,55 @@ alias Tuple!(X86Opnd, "dst", X86Opnd, "src") Move;
 Execute a list of moves as if occurring simultaneously,
 preventing memory locations from being overwritten
 */
-void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
+void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
 {
     void execMove(Move move)
     {
         assert (
-            cast(X86Imm)move.dst is null,
+            !move.dst.isImm,
             "move dst is an immediate"
         );
 
-        auto immSrc = cast(X86Imm)move.src;
-        auto memSrc = cast(X86Mem)move.src;
-        auto regDst = cast(X86Reg)move.dst;
-        auto memDst = cast(X86Mem)move.dst;
+        auto src = move.src;
+        auto dst = move.dst;
 
-        if (memSrc && memDst)
+        if (src.isMem && dst.isMem)
         {
-            assert (memSrc.memSize == memDst.memSize);
-            auto tmpReg = tmp1.ofSize(memSrc.memSize);
-            as.instr(MOV, tmpReg, memSrc);
-            as.instr(MOV, memDst, tmpReg);
+            assert (src.mem.size == dst.mem.size);
+            auto tmpReg = tmp1.opnd(src.mem.size);
+            as.mov(tmpReg, src);
+            as.mov(dst, tmpReg);
             return;
         }
 
-        if (immSrc && immSrc.immSize > 32 && memDst)
+        if (src.isImm && src.imm.immSize > 32 && dst.isMem)
         {
-            assert (memDst.memSize == 64);
-            as.instr(MOV, tmp1, immSrc);
-            as.instr(MOV, memDst, tmp1);
+            assert (dst.mem.size == 64);
+            as.mov(tmp1.opnd(64), src);
+            as.mov(dst, tmp1.opnd(64));
             return;
         }
 
-        if (regDst && immSrc)
+        if (dst.isReg && src.isImm)
         {
-            auto regDst32 = regDst.ofSize(32);
+            auto regDst32 = dst.reg.opnd(32);
 
             // xor rXX, rXX is the shortest way to zero-out a register
-            if (immSrc.imm is 0)
+            if (src.imm.imm is 0)
             {
-                as.instr(XOR, regDst32, regDst32);
+                as.xor(regDst32, regDst32);
                 return;
             }
 
             // Take advantage of zero-extension to save REX bytes
-            if (regDst.size is 64 && immSrc.imm > 0 && immSrc.unsgSize <= 32)
+            if (dst.reg.size is 64 && src.imm.imm > 0 && src.imm.unsgSize <= 32)
             {
-                as.instr(MOV, regDst32, immSrc);
+                as.mov(regDst32, src);
                 return;
             }
         }
 
-        as.instr(MOV, move.dst, move.src);  
+        as.mov(move.dst, move.src);  
     }
 
     // Remove identity moves from the list
@@ -123,11 +120,12 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
         // Find a move that doesn't overwrite an src and execute it
         //
         // if no move doesn't overwrite an src,
-        //      take pair (A->B) and remove from list
-        //      add (A->tmp), (tmp->B) to list
+        //      take pair (B<-A) and remove from list
+        //      execute the move (tmp<-A)
+        //      add (B<-tmp) to list
         //
-        // We've removed A from the src list
-        // move that goes into A can get executed
+        // We've removed A from the src list, breaking the cycle
+        // move that goes into A can now get executed
 
         MOVE_LOOP:
         foreach (idx0, move0; moveList)
@@ -146,24 +144,40 @@ void execMoves(Assembler as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             continue EXEC_LOOP;
         }
 
-        writeln("cycle occurs ***");
+        /*
+        writefln("cycle occurs, list length=%s ***", moveList.length);
+        foreach (move; moveList)
+            writeln(move.dst, " <= ", move.src);
+        */
 
         // No safe move was found
-        // take a pair (A->B) and remove it from list
-        // add (A->tmp), (tmp->B) to list
+        // take a pair (dst<-src) and remove it from list
         Move move = moveList[$-1];
         moveList.length -= 1;
 
-        X86Reg tmpReg;
-        if (auto regSrc = cast(X86Reg)move.src)
-            tmpReg = tmp0.ofSize(regSrc.size);
-        else if (auto memSrc = cast(X86Mem)move.src)
-            tmpReg = tmp0.ofSize(memSrc.memSize);
-        else
-            tmpReg = tmp0;
+        auto src = move.src;
+        auto dst = move.dst;
 
-        moveList ~= Move(tmpReg, move.src);
-        moveList ~= Move(move.dst, tmpReg);
+        X86Opnd tmpReg;
+        if (src.isReg)
+            tmpReg = tmp0.opnd(src.reg.size);
+        else if (src.isMem)
+            tmpReg = tmp0.opnd(src.mem.size);
+        else
+            tmpReg = X86Opnd(tmp0);
+
+        // Ensure that the tmp reg is not already used in the move list
+        debug
+        {
+            foreach (m; moveList)
+                assert (!(m.src.isGPR && m.src.reg.regNo is tmpReg.reg.regNo));
+        }
+
+        // Execute (tmp<-src)
+        execMove(Move(tmpReg, src));
+
+        // Add (dst<-tmp) to the list
+        moveList ~= Move(dst, tmpReg);
     }
 }
 

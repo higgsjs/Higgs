@@ -52,24 +52,18 @@ struct Options
     /// Gather and report various statistics about program execution
     bool stats = false;
 
-    /* Interpreter options */
+    /* VM options */
 
     /// Disable loading of the standard library
     bool nostdlib = false;
 
     /* JIT options */
 
-    /// Flag to disable the JIT compiler
-    bool jit_disable = false;
-
     /// Maximum number of specialized versions to compile per basic block
     uint jit_maxvers = 20;
 
     /// Disable inlining in the JIT
     bool jit_noinline = false;
-
-    /// Disable ASM peephole optimizations in the JIT
-    bool jit_noasmopts = false;
 
     /// Dump information about JIT compilation
     bool jit_dumpinfo = false;
@@ -100,10 +94,8 @@ void parseCmdArgs(ref string[] args)
 
         "nostdlib"      , &opts.nostdlib,
 
-        "jit_disable"   , &opts.jit_disable,
         "jit_maxvers"   , &opts.jit_maxvers,
         "jit_noinline"  , &opts.jit_noinline,
-        "jit_noasmopts" , &opts.jit_noasmopts,
         "jit_dumpinfo"  , &opts.jit_dumpinfo,
         "jit_dumpir"  , &opts.jit_dumpir,
         "jit_dumpasm"   , &opts.jit_dumpasm,

@@ -498,6 +498,19 @@ ASTStmt parseStmt(TokenStream input)
         return new VarStmt(identExprs, initExprs, pos);
     }
 
+    
+    // Function declaration statement
+    else if (input.peekKw("function"))
+    {
+        auto funStmt = new ExprStmt(parseExpr(input), pos);
+
+        // Weed out trailing semicolons
+        if (input.peekSep(";"))
+            input.read();
+
+        return funStmt;
+    }    
+
     // If this is a labelled statement
     else if (isLabel(input))
     {
@@ -956,6 +969,25 @@ ASTExpr parseAtom(TokenStream input)
     {
         input.read();
         return new FloatExpr(t.floatVal, pos);
+    }
+
+    // Floating-point literal starting with a period (eg: .5)
+    else if (t.type == Token.OP && t.stringVal == ".")
+    {
+        input.read();
+
+        auto intTok = input.read();
+        if (intTok.type != Token.INT)
+        {
+            throw new ParseError(
+                "expected decimals after point", 
+                intTok.pos
+            );
+        }
+
+        // Re-parse the value as a float
+        auto floatVal = to!float("0." ~ to!string(intTok.intVal));
+        return new FloatExpr(floatVal, pos);
     }
 
     // String literal
