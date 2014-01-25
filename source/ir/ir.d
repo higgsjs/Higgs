@@ -270,13 +270,13 @@ class IRFunction : IdObject
         if (ctorCall is false)
         {
             if (this.ctx is null)
-                this.ctx = new CallCtx(this, false, vm);
-            return this.ctx;     
+                this.ctx = new CallCtx(vm, this, false);
+            return this.ctx;
         }
         else
         {
             if (this.ctorCtx is null)
-                this.ctorCtx = new CallCtx(this, true, vm);
+                this.ctorCtx = new CallCtx(vm, this, true);
             return this.ctorCtx;
         }
     }
@@ -291,7 +291,10 @@ class CallCtx
     CallCtx parent = null;
 
     /// Call site inlined at (if inlined)
-    IRInstr inlineSite = null;
+    IRInstr callSite = null;
+
+    /// Continuation state (if inlined)
+    CodeGenState contState = null;
 
     /// Number of extra locals (if inlined)
     size_t extraLocals = 0;
@@ -305,11 +308,32 @@ class CallCtx
     /// Constructor call flag
     bool ctorCall;
 
-    this(IRFunction fun, bool ctorCall, VM vm)
+    /// Default constructor
+    this(VM vm, IRFunction fun, bool ctorCall)
     {
+        this.vm = vm;
         this.fun = fun;
         this.ctorCall = ctorCall;
-        this.vm = vm;
+    }
+
+    /// Inlined context constructor
+    this(
+        CallCtx parent,
+        IRInstr callSite,
+        CodeGenState contState,
+        size_t extraLocals,
+        IRFunction fun,
+        bool ctorCall
+    )
+    {
+        this.vm = parent.vm;
+
+        this.parent = parent;
+        this.callSite = callSite;
+        this.contState = contState;
+        this.extraLocals = extraLocals;
+        this.fun = fun;
+        this.ctorCall = ctorCall;
     }
 }
 

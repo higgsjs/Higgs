@@ -737,6 +737,16 @@ class CodeGenState
         //if (allocState.get(instr, 0) & RA_GPREG)
         //    as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
     }
+
+    /// Map a value to a specific stack location
+    void mapToStack(IRDstValue val, LocalIdx slotIdx)
+    {
+        valMap[val] = ValState.stack(slotIdx);
+
+        // TODO: gpRegMap?
+
+        // TODO: localMap?
+    }
 }
 
 /**

@@ -1439,34 +1439,103 @@ void gen_call_prim(
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     assert (numArgs is fun.numParams);
 
+    // If we are recompiling with inlining
+    if (ver.counter >= INLINE_THRESHOLD)
+    {
+        // TODO: remove arg space?
+        auto extraLocals = fun.numLocals;
+
+        // TODO: spill all
+        auto contState = new CodeGenState(st);
+
+        // Create the callee context
+        auto subCtx = new CallCtx(
+            st.callCtx,
+            instr,
+            contState,
+            extraLocals,
+            fun,
+            false
+        );
+
+        // Create the callee entry state
+        auto calleeSt = new CodeGenState(subCtx);
 
 
+        // TODO: ISSUE: some values are IR constants!
 
 
-    // TODO: check if the execution count threshold for inlining was reached
-    // INLINE_THRESHOLD
-    //
-    // Create new CallCtx for inlined callee
-    // new CodeGenState, map arg values to parent values
-    //
-    // Queue new entry block for compilation
-    // Jump to new entry block
-    //
-    // Branch code should add space for extra locals?
-    //
-    // What about return branch, exc branch, do we need these?
-    // - return needs to find return branch
-    // - exceptions thrown should go to exception branch if present
-    //
-    // Return branch should pop extra locals
+        // Map parameters to parent values in the calleeSt
+        foreach (argIdx, argIdent; fun.ast.params)
+        {
+            auto paramVal = fun.paramMap[argIdent];
+            auto argVal = instr.getArg(argIdx + 1);
+            auto dstIdx = cast(int)(-numArgs + argIdx);
 
+            // If the argument is a non-constant value
+            if (auto dstArg = cast(IRDstValue)argVal)
+            {
+                // Map the parameter to the caller function slot
+                calleeSt.mapToStack(paramVal, dstArg.outSlot + extraLocals);
+            }
+            else
+            {
+                // Copy the argument word
+                auto argOpnd = st.getWordOpnd(
+                    as,
+                    instr,
+                    argIdx,
+                    64,
+                    scrRegs[1].opnd(64),
+                    true,
+                    false
+                );
+                as.setWord(dstIdx, argOpnd);
 
+                // Copy the argument type
+                auto typeOpnd = st.getTypeOpnd(
+                    as,
+                    instr,
+                    argIdx,
+                    scrRegs[1].opnd(8),
+                    true
+                );
+                as.setType(dstIdx, typeOpnd);
+            }
+        }
 
+        // Add stack space for the extra inlined locals
+        as.sub(wspReg.opnd, X86Opnd(Word.sizeof * extraLocals));
+        as.sub(tspReg.opnd, X86Opnd(Type.sizeof * extraLocals));
 
+        // Get an inlined entry block version
+        auto entryVer = getBlockVersion(
+            fun.entryBlock,
+            calleeSt,
+            true
+        );
 
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            entryVer,
+            null,
+            BranchShape.DEFAULT,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                // Jump to the function entry
+                jmp32Ref(as, vm, target0);
+            }
+        );
 
-
-
+        return;
+    }
 
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
@@ -1484,8 +1553,8 @@ void gen_call_prim(
 
         // Copy the argument word
         auto argOpnd = st.getWordOpnd(
-            as, 
-            instr, 
+            as,
+            instr,
             instrArgIdx,
             64,
             scrRegs[1].opnd(64),
@@ -1496,10 +1565,10 @@ void gen_call_prim(
 
         // Copy the argument type
         auto typeOpnd = st.getTypeOpnd(
-            as, 
-            instr, 
-            instrArgIdx, 
-            scrRegs[1].opnd(8), 
+            as,
+            instr,
+            instrArgIdx,
+            scrRegs[1].opnd(8),
             true
         );
         as.setType(dstIdx, typeOpnd);
@@ -1535,7 +1604,7 @@ void gen_call_prim(
 
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
-        fun.entryBlock, 
+        fun.entryBlock,
         new CodeGenState(fun.getCtx(false, vm)),
         true
     );
@@ -2374,6 +2443,8 @@ void gen_ret(
     CodeBlock as
 )
 {
+    auto callCtx = st.callCtx;
+
     auto raSlot    = instr.block.fun.raVal.outSlot;
     auto argcSlot  = instr.block.fun.argcVal.outSlot;
     auto numParams = instr.block.fun.numParams;
@@ -2381,26 +2452,72 @@ void gen_ret(
 
     //as.printStr("ret from " ~ instr.block.fun.getName);
 
-    // Copy the return value word
+    // Get the return value word operand
     auto retOpnd = st.getWordOpnd(
-        as, 
-        instr, 
+        as,
+        instr,
         0,
         64,
-        scrRegs[1].opnd(64),
+        scrRegs[0].opnd(64),
         true,
         false
     );
-    as.mov(retWordReg.opnd(64), retOpnd);
 
-    // Copy the return value type
+    // Get the return value type operand
     auto typeOpnd = st.getTypeOpnd(
         as,
-        instr, 
-        0, 
+        instr,
+        0,
         scrRegs[1].opnd(8),
         true
     );
+
+    // If we are in an inlined call
+    if (callCtx.parent !is null)
+    {
+        auto contSt = new CodeGenState(callCtx.contState);
+
+        // TODO: add type info about ret value to cont state
+
+        // Get the continuation branch object
+        auto contBranch = getBranchEdge(
+            as,
+            callCtx.callSite.getTarget(0),
+            contSt,
+            true
+        );
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            contBranch,
+            null,
+            BranchShape.DEFAULT,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                jmp32Ref(as, vm, target0);
+            }
+        );
+
+        // Pop the extra (inlined) locals
+        contBranch.markStart(as);
+        as.add(tspReg.opnd, X86Opnd(Type.sizeof * callCtx.extraLocals));
+        as.add(wspReg.opnd, X86Opnd(Word.sizeof * callCtx.extraLocals));
+
+        // Generate the edge code
+        contBranch.genCode(as, contSt);
+
+        return;
+    }
+
+    // Move the return word and types to the return registers
+    as.mov(retWordReg.opnd(64), retOpnd);
     as.mov(retTypeReg.opnd(8), typeOpnd);
 
     // If we are in a constructor (new) call

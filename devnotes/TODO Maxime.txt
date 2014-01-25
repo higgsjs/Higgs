@@ -18,6 +18,8 @@ List of possible contributions:
 - Register allocation
 - Lazy/incremental JIT
 - Basic block versioning
+- Interprocedural versioning
+- Incremental inlining vs classical inlining
 
 ------------------------------------------------------------------------------
 
@@ -62,6 +64,8 @@ TODO: add source position info for call instructions and throw instruction
 - Do this in genCallTargets?
 - Modify stack trace code to show source positions
 
+FIXME: Higgs REPL, should return value of last expr if several
+
 ------------------------------------------------------------------------------
 
 TODO: execHeap collection/expansion
@@ -90,10 +94,10 @@ TODO: register allocation
 
 TODO: basic type prop, without reg alloc, type test removal
 
-TODO: big blog post about basic block versioning, incremental JIT
-
 TODO: reduce code size by using calls for fallback type code,
 eg: global access, call_prim inlining/recompilation, others?
+
+TODO: big blog post about basic block versioning, incremental JIT
 
 TODO: skip empty branch edges, see perf impact?
 - can we integrate this in genBranchEdge?
@@ -104,6 +108,8 @@ TODO: blog
 - incremental JIT in master branch, no reg alloc, perf about the same
 - working on incremental inlining
 - bug fixes, thanks to toledo chess
+  - more bug fixes, unary + and -
+  - Higgs now more JS compliant
 - travis test system
 - contribuse OSS, DOM-free JS code, help us test & debug Higgs
   - always looking to grow our collection of tests
@@ -118,39 +124,49 @@ TODO: exception handling in inlined context
   - This is a BranchCode object
   - Could also just generate our own, avoids need to keep JIT objects in CallCtx
 
-TODO: connect the inlining bits in call_prim
+
+TODO: test on trivial loop example first, with --nostdlib
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: connect the inlining bits in call_prim
 - setup new CallCtx
+  - store contSt
+- setup new CodeGenState
+  - map args to parent values
 - adding of extraLocals
-- map args to parent values
+- jump to entry
 
-FIXME: Higgs REPL, should return value of last expr if several
+[DONE] TODO: email Marc, Laurie, Clark about ref letter
 
-TODO: start with return handling in call_prim, no exceptions yet
+[DONE] TODO: start with return handling for inlining, no exceptions yet
 - Probably don't want to jump to regular return branch from inlined call
   - Don't want to use the move register, want to get a branch edge for the call cont
   - Need to track the IR branch edge object
   - Generate efficient code upon return
 - can test on 3d-raytrace
 
-TODO: write/send submission for DConf 2014 , title + abstract
+[DONE] TODO: write/send submission for DConf 2014 , title + abstract
 - Deadline Jan 31st
 - 21-23 May, Menlo Park
 
-FIXME: +{} should be NaN, +[] should be integer 0
+[DONE] FIXME: +{} should be NaN, +[] should be integer 0
 - currently does 0+x
 - what does the spec say?
-
 ToNumber(GetValue(expr))
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: get_ir_str
 
