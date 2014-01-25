@@ -1380,11 +1380,11 @@ void gen_call_prim(
         auto callCtx = state.callCtx;
         auto vm = callCtx.vm;
 
-        /*
         writeln("recompiling for call instr: ", block.lastInstr);
 
         // Create a new version of this block
         auto newInst = new VersionInst(block, ver.state);
+        newInst.counter = ver.counter;
 
         // Recompile the new call block with inlining
         vm.queue(newInst);
@@ -1392,7 +1392,6 @@ void gen_call_prim(
 
         // Patch the current versiont to jump to the inlined version
         ver.patch(vm, newInst);
-        */
     }
 
     // If inlining is not disabled
@@ -1461,16 +1460,13 @@ void gen_call_prim(
         // Create the callee entry state
         auto calleeSt = new CodeGenState(subCtx);
 
-
-        // TODO: ISSUE: some values are IR constants!
-
-
         // Map parameters to parent values in the calleeSt
-        foreach (argIdx, argIdent; fun.ast.params)
+        foreach (paramIdx, argIdent; fun.ast.params)
         {
             auto paramVal = fun.paramMap[argIdent];
-            auto argVal = instr.getArg(argIdx + 1);
-            auto dstIdx = cast(int)(-numArgs + argIdx);
+            auto argIdx = paramIdx + 2;
+            auto argVal = instr.getArg(argIdx);
+            auto dstIdx = cast(int)(-numArgs + paramIdx);
 
             // If the argument is a non-constant value
             if (auto dstArg = cast(IRDstValue)argVal)
@@ -1504,6 +1500,8 @@ void gen_call_prim(
             }
         }
 
+        // TODO: arg count, other args, if used by callee
+
         // Add stack space for the extra inlined locals
         as.sub(wspReg.opnd, X86Opnd(Word.sizeof * extraLocals));
         as.sub(tspReg.opnd, X86Opnd(Type.sizeof * extraLocals));
@@ -1514,6 +1512,8 @@ void gen_call_prim(
             calleeSt,
             true
         );
+
+        //as.printStr("inlined call to " ~ fun.getName);
 
         // Generate the branch code
         ver.genBranch(
@@ -2437,7 +2437,7 @@ void gen_eval_str(
 }
 
 void gen_ret(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2479,18 +2479,30 @@ void gen_ret(
 
         // TODO: add type info about ret value to cont state
 
-        // Get the continuation branch object
-        auto contBranch = getBranchEdge(
-            as,
-            callCtx.callSite.getTarget(0),
+        // Set the return value
+        auto retSlot = cast(int)(callCtx.callSite.outSlot + callCtx.extraLocals);
+        as.setWord(retSlot, retOpnd);
+        as.setType(retSlot, typeOpnd);
+
+        //as.printStr("inlined return from " ~ instr.block.fun.getName);
+        //as.printUint(retOpnd);
+        //as.printUint(typeOpnd);
+
+        // Get the continuation version object
+        auto contVer = getBlockVersion(
+            callCtx.callSite.getTarget(0).target,
             contSt,
             true
         );
 
+        // Pop the extra (inlined) locals
+        as.add(tspReg.opnd, X86Opnd(Type.sizeof * callCtx.extraLocals));
+        as.add(wspReg.opnd, X86Opnd(Word.sizeof * callCtx.extraLocals));
+
         // Generate the branch code
         ver.genBranch(
             as,
-            contBranch,
+            contVer,
             null,
             BranchShape.DEFAULT,
             delegate void(
@@ -2504,14 +2516,6 @@ void gen_ret(
                 jmp32Ref(as, vm, target0);
             }
         );
-
-        // Pop the extra (inlined) locals
-        contBranch.markStart(as);
-        as.add(tspReg.opnd, X86Opnd(Type.sizeof * callCtx.extraLocals));
-        as.add(wspReg.opnd, X86Opnd(Word.sizeof * callCtx.extraLocals));
-
-        // Generate the edge code
-        contBranch.genCode(as, contSt);
 
         return;
     }
