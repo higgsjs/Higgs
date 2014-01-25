@@ -141,7 +141,6 @@ noinline: 55s
 - inlining code should not be generated for inlined version!
 - still infinite loops after fix
 
-TODO: integrate regexp fix PR
 
 
 
@@ -149,10 +148,7 @@ TODO: integrate regexp fix PR
 
 
 
-
-
-
-
+[DONE] TODO: integrate regexp fix PR
 
 [DONE] TODO: see how far along we get in make test
 - global object test, goes into infinite loop, possibly 2-level inlining
