@@ -70,7 +70,7 @@ function check_equal_matches (
 }
 
 function test_char_match ()
-{    
+{
     if (!check_equal_matches(new RegExp("a").exec("a"), ["a"]))
         return 1;
     if (!check_equal_matches(new RegExp("a").exec("b"), null))
