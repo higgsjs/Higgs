@@ -584,7 +584,7 @@ RegExpParser.prototype.parseAtomEscape = function ()
 {
     var cc;
 
-    if (this.current() >= 48 && this.current() <= 57)
+    if (this.current() >= 49 && this.current() <= 57)
     {
         return new RegExpBackReference( this.parseDecimalDigit() );
     }
@@ -673,6 +673,10 @@ RegExpParser.prototype.parseAtomEscape = function ()
             case 114: // 'r'
             this.advance();
             return new RegExpPatternCharacter(13);
+
+            case 48: // null character
+            this.advance();
+            return new RegExpPatternCharacter(0);
 
             default:
             var c = this.current();
