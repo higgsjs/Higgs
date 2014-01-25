@@ -129,15 +129,33 @@ TODO: exception handling in inlined context
   - This is a BranchCode object
   - Could also just generate our own, avoids need to keep JIT objects in CallCtx
 
-TODO: benchmark inlining on for incr loop (see existing tests)
+FIXME: no handling for two levels of inlining?
+- construct test for this
+
+TODO: test full higgs init with inlining
+
+FIXME: benchmark inlining on for incr loop (see existing tests)
 tests/regress/loop_big_incr.js
+noinline: 55s
+- something is broken, recompiling add and lt multiple times!
+- inlining code should not be generated for inlined version!
+- still infinite loops after fix
 
-TODO: see how far along we get in make test
+TODO: integrate regexp fix PR
 
 
 
 
 
+
+
+
+
+
+
+
+[DONE] TODO: see how far along we get in make test
+- global object test, goes into infinite loop, possibly 2-level inlining
 
 [DONE] TODO: test on trivial loop example first, with --nostdlib
 for (var i = 0; i < 10000; ++i);

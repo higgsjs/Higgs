@@ -1394,29 +1394,6 @@ void gen_call_prim(
         ver.patch(vm, newInst);
     }
 
-    // If inlining is not disabled
-    if (opts.jit_noinline is false)
-    {
-        // Fetch and increment the execution counter
-        as.ptr(scrRegs[0], ver);
-        as.getMember!("VersionInst.counter")(scrRegs[1].reg(32), scrRegs[0]);
-        as.inc(scrRegs[1].opnd(32));
-        as.setMember!("VersionInst.counter")(scrRegs[0], scrRegs[1].reg(32));
-
-        // Compare the counter against the threshold
-        as.cmp(scrRegs[1].opnd(32), X86Opnd(INLINE_THRESHOLD));
-        as.jne(Label.FALSE);
-
-        // Call the recompilation function
-        as.pushJITRegs();
-        as.ptr(cargRegs[0], ver);
-        as.ptr(scrRegs[0], &recompile);
-        as.call(scrRegs[0].opnd);
-        as.popJITRegs();
-
-        as.label(Label.FALSE);
-    }
-
     auto vm = st.callCtx.vm;
 
     // Function name string (D string)
@@ -1535,6 +1512,29 @@ void gen_call_prim(
         );
 
         return;
+    }
+
+    // If inlining is not disabled
+    if (/*opts.jit_noinline is false*/false)
+    {
+        // Fetch and increment the execution counter
+        as.ptr(scrRegs[0], ver);
+        as.getMember!("VersionInst.counter")(scrRegs[1].reg(32), scrRegs[0]);
+        as.inc(scrRegs[1].opnd(32));
+        as.setMember!("VersionInst.counter")(scrRegs[0], scrRegs[1].reg(32));
+
+        // Compare the counter against the threshold
+        as.cmp(scrRegs[1].opnd(32), X86Opnd(INLINE_THRESHOLD));
+        as.jne(Label.FALSE);
+
+        // Call the recompilation function
+        as.pushJITRegs();
+        as.ptr(cargRegs[0], ver);
+        as.ptr(scrRegs[0], &recompile);
+        as.call(scrRegs[0].opnd);
+        as.popJITRegs();
+
+        as.label(Label.FALSE);
     }
 
     // If the function is not yet compiled, compile it now
