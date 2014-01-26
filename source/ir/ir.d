@@ -358,7 +358,7 @@ class IRBlock : IdObject
     /// Linked list of instructions
     IRInstr firstInstr = null;
     IRInstr lastInstr = null;
-    
+
     /// Previous and next block (linked list)
     IRBlock prev = null;
     IRBlock next = null;

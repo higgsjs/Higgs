@@ -1345,6 +1345,7 @@ unittest
     vm.load("tests/regress/loop_argc.js");
     vm.load("tests/regress/loop_bool.js");
     vm.load("tests/regress/loop_decr_sum.js");
+    vm.load("tests/regress/loop_decr_test.js");
     vm.load("tests/regress/dowhile_cont.js");
     vm.load("tests/regress/vers_pathos.js");
 

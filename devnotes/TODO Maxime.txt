@@ -112,7 +112,7 @@ TODO: blog
 - incremental JIT in master branch, no reg alloc, perf about the same
 - working on incremental inlining
 - bug fixes, thanks to toledo chess
-  - more bug fixes, unary + and -
+  - more bug fixes, unary + and -, regex, thanks to zimbabao, toledo
   - Higgs now more JS compliant
   - new test framework, moz/v8 tests
 - travis test system
@@ -135,11 +135,16 @@ FIXME: no handling for two levels of inlining?
 TODO: test full higgs init with inlining
 
 FIXME: benchmark inlining on for incr loop (see existing tests)
-tests/regress/loop_big_incr.js
+make; ./higgs --nostdlib tests/regress/loop_big_incr.js 
 noinline: 55s
-- something is broken, recompiling add and lt multiple times!
-- inlining code should not be generated for inlined version!
-- still infinite loops after fix
+- seems to infinite loop, need to look at return values, args
+- loop i stops being incremented at 5000
+- try printing return value of add
+- Are we not executing phi nodes after the return? ******
+
+FIXME: foo.irString() before foo() fails?
+- irString causes odd things to happen
+- make regression test for this too
 
 
 
@@ -147,6 +152,19 @@ noinline: 55s
 
 
 
+
+
+
+[DONE] FIXME: bug found by zimbabao
+- something with phi nodes, liveness?
+    while (size-- > 0)
+    $5 = phi [call_cont(ED8A):0 => 4, call_cont(EDB9):0 => $0]
+    $0 = set_str "sjhsjsh", <link:NULL>
+- There is no call to rt_sub! test expr wrongly evaluated
+  - some phi simplification might be failing
+- Problem is with tmp alloc, tmp escapes block, used by phi node
+  - But used within same block
+- sunspider/crypto-aes still not working properly!
 
 [DONE] TODO: integrate regexp fix PR
 

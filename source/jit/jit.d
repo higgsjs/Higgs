@@ -1747,7 +1747,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     auto closPtr = vm.getWord(1).ptrVal;
     assert (closPtr !is null);
     auto fun = getClosFun(closPtr);
-    assert (fun !is null);
+    assert (
+        fun !is null,
+        "closure IRFunction is null"
+    );
 
     if (opts.jit_dumpinfo)
         writeln("compiling entry for " ~ fun.getName);

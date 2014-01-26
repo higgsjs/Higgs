@@ -824,8 +824,8 @@ void CmpOp(string op, size_t numBits)(
 
     // The first operand must be memory or register, but not immediate
     auto opnd0 = st.getWordOpnd(
-        as, 
-        instr, 
+        as,
+        instr,
         0,
         numBits,
         scrRegs[0].opnd(numBits),
@@ -835,9 +835,9 @@ void CmpOp(string op, size_t numBits)(
     // The second operand may be an immediate, unless FP comparison
     auto opnd1 = st.getWordOpnd(
         as,
-        instr, 
-        1, 
-        numBits, 
+        instr,
+        1,
+        numBits,
         scrRegs[1].opnd(numBits),
         isFP? false:true
     );
@@ -1515,7 +1515,8 @@ void gen_call_prim(
     }
 
     // If inlining is not disabled
-    if (/*opts.jit_noinline is false*/false)
+    //if (opts.jit_noinline is false)
+    if (false)
     {
         // Fetch and increment the execution counter
         as.ptr(scrRegs[0], ver);
