@@ -48,7 +48,9 @@ If the program exits abnormally, it's a failure.
     var test = require("lib/test");
     var io = require("lib/stdio");
 
-    var tests_dir = "./test";
+    var tests_dir = "./tests";
+    var ignore_dir = "core";
+
     var tests_run = 0;
     var tests_passed = 0;
     var tests_failed = 0;
@@ -104,8 +106,33 @@ If the program exits abnormally, it's a failure.
         });
     }
 
-    runTests(tests_dir);
-    console.log("\n---\n");
+    console.log("Starting test-run.js...");
+    console.log(" --- ");
+
+    // We need to ignore the dir which contains test files run in unittest {} blocks in D
+    var dir = fs.dir(tests_dir);
+
+    var dirs = dir.getDirs().sort().filter(function(n)
+    {
+        return n !== ignore_dir;
+    });
+
+    var files = dir.getFiles().sort().filter(function(name)
+    {
+        var ext = name.substr(name.length - 3);
+        return ext === ".js";
+    });
+
+    // first run tests in this dir
+    current = tests_dir;
+    files.forEach(runTest);
+    dirs.forEach(function(next_dir)
+    {
+        runTests(tests_dir + "/" + next_dir);
+    });
+
+    console.log("test-run.js results:");
+    console.log(" --- ");
     console.log("Tests run:", tests_run);
     console.log("Tests passed:", tests_passed);
     console.log("Tests failed:", tests_failed);

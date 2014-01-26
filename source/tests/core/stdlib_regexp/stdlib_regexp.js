@@ -70,7 +70,7 @@ function check_equal_matches (
 }
 
 function test_char_match ()
-{    
+{
     if (!check_equal_matches(new RegExp("a").exec("a"), ["a"]))
         return 1;
     if (!check_equal_matches(new RegExp("a").exec("b"), null))
@@ -212,6 +212,15 @@ function test_backreference ()
 
 }
 
+function test_null_charcter ()
+{
+    if (!check_equal_matches(new RegExp("\\0").exec("test\0str"), ["\0"]))
+        return 1;
+    if (!check_equal_matches(new RegExp("\\0").exec("test str"), null))
+        return 2;
+    return 0;
+}
+
 function test ()
 {
     var r;
@@ -243,6 +252,10 @@ function test ()
     r = test_backreference();
     if (r !== 0)
         return 700 + r;
+
+    r = test_null_charcter();
+    if (r !== 0)
+        return 800 + r;
 
     return 0;
 }
