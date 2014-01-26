@@ -50,7 +50,8 @@ C stdlib functions
         "int system (const char* command);",
         "char* getenv (const char* name);",
         "FILE *popen(const char *command, const char *mode);",
-        "void perror(const char *s);"
+        "void perror(const char *s);",
+        "int chdir (const char *filename);"
     ]);
 
     /**
@@ -145,6 +146,15 @@ C stdlib functions
         return;
     }
 
+    function chdir(dir_name)
+    {
+        var c_dir_name = ffi.cstr(dir_name);
+        var success = c.chdir(c_dir_name);
+        c.free(c_dir_name);
+        // TODO: check for error here?
+        return success;
+    }
+
     exports = {
         malloc : malloc,
         realloc : realloc,
@@ -153,6 +163,7 @@ C stdlib functions
         system : system,
         getenv : getenv,
         popen : popen,
+        chdir : chdir,
         perror : perror
     };
 

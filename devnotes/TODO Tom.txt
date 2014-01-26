@@ -1,3 +1,51 @@
+TODO: all libs
+      - cleaner API designs
+      - CommonJS is probably a good basis to build on - aim for compatibility where it makes sense
+      - perf also needs to be a consideration; all apis/libs should be designed so that it's easy to do
+        common tasks in a performant way. Try to achieve best balance possible.
+
+TODO: test lib
+      X more assert/testing functions
+      X basic assert functions; exit abnormally on failure
+
+TODO: improve FFI
+      - better errors in cdef - just good enough to find problems
+      - add more wrapping capability
+      - performance improvements (more caching/sharing, etc internally)
+      - add caching for bindings created by cdef to avoid reparsing, eval(), etc each time?
+
+TODO: SDL bindings
+      - move to binding for SDL2? Not as much support currently, but more future proof
+
+TODO: stdlib
+      - improve stdlib
+
+TODO: docs
+      - more documentation needed all around
+
+TODO: dir lib
+      - add functionality / settle api
+      - add more predicate functions - isFile etc (construct these at include time with eval? - saves lookup time)
+
+TODO: higgs-mode
+      - higgs (minor?) mode for emacs, prototype complete
+      - get prototype up on github
+      - add REPL capability
+      - higgs-dev functionality - run make targets, etc
+      - addons for js-mode and js2-mode to get correct syntax coloring, autocomplete, etc behavior for
+        Higgs globals (such as require()) and IR function names, etc.
+
+
+---------------------------------------------------------------------------------------------------
+
+[DONE]: test harness
+      - simple harness for running tests similar to what mozilla uses in their JIT tests
+
+[DONE]: organize
+      - merge in the ridic number of feature branches you got going on brah
+
+[DONE]: start FFI
+
 The eventual goal is to give users of Higgs easy access to various APIs.
 We will probably want to provide access to standard C APIs such as
 malloc/free as well as the C file APIs. May also want to provide BSD-type

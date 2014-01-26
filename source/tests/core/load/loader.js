@@ -1,6 +1,6 @@
 //println('hi!');
 
-load('tests/load/loadee.js');
+load('tests/core/load/loadee.js');
 
 //println(_loadeeVar_);
 
