@@ -53,6 +53,8 @@ void allocSlots(IRFunction fun)
     // interfere with previous tmp?
     // keep track of lastTmp?
 
+    // TODO: use nested helper functions to simplify code
+
     //writefln("allocSlots");
 
     // Number of assigned variable slots
@@ -117,7 +119,8 @@ void allocSlots(IRFunction fun)
                 );
 
                 // If the instruction is used in this block
-                if (owner.block is instr.block)
+                // by something that isn't a phi node
+                if (owner.block is instr.block && cast(PhiNode)owner is null)
                 {
                     // Assign the instruction a temp slot
                     if (tmpSlotIdx >= numTmpSlots)
@@ -185,7 +188,7 @@ void allocSlots(IRFunction fun)
             {
                 // Get the owner of this use
                 auto owner = instr.getFirstUse.owner;
-                if (owner.block is instr.block)                    
+                if (owner.block is instr.block && cast(PhiNode)owner is null)
                 {
                     // Leave the tmp slot index unchanged and
                     // Move to the next instruction
@@ -200,8 +203,8 @@ void allocSlots(IRFunction fun)
 
     /*
     writeln(fun.getName());
-    writefln("numLocals  : %s", fun.numLocals);    
-    writefln("numVarSlots: %s", numVarSlots);    
+    writefln("numLocals  : %s", fun.numLocals);
+    writefln("numVarSlots: %s", numVarSlots);
     writefln("numTmpSlots: %s", numTmpSlots);
     */
 }

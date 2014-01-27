@@ -730,6 +730,9 @@ void IsTypeOp(Type type)(
     // If the type of the argument is known
     if (st.typeKnown(argVal))
     {
+        // TODO: use getTypeOpnd
+        // get rid of typeKnown?
+
         // Mark the value as a known constant
         // This will defer writing the value
         auto knownType = st.getType(argVal);
@@ -821,8 +824,8 @@ void CmpOp(string op, size_t numBits)(
 
     // The first operand must be memory or register, but not immediate
     auto opnd0 = st.getWordOpnd(
-        as, 
-        instr, 
+        as,
+        instr,
         0,
         numBits,
         scrRegs[0].opnd(numBits),
@@ -832,9 +835,9 @@ void CmpOp(string op, size_t numBits)(
     // The second operand may be an immediate, unless FP comparison
     auto opnd1 = st.getWordOpnd(
         as,
-        instr, 
-        1, 
-        numBits, 
+        instr,
+        1,
+        numBits,
         scrRegs[1].opnd(numBits),
         isFP? false:true
     );
@@ -1146,16 +1149,25 @@ void gen_if_true(
     CodeBlock as
 )
 {
-    auto argVal = instr.getArg(0);
+    // If a boolean argument immediately precedes, the
+    // conditional branch has already been generated
+    if (boolArgPrev(instr) is true)
+        return;
+
+
 
     // TODO
     /*
+    auto argVal = instr.getArg(0);
+
     // If the argument is a known constant
     if (st.wordKnown(argVal))
     {
         auto targetT = instr.getTarget(0);
         auto targetF = instr.getTarget(1);
 
+        // TODO: use getWordOpnd
+        // TODO: get rid of wordKnown?
         auto argWord = st.getWord(argVal);
         auto target = (argWord == TRUE)? targetT:targetF;
         ctx.genBranchEdge(ctx.as, null, target, st);
@@ -1164,10 +1176,8 @@ void gen_if_true(
     }
     */
 
-    // If a boolean argument immediately precedes, the
-    // conditional branch has already been generated
-    if (boolArgPrev(instr) is true)
-        return;
+
+
 
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
@@ -1358,32 +1368,31 @@ void gen_call_prim(
     CodeBlock as
 )
 {
+    /// Inlining execution count threshold
+    const uint32_t INLINE_THRESHOLD = 5000;
+
     as.incStatCnt(&stats.numCallPrim, scrRegs[0]);
 
+    extern (C) static recompile(VersionInst ver)
+    {
+        auto block = ver.block;
+        auto state = ver.state;
+        auto callCtx = state.callCtx;
+        auto vm = callCtx.vm;
 
+        writeln("recompiling for call instr: ", block.lastInstr);
 
-    // TODO: use non-inline counter, messing with the i-cache is bad
-    /*
-    as.lea(scrRegs[0], X86Mem(32, RIP, 2));
-    as.jmp8(4);
-    as.writeInt(0, 32);
+        // Create a new version of this block
+        auto newInst = new VersionInst(block, ver.state);
+        newInst.counter = ver.counter;
 
-    auto cntMem = X86Opnd(32, scrRegs[0]);
-    
-    //as.mov(scrRegs[1].opnd(32), cntMem);
-    //as.inc(scrRegs[1].opnd(32));
-    //as.mov(cntMem, scrRegs[1].opnd(32));
-    as.mov(cntMem, X86Opnd(5));
+        // Recompile the new call block with inlining
+        vm.queue(newInst);
+        vm.compile(callCtx);
 
-    //as.inc(cntMem);
-    //as.cmp(cntMem, X86Opnd(5000));
-    //as.jne(Label.FALSE);
-    //as.label(Label.FALSE);
-    */
-
-
-
-
+        // Patch the current versiont to jump to the inlined version
+        ver.patch(vm, newInst);
+    }
 
     auto vm = st.callCtx.vm;
 
@@ -1406,6 +1415,129 @@ void gen_call_prim(
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     assert (numArgs is fun.numParams);
 
+    // If we are recompiling with inlining
+    if (ver.counter >= INLINE_THRESHOLD)
+    {
+        // TODO: remove arg space?
+        auto extraLocals = fun.numLocals;
+
+        // TODO: spill all
+        auto contState = new CodeGenState(st);
+
+        // Create the callee context
+        auto subCtx = new CallCtx(
+            st.callCtx,
+            instr,
+            contState,
+            extraLocals,
+            fun,
+            false
+        );
+
+        // Create the callee entry state
+        auto calleeSt = new CodeGenState(subCtx);
+
+        // Map parameters to parent values in the calleeSt
+        foreach (paramIdx, argIdent; fun.ast.params)
+        {
+            auto paramVal = fun.paramMap[argIdent];
+            auto argIdx = paramIdx + 2;
+            auto argVal = instr.getArg(argIdx);
+            auto dstIdx = cast(int)(-numArgs + paramIdx);
+
+            // If the argument is a non-constant value
+            if (auto dstArg = cast(IRDstValue)argVal)
+            {
+                // Map the parameter to the caller function slot
+                calleeSt.mapToStack(paramVal, dstArg.outSlot + extraLocals);
+            }
+            else
+            {
+                // Copy the argument word
+                auto argOpnd = st.getWordOpnd(
+                    as,
+                    instr,
+                    argIdx,
+                    64,
+                    scrRegs[1].opnd(64),
+                    true,
+                    false
+                );
+                as.setWord(dstIdx, argOpnd);
+
+                // Copy the argument type
+                auto typeOpnd = st.getTypeOpnd(
+                    as,
+                    instr,
+                    argIdx,
+                    scrRegs[1].opnd(8),
+                    true
+                );
+                as.setType(dstIdx, typeOpnd);
+            }
+        }
+
+        // TODO: arg count, other args, if used by callee
+
+        // Add stack space for the extra inlined locals
+        as.sub(wspReg.opnd, X86Opnd(Word.sizeof * extraLocals));
+        as.sub(tspReg.opnd, X86Opnd(Type.sizeof * extraLocals));
+
+        // Get an inlined entry block version
+        auto entryVer = getBlockVersion(
+            fun.entryBlock,
+            calleeSt,
+            true
+        );
+
+        //as.printStr("inlined call to " ~ fun.getName);
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            entryVer,
+            null,
+            BranchShape.DEFAULT,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                // Jump to the function entry
+                jmp32Ref(as, vm, target0);
+            }
+        );
+
+        return;
+    }
+
+    // If inlining is not disabled
+    //if (opts.jit_noinline is false)
+    if (false)
+    {
+        // Fetch and increment the execution counter
+        as.ptr(scrRegs[0], ver);
+        as.getMember!("VersionInst.counter")(scrRegs[1].reg(32), scrRegs[0]);
+        as.inc(scrRegs[1].opnd(32));
+        as.setMember!("VersionInst.counter")(scrRegs[0], scrRegs[1].reg(32));
+
+        // Compare the counter against the threshold
+        as.cmp(scrRegs[1].opnd(32), X86Opnd(INLINE_THRESHOLD));
+        as.jne(Label.FALSE);
+
+        // Call the recompilation function
+        as.pushJITRegs();
+        as.ptr(cargRegs[0], ver);
+        as.ptr(scrRegs[0], &recompile);
+        as.call(scrRegs[0].opnd);
+        as.popJITRegs();
+
+        as.label(Label.FALSE);
+    }
+
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
     {
@@ -1422,8 +1554,8 @@ void gen_call_prim(
 
         // Copy the argument word
         auto argOpnd = st.getWordOpnd(
-            as, 
-            instr, 
+            as,
+            instr,
             instrArgIdx,
             64,
             scrRegs[1].opnd(64),
@@ -1434,10 +1566,10 @@ void gen_call_prim(
 
         // Copy the argument type
         auto typeOpnd = st.getTypeOpnd(
-            as, 
-            instr, 
-            instrArgIdx, 
-            scrRegs[1].opnd(8), 
+            as,
+            instr,
+            instrArgIdx,
+            scrRegs[1].opnd(8),
             true
         );
         as.setType(dstIdx, typeOpnd);
@@ -1473,7 +1605,7 @@ void gen_call_prim(
 
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
-        fun.entryBlock, 
+        fun.entryBlock,
         new CodeGenState(fun.getCtx(false, vm)),
         true
     );
@@ -2306,12 +2438,14 @@ void gen_eval_str(
 }
 
 void gen_ret(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
+    auto callCtx = st.callCtx;
+
     auto raSlot    = instr.block.fun.raVal.outSlot;
     auto argcSlot  = instr.block.fun.argcVal.outSlot;
     auto numParams = instr.block.fun.numParams;
@@ -2319,26 +2453,76 @@ void gen_ret(
 
     //as.printStr("ret from " ~ instr.block.fun.getName);
 
-    // Copy the return value word
+    // Get the return value word operand
     auto retOpnd = st.getWordOpnd(
-        as, 
-        instr, 
+        as,
+        instr,
         0,
         64,
-        scrRegs[1].opnd(64),
+        scrRegs[0].opnd(64),
         true,
         false
     );
-    as.mov(retWordReg.opnd(64), retOpnd);
 
-    // Copy the return value type
+    // Get the return value type operand
     auto typeOpnd = st.getTypeOpnd(
         as,
-        instr, 
-        0, 
+        instr,
+        0,
         scrRegs[1].opnd(8),
         true
     );
+
+    // If we are in an inlined call
+    if (callCtx.parent !is null)
+    {
+        auto contSt = new CodeGenState(callCtx.contState);
+
+        // TODO: add type info about ret value to cont state
+
+        // Set the return value
+        auto retSlot = cast(int)(callCtx.callSite.outSlot + callCtx.extraLocals);
+        as.setWord(retSlot, retOpnd);
+        as.setType(retSlot, typeOpnd);
+
+        //as.printStr("inlined return from " ~ instr.block.fun.getName);
+        //as.printUint(retOpnd);
+        //as.printUint(typeOpnd);
+
+        // Get the continuation version object
+        auto contVer = getBlockVersion(
+            callCtx.callSite.getTarget(0).target,
+            contSt,
+            true
+        );
+
+        // Pop the extra (inlined) locals
+        as.add(tspReg.opnd, X86Opnd(Type.sizeof * callCtx.extraLocals));
+        as.add(wspReg.opnd, X86Opnd(Word.sizeof * callCtx.extraLocals));
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            contVer,
+            null,
+            BranchShape.DEFAULT,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                jmp32Ref(as, vm, target0);
+            }
+        );
+
+        return;
+    }
+
+    // Move the return word and types to the return registers
+    as.mov(retWordReg.opnd(64), retOpnd);
     as.mov(retTypeReg.opnd(8), typeOpnd);
 
     // If we are in a constructor (new) call
@@ -3265,32 +3449,53 @@ void gen_get_ast_str(
     as.mov(outOpnd, X86Opnd(RAX));
 }
 
-/*
-extern (C) void op_get_ir_str(VM vm, IRInstr instr)
+void gen_get_ir_str(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
 {
-    auto funArg = vm.getArgVal(instr, 0);
+    extern (C) static refptr op_get_ir_str(CallCtx callCtx, refptr closPtr)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
 
-    assert (
-        funArg.type == Type.REFPTR && valIsLayout(funArg.word, LAYOUT_CLOS),
-        "invalid closure object"
-    );
+        assert (
+            refIsLayout(closPtr, LAYOUT_CLOS),
+            "invalid closure object"
+        );
 
-    auto fun = getClosFun(funArg.word.ptrVal);
+        auto fun = getClosFun(closPtr);
 
-    // If the function is not yet compiled, compile it now
-    if (fun.entryBlock is null)
-        astToIR(fun.ast, fun);
+        // If the function is not yet compiled, compile it now
+        if (fun.entryBlock is null)
+            astToIR(fun.ast, fun);
 
-    auto str = fun.toString();
-    auto strObj = getString(vm, to!wstring(str));
+        auto str = fun.toString();
+        auto strObj = getString(vm, to!wstring(str));
 
-    vm.setSlot(
-        instr.outSlot,
-        Word.ptrv(strObj),
-        Type.REFPTR
-    );
+        vm.setCallCtx(null);
+
+        return strObj;
+    }
+
+    // TODO: spill all for GC
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    as.pushJITRegs();
+
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd, opnd0);
+    as.ptr(scrRegs[0], &op_get_ir_str);
+    as.call(scrRegs[0].opnd);
+
+    as.popJITRegs();
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(RAX));
 }
-*/
 
 void gen_load_lib(
     VersionInst ver,

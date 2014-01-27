@@ -104,42 +104,41 @@ Type and allocation state of a live value
 */
 struct ValState
 {
+    /// Value kind
+    enum Kind
+    {
+        STACK,
+        REG,
+        CONST
+    }
+
     /// Bit field for compact encoding
     mixin(bitfields!(
-        /// Known constant flag
-        bool, "isConst", 1,
+
+        /// Value kind
+        Kind, "kind", 2,
 
         /// Known type flag
         bool, "knownType", 1,
 
-        /// Has allocated register flag
-        bool, "hasReg", 1,
-
-        /// Is on the stack flag
-        bool, "onStack", 1,
-
-        /// Register number
-        uint, "regNo", 4,
-
         /// Type, if known
         Type, "type", 4,
 
-        /// Constant value, if known
-        uint, "cstVal", 4,
+        /// Local index, or register number, or constant value
+        int, "val", 25,
 
         /// Padding bits
         uint, "", 0
     ));
 
     /// Stack value constructor
-    static ValState stack()
+    static ValState stack(LocalIdx idx)
     {
         ValState val;
 
-        val.isConst = false;
+        val.kind = Kind.STACK;
         val.knownType = false;
-        val.hasReg = false;
-        val.onStack = true;
+        val.val = cast(int)idx;
 
         return val;
     }
@@ -149,35 +148,41 @@ struct ValState
     {
         ValState val;
 
-        val.isConst = false;
+        val.kind = Kind.STACK;
         val.knownType = false;
-        val.hasReg = true;
-        val.onStack = false;
-        val.regNo = reg.regNo;
+        val.val = reg.regNo;
 
         return val;
     }
 
+    bool isStack() const { return kind is Kind.STACK; }
+    bool isReg() const { return kind is Kind.REG; }
+    bool isConst() const { return kind is Kind.CONST; }
+
     /// Get a word operand for this value
-    X86Opnd getWordOpnd(LocalIdx stackSlot)
+    X86Opnd getWordOpnd(size_t numBits) const
     {
-        // TODO
-        assert (isConst is false);
-        assert (hasReg || onStack);
+        switch (kind)
+        {
+            case Kind.STACK:
+            return X86Opnd(numBits, wspReg, cast(int32_t)(Word.sizeof * val));
 
-        if (hasReg)
-            return X86Opnd(X86Reg(X86Reg.GP, regNo, 64));
+            case Kind.REG:
+            return X86Reg(X86Reg.GP, val, numBits).opnd;
 
-        return X86Opnd(8, wspReg, cast(int32_t)(Word.sizeof * stackSlot));
+            // TODO: const kind
+            default:
+            assert (false);
+        }
     }
 
     /// Get a type operand for this value
-    X86Opnd getTypeOpnd(LocalIdx stackSlot)
+    X86Opnd getTypeOpnd() const
     {
         // TODO
         assert (knownType is false);
 
-        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * stackSlot));
+        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * val));
     }
 }
 
@@ -194,10 +199,11 @@ class CodeGenState
     private ValState[IRDstValue] valMap;
 
     /// Map of general-purpose registers to values
-    /// The value is null if a register is free
+    /// If a register is free, its value is null
     private IRDstValue[] gpRegMap;
 
     /// Map of stack slots to values
+    /// Unmapped slots have no associated value
     private IRDstValue[LocalIdx] slotMap;
 
     // TODO
@@ -232,8 +238,20 @@ class CodeGenState
     */
     void removeDead(LiveInfo liveInfo, IRBlock block)
     {
-        // TODO
-        /*
+        // For each value in the value map
+        // Note: a value being mapped to a register/slot does not mean that
+        // this register/slot is necessarily mapped to that value in the
+        // presence of inlined calls
+        foreach (value; valMap.keys)
+        {
+            // If this value is not from this function, skip it
+            if (value.block.fun !is block.fun)
+                continue;
+
+            if (liveInfo.liveAtEntry(value, block) is false)
+                valMap.remove(value);
+        }
+
         // For each general-purpose register
         foreach (regNo, value; gpRegMap)
         {
@@ -241,29 +259,28 @@ class CodeGenState
             if (value is null)
                 continue;
 
+            // If this value is not from this function, skip it
+            if (value.block.fun !is block.fun)
+                continue;
+
             // If the value is no longer live, remove it
             if (liveInfo.liveAtEntry(value, block) is false)
-            {
                 gpRegMap[regNo] = null;
-                allocState.remove(value);
-                typeState.remove(value);
-            }
         }
 
-        // Remove dead values from the alloc state
-        foreach (value; allocState.keys)
+        // For each slot for which we have an assigned value
+        foreach (idx; slotMap.keys)
         {
-            if (liveInfo.liveAtEntry(value, block) is false)
-                allocState.remove(value);
-        }
+            auto value = slotMap[idx];
 
-        // Remove dead values from the type state
-        foreach (value; typeState.keys)
-        {
+            // If this value is not from this function, skip it
+            if (value.block.fun !is block.fun)
+                continue;
+
+            // If the value is no longer live, remove it
             if (liveInfo.liveAtEntry(value, block) is false)
-                typeState.remove(value);
+                slotMap.remove(idx);
         }
-        */
     }
 
     /**
@@ -374,35 +391,29 @@ class CodeGenState
 
         auto dstVal = cast(IRDstValue)value;
 
-        // TODO
-        /*
-        // Get the current alloc flags for the argument
-        auto flags = allocState.get(dstVal, 0);
-        */
-
-        // If the argument is a known constant
-        if (/*flags & RA_CONST ||*/ dstVal is null)
+        // If the value is an IR constant
+        if (dstVal is null)
         {
-            auto word = getWord(value);
+            auto word = value.cstValue.word;
 
+            // Note: the sequence below is necessary because the 64-bit
+            // value of a 32-bit negative integer is positive as the
+            // higher bits are all zeros.
             if (numBits is 8)
                 return X86Opnd(word.int8Val);
             if (numBits is 32)
                 return X86Opnd(word.int32Val);
-            return X86Opnd(getWord(value).int64Val);
+            else
+                return X86Opnd(word.int64Val);
         }
 
-        /*
-        // If the argument already is in a general-purpose register
-        if (flags & RA_GPREG)
-        {
-            auto regNo = flags & RA_REG_MASK;
-            return new X86Reg(X86Reg.GP, regNo, numBits);
-        }
-        */
+        // Get the state for this value
+        auto state = valMap.get(
+            dstVal,
+            ValState.stack(dstVal.outSlot)
+        );
 
-        // Return the stack operand for the argument
-        return X86Opnd(numBits, wspReg, 8 * dstVal.outSlot);
+        return state.getWordOpnd(numBits);
     }
 
     /**
@@ -528,7 +539,8 @@ class CodeGenState
         // If the operand is a memory location
         if (curOpnd.isMem)
         {
-            // TODO: only allocate a register if more than one use?            
+            // TODO: only allocate a register if more than one use?
+            // should benchmark this idea
 
             // TODO
             // Try to allocate a register for the operand
@@ -562,12 +574,18 @@ class CodeGenState
         auto dstVal = cast(IRDstValue)value;
 
         // If the value is an IR constant or has a known type
-        if (dstVal is null /*|| typeKnown(value) is true*/)
+        if (dstVal is null)
         {
-            return X86Opnd(getType(value));
+            return X86Opnd(value.cstValue.type);
         }
 
-        return X86Opnd(8, tspReg, dstVal.outSlot);
+        // Get the state for this value
+        auto state = valMap.get(
+            dstVal,
+            ValState.stack(dstVal.outSlot)
+        );
+
+        return state.getTypeOpnd();
     }
 
     /**
@@ -656,57 +674,6 @@ class CodeGenState
         */
     }
 
-    /// Get the word value for a known constant local
-    Word getWord(IRValue value) const
-    {
-        assert (value !is null);
-
-        auto dstValue = cast(IRDstValue)value;
-
-        if (dstValue is null)
-            return value.cstValue.word;
-
-        // TODO
-        assert (false);
-        /*
-        auto allocSt = allocState[dstValue];
-        auto typeSt = typeState[dstValue];
-
-        assert (allocSt & RA_CONST);
-
-        if (typeSt & TF_BOOL_TRUE)
-            return TRUE;
-        else if (typeSt & TF_BOOL_FALSE)
-            return FALSE;
-        else
-            assert (false, "unknown constant");
-        */
-    }
-
-    /// Get the known type of a value
-    Type getType(IRValue value) const
-    {
-        assert (value !is null);
-
-        auto dstValue = cast(IRDstValue)value;
-
-        if (dstValue is null)
-            return value.cstValue.type;
-
-        // TODO
-        assert (false);
-        /*
-        auto typeState = typeState.get(dstValue, 0);
-
-        assert (
-            typeState & TF_KNOWN,
-            "type is unknown"
-        );
-
-        return cast(Type)(typeState & TF_TYPE_MASK);
-        */
-    }
-
     /// Set the output type value for an instruction's output
     void setOutType(CodeBlock as, IRInstr instr, Type type)
     {
@@ -770,6 +737,16 @@ class CodeGenState
         //if (allocState.get(instr, 0) & RA_GPREG)
         //    as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
     }
+
+    /// Map a value to a specific stack location
+    void mapToStack(IRDstValue val, LocalIdx slotIdx)
+    {
+        valMap[val] = ValState.stack(slotIdx);
+
+        // TODO: gpRegMap?
+
+        // TODO: localMap?
+    }
 }
 
 /**
@@ -819,6 +796,8 @@ abstract class CodeFragment
     final auto length()
     {
         assert (startIdx !is startIdx.max);
+        assert (endIdx !is endIdx.max);
+        assert (endIdx > startIdx);
         return endIdx - startIdx;
     }
 
@@ -833,7 +812,10 @@ abstract class CodeFragment
     */
     final void markStart(CodeBlock as)
     {
-        assert (startIdx is startIdx.max);
+        assert (
+            startIdx is startIdx.max,
+            "start position is already marked"
+        );
 
         startIdx = cast(uint32_t)as.getWritePos();
 
@@ -846,9 +828,15 @@ abstract class CodeFragment
     */
     final void markEnd(CodeBlock as)
     {
-        assert (endIdx is startIdx.max);
+        assert (
+            endIdx is startIdx.max,
+            "end position is already marked"
+        );
 
         endIdx = cast(uint32_t)as.getWritePos();
+
+        // Update the generated code size stat
+        stats.genCodeSize += this.length();
     }
 }
 
@@ -893,9 +881,6 @@ class BranchCode : CodeFragment
 
     /// Target block version (may be a stub)
     BlockVersion target;
-
-    /// Code length, excluding the optional final jump
-    uint32_t codeLen;
 
     this(BranchEdge branch, BlockVersion target)
     {
@@ -1004,10 +989,6 @@ class BranchCode : CodeFragment
         // Execute the moves
         execMoves(as, moveList, scrRegs[0], scrRegs[1]);
 
-        // Compute the inner code length
-        assert (as.getWritePos() >= this.startIdx);
-        codeLen = cast(uint32_t)as.getWritePos() - this.startIdx;
-        
         // Encode the final jump and version reference
         as.jmp32Ref(vm, this.target);
 
@@ -1041,6 +1022,41 @@ abstract class BlockVersion : CodeFragment
 
     /// Code generation state at block entry
     CodeGenState state;
+
+    // (Re)compiled version (initially null, non-null if patched)
+    VersionInst next = null;
+
+    /**
+    Patch this code fragment to jump to a newer version
+    */
+    void patch(VM vm, VersionInst next)
+    {
+        auto as = vm.execHeap;
+
+        // Write a relative 32-bit jump to the instance over the stub code
+        auto startPos = as.getWritePos();
+        as.setWritePos(this.startIdx);
+        as.writeASM("jmp", next.getName);
+        as.writeByte(JMP_REL32_OPCODE);
+        auto offset = next.startIdx - (as.getWritePos + 4);
+        as.writeInt(offset, 32);
+
+        // Ensure that we did not overrun the code fragment length
+        assert (as.getWritePos() <= this.endIdx);
+
+        // Return to the original write position
+        as.setWritePos(startPos);
+
+        // Set next pointer
+        this.next = next;
+
+        // Replace the current version by the new one in the version map
+        auto versions = vm.versionMap.get(this.block, []);
+        auto idx = versions.countUntil(this);
+        assert (idx !is -1);
+        versions[idx] = next;
+        assert (versions.countUntil(this) is -1);
+    }
 }
 
 /**
@@ -1048,9 +1064,6 @@ Stubbed block version
 */
 class VersionStub : BlockVersion
 {
-    // Compiled instance (initially null, non-null if stub patched)
-    VersionInst inst = null;
-
     this(IRBlock block, CodeGenState state)
     {
         this.block = block;
@@ -1080,9 +1093,6 @@ Compiled block version instance
 */
 class VersionInst : BlockVersion
 {
-    /// Recompiled version
-    VersionInst next = null;
-
     /// Branch targets
     CodeFragment targets[2];
 
@@ -1100,7 +1110,7 @@ class VersionInst : BlockVersion
         this.block = block;
         this.state = state;
     }
-   
+
     /**
     Generate the final branch for the block
     */
@@ -1115,10 +1125,6 @@ class VersionInst : BlockVersion
         // Store the branch generation function and targets
         this.branchGenFn = genFn;
         this.targets = [target0, target1];
-
-        // Compute the inner code length
-        assert (as.getWritePos() >= this.startIdx);
-        codeLen = cast(uint32_t)as.getWritePos() - this.startIdx;
 
         // Generate the final branch code
         genFn(
@@ -1201,7 +1207,7 @@ BlockVersion getBlockVersion(
         assert (genState.callCtx is state.callCtx);
         state = genState;
     }
-    
+
     //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
 
     // Create a new block version object using the predecessor's state
@@ -1264,7 +1270,7 @@ BranchCode getBranchEdge(
         );
 
         // Map the phi node to its stack location
-        succState.valMap[phi] = ValState.stack();
+        succState.valMap[phi] = ValState.stack(phi.outSlot);
 
         /*
         // Get the register the phi is mapped to
@@ -1699,35 +1705,20 @@ extern (C) CodePtr compileStub(VersionStub stub)
 
     auto state = stub.state;
     auto vm = state.callCtx.vm;
-    auto as = vm.execHeap;
 
     assert (stub.startIdx !is stub.startIdx.max);
-    assert (stub.inst is null);
+    assert (stub.next is null);
 
     // Create a version instance object for this stub
     // and set the instance pointer for the stub
-    stub.inst = new VersionInst(stub.block, state);
+    auto inst = new VersionInst(stub.block, state);
 
     // Compile the version instance
-    vm.queue(stub.inst);
+    vm.queue(inst);
     vm.compile(state.callCtx);
-    assert (stub.inst.startIdx !is stub.inst.startIdx.max);
 
-    // Replace the stub by its instance in the version map
-    auto versions = vm.versionMap.get(stub.block, []);
-    auto stubIdx = versions.countUntil(stub);
-    assert (stubIdx !is -1);
-    versions[stubIdx] = stub.inst;
-    assert (versions.countUntil(stub) is -1);
-
-    // Write a relative 32-bit jump to the instance over the stub code
-    auto startPos = as.getWritePos();
-    as.setWritePos(stub.startIdx);
-    as.writeASM("jmp", stub.inst.getName);
-    as.writeByte(JMP_REL32_OPCODE);
-    auto offset = stub.inst.startIdx - (as.getWritePos + 4);
-    as.writeInt(offset, 32);
-    as.setWritePos(startPos);
+    // Patch the stub to jump to the compiled instance
+    stub.patch(vm, inst);
 
     //writeln("leaving compileStub");
 
@@ -1736,7 +1727,7 @@ extern (C) CodePtr compileStub(VersionStub stub)
     stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 
     // Return a pointer to the instance's code
-    return stub.inst.getCodePtr(as);
+    return inst.getCodePtr(vm.execHeap);
 }
 
 /**
@@ -1756,7 +1747,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     auto closPtr = vm.getWord(1).ptrVal;
     assert (closPtr !is null);
     auto fun = getClosFun(closPtr);
-    assert (fun !is null);
+    assert (
+        fun !is null,
+        "closure IRFunction is null"
+    );
 
     if (opts.jit_dumpinfo)
         writeln("compiling entry for " ~ fun.getName);

@@ -18,6 +18,8 @@ List of possible contributions:
 - Register allocation
 - Lazy/incremental JIT
 - Basic block versioning
+- Interprocedural versioning
+- Incremental inlining vs classical inlining
 
 ------------------------------------------------------------------------------
 
@@ -62,6 +64,8 @@ TODO: add source position info for call instructions and throw instruction
 - Do this in genCallTargets?
 - Modify stack trace code to show source positions
 
+FIXME: Higgs REPL, should return value of last expr if several
+
 ------------------------------------------------------------------------------
 
 TODO: execHeap collection/expansion
@@ -88,43 +92,176 @@ TODO: register allocation
 - unified spilling function? params to spill tsp/wsp, vm reg
 - delayed writes
 
-TODO: basic type prop, without reg alloc, type test removal
-
-TODO: big blog post about basic block versioning, incremental JIT
-
 TODO: reduce code size by using calls for fallback type code,
 eg: global access, call_prim inlining/recompilation, others?
 
 TODO: skip empty branch edges, see perf impact?
 - can we integrate this in genBranchEdge?
+- could also have quick reoptimization pass with basic asm pattern matching
+- repatch stub jumps, etc.
 
-TODO: work on inlining
-- This is critical for performance
-- Work on inlining before dweldving into type prop opts too much
-- Marc: write on other side of sp for inlined locals?
-- start by inlining primitive calls only, will make a huge difference
+TODO: big blog post about basic block versioning, incremental JIT
 
-TODO: proper system to map values to stack slots in CodeGenState
+TODO: prepare beta mloc/midiro talk
+
+TODO: type prop, pass types along inlined calls/returns
+
+TODO: basic type prop, without reg alloc, type test removal
+
+TODO: blog
+- incremental JIT in master branch, no reg alloc, perf about the same
+- working on incremental inlining
+- bug fixes, thanks to toledo chess
+  - more bug fixes, unary + and -, regex, thanks to zimbabao, toledo
+  - Higgs now more JS compliant
+  - new test framework, moz/v8 tests
+- travis test system
+- contribuse OSS, DOM-free JS code, help us test & debug Higgs
+  - always looking to grow our collection of tests
+- paper on arxiv
+- Budapest talk imminently
+  - expect detailed blog post on BBV & incremental JIT
+- DConf 2014
+
+TODO: exception handling in inlined context
+- Can use regular exception handler, however? Yes
+  - Takes the exc value off the stack
+  - This is a BranchCode object
+  - Could also just generate our own, avoids need to keep JIT objects in CallCtx
+
+FIXME: no handling for two levels of inlining?
+- construct test for this
+
+TODO: test full higgs init with inlining
+
+FIXME: benchmark inlining on for incr loop (see existing tests)
+make; ./higgs --nostdlib tests/regress/loop_big_incr.js 
+noinline: 55s
+- seems to infinite loop, need to look at return values, args
+- loop i stops being incremented at 5000
+- try printing return value of add
+- Are we not executing phi nodes after the return? ******
+
+FIXME: foo.irString() before foo() fails?
+- irString causes odd things to happen
+- make regression test for this too
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: bug found by zimbabao
+- something with phi nodes, liveness?
+    while (size-- > 0)
+    $5 = phi [call_cont(ED8A):0 => 4, call_cont(EDB9):0 => $0]
+    $0 = set_str "sjhsjsh", <link:NULL>
+- There is no call to rt_sub! test expr wrongly evaluated
+  - some phi simplification might be failing
+- Problem is with tmp alloc, tmp escapes block, used by phi node
+  - But used within same block
+- sunspider/crypto-aes still not working properly!
+
+[DONE] TODO: integrate regexp fix PR
+
+[DONE] TODO: see how far along we get in make test
+- global object test, goes into infinite loop, possibly 2-level inlining
+
+[DONE] TODO: test on trivial loop example first, with --nostdlib
+for (var i = 0; i < 10000; ++i);
+- Inlines call to lt, but execution stops immediately (lt returns false)
+- lt returns false, arguments are probably mapped wronge (inverted?)
+
+[DONE] TODO: connect the inlining bits in call_prim
+- setup new CallCtx
+  - store contSt
+- setup new CodeGenState
+  - map args to parent values
+- adding of extraLocals
+- jump to entry
+
+[DONE] TODO: email Marc, Laurie, Clark about ref letter
+
+[DONE] TODO: start with return handling for inlining, no exceptions yet
+- Probably don't want to jump to regular return branch from inlined call
+  - Don't want to use the move register, want to get a branch edge for the call cont
+  - Need to track the IR branch edge object
+  - Generate efficient code upon return
+- can test on 3d-raytrace
+
+[DONE] TODO: write/send submission for DConf 2014 , title + abstract
+- Deadline Jan 31st
+- 21-23 May, Menlo Park
+
+[DONE] FIXME: +{} should be NaN, +[] should be integer 0
+- currently does 0+x
+- what does the spec say?
+ToNumber(GetValue(expr))
+
+[DONE] TODO: get_ir_str
+
+[DONE] FIXME: X86Opnd(-1) doesn't fit in 8 bits?
+- see getWordOpnd
+
+[DONE] TODO: proper system to map values to stack slots in CodeGenState
 - Needed for handling of inlined args
+- Need to be able to map a value to a specific stack slot ***
 
-TODO: patching mechanism for when recompiling 
+[DONE] TODO: inform Andrei
+- Marc willing to pay for travel + hotel
+
+[DONE] TODO: liveness information during inlining
+- fix removeDead
+- Do we even need to query this??? Can probably ignore parent values in removeDead
+
+[DONE] TODO: send toledo chess link to Marc
+
+[DONE] Meeting:
+- added generated code size stat, num call_prim, num dynamic calls
+- large majority of calls are primitive calls (>70x more) in several benchmark
+- began inlining work
+- have system to trigger recompilation of call sites on inlining, code patching
+- working on stack value tracking in inlined calls, branch and exc edges
+  - all managed in backend, IR not transformed
+- DConf 2014. Could replace Australian conf, coincide with Mozilla visit?
+
+[DONE] TODO: --jit_noinline flag
+- 3d-raytrace inline:
+exec time (ms): 2698
+comp time (ms): 436
+code size (bytes): 1151903
+- noinline:
+exec time (ms): 2528
+comp time (ms): 420
+code size (bytes): 919875
+
+[DONE] TODO: test, long loop with getProp and try, eventually set base to null,
+throws an exception in an inlined context
+
+[DONE] TODO: patching mechanism for when recompiling
 - VersionInst needs a next version var
 - BlockVersion method for patching?
-  - put next var in base class?
+- put next var in base class?
+- should assert that the patch code can fit within the current block length
+- assert that the endIdx is set in length computation
 
-TODO: ask on Twitter if people have DOM-free JS code to help test & benchmark the Higgs JS JIT
-Do you have any DOM-free JS code to help test & benchmark the Higgs JS JIT? https://github.com/maximecb/Higgs
+[DONE] TODO: sketch recompilation mechanism for inlining
+- spill regs, call?
+- need to set the CallCtx, contained in BlockVersion
 
-TODO: add counter variable (uint32) on VersionInst
+[DONE] FIXME: code size statistic, sum up generated code
+- markEnd should do this?
+- adding counter/recompilation code makes code size go from to 0.9 to 1.15MB
+
+[DONE] TODO: add counter variable (uint32) on VersionInst
 - Implement incrementation code in call_prim, test performance
 
-
-
-
-
-
-
-
+[DONE] TODO: ask on Twitter if people have DOM-free JS code to help test & benchmark the Higgs JS JIT
+Do you have any DOM-free JS code to help test & benchmark the Higgs JS JIT? https://github.com/maximecb/Higgs
 
 [DONE] TODO: look at incremental inlining notes, new notes file specifically on this
 2014-01-16 Inlining.txt

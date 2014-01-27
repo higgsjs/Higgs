@@ -1,32 +1,17 @@
 TODO: all libs
       - cleaner API designs
-      - reduce c-isms? If users can access our tools they can write c-in-js to their heart's content
-        whether for perf or personal preference. We should strive for cleaner/higher level apis that
-        are convienent for common use.
-      - the "wrap a single c library" model does not seem to always map well to how users will want
-        to write code. C can get away with having filesystem related functions spread out across several
-        libs due to it's compilation model -  we have to execute and load into memory expensive high level
-        code or every module require()'d, so some focus is probably desirable. It does work somewhat
-        for really common functionality and 3rd party c libs that are pretty focused, but I want to take a
-        good look at different ways to organize "core" common functions for Higgs.
-      - Node api compatibility? Would probably be nice, but meh.
-        Perhaps Higgs should strive for it's own ecosystem. Should perhaps try to conform to CommonJS where
-        applicable. Compatibility is nice, but so is diversity to avoid stagnation.
+      - CommonJS is probably a good basis to build on - aim for compatibility where it makes sense
       - perf also needs to be a consideration; all apis/libs should be designed so that it's easy to do
         common tasks in a performant way. Try to achieve best balance possible.
 
 TODO: test lib
-      - more assert/testing functions
+      X more assert/testing functions
       X basic assert functions; exit abnormally on failure
 
 TODO: improve FFI
-      - better errors in cdef (pretty, even? arrows pointing to failures? line/col?)
+      - better errors in cdef - just good enough to find problems
       - add more wrapping capability
       - performance improvements (more caching/sharing, etc internally)
-      - leverage maps() for looking up types
-      - c-types? While working on the FFI, it may be possible to change it's internal api
-        to something like c-types, and allow users to use it directly if they wish rather than
-        cdef();
       - add caching for bindings created by cdef to avoid reparsing, eval(), etc each time?
 
 TODO: SDL bindings
@@ -34,9 +19,6 @@ TODO: SDL bindings
 
 TODO: stdlib
       - improve stdlib
-
-TODO: organize
-      - merge in the ridic number of feature branches you got going on brah
 
 TODO: docs
       - more documentation needed all around
@@ -59,6 +41,8 @@ TODO: higgs-mode
 [DONE]: test harness
       - simple harness for running tests similar to what mozilla uses in their JIT tests
 
+[DONE]: organize
+      - merge in the ridic number of feature branches you got going on brah
 
 [DONE]: start FFI
 
