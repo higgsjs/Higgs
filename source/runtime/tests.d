@@ -1286,7 +1286,7 @@ unittest
     vm.assertStr("str;", "abcdef");
     vm.load("tests/core/exceptions/try_call.js");
     vm.assertStr("str;", "abc");
-    vm.load("tests/exceptions/try_loop_getprop.js");
+    vm.load("tests/core/exceptions/try_loop_getprop.js");
     vm.assertStr("str;", "abcd");
 }
 
@@ -1345,6 +1345,7 @@ unittest
     vm.load("tests/core/regress/loop_argc.js");
     vm.load("tests/core/regress/loop_bool.js");
     vm.load("tests/core/regress/loop_decr_sum.js");
+    vm.load("tests/core/regress/loop_decr_test.js");
     vm.load("tests/core/regress/dowhile_cont.js");
     vm.load("tests/core/regress/vers_pathos.js");
 
