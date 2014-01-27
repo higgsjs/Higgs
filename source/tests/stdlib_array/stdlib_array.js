@@ -355,7 +355,6 @@ function test_reduce()
         return 5;
     if (sparseArray.reduce(function(a,b){return a+1;}) != 22)
         return 6;
-
     if (sparseArray.reduce(function(a,b){return a+1;}, 10) != 13)
         return 7;
 

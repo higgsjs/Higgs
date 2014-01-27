@@ -132,7 +132,8 @@ TODO: exception handling in inlined context
 TODO: test full higgs init with inlining
 
 FIXME: no handling for two levels of inlining
-- construct test for this
+- use extraLocals from previous level when computing current extraLocals
+- make loop test that uses getProp?
 
 
 
