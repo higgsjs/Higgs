@@ -1232,7 +1232,6 @@ BlockVersion getBlockVersion(
 Request a branch edge transition matching the incoming state
 */
 BranchCode getBranchEdge(
-    CodeBlock as,
     BranchEdge branch,
     CodeGenState predState,
     bool noStub
@@ -1768,11 +1767,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     auto origLocals = fun.numLocals;
 
     // Generate the IR for this function
-    assert (
-        fun.entryBlock is null,
-        "IR already generated for function: " ~ fun.getName
-    );
-    astToIR(fun.ast, fun);
+    if (fun.entryBlock is null)
+    {
+        astToIR(fun.ast, fun);
+    }
 
     // Add space for the newly allocated locals
     vm.push(fun.numLocals - origLocals);
