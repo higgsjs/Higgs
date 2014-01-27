@@ -14,3 +14,14 @@ assert (
     "eval of function expression failed"
 );
 
+assert (
+    eval("1;2") === 2,
+    "eval of const with two expression failed"
+);
+
+var testVal = 100;
+
+assert(
+    eval("var i=0;testVal;") === testVal,
+    "eval returning global variable"
+);
