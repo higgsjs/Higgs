@@ -129,31 +129,32 @@ TODO: exception handling in inlined context
   - This is a BranchCode object
   - Could also just generate our own, avoids need to keep JIT objects in CallCtx
 
-FIXME: no handling for two levels of inlining?
-- construct test for this
-
 TODO: test full higgs init with inlining
 
-FIXME: benchmark inlining on for incr loop (see existing tests)
-make; ./higgs --nostdlib tests/regress/loop_big_incr.js 
-noinline: 55s
+FIXME: no handling for two levels of inlining
+- construct test for this
+
+
+
+
+
+
+
+
+[DONE] TODO: getBranchEdge shouldn't need assembler argument
+
+[DONE] FIXME: benchmark inlining on for incr loop (see existing tests)
+make; time ./higgs --nostdlib tests/regress/loop_big_incr.js 
+noinline: 40s
+inline: 36s
 - seems to infinite loop, need to look at return values, args
 - loop i stops being incremented at 5000
 - try printing return value of add
-- Are we not executing phi nodes after the return? ******
+- Not executing phi nodes after the return? ***
 
-FIXME: foo.irString() before foo() fails?
+[DONE] FIXME: foo.irString() before foo() fails
 - irString causes odd things to happen
 - make regression test for this too
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: bug found by zimbabao
 - something with phi nodes, liveness?

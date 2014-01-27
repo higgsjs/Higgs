@@ -1347,7 +1347,6 @@ unittest
     vm.load("tests/regress/loop_decr_sum.js");
     vm.load("tests/regress/loop_decr_test.js");
     vm.load("tests/regress/dowhile_cont.js");
-    vm.load("tests/regress/vers_pathos.js");
 
     vm.load("tests/regress/jit_se_cmp.js");
     vm.load("tests/regress/jit_float_cmp.js");
@@ -1357,6 +1356,9 @@ unittest
     vm.load("tests/regress/jit_set_global.js");
     vm.load("tests/regress/jit_inlining.js");
     vm.load("tests/regress/jit_inlining2.js");
+    vm.load("tests/regress/vers_pathos.js");
+
+    vm.load("tests/regress/ir_string.js");
 
     vm.load("tests/regress/delta.js");
     vm.load("tests/regress/raytrace.js");

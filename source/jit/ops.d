@@ -302,8 +302,8 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
     // If the instruction has an exception/overflow target
     if (instr.getTarget(0))
     {
-        auto branchNO = getBranchEdge(as, instr.getTarget(0), st, false);
-        auto branchOV = getBranchEdge(as, instr.getTarget(1), st, false);
+        auto branchNO = getBranchEdge(instr.getTarget(0), st, false);
+        auto branchOV = getBranchEdge(instr.getTarget(1), st, false);
 
         // Generate the branch code
         ver.genBranch(
@@ -777,8 +777,8 @@ void IsTypeOp(Type type)(
     if (ifUseNext(instr) is true)
     {
         // Get branch edges for the true and false branches
-        auto branchT = getBranchEdge(as, instr.next.getTarget(0), st, false);
-        auto branchF = getBranchEdge(as, instr.next.getTarget(1), st, false);
+        auto branchT = getBranchEdge(instr.next.getTarget(0), st, false);
+        auto branchF = getBranchEdge(instr.next.getTarget(1), st, false);
 
         // Generate the branch code
         ver.genBranch(
@@ -1023,8 +1023,8 @@ void CmpOp(string op, size_t numBits)(
     if (ifUseNext(instr) is true)
     {
         // Get branch edges for the true and false branches
-        auto branchT = getBranchEdge(as, instr.next.getTarget(0), st, false);
-        auto branchF = getBranchEdge(as, instr.next.getTarget(1), st, false);
+        auto branchT = getBranchEdge(instr.next.getTarget(0), st, false);
+        auto branchF = getBranchEdge(instr.next.getTarget(1), st, false);
 
         // Generate the branch code
         ver.genBranch(
@@ -1183,8 +1183,8 @@ void gen_if_true(
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
     as.cmp(argOpnd, X86Opnd(TRUE.int8Val));
 
-    auto branchT = getBranchEdge(as, instr.getTarget(0), st, false);
-    auto branchF = getBranchEdge(as, instr.getTarget(1), st, false);
+    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+    auto branchF = getBranchEdge(instr.getTarget(1), st, false);
 
     // Generate the branch code
     ver.genBranch(
@@ -1218,7 +1218,6 @@ void gen_jump(
 )
 {
     auto branch = getBranchEdge(
-        as,
         instr.getTarget(0),
         st,
         true
@@ -1282,7 +1281,6 @@ void genCallBranch(
 
     // Request a branch object for the continuation
     auto contBranch = getBranchEdge(
-        as,
         instr.getTarget(0),
         st,
         false
@@ -1293,7 +1291,6 @@ void genCallBranch(
     if (instr.getTarget(1))
     {
         excBranch = getBranchEdge(
-            as,
             instr.getTarget(1),
             st,
             false
@@ -2489,9 +2486,9 @@ void gen_ret(
         //as.printUint(retOpnd);
         //as.printUint(typeOpnd);
 
-        // Get the continuation version object
-        auto contVer = getBlockVersion(
-            callCtx.callSite.getTarget(0).target,
+        // Request a branch object for the continuation
+        auto contBranch = getBranchEdge(
+            callCtx.callSite.getTarget(0),
             contSt,
             true
         );
@@ -2503,7 +2500,7 @@ void gen_ret(
         // Generate the branch code
         ver.genBranch(
             as,
-            contVer,
+            contBranch,
             null,
             BranchShape.DEFAULT,
             delegate void(
@@ -2517,6 +2514,9 @@ void gen_ret(
                 jmp32Ref(as, vm, target0);
             }
         );
+
+        // Generate the continuation branch edge code
+        contBranch.genCode(as, contSt);
 
         return;
     }
@@ -3838,7 +3838,6 @@ void gen_call_ffi(
 
     // Request a branch object for the continuation
     auto contBranch = getBranchEdge(
-        as,
         instr.getTarget(0),
         st,
         false
