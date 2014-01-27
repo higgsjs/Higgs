@@ -1349,6 +1349,8 @@ unittest
     vm.load("tests/core/regress/dowhile_cont.js");
     vm.load("tests/core/regress/vers_pathos.js");
 
+    vm.load("tests/regress/ir_string.js");
+
     vm.load("tests/core/regress/jit_se_cmp.js");
     vm.load("tests/core/regress/jit_float_cmp.js");
     vm.load("tests/core/regress/jit_getprop_arr.js");
