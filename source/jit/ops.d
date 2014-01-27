@@ -1446,7 +1446,10 @@ void gen_call_prim(
             if (auto dstArg = cast(IRDstValue)argVal)
             {
                 // Map the parameter to the caller function slot
-                calleeSt.mapToStack(paramVal, dstArg.outSlot + extraLocals);
+                // Note: the argument we are receiving might be mapped
+                // across multiple levels of inlining
+                auto valState = st.getState(dstArg);
+                calleeSt.mapToStack(paramVal, valState.localIdx + extraLocals);
             }
             else
             {
@@ -1512,8 +1515,8 @@ void gen_call_prim(
     }
 
     // If inlining is not disabled
-    //if (opts.jit_noinline is false)
-    if (false)
+    if (opts.jit_noinline is false)
+    //if (false)
     {
         // Fetch and increment the execution counter
         as.ptr(scrRegs[0], ver);
@@ -3259,7 +3262,7 @@ void gen_map_prop_name(
 }
 
 void gen_new_clos(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3267,8 +3270,8 @@ void gen_new_clos(
 {
     extern (C) static refptr op_new_clos(
         CallCtx callCtx,
-        IRFunction fun, 
-        ObjMap closMap, 
+        IRFunction fun,
+        ObjMap closMap,
         ObjMap protMap
     )
     {

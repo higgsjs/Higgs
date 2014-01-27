@@ -99,16 +99,31 @@ TODO: skip empty branch edges, see perf impact?
 - can we integrate this in genBranchEdge?
 - could also have quick reoptimization pass with basic asm pattern matching
 - repatch stub jumps, etc.
+- does dst block fit in source block?
+
+TODO: proper 1 / (-1 * 0) handling, negative operator as -1 times zero,
+multiply handling of 
+If the multiplication isn't truncated (by one of the many ToInt32()/ToUint32()-coercing operators),
+then we dynamically branch for both overflow and negative*zero.  We can also special case various
+multiply-by-constant cases to avoid one or both branches.  (Note, even when multiplication is
+truncated it can overflow making * kindof a lame duck.  In asm.js, we give it the type (doublish,doublish)->double
+and then we separately define multiplication by small-enough constants as having type int->intish.
+This suckiness is what motivates Math.imul.
+We just branch on zero to an out-of-line path that does the signed check.
 
 TODO: big blog post about basic block versioning, incremental JIT
-
-TODO: prepare beta mloc/midiro talk
 
 TODO: type prop, pass types along inlined calls/returns
 
 TODO: basic type prop, without reg alloc, type test removal
 
-TODO: blog
+TODO: prepare beta mloc/midiro talk
+
+TODO: blog, use subheaders? (More talks coming, new contributors)
+- paper on arxiv
+- Budapest talk imminently
+  - expect detailed blog post on BBV & incremental JIT
+- DConf 2014
 - incremental JIT in master branch, no reg alloc, perf about the same
 - working on incremental inlining
 - bug fixes, thanks to toledo chess
@@ -118,10 +133,8 @@ TODO: blog
 - travis test system
 - contribuse OSS, DOM-free JS code, help us test & debug Higgs
   - always looking to grow our collection of tests
-- paper on arxiv
-- Budapest talk imminently
-  - expect detailed blog post on BBV & incremental JIT
-- DConf 2014
+
+TODO: make inline threshold larger for bigger functions?
 
 TODO: exception handling in inlined context
 - Can use regular exception handler, however? Yes
@@ -129,18 +142,39 @@ TODO: exception handling in inlined context
   - This is a BranchCode object
   - Could also just generate our own, avoids need to keep JIT objects in CallCtx
 
-TODO: test full higgs init with inlining
+Seem to now be failing in exceptions test
 
-FIXME: no handling for two levels of inlining
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: no handling for two levels of inlining
+- loop test that uses getProp?
+    make; ./higgs tests/regress/jit_getprop_arr.js
 - use extraLocals from previous level when computing current extraLocals
-- make loop test that uses getProp?
+- still segfaults, probably want simpler test
+    make; ./higgs loop_test.js
+We crash at the second inlined call to str_ofs_data...
+- We aren't getting the same entryVer object
+- extraLocals... can't pop them all at once when returning if multiple levels
+- want extraLocals and totalLocals...
+- Also want to be able to map arguments across *multiple levels* of inlining
 
+[DONE] Meeting:
+- Sent submission for DConf
+- New contributions, regexp fix, missing array functions
+- Multiple bugfixes
+- More conformance bug fixes
+- Inlining, slight perf gain, ~12%
 
-
-
-
-
-
+[DONE] TODO: test full higgs init with inlining
 
 [DONE] TODO: getBranchEdge shouldn't need assembler argument
 

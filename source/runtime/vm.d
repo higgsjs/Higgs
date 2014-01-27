@@ -1082,7 +1082,7 @@ class VM
             auto curFun = curCtx.fun;
             assert (curFun !is null);
 
-            auto numLocals = curFun.numLocals + curCtx.extraLocals;
+            auto numLocals = curCtx.totalLocals;
             auto numParams = curFun.numParams;
             auto argcSlot  = curFun.argcVal.outSlot;
             auto raSlot    = curFun.raVal.outSlot;
@@ -1198,7 +1198,7 @@ extern (C) CodePtr throwExc(
         auto curFun = curCtx.fun;
         assert (curFun !is null);
 
-        auto numLocals = curFun.numLocals + curCtx.extraLocals;
+        auto numLocals = curCtx.totalLocals;
         auto numParams = curFun.numParams;
         auto argcSlot  = curFun.argcVal.outSlot;
         auto raSlot    = curFun.raVal.outSlot;

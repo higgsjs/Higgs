@@ -159,13 +159,20 @@ struct ValState
     bool isReg() const { return kind is Kind.REG; }
     bool isConst() const { return kind is Kind.CONST; }
 
+    /// Get the stack slot index for this value
+    LocalIdx localIdx() const
+    {
+        assert (isStack);
+        return cast(LocalIdx)val;
+    }
+
     /// Get a word operand for this value
     X86Opnd getWordOpnd(size_t numBits) const
     {
         switch (kind)
         {
             case Kind.STACK:
-            return X86Opnd(numBits, wspReg, cast(int32_t)(Word.sizeof * val));
+            return X86Opnd(numBits, wspReg, cast(int32_t)(Word.sizeof * localIdx));
 
             case Kind.REG:
             return X86Reg(X86Reg.GP, val, numBits).opnd;
@@ -182,7 +189,7 @@ struct ValState
         // TODO
         assert (knownType is false);
 
-        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * val));
+        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * localIdx));
     }
 }
 
@@ -408,10 +415,7 @@ class CodeGenState
         }
 
         // Get the state for this value
-        auto state = valMap.get(
-            dstVal,
-            ValState.stack(dstVal.outSlot)
-        );
+        auto state = getState(dstVal);
 
         return state.getWordOpnd(numBits);
     }
@@ -580,10 +584,7 @@ class CodeGenState
         }
 
         // Get the state for this value
-        auto state = valMap.get(
-            dstVal,
-            ValState.stack(dstVal.outSlot)
-        );
+        auto state = getState(dstVal);
 
         return state.getTypeOpnd();
     }
@@ -736,6 +737,17 @@ class CodeGenState
         // to the word stack to avoid invalid references
         //if (allocState.get(instr, 0) & RA_GPREG)
         //    as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
+    }
+
+    /// Get the state for a given value
+    auto getState(IRDstValue val) const
+    {
+        assert (val !is null);
+
+        return valMap.get(
+            val,
+            ValState.stack(val.outSlot)
+        );
     }
 
     /// Map a value to a specific stack location
