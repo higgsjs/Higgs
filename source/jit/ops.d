@@ -1251,7 +1251,7 @@ Returns a pointer to an exception handler.
 */
 extern (C) CodePtr throwCallExc(
     CallCtx callCtx,
-    IRInstr instr, 
+    IRInstr instr,
     BranchCode excHandler
 )
 {
@@ -1515,8 +1515,8 @@ void gen_call_prim(
     }
 
     // If inlining is not disabled
-    if (opts.jit_noinline is false)
-    //if (false)
+    //if (opts.jit_noinline is false)
+    if (false)
     {
         // Fetch and increment the execution counter
         as.ptr(scrRegs[0], ver);
@@ -2780,7 +2780,7 @@ void gen_gc_collect(
 
     as.pushJITRegs();
 
-    // Call the host throwExc function
+    // Call the host function
     as.ptr(cargRegs[0], st.callCtx);
     as.mov(cargRegs[1].opnd, heapSizeOpnd);
     as.ptr(scrRegs[0], &op_gc_collect);

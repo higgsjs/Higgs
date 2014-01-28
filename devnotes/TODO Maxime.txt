@@ -117,6 +117,8 @@ TODO: type prop, pass types along inlined calls/returns
 
 TODO: basic type prop, without reg alloc, type test removal
 
+TODO: make inline threshold larger for bigger functions?
+
 TODO: prepare beta mloc/midiro talk
 
 TODO: blog, use subheaders? (More talks coming, new contributors)
@@ -134,7 +136,7 @@ TODO: blog, use subheaders? (More talks coming, new contributors)
 - contribuse OSS, DOM-free JS code, help us test & debug Higgs
   - always looking to grow our collection of tests
 
-TODO: make inline threshold larger for bigger functions?
+TODO: integrate new test system
 
 TODO: exception handling in inlined context
 - Can use regular exception handler, however? Yes
@@ -142,8 +144,19 @@ TODO: exception handling in inlined context
   - This is a BranchCode object
   - Could also just generate our own, avoids need to keep JIT objects in CallCtx
 
-Seem to now be failing in exceptions test
-
+FIXME: seem to now be failing in exceptions test
+./higgs --nostdlib tests/exceptions/try_loop_getprop.js
+- Does getprop to null, fails
+- When inlined, throw becomes a jump?
+  - can use exc handler also, performance not so important
+- All the ops that can throw need throw handler code, including get_global
+  - Need some kind of getExcHandler fn?
+  - Returns a code fragment
+  - Problem: need to compile handler after throwing instr
+  - Ideally, compile at throwing instr, store in CallCtx???
+  - Only call_prim can cause this
+- CallCtx.getExcHandler(curHandler = null)?
+  - seems like that would work!
 
 
 

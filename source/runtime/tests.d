@@ -1258,7 +1258,7 @@ unittest
 /// Exceptions
 unittest
 {
-    writefln("exceptions");
+    writefln("exceptions (intra)");
 
     auto vm = new VM();
 
@@ -1278,6 +1278,8 @@ unittest
     vm.assertStr("str;", "abcdef");
     vm.load("tests/exceptions/throw_in_catch.js");
     vm.assertStr("str;", "abcdefg");
+
+    writefln("exceptions (inter)");
 
     // Interprocedural tests
     vm.load("tests/exceptions/throw_inter.js");
