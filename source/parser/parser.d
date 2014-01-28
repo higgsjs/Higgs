@@ -183,7 +183,7 @@ ASTProgram parseProgram(TokenStream input)
     void makeReturn(ASTStmt stmt)
     {
         auto blockStmt = cast(BlockStmt)ast.bodyStmt;
-        if (blockStmt is null || blockStmt.stmts.length != 1)
+        if (blockStmt is null || blockStmt.stmts.length == 0)
             return;
 
         auto exprStmt = cast(ExprStmt)blockStmt.stmts[$-1];
