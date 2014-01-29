@@ -147,6 +147,8 @@ function string_internal_isWhiteSpace(c)
 function string_fromCharCode()
 {
     var args = Array.prototype.slice.call(arguments, 0);
+    for(var i = 0; i < args.length; i++)
+        args[i] = parseInt(args[i]);
     return string_internal_fromCharCodeArray(args);
 }
 
@@ -514,7 +516,7 @@ function string_replace(searchValue, replaceValue)
             i = searchValue.lastIndex;
         } while (globalFlagSave);
 
-        if (i < this.length - 1)
+        if (i < this.length)
             nsparts.push(this.substring(i, this.length));
 
         searchValue.global = globalFlagSave;
@@ -625,6 +627,27 @@ function string_substring(start, end)
         $rt_str_set_data(s, j, source.charCodeAt(i));
 
     return $ir_get_str(s);
+}
+
+/**
+15.5.4.12 String.prototype.slice(start, end)
+*/
+function string_slice(start, end)
+{
+    var source = this.toString();
+    var length = string_internal_getLength(source.toString());
+    if (typeof start === 'undefined')
+        start = 0;
+    if (typeof end === 'undefined')
+        end = length;
+
+    if (start < 0)
+        start += length;
+
+    if (end < 0)
+        end += length;
+
+    return string_substring.call(this, start, end);
 }
 
 /**
@@ -740,7 +763,7 @@ String.prototype.concat = string_concat;
 String.prototype.indexOf = string_indexOf;
 String.prototype.lastIndexOf = string_lastIndexOf;
 String.prototype.localeCompare = string_localeCompare;
-String.prototype.slice = string_substring;
+String.prototype.slice = string_slice;
 String.prototype.match = string_match;
 String.prototype.replace = string_replace;
 String.prototype.search = string_search;
