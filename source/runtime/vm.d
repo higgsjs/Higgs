@@ -1082,7 +1082,30 @@ class VM
             auto curFun = curCtx.fun;
             assert (curFun !is null);
 
-            auto numLocals = curCtx.totalLocals;
+            // If we are in an inlined call context
+            if (curCtx.parent)
+            {
+                // Visit this stack frame
+                visitFrame(
+                    curFun,
+                    wsp,
+                    tsp,
+                    depth,
+                    curCtx.extraLocals,
+                    curCtx.callSite
+                );
+
+                // Pop the inlined locals
+                wsp += curCtx.extraLocals;
+                tsp += curCtx.extraLocals;
+
+                // Move to the caller context
+                curCtx = curCtx.parent;
+
+                continue;
+            }
+
+            auto numLocals = curFun.numLocals;
             auto numParams = curFun.numParams;
             auto argcSlot  = curFun.argcVal.outSlot;
             auto raSlot    = curFun.raVal.outSlot;
@@ -1178,7 +1201,7 @@ extern (C) CodePtr throwExc(
         assert (curInstr !is null);
 
         // Add the current instruction to the stack trace
-        trace ~= curInstr;    
+        trace ~= curInstr;
 
         //writeln("unwinding: ", curInstr.toString, " in ", curInstr.block.fun.getName);
         //writeln("stack size: ", vm.stackSize);
@@ -1195,10 +1218,31 @@ extern (C) CodePtr throwExc(
             return curHandler;
         }
 
+        // If we are in an inlined call context
+        if (curCtx.parent)
+        {
+            //writeln("inlined at: ", curCtx.callSite.toString);
+
+            // Get the inlined call site
+            curInstr = curCtx.callSite;
+
+            // Pop the inlined locals
+            vm.pop(curCtx.extraLocals);
+
+            // Get the exception handler for the inlined context
+            if (curCtx.excHandler)
+                curHandler = curCtx.excHandler.getCodePtr(vm.execHeap);
+
+            // Move to the caller context
+            curCtx = curCtx.parent;
+
+            continue;
+        }
+
         auto curFun = curCtx.fun;
         assert (curFun !is null);
 
-        auto numLocals = curCtx.totalLocals;
+        auto numLocals = curFun.numLocals;
         auto numParams = curFun.numParams;
         auto argcSlot  = curFun.argcVal.outSlot;
         auto raSlot    = curFun.raVal.outSlot;
@@ -1232,7 +1276,8 @@ extern (C) CodePtr throwExc(
         }
 
         // Get the exception handler code for the calling instruction
-        curHandler = retEntry.excCode? retEntry.excCode.getCodePtr(vm.execHeap):null;
+        if (retEntry.excCode)
+            curHandler = retEntry.excCode.getCodePtr(vm.execHeap);
 
         // Get the argument count
         auto argCount = vm.wsp[argcSlot].int32Val;
@@ -1255,7 +1300,7 @@ extern (C) CodePtr throwError(
     CallCtx callCtx,
     IRInstr throwInstr,
     CodeFragment throwHandler,
-    string ctorName, 
+    string ctorName,
     string errMsg
 )
 {

@@ -101,16 +101,6 @@ TODO: skip empty branch edges, see perf impact?
 - repatch stub jumps, etc.
 - does dst block fit in source block?
 
-TODO: proper 1 / (-1 * 0) handling, negative operator as -1 times zero,
-multiply handling of 
-If the multiplication isn't truncated (by one of the many ToInt32()/ToUint32()-coercing operators),
-then we dynamically branch for both overflow and negative*zero.  We can also special case various
-multiply-by-constant cases to avoid one or both branches.  (Note, even when multiplication is
-truncated it can overflow making * kindof a lame duck.  In asm.js, we give it the type (doublish,doublish)->double
-and then we separately define multiplication by small-enough constants as having type int->intish.
-This suckiness is what motivates Math.imul.
-We just branch on zero to an out-of-line path that does the signed check.
-
 TODO: big blog post about basic block versioning, incremental JIT
 
 TODO: type prop, pass types along inlined calls/returns
@@ -119,9 +109,20 @@ TODO: basic type prop, without reg alloc, type test removal
 
 TODO: make inline threshold larger for bigger functions?
 
+TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
+- Need negative indexing relative to wsp, make LocalIdx signed
+- Need to correct wsp/tsp at non-inlined call time
+- Need to correct wsp/tsp when throwing exceptions
+- Need to adjust getWordOpnd and others
+  - These can assume that the IRDstValue belongs to the current frame
+- Measure perf impact on loop_big_incr
+
 TODO: prepare beta mloc/midiro talk
 
-TODO: blog, use subheaders? (More talks coming, new contributors)
+TODO: start moving core tests to test runner
+- start with benchmarks
+
+TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser)
 - paper on arxiv
 - Budapest talk imminently
   - expect detailed blog post on BBV & incremental JIT
@@ -136,15 +137,75 @@ TODO: blog, use subheaders? (More talks coming, new contributors)
 - contribuse OSS, DOM-free JS code, help us test & debug Higgs
   - always looking to grow our collection of tests
 
-TODO: integrate new test system
+FIXME: block cap hit... Block version map needs to be per-callCtx?
 
-TODO: exception handling in inlined context
+FIXME: killing of values in removeDead... Doesn't account for recursive
+inlining. Should traverse chain of ctxs to test if callee is in the chain.
+
+TODO: proper 1 / (-1 * 0) handling, negative operator as -1 times zero,
+multiply handling of 
+If the multiplication isn't truncated (by one of the many ToInt32()/ToUint32()-coercing operators),
+then we dynamically branch for both overflow and negative*zero.  We can also special case various
+multiply-by-constant cases to avoid one or both branches.  (Note, even when multiplication is
+truncated it can overflow making * kindof a lame duck.  In asm.js, we give it the type (doublish,doublish)->double
+and then we separately define multiplication by small-enough constants as having type int->intish.
+This suckiness is what motivates Math.imul.
+We just branch on zero to an out-of-line path that does the signed check.
+
+TODO: pull from master
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: sunspider/3d-raytrace borks with inlining enabled
+./higgs benchmarks/sunspider/3d-raytrace.js
+run-time error: unsupported types in strict equality comparison
+- Invalid base in property read
+- Inlining of getProp is wrong?
+- base argument of getProp seems wrongly mapped
+- localIdx is correct at time of call to $rt_se
+- The type we get is retaddr... We seem to be off by 2?
+... Draw this specific situation on paper
+When calling getProp, the this/base type tag is already corrupted.
+- Sometimes gets a zero type tag too...
+Why is the this value of Triangle.prototype.intersect corrupted???
+The argc value is correct, so is the type tag!
+- Only the this value is corrupted
+This problem happens with getProp a lot, in several places... wtf is wrong with getProp?
+- Should probably assume that getProp gets inlined wrong somehow?
+- getProp tends to have other functions inlined inside it? Is the inlined return wrong?
+  - Many many things get inlined in getProp, then we get a failure
+Hypothesis: getProp needs to be inlined for this to fail?
+Seems to be getPropObj that's inlined in getProp that fails?
+phi move seems to be at fault:
+move from: $17 = arg 4 "obj"
+move to: $17 = arg 4 "obj"
+  src: [qword r14 + 136]
+  dst: [qword r14 + 800]
+No mapping of arg in src, but mapped in dst...
+Killed by removeDead...
+Might indeed really be dead!
+Moving from callee argument to caller argument slot, bad
+
+[DONE] TODO: integrate new test system
+
+[DONE] TODO: pull zimbabao's PR
+
+[DONE] TODO: exception handling in inlined context
 - Can use regular exception handler, however? Yes
   - Takes the exc value off the stack
   - This is a BranchCode object
   - Could also just generate our own, avoids need to keep JIT objects in CallCtx
 
-FIXME: seem to now be failing in exceptions test
+[DONE] FIXME: seem to now be failing in exceptions test
 ./higgs --nostdlib tests/exceptions/try_loop_getprop.js
 - Does getprop to null, fails
 - When inlined, throw becomes a jump?
@@ -157,16 +218,6 @@ FIXME: seem to now be failing in exceptions test
   - Only call_prim can cause this
 - CallCtx.getExcHandler(curHandler = null)?
   - seems like that would work!
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: no handling for two levels of inlining
 - loop test that uses getProp?

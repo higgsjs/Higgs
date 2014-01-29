@@ -933,18 +933,22 @@ class BranchCode : CodeFragment
             else
                 as.comment("move " ~ succVal.getName);
 
+            // Test if the successor value is a parameter
+            // We don't need to move parameter values to the stack
+            bool succParam = cast(FunParam)succVal !is null;
+
             // Get the source and destination operands for the arg word
             X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
             X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
 
-            if (srcWordOpnd != dstWordOpnd)
+            if (srcWordOpnd != dstWordOpnd && !(succParam && dstWordOpnd.isMem))
                 moveList ~= Move(dstWordOpnd, srcWordOpnd);
 
             // Get the source and destination operands for the phi type
             X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
             X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
 
-            if (srcTypeOpnd != dstTypeOpnd)
+            if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
                 moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
 
             // TODO: handle delayed writes
@@ -1191,7 +1195,7 @@ BlockVersion getBlockVersion(
     // If the block version cap is hit
     if (versions.length >= opts.jit_maxvers)
     {
-        writeln("block cap hit: ", versions.length);
+        //writeln("block cap hit: ", versions.length);
 
         // If a compatible match was found
         if (bestDiff < size_t.max)

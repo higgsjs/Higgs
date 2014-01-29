@@ -1598,7 +1598,7 @@ void movzx(CodeBlock cb, X86Opnd dst, X86Opnd src)
     }
     else
     {
-        assert (false);
+        assert (false, "invalid src operand size for movxz");
     }
 }
 

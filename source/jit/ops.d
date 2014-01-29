@@ -1377,8 +1377,6 @@ void gen_call_prim(
         auto callCtx = state.callCtx;
         auto vm = callCtx.vm;
 
-        writeln("recompiling for call instr: ", block.lastInstr);
-
         // Create a new version of this block
         auto newInst = new VersionInst(block, ver.state);
         newInst.counter = ver.counter;
@@ -1387,7 +1385,7 @@ void gen_call_prim(
         vm.queue(newInst);
         vm.compile(callCtx);
 
-        // Patch the current versiont to jump to the inlined version
+        // Patch the current version to jump to the inlined version
         ver.patch(vm, newInst);
     }
 
@@ -1413,23 +1411,42 @@ void gen_call_prim(
     assert (numArgs is fun.numParams);
 
     // If we are recompiling with inlining
-    if (ver.counter >= INLINE_THRESHOLD)
+    if (ver.counter > 0)
     {
-        // TODO: remove arg space?
         auto extraLocals = fun.numLocals;
 
-        // TODO: spill all
+        // State object for the call continuation
         auto contState = new CodeGenState(st);
+
+        // Create the continuation branch object
+        BranchCode excBranch;
+        if (instr.getTarget(1))
+        {
+            excBranch = getBranchEdge(
+                instr.getTarget(1),
+                st,
+                false
+            );
+        }
 
         // Create the callee context
         auto subCtx = new CallCtx(
             st.callCtx,
             instr,
             contState,
+            excBranch,
             extraLocals,
             fun,
             false
         );
+
+        /*
+        writeln("recompiling for call instr: ", instr);
+        writeln("  callee: ", fun.getName);
+        writeln("  caller: ", st.callCtx.fun.getName);
+        writeln("  extraLocals: ", subCtx.extraLocals);
+        writeln("  caller inlined: ", (st.callCtx.parent !is null));
+        */
 
         // Create the callee entry state
         auto calleeSt = new CodeGenState(subCtx);
@@ -1496,7 +1513,7 @@ void gen_call_prim(
         ver.genBranch(
             as,
             entryVer,
-            null,
+            excBranch,
             BranchShape.DEFAULT,
             delegate void(
                 CodeBlock as,
@@ -1511,12 +1528,25 @@ void gen_call_prim(
             }
         );
 
+        // Add the exception value move code to the exception branch
+        if (excBranch)
+        {
+            excBranch.markStart(as);
+            as.add(tspReg, Type.sizeof);
+            as.add(wspReg, Word.sizeof);
+            as.getWord(scrRegs[0], -1);
+            as.setWord(instr.outSlot, scrRegs[0].opnd(64));
+            as.getType(scrRegs[0].reg(8), -1);
+            as.setType(instr.outSlot, scrRegs[0].opnd(8));
+            excBranch.genCode(as, st);
+        }
+
         return;
     }
 
-    // If inlining is not disabled
-    //if (opts.jit_noinline is false)
-    if (false)
+    // If inlining is not disabled and the callee is not the caller
+    if (opts.jit_noinline is false && fun !is st.callCtx.fun)
+    //if (false)
     {
         // Fetch and increment the execution counter
         as.ptr(scrRegs[0], ver);
@@ -2485,9 +2515,9 @@ void gen_ret(
         as.setWord(retSlot, retOpnd);
         as.setType(retSlot, typeOpnd);
 
-        //as.printStr("inlined return from " ~ instr.block.fun.getName);
-        //as.printUint(retOpnd);
-        //as.printUint(typeOpnd);
+        // Pop the extra (inlined) locals
+        as.add(tspReg.opnd, X86Opnd(Type.sizeof * callCtx.extraLocals));
+        as.add(wspReg.opnd, X86Opnd(Word.sizeof * callCtx.extraLocals));
 
         // Request a branch object for the continuation
         auto contBranch = getBranchEdge(
@@ -2495,10 +2525,6 @@ void gen_ret(
             contSt,
             true
         );
-
-        // Pop the extra (inlined) locals
-        as.add(tspReg.opnd, X86Opnd(Type.sizeof * callCtx.extraLocals));
-        as.add(wspReg.opnd, X86Opnd(Word.sizeof * callCtx.extraLocals));
 
         // Generate the branch code
         ver.genBranch(
@@ -2611,7 +2637,7 @@ void gen_throw(
     as.popJITRegs();
 
     // Jump to the exception handler
-    as.jmp(X86Opnd(RAX));
+    as.jmp(cretReg.opnd);
 }
 
 void GetValOp(Type typeTag, string fName)(

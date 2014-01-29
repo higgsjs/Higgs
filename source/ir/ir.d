@@ -296,11 +296,11 @@ class CallCtx
     /// Continuation state (if inlined)
     CodeGenState contState = null;
 
-    /// Number of extra locals (if inlined)
-    uint32_t extraLocals = 0;
+    /// Exception handler (if inlined, may be null)
+    CodeFragment excHandler = null;
 
-    /// Total number of locals (including inlined)
-    uint32_t totalLocals;
+    /// Number of extra inlined locals (if inlined)
+    uint32_t extraLocals = 0;
 
     /// Associated VM object
     VM vm;
@@ -317,7 +317,6 @@ class CallCtx
         this.vm = vm;
         this.fun = fun;
         this.ctorCall = ctorCall;
-        this.totalLocals = fun.numLocals;
     }
 
     /// Inlined context constructor
@@ -325,6 +324,7 @@ class CallCtx
         CallCtx parent,
         IRInstr callSite,
         CodeGenState contState,
+        CodeFragment excHandler,
         uint32_t extraLocals,
         IRFunction fun,
         bool ctorCall
@@ -335,10 +335,10 @@ class CallCtx
         this.parent = parent;
         this.callSite = callSite;
         this.contState = contState;
+        this.excHandler = excHandler;
         this.extraLocals = extraLocals;
         this.fun = fun;
         this.ctorCall = ctorCall;
-        this.totalLocals = parent.totalLocals + extraLocals;
     }
 }
 

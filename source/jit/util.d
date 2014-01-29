@@ -325,7 +325,9 @@ void printUint(CodeBlock as, X86Opnd opnd)
 
     as.pushRegs();
 
-    if (opndSz < 64)
+    if (opndSz is 32)
+        as.mov(cargRegs[0].opnd(32), opnd);
+    else if (opndSz < 32)
         as.movzx(cargRegs[0].opnd(64), opnd);
     else
         as.mov(cargRegs[0].opnd(opndSz), opnd);
