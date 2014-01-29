@@ -210,6 +210,12 @@ function test_slice()
         return 3;
     if ((new String('foobar')).slice(1,4) !== 'oob')
         return 4;
+    if ('foobar'.slice(1,-1) !== 'ooba')
+        return 5;
+    if ('foobar'.slice() !== 'foobar')
+        return 6;
+    if ('foobar'.slice(-2, -1) !== 'a')
+        return 7;
 
     return 0;
 }
@@ -276,7 +282,8 @@ function test_replace()
     
     if ('foobar foobar'.replace(/\bf/g, "$'") !== 'oobar foobaroobar oobaroobar')
         return 5;
-                        
+    if ('f'.replace(/a/g, "b") !== 'f')
+        return 6;
     return 0;
 }
 
@@ -339,6 +346,15 @@ function test_fromCharCode()
 
     if (String.fromCharCode(102, 111, 111) != 'foo')
         return 2;
+
+    if (String.fromCharCode('48','49') != '01')
+        return 3;
+
+    if (String.fromCharCode('060','061') != '<=')
+        return 4;
+
+    if (String.fromCharCode('0x48','0x49') != 'HI')
+        return 5;
 
     return 0;
 }
@@ -423,4 +439,3 @@ function test()
 
     return 0;
 }
-
