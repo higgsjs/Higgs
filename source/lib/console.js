@@ -69,7 +69,11 @@ Console functions
         if (ob.__CONSOLE_VISITED__)
         {
             // TODO: better substitute string?
-            return "{...}"
+            return "{...}";
+        }
+        else if (ob.hasOwnProperty("toString") && typeof ob.toString === "function")
+        {
+                return ob.toString();
         }
         else
         {
@@ -88,7 +92,7 @@ Console functions
             }
         }
 
-        str += " }"
+        str += " }";
         return str;
     };
 
@@ -125,6 +129,14 @@ Console functions
         // special case raw pointers
         if ($ir_get_type(thing) === 4)
             return "<RAWPTR>";
+
+        // special case null
+        if (thing === null)
+            return "null";
+
+        // special case undefined
+        if (thing === undefined)
+            return "undefined";
 
         // special case arrays
         // TODO: fix this
