@@ -56,7 +56,7 @@ void main(string[] args)
     // VM instance
     auto vm = new VM(true, !opts.nostdlib);
 
-    // If file arguments were passed or there is 
+    // If file arguments were passed or there is
     // a string of code to be executed
     if (fileNames.length != 0 || opts.execString !is null)
     {
