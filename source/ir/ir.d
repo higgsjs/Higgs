@@ -340,6 +340,20 @@ class CallCtx
         this.fun = fun;
         this.ctorCall = ctorCall;
     }
+
+    /**
+    Test if a function is in this context or one of its parents
+    */
+    bool contains(IRFunction fun)
+    {
+        if (fun is this.fun)
+            return true;
+
+        if (parent)
+            return parent.contains(fun);
+
+        return false;
+    }
 }
 
 /**

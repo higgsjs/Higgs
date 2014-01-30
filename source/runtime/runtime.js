@@ -707,16 +707,22 @@ function $rt_minus(x)
     // If x is integer
     if ($ir_is_i32(x))
     {
-        return 0 - x;
+        if ($ir_eq_i32(x, 0))
+            return -0;
+
+        return $ir_sub_i32(0, x);
     }
 
     // If x is floating-point
     if ($ir_is_f64(x))
     {
-        return 0.0 - x;
+        if ($ir_eq_f64(x, 0.0))
+            return -0;
+
+        return $ir_sub_f64(0.0, x);
     }
 
-    return 0 - $rt_toNumber(x);
+    return -1 * $rt_toNumber(x);
 }
 
 /**
@@ -827,6 +833,13 @@ function $rt_mul(x, y)
     {
         if ($ir_is_i32(y))
         {
+            if ($ir_eq_i32(y, 0) && $ir_lt_i32(x, 0))
+            {
+                var fx = $ir_i32_to_f64(x);
+                var fy = $ir_i32_to_f64(y);
+                return $ir_mul_f64(fx, fy);
+            }
+
             var r;
             if (r = $ir_mul_i32_ovf(x, y))
             {

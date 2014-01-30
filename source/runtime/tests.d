@@ -1405,7 +1405,7 @@ unittest
 
     writeln("matrix comp");
     vm.load("tests/core/matrix_comp/matrix_comp.js");
-    vm.assertInt("test();", 10);
+    vm.assertFloat("test();", 10);
 
     writefln("closures");
 

@@ -84,15 +84,17 @@ TODO: have map idx system, instead of map pointers?
 - smaller type representation
 - what else?
 
+TODO: smarter spilling across inlined calls
+- only spill parent values when necessary
+- also want to be smart about delayed writes
 TODO: better register spilling mechanism for C calls
-
 TODO: register allocation
 - peephole pass should swap operands to favor reg alloc?
   - or do this on demand?
 - unified spilling function? params to spill tsp/wsp, vm reg
 - delayed writes
 
-TODO: reduce code size by using calls for fallback type code,
+TODO: reduce code size by using calls for fallback code,
 eg: global access, call_prim inlining/recompilation, others?
 
 TODO: skip empty branch edges, see perf impact?
@@ -138,11 +140,19 @@ TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser
   - always looking to grow our collection of tests
 
 FIXME: block cap hit... Block version map needs to be per-callCtx?
+- uncomment block cap hit print
 
-FIXME: killing of values in removeDead... Doesn't account for recursive
-inlining. Should traverse chain of ctxs to test if callee is in the chain.
 
-TODO: proper 1 / (-1 * 0) handling, negative operator as -1 times zero,
+
+
+
+
+
+
+
+
+
+[DONE] TODO: proper 1 / (-1 * 0) handling, negative operator as -1 times zero,
 multiply handling of 
 If the multiplication isn't truncated (by one of the many ToInt32()/ToUint32()-coercing operators),
 then we dynamically branch for both overflow and negative*zero.  We can also special case various
@@ -152,18 +162,11 @@ and then we separately define multiplication by small-enough constants as having
 This suckiness is what motivates Math.imul.
 We just branch on zero to an out-of-line path that does the signed check.
 
-TODO: pull from master
+[DONE] FIXME: killing of values in removeDead... Doesn't account for recursive
+inlining. Should traverse chain of ctxs to test if callee is in the chain.
+- CallCtx.contains(IRFunction fun)
 
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: pull from master
 
 [DONE] FIXME: sunspider/3d-raytrace borks with inlining enabled
 ./higgs benchmarks/sunspider/3d-raytrace.js

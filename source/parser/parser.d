@@ -498,7 +498,6 @@ ASTStmt parseStmt(TokenStream input)
         return new VarStmt(identExprs, initExprs, pos);
     }
 
-    
     // Function declaration statement
     else if (input.peekKw("function"))
     {
@@ -509,7 +508,7 @@ ASTStmt parseStmt(TokenStream input)
             input.read();
 
         return funStmt;
-    }    
+    }
 
     // If this is a labelled statement
     else if (isLabel(input))
@@ -1035,10 +1034,19 @@ ASTExpr parseAtom(TokenStream input)
         // Parse the right subexpression
         ASTExpr expr = parseExpr(input, op.prec);
 
-        // If this is a negated integer, negate the value now
+        // If this is a negated integer
         if (op.str == "-"w)
+        {
             if (auto intExpr = cast(IntExpr)expr)
+            {
+                // Negative zero cannot be represented as integer
+                if (intExpr.val is 0)
+                    return new FloatExpr(-0.0, intExpr.pos);
+
+                // Negate the integer value
                 return new IntExpr(-intExpr.val, intExpr.pos);
+            }
+        }
 
         // Return the unary expression
         return new UnOpExpr(op, expr, pos);

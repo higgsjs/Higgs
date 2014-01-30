@@ -1544,9 +1544,8 @@ void gen_call_prim(
         return;
     }
 
-    // If inlining is not disabled and the callee is not the caller
-    if (opts.jit_noinline is false && fun !is st.callCtx.fun)
-    //if (false)
+    // If inlining is not disabled and this inlining would not be recursive
+    if (opts.jit_noinline is false && st.callCtx.contains(fun) is false)
     {
         // Fetch and increment the execution counter
         as.ptr(scrRegs[0], ver);
