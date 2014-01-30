@@ -3092,7 +3092,7 @@ void gen_set_link(
     as.mov(wordMem, valWord);
 
     // Set the link type
-    auto valType = st.getTypeOpnd(as, instr, 0, scrRegs[1].opnd(8));
+    auto valType = st.getTypeOpnd(as, instr, 1, scrRegs[1].opnd(8));
     as.getMember!("VM.tLinkTable")(scrRegs[2], vmReg);
     auto typeMem = X86Opnd(8, scrRegs[2], 0, Type.sizeof, idxReg.reg);
     as.mov(typeMem, valType);

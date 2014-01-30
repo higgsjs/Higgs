@@ -142,6 +142,11 @@ TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser
 FIXME: block cap hit... Block version map needs to be per-callCtx?
 - uncomment block cap hit print
 
+TODO: simple tests for csv lib?
+tests/lib/csv/ csv.js, infile.csv
+
+TODO: move basic FFI tests to test runner
+tmpnam, make sure that returns string of length > 0
 
 
 
@@ -149,8 +154,18 @@ FIXME: block cap hit... Block version map needs to be per-callCtx?
 
 
 
-
-
+[DONE] TODO: look at link issue pointed out by zimbabao
+function set_get_test_function() {
+    var link = $ir_make_link(0);
+    var s = "1234";
+    print($ir_get_type(s));
+    $ir_set_link(link, s);
+    var val = $ir_get_link(link);
+    print(val + " : " + $ir_get_type(val));
+    val = $ir_get_link(link);
+    print(val + " : " + $ir_get_type(val));
+}
+set_get_test_function();
 
 [DONE] TODO: proper 1 / (-1 * 0) handling, negative operator as -1 times zero,
 multiply handling of 

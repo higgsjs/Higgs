@@ -1001,6 +1001,7 @@ unittest
         77
     );
 
+    // Link and integer value
     vm.assertInt(
         "
         var link = $ir_make_link(0);
@@ -1008,6 +1009,16 @@ unittest
         return $ir_get_link(link);
         ",
         133
+    );
+
+    // Link and string value
+    vm.assertBool(
+        "
+        var link = $ir_make_link(0);
+        $ir_set_link(link, 'abc');
+        return ($ir_get_link(link) === 'abc');
+        ",
+        true
     );
 
     vm.assertInt(
