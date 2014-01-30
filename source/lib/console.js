@@ -71,6 +71,10 @@ Console functions
             // TODO: better substitute string?
             return "{...}";
         }
+        else if (ob.hasOwnProperty("toString") && typeof ob.toString === "function")
+        {
+                return ob.toString();
+        }
         else
         {
             ob.__CONSOLE_VISITED__ = true;
@@ -130,9 +134,9 @@ Console functions
         if (thing === null)
             return "null";
 
-        // special case things with own toString()
-        if (thing.hasOwnProperty("toString") && typeof thing.toString === "function")
-            return thing.toString();
+        // special case undefined
+        if (thing === undefined)
+            return "undefined";
 
         // special case arrays
         // TODO: fix this
