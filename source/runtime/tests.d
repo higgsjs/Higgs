@@ -1746,9 +1746,8 @@ unittest
     vm.assertInt("ack(3,2);", 29);
     vm.assertInt("tak(9,5,3);", 4);
 
-    // FIXME: bug in regexp lib?
-    //run("crypto-aes");
-    //vm.assertInt("decryptedText.length;", 1311);
+    run("crypto-aes");
+    vm.assertInt("decryptedText.length;", 1311);
     run("crypto-md5");
     run("crypto-sha1");
 
@@ -1792,18 +1791,5 @@ unittest
 
     // TODO: enable once faster
     //run("splay");
-}
-
-unittest
-{
-    writefln("libraries");
-
-    auto vm = new VM();
-
-    vm.evalString("stdio = require('lib/stdio')");
-    vm.evalString("tmpName = stdio.tmpname()");
-
-    vm.evalString("stdlib = require('lib/stdlib')");
-    vm.evalString("mem = stdlib.malloc(32); stdlib.free(mem)");
 }
 

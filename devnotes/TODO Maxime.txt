@@ -124,8 +124,13 @@ TODO: prepare beta mloc/midiro talk
 TODO: start moving core tests to test runner
 - start with benchmarks
 
+TODO: fix unsupported base issue
+- add test, stdlib/object
+- Tom is working on it
+
 TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser)
 - paper on arxiv
+    http://arxiv.org/abs/1401.3041
 - Budapest talk imminently
   - expect detailed blog post on BBV & incremental JIT
 - DConf 2014
@@ -145,14 +150,17 @@ FIXME: block cap hit... Block version map needs to be per-callCtx?
 TODO: simple tests for csv lib?
 tests/lib/csv/ csv.js, infile.csv
 
-TODO: move basic FFI tests to test runner
+
+
+
+
+
+
+
+
+
+[DONE] TODO: move basic FFI tests to test runner
 tmpnam, make sure that returns string of length > 0
-
-
-
-
-
-
 
 [DONE] TODO: look at link issue pointed out by zimbabao
 function set_get_test_function() {
