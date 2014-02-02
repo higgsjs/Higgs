@@ -1399,8 +1399,11 @@ void gen_call_prim(
     // Get the primitve function from the global object
     auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
     assert (globalMap !is null);
-    auto propIdx = globalMap.getPropIdx(nameStr, true);
-    assert (propIdx !is uint32_t.max);
+    auto propIdx = globalMap.getPropIdx(nameStr);
+    assert (
+        propIdx !is uint32_t.max,
+        "call_prim to missing primitive: \"" ~ to!string(nameStr) ~ "\""
+    );
     assert (propIdx < obj_get_cap(vm.globalObj));
     auto closPtr = cast(refptr)obj_get_word(vm.globalObj, propIdx);
     assert (refIsLayout(closPtr, LAYOUT_CLOS));

@@ -64,8 +64,6 @@ TODO: add source position info for call instructions and throw instruction
 - Do this in genCallTargets?
 - Modify stack trace code to show source positions
 
-FIXME: Higgs REPL, should return value of last expr if several
-
 ------------------------------------------------------------------------------
 
 TODO: execHeap collection/expansion
@@ -97,6 +95,9 @@ TODO: register allocation
 TODO: reduce code size by using calls for fallback code,
 eg: global access, call_prim inlining/recompilation, others?
 
+TODO: make inline threshold larger for bigger functions?
+- wait until inlining is more optimized before tweaking heuristics
+
 TODO: skip empty branch edges, see perf impact?
 - can we integrate this in genBranchEdge?
 - could also have quick reoptimization pass with basic asm pattern matching
@@ -108,8 +109,6 @@ TODO: big blog post about basic block versioning, incremental JIT
 TODO: type prop, pass types along inlined calls/returns
 
 TODO: basic type prop, without reg alloc, type test removal
-
-TODO: make inline threshold larger for bigger functions?
 
 TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Need negative indexing relative to wsp, make LocalIdx signed
@@ -128,6 +127,9 @@ TODO: fix unsupported base issue
 - add test, stdlib/object
 - Tom is working on it
 
+FIXME: block cap hit... Block version map needs to be per-callCtx?
+- uncomment block cap hit print
+
 TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser)
 - paper on arxiv
     http://arxiv.org/abs/1401.3041
@@ -144,20 +146,22 @@ TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser
 - contribuse OSS, DOM-free JS code, help us test & debug Higgs
   - always looking to grow our collection of tests
 
-FIXME: block cap hit... Block version map needs to be per-callCtx?
-- uncomment block cap hit print
 
-TODO: simple tests for csv lib?
+
+
+
+
+
+
+
+
+[DONE] FIXME: missing runtime primitive segfaults?
+- Does indeed segfault in the shell
+
+[DONE] FIXME: Higgs REPL, should return value of last expr if several
+
+[DONE] TODO: simple tests for csv lib?
 tests/lib/csv/ csv.js, infile.csv
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: move basic FFI tests to test runner
 tmpnam, make sure that returns string of length > 0
