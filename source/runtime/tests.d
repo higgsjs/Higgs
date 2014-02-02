@@ -1688,7 +1688,7 @@ unittest
     }
 
     run("hash", 10);
-    vm.assertInt("c", 10);
+    vm.assertInt("c", 9);
 
     run("hash2", 1);
 
