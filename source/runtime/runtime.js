@@ -462,8 +462,9 @@ function $rt_toString(v)
 
     if (type === "number")
     {
-        return $rt_NumberToString(v, 10);
+        return $rt_numberToString(v, 10);
     }
+
     if (type === "object" || type === "function" || type === "array")
     {
         if (v === null)
@@ -486,32 +487,31 @@ function $rt_toString(v)
 /**
 Convert number to string
 */
-function $rt_NumberToString(v, radix)
+function $rt_numberToString(v, radix)
 {
     if (typeof radix !== "number")
     {
         radix = 10;
     }
+
     if (radix < 2 || radix > 36)
     {
-        //TODO: should thrown an Range error
-        throw Error("Range is not from 2 to 36");
+        throw RangeError("radix is not between 2 and 36");
     }
+
     if ($ir_is_i32(v))
     {
         return $rt_intToStr(v, radix);
     }
-    else
-    {
-        if (isNaN(v))
-            return "NaN";
-        if (v === Infinity)
-            return "Infinity";
-        if (v === -Infinity)
-            return "-Infinity";
 
-        return $ir_f64_to_str(v);
-     }
+    if (isNaN(v))
+        return "NaN";
+    if (v === Infinity)
+        return "Infinity";
+    if (v === -Infinity)
+        return "-Infinity";
+
+    return $ir_f64_to_str(v);
 }
 
 /**
@@ -519,7 +519,7 @@ Convert a boxed value to a primitive value.
 */
 function $rt_toPrim(v)
 {
-    if ($ir_is_i32(v)   || 
+    if ($ir_is_i32(v) ||
         $ir_is_f64(v) ||
         $ir_is_const(v))
         return v
@@ -576,9 +576,7 @@ function $rt_toBool(v)
     }
 
     if ($ir_is_rawptr(v))
-    {
-        // TODO: raw ptr?
-    }
+        return $ir_ne_rawptr(v, $nullptr);
 
     return false;
 }

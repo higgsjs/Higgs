@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2012-2013, Universite de Montreal
+ *  Copyright (c) 2012-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -108,13 +108,13 @@ Number.prototype.toString = function (radix)
 {
     var num = getNumVal(this);
 
-    //FIXME: for now, ignoring the radix
-    //TODO: convert readix from string to integer
+    // Convert radix from string to integer
     if (typeof radix === "string")
     {
         radix = parseInt(radix, 10);
     }
-    return $rt_NumberToString(num, radix);
+
+    return $rt_numberToString(num, radix);
 };
 
 /**

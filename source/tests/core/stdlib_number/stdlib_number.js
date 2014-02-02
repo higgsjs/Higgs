@@ -43,7 +43,7 @@ function test_toString()
     if (f.toString() !== '12.234')
         return 8;
 
-    //TODO: Fix toString for floats to handle redix
+    // TODO: Fix toString for floats to handle radix
     // if (f.toString(16) !== 'c.3be76c8b43958')
     //     return 8;
 
@@ -129,3 +129,4 @@ function test()
 
     return 0;
 }
+
