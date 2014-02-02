@@ -109,8 +109,12 @@ Number.prototype.toString = function (radix)
     var num = getNumVal(this);
 
     //FIXME: for now, ignoring the radix
-
-    return $rt_toString(num);
+    //TODO: convert readix from string to integer
+    if (typeof radix === "string")
+    {
+        radix = parseInt(radix, 10);
+    }
+    return $rt_NumberToString(num, radix);
 };
 
 /**

@@ -462,23 +462,8 @@ function $rt_toString(v)
 
     if (type === "number")
     {
-        if ($ir_is_i32(v))
-        {
-            return $rt_intToStr(v, 10);
-        }
-        else
-        {
-            if (isNaN(v))
-                return "NaN";
-            if (v === Infinity)
-                return "Infinity";
-            if (v === -Infinity)
-                return "-Infinity";
-
-            return $ir_f64_to_str(v);
-        }
+        return $rt_NumberToString(v, 10);
     }
-
     if (type === "object" || type === "function" || type === "array")
     {
         if (v === null)
@@ -496,6 +481,37 @@ function $rt_toString(v)
     }
 
     assert (false, "unhandled type in toString");
+}
+
+/**
+Convert number to string
+*/
+function $rt_NumberToString(v, radix)
+{
+    if (typeof radix !== "number")
+    {
+        radix = 10;
+    }
+    if (radix < 2 || radix > 36)
+    {
+        //TODO: should thrown an Range error
+        throw Error("Range is not from 2 to 36");
+    }
+    if ($ir_is_i32(v))
+    {
+        return $rt_intToStr(v, radix);
+    }
+    else
+    {
+        if (isNaN(v))
+            return "NaN";
+        if (v === Infinity)
+            return "Infinity";
+        if (v === -Infinity)
+            return "-Infinity";
+
+        return $ir_f64_to_str(v);
+     }
 }
 
 /**

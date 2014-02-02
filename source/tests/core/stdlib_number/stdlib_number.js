@@ -24,6 +24,32 @@ function test_toString()
     if (no.toString() !== s)
         return 2;
 
+    if (no.toString(16) !== '539')
+        return 3;
+
+    if (no.toString(8) !== '2471')
+        return 4;
+
+    if (no.toString(2) !== '10100111001')
+        return 5;
+
+    if (no.toString('2') !== '10100111001')
+        return 6;
+
+    if (no.toString('010') !== s)
+        return 7;
+
+    var f = 12.234;
+    if (f.toString() !== '12.234')
+        return 8;
+
+    //TODO: Fix toString for floats to handle redix
+    // if (f.toString(16) !== 'c.3be76c8b43958')
+    //     return 8;
+
+    // if (f.toString(8) !== '14.16763554426416254')
+    //     return 8;
+
     return 0;
 }
 
@@ -103,4 +129,3 @@ function test()
 
     return 0;
 }
-
