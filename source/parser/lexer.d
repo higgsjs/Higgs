@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -699,11 +699,14 @@ Token getToken(ref StrStream stream, LexFlags flags)
     // Number
     if (digit(ch))
     {
-        if (ch == '0') {
+        // If this is an octal number
+        if (ch == '0')
+        {
             enum octRegex = ctRegex!(`^0([0-7]+)`w);
 
             auto m = stream.match(octRegex);
-                if (!m.empty) {
+            if (!m.empty) 
+            {
                 auto octStr = m.captures[1];
                 long val;
                 formattedRead(octStr, "%o", &val);
@@ -712,10 +715,10 @@ Token getToken(ref StrStream stream, LexFlags flags)
         }
 
         enum fpRegex = ctRegex!(`^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?`w);
-    
+
         auto m = stream.match(fpRegex);
         assert (m.empty == false);
-        auto numStr = m.captures[0];        
+        auto numStr = m.captures[0];
 
         // If this is a floating-point number
         if (countUntil(numStr, '.') != -1 ||
