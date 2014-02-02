@@ -194,6 +194,7 @@ unittest
     testParse("1E15;");
     testParse("1E-15;");
     testParse("0x09ABCD;");
+    testParse("01237;");
 
     testParse("\"foobar\";");
     testParse("'foobar';");
@@ -254,6 +255,8 @@ unittest
 {
     testExprAST("1;", new IntExpr(1));
     testExprAST("0xFB;", new IntExpr(0xFB));
+    testExprAST("077;", new IntExpr(63));
+    testExprAST("087;", new IntExpr(87));
     testExprAST("7.0;", new FloatExpr(7));
     testExprAST("true;", new TrueExpr());
     testExprAST("false;", new FalseExpr());
