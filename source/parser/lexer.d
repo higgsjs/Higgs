@@ -699,6 +699,18 @@ Token getToken(ref StrStream stream, LexFlags flags)
     // Number
     if (digit(ch))
     {
+        if (ch == '0') {
+            enum octRegex = ctRegex!(`^0([0-7]+)`w);
+
+            auto m = stream.match(octRegex);
+                if (!m.empty) {
+                auto octStr = m.captures[1];
+                long val;
+                formattedRead(octStr, "%o", &val);
+                return Token(Token.INT, val, pos);
+            }
+        }
+
         enum fpRegex = ctRegex!(`^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?`w);
     
         auto m = stream.match(fpRegex);
