@@ -2064,8 +2064,8 @@ function $rt_hasOwnProp(base, prop)
 
             // Check if it's an indexed property the array should have
             var n = $rt_strToInt(prop);
-            if ($ir_is_i32(n) && 
-                $ir_ge_i32(n, 0) && 
+            if ($ir_is_i32(n) &&
+                $ir_ge_i32(n, 0) &&
                 $ir_lt_i32(n, $rt_arr_get_len(base)))
                 return true;
 
@@ -2091,8 +2091,8 @@ function $rt_hasOwnProp(base, prop)
             // Check if this is a valid index into the string
             var n = $rt_strToInt(prop);
             return (
-                $ir_is_i32(n) && 
-                $ir_ge_i32(n, 0) && 
+                $ir_is_i32(n) &&
+                $ir_ge_i32(n, 0) &&
                 $ir_lt_i32(n, $rt_str_get_len(base))
             );
         }
