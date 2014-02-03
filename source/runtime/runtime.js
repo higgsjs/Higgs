@@ -2017,7 +2017,7 @@ function $rt_hasPropObj(obj, propStr)
 
     // If the object doesn't have space for this property, return false
     if ($ir_ge_i32(propIdx, objCap))
-        return false
+        return false;
 
     // Check that the property is not missing
     var word = $rt_obj_get_word(obj, propIdx);
@@ -2031,6 +2031,8 @@ Check if a value has a given property
 */
 function $rt_hasOwnProp(base, prop)
 {
+    var n;
+
     // If the base is a reference
     if ($ir_is_refptr(base) && $ir_ne_refptr(base, null))
     {
@@ -2055,16 +2057,53 @@ function $rt_hasOwnProp(base, prop)
                 $ir_lt_i32(prop, $rt_arr_get_len(base)))
                 return true;
 
+            if (!$rt_valIsString(prop))
+                prop = $rt_toString(prop);
+
             // If this is the length property
             if (prop === 'length')
                 return true;
 
-            // If the property is a string
-            if ($rt_valIsString(prop))
+            // Check if it's a numeric property the array should have
+            n = $rt_strToInt(prop);
+
+            if ($ir_is_i32(n) && $ir_ge_i32(n, 0) && $ir_lt_i32(n, $rt_arr_get_len(base)))
+                return true;
+            else
                 return $rt_hasPropObj(base, prop);
 
-            return $rt_hasPropObj(base, $rt_toString(prop));
         }
+
+        // If the base is a string
+        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
+        {
+            // If the property is an int
+            if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
+                $ir_lt_i32(prop, $rt_str_get_len(base)))
+               return true;
+
+            // If the property is not a string, get one
+            if (!$rt_valIsString(prop))
+                prop = $rt_toString(prop);
+
+            // If this is the 'length' property
+            if (prop === 'length')
+                return true;
+
+            // Otherwise treat it as a number
+            n = $rt_strToInt(prop);
+            return ($ir_is_i32(n) && $ir_ge_i32(n, 0) && $ir_lt_i32(n, $rt_str_get_len(base)));
+        }
+    }
+    // If the base is a number
+    else if ($ir_is_i32(base) || $ir_is_f64(base))
+    {
+        return false;
+    }
+    // If the base is a constant
+    else if ($ir_is_const(base))
+    {
+        return false;
     }
 
     assert (false, "unsupported base in hasOwnProp");

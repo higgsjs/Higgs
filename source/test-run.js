@@ -63,6 +63,13 @@ If the program exits abnormally, it's a failure.
         var msg = "Running: " + file + "...";
         var failed = false;
         var fail_msg = null;
+        var pad_len = 60 - msg.length;
+
+        while(pad_len--)
+        {
+            msg += " ";
+        }
+
 
         try
         {
@@ -78,13 +85,15 @@ If the program exits abnormally, it's a failure.
 
         if (failed)
         {
-            console.log(msg, "\tFAILED!");
-            console.log("", fail_msg);
+            console.log(msg, 'FAILED!');
+            if (fail_msg)
+                console.log("msg:", fail_msg);
             return;
         }
 
         tests_passed += 1;
-        console.log(msg, "\tPASSED!");
+        // offset 'PASSED!' so 'FAILED!' sticks out more
+        console.log(msg, '        PASSED!');
     }
 
     function runTests(dir_name)
