@@ -1152,7 +1152,7 @@ void cqo(CodeBlock cb)
     cb.writeBytes(0x48, 0x99);
 }
 
-//// cvtsd2si - Convert integer to scalar double
+//// cvtsd2si - Convert scalar double to integer with rounding
 void cvtsd2si(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("cvtsd2si", dst, src);
@@ -1167,7 +1167,7 @@ void cvtsd2si(CodeBlock cb, X86Opnd dst, X86Opnd src)
     cb.writeRMInstr!('r', 0xFF, 0x0F, 0x2D)(false, rexW, dst, src);
 }
 
-//// cvtsi2sd - Convert scalar double to integer with rounding
+//// cvtsi2sd - Convert integer to scalar double
 void cvtsi2sd(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("cvtsi2sd", dst, src);
