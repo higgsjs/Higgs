@@ -2062,14 +2062,14 @@ function $rt_hasOwnProp(base, prop)
             if (prop === 'length')
                 return true;
 
-            // Check if it's a numeric property the array should have
+            // Check if it's an indexed property the array should have
             var n = $rt_strToInt(prop);
-
-            if ($ir_is_i32(n) && $ir_ge_i32(n, 0) && $ir_lt_i32(n, $rt_arr_get_len(base)))
+            if ($ir_is_i32(n) &&
+                $ir_ge_i32(n, 0) &&
+                $ir_lt_i32(n, $rt_arr_get_len(base)))
                 return true;
-            else
-                return $rt_hasPropObj(base, prop);
 
+            return $rt_hasPropObj(base, prop);
         }
 
         // If the base is a string
@@ -2088,18 +2088,25 @@ function $rt_hasOwnProp(base, prop)
             if (prop === 'length')
                 return true;
 
-            // Otherwise treat it as a number
+            // Check if this is a valid index into the string
             var n = $rt_strToInt(prop);
-            return ($ir_is_i32(n) && $ir_ge_i32(n, 0) && $ir_lt_i32(n, $rt_str_get_len(base)));
+            return (
+                $ir_is_i32(n) &&
+                $ir_ge_i32(n, 0) &&
+                $ir_lt_i32(n, $rt_str_get_len(base))
+            );
+
         }
     }
+
     // If the base is a number
-    else if ($ir_is_i32(base) || $ir_is_f64(base))
+    if ($ir_is_i32(base) || $ir_is_f64(base))
     {
         return false;
     }
+
     // If the base is a constant
-    else if ($ir_is_const(base))
+    if ($ir_is_const(base))
     {
         return false;
     }
