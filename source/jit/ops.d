@@ -3417,9 +3417,12 @@ void gen_get_time_ms(
     CodeBlock as
 )
 {
-    extern (C) static int32 op_get_time_ms()
+    extern (C) static double op_get_time_ms()
     {
-        return cast(int32_t)Clock.currAppTick().msecs();
+        long currTime = Clock.currStdTime();
+        long epochTime = 621355968000000000; //unixTimeToStdTime(0);
+        double retVal = cast(double)((currTime - epochTime)/10000);
+        return retVal;
     }
 
     // FIXME: don't push RAX
@@ -3431,9 +3434,9 @@ void gen_get_time_ms(
     as.popJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.movq(outOpnd, X86Opnd(XMM0));
 
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Type.FLOAT64);
 }
 
 void gen_get_ast_str(
