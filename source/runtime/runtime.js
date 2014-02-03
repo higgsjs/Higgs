@@ -2095,7 +2095,6 @@ function $rt_hasOwnProp(base, prop)
                 $ir_ge_i32(n, 0) &&
                 $ir_lt_i32(n, $rt_str_get_len(base))
             );
-
         }
     }
 
