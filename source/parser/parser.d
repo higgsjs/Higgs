@@ -1072,6 +1072,17 @@ ASTExpr[] parseExprList(TokenStream input, wstring openSep, wstring closeSep)
         if (exprs.length > 0 && input.matchSep(",") == false)
             throw new ParseError("expected comma", input.getPos());
 
+        // Handle missing element syntax of array
+        if (openSep == "[")
+        {
+            if (input.matchSep(closeSep))
+                break;
+
+            if (input.peekSep(",")) {
+                exprs ~= new IdentExpr("undefined", input.getPos());
+                continue;
+            }
+        }
         exprs ~= parseExpr(input, COMMA_PREC+1);
     }
 

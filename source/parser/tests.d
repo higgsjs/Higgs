@@ -513,6 +513,7 @@ unittest
     testParse("return");
     testParse("(function () { return })");
     testParse("throw x");
+    testParse("var a = [1,,2,]");
 }
 
 /// Test program-level ASTs

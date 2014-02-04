@@ -422,6 +422,23 @@ function test_reduceRight()
     return 0;
 }
 
+function test_weird_syntax()
+{
+    if (!array_eq([, 2], [undefined, 2]))
+        return 1;
+
+    if (!array_eq([1,,2], [1,undefined, 2]))
+        return 2;
+
+    if (!array_eq([1,2,], [1, 2]))
+        return 3;
+
+    if (!array_eq([,,,], [undefined,undefined, undefined]))
+        return 4;
+
+    return 0;
+}
+
 function test()
 {
     var r = test_ctor();
@@ -484,13 +501,17 @@ function test()
     if (r != 0)
         return 1500 + r;
 
-    var r = test_reduce()
+    var r = test_reduce();
     if (r != 0)
         return 1600 + r;
 
-    var r = test_reduceRight()
+    var r = test_reduceRight();
     if (r != 0)
         return 1700 + r;
+
+    var r = test_weird_syntax();
+    if (r != 0)
+        return 1800 + r;
 
     return 0;
 }
