@@ -61,15 +61,20 @@ function isNaN(v)
 /**
 Perform an assertion test
 */
-function assert(test, errorMsg)
+function assert(testVal, errorMsg)
 {
-    if ($ir_eq_const(test, true))
+    if (testVal === true)
         return;
 
-    //var globalObj = $ir_get_global_obj();
-    //if (globalObj.Error !== undefined)
-    //    throw Error(errorMsg);
+    // If no error message is specified
+    if ($argc < 2)
+        errorMsg = 'assertion failed';
 
+    // If the global Error object exists
+    if (this.Error !== $undef)
+        throw Error(errorMsg);
+
+    // Throw the error message as-is
     throw errorMsg;
 }
 

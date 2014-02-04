@@ -1661,18 +1661,6 @@ unittest
     vm.load("tests/core/ffi/ffi.js");
 }
 
-/// Misc benchmarks
-unittest
-{
-    auto vm = new VM();
-
-    writefln("misc/bones");
-    vm.load("benchmarks/bones/bones.js");
-
-    writefln("misc/chess");
-    vm.load("benchmarks/chess/toledo_chess.js");
-}
-
 /// Computer Language Shootout benchmarks
 unittest
 {
