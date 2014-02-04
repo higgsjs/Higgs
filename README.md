@@ -23,10 +23,21 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 `make all`
 generates a binary `higgs` in the source directory.
 
+*Compile a release binary:*
+
+`make release`
+generates a binary `higgs` in the source directoy.
+
 *Install (optional):*
  
-`make install` 
-copies the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`.
+`make install`
+Will compile a release binary using the `release` target, then copies the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`. The installation directories for
+the binary and runtime files may be changed with `BIN_DIR` and `LIB_DIR` respectively:
+```sh
+make install BIN_DIR=/my/bin/dir LIB_DIR=/my/lib/dir
+```
+
+Note: you may need to run `make install` with `sudo`.
 
 *Cleanup:*
 
