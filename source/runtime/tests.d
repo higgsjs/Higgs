@@ -1592,61 +1592,64 @@ unittest
 }
 
 // Dummy functions used for FFI tests
-extern (C)
+version (unittest)
 {
-    void testVoidFun()
+    extern (C)
     {
-        return;
-    }
+        void testVoidFun()
+        {
+            return;
+        }
 
-    short testShortFun()
-    {
-        return 2;
-    }
+        short testShortFun()
+        {
+            return 2;
+        }
 
-    int testIntFun()
-    {
-        return 5;
-    }
+        int testIntFun()
+        {
+            return 5;
+        }
 
-    double testDoubleFun()
-    {
-        return 5.5;
-    }
+        double testDoubleFun()
+        {
+            return 5.5;
+        }
 
-    int testIntAddFun(int a, int b)
-    {
-        return a + b;
-    }
+        int testIntAddFun(int a, int b)
+        {
+            return a + b;
+        }
 
-    double testDoubleAddFun(double a, double b)
-    {
-        return a + b;
-    }
+        double testDoubleAddFun(double a, double b)
+        {
+            return a + b;
+        }
 
-    int testIntArgsFun(int a, int b, int c, int d, int e, int f, int g)
-    {
-        return a + b + c + d + e + (f - g);
-    }
+        int testIntArgsFun(int a, int b, int c, int d, int e, int f, int g)
+        {
+            return a + b + c + d + e + (f - g);
+        }
 
-    double testDoubleArgsFun(double a, double b, double c, double d, double e, double f, double g)
-    {
-        return a + b + c + d + e + (f - g);
-    }
+        double testDoubleArgsFun(double a, double b, double c, double d, double e, double f, double g)
+        {
+            return a + b + c + d + e + (f - g);
+        }
 
-    void* testPtrFun()
-    {
-        return &testIntAddFun;
-    }
+        void* testPtrFun()
+        {
+            return &testIntAddFun;
+        }
 
-    void* testPtrArgFun(void* ptrArg)
-    {
-        return ptrArg;
-    }
+        void* testPtrArgFun(void* ptrArg)
+        {
+            return ptrArg;
+        }
 
-    double testMixedArgsFun(int a, double b, int c, double d, int e, double f, int g)
-    {
-        return cast(double)(a + b + c + d + e + (f - g));
+        double testMixedArgsFun(int a, double b, int c, double d, int e, double f, int g)
+        {
+            return cast(double)(a + b + c + d + e + (f - g));
+        }
     }
 }
 

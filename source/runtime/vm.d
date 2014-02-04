@@ -1018,7 +1018,7 @@ class VM
         // If the path is relative, first check the Higgs lib dir
         if (!isAbsolute(fileName))
         {
-            auto libFile = buildPath("/etc/higgs", fileName);
+            auto libFile = buildPath(import("libdir.txt"), fileName);
             if (!exists(fileName) && exists(libFile))
                 fileName = to!string(libFile);
         }

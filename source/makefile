@@ -1,8 +1,8 @@
 DC = dmd
-COPTS = -m64 -O -L-ldl
-TESTOPTS = -m64 -O -L-ldl -unittest -debug
-DBGOPTS = -m64 -O -L-ldl -gc -debug
-RELOPTS = -m64 -O -L-ldl -release
+COPTS = -m64 -O -L-ldl -J./
+TESTOPTS = -m64 -O -L-ldl -J./ -unittest -debug
+DBGOPTS = -m64 -O -L-ldl -J./ -gc -debug
+RELOPTS = -m64 -O -L-ldl -J./
 
 BIN_NAME = higgs
 BIN_NAME_TEST = test-higgs
@@ -61,6 +61,7 @@ debug: layout
 	$(DC) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)
 
 release: layout
+	printf $(LIB_DIR) > ./libdir.txt;
 	$(DC) $(RELOPTS) -of$(BIN_NAME) $(SRC)
 
 layout:
