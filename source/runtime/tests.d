@@ -1765,34 +1765,3 @@ unittest
     //run("string-fasta");
 }
 
-/// V8 benchmarks
-unittest
-{
-    writefln("v8bench");
-
-    auto vm = new VM();
-    vm.load("benchmarks/v8bench/base.js");
-
-    void run(string name)
-    {
-        writefln("v8bench/%s", name);
-        vm.load("benchmarks/v8bench/" ~ name ~ ".js");
-        vm.load("benchmarks/v8bench/drv-" ~ name ~ ".js");
-    }
-
-    run("crypto");
-
-    run("deltablue");
-
-    run("earley-boyer");
-
-    run("navier-stokes");
-
-    run("raytrace");
-
-    run("richards");
-
-    // TODO: enable once faster
-    //run("splay");
-}
-
