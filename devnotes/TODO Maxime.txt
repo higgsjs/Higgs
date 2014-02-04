@@ -104,8 +104,6 @@ TODO: skip empty branch edges, see perf impact?
 - repatch stub jumps, etc.
 - does dst block fit in source block?
 
-TODO: big blog post about basic block versioning, incremental JIT
-
 TODO: type prop, pass types along inlined calls/returns
 
 TODO: basic type prop, without reg alloc, type test removal
@@ -118,19 +116,35 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
   - These can assume that the IRDstValue belongs to the current frame
 - Measure perf impact on loop_big_incr
 
-TODO: prepare beta mloc/midiro talk
-
 TODO: start moving core tests to test runner
-- start with benchmarks
 
-TODO: fix unsupported base issue
-- add test, stdlib/object
-- Tom is working on it
+TODO: prepare beta mloc/midiro talk
+- start with benchmarks
 
 FIXME: block cap hit... Block version map needs to be per-callCtx?
 - uncomment block cap hit print
 
-TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser)
+TODO: make sure to mention arxiv paper on wiki, basic block versioning
+
+TODO: make test-higgs not skip main
+- Run test runner with same binary
+- Notify Tom of change
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: fix unsupported base issue
+- add test, stdlib/object
+- Tom is working on it
+
+[DONE] TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser)
 - paper on arxiv
     http://arxiv.org/abs/1401.3041
 - Budapest talk imminently
@@ -145,15 +159,6 @@ TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser
 - travis test system
 - contribuse OSS, DOM-free JS code, help us test & debug Higgs
   - always looking to grow our collection of tests
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: missing runtime primitive segfaults?
 - Does indeed segfault in the shell

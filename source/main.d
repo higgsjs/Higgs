@@ -46,10 +46,6 @@ void main(string[] args)
     // Parse the command-line arguments
     parseCmdArgs(args);
 
-    // If in (unit) test mode
-    if (opts.test is true)
-        return;
-
     // Get the names of files to execute
     auto fileNames = args[1..$];
 

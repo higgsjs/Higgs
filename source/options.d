@@ -43,10 +43,7 @@ struct Options
     /// String of code to execute
     string execString = null;
 
-    /// Test mode, disables repl
-    bool test = false;
-
-    /// Force a repl
+    /// Force a repl, even after loading files or executing a string
     bool repl = false;
 
     /// Gather and report various statistics about program execution
@@ -97,14 +94,8 @@ void parseCmdArgs(ref string[] args)
         "jit_maxvers"   , &opts.jit_maxvers,
         "jit_noinline"  , &opts.jit_noinline,
         "jit_dumpinfo"  , &opts.jit_dumpinfo,
-        "jit_dumpir"  , &opts.jit_dumpir,
+        "jit_dumpir"    , &opts.jit_dumpir,
         "jit_dumpasm"   , &opts.jit_dumpasm,
     );
-}
-
-/// If running in unit test mode, set the test option to true
-unittest
-{
-    opts.test = true;
 }
 

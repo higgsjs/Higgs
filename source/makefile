@@ -52,10 +52,9 @@ runtime/tests.d
 all: layout
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
 
-test: all
+test: layout
 	$(DC) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
-	time ./$(BIN_NAME_TEST)
-	time ./$(BIN_NAME) test-run.js
+	time ./$(BIN_NAME_TEST) test-run.js
 
 debug: layout
 	$(DC) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)
