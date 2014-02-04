@@ -70,7 +70,7 @@ layout:
 clean:
 	rm -f $(BIN_NAME) $(BIN_NAME_TEST) $(BIN_NAME_DEBUG) *.o
 
-install:
+install: release
 	@if [ ! -d $(LIB_DIR) ] ; then echo "mkdir $(LIB_DIR)" ; mkdir $(LIB_DIR) ; fi
 	@if [ ! -d $(LIB_DIR)/runtime ] ; then echo "mkdir $(LIB_DIR)/runtime" ; mkdir $(LIB_DIR)/runtime ; fi
 	@if [ ! -d $(LIB_DIR)/stdlib ] ; then echo "mkdir $(LIB_DIR)/stdlib" ; mkdir $(LIB_DIR)/stdlib ; fi
