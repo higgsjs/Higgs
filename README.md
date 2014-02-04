@@ -31,8 +31,7 @@ generates a binary `higgs` in the source directoy.
 *Install (optional):*
  
 `make install`
-Will compile a release binary using the `release` target,
-then the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`. The installation directories for
+Will compile a release binary using the `release` target, then copies the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`. The installation directories for
 the binary and runtime files may be changed with `BIN_DIR` and `LIB_DIR` respectively:
 ```sh
 make install BIN_DIR=/my/bin/dir LIB_DIR=/my/lib/dir
