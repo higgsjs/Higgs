@@ -207,6 +207,7 @@ unittest
     testParse("/foobar/ig;");
 
     testParse("[1, 2, 3];");
+    testParse("[1, 2, 3,];");
     testParse("true;");
     testParse("false;");
     testParse("null;");

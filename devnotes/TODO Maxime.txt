@@ -119,26 +119,29 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 TODO: start moving core tests to test runner
 
 TODO: prepare beta mloc/midiro talk
-- start with benchmarks
+- start with benchmarks, V8
 
 FIXME: block cap hit... Block version map needs to be per-callCtx?
 - uncomment block cap hit print
 
-TODO: make sure to mention arxiv paper on wiki, basic block versioning
 
-TODO: make test-higgs not skip main
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: make sure to mention arxiv paper on wiki, basic block versioning
+
+[DONE] TODO: make test-higgs not skip main
 - Run test runner with same binary
 - Notify Tom of change
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: fix unsupported base issue
 - add test, stdlib/object

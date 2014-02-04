@@ -394,7 +394,7 @@ function test_reduceRight()
     sparseArray[15] = 10;
     sparseArray[12] = 20;
     sparseArray[30] = 30;
-    if (sparseArray.reduceRight(function(a,b){ return a - b; }, 100) != 40)
+    if (sparseArray.reduceRight(function(a,b){ return a-b; }, 100) != 40)
         return 5;
     if (sparseArray.reduceRight(function(a,b){return a+1;}) != 32)
         return 6;
@@ -403,11 +403,11 @@ function test_reduceRight()
         return 7;
 
     // operations on object passed as param
-    var count = [1, 2, 3, 4].reduceRight(function(a,b, i, thisObj){ thisObj.length--;  return a + 1; }, 0);
+    var count = [1,2,3,4].reduceRight(function(a,b,i,thisObj){ thisObj.length--; return a+1; }, 0);
     if (count != 4)
         return 8;
 
-    count = [1, 2, 3, 4].reduceRight(function(a,b, i, thisObj){ thisObj.length++; return a + 1; }, 0);
+    count = [1,2,3,4].reduceRight(function(a,b,i,thisObj){ thisObj.length++; return a+1; }, 0);
     if (count != 4)
         return 9;
 
@@ -415,25 +415,25 @@ function test_reduceRight()
     if (!array_eq(opArr, [4,5,2,3,0,1]))
         return 10;
 
-    opArr = [0,1,2,3,4,5].reduceRight(function(a,b,i) {return a.concat([i,b, i + b]);}, []);
+    opArr = [0,1,2,3,4,5].reduceRight(function(a,b,i) {return a.concat([i,b, i+b]);}, []);
     if (!array_eq(opArr, [5,5,10,4,4,8,3,3,6,2,2,4,1,1,2,0,0,0]))
          return 11;
 
     return 0;
 }
 
-function test_weird_syntax()
+function test_array_syntax()
 {
-    if (!array_eq([, 2], [undefined, 2]))
+    if (!array_eq([, 2], [undefined,2]))
         return 1;
 
-    if (!array_eq([1,,2], [1,undefined, 2]))
+    if (!array_eq([1,,2], [1,undefined,2]))
         return 2;
 
-    if (!array_eq([1,2,], [1, 2]))
+    if (!array_eq([1,2,], [1,2]))
         return 3;
 
-    if (!array_eq([,,,], [undefined,undefined, undefined]))
+    if (!array_eq([,,,], [undefined,undefined,undefined]))
         return 4;
 
     return 0;
@@ -509,7 +509,7 @@ function test()
     if (r != 0)
         return 1700 + r;
 
-    var r = test_weird_syntax();
+    var r = test_array_syntax();
     if (r != 0)
         return 1800 + r;
 
