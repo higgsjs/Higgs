@@ -2143,9 +2143,9 @@ function $rt_in(prop, obj)
 Used to enumerate properties in a for-in loop
 */
 function $rt_getPropEnum(obj)
-{ 
+{
     // If the value is not an object or a string
-    if ($rt_valIsObj(obj) === false && 
+    if ($rt_valIsObj(obj) === false &&
         $rt_valIsLayout(obj, $rt_LAYOUT_STR) === false)
     {
         // Return the empty enumeration function
@@ -2158,21 +2158,38 @@ function $rt_getPropEnum(obj)
     var curObj = obj;
     var curIdx = 0;
 
-    // Check if a property is currently shadowed
-    function isShadowed(propName)
+    // Check if a property is shadowed by a prototype's
+    function isShadowed(curObj, propName)
     {
-        // TODO: shadowing check function?
-        return false;
+        for (;;)
+        {
+            // Move one down the prototype chain
+            curObj = $rt_obj_get_proto(curObj);
+
+            // If we reached the bottom of the chain, stop
+            if ($ir_eq_refptr(curObj, null))
+                return false;
+
+            // FIXME: for now, no support for non-enumerable properties
+            // assume that properties on core objects at the bottom of
+            // the prototype chain are non-enumerable
+            if ($ir_eq_refptr($rt_obj_get_proto(curObj), null))
+                return false;
+
+            // If the property exists on this object, it is shadowed
+            if ($rt_hasOwnProp(curObj, propName))
+                return true;
+        }
     }
 
-    // Move to the next available property
+    // Function to get the next available property
     function nextProp()
     {
         while (true)
         {
             // FIXME: for now, no support for non-enumerable properties
-            if (curObj === Object.prototype     || 
-                curObj === Array.prototype      || 
+            if (curObj === Object.prototype     ||
+                curObj === Array.prototype      ||
                 curObj === Function.prototype   ||
                 curObj === String.prototype)
                 return true;
@@ -2201,10 +2218,16 @@ function $rt_getPropEnum(obj)
                         continue;
                     }
 
-                    // If this is a valid key, return it
+                    // If this is a valid key in this object
                     if (keyVal !== null && $rt_hasOwnProp(curObj, keyVal))
                     {
                         ++curIdx;
+
+                        // If the property is shadowed, skip it
+                        if (isShadowed(curObj, keyVal))
+                            continue;
+
+                        // Return the current key
                         return keyVal;
                     }
                 }
@@ -2253,21 +2276,6 @@ function $rt_getPropEnum(obj)
         }
     }
 
-    // Enumerator function, returns a new property name with
-    // each call, undefined when no more properties found
-    function enumerator()
-    {
-        while (true)
-        {
-            var propName = nextProp();
-
-            if (isShadowed(propName))
-                continue;
-
-            return propName;
-        }
-    }
-
-    return enumerator;
+    return nextProp;
 }
 

@@ -66,6 +66,9 @@ TODO: add source position info for call instructions and throw instruction
 
 ------------------------------------------------------------------------------
 
+TODO: proper hidden classes, support for property enumeration?
+- Type information in hidden classes too?
+
 TODO: execHeap collection/expansion
 - Marc says: not on critical path for paper
 
@@ -121,18 +124,35 @@ TODO: prepare beta mloc/midiro talk
 FIXME: block cap hit... Block version map needs to be per-callCtx?
 - uncomment block cap hit print
 
-TODO: move shootout tests to test runner
+TODO: call to non-function, try to recover fn name from IR
+- make a function for that in ir/ir.d, getCalleeName(IRInstr callInstr)
 
-TODO: move SunSpider test to test runner
-
-
-
+TODO: move shootout & SunSpider tests to test runner
 
 
 
 
 
 
+
+
+
+[DONE] FIXME: enumeration issue, duplicates
+h> a = { x:1 }
+object
+h> b = Object.create(a)
+object
+h> b.x = 2
+2
+h> for (k in a) print(k)
+x
+h> for (k in b) print(k)
+x
+x
+- Need a way to check if somewhere in the inheritance hierarchy an enumerable
+prop of the same name exists
+- Make regression test, tests/regress/for_in_dup.js
+- When solved, add for_in test, close github issue
 
 [DONE] TODO: move V8 tests to test runner
 

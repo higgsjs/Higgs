@@ -54,7 +54,7 @@ all: layout
 
 test: layout
 	$(DC) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
-	time ./$(BIN_NAME_TEST) test-run.js
+	time ./$(BIN_NAME_TEST) test-runner.js
 
 debug: layout
 	$(DC) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)

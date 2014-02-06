@@ -115,7 +115,7 @@ If the program exits abnormally, it's a failure.
         });
     }
 
-    console.log("Starting test-run.js...");
+    console.log("Starting test-runner.js...");
     console.log(" --- ");
 
     // We need to ignore the dir which contains test files run in unittest {} blocks in D
@@ -140,7 +140,7 @@ If the program exits abnormally, it's a failure.
         runTests(tests_dir + "/" + next_dir);
     });
 
-    console.log("test-run.js results:");
+    console.log("test-runner.js results:");
     console.log(" --- ");
     console.log("Tests run:", tests_run);
     console.log("Tests passed:", tests_passed);

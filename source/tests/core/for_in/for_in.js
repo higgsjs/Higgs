@@ -67,24 +67,28 @@ function validate(propNames, valid)
 
 function test()
 {
+    // o is an array which also has the keys 'x' and 'y'
     var o = [3,4,5];
     o.x = 1;
     o.y = 2;
 
-    var valid = [0,1,2,'x','y'];
+    // keys we expect to find in o
+    var expected = [0,1,2,'x','y'];
 
+    // check that we find the expected properties
+    // Note: the code is written in a convoluted style to avoid
+    // needing to use the stdlib Array functions, runtime only.
     var propNames = [];
     for (k1 in o)
         propNames[propNames.length] = k1;
-
-    if (validate(propNames, valid) !== true)
+    if (validate(propNames, expected) !== true)
         return 1;
 
+    // check a second time
     var propNames = [];
     for (var k2 in o)
         propNames[propNames.length] = k2;
-
-    if (validate(propNames, valid) !== true)
+    if (validate(propNames, expected) !== true)
         return 2;
 
     return 0;
