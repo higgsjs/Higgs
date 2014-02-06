@@ -59,6 +59,12 @@ Idea: getters/setters + never used opt?
 
 TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
+TODO: add missing shootout/sunspider/v8 benchmarks
+- previously too slow
+- lists
+- string-base64, string-fasta
+- splay
+
 TODO: add source position info for call instructions and throw instruction
 - Map of call sites to source pos in IRFunction
 - Do this in genCallTargets?
@@ -84,6 +90,9 @@ TODO: have map idx system, instead of map pointers?
 - avoids issue of maps reallocated at same addr
 - smaller type representation
 - what else?
+
+TODO: accelerate getPropObj, make more hosted?
+- generate optimized machine code?
 
 TODO: smarter spilling across inlined calls
 - only spill parent values when necessary
@@ -124,21 +133,20 @@ TODO: prepare beta mloc/midiro talk
 FIXME: block cap hit... Block version map needs to be per-callCtx?
 - uncomment block cap hit print
 
-TODO: call to non-function, try to recover fn name from IR
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: call to non-function, try to recover fn name from IR
 - make a function for that in ir/ir.d, getCalleeName(IRInstr callInstr)
 
-TODO: move SunSpider tests to test runner
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: move SunSpider tests to test runner
 
 [DONE] TODO: move shootout tests to test runner
 

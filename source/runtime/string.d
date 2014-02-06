@@ -197,7 +197,7 @@ void extStrTable(VM vm, refptr curTbl, uint32 curSize, uint32 numStrings)
     // Compute the new table size
     auto newSize = 2 * curSize;
 
-    writefln("extending string table, old size: %s, new size: %s", curSize, newSize);
+    //writefln("extending string table, old size: %s, new size: %s", curSize, newSize);
 
     //printInt(curSize);
     //printInt(newSize);

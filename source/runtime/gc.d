@@ -167,7 +167,7 @@ refptr heapAlloc(VM vm, size_t size)
     // If this allocation exceeds the heap limit
     if (vm.allocPtr + size > vm.heapLimit)
     {
-        writefln("gc on alloc of size %s", size);
+        //writefln("gc on alloc of size %s", size);
 
         // Perform garbage collection
         gcCollect(vm);
@@ -413,7 +413,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Increment the garbage collection count
     vm.gcCount++;
 
-    writeln("leaving gcCollect");
+    //writeln("leaving gcCollect");
     //writefln("free space: %s", (vm.heapLimit - vm.allocPtr));
 }
 

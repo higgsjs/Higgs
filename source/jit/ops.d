@@ -1255,13 +1255,17 @@ extern (C) CodePtr throwCallExc(
     BranchCode excHandler
 )
 {
+    auto fnName = getCalleeName(instr);
+
     return throwError(
         callCtx.vm,
         callCtx,
         instr,
         excHandler,
         "TypeError",
-        "call to non-function"
+        fnName?
+        ("call to non-function \"" ~ fnName ~ "\""):
+        ("call to non-function")
     );
 }
 
@@ -2794,7 +2798,7 @@ void gen_gc_collect(
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
 
-        writeln("triggering gc");
+        //writeln("triggering gc");
 
         gcCollect(vm, heapSize);
 

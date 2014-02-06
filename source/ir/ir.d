@@ -1243,10 +1243,6 @@ class IRInstr : IRDstValue
     /// Opcode
     Opcode* opcode;
 
-    // TODO: subdivide instructions into branch and call instruction classes?
-    /// JIT code call continuation entry point
-    ubyte* jitCont = null;
-
     /// Arguments to this instruction
     private Use[] args;
 
@@ -1428,5 +1424,45 @@ class IRInstr : IRDstValue
 
         return output;
     }
+}
+
+/**
+Recover the callee name for a call instruction, if possible.
+This function is used to help print sensible error messages.
+*/
+string getCalleeName(IRInstr callInstr)
+{
+    assert (callInstr.opcode.isCall);
+
+    auto closInstr = cast(IRInstr)callInstr.getArg(0);
+    if (closInstr is null)
+        return null;
+
+    // If the callee is a global function
+    if (closInstr.opcode == &GET_GLOBAL)
+    {
+        auto nameArg = cast(IRString)closInstr.getArg(0);
+        return to!string(nameArg.str);
+    }
+
+    // If the callee is a method we're getting from some object
+    if (closInstr.opcode == &CALL_PRIM)
+    {
+        auto primName = cast(IRString)closInstr.getArg(0);
+        if (primName.str == "$rt_getProp"w)
+        {
+            // Get the property name instruction
+            auto propInstr = cast(IRInstr)closInstr.getArg(3);
+            if (propInstr is null)
+                return null;
+
+            // Extract the method name
+            auto nameArg = cast(IRString)propInstr.getArg(0);
+            return to!string(nameArg.str);
+        }
+    }
+
+    // Callee name unrecoverable
+    return null;
 }
 
