@@ -127,7 +127,7 @@ FIXME: block cap hit... Block version map needs to be per-callCtx?
 TODO: call to non-function, try to recover fn name from IR
 - make a function for that in ir/ir.d, getCalleeName(IRInstr callInstr)
 
-TODO: move shootout & SunSpider tests to test runner
+TODO: move SunSpider tests to test runner
 
 
 
@@ -136,6 +136,11 @@ TODO: move shootout & SunSpider tests to test runner
 
 
 
+
+
+
+
+[DONE] TODO: move shootout tests to test runner
 
 [DONE] FIXME: enumeration issue, duplicates
 h> a = { x:1 }

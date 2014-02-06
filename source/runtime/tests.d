@@ -1661,51 +1661,6 @@ unittest
     vm.load("tests/core/ffi/ffi.js");
 }
 
-/// Computer Language Shootout benchmarks
-unittest
-{
-    writefln("shootout");
-
-    auto vm = new VM();
-
-    // Silence the print function
-    vm.evalString("print = function (s) {}");
-
-    void run(string name, size_t n)
-    {
-        writefln("shootout/%s", name);
-        vm.evalString("arguments = [" ~ to!string(n) ~ "];");
-        vm.load("benchmarks/shootout/" ~ name ~ ".js");
-    }
-
-    run("hash", 10);
-    vm.assertInt("c", 9);
-
-    run("hash2", 1);
-
-    run("heapsort", 4);
-    vm.assertFloat("ary[n]", 0.79348136);
-
-    // TODO: too slow for now
-    //run(lists, 1);
-
-    run("mandelbrot", 10);
-
-    run("matrix", 4);
-    vm.assertInt("mm[0][0]", 270165);
-    vm.assertInt("mm[4][4]", 1856025);
-
-    run("methcall", 10);
-
-    run("nestedloop", 10);
-    vm.assertInt("x", 1000000);
-
-    run("objinst", 10);
-
-    run("random", 10);
-    vm.assertInt("last", 75056);
-}
-
 /// SunSpider benchmarks
 unittest
 {
