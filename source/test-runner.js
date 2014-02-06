@@ -80,12 +80,15 @@ If the program exits abnormally, it's a failure.
         {
             failed = true;
             tests_failed += 1;
-            fail_msg = e;
+            if (e && e.hasOwnProperty("message"))
+                fail_msg = e.message;
+            else if (typeof e === "string")
+                fail_msg = e;
         }
 
         if (failed)
         {
-            console.log(msg, 'FAILED!');
+            console.log(msg, "FAILED!");
             if (fail_msg)
                 console.log("msg:", fail_msg);
             return;
@@ -93,7 +96,7 @@ If the program exits abnormally, it's a failure.
 
         tests_passed += 1;
         // offset 'PASSED!' so 'FAILED!' sticks out more
-        console.log(msg, '        PASSED!');
+        console.log(msg, "        PASSED!");
     }
 
     function runTests(dir_name)
@@ -115,7 +118,7 @@ If the program exits abnormally, it's a failure.
         });
     }
 
-    console.log("Starting test-runner.js...");
+    console.log("Starting test-run.js...");
     console.log(" --- ");
 
     // We need to ignore the dir which contains test files run in unittest {} blocks in D
@@ -140,12 +143,14 @@ If the program exits abnormally, it's a failure.
         runTests(tests_dir + "/" + next_dir);
     });
 
-    console.log("test-runner.js results:");
+    console.log("test-run.js results:");
     console.log(" --- ");
     console.log("Tests run:", tests_run);
-    console.log("Tests passed:", tests_passed);
+    if (tests_run !== tests_passed)
+        console.log("Tests passed:", tests_passed);
     console.log("Tests failed:", tests_failed);
 
     if (tests_failed)
         std.exit(1);
 })();
+
