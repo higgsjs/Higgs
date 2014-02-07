@@ -185,7 +185,9 @@ Console functions
     }
 
     exports = {
-        log : log
+        log : log,
+        stringify : stringify,
+        stringers : stringers
     };
 
 })();
