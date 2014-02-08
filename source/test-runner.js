@@ -36,12 +36,15 @@
 *****************************************************************************/
 
 /*
-Test-runner runs all js files in the specified dir in a fresh instance of higgs.
-If the program exits abnormally, it's a failure.
+Test-runner runs all js files in the specified dir in a forked instance of higgs.
+If any tests fail the program exist abnormally (i.e. exit(1);)
 */
+
+// Used to communicate with child test processes
 
 (function()
 {
+    var ffi = require("lib/ffi");
     var std = require("lib/stdlib");
     var fs = require("lib/dir");
     var console = require("lib/console");
@@ -57,12 +60,12 @@ If the program exits abnormally, it's a failure.
 
     var current = "";
 
+    var child_status = std.malloc(16);
+
     function runTest(file)
     {
         file = current + "/" + file;
         var msg = "Running: " + file + "...";
-        var failed = false;
-        var fail_msg = null;
         var pad_len = 60 - msg.length;
 
         while(pad_len--)
@@ -70,33 +73,51 @@ If the program exits abnormally, it's a failure.
             msg += " ";
         }
 
+        // fork before running test
+        var pid = ffi.c.fork();
 
-        try
+        if (pid < 0)
         {
-            load(file);
-            tests_run += 1;
-        }
-        catch (e)
-        {
-            failed = true;
-            tests_failed += 1;
-            if (e && e.hasOwnProperty("message"))
-                fail_msg = e.message;
-            else if (typeof e === "string")
-                fail_msg = e;
+            console.log("FORK FAILED!");
+            std.exit(1);
         }
 
-        if (failed)
-        {
-            console.log(msg, "FAILED!");
-            if (fail_msg)
-                console.log("msg:", fail_msg);
-            return;
-        }
 
-        tests_passed += 1;
-        // offset 'PASSED!' so 'FAILED!' sticks out more
-        console.log(msg, "        PASSED!");
+        if (pid === 0)
+        {
+            // run the test in this child process
+            try
+            {
+                load(file);
+                tests_run += 1;
+            }
+            catch (e)
+            {
+                console.log(msg, "FAILED!");
+                if (e && e.hasOwnProperty("message"))
+                    console.log(e.message);
+                else if (typeof e === "string")
+                    console.log(e);
+
+                std.exit(1);
+            }
+
+            // offset 'PASSED!' so 'FAILED!' sticks out more
+            console.log(msg, "        PASSED!");
+            std.exit(0);
+
+        }
+        else
+        {
+            // parent, wait for test to finish
+            ffi.c.waitpid(pid, child_status, 0);
+            tests_run +=1;
+            // pull out return code and check for pass/fail
+            if ($ir_load_u8(child_status, 1) !== 0)
+                tests_failed += 1;
+            else
+                tests_passed += 1;
+        }
     }
 
     function runTests(dir_name)

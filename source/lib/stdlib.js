@@ -51,7 +51,10 @@ C stdlib functions
         "char* getenv (const char* name);",
         "FILE *popen(const char *command, const char *mode);",
         "void perror(const char *s);",
-        "int chdir (const char *filename);"
+        "int chdir (const char *filename);",
+        "typedef int pid_t;",
+        "pid_t fork(void);",
+        "pid_t waitpid(pid_t pid, int *status, int options);"
     ]);
 
     /**
