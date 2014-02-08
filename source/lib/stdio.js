@@ -460,6 +460,17 @@ Bindings for common c I/O functions
     };
 
     /**
+    Read an entire file into a string
+    */
+    io.readFile = function(file)
+    {
+        var f = new File(file, "r");
+        var str = f.read();
+        f.close();
+        return str;
+    };
+
+    /**
     Delete a file
     */
     io.remove = function(file)
@@ -506,7 +517,7 @@ Bindings for common c I/O functions
     */
     io.tmpname = function()
     {
-        var buf = c.malloc(100);
+        var buf = c.malloc(128);
         var name = c.tmpnam(buf);
         if(ffi.isNull(name))
             throw "Unable to get temp name.";
