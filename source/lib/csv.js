@@ -189,9 +189,7 @@
 
     CSV.prototype.readFile = function (fileName)
     {
-        var file = io.fopen(fileName, "r");
-        var str = file.read();
-        file.close();
+        var str = io.readFile(fileName);
         return this.fromString(str);
     }
 

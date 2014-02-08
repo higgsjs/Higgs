@@ -26,20 +26,14 @@ assert (ast.body[0].declarations[0].init.value === 42)
 // - array literal
 //
 
-var stdio = require('lib/stdio');
-var srcFile = stdio.fopen('benchmarks/esprima/test1.js', 'r');
-var srcData = srcFile.read();
-srcFile.close();
-var ast = esprima.parse(srcFile, { loc:true });
+var srcData = require('lib/stdio').readFile('benchmarks/esprima/test1.js');
+var ast = esprima.parse(srcData, { loc:true });
 //print(JSON.stringify(ast));
 
 //
 // Self-parse test, esprima parsing esprima
 //
 
-var stdio = require('lib/stdio');
-var srcFile = stdio.fopen('benchmarks/esprima/esprima.js', 'r');
-var srcData = srcFile.read();
-srcFile.close();
-var ast = esprima.parse(srcFile);
+var srcData = require('lib/stdio').readFile('benchmarks/esprima/esprima.js');
+var ast = esprima.parse(srcData);
 
