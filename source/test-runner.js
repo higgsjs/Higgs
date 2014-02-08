@@ -60,7 +60,7 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
 
     var current = "";
 
-    var child_status = std.malloc(16);
+    var child_status = std.malloc(2);
 
     function runTest(file)
     {
