@@ -931,7 +931,15 @@ The Higgs FFI api
     {
         // Some ir functions expect string constants, so they must be
         // constructed as strings and eval'd
-        var args = getArgString(sig.split(",").length - 1);
+        var sig_arr = sig.split(",");
+        // This is hacky, but the ffi is being completely rewritten so
+        // it's just a bandaid for now
+        if (sig_arr[1] === "void")
+        {
+            sig_arr.pop();
+            sig = sig_arr.join(",");
+        }
+        var args = getArgString(sig_arr.length - 1);
         var fun = ["function(", args, ")",
                    "{",
                    "    var sym = this.symbols[", ('"' + fname + '"'), "];",
@@ -940,6 +948,7 @@ The Higgs FFI api
                     ");",
                    "}"
                   ].join(" ");
+
         this.getSym(fname);
         this[fname] = eval(fun);
     };
