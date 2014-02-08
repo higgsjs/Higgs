@@ -128,10 +128,12 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
   - These can assume that the IRDstValue belongs to the current frame
 - Measure perf impact on loop_big_incr
 
-TODO: prepare beta mloc/midiro talk
+TODO: if to same if opt pattern
+- if testing the same value and value is not from succ, will branch the same way
 
 FIXME: block cap hit... Block version map needs to be per-callCtx?
 - uncomment block cap hit print
+- see $rt_getPropObj, $6
 
 
 
@@ -141,7 +143,11 @@ FIXME: block cap hit... Block version map needs to be per-callCtx?
 
 
 
+[DONE] FIXME: peephole opt bug
+- streamline failing test
+- add new test to core/regress
 
+[DONE] TODO: prepare beta mloc/midiro talk
 
 [DONE] TODO: call to non-function, try to recover fn name from IR
 - make a function for that in ir/ir.d, getCalleeName(IRInstr callInstr)

@@ -1837,7 +1837,7 @@ function $rt_setPropObj(obj, propStr, val)
         // If we just extended the global object, trigger garbage collection
         if ($ir_eq_refptr(obj, $ir_get_global_obj()))
         {
-            print('extended global object');
+            //print('extended global object');
             $ir_gc_collect(0);
         }
 

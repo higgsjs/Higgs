@@ -48,7 +48,7 @@ import ir.ops;
 
 void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 {
-    //writeln("peephole pass");
+    //writeln("peephole pass for ", fun.getName);
 
     /// Test if a value is available at the target block
     bool isAvail(IRValue value)
@@ -114,7 +114,9 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
         //writeln("*** deleting phi node ", phi.getName());
 
         assert (
-            phi.hasNoUses
+            phi.hasNoUses || (phi.hasOneUse && phi.getFirstUse.owner is phi),
+            "cannot remove phi node which still has uses:\n" ~
+            phi.toString()
         );
 
         // Set the changed flag
@@ -194,6 +196,8 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
     size_t passNo;
     for (passNo = 1; changed is true; passNo++)
     {
+        //writeln("passNo=", passNo);
+
         // Reset the changed flag
         changed = false;
 
@@ -261,7 +265,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 // If this phi node has the form:
                 // Vi <- phi(...Vi...Vi...)
                 // it is a tautological phi node
-                if (numVi == phi.block.numIncoming)
+                if (numVi == phi.block.numIncoming && phi.hasOneUse)
                 {
                     // Remove the phi node
                     delPhi(phi);
@@ -271,7 +275,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 // If this phi assignment has the form:
                 // Vi <- phi(...Vi...Vj...Vi...Vj...)
                 // 0 or more Vi and 1 or more Vj
-                if (numVi + numVj == phi.block.numIncoming && isAvail(Vj))
+                if (numVi + numVj == phi.block.numIncoming && numVj > 0 && isAvail(Vj))
                 {
                     //print('Renaming phi: ' + instr);
 
@@ -291,6 +295,8 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             {
                 auto op = instr.opcode;
+
+                //writeln("instr: ", instr);
 
                 // If this instruction has no uses and is pure, remove it
                 if (instr.hasNoUses && !op.isImpure && !op.isBranch)
@@ -384,7 +390,10 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         auto succ = branch.target;
 
                         // If the successor has no phi nodes and only one predecessor
-                        if (branch.args.length is 0 && succ.numIncoming is 1 && succ !is target)
+                        if (branch.args.length is 0 &&
+                            succ.numIncoming is 1 &&
+                            succ !is target &&
+                            succ !is block)
                         {
                             // Move instructions from the successor into the predecessor
                             while (succ.firstInstr !is null)
@@ -457,7 +466,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                             continue INSTR_LOOP;
                         }
                     }
-                    
+
                     // If this is a conditional branch with a constant argument
                     if (op is &IF_TRUE)
                     {
@@ -488,7 +497,9 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         auto firstInstr = branch.target.firstInstr;
 
                         // If the branch has no phi args and the target is a jump
-                        if (branch.args.length is 0 && firstInstr.opcode is &JUMP)
+                        if (branch.args.length is 0 && 
+                            firstInstr.opcode is &JUMP &&
+                            branch.target !is block)
                         {
                             assert (branch.target.firstPhi is null);
                             auto jmpBranch = firstInstr.getTarget(0);
@@ -507,7 +518,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         }
                     }
                 }
-                
+
             } // foreach instr
 
         } // foreach block

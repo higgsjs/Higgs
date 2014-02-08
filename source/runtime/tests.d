@@ -1350,6 +1350,7 @@ unittest
     vm.load("tests/core/regress/in_operator.js");
     vm.load("tests/core/regress/tostring.js");
     vm.load("tests/core/regress/new_array.js");
+    vm.load("tests/core/regress/loop_cst_branch.js");
     vm.load("tests/core/regress/loop_labels.js");
     vm.load("tests/core/regress/loop_swap.js");
     vm.load("tests/core/regress/loop_lt.js");
