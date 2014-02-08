@@ -40,106 +40,104 @@
  * _________________________________________________________________________
  */
 
-function test()
+function test_ctor()
 {
-    var map = new Map();
-
-    var keyList = [];
-    var valList = [];
-
-    for (var i = 0; i < 50; ++i)
-    {
-        keyList.push('k' + i);
-        valList.push(i);
-    }
-
-    for (var i = 0; i < 50; ++i)
-    {
-        keyList.push(i);
-        valList.push('v' + i);
-    }
-
-    /*
-    print('num items: ' + map.length);
-    print('num slots: ' + map.numSlots);
-    print('array length: ' + map.array.length);
-    */
-
-    for (var i = 0; i < keyList.length; ++i)
-    {
-        /*
-        print('key: ' + keyList[i]);
-        print('val: ' + valList[i]);
-        print('hash: ' + defHashFunc(keyList[i]));
-        */
-
-        map.set(keyList[i], valList[i]);
-    }
-
-    /*
-    print('getting items');
-    */
-
-    for (var i = 0; i < keyList.length; ++i)
-    {
-        if (!map.has(keyList[i]))
-            return 1;
-
-        var val = map.get(keyList[i]);
-
-        /*
-        print('key: ' + keyList[i]);
-        print('val: ' + valList[i]);
-        print('got: ' + val);
-        */
-
-        if (val !== valList[i])
-            return 2;
-    }
-
-    ITR_LOOP:
-    for (var itr = map.getItr(); itr.valid(); itr.next())
-    {
-        var cur = itr.get();
-
-        for (var i = 0; i < keyList.length; ++i)
-        {
-            if (keyList[i] === cur.key)
-            {
-                if (valList[i] !== cur.value)
-                    return 3;
-
-                continue ITR_LOOP;
-            }
-        }
-
+    if (typeof Function !== 'function')
+        return 1;
+    if (!(Function instanceof Function))
+        return 2;
+    if (typeof test_ctor !== 'function')
+        return 3;
+    if (!(test_ctor instanceof Function))
         return 4;
-    }
-
-    for (var i = 0, c = 0; i < keyList.length; ++i, ++c)
-    {
-        if (c % 3 === 0)
-        {
-            map.delete(keyList[i]);
-
-            keyList.splice(i, 1);
-            valList.splice(i, 1);
-
-            --i;
-        }
-    }
-
-    for (var i = 0; i < keyList.length; ++i)
-    {
-        if (!map.has(keyList[i]))
-            return 5;
-
-        var val = map.get(keyList[i]);
-
-        if (val !== valList[i])
-            return 6;
-    }
 
     return 0;
 }
+
+function test_proto()
+{
+    var fProto = Function.prototype;
+
+    if (fProto.isPrototypeOf(Function.prototype.toString) === false)
+        return 1;
+
+    if (fProto.isPrototypeOf(Object.prototype.hasOwnProperty) === false)
+        return 2;
+
+    return 0;
+}
+
+function test_toString()
+{
+    var s = test_toString.toString();
+
+    if (typeof s !== 'string')
+        return 1;
+
+    if (s.length < 8)
+        return 2;
+
+    return 0;
+}
+
+function sum()
+{
+    var sum = 0;
+
+    for (var i = 0; i < arguments.length; ++i)
+        sum += arguments[i];
+
+    return sum;
+}
+
+function test_apply()
+{
+    if (sum.apply(null, [1, 2, 3]) !== 6)
+        return 1;
+
+    if (sum.apply(null, [1, 2, 3, 4, 5, 6]) !== 21)
+        return 2;
+
+    return 0;
+}
+
+function test_call()
+{
+    if (sum.call(null, 1, 2, 3) !== 6)
+        return 1;
+
+    if (sum.call(null, 1, 2, 3, 4, 5, 6) !== 21)
+        return 2;
+
+    return 0;
+}
+
+function test()
+{
+    var r = test_ctor();
+    if (r != 0)
+        return 100 + r;
+
+    var r = test_proto()
+    if (r != 0)
+        return 200 + r;
+
+   var r = test_toString();
+    if (r != 0)
+        return 300 + r;
+
+   var r = test_apply();
+    if (r != 0)
+        return 400 + r;
+
+   var r = test_call();
+    if (r != 0)
+        return 500 + r;
+
+    return 0;
+}
+
+// TODO: convert this test to use assertions &
+// exceptions instead of return codes 
+assert (test() === 0);
 

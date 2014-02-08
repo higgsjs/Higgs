@@ -154,7 +154,7 @@ Matrix.matrixMult = function (mat1, mat2)
         throw TypeError('matrix dimensions do not match');
 
     var outMatrix = new Matrix(mat1.getNumRows(), mat2.getNumCols());
-    
+
     for (var i = 0; i < mat1.getNumRows(); ++i)
     {
         for (var j = 0; j < mat2.getNumCols(); ++j)
@@ -173,41 +173,32 @@ Matrix.matrixMult = function (mat1, mat2)
     return outMatrix;
 }
 
-function test()
-{
-    var m1 = new Matrix(2, 4);
-    var m2 = new Matrix(4, 3);
+var m1 = new Matrix(2, 4);
+var m2 = new Matrix(4, 3);
 
-    m1.set(
-        [
-            2, 0,-1, 1,
-            1, 2, 0, 1
-        ]
-    );
+m1.set(
+    [
+        2, 0,-1, 1,
+        1, 2, 0, 1
+    ]
+);
 
-    m2.set(
-        [
-            1, 5,-7,
-            1, 1, 0,
-            0,-1, 1,
-            2, 0, 0
-        ]
-    );
+m2.set(
+    [
+        1, 5,-7,
+        1, 1, 0,
+        0,-1, 1,
+        2, 0, 0
+    ]
+);
 
-    var res = Matrix.matrixMult(Matrix.scalarMult(m1, 2), m2);
+var res = Matrix.matrixMult(Matrix.scalarMult(m1, 2), m2);
 
-    var resStr = String(res);
+var resStr = String(res);
 
-    var validStr = "[8,22,-30;10,14,-14]";
+var validStr = "[8,22,-30;10,14,-14]";
+assert (resStr === validStr);
 
-    if (resStr != validStr)
-        return 1;
-
-    var resSum = res.sum();
-
-    if (resSum != 10)
-        return 2;    
-
-    return resSum;
-}
+var resSum = res.sum();
+assert (resSum === 10);
 

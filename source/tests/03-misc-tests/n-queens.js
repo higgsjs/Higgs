@@ -52,7 +52,7 @@ function nQueens(unused, board, row, n)
     // If we are past the end of the board, we have found a solution
     if (row >= n)
         return 1;
-    
+
     /*
     print('unused:');
     for (var i = 0; i < unused.length; ++i)
@@ -66,9 +66,9 @@ function nQueens(unused, board, row, n)
     for (var i = 0; i < unused.length; ++i)
     {
         var col = unused[i];
-        
+
         var safe = true;
-        
+
         // For each row before the current one
         for (var r = 0; r < row; ++r)
         {
@@ -79,7 +79,7 @@ function nQueens(unused, board, row, n)
                 break;
             }
         }
-        
+
         // If we can place the queen at this position
         if (safe)
         {
@@ -88,7 +88,7 @@ function nQueens(unused, board, row, n)
                 newBoard[j] = board[j];
 
             newBoard[row] = col;
-            
+
             //print('placing queen at row ' + row + ' col ' + col);
 
             var newUnused = [];
@@ -115,7 +115,7 @@ function countSolns(n)
 
     // The board is initially empty
     var board = [];
-    
+
     var numSolns = nQueens(unused, board, 0, n);
 
     return numSolns;
@@ -142,26 +142,9 @@ function printBoard(board)
     }
 }
 
-function test()
-{
-    //print('in test()');
+assert (countSolns(2) === 0);
 
-    if (countSolns(2) !== 0)
-        return 1;
+assert (countSolns(3) === 0);
 
-    //print('ok 2');
+assert (countSolns(4) === 2);
 
-    if (countSolns(3) !== 0)
-        return 1;
-
-    //print('ok 3');
-
-    if (countSolns(4) !== 2)
-        return 1;
-
-    //print('ok 4');
-
-    return 0;
-}
-
-//print(test());

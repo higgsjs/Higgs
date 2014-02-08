@@ -100,65 +100,54 @@ var tests = [
     [o_str  , o_str , F, T, F, T, T, F, T, F]
 ];
 
-function test()
+function testOp(v1, v2, op, produced, expected)
 {
-    function testOp(v1, v2, op, produced, expected)
+    if (produced !== expected)
     {
-        if (produced !== expected)
-        {
-            print(
-                v1 + ' ' + op + ' ' + v2 + ' ==> ' + 
-                produced + ' (expected ' + expected + ')'
-            );
+        print(
+            v1 + ' ' + op + ' ' + v2 + ' ==> ' + 
+            produced + ' (expected ' + expected + ')'
+        );
 
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        throw Error("wrong result for cmp op " + op);
     }
-
-    for (var i = 0; i < tests.length; ++i)
-    {
-        var test = tests[i];
-
-        var testNo = 10 * i;
-
-        var v1 = test[0]
-        var v2 = test[1];
-
-        var lt  = test[2];
-        var le  = test[3];
-        var gt  = test[4];
-        var ge  = test[5];
-        var eq  = test[6];
-        var ne  = test[7];
-        var seq = test[8];
-        var sne = test[9];
-
-        /*
-        println('test ' + i);
-        println(typeof v1);
-        println(typeof v2);
-        print(v1);
-        print('\n');
-        print(v2);
-        print('\n');
-        */
-
-        if (testOp(v1, v2, '<'  , (v1 < v2)     , lt    )) return testNo + 1;
-        if (testOp(v1, v2, '<=' , (v1 <= v2)    , le    )) return testNo + 2;
-        if (testOp(v1, v2, '>'  , (v1 > v2)     , gt    )) return testNo + 3;
-        if (testOp(v1, v2, '>=' , (v1 >= v2)    , ge    )) return testNo + 4;
-        if (testOp(v1, v2, '==' , (v1 == v2)    , eq    )) return testNo + 5;
-        if (testOp(v1, v2, '!=' , (v1 != v2)    , ne    )) return testNo + 6;
-        if (testOp(v1, v2, '===', (v1 === v2)   , seq   )) return testNo + 7;
-        if (testOp(v1, v2, '!==', (v1 !== v2)   , sne   )) return testNo + 8;
-    }
-
-    return 0;
 }
 
-//print(test());
+for (var i = 0; i < tests.length; ++i)
+{
+    var test = tests[i];
+
+    var testNo = 10 * i;
+
+    var v1 = test[0]
+    var v2 = test[1];
+
+    var lt  = test[2];
+    var le  = test[3];
+    var gt  = test[4];
+    var ge  = test[5];
+    var eq  = test[6];
+    var ne  = test[7];
+    var seq = test[8];
+    var sne = test[9];
+
+    /*
+    println('test ' + i);
+    println(typeof v1);
+    println(typeof v2);
+    print(v1);
+    print('\n');
+    print(v2);
+    print('\n');
+    */
+
+    testOp(v1, v2, '<'  , (v1 < v2)     , lt    );
+    testOp(v1, v2, '<=' , (v1 <= v2)    , le    );
+    testOp(v1, v2, '>'  , (v1 > v2)     , gt    );
+    testOp(v1, v2, '>=' , (v1 >= v2)    , ge    );
+    testOp(v1, v2, '==' , (v1 == v2)    , eq    );
+    testOp(v1, v2, '!=' , (v1 != v2)    , ne    );
+    testOp(v1, v2, '===', (v1 === v2)   , seq   );
+    testOp(v1, v2, '!==', (v1 !== v2)   , sne   );
+}
 

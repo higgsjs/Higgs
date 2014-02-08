@@ -40,100 +40,38 @@
  * _________________________________________________________________________
  */
 
-function test_ctor()
+function bubbleSort(list, compOp)
 {
-    if (typeof Function !== 'function')
-        return 1;
-    if (!(Function instanceof Function))
-        return 2;
-    if (typeof test_ctor !== 'function')
-        return 3;
-    if (!(test_ctor instanceof Function))
-        return 4;
+    do
+    {
+        var swapped = false;
 
-    return 0;
+        for (i = 1; i < list.length; ++i)
+        {
+            if (compOp(list[i-1], list[i]))
+            {
+                var temp = list[i-1];
+                list[i-1] = list[i];
+                list[i] = temp;
+
+                swapped = true;
+            }
+        }
+
+    } while (swapped);
 }
 
-function test_proto()
+function numCompOp(x, y)
 {
-    var fProto = Function.prototype;
-
-    if (fProto.isPrototypeOf(Function.prototype.toString) === false)
-        return 1;
-
-    if (fProto.isPrototypeOf(Object.prototype.hasOwnProperty) === false)
-        return 2;
-
-    return 0;
+    return x > y;
 }
 
-function test_toString()
-{
-    var s = test_toString.toString();
+var list = [4,6,34,5,6,8,1,-5,2,7];
+var sorted = [-5,1,2,4,5,6,6,7,8,34];
 
-    if (typeof s !== 'string')
-        return 1;
+bubbleSort(list, numCompOp);
 
-    if (s.length < 8)
-        return 2;
-
-    return 0;
-}
-
-function sum()
-{
-    var sum = 0;
-
-    for (var i = 0; i < arguments.length; ++i)
-        sum += arguments[i];
-
-    return sum;
-}
-
-function test_apply()
-{
-    if (sum.apply(null, [1, 2, 3]) !== 6)
-        return 1;
-
-    if (sum.apply(null, [1, 2, 3, 4, 5, 6]) !== 21)
-        return 2;
-
-    return 0;
-}
-
-function test_call()
-{
-    if (sum.call(null, 1, 2, 3) !== 6)
-        return 1;
-
-    if (sum.call(null, 1, 2, 3, 4, 5, 6) !== 21)
-        return 2;
-
-    return 0;
-}
-
-function test()
-{
-    var r = test_ctor();
-    if (r != 0)
-        return 100 + r;
-
-    var r = test_proto()
-    if (r != 0)
-        return 200 + r;
-
-   var r = test_toString();
-    if (r != 0)
-        return 300 + r;
-
-   var r = test_apply();
-    if (r != 0)
-        return 400 + r;
-
-   var r = test_call();
-    if (r != 0)
-        return 500 + r;
-
-    return 0;
-}
+for (var i = 0; i < sorted.length; ++i)
+    if (list[i] !== sorted[i])
+        throw Error("invalid sorted list");
 

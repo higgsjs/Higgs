@@ -516,3 +516,7 @@ function test()
     return 0;
 }
 
+// TODO: convert this test to use assertions &
+// exceptions instead of return codes 
+assert (test() === 0);
+

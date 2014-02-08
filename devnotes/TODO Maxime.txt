@@ -34,8 +34,6 @@ TODO: add --jit_trace command-line option
 
 TODO: complete WAV output support, test it out with sine wave
 
-TODO: pixel plotting, canvas window lib? lib/canvas
-
 TODO: optimize x86 instr encoding based on usage
 - e.g.: reg64 to mem move and vice versa?
 - do profiling first
@@ -65,10 +63,8 @@ TODO: add missing shootout/sunspider/v8 benchmarks
 - string-base64, string-fasta
 - splay
 
-TODO: add source position info for call instructions and throw instruction
-- Map of call sites to source pos in IRFunction
-- Do this in genCallTargets?
-- Modify stack trace code to show source positions
+TODO: pixel plotting, drawing window lib? lib/draw
+- Probably will want to use X11
 
 ------------------------------------------------------------------------------
 
@@ -128,6 +124,13 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
   - These can assume that the IRDstValue belongs to the current frame
 - Measure perf impact on loop_big_incr
 
+TODO: add source position info for call instructions and throw instruction
+- Do this in genCallTargets?
+- Modify stack trace code to show source positions
+- Map of call sites to source pos in IRFunction
+  - Might want to just have sourcePos ptr on IRInstr, simpler wrt inlining
+  - More robust with IRInstr
+
 TODO: if to same if opt pattern
 - if testing the same value and value is not from succ, will branch the same way
 
@@ -142,6 +145,8 @@ FIXME: block cap hit... Block version map needs to be per-callCtx?
 
 
 
+
+[DONE] TODO: move some of the misc Tachyon tests to the new test runner
 
 [DONE] FIXME: peephole opt bug
 - streamline failing test

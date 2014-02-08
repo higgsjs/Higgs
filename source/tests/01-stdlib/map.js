@@ -40,43 +40,110 @@
  * _________________________________________________________________________
  */
 
-function bubbleSort(list, compOp)
+function test()
 {
-    do
+    var map = new Map();
+
+    var keyList = [];
+    var valList = [];
+
+    for (var i = 0; i < 50; ++i)
     {
-        var swapped = false;
+        keyList.push('k' + i);
+        valList.push(i);
+    }
 
-        for (i = 1; i < list.length; ++i)
+    for (var i = 0; i < 50; ++i)
+    {
+        keyList.push(i);
+        valList.push('v' + i);
+    }
+
+    /*
+    print('num items: ' + map.length);
+    print('num slots: ' + map.numSlots);
+    print('array length: ' + map.array.length);
+    */
+
+    for (var i = 0; i < keyList.length; ++i)
+    {
+        /*
+        print('key: ' + keyList[i]);
+        print('val: ' + valList[i]);
+        print('hash: ' + defHashFunc(keyList[i]));
+        */
+
+        map.set(keyList[i], valList[i]);
+    }
+
+    /*
+    print('getting items');
+    */
+
+    for (var i = 0; i < keyList.length; ++i)
+    {
+        if (!map.has(keyList[i]))
+            return 1;
+
+        var val = map.get(keyList[i]);
+
+        /*
+        print('key: ' + keyList[i]);
+        print('val: ' + valList[i]);
+        print('got: ' + val);
+        */
+
+        if (val !== valList[i])
+            return 2;
+    }
+
+    ITR_LOOP:
+    for (var itr = map.getItr(); itr.valid(); itr.next())
+    {
+        var cur = itr.get();
+
+        for (var i = 0; i < keyList.length; ++i)
         {
-            if (compOp(list[i-1], list[i]))
+            if (keyList[i] === cur.key)
             {
-                var temp = list[i-1];
-                list[i-1] = list[i];
-                list[i] = temp;
+                if (valList[i] !== cur.value)
+                    return 3;
 
-                swapped = true;
+                continue ITR_LOOP;
             }
         }
 
-    } while (swapped);
-}
+        return 4;
+    }
 
-function numCompOp(x, y)
-{
-    return x > y;
-}
+    for (var i = 0, c = 0; i < keyList.length; ++i, ++c)
+    {
+        if (c % 3 === 0)
+        {
+            map.delete(keyList[i]);
 
-function test()
-{
-    var list = [4,6,34,5,6,8,1,-5,2,7];
-    var sorted = [-5,1,2,4,5,6,6,7,8,34];
+            keyList.splice(i, 1);
+            valList.splice(i, 1);
 
-    bubbleSort(list, numCompOp);
+            --i;
+        }
+    }
 
-    for (var i = 0; i < sorted.length; ++i)
-        if (list[i] !== sorted[i])
-            return 1;
+    for (var i = 0; i < keyList.length; ++i)
+    {
+        if (!map.has(keyList[i]))
+            return 5;
+
+        var val = map.get(keyList[i]);
+
+        if (val !== valList[i])
+            return 6;
+    }
 
     return 0;
 }
+
+// TODO: convert this test to use assertions &
+// exceptions instead of return codes 
+assert (test() === 0);
 

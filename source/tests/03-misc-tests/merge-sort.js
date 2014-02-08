@@ -160,24 +160,18 @@ function array_print(a)
         print(a[i]);
 }
 
-function test()
-{
-    var a = [0,-5,3,15,12,-33,7];
+var a = [0,-5,3,15,12,-33,7];
 
-    merge_sort(a);
+merge_sort(a);
 
-    var b = [-33,-5,0,3,7,12,15];
+var b = [-33,-5,0,3,7,12,15];
 
-    /*
-    print('result:');
-    array_print(a);
-    print('expected:');
-    array_print(b);
-    */
+/*
+print('result:');
+array_print(a);
+print('expected:');
+array_print(b);
+*/
 
-    if (!array_eq(a, b))
-        return 1;
-
-    return 0;
-}
+assert (array_eq(a, b));
 
