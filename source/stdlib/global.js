@@ -115,6 +115,17 @@ function parseInt(string, radix)
     return NaN;
 }
 
+// TODO: complete the implementation of parseFloat
+function parseFloat(string)
+{
+    assert (
+        string.indexOf('.') === -1,
+        "no support for parsing floating-point numbers"
+    );
+
+    return parseInt(string);
+}
+
 /**
 15.1.3.1 decodeURI(encodedURI)
 */
