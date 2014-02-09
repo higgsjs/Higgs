@@ -3,6 +3,10 @@
 # not really, but meh
 language: c
 
+# use caching
+cache:
+ apt: true
+
 # get latest version of dmd and dependencies
 before_install:
  - sudo apt-get update -qq
