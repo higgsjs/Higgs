@@ -1192,6 +1192,16 @@ extern (C) CodePtr throwExc(
     // Get the exception handler code, if supplied
     auto curHandler = throwHandler? throwHandler.getCodePtr(vm.execHeap):null;
 
+    // Get a GC root for the exception object
+    auto excObj = GCRoot(
+        vm,
+        valIsLayout(ValuePair(excWord, excType), LAYOUT_OBJ)? excWord.ptrVal:null
+    );
+
+
+
+
+
     // Until we're done unwinding the stack
     for (IRInstr curInstr = throwInstr;;)
     {

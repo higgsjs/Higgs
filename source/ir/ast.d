@@ -43,6 +43,7 @@ import std.array;
 import std.algorithm;
 import std.typecons;
 import std.conv;
+import parser.lexer;
 import parser.ast;
 import parser.parser;
 import ir.ir;
@@ -452,18 +453,20 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         auto argObjVal = genRtCall(
             bodyCtx, 
             "newArr",
-            [mapVal, protoVal, fun.argcVal]
+            [mapVal, protoVal, fun.argcVal],
+            fun.ast.pos
         );
 
         // Map the "arguments" identifier to the array object
         bodyCtx.localMap[ast.argObjIdent] = argObjVal;
 
         // Set the "callee" property
-        auto calleeStr = bodyCtx.strVal("callee");        
+        auto calleeStr = bodyCtx.strVal("callee");
         auto setInstr = genRtCall(
             bodyCtx, 
             "setProp",
-            [argObjVal, calleeStr, fun.closVal]
+            [argObjVal, calleeStr, fun.closVal],
+            fun.ast.pos
         );
 
         // Create the loop test, body and exit blocks
@@ -496,7 +499,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         genRtCall(
             loopCtx, 
             "setArrElem",
-            [cast(IRValue)argObjVal, idxPhi, argVal]
+            [cast(IRValue)argObjVal, idxPhi, argVal],
+            fun.ast.pos
         );
 
         // Increment the loop index and jump to the test block
@@ -518,7 +522,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         auto getVal = genRtCall(
             bodyCtx, 
             "clos_get_cell",
-            [fun.closVal, cast(IRValue)IRConst.int32Cst(cast(int32_t)idx)]
+            [fun.closVal, cast(IRValue)IRConst.int32Cst(cast(int32_t)idx)],
+            fun.ast.pos
         );
 
         fun.cellMap[ident] = getVal;
@@ -534,7 +539,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             auto allocInstr = genRtCall(
                 bodyCtx, 
                 "makeClosCell",
-                []
+                [],
+                fun.ast.pos
             );
             fun.cellMap[ident] = allocInstr;
 
@@ -544,7 +550,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                 genRtCall(
                     bodyCtx, 
                     "setCellVal", 
-                    [allocInstr, bodyCtx.localMap[ident]]
+                    [allocInstr, bodyCtx.localMap[ident]],
+                    fun.ast.pos
                 );
             }
         }
@@ -580,7 +587,8 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
                     genRtCall(
                         ctx, 
                         "clos_set_cell",
-                        [newClos, idxCst, fun.cellMap[ident]]
+                        [newClos, idxCst, fun.cellMap[ident]],
+                        fun.ast.pos
                     );
                 }
 
@@ -692,7 +700,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
             // Branch based on the boolean value
             ctx.ifTrue(boolVal, trueBlock, falseBlock);
         }
-    
+
         // Compile the true statement
         auto trueCtx = ctx.subCtx(trueBlock);
         stmtToIR(trueCtx, ifStmt.trueStmt);
@@ -802,7 +810,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         );
 
         // Store a copy of the loop entry phi nodes
-        auto entryLocals = bodyCtx.localMap.dup;        
+        auto entryLocals = bodyCtx.localMap.dup;
 
         // Compile the loop body statement
         stmtToIR(bodyCtx, doStmt.bodyStmt);
@@ -947,9 +955,10 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
 
         // Get the property enumerator
         auto enumVal = genRtCall(
-            ctx, 
-            "getPropEnum", 
-            [objVal]
+            ctx,
+            "getPropEnum",
+            [objVal],
+            stmt.pos
         );
 
         // Create a context for the loop entry (the loop test)
@@ -966,7 +975,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         );
 
         // Store a copy of the loop entry phi nodes
-        auto entryLocals = testCtx.localMap.dup;        
+        auto entryLocals = testCtx.localMap.dup;
 
         // Get the next property
         auto callInstr = testCtx.addInstr(new IRInstr(&CALL, 2));
@@ -974,7 +983,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         callInstr.setArg(1, enumVal);
 
         // Generate the call targets
-        genCallTargets(testCtx, callInstr);
+        genCallTargets(testCtx, callInstr, stmt.pos);
 
         // If the property is a constant value, exit the loop
         auto isConst = testCtx.addInstr(new IRInstr(&IS_CONST, callInstr));
@@ -1111,20 +1120,13 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
     {
         auto throwVal = exprToIR(ctx, throwStmt.expr);
 
-        // Generate the exception path
-        if (auto excBlock = genExcPath(ctx, throwVal))
-        {
-            // Jump to the exception path
-            ctx.jump(excBlock);
-        }
-        else
-        {
-            // Add an interprocedural throw instruction
-            ctx.addInstr(new IRInstr(
-                &THROW,
-                throwVal
-            ));
-        }
+        // Call a primitive which will throw the exception
+        auto enumVal = genRtCall(
+            ctx,
+            "throwExc",
+            [throwVal],
+            stmt.pos
+        );
     }
 
     else if (auto tryStmt = cast(TryStmt)stmt)
@@ -1248,9 +1250,10 @@ void switchToIR(IRGenCtx ctx, SwitchStmt stmt)
 
         // Test if the case expression matches
         auto cmpInstr = genRtCall(
-            testCtx, 
-            "se", 
-            [switchVal, caseVal]
+            testCtx,
+            "se",
+            [switchVal, caseVal],
+            stmt.pos
         );
 
         // Branch based on the test
@@ -1344,7 +1347,8 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 genRtCall(
                     ctx, 
                     "clos_set_cell",
-                    [newClos, idxCst, cellVal]
+                    [newClos, idxCst, cellVal],
+                    expr.pos
                 );
             }
 
@@ -1362,9 +1366,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             auto rVal = exprToIR(ctx, binExpr.rExpr);
 
             return genRtCall(
-                ctx, 
+                ctx,
                 rtFunName,
-                [lVal, rVal]
+                [lVal, rVal],
+                expr.pos
             );
         }
 
@@ -1376,9 +1381,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 opFn = delegate IRValue(IRGenCtx ctx, IRValue lArg, IRValue rArg)
                 {
                     return genRtCall(
-                        ctx, 
-                        rtFunName, 
-                        [lArg, rArg]
+                        ctx,
+                        rtFunName,
+                        [lArg, rArg],
+                        expr.pos
                     );
                 };
             }
@@ -1550,9 +1556,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             auto subVal = exprToIR(ctx, unExpr.expr);
 
             return genRtCall(
-                ctx, 
+                ctx,
                 "plus",
-                [subVal]
+                [subVal],
+                expr.pos
             );
         }
 
@@ -1562,9 +1569,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             auto subVal = exprToIR(ctx, unExpr.expr);
 
             return genRtCall(
-                ctx, 
+                ctx,
                 "minus",
-                [subVal]
+                [subVal],
+                expr.pos
             );
         }
 
@@ -1573,9 +1581,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         {
             auto subVal = exprToIR(ctx, unExpr.expr);
             return genRtCall(
-                ctx, 
-                "not", 
-                [subVal]
+                ctx,
+                "not",
+                [subVal],
+                expr.pos
             );
         }
 
@@ -1598,9 +1607,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             }
 
             return genRtCall(
-                ctx, 
+                ctx,
                 "typeof",
-                [exprVal]
+                [exprVal],
+                expr.pos
             );
         }
 
@@ -1627,9 +1637,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             }
 
             return genRtCall(
-                ctx, 
+                ctx,
                 "delProp",
-                [objVal, propVal]
+                [objVal, propVal],
+                expr.pos
             );
         }
 
@@ -1677,9 +1688,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 delegate IRValue(IRGenCtx ctx, IRValue lArg, IRValue rArg)
                 {
                     return genRtCall(
-                        ctx, 
+                        ctx,
                         (op.str == "++")? "add":"sub",
-                        [lArg, rArg]
+                        [lArg, rArg],
+                        expr.pos
                     );
                 },
                 delegate IRValue(IRGenCtx ctx)
@@ -1706,7 +1718,8 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                     return genRtCall(
                         ctx, 
                         (op.str == "++")? "add":"sub",
-                        [lArg, rArg]
+                        [lArg, rArg],
+                        expr.pos
                     );
                 },
                 delegate IRValue(IRGenCtx ctx)
@@ -1812,7 +1825,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                     callInstr.setArg(2 + argIdx, argVal);
 
                 // Generate the call targets
-                genCallTargets(ctx, callInstr);
+                genCallTargets(ctx, callInstr, expr.pos);
 
                 return callInstr;
             }
@@ -1835,7 +1848,8 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             closVal = genRtCall(
                 ctx,
                 "getProp",
-                [thisVal, keyVal]
+                [thisVal, keyVal],
+                expr.pos
             );
         }
         else
@@ -1856,7 +1870,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             callInstr.setArg(2 + argIdx, argVal);
 
         // Generate the call targets
-        genCallTargets(ctx, callInstr);
+        genCallTargets(ctx, callInstr, expr.pos);
 
         return callInstr;
     }
@@ -1883,7 +1897,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             callInstr.setArg(1+argIdx, argVal);
 
         // Generate the call targets
-        genCallTargets(ctx, callInstr);
+        genCallTargets(ctx, callInstr, expr.pos);
 
         return callInstr;
     }
@@ -1898,9 +1912,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
         // Get the property from the object
         return genRtCall(
-            ctx, 
+            ctx,
             "getProp",
-            [baseVal, idxVal]
+            [baseVal, idxVal],
+            expr.pos
         );
     }
 
@@ -1913,7 +1928,8 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         auto arrVal = genRtCall(
             ctx, 
             "newArr",
-            [mapVal, protoVal, numVal]
+            [mapVal, protoVal, numVal],
+            expr.pos
         );
 
         // Evaluate the property values
@@ -1926,9 +1942,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
             // Set the array element
             genRtCall(
-                ctx, 
+                ctx,
                 "setArrElem",
-                [arrVal, idxVal, propVal]
+                [arrVal, idxVal, propVal],
+                expr.pos
             );
         }
 
@@ -1941,9 +1958,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         auto mapVal = ctx.makeMap(objExpr.names.length);
         auto protoVal = ctx.addInstr(new IRInstr(&GET_OBJ_PROTO));
         auto objVal = genRtCall(
-            ctx, 
+            ctx,
             "newObj",
-            [mapVal, protoVal]
+            [mapVal, protoVal],
+            expr.pos
         );
 
         // Evaluate the property values
@@ -1957,9 +1975,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
             // Set the property on the object
             genRtCall(
-                ctx, 
+                ctx,
                 "setProp",
-                [objVal, strVal, propVal]
+                [objVal, strVal, propVal],
+                expr.pos
             );
         }
 
@@ -2001,9 +2020,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         auto strInstr = ctx.strVal(regexpExpr.pattern);
         auto flagsInstr = ctx.strVal(regexpExpr.flags);
         auto reInstr = genRtCall(
-            ctx, 
+            ctx,
             "getRegexp",
-            [linkInstr, strInstr, flagsInstr]
+            [linkInstr, strInstr, flagsInstr],
+            expr.pos
         );
 
         return reInstr;
@@ -2087,9 +2107,10 @@ IRValue refToIR(
             auto globInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
             auto propStr = ctx.strVal(identExpr.name);
             return  genRtCall(
-                ctx, 
+                ctx,
                 "getProp",
-                [globInstr, propStr]
+                [globInstr, propStr],
+                identExpr.pos
             );
         }
     }
@@ -2099,9 +2120,10 @@ IRValue refToIR(
     {
         auto cellVal = ctx.fun.cellMap[identExpr.declNode];
         return genRtCall(
-            ctx, 
+            ctx,
             "getCellVal",
-            [cellVal]
+            [cellVal],
+            identExpr.pos
         );
     }
 
@@ -2132,7 +2154,7 @@ Generate IR for an assignment expression
 */
 IRValue assgToIR(
     IRGenCtx ctx,
-    ASTExpr lhsExpr, 
+    ASTExpr lhsExpr,
     InPlaceOpFn inPlaceOpFn,
     ExprEvalFn rhsExprFn
 )
@@ -2160,9 +2182,10 @@ IRValue assgToIR(
             {
                 // Get the property from the object
                 lhsTemp = genRtCall(
-                    ctx, 
+                    ctx,
                     "getProp",
-                    [base, index]
+                    [base, index],
+                    lhsExpr.pos
                 );
             }
             else
@@ -2201,9 +2224,10 @@ IRValue assgToIR(
             // Set the value in the mutable cell
             auto cellVal = ctx.fun.cellMap[identExpr.declNode];
             genRtCall(
-                ctx, 
+                ctx,
                 "setCellVal",
-                [cellVal, rhsVal]
+                [cellVal, rhsVal],
+                lhsExpr.pos
             );
         }
 
@@ -2235,9 +2259,10 @@ IRValue assgToIR(
 
         // Set the property on the object
         genRtCall(
-            ctx, 
+            ctx,
             "setProp",
-            [baseVal, idxVal, rhsVal]
+            [baseVal, idxVal, rhsVal],
+            lhsExpr.pos
         );
 
         return rhsVal;
@@ -2386,7 +2411,7 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
             // Map pointer
             case OpArg.MAP:
             if (cast(NullExpr)argExpr is null)
-            {    
+            {
                 throw new ParseError(
                     "expected null argument", 
                     argExpr.pos
@@ -2407,9 +2432,12 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
     // Add the instruction to the context
     ctx.addInstr(instr);
 
-    // If this is a call_instruction, generate the call targets
+    // If this is a call_instruction
     if (instr.opcode.isCall)
-        genCallTargets(ctx, instr);
+    {
+        // Generate the call targets
+        genCallTargets(ctx, instr, expr.pos);
+    }
 
     // If this instruction has no output, return the undefined value
     if (instr.opcode.output is false)
@@ -2466,9 +2494,10 @@ IRValue genBoolEval(IRGenCtx ctx, ASTExpr testExpr, IRValue argVal)
     {
         // Convert the value to a boolean
         auto boolInstr = genRtCall(
-            ctx, 
+            ctx,
             "toBool",
-            [argVal]
+            [argVal],
+            testExpr.pos
         );
 
         return boolInstr;
@@ -2478,7 +2507,7 @@ IRValue genBoolEval(IRGenCtx ctx, ASTExpr testExpr, IRValue argVal)
 /**
 Insert a call to a runtime function
 */
-IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
+IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals, SrcPos pos)
 {
     auto nameStr = new IRString(RT_PREFIX ~ to!wstring(fName));
 
@@ -2493,7 +2522,7 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals)
     }
 
     // Generate the call targets
-    genCallTargets(ctx, callInstr);
+    genCallTargets(ctx, callInstr, pos);
 
     return callInstr;
 }
@@ -2513,7 +2542,7 @@ IRBlock genExcPath(IRGenCtx ctx, IRValue excVal)
 
     // Create a block for the exception path
     auto excBlock = ctx.fun.newBlock("call_exc");
-    auto excCtx = ctx.subCtx(excBlock);           
+    auto excCtx = ctx.subCtx(excBlock);
 
     // If there is an englobing try block
     if (catchInfo !is null)
@@ -2554,7 +2583,8 @@ IRBlock genExcPath(IRGenCtx ctx, IRValue excVal)
     // Otherwise, there is no englobing try-catch block
     else
     {
-        // Add an interprocedural throw instruction
+        // Add an interprocedural throw instruction, this will rethrow
+        // the exception value after the finally statements
         excCtx.addInstr(new IRInstr(&THROW, excVal));
     }
 
@@ -2564,7 +2594,7 @@ IRBlock genExcPath(IRGenCtx ctx, IRValue excVal)
 /**
 Generate and set the normal and exception targets for a call instruction
 */
-void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
+void genCallTargets(IRGenCtx ctx, IRInstr callInstr, SrcPos pos)
 {
     // Create a block for the call continuation
     auto contBlock = ctx.fun.newBlock("call_cont");
@@ -2578,6 +2608,9 @@ void genCallTargets(IRGenCtx ctx, IRInstr callInstr)
 
     // Continue code generation in the continuation block
     ctx.merge(contBlock);
+
+    // Set the source position for the call
+    callInstr.srcPos = pos;
 }
 
 /*

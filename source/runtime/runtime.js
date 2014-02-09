@@ -59,26 +59,6 @@ function isNaN(v)
 }
 
 /**
-Perform an assertion test
-*/
-function assert(testVal, errorMsg)
-{
-    if (testVal === true)
-        return;
-
-    // If no error message is specified
-    if ($argc < 2)
-        errorMsg = 'assertion failed';
-
-    // If the global Error object exists
-    if (this.Error !== $undef)
-        throw Error(errorMsg);
-
-    // Throw the error message as-is
-    throw errorMsg;
-}
-
-/**
 Load and execute a source file
 */
 function load(fileName)
@@ -114,6 +94,36 @@ function print()
 
     // Print a final newline
     $ir_print_str('\n');
+}
+
+/**
+Perform an assertion test
+*/
+function assert(testVal, errorMsg)
+{
+    if (testVal === true)
+        return;
+
+    // If no error message is specified
+    if ($argc < 2)
+        errorMsg = 'assertion failed';
+
+    // If the global Error object exists
+    if (this.Error !== $undef)
+        throw Error(errorMsg);
+
+    // Throw the error message as-is
+    $ir_throw(errorMsg);
+}
+
+/**
+Throw an exception value
+Note: this primitive makes exception handling simpler as the
+throw instruction will always unwind at least one stack frame.
+*/
+function $rt_throwExc(excVal)
+{
+    $ir_throw(excVal);
 }
 
 /**
@@ -1371,7 +1381,7 @@ function $rt_ns(x, y)
     {
         if ($ir_is_const(y))
             return $ir_ne_const(x, y);
-        
+
         return true;
     }
 
@@ -1649,10 +1659,10 @@ function $rt_getProp(base, prop)
 Extend the internal array table of an array
 */
 function $rt_extArrTbl(
-    arr, 
-    curTbl, 
-    curLen, 
-    curSize, 
+    arr,
+    curTbl,
+    curLen,
+    curSize,
     newSize
 )
 {

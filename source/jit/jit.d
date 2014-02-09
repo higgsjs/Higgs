@@ -297,14 +297,12 @@ class CodeGenState
     */
     size_t diff(CodeGenState succ)
     {
+        assert (this.callCtx is succ.callCtx);
+
         auto pred = this;
 
         // Difference (penalty) sum
         size_t diff = 0;
-
-        // If the contexts are different, the states are incompatible
-        if (pred.callCtx !is succ.callCtx)
-            return size_t.max;
 
         // TODO
         /*

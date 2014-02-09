@@ -162,6 +162,7 @@ static this()
     addOp(STORE_FUNPTR);
     addOp(STORE_MAPPTR);
 
+    addOp(THROW);
     addOp(CALL_APPLY);
 
     addOp(GET_ARG);

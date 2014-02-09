@@ -127,29 +127,34 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 TODO: if to same if opt pattern
 - if testing the same value and value is not from succ, will branch the same way
 
-TODO: when exception is caught, add origin position to object if possible
-- exception.pos
-- make the error class allocate an SrcPos JS object!
-- make the error class log this when available
+TODO: add trace info to exception objects
+- throwError already allocates in heap, fair game
+- can make helper functions in throwExc to set the current position at each
+  call level
 
-TODO: add source position info for call instructions and throw instruction
+
+
+
+
+
+
+
+[DONE] TODO: probably want to be able to set a target for throw?
+- Want to unwind the stack, set the position on the exception value
+- Call some runtime function that does throw
+  - Eliminates need to set srcPos on throw instrs
+  - genRtCall("throwExc");
+
+[DONE] TODO: add source position info for call instructions and throw instruction
 - Do this in genCallTargets?
 - Modify stack trace code to show source positions
 - Map of call sites to source pos in IRFunction
   - Might want to just have sourcePos ptr on IRInstr, simpler wrt inlining
   - More robust with IRInstr
 
-FIXME: block cap hit... Block version map needs to be per-callCtx?
+[DONE] FIXME: block cap hit... Block version map needs to be per-callCtx?
 - uncomment block cap hit print, put in version(debug) block
 - see $rt_getPropObj, $6
-
-
-
-
-
-
-
-
 
 [DONE] TODO: migrate esprima parser test from Tachyon
 

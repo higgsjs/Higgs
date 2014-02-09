@@ -46,6 +46,7 @@ import std.conv;
 import std.regex;
 import util.id;
 import util.string;
+import parser.lexer;
 import parser.ast;
 import ir.ops;
 import ir.livevars;
@@ -1255,6 +1256,9 @@ class IRInstr : IRDstValue
     /// Previous and next instructions (linked list)
     IRInstr prev = null;
     IRInstr next = null;
+
+    // Source position, may be null
+    SrcPos srcPos = null;
 
     /// Default constructor
     this(Opcode* opcode, size_t numArgs = 0)
