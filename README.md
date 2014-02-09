@@ -40,7 +40,7 @@ make install BIN_DIR=/my/bin/dir LIB_DIR=/my/lib/dir
 Note: you may need to run `make install` with `sudo`.
 
 *Cleanup:*
-
+ 
 `make clean`
 will remove any binaries in the source directory.
 
