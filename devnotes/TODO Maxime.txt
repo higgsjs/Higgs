@@ -124,6 +124,14 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
   - These can assume that the IRDstValue belongs to the current frame
 - Measure perf impact on loop_big_incr
 
+TODO: if to same if opt pattern
+- if testing the same value and value is not from succ, will branch the same way
+
+TODO: when exception is caught, add origin position to object if possible
+- exception.pos
+- make the error class allocate an SrcPos JS object!
+- make the error class log this when available
+
 TODO: add source position info for call instructions and throw instruction
 - Do this in genCallTargets?
 - Modify stack trace code to show source positions
@@ -131,12 +139,10 @@ TODO: add source position info for call instructions and throw instruction
   - Might want to just have sourcePos ptr on IRInstr, simpler wrt inlining
   - More robust with IRInstr
 
-TODO: if to same if opt pattern
-- if testing the same value and value is not from succ, will branch the same way
-
 FIXME: block cap hit... Block version map needs to be per-callCtx?
-- uncomment block cap hit print
+- uncomment block cap hit print, put in version(debug) block
 - see $rt_getPropObj, $6
+
 
 
 

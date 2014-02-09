@@ -1067,7 +1067,7 @@ abstract class BlockVersion : CodeFragment
         this.next = next;
 
         // Replace the current version by the new one in the version map
-        auto versions = vm.versionMap.get(this.block, []);
+        auto versions = state.callCtx.versionMap.get(this.block, []);
         auto idx = versions.countUntil(this);
         assert (idx !is -1);
         versions[idx] = next;
@@ -1160,15 +1160,16 @@ class VersionInst : BlockVersion
 Request a block version matching the incoming state
 */
 BlockVersion getBlockVersion(
-    IRBlock block, 
+    IRBlock block,
     CodeGenState state,
     bool noStub
 )
 {
-    auto vm = state.callCtx.vm;
+    auto callCtx = state.callCtx;
+    auto vm = callCtx.vm;
 
     // Get the list of versions for this block
-    auto versions = vm.versionMap.get(block, []);
+    auto versions = callCtx.versionMap.get(block, []);
 
     // Best version found
     BlockVersion bestVer;
@@ -1195,13 +1196,16 @@ BlockVersion getBlockVersion(
     // If the block version cap is hit
     if (versions.length >= opts.jit_maxvers)
     {
-        //writeln("block cap hit: ", versions.length);
+        debug
+        {
+            writeln("version limit hit: ", versions.length);
+        }
 
         // If a compatible match was found
         if (bestDiff < size_t.max)
         {
             // Return the best match found
-            assert (bestVer.state.callCtx is state.callCtx);
+            assert (bestVer.state.callCtx is callCtx);
             return bestVer;
         }
 
@@ -1210,7 +1214,7 @@ BlockVersion getBlockVersion(
         // Strip the state of all known types and constants
         auto genState = new CodeGenState(state);
         // TODO
-        /*        
+        /*
         genState.typeState = genState.typeState.init;
         foreach (val, allocSt; genState.allocState)
             if (allocSt & RA_CONST)
@@ -1220,7 +1224,7 @@ BlockVersion getBlockVersion(
         // Ensure that the general version matches
         assert(state.diff(genState) !is size_t.max);
 
-        assert (genState.callCtx is state.callCtx);
+        assert (genState.callCtx is callCtx);
         state = genState;
     }
 
@@ -1234,13 +1238,13 @@ BlockVersion getBlockVersion(
     );
 
     // Add the new version to the list for this block
-    vm.versionMap[block] ~= ver;
+    callCtx.versionMap[block] ~= ver;
 
     // Queue the new version to be compiled
     vm.queue(ver);
 
     // Return the newly created block version
-    assert (ver.state.callCtx is state.callCtx);
+    assert (ver.state.callCtx is callCtx);
     return ver;
 }
 

@@ -311,6 +311,9 @@ class CallCtx
     /// Constructor call flag
     bool ctorCall;
 
+    /// Map of blocks to lists of existing versions
+    BlockVersion[][IRBlock] versionMap;
+
     /// Default constructor
     this(VM vm, IRFunction fun, bool ctorCall)
     {
@@ -513,7 +516,7 @@ class IRBlock : IdObject
         if (instr.opcode.isBranch)
         {
             // Remove branch edges from successors
-            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)            
+            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
             {
                 auto edge = instr.getTarget(tIdx);
                 if (edge !is null)

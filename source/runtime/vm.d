@@ -412,7 +412,7 @@ class VM
     /// Executable heap
     CodeBlock execHeap;
 
-    /// Topmost call context (when calling host code)
+    /// Current call context (set when calling into host code)
     CallCtx callCtx;
 
     /// Map of return addresses to return entries
@@ -420,9 +420,6 @@ class VM
 
     /// List of code fragments, in memory order
     CodeFragment[] fragList;
-
-    /// Map of blocks to lists of existing versions
-    BlockVersion[][IRBlock] versionMap;
 
     /// Queue of block versions to be compiled
     BlockVersion[] compQueue;
@@ -520,7 +517,7 @@ class VM
         objProto = newObj(
             this, 
             new ObjMap(this, BASE_OBJ_INIT_SIZE),
-            NULL.ptrVal            
+            null
         );
 
         // Allocate the array prototype object
