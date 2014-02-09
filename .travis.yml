@@ -13,8 +13,8 @@ cache:
 before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq gcc-multilib time
- - if [ ! -d $HOME/dmd ] ; then mkdir $HOME/dmd ; fi
- - if [ ! -f $HOME/dmd/dmd.deb ] ; then wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb" -O $HOME/dmd/dmd.deb ; fi
+ - if [ ! -d $HOME/dmd ] ; then echo "mkdir dmd..." ; mkdir $HOME/dmd ; fi
+ - if [ ! -f $HOME/dmd/dmd.deb ] ; then echo "fetch dmd..." ; wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb" -O $HOME/dmd/dmd.deb ; fi
  - sudo dpkg -i $HOME/dmd/dmd.deb
 
 # skip dependency install step
