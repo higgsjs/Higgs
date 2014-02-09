@@ -835,7 +835,7 @@ Token getToken(ref StrStream stream, LexFlags flags)
         return Token(Token.REGEXP, reStr, reFlags, pos);
     }
 
-    // Try matching all separators    
+    // Try matching all separators
     foreach (sep; separators)
         if (stream.match(sep))
             return Token(Token.SEP, sep, pos);

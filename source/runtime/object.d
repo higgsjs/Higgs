@@ -128,7 +128,7 @@ class ObjMap : IdObject
 }
 
 refptr newObj(
-    VM vm, 
+    VM vm,
     ObjMap map,
     refptr protoPtr
 )
@@ -149,7 +149,7 @@ refptr newObj(
 }
 
 refptr newClos(
-    VM vm, 
+    VM vm,
     ObjMap closMap,
     refptr protoPtr,
     uint32_t allocNumCells,

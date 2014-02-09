@@ -127,17 +127,28 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 TODO: if to same if opt pattern
 - if testing the same value and value is not from succ, will branch the same way
 
-TODO: add trace info to exception objects
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME:
+h> try { 'foo' + $nullptr } catch (e) { exc = e }
+h> exc.toString()
+object
+Needs to inherit from Error.prototype
+
+[DONE] TODO: add trace info to exception objects
 - throwError already allocates in heap, fair game
 - can make helper functions in throwExc to set the current position at each
   call level
-
-
-
-
-
-
-
 
 [DONE] TODO: probably want to be able to set a target for throw?
 - Want to unwind the stack, set the position on the exception value

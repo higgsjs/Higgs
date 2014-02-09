@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2012, Universite de Montreal
+ *  Copyright (c) 2012-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -41,17 +41,6 @@
  */
 
 /**
-@fileOverview
-Implementation of JavaScript native error classes.
-
-@author
-Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2012 Maxime Chevalier-Boisvert, All Rights Reserved
-*/
-
-/**
 Function to create an error constructor function
 */
 function makeErrorCtor(errorName, protoParent)
@@ -65,7 +54,7 @@ function makeErrorCtor(errorName, protoParent)
         if (this === globalThis)
             var newObj = new ErrorCtor(message);
         else
-            var newObj = this;    
+            var newObj = this;
 
         if (message !== undefined)
             this.message = message.toString();
@@ -73,9 +62,8 @@ function makeErrorCtor(errorName, protoParent)
         return newObj;
     }
 
-    // FIXME
     // Create the prototype object for this error constructor
-    //ErrorCtor.prototype = Object.create(protoParent);
+    ErrorCtor.prototype = Object.create(protoParent);
 
     // Set the error name in the error prototype object
     ErrorCtor.prototype.name = errorName;
@@ -106,9 +94,14 @@ Error.prototype.toString = function ()
     if (this.message === undefined)
         return undefined;
 
-    var name = (this.name === undefined)? 'Error':this.name;
+    var str = (this.name === undefined)? 'Error':this.name;
+    str += ': ' + this.message;
 
-    return name + ': ' + this.message;
+    // Add trace information, if available
+    for (var i = 0; i < this.length; ++i)
+        str += '\n' + this[i];
+
+    return str;
 };
 
 /*

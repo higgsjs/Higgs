@@ -109,7 +109,8 @@ class RunError : Error
         foreach (instr; trace)
         {
             auto fun = instr.block.fun;
-            str ~= "\n" ~ fun.getName ~ " (" ~ to!string(fun.ast.pos) ~ ")";
+            auto pos = instr.srcPos? instr.srcPos:fun.ast.pos;
+            str ~= "\n" ~ fun.getName ~ " (" ~ to!string(pos) ~ ")";
         }
 
         return str;
@@ -557,8 +558,8 @@ class VM
         // If the standard library should be loaded
         if (loadStdLib)
         {
-            load("stdlib/error.js");
             load("stdlib/object.js");
+            load("stdlib/error.js");
             load("stdlib/function.js");
             load("stdlib/math.js");
             load("stdlib/string.js");
@@ -1198,20 +1199,50 @@ extern (C) CodePtr throwExc(
         valIsLayout(ValuePair(excWord, excType), LAYOUT_OBJ)? excWord.ptrVal:null
     );
 
-
-
-
-
     // Until we're done unwinding the stack
     for (IRInstr curInstr = throwInstr;;)
     {
         assert (curInstr !is null);
 
+        //writeln("unwinding: ", curInstr.toString, " in ", curInstr.block.fun.getName);
+        //writeln("stack size: ", vm.stackSize);
+
         // Add the current instruction to the stack trace
         trace ~= curInstr;
 
-        //writeln("unwinding: ", curInstr.toString, " in ", curInstr.block.fun.getName);
-        //writeln("stack size: ", vm.stackSize);
+        // If the exception value is an object,
+        // add trace information to the object
+        if (excObj.ptr)
+        {
+            auto propName = to!wstring(trace.length-1);
+
+            auto fun = curInstr.block.fun;
+            auto pos = curInstr.srcPos? curInstr.srcPos:fun.ast.pos;
+            auto strObj = GCRoot(
+                vm,
+                getString(
+                    vm,
+                    to!wstring(
+                        curInstr.block.fun.getName ~
+                        " (" ~ pos.toString ~ ")"
+                    )
+                )
+            );
+
+            setProp(
+                vm,
+                excObj.ptr,
+                propName,
+                strObj.pair
+            );
+
+            setProp(
+                vm,
+                excObj.ptr,
+                "length"w,
+                ValuePair(Word.int64v(trace.length), Type.INT32)
+            );
+        }
 
         // If the current instruction has an exception handler
         if (curHandler !is null)
@@ -1341,8 +1372,8 @@ extern (C) CodePtr throwError(
             auto excObj = GCRoot(
                 vm,
                     newObj(
-                    vm, 
-                    new ObjMap(vm, 1), 
+                    vm,
+                    new ObjMap(vm, 1),
                     errProto.ptr
                 )
             );
