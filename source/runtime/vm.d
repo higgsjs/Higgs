@@ -72,6 +72,9 @@ class RunError : Error
     /// Exception value
     ValuePair excVal;
 
+    /// Error constructor name
+    string name;
+
     /// Error message
     string message;
 
@@ -84,10 +87,21 @@ class RunError : Error
         this.excVal = excVal;
         this.trace = trace;
 
+        this.name = "run-time error";
+
         if (valIsLayout(excVal, LAYOUT_OBJ))
         {
+            auto errName = getProp(
+                vm,
+                excVal.word.ptrVal,
+                "name"w
+            );
+
+            if (valIsString(errName))
+                this.name = valToString(errName);
+
             auto msgStr = getProp(
-                vm, 
+                vm,
                 excVal.word.ptrVal,
                 "message"w
             );
@@ -104,7 +118,7 @@ class RunError : Error
 
     override string toString()
     {
-        string str = message;
+        string str = name ~ ": " ~ message;
 
         foreach (instr; trace)
         {

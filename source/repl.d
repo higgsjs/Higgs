@@ -52,7 +52,7 @@ void repl(VM vm)
     {
         write("h> ");
         string input = readln().stripRight();
-        
+
         if (input is null || input.toLower() == "exit")
         {
             if (input is null)
@@ -77,7 +77,7 @@ void repl(VM vm)
 
         catch (RunError e)
         {
-            writefln("run-time error: " ~ e.toString());
+            writefln(e.toString());
         }
     }
 }
