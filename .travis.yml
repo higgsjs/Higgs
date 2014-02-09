@@ -6,13 +6,16 @@ language: c
 # use caching
 cache:
  apt: true
+ directories:
+  - $HOME/dmd
 
 # get latest version of dmd and dependencies
 before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq gcc-multilib time
- - wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb"
- - sudo dpkg -i dmd_2.064.2-0_amd64.deb
+ - if [ ! -d $HOME/dmd ] ; then mkdir $HOME/dmd ; fi
+ - if [ ! -f $HOME/dmd/dmd.deb ] ; then wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb" -O $HOME/dmd/dmd.deb ; fi
+ - sudo dpkg -i $HOME/dmd/dmd.deb
 
 # skip dependency install step
 install: true
