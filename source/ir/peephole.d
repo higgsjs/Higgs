@@ -467,13 +467,45 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         }
                     }
 
-                    // If this is a conditional branch with a constant argument
+                    // If this is an if_true conditional branch
                     if (op is &IF_TRUE)
                     {
-                        if (auto cstArg = cast(IRConst)instr.getArg(0))
+                        auto ifArg = instr.getArg(0);
+                        auto ifDstArg = cast(IRDstValue)ifArg;
+
+                        // If the argument is a constant
+                        if (auto cstArg = cast(IRConst)ifArg)
                         {
                             // Select the target to branch to
                             auto desc = instr.getTarget((cstArg is IRConst.trueCst)? 0:1);
+
+                            // Replace the if branch by a direct jump
+                            auto jumpInstr = block.addInstr(new IRInstr(&JUMP));
+                            auto newDesc = jumpInstr.setTarget(0, desc.target);
+                            foreach (arg; desc.args)
+                                newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+                            delInstr(instr);
+
+                            continue INSTR_LOOP;
+                        }
+
+                        // If there is a single predecessor which is an if
+                        // branch on the same argument, and the argument is
+                        // not from this block
+                        if (
+                            block.numIncoming is 1 &&
+                            block.getIncoming(0).branch.opcode is &IF_TRUE &&
+                            block.getIncoming(0).branch.getArg(0) is ifArg &&
+                            ifDstArg && ifDstArg.block !is block
+                        )
+                        {
+                            // Determine which branch was taken to get here
+                            auto predEdge = block.getIncoming(0);
+                            auto predIf = predEdge.branch;
+                            auto branchIdx = (predEdge is predIf.getTarget(0))? 0:1;
+
+                            // This if will branch the same way as the predecessor
+                            auto desc = instr.getTarget(branchIdx);
 
                             // Replace the if branch by a direct jump
                             auto jumpInstr = block.addInstr(new IRInstr(&JUMP));

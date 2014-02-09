@@ -115,6 +115,7 @@ TODO: skip empty branch edges, see perf impact?
 TODO: type prop, pass types along inlined calls/returns
 
 TODO: basic type prop, without reg alloc, type test removal
+- For now, don't do delayed writes
 
 TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Need negative indexing relative to wsp, make LocalIdx signed
@@ -123,21 +124,22 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Need to adjust getWordOpnd and others
   - These can assume that the IRDstValue belongs to the current frame
 - Measure perf impact on loop_big_incr
+- Break implementation into small steps ***
 
-TODO: if to same if opt pattern
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: if to same if opt pattern, see $rt_getPropObj, $6
 - if testing the same value and value is not from succ, will branch the same way
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME:
 h> try { 'foo' + $nullptr } catch (e) { exc = e }
