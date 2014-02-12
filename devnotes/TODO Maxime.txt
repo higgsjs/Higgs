@@ -26,10 +26,6 @@ List of possible contributions:
 Wishlist
 --------
 
-TODO: take a look at Mozilla regression tests
-http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
-- ideally requires test harness
-
 TODO: add --jit_trace command-line option
 
 TODO: complete WAV output support, test it out with sine wave
@@ -63,9 +59,6 @@ TODO: add missing shootout/sunspider/v8 benchmarks
 - string-base64, string-fasta
 - splay
 
-TODO: pixel plotting, drawing window lib? lib/draw
-- Probably will want to use X11
-
 ------------------------------------------------------------------------------
 
 TODO: proper hidden classes, support for property enumeration?
@@ -88,7 +81,7 @@ TODO: have map idx system, instead of map pointers?
 - what else?
 
 TODO: accelerate getPropObj, make more hosted?
-- generate optimized machine code?
+- generate optimized machine code? inline cache?
 
 TODO: smarter spilling across inlined calls
 - only spill parent values when necessary
@@ -117,6 +110,20 @@ TODO: type prop, pass types along inlined calls/returns
 TODO: basic type prop, without reg alloc, type test removal
 - For now, don't do delayed writes
 
+TODO: IRFunction.asmString()
+
+TODO: pixel plotting, drawing window lib? lib/draw
+- Probably will want to use X11
+  - implement a lib/x11
+  - need an event loop
+- Can have a draw lib which creates a window using lib/x11 and sets up a
+  basic event loop
+  - allows setting callbacks for KB and mouse events
+  - allows calling a function in the loop
+- Make another lib to read from the console without blocking
+  - use select() on stdin
+  - Can then implement our own REPL on top
+
 TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Need negative indexing relative to wsp, make LocalIdx signed
 - Need to correct wsp/tsp at non-inlined call time
@@ -126,6 +133,11 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Measure perf impact on loop_big_incr
 - Break implementation into small steps ***
 
+TODO: update CV for bourse DIRO
+
+TODO: e-mail Marc about bourse DIRO. Mention e-mail suffices.
+
+TODO: in About Me on pointersgonewild, link arxiv paper, mention it's a tech report
 
 
 
@@ -137,6 +149,10 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 
 
 
+
+
+[DONE] TODO: take a look at Mozilla regression tests
+http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
 
 [DONE] TODO: if to same if opt pattern, see $rt_getPropObj, $6
 - if testing the same value and value is not from succ, will branch the same way
