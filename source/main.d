@@ -36,21 +36,49 @@
 *****************************************************************************/
 
 import std.stdio;
+import std.algorithm;
+import std.conv;
+import std.string;
 import parser.parser;
 import runtime.vm;
+import util.string;
 import repl;
 import options;
 
 void main(string[] args)
 {
+    // ignore anything after "--"
+    auto argLimit = countUntil(args, "--");
+    string[] higgsArgs;
+    string[] jsArgs;
+
+    if (argLimit > 0)
+    {
+        higgsArgs = args[0..argLimit];
+        jsArgs = args[++argLimit..$];
+    }
+    else
+    {
+        higgsArgs = args[0..$];
+        jsArgs = [];
+    }
+
     // Parse the command-line arguments
-    parseCmdArgs(args);
+    parseCmdArgs(higgsArgs);
 
     // Get the names of files to execute
-    auto fileNames = args[1..$];
+    auto fileNames = higgsArgs[1..$];
+
+    // construct JS array for jsArgs
+    wstring jsArgsStr = "arguments = [";
+    foreach(string arg; jsArgs)
+        jsArgsStr ~= "'" ~ escapeJSString(to!wstring(arg)) ~ "',";
+    jsArgsStr = chomp(jsArgsStr, ","w);
+    jsArgsStr ~= "];";
 
     // VM instance
     auto vm = new VM(true, !opts.nostdlib);
+    vm.evalString(to!string(jsArgsStr));
 
     // If file arguments were passed or there is
     // a string of code to be executed
