@@ -742,7 +742,10 @@ function string_trim()
     while (string_internal_isWhiteSpace(this.charCodeAt(to)))
         --to;
 
-    return this.substring(from, to + 1);
+    if (from > to)
+        return "";
+    else
+        return this.substring(from, to + 1);
 }
 
 /**
