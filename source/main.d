@@ -47,37 +47,38 @@ import options;
 
 void main(string[] args)
 {
-    // ignore anything after "--"
+    // Arguments after "--" are passed to JS code
     auto argLimit = countUntil(args, "--");
-    string[] higgsArgs;
+    string[] hostArgs;
     string[] jsArgs;
 
     if (argLimit > 0)
     {
-        higgsArgs = args[0..argLimit];
+        hostArgs = args[0..argLimit];
         jsArgs = args[++argLimit..$];
     }
     else
     {
-        higgsArgs = args[0..$];
+        hostArgs = args[0..$];
         jsArgs = [];
     }
 
     // Parse the command-line arguments
-    parseCmdArgs(higgsArgs);
+    parseCmdArgs(hostArgs);
 
     // Get the names of files to execute
-    auto fileNames = higgsArgs[1..$];
+    auto fileNames = hostArgs[1..$];
 
-    // construct JS array for jsArgs
+    // Create VM instance
+    auto vm = new VM(true, !opts.nostdlib);
+
+    // Construct the JS arguments array
     wstring jsArgsStr = "arguments = [";
     foreach(string arg; jsArgs)
         jsArgsStr ~= "'" ~ escapeJSString(to!wstring(arg)) ~ "',";
-    jsArgsStr = chomp(jsArgsStr, ","w);
     jsArgsStr ~= "];";
 
-    // VM instance
-    auto vm = new VM(true, !opts.nostdlib);
+    // Evaluate the arguments array string
     vm.evalString(to!string(jsArgsStr));
 
     // If file arguments were passed or there is
