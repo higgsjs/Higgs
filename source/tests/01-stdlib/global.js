@@ -16,3 +16,10 @@ assert (cmpEps(parseFloat(" 0"), 0));
 assert (isNaN(parseFloat(" ")));
 assert (isNaN(parseFloat()));
 
+assert (isNaN(NaN));
+assert (isNaN(Number.NaN));
+assert (isNaN("wwerr21234"));
+assert (isNaN("1234ghhh"));
+assert (!isNaN(1));
+assert (!isNaN(1.678));
+assert (!isNaN("1234"));
