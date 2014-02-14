@@ -10,8 +10,8 @@ Conference deadlines:
 Internships: Nov-Dec 2014, after paper deadlines?
 ~3-4 months
 Marc advises to remain near PhD work, best for CV
+Approach Mozilla around early June, combine with trip?
 Approach Facebook
-Approach Mozilla around spring, combine with trip
 
 List of possible contributions:
 - Type tagging scheme
@@ -53,13 +53,14 @@ Idea: getters/setters + never used opt?
 
 TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 
+TODO: reduce code size by using calls for fallback code,
+eg: global access, call_prim inlining/recompilation, others?
+
 TODO: add missing shootout/sunspider/v8 benchmarks
 - previously too slow
 - lists
 - string-base64, string-fasta
 - splay
-
-------------------------------------------------------------------------------
 
 TODO: proper hidden classes, support for property enumeration?
 - Type information in hidden classes too?
@@ -68,10 +69,20 @@ TODO: execHeap collection/expansion
 - Marc says: not on critical path for paper
 
 TODO: arrays, functions, have obj ptr inside, drop object inheritance system
+- Arrays: how do we handle resizing, use a next pointer? Store length
+  - Need to check elem < length anyways before reading?
+
+TODO: typed arrays
+- Will save many many type checks on some benchmarks
+  - e.g. : integer, FFT
+
+------------------------------------------------------------------------------
+
+TODO: reimplement type analysis to compare with BBV for paper
 
 TODO: think about type representation
 - types need to encode obj vs clos vs array
-- int array, float array
+- typed arrays: int32 array, float array
 - use one whole word for cst value, encode map idx in there too?
 
 TODO: have map idx system, instead of map pointers?
@@ -92,9 +103,6 @@ TODO: register allocation
   - or do this on demand?
 - unified spilling function? params to spill tsp/wsp, vm reg
 - delayed writes
-
-TODO: reduce code size by using calls for fallback code,
-eg: global access, call_prim inlining/recompilation, others?
 
 TODO: make inline threshold larger for bigger functions?
 - wait until inlining is more optimized before tweaking heuristics
@@ -124,20 +132,30 @@ TODO: pixel plotting, drawing window lib? lib/draw
   - use select() on stdin
   - Can then implement our own REPL on top
 
+TODO: look at https://github.com/dntj/jsfft
+- Do they have a test/benchmark of the FFT?
+
+TODO: resume for bourse DIRO
+- Mention github stars, Mozilla continues funding us, interest from Facebook
+
 TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
-- Need negative indexing relative to wsp, make LocalIdx signed
 - Need to correct wsp/tsp at non-inlined call time
-- Need to correct wsp/tsp when throwing exceptions
+  - push actual stack space to protect inlined locals
+  - return from non-inlined call needs to remove slots
+  callCtx.extraLocals?
+- Need to correct wsp/tsp when throwing exceptions?
+  - if we go to exc handler in inlined context, need to adjust frame
+  - may need to remove stack slots
+- What if we do an inlined call in an inlined call?
+  - no need to adjust anything, context inherits
 - Need to adjust getWordOpnd and others
   - These can assume that the IRDstValue belongs to the current frame
-- Measure perf impact on loop_big_incr
-- Break implementation into small steps ***
+- Break implementation into small steps
+  - Get it working without exception support first
 
-TODO: update CV for bourse DIRO
-
-TODO: e-mail Marc about bourse DIRO. Mention e-mail suffices.
-
-TODO: in About Me on pointersgonewild, link arxiv paper, mention it's a tech report
+TODO: LocalIdx => StackIdx
+- Not unsigned
+- Do we still need NULL_LOCAL for anything? grep it
 
 
 
@@ -149,7 +167,17 @@ TODO: in About Me on pointersgonewild, link arxiv paper, mention it's a tech rep
 
 
 
+[DONE] TODO: update CV for bourse DIRO
 
+[DONE] TODO: wiki, add enum of missing features
+
+[DONE] TODO: in About Me on pointersgonewild, link arxiv paper, mention it's a tech report
+
+[DONE] TODO: look for JS FFT implementation
+- there is one in kraken 1.1
+- ask on Twitter if someone knows of a simple JS FFT
+
+[DONE] TODO: e-mail Marc about bourse DIRO. Mention e-mail suffices.
 
 [DONE] TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
