@@ -55,7 +55,11 @@ Test if a value is NaN
 */
 function isNaN(v)
 {
-    return ($ir_is_f64(v) && $ir_ne_f64(v, v));
+    if ($ir_is_f64(v))
+        return $ir_ne_f64(v,v);
+
+    var n = $rt_toNumber(v);
+    return ($ir_is_f64(n) && $ir_ne_f64(n, n));
 }
 
 /**
