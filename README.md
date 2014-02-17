@@ -75,7 +75,7 @@ Command-line arguments can be passed to a JS script using the `--` separator, as
 
 `higgs file1.js file2.js -- 0 1 2`
 
-These arguments will be evaluated as JS code in the global scope and inserted in a global `arguments` array.
+These arguments will be evaluated as JS code in the global scope and the resulting values inserted in a global `arguments` array.
 
 **Notes:**
  - You may wish to use `rlwrap` for a better REPL experience.
