@@ -120,6 +120,10 @@ TODO: basic type prop, without reg alloc, type test removal
 
 TODO: IRFunction.asmString()
 
+TODO: blog post about draw lib
+- advice: crazy but true titles, skimmable blog post, skimmable style, pretty pics
+- tutorials, should also list in wiki, or blog wiki tuts?
+
 TODO: pixel plotting, drawing window lib? lib/draw
 - Probably will want to use X11
   - implement a lib/x11
@@ -156,6 +160,10 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 TODO: LocalIdx => StackIdx
 - Not unsigned
 - Do we still need NULL_LOCAL for anything? grep it
+
+TODO: partial support for `quasis` as multi-line strings only
+
+
 
 
 

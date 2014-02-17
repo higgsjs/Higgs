@@ -281,5 +281,6 @@ function test ()
 
 // TODO: convert this test to use assertions &
 // exceptions instead of return codes 
-assert (test() === 0);
+var r = test();
+assert (r === 0, r);
 

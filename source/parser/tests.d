@@ -199,6 +199,7 @@ unittest
     testParse("\"foobar\";");
     testParse("'foobar';");
     testParse("\"foobar';", false);
+    testParse("'foo\nbar';", false);
     testParse("'foo\\x55bar';");
     testParse("'foo\\uABCDbar';");
 
@@ -265,6 +266,7 @@ unittest
 
     // String escape sequences
     testExprAST("'foo\\nbar';", new StringExpr("foo\nbar"));
+    testExprAST("'foo\\\nbar';", new StringExpr("foobar"));
     testExprAST("'foo\\x55bar';", new StringExpr("foo\x55bar"));
     testExprAST("'foo\\u0055bar';", new StringExpr("foo\u0055bar"w));
     testExprAST("'foo\\055bar';", new StringExpr("foo-bar"w));
