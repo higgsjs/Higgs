@@ -76,9 +76,9 @@ TODO: typed arrays
 - Will save many many type checks on some benchmarks
   - e.g. : integer, FFT
 
-------------------------------------------------------------------------------
-
-TODO: reimplement type analysis to compare with BBV for paper
+TODO: quick reoptimization pass with basic asm pattern matching?
+- repatch stub jumps, etc.
+- does dst block fit in source block?
 
 TODO: think about type representation
 - types need to encode obj vs clos vs array
@@ -94,6 +94,13 @@ TODO: have map idx system, instead of map pointers?
 TODO: accelerate getPropObj, make more hosted?
 - generate optimized machine code? inline cache?
 
+TODO: look at https://github.com/dntj/jsfft
+- Do they have a test/benchmark of the FFT?
+
+------------------------------------------------------------------------------
+
+TODO: reimplement type analysis to compare with BBV for paper
+
 TODO: smarter spilling across inlined calls
 - only spill parent values when necessary
 - also want to be smart about delayed writes
@@ -106,12 +113,6 @@ TODO: register allocation
 
 TODO: make inline threshold larger for bigger functions?
 - wait until inlining is more optimized before tweaking heuristics
-
-TODO: skip empty branch edges, see perf impact?
-- can we integrate this in genBranchEdge?
-- could also have quick reoptimization pass with basic asm pattern matching
-- repatch stub jumps, etc.
-- does dst block fit in source block?
 
 TODO: blog post about draw lib
 - advice: crazy but true titles, skimmable blog post, skimmable style, pretty pics
@@ -129,16 +130,13 @@ TODO: pixel plotting, drawing window lib? lib/draw
   - use select() on stdin
   - Can then implement our own REPL on top
 
-TODO: look at https://github.com/dntj/jsfft
-- Do they have a test/benchmark of the FFT?
-
-TODO: resume projet for bourse DIRO
-- Mention github stars, Mozilla continues funding us, interest from Facebook
-
 TODO: type prop, pass types along inlined calls/returns
 
 TODO: basic type prop, without reg alloc, type test removal
 - For now, don't do delayed writes
+
+TODO: resume projet for bourse DIRO
+- Mention github stars, Mozilla continues funding us, interest from Facebook
 
 TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Need to correct wsp/tsp at non-inlined call time
@@ -157,6 +155,9 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 
 TODO: try optimizing away empty branch edges
 - Time the result
+- can we integrate this in genBranchEdge?
+make; ./higgs --jit_genasm --e "print(\$rt_add.asmString())"
+
 
 
 
