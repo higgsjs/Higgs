@@ -132,7 +132,7 @@ struct ValState
     ));
 
     /// Stack value constructor
-    static ValState stack(LocalIdx idx)
+    static ValState stack(StackIdx idx)
     {
         ValState val;
 
@@ -160,10 +160,10 @@ struct ValState
     bool isConst() const { return kind is Kind.CONST; }
 
     /// Get the stack slot index for this value
-    LocalIdx localIdx() const
+    StackIdx stackIdx() const
     {
         assert (isStack);
-        return cast(LocalIdx)val;
+        return cast(StackIdx)val;
     }
 
     /// Get a word operand for this value
@@ -172,7 +172,7 @@ struct ValState
         switch (kind)
         {
             case Kind.STACK:
-            return X86Opnd(numBits, wspReg, cast(int32_t)(Word.sizeof * localIdx));
+            return X86Opnd(numBits, wspReg, cast(int32_t)(Word.sizeof * stackIdx));
 
             case Kind.REG:
             return X86Reg(X86Reg.GP, val, numBits).opnd;
@@ -189,7 +189,7 @@ struct ValState
         // TODO
         assert (knownType is false);
 
-        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * localIdx));
+        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * stackIdx));
     }
 }
 
@@ -211,7 +211,7 @@ class CodeGenState
 
     /// Map of stack slots to values
     /// Unmapped slots have no associated value
-    private IRDstValue[LocalIdx] slotMap;
+    private IRDstValue[StackIdx] slotMap;
 
     // TODO
     /// List of delayed value writes
@@ -749,7 +749,7 @@ class CodeGenState
     }
 
     /// Map a value to a specific stack location
-    void mapToStack(IRDstValue val, LocalIdx slotIdx)
+    void mapToStack(IRDstValue val, StackIdx slotIdx)
     {
         valMap[val] = ValState.stack(slotIdx);
 
@@ -1155,6 +1155,61 @@ class VersionInst : BlockVersion
 }
 
 /**
+Produce a string representation of the code generated for a function
+*/
+string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
+{
+    auto str = appender!string;
+
+    auto workList = [entryFrag];
+
+    void queue(CodeFragment frag, CodeFragment target)
+    {
+        if (target is null)
+            return;
+
+        if (target.startIdx <= frag.startIdx)
+            return;
+
+        workList ~= target;
+    }
+
+    while (workList.empty is false)
+    {
+        auto frag = workList.back;
+        workList.popBack();
+
+        if (str.data != "")
+            str.put("\n\n");
+        str.put(frag.genString(execHeap));
+
+        if (auto branch = cast(BranchCode)frag)
+        {
+            queue(frag, branch.target);
+        }
+
+        else if (auto stub = cast(VersionStub)frag)
+        {
+            queue(frag, stub.next);
+        }
+
+        else if (auto inst = cast(VersionInst)frag)
+        {
+            queue(frag, inst.targets[0]);
+            queue(frag, inst.targets[1]);
+            queue(frag, inst.next);
+        }
+
+        else
+        {
+            // Do nothing
+        }
+    }
+
+    return str.data;
+}
+
+/**
 Request a block version matching the incoming state
 */
 BlockVersion getBlockVersion(
@@ -1488,7 +1543,9 @@ void compile(VM vm, CallCtx callCtx)
                 if (opts.jit_dumpinfo)
                     writeln("compiling instr: ", instr.toString());
 
-                //as.comment(instr.toString());
+                if (opts.jit_genasm)
+                    as.comment(instr.toString());
+
                 //as.printStr(instr.toString());
 
                 auto opcode = instr.opcode;

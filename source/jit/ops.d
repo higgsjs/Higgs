@@ -1473,7 +1473,7 @@ void gen_call_prim(
                 // Note: the argument we are receiving might be mapped
                 // across multiple levels of inlining
                 auto valState = st.getState(dstArg);
-                calleeSt.mapToStack(paramVal, valState.localIdx + extraLocals);
+                calleeSt.mapToStack(paramVal, valState.stackIdx + extraLocals);
             }
             else
             {
@@ -1660,7 +1660,7 @@ void gen_call_prim(
         {
             // Get the return address slot of the callee
             auto raSlot = entryVer.block.fun.raVal.outSlot;
-            assert (raSlot !is NULL_LOCAL);
+            assert (raSlot !is NULL_STACK);
 
             // Write the return address on the stack
             as.movAbsRef(vm, scrRegs[0], target0);
@@ -3415,7 +3415,7 @@ void gen_print_str(
 }
 
 void gen_get_time_ms(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3527,6 +3527,84 @@ void gen_get_ir_str(
     as.ptr(cargRegs[0], st.callCtx);
     as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_ir_str);
+    as.call(scrRegs[0].opnd);
+
+    as.popJITRegs();
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    as.mov(outOpnd, X86Opnd(RAX));
+}
+
+void gen_get_asm_str(
+    VersionInst ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr op_get_asm_str(CallCtx callCtx, refptr closPtr)
+    {
+        auto vm = callCtx.vm;
+        vm.setCallCtx(callCtx);
+
+        assert (
+            refIsLayout(closPtr, LAYOUT_CLOS),
+            "invalid closure object"
+        );
+
+        auto fun = getClosFun(closPtr);
+
+        // If the function is not yet compiled, compile it now
+        if (fun.entryBlock is null)
+            astToIR(fun.ast, fun);
+
+        string str;
+
+        // If this function has a call context
+        if (fun.ctx)
+        {
+            // Request an instance for the function entry block
+            auto entryVer = getBlockVersion(
+                fun.entryBlock,
+                new CodeGenState(fun.getCtx(false, vm)),
+                true
+            );
+
+            // Generate a string representation of the code
+            str ~= asmString(fun, entryVer, vm.execHeap);
+        }
+
+        // If this function has a constructor context
+        if (fun.ctorCtx)
+        {
+            // Request an instance for the constructor entry block
+            auto entryVer = getBlockVersion(
+                fun.entryBlock,
+                new CodeGenState(fun.getCtx(true, vm)),
+                true
+            );
+
+            // Generate a string representation of the code
+            str ~= asmString(fun, entryVer, vm.execHeap);
+        }
+
+        // Get a string object for the output
+        auto strObj = getString(vm, to!wstring(str));
+
+        vm.setCallCtx(null);
+
+        return strObj;
+    }
+
+    // TODO: spill all for GC
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    as.pushJITRegs();
+
+    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[1].opnd, opnd0);
+    as.ptr(scrRegs[0], &op_get_asm_str);
     as.call(scrRegs[0].opnd);
 
     as.popJITRegs();

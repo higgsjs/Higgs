@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -56,17 +56,17 @@ import runtime.object;
 import jit.codeblock;
 import jit.jit;
 
-/// Local variable index type
-alias uint32 LocalIdx;
+/// Stack variable index type
+alias int32 StackIdx;
 
 /// Link table index type
 alias uint32 LinkIdx;
 
 /// Null local constant
-immutable LocalIdx NULL_LOCAL = LocalIdx.max;
+immutable StackIdx NULL_STACK = StackIdx.max;
 
 /// Null link constant
-immutable LocalIdx NULL_LINK = LinkIdx.max;
+immutable StackIdx NULL_LINK = LinkIdx.max;
 
 /// Number of hidden function arguments
 immutable uint32_t NUM_HIDDEN_ARGS = 4;
@@ -1130,12 +1130,12 @@ abstract class IRDstValue : IRValue
     IRBlock block = null;
 
     /// Output stack slot
-    LocalIdx outSlot = NULL_LOCAL;
+    StackIdx outSlot = NULL_STACK;
 
     /// Get the short name string associated with this instruction
     override string getName()
     {
-        if (outSlot !is NULL_LOCAL)
+        if (outSlot !is NULL_STACK)
             return "$" ~ to!string(outSlot);
 
         return "t_" ~ idString();
@@ -1217,7 +1217,7 @@ class FunParam : PhiNode
     /// Get the short name string associated with this argument
     override string getName()
     {
-        if (outSlot !is NULL_LOCAL)
+        if (outSlot !is NULL_STACK)
             return "$" ~ to!string(outSlot);
 
         return "arg_" ~ to!string(idx);
@@ -1227,7 +1227,7 @@ class FunParam : PhiNode
     {
         string str;
 
-        if (outSlot !is NULL_LOCAL)
+        if (outSlot !is NULL_STACK)
             str ~= "$" ~ to!string(outSlot) ~ " = ";
 
         str ~= "arg " ~ to!string(idx) ~ " \"" ~ to!string(name) ~ "\"";
@@ -1402,7 +1402,7 @@ class IRInstr : IRDstValue
     {
         string output;
 
-        if (firstUse !is null || outSlot !is NULL_LOCAL)
+        if (firstUse !is null || outSlot !is NULL_STACK)
             output ~= getName() ~ " = ";
 
         output ~= opcode.mnem;

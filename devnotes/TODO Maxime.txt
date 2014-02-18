@@ -113,13 +113,6 @@ TODO: skip empty branch edges, see perf impact?
 - repatch stub jumps, etc.
 - does dst block fit in source block?
 
-TODO: type prop, pass types along inlined calls/returns
-
-TODO: basic type prop, without reg alloc, type test removal
-- For now, don't do delayed writes
-
-TODO: IRFunction.asmString()
-
 TODO: blog post about draw lib
 - advice: crazy but true titles, skimmable blog post, skimmable style, pretty pics
 - tutorials, should also list in wiki, or blog wiki tuts?
@@ -139,8 +132,13 @@ TODO: pixel plotting, drawing window lib? lib/draw
 TODO: look at https://github.com/dntj/jsfft
 - Do they have a test/benchmark of the FFT?
 
-TODO: resume for bourse DIRO
+TODO: resume projet for bourse DIRO
 - Mention github stars, Mozilla continues funding us, interest from Facebook
+
+TODO: type prop, pass types along inlined calls/returns
+
+TODO: basic type prop, without reg alloc, type test removal
+- For now, don't do delayed writes
 
 TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Need to correct wsp/tsp at non-inlined call time
@@ -157,23 +155,29 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Break implementation into small steps
   - Get it working without exception support first
 
-TODO: LocalIdx => StackIdx
+TODO: try optimizing away empty branch edges
+- Time the result
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: IRFunction.asmString()
+- Order by address
+  - no need to sort, just keep track of traversed, do smaller addr first
+- Branch code too
+- This should be quick to code
+
+[DONE] TODO: LocalIdx => StackIdx
 - Not unsigned
-- Do we still need NULL_LOCAL for anything? grep it
 
-TODO: partial support for `quasis` as multi-line strings only
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: partial support for `quasis` as multi-line strings only
 
 [DONE] TODO: update CV for bourse DIRO
 

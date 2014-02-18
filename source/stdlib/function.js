@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011-2013, Universite de Montreal
+ *  Copyright (c) 2011-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -41,22 +41,11 @@
  */
 
 /**
-@fileOverview
-Implementation of ECMAScript 5 Function methods and prototype.
-
-@author
-Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
-*/
-
-/**
-15.3.2 The function constructor
+15.3.2 ECMAScript function constructor
 */
 function Function()
 {
-    // TODO
+    // TODO: support for new Function(...)
 }
 
 // Set the function prototype object
@@ -76,12 +65,21 @@ Function.prototype.toString = function ()
 };
 
 /**
-Get a string representation of the IR
+Get a string representation of the IR for this function
 Note: this method is not part of ECMAScript
 */
 Function.prototype.irString = function ()
 {
     return $ir_get_ir_str(this);
+}
+
+/**
+Get a string representation of the machine code for this function
+Note: this method is not part of ECMAScript
+*/
+Function.prototype.asmString = function ()
+{
+    return $ir_get_asm_str(this);
 }
 
 /**

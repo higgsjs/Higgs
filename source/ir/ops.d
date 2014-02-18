@@ -326,6 +326,9 @@ Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &gen_get_ast_str, OpI
 /// Get a string representation of a function's IR
 Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &gen_get_ir_str, OpInfo.MAY_GC };
 
+/// Get a string representation of a function's machine code
+Opcode GET_ASM_STR = { "get_asm_str", true, [OpArg.LOCAL], &gen_get_asm_str, OpInfo.MAY_GC };
+
 /// Load a shared lib
 Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], &gen_load_lib };
 

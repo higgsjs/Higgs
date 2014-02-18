@@ -557,7 +557,7 @@ class VM
         );
 
         // Allocate the executable heap
-        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_dumpasm);
+        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_genasm);
 
         // If the runtime library should be loaded
         if (loadRuntime)
@@ -592,7 +592,7 @@ class VM
     /**
     Set the value and type of a stack slot
     */
-    void setSlot(LocalIdx idx, Word w, Type t)
+    void setSlot(StackIdx idx, Word w, Type t)
     {
         assert (
             &wsp[idx] >= wStack && &wsp[idx] < wUpperLimit,
@@ -614,7 +614,7 @@ class VM
     /**
     Set the value and type of a stack slot from a value/type pair
     */
-    void setSlot(LocalIdx idx, ValuePair val)
+    void setSlot(StackIdx idx, ValuePair val)
     {
         setSlot(idx, val.word, val.type);
     }
@@ -622,7 +622,7 @@ class VM
     /**
     Set a stack slot to a boolean value
     */
-    void setSlot(LocalIdx idx, bool val)
+    void setSlot(StackIdx idx, bool val)
     {
         setSlot(idx, val? TRUE:FALSE, Type.CONST);
     }
@@ -630,7 +630,7 @@ class VM
     /**
     Set a stack slot to an integer value
     */
-    void setSlot(LocalIdx idx, uint32 val)
+    void setSlot(StackIdx idx, uint32 val)
     {
         setSlot(idx, Word.int32v(val), Type.INT32);
     }
@@ -638,7 +638,7 @@ class VM
     /**
     Set a stack slot to a float value
     */
-    void setSlot(LocalIdx idx, float64 val)
+    void setSlot(StackIdx idx, float64 val)
     {
         setSlot(idx, Word.float64v(val), Type.FLOAT64);
     }
@@ -646,7 +646,7 @@ class VM
     /**
     Get a word from the word stack
     */
-    Word getWord(LocalIdx idx)
+    Word getWord(StackIdx idx)
     {
         assert (
             &wsp[idx] >= wStack && &wsp[idx] < wUpperLimit,
@@ -659,7 +659,7 @@ class VM
     /**
     Get a type from the type stack
     */
-    Type getType(LocalIdx idx)
+    Type getType(StackIdx idx)
     {
         assert (
             &tsp[idx] >= tStack && &tsp[idx] < tUpperLimit,
@@ -672,7 +672,7 @@ class VM
     /**
     Get a value/type pair from the stack
     */
-    ValuePair getSlot(LocalIdx idx)
+    ValuePair getSlot(StackIdx idx)
     {
         return ValuePair(getWord(idx), getType(idx));
     }
@@ -680,7 +680,7 @@ class VM
     /**
     Copy a value from one stack slot to another
     */
-    void move(LocalIdx src, LocalIdx dst)
+    void move(StackIdx src, StackIdx dst)
     {
         assert (
             &wsp[src] >= wStack && &wsp[src] < wUpperLimit,
@@ -840,7 +840,7 @@ class VM
         if (auto dstVal = cast(IRDstValue)val)
         {
             assert (
-                dstVal.outSlot != NULL_LOCAL, 
+                dstVal.outSlot != NULL_STACK,
                 "out slot unassigned for:\n" ~
                 dstVal.toString()
             );

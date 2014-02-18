@@ -191,6 +191,7 @@ static this()
     addOp(PRINT_STR);
     addOp(GET_AST_STR);
     addOp(GET_IR_STR);
+    addOp(GET_ASM_STR);
     addOp(F64_TO_STR);
     addOp(F64_TO_STR_LNG);
     addOp(GET_TIME_MS);

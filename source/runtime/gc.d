@@ -668,7 +668,7 @@ void visitStackRoots(VM vm)
         //writeln("frame size: ", frameSize);
 
         // For each local in this frame
-        for (LocalIdx idx = 0; idx < frameSize; ++idx)
+        for (StackIdx idx = 0; idx < frameSize; ++idx)
         {
             //ritefln("ref %s/%s", idx, frameSize);
 
