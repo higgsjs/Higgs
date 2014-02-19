@@ -135,8 +135,11 @@ TODO: type prop, pass types along inlined calls/returns
 TODO: basic type prop, without reg alloc, type test removal
 - For now, don't do delayed writes
 
-TODO: resume projet for bourse DIRO
-- Mention github stars, Mozilla continues funding us, interest from Facebook
+Meeting:
+- Bourse DIRO
+- IRFunction.asmString, see generated code
+- Redundant jump opt
+- DLS Paper, coming soon, what do we absolutely need?
 
 TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Need to correct wsp/tsp at non-inlined call time
@@ -153,21 +156,37 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Break implementation into small steps
   - Get it working without exception support first
 
-TODO: try optimizing away empty branch edges
+FIXME: corrupted ASM comment in the middle of stub
+; if_true $0 => if_true(36C3), if_false(36C4)896F38
+
+TODO: resume projet for bourse DIRO
+- Mention github stars, Mozilla continues funding us, interest from Facebook
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: asmString, don't print blocks with zero length?
+make; ./higgs --jit_genasm --e "print(\$rt_add.asmString())"
+- or just no whitespace after ***
+
+[DONE] TODO: try optimizing away empty branch edges
 - Time the result
 - can we integrate this in genBranchEdge?
-make; ./higgs --jit_genasm --e "print(\$rt_add.asmString())"
-
-
-
-
-
-
-
-
-
-
-
+- Simpler alternative: if block immediately follows branch edge, 
+  don't write jump.
+  - Query code gen queue to know if jump is necessary
+  - Have special utility function just for generating final jumps ***
+time ./higgs tests/core/regress/loop_big_incr.js
+before: 36.4
+after: 31.3
 
 [DONE] TODO: IRFunction.asmString()
 - Order by address

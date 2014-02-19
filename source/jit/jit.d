@@ -807,7 +807,6 @@ abstract class CodeFragment
     {
         assert (startIdx !is startIdx.max);
         assert (endIdx !is endIdx.max);
-        assert (endIdx > startIdx);
         return endIdx - startIdx;
     }
 
@@ -820,12 +819,34 @@ abstract class CodeFragment
     /**
     Store the start position of the code
     */
-    final void markStart(CodeBlock as)
+    final void markStart(CodeBlock as, VM vm)
     {
         assert (
             startIdx is startIdx.max,
             "start position is already marked"
         );
+
+        // If there is a jump to this fragment right before us,
+        // remove the jump as it has no effect
+        if (vm.refList.length > 0 &&
+            vm.refList.back.frag is this && 
+            vm.refList.back.size is 32 &&
+            vm.refList.back.pos is as.getWritePos - 4 &&
+            as.readByte(as.getWritePos - 5) is JMP_REL32_OPCODE)
+        {
+            if (vm.fragList.back.endIdx !is as.getWritePos)
+                writeln(vm.fragList.back.getName);
+
+            assert (vm.fragList.length > 0);
+            assert (vm.fragList.back !is this);
+            assert (vm.fragList.back.endIdx is as.getWritePos);
+
+            vm.refList.popBack();
+
+            auto newPos = as.getWritePos - 5;
+            as.setWritePos(newPos);
+            vm.fragList.back.endIdx = cast(uint32_t)newPos;
+        }
 
         startIdx = cast(uint32_t)as.getWritePos();
 
@@ -836,7 +857,7 @@ abstract class CodeFragment
     /**
     Store the end position of the code
     */
-    final void markEnd(CodeBlock as)
+    final void markEnd(CodeBlock as, VM vm)
     {
         assert (
             endIdx is startIdx.max,
@@ -844,6 +865,9 @@ abstract class CodeFragment
         );
 
         endIdx = cast(uint32_t)as.getWritePos();
+
+        // Add this fragment to the back of to the list of compiled fragments
+        vm.fragList ~= this;
 
         // Update the generated code size stat
         stats.genCodeSize += this.length();
@@ -998,7 +1022,7 @@ class BranchCode : CodeFragment
 
         // Store the code start index
         if (startIdx is startIdx.max)
-            markStart(as);
+            markStart(as, vm);
 
         // Execute the moves
         execMoves(as, moveList, scrRegs[0], scrRegs[1]);
@@ -1007,10 +1031,7 @@ class BranchCode : CodeFragment
         as.jmp32Ref(vm, this.target);
 
         // Store the code end index
-        markEnd(as);
-
-        // Add the compiled fragment to the fragment list
-        vm.fragList ~= this;
+        markEnd(as, vm);
 
         if (opts.jit_dumpasm)
         {
@@ -1140,17 +1161,19 @@ class VersionInst : BlockVersion
         this.branchGenFn = genFn;
         this.targets = [target0, target1];
 
+        auto vm = state.callCtx.vm;
+
         // Generate the final branch code
         genFn(
             as,
-            state.callCtx.vm,
+            vm,
             target0, 
             target1, 
             shape
         );
 
         // Store the code end index
-        markEnd(as);
+        markEnd(as, vm);
     }
 }
 
@@ -1159,8 +1182,6 @@ Produce a string representation of the code generated for a function
 */
 string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
 {
-    auto str = appender!string;
-
     auto workList = [entryFrag];
 
     void queue(CodeFragment frag, CodeFragment target)
@@ -1168,20 +1189,22 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
         if (target is null)
             return;
 
-        if (target.startIdx <= frag.startIdx)
+        // Don't re-visit fragments at smaller addresses
+        if (target.startIdx < frag.startIdx || target is frag)
             return;
 
         workList ~= target;
     }
 
+    CodeFragment[] fragList;
+
     while (workList.empty is false)
     {
+        // Get a fragment from the work list
         auto frag = workList.back;
         workList.popBack();
 
-        if (str.data != "")
-            str.put("\n\n");
-        str.put(frag.genString(execHeap));
+        fragList ~= frag;
 
         if (auto branch = cast(BranchCode)frag)
         {
@@ -1204,6 +1227,25 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
         {
             // Do nothing
         }
+    }
+
+    // Sort the fragment by increasing memory address
+    fragList.sort!"a.startIdx < b.startIdx";
+
+    auto str = appender!string;
+
+    foreach (fIdx, frag; fragList)
+    {
+        if (frag.length is 0)
+            continue;
+
+        if (str.data != "")
+            str.put("\n\n");
+
+        //str.put("idx=" ~ to!string(frag.startIdx) ~ "\n");
+        //str.put("len=" ~ to!string(frag.length) ~ "\n");
+
+        str.put(frag.genString(execHeap));
     }
 
     return str.data;
@@ -1484,8 +1526,8 @@ void compile(VM vm, CallCtx callCtx)
         );
 
         // Get a version to compile from the queue
-        auto ver = vm.compQueue.front;
-        vm.compQueue.popFront();
+        auto ver = vm.compQueue.back;
+        vm.compQueue.popBack();
 
         // If this is a version stub
         if (auto stub = cast(VersionStub)ver)
@@ -1493,7 +1535,7 @@ void compile(VM vm, CallCtx callCtx)
             //writeln("compiling stub");
 
             // Store the code start index
-            stub.markStart(as);
+            stub.markStart(as, vm);
 
             // Insert the label for this block in the out of line code
             as.comment("Stub of " ~ ver.getName());
@@ -1515,7 +1557,7 @@ void compile(VM vm, CallCtx callCtx)
             as.jmp(X86Opnd(RAX));
 
             // Store the code end index
-            stub.markEnd(as);
+            stub.markEnd(as, vm);
         }
 
         // If this is a version instance
@@ -1531,7 +1573,7 @@ void compile(VM vm, CallCtx callCtx)
 
             // Store the code start index for this fragment
             if (inst.startIdx is inst.startIdx.max)
-               inst.markStart(as);
+               inst.markStart(as, vm);
 
             as.comment("Instance of " ~ ver.getName());
             //as.printStr(block.fun.getName);
@@ -1576,7 +1618,7 @@ void compile(VM vm, CallCtx callCtx)
 
             // Store the code end index for this fragment
             if (inst.endIdx is inst.endIdx.max)
-                inst.markEnd(as);
+                inst.markEnd(as, vm);
 
             stats.numInsts++;
         }
@@ -1585,10 +1627,6 @@ void compile(VM vm, CallCtx callCtx)
         {
             assert (false, "invalid code fragment");
         }
-
-        // Add the compiled version to the fragment
-        // list in the order they were compiled in
-        vm.fragList ~= ver;
 
         stats.numVersions++;
 
@@ -1664,7 +1702,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     //
 
     auto retEdge = new ExitCode(fun);
-    retEdge.markStart(as);
+    retEdge.markStart(as, vm);
 
     // Push one slot for the return value
     as.sub(tspReg.opnd, X86Opnd(1));
@@ -1692,7 +1730,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Return to the host
     as.ret();
 
-    retEdge.markEnd(as);
+    retEdge.markEnd(as, vm);
 
     // Get the return code address
     auto retAddr = retEdge.getCodePtr(as);
@@ -1900,7 +1938,7 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
 
     auto stub = new EntryStub(vm, ctorCall);
 
-    stub.markStart(as);
+    stub.markStart(as, vm);
 
     as.pushJITRegs();
 
@@ -1916,7 +1954,7 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
     // Jump to the compiled version
     as.jmp(X86Opnd(RAX));
 
-    stub.markEnd(as);
+    stub.markEnd(as, vm);
 
     if (ctorCall)
         vm.ctorStub = stub;

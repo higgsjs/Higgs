@@ -319,8 +319,8 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
                 BranchShape shape
             )
             {
-                jno32Ref(as, vm, target0);
-                jmp32Ref(as, vm, target1);
+                jo32Ref(as, vm, target1);
+                jmp32Ref(as, vm, target0);
             }
         );
 
@@ -794,8 +794,8 @@ void IsTypeOp(Type type)(
                 BranchShape shape
             )
             {
-                je32Ref(as, vm, target0);
-                jmp32Ref(as, vm, target1);
+                jne32Ref(as, vm, target1);
+                jmp32Ref(as, vm, target0);
             }
         );
 
@@ -1338,7 +1338,7 @@ void genCallBranch(
     //writeln("call block length: ", ver.length);
 
     // Add the return value move code to the continuation branch
-    contBranch.markStart(as);
+    contBranch.markStart(as, vm);
     as.setWord(instr.outSlot, retWordReg.opnd(64));
     as.setType(instr.outSlot, retTypeReg.opnd(8));
 
@@ -1348,7 +1348,7 @@ void genCallBranch(
     // Add the exception value move code to the exception branch
     if (excBranch)
     {
-        excBranch.markStart(as);
+        excBranch.markStart(as, vm);
         as.add(tspReg, Type.sizeof);
         as.add(wspReg, Word.sizeof);
         as.getWord(scrRegs[0], -1);
@@ -1538,7 +1538,7 @@ void gen_call_prim(
         // Add the exception value move code to the exception branch
         if (excBranch)
         {
-            excBranch.markStart(as);
+            excBranch.markStart(as, vm);
             as.add(tspReg, Type.sizeof);
             as.add(wspReg, Word.sizeof);
             as.getWord(scrRegs[0], -1);
