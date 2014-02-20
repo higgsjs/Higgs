@@ -806,7 +806,7 @@ abstract class CodeFragment
     final auto length()
     {
         assert (startIdx !is startIdx.max);
-        assert (endIdx !is endIdx.max);
+        assert (endMarked);
         return endIdx - startIdx;
     }
 
@@ -845,13 +845,14 @@ abstract class CodeFragment
 
             auto newPos = as.getWritePos - 5;
             as.setWritePos(newPos);
+            as.delStrings(newPos);
             vm.fragList.back.endIdx = cast(uint32_t)newPos;
         }
 
         startIdx = cast(uint32_t)as.getWritePos();
 
         // Add a label string comment
-        as.writeStr(this.getName ~ ":");
+        as.writeString(this.getName ~ ":");
     }
 
     /**
@@ -860,7 +861,7 @@ abstract class CodeFragment
     final void markEnd(CodeBlock as, VM vm)
     {
         assert (
-            endIdx is startIdx.max,
+            !endMarked,
             "end position is already marked"
         );
 
@@ -871,6 +872,14 @@ abstract class CodeFragment
 
         // Update the generated code size stat
         stats.genCodeSize += this.length();
+    }
+
+    /**
+    Check if the end of the fragment has been marked
+    */
+    final bool endMarked()
+    {
+        return endIdx !is startIdx.max;
     }
 }
 
@@ -1610,15 +1619,13 @@ void compile(VM vm, CallCtx callCtx)
                 // Link block-internal labels
                 as.linkLabels();
 
-                // If we know the instruction will definitely leave 
-                // this block, stop the block compilation
-                if (opcode.isBranch)
+                // If the end of the block was marked, skip further instructions
+                if (inst.endMarked)
                     break;
             }
 
-            // Store the code end index for this fragment
-            if (inst.endIdx is inst.endIdx.max)
-                inst.markEnd(as, vm);
+            // Ensure that the end of the fragment was marked
+            assert (inst.endMarked, inst.block.toString);
 
             stats.numInsts++;
         }

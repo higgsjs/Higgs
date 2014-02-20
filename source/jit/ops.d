@@ -2613,10 +2613,13 @@ void gen_ret(
     //as.printStr("ra=");
     //as.printUint(scrRegs[1].opnd);
     as.jmp(scrRegs[1].opnd);
+
+    // Mark the end of the fragment
+    ver.markEnd(as, st.callCtx.vm);
 }
 
 void gen_throw(
-    VersionInst ver, 
+    VersionInst ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2644,6 +2647,9 @@ void gen_throw(
 
     // Jump to the exception handler
     as.jmp(cretReg.opnd);
+
+    // Mark the end of the fragment
+    ver.markEnd(as, st.callCtx.vm);
 }
 
 void GetValOp(Type typeTag, string fName)(

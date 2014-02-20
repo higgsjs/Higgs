@@ -138,8 +138,14 @@ TODO: basic type prop, without reg alloc, type test removal
 Meeting:
 - Bourse DIRO
 - IRFunction.asmString, see generated code
+  - Found bugs and issues with ASM comments, markEnd logic
+  - visualization useful
 - Redundant jump opt
+- Now obvious: stubs should probably be out of line
+  - But should we implement this later?
 - DLS Paper, coming soon, what do we absolutely need?
+  - Objective: show less checks, better running times
+  - Run benchmarks in a loop?
 
 TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Need to correct wsp/tsp at non-inlined call time
@@ -156,22 +162,37 @@ TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
 - Break implementation into small steps
   - Get it working without exception support first
 
-FIXME: corrupted ASM comment in the middle of stub
-; if_true $0 => if_true(36C3), if_false(36C4)896F38
 
-TODO: resume projet for bourse DIRO
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: corrupted ASM comment in the middle of stub
+    branch_if_join(36CC):
+    jmp if_join(36CC);
+    if_join(36CC):
+    ; Stub of if_join(36CC)
+    mov [qword r15 + 48], r14;              4D897730
+    mov [qword r15 + 56], r13;              4D
+    ; if_true $0 => if_true(36CA), if_join(36CC)896F38
+- Try disabling jmp opt, see if it helps
+  - Seems to fix the problem, but now the commend is just before if_join?
+    if_true(36C3):
+    $0 = is_i32 $22
+    if_true $0 => if_true(36CA), if_join(36CC)
+- The if_true compiles to nothing because is_i32 generates branches,
+  the ASM comment gets placed after the branch code
+
+[DONE] TODO: resume projet for bourse DIRO
 - Mention github stars, Mozilla continues funding us, interest from Facebook
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: asmString, don't print blocks with zero length?
 make; ./higgs --jit_genasm --e "print(\$rt_add.asmString())"

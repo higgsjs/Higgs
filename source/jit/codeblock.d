@@ -367,7 +367,7 @@ class CodeBlock
     /**
     Write a disassembly/comment string at the current position
     */
-    void writeStr(string str)
+    void writeString(string str)
     {
         auto newStr = CommentStr(writePos, str);
 
@@ -382,6 +382,20 @@ class CodeBlock
             strings = r[0].release() ~ r[1].release() ~ newStr ~ r[2].release();
         }
     }
+
+    /**
+    Delete strings at or after a given position
+    */
+    void delStrings(size_t pos)
+    {
+        if (!hasComments)
+            return;
+
+        for (long i = strings.length - 1; i >= 0; --i)
+            if (strings[i].pos >= pos)
+                strings.length = i;
+    }
+
     /**
     Write the contents of another code block at the given position
     */
@@ -447,7 +461,7 @@ class CodeBlock
 
         str ~= ";";
 
-        return writeStr(str);
+        return writeString(str);
     }
 
     /**
@@ -458,7 +472,7 @@ class CodeBlock
         if (!hasComments)
             return;
 
-        return writeStr("; " ~ str);
+        return writeString("; " ~ str);
     }
 
     /**
@@ -469,7 +483,7 @@ class CodeBlock
         auto labelAddr = labelAddrs[label];
 
         if (hasComments)
-            writeStr(to!string(label) ~ ":");
+            writeString(to!string(label) ~ ":");
 
         assert (
             labelAddr is size_t.max,
