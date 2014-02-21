@@ -143,25 +143,35 @@ Meeting:
 - Redundant jump opt
 - Now obvious: stubs should probably be out of line
   - But should we implement this later?
+- Emmanuel Bengio: predicting most likely target could be useful wrt ordering
 - DLS Paper, coming soon, what do we absolutely need?
   - Objective: show less checks, better running times
   - Run benchmarks in a loop?
 
-TODO: better stack slot management? avoid inc/dec wsp/tsp on inlined calls
+TODO: fix GC for new stack handling
+
+TODO: fix exceptions for new stack handling
+- Need to correct wsp/tsp when throwing exceptions?
+- if we go to exc handler in inlined context, need to adjust frame
+  - remove inlined locals
+- may need to remove stack slots
+
+TODO: avoid inc/dec wsp/tsp on inlined calls
+- Get it working without exception support first
 - Need to correct wsp/tsp at non-inlined call time
   - push actual stack space to protect inlined locals
   - return from non-inlined call needs to remove slots
   callCtx.extraLocals?
-- Need to correct wsp/tsp when throwing exceptions?
-  - if we go to exc handler in inlined context, need to adjust frame
-  - may need to remove stack slots
 - What if we do an inlined call in an inlined call?
   - no need to adjust anything, context inherits
-- Need to adjust getWordOpnd and others
-  - These can assume that the IRDstValue belongs to the current frame
-- Break implementation into small steps
-  - Get it working without exception support first
 
+TODO: modify getWordOpnd, getTypeOpnd et al for inlined calls
+- Assume that the IRDstValue belongs to the current frame
+  - Can we assert this?
+
+TODO: Modify CallCtx for improved inlined stack management
+CallCtx.extraLocals => obvious from fun
+Add: CallCtx.spOffset, CallCtx.totalLocals? Maybe just extraLocals
 
 
 

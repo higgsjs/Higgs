@@ -846,7 +846,10 @@ abstract class CodeFragment
             auto newPos = as.getWritePos - 5;
             as.setWritePos(newPos);
             as.delStrings(newPos);
+
             vm.fragList.back.endIdx = cast(uint32_t)newPos;
+            if (vm.fragList.back.length is 0)
+                vm.fragList.popBack();
         }
 
         startIdx = cast(uint32_t)as.getWritePos();

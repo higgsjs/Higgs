@@ -1381,6 +1381,8 @@ void gen_call_prim(
         auto callCtx = state.callCtx;
         auto vm = callCtx.vm;
 
+        writeln("inlining");
+
         // Create a new version of this block
         auto newInst = new VersionInst(block, ver.state);
         newInst.counter = ver.counter;
