@@ -300,7 +300,7 @@ class CallCtx
     /// Exception handler (if inlined, may be null)
     CodeFragment excHandler = null;
 
-    /// Number of extra inlined locals (if inlined)
+    /// Total number of inlined locals from all inlined contexts
     uint32_t extraLocals = 0;
 
     /// Associated VM object
@@ -329,7 +329,6 @@ class CallCtx
         IRInstr callSite,
         CodeGenState contState,
         CodeFragment excHandler,
-        uint32_t extraLocals,
         IRFunction fun,
         bool ctorCall
     )
@@ -340,9 +339,11 @@ class CallCtx
         this.callSite = callSite;
         this.contState = contState;
         this.excHandler = excHandler;
-        this.extraLocals = extraLocals;
         this.fun = fun;
         this.ctorCall = ctorCall;
+
+        // Compute the total number of inlined locals
+        this.extraLocals = parent.extraLocals + fun.numLocals;
     }
 
     /**

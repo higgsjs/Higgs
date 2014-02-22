@@ -130,23 +130,21 @@ TODO: pixel plotting, drawing window lib? lib/draw
   - use select() on stdin
   - Can then implement our own REPL on top
 
+TODO: basic reg alloc, what's the simplest we can do?
+- Marc says: probably a bigger perf issue than instr cache
+
+TODO: stub patching, avoid double jumps
+- patch jumps to stub instead? keep list of incoming refs?
+- Marc says: call to stub, patch lazily
+  - patch lazily, no need for list of incoming?
+  - may allow one single piece of stub code, better code
+
 TODO: type prop, pass types along inlined calls/returns
 
 TODO: basic type prop, without reg alloc, type test removal
 - For now, don't do delayed writes
 
-Meeting:
-- Bourse DIRO
-- IRFunction.asmString, see generated code
-  - Found bugs and issues with ASM comments, markEnd logic
-  - visualization useful
-- Redundant jump opt
-- Now obvious: stubs should probably be out of line
-  - But should we implement this later?
-- Emmanuel Bengio: predicting most likely target could be useful wrt ordering
-- DLS Paper, coming soon, what do we absolutely need?
-  - Objective: show less checks, better running times
-  - Run benchmarks in a loop?
+------
 
 TODO: fix GC for new stack handling
 
@@ -155,6 +153,10 @@ TODO: fix exceptions for new stack handling
 - if we go to exc handler in inlined context, need to adjust frame
   - remove inlined locals
 - may need to remove stack slots
+
+TODO: modify getWordOpnd, getTypeOpnd et al for inlined calls
+- Assume that the IRDstValue belongs to the current frame
+  - Can we assert this?
 
 TODO: avoid inc/dec wsp/tsp on inlined calls
 - Get it working without exception support first
@@ -165,25 +167,66 @@ TODO: avoid inc/dec wsp/tsp on inlined calls
 - What if we do an inlined call in an inlined call?
   - no need to adjust anything, context inherits
 
-TODO: modify getWordOpnd, getTypeOpnd et al for inlined calls
-- Assume that the IRDstValue belongs to the current frame
-  - Can we assert this?
+------
 
-TODO: Modify CallCtx for improved inlined stack management
+Meeting:
+- contribs, multiple fronts:
+  - self-hosting
+  - type tagging scheme
+  - BBV
+  - incremental compilation
+  - incremental inlining
+- incremental inlining decreases execution time on `make test`
+  - does it do the same on 3d-raytrace?
+- paper-wise, might be better to do "dumb" inlining
+  - keep the same type analysis
+  - inling once, no recompilation
+  - inling specific primitives
+  - don't inline in global functions, unless they have loops
+- propose a deal: simple inlining for DLS paper
+  - focus on BBV, improving code gen, fixing incremenetal compilation quirks
+- stubs: might be able to have one stub for all
+  - call to stub, RA identifies origin
+
+------
+
+FIXME: string interning, no cleanup on GC? Can we make splay work?
+- try creating smaller versions of benchmarks for unit tests
+- at least keep them tested!
+
+FIXME: jump removal opt, conditional or not, doesn't matter
+- Don't check if jmp
+
+TODO: move loop_big_incr into benchmarks/micro?
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: Modify CallCtx for improved inlined stack management
 CallCtx.extraLocals => obvious from fun
 Add: CallCtx.spOffset, CallCtx.totalLocals? Maybe just extraLocals
 
-
-
-
-
-
-
-
-
-
-
-
+[DONE] Meeting:
+- IRFunction.asmString, see generated code
+  - Found bugs and issues with ASM comments, markEnd logic
+  - visualization useful
+- Redundant jump opt
+- Now obvious: stubs should probably be out of line
+  - But should we implement this later?
+- DLS Paper, coming soon, what do we absolutely need?
+  - Objective: show less checks, better running times
+    - Run benchmarks in a loop?
+  - Inlining, type prop, eliminate type checks
+  - Type analysis
+  - Reg alloc? basic
+- Bourse DIRO
 
 [DONE] FIXME: corrupted ASM comment in the middle of stub
     branch_if_join(36CC):

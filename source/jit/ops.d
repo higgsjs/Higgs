@@ -1369,6 +1369,7 @@ void gen_call_prim(
     CodeBlock as
 )
 {
+    /*
     /// Inlining execution count threshold
     const uint32_t INLINE_THRESHOLD = 5000;
 
@@ -1394,6 +1395,7 @@ void gen_call_prim(
         // Patch the current version to jump to the inlined version
         ver.patch(vm, newInst);
     }
+    */
 
     auto vm = st.callCtx.vm;
 
@@ -1419,11 +1421,10 @@ void gen_call_prim(
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     assert (numArgs is fun.numParams);
 
+    /*
     // If we are recompiling with inlining
     if (ver.counter > 0)
     {
-        auto extraLocals = fun.numLocals;
-
         // State object for the call continuation
         auto contState = new CodeGenState(st);
 
@@ -1444,18 +1445,9 @@ void gen_call_prim(
             instr,
             contState,
             excBranch,
-            extraLocals,
             fun,
             false
         );
-
-        /*
-        writeln("recompiling for call instr: ", instr);
-        writeln("  callee: ", fun.getName);
-        writeln("  caller: ", st.callCtx.fun.getName);
-        writeln("  extraLocals: ", subCtx.extraLocals);
-        writeln("  caller inlined: ", (st.callCtx.parent !is null));
-        */
 
         // Create the callee entry state
         auto calleeSt = new CodeGenState(subCtx);
@@ -1475,7 +1467,7 @@ void gen_call_prim(
                 // Note: the argument we are receiving might be mapped
                 // across multiple levels of inlining
                 auto valState = st.getState(dstArg);
-                calleeSt.mapToStack(paramVal, valState.stackIdx + extraLocals);
+                calleeSt.mapToStack(paramVal, valState.stackIdx + fun.numLocals);
             }
             else
             {
@@ -1502,12 +1494,6 @@ void gen_call_prim(
                 as.setType(dstIdx, typeOpnd);
             }
         }
-
-        // TODO: arg count, other args, if used by callee
-
-        // Add stack space for the extra inlined locals
-        as.sub(wspReg.opnd, X86Opnd(Word.sizeof * extraLocals));
-        as.sub(tspReg.opnd, X86Opnd(Type.sizeof * extraLocals));
 
         // Get an inlined entry block version
         auto entryVer = getBlockVersion(
@@ -1575,6 +1561,7 @@ void gen_call_prim(
 
         as.label(Label.FALSE);
     }
+    */
 
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
@@ -2522,10 +2509,6 @@ void gen_ret(
         auto retSlot = cast(int)(callCtx.callSite.outSlot + callCtx.extraLocals);
         as.setWord(retSlot, retOpnd);
         as.setType(retSlot, typeOpnd);
-
-        // Pop the extra (inlined) locals
-        as.add(tspReg.opnd, X86Opnd(Type.sizeof * callCtx.extraLocals));
-        as.add(wspReg.opnd, X86Opnd(Word.sizeof * callCtx.extraLocals));
 
         // Request a branch object for the continuation
         auto contBranch = getBranchEdge(
