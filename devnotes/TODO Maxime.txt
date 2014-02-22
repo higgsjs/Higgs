@@ -56,12 +56,6 @@ TODO: produce 32-bit offsets/addresses in CodeBlock.toString
 TODO: reduce code size by using calls for fallback code,
 eg: global access, call_prim inlining/recompilation, others?
 
-TODO: add missing shootout/sunspider/v8 benchmarks
-- previously too slow
-- lists
-- string-base64, string-fasta
-- splay
-
 TODO: proper hidden classes, support for property enumeration?
 - Type information in hidden classes too?
 
@@ -99,21 +93,6 @@ TODO: look at https://github.com/dntj/jsfft
 
 ------------------------------------------------------------------------------
 
-TODO: reimplement type analysis to compare with BBV for paper
-
-TODO: smarter spilling across inlined calls
-- only spill parent values when necessary
-- also want to be smart about delayed writes
-TODO: better register spilling mechanism for C calls
-TODO: register allocation
-- peephole pass should swap operands to favor reg alloc?
-  - or do this on demand?
-- unified spilling function? params to spill tsp/wsp, vm reg
-- delayed writes
-
-TODO: make inline threshold larger for bigger functions?
-- wait until inlining is more optimized before tweaking heuristics
-
 TODO: blog post about draw lib
 - advice: crazy but true titles, skimmable blog post, skimmable style, pretty pics
 - tutorials, should also list in wiki, or blog wiki tuts?
@@ -141,10 +120,22 @@ TODO: stub patching, avoid double jumps
 
 TODO: type prop, pass types along inlined calls/returns
 
-TODO: basic type prop, without reg alloc, type test removal
-- For now, don't do delayed writes
-
 ------
+
+TODO: reimplement type analysis to compare with BBV for paper
+
+TODO: smarter spilling across inlined calls
+- only spill parent values when necessary
+- also want to be smart about delayed writes
+TODO: better register spilling mechanism for C calls
+TODO: register allocation
+- peephole pass should swap operands to favor reg alloc?
+  - or do this on demand?
+- unified spilling function? params to spill tsp/wsp, vm reg
+- delayed writes
+
+TODO: make inline threshold larger for bigger functions?
+- wait until inlining is more optimized before tweaking heuristics
 
 TODO: fix GC for new stack handling
 
@@ -177,7 +168,8 @@ Meeting:
   - incremental compilation
   - incremental inlining
 - incremental inlining decreases execution time on `make test`
-  - does it do the same on 3d-raytrace?
+  - right now, even with poor inlining, doesn't make benchmarks slower
+  - old aggressive inlining might be slower, increase compilation time
 - paper-wise, might be better to do "dumb" inlining
   - keep the same type analysis
   - inling once, no recompilation
@@ -190,24 +182,36 @@ Meeting:
 
 ------
 
-FIXME: string interning, no cleanup on GC? Can we make splay work?
-- try creating smaller versions of benchmarks for unit tests
+TODO: basic type prop, without reg alloc, type test removal
+- For now, don't do delayed writes
+
+FIXME: string interning, no cleanup on GC? Can we make splay faster?
+
+FIXME: string interning is very slow right now... can we make it faster?
+- slow benchmarks: string-base64, splay
+- can we get the offset of the string data?
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: try creating smaller versions of slow benchmarks for unit tests
+    shootout/lists
+    sunspider/string-base64
+    sunspider/string-fasta
+    v8bench/splay
 - at least keep them tested!
+- name with _quick
 
-FIXME: jump removal opt, conditional or not, doesn't matter
+[DONE] TODO: move loop_big_incr into benchmarks/micro?
+
+[DONE] FIXME: jump removal opt, conditional or not, doesn't matter
 - Don't check if jmp
-
-TODO: move loop_big_incr into benchmarks/micro?
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: Modify CallCtx for improved inlined stack management
 CallCtx.extraLocals => obvious from fun

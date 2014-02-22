@@ -4,7 +4,7 @@
 // contributed by David Hedbor
 // modified by  Isaac Gouy
 
-var SIZE = 10000;
+var SIZE = 100;
 
 function test_lists()
 {
@@ -47,4 +47,4 @@ var resultl
 while( n-- )
   result = test_lists();
 
-print(result );
+print(result);

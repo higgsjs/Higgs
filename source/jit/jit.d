@@ -831,8 +831,7 @@ abstract class CodeFragment
         if (vm.refList.length > 0 &&
             vm.refList.back.frag is this && 
             vm.refList.back.size is 32 &&
-            vm.refList.back.pos is as.getWritePos - 4 &&
-            as.readByte(as.getWritePos - 5) is JMP_REL32_OPCODE)
+            vm.refList.back.pos is as.getWritePos - 4)
         {
             if (vm.fragList.back.endIdx !is as.getWritePos)
                 writeln(vm.fragList.back.getName);
