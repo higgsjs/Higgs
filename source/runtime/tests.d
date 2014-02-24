@@ -415,8 +415,6 @@ unittest
         24
     );
 
-    assert (false, "breakpoint");
-
     vm.assertInt(
         "
         return function (n)
@@ -794,7 +792,7 @@ unittest
     vm.assertInt("o = {x:7, m:function() {return this.x;}}; return o.m();", 7);
 
     // Object extension and equality
-    vm.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);  
+    vm.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);
 }
 
 /// New operator, prototype chain

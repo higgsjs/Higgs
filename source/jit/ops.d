@@ -1795,6 +1795,24 @@ void gen_call(
     movArgWord(as, numArgs + 2, closReg);
     movArgType(as, numArgs + 2, X86Opnd(Type.REFPTR));
 
+    // Compute the total number of locals and extra arguments
+    // input : scr1, IRFunction
+    // output: scr0, total frame size
+    // mangle: scr3
+    as.getMember!("IRFunction.numParams")(scrRegs[0].reg(32), scrRegs[1]);
+    // scr3 = numArgs, actual number of args passed
+    as.mov(scrReg3.opnd(32), X86Opnd(numArgs));
+    // scr3 = numArgs - numParams (num extra args)
+    as.sub(scrReg3.opnd(32), scrRegs[0].opnd(32));
+    // scr0 = numLocals
+    as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
+    // if there are no missing parameters, skip the add
+    as.cmp(scrReg3.opnd(32), X86Opnd(0));
+    as.jle(Label.FALSE2);
+    // src0 = numLocals + extraArgs
+    as.add(scrRegs[0].opnd(32), scrReg3.opnd(32));
+    as.label(Label.FALSE2);
+
     ver.genCallBranch(
         st,
         instr,
@@ -1808,19 +1826,9 @@ void gen_call(
         )
         {
             // Write the return address on the stack
-            as.movAbsRef(vm, scrRegs[0], target0, 0);
-            movArgWord(as, numArgs + 3, scrRegs[0].opnd);
+            as.movAbsRef(vm, scrReg3, target0, 0);
+            movArgWord(as, numArgs + 3, scrReg3.opnd);
             movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
-
-            // Compute the total number of locals and extra arguments
-            as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
-            as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
-            as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
-            as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
-            as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
-            as.jle(Label.FALSE2);
-            as.add(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
-            as.label(Label.FALSE2);
 
             // Adjust the stack pointers
             //as.printStr("pushing");
@@ -2072,6 +2080,24 @@ void gen_call_new(
     // Final branch generation
     //
 
+    // Compute the total number of locals and extra arguments
+    // input : scr1, IRFunction
+    // output: scr0, total frame size
+    // mangle: scr3
+    as.getMember!("IRFunction.numParams")(scrRegs[0].reg(32), scrRegs[1]);
+    // scr3 = numArgs, actual number of args passed
+    as.mov(scrReg3.opnd(32), X86Opnd(numArgs));
+    // scr3 = numArgs - numParams (num extra args)
+    as.sub(scrReg3.opnd(32), scrRegs[0].opnd(32));
+    // scr0 = numLocals
+    as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
+    // if there are no missing parameters, skip the add
+    as.cmp(scrReg3.opnd(32), X86Opnd(0));
+    as.jle(Label.FALSE2);
+    // src0 = numLocals + extraArgs
+    as.add(scrRegs[0].opnd(32), scrReg3.opnd(32));
+    as.label(Label.FALSE2);
+
     ver.genCallBranch(
         st,
         instr,
@@ -2085,19 +2111,9 @@ void gen_call_new(
         )
         {
             // Write the return address on the stack
-            as.movAbsRef(vm, scrRegs[0], target0, 0);
-            movArgWord(as, numArgs + 3, scrRegs[0].opnd);
+            as.movAbsRef(vm, scrReg3, target0, 0);
+            movArgWord(as, numArgs + 3, scrReg3.opnd);
             movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
-
-            // Compute the total number of locals and extra arguments
-            as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
-            as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
-            as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
-            as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
-            as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
-            as.jle(Label.FALSE2);
-            as.add(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
-            as.label(Label.FALSE2);
 
             // Adjust the stack pointers
             //as.printStr("pushing");

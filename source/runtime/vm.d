@@ -560,7 +560,7 @@ class VM
         );
 
         // Allocate the executable heap
-        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, /*opts.jit_genasm*/true);
+        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_genasm);
 
         // If the runtime library should be loaded
         if (loadRuntime)
@@ -1208,7 +1208,7 @@ extern (C) CodePtr throwExc(
     auto curCtx = callCtx;
 
     // Get the exception handler code, if supplied
-    auto curHandler = throwHandler? throwHandler.getCodePtr(vm.execHeap):null;
+    auto curHandler = throwHandler;
 
     // Get a GC root for the exception object
     auto excObj = GCRoot(
@@ -1266,11 +1266,20 @@ extern (C) CodePtr throwExc(
         {
             //writefln("found exception handler");
 
+            // If the exception handler is not yet compiled, compile it
+            if (curHandler.ended is false)
+            {
+                vm.queue(curHandler);
+                vm.compile(callCtx);
+            }
+
+            auto excCodeAddr = curHandler.getCodePtr(vm.execHeap);
+
             // Push the exception value on the stack
             vm.push(excWord, excType);
 
             // Return the exception handler address
-            return curHandler;
+            return excCodeAddr;
         }
 
         // If we are in an inlined call context
@@ -1286,7 +1295,7 @@ extern (C) CodePtr throwExc(
 
             // Get the exception handler for the inlined context
             if (curCtx.excHandler)
-                curHandler = curCtx.excHandler.getCodePtr(vm.execHeap);
+                curHandler = curCtx.excHandler;
 
             // Move to the caller context
             curCtx = curCtx.parent;
@@ -1332,7 +1341,7 @@ extern (C) CodePtr throwExc(
 
         // Get the exception handler code for the calling instruction
         if (retEntry.excCode)
-            curHandler = retEntry.excCode.getCodePtr(vm.execHeap);
+            curHandler = retEntry.excCode;
 
         // Get the argument count
         auto argCount = vm.wsp[argcSlot].int32Val;

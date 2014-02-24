@@ -158,34 +158,23 @@ TODO: basic reg alloc, what's the simplest we can do?
 TODO: basic type prop, without reg alloc, type test removal
 - For now, don't do delayed writes
 
-TODO: simple rule-based inlining?
+TODO: stare at machine code for simple programs, e.g.: fib, improve
+
+TODO: simple ad-hoc, rule-based inlining
+- benefit: keep the old type analysis
+- inling once at IR gen time, no recompilation
+- inling specific primitives
+- don't inline in global functions, unless they have loops
+  - IRFunction.hasLoop?
+
+TODO: block-internal jumps, can they all fit in 8-bit indices? force?
+- can maybe "promise" it will fit
 
 TODO: as.comment, as.writeString, probably somewhat inefficient
 - Should maybe try templating these functions, no string concat if no comments
+- benchmark first and after
 
-Meeting:
-- contribs, multiple fronts:
-  - self-hosting
-  - type tagging scheme
-  - BBV
-  - incremental compilation
-  - incremental inlining
-- incremental inlining decreases execution time on `make test`
-  - right now, even with poor inlining, doesn't make benchmarks slower
-  - old aggressive inlining might be slower, increase compilation time
-- paper-wise, might be better to do simple rule-based inlining
-  - benefit: keep the old type analysis
-  - inling once at IR gen time, no recompilation
-  - inling specific primitives
-  - don't inline in global functions, unless they have loops
-    - IRFunction.hasLoop?
-- proposal: simple inlining for DLS paper
-  - focus on BBV, improving code gen, fixing incremenetal compilation quirks
-- stubs: might be able to have one stub for all branches
-  - truer to the lazyness goal
-  - allows better contiguous code
-- CC or PLDI paper on incremental compilation?
-- Bourse DIRO!
+TODO: compare speed against master branch
 
 TODO: zero length branch edges should be eliminated
 - do this later, get it working first
@@ -205,8 +194,6 @@ avoid doing getBlockVersion to get a successor version
 TODO: optimize final jump ordering when rewriting final branch
 - BranchShape
 
-TODO: compare speed against master branch
-
 TODO: avoid writing blockIdx when neither target is a stub
 - log if this happens
 - also make this a 32-bit opnd move, more compact
@@ -215,15 +202,46 @@ TODO: rename noStub to willExec?
 - May be cleaner, more explicit to do vm.queue manually when desired
 - The boolean flag is not very explicit in terms of meaning
 
-... Debugging...
-
 TODO: pushf, popf for debugging w/ printInt, printStr
 
+... Debugging...
+
+FIXME: problem with tests/core/ffi/ffi.js
+- FFI call borking, issue with stubs?
+- Might be an issue with the return value handling, call continuation
+- FFI probably does not need genCallBranch... Better served by plain genBranch
 
 
 
 
 
+
+
+[DONE] FIXME: throwExc needs to JIT compile the exception branch
+
+[DONE] FIXME: stdlib init fails
+label "FALSE2" already defined at position 410858
+- call does a conditional jump to compute the total frame size
+- should try to move this computation out of the final branch part
+
+[DONE] Meeting:
+- contribs, multiple fronts:
+  - self-hosting
+  - type tagging scheme
+  - BBV
+  - incremental compilation
+  - incremental inlining
+- incremental inlining decreases execution time on `make test`
+  - right now, even with poor inlining, doesn't make benchmarks slower
+  - old aggressive inlining might be slower, increase compilation time
+- paper-wise, might be better to do simple rule-based inlining
+- proposal: simple inlining for DLS paper
+  - focus on BBV, improving code gen, fixing incremenetal compilation quirks
+- stubs: might be able to have one stub for all branches
+  - truer to the lazyness goal
+  - allows better contiguous code
+- CC or PLDI paper on incremental compilation?
+- Bourse DIRO!
 
 [DONE] FIXME: issue with recursion, start position is already marked
 - may need to patch the cont stub, still used for deeper calls
