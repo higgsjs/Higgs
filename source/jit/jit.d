@@ -876,6 +876,28 @@ abstract class CodeFragment
     {
         return endIdx !is endIdx.max;
     }
+
+    /**
+    Patch this code fragment to jump to a newer version
+    */
+    final void patch(CodeBlock as, CodeFragment next)
+    {
+        assert (this.started && next.started);
+
+        // Write a relative 32-bit jump to the instance over the stub code
+        auto startPos = as.getWritePos();
+        as.setWritePos(this.startIdx);
+        as.writeASM("jmp", next.getName);
+        as.writeByte(JMP_REL32_OPCODE);
+        auto offset = next.startIdx - (as.getWritePos + 4);
+        as.writeInt(offset, 32);
+
+        // Ensure that we did not overrun the code fragment length
+        assert (as.getWritePos() <= this.endIdx);
+
+        // Return to the original write position
+        as.setWritePos(startPos);
+    }
 }
 
 /**
@@ -1608,7 +1630,7 @@ void compile(VM vm, CallCtx callCtx)
             auto block = ver.block;
             assert (ver.block !is null);
 
-            writeln(block.toString);
+            //writeln(block.toString);
 
             // Copy the instance's state object
             auto state = new CodeGenState(ver.state);
@@ -1618,8 +1640,6 @@ void compile(VM vm, CallCtx callCtx)
                ver.markStart(as, vm);
 
             as.comment("Instance of " ~ ver.getName());
-            //as.printStr(block.fun.getName);
-            //as.printStr(block.toString());
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -1627,10 +1647,11 @@ void compile(VM vm, CallCtx callCtx)
                 if (opts.jit_dumpinfo)
                     writeln("compiling instr: ", instr.toString());
 
+                // If we should generate disassembly strings
                 if (opts.jit_genasm)
                     as.comment(instr.toString());
 
-                as.printStr(instr.toString());
+                //as.printStr(instr.toString());
 
                 auto opcode = instr.opcode;
                 assert (opcode !is null);
@@ -1671,6 +1692,10 @@ void compile(VM vm, CallCtx callCtx)
             // Store the code start index
             branch.markStart(as, vm);
 
+            // Generate the prelude code, if any
+            if (branch.prelGenFn)
+                branch.prelGenFn(as, vm);
+
             // Execute the moves
             execMoves(as, branch.moveList, scrRegs[0], scrRegs[1]);
 
@@ -1703,13 +1728,21 @@ void compile(VM vm, CallCtx callCtx)
 
             as.pushJITRegs();
 
-            // The first argument is the VM object
+            // Save the return value
+            as.push(retWordReg.reg(64));
+            as.push(retTypeReg.reg(64));
+
+            // The first argument is the stub object
             as.ptr(cargRegs[0], stub);
 
             // Call the JIT compilation function,
             auto compileFn = &compileCont;
             as.ptr(scrRegs[0], compileFn);
             as.call(scrRegs[0]);
+
+            // Restore the return value
+            as.pop(retTypeReg.reg(64));
+            as.pop(retWordReg.reg(64));
 
             as.popJITRegs();
 
@@ -2014,9 +2047,9 @@ extern (C) CodePtr compileBranch(VM vm, size_t blockIdx, size_t targetIdx)
 {
     auto startTimeUsecs = Clock.currAppTick().usecs();
 
-    writeln("entering compileBranch");
-    writeln("    blockIdx=", blockIdx);
-    writeln("    targetIdx=", targetIdx);
+    //writeln("entering compileBranch");
+    //writeln("    blockIdx=", blockIdx);
+    //writeln("    targetIdx=", targetIdx);
 
     // Get the block from which the stub hit originated
     assert (blockIdx < vm.fragList.length, "invalid block idx");
@@ -2041,7 +2074,7 @@ extern (C) CodePtr compileBranch(VM vm, size_t blockIdx, size_t targetIdx)
     auto endTimeUsecs = Clock.currAppTick().usecs();
     stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 
-    writeln("leaving compileBranch");
+    //writeln("leaving compileBranch");
 
     // Return a pointer to the compiled branch code
     return branchCode.getCodePtr(vm.execHeap);
@@ -2054,7 +2087,7 @@ extern (C) CodePtr compileCont(ContStub stub)
 {
     auto startTimeUsecs = Clock.currAppTick().usecs();
 
-    writeln("entering compileCont");
+    //writeln("entering compileCont");
 
     auto callVer = stub.callVer;
     auto contBranch = stub.contBranch;
@@ -2062,6 +2095,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     auto vm = callCtx.vm;
 
     // Queue the continuation branch edge to be compiled
+    assert (!contBranch.started);
     vm.queue(contBranch);
 
     // Update the continuation target in the call version
@@ -2073,10 +2107,10 @@ extern (C) CodePtr compileCont(ContStub stub)
     // Compile fragments and patch references
     vm.compile(callCtx);
 
-    // Remove the stub's return entry
-    vm.retAddrMap.remove(stub.getCodePtr(vm.execHeap));
+    // Patch the stub to jump to the continuation branch
+    stub.patch(vm.execHeap, contBranch);
 
-    // Set the return entry for the compiled call continuation
+    // Set the return entry for the call continuation
     vm.setRetEntry(
         callVer.block.lastInstr,
         callCtx,
@@ -2088,7 +2122,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     auto endTimeUsecs = Clock.currAppTick().usecs();
     stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 
-    writeln("leaving compileCont");
+    //writeln("leaving compileCont");
 
     // Return a pointer to the compiled branch code
     return contBranch.getCodePtr(vm.execHeap);
@@ -2148,8 +2182,6 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     // TODO: don't need special spill code for now, no reg alloc yet
     // eventually, need to save registers and implement soft-spilling scheme
 
-    writeln("generating branch stub, targetIdx=", targetIdx);
-
     auto stub = new BranchStub(vm, targetIdx);
     vm.branchStubs.length = targetIdx + 1;
     vm.branchStubs[targetIdx] = stub;
@@ -2188,11 +2220,6 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
 
     // Store the code end index
     stub.markEnd(as, vm);
-
-    writeln(stub.genString(as));
-
-    writeln("done generating branch stub");
-    writeln("    stub length=", stub.length);
 
     return stub;
 }

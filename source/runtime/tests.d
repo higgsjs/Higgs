@@ -415,6 +415,8 @@ unittest
         24
     );
 
+    assert (false, "breakpoint");
+
     vm.assertInt(
         "
         return function (n)

@@ -328,7 +328,7 @@ void printUint(CodeBlock as, X86Opnd opnd)
     else if (opnd.isMem)
         opndSz = opnd.mem.size;
     else
-        assert (false);
+        assert (false, "invalid opnd in printUint: " ~ opnd.toString);
 
     as.pushRegs();
 

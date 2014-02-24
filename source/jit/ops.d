@@ -2442,8 +2442,6 @@ void gen_ret(
     auto numParams = instr.block.fun.numParams;
     auto numLocals = instr.block.fun.numLocals;
 
-    //as.printStr("ret from " ~ instr.block.fun.getName);
-
     // Get the return value word operand
     auto retOpnd = st.getWordOpnd(
         as,
@@ -2463,6 +2461,8 @@ void gen_ret(
         scrRegs[1].opnd(8),
         true
     );
+
+    //as.printStr("ret from " ~ instr.block.fun.getName);
 
     assert (callCtx.parent is null);
     /*

@@ -185,6 +185,7 @@ Meeting:
   - truer to the lazyness goal
   - allows better contiguous code
 - CC or PLDI paper on incremental compilation?
+- Bourse DIRO!
 
 TODO: zero length branch edges should be eliminated
 - do this later, get it working first
@@ -216,12 +217,23 @@ TODO: rename noStub to willExec?
 
 ... Debugging...
 
+TODO: pushf, popf for debugging w/ printInt, printStr
 
 
 
 
 
 
+
+[DONE] FIXME: issue with recursion, start position is already marked
+- may need to patch the cont stub, still used for deeper calls
+
+[DONE] FIXME: 1 + 2 doesn't produce the right output
+- Return not working?
+- Are we manging the return type reg?
+- Value+type correct after add...
+- Value+type correct at first level return
+- Second return gets incorrect value and type
 
 [DONE] FIXME: 1 + 2 doesn't work
 make; ./higgs --nostdlib --e "1 + 2"
