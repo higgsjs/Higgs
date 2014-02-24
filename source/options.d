@@ -51,6 +51,9 @@ struct Options
 
     /* VM options */
 
+    /// Disable loading of the runtime library
+    bool noruntime = false;
+
     /// Disable loading of the standard library
     bool nostdlib = false;
 
@@ -92,6 +95,7 @@ void parseCmdArgs(ref string[] args)
         "repl"          , &opts.repl,
         "stats"         , &opts.stats,
 
+        "noruntime"     , &opts.noruntime,
         "nostdlib"      , &opts.nostdlib,
 
         "jit_maxvers"   , &opts.jit_maxvers,
@@ -101,6 +105,10 @@ void parseCmdArgs(ref string[] args)
         "jit_genasm"    , &opts.jit_genasm,
         "jit_dumpasm"   , &opts.jit_dumpasm,
     );
+
+    // If we don't load the runtime, we can't load the standard library
+    if (opts.noruntime)
+        opts.nostdlib = true;
 
     // If dumping the ASM, we must first generate the ASM
     if (opts.jit_dumpasm)

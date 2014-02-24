@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -437,7 +437,7 @@ class VM
     CodeFragment[] fragList;
 
     /// Queue of block versions to be compiled
-    BlockVersion[] compQueue;
+    CodeFragment[] compQueue;
 
     /// List of references to code fragments to be linked
     FragmentRef[] refList;
@@ -447,6 +447,9 @@ class VM
 
     /// Constructor entry stub
     EntryStub ctorStub;
+
+    /// Branch target stubs
+    BranchStub[] branchStubs;
 
     /**
     Constructor, initializes the VM state
@@ -557,7 +560,7 @@ class VM
         );
 
         // Allocate the executable heap
-        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_genasm);
+        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, /*opts.jit_genasm*/true);
 
         // If the runtime library should be loaded
         if (loadRuntime)

@@ -70,10 +70,6 @@ TODO: typed arrays
 - Will save many many type checks on some benchmarks
   - e.g. : integer, FFT
 
-TODO: quick reoptimization pass with basic asm pattern matching?
-- repatch stub jumps, etc.
-- does dst block fit in source block?
-
 TODO: think about type representation
 - types need to encode obj vs clos vs array
 - typed arrays: int32 array, float array
@@ -91,38 +87,16 @@ TODO: accelerate getPropObj, make more hosted?
 TODO: look at https://github.com/dntj/jsfft
 - Do they have a test/benchmark of the FFT?
 
+FIXME: string concat is very slow right now... can we make it faster?
+- slow benchmarks: string-base64, string-fasta, splay
+- can we get the offset of the string data? str_ofs_data(s, 0)
+- create a memcpy IR instr?
+    import std.c.string;
+    memcpy ( void * destination, const void * source, size_t num );
+    issue: spilling required
+    could generate custom code
+
 ------------------------------------------------------------------------------
-
-TODO: blog post about draw lib
-- advice: crazy but true titles, skimmable blog post, skimmable style, pretty pics
-- tutorials, should also list in wiki, or blog wiki tuts?
-
-TODO: pixel plotting, drawing window lib? lib/draw
-- Probably will want to use X11
-  - implement a lib/x11
-  - need an event loop
-- Can have a draw lib which creates a window using lib/x11 and sets up a
-  basic event loop
-  - allows setting callbacks for KB and mouse events
-  - allows calling a function in the loop
-- Make another lib to read from the console without blocking
-  - use select() on stdin
-  - Can then implement our own REPL on top
-
-TODO: basic reg alloc, what's the simplest we can do?
-- Marc says: probably a bigger perf issue than instr cache
-
-TODO: stub patching, avoid double jumps
-- patch jumps to stub instead? keep list of incoming refs?
-- Marc says: call to stub, patch lazily
-  - patch lazily, no need for list of incoming?
-  - may allow one single piece of stub code, better code
-
-TODO: type prop, pass types along inlined calls/returns
-
-------
-
-TODO: reimplement type analysis to compare with BBV for paper
 
 TODO: smarter spilling across inlined calls
 - only spill parent values when necessary
@@ -136,6 +110,8 @@ TODO: register allocation
 
 TODO: make inline threshold larger for bigger functions?
 - wait until inlining is more optimized before tweaking heuristics
+
+TODO: type prop, pass types along inlined calls/returns
 
 TODO: fix GC for new stack handling
 
@@ -158,7 +134,34 @@ TODO: avoid inc/dec wsp/tsp on inlined calls
 - What if we do an inlined call in an inlined call?
   - no need to adjust anything, context inherits
 
-------
+------------------------------------------------------------------------------
+
+TODO: blog post about draw lib
+- advice: crazy but true titles, skimmable blog posts, skimmable style, pretty pics
+- tutorials, should also list in wiki, or blog wiki tuts?
+
+TODO: pixel plotting, drawing window lib? lib/draw
+- Probably will want to use X11
+  - implement a lib/x11
+  - need an event loop
+- Can have a draw lib which creates a window using lib/x11 and sets up a
+  basic event loop
+  - allows setting callbacks for KB and mouse events
+  - allows calling a function in the loop
+- Make another lib to read from the console without blocking
+  - use select() on stdin
+  - Can then implement our own REPL on top
+
+TODO: basic reg alloc, what's the simplest we can do?
+- Marc says: probably a bigger perf issue than instr cache
+
+TODO: basic type prop, without reg alloc, type test removal
+- For now, don't do delayed writes
+
+TODO: simple rule-based inlining?
+
+TODO: as.comment, as.writeString, probably somewhat inefficient
+- Should maybe try templating these functions, no string concat if no comments
 
 Meeting:
 - contribs, multiple fronts:
@@ -170,26 +173,48 @@ Meeting:
 - incremental inlining decreases execution time on `make test`
   - right now, even with poor inlining, doesn't make benchmarks slower
   - old aggressive inlining might be slower, increase compilation time
-- paper-wise, might be better to do "dumb" inlining
-  - keep the same type analysis
-  - inling once, no recompilation
+- paper-wise, might be better to do simple rule-based inlining
+  - benefit: keep the old type analysis
+  - inling once at IR gen time, no recompilation
   - inling specific primitives
   - don't inline in global functions, unless they have loops
-- propose a deal: simple inlining for DLS paper
+    - IRFunction.hasLoop?
+- proposal: simple inlining for DLS paper
   - focus on BBV, improving code gen, fixing incremenetal compilation quirks
-- stubs: might be able to have one stub for all
-  - call to stub, RA identifies origin
+- stubs: might be able to have one stub for all branches
+  - truer to the lazyness goal
+  - allows better contiguous code
+- CC or PLDI paper on incremental compilation?
 
-------
+TODO: zero length branch edges should be eliminated
+- do this later, get it working first
+- do sophisticated final branch reoptimization later
+- if moveList.length is 0 and prelGenFn is null, then it's empty
+  add isNoop accessor
 
-TODO: basic type prop, without reg alloc, type test removal
-- For now, don't do delayed writes
+TODO: getBranchEdge, should probably avoid immediately doing move generation,
+avoid doing getBlockVersion to get a successor version
+- generates a succState
+- wastes time and memory on unexecuted targets
+- only store the predState and target at first
+- can lazily generate moveList in compileBranch
+- if isNoop, eliminate the branch edge
+- queue the target manually
 
-FIXME: string interning, no cleanup on GC? Can we make splay faster?
+TODO: optimize final jump ordering when rewriting final branch
+- BranchShape
 
-FIXME: string interning is very slow right now... can we make it faster?
-- slow benchmarks: string-base64, splay
-- can we get the offset of the string data?
+TODO: compare speed against master branch
+
+TODO: avoid writing blockIdx when neither target is a stub
+- log if this happens
+- also make this a 32-bit opnd move, more compact
+
+TODO: rename noStub to willExec?
+- May be cleaner, more explicit to do vm.queue manually when desired
+- The boolean flag is not very explicit in terms of meaning
+
+... Debugging...
 
 
 
@@ -198,7 +223,69 @@ FIXME: string interning is very slow right now... can we make it faster?
 
 
 
+[DONE] FIXME: 1 + 2 doesn't work
+make; ./higgs --nostdlib --e "1 + 2"
 
+[DONE] TODO: --noruntime flag, useful for debugging, with --jit_dumpinfo
+- make it automatically imply nostdlib
+- debug simple expressions, make test produces too much output
+
+[DONE] FIXME: setRetEntry, calls getCodePtr to get a pointer to the call
+continuation code. The call continuation branch is not yet instantiated.
+- Can we make call returns go to BranchStub?
+  - doesn't really work
+- Should force cont branch to get compiled?
+  - what about exception branch... don't want to force that to be compiled
+- For exceptions, can probably trigger compilation manually during exception handling
+- If we say call cont must be compiled, we still don't get an address immediately
+    auto retAddr = retCode.getCodePtr(vm.execHeap);
+    vm.retAddrMap[retAddr] = RetEntry(callInstr, callCtx, retCode, excCode);
+
+[DONE] For efficiency, probably want returns to go to special stubs
+- Compile whole sequence after return all at once, more elegant and optimal
+- ContStub will:
+  - patch its calling block version, rewrite its final branch
+  - queue the proper return branch to be compiled
+  - remove the old RetEntry for the ContStub
+  - create a proper RetEntry for the compiled return branch
+- Could use a unique return stub?
+  - Since we patch the calling block
+  - Could set the call blockIdx in a special register
+- Probably don't want a unique stub
+  - Want to have some specific RA we can track!
+
+[DONE] FIXME: we hit a branch stub, but the blockIdx is corrupted
+- Seems to contain a pointer value instead
+- corruption during reference patching because of getBranchStub
+
+[DONE] TODO: rework genBranch
+- block idx is available when compiling block (fragList.length)
+  - store in scrReg[0]? be careful wrt calls
+  - check if either target is a stub first
+- may need to pad until endIdx with noops
+  - also assert that we aren't going past endIdx if rewriting
+
+[DONE] TODO: rewrite srcBlock final branch in compileBranch
+
+[DONE] TODO: refList patching, if jumping to uncompiled block, jump to branch stub instead
+
+[DONE] TODO: generate code for BranchCode in code gen loop
+- Add call to prelGenFn
+
+[DONE] TODO: BranchCode should store a closure that generates its code
+- Deferred codegen
+- Also store list of moves
+
+[DONE] TODO: rework compileStub
+- only write branch edge to execHeap once stub is hit, unless we know it will be taken
+- store pointer to BranchCode as outgoing target
+
+[DONE] TODO: generate stub[i], getStub(targetIdx)
+- don't need special spill code for now, no reg alloc yet
+- Receives blockIdx in scrReg[0]
+
+[DONE] FIXME: string interning, no cleanup on GC? Can we make splay faster?
+- This is already done correctly!
 
 [DONE] TODO: try creating smaller versions of slow benchmarks for unit tests
     shootout/lists

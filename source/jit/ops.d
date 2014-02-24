@@ -66,14 +66,14 @@ import core.sys.posix.dlfcn;
 
 /// Instruction code generation function
 alias void function(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 ) GenFn;
 
 void gen_get_arg(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -107,7 +107,7 @@ void gen_get_arg(
 }
 
 void gen_set_str(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -142,7 +142,7 @@ void gen_set_str(
 }
 
 void gen_make_value(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -160,7 +160,7 @@ void gen_make_value(
 }
 
 void gen_get_word(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -175,7 +175,7 @@ void gen_get_word(
 }
 
 void gen_get_type(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -202,7 +202,7 @@ void gen_get_type(
 }
 
 void gen_i32_to_f64(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -222,7 +222,7 @@ void gen_i32_to_f64(
 }
 
 void gen_f64_to_i32(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -242,7 +242,7 @@ void gen_f64_to_i32(
 }
 
 void RMMOp(string op, size_t numBits, Type typeTag)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -310,7 +310,6 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
             as,
             branchNO,
             branchOV,
-            BranchShape.DEFAULT,
             delegate void(
                 CodeBlock as,
                 VM vm,
@@ -319,14 +318,10 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
                 BranchShape shape
             )
             {
-                jo32Ref(as, vm, target1);
-                jmp32Ref(as, vm, target0);
+                jo32Ref(as, vm, target1, 1);
+                jmp32Ref(as, vm, target0, 0);
             }
         );
-
-        // Generate the edge code
-        branchNO.genCode(as, st);
-        branchOV.genCode(as, st);
     }
 }
 
@@ -342,7 +337,7 @@ alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
 void divOp(string op)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -388,7 +383,7 @@ alias divOp!("div") gen_div_i32;
 alias divOp!("mod") gen_mod_i32;
 
 void gen_not_i32(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -405,7 +400,7 @@ void gen_not_i32(
 }
 
 void ShiftOp(string op)(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -444,7 +439,7 @@ alias ShiftOp!("sar") gen_rsft_i32;
 alias ShiftOp!("shr") gen_ursft_i32;
 
 void FPOp(string op)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -484,7 +479,7 @@ alias FPOp!("mul") gen_mul_f64;
 alias FPOp!("div") gen_div_f64;
 
 void HostFPOp(alias cFPFun, size_t arity = 1)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -530,7 +525,7 @@ alias HostFPOp!(std.c.math.pow, 2) gen_pow_f64;
 alias HostFPOp!(std.c.math.fmod, 2) gen_mod_f64;
 
 void FPToStr(string fmt)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -574,7 +569,7 @@ alias FPToStr!("%G") gen_f64_to_str;
 alias FPToStr!(format("%%.%sf", float64.dig)) gen_f64_to_str_lng;
 
 void LoadOp(size_t memSize, Type typeTag)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -645,7 +640,7 @@ alias LoadOp!(64, Type.FUNPTR) gen_load_funptr;
 alias LoadOp!(64, Type.MAPPTR) gen_load_mapptr;
 
 void StoreOp(size_t memSize, Type typeTag)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -718,7 +713,7 @@ bool boolArgPrev(IRInstr instr)
 }
 
 void IsTypeOp(Type type)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -785,7 +780,6 @@ void IsTypeOp(Type type)(
             as,
             branchT,
             branchF,
-            BranchShape.DEFAULT,
             delegate void(
                 CodeBlock as,
                 VM vm,
@@ -794,14 +788,10 @@ void IsTypeOp(Type type)(
                 BranchShape shape
             )
             {
-                jne32Ref(as, vm, target1);
-                jmp32Ref(as, vm, target0);
+                jne32Ref(as, vm, target1, 1);
+                jmp32Ref(as, vm, target0, 0);
             }
         );
-
-        // Generate the edge code
-        branchT.genCode(as, st);
-        branchF.genCode(as, st);
     }
 }
 
@@ -813,7 +803,7 @@ alias IsTypeOp!(Type.INT64) gen_is_i64;
 alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
 
 void CmpOp(string op, size_t numBits)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -1031,7 +1021,6 @@ void CmpOp(string op, size_t numBits)(
             as,
             branchT,
             branchF,
-            BranchShape.DEFAULT,
             delegate void(
                 CodeBlock as,
                 VM vm,
@@ -1043,33 +1032,33 @@ void CmpOp(string op, size_t numBits)(
                 // Integer comparison
                 static if (op == "eq")
                 {
-                    je32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    je32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
                 else if (op == "ne")
                 {
-                    jne32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    jne32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
                 else if (op == "lt")
                 {
-                    jl32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    jl32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
                 else if (op == "le")
                 {
-                    jle32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    jle32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
                 else if (op == "gt")
                 {
-                    jg32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    jg32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
                 else if (op == "ge")
                 {
-                    jge32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    jge32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
 
                 // Floating-point comparisons
@@ -1079,9 +1068,9 @@ void CmpOp(string op, size_t numBits)(
                     // True: 100
                     // False: 111 or 000 or 001
                     // False: JNE + JP
-                    jne32Ref(as, vm, target1);
-                    jp32Ref(as, vm, target1);
-                    jmp32Ref(as, vm, target0);
+                    jne32Ref(as, vm, target1, 1);
+                    jp32Ref(as, vm, target1, 1);
+                    jmp32Ref(as, vm, target0, 0);
                 }
                 else if (op == "fne")
                 {
@@ -1089,36 +1078,32 @@ void CmpOp(string op, size_t numBits)(
                     // True: 111 or 000 or 001
                     // False: 100
                     // True: JNE + JP
-                    jne32Ref(as, vm, target0);
-                    jp32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    jne32Ref(as, vm, target0, 0);
+                    jp32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
                 else if (op == "flt")
                 {
-                    ja32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    ja32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
                 else if (op == "fle")
                 {
-                    jae32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    jae32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
                 else if (op == "fgt")
                 {
-                    ja32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    ja32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
                 else if (op == "fge")
                 {
-                    jae32Ref(as, vm, target0);
-                    jmp32Ref(as, vm, target1);
+                    jae32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
                 }
             }
         );
-
-        // Generate the edge code
-        branchT.genCode(as, st);
-        branchF.genCode(as, st);
     }
 }
 
@@ -1143,7 +1128,7 @@ alias CmpOp!("fgt", 64) gen_gt_f64;
 alias CmpOp!("fge", 64) gen_ge_f64;
 
 void gen_if_true(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -1153,8 +1138,6 @@ void gen_if_true(
     // conditional branch has already been generated
     if (boolArgPrev(instr) is true)
         return;
-
-
 
     // TODO
     /*
@@ -1176,9 +1159,6 @@ void gen_if_true(
     }
     */
 
-
-
-
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
     as.cmp(argOpnd, X86Opnd(TRUE.int8Val));
@@ -1191,7 +1171,6 @@ void gen_if_true(
         as,
         branchT,
         branchF,
-        BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
             VM vm,
@@ -1200,18 +1179,14 @@ void gen_if_true(
             BranchShape shape
         )
         {
-            je32Ref(as, vm, target0);
-            jmp32Ref(as, vm, target1);
+            je32Ref(as, vm, target0, 0);
+            jmp32Ref(as, vm, target1, 1);
         }
     );
-
-    // Generate the edge code
-    branchT.genCode(as, st);
-    branchF.genCode(as, st);
 }
 
 void gen_jump(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -1228,7 +1203,6 @@ void gen_jump(
         as,
         branch,
         null,
-        BranchShape.DEFAULT,
         delegate void(
             CodeBlock as,
             VM vm,
@@ -1237,12 +1211,9 @@ void gen_jump(
             BranchShape shape
         )
         {
-            jmp32Ref(as, vm, target0);
+            jmp32Ref(as, vm, target0, 0);
         }
     );
-
-    // Generate the branch edge code
-    branch.genCode(as, st);
 }
 
 /**
@@ -1273,7 +1244,7 @@ extern (C) CodePtr throwCallExc(
 Generate the final branch and exception handler for a call instruction
 */
 void genCallBranch(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as,
@@ -1283,21 +1254,38 @@ void genCallBranch(
 {
     auto vm = st.callCtx.vm;
 
-    // Request a branch object for the continuation
+    // Create a branch object for the continuation
     auto contBranch = getBranchEdge(
         instr.getTarget(0),
         st,
-        false
+        false,
+        delegate void(CodeBlock as, VM vm)
+        {
+            // Move the return value into the instruction's output slot
+            as.setWord(instr.outSlot, retWordReg.opnd(64));
+            as.setType(instr.outSlot, retTypeReg.opnd(8));
+        }
     );
 
     // Create the continuation branch object
-    BranchCode excBranch;
+    BranchCode excBranch = null;
     if (instr.getTarget(1))
     {
         excBranch = getBranchEdge(
             instr.getTarget(1),
             st,
-            false
+            false,
+            delegate void(CodeBlock as, VM vm)
+            {
+                // Pop the exception value off the stack and
+                // move it into the instruction's output slot
+                as.add(tspReg, Type.sizeof);
+                as.add(wspReg, Word.sizeof);
+                as.getWord(scrRegs[0], -1);
+                as.setWord(instr.outSlot, scrRegs[0].opnd(64));
+                as.getType(scrRegs[0].reg(8), -1);
+                as.setType(instr.outSlot, scrRegs[0].opnd(8));
+            }
         );
     }
 
@@ -1326,44 +1314,23 @@ void genCallBranch(
         as.label(Label.SKIP);
     }
 
+    // Create a call continuation stub
+    auto contStub = new ContStub(ver, contBranch);
+    vm.queue(contStub);
+
     // Generate the call branch code
     ver.genBranch(
         as,
-        contBranch,
+        contStub,
         excBranch,
-        BranchShape.DEFAULT,
         genFn
     );
 
     //writeln("call block length: ", ver.length);
-
-    // Add the return value move code to the continuation branch
-    contBranch.markStart(as, vm);
-    as.setWord(instr.outSlot, retWordReg.opnd(64));
-    as.setType(instr.outSlot, retTypeReg.opnd(8));
-
-    // Generate the continuation branch edge code
-    contBranch.genCode(as, st);
-
-    // Add the exception value move code to the exception branch
-    if (excBranch)
-    {
-        excBranch.markStart(as, vm);
-        as.add(tspReg, Type.sizeof);
-        as.add(wspReg, Word.sizeof);
-        as.getWord(scrRegs[0], -1);
-        as.setWord(instr.outSlot, scrRegs[0].opnd(64));
-        as.getType(scrRegs[0].reg(8), -1);
-        as.setType(instr.outSlot, scrRegs[0].opnd(8));
-        excBranch.genCode(as, st);
-    }
-
-    // Set the return address entry for this call
-    vm.setRetEntry(instr, st.callCtx, contBranch, excBranch);
 }
 
 void gen_call_prim(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -1375,7 +1342,7 @@ void gen_call_prim(
 
     as.incStatCnt(&stats.numCallPrim, scrRegs[0]);
 
-    extern (C) static recompile(VersionInst ver)
+    extern (C) static recompile(BlockVersion ver)
     {
         auto block = ver.block;
         auto state = ver.state;
@@ -1385,7 +1352,7 @@ void gen_call_prim(
         writeln("inlining");
 
         // Create a new version of this block
-        auto newInst = new VersionInst(block, ver.state);
+        auto newInst = new BlockVersion(block, ver.state);
         newInst.counter = ver.counter;
 
         // Recompile the new call block with inlining
@@ -1509,7 +1476,6 @@ void gen_call_prim(
             as,
             entryVer,
             excBranch,
-            BranchShape.DEFAULT,
             delegate void(
                 CodeBlock as,
                 VM vm,
@@ -1544,9 +1510,9 @@ void gen_call_prim(
     {
         // Fetch and increment the execution counter
         as.ptr(scrRegs[0], ver);
-        as.getMember!("VersionInst.counter")(scrRegs[1].reg(32), scrRegs[0]);
+        as.getMember!("BlockVersion.counter")(scrRegs[1].reg(32), scrRegs[0]);
         as.inc(scrRegs[1].opnd(32));
-        as.setMember!("VersionInst.counter")(scrRegs[0], scrRegs[1].reg(32));
+        as.setMember!("BlockVersion.counter")(scrRegs[0], scrRegs[1].reg(32));
 
         // Compare the counter against the threshold
         as.cmp(scrRegs[1].opnd(32), X86Opnd(INLINE_THRESHOLD));
@@ -1652,19 +1618,19 @@ void gen_call_prim(
             assert (raSlot !is NULL_STACK);
 
             // Write the return address on the stack
-            as.movAbsRef(vm, scrRegs[0], target0);
+            as.movAbsRef(vm, scrRegs[0], target0, 0);
             as.setWord(raSlot, scrRegs[0].opnd(64));
             as.setType(raSlot, Type.RETADDR);
 
             // Jump to the function entry block
-            jmp32Ref(as, vm, entryVer);
+            jmp32Ref(as, vm, entryVer, 0);
         },
         false
     );
 }
 
 void gen_call(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -1842,7 +1808,7 @@ void gen_call(
         )
         {
             // Write the return address on the stack
-            as.movAbsRef(vm, scrRegs[0], target0);
+            as.movAbsRef(vm, scrRegs[0], target0, 0);
             movArgWord(as, numArgs + 3, scrRegs[0].opnd);
             movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
 
@@ -1875,7 +1841,7 @@ void gen_call(
 
 /// JavaScript new operator (constructor call)
 void gen_call_new(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2093,9 +2059,9 @@ void gen_call_new(
 
         // Copy the argument type
         auto typeOpnd = st.getTypeOpnd(
-            as, 
-            instr, 
-            instrArgIdx, 
+            as,
+            instr,
+            instrArgIdx,
             scrReg3.opnd(8),
             true
         );
@@ -2119,7 +2085,7 @@ void gen_call_new(
         )
         {
             // Write the return address on the stack
-            as.movAbsRef(vm, scrRegs[0], target0);
+            as.movAbsRef(vm, scrRegs[0], target0, 0);
             movArgWord(as, numArgs + 3, scrRegs[0].opnd);
             movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
 
@@ -2149,7 +2115,7 @@ void gen_call_new(
 }
 
 void gen_call_apply(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2235,7 +2201,7 @@ void gen_call_apply(
             as.ptr(cargRegs[1], instr);
 
             // Pass the return address as third argument
-            as.movAbsRef(vm, cargRegs[2], target0);
+            as.movAbsRef(vm, cargRegs[2], target0, 0);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_call_apply);
@@ -2251,7 +2217,7 @@ void gen_call_apply(
 }
 
 void gen_load_file(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2279,8 +2245,8 @@ void gen_load_file(
             vm.funRefs[cast(void*)fun] = fun;
 
             // Create a version instance object for the unit function entry
-            auto entryInst = new VersionInst(
-                fun.entryBlock, 
+            auto entryInst = new BlockVersion(
+                fun.entryBlock,
                 new CodeGenState(fun.getCtx(false, vm))
             );
 
@@ -2357,7 +2323,7 @@ void gen_load_file(
 }
 
 void gen_eval_str(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2385,7 +2351,7 @@ void gen_eval_str(
             vm.funRefs[cast(void*)fun] = fun;
 
             // Create a version instance object for the unit function entry
-            auto entryInst = new VersionInst(
+            auto entryInst = new BlockVersion(
                 fun.entryBlock,
                 new CodeGenState(fun.getCtx(false, vm))
             );
@@ -2463,7 +2429,7 @@ void gen_eval_str(
 }
 
 void gen_ret(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2498,6 +2464,8 @@ void gen_ret(
         true
     );
 
+    assert (callCtx.parent is null);
+    /*
     // If we are in an inlined call
     if (callCtx.parent !is null)
     {
@@ -2522,7 +2490,6 @@ void gen_ret(
             as,
             contBranch,
             null,
-            BranchShape.DEFAULT,
             delegate void(
                 CodeBlock as,
                 VM vm,
@@ -2535,11 +2502,9 @@ void gen_ret(
             }
         );
 
-        // Generate the continuation branch edge code
-        contBranch.genCode(as, contSt);
-
         return;
     }
+    */
 
     // Move the return word and types to the return registers
     as.mov(retWordReg.opnd(64), retOpnd);
@@ -2604,7 +2569,7 @@ void gen_ret(
 }
 
 void gen_throw(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2638,7 +2603,7 @@ void gen_throw(
 }
 
 void GetValOp(Type typeTag, string fName)(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2662,7 +2627,7 @@ alias GetValOp!(Type.INT32, "heapSize") gen_get_heap_size;
 alias GetValOp!(Type.INT32, "gcCount") gen_get_gc_count;
 
 void gen_get_heap_free(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2681,7 +2646,7 @@ void gen_get_heap_free(
 }
 
 void gen_heap_alloc(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2778,7 +2743,7 @@ void gen_heap_alloc(
 }
 
 void gen_gc_collect(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2813,7 +2778,7 @@ void gen_gc_collect(
 }
 
 void gen_get_global(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2946,7 +2911,7 @@ void gen_get_global(
 
 
 void gen_set_global(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2996,7 +2961,7 @@ void gen_set_global(
 }
 
 void gen_get_str(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3045,7 +3010,7 @@ void gen_get_str(
 }
 
 void gen_make_link(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3073,7 +3038,7 @@ void gen_make_link(
 }
 
 void gen_set_link(
-    VersionInst ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3097,7 +3062,7 @@ void gen_set_link(
 }
 
 void gen_get_link(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3124,7 +3089,7 @@ void gen_get_link(
 }
 
 void gen_make_map(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3152,7 +3117,7 @@ void gen_make_map(
 }
 
 void gen_map_num_props(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3187,7 +3152,7 @@ void gen_map_num_props(
 }
 
 void gen_map_prop_idx(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3235,7 +3200,7 @@ void gen_map_prop_idx(
 }
 
 void gen_map_prop_name(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3285,7 +3250,7 @@ void gen_map_prop_name(
 }
 
 void gen_new_clos(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3379,7 +3344,7 @@ void gen_new_clos(
 }
 
 void gen_print_str(
-    VersionInst ver, 
+    BlockVersion ver, 
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3406,7 +3371,7 @@ void gen_print_str(
 }
 
 void gen_get_time_ms(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3435,7 +3400,7 @@ void gen_get_time_ms(
 }
 
 void gen_get_ast_str(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3479,7 +3444,7 @@ void gen_get_ast_str(
 }
 
 void gen_get_ir_str(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3527,7 +3492,7 @@ void gen_get_ir_str(
 }
 
 void gen_get_asm_str(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3605,7 +3570,7 @@ void gen_get_asm_str(
 }
 
 void gen_load_lib(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3671,7 +3636,7 @@ void gen_load_lib(
 }
 
 void gen_close_lib(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3720,7 +3685,7 @@ void gen_close_lib(
 }
 
 void gen_get_sym(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3816,7 +3781,7 @@ static this()
 }
 
 void gen_call_ffi(
-    VersionInst ver,
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3943,13 +3908,6 @@ void gen_call_ffi(
 
     as.popJITRegs();
 
-    // Request a branch object for the continuation
-    auto contBranch = getBranchEdge(
-        instr.getTarget(0),
-        st,
-        false
-    );
-
     // Generate the final call continuation branch
     ver.genCallBranch(
         st,
@@ -3963,12 +3921,9 @@ void gen_call_ffi(
             BranchShape shape
         )
         {
-            jmp32Ref(as, vm, contBranch);
+            jmp32Ref(as, vm, target0, 0);
         },
         false
     );
-
-    // Generate the continuation branch edge code
-    contBranch.genCode(as, st);
 }
 

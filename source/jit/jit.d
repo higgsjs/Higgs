@@ -794,6 +794,16 @@ abstract class CodeFragment
             return "entry_stub_" ~ (stub.ctorCall? "ctor":"reg");
         }
 
+        if (auto stub = cast(BranchStub)this)
+        {
+            return "branch_stub_" ~ to!string(stub.targetIdx);
+        }
+
+        if (auto stub = cast(ContStub)this)
+        {
+            return "cont_stub_" ~ stub.contBranch.getName;
+        }
+
         if (auto exit = cast(ExitCode)this)
         {
             return "unit_exit_" ~ exit.fun.getName;
@@ -806,7 +816,7 @@ abstract class CodeFragment
     final auto length()
     {
         assert (startIdx !is startIdx.max);
-        assert (endMarked);
+        assert (ended);
         return endIdx - startIdx;
     }
 
@@ -826,31 +836,6 @@ abstract class CodeFragment
             "start position is already marked"
         );
 
-        // If there is a jump to this fragment right before us,
-        // remove the jump as it has no effect
-        if (vm.refList.length > 0 &&
-            vm.refList.back.frag is this && 
-            vm.refList.back.size is 32 &&
-            vm.refList.back.pos is as.getWritePos - 4)
-        {
-            if (vm.fragList.back.endIdx !is as.getWritePos)
-                writeln(vm.fragList.back.getName);
-
-            assert (vm.fragList.length > 0);
-            assert (vm.fragList.back !is this);
-            assert (vm.fragList.back.endIdx is as.getWritePos);
-
-            vm.refList.popBack();
-
-            auto newPos = as.getWritePos - 5;
-            as.setWritePos(newPos);
-            as.delStrings(newPos);
-
-            vm.fragList.back.endIdx = cast(uint32_t)newPos;
-            if (vm.fragList.back.length is 0)
-                vm.fragList.popBack();
-        }
-
         startIdx = cast(uint32_t)as.getWritePos();
 
         // Add a label string comment
@@ -863,7 +848,7 @@ abstract class CodeFragment
     final void markEnd(CodeBlock as, VM vm)
     {
         assert (
-            !endMarked,
+            !ended,
             "end position is already marked"
         );
 
@@ -877,11 +862,19 @@ abstract class CodeFragment
     }
 
     /**
+    Check if the fragment start has been marked (fragment is instantiated)
+    */
+    final bool started()
+    {
+        return startIdx !is startIdx.max;
+    }
+
+    /**
     Check if the end of the fragment has been marked
     */
-    final bool endMarked()
+    final bool ended()
     {
-        return endIdx !is startIdx.max;
+        return endIdx !is endIdx.max;
     }
 }
 
@@ -904,6 +897,42 @@ class EntryStub : CodeFragment
 }
 
 /**
+Branch target stub
+*/
+class BranchStub : CodeFragment
+{
+    /// Associated VM
+    VM vm;
+
+    /// Branch target index
+    size_t targetIdx;
+
+    this(VM vm, size_t targetIdx)
+    {
+        this.vm = vm;
+        this.targetIdx = targetIdx;
+    }
+}
+
+/**
+Call continuation stub
+*/
+class ContStub : CodeFragment
+{
+    /// Block version containing the call instruction
+    BlockVersion callVer;
+
+    /// Call continuation branch
+    BranchCode contBranch;
+
+    this(BlockVersion callVer, BranchCode contBranch)
+    {
+        this.callVer = callVer;
+        this.contBranch = contBranch;
+    }
+}
+
+/**
 Unit exit code
 */
 class ExitCode : CodeFragment
@@ -916,204 +945,39 @@ class ExitCode : CodeFragment
     }
 }
 
+/// Branch edge prelude code generation delegate
+alias void delegate(
+    CodeBlock as,
+    VM vm
+) PrelGenFn;
+
 /**
 Branch edge transition code
 */
 class BranchCode : CodeFragment
 {
+    /// Prelude code generation function
+    PrelGenFn prelGenFn;
+
+    // List of moves to transition to the successor state
+    Move[] moveList;
+
     /// IR branch edge object
     BranchEdge branch;
 
     /// Target block version (may be a stub)
     BlockVersion target;
 
-    this(BranchEdge branch, BlockVersion target)
+    this(
+        BranchEdge branch,
+        BlockVersion target,
+        PrelGenFn prelGenFn,
+        Move[] moveList)
     {
         this.branch = branch;
         this.target = target;
-    }
-
-    /**
-    Generate move code for this branch edge
-    */
-    void genCode(CodeBlock as, CodeGenState predState)
-    {
-        assert (target !is null);
-        auto succState = target.state;
-        assert (succState !is null);
-        auto vm = succState.callCtx.vm;
-        assert (vm !is null);
-
-        // List of moves to transition to the successor state
-        Move[] moveList;
-
-        // For each value in the successor state
-        foreach (succVal, succSt; succState.valMap)
-        {
-            auto succPhi = (
-                (branch.branch !is null && succVal.block is branch.target)?
-                cast(PhiNode)succVal:null
-            );
-            auto predVal = (
-                succPhi?
-                branch.getPhiArg(succPhi):succVal
-            );
-            assert (succVal !is null);
-            assert (predVal !is null);
-
-            if (succPhi)
-                as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
-            else
-                as.comment("move " ~ succVal.getName);
-
-            // Test if the successor value is a parameter
-            // We don't need to move parameter values to the stack
-            bool succParam = cast(FunParam)succVal !is null;
-
-            // Get the source and destination operands for the arg word
-            X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
-            X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
-
-            if (srcWordOpnd != dstWordOpnd && !(succParam && dstWordOpnd.isMem))
-                moveList ~= Move(dstWordOpnd, srcWordOpnd);
-
-            // Get the source and destination operands for the phi type
-            X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
-            X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
-
-            if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
-                moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
-
-            // TODO: handle delayed writes
-
-            /*
-            // Get the predecessor and successor type states
-            auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
-            auto succTS = succState.typeState.get(succVal, 0);
-
-            // Get the predecessor allocation state
-            auto predAS = predState.allocState.get(cast(IRDstValue)predVal, 0);
-
-            // If the successor value is a phi node
-            if (succPhi)
-            {
-                // If the phi is on the stack and the type is known,
-                // write the type to the stack to keep it in sync
-                if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
-                {
-                    assert (succTS & TF_SYNC);
-                    moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
-                }
-
-                // If the phi is in a register and the type is unknown,
-                // write 0 on the stack to avoid invalid references
-                if (!(succAS & RA_STACK) && !(succTS & TF_KNOWN))
-                {
-                    moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
-                }
-            }
-            else
-            {
-                // If the value wasn't before in a register, now is, and the type is unknown
-                // write 0 on the stack to avoid invalid references
-                if ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && (succAS & RA_GPREG) && !(succTS & TF_KNOWN))
-                {
-                    moveList ~= Move(new X86Mem(64, wspReg, 8 * succVal.outSlot), new X86Imm(0));
-                }
-
-                // If the type was not in sync in the predecessor and is now
-                // in sync in the successor, write the type to the type stack
-                if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
-                {
-                    moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
-                }
-            }
-            */
-        }
-
-        // Store the code start index
-        if (startIdx is startIdx.max)
-            markStart(as, vm);
-
-        // Execute the moves
-        execMoves(as, moveList, scrRegs[0], scrRegs[1]);
-
-        // Encode the final jump and version reference
-        as.jmp32Ref(vm, this.target);
-
-        // Store the code end index
-        markEnd(as, vm);
-
-        if (opts.jit_dumpasm)
-        {
-            writeln(this.genString(as));
-            writeln();
-        }
-
-        if (opts.jit_dumpinfo)
-        {
-            writeln("branch code length: ", length, " (", moveList.length, " moves)");
-            writeln();
-        }
-    }
-}
-
-/**
-Base class for basic block versions
-*/
-abstract class BlockVersion : CodeFragment
-{
-    /// Associated block
-    IRBlock block;
-
-    /// Code generation state at block entry
-    CodeGenState state;
-
-    // (Re)compiled version (initially null, non-null if patched)
-    VersionInst next = null;
-
-    /**
-    Patch this code fragment to jump to a newer version
-    */
-    void patch(VM vm, VersionInst next)
-    {
-        auto as = vm.execHeap;
-
-        // Write a relative 32-bit jump to the instance over the stub code
-        auto startPos = as.getWritePos();
-        as.setWritePos(this.startIdx);
-        as.writeASM("jmp", next.getName);
-        as.writeByte(JMP_REL32_OPCODE);
-        auto offset = next.startIdx - (as.getWritePos + 4);
-        as.writeInt(offset, 32);
-
-        // Ensure that we did not overrun the code fragment length
-        assert (as.getWritePos() <= this.endIdx);
-
-        // Return to the original write position
-        as.setWritePos(startPos);
-
-        // Set next pointer
-        this.next = next;
-
-        // Replace the current version by the new one in the version map
-        auto versions = state.callCtx.versionMap.get(this.block, []);
-        auto idx = versions.countUntil(this);
-        assert (idx !is -1);
-        versions[idx] = next;
-        assert (versions.countUntil(this) is -1);
-    }
-}
-
-/**
-Stubbed block version
-*/
-class VersionStub : BlockVersion
-{
-    this(IRBlock block, CodeGenState state)
-    {
-        this.block = block;
-        this.state = state;
+        this.prelGenFn = prelGenFn;
+        this.moveList = moveList;
     }
 }
 
@@ -1125,7 +989,7 @@ enum BranchShape
     DEFAULT // Neither target is next
 }
 
-/// Instruction code generation delegate
+/// Branch code generation delegate
 alias void delegate(
     CodeBlock as,
     VM vm,
@@ -1135,15 +999,21 @@ alias void delegate(
 ) BranchGenFn;
 
 /**
-Compiled block version instance
+Basic block version
 */
-class VersionInst : BlockVersion
+class BlockVersion : CodeFragment
 {
-    /// Branch targets
-    CodeFragment targets[2];
-
     /// Final branch code generation function
     BranchGenFn branchGenFn;
+
+    /// Associated block
+    IRBlock block;
+
+    /// Code generation state at block entry
+    CodeGenState state;
+
+    /// Branch targets
+    CodeFragment targets[2];
 
     /// Inner code length, excluding final branches
     uint32_t codeLen;
@@ -1164,27 +1034,101 @@ class VersionInst : BlockVersion
         CodeBlock as,
         CodeFragment target0,
         CodeFragment target1,
-        BranchShape shape,
         BranchGenFn genFn
     )
     {
+        assert (started);
+
+        auto vm = state.callCtx.vm;
+
         // Store the branch generation function and targets
         this.branchGenFn = genFn;
         this.targets = [target0, target1];
 
-        auto vm = state.callCtx.vm;
+        // Compute the code length
+        codeLen = cast(uint32_t)as.getWritePos - startIdx;
+
+        // If this block doesn't end in a call
+        if (block.lastInstr.opcode.isCall is false)
+        {
+            // TODO: if either targets are (not compiled and or not queued)
+            // write the block idx in scrReg[0]
+            size_t blockIdx = vm.fragList.length;
+            as.mov(scrRegs[0].opnd, X86Opnd(blockIdx));
+        }
+
+
+
+
+
+
+        // TODO: determine shape based on current position, who is queued next
 
         // Generate the final branch code
-        genFn(
+        branchGenFn(
             as,
             vm,
-            target0, 
-            target1, 
-            shape
+            target0,
+            target1,
+            BranchShape.DEFAULT
         );
 
         // Store the code end index
         markEnd(as, vm);
+    }
+
+    /**
+    Rewrite the final branch of this block
+    */
+    void rewriteBranch(CodeBlock as, size_t blockIdx)
+    {
+        writeln("rewriting final branch for ", block.getName);
+
+        // Ensure that this block has already been compiled
+        assert (started && ended);
+
+        auto vm = state.callCtx.vm;
+
+        // Move to the branch code position
+        auto origPos = as.getWritePos();
+        as.setWritePos(startIdx + codeLen);
+
+        // If this block doesn't end in a call
+        if (block.lastInstr.opcode.isCall is false)
+        {
+            // TODO: if either targets are (not compiled and or not queued)
+            // write the block idx in scrReg[0]
+            as.mov(scrRegs[0].opnd, X86Opnd(blockIdx));
+        }
+
+
+
+
+
+
+
+
+
+        // TODO: determine shape based on current position, who is queued next
+
+        // Generate the final branch code
+        branchGenFn(
+            as,
+            vm,
+            targets[0],
+            targets[1],
+            BranchShape.DEFAULT
+        );
+
+        // Ensure that we did not overwrite the next block
+        assert (as.getWritePos <= endIdx);
+
+        // Pas the end of the fragment with noops if necessary
+        if (as.getWritePos < endIdx)
+            as.nop(endIdx - as.getWritePos);
+
+        // Return to the previous write position
+        as.setWritePos(origPos);
     }
 }
 
@@ -1222,16 +1166,10 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
             queue(frag, branch.target);
         }
 
-        else if (auto stub = cast(VersionStub)frag)
-        {
-            queue(frag, stub.next);
-        }
-
-        else if (auto inst = cast(VersionInst)frag)
+        else if (auto inst = cast(BlockVersion)frag)
         {
             queue(frag, inst.targets[0]);
             queue(frag, inst.targets[1]);
-            queue(frag, inst.next);
         }
 
         else
@@ -1337,17 +1275,17 @@ BlockVersion getBlockVersion(
     //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
 
     // Create a new block version object using the predecessor's state
-    BlockVersion ver = (
-        noStub? 
-        new VersionInst(block, state):
-        new VersionStub(block, state)
-    );
+    auto ver = new BlockVersion(block, state);
 
     // Add the new version to the list for this block
     callCtx.versionMap[block] ~= ver;
 
-    // Queue the new version to be compiled
-    vm.queue(ver);
+    // If we know this version will be executed, queue it for compilation
+    if (noStub)
+        vm.queue(ver);
+
+    // Increment the total number of block versions (compiled or not)
+    stats.numVersions++;
 
     // Return the newly created block version
     assert (ver.state.callCtx is callCtx);
@@ -1360,7 +1298,8 @@ Request a branch edge transition matching the incoming state
 BranchCode getBranchEdge(
     BranchEdge branch,
     CodeGenState predState,
-    bool noStub
+    bool noStub,
+    PrelGenFn prelGenFn = null
 )
 {
     assert (
@@ -1368,7 +1307,9 @@ BranchCode getBranchEdge(
         "branch edge is null"
     );
 
-    auto liveInfo = predState.callCtx.fun.liveInfo;
+    auto callCtx = predState.callCtx;
+    auto vm = callCtx.vm;
+    auto liveInfo = callCtx.fun.liveInfo;
 
     // Copy the predecessor state
     auto succState = new CodeGenState(predState);
@@ -1441,13 +1382,116 @@ BranchCode getBranchEdge(
 
     // Get a version of the successor matching the incoming state
     auto succVer = getBlockVersion(
-        branch.target, 
-        succState, 
-        noStub
+        branch.target,
+        succState,
+        false
     );
 
+    // Update the successor state
+    succState = succVer.state;
+
+    // List of moves to transition to the successor state
+    Move[] moveList;
+
+    // For each value in the successor state
+    foreach (succVal, succSt; succState.valMap)
+    {
+        auto succPhi = (
+            (branch.branch !is null && succVal.block is branch.target)?
+            cast(PhiNode)succVal:null
+        );
+        auto predVal = (
+            succPhi?
+            branch.getPhiArg(succPhi):succVal
+        );
+        assert (succVal !is null);
+        assert (predVal !is null);
+
+        /*
+        if (succPhi)
+            as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
+        else
+            as.comment("move " ~ succVal.getName);
+        */
+
+        // Test if the successor value is a parameter
+        // We don't need to move parameter values to the stack
+        bool succParam = cast(FunParam)succVal !is null;
+
+        // Get the source and destination operands for the arg word
+        X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
+        X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
+
+        if (srcWordOpnd != dstWordOpnd && !(succParam && dstWordOpnd.isMem))
+            moveList ~= Move(dstWordOpnd, srcWordOpnd);
+
+        // Get the source and destination operands for the phi type
+        X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
+        X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
+
+        if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
+            moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
+
+        // TODO: handle delayed writes
+
+        /*
+        // Get the predecessor and successor type states
+        auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
+        auto succTS = succState.typeState.get(succVal, 0);
+
+        // Get the predecessor allocation state
+        auto predAS = predState.allocState.get(cast(IRDstValue)predVal, 0);
+
+        // If the successor value is a phi node
+        if (succPhi)
+        {
+            // If the phi is on the stack and the type is known,
+            // write the type to the stack to keep it in sync
+            if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
+            {
+                assert (succTS & TF_SYNC);
+                moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
+            }
+
+            // If the phi is in a register and the type is unknown,
+            // write 0 on the stack to avoid invalid references
+            if (!(succAS & RA_STACK) && !(succTS & TF_KNOWN))
+            {
+                moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
+            }
+        }
+        else
+        {
+            // If the value wasn't before in a register, now is, and the type is unknown
+            // write 0 on the stack to avoid invalid references
+            if ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && (succAS & RA_GPREG) && !(succTS & TF_KNOWN))
+            {
+                moveList ~= Move(new X86Mem(64, wspReg, 8 * succVal.outSlot), new X86Imm(0));
+            }
+
+            // If the type was not in sync in the predecessor and is now
+            // in sync in the successor, write the type to the type stack
+            if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
+            {
+                moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
+            }
+        }
+        */
+    }
+
     // Return a branch edge code object for the successor
-    return new BranchCode(branch, succVer);
+    auto branchCode = new BranchCode(
+        branch,
+        succVer,
+        prelGenFn,
+        moveList
+    );
+
+    // If we know this will be executed, queue the branch edge for compilation
+    if (noStub)
+        vm.queue(branchCode);
+
+    return branchCode;
 }
 
 /// Return address entry
@@ -1460,25 +1504,34 @@ alias Tuple!(
 
 /// Fragment reference tuple
 alias Tuple!(
-    size_t, "pos", 
-    CodeFragment, "frag", 
-    size_t, "size"
+    size_t, "pos",
+    size_t, "size",
+    CodeFragment, "frag",
+    size_t, "targetIdx"
 ) FragmentRef;
 
 /**
 Add a fragment reference to the reference list
 */
-void addFragRef(VM vm, size_t pos, CodeFragment frag, size_t size)
+void addFragRef(
+    VM vm,
+    size_t pos,
+    size_t size,
+    CodeFragment frag,
+    size_t targetIdx
+)
 {
-    vm.refList ~= FragmentRef(pos, frag, size);
+    vm.refList ~= FragmentRef(pos, size, frag, targetIdx);
 }
 
 /**
 Queue a block version to be compiled
 */
-void queue(VM vm, BlockVersion ver)
+void queue(VM vm, CodeFragment frag)
 {
-    vm.compQueue ~= ver;
+    writeln("queueing: ", frag.getName);
+
+    vm.compQueue ~= frag;
 }
 
 /**
@@ -1501,10 +1554,10 @@ void setCallCtx(VM vm, CallCtx callCtx)
 Set the return address entry for a call instruction
 */
 void setRetEntry(
-    VM vm, 
+    VM vm,
     IRInstr callInstr,
     CallCtx callCtx,
-    CodeFragment retCode, 
+    CodeFragment retCode,
     CodeFragment excCode
 )
 {
@@ -1536,55 +1589,33 @@ void compile(VM vm, CallCtx callCtx)
             "insufficient space to compile version"
         );
 
-        // Get a version to compile from the queue
-        auto ver = vm.compQueue.back;
+        // Get a fragment to compile from the queue
+        auto frag = vm.compQueue.back;
         vm.compQueue.popBack();
 
-        // If this is a version stub
-        if (auto stub = cast(VersionStub)ver)
-        {
-            //writeln("compiling stub");
-
-            // Store the code start index
-            stub.markStart(as, vm);
-
-            // Insert the label for this block in the out of line code
-            as.comment("Stub of " ~ ver.getName());
-
-            // TODO: properly spill registers, GC may be run during compileStub
-
-            as.pushJITRegs();
-
-            // Call the JIT compile function,
-            // passing it a pointer to the stub
-            auto compileFn = &compileStub;
-            as.ptr(scrRegs[0], compileFn);
-            as.ptr(cargRegs[0], stub);
-            as.call(scrRegs[0]);
-
-            as.popJITRegs();
-
-            // Jump to the compiled version
-            as.jmp(X86Opnd(RAX));
-
-            // Store the code end index
-            stub.markEnd(as, vm);
-        }
+        writeln("compiling: ", frag.getName);
 
         // If this is a version instance
-        else if (auto inst = cast(VersionInst)ver)
+        if (auto ver = cast(BlockVersion)frag)
         {
             //writeln("compiling instance");
 
-            auto block = inst.block;
-            assert (inst.block !is null);
+            assert (
+                ver.ended is false,
+                "version already compiled: " ~ ver.getName
+            );
+
+            auto block = ver.block;
+            assert (ver.block !is null);
+
+            writeln(block.toString);
 
             // Copy the instance's state object
-            auto state = new CodeGenState(inst.state);
+            auto state = new CodeGenState(ver.state);
 
             // Store the code start index for this fragment
-            if (inst.startIdx is inst.startIdx.max)
-               inst.markStart(as, vm);
+            if (ver.startIdx is ver.startIdx.max)
+               ver.markStart(as, vm);
 
             as.comment("Instance of " ~ ver.getName());
             //as.printStr(block.fun.getName);
@@ -1599,7 +1630,7 @@ void compile(VM vm, CallCtx callCtx)
                 if (opts.jit_genasm)
                     as.comment(instr.toString());
 
-                //as.printStr(instr.toString());
+                as.printStr(instr.toString());
 
                 auto opcode = instr.opcode;
                 assert (opcode !is null);
@@ -1612,7 +1643,7 @@ void compile(VM vm, CallCtx callCtx)
 
                 // Call the code generation function for the opcode
                 opcode.genFn(
-                    inst,
+                    ver,
                     state,
                     instr,
                     as
@@ -1622,14 +1653,78 @@ void compile(VM vm, CallCtx callCtx)
                 as.linkLabels();
 
                 // If the end of the block was marked, skip further instructions
-                if (inst.endMarked)
+                if (ver.ended)
                     break;
             }
 
             // Ensure that the end of the fragment was marked
-            assert (inst.endMarked, inst.block.toString);
+            assert (frag.ended, ver.block.toString);
 
             stats.numInsts++;
+        }
+
+        // If this is a branch code fragment
+        else if (auto branch = cast(BranchCode)frag)
+        {
+            assert (branch.target !is null);
+
+            // Store the code start index
+            branch.markStart(as, vm);
+
+            // Execute the moves
+            execMoves(as, branch.moveList, scrRegs[0], scrRegs[1]);
+
+            // Encode the final jump and version reference
+            as.jmp32Ref(vm, branch.target);
+
+            // Store the code end index
+            branch.markEnd(as, vm);
+
+            // If the target is not yet compiled, queue it for compilation
+            if (branch.target.started is false)
+                vm.queue(branch.target);
+
+            if (opts.jit_dumpinfo)
+            {
+                writeln(
+                    "branch code length: ", branch.length, 
+                    " (", branch.moveList.length, " moves)"
+                );
+                writeln();
+            }
+        }
+
+        // If this is a call continuation stub
+        else if (auto stub = cast(ContStub)frag)
+        {
+            stub.markStart(as, vm);
+
+            as.comment("Continuation stub for " ~ stub.contBranch.getName);
+
+            as.pushJITRegs();
+
+            // The first argument is the VM object
+            as.ptr(cargRegs[0], stub);
+
+            // Call the JIT compilation function,
+            auto compileFn = &compileCont;
+            as.ptr(scrRegs[0], compileFn);
+            as.call(scrRegs[0]);
+
+            as.popJITRegs();
+
+            // Jump to the compiled continuation
+            as.jmp(X86Opnd(RAX));
+
+            stub.markEnd(as, vm);
+
+            // Set the return address entry for this stub
+            vm.setRetEntry(
+                stub.callVer.block.lastInstr,
+                stub.callVer.state.callCtx,
+                stub,
+                stub.callVer.targets[1]
+            );
         }
 
         else
@@ -1637,11 +1732,9 @@ void compile(VM vm, CallCtx callCtx)
             assert (false, "invalid code fragment");
         }
 
-        stats.numVersions++;
-
         if (opts.jit_dumpasm)
         {
-            writeln(ver.genString(as));
+            writeln(frag.genString(as));
             writeln();
         }
     }
@@ -1649,35 +1742,49 @@ void compile(VM vm, CallCtx callCtx)
     assert (vm.compQueue.length is 0);
 
     // For each fragment reference
-    auto startPos = as.getWritePos();
     foreach (refr; vm.refList)
     {
-        auto frag = refr.frag;
-        assert (frag.startIdx !is refr.frag.startIdx.max);
+        // If the target is not compiled, substitute it for a branch stub
+        CodeFragment target;
+        if (refr.frag.started)
+        {
+            target = refr.frag;
+        }
+        else
+        {
+            assert (refr.targetIdx < 2);
+            target = getBranchStub(vm, refr.targetIdx);
+        }
+
+        // Set the write position at the reference point
+        auto startPos = as.getWritePos();
         as.setWritePos(refr.pos);
 
         // Switch on the reference size/type
         switch (refr.size)
         {
             case 32:
-            auto offset = cast(int32_t)frag.startIdx - (cast(int32_t)refr.pos + 4);
+            auto offset = cast(int32_t)target.startIdx - (cast(int32_t)refr.pos + 4);
             as.writeInt(offset, 32);
             if (opts.jit_dumpinfo)
-                writefln("linking ref to %s, offset=%s", frag.getName, offset);
+                writefln("linking ref to %s, offset=%s", target.getName, offset);
             break;
 
             case 64:
-            as.writeInt(cast(int64_t)frag.getCodePtr(as), 64);
+            as.writeInt(cast(int64_t)target.getCodePtr(as), 64);
             if (opts.jit_dumpinfo)
-                writefln("linking absolute ref to %s", frag.getName);
+                writefln("linking absolute ref to %s", target.getName);
             break;
 
             default:
             assert (false);
         }
 
+        // Return to the previous write position
+        as.setWritePos(startPos);
     }
-    as.setWritePos(startPos);
+
+    // Clear the reference list
     vm.refList.length = 0;
 
     if (opts.jit_dumpinfo)
@@ -1690,6 +1797,8 @@ void compile(VM vm, CallCtx callCtx)
 
     // Unset the call context
     vm.setCallCtx(null);
+
+    //writeln("leaving compile");
 }
 
 /// Unit function entry point
@@ -1749,8 +1858,8 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     //
 
     // Create a version instance object for the function entry
-    auto entryInst = new VersionInst(
-        fun.entryBlock, 
+    auto entryInst = new BlockVersion(
+        fun.entryBlock,
         new CodeGenState(fun.getCtx(false, vm))
     );
 
@@ -1816,42 +1925,6 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 }
 
 /**
-Compile the block version instance for a stub
-*/
-extern (C) CodePtr compileStub(VersionStub stub)
-{
-    auto startTimeUsecs = Clock.currAppTick().usecs();
-
-    //writeln("entering compileStub");
-
-    auto state = stub.state;
-    auto vm = state.callCtx.vm;
-
-    assert (stub.startIdx !is stub.startIdx.max);
-    assert (stub.next is null);
-
-    // Create a version instance object for this stub
-    // and set the instance pointer for the stub
-    auto inst = new VersionInst(stub.block, state);
-
-    // Compile the version instance
-    vm.queue(inst);
-    vm.compile(state.callCtx);
-
-    // Patch the stub to jump to the compiled instance
-    stub.patch(vm, inst);
-
-    //writeln("leaving compileStub");
-
-    // Update the compilation time stat
-    auto endTimeUsecs = Clock.currAppTick().usecs();
-    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
-
-    // Return a pointer to the instance's code
-    return inst.getCodePtr(vm.execHeap);
-}
-
-/**
 Compile an entry block instance for a function
 */
 extern (C) CodePtr compileEntry(EntryStub stub)
@@ -1905,13 +1978,14 @@ extern (C) CodePtr compileEntry(EntryStub stub)
 
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
-        fun.entryBlock, 
+        fun.entryBlock,
         new CodeGenState(fun.getCtx(false, vm)),
         true
     );
+
     // Request an instance for the function entry block
     auto ctorInst = getBlockVersion(
-        fun.entryBlock, 
+        fun.entryBlock,
         new CodeGenState(fun.getCtx(true, vm)),
         true
     );
@@ -1931,6 +2005,93 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
 
     return ctorCall? fun.ctorCode:fun.entryCode;
+}
+
+/**
+Compile the branch code when a branch stub is hit
+*/
+extern (C) CodePtr compileBranch(VM vm, size_t blockIdx, size_t targetIdx)
+{
+    auto startTimeUsecs = Clock.currAppTick().usecs();
+
+    writeln("entering compileBranch");
+    writeln("    blockIdx=", blockIdx);
+    writeln("    targetIdx=", targetIdx);
+
+    // Get the block from which the stub hit originated
+    assert (blockIdx < vm.fragList.length, "invalid block idx");
+    auto srcBlock = cast(BlockVersion)vm.fragList[blockIdx];
+    assert (srcBlock !is null);
+
+    // Get the branch edge
+    assert (targetIdx < srcBlock.targets.length);
+    auto branchCode = srcBlock.targets[targetIdx];
+    assert (branchCode.started is false);
+
+    // Queue the branch edge to be compiled
+    vm.queue(branchCode);
+
+    // Rewrite the final branch of the source block
+    srcBlock.rewriteBranch(vm.execHeap, blockIdx);
+
+    // Compile fragments and patch references
+    vm.compile(srcBlock.state.callCtx);
+
+    // Update the compilation time stat
+    auto endTimeUsecs = Clock.currAppTick().usecs();
+    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+
+    writeln("leaving compileBranch");
+
+    // Return a pointer to the compiled branch code
+    return branchCode.getCodePtr(vm.execHeap);
+}
+
+/**
+Called when a call continuation stub is hit, compiles the continuation
+*/
+extern (C) CodePtr compileCont(ContStub stub)
+{
+    auto startTimeUsecs = Clock.currAppTick().usecs();
+
+    writeln("entering compileCont");
+
+    auto callVer = stub.callVer;
+    auto contBranch = stub.contBranch;
+    auto callCtx = callVer.state.callCtx;
+    auto vm = callCtx.vm;
+
+    // Queue the continuation branch edge to be compiled
+    vm.queue(contBranch);
+
+    // Update the continuation target in the call version
+    stub.callVer.targets[0] = contBranch;
+
+    // Rewrite the final branch of the call block
+    stub.callVer.rewriteBranch(vm.execHeap, 0);
+
+    // Compile fragments and patch references
+    vm.compile(callCtx);
+
+    // Remove the stub's return entry
+    vm.retAddrMap.remove(stub.getCodePtr(vm.execHeap));
+
+    // Set the return entry for the compiled call continuation
+    vm.setRetEntry(
+        callVer.block.lastInstr,
+        callCtx,
+        contBranch,
+        callVer.targets[1]
+    );
+
+    // Update the compilation time stat
+    auto endTimeUsecs = Clock.currAppTick().usecs();
+    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+
+    writeln("leaving compileCont");
+
+    // Return a pointer to the compiled branch code
+    return contBranch.getCodePtr(vm.execHeap);
 }
 
 /**
@@ -1971,5 +2132,68 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
         vm.entryStub = stub;
 
     return stub.getCodePtr(as);
+}
+
+/**
+Get the branch target stub for a given target index
+*/
+BranchStub getBranchStub(VM vm, size_t targetIdx)
+{
+    auto as = vm.execHeap;
+
+    // If this stub was already generated, return it
+    if (targetIdx < vm.branchStubs.length && vm.branchStubs[targetIdx] !is null)
+        return vm.branchStubs[targetIdx];
+
+    // TODO: don't need special spill code for now, no reg alloc yet
+    // eventually, need to save registers and implement soft-spilling scheme
+
+    writeln("generating branch stub, targetIdx=", targetIdx);
+
+    auto stub = new BranchStub(vm, targetIdx);
+    vm.branchStubs.length = targetIdx + 1;
+    vm.branchStubs[targetIdx] = stub;
+
+    stub.markStart(as, vm);
+
+    // Insert the label for this block in the out of line code
+    as.comment("Branch stub (target " ~ to!string(targetIdx) ~ ")");
+
+    //as.printStr("hit branch stub (target " ~ to!string(targetIdx) ~ ")");
+    //as.printUint(scrRegs[0].opnd);
+
+    // TODO: properly spill registers, GC may be run during compileBranch
+
+    as.pushJITRegs();
+
+    // The first argument is the VM object
+    as.mov(cargRegs[0].opnd, vmReg.opnd);
+
+    // The second argument is the src block index,
+    // which was passed in scrRegs[0]
+    as.mov(cargRegs[1].opnd, scrRegs[0].opnd);
+
+    // The third argument is the branch target index
+    as.mov(cargRegs[2].opnd, X86Opnd(targetIdx));
+
+    // Call the JIT compilation function,
+    auto compileFn = &compileBranch;
+    as.ptr(scrRegs[0], compileFn);
+    as.call(scrRegs[0]);
+
+    as.popJITRegs();
+
+    // Jump to the compiled version
+    as.jmp(X86Opnd(RAX));
+
+    // Store the code end index
+    stub.markEnd(as, vm);
+
+    writeln(stub.genString(as));
+
+    writeln("done generating branch stub");
+    writeln("    stub length=", stub.length);
+
+    return stub;
 }
 

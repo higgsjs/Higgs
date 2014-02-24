@@ -253,7 +253,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Initialize the to-space allocation pointer
     vm.toAlloc = vm.toStart;
-    
+
     //writeln("visiting root objects");
 
     // Forward the root objects
@@ -353,16 +353,14 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Allocate a new string table
     vm.strTbl = strtbl_alloc(vm, strTblCap);
 
-    // Add the forwarded strings to the new string table
+    // Add only the forwarded strings to the new string table
     for (uint32 i = 0; i < strTblCap; ++i)
     {
         auto ptr = strtbl_get_str(oldStrTbl, i);
-
         if (ptr is null)
             continue;
 
         auto next = obj_get_next(ptr);
-
         if (next is null)
             continue;
 
