@@ -170,11 +170,17 @@ TODO: simple ad-hoc, rule-based inlining
 TODO: block-internal jumps, can they all fit in 8-bit indices? force?
 - can maybe "promise" it will fit
 
-TODO: as.comment, as.writeString, probably somewhat inefficient
+TODO: as.comment, probably somewhat inefficient
 - Should maybe try templating these functions, no string concat if no comments
 - benchmark first and after
+- also try declaring args lazy?
 
-TODO: compare speed against master branch
+Meeting: to be shown, disassembly for fib
+- completed and debugged new stub scheme
+- optimized new stub scheme, branch rewriting
+- made disassembly strings much faster
+
+TODO: compare speed against master branch with ./benchmark.py
 
 TODO: zero length branch edges should be eliminated
 - do this later, get it working first
@@ -190,29 +196,44 @@ TODO: getBranchEdge, should probably avoid:
 - only store the predState and target block at first
 - can lazily generate moveList when compiling branch edge
 - if isNoop, eliminate the branch edge
+- want to do repatching in compile loop, when compiling branch edge
 
-TODO: optimize final jump ordering when rewriting final branch
-- BranchShape
-- again need to check if successors are queued
 
-TODO: avoid writing blockIdx when neither target is a stub
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: if we're the last block, don't pad with nops!
+
+[DONE] TODO: avoid writing blockIdx when neither target is a stub
 - need to check if queued for compilation also
-- also make this a 32-bit opnd move, more compact
-- log if this happens
+  - workList.canFind(b)
+make; ./higgs --jit_genasm --e "print(\$rt_add.asmString())"
 
+[DONE] FIXME: issue with neither targets being stubs
+- not writing blockIdx causes segfault
+- problem happens with is_i32, right when compiling a stub
+- error with nop() function causing stack overflow
 
+[DONE] TODO: optimize final jump ordering when rewriting final branch
+- BranchShape
+- again need to check if successors are queued?
+just compare startIdx... value is max if stub!
 
+[DONE] TODO: way to remove code block strings in specific range, delStrs
+- Needed when rewriting branch or patching stub
+- range [startIdx, endIdx[
 
+[DONE] TODO: asm strings, reimplement using an array of indices to lists of strings
 
-
-
-
-
-
-
-
-
-
+[DONE] TODO: make blockIdx 32-bit so move is smaller
 
 [DONE] TODO: pushfq, popfq for debugging w/ printInt, printStr
 9C PUSHFQ

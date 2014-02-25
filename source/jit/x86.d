@@ -1629,27 +1629,28 @@ alias writeRMUnary!(
 /// nop - Noop, one or multiple bytes long
 void nop(CodeBlock cb, size_t length = 1)
 {
-    if (length > 0)
-        cb.writeASM("nop" ~ to!string(length));
-
     switch (length)
     {
         case 0:
         break;
 
         case 1:
+        cb.writeASM("nop1");
         cb.writeByte(0x90);
         break;
 
         case 2:
+        cb.writeASM("nop2");
         cb.writeBytes(0x89, 0xf6);
         break;
 
         case 3:
+        cb.writeASM("nop3");
         cb.writeBytes(0x8d,0x76,0x00);
         break;
 
         case 4:
+        cb.writeASM("nop4");
         cb.writeBytes(0x8d,0x74,0x26,0x00);
         break;
 
@@ -1658,19 +1659,28 @@ void nop(CodeBlock cb, size_t length = 1)
         break;
 
         case 6:
+        cb.writeASM("nop6");
         cb.writeBytes(0x8d,0xb6,0x00,0x00,0x00,0x00);
         break;
 
         case 7:
+        cb.writeASM("nop7");
         cb.writeBytes(0x8d,0xb4,0x26,0x00,0x00,0x00,0x00);
         break;
 
         case 8:
-        cb.nop(8); cb.nop(1); cb.nop(7);
+        cb.nop(1); cb.nop(7);
         break;
 
         default:
-        assert (false);
+        size_t written = 0;
+        while (written + 8 <= length)
+        {
+            cb.nop(8);
+            written += 8;
+        }
+        cb.nop(length - written);
+        break;
     }
 }
 

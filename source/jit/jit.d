@@ -626,8 +626,8 @@ class CodeGenState
 
     /// Get the operand for an instruction's output
     X86Opnd getOutOpnd(
-        CodeBlock as, 
-        IRInstr instr, 
+        CodeBlock as,
+        IRInstr instr,
         size_t numBits
     )
     {
@@ -884,6 +884,9 @@ abstract class CodeFragment
     {
         assert (this.started && next.started);
 
+        // Clear the old ASM comments
+        as.delStrings(startIdx, endIdx);
+
         // Write a relative 32-bit jump to the instance over the stub code
         auto startPos = as.getWritePos();
         as.setWritePos(this.startIdx);
@@ -1073,18 +1076,10 @@ class BlockVersion : CodeFragment
         // If this block doesn't end in a call
         if (block.lastInstr.opcode.isCall is false)
         {
-            // TODO: if either targets are (not compiled and or not queued)
-            // write the block idx in scrReg[0]
+            // Write the block idx in scrReg[0]
             size_t blockIdx = vm.fragList.length;
-            as.mov(scrRegs[0].opnd, X86Opnd(blockIdx));
+            as.mov(scrRegs[0].opnd(32), X86Opnd(blockIdx));
         }
-
-
-
-
-
-
-        // TODO: determine shape based on current position, who is queued next
 
         // Generate the final branch code
         branchGenFn(
@@ -1102,7 +1097,7 @@ class BlockVersion : CodeFragment
     /**
     Rewrite the final branch of this block
     */
-    void rewriteBranch(CodeBlock as, size_t blockIdx)
+    void regenBranch(CodeBlock as, size_t blockIdx)
     {
         //writeln("rewriting final branch for ", block.getName);
 
@@ -1115,23 +1110,49 @@ class BlockVersion : CodeFragment
         auto origPos = as.getWritePos();
         as.setWritePos(startIdx + codeLen);
 
-        // If this block doesn't end in a call
-        if (block.lastInstr.opcode.isCall is false)
+        // Clear the ASM comments of the old branch code
+        as.delStrings(as.getWritePos, endIdx);
+
+
+
+        auto stub0 = (
+            targets[0] &&
+            !targets[0].started &&
+            !vm.compQueue.canFind(targets[0])
+        );
+        auto stub1 = (
+            targets[1] &&
+            !targets[1].started &&
+            !vm.compQueue.canFind(targets[1])
+        );
+
+        // If this block doesn't end in a call and at least one target is a stub
+        if (!block.lastInstr.opcode.isCall && (stub0 || stub1))
         {
-            // TODO: if either targets are (not compiled and or not queued)
-            // write the block idx in scrReg[0]
-            as.mov(scrRegs[0].opnd, X86Opnd(blockIdx));
+            // Write the block idx in scrReg[0]
+            as.mov(scrRegs[0].opnd(32), X86Opnd(blockIdx));
         }
 
-
-
-
-
-
-
-
-
-        // TODO: determine shape based on current position, who is queued next
+        // Determine the branch shape, whether a target is immediately next
+        BranchShape shape = BranchShape.DEFAULT;
+        if (targets[0])
+        {
+            if (targets[0].startIdx is endIdx)
+                shape = BranchShape.NEXT0;
+            if (endIdx is origPos &&
+                vm.compQueue.length > 0 &&
+                vm.compQueue.back is targets[0])
+                shape = BranchShape.NEXT0;
+        }
+        if (targets[1])
+        {
+            if (targets[1].startIdx is endIdx)
+                shape = BranchShape.NEXT1;
+            if (endIdx is origPos &&
+                vm.compQueue.length > 0 &&
+                vm.compQueue.back is targets[1])
+                shape = BranchShape.NEXT1;
+        }
 
         // Generate the final branch code
         branchGenFn(
@@ -1139,18 +1160,26 @@ class BlockVersion : CodeFragment
             vm,
             targets[0],
             targets[1],
-            BranchShape.DEFAULT
+            shape
         );
 
         // Ensure that we did not overwrite the next block
         assert (as.getWritePos <= endIdx);
 
-        // Pas the end of the fragment with noops if necessary
-        if (as.getWritePos < endIdx)
+        // If this is the last block in the executable heap
+        if (endIdx is origPos)
+        {
+            // Resize the block to the current position
+            endIdx = cast(uint32_t)as.getWritePos;
+        }
+        else
+        {
+            // Pad the end of the fragment with noops
             as.nop(endIdx - as.getWritePos);
 
-        // Return to the previous write position
-        as.setWritePos(origPos);
+            // Return to the previous write position
+            as.setWritePos(origPos);
+        }
     }
 }
 
@@ -1163,7 +1192,7 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
 
     void queue(CodeFragment frag, CodeFragment target)
     {
-        if (target is null)
+        if (target is null || target.ended is false)
             return;
 
         // Don't re-visit fragments at smaller addresses
@@ -1207,8 +1236,8 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
 
     foreach (fIdx, frag; fragList)
     {
-        if (frag.length is 0)
-            continue;
+        //if (frag.length is 0)
+        //    continue;
 
         if (str.data != "")
             str.put("\n\n");
@@ -2043,7 +2072,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
 /**
 Compile the branch code when a branch stub is hit
 */
-extern (C) CodePtr compileBranch(VM vm, size_t blockIdx, size_t targetIdx)
+extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
 {
     auto startTimeUsecs = Clock.currAppTick().usecs();
 
@@ -2065,7 +2094,7 @@ extern (C) CodePtr compileBranch(VM vm, size_t blockIdx, size_t targetIdx)
     vm.queue(branchCode);
 
     // Rewrite the final branch of the source block
-    srcBlock.rewriteBranch(vm.execHeap, blockIdx);
+    srcBlock.regenBranch(vm.execHeap, blockIdx);
 
     // Compile fragments and patch references
     vm.compile(srcBlock.state.callCtx);
@@ -2102,7 +2131,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     stub.callVer.targets[0] = contBranch;
 
     // Rewrite the final branch of the call block
-    stub.callVer.rewriteBranch(vm.execHeap, 0);
+    stub.callVer.regenBranch(vm.execHeap, 0);
 
     // Compile fragments and patch references
     vm.compile(callCtx);
@@ -2203,10 +2232,10 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
 
     // The second argument is the src block index,
     // which was passed in scrRegs[0]
-    as.mov(cargRegs[1].opnd, scrRegs[0].opnd);
+    as.mov(cargRegs[1].opnd(32), scrRegs[0].opnd(32));
 
     // The third argument is the branch target index
-    as.mov(cargRegs[2].opnd, X86Opnd(targetIdx));
+    as.mov(cargRegs[2].opnd(32), X86Opnd(targetIdx));
 
     // Call the JIT compilation function,
     auto compileFn = &compileBranch;

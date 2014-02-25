@@ -318,8 +318,21 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
                 BranchShape shape
             )
             {
-                jo32Ref(as, vm, target1, 1);
-                jmp32Ref(as, vm, target0, 0);
+                final switch (shape)
+                {
+                    case BranchShape.NEXT0:
+                    jo32Ref(as, vm, target1, 1);
+                    break;
+
+                    case BranchShape.NEXT1:
+                    jno32Ref(as, vm, target0, 0);
+                    break;
+
+                    case BranchShape.DEFAULT:
+                    jo32Ref(as, vm, target1, 1);
+                    jmp32Ref(as, vm, target0, 0);
+                    break;
+                }
             }
         );
     }
@@ -713,7 +726,7 @@ bool boolArgPrev(IRInstr instr)
 }
 
 void IsTypeOp(Type type)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -788,8 +801,21 @@ void IsTypeOp(Type type)(
                 BranchShape shape
             )
             {
-                jne32Ref(as, vm, target1, 1);
-                jmp32Ref(as, vm, target0, 0);
+                final switch (shape)
+                {
+                    case BranchShape.NEXT0:
+                    jne32Ref(as, vm, target1, 1);
+                    break;
+
+                    case BranchShape.NEXT1:
+                    je32Ref(as, vm, target0, 0);
+                    break;
+
+                    case BranchShape.DEFAULT:
+                    jne32Ref(as, vm, target1, 1);
+                    jmp32Ref(as, vm, target0, 0);
+                    break;
+                }
             }
         );
     }
@@ -1336,34 +1362,6 @@ void gen_call_prim(
     CodeBlock as
 )
 {
-    /*
-    /// Inlining execution count threshold
-    const uint32_t INLINE_THRESHOLD = 5000;
-
-    as.incStatCnt(&stats.numCallPrim, scrRegs[0]);
-
-    extern (C) static recompile(BlockVersion ver)
-    {
-        auto block = ver.block;
-        auto state = ver.state;
-        auto callCtx = state.callCtx;
-        auto vm = callCtx.vm;
-
-        writeln("inlining");
-
-        // Create a new version of this block
-        auto newInst = new BlockVersion(block, ver.state);
-        newInst.counter = ver.counter;
-
-        // Recompile the new call block with inlining
-        vm.queue(newInst);
-        vm.compile(callCtx);
-
-        // Patch the current version to jump to the inlined version
-        ver.patch(vm, newInst);
-    }
-    */
-
     auto vm = st.callCtx.vm;
 
     // Function name string (D string)
@@ -1387,147 +1385,6 @@ void gen_call_prim(
     // Check that the argument count matches
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     assert (numArgs is fun.numParams);
-
-    /*
-    // If we are recompiling with inlining
-    if (ver.counter > 0)
-    {
-        // State object for the call continuation
-        auto contState = new CodeGenState(st);
-
-        // Create the continuation branch object
-        BranchCode excBranch;
-        if (instr.getTarget(1))
-        {
-            excBranch = getBranchEdge(
-                instr.getTarget(1),
-                st,
-                false
-            );
-        }
-
-        // Create the callee context
-        auto subCtx = new CallCtx(
-            st.callCtx,
-            instr,
-            contState,
-            excBranch,
-            fun,
-            false
-        );
-
-        // Create the callee entry state
-        auto calleeSt = new CodeGenState(subCtx);
-
-        // Map parameters to parent values in the calleeSt
-        foreach (paramIdx, argIdent; fun.ast.params)
-        {
-            auto paramVal = fun.paramMap[argIdent];
-            auto argIdx = paramIdx + 2;
-            auto argVal = instr.getArg(argIdx);
-            auto dstIdx = cast(int)(-numArgs + paramIdx);
-
-            // If the argument is a non-constant value
-            if (auto dstArg = cast(IRDstValue)argVal)
-            {
-                // Map the parameter to the caller function slot
-                // Note: the argument we are receiving might be mapped
-                // across multiple levels of inlining
-                auto valState = st.getState(dstArg);
-                calleeSt.mapToStack(paramVal, valState.stackIdx + fun.numLocals);
-            }
-            else
-            {
-                // Copy the argument word
-                auto argOpnd = st.getWordOpnd(
-                    as,
-                    instr,
-                    argIdx,
-                    64,
-                    scrRegs[1].opnd(64),
-                    true,
-                    false
-                );
-                as.setWord(dstIdx, argOpnd);
-
-                // Copy the argument type
-                auto typeOpnd = st.getTypeOpnd(
-                    as,
-                    instr,
-                    argIdx,
-                    scrRegs[1].opnd(8),
-                    true
-                );
-                as.setType(dstIdx, typeOpnd);
-            }
-        }
-
-        // Get an inlined entry block version
-        auto entryVer = getBlockVersion(
-            fun.entryBlock,
-            calleeSt,
-            true
-        );
-
-        //as.printStr("inlined call to " ~ fun.getName);
-
-        // Generate the branch code
-        ver.genBranch(
-            as,
-            entryVer,
-            excBranch,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
-            {
-                // Jump to the function entry
-                jmp32Ref(as, vm, target0);
-            }
-        );
-
-        // Add the exception value move code to the exception branch
-        if (excBranch)
-        {
-            excBranch.markStart(as, vm);
-            as.add(tspReg, Type.sizeof);
-            as.add(wspReg, Word.sizeof);
-            as.getWord(scrRegs[0], -1);
-            as.setWord(instr.outSlot, scrRegs[0].opnd(64));
-            as.getType(scrRegs[0].reg(8), -1);
-            as.setType(instr.outSlot, scrRegs[0].opnd(8));
-            excBranch.genCode(as, st);
-        }
-
-        return;
-    }
-
-    // If inlining is not disabled and this inlining would not be recursive
-    if (opts.jit_noinline is false && st.callCtx.contains(fun) is false)
-    {
-        // Fetch and increment the execution counter
-        as.ptr(scrRegs[0], ver);
-        as.getMember!("BlockVersion.counter")(scrRegs[1].reg(32), scrRegs[0]);
-        as.inc(scrRegs[1].opnd(32));
-        as.setMember!("BlockVersion.counter")(scrRegs[0], scrRegs[1].reg(32));
-
-        // Compare the counter against the threshold
-        as.cmp(scrRegs[1].opnd(32), X86Opnd(INLINE_THRESHOLD));
-        as.jne(Label.FALSE);
-
-        // Call the recompilation function
-        as.pushJITRegs();
-        as.ptr(cargRegs[0], ver);
-        as.ptr(scrRegs[0], &recompile);
-        as.call(scrRegs[0].opnd);
-        as.popJITRegs();
-
-        as.label(Label.FALSE);
-    }
-    */
 
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
@@ -1630,7 +1487,7 @@ void gen_call_prim(
 }
 
 void gen_call(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
