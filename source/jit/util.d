@@ -252,13 +252,13 @@ void pushRegs(CodeBlock as)
     as.push(R9);
     as.push(R10);
     as.push(R11);
-    as.push(R11);
+    as.pushfq();
 }
 
 /// Restore caller-save registers from the after before a C call
 void popRegs(CodeBlock as)
 {
-    as.pop(R11);
+    as.popfq();
     as.pop(R11);
     as.pop(R10);
     as.pop(R9);

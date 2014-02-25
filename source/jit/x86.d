@@ -1707,6 +1707,13 @@ void push(CodeBlock cb, immutable X86Reg reg)
     cb.writeOpcode(0x50, reg);
 }
 
+/// pushfq - Push the flags register (64-bit)
+void pushfq(CodeBlock cb)
+{
+    cb.writeASM("pushfq");
+    cb.writeByte(0x9C);
+}
+
 /// pop - Pop a register off the stack
 void pop(CodeBlock cb, immutable X86Reg reg)
 {
@@ -1717,6 +1724,15 @@ void pop(CodeBlock cb, immutable X86Reg reg)
     if (reg.rexNeeded)
         cb.writeREX(false, 0, 0, reg.regNo);
     cb.writeOpcode(0x58, reg);
+}
+
+/// popfq - Pop the flags register (64-bit)
+void popfq(CodeBlock cb)
+{
+    cb.writeASM("popfq");
+
+    // REX.W + 0x9D
+    cb.writeBytes(0x48, 0x9D);
 }
 
 /// ret - Return from call, popping only the return address
@@ -1815,7 +1831,7 @@ alias writeShift!(
 
 // sqrtsd - Square root of scalar double (SSE2)
 alias writeXMM64!(
-    "sqrtsd", 
+    "sqrtsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x51  // opRegMem1
@@ -1836,7 +1852,7 @@ alias writeRMMulti!(
 
 // subsd - Subtract scalar double
 alias writeXMM64!(
-    "subsd", 
+    "subsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x5C  // opRegMem1

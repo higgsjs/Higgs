@@ -182,40 +182,46 @@ TODO: zero length branch edges should be eliminated
 - if moveList.length is 0 and prelGenFn is null, then it's empty
   add isNoop accessor
 
-TODO: getBranchEdge, should probably avoid immediately doing move generation,
-avoid doing getBlockVersion to get a successor version
-- generates a succState
+TODO: getBranchEdge, should probably avoid:
+  - generating succState
+  - doing getBlockVersion to get a successor version
+  - immediately doing move generation
 - wastes time and memory on unexecuted targets
-- only store the predState and target at first
-- can lazily generate moveList in compileBranch
+- only store the predState and target block at first
+- can lazily generate moveList when compiling branch edge
 - if isNoop, eliminate the branch edge
-- queue the target manually
 
 TODO: optimize final jump ordering when rewriting final branch
 - BranchShape
+- again need to check if successors are queued
 
 TODO: avoid writing blockIdx when neither target is a stub
-- log if this happens
+- need to check if queued for compilation also
 - also make this a 32-bit opnd move, more compact
+- log if this happens
 
-TODO: rename noStub to willExec?
-- May be cleaner, more explicit to do vm.queue manually when desired
-- The boolean flag is not very explicit in terms of meaning
 
-TODO: pushf, popf for debugging w/ printInt, printStr
 
-... Debugging...
 
-FIXME: problem with tests/core/ffi/ffi.js
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: pushfq, popfq for debugging w/ printInt, printStr
+9C PUSHFQ
+REX.W + 9D POPFQ 
+
+[DONE] FIXME: problem with tests/core/ffi/ffi.js
 - FFI call borking, issue with stubs?
 - Might be an issue with the return value handling, call continuation
 - FFI probably does not need genCallBranch... Better served by plain genBranch
-
-
-
-
-
-
 
 [DONE] FIXME: throwExc needs to JIT compile the exception branch
 

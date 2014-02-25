@@ -1104,7 +1104,7 @@ class BlockVersion : CodeFragment
     */
     void rewriteBranch(CodeBlock as, size_t blockIdx)
     {
-        writeln("rewriting final branch for ", block.getName);
+        //writeln("rewriting final branch for ", block.getName);
 
         // Ensure that this block has already been compiled
         assert (started && ended);
@@ -1551,7 +1551,7 @@ Queue a block version to be compiled
 */
 void queue(VM vm, CodeFragment frag)
 {
-    writeln("queueing: ", frag.getName);
+    //writeln("queueing: ", frag.getName);
 
     vm.compQueue ~= frag;
 }
@@ -1615,7 +1615,7 @@ void compile(VM vm, CallCtx callCtx)
         auto frag = vm.compQueue.back;
         vm.compQueue.popBack();
 
-        writeln("compiling: ", frag.getName);
+        //writeln("compiling: ", frag.getName);
 
         // If this is a version instance
         if (auto ver = cast(BlockVersion)frag)

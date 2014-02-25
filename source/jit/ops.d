@@ -3360,7 +3360,7 @@ void gen_new_clos(
 }
 
 void gen_print_str(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3924,11 +3924,17 @@ void gen_call_ffi(
 
     as.popJITRegs();
 
-    // Generate the final call continuation branch
-    ver.genCallBranch(
+    auto branch = getBranchEdge(
+        instr.getTarget(0),
         st,
-        instr,
+        true
+    );
+
+    // Jump to the target block directly
+    ver.genBranch(
         as,
+        branch,
+        null,
         delegate void(
             CodeBlock as,
             VM vm,
@@ -3938,8 +3944,7 @@ void gen_call_ffi(
         )
         {
             jmp32Ref(as, vm, target0, 0);
-        },
-        false
+        }
     );
 }
 
