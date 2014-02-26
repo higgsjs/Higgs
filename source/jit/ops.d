@@ -1028,10 +1028,10 @@ void CmpOp(string op, size_t numBits)(
         // If the output register is not the output operand
         if (outReg != outOpnd)
             as.mov(outOpnd, outReg.reg.opnd(64));
-    }
 
-    // Set the output type
-    st.setOutType(as, instr, Type.CONST);
+        // Set the output type
+        st.setOutType(as, instr, Type.CONST);
+    }
 
     // If there is an immediately following if_true using this value
     if (ifUseNext(instr) is true)
@@ -1466,16 +1466,6 @@ void gen_call_prim(
     // Write the argument count
     as.setWord(-numArgs - 1, numArgs);
     as.setType(-numArgs - 1, Type.INT32);
-
-    /*
-    // Set the "this" argument to null
-    as.setWord(-numArgs - 2, NULL.int32Val);
-    as.setType(-numArgs - 2, Type.REFPTR);
-    */
-
-    // Set the closure argument to null
-    as.setWord(-numArgs - 3, NULL.int32Val);
-    as.setType(-numArgs - 3, Type.REFPTR);
 
     // TODO
     /*
@@ -3310,7 +3300,6 @@ void gen_get_time_ms(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.movq(outOpnd, X86Opnd(XMM0));
-
     st.setOutType(as, instr, Type.FLOAT64);
 }
 
@@ -3356,6 +3345,7 @@ void gen_get_ast_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
+    st.setOutType(as, instr, Type.REFPTR);
 }
 
 void gen_get_ir_str(
@@ -3404,6 +3394,7 @@ void gen_get_ir_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
+    st.setOutType(as, instr, Type.REFPTR);
 }
 
 void gen_get_asm_str(
@@ -3482,6 +3473,7 @@ void gen_get_asm_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
+    st.setOutType(as, instr, Type.REFPTR);
 }
 
 void gen_load_lib(

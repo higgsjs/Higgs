@@ -194,6 +194,8 @@ TODO: microbenchmarks, big loop with either getProp, getGlobal, fn call
 
 TODO: compare speed against master branch with ./benchmark.py
 
+TODO: memberOpnd? could optimize call code further
+
 TODO: getBranchEdge, should probably avoid:
   - generating succState
   - doing getBlockVersion to get a successor version
@@ -204,20 +206,29 @@ TODO: getBranchEdge, should probably avoid:
 - if isNoop, eliminate the branch edge
 - want to do repatching in compile loop, when compiling branch edge
 
-FIXME: call_prim to rt_obj_get_next taking 3 constant args, why?
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: call_prim to rt_obj_get_next taking 3 constant args, why?
 - only needs one argument
 - we don't check if the hidden arguments are needed
 - could just assert they have no uses
 - argc seems necessary to traverse the stack
-- does the GC need the closure argument???
 
-
-
-
-
-
-
-
+[DONE] FIXME: does the GC need the closure argument?
+- closure argument not needed per-se
+- GC fails to find return address in ret addr map
+- leftover corrupted data with the wrong tag?
+- Do we ever write values on the stack without a type tag?
+  - odd interation with a regression test...
+- bug in get_ir_string, missing setOutType
 
 [DONE] TODO: optimize branch edges
 - if target is directly next, not write jump?

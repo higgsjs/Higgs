@@ -548,7 +548,7 @@ Word gcForward(VM vm, Word word, Type type)
         visitFun(vm, fun);
         return word;
 
-        // Map pointer (ObjMap)
+        // Map pointer (ClassMap)
         // Return the pointer unchanged
         case Type.MAPPTR:
         auto map = word.mapVal;
@@ -558,6 +558,10 @@ Word gcForward(VM vm, Word word, Type type)
 
         // Return address
         case Type.RETADDR:
+        assert (
+            word.ptrVal in vm.retAddrMap,
+            format("ret addr not found: %s", word.ptrVal)
+        );
         auto retEntry = vm.retAddrMap[word.ptrVal];
         auto fun = retEntry.callCtx.fun;
         visitFun(vm, fun);
