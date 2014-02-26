@@ -60,8 +60,9 @@ void writeJcc32Ref(string mnem, opcode...)(
     size_t targetIdx = size_t.max
 )
 {
-    // Write an asm comment
-    as.writeASM(mnem, frag.getName);
+    // Write an ASM comment
+    if (opts.jit_genasm)
+        as.writeASM(mnem, frag.getName);
 
     as.writeBytes(opcode);
 

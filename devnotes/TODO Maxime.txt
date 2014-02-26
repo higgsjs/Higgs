@@ -187,7 +187,13 @@ TODO: as.comment, try avoiding calling if jit_dumpasm is false
 *** Meeting: to be shown: disassembly for fib, microbenchmark results
 - completed and debugged new stub scheme
 - optimized new stub scheme, branch rewriting
+- various machine code optimizations
 - made disassembly strings much much faster
+- microbenchmarks
+  - both 3d-raytrace and earley-boyer have more object accesses than calls
+  - calling map_prop_idx is quite inefficient
+  - should probably redesign getProp to inline the object part only
+  - reimplement map_prop_idx for efficiency
 
 TODO: rewrite a sunspider bench to use only local vars, compare speed
 TODO: microbenchmarks, big loop with either getProp, getGlobal, fn call
@@ -196,7 +202,41 @@ TODO: compare speed against master branch with ./benchmark.py
 
 TODO: memberOpnd? could optimize call code further
 
-TODO: getBranchEdge, should probably avoid:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: branch rewriting did not shave end of blocks in getPropObj
+make; ./higgs --jit_genasm --e "print(\$rt_getPropObj.asmString())"
+call_cont(3D2B):
+; $0 = eq_refptr $7, null
+mov rax, [qword r14 + 56];              498B4638
+cmp rax, 0;                             4883F800
+je branch_if_true(3D2D);                0F848C000000
+nop1;                                   90
+nop4;                                   8D742600
+branch_if_join(3D2F):
+if_join(3D2F):
+
+Clearly branch_if_join is immediately after. Should be immediately queued.
+Will need to log things specific to getPropObj branches
+
+What those jumps have in common is that neither of the targets are stubbed.
+They got rewritten twice.
+Most likely, the first rewrite simply did not remove the mov...
+
+[DONE] TODO: getBranchEdge, should probably avoid:
   - generating succState
   - doing getBlockVersion to get a successor version
   - immediately doing move generation
@@ -205,16 +245,6 @@ TODO: getBranchEdge, should probably avoid:
 - can lazily generate moveList when compiling branch edge
 - if isNoop, eliminate the branch edge
 - want to do repatching in compile loop, when compiling branch edge
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: call_prim to rt_obj_get_next taking 3 constant args, why?
 - only needs one argument

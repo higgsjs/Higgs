@@ -1056,13 +1056,37 @@ void CmpOp(string op, size_t numBits)(
                 // Integer comparison
                 static if (op == "eq")
                 {
-                    je32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        jne32Ref(as, vm, target1, 1);
+                        break;
+
+                        case BranchShape.NEXT1:
+                        je32Ref(as, vm, target0, 0);
+                        break;
+
+                        case BranchShape.DEFAULT:
+                        je32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, target1, 1);
+                    }
                 }
                 else if (op == "ne")
                 {
-                    jne32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        je32Ref(as, vm, target1, 1);
+                        break;
+
+                        case BranchShape.NEXT1:
+                        jne32Ref(as, vm, target0, 0);
+                        break;
+
+                        case BranchShape.DEFAULT:
+                        jne32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, target1, 1);
+                    }
                 }
                 else if (op == "lt")
                 {

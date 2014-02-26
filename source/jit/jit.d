@@ -786,7 +786,7 @@ abstract class CodeFragment
 
         if (auto branch = cast(BranchCode)this)
         {
-            return "branch_" ~ branch.target.block.getName;
+            return "branch_" ~ branch.branch.target.getName;
         }
 
         if (auto stub = cast(EntryStub)this)
@@ -890,7 +890,8 @@ abstract class CodeFragment
         // Write a relative 32-bit jump to the instance over the stub code
         auto startPos = as.getWritePos();
         as.setWritePos(this.startIdx);
-        as.writeASM("jmp", next.getName);
+        if (opts.jit_genasm)
+            as.writeASM("jmp", next.getName);
         as.writeByte(JMP_REL32_OPCODE);
         auto offset = next.startIdx - (as.getWritePos + 4);
         as.writeInt(offset, 32);
@@ -981,28 +982,27 @@ Branch edge transition code
 */
 class BranchCode : CodeFragment
 {
-    /// Prelude code generation function
-    PrelGenFn prelGenFn;
-
-    // List of moves to transition to the successor state
-    Move[] moveList;
+    /// Predecessor state
+    CodeGenState predState;
 
     /// IR branch edge object
     BranchEdge branch;
 
-    /// Target block version (may be a stub)
-    BlockVersion target;
+    /// Prelude code generation function
+    PrelGenFn prelGenFn;
+
+    /// Target block version (null until compiled)
+    BlockVersion target = null;
 
     this(
+        CodeGenState predState,
         BranchEdge branch,
-        BlockVersion target,
-        PrelGenFn prelGenFn,
-        Move[] moveList)
+        PrelGenFn prelGenFn
+    )
     {
+        this.predState = predState;
         this.branch = branch;
-        this.target = target;
         this.prelGenFn = prelGenFn;
-        this.moveList = moveList;
     }
 }
 
@@ -1365,13 +1365,36 @@ BranchCode getBranchEdge(
     PrelGenFn prelGenFn = null
 )
 {
+    auto vm = predState.callCtx.vm;
+
     assert (
         branch !is null,
         "branch edge is null"
     );
 
+    // Return a branch edge code object for the successor
+    auto branchCode = new BranchCode(
+        predState,
+        branch,
+        prelGenFn
+    );
+
+    // If we know this will be executed, queue the branch edge for compilation
+    if (noStub)
+        vm.queue(branchCode);
+
+    return branchCode;
+}
+
+/**
+Generate the successor state for a given predecessor state and branch edge
+*/
+CodeGenState getSuccState(
+    CodeGenState predState,
+    BranchEdge branch
+)
+{
     auto callCtx = predState.callCtx;
-    auto vm = callCtx.vm;
     auto liveInfo = callCtx.fun.liveInfo;
 
     // Copy the predecessor state
@@ -1443,16 +1466,18 @@ BranchCode getBranchEdge(
         */
     }
 
-    // Get a version of the successor matching the incoming state
-    auto succVer = getBlockVersion(
-        branch.target,
-        succState,
-        false
-    );
+    return succState;
+}
 
-    // Update the successor state
-    succState = succVer.state;
-
+/**
+Generate the moves to transition from a predecessor to a successor state
+*/
+Move[] genBranchMoves(
+    CodeGenState predState,
+    CodeGenState succState,
+    BranchEdge branch
+)
+{
     // List of moves to transition to the successor state
     Move[] moveList;
 
@@ -1542,19 +1567,7 @@ BranchCode getBranchEdge(
         */
     }
 
-    // Return a branch edge code object for the successor
-    auto branchCode = new BranchCode(
-        branch,
-        succVer,
-        prelGenFn,
-        moveList
-    );
-
-    // If we know this will be executed, queue the branch edge for compilation
-    if (noStub)
-        vm.queue(branchCode);
-
-    return branchCode;
+    return moveList;
 }
 
 /// Return address entry
@@ -1678,9 +1691,7 @@ void compile(VM vm, CallCtx callCtx)
 
             // Store the code start index for this fragment
             if (ver.startIdx is ver.startIdx.max)
-               ver.markStart(as, vm);
-
-            as.comment("Instance of " ~ ver.getName());
+                ver.markStart(as, vm);
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -1728,7 +1739,7 @@ void compile(VM vm, CallCtx callCtx)
         // If this is a branch code fragment
         else if (auto branch = cast(BranchCode)frag)
         {
-            assert (branch.target !is null);
+            assert (branch.predState !is null);
 
             // Store the code start index
             branch.markStart(as, vm);
@@ -1737,20 +1748,37 @@ void compile(VM vm, CallCtx callCtx)
             if (branch.prelGenFn)
                 branch.prelGenFn(as, vm);
 
-            // Execute the moves
-            execMoves(as, branch.moveList, scrRegs[0], scrRegs[1]);
+            // Generate the successor state for this branch
+            auto succState = getSuccState(
+                branch.predState, 
+                branch.branch
+            );
 
-            // If the target is already compiled
+            // Get a version of the successor matching the incoming state
+            branch.target = getBlockVersion(
+                branch.branch.target,
+                succState,
+                true
+            );
+
+            // Generate the moves to transition to the successor state
+            auto moveList = genBranchMoves(
+                branch.predState,
+                branch.target.state,
+                branch.branch
+            );
+
+            // The predecessor state is no longer needed
+            branch.predState = null;
+
+            // Execute the moves
+            execMoves(as, moveList, scrRegs[0], scrRegs[1]);
+
+            // If the target was already compiled before
             if (branch.target.started)
             {
                 // Encode the final jump and version reference
                 as.jmp32Ref(vm, branch.target);
-            }
-            else
-            {
-                // Queue the target for compilation
-                // No jump since the target will immediately follow
-                vm.queue(branch.target);
             }
 
             // Store the code end index
@@ -1760,7 +1788,7 @@ void compile(VM vm, CallCtx callCtx)
             {
                 writeln(
                     "branch code length: ", branch.length, 
-                    " (", branch.moveList.length, " moves)"
+                    " (", moveList.length, " moves)"
                 );
                 writeln();
             }
@@ -1771,7 +1799,8 @@ void compile(VM vm, CallCtx callCtx)
         {
             stub.markStart(as, vm);
 
-            as.comment("Cont stub for " ~ stub.contBranch.getName);
+            if (opts.jit_genasm)
+                as.comment("Cont stub for " ~ stub.contBranch.getName);
 
             as.pushJITRegs();
 
