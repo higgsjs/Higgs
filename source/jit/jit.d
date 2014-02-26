@@ -1242,8 +1242,15 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
         if (str.data != "")
             str.put("\n\n");
 
-        //str.put("idx=" ~ to!string(frag.startIdx) ~ "\n");
-        //str.put("len=" ~ to!string(frag.length) ~ "\n");
+        if (fIdx < fragList.length - 1)
+        {
+            auto next = fragList[fIdx+1];
+            if (next.startIdx > frag.endIdx)
+            {
+                auto numBytes = next.startIdx - frag.endIdx;
+                str.put(format("; ### %s byte gap ###\n\n", numBytes));
+            }
+        }
 
         str.put(frag.genString(execHeap));
     }

@@ -331,7 +331,6 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
                     case BranchShape.DEFAULT:
                     jo32Ref(as, vm, target1, 1);
                     jmp32Ref(as, vm, target0, 0);
-                    break;
                 }
             }
         );
@@ -814,7 +813,6 @@ void IsTypeOp(Type type)(
                     case BranchShape.DEFAULT:
                     jne32Ref(as, vm, target1, 1);
                     jmp32Ref(as, vm, target0, 0);
-                    break;
                 }
             }
         );
@@ -1068,8 +1066,20 @@ void CmpOp(string op, size_t numBits)(
                 }
                 else if (op == "lt")
                 {
-                    jl32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        jge32Ref(as, vm, target1, 1);
+                        break;
+
+                        case BranchShape.NEXT1:
+                        jl32Ref(as, vm, target0, 0);
+                        break;
+
+                        case BranchShape.DEFAULT:
+                        jl32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, target1, 1);
+                    }
                 }
                 else if (op == "le")
                 {
@@ -1237,7 +1247,17 @@ void gen_jump(
             BranchShape shape
         )
         {
-            jmp32Ref(as, vm, target0, 0);
+            final switch (shape)
+            {
+                case BranchShape.NEXT0:
+                break;
+
+                case BranchShape.NEXT1:
+                assert (false);
+
+                case BranchShape.DEFAULT:
+                jmp32Ref(as, vm, target0, 0);
+            }
         }
     );
 }

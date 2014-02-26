@@ -170,23 +170,34 @@ TODO: simple ad-hoc, rule-based inlining
 TODO: block-internal jumps, can they all fit in 8-bit indices? force?
 - can maybe "promise" it will fit
 
-TODO: as.comment, probably somewhat inefficient
+TODO: think about global prop opts
+- could use call_prim "get_global", call_prim "set_global"
+- optimize this when we know specifics about the property to read
+- use generic call for other cases
+
+TODO: simplify return from primitive functions?
+- Are we doing frame size checks in there?
+- Could we use an isRuntime accessor?
+
+TODO: as.comment, try avoiding calling if jit_dumpasm is false
 - Should maybe try templating these functions, no string concat if no comments
 - benchmark first and after
 - also try declaring args lazy?
 
-Meeting: to be shown, disassembly for fib
+*** Meeting: to be shown: disassembly for fib, microbenchmark results
 - completed and debugged new stub scheme
 - optimized new stub scheme, branch rewriting
-- made disassembly strings much faster
+- made disassembly strings much much faster
+
+TODO: rewrite a sunspider bench to use only local vars, compare speed
+TODO: microbenchmarks, big loop with either getProp, getGlobal, fn call
 
 TODO: compare speed against master branch with ./benchmark.py
 
 TODO: zero length branch edges should be eliminated
-- do this later, get it working first
-- do sophisticated final branch reoptimization later
 - if moveList.length is 0 and prelGenFn is null, then it's empty
   add isNoop accessor
+- can we just optimize if target is directly next, not write jump?
 
 TODO: getBranchEdge, should probably avoid:
   - generating succState
@@ -198,6 +209,8 @@ TODO: getBranchEdge, should probably avoid:
 - if isNoop, eliminate the branch edge
 - want to do repatching in compile loop, when compiling branch edge
 
+TODO: asmString log call cont stubs
+make; ./higgs --jit_genasm --e "print(\$rt_getPropObj.asmString())"
 
 
 
@@ -207,8 +220,12 @@ TODO: getBranchEdge, should probably avoid:
 
 
 
+[DONE] TODO: optimize branch shape for integer less-than
 
+[DONE] TODO: optimize direct jump shape
 
+[DONE] TODO: asmString, display gaps!
+; ### NN bytes gap ###
 
 [DONE] TODO: if we're the last block, don't pad with nops!
 
