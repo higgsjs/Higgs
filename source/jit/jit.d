@@ -1217,6 +1217,11 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
             queue(frag, branch.target);
         }
 
+        if (auto cont = cast(ContStub)frag)
+        {
+            queue(frag, cont.contBranch);
+        }
+
         else if (auto inst = cast(BlockVersion)frag)
         {
             queue(frag, inst.targets[0]);
@@ -1236,11 +1241,13 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
 
     foreach (fIdx, frag; fragList)
     {
-        //if (frag.length is 0)
-        //    continue;
+        if (frag.length is 0)
+            continue;
 
         if (str.data != "")
             str.put("\n\n");
+
+        str.put(frag.genString(execHeap));
 
         if (fIdx < fragList.length - 1)
         {
@@ -1248,11 +1255,9 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
             if (next.startIdx > frag.endIdx)
             {
                 auto numBytes = next.startIdx - frag.endIdx;
-                str.put(format("; ### %s byte gap ###\n\n", numBytes));
+                str.put(format("\n\n; ### %s byte gap ###", numBytes));
             }
         }
-
-        str.put(frag.genString(execHeap));
     }
 
     return str.data;
@@ -1735,15 +1740,21 @@ void compile(VM vm, CallCtx callCtx)
             // Execute the moves
             execMoves(as, branch.moveList, scrRegs[0], scrRegs[1]);
 
-            // Encode the final jump and version reference
-            as.jmp32Ref(vm, branch.target);
+            // If the target is already compiled
+            if (branch.target.started)
+            {
+                // Encode the final jump and version reference
+                as.jmp32Ref(vm, branch.target);
+            }
+            else
+            {
+                // Queue the target for compilation
+                // No jump since the target will immediately follow
+                vm.queue(branch.target);
+            }
 
             // Store the code end index
             branch.markEnd(as, vm);
-
-            // If the target is not yet compiled, queue it for compilation
-            if (branch.target.started is false)
-                vm.queue(branch.target);
 
             if (opts.jit_dumpinfo)
             {
@@ -1760,7 +1771,7 @@ void compile(VM vm, CallCtx callCtx)
         {
             stub.markStart(as, vm);
 
-            as.comment("Continuation stub for " ~ stub.contBranch.getName);
+            as.comment("Cont stub for " ~ stub.contBranch.getName);
 
             as.pushJITRegs();
 

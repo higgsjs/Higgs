@@ -194,11 +194,6 @@ TODO: microbenchmarks, big loop with either getProp, getGlobal, fn call
 
 TODO: compare speed against master branch with ./benchmark.py
 
-TODO: zero length branch edges should be eliminated
-- if moveList.length is 0 and prelGenFn is null, then it's empty
-  add isNoop accessor
-- can we just optimize if target is directly next, not write jump?
-
 TODO: getBranchEdge, should probably avoid:
   - generating succState
   - doing getBlockVersion to get a successor version
@@ -209,16 +204,28 @@ TODO: getBranchEdge, should probably avoid:
 - if isNoop, eliminate the branch edge
 - want to do repatching in compile loop, when compiling branch edge
 
-TODO: asmString log call cont stubs
+FIXME: call_prim to rt_obj_get_next taking 3 constant args, why?
+- only needs one argument
+- we don't check if the hidden arguments are needed
+- could just assert they have no uses
+- argc seems necessary to traverse the stack
+- does the GC need the closure argument???
+
+
+
+
+
+
+
+
+
+[DONE] TODO: optimize branch edges
+- if target is directly next, not write jump?
+
+[DONE] TODO: optimize if_true branch shape
+
+[DONE] TODO: asmString log call cont stubs
 make; ./higgs --jit_genasm --e "print(\$rt_getPropObj.asmString())"
-
-
-
-
-
-
-
-
 
 [DONE] TODO: optimize branch shape for integer less-than
 

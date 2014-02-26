@@ -1215,8 +1215,20 @@ void gen_if_true(
             BranchShape shape
         )
         {
-            je32Ref(as, vm, target0, 0);
-            jmp32Ref(as, vm, target1, 1);
+            final switch (shape)
+            {
+                case BranchShape.NEXT0:
+                jne32Ref(as, vm, target1, 1);
+                break;
+
+                case BranchShape.NEXT1:
+                je32Ref(as, vm, target0, 0);
+                break;
+
+                case BranchShape.DEFAULT:
+                je32Ref(as, vm, target0, 0);
+                jmp32Ref(as, vm, target1, 1);
+            }
         }
     );
 }
@@ -1406,6 +1418,14 @@ void gen_call_prim(
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     assert (numArgs is fun.numParams);
 
+    // Check that the hidden arguments are not used
+    assert (
+        (!fun.closVal || fun.closVal.hasNoUses) &&
+        (!fun.thisVal || fun.thisVal.hasNoUses) &&
+        (!fun.argcVal || fun.argcVal.hasNoUses),
+        "hidden args used"
+    );
+
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
     {
@@ -1447,9 +1467,11 @@ void gen_call_prim(
     as.setWord(-numArgs - 1, numArgs);
     as.setType(-numArgs - 1, Type.INT32);
 
+    /*
     // Set the "this" argument to null
     as.setWord(-numArgs - 2, NULL.int32Val);
     as.setType(-numArgs - 2, Type.REFPTR);
+    */
 
     // Set the closure argument to null
     as.setWord(-numArgs - 3, NULL.int32Val);
