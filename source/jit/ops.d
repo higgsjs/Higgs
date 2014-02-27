@@ -1418,6 +1418,8 @@ void gen_call_prim(
     CodeBlock as
 )
 {
+    as.incStatCnt(&stats.numCallPrim, scrRegs[0]);
+
     auto vm = st.callCtx.vm;
 
     // Function name string (D string)
