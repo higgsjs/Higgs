@@ -20,143 +20,12 @@ List of possible contributions:
 - Basic block versioning
 - Interprocedural versioning
 - Incremental inlining vs classical inlining
-
-------------------------------------------------------------------------------
-
-Wishlist
---------
-
-TODO: add --jit_trace command-line option
-
-TODO: complete WAV output support, test it out with sine wave
-
-TODO: optimize x86 instr encoding based on usage
-- e.g.: reg64 to mem move and vice versa?
-- do profiling first
-
-Idea: global table of property names with type monitoring
-- current index, if always same
-- current type
-- can it be a getter/setter?
-- discuss with Marc
-  - would most probably work well for benchmarks
-- if foobar property always has same offset, don't even care what the map is
-  - fair game?
-- issue: can know that x is always at some index, but doesn't mean that your
-  object has a property x
-- can do monitoring per-map, and get great perf gains on the global object
-- how often are object types monomorphic?
-
-Idea: getters/setters + never used opt?
-- Need to be able to invalidate code depending on this
-- segregate by property name, much more effective
-
-TODO: produce 32-bit offsets/addresses in CodeBlock.toString
-
-TODO: reduce code size by using calls for fallback code,
-eg: global access, call_prim inlining/recompilation, others?
-
-TODO: proper hidden classes, support for property enumeration?
-- Type information in hidden classes too?
-
-TODO: execHeap collection/expansion
-- Marc says: not on critical path for paper
-
-TODO: arrays, functions, have obj ptr inside, drop object inheritance system
-- Arrays: how do we handle resizing, use a next pointer? Store length
-  - Need to check elem < length anyways before reading?
-
-TODO: typed arrays
-- Will save many many type checks on some benchmarks
-  - e.g. : integer, FFT
-
-TODO: think about type representation
-- types need to encode obj vs clos vs array
-- typed arrays: int32 array, float array
-- use one whole word for cst value, encode map idx in there too?
-
-TODO: have map idx system, instead of map pointers?
-- smaller comparison instr
-- avoids issue of maps reallocated at same addr
-- smaller type representation
-- what else?
-
-TODO: accelerate getPropObj, make more hosted?
-- generate optimized machine code? inline cache?
-
-TODO: look at https://github.com/dntj/jsfft
-- Do they have a test/benchmark of the FFT?
-
-FIXME: string concat is very slow right now... can we make it faster?
-- slow benchmarks: string-base64, string-fasta, splay
-- can we get the offset of the string data? str_ofs_data(s, 0)
-- create a memcpy IR instr?
-    import std.c.string;
-    memcpy ( void * destination, const void * source, size_t num );
-    issue: spilling required
-    could generate custom code
-
-TODO: blog post about draw lib
-- advice: crazy but true titles, skimmable blog posts, skimmable style, pretty pics
-- tutorials, should also list in wiki, or blog wiki tuts?
-
-TODO: pixel plotting, drawing window lib? lib/draw
-- Probably will want to use X11
-  - implement a lib/x11
-  - need an event loop
-- Can have a draw lib which creates a window using lib/x11 and sets up a
-  basic event loop
-  - allows setting callbacks for KB and mouse events
-  - allows calling a function in the loop
-- Make another lib to read from the console without blocking
-  - use select() on stdin
-  - Can then implement our own REPL on top
-
-------------------------------------------------------------------------------
-
-TODO: smarter spilling across inlined calls
-- only spill parent values when necessary
-- also want to be smart about delayed writes
-TODO: better register spilling mechanism for C calls
-TODO: register allocation
-- peephole pass should swap operands to favor reg alloc?
-  - or do this on demand?
-- unified spilling function? params to spill tsp/wsp, vm reg
-- delayed writes
-
-TODO: make inline threshold larger for bigger functions?
-- wait until inlining is more optimized before tweaking heuristics
-
-TODO: type prop, pass types along inlined calls/returns
-
-TODO: fix GC for new stack handling
-
-TODO: fix exceptions for new stack handling
-- Need to correct wsp/tsp when throwing exceptions?
-- if we go to exc handler in inlined context, need to adjust frame
-  - remove inlined locals
-- may need to remove stack slots
-
-TODO: modify getWordOpnd, getTypeOpnd et al for inlined calls
-- Assume that the IRDstValue belongs to the current frame
-  - Can we assert this?
-
-TODO: avoid inc/dec wsp/tsp on inlined calls
-- Get it working without exception support first
-- Need to correct wsp/tsp at non-inlined call time
-  - push actual stack space to protect inlined locals
-  - return from non-inlined call needs to remove slots
-  callCtx.extraLocals?
-- What if we do an inlined call in an inlined call?
-  - no need to adjust anything, context inherits
+- Typed shapes and basic block versioning
 
 ------------------------------------------------------------------------------
 
 TODO: basic reg alloc, what's the simplest we can do?
 - Marc says: probably a bigger perf issue than instr cache
-
-TODO: block-internal jumps, can they all fit in 8-bit indices? force?
-- can maybe "promise" it will fit
 
 TODO: basic type prop, without reg alloc, type test removal
 - For now, don't do delayed writes
@@ -170,6 +39,7 @@ TODO: think about global prop opts
 
 TODO: reimplement getPropObj with first level obj access inlined
 - keep small so just this gets inlined
+- create a new version of the primitive, no need to erase the old
 
 TODO: simple ad-hoc, rule-based inlining
 - benefit: keep the old type analysis
@@ -180,14 +50,6 @@ TODO: simple ad-hoc, rule-based inlining
 - could also only inline in functions that have loops
   - and/or maybe be super extra aggressive there
 - must inline object access and low level primitives in getprop
-
-TODO: call to primitives, could avoid argument count arg
-- make stack traversal aware of primitives
-
-TODO: simplify return from primitive functions?
-- add isRuntime accessor
-  - assert this in call_prim
-- Are we doing frame size checks in there?
 
 *** Meeting: to be shown: disassembly for fib, microbenchmark results
 - completed and debugged new stub scheme
@@ -221,9 +83,12 @@ TODO: think about shapes more
   - switch to shape idx
 - how much simplification could you get on object property accesses?
   - sketch it out
-- check the Moz guy's slides, check notes
+- can use shape pointers directly
+  - shapes can keep list of referring blocks
 - start writing D code for shapes
   - class ObjShape
+
+TODO: check the Moz guy's shape slides, check notes
 
 TODO: layout, avoid defining LAYOUT_ARR and such
 - instead substitute directly for integer values
@@ -237,7 +102,12 @@ TODO: wider type tags, object, closure, array, string
 - Can try to have bit 3 always set for refptrs
 - Is there any disadvantage?
 
+TODO: simplify return from primitive functions?
+- Are we doing frame size checks in there?
+- test 200m primcalls again
 
+TODO: add IRFunction.isRuntime accessor
+- assert this in call_prim
 
 
 
