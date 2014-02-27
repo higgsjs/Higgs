@@ -149,22 +149,22 @@ void setField(CodeBlock as, X86Reg baseReg, size_t fOffset, X86Reg srcReg)
     as.mov(X86Opnd(srcReg.size, baseReg, cast(int32_t)fOffset), X86Opnd(srcReg));
 }
 
-void getMember(string fName)(CodeBlock as, X86Reg dstReg, X86Reg baseReg)
+X86Opnd memberOpnd(string fName)(X86Reg baseReg)
 {
     mixin("auto fOffset = " ~ fName ~ ".offsetof;");
     mixin("auto fSize = " ~ fName ~ ".sizeof;");
-    assert (dstReg.size is 8 * fSize);
 
-    as.getField(dstReg, baseReg, fOffset);
+    return X86Opnd(fSize * 8, baseReg, cast(int32_t)fOffset);
+}
+
+void getMember(string fName)(CodeBlock as, X86Reg dstReg, X86Reg baseReg)
+{
+    as.mov(X86Opnd(dstReg), memberOpnd!fName(baseReg));
 }
 
 void setMember(string fName)(CodeBlock as, X86Reg baseReg, X86Reg srcReg)
 {
-    mixin("auto fOffset = " ~ fName ~ ".offsetof;");
-    mixin("auto fSize = " ~ fName ~ ".sizeof;");
-    assert (srcReg.size is 8 * fSize);
-
-    as.setField(baseReg, fOffset, srcReg);
+    as.mov(memberOpnd!fName(baseReg), X86Opnd(srcReg));
 }
 
 /// Read from the word stack

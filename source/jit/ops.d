@@ -1601,8 +1601,7 @@ void gen_call(
     // If the object is not a closure, bailout
     as.cmp(closReg, X86Opnd(0));
     as.je(Label.THROW);
-    as.mov(scrRegs[1].opnd(32), X86Opnd(32, closReg.reg, obj_ofs_header(null)));
-    as.cmp(scrRegs[1].opnd(32), X86Opnd(LAYOUT_CLOS));
+    as.cmp(X86Opnd(32, closReg.reg, obj_ofs_header(null)), X86Opnd(LAYOUT_CLOS));
     as.jne(Label.THROW);
 
     // Get the IRFunction pointer from the closure object
@@ -1618,9 +1617,9 @@ void gen_call(
     // Compute -missingArgs = numArgs - numParams
     // This is the negation of the number of missing arguments
     // We use this as an offset when writing arguments to the stack
-    as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
+    auto numParamsOpnd = memberOpnd!("IRFunction.numParams")(scrRegs[1]);
     as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
-    as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
+    as.sub(scrRegs[2].opnd(32), numParamsOpnd);
     as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
     as.jle(Label.FALSE);
     as.xor(scrRegs[2].opnd(32), scrRegs[2].opnd(32));
@@ -1712,11 +1711,10 @@ void gen_call(
     // input : scr1, IRFunction
     // output: scr0, total frame size
     // mangle: scr3
-    as.getMember!("IRFunction.numParams")(scrRegs[0].reg(32), scrRegs[1]);
     // scr3 = numArgs, actual number of args passed
     as.mov(scrReg3.opnd(32), X86Opnd(numArgs));
     // scr3 = numArgs - numParams (num extra args)
-    as.sub(scrReg3.opnd(32), scrRegs[0].opnd(32));
+    as.sub(scrReg3.opnd(32), numParamsOpnd);
     // scr0 = numLocals
     as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
     // if there are no missing parameters, skip the add
@@ -1762,7 +1760,7 @@ void gen_call(
 
 /// JavaScript new operator (constructor call)
 void gen_call_new(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -1864,8 +1862,7 @@ void gen_call_new(
     // If the object is not a closure, bailout
     as.cmp(closReg, X86Opnd(0));
     as.je(Label.THROW);
-    as.mov(scrRegs[1].opnd(32), X86Opnd(32, closReg.reg, obj_ofs_header(null)));
-    as.cmp(scrRegs[1].opnd(32), X86Opnd(LAYOUT_CLOS));
+    as.cmp(X86Opnd(32, closReg.reg, obj_ofs_header(null)), X86Opnd(LAYOUT_CLOS));
     as.jne(Label.THROW);
 
     // Get the IRFunction pointer from the closure object
@@ -1884,9 +1881,9 @@ void gen_call_new(
     // Compute -missingArgs = numArgs - numParams
     // This is the negation of the number of missing arguments
     // We use this as an offset when writing arguments to the stack
-    as.getMember!("IRFunction.numParams")(scrReg3.reg(32), scrRegs[1]);
+    auto numParamsOpnd = memberOpnd!("IRFunction.numParams")(scrRegs[1]);
     as.mov(scrRegs[2].opnd(32), X86Opnd(numArgs));
-    as.sub(scrRegs[2].opnd(32), scrReg3.opnd(32));
+    as.sub(scrRegs[2].opnd(32), numParamsOpnd);
     as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
     as.jle(Label.FALSE);
     as.xor(scrRegs[2].opnd(32), scrRegs[2].opnd(32));
@@ -1997,11 +1994,10 @@ void gen_call_new(
     // input : scr1, IRFunction
     // output: scr0, total frame size
     // mangle: scr3
-    as.getMember!("IRFunction.numParams")(scrRegs[0].reg(32), scrRegs[1]);
     // scr3 = numArgs, actual number of args passed
     as.mov(scrReg3.opnd(32), X86Opnd(numArgs));
     // scr3 = numArgs - numParams (num extra args)
-    as.sub(scrReg3.opnd(32), scrRegs[0].opnd(32));
+    as.sub(scrReg3.opnd(32), numParamsOpnd);
     // scr0 = numLocals
     as.getMember!("IRFunction.numLocals")(scrRegs[0].reg(32), scrRegs[1]);
     // if there are no missing parameters, skip the add

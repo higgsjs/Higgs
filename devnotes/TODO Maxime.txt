@@ -96,6 +96,22 @@ FIXME: string concat is very slow right now... can we make it faster?
     issue: spilling required
     could generate custom code
 
+TODO: blog post about draw lib
+- advice: crazy but true titles, skimmable blog posts, skimmable style, pretty pics
+- tutorials, should also list in wiki, or blog wiki tuts?
+
+TODO: pixel plotting, drawing window lib? lib/draw
+- Probably will want to use X11
+  - implement a lib/x11
+  - need an event loop
+- Can have a draw lib which creates a window using lib/x11 and sets up a
+  basic event loop
+  - allows setting callbacks for KB and mouse events
+  - allows calling a function in the loop
+- Make another lib to read from the console without blocking
+  - use select() on stdin
+  - Can then implement our own REPL on top
+
 ------------------------------------------------------------------------------
 
 TODO: smarter spilling across inlined calls
@@ -136,29 +152,23 @@ TODO: avoid inc/dec wsp/tsp on inlined calls
 
 ------------------------------------------------------------------------------
 
-TODO: blog post about draw lib
-- advice: crazy but true titles, skimmable blog posts, skimmable style, pretty pics
-- tutorials, should also list in wiki, or blog wiki tuts?
-
-TODO: pixel plotting, drawing window lib? lib/draw
-- Probably will want to use X11
-  - implement a lib/x11
-  - need an event loop
-- Can have a draw lib which creates a window using lib/x11 and sets up a
-  basic event loop
-  - allows setting callbacks for KB and mouse events
-  - allows calling a function in the loop
-- Make another lib to read from the console without blocking
-  - use select() on stdin
-  - Can then implement our own REPL on top
-
 TODO: basic reg alloc, what's the simplest we can do?
 - Marc says: probably a bigger perf issue than instr cache
+
+TODO: block-internal jumps, can they all fit in 8-bit indices? force?
+- can maybe "promise" it will fit
 
 TODO: basic type prop, without reg alloc, type test removal
 - For now, don't do delayed writes
 
-TODO: stare at machine code for simple programs, e.g.: fib, improve
+TODO: think about global prop opts
+- could use call_prim "get_global", call_prim "set_global"
+- optimize this when we know specifics about the property to read
+- JIT recognizes pattern and optimizes
+- use generic call for other cases
+
+TODO: reimplement getPropObj with first level obj access inlined
+- keep small so just this gets inlined
 
 TODO: simple ad-hoc, rule-based inlining
 - benefit: keep the old type analysis
@@ -166,23 +176,12 @@ TODO: simple ad-hoc, rule-based inlining
 - inling specific primitives
 - don't inline in global functions, unless they have loops
   - IRFunction.hasLoop?
-
-TODO: block-internal jumps, can they all fit in 8-bit indices? force?
-- can maybe "promise" it will fit
-
-TODO: think about global prop opts
-- could use call_prim "get_global", call_prim "set_global"
-- optimize this when we know specifics about the property to read
-- use generic call for other cases
+- could also only inline in functions that have loops
+  - and/or maybe be super extra aggressive there
 
 TODO: simplify return from primitive functions?
 - Are we doing frame size checks in there?
 - Could we use an isRuntime accessor?
-
-TODO: as.comment, try avoiding calling if jit_dumpasm is false
-- Should maybe try templating these functions, no string concat if no comments
-- benchmark first and after
-- also try declaring args lazy?
 
 *** Meeting: to be shown: disassembly for fib, microbenchmark results
 - completed and debugged new stub scheme
@@ -195,12 +194,16 @@ TODO: as.comment, try avoiding calling if jit_dumpasm is false
   - should probably redesign getProp to inline the object part only
   - reimplement map_prop_idx for efficiency
 
+TODO: try optimizing property access?
+- optimize map_prop_idx with caching mechanism
+- don't try to be too fancy at first
+- no map idx for now, don't collect maps for the moment
+
 TODO: rewrite a sunspider bench to use only local vars, compare speed
 TODO: microbenchmarks, big loop with either getProp, getGlobal, fn call
 
 TODO: compare speed against master branch with ./benchmark.py
 
-TODO: memberOpnd? could optimize call code further
 
 
 
@@ -215,7 +218,9 @@ TODO: memberOpnd? could optimize call code further
 
 
 
+[DONE] TODO: memberOpnd? could optimize call code further
 
+[DONE] TODO: as.comment, try avoiding calling if jit_dumpasm is false
 
 [DONE] FIXME: branch rewriting did not shave end of blocks in getPropObj
 make; ./higgs --jit_genasm --e "print(\$rt_getPropObj.asmString())"
