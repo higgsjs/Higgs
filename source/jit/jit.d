@@ -1669,13 +1669,11 @@ void compile(VM vm, CallCtx callCtx)
         auto frag = vm.compQueue.back;
         vm.compQueue.popBack();
 
-        //writeln("compiling: ", frag.getName);
+        //writeln("compiling fragment: ", frag.getName);
 
         // If this is a version instance
         if (auto ver = cast(BlockVersion)frag)
         {
-            //writeln("compiling instance");
-
             assert (
                 ver.ended is false,
                 "version already compiled: " ~ ver.getName
@@ -1685,6 +1683,7 @@ void compile(VM vm, CallCtx callCtx)
             assert (ver.block !is null);
 
             //writeln(block.toString);
+            //as.printStr(block.getName);
 
             // Copy the instance's state object
             auto state = new CodeGenState(ver.state);
@@ -1703,7 +1702,8 @@ void compile(VM vm, CallCtx callCtx)
                 if (opts.jit_genasm)
                     as.comment(instr.toString());
 
-                //as.printStr(instr.toString());
+                if (opts.jit_trace_instrs)
+                    as.printStr(instr.toString());
 
                 auto opcode = instr.opcode;
                 assert (opcode !is null);
@@ -1841,7 +1841,7 @@ void compile(VM vm, CallCtx callCtx)
             assert (false, "invalid code fragment");
         }
 
-        if (opts.jit_dumpasm)
+        if (opts.jit_dumpasm && frag.length > 0)
         {
             writeln(frag.genString(as));
             writeln();
@@ -1922,6 +1922,9 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     assert (fun.isUnit, "compileUnit on non-unit function");
 
+    if (opts.jit_dumpinfo)
+        writeln("compiling unit ", fun.getName);
+
     auto as = vm.execHeap;
 
     //
@@ -1972,8 +1975,10 @@ EntryFn compileUnit(VM vm, IRFunction fun)
         new CodeGenState(fun.getCtx(false, vm))
     );
 
-    // Note the code start index for this version
-    entryInst.startIdx = cast(uint32_t)as.getWritePos();
+    // Mark the code start index
+    entryInst.markStart(as, vm);
+
+    as.comment("unit " ~ fun.getName);
 
     // Align SP to a multiple of 16 bytes
     as.sub(X86Opnd(RSP), X86Opnd(8));
@@ -2073,7 +2078,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     // Generate the IR for this function
     if (fun.entryBlock is null)
     {
-        astToIR(fun.ast, fun);
+        astToIR(vm, fun.ast, fun);
     }
 
     // Add space for the newly allocated locals

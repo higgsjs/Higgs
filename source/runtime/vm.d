@@ -966,7 +966,7 @@ class VM
 
         // Push the return address
         push(Word.ptrv(cast(rawptr)retAddr), Type.RETADDR);
-     
+
         // Push space for the callee locals
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
         push(numLocals);
@@ -1021,7 +1021,8 @@ class VM
     */
     ValuePair exec(FunExpr fun)
     {
-        auto ir = astToIR(fun);
+        auto ir = astToIR(this, fun);
+
         return exec(ir);
     }
 
@@ -1066,9 +1067,9 @@ class VM
 
     /// Stack frame visit function
     alias void delegate(
-        IRFunction fun, 
-        Word* wsp, 
-        Type* tsp, 
+        IRFunction fun,
+        Word* wsp,
+        Type* tsp,
         size_t depth,
         size_t frameSize,
         IRInstr callInstr
@@ -1199,7 +1200,7 @@ extern (C) CodePtr throwExc(
     Type excType
 )
 {
-    //writefln("throw");
+    //writefln("entering throwExc");
 
     // Stack trace (throwing instruction and call instructions)
     IRInstr[] trace;

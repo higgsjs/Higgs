@@ -30,6 +30,7 @@ ir/ast.d            \
 ir/peephole.d       \
 ir/slotalloc.d      \
 ir/livevars.d       \
+ir/inlining.d       \
 runtime/vm.d        \
 runtime/layout.d    \
 runtime/string.d    \

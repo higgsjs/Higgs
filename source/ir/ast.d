@@ -49,9 +49,11 @@ import parser.parser;
 import ir.ir;
 import ir.ops;
 import ir.iir;
+import ir.inlining;
 import ir.peephole;
 import ir.livevars;
 import ir.slotalloc;
+import runtime.vm;
 
 /// Runtime function name prefix
 const wstring RT_PREFIX = "$rt_";
@@ -342,7 +344,7 @@ class IRGenCtx
     {
         return addInstr(new IRInstr(
             &MAKE_LINK,
-            new IRLinkIdx()            
+            new IRLinkIdx()
         ));
     }
 
@@ -374,7 +376,7 @@ class IRGenCtx
 /**
 Compile an AST program or function into an IR function
 */
-IRFunction astToIR(FunExpr ast, IRFunction fun = null)
+IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
 {
     assert (
         cast(FunExpr)ast || cast(ASTProgram)ast,
@@ -605,6 +607,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     {
         bodyCtx.addInstr(new IRInstr(&RET, IRConst.undefCst));
     }
+
+    // Run the inlining pass
+    inlinePass(vm, fun);
 
     // Perform peephole optimizations on the function
     optIR(fun);

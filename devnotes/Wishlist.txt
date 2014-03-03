@@ -1,8 +1,6 @@
 Wishlist
 --------
 
-TODO: add --jit_trace command-line option
-
 TODO: complete WAV output support, test it out with sine wave
 
 TODO: optimize x86 instr encoding based on usage

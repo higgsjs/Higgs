@@ -980,13 +980,13 @@ class IRConst : IRValue
 
     static IRConst trueCst() 
     { 
-        if (!trueVal) trueVal = new IRConst(TRUE , Type.CONST); 
+        if (!trueVal) trueVal = new IRConst(TRUE , Type.CONST);
         return trueVal;
     }
 
     static IRConst falseCst()
     {
-        if (!falseVal) falseVal = new IRConst(FALSE, Type.CONST); 
+        if (!falseVal) falseVal = new IRConst(FALSE, Type.CONST);
         return falseVal;
     }
 
@@ -1002,7 +1002,7 @@ class IRConst : IRValue
         return missingVal;
     }
 
-    static IRConst nullCst()  
+    static IRConst nullCst()
     { 
         if (!nullVal) nullVal = new IRConst(NULL, Type.REFPTR);
         return nullVal;

@@ -76,6 +76,9 @@ struct Options
 
     /// Dump disassembly for all the generated machine code
     bool jit_dumpasm = false;
+
+    /// Log a trace of the instructions executed
+    bool jit_trace_instrs = false;
 }
 
 /// Global options structure
@@ -91,19 +94,20 @@ void parseCmdArgs(ref string[] args)
         config.stopOnFirstNonOption,
         config.passThrough,
 
-        "e"             , &opts.execString,
-        "repl"          , &opts.repl,
-        "stats"         , &opts.stats,
+        "e"                 , &opts.execString,
+        "repl"              , &opts.repl,
+        "stats"             , &opts.stats,
 
-        "noruntime"     , &opts.noruntime,
-        "nostdlib"      , &opts.nostdlib,
+        "noruntime"         , &opts.noruntime,
+        "nostdlib"          , &opts.nostdlib,
 
-        "jit_maxvers"   , &opts.jit_maxvers,
-        "jit_noinline"  , &opts.jit_noinline,
-        "jit_dumpinfo"  , &opts.jit_dumpinfo,
-        "jit_dumpir"    , &opts.jit_dumpir,
-        "jit_genasm"    , &opts.jit_genasm,
-        "jit_dumpasm"   , &opts.jit_dumpasm,
+        "jit_maxvers"       , &opts.jit_maxvers,
+        "jit_noinline"      , &opts.jit_noinline,
+        "jit_dumpinfo"      , &opts.jit_dumpinfo,
+        "jit_dumpir"        , &opts.jit_dumpir,
+        "jit_genasm"        , &opts.jit_genasm,
+        "jit_dumpasm"       , &opts.jit_dumpasm,
+        "jit_trace_instrs"  , &opts.jit_trace_instrs
     );
 
     // If we don't load the runtime, we can't load the standard library

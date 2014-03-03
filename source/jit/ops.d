@@ -1344,8 +1344,11 @@ void genCallBranch(
         delegate void(CodeBlock as, VM vm)
         {
             // Move the return value into the instruction's output slot
-            as.setWord(instr.outSlot, retWordReg.opnd(64));
-            as.setType(instr.outSlot, retTypeReg.opnd(8));
+            if (instr.hasUses)
+            {
+                as.setWord(instr.outSlot, retWordReg.opnd(64));
+                as.setType(instr.outSlot, retTypeReg.opnd(8));
+            }
         }
     );
 
@@ -1428,17 +1431,9 @@ void gen_call_prim(
     auto nameStr = strArg.str;
 
     // Get the primitve function from the global object
-    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
-    assert (globalMap !is null);
-    auto propIdx = globalMap.getPropIdx(nameStr);
-    assert (
-        propIdx !is uint32_t.max,
-        "call_prim to missing primitive: \"" ~ to!string(nameStr) ~ "\""
-    );
-    assert (propIdx < obj_get_cap(vm.globalObj));
-    auto closPtr = cast(refptr)obj_get_word(vm.globalObj, propIdx);
-    assert (refIsLayout(closPtr, LAYOUT_CLOS));
-    auto fun = getClosFun(closPtr);
+    auto closVal = getProp(vm, vm.globalObj, nameStr);
+    assert (valIsLayout(closVal, LAYOUT_CLOS));
+    auto fun = getClosFun(closVal.word.ptrVal);
 
     // Check that the argument count matches
     auto numArgs = cast(int32_t)instr.numArgs - 2;
@@ -1457,7 +1452,7 @@ void gen_call_prim(
     {
         //writeln("compiling");
         //writeln(core.memory.GC.addrOf(cast(void*)fun.ast));
-        astToIR(fun.ast, fun);
+        astToIR(vm, fun.ast, fun);
     }
 
     // Copy the function arguments in reverse order
@@ -2166,7 +2161,7 @@ void gen_load_file(
         {
             // Parse the source file and generate IR
             auto ast = parseFile(fileName);
-            auto fun = astToIR(ast);
+            auto fun = astToIR(vm, ast);
 
             // Register this function in the function reference set
             vm.funRefs[cast(void*)fun] = fun;
@@ -2272,7 +2267,7 @@ void gen_eval_str(
         {
             // Parse the source file and generate IR
             auto ast = parseString(codeStr, "eval_str");
-            auto fun = astToIR(ast);
+            auto fun = astToIR(vm, ast);
 
             // Register this function in the function reference set
             vm.funRefs[cast(void*)fun] = fun;
@@ -2363,11 +2358,12 @@ void gen_ret(
 )
 {
     auto callCtx = st.callCtx;
+    auto fun = callCtx.fun;
 
-    auto raSlot    = instr.block.fun.raVal.outSlot;
-    auto argcSlot  = instr.block.fun.argcVal.outSlot;
-    auto numParams = instr.block.fun.numParams;
-    auto numLocals = instr.block.fun.numLocals;
+    auto raSlot    = fun.raVal.outSlot;
+    auto argcSlot  = fun.argcVal.outSlot;
+    auto numParams = fun.numParams;
+    auto numLocals = fun.numLocals;
 
     // Get the return value word operand
     auto retOpnd = st.getWordOpnd(
@@ -2390,48 +2386,6 @@ void gen_ret(
     );
 
     //as.printStr("ret from " ~ instr.block.fun.getName);
-
-    assert (callCtx.parent is null);
-    /*
-    // If we are in an inlined call
-    if (callCtx.parent !is null)
-    {
-        auto contSt = new CodeGenState(callCtx.contState);
-
-        // TODO: add type info about ret value to cont state
-
-        // Set the return value
-        auto retSlot = cast(int)(callCtx.callSite.outSlot + callCtx.extraLocals);
-        as.setWord(retSlot, retOpnd);
-        as.setType(retSlot, typeOpnd);
-
-        // Request a branch object for the continuation
-        auto contBranch = getBranchEdge(
-            callCtx.callSite.getTarget(0),
-            contSt,
-            true
-        );
-
-        // Generate the branch code
-        ver.genBranch(
-            as,
-            contBranch,
-            null,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
-            {
-                jmp32Ref(as, vm, target0);
-            }
-        );
-
-        return;
-    }
-    */
 
     // Move the return word and types to the return registers
     as.mov(retWordReg.opnd(64), retOpnd);
@@ -2459,32 +2413,46 @@ void gen_ret(
         as.label(Label.FALSE);
     }
 
-    // Get the actual argument count into r0
-    as.getWord(scrRegs[0], argcSlot);
-    //as.printStr("argc=");
-    //as.printInt(scrRegs[0].opnd(64));
+    // If this is a runtime function
+    if (fun.getName.startsWith(RT_PREFIX))
+    {
+        // Get the return address into r1
+        as.getWord(scrRegs[1], raSlot);
 
-    // Compute the number of extra arguments into r0
-    as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
-    as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
-    as.cmp(scrRegs[0].opnd(32), X86Opnd(0));
-    as.cmovl(scrRegs[0].reg(32), scrRegs[1].opnd(32));
+        // Pop all local stack slots
+        as.add(tspReg.opnd(64), X86Opnd(Type.sizeof * numLocals));
+        as.add(wspReg.opnd(64), X86Opnd(Word.sizeof * numLocals));
 
-    //as.printStr("numExtra=");
-    //as.printInt(scrRegs[0].opnd(32));
+    }
+    else
+    {
+        // Get the actual argument count into r0
+        as.getWord(scrRegs[0], argcSlot);
+        //as.printStr("argc=");
+        //as.printInt(scrRegs[0].opnd(64));
 
-    // Compute the number of stack slots to pop into r0
-    as.add(scrRegs[0].opnd(32), X86Opnd(numLocals));
+        // Compute the number of extra arguments into r0
+        as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
+        as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
+        as.cmp(scrRegs[0].opnd(32), X86Opnd(0));
+        as.cmovl(scrRegs[0].reg(32), scrRegs[1].opnd(32));
 
-    // Get the return address into r1
-    as.getWord(scrRegs[1], raSlot);
+        //as.printStr("numExtra=");
+        //as.printInt(scrRegs[0].opnd(32));
 
-    // Pop all local stack slots and arguments
-    //as.printStr("popping");
-    //as.printUint(scrRegs[0].opnd);
-    as.add(tspReg.opnd(64), scrRegs[0].opnd);
-    as.shl(scrRegs[0].opnd, X86Opnd(3));
-    as.add(wspReg.opnd(64), scrRegs[0].opnd);
+        // Compute the number of stack slots to pop into r0
+        as.add(scrRegs[0].opnd(32), X86Opnd(numLocals));
+
+        // Get the return address into r1
+        as.getWord(scrRegs[1], raSlot);
+
+        // Pop all local stack slots and arguments
+        //as.printStr("popping");
+        //as.printUint(scrRegs[0].opnd);
+        as.add(tspReg.opnd(64), scrRegs[0].opnd);
+        as.shl(scrRegs[0].opnd, X86Opnd(3));
+        as.add(wspReg.opnd(64), scrRegs[0].opnd);
+    }
 
     // Jump to the return address
     //as.printStr("ra=");
@@ -3391,7 +3359,7 @@ void gen_get_ir_str(
 
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
-            astToIR(fun.ast, fun);
+            astToIR(vm, fun.ast, fun);
 
         auto str = fun.toString();
         auto strObj = getString(vm, to!wstring(str));
@@ -3440,7 +3408,7 @@ void gen_get_asm_str(
 
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
-            astToIR(fun.ast, fun);
+            astToIR(vm, fun.ast, fun);
 
         string str;
 

@@ -30,51 +30,12 @@ TODO: basic reg alloc, what's the simplest we can do?
 TODO: basic type prop, without reg alloc, type test removal
 - For now, don't do delayed writes
 
-TODO: think about global prop opts
-- could use call_prim "get_global", call_prim "set_global"
-- optimize this when we know specifics about the property to read
-  - e.g.: not missing, specific type or specific function
-- JIT recognizes pattern and optimizes
-- use generic call for other cases
+TODO: not missing global prop opt?
+- observation: if read once, we know its not missing
 
 TODO: reimplement getPropObj with first level obj access inlined
 - keep small so just this gets inlined
 - create a new version of the primitive, no need to erase the old
-
-TODO: simple ad-hoc, rule-based inlining
-- benefit: keep the old type analysis
-- inling once at IR gen time, no recompilation
-- inling specific primitives
-- don't inline in global functions, unless they have loops
-  - IRFunction.hasLoop?
-- could also only inline in functions that have loops
-  - and/or maybe be super extra aggressive there
-- must inline object access and low level primitives in getprop
-
-*** Meeting: to be shown: disassembly for fib, microbenchmark results
-- completed and debugged new stub scheme
-- optimized new stub scheme, branch rewriting
-- various machine code optimizations
-  comp time     -42%
-  exec time     -19%
-  code size     -14%
-- made disassembly strings much much faster
-- idea: shape system with types for object fields
-  - by testing for a specific shape, instantly gain invaluable info about an object
-  - could insert shape test instruction, generate many basic block versions (up to 4?)
-    s = obj_get_shape o (s is say int32)
-    v = obj_get_val(o, s, propStr)
-    In optimized case, shape idx and prop idx gets us a constant, or
-    a constant type.
-  - could work for the global object too
-- proposal: first get basic inlining, type prop, type analysis working
-  - see how much time is left
-- idea: redesign getProp to inline the object part only
-  - in general, smaller core primitives, fallback function
-- idea: reimplement map_prop_idx with inline caching
-- microbenchmarks
-  - both 3d-raytrace and earley-boyer have more object accesses than calls
-  - calling map_prop_idx is quite inefficient
 
 TODO: think about shapes more
 - want a guaranteed minimum object size
@@ -87,36 +48,129 @@ TODO: think about shapes more
   - shapes can keep list of referring blocks
 - start writing D code for shapes
   - class ObjShape
+- no more "make_map"
 
 TODO: check the Moz guy's shape slides, check notes
+
+TODO: blog post about optimization, results
+- difficulty of optimizing self-hosted code
+
+*** Meeting: to be shown: disassembly for fib, microbenchmark results
+- completed and debugged new stub scheme, branch rewriting
+- various machine code optimizations
+  comp time     -42%
+  exec time     -19%
+  code size     -14%
+- made disassembly strings much much faster
+- ran microbenchmarks
+- recuperated inlining code from cc2014 branch, basic inlining working
+- idea: shape system with types for object fields
+  - by testing for a specific shape, instantly gain invaluable info about an object
+  - could insert shape test instruction, generate many basic block versions (up to 4?)
+    s = obj_get_shape o (s is say int32)
+    v = obj_get_val(o, s, propStr)
+    In optimized case, shape idx and prop idx gets us a constant, or
+    a constant type.
+  - could work for the global object too
+  - solves the undefined problem, advantage over TI!
+- the plan:
+  - first basic inlining
+  - get type prop, type analysis working
+  - rewrite new primitives with smaller inlinable part, hand-inlining, hand-tuning
+  - 1st level type tags for objects, arrays, closures
+  - see how much time is left
+  - reg alloc, some gains, but probably not that much
+  - global prop access idea, known not missing?
+  - shape system?
+    - may want to leave type spec out until next paper
+    - may be too much to explain
+    - but, could start with inline caching
+
+TODO: optimize IR inlining, less jumps & reliance on peepholes?
+- sometimes inlining functions that are only 1 block
+
+FIXME: much regexp code executed during init, why?
+
+TODO: look at IR, ASM got getPropObj
 
 TODO: layout, avoid defining LAYOUT_ARR and such
 - instead substitute directly for integer values
 - auto-define accessors for $rt_ref_is_obj, $rt_val_is_obj, $rt_header_is_obj
 - could be a big win, will eliminate many global accesses from primitives
-- do it incrementally, optimize getProp first
-- try it by hand even, see if it makes a difference
+- do it incrementally, don't remove defs, optimize getProp first
 
 TODO: wider type tags, object, closure, array, string
 - Save some type tests, must be faster in the end
 - Can try to have bit 3 always set for refptrs
 - Is there any disadvantage?
 
-TODO: simplify return from primitive functions?
+TODO: tweak inlining heuristics
+- don't inline in global functions, unless they have loops?
+  - IRFunction.hasLoop?
+- could also only inline in functions that have loops
+  - and/or maybe be super extra aggressive there
+- *must* inline object access and low level primitives in getprop
+  - runtime primitives that are less than 3-4 blocks should always be inlined
+
+FIXME: inlining makes things significantly slower
+- are we making some functions very big? print initial and final numBlocks
+- making IR get generated for unexecuted code?
+- lots of inlining happening
+
+FIXME: getProp does call to toBool, this is wrong!
+time ./higgs --nostdlib --stats benchmarks/micro/10m_getprop.js
+- Can we assume that if (prim) produces a boolean? should be able to
+
+TODO: fetch type analysis from cc2014 branch
+
+TODO: upgrade dmd to 2.065
+
+
+
+
+
+
+
+
+[DONE] FIXME: segfault on throw_in_finally
+make; ./higgs --nostdlib "tests/core/exceptions/throw_in_finally.js"
+- Doesn't have to do with the peephole
+- Don't want to inline $rt_throw
+  - but why does it segfault?
+- Not inlining throw doesn't fix it
+- doesn't get to throwExc
+- something screws up during IR gen
+- inlining + exc produces empty block
+
+[DONE] TODO: --jit_trace_instrs
+
+[DONE] FIXME: $rt_obj_ofs_next not inlined in $rt_obj_get_next, why?
+- IR gets doesn't get generated when entry stub is hit, no entry stub for primitives!
+- move inlinePass call into astToIR!
+
+[DONE] TODO: peephope opt for IsTypeOp with constant
+
+[DONE] TODO: simple ad-hoc, rule-based inlining
+- benefit: keep the old type analysis
+- inling once at IR gen time, no recompilation
+- inling specific primitives
+- to begin, only inline small runtime primitives
+- should be able to speedup getProp hugely
+
+[DONE] TODO: if call has no uses, no need to copy ret regs to out slot
+
+[DONE] TODO: grab ir/inlining.d and jit/inlining.d from CC branch
+
+[DONE] TODO: simplify return from primitive functions?
 - Are we doing frame size checks in there?
 - test 200m primcalls again
-
-TODO: add IRFunction.isRuntime accessor
-- assert this in call_prim
-
-
-
-
-
-
-
-
-
+time ./higgs --nostdlib --stats benchmarks/micro/200m_primcalls.js 
+- hack it for now
+- before
+  exec time (ms): 1810
+  comp time (ms): 1
+  code size (bytes): 40890
+- no noticeable time difference!
 
 [DONE] TODO: microbenchmarks, big loop with either getProp, getGlobal, fn call
 - also run with --stats, look at num prim calls
