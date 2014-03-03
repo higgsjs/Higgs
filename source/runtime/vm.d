@@ -205,11 +205,16 @@ string typeToString(Type type)
         case Type.INT64:    return "int64";
         case Type.FLOAT64:  return "float64";
         case Type.RAWPTR:   return "raw pointer";
-        case Type.REFPTR:   return "ref pointer";
         case Type.RETADDR:  return "return address";
         case Type.CONST:    return "const";
         case Type.FUNPTR:   return "funptr";
         case Type.MAPPTR:   return "mapptr";
+
+        case Type.REFPTR:   return "ref pointer";
+
+
+
+
 
         default:
         assert (false, "unsupported type");

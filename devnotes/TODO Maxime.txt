@@ -55,6 +55,13 @@ TODO: check the Moz guy's shape slides, check notes
 TODO: blog post about optimization, results
 - difficulty of optimizing self-hosted code
 
+FIXME: much regexp code executed during init, why?
+
+TODO: look at IR, ASM got getPropObj
+
+TODO: optimize IR inlining, less jumps & reliance on peepholes?
+- sometimes inlining functions that are only 1 block
+
 *** Meeting: to be shown: disassembly for fib, microbenchmark results
 - completed and debugged new stub scheme, branch rewriting
 - various machine code optimizations
@@ -63,7 +70,10 @@ TODO: blog post about optimization, results
   code size     -14%
 - made disassembly strings much much faster
 - ran microbenchmarks
-- recuperated inlining code from cc2014 branch, basic inlining working
+- recuperated inlining, type analysis code from cc2014 branch, basic inlining working
+  - even only inlining small primitives generally doesn't pay for itself
+  - does win out on 3d-raytrace, cuts prim calls by more than half
+- started looking at IR, ASM for prop access, optimizing inefficiencies
 - idea: shape system with types for object fields
   - by testing for a specific shape, instantly gain invaluable info about an object
   - could insert shape test instruction, generate many basic block versions (up to 4?)
@@ -74,7 +84,7 @@ TODO: blog post about optimization, results
   - could work for the global object too
   - solves the undefined problem, advantage over TI!
 - the plan:
-  - first basic inlining
+  - first basic inlining, tweak heuristics
   - get type prop, type analysis working
   - rewrite new primitives with smaller inlinable part, hand-inlining, hand-tuning
   - 1st level type tags for objects, arrays, closures
@@ -86,27 +96,10 @@ TODO: blog post about optimization, results
     - may be too much to explain
     - but, could start with inline caching
 
-TODO: optimize IR inlining, less jumps & reliance on peepholes?
-- sometimes inlining functions that are only 1 block
-
-FIXME: much regexp code executed during init, why?
-
-TODO: look at IR, ASM got getPropObj
-
-TODO: layout, avoid defining LAYOUT_ARR and such
-- instead substitute directly for integer values
-- auto-define accessors for $rt_ref_is_obj, $rt_val_is_obj, $rt_header_is_obj
-- could be a big win, will eliminate many global accesses from primitives
-- do it incrementally, don't remove defs, optimize getProp first
-
-TODO: wider type tags, object, closure, array, string
-- Save some type tests, must be faster in the end
-- Can try to have bit 3 always set for refptrs
-- Is there any disadvantage?
-
 TODO: tweak inlining heuristics
-- don't inline in global functions, unless they have loops?
+- don't inline in global functions, unless they have loops? ***
   - IRFunction.hasLoop?
+  - this might be extra beneficial, big functions that run only once
 - could also only inline in functions that have loops
   - and/or maybe be super extra aggressive there
 - *must* inline object access and low level primitives in getprop
@@ -117,20 +110,47 @@ FIXME: inlining makes things significantly slower
 - making IR get generated for unexecuted code?
 - lots of inlining happening
 
-FIXME: getProp does call to toBool, this is wrong!
+TODO: tweet that presence at dconf is confirmed #dlang #dconf
+It's official, Higgs and I will be returning to DConf in 2014! #dlang #dconf
+
+TODO: peephope opt, see $rt_getPropObj
+not_exit(3986):
+$15 = phi [if_true(3965):0 => false, if_true(3965):1 => true]
+if_true $15 => if_true(3981), or_sec(3984)
+
+TODO: wider type tags, object, closure, array, string
+- commit before refactoring!
+- Save some type tests, must be faster in the end
+- Eliminate valIsString and such
+- Can try to have bit 3 always set for refptrs
+- Is there any disadvantage? ***
+  - load and store? still using make_value, get_word, get_type for properties
+- may want tagging instructions for alloc
+  tag_object, tag_string, ...
+
+
+
+TODO: eliminate valIsLayout from D code, JS code
+
+
+
+
+
+
+
+
+
+[DONE] TODO: fetch type analysis from cc2014 branch, make it compile
+
+[DONE] FIXME: getProp calls toBool, this is wrong!
 time ./higgs --nostdlib --stats benchmarks/micro/10m_getprop.js
 - Can we assume that if (prim) produces a boolean? should be able to
+  - don't design primitives that have weird polymorphic return types
+time ./higgs --nostdlib --stats benchmarks/micro/10m_getprop.js
+exec time (ms): 3200
+comp time (ms): 12
 
-TODO: fetch type analysis from cc2014 branch
-
-TODO: upgrade dmd to 2.065
-
-
-
-
-
-
-
+[DONE] TODO: upgrade dmd to 2.065
 
 [DONE] FIXME: segfault on throw_in_finally
 make; ./higgs --nostdlib "tests/core/exceptions/throw_in_finally.js"

@@ -697,8 +697,8 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         {
             // Convert the expression value to a boolean
             auto boolVal = genBoolEval(
-                ctx, 
-                ifStmt.testExpr, 
+                ctx,
+                ifStmt.testExpr,
                 testVal
             );
 
@@ -750,15 +750,15 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         );
 
         // Store a copy of the loop entry phi nodes
-        auto entryLocals = testCtx.localMap.dup;        
+        auto entryLocals = testCtx.localMap.dup;
 
         // Compile the loop test in the entry context
         auto testVal = exprToIR(testCtx, whileStmt.testExpr);
 
         // Convert the expression value to a boolean
         auto boolVal = genBoolEval(
-            testCtx, 
-            whileStmt.testExpr, 
+            testCtx,
+            whileStmt.testExpr,
             testVal
         );
 
@@ -2465,14 +2465,15 @@ IRValue genBoolEval(IRGenCtx ctx, ASTExpr testExpr, IRValue argVal)
         if (cast(TrueExpr)expr || cast(FalseExpr)expr)
             return true;
 
-        auto unOp = cast(UnOpExpr)expr;
-        if (unOp !is null &&
-            unOp.op.str == "!" &&
-            isBoolExpr(unOp.expr))
-            return true;
+        if (auto unOp = cast(UnOpExpr)expr)
+        {
+            if (unOp.op.str == "!" && isBoolExpr(unOp.expr))
+                return true;
 
-        auto binOp = cast(BinOpExpr)expr;
-        if (binOp !is null)
+            return false;
+        }
+
+        if (auto binOp = cast(BinOpExpr)expr)
         {
             auto op = binOp.op.str;
  
@@ -2482,10 +2483,23 @@ IRValue genBoolEval(IRGenCtx ctx, ASTExpr testExpr, IRValue argVal)
                 op == ">"   || op == ">=")
                 return true;
 
-            if ((op == "&&" || op == "||") && 
-                isBoolExpr(binOp.lExpr) && 
+            // The AND and OR of boolean arguments is a boolean
+            if ((op == "&&" || op == "||") &&
+                isBoolExpr(binOp.lExpr) &&
                 isBoolExpr(binOp.rExpr))
                 return true;
+
+            return false;
+        }
+
+        // Primitive calls are assumed to produce booleans
+        if (auto callExpr = cast(CallExpr)expr)
+        {
+            if (auto identExpr = cast(IdentExpr)callExpr.base)
+                if (identExpr.name.startsWith(RT_PREFIX))
+                    return true;
+
+            return false;
         }
 
         return false;
