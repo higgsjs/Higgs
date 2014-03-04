@@ -182,12 +182,18 @@ enum Type : ubyte
     INT32 = 0,
     INT64,
     FLOAT64,
-    REFPTR,
     RAWPTR,
     RETADDR,
     CONST,
     FUNPTR,
-    MAPPTR
+    MAPPTR,
+
+    // GC heap pointer types
+    REFPTR,
+    OBJECT,
+    ARRAY,
+    CLOSURE,
+    STRING
 }
 
 /// Word and type pair
@@ -211,10 +217,10 @@ string typeToString(Type type)
         case Type.MAPPTR:   return "mapptr";
 
         case Type.REFPTR:   return "ref pointer";
-
-
-
-
+        case Type.OBJECT:   return "object";
+        case Type.ARRAY:    return "array";
+        case Type.CLOSURE:  return "closure";
+        case Type.STRING:   return "string";
 
         default:
         assert (false, "unsupported type");
@@ -273,21 +279,6 @@ string valToString(ValuePair value)
         case Type.RAWPTR:
         return to!string(w.ptrVal);
 
-        case Type.REFPTR:
-        if (w == NULL)
-            return "null";
-        if (ptrValid(w.ptrVal) is false)
-            return "invalid refptr";
-        if (valIsLayout(value, LAYOUT_OBJ))
-            return "object";
-        if (valIsLayout(value, LAYOUT_CLOS))
-            return "function";
-        if (valIsLayout(value, LAYOUT_ARR))
-            return "array";
-        if (valIsString(value))
-            return extractStr(w.ptrVal);
-        return "refptr";
-
         case Type.RETADDR:
         return to!string(w.ptrVal);
 
@@ -307,11 +298,36 @@ string valToString(ValuePair value)
 
         case Type.FUNPTR:
         return "funptr";
-        break;
 
         case Type.MAPPTR:
         return "mapptr";
-        break;
+
+        case Type.REFPTR:
+        if (w == NULL)
+            return "null";
+        if (ptrValid(w.ptrVal) is false)
+            return "invalid refptr";
+        if (valIsLayout(value, LAYOUT_OBJ))
+            return "object";
+        if (valIsLayout(value, LAYOUT_CLOS))
+            return "function";
+        if (valIsLayout(value, LAYOUT_ARR))
+            return "array";
+        if (valIsString(value))
+            return extractStr(w.ptrVal);
+        return "refptr";
+
+        case Type.OBJECT:
+        return "object";
+
+        case Type.ARRAY:
+        return "array";
+
+        case Type.CLOSURE:
+        return "closure";
+
+        case Type.STRING:
+        return "string";
 
         default:
         assert (false, "unsupported value type");

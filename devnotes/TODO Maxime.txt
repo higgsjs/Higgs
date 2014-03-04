@@ -119,26 +119,26 @@ $15 = phi [if_true(3965):0 => false, if_true(3965):1 => true]
 if_true $15 => if_true(3981), or_sec(3984)
 
 TODO: wider type tags, object, closure, array, string
-- commit before refactoring!
 - Save some type tests, must be faster in the end
 - Eliminate valIsString and such
-- Can try to have bit 3 always set for refptrs
-- Is there any disadvantage? ***
-  - load and store? still using make_value, get_word, get_type for properties
-- may want tagging instructions for alloc
-  tag_object, tag_string, ...
+- Can try to have bit 3 always set for refptrs? if useful
 
+TODO: eliminate valIsLayout, refIsLayout from JS code
 
+TODO: eliminate valIsString from D code
 
-TODO: eliminate valIsLayout from D code, JS code
-
-
-
+TODO: new IR instrs, tag_object, tag_string, ...
+- use for layout GC alloc
 
 
 
 
 
+
+
+
+[DONE] FIXME: test runner, FFI depend on type tag values?
+- grep for get_type
 
 [DONE] TODO: fetch type analysis from cc2014 branch, make it compile
 

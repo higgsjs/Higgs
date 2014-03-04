@@ -127,7 +127,7 @@ Console functions
         var string_fun;
 
         // special case raw pointers
-        if ($ir_get_type(thing) === 4)
+        if ($ir_is_rawptr(thing))
             return "<RAWPTR>";
 
         // special case null
