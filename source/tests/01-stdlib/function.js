@@ -133,6 +133,14 @@ function test_bind() {
     if (bound("arg1", "arg2") != ["x", "boundArg1", "boundArg2", "arg1", "arg2"])
         return 3;
 
+    //Bound "this" identity
+    var getThis = function() { return this; };
+    if (getThis() === testObj)
+        return 4;
+    var getThat = getThis.bind(testObj);
+    if (getThat() !== testObj)
+        return 5;
+
     return 0;
 }
 
