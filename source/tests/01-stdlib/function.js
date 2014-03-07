@@ -113,24 +113,24 @@ function test_call()
 }
 
 function test_bind() {
-    testObj = {
+    var testObj = {
         x: ["x"],
-        func: function() {return this.x.concat(arguments);}
+        func: function() { return this.x.concat(arguments); }
     };
 
     //Dotted
-    if(testObj.func("arg1", "arg2") != ["x", "arg1", "arg2"])
+    if (testObj.func("arg1", "arg2") != ["x", "arg1", "arg2"])
         return 1;
 
     //Unbound
     x = ["outerX"];
-    unbound = testObj.func;
-    if(unbound("arg1", "arg2") != ["outerX", "arg1", "arg2"])
+    var unbound = testObj.func;
+    if (unbound("arg1", "arg2") != ["outerX", "arg1", "arg2"])
         return 2;
 
     //Bound
-    bound = testObj.func.bind(testObj, "boundArg1", "boundArg2");
-    if(bound("arg1", "arg2") != ["x", "boundArg1", "boundArg2", "arg1", "arg2"])
+    var bound = testObj.func.bind(testObj, "boundArg1", "boundArg2");
+    if (bound("arg1", "arg2") != ["x", "boundArg1", "boundArg2", "arg1", "arg2"])
         return 3;
 
     return 0;
