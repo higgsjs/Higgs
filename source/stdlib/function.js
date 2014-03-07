@@ -135,9 +135,19 @@ Function.prototype.bind = function(thisArg)
     if (typeof this !== 'function')
         throw new TypeError('bind on non-function');
 
-    var args = arguments.length > 1 ? [].slice.call(arguments, 1) : [];
     var func = this;
-    return function() {
-        return func.apply(thisArg, args.concat(arguments));
-    };
+    if (arguments.length > 1) {
+
+        var args = [].slice.call(arguments, 1);
+        return function() {
+            return func.apply(thisArg, args.concat(arguments));
+        };
+
+    } else {
+
+        return function() {
+            return func.apply(thisArg, arguments);
+        };
+
+    }
 };
