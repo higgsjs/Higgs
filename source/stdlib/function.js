@@ -127,3 +127,17 @@ Function.prototype.call = function (thisArg)
     return retVal;
 };
 
+/**
+15.3.4.5 Function.prototype.bind (thisArg [, arg1 [, arg2, … ]])
+*/
+Function.prototype.bind = function(thisArg)
+{
+    if (typeof this !== 'function')
+        throw new TypeError('bind on non-function');
+
+    var args = arguments.length > 1 ? [].slice.call(arguments, 1) : [];
+    var func = this;
+    return function() {
+        return func.apply(thisArg, args.concat(arguments));
+    };
+};

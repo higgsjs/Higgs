@@ -112,6 +112,30 @@ function test_call()
     return 0;
 }
 
+function test_bind() {
+    testObj = {
+        x: ["x"],
+        func: function() {return this.x.concat(arguments);}
+    };
+
+    //Dotted
+    if(testObj.func("arg1", "arg2") != ["x", "arg1", "arg2"])
+        return 1;
+
+    //Unbound
+    x = ["outerX"];
+    unbound = testObj.func;
+    if(unbound("arg1", "arg2") != ["outerX", "arg1", "arg2"])
+        return 2;
+
+    //Bound
+    bound = testObj.func.bind(testObj, "boundArg1", "boundArg2");
+    if(bound("arg1", "arg2") != ["x", "boundArg1", "boundArg2", "arg1", "arg2"])
+        return 3;
+
+    return 0;
+}
+
 function test()
 {
     var r = test_ctor();
@@ -134,8 +158,14 @@ function test()
     if (r != 0)
         return 500 + r;
 
+   var r = test_bind();
+    if (r != 0)
+        return 600 + r;
+
     return 0;
 }
+
+
 
 // TODO: convert this test to use assertions &
 // exceptions instead of return codes 
