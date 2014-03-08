@@ -112,6 +112,18 @@ function test_call()
     return 0;
 }
 
+function array_eq(a1, a2)
+{
+    if (a1.length !== a2.length)
+        return false;
+
+    for (var i = 0; i < a1.length; ++i)
+        if (a1[i] !== a2[i])
+            return false;
+
+    return true;
+}
+
 function test_bind() {
     var testObj = {
         x: ["x"],
@@ -119,19 +131,26 @@ function test_bind() {
     };
 
     //Dotted
-    if (testObj.func("arg1", "arg2") != ["x", "arg1", "arg2"])
+    if (!array_eq(
+                testObj.func("arg1", "arg2"),
+                ["x", "arg1", "arg2"] ))
         return 1;
 
     //Unbound
     x = ["outerX"];
     var unbound = testObj.func;
-    if (unbound("arg1", "arg2") != ["outerX", "arg1", "arg2"])
+    if (!array_eq(
+                unbound("arg1", "arg2"),
+                ["outerX", "arg1", "arg2"] ))
         return 2;
 
     //Bound
     var bound = testObj.func.bind(testObj, "boundArg1", "boundArg2");
-    if (bound("arg1", "arg2") != ["x", "boundArg1", "boundArg2", "arg1", "arg2"])
+    if (!array_eq(
+                bound("arg1", "arg2"),
+                ["x", "boundArg1", "boundArg2", "arg1", "arg2"] ))
         return 3;
+
 
     //Bound "this" identity
     var getThis = function() { return this; };
@@ -144,7 +163,9 @@ function test_bind() {
 
     //Unbound constructor
     function ArgArray() { this.args = [].concat(arguments); }
-    if (new ArgArray("arg").args != ["arg"])
+    if (!array_eq(
+                new ArgArray("arg").args,
+                ["arg"] ))
         return 6;
 
     //Bound constructor
@@ -159,7 +180,9 @@ function test_bind() {
         return 9;
     if (!(argArray instanceof ArgArray))
         return 10;
-    if (argArray.args != ["boundArg", "arg"])
+    if (!array_eq(
+                argArray.args,
+                ["boundArg", "arg"] ))
         return 11;
 
     //Inheritance
@@ -168,7 +191,9 @@ function test_bind() {
     ArgArray.prototype.getArgs = function() { return this.args; }
     if (!('getArgs' in argArray))
         return 13;
-    if (argArray.getArgs() != argArray.args)
+    if (!array_eq(
+                argArray.getArgs(),
+                argArray.args ))
         return 14;
 
     return 0;
