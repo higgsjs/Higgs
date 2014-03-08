@@ -162,6 +162,15 @@ function test_bind() {
     if (argArray.args != ["boundArg", "arg"])
         return 11;
 
+    //Inheritance
+    if ('getArgs' in argArray)
+        return 12;
+    ArgArray.prototype.getArgs = function() { return this.args; }
+    if (!('getArgs' in argArray))
+        return 13;
+    if (argArray.getArgs() != argArray.args)
+        return 14;
+
     return 0;
 }
 
