@@ -136,22 +136,16 @@ Function.prototype.bind = function(thisArg)
         throw new TypeError('bind on non-function');
 
     var unbound = this;
-    var bound;
-    if (arguments.length > 1) {
+    var boundArguments = arguments.length > 1 ?
+        [].slice.call(arguments, 1) : [];
 
-        var args = [].slice.call(arguments, 1);
-        bound = function() {
-            var target = this instanceof bound ? this : thisArg;
-            return unbound.apply(target, args.concat(arguments));
-        };
+    function bound() {
+        var target = this instanceof bound ? this : thisArg;
 
-    } else {
+        var fullArguments = boundArguments.length > 0 ?
+            boundArguments.concat(arguments) : arguments;
 
-        bound = function() {
-            var target = this instanceof bound ? this : thisArg;
-            return unbound.apply(target, arguments);
-        };
-
+        return unbound.apply(target, fullArguments);
     }
 
     bound.prototype = unbound.prototype;
