@@ -141,6 +141,27 @@ function test_bind() {
     if (getThat() !== testObj)
         return 5;
 
+
+    //Unbound constructor
+    function ArgArray() { this.args = [].concat(arguments); }
+    if (new ArgArray("arg").args != ["arg"])
+        return 6;
+
+    //Bound constructor
+    var dummy = { ignore : true };
+    var BoundArgArray = ArgArray.bind(dummy, "boundArg");
+    var argArray = new BoundArgArray("arg");
+    if (argArray === dummy)
+        return 7;
+    if (argArray.ignore === true)
+        return 8;
+    if (!(argArray instanceof BoundArgArray))
+        return 9;
+    if (!(argArray instanceof ArgArray))
+        return 10;
+    if (argArray.args != ["boundArg", "arg"])
+        return 11;
+
     return 0;
 }
 
