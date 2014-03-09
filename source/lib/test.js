@@ -70,6 +70,16 @@ Assert functions for basic unit/regression tests.
     };
 
     /**
+    Assert two values are not equal
+    */
+    global.assertNotEq = function(val, different, msg)
+    {
+        if(isSameVal(val, different))
+            throw new Error("Assertion failed: got '" + val + "' expected something else " +
+                                (msg ? " : " + msg : ""));
+    };
+
+    /**
     Assert a function throws an error when called
     */
     global.assertThrows = function(fun, msg)
