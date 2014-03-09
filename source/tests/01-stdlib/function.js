@@ -112,18 +112,6 @@ function test_call()
     return 0;
 }
 
-function array_eq(a1, a2)
-{
-    if (a1.length !== a2.length)
-        return false;
-
-    for (var i = 0; i < a1.length; ++i)
-        if (a1[i] !== a2[i])
-            return false;
-
-    return true;
-}
-
 function test_bind() {
     var testObj = {
         x: ["x"],
@@ -131,70 +119,69 @@ function test_bind() {
     };
 
     //Dotted
-    if (!array_eq(
-                testObj.func("arg1", "arg2"),
-                ["x", "arg1", "arg2"] ))
-        return 1;
+    assertEqArray(
+            testObj.func("arg1", "arg2"),
+            ["x", "arg1", "arg2"],
+            "Unbound function should work as a member.");
 
     //Unbound
     x = ["outerX"];
     var unbound = testObj.func;
-    if (!array_eq(
-                unbound("arg1", "arg2"),
-                ["outerX", "arg1", "arg2"] ))
-        return 2;
+    assertEqArray(
+            unbound("arg1", "arg2"),
+            ["outerX", "arg1", "arg2"],
+            "Unbound function should use outer `this`.");
 
     //Bound
     var bound = testObj.func.bind(testObj, "boundArg1", "boundArg2");
-    if (!array_eq(
-                bound("arg1", "arg2"),
-                ["x", "boundArg1", "boundArg2", "arg1", "arg2"] ))
-        return 3;
+    assertEqArray(
+            bound("arg1", "arg2"),
+            ["x", "boundArg1", "boundArg2", "arg1", "arg2"],
+            "Function should be bound to testObj and two parameters.");
 
 
     //Bound "this" identity
     var getThis = function() { return this; };
-    if (getThis() === testObj)
-        return 4;
+    assertNotEq(getThis(), testObj,
+            "getThis should not be bound.");
+
     var getThat = getThis.bind(testObj);
-    if (getThat() !== testObj)
-        return 5;
+    assertEq(getThat(), testObj,
+            "getThat should be bound to testObj.");
 
 
     //Unbound constructor
     function ArgArray() { this.args = [].concat(arguments); }
-    if (!array_eq(
-                new ArgArray("arg").args,
-                ["arg"] ))
-        return 6;
+    assertEqArray(new ArgArray("arg").args, ["arg"],
+            "Unbound constructor should work normally.");
 
     //Bound constructor
     var dummy = { ignore : true };
     var BoundArgArray = ArgArray.bind(dummy, "boundArg");
     var argArray = new BoundArgArray("arg");
-    if (argArray === dummy)
-        return 7;
-    if (argArray.ignore === true)
-        return 8;
-    if (!(argArray instanceof BoundArgArray))
-        return 9;
-    if (!(argArray instanceof ArgArray))
-        return 10;
-    if (!array_eq(
-                argArray.args,
-                ["boundArg", "arg"] ))
-        return 11;
+    assertEqArray(
+            argArray.args,
+            ["boundArg", "arg"],
+            "Bound constructor should initialize the created object.");
+    assertNotEq(argArray, dummy,
+            "Bound constructor should not initialize the object it's bound to.");
+    assertFalse(argArray.ignore,
+            "Created object should not inherit from the object that " +
+            "the constructor is bound to.");
+    assertTrue(argArray instanceof BoundArgArray,
+            "Created oject should be an instance of the bound function.");
+    assertTrue(argArray instanceof ArgArray,
+            "Created oject should be an instance of the unbound function.");
 
     //Inheritance
-    if ('getArgs' in argArray)
-        return 12;
+    assertFalse('getArgs' in argArray,
+            "Bound object should not yet have the getArgs method.");
     ArgArray.prototype.getArgs = function() { return this.args; }
-    if (!('getArgs' in argArray))
-        return 13;
-    if (!array_eq(
-                argArray.getArgs(),
-                argArray.args ))
-        return 14;
+    assertTrue('getArgs' in argArray,
+            "Bound object should inherit getArgs after it is added to " +
+            "unbound functions prototype.");
+    assertEqArray(argArray.getArgs(), argArray.args,
+            "Inherited getArgs method should run in the created object.");
 
     return 0;
 }
@@ -221,9 +208,7 @@ function test()
     if (r != 0)
         return 500 + r;
 
-   var r = test_bind();
-    if (r != 0)
-        return 600 + r;
+   test_bind();
 
     return 0;
 }
