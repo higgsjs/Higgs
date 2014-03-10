@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2011-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -85,6 +85,7 @@ var tests = [
     ['1'    , true  , F, T, F, T, T, F, F, T],
     ['0'    , false , F, T, F, T, T, F, F, T],
     ['0'    , null  , F, T, F, T, F, T, F, T],
+    [null   , '0'   , F, T, F, T, F, T, F, T],
     [null   , undef , F, F, F, F, T, F, F, T],
     [null   , 0     , F, T, F, T, F, T, F, T],
     [0      , null  , F, T, F, T, F, T, F, T],

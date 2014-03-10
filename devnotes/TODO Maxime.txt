@@ -24,19 +24,8 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-TODO: basic reg alloc, what's the simplest we can do?
-- Marc says: probably a bigger perf issue than instr cache
-
-TODO: basic type prop, without reg alloc, type test removal
-- For now, don't do delayed writes
-
-TODO: not missing global prop opt?
-- observation: if read once, we know its not missing
-
-TODO: reimplement getPropObj with first level obj access inlined
-- keep small so just this gets inlined
-- create a new version of the primitive, no need to erase the old
-
+TODO: check the Moz guy's shape slides, check notes
+TODO: read some of Mozilla's shape code, srysly
 TODO: think about shapes more
 - want a guaranteed minimum object size
   - no need for a special ext table, can use objects as is with len, next ptr
@@ -50,19 +39,149 @@ TODO: think about shapes more
   - class ObjShape
 - no more "make_map"
 
-TODO: check the Moz guy's shape slides, check notes
+TODO: not missing global prop opt?
+- observation: if read once, we know its not missing
+
+TODO: basic reg alloc, what's the simplest we can do?
+- Marc says: probably a bigger perf issue than instr cache
 
 TODO: blog post about optimization, results
 - difficulty of optimizing self-hosted code
 
 FIXME: much regexp code executed during init, why?
 
-TODO: look at IR, ASM got getPropObj
-
 TODO: optimize IR inlining, less jumps & reliance on peepholes?
 - sometimes inlining functions that are only 1 block
 
-*** Meeting: to be shown: disassembly for fib, microbenchmark results
+TODO: tweak inlining heuristics
+- don't inline in global functions, unless they have loops? ***
+  - IRFunction.hasLoop?
+  - this might be extra beneficial, big functions that run only once
+- could also only inline in functions that have loops
+  - and/or maybe be super extra aggressive there
+- *must* inline object access and low level primitives in getprop
+  - runtime primitives that are less than 3-4 blocks should always be inlined
+
+------------------------------------------------------------------------------
+
+Goal: March 31st, type prop working, satisfying perf for article
+- Type prop should enable speed gains on bigger benchmarks
+
+TODO: try quickly hacked inline caches
+
+TODO: simple reg alloc
+- Marc says stack mapping, 1 bit per value
+  - value is on stack or in reg for that stack slot
+- could also think about delayed writes
+  - all output operands go into table, map to regs, spill when full
+  - is this simpler than modelizing occupied regs
+
+TODO: basic type prop & type test removal
+- For now, don't do delayed writes
+
+TODO: look at IR & ASM for getPropObj
+- type read and alignment code, is it optimal?
+
+TODO: specialized/biased primitives
+- could bias loop lt and loop add to only do integer, not fp
+- could also bias getProp for array elems, getLength
+
+TODO: reimplement getPropObj with first level obj access inlined
+- second level inlined for methods
+- keep small so just this gets inlined
+- create a new version of the primitive, no need to erase the old
+
+TODO: smaller add and lt for inlining
+- rerun microbenchmarks
+
+TODO: make add, sub, mul, lt get inlined
+- run benchmarks with and without
+
+TODO: peephope opt, see $rt_getPropObj
+not_exit(3986):
+$15 = phi [if_true(3965):0 => false, if_true(3965):1 => true]
+if_true $15 => if_true(3981), or_sec(3984)
+
+TODO: peephope opt, getPropObj, add_i32 x4
+
+FIXME: [1,2] == [1,2]
+
+FIXME: empty fun, cmp eax, 0
+
+FIXME: empty fun, ret undefined twice
+
+FIXME: loop incr, jump to immediately following block
+
+FIXME: asmString followed by call crashes
+- add test for this
+
+TODO: 200m_loop_incr
+
+TODO: proper struct for ValuePair
+- methods, toString, isHeapPtr, isNull, isLayout, etc
+- constructor taking a refptr & type
+
+TODO: eliminate valIsString from D code
+
+TODO: examine uses of valIsLayout, refIsLayout in runtime.js
+
+FIXME: ... something fucks up with GC in deltablue... heisenbug
+- maybe try tackling other issues first
+- run deltablue outside of tests
+
+
+
+
+
+
+
+
+[DONE] FIXME: esprima test fails
+- add new regression test
+
+[DONE] TODO: eliminate valIsString from JS code
+
+[DONE] Meeting:
+- New wider type tags
+- More debugging tools, tracing instrs, stack printing
+- Conf invite in Sweden
+  - rejected, suggested that Tom may apply, promote Higgs
+
+[DONE] TODO: use ValuePair more in runtime/object.d, for safety?
+- who uses getPropObj, newObj, newClos?
+- might make most sense for newObj, newClos
+- newObj should definitely take a ValuePair for the proto value
+
+[DONE] FIXME: segfault on Higgs init
+jump => for_test(3729)
+$10 = load_refptr $9, 0
+$0 = eq_refptr $10, null
+$0 = load_mapptr $9, 16
+$11 = map_prop_idx $0, $22, false
+Is the map null?
+- Seemingly not null, but getPropIdx segfaults
+- str ptr seems corrupted
+- gotta log who's calling getPropObj
+  - can you traverse the stack using VM.visitStack?
+- stack overflow is the problem
+
+[DONE] TODO: util, as.printStack
+
+[DONE] FIXME: $rt_getProto not working? proto value we get is corrupted, zero type tag
+- value properly set in newObj
+- seems to work with object in the console
+- proto corrupted during object expansion
+- minNumProps wrongly handled wrt reserveSlots
+
+[DONE] FIXME: prototype needs a type tag
+- store in slot 0?
+- need to move closure pointer to slot 1
+- newObj, newArr need to reserve a hidden prototype slot too
+
+[DONE] TODO: adjust D uses of newObj, newClos
+- grep for REFPTR
+
+[DONE] Meeting: to be shown: disassembly for fib, microbenchmark results
 - completed and debugged new stub scheme, branch rewriting
 - various machine code optimizations
   comp time     -42%
@@ -95,47 +214,20 @@ TODO: optimize IR inlining, less jumps & reliance on peepholes?
     - may want to leave type spec out until next paper
     - may be too much to explain
     - but, could start with inline caching
+- Marc says: prioritize inlining of add, sub, mul, etc.
+  - rerun microbenchmarks
+- Marc says: aim for having satisfying perf a month from now
+  - set milestone
 
-TODO: tweak inlining heuristics
-- don't inline in global functions, unless they have loops? ***
-  - IRFunction.hasLoop?
-  - this might be extra beneficial, big functions that run only once
-- could also only inline in functions that have loops
-  - and/or maybe be super extra aggressive there
-- *must* inline object access and low level primitives in getprop
-  - runtime primitives that are less than 3-4 blocks should always be inlined
+[DONE] TODO: adjust GC code for new type tags
 
-FIXME: inlining makes things significantly slower
-- are we making some functions very big? print initial and final numBlocks
-- making IR get generated for unexecuted code?
-- lots of inlining happening
+[DONE] TODO: isHeapPtr(Type type), useful for sanity checks
+- grep for REFPTR
 
-TODO: tweet that presence at dconf is confirmed #dlang #dconf
-It's official, Higgs and I will be returning to DConf in 2014! #dlang #dconf
+[DONE] TODO: change layout system to use new alloc instructions
 
-TODO: peephope opt, see $rt_getPropObj
-not_exit(3986):
-$15 = phi [if_true(3965):0 => false, if_true(3965):1 => true]
-if_true $15 => if_true(3981), or_sec(3984)
-
-TODO: wider type tags, object, closure, array, string
-- Save some type tests, must be faster in the end
-- Eliminate valIsString and such
-- Can try to have bit 3 always set for refptrs? if useful
-
-TODO: eliminate valIsLayout, refIsLayout from JS code
-
-TODO: eliminate valIsString from D code
-
-TODO: new IR instrs, tag_object, tag_string, ...
-- use for layout GC alloc
-
-
-
-
-
-
-
+[DONE] TODO: tweet that presence at dconf is confirmed #dlang #dconf
+It's official, Higgs and I will be returning to DConf in 2014! dconf.org #dlang #dconf
 
 [DONE] FIXME: test runner, FFI depend on type tag values?
 - grep for get_type

@@ -980,31 +980,31 @@ class IRConst : IRValue
 
     static IRConst trueCst() 
     { 
-        if (!trueVal) trueVal = new IRConst(TRUE , Type.CONST);
+        if (!trueVal) trueVal = new IRConst(TRUE);
         return trueVal;
     }
 
     static IRConst falseCst()
     {
-        if (!falseVal) falseVal = new IRConst(FALSE, Type.CONST);
+        if (!falseVal) falseVal = new IRConst(FALSE);
         return falseVal;
     }
 
     static IRConst undefCst()
     {
-        if (!undefVal) undefVal = new IRConst(UNDEF, Type.CONST);
+        if (!undefVal) undefVal = new IRConst(UNDEF);
         return undefVal;
     }
 
     static IRConst missingCst()
     {
-        if (!missingVal) missingVal = new IRConst(MISSING, Type.CONST);
+        if (!missingVal) missingVal = new IRConst(MISSING);
         return missingVal;
     }
 
     static IRConst nullCst()
     { 
-        if (!nullVal) nullVal = new IRConst(NULL, Type.REFPTR);
+        if (!nullVal) nullVal = new IRConst(NULL);
         return nullVal;
     }
 
@@ -1021,6 +1021,11 @@ class IRConst : IRValue
     private this(Word word, Type type)
     {
         this.value = ValuePair(word, type);
+    }
+
+    private this(ValuePair value)
+    {
+        this.value = value;
     }
 }
 

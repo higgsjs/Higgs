@@ -58,13 +58,9 @@ function test_proto()
 {
     var fProto = Function.prototype;
 
-    if (fProto.isPrototypeOf(Function.prototype.toString) === false)
-        return 1;
+    assert (fProto.isPrototypeOf(Function.prototype.toString));
 
-    if (fProto.isPrototypeOf(Object.prototype.hasOwnProperty) === false)
-        return 2;
-
-    return 0;
+    assert (fProto.isPrototypeOf(Object.prototype.hasOwnProperty));
 }
 
 function test_toString()
@@ -118,9 +114,7 @@ function test()
     if (r != 0)
         return 100 + r;
 
-    var r = test_proto()
-    if (r != 0)
-        return 200 + r;
+   test_proto()
 
    var r = test_toString();
     if (r != 0)
@@ -139,5 +133,6 @@ function test()
 
 // TODO: convert this test to use assertions &
 // exceptions instead of return codes 
-assert (test() === 0);
+var r = test();
+assert (r === 0, 'code ' + r);
 

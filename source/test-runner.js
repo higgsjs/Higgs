@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -94,8 +94,8 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
             catch (e)
             {
                 console.log(msg, "FAILED!");
-                if (e && e.hasOwnProperty("message"))
-                    console.log(e.message);
+                if (typeof e === "object")
+                    console.log(e.toString());
                 else if (typeof e === "string")
                     console.log(e);
 

@@ -151,7 +151,33 @@ void setField(CodeBlock as, X86Reg baseReg, size_t fOffset, X86Reg srcReg)
 
 X86Opnd memberOpnd(string fName)(X86Reg baseReg)
 {
-    mixin("auto fOffset = " ~ fName ~ ".offsetof;");
+    const auto elems = split(fName, ".");
+
+    size_t fOffset;
+    static if (elems.length is 3)
+    {
+        mixin(format(
+            "const e1Type = typeof(%s.%s).stringof;", elems[0], elems[1]
+        ));
+
+        mixin(format(
+            "fOffset = %s.%s.offsetof + %s.%s.offsetof;", 
+            elems[0], elems[1],
+            e1Type, elems[2]
+        ));
+    }
+    else if (elems.length is 2)
+    {
+        mixin(format(
+            "fOffset = %s.%s.offsetof;", 
+            elems[0], elems[1]
+        ));
+    }
+    else
+    {
+        assert (false);
+    }
+
     mixin("auto fSize = " ~ fName ~ ".sizeof;");
 
     return X86Opnd(fSize * 8, baseReg, cast(int32_t)fOffset);
@@ -271,49 +297,6 @@ void popRegs(CodeBlock as)
     as.pop(RAX);
 }
 
-/*
-void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)
-{
-    extern (C) static void checkValFn(VM vm, Word word, Type type, char* errorStr)
-    {
-        if (type != Type.REFPTR)
-            return;
-
-        if (vm.inFromSpace(word.ptrVal) is false)
-        {
-            writefln(
-                "pointer not in from-space: %s\n%s",
-                word.ptrVal,
-                to!string(errorStr)
-            );
-        }
-    }
-
-    as.pushRegs();
-
-    auto STR_DATA = new Label("STR_DATA");
-    auto AFTER_STR = new Label("AFTER_STR");
-
-    as.instr(JMP, AFTER_STR);
-    as.addInstr(STR_DATA);
-    foreach (ch; errorStr)
-        as.addInstr(new IntData(cast(uint)ch, 8));    
-    as.addInstr(new IntData(0, 8));
-    as.addInstr(AFTER_STR);
-
-    as.instr(MOV, cargRegs[2].reg(8), typeOpnd);
-    as.instr(MOV, cargRegs[1], wordOpnd);
-    as.instr(MOV, cargRegs[0], vmReg);
-    as.instr(LEA, cargRegs[3], new X86IPRel(8, STR_DATA));
-
-    auto checkFn = &checkValFn;
-    as.ptr(scrRegs64[0], checkFn);
-    as.instr(jit.encodings.CALL, scrRegs64[0]);
-
-    as.popRegs();
-}
-*/
-
 void printUint(CodeBlock as, X86Opnd opnd)
 {
     extern (C) void printUintFn(uint64_t v)
@@ -401,6 +384,45 @@ void printStr(CodeBlock as, string str)
     as.ptr(scrRegs[0], &printStrFn);
     as.call(scrRegs[0].opnd(64));
 
+    as.popRegs();
+}
+
+void printStack(CodeBlock as, CallCtx ctx)
+{
+    extern (C) static void printStackFn(CallCtx ctx)
+    {
+        auto vm = ctx.vm;
+
+        vm.setCallCtx(ctx);
+
+        vm.visitStack(
+            delegate void(
+                IRFunction fun,
+                Word* wsp,
+                Type* tsp,
+                size_t depth,
+                size_t frameSize,
+                IRInstr callInstr
+            )
+            {
+                writeln(fun.getName);
+            }
+        );
+
+        vm.setCallCtx(null);
+    }
+
+    as.comment("printStack()");
+
+    as.pushRegs();
+    as.pushJITRegs();
+
+    as.ptr(cargRegs[0], ctx);
+
+    as.ptr(scrRegs[0], &printStackFn);
+    as.call(scrRegs[0].opnd(64));
+
+    as.popJITRegs();
     as.popRegs();
 }
 

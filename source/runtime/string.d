@@ -176,7 +176,7 @@ refptr getTableStr(VM vm, refptr str)
         tblSize * STR_TBL_MAX_LOAD_NUM)
     {
         // Store the string pointer in a GC root object
-        auto strRoot = GCRoot(vm, str);
+        auto strRoot = GCRoot(vm, str, Type.STRING);
 
         // Extend the string table
         extStrTable(vm, strTbl, tblSize, numStrings);

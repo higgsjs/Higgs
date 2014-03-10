@@ -87,13 +87,13 @@ Function.prototype.asmString = function ()
 */
 Function.prototype.apply = function (thisArg, argArray)
 {
-    if (typeof this !== 'function')
+    if (!$ir_is_closure(this))
         throw new TypeError('apply on non-function');
 
     if (argArray === null || argArray === undefined)
         argArray = [];
 
-    if (!$rt_valIsLayout(argArray, $rt_LAYOUT_ARR))
+    if (!$ir_is_array(argArray))
         throw new TypeError('invalid arguments array');
 
     // Get the arguments table from the array

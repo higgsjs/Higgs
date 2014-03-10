@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -129,7 +129,7 @@ void gen_set_str(
         linkVal.linkIdx = vm.allocLink();
 
         vm.setLinkWord(linkVal.linkIdx, Word.ptrv(strPtr));
-        vm.setLinkType(linkVal.linkIdx, Type.REFPTR);
+        vm.setLinkType(linkVal.linkIdx, Type.STRING);
     }
 
     as.getMember!("VM.wLinkTable")(scrRegs[0], vmReg);
@@ -138,7 +138,7 @@ void gen_set_str(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, scrRegs[0].opnd(64));
 
-    st.setOutType(as, instr, Type.REFPTR);
+    st.setOutType(as, instr, Type.STRING);
 }
 
 void gen_make_value(
@@ -574,7 +574,7 @@ void FPToStr(string fmt)(
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
 
-    st.setOutType(as, instr, Type.REFPTR);
+    st.setOutType(as, instr, Type.STRING);
 }
 
 alias FPToStr!("%G") gen_f64_to_str;
@@ -768,8 +768,8 @@ void IsTypeOp(Type type)(
         X86Opnd outReg = outOpnd.isReg? outOpnd.reg.opnd(32):scrRegs[0].opnd(32);
 
         // Generate a boolean output value
-        as.mov(outReg, X86Opnd(FALSE.int8Val));
-        as.mov(scrRegs[1].opnd(32), X86Opnd(TRUE.int8Val));
+        as.mov(outReg, X86Opnd(FALSE.word.int8Val));
+        as.mov(scrRegs[1].opnd(32), X86Opnd(TRUE.word.int8Val));
         as.cmove(outReg.reg, scrRegs[1].opnd(32));
 
         // If the output register is not the output operand
@@ -820,11 +820,15 @@ void IsTypeOp(Type type)(
 }
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
-alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
-alias IsTypeOp!(Type.RAWPTR) gen_is_rawptr;
 alias IsTypeOp!(Type.INT32) gen_is_i32;
 alias IsTypeOp!(Type.INT64) gen_is_i64;
 alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
+alias IsTypeOp!(Type.RAWPTR) gen_is_rawptr;
+alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
+alias IsTypeOp!(Type.OBJECT) gen_is_object;
+alias IsTypeOp!(Type.ARRAY) gen_is_array;
+alias IsTypeOp!(Type.CLOSURE) gen_is_closure;
+alias IsTypeOp!(Type.STRING) gen_is_string;
 
 void CmpOp(string op, size_t numBits)(
     BlockVersion ver, 
@@ -871,8 +875,8 @@ void CmpOp(string op, size_t numBits)(
     X86Opnd outReg = outOpnd.isReg? outOpnd.reg.opnd(32):scrRegs[0].opnd(32);
 
     auto tmpReg = scrRegs[1].opnd(32);
-    auto trueOpnd = X86Opnd(TRUE.int8Val);
-    auto falseOpnd = X86Opnd(FALSE.int8Val);
+    auto trueOpnd = X86Opnd(TRUE.word.int8Val);
+    auto falseOpnd = X86Opnd(FALSE.word.int8Val);
 
     // Generate a boolean output only if this instruction has
     // many uses or is not followed by an if
@@ -1221,7 +1225,7 @@ void gen_if_true(
 
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
-    as.cmp(argOpnd, X86Opnd(TRUE.int8Val));
+    as.cmp(argOpnd, X86Opnd(TRUE.word.int8Val));
 
     auto branchT = getBranchEdge(instr.getTarget(0), st, false);
     auto branchF = getBranchEdge(instr.getTarget(1), st, false);
@@ -1432,8 +1436,9 @@ void gen_call_prim(
 
     // Get the primitve function from the global object
     auto closVal = getProp(vm, vm.globalObj, nameStr);
-    assert (valIsLayout(closVal, LAYOUT_CLOS));
-    auto fun = getClosFun(closVal.word.ptrVal);
+    assert (closVal.type is Type.CLOSURE);
+    assert (closVal.word.ptrVal !is null);
+    auto fun = getFunPtr(closVal.word.ptrVal);
 
     // Check that the argument count matches
     auto numArgs = cast(int32_t)instr.numArgs - 2;
@@ -1579,8 +1584,8 @@ void gen_call(
         false
     );
 
-    // If the value is not a reference, bailout
-    as.cmp(closType, X86Opnd(Type.REFPTR));
+    // If the value is not a closure, bailout
+    as.cmp(closType, X86Opnd(Type.CLOSURE));
     as.jne(Label.THROW);
 
     // Get the word for the closure value
@@ -1595,14 +1600,8 @@ void gen_call(
     );
     assert (closReg.isGPR);
 
-    // If the object is not a closure, bailout
-    as.cmp(closReg, X86Opnd(0));
-    as.je(Label.THROW);
-    as.cmp(X86Opnd(32, closReg.reg, obj_ofs_header(null)), X86Opnd(LAYOUT_CLOS));
-    as.jne(Label.THROW);
-
     // Get the IRFunction pointer from the closure object
-    auto fptrMem = X86Opnd(64, closReg.reg, CLOS_OFS_FPTR);
+    auto fptrMem = X86Opnd(64, closReg.reg, FPTR_SLOT_OFS);
     as.mov(scrRegs[1].opnd(64), fptrMem);
 
     //
@@ -1632,7 +1631,7 @@ void gen_call(
     as.label(Label.LOOP);
     as.cmp(scrReg3.opnd(64), X86Opnd(0));
     as.jge(Label.LOOP_EXIT);
-    as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.int8Val));
+    as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.word.int8Val));
     as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
     as.add(scrReg3.opnd(64), X86Opnd(1));
     as.jmp(Label.LOOP);
@@ -1702,7 +1701,7 @@ void gen_call(
 
     // Write the closure argument
     movArgWord(as, numArgs + 2, closReg);
-    movArgType(as, numArgs + 2, X86Opnd(Type.REFPTR));
+    movArgType(as, numArgs + 2, X86Opnd(Type.CLOSURE));
 
     // Compute the total number of locals and extra arguments
     // input : scr1, IRFunction
@@ -1770,8 +1769,8 @@ void gen_call_new(
         vm.setCallCtx(callCtx);
 
         // Get the function object from the closure
-        auto clos = GCRoot(vm, closPtr);
-        auto fun = getClosFun(clos.ptr);
+        auto clos = GCRoot(vm, closPtr, Type.CLOSURE);
+        auto fun = getFunPtr(clos.ptr);
 
         assert (
             fun !is null,
@@ -1782,8 +1781,8 @@ void gen_call_new(
         auto protoObj = GCRoot(
             vm,
             getProp(
-                vm, 
-                clos.ptr,
+                vm,
+                clos.pair,
                 "prototype"w
             )
         );
@@ -1802,9 +1801,9 @@ void gen_call_new(
         auto thisObj = GCRoot(
             vm,
             newObj(
-                vm, 
+                vm,
                 ctorMap,
-                protoObj.ptr
+                protoObj.pair
             )
         );
 
@@ -1840,8 +1839,8 @@ void gen_call_new(
         false
     );
 
-    // If the value is not a reference, bailout
-    as.cmp(closType, X86Opnd(Type.REFPTR));
+    // If the value is not a closure, bailout
+    as.cmp(closType, X86Opnd(Type.CLOSURE));
     as.jne(Label.THROW);
 
     // Get the word for the closure value
@@ -1856,14 +1855,8 @@ void gen_call_new(
     );
     assert (closReg.isGPR);
 
-    // If the object is not a closure, bailout
-    as.cmp(closReg, X86Opnd(0));
-    as.je(Label.THROW);
-    as.cmp(X86Opnd(32, closReg.reg, obj_ofs_header(null)), X86Opnd(LAYOUT_CLOS));
-    as.jne(Label.THROW);
-
     // Get the IRFunction pointer from the closure object
-    auto fptrMem = X86Opnd(64, closReg.reg, CLOS_OFS_FPTR);
+    auto fptrMem = X86Opnd(64, closReg.reg, FPTR_SLOT_OFS);
     as.mov(scrRegs[1].opnd(64), fptrMem);
 
     //
@@ -1895,7 +1888,7 @@ void gen_call_new(
     as.label(Label.LOOP);
     as.cmp(scrReg3.opnd(64), X86Opnd(0));
     as.jge(Label.LOOP_EXIT);
-    as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.int8Val));
+    as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.word.int8Val));
     as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
     as.add(scrReg3.opnd(64), X86Opnd(1));
     as.jmp(Label.LOOP);
@@ -1931,7 +1924,7 @@ void gen_call_new(
 
     // Write the "this" argument
     movArgWord(as, numArgs + 1, X86Opnd(RAX));
-    movArgType(as, numArgs + 1, X86Opnd(Type.REFPTR));
+    movArgType(as, numArgs + 1, X86Opnd(Type.OBJECT));
 
     //
     // Argument copying
@@ -1953,7 +1946,7 @@ void gen_call_new(
         false
     );
     movArgWord(as, numArgs + 2, closReg);
-    movArgType(as, numArgs + 2, X86Opnd(Type.REFPTR));
+    movArgType(as, numArgs + 2, X86Opnd(Type.CLOSURE));
 
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
@@ -2063,13 +2056,13 @@ void gen_call_apply(
         );
 
         assert (
-            valIsLayout(closVal, LAYOUT_CLOS),
+            closVal.type is Type.CLOSURE,
             "apply call on to non-function"
         );
 
         // Get the function object from the closure
         auto closPtr = closVal.word.ptrVal;
-        auto fun = getClosFun(closPtr);
+        auto fun = getFunPtr(closPtr);
 
         // Get the array table pointer
         auto tblPtr = tblVal.word.ptrVal;
@@ -2088,8 +2081,7 @@ void gen_call_apply(
             fun,
             retAddr,
             closPtr,
-            thisVal.word,
-            thisVal.type,
+            thisVal,
             argcVal,
             argVals
         );
@@ -2184,8 +2176,7 @@ void gen_load_file(
                 fun,
                 retAddr,
                 null,
-                Word.ptrv(vm.globalObj),
-                Type.REFPTR,
+                vm.globalObj,
                 0,
                 null
             );
@@ -2290,8 +2281,7 @@ void gen_eval_str(
                 fun,
                 retAddr,
                 null,
-                Word.ptrv(vm.globalObj),
-                Type.REFPTR,
+                vm.globalObj,
                 0,
                 null
             );
@@ -2401,7 +2391,7 @@ void gen_ret(
         // value and return that instead.
         as.cmp(retTypeReg.opnd(8), X86Opnd(Type.CONST));
         as.jne(Label.FALSE);
-        as.cmp(retWordReg.opnd(8), X86Opnd(UNDEF.int8Val));
+        as.cmp(retWordReg.opnd(8), X86Opnd(UNDEF.word.int8Val));
         as.jne(Label.FALSE);
 
         // Use the "this" value as a return value
@@ -2514,10 +2504,10 @@ void GetValOp(Type typeTag, string fName)(
     st.setOutType(as, instr, typeTag);
 }
 
-alias GetValOp!(Type.REFPTR, "objProto") gen_get_obj_proto;
-alias GetValOp!(Type.REFPTR, "arrProto") gen_get_arr_proto;
-alias GetValOp!(Type.REFPTR, "funProto") gen_get_fun_proto;
-alias GetValOp!(Type.REFPTR, "globalObj") gen_get_global_obj;
+alias GetValOp!(Type.OBJECT, "objProto.word") gen_get_obj_proto;
+alias GetValOp!(Type.OBJECT, "arrProto.word") gen_get_arr_proto;
+alias GetValOp!(Type.OBJECT, "funProto.word") gen_get_fun_proto;
+alias GetValOp!(Type.OBJECT, "globalObj.word") gen_get_global_obj;
 alias GetValOp!(Type.INT32, "heapSize") gen_get_heap_size;
 alias GetValOp!(Type.INT32, "gcCount") gen_get_gc_count;
 
@@ -2540,7 +2530,7 @@ void gen_get_heap_free(
     st.setOutType(as, instr, Type.INT32);
 }
 
-void gen_heap_alloc(
+void HeapAllocOp(Type type)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -2633,9 +2623,15 @@ void gen_heap_alloc(
     // Allocation done
     as.label(Label.DONE);
 
-    // The output is a reference pointer
-    st.setOutType(as, instr, Type.REFPTR);
+    // Set the output type tag
+    st.setOutType(as, instr, type);
 }
+
+alias HeapAllocOp!(Type.REFPTR) gen_alloc_refptr;
+alias HeapAllocOp!(Type.OBJECT) gen_alloc_object;
+alias HeapAllocOp!(Type.ARRAY) gen_alloc_array;
+alias HeapAllocOp!(Type.CLOSURE) gen_alloc_closure;
+alias HeapAllocOp!(Type.STRING) gen_alloc_string;
 
 void gen_gc_collect(
     BlockVersion ver,
@@ -2688,7 +2684,7 @@ void gen_get_global(
 
     // Lookup the property index in the class
     // if the property slot doesn't exist, it will be allocated
-    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj.word.ptrVal);
     assert (globalMap !is null);
     auto propIdx = globalMap.getPropIdx(nameStr, false);
 
@@ -2696,7 +2692,7 @@ void gen_get_global(
     if (propIdx is uint32.max)
     {
         // Initialize the property, this may extend the global object
-        setProp(vm, vm.globalObj, nameStr, ValuePair(MISSING, Type.CONST));
+        setProp(vm, vm.globalObj, nameStr, MISSING);
         propIdx = globalMap.getPropIdx(nameStr, false);
         assert (propIdx !is uint32.max);
     }
@@ -2717,7 +2713,7 @@ void gen_get_global(
             propName
         );
 
-        if (propVal.word == MISSING && propVal.type == Type.CONST)
+        if (propVal == MISSING)
         {
             return throwError(
                 vm,
@@ -2740,13 +2736,13 @@ void gen_get_global(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Get the global object pointer
-    as.getMember!("VM.globalObj")(scrRegs[0], vmReg);
+    as.getMember!("VM.globalObj.word")(scrRegs[0], vmReg);
 
     // Get the global object size/capacity
     as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
 
     // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(vm.globalObj, 0);
+    auto wordOfs = obj_ofs_word(vm.globalObj.word.ptrVal, 0);
 
     // Define memory operands for the word and type values
     auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
@@ -2755,7 +2751,7 @@ void gen_get_global(
     // If the value is not "missing", skip the fallback code
     as.cmp(typeMem, X86Opnd(Type.CONST));
     as.jne(Label.SKIP);
-    as.cmp(wordMem, X86Opnd(MISSING.int8Val));
+    as.cmp(wordMem, X86Opnd(MISSING.word.int8Val));
     as.jne(Label.SKIP);
 
     // If the value is missing, call the host fallback code
@@ -2820,7 +2816,7 @@ void gen_set_global(
     auto nameStr = strArg.str;
 
     // Lookup the property index in the class
-    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj);
+    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj.word.ptrVal);
     assert (globalMap !is null);
     auto propIdx = globalMap.getPropIdx(nameStr, false);
 
@@ -2828,7 +2824,7 @@ void gen_set_global(
     if (propIdx is uint32.max)
     {
         // Initialize the property, this may extend the global object
-        setProp(vm, vm.globalObj, nameStr, ValuePair(MISSING, Type.CONST));
+        setProp(vm, vm.globalObj, nameStr, MISSING);
         propIdx = globalMap.getPropIdx(nameStr, false);
         assert (propIdx !is uint32.max);
     }
@@ -2837,13 +2833,13 @@ void gen_set_global(
     auto argOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd(64), true);
 
     // Get the global object pointer
-    as.getMember!("VM.globalObj")(scrRegs[1], vmReg);
+    as.getMember!("VM.globalObj.word")(scrRegs[1], vmReg);
 
     // Get the global object size/capacity
     as.getField(scrRegs[2].reg(32), scrRegs[1], obj_ofs_cap(null));
 
     // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(vm.globalObj, 0);
+    auto wordOfs = obj_ofs_word(vm.globalObj.word.ptrVal, 0);
 
     // Set the word value
     auto wordMem = X86Opnd(64, scrRegs[1], wordOfs + 8 * propIdx);
@@ -2901,7 +2897,7 @@ void gen_get_str(
     as.mov(outOpnd, X86Opnd(RAX));
 
     // The output is a reference pointer
-    st.setOutType(as, instr, Type.REFPTR);
+    st.setOutType(as, instr, Type.STRING);
 }
 
 void gen_make_link(
@@ -2920,8 +2916,8 @@ void gen_make_link(
     {
         linkArg.linkIdx = vm.allocLink();
 
-        vm.setLinkWord(linkArg.linkIdx, NULL);
-        vm.setLinkType(linkArg.linkIdx, Type.REFPTR);
+        vm.setLinkWord(linkArg.linkIdx, NULL.word);
+        vm.setLinkType(linkArg.linkIdx, NULL.type);
     }
 
     // Set the output value
@@ -3047,7 +3043,7 @@ void gen_map_num_props(
 }
 
 void gen_map_prop_idx(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3059,7 +3055,9 @@ void gen_map_prop_idx(
     {
         // Lookup the property index
         assert (map !is null, "map is null");
-        return map.getPropIdx(strPtr, allocField);
+        auto propIdx = map.getPropIdx(strPtr, allocField);
+
+        return propIdx;
     }
 
     // TODO: this won't GC, but spill C caller-save registers
@@ -3095,14 +3093,14 @@ void gen_map_prop_idx(
 }
 
 void gen_map_prop_name(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
     extern (C) static refptr op_map_prop_name(
-        CallCtx callCtx, 
+        CallCtx callCtx,
         ObjMap map,
         uint32_t propIdx
     )
@@ -3112,7 +3110,6 @@ void gen_map_prop_name(
 
         assert (map !is null, "map is null");
         auto propName = map.getPropName(propIdx);
-
         auto str = (propName !is null)? getString(vm, propName):null;
 
         vm.setCallCtx(null);
@@ -3139,9 +3136,14 @@ void gen_map_prop_name(
     as.popJITRegs();
 
     // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, cretReg.opnd);
 
-    st.setOutType(as, instr, Type.REFPTR);
+    // If the string is null, the type must be REFPTR
+    as.mov(scrRegs[0].opnd(8), X86Opnd(Type.STRING));
+    as.mov(scrRegs[1].opnd(8), X86Opnd(Type.REFPTR));
+    as.cmp(outOpnd, X86Opnd(NULL.word.int8Val));
+    as.cmove(scrRegs[0].reg(8), scrRegs[1].opnd(8));
+    st.setOutType(as, instr, scrRegs[0].reg(8));
 }
 
 void gen_new_clos(
@@ -3174,7 +3176,7 @@ void gen_new_clos(
         auto closPtr = GCRoot(
             vm,
             newClos(
-                vm, 
+                vm,
                 closMap,
                 vm.funProto,
                 cast(uint32)fun.ast.captVars.length,
@@ -3186,7 +3188,7 @@ void gen_new_clos(
         auto objPtr = GCRoot(
             vm,
             newObj(
-                vm, 
+                vm,
                 protMap,
                 vm.objProto
             )
@@ -3195,7 +3197,7 @@ void gen_new_clos(
         // Set the "prototype" property on the closure object
         setProp(
             vm,
-            closPtr.ptr,
+            closPtr.pair,
             "prototype"w,
             objPtr.pair
         );
@@ -3235,7 +3237,7 @@ void gen_new_clos(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(cretReg));
 
-    st.setOutType(as, instr, Type.REFPTR);
+    st.setOutType(as, instr, Type.CLOSURE);
 }
 
 void gen_print_str(
@@ -3310,7 +3312,7 @@ void gen_get_ast_str(
             "invalid closure object"
         );
 
-        auto fun = getClosFun(closPtr);
+        auto fun = getFunPtr(closPtr);
 
         auto str = fun.ast.toString();
         auto strObj = getString(vm, to!wstring(str));
@@ -3335,7 +3337,7 @@ void gen_get_ast_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Type.REFPTR);
+    st.setOutType(as, instr, Type.STRING);
 }
 
 void gen_get_ir_str(
@@ -3355,7 +3357,7 @@ void gen_get_ir_str(
             "invalid closure object"
         );
 
-        auto fun = getClosFun(closPtr);
+        auto fun = getFunPtr(closPtr);
 
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
@@ -3384,7 +3386,7 @@ void gen_get_ir_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Type.REFPTR);
+    st.setOutType(as, instr, Type.STRING);
 }
 
 void gen_get_asm_str(
@@ -3404,7 +3406,7 @@ void gen_get_asm_str(
             "invalid closure object"
         );
 
-        auto fun = getClosFun(closPtr);
+        auto fun = getFunPtr(closPtr);
 
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
@@ -3463,7 +3465,7 @@ void gen_get_asm_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Type.REFPTR);
+    st.setOutType(as, instr, Type.STRING);
 }
 
 void gen_load_lib(
@@ -3786,7 +3788,7 @@ void gen_call_ffi(
     }
     else if (retType == "void")
     {
-        as.mov(outOpnd, X86Opnd(UNDEF.int8Val));
+        as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
         st.setOutType(as, instr, Type.CONST);
     }
     else

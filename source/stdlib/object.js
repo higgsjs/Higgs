@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2012, Universite de Montreal
+ *  Copyright (c) 2012-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -39,14 +39,6 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * _________________________________________________________________________
  */
-
-/**
-@fileOverview
-Implementation of ECMAScript 5 Object methods and prototype.
-
-@author
-Maxime Chevalier-Boisvert
-*/
 
 /**
 @class 15.2.2 The Object Constructor
@@ -101,7 +93,7 @@ Object.getPrototypeOf = function (obj)
         'non-object value in getPrototypeOf'
     );
 
-    var proto = $rt_obj_get_proto(obj);
+    var proto = $rt_getProto(obj);
 
     return proto;
 };

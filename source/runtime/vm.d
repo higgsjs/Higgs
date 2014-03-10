@@ -49,7 +49,6 @@ import std.file;
 import options;
 import stats;
 import util.misc;
-import analysis.typeset;
 import parser.parser;
 import parser.ast;
 import ir.ir;
@@ -89,11 +88,11 @@ class RunError : Error
 
         this.name = "run-time error";
 
-        if (valIsLayout(excVal, LAYOUT_OBJ))
+        if (excVal.type is Type.OBJECT)
         {
             auto errName = getProp(
                 vm,
-                excVal.word.ptrVal,
+                excVal,
                 "name"w
             );
 
@@ -102,7 +101,7 @@ class RunError : Error
 
             auto msgStr = getProp(
                 vm,
-                excVal.word.ptrVal,
+                excVal,
                 "message"w
             );
 
@@ -169,13 +168,6 @@ unittest
     );
 }
 
-// Note: low byte is set to allow for one byte immediate comparison
-Word NULL    = { uint64Val: 0x0000000000000000 };
-Word TRUE    = { uint64Val: 0x0000000000000001 };
-Word FALSE   = { uint64Val: 0x0000000000000002 };
-Word UNDEF   = { uint64Val: 0x0000000000000003 };
-Word MISSING = { uint64Val: 0x0000000000000004 };
-
 /// Word type values
 enum Type : ubyte
 {
@@ -197,7 +189,50 @@ enum Type : ubyte
 }
 
 /// Word and type pair
-alias Tuple!(Word, "word", Type, "type") ValuePair;
+struct ValuePair
+{
+    this(Word word, Type type)
+    {
+        this.word = word;
+        this.type = type;
+    }
+
+    this(refptr ptr, Type type)
+    {
+        this.word.ptrVal = ptr;
+        this.type = type;
+    }
+
+    Word word;
+
+    Type type;
+}
+
+// Note: low byte is set to allow for one byte immediate comparison
+immutable NULL    = ValuePair(Word(0x00), Type.REFPTR);
+immutable TRUE    = ValuePair(Word(0x01), Type.CONST);
+immutable FALSE   = ValuePair(Word(0x02), Type.CONST);
+immutable UNDEF   = ValuePair(Word(0x03), Type.CONST);
+immutable MISSING = ValuePair(Word(0x04), Type.CONST);
+
+/**
+Test if a given type is a heap pointer
+*/
+bool isHeapPtr(Type type)
+{
+    switch (type)
+    {
+        case Type.REFPTR:
+        case Type.OBJECT:
+        case Type.ARRAY:
+        case Type.CLOSURE:
+        case Type.STRING:
+        return true;
+
+        default:
+        return false;
+    }
+}
 
 /**
 Produce a string representation of a type tag
@@ -283,13 +318,13 @@ string valToString(ValuePair value)
         return to!string(w.ptrVal);
 
         case Type.CONST:
-        if (w == TRUE)
+        if (value == TRUE)
             return "true";
-        if (w == FALSE)
+        if (value == FALSE)
             return "false";
-        if (w == UNDEF)
+        if (value == UNDEF)
             return "undefined";
-        if (w == MISSING)
+        if (value == MISSING)
             return "missing";
         assert (
             false, 
@@ -303,7 +338,7 @@ string valToString(ValuePair value)
         return "mapptr";
 
         case Type.REFPTR:
-        if (w == NULL)
+        if (value == NULL)
             return "null";
         if (ptrValid(w.ptrVal) is false)
             return "invalid refptr";
@@ -313,8 +348,6 @@ string valToString(ValuePair value)
             return "function";
         if (valIsLayout(value, LAYOUT_ARR))
             return "array";
-        if (valIsString(value))
-            return extractStr(w.ptrVal);
         return "refptr";
 
         case Type.OBJECT:
@@ -327,7 +360,7 @@ string valToString(ValuePair value)
         return "closure";
 
         case Type.STRING:
-        return "string";
+        return extractStr(w.ptrVal);
 
         default:
         assert (false, "unsupported value type");
@@ -395,9 +428,6 @@ class VM
     /// Linked list of GC roots
     GCRoot* firstRoot;
 
-    /// Linked list of type sets
-    TypeSet* firstSet;
-
     /// Set of weak references to functions referenced in the heap
     /// To be cleaned up by the GC
     IRFunction[void*] funRefs;
@@ -431,16 +461,16 @@ class VM
     refptr strTbl;
 
     /// Object prototype object
-    refptr objProto;
+    ValuePair objProto;
 
     /// Array prototype object
-    refptr arrProto;
+    ValuePair arrProto;
 
     /// Function prototype object
-    refptr funProto;
+    ValuePair funProto;
 
     /// Global object reference
-    refptr globalObj;
+    ValuePair globalObj;
 
     /// Runtime error value (uncaught exceptions)
     RunError runError;
@@ -554,21 +584,21 @@ class VM
 
         // Allocate the object prototype object
         objProto = newObj(
-            this, 
+            this,
             new ObjMap(this, BASE_OBJ_INIT_SIZE),
-            null
+            NULL
         );
 
         // Allocate the array prototype object
         arrProto = newObj(
-            this, 
+            this,
             new ObjMap(this, BASE_OBJ_INIT_SIZE),
             objProto
         );
 
         // Allocate the function prototype object
         funProto = newObj(
-            this, 
+            this,
             new ObjMap(this, BASE_OBJ_INIT_SIZE),
             objProto
         );
@@ -624,7 +654,7 @@ class VM
         );
 
         assert (
-            t != Type.REFPTR ||
+            !isHeapPtr(t) ||
             w.ptrVal == null ||
             (w.ptrVal >= heapStart && w.ptrVal < heapLimit),
             "ref ptr out of heap in setSlot: " ~
@@ -641,14 +671,6 @@ class VM
     void setSlot(StackIdx idx, ValuePair val)
     {
         setSlot(idx, val.word, val.type);
-    }
-
-    /**
-    Set a stack slot to a boolean value
-    */
-    void setSlot(StackIdx idx, bool val)
-    {
-        setSlot(idx, val? TRUE:FALSE, Type.CONST);
     }
 
     /**
@@ -902,7 +924,7 @@ class VM
             "expected constant value for arg " ~ to!string(argIdx)
         );
 
-        return (argVal.word.int8Val == TRUE.int8Val);
+        return (argVal.word.int8Val == TRUE.word.int8Val);
     }
 
     /**
@@ -933,7 +955,7 @@ class VM
         auto strVal = getArgVal(instr, argIdx);
 
         assert (
-            valIsString(strVal),
+            strVal.type is Type.STRING,
             "expected string value for arg " ~ to!string(argIdx)
         );
 
@@ -947,8 +969,7 @@ class VM
         IRFunction fun,         // Function to call
         CodePtr retAddr,        // Return address
         refptr closPtr,         // Closure pointer
-        Word thisWord,          // This value word
-        Type thisType,          // This value type
+        ValuePair thisVal,      // This value
         uint32_t argCount,
         ValuePair* argVals
     )
@@ -967,7 +988,7 @@ class VM
 
         // Push undefined values for the missing last arguments
         for (size_t i = 0; i < argDiff; ++i)
-            push(UNDEF, Type.CONST);
+            push(UNDEF);
 
         // Push the visible function arguments in reverse order
         for (size_t i = 0; i < argCount; ++i)
@@ -980,10 +1001,10 @@ class VM
         push(Word.int32v(argCount), Type.INT32);
 
         // Push the "this" argument
-        push(thisWord, thisType);
+        push(thisVal);
 
         // Push the closure argument
-        push(Word.ptrv(closPtr), Type.REFPTR);
+        push(Word.ptrv(closPtr), Type.CLOSURE);
 
         // Push the return address
         push(Word.ptrv(cast(rawptr)retAddr), Type.RETADDR);
@@ -1235,7 +1256,8 @@ extern (C) CodePtr throwExc(
     // Get a GC root for the exception object
     auto excObj = GCRoot(
         vm,
-        valIsLayout(ValuePair(excWord, excType), LAYOUT_OBJ)? excWord.ptrVal:null
+        (excType is Type.OBJECT)? excWord.ptrVal:null,
+        Type.OBJECT
     );
 
     // Until we're done unwinding the stack
@@ -1265,19 +1287,20 @@ extern (C) CodePtr throwExc(
                         curInstr.block.fun.getName ~
                         " (" ~ pos.toString ~ ")"
                     )
-                )
+                ),
+                Type.STRING
             );
 
             setProp(
                 vm,
-                excObj.ptr,
+                excObj.pair,
                 propName,
                 strObj.pair
             );
 
             setProp(
                 vm,
-                excObj.ptr,
+                excObj.pair,
                 "length"w,
                 ValuePair(Word.int64v(trace.length), Type.INT32)
             );
@@ -1390,7 +1413,11 @@ extern (C) CodePtr throwError(
     string errMsg
 )
 {
-    auto errStr = GCRoot(vm, getString(vm, to!wstring(errMsg)));
+    auto errStr = GCRoot(
+        vm, 
+        getString(vm, to!wstring(errMsg)),
+        Type.STRING
+    );
 
     auto errCtor = GCRoot(
         vm,
@@ -1402,34 +1429,34 @@ extern (C) CodePtr throwError(
     );
 
     // If the error constructor is an object
-    if (valIsLayout(errCtor.pair, LAYOUT_OBJ))
+    if (errCtor.type is Type.OBJECT)
     {
         auto errProto = GCRoot(
             vm,
             getProp(
                 vm,
-                errCtor.ptr,
+                errCtor.pair,
                 "prototype"w
             )
         );
 
         // If the error prototype is an object
-        if (valIsLayout(errCtor.pair, LAYOUT_OBJ))
+        if (errCtor.type is Type.OBJECT)
         {
             // Create the error object
             auto excObj = GCRoot(
                 vm,
-                    newObj(
+                newObj(
                     vm,
                     new ObjMap(vm, 1),
-                    errProto.ptr
+                    errProto.pair
                 )
             );
 
             // Set the error "message" property
             setProp(
                 vm,
-                excObj.ptr,
+                excObj.pair,
                 "message"w,
                 errStr.pair
             );

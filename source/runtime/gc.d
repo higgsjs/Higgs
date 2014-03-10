@@ -69,9 +69,10 @@ struct GCRoot
         this(vm, ValuePair(w, t));
     }
 
-    this(VM vm, refptr p = null)
+    this(VM vm, refptr p, Type t)
     {
-        this(vm, Word.ptrv(p), Type.REFPTR);
+        assert (isHeapPtr(t));
+        this(vm, Word.ptrv(p), t);
     }
 
     @disable this();
@@ -90,13 +91,6 @@ struct GCRoot
 
         if (next)
             next.prev = prev;
-    }
-
-    GCRoot* opAssign(refptr p)
-    {
-        pair.word.ptrVal = p;
-        pair.type = Type.REFPTR;
-        return &this;
     }
 
     GCRoot* opAssign(ValuePair v)
@@ -257,10 +251,10 @@ void gcCollect(VM vm, size_t heapSize = 0)
     //writeln("visiting root objects");
 
     // Forward the root objects
-    vm.objProto     = gcForward(vm, vm.objProto);
-    vm.arrProto     = gcForward(vm, vm.arrProto);
-    vm.funProto     = gcForward(vm, vm.funProto);
-    vm.globalObj    = gcForward(vm, vm.globalObj);
+    vm.objProto.word.ptrVal     = gcForward(vm, vm.objProto.word.ptrVal);
+    vm.arrProto.word.ptrVal     = gcForward(vm, vm.arrProto.word.ptrVal);
+    vm.funProto.word.ptrVal     = gcForward(vm, vm.funProto.word.ptrVal);
+    vm.globalObj.word.ptrVal    = gcForward(vm, vm.globalObj.word.ptrVal);
 
     //writeln("visiting stack roots");
 
@@ -455,7 +449,7 @@ refptr gcForward(VM vm, refptr ptr)
     auto header = obj_get_header(ptr);
     if (header == LAYOUT_CLOS)
     {
-        auto fun = getClosFun(ptr);
+        auto fun = getFunPtr(ptr);
         assert (fun !is null);
         visitFun(vm, fun);
 
@@ -538,13 +532,17 @@ Word gcForward(VM vm, Word word, Type type)
         // Heap reference pointer
         // Forward the pointer
         case Type.REFPTR:
+        case Type.OBJECT:
+        case Type.ARRAY:
+        case Type.CLOSURE:
+        case Type.STRING:
         return Word.ptrv(gcForward(vm, word.ptrVal));
 
         // Function pointer (IRFunction)
         // Return the pointer unchanged
         case Type.FUNPTR:
         auto fun = word.funVal;
-        assert (fun !is null);
+        assert (fun !is null, "null IRFunction pointer");
         visitFun(vm, fun);
         return word;
 
@@ -655,9 +653,9 @@ Walk the stack and forward references to the to-space
 void visitStackRoots(VM vm)
 {
     auto visitFrame = delegate void(
-        IRFunction fun, 
-        Word* wsp, 
-        Type* tsp, 
+        IRFunction fun,
+        Word* wsp,
+        Type* tsp,
         size_t depth,
         size_t frameSize,
         IRInstr callInstr
@@ -683,7 +681,7 @@ void visitStackRoots(VM vm)
             auto fwdPtr = wsp[idx].ptrVal;
 
             assert (
-                type != Type.REFPTR ||
+                !isHeapPtr(type) ||
                 fwdPtr == null ||
                 vm.inToSpace(fwdPtr),
                 format(

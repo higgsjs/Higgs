@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -114,9 +114,13 @@ Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &gen_get_type };
 Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &gen_is_i32, OpInfo.BOOL_VAL };
 Opcode IS_I64 = { "is_i64", true, [OpArg.LOCAL], &gen_is_i64, OpInfo.BOOL_VAL };
 Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], &gen_is_f64, OpInfo.BOOL_VAL };
-Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BOOL_VAL };
-Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &gen_is_rawptr, OpInfo.BOOL_VAL };
 Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &gen_is_const, OpInfo.BOOL_VAL };
+Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &gen_is_rawptr, OpInfo.BOOL_VAL };
+Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BOOL_VAL };
+Opcode IS_OBJECT = { "is_object", true, [OpArg.LOCAL], &gen_is_object, OpInfo.BOOL_VAL };
+Opcode IS_ARRAY = { "is_array", true, [OpArg.LOCAL], &gen_is_array, OpInfo.BOOL_VAL };
+Opcode IS_CLOSURE = { "is_closure", true, [OpArg.LOCAL], &gen_is_closure, OpInfo.BOOL_VAL };
+Opcode IS_STRING = { "is_string", true, [OpArg.LOCAL], &gen_is_string, OpInfo.BOOL_VAL };
 
 // Type conversion
 Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &gen_i32_to_f64 };
@@ -265,8 +269,13 @@ Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], &gen_get_heap_size };
 Opcode GET_HEAP_FREE = { "get_heap_free", true, [], &gen_get_heap_free };
 Opcode GET_GC_COUNT = { "get_gc_count", true, [], &gen_get_gc_count };
 
-/// Allocate a block of memory on the heap
-Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &gen_heap_alloc, OpInfo.MAY_GC };
+/// Heap memory block allocation instructions
+/// Note: each of these assigns a different type tag to the output pointer
+Opcode ALLOC_REFPTR = { "alloc_refptr", true, [OpArg.LOCAL], &gen_alloc_refptr, OpInfo.MAY_GC };
+Opcode ALLOC_OBJECT = { "alloc_object", true, [OpArg.LOCAL], &gen_alloc_object, OpInfo.MAY_GC };
+Opcode ALLOC_ARRAY = { "alloc_array", true, [OpArg.LOCAL], &gen_alloc_array, OpInfo.MAY_GC };
+Opcode ALLOC_CLOSURE = { "alloc_closure", true, [OpArg.LOCAL], &gen_alloc_closure, OpInfo.MAY_GC };
+Opcode ALLOC_STRING = { "alloc_string", true, [OpArg.LOCAL], &gen_alloc_string, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection
 Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &gen_gc_collect, OpInfo.MAY_GC | OpInfo.IMPURE };

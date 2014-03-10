@@ -573,7 +573,7 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
             delegate IRValue(IRGenCtx ctx)
             {
                 // Create a closure of this function
-                auto closMap = ctx.makeMap(2);
+                auto closMap = ctx.makeMap(3);
                 auto protMap = ctx.makeMap();
                 auto newClos = ctx.addInstr(new IRInstr(
                     &NEW_CLOS,
@@ -1335,7 +1335,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             auto fun = new IRFunction(funExpr);
 
             // Create a closure of this function
-            auto closMap = ctx.makeMap(2);
+            auto closMap = ctx.makeMap(3);
             auto protMap = ctx.makeMap();
             auto newClos = ctx.addInstr(new IRInstr(
                 &NEW_CLOS,

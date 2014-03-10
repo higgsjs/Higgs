@@ -2003,13 +2003,13 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     as.setType(-1, Type.INT32);
 
     // Set the "this" argument (global object)
-    as.getMember!("VM.globalObj")(scrRegs[0], vmReg);
+    as.getMember!("VM.globalObj.word")(scrRegs[0], vmReg);
     as.setWord(-2, scrRegs[0].opnd);
-    as.setType(-2, Type.REFPTR);
+    as.setType(-2, Type.OBJECT);
 
     // Set the closure argument (null)
     as.setWord(-3, X86Opnd(0));
-    as.setType(-3, Type.REFPTR);
+    as.setType(-3, Type.CLOSURE);
 
     // Set the return address
     as.ptr(scrRegs[0], retAddr);
@@ -2054,7 +2054,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     auto argCount = vm.getWord(3).uint32Val;
     auto closPtr = vm.getWord(1).ptrVal;
     assert (closPtr !is null);
-    auto fun = getClosFun(closPtr);
+    auto fun = getFunPtr(closPtr);
     assert (
         fun !is null,
         "closure IRFunction is null"

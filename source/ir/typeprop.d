@@ -167,9 +167,9 @@ TypeMap typeProp(IRFunction fun)
         // Get the constant value pair for this IR value
         auto cstVal = val.cstValue();
 
-        if (cstVal.type == Type.CONST && cstVal.word == TRUE)
+        if (cstVal == TRUE)
             return TypeVal(true);
-        if (cstVal.type == Type.CONST && cstVal.word == FALSE)
+        if (cstVal == FALSE)
             return TypeVal(false);
 
         return TypeVal(cstVal.type);

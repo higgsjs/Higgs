@@ -18,7 +18,6 @@ util/id.d           \
 util/string.d       \
 util/misc.d         \
 util/bitset.d       \
-analysis/typeset.d  \
 parser/lexer.d      \
 parser/ast.d        \
 parser/vars.d       \

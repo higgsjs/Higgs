@@ -71,7 +71,9 @@ void assertInt(VM vm, string input, int32 intVal)
 
     assert (
         ret.type == Type.INT32,
-        "non-integer value: " ~ valToString(ret)
+        "non-integer value: " ~ valToString(ret) ~ "\n" ~
+        "for input:\n" ~
+        input
     );
 
     assert (
@@ -122,7 +124,7 @@ void assertBool(VM vm, string input, bool boolVal)
     );
 
     assert (
-        ret.word == (boolVal? TRUE:FALSE),
+        ret == (boolVal? TRUE:FALSE),
         format(
             "Test failed:\n" ~
             "%s" ~ "\n" ~
@@ -130,6 +132,30 @@ void assertBool(VM vm, string input, bool boolVal)
             input,
             valToString(ret), 
             boolVal
+        )
+    );
+}
+
+void assertStr(VM vm, string input, string strVal)
+{
+    auto ret = vm.evalString(input);
+
+    assert (
+        ret.type is Type.STRING,
+        "non-string value: " ~ valToString(ret) ~ "\n" ~
+        "for eval string \"" ~ input ~ "\""
+    );
+
+    auto outStr = valToString(ret);
+
+    assert (
+        outStr == strVal,
+        format(
+            "Test failed:\n" ~
+            input ~ "\n" ~
+            "incorrect string value: %s, expected: %s",
+            outStr, 
+            strVal
         )
     );
 }
@@ -152,30 +178,6 @@ void assertThrows(VM vm, string input)
             "%s" ~ "\n" ~
             "no exception thrown",
             input
-        )
-    );
-}
-
-void assertStr(VM vm, string input, string strVal)
-{
-    auto ret = vm.evalString(input);
-
-    assert (
-        valIsString(ret),
-        "non-string value: " ~ valToString(ret) ~ "\n" ~
-        "for eval string \"" ~ input ~ "\""
-    );
-
-    auto outStr = valToString(ret);
-
-    assert (
-        outStr == strVal,
-        format(
-            "Test failed:\n" ~
-            input ~ "\n" ~
-            "incorrect string value: %s, expected: %s",
-            outStr, 
-            strVal
         )
     );
 }
@@ -250,6 +252,7 @@ unittest
     vm.assertInt("return 7 >> 1", 3);
     vm.assertInt("return 7 >>> 1", 3);
     vm.assertInt("return ~2", -3);
+
     vm.assertInt("return ~undefined", -1);
     vm.assertInt("return undefined | 1", 1);
     vm.assertInt("return undefined & 1", 0);
@@ -719,7 +722,7 @@ unittest
         {
             if (n < 2)
                 return n;
-            else   
+            else
                 return fib(n-1) + fib(n-2);
         }
 
@@ -1002,7 +1005,7 @@ unittest
 
     vm.assertInt(
         "
-        var ptr = $ir_heap_alloc(16);
+        var ptr = $ir_alloc_refptr(16);
         $ir_store_u8(ptr, 0, 77);
         return $ir_load_u8(ptr, 0);
         ",

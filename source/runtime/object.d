@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -49,6 +49,15 @@ import runtime.string;
 import runtime.gc;
 import util.id;
 
+/// Prototype property slot index
+const uint32_t PROTO_SLOT_IDX = 0;
+
+/// Function pointer property slot index (closures only)
+const uint32_t FPTR_SLOT_IDX = 1;
+
+/// Static offset for the function pointer in a closure object
+const size_t FPTR_SLOT_OFS = clos_ofs_word(null, FPTR_SLOT_IDX);
+
 /**
 Object field/slot layout map
 */
@@ -73,15 +82,22 @@ class ObjMap : IdObject
 
         this.nextPropIdx = 0;
         this.minNumProps = minNumProps;
+
+        // FIXME: temporary until proper shape system
+        // Reserve hidden slots in all maps for the
+        // prototype and function pointer
+        reserveSlots(2);
     }
 
     /// Reserve property slots for private use (hidden)
-    void reserveSlots(uint32_t numSlots)
+    private void reserveSlots(uint32_t numSlots)
     {
         if (nextPropIdx != 0)
             return;
 
         nextPropIdx += numSlots;
+
+        minNumProps += numSlots;
 
         for (size_t i = 0; i < numSlots; ++i)
             fieldNames ~= null;
@@ -90,7 +106,7 @@ class ObjMap : IdObject
     /// Get the number of properties to allocate
     uint32_t numProps() const
     {
-        return max(cast(uint32_t)fields.length, minNumProps);
+        return max(cast(uint32_t)fieldNames.length, minNumProps);
     }
 
     /// Find or allocate the property index for a given property name string
@@ -127,42 +143,39 @@ class ObjMap : IdObject
     }
 }
 
-refptr newObj(
+ValuePair newObj(
     VM vm,
     ObjMap map,
-    refptr protoPtr
+    ValuePair proto
 )
 {
     assert (map !is null);
 
     // Create a root for the prototype object
-    auto protoObj = GCRoot(vm, protoPtr);
+    auto protoObj = GCRoot(vm, proto);
 
     // Allocate the object
     auto objPtr = obj_alloc(vm, map.numProps);
 
-    // Initialize the object
     obj_set_map(objPtr, cast(rawptr)map);
-    obj_set_proto(objPtr, protoObj.ptr);
 
-    return objPtr;
+    setProto(objPtr, protoObj.pair);
+
+    return ValuePair(objPtr, Type.OBJECT);
 }
 
-refptr newClos(
+ValuePair newClos(
     VM vm,
     ObjMap closMap,
-    refptr protoPtr,
+    ValuePair proto,
     uint32_t allocNumCells,
     IRFunction fun
 )
 {
     assert (closMap !is null);
 
-    // Reserve a hidden slot for the function pointer
-    closMap.reserveSlots(1);
-
     // Create a root for the prototype object
-    auto protoObj = GCRoot(vm, protoPtr);
+    auto protoObj = GCRoot(vm, proto);
 
     // Register this function in the function reference set
     vm.funRefs[cast(void*)fun] = fun;
@@ -170,39 +183,57 @@ refptr newClos(
     // Allocate the closure object
     auto objPtr = clos_alloc(vm, closMap.numProps, allocNumCells);
 
-    // Initialize the object
     obj_set_map(objPtr, cast(rawptr)closMap);
-    obj_set_proto(objPtr, protoObj.ptr);
+
+    setProto(objPtr, protoObj.pair);
 
     // Set the function pointer
-    setClosFun(objPtr, fun);
+    setFunPtr(objPtr, fun);
 
-    return objPtr;
+    return ValuePair(objPtr, Type.CLOSURE);
+}
+
+/**
+Set the prototype value for an object
+*/
+void setProto(refptr objPtr, ValuePair proto)
+{
+    obj_set_word(objPtr, PROTO_SLOT_IDX, proto.word.uint64Val);
+    obj_set_type(objPtr, PROTO_SLOT_IDX, proto.type);
+}
+
+/**
+Get the prototype value for an object
+*/
+ValuePair getProto(refptr objPtr)
+{
+    return ValuePair(
+        Word.uint64v(obj_get_word(objPtr, PROTO_SLOT_IDX)),
+        cast(Type)obj_get_type(objPtr, PROTO_SLOT_IDX)
+    );
 }
 
 /**
 Set the function pointer on a closure object
 */
-void setClosFun(refptr closPtr, IRFunction fun)
+void setFunPtr(refptr closPtr, IRFunction fun)
 {
-    // Write the function pointer in the first property slot
-    clos_set_word(closPtr, 0, cast(uint64_t)cast(rawptr)fun);
-    clos_set_type(closPtr, 0, cast(uint8)Type.FUNPTR);
+    clos_set_word(closPtr, FPTR_SLOT_IDX, cast(uint64_t)cast(rawptr)fun);
+    clos_set_type(closPtr, FPTR_SLOT_IDX, cast(uint8)Type.FUNPTR);
 }
 
 /**
 Get the function pointer from a closure object
 */
-IRFunction getClosFun(refptr closPtr)
+IRFunction getFunPtr(refptr closPtr)
 {
-    return cast(IRFunction)cast(refptr)clos_get_word(closPtr, 0);
+    return cast(IRFunction)cast(refptr)clos_get_word(closPtr, FPTR_SLOT_IDX);
 }
 
-/// Static offset for the function pointer in a closure object
-immutable size_t CLOS_OFS_FPTR = clos_ofs_word(null, 0);
-
-ValuePair getProp(VM vm, refptr objPtr, wstring propStr)
+ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
 {
+    auto objPtr = obj.word.ptrVal;
+
     // Follow the next link chain
     for (;;)
     {
@@ -226,41 +257,41 @@ ValuePair getProp(VM vm, refptr objPtr, wstring propStr)
         auto pType = cast(Type)obj_get_type(objPtr, propIdx);
 
         // If the property is not the "missing" value, return it directly
-        if (pType != Type.CONST || pWord != MISSING)
+        if (pType != MISSING.type || pWord != MISSING.word)
             return ValuePair(pWord, pType);
     }
 
     // Get the prototype pointer
-    auto protoPtr = obj_get_proto(objPtr);
+    auto proto = getProto(objPtr);
 
     // If the prototype is null, produce the missing constant
-    if (protoPtr is null)
-        return ValuePair(MISSING, Type.CONST);
+    if (proto is NULL)
+        return MISSING;
 
     // Do a recursive lookup on the prototype
     return getProp(
         vm,
-        protoPtr,
+        proto,
         propStr
     );
 }
 
-void setProp(VM vm, refptr objPtr, wstring propStr, ValuePair valPair)
+void setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
 {
-    auto obj = GCRoot(vm, objPtr);
-    auto val = GCRoot(vm, valPair);
-
     // Follow the next link chain
     for (;;)
     {
-        auto nextPtr = obj_get_next(obj.ptr);
+        auto nextPtr = obj_get_next(objPair.word.ptrVal);
         if (nextPtr is null)
             break;
-        obj = nextPtr;
+        objPair.word.ptrVal = nextPtr;
     }
 
+    auto obj = GCRoot(vm, objPair);
+    auto val = GCRoot(vm, valPair);
+
     // Get the map from the object
-    auto map = cast(ObjMap)obj_get_map(objPtr);
+    auto map = cast(ObjMap)obj_get_map(obj.word.ptrVal);
     assert (map !is null);
 
     // Find/allocate the property index in the class
@@ -300,7 +331,7 @@ void setProp(VM vm, refptr objPtr, wstring propStr, ValuePair valPair)
         }
 
         obj_set_map(newObj, obj_get_map(obj.ptr));
-        obj_set_proto(newObj, obj_get_proto(obj.ptr));
+        setProto(newObj, getProto(obj.ptr));
 
         // Copy over the property words and types
         for (uint32_t i = 0; i < objCap; ++i)
@@ -314,11 +345,11 @@ void setProp(VM vm, refptr objPtr, wstring propStr, ValuePair valPair)
 
         // If this is the global object, update
         // the global object pointer
-        if (obj.ptr == vm.globalObj)
-            vm.globalObj = newObj;
+        if (obj.pair == vm.globalObj)
+            vm.globalObj = ValuePair(newObj, Type.OBJECT);
 
         // Update the object pointer
-        obj = newObj;
+        obj = ValuePair(newObj, Type.OBJECT);
 
         //writefln("done extending object");
     }

@@ -80,8 +80,14 @@ void inlinePass(VM vm, IRFunction caller)
 
         // Get the primitve function from the global object
         auto closVal = getProp(vm, vm.globalObj, nameStr);
-        assert (valIsLayout(closVal, LAYOUT_CLOS));
-        auto callee = getClosFun(closVal.word.ptrVal);
+        assert (
+            closVal.type is Type.CLOSURE,
+            format("cannot inline non-closure \"%s\"", nameStr)
+        );
+        assert (
+            closVal.word.ptrVal !is null
+        );
+        auto callee = getFunPtr(closVal.word.ptrVal);
 
         // If this combination is not inlinable, skip it
         if (inlinable(callSite, callee) is false)

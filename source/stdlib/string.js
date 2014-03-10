@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2011-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -105,7 +105,7 @@ function string_internal_getLength(s)
 function string_internal_toCharCodeArray(x)
 {
     var s = x.toString();
-    //var a = new Array(s.length);
+
     var a = [];
     a.length = s.length;
 
