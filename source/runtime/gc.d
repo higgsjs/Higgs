@@ -465,7 +465,7 @@ refptr gcForward(VM vm, refptr ptr)
         assert (map !is null);
         visitMap(vm, map);
     }
-   
+
     // Follow the next pointer chain as long as it points in the from-space
     refptr nextPtr = ptr;
     for (;;)
@@ -564,7 +564,7 @@ Word gcForward(VM vm, Word word, Type type)
         auto fun = retEntry.callCtx.fun;
         visitFun(vm, fun);
         return word;
-     
+
         // Return the word unchanged
         default:
         return word;
@@ -597,14 +597,14 @@ refptr gcCopy(VM vm, refptr ptr, size_t size)
             vm.heapStart,
             vm.heapLimit,
             obj_get_header(ptr)
-        )        
+        )
     );
 
     assert (
         obj_get_next(ptr) == null,
         "next pointer in object to forward is not null"
     );
-    
+
     // The object will be copied at the to-space allocation pointer
     auto nextPtr = vm.toAlloc;
 

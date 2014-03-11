@@ -47,6 +47,9 @@ var undef = undefined;
 var o1 = {};
 var o2 = {};
 
+var a1 = [1,2];
+var a2 = [1,2];
+
 var o_str = { toString: function () { return 'foo'; } };
 var o_num = { toString: function () { return 3; } };
 
@@ -62,7 +65,10 @@ var tests = [
     ['34'   , '4'   , T, T, F, F, F, T, F, T],
     ['-100' , 'a'   , T, T, F, F, F, T, F, T],
     [undef  , '2'   , F, F, F, F, F, T, F, T],
+
     [o1     , o2    , F, T, F, T, F, T, F, T],
+    [a1     , a1    , F, T, F, T, T, F, T, F],
+    [a1     , a2    , F, T, F, T, F, T, F, T],
 
     [2      , 1     , F, F, T, T, F, T, F, T],
     ['1'    , 1     , F, T, F, T, T, F, F, T],

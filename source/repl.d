@@ -66,7 +66,7 @@ void repl(VM vm)
 
             // Print the output if it isn't "undefined"
             if (output != UNDEF)
-                writeln(valToString(output));
+                writeln(output.toString);
         }
 
         catch (ParseError e)

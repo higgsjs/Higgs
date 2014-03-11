@@ -1073,13 +1073,20 @@ class BlockVersion : CodeFragment
         // Compute the code length
         codeLen = cast(uint32_t)as.getWritePos - startIdx;
 
-        // If this block doesn't end in a call
-        if (block.lastInstr.opcode.isCall is false)
+        // If this block doesn't end in a call and there are two targets
+        if (block.lastInstr.opcode.isCall is false && target1 !is null)
         {
             // Write the block idx in scrReg[0]
             size_t blockIdx = vm.fragList.length;
             as.mov(scrRegs[0].opnd(32), X86Opnd(blockIdx));
         }
+
+        // Determine the branch shape
+        auto shape = (target1 is null)? BranchShape.NEXT0:BranchShape.DEFAULT;
+        assert (
+            (shape !is BranchShape.NEXT0) ||
+            (vm.compQueue.length > 0 && vm.compQueue.back is targets[0])
+        );
 
         // Generate the final branch code
         branchGenFn(
@@ -1087,7 +1094,7 @@ class BlockVersion : CodeFragment
             vm,
             target0,
             target1,
-            BranchShape.DEFAULT
+            shape
         );
 
         // Store the code end index
@@ -1112,8 +1119,6 @@ class BlockVersion : CodeFragment
 
         // Clear the ASM comments of the old branch code
         as.delStrings(as.getWritePos, endIdx);
-
-
 
         auto stub0 = (
             targets[0] &&

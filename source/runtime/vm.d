@@ -96,8 +96,8 @@ class RunError : Error
                 "name"w
             );
 
-            if (valIsString(errName))
-                this.name = valToString(errName);
+            if (errName.type is Type.STRING)
+                this.name = errName.toString();
 
             auto msgStr = getProp(
                 vm,
@@ -105,11 +105,11 @@ class RunError : Error
                 "message"w
             );
 
-            this.message = valToString(msgStr);
+            this.message = msgStr.toString();
         }
         else
         {
-            this.message = valToString(excVal);
+            this.message = excVal.toString();
         }
 
         super(toString());
@@ -188,33 +188,6 @@ enum Type : ubyte
     STRING
 }
 
-/// Word and type pair
-struct ValuePair
-{
-    this(Word word, Type type)
-    {
-        this.word = word;
-        this.type = type;
-    }
-
-    this(refptr ptr, Type type)
-    {
-        this.word.ptrVal = ptr;
-        this.type = type;
-    }
-
-    Word word;
-
-    Type type;
-}
-
-// Note: low byte is set to allow for one byte immediate comparison
-immutable NULL    = ValuePair(Word(0x00), Type.REFPTR);
-immutable TRUE    = ValuePair(Word(0x01), Type.CONST);
-immutable FALSE   = ValuePair(Word(0x02), Type.CONST);
-immutable UNDEF   = ValuePair(Word(0x03), Type.CONST);
-immutable MISSING = ValuePair(Word(0x04), Type.CONST);
-
 /**
 Test if a given type is a heap pointer
 */
@@ -270,102 +243,119 @@ bool refIsLayout(refptr ptr, uint32 layoutId)
     return (ptr !is null && obj_get_header(ptr) == layoutId);
 }
 
-/**
-Test if a value is an object of a given layout
-*/
-bool valIsLayout(ValuePair val, uint32 layoutId)
+/// Word and type pair
+struct ValuePair
 {
-    return (
-        val.type is Type.REFPTR && 
-        refIsLayout(val.word.ptrVal, layoutId)
-    );
-}
+    Word word;
 
-/**
-Test if a value is a string
-*/
-bool valIsString(ValuePair val)
-{
-    return valIsLayout(val, LAYOUT_STR);
-}
+    Type type;
 
-/**
-Produce a string representation of a value pair
-*/
-string valToString(ValuePair value)
-{
-    auto w = value.word;
-
-    // Switch on the type tag
-    switch (value.type)
+    this(Word word, Type type)
     {
-        case Type.INT32:
-        return to!string(w.int32Val);
+        this.word = word;
+        this.type = type;
+    }
 
-        case Type.FLOAT64:
-        if (w.floatVal != w.floatVal)
-            return "NaN";
-        if (w.floatVal == 1.0/0)
-            return "Infinity";
-        if (w.floatVal == -1.0/0)
-            return "-Infinity";
-        return to!string(w.floatVal);
+    this(refptr ptr, Type type)
+    {
+        this.word.ptrVal = ptr;
+        this.type = type;
+    }
 
-        case Type.RAWPTR:
-        return to!string(w.ptrVal);
-
-        case Type.RETADDR:
-        return to!string(w.ptrVal);
-
-        case Type.CONST:
-        if (value == TRUE)
-            return "true";
-        if (value == FALSE)
-            return "false";
-        if (value == UNDEF)
-            return "undefined";
-        if (value == MISSING)
-            return "missing";
-        assert (
-            false, 
-            "unsupported constant " ~ to!string(value.word.uint64Val)
+    /**
+    Test if a value is an object of a given layout
+    */
+    bool isLayout(uint32 layoutId)
+    {
+        return (
+            type is Type.REFPTR && 
+            refIsLayout(word.ptrVal, layoutId)
         );
+    }
 
-        case Type.FUNPTR:
-        return "funptr";
+    /**
+    Produce a string representation of a value pair
+    */
+    string toString()
+    {
+        // Switch on the type tag
+        switch (type)
+        {
+            case Type.INT32:
+            return to!string(word.int32Val);
 
-        case Type.MAPPTR:
-        return "mapptr";
+            case Type.FLOAT64:
+            if (word.floatVal != word.floatVal)
+                return "NaN";
+            if (word.floatVal == 1.0/0)
+                return "Infinity";
+            if (word.floatVal == -1.0/0)
+                return "-Infinity";
+            return to!string(word.floatVal);
 
-        case Type.REFPTR:
-        if (value == NULL)
-            return "null";
-        if (ptrValid(w.ptrVal) is false)
-            return "invalid refptr";
-        if (valIsLayout(value, LAYOUT_OBJ))
+            case Type.RAWPTR:
+            return to!string(word.ptrVal);
+
+            case Type.RETADDR:
+            return to!string(word.ptrVal);
+
+            case Type.CONST:
+            if (this == TRUE)
+                return "true";
+            if (this == FALSE)
+                return "false";
+            if (this == UNDEF)
+                return "undefined";
+            if (this == MISSING)
+                return "missing";
+            assert (
+                false, 
+                "unsupported constant " ~ to!string(word.uint64Val)
+            );
+
+            case Type.FUNPTR:
+            return "funptr";
+
+            case Type.MAPPTR:
+            return "mapptr";
+
+            case Type.REFPTR:
+            if (this == NULL)
+                return "null";
+            if (ptrValid(word.ptrVal) is false)
+                return "invalid refptr";
+            if (isLayout(LAYOUT_OBJ))
+                return "object";
+            if (isLayout(LAYOUT_CLOS))
+                return "function";
+            if (isLayout(LAYOUT_ARR))
+                return "array";
+            return "refptr";
+
+            case Type.OBJECT:
             return "object";
-        if (valIsLayout(value, LAYOUT_CLOS))
-            return "function";
-        if (valIsLayout(value, LAYOUT_ARR))
+
+            case Type.ARRAY:
             return "array";
-        return "refptr";
 
-        case Type.OBJECT:
-        return "object";
+            case Type.CLOSURE:
+            return "closure";
 
-        case Type.ARRAY:
-        return "array";
+            case Type.STRING:
+            return extractStr(word.ptrVal);
 
-        case Type.CLOSURE:
-        return "closure";
-
-        case Type.STRING:
-        return extractStr(w.ptrVal);
-
-        default:
-        assert (false, "unsupported value type");
+            default:
+            assert (false, "unsupported value type");
+        }
     }
 }
+
+// Note: low byte is set to allow for one byte immediate comparison
+immutable NULL    = ValuePair(Word(0x00), Type.REFPTR);
+immutable TRUE    = ValuePair(Word(0x01), Type.CONST);
+immutable FALSE   = ValuePair(Word(0x02), Type.CONST);
+immutable UNDEF   = ValuePair(Word(0x03), Type.CONST);
+immutable MISSING = ValuePair(Word(0x04), Type.CONST);
 
 /// Stack size, 256K words (2MB)
 immutable size_t STACK_SIZE = 2^^18;
@@ -650,7 +640,7 @@ class VM
     {
         assert (
             &wsp[idx] >= wStack && &wsp[idx] < wUpperLimit,
-            "invalid stack slot index"
+            format("invalid stack slot index (%s/%s)", idx, stackSize)
         );
 
         assert (
@@ -696,7 +686,7 @@ class VM
     {
         assert (
             &wsp[idx] >= wStack && &wsp[idx] < wUpperLimit,
-            "invalid stack slot index"
+            format("invalid stack slot index (%s/%s)", idx, stackSize)
         );
 
         return wsp[idx];

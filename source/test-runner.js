@@ -40,8 +40,6 @@ Test-runner runs all js files in the specified dir in a forked instance of higgs
 If any tests fail the program exist abnormally (i.e. exit(1);)
 */
 
-// Used to communicate with child test processes
-
 (function()
 {
     var ffi = require("lib/ffi");
@@ -60,18 +58,12 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
 
     var current = "";
 
-    var child_status = std.malloc(2);
+    var child_status = std.malloc(4);
 
     function runTest(file)
     {
         file = current + "/" + file;
-        var msg = "Running: " + file + "...";
-        var pad_len = 60 - msg.length;
-
-        while(pad_len--)
-        {
-            msg += " ";
-        }
+        console.log("Running: " + file + "...");
 
         // fork before running test
         var pid = ffi.c.fork();
@@ -81,19 +73,15 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
             console.log("FORK FAILED!");
             std.exit(1);
         }
-
-
-        if (pid === 0)
+        else if (pid === 0)
         {
             // run the test in this child process
             try
             {
                 load(file);
-                tests_run += 1;
             }
             catch (e)
             {
-                console.log(msg, "FAILED!");
                 if (typeof e === "object")
                     console.log(e.toString());
                 else if (typeof e === "string")
@@ -102,21 +90,25 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
                 std.exit(1);
             }
 
-            // offset 'PASSED!' so 'FAILED!' sticks out more
-            console.log(msg, "        PASSED!");
             std.exit(0);
-
         }
         else
         {
             // parent, wait for test to finish
             ffi.c.waitpid(pid, child_status, 0);
             tests_run +=1;
+
             // pull out return code and check for pass/fail
-            if ($ir_load_u8(child_status, 1) !== 0)
+            var status = $ir_load_u32(child_status, 0);
+            if (status !== 0)
+            {
+                console.log("***** FAILED! *****");
                 tests_failed += 1;
+            }
             else
+            {
                 tests_passed += 1;
+            }
         }
     }
 
@@ -124,11 +116,13 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
     {
         var dir = fs.dir(dir_name);
         var dirs = dir.getDirs().sort();
-        var files = dir.getFiles().sort().filter(function(name)
-        {
-            var ext = name.substr(name.length - 3);
-            return ext === ".js";
-        });
+        var files = dir.getFiles().sort().filter(
+            function(name)
+            {
+                var ext = name.split('.').pop();
+                return ext === "js";
+            }
+        );
 
         // first run tests in this dir
         current = dir_name;
@@ -144,25 +138,20 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
 
     // We need to ignore the dir which contains test files run in unittest {} blocks in D
     var dir = fs.dir(tests_dir);
-
-    var dirs = dir.getDirs().sort().filter(function(n)
-    {
-        return n !== ignore_dir;
-    });
-
-    var files = dir.getFiles().sort().filter(function(name)
-    {
-        var ext = name.substr(name.length - 3);
-        return ext === ".js";
-    });
+    var dirs = dir.getDirs().sort().filter(
+        function(name)
+        {
+            return name !== ignore_dir;
+        }
+    );
 
     // first run tests in this dir
-    current = tests_dir;
-    files.forEach(runTest);
-    dirs.forEach(function(next_dir)
-    {
-        runTests(tests_dir + "/" + next_dir);
-    });
+    dirs.forEach(
+        function(next_dir)
+        {
+            runTests(tests_dir + "/" + next_dir);
+        }
+    );
 
     console.log("test-runner.js results:");
     console.log(" --- ");

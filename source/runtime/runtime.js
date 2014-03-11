@@ -131,29 +131,6 @@ function $rt_throwExc(excVal)
 }
 
 /**
-Test if a reference is of a given layout
-*/
-function $rt_refIsLayout(val, layoutId)
-{
-    return (
-        $ir_ne_refptr(val, null) && 
-        $ir_eq_i8($rt_obj_get_header(val), layoutId)
-    );
-}
-
-/**
-Test if a value is of a given layout
-*/
-function $rt_valIsLayout(val, layoutId)
-{
-    return (
-        $ir_is_refptr(val) &&
-        $ir_ne_refptr(val, null) && 
-        $ir_eq_i8($rt_obj_get_header(val), layoutId)
-    );
-}
-
-/**
 Test if a value is an object
 */
 function $rt_valIsObj(val)

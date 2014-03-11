@@ -71,7 +71,7 @@ void assertInt(VM vm, string input, int32 intVal)
 
     assert (
         ret.type == Type.INT32,
-        "non-integer value: " ~ valToString(ret) ~ "\n" ~
+        "non-integer value: " ~ ret.toString ~ "\n" ~
         "for input:\n" ~
         input
     );
@@ -83,7 +83,7 @@ void assertInt(VM vm, string input, int32 intVal)
             "%s" ~ "\n" ~
             "incorrect integer value: %s, expected: %s",
             input,
-            ret.word.int32Val, 
+            ret.word.int32Val,
             intVal
         )
     );
@@ -96,7 +96,7 @@ void assertFloat(VM vm, string input, double floatVal, double eps = 1E-4)
     assert (
         ret.type == Type.INT32 ||
         ret.type == Type.FLOAT64,
-        "non-numeric value: " ~ valToString(ret)
+        "non-numeric value: " ~ ret.toString
     );
 
     auto fRet = (ret.type == Type.FLOAT64)? ret.word.floatVal:ret.word.int32Val;
@@ -108,7 +108,7 @@ void assertFloat(VM vm, string input, double floatVal, double eps = 1E-4)
             "%s" ~ "\n" ~
             "incorrect float value: %s, expected: %s",
             input,
-            fRet, 
+            fRet,
             floatVal
         )
     );
@@ -120,7 +120,7 @@ void assertBool(VM vm, string input, bool boolVal)
 
     assert (
         ret.type == Type.CONST,
-        "non-const value: " ~ valToString(ret)
+        "non-const value: " ~ ret.toString
     );
 
     assert (
@@ -130,7 +130,7 @@ void assertBool(VM vm, string input, bool boolVal)
             "%s" ~ "\n" ~
             "incorrect boolean value: %s, expected: %s",
             input,
-            valToString(ret), 
+            ret.toString,
             boolVal
         )
     );
@@ -142,19 +142,17 @@ void assertStr(VM vm, string input, string strVal)
 
     assert (
         ret.type is Type.STRING,
-        "non-string value: " ~ valToString(ret) ~ "\n" ~
+        "non-string value: " ~ ret.toString ~ "\n" ~
         "for eval string \"" ~ input ~ "\""
     );
 
-    auto outStr = valToString(ret);
-
     assert (
-        outStr == strVal,
+        ret.toString == strVal,
         format(
             "Test failed:\n" ~
             input ~ "\n" ~
             "incorrect string value: %s, expected: %s",
-            outStr, 
+            ret.toString,
             strVal
         )
     );

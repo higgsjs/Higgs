@@ -35,6 +35,7 @@
 *
 *****************************************************************************/
 
+import std.c.stdlib;
 import std.stdio;
 import std.algorithm;
 import std.conv;
@@ -101,12 +102,20 @@ void main(string[] args)
 
         catch (ParseError e)
         {
-            writeln("parse error: " ~ e.toString());
+            writeln("parse error: ", e);
+            exit(-1);
         }
 
         catch (RunError e)
         {
-            writefln("run-time error: " ~ e.toString());
+            writeln("run-time error: ", e);
+            exit(-1);
+        }
+
+        catch (Error e)
+        {
+            writeln(e);
+            exit(-1);
         }
     }
 

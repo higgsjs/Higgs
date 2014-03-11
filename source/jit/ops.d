@@ -1262,7 +1262,7 @@ void gen_if_true(
 }
 
 void gen_jump(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2051,7 +2051,7 @@ void gen_call_apply(
         auto argcVal = vm.getArgUint32(instr, 3);
 
         assert (
-            valIsLayout(tblVal, LAYOUT_ARRTBL),
+            tblVal.type !is Type.ARRAY,
             "invalid argument table"
         );
 

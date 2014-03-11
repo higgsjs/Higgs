@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -58,7 +58,6 @@ Assert functions for basic unit/regression tests.
         return val1 === val2;
     }
 
-
     /**
     Assert two values are equal
     */
@@ -85,9 +84,13 @@ Assert functions for basic unit/regression tests.
     global.assertThrows = function(fun, msg)
     {
         var thrown = false;
-        try {
+
+        try
+        {
             fun();
-        } catch (e) {
+        }
+        catch (e) 
+        {
             thrown = true;
         }
 
@@ -122,7 +125,6 @@ Assert functions for basic unit/regression tests.
         if (!val)
             throw new Error("Assertion failed: expected truthy value got '" + val +"'" +
                                 (msg ? " : " + msg : ""));
-
     };
 
     /**
@@ -134,7 +136,6 @@ Assert functions for basic unit/regression tests.
             throw new Error("Assertion failed: expected falsey value, got: '" + val + "'" +
                                 (msg ? " : " + msg : ""));
     };
-
 
     exports = {
         isSameVal: isSameVal

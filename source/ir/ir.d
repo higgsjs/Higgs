@@ -930,9 +930,9 @@ class IRConst : IRValue
     /// Value of this constant
     private ValuePair value;
 
-    override string toString() 
+    override string toString()
     {
-        return valToString(value);
+        return value.toString();
     }
 
     /// Get the constant value pair for this IR value

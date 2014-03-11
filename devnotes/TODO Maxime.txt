@@ -90,12 +90,12 @@ TODO: reimplement getPropObj with first level obj access inlined
 - second level inlined for methods
 - keep small so just this gets inlined
 - create a new version of the primitive, no need to erase the old
+- rename getPropObj to getObjProp
 
 TODO: smaller add and lt for inlining
-- rerun microbenchmarks
-
-TODO: make add, sub, mul, lt get inlined
-- run benchmarks with and without
+- $rt_inlAdd
+- make it get inlined
+- test perf on benchmarks with and without inlining
 
 TODO: peephope opt, see $rt_getPropObj
 not_exit(3986):
@@ -104,37 +104,59 @@ if_true $15 => if_true(3981), or_sec(3984)
 
 TODO: peephope opt, getPropObj, add_i32 x4
 
-FIXME: [1,2] == [1,2]
-
-FIXME: empty fun, cmp eax, 0
+FIXME: GC bug with v8bench/crypto... heisenbug
+- run outside of tests
+- log when GC happens
+- IRFunction gets collected before it should?
 
 FIXME: empty fun, ret undefined twice
+- see 200m_calls
+- second one is from ctor entry
+- why is it printed wrong?
 
-FIXME: loop incr, jump to immediately following block
+FIXME: empty fun, cmp eax, 0
+- see 200m_calls
 
 FIXME: asmString followed by call crashes
 - add test for this
 
-TODO: 200m_loop_incr
 
-TODO: proper struct for ValuePair
+
+
+
+
+
+
+
+
+[DONE] FIXME: loop incr, redundant jump to immediately following block
+time ./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/200m_loop_incr.js 
+- not a stub, shouldn't happen
+- naive writing, never rewritten?
+
+[DONE] TODO: 200m_loop_incr microbenchmark
+
+[DONE] FIXME: [1,2] == [1,2]
+
+[DONE] TODO: proper struct for ValuePair
 - methods, toString, isHeapPtr, isNull, isLayout, etc
 - constructor taking a refptr & type
 
-TODO: eliminate valIsString from D code
+[DONE] TODO: examine uses of valIsLayout, refIsLayout in D code
 
-TODO: examine uses of valIsLayout, refIsLayout in runtime.js
+[DONE] TODO: eliminate valIsString from D code
 
-FIXME: ... something fucks up with GC in deltablue... heisenbug
-- maybe try tackling other issues first
-- run deltablue outside of tests
-
-
-
-
-
-
-
+[DONE] TODO: add more logging for this error
+Assertion failed (runtime/vm.d@697): invalid stack slot index
+core.exception.AssertError@runtime/vm.d(697): invalid stack slot index
+----------------
+./test-higgs(onAssertErrorMsg+0xb0) [0x6ba054]
+./test-higgs(_d_assert_msg+0x45) [0x69a065]
+./test-higgs(runtime.vm.Word runtime.vm.VM.getWord(int)+0x9b) [0x6241a7]
+./test-higgs(compileEntry+0x43) [0x681647]
+[0x2aff3d1ee80f]
+./test-higgs(runtime.vm.ValuePair runtime.vm.VM.exec(parser.ast.FunExpr)+0x6e) [0x6253a2]
+./test-higgs(runtime.vm.ValuePair runtime.vm.VM.load(immutable(char)[])+0x83) [0x625537]
 
 [DONE] FIXME: esprima test fails
 - add new regression test
