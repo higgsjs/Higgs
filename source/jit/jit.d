@@ -781,6 +781,10 @@ abstract class CodeFragment
     {
         if (auto ver = cast(BlockVersion)this)
         {
+            if (ver.block is ver.block.fun.entryBlock && 
+                ver.state.callCtx.ctorCall)
+                return "ctor_" ~ ver.block.getName;
+
             return ver.block.getName;
         }
 
@@ -2081,10 +2085,8 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     auto origLocals = fun.numLocals;
 
     // Generate the IR for this function
-    if (fun.entryBlock is null)
-    {
-        astToIR(vm, fun.ast, fun);
-    }
+    fun.entryBlock = null;
+    astToIR(vm, fun.ast, fun);
 
     // Add space for the newly allocated locals
     vm.push(fun.numLocals - origLocals);

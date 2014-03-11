@@ -62,6 +62,13 @@ TODO: tweak inlining heuristics
 - *must* inline object access and low level primitives in getprop
   - runtime primitives that are less than 3-4 blocks should always be inlined
 
+FIXME: empty fun, ret undefined twice
+- see 200m_calls
+- second one is from ctor entry
+  - entry stub doesn't know which function we're in
+  - needs to assume frame size is initial
+- should push locals in entry, pop in ret
+
 ------------------------------------------------------------------------------
 
 Goal: March 31st, type prop working, satisfying perf for article
@@ -104,30 +111,25 @@ if_true $15 => if_true(3981), or_sec(3984)
 
 TODO: peephope opt, getPropObj, add_i32 x4
 
-FIXME: GC bug with v8bench/crypto... heisenbug
+FIXME: GC/segfault bug with v8bench/crypto... heisenbug
 - run outside of tests
 - log when GC happens
 - IRFunction gets collected before it should?
 
-FIXME: empty fun, ret undefined twice
-- see 200m_calls
-- second one is from ctor entry
-- why is it printed wrong?
-
 FIXME: empty fun, cmp eax, 0
 - see 200m_calls
 
-FIXME: asmString followed by call crashes
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: irString followed by call crashes
 - add test for this
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: loop incr, redundant jump to immediately following block
 time ./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/200m_loop_incr.js 

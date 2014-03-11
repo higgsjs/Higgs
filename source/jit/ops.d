@@ -3361,7 +3361,11 @@ void gen_get_ir_str(
 
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
+        {
+            auto numLocals = fun.numLocals;
             astToIR(vm, fun.ast, fun);
+            fun.numLocals = numLocals;
+        }
 
         auto str = fun.toString();
         auto strObj = getString(vm, to!wstring(str));
@@ -3408,10 +3412,6 @@ void gen_get_asm_str(
 
         auto fun = getFunPtr(closPtr);
 
-        // If the function is not yet compiled, compile it now
-        if (fun.entryBlock is null)
-            astToIR(vm, fun.ast, fun);
-
         string str;
 
         // If this function has a call context
@@ -3437,6 +3437,9 @@ void gen_get_asm_str(
                 new CodeGenState(fun.getCtx(true, vm)),
                 true
             );
+
+            if (str != "")
+                str ~= "\n\n";
 
             // Generate a string representation of the code
             str ~= asmString(fun, entryVer, vm.execHeap);
