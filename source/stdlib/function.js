@@ -127,3 +127,33 @@ Function.prototype.call = function (thisArg)
     return retVal;
 };
 
+/**
+15.3.4.5 Function.prototype.bind (thisArg [, arg1 [, arg2, … ]])
+*/
+Function.prototype.bind = function(thisArg)
+{
+    if (typeof this !== 'function')
+        throw new TypeError('bind on non-function');
+
+    var unbound = this;
+    var bound;
+    if (arguments.length > 1) {
+
+        var args = [].slice.call(arguments, 1);
+        bound = function() {
+            var target = this instanceof bound ? this : thisArg;
+            return unbound.apply(target, args.concat(arguments));
+        };
+
+    } else {
+
+        bound = function() {
+            var target = this instanceof bound ? this : thisArg;
+            return unbound.apply(target, arguments);
+        };
+
+    }
+
+    bound.prototype = unbound.prototype;
+    return bound;
+};
