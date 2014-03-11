@@ -54,17 +54,19 @@ import jit.jit;
 Create a relative 32-bit jump to a code fragment
 */
 void writeJcc32Ref(string mnem, opcode...)(
-    CodeBlock as, 
-    VM vm, 
-    CodeFragment frag
+    CodeBlock as,
+    VM vm,
+    CodeFragment frag,
+    size_t targetIdx = size_t.max
 )
 {
-    // Write an asm comment
-    as.writeASM(mnem, frag.getName);
+    // Write an ASM comment
+    if (opts.jit_genasm)
+        as.writeASM(mnem, frag.getName);
 
     as.writeBytes(opcode);
 
-    vm.addFragRef(as.getWritePos(), frag, 32);
+    vm.addFragRef(as.getWritePos(), 32, frag, targetIdx);
 
     as.writeInt(0, 32);
 }
@@ -105,11 +107,17 @@ alias writeJcc32Ref!("jmp" , 0xE9) jmp32Ref;
 /**
 Move an absolute reference to a fragment's address into a register
 */
-void movAbsRef(CodeBlock as, VM vm, X86Reg dstReg, CodeFragment frag)
+void movAbsRef(
+    CodeBlock as,
+    VM vm,
+    X86Reg dstReg,
+    CodeFragment frag,
+    size_t targetIdx = size_t.max
+)
 {
     as.writeASM("mov", dstReg, frag.getName);
     as.mov(dstReg.opnd(64), X86Opnd(uint64_t.max));
-    vm.addFragRef(as.getWritePos() - 8, frag, 64);
+    vm.addFragRef(as.getWritePos() - 8, 64, frag, targetIdx);
 }
 
 /// Load a pointer constant into a register
@@ -141,22 +149,22 @@ void setField(CodeBlock as, X86Reg baseReg, size_t fOffset, X86Reg srcReg)
     as.mov(X86Opnd(srcReg.size, baseReg, cast(int32_t)fOffset), X86Opnd(srcReg));
 }
 
-void getMember(string fName)(CodeBlock as, X86Reg dstReg, X86Reg baseReg)
+X86Opnd memberOpnd(string fName)(X86Reg baseReg)
 {
     mixin("auto fOffset = " ~ fName ~ ".offsetof;");
     mixin("auto fSize = " ~ fName ~ ".sizeof;");
-    assert (dstReg.size is 8 * fSize);
 
-    as.getField(dstReg, baseReg, fOffset);
+    return X86Opnd(fSize * 8, baseReg, cast(int32_t)fOffset);
+}
+
+void getMember(string fName)(CodeBlock as, X86Reg dstReg, X86Reg baseReg)
+{
+    as.mov(X86Opnd(dstReg), memberOpnd!fName(baseReg));
 }
 
 void setMember(string fName)(CodeBlock as, X86Reg baseReg, X86Reg srcReg)
 {
-    mixin("auto fOffset = " ~ fName ~ ".offsetof;");
-    mixin("auto fSize = " ~ fName ~ ".sizeof;");
-    assert (srcReg.size is 8 * fSize);
-
-    as.setField(baseReg, fOffset, srcReg);
+    as.mov(memberOpnd!fName(baseReg), X86Opnd(srcReg));
 }
 
 /// Read from the word stack
@@ -245,13 +253,13 @@ void pushRegs(CodeBlock as)
     as.push(R9);
     as.push(R10);
     as.push(R11);
-    as.push(R11);
+    as.pushfq();
 }
 
 /// Restore caller-save registers from the after before a C call
 void popRegs(CodeBlock as)
 {
-    as.pop(R11);
+    as.popfq();
     as.pop(R11);
     as.pop(R10);
     as.pop(R9);
@@ -321,7 +329,7 @@ void printUint(CodeBlock as, X86Opnd opnd)
     else if (opnd.isMem)
         opndSz = opnd.mem.size;
     else
-        assert (false);
+        assert (false, "invalid opnd in printUint: " ~ opnd.toString);
 
     as.pushRegs();
 

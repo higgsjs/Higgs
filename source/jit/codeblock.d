@@ -96,9 +96,9 @@ class CodeBlock
     /// Current writing position
     private size_t writePos = 0;
 
-    /// Disassembly/comment strings
+    /// Disassembly/comment strings, indexed by position
     alias Tuple!(size_t, "pos", string, "str") CommentStr;
-    private CommentStr[] strings;
+    private CommentStr[][] strings;
 
     // Table of label addresses
     private size_t[Label.max+1] labelAddrs;
@@ -166,58 +166,30 @@ class CodeBlock
 
         auto app = appender!string();
 
-        // If there are comment/disassembly strings
-        if (strings.length > 0)
+        // For each byte to print
+        for (size_t curPos = startIdx; curPos < endIdx; ++curPos)
         {
-            // Find the first string at/after the start index
-            auto sortedRange = assumeSorted!"a.pos <= b.pos"(strings);
-            auto strRange = sortedRange.upperBound(CommentStr(startIdx, "")).release();
-            assert (strRange.length is 0 || strRange[0].pos >= startIdx);
-
-            size_t curPos = startIdx;
-            string line = "";
-
-            // For each string
-            foreach (strIdx, str; strRange)
+            // If there are strings at this position
+            auto strs = (curPos < strings.length)? strings[curPos]:[];
+            if (strs.length > 0)
             {
-                // Start a new line for this string
-                line = str.str;
+                // Start a new line
+                if (app.data.length > 0)
+                    app.put("\n");
 
-                auto nextStrPos = (strIdx < strRange.length - 1)? strRange[strIdx+1].pos:endIdx;
-
-                // If the next string is past the current position
-                if (nextStrPos > curPos)
+                // Print each string on its own line
+                foreach (str; strs[0..$-1])
                 {
-                    // Add padding space before the hex printout
-                    line = rightPadStr(line, " ", 40);
-
-                    // Print all the bytes until the next string
-                    for (; curPos < nextStrPos; ++curPos)
-                        line ~= format("%02X", this.memBlock[curPos]);
+                    app.put(str.str);
+                    app.put("\n");
                 }
 
-                // Write the current line
-                app.put(line);
-
-                // If we are past the end index, stop
-                if (curPos >= endIdx)
-                    break;
-
-                app.put("\n");
+                // Add padding space before the hex printout
+                app.put(rightPadStr(strs[$-1].str, " ", 40));
             }
-        }
-        else
-        {
-            // Produce a raw dump of the binary data
-            for (size_t i = startIdx; i < endIdx; ++i)
-            {
-                auto b = this.memBlock[i];
 
-                if (i != 0)
-                    app.put(' ');
-
-                app.put(format("%02X", b));
-            }
+            // Print all the bytes until the next string
+            app.put(format("%02X", memBlock[curPos]));
         }
 
         return app.data;
@@ -369,67 +341,32 @@ class CodeBlock
     */
     void writeString(string str)
     {
+        if (!hasComments)
+            return;
+
         auto newStr = CommentStr(writePos, str);
 
-        if (strings.length is 0 || strings[$-1].pos <= writePos)
-        {
-            strings ~= newStr;
-        }
-        else
-        {
-            // Replace other strings of equal position by the new string
-            auto r = assumeSorted!"a.pos < b.pos"(strings).trisect(newStr);
-            strings = r[0].release() ~ r[1].release() ~ newStr ~ r[2].release();
-        }
+        if (writePos >= strings.length)
+            strings.length = writePos + 1;
+
+        strings[writePos] ~= newStr;
     }
 
     /**
     Delete strings at or after a given position
     */
-    void delStrings(size_t pos)
+    void delStrings(size_t startIdx, size_t endIdx)
     {
-        if (!hasComments)
+        assert (endIdx >= startIdx);
+
+        if (strings.length is 0)
             return;
 
-        for (long i = strings.length - 1; i >= 0; --i)
-            if (strings[i].pos >= pos)
-                strings.length = i;
+        // Clear the strings at each byte position
+        for (size_t curPos = startIdx; curPos < endIdx; ++curPos)
+            if (curPos < strings.length)
+                strings[curPos].length = 0;
     }
-
-    /**
-    Write the contents of another code block at the given position
-    */
-    /*
-    void writeBlock(CodeBlock cb)
-    {
-        if (this.writePos + cb.writePos > this.memSize)
-            noSpace(this.writePos + cb.writePos);
-
-        // If the other block has comment strings
-        if (cb.strings.length > 0)
-        {
-            //writeln("merging strings (", strings.length, ")");
-
-            // Translate the positions of the strings being written
-            auto newStrs = array(map!(s => CommentStr(writePos + s.pos, s.str))(cb.strings));
-
-            // Get the strings that come before and after the other block's
-            auto range = assumeSorted!"a.pos < b.pos"(strings);
-            auto lower = range.lowerBound(newStrs.front);
-            auto upper = range.upperBound(newStrs.back);
-
-            //writeln("lower.length: ", lower.length);
-            //writeln("upper.length: ", upper.length);
-
-            // Insert the new strings in between
-            strings = lower.release() ~ newStrs ~ upper.release();
-        }
-
-        // Copy the bytes from the other code block
-        this.memBlock[this.writePos..this.writePos+cb.writePos] = cb.memBlock[0..cb.writePos];
-        this.writePos += cb.writePos;   
-    }
-    */
 
     /**
     Read the byte at the given index

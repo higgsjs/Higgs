@@ -1525,7 +1525,7 @@ function $rt_getPropObj(obj, propStr)
         var val = $ir_make_value(word, type);
 
         // If the value is not missing, return it
-        if (val !== $missing)
+        if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
             return val;
     }
 

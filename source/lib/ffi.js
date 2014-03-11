@@ -1005,7 +1005,7 @@ The Higgs FFI api
             if (!a.type_size || !a.loader)
                 throw "Unhandled type in array constructor: " + type + ".";
 
-            if ($ir_get_type(handle) === 4)
+            if ($ir_is_rawptr(handle))
             {
                 a.handle = handle;
                 a.offset = offset || 0;
@@ -1050,7 +1050,7 @@ The Higgs FFI api
         {
             var s = Object.create(struct_proto);
             // check if a ptr was passed in
-            if ($ir_get_type(handle) === 4)
+            if ($ir_is_rawptr(handle))
             {
                 s.handle = handle;
                 s.offset = offset || 0;

@@ -1,0 +1,90 @@
+Wishlist
+--------
+
+TODO: complete WAV output support, test it out with sine wave
+
+TODO: optimize x86 instr encoding based on usage
+- e.g.: reg64 to mem move and vice versa?
+- do profiling first
+
+Idea: global table of property names with type monitoring
+- current index, if always same
+- current type
+- can it be a getter/setter?
+- discuss with Marc
+  - would most probably work well for benchmarks
+- if foobar property always has same offset, don't even care what the map is
+  - fair game?
+- issue: can know that x is always at some index, but doesn't mean that your
+  object has a property x
+- can do monitoring per-map, and get great perf gains on the global object
+- how often are object types monomorphic?
+
+Idea: getters/setters + never used opt?
+- Need to be able to invalidate code depending on this
+- segregate by property name, much more effective
+
+TODO: produce 32-bit offsets/addresses in CodeBlock.toString
+
+TODO: reduce code size by using calls for fallback code,
+eg: global access, call_prim inlining/recompilation, others?
+
+TODO: proper hidden classes, support for property enumeration?
+- Type information in hidden classes too?
+
+TODO: execHeap collection/expansion
+- Marc says: not on critical path for paper
+
+TODO: arrays, functions, have obj ptr inside, drop object inheritance system
+- Arrays: how do we handle resizing, use a next pointer? Store length
+  - Need to check elem < length anyways before reading?
+
+TODO: typed arrays
+- Will save many many type checks on some benchmarks
+  - e.g. : integer, FFT
+
+TODO: think about type representation
+- types need to encode obj vs clos vs array
+- typed arrays: int32 array, float array
+- use one whole word for cst value, encode map idx in there too?
+
+TODO: have map idx system, instead of map pointers?
+- smaller comparison instr
+- avoids issue of maps reallocated at same addr
+- smaller type representation
+- what else?
+
+TODO: accelerate getPropObj, make more hosted?
+- generate optimized machine code? inline cache?
+
+TODO: look at https://github.com/dntj/jsfft
+- Do they have a test/benchmark of the FFT?
+
+FIXME: string concat is very slow right now... can we make it faster?
+- slow benchmarks: string-base64, string-fasta, splay
+- can we get the offset of the string data? str_ofs_data(s, 0)
+- create a memcpy IR instr?
+    import std.c.string;
+    memcpy ( void * destination, const void * source, size_t num );
+    issue: spilling required
+    could generate custom code
+
+TODO: block-internal jumps, can they all fit in 8-bit indices? force?
+- can maybe "promise" it will fit
+
+TODO: blog post about draw lib
+- advice: crazy but true titles, skimmable blog posts, skimmable style, pretty pics
+- tutorials, should also list in wiki, or blog wiki tuts?
+
+TODO: pixel plotting, drawing window lib? lib/draw
+- Probably will want to use X11
+  - implement a lib/x11
+  - need an event loop
+- Can have a draw lib which creates a window using lib/x11 and sets up a
+  basic event loop
+  - allows setting callbacks for KB and mouse events
+  - allows calling a function in the loop
+- Make another lib to read from the console without blocking
+  - use select() on stdin
+  - Can then implement our own REPL on top
+  - not a priority for now, don't need REPL to implement games and such

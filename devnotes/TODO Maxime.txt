@@ -20,147 +20,328 @@ List of possible contributions:
 - Basic block versioning
 - Interprocedural versioning
 - Incremental inlining vs classical inlining
+- Typed shapes and basic block versioning
 
 ------------------------------------------------------------------------------
-
-Wishlist
---------
-
-TODO: add --jit_trace command-line option
-
-TODO: complete WAV output support, test it out with sine wave
-
-TODO: optimize x86 instr encoding based on usage
-- e.g.: reg64 to mem move and vice versa?
-- do profiling first
-
-Idea: global table of property names with type monitoring
-- current index, if always same
-- current type
-- can it be a getter/setter?
-- discuss with Marc
-  - would most probably work well for benchmarks
-- if foobar property always has same offset, don't even care what the map is
-  - fair game?
-- issue: can know that x is always at some index, but doesn't mean that your
-  object has a property x
-- can do monitoring per-map, and get great perf gains on the global object
-- how often are object types monomorphic?
-
-Idea: getters/setters + never used opt?
-- Need to be able to invalidate code depending on this
-- segregate by property name, much more effective
-
-TODO: produce 32-bit offsets/addresses in CodeBlock.toString
-
-TODO: reduce code size by using calls for fallback code,
-eg: global access, call_prim inlining/recompilation, others?
-
-TODO: proper hidden classes, support for property enumeration?
-- Type information in hidden classes too?
-
-TODO: execHeap collection/expansion
-- Marc says: not on critical path for paper
-
-TODO: arrays, functions, have obj ptr inside, drop object inheritance system
-- Arrays: how do we handle resizing, use a next pointer? Store length
-  - Need to check elem < length anyways before reading?
-
-TODO: typed arrays
-- Will save many many type checks on some benchmarks
-  - e.g. : integer, FFT
-
-TODO: quick reoptimization pass with basic asm pattern matching?
-- repatch stub jumps, etc.
-- does dst block fit in source block?
-
-TODO: think about type representation
-- types need to encode obj vs clos vs array
-- typed arrays: int32 array, float array
-- use one whole word for cst value, encode map idx in there too?
-
-TODO: have map idx system, instead of map pointers?
-- smaller comparison instr
-- avoids issue of maps reallocated at same addr
-- smaller type representation
-- what else?
-
-TODO: accelerate getPropObj, make more hosted?
-- generate optimized machine code? inline cache?
-
-TODO: look at https://github.com/dntj/jsfft
-- Do they have a test/benchmark of the FFT?
-
-------------------------------------------------------------------------------
-
-TODO: blog post about draw lib
-- advice: crazy but true titles, skimmable blog post, skimmable style, pretty pics
-- tutorials, should also list in wiki, or blog wiki tuts?
-
-TODO: pixel plotting, drawing window lib? lib/draw
-- Probably will want to use X11
-  - implement a lib/x11
-  - need an event loop
-- Can have a draw lib which creates a window using lib/x11 and sets up a
-  basic event loop
-  - allows setting callbacks for KB and mouse events
-  - allows calling a function in the loop
-- Make another lib to read from the console without blocking
-  - use select() on stdin
-  - Can then implement our own REPL on top
 
 TODO: basic reg alloc, what's the simplest we can do?
 - Marc says: probably a bigger perf issue than instr cache
 
-TODO: stub patching, avoid double jumps
-- patch jumps to stub instead? keep list of incoming refs?
-- Marc says: call to stub, patch lazily
-  - patch lazily, no need for list of incoming?
-  - may allow one single piece of stub code, better code
+TODO: basic type prop, without reg alloc, type test removal
+- For now, don't do delayed writes
 
-TODO: type prop, pass types along inlined calls/returns
+TODO: not missing global prop opt?
+- observation: if read once, we know its not missing
 
-------
+TODO: reimplement getPropObj with first level obj access inlined
+- keep small so just this gets inlined
+- create a new version of the primitive, no need to erase the old
 
-TODO: reimplement type analysis to compare with BBV for paper
+TODO: think about shapes more
+- want a guaranteed minimum object size
+  - no need for a special ext table, can use objects as is with len, next ptr
+- how complicated would they be to implement in a basic form?
+  - switch to shape idx
+- how much simplification could you get on object property accesses?
+  - sketch it out
+- can use shape pointers directly
+  - shapes can keep list of referring blocks
+- start writing D code for shapes
+  - class ObjShape
+- no more "make_map"
 
-TODO: smarter spilling across inlined calls
-- only spill parent values when necessary
-- also want to be smart about delayed writes
-TODO: better register spilling mechanism for C calls
-TODO: register allocation
-- peephole pass should swap operands to favor reg alloc?
-  - or do this on demand?
-- unified spilling function? params to spill tsp/wsp, vm reg
-- delayed writes
+TODO: check the Moz guy's shape slides, check notes
 
-TODO: make inline threshold larger for bigger functions?
-- wait until inlining is more optimized before tweaking heuristics
+TODO: blog post about optimization, results
+- difficulty of optimizing self-hosted code
 
-TODO: fix GC for new stack handling
+FIXME: much regexp code executed during init, why?
 
-TODO: fix exceptions for new stack handling
-- Need to correct wsp/tsp when throwing exceptions?
-- if we go to exc handler in inlined context, need to adjust frame
-  - remove inlined locals
-- may need to remove stack slots
+TODO: look at IR, ASM got getPropObj
 
-TODO: modify getWordOpnd, getTypeOpnd et al for inlined calls
-- Assume that the IRDstValue belongs to the current frame
-  - Can we assert this?
+TODO: optimize IR inlining, less jumps & reliance on peepholes?
+- sometimes inlining functions that are only 1 block
 
-TODO: avoid inc/dec wsp/tsp on inlined calls
-- Get it working without exception support first
-- Need to correct wsp/tsp at non-inlined call time
-  - push actual stack space to protect inlined locals
-  - return from non-inlined call needs to remove slots
-  callCtx.extraLocals?
-- What if we do an inlined call in an inlined call?
-  - no need to adjust anything, context inherits
+*** Meeting: to be shown: disassembly for fib, microbenchmark results
+- completed and debugged new stub scheme, branch rewriting
+- various machine code optimizations
+  comp time     -42%
+  exec time     -19%
+  code size     -14%
+- made disassembly strings much much faster
+- ran microbenchmarks
+- recuperated inlining, type analysis code from cc2014 branch, basic inlining working
+  - even only inlining small primitives generally doesn't pay for itself
+  - does win out on 3d-raytrace, cuts prim calls by more than half
+- started looking at IR, ASM for prop access, optimizing inefficiencies
+- idea: shape system with types for object fields
+  - by testing for a specific shape, instantly gain invaluable info about an object
+  - could insert shape test instruction, generate many basic block versions (up to 4?)
+    s = obj_get_shape o (s is say int32)
+    v = obj_get_val(o, s, propStr)
+    In optimized case, shape idx and prop idx gets us a constant, or
+    a constant type.
+  - could work for the global object too
+  - solves the undefined problem, advantage over TI!
+- the plan:
+  - first basic inlining, tweak heuristics
+  - get type prop, type analysis working
+  - rewrite new primitives with smaller inlinable part, hand-inlining, hand-tuning
+  - 1st level type tags for objects, arrays, closures
+  - see how much time is left
+  - reg alloc, some gains, but probably not that much
+  - global prop access idea, known not missing?
+  - shape system?
+    - may want to leave type spec out until next paper
+    - may be too much to explain
+    - but, could start with inline caching
 
-------
+TODO: tweak inlining heuristics
+- don't inline in global functions, unless they have loops? ***
+  - IRFunction.hasLoop?
+  - this might be extra beneficial, big functions that run only once
+- could also only inline in functions that have loops
+  - and/or maybe be super extra aggressive there
+- *must* inline object access and low level primitives in getprop
+  - runtime primitives that are less than 3-4 blocks should always be inlined
 
-Meeting:
+FIXME: inlining makes things significantly slower
+- are we making some functions very big? print initial and final numBlocks
+- making IR get generated for unexecuted code?
+- lots of inlining happening
+
+TODO: tweet that presence at dconf is confirmed #dlang #dconf
+It's official, Higgs and I will be returning to DConf in 2014! #dlang #dconf
+
+TODO: peephope opt, see $rt_getPropObj
+not_exit(3986):
+$15 = phi [if_true(3965):0 => false, if_true(3965):1 => true]
+if_true $15 => if_true(3981), or_sec(3984)
+
+TODO: wider type tags, object, closure, array, string
+- Save some type tests, must be faster in the end
+- Eliminate valIsString and such
+- Can try to have bit 3 always set for refptrs? if useful
+
+TODO: eliminate valIsLayout, refIsLayout from JS code
+
+TODO: eliminate valIsString from D code
+
+TODO: new IR instrs, tag_object, tag_string, ...
+- use for layout GC alloc
+
+
+
+
+
+
+
+
+[DONE] FIXME: test runner, FFI depend on type tag values?
+- grep for get_type
+
+[DONE] TODO: fetch type analysis from cc2014 branch, make it compile
+
+[DONE] FIXME: getProp calls toBool, this is wrong!
+time ./higgs --nostdlib --stats benchmarks/micro/10m_getprop.js
+- Can we assume that if (prim) produces a boolean? should be able to
+  - don't design primitives that have weird polymorphic return types
+time ./higgs --nostdlib --stats benchmarks/micro/10m_getprop.js
+exec time (ms): 3200
+comp time (ms): 12
+
+[DONE] TODO: upgrade dmd to 2.065
+
+[DONE] FIXME: segfault on throw_in_finally
+make; ./higgs --nostdlib "tests/core/exceptions/throw_in_finally.js"
+- Doesn't have to do with the peephole
+- Don't want to inline $rt_throw
+  - but why does it segfault?
+- Not inlining throw doesn't fix it
+- doesn't get to throwExc
+- something screws up during IR gen
+- inlining + exc produces empty block
+
+[DONE] TODO: --jit_trace_instrs
+
+[DONE] FIXME: $rt_obj_ofs_next not inlined in $rt_obj_get_next, why?
+- IR gets doesn't get generated when entry stub is hit, no entry stub for primitives!
+- move inlinePass call into astToIR!
+
+[DONE] TODO: peephope opt for IsTypeOp with constant
+
+[DONE] TODO: simple ad-hoc, rule-based inlining
+- benefit: keep the old type analysis
+- inling once at IR gen time, no recompilation
+- inling specific primitives
+- to begin, only inline small runtime primitives
+- should be able to speedup getProp hugely
+
+[DONE] TODO: if call has no uses, no need to copy ret regs to out slot
+
+[DONE] TODO: grab ir/inlining.d and jit/inlining.d from CC branch
+
+[DONE] TODO: simplify return from primitive functions?
+- Are we doing frame size checks in there?
+- test 200m primcalls again
+time ./higgs --nostdlib --stats benchmarks/micro/200m_primcalls.js 
+- hack it for now
+- before
+  exec time (ms): 1810
+  comp time (ms): 1
+  code size (bytes): 40890
+- no noticeable time difference!
+
+[DONE] TODO: microbenchmarks, big loop with either getProp, getGlobal, fn call
+- also run with --stats, look at num prim calls
+time ./higgs --nostdlib --stats benchmarks/micro/10m_getprop.js
+  10M getprop
+    exec time (ms): 4884
+    comp time (ms): 10
+    num call_prim: 210000041    *** 210M primitive calls, inlining will help
+    num map_prop_idx: 10000001
+    is_refptr: 20000002
+    is_const: 20000001
+    type tests: 40000005
+  10M getglobal
+    exec time (ms): 154
+    comp time (ms): 3
+    num call_prim: 0
+    num map_prop_idx: 0
+    type tests: 0
+  200M add
+    exec time (ms): 3637
+    comp time (ms): 2
+    num call_prim: 200000000
+    type tests: 400000000
+  200m primcalls
+    exec time (ms): 2120
+    comp time (ms): 2
+    num call_prim: 200000000
+    type tests: 0
+- worth studying, discovered some hidden type tests
+- getProp does about 20 calls per access, about 50% exec time is prim calls
+- inlining will be crucial, especially inside getprop
+
+[DONE] FIXME: getprop does 10M is_f64 tests?
+- use of $rt_ns in getPropObj
+
+[DONE] TODO: fix num prim calls stat
+
+[DONE] TODO: compare speed against master branch with ./benchmark.py
+new
+  comp time (ms): 95            -42%
+  exec time (ms): 512           -19%
+  code size (bytes): 618873     -14%
+old
+  comp time (ms): 163
+  exec time (ms): 631
+  code size (bytes): 715050
+
+[DONE] TODO: memberOpnd? could optimize call code further
+
+[DONE] TODO: as.comment, try avoiding calling if jit_dumpasm is false
+
+[DONE] FIXME: branch rewriting did not shave end of blocks in getPropObj
+make; ./higgs --jit_genasm --e "print(\$rt_getPropObj.asmString())"
+call_cont(3D2B):
+; $0 = eq_refptr $7, null
+mov rax, [qword r14 + 56];              498B4638
+cmp rax, 0;                             4883F800
+je branch_if_true(3D2D);                0F848C000000
+nop1;                                   90
+nop4;                                   8D742600
+branch_if_join(3D2F):
+if_join(3D2F):
+
+Clearly branch_if_join is immediately after. Should be immediately queued.
+Will need to log things specific to getPropObj branches
+
+What those jumps have in common is that neither of the targets are stubbed.
+They got rewritten twice.
+Most likely, the first rewrite simply did not remove the mov...
+
+[DONE] TODO: getBranchEdge, should probably avoid:
+  - generating succState
+  - doing getBlockVersion to get a successor version
+  - immediately doing move generation
+- wastes time and memory on unexecuted targets
+- only store the predState and target block at first
+- can lazily generate moveList when compiling branch edge
+- if isNoop, eliminate the branch edge
+- want to do repatching in compile loop, when compiling branch edge
+
+[DONE] FIXME: call_prim to rt_obj_get_next taking 3 constant args, why?
+- only needs one argument
+- we don't check if the hidden arguments are needed
+- could just assert they have no uses
+- argc seems necessary to traverse the stack
+
+[DONE] FIXME: does the GC need the closure argument?
+- closure argument not needed per-se
+- GC fails to find return address in ret addr map
+- leftover corrupted data with the wrong tag?
+- Do we ever write values on the stack without a type tag?
+  - odd interation with a regression test...
+- bug in get_ir_string, missing setOutType
+
+[DONE] TODO: optimize branch edges
+- if target is directly next, not write jump?
+
+[DONE] TODO: optimize if_true branch shape
+
+[DONE] TODO: asmString log call cont stubs
+make; ./higgs --jit_genasm --e "print(\$rt_getPropObj.asmString())"
+
+[DONE] TODO: optimize branch shape for integer less-than
+
+[DONE] TODO: optimize direct jump shape
+
+[DONE] TODO: asmString, display gaps!
+; ### NN bytes gap ###
+
+[DONE] TODO: if we're the last block, don't pad with nops!
+
+[DONE] TODO: avoid writing blockIdx when neither target is a stub
+- need to check if queued for compilation also
+  - workList.canFind(b)
+make; ./higgs --jit_genasm --e "print(\$rt_add.asmString())"
+
+[DONE] FIXME: issue with neither targets being stubs
+- not writing blockIdx causes segfault
+- problem happens with is_i32, right when compiling a stub
+- error with nop() function causing stack overflow
+
+[DONE] TODO: optimize final jump ordering when rewriting final branch
+- BranchShape
+- again need to check if successors are queued?
+just compare startIdx... value is max if stub!
+
+[DONE] TODO: way to remove code block strings in specific range, delStrs
+- Needed when rewriting branch or patching stub
+- range [startIdx, endIdx[
+
+[DONE] TODO: asm strings, reimplement using an array of indices to lists of strings
+
+[DONE] TODO: make blockIdx 32-bit so move is smaller
+
+[DONE] TODO: pushfq, popfq for debugging w/ printInt, printStr
+9C PUSHFQ
+REX.W + 9D POPFQ 
+
+[DONE] FIXME: problem with tests/core/ffi/ffi.js
+- FFI call borking, issue with stubs?
+- Might be an issue with the return value handling, call continuation
+- FFI probably does not need genCallBranch... Better served by plain genBranch
+
+[DONE] FIXME: throwExc needs to JIT compile the exception branch
+
+[DONE] FIXME: stdlib init fails
+label "FALSE2" already defined at position 410858
+- call does a conditional jump to compute the total frame size
+- should try to move this computation out of the final branch part
+
+[DONE] Meeting:
 - contribs, multiple fronts:
   - self-hosting
   - type tagging scheme
@@ -170,35 +351,88 @@ Meeting:
 - incremental inlining decreases execution time on `make test`
   - right now, even with poor inlining, doesn't make benchmarks slower
   - old aggressive inlining might be slower, increase compilation time
-- paper-wise, might be better to do "dumb" inlining
-  - keep the same type analysis
-  - inling once, no recompilation
-  - inling specific primitives
-  - don't inline in global functions, unless they have loops
-- propose a deal: simple inlining for DLS paper
+- paper-wise, might be better to do simple rule-based inlining
+- proposal: simple inlining for DLS paper
   - focus on BBV, improving code gen, fixing incremenetal compilation quirks
-- stubs: might be able to have one stub for all
-  - call to stub, RA identifies origin
+- stubs: might be able to have one stub for all branches
+  - truer to the lazyness goal
+  - allows better contiguous code
+- CC or PLDI paper on incremental compilation?
+- Bourse DIRO!
 
-------
+[DONE] FIXME: issue with recursion, start position is already marked
+- may need to patch the cont stub, still used for deeper calls
 
-TODO: basic type prop, without reg alloc, type test removal
-- For now, don't do delayed writes
+[DONE] FIXME: 1 + 2 doesn't produce the right output
+- Return not working?
+- Are we manging the return type reg?
+- Value+type correct after add...
+- Value+type correct at first level return
+- Second return gets incorrect value and type
 
-FIXME: string interning, no cleanup on GC? Can we make splay faster?
+[DONE] FIXME: 1 + 2 doesn't work
+make; ./higgs --nostdlib --e "1 + 2"
 
-FIXME: string interning is very slow right now... can we make it faster?
-- slow benchmarks: string-base64, splay
-- can we get the offset of the string data?
+[DONE] TODO: --noruntime flag, useful for debugging, with --jit_dumpinfo
+- make it automatically imply nostdlib
+- debug simple expressions, make test produces too much output
 
+[DONE] FIXME: setRetEntry, calls getCodePtr to get a pointer to the call
+continuation code. The call continuation branch is not yet instantiated.
+- Can we make call returns go to BranchStub?
+  - doesn't really work
+- Should force cont branch to get compiled?
+  - what about exception branch... don't want to force that to be compiled
+- For exceptions, can probably trigger compilation manually during exception handling
+- If we say call cont must be compiled, we still don't get an address immediately
+    auto retAddr = retCode.getCodePtr(vm.execHeap);
+    vm.retAddrMap[retAddr] = RetEntry(callInstr, callCtx, retCode, excCode);
 
+[DONE] For efficiency, probably want returns to go to special stubs
+- Compile whole sequence after return all at once, more elegant and optimal
+- ContStub will:
+  - patch its calling block version, rewrite its final branch
+  - queue the proper return branch to be compiled
+  - remove the old RetEntry for the ContStub
+  - create a proper RetEntry for the compiled return branch
+- Could use a unique return stub?
+  - Since we patch the calling block
+  - Could set the call blockIdx in a special register
+- Probably don't want a unique stub
+  - Want to have some specific RA we can track!
 
+[DONE] FIXME: we hit a branch stub, but the blockIdx is corrupted
+- Seems to contain a pointer value instead
+- corruption during reference patching because of getBranchStub
 
+[DONE] TODO: rework genBranch
+- block idx is available when compiling block (fragList.length)
+  - store in scrReg[0]? be careful wrt calls
+  - check if either target is a stub first
+- may need to pad until endIdx with noops
+  - also assert that we aren't going past endIdx if rewriting
 
+[DONE] TODO: rewrite srcBlock final branch in compileBranch
 
+[DONE] TODO: refList patching, if jumping to uncompiled block, jump to branch stub instead
 
+[DONE] TODO: generate code for BranchCode in code gen loop
+- Add call to prelGenFn
 
+[DONE] TODO: BranchCode should store a closure that generates its code
+- Deferred codegen
+- Also store list of moves
 
+[DONE] TODO: rework compileStub
+- only write branch edge to execHeap once stub is hit, unless we know it will be taken
+- store pointer to BranchCode as outgoing target
+
+[DONE] TODO: generate stub[i], getStub(targetIdx)
+- don't need special spill code for now, no reg alloc yet
+- Receives blockIdx in scrReg[0]
+
+[DONE] FIXME: string interning, no cleanup on GC? Can we make splay faster?
+- This is already done correctly!
 
 [DONE] TODO: try creating smaller versions of slow benchmarks for unit tests
     shootout/lists

@@ -70,16 +70,21 @@ void main(string[] args)
     auto fileNames = hostArgs[1..$];
 
     // Create VM instance
-    auto vm = new VM(true, !opts.nostdlib);
+    auto vm = new VM(!opts.noruntime, !opts.nostdlib);
 
+    /*
     // Construct the JS arguments array
-    wstring jsArgsStr = "arguments = [";
-    foreach(string arg; jsArgs)
-        jsArgsStr ~= "'" ~ escapeJSString(to!wstring(arg)) ~ "',";
-    jsArgsStr ~= "];";
+    if (!opts.noruntime)
+    {
+        wstring jsArgsStr = "arguments = [";
+        foreach(string arg; jsArgs)
+            jsArgsStr ~= "'" ~ escapeJSString(to!wstring(arg)) ~ "',";
+        jsArgsStr ~= "];";
 
-    // Evaluate the arguments array string
-    vm.evalString(to!string(jsArgsStr));
+        // Evaluate the arguments array string
+        vm.evalString(to!string(jsArgsStr));
+    }
+    */
 
     // If file arguments were passed or there is
     // a string of code to be executed

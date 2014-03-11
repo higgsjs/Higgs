@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -182,12 +182,18 @@ enum Type : ubyte
     INT32 = 0,
     INT64,
     FLOAT64,
-    REFPTR,
     RAWPTR,
     RETADDR,
     CONST,
     FUNPTR,
-    MAPPTR
+    MAPPTR,
+
+    // GC heap pointer types
+    REFPTR,
+    OBJECT,
+    ARRAY,
+    CLOSURE,
+    STRING
 }
 
 /// Word and type pair
@@ -205,11 +211,16 @@ string typeToString(Type type)
         case Type.INT64:    return "int64";
         case Type.FLOAT64:  return "float64";
         case Type.RAWPTR:   return "raw pointer";
-        case Type.REFPTR:   return "ref pointer";
         case Type.RETADDR:  return "return address";
         case Type.CONST:    return "const";
         case Type.FUNPTR:   return "funptr";
         case Type.MAPPTR:   return "mapptr";
+
+        case Type.REFPTR:   return "ref pointer";
+        case Type.OBJECT:   return "object";
+        case Type.ARRAY:    return "array";
+        case Type.CLOSURE:  return "closure";
+        case Type.STRING:   return "string";
 
         default:
         assert (false, "unsupported type");
@@ -268,21 +279,6 @@ string valToString(ValuePair value)
         case Type.RAWPTR:
         return to!string(w.ptrVal);
 
-        case Type.REFPTR:
-        if (w == NULL)
-            return "null";
-        if (ptrValid(w.ptrVal) is false)
-            return "invalid refptr";
-        if (valIsLayout(value, LAYOUT_OBJ))
-            return "object";
-        if (valIsLayout(value, LAYOUT_CLOS))
-            return "function";
-        if (valIsLayout(value, LAYOUT_ARR))
-            return "array";
-        if (valIsString(value))
-            return extractStr(w.ptrVal);
-        return "refptr";
-
         case Type.RETADDR:
         return to!string(w.ptrVal);
 
@@ -302,11 +298,36 @@ string valToString(ValuePair value)
 
         case Type.FUNPTR:
         return "funptr";
-        break;
 
         case Type.MAPPTR:
         return "mapptr";
-        break;
+
+        case Type.REFPTR:
+        if (w == NULL)
+            return "null";
+        if (ptrValid(w.ptrVal) is false)
+            return "invalid refptr";
+        if (valIsLayout(value, LAYOUT_OBJ))
+            return "object";
+        if (valIsLayout(value, LAYOUT_CLOS))
+            return "function";
+        if (valIsLayout(value, LAYOUT_ARR))
+            return "array";
+        if (valIsString(value))
+            return extractStr(w.ptrVal);
+        return "refptr";
+
+        case Type.OBJECT:
+        return "object";
+
+        case Type.ARRAY:
+        return "array";
+
+        case Type.CLOSURE:
+        return "closure";
+
+        case Type.STRING:
+        return "string";
 
         default:
         assert (false, "unsupported value type");
@@ -437,7 +458,7 @@ class VM
     CodeFragment[] fragList;
 
     /// Queue of block versions to be compiled
-    BlockVersion[] compQueue;
+    CodeFragment[] compQueue;
 
     /// List of references to code fragments to be linked
     FragmentRef[] refList;
@@ -447,6 +468,9 @@ class VM
 
     /// Constructor entry stub
     EntryStub ctorStub;
+
+    /// Branch target stubs
+    BranchStub[] branchStubs;
 
     /**
     Constructor, initializes the VM state
@@ -963,7 +987,7 @@ class VM
 
         // Push the return address
         push(Word.ptrv(cast(rawptr)retAddr), Type.RETADDR);
-     
+
         // Push space for the callee locals
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
         push(numLocals);
@@ -1018,7 +1042,8 @@ class VM
     */
     ValuePair exec(FunExpr fun)
     {
-        auto ir = astToIR(fun);
+        auto ir = astToIR(this, fun);
+
         return exec(ir);
     }
 
@@ -1063,9 +1088,9 @@ class VM
 
     /// Stack frame visit function
     alias void delegate(
-        IRFunction fun, 
-        Word* wsp, 
-        Type* tsp, 
+        IRFunction fun,
+        Word* wsp,
+        Type* tsp,
         size_t depth,
         size_t frameSize,
         IRInstr callInstr
@@ -1196,7 +1221,7 @@ extern (C) CodePtr throwExc(
     Type excType
 )
 {
-    //writefln("throw");
+    //writefln("entering throwExc");
 
     // Stack trace (throwing instruction and call instructions)
     IRInstr[] trace;
@@ -1205,7 +1230,7 @@ extern (C) CodePtr throwExc(
     auto curCtx = callCtx;
 
     // Get the exception handler code, if supplied
-    auto curHandler = throwHandler? throwHandler.getCodePtr(vm.execHeap):null;
+    auto curHandler = throwHandler;
 
     // Get a GC root for the exception object
     auto excObj = GCRoot(
@@ -1263,11 +1288,20 @@ extern (C) CodePtr throwExc(
         {
             //writefln("found exception handler");
 
+            // If the exception handler is not yet compiled, compile it
+            if (curHandler.ended is false)
+            {
+                vm.queue(curHandler);
+                vm.compile(callCtx);
+            }
+
+            auto excCodeAddr = curHandler.getCodePtr(vm.execHeap);
+
             // Push the exception value on the stack
             vm.push(excWord, excType);
 
             // Return the exception handler address
-            return curHandler;
+            return excCodeAddr;
         }
 
         // If we are in an inlined call context
@@ -1283,7 +1317,7 @@ extern (C) CodePtr throwExc(
 
             // Get the exception handler for the inlined context
             if (curCtx.excHandler)
-                curHandler = curCtx.excHandler.getCodePtr(vm.execHeap);
+                curHandler = curCtx.excHandler;
 
             // Move to the caller context
             curCtx = curCtx.parent;
@@ -1329,7 +1363,7 @@ extern (C) CodePtr throwExc(
 
         // Get the exception handler code for the calling instruction
         if (retEntry.excCode)
-            curHandler = retEntry.excCode.getCodePtr(vm.execHeap);
+            curHandler = retEntry.excCode;
 
         // Get the argument count
         auto argCount = vm.wsp[argcSlot].int32Val;

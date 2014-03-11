@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -45,6 +45,7 @@ import std.conv;
 import ir.ir;
 import ir.livevars;
 import ir.ops;
+import runtime.vm;
 
 void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 {
@@ -304,6 +305,24 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                     //writeln("removing dead: ", instr);
                     delInstr(instr);
                     continue INSTR_LOOP;
+                }
+
+                // Constant folding on is_i32
+                if (op == &IS_I32)
+                {
+                    auto arg0 = instr.getArg(0);
+                    auto cst0 = cast(IRConst)arg0;
+
+                    if (cst0)
+                    {
+                        instr.replUses(
+                            (cst0.type is Type.INT32)? 
+                            IRConst.trueCst:IRConst.falseCst
+                        );
+
+                        delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
                 }
 
                 // Constant folding on int32 add instructions
