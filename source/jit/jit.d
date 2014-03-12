@@ -1691,15 +1691,15 @@ void compile(VM vm, CallCtx callCtx)
             auto block = ver.block;
             assert (ver.block !is null);
 
-            //writeln(block.toString);
-            //as.printStr(block.getName);
-
             // Copy the instance's state object
             auto state = new CodeGenState(ver.state);
 
             // Store the code start index for this fragment
             if (ver.startIdx is ver.startIdx.max)
                 ver.markStart(as, vm);
+
+            if (opts.jit_trace_instrs)
+                as.printStr(block.getName ~ ":");
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -2110,6 +2110,27 @@ extern (C) CodePtr compileEntry(EntryStub stub)
         new CodeGenState(fun.getCtx(true, vm)),
         true
     );
+
+    /*
+    // warning, ctor is first on queue
+    auto as = vm.execHeap;
+    entryInst.markStart(as, vm);
+    as.getMember!"VM.tsp"(scrRegs[0], vmReg);
+    as.getMember!"VM.tStack"(scrRegs[1], vmReg);
+
+    as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
+    as.jle(Label.TRUE);
+    as.jmp(Label.FALSE);
+    as.label(Label.TRUE);
+
+    as.printStr("stack limit exceeded");
+    //as.printStack(fun.getCtx(ctorCall, vm));
+    as.mov(scrRegs[0].opnd, X86Opnd(0));
+    as.jmp(scrRegs[0].opnd);
+
+    as.label(Label.FALSE);
+    as.linkLabels();
+    */
 
     // Compile the entry versions
     vm.compile(fun.getCtx(ctorCall, vm));

@@ -1145,18 +1145,27 @@ function $rt_eq(x, y)
     {
         if ($ir_is_object(y))
             return $ir_eq_refptr(x, y);
+
+        if ($ir_is_refptr(y) || $rt_valIsObj(y))
+            return false;
     }
 
     else if ($ir_is_array(x))
     {
         if ($ir_is_array(y))
             return $ir_eq_refptr(x, y);
+
+        if ($ir_is_refptr(y) || $rt_valIsObj(y))
+            return false;
     }
 
     else if ($ir_is_closure(x))
     {
         if ($ir_is_closure(y))
             return $ir_eq_refptr(x, y);
+
+        if ($ir_is_refptr(y) || $rt_valIsObj(y))
+            return false;
     }
 
     else if ($ir_is_string(x))

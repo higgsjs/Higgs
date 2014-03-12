@@ -2423,7 +2423,8 @@ void gen_ret(
 
         // Compute the number of extra arguments into r0
         as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
-        as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
+        if (numParams !is 0)
+            as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
         as.cmp(scrRegs[0].opnd(32), X86Opnd(0));
         as.cmovl(scrRegs[0].reg(32), scrRegs[1].opnd(32));
 

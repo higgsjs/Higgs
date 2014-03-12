@@ -86,9 +86,6 @@ TODO: simple reg alloc
 TODO: basic type prop & type test removal
 - For now, don't do delayed writes
 
-TODO: look at IR & ASM for getPropObj
-- type read and alignment code, is it optimal?
-
 TODO: specialized/biased primitives
 - could bias loop lt and loop add to only do integer, not fp
 - could also bias getProp for array elems, getLength
@@ -105,28 +102,34 @@ TODO: smaller add and lt for inlining
 - test perf on benchmarks with and without inlining
 
 TODO: peephope opt, see $rt_getPropObj
+time ./higgs --jit_genasm --e "print(\$rt_getPropObj.irString())"
 not_exit(3986):
 $15 = phi [if_true(3965):0 => false, if_true(3965):1 => true]
 if_true $15 => if_true(3981), or_sec(3984)
 
-TODO: peephope opt, getPropObj, add_i32 x4
 
-FIXME: GC/segfault bug with v8bench/crypto... heisenbug
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: GC/segfault bug with v8bench/crypto... heisenbug
 - run outside of tests
 - log when GC happens
-- IRFunction gets collected before it should?
+- segfaults before GC!
+$0 = is_const $10
+$0 = eq_const $9, $10
+ret $0
+if_true $2 => if_true(12273), if_false(12274)
+Segmentation fault (core dumped)
+- Stack overflow
 
-FIXME: empty fun, cmp eax, 0
+[DONE] FIXME: empty fun, cmp eax, 0
 - see 200m_calls
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: irString followed by call crashes
 - add test for this

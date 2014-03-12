@@ -221,7 +221,6 @@ void gcCollect(VM vm, size_t heapSize = 0)
     */
 
     //writeln("entering gcCollect");
-    //writefln("from-space address: %s", vm.heapStart);
 
     if (heapSize != 0)
         vm.heapSize = heapSize;
