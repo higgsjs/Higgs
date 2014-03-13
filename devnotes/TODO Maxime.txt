@@ -83,35 +83,75 @@ TODO: simple reg alloc
   - all output operands go into table, map to regs, spill when full
   - is this simpler than modelizing occupied regs
 
+TODO: eliminate is_i32 peephole
+- let the type analysis and BBV take care of that
+
 TODO: basic type prop & type test removal
 - For now, don't do delayed writes
 - isTypeOp, handle constant types
 
-TODO: getProp for array elems
+Meeting:
+- Fixed codegen bugs outlined at last group meeting
+- Completed wider type tags refactoring
+- Fixed bugs with that
+- Began smaller primitives for inlining
+- 3d-raytrace
+  - primitive calls: 16.6M to 1.82M         *** update number
+  - code size: 937K to 1003K                *** update number
+  - 37M type tests, most of them is_i32
+  - eliminating 60-80% type tests should make a noticeable perf difference
 
-TODO: specialized getLength primitive
+TODO: getPropMethod
 
-TODO: reimplement getPropObj with first level obj access inlined
-- second level inlined for methods
+TODO: smaller version of toBool for inlining?
+
+TODO: option to record primitive call frequency
+- display sorted count
+
+TODO: try to optimize inlining?
+- assess what causes slowness first, need to profile
+- could be your peephole pass blowing up on bigger functions
+- liveness analysis? ***
+
+TODO: getPropElem for array elements
+- currently 1.8M primitive calls
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: specialized getPropLength primitive
+
+[DONE] TODO: getPropField with first level obj access inlined
 - keep small so just this gets inlined
-- create a new version of the primitive, no need to erase the old
-- rename getPropObj to getObjProp
+- inline only where appropriate in ir/ast.d
+- slows down compilation time hugely, unexplained by minor code size bloat
 
-TODO: smaller lt for inlining
+[DONE] TODO: rename getPropObj to objGetProp
 
-FIXME: mulIntFloat decreases perf on 3d-raytrace
+[DONE] TODO: smaller lt for inlining, ltIntFloat
+
+[DONE] TODO: log prim call names for 3d-raytrace
+- lots of getProp
+- lots of lt
+- lots of add from ++ (fixed)
+
+[DONE] TODO: $rt_addInt for ++ operator
+- check stats for 3d-raytrace
+
+[DONE] FIXME: mulIntFloat decreases perf on 3d-raytrace
+./higgs --stats --e "print(numC); print(numF);" benchmarks/sunspider/3d-raytrace.js
 - could we be hitting the fallback case often?
 - collect stats using global vars
   - number of calls vs number of fallbacks
-
-TODO: $rt_addInt for ++ operator
-- check stats for 3d-raytrace
-
-
-
-
-
-
+- mulIntFloat: 301K calls, 6K fallbacks
+- addIntFloat: 317K calls, 4K fallbacks
+- will have to wait until type prop to know
 
 [DONE] TODO: $rt_mulIntFloat
 - test perf on 3d-raytrace

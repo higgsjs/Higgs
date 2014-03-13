@@ -751,6 +751,24 @@ function $rt_add(x, y)
 }
 
 /**
+Specialized add for the (int,int) case (e.g.: array increment)
+*/
+function $rt_addInt(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        var r;
+        if (r = $ir_add_i32_ovf(x, y))
+        {
+            return r;
+        }
+    }
+
+    return $rt_add(x, y);
+}
+
+/**
 Specialized add for the (int,int) and (float,float) cases
 */
 function $rt_addIntFloat(x, y)
@@ -1060,6 +1078,26 @@ function $rt_lt(x, y)
     }
 
     return $rt_lt($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized less-than for the (int,int) and (float,float) cases
+*/
+function $rt_ltIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        return $ir_lt_i32(x, y);
+    }
+
+    // If x,y are float
+    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    {
+        return $ir_lt_f64(x, y);
+    }
+
+    return $rt_lt(x, y);
 }
 
 /**
@@ -1562,7 +1600,7 @@ function $rt_setProto(obj, proto)
 /**
 Get a property from an object using a string as key
 */
-function $rt_getPropObj(obj, propStr)
+function $rt_objGetProp(obj, propStr)
 {
     // Follow the next link chain
     for (;;)
@@ -1606,7 +1644,7 @@ function $rt_getPropObj(obj, propStr)
         return $undef;
 
     // Do a recursive lookup on the prototype
-    return $rt_getPropObj(
+    return $rt_objGetProp(
         proto,
         propStr
     );
@@ -1622,9 +1660,9 @@ function $rt_getProp(base, prop)
     {
         // If the property is a string
         if ($ir_is_string(prop))
-            return $rt_getPropObj(base, prop);
+            return $rt_objGetProp(base, prop);
 
-        return $rt_getPropObj(base, $rt_toString(prop));
+        return $rt_objGetProp(base, $rt_toString(prop));
     }
 
     // If the base is an array
@@ -1662,10 +1700,10 @@ function $rt_getProp(base, prop)
             if (!isNaN(propNum))
                 return $rt_getProp(base, propNum);
 
-            return $rt_getPropObj(base, prop);
+            return $rt_objGetProp(base, prop);
         }
 
-        return $rt_getPropObj(base, $rt_toString(prop));
+        return $rt_objGetProp(base, $rt_toString(prop));
     }
 
     // If the base is a string
@@ -1720,6 +1758,62 @@ function $rt_getProp(base, prop)
     }
 
     throw TypeError("invalid base in property read");
+}
+
+/**
+Specialized version of getProp for field accesses where
+the base is an object and the key is a constant string
+*/
+function $rt_getPropField(base, prop)
+{
+    // If the base is an object
+    if ($ir_is_object(base))
+    {
+        var obj = base;
+
+        // Follow the next link chain
+        for (;;)
+        {
+            var next = $rt_obj_get_next(obj);
+            if ($ir_eq_refptr(next, null))
+                break;
+            obj = next;
+        }
+
+        // Find the index for this property
+        var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), prop, false);
+
+        // Get the capacity of the object
+        var objCap = $rt_obj_get_cap(obj);
+
+        // If the property was found and is present in the object
+        if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
+        {
+            var word = $rt_obj_get_word(obj, propIdx);
+            var type = $rt_obj_get_type(obj, propIdx);
+            var val = $ir_make_value(word, type);
+
+            // If the value is not missing, return it
+            if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
+                return val;
+        }
+    }
+
+    return $rt_getProp(base, prop);
+}
+
+/**
+Specialized version of getProp for "length" property accesses
+*/
+function $rt_getPropLength(base, prop)
+{
+    // If the base is an array
+    if ($ir_is_array(base))
+    {
+        return $rt_arr_get_len(base);
+    }
+
+    return $rt_getProp(base, prop);
 }
 
 /**
@@ -1842,7 +1936,7 @@ function $rt_setArrLen(arr, newLen)
 /**
 Set a property on an object using a string as key
 */
-function $rt_setPropObj(obj, propStr, val)
+function $rt_objSetProp(obj, propStr, val)
 {
     // Follow the next link chain
     for (;;)
@@ -1895,7 +1989,7 @@ function $rt_setPropObj(obj, propStr, val)
             break;
 
             default:
-            assert (false, "unhandled object type in setPropObj");
+            assert (false, "unhandled object type in objSetProp");
         }
 
         $rt_obj_set_map(newObj, classPtr);
@@ -1941,9 +2035,9 @@ function $rt_setProp(base, prop, val)
     {
         // If the property is a string
         if ($ir_is_string(prop))
-            return $rt_setPropObj(base, prop, val);
+            return $rt_objSetProp(base, prop, val);
 
-        return $rt_setPropObj(base, $rt_toString(prop), val);
+        return $rt_objSetProp(base, $rt_toString(prop), val);
     }
 
     // If the base is an array
@@ -1952,7 +2046,7 @@ function $rt_setProp(base, prop, val)
         // If the property is a non-negative integer
         if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0))
         {
-            return $rt_setArrElem(base, prop, val);            
+            return $rt_setArrElem(base, prop, val);
         }
 
         // If the property is a floating-point number
@@ -1979,10 +2073,10 @@ function $rt_setProp(base, prop, val)
             if (!isNaN(propNum))
                 return $rt_setProp(base, propNum, val);
 
-            return $rt_setPropObj(base, prop, val);
+            return $rt_objSetProp(base, prop, val);
         }
 
-        return $rt_setPropObj(base, $rt_toString(prop), val);
+        return $rt_objSetProp(base, $rt_toString(prop), val);
     }
 
     //print(typeof base);
@@ -2068,7 +2162,7 @@ function $rt_instanceof(obj, ctor)
 /**
 Check if an object has a given property
 */
-function $rt_hasPropObj(obj, propStr)
+function $rt_objHasProp(obj, propStr)
 {
     // Follow the next link chain
     for (;;)
@@ -2110,9 +2204,9 @@ function $rt_hasOwnProp(base, prop)
     {
         // If the property is a string
         if ($ir_is_string(prop))
-            return $rt_hasPropObj(base, prop);
+            return $rt_objHasProp(base, prop);
 
-        return $rt_hasPropObj(base, $rt_toString(prop));
+        return $rt_objHasProp(base, $rt_toString(prop));
     }
 
     // If the base is an array
@@ -2138,7 +2232,7 @@ function $rt_hasOwnProp(base, prop)
             $ir_lt_i32(n, $rt_arr_get_len(base)))
             return true;
 
-        return $rt_hasPropObj(base, prop);
+        return $rt_objHasProp(base, prop);
     }
 
     // If the base is a string

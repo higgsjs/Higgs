@@ -103,9 +103,14 @@ void inlinePass(VM vm, IRFunction caller)
 
         // TODO: inlining whitelist, constant array
 
-        if (callee.numBlocks > 4 && 
-            !callee.getName.startsWith("$rt_addIntFloat") &&
-            !callee.getName.startsWith("$rt_mulIntFloat"))
+        if (callee.numBlocks > 4
+            && !callee.getName.startsWith("$rt_addInt")
+            && !callee.getName.startsWith("$rt_addIntFloat")
+            && !callee.getName.startsWith("$rt_mulIntFloat")
+            && !callee.getName.startsWith("$rt_ltIntFloat")
+            && !callee.getName.startsWith("$rt_getPropField")
+            && !callee.getName.startsWith("$rt_getPropLength")
+        )
             continue;
 
         if (callee.getName.startsWith("$rt_throw"))

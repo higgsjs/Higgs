@@ -1453,7 +1453,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "!=")
             return genBinOp("ne");
         else if (op.str == "<")
-            return genBinOp("lt");
+            return genBinOp("ltIntFloat");
         else if (op.str == "<=")
             return genBinOp("le");
         else if (op.str == ">")
@@ -1694,7 +1694,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 {
                     return genRtCall(
                         ctx,
-                        (op.str == "++")? "add":"sub",
+                        (op.str == "++")? "addInt":"sub",
                         [lArg, rArg],
                         expr.pos
                     );
@@ -1722,7 +1722,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
                     return genRtCall(
                         ctx, 
-                        (op.str == "++")? "add":"sub",
+                        (op.str == "++")? "addInt":"sub",
                         [lArg, rArg],
                         expr.pos
                     );
@@ -1915,7 +1915,44 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         // Evaluate the index expression
         auto idxVal = exprToIR(ctx, indexExpr.index);
 
-        // Get the property from the object
+        // If the property is a constant string
+        if (auto strProp = cast(StringExpr)indexExpr.index)
+        {
+            // If the property is "length"
+            if (strProp.val == "length")
+            {
+                // Use a primitive specialized for array length
+                return genRtCall(
+                    ctx,
+                    "getPropLength",
+                    [baseVal, idxVal],
+                    expr.pos
+                );
+            }
+
+            // If the property is not "prototype"
+            if (strProp.val != "prototype")
+            {
+                // Use a primitive specialized for object fields
+                return genRtCall(
+                    ctx,
+                    "getPropField",
+                    [baseVal, idxVal],
+                    expr.pos
+                );
+            }
+        }
+
+        // The property is non-constant, likely an array index
+        else
+        {
+
+
+
+
+        }
+
+        // Get the property from the base value
         return genRtCall(
             ctx,
             "getProp",

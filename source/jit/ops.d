@@ -1441,6 +1441,8 @@ void gen_call_prim(
     assert (closVal.word.ptrVal !is null);
     auto fun = getFunPtr(closVal.word.ptrVal);
 
+    //as.printStr(to!string(nameStr));
+
     // Check that the argument count matches
     auto numArgs = cast(int32_t)instr.numArgs - 2;
     assert (numArgs is fun.numParams);
