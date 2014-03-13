@@ -109,6 +109,7 @@ void inlinePass(VM vm, IRFunction caller)
             && !callee.getName.startsWith("$rt_mulIntFloat")
             && !callee.getName.startsWith("$rt_ltIntFloat")
             && !callee.getName.startsWith("$rt_getPropField")
+            && !callee.getName.startsWith("$rt_getPropElem")
             && !callee.getName.startsWith("$rt_getPropLength")
         )
             continue;

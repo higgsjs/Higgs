@@ -74,6 +74,8 @@ FIXME: empty fun, ret undefined twice
 Goal: March 31st, type prop working, satisfying perf for article
 - Type prop should enable speed gains on bigger benchmarks
 
+TODO: getPropMethod
+
 TODO: try quickly hacked inline caches
 
 TODO: simple reg alloc
@@ -96,34 +98,37 @@ Meeting:
 - Fixed bugs with that
 - Began smaller primitives for inlining
 - 3d-raytrace
-  - primitive calls: 16.6M to 1.82M         *** update number
-  - code size: 937K to 1003K                *** update number
+  - primitive calls: 16.6M to 1.37M         *** update number
+  - code size: 937K to 1092K                *** update number
   - 37M type tests, most of them is_i32
   - eliminating 60-80% type tests should make a noticeable perf difference
 
-TODO: getPropMethod
-
 TODO: smaller version of toBool for inlining?
 
-TODO: option to record primitive call frequency
+TODO: command-line option to record primitive call frequency
 - display sorted count
+- only way to know what's relevant to optimize
+- not that hard to implement, call some host primitive with a pointer to the D string
 
 TODO: try to optimize inlining?
 - assess what causes slowness first, need to profile
+  http://www.digitalmars.com/ctg/trace.html
+  Compile with the -profile switch. Generates traces.log
 - could be your peephole pass blowing up on bigger functions
 - liveness analysis? ***
 
-TODO: getPropElem for array elements
+
+
+
+
+
+
+
+
+
+[DONE] TODO: getPropElem for array elements
 - currently 1.8M primitive calls
-
-
-
-
-
-
-
-
-
+- now 1.37M
 
 [DONE] TODO: specialized getPropLength primitive
 

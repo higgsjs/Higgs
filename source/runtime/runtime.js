@@ -1803,6 +1803,25 @@ function $rt_getPropField(base, prop)
 }
 
 /**
+Specialized version of getProp for array elements
+*/
+function $rt_getPropElem(base, prop)
+{
+    // If the base is an array and the property is a non-negative integer
+    if ($ir_is_array(base) &&
+        $ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
+        $ir_lt_i32(prop, $rt_arr_get_len(base)))
+    {
+        var tbl = $rt_arr_get_tbl(base);
+        var word = $rt_arrtbl_get_word(tbl, prop);
+        var type = $rt_arrtbl_get_type(tbl, prop);
+        return $ir_make_value(word, type);
+    }
+
+    return $rt_getProp(base, prop);
+}
+
+/**
 Specialized version of getProp for "length" property accesses
 */
 function $rt_getPropLength(base, prop)

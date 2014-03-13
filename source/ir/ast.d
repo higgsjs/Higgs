@@ -1946,10 +1946,13 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         // The property is non-constant, likely an array index
         else
         {
-
-
-
-
+            // Use a primitive specialized for object fields
+            return genRtCall(
+                ctx,
+                "getPropElem",
+                [baseVal, idxVal],
+                expr.pos
+            );
         }
 
         // Get the property from the base value
