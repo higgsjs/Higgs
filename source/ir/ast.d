@@ -1411,11 +1411,11 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
         // Arithmetic operators
         if (op.str == "+")
-            return genBinOp("add");
+            return genBinOp("addIntFloat");
         else if (op.str == "-")
             return genBinOp("sub");
         else if (op.str == "*")
-            return genBinOp("mul");
+            return genBinOp("mulIntFloat");
         else if (op.str == "/")
             return genBinOp("div");
         else if (op.str == "%")
@@ -1465,11 +1465,11 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "=")
             return genAssign(null);
         else if (op.str == "+=")
-            return genAssign("add");
+            return genAssign("addIntFloat");
         else if (op.str == "-=")
             return genAssign("sub");
         else if (op.str == "*=")
-            return genAssign("mul");
+            return genAssign("mulIntFloat");
         else if (op.str == "/=")
             return genAssign("div");
         else if (op.str == "&=")

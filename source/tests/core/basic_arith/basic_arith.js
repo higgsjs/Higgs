@@ -186,6 +186,8 @@ function test()
         return 30;
     if (test_div(1, -1 * 0) !== -Infinity)
         return 31;
+    if (test_div(1, 0 * -1) !== -Infinity)
+        return 31;
 
     if (test_mod(5, 3) !== 2)
         return 32;

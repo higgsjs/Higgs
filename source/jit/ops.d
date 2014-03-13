@@ -754,8 +754,9 @@ void IsTypeOp(Type type)(
     // Increment the stat counter for this specific kind of type test
     as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs[0]);
 
+    // TODO: handle constant types better
     // Get an operand for the value's type
-    auto typeOpnd = st.getTypeOpnd(as, instr, 0);
+    auto typeOpnd = st.getTypeOpnd(as, instr, 0, scrRegs[0].opnd(8));
 
     // Compare against the tested type
     as.cmp(typeOpnd, X86Opnd(type));

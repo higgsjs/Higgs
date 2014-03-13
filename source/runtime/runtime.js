@@ -751,6 +751,30 @@ function $rt_add(x, y)
 }
 
 /**
+Specialized add for the (int,int) and (float,float) cases
+*/
+function $rt_addIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        var r;
+        if (r = $ir_add_i32_ovf(x, y))
+        {
+            return r;
+        }
+    }
+
+    // If x,y are floating-point
+    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    {
+        return $ir_add_f64(x, y);
+    }
+
+    return $rt_add(x, y);
+}
+
+/**
 JS subtraction operator
 */
 function $rt_sub(x, y)
@@ -800,7 +824,9 @@ function $rt_mul(x, y)
     {
         if ($ir_is_i32(y))
         {
-            if ($ir_eq_i32(y, 0) && $ir_lt_i32(x, 0))
+            // If this could produce negative 0
+            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) || 
+                ($ir_eq_i32(x, 0) && $ir_lt_i32(y, 0)))
             {
                 var fx = $ir_i32_to_f64(x);
                 var fy = $ir_i32_to_f64(y);
@@ -835,6 +861,31 @@ function $rt_mul(x, y)
     }
 
     return $rt_mul($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized add for the (int,int) and (float,float) cases
+*/
+function $rt_mulIntFloat(x, y)
+{
+    // If x,y are integer and this can't produce negative zero
+    if ($ir_is_i32(x) && $ir_is_i32(y) &&
+        $ir_ne_i32(x, 0) && $ir_ne_i32(y, 0))
+    {
+        var r;
+        if (r = $ir_mul_i32_ovf(x, y))
+        {
+            return r;
+        }
+    }
+
+    // If x,y are floating-point
+    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    {
+        return $ir_mul_f64(x, y);
+    }
+
+    return $rt_mul(x, y);
 }
 
 /**

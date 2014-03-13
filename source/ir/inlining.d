@@ -101,13 +101,15 @@ void inlinePass(VM vm, IRFunction caller)
             astToIR(vm, callee.ast, callee);
         }
 
-        if (callee.numBlocks > 4)
+        // TODO: inlining whitelist, constant array
+
+        if (callee.numBlocks > 4 && 
+            !callee.getName.startsWith("$rt_addIntFloat") &&
+            !callee.getName.startsWith("$rt_mulIntFloat"))
             continue;
 
         if (callee.getName.startsWith("$rt_throw"))
             continue;
-
-
 
         //writefln("inlining %s in %s (%s blocks)", callee.getName, caller.getName, callee.numBlocks);
 

@@ -85,10 +85,11 @@ TODO: simple reg alloc
 
 TODO: basic type prop & type test removal
 - For now, don't do delayed writes
+- isTypeOp, handle constant types
 
-TODO: specialized/biased primitives
-- could bias loop lt and loop add to only do integer, not fp
-- could also bias getProp for array elems, getLength
+TODO: getProp for array elems
+
+TODO: specialized getLength primitive
 
 TODO: reimplement getPropObj with first level obj access inlined
 - second level inlined for methods
@@ -96,10 +97,15 @@ TODO: reimplement getPropObj with first level obj access inlined
 - create a new version of the primitive, no need to erase the old
 - rename getPropObj to getObjProp
 
-TODO: smaller add and lt for inlining
-- $rt_inlAdd
-- make it get inlined
-- test perf on benchmarks with and without inlining
+TODO: smaller lt for inlining
+
+FIXME: mulIntFloat decreases perf on 3d-raytrace
+- could we be hitting the fallback case often?
+- collect stats using global vars
+  - number of calls vs number of fallbacks
+
+TODO: $rt_addInt for ++ operator
+- check stats for 3d-raytrace
 
 
 
@@ -107,8 +113,11 @@ TODO: smaller add and lt for inlining
 
 
 
+[DONE] TODO: $rt_mulIntFloat
+- test perf on 3d-raytrace
 
-
+[DONE] TODO: $rt_addIntFloat, smaller primitive for inlining
+- doesn't make a big difference on 3d-raytrace
 
 [DONE] TODO: peephope opt, see $rt_getPropObj
 time ./higgs --jit_genasm --e "print(\$rt_getPropObj.irString())"
