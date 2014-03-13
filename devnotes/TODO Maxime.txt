@@ -101,21 +101,22 @@ TODO: smaller add and lt for inlining
 - make it get inlined
 - test perf on benchmarks with and without inlining
 
-TODO: peephope opt, see $rt_getPropObj
+
+
+
+
+
+
+
+
+
+[DONE] TODO: peephope opt, see $rt_getPropObj
 time ./higgs --jit_genasm --e "print(\$rt_getPropObj.irString())"
 not_exit(3986):
 $15 = phi [if_true(3965):0 => false, if_true(3965):1 => true]
 if_true $15 => if_true(3981), or_sec(3984)
-
-
-
-
-
-
-
-
-
-
+- Should be the only phi node in this block
+- Should be no other instructions
 
 [DONE] FIXME: GC/segfault bug with v8bench/crypto... heisenbug
 - run outside of tests

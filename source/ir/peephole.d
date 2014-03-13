@@ -508,6 +508,49 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                             continue INSTR_LOOP;
                         }
 
+                        // If the if arg is a phi node
+                        // and there are other phi nodes or instructions 
+                        // and the phi node has no uther uses
+                        if (
+                            ifArg is block.firstPhi &&
+                            block.firstPhi.next is null &&
+                            block.firstInstr is instr &&
+                            block.firstPhi.hasOneUse
+                        )
+                        {
+                            // For each predecessor
+                            for (size_t pIdx = 0; pIdx < block.numIncoming; ++pIdx)
+                            {
+                                // Get the phi argument from the predecessor
+                                auto predDesc = block.getIncoming(pIdx);
+                                auto phiArg = predDesc.getPhiArg(block.firstPhi);
+
+                                // If the phi arg is constant
+                                if (auto cstArg = cast(IRConst)phiArg)
+                                {
+                                    auto predBranch = predDesc.branch;
+
+                                    // Find the target index
+                                    size_t tIdx;
+                                    for (tIdx = 0; tIdx < predBranch.MAX_TARGETS; ++tIdx)
+                                        if (predBranch.getTarget(tIdx) is predDesc)
+                                            break;
+                                    assert (tIdx < predBranch.MAX_TARGETS);
+
+                                    // Determine the target from this if-branch
+                                    auto ifDesc = instr.getTarget((cstArg.pair == TRUE)? 0:1);
+                                    auto newDesc = predBranch.setTarget(tIdx, ifDesc.target);
+
+                                    // Copy the arguments from this if-branch
+                                    foreach (arg; ifDesc.args)
+                                        newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+
+                                    changed = true;
+                                    continue INSTR_LOOP;
+                                }
+                            }
+                        }
+
                         // If there is a single predecessor which is an if
                         // branch on the same argument, and the argument is
                         // not from this block
