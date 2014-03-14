@@ -42,16 +42,10 @@ TODO: think about shapes more
 TODO: not missing global prop opt?
 - observation: if read once, we know its not missing
 
-TODO: basic reg alloc, what's the simplest we can do?
-- Marc says: probably a bigger perf issue than instr cache
-
 TODO: blog post about optimization, results
 - difficulty of optimizing self-hosted code
 
 FIXME: much regexp code executed during init, why?
-
-TODO: optimize IR inlining, less jumps & reliance on peepholes?
-- sometimes inlining functions that are only 1 block
 
 TODO: tweak inlining heuristics
 - don't inline in global functions, unless they have loops? ***
@@ -78,44 +72,76 @@ TODO: getPropMethod
 
 TODO: try quickly hacked inline caches
 
+TODO: profile again, lots of interesting things to learn!
+
 TODO: simple reg alloc
 - Marc says stack mapping, 1 bit per value
   - value is on stack or in reg for that stack slot
 - could also think about delayed writes
   - all output operands go into table, map to regs, spill when full
   - is this simpler than modelizing occupied regs
+- KISS: if you write a value to the stack, should also write its type
+  - write type tags on spilling
+  - if out opnd is stack, write type tag
+- Outline options in detail
 
 TODO: eliminate is_i32 peephole
 - let the type analysis and BBV take care of that
 
 TODO: basic type prop & type test removal
-- For now, don't do delayed writes
+- For now, don't do delayed writes, always just write type tags
 - isTypeOp, handle constant types
 
 Meeting:
 - Fixed codegen bugs outlined at last group meeting
+  - suboptimal direct jump
 - Completed wider type tags refactoring
-- Fixed bugs with that
+  - Fixed bugs, added more tests
 - Began smaller primitives for inlining
+  - specialized getPropField, getPropElem, getPropLength
+  - addInt (++), addIntFloat
+  - ltIntFloat
 - 3d-raytrace
   - primitive calls: 16.6M to 1.37M         *** update number
   - code size: 937K to 1092K                *** update number
   - 37M type tests, most of them is_i32
-  - eliminating 60-80% type tests should make a noticeable perf difference
+  - eliminated >75% tests on this, should make noticeable perf difference
+  - new tag scheme will also eliminate is_object, is_array, is_string
+- Opinion: is_i32 peephole, keep or remove?
+  - Removes trivial type tests at the IR level
+  - Reduces what the type analysis can eliminate somewhat (makes us look better)
+- Ran DMD's profiler
+  - liveness analysis is slow, quadratic
+  - getProp makes > 30% of exec time
 
 TODO: smaller version of toBool for inlining?
+
+TODO: getPropIdx, try caching 4 entries in a given map, for fun!
+- see impact on 3d-raytrace time
 
 TODO: command-line option to record primitive call frequency
 - display sorted count
 - only way to know what's relevant to optimize
 - not that hard to implement, call some host primitive with a pointer to the D string
 
-TODO: try to optimize inlining?
-- assess what causes slowness first, need to profile
-  http://www.digitalmars.com/ctg/trace.html
-  Compile with the -profile switch. Generates traces.log
-- could be your peephole pass blowing up on bigger functions
-- liveness analysis? ***
+TODO: try to optimize inlineCall
+- inlinePass does not do liveness analysis, is slow on its own
+- what are the slowest parts of it?
+
+TODO: try to optimize liveness analysis
+- record total time taken in stats
+
+TODO: check that we're measuring comp time properly
+
+TODO: runtime.string.extractWStr(ubyte*) is taking a lot of time
+- what calls this? 610K calls???
+time ./higgs benchmarks/sunspider/3d-raytrace.js 
+real	0m1.123s
+- getPropIdx calls this! This takes the bulk of the time.
+- To optimize getProp, we need to avoid using JS strings?
+- Can generate an optimized getPropIdx
+  - Pass a pointer to the D string from the string constant if known
+- Give the maps a 64-bit id as you do for instrs, have one cache slot
 
 
 
@@ -125,6 +151,15 @@ TODO: try to optimize inlining?
 
 
 
+
+
+
+[DONE] FIXME: block.getName, CodeFragment.getName called when not generating ASM?
+
+[DONE] TODO: profiling
+- getPropIdx quite slow
+- liveInfo is ~10% of exec time
+- getPropIdx is ~30%
 
 [DONE] TODO: getPropElem for array elements
 - currently 1.8M primitive calls

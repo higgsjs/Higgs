@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011-2012, Universite de Montreal
+ *  Copyright (c) 2011-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -85,15 +85,15 @@ function Array(len)
 // Set the array prototype object
 Array.prototype = $ir_get_arr_proto();
 
-//-----------------------------------------------------------------------------
-
 /**
 15.4.3.2 Test if a value is an array
 */
 Array.isArray = function (arg)
 {
-    return boxIsArray(arg);
+    return $ir_is_array(arg);
 };
+
+//-----------------------------------------------------------------------------
 
 // Operations on Array objects.
 

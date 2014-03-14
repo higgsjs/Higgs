@@ -66,6 +66,16 @@ function test_ctor()
     return 0;
 }
 
+function test_isArray()
+{
+    assert (Array.isArray([]) === true);
+    assert (Array.isArray([1,2,3]) === true);
+
+    assert (Array.isArray(3) === false);
+    assert (Array.isArray(null) === false);
+    assert (Array.isArray({}) === false);
+}
+
 function test_indexOf()
 {
     var a = ['a', 'b', 'c', 'd'];
@@ -444,6 +454,8 @@ function test()
     var r = test_ctor();
     if (r != 0)
         return 100 + r;
+
+    test_isArray();
 
     var r = test_indexOf();
     if (r != 0)

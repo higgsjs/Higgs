@@ -779,6 +779,8 @@ abstract class CodeFragment
     /// Get the name string for this fragment
     final string getName()
     {
+        assert (opts.jit_genasm);
+
         if (auto ver = cast(BlockVersion)this)
         {
             if (ver.block is ver.block.fun.entryBlock && 
@@ -843,7 +845,8 @@ abstract class CodeFragment
         startIdx = cast(uint32_t)as.getWritePos();
 
         // Add a label string comment
-        as.writeString(this.getName ~ ":");
+        if (opts.jit_genasm)
+            as.writeString(this.getName ~ ":");
     }
 
     /**

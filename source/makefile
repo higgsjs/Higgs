@@ -3,10 +3,12 @@ COPTS = -m64 -O -L-ldl -J./
 TESTOPTS = -m64 -O -L-ldl -J./ -unittest -debug
 DBGOPTS = -m64 -O -L-ldl -J./ -gc -debug
 RELOPTS = -m64 -O -L-ldl -J./ -release -inline -noboundscheck
+PROFOPTS = -m64 -O -L-ldl -J./ -release -inline -noboundscheck -profile
 
 BIN_NAME = higgs
-BIN_NAME_TEST = test-higgs
-BIN_NAME_DEBUG = dbg-higgs
+BIN_NAME_TEST = higgs-test
+BIN_NAME_PROF = higgs-prof
+BIN_NAME_DEBUG = higgs-dbg
 
 BIN_DIR = /usr/bin
 LIB_DIR = /etc/higgs
@@ -56,6 +58,10 @@ all: layout
 test: layout
 	$(DC) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
 	time ./$(BIN_NAME_TEST) test-runner.js
+	rm $(BIN_NAME_TEST)
+
+prof: layout
+	$(DC) $(PROFOPTS) -of$(BIN_NAME_PROF) $(SRC)
 
 debug: layout
 	$(DC) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)

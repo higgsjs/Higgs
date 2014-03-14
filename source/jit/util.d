@@ -115,7 +115,9 @@ void movAbsRef(
     size_t targetIdx = size_t.max
 )
 {
-    as.writeASM("mov", dstReg, frag.getName);
+    if (opts.jit_genasm)
+        as.writeASM("mov", dstReg, frag.getName);
+
     as.mov(dstReg.opnd(64), X86Opnd(uint64_t.max));
     vm.addFragRef(as.getWritePos() - 8, 64, frag, targetIdx);
 }
