@@ -82,13 +82,11 @@ immutable X86Reg[] cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7]
 /// C return value register
 alias RAX cretReg;
 
-/// RAX: scratch register, C return value
-/// RDI: scratch register, first C argument register
-/// RSI: scratch register, second C argument register
-immutable X86Reg[] scrRegs = [RAX, RDI, RSI];
+/// Scratch registers, these do not conflict with the C arguments
+immutable X86Reg[] scrRegs = [RAX, RBX, RBP];
 
 /// RCX, RBX, RBP, R8-R12: 9 allocatable registers
-immutable X86Reg[] allocRegs = [RCX, RDX, RBX, RBP, R8, R9, R10, R11, R12];
+immutable X86Reg[] allocRegs = [RDI, RSI, RCX, RDX, R8, R9, R10, R11, R12];
 
 /// Return word register
 alias RCX retWordReg;

@@ -46,6 +46,7 @@ import std.typecons;
 import options;
 import ir.ir;
 import runtime.vm;
+import runtime.object;
 import jit.codeblock;
 import jit.x86;
 import jit.jit;

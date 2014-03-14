@@ -331,9 +331,9 @@ struct X86Mem
     int32_t disp; 
 
     this(
-        size_t size, 
-        X86Reg base, 
-        int32_t disp    = 0, 
+        size_t size,
+        X86Reg base,
+        int32_t disp    = 0,
         size_t scale    = 0,
         X86Reg index    = RAX,
     )
@@ -545,9 +545,9 @@ struct X86Opnd
 
     /// Memory operand constructor
     this(
-        size_t size, 
-        X86Reg base, 
-        int32_t disp    = 0, 
+        size_t size,
+        X86Reg base,
+        int32_t disp    = 0,
         size_t scale    = 0,
         X86Reg index    = RAX,
     )

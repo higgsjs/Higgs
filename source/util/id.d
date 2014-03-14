@@ -46,7 +46,7 @@ class IdObject
 {
     static ulong nextId = 0;
 
-    private ulong id;
+    const ulong id;
 
     this()
     {

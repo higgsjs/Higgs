@@ -76,7 +76,8 @@ enum Label : size_t
     FUN1,
     FUN2,
     BRANCH_TARGET0,
-    BRANCH_TARGET1
+    BRANCH_TARGET1,
+    AFTER_DATA
 }
 
 /// Code pointer type definition

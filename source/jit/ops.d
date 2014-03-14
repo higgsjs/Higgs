@@ -3053,6 +3053,9 @@ void gen_map_prop_idx(
     CodeBlock as
 )
 {
+    static const uint NUM_CACHE_ENTRIES = 4;
+    static const uint CACHE_ENTRY_SIZE = 8 + 4;
+
     as.incStatCnt(&stats.numMapPropIdx, scrRegs[0]);
 
     extern (C) static uint32_t op_map_prop_idx(ObjMap map, refptr strPtr, bool allocField)
@@ -3064,10 +3067,44 @@ void gen_map_prop_idx(
         return propIdx;
     }
 
-    // TODO: this won't GC, but spill C caller-save registers
+    extern (C) static uint32_t updateCache(ObjMap map, wstring* propName, bool allocField, ubyte* cachePtr)
+    {
+        /*
+        writeln("cache miss");
+        writeln("propName=", *propName);
+        writeln("cachePtr=", cast(uint64_t)cast(void*)cachePtr);
+        writeln("map ptr=" , cast(uint64_t)cast(void*)map);
+        writeln("map id=", map.id);
+        */
 
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+        // TODO: cache miss stat
+        // stats.inlCacheMiss
+
+        // Lookup the property index
+        assert (map !is null, "map is null");
+        auto propIdx = map.getPropIdx(*propName, allocField);
+
+        //writeln("shifting cache entries");
+
+        // Shift the current cache entries down
+        for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
+        {
+            memcpy(
+                cachePtr + CACHE_ENTRY_SIZE * i,
+                cachePtr + CACHE_ENTRY_SIZE * (i-1),
+                CACHE_ENTRY_SIZE
+            );
+        }
+
+        // Add a new cache entry
+        *(cast(uint64_t*)(cachePtr + 0)) = map.id;
+        *(cast(uint32_t*)(cachePtr + 8)) = propIdx;
+
+        // Return the property index
+        return propIdx;
+    }
+
+    // TODO: this won't GC, but spill C caller-save registers
 
     bool allocField;
     if (instr.getArg(2) is IRConst.trueCst)
@@ -3079,20 +3116,85 @@ void gen_map_prop_idx(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    // Get the map operand
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
 
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), opnd0);
-    as.mov(cargRegs[1].opnd(64), opnd1);
-    as.mov(cargRegs[2].opnd(64), X86Opnd(allocField? 1:0));
-    as.ptr(scrRegs[0], &op_map_prop_idx);
-    as.call(scrRegs[0]);
+    // If the property name is a known constant string
+    auto nameArgInstr = cast(IRInstr)instr.getArg(1);
+    if (nameArgInstr && nameArgInstr.opcode is &SET_STR)
+    {
+        // TODO: just steal an allocatable reg to use as an extra temporary
+        // force its contents to be spilled if necessary
+        // maybe add State.freeReg method
+        auto scrReg3 = allocRegs[$-1];
 
-    as.popJITRegs();
+        // Get the property name
+        auto propName = &(cast(IRString)nameArgInstr.getArg(0)).str;
 
-    // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+        // Inline cache entries
+        // [mapIdx (uint64_t) | propIdx (uint32_t)]+
+        as.lea(scrRegs[1], X86Mem(8, RIP, 5));
+        as.jmp(Label.AFTER_DATA);
+        as.writeInt(0, 8 * CACHE_ENTRY_SIZE * NUM_CACHE_ENTRIES);
+        as.label(Label.AFTER_DATA);
 
+        // Get the map id
+        as.getMember!("ObjMap.id")(scrRegs[2].reg(64), opnd0.reg);
+
+        // For each cache entry
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        {
+            auto mapIdxOpnd  = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i + 0);
+            auto propIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i + 8);
+
+            // Move the prop idx for this entry into the output operand
+            as.mov(scrReg3.opnd(32), propIdxOpnd);
+            as.mov(outOpnd, scrReg3.opnd(64));
+
+            // If this is a cache hit, we are done, stop
+            as.cmp(mapIdxOpnd, scrRegs[2].opnd(64));
+            as.je(Label.DONE);
+        }
+
+        as.pushJITRegs();
+
+        // Call the cache update function
+        as.mov(cargRegs[0].opnd(64), opnd0);
+        as.ptr(cargRegs[1], propName);
+        as.mov(cargRegs[2].opnd(64), X86Opnd(allocField? 1:0));
+        as.mov(cargRegs[3].opnd(64), scrRegs[1].opnd(64));
+        as.ptr(scrRegs[0], &updateCache);
+        as.call(scrRegs[0]);
+
+        as.popJITRegs();
+
+        // Store the output value into the output operand
+        as.mov(outOpnd, X86Opnd(cretReg));
+
+        // Cache entry found
+        as.label(Label.DONE);
+    }
+    else
+    {
+        // Get the property name operand
+        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+
+        as.pushJITRegs();
+
+        // Call the host function
+        as.mov(cargRegs[0].opnd(64), opnd0);
+        as.mov(cargRegs[1].opnd(64), opnd1);
+        as.mov(cargRegs[2].opnd(64), X86Opnd(allocField? 1:0));
+        as.ptr(scrRegs[0], &op_map_prop_idx);
+        as.call(scrRegs[0]);
+
+        as.popJITRegs();
+
+        // Store the output value into the output operand
+        as.mov(outOpnd, X86Opnd(cretReg));
+    }
+
+    // Set the output type
     st.setOutType(as, instr, Type.INT32);
 }
 
