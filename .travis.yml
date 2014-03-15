@@ -20,7 +20,13 @@ before_script:
 # build a test binary and run tests
 script:
   - make test
-
+  
+# branch settings
+branches:
+ # only run for these branches
+ only:
+  - master
+  
 # notify the irc channel
 notifications:
   irc: "chat.freenode.net#higgsjs"
