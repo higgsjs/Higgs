@@ -1852,7 +1852,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             // Get the method property
             closVal = genRtCall(
                 ctx,
-                "getProp",
+                "getPropMethod",
                 [thisVal, keyVal],
                 expr.pos
             );

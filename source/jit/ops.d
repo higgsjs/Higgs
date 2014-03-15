@@ -3081,13 +3081,11 @@ void gen_map_prop_idx(
 
     extern (C) static uint32_t updateCache(ObjMap map, wstring* propName, bool allocField, ubyte* cachePtr)
     {
-        /*
-        writeln("cache miss");
-        writeln("propName=", *propName);
-        writeln("cachePtr=", cast(uint64_t)cast(void*)cachePtr);
-        writeln("map ptr=" , cast(uint64_t)cast(void*)map);
-        writeln("map id=", map.id);
-        */
+        //writeln("cache miss");
+        //writeln("propName=", *propName);
+        //writeln("cachePtr=", cast(uint64_t)cast(void*)cachePtr);
+        //writeln("map ptr=" , cast(uint64_t)cast(void*)map);
+        //writeln("map id=", map.id);
 
         // TODO: cache miss stat
         // stats.inlCacheMiss
@@ -3147,11 +3145,19 @@ void gen_map_prop_idx(
         // [mapIdx (uint64_t) | propIdx (uint32_t)]+
         as.lea(scrRegs[1], X86Mem(8, RIP, 5));
         as.jmp(Label.AFTER_DATA);
-        as.writeInt(0, 8 * CACHE_ENTRY_SIZE * NUM_CACHE_ENTRIES);
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        {
+            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
+            as.writeInt(0x00000000, 32);
+        }
         as.label(Label.AFTER_DATA);
 
         // Get the map id
         as.getMember!("ObjMap.id")(scrRegs[2].reg(64), opnd0.reg);
+
+        //as.printStr("inline cache lookup");
+        //as.printStr("map id=");
+        //as.printUint(scrRegs[2].opnd(64));
 
         // For each cache entry
         for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
@@ -3185,6 +3191,9 @@ void gen_map_prop_idx(
 
         // Cache entry found
         as.label(Label.DONE);
+
+        //as.printStr("propIdx=");
+        //as.printUint(outOpnd);
     }
     else
     {

@@ -82,8 +82,8 @@ function Function()
     var fn = 'function(' + argList.join(', ') + '){\n' + body + '\n}';
     return $ir_eval_str(fn);
 
-
-    function isValidFunctionBody(body) {
+    function isValidFunctionBody(body) 
+    {
         var i = 0;
         var brackets = 0;
         while (i < body.length)
@@ -120,7 +120,8 @@ function Function()
         return brackets === 0;
     }
 
-    function skipString(body, quote, i) {
+    function skipString(body, quote, i)
+    {
         while (i < body.length) {
             var current = body.charAt(i);
             switch (current)
@@ -136,27 +137,33 @@ function Function()
             }
             ++i;
         }
+
         throw new SyntaxError('Unterminated string literal');
     }
 
-    function skipLineComment(body, i) {
+    function skipLineComment(body, i)
+    {
         while (i < body.length) {
             var current = body.charAt(i);
             if (current === '\n' || current === '\r')
                 return i + 1;
             ++i;
         }
+
         return i;
     }
 
-    function skipBlockComment(body, i) {
-        while (i < body.length) {
+    function skipBlockComment(body, i)
+    {
+        while (i < body.length)
+        {
             var current   = body.charAt(i);
             var lookAhead = body.charAt(i + 1);
             if (current === '*' && lookAhead === '/')
                 return i + 2;
             ++i;
         }
+
         throw new SyntaxError('Unterminated block comment');
     }
 }
@@ -270,3 +277,4 @@ Function.prototype.bind = function(thisArg)
     bound.prototype = unbound.prototype;
     return bound;
 };
+

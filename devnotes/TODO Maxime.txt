@@ -42,9 +42,6 @@ TODO: think about shapes more
 TODO: not missing global prop opt?
 - observation: if read once, we know its not missing
 
-TODO: blog post about optimization, results
-- difficulty of optimizing self-hosted code
-
 FIXME: much regexp code executed during init, why?
 
 TODO: tweak inlining heuristics
@@ -105,14 +102,17 @@ Meeting:
   - Fixed bugs, added more tests
 - Added back stats for number of block versions
 - Began smaller primitives for inlining
-  - specialized getPropField, getPropElem, getPropLength
+  - getPropField, getPropMethod, getPropElem, getPropLength
   - addInt (++), addIntFloat
   - ltIntFloat
+  - fallback to old, complete primitives
 - 3d-raytrace
-  - primitive calls: 16.6M to 1.37M         *** update number
-  - code size: 937K to 1111K                *** update number
+  - primitive calls: 16.6M to 1.25M         *** update number
+  - code size: 937K to 1160K                *** update number
   - 37M type tests, most of them is_i32
-- eliminated >75% tests on 3d-raytrace, should make noticeable perf difference
+  - compilation time now about 60% of total time
+  - something a 
+- BBV eliminates >75% tests on 3d-raytrace, should make noticeable perf difference
   - new tag scheme will also eliminate is_object, is_array, is_string
   - but: block versioning will increase compilation time
   - can we exclude compile time for the paper?
@@ -128,16 +128,18 @@ TODO: basic type prop & type test removal
 - For now, don't do delayed writes, always just write type tags
 - isTypeOp, handle constant types
 
+TODO: blog post about optimization, results
+- 200 stars on github???
+- difficulty of optimizing self-hosted code
+- profiling, you don't actually know what's going on, complex codebase
+- 3d-raytrace, prop access > 30% execution time
+
 FIXME: string-fasta is slower than before? fast compile time, profile this ***
 
-TODO: total time vs exec time
+TODO: total time vs exec time in stats
 
-TODO: getPropMethod
-make; ./higgs --stats benchmarks/sunspider/3d-raytrace.js 
-exec time (ms): 846
-comp time (ms): 388
-code size (bytes): 1111224
-num call_prim: 1369740
+FIXME: getPropIdx runs for every global call????? noooo
+- verify this with a loop that calls print
 
 
 
@@ -146,6 +148,25 @@ num call_prim: 1369740
 
 
 
+
+
+[DONE] TODO: getPropMethod
+make; ./higgs --stats benchmarks/sunspider/3d-raytrace.js
+- before:
+    exec time (ms): 846
+    comp time (ms): 388
+    code size (bytes): 1111224
+    num call_prim: 1369740
+- after:
+    exec time (ms): 1003
+    comp time (ms): 608
+    code size (bytes): 1160565
+    num call_prim: 1250309
+- compilation time now really dominates
+- exec time went down but total time went up!
+
+[DONE] FIXME: map_prop_idx produces idx 0
+- obj proto map id is 0!
 
 [DONE] FIXME: exceptions thrown by eval can't be caught in JS
 

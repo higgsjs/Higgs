@@ -112,6 +112,8 @@ class ObjMap : IdObject
     /// Find or allocate the property index for a given property name string
     uint32_t getPropIdx(wstring propStr, bool allocField = false)
     {
+        //writeln("getPropIdx, propStr=", propStr);
+
         if (propStr in fields)
             return fields[propStr].idx;
 
