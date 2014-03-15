@@ -187,20 +187,20 @@ function test_new_Function()
     var a = {
         toString: function()
         {
-            return 'a'
+            return 'a';
         }
-    }
+    };
     var b = [];
     b.toString = function()
     {
         return 'b'
-    }
+    };
     var c = {
         toString: function()
         {
-            return 'return 1'
+            return 'return 1';
         }
-    }
+    };
 
     // Valid function constructions
     assertEq(new Function()(),
@@ -225,62 +225,62 @@ function test_new_Function()
              5,
              "All argument names should be converted with ToString(a), " +
              "the resulting argument should be a valid part of " +
-             "FormalParameterList.")
+             "FormalParameterList.");
 
 
     // Invalid function constructions
     assertThrows(function()
                  {
-                     new Function('a-b', 'return a + b')(2, 3)
+                     new Function('a-b', 'return a + b')(2, 3);
                  },
-                 "(1) Invalid FormalParameterLists should throw a SyntaxError.")
+                 "(1) Invalid FormalParameterLists should throw a SyntaxError.");
 
     assertThrows(function()
                  {
-                     new Function('a){ global = {}', 'return a + 1')()
+                     new Function('a){ global = {}', 'return a + 1')();
                  },
-                 "(2) Invalid FormalParameterLists should throw a SyntaxError.")
+                 "(2) Invalid FormalParameterLists should throw a SyntaxError.");
 
     assertThrows(function()
                  {
-                     new Function('return }')()
+                     new Function('return }')();
                  },
-                 "Unbalanced brackets in the FunctionBody should throw a SyntaxError.")
+                 "Unbalanced brackets in the FunctionBody should throw a SyntaxError.");
 
     assertThrows(function()
                  {
-                     new Function('return "')()
+                     new Function('return "')();
                  },
                  "(1) Unterminated strings in the FunctionBody should throw a " +
-                 "SyntaxError.")
+                 "SyntaxError.");
 
     assertThrows(function()
                  {
-                     new Function("return '")()
+                     new Function("return '")();
                  },
                  "(2) Unterminated strings in the FunctionBody should throw a " +
-                 "SyntaxError.")
+                 "SyntaxError.");
 
     assertThrows(function()
                  {
-                     new Function('return "foo\n"')()
+                     new Function('return "foo\n"')();
                  },
                  "(3) Unterminated strings in the FunctionBody should throw a " +
-                 "SyntaxError.")
+                 "SyntaxError.");
 
     assertThrows(function()
                  {
-                     new Function("return /** /")()
+                     new Function("return /** /")();
                  },
                  "Unterminated block commants in the FunctionBody should throw " +
-                 "a SyntaxError.")
+                 "a SyntaxError.");
 
     assertThrows(function()
                  {
-                     new Function("return var a = 1")()
+                     new Function("return var a = 1")();
                  },
                  "Otherwise invalid FunctionBody should be caught by the Higgs " +
-                 "parser and throw a SyntaxError.")
+                 "parser and throw a SyntaxError.");
 }
 
 

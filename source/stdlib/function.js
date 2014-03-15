@@ -132,11 +132,11 @@ function Function()
                     break;
                 case '\r':
                 case '\n':
-                    throw new SyntaxError('Unterminated string literal')
+                    throw new SyntaxError('Unterminated string literal');
             }
             ++i;
         }
-        throw new SyntaxError('Unterminated string literal')
+        throw new SyntaxError('Unterminated string literal');
     }
 
     function skipLineComment(body, i) {
@@ -157,7 +157,7 @@ function Function()
                 return i + 2;
             ++i;
         }
-        throw new SyntaxError('Unterminated block comment')
+        throw new SyntaxError('Unterminated block comment');
     }
 }
 
