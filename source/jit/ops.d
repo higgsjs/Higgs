@@ -2195,8 +2195,20 @@ void gen_load_file(
                 callCtx,
                 instr,
                 excTarget,
-                "SyntaxError",
+                "ReferenceError",
                 "failed to load unit \"" ~ to!string(fileName) ~ "\""
+            );
+        }
+
+        catch (Error err)
+        {
+            return throwError(
+                vm,
+                callCtx,
+                instr,
+                excTarget,
+                "SyntaxError",
+                err.toString
             );
         }
     }
@@ -2293,7 +2305,7 @@ void gen_eval_str(
             return entryInst.getCodePtr(vm.execHeap);
         }
 
-        catch (Exception err)
+        catch (Error err)
         {
             return throwError(
                 vm,
@@ -2301,7 +2313,7 @@ void gen_eval_str(
                 instr,
                 excTarget,
                 "SyntaxError",
-                "error while evaluating string"
+                err.toString
             );
         }
     }

@@ -1803,6 +1803,78 @@ function $rt_getPropField(base, prop)
 }
 
 /**
+Specialized version of getProp for method accesses where
+the base is an object and the key is a constant string
+*/
+function $rt_getPropMethod(base, prop)
+{
+    // If the base is an object
+    if ($ir_is_object(base))
+    {
+        var obj = base;
+
+        // Follow the next link chain
+        for (;;)
+        {
+            var next = $rt_obj_get_next(obj);
+            if ($ir_eq_refptr(next, null))
+                break;
+            obj = next;
+        }
+
+        // Find the index for this property
+        var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), prop, false);
+
+        // Get the capacity of the object
+        var objCap = $rt_obj_get_cap(obj);
+
+        // If the property was found and is present in the object
+        if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
+        {
+            var word = $rt_obj_get_word(obj, propIdx);
+            var type = $rt_obj_get_type(obj, propIdx);
+            var val = $ir_make_value(word, type);
+
+            // If the value is not missing, return it
+            if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
+                return val;
+        }
+
+        // Get the prototype of the object
+        var obj = $rt_getProto(obj);
+
+        // Follow the next link chain
+        for (;;)
+        {
+            var next = $rt_obj_get_next(obj);
+            if ($ir_eq_refptr(next, null))
+                break;
+            obj = next;
+        }
+
+        // Find the index for this property
+        var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), prop, false);
+
+        // Get the capacity of the object
+        var objCap = $rt_obj_get_cap(obj);
+
+        // If the property was found and is present in the object
+        if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
+        {
+            var word = $rt_obj_get_word(obj, propIdx);
+            var type = $rt_obj_get_type(obj, propIdx);
+            var val = $ir_make_value(word, type);
+
+            // If the value is not missing, return it
+            if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
+                return val;
+        }
+    }
+
+    return $rt_getProp(base, prop);
+}
+
+/**
 Specialized version of getProp for array elements
 */
 function $rt_getPropElem(base, prop)

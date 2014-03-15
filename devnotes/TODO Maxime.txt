@@ -69,7 +69,6 @@ Goal: March 31st, type prop working, satisfying perf for article
 - Type prop should enable speed gains on bigger benchmarks
 
 TODO: smaller version of toBool for inlining?
-TODO: getPropMethod?
 
 TODO: profile again, lots of interesting things to learn!
 
@@ -87,40 +86,10 @@ TODO: simple reg alloc
 TODO: eliminate is_i32 peephole
 - let the type analysis and BBV take care of that
 
-TODO: basic type prop & type test removal
-- For now, don't do delayed writes, always just write type tags
-- isTypeOp, handle constant types
-
 TODO: command-line option to record primitive call frequency
 - display sorted count
 - only way to know what's relevant to optimize
 - not that hard to implement, call some host primitive with a pointer to the D string
-
-Meeting:
-- Fixed codegen bugs outlined at last group meeting
-  - suboptimal direct jump
-- Completed wider type tags refactoring
-  - Fixed bugs, added more tests
-- Began smaller primitives for inlining
-  - specialized getPropField, getPropElem, getPropLength
-  - addInt (++), addIntFloat
-  - ltIntFloat
-- 3d-raytrace
-  - primitive calls: 16.6M to 1.37M         *** update number
-  - code size: 937K to 1092K                *** update number
-  - 37M type tests, most of them is_i32
-  - eliminated >75% tests on this, should make noticeable perf difference
-  - new tag scheme will also eliminate is_object, is_array, is_string
-  - but: block versioning will increase compilation time
-- Opinion: is_i32 peephole, keep or remove?
-  - Removes trivial type tests at the IR level
-  - Reduces what the type analysis can eliminate somewhat (makes us look better)
-- Ran DMD's profiler
-  - liveness analysis is slow, quadratic
-  - getProp makes > 30% of exec time
-- Implemented basic inline caching, 23% speedup on 3d-raytrace
-
-TODO: compare ./benchmark.py times to CC2014 branch, to show Marc
 
 TODO: try to optimize inlineCall
 - inlinePass does not do liveness analysis, is slow on its own
@@ -129,7 +98,46 @@ TODO: try to optimize inlineCall
 TODO: try to optimize liveness analysis
 - record total time taken in stats
 
-TODO: check that we're measuring comp time properly
+Meeting:
+- Fixed codegen bugs outlined at last group meeting
+  - suboptimal direct jump
+- Completed wider type tags refactoring
+  - Fixed bugs, added more tests
+- Added back stats for number of block versions
+- Began smaller primitives for inlining
+  - specialized getPropField, getPropElem, getPropLength
+  - addInt (++), addIntFloat
+  - ltIntFloat
+- 3d-raytrace
+  - primitive calls: 16.6M to 1.37M         *** update number
+  - code size: 937K to 1111K                *** update number
+  - 37M type tests, most of them is_i32
+- eliminated >75% tests on 3d-raytrace, should make noticeable perf difference
+  - new tag scheme will also eliminate is_object, is_array, is_string
+  - but: block versioning will increase compilation time
+  - can we exclude compile time for the paper?
+- Opinion: is_i32 peephole, keep or remove?
+  - Removes trivial type tests at the IR level
+  - Reduces what the type analysis can eliminate somewhat (makes us look better)
+- Ran DMD's profiler
+  - liveness analysis is slow, quadratic
+  - getProp makes > 30% of exec time
+- Implemented basic inline caching, 23% speedup on 3d-raytrace
+
+TODO: basic type prop & type test removal
+- For now, don't do delayed writes, always just write type tags
+- isTypeOp, handle constant types
+
+FIXME: string-fasta is slower than before? fast compile time, profile this ***
+
+TODO: total time vs exec time
+
+TODO: getPropMethod
+make; ./higgs --stats benchmarks/sunspider/3d-raytrace.js 
+exec time (ms): 846
+comp time (ms): 388
+code size (bytes): 1111224
+num call_prim: 1369740
 
 
 
@@ -139,7 +147,19 @@ TODO: check that we're measuring comp time properly
 
 
 
+[DONE] FIXME: exceptions thrown by eval can't be caught in JS
 
+[DONE] TODO: stat for all version counts, 1 version, 2 versions, ...
+- Can compute this incrementally
+- When going from 3 to 4 versions, remove 1 from 3, add to 4
+
+[DONE] TODO: num blocks vs num versions stat, remove num instances
+
+[DONE] TODO: compare ./benchmark.py times to CC2014 branch, to show Marc
+- Much faster on some benchmarks, but slower in others
+- Compilation time seems to be the problem
+
+[DONE] TODO: check that we're measuring comp time properly
 
 [DONE] TODO: specialized getPropIdx with basic inline caching
 time ./higgs benchmarks/sunspider/3d-raytrace.js    real 1.123s

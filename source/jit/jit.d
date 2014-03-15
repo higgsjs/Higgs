@@ -1353,12 +1353,37 @@ BlockVersion getBlockVersion(
     // Add the new version to the list for this block
     callCtx.versionMap[block] ~= ver;
 
+    // If block version stats should be computed
+    if (opts.stats)
+    {
+        auto numVersions = callCtx.versionMap[block].length;
+
+        // If this is the first version for this block
+        if (numVersions is 1)
+        {
+            // Increment the number of compiled blocks
+            stats.numBlocks++;
+
+            // Increment the number of blocks with 1 version
+            stats.numVerBlocks[1]++;
+        }
+        else
+        {
+            // Update counts of blocks with specific numbers of versions
+            stats.numVerBlocks[numVersions-1]--;
+            stats.numVerBlocks[numVersions]++;
+        }
+
+        // Increment the total number of block versions generated
+        stats.numVersions++;
+
+        // Update the maximum version count
+        stats.maxVersions = max(stats.maxVersions, numVersions);
+    }
+
     // If we know this version will be executed, queue it for compilation
     if (noStub)
         vm.queue(ver);
-
-    // Increment the total number of block versions (compiled or not)
-    stats.numVersions++;
 
     // Return the newly created block version
     assert (ver.state.callCtx is callCtx);
@@ -1742,8 +1767,6 @@ void compile(VM vm, CallCtx callCtx)
 
             // Ensure that the end of the fragment was marked
             assert (frag.ended, ver.block.toString);
-
-            stats.numInsts++;
         }
 
         // If this is a branch code fragment
@@ -1909,8 +1932,8 @@ void compile(VM vm, CallCtx callCtx)
     if (opts.jit_dumpinfo)
     {
         writeln("write pos: ", as.getWritePos, " / ", as.getRemSpace);
+        writeln("num blocks: ", stats.numBlocks);
         writeln("num versions: ", stats.numVersions);
-        writeln("num instances: ", stats.numInsts);
         writeln();
     }
 

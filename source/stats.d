@@ -43,6 +43,7 @@ import std.string;
 import std.array;
 import std.stdint;
 import std.conv;
+import std.algorithm;
 import options;
 
 /// Program start time in milliseconds
@@ -54,11 +55,17 @@ ulong compTimeUsecs = 0;
 /// Total size of the machine code generated (in bytes)
 ulong genCodeSize = 0;
 
-/// Number of block versions for which code was generated (stubbed or not)
+/// Number of blocks for which there are compiled versions
+ulong numBlocks = 0;
+
+/// Number of block versions compiled
 ulong numVersions = 0;
 
-/// Number of versions instantiated
-ulong numInsts = 0;
+/// Maximum number of versions compiled for a block
+ulong maxVersions = 0;
+
+/// Number of blocks with specific version counts
+ulong[ulong] numVerBlocks;
 
 /// Per-instruction execution counts
 ulong numCall = 0;
@@ -108,8 +115,10 @@ static ~this()
     writefln("exec time (ms): %s", execTimeMsecs);
     writefln("comp time (ms): %s", compTimeUsecs / 1000);
     writefln("code size (bytes): %s", genCodeSize);
+
+    writefln("num blocks: %s", numBlocks);
     writefln("num versions: %s", numVersions);
-    writefln("num instances: %s", numInsts);    
+    writefln("max versions: %s", maxVersions);
 
     writefln("num call: %s", numCall);
     writefln("num call_prim: %s", numCallPrim);
@@ -123,5 +132,13 @@ static ~this()
         totalTypeTests += ctr;
     }
     writefln("type tests: %s", totalTypeTests);
+
+    /*
+    for (size_t numVers = 1; numVers <= min(opts.jit_maxvers, 100); numVers++)
+    {
+        auto blockCount = numVerBlocks.get(numVers, 0);
+        writefln("%s versions: %s", numVers, blockCount);
+    }
+    */
 }
 

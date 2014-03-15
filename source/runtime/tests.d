@@ -1356,6 +1356,8 @@ unittest
     // Loading a missing file
     vm.assertThrows("load('_filethatdoesntexist123_')");
 
+    writefln("eval");
+
     // Eval
     vm.load("tests/core/eval/eval.js");
 

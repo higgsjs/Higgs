@@ -101,14 +101,13 @@ void inlinePass(VM vm, IRFunction caller)
             astToIR(vm, callee.ast, callee);
         }
 
-        // TODO: inlining whitelist, constant array
-
         if (callee.numBlocks > 4
             && !callee.getName.startsWith("$rt_addInt")
             && !callee.getName.startsWith("$rt_addIntFloat")
             && !callee.getName.startsWith("$rt_mulIntFloat")
             && !callee.getName.startsWith("$rt_ltIntFloat")
             && !callee.getName.startsWith("$rt_getPropField")
+            && !callee.getName.startsWith("$rt_getPropMethod")
             && !callee.getName.startsWith("$rt_getPropElem")
             && !callee.getName.startsWith("$rt_getPropLength")
         )
