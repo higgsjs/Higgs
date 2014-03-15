@@ -49,7 +49,7 @@ function Function()
     var body = '';
 
     if ($argc > 0)
-        body = $ir_get_arg($argc - 1);
+        body = String($ir_get_arg($argc - 1));
 
     for (var i = 0; i < $argc - 1; ++i)
     {

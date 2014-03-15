@@ -195,13 +195,19 @@ function test_new_Function()
     {
         return 'b'
     }
+    var c = {
+        toString: function()
+        {
+            return 'return 1'
+        }
+    }
 
     // Valid function constructions
     assertEq(new Function()(),
              undefined,
              "Function() should make an empty function.");
 
-    assertEq(new Function('return 1')(),
+    assertEq(new Function(c)(),
              1,
              "Function(body) should make a function with that body.");
 
@@ -220,6 +226,7 @@ function test_new_Function()
              "All argument names should be converted with ToString(a), " +
              "the resulting argument should be a valid part of " +
              "FormalParameterList.")
+
 
     // Invalid function constructions
     assertThrows(function()
