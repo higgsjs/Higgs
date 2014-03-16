@@ -109,11 +109,14 @@ static ~this()
         return;
 
     auto endTimeMsecs = Clock.currAppTick().msecs();
-    auto execTimeMsecs = endTimeMsecs - startTimeMsecs;
+    auto totalTimeMsecs = endTimeMsecs - startTimeMsecs;
+    auto compTimeMsecs = compTimeUsecs / 1000;
+    auto execTimeMsecs = totalTimeMsecs - compTimeMsecs;
 
     writeln();
+    writefln("total time (ms): %s", totalTimeMsecs);
+    writefln("comp time (ms): %s", compTimeMsecs);
     writefln("exec time (ms): %s", execTimeMsecs);
-    writefln("comp time (ms): %s", compTimeUsecs / 1000);
     writefln("code size (bytes): %s", genCodeSize);
 
     writefln("num blocks: %s", numBlocks);

@@ -319,11 +319,6 @@ Compute the integer value of a string
 */
 function $rt_strToInt(strVal)
 {
-    assert (
-        typeof strVal === 'string',
-        'expected string value in strToInt'
-    );
-
     // TODO: add radix support
 
     // TODO: add floating-point support
@@ -331,87 +326,76 @@ function $rt_strToInt(strVal)
     var strLen = $rt_str_get_len(strVal);
 
     var intVal = 0;
-
     var neg = false;
-
     var state = 'PREWS';
 
     // For each string character
-    for (var i = 0; i < strLen;)
+    for (var i = 0; $ir_lt_i32(i, strLen);)
     {
         var ch = $rt_str_get_data(strVal, i);
 
-        switch (state)
+        if ($ir_eq_refptr(state, 'PREWS'))
         {
-            case 'PREWS':
+            // Space or tab
+            if ($ir_eq_i32(ch, 32) || $ir_eq_i32(ch, 9))
             {
-                // space or tab
-                if (ch === 32 || ch === 9)
-                {
-                    ++i;
-                }
-
-                // + or -
-                else if (ch === 43 || ch === 45)
-                {
-                    state = 'SIGN';
-                }
-
-                // Any other character
-                else
-                {
-                    state = 'DIGITS';
-                }
+                i = $ir_add_i32(i, 1);
             }
-            break;
 
-            case 'SIGN':
+            // + or -
+            else if ($ir_eq_i32(ch, 43) || $ir_eq_i32(ch, 45))
             {
-                // Plus sign
-                if (ch === 43)
-                {
-                    ++i;
-                }
+                state = 'SIGN';
+            }
 
-                // Minus sign
-                else if (ch === 45)
-                {
-                    neg = true;
-                    ++i;
-                }
-
+            // Any other character
+            else
+            {
                 state = 'DIGITS';
             }
-            break;
-
-            case 'DIGITS':
+        }
+        else if ($ir_eq_refptr(state, 'SIGN'))
+        {
+            // Plus sign
+            if ($ir_eq_i32(ch, 43))
             {
-                if (ch < 48 || ch > 57)
-                {
-                    state = 'POSTWS';
-                    continue;
-                }
-
-                var digit = ch - 48;
-
-                intVal = 10 * intVal + digit;
-
-                ++i;
+                i = $ir_add_i32(i, 1);
             }
-            break;
 
-            case 'POSTWS':
+            // Minus sign
+            else if ($ir_eq_i32(ch, 45))
             {
-                // If this is not a space or tab
-                if (ch !== 32 && ch !== 9)
-                {
-                    // Invalid number
-                    return NaN;
-                }
-
-                ++i;
+                neg = true;
+                i = $ir_add_i32(i, 1);
             }
-            break;
+
+            state = 'DIGITS';
+        }
+        else if ($ir_eq_refptr(state, 'DIGITS'))
+        {
+            // If this is not a digit
+            if ($ir_lt_i32(ch, 48) || $ir_gt_i32(ch, 57))
+            {
+                state = 'POSTWS';
+                continue;
+            }
+
+            var digit = ch - 48;
+
+            intVal = 10 * intVal + digit;
+
+            i = $ir_add_i32(i, 1);
+        }
+        else if ($ir_eq_refptr(state, 'POSTWS'))
+        {
+            // If this is not a space or tab
+            if ($ir_ne_i32(ch, 32) && $ir_ne_i32(ch, 9))
+            {
+                // Invalid number
+                return NaN;
+            }
+
+            i = $ir_add_i32(i, 1);
         }
     }
 
@@ -557,14 +541,17 @@ function $rt_toNumber(v)
     if ($ir_is_i32(v) || $ir_is_f64(v))
         return v;
 
-    if (v === null)
+    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
         return 0;
 
-    if (v === true)
-        return 1;
+    if ($ir_is_const(v))
+    {
+        if ($ir_eq_const(v, true))
+            return 1;
 
-    if (v === false)
-        return 0;
+        if ($ir_eq_const(v, false))
+            return 0;
+    }
 
     if ($ir_is_string(v))
         return $rt_strToInt(v);
@@ -2063,28 +2050,26 @@ function $rt_objSetProp(obj, propStr, val)
 
         var newObj;
 
-        // Switch on the layout type
-        switch (objType)
+        if ($ir_eq_i32(objType, $rt_LAYOUT_OBJ))
         {
-            case $rt_LAYOUT_OBJ:
             newObj = $rt_obj_alloc(newObjCap);
-            break;
-
-            case $rt_LAYOUT_CLOS:
+        }
+        else if ($ir_eq_i32(objType, $rt_LAYOUT_CLOS))
+        {
             var numCells = $rt_clos_get_num_cells(obj);
             newObj = $rt_clos_alloc(newObjCap, numCells);
             for (var i = 0; i < numCells; ++i)
                 $rt_clos_set_cell(newObj, i, $rt_clos_get_cell(obj, i));
-            break;
-
-            case $rt_LAYOUT_ARR:
+        }
+        else if ($ir_eq_i32(objType, $rt_LAYOUT_ARR))
+        {
             newObj = $rt_arr_alloc(newObjCap);
             $rt_arr_set_len(newObj, $rt_arr_get_len(obj));
             $rt_arr_set_tbl(newObj, $rt_arr_get_tbl(obj));
-            break;
-
-            default:
-            assert (false, "unhandled object type in objSetProp");
+        }
+        else
+        {
+            throw TypeError("unhandled object type in objSetProp");
         }
 
         $rt_obj_set_map(newObj, classPtr);

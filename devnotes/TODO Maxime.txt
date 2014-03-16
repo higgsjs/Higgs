@@ -60,6 +60,13 @@ FIXME: empty fun, ret undefined twice
   - needs to assume frame size is initial
 - should push locals in entry, pop in ret
 
+TODO: try to optimize inlineCall
+- inlinePass does not do liveness analysis, is slow on its own
+- what are the slowest parts of it?
+
+TODO: try to optimize liveness analysis
+- record total time taken in stats
+
 ------------------------------------------------------------------------------
 
 Goal: March 31st, type prop working, satisfying perf for article
@@ -80,7 +87,7 @@ TODO: simple reg alloc
   - if out opnd is stack, write type tag
 - Outline options in detail
 
-TODO: eliminate is_i32 peephole
+TODO: eliminate is_i32 peephole?
 - let the type analysis and BBV take care of that
 
 TODO: command-line option to record primitive call frequency
@@ -88,12 +95,15 @@ TODO: command-line option to record primitive call frequency
 - only way to know what's relevant to optimize
 - not that hard to implement, call some host primitive with a pointer to the D string
 
-TODO: try to optimize inlineCall
-- inlinePass does not do liveness analysis, is slow on its own
-- what are the slowest parts of it?
+TODO: basic type prop & type test removal
+- For now, don't do delayed writes, always just write type tags
+- isTypeOp, handle constant types
 
-TODO: try to optimize liveness analysis
-- record total time taken in stats
+TODO: blog post about optimization, results
+- 200 stars on github???
+- difficulty of optimizing self-hosted code
+- profiling, you don't actually know what's going on, complex codebase
+- 3d-raytrace, prop access > 30% execution time
 
 Meeting:
 - Fixed codegen bugs outlined at last group meeting
@@ -107,8 +117,8 @@ Meeting:
   - ltIntFloat
   - fallback to old, complete primitives
 - 3d-raytrace
-  - primitive calls: 16.6M to 1.25M         *** update number
-  - code size: 937K to 1160K                *** update number
+  - primitive calls: 16.6M to 1.06M         *** update number
+  - code size: 937K to 1157K                *** update number
   - 37M type tests, most of them is_i32
   - compilation time now about 60% of total time
   - something a 
@@ -124,22 +134,8 @@ Meeting:
   - getProp makes > 30% of exec time
 - Implemented basic inline caching, 23% speedup on 3d-raytrace
 
-TODO: basic type prop & type test removal
-- For now, don't do delayed writes, always just write type tags
-- isTypeOp, handle constant types
-
-TODO: blog post about optimization, results
-- 200 stars on github???
-- difficulty of optimizing self-hosted code
-- profiling, you don't actually know what's going on, complex codebase
-- 3d-raytrace, prop access > 30% execution time
-
 FIXME: string-fasta is slower than before? fast compile time, profile this ***
 
-TODO: total time vs exec time in stats
-
-FIXME: getPropIdx runs for every global call????? noooo
-- verify this with a loop that calls print
 
 
 
@@ -149,6 +145,12 @@ FIXME: getPropIdx runs for every global call????? noooo
 
 
 
+
+[DONE] TODO: rt_se usage in 3d-raytrace
+- benchmark itself doesn't use se!
+- called 282K times
+
+[DONE] TODO: total time vs exec time in stats
 
 [DONE] TODO: getPropMethod
 make; ./higgs --stats benchmarks/sunspider/3d-raytrace.js
