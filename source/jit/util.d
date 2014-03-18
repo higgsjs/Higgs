@@ -137,7 +137,7 @@ void incStatCnt(CodeBlock as, ulong* pCntVar, X86Reg scrReg)
 
     as.ptr(scrReg, pCntVar);
 
-    as.inc(X86Opnd(8 * ulong.sizeof, RAX));
+    as.inc(X86Opnd(8 * ulong.sizeof, scrReg));
 }
 
 void getField(CodeBlock as, X86Reg dstReg, X86Reg baseReg, size_t fOffset)

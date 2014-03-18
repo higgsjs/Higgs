@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -184,10 +184,30 @@ struct ValState
     /// Get a type operand for this value
     X86Opnd getTypeOpnd() const
     {
-        // TODO
-        assert (knownType is false);
+        if (knownType)
+            return X86Opnd(type);
 
         return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * stackIdx));
+    }
+
+    /// Set the type for this value, creates a new value
+    ValState setType(Type type) const
+    {
+        assert (!isConst);
+        ValState newState = this;
+        newState.knownType = true;
+        newState.type = type;
+        return newState;
+    }
+
+    /// Clear the type for this value if known, creates a new value
+    ValState clearType() const
+    {
+        assert (!isConst);
+
+        ValState newState = this;
+        newState.knownType = false;
+        return newState;
     }
 }
 
@@ -253,7 +273,7 @@ class CodeGenState
             if (value.block.fun !is block.fun)
                 continue;
 
-            if (liveInfo.liveAtEntry(value, block) is false)
+            if (liveInfo.liveAfterPhi(value, block) is false)
                 valMap.remove(value);
         }
 
@@ -269,7 +289,7 @@ class CodeGenState
                 continue;
 
             // If the value is no longer live, remove it
-            if (liveInfo.liveAtEntry(value, block) is false)
+            if (liveInfo.liveAfterPhi(value, block) is false)
                 gpRegMap[regNo] = null;
         }
 
@@ -283,7 +303,7 @@ class CodeGenState
                 continue;
 
             // If the value is no longer live, remove it
-            if (liveInfo.liveAtEntry(value, block) is false)
+            if (liveInfo.liveAfterPhi(value, block) is false)
                 slotMap.remove(idx);
         }
     }
@@ -302,17 +322,42 @@ class CodeGenState
         // Difference (penalty) sum
         size_t diff = 0;
 
-        // TODO
-        /*
-        // For each value in the predecessor alloc state map
-        foreach (value, allocSt; pred.allocState)
+        // For each value in the successor type state map
+        foreach (value, state; succ.valMap)
         {
-            // If this value is not in the successor state,
-            // mark it as on the stack in the successor state
-            if (value !in succ.allocState)
-                succ.allocState[value] = RA_STACK;
+            auto predSt = pred.getState(value);
+            auto succSt = succ.getState(value);
+
+            // If the type states match perfectly, no penalty
+            if (predSt == succSt)
+                continue;
+
+            // If the successor has a known type
+            if (succSt.knownType)
+            {
+                // If the predecessor has no known type, mismatch
+                if (!predSt.knownType)
+                    return size_t.max;
+
+                // If the known types do not match, mismatch
+                if (predSt.type != succSt.type)
+                    return size_t.max;
+
+                // If the type sync flags do not match, add a penalty
+                //if ((predTS & TF_SYNC) !is (succTS & TF_SYNC))
+                //    diff += 1;
+            }
+            else 
+            {
+                // If the predecessor has a known type, transitioning
+                // would lose us this known type
+                if (predSt.knownType)
+                    diff += 1;
+            }
         }
 
+        // TODO
+        /*
         // For each value in the successor alloc state map
         foreach (value, allocSt; succ.allocState)
         {
@@ -329,52 +374,6 @@ class CodeGenState
 
             // Add a penalty for the mismatched alloc state
             diff += 1;
-        }
-
-        // For each value in the predecessor type state map
-        foreach (value, allocSt; pred.typeState)
-        {
-            // If this value is not in the successor state,
-            // add an entry for it in the successor state
-            if (value !in succ.typeState)
-                succ.typeState[value] = 0;
-        }
-
-        // For each value in the successor type state map
-        foreach (value, allocSt; succ.typeState)
-        {
-            auto predTS = pred.typeState.get(value, 0);
-            auto succTS = succ.typeState.get(value, 0);
-
-            // If the type states match perfectly, no penalty
-            if (predTS is succTS)
-                continue;
-
-            // If the successor has a known type
-            if (succTS & TF_KNOWN)
-            {
-                // If the predecessor has no known type, mismatch
-                if (!(predTS & TF_KNOWN))
-                    return size_t.max;
-
-                auto predType = predTS & TF_TYPE_MASK;
-                auto succType = succTS & TF_TYPE_MASK;
-
-                // If the known types do not match, mismatch
-                if (predType !is succType)
-                    return size_t.max;
-
-                // If the type sync flags do not match, add a penalty
-                if ((predTS & TF_SYNC) !is (succTS & TF_SYNC))
-                    diff += 1;
-            }
-            else 
-            {
-                // If the predecessor has a known type, transitioning
-                // would lose us this known type
-                if (predTS & TF_KNOWN)
-                    diff += 1;
-            }
         }
         */
 
@@ -425,7 +424,7 @@ class CodeGenState
     */
     X86Opnd getWordOpnd(
         CodeBlock as,
-        IRInstr instr, 
+        IRInstr instr,
         size_t argIdx,
         size_t numBits,
         X86Opnd tmpReg = X86Opnd.NONE,
@@ -573,16 +572,14 @@ class CodeGenState
 
         auto dstVal = cast(IRDstValue)value;
 
-        // If the value is an IR constant or has a known type
+        // If the value is an IR constant
         if (dstVal is null)
         {
             return X86Opnd(value.cstValue.type);
         }
 
-        // Get the state for this value
-        auto state = getState(dstVal);
-
-        return state.getTypeOpnd();
+        // Get the type operand for this value
+        return getState(dstVal).getTypeOpnd();
     }
 
     /**
@@ -679,35 +676,8 @@ class CodeGenState
             "null instruction"
         );
 
-        /*
-        assert (
-            (type & TF_TYPE_MASK) == type,
-            "type mask corrupts type tag"
-        );
-
-        // Get the previous type state
-        auto prevState = typeState.get(instr, 0);
-
-        // Check if the type is still in sync
-        auto inSync = (
-            (prevState & TF_SYNC) &&
-            (prevState & TF_KNOWN) &&
-            ((prevState & TF_TYPE_MASK) == type)
-        );
-
-        // Set the type known flag and update the type
-        typeState[instr] = TF_KNOWN | (inSync? TF_SYNC:0) | type;
-
-        // If the output operand is on the stack
-        if (allocState.get(instr, 0) & RA_STACK)
-        {
-            // Write the type value to the type stack
-            as.instr(MOV, new X86Mem(8, tspReg, instr.outSlot), type);
-
-            // Mark the type as in sync, so we don't spill the type later
-            typeState[instr] |= TF_SYNC;
-        }
-        */
+        // Set a known type for this value
+        valMap[instr] = getState(instr).setType(type);
 
         // Write the type value to the type stack
         as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(type));
@@ -721,18 +691,11 @@ class CodeGenState
             "null instruction"
         );
 
-        // TODO
-        // Mark the type value as unknown
-        //typeState.remove(instr);
+        // Clear the type information for the value
+        valMap[instr] = getState(instr).clearType();
 
         // Write the type to the type stack
         as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(typeReg));
-
-        // TODO
-        // If the output is mapped to a register, write a 0 value
-        // to the word stack to avoid invalid references
-        //if (allocState.get(instr, 0) & RA_GPREG)
-        //    as.instr(MOV, new X86Mem(64, wspReg, 8 * instr.outSlot), 0);
     }
 
     /// Get the state for a given value
@@ -777,7 +740,11 @@ abstract class CodeFragment
     /// Get the name string for this fragment
     final string getName()
     {
-        assert (opts.jit_genasm);
+        assert (
+            opts.jit_genasm ||
+            opts.jit_dumpinfo ||
+            opts.jit_trace_instrs
+        );
 
         if (auto ver = cast(BlockVersion)this)
         {
@@ -1292,11 +1259,15 @@ BlockVersion getBlockVersion(
     BlockVersion bestVer;
     size_t bestDiff = size_t.max;
 
+    //writeln("requesting: ", block.getName);
+
     // For each successor version available
     foreach (ver; versions)
     {
         // Compute the difference with the incoming state
         auto diff = state.diff(ver.state);
+
+        //writeln("diff: ", diff);
 
         // If this is a perfect match, return it
         if (diff is 0)
@@ -1435,10 +1406,6 @@ CodeGenState getSuccState(
     // Copy the predecessor state
     auto succState = new CodeGenState(predState);
 
-    // Remove information about values dead at
-    // the beginning of the successor block
-    succState.removeDead(liveInfo, branch.target);
-
     // Map each successor phi node on the stack or in its register
     // in a way that best matches the predecessor state
     for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
@@ -1456,8 +1423,22 @@ CodeGenState getSuccState(
             phi.block.toString()
         );
 
-        // Map the phi node to its stack location
-        succState.valMap[phi] = ValState.stack(phi.outSlot);
+        if (auto dstArg = cast(IRDstValue)arg)
+        {
+            auto phiState = ValState.stack(phi.outSlot);
+
+            // Get the state for the phi argument value
+            auto argState = predState.getState(dstArg);
+            if (argState.knownType)
+                phiState = phiState.setType(argState.type);
+
+            succState.valMap[phi] = phiState;
+        }
+        else
+        {
+            // Map the phi node to its stack location
+            succState.valMap[phi] = ValState.stack(phi.outSlot);
+        }
 
         /*
         // Get the register the phi is mapped to
@@ -1500,6 +1481,10 @@ CodeGenState getSuccState(
         }
         */
     }
+
+    // Remove information about values dead after
+    // the phi nodes in the successor block
+    succState.removeDead(liveInfo, branch.target);
 
     return succState;
 }
@@ -1548,9 +1533,17 @@ Move[] genBranchMoves(
         if (srcWordOpnd != dstWordOpnd && !(succParam && dstWordOpnd.isMem))
             moveList ~= Move(dstWordOpnd, srcWordOpnd);
 
+        /*
         // Get the source and destination operands for the phi type
         X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
         X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
+        */
+
+        // FIXME: for now, no reg alloc or delated writes,
+        // always generate the type moves
+        auto srcTypeOpnd = predState.getTypeOpnd(predVal);
+        auto dstValState = succState.getState(succVal);
+        X86Opnd dstTypeOpnd = X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * dstValState.stackIdx));
 
         if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);

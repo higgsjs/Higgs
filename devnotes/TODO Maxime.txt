@@ -42,16 +42,9 @@ TODO: think about shapes more
 TODO: not missing global prop opt?
 - observation: if read once, we know its not missing
 
-FIXME: much regexp code executed during init, why?
-
-TODO: tweak inlining heuristics
-- don't inline in global functions, unless they have loops? ***
-  - IRFunction.hasLoop?
-  - this might be extra beneficial, big functions that run only once
-- could also only inline in functions that have loops
-  - and/or maybe be super extra aggressive there
-- *must* inline object access and low level primitives in getprop
-  - runtime primitives that are less than 3-4 blocks should always be inlined
+TODO: don't inline in global functions, unless they have loops? ***
+- IRFunction.hasLoop?
+- this might be extra beneficial, big functions that run only once
 
 FIXME: empty fun, ret undefined twice
 - see 200m_calls
@@ -76,6 +69,11 @@ TODO: smaller version of toBool for inlining?
 
 TODO: profile again, lots of interesting things to learn!
 
+TODO: command-line option to record primitive call frequency
+- display sorted count
+- only way to know what's relevant to optimize
+- not that hard to implement, call some host primitive with a pointer to the D string
+
 TODO: simple reg alloc
 - Marc says stack mapping, 1 bit per value
   - value is on stack or in reg for that stack slot
@@ -87,25 +85,71 @@ TODO: simple reg alloc
   - if out opnd is stack, write type tag
 - Outline options in detail
 
-TODO: eliminate is_i32 peephole?
-- let the type analysis and BBV take care of that
-
-TODO: command-line option to record primitive call frequency
-- display sorted count
-- only way to know what's relevant to optimize
-- not that hard to implement, call some host primitive with a pointer to the D string
-
-TODO: basic type prop & type test removal
-- For now, don't do delayed writes, always just write type tags
-- isTypeOp, handle constant types
-
 TODO: blog post about optimization, results
 - 200 stars on github???
 - difficulty of optimizing self-hosted code
 - profiling, you don't actually know what's going on, complex codebase
+- compile time now dominates execution time on several benchmarks
 - 3d-raytrace, prop access > 30% execution time
+- inline caching
 
-Meeting:
+Meeting this week: examine machine code again, Wednesday or Thursday
+
+FIXME: string-fasta is slower than before? fast compile time, profile quickly
+
+TODO: setOutBool
+
+TODO: CodeGenState.getState for constant values?
+- Would facilitate interoperability
+- Need to know the IR constant to get an operand
+- Difference between known constant and ir constant?
+- knownType vs knownCst?
+- Or have a 4th kind, KNOWN_VAL vs IR_CONST
+
+TODO: eq... specialized version for null? rt_eqNull
+
+TODO: inline version of rt_mod, integers only, rt_modInt
+
+TODO: inline version of rt_sub, rt_subIntFloat
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: examine runtime type tests, why so many int tests in 3d-raytrace?
+- print where they happen
+
+[DONE] FIXME: still missing versions on loop_big_incr, 4B tests
+make; ./higgs --nostdlib --stats benchmarks/micro/loop_big_incr.js
+make; ./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/loop_big_incr.js
+- No versioning happening
+- Is removeDead killing all the type info? No
+- Useless type tests still present
+- Might have to do with phi types not getting set? Yes
+- 3d-raytrace type tests go from 20M to 7M
+
+[DONE] TODO: implement CodeGenState.diff
+- Needs to compare typeKnown flag, types
+
+[DONE] TODO: examine behavior of BBV on loop incr, look at machine code
+make; ./higgs --nostdlib --stats benchmarks/micro/loop_big_incr.js
+- 4B type tests still!
+- primitives inlined properly
+- code not optimized
+
+[DONE] TODO: implement known types in both variants of setOutType
+- 27M to 21M type tests
+- code size 1157K to 1229K
+- versions 5024 to 5027
+
+[DONE] Meeting:
 - Fixed codegen bugs outlined at last group meeting
   - suboptimal direct jump
 - Completed wider type tags refactoring
@@ -121,30 +165,15 @@ Meeting:
   - code size: 937K to 1157K                *** update number
   - 37M type tests, most of them is_i32
   - compilation time now about 60% of total time
-  - something a 
 - BBV eliminates >75% tests on 3d-raytrace, should make noticeable perf difference
   - new tag scheme will also eliminate is_object, is_array, is_string
   - but: block versioning will increase compilation time
   - can we exclude compile time for the paper?
-- Opinion: is_i32 peephole, keep or remove?
-  - Removes trivial type tests at the IR level
-  - Reduces what the type analysis can eliminate somewhat (makes us look better)
 - Ran DMD's profiler
   - liveness analysis is slow, quadratic
   - getProp makes > 30% of exec time
 - Implemented basic inline caching, 23% speedup on 3d-raytrace
-
-FIXME: string-fasta is slower than before? fast compile time, profile this ***
-
-
-
-
-
-
-
-
-
-
+- Marc says: focus on generated code performance
 
 [DONE] TODO: rt_se usage in 3d-raytrace
 - benchmark itself doesn't use se!

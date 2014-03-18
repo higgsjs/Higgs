@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2011-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -103,30 +103,32 @@ function test_round()
 
 function test_max()
 {
-    if (Math.max(0, 1) !== 1)
-        return 1;
-    if (Math.max(-5, 2) !== 2)
-        return 2;
-    if (Math.max(1, 2, 9, 3, 4) !== 9)
-        return 3;
-    if (Math.max(-8, -9, -3, -5, -7) !== -3)
-        return 4;
+    assert (Math.max() === -Infinity);
 
-    return 0;
+    assert (Math.max(1) === 1);
+
+    assert (Math.max(0, 1) === 1)
+
+    assert (Math.max(-5, 2) === 2)
+
+    assert (Math.max(1, 2, 9, 3, 4) === 9)
+
+    assert (Math.max(-8, -9, -3, -5, -7) === -3)
 }
 
 function test_min()
 {
-    if (Math.min(0, 1) !== 0)
-        return 1;
-    if (Math.min(-5, 2) !== -5)
-        return 2;
-    if (Math.min(1, 2, 9, -3, 4) !== -3)
-        return 3;
-    if (Math.min(-8, -9, -3, -5, -11, -7) !== -11)
-        return 4;
+    assert (Math.min() === Infinity);
 
-    return 0;
+    assert (Math.min(1) === 1);
+
+    assert (Math.min(0, 1) === 0)
+
+    assert (Math.min(-5, 2) === -5)
+
+    assert (Math.min(1, 2, 9, -3, 4) === -3)
+
+    assert (Math.min(-8, -9, -3, -5, -11, -7) === -11)
 }
 
 function test_pow()
@@ -163,13 +165,9 @@ function test()
     if (r !== 0)
         return 400 + r;
 
-    var r = test_max();
-    if (r !== 0)
-        return 500 + r;
+    test_max();
 
-    var r = test_min();
-    if (r !== 0)
-        return 600 + r;
+    test_min();
 
     var r = test_pow();
     if (r !== 0)

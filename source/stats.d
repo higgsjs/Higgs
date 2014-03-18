@@ -127,7 +127,7 @@ static ~this()
     writefln("num call_prim: %s", numCallPrim);
     writefln("num map_prop_idx: %s", numMapPropIdx);
 
-    auto totalTypeTests = 0;
+    ulong totalTypeTests = 0;
     foreach (testOp, pCtr; numTypeTests)
     {
         auto ctr = *pCtr;

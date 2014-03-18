@@ -1,4 +1,4 @@
-function foo()
+function test()
 {
     // Loop to 2B
     for (var i = 0; i < 2000000000; ++i)
@@ -9,7 +9,7 @@ function foo()
 }
 
 assert (
-    foo() === 2000000000,
+    test() === 2000000000,
     'final loop increment value incorrect'
 );
 

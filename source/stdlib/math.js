@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2012, Universite de Montreal
+ *  Copyright (c) 2012-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -39,17 +39,6 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * _________________________________________________________________________
  */
-
-/**
-@fileOverview
-Implementation of ECMAScript 5 math library routines.
-
-@author
-Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2012 Tachyon Javascript Engine, All Rights Reserved
-*/
 
 /// Private namespace for this module
 (function () {
@@ -173,7 +162,7 @@ The length property of the min method is 2.
 Math.min = function ()
 {
     if ($argc == 0)
-        return -Infinity;
+        return Infinity;
 
     var m = $ir_get_arg(0);
 
@@ -442,12 +431,12 @@ Returns an implementation-dependent approximation to the square root of x.
 */
 Math.sqrt = function (x)
 {
-    if ($ir_is_i32(x) === true)
-        x = $ir_i32_to_f64(x);
-    else if ($ir_is_f64(x) === false)
-        return NaN;
+    if ($ir_is_i32(x))
+        return $ir_sqrt_f64($ir_i32_to_f64(x));
+    if ($ir_is_f64(x))
+        return $ir_sqrt_f64(x);
 
-    return $ir_sqrt_f64(x);
+    return NaN;
 };
 
 /**
@@ -510,47 +499,6 @@ Math.log = function (x)
         return $ir_log_f64(x);
 
     return NaN;
-
-    /*
-    // For x in the interval -1 < x < 1
-    // log(1+x) = x - x2/2 + x3/3 - x4/4 + ...
-    if (x >= 0 && x < 1)
-    {
-        // Want to compute log(1 + (x-1))
-        x = x - 1;
-
-        var sum = 0;
-        var prod = x;
-        var div = 1;
-
-        print('x: ' + x);
-
-        for (;;)
-        {   
-            var term = prod / div;
-
-            if (div & 1 === 1)
-                sum += term;
-            else
-                sum -= term;
-
-            print('term: ' + term);
-            print('sum: ' + sum);
-            print('div: ' + div);
-
-            if (term > -1E-18 && term < 1E-18)
-                break;
-
-            prod *= x;
-            div += 1;
-        }
-
-        return sum;
-    }
-
-    // log(pq) = log(p) + log(q)
-    // log(4) = log(e*1.47151...) = 1 + log(1.47151...)
-    */
 };
 
 /// Next random seed

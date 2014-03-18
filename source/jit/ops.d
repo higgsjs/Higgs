@@ -731,32 +731,63 @@ void IsTypeOp(Type type)(
     CodeBlock as
 )
 {
-    auto argVal = instr.getArg(0);
+    //as.printStr(instr.toString);
+    //as.printStr("    " ~ instr.block.fun.getName);
 
-    /*
+    // Get an operand for the value's type
+    auto typeOpnd = st.getTypeOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+
     // If the type of the argument is known
-    if (st.typeKnown(argVal))
+    if (typeOpnd.isImm)
     {
-        // TODO: use getTypeOpnd
-        // get rid of typeKnown?
-
         // Mark the value as a known constant
         // This will defer writing the value
-        auto knownType = st.getType(argVal);
-        st.setOutBool(instr, type is knownType);
+        auto knownType = cast(Type)typeOpnd.imm.imm;
+
+        // If this instruction has many uses or is not followed by an if
+        if (instr.hasManyUses || ifUseNext(instr) is false)
+        {
+            // FIXME
+            //st.setOutBool(instr, type is knownType);
+
+            auto outOpnd = st.getOutOpnd(as, instr, 64);
+            if (type is knownType)
+                as.mov(outOpnd, X86Opnd(TRUE.word.int8Val));
+            else
+                as.mov(outOpnd, X86Opnd(FALSE.word.int8Val));
+            st.setOutType(as, instr, Type.CONST);
+        }
+
+        // If our only use is an immediately following if_true
+        if (ifUseNext(instr) is true)
+        {
+            // Get the branch edge
+            auto targetIdx = (type is knownType)? 0:1;
+            auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
+
+            // Generate the branch code
+            ver.genBranch(
+                as,
+                branch,
+                null,
+                delegate void(
+                    CodeBlock as,
+                    VM vm,
+                    CodeFragment target0,
+                    CodeFragment target1,
+                    BranchShape shape
+                )
+                {
+                    jmp32Ref(as, vm, target0, 0);
+                }
+            );
+        }
 
         return;
     }
-    */
-
-    //ctx.as.printStr(instr.opcode.mnem ~ " (" ~ instr.block.fun.getName ~ ")");
 
     // Increment the stat counter for this specific kind of type test
-    as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs[0]);
-
-    // TODO: handle constant types better
-    // Get an operand for the value's type
-    auto typeOpnd = st.getTypeOpnd(as, instr, 0, scrRegs[0].opnd(8));
+    as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs[1]);
 
     // Compare against the tested type
     as.cmp(typeOpnd, X86Opnd(type));
