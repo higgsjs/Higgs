@@ -1347,10 +1347,13 @@ Optimized equality (==) for comparisons with null
 */
 function $rt_eqNull(x)
 {
-    if ($rt_valIsObj(x))
+    if ($ir_is_refptr(x) && $ir_eq_refptr(x, null))
         return true;
 
-    return $rt_eq(x, null);
+    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+        return true;
+
+    return false;
 }
 
 /**

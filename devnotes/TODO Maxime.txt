@@ -69,11 +69,6 @@ TODO: smaller version of toBool for inlining?
 
 TODO: profile again, lots of interesting things to learn!
 
-TODO: command-line option to record primitive call frequency
-- display sorted count
-- only way to know what's relevant to optimize
-- not that hard to implement, call some host primitive with a pointer to the D string
-
 TODO: simple reg alloc
 - Marc says stack mapping, 1 bit per value
   - value is on stack or in reg for that stack slot
@@ -106,7 +101,13 @@ TODO: CodeGenState.getState for constant values?
 - knownType vs knownCst?
 - Or have a 4th kind, KNOWN_VAL vs IR_CONST
 
-TODO: eq... specialized version for null? rt_eqNull
+TODO: command-line option to record primitive call frequency
+- display sorted count
+- only way to know what's relevant to optimize
+- not that hard to implement, call some host primitive with a pointer to the D string
+
+TODO: look at type tests in 3d-raytrace further
+- Much tests in primitives anymore?
 
 
 
@@ -116,8 +117,9 @@ TODO: eq... specialized version for null? rt_eqNull
 
 
 
-
-
+[DONE] TODO: eq... specialized version for null? rt_eqNull
+- 37K calls in 3d-raytrace
+- eliminates calls but doesn't reduce type tests
 
 [DONE] FIXME: maxvers=0, something gets up to 3 versions on 3d-raytrace
 make; ./higgs --stats --jit_maxvers=0 benchmarks/sunspider/3d-raytrace.js

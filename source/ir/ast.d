@@ -1407,6 +1407,22 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             return assgVal;
         }
 
+        IRValue genEq()
+        {
+            if (cast(NullExpr)binExpr.rExpr)
+            {
+                auto lVal = exprToIR(ctx, binExpr.lExpr);
+                return genRtCall(
+                    ctx,
+                    "eqNull",
+                    [lVal],
+                    expr.pos
+                );
+            }
+
+            return genBinOp("eq");
+        }
+
         auto op = binExpr.op;
 
         // Arithmetic operators
@@ -1449,7 +1465,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "!==")
             return genBinOp("ns");
         else if (op.str == "==")
-            return genBinOp("eq");
+            return genEq();
         else if (op.str == "!=")
             return genBinOp("ne");
         else if (op.str == "<")

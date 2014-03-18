@@ -102,13 +102,14 @@ void inlinePass(VM vm, IRFunction caller)
         }
 
         if (callee.numBlocks > 4
-            //&& !callee.getName.startsWith("$rt_valIsObj")
+            && !callee.getName.startsWith("$rt_valIsObj")
             && !callee.getName.startsWith("$rt_addInt")
             && !callee.getName.startsWith("$rt_addIntFloat")
             && !callee.getName.startsWith("$rt_subIntFloat")
             && !callee.getName.startsWith("$rt_mulIntFloat")
             && !callee.getName.startsWith("$rt_modInt")
             && !callee.getName.startsWith("$rt_ltIntFloat")
+            && !callee.getName.startsWith("$rt_eqNull")
             && !callee.getName.startsWith("$rt_getPropField")
             && !callee.getName.startsWith("$rt_getPropMethod")
             && !callee.getName.startsWith("$rt_getPropElem")
