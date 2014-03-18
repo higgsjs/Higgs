@@ -820,6 +820,30 @@ function $rt_sub(x, y)
 }
 
 /**
+Specialized sub for the (int,int) and (float,float) cases
+*/
+function $rt_subIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        var r;
+        if (r = $ir_sub_i32_ovf(x, y))
+        {
+            return r;
+        }
+    }
+
+    // If x,y are floating-point
+    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    {
+        return $ir_sub_f64(x, y);
+    }
+
+    return $rt_sub(x, y);
+}
+
+/**
 JS multiplication operator
 */
 function $rt_mul(x, y)
@@ -937,6 +961,20 @@ function $rt_mod(x, y)
     }
 
     return $rt_mod($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized modulo for the (int,int) case
+*/
+function $rt_modInt(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        return $ir_mod_i32(x, y);
+    }
+
+    return $rt_mod(x, y);
 }
 
 //=============================================================================
@@ -1302,6 +1340,17 @@ function $rt_eq(x, y)
     }
 
     return $rt_eq($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Optimized equality (==) for comparisons with null
+*/
+function $rt_eqNull(x)
+{
+    if ($rt_valIsObj(x))
+        return true;
+
+    return $rt_eq(x, null);
 }
 
 /**

@@ -1413,13 +1413,13 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         if (op.str == "+")
             return genBinOp("addIntFloat");
         else if (op.str == "-")
-            return genBinOp("sub");
+            return genBinOp("subIntFloat");
         else if (op.str == "*")
             return genBinOp("mulIntFloat");
         else if (op.str == "/")
             return genBinOp("div");
         else if (op.str == "%")
-            return genBinOp("mod");
+            return genBinOp("modInt");
 
         // Bitwise operators
         else if (op.str == "&")
@@ -1467,13 +1467,13 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "+=")
             return genAssign("addIntFloat");
         else if (op.str == "-=")
-            return genAssign("sub");
+            return genAssign("subIntFloat");
         else if (op.str == "*=")
             return genAssign("mulIntFloat");
         else if (op.str == "/=")
             return genAssign("div");
         else if (op.str == "&=")
-            return genAssign("mod");
+            return genAssign("modInt");
         else if (op.str == "&=")
             return genAssign("and");
         else if (op.str == "|=")

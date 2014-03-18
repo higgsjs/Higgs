@@ -1301,13 +1301,10 @@ BlockVersion getBlockVersion(
 
         // Strip the state of all known types and constants
         auto genState = new CodeGenState(state);
-        // TODO
-        /*
-        genState.typeState = genState.typeState.init;
-        foreach (val, allocSt; genState.allocState)
-            if (allocSt & RA_CONST)
-                genState.allocState[val] = RA_STACK;
-        */
+        // TODO: clear known constants
+        foreach (val, valSt; genState.valMap)
+            if (valSt.knownType)
+                genState.valMap[val] = valSt.clearType();
 
         // Ensure that the general version matches
         assert(state.diff(genState) !is size_t.max);

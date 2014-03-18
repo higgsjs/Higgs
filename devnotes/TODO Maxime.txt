@@ -108,9 +108,6 @@ TODO: CodeGenState.getState for constant values?
 
 TODO: eq... specialized version for null? rt_eqNull
 
-TODO: inline version of rt_mod, integers only, rt_modInt
-
-TODO: inline version of rt_sub, rt_subIntFloat
 
 
 
@@ -122,6 +119,12 @@ TODO: inline version of rt_sub, rt_subIntFloat
 
 
 
+[DONE] FIXME: maxvers=0, something gets up to 3 versions on 3d-raytrace
+make; ./higgs --stats --jit_maxvers=0 benchmarks/sunspider/3d-raytrace.js
+
+[DONE] TODO: inline version of rt_mod, integers only, rt_modInt
+
+[DONE] TODO: inline version of rt_sub, rt_subIntFloat
 
 [DONE] TODO: examine runtime type tests, why so many int tests in 3d-raytrace?
 - print where they happen
