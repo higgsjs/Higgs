@@ -1010,6 +1010,15 @@ unittest
         77
     );
 
+    vm.assertInt(
+        "
+        var ptr = $ir_alloc_refptr(16);
+        $ir_store_u8(ptr, 0, 0xFF);
+        return $ir_load_i8(ptr, 0);
+        ",
+        -1
+    );
+
     // Link and integer value
     vm.assertInt(
         "

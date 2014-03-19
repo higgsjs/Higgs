@@ -90,6 +90,9 @@ TODO: simple reg alloc
 - Outline options in detail
 
 Meeting this week: examine machine code again, Wednesday or Thursday
+- Basic BBV working with inlining
+- Eliminating large proportion of type tests
+- Detailed primitive call stats
 
 TODO: setOutBool
 
@@ -112,6 +115,10 @@ TODO: $rt_se still dominates prim calls in 3d-raytrace, find out why
 
 
 
+
+
+[DONE] TODO: load i8, signed 8 bit int
+- add test
 
 [DONE] TODO: command-line option to record primitive call frequency, --prim_stats
 - display sorted count

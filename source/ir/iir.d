@@ -148,6 +148,7 @@ static this()
     addOp(LOAD_U64);
     addOp(LOAD_I8);
     addOp(LOAD_I16);
+    addOp(LOAD_I32);
     addOp(LOAD_F64);
     addOp(LOAD_REFPTR);
     addOp(LOAD_RAWPTR);
@@ -159,6 +160,7 @@ static this()
     addOp(STORE_U32);
     addOp(STORE_I8);
     addOp(STORE_I16);
+    addOp(STORE_I32);
     addOp(STORE_U64);
     addOp(STORE_F64);
     addOp(STORE_REFPTR);

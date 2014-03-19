@@ -154,7 +154,6 @@ static ~this()
     }
     writefln("total prim calls: %s", totalPrimCalls);
 
-
     alias Tuple!(string, "test", ulong, "cnt") TypeTestCnt;
     TypeTestCnt[] typeTestCnts;
     foreach (test, pCtr; numTypeTests)

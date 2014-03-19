@@ -580,8 +580,8 @@ void FPToStr(string fmt)(
 alias FPToStr!("%G") gen_f64_to_str;
 alias FPToStr!(format("%%.%sf", float64.dig)) gen_f64_to_str_lng;
 
-void LoadOp(size_t memSize, Type typeTag)(
-    BlockVersion ver, 
+void LoadOp(size_t memSize, bool signed, Type typeTag)(
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -614,45 +614,63 @@ void LoadOp(size_t memSize, Type typeTag)(
     }
 
     // If the output operand is a memory location
-    if (outOpnd.isMem || memSize == 32)    
+    if (outOpnd.isMem || memSize == 32)
     {
         size_t scrSize = (memSize == 32)? 32:64;
         auto scrReg64 = scrRegs[2].opnd(64);
         auto scrReg = X86Opnd(X86Reg(X86Reg.GP, scrReg64.reg.regNo, scrSize));
 
-        // Load to a scratch register and then move to the output
+        // Load to a scratch register
         static if (memSize == 8 || memSize == 16)
-            as.movzx(scrReg64, memOpnd);
+        {
+            static if (signed)
+                as.movsx(scrReg64, memOpnd);
+            else
+                as.movzx(scrReg64, memOpnd);
+        }
         else
+        {
             as.mov(scrReg, memOpnd);
+        }
 
+        // Move the scratch register to the output
         as.mov(outOpnd, scrReg64);
     }
     else
     {
         // Load to the output register directly
         static if (memSize == 8 || memSize == 16)
-            as.movzx(outOpnd, memOpnd);
+        {
+            static if (signed)
+                as.movsx(outOpnd, memOpnd);
+            else
+                as.movzx(outOpnd, memOpnd);
+        }
         else
+        {
             as.mov(outOpnd, memOpnd);
+        }
     }
 
     // Set the output type tag
     st.setOutType(as, instr, typeTag);
 }
 
-alias LoadOp!(8 , Type.INT32) gen_load_u8;
-alias LoadOp!(16, Type.INT32) gen_load_u16;
-alias LoadOp!(32, Type.INT32) gen_load_u32;
-alias LoadOp!(64, Type.INT64) gen_load_u64;
-alias LoadOp!(64, Type.FLOAT64) gen_load_f64;
-alias LoadOp!(64, Type.REFPTR) gen_load_refptr;
-alias LoadOp!(64, Type.RAWPTR) gen_load_rawptr;
-alias LoadOp!(64, Type.FUNPTR) gen_load_funptr;
-alias LoadOp!(64, Type.MAPPTR) gen_load_mapptr;
+alias LoadOp!(8 , false, Type.INT32) gen_load_u8;
+alias LoadOp!(16, false, Type.INT32) gen_load_u16;
+alias LoadOp!(32, false, Type.INT32) gen_load_u32;
+alias LoadOp!(64, false, Type.INT64) gen_load_u64;
+alias LoadOp!(8 , true , Type.INT32) gen_load_i8;
+alias LoadOp!(16, true , Type.INT32) gen_load_i16;
+alias LoadOp!(32, true , Type.INT32) gen_load_i32;
+alias LoadOp!(64, false, Type.FLOAT64) gen_load_f64;
+alias LoadOp!(64, false, Type.REFPTR) gen_load_refptr;
+alias LoadOp!(64, false, Type.RAWPTR) gen_load_rawptr;
+alias LoadOp!(64, false, Type.FUNPTR) gen_load_funptr;
+alias LoadOp!(64, false, Type.MAPPTR) gen_load_mapptr;
 
 void StoreOp(size_t memSize, Type typeTag)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -695,6 +713,7 @@ alias StoreOp!(32, Type.INT32) gen_store_u32;
 alias StoreOp!(64, Type.INT64) gen_store_u64;
 alias StoreOp!(8 , Type.INT32) gen_store_i8;
 alias StoreOp!(16, Type.INT32) gen_store_i16;
+alias StoreOp!(32, Type.INT32) gen_store_i32;
 alias StoreOp!(64, Type.FLOAT64) gen_store_f64;
 alias StoreOp!(64, Type.REFPTR) gen_store_refptr;
 alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
