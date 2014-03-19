@@ -60,6 +60,9 @@ TODO: try to optimize inlineCall
 TODO: try to optimize liveness analysis
 - record total time taken in stats
 
+FIXME: string-fasta is slower than before? fast compile time, profile quickly
+TODO: profile again, lots of interesting things to learn!
+
 ------------------------------------------------------------------------------
 
 Goal: March 31st, type prop working, satisfying perf for article
@@ -67,7 +70,13 @@ Goal: March 31st, type prop working, satisfying perf for article
 
 TODO: smaller version of toBool for inlining?
 
-TODO: profile again, lots of interesting things to learn!
+TODO: blog post about optimization, results
+- 200 stars on github???
+- difficulty of optimizing self-hosted code
+- profiling, you don't actually know what's going on, complex codebase
+- compile time now dominates execution time on several benchmarks
+- 3d-raytrace, prop access > 30% execution time
+- inline caching
 
 TODO: simple reg alloc
 - Marc says stack mapping, 1 bit per value
@@ -80,17 +89,7 @@ TODO: simple reg alloc
   - if out opnd is stack, write type tag
 - Outline options in detail
 
-TODO: blog post about optimization, results
-- 200 stars on github???
-- difficulty of optimizing self-hosted code
-- profiling, you don't actually know what's going on, complex codebase
-- compile time now dominates execution time on several benchmarks
-- 3d-raytrace, prop access > 30% execution time
-- inline caching
-
 Meeting this week: examine machine code again, Wednesday or Thursday
-
-FIXME: string-fasta is slower than before? fast compile time, profile quickly
 
 TODO: setOutBool
 
@@ -101,21 +100,23 @@ TODO: CodeGenState.getState for constant values?
 - knownType vs knownCst?
 - Or have a 4th kind, KNOWN_VAL vs IR_CONST
 
-TODO: command-line option to record primitive call frequency
+TODO: $rt_se still dominates prim calls in 3d-raytrace, find out why
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: command-line option to record primitive call frequency, --prim_stats
 - display sorted count
 - only way to know what's relevant to optimize
 - not that hard to implement, call some host primitive with a pointer to the D string
-
-TODO: look at type tests in 3d-raytrace further
-- Much tests in primitives anymore?
-
-
-
-
-
-
-
-
 
 [DONE] TODO: eq... specialized version for null? rt_eqNull
 - 37K calls in 3d-raytrace

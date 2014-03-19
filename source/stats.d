@@ -43,6 +43,7 @@ import std.string;
 import std.array;
 import std.stdint;
 import std.conv;
+import std.typecons;
 import std.algorithm;
 import options;
 
@@ -68,12 +69,25 @@ ulong maxVersions = 0;
 ulong[ulong] numVerBlocks;
 
 /// Per-instruction execution counts
-ulong numCall = 0;
-ulong numCallPrim = 0;
 ulong numMapPropIdx = 0;
+ulong numCall = 0;
+
+/// Number of primitive calls by primitive name (dynamic)
+ulong* numPrimCalls[string];
 
 /// Number of type tests executed by test kind (dynamic)
 ulong* numTypeTests[string];
+
+/// Get a pointer to the counter variable associated with a primitive
+ulong* getPrimCallCtr(string primName)
+{
+    // If there is no counter for this primitive, allocate one
+    if (primName !in numPrimCalls)
+        numPrimCalls[primName] = new ulong;
+
+    // Return the counter for this primitive
+    return numPrimCalls[primName];
+}
 
 /// Get a pointer to the counter variable associated with a type test
 ulong* getTypeTestCtr(string testOp)
@@ -123,18 +137,37 @@ static ~this()
     writefln("num versions: %s", numVersions);
     writefln("max versions: %s", maxVersions);
 
-    writefln("num call: %s", numCall);
-    writefln("num call_prim: %s", numCallPrim);
     writefln("num map_prop_idx: %s", numMapPropIdx);
+    writefln("num call: %s", numCall);
+
+    alias Tuple!(string, "name", ulong, "cnt") PrimCallCnt;
+    PrimCallCnt[] primCallCnts;
+    foreach (name, pCtr; numPrimCalls)
+        primCallCnts ~= PrimCallCnt(name, *pCtr);
+    primCallCnts.sort!"a.cnt > b.cnt";
+
+    ulong totalPrimCalls = 0;
+    foreach (pair; primCallCnts)
+    {
+        writefln("%s: %s", pair.name, pair.cnt);
+        totalPrimCalls += pair.cnt;
+    }
+    writefln("total prim calls: %s", totalPrimCalls);
+
+
+    alias Tuple!(string, "test", ulong, "cnt") TypeTestCnt;
+    TypeTestCnt[] typeTestCnts;
+    foreach (test, pCtr; numTypeTests)
+        typeTestCnts ~= TypeTestCnt(test, *pCtr);
+    typeTestCnts.sort!"a.cnt > b.cnt";
 
     ulong totalTypeTests = 0;
-    foreach (testOp, pCtr; numTypeTests)
+    foreach (pair; typeTestCnts)
     {
-        auto ctr = *pCtr;
-        writefln("%s: %s", testOp, ctr);
-        totalTypeTests += ctr;
+        writefln("%s: %s", pair.test, pair.cnt);
+        totalTypeTests += pair.cnt;
     }
-    writefln("type tests: %s", totalTypeTests);
+    writefln("total type tests: %s", totalTypeTests);
 
     /*
     for (size_t numVers = 1; numVers <= min(opts.jit_maxvers, 100); numVers++)

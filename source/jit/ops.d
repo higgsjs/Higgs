@@ -1457,14 +1457,15 @@ void gen_call_prim(
     CodeBlock as
 )
 {
-    as.incStatCnt(&stats.numCallPrim, scrRegs[0]);
-
     auto vm = st.callCtx.vm;
 
     // Function name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
     assert (strArg !is null);
     auto nameStr = strArg.str;
+
+    // Increment the stat counter for this primitive
+    as.incStatCnt(stats.getPrimCallCtr(to!string(nameStr)), scrRegs[0]);
 
     // Get the primitve function from the global object
     auto closVal = getProp(vm, vm.globalObj, nameStr);
