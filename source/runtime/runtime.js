@@ -410,27 +410,8 @@ Get the string representation of a value
 */
 function $rt_toString(v)
 {
-    var type = typeof v;
-
-    if (type === "undefined")
-        return "undefined";
-
-    if (type === "boolean")
-        return v? "true":"false";
-
-    if (type === "string")
-        return v;
-
-    if (type === "number")
+    if ($rt_valIsObj(v))
     {
-        return $rt_numberToString(v, 10);
-    }
-
-    if (type === "object" || type === "function" || type === "array")
-    {
-        if (v === null)
-            return "null";
-
         var str = v.toString();
 
         if ($ir_is_string(str))
@@ -440,6 +421,33 @@ function $rt_toString(v)
             throw TypeError('toString produced non-primitive value');
 
         return $rt_toString(str);
+    }
+
+    if ($ir_is_i32(v) || $ir_is_f64(v))
+    {
+        return $rt_numberToString(v, 10);
+    }
+
+    if ($ir_is_string(v))
+    {
+        return v;
+    }
+
+    if ($ir_is_const(v))
+    {
+        if ($ir_eq_const(v, $undef))
+            return "undefined";
+
+        if ($ir_eq_const(v, true))
+            return "true";
+
+        if ($ir_eq_const(v, false))
+            return "false";
+    }
+
+    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+    {
+        return "null";
     }
 
     assert (false, "unhandled type in toString");
@@ -1116,10 +1124,14 @@ function $rt_ltIntFloat(x, y)
         return $ir_lt_i32(x, y);
     }
 
-    // If x,y are float
-    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    // If x is float
+    else if ($ir_is_f64(x))
     {
-        return $ir_lt_f64(x, y);
+        if ($ir_is_i32(y))
+            return $ir_lt_f64(x, $ir_i32_to_f64(y));
+
+        if ($ir_is_f64(y))
+            return $ir_lt_f64(x, y);
     }
 
     return $rt_lt(x, y);

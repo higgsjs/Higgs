@@ -92,7 +92,8 @@ TODO: simple reg alloc
 Meeting this week: examine machine code again, Wednesday or Thursday
 - Basic BBV working with inlining
 - Eliminating large proportion of type tests
-- Detailed primitive call stats
+- Detailed primitive call stats, sorted by decreasing frequency
+- Perf results not fully clear
 
 TODO: setOutBool
 
@@ -103,7 +104,14 @@ TODO: CodeGenState.getState for constant values?
 - knownType vs knownCst?
 - Or have a 4th kind, KNOWN_VAL vs IR_CONST
 
-TODO: $rt_se still dominates prim calls in 3d-raytrace, find out why
+TODO: exec time, should probably measure when entering code, stop when leaving
+- May want state-based time accounting
+- commit before refactoring
+
+TODO: $rt_gtIntFloat
+
+TODO: make setProp more efficient, eliminate === calls
+- now 75K se calls, 5.90M tests
 
 
 
@@ -111,11 +119,11 @@ TODO: $rt_se still dominates prim calls in 3d-raytrace, find out why
 
 
 
+[DONE] TODO: make $rt_toString more efficient, eliminate === calls
+- currently 113K se calls, 6.12M type tests in 3d-raytrace
+- now 75K se calls, 5.90M tests
 
-
-
-
-
+[DONE] TODO: rt_lt... Should probably handle lhs float + rhs int case?
 
 [DONE] TODO: load i8, signed 8 bit int
 - add test
