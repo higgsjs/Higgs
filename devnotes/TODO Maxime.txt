@@ -63,12 +63,18 @@ TODO: try to optimize liveness analysis
 FIXME: string-fasta is slower than before? fast compile time, profile quickly
 TODO: profile again, lots of interesting things to learn!
 
+TODO: transform jit.compileUnit into jit.execUnit
+- Do parsing, AST->IR and call in there, better time accounting?
+- Any real reason not to?
+- alternative: try to treat unit functions more like other functions
+  - create closure objects for them
+  - create some sort of closure call bridge with a C call conv
+  - having a "C adapter" for a specific closure seems sensible
+
 ------------------------------------------------------------------------------
 
 Goal: March 31st, type prop working, satisfying perf for article
 - Type prop should enable speed gains on bigger benchmarks
-
-TODO: smaller version of toBool for inlining?
 
 TODO: blog post about optimization, results
 - 200 stars on github???
@@ -77,6 +83,12 @@ TODO: blog post about optimization, results
 - compile time now dominates execution time on several benchmarks
 - 3d-raytrace, prop access > 30% execution time
 - inline caching
+
+TODO: exec time, should probably measure when entering code, stop when leaving
+- May want state-based time accounting
+- commit before refactoring
+
+Marc says: get perf counters to measure context switching overhead
 
 TODO: simple reg alloc
 - Marc says stack mapping, 1 bit per value
@@ -89,17 +101,6 @@ TODO: simple reg alloc
   - if out opnd is stack, write type tag
 - Outline options in detail
 
-Meeting this week: examine machine code again, Wednesday or Thursday
-- Detailed primitive call stats, sorted by decreasing frequency
-- Various improvements to runtime code
-- More inlined primitives
-- Basic BBV working with inlining
-  - Eliminating large proportion of type tests
-  - >78% on 3d-raytrace
-- Perf results not fully clear
-
-TODO: setOutBool
-
 TODO: CodeGenState.getState for constant values?
 - Would facilitate interoperability
 - Need to know the IR constant to get an operand
@@ -107,11 +108,9 @@ TODO: CodeGenState.getState for constant values?
 - knownType vs knownCst?
 - Or have a 4th kind, KNOWN_VAL vs IR_CONST
 
-TODO: exec time, should probably measure when entering code, stop when leaving
-- May want state-based time accounting
-- commit before refactoring
-
-TODO: $rt_gtIntFloat
+TODO: smaller version of toBool for inlining?
+- see benchmarks/sunspider/access-nsieve-bits
+- should handle true, false, undef
 
 
 
@@ -120,6 +119,34 @@ TODO: $rt_gtIntFloat
 
 
 
+
+
+
+
+
+[DONE] TODO: specialized $rt_setPropElem, see access-fannkuch
+- before: 4.3M prim calls, 13.2M type tests
+- after: 604K prim calls, 7.4M type tests!
+
+[DONE] Meeting this week: examine machine code again, Wednesday or Thursday
+- Detailed primitive call stats, sorted by decreasing frequency
+- Various improvements to runtime code
+- More inlined primitives
+- Basic BBV working with inlining
+  - Eliminating large proportion of type tests
+  - >78% on 3d-raytrace
+- Perf results not fully clear
+  - May be that on short benchmarks, more versions means more interruptions to compile
+  - icache trouble
+  - reg alloc may help with more compact code, better icache perf?
+
+[DONE] TODO: specialized $rt_geIntFloat, see access-fannkuch
+- before: 4.3M prim calls, 13.2M type tests
+- after: 3.1M prim calls, 12.0M type tests
+
+[DONE] TODO: $rt_gtIntFloat
+- before: $rt_gt has 90K calls
+- eliminates a fair amount of primitive calls and type tests
 
 [DONE] TODO: make setProp more efficient, eliminate === calls
 - before, 75K se calls, 5.90M tests

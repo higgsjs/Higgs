@@ -1473,9 +1473,9 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "<=")
             return genBinOp("le");
         else if (op.str == ">")
-            return genBinOp("gt");
+            return genBinOp("gtIntFloat");
         else if (op.str == ">=")
-            return genBinOp("ge");
+            return genBinOp("geIntFloat");
 
         // In-place assignment operators
         else if (op.str == "=")
@@ -1957,6 +1957,14 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                     expr.pos
                 );
             }
+
+            // Get the property from the base value
+            return genRtCall(
+                ctx,
+                "getProp",
+                [baseVal, idxVal],
+                expr.pos
+            );
         }
 
         // The property is non-constant, likely an array index
@@ -1970,14 +1978,6 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 expr.pos
             );
         }
-
-        // Get the property from the base value
-        return genRtCall(
-            ctx,
-            "getProp",
-            [baseVal, idxVal],
-            expr.pos
-        );
     }
 
     else if (auto arrayExpr = cast(ArrayExpr)expr)
@@ -2318,13 +2318,29 @@ IRValue assgToIR(
             idxVal
         );
 
-        // Set the property on the object
-        genRtCall(
-            ctx,
-            "setProp",
-            [baseVal, idxVal, rhsVal],
-            lhsExpr.pos
-        );
+        // If the property is a constant string
+        if (auto strProp = cast(StringExpr)indexExpr.index)
+        {
+            // Set the property on the object
+            genRtCall(
+                ctx,
+                "setProp",
+                [baseVal, idxVal, rhsVal],
+                lhsExpr.pos
+            );
+        }
+
+        // The property is non-constant, likely an array index
+        else
+        {
+            // Use a primitive specialized for array elements
+            genRtCall(
+                ctx,
+                "setPropElem",
+                [baseVal, idxVal, rhsVal],
+                lhsExpr.pos
+            );
+        }
 
         return rhsVal;
     }

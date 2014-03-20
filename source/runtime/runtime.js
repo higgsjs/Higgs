@@ -105,7 +105,7 @@ Perform an assertion test
 */
 function assert(testVal, errorMsg)
 {
-    if (testVal === true)
+    if ($ir_is_const(testVal) && $ir_eq_const(testVal, true))
         return;
 
     // If no error message is specified
@@ -1114,7 +1114,7 @@ function $rt_lt(x, y)
 }
 
 /**
-Specialized less-than for the (int,int) and (float,float) cases
+Specialized less-than for the integer and float cases
 */
 function $rt_ltIntFloat(x, y)
 {
@@ -1212,7 +1212,31 @@ function $rt_gt(x, y)
 }
 
 /**
-JS greater-than or equal operator
+Specialized greater-than for the integer and float cases
+*/
+function $rt_gtIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        return $ir_gt_i32(x, y);
+    }
+
+    // If x is float
+    else if ($ir_is_f64(x))
+    {
+        if ($ir_is_i32(y))
+            return $ir_gt_f64(x, $ir_i32_to_f64(y));
+
+        if ($ir_is_f64(y))
+            return $ir_gt_f64(x, y);
+    }
+
+    return $rt_gt(x, y);
+}
+
+/**
+JS greater-than-or-equal operator
 */
 function $rt_ge(x, y)
 {
@@ -1246,6 +1270,30 @@ function $rt_ge(x, y)
     }
 
     return $rt_ge($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized greater-than-or-equal for the integer and float cases
+*/
+function $rt_geIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        return $ir_ge_i32(x, y);
+    }
+
+    // If x is float
+    else if ($ir_is_f64(x))
+    {
+        if ($ir_is_i32(y))
+            return $ir_ge_f64(x, $ir_i32_to_f64(y));
+
+        if ($ir_is_f64(y))
+            return $ir_ge_f64(x, y);
+    }
+
+    return $rt_ge(x, y);
 }
 
 /**
@@ -1328,7 +1376,9 @@ function $rt_eq(x, y)
         if ($ir_is_const(y))
             return $ir_eq_const(x, y);
 
-        if (x === undefined && y === null)
+        // undefined == null
+        if ($ir_eq_const(x, undefined) && 
+            $ir_is_refptr(y) && $ir_eq_refptr(y, null))
             return true;
     }
 
@@ -1348,7 +1398,7 @@ function $rt_eq(x, y)
     // If x is a string
     if ($ir_is_string(px) && $ir_is_string(py))
     {
-        return $rt_strcmp(px, py) === 0;
+        return $ir_eq_refptr(px, py);
     }
 
     return $rt_eq($rt_toNumber(x), $rt_toNumber(y));
@@ -2228,6 +2278,34 @@ function $rt_setProp(base, prop, val)
     //print(prop);
 
     throw TypeError("invalid base in property write");
+}
+
+/**
+Specialized version of setProp for array elements
+*/
+function $rt_setPropElem(base, prop, val)
+{
+    // If the base is an array
+    if ($ir_is_array(base))
+    {
+        // If the property is a non-negative integer
+        // and is within the array bounds
+        if ($ir_is_i32(prop) &&
+            $ir_ge_i32(prop, 0) && 
+            $ir_lt_i32(prop, $rt_arr_get_len(base)))
+        {
+            // Get a reference to the array table
+            var tbl = $rt_arr_get_tbl(base);
+
+            // Set the element in the array
+            $rt_arrtbl_set_word(tbl, prop, $ir_get_word(val));
+            $rt_arrtbl_set_type(tbl, prop, $ir_get_type(val));
+
+            return;
+        }
+    }
+
+    return $rt_setProp(base, prop, val);
 }
 
 /**
