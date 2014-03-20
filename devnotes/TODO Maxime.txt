@@ -90,9 +90,12 @@ TODO: simple reg alloc
 - Outline options in detail
 
 Meeting this week: examine machine code again, Wednesday or Thursday
-- Basic BBV working with inlining
-- Eliminating large proportion of type tests
 - Detailed primitive call stats, sorted by decreasing frequency
+- Various improvements to runtime code
+- More inlined primitives
+- Basic BBV working with inlining
+  - Eliminating large proportion of type tests
+  - >78% on 3d-raytrace
 - Perf results not fully clear
 
 TODO: setOutBool
@@ -110,14 +113,17 @@ TODO: exec time, should probably measure when entering code, stop when leaving
 
 TODO: $rt_gtIntFloat
 
-TODO: make setProp more efficient, eliminate === calls
-- now 75K se calls, 5.90M tests
 
 
 
 
 
 
+
+
+[DONE] TODO: make setProp more efficient, eliminate === calls
+- before, 75K se calls, 5.90M tests
+- after, 71K, 5.88M
 
 [DONE] TODO: make $rt_toString more efficient, eliminate === calls
 - currently 113K se calls, 6.12M type tests in 3d-raytrace

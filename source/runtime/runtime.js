@@ -2193,31 +2193,31 @@ function $rt_setProp(base, prop, val)
             return $rt_setArrElem(base, prop, val);
         }
 
+        // If the property is a string
+        if ($ir_is_string(prop))
+        {
+            // If this is the length property
+            if ($ir_eq_refptr(prop, 'length'))
+            {
+                if ($ir_is_i32(val) && $ir_ge_i32(val, 0))
+                    return $rt_setArrLen(base, val);
+
+                assert (false, 'invalid array length');
+            }
+
+            var propNum = $rt_strToInt(prop);
+            if (!isNaN(propNum))
+                return $rt_setProp(base, propNum, val);
+
+            return $rt_objSetProp(base, prop, val);
+        }
+
         // If the property is a floating-point number
         if ($ir_is_f64(prop))
         {
             var intVal = $rt_toUint32(prop);
             if (intVal === prop)
                 return $rt_setProp(base, intVal, val);
-        }
-
-        // If this is the length property
-        if (prop === 'length')
-        {
-            if ($ir_is_i32(val) && $ir_ge_i32(val, 0))
-                return $rt_setArrLen(base, val);
-
-            assert (false, 'invalid array length');
-        }
-
-        // If the property is a string
-        if ($ir_is_string(prop))
-        {
-            var propNum = $rt_strToInt(prop);
-            if (!isNaN(propNum))
-                return $rt_setProp(base, propNum, val);
-
-            return $rt_objSetProp(base, prop, val);
         }
 
         return $rt_objSetProp(base, $rt_toString(prop), val);
