@@ -1676,7 +1676,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
             // Convert the expression value to a boolean
             auto boolVal = genBoolEval(
-                ctx, 
+                ctx,
                 unExpr.expr,
                 testVal
             );
@@ -2539,7 +2539,7 @@ IRValue genBoolEval(IRGenCtx ctx, ASTExpr testExpr, IRValue argVal)
 
         if (auto unOp = cast(UnOpExpr)expr)
         {
-            if (unOp.op.str == "!" && isBoolExpr(unOp.expr))
+            if (unOp.op.str == "!")
                 return true;
 
             return false;
@@ -2548,11 +2548,13 @@ IRValue genBoolEval(IRGenCtx ctx, ASTExpr testExpr, IRValue argVal)
         if (auto binOp = cast(BinOpExpr)expr)
         {
             auto op = binOp.op.str;
- 
-            if (op == "=="  || op == "!=" ||
+
+            if (op == "=="  || op == "!="  ||
                 op == "===" || op == "!==" ||
-                op == "<"   || op == "<=" ||
-                op == ">"   || op == ">=")
+                op == "<"   || op == "<="  ||
+                op == ">"   || op == ">="  ||
+                op == "instanceof" ||
+                op == "in")
                 return true;
 
             // The AND and OR of boolean arguments is a boolean
@@ -2583,6 +2585,8 @@ IRValue genBoolEval(IRGenCtx ctx, ASTExpr testExpr, IRValue argVal)
     }
     else
     {
+        //writeln(testExpr);
+
         // Convert the value to a boolean
         auto boolInstr = genRtCall(
             ctx,

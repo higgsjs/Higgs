@@ -60,9 +60,6 @@ TODO: try to optimize inlineCall
 TODO: try to optimize liveness analysis
 - record total time taken in stats
 
-FIXME: string-fasta is slower than before? fast compile time, profile quickly
-TODO: profile again, lots of interesting things to learn!
-
 TODO: transform jit.compileUnit into jit.execUnit
 - Do parsing, AST->IR and call in there, better time accounting?
 - Any real reason not to?
@@ -70,6 +67,9 @@ TODO: transform jit.compileUnit into jit.execUnit
   - create closure objects for them
   - create some sort of closure call bridge with a C call conv
   - having a "C adapter" for a specific closure seems sensible
+
+FIXME: string-fasta is slower than before? fast compile time, profile quickly
+TODO: profile again, lots of interesting things to learn!
 
 ------------------------------------------------------------------------------
 
@@ -84,11 +84,16 @@ TODO: blog post about optimization, results
 - 3d-raytrace, prop access > 30% execution time
 - inline caching
 
+TODO: bias toBool for property access expressions, isNaN, bitwise result
+
 TODO: exec time, should probably measure when entering code, stop when leaving
 - May want state-based time accounting
 - commit before refactoring
-
 Marc says: get perf counters to measure context switching overhead
+TODO: can we design a pathological case wrt versioning and context switching?
+- would make it easier to study the overhead involved, profile it
+IDEA: could it be the inline caches screwing us over???
+- Add inline cache miss stat, find out!
 
 TODO: simple reg alloc
 - Marc says stack mapping, 1 bit per value
@@ -108,9 +113,11 @@ TODO: CodeGenState.getState for constant values?
 - knownType vs knownCst?
 - Or have a 4th kind, KNOWN_VAL vs IR_CONST
 
-TODO: smaller version of toBool for inlining?
-- see benchmarks/sunspider/access-nsieve-bits
-- should handle true, false, undef
+Time to move on to the serious stuff! Fix above issue, then open notes about reg alloc, work it out
+- Look at some machine code go get an idea of what's at stake
+
+TODO: add inline cache miss stat, compare 3d-raytrace with and without BBV
+- num prop idx misses
 
 
 
@@ -122,7 +129,8 @@ TODO: smaller version of toBool for inlining?
 
 
 
-
+[DONE] TODO: optimize genBoolEval
+- Don't need toBool for !, instanceof, in
 
 [DONE] TODO: specialized $rt_setPropElem, see access-fannkuch
 - before: 4.3M prim calls, 13.2M type tests
