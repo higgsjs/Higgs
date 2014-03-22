@@ -71,6 +71,8 @@ TODO: transform jit.compileUnit into jit.execUnit
 FIXME: string-fasta is slower than before? fast compile time, profile quickly
 TODO: profile again, lots of interesting things to learn!
 
+TODO: bias toBool for property access expressions, isNaN, bitwise result
+
 ------------------------------------------------------------------------------
 
 Goal: March 31st, type prop working, satisfying perf for article
@@ -84,27 +86,12 @@ TODO: blog post about optimization, results
 - 3d-raytrace, prop access > 30% execution time
 - inline caching
 
-TODO: bias toBool for property access expressions, isNaN, bitwise result
-
 TODO: exec time, should probably measure when entering code, stop when leaving
 - May want state-based time accounting
 - commit before refactoring
 Marc says: get perf counters to measure context switching overhead
 TODO: can we design a pathological case wrt versioning and context switching?
 - would make it easier to study the overhead involved, profile it
-IDEA: could it be the inline caches screwing us over???
-- Add inline cache miss stat, find out!
-
-TODO: simple reg alloc
-- Marc says stack mapping, 1 bit per value
-  - value is on stack or in reg for that stack slot
-- could also think about delayed writes
-  - all output operands go into table, map to regs, spill when full
-  - is this simpler than modelizing occupied regs
-- KISS: if you write a value to the stack, should also write its type
-  - write type tags on spilling
-  - if out opnd is stack, write type tag
-- Outline options in detail
 
 TODO: CodeGenState.getState for constant values?
 - Would facilitate interoperability
@@ -113,21 +100,107 @@ TODO: CodeGenState.getState for constant values?
 - knownType vs knownCst?
 - Or have a 4th kind, KNOWN_VAL vs IR_CONST
 
-Time to move on to the serious stuff! Fix above issue, then open notes about reg alloc, work it out
-- Look at some machine code go get an idea of what's at stake
+------------------------------------------------------------------------------
 
-TODO: add inline cache miss stat, compare 3d-raytrace with and without BBV
+Milestone: register allocation
+------------------------------
+
+Meeting:
+- sketched out reg alloc
+- more runtime and inlining tweaks
+- better exec time accounting
+- tested hypothesis: inline cache, more misses, icache invalidation
+  - a few more misses, but doesn't explain problem
+  - most benchmarks have very very few misses (e.g.: 100-300)
+- almost all benchmarks still slower with BBV
+  - shorter/simpler benchmarks sometimes faster
+  - these have less code, also less compiler calls, context switching
+- bitops-3bit-bits-in-byte.js is not slower
+  - its own code fits within 4KB or so, fits in the icache
+  - ~300 additional context swaps for compilation, significant
+- fasta is very long running, still significantly slower
+  - comp time relatively small, less than 3d-raytrace
+  - code size, num versions is much less than 3d-raytrace, but...
+  - slowdown seems to have scaled upwards with execution time ***
+    - suggestive of icache effect
+- strangeness: with BBV, one would expect less *hot code*?
+  - but only executed versions compiled
+  - more code does mean more icache interference
+- should probably focus on trimming the biggest instructions
+  (e.g.: get_global, calls)?
+
+TODO: can possibly test out context swapping hypothesis by adding a certain
+number of useless compiler calls, without increasing code size?
+- These would have to do real compilation work
+- Easy dirty hack: have the branch stub compilation not patch the branch
+  the first time around, do some useless compilation the second time
+
+TODO: phi moves
+- Phi moves from reg to stack (should be relatively uncommon?)
+  - must write type
+- Phi moves from reg to reg with unknown dst type?
+  - must write type (automatic)
+  - must write zero if the type is pointer
+
+TODO: spilling mechamism for calls and host code
+- When spilling a value, always spill its type (if known)
+- KISS at first, spill all
+
+TODO: setOutType
+- If we have an unknown output type but the output operand is a register, need
+  to write a zero to the stack. This is rare-ish.
+- When setting a known out type, if the value is in a register, avoid writing the type
+
+TODO: soft-spilling, soft-restore for getBranchStub
+- Save register values before entering compileBranch
+- Go through incoming context, spill values appropriately for GC safety
+- When going back to new compiled code, need to restore values into registers
+- Want to write regs to a designated memory area, not difficult
+  - Pre-alloc on the VM
+
+Reg alloc simplifying assumptions:
+- KISS: if you write a value to the stack, should also write its type
+  - write type tags on spilling
+  - if out opnd is stack, write type tag
+- For now, can just assign a register based on stack idx
+ - no reg alloc phase, interference testing per-se?
+ - or just do it all on-the-fly...?
+
+TODO: reg alloc, commit all, work in steps, get basic tests working first
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+[DONE] TODO: try measuring execution time separately, see if issue persists
+- May be that time issue is due to cleanup time, allocated memory?
+  - We're measuring the whole program execution time, which is bad
+- 3d-raytrace still slower with this change
+- slower across benchmarks
+- even fasta is slower... seems ridiculous?
+- some very short/simple benchmarks are faster or the same?
+  - might support the idea that this is a cache effect
+  - these benchmarks should also do less compiler calls
+
+[DONE] TODO: sketch simple reg alloc
+
+[DONE] TODO: add inline cache miss stat, compare 3d-raytrace with and without BBV
 - num prop idx misses
-
-
-
-
-
-
-
-
-
-
+- very few misses
+- this is not the problem wrt BBV code being slower!
 
 [DONE] TODO: optimize genBoolEval
 - Don't need toBool for !, instanceof, in

@@ -1022,8 +1022,14 @@ class VM
         // Compile the entry block of the unit function
         auto entryFn = compileUnit(this, fun);
 
+        // Start recording execution time
+        stats.execTimeStart();
+
         // Call into the compiled code
         entryFn();
+
+        // Stop recording execution time
+        stats.execTimeStop();
 
         // If a runtime error occurred, throw the exception object
         if (runError)

@@ -47,12 +47,6 @@ import std.typecons;
 import std.algorithm;
 import options;
 
-/// Program start time in milliseconds
-private ulong startTimeMsecs = 0;
-
-/// Total compilation time in microseconds
-ulong compTimeUsecs = 0;
-
 /// Total size of the machine code generated (in bytes)
 ulong genCodeSize = 0;
 
@@ -68,15 +62,20 @@ ulong maxVersions = 0;
 /// Number of blocks with specific version counts
 ulong[ulong] numVerBlocks;
 
-/// Per-instruction execution counts
+/// Number of property index requests
 ulong numMapPropIdx = 0;
+
+/// Number of property cache misses
+ulong numMapPropMisses = 0;
+
+/// Number of dynamic calls
 ulong numCall = 0;
 
-/// Number of primitive calls by primitive name (dynamic)
-ulong* numPrimCalls[string];
+/// Number of primitive calls by primitive name
+private ulong* numPrimCalls[string];
 
-/// Number of type tests executed by test kind (dynamic)
-ulong* numTypeTests[string];
+/// Number of type tests executed by test kind
+private ulong* numTypeTests[string];
 
 /// Get a pointer to the counter variable associated with a primitive
 ulong* getPrimCallCtr(string primName)
@@ -100,6 +99,58 @@ ulong* getTypeTestCtr(string testOp)
     return numTypeTests[testOp];
 }
 
+/// Total compilation time in microseconds
+private ulong compTimeUsecs = 0;
+
+/// Total execution time in microseconds
+private ulong execTimeUsecs = 0;
+
+/// Compilation timer start
+private ulong compStartUsecs = 0;
+
+/// Execution timer start
+private ulong execStartUsecs = 0;
+
+/// Start recording compilation time
+void compTimeStart()
+{
+    assert (compStartUsecs is 0, "comp timer already started");
+    assert (execStartUsecs is 0, "exec timer ongoing");
+
+    compStartUsecs = Clock.currAppTick().usecs();
+}
+
+// Stop recording compilation time
+void compTimeStop()
+{
+    assert (compStartUsecs !is 0);
+
+    auto compEndUsecs = Clock.currAppTick().usecs();
+    compTimeUsecs += compEndUsecs - compStartUsecs;
+
+    compStartUsecs = 0;
+}
+
+/// Start recording execution time
+void execTimeStart()
+{
+    assert (execStartUsecs is 0, "exec timer already started");
+    assert (compStartUsecs is 0, "comp timer ongoing");
+
+    execStartUsecs = Clock.currAppTick().usecs();
+}
+
+// Stop recording execution time
+void execTimeStop()
+{
+    assert (execStartUsecs !is 0);
+
+    auto execEndUsecs = Clock.currAppTick().usecs();
+    execTimeUsecs += execEndUsecs - execStartUsecs;
+
+    execStartUsecs = 0;
+}
+
 /// Static module constructor
 static this()
 {
@@ -110,9 +161,6 @@ static this()
     getTypeTestCtr("is_const");
     getTypeTestCtr("is_refptr");
     getTypeTestCtr("is_rawptr");
-
-    // Record the starting time
-    startTimeMsecs = Clock.currAppTick().msecs();
 }
 
 /// Static module destructor, log the accumulated stats
@@ -122,15 +170,9 @@ static ~this()
     if (opts.stats is false)
         return;
 
-    auto endTimeMsecs = Clock.currAppTick().msecs();
-    auto totalTimeMsecs = endTimeMsecs - startTimeMsecs;
-    auto compTimeMsecs = compTimeUsecs / 1000;
-    auto execTimeMsecs = totalTimeMsecs - compTimeMsecs;
-
     writeln();
-    writefln("total time (ms): %s", totalTimeMsecs);
-    writefln("comp time (ms): %s", compTimeMsecs);
-    writefln("exec time (ms): %s", execTimeMsecs);
+    writefln("comp time (ms): %s", compTimeUsecs / 1000);
+    writefln("exec time (ms): %s", execTimeUsecs / 1000);
     writefln("code size (bytes): %s", genCodeSize);
 
     writefln("num blocks: %s", numBlocks);
@@ -138,6 +180,8 @@ static ~this()
     writefln("max versions: %s", maxVersions);
 
     writefln("num map_prop_idx: %s", numMapPropIdx);
+    writefln("num prop cache misses: %s", numMapPropMisses);
+
     writefln("num call: %s", numCall);
 
     alias Tuple!(string, "name", ulong, "cnt") PrimCallCnt;

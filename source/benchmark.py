@@ -142,7 +142,8 @@ for benchmark, valLists in benchResults.items():
 print ''
 print 'exec times'
 print '----------'
-for benchmark, valMeans in benchMeans.items():
+for benchmark in sorted(benchMeans.keys()):
+    valMeans = benchMeans[benchmark]
     print benchmark + ":", valMeans['exec time (ms)']
 
 # Output the mean of all stats gathered
@@ -155,7 +156,9 @@ for benchmark, valMeans in benchMeans.items():
         if not (key in valLists):
             valLists[key] = []
         valLists[key] += [mean]
-for key, valList in valLists.items():
+
+for key in sorted(valLists.keys()):
+    valList = valLists[key]
     mean = geoMean(valList)
     if valsInt(valList):
         print "%s: %s" % (key, int(mean))

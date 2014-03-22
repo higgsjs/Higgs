@@ -38,7 +38,6 @@
 module jit.jit;
 
 import std.stdio;
-import std.datetime;
 import std.string;
 import std.array;
 import std.stdint;
@@ -1941,7 +1940,8 @@ Compile an entry point for a unit-level function
 */
 EntryFn compileUnit(VM vm, IRFunction fun)
 {
-    auto startTimeUsecs = Clock.currAppTick().usecs();
+    // Start recording compilation time
+    stats.compTimeStart();
 
     assert (fun.isUnit, "compileUnit on non-unit function");
 
@@ -2053,9 +2053,8 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Get a pointer to the entry block version's code
     auto entryFn = cast(EntryFn)entryInst.getCodePtr(vm.execHeap);
 
-    // Update the compilation time stat
-    auto endTimeUsecs = Clock.currAppTick().usecs();
-    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+    // Stop recording compilation time
+    stats.compTimeStop();
 
     // Return the unit entry function
     return entryFn;
@@ -2066,7 +2065,9 @@ Compile an entry block instance for a function
 */
 extern (C) CodePtr compileEntry(EntryStub stub)
 {
-    auto startTimeUsecs = Clock.currAppTick().usecs();
+    // Stop recording execution time, start recording compilation time
+    stats.execTimeStop();
+    stats.compTimeStart();
 
     //writeln("entering compileEntry");
 
@@ -2156,9 +2157,9 @@ extern (C) CodePtr compileEntry(EntryStub stub)
 
     //writeln("leaving compileEntry");
 
-    // Update the compilation time stat
-    auto endTimeUsecs = Clock.currAppTick().usecs();
-    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+    // Stop recording compilation time, resume recording execution time
+    stats.compTimeStop();
+    stats.execTimeStart();
 
     return ctorCall? fun.ctorCode:fun.entryCode;
 }
@@ -2168,7 +2169,9 @@ Compile the branch code when a branch stub is hit
 */
 extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
 {
-    auto startTimeUsecs = Clock.currAppTick().usecs();
+    // Stop recording execution time, start recording compilation time
+    stats.execTimeStop();
+    stats.compTimeStart();
 
     //writeln("entering compileBranch");
     //writeln("    blockIdx=", blockIdx);
@@ -2193,9 +2196,9 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     // Compile fragments and patch references
     vm.compile(srcBlock.state.callCtx);
 
-    // Update the compilation time stat
-    auto endTimeUsecs = Clock.currAppTick().usecs();
-    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+    // Stop recording compilation time, resume recording execution time
+    stats.compTimeStop();
+    stats.execTimeStart();
 
     //writeln("leaving compileBranch");
 
@@ -2208,7 +2211,9 @@ Called when a call continuation stub is hit, compiles the continuation
 */
 extern (C) CodePtr compileCont(ContStub stub)
 {
-    auto startTimeUsecs = Clock.currAppTick().usecs();
+    // Stop recording execution time, start recording compilation time
+    stats.execTimeStop();
+    stats.compTimeStart();
 
     //writeln("entering compileCont");
 
@@ -2241,9 +2246,9 @@ extern (C) CodePtr compileCont(ContStub stub)
         callVer.targets[1]
     );
 
-    // Update the compilation time stat
-    auto endTimeUsecs = Clock.currAppTick().usecs();
-    stats.compTimeUsecs += endTimeUsecs - startTimeUsecs;
+    // Stop recording compilation time, resume recording execution time
+    stats.compTimeStop();
+    stats.execTimeStart();
 
     //writeln("leaving compileCont");
 

@@ -3138,8 +3138,8 @@ void gen_map_prop_idx(
         //writeln("map ptr=" , cast(uint64_t)cast(void*)map);
         //writeln("map id=", map.id);
 
-        // TODO: cache miss stat
-        // stats.inlCacheMiss
+        // Increment the count of property cache misses
+        stats.numMapPropMisses++;
 
         // Lookup the property index
         assert (map !is null, "map is null");
