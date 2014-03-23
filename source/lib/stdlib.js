@@ -43,26 +43,26 @@ C stdlib functions
 {
     var ffi = require("lib/ffi");
     var io = require("lib/stdio");
-    var c = ffi.c;
+    var C = ffi.C;
 
-    c.cdef([
-        "void exit (int status);",
-        "int system (const char* command);",
-        "char* getenv (const char* name);",
-        "FILE *popen(const char *command, const char *mode);",
-        "void perror(const char *s);",
-        "int chdir (const char *filename);",
-        "typedef int pid_t;",
-        "pid_t fork(void);",
-        "pid_t waitpid(pid_t pid, int *status, int options);"
-    ]);
+    C.CDef("\
+         void exit (int status);\
+         int system (const char* command);\
+         char* getenv (const char* name);\
+         FILE *popen(const char *command, const char *mode);\
+         void perror(const char *s);\
+         int chdir (const char *filename);\
+         typedef int pid_t;\
+         pid_t fork(void);\
+         pid_t waitpid(pid_t pid, int *status, int options);\
+    ");
 
     /**
     Allocate memory
     */
     function malloc(size)
     {
-        return c.malloc(size);
+        return C.malloc(size);
     }
 
     /**
@@ -70,7 +70,7 @@ C stdlib functions
     */
     function realloc(ptr, size)
     {
-        return c.realloc(ptr, size);
+        return C.realloc(ptr, size);
     }
 
     /**
@@ -78,7 +78,7 @@ C stdlib functions
     */
     function free(ptr)
     {
-        return c.free(ptr);
+        return C.free(ptr);
     }
 
     /**
@@ -86,7 +86,7 @@ C stdlib functions
     */
     function exit(status)
     {
-        return c.exit(status);
+        return C.exit(status);
     }
 
     /**
@@ -95,8 +95,8 @@ C stdlib functions
     function system(command)
     {
         var c_cmd = ffi.cstr(command);
-        var result = c.system(c_cmd);
-        c.free(c_cmd);
+        var result = C.system(c_cmd);
+        C.free(c_cmd);
         return result;
     }
 
@@ -106,8 +106,8 @@ C stdlib functions
     function getenv(name)
     {
         var c_name = ffi.cstr(name);
-        var result = c.getenv(c_name);
-        c.free(c_name);
+        var result = C.getenv(c_name);
+        C.free(c_name);
         return ffi.string(result);
     }
 
@@ -131,9 +131,9 @@ C stdlib functions
         else
             throw "Invalide popen mode: " + mode;
 
-        var streamh = c.popen(c_cmd, c_mode);
-        c.free(c_cmd);
-        c.free(c_mode);
+        var streamh = C.popen(c_cmd, c_mode);
+        C.free(c_cmd);
+        C.free(c_mode);
 
         if (ffi.isNull(streamh))
             throw "Error calling popen with:" + command;
@@ -144,16 +144,16 @@ C stdlib functions
     function perror(msg)
     {
         var c_msg = ffi.cstr(msg);
-        c.perror(c_msg);
-        c.free(c_msg);
+        C.perror(c_msg);
+        C.free(c_msg);
         return;
     }
 
     function chdir(dir_name)
     {
         var c_dir_name = ffi.cstr(dir_name);
-        var success = c.chdir(c_dir_name);
-        c.free(c_dir_name);
+        var success = C.chdir(c_dir_name);
+        C.free(c_dir_name);
         // TODO: check for error here?
         return success;
     }

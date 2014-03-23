@@ -35,13 +35,54 @@
 *
 *****************************************************************************/
 
-(function()
-{
+var ffi = require('lib/ffi');
+var C = ffi.C;
+var console = require('lib/console');
 
-    var test = require('lib/test');
-    var ffi = require('lib/ffi');
+// Test array wrappers
+C.CDef("\
+       int TestIntArray[3];\
+");
 
-    // TODO: add more tests of FFI functions
-    // Let's make sure we can call a few without segfaulting
+assertEq(C.TestIntArray.toString(), "[ 1, 2, 3 ]");
+assertEqArray(C.TestIntArray.toJS(), [1,2,3]);
 
-})();
+// Test struct wrappers
+C.CDef("\
+       struct CustomerStruct { int num; double balance; char name[10]; };\
+       typedef struct CustomerStruct Customer;\
+       Customer TestCustomer;\
+");
+
+var Bob = C.TestCustomer;
+assertEq(Bob.name.toString(), "Bob");
+assertEq(Bob.get_num(), 6);
+assertEq(Bob.get_balance(), 2.22);
+
+// Test union wrappers
+
+C.CDef("\
+       union NumberUnion { int i; double f; };\
+       union NumberUnion TestNumberUnionInt;\
+       union NumberUnion TestNumberUnionDouble;\
+");
+
+assertEq(C.TestNumberUnionInt.get_i(), 32);
+assertEq(C.TestNumberUnionDouble.get_f(), 5.50);
+
+// Test enum wrappers
+
+C.CDef("\
+       enum Charms { HEARTS, STARS, HORSESHOES };\
+");
+
+assertEq(C.Charms.HEARTS, 0);
+assertEq(C.Charms.STARS, 1);
+assertEq(C.Charms.HORSESHOES, 2);
+
+// Test string wrapping
+C.CDef("\
+       char *getTestString();\
+");
+
+assertEq(ffi.string(C.getTestString()), "Hello World!");

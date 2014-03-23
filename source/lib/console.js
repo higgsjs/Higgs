@@ -71,6 +71,10 @@ Console functions
             // TODO: better substitute string?
             return "{...}";
         }
+        else if (Object.getPrototypeOf(ob) === null)
+        {
+            return ob.toString();
+        }
         else if (ob.hasOwnProperty("toString") && typeof ob.toString === "function")
         {
                 return ob.toString();
@@ -140,8 +144,7 @@ Console functions
 
         // special case arrays
         // TODO: fix this
-        type = (thing && typeof thing.push === "function" && "length" in thing) ?
-                    "array" : typeof thing;
+        type = (Array.isArray(thing)) ? "array" : typeof thing;
 
         // get appropriate stringify function
         string_fun = stringers[type];

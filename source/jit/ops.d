@@ -663,6 +663,7 @@ alias LoadOp!(64, false, Type.INT64) gen_load_u64;
 alias LoadOp!(8 , true , Type.INT32) gen_load_i8;
 alias LoadOp!(16, true , Type.INT32) gen_load_i16;
 alias LoadOp!(32, true , Type.INT32) gen_load_i32;
+alias LoadOp!(64, true, Type.INT64) gen_load_i64;
 alias LoadOp!(64, false, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, false, Type.REFPTR) gen_load_refptr;
 alias LoadOp!(64, false, Type.RAWPTR) gen_load_rawptr;
@@ -714,6 +715,7 @@ alias StoreOp!(64, Type.INT64) gen_store_u64;
 alias StoreOp!(8 , Type.INT32) gen_store_i8;
 alias StoreOp!(16, Type.INT32) gen_store_i16;
 alias StoreOp!(32, Type.INT32) gen_store_i32;
+alias StoreOp!(64, Type.INT64) gen_store_u64;
 alias StoreOp!(64, Type.FLOAT64) gen_store_f64;
 alias StoreOp!(64, Type.REFPTR) gen_store_refptr;
 alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
@@ -3669,6 +3671,16 @@ void gen_load_lib(
         // Library to load (D string)
         auto libname = extractStr(strPtr);
 
+        // Let the user specify just the lib name
+        if (libname.length > 0 && libname.countUntil('/') == -1)
+        {
+            if (libname.countUntil('.') == -1)
+                libname ~= ".so";
+
+            if (libname[0] != 'l' && libname[1] != 'i' && libname[2] != 'b')
+                libname = "lib" ~ libname;
+        }
+
         // String must be null terminated
         libname ~= '\0';
 
@@ -3835,7 +3847,7 @@ void gen_get_sym(
     st.setOutType(as, instr, Type.RAWPTR);
 
 }
-
+// TODO: add support for new i types
 // Mappings for arguments/return values
 Type[string] typeMap;
 size_t[string] sizeMap;
@@ -3846,6 +3858,10 @@ static this()
         "i16" : Type.INT32,
         "i32" : Type.INT32,
         "i64" : Type.INT64,
+        "u8" : Type.INT32,
+        "u16" : Type.INT32,
+        "u32" : Type.INT32,
+        "u64" : Type.INT64,
         "f64" : Type.FLOAT64,
         "*" : Type.RAWPTR
     ];
@@ -3854,6 +3870,9 @@ static this()
         "i8" : 8,
         "i16" : 16,
         "i32" : 32,
+        "u8" : 8,
+        "u16" : 16,
+        "u32" : 32,
         "i64" : 64,
         "f64" : 64,
         "*" : 64

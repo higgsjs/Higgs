@@ -43,28 +43,27 @@ Functions for dealing with the filesystem
 {
     var ffi = require("lib/ffi");
 
-    var c = ffi.c;
+    var C = ffi.C;
 
-    c.cdef([
-        "typedef unsigned long int __ino_t;",
-        "typedef long int __off_t;",
-        "struct dirent\
-        {\
-            __ino_t d_ino;\
-            __off_t d_off;\
-            unsigned short int d_reclen;\
-            unsigned char d_type;\
-            char d_name[256];\
-        };",
-        "typedef struct dirent dirent;",
-        "typedef struct __dirstream DIR;",
-        "DIR *opendir(const char *name);",
-        "dirent *readdir(DIR *dirp);",
-        "void rewinddir(DIR *dirp);",
-        "int closedir(DIR *dirp);"
-    ]);
-
-    c.symbol("errno", "*");
+    C.CDef("\
+           typedef unsigned long int __ino_t;\
+           typedef long int __off_t;\
+           struct dirent\
+           {\
+               __ino_t d_ino;\
+               __off_t d_off;\
+               unsigned short int d_reclen;\
+               unsigned char d_type;\
+               char d_name[256];\
+           };\
+           typedef struct dirent dirent;\
+           typedef struct __dirstream DIR;\
+           DIR *opendir(const char *name);\
+           dirent *readdir(DIR *dirp);\
+           void rewinddir(DIR *dirp);\
+           int closedir(DIR *dirp);\
+           int errno;\
+    ");
 
     // File types (d_type in dirent struct)
     var d_types = {
@@ -91,9 +90,9 @@ Functions for dealing with the filesystem
     dir.prototype.open = function()
     {
         var c_path = ffi.cstr(this.path);
-        var dir = c.opendir(c_path);
-        c.free(c_path);
-        if (ffi.isNull(dir))
+        var dir = C.opendir(c_path);
+        C.free(c_path);
+        if (ffi.isNullPtr(dir))
             throw "Unable to open directory: " + this.path;
         return dir;
     };
@@ -103,16 +102,16 @@ Functions for dealing with the filesystem
         var ent;
         var dname;
 
-        while (!ffi.isNull(ent = c.readdir(this.handle)))
+        while (!ffi.isNullPtr(ent = C.readdir(this.handle)))
         {
-            ent = c.dirent(ent);
-            dname = ent.get_d_name();
-            dname = ffi.string(dname.handle, 0, dname.offset);
+            ent = C.dirent(ent);
+            dname = ent.d_name.toString();
+
             if (dname === '.' || dname === '..')
                 continue;
             cb.call(this, dname, ent);
         }
-        c.rewinddir(this.handle);
+        C.rewinddir(this.handle);
     };
 
     dir.prototype.getDirs = function()
@@ -121,18 +120,19 @@ Functions for dealing with the filesystem
         var dname;
         var dirs = [];
 
-        while (!ffi.isNull(ent = c.readdir(this.handle)))
+        while (!ffi.isNullPtr(ent = C.readdir(this.handle)))
         {
-            ent = c.dirent(ent);
-            dname = ent.get_d_name();
-            dname = ffi.string(dname.handle, 0, dname.offset);
+            ent = C.dirent(ent);
+            dname = ent.d_name.toString();
+
             if (dname === '.' || dname === '..')
                 continue;
 
             if (isDir(ent))
                 dirs.push(dname);
         }
-        c.rewinddir(this.handle);
+
+        C.rewinddir(this.handle);
         return dirs;
     };
 
@@ -142,18 +142,19 @@ Functions for dealing with the filesystem
         var dname;
         var files = [];
 
-        while (!ffi.isNull(ent = c.readdir(this.handle)))
+        while (!ffi.isNullPtr(ent = C.readdir(this.handle)))
         {
-            ent = c.dirent(ent);
-            dname = ent.get_d_name();
-            dname = ffi.string(dname.handle, 0, dname.offset);
+            ent = C.dirent(ent);
+            dname = ent.d_name.toString();
+
             if (dname === '.' || dname === '..')
                 continue;
 
             if (isFile(ent))
                 files.push(dname);
         }
-        c.rewinddir(this.handle);
+
+        C.rewinddir(this.handle);
         return files;
     };
 
