@@ -132,11 +132,9 @@ struct ValState
     static ValState stack(StackIdx idx)
     {
         ValState val;
-
         val.kind = Kind.STACK;
         val.knownType = false;
         val.val = cast(int)idx;
-
         return val;
     }
 
@@ -144,11 +142,9 @@ struct ValState
     static ValState reg(X86Reg reg)
     {
         ValState val;
-
         val.kind = Kind.STACK;
         val.knownType = false;
         val.val = reg.regNo;
-
         return val;
     }
 
@@ -208,6 +204,24 @@ struct ValState
         newState.knownType = false;
         return newState;
     }
+
+    /// Move this value to the stack
+    ValState toStack(StackIdx idx) const
+    {
+        ValState val = this;
+        val.kind = Kind.STACK;
+        val.val = cast(int)idx;
+        return val;
+    }
+
+    /// Move this value to a register
+    ValState toReg(X86Reg reg) const
+    {
+        ValState val = this;
+        val.kind = Kind.STACK;
+        val.val = reg.regNo;
+        return val;
+    }
 }
 
 /**
@@ -226,16 +240,6 @@ class CodeGenState
     /// If a register is free, its value is null
     private IRDstValue[] gpRegMap;
 
-    /// Map of stack slots to values
-    /// Unmapped slots have no associated value
-    private IRDstValue[StackIdx] slotMap;
-
-    // TODO
-    /// List of delayed value writes
-
-    // TODO
-    /// List of delayed type tag writes
-
     /// Constructor for a default/entry code generation state
     this(CallCtx callCtx)
     {
@@ -253,7 +257,6 @@ class CodeGenState
         this.callCtx = that.callCtx;
         this.valMap = that.valMap.dup;
         this.gpRegMap = that.gpRegMap.dup;
-        this.slotMap = that.slotMap.dup;
     }
 
     /**
@@ -290,20 +293,6 @@ class CodeGenState
             // If the value is no longer live, remove it
             if (liveInfo.liveAfterPhi(value, block) is false)
                 gpRegMap[regNo] = null;
-        }
-
-        // For each slot for which we have an assigned value
-        foreach (idx; slotMap.keys)
-        {
-            auto value = slotMap[idx];
-
-            // If this value is not from this function, skip it
-            if (value.block.fun !is block.fun)
-                continue;
-
-            // If the value is no longer live, remove it
-            if (liveInfo.liveAfterPhi(value, block) is false)
-                slotMap.remove(idx);
         }
     }
 
@@ -381,7 +370,190 @@ class CodeGenState
     }
 
     /**
-    Get an operand for any IR value without allocating a register.
+    Allocate a register for a value
+    */
+    X86Opnd allocRec(
+        CodeBlock as,
+        IRDstValue value,
+        IRInstr instr,
+        LiveInfo liveInfo
+    )
+    {
+        assert (value !is null);
+
+        // TODO: check if value is already reg mapped?
+        // may want to do this in getWordOpnd,
+        // in that case, only assert here that the value isn't reg mapped
+
+        // Map the value to a specific register
+        X86Opnd mapReg(X86Reg reg)
+        {
+            // Map the register to the new value
+            gpRegMap[reg.regNo] = value;
+
+            // Map the value to the register
+            valMap[value] = getState(value).toReg(reg);
+
+            // Load the value into the register
+            // note: all 64 bits of the value, not just the requested bits
+            as.mov(reg.opnd(64), getWordOpnd(value, 64));
+
+            // Return the operand for this register
+            return reg.opnd(64);
+        }
+
+        // For each allocatable general-purpose register
+        foreach (reg; allocRegs)
+        {
+            auto regVal = gpRegMap[reg.regNo];
+
+            // If nothing is mapped to this register
+            if (value is null)
+            {
+                // Map the value to this register
+                return mapReg(reg);
+            }
+
+            // If the value mapped is not live
+            if (liveInfo.liveAfter(regVal, instr) == false)
+            {
+                // Remove the mapped value from the value map
+                valMap.remove(regVal);
+
+                // Map the value to this register
+                return mapReg(reg);
+            }
+        }
+
+        // Chosen register to spill
+        immutable(X86Reg)* chosenReg = null;
+
+        // For each allocatable general-purpose register
+        foreach (reg; allocRegs)
+        {
+            auto regVal = gpRegMap[reg.regNo];
+
+            // If an argument of the instruction uses this register, skip it
+            if (instr.hasArg(regVal))
+                continue;
+
+            chosenReg = &reg;
+            break;
+        }
+
+        assert (chosenReg !is null);
+
+        // Free the contents of the chosen register
+        spillReg(as, chosenReg.regNo);
+
+        // Map the value to the chosen register
+        return mapReg(*chosenReg);
+    }
+
+    /**
+    Spill a specific register to the stack
+    */
+    void spillReg(CodeBlock as, size_t regNo)
+    {
+        // Get the value mapped to this register
+        auto regVal = gpRegMap[regNo];
+
+        // If no value is mapped to this register, stop
+        if (regVal is null)
+            return;
+
+        // Get the state for this value
+        auto state = getState(regVal);
+
+        assert (
+            state.isReg,
+            "value not mapped to reg to be spilled"
+        );
+
+        auto mem = X86Opnd(64, wspReg, 8 * regVal.outSlot);
+        auto reg = X86Reg(X86Reg.GP, regNo, 64);
+
+        //writefln("spilling: %s (%s)", regVal.toString(), reg);
+
+        // Spill the value currently in the register
+        //as.comment("Spilling " ~ regVal.toString());
+        as.mov(mem, reg.opnd(64));
+
+        // If the type is known, spill it
+        if (state.knownType)
+        {
+            // Write the type tag to the type stack
+            //as.comment("Spilling type for " ~ regVal.toString());
+            auto memOpnd = X86Opnd(8, tspReg, regVal.outSlot);
+            as.mov(memOpnd, X86Opnd(state.type));
+        }
+
+        // Mark the value as being on the stack
+        valMap[regVal] = state.toStack(regVal.outSlot);
+
+        // Mark the register as free
+        gpRegMap[regNo] = null;
+    }
+
+    /// Spill test function
+    alias bool delegate(IRDstValue value) SpillTestFn;
+
+    /**
+    Spill a set of registers to the stack
+    */
+    void spillRegs(CodeBlock as, SpillTestFn spillTest)
+    {
+        // For each general-purpose register
+        foreach (regNo, value; gpRegMap)
+        {
+            // If nothing is mapped to this register, skip it
+            if (value is null)
+                continue;
+
+            // If the value should be spilled, spill it
+            if (spillTest is null || spillTest(value) is true)
+                spillReg(as, regNo);
+        }
+
+        /*
+        //writefln("spilling consts");
+
+        // For each value
+        foreach (value, allocSt; allocState)
+        {
+            // If this is a known constant
+            if (allocSt & RA_CONST)
+            {
+                // If the value should be spilled
+                if (spillTest is null || spillTest(value) == true)
+                {
+                    // Spill the constant value to the stack
+                    as.comment("Spilling constant value of " ~ value.toString());
+
+                    auto word = getWord(value);
+                    as.setWord(value.outSlot, word.int32Val);
+
+                    auto typeSt = typeState.get(value, 0);
+                    assert (typeSt & TF_KNOWN);
+
+                    // If the type flags are not in sync
+                    if (!(typeSt & TF_SYNC))
+                    {
+                        // Write the type tag to the type stack
+                        as.comment("Spilling type for " ~ value.toString());
+                        auto type = cast(Type)(typeSt & TF_TYPE_MASK);
+                        as.setType(value.outSlot, type);
+                    }
+                }
+            }
+        }
+
+        //writefln("done spilling consts");
+        */
+    }
+
+    /**
+    Get an operand for any IR value without allocating a register
     */
     X86Opnd getWordOpnd(IRValue value, size_t numBits)
     {

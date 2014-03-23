@@ -135,6 +135,9 @@ number of useless compiler calls, without increasing code size?
 - Easy dirty hack: have the branch stub compilation not patch the branch
   the first time around, do some useless compilation the second time
 
+TODO: test performance against master branch
+- is the comp time much worse?
+
 TODO: phi moves
 - Phi moves from reg to stack (should be relatively uncommon?)
   - must write type
@@ -142,38 +145,33 @@ TODO: phi moves
   - must write type (automatic)
   - must write zero if the type is pointer
 
-TODO: spilling mechamism for calls and host code
+TODO: spilling logic for calls and host code, modify jit/ops.d
 - When spilling a value, always spill its type (if known)
-- KISS at first, spill all
+- KISS at first, spill all live
 
-TODO: setOutType
-- If we have an unknown output type but the output operand is a register, need
-  to write a zero to the stack. This is rare-ish.
-- When setting a known out type, if the value is in a register, avoid writing the type
+*** at this point, should be able to get very basic tests working ***
 
-TODO: soft-spilling, soft-restore for getBranchStub
+TODO: soft-spilling scheme, soft-restore for getBranchStub
 - Save register values before entering compileBranch
 - Go through incoming context, spill values appropriately for GC safety
 - When going back to new compiled code, need to restore values into registers
 - Want to write regs to a designated memory area, not difficult
   - Pre-alloc on the VM
 
-Reg alloc simplifying assumptions:
-- KISS: if you write a value to the stack, should also write its type
-  - write type tags on spilling
-  - if out opnd is stack, write type tag
-- For now, can just assign a register based on stack idx
- - no reg alloc phase, interference testing per-se?
- - or just do it all on-the-fly...?
+TODO: setOutType
+- If we have an unknown output type but the output operand is a register, need
+  to write a zero to the stack. This is rare-ish.
+- When setting a known out type, if the value is in a register, avoid writing the type
 
-TODO: reg alloc, commit all, work in steps, get basic tests working first
+TODO: getOutOpnd
 
+TODO: getTypeOpnd
 
-
-
-
-
-
+TODO: getWordOpnd
+- For now, just assign a register based on stack idx?
+ - no reg alloc phase, interference testing per-se
+ - do it all on-the-fly
+- Can also just try to find a free register
 
 
 
@@ -182,6 +180,16 @@ TODO: reg alloc, commit all, work in steps, get basic tests working first
 
 
 
+
+
+
+
+
+[DONE] TODO: spillReg helper function
+
+[DONE] TODO: allocReg helper function
+
+[DONE] TODO: ValState.toReg, toStack
 
 ------------------------------------------------------------------------------
 
