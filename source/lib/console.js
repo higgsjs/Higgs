@@ -61,8 +61,8 @@ Console functions
     */
     stringers.object = function(ob)
     {
-        var keys = Object.keys(ob);
-        var l = keys.length;
+        var keys;
+        var l;
         var str = "{ ";
         var k;
 
@@ -73,17 +73,23 @@ Console functions
         }
         else if (Object.getPrototypeOf(ob) === null)
         {
-            return ob.toString();
+            if (typeof ob.toString === "function")
+                return ob.toString();
+            else
+                return "{ object }";
         }
         else if (ob.hasOwnProperty("toString") && typeof ob.toString === "function")
         {
-                return ob.toString();
+            return ob.toString();
         }
         else
         {
             ob.__CONSOLE_VISITED__ = true;
             obs.push(ob);
         }
+
+        keys = Object.keys(ob);
+        l = keys.length;
 
         if (l > 0)
         {
