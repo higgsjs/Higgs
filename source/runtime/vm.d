@@ -492,6 +492,9 @@ class VM
     /// Branch target stubs
     BranchStub[] branchStubs;
 
+    /// Space to save registers when calling into hosted code
+    Word* regSave;
+
     /**
     Constructor, initializes the VM state
     */
@@ -602,6 +605,13 @@ class VM
 
         // Allocate the executable heap
         execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_genasm);
+
+        // Allocate the register save space
+        regSave = cast(Word*)GC.malloc(
+            Word.sizeof * allocRegs.length,
+            GC.BlkAttr.NO_SCAN |
+            GC.BlkAttr.NO_INTERIOR
+        );
 
         // If the runtime library should be loaded
         if (loadRuntime)

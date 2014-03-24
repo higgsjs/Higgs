@@ -531,7 +531,7 @@ struct X86Opnd
         REG,
         IMM,
         MEM,
-        IPREL  
+        IPREL
     }
 
     Kind kind;

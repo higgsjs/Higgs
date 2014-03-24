@@ -128,12 +128,17 @@ Meeting:
   - more code does mean more icache interference
 - should probably focus on trimming the biggest instructions
   (e.g.: get_global, calls)?
+  - get_global can be optimized with external fallback code
+  - could optimize global calls speculatively
 
 TODO: can possibly test out context swapping hypothesis by adding a certain
 number of useless compiler calls, without increasing code size?
 - These would have to do real compilation work
 - Easy dirty hack: have the branch stub compilation not patch the branch
   the first time around, do some useless compilation the second time
+
+TODO: test performance against master branch
+- is the comp time much worse?
 
 TODO: phi moves
 - Phi moves from reg to stack (should be relatively uncommon?)
@@ -142,46 +147,45 @@ TODO: phi moves
   - must write type (automatic)
   - must write zero if the type is pointer
 
-TODO: spilling mechamism for calls and host code
+TODO: spilling logic for calls and host code, modify jit/ops.d
 - When spilling a value, always spill its type (if known)
-- KISS at first, spill all
+- KISS at first, spill all live
+
+*** at this point, should be able to get very basic tests working ***
 
 TODO: setOutType
 - If we have an unknown output type but the output operand is a register, need
   to write a zero to the stack. This is rare-ish.
 - When setting a known out type, if the value is in a register, avoid writing the type
 
-TODO: soft-spilling, soft-restore for getBranchStub
-- Save register values before entering compileBranch
+TODO: getOutOpnd
+
+TODO: getWordOpnd
+- Put code in place to alloc regs, but leave disabled for now?
+
+TODO: getTypeOpnd
+
+
+
+
+
+
+[DONE] TODO: spill saved registers for GC in compileBranch
 - Go through incoming context, spill values appropriately for GC safety
+- iterate through valMap, spill known types as well
+- no need to change status of written values
+
+[DONE] TODO: save registers in getBranchStub
+- Save register values before entering compileBranch
 - When going back to new compiled code, need to restore values into registers
 - Want to write regs to a designated memory area, not difficult
-  - Pre-alloc on the VM
+- Word[allocRegs.length] VM.regSave
 
-Reg alloc simplifying assumptions:
-- KISS: if you write a value to the stack, should also write its type
-  - write type tags on spilling
-  - if out opnd is stack, write type tag
-- For now, can just assign a register based on stack idx
- - no reg alloc phase, interference testing per-se?
- - or just do it all on-the-fly...?
+[DONE] TODO: spillReg helper function
 
-TODO: reg alloc, commit all, work in steps, get basic tests working first
+[DONE] TODO: allocReg helper function
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: ValState.toReg, toStack
 
 ------------------------------------------------------------------------------
 
