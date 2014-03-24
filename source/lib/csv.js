@@ -199,12 +199,12 @@
         var file = io.fopen(fileName, "w");
         file.write(str);
         file.close();
-    }
+    };
 
     CSV.prototype.getNumRows = function ()
     {
         return this.rows.length;
-    }
+    };
 
     CSV.prototype.getNumCols = function (rowIdx)
     {
@@ -214,7 +214,7 @@
         );
 
         return this.rows[rowIdx].length;
-    }
+    };
 
     CSV.prototype.getCell = function (rowIdx, colIdx)
     {

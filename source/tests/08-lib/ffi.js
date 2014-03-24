@@ -36,53 +36,53 @@
 *****************************************************************************/
 
 var ffi = require('lib/ffi');
-var C = ffi.C;
+var c = ffi.c;
 var console = require('lib/console');
 
 // Test array wrappers
-C.CDef("\
+c.cdef("\
        int TestIntArray[3];\
 ");
 
-assertEq(C.TestIntArray.toString(), "[ 1, 2, 3 ]");
-assertEqArray(C.TestIntArray.toJS(), [1,2,3]);
+assertEq(c.TestIntArray.toString(), "[ 1, 2, 3 ]");
+assertEqArray(c.TestIntArray.toJS(), [1,2,3]);
 
 // Test struct wrappers
-C.CDef("\
+c.cdef("\
        struct CustomerStruct { int num; double balance; char name[10]; };\
        typedef struct CustomerStruct Customer;\
        Customer TestCustomer;\
 ");
 
-var Bob = C.TestCustomer;
+var Bob = c.TestCustomer;
 assertEq(Bob.name.toString(), "Bob");
 assertEq(Bob.get_num(), 6);
 assertEq(Bob.get_balance(), 2.22);
 
 // Test union wrappers
 
-C.CDef("\
+c.cdef("\
        union NumberUnion { int i; double f; };\
        union NumberUnion TestNumberUnionInt;\
        union NumberUnion TestNumberUnionDouble;\
 ");
 
-assertEq(C.TestNumberUnionInt.get_i(), 32);
-assertEq(C.TestNumberUnionDouble.get_f(), 5.50);
+assertEq(c.TestNumberUnionInt.get_i(), 32);
+assertEq(c.TestNumberUnionDouble.get_f(), 5.50);
 
 // Test enum wrappers
 
-C.CDef("\
+c.cdef("\
        enum Charms { HEARTS, STARS, HORSESHOES };\
 ");
 
-assertEq(C.Charms.HEARTS, 0);
-assertEq(C.Charms.STARS, 1);
-assertEq(C.Charms.HORSESHOES, 2);
+assertEq(c.Charms.HEARTS, 0);
+assertEq(c.Charms.STARS, 1);
+assertEq(c.Charms.HORSESHOES, 2);
 
 // Test string wrapping
-C.CDef("\
+c.cdef("\
        char *getTestString();\
 ");
 
-assertEq(ffi.string(C.getTestString()), "Hello World!");
+assertEq(ffi.string(c.getTestString()), "Hello World!");

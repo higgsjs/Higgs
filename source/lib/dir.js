@@ -43,9 +43,9 @@ Functions for dealing with the filesystem
 {
     var ffi = require("lib/ffi");
 
-    var C = ffi.C;
+    var c = ffi.c;
 
-    C.CDef("\
+    c.cdef("\
            typedef unsigned long int __ino_t;\
            typedef long int __off_t;\
            struct dirent\
@@ -90,8 +90,8 @@ Functions for dealing with the filesystem
     dir.prototype.open = function()
     {
         var c_path = ffi.cstr(this.path);
-        var dir = C.opendir(c_path);
-        C.free(c_path);
+        var dir = c.opendir(c_path);
+        c.free(c_path);
         if (ffi.isNullPtr(dir))
             throw "Unable to open directory: " + this.path;
         return dir;
@@ -102,16 +102,17 @@ Functions for dealing with the filesystem
         var ent;
         var dname;
 
-        while (!ffi.isNullPtr(ent = C.readdir(this.handle)))
+        while (!ffi.isNullPtr(ent = c.readdir(this.handle)))
         {
-            ent = C.dirent(ent);
+            ent = c.dirent(ent);
             dname = ent.d_name.toString();
 
             if (dname === '.' || dname === '..')
                 continue;
             cb.call(this, dname, ent);
         }
-        C.rewinddir(this.handle);
+
+        c.rewinddir(this.handle);
     };
 
     dir.prototype.getDirs = function()
@@ -120,9 +121,9 @@ Functions for dealing with the filesystem
         var dname;
         var dirs = [];
 
-        while (!ffi.isNullPtr(ent = C.readdir(this.handle)))
+        while (!ffi.isNullPtr(ent = c.readdir(this.handle)))
         {
-            ent = C.dirent(ent);
+            ent = c.dirent(ent);
             dname = ent.d_name.toString();
 
             if (dname === '.' || dname === '..')
@@ -132,7 +133,7 @@ Functions for dealing with the filesystem
                 dirs.push(dname);
         }
 
-        C.rewinddir(this.handle);
+        c.rewinddir(this.handle);
         return dirs;
     };
 
@@ -142,9 +143,9 @@ Functions for dealing with the filesystem
         var dname;
         var files = [];
 
-        while (!ffi.isNullPtr(ent = C.readdir(this.handle)))
+        while (!ffi.isNullPtr(ent = c.readdir(this.handle)))
         {
-            ent = C.dirent(ent);
+            ent = c.dirent(ent);
             dname = ent.d_name.toString();
 
             if (dname === '.' || dname === '..')
@@ -154,7 +155,7 @@ Functions for dealing with the filesystem
                 files.push(dname);
         }
 
-        C.rewinddir(this.handle);
+        c.rewinddir(this.handle);
         return files;
     };
 

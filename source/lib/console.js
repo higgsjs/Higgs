@@ -61,8 +61,8 @@ Console functions
     */
     stringers.object = function(ob)
     {
-        var keys;
-        var l;
+        var keys = Object.keys(ob);
+        var l = keys.length;
         var str = "{ ";
         var k;
 
@@ -71,25 +71,22 @@ Console functions
             // TODO: better substitute string?
             return "{...}";
         }
-        else if (Object.getPrototypeOf(ob) === null)
+        if (Object.getPrototypeOf(ob) == null)
         {
             if (typeof ob.toString === "function")
                 return ob.toString();
             else
-                return "{ object }";
+                return "{ Object }";
         }
         else if (ob.hasOwnProperty("toString") && typeof ob.toString === "function")
         {
-            return ob.toString();
+                return ob.toString();
         }
         else
         {
             ob.__CONSOLE_VISITED__ = true;
             obs.push(ob);
         }
-
-        keys = Object.keys(ob);
-        l = keys.length;
 
         if (l > 0)
         {
@@ -150,7 +147,8 @@ Console functions
 
         // special case arrays
         // TODO: fix this
-        type = (Array.isArray(thing)) ? "array" : typeof thing;
+        type = (thing && typeof thing.push === "function" && "length" in thing) ?
+                    "array" : typeof thing;
 
         // get appropriate stringify function
         string_fun = stringers[type];

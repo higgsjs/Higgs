@@ -66,7 +66,7 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
         console.log("Running: " + file + "...");
 
         // fork before running test
-        var pid = ffi.C.fork();
+        var pid = ffi.c.fork();
 
         if (pid < 0)
         {
@@ -95,7 +95,7 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
         else
         {
             // parent, wait for test to finish
-            ffi.C.waitpid(pid, child_status, 0);
+            ffi.c.waitpid(pid, child_status, 0);
             tests_run +=1;
 
             // pull out return code and check for pass/fail
