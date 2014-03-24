@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -45,10 +45,11 @@ import std.conv;
 import ir.ir;
 import ir.livevars;
 import ir.ops;
+import runtime.vm;
 
 void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
 {
-    //writeln("peephole pass");
+    //writeln("peephole pass for ", fun.getName);
 
     /// Test if a value is available at the target block
     bool isAvail(IRValue value)
@@ -114,7 +115,9 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
         //writeln("*** deleting phi node ", phi.getName());
 
         assert (
-            phi.hasNoUses
+            phi.hasNoUses || (phi.hasOneUse && phi.getFirstUse.owner is phi),
+            "cannot remove phi node which still has uses:\n" ~
+            phi.toString()
         );
 
         // Set the changed flag
@@ -194,6 +197,8 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
     size_t passNo;
     for (passNo = 1; changed is true; passNo++)
     {
+        //writeln("passNo=", passNo);
+
         // Reset the changed flag
         changed = false;
 
@@ -261,7 +266,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 // If this phi node has the form:
                 // Vi <- phi(...Vi...Vi...)
                 // it is a tautological phi node
-                if (numVi == phi.block.numIncoming)
+                if (numVi == phi.block.numIncoming && phi.hasOneUse)
                 {
                     // Remove the phi node
                     delPhi(phi);
@@ -271,7 +276,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 // If this phi assignment has the form:
                 // Vi <- phi(...Vi...Vj...Vi...Vj...)
                 // 0 or more Vi and 1 or more Vj
-                if (numVi + numVj == phi.block.numIncoming && isAvail(Vj))
+                if (numVi + numVj == phi.block.numIncoming && numVj > 0 && isAvail(Vj))
                 {
                     //print('Renaming phi: ' + instr);
 
@@ -292,12 +297,32 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
             {
                 auto op = instr.opcode;
 
+                //writeln("instr: ", instr);
+
                 // If this instruction has no uses and is pure, remove it
                 if (instr.hasNoUses && !op.isImpure && !op.isBranch)
                 {
                     //writeln("removing dead: ", instr);
                     delInstr(instr);
                     continue INSTR_LOOP;
+                }
+
+                // Constant folding on is_i32
+                if (op == &IS_I32)
+                {
+                    auto arg0 = instr.getArg(0);
+                    auto cst0 = cast(IRConst)arg0;
+
+                    if (cst0)
+                    {
+                        instr.replUses(
+                            (cst0.type is Type.INT32)? 
+                            IRConst.trueCst:IRConst.falseCst
+                        );
+
+                        delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
                 }
 
                 // Constant folding on int32 add instructions
@@ -384,7 +409,10 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         auto succ = branch.target;
 
                         // If the successor has no phi nodes and only one predecessor
-                        if (branch.args.length is 0 && succ.numIncoming is 1 && succ !is target)
+                        if (branch.args.length is 0 &&
+                            succ.numIncoming is 1 &&
+                            succ !is target &&
+                            succ !is block)
                         {
                             // Move instructions from the successor into the predecessor
                             while (succ.firstInstr !is null)
@@ -457,14 +485,89 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                             continue INSTR_LOOP;
                         }
                     }
-                    
-                    // If this is a conditional branch with a constant argument
+
+                    // If this is an if_true conditional branch
                     if (op is &IF_TRUE)
                     {
-                        if (auto cstArg = cast(IRConst)instr.getArg(0))
+                        auto ifArg = instr.getArg(0);
+                        auto ifDstArg = cast(IRDstValue)ifArg;
+
+                        // If the argument is a constant
+                        if (auto cstArg = cast(IRConst)ifArg)
                         {
                             // Select the target to branch to
                             auto desc = instr.getTarget((cstArg is IRConst.trueCst)? 0:1);
+
+                            // Replace the if branch by a direct jump
+                            auto jumpInstr = block.addInstr(new IRInstr(&JUMP));
+                            auto newDesc = jumpInstr.setTarget(0, desc.target);
+                            foreach (arg; desc.args)
+                                newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+                            delInstr(instr);
+
+                            continue INSTR_LOOP;
+                        }
+
+                        // If the if arg is a phi node
+                        // and there are other phi nodes or instructions 
+                        // and the phi node has no uther uses
+                        if (
+                            ifArg is block.firstPhi &&
+                            block.firstPhi.next is null &&
+                            block.firstInstr is instr &&
+                            block.firstPhi.hasOneUse
+                        )
+                        {
+                            // For each predecessor
+                            for (size_t pIdx = 0; pIdx < block.numIncoming; ++pIdx)
+                            {
+                                // Get the phi argument from the predecessor
+                                auto predDesc = block.getIncoming(pIdx);
+                                auto phiArg = predDesc.getPhiArg(block.firstPhi);
+
+                                // If the phi arg is constant
+                                if (auto cstArg = cast(IRConst)phiArg)
+                                {
+                                    auto predBranch = predDesc.branch;
+
+                                    // Find the target index
+                                    size_t tIdx;
+                                    for (tIdx = 0; tIdx < predBranch.MAX_TARGETS; ++tIdx)
+                                        if (predBranch.getTarget(tIdx) is predDesc)
+                                            break;
+                                    assert (tIdx < predBranch.MAX_TARGETS);
+
+                                    // Determine the target from this if-branch
+                                    auto ifDesc = instr.getTarget((cstArg.pair == TRUE)? 0:1);
+                                    auto newDesc = predBranch.setTarget(tIdx, ifDesc.target);
+
+                                    // Copy the arguments from this if-branch
+                                    foreach (arg; ifDesc.args)
+                                        newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+
+                                    changed = true;
+                                    continue INSTR_LOOP;
+                                }
+                            }
+                        }
+
+                        // If there is a single predecessor which is an if
+                        // branch on the same argument, and the argument is
+                        // not from this block
+                        if (
+                            block.numIncoming is 1 &&
+                            block.getIncoming(0).branch.opcode is &IF_TRUE &&
+                            block.getIncoming(0).branch.getArg(0) is ifArg &&
+                            ifDstArg && ifDstArg.block !is block
+                        )
+                        {
+                            // Determine which branch was taken to get here
+                            auto predEdge = block.getIncoming(0);
+                            auto predIf = predEdge.branch;
+                            auto branchIdx = (predEdge is predIf.getTarget(0))? 0:1;
+
+                            // This if will branch the same way as the predecessor
+                            auto desc = instr.getTarget(branchIdx);
 
                             // Replace the if branch by a direct jump
                             auto jumpInstr = block.addInstr(new IRInstr(&JUMP));
@@ -488,7 +591,9 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         auto firstInstr = branch.target.firstInstr;
 
                         // If the branch has no phi args and the target is a jump
-                        if (branch.args.length is 0 && firstInstr.opcode is &JUMP)
+                        if (branch.args.length is 0 && 
+                            firstInstr.opcode is &JUMP &&
+                            branch.target !is block)
                         {
                             assert (branch.target.firstPhi is null);
                             auto jmpBranch = firstInstr.getTarget(0);
@@ -507,7 +612,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         }
                     }
                 }
-                
+
             } // foreach instr
 
         } // foreach block

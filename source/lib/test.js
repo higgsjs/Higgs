@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -47,9 +47,9 @@ Assert functions for basic unit/regression tests.
     */
     function isSameVal(val1, val2)
     {
-        // TODO: in other engines +0 and -0 can lead to distinct
-        // results, for example -Infinity vs +Infinity. Higgs doesn't currently
-        // have those distinctions, but when/if it does checks can be put here.
+        //check for +0 and -0
+        if (val1 === 0 && val2 === 0)
+            return (1 / val1) === (1 / val2);
 
         // Check for NaN
         if (val1 !== val1 && val2 !== val2)
@@ -58,14 +58,23 @@ Assert functions for basic unit/regression tests.
         return val1 === val2;
     }
 
-
     /**
     Assert two values are equal
     */
     global.assertEq = function(val, expected, msg)
     {
         if(!isSameVal(val, expected))
-            throw new TypeError("Assertion failed: got '" + val + "' expected '" + expected + "'" +
+            throw new Error("Assertion failed: got '" + val + "' expected '" + expected + "'" +
+                                (msg ? " : " + msg : ""));
+    };
+
+    /**
+    Assert two values are not equal
+    */
+    global.assertNotEq = function(val, different, msg)
+    {
+        if(isSameVal(val, different))
+            throw new Error("Assertion failed: got '" + val + "' expected something else " +
                                 (msg ? " : " + msg : ""));
     };
 
@@ -75,14 +84,18 @@ Assert functions for basic unit/regression tests.
     global.assertThrows = function(fun, msg)
     {
         var thrown = false;
-        try {
+
+        try
+        {
             fun();
-        } catch (e) {
+        }
+        catch (e) 
+        {
             thrown = true;
         }
 
         if (!thrown)
-            throw new TypeError("Assertion failed: function did not throw exception" +
+            throw new Error("Assertion failed: function did not throw exception" +
                                 (msg ? " : " + msg : ""));
     };
 
@@ -95,12 +108,12 @@ Assert functions for basic unit/regression tests.
         var len = arr2.length;
 
         if (i !== len)
-            throw new TypeError("Assertion failed: expected equal arrays but lengths not the same" +
+            throw new Error("Assertion failed: expected equal arrays but lengths not the same" +
                                 (msg ? " : " + msg : ""));
 
         while (i--)
             if (!isSameVal(arr1[i], arr2[i]))
-                throw new TypeError("Assertion failed: expected equal arrays mismatch at index " + i +
+                throw new Error("Assertion failed: expected equal arrays mismatch at index " + i +
                                     (msg ? " : " + msg : ""));
     };
 
@@ -110,9 +123,8 @@ Assert functions for basic unit/regression tests.
     global.assertTrue = function(val, msg)
     {
         if (!val)
-            throw new TypeError("Assertion failed: expected truthy value got '" + val +"'" +
+            throw new Error("Assertion failed: expected truthy value got '" + val +"'" +
                                 (msg ? " : " + msg : ""));
-
     };
 
     /**
@@ -121,10 +133,9 @@ Assert functions for basic unit/regression tests.
     global.assertFalse = function(val, msg)
     {
         if (val)
-            throw new TypeError("Assertion failed: expected falsey value, got: '" + val + "'" +
+            throw new Error("Assertion failed: expected falsey value, got: '" + val + "'" +
                                 (msg ? " : " + msg : ""));
     };
-
 
     exports = {
         isSameVal: isSameVal

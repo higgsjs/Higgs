@@ -35,26 +35,57 @@
 *
 *****************************************************************************/
 
+import std.c.stdlib;
 import std.stdio;
+import std.algorithm;
+import std.conv;
+import std.string;
 import parser.parser;
 import runtime.vm;
+import util.string;
 import repl;
 import options;
 
 void main(string[] args)
 {
-    // Parse the command-line arguments
-    parseCmdArgs(args);
+    // Arguments after "--" are passed to JS code
+    auto argLimit = countUntil(args, "--");
+    string[] hostArgs;
+    string[] jsArgs;
 
-    // If in (unit) test mode
-    if (opts.test is true)
-        return;
+    if (argLimit > 0)
+    {
+        hostArgs = args[0..argLimit];
+        jsArgs = args[++argLimit..$];
+    }
+    else
+    {
+        hostArgs = args[0..$];
+        jsArgs = [];
+    }
+
+    // Parse the command-line arguments
+    parseCmdArgs(hostArgs);
 
     // Get the names of files to execute
-    auto fileNames = args[1..$];
+    auto fileNames = hostArgs[1..$];
 
-    // VM instance
-    auto vm = new VM(true, !opts.nostdlib);
+    // Create VM instance
+    auto vm = new VM(!opts.noruntime, !opts.nostdlib);
+
+    /*
+    // Construct the JS arguments array
+    if (!opts.noruntime)
+    {
+        wstring jsArgsStr = "arguments = [";
+        foreach(string arg; jsArgs)
+            jsArgsStr ~= "'" ~ escapeJSString(to!wstring(arg)) ~ "',";
+        jsArgsStr ~= "];";
+
+        // Evaluate the arguments array string
+        vm.evalString(to!string(jsArgsStr));
+    }
+    */
 
     // If file arguments were passed or there is
     // a string of code to be executed
@@ -71,12 +102,20 @@ void main(string[] args)
 
         catch (ParseError e)
         {
-            writeln("parse error: " ~ e.toString());
+            writeln("parse error: ", e);
+            exit(-1);
         }
 
         catch (RunError e)
         {
-            writefln("run-time error: " ~ e.toString());
+            writeln("run-time error: ", e);
+            exit(-1);
+        }
+
+        catch (Error e)
+        {
+            writeln(e);
+            exit(-1);
         }
     }
 

@@ -22,14 +22,14 @@ function test_lists()
 
   while( (tmp = Li2.shift()) ) {
     Li3.push(tmp);
-  } 
+  }
 
   // Li2 is now empty.
   // Remove each element from right side of Li3 and append to right
   // side of Li2
   while( (tmp = Li3.pop()) ) {
     Li2.push(tmp);
-  } 
+  }
 
   // Li2 is now reversed, and Li3 empty.
   // Reverse Li1 in place.
@@ -46,5 +46,5 @@ var resultl
 
 while( n-- )
   result = test_lists();
-  
+
 print(result );

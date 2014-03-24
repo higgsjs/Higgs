@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -114,9 +114,13 @@ Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &gen_get_type };
 Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &gen_is_i32, OpInfo.BOOL_VAL };
 Opcode IS_I64 = { "is_i64", true, [OpArg.LOCAL], &gen_is_i64, OpInfo.BOOL_VAL };
 Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], &gen_is_f64, OpInfo.BOOL_VAL };
-Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BOOL_VAL };
-Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &gen_is_rawptr, OpInfo.BOOL_VAL };
 Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &gen_is_const, OpInfo.BOOL_VAL };
+Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &gen_is_rawptr, OpInfo.BOOL_VAL };
+Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BOOL_VAL };
+Opcode IS_OBJECT = { "is_object", true, [OpArg.LOCAL], &gen_is_object, OpInfo.BOOL_VAL };
+Opcode IS_ARRAY = { "is_array", true, [OpArg.LOCAL], &gen_is_array, OpInfo.BOOL_VAL };
+Opcode IS_CLOSURE = { "is_closure", true, [OpArg.LOCAL], &gen_is_closure, OpInfo.BOOL_VAL };
+Opcode IS_STRING = { "is_string", true, [OpArg.LOCAL], &gen_is_string, OpInfo.BOOL_VAL };
 
 // Type conversion
 Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &gen_i32_to_f64 };
@@ -192,8 +196,9 @@ Opcode LOAD_U8 = { "load_u8", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u8 };
 Opcode LOAD_U16 = { "load_u16", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u16 };
 Opcode LOAD_U32 = { "load_u32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u32 };
 Opcode LOAD_U64 = { "load_u64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u64 };
-Opcode LOAD_I8 = { "load_i8", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_i8*/null };
-Opcode LOAD_I16 = { "load_i16", true, [OpArg.LOCAL, OpArg.LOCAL], /*&gen_load_i16*/null };
+Opcode LOAD_I8 = { "load_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i8 };
+Opcode LOAD_I16 = { "load_i16", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i16 };
+Opcode LOAD_I32 = { "load_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i32 };
 Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_f64 };
 Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_refptr };
 Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_rawptr };
@@ -207,6 +212,7 @@ Opcode STORE_U32 = { "store_u32", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL]
 Opcode STORE_U64 = { "store_u64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_u64, OpInfo.IMPURE };
 Opcode STORE_I8 = { "store_i8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_i8, OpInfo.IMPURE };
 Opcode STORE_I16 = { "store_i16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_i16, OpInfo.IMPURE };
+Opcode STORE_I32 = { "store_i32", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_i32, OpInfo.IMPURE };
 Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_f64, OpInfo.IMPURE };
 Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_refptr, OpInfo.IMPURE };
 Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_rawptr, OpInfo.IMPURE };
@@ -265,8 +271,13 @@ Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], &gen_get_heap_size };
 Opcode GET_HEAP_FREE = { "get_heap_free", true, [], &gen_get_heap_free };
 Opcode GET_GC_COUNT = { "get_gc_count", true, [], &gen_get_gc_count };
 
-/// Allocate a block of memory on the heap
-Opcode HEAP_ALLOC = { "heap_alloc", true, [OpArg.LOCAL], &gen_heap_alloc, OpInfo.MAY_GC };
+/// Heap memory block allocation instructions
+/// Note: each of these assigns a different type tag to the output pointer
+Opcode ALLOC_REFPTR = { "alloc_refptr", true, [OpArg.LOCAL], &gen_alloc_refptr, OpInfo.MAY_GC };
+Opcode ALLOC_OBJECT = { "alloc_object", true, [OpArg.LOCAL], &gen_alloc_object, OpInfo.MAY_GC };
+Opcode ALLOC_ARRAY = { "alloc_array", true, [OpArg.LOCAL], &gen_alloc_array, OpInfo.MAY_GC };
+Opcode ALLOC_CLOSURE = { "alloc_closure", true, [OpArg.LOCAL], &gen_alloc_closure, OpInfo.MAY_GC };
+Opcode ALLOC_STRING = { "alloc_string", true, [OpArg.LOCAL], &gen_alloc_string, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection
 Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &gen_gc_collect, OpInfo.MAY_GC | OpInfo.IMPURE };
@@ -325,6 +336,9 @@ Opcode GET_AST_STR = { "get_ast_str", true, [OpArg.LOCAL], &gen_get_ast_str, OpI
 
 /// Get a string representation of a function's IR
 Opcode GET_IR_STR = { "get_ir_str", true, [OpArg.LOCAL], &gen_get_ir_str, OpInfo.MAY_GC };
+
+/// Get a string representation of a function's machine code
+Opcode GET_ASM_STR = { "get_asm_str", true, [OpArg.LOCAL], &gen_get_asm_str, OpInfo.MAY_GC };
 
 /// Load a shared lib
 Opcode LOAD_LIB = { "load_lib", true, [OpArg.LOCAL], &gen_load_lib };

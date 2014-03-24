@@ -69,7 +69,18 @@ Console functions
         if (ob.__CONSOLE_VISITED__)
         {
             // TODO: better substitute string?
-            return "{...}"
+            return "{...}";
+        }
+        if (Object.getPrototypeOf(ob) == null)
+        {
+            if (typeof ob.toString === "function")
+                return ob.toString();
+            else
+                return "{ Object }";
+        }
+        else if (ob.hasOwnProperty("toString") && typeof ob.toString === "function")
+        {
+                return ob.toString();
         }
         else
         {
@@ -88,7 +99,7 @@ Console functions
             }
         }
 
-        str += " }"
+        str += " }";
         return str;
     };
 
@@ -123,8 +134,16 @@ Console functions
         var string_fun;
 
         // special case raw pointers
-        if ($ir_get_type(thing) === 4)
+        if ($ir_is_rawptr(thing))
             return "<RAWPTR>";
+
+        // special case null
+        if (thing === null)
+            return "null";
+
+        // special case undefined
+        if (thing === undefined)
+            return "undefined";
 
         // special case arrays
         // TODO: fix this
@@ -173,7 +192,9 @@ Console functions
     }
 
     exports = {
-        log : log
+        log : log,
+        stringify : stringify,
+        stringers : stringers
     };
 
 })();

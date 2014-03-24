@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -46,6 +46,7 @@ import std.conv;
 import std.regex;
 import util.id;
 import util.string;
+import parser.lexer;
 import parser.ast;
 import ir.ops;
 import ir.livevars;
@@ -55,17 +56,17 @@ import runtime.object;
 import jit.codeblock;
 import jit.jit;
 
-/// Local variable index type
-alias uint32 LocalIdx;
+/// Stack variable index type
+alias int32 StackIdx;
 
 /// Link table index type
 alias uint32 LinkIdx;
 
 /// Null local constant
-immutable LocalIdx NULL_LOCAL = LocalIdx.max;
+immutable StackIdx NULL_STACK = StackIdx.max;
 
 /// Null link constant
-immutable LocalIdx NULL_LINK = LinkIdx.max;
+immutable StackIdx NULL_LINK = LinkIdx.max;
 
 /// Number of hidden function arguments
 immutable uint32_t NUM_HIDDEN_ARGS = 4;
@@ -296,8 +297,11 @@ class CallCtx
     /// Continuation state (if inlined)
     CodeGenState contState = null;
 
-    /// Number of extra locals (if inlined)
-    size_t extraLocals = 0;
+    /// Exception handler (if inlined, may be null)
+    CodeFragment excHandler = null;
+
+    /// Total number of inlined locals from all inlined contexts
+    uint32_t extraLocals = 0;
 
     /// Associated VM object
     VM vm;
@@ -307,6 +311,9 @@ class CallCtx
 
     /// Constructor call flag
     bool ctorCall;
+
+    /// Map of blocks to lists of existing versions
+    BlockVersion[][IRBlock] versionMap;
 
     /// Default constructor
     this(VM vm, IRFunction fun, bool ctorCall)
@@ -321,7 +328,7 @@ class CallCtx
         CallCtx parent,
         IRInstr callSite,
         CodeGenState contState,
-        size_t extraLocals,
+        CodeFragment excHandler,
         IRFunction fun,
         bool ctorCall
     )
@@ -331,9 +338,26 @@ class CallCtx
         this.parent = parent;
         this.callSite = callSite;
         this.contState = contState;
-        this.extraLocals = extraLocals;
+        this.excHandler = excHandler;
         this.fun = fun;
         this.ctorCall = ctorCall;
+
+        // Compute the total number of inlined locals
+        this.extraLocals = parent.extraLocals + fun.numLocals;
+    }
+
+    /**
+    Test if a function is in this context or one of its parents
+    */
+    bool contains(IRFunction fun)
+    {
+        if (fun is this.fun)
+            return true;
+
+        if (parent)
+            return parent.contains(fun);
+
+        return false;
     }
 }
 
@@ -494,7 +518,7 @@ class IRBlock : IdObject
         if (instr.opcode.isBranch)
         {
             // Remove branch edges from successors
-            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)            
+            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
             {
                 auto edge = instr.getTarget(tIdx);
                 if (edge !is null)
@@ -906,9 +930,9 @@ class IRConst : IRValue
     /// Value of this constant
     private ValuePair value;
 
-    override string toString() 
+    override string toString()
     {
-        return valToString(value);
+        return value.toString();
     }
 
     /// Get the constant value pair for this IR value
@@ -956,31 +980,31 @@ class IRConst : IRValue
 
     static IRConst trueCst() 
     { 
-        if (!trueVal) trueVal = new IRConst(TRUE , Type.CONST); 
+        if (!trueVal) trueVal = new IRConst(TRUE);
         return trueVal;
     }
 
     static IRConst falseCst()
     {
-        if (!falseVal) falseVal = new IRConst(FALSE, Type.CONST); 
+        if (!falseVal) falseVal = new IRConst(FALSE);
         return falseVal;
     }
 
     static IRConst undefCst()
     {
-        if (!undefVal) undefVal = new IRConst(UNDEF, Type.CONST);
+        if (!undefVal) undefVal = new IRConst(UNDEF);
         return undefVal;
     }
 
     static IRConst missingCst()
     {
-        if (!missingVal) missingVal = new IRConst(MISSING, Type.CONST);
+        if (!missingVal) missingVal = new IRConst(MISSING);
         return missingVal;
     }
 
-    static IRConst nullCst()  
+    static IRConst nullCst()
     { 
-        if (!nullVal) nullVal = new IRConst(NULL, Type.REFPTR);
+        if (!nullVal) nullVal = new IRConst(NULL);
         return nullVal;
     }
 
@@ -997,6 +1021,11 @@ class IRConst : IRValue
     private this(Word word, Type type)
     {
         this.value = ValuePair(word, type);
+    }
+
+    private this(ValuePair value)
+    {
+        this.value = value;
     }
 }
 
@@ -1107,12 +1136,12 @@ abstract class IRDstValue : IRValue
     IRBlock block = null;
 
     /// Output stack slot
-    LocalIdx outSlot = NULL_LOCAL;
+    StackIdx outSlot = NULL_STACK;
 
     /// Get the short name string associated with this instruction
     override string getName()
     {
-        if (outSlot !is NULL_LOCAL)
+        if (outSlot !is NULL_STACK)
             return "$" ~ to!string(outSlot);
 
         return "t_" ~ idString();
@@ -1194,7 +1223,7 @@ class FunParam : PhiNode
     /// Get the short name string associated with this argument
     override string getName()
     {
-        if (outSlot !is NULL_LOCAL)
+        if (outSlot !is NULL_STACK)
             return "$" ~ to!string(outSlot);
 
         return "arg_" ~ to!string(idx);
@@ -1204,7 +1233,7 @@ class FunParam : PhiNode
     {
         string str;
 
-        if (outSlot !is NULL_LOCAL)
+        if (outSlot !is NULL_STACK)
             str ~= "$" ~ to!string(outSlot) ~ " = ";
 
         str ~= "arg " ~ to!string(idx) ~ " \"" ~ to!string(name) ~ "\"";
@@ -1224,10 +1253,6 @@ class IRInstr : IRDstValue
     /// Opcode
     Opcode* opcode;
 
-    // TODO: subdivide instructions into branch and call instruction classes?
-    /// JIT code call continuation entry point
-    ubyte* jitCont = null;
-
     /// Arguments to this instruction
     private Use[] args;
 
@@ -1237,6 +1262,9 @@ class IRInstr : IRDstValue
     /// Previous and next instructions (linked list)
     IRInstr prev = null;
     IRInstr next = null;
+
+    // Source position, may be null
+    SrcPos srcPos = null;
 
     /// Default constructor
     this(Opcode* opcode, size_t numArgs = 0)
@@ -1380,7 +1408,7 @@ class IRInstr : IRDstValue
     {
         string output;
 
-        if (firstUse !is null || outSlot !is NULL_LOCAL)
+        if (firstUse !is null || outSlot !is NULL_STACK)
             output ~= getName() ~ " = ";
 
         output ~= opcode.mnem;
@@ -1409,5 +1437,45 @@ class IRInstr : IRDstValue
 
         return output;
     }
+}
+
+/**
+Recover the callee name for a call instruction, if possible.
+This function is used to help print sensible error messages.
+*/
+string getCalleeName(IRInstr callInstr)
+{
+    assert (callInstr.opcode.isCall);
+
+    auto closInstr = cast(IRInstr)callInstr.getArg(0);
+    if (closInstr is null)
+        return null;
+
+    // If the callee is a global function
+    if (closInstr.opcode == &GET_GLOBAL)
+    {
+        auto nameArg = cast(IRString)closInstr.getArg(0);
+        return to!string(nameArg.str);
+    }
+
+    // If the callee is a method we're getting from some object
+    if (closInstr.opcode == &CALL_PRIM)
+    {
+        auto primName = cast(IRString)closInstr.getArg(0);
+        if (primName.str == "$rt_getProp"w)
+        {
+            // Get the property name instruction
+            auto propInstr = cast(IRInstr)closInstr.getArg(3);
+            if (propInstr is null)
+                return null;
+
+            // Extract the method name
+            auto nameArg = cast(IRString)propInstr.getArg(0);
+            return to!string(nameArg.str);
+        }
+    }
+
+    // Callee name unrecoverable
+    return null;
 }
 

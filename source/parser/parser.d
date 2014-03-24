@@ -183,7 +183,7 @@ ASTProgram parseProgram(TokenStream input)
     void makeReturn(ASTStmt stmt)
     {
         auto blockStmt = cast(BlockStmt)ast.bodyStmt;
-        if (blockStmt is null || blockStmt.stmts.length != 1)
+        if (blockStmt is null || blockStmt.stmts.length == 0)
             return;
 
         auto exprStmt = cast(ExprStmt)blockStmt.stmts[$-1];
@@ -498,7 +498,6 @@ ASTStmt parseStmt(TokenStream input)
         return new VarStmt(identExprs, initExprs, pos);
     }
 
-    
     // Function declaration statement
     else if (input.peekKw("function"))
     {
@@ -509,7 +508,7 @@ ASTStmt parseStmt(TokenStream input)
             input.read();
 
         return funStmt;
-    }    
+    }
 
     // If this is a labelled statement
     else if (isLabel(input))
@@ -1035,10 +1034,19 @@ ASTExpr parseAtom(TokenStream input)
         // Parse the right subexpression
         ASTExpr expr = parseExpr(input, op.prec);
 
-        // If this is a negated integer, negate the value now
+        // If this is a negated integer
         if (op.str == "-"w)
+        {
             if (auto intExpr = cast(IntExpr)expr)
+            {
+                // Negative zero cannot be represented as integer
+                if (intExpr.val is 0)
+                    return new FloatExpr(-0.0, intExpr.pos);
+
+                // Negate the integer value
                 return new IntExpr(-intExpr.val, intExpr.pos);
+            }
+        }
 
         // Return the unary expression
         return new UnOpExpr(op, expr, pos);
@@ -1061,9 +1069,25 @@ ASTExpr[] parseExprList(TokenStream input, wstring openSep, wstring closeSep)
         if (input.matchSep(closeSep))
             break;
 
+        // If this is not the first element and there
+        // is no comma separator, throw an error
         if (exprs.length > 0 && input.matchSep(",") == false)
             throw new ParseError("expected comma", input.getPos());
 
+        // Handle missing array element syntax
+        if (openSep == "[")
+        {
+            if (input.matchSep(closeSep))
+                break;
+
+            if (input.peekSep(",")) 
+            {
+                exprs ~= new IdentExpr("undefined", input.getPos());
+                continue;
+            }
+        }
+
+        // Parse the current element
         exprs ~= parseExpr(input, COMMA_PREC+1);
     }
 

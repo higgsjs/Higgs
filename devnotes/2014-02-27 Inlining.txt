@@ -1,0 +1,35 @@
+TODO: smarter spilling across inlined calls
+- only spill parent values when necessary
+- also want to be smart about delayed writes
+TODO: better register spilling mechanism for C calls
+TODO: register allocation
+- peephole pass should swap operands to favor reg alloc?
+  - or do this on demand?
+- unified spilling function? params to spill tsp/wsp, vm reg
+- delayed writes
+
+TODO: make inline threshold larger for bigger functions?
+- wait until inlining is more optimized before tweaking heuristics
+
+TODO: type prop, pass types along inlined calls/returns
+
+TODO: fix GC for new stack handling
+
+TODO: fix exceptions for new stack handling
+- Need to correct wsp/tsp when throwing exceptions?
+- if we go to exc handler in inlined context, need to adjust frame
+  - remove inlined locals
+- may need to remove stack slots
+
+TODO: modify getWordOpnd, getTypeOpnd et al for inlined calls
+- Assume that the IRDstValue belongs to the current frame
+  - Can we assert this?
+
+TODO: avoid inc/dec wsp/tsp on inlined calls
+- Get it working without exception support first
+- Need to correct wsp/tsp at non-inlined call time
+  - push actual stack space to protect inlined locals
+  - return from non-inlined call needs to remove slots
+  callCtx.extraLocals?
+- What if we do an inlined call in an inlined call?
+  - no need to adjust anything, context inherits

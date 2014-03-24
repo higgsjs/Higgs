@@ -46,6 +46,7 @@ import std.typecons;
 import options;
 import ir.ir;
 import runtime.vm;
+import runtime.object;
 import jit.codeblock;
 import jit.x86;
 import jit.jit;
@@ -54,17 +55,19 @@ import jit.jit;
 Create a relative 32-bit jump to a code fragment
 */
 void writeJcc32Ref(string mnem, opcode...)(
-    CodeBlock as, 
-    VM vm, 
-    CodeFragment frag
+    CodeBlock as,
+    VM vm,
+    CodeFragment frag,
+    size_t targetIdx = size_t.max
 )
 {
-    // Write an asm comment
-    as.writeASM(mnem, frag.getName);
+    // Write an ASM comment
+    if (opts.jit_genasm)
+        as.writeASM(mnem, frag.getName);
 
     as.writeBytes(opcode);
 
-    vm.addFragRef(as.getWritePos(), frag, 32);
+    vm.addFragRef(as.getWritePos(), 32, frag, targetIdx);
 
     as.writeInt(0, 32);
 }
@@ -105,11 +108,19 @@ alias writeJcc32Ref!("jmp" , 0xE9) jmp32Ref;
 /**
 Move an absolute reference to a fragment's address into a register
 */
-void movAbsRef(CodeBlock as, VM vm, X86Reg dstReg, CodeFragment frag)
+void movAbsRef(
+    CodeBlock as,
+    VM vm,
+    X86Reg dstReg,
+    CodeFragment frag,
+    size_t targetIdx = size_t.max
+)
 {
-    as.writeASM("mov", dstReg, frag.getName);
+    if (opts.jit_genasm)
+        as.writeASM("mov", dstReg, frag.getName);
+
     as.mov(dstReg.opnd(64), X86Opnd(uint64_t.max));
-    vm.addFragRef(as.getWritePos() - 8, frag, 64);
+    vm.addFragRef(as.getWritePos() - 8, 64, frag, targetIdx);
 }
 
 /// Load a pointer constant into a register
@@ -126,7 +137,7 @@ void incStatCnt(CodeBlock as, ulong* pCntVar, X86Reg scrReg)
 
     as.ptr(scrReg, pCntVar);
 
-    as.inc(X86Opnd(8 * ulong.sizeof, RAX));
+    as.inc(X86Opnd(8 * ulong.sizeof, scrReg));
 }
 
 void getField(CodeBlock as, X86Reg dstReg, X86Reg baseReg, size_t fOffset)
@@ -141,22 +152,48 @@ void setField(CodeBlock as, X86Reg baseReg, size_t fOffset, X86Reg srcReg)
     as.mov(X86Opnd(srcReg.size, baseReg, cast(int32_t)fOffset), X86Opnd(srcReg));
 }
 
+X86Opnd memberOpnd(string fName)(X86Reg baseReg)
+{
+    const auto elems = split(fName, ".");
+
+    size_t fOffset;
+    static if (elems.length is 3)
+    {
+        mixin(format(
+            "const e1Type = typeof(%s.%s).stringof;", elems[0], elems[1]
+        ));
+
+        mixin(format(
+            "fOffset = %s.%s.offsetof + %s.%s.offsetof;", 
+            elems[0], elems[1],
+            e1Type, elems[2]
+        ));
+    }
+    else if (elems.length is 2)
+    {
+        mixin(format(
+            "fOffset = %s.%s.offsetof;", 
+            elems[0], elems[1]
+        ));
+    }
+    else
+    {
+        assert (false);
+    }
+
+    mixin("auto fSize = " ~ fName ~ ".sizeof;");
+
+    return X86Opnd(fSize * 8, baseReg, cast(int32_t)fOffset);
+}
+
 void getMember(string fName)(CodeBlock as, X86Reg dstReg, X86Reg baseReg)
 {
-    mixin("auto fOffset = " ~ fName ~ ".offsetof;");
-    mixin("auto fSize = " ~ fName ~ ".sizeof;");
-    assert (dstReg.size is 8 * fSize);
-
-    as.getField(dstReg, baseReg, fOffset);
+    as.mov(X86Opnd(dstReg), memberOpnd!fName(baseReg));
 }
 
 void setMember(string fName)(CodeBlock as, X86Reg baseReg, X86Reg srcReg)
 {
-    mixin("auto fOffset = " ~ fName ~ ".offsetof;");
-    mixin("auto fSize = " ~ fName ~ ".sizeof;");
-    assert (srcReg.size is 8 * fSize);
-
-    as.setField(baseReg, fOffset, srcReg);
+    as.mov(memberOpnd!fName(baseReg), X86Opnd(srcReg));
 }
 
 /// Read from the word stack
@@ -245,13 +282,13 @@ void pushRegs(CodeBlock as)
     as.push(R9);
     as.push(R10);
     as.push(R11);
-    as.push(R11);
+    as.pushfq();
 }
 
 /// Restore caller-save registers from the after before a C call
 void popRegs(CodeBlock as)
 {
-    as.pop(R11);
+    as.popfq();
     as.pop(R11);
     as.pop(R10);
     as.pop(R9);
@@ -262,49 +299,6 @@ void popRegs(CodeBlock as)
     as.pop(RCX);
     as.pop(RAX);
 }
-
-/*
-void checkVal(Assembler as, X86Opnd wordOpnd, X86Opnd typeOpnd, string errorStr)
-{
-    extern (C) static void checkValFn(VM vm, Word word, Type type, char* errorStr)
-    {
-        if (type != Type.REFPTR)
-            return;
-
-        if (vm.inFromSpace(word.ptrVal) is false)
-        {
-            writefln(
-                "pointer not in from-space: %s\n%s",
-                word.ptrVal,
-                to!string(errorStr)
-            );
-        }
-    }
-
-    as.pushRegs();
-
-    auto STR_DATA = new Label("STR_DATA");
-    auto AFTER_STR = new Label("AFTER_STR");
-
-    as.instr(JMP, AFTER_STR);
-    as.addInstr(STR_DATA);
-    foreach (ch; errorStr)
-        as.addInstr(new IntData(cast(uint)ch, 8));    
-    as.addInstr(new IntData(0, 8));
-    as.addInstr(AFTER_STR);
-
-    as.instr(MOV, cargRegs[2].reg(8), typeOpnd);
-    as.instr(MOV, cargRegs[1], wordOpnd);
-    as.instr(MOV, cargRegs[0], vmReg);
-    as.instr(LEA, cargRegs[3], new X86IPRel(8, STR_DATA));
-
-    auto checkFn = &checkValFn;
-    as.ptr(scrRegs64[0], checkFn);
-    as.instr(jit.encodings.CALL, scrRegs64[0]);
-
-    as.popRegs();
-}
-*/
 
 void printUint(CodeBlock as, X86Opnd opnd)
 {
@@ -321,11 +315,13 @@ void printUint(CodeBlock as, X86Opnd opnd)
     else if (opnd.isMem)
         opndSz = opnd.mem.size;
     else
-        assert (false);
+        assert (false, "invalid opnd in printUint: " ~ opnd.toString);
 
     as.pushRegs();
 
-    if (opndSz < 64)
+    if (opndSz is 32)
+        as.mov(cargRegs[0].opnd(32), opnd);
+    else if (opndSz < 32)
         as.movzx(cargRegs[0].opnd(64), opnd);
     else
         as.mov(cargRegs[0].opnd(opndSz), opnd);
@@ -391,6 +387,45 @@ void printStr(CodeBlock as, string str)
     as.ptr(scrRegs[0], &printStrFn);
     as.call(scrRegs[0].opnd(64));
 
+    as.popRegs();
+}
+
+void printStack(CodeBlock as, CallCtx ctx)
+{
+    extern (C) static void printStackFn(CallCtx ctx)
+    {
+        auto vm = ctx.vm;
+
+        vm.setCallCtx(ctx);
+
+        vm.visitStack(
+            delegate void(
+                IRFunction fun,
+                Word* wsp,
+                Type* tsp,
+                size_t depth,
+                size_t frameSize,
+                IRInstr callInstr
+            )
+            {
+                writeln(fun.getName);
+            }
+        );
+
+        vm.setCallCtx(null);
+    }
+
+    as.comment("printStack()");
+
+    as.pushRegs();
+    as.pushJITRegs();
+
+    as.ptr(cargRegs[0], ctx);
+
+    as.ptr(scrRegs[0], &printStackFn);
+    as.call(scrRegs[0].opnd(64));
+
+    as.popJITRegs();
     as.popRegs();
 }
 

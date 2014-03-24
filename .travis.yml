@@ -7,8 +7,8 @@ language: c
 before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq gcc-multilib time
- - wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb"
- - sudo dpkg -i dmd_2.064.2-0_amd64.deb
+ - wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb" -O dmd.deb
+ - sudo dpkg -i dmd.deb
 
 # skip dependency install step
 install: true
@@ -20,7 +20,13 @@ before_script:
 # build a test binary and run tests
 script:
   - make test
-
+  
+# branch settings
+branches:
+ # only run for these branches
+ only:
+  - master
+  
 # notify the irc channel
 notifications:
   irc: "chat.freenode.net#higgsjs"

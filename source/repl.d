@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -44,7 +44,6 @@ import runtime.vm;
 
 void repl(VM vm)
 {
-
     writeln("Entering read-eval-print loop");
     writeln("To exit, press ctrl+D (end-of-file) or type \"exit\" at the prompt");
 
@@ -52,7 +51,7 @@ void repl(VM vm)
     {
         write("h> ");
         string input = readln().stripRight();
-        
+
         if (input is null || input.toLower() == "exit")
         {
             if (input is null)
@@ -66,8 +65,8 @@ void repl(VM vm)
             auto output = vm.evalString(input, "repl");
 
             // Print the output if it isn't "undefined"
-            if (!(output.type == Type.CONST && output.word == UNDEF))
-                writeln(valToString(output));
+            if (output != UNDEF)
+                writeln(output.toString);
         }
 
         catch (ParseError e)
@@ -77,7 +76,7 @@ void repl(VM vm)
 
         catch (RunError e)
         {
-            writefln("run-time error: " ~ e.toString());
+            writefln(e.toString());
         }
     }
 }

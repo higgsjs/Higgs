@@ -16,7 +16,7 @@ var theGlob = 777;
 
 assert (
     theGlob === 777,
-    'invalid global value'    
+    'invalid global value'
 );
 
 assert (

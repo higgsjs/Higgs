@@ -71,6 +71,16 @@ RegExpParser.prototype.current = function ()
 } 
 
 /**
+Look ahead one character code.
+*/
+RegExpParser.prototype.lookAhead = function ()
+{
+    return this.index === this.pattern.length - 1 ?
+            null :
+            this.pattern.charCodeAt(this.index + 1);
+}
+
+/**
 Advance cursor one character.
 */
 RegExpParser.prototype.advance = function ()
@@ -815,7 +825,7 @@ RegExpParser.prototype.parseClassAtom = function ()
         this.advance();
     }
 
-    if (this.current() === 45) // '-'
+    if (this.current() === 45 && this.lookAhead() !==  93) // '-]'
     {
         this.advance();
         switch (this.current())
@@ -823,9 +833,6 @@ RegExpParser.prototype.parseClassAtom = function ()
             case 92: // '\'
             this.advance();
             node.max = this.parseAtomEscape();
-            break;
-
-            case 93: // ']'
             break;
 
             default:

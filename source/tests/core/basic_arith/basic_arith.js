@@ -175,16 +175,30 @@ function test()
     if (test_9div(3) !== 3)
         return 26;
 
-    if (test_mod(5, 3) !== 2)
+    // Divide with 0 and -0
+    if (test_div(1, 0) !== Infinity)
         return 27;
-    if (test_mod(-5, 3) !== -2)
+    if (test_div(1, -0) !== -Infinity)
         return 28;
-    if (test_mod(5, -2) !== 1)
+    if (test_div(1, -0.0) !== -Infinity)
         return 29;
-    if (test_mod3(5) !== 2)
+    if (test_div(1, -(3 - 3)) !== -Infinity)
         return 30;
-    if (test_3mod(2) !== 1)
+    if (test_div(1, -1 * 0) !== -Infinity)
         return 31;
+    if (test_div(1, 0 * -1) !== -Infinity)
+        return 31;
+
+    if (test_mod(5, 3) !== 2)
+        return 32;
+    if (test_mod(-5, 3) !== -2)
+        return 33;
+    if (test_mod(5, -2) !== 1)
+        return 34;
+    if (test_mod3(5) !== 2)
+        return 35;
+    if (test_3mod(2) !== 1)
+        return 36;
 
     return 0;
 }

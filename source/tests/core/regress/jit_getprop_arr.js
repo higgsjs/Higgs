@@ -1,6 +1,6 @@
 var arr = [0];
 
-for (var i = 0; i < 5000; ++i)
+for (var i = 0; i < 10000; ++i)
 {
     var sne = $rt_getProp(arr, 0);
 

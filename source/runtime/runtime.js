@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -55,22 +55,11 @@ Test if a value is NaN
 */
 function isNaN(v)
 {
-    return ($ir_is_f64(v) && $ir_ne_f64(v, v));
-}
+    if ($ir_is_f64(v))
+        return $ir_ne_f64(v,v);
 
-/**
-Perform an assertion test
-*/
-function assert(test, errorMsg)
-{
-    if ($ir_eq_const(test, true))
-        return;
-
-    //var globalObj = $ir_get_global_obj();
-    //if (globalObj.Error !== undefined)
-    //    throw Error(errorMsg);
-
-    throw errorMsg;
+    var n = $rt_toNumber(v);
+    return ($ir_is_f64(n) && $ir_ne_f64(n, n));
 }
 
 /**
@@ -100,7 +89,7 @@ function print()
         var arg = $ir_get_arg(i);
 
         // Convert the value to a string if it isn't one
-        if (!$rt_valIsString(arg))
+        if (!$ir_is_string(arg))
             arg = $rt_toString(arg);
 
         // Print the string
@@ -112,38 +101,33 @@ function print()
 }
 
 /**
-Test if a reference is of a given layout
+Perform an assertion test
 */
-function $rt_refIsLayout(val, layoutId)
+function assert(testVal, errorMsg)
 {
-    return (
-        $ir_ne_refptr(val, null) && 
-        $ir_eq_i8($rt_obj_get_header(val), layoutId)
-    );
+    if ($ir_is_const(testVal) && $ir_eq_const(testVal, true))
+        return;
+
+    // If no error message is specified
+    if ($argc < 2)
+        errorMsg = 'assertion failed';
+
+    // If the global Error object exists
+    if (this.Error !== $undef)
+        throw Error(errorMsg);
+
+    // Throw the error message as-is
+    $ir_throw(errorMsg);
 }
 
 /**
-Test if a value is of a given layout
+Throw an exception value
+Note: this primitive makes exception handling simpler as the
+throw instruction will always unwind at least one stack frame.
 */
-function $rt_valIsLayout(val, layoutId)
+function $rt_throwExc(excVal)
 {
-    return (
-        $ir_is_refptr(val) &&
-        $ir_ne_refptr(val, null) && 
-        $ir_eq_i8($rt_obj_get_header(val), layoutId)
-    );
-}
-
-/**
-Test if a value is a string
-*/
-function $rt_valIsString(val)
-{
-    return (
-        $ir_is_refptr(val) && 
-        $ir_ne_refptr(val, null) && 
-        $rt_refIsLayout(val, $rt_LAYOUT_STR)
-    );
+    $ir_throw(excVal);
 }
 
 /**
@@ -151,14 +135,7 @@ Test if a value is an object
 */
 function $rt_valIsObj(val)
 {
-    return (
-        $ir_is_refptr(val) && 
-        $ir_ne_refptr(val, null) && (
-            $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_OBJ) ||
-            $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_ARR) ||
-            $ir_eq_i8($rt_obj_get_header(val), $rt_LAYOUT_CLOS)
-        )
-    );
+    return ($ir_is_object(val) || $ir_is_array(val) || $ir_is_closure(val));
 }
 
 /**
@@ -166,7 +143,7 @@ Test if a value is the global object
 */
 function $rt_isGlobalObj(val)
 {
-    return $ir_is_refptr(val) && $ir_eq_refptr(val, $ir_get_global_obj());
+    return $ir_is_object(val) && $ir_eq_refptr(val, $ir_get_global_obj());
 }
 
 /**
@@ -342,11 +319,6 @@ Compute the integer value of a string
 */
 function $rt_strToInt(strVal)
 {
-    assert (
-        typeof strVal === 'string',
-        'expected string value in strToInt'
-    );
-
     // TODO: add radix support
 
     // TODO: add floating-point support
@@ -354,87 +326,76 @@ function $rt_strToInt(strVal)
     var strLen = $rt_str_get_len(strVal);
 
     var intVal = 0;
-
     var neg = false;
-
     var state = 'PREWS';
 
     // For each string character
-    for (var i = 0; i < strLen;)
+    for (var i = 0; $ir_lt_i32(i, strLen);)
     {
         var ch = $rt_str_get_data(strVal, i);
 
-        switch (state)
+        if ($ir_eq_refptr(state, 'PREWS'))
         {
-            case 'PREWS':
+            // Space or tab
+            if ($ir_eq_i32(ch, 32) || $ir_eq_i32(ch, 9))
             {
-                // space or tab
-                if (ch === 32 || ch === 9)
-                {
-                    ++i;
-                }
-
-                // + or -
-                else if (ch === 43 || ch === 45)
-                {
-                    state = 'SIGN';
-                }
-
-                // Any other character
-                else
-                {
-                    state = 'DIGITS';
-                }
+                i = $ir_add_i32(i, 1);
             }
-            break;
 
-            case 'SIGN':
+            // + or -
+            else if ($ir_eq_i32(ch, 43) || $ir_eq_i32(ch, 45))
             {
-                // Plus sign
-                if (ch === 43)
-                {
-                    ++i;
-                }
+                state = 'SIGN';
+            }
 
-                // Minus sign
-                else if (ch === 45)
-                {
-                    neg = true;
-                    ++i;
-                }
-
+            // Any other character
+            else
+            {
                 state = 'DIGITS';
             }
-            break;
-
-            case 'DIGITS':
+        }
+        else if ($ir_eq_refptr(state, 'SIGN'))
+        {
+            // Plus sign
+            if ($ir_eq_i32(ch, 43))
             {
-                if (ch < 48 || ch > 57)
-                {
-                    state = 'POSTWS';
-                    continue;
-                }
-
-                var digit = ch - 48;
-
-                intVal = 10 * intVal + digit;
-
-                ++i;
+                i = $ir_add_i32(i, 1);
             }
-            break;
 
-            case 'POSTWS':
+            // Minus sign
+            else if ($ir_eq_i32(ch, 45))
             {
-                // If this is not a space or tab
-                if (ch !== 32 && ch !== 9)
-                {
-                    // Invalid number
-                    return NaN;
-                }
-
-                ++i;
+                neg = true;
+                i = $ir_add_i32(i, 1);
             }
-            break;
+
+            state = 'DIGITS';
+        }
+        else if ($ir_eq_refptr(state, 'DIGITS'))
+        {
+            // If this is not a digit
+            if ($ir_lt_i32(ch, 48) || $ir_gt_i32(ch, 57))
+            {
+                state = 'POSTWS';
+                continue;
+            }
+
+            var digit = ch - 48;
+
+            intVal = 10 * intVal + digit;
+
+            i = $ir_add_i32(i, 1);
+        }
+        else if ($ir_eq_refptr(state, 'POSTWS'))
+        {
+            // If this is not a space or tab
+            if ($ir_ne_i32(ch, 32) && $ir_ne_i32(ch, 9))
+            {
+                // Invalid number
+                return NaN;
+            }
+
+            i = $ir_add_i32(i, 1);
         }
     }
 
@@ -449,44 +410,11 @@ Get the string representation of a value
 */
 function $rt_toString(v)
 {
-    var type = typeof v;
-
-    if (type === "undefined")
-        return "undefined";
-
-    if (type === "boolean")
-        return v? "true":"false";
-
-    if (type === "string")
-        return v;
-
-    if (type === "number")
+    if ($rt_valIsObj(v))
     {
-        if ($ir_is_i32(v))
-        {
-            return $rt_intToStr(v, 10);
-        }
-        else
-        {
-            if (isNaN(v))
-                return "NaN";
-            if (v === Infinity)
-                return "Infinity";
-            if (v === -Infinity)
-                return "-Infinity";
-
-            return $ir_f64_to_str(v);
-        }
-    }
-
-    if (type === "object" || type === "function" || type === "array")
-    {
-        if (v === null)
-            return "null";
-
         var str = v.toString();
 
-        if ($rt_valIsString(str))
+        if ($ir_is_string(str))
             return str;
 
         if ($rt_valIsObj(str))
@@ -495,7 +423,64 @@ function $rt_toString(v)
         return $rt_toString(str);
     }
 
+    if ($ir_is_i32(v) || $ir_is_f64(v))
+    {
+        return $rt_numberToString(v, 10);
+    }
+
+    if ($ir_is_string(v))
+    {
+        return v;
+    }
+
+    if ($ir_is_const(v))
+    {
+        if ($ir_eq_const(v, $undef))
+            return "undefined";
+
+        if ($ir_eq_const(v, true))
+            return "true";
+
+        if ($ir_eq_const(v, false))
+            return "false";
+    }
+
+    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+    {
+        return "null";
+    }
+
     assert (false, "unhandled type in toString");
+}
+
+/**
+Convert number to string
+*/
+function $rt_numberToString(v, radix)
+{
+    if (!$ir_is_i32(radix))
+    {
+        radix = 10;
+    }
+
+    if (radix < 2 || radix > 36)
+    {
+        throw RangeError("radix is not between 2 and 36");
+    }
+
+    if ($ir_is_i32(v))
+    {
+        return $rt_intToStr(v, radix);
+    }
+
+    if (isNaN(v))
+        return "NaN";
+    if (v === Infinity)
+        return "Infinity";
+    if (v === -Infinity)
+        return "-Infinity";
+
+    return $ir_f64_to_str(v);
 }
 
 /**
@@ -503,30 +488,25 @@ Convert a boxed value to a primitive value.
 */
 function $rt_toPrim(v)
 {
-    if ($ir_is_i32(v)   || 
+    if ($ir_is_i32(v) ||
         $ir_is_f64(v) ||
         $ir_is_const(v))
         return v
 
-    if ($ir_is_refptr(v))
+    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+        return v;
+
+    if ($ir_is_string(v))
+        return v;
+
+    if ($ir_is_object(v) || $ir_is_array(v) || $ir_is_closure(v))
     {
-        if ($ir_eq_refptr(v, null))
-            return v;
+        var str = v.toString();
 
-        var type = $rt_obj_get_header(v);
+        if ($ir_is_refptr(str) && $ir_ne_refptr(str, null) && !$ir_is_string(str))
+            throw TypeError('toString produced non-primitive value');
 
-        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
-            return v;
-
-        if ($rt_valIsObj(v))
-        {
-            var str = v.toString();
-
-            if ($ir_is_refptr(str) && $ir_ne_refptr(str, null) && !$rt_valIsString(str))
-                throw TypeError('toString produced non-primitive value');
-
-            return str;
-        }
+        return str;
     }
 
     throw TypeError('unexpected type in toPrimitive');
@@ -546,23 +526,17 @@ function $rt_toBool(v)
     if ($ir_is_f64(v))
         return $ir_ne_f64(v, 0.0);
 
-    if ($ir_is_refptr(v))
-    {
-        if ($ir_eq_refptr(v, null))
-            return false;
+    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+        return false;
 
-        var type = $rt_obj_get_header(v);
+    if ($ir_is_string(v))
+        return $ir_gt_i32($rt_str_get_len(v), 0);
 
-        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
-            return $ir_gt_i32($rt_str_get_len(v), 0);
-
+    if ($ir_is_object(v) || $ir_is_array(v) || $ir_is_closure(v))
         return true;
-    }
 
     if ($ir_is_rawptr(v))
-    {
-        // TODO: raw ptr?
-    }
+        return $ir_ne_rawptr(v, $nullptr);
 
     return false;
 }
@@ -575,25 +549,23 @@ function $rt_toNumber(v)
     if ($ir_is_i32(v) || $ir_is_f64(v))
         return v;
 
-    if (v === null)
+    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
         return 0;
 
-    if (v === true)
-        return 1;
-
-    if (v === false)
-        return 0;
-
-    if ($ir_is_refptr(v))
+    if ($ir_is_const(v))
     {
-        var type = $rt_obj_get_header(v);
+        if ($ir_eq_const(v, true))
+            return 1;
 
-        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
-            return $rt_strToInt(v);
-
-        if ($rt_valIsObj(v))
-            return $rt_toNumber($rt_toString(v));
+        if ($ir_eq_const(v, false))
+            return 0;
     }
+
+    if ($ir_is_string(v))
+        return $rt_strToInt(v);
+
+    if ($rt_valIsObj(v))
+        return $rt_toNumber($rt_toString(v));
 
     return NaN;
 }
@@ -647,30 +619,20 @@ function $rt_typeof(v)
             return "undefined";
     }
 
-    if ($ir_is_refptr(v))
-    {
-        if ($ir_eq_refptr(v, null))
-            return "object";
+    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+        return "object";
 
-        var type = $rt_obj_get_header(v);
+    if ($ir_is_object(v) || $ir_is_array(v))
+        return "object";
 
-        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
-            return "string";
+    if ($ir_is_closure(v))
+        return "function";
 
-        if ($ir_eq_i8(type, $rt_LAYOUT_OBJ) || $ir_eq_i8(type, $rt_LAYOUT_ARR))
-            return "object";
-
-        if ($ir_eq_i8(type, $rt_LAYOUT_CLOS))
-            return "function";
-
-        if ($ir_eq_i8(type, $rt_LAYOUT_CELL))
-            return "cell";
-    }
+    if ($ir_is_string(v))
+        return "string";
 
     if ($ir_is_rawptr(v))
-    {
         return "rawptr";
-    }
 
     throw TypeError("unhandled type in typeof");
 }
@@ -691,7 +653,7 @@ function $rt_plus(x)
     }
 
     // If x is floating-point
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         return x;
     }
@@ -707,16 +669,22 @@ function $rt_minus(x)
     // If x is integer
     if ($ir_is_i32(x))
     {
-        return 0 - x;
+        if ($ir_eq_i32(x, 0))
+            return -0;
+
+        return $ir_sub_i32(0, x);
     }
 
     // If x is floating-point
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
-        return 0.0 - x;
+        if ($ir_eq_f64(x, 0.0))
+            return -0;
+
+        return $ir_sub_f64(0.0, x);
     }
 
-    return 0 - $rt_toNumber(x);
+    return -1 * $rt_toNumber(x);
 }
 
 /**
@@ -762,19 +730,61 @@ function $rt_add(x, y)
     var py = $rt_toPrim(y);
 
     // If x is a string
-    if ($rt_valIsString(px))
+    if ($ir_is_string(px))
     {
         return $rt_strcat(px, $rt_toString(y));
     }
 
     // If y is a string
-    if ($rt_valIsString(py))
+    if ($ir_is_string(py))
     {
         return $rt_strcat($rt_toString(x), py);
     }
 
     // Convert both values to numbers and add them
     return $rt_add($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized add for the (int,int) case (e.g.: array increment)
+*/
+function $rt_addInt(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        var r;
+        if (r = $ir_add_i32_ovf(x, y))
+        {
+            return r;
+        }
+    }
+
+    return $rt_add(x, y);
+}
+
+/**
+Specialized add for the (int,int) and (float,float) cases
+*/
+function $rt_addIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        var r;
+        if (r = $ir_add_i32_ovf(x, y))
+        {
+            return r;
+        }
+    }
+
+    // If x,y are floating-point
+    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    {
+        return $ir_add_f64(x, y);
+    }
+
+    return $rt_add(x, y);
 }
 
 /**
@@ -818,6 +828,30 @@ function $rt_sub(x, y)
 }
 
 /**
+Specialized sub for the (int,int) and (float,float) cases
+*/
+function $rt_subIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        var r;
+        if (r = $ir_sub_i32_ovf(x, y))
+        {
+            return r;
+        }
+    }
+
+    // If x,y are floating-point
+    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    {
+        return $ir_sub_f64(x, y);
+    }
+
+    return $rt_sub(x, y);
+}
+
+/**
 JS multiplication operator
 */
 function $rt_mul(x, y)
@@ -827,6 +861,15 @@ function $rt_mul(x, y)
     {
         if ($ir_is_i32(y))
         {
+            // If this could produce negative 0
+            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) || 
+                ($ir_eq_i32(x, 0) && $ir_lt_i32(y, 0)))
+            {
+                var fx = $ir_i32_to_f64(x);
+                var fy = $ir_i32_to_f64(y);
+                return $ir_mul_f64(fx, fy);
+            }
+
             var r;
             if (r = $ir_mul_i32_ovf(x, y))
             {
@@ -855,6 +898,31 @@ function $rt_mul(x, y)
     }
 
     return $rt_mul($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized add for the (int,int) and (float,float) cases
+*/
+function $rt_mulIntFloat(x, y)
+{
+    // If x,y are integer and this can't produce negative zero
+    if ($ir_is_i32(x) && $ir_is_i32(y) &&
+        $ir_ne_i32(x, 0) && $ir_ne_i32(y, 0))
+    {
+        var r;
+        if (r = $ir_mul_i32_ovf(x, y))
+        {
+            return r;
+        }
+    }
+
+    // If x,y are floating-point
+    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    {
+        return $ir_mul_f64(x, y);
+    }
+
+    return $rt_mul(x, y);
 }
 
 /**
@@ -901,6 +969,20 @@ function $rt_mod(x, y)
     }
 
     return $rt_mod($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized modulo for the (int,int) case
+*/
+function $rt_modInt(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        return $ir_mod_i32(x, y);
+    }
+
+    return $rt_mod(x, y);
 }
 
 //=============================================================================
@@ -1010,7 +1092,7 @@ function $rt_lt(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_lt_f64(x, $ir_i32_to_f64(y));
@@ -1023,12 +1105,36 @@ function $rt_lt(x, y)
     var py = $rt_toPrim(y);
 
     // If x is a string
-    if ($rt_valIsString(px) && $rt_valIsString(py))
+    if ($ir_is_string(px) && $ir_is_string(py))
     {
         return $rt_strcmp(px, py) === -1;
     }
 
     return $rt_lt($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized less-than for the integer and float cases
+*/
+function $rt_ltIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        return $ir_lt_i32(x, y);
+    }
+
+    // If x is float
+    else if ($ir_is_f64(x))
+    {
+        if ($ir_is_i32(y))
+            return $ir_lt_f64(x, $ir_i32_to_f64(y));
+
+        if ($ir_is_f64(y))
+            return $ir_lt_f64(x, y);
+    }
+
+    return $rt_lt(x, y);
 }
 
 /**
@@ -1047,7 +1153,7 @@ function $rt_le(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_le_f64(x, $ir_i32_to_f64(y));
@@ -1060,7 +1166,7 @@ function $rt_le(x, y)
     var py = $rt_toPrim(y);
 
     // If x is a string
-    if ($rt_valIsString(px) && $rt_valIsString(py))
+    if ($ir_is_string(px) && $ir_is_string(py))
     {
         return $rt_strcmp(px, py) <= 0;
     }
@@ -1084,7 +1190,7 @@ function $rt_gt(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_gt_f64(x, $ir_i32_to_f64(y));
@@ -1097,7 +1203,7 @@ function $rt_gt(x, y)
     var py = $rt_toPrim(y);
 
     // If x is a string
-    if ($rt_valIsString(px) && $rt_valIsString(py))
+    if ($ir_is_string(px) && $ir_is_string(py))
     {
         return $rt_strcmp(px, py) > 0;
     }
@@ -1106,7 +1212,31 @@ function $rt_gt(x, y)
 }
 
 /**
-JS greater-than or equal operator
+Specialized greater-than for the integer and float cases
+*/
+function $rt_gtIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        return $ir_gt_i32(x, y);
+    }
+
+    // If x is float
+    else if ($ir_is_f64(x))
+    {
+        if ($ir_is_i32(y))
+            return $ir_gt_f64(x, $ir_i32_to_f64(y));
+
+        if ($ir_is_f64(y))
+            return $ir_gt_f64(x, y);
+    }
+
+    return $rt_gt(x, y);
+}
+
+/**
+JS greater-than-or-equal operator
 */
 function $rt_ge(x, y)
 {
@@ -1121,7 +1251,7 @@ function $rt_ge(x, y)
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_ge_f64(x, $ir_i32_to_f64(y));
@@ -1134,12 +1264,36 @@ function $rt_ge(x, y)
     var py = $rt_toPrim(y);
 
     // If x is a string
-    if ($rt_valIsString(px) && $rt_valIsString(py))
+    if ($ir_is_string(px) && $ir_is_string(py))
     {
         return $rt_strcmp(px, py) >= 0;
     }
 
     return $rt_ge($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized greater-than-or-equal for the integer and float cases
+*/
+function $rt_geIntFloat(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        return $ir_ge_i32(x, y);
+    }
+
+    // If x is float
+    else if ($ir_is_f64(x))
+    {
+        if ($ir_is_i32(y))
+            return $ir_ge_f64(x, $ir_i32_to_f64(y));
+
+        if ($ir_is_f64(y))
+            return $ir_ge_f64(x, y);
+    }
+
+    return $rt_ge(x, y);
 }
 
 /**
@@ -1161,32 +1315,46 @@ function $rt_eq(x, y)
             return false;
     }
 
-    // If x is a references
-    if ($ir_is_refptr(x))
+    else if ($ir_is_object(x))
     {
-        // If y is a reference
-        if ($ir_is_refptr(y))
-        {
-            // If the references are equal
-            if ($ir_eq_refptr(x, y))
-                return true;
+        if ($ir_is_object(y))
+            return $ir_eq_refptr(x, y);
 
-            // If x or y are null, they are not equal
-            if ($ir_eq_refptr(x, null) || $ir_eq_refptr(y, null))
-                return false;
+        if ($ir_is_refptr(y) || $rt_valIsObj(y))
+            return false;
+    }
 
-            var tx = $rt_obj_get_header(x);
-            var ty = $rt_obj_get_header(y);
+    else if ($ir_is_array(x))
+    {
+        if ($ir_is_array(y))
+            return $ir_eq_refptr(x, y);
 
-            // If x and y are strings
-            if ($ir_eq_i8(tx, $rt_LAYOUT_STR) && $ir_eq_i8(ty, $rt_LAYOUT_STR))
-                return false;
+        if ($ir_is_refptr(y) || $rt_valIsObj(y))
+            return false;
+    }
 
-            // If x and y are objects
-            if ($ir_eq_i8(tx, $rt_LAYOUT_OBJ) && $ir_eq_i8(ty, $rt_LAYOUT_OBJ))
-                return false;
-        }
+    else if ($ir_is_closure(x))
+    {
+        if ($ir_is_closure(y))
+            return $ir_eq_refptr(x, y);
 
+        if ($ir_is_refptr(y) || $rt_valIsObj(y))
+            return false;
+    }
+
+    else if ($ir_is_string(x))
+    {
+        if ($ir_is_string(y))
+            return $ir_eq_refptr(x, y);
+
+        // string != null
+        if ($ir_is_refptr(y) && $ir_eq_refptr(y, null))
+            return false;
+    }
+
+    // If x is a references
+    else if ($ir_is_refptr(x))
+    {
         // If x is null
         if ($ir_eq_refptr(x, null))
         {
@@ -1194,24 +1362,28 @@ function $rt_eq(x, y)
             if ($ir_is_const(y) && $ir_eq_const(y, $undef))
                 return true;
 
-            // null != 0
-            if (y === 0)
-                return false;
+            // null == null
+            if ($ir_is_refptr(y) && $ir_eq_refptr(y, null))
+                return true;
+
+            return false;
         }
     }
 
     // If x is a constant
-    if ($ir_is_const(x))
+    else if ($ir_is_const(x))
     {
         if ($ir_is_const(y))
             return $ir_eq_const(x, y);
 
-        if (x === undefined && y === null)
+        // undefined == null
+        if ($ir_eq_const(x, undefined) && 
+            $ir_is_refptr(y) && $ir_eq_refptr(y, null))
             return true;
     }
 
     // If x is float
-    if ($ir_is_f64(x))
+    else if ($ir_is_f64(x))
     {
         if ($ir_is_i32(y))
             return $ir_eq_f64(x, $ir_i32_to_f64(y));
@@ -1224,12 +1396,26 @@ function $rt_eq(x, y)
     var py = $rt_toPrim(y);
 
     // If x is a string
-    if ($rt_valIsString(px) && $rt_valIsString(py))
+    if ($ir_is_string(px) && $ir_is_string(py))
     {
-        return $rt_strcmp(px, py) === 0;
+        return $ir_eq_refptr(px, py);
     }
 
     return $rt_eq($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Optimized equality (==) for comparisons with null
+*/
+function $rt_eqNull(x)
+{
+    if ($ir_is_refptr(x) && $ir_eq_refptr(x, null))
+        return true;
+
+    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+        return true;
+
+    return false;
 }
 
 /**
@@ -1257,12 +1443,38 @@ function $rt_se(x, y)
         return false;
     }
 
-    // If x is a reference
+    else if ($ir_is_object(x))
+    {
+        if ($ir_is_object(y))
+            return $ir_eq_refptr(x, y);
+        return false;
+    }
+
+    else if ($ir_is_array(x))
+    {
+        if ($ir_is_array(y))
+            return $ir_eq_refptr(x, y);
+        return false;
+    }
+
+    else if ($ir_is_closure(x))
+    {
+        if ($ir_is_closure(y))
+            return $ir_eq_refptr(x, y);
+        return false;
+    }
+
+    else if ($ir_is_string(x))
+    {
+        if ($ir_is_string(y))
+            return $ir_eq_refptr(x, y);
+        return false;
+    }
+
     else if ($ir_is_refptr(x))
     {
         if ($ir_is_refptr(y))
             return $ir_eq_refptr(x, y);
-
         return false;
     }
 
@@ -1271,7 +1483,6 @@ function $rt_se(x, y)
     {
         if ($ir_is_const(y))
             return $ir_eq_const(x, y);
-
         return false;
     }
 
@@ -1316,22 +1527,39 @@ function $rt_ns(x, y)
         return true;
     }
 
-    // If x is a reference
+    else if ($ir_is_object(x))
+    {
+        if ($ir_is_object(y))
+            return $ir_ne_refptr(x, y);
+        return true;
+    }
+
+    else if ($ir_is_array(x))
+    {
+        if ($ir_is_array(y))
+            return $ir_ne_refptr(x, y);
+        return true;
+    }
+
+    else if ($ir_is_closure(x))
+    {
+        if ($ir_is_closure(y))
+            return $ir_ne_refptr(x, y);
+        return true;
+    }
+
+    else if ($ir_is_string(x))
+    {
+        if ($ir_is_string(y))
+            return $ir_ne_refptr(x, y);
+        return true;
+    }
+
     else if ($ir_is_refptr(x))
     {
         if ($ir_is_refptr(y))
             return $ir_ne_refptr(x, y);
-
         return true;
-    }
-
-    // If x is a rawptr
-    else if($ir_is_rawptr(x))
-    {
-        if ($ir_is_rawptr(y))
-            return $ir_ne_rawptr(x, y);
-
-        return true
     }
 
     // If x is a constant
@@ -1339,7 +1567,6 @@ function $rt_ns(x, y)
     {
         if ($ir_is_const(y))
             return $ir_ne_const(x, y);
-        
         return true;
     }
 
@@ -1353,6 +1580,15 @@ function $rt_ns(x, y)
             return $ir_ne_f64(x, $ir_i32_to_f64(y));
 
         return true;
+    }
+
+    // If x is a rawptr
+    else if($ir_is_rawptr(x))
+    {
+        if ($ir_is_rawptr(y))
+            return $ir_ne_rawptr(x, y);
+
+        return true
     }
 
     throw TypeError("unsupported types in strict inequality comparison");
@@ -1377,7 +1613,7 @@ function $rt_newObj(mapPtr, protoPtr)
 
     // Initialize the object
     $rt_obj_set_map(objPtr, mapPtr);
-    $rt_obj_set_proto(objPtr, protoPtr);
+    $rt_setProto(objPtr, protoPtr);
 
     //$ir_print_str("Allocated object\n");
 
@@ -1400,7 +1636,7 @@ function $rt_newArr(mapPtr, protoPtr, numElems)
 
     // Initialize the object
     $rt_obj_set_map(objPtr, mapPtr);
-    $rt_obj_set_proto(objPtr, protoPtr);
+    $rt_setProto(objPtr, protoPtr);
     $rt_arr_set_tbl(objPtr, tblPtr);
     $rt_arr_set_len(objPtr, 0);
 
@@ -1449,10 +1685,23 @@ function $rt_shrinkHeap(freeSpace)
 // Objects and property access
 //=============================================================================
 
+function $rt_getProto(obj)
+{
+    var w = $rt_obj_get_word(obj, 0);
+    var t = $rt_obj_get_type(obj, 0);
+    return $ir_make_value(w, t);
+}
+
+function $rt_setProto(obj, proto)
+{
+    $rt_obj_set_word(obj, 0, $ir_get_word(proto));
+    $rt_obj_set_type(obj, 0, $ir_get_type(proto));
+}
+
 /**
 Get a property from an object using a string as key
 */
-function $rt_getPropObj(obj, propStr)
+function $rt_objGetProp(obj, propStr)
 {
     // Follow the next link chain
     for (;;)
@@ -1479,19 +1728,24 @@ function $rt_getPropObj(obj, propStr)
         var val = $ir_make_value(word, type);
 
         // If the value is not missing, return it
-        if (val !== $missing)
+        if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
             return val;
+
+        //print('missing');
     }
 
     // Get the object's prototype
-    var proto = $rt_obj_get_proto(obj);
+    var proto = $rt_getProto(obj);
+
+    //print('recurse');
+    //print($ir_get_type(proto));
 
     // If the prototype is null, produce undefined
     if ($ir_eq_refptr(proto, null))
         return $undef;
 
     // Do a recursive lookup on the prototype
-    return $rt_getPropObj(
+    return $rt_objGetProp(
         proto,
         propStr
     );
@@ -1502,82 +1756,76 @@ Get a property from a value using a value as a key
 */
 function $rt_getProp(base, prop)
 {
-    // If the base is a reference
-    if ($ir_is_refptr(base) && $ir_ne_refptr(base, null))
+    // If the base is an object or closure
+    if ($ir_is_object(base) || $ir_is_closure(base))
     {
-        var type = $rt_obj_get_header(base);
+        // If the property is a string
+        if ($ir_is_string(prop))
+            return $rt_objGetProp(base, prop);
 
-        // If the base is an object or closure
-        if ($ir_eq_i8(type, $rt_LAYOUT_OBJ) ||
-            $ir_eq_i8(type, $rt_LAYOUT_CLOS))
+        return $rt_objGetProp(base, $rt_toString(prop));
+    }
+
+    // If the base is an array
+    if ($ir_is_array(base))
+    {
+        // If the property is a non-negative integer
+        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
+            $ir_lt_i32(prop, $rt_arr_get_len(base)))
         {
-            // If the property is a string
-            if ($rt_valIsString(prop))
-                return $rt_getPropObj(base, prop);
-
-            return $rt_getPropObj(base, $rt_toString(prop));
+            var tbl = $rt_arr_get_tbl(base);
+            var word = $rt_arrtbl_get_word(tbl, prop);
+            var type = $rt_arrtbl_get_type(tbl, prop);
+            return $ir_make_value(word, type);
         }
 
-        // If the base is an array
-        if ($ir_eq_i8(type, $rt_LAYOUT_ARR))
+        // If the property is a floating-point number
+        if ($ir_is_f64(prop))
         {
-            // If the property is a non-negative integer
-            if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
-                $ir_lt_i32(prop, $rt_arr_get_len(base)))
-            {
-                var tbl = $rt_arr_get_tbl(base);
-                var word = $rt_arrtbl_get_word(tbl, prop);
-                var type = $rt_arrtbl_get_type(tbl, prop);
-                return $ir_make_value(word, type);
-            }
-
-            // If the property is a floating-point number
-            if ($ir_is_f64(prop))
-            {
-                var intVal = $rt_toUint32(prop);
-                if (intVal === prop)
-                    return $rt_getProp(base, intVal);
-            }
-
-            // If this is the length property
-            if (prop === 'length')
-            {
-                return $rt_arr_get_len(base);
-            }
-
-            // If the property is a string
-            if ($rt_valIsString(prop))
-            {
-                var propNum = $rt_strToInt(prop);
-                if (!isNaN(propNum))
-                    return $rt_getProp(base, propNum);
-
-                return $rt_getPropObj(base, prop);
-            }
-
-            return $rt_getPropObj(base, $rt_toString(prop));
+            var intVal = $rt_toUint32(prop);
+            if (intVal === prop)
+                return $rt_getProp(base, intVal);
         }
 
-        // If the base is a string
-        if ($ir_eq_i8(type, $rt_LAYOUT_STR))
+        // TODO: optimize eq comparison
+        // If this is the length property
+        if (prop === 'length')
         {
-            // If the property is a non-negative integer
-            if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) && 
-                $ir_lt_i32(prop, $rt_str_get_len(base)))
-            {
-                var ch = $rt_str_get_data(base, prop);
-                var str = $rt_str_alloc(1);
-                $rt_str_set_data(str, 0, ch);
-                return $ir_get_str(str);
-            }
-
-            // If this is the length property
-            if (prop === 'length')
-                return $rt_str_get_len(base);
-
-            // Recurse on String.prototype
-            return $rt_getProp(String.prototype, prop);
+            return $rt_arr_get_len(base);
         }
+
+        // If the property is a string
+        if ($ir_is_string(prop))
+        {
+            var propNum = $rt_strToInt(prop);
+            if (!isNaN(propNum))
+                return $rt_getProp(base, propNum);
+
+            return $rt_objGetProp(base, prop);
+        }
+
+        return $rt_objGetProp(base, $rt_toString(prop));
+    }
+
+    // If the base is a string
+    if ($ir_is_string(base))
+    {
+        // If the property is a non-negative integer
+        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) && 
+            $ir_lt_i32(prop, $rt_str_get_len(base)))
+        {
+            var ch = $rt_str_get_data(base, prop);
+            var str = $rt_str_alloc(1);
+            $rt_str_set_data(str, 0, ch);
+            return $ir_get_str(str);
+        }
+
+        // If this is the length property
+        if (prop === 'length')
+            return $rt_str_get_len(base);
+
+        // Recurse on String.prototype
+        return $rt_getProp(String.prototype, prop);
     }
 
     // If the base is a number
@@ -1596,7 +1844,7 @@ function $rt_getProp(base, prop)
 
     if (base === null)
     {
-        if ($rt_valIsString(prop))
+        if ($ir_is_string(prop))
             throw TypeError('null base in read of property "' + prop + '"');
         else
             throw TypeError("null base in property read");
@@ -1604,7 +1852,7 @@ function $rt_getProp(base, prop)
 
     if (base === $undef)
     {
-        if ($rt_valIsString(prop))
+        if ($ir_is_string(prop))
             throw TypeError('undefined base in read of property "' + prop + '"');
         else
             throw TypeError("undefined base in property read");
@@ -1614,13 +1862,164 @@ function $rt_getProp(base, prop)
 }
 
 /**
+Specialized version of getProp for field accesses where
+the base is an object and the key is a constant string
+*/
+function $rt_getPropField(base, prop)
+{
+    // If the base is an object
+    if ($ir_is_object(base))
+    {
+        var obj = base;
+
+        // Follow the next link chain
+        for (;;)
+        {
+            var next = $rt_obj_get_next(obj);
+            if ($ir_eq_refptr(next, null))
+                break;
+            obj = next;
+        }
+
+        // Find the index for this property
+        var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), prop, false);
+
+        // Get the capacity of the object
+        var objCap = $rt_obj_get_cap(obj);
+
+        // If the property was found and is present in the object
+        if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
+        {
+            var word = $rt_obj_get_word(obj, propIdx);
+            var type = $rt_obj_get_type(obj, propIdx);
+            var val = $ir_make_value(word, type);
+
+            // If the value is not missing, return it
+            if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
+                return val;
+        }
+    }
+
+    return $rt_getProp(base, prop);
+}
+
+/**
+Specialized version of getProp for method accesses where
+the base is an object and the key is a constant string
+*/
+function $rt_getPropMethod(base, prop)
+{
+    // If the base is an object
+    if ($ir_is_object(base))
+    {
+        var obj = base;
+
+        // Follow the next link chain
+        for (;;)
+        {
+            var next = $rt_obj_get_next(obj);
+            if ($ir_eq_refptr(next, null))
+                break;
+            obj = next;
+        }
+
+        // Find the index for this property
+        var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), prop, false);
+
+        // Get the capacity of the object
+        var objCap = $rt_obj_get_cap(obj);
+
+        // If the property was found and is present in the object
+        if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
+        {
+            var word = $rt_obj_get_word(obj, propIdx);
+            var type = $rt_obj_get_type(obj, propIdx);
+            var val = $ir_make_value(word, type);
+
+            // If the value is not missing, return it
+            if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
+                return val;
+        }
+
+        // Get the prototype of the object
+        var obj = $rt_getProto(obj);
+
+        // If the prototype is not null
+        if ($ir_is_object(obj))
+        {
+            // Follow the next link chain
+            for (;;)
+            {
+                var next = $rt_obj_get_next(obj);
+                if ($ir_eq_refptr(next, null))
+                    break;
+                obj = next;
+            }
+
+            // Find the index for this property
+            var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), prop, false);
+
+            // Get the capacity of the object
+            var objCap = $rt_obj_get_cap(obj);
+
+            // If the property was found and is present in the object
+            if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
+            {
+                var word = $rt_obj_get_word(obj, propIdx);
+                var type = $rt_obj_get_type(obj, propIdx);
+                var val = $ir_make_value(word, type);
+
+                // If the value is not missing, return it
+                if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
+                    return val;
+            }
+        }
+    }
+
+    return $rt_getProp(base, prop);
+}
+
+/**
+Specialized version of getProp for array elements
+*/
+function $rt_getPropElem(base, prop)
+{
+    // If the base is an array and the property is a non-negative integer
+    if ($ir_is_array(base) &&
+        $ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
+        $ir_lt_i32(prop, $rt_arr_get_len(base)))
+    {
+        var tbl = $rt_arr_get_tbl(base);
+        var word = $rt_arrtbl_get_word(tbl, prop);
+        var type = $rt_arrtbl_get_type(tbl, prop);
+        return $ir_make_value(word, type);
+    }
+
+    return $rt_getProp(base, prop);
+}
+
+/**
+Specialized version of getProp for "length" property accesses
+*/
+function $rt_getPropLength(base, prop)
+{
+    // If the base is an array
+    if ($ir_is_array(base))
+    {
+        return $rt_arr_get_len(base);
+    }
+
+    return $rt_getProp(base, prop);
+}
+
+/**
 Extend the internal array table of an array
 */
 function $rt_extArrTbl(
-    arr, 
-    curTbl, 
-    curLen, 
-    curSize, 
+    arr,
+    curTbl,
+    curLen,
+    curSize,
     newSize
 )
 {
@@ -1733,7 +2132,7 @@ function $rt_setArrLen(arr, newLen)
 /**
 Set a property on an object using a string as key
 */
-function $rt_setPropObj(obj, propStr, val)
+function $rt_objSetProp(obj, propStr, val)
 {
     // Follow the next link chain
     for (;;)
@@ -1765,32 +2164,29 @@ function $rt_setPropObj(obj, propStr, val)
 
         var newObj;
 
-        // Switch on the layout type
-        switch (objType)
+        if ($ir_eq_i32(objType, $rt_LAYOUT_OBJ))
         {
-            case $rt_LAYOUT_OBJ:
             newObj = $rt_obj_alloc(newObjCap);
-            break;
-
-            case $rt_LAYOUT_CLOS:
+        }
+        else if ($ir_eq_i32(objType, $rt_LAYOUT_CLOS))
+        {
             var numCells = $rt_clos_get_num_cells(obj);
             newObj = $rt_clos_alloc(newObjCap, numCells);
             for (var i = 0; i < numCells; ++i)
                 $rt_clos_set_cell(newObj, i, $rt_clos_get_cell(obj, i));
-            break;
-
-            case $rt_LAYOUT_ARR:
+        }
+        else if ($ir_eq_i32(objType, $rt_LAYOUT_ARR))
+        {
             newObj = $rt_arr_alloc(newObjCap);
             $rt_arr_set_len(newObj, $rt_arr_get_len(obj));
             $rt_arr_set_tbl(newObj, $rt_arr_get_tbl(obj));
-            break;
-
-            default:
-            assert (false, "unhandled object type in setPropObj");
+        }
+        else
+        {
+            throw TypeError("unhandled object type in objSetProp");
         }
 
         $rt_obj_set_map(newObj, classPtr);
-        $rt_obj_set_proto(newObj, $rt_obj_get_proto(obj));
 
         // Copy over the property words and types
         for (var i = 0; i < objCap; ++i)
@@ -1805,7 +2201,7 @@ function $rt_setPropObj(obj, propStr, val)
         // If we just extended the global object, trigger garbage collection
         if ($ir_eq_refptr(obj, $ir_get_global_obj()))
         {
-            print('extended global object');
+            //print('extended global object');
             $ir_gc_collect(0);
         }
 
@@ -1828,41 +2224,30 @@ function $rt_setProp(base, prop, val)
     //print(prop);
     //print('\n');
 
-    // If the base is a reference
-    if ($ir_is_refptr(base) && $ir_ne_refptr(base, null))
+    // If the base is an object or closure
+    if ($ir_is_object(base) || $ir_is_closure(base))
     {
-        var type = $rt_obj_get_header(base);
+        // If the property is a string
+        if ($ir_is_string(prop))
+            return $rt_objSetProp(base, prop, val);
 
-        // If the base is an object or closure
-        if ($ir_eq_i8(type, $rt_LAYOUT_OBJ) ||
-            $ir_eq_i8(type, $rt_LAYOUT_CLOS))
+        return $rt_objSetProp(base, $rt_toString(prop), val);
+    }
+
+    // If the base is an array
+    if ($ir_is_array(base))
+    {
+        // If the property is a non-negative integer
+        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0))
         {
-            // If the property is a string
-            if ($rt_valIsString(prop))
-                return $rt_setPropObj(base, prop, val);
-
-            return $rt_setPropObj(base, $rt_toString(prop), val);
+            return $rt_setArrElem(base, prop, val);
         }
 
-        // If the base is an array
-        if ($ir_eq_i8(type, $rt_LAYOUT_ARR))
+        // If the property is a string
+        if ($ir_is_string(prop))
         {
-            // If the property is a non-negative integer
-            if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0))
-            {
-                return $rt_setArrElem(base, prop, val);            
-            }
-
-            // If the property is a floating-point number
-            if ($ir_is_f64(prop))
-            {
-                var intVal = $rt_toUint32(prop);
-                if (intVal === prop)
-                    return $rt_setProp(base, intVal, val);
-            }
-
             // If this is the length property
-            if (prop === 'length')
+            if ($ir_eq_refptr(prop, 'length'))
             {
                 if ($ir_is_i32(val) && $ir_ge_i32(val, 0))
                     return $rt_setArrLen(base, val);
@@ -1870,18 +2255,22 @@ function $rt_setProp(base, prop, val)
                 assert (false, 'invalid array length');
             }
 
-            // If the property is a string
-            if ($rt_valIsString(prop))
-            {
-                var propNum = $rt_strToInt(prop);
-                if (!isNaN(propNum))
-                    return $rt_setProp(base, propNum, val);
+            var propNum = $rt_strToInt(prop);
+            if (!isNaN(propNum))
+                return $rt_setProp(base, propNum, val);
 
-                return $rt_setPropObj(base, prop, val);
-            }
-
-            return $rt_setPropObj(base, $rt_toString(prop), val);
+            return $rt_objSetProp(base, prop, val);
         }
+
+        // If the property is a floating-point number
+        if ($ir_is_f64(prop))
+        {
+            var intVal = $rt_toUint32(prop);
+            if (intVal === prop)
+                return $rt_setProp(base, intVal, val);
+        }
+
+        return $rt_objSetProp(base, $rt_toString(prop), val);
     }
 
     //print(typeof base);
@@ -1892,16 +2281,44 @@ function $rt_setProp(base, prop, val)
 }
 
 /**
+Specialized version of setProp for array elements
+*/
+function $rt_setPropElem(base, prop, val)
+{
+    // If the base is an array
+    if ($ir_is_array(base))
+    {
+        // If the property is a non-negative integer
+        // and is within the array bounds
+        if ($ir_is_i32(prop) &&
+            $ir_ge_i32(prop, 0) && 
+            $ir_lt_i32(prop, $rt_arr_get_len(base)))
+        {
+            // Get a reference to the array table
+            var tbl = $rt_arr_get_tbl(base);
+
+            // Set the element in the array
+            $rt_arrtbl_set_word(tbl, prop, $ir_get_word(val));
+            $rt_arrtbl_set_type(tbl, prop, $ir_get_type(val));
+
+            return;
+        }
+    }
+
+    return $rt_setProp(base, prop, val);
+}
+
+/**
 JS delete operator
 */
 function $rt_delProp(base, prop)
 {
     // If the base is not an object, do nothing
-    if ($rt_valIsObj(base) === false)
+    if (!$ir_is_object(base) && !ir_is_array(base) && !ir_is_closure(base))
         return true;
 
     // If the property is not a string
-    if ($rt_valIsString(prop) === false)
+    if (!$ir_is_string(prop))
         throw TypeError('non-string property name');
 
     var obj = base;
@@ -1936,11 +2353,11 @@ Implementation of the "instanceof" operator
 */
 function $rt_instanceof(obj, ctor)
 { 
-    if (!$rt_valIsLayout(ctor, $rt_LAYOUT_CLOS))
+    if (!$ir_is_closure(ctor))
         throw TypeError('constructor must be function');
 
     // If the value is not an object
-    if ($rt_valIsObj(obj) === false)
+    if (!$rt_valIsObj(obj))
     {
         // Return the false value
         return false;
@@ -1952,7 +2369,7 @@ function $rt_instanceof(obj, ctor)
     // Until we went all the way through the prototype chain
     do
     {
-        var objProto = $rt_obj_get_proto(obj);
+        var objProto = $rt_getProto(obj);
 
         if ($ir_eq_refptr(objProto, ctorProto))
             return true;
@@ -1967,7 +2384,7 @@ function $rt_instanceof(obj, ctor)
 /**
 Check if an object has a given property
 */
-function $rt_hasPropObj(obj, propStr)
+function $rt_objHasProp(obj, propStr)
 {
     // Follow the next link chain
     for (;;)
@@ -1990,7 +2407,7 @@ function $rt_hasPropObj(obj, propStr)
 
     // If the object doesn't have space for this property, return false
     if ($ir_ge_i32(propIdx, objCap))
-        return false
+        return false;
 
     // Check that the property is not missing
     var word = $rt_obj_get_word(obj, propIdx);
@@ -2004,40 +2421,77 @@ Check if a value has a given property
 */
 function $rt_hasOwnProp(base, prop)
 {
-    // If the base is a reference
-    if ($ir_is_refptr(base) && $ir_ne_refptr(base, null))
+    // If the base is an object or closure
+    if ($ir_is_object(base) || $ir_is_closure(base))
     {
-        var type = $rt_obj_get_header(base);
+        // If the property is a string
+        if ($ir_is_string(prop))
+            return $rt_objHasProp(base, prop);
 
-        // If the base is an object or closure
-        if ($ir_eq_i8(type, $rt_LAYOUT_OBJ) ||
-            $ir_eq_i8(type, $rt_LAYOUT_CLOS))
-        {
-            // If the property is a string
-            if ($rt_valIsString(prop))
-                return $rt_hasPropObj(base, prop);
+        return $rt_objHasProp(base, $rt_toString(prop));
+    }
 
-            return $rt_hasPropObj(base, $rt_toString(prop));
-        }
+    // If the base is an array
+    if ($ir_is_array(base))
+    {
+        // If the property is a non-negative integer
+        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
+            $ir_lt_i32(prop, $rt_arr_get_len(base)))
+            return true;
 
-        // If the base is an array
-        if ($ir_eq_i8(type, $rt_LAYOUT_ARR))
-        {
-            // If the property is a non-negative integer
-            if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
-                $ir_lt_i32(prop, $rt_arr_get_len(base)))
-                return true;
+        // If the property is not a string, get one
+        if (!$ir_is_string(prop))
+            prop = $rt_toString(prop);
 
-            // If this is the length property
-            if (prop === 'length')
-                return true;
+        // If this is the length property
+        if (prop === 'length')
+            return true;
 
-            // If the property is a string
-            if ($rt_valIsString(prop))
-                return $rt_hasPropObj(base, prop);
+        // Check if it's an indexed property the array should have
+        var n = $rt_strToInt(prop);
+        if ($ir_is_i32(n) &&
+            $ir_ge_i32(n, 0) &&
+            $ir_lt_i32(n, $rt_arr_get_len(base)))
+            return true;
 
-            return $rt_hasPropObj(base, $rt_toString(prop));
-        }
+        return $rt_objHasProp(base, prop);
+    }
+
+    // If the base is a string
+    if ($ir_is_string(base))
+    {
+        // If the property is an int
+        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
+            $ir_lt_i32(prop, $rt_str_get_len(base)))
+           return true;
+
+        // If the property is not a string, get one
+        if (!$ir_is_string(prop))
+            prop = $rt_toString(prop);
+
+        // If this is the 'length' property
+        if (prop === 'length')
+            return true;
+
+        // Check if this is a valid index into the string
+        var n = $rt_strToInt(prop);
+        return (
+            $ir_is_i32(n) &&
+            $ir_ge_i32(n, 0) &&
+            $ir_lt_i32(n, $rt_str_get_len(base))
+        );
+    }
+
+    // If the base is a number
+    if ($ir_is_i32(base) || $ir_is_f64(base))
+    {
+        return false;
+    }
+
+    // If the base is a constant
+    if ($ir_is_const(base))
+    {
+        return false;
     }
 
     assert (false, "unsupported base in hasOwnProp");
@@ -2057,7 +2511,7 @@ function $rt_in(prop, obj)
         if ($rt_hasOwnProp(obj, prop))
             return true;
 
-        obj = $rt_obj_get_proto(obj);
+        obj = $rt_getProto(obj);
 
     } while ($ir_ne_refptr(obj, null));
 
@@ -2068,10 +2522,9 @@ function $rt_in(prop, obj)
 Used to enumerate properties in a for-in loop
 */
 function $rt_getPropEnum(obj)
-{ 
+{
     // If the value is not an object or a string
-    if ($rt_valIsObj(obj) === false && 
-        $rt_valIsLayout(obj, $rt_LAYOUT_STR) === false)
+    if (!$rt_valIsObj(obj) && !$ir_is_string(obj))
     {
         // Return the empty enumeration function
         return function ()
@@ -2083,21 +2536,38 @@ function $rt_getPropEnum(obj)
     var curObj = obj;
     var curIdx = 0;
 
-    // Check if a property is currently shadowed
-    function isShadowed(propName)
+    // Check if a property is shadowed by a prototype's
+    function isShadowed(curObj, propName)
     {
-        // TODO: shadowing check function?
-        return false;
+        for (;;)
+        {
+            // Move one down the prototype chain
+            curObj = $rt_getProto(curObj);
+
+            // If we reached the bottom of the chain, stop
+            if ($ir_eq_refptr(curObj, null))
+                return false;
+
+            // FIXME: for now, no support for non-enumerable properties
+            // assume that properties on core objects at the bottom of
+            // the prototype chain are non-enumerable
+            if ($ir_eq_refptr($rt_getProto(curObj), null))
+                return false;
+
+            // If the property exists on this object, it is shadowed
+            if ($rt_hasOwnProp(curObj, propName))
+                return true;
+        }
     }
 
-    // Move to the next available property
+    // Function to get the next available property
     function nextProp()
     {
         while (true)
         {
             // FIXME: for now, no support for non-enumerable properties
-            if (curObj === Object.prototype     || 
-                curObj === Array.prototype      || 
+            if (curObj === Object.prototype     ||
+                curObj === Array.prototype      ||
                 curObj === Function.prototype   ||
                 curObj === String.prototype)
                 return true;
@@ -2119,23 +2589,28 @@ function $rt_getPropEnum(obj)
                     var keyVal = $ir_map_prop_name(classPtr, curIdx);
 
                     // FIXME: until we have support for non-enumerable properties
-                    if ((keyVal === 'length' || keyVal === 'callee' ) &&
-                        $rt_valIsLayout(obj, $rt_LAYOUT_OBJ) === false)
+                    if ((keyVal === 'length' || keyVal === 'callee' ) && !$ir_is_object(obj))
                     {
                         ++curIdx;
                         continue;
                     }
 
-                    // If this is a valid key, return it
+                    // If this is a valid key in this object
                     if (keyVal !== null && $rt_hasOwnProp(curObj, keyVal))
                     {
                         ++curIdx;
+
+                        // If the property is shadowed, skip it
+                        if (isShadowed(curObj, keyVal))
+                            continue;
+
+                        // Return the current key
                         return keyVal;
                     }
                 }
 
                 // If the object is an array
-                if ($rt_valIsLayout(curObj, $rt_LAYOUT_ARR))
+                if ($ir_is_array(curObj))
                 {
                     var arrIdx = curIdx - numProps;
                     var len = curObj.length;
@@ -2148,13 +2623,13 @@ function $rt_getPropEnum(obj)
                 }
 
                 // Move up the prototype chain
-                curObj = $rt_obj_get_proto(curObj);
+                curObj = $rt_getProto(curObj);
                 curIdx = 0;
                 continue;
             }
 
             // If the object is a string
-            else if ($rt_valIsLayout(curObj, $rt_LAYOUT_STR))
+            else if ($ir_is_string(curObj))
             {
                 var len = curObj.length;
 
@@ -2178,21 +2653,6 @@ function $rt_getPropEnum(obj)
         }
     }
 
-    // Enumerator function, returns a new property name with
-    // each call, undefined when no more properties found
-    function enumerator()
-    {
-        while (true)
-        {
-            var propName = nextProp();
-
-            if (isShadowed(propName))
-                continue;
-
-            return propName;
-        }
-    }
-
-    return enumerator;
+    return nextProp;
 }
 

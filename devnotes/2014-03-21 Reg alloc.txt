@@ -1,0 +1,37 @@
+Priority: should be simple to implement, relatively efficient
+
+Simplifying assumptions:
+- KISS: if you write a value to the stack, should also write its type
+  - write type tags on spilling
+  - if out opnd is stack, write type tag
+- For now, can just assign a register based on stack idx
+ - no reg alloc phase, interference testing per-se?
+ - or just do it all on-the-fly...?
+
+Safety measures:
+- When setting a known out type, if the value is in a register, avoid writing the type
+- When spilling a value, always spill its type (if known)
+- Phi moves from reg to stack (should be relatively uncommon?)
+  - must write type
+- Phi moves from reg to reg with unknown dst type?
+  - must write type (automatic)
+  - must write zero if the type is pointer
+
+If we have an unknown output type but the output operand is a register, need
+to write a zero to the stack
+- This is rare-ish
+
+Spilling mechamism:
+- Spill what's life after this point?
+- In general, spill all live is probably sufficient
+- Can optimize later, spill only C caller-save regs in some cases
+
+TODO: need soft-spilling, soft-restore for getBranchStub ***
+- Save register values before entering compileBranch
+- Go through incoming context, spill values appropriately for GC safety
+- When going back to new compiled code, need to restore values into registers
+- Want to write regs to a designated memory area, not difficult
+  - Pre-alloc on the VM
+
+
+Commit all, work in steps, get the basic tests working first!

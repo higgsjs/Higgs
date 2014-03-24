@@ -71,7 +71,9 @@ void assertInt(VM vm, string input, int32 intVal)
 
     assert (
         ret.type == Type.INT32,
-        "non-integer value: " ~ valToString(ret)
+        "non-integer value: " ~ ret.toString ~ "\n" ~
+        "for input:\n" ~
+        input
     );
 
     assert (
@@ -81,7 +83,7 @@ void assertInt(VM vm, string input, int32 intVal)
             "%s" ~ "\n" ~
             "incorrect integer value: %s, expected: %s",
             input,
-            ret.word.int32Val, 
+            ret.word.int32Val,
             intVal
         )
     );
@@ -94,7 +96,7 @@ void assertFloat(VM vm, string input, double floatVal, double eps = 1E-4)
     assert (
         ret.type == Type.INT32 ||
         ret.type == Type.FLOAT64,
-        "non-numeric value: " ~ valToString(ret)
+        "non-numeric value: " ~ ret.toString
     );
 
     auto fRet = (ret.type == Type.FLOAT64)? ret.word.floatVal:ret.word.int32Val;
@@ -106,7 +108,7 @@ void assertFloat(VM vm, string input, double floatVal, double eps = 1E-4)
             "%s" ~ "\n" ~
             "incorrect float value: %s, expected: %s",
             input,
-            fRet, 
+            fRet,
             floatVal
         )
     );
@@ -118,18 +120,40 @@ void assertBool(VM vm, string input, bool boolVal)
 
     assert (
         ret.type == Type.CONST,
-        "non-const value: " ~ valToString(ret)
+        "non-const value: " ~ ret.toString
     );
 
     assert (
-        ret.word == (boolVal? TRUE:FALSE),
+        ret == (boolVal? TRUE:FALSE),
         format(
             "Test failed:\n" ~
             "%s" ~ "\n" ~
             "incorrect boolean value: %s, expected: %s",
             input,
-            valToString(ret), 
+            ret.toString,
             boolVal
+        )
+    );
+}
+
+void assertStr(VM vm, string input, string strVal)
+{
+    auto ret = vm.evalString(input);
+
+    assert (
+        ret.type is Type.STRING,
+        "non-string value: " ~ ret.toString ~ "\n" ~
+        "for eval string \"" ~ input ~ "\""
+    );
+
+    assert (
+        ret.toString == strVal,
+        format(
+            "Test failed:\n" ~
+            input ~ "\n" ~
+            "incorrect string value: %s, expected: %s",
+            ret.toString,
+            strVal
         )
     );
 }
@@ -152,30 +176,6 @@ void assertThrows(VM vm, string input)
             "%s" ~ "\n" ~
             "no exception thrown",
             input
-        )
-    );
-}
-
-void assertStr(VM vm, string input, string strVal)
-{
-    auto ret = vm.evalString(input);
-
-    assert (
-        valIsString(ret),
-        "non-string value: " ~ valToString(ret) ~ "\n" ~
-        "for eval string \"" ~ input ~ "\""
-    );
-
-    auto outStr = valToString(ret);
-
-    assert (
-        outStr == strVal,
-        format(
-            "Test failed:\n" ~
-            input ~ "\n" ~
-            "incorrect string value: %s, expected: %s",
-            outStr, 
-            strVal
         )
     );
 }
@@ -250,6 +250,7 @@ unittest
     vm.assertInt("return 7 >> 1", 3);
     vm.assertInt("return 7 >>> 1", 3);
     vm.assertInt("return ~2", -3);
+
     vm.assertInt("return ~undefined", -1);
     vm.assertInt("return undefined | 1", 1);
     vm.assertInt("return undefined & 1", 0);
@@ -408,7 +409,7 @@ unittest
                 else   
                     return n * fact(fact, n-1);
             };
-                              
+
             return fact(fact, n);
         } (4);
         ",
@@ -423,15 +424,20 @@ unittest
             {
                 if (n < 2)
                     return n;
-                else   
+                else
                     return fib(fib, n-1) + fib(fib, n-2);
             };
-                              
+
             return fib(fib, n);
         } (6);
         ",
         8
     );
+
+    // Recursive Fibonacci computation
+    writeln("fib");
+    vm.load("tests/core/fib/fib.js");
+    vm.assertInt("fib(8);", 21);
 }
 
 /// Loops
@@ -530,6 +536,9 @@ unittest
         ",
         5
     );
+
+    vm.load("tests/core/nested_loops/nested_loops.js");
+    vm.assertInt("foo(10);", 510);
 }
 
 /// Switch statement
@@ -711,7 +720,7 @@ unittest
         {
             if (n < 2)
                 return n;
-            else   
+            else
                 return fib(n-1) + fib(n-2);
         }
 
@@ -784,7 +793,7 @@ unittest
     vm.assertInt("o = {x:7, m:function() {return this.x;}}; return o.m();", 7);
 
     // Object extension and equality
-    vm.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);  
+    vm.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);
 }
 
 /// New operator, prototype chain
@@ -994,7 +1003,7 @@ unittest
 
     vm.assertInt(
         "
-        var ptr = $ir_heap_alloc(16);
+        var ptr = $ir_alloc_refptr(16);
         $ir_store_u8(ptr, 0, 77);
         return $ir_load_u8(ptr, 0);
         ",
@@ -1003,11 +1012,31 @@ unittest
 
     vm.assertInt(
         "
+        var ptr = $ir_alloc_refptr(16);
+        $ir_store_u8(ptr, 0, 0xFF);
+        return $ir_load_i8(ptr, 0);
+        ",
+        -1
+    );
+
+    // Link and integer value
+    vm.assertInt(
+        "
         var link = $ir_make_link(0);
         $ir_set_link(link, 133);
         return $ir_get_link(link);
         ",
         133
+    );
+
+    // Link and string value
+    vm.assertBool(
+        "
+        var link = $ir_make_link(0);
+        $ir_set_link(link, 'abc');
+        return ($ir_get_link(link) === 'abc');
+        ",
+        true
     );
 
     vm.assertInt(
@@ -1024,6 +1053,28 @@ unittest
         ",
         10
     );
+}
+
+/// Basic test programs
+unittest
+{
+    writefln("basic");
+
+    auto vm = new VMNoStdLib();
+
+    // Basic suite
+    vm.load("tests/core/basic_arith/basic_arith.js");
+    vm.assertInt("test();", 0);
+    vm.load("tests/core/basic_shift/basic_shift.js");
+    vm.assertInt("test();", 0);
+    vm.load("tests/core/basic_bitops/basic_bitops.js");
+    vm.assertInt("test();", 0);
+    vm.load("tests/core/basic_assign/basic_assign.js");
+    vm.assertInt("test();", 0);
+    vm.load("tests/core/basic_cmp/basic_cmp.js");
+    vm.assertInt("test();", 0);
+    vm.load("tests/core/basic_bool_eval/basic_bool_eval.js");
+    vm.assertInt("test();", 0);
 }
 
 /// Runtime functions
@@ -1149,6 +1200,15 @@ unittest
         ",
         6
     );
+
+    vm.load("tests/core/clos_capt/clos_capt.js");
+    vm.assertInt("foo(5);", 8);
+    vm.load("tests/core/clos_access/clos_access.js");
+    vm.assertInt("test();", 0);
+    vm.load("tests/core/clos_globals/clos_globals.js");
+    vm.assertInt("test();", 0);
+    vm.load("tests/core/clos_xcall/clos_xcall.js");
+    vm.assertInt("test(5);", 5);
 }
 
 /// Stdlib Math library
@@ -1258,7 +1318,7 @@ unittest
 /// Exceptions
 unittest
 {
-    writefln("exceptions");
+    writefln("exceptions (intra)");
 
     auto vm = new VM();
 
@@ -1279,6 +1339,8 @@ unittest
     vm.load("tests/core/exceptions/throw_in_catch.js");
     vm.assertStr("str;", "abcdefg");
 
+    writefln("exceptions (inter)");
+
     // Interprocedural tests
     vm.load("tests/core/exceptions/throw_inter.js");
     vm.assertInt("test();", 0);
@@ -1290,25 +1352,46 @@ unittest
     vm.assertStr("str;", "abcd");
 }
 
-/// Basic test programs
+/// Dynamic code loading and eval
 unittest
 {
-    writefln("basic");
-
     auto vm = new VM();
 
-    // Basic suite
-    vm.load("tests/core/basic_arith/basic_arith.js");
+    writefln("load");
+
+    // Dynamic code loading
+    vm.load("tests/core/load/loader.js");
+
+    // Loading a missing file
+    vm.assertThrows("load('_filethatdoesntexist123_')");
+
+    writefln("eval");
+
+    // Eval
+    vm.load("tests/core/eval/eval.js");
+
+    // Eval throwing an exception
+    vm.assertThrows("eval('throw 1')");
+}
+
+/// High-level features
+unittest
+{
+    auto vm = new VM();
+
+    // Call with apply
+    writefln("apply");
+    vm.load("tests/core/apply/apply.js");
     vm.assertInt("test();", 0);
-    vm.load("tests/core/basic_shift/basic_shift.js");
+
+    // Arguments object
+    writefln("arguments");
+    vm.load("tests/core/arg_obj/arg_obj.js");
     vm.assertInt("test();", 0);
-    vm.load("tests/core/basic_bitops/basic_bitops.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/basic_assign/basic_assign.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/basic_cmp/basic_cmp.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/basic_bool_eval/basic_bool_eval.js");
+
+    // For-in loop
+    writeln("for-in");
+    vm.load("tests/core/for_in/for_in.js");
     vm.assertInt("test();", 0);
 }
 
@@ -1337,6 +1420,7 @@ unittest
     vm.load("tests/core/regress/in_operator.js");
     vm.load("tests/core/regress/tostring.js");
     vm.load("tests/core/regress/new_array.js");
+    vm.load("tests/core/regress/loop_cst_branch.js");
     vm.load("tests/core/regress/loop_labels.js");
     vm.load("tests/core/regress/loop_swap.js");
     vm.load("tests/core/regress/loop_lt.js");
@@ -1349,6 +1433,8 @@ unittest
     vm.load("tests/core/regress/dowhile_cont.js");
     vm.load("tests/core/regress/vers_pathos.js");
 
+    vm.load("tests/core/regress/ir_string.js");
+
     vm.load("tests/core/regress/jit_se_cmp.js");
     vm.load("tests/core/regress/jit_float_cmp.js");
     vm.load("tests/core/regress/jit_getprop_arr.js");
@@ -1360,122 +1446,7 @@ unittest
 
     vm.load("tests/core/regress/delta.js");
     vm.load("tests/core/regress/raytrace.js");
-
-    vm = new VM();
     vm.load("tests/core/regress/boyer.js");
-}
-
-/// Tachyon tests
-unittest
-{
-    writefln("tachyon");
-
-    auto vm = new VM();
-
-    // ES5 comparison operator test
-    writeln("es5 comparisons");
-    vm.load("tests/core/es5_cmp/es5_cmp.js");
-    vm.assertInt("test();", 0);
-
-    // Recursive Fibonacci computation
-    writeln("fib");
-    vm.load("tests/core/fib/fib.js");
-    vm.assertInt("fib(8);", 21);
-
-    writeln("nested loops");
-    vm.load("tests/core/nested_loops/nested_loops.js");
-    vm.assertInt("foo(10);", 510);
-
-    writeln("bubble sort");
-    vm.load("tests/core/bubble_sort/bubble_sort.js");
-    vm.assertInt("test();", 0);
-
-    // N-queens solver
-    writeln("n-queens");
-    vm.load("tests/core/nqueens/nqueens.js");
-    vm.assertInt("test();", 0);
-
-    writeln("merge sort");
-    vm.load("tests/core/merge_sort/merge_sort.js");
-    vm.assertInt("test();", 0);
-
-    writeln("matrix comp");
-    vm.load("tests/core/matrix_comp/matrix_comp.js");
-    vm.assertInt("test();", 10);
-
-    writefln("closures");
-
-    // Closures
-    vm.load("tests/core/clos_capt/clos_capt.js");
-    vm.assertInt("foo(5);", 8);
-    vm.load("tests/core/clos_access/clos_access.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/clos_globals/clos_globals.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/clos_xcall/clos_xcall.js");
-    vm.assertInt("test(5);", 5);
-
-    writefln("apply");
-
-    // Call with apply
-    vm.load("tests/core/apply/apply.js");
-    vm.assertInt("test();", 0);
-
-    writefln("arguments");
-
-    // Arguments object
-    vm.load("tests/core/arg_obj/arg_obj.js");
-    vm.assertInt("test();", 0);
-
-    writefln("for-in");
-
-    // For-in loop
-    vm.load("tests/core/for_in/for_in.js");
-    vm.assertInt("test();", 0);
-
-    writefln("stdlib");
-
-    // Standard library
-    vm.load("tests/core/stdlib_math/stdlib_math.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/stdlib_boolean/stdlib_boolean.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/stdlib_number/stdlib_number.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/stdlib_function/stdlib_function.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/stdlib_object/stdlib_object.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/stdlib_array/stdlib_array.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/stdlib_string/stdlib_string.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/stdlib_json/stdlib_json.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/stdlib_regexp/stdlib_regexp.js");
-    vm.assertInt("test();", 0);
-    vm.load("tests/core/stdlib_map/stdlib_map.js");
-    vm.assertInt("test();", 0);
-}
-
-/// Dynamic code loading and eval
-unittest
-{
-    auto vm = new VM();
-
-    writefln("load");
-
-    // Dynamic code loading
-    vm.load("tests/core/load/loader.js");
-
-    // Loading a missing file
-    vm.assertThrows("load('_filethatdoesntexist123_')");
-
-    // Eval
-    vm.load("tests/core/eval/eval.js");
-
-    // Eval throwing an exception
-    vm.assertThrows("eval('throw 1')");
 }
 
 /// Garbage collector tests
@@ -1574,222 +1545,5 @@ unittest
     vm = new VM();
     vm.load("tests/core/gc/load.js");
     vm.assertInt("theFlag;", 1337);
-}
-
-// Dummy functions used for FFI tests
-extern (C)
-{
-    void testVoidFun()
-    {
-        return;
-    }
-
-    short testShortFun()
-    {
-        return 2;
-    }
-
-    int testIntFun()
-    {
-        return 5;
-    }
-
-    double testDoubleFun()
-    {
-        return 5.5;
-    }
-
-    int testIntAddFun(int a, int b)
-    {
-        return a + b;
-    }
-
-    double testDoubleAddFun(double a, double b)
-    {
-        return a + b;
-    }
-
-    int testIntArgsFun(int a, int b, int c, int d, int e, int f, int g)
-    {
-        return a + b + c + d + e + (f - g);
-    }
-
-    double testDoubleArgsFun(double a, double b, double c, double d, double e, double f, double g)
-    {
-        return a + b + c + d + e + (f - g);
-    }
-
-    void* testPtrFun()
-    {
-        return &testIntAddFun;
-    }
-
-    void* testPtrArgFun(void* ptrArg)
-    {
-        return ptrArg;
-    }
-
-    double testMixedArgsFun(int a, double b, int c, double d, int e, double f, int g)
-    {
-        return cast(double)(a + b + c + d + e + (f - g));
-    }
-}
-
-unittest
-{
-    writefln("FFI");
-
-    auto vm = new VM();
-    vm.load("tests/core/ffi/ffi.js");
-
-}
-
-/// Misc benchmarks
-unittest
-{
-    auto vm = new VM();
-
-    writefln("misc/bones");
-    vm.load("benchmarks/bones/bones.js");
-
-    writefln("misc/chess");
-    vm.load("benchmarks/chess/toledo_chess.js");
-}
-
-/// Computer Language Shootout benchmarks
-unittest
-{
-    writefln("shootout");
-
-    auto vm = new VM();
-
-    // Silence the print function
-    vm.evalString("print = function (s) {}");
-
-    void run(string name, size_t n)
-    {
-        writefln("shootout/%s", name);
-        vm.evalString("arguments = [" ~ to!string(n) ~ "];");
-        vm.load("benchmarks/shootout/" ~ name ~ ".js");
-    }
-
-    run("hash", 10);
-    vm.assertInt("c", 10);
-
-    run("hash2", 1);
-
-    run("heapsort", 4);
-    vm.assertFloat("ary[n]", 0.79348136);
-
-    // TODO: too slow for now
-    //run(lists, 1);
-
-    run("mandelbrot", 10);
-
-    run("matrix", 4);
-    vm.assertInt("mm[0][0]", 270165);
-    vm.assertInt("mm[4][4]", 1856025);
-
-    run("methcall", 10);
-
-    run("nestedloop", 10);
-    vm.assertInt("x", 1000000);
-
-    run("objinst", 10);
-
-    run("random", 10);
-    vm.assertInt("last", 75056);
-}
-
-/// SunSpider benchmarks
-unittest
-{
-    writefln("sunspider");
-
-    auto vm = new VM();
-
-    void run(string name)
-    {
-        writefln("sunspider/%s", name);
-        vm.load("benchmarks/sunspider/" ~ name ~ ".js");
-    }
-
-    run("3d-cube");
-    run("3d-morph");
-    run("3d-raytrace");
-
-    run("access-binary-trees");
-    run("access-fannkuch");
-    run("access-nbody");
-    run("access-nsieve");
-
-    run("bitops-bitwise-and");
-    run("bitops-bits-in-byte");
-    run("bitops-3bit-bits-in-byte");
-    run("bitops-nsieve-bits");
-
-    run("controlflow-recursive");
-    vm.assertInt("ack(3,2);", 29);
-    vm.assertInt("tak(9,5,3);", 4);
-
-    // FIXME: bug in regexp lib?
-    //run("crypto-aes");
-    //vm.assertInt("decryptedText.length;", 1311);
-    run("crypto-md5");
-    run("crypto-sha1");
-
-    run("math-cordic");
-    run("math-partial-sums");
-    run("math-spectral-norm");
-
-    // TODO: enable once faster
-    //run("string-base64");
-
-    // TODO: enable once faster, now ~9s
-    //run("string-fasta");
-}
-
-/// V8 benchmarks
-unittest
-{
-    writefln("v8bench");
-
-    auto vm = new VM();
-    vm.load("benchmarks/v8bench/base.js");
-
-    void run(string name)
-    {
-        writefln("v8bench/%s", name);
-        vm.load("benchmarks/v8bench/" ~ name ~ ".js");
-        vm.load("benchmarks/v8bench/drv-" ~ name ~ ".js");
-    }
-
-    run("crypto");
-
-    run("deltablue");
-
-    run("earley-boyer");
-
-    run("navier-stokes");
-
-    run("raytrace");
-
-    run("richards");
-
-    // TODO: enable once faster
-    //run("splay");
-}
-
-unittest
-{
-    writefln("libraries");
-
-    auto vm = new VM();
-
-    vm.evalString("stdio = require('lib/stdio')");
-    vm.evalString("tmpName = stdio.tmpname()");
-
-    vm.evalString("stdlib = require('lib/stdlib')");
-    vm.evalString("mem = stdlib.malloc(32); stdlib.free(mem)");
 }
 

@@ -46,6 +46,7 @@ layouts = [
     # String layout
     {
         'name':'str',
+        'tag':'string',
         'fields':
         [
             # String length
@@ -62,6 +63,7 @@ layouts = [
     # String table layout (for hash consing)
     {
         'name':'strtbl',
+        'tag':'refptr',
         'fields': 
         [
             # Capacity, total number of slots
@@ -78,6 +80,7 @@ layouts = [
     # Object layout
     {
         'name':'obj',
+        'tag':'object',
         'fields':
         [
             # Capacity, number of property slots
@@ -85,9 +88,6 @@ layouts = [
 
             # Map reference
             { 'name':"map", 'type':"mapptr" },
-
-            # Prototype reference
-            { 'name':"proto", 'type':"refptr" },
 
             # Property words
             { 'name':"word", 'type':"uint64", 'init':'missing_word', 'szField':"cap", 'tpField':'type' },
@@ -100,6 +100,7 @@ layouts = [
     # Function/closure layout (extends object)
     {
         'name':'clos',
+        'tag':'closure',
         'extends':'obj',
         'fields':
         [
@@ -119,6 +120,7 @@ layouts = [
     # Closure cell
     {
         'name':'cell',
+        'tag':'refptr',
         'fields':
         [
             # Value word
@@ -132,6 +134,7 @@ layouts = [
     # Array layout (extends object)
     {
         'name':'arr',
+        'tag':'array',
         'extends':'obj',
         'fields':
         [
@@ -146,6 +149,7 @@ layouts = [
     # Array table layout (contains array elements)
     {
         'name':'arrtbl',
+        'tag':'refptr',
         'fields':
         [
             # Array capacity
@@ -220,12 +224,12 @@ class Cst:
     def genD(self):
 
         if self.val == 'undef_word':
-            return 'UNDEF.uint64Val'
+            return 'UNDEF.word.uint8Val'
         if self.val == 'undef_type':
             return 'Type.CONST'
 
         if self.val == 'missing_word':
-            return 'MISSING.uint64Val'
+            return 'MISSING.word.uint8Val'
         if self.val == 'missing_type':
             return 'Type.CONST'
 
@@ -442,11 +446,12 @@ class StoreExpr:
 
 class AllocExpr:
 
-    def __init__(self, size):
+    def __init__(self, size, tag):
         self.size = size
+        self.tag = tag
 
     def genJS(self):
-        return '$ir_heap_alloc(' + self.size.genJS() + ')'
+        return '$ir_alloc_' + self.tag + '(' + self.size.genJS() + ')'
 
     def genD(self):
         return 'vm.heapAlloc(' + self.size.genD() + ')'
@@ -776,7 +781,7 @@ for layout in layouts:
     for szField in layout['szFields']:
         szCall.args += [szVars[szField['name']]]
     objVar = Var('refptr', 'o')
-    fun.stmts += [DeclStmt(objVar, AllocExpr(szCall))]
+    fun.stmts += [DeclStmt(objVar, AllocExpr(szCall, layout['tag']))]
 
     for szField in layout['szFields']:
         setCall = CallExpr(setPref + szField['name'], [objVar, szVars[szField['name']]])

@@ -10,8 +10,8 @@ Conference deadlines:
 Internships: Nov-Dec 2014, after paper deadlines?
 ~3-4 months
 Marc advises to remain near PhD work, best for CV
+Approach Mozilla around early June, combine with trip?
 Approach Facebook
-Approach Mozilla around spring, combine with trip
 
 List of possible contributions:
 - Type tagging scheme
@@ -20,95 +20,1008 @@ List of possible contributions:
 - Basic block versioning
 - Interprocedural versioning
 - Incremental inlining vs classical inlining
+- Typed shapes and basic block versioning
 
 ------------------------------------------------------------------------------
 
-Wishlist
---------
+TODO: check the Moz guy's shape slides, check notes
+TODO: read some of Mozilla's shape code, srysly
+TODO: think about shapes more
+- want a guaranteed minimum object size
+  - no need for a special ext table, can use objects as is with len, next ptr
+- how complicated would they be to implement in a basic form?
+  - switch to shape idx
+- how much simplification could you get on object property accesses?
+  - sketch it out
+- can use shape pointers directly
+  - shapes can keep list of referring blocks
+- start writing D code for shapes
+  - class ObjShape
+- no more "make_map"
 
-TODO: take a look at Mozilla regression tests
+TODO: not missing global prop opt?
+- observation: if read once, we know its not missing
+
+TODO: don't inline in global functions, unless they have loops? ***
+- IRFunction.hasLoop?
+- this might be extra beneficial, big functions that run only once
+
+FIXME: empty fun, ret undefined twice
+- see 200m_calls
+- second one is from ctor entry
+  - entry stub doesn't know which function we're in
+  - needs to assume frame size is initial
+- should push locals in entry, pop in ret
+
+TODO: try to optimize inlineCall
+- inlinePass does not do liveness analysis, is slow on its own
+- what are the slowest parts of it?
+
+TODO: try to optimize liveness analysis
+- record total time taken in stats
+
+TODO: transform jit.compileUnit into jit.execUnit
+- Do parsing, AST->IR and call in there, better time accounting?
+- Any real reason not to?
+- alternative: try to treat unit functions more like other functions
+  - create closure objects for them
+  - create some sort of closure call bridge with a C call conv
+  - having a "C adapter" for a specific closure seems sensible
+
+FIXME: string-fasta is slower than before? fast compile time, profile quickly
+TODO: profile again, lots of interesting things to learn!
+
+TODO: bias toBool for property access expressions, isNaN, bitwise result
+
+------------------------------------------------------------------------------
+
+Goal: March 31st, type prop working, satisfying perf for article
+- Type prop should enable speed gains on bigger benchmarks
+
+TODO: blog post about optimization, results
+- 200 stars on github???
+- difficulty of optimizing self-hosted code
+- profiling, you don't actually know what's going on, complex codebase
+- compile time now dominates execution time on several benchmarks
+- 3d-raytrace, prop access > 30% execution time
+- inline caching
+
+TODO: exec time, should probably measure when entering code, stop when leaving
+- May want state-based time accounting
+- commit before refactoring
+Marc says: get perf counters to measure context switching overhead
+TODO: can we design a pathological case wrt versioning and context switching?
+- would make it easier to study the overhead involved, profile it
+
+TODO: CodeGenState.getState for constant values?
+- Would facilitate interoperability
+- Need to know the IR constant to get an operand
+- Difference between known constant and ir constant?
+- knownType vs knownCst?
+- Or have a 4th kind, KNOWN_VAL vs IR_CONST
+
+------------------------------------------------------------------------------
+
+Milestone: register allocation
+------------------------------
+
+Meeting:
+- sketched out reg alloc
+- more runtime and inlining tweaks
+- better exec time accounting
+- tested hypothesis: inline cache, more misses, icache invalidation
+  - a few more misses, but doesn't explain problem
+  - most benchmarks have very very few misses (e.g.: 100-300)
+- almost all benchmarks still slower with BBV
+  - shorter/simpler benchmarks sometimes faster
+  - these have less code, also less compiler calls, context switching
+- bitops-3bit-bits-in-byte.js is not slower
+  - its own code fits within 4KB or so, fits in the icache
+  - ~300 additional context swaps for compilation, significant
+- fasta is very long running, still significantly slower
+  - comp time relatively small, less than 3d-raytrace
+  - code size, num versions is much less than 3d-raytrace, but...
+  - slowdown seems to have scaled upwards with execution time ***
+    - suggestive of icache effect
+- strangeness: with BBV, one would expect less *hot code*?
+  - but only executed versions compiled
+  - more code does mean more icache interference
+- should probably focus on trimming the biggest instructions
+  (e.g.: get_global, calls)?
+  - get_global can be optimized with external fallback code
+  - could optimize global calls speculatively
+
+TODO: can possibly test out context swapping hypothesis by adding a certain
+number of useless compiler calls, without increasing code size?
+- These would have to do real compilation work
+- Easy dirty hack: have the branch stub compilation not patch the branch
+  the first time around, do some useless compilation the second time
+
+TODO: test performance against master branch
+- is the comp time much worse?
+
+TODO: phi moves
+- Phi moves from reg to stack (should be relatively uncommon?)
+  - must write type
+- Phi moves from reg to reg with unknown dst type?
+  - must write type (automatic)
+  - must write zero if the type is pointer
+
+TODO: spilling logic for calls and host code, modify jit/ops.d
+- When spilling a value, always spill its type (if known)
+- KISS at first, spill all live
+
+*** at this point, should be able to get very basic tests working ***
+
+TODO: setOutType
+- If we have an unknown output type but the output operand is a register, need
+  to write a zero to the stack. This is rare-ish.
+- When setting a known out type, if the value is in a register, avoid writing the type
+
+TODO: getOutOpnd
+
+TODO: getWordOpnd
+- Put code in place to alloc regs, but leave disabled for now?
+
+TODO: getTypeOpnd
+
+
+
+
+
+
+[DONE] TODO: spill saved registers for GC in compileBranch
+- Go through incoming context, spill values appropriately for GC safety
+- iterate through valMap, spill known types as well
+- no need to change status of written values
+
+[DONE] TODO: save registers in getBranchStub
+- Save register values before entering compileBranch
+- When going back to new compiled code, need to restore values into registers
+- Want to write regs to a designated memory area, not difficult
+- Word[allocRegs.length] VM.regSave
+
+[DONE] TODO: spillReg helper function
+
+[DONE] TODO: allocReg helper function
+
+[DONE] TODO: ValState.toReg, toStack
+
+------------------------------------------------------------------------------
+
+[DONE] TODO: try measuring execution time separately, see if issue persists
+- May be that time issue is due to cleanup time, allocated memory?
+  - We're measuring the whole program execution time, which is bad
+- 3d-raytrace still slower with this change
+- slower across benchmarks
+- even fasta is slower... seems ridiculous?
+- some very short/simple benchmarks are faster or the same?
+  - might support the idea that this is a cache effect
+  - these benchmarks should also do less compiler calls
+
+[DONE] TODO: sketch simple reg alloc
+
+[DONE] TODO: add inline cache miss stat, compare 3d-raytrace with and without BBV
+- num prop idx misses
+- very few misses
+- this is not the problem wrt BBV code being slower!
+
+[DONE] TODO: optimize genBoolEval
+- Don't need toBool for !, instanceof, in
+
+[DONE] TODO: specialized $rt_setPropElem, see access-fannkuch
+- before: 4.3M prim calls, 13.2M type tests
+- after: 604K prim calls, 7.4M type tests!
+
+[DONE] Meeting this week: examine machine code again, Wednesday or Thursday
+- Detailed primitive call stats, sorted by decreasing frequency
+- Various improvements to runtime code
+- More inlined primitives
+- Basic BBV working with inlining
+  - Eliminating large proportion of type tests
+  - >78% on 3d-raytrace
+- Perf results not fully clear
+  - May be that on short benchmarks, more versions means more interruptions to compile
+  - icache trouble
+  - reg alloc may help with more compact code, better icache perf?
+
+[DONE] TODO: specialized $rt_geIntFloat, see access-fannkuch
+- before: 4.3M prim calls, 13.2M type tests
+- after: 3.1M prim calls, 12.0M type tests
+
+[DONE] TODO: $rt_gtIntFloat
+- before: $rt_gt has 90K calls
+- eliminates a fair amount of primitive calls and type tests
+
+[DONE] TODO: make setProp more efficient, eliminate === calls
+- before, 75K se calls, 5.90M tests
+- after, 71K, 5.88M
+
+[DONE] TODO: make $rt_toString more efficient, eliminate === calls
+- currently 113K se calls, 6.12M type tests in 3d-raytrace
+- now 75K se calls, 5.90M tests
+
+[DONE] TODO: rt_lt... Should probably handle lhs float + rhs int case?
+
+[DONE] TODO: load i8, signed 8 bit int
+- add test
+
+[DONE] TODO: command-line option to record primitive call frequency, --prim_stats
+- display sorted count
+- only way to know what's relevant to optimize
+- not that hard to implement, call some host primitive with a pointer to the D string
+
+[DONE] TODO: eq... specialized version for null? rt_eqNull
+- 37K calls in 3d-raytrace
+- eliminates calls but doesn't reduce type tests
+
+[DONE] FIXME: maxvers=0, something gets up to 3 versions on 3d-raytrace
+make; ./higgs --stats --jit_maxvers=0 benchmarks/sunspider/3d-raytrace.js
+
+[DONE] TODO: inline version of rt_mod, integers only, rt_modInt
+
+[DONE] TODO: inline version of rt_sub, rt_subIntFloat
+
+[DONE] TODO: examine runtime type tests, why so many int tests in 3d-raytrace?
+- print where they happen
+
+[DONE] FIXME: still missing versions on loop_big_incr, 4B tests
+make; ./higgs --nostdlib --stats benchmarks/micro/loop_big_incr.js
+make; ./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/loop_big_incr.js
+- No versioning happening
+- Is removeDead killing all the type info? No
+- Useless type tests still present
+- Might have to do with phi types not getting set? Yes
+- 3d-raytrace type tests go from 20M to 7M
+
+[DONE] TODO: implement CodeGenState.diff
+- Needs to compare typeKnown flag, types
+
+[DONE] TODO: examine behavior of BBV on loop incr, look at machine code
+make; ./higgs --nostdlib --stats benchmarks/micro/loop_big_incr.js
+- 4B type tests still!
+- primitives inlined properly
+- code not optimized
+
+[DONE] TODO: implement known types in both variants of setOutType
+- 27M to 21M type tests
+- code size 1157K to 1229K
+- versions 5024 to 5027
+
+[DONE] Meeting:
+- Fixed codegen bugs outlined at last group meeting
+  - suboptimal direct jump
+- Completed wider type tags refactoring
+  - Fixed bugs, added more tests
+- Added back stats for number of block versions
+- Began smaller primitives for inlining
+  - getPropField, getPropMethod, getPropElem, getPropLength
+  - addInt (++), addIntFloat
+  - ltIntFloat
+  - fallback to old, complete primitives
+- 3d-raytrace
+  - primitive calls: 16.6M to 1.06M         *** update number
+  - code size: 937K to 1157K                *** update number
+  - 37M type tests, most of them is_i32
+  - compilation time now about 60% of total time
+- BBV eliminates >75% tests on 3d-raytrace, should make noticeable perf difference
+  - new tag scheme will also eliminate is_object, is_array, is_string
+  - but: block versioning will increase compilation time
+  - can we exclude compile time for the paper?
+- Ran DMD's profiler
+  - liveness analysis is slow, quadratic
+  - getProp makes > 30% of exec time
+- Implemented basic inline caching, 23% speedup on 3d-raytrace
+- Marc says: focus on generated code performance
+
+[DONE] TODO: rt_se usage in 3d-raytrace
+- benchmark itself doesn't use se!
+- called 282K times
+
+[DONE] TODO: total time vs exec time in stats
+
+[DONE] TODO: getPropMethod
+make; ./higgs --stats benchmarks/sunspider/3d-raytrace.js
+- before:
+    exec time (ms): 846
+    comp time (ms): 388
+    code size (bytes): 1111224
+    num call_prim: 1369740
+- after:
+    exec time (ms): 1003
+    comp time (ms): 608
+    code size (bytes): 1160565
+    num call_prim: 1250309
+- compilation time now really dominates
+- exec time went down but total time went up!
+
+[DONE] FIXME: map_prop_idx produces idx 0
+- obj proto map id is 0!
+
+[DONE] FIXME: exceptions thrown by eval can't be caught in JS
+
+[DONE] TODO: stat for all version counts, 1 version, 2 versions, ...
+- Can compute this incrementally
+- When going from 3 to 4 versions, remove 1 from 3, add to 4
+
+[DONE] TODO: num blocks vs num versions stat, remove num instances
+
+[DONE] TODO: compare ./benchmark.py times to CC2014 branch, to show Marc
+- Much faster on some benchmarks, but slower in others
+- Compilation time seems to be the problem
+
+[DONE] TODO: check that we're measuring comp time properly
+
+[DONE] TODO: specialized getPropIdx with basic inline caching
+time ./higgs benchmarks/sunspider/3d-raytrace.js    real 1.123s
+time ./higgs benchmarks/sunspider/3d-raytrace.js    real 0.869s
+- Pass a pointer to the D string from the string constant if known
+- Give the maps a 64-bit id as you do for instrs, have a few cache slots (4?)
+
+[DONE] FIXME: block.getName, CodeFragment.getName called when not generating ASM?
+
+[DONE] TODO: profiling
+- getPropIdx quite slow
+- liveInfo is ~10% of exec time
+- getPropIdx is ~30%
+
+[DONE] TODO: getPropElem for array elements
+- currently 1.8M primitive calls
+- now 1.37M
+
+[DONE] TODO: specialized getPropLength primitive
+
+[DONE] TODO: getPropField with first level obj access inlined
+- keep small so just this gets inlined
+- inline only where appropriate in ir/ast.d
+- slows down compilation time hugely, unexplained by minor code size bloat
+
+[DONE] TODO: rename getPropObj to objGetProp
+
+[DONE] TODO: smaller lt for inlining, ltIntFloat
+
+[DONE] TODO: log prim call names for 3d-raytrace
+- lots of getProp
+- lots of lt
+- lots of add from ++ (fixed)
+
+[DONE] TODO: $rt_addInt for ++ operator
+- check stats for 3d-raytrace
+
+[DONE] FIXME: mulIntFloat decreases perf on 3d-raytrace
+./higgs --stats --e "print(numC); print(numF);" benchmarks/sunspider/3d-raytrace.js
+- could we be hitting the fallback case often?
+- collect stats using global vars
+  - number of calls vs number of fallbacks
+- mulIntFloat: 301K calls, 6K fallbacks
+- addIntFloat: 317K calls, 4K fallbacks
+- will have to wait until type prop to know
+
+[DONE] TODO: $rt_mulIntFloat
+- test perf on 3d-raytrace
+
+[DONE] TODO: $rt_addIntFloat, smaller primitive for inlining
+- doesn't make a big difference on 3d-raytrace
+
+[DONE] TODO: peephope opt, see $rt_getPropObj
+time ./higgs --jit_genasm --e "print(\$rt_getPropObj.irString())"
+not_exit(3986):
+$15 = phi [if_true(3965):0 => false, if_true(3965):1 => true]
+if_true $15 => if_true(3981), or_sec(3984)
+- Should be the only phi node in this block
+- Should be no other instructions
+
+[DONE] FIXME: GC/segfault bug with v8bench/crypto... heisenbug
+- run outside of tests
+- log when GC happens
+- segfaults before GC!
+$0 = is_const $10
+$0 = eq_const $9, $10
+ret $0
+if_true $2 => if_true(12273), if_false(12274)
+Segmentation fault (core dumped)
+- Stack overflow
+
+[DONE] FIXME: empty fun, cmp eax, 0
+- see 200m_calls
+
+[DONE] FIXME: irString followed by call crashes
+- add test for this
+
+[DONE] FIXME: loop incr, redundant jump to immediately following block
+time ./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/200m_loop_incr.js 
+- not a stub, shouldn't happen
+- naive writing, never rewritten?
+
+[DONE] TODO: 200m_loop_incr microbenchmark
+
+[DONE] FIXME: [1,2] == [1,2]
+
+[DONE] TODO: proper struct for ValuePair
+- methods, toString, isHeapPtr, isNull, isLayout, etc
+- constructor taking a refptr & type
+
+[DONE] TODO: examine uses of valIsLayout, refIsLayout in D code
+
+[DONE] TODO: eliminate valIsString from D code
+
+[DONE] TODO: add more logging for this error
+Assertion failed (runtime/vm.d@697): invalid stack slot index
+core.exception.AssertError@runtime/vm.d(697): invalid stack slot index
+----------------
+./test-higgs(onAssertErrorMsg+0xb0) [0x6ba054]
+./test-higgs(_d_assert_msg+0x45) [0x69a065]
+./test-higgs(runtime.vm.Word runtime.vm.VM.getWord(int)+0x9b) [0x6241a7]
+./test-higgs(compileEntry+0x43) [0x681647]
+[0x2aff3d1ee80f]
+./test-higgs(runtime.vm.ValuePair runtime.vm.VM.exec(parser.ast.FunExpr)+0x6e) [0x6253a2]
+./test-higgs(runtime.vm.ValuePair runtime.vm.VM.load(immutable(char)[])+0x83) [0x625537]
+
+[DONE] FIXME: esprima test fails
+- add new regression test
+
+[DONE] TODO: eliminate valIsString from JS code
+
+[DONE] Meeting:
+- New wider type tags
+- More debugging tools, tracing instrs, stack printing
+- Conf invite in Sweden
+  - rejected, suggested that Tom may apply, promote Higgs
+
+[DONE] TODO: use ValuePair more in runtime/object.d, for safety?
+- who uses getPropObj, newObj, newClos?
+- might make most sense for newObj, newClos
+- newObj should definitely take a ValuePair for the proto value
+
+[DONE] FIXME: segfault on Higgs init
+jump => for_test(3729)
+$10 = load_refptr $9, 0
+$0 = eq_refptr $10, null
+$0 = load_mapptr $9, 16
+$11 = map_prop_idx $0, $22, false
+Is the map null?
+- Seemingly not null, but getPropIdx segfaults
+- str ptr seems corrupted
+- gotta log who's calling getPropObj
+  - can you traverse the stack using VM.visitStack?
+- stack overflow is the problem
+
+[DONE] TODO: util, as.printStack
+
+[DONE] FIXME: $rt_getProto not working? proto value we get is corrupted, zero type tag
+- value properly set in newObj
+- seems to work with object in the console
+- proto corrupted during object expansion
+- minNumProps wrongly handled wrt reserveSlots
+
+[DONE] FIXME: prototype needs a type tag
+- store in slot 0?
+- need to move closure pointer to slot 1
+- newObj, newArr need to reserve a hidden prototype slot too
+
+[DONE] TODO: adjust D uses of newObj, newClos
+- grep for REFPTR
+
+[DONE] Meeting: to be shown: disassembly for fib, microbenchmark results
+- completed and debugged new stub scheme, branch rewriting
+- various machine code optimizations
+  comp time     -42%
+  exec time     -19%
+  code size     -14%
+- made disassembly strings much much faster
+- ran microbenchmarks
+- recuperated inlining, type analysis code from cc2014 branch, basic inlining working
+  - even only inlining small primitives generally doesn't pay for itself
+  - does win out on 3d-raytrace, cuts prim calls by more than half
+- started looking at IR, ASM for prop access, optimizing inefficiencies
+- idea: shape system with types for object fields
+  - by testing for a specific shape, instantly gain invaluable info about an object
+  - could insert shape test instruction, generate many basic block versions (up to 4?)
+    s = obj_get_shape o (s is say int32)
+    v = obj_get_val(o, s, propStr)
+    In optimized case, shape idx and prop idx gets us a constant, or
+    a constant type.
+  - could work for the global object too
+  - solves the undefined problem, advantage over TI!
+- the plan:
+  - first basic inlining, tweak heuristics
+  - get type prop, type analysis working
+  - rewrite new primitives with smaller inlinable part, hand-inlining, hand-tuning
+  - 1st level type tags for objects, arrays, closures
+  - see how much time is left
+  - reg alloc, some gains, but probably not that much
+  - global prop access idea, known not missing?
+  - shape system?
+    - may want to leave type spec out until next paper
+    - may be too much to explain
+    - but, could start with inline caching
+- Marc says: prioritize inlining of add, sub, mul, etc.
+  - rerun microbenchmarks
+- Marc says: aim for having satisfying perf a month from now
+  - set milestone
+
+[DONE] TODO: adjust GC code for new type tags
+
+[DONE] TODO: isHeapPtr(Type type), useful for sanity checks
+- grep for REFPTR
+
+[DONE] TODO: change layout system to use new alloc instructions
+
+[DONE] TODO: tweet that presence at dconf is confirmed #dlang #dconf
+It's official, Higgs and I will be returning to DConf in 2014! dconf.org #dlang #dconf
+
+[DONE] FIXME: test runner, FFI depend on type tag values?
+- grep for get_type
+
+[DONE] TODO: fetch type analysis from cc2014 branch, make it compile
+
+[DONE] FIXME: getProp calls toBool, this is wrong!
+time ./higgs --nostdlib --stats benchmarks/micro/10m_getprop.js
+- Can we assume that if (prim) produces a boolean? should be able to
+  - don't design primitives that have weird polymorphic return types
+time ./higgs --nostdlib --stats benchmarks/micro/10m_getprop.js
+exec time (ms): 3200
+comp time (ms): 12
+
+[DONE] TODO: upgrade dmd to 2.065
+
+[DONE] FIXME: segfault on throw_in_finally
+make; ./higgs --nostdlib "tests/core/exceptions/throw_in_finally.js"
+- Doesn't have to do with the peephole
+- Don't want to inline $rt_throw
+  - but why does it segfault?
+- Not inlining throw doesn't fix it
+- doesn't get to throwExc
+- something screws up during IR gen
+- inlining + exc produces empty block
+
+[DONE] TODO: --jit_trace_instrs
+
+[DONE] FIXME: $rt_obj_ofs_next not inlined in $rt_obj_get_next, why?
+- IR gets doesn't get generated when entry stub is hit, no entry stub for primitives!
+- move inlinePass call into astToIR!
+
+[DONE] TODO: peephope opt for IsTypeOp with constant
+
+[DONE] TODO: simple ad-hoc, rule-based inlining
+- benefit: keep the old type analysis
+- inling once at IR gen time, no recompilation
+- inling specific primitives
+- to begin, only inline small runtime primitives
+- should be able to speedup getProp hugely
+
+[DONE] TODO: if call has no uses, no need to copy ret regs to out slot
+
+[DONE] TODO: grab ir/inlining.d and jit/inlining.d from CC branch
+
+[DONE] TODO: simplify return from primitive functions?
+- Are we doing frame size checks in there?
+- test 200m primcalls again
+time ./higgs --nostdlib --stats benchmarks/micro/200m_primcalls.js 
+- hack it for now
+- before
+  exec time (ms): 1810
+  comp time (ms): 1
+  code size (bytes): 40890
+- no noticeable time difference!
+
+[DONE] TODO: microbenchmarks, big loop with either getProp, getGlobal, fn call
+- also run with --stats, look at num prim calls
+time ./higgs --nostdlib --stats benchmarks/micro/10m_getprop.js
+  10M getprop
+    exec time (ms): 4884
+    comp time (ms): 10
+    num call_prim: 210000041    *** 210M primitive calls, inlining will help
+    num map_prop_idx: 10000001
+    is_refptr: 20000002
+    is_const: 20000001
+    type tests: 40000005
+  10M getglobal
+    exec time (ms): 154
+    comp time (ms): 3
+    num call_prim: 0
+    num map_prop_idx: 0
+    type tests: 0
+  200M add
+    exec time (ms): 3637
+    comp time (ms): 2
+    num call_prim: 200000000
+    type tests: 400000000
+  200m primcalls
+    exec time (ms): 2120
+    comp time (ms): 2
+    num call_prim: 200000000
+    type tests: 0
+- worth studying, discovered some hidden type tests
+- getProp does about 20 calls per access, about 50% exec time is prim calls
+- inlining will be crucial, especially inside getprop
+
+[DONE] FIXME: getprop does 10M is_f64 tests?
+- use of $rt_ns in getPropObj
+
+[DONE] TODO: fix num prim calls stat
+
+[DONE] TODO: compare speed against master branch with ./benchmark.py
+new
+  comp time (ms): 95            -42%
+  exec time (ms): 512           -19%
+  code size (bytes): 618873     -14%
+old
+  comp time (ms): 163
+  exec time (ms): 631
+  code size (bytes): 715050
+
+[DONE] TODO: memberOpnd? could optimize call code further
+
+[DONE] TODO: as.comment, try avoiding calling if jit_dumpasm is false
+
+[DONE] FIXME: branch rewriting did not shave end of blocks in getPropObj
+make; ./higgs --jit_genasm --e "print(\$rt_getPropObj.asmString())"
+call_cont(3D2B):
+; $0 = eq_refptr $7, null
+mov rax, [qword r14 + 56];              498B4638
+cmp rax, 0;                             4883F800
+je branch_if_true(3D2D);                0F848C000000
+nop1;                                   90
+nop4;                                   8D742600
+branch_if_join(3D2F):
+if_join(3D2F):
+
+Clearly branch_if_join is immediately after. Should be immediately queued.
+Will need to log things specific to getPropObj branches
+
+What those jumps have in common is that neither of the targets are stubbed.
+They got rewritten twice.
+Most likely, the first rewrite simply did not remove the mov...
+
+[DONE] TODO: getBranchEdge, should probably avoid:
+  - generating succState
+  - doing getBlockVersion to get a successor version
+  - immediately doing move generation
+- wastes time and memory on unexecuted targets
+- only store the predState and target block at first
+- can lazily generate moveList when compiling branch edge
+- if isNoop, eliminate the branch edge
+- want to do repatching in compile loop, when compiling branch edge
+
+[DONE] FIXME: call_prim to rt_obj_get_next taking 3 constant args, why?
+- only needs one argument
+- we don't check if the hidden arguments are needed
+- could just assert they have no uses
+- argc seems necessary to traverse the stack
+
+[DONE] FIXME: does the GC need the closure argument?
+- closure argument not needed per-se
+- GC fails to find return address in ret addr map
+- leftover corrupted data with the wrong tag?
+- Do we ever write values on the stack without a type tag?
+  - odd interation with a regression test...
+- bug in get_ir_string, missing setOutType
+
+[DONE] TODO: optimize branch edges
+- if target is directly next, not write jump?
+
+[DONE] TODO: optimize if_true branch shape
+
+[DONE] TODO: asmString log call cont stubs
+make; ./higgs --jit_genasm --e "print(\$rt_getPropObj.asmString())"
+
+[DONE] TODO: optimize branch shape for integer less-than
+
+[DONE] TODO: optimize direct jump shape
+
+[DONE] TODO: asmString, display gaps!
+; ### NN bytes gap ###
+
+[DONE] TODO: if we're the last block, don't pad with nops!
+
+[DONE] TODO: avoid writing blockIdx when neither target is a stub
+- need to check if queued for compilation also
+  - workList.canFind(b)
+make; ./higgs --jit_genasm --e "print(\$rt_add.asmString())"
+
+[DONE] FIXME: issue with neither targets being stubs
+- not writing blockIdx causes segfault
+- problem happens with is_i32, right when compiling a stub
+- error with nop() function causing stack overflow
+
+[DONE] TODO: optimize final jump ordering when rewriting final branch
+- BranchShape
+- again need to check if successors are queued?
+just compare startIdx... value is max if stub!
+
+[DONE] TODO: way to remove code block strings in specific range, delStrs
+- Needed when rewriting branch or patching stub
+- range [startIdx, endIdx[
+
+[DONE] TODO: asm strings, reimplement using an array of indices to lists of strings
+
+[DONE] TODO: make blockIdx 32-bit so move is smaller
+
+[DONE] TODO: pushfq, popfq for debugging w/ printInt, printStr
+9C PUSHFQ
+REX.W + 9D POPFQ 
+
+[DONE] FIXME: problem with tests/core/ffi/ffi.js
+- FFI call borking, issue with stubs?
+- Might be an issue with the return value handling, call continuation
+- FFI probably does not need genCallBranch... Better served by plain genBranch
+
+[DONE] FIXME: throwExc needs to JIT compile the exception branch
+
+[DONE] FIXME: stdlib init fails
+label "FALSE2" already defined at position 410858
+- call does a conditional jump to compute the total frame size
+- should try to move this computation out of the final branch part
+
+[DONE] Meeting:
+- contribs, multiple fronts:
+  - self-hosting
+  - type tagging scheme
+  - BBV
+  - incremental compilation
+  - incremental inlining
+- incremental inlining decreases execution time on `make test`
+  - right now, even with poor inlining, doesn't make benchmarks slower
+  - old aggressive inlining might be slower, increase compilation time
+- paper-wise, might be better to do simple rule-based inlining
+- proposal: simple inlining for DLS paper
+  - focus on BBV, improving code gen, fixing incremenetal compilation quirks
+- stubs: might be able to have one stub for all branches
+  - truer to the lazyness goal
+  - allows better contiguous code
+- CC or PLDI paper on incremental compilation?
+- Bourse DIRO!
+
+[DONE] FIXME: issue with recursion, start position is already marked
+- may need to patch the cont stub, still used for deeper calls
+
+[DONE] FIXME: 1 + 2 doesn't produce the right output
+- Return not working?
+- Are we manging the return type reg?
+- Value+type correct after add...
+- Value+type correct at first level return
+- Second return gets incorrect value and type
+
+[DONE] FIXME: 1 + 2 doesn't work
+make; ./higgs --nostdlib --e "1 + 2"
+
+[DONE] TODO: --noruntime flag, useful for debugging, with --jit_dumpinfo
+- make it automatically imply nostdlib
+- debug simple expressions, make test produces too much output
+
+[DONE] FIXME: setRetEntry, calls getCodePtr to get a pointer to the call
+continuation code. The call continuation branch is not yet instantiated.
+- Can we make call returns go to BranchStub?
+  - doesn't really work
+- Should force cont branch to get compiled?
+  - what about exception branch... don't want to force that to be compiled
+- For exceptions, can probably trigger compilation manually during exception handling
+- If we say call cont must be compiled, we still don't get an address immediately
+    auto retAddr = retCode.getCodePtr(vm.execHeap);
+    vm.retAddrMap[retAddr] = RetEntry(callInstr, callCtx, retCode, excCode);
+
+[DONE] For efficiency, probably want returns to go to special stubs
+- Compile whole sequence after return all at once, more elegant and optimal
+- ContStub will:
+  - patch its calling block version, rewrite its final branch
+  - queue the proper return branch to be compiled
+  - remove the old RetEntry for the ContStub
+  - create a proper RetEntry for the compiled return branch
+- Could use a unique return stub?
+  - Since we patch the calling block
+  - Could set the call blockIdx in a special register
+- Probably don't want a unique stub
+  - Want to have some specific RA we can track!
+
+[DONE] FIXME: we hit a branch stub, but the blockIdx is corrupted
+- Seems to contain a pointer value instead
+- corruption during reference patching because of getBranchStub
+
+[DONE] TODO: rework genBranch
+- block idx is available when compiling block (fragList.length)
+  - store in scrReg[0]? be careful wrt calls
+  - check if either target is a stub first
+- may need to pad until endIdx with noops
+  - also assert that we aren't going past endIdx if rewriting
+
+[DONE] TODO: rewrite srcBlock final branch in compileBranch
+
+[DONE] TODO: refList patching, if jumping to uncompiled block, jump to branch stub instead
+
+[DONE] TODO: generate code for BranchCode in code gen loop
+- Add call to prelGenFn
+
+[DONE] TODO: BranchCode should store a closure that generates its code
+- Deferred codegen
+- Also store list of moves
+
+[DONE] TODO: rework compileStub
+- only write branch edge to execHeap once stub is hit, unless we know it will be taken
+- store pointer to BranchCode as outgoing target
+
+[DONE] TODO: generate stub[i], getStub(targetIdx)
+- don't need special spill code for now, no reg alloc yet
+- Receives blockIdx in scrReg[0]
+
+[DONE] FIXME: string interning, no cleanup on GC? Can we make splay faster?
+- This is already done correctly!
+
+[DONE] TODO: try creating smaller versions of slow benchmarks for unit tests
+    shootout/lists
+    sunspider/string-base64
+    sunspider/string-fasta
+    v8bench/splay
+- at least keep them tested!
+- name with _quick
+
+[DONE] TODO: move loop_big_incr into benchmarks/micro?
+
+[DONE] FIXME: jump removal opt, conditional or not, doesn't matter
+- Don't check if jmp
+
+[DONE] TODO: Modify CallCtx for improved inlined stack management
+CallCtx.extraLocals => obvious from fun
+Add: CallCtx.spOffset, CallCtx.totalLocals? Maybe just extraLocals
+
+[DONE] Meeting:
+- IRFunction.asmString, see generated code
+  - Found bugs and issues with ASM comments, markEnd logic
+  - visualization useful
+- Redundant jump opt
+- Now obvious: stubs should probably be out of line
+  - But should we implement this later?
+- DLS Paper, coming soon, what do we absolutely need?
+  - Objective: show less checks, better running times
+    - Run benchmarks in a loop?
+  - Inlining, type prop, eliminate type checks
+  - Type analysis
+  - Reg alloc? basic
+- Bourse DIRO
+
+[DONE] FIXME: corrupted ASM comment in the middle of stub
+    branch_if_join(36CC):
+    jmp if_join(36CC);
+    if_join(36CC):
+    ; Stub of if_join(36CC)
+    mov [qword r15 + 48], r14;              4D897730
+    mov [qword r15 + 56], r13;              4D
+    ; if_true $0 => if_true(36CA), if_join(36CC)896F38
+- Try disabling jmp opt, see if it helps
+  - Seems to fix the problem, but now the commend is just before if_join?
+    if_true(36C3):
+    $0 = is_i32 $22
+    if_true $0 => if_true(36CA), if_join(36CC)
+- The if_true compiles to nothing because is_i32 generates branches,
+  the ASM comment gets placed after the branch code
+
+[DONE] TODO: resume projet for bourse DIRO
+- Mention github stars, Mozilla continues funding us, interest from Facebook
+
+[DONE] TODO: asmString, don't print blocks with zero length?
+make; ./higgs --jit_genasm --e "print(\$rt_add.asmString())"
+- or just no whitespace after ***
+
+[DONE] TODO: try optimizing away empty branch edges
+- Time the result
+- can we integrate this in genBranchEdge?
+- Simpler alternative: if block immediately follows branch edge, 
+  don't write jump.
+  - Query code gen queue to know if jump is necessary
+  - Have special utility function just for generating final jumps ***
+time ./higgs tests/core/regress/loop_big_incr.js
+before: 36.4
+after: 31.3
+
+[DONE] TODO: IRFunction.asmString()
+- Order by address
+  - no need to sort, just keep track of traversed, do smaller addr first
+- Branch code too
+- This should be quick to code
+
+[DONE] TODO: LocalIdx => StackIdx
+- Not unsigned
+
+[DONE] TODO: partial support for `quasis` as multi-line strings only
+
+[DONE] TODO: update CV for bourse DIRO
+
+[DONE] TODO: wiki, add enum of missing features
+
+[DONE] TODO: in About Me on pointersgonewild, link arxiv paper, mention it's a tech report
+
+[DONE] TODO: look for JS FFT implementation
+- there is one in kraken 1.1
+- ask on Twitter if someone knows of a simple JS FFT
+
+[DONE] TODO: e-mail Marc about bourse DIRO. Mention e-mail suffices.
+
+[DONE] TODO: take a look at Mozilla regression tests
 http://hg.mozilla.org/mozilla-central/file/8c5a94ba1096/js/src/jit-test/
-- ideally requires test harness
 
-TODO: add --jit_trace command-line option
+[DONE] TODO: if to same if opt pattern, see $rt_getPropObj, $6
+- if testing the same value and value is not from succ, will branch the same way
 
-TODO: complete WAV output support, test it out with sine wave
+[DONE] FIXME:
+h> try { 'foo' + $nullptr } catch (e) { exc = e }
+h> exc.toString()
+object
+Needs to inherit from Error.prototype
 
-TODO: pixel plotting, canvas window lib? lib/canvas
+[DONE] TODO: add trace info to exception objects
+- throwError already allocates in heap, fair game
+- can make helper functions in throwExc to set the current position at each
+  call level
 
-TODO: optimize x86 instr encoding based on usage
-- e.g.: reg64 to mem move and vice versa?
-- do profiling first
+[DONE] TODO: probably want to be able to set a target for throw?
+- Want to unwind the stack, set the position on the exception value
+- Call some runtime function that does throw
+  - Eliminates need to set srcPos on throw instrs
+  - genRtCall("throwExc");
 
-Idea: global table of property names with type monitoring
-- current index, if always same
-- current type
-- can it be a getter/setter?
-- discuss with Marc
-  - would most probably work well for benchmarks
-- if foobar property always has same offset, don't even care what the map is
-  - fair game?
-- issue: can know that x is always at some index, but doesn't mean that your
-  object has a property x
-- can do monitoring per-map, and get great perf gains on the global object
-- how often are object types monomorphic?
-
-Idea: getters/setters + never used opt?
-- Need to be able to invalidate code depending on this
-- segregate by property name, much more effective
-
-TODO: produce 32-bit offsets/addresses in CodeBlock.toString
-
-TODO: add source position info for call instructions and throw instruction
-- Map of call sites to source pos in IRFunction
+[DONE] TODO: add source position info for call instructions and throw instruction
 - Do this in genCallTargets?
 - Modify stack trace code to show source positions
+- Map of call sites to source pos in IRFunction
+  - Might want to just have sourcePos ptr on IRInstr, simpler wrt inlining
+  - More robust with IRInstr
 
-FIXME: Higgs REPL, should return value of last expr if several
+[DONE] FIXME: block cap hit... Block version map needs to be per-callCtx?
+- uncomment block cap hit print, put in version(debug) block
+- see $rt_getPropObj, $6
 
-------------------------------------------------------------------------------
+[DONE] TODO: migrate esprima parser test from Tachyon
 
-TODO: execHeap collection/expansion
-- Marc says: not on critical path for paper
+[DONE] TODO: move some of the misc Tachyon tests to the new test runner
 
-TODO: arrays, functions, have obj ptr inside, drop object inheritance system
+[DONE] FIXME: peephole opt bug
+- streamline failing test
+- add new test to core/regress
 
-TODO: think about type representation
-- types need to encode obj vs clos vs array
-- int array, float array
-- use one whole word for cst value, encode map idx in there too?
+[DONE] TODO: prepare beta mloc/midiro talk
 
-TODO: have map idx system, instead of map pointers?
-- smaller comparison instr
-- avoids issue of maps reallocated at same addr
-- smaller type representation
-- what else?
+[DONE] TODO: call to non-function, try to recover fn name from IR
+- make a function for that in ir/ir.d, getCalleeName(IRInstr callInstr)
 
-TODO: better register spilling mechanism for C calls
+[DONE] TODO: move SunSpider tests to test runner
 
-TODO: register allocation
-- peephole pass should swap operands to favor reg alloc?
-  - or do this on demand?
-- unified spilling function? params to spill tsp/wsp, vm reg
-- delayed writes
+[DONE] TODO: move shootout tests to test runner
 
-TODO: reduce code size by using calls for fallback type code,
-eg: global access, call_prim inlining/recompilation, others?
+[DONE] FIXME: enumeration issue, duplicates
+h> a = { x:1 }
+object
+h> b = Object.create(a)
+object
+h> b.x = 2
+2
+h> for (k in a) print(k)
+x
+h> for (k in b) print(k)
+x
+x
+- Need a way to check if somewhere in the inheritance hierarchy an enumerable
+prop of the same name exists
+- Make regression test, tests/regress/for_in_dup.js
+- When solved, add for_in test, close github issue
 
-TODO: skip empty branch edges, see perf impact?
-- can we integrate this in genBranchEdge?
-- could also have quick reoptimization pass with basic asm pattern matching
-- repatch stub jumps, etc.
+[DONE] TODO: move V8 tests to test runner
 
-TODO: big blog post about basic block versioning, incremental JIT
+[DONE] TODO: make sure to mention arxiv paper on wiki, basic block versioning
 
-TODO: prepare beta mloc/midiro talk
+[DONE] TODO: make test-higgs not skip main
+- Run test runner with same binary
+- Notify Tom of change
 
-TODO: type prop, pass types along inlined calls/returns
+[DONE] TODO: fix unsupported base issue
+- add test, stdlib/object
+- Tom is working on it
 
-TODO: basic type prop, without reg alloc, type test removal
-
-TODO: blog
+[DONE] TODO: blog, use subheaders? (More talks coming, new contributors, more seriouser)
+- paper on arxiv
+    http://arxiv.org/abs/1401.3041
+- Budapest talk imminently
+  - expect detailed blog post on BBV & incremental JIT
+- DConf 2014
 - incremental JIT in master branch, no reg alloc, perf about the same
 - working on incremental inlining
 - bug fixes, thanks to toledo chess
@@ -118,42 +1031,136 @@ TODO: blog
 - travis test system
 - contribuse OSS, DOM-free JS code, help us test & debug Higgs
   - always looking to grow our collection of tests
-- paper on arxiv
-- Budapest talk imminently
-  - expect detailed blog post on BBV & incremental JIT
-- DConf 2014
 
-TODO: exception handling in inlined context
+[DONE] FIXME: missing runtime primitive segfaults?
+- Does indeed segfault in the shell
+
+[DONE] FIXME: Higgs REPL, should return value of last expr if several
+
+[DONE] TODO: simple tests for csv lib?
+tests/lib/csv/ csv.js, infile.csv
+
+[DONE] TODO: move basic FFI tests to test runner
+tmpnam, make sure that returns string of length > 0
+
+[DONE] TODO: look at link issue pointed out by zimbabao
+function set_get_test_function() {
+    var link = $ir_make_link(0);
+    var s = "1234";
+    print($ir_get_type(s));
+    $ir_set_link(link, s);
+    var val = $ir_get_link(link);
+    print(val + " : " + $ir_get_type(val));
+    val = $ir_get_link(link);
+    print(val + " : " + $ir_get_type(val));
+}
+set_get_test_function();
+
+[DONE] TODO: proper 1 / (-1 * 0) handling, negative operator as -1 times zero,
+multiply handling of 
+If the multiplication isn't truncated (by one of the many ToInt32()/ToUint32()-coercing operators),
+then we dynamically branch for both overflow and negative*zero.  We can also special case various
+multiply-by-constant cases to avoid one or both branches.  (Note, even when multiplication is
+truncated it can overflow making * kindof a lame duck.  In asm.js, we give it the type (doublish,doublish)->double
+and then we separately define multiplication by small-enough constants as having type int->intish.
+This suckiness is what motivates Math.imul.
+We just branch on zero to an out-of-line path that does the signed check.
+
+[DONE] FIXME: killing of values in removeDead... Doesn't account for recursive
+inlining. Should traverse chain of ctxs to test if callee is in the chain.
+- CallCtx.contains(IRFunction fun)
+
+[DONE] TODO: pull from master
+
+[DONE] FIXME: sunspider/3d-raytrace borks with inlining enabled
+./higgs benchmarks/sunspider/3d-raytrace.js
+run-time error: unsupported types in strict equality comparison
+- Invalid base in property read
+- Inlining of getProp is wrong?
+- base argument of getProp seems wrongly mapped
+- localIdx is correct at time of call to $rt_se
+- The type we get is retaddr... We seem to be off by 2?
+... Draw this specific situation on paper
+When calling getProp, the this/base type tag is already corrupted.
+- Sometimes gets a zero type tag too...
+Why is the this value of Triangle.prototype.intersect corrupted???
+The argc value is correct, so is the type tag!
+- Only the this value is corrupted
+This problem happens with getProp a lot, in several places... wtf is wrong with getProp?
+- Should probably assume that getProp gets inlined wrong somehow?
+- getProp tends to have other functions inlined inside it? Is the inlined return wrong?
+  - Many many things get inlined in getProp, then we get a failure
+Hypothesis: getProp needs to be inlined for this to fail?
+Seems to be getPropObj that's inlined in getProp that fails?
+phi move seems to be at fault:
+move from: $17 = arg 4 "obj"
+move to: $17 = arg 4 "obj"
+  src: [qword r14 + 136]
+  dst: [qword r14 + 800]
+No mapping of arg in src, but mapped in dst...
+Killed by removeDead...
+Might indeed really be dead!
+Moving from callee argument to caller argument slot, bad
+
+[DONE] TODO: integrate new test system
+
+[DONE] TODO: pull zimbabao's PR
+
+[DONE] TODO: exception handling in inlined context
 - Can use regular exception handler, however? Yes
   - Takes the exc value off the stack
   - This is a BranchCode object
   - Could also just generate our own, avoids need to keep JIT objects in CallCtx
 
-FIXME: no handling for two levels of inlining?
-- construct test for this
+[DONE] FIXME: seem to now be failing in exceptions test
+./higgs --nostdlib tests/exceptions/try_loop_getprop.js
+- Does getprop to null, fails
+- When inlined, throw becomes a jump?
+  - can use exc handler also, performance not so important
+- All the ops that can throw need throw handler code, including get_global
+  - Need some kind of getExcHandler fn?
+  - Returns a code fragment
+  - Problem: need to compile handler after throwing instr
+  - Ideally, compile at throwing instr, store in CallCtx???
+  - Only call_prim can cause this
+- CallCtx.getExcHandler(curHandler = null)?
+  - seems like that would work!
 
-TODO: test full higgs init with inlining
+[DONE] FIXME: no handling for two levels of inlining
+- loop test that uses getProp?
+    make; ./higgs tests/regress/jit_getprop_arr.js
+- use extraLocals from previous level when computing current extraLocals
+- still segfaults, probably want simpler test
+    make; ./higgs loop_test.js
+We crash at the second inlined call to str_ofs_data...
+- We aren't getting the same entryVer object
+- extraLocals... can't pop them all at once when returning if multiple levels
+- want extraLocals and totalLocals...
+- Also want to be able to map arguments across *multiple levels* of inlining
 
-FIXME: benchmark inlining on for incr loop (see existing tests)
-make; ./higgs --nostdlib tests/regress/loop_big_incr.js 
-noinline: 55s
+[DONE] Meeting:
+- Sent submission for DConf
+- New contributions, regexp fix, missing array functions
+- Multiple bugfixes
+- More conformance bug fixes
+- Inlining, slight perf gain, ~12%
+
+[DONE] TODO: test full higgs init with inlining
+
+[DONE] TODO: getBranchEdge shouldn't need assembler argument
+
+[DONE] FIXME: benchmark inlining on for incr loop (see existing tests)
+make; time ./higgs --nostdlib tests/regress/loop_big_incr.js 
+noinline: 40s
+inline: 36s
 - seems to infinite loop, need to look at return values, args
 - loop i stops being incremented at 5000
 - try printing return value of add
-- Are we not executing phi nodes after the return? ******
+- Not executing phi nodes after the return? ***
 
-FIXME: foo.irString() before foo() fails?
+[DONE] FIXME: foo.irString() before foo() fails
 - irString causes odd things to happen
 - make regression test for this too
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: bug found by zimbabao
 - something with phi nodes, liveness?

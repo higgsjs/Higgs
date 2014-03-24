@@ -331,9 +331,9 @@ struct X86Mem
     int32_t disp; 
 
     this(
-        size_t size, 
-        X86Reg base, 
-        int32_t disp    = 0, 
+        size_t size,
+        X86Reg base,
+        int32_t disp    = 0,
         size_t scale    = 0,
         X86Reg index    = RAX,
     )
@@ -531,7 +531,7 @@ struct X86Opnd
         REG,
         IMM,
         MEM,
-        IPREL  
+        IPREL
     }
 
     Kind kind;
@@ -545,9 +545,9 @@ struct X86Opnd
 
     /// Memory operand constructor
     this(
-        size_t size, 
-        X86Reg base, 
-        int32_t disp    = 0, 
+        size_t size,
+        X86Reg base,
+        int32_t disp    = 0,
         size_t scale    = 0,
         X86Reg index    = RAX,
     )
@@ -1152,7 +1152,7 @@ void cqo(CodeBlock cb)
     cb.writeBytes(0x48, 0x99);
 }
 
-//// cvtsd2si - Convert integer to scalar double
+//// cvtsd2si - Convert scalar double to integer with rounding
 void cvtsd2si(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("cvtsd2si", dst, src);
@@ -1167,7 +1167,7 @@ void cvtsd2si(CodeBlock cb, X86Opnd dst, X86Opnd src)
     cb.writeRMInstr!('r', 0xFF, 0x0F, 0x2D)(false, rexW, dst, src);
 }
 
-//// cvtsi2sd - Convert scalar double to integer with rounding
+//// cvtsi2sd - Convert integer to scalar double
 void cvtsi2sd(CodeBlock cb, X86Opnd dst, X86Opnd src)
 {
     cb.writeASM("cvtsi2sd", dst, src);
@@ -1598,7 +1598,7 @@ void movzx(CodeBlock cb, X86Opnd dst, X86Opnd src)
     }
     else
     {
-        assert (false);
+        assert (false, "invalid src operand size for movxz");
     }
 }
 
@@ -1629,27 +1629,28 @@ alias writeRMUnary!(
 /// nop - Noop, one or multiple bytes long
 void nop(CodeBlock cb, size_t length = 1)
 {
-    if (length > 0)
-        cb.writeASM("nop" ~ to!string(length));
-
     switch (length)
     {
         case 0:
         break;
 
         case 1:
+        cb.writeASM("nop1");
         cb.writeByte(0x90);
         break;
 
         case 2:
+        cb.writeASM("nop2");
         cb.writeBytes(0x89, 0xf6);
         break;
 
         case 3:
+        cb.writeASM("nop3");
         cb.writeBytes(0x8d,0x76,0x00);
         break;
 
         case 4:
+        cb.writeASM("nop4");
         cb.writeBytes(0x8d,0x74,0x26,0x00);
         break;
 
@@ -1658,19 +1659,28 @@ void nop(CodeBlock cb, size_t length = 1)
         break;
 
         case 6:
+        cb.writeASM("nop6");
         cb.writeBytes(0x8d,0xb6,0x00,0x00,0x00,0x00);
         break;
 
         case 7:
+        cb.writeASM("nop7");
         cb.writeBytes(0x8d,0xb4,0x26,0x00,0x00,0x00,0x00);
         break;
 
         case 8:
-        cb.nop(8); cb.nop(1); cb.nop(7);
+        cb.nop(1); cb.nop(7);
         break;
 
         default:
-        assert (false);
+        size_t written = 0;
+        while (written + 8 <= length)
+        {
+            cb.nop(8);
+            written += 8;
+        }
+        cb.nop(length - written);
+        break;
     }
 }
 
@@ -1707,6 +1717,13 @@ void push(CodeBlock cb, immutable X86Reg reg)
     cb.writeOpcode(0x50, reg);
 }
 
+/// pushfq - Push the flags register (64-bit)
+void pushfq(CodeBlock cb)
+{
+    cb.writeASM("pushfq");
+    cb.writeByte(0x9C);
+}
+
 /// pop - Pop a register off the stack
 void pop(CodeBlock cb, immutable X86Reg reg)
 {
@@ -1717,6 +1734,15 @@ void pop(CodeBlock cb, immutable X86Reg reg)
     if (reg.rexNeeded)
         cb.writeREX(false, 0, 0, reg.regNo);
     cb.writeOpcode(0x58, reg);
+}
+
+/// popfq - Pop the flags register (64-bit)
+void popfq(CodeBlock cb)
+{
+    cb.writeASM("popfq");
+
+    // REX.W + 0x9D
+    cb.writeBytes(0x48, 0x9D);
 }
 
 /// ret - Return from call, popping only the return address
@@ -1815,7 +1841,7 @@ alias writeShift!(
 
 // sqrtsd - Square root of scalar double (SSE2)
 alias writeXMM64!(
-    "sqrtsd", 
+    "sqrtsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x51  // opRegMem1
@@ -1836,7 +1862,7 @@ alias writeRMMulti!(
 
 // subsd - Subtract scalar double
 alias writeXMM64!(
-    "subsd", 
+    "subsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x5C  // opRegMem1

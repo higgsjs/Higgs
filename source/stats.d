@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -43,30 +43,50 @@ import std.string;
 import std.array;
 import std.stdint;
 import std.conv;
+import std.typecons;
+import std.algorithm;
 import options;
-
-/// Program start time in milliseconds
-private ulong startTimeMsecs = 0;
-
-/// Total compilation time in microseconds
-ulong compTimeUsecs = 0;
 
 /// Total size of the machine code generated (in bytes)
 ulong genCodeSize = 0;
 
-/// Number of block versions for which code was generated (stubbed or not)
+/// Number of blocks for which there are compiled versions
+ulong numBlocks = 0;
+
+/// Number of block versions compiled
 ulong numVersions = 0;
 
-/// Number of versions instantiated
-ulong numInsts = 0;
+/// Maximum number of versions compiled for a block
+ulong maxVersions = 0;
 
-/// Per-instruction execution counts
-ulong numCall = 0;
-ulong numCallPrim = 0;
+/// Number of blocks with specific version counts
+ulong[ulong] numVerBlocks;
+
+/// Number of property index requests
 ulong numMapPropIdx = 0;
 
-/// Number of type tests executed by test kind (dynamic)
-ulong* numTypeTests[string];
+/// Number of property cache misses
+ulong numMapPropMisses = 0;
+
+/// Number of dynamic calls
+ulong numCall = 0;
+
+/// Number of primitive calls by primitive name
+private ulong* numPrimCalls[string];
+
+/// Number of type tests executed by test kind
+private ulong* numTypeTests[string];
+
+/// Get a pointer to the counter variable associated with a primitive
+ulong* getPrimCallCtr(string primName)
+{
+    // If there is no counter for this primitive, allocate one
+    if (primName !in numPrimCalls)
+        numPrimCalls[primName] = new ulong;
+
+    // Return the counter for this primitive
+    return numPrimCalls[primName];
+}
 
 /// Get a pointer to the counter variable associated with a type test
 ulong* getTypeTestCtr(string testOp)
@@ -79,6 +99,58 @@ ulong* getTypeTestCtr(string testOp)
     return numTypeTests[testOp];
 }
 
+/// Total compilation time in microseconds
+private ulong compTimeUsecs = 0;
+
+/// Total execution time in microseconds
+private ulong execTimeUsecs = 0;
+
+/// Compilation timer start
+private ulong compStartUsecs = 0;
+
+/// Execution timer start
+private ulong execStartUsecs = 0;
+
+/// Start recording compilation time
+void compTimeStart()
+{
+    assert (compStartUsecs is 0, "comp timer already started");
+    assert (execStartUsecs is 0, "exec timer ongoing");
+
+    compStartUsecs = Clock.currAppTick().usecs();
+}
+
+// Stop recording compilation time
+void compTimeStop()
+{
+    assert (compStartUsecs !is 0);
+
+    auto compEndUsecs = Clock.currAppTick().usecs();
+    compTimeUsecs += compEndUsecs - compStartUsecs;
+
+    compStartUsecs = 0;
+}
+
+/// Start recording execution time
+void execTimeStart()
+{
+    assert (execStartUsecs is 0, "exec timer already started");
+    assert (compStartUsecs is 0, "comp timer ongoing");
+
+    execStartUsecs = Clock.currAppTick().usecs();
+}
+
+// Stop recording execution time
+void execTimeStop()
+{
+    assert (execStartUsecs !is 0);
+
+    auto execEndUsecs = Clock.currAppTick().usecs();
+    execTimeUsecs += execEndUsecs - execStartUsecs;
+
+    execStartUsecs = 0;
+}
+
 /// Static module constructor
 static this()
 {
@@ -89,9 +161,6 @@ static this()
     getTypeTestCtr("is_const");
     getTypeTestCtr("is_refptr");
     getTypeTestCtr("is_rawptr");
-
-    // Record the starting time
-    startTimeMsecs = Clock.currAppTick().msecs();
 }
 
 /// Static module destructor, log the accumulated stats
@@ -101,27 +170,54 @@ static ~this()
     if (opts.stats is false)
         return;
 
-    auto endTimeMsecs = Clock.currAppTick().msecs();
-    auto execTimeMsecs = endTimeMsecs - startTimeMsecs;
-
     writeln();
-    writefln("exec time (ms): %s", execTimeMsecs);
     writefln("comp time (ms): %s", compTimeUsecs / 1000);
+    writefln("exec time (ms): %s", execTimeUsecs / 1000);
     writefln("code size (bytes): %s", genCodeSize);
+
+    writefln("num blocks: %s", numBlocks);
     writefln("num versions: %s", numVersions);
-    writefln("num instances: %s", numInsts);    
+    writefln("max versions: %s", maxVersions);
+
+    writefln("num map_prop_idx: %s", numMapPropIdx);
+    writefln("num prop cache misses: %s", numMapPropMisses);
 
     writefln("num call: %s", numCall);
-    writefln("num call_prim: %s", numCallPrim);
-    writefln("num map_prop_idx: %s", numMapPropIdx);
 
-    auto totalTypeTests = 0;
-    foreach (testOp, pCtr; numTypeTests)
+    alias Tuple!(string, "name", ulong, "cnt") PrimCallCnt;
+    PrimCallCnt[] primCallCnts;
+    foreach (name, pCtr; numPrimCalls)
+        primCallCnts ~= PrimCallCnt(name, *pCtr);
+    primCallCnts.sort!"a.cnt > b.cnt";
+
+    ulong totalPrimCalls = 0;
+    foreach (pair; primCallCnts)
     {
-        auto ctr = *pCtr;
-        writefln("%s: %s", testOp, ctr);
-        totalTypeTests += ctr;
+        writefln("%s: %s", pair.name, pair.cnt);
+        totalPrimCalls += pair.cnt;
     }
-    writefln("type tests: %s", totalTypeTests);
+    writefln("total prim calls: %s", totalPrimCalls);
+
+    alias Tuple!(string, "test", ulong, "cnt") TypeTestCnt;
+    TypeTestCnt[] typeTestCnts;
+    foreach (test, pCtr; numTypeTests)
+        typeTestCnts ~= TypeTestCnt(test, *pCtr);
+    typeTestCnts.sort!"a.cnt > b.cnt";
+
+    ulong totalTypeTests = 0;
+    foreach (pair; typeTestCnts)
+    {
+        writefln("%s: %s", pair.test, pair.cnt);
+        totalTypeTests += pair.cnt;
+    }
+    writefln("total type tests: %s", totalTypeTests);
+
+    /*
+    for (size_t numVers = 1; numVers <= min(opts.jit_maxvers, 100); numVers++)
+    {
+        auto blockCount = numVerBlocks.get(numVers, 0);
+        writefln("%s versions: %s", numVers, blockCount);
+    }
+    */
 }
 

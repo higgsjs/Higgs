@@ -115,6 +115,90 @@ function parseInt(string, radix)
     return NaN;
 }
 
+function parseFloat(string)
+{
+    // parse function parses consecutive digits along with
+    // sign (for non-fraction parts).
+    // parameter parseFraction is to indicate if parsed digits
+    // are of fraction or not.
+    function parseNumber(str, start, radix, parseFraction)
+    {
+        var val = 0;
+        var j = start;
+        var sign = 1;
+        var signCode = str.charCodeAt(j);
+
+        // parse sign of the sequence
+        if (!parseFraction && signCode == 45)
+        {
+            sign = -1;
+            j++;
+        } else if (!parseFraction && signCode == 43)
+        {
+            sign = +1;
+            j++;
+        }
+
+        // radix muliple to be used in case of fraction parsing.
+        var radixMutiple = 1/radix;
+        for(; j < str.length; j++)
+        {
+              var code = str.charCodeAt(j);
+              if (code < 48 || code > 57)
+                    break;
+              else
+              {
+                if (!!parseFraction) {
+                    val = val + (code - 48)*radixMutiple;
+                    radixMutiple /= radix;
+                }
+                else
+                    val = val*radix + code - 48;
+              }
+        }
+        return { "endIndex": j, "value": val, "sign": sign };
+    }
+
+    if (typeof string == 'undefined') return Number.NaN;
+    string = string.trim();
+
+    if (string.length == 0) return Number.NaN;
+
+    var retVal = 0;
+    var i = 0;
+    var sign = 1;
+
+    // Parse non-fraction part of mantisa
+    var mantisaObj = parseNumber(string, i, 10, false);
+    var fractionObj;
+    var exponentObj;
+
+    retVal = mantisaObj.value;
+    sign = mantisaObj.sign;
+    i = mantisaObj.endIndex;
+
+    // if decimal point present then parse fractional part
+    if (string.charCodeAt(i) == 46)
+    {
+        fractionObj = parseNumber(string, i + 1, 10, true);
+        i = fractionObj.endIndex;
+        retVal += fractionObj.value;
+    }
+
+    // if 'e' or 'E' present then parse exponent
+    if (string.charCodeAt(i) == 101 ||
+        string.charCodeAt(i) == 69)
+    {
+        exponentObj = parseNumber(string, i+1, 10, false);
+        retVal *= Math.pow(10, exponentObj.value*exponentObj.sign);
+    }
+
+    // special case where everything parsed is empty return NaN
+    if (i == 0) return Number.NaN;
+
+    return mantisaObj.sign*retVal;
+}
+
 /**
 15.1.3.1 decodeURI(encodedURI)
 */

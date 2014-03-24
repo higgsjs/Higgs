@@ -194,10 +194,12 @@ unittest
     testParse("1E15;");
     testParse("1E-15;");
     testParse("0x09ABCD;");
+    testParse("01237;");
 
     testParse("\"foobar\";");
     testParse("'foobar';");
     testParse("\"foobar';", false);
+    testParse("'foo\nbar';", false);
     testParse("'foo\\x55bar';");
     testParse("'foo\\uABCDbar';");
 
@@ -206,6 +208,7 @@ unittest
     testParse("/foobar/ig;");
 
     testParse("[1, 2, 3];");
+    testParse("[1, 2, 3,];");
     testParse("true;");
     testParse("false;");
     testParse("null;");
@@ -254,6 +257,8 @@ unittest
 {
     testExprAST("1;", new IntExpr(1));
     testExprAST("0xFB;", new IntExpr(0xFB));
+    testExprAST("077;", new IntExpr(63));
+    testExprAST("087;", new IntExpr(87));
     testExprAST("7.0;", new FloatExpr(7));
     testExprAST("true;", new TrueExpr());
     testExprAST("false;", new FalseExpr());
@@ -261,6 +266,7 @@ unittest
 
     // String escape sequences
     testExprAST("'foo\\nbar';", new StringExpr("foo\nbar"));
+    testExprAST("'foo\\\nbar';", new StringExpr("foobar"));
     testExprAST("'foo\\x55bar';", new StringExpr("foo\x55bar"));
     testExprAST("'foo\\u0055bar';", new StringExpr("foo\u0055bar"w));
     testExprAST("'foo\\055bar';", new StringExpr("foo-bar"w));
@@ -510,6 +516,7 @@ unittest
     testParse("return");
     testParse("(function () { return })");
     testParse("throw x");
+    testParse("var a = [1,,2,]");
 }
 
 /// Test program-level ASTs

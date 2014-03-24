@@ -157,7 +157,7 @@
 
         if (curRow.length > 0)
             pushRow();
-    }
+    };
 
     CSV.prototype.toString = function ()
     {
@@ -185,28 +185,26 @@
         }
 
         return str;
-    }
+    };
 
     CSV.prototype.readFile = function (fileName)
     {
-        var file = io.fopen(fileName, "r");
-        var str = file.read();
-        file.close();
+        var str = io.readFile(fileName);
         return this.fromString(str);
-    }
+    };
 
     CSV.prototype.writeFile = function (fileName)
     {
         var str = this.toString();
-        var file = io.fopen(fileName, "w")
+        var file = io.fopen(fileName, "w");
         file.write(str);
         file.close();
-    }
+    };
 
     CSV.prototype.getNumRows = function ()
     {
         return this.rows.length;
-    }
+    };
 
     CSV.prototype.getNumCols = function (rowIdx)
     {
@@ -216,7 +214,7 @@
         );
 
         return this.rows[rowIdx].length;
-    }
+    };
 
     CSV.prototype.getCell = function (rowIdx, colIdx)
     {
@@ -231,7 +229,7 @@
         );
 
         return this.rows[rowIdx][colIdx];
-    }
+    };
 
     CSV.prototype.setCell = function (rowIdx, colIdx, val)
     {
@@ -256,7 +254,7 @@
         }
 
         row[colIdx] = val;
-    }
+    };
 
     CSV.prototype.setRow = function (rowIdx, arr)
     {
@@ -267,12 +265,12 @@
 
         for (var i = 0; i < arr.length; ++i)
             this.setCell(rowIdx, i, arr[i]);
-    }
+    };
 
     CSV.prototype.addRow = function (arr)
     {
         this.setRow(this.rows.length, arr);
-    }
+    };
 
     CSV.prototype.getColIdx = function (colName)
     {
@@ -285,7 +283,7 @@
         }
 
         return undefined;
-    }
+    };
 
     function readFile(fileName)
     {
@@ -300,5 +298,5 @@
         readFile: readFile
     };
 
-})()
+})();
 

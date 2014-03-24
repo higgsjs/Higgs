@@ -69,9 +69,10 @@ struct GCRoot
         this(vm, ValuePair(w, t));
     }
 
-    this(VM vm, refptr p = null)
+    this(VM vm, refptr p, Type t)
     {
-        this(vm, Word.ptrv(p), Type.REFPTR);
+        assert (isHeapPtr(t));
+        this(vm, Word.ptrv(p), t);
     }
 
     @disable this();
@@ -90,13 +91,6 @@ struct GCRoot
 
         if (next)
             next.prev = prev;
-    }
-
-    GCRoot* opAssign(refptr p)
-    {
-        pair.word.ptrVal = p;
-        pair.type = Type.REFPTR;
-        return &this;
     }
 
     GCRoot* opAssign(ValuePair v)
@@ -167,7 +161,7 @@ refptr heapAlloc(VM vm, size_t size)
     // If this allocation exceeds the heap limit
     if (vm.allocPtr + size > vm.heapLimit)
     {
-        writefln("gc on alloc of size %s", size);
+        //writefln("gc on alloc of size %s", size);
 
         // Perform garbage collection
         gcCollect(vm);
@@ -227,7 +221,6 @@ void gcCollect(VM vm, size_t heapSize = 0)
     */
 
     //writeln("entering gcCollect");
-    //writefln("from-space address: %s", vm.heapStart);
 
     if (heapSize != 0)
         vm.heapSize = heapSize;
@@ -253,14 +246,14 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Initialize the to-space allocation pointer
     vm.toAlloc = vm.toStart;
-    
+
     //writeln("visiting root objects");
 
     // Forward the root objects
-    vm.objProto     = gcForward(vm, vm.objProto);
-    vm.arrProto     = gcForward(vm, vm.arrProto);
-    vm.funProto     = gcForward(vm, vm.funProto);
-    vm.globalObj    = gcForward(vm, vm.globalObj);
+    vm.objProto.word.ptrVal     = gcForward(vm, vm.objProto.word.ptrVal);
+    vm.arrProto.word.ptrVal     = gcForward(vm, vm.arrProto.word.ptrVal);
+    vm.funProto.word.ptrVal     = gcForward(vm, vm.funProto.word.ptrVal);
+    vm.globalObj.word.ptrVal    = gcForward(vm, vm.globalObj.word.ptrVal);
 
     //writeln("visiting stack roots");
 
@@ -353,16 +346,14 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Allocate a new string table
     vm.strTbl = strtbl_alloc(vm, strTblCap);
 
-    // Add the forwarded strings to the new string table
+    // Add only the forwarded strings to the new string table
     for (uint32 i = 0; i < strTblCap; ++i)
     {
         auto ptr = strtbl_get_str(oldStrTbl, i);
-
         if (ptr is null)
             continue;
 
         auto next = obj_get_next(ptr);
-
         if (next is null)
             continue;
 
@@ -413,7 +404,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Increment the garbage collection count
     vm.gcCount++;
 
-    writeln("leaving gcCollect");
+    //writeln("leaving gcCollect");
     //writefln("free space: %s", (vm.heapLimit - vm.allocPtr));
 }
 
@@ -457,7 +448,7 @@ refptr gcForward(VM vm, refptr ptr)
     auto header = obj_get_header(ptr);
     if (header == LAYOUT_CLOS)
     {
-        auto fun = getClosFun(ptr);
+        auto fun = getFunPtr(ptr);
         assert (fun !is null);
         visitFun(vm, fun);
 
@@ -473,7 +464,7 @@ refptr gcForward(VM vm, refptr ptr)
         assert (map !is null);
         visitMap(vm, map);
     }
-   
+
     // Follow the next pointer chain as long as it points in the from-space
     refptr nextPtr = ptr;
     for (;;)
@@ -540,17 +531,21 @@ Word gcForward(VM vm, Word word, Type type)
         // Heap reference pointer
         // Forward the pointer
         case Type.REFPTR:
+        case Type.OBJECT:
+        case Type.ARRAY:
+        case Type.CLOSURE:
+        case Type.STRING:
         return Word.ptrv(gcForward(vm, word.ptrVal));
 
         // Function pointer (IRFunction)
         // Return the pointer unchanged
         case Type.FUNPTR:
         auto fun = word.funVal;
-        assert (fun !is null);
+        assert (fun !is null, "null IRFunction pointer");
         visitFun(vm, fun);
         return word;
 
-        // Map pointer (ObjMap)
+        // Map pointer (ClassMap)
         // Return the pointer unchanged
         case Type.MAPPTR:
         auto map = word.mapVal;
@@ -560,11 +555,15 @@ Word gcForward(VM vm, Word word, Type type)
 
         // Return address
         case Type.RETADDR:
+        assert (
+            word.ptrVal in vm.retAddrMap,
+            format("ret addr not found: %s", word.ptrVal)
+        );
         auto retEntry = vm.retAddrMap[word.ptrVal];
         auto fun = retEntry.callCtx.fun;
         visitFun(vm, fun);
         return word;
-     
+
         // Return the word unchanged
         default:
         return word;
@@ -597,14 +596,14 @@ refptr gcCopy(VM vm, refptr ptr, size_t size)
             vm.heapStart,
             vm.heapLimit,
             obj_get_header(ptr)
-        )        
+        )
     );
 
     assert (
         obj_get_next(ptr) == null,
         "next pointer in object to forward is not null"
     );
-    
+
     // The object will be copied at the to-space allocation pointer
     auto nextPtr = vm.toAlloc;
 
@@ -653,9 +652,9 @@ Walk the stack and forward references to the to-space
 void visitStackRoots(VM vm)
 {
     auto visitFrame = delegate void(
-        IRFunction fun, 
-        Word* wsp, 
-        Type* tsp, 
+        IRFunction fun,
+        Word* wsp,
+        Type* tsp,
         size_t depth,
         size_t frameSize,
         IRInstr callInstr
@@ -668,7 +667,7 @@ void visitStackRoots(VM vm)
         //writeln("frame size: ", frameSize);
 
         // For each local in this frame
-        for (LocalIdx idx = 0; idx < frameSize; ++idx)
+        for (StackIdx idx = 0; idx < frameSize; ++idx)
         {
             //ritefln("ref %s/%s", idx, frameSize);
 
@@ -681,7 +680,7 @@ void visitStackRoots(VM vm)
             auto fwdPtr = wsp[idx].ptrVal;
 
             assert (
-                type != Type.REFPTR ||
+                !isHeapPtr(type) ||
                 fwdPtr == null ||
                 vm.inToSpace(fwdPtr),
                 format(

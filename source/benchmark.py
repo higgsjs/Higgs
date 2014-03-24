@@ -27,18 +27,16 @@ BENCHMARKS = {
     '3d-morph':'benchmarks/sunspider/3d-morph.js',
     '3d-raytrace':'benchmarks/sunspider/3d-raytrace.js',
     'binary-trees':'benchmarks/sunspider/access-binary-trees.js',
-    'fannkuch':'benchmarks/sunspider/access-fannkuch.js',  
-    'nbody':'benchmarks/sunspider/access-nbody.js',      
+    'fannkuch':'benchmarks/sunspider/access-fannkuch.js',
+    'nbody':'benchmarks/sunspider/access-nbody.js',
     'nsieve':'benchmarks/sunspider/access-nsieve.js',
     '3bits-byte':'benchmarks/sunspider/bitops-3bit-bits-in-byte.js',
-    'bits-in-byte':'benchmarks/sunspider/bitops-bits-in-byte.js',  
-    'bitwise-and':'benchmarks/sunspider/bitops-bitwise-and.js',       
-    'nsieve-bits':'benchmarks/sunspider/bitops-nsieve-bits.js',        
+    'bits-in-byte':'benchmarks/sunspider/bitops-bits-in-byte.js',
+    'bitwise-and':'benchmarks/sunspider/bitops-bitwise-and.js',
+    'nsieve-bits':'benchmarks/sunspider/bitops-nsieve-bits.js',
     'recursive':'benchmarks/sunspider/controlflow-recursive.js',
 
-    # Bug in regexp lib? disable for now
-    #'crypto-aes':'benchmarks/sunspider/crypto-aes.js',
-
+    'crypto-aes':'benchmarks/sunspider/crypto-aes.js',
     'crypto-md5':'benchmarks/sunspider/crypto-md5.js',
     'crypto-sha1':'benchmarks/sunspider/crypto-sha1.js',
     'cordic':'benchmarks/sunspider/math-cordic.js',
@@ -144,7 +142,8 @@ for benchmark, valLists in benchResults.items():
 print ''
 print 'exec times'
 print '----------'
-for benchmark, valMeans in benchMeans.items():
+for benchmark in sorted(benchMeans.keys()):
+    valMeans = benchMeans[benchmark]
     print benchmark + ":", valMeans['exec time (ms)']
 
 # Output the mean of all stats gathered
@@ -157,7 +156,9 @@ for benchmark, valMeans in benchMeans.items():
         if not (key in valLists):
             valLists[key] = []
         valLists[key] += [mean]
-for key, valList in valLists.items():
+
+for key in sorted(valLists.keys()):
+    valList = valLists[key]
     mean = geoMean(valList)
     if valsInt(valList):
         print "%s: %s" % (key, int(mean))

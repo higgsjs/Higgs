@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -520,102 +520,66 @@ class LexError : Error
 }
 
 /**
-Read a string constant from a stream
+Read a character escape sequence
 */
-wstring getString(ref StrStream stream, wchar stopChar)
+int readEscape(ref StrStream stream)
 {
-    wstring str = "";
+    // Hexadecimal escape sequence regular expressions
+    enum hexRegex = ctRegex!(`^x([0-9|a-f|A-F]{2})`w);
+    enum uniRegex = ctRegex!(`^u([0-9|a-f|A-F]{4})`w);
 
-    // Until the end of the string
-    CHAR_LOOP: 
-    for (;;)
+    // Try to match a hexadecimal escape sequence
+    auto m = stream.match(hexRegex);
+    if (m.empty == true)
+        m = stream.match(uniRegex);
+    if (m.empty == false)
     {
-        wchar ch = stream.readCh();
+        auto hexStr = m.captures[1];
 
-        if (ch == stopChar)
-            break;
+        int charCode;
+        formattedRead(hexStr, "%x", &charCode);
 
-        // End of file
-        if (ch == '\0')
-        {
-            throw new LexError(
-                "EOF in literal",
-                stream.getPos()
-            );
-        }
-
-        // Escape sequence
-        if (ch == '\\')
-        {
-            // Hexadecimal escape sequence regular expressions
-            enum hexRegex = ctRegex!(`^x([0-9|a-f|A-F]{2})`w);
-            enum uniRegex = ctRegex!(`^u([0-9|a-f|A-F]{4})`w);
-
-            // Try to match a hexadecimal escape sequence
-            auto m = stream.match(hexRegex);
-            if (m.empty == true)
-                m = stream.match(uniRegex);
-            if (m.empty == false)
-            {
-                auto hexStr = m.captures[1];
-
-                int charCode;
-                formattedRead(hexStr, "%x", &charCode);
-
-                str ~= cast(wchar)charCode;
-
-                continue CHAR_LOOP;
-            }
-
-            // Octal escape sequence regular expression
-            enum octRegex = ctRegex!(`^([0-7][0-7]?[0-7]?)`w);
-
-            // Try to match an octal escape sequence
-            m = stream.match(octRegex);
-            if (m.empty == false)
-            {
-                auto octStr = m.captures[1];
-
-                int charCode;
-                formattedRead(octStr, "%o", &charCode);
-
-                str ~= cast(char)charCode;
-
-                continue CHAR_LOOP;
-            }
-
-            auto code = stream.readCh();
-
-            switch (code)
-            {
-                case 'r' : str ~= '\r'; break;
-                case 'n' : str ~= '\n'; break;
-                case 'v' : str ~= '\v'; break;
-                case 't' : str ~= '\t'; break;
-                case 'f' : str ~= '\f'; break;
-                case 'b' : str ~= '\b'; break;
-                case 'a' : str ~= '\a'; break;
-                case '\\': str ~= '\\'; break;
-                case '\"': str ~= '\"'; break;
-                case '\'': str ~= '\''; break;
-
-                // Multiline string continuation
-                case '\n': break;
-
-                // By default, add the escape character as is
-                default:
-                str ~= code;
-            }
-        }
-
-        // Normal character
-        else
-        {
-            str ~= ch;
-        }
+        return charCode;
     }
 
-    return str;
+    // Octal escape sequence regular expression
+    enum octRegex = ctRegex!(`^([0-7][0-7]?[0-7]?)`w);
+
+    // Try to match an octal escape sequence
+    m = stream.match(octRegex);
+    if (m.empty == false)
+    {
+        auto octStr = m.captures[1];
+
+        int charCode;
+        formattedRead(octStr, "%o", &charCode);
+
+        return charCode;
+    }
+
+    auto code = stream.readCh();
+
+    // Switch on the escape code
+    switch (code)
+    {
+        case 'r' : return '\r';
+        case 'n' : return '\n';
+        case 'v' : return '\v';
+        case 't' : return '\t';
+        case 'f' : return '\f';
+        case 'b' : return '\b';
+        case 'a' : return '\a';
+        case '\\': return '\\';
+        case '\"': return '\"';
+        case '\'': return '\'';
+
+        // Multiline string continuation
+        case '\n': return -1;
+
+        // By default, add the escape character as is
+        default:
+        return code;
+    }
 }
 
 /**
@@ -674,36 +638,51 @@ Token getToken(ref StrStream stream, LexFlags flags)
     // Get the position at the start of the token
     SrcPos pos = stream.getPos();
 
-    // Hexadecimal number
-    if (stream.match("0x"))
-    {
-        enum hexRegex = ctRegex!(`^[0-9|a-f|A-F]+`w);
-        auto m = stream.match(hexRegex);
-
-        if (m.empty)
-        {
-            return Token(
-                Token.ERROR,
-                "invalid hex number", 
-                pos
-            );
-        }
-
-        auto hexStr = m.captures[0];
-        long val;
-        formattedRead(hexStr, "%x", &val);
-
-        return Token(Token.INT, val, pos);
-    }
-
     // Number
     if (digit(ch))
     {
+        // Hexadecimal number
+        if (stream.match("0x"))
+        {
+            enum hexRegex = ctRegex!(`^[0-9|a-f|A-F]+`w);
+            auto m = stream.match(hexRegex);
+
+            if (m.empty)
+            {
+                return Token(
+                    Token.ERROR,
+                    "invalid hex number", 
+                    pos
+                );
+            }
+
+            auto hexStr = m.captures[0];
+            long val;
+            formattedRead(hexStr, "%x", &val);
+
+            return Token(Token.INT, val, pos);
+        }
+
+        // Octal number
+        if (ch == '0')
+        {
+            enum octRegex = ctRegex!(`^0([0-7]+)`w);
+
+            auto m = stream.match(octRegex);
+            if (!m.empty) 
+            {
+                auto octStr = m.captures[1];
+                long val;
+                formattedRead(octStr, "%o", &val);
+                return Token(Token.INT, val, pos);
+            }
+        }
+
         enum fpRegex = ctRegex!(`^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?`w);
-    
+
         auto m = stream.match(fpRegex);
         assert (m.empty == false);
-        auto numStr = m.captures[0];        
+        auto numStr = m.captures[0];
 
         // If this is a floating-point number
         if (countUntil(numStr, '.') != -1 ||
@@ -727,16 +706,103 @@ Token getToken(ref StrStream stream, LexFlags flags)
     {
         auto openChar = stream.readCh();
 
-        try
+        wstring str = "";
+
+        // Until the end of the string
+        for (;;)
         {
-            auto str = getString(stream, openChar);
-            return Token(Token.STRING, str, pos);
+            ch = stream.readCh();
+
+            if (ch == openChar)
+            {
+                break;
+            }
+
+            // End of file
+            else if (ch == '\0')
+            {
+                return Token(
+                    Token.ERROR,
+                    "EOF in string literal",
+                    stream.getPos()
+                );
+            }
+
+            // End of line
+            else if (ch == '\n')
+            {
+                return Token(
+                    Token.ERROR,
+                    "newline in string literal",
+                    stream.getPos()
+                );
+            }
+
+            // Escape sequence
+            else if (ch == '\\')
+            {
+                auto escCh = readEscape(stream);
+                if (escCh != -1)
+                    str ~= escCh;
+            }
+
+            // Normal character
+            else
+            {
+                str ~= ch;
+            }
         }
 
-        catch (LexError err)
+        return Token(Token.STRING, str, pos);
+    }
+
+    // Quasi literal
+    if (ch == '`')
+    {
+        // TODO: full support for quasi-literals
+        // for now, quasis are only multi-line strings
+
+        // Read the opening ` character
+        auto openChar = stream.readCh();
+
+        wstring str = "";
+
+        // Until the end of the string
+        for (;;)
         {
-            return Token(Token.ERROR, err.msg, err.pos);
+            ch = stream.readCh();
+
+            if (ch == openChar)
+            {
+                break;
+            }
+
+            // End of file
+            else if (ch == '\0')
+            {
+                return Token(
+                    Token.ERROR,
+                    "EOF in string literal",
+                    stream.getPos()
+                );
+            }
+
+            // Escape sequence
+            else if (ch == '\\')
+            {
+                auto escCh = readEscape(stream);
+                if (escCh != -1)
+                    str ~= escCh;
+            }
+
+            // Normal character
+            else
+            {
+                str ~= ch;
+            }
         }
+
+        return Token(Token.STRING, str, pos);
     }
 
     // End of file
@@ -820,7 +886,7 @@ Token getToken(ref StrStream stream, LexFlags flags)
         return Token(Token.REGEXP, reStr, reFlags, pos);
     }
 
-    // Try matching all separators    
+    // Try matching all separators
     foreach (sep; separators)
         if (stream.match(sep))
             return Token(Token.SEP, sep, pos);

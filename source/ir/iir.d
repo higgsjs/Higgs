@@ -74,9 +74,13 @@ static this()
 
     addOp(IS_I32);
     addOp(IS_F64);
-    addOp(IS_REFPTR);
-    addOp(IS_RAWPTR);
     addOp(IS_CONST);
+    addOp(IS_RAWPTR);
+    addOp(IS_REFPTR);
+    addOp(IS_OBJECT);
+    addOp(IS_ARRAY);
+    addOp(IS_CLOSURE);
+    addOp(IS_STRING);
 
     addOp(I32_TO_F64);
     addOp(F64_TO_I32);
@@ -144,6 +148,7 @@ static this()
     addOp(LOAD_U64);
     addOp(LOAD_I8);
     addOp(LOAD_I16);
+    addOp(LOAD_I32);
     addOp(LOAD_F64);
     addOp(LOAD_REFPTR);
     addOp(LOAD_RAWPTR);
@@ -155,6 +160,7 @@ static this()
     addOp(STORE_U32);
     addOp(STORE_I8);
     addOp(STORE_I16);
+    addOp(STORE_I32);
     addOp(STORE_U64);
     addOp(STORE_F64);
     addOp(STORE_REFPTR);
@@ -162,6 +168,7 @@ static this()
     addOp(STORE_FUNPTR);
     addOp(STORE_MAPPTR);
 
+    addOp(THROW);
     addOp(CALL_APPLY);
 
     addOp(GET_ARG);
@@ -174,7 +181,12 @@ static this()
     addOp(GET_HEAP_FREE);
     addOp(GET_GC_COUNT);
 
-    addOp(HEAP_ALLOC);
+    addOp(ALLOC_REFPTR);
+    addOp(ALLOC_OBJECT);
+    addOp(ALLOC_ARRAY);
+    addOp(ALLOC_CLOSURE);
+    addOp(ALLOC_STRING);
+
     addOp(GC_COLLECT);
     addOp(MAKE_LINK);
     addOp(SET_LINK);
@@ -190,6 +202,7 @@ static this()
     addOp(PRINT_STR);
     addOp(GET_AST_STR);
     addOp(GET_IR_STR);
+    addOp(GET_ASM_STR);
     addOp(F64_TO_STR);
     addOp(F64_TO_STR_LNG);
     addOp(GET_TIME_MS);
