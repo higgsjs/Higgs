@@ -100,12 +100,69 @@ TODO: CodeGenState.getState for constant values?
 - knownType vs knownCst?
 - Or have a 4th kind, KNOWN_VAL vs IR_CONST
 
+TODO: val can be both in reg and stack
+- stop storing stack idx in ValState
+
+TODO: can possibly test out context swapping hypothesis by adding a certain
+number of useless compiler calls, without increasing code size?
+- These would have to do real compilation work
+- Easy dirty hack: have the branch stub compilation not patch the branch
+  the first time around, do some useless compilation the second time
+
+Marc: start writing paper soon
+- Setup repo
+- Outline sections
+- Write ideas as they come
+
 ------------------------------------------------------------------------------
 
 Milestone: register allocation
 ------------------------------
 
-Meeting:
+TODO: test performance against master branch
+- is the comp time much worse?
+
+TODO: phi moves
+- Phi moves from reg to stack (should be relatively uncommon?)
+  - must write type
+- Phi moves from reg to reg with unknown dst type?
+  - must write type (automatic)
+  - must write zero if the type is pointer
+
+TODO: spilling logic for calls and host code, modify jit/ops.d
+- When spilling a value, always spill its type (if known)
+- KISS at first, spill all live
+
+*** at this point, should be able to get very basic tests working ***
+
+FIXME: segfault on "x = 7; return x;", or just "x"
+./higgs --noruntime --nostdlib --jit_dumpasm --jit_dumpinfo
+- It's the get_global compilation that screws up
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: setOutType, both variants
+- If we have an unknown output type but the output operand is a register, need
+  to write a zero to the stack. This is rare-ish.
+- When setting a known out type, if the value is in a register, avoid writing the type
+
+[DONE] TODO: getWordOpnd
+- Put code in place to alloc regs, but leave disabled for now
+
+[DONE] TODO: getOutOpnd
+- Put code in place to alloc regs, but leave disabled for now
+
+[DONE] Meeting:
 - sketched out reg alloc
 - more runtime and inlining tweaks
 - better exec time accounting
@@ -131,44 +188,7 @@ Meeting:
   - get_global can be optimized with external fallback code
   - could optimize global calls speculatively
 
-TODO: can possibly test out context swapping hypothesis by adding a certain
-number of useless compiler calls, without increasing code size?
-- These would have to do real compilation work
-- Easy dirty hack: have the branch stub compilation not patch the branch
-  the first time around, do some useless compilation the second time
-
-TODO: test performance against master branch
-- is the comp time much worse?
-
-TODO: phi moves
-- Phi moves from reg to stack (should be relatively uncommon?)
-  - must write type
-- Phi moves from reg to reg with unknown dst type?
-  - must write type (automatic)
-  - must write zero if the type is pointer
-
-TODO: spilling logic for calls and host code, modify jit/ops.d
-- When spilling a value, always spill its type (if known)
-- KISS at first, spill all live
-
-*** at this point, should be able to get very basic tests working ***
-
-TODO: setOutType
-- If we have an unknown output type but the output operand is a register, need
-  to write a zero to the stack. This is rare-ish.
-- When setting a known out type, if the value is in a register, avoid writing the type
-
-TODO: getOutOpnd
-
-TODO: getWordOpnd
-- Put code in place to alloc regs, but leave disabled for now?
-
-TODO: getTypeOpnd
-
-
-
-
-
+[DONE] TODO: getTypeOpnd
 
 [DONE] TODO: spill saved registers for GC in compileBranch
 - Go through incoming context, spill values appropriately for GC safety

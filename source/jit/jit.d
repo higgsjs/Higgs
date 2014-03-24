@@ -372,21 +372,23 @@ class CodeGenState
     /**
     Allocate a register for a value
     */
-    X86Opnd allocRec(
+    X86Reg allocReg(
         CodeBlock as,
-        IRDstValue value,
         IRInstr instr,
-        LiveInfo liveInfo
+        IRDstValue value,
+        size_t numBits
     )
     {
         assert (value !is null);
+
+        auto liveInfo = callCtx.fun.liveInfo;
 
         // TODO: check if value is already reg mapped?
         // may want to do this in getWordOpnd,
         // in that case, only assert here that the value isn't reg mapped
 
         // Map the value to a specific register
-        X86Opnd mapReg(X86Reg reg)
+        X86Reg mapReg(X86Reg reg)
         {
             // Map the register to the new value
             gpRegMap[reg.regNo] = value;
@@ -394,12 +396,8 @@ class CodeGenState
             // Map the value to the register
             valMap[value] = getState(value).toReg(reg);
 
-            // Load the value into the register
-            // note: all 64 bits of the value, not just the requested bits
-            as.mov(reg.opnd(64), getWordOpnd(value, 64));
-
             // Return the operand for this register
-            return reg.opnd(64);
+            return reg.reg(numBits);
         }
 
         // For each allocatable general-purpose register
@@ -612,55 +610,6 @@ class CodeGenState
 
         // Get the IR value for the argument
         auto argVal = instr.getArg(argIdx);
-        auto dstVal = cast(IRDstValue)argVal;
-
-        /*
-        /// Allocate a register for the argument
-        X86Opnd allocReg()
-        {
-            assert (
-                dstVal !is null,
-                "cannot allocate register for constant IR value: " ~
-                argVal.toString()
-            );
-
-            // Get the assigned register for the argument
-            auto reg = ctx.regMapping[dstVal];
-
-            // Get the value mapped to this register
-            auto regVal = gpRegMap[reg.regNo];
-
-            // If the register is mapped to a value
-            if (regVal !is null)
-            {
-                // If the mapped slot belongs to another instruction argument
-                for (size_t otherIdx = 0; otherIdx < instr.numArgs; ++otherIdx)
-                {
-                    if (otherIdx != argIdx && regVal is instr.getArg(otherIdx))
-                    {
-                        // Map the argument to its stack location
-                        allocState[dstVal] = RA_STACK;
-                        return new X86Mem(numBits, wspReg, 8 * dstVal.outSlot);
-                    }
-                }
-
-                // If the currently mapped value is live, spill it
-                if (ctx.liveInfo.liveAfter(regVal, instr))
-                    spillReg(as, reg.regNo);
-                else
-                    allocState.remove(regVal);
-            }
-
-            // Load the value into the register 
-            // note: all 64 bits of it, not just the requested bits
-            as.instr(MOV, reg, getWordOpnd(argVal, 64));
-
-            // Map the argument to the register
-            allocState[dstVal] = RA_GPREG | reg.regNo;
-            gpRegMap[reg.regNo] = dstVal;
-            return new X86Reg(X86Reg.GP, reg.regNo, numBits);
-        }
-        */
 
         // Get the current operand for the argument value
         auto curOpnd = getWordOpnd(argVal, numBits);
@@ -712,12 +661,22 @@ class CodeGenState
             // TODO: only allocate a register if more than one use?
             // should benchmark this idea
 
-            // TODO
             // Try to allocate a register for the operand
-            auto opnd = /*loadVal? allocReg():*/curOpnd;
+            auto argDst = cast(IRDstValue)argVal;
+            assert (argDst !is null);
+            auto opnd = loadVal? allocReg(as, instr, argDst, numBits).opnd:curOpnd;
+
+            // If a register was successfully allocated
+            if (opnd != curOpnd)
+            {
+                assert (opnd.isReg);
+
+                // Load the value into the register
+                as.mov(opnd, curOpnd);
+            }
 
             // If the register allocation failed but a temp reg was supplied
-            if (opnd.isMem && !tmpReg.isNone)
+            else if (opnd.isMem && !tmpReg.isNone)
             {
                 if (tmpReg.isXMM)
                     as.movsd(tmpReg, curOpnd);
@@ -799,44 +758,15 @@ class CodeGenState
     {
         assert (instr !is null);
 
-        auto opnd = getWordOpnd(instr, numBits);
-        assert (opnd.isMem);
-        return opnd;
+        // Attempt to allocate a register for the output value
+        auto reg = allocReg(
+            as,
+            instr,
+            instr,
+            numBits
+        );
 
-        // TODO
-        /*
-        // Get the assigned register for this instruction
-        auto reg = ctx.regMapping[instr];
-
-        // Get the value mapped to this register
-        auto regVal = gpRegMap[reg.regNo];
-
-        // If another slot is using the register
-        if (regVal !is null && regVal !is instr)
-        {
-            // If an instruction argument is using this slot
-            for (size_t argIdx = 0; argIdx < instr.numArgs; ++argIdx)
-            {
-                if (regVal is instr.getArg(argIdx))
-                {
-                    // Map the output slot to its stack location
-                    allocState[instr] = RA_STACK;
-                    return new X86Mem(numBits, wspReg, 8 * instr.outSlot);
-                }
-            }
-
-            // If the value is live, spill it
-            if (ctx.liveInfo.liveAfter(regVal, instr) is true)
-                spillReg(as, reg.regNo);
-            else
-                allocState.remove(regVal);
-        }
-
-        // Map the instruction to the register
-        allocState[instr] = RA_GPREG | reg.regNo;
-        gpRegMap[reg.regNo] = instr;
-        return new X86Reg(X86Reg.GP, reg.regNo, numBits);
-        */
+        return reg.opnd;
     }
 
     /// Set the output type value for an instruction's output
@@ -847,11 +777,17 @@ class CodeGenState
             "null instruction"
         );
 
-        // Set a known type for this value
-        valMap[instr] = getState(instr).setType(type);
+        auto state = getState(instr);
 
-        // Write the type value to the type stack
-        as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(type));
+        // Set a known type for this value
+        valMap[instr] = state.setType(type);
+
+        // If the value is on the stack
+        if (state.isStack)
+        {
+            // Write the type value to the type stack
+            as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(type));
+        }
     }
 
     /// Write the output type for an instruction's output to the type stack
@@ -862,11 +798,20 @@ class CodeGenState
             "null instruction"
         );
 
+        auto state = getState(instr);
+
         // Clear the type information for the value
-        valMap[instr] = getState(instr).clearType();
+        valMap[instr] = state.clearType();
 
         // Write the type to the type stack
         as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(typeReg));
+
+        // If the value is in a register
+        if (state.isReg)
+        {
+            // Write a zero to the word stack to avoid false pointers
+            as.mov(X86Opnd(64, wspReg, instr.outSlot), X86Opnd(0));
+        }
     }
 
     /// Get the state for a given value
