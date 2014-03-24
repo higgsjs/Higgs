@@ -581,7 +581,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             // specifier-qualifier-list
             while (true)
             {
-                if (lex.token_type === TYPE_SPECIFIER)
+                type = lex.token_type;
+                if (type === TYPE_SPECIFIER)
                 {
                     if (of.type)
                         of.type = CType(of.type.name + " " + lex.token);
@@ -590,7 +591,15 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     lex.next();
                     continue;
                 }
-                else if (lex.token_type === TYPE_QUALIFIER)
+                else if (type === STRUCT_OR_UNION)
+                {
+                    this.acceptStructOrUnionSpecifier();
+                }
+                else if (type === ENUM)
+                {
+                    this.acceptEnumSpecifier();
+                }
+                else if (type === TYPE_QUALIFIER)
                 {} // NOTE: just eat this
                 break;
             }
@@ -602,6 +611,10 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 this.acceptDeclarator();
 
                 // TODO: = constant expression
+                if (!of.type)
+                {
+                    throw new CParseExpectedError("type specifier", null, lex.loc());
+                }
 
                 members.push(of.type);
                 names.push(of.name);
