@@ -3682,9 +3682,7 @@ void gen_load_lib(
         }
 
         // String must be null terminated
-        libname ~= '\0';
-
-        auto lib = dlopen(libname.ptr, RTLD_LAZY | RTLD_LOCAL);
+        auto lib = dlopen(toStringz(libname), RTLD_LAZY | RTLD_LOCAL);
 
         if (lib is null)
         {
@@ -3803,9 +3801,7 @@ void gen_get_sym(
         auto symname = to!string(strArg.str);
 
         // String must be null terminated
-        symname ~= '\0';
-
-        auto sym = dlsym(libArg.word.ptrVal, symname.ptr);
+        auto sym = dlsym(libArg.word.ptrVal, toStringz(symname));
 
         if (sym is null)
         {
