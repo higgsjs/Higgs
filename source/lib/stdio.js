@@ -50,34 +50,36 @@ Bindings for common c I/O functions
     var c = ffi.c;
 
     // TODO: NOTE: size_t should be long int
-    c.cdef("\
-           typedef int size_t;\
-           typedef struct _IO_FILE FILE;\
-           \
-           FILE *fopen( const char *filename, const char *mode );\
-           int fflush( FILE *stream );\
-           int fclose( FILE *stream );\
-           \
-           int fgetc( FILE *stream );\
-           int ungetc( int ch, FILE *stream );\
-           \
-           char *fgets( char *str, int count, FILE *stream );\
-           size_t fread( void *buffer, size_t size, size_t count, FILE *stream );\
-           \
-           long ftell( FILE *stream );\
-           int fseek( FILE *stream, long offset, int origin );\
-           void rewind( FILE *stream );\
-           int feof( FILE *stream );\
-           size_t fwrite( const void *buffer, size_t size, size_t count, FILE *stream );\
-           int fputc( int ch, FILE *stream );\
-           int remove( const char *fname );\
-           int rename( const char *old_filename, const char *new_filename );\
-           char *tmpnam( char *filename );\
-           FILE *tmpfile();\
-           FILE *stdout;\
-           FILE *stdin;\
-           FILE *stderr;\
-    ");
+    c.cdef(`
+        typedef int size_t;
+
+        typedef struct _IO_FILE FILE;
+
+        FILE *fopen( const char *filename, const char *mode );
+        int fflush( FILE *stream );
+        int fclose( FILE *stream );
+
+        int fgetc( FILE *stream );
+        int ungetc( int ch, FILE *stream );
+
+        char *fgets( char *str, int count, FILE *stream );
+        size_t fread( void *buffer, size_t size, size_t count, FILE *stream );
+
+        long ftell( FILE *stream );
+        int fseek( FILE *stream, long offset, int origin );
+        void rewind( FILE *stream );
+        int feof( FILE *stream );
+        size_t fwrite( const void *buffer, size_t size, size_t count, FILE *stream );
+        int fputc( int ch, FILE *stream );
+        int remove( const char *fname );
+        int rename( const char *old_filename, const char *new_filename );
+        char *tmpnam( char *filename );
+        FILE *tmpfile();
+        FILE *stdout;
+        FILE *stdin;
+        FILE *stderr;
+    `);
+
 
     // FFI can't handle printf yet
     c.cfun("printf", "i32,*");
@@ -90,7 +92,6 @@ Bindings for common c I/O functions
 
     // Constants
     io.SEEK_SET = 0;
-    io.SEEK_CUR = 1;
     io.SEEK_END = 2;
 
     /**

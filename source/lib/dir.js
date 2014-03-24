@@ -45,25 +45,25 @@ Functions for dealing with the filesystem
 
     var c = ffi.c;
 
-    c.cdef("\
-           typedef unsigned long int __ino_t;\
-           typedef long int __off_t;\
-           struct dirent\
-           {\
-               __ino_t d_ino;\
-               __off_t d_off;\
-               unsigned short int d_reclen;\
-               unsigned char d_type;\
-               char d_name[256];\
-           };\
-           typedef struct dirent dirent;\
-           typedef struct __dirstream DIR;\
-           DIR *opendir(const char *name);\
-           dirent *readdir(DIR *dirp);\
-           void rewinddir(DIR *dirp);\
-           int closedir(DIR *dirp);\
-           int errno;\
-    ");
+    c.cdef(`
+        typedef unsigned long int __ino_t;
+        typedef long int __off_t;
+        struct dirent
+        {
+            __ino_t d_ino;
+            __off_t d_off;
+            unsigned short int d_reclen;
+            unsigned char d_type;
+            char d_name[256];
+        };
+        typedef struct dirent dirent;
+        typedef struct __dirstream DIR;
+        DIR *opendir(const char *name);
+        dirent *readdir(DIR *dirp);
+        void rewinddir(DIR *dirp);
+        int closedir(DIR *dirp);
+        int errno;
+    `);
 
     // File types (d_type in dirent struct)
     var d_types = {

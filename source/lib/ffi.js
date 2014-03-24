@@ -266,8 +266,22 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 cursor += 1;
                 index = cursor;
                 break;
+            // comments /* */
+            case 47:
+                chr = $rt_str_get_data(input, ++cursor);
+                if (chr === 42)
+                    do
+                    {
+                        chr = $rt_str_get_data(input, ++cursor);
+                        if (cursor === end)
+                            throw CParseError("unterminated comment");
+                    } while (chr !== 42 && $rt_str_get_data(input, cursor + 1) !== 47)
+                else
+                    throw new CParseUnexpectedError("char", '/', this.loc());
+                cursor += 2;
+                index = cursor;
+                break;
             default:
-
                 // number literals
                 if ((cursor === index) && (chr > 47 && chr < 58))
                 {
