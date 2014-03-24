@@ -128,6 +128,8 @@ Meeting:
   - more code does mean more icache interference
 - should probably focus on trimming the biggest instructions
   (e.g.: get_global, calls)?
+  - get_global can be optimized with external fallback code
+  - could optimize global calls speculatively
 
 TODO: can possibly test out context swapping hypothesis by adding a certain
 number of useless compiler calls, without increasing code size?
@@ -151,13 +153,6 @@ TODO: spilling logic for calls and host code, modify jit/ops.d
 
 *** at this point, should be able to get very basic tests working ***
 
-TODO: soft-spilling scheme, soft-restore for getBranchStub
-- Save register values before entering compileBranch
-- Go through incoming context, spill values appropriately for GC safety
-- When going back to new compiled code, need to restore values into registers
-- Want to write regs to a designated memory area, not difficult
-  - Pre-alloc on the VM
-
 TODO: setOutType
 - If we have an unknown output type but the output operand is a register, need
   to write a zero to the stack. This is rare-ish.
@@ -165,25 +160,26 @@ TODO: setOutType
 
 TODO: getOutOpnd
 
+TODO: getWordOpnd
+- Put code in place to alloc regs, but leave disabled for now?
+
 TODO: getTypeOpnd
 
-TODO: getWordOpnd
-- For now, just assign a register based on stack idx?
- - no reg alloc phase, interference testing per-se
- - do it all on-the-fly
-- Can also just try to find a free register
 
 
 
 
 
+[DONE] TODO: spill saved registers for GC in compileBranch
+- Go through incoming context, spill values appropriately for GC safety
+- iterate through valMap, spill known types as well
+- no need to change status of written values
 
-
-
-
-
-
-
+[DONE] TODO: save registers in getBranchStub
+- Save register values before entering compileBranch
+- When going back to new compiled code, need to restore values into registers
+- Want to write regs to a designated memory area, not difficult
+- Word[allocRegs.length] VM.regSave
 
 [DONE] TODO: spillReg helper function
 

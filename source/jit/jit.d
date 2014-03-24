@@ -2356,8 +2356,45 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
 
     // Get the branch edge
     assert (targetIdx < srcBlock.targets.length);
-    auto branchCode = srcBlock.targets[targetIdx];
+    auto branchCode = cast(BranchCode)srcBlock.targets[targetIdx];
+    assert (branchCode !is null);
     assert (branchCode.started is false);
+
+    auto predState = branchCode.predState;
+    auto liveInfo = predState.callCtx.fun.liveInfo;
+
+    // For each allocatable register
+    foreach (regIdx, reg; allocRegs)
+    {
+        // Get the value mapped to this register
+        auto regVal = predState.gpRegMap[reg.regNo];
+
+        // If nothing is mapped to this register, skip it
+        if (regVal is null)
+            continue;
+
+        // If the value is not live, skip it
+        if (liveInfo.liveAtEntry(regVal, branchCode.target.block) is false)
+            continue;
+
+        // Get the state for this value
+        auto state = predState.getState(regVal);
+
+        assert (
+            state.isReg,
+            "value not mapped to reg to be spilled"
+        );
+
+        // Store the value in its stack location
+        vm.wsp[regVal.outSlot] = vm.regSave[regIdx];
+
+        // If the type is known, store it
+        if (state.knownType)
+        {
+            // Write the type tag to the type stack
+            vm.tsp[regVal.outSlot] = state.type;
+        }
+    }
 
     // Queue the branch edge to be compiled
     vm.queue(branchCode);
@@ -2479,9 +2516,6 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     if (targetIdx < vm.branchStubs.length && vm.branchStubs[targetIdx] !is null)
         return vm.branchStubs[targetIdx];
 
-    // TODO: don't need special spill code for now, no reg alloc yet
-    // eventually, need to save registers and implement soft-spilling scheme
-
     auto stub = new BranchStub(vm, targetIdx);
     vm.branchStubs.length = targetIdx + 1;
     vm.branchStubs[targetIdx] = stub;
@@ -2494,7 +2528,13 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     //as.printStr("hit branch stub (target " ~ to!string(targetIdx) ~ ")");
     //as.printUint(scrRegs[0].opnd);
 
-    // TODO: properly spill registers, GC may be run during compileBranch
+    // Save the allocatable registers to the register VM save space
+    as.getMember!("VM.regSave")(scrRegs[1], vmReg);
+    foreach (uint regIdx, reg; allocRegs)
+    {
+        auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
+        as.mov(memOpnd, reg.opnd);
+    }
 
     as.pushJITRegs();
 
@@ -2514,6 +2554,14 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     as.call(scrRegs[0]);
 
     as.popJITRegs();
+
+    // Restore the allocatable registers from the register VM save space
+    as.getMember!("VM.regSave")(scrRegs[1], vmReg);
+    foreach (uint regIdx, reg; allocRegs)
+    {
+        auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
+        as.mov(reg.opnd, memOpnd);
+    }
 
     // Jump to the compiled version
     as.jmp(X86Opnd(RAX));
