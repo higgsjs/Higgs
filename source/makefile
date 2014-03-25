@@ -50,10 +50,14 @@ stats.d             \
 main.d              \
 jit/tests.d         \
 parser/tests.d      \
-runtime/tests.d
+runtime/tests.d     \
+runtime/ffitests.d
 
 all: layout
 	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
+
+ffidev:
+	$(DC) $(COPTS) -of$(BIN_NAME_TEST) $(SRC) -gc -version=FFIdev
 
 test: layout
 	$(DC) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
