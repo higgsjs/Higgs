@@ -45,17 +45,17 @@ C stdlib functions
     var io = require("lib/stdio");
     var c = ffi.c;
 
-    c.cdef([
-        "void exit (int status);",
-        "int system (const char* command);",
-        "char* getenv (const char* name);",
-        "FILE *popen(const char *command, const char *mode);",
-        "void perror(const char *s);",
-        "int chdir (const char *filename);",
-        "typedef int pid_t;",
-        "pid_t fork(void);",
-        "pid_t waitpid(pid_t pid, int *status, int options);"
-    ]);
+    c.cdef(`
+        void exit (int status);
+        int system (const char* command);
+        char* getenv (const char* name);
+        FILE *popen(const char *command, const char *mode);
+        void perror(const char *s);
+        int chdir (const char *filename);
+        typedef int pid_t;
+        pid_t fork(void);
+        pid_t waitpid(pid_t pid, int *status, int options);
+    `);
 
     /**
     Allocate memory

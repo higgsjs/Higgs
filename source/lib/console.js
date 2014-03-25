@@ -71,7 +71,11 @@ Console functions
             // TODO: better substitute string?
             return "{...}";
         }
-        else if (ob.hasOwnProperty("toString") && typeof ob.toString === "function")
+        if (Object.getPrototypeOf(ob) == null && typeof ob.toString === "function")
+        {
+                return ob.toString();
+        }
+        else if (ob.hasOwnProptery && ob.hasOwnProperty("toString") && typeof ob.toString === "function")
         {
                 return ob.toString();
         }
