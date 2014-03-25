@@ -43,8 +43,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 (function()
 {
 
-    var console = require('lib/console');
-
     /**
     ERRORS
     */
