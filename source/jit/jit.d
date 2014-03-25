@@ -504,7 +504,7 @@ class CodeGenState
                 continue;
 
             // If the value should be spilled, spill it
-            if (spillTest is null || spillTest(value) is true)
+            if (spillTest(value) is true)
                 spillReg(as, regNo);
         }
 

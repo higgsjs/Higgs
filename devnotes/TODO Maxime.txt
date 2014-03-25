@@ -135,7 +135,6 @@ TODO: spilling logic for calls and host code, modify jit/ops.d
 
 *** TODO: debug global expression tests ***
 
-FIXME: runtime init fails?
 
 
 
@@ -145,6 +144,10 @@ FIXME: runtime init fails?
 
 
 
+
+[DONE] FIXME: runtime init fails?
+make; ./higgs --nostdlib --jit_trace_instrs
+- new_clos needs to spill regs before doing host call
 
 [DONE] FIXME: x = 7; if (\$ir_eq_i32(x, 7)) return 1; else return 0;
 - segfault 

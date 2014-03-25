@@ -3047,7 +3047,7 @@ void gen_get_link(
 }
 
 void gen_make_map(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3072,6 +3072,11 @@ void gen_make_map(
 
     // Set the output type
     st.setOutType(as, instr, Type.MAPPTR);
+
+
+
+    as.printStr(outOpnd.toString);
+
 }
 
 void gen_map_num_props(
@@ -3392,8 +3397,15 @@ void gen_new_clos(
         return closPtr.ptr;
     }
 
-    // TODO: make sure regs are properly spilled, this may trigger GC
-    // c arg regs may also overlap allocated regs, args should be on stack
+    // TODO: spill only values stored in C arg regs and C caller-save regs?
+    // Spill all values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto funArg = cast(IRFunPtr)instr.getArg(0);
     assert (funArg !is null);

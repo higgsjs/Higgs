@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -58,6 +58,27 @@ class LiveInfo
 
     // Internal bitset used to store liveness info
     private int32_t[] bitSet;
+
+    /**
+    Test if a value is live before a given instruction
+    Note: this function is exposed outside of this analysis
+    */
+    public bool liveBefore(IRDstValue val, IRInstr beforeInstr)
+    {
+        if (val.hasNoUses)
+            return false;
+
+        // If the value is the instruction, it isn't live
+        if (val is beforeInstr)
+            return false;
+
+        // If the value is an argument to the instruction, it is live
+        if (beforeInstr.hasArg(val))
+            return true;
+
+        // If the value is live after the instruction, it is live before
+        return liveAfter(val, beforeInstr);
+    };
 
     /**
     Test if a value is live after a given instruction
