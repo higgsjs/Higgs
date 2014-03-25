@@ -230,6 +230,8 @@ unittest
 
     auto vm = new VMNoStdLib();
 
+    writeln("unary ops");
+
     vm.assertInt("return 7", 7);
     vm.assertInt("return 1 + 2", 3);
     vm.assertInt("return 5 - 1", 4);
@@ -238,10 +240,14 @@ unittest
     vm.assertInt("return -3", -3);
     vm.assertInt("return +7", 7);
 
+    writeln("binary arith ops");
+
     vm.assertInt("return 2 + 3 * 4", 14);
     vm.assertInt("return 1 - (2+3)", -4);
     vm.assertInt("return 6 - (3-3)", 6);
     vm.assertInt("return 3 - 3 - 3", -3);
+
+    writeln("bitwise");
 
     vm.assertInt("return 5 | 3", 7);
     vm.assertInt("return 5 & 3", 1);
@@ -251,12 +257,16 @@ unittest
     vm.assertInt("return 7 >>> 1", 3);
     vm.assertInt("return ~2", -3);
 
+    writeln("undef");
+
     vm.assertInt("return ~undefined", -1);
     vm.assertInt("return undefined | 1", 1);
     vm.assertInt("return undefined & 1", 0);
     vm.assertInt("return undefined ^ 1", 1);
     vm.assertInt("return 1 << undefined", 1);
     vm.assertInt("return 1 >> undefined", 1);
+
+    writeln("fp");
 
     vm.assertFloat("return 3.5", 3.5);
     vm.assertFloat("return 2.5 + 2", 4.5);

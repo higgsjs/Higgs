@@ -133,23 +133,27 @@ TODO: spilling logic for calls and host code, modify jit/ops.d
 - When spilling a value, always spill its type (if known)
 - KISS at first, spill all live
 
-*** at this point, should be able to get very basic tests working ***
+*** TODO: debug global expression tests ***
 
-FIXME: segfault on "x = 7; return x;", or just "x"
+FIXME: runtime init fails?
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: x = 7; if (\$ir_eq_i32(x, 7)) return 1; else return 0;
+- segfault 
+- compileBranch?
+
+[DONE] FIXME: "x = 7; return x;", getting a zero value back
+
+[DONE] FIXME: get_global, "x" segfaults
 ./higgs --noruntime --nostdlib --jit_dumpasm --jit_dumpinfo
-- It's the get_global compilation that screws up
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: setOutType, both variants
 - If we have an unknown output type but the output operand is a register, need

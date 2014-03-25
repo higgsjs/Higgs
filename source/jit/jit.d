@@ -152,19 +152,13 @@ struct ValState
     bool isReg() const { return kind is Kind.REG; }
     bool isConst() const { return kind is Kind.CONST; }
 
-    /// Get the stack slot index for this value
-    StackIdx stackIdx() const
-    {
-        assert (isStack);
-        return cast(StackIdx)val;
-    }
-
     /// Get a word operand for this value
-    X86Opnd getWordOpnd(size_t numBits) const
+    X86Opnd getWordOpnd(size_t numBits, StackIdx stackIdx = StackIdx.max) const
     {
         switch (kind)
         {
             case Kind.STACK:
+            assert (stackIdx !is StackIdx.max);
             return X86Opnd(numBits, wspReg, cast(int32_t)(Word.sizeof * stackIdx));
 
             case Kind.REG:
@@ -177,11 +171,12 @@ struct ValState
     }
 
     /// Get a type operand for this value
-    X86Opnd getTypeOpnd() const
+    X86Opnd getTypeOpnd(StackIdx stackIdx = StackIdx.max) const
     {
         if (knownType)
             return X86Opnd(type);
 
+        assert (stackIdx !is StackIdx.max);
         return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * stackIdx));
     }
 
@@ -206,11 +201,11 @@ struct ValState
     }
 
     /// Move this value to the stack
-    ValState toStack(StackIdx idx) const
+    ValState toStack() const
     {
         ValState val = this;
         val.kind = Kind.STACK;
-        val.val = cast(int)idx;
+        val.val = 0xFFFF;
         return val;
     }
 
@@ -218,7 +213,7 @@ struct ValState
     ValState toReg(X86Reg reg) const
     {
         ValState val = this;
-        val.kind = Kind.STACK;
+        val.kind = Kind.REG;
         val.val = reg.regNo;
         return val;
     }
@@ -406,7 +401,7 @@ class CodeGenState
             auto regVal = gpRegMap[reg.regNo];
 
             // If nothing is mapped to this register
-            if (value is null)
+            if (regVal is null)
             {
                 // Map the value to this register
                 return mapReg(reg);
@@ -487,7 +482,7 @@ class CodeGenState
         }
 
         // Mark the value as being on the stack
-        valMap[regVal] = state.toStack(regVal.outSlot);
+        valMap[regVal] = state.toStack();
 
         // Mark the register as free
         gpRegMap[regNo] = null;
@@ -581,7 +576,7 @@ class CodeGenState
         // Get the state for this value
         auto state = getState(dstVal);
 
-        return state.getWordOpnd(numBits);
+        return state.getWordOpnd(numBits, dstVal.outSlot);
     }
 
     /**
@@ -709,7 +704,7 @@ class CodeGenState
         }
 
         // Get the type operand for this value
-        return getState(dstVal).getTypeOpnd();
+        return getState(dstVal).getTypeOpnd(dstVal.outSlot);
     }
 
     /**
@@ -765,6 +760,8 @@ class CodeGenState
             instr,
             numBits
         );
+
+        //writeln("outOpnd=", reg);
 
         return reg.opnd;
     }
@@ -823,16 +820,6 @@ class CodeGenState
             val,
             ValState.stack(val.outSlot)
         );
-    }
-
-    /// Map a value to a specific stack location
-    void mapToStack(IRDstValue val, StackIdx slotIdx)
-    {
-        valMap[val] = ValState.stack(slotIdx);
-
-        // TODO: gpRegMap?
-
-        // TODO: localMap?
     }
 }
 
@@ -1656,7 +1643,7 @@ Move[] genBranchMoves(
         // always generate the type moves
         auto srcTypeOpnd = predState.getTypeOpnd(predVal);
         auto dstValState = succState.getState(succVal);
-        X86Opnd dstTypeOpnd = X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * dstValState.stackIdx));
+        X86Opnd dstTypeOpnd = X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * succVal.outSlot));
 
         if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
@@ -2290,9 +2277,12 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    //writeln("entering compileBranch");
-    //writeln("    blockIdx=", blockIdx);
-    //writeln("    targetIdx=", targetIdx);
+    if (opts.jit_dumpinfo)
+    {
+        writeln("entering compileBranch");
+        writeln("blockIdx=", blockIdx);
+        writeln("targetIdx=", targetIdx);
+    }
 
     // Get the block from which the stub hit originated
     assert (blockIdx < vm.fragList.length, "invalid block idx");
@@ -2319,7 +2309,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
             continue;
 
         // If the value is not live, skip it
-        if (liveInfo.liveAtEntry(regVal, branchCode.target.block) is false)
+        if (liveInfo.liveAtEntry(regVal, branchCode.branch.target) is false)
             continue;
 
         // Get the state for this value
@@ -2354,7 +2344,11 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     stats.compTimeStop();
     stats.execTimeStart();
 
-    //writeln("leaving compileBranch");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("leaving compileBranch");
+        writeln();
+    }
 
     // Return a pointer to the compiled branch code
     return branchCode.getCodePtr(vm.execHeap);
