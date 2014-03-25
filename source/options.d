@@ -48,6 +48,9 @@ struct Options
 
     /// Gather and report various statistics about program execution
     bool stats = false;
+    
+    /// Set stdout to be unbuffered
+    bool unbufstdout = false;
 
     /* VM options */
 
@@ -95,6 +98,7 @@ void parseCmdArgs(ref string[] args)
         config.passThrough,
 
         "e"                 , &opts.execString,
+        "u"                 , &opts.unbufstdout,
         "repl"              , &opts.repl,
         "stats"             , &opts.stats,
 
