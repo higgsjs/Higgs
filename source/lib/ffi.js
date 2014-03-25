@@ -235,13 +235,13 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             // Handle Loners
             switch(chr)
             {
-                // ( )
+            // ( )
             case 40: case 41:
-                // ; = * ,
+            // ; = * ,
             case 59: case 61: case 42: case 44:
-                //  [ {
+            //  [ {
             case 91: case 123:
-                // ] }
+            // ] }
             case 93: case 125:
                 this.token = chr;
                 this.token_type = chr;
@@ -481,7 +481,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var names;
         var name;
         var t;
-        var w;
 
         if (tok !== "struct" && tok !== "union")
             throw new CParseExpectedError("'struct' or 'union'", tok, lex.loc());
@@ -510,9 +509,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
             // Wrap the declaration appropriately
             if (tok === "struct")
-                this.dec.type = CStruct(members);
+                this.dec.type = CStruct(members, names, name);
             else
-                this.dec.type = CUnion(members);
+                this.dec.type = CUnion(members, names, name);
 
             // If the struct is tagged and this is the first time seeing it, add
             // the wrapper to the library
@@ -522,12 +521,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 if (!t)
                 {
                     t = this.dec.type;
-                    w = t.wrapper_fun(c, names);
-                    t = Object.create(t);
-                    t.wrapper_fun = w;
                     this.ctypes[tok + " " + name] = t;
-                    this.lib[name] = w;
-
+                    // TODO: only do this once it's typedef'd?
+                    this.lib[name] = t.wrapper_fun;
                 }
             }
 
@@ -994,31 +990,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     }
 
     /**
-    Generate a name for a struct or union type
-    */
-    function StructUnionNameStr(is_struct, members)
-    {
-        var i = 0;
-        var l = members.length - 1;
-        var str;
-
-        if (is_struct)
-            str = "s{";
-        else
-            str = "u{";
-
-        while (i <= l)
-        {
-            str += members[i].name;
-            if (i < l)
-                str += ",";
-            i += 1;
-        }
-
-        return str + "}";
-    }
-
-    /**
     Generate a name for a function type
     */
     function FunNameStr(ret, args)
@@ -1186,7 +1157,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     /**
     Generate a wrapping function for a CUnion
     */
-    function CUnionGen(members, size)
+    function CUnionGen(members, names, size)
     {
         var i = 0;
         var l = members.length;
@@ -1200,7 +1171,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var arg_str;
 
         var wrapper_fun = "\
-            (function(c, names)\
+            (function(c)\
             {\n\
                 var strProto = {};\
         ";
@@ -1223,17 +1194,17 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 arg_str = (arg_str) ? (arg_str + ", ld" + loader_n) : ("ld1");
                 loaders.push(mem.wrapper_fun);
                 loader_dec = "\n\
-                s[names[" + i + "]] = ld" + loader_n + "(s.handle, s.offset);\n\
+                s." + names[i] + " = ld" + loader_n + "(s.handle, s.offset);\n\
                 ";
             }
             else
             {
                 // This member uses simple getter/setter
                 wrapper_fun += "\n\
-                strProto['get_' + names[" + i + "]] = function (){\n\
+                strProto.get_" + names[i] + " = function (){\n\
                     return " + loader + "(this.handle, this.offset);\n\
                 };\n\
-                strProto['set_' + names[" + i + "]] = function (val){\n\
+                strProto.set_" + names[i] + " = function (val){\n\
                     return " + mem.store_fun + "(this.handle, this.offset, val);\n\
                 };\
                 ";
@@ -1269,19 +1240,19 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         {
             // If any of the members use wrappers, add access to the wrapping functions
             wrapper_fun = "(function(" + arg_str + "){\n    return " + wrapper_fun + "\n})";
-            return eval(wrapper_fun).apply(this, loaders);
+            return eval(wrapper_fun).apply(this, loaders)(c);
         }
         else
         {
             // ...otherwise just return the wrapping function
-            return eval(wrapper_fun);
+            return eval(wrapper_fun)(c);
         }
     }
 
     /**
     Generate a wrapping function for a CStruct
     */
-    function CStructGen(members, size)
+    function CStructGen(members, names, size)
     {
         var i = 0;
         var l = members.length;
@@ -1296,7 +1267,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var arg_str;
 
         var wrapper_fun = "\
-            (function(c, names)\
+            (function(c)\
             {\
                 var strProto = {};\
         ";
@@ -1327,17 +1298,17 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 arg_str = (arg_str) ? (arg_str + ", ld" + loader_n) : ("ld1");
                 loaders.push(mem.wrapper_fun);
                 loader_dec = "\n\
-                s[names[" + i + "]] = ld" + loader_n + "(s.handle, s.offset + " + mem_offset + ");\n\
+                s." + names[i] + " = ld" + loader_n + "(s.handle, s.offset + " + mem_offset + ");\n\
                 ";
             }
             else
             {
                 // This member uses simple getter/setter
                 wrapper_fun += "\
-                strProto['get_' + names[" + i + "]] = function (){\n\
+                strProto.get_" + names[i] + " = function (){\n\
                     return " + loader + "(this.handle, this.offset + " + mem_offset + ");\n\
                 };\n\
-                strProto['set_' + names[" + i + "]] = function (val){\n\
+                strProto.set_" + names[i] + "= function (val){\n\
                     return " + mem.store_fun + "(this.handle, this.offset + " + mem_offset + ", val);\n\
                 };\
                 ";
@@ -1374,12 +1345,12 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         {
             // If any of the members use wrappers, add access to the wrapping functions
             wrapper_fun = "(function(" + arg_str + "){\n    return " + wrapper_fun + "\n})";
-            return eval(wrapper_fun).apply(this, loaders);
+            return eval(wrapper_fun).apply(this, loaders)(c);
         }
         else
         {
             // ...otherwise just return the wrapping function
-            return eval(wrapper_fun);
+            return eval(wrapper_fun)(c);
         }
     }
 
@@ -1556,21 +1527,14 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     /**
     Wrappers for C Structs
     */
-
-    var CStructs = Object.create(null);
-
-    function CStruct(members)
+    function CStruct(members, names, struct_name)
     {
         var l;
         var mem;
-        var key_name;
-        var last;
-        var next;
-        var s;
-        var d;
-        var key = 1;
+        var i = 1;
         var type_size = 0;
         var struct_size = 0;
+        var s;
 
         // Sometimes the FFI user doesn't care about the layout of the struct, in that case
         // they can just specify the tag: such as "struct Foo". These cannot be fully wrapped,
@@ -1579,125 +1543,72 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             return { wrapper: "CStruct", name: "s{}" };
 
         // Otherwise, get a full type wrapper
+        
+        // calculate size of struct
         l = members.length;
         mem = members[0];
-        key_name = mem.name;
-        last = CStructs[key_name];
         struct_size = mem.size;
-
-        // check for existing wrapper
-        if (!last)
-            CStructs[key_name] = last = Object.create(null);
-
-        while (key < l)
+        while (i < l)
         {
-            mem = members[key++];
             type_size = mem.size;
-
-            // track size of struct
             struct_size += type_size;
             d = struct_size % type_size;
             if (d !== 0)
                 struct_size += type_size - d;
-
-            // wrapper lookup
-            key_name = mem.name;
-            next = last[key_name];
-            if (!next)
-                last = last[key_name] = Object.create(null);
-            else
-                last = next;
+            i += 1;
         }
 
-        s = last["$"];
-
-        // otherwise, create a new wrapper
-        if (!s)
-        {
-            s = {
-                wrapper : "CStruct",
-                members : members,
-                name : StructUnionNameStr(true, members),
-                size : struct_size,
-                wrapper_fun : CStructGen(members, struct_size)
-            };
-
-            last["$"] = s;
-        }
+        s = {
+            wrapper : "CStruct",
+            members : members,
+            name : (struct_name || "s{}"),
+            size : struct_size,
+            wrapper_fun : CStructGen(members, names, struct_size)
+        };
 
         return s;
     }
 
+    
     /**
-    Wrappers for C Unions
+    Wrappers for C Structs
     */
-
-    var CUnions = Object.create(null);
-
-    function CUnion(members)
+    function CUnion(members, names, union_name)
     {
-
         var l;
         var mem;
-        var key_name;
-        var last;
-        var next;
-        var u;
-        var d;
-        var key = 1;
+        var i = 1;
         var type_size = 0;
         var union_size = 0;
+        var u;
 
+        // Sometimes the FFI user doesn't care about the layout of the union, in that case
+        // they can just specify the tag: such as "union Foo". These cannot be fully wrapped,
+        // but usually when you do this it's because you are just passing around an opaque pointer.
         if (members == null)
-            return {
-                wrapper : "CUnion",
-                name : "u{}"
-            };
+            return { wrapper: "CUnion", name: "u{}" };
 
         // Otherwise, get a full type wrapper
+        
+        // calculate size of struct
         l = members.length;
         mem = members[0];
-        key_name = mem.name;
-        last = CUnions[key_name];
-        union_size = mem.size;
-
-        // check for existing wrapper
-        if (!last)
-            CUnions[key_name] = last = Object.create(null);
-
-        while (key < l)
+        struct_size = mem.size;
+        while (i < l)
         {
-            mem = members[key++];
             type_size = mem.size;
-
-            // track size of union
             if (type_size > union_size)
                 union_size = type_size;
-
-            // wrapper lookup
-            key_name = mem.name;
-            next = last[key_name];
-            if (!next)
-                last = last[key_name] = Object.create(null);
-            else
-                last = next;
+            i += 1;
         }
 
-        u = last["$"];
-
-        // otherwise, create a new wrapper
-        if (!u)
-        {
-            u = {
-                wrapper : "CUnion",
-                members : members,
-                name : StructUnionNameStr(false, members),
-                size : union_size,
-                wrapper_fun : CUnionGen(members, union_size)
-            };
-
-            last["$"] = u;
-        }
+        u = {
+            wrapper : "CUnion",
+            members : members,
+            name : (union_name || "u{}"),
+            size : union_size,
+            wrapper_fun : CUnionGen(members, names, union_size)
+        };
 
         return u;
     }
@@ -1812,7 +1723,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
             if (dec.storage_class === "typedef")
             {
-               ctypes[dec_name] = dec.type;
+                ctypes[dec_name] = dec.type;
+                lib[dec_name] = dec.type.wrapper_fun;
             }
             else if (dec_name && dec_type === "CFun")
             {
@@ -2070,8 +1982,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     {
         return x === $nullptr;
     }
-
-
+    
     /**
     EXPORTS
     */
