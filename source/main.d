@@ -48,6 +48,7 @@ import options;
 
 void main(string[] args)
 {
+        
     // Arguments after "--" are passed to JS code
     auto argLimit = countUntil(args, "--");
     string[] hostArgs;
@@ -86,6 +87,10 @@ void main(string[] args)
         vm.evalString(to!string(jsArgsStr));
     }
     */
+    
+    // Check if we need to set stdout to unbuffered
+    if (opts.unbufstdout)
+        stdout.setvbuf(0, _IONBF); 
 
     // If file arguments were passed or there is
     // a string of code to be executed
