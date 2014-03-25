@@ -604,7 +604,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             while (true)
             {
                 // struct-declarator
-                this.acceptDeclarator();
+                this.acceptDeclarator(0);
 
                 // TODO: = constant expression
                 if (!of.type)
@@ -1181,6 +1181,11 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             mem = members[i];
             type_size = mem.align_size || mem.size;
 
+            if (typeof type_size !== "number" || isNaN(type_size))
+            {
+                throw new FFIError("Invalid type size for: " + mem.name);
+            }
+
             // members with a simple type like int are handled differently than members
             // of type like char[], the former uses simple getters/setters
             // the latter use a wrapper
@@ -1276,6 +1281,11 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         {
             mem = members[i];
             type_size = mem.align_size || mem.size;
+            
+            if (typeof type_size !== "number" || isNaN(type_size))
+            {
+                throw new FFIError("Invalid type size for: " + mem.name);
+            }
 
             // member alignment
             if (mem_offset !== 0)
