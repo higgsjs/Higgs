@@ -89,7 +89,7 @@ void main(string[] args)
     */
     
     // Check if we need to set stdout to unbuffered
-    if (opts.unbufstdout)
+    if (opts.unbuffered)
         stdout.setvbuf(0, _IONBF); 
 
     // If file arguments were passed or there is
