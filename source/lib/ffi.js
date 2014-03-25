@@ -1281,11 +1281,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         {
             mem = members[i];
             type_size = mem.align_size || mem.size;
-            
-            if (typeof type_size !== "number" || isNaN(type_size))
-            {
-                throw new FFIError("Invalid type size for: " + mem.name);
-            }
 
             // member alignment
             if (mem_offset !== 0)
@@ -1541,7 +1536,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     {
         var l;
         var mem;
-        var i = 1;
+        var i = 0;
         var type_size = 0;
         var struct_size = 0;
         var s;
@@ -1556,16 +1551,29 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         
         // calculate size of struct
         l = members.length;
-        mem = members[0];
-        struct_size = mem.size;
         while (i < l)
         {
+            mem = members[i];
             type_size = mem.size;
+            
+            if (typeof type_size !== "number" || isNaN(type_size))
+            {
+                throw new FFIError(
+                    "Invalid type size for: " + mem.name + " in struct " +
+                    (struct_name ? struct_name : "")
+                );
+            }
+            
             struct_size += type_size;
             d = struct_size % type_size;
             if (d !== 0)
                 struct_size += type_size - d;
             i += 1;
+        }
+        
+        if (typeof struct_size !== "number" || isNaN(struct_size))
+        {
+            throw new FFIError("Invalid type size for: struct " + (struct_name ? struct_name : ""));
         }
 
         s = {
@@ -1587,7 +1595,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     {
         var l;
         var mem;
-        var i = 1;
+        var i = 0;
         var type_size = 0;
         var union_size = 0;
         var u;
@@ -1602,11 +1610,19 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         
         // calculate size of struct
         l = members.length;
-        mem = members[0];
-        struct_size = mem.size;
         while (i < l)
         {
+            mem = members[i];
             type_size = mem.size;
+
+            if (typeof type_size !== "number" || isNaN(type_size))
+            {
+                throw new FFIError(
+                    "Invalid type size for: " + mem.name + " in union " +
+                    (union_name ? union_name : "")
+                );
+            }
+
             if (type_size > union_size)
                 union_size = type_size;
             i += 1;
@@ -1992,7 +2008,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     {
         return x === $nullptr;
     }
-    
+
     /**
     EXPORTS
     */
