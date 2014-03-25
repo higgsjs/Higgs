@@ -98,7 +98,7 @@ void parseCmdArgs(ref string[] args)
         config.passThrough,
 
         "e"                 , &opts.execString,
-        "u"                 , &opts.unbufstdout,
+        "unbuffered"        , &opts.unbufstdout,
         "repl"              , &opts.repl,
         "stats"             , &opts.stats,
 
