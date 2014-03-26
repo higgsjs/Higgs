@@ -202,7 +202,7 @@ void gen_get_type(
 }
 
 void gen_i32_to_f64(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -222,7 +222,7 @@ void gen_i32_to_f64(
 }
 
 void gen_f64_to_i32(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -250,19 +250,19 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
 {
     // Should be mem or reg
     auto opnd0 = st.getWordOpnd(
-        as, 
-        instr, 
-        0, 
-        numBits, 
+        as,
+        instr,
+        0,
+        numBits,
         scrRegs[0].opnd(numBits),
         false
     );
 
     // May be reg or immediate
     auto opnd1 = st.getWordOpnd(
-        as, 
-        instr, 
-        1, 
+        as,
+        instr,
+        1,
         numBits,
         scrRegs[1].opnd(numBits),
         true
@@ -1549,17 +1549,14 @@ void gen_call_prim(
     as.setWord(-numArgs - 1, numArgs);
     as.setType(-numArgs - 1, Type.INT32);
 
-    // TODO
-    /*
     // Spill the values that are live after the call
     st.spillRegs(
-        ctx.as,
-        delegate bool(IRDstValue val)
+        as,
+        delegate bool(IRDstValue value)
         {
-            return ctx.liveInfo.liveAfter(val, instr);
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
         }
     );
-    */
 
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
@@ -1614,18 +1611,16 @@ void gen_call(
     // maybe add State.freeReg method
     auto scrReg3 = allocRegs[$-1];
 
-    // TODO : save the state before spilling?
-    // TODO
-    /*
+    // TODO: optimize call spills
+    // TODO: move spills after arg copying?
     // Spill the values that are live after the call
     st.spillRegs(
-        ctx.as,
-        delegate bool(IRDstValue val)
+        as,
+        delegate bool(IRDstValue value)
         {
-            return ctx.liveInfo.liveAfter(val, instr);
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
         }
     );
-    */
 
     //
     // Function pointer extraction
@@ -1634,8 +1629,8 @@ void gen_call(
     // Get the type tag for the closure value
     auto closType = st.getTypeOpnd(
         as,
-        instr, 
-        0, 
+        instr,
+        0,
         scrRegs[0].opnd(8),
         false
     );
@@ -1710,8 +1705,8 @@ void gen_call(
 
         // Copy the argument word
         auto argOpnd = st.getWordOpnd(
-            as, 
-            instr, 
+            as,
+            instr,
             instrArgIdx,
             64,
             scrReg3.opnd(64),
@@ -1737,8 +1732,8 @@ void gen_call(
 
     // Write the "this" argument
     auto thisReg = st.getWordOpnd(
-        as, 
-        instr, 
+        as,
+        instr,
         1,
         64,
         scrReg3.opnd(64),
@@ -3074,11 +3069,6 @@ void gen_make_map(
 
     // Set the output type
     st.setOutType(as, instr, Type.MAPPTR);
-
-
-
-    as.printStr(outOpnd.toString);
-
 }
 
 void gen_map_num_props(

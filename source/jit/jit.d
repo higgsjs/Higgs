@@ -408,7 +408,7 @@ class CodeGenState
             }
 
             // If the value mapped is not live
-            if (liveInfo.liveAfter(regVal, instr) == false)
+            if (liveInfo.liveBefore(regVal, instr) == false)
             {
                 // Remove the mapped value from the value map
                 valMap.remove(regVal);

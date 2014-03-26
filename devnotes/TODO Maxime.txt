@@ -122,6 +122,14 @@ Milestone: register allocation
 TODO: test performance against master branch
 - is the comp time much worse?
 
+TODO: look at machine code, optimize RA further
+- Try to bias allocReg based on stack idx?
+- Try to bias allocReg based on dst phi nodes
+
+TODO: optimize call spills
+
+*** debugging ***
+
 TODO: phi moves
 - Phi moves from reg to stack (should be relatively uncommon?)
   - must write type
@@ -133,7 +141,6 @@ TODO: spilling logic for calls and host code, modify jit/ops.d
 - When spilling a value, always spill its type (if known)
 - KISS at first, spill all live
 
-*** TODO: debug global expression tests ***
 
 
 
@@ -144,6 +151,16 @@ TODO: spilling logic for calls and host code, modify jit/ops.d
 
 
 
+[DONE] FIXME: "false & 1" produces 1 instead of 0
+make; ./higgs --nostdlib --jit_trace_instrs
+- Probable cause: registers not spilled before call!
+  - Try just spilling all for now
+- This doesn't fix the problem!
+- Some other op might need spills?
+- retWordReg and retTypeReg are both allocatable registers ***
+ - Should printStr info in gen_ret, see what's happening
+ - doesn't seem to be the problem
+- allocReg used liveAfter to pick reg, two args with same reg
 
 [DONE] FIXME: runtime init fails?
 make; ./higgs --nostdlib --jit_trace_instrs
