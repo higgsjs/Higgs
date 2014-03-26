@@ -3175,7 +3175,23 @@ void gen_map_prop_idx(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Get the map operand
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false, false);
+    assert (opnd0.isReg);
+
+    // Get the property name operand
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+
+    // Spill the values that are live after the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return (
+                instr.block.fun.liveInfo.liveAfter(value, instr) &&
+                value !is instr
+            );
+        }
+    );
 
     // If the property name is a known constant string
     auto nameArgInstr = cast(IRInstr)instr.getArg(1);
@@ -3245,9 +3261,6 @@ void gen_map_prop_idx(
     }
     else
     {
-        // Get the property name operand
-        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-
         as.pushJITRegs();
 
         // Call the host function

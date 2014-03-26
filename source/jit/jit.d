@@ -460,7 +460,8 @@ class CodeGenState
 
         assert (
             state.isReg,
-            "value not mapped to reg to be spilled"
+            "value not mapped to reg in spillReg:\n" ~
+            regVal.toString
         );
 
         auto mem = X86Opnd(64, wspReg, 8 * regVal.outSlot);
@@ -1523,6 +1524,14 @@ CodeGenState getSuccState(
             phi.block.toString()
         );
 
+        // TODO: better mechanism for mapping phi to reg or stack...
+        auto oldPhiState = succState.getState(phi);
+        if (oldPhiState.isReg)
+        {
+            auto regNo = oldPhiState.val;
+            succState.gpRegMap[regNo] = null;
+        }
+
         if (auto dstArg = cast(IRDstValue)arg)
         {
             auto phiState = ValState.stack(phi.outSlot);
@@ -1648,7 +1657,13 @@ Move[] genBranchMoves(
         if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
 
-        // TODO: handle delayed writes
+
+
+
+
+
+
+
 
         /*
         // Get the predecessor and successor type states
@@ -1693,6 +1708,11 @@ Move[] genBranchMoves(
             }
         }
         */
+
+
+
+
+
     }
 
     return moveList;

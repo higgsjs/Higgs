@@ -128,18 +128,20 @@ TODO: look at machine code, optimize RA further
 
 TODO: optimize call spills
 
-*** debugging ***
-
-TODO: phi moves
+TODO: optimize phi moves
 - Phi moves from reg to stack (should be relatively uncommon?)
   - must write type
 - Phi moves from reg to reg with unknown dst type?
   - must write type (automatic)
   - must write zero if the type is pointer
 
+TODO: optimize call spills
+
+*** debugging ***
+
 TODO: spilling logic for calls and host code, modify jit/ops.d
 - When spilling a value, always spill its type (if known)
-- KISS at first, spill all live
+- KISS at first, spill all live, do it naively, optimize spills later
 
 
 
@@ -147,9 +149,9 @@ TODO: spilling logic for calls and host code, modify jit/ops.d
 
 
 
-
-
-
+[DONE] FIXME: "typeof x" causes segfault
+make; ./higgs --nostdlib --jit_trace_instrs
+- map_prop_idx may be to blame, call to host without spills
 
 [DONE] FIXME: "false & 1" produces 1 instead of 0
 make; ./higgs --nostdlib --jit_trace_instrs
