@@ -708,6 +708,8 @@ unittest
 
     auto vm = new VMNoStdLib();
 
+    writeln("exprs");
+
     vm.assertBool("var x; return !x", true);
     vm.assertInt("a = 1; return a;", 1);
     vm.assertInt("var a; a = 1; return a;", 1);
@@ -718,6 +720,8 @@ unittest
     vm.assertInt("return a = 1,2;", 2);
     vm.assertInt("a = 1,2; return a;", 1);
     vm.assertInt("a = (1,2); return a;", 2);
+
+    writeln("calls");
 
     vm.assertInt("f = function() { return 7; }; return f();", 7);
     vm.assertInt("function f() { return 9; }; return f();", 9);
@@ -739,11 +743,17 @@ unittest
         8
     );
 
+    writeln("unresolved");
+
     // Unresolved global
     vm.assertThrows("foo5783");
 
+    writeln("delete");
+
     // Accessing a property from Object.prototype
     vm.assertInt("delete x; ($ir_get_obj_proto()).x = 777; return x;", 777);
+
+    writeln("many globals");
 
     // Many global variables
     vm = new VMNoStdLib();

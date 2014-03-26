@@ -159,7 +159,7 @@ struct ValState
         {
             case Kind.STACK:
             assert (stackIdx !is StackIdx.max);
-            return X86Opnd(numBits, wspReg, cast(int32_t)(Word.sizeof * stackIdx));
+            return wordStackOpnd(stackIdx, numBits);
 
             case Kind.REG:
             return X86Reg(X86Reg.GP, val, numBits).opnd;
@@ -177,7 +177,7 @@ struct ValState
             return X86Opnd(type);
 
         assert (stackIdx !is StackIdx.max);
-        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * stackIdx));
+        return typeStackOpnd(stackIdx);
     }
 
     /// Set the type for this value, creates a new value
@@ -464,7 +464,7 @@ class CodeGenState
             regVal.toString
         );
 
-        auto mem = X86Opnd(64, wspReg, 8 * regVal.outSlot);
+        auto mem = wordStackOpnd(regVal.outSlot);
         auto reg = X86Reg(X86Reg.GP, regNo, 64);
 
         //writefln("spilling: %s (%s)", regVal.toString(), reg);
@@ -478,8 +478,7 @@ class CodeGenState
         {
             // Write the type tag to the type stack
             //as.comment("Spilling type for " ~ regVal.toString());
-            auto memOpnd = X86Opnd(8, tspReg, regVal.outSlot);
-            as.mov(memOpnd, X86Opnd(state.type));
+            as.mov(typeStackOpnd(regVal.outSlot), X86Opnd(state.type));
         }
 
         // Mark the value as being on the stack
@@ -784,7 +783,7 @@ class CodeGenState
         if (state.isStack)
         {
             // Write the type value to the type stack
-            as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(type));
+            as.mov(typeStackOpnd(instr.outSlot), X86Opnd(type));
         }
     }
 
@@ -802,13 +801,13 @@ class CodeGenState
         valMap[instr] = state.clearType();
 
         // Write the type to the type stack
-        as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(typeReg));
+        as.mov(typeStackOpnd(instr.outSlot), X86Opnd(typeReg));
 
         // If the value is in a register
         if (state.isReg)
         {
             // Write a zero to the word stack to avoid false pointers
-            as.mov(X86Opnd(64, wspReg, instr.outSlot), X86Opnd(0));
+            as.mov(wordStackOpnd(instr.outSlot), X86Opnd(0));
         }
     }
 
@@ -1652,7 +1651,7 @@ Move[] genBranchMoves(
         // always generate the type moves
         auto srcTypeOpnd = predState.getTypeOpnd(predVal);
         auto dstValState = succState.getState(succVal);
-        X86Opnd dstTypeOpnd = X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * succVal.outSlot));
+        X86Opnd dstTypeOpnd = typeStackOpnd(succVal.outSlot);
 
         if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);

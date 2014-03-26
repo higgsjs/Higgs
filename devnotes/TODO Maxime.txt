@@ -126,7 +126,8 @@ TODO: look at machine code, optimize RA further
 - Try to bias allocReg based on stack idx?
 - Try to bias allocReg based on dst phi nodes
 
-TODO: optimize call spills
+TODO: optimize call spills, other spills
+- Should have shorthands for spilling only C caller-save regs and such
 
 TODO: optimize phi moves
 - Phi moves from reg to stack (should be relatively uncommon?)
@@ -135,19 +136,35 @@ TODO: optimize phi moves
   - must write type (automatic)
   - must write zero if the type is pointer
 
-TODO: optimize call spills
-
 *** debugging ***
 
-TODO: spilling logic for calls and host code, modify jit/ops.d
-- When spilling a value, always spill its type (if known)
+TODO: complete adding spills for calls and host code, modify jit/ops.d
 - KISS at first, spill all live, do it naively, optimize spills later
 
+TODO: add zero write for phis
+- If the dst is in a register and the dst type is unknown, write zero
 
 
 
 
 
+
+
+
+
+
+
+[DONE] FIXME: segfault, make; ./higgs --nostdlib --jit_trace_instrs tests/core/many_globals/many_globals3.js
+- possibly due to lack of spilling logic
+- add spilling logic!
+- may also need additional phi/val move logic
+  - writing zeroes and type tags properly?
+  - may be missing zero writes
+
+[DONE] FIXME: test fails, "a = 1; b = 2; return a+b;"
+make; ./higgs --nostdlib --jit_dumpasm --e "a = 1; b = 2; return a+b;"
+- Probably has to do with added spill logic in get_global
+- not the same opnd
 
 [DONE] FIXME: "typeof x" causes segfault
 make; ./higgs --nostdlib --jit_trace_instrs

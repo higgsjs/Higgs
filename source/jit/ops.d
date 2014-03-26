@@ -497,9 +497,17 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     CodeBlock as
 )
 {
-    // TODO: this won't GC, but spill C caller-save registers
-
     assert (arity is 1 || arity is 2);
+
+    // TODO: this won't GC, but spill C caller-save registers
+    // Spill the values that are live after the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
     as.movq(X86Opnd(XMM0), opnd0);
@@ -537,7 +545,7 @@ alias HostFPOp!(std.c.math.pow, 2) gen_pow_f64;
 alias HostFPOp!(std.c.math.fmod, 2) gen_mod_f64;
 
 void FPToStr(string fmt)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -555,7 +563,14 @@ void FPToStr(string fmt)(
         return str;
     }
 
-    // TODO: spill all for GC
+    // Spill the values that are live after the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
@@ -1245,7 +1260,7 @@ alias CmpOp!("fgt", 64) gen_gt_f64;
 alias CmpOp!("fge", 64) gen_ge_f64;
 
 void gen_if_true(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -1717,9 +1732,9 @@ void gen_call(
 
         // Copy the argument type
         auto typeOpnd = st.getTypeOpnd(
-            as, 
-            instr, 
-            instrArgIdx, 
+            as,
+            instr,
+            instrArgIdx,
             scrReg3.opnd(8),
             true
         );
@@ -2719,7 +2734,14 @@ void gen_gc_collect(
     // Get the string pointer
     auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
 
-    // TODO: spill regs, may GC
+    // Spill the values that are live after the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
 
     as.pushJITRegs();
 
@@ -2794,7 +2816,14 @@ void gen_get_global(
         return null;
     }
 
-    // TODO: spill all for potential host call 
+    // Spill the values that are live after the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
 
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -2866,7 +2895,7 @@ void gen_get_global(
 
 
 void gen_set_global(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2942,7 +2971,14 @@ void gen_get_str(
     // Get the string pointer
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
 
-    // TODO: spill regs, may GC
+    // Spill the values that are live after the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
 
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -3085,9 +3121,17 @@ void gen_map_num_props(
         return map.numProps;
     }
 
-    // TODO: this won't GC, but spill C caller-save registers
-
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+    // TODO: this won't GC, but spill C caller-save registers
+    // Spill the values that are live after the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
@@ -3172,8 +3216,6 @@ void gen_map_prop_idx(
     else
         assert (false);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
     // Get the map operand
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false, false);
     assert (opnd0.isReg);
@@ -3186,12 +3228,11 @@ void gen_map_prop_idx(
         as,
         delegate bool(IRDstValue value)
         {
-            return (
-                instr.block.fun.liveInfo.liveAfter(value, instr) &&
-                value !is instr
-            );
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
         }
     );
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // If the property name is a known constant string
     auto nameArgInstr = cast(IRInstr)instr.getArg(1);

@@ -868,7 +868,7 @@ void writeRMMulti(
     if (opnd1.isReg)
         assert (opnd1.reg.size is opndSize, "operand size mismatch");
     else if (opnd1.isMem)
-        assert (opnd1.mem.size is opndSize, "operand size mismatch");
+        assert (opnd1.mem.size is opndSize, "operand size mismatch for " ~ mnem);
     else if (opnd1.isImm)
         assert (opnd1.imm.immSize <= opndSize, "immediate too large for dst");
 
