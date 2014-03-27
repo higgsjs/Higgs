@@ -141,18 +141,37 @@ TODO: optimize phi moves
 TODO: complete adding spills for calls and host code, modify jit/ops.d
 - KISS at first, spill all live, do it naively, optimize spills later
 
-TODO: add zero write for phis
+FIXME: segfault after compileBranch in property delete test
+"o = {x: 5}; delete o.x; return !o.x;"
+- crash is in objGetProp
+- seems to have to do with phi node
+- phi value reg is spilled, but this doesn't seem to matter?
+- The property word is "missing"
+- Immediately after the jump, there is a load
+- The missing path wasn't taken before...
+
+Back jump mechanism is broken???
+jmp32Ref seemingly sends us to the wrong place
+
+TODO: impossible to debug, create standalone test to replicate this...
+make; ./higgs --nostdlib --jit_trace_instrs --jit_dumpinfo test.js
+- When we get to call_prim getPropObj, rsi is corrupted...
+
+
+Possibly, the NOP padding fails on rewritebranch.......?
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: add zero write for phis
 - If the dst is in a register and the dst type is unknown, write zero
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: segfault, make; ./higgs --nostdlib --jit_trace_instrs tests/core/many_globals/many_globals3.js
 - possibly due to lack of spilling logic

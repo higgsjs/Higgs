@@ -467,6 +467,7 @@ class CodeGenState
         auto mem = wordStackOpnd(regVal.outSlot);
         auto reg = X86Reg(X86Reg.GP, regNo, 64);
 
+        //as.printStr("spilling " ~ reg.toString);
         //writefln("spilling: %s (%s)", regVal.toString(), reg);
 
         // Spill the value currently in the register
@@ -608,6 +609,12 @@ class CodeGenState
 
         // Get the current operand for the argument value
         auto curOpnd = getWordOpnd(argVal, numBits);
+
+        /*
+        as.printStr("getWordOpnd for " ~ argVal.toString);
+        as.printStr("curOpnd=" ~ curOpnd.toString);
+        as.printUint(curOpnd);
+        */
 
         // If the argument is already in a register
         if (curOpnd.isReg)
@@ -1600,7 +1607,8 @@ CodeGenState getSuccState(
 /**
 Generate the moves to transition from a predecessor to a successor state
 */
-Move[] genBranchMoves(
+void genBranchMoves(
+    CodeBlock as,
     CodeGenState predState,
     CodeGenState succState,
     BranchEdge branch
@@ -1623,12 +1631,16 @@ Move[] genBranchMoves(
         assert (succVal !is null);
         assert (predVal !is null);
 
-        /*
-        if (succPhi)
-            as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
-        else
-            as.comment("move " ~ succVal.getName);
-        */
+        if (opts.jit_dumpinfo)
+        {
+            if (succPhi)
+                as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
+            else
+                as.comment("move " ~ succVal.getName);
+
+            //as.printStr("move predVal=" ~ predVal.toString);
+            //as.printStr("move succVal=" ~ succVal.toString);
+        }
 
         // Test if the successor value is a parameter
         // We don't need to move parameter values to the stack
@@ -1656,13 +1668,11 @@ Move[] genBranchMoves(
         if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
 
-
-
-
-
-
-
-
+        // FIXME: only if pointer dst type?
+        // If the dst is in a register and the dst type is known,
+        // write a zero to the stack to prevent bad pointers
+        if (dstWordOpnd.isReg && dstValState.knownType)
+            moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
 
         /*
         // Get the predecessor and successor type states
@@ -1707,14 +1717,13 @@ Move[] genBranchMoves(
             }
         }
         */
-
-
-
-
-
     }
 
-    return moveList;
+    //foreach (move; moveList)
+    //    as.printStr(format("move from %s to %s", move.src, move.dst));
+
+    // Execute the moves
+    execMoves(as, moveList, scrRegs[0], scrRegs[1]);
 }
 
 /// Return address entry
@@ -1889,6 +1898,16 @@ void compile(VM vm, CallCtx callCtx)
             // Store the code start index
             branch.markStart(as, vm);
 
+            /*
+            if (opts.jit_trace_instrs)
+            {
+                as.printStr("branch code to " ~ branch.branch.target.getName);
+                as.printStr("  fun=" ~ branch.branch.target.fun.getName);
+            }
+            */
+
+            //as.printStr("branch code to " ~ branch.branch.target.getName);
+
             // Generate the prelude code, if any
             if (branch.prelGenFn)
                 branch.prelGenFn(as, vm);
@@ -1907,7 +1926,8 @@ void compile(VM vm, CallCtx callCtx)
             );
 
             // Generate the moves to transition to the successor state
-            auto moveList = genBranchMoves(
+            genBranchMoves(
+                as,
                 branch.predState,
                 branch.target.state,
                 branch.branch
@@ -1915,9 +1935,6 @@ void compile(VM vm, CallCtx callCtx)
 
             // The predecessor state is no longer needed
             branch.predState = null;
-
-            // Execute the moves
-            execMoves(as, moveList, scrRegs[0], scrRegs[1]);
 
             // If the target was already compiled before
             if (branch.target.started)
@@ -1931,10 +1948,7 @@ void compile(VM vm, CallCtx callCtx)
 
             if (opts.jit_dumpinfo)
             {
-                writeln(
-                    "branch code length: ", branch.length, 
-                    " (", moveList.length, " moves)"
-                );
+                writeln("branch code length: ", branch.length);
                 writeln();
             }
         }
@@ -1946,6 +1960,9 @@ void compile(VM vm, CallCtx callCtx)
 
             if (opts.jit_genasm)
                 as.comment("Cont stub for " ~ stub.contBranch.getName);
+
+            if (opts.jit_trace_instrs)
+                as.printStr("Cont stub for " ~ stub.contBranch.getName);
 
             as.pushJITRegs();
 
@@ -1968,7 +1985,7 @@ void compile(VM vm, CallCtx callCtx)
             as.popJITRegs();
 
             // Jump to the compiled continuation
-            as.jmp(X86Opnd(RAX));
+            as.jmp(X86Opnd(cretReg));
 
             stub.markEnd(as, vm);
 
@@ -2192,7 +2209,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    //writeln("entering compileEntry");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("entering compileEntry");
+    }
 
     auto vm = stub.vm;
     auto ctorCall = stub.ctorCall;
@@ -2278,7 +2298,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     fun.ctorCode = ctorInst.getCodePtr(vm.execHeap);
     assert (fun.entryCode !is fun.ctorCode);
 
-    //writeln("leaving compileEntry");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("leaving compileEntry");
+    }
 
     // Stop recording compilation time, resume recording execution time
     stats.compTimeStop();
@@ -2314,6 +2337,15 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     assert (branchCode !is null);
     assert (branchCode.started is false);
 
+    if (opts.jit_dumpinfo)
+    {
+        writefln(
+            "branch from %s to %s", 
+            srcBlock.block.getName, 
+            branchCode.branch.target.getName
+        );
+    }
+
     auto predState = branchCode.predState;
     auto liveInfo = predState.callCtx.fun.liveInfo;
 
@@ -2331,6 +2363,9 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
         if (liveInfo.liveAtEntry(regVal, branchCode.branch.target) is false)
             continue;
 
+        //writefln("spilling reg %s val %s", reg, regVal);
+        //writefln("  val=%s", vm.regSave[regIdx].uint64Val);
+
         // Get the state for this value
         auto state = predState.getState(regVal);
 
@@ -2345,6 +2380,8 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
         // If the type is known, store it
         if (state.knownType)
         {
+            //writeln("spilling known type");
+
             // Write the type tag to the type stack
             vm.tsp[regVal.outSlot] = state.type;
         }
@@ -2382,7 +2419,10 @@ extern (C) CodePtr compileCont(ContStub stub)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    //writeln("entering compileCont");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("entering compileCont");
+    }
 
     auto callVer = stub.callVer;
     auto contBranch = stub.contBranch;
@@ -2417,7 +2457,10 @@ extern (C) CodePtr compileCont(ContStub stub)
     stats.compTimeStop();
     stats.execTimeStart();
 
-    //writeln("leaving compileCont");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("leaving compileCont");
+    }
 
     // Return a pointer to the compiled branch code
     return contBranch.getCodePtr(vm.execHeap);
@@ -2486,10 +2529,13 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     //as.printStr("hit branch stub (target " ~ to!string(targetIdx) ~ ")");
     //as.printUint(scrRegs[0].opnd);
 
-    // Save the allocatable registers to the register VM save space
+    // Save the allocatable registers to the VM register save space
     as.getMember!("VM.regSave")(scrRegs[1], vmReg);
     foreach (uint regIdx, reg; allocRegs)
     {
+        //as.printStr("save " ~ reg.toString);
+        //as.printUint(reg.opnd);
+
         auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
         as.mov(memOpnd, reg.opnd);
     }
@@ -2513,16 +2559,19 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
 
     as.popJITRegs();
 
-    // Restore the allocatable registers from the register VM save space
+    // Restore the allocatable registers from the VM register save space
     as.getMember!("VM.regSave")(scrRegs[1], vmReg);
     foreach (uint regIdx, reg; allocRegs)
     {
         auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
         as.mov(reg.opnd, memOpnd);
+
+        //as.printStr("restore " ~ reg.toString);
+        //as.printUint(reg.opnd);
     }
 
     // Jump to the compiled version
-    as.jmp(X86Opnd(RAX));
+    as.jmp(cretReg.opnd);
 
     // Store the code end index
     stub.markEnd(as, vm);

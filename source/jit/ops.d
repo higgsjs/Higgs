@@ -3206,8 +3206,6 @@ void gen_map_prop_idx(
         return propIdx;
     }
 
-    // TODO: this won't GC, but spill C caller-save registers
-
     bool allocField;
     if (instr.getArg(2) is IRConst.trueCst)
         allocField = true;

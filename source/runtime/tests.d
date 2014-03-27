@@ -788,6 +788,8 @@ unittest
 
     auto vm = new VMNoStdLib();
 
+    writeln("obj basic");
+
     vm.assertInt("{}; return 1;", 1);
     vm.assertInt("{x: 7}; return 1;", 1);
     vm.assertInt("o = {}; o.x = 7; return 1;", 1);
@@ -797,20 +799,30 @@ unittest
     vm.assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
     vm.assertInt("o = {x: 5}; return o.y? 1:0;", 0);
 
+    writeln("in operator");
+
     // In operator
     vm.assertBool("o = {x: 5}; return 'x' in o;", true);
     vm.assertBool("o = {x: 5}; return 'k' in o;", false);
+
+    writeln("delete operator");
 
     // Delete operator
     vm.assertBool("o = {x: 5}; delete o.x; return 'x' in o;", false);
     vm.assertBool("o = {x: 5}; delete o.x; return !o.x;", true);
     vm.assertThrows("a = 5; delete a; a;");
 
+    writeln("function objects");
+
     // Function object property
     vm.assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
 
+    writeln("method call");
+
     // Method call
     vm.assertInt("o = {x:7, m:function() {return this.x;}}; return o.m();", 7);
+
+    writeln("object extension");
 
     // Object extension and equality
     vm.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);

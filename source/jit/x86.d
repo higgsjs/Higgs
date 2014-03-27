@@ -1641,43 +1641,50 @@ void nop(CodeBlock cb, size_t length = 1)
 
         case 2:
         cb.writeASM("nop2");
-        cb.writeBytes(0x89, 0xf6);
+        cb.writeBytes(0x66,0x90);
         break;
 
         case 3:
         cb.writeASM("nop3");
-        cb.writeBytes(0x8d,0x76,0x00);
+        cb.writeBytes(0x0F,0x1F,0x00);
         break;
 
         case 4:
         cb.writeASM("nop4");
-        cb.writeBytes(0x8d,0x74,0x26,0x00);
+        cb.writeBytes(0x0F,0x1F,0x40,0x00);
         break;
 
         case 5:
-        cb.nop(1); cb.nop(4);
+        cb.writeASM("nop5");
+        cb.writeBytes(0x0F,0x1F,0x44,0x00,0x00);
         break;
 
         case 6:
         cb.writeASM("nop6");
-        cb.writeBytes(0x8d,0xb6,0x00,0x00,0x00,0x00);
+        cb.writeBytes(0x66,0x0F,0x1F,0x44,0x00,0x00);
         break;
 
         case 7:
         cb.writeASM("nop7");
-        cb.writeBytes(0x8d,0xb4,0x26,0x00,0x00,0x00,0x00);
+        cb.writeBytes(0x0F,0x1F,0x80,0x00,0x00,0x00,0x00);
         break;
 
         case 8:
-        cb.nop(1); cb.nop(7);
+        cb.writeASM("nop8");
+        cb.writeBytes(0x0F,0x1F,0x84,0x00,0x00,0x00,0x00,0x00);
+        break;
+
+        case 9:
+        cb.writeASM("nop9");
+        cb.writeBytes(0x66,0x0F,0x1F,0x84,0x00,0x00,0x00,0x00,0x00);
         break;
 
         default:
         size_t written = 0;
-        while (written + 8 <= length)
+        while (written + 9 <= length)
         {
-            cb.nop(8);
-            written += 8;
+            cb.nop(9);
+            written += 9;
         }
         cb.nop(length - written);
         break;
