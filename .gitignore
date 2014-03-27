@@ -5,4 +5,5 @@ source/dbg-higgs
 source/*.o
 bin/
 *.*~
+*.idea
 

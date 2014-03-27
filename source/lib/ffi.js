@@ -119,7 +119,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         this.name = "CParseUnexpectedError";
         if (unexpected)
         {
-            message = "Unexpected: " + got;
+            message = "Unexpected: " + unexpected + " near ";
 
             if (got)
             {
@@ -321,7 +321,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 t = $ir_get_str(t_string);
                 this.token = t;
 
-                if (t === "typedef")
+                if (t === "typedef" || t === "extern")
                     this.token_type = STORAGE_CLASS_SPECIFIER;
                 else if (t === "struct" || t === "union")
                     this.token_type = STRUCT_OR_UNION;
@@ -921,6 +921,11 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             if (t && t.name === "void")
                 break;
 
+            if (t === undefined)
+            {
+                throw new CParseUnexpectedError("unknown type", lex.token, lex.loc());
+            }
+            
             sig.push(t);
 
             if (lex.token_type === COMMA)
