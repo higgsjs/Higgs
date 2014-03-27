@@ -3243,6 +3243,8 @@ void gen_map_prop_idx(
 
     extern (C) static uint32_t op_map_prop_idx(ObjMap map, refptr strPtr, bool allocField)
     {
+        //writeln("slow lookup");
+
         // Lookup the property index
         assert (map !is null, "map is null");
         auto propIdx = map.getPropIdx(strPtr, allocField);
@@ -3602,7 +3604,15 @@ void gen_get_time_ms(
         return retVal;
     }
 
-    // FIXME: don't push RAX
+    // Spill the values live after this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
+
     as.pushJITRegs();
 
     as.ptr(scrRegs[0], &op_get_time_ms);

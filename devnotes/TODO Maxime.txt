@@ -119,6 +119,9 @@ Marc: start writing paper soon
 Milestone: register allocation
 ------------------------------
 
+TODO: profile awful slow compilation speed
+- relevance to reg alloc
+
 TODO: test performance against master branch
 - is the comp time much worse?
 
@@ -142,7 +145,8 @@ TODO: optimize phi moves
 
 FIXME: several tests failing
 
-FIXME: test fails, ./tests/06-sunspider/05-access-nbody.js
+FIXME: string-base64 fails
+- verify that all extern (C) host calls have the proper spilling
 
 
 
@@ -153,6 +157,16 @@ FIXME: test fails, ./tests/06-sunspider/05-access-nbody.js
 
 
 
+
+
+
+
+[DONE] FIXME: test fails, ./tests/06-sunspider/05-access-nbody.js
+make; ./higgs --jit_trace_instrs benchmarks/sunspider/access-nbody.js
+- segfault at $35 = map_prop_idx $34, $68, true
+- string pointer is corrupted
+- pointer is passed as an argument to $rt_objSetProp
+- get_time_ms is lacking spill code!
 
 [DONE] FIXME: bug wrt call_ffi, *heisenbug*
 - incorrect return value
