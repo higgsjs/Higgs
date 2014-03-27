@@ -3863,6 +3863,15 @@ void gen_load_lib(
 
     }
 
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
+
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.pushJITRegs();
@@ -3920,6 +3929,15 @@ void gen_close_lib(
 
         return null;
     }
+
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     as.pushJITRegs();
     as.ptr(cargRegs[0], st.callCtx);
@@ -3980,6 +3998,15 @@ void gen_get_sym(
 
         return null;
     }
+
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
@@ -4061,14 +4088,21 @@ void gen_call_ffi(
     // Argument types the call expects
     auto argTypes = types[1..$];
 
-    // outOpnd
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
     // The number of args actually passed
     auto argCount = cast(uint32_t)instr.numArgs - 2;
     assert(argTypes.length == argCount, "Incorrect arg count in call_ffi.");
 
-    as.pushJITRegs();
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    // outOpnd
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Indices of arguments to be pushed on the stack
     size_t stackArgs[];
@@ -4086,7 +4120,8 @@ void gen_call_ffi(
                 idx + 2,
                 64,
                 scrRegs[0].opnd(64),
-                true
+                true,
+                false
             );
             as.movq(cfpArgRegs[fArgIdx++].opnd, argOpnd);
         }
@@ -4099,7 +4134,8 @@ void gen_call_ffi(
                 idx + 2,
                 argSize,
                 scrRegs[0].opnd(argSize),
-                 true
+                true,
+                false
             );
             auto cargOpnd = cargRegs[iArgIdx++].opnd(argSize);
             as.mov(cargOpnd, argOpnd);
@@ -4124,18 +4160,30 @@ void gen_call_ffi(
             idx + 2, 
             argSize, 
             scrRegs[0].opnd(argSize),
-            true
+            true,
+            false
         );
         as.mov(scrRegs[0].opnd(argSize), argOpnd);
         as.push(scrRegs[0]);
     }
 
     // Pointer to function to call
-    auto funArg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false);
+    auto funArg = st.getWordOpnd(
+        as, 
+        instr, 
+        0, 
+        64, 
+        scrRegs[0].opnd(64), 
+        false,
+        false
+    );
+
+    as.pushJITRegs();
 
     // call the function
-    as.mov(X86Opnd(scrRegs[0]), funArg);
     as.call(scrRegs[0].opnd);
+
+    as.popJITRegs();
 
     // Send return value/type
     if (retType == "f64")
@@ -4161,8 +4209,6 @@ void gen_call_ffi(
     // Make sure there is an even number of pops
     if (stackArgs.length % 2 != 0)
         as.pop(scrRegs[1]);
-
-    as.popJITRegs();
 
     auto branch = getBranchEdge(
         instr.getTarget(0),

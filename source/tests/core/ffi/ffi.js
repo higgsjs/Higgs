@@ -15,7 +15,7 @@ while (limit--)
     result = $ir_call_ffi(voidFun, "void");
     assert ( result == undefined, "Failed testVoidFun");
 }
-assert ( result == undefined, "Failed testVoidFun");
+assert ( result == undefined, "Failed testVoidFun loop");
 
 // testShortFun
 var shortFun = $ir_get_sym(higgs, "testShortFun");
@@ -93,9 +93,9 @@ while (limit--)
 {
     result = $ir_call_ffi(intArgsFun, "i32,i32,i32,i32,i32,i32,i32,i32",
                             1, 1, 1, 1, 1, 2, 3);
-    assert (result == 4, "Failed testIntArgsFun");
+    assert (result == 4, "Failed testIntArgsFun loop");
 }
-assert (result == 4, "Failed testIntArgsFun");
+assert (result == 4, "Failed testIntArgsFun after loop");
 
 // testDoubleArgsFun
 var doubleArgsFun = $ir_get_sym(higgs, "testDoubleArgsFun");
