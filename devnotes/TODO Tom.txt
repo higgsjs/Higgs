@@ -1,21 +1,32 @@
 TODO: all libs
       - cleaner API designs
-      - CommonJS is probably a good basis to build on - aim for compatibility where it makes sense
       - perf also needs to be a consideration; all apis/libs should be designed so that it's easy to do
         common tasks in a performant way. Try to achieve best balance possible.
 
 TODO: test lib
-      X more assert/testing functions
-      X basic assert functions; exit abnormally on failure
+      - more assertion/helper functions
 
 TODO: improve FFI
-      - better errors in cdef - just good enough to find problems
-      - add more wrapping capability
-      - performance improvements (more caching/sharing, etc internally)
-      - add caching for bindings created by cdef to avoid reparsing, eval(), etc each time?
+      - keep improving error messages/checking
+      - add toString() and toJS() functionality for structs/unions
+      - improved wrapping
+      - wrapAll() function?
+      - add some preprocessor functionality?
 
 TODO: SDL bindings
-      - move to binding for SDL2? Not as much support currently, but more future proof
+      X move to binding for SDL2? Not as much support currently, but more future proof
+      - [STARTED] SDL2 bindings
+
+TODO: Xlib
+      - bindings for Xlib
+      - [STARTED] currently just covering enough to be useful to SDL, cairo, etc
+      
+TODO: cairo bindings
+      - [STARTED] currently just covering enough to be useful to drawing lib
+      
+TODO: dawing lib
+      - [STARTED]
+      - simple drawing api for drawing to windows/images/pdf
 
 TODO: stdlib
       - improve stdlib
@@ -25,7 +36,7 @@ TODO: docs
 
 TODO: dir lib
       - add functionality / settle api
-      - add more predicate functions - isFile etc (construct these at include time with eval? - saves lookup time)
+      - add more predicate functions - isFile etc
 
 TODO: higgs-mode
       - higgs (minor?) mode for emacs, prototype complete
@@ -37,6 +48,15 @@ TODO: higgs-mode
 
 
 ---------------------------------------------------------------------------------------------------
+[DONE]: improve FFI
+      - better errors in cdef - just good enough to find problems
+      - add more wrapping capability
+      - performance improvements (more caching/sharing, etc internally)
+      - add caching for bindings created by cdef to avoid reparsing, eval(), etc each time?
+
+[DONE]: test lib
+      X more assert/testing functions
+      X basic assert functions; exit abnormally on failure
 
 [DONE]: test harness
       - simple harness for running tests similar to what mozilla uses in their JIT tests

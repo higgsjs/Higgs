@@ -321,7 +321,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 t = $ir_get_str(t_string);
                 this.token = t;
 
-                if (t === "typedef")
+                if (t === "typedef" || t === "extern")
                     this.token_type = STORAGE_CLASS_SPECIFIER;
                 else if (t === "struct" || t === "union")
                     this.token_type = STRUCT_OR_UNION;
