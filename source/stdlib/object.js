@@ -260,7 +260,7 @@ Object.keys = function (O)
 
     for (var k in O)
     {
-        if (O.hasOwnProperty(k) === true)
+        if ($rt_hasOwnProp(O, k) === true)
             propNames.push(k);
     }
 

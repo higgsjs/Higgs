@@ -232,25 +232,24 @@ function test_keys()
     b.k3 = 3;
 
     var keys = Object.keys(b);
-
-    if (keys.length !== 2)
-        return 1;
-    if (keys.indexOf('k2') === -1)
-        return 2;
-    if (keys.indexOf('k3') === -1)
-        return 3;
+    assert (keys.length === 2)
+    assert (keys.indexOf('k2') !== -1)
+    assert (keys.indexOf('k3') !== -1)
 
     var a = {length:3};
     var keys = Object.keys(a);
-    if (keys.length !== 1)
-        return 4;
+    assert (keys.length === 1)
 
     var a = [];
     var keys = Object.keys(a);
-    if (keys.indexOf('length') !== -1)
-        return 5;
+    assert (keys.indexOf('length') === -1)
 
-    return 0;
+    // Object with no prototype
+    var a = Object.create(null);
+    a.x = 'foo';
+    a.y = 'bar';
+    var keys = Object.keys(a);
+    assert (keys.length === 2)
 }
 
 function test_toString()
@@ -391,9 +390,7 @@ function test()
     if (r != 0)
         return 1300 + r;
 
-    var r = test_keys();
-    if (r != 0)
-        return 1400 + r;
+    test_keys();
 
     var r = test_toString();
     if (r != 0)

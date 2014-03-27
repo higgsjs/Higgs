@@ -242,7 +242,7 @@ void gen_f64_to_i32(
 }
 
 void RMMOp(string op, size_t numBits, Type typeTag)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -250,19 +250,19 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
 {
     // Should be mem or reg
     auto opnd0 = st.getWordOpnd(
-        as, 
-        instr, 
+        as,
+        instr,
         0, 
-        numBits, 
+        numBits,
         scrRegs[0].opnd(numBits),
         false
     );
 
     // May be reg or immediate
     auto opnd1 = st.getWordOpnd(
-        as, 
-        instr, 
-        1, 
+        as,
+        instr,
+        1,
         numBits,
         scrRegs[1].opnd(numBits),
         true
@@ -348,8 +348,47 @@ alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
 alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
 alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
 
+void gen_add_ptr_i32(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // Should be mem or reg
+    auto opnd0 = st.getWordOpnd(
+        as,
+        instr,
+        0,
+        64,
+        scrRegs[0].opnd(64),
+        false
+    );
+
+    // May be reg or immediate
+    auto opnd1 = st.getWordOpnd(
+        as,
+        instr,
+        1,
+        32,
+        scrRegs[1].opnd(32),
+        true
+    );
+
+    auto opndOut = st.getOutOpnd(as, instr, 64);
+
+    // Zero-extend the integer operand to 64-bits
+    as.mov(scrRegs[1].opnd(32), opnd1);
+
+    as.mov(opndOut, opnd0);
+    as.add(opndOut, scrRegs[1].opnd);
+
+    // Set the output type
+    st.setOutType(as, instr, Type.RAWPTR);
+}
+
 void divOp(string op)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -451,7 +490,7 @@ alias ShiftOp!("sar") gen_rsft_i32;
 alias ShiftOp!("shr") gen_ursft_i32;
 
 void FPOp(string op)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3866,10 +3905,11 @@ static this()
         "i8" : 8,
         "i16" : 16,
         "i32" : 32,
+        "i64" : 64,
         "u8" : 8,
         "u16" : 16,
         "u32" : 32,
-        "i64" : 64,
+        "u64" : 64,
         "f64" : 64,
         "*" : 64
     ];
