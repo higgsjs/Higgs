@@ -4146,6 +4146,9 @@ void gen_call_ffi(
         }
     }
 
+    // Save the JIT registers
+    as.pushJITRegs();
+
     // Make sure there is an even number of pushes
     if (stackArgs.length % 2 != 0)
         as.push(scrRegs[0]);
@@ -4157,8 +4160,8 @@ void gen_call_ffi(
         auto argOpnd = st.getWordOpnd(
             as,
             instr,
-            idx + 2, 
-            argSize, 
+            idx + 2,
+            argSize,
             scrRegs[0].opnd(argSize),
             true,
             false
@@ -4169,20 +4172,27 @@ void gen_call_ffi(
 
     // Pointer to function to call
     auto funArg = st.getWordOpnd(
-        as, 
-        instr, 
-        0, 
-        64, 
-        scrRegs[0].opnd(64), 
+        as,
+        instr,
+        0,
+        64,
+        scrRegs[0].opnd(64),
         false,
         false
     );
 
-    as.pushJITRegs();
-
     // call the function
     as.call(scrRegs[0].opnd);
 
+    // Pop the stack arguments
+    foreach (idx; stackArgs)
+        as.pop(scrRegs[1]);
+
+    // Make sure there is an even number of pops
+    if (stackArgs.length % 2 != 0)
+        as.pop(scrRegs[1]);
+
+    // Restore the JIT registers
     as.popJITRegs();
 
     // Send return value/type
@@ -4201,14 +4211,6 @@ void gen_call_ffi(
         as.mov(outOpnd, X86Opnd(RAX));
         st.setOutType(as, instr, typeMap[retType]);
     }
-
-    // Pop the stack arguments
-    foreach (idx; stackArgs)
-        as.pop(scrRegs[1]);
-
-    // Make sure there is an even number of pops
-    if (stackArgs.length % 2 != 0)
-        as.pop(scrRegs[1]);
 
     auto branch = getBranchEdge(
         instr.getTarget(0),

@@ -46,15 +46,15 @@ assert (result == 5, "Failed testIntFun");
 // testDoubleFun
 var doubleFun = $ir_get_sym(higgs, "testDoubleFun");
 result = $ir_call_ffi(doubleFun, "f64");
-assert (result == 5.5, "Failed testDoubleFun");
+assert (result == 5.5, "Failed testDoubleFun, result=" + result);
 
 limit = iters;
 while (limit--)
 {
     result = $ir_call_ffi(doubleFun, "f64");
-    assert (result == 5.5, "Failed testDoubleFun");
+    assert (result == 5.5, "Failed testDoubleFun loop");
 }
-assert (result == 5.5, "Failed testDoubleFun");
+assert (result == 5.5, "Failed testDoubleFun after loop");
 
 // testIntAddFun
 var intAddFun = $ir_get_sym(higgs, "testIntAddFun");

@@ -140,6 +140,9 @@ TODO: optimize phi moves
 
 *** debugging ***
 
+FIXME: several tests failing
+
+FIXME: test fails, ./tests/06-sunspider/05-access-nbody.js
 
 
 
@@ -147,6 +150,13 @@ TODO: optimize phi moves
 
 
 
+
+
+
+
+[DONE] FIXME: bug wrt call_ffi, *heisenbug*
+- incorrect return value
+- could also be caused by invalid arg
 
 [DONE] TODO: change spills to spill live before, safer
 - fixed a bug!
