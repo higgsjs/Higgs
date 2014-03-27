@@ -128,6 +128,8 @@ TODO: look at machine code, optimize RA further
 
 TODO: optimize call spills, other spills
 - Should have shorthands for spilling only C caller-save regs and such
+- Should have way to spill live after instr or arg regs only
+  - move into cargReg can easily corrupt allocated reg
 
 TODO: optimize phi moves
 - Phi moves from reg to stack (should be relatively uncommon?)
@@ -138,37 +140,24 @@ TODO: optimize phi moves
 
 *** debugging ***
 
-TODO: complete adding spills for calls and host code, modify jit/ops.d
+
+
+
+
+
+
+
+
+[DONE] TODO: change spills to spill live before, safer
+- fixed a bug!
+
+[DONE] TODO: complete adding spills for calls and host code, modify jit/ops.d
 - KISS at first, spill all live, do it naively, optimize spills later
 
-FIXME: segfault after compileBranch in property delete test
+[DONE] FIXME: segfault after compileBranch in property delete test
 "o = {x: 5}; delete o.x; return !o.x;"
 - crash is in objGetProp
-- seems to have to do with phi node
-- phi value reg is spilled, but this doesn't seem to matter?
-- The property word is "missing"
-- Immediately after the jump, there is a load
-- The missing path wasn't taken before...
-
-Back jump mechanism is broken???
-jmp32Ref seemingly sends us to the wrong place
-
-TODO: impossible to debug, create standalone test to replicate this...
-make; ./higgs --nostdlib --jit_trace_instrs --jit_dumpinfo test.js
-- When we get to call_prim getPropObj, rsi is corrupted...
-
-
-Possibly, the NOP padding fails on rewritebranch.......?
-
-
-
-
-
-
-
-
-
-
+- the NOP padding fails on rewriteBranch
 
 [DONE] TODO: add zero write for phis
 - If the dst is in a register and the dst type is unknown, write zero
