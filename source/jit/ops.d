@@ -2616,7 +2616,7 @@ void gen_throw(
 
     // TODO: optimize call spills
     // TODO: move spills after arg copying?
-    // Spill the values that are live after the call
+    // Spill the values live before the instruction
     st.spillRegs(
         as,
         delegate bool(IRDstValue value)
@@ -2647,7 +2647,7 @@ void gen_throw(
 }
 
 void GetValOp(Type typeTag, string fName)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2710,8 +2710,17 @@ void HeapAllocOp(Type type)(
         return ptr;
     }
 
+    // Spill the values live before the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
+
     // Get the allocation size operand
-    auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
+    auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
 
     // Get the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);

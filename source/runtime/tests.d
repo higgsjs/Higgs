@@ -1475,6 +1475,7 @@ unittest
     vm.load("tests/core/regress/jit_set_global.js");
     vm.load("tests/core/regress/jit_inlining.js");
     vm.load("tests/core/regress/jit_inlining2.js");
+    vm.load("tests/core/regress/jit_spill_load.js");
 
     vm.load("tests/core/regress/delta.js");
     vm.load("tests/core/regress/raytrace.js");

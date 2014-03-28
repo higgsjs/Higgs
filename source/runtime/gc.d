@@ -220,7 +220,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
             return addr
     */
 
-    //writeln("entering gcCollect");
+    writeln("entering gcCollect");
 
     if (heapSize != 0)
         vm.heapSize = heapSize;
@@ -404,7 +404,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Increment the garbage collection count
     vm.gcCount++;
 
-    //writeln("leaving gcCollect");
+    writeln("leaving gcCollect");
     //writefln("free space: %s", (vm.heapLimit - vm.allocPtr));
 }
 

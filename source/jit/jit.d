@@ -671,10 +671,10 @@ class CodeGenState
             // If a register was successfully allocated
             if (opnd != curOpnd)
             {
-                assert (opnd.isReg);
-
                 // Load the value into the register
-                as.mov(opnd, curOpnd);
+                // Note: we load all 64 bits, not just the requested bits
+                assert (opnd.isReg);
+                as.mov(opnd.reg.opnd(64), wordStackOpnd(argDst.outSlot));
             }
 
             // If the register allocation failed but a temp reg was supplied

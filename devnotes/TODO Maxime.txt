@@ -143,10 +143,7 @@ TODO: optimize phi moves
 
 *** debugging ***
 
-FIXME: several tests failing
-
-FIXME: string-base64 fails
-- verify that all extern (C) host calls have the proper spilling
+FIXME: v8/navier-stokes test failing
 
 
 
@@ -158,8 +155,16 @@ FIXME: string-base64 fails
 
 
 
+[DONE] FIXME: string-base64 fails
+/higgs tests/06-sunspider/14-string-base64.js
+run-time error: run-time error: global property not defined "Components"
+base64ToString(1DE27) ("benchmarks/sunspider/string-base64-quick.js"@86:1)
+- Make small regression test
+- Probably an issue with spills or operating on 64-bit when it should be on 32
+  - check bitwise and, left shift
+- Not loading all 64 bits when loading value
 
-
+[DONE] TODO: verify that all extern (C) host calls have the proper spilling
 
 [DONE] FIXME: test fails, ./tests/06-sunspider/05-access-nbody.js
 make; ./higgs --jit_trace_instrs benchmarks/sunspider/access-nbody.js
