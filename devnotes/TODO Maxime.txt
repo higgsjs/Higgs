@@ -141,9 +141,6 @@ TODO: optimize phi moves
   - must write type (automatic)
   - must write zero if the type is pointer
 
-*** debugging ***
-
-FIXME: v8/navier-stokes test failing
 
 
 
@@ -154,6 +151,13 @@ FIXME: v8/navier-stokes test failing
 
 
 
+
+
+
+
+[DONE] FIXME: v8/navier-stokes test failing, segmentation fault
+- Affected by very subtle details
+- Issue with spilling liveAfter vs lifeBefore, stolen scrReg
 
 [DONE] FIXME: string-base64 fails
 /higgs tests/06-sunspider/14-string-base64.js

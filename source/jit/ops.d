@@ -1671,7 +1671,7 @@ void gen_call(
         as,
         delegate bool(IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveAfter(value, instr);
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
         }
     );
 

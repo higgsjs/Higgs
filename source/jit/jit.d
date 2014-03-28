@@ -2220,7 +2220,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     // Get the closure and IRFunction pointers
     auto argCount = vm.getWord(3).uint32Val;
     auto closPtr = vm.getWord(1).ptrVal;
-    assert (closPtr !is null);
+    assert (
+        closPtr !is null,
+        "closure pointer is null in compileEntry"
+    );
     auto fun = getFunPtr(closPtr);
     assert (
         fun !is null,
