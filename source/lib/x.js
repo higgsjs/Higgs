@@ -81,7 +81,6 @@ NOTE: currently this provides just enough bindings for the drawing lib
         typedef struct _ScreenFormat ScreenFormat;
         typedef struct _Depth Depth;
         typedef struct _Visual Visual;
-        typedef struct _XColor XColor;
         typedef struct _XGCValues XGCValues;
         typedef struct _XSetWindowAttributes XSetWindowAttributes;
         typedef struct _XFontStruct XFontStruct;
@@ -216,10 +215,21 @@ NOTE: currently this provides just enough bindings for the drawing lib
         } Display;
         
         /*
+         * Data structure used by color operations
+         */
+        typedef struct {
+            unsigned long pixel;
+            unsigned short red, green, blue;
+            char flags;  /* do_red, do_green, do_blue */
+            char pad;
+        } XColor;
+        
+        /*
          * Data structures for graphics operations.  On most machines, these are
          * congruent with the wire protocol structures, so reformatting the data
          * can be avoided on these architectures.
          */
+        
         typedef struct {
             short x1, y1, x2, y2;
         } XSegment;
