@@ -60,7 +60,6 @@ version (TestFFI)
     // Used to test the low-level FFI ops
     extern (C)
     {
-
         void testVoidFun()
         {
             return;

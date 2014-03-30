@@ -956,7 +956,7 @@ class VM
 
         assert (
             strVal.type is Type.STRING,
-            "expected string value for arg " ~ to!string(argIdx)
+            format("expected string value for arg %s of:\n%s", argIdx, instr)
         );
 
         return strVal.word.ptrVal;

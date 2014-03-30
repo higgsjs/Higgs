@@ -91,6 +91,12 @@ static this()
     addOp(DIV_I32);
     addOp(MOD_I32);
 
+    addOp(ADD_I32_OVF);
+    addOp(SUB_I32_OVF);
+    addOp(MUL_I32_OVF);
+
+    addOp(ADD_PTR_I32);
+
     addOp(AND_I32);
     addOp(OR_I32);
     addOp(XOR_I32);
@@ -113,10 +119,6 @@ static this()
     addOp(LOG_F64);
     addOp(EXP_F64);
     addOp(POW_F64);
-
-    addOp(ADD_I32_OVF);
-    addOp(SUB_I32_OVF);
-    addOp(MUL_I32_OVF);
 
     addOp(EQ_I32);
     addOp(NE_I32);

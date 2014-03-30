@@ -100,12 +100,153 @@ TODO: CodeGenState.getState for constant values?
 - knownType vs knownCst?
 - Or have a 4th kind, KNOWN_VAL vs IR_CONST
 
+TODO: val can be both in reg and stack
+- stop storing stack idx in ValState
+
+TODO: can possibly test out context swapping hypothesis by adding a certain
+number of useless compiler calls, without increasing code size?
+- These would have to do real compilation work
+- Easy dirty hack: have the branch stub compilation not patch the branch
+  the first time around, do some useless compilation the second time
+
+Marc: start writing paper soon
+- Setup repo
+- Outline sections
+- Write ideas as they come
+
 ------------------------------------------------------------------------------
 
 Milestone: register allocation
 ------------------------------
 
-Meeting:
+TODO: profile awful slow compilation speed
+- relevance to reg alloc
+
+TODO: test performance against master branch
+- is the comp time much worse?
+
+TODO: look at machine code, optimize RA further
+- Try to bias allocReg based on stack idx?
+- Try to bias allocReg based on dst phi nodes
+
+TODO: optimize call spills, other spills
+- Should have shorthands for spilling only C caller-save regs and such
+- Should have way to spill live after instr or arg regs only
+  - move into cargReg can easily corrupt allocated reg
+
+TODO: optimize phi moves
+- Phi moves from reg to stack (should be relatively uncommon?)
+  - must write type
+- Phi moves from reg to reg with unknown dst type?
+  - must write type (automatic)
+  - must write zero if the type is pointer
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: v8/navier-stokes test failing, segmentation fault
+- Affected by very subtle details
+- Issue with spilling liveAfter vs lifeBefore, stolen scrReg
+
+[DONE] FIXME: string-base64 fails
+/higgs tests/06-sunspider/14-string-base64.js
+run-time error: run-time error: global property not defined "Components"
+base64ToString(1DE27) ("benchmarks/sunspider/string-base64-quick.js"@86:1)
+- Make small regression test
+- Probably an issue with spills or operating on 64-bit when it should be on 32
+  - check bitwise and, left shift
+- Not loading all 64 bits when loading value
+
+[DONE] TODO: verify that all extern (C) host calls have the proper spilling
+
+[DONE] FIXME: test fails, ./tests/06-sunspider/05-access-nbody.js
+make; ./higgs --jit_trace_instrs benchmarks/sunspider/access-nbody.js
+- segfault at $35 = map_prop_idx $34, $68, true
+- string pointer is corrupted
+- pointer is passed as an argument to $rt_objSetProp
+- get_time_ms is lacking spill code!
+
+[DONE] FIXME: bug wrt call_ffi, *heisenbug*
+- incorrect return value
+- could also be caused by invalid arg
+
+[DONE] TODO: change spills to spill live before, safer
+- fixed a bug!
+
+[DONE] TODO: complete adding spills for calls and host code, modify jit/ops.d
+- KISS at first, spill all live, do it naively, optimize spills later
+
+[DONE] FIXME: segfault after compileBranch in property delete test
+"o = {x: 5}; delete o.x; return !o.x;"
+- crash is in objGetProp
+- the NOP padding fails on rewriteBranch
+
+[DONE] TODO: add zero write for phis
+- If the dst is in a register and the dst type is unknown, write zero
+
+[DONE] FIXME: segfault, make; ./higgs --nostdlib --jit_trace_instrs tests/core/many_globals/many_globals3.js
+- possibly due to lack of spilling logic
+- add spilling logic!
+- may also need additional phi/val move logic
+  - writing zeroes and type tags properly?
+  - may be missing zero writes
+
+[DONE] FIXME: test fails, "a = 1; b = 2; return a+b;"
+make; ./higgs --nostdlib --jit_dumpasm --e "a = 1; b = 2; return a+b;"
+- Probably has to do with added spill logic in get_global
+- not the same opnd
+
+[DONE] FIXME: "typeof x" causes segfault
+make; ./higgs --nostdlib --jit_trace_instrs
+- map_prop_idx may be to blame, call to host without spills
+
+[DONE] FIXME: "false & 1" produces 1 instead of 0
+make; ./higgs --nostdlib --jit_trace_instrs
+- Probable cause: registers not spilled before call!
+  - Try just spilling all for now
+- This doesn't fix the problem!
+- Some other op might need spills?
+- retWordReg and retTypeReg are both allocatable registers ***
+ - Should printStr info in gen_ret, see what's happening
+ - doesn't seem to be the problem
+- allocReg used liveAfter to pick reg, two args with same reg
+
+[DONE] FIXME: runtime init fails?
+make; ./higgs --nostdlib --jit_trace_instrs
+- new_clos needs to spill regs before doing host call
+
+[DONE] FIXME: x = 7; if (\$ir_eq_i32(x, 7)) return 1; else return 0;
+- segfault 
+- compileBranch?
+
+[DONE] FIXME: "x = 7; return x;", getting a zero value back
+
+[DONE] FIXME: get_global, "x" segfaults
+./higgs --noruntime --nostdlib --jit_dumpasm --jit_dumpinfo
+
+[DONE] TODO: setOutType, both variants
+- If we have an unknown output type but the output operand is a register, need
+  to write a zero to the stack. This is rare-ish.
+- When setting a known out type, if the value is in a register, avoid writing the type
+
+[DONE] TODO: getWordOpnd
+- Put code in place to alloc regs, but leave disabled for now
+
+[DONE] TODO: getOutOpnd
+- Put code in place to alloc regs, but leave disabled for now
+
+[DONE] Meeting:
 - sketched out reg alloc
 - more runtime and inlining tweaks
 - better exec time accounting
@@ -131,44 +272,7 @@ Meeting:
   - get_global can be optimized with external fallback code
   - could optimize global calls speculatively
 
-TODO: can possibly test out context swapping hypothesis by adding a certain
-number of useless compiler calls, without increasing code size?
-- These would have to do real compilation work
-- Easy dirty hack: have the branch stub compilation not patch the branch
-  the first time around, do some useless compilation the second time
-
-TODO: test performance against master branch
-- is the comp time much worse?
-
-TODO: phi moves
-- Phi moves from reg to stack (should be relatively uncommon?)
-  - must write type
-- Phi moves from reg to reg with unknown dst type?
-  - must write type (automatic)
-  - must write zero if the type is pointer
-
-TODO: spilling logic for calls and host code, modify jit/ops.d
-- When spilling a value, always spill its type (if known)
-- KISS at first, spill all live
-
-*** at this point, should be able to get very basic tests working ***
-
-TODO: setOutType
-- If we have an unknown output type but the output operand is a register, need
-  to write a zero to the stack. This is rare-ish.
-- When setting a known out type, if the value is in a register, avoid writing the type
-
-TODO: getOutOpnd
-
-TODO: getWordOpnd
-- Put code in place to alloc regs, but leave disabled for now?
-
-TODO: getTypeOpnd
-
-
-
-
-
+[DONE] TODO: getTypeOpnd
 
 [DONE] TODO: spill saved registers for GC in compileBranch
 - Go through incoming context, spill values appropriately for GC safety

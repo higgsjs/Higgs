@@ -230,6 +230,8 @@ unittest
 
     auto vm = new VMNoStdLib();
 
+    writeln("unary ops");
+
     vm.assertInt("return 7", 7);
     vm.assertInt("return 1 + 2", 3);
     vm.assertInt("return 5 - 1", 4);
@@ -238,10 +240,14 @@ unittest
     vm.assertInt("return -3", -3);
     vm.assertInt("return +7", 7);
 
+    writeln("binary arith ops");
+
     vm.assertInt("return 2 + 3 * 4", 14);
     vm.assertInt("return 1 - (2+3)", -4);
     vm.assertInt("return 6 - (3-3)", 6);
     vm.assertInt("return 3 - 3 - 3", -3);
+
+    writeln("bitwise");
 
     vm.assertInt("return 5 | 3", 7);
     vm.assertInt("return 5 & 3", 1);
@@ -251,12 +257,16 @@ unittest
     vm.assertInt("return 7 >>> 1", 3);
     vm.assertInt("return ~2", -3);
 
+    writeln("undef");
+
     vm.assertInt("return ~undefined", -1);
     vm.assertInt("return undefined | 1", 1);
     vm.assertInt("return undefined & 1", 0);
     vm.assertInt("return undefined ^ 1", 1);
     vm.assertInt("return 1 << undefined", 1);
     vm.assertInt("return 1 >> undefined", 1);
+
+    writeln("fp");
 
     vm.assertFloat("return 3.5", 3.5);
     vm.assertFloat("return 2.5 + 2", 4.5);
@@ -698,6 +708,8 @@ unittest
 
     auto vm = new VMNoStdLib();
 
+    writeln("exprs");
+
     vm.assertBool("var x; return !x", true);
     vm.assertInt("a = 1; return a;", 1);
     vm.assertInt("var a; a = 1; return a;", 1);
@@ -708,6 +720,8 @@ unittest
     vm.assertInt("return a = 1,2;", 2);
     vm.assertInt("a = 1,2; return a;", 1);
     vm.assertInt("a = (1,2); return a;", 2);
+
+    writeln("calls");
 
     vm.assertInt("f = function() { return 7; }; return f();", 7);
     vm.assertInt("function f() { return 9; }; return f();", 9);
@@ -729,11 +743,17 @@ unittest
         8
     );
 
+    writeln("unresolved");
+
     // Unresolved global
     vm.assertThrows("foo5783");
 
+    writeln("delete");
+
     // Accessing a property from Object.prototype
     vm.assertInt("delete x; ($ir_get_obj_proto()).x = 777; return x;", 777);
+
+    writeln("many globals");
 
     // Many global variables
     vm = new VMNoStdLib();
@@ -768,6 +788,8 @@ unittest
 
     auto vm = new VMNoStdLib();
 
+    writeln("obj basic");
+
     vm.assertInt("{}; return 1;", 1);
     vm.assertInt("{x: 7}; return 1;", 1);
     vm.assertInt("o = {}; o.x = 7; return 1;", 1);
@@ -777,20 +799,30 @@ unittest
     vm.assertInt("o = {x: 5}; o.x += 1; return o.x;", 6);
     vm.assertInt("o = {x: 5}; return o.y? 1:0;", 0);
 
+    writeln("in operator");
+
     // In operator
     vm.assertBool("o = {x: 5}; return 'x' in o;", true);
     vm.assertBool("o = {x: 5}; return 'k' in o;", false);
+
+    writeln("delete operator");
 
     // Delete operator
     vm.assertBool("o = {x: 5}; delete o.x; return 'x' in o;", false);
     vm.assertBool("o = {x: 5}; delete o.x; return !o.x;", true);
     vm.assertThrows("a = 5; delete a; a;");
 
+    writeln("function objects");
+
     // Function object property
     vm.assertInt("function f() { return 1; }; f.x = 3; return f() + f.x;", 4);
 
+    writeln("method call");
+
     // Method call
     vm.assertInt("o = {x:7, m:function() {return this.x;}}; return o.m();", 7);
+
+    writeln("object extension");
 
     // Object extension and equality
     vm.assertBool("o = {x: 5}; ob = o; o.y = 3; o.z = 6; return (o === ob);", true);
@@ -1443,6 +1475,7 @@ unittest
     vm.load("tests/core/regress/jit_set_global.js");
     vm.load("tests/core/regress/jit_inlining.js");
     vm.load("tests/core/regress/jit_inlining2.js");
+    vm.load("tests/core/regress/jit_spill_load.js");
 
     vm.load("tests/core/regress/delta.js");
     vm.load("tests/core/regress/raytrace.js");
