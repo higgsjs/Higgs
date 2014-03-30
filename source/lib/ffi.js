@@ -43,8 +43,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 (function()
 {
 
-    var console = require('lib/console');
-
     /**
     ERRORS
     */
@@ -480,6 +478,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var members;
         var names;
         var name;
+        var type;
         var t;
 
         if (tok !== "struct" && tok !== "union")
@@ -509,9 +508,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
             // Wrap the declaration appropriately
             if (tok === "struct")
-                this.dec.type = CStruct(members, names, name);
+                type = this.dec.type = CStruct(members, names, name);
             else
-                this.dec.type = CUnion(members, names, name);
+                type = this.dec.type = CUnion(members, names, name);
 
             // If the struct is tagged and this is the first time seeing it, add
             // the wrapper to the library
@@ -520,10 +519,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 t = this.lib[name];
                 if (!t)
                 {
-                    t = this.dec.type;
-                    this.ctypes[tok + " " + name] = t;
-                    // TODO: only do this once it's typedef'd?
-                    this.lib[name] = t.wrapper_fun;
+                    this.ctypes[tok + " " + name] = type;
+                    this.lib[name] = type.wrapper_fun;
                 }
             }
 

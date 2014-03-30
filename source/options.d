@@ -50,7 +50,7 @@ struct Options
     bool stats = false;
     
     /// Set stdout to be unbuffered
-    bool unbufstdout = false;
+    bool unbuffered = false;
 
     /* VM options */
 
@@ -98,7 +98,7 @@ void parseCmdArgs(ref string[] args)
         config.passThrough,
 
         "e"                 , &opts.execString,
-        "u"                 , &opts.unbufstdout,
+        "unbuffered"        , &opts.unbuffered,
         "repl"              , &opts.repl,
         "stats"             , &opts.stats,
 
