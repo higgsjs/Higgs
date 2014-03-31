@@ -149,16 +149,35 @@ TODO: optimize phi moves
   - must write type (automatic)
   - must write zero if the type is pointer
 
-TODO: bias values towards dst register reg
+TODO: bias values towards dst phi reg
 - benchmark, look at code size
 
+TODO: rework edge moves
+- Always writing type to the stack is wrong... Value may die and not be spilled! ****
+- Look at old code for setOutType, moves
+
 TODO: improve phi reg alloc
-- if reg mapped to phi itself, use it
-- if val is not live, use it
+- if val mapped to reg is not live, use the reg
 
-TODO: re-enable phi nodes in regs
 
-FIXME: gc bug, crash in bigloop
+
+
+
+
+
+
+
+
+[DONE] TODO: phi node known types from constants
+
+[DONE] FIXME: Running: ./tests/01-stdlib/global.js...
+Assertion failed (jit/x86.d@1417): immediate too large for dst reg
+- Probably trying to move a large constant into a phi node
+- Possibly FP
+
+[DONE] TODO: re-enable phi nodes in regs
+
+[DONE] FIXME: gc bug, crash in bigloop
 ./higgs tests/core/gc/bigloop.js
 - try to run outside of make test
 - disabled phi nodes in regs but problem persists!
@@ -173,23 +192,10 @@ FIXME: gc bug, crash in bigloop
   - Or type written, but not value
 - Writing zero word and type stack values on getOutOpnd fixes the problem
   - Writing just zero type values does not
-
-
-
-Old type tags are found on the stack
-- Writing a word value without a type can create false pointers
-- At some point, we must be writing some type, but no word value ***
-- Doesn't seem like it's a phi node
-
-
-
-Always writing the type to the stack is wrong... The value may die and not be spilled!
-
-
-
-
-
-
+- Old type tags are found on the stack
+  - Writing a word value without a type can create false pointers
+  - At some point, we must be writing some type, but no word value ***
+  - Doesn't seem like it's a phi node
 
 [DONE] FIXME: segfault bug in stdlib/math test
 - trace the instructions

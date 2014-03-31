@@ -220,7 +220,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
             return addr
     */
 
-    writeln("entering gcCollect");
+    //writeln("entering gcCollect");
 
     if (heapSize != 0)
         vm.heapSize = heapSize;

@@ -2704,8 +2704,8 @@ void HeapAllocOp(Type type)(
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
 
-        writeln("alloc fallback");
-        writeln(callCtx.fun.getName);
+        //writeln("alloc fallback");
+        //writeln(callCtx.fun.getName);
 
         auto ptr = heapAlloc(vm, allocSize);
 
@@ -2817,7 +2817,7 @@ void gen_gc_collect(
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
 
-        writeln("triggering gc");
+        //writeln("triggering gc");
 
         gcCollect(vm, heapSize);
 

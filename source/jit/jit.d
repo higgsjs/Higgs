@@ -1537,7 +1537,7 @@ CodeGenState getSuccState(
             phi.block.toString()
         );
 
-        // TODO: better mechanism for mapping phi to reg or stack...
+        // Free the register currently used by the phi node (if any)
         auto oldPhiState = succState.getState(phi);
         if (oldPhiState.isReg)
         {
@@ -1550,16 +1550,18 @@ CodeGenState getSuccState(
         // Get the default register for the phi node
         auto phiReg = succState.getDefReg(phi);
 
+        // Get the value currently mapped to this register
+        auto regVal = succState.gpRegMap[phiReg.regNo];
+
         ValState phiState;
 
-        // TODO: OK if current phi node is already mapped to reg
         // If the phi node's register is free
-        /*if (succState.gpRegMap[phiReg.regNo] is null)
+        if (regVal is null)
         {
             phiState = ValState.reg(phiReg);
             succState.gpRegMap[phiReg.regNo] = phi;
         }
-        else*/
+        else
         {
             // Map the phi node to its stack location
             phiState = ValState.stack();
@@ -1576,8 +1578,12 @@ CodeGenState getSuccState(
                 phiState = phiState.setType(argState.type);
         }
 
-        // TODO: known types for constants
-        // should have ValState function for this
+        // Otherwise, if the phi argument is an IR constant
+        else if (auto cstArg = cast(IRConst)arg)
+        {
+            // Set the phi type to the constant's type
+            phiState = phiState.setType(cstArg.type);
+        }
 
 
 
@@ -1662,29 +1668,15 @@ void genBranchMoves(
 
 
 
-
+        /*
         // What about phi nodes with isReg and unknown types?
         // they are in a register, may never be spilled
         if (succPhi && !srcWordOpnd.isReg && dstWordOpnd.isReg && dstValState.knownType is false)
             moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
-
-
-
-
-        /*
-        if (opts.jit_trace_instrs)
-        {
-            //as.printStr("* move predVal=" ~ predVal.toString);
-            //as.printStr("* move succVal=" ~ succVal.toString);
-            as.printStr(srcWordOpnd.toString);
-            as.printStr(dstWordOpnd.toString);
-
-            if (dstWordOpnd == RCX.opnd)
-            {
-                assert (succState.gpRegMap[RCX.regNo] is succVal);
-            }
-        }
         */
+
+
+
 
         // TODO: add this later? for now always doing type move
         // Phi nodes do not use setOutType

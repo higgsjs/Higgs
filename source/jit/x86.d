@@ -1414,7 +1414,10 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
             auto reg = dst.reg;
             auto dstSize = reg.size;
 
-            assert (imm.immSize <= dstSize, "immediate too large for dst reg");
+            assert (
+                imm.immSize <= dstSize || imm.unsgSize <= dstSize,
+                format("immediate too large for dst reg: %s = %s", imm, dst)
+            );
 
             if (dstSize is 16)
                 cb.writeByte(0x66);
@@ -1424,7 +1427,7 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
             cb.writeOpcode((dstSize is 8)? 0xB0:0xB8, reg);
 
             cb.writeInt(imm.imm, dstSize);
-        }  
+        }
 
         // M + Imm
         else if (dst.isMem)
