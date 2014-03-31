@@ -220,7 +220,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
             return addr
     */
 
-    //writeln("entering gcCollect");
+    writeln("entering gcCollect");
 
     if (heapSize != 0)
         vm.heapSize = heapSize;
@@ -229,7 +229,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Allocate a memory block for the to-space
     vm.toStart = cast(ubyte*)GC.malloc(
-        vm.heapSize, 
+        vm.heapSize,
         GC.BlkAttr.NO_SCAN |
         GC.BlkAttr.NO_INTERIOR
     );
@@ -669,7 +669,7 @@ void visitStackRoots(VM vm)
         // For each local in this frame
         for (StackIdx idx = 0; idx < frameSize; ++idx)
         {
-            //ritefln("ref %s/%s", idx, frameSize);
+            //writefln("ref %s/%s", idx, frameSize);
 
             Word word = wsp[idx];
             Type type = tsp[idx];

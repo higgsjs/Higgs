@@ -1446,6 +1446,9 @@ void genCallBranch(
 {
     auto vm = st.callCtx.vm;
 
+    // Map the return value to its stack location
+    st.mapToStack(instr);
+
     // Create a branch object for the continuation
     auto contBranch = getBranchEdge(
         instr.getTarget(0),
@@ -1618,7 +1621,7 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(fun.getCtx(false, vm)),
+        new CodeGenState(vm, fun, false),
         true
     );
 
@@ -2280,7 +2283,7 @@ void gen_load_file(
             // Create a version instance object for the unit function entry
             auto entryInst = new BlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(false, vm))
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -2406,7 +2409,7 @@ void gen_eval_str(
             // Create a version instance object for the unit function entry
             auto entryInst = new BlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(false, vm))
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -2701,7 +2704,8 @@ void HeapAllocOp(Type type)(
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
 
-        //writeln(callCtx.fun.getName);
+        writeln("alloc fallback");
+        writeln(callCtx.fun.getName);
 
         auto ptr = heapAlloc(vm, allocSize);
 
@@ -2813,7 +2817,7 @@ void gen_gc_collect(
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
 
-        //writeln("triggering gc");
+        writeln("triggering gc");
 
         gcCollect(vm, heapSize);
 
@@ -3773,7 +3777,7 @@ void gen_get_asm_str(
             // Request an instance for the function entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(false, vm)),
+                new CodeGenState(vm, fun, false),
                 true
             );
 
@@ -3787,7 +3791,7 @@ void gen_get_asm_str(
             // Request an instance for the constructor entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(true, vm)),
+                new CodeGenState(vm, fun, true),
                 true
             );
 

@@ -44,6 +44,8 @@ import std.typecons;
 import ir.ir;
 import jit.codeblock;
 import jit.x86;
+import jit.util;
+import options;
 
 alias Tuple!(X86Opnd, "dst", X86Opnd, "src") Move;
 
@@ -62,6 +64,9 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
 
         auto src = move.src;
         auto dst = move.dst;
+
+        //if (opts.jit_trace_instrs)
+        //    as.printStr(dst.toString ~ " = " ~ src.toString);
 
         if (src.isMem && dst.isMem)
         {
@@ -99,7 +104,7 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             }
         }
 
-        as.mov(move.dst, move.src);  
+        as.mov(move.dst, move.src);
     }
 
     // Remove identity moves from the list

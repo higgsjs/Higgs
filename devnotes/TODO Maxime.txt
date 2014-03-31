@@ -134,6 +134,14 @@ TODO: optimize call spills, other spills
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
 
+Meeting:
+- comp time unaffected, sometimes slightly slower
+- code size smaller, ~23% on avt
+- exec time significantly faster
+  - up to 4x on microbenchmark
+  - avg 25% on benchmarks
+- It's not the mem writes that kill you, but the reads?
+
 TODO: optimize phi moves
 - Phi moves from reg to stack (should be relatively uncommon?)
   - must write type
@@ -141,6 +149,41 @@ TODO: optimize phi moves
   - must write type (automatic)
   - must write zero if the type is pointer
 
+TODO: bias values towards dst register reg
+- benchmark, look at code size
+
+TODO: improve phi reg alloc
+- if reg mapped to phi itself, use it
+- if val is not live, use it
+
+TODO: re-enable phi nodes in regs
+
+FIXME: gc bug, crash in bigloop
+./higgs tests/core/gc/bigloop.js
+- try to run outside of make test
+- disabled phi nodes in regs but problem persists!
+- some move is there that wasn't there before we mapped stack args?
+  - Bug not caused by new moves, or stack mapped vals...
+- Caused by regSave? Nope!
+- Doesn't fail with --nostdlib
+  - Suggests old vars left on stack
+  - Problem indeed found while visiting stack
+- The value is integer 1, but tagged as a pointer!
+  - Value spilled, but type isn't?
+  - Or type written, but not value
+- Writing zero word and type stack values on getOutOpnd fixes the problem
+  - Writing just zero type values does not
+
+
+
+Old type tags are found on the stack
+- Writing a word value without a type can create false pointers
+- At some point, we must be writing some type, but no word value ***
+- Doesn't seem like it's a phi node
+
+
+
+Always writing the type to the stack is wrong... The value may die and not be spilled!
 
 
 
@@ -148,12 +191,40 @@ TODO: optimize phi moves
 
 
 
+[DONE] FIXME: segfault bug in stdlib/math test
+- trace the instructions
+- storing a value in an array, initializing it to undefined
+- opnd0 is RCX, value is 0
+Value is loaded twice, never spilled? What the fuck.
+Randomly lose the mapping to $15 at the beginning of for_test
+- Missing value in valMap
+  - Argument never set
+  - Zero written on stack while in reg
+  - Value not moved from reg to stack cause not seen
+  - Value re-loaded from zero stack value
 
+[DONE] FIXME: GC bug in many_globals3.js
+(runtime/gc.d@432): gcForward: object not in from-space heap
+- GC is manually triggered when extending the global object
+- Old pointer from previous GC
 
+[DONE] TODO: phi nodes, alloc reg if possible, currently always on stack
+- issue: allocReg expects instr argument
+- generalize hasArg to dstValue? don't want virtual method
+- For phi nodes we don't really need to worry about not spilling other args!
+  - Try to alloc same reg as incoming? Force same reg?
+- It's not the same code? I decide that some phi node has reg X
+  - If anything else has reg X, I move it to another reg
+  - For now, just say stack if reg taken
+  - DONE
 
+[DONE] TODO: phi node ASM comments
+./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/200m_add.js 
 
-
-
+./higgs --nostdlib --stats benchmarks/micro/200m_add.js
+comp time (ms): 17
+exec time (ms): 359
+code size (bytes): 36131
 
 [DONE] FIXME: v8/navier-stokes test failing, segmentation fault
 - Affected by very subtle details
