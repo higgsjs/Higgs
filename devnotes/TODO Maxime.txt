@@ -149,24 +149,33 @@ TODO: optimize phi moves
   - must write type (automatic)
   - must write zero if the type is pointer
 
-TODO: bias values towards dst phi reg
-- benchmark, look at code size
-
 TODO: rework edge moves
 - Always writing type to the stack is wrong... Value may die and not be spilled! ****
 - Look at old code for setOutType, moves
 
-TODO: improve phi reg alloc
+TODO: bias values towards dst phi reg
+- benchmark, look at code size
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: improve phi reg alloc
 - if val mapped to reg is not live, use the reg
 
-
-
-
-
-
-
-
-
+./higgs --nostdlib --stats benchmarks/micro/200m_add.js
+./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/200m_add.js 
+comp time (ms): 17
+exec time (ms): 344
+code size (bytes): 36068
 
 [DONE] TODO: phi node known types from constants
 

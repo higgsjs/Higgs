@@ -1545,8 +1545,6 @@ CodeGenState getSuccState(
             succState.gpRegMap[regNo] = null;
         }
 
-
-
         // Get the default register for the phi node
         auto phiReg = succState.getDefReg(phi);
 
@@ -1556,7 +1554,7 @@ CodeGenState getSuccState(
         ValState phiState;
 
         // If the phi node's register is free
-        if (regVal is null)
+        if (regVal is null || liveInfo.liveAfterPhi(regVal, phi.block) is false)
         {
             phiState = ValState.reg(phiReg);
             succState.gpRegMap[phiReg.regNo] = phi;
@@ -1566,8 +1564,6 @@ CodeGenState getSuccState(
             // Map the phi node to its stack location
             phiState = ValState.stack();
         }
-
-
 
         // If the phi argument is a dst value
         if (auto dstArg = cast(IRDstValue)arg)
@@ -1584,8 +1580,6 @@ CodeGenState getSuccState(
             // Set the phi type to the constant's type
             phiState = phiState.setType(cstArg.type);
         }
-
-
 
         // Set the phi node's new state
         succState.valMap[phi] = phiState;
