@@ -149,27 +149,31 @@ TODO: optimize call spills, other spills
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
 
-TODO: optimize phi moves
+TODO: tweak add moves in 200m_add
+
+
+
+
+
+
+
+
+./higgs --nostdlib --stats benchmarks/micro/200m_add.js
+./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/200m_add.js
+comp time (ms): 17
+exec time (ms): 172
+code size (bytes): 36003
+
+[DONE] TODO: optimize phi moves
 - Phi moves from reg to stack (should be relatively uncommon?)
   - must write type
 - Phi moves from reg to reg with unknown dst type?
   - must write type (automatic)
   - must write zero if the type is pointer
-TODO: rework edge moves
+
+[DONE] TODO: rework edge moves
 - Always writing type to the stack is wrong... Value may die and not be spilled! ****
 - Look at old code for setOutType, moves
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: improve phi reg alloc
 - if val mapped to reg is not live, use the reg

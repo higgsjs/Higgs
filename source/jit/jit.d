@@ -1638,13 +1638,6 @@ void genBranchMoves(
         // We don't need to move parameter values to the stack
         bool succParam = cast(FunParam)succVal !is null;
 
-
-
-
-
-
-
-
         // Get the source and destination operands for the arg word
         X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
         X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
@@ -1663,50 +1656,35 @@ void genBranchMoves(
             !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
 
-
-
         // If the successor value is a phi node
         if (succPhi)
         {
-            // TODO: can we remove this? If prev type opnd was mem, this isn't necessary? only if they're eq
-
-            // If the phi is in a register and the type is unknown,
-            // write 0 on the stack to avoid invalid references
-            if (dstWordOpnd.isReg && !dstTypeOpnd.isImm)
+            // Src to reg move with unknown dst type
+            if (srcTypeOpnd != dstTypeOpnd && dstWordOpnd.isReg && dstTypeOpnd.isMem)
             {
                 moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
             }
 
-            // If the phi is on the stack and the type is known,
-            // write the type to the stack to keep it in sync
-            if (dstWordOpnd.isMem && dstTypeOpnd.isImm)
+            // Src to stack move with known dst type
+            if (srcWordOpnd != dstWordOpnd && dstWordOpnd.isMem && dstTypeOpnd.isImm)
             {
                 moveList ~= Move(typeStackOpnd(succPhi.outSlot), srcTypeOpnd);
             }
         }
         else
         {
-            // TODO: check wasn't in a register before?
-
-            // If the value wasn't before in a register, now is, and the type is unknown
-            // write 0 on the stack to avoid invalid references
-            if (srcTypeOpnd.isImm && dstWordOpnd.isReg && !dstTypeOpnd.isImm)
+            // Stack to reg move with known to unknown type
+            if (srcWordOpnd.isMem && srcTypeOpnd.isImm && dstWordOpnd.isReg && dstTypeOpnd.isMem)
             {
                 moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
             }
 
-            // Reg to stack moves are an issue.... 
-            if (dstWordOpnd.isMem && dstTypeOpnd.isImm)
+            // Register to stack move with known dst type
+            if (srcWordOpnd.isReg && dstWordOpnd.isMem && dstTypeOpnd.isImm)
             {
                 moveList ~= Move(typeStackOpnd(succVal.outSlot), srcTypeOpnd);
             }
         }
-
-
-
-
-
-
     }
 
     //foreach (move; moveList)
