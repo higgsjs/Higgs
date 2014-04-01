@@ -161,49 +161,6 @@ TODO: rework edge moves
 
 
 
-Old code:
-setOutType(cst) writes type to the stack if val is on the stack
-setOutType(reg) writes 0 to word stack if val is in reg
-
-
-// If the successor value is a phi node
-if (succPhi)
-{
-    // If the phi is on the stack and the type is known,
-    // write the type to the stack to keep it in sync
-    if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
-    {
-        assert (succTS & TF_SYNC);
-        moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
-    }
-
-    // If the phi is in a register and the type is unknown,
-    // write 0 on the stack to avoid invalid references
-    if (!(succAS & RA_STACK) && !(succTS & TF_KNOWN))
-    {
-        moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
-    }
-}
-else
-{
-    // If the value wasn't before in a register, now is, and the type is unknown
-    // write 0 on the stack to avoid invalid references
-    if ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && (succAS & RA_GPREG) && !(succTS & TF_KNOWN))
-    {
-        moveList ~= Move(new X86Mem(64, wspReg, 8 * succVal.outSlot), new X86Imm(0));
-    }
-
-    // If the type was not in sync in the predecessor and is now
-    // in sync in the successor, write the type to the type stack
-    if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
-    {
-        moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
-    }
-}
-
-
-
-
 
 
 
@@ -218,7 +175,7 @@ else
 - if val mapped to reg is not live, use the reg
 
 ./higgs --nostdlib --stats benchmarks/micro/200m_add.js
-./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/200m_add.js 
+./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/200m_add.js
 comp time (ms): 17
 exec time (ms): 344
 code size (bytes): 36068

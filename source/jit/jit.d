@@ -1638,73 +1638,76 @@ void genBranchMoves(
         // We don't need to move parameter values to the stack
         bool succParam = cast(FunParam)succVal !is null;
 
+
+
+
+
+
+
+
         // Get the source and destination operands for the arg word
         X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
         X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
 
-        if (srcWordOpnd != dstWordOpnd && !(succParam && dstWordOpnd.isMem))
+        if (srcWordOpnd != dstWordOpnd &&
+            !dstWordOpnd.isImm &&
+            !(succParam && dstWordOpnd.isMem))
             moveList ~= Move(dstWordOpnd, srcWordOpnd);
 
-
-        /*
         // Get the source and destination operands for the phi type
         X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
         X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
-        */
 
-        // FIXME: for now, no reg alloc or delated writes,
-        // always generate the type moves
-        auto srcTypeOpnd = predState.getTypeOpnd(predVal);
-        auto dstValState = succState.getState(succVal);
-        X86Opnd dstTypeOpnd = typeStackOpnd(succVal.outSlot);
-        if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
+        if (srcTypeOpnd != dstTypeOpnd &&
+            !dstTypeOpnd.isImm &&
+            !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
 
 
 
-
-        if (dstWordOpnd.isReg && !succParam)
-            moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
-
-
-
-
-        /*
-        // What about phi nodes with isReg and unknown types?
-        // they are in a register, may never be spilled
-        if (succPhi && !srcWordOpnd.isReg && dstWordOpnd.isReg && dstValState.knownType is false)
-            moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
-        */
-
-
-
-
-        // TODO: add this later? for now always doing type move
-        // Phi nodes do not use setOutType
-        // If the type is known, they can be on the stack with no type written?
-        //if (dstWordOpnd.isMem && dstValState.knownType)
-        //    moveList ~= Move(typeStackOpnd(succVal.outSlot), X86Opnd(0));
-    }
-
-    /*
-    OUTER: foreach (idx, move; moveList)
-    {
-        foreach (idx2, move2; moveList)
+        // If the successor value is a phi node
+        if (succPhi)
         {
-            if (move.dst == move2.src && idx != idx2)
+            // TODO: can we remove this? If prev type opnd was mem, this isn't necessary? only if they're eq
+
+            // If the phi is in a register and the type is unknown,
+            // write 0 on the stack to avoid invalid references
+            if (dstWordOpnd.isReg && !dstTypeOpnd.isImm)
             {
-                writeln("CONFLICT: ", move.dst);
+                moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
+            }
 
-                foreach (move3; moveList)
-                {
-                    writeln(move3.dst, " = ", move3.src);
-                }
-
-                break OUTER;
+            // If the phi is on the stack and the type is known,
+            // write the type to the stack to keep it in sync
+            if (dstWordOpnd.isMem && dstTypeOpnd.isImm)
+            {
+                moveList ~= Move(typeStackOpnd(succPhi.outSlot), srcTypeOpnd);
             }
         }
+        else
+        {
+            // TODO: check wasn't in a register before?
+
+            // If the value wasn't before in a register, now is, and the type is unknown
+            // write 0 on the stack to avoid invalid references
+            if (srcTypeOpnd.isImm && dstWordOpnd.isReg && !dstTypeOpnd.isImm)
+            {
+                moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
+            }
+
+            // Reg to stack moves are an issue.... 
+            if (dstWordOpnd.isMem && dstTypeOpnd.isImm)
+            {
+                moveList ~= Move(typeStackOpnd(succVal.outSlot), srcTypeOpnd);
+            }
+        }
+
+
+
+
+
+
     }
-    */
 
     //foreach (move; moveList)
     //    as.printStr(format("move from %s to %s", move.src, move.dst));
