@@ -122,17 +122,7 @@ Milestone: register allocation
 TODO: profile awful slow compilation speed
 - relevance to reg alloc
 
-TODO: test performance against master branch
-- is the comp time much worse?
-
 TODO: look at machine code, optimize RA further
-- Try to bias allocReg based on stack idx?
-- Try to bias allocReg based on dst phi nodes
-
-TODO: optimize call spills, other spills
-- Should have shorthands for spilling only C caller-save regs and such
-- Should have way to spill live after instr or arg regs only
-  - move into cargReg can easily corrupt allocated reg
 
 Meeting:
 - comp time unaffected, sometimes slightly slower
@@ -141,6 +131,23 @@ Meeting:
   - up to 4x on microbenchmark
   - avg 25% on benchmarks
 - It's not the mem writes that kill you, but the reads?
+- Unfortunately, maxvers=0 still wins on most benchmarks
+
+TODO: bias values towards dst phi reg
+- check if hasOneUse, use is a phi node, reg is free or regVal not live
+- benchmark, look at code size
+- Have different reg alloc for getOutOpnd
+  - Separate out freeReg() and mapReg()
+
+TODO: optimize code size for get_global
+- do fully "interpreted" if needed, call into code fragment
+  - maybe try this first, as an "extreme" test
+- see how execution time and code size change across benchmarks
+
+TODO: optimize call spills, other spills
+- Should have shorthands for spilling only C caller-save regs and such
+- Should have way to spill live after instr or arg regs only
+  - move into cargReg can easily corrupt allocated reg
 
 TODO: optimize phi moves
 - Phi moves from reg to stack (should be relatively uncommon?)
@@ -148,13 +155,52 @@ TODO: optimize phi moves
 - Phi moves from reg to reg with unknown dst type?
   - must write type (automatic)
   - must write zero if the type is pointer
-
 TODO: rework edge moves
 - Always writing type to the stack is wrong... Value may die and not be spilled! ****
 - Look at old code for setOutType, moves
 
-TODO: bias values towards dst phi reg
-- benchmark, look at code size
+
+
+Old code:
+setOutType(cst) writes type to the stack if val is on the stack
+setOutType(reg) writes 0 to word stack if val is in reg
+
+
+// If the successor value is a phi node
+if (succPhi)
+{
+    // If the phi is on the stack and the type is known,
+    // write the type to the stack to keep it in sync
+    if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
+    {
+        assert (succTS & TF_SYNC);
+        moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
+    }
+
+    // If the phi is in a register and the type is unknown,
+    // write 0 on the stack to avoid invalid references
+    if (!(succAS & RA_STACK) && !(succTS & TF_KNOWN))
+    {
+        moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
+    }
+}
+else
+{
+    // If the value wasn't before in a register, now is, and the type is unknown
+    // write 0 on the stack to avoid invalid references
+    if ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && (succAS & RA_GPREG) && !(succTS & TF_KNOWN))
+    {
+        moveList ~= Move(new X86Mem(64, wspReg, 8 * succVal.outSlot), new X86Imm(0));
+    }
+
+    // If the type was not in sync in the predecessor and is now
+    // in sync in the successor, write the type to the type stack
+    if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
+    {
+        moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
+    }
+}
+
 
 
 

@@ -235,7 +235,9 @@ class CodeGenState
     /// If a register is free, its value is null
     private IRDstValue[] gpRegMap;
 
-    /// Constructor for a function entry code generation state
+    /**
+    Constructor for a function entry code generation state
+    */
     this(VM vm, IRFunction fun, bool ctorCall)
     {
         this.callCtx = fun.getCtx(ctorCall, vm);
@@ -254,12 +256,94 @@ class CodeGenState
             mapToStack(param);
     }
 
-    /// Copy constructor
+    /**
+    Copy constructor
+    */
     this(CodeGenState that)
     {
         this.callCtx = that.callCtx;
         this.valMap = that.valMap.dup;
         this.gpRegMap = that.gpRegMap.dup;
+    }
+
+    /**
+    Construct the successor state for a given predecessor state and branch edge
+    */
+    this(CodeGenState predState, BranchEdge branch)
+    {
+        // Call the copy constructor
+        this(predState);
+
+        auto liveInfo = callCtx.fun.liveInfo;
+
+        // Map each successor phi node on the stack or in its register
+        // in a way that best matches the predecessor state
+        for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
+        {
+            if (branch.branch is null || phi.hasNoUses)
+                continue;
+
+            // Get the phi argument
+            auto arg = branch.getPhiArg(phi);
+            assert (
+                arg !is null, 
+                "missing phi argument for:\n" ~
+                phi.toString() ~
+                "\nin block:\n" ~
+                phi.block.toString()
+            );
+
+            // Free the register currently used by the phi node (if any)
+            auto oldPhiState = getState(phi);
+            if (oldPhiState.isReg)
+            {
+                auto regNo = oldPhiState.val;
+                gpRegMap[regNo] = null;
+            }
+
+            // Get the default register for the phi node
+            auto phiReg = getDefReg(phi);
+
+            // Get the value currently mapped to this register
+            auto regVal = gpRegMap[phiReg.regNo];
+
+            ValState phiState;
+
+            // If the phi node's register is free
+            if (regVal is null || liveInfo.liveAfterPhi(regVal, phi.block) is false)
+            {
+                phiState = ValState.reg(phiReg);
+                gpRegMap[phiReg.regNo] = phi;
+            }
+            else
+            {
+                // Map the phi node to its stack location
+                phiState = ValState.stack();
+            }
+
+            // If the phi argument is a dst value
+            if (auto dstArg = cast(IRDstValue)arg)
+            {
+                // Get the state for the phi argument value
+                auto argState = predState.getState(dstArg);
+                if (argState.knownType)
+                    phiState = phiState.setType(argState.type);
+            }
+
+            // Otherwise, if the phi argument is an IR constant
+            else if (auto cstArg = cast(IRConst)arg)
+            {
+                // Set the phi type to the constant's type
+                phiState = phiState.setType(cstArg.type);
+            }
+
+            // Set the phi node's new state
+            valMap[phi] = phiState;
+        }
+
+        // Remove information about values dead after
+        // the phi nodes in the successor block
+        removeDead(liveInfo, branch.target);
     }
 
     /**
@@ -387,6 +471,24 @@ class CodeGenState
     }
 
     /**
+    Map a register to a value
+    */
+    X86Reg mapReg(X86Reg reg, IRDstValue value, size_t numBits)
+    {
+        assert (getState(value).isReg is false);
+        assert (gpRegMap[reg.regNo] is null);
+
+        // Map the register to the new value
+        gpRegMap[reg.regNo] = value;
+
+        // Map the value to the register
+        valMap[value] = getState(value).toReg(reg);
+
+        // Return the operand for this register
+        return reg.reg(numBits);
+    }
+
+    /**
     Allocate a register for a value
     */
     X86Reg allocReg(
@@ -400,23 +502,6 @@ class CodeGenState
 
         auto liveInfo = callCtx.fun.liveInfo;
 
-        // TODO: check if value is already reg mapped?
-        // may want to do this in getWordOpnd,
-        // in that case, only assert here that the value isn't reg mapped
-
-        // Map the value to a specific register
-        X86Reg mapReg(X86Reg reg)
-        {
-            // Map the register to the new value
-            gpRegMap[reg.regNo] = value;
-
-            // Map the value to the register
-            valMap[value] = getState(value).toReg(reg);
-
-            // Return the operand for this register
-            return reg.reg(numBits);
-        }
-
         // For each allocatable general-purpose register
         foreach (reg; allocRegs)
         {
@@ -426,7 +511,7 @@ class CodeGenState
             if (regVal is null)
             {
                 // Map the value to this register
-                return mapReg(reg);
+                return mapReg(reg, value, numBits);
             }
 
             // If the value mapped is not live
@@ -434,9 +519,10 @@ class CodeGenState
             {
                 // Remove the mapped value from the value map
                 valMap.remove(regVal);
+                gpRegMap[reg.regNo] = null;
 
                 // Map the value to this register
-                return mapReg(reg);
+                return mapReg(reg, value, numBits);
             }
         }
 
@@ -462,7 +548,44 @@ class CodeGenState
         spillReg(as, chosenReg.regNo);
 
         // Map the value to the chosen register
-        return mapReg(*chosenReg);
+        return mapReg(*chosenReg, value, numBits);
+    }
+
+    /**
+    Get the operand for an instruction's output
+    */
+    X86Opnd getOutOpnd(
+        CodeBlock as,
+        IRInstr instr,
+        size_t numBits
+    )
+    {
+        // TODO: option to allow allocating to arg reg?
+        // actually, for add, we *want to* allocate to arg reg when possible
+
+        // TODO: start with biasing towards dst phi reg
+
+        assert (instr !is null);
+
+        // Attempt to allocate a register for the output value
+        auto reg = allocReg(
+            as,
+            instr,
+            instr,
+            numBits
+        );
+
+        //writeln("outOpnd=", reg);
+
+        return reg.opnd;
+    }
+
+    /**
+    Map a value to its stack location
+    */
+    void mapToStack(IRDstValue value)
+    {
+        valMap[value] = ValState.stack();
     }
 
     /**
@@ -743,36 +866,6 @@ class CodeGenState
         }
 
         return curOpnd;
-    }
-
-    /// Get the operand for an instruction's output
-    X86Opnd getOutOpnd(
-        CodeBlock as,
-        IRInstr instr,
-        size_t numBits
-    )
-    {
-        assert (instr !is null);
-
-        // Attempt to allocate a register for the output value
-        auto reg = allocReg(
-            as,
-            instr,
-            instr,
-            numBits
-        );
-
-        //writeln("outOpnd=", reg);
-
-        return reg.opnd;
-    }
-
-    /**
-    Map a value to its stack location
-    */
-    void mapToStack(IRDstValue value)
-    {
-        valMap[value] = ValState.stack();
     }
 
     /// Set the output type value for an instruction's output
@@ -1507,92 +1600,6 @@ BranchCode getBranchEdge(
 }
 
 /**
-Generate the successor state for a given predecessor state and branch edge
-*/
-CodeGenState getSuccState(
-    CodeGenState predState,
-    BranchEdge branch
-)
-{
-    auto callCtx = predState.callCtx;
-    auto liveInfo = callCtx.fun.liveInfo;
-
-    // Copy the predecessor state
-    auto succState = new CodeGenState(predState);
-
-    // Map each successor phi node on the stack or in its register
-    // in a way that best matches the predecessor state
-    for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
-    {
-        if (branch.branch is null || phi.hasNoUses)
-            continue;
-
-        // Get the phi argument
-        auto arg = branch.getPhiArg(phi);
-        assert (
-            arg !is null, 
-            "missing phi argument for:\n" ~
-            phi.toString() ~
-            "\nin block:\n" ~
-            phi.block.toString()
-        );
-
-        // Free the register currently used by the phi node (if any)
-        auto oldPhiState = succState.getState(phi);
-        if (oldPhiState.isReg)
-        {
-            auto regNo = oldPhiState.val;
-            succState.gpRegMap[regNo] = null;
-        }
-
-        // Get the default register for the phi node
-        auto phiReg = succState.getDefReg(phi);
-
-        // Get the value currently mapped to this register
-        auto regVal = succState.gpRegMap[phiReg.regNo];
-
-        ValState phiState;
-
-        // If the phi node's register is free
-        if (regVal is null || liveInfo.liveAfterPhi(regVal, phi.block) is false)
-        {
-            phiState = ValState.reg(phiReg);
-            succState.gpRegMap[phiReg.regNo] = phi;
-        }
-        else
-        {
-            // Map the phi node to its stack location
-            phiState = ValState.stack();
-        }
-
-        // If the phi argument is a dst value
-        if (auto dstArg = cast(IRDstValue)arg)
-        {
-            // Get the state for the phi argument value
-            auto argState = predState.getState(dstArg);
-            if (argState.knownType)
-                phiState = phiState.setType(argState.type);
-        }
-
-        // Otherwise, if the phi argument is an IR constant
-        else if (auto cstArg = cast(IRConst)arg)
-        {
-            // Set the phi type to the constant's type
-            phiState = phiState.setType(cstArg.type);
-        }
-
-        // Set the phi node's new state
-        succState.valMap[phi] = phiState;
-    }
-
-    // Remove information about values dead after
-    // the phi nodes in the successor block
-    succState.removeDead(liveInfo, branch.target);
-
-    return succState;
-}
-
-/**
 Generate the moves to transition from a predecessor to a successor state
 */
 void genBranchMoves(
@@ -1893,7 +1900,7 @@ void compile(VM vm, CallCtx callCtx)
                 branch.prelGenFn(as, vm);
 
             // Generate the successor state for this branch
-            auto succState = getSuccState(
+            auto succState = new CodeGenState(
                 branch.predState,
                 branch.branch
             );
