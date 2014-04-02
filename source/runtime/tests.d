@@ -1250,6 +1250,9 @@ unittest
 
     auto vm = new VM();
 
+    //import options;
+    //opts.jit_trace_instrs = true;
+
     vm.assertInt("Math.max(1,2);", 2);
     vm.assertInt("Math.max(5,1,2);", 5);
     vm.assertInt("Math.min(5,-1,2);", -1);
@@ -1280,6 +1283,8 @@ unittest
 
     vm.assertBool("r = Math.random(); return r >= 0 && r < 1;", true);
     vm.assertBool("r0 = Math.random(); r1 = Math.random(); return r0 !== r1;", true);
+
+    //opts.jit_trace_instrs = false;
 }
 
 /// Stdlib Object library

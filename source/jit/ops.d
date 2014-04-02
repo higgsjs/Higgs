@@ -1446,6 +1446,9 @@ void genCallBranch(
 {
     auto vm = st.callCtx.vm;
 
+    // Map the return value to its stack location
+    st.mapToStack(instr);
+
     // Create a branch object for the continuation
     auto contBranch = getBranchEdge(
         instr.getTarget(0),
@@ -1618,7 +1621,7 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(fun.getCtx(false, vm)),
+        new CodeGenState(vm, fun, false),
         true
     );
 
@@ -1659,21 +1662,8 @@ void gen_call(
 {
     as.incStatCnt(&stats.numCall, scrRegs[0]);
 
-    // TODO: just steal an allocatable reg to use as an extra temporary
-    // force its contents to be spilled if necessary
-    // maybe add State.freeReg method
-    auto scrReg3 = allocRegs[$-1];
-
-    // TODO: optimize call spills
-    // TODO: move spills after arg copying?
-    // Spill the values that are live after the call
-    st.spillRegs(
-        as,
-        delegate bool(IRDstValue value)
-        {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Free an extra register to use as scratch
+    auto scrReg3 = st.freeReg(as, instr);
 
     //
     // Function pointer extraction
@@ -1823,6 +1813,19 @@ void gen_call(
     // src0 = numLocals + extraArgs
     as.add(scrRegs[0].opnd(32), scrReg3.opnd(32));
     as.label(Label.FALSE2);
+
+
+
+    // Spill the values that are live after the call
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
+
+
 
     ver.genCallBranch(
         st,
@@ -2280,7 +2283,7 @@ void gen_load_file(
             // Create a version instance object for the unit function entry
             auto entryInst = new BlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(false, vm))
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -2406,7 +2409,7 @@ void gen_eval_str(
             // Create a version instance object for the unit function entry
             auto entryInst = new BlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(false, vm))
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -2701,6 +2704,7 @@ void HeapAllocOp(Type type)(
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
 
+        //writeln("alloc fallback");
         //writeln(callCtx.fun.getName);
 
         auto ptr = heapAlloc(vm, allocSize);
@@ -3773,7 +3777,7 @@ void gen_get_asm_str(
             // Request an instance for the function entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(false, vm)),
+                new CodeGenState(vm, fun, false),
                 true
             );
 
@@ -3787,7 +3791,7 @@ void gen_get_asm_str(
             // Request an instance for the constructor entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(true, vm)),
+                new CodeGenState(vm, fun, true),
                 true
             );
 
