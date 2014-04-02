@@ -868,7 +868,7 @@ void writeRMMulti(
     if (opnd1.isReg)
         assert (opnd1.reg.size is opndSize, "operand size mismatch");
     else if (opnd1.isMem)
-        assert (opnd1.mem.size is opndSize, "operand size mismatch");
+        assert (opnd1.mem.size is opndSize, "operand size mismatch for " ~ mnem);
     else if (opnd1.isImm)
         assert (opnd1.imm.immSize <= opndSize, "immediate too large for dst");
 
@@ -1414,7 +1414,10 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
             auto reg = dst.reg;
             auto dstSize = reg.size;
 
-            assert (imm.immSize <= dstSize, "immediate too large for dst reg");
+            assert (
+                imm.immSize <= dstSize || imm.unsgSize <= dstSize,
+                format("immediate too large for dst reg: %s = %s", imm, dst)
+            );
 
             if (dstSize is 16)
                 cb.writeByte(0x66);
@@ -1424,7 +1427,7 @@ void mov(CodeBlock cb, X86Opnd dst, X86Opnd src)
             cb.writeOpcode((dstSize is 8)? 0xB0:0xB8, reg);
 
             cb.writeInt(imm.imm, dstSize);
-        }  
+        }
 
         // M + Imm
         else if (dst.isMem)
@@ -1641,43 +1644,50 @@ void nop(CodeBlock cb, size_t length = 1)
 
         case 2:
         cb.writeASM("nop2");
-        cb.writeBytes(0x89, 0xf6);
+        cb.writeBytes(0x66,0x90);
         break;
 
         case 3:
         cb.writeASM("nop3");
-        cb.writeBytes(0x8d,0x76,0x00);
+        cb.writeBytes(0x0F,0x1F,0x00);
         break;
 
         case 4:
         cb.writeASM("nop4");
-        cb.writeBytes(0x8d,0x74,0x26,0x00);
+        cb.writeBytes(0x0F,0x1F,0x40,0x00);
         break;
 
         case 5:
-        cb.nop(1); cb.nop(4);
+        cb.writeASM("nop5");
+        cb.writeBytes(0x0F,0x1F,0x44,0x00,0x00);
         break;
 
         case 6:
         cb.writeASM("nop6");
-        cb.writeBytes(0x8d,0xb6,0x00,0x00,0x00,0x00);
+        cb.writeBytes(0x66,0x0F,0x1F,0x44,0x00,0x00);
         break;
 
         case 7:
         cb.writeASM("nop7");
-        cb.writeBytes(0x8d,0xb4,0x26,0x00,0x00,0x00,0x00);
+        cb.writeBytes(0x0F,0x1F,0x80,0x00,0x00,0x00,0x00);
         break;
 
         case 8:
-        cb.nop(1); cb.nop(7);
+        cb.writeASM("nop8");
+        cb.writeBytes(0x0F,0x1F,0x84,0x00,0x00,0x00,0x00,0x00);
+        break;
+
+        case 9:
+        cb.writeASM("nop9");
+        cb.writeBytes(0x66,0x0F,0x1F,0x84,0x00,0x00,0x00,0x00,0x00);
         break;
 
         default:
         size_t written = 0;
-        while (written + 8 <= length)
+        while (written + 9 <= length)
         {
-            cb.nop(8);
-            written += 8;
+            cb.nop(9);
+            written += 9;
         }
         cb.nop(length - written);
         break;

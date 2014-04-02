@@ -78,34 +78,260 @@ TODO: bias toBool for property access expressions, isNaN, bitwise result
 Goal: March 31st, type prop working, satisfying perf for article
 - Type prop should enable speed gains on bigger benchmarks
 
-TODO: blog post about optimization, results
-- 200 stars on github???
-- difficulty of optimizing self-hosted code
-- profiling, you don't actually know what's going on, complex codebase
-- compile time now dominates execution time on several benchmarks
-- 3d-raytrace, prop access > 30% execution time
-- inline caching
+TODO: val can be both in reg and stack
+- stop storing stack idx in ValState
 
-TODO: exec time, should probably measure when entering code, stop when leaving
-- May want state-based time accounting
-- commit before refactoring
-Marc says: get perf counters to measure context switching overhead
-TODO: can we design a pathological case wrt versioning and context switching?
-- would make it easier to study the overhead involved, profile it
+TODO: can possibly test out context swapping hypothesis by adding a certain
+number of useless compiler calls, without increasing code size?
+- These would have to do real compilation work
+- Easy dirty hack: have the branch stub compilation not patch the branch
+  the first time around, do some useless compilation the second time
 
-TODO: CodeGenState.getState for constant values?
-- Would facilitate interoperability
-- Need to know the IR constant to get an operand
-- Difference between known constant and ir constant?
-- knownType vs knownCst?
-- Or have a 4th kind, KNOWN_VAL vs IR_CONST
+Marc: start writing paper soon
+- Setup repo
+- Outline sections
+- Write ideas as they come
 
 ------------------------------------------------------------------------------
 
 Milestone: register allocation
 ------------------------------
 
+TODO: profile awful slow compilation speed
+
+TODO: look at machine code, optimize RA further
+
+TODO: optimize code size for get_global
+- do fully "interpreted" if needed, call into code fragment
+  - maybe try this first, as an "extreme" test
+- see how execution time and code size change across benchmarks
+
+TODO: bias values towards dst phi reg
+- check if hasOneUse, use is a phi node, reg is free or regVal not live
+- benchmark, look at code size
+- Have different reg alloc for getOutOpnd
+  - Separate out freeReg() and mapReg()
+
+TODO: allow reusing input reg if value is dead?
+- special flag for getOutOpnd?
+
 Meeting:
+- phi type prop tweak results in slightly less versions
+- reg alloc:
+  - comp time unaffected, sometimes slightly slower
+  - code size significantly smaller, ~23% on avt
+  - exec time significantly faster
+    - up to 4x on microbenchmark
+    - 2x on some benchmarks
+- It's not the mem writes that kill you, but the reads?
+- BBV now wins on most benchmarks (on exec time)
+
+TODO: blog post about optimization, results
+- 200 stars on github
+- reg alloc speed gains
+- graphics lib
+- difficulty of optimizing self-hosted code
+- profiling, you don't actually know what's going on, complex codebase
+- compile time now dominates execution time on several benchmarks
+- 3d-raytrace, prop access > 30% execution time, inline caching
+
+
+TODO: optimize get_global spills
+- Should have way to spill live after instr or arg regs only
+  - move into cargReg can easily corrupt allocated reg
+
+
+
+
+
+
+
+[DONE] TODO: optimize call spills
+raytrace code size: 904082, 727ms, 137ms
+after: 900230, 657, 122ms
+
+./higgs --nostdlib --stats benchmarks/micro/200m_add.js
+./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/200m_add.js
+comp time (ms): 17
+exec time (ms): 172
+code size (bytes): 36003
+
+[DONE] TODO: optimize phi moves
+- Phi moves from reg to stack (should be relatively uncommon?)
+  - must write type
+- Phi moves from reg to reg with unknown dst type?
+  - must write type (automatic)
+  - must write zero if the type is pointer
+
+[DONE] TODO: rework edge moves
+- Always writing type to the stack is wrong... Value may die and not be spilled! ****
+- Look at old code for setOutType, moves
+
+[DONE] TODO: improve phi reg alloc
+- if val mapped to reg is not live, use the reg
+
+./higgs --nostdlib --stats benchmarks/micro/200m_add.js
+./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/200m_add.js
+comp time (ms): 17
+exec time (ms): 344
+code size (bytes): 36068
+
+[DONE] TODO: phi node known types from constants
+
+[DONE] FIXME: Running: ./tests/01-stdlib/global.js...
+Assertion failed (jit/x86.d@1417): immediate too large for dst reg
+- Probably trying to move a large constant into a phi node
+- Possibly FP
+
+[DONE] TODO: re-enable phi nodes in regs
+
+[DONE] FIXME: gc bug, crash in bigloop
+./higgs tests/core/gc/bigloop.js
+- try to run outside of make test
+- disabled phi nodes in regs but problem persists!
+- some move is there that wasn't there before we mapped stack args?
+  - Bug not caused by new moves, or stack mapped vals...
+- Caused by regSave? Nope!
+- Doesn't fail with --nostdlib
+  - Suggests old vars left on stack
+  - Problem indeed found while visiting stack
+- The value is integer 1, but tagged as a pointer!
+  - Value spilled, but type isn't?
+  - Or type written, but not value
+- Writing zero word and type stack values on getOutOpnd fixes the problem
+  - Writing just zero type values does not
+- Old type tags are found on the stack
+  - Writing a word value without a type can create false pointers
+  - At some point, we must be writing some type, but no word value ***
+  - Doesn't seem like it's a phi node
+
+[DONE] FIXME: segfault bug in stdlib/math test
+- trace the instructions
+- storing a value in an array, initializing it to undefined
+- opnd0 is RCX, value is 0
+Value is loaded twice, never spilled? What the fuck.
+Randomly lose the mapping to $15 at the beginning of for_test
+- Missing value in valMap
+  - Argument never set
+  - Zero written on stack while in reg
+  - Value not moved from reg to stack cause not seen
+  - Value re-loaded from zero stack value
+
+[DONE] FIXME: GC bug in many_globals3.js
+(runtime/gc.d@432): gcForward: object not in from-space heap
+- GC is manually triggered when extending the global object
+- Old pointer from previous GC
+
+[DONE] TODO: phi nodes, alloc reg if possible, currently always on stack
+- issue: allocReg expects instr argument
+- generalize hasArg to dstValue? don't want virtual method
+- For phi nodes we don't really need to worry about not spilling other args!
+  - Try to alloc same reg as incoming? Force same reg?
+- It's not the same code? I decide that some phi node has reg X
+  - If anything else has reg X, I move it to another reg
+  - For now, just say stack if reg taken
+  - DONE
+
+[DONE] TODO: phi node ASM comments
+./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/200m_add.js 
+
+./higgs --nostdlib --stats benchmarks/micro/200m_add.js
+comp time (ms): 17
+exec time (ms): 359
+code size (bytes): 36131
+
+[DONE] FIXME: v8/navier-stokes test failing, segmentation fault
+- Affected by very subtle details
+- Issue with spilling liveAfter vs lifeBefore, stolen scrReg
+
+[DONE] FIXME: string-base64 fails
+/higgs tests/06-sunspider/14-string-base64.js
+run-time error: run-time error: global property not defined "Components"
+base64ToString(1DE27) ("benchmarks/sunspider/string-base64-quick.js"@86:1)
+- Make small regression test
+- Probably an issue with spills or operating on 64-bit when it should be on 32
+  - check bitwise and, left shift
+- Not loading all 64 bits when loading value
+
+[DONE] TODO: verify that all extern (C) host calls have the proper spilling
+
+[DONE] FIXME: test fails, ./tests/06-sunspider/05-access-nbody.js
+make; ./higgs --jit_trace_instrs benchmarks/sunspider/access-nbody.js
+- segfault at $35 = map_prop_idx $34, $68, true
+- string pointer is corrupted
+- pointer is passed as an argument to $rt_objSetProp
+- get_time_ms is lacking spill code!
+
+[DONE] FIXME: bug wrt call_ffi, *heisenbug*
+- incorrect return value
+- could also be caused by invalid arg
+
+[DONE] TODO: change spills to spill live before, safer
+- fixed a bug!
+
+[DONE] TODO: complete adding spills for calls and host code, modify jit/ops.d
+- KISS at first, spill all live, do it naively, optimize spills later
+
+[DONE] FIXME: segfault after compileBranch in property delete test
+"o = {x: 5}; delete o.x; return !o.x;"
+- crash is in objGetProp
+- the NOP padding fails on rewriteBranch
+
+[DONE] TODO: add zero write for phis
+- If the dst is in a register and the dst type is unknown, write zero
+
+[DONE] FIXME: segfault, make; ./higgs --nostdlib --jit_trace_instrs tests/core/many_globals/many_globals3.js
+- possibly due to lack of spilling logic
+- add spilling logic!
+- may also need additional phi/val move logic
+  - writing zeroes and type tags properly?
+  - may be missing zero writes
+
+[DONE] FIXME: test fails, "a = 1; b = 2; return a+b;"
+make; ./higgs --nostdlib --jit_dumpasm --e "a = 1; b = 2; return a+b;"
+- Probably has to do with added spill logic in get_global
+- not the same opnd
+
+[DONE] FIXME: "typeof x" causes segfault
+make; ./higgs --nostdlib --jit_trace_instrs
+- map_prop_idx may be to blame, call to host without spills
+
+[DONE] FIXME: "false & 1" produces 1 instead of 0
+make; ./higgs --nostdlib --jit_trace_instrs
+- Probable cause: registers not spilled before call!
+  - Try just spilling all for now
+- This doesn't fix the problem!
+- Some other op might need spills?
+- retWordReg and retTypeReg are both allocatable registers ***
+ - Should printStr info in gen_ret, see what's happening
+ - doesn't seem to be the problem
+- allocReg used liveAfter to pick reg, two args with same reg
+
+[DONE] FIXME: runtime init fails?
+make; ./higgs --nostdlib --jit_trace_instrs
+- new_clos needs to spill regs before doing host call
+
+[DONE] FIXME: x = 7; if (\$ir_eq_i32(x, 7)) return 1; else return 0;
+- segfault 
+- compileBranch?
+
+[DONE] FIXME: "x = 7; return x;", getting a zero value back
+
+[DONE] FIXME: get_global, "x" segfaults
+./higgs --noruntime --nostdlib --jit_dumpasm --jit_dumpinfo
+
+[DONE] TODO: setOutType, both variants
+- If we have an unknown output type but the output operand is a register, need
+  to write a zero to the stack. This is rare-ish.
+- When setting a known out type, if the value is in a register, avoid writing the type
+
+[DONE] TODO: getWordOpnd
+- Put code in place to alloc regs, but leave disabled for now
+
+[DONE] TODO: getOutOpnd
+- Put code in place to alloc regs, but leave disabled for now
+
+[DONE] Meeting:
 - sketched out reg alloc
 - more runtime and inlining tweaks
 - better exec time accounting
@@ -131,44 +357,7 @@ Meeting:
   - get_global can be optimized with external fallback code
   - could optimize global calls speculatively
 
-TODO: can possibly test out context swapping hypothesis by adding a certain
-number of useless compiler calls, without increasing code size?
-- These would have to do real compilation work
-- Easy dirty hack: have the branch stub compilation not patch the branch
-  the first time around, do some useless compilation the second time
-
-TODO: test performance against master branch
-- is the comp time much worse?
-
-TODO: phi moves
-- Phi moves from reg to stack (should be relatively uncommon?)
-  - must write type
-- Phi moves from reg to reg with unknown dst type?
-  - must write type (automatic)
-  - must write zero if the type is pointer
-
-TODO: spilling logic for calls and host code, modify jit/ops.d
-- When spilling a value, always spill its type (if known)
-- KISS at first, spill all live
-
-*** at this point, should be able to get very basic tests working ***
-
-TODO: setOutType
-- If we have an unknown output type but the output operand is a register, need
-  to write a zero to the stack. This is rare-ish.
-- When setting a known out type, if the value is in a register, avoid writing the type
-
-TODO: getOutOpnd
-
-TODO: getWordOpnd
-- Put code in place to alloc regs, but leave disabled for now?
-
-TODO: getTypeOpnd
-
-
-
-
-
+[DONE] TODO: getTypeOpnd
 
 [DONE] TODO: spill saved registers for GC in compileBranch
 - Go through incoming context, spill values appropriately for GC safety

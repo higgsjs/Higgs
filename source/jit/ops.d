@@ -202,7 +202,7 @@ void gen_get_type(
 }
 
 void gen_i32_to_f64(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -222,7 +222,7 @@ void gen_i32_to_f64(
 }
 
 void gen_f64_to_i32(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -252,7 +252,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
     auto opnd0 = st.getWordOpnd(
         as,
         instr,
-        0, 
+        0,
         numBits,
         scrRegs[0].opnd(numBits),
         false
@@ -530,15 +530,22 @@ alias FPOp!("mul") gen_mul_f64;
 alias FPOp!("div") gen_div_f64;
 
 void HostFPOp(alias cFPFun, size_t arity = 1)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    // TODO: this won't GC, but spill C caller-save registers
-
     assert (arity is 1 || arity is 2);
+
+    // Spill the values live before the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
     as.movq(X86Opnd(XMM0), opnd0);
@@ -576,7 +583,7 @@ alias HostFPOp!(std.c.math.pow, 2) gen_pow_f64;
 alias HostFPOp!(std.c.math.fmod, 2) gen_mod_f64;
 
 void FPToStr(string fmt)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -594,7 +601,14 @@ void FPToStr(string fmt)(
         return str;
     }
 
-    // TODO: spill all for GC
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
@@ -1284,7 +1298,7 @@ alias CmpOp!("fgt", 64) gen_gt_f64;
 alias CmpOp!("fge", 64) gen_ge_f64;
 
 void gen_if_true(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -1431,6 +1445,9 @@ void genCallBranch(
 )
 {
     auto vm = st.callCtx.vm;
+
+    // Map the return value to its stack location
+    st.mapToStack(instr);
 
     // Create a branch object for the continuation
     auto contBranch = getBranchEdge(
@@ -1588,17 +1605,14 @@ void gen_call_prim(
     as.setWord(-numArgs - 1, numArgs);
     as.setType(-numArgs - 1, Type.INT32);
 
-    // TODO
-    /*
     // Spill the values that are live after the call
     st.spillRegs(
-        ctx.as,
-        delegate bool(IRDstValue val)
+        as,
+        delegate bool(IRDstValue value)
         {
-            return ctx.liveInfo.liveAfter(val, instr);
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
         }
     );
-    */
 
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
@@ -1607,7 +1621,7 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(fun.getCtx(false, vm)),
+        new CodeGenState(vm, fun, false),
         true
     );
 
@@ -1648,23 +1662,8 @@ void gen_call(
 {
     as.incStatCnt(&stats.numCall, scrRegs[0]);
 
-    // TODO: just steal an allocatable reg to use as an extra temporary
-    // force its contents to be spilled if necessary
-    // maybe add State.freeReg method
-    auto scrReg3 = allocRegs[$-1];
-
-    // TODO : save the state before spilling?
-    // TODO
-    /*
-    // Spill the values that are live after the call
-    st.spillRegs(
-        ctx.as,
-        delegate bool(IRDstValue val)
-        {
-            return ctx.liveInfo.liveAfter(val, instr);
-        }
-    );
-    */
+    // Free an extra register to use as scratch
+    auto scrReg3 = st.freeReg(as, instr);
 
     //
     // Function pointer extraction
@@ -1673,8 +1672,8 @@ void gen_call(
     // Get the type tag for the closure value
     auto closType = st.getTypeOpnd(
         as,
-        instr, 
-        0, 
+        instr,
+        0,
         scrRegs[0].opnd(8),
         false
     );
@@ -1686,7 +1685,7 @@ void gen_call(
     // Get the word for the closure value
     auto closReg = st.getWordOpnd(
         as,
-        instr, 
+        instr,
         0,
         64,
         scrRegs[0].opnd(64),
@@ -1749,8 +1748,8 @@ void gen_call(
 
         // Copy the argument word
         auto argOpnd = st.getWordOpnd(
-            as, 
-            instr, 
+            as,
+            instr,
             instrArgIdx,
             64,
             scrReg3.opnd(64),
@@ -1761,9 +1760,9 @@ void gen_call(
 
         // Copy the argument type
         auto typeOpnd = st.getTypeOpnd(
-            as, 
-            instr, 
-            instrArgIdx, 
+            as,
+            instr,
+            instrArgIdx,
             scrReg3.opnd(8),
             true
         );
@@ -1776,8 +1775,8 @@ void gen_call(
 
     // Write the "this" argument
     auto thisReg = st.getWordOpnd(
-        as, 
-        instr, 
+        as,
+        instr,
         1,
         64,
         scrReg3.opnd(64),
@@ -1786,9 +1785,9 @@ void gen_call(
     );
     movArgWord(as, numArgs + 1, thisReg);
     auto typeOpnd = st.getTypeOpnd(
-        as, 
-        instr, 
-        1, 
+        as,
+        instr,
+        1,
         scrReg3.opnd(8),
         true
     );
@@ -1814,6 +1813,19 @@ void gen_call(
     // src0 = numLocals + extraArgs
     as.add(scrRegs[0].opnd(32), scrReg3.opnd(32));
     as.label(Label.FALSE2);
+
+
+
+    // Spill the values that are live after the call
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
+
+
 
     ver.genCallBranch(
         st,
@@ -1911,15 +1923,21 @@ void gen_call_new(
         return thisObj.ptr;
     }
 
-    // TODO: spill everything
-    // spill args in the current stack frame so that if the GC runs during
-    // makeThisObj, it will examine the args
-    // eventually, could split makeThisObj into its own instr if problematic
-
-    // TODO: just steal an allocatable reg to use as an extra temporary
+    // TODO: steal an allocatable reg to use as an extra temporary
     // force its contents to be spilled if necessary
     // maybe add State.freeReg method
     auto scrReg3 = allocRegs[$-1];
+
+    // TODO: optimize call spills
+    // TODO: move spills after arg copying?
+    // Spill the values that are live after the call
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     //
     // Function pointer extraction
@@ -1928,8 +1946,8 @@ void gen_call_new(
     // Get the type tag for the closure value
     auto closType = st.getTypeOpnd(
         as,
-        instr, 
-        0, 
+        instr,
+        0,
         scrRegs[0].opnd(8),
         false
     );
@@ -1941,7 +1959,7 @@ void gen_call_new(
     // Get the word for the closure value
     auto closReg = st.getWordOpnd(
         as,
-        instr, 
+        instr,
         0,
         64,
         scrRegs[0].opnd(64),
@@ -2033,7 +2051,7 @@ void gen_call_new(
     // Note: the closure may have been moved during GC
     closReg = st.getWordOpnd(
         as,
-        instr, 
+        instr,
         0,
         64,
         scrRegs[0].opnd(64),
@@ -2050,8 +2068,8 @@ void gen_call_new(
 
         // Copy the argument word
         auto argOpnd = st.getWordOpnd(
-            as, 
-            instr, 
+            as,
+            instr,
             instrArgIdx,
             64,
             scrReg3.opnd(64),
@@ -2189,7 +2207,16 @@ void gen_call_apply(
         return fun.entryCode;
     }
 
-    // TODO: spill all
+    // TODO: optimize call spills
+    // TODO: move spills after arg copying?
+    // Spill the values that are live after the call
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     ver.genCallBranch(
         st,
@@ -2256,7 +2283,7 @@ void gen_load_file(
             // Create a version instance object for the unit function entry
             auto entryInst = new BlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(false, vm))
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -2305,7 +2332,16 @@ void gen_load_file(
         }
     }
 
-    // TODO: spill all
+    // TODO: optimize call spills
+    // TODO: move spills after arg copying?
+    // Spill the values that are live after the call
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     ver.genCallBranch(
         st,
@@ -2373,7 +2409,7 @@ void gen_eval_str(
             // Create a version instance object for the unit function entry
             auto entryInst = new BlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(false, vm))
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -2410,7 +2446,16 @@ void gen_eval_str(
         }
     }
 
-    // TODO: spill all
+    // TODO: optimize call spills
+    // TODO: move spills after arg copying?
+    // Spill the values that are live after the call
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     ver.genCallBranch(
         st,
@@ -2572,7 +2617,16 @@ void gen_throw(
     auto excWordOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
     auto excTypeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
-    // TODO: spill regs, may GC
+    // TODO: optimize call spills
+    // TODO: move spills after arg copying?
+    // Spill the values live before the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     as.pushJITRegs();
 
@@ -2596,7 +2650,7 @@ void gen_throw(
 }
 
 void GetValOp(Type typeTag, string fName)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2650,6 +2704,7 @@ void HeapAllocOp(Type type)(
         auto vm = callCtx.vm;
         vm.setCallCtx(callCtx);
 
+        //writeln("alloc fallback");
         //writeln(callCtx.fun.getName);
 
         auto ptr = heapAlloc(vm, allocSize);
@@ -2659,8 +2714,17 @@ void HeapAllocOp(Type type)(
         return ptr;
     }
 
+    // Spill the values live before the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
+
     // Get the allocation size operand
-    auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
+    auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
 
     // Get the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -2760,10 +2824,17 @@ void gen_gc_collect(
         vm.setCallCtx(null);
     }
 
+    // Spill the values live before the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
+
     // Get the string pointer
     auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
-
-    // TODO: spill regs, may GC
 
     as.pushJITRegs();
 
@@ -2838,7 +2909,14 @@ void gen_get_global(
         return null;
     }
 
-    // TODO: spill all for potential host call 
+    // Spill the values that are live after the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
 
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -2910,7 +2988,7 @@ void gen_get_global(
 
 
 void gen_set_global(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -2983,10 +3061,17 @@ void gen_get_str(
         return str;
     }
 
+    // Spill the values live before the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
+
     // Get the string pointer
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
-
-    // TODO: spill regs, may GC
 
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -3088,7 +3173,7 @@ void gen_get_link(
 }
 
 void gen_make_map(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3129,7 +3214,14 @@ void gen_map_num_props(
         return map.numProps;
     }
 
-    // TODO: this won't GC, but spill C caller-save registers
+    // Spill the values live before the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
@@ -3164,6 +3256,8 @@ void gen_map_prop_idx(
 
     extern (C) static uint32_t op_map_prop_idx(ObjMap map, refptr strPtr, bool allocField)
     {
+        //writeln("slow lookup");
+
         // Lookup the property index
         assert (map !is null, "map is null");
         auto propIdx = map.getPropIdx(strPtr, allocField);
@@ -3206,8 +3300,6 @@ void gen_map_prop_idx(
         return propIdx;
     }
 
-    // TODO: this won't GC, but spill C caller-save registers
-
     bool allocField;
     if (instr.getArg(2) is IRConst.trueCst)
         allocField = true;
@@ -3216,10 +3308,23 @@ void gen_map_prop_idx(
     else
         assert (false);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    // Spill the values live before the instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     // Get the map operand
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false, false);
+    assert (opnd0.isReg);
+
+    // Get the property name operand
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // If the property name is a known constant string
     auto nameArgInstr = cast(IRInstr)instr.getArg(1);
@@ -3289,9 +3394,6 @@ void gen_map_prop_idx(
     }
     else
     {
-        // Get the property name operand
-        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-
         as.pushJITRegs();
 
         // Call the host function
@@ -3336,7 +3438,14 @@ void gen_map_prop_name(
         return str;
     }
 
-    // TODO: spill all, this may GC
+    // Spill the values that are live after the call
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
     auto opnd1 = st.getWordOpnd(as, instr, 1, 32, X86Opnd.NONE, false, false);
@@ -3433,8 +3542,15 @@ void gen_new_clos(
         return closPtr.ptr;
     }
 
-    // TODO: make sure regs are properly spilled, this may trigger GC
-    // c arg regs may also overlap allocated regs, args should be on stack
+    // TODO: spill only values stored in C arg regs and C caller-save regs?
+    // Spill all values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto funArg = cast(IRFunPtr)instr.getArg(0);
     assert (funArg !is null);
@@ -3501,7 +3617,15 @@ void gen_get_time_ms(
         return retVal;
     }
 
-    // FIXME: don't push RAX
+    // Spill the values live after this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
+
     as.pushJITRegs();
 
     as.ptr(scrRegs[0], &op_get_time_ms);
@@ -3541,7 +3665,14 @@ void gen_get_ast_str(
         return strObj;
     }
 
-    // TODO: spill all for GC
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
@@ -3594,7 +3725,14 @@ void gen_get_ir_str(
         return strObj;
     }
 
-    // TODO: spill all for GC
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
@@ -3639,7 +3777,7 @@ void gen_get_asm_str(
             // Request an instance for the function entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(false, vm)),
+                new CodeGenState(vm, fun, false),
                 true
             );
 
@@ -3653,7 +3791,7 @@ void gen_get_asm_str(
             // Request an instance for the constructor entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun.getCtx(true, vm)),
+                new CodeGenState(vm, fun, true),
                 true
             );
 
@@ -3672,7 +3810,14 @@ void gen_get_asm_str(
         return strObj;
     }
 
-    // TODO: spill all for GC
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
@@ -3741,6 +3886,15 @@ void gen_load_lib(
 
     }
 
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
+
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.pushJITRegs();
@@ -3798,6 +3952,15 @@ void gen_close_lib(
 
         return null;
     }
+
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     as.pushJITRegs();
     as.ptr(cargRegs[0], st.callCtx);
@@ -3858,6 +4021,15 @@ void gen_get_sym(
 
         return null;
     }
+
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
@@ -3940,14 +4112,21 @@ void gen_call_ffi(
     // Argument types the call expects
     auto argTypes = types[1..$];
 
-    // outOpnd
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
     // The number of args actually passed
     auto argCount = cast(uint32_t)instr.numArgs - 2;
     assert(argTypes.length == argCount, "Incorrect arg count in call_ffi.");
 
-    as.pushJITRegs();
+    // Spill the values live before this instruction
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    // outOpnd
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Indices of arguments to be pushed on the stack
     size_t stackArgs[];
@@ -3965,7 +4144,8 @@ void gen_call_ffi(
                 idx + 2,
                 64,
                 scrRegs[0].opnd(64),
-                true
+                true,
+                false
             );
             as.movq(cfpArgRegs[fArgIdx++].opnd, argOpnd);
         }
@@ -3978,7 +4158,8 @@ void gen_call_ffi(
                 idx + 2,
                 argSize,
                 scrRegs[0].opnd(argSize),
-                 true
+                true,
+                false
             );
             auto cargOpnd = cargRegs[iArgIdx++].opnd(argSize);
             as.mov(cargOpnd, argOpnd);
@@ -3988,6 +4169,9 @@ void gen_call_ffi(
             stackArgs ~= idx;
         }
     }
+
+    // Save the JIT registers
+    as.pushJITRegs();
 
     // Make sure there is an even number of pushes
     if (stackArgs.length % 2 != 0)
@@ -4000,21 +4184,40 @@ void gen_call_ffi(
         auto argOpnd = st.getWordOpnd(
             as,
             instr,
-            idx + 2, 
-            argSize, 
+            idx + 2,
+            argSize,
             scrRegs[0].opnd(argSize),
-            true
+            true,
+            false
         );
         as.mov(scrRegs[0].opnd(argSize), argOpnd);
         as.push(scrRegs[0]);
     }
 
     // Pointer to function to call
-    auto funArg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false);
+    auto funArg = st.getWordOpnd(
+        as,
+        instr,
+        0,
+        64,
+        scrRegs[0].opnd(64),
+        false,
+        false
+    );
 
     // call the function
-    as.mov(X86Opnd(scrRegs[0]), funArg);
     as.call(scrRegs[0].opnd);
+
+    // Pop the stack arguments
+    foreach (idx; stackArgs)
+        as.pop(scrRegs[1]);
+
+    // Make sure there is an even number of pops
+    if (stackArgs.length % 2 != 0)
+        as.pop(scrRegs[1]);
+
+    // Restore the JIT registers
+    as.popJITRegs();
 
     // Send return value/type
     if (retType == "f64")
@@ -4032,16 +4235,6 @@ void gen_call_ffi(
         as.mov(outOpnd, X86Opnd(RAX));
         st.setOutType(as, instr, typeMap[retType]);
     }
-
-    // Pop the stack arguments
-    foreach (idx; stackArgs)
-        as.pop(scrRegs[1]);
-
-    // Make sure there is an even number of pops
-    if (stackArgs.length % 2 != 0)
-        as.pop(scrRegs[1]);
-
-    as.popJITRegs();
 
     auto branch = getBranchEdge(
         instr.getTarget(0),

@@ -1166,7 +1166,7 @@ class PhiNode : IRDstValue
 
         string output;
 
-        output ~= getName() ~ " = phi [";          
+        output ~= getName() ~ " = phi [";
 
         // For each incoming branch edge
         foreach (edgeIdx, edge; block.incoming)

@@ -196,13 +196,25 @@ void setMember(string fName)(CodeBlock as, X86Reg baseReg, X86Reg srcReg)
     as.mov(memberOpnd!fName(baseReg), X86Opnd(srcReg));
 }
 
+// Get a word stack operand
+auto wordStackOpnd(int32_t idx, size_t numBits = 64)
+{
+    return X86Opnd(numBits, wspReg, cast(int32_t)Word.sizeof * idx);
+}
+
+// Get a type stack operand
+auto typeStackOpnd(int32_t idx)
+{
+    return X86Opnd(8, tspReg, cast(int32_t)Type.sizeof * idx);
+}
+
 /// Read from the word stack
 void getWord(CodeBlock as, X86Reg dstReg, int32_t idx)
 {
     if (dstReg.type is X86Reg.GP)
-        as.mov(X86Opnd(dstReg), X86Opnd(dstReg.size, wspReg, 8 * idx));
+        as.mov(X86Opnd(dstReg), wordStackOpnd(idx, dstReg.size));
     else if (dstReg.type is X86Reg.XMM)
-        as.movsd(X86Opnd(dstReg), X86Opnd(64, wspReg, 8 * idx));
+        as.movsd(X86Opnd(dstReg), wordStackOpnd(idx, 64));
     else
         assert (false, "unsupported register type");
 }
@@ -210,13 +222,13 @@ void getWord(CodeBlock as, X86Reg dstReg, int32_t idx)
 /// Read from the type stack
 void getType(CodeBlock as, X86Reg dstReg, int32_t idx)
 {
-    as.mov(X86Opnd(dstReg), X86Opnd(8, tspReg, idx));
+    as.mov(X86Opnd(dstReg), typeStackOpnd(idx));
 }
 
 /// Write to the word stack
 void setWord(CodeBlock as, int32_t idx, X86Opnd src)
 {
-    auto memOpnd = X86Opnd(64, wspReg, 8 * idx);
+    auto memOpnd = wordStackOpnd(idx);
 
     if (src.isGPR)
         as.mov(memOpnd, src);
@@ -231,19 +243,19 @@ void setWord(CodeBlock as, int32_t idx, X86Opnd src)
 // Write a constant to the word type
 void setWord(CodeBlock as, int32_t idx, int32_t imm)
 {
-    as.mov(X86Opnd(64, wspReg, 8 * idx), X86Opnd(imm));
+    as.mov(wordStackOpnd(idx), X86Opnd(imm));
 }
 
 /// Write to the type stack
 void setType(CodeBlock as, int32_t idx, X86Opnd srcOpnd)
 {
-    as.mov(X86Opnd(8, tspReg, idx), srcOpnd);
+    as.mov(typeStackOpnd(idx), srcOpnd);
 }
 
 /// Write a constant to the type stack
 void setType(CodeBlock as, int32_t idx, Type type)
 {
-    as.mov(X86Opnd(8, tspReg, idx), X86Opnd(type));
+    as.mov(typeStackOpnd(idx), X86Opnd(type));
 }
 
 /// Store/save the JIT state register

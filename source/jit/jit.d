@@ -129,12 +129,12 @@ struct ValState
     ));
 
     /// Stack value constructor
-    static ValState stack(StackIdx idx)
+    static ValState stack()
     {
         ValState val;
         val.kind = Kind.STACK;
         val.knownType = false;
-        val.val = cast(int)idx;
+        val.val = 0xFFFF;
         return val;
     }
 
@@ -142,7 +142,7 @@ struct ValState
     static ValState reg(X86Reg reg)
     {
         ValState val;
-        val.kind = Kind.STACK;
+        val.kind = Kind.REG;
         val.knownType = false;
         val.val = reg.regNo;
         return val;
@@ -152,20 +152,14 @@ struct ValState
     bool isReg() const { return kind is Kind.REG; }
     bool isConst() const { return kind is Kind.CONST; }
 
-    /// Get the stack slot index for this value
-    StackIdx stackIdx() const
-    {
-        assert (isStack);
-        return cast(StackIdx)val;
-    }
-
     /// Get a word operand for this value
-    X86Opnd getWordOpnd(size_t numBits) const
+    X86Opnd getWordOpnd(size_t numBits, StackIdx stackIdx = StackIdx.max) const
     {
         switch (kind)
         {
             case Kind.STACK:
-            return X86Opnd(numBits, wspReg, cast(int32_t)(Word.sizeof * stackIdx));
+            assert (stackIdx !is StackIdx.max);
+            return wordStackOpnd(stackIdx, numBits);
 
             case Kind.REG:
             return X86Reg(X86Reg.GP, val, numBits).opnd;
@@ -177,12 +171,13 @@ struct ValState
     }
 
     /// Get a type operand for this value
-    X86Opnd getTypeOpnd() const
+    X86Opnd getTypeOpnd(StackIdx stackIdx = StackIdx.max) const
     {
         if (knownType)
             return X86Opnd(type);
 
-        return X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * stackIdx));
+        assert (stackIdx !is StackIdx.max);
+        return typeStackOpnd(stackIdx);
     }
 
     /// Set the type for this value, creates a new value
@@ -206,11 +201,11 @@ struct ValState
     }
 
     /// Move this value to the stack
-    ValState toStack(StackIdx idx) const
+    ValState toStack() const
     {
         ValState val = this;
         val.kind = Kind.STACK;
-        val.val = cast(int)idx;
+        val.val = 0xFFFF;
         return val;
     }
 
@@ -218,7 +213,7 @@ struct ValState
     ValState toReg(X86Reg reg) const
     {
         ValState val = this;
-        val.kind = Kind.STACK;
+        val.kind = Kind.REG;
         val.val = reg.regNo;
         return val;
     }
@@ -240,23 +235,115 @@ class CodeGenState
     /// If a register is free, its value is null
     private IRDstValue[] gpRegMap;
 
-    /// Constructor for a default/entry code generation state
-    this(CallCtx callCtx)
+    /**
+    Constructor for a function entry code generation state
+    */
+    this(VM vm, IRFunction fun, bool ctorCall)
     {
-        this.callCtx = callCtx;
+        this.callCtx = fun.getCtx(ctorCall, vm);
 
         // All registers are initially free
         gpRegMap.length = 16;
         for (size_t i = 0; i < gpRegMap.length; ++i)
             gpRegMap[i] = null;
+
+        mapToStack(fun.raVal);
+        mapToStack(fun.closVal);
+        mapToStack(fun.thisVal);
+        mapToStack(fun.argcVal);
+
+        foreach (ident, param; fun.paramMap)
+            mapToStack(param);
     }
 
-    /// Copy constructor
+    /**
+    Copy constructor
+    */
     this(CodeGenState that)
     {
         this.callCtx = that.callCtx;
         this.valMap = that.valMap.dup;
         this.gpRegMap = that.gpRegMap.dup;
+    }
+
+    /**
+    Construct the successor state for a given predecessor state and branch edge
+    */
+    this(CodeGenState predState, BranchEdge branch)
+    {
+        // Call the copy constructor
+        this(predState);
+
+        auto liveInfo = callCtx.fun.liveInfo;
+
+        // Map each successor phi node on the stack or in its register
+        // in a way that best matches the predecessor state
+        for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
+        {
+            if (branch.branch is null || phi.hasNoUses)
+                continue;
+
+            // Get the phi argument
+            auto arg = branch.getPhiArg(phi);
+            assert (
+                arg !is null, 
+                "missing phi argument for:\n" ~
+                phi.toString() ~
+                "\nin block:\n" ~
+                phi.block.toString()
+            );
+
+            // Free the register currently used by the phi node (if any)
+            auto oldPhiState = getState(phi);
+            if (oldPhiState.isReg)
+            {
+                auto regNo = oldPhiState.val;
+                gpRegMap[regNo] = null;
+            }
+
+            // Get the default register for the phi node
+            auto phiReg = getDefReg(phi);
+
+            // Get the value currently mapped to this register
+            auto regVal = gpRegMap[phiReg.regNo];
+
+            ValState phiState;
+
+            // If the phi node's register is free
+            if (regVal is null || liveInfo.liveAfterPhi(regVal, phi.block) is false)
+            {
+                phiState = ValState.reg(phiReg);
+                gpRegMap[phiReg.regNo] = phi;
+            }
+            else
+            {
+                // Map the phi node to its stack location
+                phiState = ValState.stack();
+            }
+
+            // If the phi argument is a dst value
+            if (auto dstArg = cast(IRDstValue)arg)
+            {
+                // Get the state for the phi argument value
+                auto argState = predState.getState(dstArg);
+                if (argState.knownType)
+                    phiState = phiState.setType(argState.type);
+            }
+
+            // Otherwise, if the phi argument is an IR constant
+            else if (auto cstArg = cast(IRConst)arg)
+            {
+                // Set the phi type to the constant's type
+                phiState = phiState.setType(cstArg.type);
+            }
+
+            // Set the phi node's new state
+            valMap[phi] = phiState;
+        }
+
+        // Remove information about values dead after
+        // the phi nodes in the successor block
+        removeDead(liveInfo, branch.target);
     }
 
     /**
@@ -330,10 +417,6 @@ class CodeGenState
                 // If the known types do not match, mismatch
                 if (predSt.type != succSt.type)
                     return size_t.max;
-
-                // If the type sync flags do not match, add a penalty
-                //if ((predTS & TF_SYNC) !is (succTS & TF_SYNC))
-                //    diff += 1;
             }
             else 
             {
@@ -370,37 +453,43 @@ class CodeGenState
     }
 
     /**
-    Allocate a register for a value
+    Get the default register for a given value
     */
-    X86Opnd allocRec(
-        CodeBlock as,
-        IRDstValue value,
-        IRInstr instr,
-        LiveInfo liveInfo
-    )
+    X86Reg getDefReg(IRDstValue value)
     {
-        assert (value !is null);
+        assert (value.outSlot !is NULL_STACK);
 
-        // TODO: check if value is already reg mapped?
-        // may want to do this in getWordOpnd,
-        // in that case, only assert here that the value isn't reg mapped
+        auto regIdx = value.outSlot % allocRegs.length;
 
-        // Map the value to a specific register
-        X86Opnd mapReg(X86Reg reg)
-        {
-            // Map the register to the new value
-            gpRegMap[reg.regNo] = value;
+        auto reg = allocRegs[regIdx];
 
-            // Map the value to the register
-            valMap[value] = getState(value).toReg(reg);
+        return reg;
+    }
 
-            // Load the value into the register
-            // note: all 64 bits of the value, not just the requested bits
-            as.mov(reg.opnd(64), getWordOpnd(value, 64));
+    /**
+    Map a register to a value
+    */
+    X86Reg mapReg(X86Reg reg, IRDstValue value, size_t numBits)
+    {
+        assert (getState(value).isReg is false);
+        assert (gpRegMap[reg.regNo] is null);
 
-            // Return the operand for this register
-            return reg.opnd(64);
-        }
+        // Map the register to the new value
+        gpRegMap[reg.regNo] = value;
+
+        // Map the value to the register
+        valMap[value] = getState(value).toReg(reg);
+
+        // Return the operand for this register
+        return reg.reg(numBits);
+    }
+
+    /**
+    Find a free register or spill one
+    */
+    X86Reg freeReg(CodeBlock as, IRInstr instr)
+    {
+        auto liveInfo = callCtx.fun.liveInfo;
 
         // For each allocatable general-purpose register
         foreach (reg; allocRegs)
@@ -408,20 +497,19 @@ class CodeGenState
             auto regVal = gpRegMap[reg.regNo];
 
             // If nothing is mapped to this register
-            if (value is null)
+            if (regVal is null)
             {
-                // Map the value to this register
-                return mapReg(reg);
+                return reg;
             }
 
             // If the value mapped is not live
-            if (liveInfo.liveAfter(regVal, instr) == false)
+            if (liveInfo.liveBefore(regVal, instr) == false)
             {
                 // Remove the mapped value from the value map
                 valMap.remove(regVal);
+                gpRegMap[reg.regNo] = null;
 
-                // Map the value to this register
-                return mapReg(reg);
+                return reg;
             }
         }
 
@@ -441,13 +529,67 @@ class CodeGenState
             break;
         }
 
+        // Spill the chosen register
         assert (chosenReg !is null);
-
-        // Free the contents of the chosen register
         spillReg(as, chosenReg.regNo);
 
+        return *chosenReg;
+    }
+
+    /**
+    Allocate a register for a value
+    */
+    X86Reg allocReg(
+        CodeBlock as,
+        IRInstr instr,
+        IRDstValue value,
+        size_t numBits
+    )
+    {
+        assert (value !is null);
+
+        // Find or free a register
+        auto reg = freeReg(as, instr);
+
         // Map the value to the chosen register
-        return mapReg(*chosenReg);
+        return mapReg(reg, value, numBits);
+    }
+
+    /**
+    Get the operand for an instruction's output
+    */
+    X86Opnd getOutOpnd(
+        CodeBlock as,
+        IRInstr instr,
+        size_t numBits
+    )
+    {
+        // TODO: option to allow allocating to arg reg?
+        // actually, for add, we *want to* allocate to arg reg when possible
+
+        // TODO: start with biasing towards dst phi reg
+
+        assert (instr !is null);
+
+        // Attempt to allocate a register for the output value
+        auto reg = allocReg(
+            as,
+            instr,
+            instr,
+            numBits
+        );
+
+        //writeln("outOpnd=", reg);
+
+        return reg.opnd;
+    }
+
+    /**
+    Map a value to its stack location
+    */
+    void mapToStack(IRDstValue value)
+    {
+        valMap[value] = ValState.stack();
     }
 
     /**
@@ -467,12 +609,14 @@ class CodeGenState
 
         assert (
             state.isReg,
-            "value not mapped to reg to be spilled"
+            "value not mapped to reg in spillReg:\n" ~
+            regVal.toString
         );
 
-        auto mem = X86Opnd(64, wspReg, 8 * regVal.outSlot);
+        auto mem = wordStackOpnd(regVal.outSlot);
         auto reg = X86Reg(X86Reg.GP, regNo, 64);
 
+        //as.printStr("spilling " ~ reg.toString);
         //writefln("spilling: %s (%s)", regVal.toString(), reg);
 
         // Spill the value currently in the register
@@ -484,12 +628,11 @@ class CodeGenState
         {
             // Write the type tag to the type stack
             //as.comment("Spilling type for " ~ regVal.toString());
-            auto memOpnd = X86Opnd(8, tspReg, regVal.outSlot);
-            as.mov(memOpnd, X86Opnd(state.type));
+            as.mov(typeStackOpnd(regVal.outSlot), X86Opnd(state.type));
         }
 
         // Mark the value as being on the stack
-        valMap[regVal] = state.toStack(regVal.outSlot);
+        valMap[regVal] = state.toStack();
 
         // Mark the register as free
         gpRegMap[regNo] = null;
@@ -511,45 +654,9 @@ class CodeGenState
                 continue;
 
             // If the value should be spilled, spill it
-            if (spillTest is null || spillTest(value) is true)
+            if (spillTest(value) is true)
                 spillReg(as, regNo);
         }
-
-        /*
-        //writefln("spilling consts");
-
-        // For each value
-        foreach (value, allocSt; allocState)
-        {
-            // If this is a known constant
-            if (allocSt & RA_CONST)
-            {
-                // If the value should be spilled
-                if (spillTest is null || spillTest(value) == true)
-                {
-                    // Spill the constant value to the stack
-                    as.comment("Spilling constant value of " ~ value.toString());
-
-                    auto word = getWord(value);
-                    as.setWord(value.outSlot, word.int32Val);
-
-                    auto typeSt = typeState.get(value, 0);
-                    assert (typeSt & TF_KNOWN);
-
-                    // If the type flags are not in sync
-                    if (!(typeSt & TF_SYNC))
-                    {
-                        // Write the type tag to the type stack
-                        as.comment("Spilling type for " ~ value.toString());
-                        auto type = cast(Type)(typeSt & TF_TYPE_MASK);
-                        as.setType(value.outSlot, type);
-                    }
-                }
-            }
-        }
-
-        //writefln("done spilling consts");
-        */
     }
 
     /**
@@ -583,7 +690,7 @@ class CodeGenState
         // Get the state for this value
         auto state = getState(dstVal);
 
-        return state.getWordOpnd(numBits);
+        return state.getWordOpnd(numBits, dstVal.outSlot);
     }
 
     /**
@@ -612,58 +719,22 @@ class CodeGenState
 
         // Get the IR value for the argument
         auto argVal = instr.getArg(argIdx);
-        auto dstVal = cast(IRDstValue)argVal;
+        auto argDst = cast(IRDstValue)argVal;
 
-        /*
-        /// Allocate a register for the argument
-        X86Opnd allocReg()
-        {
-            assert (
-                dstVal !is null,
-                "cannot allocate register for constant IR value: " ~
-                argVal.toString()
-            );
-
-            // Get the assigned register for the argument
-            auto reg = ctx.regMapping[dstVal];
-
-            // Get the value mapped to this register
-            auto regVal = gpRegMap[reg.regNo];
-
-            // If the register is mapped to a value
-            if (regVal !is null)
-            {
-                // If the mapped slot belongs to another instruction argument
-                for (size_t otherIdx = 0; otherIdx < instr.numArgs; ++otherIdx)
-                {
-                    if (otherIdx != argIdx && regVal is instr.getArg(otherIdx))
-                    {
-                        // Map the argument to its stack location
-                        allocState[dstVal] = RA_STACK;
-                        return new X86Mem(numBits, wspReg, 8 * dstVal.outSlot);
-                    }
-                }
-
-                // If the currently mapped value is live, spill it
-                if (ctx.liveInfo.liveAfter(regVal, instr))
-                    spillReg(as, reg.regNo);
-                else
-                    allocState.remove(regVal);
-            }
-
-            // Load the value into the register 
-            // note: all 64 bits of it, not just the requested bits
-            as.instr(MOV, reg, getWordOpnd(argVal, 64));
-
-            // Map the argument to the register
-            allocState[dstVal] = RA_GPREG | reg.regNo;
-            gpRegMap[reg.regNo] = dstVal;
-            return new X86Reg(X86Reg.GP, reg.regNo, numBits);
-        }
-        */
+        // Ensure that the value was previously defined and is live
+        assert (
+            argDst is null || argDst in valMap,
+            argDst.toString
+        );
 
         // Get the current operand for the argument value
         auto curOpnd = getWordOpnd(argVal, numBits);
+
+        /*
+        as.printStr("getWordOpnd for " ~ argVal.toString);
+        as.printStr("curOpnd=" ~ curOpnd.toString);
+        as.printUint(curOpnd);
+        */
 
         // If the argument is already in a register
         if (curOpnd.isReg)
@@ -712,12 +783,23 @@ class CodeGenState
             // TODO: only allocate a register if more than one use?
             // should benchmark this idea
 
-            // TODO
             // Try to allocate a register for the operand
-            auto opnd = /*loadVal? allocReg():*/curOpnd;
+            assert (argDst !is null);
+            assert (getState(argDst).isStack);
+            auto opnd = loadVal? allocReg(as, instr, argDst, numBits).opnd:curOpnd;
+
+            // If a register was successfully allocated
+            if (opnd.isReg && curOpnd.isMem)
+            {
+                // Load the value into the register
+                // Note: we load all 64 bits, not just the requested bits
+                as.mov(opnd.reg.opnd(64), wordStackOpnd(argDst.outSlot));
+
+                assert (getState(argDst).isReg);
+            }
 
             // If the register allocation failed but a temp reg was supplied
-            if (opnd.isMem && !tmpReg.isNone)
+            else if (opnd.isMem && !tmpReg.isNone)
             {
                 if (tmpReg.isXMM)
                     as.movsd(tmpReg, curOpnd);
@@ -750,7 +832,7 @@ class CodeGenState
         }
 
         // Get the type operand for this value
-        return getState(dstVal).getTypeOpnd();
+        return getState(dstVal).getTypeOpnd(dstVal.outSlot);
     }
 
     /**
@@ -790,55 +872,6 @@ class CodeGenState
         return curOpnd;
     }
 
-    /// Get the operand for an instruction's output
-    X86Opnd getOutOpnd(
-        CodeBlock as,
-        IRInstr instr,
-        size_t numBits
-    )
-    {
-        assert (instr !is null);
-
-        auto opnd = getWordOpnd(instr, numBits);
-        assert (opnd.isMem);
-        return opnd;
-
-        // TODO
-        /*
-        // Get the assigned register for this instruction
-        auto reg = ctx.regMapping[instr];
-
-        // Get the value mapped to this register
-        auto regVal = gpRegMap[reg.regNo];
-
-        // If another slot is using the register
-        if (regVal !is null && regVal !is instr)
-        {
-            // If an instruction argument is using this slot
-            for (size_t argIdx = 0; argIdx < instr.numArgs; ++argIdx)
-            {
-                if (regVal is instr.getArg(argIdx))
-                {
-                    // Map the output slot to its stack location
-                    allocState[instr] = RA_STACK;
-                    return new X86Mem(numBits, wspReg, 8 * instr.outSlot);
-                }
-            }
-
-            // If the value is live, spill it
-            if (ctx.liveInfo.liveAfter(regVal, instr) is true)
-                spillReg(as, reg.regNo);
-            else
-                allocState.remove(regVal);
-        }
-
-        // Map the instruction to the register
-        allocState[instr] = RA_GPREG | reg.regNo;
-        gpRegMap[reg.regNo] = instr;
-        return new X86Reg(X86Reg.GP, reg.regNo, numBits);
-        */
-    }
-
     /// Set the output type value for an instruction's output
     void setOutType(CodeBlock as, IRInstr instr, Type type)
     {
@@ -847,11 +880,20 @@ class CodeGenState
             "null instruction"
         );
 
-        // Set a known type for this value
-        valMap[instr] = getState(instr).setType(type);
+        // getOutOpnd should be called before setOutType
+        assert (instr in valMap);
 
-        // Write the type value to the type stack
-        as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(type));
+        auto state = getState(instr);
+
+        // Set a known type for this value
+        valMap[instr] = state.setType(type);
+
+        // If the value is on the stack
+        if (state.isStack)
+        {
+            // Write the type value to the type stack
+            as.mov(typeStackOpnd(instr.outSlot), X86Opnd(type));
+        }
     }
 
     /// Write the output type for an instruction's output to the type stack
@@ -862,11 +904,23 @@ class CodeGenState
             "null instruction"
         );
 
+        // getOutOpnd should be called before setOutType
+        assert (instr in valMap);
+
+        auto state = getState(instr);
+
         // Clear the type information for the value
-        valMap[instr] = getState(instr).clearType();
+        valMap[instr] = state.clearType();
 
         // Write the type to the type stack
-        as.mov(X86Opnd(8, tspReg, instr.outSlot), X86Opnd(typeReg));
+        as.mov(typeStackOpnd(instr.outSlot), X86Opnd(typeReg));
+
+        // If the value is in a register
+        if (state.isReg)
+        {
+            // Write a zero to the word stack to avoid false pointers
+            as.mov(wordStackOpnd(instr.outSlot), X86Opnd(0));
+        }
     }
 
     /// Get the state for a given value
@@ -876,18 +930,8 @@ class CodeGenState
 
         return valMap.get(
             val,
-            ValState.stack(val.outSlot)
+            ValState.stack()
         );
-    }
-
-    /// Map a value to a specific stack location
-    void mapToStack(IRDstValue val, StackIdx slotIdx)
-    {
-        valMap[val] = ValState.stack(slotIdx);
-
-        // TODO: gpRegMap?
-
-        // TODO: localMap?
     }
 }
 
@@ -1472,7 +1516,6 @@ BlockVersion getBlockVersion(
 
         // Strip the state of all known types and constants
         auto genState = new CodeGenState(state);
-        // TODO: clear known constants
         foreach (val, valSt; genState.valMap)
             if (valSt.knownType)
                 genState.valMap[val] = valSt.clearType();
@@ -1561,106 +1604,10 @@ BranchCode getBranchEdge(
 }
 
 /**
-Generate the successor state for a given predecessor state and branch edge
-*/
-CodeGenState getSuccState(
-    CodeGenState predState,
-    BranchEdge branch
-)
-{
-    auto callCtx = predState.callCtx;
-    auto liveInfo = callCtx.fun.liveInfo;
-
-    // Copy the predecessor state
-    auto succState = new CodeGenState(predState);
-
-    // Map each successor phi node on the stack or in its register
-    // in a way that best matches the predecessor state
-    for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
-    {
-        if (branch.branch is null || phi.hasNoUses)
-            continue;
-
-        // Get the phi argument
-        auto arg = branch.getPhiArg(phi);
-        assert (
-            arg !is null, 
-            "missing phi argument for:\n" ~
-            phi.toString() ~
-            "\nin block:\n" ~
-            phi.block.toString()
-        );
-
-        if (auto dstArg = cast(IRDstValue)arg)
-        {
-            auto phiState = ValState.stack(phi.outSlot);
-
-            // Get the state for the phi argument value
-            auto argState = predState.getState(dstArg);
-            if (argState.knownType)
-                phiState = phiState.setType(argState.type);
-
-            succState.valMap[phi] = phiState;
-        }
-        else
-        {
-            // Map the phi node to its stack location
-            succState.valMap[phi] = ValState.stack(phi.outSlot);
-        }
-
-        /*
-        // Get the register the phi is mapped to
-        auto phiReg = regMapping[phi];
-        assert (phiReg !is null);
-
-        // If value mapped to reg isn't live, use reg
-        // Note: we are querying succState here because the
-        // register might be used by a phi node we just mapped
-        auto regVal = succState.gpRegMap[phiReg.regNo];
-
-        // Map the phi node to its register or stack location
-        TFState allocSt;
-        if (regVal is null || regVal is phi)
-        {
-            allocSt = RA_GPREG | phiReg.regNo;
-            succState.gpRegMap[phiReg.regNo] = phi;
-        }
-        else
-        {
-            allocSt = RA_STACK;
-        }
-        succState.allocState[phi] = allocSt;
-        */
-
-        /*
-        // If the type of the phi argument is known
-        if (succState.typeKnown(arg))
-        {
-            auto type = succState.getType(arg);
-            auto onStack = allocSt & RA_STACK;
-
-            // Mark the type as known
-            succState.typeState[phi] = TF_KNOWN | (onStack? TF_SYNC:0) | type;
-        }
-        else
-        {
-            // The phi type is unknown
-            succState.typeState.remove(phi);
-        }
-        */
-    }
-
-    // Remove information about values dead after
-    // the phi nodes in the successor block
-    succState.removeDead(liveInfo, branch.target);
-
-    return succState;
-}
-
-/**
 Generate the moves to transition from a predecessor to a successor state
 */
-Move[] genBranchMoves(
+void genBranchMoves(
+    CodeBlock as,
     CodeGenState predState,
     CodeGenState succState,
     BranchEdge branch
@@ -1683,12 +1630,13 @@ Move[] genBranchMoves(
         assert (succVal !is null);
         assert (predVal !is null);
 
-        /*
-        if (succPhi)
-            as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
-        else
-            as.comment("move " ~ succVal.getName);
-        */
+        if (opts.jit_genasm)
+        {
+            if (succPhi)
+                as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
+            else
+                as.comment("move " ~ succVal.getName);
+        }
 
         // Test if the successor value is a parameter
         // We don't need to move parameter values to the stack
@@ -1698,72 +1646,56 @@ Move[] genBranchMoves(
         X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
         X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
 
-        if (srcWordOpnd != dstWordOpnd && !(succParam && dstWordOpnd.isMem))
+        if (srcWordOpnd != dstWordOpnd &&
+            !dstWordOpnd.isImm &&
+            !(succParam && dstWordOpnd.isMem))
             moveList ~= Move(dstWordOpnd, srcWordOpnd);
 
-        /*
         // Get the source and destination operands for the phi type
         X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
         X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
-        */
 
-        // FIXME: for now, no reg alloc or delated writes,
-        // always generate the type moves
-        auto srcTypeOpnd = predState.getTypeOpnd(predVal);
-        auto dstValState = succState.getState(succVal);
-        X86Opnd dstTypeOpnd = X86Opnd(8, tspReg, cast(int32_t)(Type.sizeof * dstValState.stackIdx));
-
-        if (srcTypeOpnd != dstTypeOpnd && !(succParam && dstTypeOpnd.isMem))
+        if (srcTypeOpnd != dstTypeOpnd &&
+            !dstTypeOpnd.isImm &&
+            !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
-
-        // TODO: handle delayed writes
-
-        /*
-        // Get the predecessor and successor type states
-        auto predTS = predState.typeState.get(cast(IRDstValue)predVal, 0);
-        auto succTS = succState.typeState.get(succVal, 0);
-
-        // Get the predecessor allocation state
-        auto predAS = predState.allocState.get(cast(IRDstValue)predVal, 0);
 
         // If the successor value is a phi node
         if (succPhi)
         {
-            // If the phi is on the stack and the type is known,
-            // write the type to the stack to keep it in sync
-            if ((succAS & RA_STACK) && (succTS & TF_KNOWN))
+            // Src to reg move with unknown dst type
+            if (srcTypeOpnd != dstTypeOpnd && dstWordOpnd.isReg && dstTypeOpnd.isMem)
             {
-                assert (succTS & TF_SYNC);
-                moveList ~= Move(new X86Mem(8, tspReg, succPhi.outSlot), srcTypeOpnd);
+                moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
             }
 
-            // If the phi is in a register and the type is unknown,
-            // write 0 on the stack to avoid invalid references
-            if (!(succAS & RA_STACK) && !(succTS & TF_KNOWN))
+            // Src to stack move with known dst type
+            if (srcWordOpnd != dstWordOpnd && dstWordOpnd.isMem && dstTypeOpnd.isImm)
             {
-                moveList ~= Move(new X86Mem(64, wspReg, 8 * succPhi.outSlot), new X86Imm(0));
+                moveList ~= Move(typeStackOpnd(succPhi.outSlot), srcTypeOpnd);
             }
         }
         else
         {
-            // If the value wasn't before in a register, now is, and the type is unknown
-            // write 0 on the stack to avoid invalid references
-            if ((predTS & TF_KNOWN) && !(predTS & TF_SYNC) && (succAS & RA_GPREG) && !(succTS & TF_KNOWN))
+            // Src to reg move with unknown dst type
+            if (srcTypeOpnd.isImm && dstWordOpnd.isReg && dstTypeOpnd.isMem)
             {
-                moveList ~= Move(new X86Mem(64, wspReg, 8 * succVal.outSlot), new X86Imm(0));
+                moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
             }
 
-            // If the type was not in sync in the predecessor and is now
-            // in sync in the successor, write the type to the type stack
-            if (!(predTS & TF_SYNC) && (succTS & TF_SYNC))
+            // Register to stack move with known dst type
+            if (srcWordOpnd.isReg && dstWordOpnd.isMem && dstTypeOpnd.isImm)
             {
-                moveList ~= Move(new X86Mem(8, tspReg, succVal.outSlot), srcTypeOpnd);
+                moveList ~= Move(typeStackOpnd(succVal.outSlot), srcTypeOpnd);
             }
         }
-        */
     }
 
-    return moveList;
+    //foreach (move; moveList)
+    //    as.printStr(format("move from %s to %s", move.src, move.dst));
+
+    // Execute the moves
+    execMoves(as, moveList, scrRegs[0], scrRegs[1]);
 }
 
 /// Return address entry
@@ -1938,15 +1870,36 @@ void compile(VM vm, CallCtx callCtx)
             // Store the code start index
             branch.markStart(as, vm);
 
+            /*
+            if (opts.jit_trace_instrs)
+            {
+                as.printStr("branch code to " ~ branch.branch.target.getName);
+                as.printStr("  fun=" ~ branch.branch.target.fun.getName);
+            }
+            */
+
+            //as.printStr("branch code to " ~ branch.branch.target.getName);
+
             // Generate the prelude code, if any
             if (branch.prelGenFn)
                 branch.prelGenFn(as, vm);
 
             // Generate the successor state for this branch
-            auto succState = getSuccState(
-                branch.predState, 
+            auto succState = new CodeGenState(
+                branch.predState,
                 branch.branch
             );
+
+            /*
+            if (opts.jit_trace_instrs)
+            {
+                if (succState.gpRegMap[RCX.regNo] is null ||
+                    succState.gpRegMap[RCX.regNo].outSlot !is 15)
+                    as.printStr("##### SUCC: NOT MAPPED TO 15 #####");
+                else
+                    as.printStr("##### SUCC: IS MAPPED TO 15!!! ##### " ~ branch.branch.target.getName);
+            }
+            */
 
             // Get a version of the successor matching the incoming state
             branch.target = getBlockVersion(
@@ -1956,7 +1909,8 @@ void compile(VM vm, CallCtx callCtx)
             );
 
             // Generate the moves to transition to the successor state
-            auto moveList = genBranchMoves(
+            genBranchMoves(
+                as,
                 branch.predState,
                 branch.target.state,
                 branch.branch
@@ -1964,9 +1918,6 @@ void compile(VM vm, CallCtx callCtx)
 
             // The predecessor state is no longer needed
             branch.predState = null;
-
-            // Execute the moves
-            execMoves(as, moveList, scrRegs[0], scrRegs[1]);
 
             // If the target was already compiled before
             if (branch.target.started)
@@ -1980,10 +1931,7 @@ void compile(VM vm, CallCtx callCtx)
 
             if (opts.jit_dumpinfo)
             {
-                writeln(
-                    "branch code length: ", branch.length, 
-                    " (", moveList.length, " moves)"
-                );
+                writeln("branch code length: ", branch.length);
                 writeln();
             }
         }
@@ -1995,6 +1943,9 @@ void compile(VM vm, CallCtx callCtx)
 
             if (opts.jit_genasm)
                 as.comment("Cont stub for " ~ stub.contBranch.getName);
+
+            if (opts.jit_trace_instrs)
+                as.printStr("Cont stub for " ~ stub.contBranch.getName);
 
             as.pushJITRegs();
 
@@ -2017,7 +1968,7 @@ void compile(VM vm, CallCtx callCtx)
             as.popJITRegs();
 
             // Jump to the compiled continuation
-            as.jmp(X86Opnd(RAX));
+            as.jmp(X86Opnd(cretReg));
 
             stub.markEnd(as, vm);
 
@@ -2167,7 +2118,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Create a version instance object for the function entry
     auto entryInst = new BlockVersion(
         fun.entryBlock,
-        new CodeGenState(fun.getCtx(false, vm))
+        new CodeGenState(vm, fun, false)
     );
 
     // Mark the code start index
@@ -2241,7 +2192,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    //writeln("entering compileEntry");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("entering compileEntry");
+    }
 
     auto vm = stub.vm;
     auto ctorCall = stub.ctorCall;
@@ -2249,7 +2203,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     // Get the closure and IRFunction pointers
     auto argCount = vm.getWord(3).uint32Val;
     auto closPtr = vm.getWord(1).ptrVal;
-    assert (closPtr !is null);
+    assert (
+        closPtr !is null,
+        "closure pointer is null in compileEntry"
+    );
     auto fun = getFunPtr(closPtr);
     assert (
         fun !is null,
@@ -2287,14 +2244,14 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(fun.getCtx(false, vm)),
+        new CodeGenState(vm, fun, false),
         true
     );
 
     // Request an instance for the function entry block
     auto ctorInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(fun.getCtx(true, vm)),
+        new CodeGenState(vm, fun, true),
         true
     );
 
@@ -2327,7 +2284,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     fun.ctorCode = ctorInst.getCodePtr(vm.execHeap);
     assert (fun.entryCode !is fun.ctorCode);
 
-    //writeln("leaving compileEntry");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("leaving compileEntry");
+    }
 
     // Stop recording compilation time, resume recording execution time
     stats.compTimeStop();
@@ -2345,9 +2305,12 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    //writeln("entering compileBranch");
-    //writeln("    blockIdx=", blockIdx);
-    //writeln("    targetIdx=", targetIdx);
+    if (opts.jit_dumpinfo)
+    {
+        writeln("entering compileBranch");
+        writeln("blockIdx=", blockIdx);
+        writeln("targetIdx=", targetIdx);
+    }
 
     // Get the block from which the stub hit originated
     assert (blockIdx < vm.fragList.length, "invalid block idx");
@@ -2359,6 +2322,15 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     auto branchCode = cast(BranchCode)srcBlock.targets[targetIdx];
     assert (branchCode !is null);
     assert (branchCode.started is false);
+
+    if (opts.jit_dumpinfo)
+    {
+        writefln(
+            "branch from %s to %s", 
+            srcBlock.block.getName, 
+            branchCode.branch.target.getName
+        );
+    }
 
     auto predState = branchCode.predState;
     auto liveInfo = predState.callCtx.fun.liveInfo;
@@ -2374,8 +2346,11 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
             continue;
 
         // If the value is not live, skip it
-        if (liveInfo.liveAtEntry(regVal, branchCode.target.block) is false)
+        if (liveInfo.liveAtEntry(regVal, branchCode.branch.target) is false)
             continue;
+
+        //writefln("spilling reg %s val %s", reg, regVal);
+        //writefln("  val=%s", vm.regSave[regIdx].uint64Val);
 
         // Get the state for this value
         auto state = predState.getState(regVal);
@@ -2391,6 +2366,8 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
         // If the type is known, store it
         if (state.knownType)
         {
+            //writeln("spilling known type");
+
             // Write the type tag to the type stack
             vm.tsp[regVal.outSlot] = state.type;
         }
@@ -2405,11 +2382,34 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     // Compile fragments and patch references
     vm.compile(srcBlock.state.callCtx);
 
+    // For each allocatable register
+    foreach (regIdx, reg; allocRegs)
+    {
+        // Get the value mapped to this register
+        auto regVal = predState.gpRegMap[reg.regNo];
+
+        // If nothing is mapped to this register, skip it
+        if (regVal is null)
+            continue;
+
+        // If the value is not live, skip it
+        if (liveInfo.liveAtEntry(regVal, branchCode.branch.target) is false)
+            continue;
+
+        // Restore the register value from its stack location
+        // Note: this is important because a GC may have occurred
+        vm.regSave[regIdx] = vm.wsp[regVal.outSlot];
+    }
+
     // Stop recording compilation time, resume recording execution time
     stats.compTimeStop();
     stats.execTimeStart();
 
-    //writeln("leaving compileBranch");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("leaving compileBranch");
+        writeln();
+    }
 
     // Return a pointer to the compiled branch code
     return branchCode.getCodePtr(vm.execHeap);
@@ -2424,7 +2424,10 @@ extern (C) CodePtr compileCont(ContStub stub)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    //writeln("entering compileCont");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("entering compileCont");
+    }
 
     auto callVer = stub.callVer;
     auto contBranch = stub.contBranch;
@@ -2459,7 +2462,10 @@ extern (C) CodePtr compileCont(ContStub stub)
     stats.compTimeStop();
     stats.execTimeStart();
 
-    //writeln("leaving compileCont");
+    if (opts.jit_dumpinfo)
+    {
+        writeln("leaving compileCont");
+    }
 
     // Return a pointer to the compiled branch code
     return contBranch.getCodePtr(vm.execHeap);
@@ -2528,10 +2534,13 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     //as.printStr("hit branch stub (target " ~ to!string(targetIdx) ~ ")");
     //as.printUint(scrRegs[0].opnd);
 
-    // Save the allocatable registers to the register VM save space
+    // Save the allocatable registers to the VM register save space
     as.getMember!("VM.regSave")(scrRegs[1], vmReg);
     foreach (uint regIdx, reg; allocRegs)
     {
+        //as.printStr("save " ~ reg.toString);
+        //as.printUint(reg.opnd);
+
         auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
         as.mov(memOpnd, reg.opnd);
     }
@@ -2555,16 +2564,19 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
 
     as.popJITRegs();
 
-    // Restore the allocatable registers from the register VM save space
+    // Restore the allocatable registers from the VM register save space
     as.getMember!("VM.regSave")(scrRegs[1], vmReg);
     foreach (uint regIdx, reg; allocRegs)
     {
         auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
         as.mov(reg.opnd, memOpnd);
+
+        //as.printStr("restore " ~ reg.toString);
+        //as.printUint(reg.opnd);
     }
 
     // Jump to the compiled version
-    as.jmp(X86Opnd(RAX));
+    as.jmp(cretReg.opnd);
 
     // Store the code end index
     stub.markEnd(as, vm);
