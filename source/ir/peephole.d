@@ -47,20 +47,9 @@ import ir.livevars;
 import ir.ops;
 import runtime.vm;
 
-void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
+void optIR(IRFunction fun)
 {
     //writeln("peephole pass for ", fun.getName);
-
-    /// Test if a value is available at the target block
-    bool isAvail(IRValue value)
-    {
-        auto dstValue = cast(IRDstValue)value;
-
-        if (dstValue is null || liveInfo is null)
-            return true;
-
-        return liveInfo.liveAfterPhi(dstValue, target);
-    }
 
     // CFG changed flag
     bool changed = true;
@@ -69,11 +58,6 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
     void delBlock(ref IRBlock block)
     {
         //writeln("*** deleting block ", block.getName());
-
-        assert (
-            block !is target,
-            "deleting target block"
-        );
 
         // Check that the block has no incoming branches
         debug
@@ -215,7 +199,7 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
         for (auto block = fun.firstBlock; block !is null; block = block.next)
         {
             // If this block has no incoming branches, remove it
-            if (block !is fun.entryBlock && block.numIncoming is 0 && block !is target)
+            if (block !is fun.entryBlock && block.numIncoming is 0)
             {
                 delBlock(block);
                 continue BLOCK_LOOP;
@@ -284,7 +268,10 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                 // If this phi assignment has the form:
                 // Vi <- phi(...Vi...Vj...Vi...Vj...)
                 // 0 or more Vi and 1 or more Vj
-                if (numVi + numVj == phi.block.numIncoming && numVj > 0 && isAvail(Vj))
+                // and the phi node is not a function of
+                // one single value from its own block
+                if ((numVi + numVj == phi.block.numIncoming && numVj > 0) &&
+                    (phi.block.numIncoming !is 1 || phi.block.getIncoming(0).branch.block !is block))
                 {
                     //print('Renaming phi: ' + instr);
 
@@ -355,14 +342,14 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         }
                     }
 
-                    if (cst0 && cst0.isInt32 && cst0.int32Val is 0 && isAvail(arg1))
+                    if (cst0 && cst0.isInt32 && cst0.int32Val is 0)
                     {
                         instr.replUses(arg1);
                         delInstr(instr);
                         continue INSTR_LOOP;
                     }
 
-                    if (cst1 && cst1.isInt32 && cst1.int32Val is 0 && isAvail(arg0))
+                    if (cst1 && cst1.isInt32 && cst1.int32Val is 0)
                     {
                         instr.replUses(arg0);
                         delInstr(instr);
@@ -392,14 +379,14 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         }
                     }
 
-                    if (cst0 && cst0.isInt32 && cst0.int32Val is 1 && isAvail(arg1))
+                    if (cst0 && cst0.isInt32 && cst0.int32Val is 1)
                     {
                         instr.replUses(arg1);
                         delInstr(instr);
                         continue INSTR_LOOP;
                     }
 
-                    if (cst1 && cst1.isInt32 && cst1.int32Val is 1 && isAvail(arg0))
+                    if (cst1 && cst1.isInt32 && cst1.int32Val is 1)
                     {
                         instr.replUses(arg0);
                         delInstr(instr);
@@ -419,7 +406,6 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         // If the successor has no phi nodes and only one predecessor
                         if (branch.args.length is 0 &&
                             succ.numIncoming is 1 &&
-                            succ !is target &&
                             succ !is block)
                         {
                             // Move instructions from the successor into the predecessor

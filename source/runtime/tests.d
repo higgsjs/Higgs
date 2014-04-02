@@ -1472,6 +1472,7 @@ unittest
 
     vm.load("tests/core/regress/ir-string.js");
     vm.load("tests/core/regress/ir-inf-loop.js");
+    vm.load("tests/core/regress/ir-dead-getprop.js");
 
     vm.load("tests/core/regress/jit_se_cmp.js");
     vm.load("tests/core/regress/jit_float_cmp.js");
