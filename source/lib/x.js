@@ -45,9 +45,9 @@ NOTE: currently this provides just enough bindings for the drawing lib
     var ffi = require('lib/ffi');
     var c = ffi.c;
     var CNULL = ffi.nullPtr;
-    
+
     var console = require('lib/console');
-    
+
     /**
     XLibError
     @constructor
@@ -61,17 +61,16 @@ NOTE: currently this provides just enough bindings for the drawing lib
 
 
     var Xlib = ffi.FFILib("X11");
-    
+
     Xlib.cdef(`
         /* define'd aliases */
         typedef int Status;
         typedef int Bool;
-        
-        /* random */
+
+              /* random */
         typedef char *XPointer;
         typedef unsigned long wchar_t;
 
-        
         /*
         dummy decs for types we don't care about
         If you care about one of these, remove it and add
@@ -85,9 +84,6 @@ NOTE: currently this provides just enough bindings for the drawing lib
         typedef struct _XSetWindowAttributes XSetWindowAttributes;
         typedef struct _XFontStruct XFontStruct;
         typedef struct _XHostAddress XHostAddress;
-        typedef struct _XKeyEvent XKeyEvent;
-        typedef XKeyEvent XKeyPressedEvent;
-        typedef XKeyEvent XKeyReleasedEvent;
         typedef struct _XExtCodes XExtCodes;
         typedef struct _XIM *XIM;
         typedef struct _XIC *XIC;
@@ -104,7 +100,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         typedef struct _XmbTextItem XmbTextItem;
         typedef struct _XwcTextItem XwcTextItem;
         typedef struct _XGenericEventCookie XGenericEventCookie;
-        
+
         /* Resources */
         typedef unsigned long XID;
         typedef unsigned long Mask;
@@ -121,26 +117,14 @@ NOTE: currently this provides just enough bindings for the drawing lib
         typedef XID KeySym;
 
         typedef unsigned char KeyCode;
-        
+
         /*
          * Graphics context.  The contents of this structure are implementation
          * dependent.  A GC should be treated as opaque by application code.
          */
         typedef struct _XGC *GC;
-        
-        
-        /*
-         * this union is defined so Xlib can always use the same sized
-         * event structure internally, to avoid memory fragmentation.
-         */
-        typedef union _XEvent {
-            int type;   /* must not be changed; first element */
-            /* NOTE: TODO: snipped: stuff we don't care about,
-                add it back as appropriate */
-            long pad[24];
-        } XEvent;        
 
-        /* Screen */        
+        /* Screen */
         typedef struct {
             XExtData *ext_data; /* hook for extension to hang data */
             struct _XDisplay *display; /* back pointer to display structure */
@@ -213,6 +197,40 @@ NOTE: currently this provides just enough bindings for the drawing lib
             char *xdefaults;    /* contents of defaults from server */
             /* there is more to this structure, but it is private to Xlib */
         } Display;
+
+        /*
+         * Definitions of specific events.
+         */
+        typedef struct {
+            int type;   /* of event */
+            unsigned long serial;   /* # of last request processed by server */
+            Bool send_event;    /* true if this came from a SendEvent request */
+            Display *display;   /* Display the event was read from */
+            Window window;        /* "event" window it is reported relative to */
+            Window root;        /* root window that the event occurred on */
+            Window subwindow;   /* child window */
+            Time time;  /* milliseconds */
+            int x, y;   /* pointer x, y coordinates in event window */
+            int x_root, y_root; /* coordinates relative to root */
+            unsigned int state; /* key or button mask */
+            unsigned int keycode;   /* detail */
+            Bool same_screen;   /* same screen flag */
+        } XKeyEvent;
+        typedef XKeyEvent XKeyPressedEvent;
+        typedef XKeyEvent XKeyReleasedEvent;
+        
+        /*
+         * this union is defined so Xlib can always use the same sized
+         * event structure internally, to avoid memory fragmentation.
+         */
+        typedef union _XEvent {
+            int type;   /* must not be changed; first element */
+            XKeyEvent xkey;
+            /* NOTE: TODO: snipped: stuff we don't care about,
+                add it back as appropriate */
+            long pad[24];
+        } XEvent;
+        
         
         /*
          * Data structure used by color operations
@@ -280,67 +298,11 @@ NOTE: currently this provides just enough bindings for the drawing lib
           XPointer,
           XPointer
         );
+        
 
         /*
         * X function declarations.
         */
-
-        /* Open a display */
-        Display *XOpenDisplay(const char* display_name);
-        
-        /* Open a window */
-        Window XCreateSimpleWindow(
-            Display* /* display */,
-            Window  /* parent */,
-            int /* x */,
-            int /* y */,
-            unsigned int    /* width */,
-            unsigned int    /* height */,
-            unsigned int    /* border_width */,
-            unsigned long   /* border */,
-            unsigned long   /* background */
-        );
-        
-        int XSelectInput(
-            Display*    /* display */,
-            Window  /* w */,
-            long /* event_mask */
-        );
-        
-        int XMapWindow(
-            Display*    /* display */,
-            Window  /* w */
-        );
-        
-        int XCloseDisplay(
-            Display*    /* display */
-        );
-        
-        int XNextEvent(
-            Display*    /* display */,
-            XEvent* /* event_return */
-        );
-        
-        int XStoreName(
-            Display*    /* display */,
-            Window  /* w */,
-            const char* /* window_name */
-        );
-        
-        Atom XInternAtom(
-            Display*    /* display */,
-            const char* /* atom_name */,
-            Bool    /* only_if_exists */
-        );
-        
-        Status XSetWMProtocols(
-            Display*    /* display */,
-            Window  /* w */,
-            Atom*   /* protocols */,
-            int /* count */
-        );
-        
-        /* c & P */
         
         Display *XOpenDisplay(
             const char*  /* display_name */
@@ -2833,7 +2795,6 @@ NOTE: currently this provides just enough bindings for the drawing lib
         typedef union { Atom atom; } AtomContainer;
     `);
 
-
     /**
     Input Event Masks. Used as event-mask window attribute and as arguments
     to Grab requests.  Not to be confused with event names.
@@ -2864,7 +2825,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         FocusChangeMask : (1<<21),
         PropertyChangeMask : (1<<22),
         ColormapChangeMask : (1<<23),
-        OwnerGrabButtonMask : (1<<24) 
+        OwnerGrabButtonMask : (1<<24)
     };
 
     /**

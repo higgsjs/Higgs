@@ -52,35 +52,92 @@ NOTE: currently this provides just enough bindings for the drawing lib
     var CNULL = ffi.nullPtr;
     var isNull = ffi.isNullPtr;
     var c = ffi.c;
-    
+
+    // STDlib
+    var stdlib = require('lib/stdlib');
+    var poll = ffi.c.poll;
+
     // Xlib
     var Xlib = require('lib/x');
     var XEventMask = Xlib.XEventMask;
     var XEvents = Xlib.XEvents;
-    
-    
+
     var CanvasWindowProto = {
-        handle: CNULL
+        handle: CNULL,
+        frame_rate: 400,
+        render_funs: null,
+        key_funs: null
     };
-    
-    // Dummy draw function
-    CanvasWindowProto.draw = function(){};
-    
+
+    /**
+    CanvasWindow
+    Construct a new CanvasWindow object.
+    */
+    function CanvasWindow(x, y, width, height, title)
+    {
+        var display;
+        var screen;
+        var root;
+        var cw;
+
+        // TODO: default to center screen?
+        x = x || 50;
+        y = y || 50;
+        width = width || 500;
+        height = height || 500;
+
+        cw = Object.create(CanvasWindowProto);
+        cw.display = display = Xlib.XOpenDisplay(CNULL);
+
+        if (ffi.isNullPtr(display))
+        {
+            throw "Could not open X display";
+        }
+
+        // X Values
+        cw.screen = screen = Xlib.XDefaultScreen(display);
+        cw.root = root = Xlib.XRootWindow(display, screen);
+        cw.black_pixel = Xlib.XBlackPixel(display, screen);
+        cw.white_pixel = Xlib.XWhitePixel(display, screen);
+
+        // X Window properties
+        cw.x = x || 50;
+        cw.y = y || 50;
+        cw.width = width;
+        cw.height = height;
+        cw.title = title || "Higgs Canvas";
+
+        // Create window
+        cw.create();
+
+        // Canvas
+        cw.canvas = Canvas(display, screen, cw.id, width, height);
+
+        // Events
+        cw.render_funs = [];
+        cw.key_funs = [];
+
+        return cw;
+    }
+
+    /**
+    Create the X Window
+    */
     CanvasWindowProto.create = function()
     {
         var win;
         var title;
-        var atom_name
+        var atom_name;
         var WM_DELTE_WINDOW;
         var display = this.display;
         var WDWAtom;
-        
+
         // create window
         this.id = win = Xlib.XCreateSimpleWindow(
-                                            display, this.root, this.x, this.y, this.width,
-                                            this.height, 0, this.black_pixel, this.white_pixel
-                                            );
-    
+            display, this.root, this.x, this.y, this.width,
+            this.height, 0, this.black_pixel, this.white_pixel
+        );
+
         // set title (if any)
         if (this.title)
         {
@@ -88,7 +145,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
             Xlib.XStoreName(display, win, title);
             c.free(title);
         }
-        
+
         // select what events to listen to
         Xlib.XSelectInput(display, win,
                       XEventMask.ExposureMask | XEventMask.KeyPressMask);
@@ -100,162 +157,236 @@ NOTE: currently this provides just enough bindings for the drawing lib
         WDWAtom = Xlib.AtomContainer();
         WDWAtom.set_atom(WM_DELTE_WINDOW);
         Xlib.XSetWMProtocols(display, win, WDWAtom.handle, 1);
-        
+
         // set window to display
         Xlib.XMapWindow(display, win);
-    }
-    
+        Xlib.XFlush(display);
+    };
+
+    /**
+    Close the X display
+    */
     CanvasWindowProto.close = function()
     {
         Xlib.XCloseDisplay(this.display);
-    }
-    
-    
+    };
+
     /**
-    Wrapper object for a X window
+    Register a listener for the render event
     */
-    function CanvasWindow(x, y, width, height, title)
+    CanvasWindowProto.onRender = function(cb)
     {
-        var display;
-        var screen;
-        var root;
-        
-        window = Object.create(CanvasWindowProto);
-        window.display = display = Xlib.XOpenDisplay(CNULL);
+        if (typeof cb === "function")
+            this.render_funs.push(cb);
+        else
+            throw "Argument not a function in onRender";
+    };
 
-        if (ffi.isNullPtr(display))
+    /**
+    Register a listener for a keypress event
+    */
+    CanvasWindowProto.onKeypress = function(cb)
+    {
+        if (typeof cb === "function")
+            this.key_funs.push(cb);
+        else
+            throw "Argument not a function in onKeypress";
+    };
+
+    /**
+    Show the window, and start the event loop
+    */
+    CanvasWindowProto.show = function()
+    {
+        // canvas/drawing
+        var draw = true;
+        var display = this.display;
+        var canvas = this.canvas;
+        var pixmap = canvas.id;
+        var window = this.id;
+        var frame_rate = this.frame_rate;
+        // TODO: may need to check these each loop in case of resize
+        var width = this.width;
+        var height = this.height;
+        // timing
+        var work_time;
+        var timeout;
+        // events
+        var event = Xlib.XEvent();
+        var event_type;
+        var key_sym;
+        var key_name_c;
+        var e = event.handle;
+        // handlers
+        var key_funs = this.key_funs;
+        var render_funs = this.render_funs;
+        var key_funs_i = 0;
+        var render_funs_i = 0;
+
+        // event loop
+        while (draw)
         {
-            throw "Could not open X display";
-        }
-        
-        window.screen = screen = Xlib.XDefaultScreen(display);
-        window.root = root = Xlib.XRootWindow(display, screen);
-        window.black_pixel = Xlib.XBlackPixel(display, screen);
-        window.white_pixel = Xlib.XWhitePixel(display, screen);
-        
-        window.x = x || 50;
-        window.y = y || 50;
-        window.width = width || 500;
-        window.height = height || 500;
-        window.title = title || "Higgs Canvas";
-        
-        return window;
-    }
+            // work time includes rendering and time handling events
+            work_time = $ir_get_time_ms();
 
-    
+            key_funs_i = key_funs.length;
+            render_funs_i = render_funs.length;
+
+            // render
+            while (render_funs_i > 0)
+            {
+                render_funs[--render_funs_i](canvas);
+            }
+
+            // Copy from Canvas buffer
+            Xlib.XCopyArea(display, canvas.id,
+                           window, canvas.gc,
+                           0, 0, width, height, 0, 0
+                          );
+            Xlib.XFlush(display);
+
+            // handle events
+            while (Xlib.XPending(display) > 0)
+            {
+                // get event
+                Xlib.XNextEvent(display, e);
+
+                // dispatch on event type
+                event_type = event.get_type();
+
+                if (event_type === XEvents.Expose)
+                {
+                    // Copy from Canvas buffer
+                    Xlib.XCopyArea(display, canvas.id,
+                                   window, canvas.gc,
+                                   0, 0, width, height, 0, 0
+                                  );
+                    Xlib.XFlush(display);
+                }
+                else if (event_type === XEvents.KeyPress)
+                {
+                    // TODO: index? change to number?
+                    key_sym = Xlib.XLookupKeysym(e, 0);
+                    key_name_c = Xlib.XKeysymToString(key_sym);
+                    var kn = ffi.string(key_name_c);
+
+                    while (key_funs_i > 0)
+                    {
+                        key_funs[--key_funs_i](canvas, kn);
+                    }
+                }
+                else if (event_type === XEvents.ClientMessage)
+                {
+                    // TODO: Should check here for other client message types -
+                    // for now we just care about the window closing
+                    draw = false;
+                }
+            }
+
+            // Calculate how long to wait
+            work_time = $ir_get_time_ms() - work_time;
+            timeout = 1000 / frame_rate - work_time;
+            if (timeout < 0)
+                timeout = 0;
+            else if ($ir_is_f64(timeout))
+                timeout = $ir_f64_to_i32(timeout);
+
+            // Just sleep for a bit to not grind the CPU
+            // TODO: eventually this should be more clever;
+            // polling on the X fd or hooking into some higgs
+            // event system so that all the libs like this can
+            // be used together
+            poll(CNULL, 0, timeout);
+        }
+
+        this.close();
+    };
+
+
+
+    /**
+    Canvas
+    An object that can be drawn on/has drawing functionality
+     */
+
     var CanvasProto = {
     };
-    
+
+    function Canvas(display, screen, window, width, height)
+    {
+        // TODO: window = drawable?
+        var canvas = Object.create(CanvasProto);
+        // TODO: change name?
+        // cleanup
+        canvas.id = Xlib.XCreatePixmap(display, window,
+                                       width, height,
+                                       Xlib.XDefaultDepth(display, screen)
+                                      );
+        canvas.display = display;
+        canvas.screen = screen;
+        canvas.window = window;
+        canvas.width = width;
+        canvas.height = height;
+        canvas.colormap = Xlib.XDefaultColormap(display, 0);
+        canvas.colorGCs = Object.create(null);
+        canvas.gc = Xlib.XDefaultGC(display, screen);
+
+        return canvas;
+    }
+
+    /**
+    Set foreground color for a Canvas, accepts a hex color string
+    */
     CanvasProto.setFG = function(color)
     {
         var gc = this.colorGCs[color];
         var colormap;
-        var window = this.window;
-        var display = window.display;
+        var display = this.display;
         var XColor;
         var color_name;
 
+        // Check if we have a graphics context for this color
         if (gc)
         {
             this.gc = gc;
             return true;
         }
-        
+
+        // .. if not we need to create one
         color_name = ffi.cstr(color);
         XColor = Xlib.XColor();
         colormap = this.colormap;
-        
-        gc = Xlib.XCreateGC(display, window.id, 0, 0);
-        
-        
+
+        gc = Xlib.XCreateGC(display, this.id, 0, 0);
+
         Xlib.XParseColor(display, colormap, color_name, XColor.handle);
         Xlib.XAllocColor(display, colormap, XColor.handle);
-        
-        Xlib.XSetForeground(display, gc, XColor.get_pixel());
-        
-        c.free(color_name);
-        //c.free(XColor);
 
+        Xlib.XSetForeground(display, gc, XColor.get_pixel());
+
+        c.free(color_name);
+
+        // TODO: error checking?
         this.gc = gc;
         return true;
-    }
-    
-    CanvasProto.fillRect = function(x, y, w, h)
-    {
-        var window = this.window;
-        Xlib.XFillRectangle(window.display, window.id,
-                       this.gc, x, y, w, h);
-    }
-    
-    CanvasProto.createGC = function()
-    {
-        
-    }
-    
-    CanvasProto.display = function(draw_fun)
-    {
-        var window = this.window;
-        var display = window.display;
-        var draw = (typeof draw_fun === "function");
+    };
 
-        
-        // events
-        var event = Xlib.XEvent();
-        var e = event.handle;
-
-        /* main loop */
-        while (draw)
-        {
-            while (Xlib.XPending(display) > 0)
-            {
-                // get
-                Xlib.XNextEvent(display, e);
-                var event_type = event.get_type();
-            
-                if (event_type === XEvents.Expose)
-                {
-                    console.log("expose")
-                    // TODO: pass args, more stuff
-                    draw_fun(this);
-                }
-                // TODO: keyboard events, etc
-                else if (event_type === XEvents.ClientMessage)
-                {
-                    // TODO: Should check here for other client message types - 
-                    // for now we just care about the window closing
-                    draw = false;
-                }
-            }
-            
-            draw_fun(this);
-        }
-        
-        this.close();
-    }
-    
-    function Canvas()
+    /**
+    fillRect - fill a rectangle
+    */
+    CanvasProto.fillRect = function(x, y, width, height)
     {
-        var canvas = Object.create(CanvasProto);
-        var window;
+        Xlib.XFillRectangle(this.display, this.id,
+                       this.gc, x, y, width, height);
+    };
 
-        // TODO: move this to .display?
-        canvas.window = window = CanvasWindow(100, 100, 500, 500,"higgs");
-        window.create();
-        
-        canvas.colormap = Xlib.XDefaultColormap(window.display, 0);
-        
-        canvas.colorGCs = Object.create(null);
-        canvas.gc = Xlib.XDefaultGC(window.display, window.screen);
-        
-        return canvas;
-    }
-    
-    var mycanvas = Canvas();
-    mycanvas.display(function(canvas)
-    {
-        canvas.setFG("#00FF00");
-        canvas.fillRect(10, 10, 100, 100);
-        canvas.setFG("#00FFFF");
-        canvas.fillRect(120, 120, 100, 100);
-    })
+
+    /**
+    EXPORTS
+    */
+
+    exports = {
+        CanvasWindow : CanvasWindow
+    };
+
 })();
