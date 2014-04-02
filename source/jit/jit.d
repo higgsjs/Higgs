@@ -417,10 +417,6 @@ class CodeGenState
                 // If the known types do not match, mismatch
                 if (predSt.type != succSt.type)
                     return size_t.max;
-
-                // If the type sync flags do not match, add a penalty
-                //if ((predTS & TF_SYNC) !is (succTS & TF_SYNC))
-                //    diff += 1;
             }
             else 
             {
@@ -489,17 +485,10 @@ class CodeGenState
     }
 
     /**
-    Allocate a register for a value
+    Find a free register or spill one
     */
-    X86Reg allocReg(
-        CodeBlock as,
-        IRInstr instr,
-        IRDstValue value,
-        size_t numBits
-    )
+    X86Reg freeReg(CodeBlock as, IRInstr instr)
     {
-        assert (value !is null);
-
         auto liveInfo = callCtx.fun.liveInfo;
 
         // For each allocatable general-purpose register
@@ -510,8 +499,7 @@ class CodeGenState
             // If nothing is mapped to this register
             if (regVal is null)
             {
-                // Map the value to this register
-                return mapReg(reg, value, numBits);
+                return reg;
             }
 
             // If the value mapped is not live
@@ -521,8 +509,7 @@ class CodeGenState
                 valMap.remove(regVal);
                 gpRegMap[reg.regNo] = null;
 
-                // Map the value to this register
-                return mapReg(reg, value, numBits);
+                return reg;
             }
         }
 
@@ -542,13 +529,30 @@ class CodeGenState
             break;
         }
 
+        // Spill the chosen register
         assert (chosenReg !is null);
-
-        // Free the contents of the chosen register
         spillReg(as, chosenReg.regNo);
 
+        return *chosenReg;
+    }
+
+    /**
+    Allocate a register for a value
+    */
+    X86Reg allocReg(
+        CodeBlock as,
+        IRInstr instr,
+        IRDstValue value,
+        size_t numBits
+    )
+    {
+        assert (value !is null);
+
+        // Find or free a register
+        auto reg = freeReg(as, instr);
+
         // Map the value to the chosen register
-        return mapReg(*chosenReg, value, numBits);
+        return mapReg(reg, value, numBits);
     }
 
     /**
@@ -1673,8 +1677,8 @@ void genBranchMoves(
         }
         else
         {
-            // Stack to reg move with known to unknown type
-            if (srcWordOpnd.isMem && srcTypeOpnd.isImm && dstWordOpnd.isReg && dstTypeOpnd.isMem)
+            // Src to reg move with unknown dst type
+            if (srcTypeOpnd.isImm && dstWordOpnd.isReg && dstTypeOpnd.isMem)
             {
                 moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
             }

@@ -120,18 +120,24 @@ Milestone: register allocation
 ------------------------------
 
 TODO: profile awful slow compilation speed
-- relevance to reg alloc
 
 TODO: look at machine code, optimize RA further
 
+TODO: optimize code size for get_global
+- do fully "interpreted" if needed, call into code fragment
+  - maybe try this first, as an "extreme" test
+- see how execution time and code size change across benchmarks
+
 Meeting:
-- comp time unaffected, sometimes slightly slower
-- code size smaller, ~23% on avt
-- exec time significantly faster
-  - up to 4x on microbenchmark
-  - avg 25% on benchmarks
+- phi type prop tweak results in slightly less versions
+- reg alloc:
+  - comp time unaffected, sometimes slightly slower
+  - code size significantly smaller, ~23% on avt
+  - exec time significantly faster
+    - up to 4x on microbenchmark
+    - 2x on some benchmarks
 - It's not the mem writes that kill you, but the reads?
-- Unfortunately, maxvers=0 still wins on most benchmarks
+- BBV now wins on most benchmarks (on exec time)
 
 TODO: bias values towards dst phi reg
 - check if hasOneUse, use is a phi node, reg is free or regVal not live
@@ -139,24 +145,22 @@ TODO: bias values towards dst phi reg
 - Have different reg alloc for getOutOpnd
   - Separate out freeReg() and mapReg()
 
-TODO: optimize code size for get_global
-- do fully "interpreted" if needed, call into code fragment
-  - maybe try this first, as an "extreme" test
-- see how execution time and code size change across benchmarks
+TODO: allow reusing input reg if value is dead?
+- special flag for getOutOpnd?
 
-TODO: optimize call spills, other spills
-- Should have shorthands for spilling only C caller-save regs and such
+TODO: optimize get_global spills
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
 
-TODO: tweak add moves in 200m_add
 
 
 
 
 
 
-
+[DONE] TODO: optimize call spills
+raytrace code size: 904082, 727ms, 137ms
+after: 900230, 657, 122ms
 
 ./higgs --nostdlib --stats benchmarks/micro/200m_add.js
 ./higgs --jit_genasm --e "print(test.asmString())" --stats benchmarks/micro/200m_add.js

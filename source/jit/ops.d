@@ -1662,21 +1662,8 @@ void gen_call(
 {
     as.incStatCnt(&stats.numCall, scrRegs[0]);
 
-    // TODO: just steal an allocatable reg to use as an extra temporary
-    // force its contents to be spilled if necessary
-    // maybe add State.freeReg method
-    auto scrReg3 = allocRegs[$-1];
-
-    // TODO: optimize call spills
-    // TODO: move spills after arg copying?
-    // Spill the values that are live after the call
-    st.spillRegs(
-        as,
-        delegate bool(IRDstValue value)
-        {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Free an extra register to use as scratch
+    auto scrReg3 = st.freeReg(as, instr);
 
     //
     // Function pointer extraction
@@ -1826,6 +1813,19 @@ void gen_call(
     // src0 = numLocals + extraArgs
     as.add(scrRegs[0].opnd(32), scrReg3.opnd(32));
     as.label(Label.FALSE2);
+
+
+
+    // Spill the values that are live after the call
+    st.spillRegs(
+        as,
+        delegate bool(IRDstValue value)
+        {
+            return instr.block.fun.liveInfo.liveAfter(value, instr);
+        }
+    );
+
+
 
     ver.genCallBranch(
         st,
