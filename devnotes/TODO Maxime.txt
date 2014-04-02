@@ -148,12 +148,8 @@ FIXME: IsTypeOp doesn't add type info!
 - IsTypeOp adding info means type info for one value may be different on either
 side of a branch
 - probably something just compiled differently
-
 ./higgs --nostdlib --jit_maxvers=0 stdlib/object.js stdlib/error.js stdlib/array.js stdlib/string.js regress-regexp.js
 
-FIXME: live vars analysis bug? wrong IR?
-
-FIXME: infinite loop causes infinite loop in IR transform
 
 
 
@@ -164,7 +160,15 @@ FIXME: infinite loop causes infinite loop in IR transform
 
 
 
+[DONE] FIXME: live vars analysis bug, wrong IR
+- illegal, circular value definition:
+  for_test(1DC66):
+    t_1DC68 = load_refptr t_1DC68, 0
+    t_1DC69 = eq_refptr t_1DC68, null
+    if_true t_1DC69 => for_exit(1DC6B), for_test(1DC66)
+- probably, the phi node was eliminated because nobody enters this loop
 
+[DONE] FIXME: infinite loop causes infinite loop in IR transform
 
 [DONE] TODO: slowdown, identify sunspider benchmark that doesn't get speedup
 - focus on this one
