@@ -184,10 +184,10 @@ struct ValState
     ValState setType(Type type) const
     {
         assert (!isConst);
-        ValState newState = this;
-        newState.knownType = true;
-        newState.type = type;
-        return newState;
+        ValState val = this;
+        val.knownType = true;
+        val.type = type;
+        return val;
     }
 
     /// Clear the type for this value if known, creates a new value
@@ -195,9 +195,10 @@ struct ValState
     {
         assert (!isConst);
 
-        ValState newState = this;
-        newState.knownType = false;
-        return newState;
+        ValState val = this;
+        val.knownType = false;
+        val.type = cast(Type)0x0F;
+        return val;
     }
 
     /// Move this value to the stack
@@ -397,6 +398,12 @@ class CodeGenState
         // Difference (penalty) sum
         size_t diff = 0;
 
+        debug
+        {
+            foreach (value, state; pred.valMap)
+                assert (value in succ.valMap);
+        }
+
         // For each value in the successor type state map
         foreach (value, state; succ.valMap)
         {
@@ -426,27 +433,6 @@ class CodeGenState
                     diff += 1;
             }
         }
-
-        // TODO
-        /*
-        // For each value in the successor alloc state map
-        foreach (value, allocSt; succ.allocState)
-        {
-            auto predAS = pred.allocState.get(value, 0);
-            auto succAS = succ.allocState.get(value, 0);
-
-            // If the alloc states match perfectly, no penalty
-            if (predAS is succAS)
-                continue;
-
-            // If the successor has this value as a known constant, mismatch
-            if (succAS & RA_CONST)
-                return size_t.max;
-
-            // Add a penalty for the mismatched alloc state
-            diff += 1;
-        }
-        */
 
         // Return the total difference
         return diff;
@@ -921,6 +907,19 @@ class CodeGenState
             // Write a zero to the word stack to avoid false pointers
             as.mov(wordStackOpnd(instr.outSlot), X86Opnd(0));
         }
+    }
+
+    /// Add type information for an arbitrary value
+    void setType(IRDstValue value, Type type)
+    {
+        assert (value in valMap);
+        auto state = getState(value);
+
+        // Assert that we aren't contradicting existing information
+        assert (!state.knownType || state.type is type);
+
+        // Set a known type for this value
+        valMap[value] = state.setType(type);
     }
 
     /// Get the state for a given value
@@ -1654,6 +1653,7 @@ void genBranchMoves(
         // Get the source and destination operands for the phi type
         X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
         X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
+        assert (opts.jit_maxvers != 0 || !dstTypeOpnd.isImm);
 
         if (srcTypeOpnd != dstTypeOpnd &&
             !dstTypeOpnd.isImm &&

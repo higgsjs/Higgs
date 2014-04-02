@@ -135,16 +135,41 @@ TODO: blog post about optimization, results
 - compile time now dominates execution time on several benchmarks
 - 3d-raytrace, prop access > 30% execution time, inline caching
 
-
 TODO: optimize get_global spills
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
 
+TODO: bias allocReg towards defReg
+- optional argument to freeReg
+- should reduce code size (test this), eliminate moves, improve bench scores
+
+FIXME: IsTypeOp doesn't add type info!
+- some value ends up undefined with maxvers=0...
+- IsTypeOp adding info means type info for one value may be different on either
+side of a branch
+- probably something just compiled differently
+
+./higgs --nostdlib --jit_maxvers=0 stdlib/object.js stdlib/error.js stdlib/array.js stdlib/string.js regress-regexp.js
+
+FIXME: live vars analysis bug? wrong IR?
+
+FIXME: infinite loop causes infinite loop in IR transform
 
 
 
 
 
+
+
+
+
+
+
+
+[DONE] TODO: slowdown, identify sunspider benchmark that doesn't get speedup
+- focus on this one
+- crypto-md5 is the worst case, exec goes from 92ms to 124ms
+- code size increases by about 80%
 
 [DONE] TODO: optimize call spills
 raytrace code size: 904082, 727ms, 137ms

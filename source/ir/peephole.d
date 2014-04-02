@@ -199,6 +199,14 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
     {
         //writeln("passNo=", passNo);
 
+        /*
+        if (passNo > 100)
+            writeln(fun.toString);
+
+        if (passNo > 150)
+            assert (false);
+        */
+
         // Reset the changed flag
         changed = false;
 
@@ -591,9 +599,9 @@ void optIR(IRFunction fun, IRBlock target = null, LiveInfo liveInfo = null)
                         auto firstInstr = branch.target.firstInstr;
 
                         // If the branch has no phi args and the target is a jump
-                        if (branch.args.length is 0 && 
+                        if (branch.args.length is 0 &&
                             firstInstr.opcode is &JUMP &&
-                            branch.target !is block)
+                            branch.target !is firstInstr.getTarget(0).target)
                         {
                             assert (branch.target.firstPhi is null);
                             auto jmpBranch = firstInstr.getTarget(0);
