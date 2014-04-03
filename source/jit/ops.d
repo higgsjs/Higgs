@@ -821,14 +821,9 @@ void IsTypeOp(Type type)(
         // If this instruction has many uses or is not followed by an if
         if (instr.hasManyUses || ifUseNext(instr) is false)
         {
-            // FIXME
-            //st.setOutBool(instr, type is knownType);
-
             auto outOpnd = st.getOutOpnd(as, instr, 64);
-            if (type is knownType)
-                as.mov(outOpnd, X86Opnd(TRUE.word.int8Val));
-            else
-                as.mov(outOpnd, X86Opnd(FALSE.word.int8Val));
+            auto outVal = (type is knownType)? TRUE:FALSE;
+            as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
             st.setOutType(as, instr, Type.CONST);
         }
 
@@ -889,8 +884,17 @@ void IsTypeOp(Type type)(
     // If our only use is an immediately following if_true
     if (ifUseNext(instr) is true)
     {
+        // If the argument is not a constant, add type information
+        // about the argument's type along the true branch
+        CodeGenState trueSt = st;
+        if (auto dstArg = cast(IRDstValue)instr.getArg(0))
+        {
+            trueSt = new CodeGenState(trueSt);
+            trueSt.setType(dstArg, type);
+        }
+
         // Get branch edges for the true and false branches
-        auto branchT = getBranchEdge(instr.next.getTarget(0), st, false);
+        auto branchT = getBranchEdge(instr.next.getTarget(0), trueSt, false);
         auto branchF = getBranchEdge(instr.next.getTarget(1), st, false);
 
         // Generate the branch code
@@ -1554,7 +1558,10 @@ void gen_call_prim(
 
     // Check that the argument count matches
     auto numArgs = cast(int32_t)instr.numArgs - 2;
-    assert (numArgs is fun.numParams);
+    assert (
+        numArgs is fun.numParams,
+        "incorrect argument count for primitive call"
+    );
 
     // Check that the hidden arguments are not used
     assert (
@@ -1814,8 +1821,6 @@ void gen_call(
     as.add(scrRegs[0].opnd(32), scrReg3.opnd(32));
     as.label(Label.FALSE2);
 
-
-
     // Spill the values that are live after the call
     st.spillRegs(
         as,
@@ -1824,8 +1829,6 @@ void gen_call(
             return instr.block.fun.liveInfo.liveAfter(value, instr);
         }
     );
-
-
 
     ver.genCallBranch(
         st,

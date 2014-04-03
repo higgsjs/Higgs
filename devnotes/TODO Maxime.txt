@@ -87,6 +87,8 @@ number of useless compiler calls, without increasing code size?
 - Easy dirty hack: have the branch stub compilation not patch the branch
   the first time around, do some useless compilation the second time
 
+FIXME: parseInt('32') takes about 20ms???
+
 Marc: start writing paper soon
 - Setup repo
 - Outline sections
@@ -115,16 +117,13 @@ TODO: bias values towards dst phi reg
 TODO: allow reusing input reg if value is dead?
 - special flag for getOutOpnd?
 
-Meeting:
-- phi type prop tweak results in slightly less versions
-- reg alloc:
-  - comp time unaffected, sometimes slightly slower
-  - code size significantly smaller, ~23% on avt
-  - exec time significantly faster
-    - up to 4x on microbenchmark
-    - 2x on some benchmarks
-- It's not the mem writes that kill you, but the reads?
-- BBV now wins on most benchmarks (on exec time)
+TODO: optimize get_global spills
+- Should have way to spill live after instr or arg regs only
+  - move into cargReg can easily corrupt allocated reg
+
+FIXME: array extends cap for each new element???
+
+TODO: try moving regexp in commonjs module inside function, see impact on init time
 
 TODO: blog post about optimization, results
 - 200 stars on github
@@ -135,16 +134,60 @@ TODO: blog post about optimization, results
 - compile time now dominates execution time on several benchmarks
 - 3d-raytrace, prop access > 30% execution time, inline caching
 
+TODO: bias allocReg towards defReg
+- optional argument to freeReg
+- should reduce code size (test this), eliminate moves, improve bench scores
 
-TODO: optimize get_global spills
-- Should have way to spill live after instr or arg regs only
-  - move into cargReg can easily corrupt allocated reg
+Meeting:
+- phi type prop tweak results in slightly less versions
+- another tweak brings us more type info from IsTypeOp
+- reg alloc:
+  - comp time unaffected, sometimes slightly slower
+  - code size significantly smaller, ~23% on avt
+  - exec time significantly faster
+    - up to 10x on microbenchmark
+    - 2x on some benchmarks
+- It's not the mem writes that kill you, but the reads?
+- on average, we eliminate more than 50% of type tests, 84% on 3d-raytrace
+- BBV now wins on most benchmarks (on exec time)
+- Effets de cache subtils? petits changements font qu'un benchmark gagne/perd avec BBV
 
 
 
 
 
 
+
+
+
+
+
+[DONE] TODO: benchmark once again
+- Winning on average if excluding comp time
+- code size increase marginal
+
+[DONE] TODO: avoid parameter spills
+
+[DONE] FIXME: IsTypeOp doesn't add type info!
+- some value ends up undefined with maxvers=0...
+- setProp not working?
+- we're spilling an argument value
+  moving zero into it to preserve consistency...
+
+[DONE] FIXME: live vars analysis bug, wrong IR
+- illegal, circular value definition:
+  for_test(1DC66):
+    t_1DC68 = load_refptr t_1DC68, 0
+    t_1DC69 = eq_refptr t_1DC68, null
+    if_true t_1DC69 => for_exit(1DC6B), for_test(1DC66)
+- probably, the phi node was eliminated because nobody enters this loop
+
+[DONE] FIXME: infinite loop causes infinite loop in IR transform
+
+[DONE] TODO: slowdown, identify sunspider benchmark that doesn't get speedup
+- focus on this one
+- crypto-md5 is the worst case, exec goes from 92ms to 124ms
+- code size increases by about 80%
 
 [DONE] TODO: optimize call spills
 raytrace code size: 904082, 727ms, 137ms

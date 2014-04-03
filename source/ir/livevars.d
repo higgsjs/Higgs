@@ -243,7 +243,16 @@ class LiveInfo
             // If the value is defined by a phi node from this block, stop
             if (defVal.block is block)
             {
-                assert (cast(PhiNode)defVal !is null);
+                assert (
+                    cast(PhiNode)defVal !is null,
+                    format(
+                        "value: %s\ndefined in block: %s\nnot found:\n%s",
+                        defVal,
+                        defVal.block.getName,
+                        fun.toString
+                    )
+                );
+
                 return;
             }
 
