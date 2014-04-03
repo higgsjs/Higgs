@@ -1819,7 +1819,12 @@ NOTE: currently this provides just enough bindings for the drawing lib
            int*    /* first_event_return */,
            int*    /* first_error_return */
         );
-       
+              
+        int XQueryKeymap(
+           Display*    /* display */,
+           char [32]   /* keys_return */
+        );
+              
         Bool XQueryPointer(
            Display*    /* display */,
            Window    /* w */,
