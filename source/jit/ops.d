@@ -1558,7 +1558,10 @@ void gen_call_prim(
 
     // Check that the argument count matches
     auto numArgs = cast(int32_t)instr.numArgs - 2;
-    assert (numArgs is fun.numParams);
+    assert (
+        numArgs is fun.numParams,
+        "incorrect argument count for primitive call"
+    );
 
     // Check that the hidden arguments are not used
     assert (

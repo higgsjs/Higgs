@@ -599,6 +599,19 @@ class CodeGenState
             regVal.toString
         );
 
+        // Mark the value as being on the stack
+        valMap[regVal] = state.toStack();
+
+        // Mark the register as free
+        gpRegMap[regNo] = null;
+
+        // If the value is a function parameter,
+        // we don't actually need to spill it
+        if (cast(FunParam)regVal)
+            return;
+
+        //writeln("spilling: ", regVal);
+
         auto mem = wordStackOpnd(regVal.outSlot);
         auto reg = X86Reg(X86Reg.GP, regNo, 64);
 
@@ -616,12 +629,6 @@ class CodeGenState
             //as.comment("Spilling type for " ~ regVal.toString());
             as.mov(typeStackOpnd(regVal.outSlot), X86Opnd(state.type));
         }
-
-        // Mark the value as being on the stack
-        valMap[regVal] = state.toStack();
-
-        // Mark the register as free
-        gpRegMap[regNo] = null;
     }
 
     /// Spill test function
@@ -777,6 +784,8 @@ class CodeGenState
             // If a register was successfully allocated
             if (opnd.isReg && curOpnd.isMem)
             {
+                //writeln("loading: ", argDst);
+
                 // Load the value into the register
                 // Note: we load all 64 bits, not just the requested bits
                 as.mov(opnd.reg.opnd(64), wordStackOpnd(argDst.outSlot));
@@ -1500,7 +1509,8 @@ BlockVersion getBlockVersion(
     {
         debug
         {
-            writeln("version limit hit: ", versions.length);
+            if (opts.jit_maxvers > 0)
+                writeln("version limit hit: ", versions.length);
         }
 
         // If a compatible match was found
@@ -1675,7 +1685,9 @@ void genBranchMoves(
                 moveList ~= Move(typeStackOpnd(succPhi.outSlot), srcTypeOpnd);
             }
         }
-        else
+
+        // Otherwise, if the successor is not a parameter
+        else if (!succParam)
         {
             // Src to reg move with unknown dst type
             if (srcTypeOpnd.isImm && dstWordOpnd.isReg && dstTypeOpnd.isMem)
