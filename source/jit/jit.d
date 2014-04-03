@@ -184,10 +184,10 @@ struct ValState
     ValState setType(Type type) const
     {
         assert (!isConst);
-        ValState newState = this;
-        newState.knownType = true;
-        newState.type = type;
-        return newState;
+        ValState val = this;
+        val.knownType = true;
+        val.type = type;
+        return val;
     }
 
     /// Clear the type for this value if known, creates a new value
@@ -195,9 +195,10 @@ struct ValState
     {
         assert (!isConst);
 
-        ValState newState = this;
-        newState.knownType = false;
-        return newState;
+        ValState val = this;
+        val.knownType = false;
+        val.type = cast(Type)0x0F;
+        return val;
     }
 
     /// Move this value to the stack
@@ -397,6 +398,12 @@ class CodeGenState
         // Difference (penalty) sum
         size_t diff = 0;
 
+        debug
+        {
+            foreach (value, state; pred.valMap)
+                assert (value in succ.valMap);
+        }
+
         // For each value in the successor type state map
         foreach (value, state; succ.valMap)
         {
@@ -426,27 +433,6 @@ class CodeGenState
                     diff += 1;
             }
         }
-
-        // TODO
-        /*
-        // For each value in the successor alloc state map
-        foreach (value, allocSt; succ.allocState)
-        {
-            auto predAS = pred.allocState.get(value, 0);
-            auto succAS = succ.allocState.get(value, 0);
-
-            // If the alloc states match perfectly, no penalty
-            if (predAS is succAS)
-                continue;
-
-            // If the successor has this value as a known constant, mismatch
-            if (succAS & RA_CONST)
-                return size_t.max;
-
-            // Add a penalty for the mismatched alloc state
-            diff += 1;
-        }
-        */
 
         // Return the total difference
         return diff;
@@ -613,6 +599,19 @@ class CodeGenState
             regVal.toString
         );
 
+        // Mark the value as being on the stack
+        valMap[regVal] = state.toStack();
+
+        // Mark the register as free
+        gpRegMap[regNo] = null;
+
+        // If the value is a function parameter,
+        // we don't actually need to spill it
+        if (cast(FunParam)regVal)
+            return;
+
+        //writeln("spilling: ", regVal);
+
         auto mem = wordStackOpnd(regVal.outSlot);
         auto reg = X86Reg(X86Reg.GP, regNo, 64);
 
@@ -630,12 +629,6 @@ class CodeGenState
             //as.comment("Spilling type for " ~ regVal.toString());
             as.mov(typeStackOpnd(regVal.outSlot), X86Opnd(state.type));
         }
-
-        // Mark the value as being on the stack
-        valMap[regVal] = state.toStack();
-
-        // Mark the register as free
-        gpRegMap[regNo] = null;
     }
 
     /// Spill test function
@@ -791,6 +784,8 @@ class CodeGenState
             // If a register was successfully allocated
             if (opnd.isReg && curOpnd.isMem)
             {
+                //writeln("loading: ", argDst);
+
                 // Load the value into the register
                 // Note: we load all 64 bits, not just the requested bits
                 as.mov(opnd.reg.opnd(64), wordStackOpnd(argDst.outSlot));
@@ -921,6 +916,19 @@ class CodeGenState
             // Write a zero to the word stack to avoid false pointers
             as.mov(wordStackOpnd(instr.outSlot), X86Opnd(0));
         }
+    }
+
+    /// Add type information for an arbitrary value
+    void setType(IRDstValue value, Type type)
+    {
+        assert (value in valMap);
+        auto state = getState(value);
+
+        // Assert that we aren't contradicting existing information
+        assert (!state.knownType || state.type is type);
+
+        // Set a known type for this value
+        valMap[value] = state.setType(type);
     }
 
     /// Get the state for a given value
@@ -1501,7 +1509,8 @@ BlockVersion getBlockVersion(
     {
         debug
         {
-            writeln("version limit hit: ", versions.length);
+            if (opts.jit_maxvers > 0)
+                writeln("version limit hit: ", versions.length);
         }
 
         // If a compatible match was found
@@ -1654,6 +1663,7 @@ void genBranchMoves(
         // Get the source and destination operands for the phi type
         X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
         X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
+        assert (opts.jit_maxvers != 0 || !dstTypeOpnd.isImm);
 
         if (srcTypeOpnd != dstTypeOpnd &&
             !dstTypeOpnd.isImm &&
@@ -1675,7 +1685,9 @@ void genBranchMoves(
                 moveList ~= Move(typeStackOpnd(succPhi.outSlot), srcTypeOpnd);
             }
         }
-        else
+
+        // Otherwise, if the successor is not a parameter
+        else if (!succParam)
         {
             // Src to reg move with unknown dst type
             if (srcTypeOpnd.isImm && dstWordOpnd.isReg && dstTypeOpnd.isMem)
