@@ -42,6 +42,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
 (function()
 {
+    var console = require('lib/console');
 
     /**
     ERRORS
@@ -344,7 +345,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         this.token_type = EOF;
         return;
     };
-
+ 
     /*
     Initialize lexer instance
     */
@@ -478,7 +479,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var members;
         var names;
         var name;
-        var type;
+        var ctype;
         var t;
 
         if (tok !== "struct" && tok !== "union")
@@ -508,9 +509,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
             // Wrap the declaration appropriately
             if (tok === "struct")
-                type = this.dec.type = CStruct(members, names, name);
+                ctype = this.dec.type = CStruct(members, names, name);
             else
-                type = this.dec.type = CUnion(members, names, name);
+                ctype = this.dec.type = CUnion(members, names, name);
 
             // If the struct is tagged and this is the first time seeing it, add
             // the wrapper to the library
@@ -519,7 +520,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 t = this.lib[name];
                 if (!t)
                 {
-                    this.ctypes[tok + " " + name] = type;
+                    this.ctypes[tok + " " + name] = ctype;
                     this.lib[name] = type.wrapper_fun;
                 }
             }
@@ -697,7 +698,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     lex.next();
                     if (lex.token_type === NUMBER_LITERAL)
                     {
-                        member.value = count = parseInt(lex.token);
+                        member.value = count = Number(lex.token);
                         lex.next();
                         continue;
                     }
@@ -828,7 +829,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     According to the c grammar we should accept a constant-expression here.
                     Right now it just accepts integer constants.
                     */
-                    num = parseInt(lex.token);
+                    num = Number(lex.token);
                     if (isNaN(num))
                         throw new CParseExpectedError("integer constant", lex.token, lex.loc());
                     lex.next();
@@ -1542,6 +1543,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var type_size = 0;
         var struct_size = 0;
         var s;
+        var d;
 
         // Sometimes the FFI user doesn't care about the layout of the struct, in that case
         // they can just specify the tag: such as "struct Foo". These cannot be fully wrapped,
@@ -1550,14 +1552,14 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             return { wrapper: "CStruct", name: "s{}" };
 
         // Otherwise, get a full type wrapper
-        
+
         // calculate size of struct
         l = members.length;
         while (i < l)
         {
             mem = members[i];
             type_size = mem.size;
-            
+
             if (typeof type_size !== "number" || isNaN(type_size))
             {
                 throw new FFIError(
@@ -1565,14 +1567,14 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     (struct_name ? struct_name : "")
                 );
             }
-            
+
             struct_size += type_size;
             d = struct_size % type_size;
             if (d !== 0)
                 struct_size += type_size - d;
             i += 1;
         }
-        
+
         if (typeof struct_size !== "number" || isNaN(struct_size))
         {
             throw new FFIError("Invalid type size for: struct " + (struct_name ? struct_name : ""));
@@ -1589,7 +1591,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         return s;
     }
 
-    
     /**
     Wrappers for C Structs
     */
@@ -1609,7 +1610,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             return { wrapper: "CUnion", name: "u{}" };
 
         // Otherwise, get a full type wrapper
-        
+
         // calculate size of struct
         l = members.length;
         while (i < l)
@@ -1881,8 +1882,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
             dlist.push(parser.dec);
             handleDecs(this, dlist, ctypes);
-
             lexer.next(true);
+
             if (lexer.token_type === EOF)
                 break;
         };

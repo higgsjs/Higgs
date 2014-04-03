@@ -59,7 +59,6 @@ NOTE: currently this provides just enough bindings for the drawing lib
     XlibError.prototype = new Error();
     XlibError.prototype.constructor = XlibError;
 
-
     var Xlib = ffi.FFILib("X11");
 
     Xlib.cdef(`
@@ -2794,6 +2793,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         /* Helpers */
         typedef union { Atom atom; } AtomContainer;
     `);
+
 
     /**
     Input Event Masks. Used as event-mask window attribute and as arguments
