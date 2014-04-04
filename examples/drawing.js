@@ -21,9 +21,7 @@
 
     mycanvas.onRender(function(canvas)
     {
-        canvas.setColor("#FFFFFF");
-
-        canvas.fillRect(0, 0, 500, 500);
+        //canvas.clear("#FFFFFF");
         canvas.setColor("#00FF00");
         canvas.fillRect(10, 10, 100, 100);
         canvas.setColor("#FF0000");

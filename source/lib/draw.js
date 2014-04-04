@@ -348,6 +348,20 @@ NOTE: currently this provides just enough bindings for the drawing lib
     }
 
     /**
+    Clear the canvas - basically a shortcut
+    */
+    CanvasProto.clear = function(color, g, b)
+    {
+        var gc = this.gc;
+        if (arguments.length === 1)
+            this.setColor(color);
+        else
+            this.setColor(color, g, b);
+        this.fillRect(0, 0, this.width, this.height);
+        this.gc = gc;
+    };
+
+    /**
     Set drawing color for a Canvas, accepts a hex color string
     */
     CanvasProto.setColor = function(color, g, b)
@@ -360,7 +374,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         var color_string;
 
         // check whether r,g,b values were passed individually or as a string
-        if (arguments.length === 3)
+        if (typeof b === "number")
         {
             color_string = "#"  + color.toString(16);
             if (color_string.length === 2)
@@ -371,7 +385,6 @@ NOTE: currently this provides just enough bindings for the drawing lib
             color_string += b.toString(16);
             if (color_string.length === 6)
                 color_string += "0";
-            console.log(color_string);
         }
         else if (color && color[0] == "#")
             color_string = color;
