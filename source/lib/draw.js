@@ -418,13 +418,67 @@ NOTE: currently this provides just enough bindings for the drawing lib
         return true;
     };
 
+
+
+    /**
+    drawPoint - draw a point
+    */
+    CanvasProto.drawPoint = function(x, y)
+    {
+        Xlib.XDrawPoint(this.display, this.id, this.gc, x, y);
+    };
+
+    /**
+    drawLine - draw a line
+    */
+    CanvasProto.drawLine = function(x1, y1, x2, y2)
+    {
+        Xlib.XDrawLine(this.display, this.id, this.gc, x1, y1, x2, y2);
+    };
+
+    /**
+    drawRect - draw a rectangle
+    */
+    CanvasProto.drawRect = function(x, y, width, height)
+    {
+        Xlib.XDrawRectangle(this.display, this.id, this.gc, x, y, width, height);
+    };
+
+    /**
+    drawArc - draw an arc
+    */
+    CanvasProto.drawArc = function(x, y, width, height, angle1, angle2)
+    {
+        Xlib.XDrawArc(this.display, this.id, this.gc, x, y, width, height, angle1, angle2);
+    };
+
+    /**
+    drawCircle - draw a circle
+    */
+    CanvasProto.drawCircle = function(x, y, radius)
+    {
+        var diameter = radius * 2;
+        Xlib.XDrawArc(this.display, this.id, this.gc,
+                      x - radius, y - radius, diameter, diameter, 0, 23040);
+    };
+
     /**
     fillRect - fill a rectangle
     */
     CanvasProto.fillRect = function(x, y, width, height)
     {
         Xlib.XFillRectangle(this.display, this.id,
-                       this.gc, x, y, width, height);
+                            this.gc, x, y, width, height);
+    };
+
+    /**
+    fillCircle - fill a circle
+    */
+    CanvasProto.fillCircle = function(x, y, radius)
+    {
+        var diameter = radius * 2;
+        Xlib.XFillArc(this.display, this.id, this.gc,
+                      x - radius, y - radius, diameter, diameter, 0, 23040);
     };
 
 

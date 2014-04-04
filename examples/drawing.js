@@ -4,24 +4,24 @@
 
     var mycanvas = draw.CanvasWindow(50, 50, 500, 500, "Higgs Test");
 
-    var x = 120;
-    var y = 120;
+    var x = 170;
+    var y = 170;
 
     mycanvas.onKeypress(function(canvas, key)
     {
-        if (x < 400 && key === "Right")
-            x += 20;
-        else if (x > 0 && key === "Left")
-            x -= 20;
-        else if (y < 400 && key === "Down")
-            y += 20;
-        else if (y > 0 && key === "Up")
-            y -= 20;
+        if (x < 450 && key === "Right")
+            x += 10;
+        else if (x > 50 && key === "Left")
+            x -= 10;
+        else if (y < 450 && key === "Down")
+            y += 10;
+        else if (y > 50 && key === "Up")
+            y -= 10;
     });
 
     mycanvas.onRender(function(canvas)
     {
-        //canvas.clear("#FFFFFF");
+        canvas.clear("#FFFFFF");
         canvas.setColor("#00FF00");
         canvas.fillRect(10, 10, 100, 100);
         canvas.setColor("#FF0000");
@@ -29,7 +29,7 @@
         canvas.setColor(255, 255, 0);
         canvas.fillRect(120, 10, 100, 100);
         canvas.setColor("#00FFFF");
-        canvas.fillRect(x, y, 100, 100);
+        canvas.fillCircle(x, y, 50);
     });
 
     mycanvas.show();
