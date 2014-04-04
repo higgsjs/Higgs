@@ -129,22 +129,23 @@ TODO: blog post about optimization, results
 
 TODO: investigate why some benchmarks have a different prim call count
 - may want to test the output of those further
+- nondeterminism?
 
 FIXME: array extends cap for each new element???
 
 FIXME: does -- call sub? should have a subInt
 
-TODO: bias values towards dst phi reg
+
+
+
+
+
+
+
+[DONE] TODO: bias values towards dst phi reg
 - check if hasOneUse, use is a phi node
 - look at code size, exec time on ./benchmark.py
-
-
-
-
-
-
-
-
+- small reduction in code size, perf results mixed
 
 [DONE] FIXME: optimize intToStr, calls to sub, ++
 

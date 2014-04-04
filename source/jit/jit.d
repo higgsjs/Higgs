@@ -445,8 +445,15 @@ class CodeGenState
     {
         assert (value.outSlot !is NULL_STACK);
 
-        auto regIdx = value.outSlot % allocRegs.length;
+        // If this value has only one use, which is a phi node
+        if (value.hasOneUse)
+        {
+            auto use = value.getFirstUse.owner;
+            if (!cast(PhiNode)value && cast(PhiNode)use)
+                return getDefReg(use);
+        }
 
+        auto regIdx = value.outSlot % allocRegs.length;
         auto reg = allocRegs[regIdx];
 
         return reg;
