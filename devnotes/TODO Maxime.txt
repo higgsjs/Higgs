@@ -7,12 +7,6 @@ Conference deadlines:
 - PLDI 2014     Nov 8, Nov 15 2013
 - VEE 2014      ~November 2013
 
-Internships: Nov-Dec 2014, after paper deadlines?
-~3-4 months
-Marc advises to remain near PhD work, best for CV
-Approach Mozilla around early June, combine with trip?
-Approach Facebook
-
 List of possible contributions:
 - Type tagging scheme
 - Register allocation
@@ -42,10 +36,6 @@ TODO: think about shapes more
 TODO: not missing global prop opt?
 - observation: if read once, we know its not missing
 
-TODO: don't inline in global functions, unless they have loops? ***
-- IRFunction.hasLoop?
-- this might be extra beneficial, big functions that run only once
-
 FIXME: empty fun, ret undefined twice
 - see 200m_calls
 - second one is from ctor entry
@@ -56,6 +46,10 @@ FIXME: empty fun, ret undefined twice
 TODO: try to optimize inlineCall
 - inlinePass does not do liveness analysis, is slow on its own
 - what are the slowest parts of it?
+
+TODO: don't inline in global functions, unless inside loop?
+- IRFunction.hasLoop?
+- this might be extra beneficial, big functions that run only once
 
 TODO: try to optimize liveness analysis
 - record total time taken in stats
@@ -71,23 +65,16 @@ TODO: transform jit.compileUnit into jit.execUnit
 FIXME: string-fasta is slower than before? fast compile time, profile quickly
 TODO: profile again, lots of interesting things to learn!
 
-TODO: bias toBool for property access expressions, isNaN, bitwise result
-
 ------------------------------------------------------------------------------
 
-Goal: March 31st, type prop working, satisfying perf for article
-- Type prop should enable speed gains on bigger benchmarks
+May 31st, complete paper writing
+--------------------------------
 
-TODO: val can be both in reg and stack
-- stop storing stack idx in ValState
-
-TODO: can possibly test out context swapping hypothesis by adding a certain
-number of useless compiler calls, without increasing code size?
-- These would have to do real compilation work
-- Easy dirty hack: have the branch stub compilation not patch the branch
-  the first time around, do some useless compilation the second time
-
-FIXME: parseInt('32') takes about 20ms???
+TODO: May, approach Moz, Apple, FB wrt internship
+- 4 months, [Jan, April] 2015, spend winter in Cali
+- Marc advises to remain near PhD work, best for CV
+- Marc thinks you can make ~40K pre-tax
+- Ask about salary, lodging options
 
 Marc: start writing paper soon
 - Setup repo
@@ -96,8 +83,14 @@ Marc: start writing paper soon
 
 ------------------------------------------------------------------------------
 
-Milestone: register allocation
-------------------------------
+April 15th, milestone: sufficient performance
+---------------------------------------------
+
+TODO: val can be both in reg and stack
+
+TODO: bias toBool for property access expressions, isNaN, bitwise result
+
+FIXME: parseInt('32') takes about 20ms???
 
 TODO: profile awful slow compilation speed
 
@@ -108,12 +101,6 @@ TODO: optimize code size for get_global
   - maybe try this first, as an "extreme" test
 - see how execution time and code size change across benchmarks
 
-TODO: bias values towards dst phi reg
-- check if hasOneUse, use is a phi node, reg is free or regVal not live
-- benchmark, look at code size
-- Have different reg alloc for getOutOpnd
-  - Separate out freeReg() and mapReg()
-
 TODO: allow reusing input reg if value is dead?
 - special flag for getOutOpnd?
 
@@ -121,9 +108,15 @@ TODO: optimize get_global spills
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
 
-FIXME: array extends cap for each new element???
-
 TODO: try moving regexp in commonjs module inside function, see impact on init time
+
+Meeting lundi 7 avril: Marc wants to look at machine code
+- Start simple, microbenchmark
+- 200m_add
+- loop_big_incr
+- something w/ function call
+
+TODO: look at machine code for 3bit-bits-in-byte
 
 TODO: blog post about optimization, results
 - 200 stars on github
@@ -134,11 +127,45 @@ TODO: blog post about optimization, results
 - compile time now dominates execution time on several benchmarks
 - 3d-raytrace, prop access > 30% execution time, inline caching
 
-TODO: bias allocReg towards defReg
+TODO: investigate why some benchmarks have a different prim call count
+- may want to test the output of those further
+
+FIXME: array extends cap for each new element???
+
+FIXME: does -- call sub? should have a subInt
+
+TODO: bias values towards dst phi reg
+- check if hasOneUse, use is a phi node
+- look at code size, exec time on ./benchmark.py
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: optimize intToStr, calls to sub, ++
+
+[DONE] TODO: bias allocReg towards defReg
 - optional argument to freeReg
 - should reduce code size (test this), eliminate moves, improve bench scores
+- code size before
+    3d-raytrace  : 
+    benchmark avg: 
+- code size after
+    3d-raytrace  : 
+    benchmark avg: 
 
-Meeting:
+[DONE] TODO: spillReg, take reg argument
+
+[DONE] FIXME: def reg biasing causes segfault?
+./higgs --nostdlib --jit_trace_instrs regress-cat-str.js
+- 'foo' + 1 segfaults, create regression test, test with --nostdlib
+- div!!! corrupting RAX, RDX
+
+[DONE] Meeting:
 - phi type prop tweak results in slightly less versions
 - another tweak brings us more type info from IsTypeOp
 - reg alloc:
@@ -152,15 +179,10 @@ Meeting:
 - BBV now wins on most benchmarks (on exec time)
 - Effets de cache subtils? petits changements font qu'un benchmark gagne/perd avec BBV
 
-
-
-
-
-
-
-
-
-
+./higgs --stats benchmarks/sunspider/3d-raytrace.js 
+comp time (ms): 829
+exec time (ms): 155
+code size (bytes): 897205
 
 [DONE] TODO: benchmark once again
 - Winning on average if excluding comp time

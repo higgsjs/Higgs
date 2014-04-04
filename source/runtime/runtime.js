@@ -278,7 +278,7 @@ function $rt_intToStr(intVal, radix)
     var intVal2 = intVal;
     do
     {
-        strLen++;
+        strLen = $ir_add_i32(strLen, 1);
         intVal2 = $ir_div_i32(intVal2, radix);
 
     } while ($ir_ne_i32(intVal2, 0));
@@ -295,7 +295,7 @@ function $rt_intToStr(intVal, radix)
     var digits = '0123456789abcdefghijklmnopqrstuvwxyz';
 
     // Write the digits in the string
-    var i = strLen - 1;
+    var i = $ir_sub_i32(strLen, 1);
     do
     {
         var digit = $ir_mod_i32(intVal, radix);
@@ -306,7 +306,7 @@ function $rt_intToStr(intVal, radix)
 
         intVal = $ir_div_i32(intVal, radix);
 
-        i--;
+        i = $ir_sub_i32(i, 1);
 
     } while ($ir_ne_i32(intVal, 0));
 

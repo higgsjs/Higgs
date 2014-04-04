@@ -394,17 +394,22 @@ void divOp(string op)(
     CodeBlock as
 )
 {
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[2].opnd(32), false, true);
+    // Spill EAX and EDX (used by the idiv instruction)
+    st.spillReg(as, EAX);
+    st.spillReg(as, EDX);
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), false, false);
     auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    // Save RDX
-    as.mov(scrRegs[1].opnd(64), X86Opnd(RDX));
-    if (opnd1.isReg && opnd1.reg == EDX)
-        opnd1 = scrRegs[1].opnd(32);
+    as.mov(EAX.opnd, opnd0);
 
-    // Move the dividend into EAX
-    as.mov(X86Opnd(EAX), opnd0);
+    if (opnd1 == EDX.opnd(32))
+    {
+        assert (scrRegs[1] != RAX && scrRegs[1] != RDX);
+        as.mov(scrRegs[1].opnd(32), opnd1);
+        opnd1 = scrRegs[1].opnd(32);
+    }
 
     // Sign-extend EAX into EDX:EAX
     as.cdq();
@@ -412,19 +417,13 @@ void divOp(string op)(
     // Signed divide/quotient EDX:EAX by r/m32
     as.idiv(opnd1);
 
-    if (!outOpnd.isReg || outOpnd.reg != EDX)
-    {
-        // Store the divisor or remainder into the output operand
-        static if (op == "div")
-            as.mov(outOpnd, X86Opnd(EAX));
-        else if (op == "mod")
-            as.mov(outOpnd, X86Opnd(EDX));
-        else
-            assert (false);
-
-        // Restore RDX
-        as.mov(X86Opnd(RDX), scrRegs[1].opnd(64));
-    }
+    // Store the divisor or remainder into the output operand
+    static if (op == "div")
+        as.mov(outOpnd, EAX.opnd);
+    else if (op == "mod")
+        as.mov(outOpnd, EDX.opnd);
+    else
+        assert (false);
 
     // Set the output type
     st.setOutType(as, instr, Type.INT32);

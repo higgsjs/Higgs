@@ -473,9 +473,31 @@ class CodeGenState
     /**
     Find a free register or spill one
     */
-    X86Reg freeReg(CodeBlock as, IRInstr instr)
+    X86Reg freeReg(
+        CodeBlock as,
+        IRInstr instr,
+        X86Reg defReg = allocRegs[0]
+    )
     {
         auto liveInfo = callCtx.fun.liveInfo;
+
+
+        // Get the value mapped to the default register
+        auto defRegVal = gpRegMap[defReg.regNo];
+
+        // If the default register is free
+        if (defRegVal is null)
+            return defReg;
+
+        // If the value mapped to the default register is not live
+        if (liveInfo.liveBefore(defRegVal, instr) == false)
+        {
+            // Remove the mapped value from the value map
+            valMap.remove(defRegVal);
+            gpRegMap[defReg.regNo] = null;
+            return defReg;
+        }
+
 
         // For each allocatable general-purpose register
         foreach (reg; allocRegs)
@@ -494,9 +516,17 @@ class CodeGenState
                 // Remove the mapped value from the value map
                 valMap.remove(regVal);
                 gpRegMap[reg.regNo] = null;
-
                 return reg;
             }
+        }
+
+        // If the value mapped to the default register
+        // is not an argument of the instruction
+        if (!instr.hasArg(defRegVal))
+        {
+            // Spill the default register
+            spillReg(as, defReg);
+            return defReg;
         }
 
         // Chosen register to spill
@@ -517,7 +547,7 @@ class CodeGenState
 
         // Spill the chosen register
         assert (chosenReg !is null);
-        spillReg(as, chosenReg.regNo);
+        spillReg(as, *chosenReg);
 
         return *chosenReg;
     }
@@ -535,7 +565,7 @@ class CodeGenState
         assert (value !is null);
 
         // Find or free a register
-        auto reg = freeReg(as, instr);
+        auto reg = freeReg(as, instr, getDefReg(value));
 
         // Map the value to the chosen register
         return mapReg(reg, value, numBits);
@@ -581,10 +611,10 @@ class CodeGenState
     /**
     Spill a specific register to the stack
     */
-    void spillReg(CodeBlock as, size_t regNo)
+    void spillReg(CodeBlock as, X86Reg reg)
     {
         // Get the value mapped to this register
-        auto regVal = gpRegMap[regNo];
+        auto regVal = gpRegMap[reg.regNo];
 
         // If no value is mapped to this register, stop
         if (regVal is null)
@@ -603,7 +633,7 @@ class CodeGenState
         valMap[regVal] = state.toStack();
 
         // Mark the register as free
-        gpRegMap[regNo] = null;
+        gpRegMap[reg.regNo] = null;
 
         // If the value is a function parameter,
         // we don't actually need to spill it
@@ -613,7 +643,6 @@ class CodeGenState
         //writeln("spilling: ", regVal);
 
         auto mem = wordStackOpnd(regVal.outSlot);
-        auto reg = X86Reg(X86Reg.GP, regNo, 64);
 
         //as.printStr("spilling " ~ reg.toString);
         //writefln("spilling: %s (%s)", regVal.toString(), reg);
@@ -640,15 +669,17 @@ class CodeGenState
     void spillRegs(CodeBlock as, SpillTestFn spillTest)
     {
         // For each general-purpose register
-        foreach (regNo, value; gpRegMap)
+        foreach (reg; allocRegs)
         {
+            auto value = gpRegMap[reg.regNo];
+
             // If nothing is mapped to this register, skip it
             if (value is null)
                 continue;
 
             // If the value should be spilled, spill it
             if (spillTest(value) is true)
-                spillReg(as, regNo);
+                spillReg(as, reg);
         }
     }
 
