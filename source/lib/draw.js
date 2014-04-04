@@ -361,7 +361,18 @@ NOTE: currently this provides just enough bindings for the drawing lib
 
         // check whether r,g,b values were passed individually or as a string
         if (arguments.length === 3)
-            color_string = "#" + color.toString(16) + g.toString(16) + b.toString(16);
+        {
+            color_string = "#"  + color.toString(16);
+            if (color_string.length === 2)
+                color_string += "0";
+            color_string += g.toString(16);
+            if (color_string.length === 4)
+                color_string += "0";
+            color_string += b.toString(16);
+            if (color_string.length === 6)
+                color_string += "0";
+            console.log(color_string);
+        }
         else if (color && color[0] == "#")
             color_string = color;
         else

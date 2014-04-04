@@ -21,14 +21,14 @@
 
     mycanvas.onRender(function(canvas)
     {
-        canvas.setFG("#FFFFFF");
+        canvas.setColor("#FFFFFF");
 
         canvas.fillRect(0, 0, 500, 500);
         canvas.setColor("#00FF00");
         canvas.fillRect(10, 10, 100, 100);
         canvas.setColor("#FF0000");
         canvas.fillRect(10, 120, 100, 100);
-        canvas.setColor("#FFFF00");
+        canvas.setColor(255, 255, 0);
         canvas.fillRect(120, 10, 100, 100);
         canvas.setColor("#00FFFF");
         canvas.fillRect(x, y, 100, 100);
