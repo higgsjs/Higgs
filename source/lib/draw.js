@@ -62,6 +62,23 @@ NOTE: currently this provides just enough bindings for the drawing lib
     var XEventMask = Xlib.XEventMask;
     var XEvents = Xlib.XEvents;
 
+
+    /**
+    DrawError
+    @constructor
+    */
+    function DrawError(message)
+    {
+        this.message = message;
+    }
+    DrawError.prototype = new Error();
+    DrawError.prototype.constructor = DrawError;
+
+
+    /**
+    CanvasWindow
+    Construct a new CanvasWindow object.
+    */
     var CanvasWindowProto = {
         handle: CNULL,
         frame_rate: 400,
@@ -69,10 +86,6 @@ NOTE: currently this provides just enough bindings for the drawing lib
         key_funs: null
     };
 
-    /**
-    CanvasWindow
-    Construct a new CanvasWindow object.
-    */
     function CanvasWindow(x, y, width, height, title)
     {
         var display;
@@ -101,6 +114,8 @@ NOTE: currently this provides just enough bindings for the drawing lib
         cw.white_pixel = Xlib.XWhitePixel(display, screen);
 
         // X Window properties
+        // TODO: default to center of screen
+        // other better defaults?
         cw.x = x || 50;
         cw.y = y || 50;
         cw.width = width;
@@ -243,7 +258,6 @@ NOTE: currently this provides just enough bindings for the drawing lib
                            window, canvas.gc,
                            0, 0, width, height, 0, 0
                           );
-            Xlib.XFlush(display);
 
             // handle events
             while (Xlib.XPending(display) > 0)
@@ -261,18 +275,17 @@ NOTE: currently this provides just enough bindings for the drawing lib
                                    window, canvas.gc,
                                    0, 0, width, height, 0, 0
                                   );
-                    Xlib.XFlush(display);
                 }
                 else if (event_type === XEvents.KeyPress)
                 {
                     // TODO: index? change to number?
                     key_sym = Xlib.XLookupKeysym(e, 0);
                     key_name_c = Xlib.XKeysymToString(key_sym);
-                    var kn = ffi.string(key_name_c);
+                    key_name = ffi.string(key_name_c);
 
                     while (key_funs_i > 0)
                     {
-                        key_funs[--key_funs_i](canvas, kn);
+                        key_funs[--key_funs_i](canvas, key_name);
                     }
                 }
                 else if (event_type === XEvents.ClientMessage)
@@ -335,17 +348,27 @@ NOTE: currently this provides just enough bindings for the drawing lib
     }
 
     /**
-    Set foreground color for a Canvas, accepts a hex color string
+    Set drawing color for a Canvas, accepts a hex color string
     */
-    CanvasProto.setFG = function(color)
+    CanvasProto.setColor = function(color, g, b)
     {
-        var gc = this.colorGCs[color];
+        var gc;
         var colormap;
         var display = this.display;
         var XColor;
-        var color_name;
+        var color_string_c;
+        var color_string;
+
+        // check whether r,g,b values were passed individually or as a string
+        if (arguments.length === 3)
+            color_string = "#" + color.toString(16) + g.toString(16) + b.toString(16);
+        else if (color && color[0] == "#")
+            color_string = color;
+        else
+            throw new DrawError("Invalid argument in setFG");
 
         // Check if we have a graphics context for this color
+        gc =  this.colorGCs[color_string];
         if (gc)
         {
             this.gc = gc;
@@ -353,18 +376,18 @@ NOTE: currently this provides just enough bindings for the drawing lib
         }
 
         // .. if not we need to create one
-        color_name = ffi.cstr(color);
+        color_string_c = ffi.cstr(color_string);
         XColor = Xlib.XColor();
         colormap = this.colormap;
 
         gc = Xlib.XCreateGC(display, this.id, 0, 0);
 
-        Xlib.XParseColor(display, colormap, color_name, XColor.handle);
+        Xlib.XParseColor(display, colormap, color_string_c, XColor.handle);
         Xlib.XAllocColor(display, colormap, XColor.handle);
 
         Xlib.XSetForeground(display, gc, XColor.get_pixel());
 
-        c.free(color_name);
+        c.free(color_string_c);
 
         // TODO: error checking?
         this.gc = gc;

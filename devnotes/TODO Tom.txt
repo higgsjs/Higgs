@@ -12,6 +12,7 @@ TODO: improve FFI
       - improved wrapping
       - wrapAll() function?
       - add some preprocessor functionality?
+      - track down perf problems
 
 TODO: SDL bindings
       X move to binding for SDL2? Not as much support currently, but more future proof
@@ -20,13 +21,19 @@ TODO: SDL bindings
 TODO: Xlib
       - bindings for Xlib
       - [STARTED] currently just covering enough to be useful to SDL, cairo, etc
-      
-TODO: cairo bindings
-      - [STARTED] currently just covering enough to be useful to drawing lib
-      
-TODO: dawing lib
+
+      TODO: cairo bindings
+      - [STARTED] currently just some tests
+
+TODO: drawing lib
       - [STARTED]
+      - some of this should be factored out into more general purpose libs
       - simple drawing api for drawing to windows/images/pdf
+      - add more support for key events/querying keyboard state,
+        currently only a fairly rudimentary "keypress" event is supported.
+        Main concern is detecting when multiple keys are pressed down. Doing this
+        for each key press would be unwieldy, but perhaps a .getKeysPressed() method
+        you can use inside the Keypress handler when you really need it.
 
 TODO: stdlib
       - improve stdlib
