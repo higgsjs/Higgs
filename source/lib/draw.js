@@ -327,9 +327,11 @@ NOTE: currently this provides just enough bindings for the drawing lib
 
     function Canvas(display, screen, window, width, height)
     {
-        // TODO: window = drawable?
+
         var canvas = Object.create(CanvasProto);
-        // TODO: change name?
+        // TODO: make default font more ocnfigurable
+        var font_name_c = ffi.cstr("-*-helvetica-*-r-*-*-18-*-*-*-*-*-*-*");
+
         // cleanup
         canvas.id = Xlib.XCreatePixmap(display, window,
                                        width, height,
@@ -341,24 +343,25 @@ NOTE: currently this provides just enough bindings for the drawing lib
         canvas.width = width;
         canvas.height = height;
         canvas.colormap = Xlib.XDefaultColormap(display, 0);
-        canvas.colorGCs = Object.create(null);
+        canvas.colors = Object.create(null);
         canvas.gc = Xlib.XDefaultGC(display, screen);
+        canvas.font = Xlib.XFontStruct(Xlib.XLoadQueryFont(display, font_name_c));
+        Xlib.XSetFont(display, canvas.gc, canvas.font.get_fid());
 
+        c.free(font_name_c);
         return canvas;
     }
 
     /**
-    Clear the canvas - basically a shortcut
+    Clear the canvas - just a shortcut for fillRect for the entire canvas
     */
     CanvasProto.clear = function(color, g, b)
     {
-        var gc = this.gc;
         if (arguments.length === 1)
             this.setColor(color);
         else
             this.setColor(color, g, b);
         this.fillRect(0, 0, this.width, this.height);
-        this.gc = gc;
     };
 
     /**
@@ -366,9 +369,9 @@ NOTE: currently this provides just enough bindings for the drawing lib
     */
     CanvasProto.setColor = function(color, g, b)
     {
-        var gc;
-        var colormap;
+        var gc = this.gc;
         var display = this.display;
+        var colormap;
         var XColor;
         var color_string_c;
         var color_string;
@@ -392,10 +395,10 @@ NOTE: currently this provides just enough bindings for the drawing lib
             throw new DrawError("Invalid argument in setFG");
 
         // Check if we have a graphics context for this color
-        gc =  this.colorGCs[color_string];
-        if (gc)
+        XColor = this.colors[color_string];
+        if (XColor)
         {
-            this.gc = gc;
+            Xlib.XSetForeground(display, gc, XColor.get_pixel());
             return true;
         }
 
@@ -404,17 +407,16 @@ NOTE: currently this provides just enough bindings for the drawing lib
         XColor = Xlib.XColor();
         colormap = this.colormap;
 
-        gc = Xlib.XCreateGC(display, this.id, 0, 0);
-
         Xlib.XParseColor(display, colormap, color_string_c, XColor.handle);
         Xlib.XAllocColor(display, colormap, XColor.handle);
 
         Xlib.XSetForeground(display, gc, XColor.get_pixel());
 
-        c.free(color_string_c);
-
         // TODO: error checking?
-        this.gc = gc;
+
+        // Cleanup
+        c.free(color_string_c);
+        this.colors[color_string] = XColor;
         return true;
     };
 
@@ -479,6 +481,41 @@ NOTE: currently this provides just enough bindings for the drawing lib
         var diameter = radius * 2;
         Xlib.XFillArc(this.display, this.id, this.gc,
                       x - radius, y - radius, diameter, diameter, 0, 23040);
+    };
+
+    /**
+    setFont - set the font to use
+    */
+    CanvasProto.setFont = function()
+    {
+
+    };
+
+    /**
+    drawText - draw some text
+    */
+    CanvasProto.drawText = function(x, y, text)
+    {
+        var text_c = ffi.cstr(text);
+        var text_l = text.length; // TODO: wchars
+        var TextItem = Xlib.XTextItem();
+        TextItem.set_chars(text_c);
+        TextItem.set_nchars(text_l);
+        TextItem.set_delta(0);
+        TextItem.set_font(this.font.get_fid());
+
+
+        Xlib.XDrawText(this.display, this.id, this.gc, x, y, TextItem.handle, 1);
+        /*
+        Display *display;
+        Drawable d;
+        GC gc;
+        int x, y;
+        XTextItem *items;
+        int nitems;
+        */
+        
+        c.free(text_c);
     };
 
 

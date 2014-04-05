@@ -22,6 +22,7 @@
     mycanvas.onRender(function(canvas)
     {
         canvas.clear("#FFFFFF");
+
         canvas.setColor("#00FF00");
         canvas.fillRect(10, 10, 100, 100);
         canvas.setColor("#FF0000");
@@ -30,6 +31,9 @@
         canvas.fillRect(120, 10, 100, 100);
         canvas.setColor("#00FFFF");
         canvas.fillCircle(x, y, 50);
+
+        canvas.setColor("#000000");
+        canvas.drawText(50, 300, "Hello World");
     });
 
     mycanvas.show();

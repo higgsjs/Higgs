@@ -81,7 +81,6 @@ NOTE: currently this provides just enough bindings for the drawing lib
         typedef struct _Visual Visual;
         typedef struct _XGCValues XGCValues;
         typedef struct _XSetWindowAttributes XSetWindowAttributes;
-        typedef struct _XFontStruct XFontStruct;
         typedef struct _XHostAddress XHostAddress;
         typedef struct _XExtCodes XExtCodes;
         typedef struct _XIM *XIM;
@@ -94,11 +93,12 @@ NOTE: currently this provides just enough bindings for the drawing lib
         typedef struct _XKeyboardState XKeyboardState;
         typedef struct _XWindowAttributes XWindowAttributes;
         typedef struct _XImage XImage;
-        typedef struct _XCharStruct XCharStruct;
         typedef struct _XMappingEvent XMappingEvent;
         typedef struct _XmbTextItem XmbTextItem;
         typedef struct _XwcTextItem XwcTextItem;
         typedef struct _XGenericEventCookie XGenericEventCookie;
+        typedef struct _XFontProp XFontProp;
+
 
         /* Resources */
         typedef unsigned long XID;
@@ -269,11 +269,41 @@ NOTE: currently this provides just enough bindings for the drawing lib
         /*
          * PolyText routines take these as arguments.
          */
-        typedef struct _XTextItem XTextItem;
         
         typedef struct _XChar2b XChar2b;
         
-        typedef struct _XTextItem16 XTextItem16;
+              typedef struct _XTextItem16 XTextItem16;
+
+        /*
+         * per character font metric information.
+         */
+        typedef struct {
+            short lbearing; /* origin to left edge of raster */
+            short rbearing; /* origin to right edge of raster */
+            short width; /* advance to next char's origin */
+            short ascent; /* baseline to top edge of raster */
+            short descent; /* baseline to bottom edge of raster */
+            unsigned short attributes; /* per char flags (not predefined) */
+        } XCharStruct;
+
+        typedef struct {
+            XExtData *ext_data;    /* hook for extension to hang data */
+            Font        fid;            /* Font id for this font */
+            unsigned direction;    /* hint about direction the font is painted */
+            unsigned min_char_or_byte2;/* first character */
+            unsigned max_char_or_byte2;/* last character */
+            unsigned min_byte1;   /* first row that exists */
+            unsigned max_byte1;    /* last row that exists */
+            Bool all_chars_exist;/* flag if all characters have non-zero size*/
+            unsigned default_char;    /* char to print for undefined character */
+            int      n_properties;   /* how many properties there are */
+            XFontProp *properties;    /* pointer to array of additional properties*/
+            XCharStruct min_bounds;    /* minimum bounds over all existing char*/
+            XCharStruct max_bounds;    /* maximum bounds over all existing char*/
+            XCharStruct *per_char;    /* first_char to last_char information */
+            int    ascent;     /* log. extent above baseline for spacing */
+            int    descent;    /* log. descent below baseline for spacing */
+        } XFontStruct;              
         
         
         typedef union { Display *display;
@@ -299,6 +329,26 @@ NOTE: currently this provides just enough bindings for the drawing lib
         );
         
 
+        /*
+         * PolyText routines take these as arguments.
+         */
+        typedef struct {
+            char *chars;    /* pointer to string */
+            int nchars;    /* number of characters */
+            int delta;    /* delta between strings */
+            Font font;    /* font to print it in, None don't change */
+        } XTextItem;
+
+        XFontStruct *XLoadQueryFont(
+            Display*    /* display */,
+            const char*    /* name */
+        );
+
+        XFontStruct *XQueryFont(
+            Display*    /* display */,
+            XID    /* font_ID */
+        );
+              
         /*
         * X function declarations.
         */
