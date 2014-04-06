@@ -746,7 +746,7 @@ function $rt_add(x, y)
 }
 
 /**
-Specialized add for the (int,int) case (e.g.: array increment)
+Specialized add for the (int,int) case (e.g.: index increment)
 */
 function $rt_addInt(x, y)
 {
@@ -846,6 +846,24 @@ function $rt_subIntFloat(x, y)
     else if ($ir_is_f64(x) && $ir_is_f64(y))
     {
         return $ir_sub_f64(x, y);
+    }
+
+    return $rt_sub(x, y);
+}
+
+/**
+Specialized subtract for the (int,int) case (e.g.: index decrement)
+*/
+function $rt_subInt(x, y)
+{
+    // If x,y are integer
+    if ($ir_is_i32(x) && $ir_is_i32(y))
+    {
+        var r;
+        if (r = $ir_sub_i32_ovf(x, y))
+        {
+            return r;
+        }
     }
 
     return $rt_sub(x, y);

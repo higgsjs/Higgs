@@ -1710,7 +1710,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 {
                     return genRtCall(
                         ctx,
-                        (op.str == "++")? "addInt":"sub",
+                        (op.str == "++")? "addInt":"subInt",
                         [lArg, rArg],
                         expr.pos
                     );
