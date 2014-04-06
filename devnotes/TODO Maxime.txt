@@ -140,17 +140,24 @@ TODO: make inlined setPropField
 TODO: try implementing GC liveness awareness, might be simpler than you think
 - save many moves, reduce code size
 
-TODO: investigate why some benchmarks have a different prim call count
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: total time stat
+
+[DONE] TODO: investigate why some benchmarks have a different prim call count
 - may want to test the output of those further
 - nondeterminism?
-
-
-
-
-
-
-
-
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20" --csv_file="maxvers20.csv"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0" --csv_file="maxvers0.csv"
+- crypto-aes shows slight difference, uses getTime
 
 [DONE] FIXME: does -- call sub? should have a subInt
 - slight decrease in code size, prim calls, type tests
@@ -164,13 +171,6 @@ TODO: investigate why some benchmarks have a different prim call count
 
 [DONE] TODO: bias allocReg towards defReg
 - optional argument to freeReg
-- should reduce code size (test this), eliminate moves, improve bench scores
-- code size before
-    3d-raytrace  : 
-    benchmark avg: 
-- code size after
-    3d-raytrace  : 
-    benchmark avg: 
 
 [DONE] TODO: spillReg, take reg argument
 
