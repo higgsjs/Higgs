@@ -2536,7 +2536,8 @@ void gen_ret(
     //as.printStr("ret from " ~ instr.block.fun.getName);
 
     // Move the return word and types to the return registers
-    as.mov(retWordReg.opnd(64), retOpnd);
+    if (retWordReg.opnd != retOpnd)
+        as.mov(retWordReg.opnd, retOpnd);
     as.mov(retTypeReg.opnd(8), typeOpnd);
 
     // If we are in a constructor (new) call

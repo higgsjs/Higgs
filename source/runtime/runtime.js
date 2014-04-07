@@ -2298,9 +2298,6 @@ function $rt_setProp(base, prop, val)
     throw TypeError("invalid base in property write");
 }
 
-numY = 0;
-numN = 0;
-
 /**
 Specialized version of setProp for object properties
 */

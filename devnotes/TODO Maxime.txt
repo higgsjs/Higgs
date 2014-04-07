@@ -98,14 +98,6 @@ TODO: optimize dynamic calls?
 - can we pass args through registers?
 TODO: compare perf of calls vs dynamic calls?
 
-TODO: optimize code size for get_global
-- do fully "interpreted" if needed, call into code fragment
-  - maybe try this first, as an "extreme" test
-- see how execution time and code size change across benchmarks
-TODO: optimize get_global spills?
-- Should have way to spill live after instr or arg regs only
-  - move into cargReg can easily corrupt allocated reg
-
 TODO: blog post about optimization, results
 - 200 stars on github
 - reg alloc speed gains
@@ -114,6 +106,16 @@ TODO: blog post about optimization, results
 - profiling, you don't actually know what's going on, complex codebase
 - compile time now dominates execution time on several benchmarks
 - 3d-raytrace, prop access > 30% execution time, inline caching
+
+TODO: optimize code size for get_global
+- do fully "interpreted" if needed, call into code fragment
+  - maybe try this first, as an "extreme" test
+- see how execution time and code size change across benchmarks
+TODO: optimize get_global spills?
+- Should have way to spill live after instr or arg regs only
+  - move into cargReg can easily corrupt allocated reg
+
+TODO: improve move listing, only list executed moves
 
 TODO: try implementing GC liveness awareness, might be simpler than you think
 - save many moves, reduce code size
@@ -129,26 +131,31 @@ FIXME: visitStack: for GC, need current instruction
 - currently passing callInstr, instr that called the current frame
 - could change setCallCtx to setCurInstr?
 
-TODO: "this" value should have known object type
+
+
+
+
+
+
+
+
+[DONE] FIXME: mov rcx, rcx??
+./higgs --e "print(fast3bitlookup.asmString())" --jit_genasm benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+- redundant move to ret reg
+
+[DONE] TODO: "this" value should have known object type
 - should affect code size, cmp count of access-binary-trees
+- noticeable reduction in type tests on some benchmarks
 
-TODO: try moving regexp in commonjs module inside function, see impact on init time
+[DONE] TODO: try moving regexp in commonjs module inside function, see impact on init time
+- saves 300ms
 
-TODO: don't inline in global functions, unless inside loop?
+[DONE] TODO: don't inline in global functions, unless inside loop?
 - Higgs init very slow since setProp inlining added!
-  ./higgs --stats --e "", comp time (ms): 1107
+  ./higgs --stats --e "", comp time (ms): 912
 - IRFunction.hasLoop?
 - this might be extra beneficial, big functions that run only once
-
-FIXME: mov rcx, rcx??
-./higgs --e "print(fast3bitlookup.asmString())" --jit_genasm benchmarks/sunspider/bitops-3bit-bits-in-byte.js
-
-
-
-
-
-
-
+- somehow this causes a major slowdown in compilation time?
 
 [DONE] FIXME: loop_big_incr, several jumps to immediate successor
 ./higgs --stats --e "print(test.asmString())" --jit_genasm benchmarks/micro/loop_big_incr.js

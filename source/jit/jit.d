@@ -255,6 +255,11 @@ class CodeGenState
 
         foreach (ident, param; fun.paramMap)
             mapToStack(param);
+
+        // If this is a constructor call,
+        // set the "this" value type to object
+        if (ctorCall)
+            setType(fun.thisVal, Type.OBJECT);
     }
 
     /**
