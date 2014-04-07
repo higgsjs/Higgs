@@ -139,6 +139,13 @@ TODO: make inlined setPropField
 
 TODO: try implementing GC liveness awareness, might be simpler than you think
 - save many moves, reduce code size
+before:
+    code size (bytes): 693204
+    comp time (ms): 405
+    exec time (ms): 56
+    total time (ms): 547
+after:
+    ???
 
 
 
@@ -149,6 +156,10 @@ TODO: try implementing GC liveness awareness, might be simpler than you think
 
 
 
+
+
+
+[DONE] TODO: modify liveness analysis to make hidden arguments live at every point
 
 [DONE] TODO: total time stat
 
