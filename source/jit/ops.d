@@ -846,7 +846,15 @@ void IsTypeOp(Type type)(
                     BranchShape shape
                 )
                 {
-                    jmp32Ref(as, vm, target0, 0);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        break;
+
+                        case BranchShape.NEXT1:
+                        case BranchShape.DEFAULT:
+                        jmp32Ref(as, vm, target0, 0);
+                    }
                 }
             );
         }

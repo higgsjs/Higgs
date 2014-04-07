@@ -47,10 +47,6 @@ TODO: try to optimize inlineCall
 - inlinePass does not do liveness analysis, is slow on its own
 - what are the slowest parts of it?
 
-TODO: don't inline in global functions, unless inside loop?
-- IRFunction.hasLoop?
-- this might be extra beneficial, big functions that run only once
-
 TODO: try to optimize liveness analysis
 - record total time taken in stats
 
@@ -66,6 +62,15 @@ FIXME: string-fasta is slower than before? fast compile time, profile quickly
 TODO: profile again, lots of interesting things to learn!
 
 FIXME: parseInt('32') takes about 20ms???
+
+TODO: val can be both in reg and stack
+
+TODO: profile awful slow compilation speed
+
+TODO: allow reusing input reg if value is dead?
+- special flag for getOutOpnd?
+
+TODO: bias toBool for property access expressions, isNaN, bitwise result
 
 ------------------------------------------------------------------------------
 
@@ -88,35 +93,18 @@ Marc: start writing paper soon
 April 15th, milestone: sufficient performance
 ---------------------------------------------
 
-TODO: val can be both in reg and stack
-
-TODO: bias toBool for property access expressions, isNaN, bitwise result
-
-TODO: profile awful slow compilation speed
-
-TODO: look at machine code, optimize RA further
+TODO: optimize dynamic calls?
+- adjust stack params in callee
+- can we pass args through registers?
+TODO: compare perf of calls vs dynamic calls?
 
 TODO: optimize code size for get_global
 - do fully "interpreted" if needed, call into code fragment
   - maybe try this first, as an "extreme" test
 - see how execution time and code size change across benchmarks
-
-TODO: allow reusing input reg if value is dead?
-- special flag for getOutOpnd?
-
-TODO: optimize get_global spills
+TODO: optimize get_global spills?
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
-
-TODO: try moving regexp in commonjs module inside function, see impact on init time
-
-Meeting lundi 7 avril: Marc wants to look at machine code
-- Start simple, microbenchmark
-- 200m_add
-- loop_big_incr
-- something w/ function call
-
-TODO: look at machine code for 3bit-bits-in-byte
 
 TODO: blog post about optimization, results
 - 200 stars on github
@@ -141,11 +129,46 @@ FIXME: visitStack: for GC, need current instruction
 - currently passing callInstr, instr that called the current frame
 - could change setCallCtx to setCurInstr?
 
+TODO: "this" value should have known object type
+- should affect code size, cmp count of access-binary-trees
+
+TODO: try moving regexp in commonjs module inside function, see impact on init time
+
+TODO: don't inline in global functions, unless inside loop?
+- Higgs init very slow since setProp inlining added!
+  ./higgs --stats --e "", comp time (ms): 1107
+- IRFunction.hasLoop?
+- this might be extra beneficial, big functions that run only once
+
+FIXME: mov rcx, rcx??
+./higgs --e "print(fast3bitlookup.asmString())" --jit_genasm benchmarks/sunspider/bitops-3bit-bits-in-byte.js
 
 
 
 
 
+
+
+
+[DONE] FIXME: loop_big_incr, several jumps to immediate successor
+./higgs --stats --e "print(test.asmString())" --jit_genasm benchmarks/micro/loop_big_incr.js
+- produced by is_i32, direct jump, no comparison
+- jump is probably never rewritten?
+- does is_i32 even know how to handle successor next?
+
+[DONE] Meeting lundi 7 avril: Marc wants to look at machine code, start simple, microbenchmark
+- Biasing reg alloc towards "assigned reg" caused huge perf gains, code size reduction
+- Added more specialized inlined primitives
+  - Will probably not add more, as they can increase code size, comp time
+- Idea: can implement "GC map" without too much difficulty
+  - Eliminate many redundant moves, reduce code size
+  - Will probably require some debugging
+- 200m_add
+    ./higgs --e "print(test.asmString())" --jit_genasm benchmarks/micro/200m_add.js
+- loop_big_incr
+    ./higgs --e "print(test.asmString())" --jit_genasm benchmarks/micro/loop_big_incr.js
+- something w/ function call, bitopts-3bits-in-byte?
+    ./higgs --e "print(fast3bitlookup.asmString())" --jit_genasm benchmarks/sunspider/bitops-3bit-bits-in-byte.js
 
 [DONE] TODO: make inlined setPropField
 ./higgs --stats benchmarks/sunspider/access-binary-trees.js
