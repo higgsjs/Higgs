@@ -2037,7 +2037,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             // Set the property on the object
             genRtCall(
                 ctx,
-                "setProp",
+                "setPropField",
                 [objVal, strVal, propVal],
                 expr.pos
             );
@@ -2324,7 +2324,7 @@ IRValue assgToIR(
             // Set the property on the object
             genRtCall(
                 ctx,
-                "setProp",
+                "setPropField",
                 [baseVal, idxVal, rhsVal],
                 lhsExpr.pos
             );

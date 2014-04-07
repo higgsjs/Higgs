@@ -1146,29 +1146,6 @@ class VM
             auto curFun = curCtx.fun;
             assert (curFun !is null);
 
-            // If we are in an inlined call context
-            if (curCtx.parent)
-            {
-                // Visit this stack frame
-                visitFrame(
-                    curFun,
-                    wsp,
-                    tsp,
-                    depth,
-                    curCtx.extraLocals,
-                    curCtx.callSite
-                );
-
-                // Pop the inlined locals
-                wsp += curCtx.extraLocals;
-                tsp += curCtx.extraLocals;
-
-                // Move to the caller context
-                curCtx = curCtx.parent;
-
-                continue;
-            }
-
             auto numLocals = curFun.numLocals;
             auto numParams = curFun.numParams;
             auto argcSlot  = curFun.argcVal.outSlot;
@@ -1331,27 +1308,6 @@ extern (C) CodePtr throwExc(
 
             // Return the exception handler address
             return excCodeAddr;
-        }
-
-        // If we are in an inlined call context
-        if (curCtx.parent)
-        {
-            //writeln("inlined at: ", curCtx.callSite.toString);
-
-            // Get the inlined call site
-            curInstr = curCtx.callSite;
-
-            // Pop the inlined locals
-            vm.pop(curCtx.extraLocals);
-
-            // Get the exception handler for the inlined context
-            if (curCtx.excHandler)
-                curHandler = curCtx.excHandler;
-
-            // Move to the caller context
-            curCtx = curCtx.parent;
-
-            continue;
         }
 
         auto curFun = curCtx.fun;

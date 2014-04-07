@@ -2153,7 +2153,7 @@ void gen_call_apply(
 {
     extern (C) CodePtr op_call_apply(
         CallCtx callCtx,
-        IRInstr instr, 
+        IRInstr instr,
         CodePtr retAddr
     )
     {
@@ -2334,9 +2334,7 @@ void gen_load_file(
         }
     }
 
-    // TODO: optimize call spills
-    // TODO: move spills after arg copying?
-    // Spill the values that are live after the call
+    // Spill the values that are live before the call
     st.spillRegs(
         as,
         delegate bool(IRDstValue value)
@@ -2448,9 +2446,7 @@ void gen_eval_str(
         }
     }
 
-    // TODO: optimize call spills
-    // TODO: move spills after arg copying?
-    // Spill the values that are live after the call
+    // Spill the values that are live before the call
     st.spillRegs(
         as,
         delegate bool(IRDstValue value)

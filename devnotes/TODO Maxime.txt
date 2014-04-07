@@ -127,16 +127,6 @@ TODO: blog post about optimization, results
 - compile time now dominates execution time on several benchmarks
 - 3d-raytrace, prop access > 30% execution time, inline caching
 
-TODO: make inlined setPropField
-- access-binary-trees
-    comp time (ms): 343
-    exec time (ms): 142
-    code size (bytes): 527457
-    num blocks: 2159
-    num versions: 2424
-    total prim calls: 255053
-    total type tests: 740561
-
 TODO: try implementing GC liveness awareness, might be simpler than you think
 - save many moves, reduce code size
 before:
@@ -147,6 +137,9 @@ before:
 after:
     ???
 
+FIXME: visitStack: for GC, need current instruction
+- currently passing callInstr, instr that called the current frame
+- could change setCallCtx to setCurInstr?
 
 
 
@@ -154,10 +147,26 @@ after:
 
 
 
-
-
-
-
+[DONE] TODO: make inlined setPropField
+./higgs --stats benchmarks/sunspider/access-binary-trees.js
+- before:
+    comp time (ms): 358
+    exec time (ms): 100
+    total time (ms): 458
+    code size (bytes): 527329
+    num blocks: 2159
+    num versions: 2424
+    total prim calls: 255053
+    total type tests: 740561
+- after:
+    comp time (ms): 914
+    exec time (ms): 25
+    total time (ms): 939
+    code size (bytes): 665077
+    num blocks: 4314
+    num versions: 4815
+    total prim calls: 2311
+    total type tests: 530259
 
 [DONE] TODO: modify liveness analysis to make hidden arguments live at every point
 

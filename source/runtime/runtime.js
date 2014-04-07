@@ -2298,6 +2298,51 @@ function $rt_setProp(base, prop, val)
     throw TypeError("invalid base in property write");
 }
 
+numY = 0;
+numN = 0;
+
+/**
+Specialized version of setProp for object properties
+*/
+function $rt_setPropField(base, prop, val)
+{
+    // If the base is an object or closure and the property is a string
+    if (($ir_is_object(base) || $ir_is_closure(base)) && $ir_is_string(prop))
+    {
+        var obj = base;
+
+        // Follow the next link chain
+        for (;;)
+        {
+            var next = $rt_obj_get_next(obj);
+            if ($ir_eq_refptr(next, null))
+                break;
+            obj = next;
+        }
+
+        // Get the class from the object
+        var classPtr = $rt_obj_get_map(obj);
+
+        // Find the index for this property
+        var propIdx = $ir_map_prop_idx(classPtr, prop, true);
+
+        // Get the capacity of the object
+        var objCap = $rt_obj_get_cap(obj);
+
+        // If the object needs to be extended
+        if (propIdx < objCap)
+        {
+            // Set the value and its type in the object
+            $rt_obj_set_word(obj, propIdx, $ir_get_word(val));
+            $rt_obj_set_type(obj, propIdx, $ir_get_type(val));
+
+            return;
+        }
+    }
+
+    return $rt_setProp(base, prop, val);
+}
+
 /**
 Specialized version of setProp for array elements
 */
