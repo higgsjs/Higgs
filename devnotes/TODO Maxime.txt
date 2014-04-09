@@ -65,12 +65,14 @@ FIXME: parseInt('32') takes about 20ms???
 
 TODO: val can be both in reg and stack
 
-TODO: profile awful slow compilation speed
-
 TODO: allow reusing input reg if value is dead?
 - special flag for getOutOpnd?
 
 TODO: bias toBool for property access expressions, isNaN, bitwise result
+
+TODO: profile awful slow compilation speed
+TODO: investigate why inlining getPropElem causes so much slowdown
+- do we have that many more blocks, versions?
 
 ------------------------------------------------------------------------------
 
@@ -106,9 +108,9 @@ TODO: optimize get_global spills?
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
 
-TODO: improve move listing, only list executed moves
-
 FIXME: remove alloc reg spills before GC?
+
+TODO: improve move listing, only list executed moves
 
 TODO: blog post about optimization, results
 - use meme image
@@ -126,25 +128,40 @@ Idea: for debugging, can make stack validation pass
 - Slow, but will find problem when it happens
 - Can also look in current frame only
 
-TODO: try implementing GC liveness awareness, might be simpler than you think
+Idea: for GC debugging, have debug block, zero out unvisited values
+- except argc
+
+before (laptop):
+    code size (bytes): 509475
+    comp time (ms): 266
+    exec time (ms): 65
+    total time (ms): 386
+
+TODO: remove redundant setOutType moves
+
+TODO: remove redundant edge moves
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: segfault in gc/closures
+make; ./higgs --e "print(test())" tests/core/gc/closures.js
+- nostdlib fixes it
+- segfaulting ref is in the test function, strangely
+- trying to forward result of current call
+
+[DONE] TODO: try implementing GC liveness awareness, might be simpler than you think
 - save many moves, reduce code size
-- Need to always spill everything that's live before GC'ing instructions
-  - check wherever you do setCurInstr ***
-before:
-    code size (bytes): 693204
-    comp time (ms): 405
-    exec time (ms): 56
-    total time (ms): 547
-after:
-    ???
 
-
-
-
-
-
-
-
+[DONE] TODO: verify that we spill everything that's live before GC'ing instructions
+- We currently do
+- call_new can trigger a GC while creating the new object
+- we already make sure not to copy the args before makeThisObj
 
 [DONE] TODO: undo changes to liveness analysis, can't assume hidden args are always live
 - doesn't correspond to primitive semantics

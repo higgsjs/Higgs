@@ -220,7 +220,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
             return addr
     */
 
-    //writeln("entering gcCollect");
+    writeln("entering gcCollect");
 
     if (heapSize != 0)
         vm.heapSize = heapSize;
@@ -404,7 +404,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Increment the garbage collection count
     vm.gcCount++;
 
-    //writeln("leaving gcCollect");
+    writeln("leaving gcCollect");
     //writefln("free space: %s", (vm.heapLimit - vm.allocPtr));
 }
 
@@ -660,12 +660,73 @@ void visitStackRoots(VM vm)
         IRInstr curInstr
     )
     {
-        // Visit the function this stack frame belongs to
-        visitFun(vm, fun);
+        /// Forward a value at a given index in the current frame
+        void forward(StackIdx idx)
+        {
+            assert (idx < frameSize);
+
+            //writefln("ref %s/%s", idx, frameSize);
+
+            Word word = wsp[idx];
+            Type type = tsp[idx];
+
+            // If this is a pointer, forward it
+            wsp[idx] = gcForward(vm, word, type);
+
+            auto fwdPtr = wsp[idx].ptrVal;
+
+            assert (
+                !isHeapPtr(type) ||
+                fwdPtr == null ||
+                vm.inToSpace(fwdPtr),
+                format(
+                    "invalid forwarded stack pointer\n" ~
+                    "ptr     : %s\n" ~
+                    "to-alloc: %s\n" ~
+                    "to-limit: %s",
+                    fwdPtr,
+                    vm.toStart,
+                    vm.toLimit
+                )
+            );
+        }
 
         //writeln("visiting frame for: ", fun.getName());
         //writeln("frame size: ", frameSize);
 
+        // Visit the function this stack frame belongs to
+        visitFun(vm, fun);
+
+        // Get the values live at the current instruction
+        IRDstValue[] liveVals;
+        if (depth is 0)
+            liveVals = fun.liveInfo.valsLiveBefore(curInstr);
+        else
+            liveVals = fun.liveInfo.valsLiveAfter(curInstr);
+
+        // For each live value
+        foreach (val; liveVals)
+        {
+            // The current instruction hasn't completed, skip it
+            if (val is curInstr)
+                continue;
+
+            // Forward the value
+            //writeln(val);
+            forward(val.outSlot);
+        }
+
+        // If this is not a primitive or unit function
+        if (fun.isPrim is false && fun.isUnit is false)
+        {
+            forward(fun.closVal.outSlot);
+            forward(fun.thisVal.outSlot);
+        }
+
+        // Forward the return address
+        forward(fun.raVal.outSlot);
+
+        /*
         // For each local in this frame
         for (StackIdx idx = 0; idx < frameSize; ++idx)
         {
@@ -694,6 +755,7 @@ void visitStackRoots(VM vm)
                 )
             );
         }
+        */
 
         //writeln("done visiting frame");
     };

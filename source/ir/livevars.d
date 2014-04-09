@@ -60,6 +60,20 @@ class LiveInfo
     private int32_t[] bitSet;
 
     /**
+    Compile a list of all values live before a given instruction
+    */
+    public IRDstValue[] valsLiveBefore(IRInstr beforeInstr)
+    {
+        IRDstValue[] liveVals;
+
+        foreach (val, idx; valIdxs)
+            if (liveBefore(val, beforeInstr))
+                liveVals ~= val;
+
+        return liveVals;
+    }
+
+    /**
     Compile a list of all values live after a given instruction
     */
     public IRDstValue[] valsLiveAfter(IRInstr afterInstr)
