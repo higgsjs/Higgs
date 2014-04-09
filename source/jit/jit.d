@@ -952,13 +952,6 @@ class CodeGenState
 
         // Write the type to the type stack
         as.mov(typeStackOpnd(instr.outSlot), X86Opnd(typeReg));
-
-        // If the value is in a register
-        if (state.isReg)
-        {
-            // Write a zero to the word stack to avoid false pointers
-            as.mov(wordStackOpnd(instr.outSlot), X86Opnd(0));
-        }
     }
 
     /// Add type information for an arbitrary value
@@ -1712,38 +1705,6 @@ void genBranchMoves(
             !dstTypeOpnd.isImm &&
             !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
-
-        // If the successor value is a phi node
-        if (succPhi)
-        {
-            // Src to reg move with unknown dst type
-            if (srcTypeOpnd != dstTypeOpnd && dstWordOpnd.isReg && dstTypeOpnd.isMem)
-            {
-                moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
-            }
-
-            // Src to stack move with known dst type
-            if (srcWordOpnd != dstWordOpnd && dstWordOpnd.isMem && dstTypeOpnd.isImm)
-            {
-                moveList ~= Move(typeStackOpnd(succPhi.outSlot), srcTypeOpnd);
-            }
-        }
-
-        // Otherwise, if the successor is not a parameter
-        else if (!succParam)
-        {
-            // Src to reg move with unknown dst type
-            if (srcTypeOpnd.isImm && dstWordOpnd.isReg && dstTypeOpnd.isMem)
-            {
-                moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
-            }
-
-            // Register to stack move with known dst type
-            if (srcWordOpnd.isReg && dstWordOpnd.isMem && dstTypeOpnd.isImm)
-            {
-                moveList ~= Move(typeStackOpnd(succVal.outSlot), srcTypeOpnd);
-            }
-        }
     }
 
     //foreach (move; moveList)

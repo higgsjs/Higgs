@@ -131,15 +131,18 @@ Idea: for debugging, can make stack validation pass
 Idea: for GC debugging, have debug block, zero out unvisited values
 - except argc
 
+TODO: try benchmark.py with maxvers=0
+
+
+
+
+[DONE] TODO: remove redundant setOutType moves
 before (laptop):
     code size (bytes): 509475
     comp time (ms): 266
     exec time (ms): 65
     total time (ms): 386
-
-TODO: remove redundant setOutType moves
-
-TODO: remove redundant edge moves
+    3d-raytrace code size (bytes): 733500
 
 
 
@@ -147,7 +150,7 @@ TODO: remove redundant edge moves
 
 
 
-
+[DONE] TODO: remove redundant edge moves
 
 [DONE] FIXME: segfault in gc/closures
 make; ./higgs --e "print(test())" tests/core/gc/closures.js
