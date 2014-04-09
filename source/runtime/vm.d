@@ -468,8 +468,8 @@ class VM
     /// Executable heap
     CodeBlock execHeap;
 
-    /// Current call context (set when calling into host code)
-    CallCtx callCtx;
+    /// Current instruction (set when calling into host code)
+    IRInstr curInstr;
 
     /// Map of return addresses to return entries
     RetEntry[CodePtr] retAddrMap;
@@ -1136,14 +1136,14 @@ class VM
         auto wsp = this.wsp;
         auto tsp = this.tsp;
 
-        // Current call context
-        auto curCtx = callCtx;
+        // Current instruction
+        auto curInstr = this.curInstr;
 
         // For each stack frame, starting from the topmost
         for (size_t depth = 0;; depth++)
         {
-            assert (curCtx !is null);
-            auto curFun = curCtx.fun;
+            assert (curInstr !is null);
+            auto curFun = curInstr.block.fun;
             assert (curFun !is null);
 
             auto numLocals = curFun.numLocals;
@@ -1195,7 +1195,7 @@ class VM
                 tsp,
                 depth,
                 frameSize,
-                retEntry.callInstr
+                curInstr
             );
 
             // If we reached the bottom of the stack, stop
@@ -1207,7 +1207,7 @@ class VM
             tsp += frameSize;
 
             // Move to the caller frame's context
-            curCtx = retEntry.callCtx;
+            curInstr = retEntry.callInstr;
         }
     }
 }
@@ -1218,7 +1218,6 @@ is found. Returns a pointer to the exception handler code.
 */
 extern (C) CodePtr throwExc(
     VM vm,
-    CallCtx callCtx,
     IRInstr throwInstr,
     CodeFragment throwHandler,
     Word excWord,
@@ -1229,9 +1228,6 @@ extern (C) CodePtr throwExc(
 
     // Stack trace (throwing instruction and call instructions)
     IRInstr[] trace;
-
-    // Current call context when the exception was thrown
-    auto curCtx = callCtx;
 
     // Get the exception handler code, if supplied
     auto curHandler = throwHandler;
@@ -1297,8 +1293,10 @@ extern (C) CodePtr throwExc(
             // If the exception handler is not yet compiled, compile it
             if (curHandler.ended is false)
             {
+                auto excTarget = curInstr.getTarget(1);
+
                 vm.queue(curHandler);
-                vm.compile(callCtx);
+                vm.compile(excTarget.target.firstInstr);
             }
 
             auto excCodeAddr = curHandler.getCodePtr(vm.execHeap);
@@ -1310,7 +1308,7 @@ extern (C) CodePtr throwExc(
             return excCodeAddr;
         }
 
-        auto curFun = curCtx.fun;
+        auto curFun = curInstr.block.fun;
         assert (curFun !is null);
 
         auto numLocals = curFun.numLocals;
@@ -1330,7 +1328,6 @@ extern (C) CodePtr throwExc(
 
         // Get the calling instruction and context for this stack frame
         curInstr = retEntry.callInstr;
-        curCtx = retEntry.callCtx;
 
         // If we have reached the bottom of the stack
         if (curInstr is null)
@@ -1368,7 +1365,6 @@ Throw a JavaScript error object as an exception
 */
 extern (C) CodePtr throwError(
     VM vm,
-    CallCtx callCtx,
     IRInstr throwInstr,
     CodeFragment throwHandler,
     string ctorName,
@@ -1425,7 +1421,6 @@ extern (C) CodePtr throwError(
 
             return throwExc(
                 vm,
-                callCtx,
                 throwInstr,
                 throwHandler,
                 excObj.word,
@@ -1437,7 +1432,6 @@ extern (C) CodePtr throwError(
     // Throw the error string directly
     return throwExc(
         vm,
-        callCtx,
         throwInstr,
         throwHandler,
         errStr.word,

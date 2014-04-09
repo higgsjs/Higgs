@@ -1794,19 +1794,18 @@ void queue(VM vm, CodeFragment frag)
 }
 
 /**
-Set the current calling context when calling host code from JITted code.
-Must set the call context to null when returning from host code.
+Set the current instruction when calling host code from JITted code.
+Must set the current instruction to null when returning from host code.
 */
-void setCallCtx(VM vm, CallCtx callCtx)
+void setCurInstr(VM vm, IRInstr curInstr)
 {
     // Ensure proper usage
     assert (
-        !(vm.callCtx !is null && callCtx !is null),
-        "VM call ctx is not null: " ~
-        vm.callCtx.fun.getName
+        !(vm.curInstr !is null && curInstr !is null),
+        "current instr is not null"
     );
 
-    vm.callCtx = callCtx;
+    vm.curInstr = curInstr;
 }
 
 /**
@@ -1827,7 +1826,7 @@ void setRetEntry(
 /**
 Compile all blocks in the compile queue
 */
-void compile(VM vm, CallCtx callCtx)
+void compile(VM vm, IRInstr curInstr)
 {
     //writeln("entering compile");
 
@@ -1835,8 +1834,8 @@ void compile(VM vm, CallCtx callCtx)
     auto as = vm.execHeap;
     assert (as !is null);
 
-    // Set the call context
-    vm.setCallCtx(callCtx);
+    // Set the current instruction
+    vm.setCurInstr(curInstr);
 
     assert (vm.compQueue.length > 0);
 
@@ -1925,14 +1924,6 @@ void compile(VM vm, CallCtx callCtx)
             // Store the code start index
             branch.markStart(as, vm);
 
-            /*
-            if (opts.jit_trace_instrs)
-            {
-                as.printStr("branch code to " ~ branch.branch.target.getName);
-                as.printStr("  fun=" ~ branch.branch.target.fun.getName);
-            }
-            */
-
             //as.printStr("branch code to " ~ branch.branch.target.getName);
 
             // Generate the prelude code, if any
@@ -1944,17 +1935,6 @@ void compile(VM vm, CallCtx callCtx)
                 branch.predState,
                 branch.branch
             );
-
-            /*
-            if (opts.jit_trace_instrs)
-            {
-                if (succState.gpRegMap[RCX.regNo] is null ||
-                    succState.gpRegMap[RCX.regNo].outSlot !is 15)
-                    as.printStr("##### SUCC: NOT MAPPED TO 15 #####");
-                else
-                    as.printStr("##### SUCC: IS MAPPED TO 15!!! ##### " ~ branch.branch.target.getName);
-            }
-            */
 
             // Get a version of the successor matching the incoming state
             branch.target = getBlockVersion(
@@ -2104,8 +2084,8 @@ void compile(VM vm, CallCtx callCtx)
         writeln();
     }
 
-    // Unset the call context
-    vm.setCallCtx(null);
+    // Unset the current instruction
+    vm.setCurInstr(null);
 
     //writeln("leaving compile");
 }
@@ -2332,7 +2312,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     */
 
     // Compile the entry versions
-    vm.compile(fun.getCtx(ctorCall, vm));
+    vm.compile(fun.entryBlock.firstInstr);
 
     // Store the entry code pointer on the function
     fun.entryCode = entryInst.getCodePtr(vm.execHeap);
@@ -2435,7 +2415,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     srcBlock.regenBranch(vm.execHeap, blockIdx);
 
     // Compile fragments and patch references
-    vm.compile(srcBlock.state.callCtx);
+    vm.compile(branchCode.branch.target.firstInstr);
 
     // For each allocatable register
     foreach (regIdx, reg; allocRegs)
@@ -2500,7 +2480,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     stub.callVer.regenBranch(vm.execHeap, 0);
 
     // Compile fragments and patch references
-    vm.compile(callCtx);
+    vm.compile(contBranch.branch.target.firstInstr);
 
     // Patch the stub to jump to the continuation branch
     stub.patch(vm.execHeap, contBranch);

@@ -55,9 +55,6 @@ import ir.livevars;
 import ir.slotalloc;
 import runtime.vm;
 
-/// Runtime function name prefix
-const wstring RT_PREFIX = "$rt_";
-
 /**
 IR generation context
 */

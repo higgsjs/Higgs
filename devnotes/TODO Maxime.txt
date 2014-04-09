@@ -98,15 +98,6 @@ TODO: optimize dynamic calls?
 - can we pass args through registers?
 TODO: compare perf of calls vs dynamic calls?
 
-TODO: blog post about optimization, results
-- 200 stars on github
-- reg alloc speed gains
-- graphics lib
-- difficulty of optimizing self-hosted code
-- profiling, you don't actually know what's going on, complex codebase
-- compile time now dominates execution time on several benchmarks
-- 3d-raytrace, prop access > 30% execution time, inline caching
-
 TODO: optimize code size for get_global
 - do fully "interpreted" if needed, call into code fragment
   - maybe try this first, as an "extreme" test
@@ -117,8 +108,28 @@ TODO: optimize get_global spills?
 
 TODO: improve move listing, only list executed moves
 
+FIXME: remove alloc reg spills before GC?
+
+TODO: blog post about optimization, results
+- use meme image
+- 200 stars on github
+- reg alloc speed gains
+- difficulty of optimizing self-hosted code
+- compile time now dominates execution time on several benchmarks
+- 3d-raytrace, prop access > 30% execution time, inline caching
+- graphics lib
+- need help wrt profiling compilation time
+  - profiling, you don't actually know what's going on, complex codebase
+
+Idea: for debugging, can make stack validation pass
+- Look for invalid pointers
+- Slow, but will find problem when it happens
+- Can also look in current frame only
+
 TODO: try implementing GC liveness awareness, might be simpler than you think
 - save many moves, reduce code size
+- Need to always spill everything that's live before GC'ing instructions
+  - check wherever you do setCurInstr ***
 before:
     code size (bytes): 693204
     comp time (ms): 405
@@ -127,17 +138,22 @@ before:
 after:
     ???
 
-FIXME: visitStack: for GC, need current instruction
+
+
+
+
+
+
+
+
+[DONE] TODO: undo changes to liveness analysis, can't assume hidden args are always live
+- doesn't correspond to primitive semantics
+
+[DONE] FIXME: visitStack: for GC, need current instruction
 - currently passing callInstr, instr that called the current frame
 - could change setCallCtx to setCurInstr?
 
-
-
-
-
-
-
-
+[DONE] TODO: add isPrim method to IRFunction
 
 [DONE] FIXME: mov rcx, rcx??
 ./higgs --e "print(fast3bitlookup.asmString())" --jit_genasm benchmarks/sunspider/bitops-3bit-bits-in-byte.js

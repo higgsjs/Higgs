@@ -79,11 +79,6 @@ class LiveInfo
     */
     public bool liveBefore(IRDstValue val, IRInstr beforeInstr)
     {
-        // The hidden argument values are live at every point
-        if (auto param = cast(FunParam)val)
-            if (param.idx < NUM_HIDDEN_ARGS)
-                return true;
-
         // Values with no uses are never live
         if (val.hasNoUses)
             return false;
@@ -106,11 +101,6 @@ class LiveInfo
     */
     public bool liveAfter(IRDstValue val, IRInstr afterInstr)
     {
-        // The hidden argument values are live at every point
-        if (auto param = cast(FunParam)val)
-            if (param.idx < NUM_HIDDEN_ARGS)
-                return true;
-
         // Values with no uses are never live
         if (val.hasNoUses)
             return false;
@@ -195,10 +185,6 @@ class LiveInfo
     */
     private void markLiveAfter(IRDstValue val, IRInstr afterInstr)
     {
-        if (auto param = cast(FunParam)val)
-            if (param.idx < NUM_HIDDEN_ARGS)
-                return;
-
         assert (val in valIdxs);
         assert (afterInstr in locIdxs);
 
@@ -229,15 +215,8 @@ class LiveInfo
             for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
             {
                 // We can query for the liveness of this phi node if it has uses
-                if (phi.hasNoUses)
-                    continue;
-
-                // The hidden argument values are implicitly live at every point
-                if (auto param = cast(FunParam)phi)
-                    if (param.idx < NUM_HIDDEN_ARGS)
-                        continue;
-
-                valIdxs[phi] = cast(uint32_t)valIdxs.length;
+                if (!phi.hasNoUses)
+                    valIdxs[phi] = cast(uint32_t)valIdxs.length;
             }
 
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)

@@ -657,7 +657,7 @@ void visitStackRoots(VM vm)
         Type* tsp,
         size_t depth,
         size_t frameSize,
-        IRInstr callInstr
+        IRInstr curInstr
     )
     {
         // Visit the function this stack frame belongs to
