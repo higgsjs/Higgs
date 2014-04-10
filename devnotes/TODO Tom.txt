@@ -13,6 +13,7 @@ TODO: improve FFI
       - wrapAll() function?
       - add some preprocessor functionality?
       - track down perf problems
+      - generate type checking code for function calls?
 
 TODO: SDL bindings
       X move to binding for SDL2? Not as much support currently, but more future proof
@@ -29,6 +30,8 @@ TODO: drawing lib
       - [STARTED]
       - some of this should be factored out into more general purpose libs
       - simple drawing api for drawing to windows/images/pdf
+      - need more error checking
+      - need more type checking - too easy to pass in wrong type and blow stuff up
       - add more support for key events/querying keyboard state,
         currently only a fairly rudimentary "keypress" event is supported.
         Main concern is detecting when multiple keys are pressed down. Doing this

@@ -81,7 +81,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     */
     var CanvasWindowProto = {
         handle: CNULL,
-        frame_rate: 400,
+        frame_rate: 60,
         render_funs: null,
         key_funs: null
     };
@@ -330,7 +330,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
 
         var canvas = Object.create(CanvasProto);
         // TODO: make default font more ocnfigurable
-        var font_name_c = ffi.cstr("-*-helvetica-*-r-*-*-18-*-*-*-*-*-*-*");
+        var font_name_c = ffi.cstr("-*-helvetica-*-r-*-*-40-*-*-*-*-*-*-*");
 
         // cleanup
         canvas.id = Xlib.XCreatePixmap(display, window,
@@ -488,7 +488,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     */
     CanvasProto.setFont = function()
     {
-
+        // TODO: this
     };
 
     /**
