@@ -375,6 +375,9 @@ immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
 /// Initial executable heap size, 16M bytes
 immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
 
+/// Initial subroutine heap size, 64K bytes
+immutable size_t SUBS_HEAP_INIT_SIZE = 2 ^^ 16;
+
 /**
 Virtual Machine (VM) instance
 */
@@ -468,6 +471,9 @@ class VM
     /// Executable heap
     CodeBlock execHeap;
 
+    /// Subroutine heap
+    CodeBlock subsHeap;
+
     /// Current instruction (set when calling into host code)
     IRInstr curInstr;
 
@@ -491,6 +497,9 @@ class VM
 
     /// Branch target stubs
     BranchStub[] branchStubs;
+
+    /// Get global fallback subroutine
+    CodePtr getGlobalSub;
 
     /// Space to save registers when calling into hosted code
     Word* regSave;
@@ -605,6 +614,9 @@ class VM
 
         // Allocate the executable heap
         execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_genasm);
+
+        // Allocate the subroutine heap
+        subsHeap = new CodeBlock(SUBS_HEAP_INIT_SIZE, opts.jit_genasm);
 
         // Allocate the register save space
         regSave = cast(Word*)GC.malloc(

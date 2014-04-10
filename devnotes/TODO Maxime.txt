@@ -100,19 +100,33 @@ TODO: optimize dynamic calls?
 - can we pass args through registers?
 TODO: compare perf of calls vs dynamic calls?
 
-TODO: optimize code size for get_global
-- do fully "interpreted" if needed, call into code fragment
-  - maybe try this first, as an "extreme" test
-- see how execution time and code size change across benchmarks
 TODO: optimize get_global spills?
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
+- exc can trigger GC
+- soft spills?
 
-FIXME: remove alloc reg spills before GC?
+FIXME: remove alloc op reg spills before GC?
 
-TODO: improve move listing, only list executed moves
 
-TODO: blog post about optimization, results
+
+
+
+
+
+
+
+
+[DONE] TODO: optimize code size for get_global
+./higgs --stats --e "print(test.asmString())" --jit_genasm benchmarks/micro/10m_getglobal.js
+- see how execution time and code size change across benchmarks
+- before: get_global takes from 165 to 213 bytes
+- after: 74 to 128 bytes (includes spills)
+- code size improved, exec time improved, compilation time much improved!
+
+[DONE] TODO: improve move listing, only list executed moves
+
+[DONE] TODO: blog post about optimization, results
 - use meme image
 - 200 stars on github
 - reg alloc speed gains
@@ -123,18 +137,7 @@ TODO: blog post about optimization, results
 - need help wrt profiling compilation time
   - profiling, you don't actually know what's going on, complex codebase
 
-Idea: for debugging, can make stack validation pass
-- Look for invalid pointers
-- Slow, but will find problem when it happens
-- Can also look in current frame only
-
-Idea: for GC debugging, have debug block, zero out unvisited values
-- except argc
-
-TODO: try benchmark.py with maxvers=0
-
-
-
+[DONE] TODO: try benchmark.py with maxvers=0
 
 [DONE] TODO: remove redundant setOutType moves
 before (laptop):
@@ -143,12 +146,12 @@ before (laptop):
     exec time (ms): 65
     total time (ms): 386
     3d-raytrace code size (bytes): 733500
-
-
-
-
-
-
+after (laptop):
+    code size (bytes): 499986
+    comp time (ms): 269
+    exec time (ms): 65
+    total time (ms): 396
+    code size (bytes): 715096
 
 [DONE] TODO: remove redundant edge moves
 

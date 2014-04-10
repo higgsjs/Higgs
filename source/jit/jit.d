@@ -660,14 +660,16 @@ class CodeGenState
         //writefln("spilling: %s (%s)", regVal.toString(), reg);
 
         // Spill the value currently in the register
-        //as.comment("Spilling " ~ regVal.toString());
+        if (opts.jit_genasm)
+            as.comment("Spilling " ~ regVal.getName);
         as.mov(mem, reg.opnd(64));
 
         // If the type is known, spill it
         if (state.knownType)
         {
             // Write the type tag to the type stack
-            //as.comment("Spilling type for " ~ regVal.toString());
+            //if (opts.jit_genasm)
+            //    as.comment("Spilling type for " ~ regVal.getName);
             as.mov(typeStackOpnd(regVal.outSlot), X86Opnd(state.type));
         }
     }
@@ -1675,13 +1677,7 @@ void genBranchMoves(
         assert (succVal !is null);
         assert (predVal !is null);
 
-        if (opts.jit_genasm)
-        {
-            if (succPhi)
-                as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
-            else
-                as.comment("move " ~ succVal.getName);
-        }
+        bool moveAdded = false;
 
         // Test if the successor value is a parameter
         // We don't need to move parameter values to the stack
@@ -1694,7 +1690,10 @@ void genBranchMoves(
         if (srcWordOpnd != dstWordOpnd &&
             !dstWordOpnd.isImm &&
             !(succParam && dstWordOpnd.isMem))
+        {
             moveList ~= Move(dstWordOpnd, srcWordOpnd);
+            moveAdded = true;
+        }
 
         // Get the source and destination operands for the phi type
         X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
@@ -1704,7 +1703,18 @@ void genBranchMoves(
         if (srcTypeOpnd != dstTypeOpnd &&
             !dstTypeOpnd.isImm &&
             !(succParam && dstTypeOpnd.isMem))
+        {
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
+            moveAdded = true;
+        }
+
+        if (opts.jit_genasm && moveAdded)
+        {
+            if (succPhi)
+                as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
+            else
+                as.comment("move " ~ succVal.getName);
+        }
     }
 
     //foreach (move; moveList)

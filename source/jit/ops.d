@@ -2871,34 +2871,84 @@ void gen_get_global(
         assert (propIdx !is uint32.max);
     }
 
-    extern (C) static CodePtr hostGetProp(
-        VM vm,
-        IRInstr instr,
-        immutable(wchar)* nameChars,
-        size_t nameLen
-    )
+    extern (C) static CodePtr hostGetProp(VM vm, IRInstr instr)
     {
-        auto propName = nameChars[0..nameLen];
+        auto strArg = cast(IRString)instr.getArg(0);
+        auto nameStr = strArg.str;
+
         auto propVal = getProp(
             vm,
             vm.globalObj,
-            propName
+            nameStr
         );
 
         if (propVal == MISSING)
         {
+            writeln("prop is missing");
+
             return throwError(
                 vm,
                 instr,
                 null,
                 "TypeError",
-                "global property not defined \"" ~ to!string(propName) ~ "\""
+                "global property not defined \"" ~ to!string(nameStr) ~ "\""
             );
         }
 
         vm.push(propVal);
 
         return null;
+    }
+
+    static CodePtr getFallbackSub(VM vm)
+    {
+        if (vm.getGlobalSub)
+            return vm.getGlobalSub;
+
+        auto as = vm.subsHeap;
+        vm.getGlobalSub = as.getAddress(as.getWritePos);
+
+        as.printStr("fallback routine");
+
+        // Save the scratch and JIT registers
+        as.push(scrRegs[1]);
+        as.push(scrRegs[2]);
+        as.push(scrRegs[2]);
+        as.pushJITRegs();
+
+        // Call the host fallback code
+        // Note: the IRInstr pointer is already in cargRegs[1]
+        as.mov(cargRegs[0], vmReg);
+        as.ptr(scrRegs[0], &hostGetProp);
+        as.call(scrRegs[0].opnd);
+
+        // Restore the scratch and JIT registers
+        as.popJITRegs();
+        as.pop(scrRegs[2]);
+        as.pop(scrRegs[2]);
+        as.pop(scrRegs[1]);
+
+        // If an exception was thrown, jump to the exception handler
+        as.cmp(cretReg.opnd, X86Opnd(0));
+        as.je(Label.FALSE);
+        as.pop(scrRegs[1]);
+        as.jmp(cretReg.opnd);
+        as.label(Label.FALSE);
+
+        // Get the property value from the stack
+        // r2 = type
+        // r1 = word
+        as.getType(scrRegs[2].reg(8), 0);
+        as.getWord(scrRegs[1], 0);
+        as.add(wspReg, Word.sizeof);
+        as.add(tspReg, Type.sizeof);
+
+        // Return to the point of call
+        as.ret();
+
+        // Link the labels in this subroutine
+        as.linkLabels();
+        return vm.getGlobalSub;
     }
 
     // Spill the values that are live after the instruction
@@ -2922,60 +2972,34 @@ void gen_get_global(
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(vm.globalObj.word.ptrVal, 0);
 
-    // Define memory operands for the word and type values
-    auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
+    // Load the word and type values
+    // r2 = type
+    // r1 = word
     auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + propIdx, 8, scrRegs[1]);
+    auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
+    as.mov(scrRegs[2].opnd(8), typeMem);
+    as.mov(scrRegs[1].opnd(64), wordMem);
 
     // If the value is not "missing", skip the fallback code
-    as.cmp(typeMem, X86Opnd(Type.CONST));
+    as.cmp(scrRegs[2].opnd(8), X86Opnd(Type.CONST));
     as.jne(Label.SKIP);
-    as.cmp(wordMem, X86Opnd(MISSING.word.int8Val));
+    as.cmp(scrRegs[1].opnd(64), X86Opnd(MISSING.word.int8Val));
     as.jne(Label.SKIP);
 
-    // If the value is missing, call the host fallback code
-    as.pushJITRegs();
-    as.mov(cargRegs[0], vmReg);
+    // Call the fallback subroutine
+    auto getGlobalSub = getFallbackSub(vm);
     as.ptr(cargRegs[1], instr);
-    as.ptr(cargRegs[2], nameStr.ptr);
-    as.mov(cargRegs[3].opnd, X86Opnd(nameStr.length));
-    as.ptr(scrRegs[0], &hostGetProp);
-    as.call(scrRegs[0].opnd);
-    as.popJITRegs();
-
-    // If an exception was thrown, jump to the exception handler
-    as.cmp(cretReg.opnd, X86Opnd(0));
-    as.je(Label.FALSE);
-    as.jmp(cretReg.opnd);
-    as.label(Label.FALSE);
-
-    // Get the property value from the stack
-    as.getWord(scrRegs[0], 0);
-    as.getType(scrRegs[1].reg(8), 0);
-    as.add(wspReg, Word.sizeof);
-    as.add(tspReg, Type.sizeof);
-    as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutType(as, instr, scrRegs[1].reg(8));
-    as.jmp(Label.DONE);
+    as.ptr(scrRegs[0], getGlobalSub);
+    as.call(scrRegs[0]);
 
     // If skipping the fallback code
     as.label(Label.SKIP);
 
     // Set the output word
-    if (outOpnd.isReg)
-    {
-        as.mov(outOpnd, wordMem);
-    }
-    else
-    {
-        as.mov(X86Opnd(scrRegs[2]), wordMem);
-        as.mov(outOpnd, X86Opnd(scrRegs[2]));
-    }
+    as.mov(outOpnd, scrRegs[1].opnd(64));
 
     // Set the type value
-    as.mov(scrRegs[2].opnd(8), typeMem);
     st.setOutType(as, instr, scrRegs[2].reg(8));
-
-    as.label(Label.DONE);
 }
 
 
