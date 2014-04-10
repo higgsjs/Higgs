@@ -41,14 +41,12 @@
 
     global.exports = global.exports || undefined;
 
-    var hasFileExt = /\.js$/;
-
     function require(identifier)
     {
         var _exports = exports;
         var mod;
 
-        if (!hasFileExt.test(identifier))
+        if (!(/\.js$/).test(identifier))
             identifier += ".js";
 
         if (require.loaded.hasOwnProperty(identifier))

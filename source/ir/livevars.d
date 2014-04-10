@@ -60,11 +60,40 @@ class LiveInfo
     private int32_t[] bitSet;
 
     /**
+    Compile a list of all values live before a given instruction
+    */
+    public IRDstValue[] valsLiveBefore(IRInstr beforeInstr)
+    {
+        IRDstValue[] liveVals;
+
+        foreach (val, idx; valIdxs)
+            if (liveBefore(val, beforeInstr))
+                liveVals ~= val;
+
+        return liveVals;
+    }
+
+    /**
+    Compile a list of all values live after a given instruction
+    */
+    public IRDstValue[] valsLiveAfter(IRInstr afterInstr)
+    {
+        IRDstValue[] liveVals;
+
+        foreach (val, idx; valIdxs)
+            if (liveAfter(val, afterInstr))
+                liveVals ~= val;
+
+        return liveVals;
+    }
+
+    /**
     Test if a value is live before a given instruction
     Note: this function is exposed outside of this analysis
     */
     public bool liveBefore(IRDstValue val, IRInstr beforeInstr)
     {
+        // Values with no uses are never live
         if (val.hasNoUses)
             return false;
 
@@ -86,6 +115,7 @@ class LiveInfo
     */
     public bool liveAfter(IRDstValue val, IRInstr afterInstr)
     {
+        // Values with no uses are never live
         if (val.hasNoUses)
             return false;
 

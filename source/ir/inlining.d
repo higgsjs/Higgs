@@ -55,6 +55,23 @@ Selectively inline callees into a function
 */
 void inlinePass(VM vm, IRFunction caller)
 {
+    /*
+    static bool hasLoop(IRFunction fun)
+    {
+        for (auto block = fun.firstBlock; block !is null; block = block.next)
+            if (block.name.startsWith("for") ||
+                block.name.startsWith("while") ||
+                block.name.startsWith("do"))
+                return true;
+
+        return false;
+    }
+
+    // If this is a unit function and it has no loops, do not inline
+    if (caller.isUnit && !hasLoop(caller))
+        return;
+    */
+
     // If inlining is disabled, do nothing
     if (opts.jit_noinline)
         return;
@@ -106,6 +123,7 @@ void inlinePass(VM vm, IRFunction caller)
             && !callee.getName.startsWith("$rt_minus")
             && !callee.getName.startsWith("$rt_addInt")
             && !callee.getName.startsWith("$rt_addIntFloat")
+            && !callee.getName.startsWith("$rt_subInt")
             && !callee.getName.startsWith("$rt_subIntFloat")
             && !callee.getName.startsWith("$rt_mulIntFloat")
             && !callee.getName.startsWith("$rt_modInt")
@@ -123,6 +141,7 @@ void inlinePass(VM vm, IRFunction caller)
             && !callee.getName.startsWith("$rt_getPropMethod")
             && !callee.getName.startsWith("$rt_getPropElem")
             && !callee.getName.startsWith("$rt_getPropLength")
+            //&& !callee.getName.startsWith("$rt_setPropField")
             && !callee.getName.startsWith("$rt_setPropElem")
         )
             continue;

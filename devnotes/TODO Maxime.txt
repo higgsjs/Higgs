@@ -7,12 +7,6 @@ Conference deadlines:
 - PLDI 2014     Nov 8, Nov 15 2013
 - VEE 2014      ~November 2013
 
-Internships: Nov-Dec 2014, after paper deadlines?
-~3-4 months
-Marc advises to remain near PhD work, best for CV
-Approach Mozilla around early June, combine with trip?
-Approach Facebook
-
 List of possible contributions:
 - Type tagging scheme
 - Register allocation
@@ -42,10 +36,6 @@ TODO: think about shapes more
 TODO: not missing global prop opt?
 - observation: if read once, we know its not missing
 
-TODO: don't inline in global functions, unless they have loops? ***
-- IRFunction.hasLoop?
-- this might be extra beneficial, big functions that run only once
-
 FIXME: empty fun, ret undefined twice
 - see 200m_calls
 - second one is from ctor entry
@@ -71,23 +61,29 @@ TODO: transform jit.compileUnit into jit.execUnit
 FIXME: string-fasta is slower than before? fast compile time, profile quickly
 TODO: profile again, lots of interesting things to learn!
 
+FIXME: parseInt('32') takes about 20ms???
+
+TODO: val can be both in reg and stack
+
+TODO: allow reusing input reg if value is dead?
+- special flag for getOutOpnd?
+
 TODO: bias toBool for property access expressions, isNaN, bitwise result
+
+TODO: profile awful slow compilation speed
+TODO: investigate why inlining getPropElem causes so much slowdown
+- do we have that many more blocks, versions?
 
 ------------------------------------------------------------------------------
 
-Goal: March 31st, type prop working, satisfying perf for article
-- Type prop should enable speed gains on bigger benchmarks
+May 31st, complete paper writing
+--------------------------------
 
-TODO: val can be both in reg and stack
-- stop storing stack idx in ValState
-
-TODO: can possibly test out context swapping hypothesis by adding a certain
-number of useless compiler calls, without increasing code size?
-- These would have to do real compilation work
-- Easy dirty hack: have the branch stub compilation not patch the branch
-  the first time around, do some useless compilation the second time
-
-FIXME: parseInt('32') takes about 20ms???
+TODO: May, approach Moz, Apple, FB wrt internship
+- 4 months, [Jan, April] 2015, spend winter in Cali
+- Marc advises to remain near PhD work, best for CV
+- Marc thinks you can make ~40K pre-tax
+- Ask about salary, lodging options
 
 Marc: start writing paper soon
 - Setup repo
@@ -96,49 +92,180 @@ Marc: start writing paper soon
 
 ------------------------------------------------------------------------------
 
-Milestone: register allocation
-------------------------------
+April 15th, milestone: sufficient performance
+---------------------------------------------
 
-TODO: profile awful slow compilation speed
-
-TODO: look at machine code, optimize RA further
+TODO: optimize dynamic calls?
+- adjust stack params in callee
+- can we pass args through registers?
+TODO: compare perf of calls vs dynamic calls?
 
 TODO: optimize code size for get_global
 - do fully "interpreted" if needed, call into code fragment
   - maybe try this first, as an "extreme" test
 - see how execution time and code size change across benchmarks
-
-TODO: bias values towards dst phi reg
-- check if hasOneUse, use is a phi node, reg is free or regVal not live
-- benchmark, look at code size
-- Have different reg alloc for getOutOpnd
-  - Separate out freeReg() and mapReg()
-
-TODO: allow reusing input reg if value is dead?
-- special flag for getOutOpnd?
-
-TODO: optimize get_global spills
+TODO: optimize get_global spills?
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
 
-FIXME: array extends cap for each new element???
+FIXME: remove alloc reg spills before GC?
 
-TODO: try moving regexp in commonjs module inside function, see impact on init time
+TODO: improve move listing, only list executed moves
 
 TODO: blog post about optimization, results
+- use meme image
 - 200 stars on github
 - reg alloc speed gains
-- graphics lib
 - difficulty of optimizing self-hosted code
-- profiling, you don't actually know what's going on, complex codebase
 - compile time now dominates execution time on several benchmarks
 - 3d-raytrace, prop access > 30% execution time, inline caching
+- graphics lib
+- need help wrt profiling compilation time
+  - profiling, you don't actually know what's going on, complex codebase
 
-TODO: bias allocReg towards defReg
+Idea: for debugging, can make stack validation pass
+- Look for invalid pointers
+- Slow, but will find problem when it happens
+- Can also look in current frame only
+
+Idea: for GC debugging, have debug block, zero out unvisited values
+- except argc
+
+TODO: try benchmark.py with maxvers=0
+
+
+
+
+[DONE] TODO: remove redundant setOutType moves
+before (laptop):
+    code size (bytes): 509475
+    comp time (ms): 266
+    exec time (ms): 65
+    total time (ms): 386
+    3d-raytrace code size (bytes): 733500
+
+
+
+
+
+
+
+[DONE] TODO: remove redundant edge moves
+
+[DONE] FIXME: segfault in gc/closures
+make; ./higgs --e "print(test())" tests/core/gc/closures.js
+- nostdlib fixes it
+- segfaulting ref is in the test function, strangely
+- trying to forward result of current call
+
+[DONE] TODO: try implementing GC liveness awareness, might be simpler than you think
+- save many moves, reduce code size
+
+[DONE] TODO: verify that we spill everything that's live before GC'ing instructions
+- We currently do
+- call_new can trigger a GC while creating the new object
+- we already make sure not to copy the args before makeThisObj
+
+[DONE] TODO: undo changes to liveness analysis, can't assume hidden args are always live
+- doesn't correspond to primitive semantics
+
+[DONE] FIXME: visitStack: for GC, need current instruction
+- currently passing callInstr, instr that called the current frame
+- could change setCallCtx to setCurInstr?
+
+[DONE] TODO: add isPrim method to IRFunction
+
+[DONE] FIXME: mov rcx, rcx??
+./higgs --e "print(fast3bitlookup.asmString())" --jit_genasm benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+- redundant move to ret reg
+
+[DONE] TODO: "this" value should have known object type
+- should affect code size, cmp count of access-binary-trees
+- noticeable reduction in type tests on some benchmarks
+
+[DONE] TODO: try moving regexp in commonjs module inside function, see impact on init time
+- saves 300ms
+
+[DONE] TODO: don't inline in global functions, unless inside loop?
+- Higgs init very slow since setProp inlining added!
+  ./higgs --stats --e "", comp time (ms): 912
+- IRFunction.hasLoop?
+- this might be extra beneficial, big functions that run only once
+- somehow this causes a major slowdown in compilation time?
+
+[DONE] FIXME: loop_big_incr, several jumps to immediate successor
+./higgs --stats --e "print(test.asmString())" --jit_genasm benchmarks/micro/loop_big_incr.js
+- produced by is_i32, direct jump, no comparison
+- jump is probably never rewritten?
+- does is_i32 even know how to handle successor next?
+
+[DONE] Meeting lundi 7 avril: Marc wants to look at machine code, start simple, microbenchmark
+- Biasing reg alloc towards "assigned reg" caused huge perf gains, code size reduction
+- Added more specialized inlined primitives
+  - Will probably not add more, as they can increase code size, comp time
+- Idea: can implement "GC map" without too much difficulty
+  - Eliminate many redundant moves, reduce code size
+  - Will probably require some debugging
+- 200m_add
+    ./higgs --e "print(test.asmString())" --jit_genasm benchmarks/micro/200m_add.js
+- loop_big_incr
+    ./higgs --e "print(test.asmString())" --jit_genasm benchmarks/micro/loop_big_incr.js
+- something w/ function call, bitopts-3bits-in-byte?
+    ./higgs --e "print(fast3bitlookup.asmString())" --jit_genasm benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+
+[DONE] TODO: make inlined setPropField
+./higgs --stats benchmarks/sunspider/access-binary-trees.js
+- before:
+    comp time (ms): 358
+    exec time (ms): 100
+    total time (ms): 458
+    code size (bytes): 527329
+    num blocks: 2159
+    num versions: 2424
+    total prim calls: 255053
+    total type tests: 740561
+- after:
+    comp time (ms): 914
+    exec time (ms): 25
+    total time (ms): 939
+    code size (bytes): 665077
+    num blocks: 4314
+    num versions: 4815
+    total prim calls: 2311
+    total type tests: 530259
+
+[DONE] TODO: modify liveness analysis to make hidden arguments live at every point
+
+[DONE] TODO: total time stat
+
+[DONE] TODO: investigate why some benchmarks have a different prim call count
+- may want to test the output of those further
+- nondeterminism?
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20" --csv_file="maxvers20.csv"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0" --csv_file="maxvers0.csv"
+- crypto-aes shows slight difference, uses getTime
+
+[DONE] FIXME: does -- call sub? should have a subInt
+- slight decrease in code size, prim calls, type tests
+
+[DONE] TODO: bias values towards dst phi reg
+- check if hasOneUse, use is a phi node
+- look at code size, exec time on ./benchmark.py
+- small reduction in code size, perf results mixed
+
+[DONE] FIXME: optimize intToStr, calls to sub, ++
+
+[DONE] TODO: bias allocReg towards defReg
 - optional argument to freeReg
-- should reduce code size (test this), eliminate moves, improve bench scores
 
-Meeting:
+[DONE] TODO: spillReg, take reg argument
+
+[DONE] FIXME: def reg biasing causes segfault?
+./higgs --nostdlib --jit_trace_instrs regress-cat-str.js
+- 'foo' + 1 segfaults, create regression test, test with --nostdlib
+- div!!! corrupting RAX, RDX
+
+[DONE] Meeting:
 - phi type prop tweak results in slightly less versions
 - another tweak brings us more type info from IsTypeOp
 - reg alloc:
@@ -152,15 +279,10 @@ Meeting:
 - BBV now wins on most benchmarks (on exec time)
 - Effets de cache subtils? petits changements font qu'un benchmark gagne/perd avec BBV
 
-
-
-
-
-
-
-
-
-
+./higgs --stats benchmarks/sunspider/3d-raytrace.js 
+comp time (ms): 829
+exec time (ms): 155
+code size (bytes): 897205
 
 [DONE] TODO: benchmark once again
 - Winning on average if excluding comp time
