@@ -171,12 +171,15 @@ if options.csv_file != '':
     print 'writing csv output to "%s"' % (options.csv_file)
     outFile = open(options.csv_file, 'w')
     writer = csv.writer(outFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    keys = valLists.keys()
+    keys = sorted(valLists.keys())
     writer.writerow([''] + keys)
     for benchmark, valMeans in benchMeans.items():
         values = []
         for key in keys:
-            mean = valMeans[key]
+            if not key in valMeans:
+                mean = 0
+            else:
+                mean = valMeans[key]
             if int(mean) == mean:
                 mean = int(mean)
             values += [mean]

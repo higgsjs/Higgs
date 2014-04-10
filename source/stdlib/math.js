@@ -453,19 +453,6 @@ natural logarithms).
 */
 Math.exp = function (x)
 {
-    /*
-    //ex = 1 + x + x2/2! + x3/3! + x4/4! + x5/5! + ...
-
-    //exp(int + frac) = exp(int)*exp(frac)
-
-    // integer powers of e
-
-    // how do we extract the int/frac part of x?
-
-    // fractional powers of e
-    // How many Taylor series terms do we need?
-    */
-
     // If x is integer, convert it to a float
     if ($ir_is_i32(x))
         return $ir_exp_f64($ir_i32_to_f64(x));

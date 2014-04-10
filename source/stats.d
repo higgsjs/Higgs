@@ -173,6 +173,7 @@ static ~this()
     writeln();
     writefln("comp time (ms): %s", compTimeUsecs / 1000);
     writefln("exec time (ms): %s", execTimeUsecs / 1000);
+    writefln("total time (ms): %s", (compTimeUsecs + execTimeUsecs) / 1000);
     writefln("code size (bytes): %s", genCodeSize);
 
     writefln("num blocks: %s", numBlocks);

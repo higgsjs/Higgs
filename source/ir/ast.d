@@ -55,9 +55,6 @@ import ir.livevars;
 import ir.slotalloc;
 import runtime.vm;
 
-/// Runtime function name prefix
-const wstring RT_PREFIX = "$rt_";
-
 /**
 IR generation context
 */
@@ -1710,7 +1707,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 {
                     return genRtCall(
                         ctx,
-                        (op.str == "++")? "addInt":"sub",
+                        (op.str == "++")? "addInt":"subInt",
                         [lArg, rArg],
                         expr.pos
                     );
@@ -2037,7 +2034,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             // Set the property on the object
             genRtCall(
                 ctx,
-                "setProp",
+                "setPropField",
                 [objVal, strVal, propVal],
                 expr.pos
             );
@@ -2324,7 +2321,7 @@ IRValue assgToIR(
             // Set the property on the object
             genRtCall(
                 ctx,
-                "setProp",
+                "setPropField",
                 [baseVal, idxVal, rhsVal],
                 lhsExpr.pos
             );

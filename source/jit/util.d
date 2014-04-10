@@ -402,6 +402,7 @@ void printStr(CodeBlock as, string str)
     as.popRegs();
 }
 
+/*
 void printStack(CodeBlock as, CallCtx ctx)
 {
     extern (C) static void printStackFn(CallCtx ctx)
@@ -440,4 +441,5 @@ void printStack(CodeBlock as, CallCtx ctx)
     as.popJITRegs();
     as.popRegs();
 }
+*/
 

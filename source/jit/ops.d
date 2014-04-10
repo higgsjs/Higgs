@@ -394,17 +394,22 @@ void divOp(string op)(
     CodeBlock as
 )
 {
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[2].opnd(32), false, true);
+    // Spill EAX and EDX (used by the idiv instruction)
+    st.spillReg(as, EAX);
+    st.spillReg(as, EDX);
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), false, false);
     auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    // Save RDX
-    as.mov(scrRegs[1].opnd(64), X86Opnd(RDX));
-    if (opnd1.isReg && opnd1.reg == EDX)
-        opnd1 = scrRegs[1].opnd(32);
+    as.mov(EAX.opnd, opnd0);
 
-    // Move the dividend into EAX
-    as.mov(X86Opnd(EAX), opnd0);
+    if (opnd1 == EDX.opnd(32))
+    {
+        assert (scrRegs[1] != RAX && scrRegs[1] != RDX);
+        as.mov(scrRegs[1].opnd(32), opnd1);
+        opnd1 = scrRegs[1].opnd(32);
+    }
 
     // Sign-extend EAX into EDX:EAX
     as.cdq();
@@ -412,19 +417,13 @@ void divOp(string op)(
     // Signed divide/quotient EDX:EAX by r/m32
     as.idiv(opnd1);
 
-    if (!outOpnd.isReg || outOpnd.reg != EDX)
-    {
-        // Store the divisor or remainder into the output operand
-        static if (op == "div")
-            as.mov(outOpnd, X86Opnd(EAX));
-        else if (op == "mod")
-            as.mov(outOpnd, X86Opnd(EDX));
-        else
-            assert (false);
-
-        // Restore RDX
-        as.mov(X86Opnd(RDX), scrRegs[1].opnd(64));
-    }
+    // Store the divisor or remainder into the output operand
+    static if (op == "div")
+        as.mov(outOpnd, EAX.opnd);
+    else if (op == "mod")
+        as.mov(outOpnd, EDX.opnd);
+    else
+        assert (false);
 
     // Set the output type
     st.setOutType(as, instr, Type.INT32);
@@ -589,14 +588,13 @@ void FPToStr(string fmt)(
     CodeBlock as
 )
 {
-    extern (C) static refptr toStrFn(CallCtx callCtx, double f)
+    extern (C) static refptr toStrFn(VM vm, IRInstr curInstr, double f)
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         auto str = getString(vm, to!wstring(format(fmt, f)));
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         return str;
     }
@@ -617,7 +615,8 @@ void FPToStr(string fmt)(
     as.pushJITRegs();
 
     // Call the host function
-    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
     as.movq(X86Opnd(XMM0), opnd0);
     as.ptr(scrRegs[0], &toStrFn);
     as.call(scrRegs[0]);
@@ -847,7 +846,15 @@ void IsTypeOp(Type type)(
                     BranchShape shape
                 )
                 {
-                    jmp32Ref(as, vm, target0, 0);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        break;
+
+                        case BranchShape.NEXT1:
+                        case BranchShape.DEFAULT:
+                        jmp32Ref(as, vm, target0, 0);
+                    }
                 }
             );
         }
@@ -1417,7 +1424,7 @@ Throw an exception and unwind the stack when one calls a non-function.
 Returns a pointer to an exception handler.
 */
 extern (C) CodePtr throwCallExc(
-    CallCtx callCtx,
+    VM vm,
     IRInstr instr,
     BranchCode excHandler
 )
@@ -1425,8 +1432,7 @@ extern (C) CodePtr throwCallExc(
     auto fnName = getCalleeName(instr);
 
     return throwError(
-        callCtx.vm,
-        callCtx,
+        vm,
         instr,
         excHandler,
         "TypeError",
@@ -1502,7 +1508,7 @@ void genCallBranch(
 
         // Throw the call exception, unwind the stack,
         // find the topmost exception handler
-        as.ptr(cargRegs[0], st.callCtx);
+        as.mov(cargRegs[0], vmReg);
         as.ptr(cargRegs[1], instr);
         as.ptr(cargRegs[2], excBranch);
         as.ptr(scrRegs[0], &throwCallExc);
@@ -1873,10 +1879,9 @@ void gen_call_new(
 )
 {
     /// Host function to allocate the "this" object
-    extern (C) refptr makeThisObj(CallCtx callCtx, refptr closPtr)
+    extern (C) refptr makeThisObj(VM vm, IRInstr curInstr, refptr closPtr)
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         // Get the function object from the closure
         auto clos = GCRoot(vm, closPtr, Type.CLOSURE);
@@ -1917,7 +1922,7 @@ void gen_call_new(
             )
         );
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         assert(
             vm.inFromSpace(thisObj.ptr) && ptrValid(thisObj.ptr)
@@ -2029,8 +2034,9 @@ void gen_call_new(
     as.push(scrRegs[2]);
 
     // Call a host function to allocate the "this" object
-    as.ptr(cargRegs[0], st.callCtx);
-    as.mov(cargRegs[1].opnd(64), closReg);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd(64), closReg);
     as.ptr(scrRegs[0], &makeThisObj);
     as.call(scrRegs[0].opnd(64));
 
@@ -2153,13 +2159,12 @@ void gen_call_apply(
 )
 {
     extern (C) CodePtr op_call_apply(
-        CallCtx callCtx,
-        IRInstr instr, 
+        VM vm,
+        IRInstr instr,
         CodePtr retAddr
     )
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(instr);
 
         auto closVal = vm.getArgVal(instr, 0);
         auto thisVal = vm.getArgVal(instr, 1);
@@ -2204,7 +2209,7 @@ void gen_call_apply(
 
         GC.free(argVals);
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         // Return the function entry point code
         return fun.entryCode;
@@ -2236,7 +2241,7 @@ void gen_call_apply(
             as.pushJITRegs();
 
             // Pass the call context and instruction as first two arguments
-            as.ptr(cargRegs[0], st.callCtx);
+            as.mov(cargRegs[0], vmReg);
             as.ptr(cargRegs[1], instr);
 
             // Pass the return address as third argument
@@ -2263,14 +2268,12 @@ void gen_load_file(
 )
 {
     extern (C) CodePtr op_load_file(
-        CallCtx callCtx,
+        VM vm,
         IRInstr instr,
         CodeFragment retTarget,
         CodeFragment excTarget
     )
     {
-        auto vm = callCtx.vm;
-
         auto strPtr = vm.getArgStr(instr, 0);
         auto fileName = vm.getLoadPath(extractStr(strPtr));
 
@@ -2291,7 +2294,7 @@ void gen_load_file(
 
             // Compile the unit entry version
             vm.queue(entryInst);
-            vm.compile(callCtx);
+            vm.compile(fun.entryBlock.firstInstr);
 
             // Get the return address for the continuation target
             auto retAddr = retTarget.getCodePtr(vm.execHeap);
@@ -2314,7 +2317,6 @@ void gen_load_file(
         {
             return throwError(
                 vm,
-                callCtx,
                 instr,
                 excTarget,
                 "ReferenceError",
@@ -2326,7 +2328,6 @@ void gen_load_file(
         {
             return throwError(
                 vm,
-                callCtx,
                 instr,
                 excTarget,
                 "SyntaxError",
@@ -2335,9 +2336,7 @@ void gen_load_file(
         }
     }
 
-    // TODO: optimize call spills
-    // TODO: move spills after arg copying?
-    // Spill the values that are live after the call
+    // Spill the values that are live before the call
     st.spillRegs(
         as,
         delegate bool(IRDstValue value)
@@ -2361,7 +2360,7 @@ void gen_load_file(
             as.pushJITRegs();
 
             // Pass the call context and instruction as first two arguments
-            as.ptr(cargRegs[0], st.callCtx);
+            as.mov(cargRegs[0], vmReg);
             as.ptr(cargRegs[1], instr);
 
             // Pass the return and exception addresses as third arguments
@@ -2389,14 +2388,12 @@ void gen_eval_str(
 )
 {
     extern (C) CodePtr op_eval_str(
-        CallCtx callCtx,
+        VM vm,
         IRInstr instr,
         CodeFragment retTarget,
         CodeFragment excTarget
     )
     {
-        auto vm = callCtx.vm;
-
         auto strPtr = vm.getArgStr(instr, 0);
         auto codeStr = extractStr(strPtr);
 
@@ -2417,7 +2414,7 @@ void gen_eval_str(
 
             // Compile the unit entry version
             vm.queue(entryInst);
-            vm.compile(callCtx);
+            vm.compile(fun.entryBlock.firstInstr);
 
             // Get the return address for the continuation target
             auto retAddr = retTarget.getCodePtr(vm.execHeap);
@@ -2440,7 +2437,6 @@ void gen_eval_str(
         {
             return throwError(
                 vm,
-                callCtx,
                 instr,
                 excTarget,
                 "SyntaxError",
@@ -2449,9 +2445,7 @@ void gen_eval_str(
         }
     }
 
-    // TODO: optimize call spills
-    // TODO: move spills after arg copying?
-    // Spill the values that are live after the call
+    // Spill the values that are live before the call
     st.spillRegs(
         as,
         delegate bool(IRDstValue value)
@@ -2475,7 +2469,7 @@ void gen_eval_str(
             as.pushJITRegs();
 
             // Pass the call context and instruction as first two arguments
-            as.ptr(cargRegs[0], st.callCtx);
+            as.mov(cargRegs[0], vmReg);
             as.ptr(cargRegs[1], instr);
 
             // Pass the return and exception addresses
@@ -2502,8 +2496,7 @@ void gen_ret(
     CodeBlock as
 )
 {
-    auto callCtx = st.callCtx;
-    auto fun = callCtx.fun;
+    auto fun = instr.block.fun;
 
     auto raSlot    = fun.raVal.outSlot;
     auto argcSlot  = fun.argcVal.outSlot;
@@ -2530,10 +2523,11 @@ void gen_ret(
         true
     );
 
-    //as.printStr("ret from " ~ instr.block.fun.getName);
+    //as.printStr("ret from " ~ fun.getName);
 
     // Move the return word and types to the return registers
-    as.mov(retWordReg.opnd(64), retOpnd);
+    if (retWordReg.opnd != retOpnd)
+        as.mov(retWordReg.opnd, retOpnd);
     as.mov(retTypeReg.opnd(8), typeOpnd);
 
     // If we are in a constructor (new) call
@@ -2550,16 +2544,16 @@ void gen_ret(
         as.jne(Label.FALSE);
 
         // Use the "this" value as a return value
-        auto thisWord = st.getWordOpnd(st.callCtx.fun.thisVal, 64);
+        auto thisWord = st.getWordOpnd(fun.thisVal, 64);
         as.mov(retWordReg.opnd(64), thisWord);
-        auto thisType = st.getTypeOpnd(st.callCtx.fun.thisVal);
+        auto thisType = st.getTypeOpnd(fun.thisVal);
         as.mov(retTypeReg.opnd(8), thisType);
 
         as.label(Label.FALSE);
     }
 
-    // If this is a runtime function
-    if (fun.getName.startsWith(RT_PREFIX))
+    // If this is a runtime primitive function
+    if (fun.isPrim)
     {
         // Get the return address into r1
         as.getWord(scrRegs[1], raSlot);
@@ -2634,12 +2628,11 @@ void gen_throw(
     as.pushJITRegs();
 
     // Call the host throwExc function
-    as.mov(cargRegs[0].opnd, vmReg.opnd);
-    as.ptr(cargRegs[1], st.callCtx);
-    as.ptr(cargRegs[2], instr);
-    as.mov(cargRegs[3].opnd, X86Opnd(0));
-    as.mov(cargRegs[4].opnd, excWordOpnd);
-    as.mov(cargRegs[5].opnd(8), excTypeOpnd);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd, X86Opnd(0));
+    as.mov(cargRegs[3].opnd, excWordOpnd);
+    as.mov(cargRegs[4].opnd(8), excTypeOpnd);
     as.ptr(scrRegs[0], &throwExc);
     as.call(scrRegs[0]);
 
@@ -2702,17 +2695,15 @@ void HeapAllocOp(Type type)(
     CodeBlock as
 )
 {
-    extern (C) static refptr allocFallback(CallCtx callCtx, uint32_t allocSize)
+    extern (C) static refptr allocFallback(VM vm, IRInstr curInstr, uint32_t allocSize)
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         //writeln("alloc fallback");
-        //writeln(callCtx.fun.getName);
 
         auto ptr = heapAlloc(vm, allocSize);
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         return ptr;
     }
@@ -2777,8 +2768,9 @@ void HeapAllocOp(Type type)(
     //as.printStr("alloc bailout ***");
 
     // Call the fallback implementation
-    as.ptr(cargRegs[0], st.callCtx);
-    as.mov(cargRegs[1].opnd(32), szOpnd);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd(32), szOpnd);
     as.ptr(RAX, &allocFallback);
     as.call(RAX);
 
@@ -2815,16 +2807,15 @@ void gen_gc_collect(
     CodeBlock as
 )
 {
-    extern (C) void op_gc_collect(CallCtx callCtx, uint32_t heapSize)
+    extern (C) void op_gc_collect(VM vm, IRInstr curInstr, uint32_t heapSize)
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         //writeln("triggering gc");
 
         gcCollect(vm, heapSize);
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
     }
 
     // Spill the values live before the instruction
@@ -2842,8 +2833,9 @@ void gen_gc_collect(
     as.pushJITRegs();
 
     // Call the host function
-    as.ptr(cargRegs[0], st.callCtx);
-    as.mov(cargRegs[1].opnd, heapSizeOpnd);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd, heapSizeOpnd);
     as.ptr(scrRegs[0], &op_gc_collect);
     as.call(scrRegs[0]);
 
@@ -2880,14 +2872,12 @@ void gen_get_global(
     }
 
     extern (C) static CodePtr hostGetProp(
-        CallCtx callCtx,
+        VM vm,
         IRInstr instr,
         immutable(wchar)* nameChars,
         size_t nameLen
     )
     {
-        auto vm = callCtx.vm;
-
         auto propName = nameChars[0..nameLen];
         auto propVal = getProp(
             vm,
@@ -2899,7 +2889,6 @@ void gen_get_global(
         {
             return throwError(
                 vm,
-                callCtx,
                 instr,
                 null,
                 "TypeError",
@@ -2945,7 +2934,7 @@ void gen_get_global(
 
     // If the value is missing, call the host fallback code
     as.pushJITRegs();
-    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(cargRegs[2], nameStr.ptr);
     as.mov(cargRegs[3].opnd, X86Opnd(nameStr.length));
@@ -3047,10 +3036,9 @@ void gen_get_str(
     CodeBlock as
 )
 {
-    extern (C) refptr getStr(CallCtx callCtx, refptr strPtr)
+    extern (C) refptr getStr(VM vm, IRInstr curInstr, refptr strPtr)
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         // Compute and set the hash code for the string
         auto hashCode = compStrHash(strPtr);
@@ -3059,7 +3047,7 @@ void gen_get_str(
         // Find the corresponding string in the string table
         auto str = getTableStr(vm, strPtr);
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         return str;
     }
@@ -3082,8 +3070,9 @@ void gen_get_str(
     as.pushJITRegs();
 
     // Call the fallback implementation
-    as.ptr(cargRegs[0], st.callCtx);
-    as.mov(cargRegs[1].opnd, opnd0);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd, opnd0);
     as.ptr(scrRegs[0], &getStr);
     as.call(scrRegs[0]);
 
@@ -3424,19 +3413,19 @@ void gen_map_prop_name(
 )
 {
     extern (C) static refptr op_map_prop_name(
-        CallCtx callCtx,
+        VM vm,
+        IRInstr curInstr,
         ObjMap map,
         uint32_t propIdx
     )
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         assert (map !is null, "map is null");
         auto propName = map.getPropName(propIdx);
         auto str = (propName !is null)? getString(vm, propName):null;
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         return str;
     }
@@ -3458,9 +3447,10 @@ void gen_map_prop_name(
     as.pushJITRegs();
 
     // Call the host function
-    as.ptr(cargRegs[0], st.callCtx);
-    as.mov(cargRegs[1].opnd(64), opnd0);
-    as.mov(cargRegs[2].opnd(32), opnd1);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd(64), opnd0);
+    as.mov(cargRegs[3].opnd(32), opnd1);
     as.ptr(scrRegs[0], &op_map_prop_name);
     as.call(scrRegs[0]);
 
@@ -3485,14 +3475,14 @@ void gen_new_clos(
 )
 {
     extern (C) static refptr op_new_clos(
-        CallCtx callCtx,
+        VM vm,
+        IRInstr curInstr,
         IRFunction fun,
         ObjMap closMap,
         ObjMap protMap
     )
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         // If the function has no entry point code
         if (fun.entryCode is null)
@@ -3540,7 +3530,7 @@ void gen_new_clos(
 
         //writeln("final clos ptr: ", closPtr.ptr);
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         return closPtr.ptr;
     }
@@ -3563,10 +3553,11 @@ void gen_new_clos(
 
     as.pushJITRegs();
 
-    as.ptr(cargRegs[0], st.callCtx);
-    as.ptr(cargRegs[1], funArg.fun);
-    as.mov(cargRegs[2].opnd(64), closMapOpnd);
-    as.mov(cargRegs[3].opnd(64), protMapOpnd);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[2], funArg.fun);
+    as.mov(cargRegs[3].opnd(64), closMapOpnd);
+    as.mov(cargRegs[4].opnd(64), protMapOpnd);
     as.ptr(scrRegs[0], &op_new_clos);
     as.call(scrRegs[0]);
 
@@ -3648,10 +3639,13 @@ void gen_get_ast_str(
     CodeBlock as
 )
 {
-    extern (C) static refptr op_get_ast_str(CallCtx callCtx, refptr closPtr)
+    extern (C) static refptr op_get_ast_str(
+        VM vm, 
+        IRInstr curInstr, 
+        refptr closPtr
+    )
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         assert (
             refIsLayout(closPtr, LAYOUT_CLOS),
@@ -3663,7 +3657,7 @@ void gen_get_ast_str(
         auto str = fun.ast.toString();
         auto strObj = getString(vm, to!wstring(str));
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         return strObj;
     }
@@ -3681,8 +3675,9 @@ void gen_get_ast_str(
 
     as.pushJITRegs();
 
-    as.ptr(cargRegs[0], st.callCtx);
-    as.mov(cargRegs[1].opnd, opnd0);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_ast_str);
     as.call(scrRegs[0].opnd);
 
@@ -3700,10 +3695,13 @@ void gen_get_ir_str(
     CodeBlock as
 )
 {
-    extern (C) static refptr op_get_ir_str(CallCtx callCtx, refptr closPtr)
+    extern (C) static refptr op_get_ir_str(
+        VM vm, 
+        IRInstr curInstr,
+        refptr closPtr
+    )
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         assert (
             refIsLayout(closPtr, LAYOUT_CLOS),
@@ -3723,7 +3721,7 @@ void gen_get_ir_str(
         auto str = fun.toString();
         auto strObj = getString(vm, to!wstring(str));
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         return strObj;
     }
@@ -3741,8 +3739,9 @@ void gen_get_ir_str(
 
     as.pushJITRegs();
 
-    as.ptr(cargRegs[0], st.callCtx);
-    as.mov(cargRegs[1].opnd, opnd0);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_ir_str);
     as.call(scrRegs[0].opnd);
 
@@ -3760,10 +3759,13 @@ void gen_get_asm_str(
     CodeBlock as
 )
 {
-    extern (C) static refptr op_get_asm_str(CallCtx callCtx, refptr closPtr)
+    extern (C) static refptr op_get_asm_str(
+        VM vm,
+        IRInstr curInstr,
+        refptr closPtr
+    )
     {
-        auto vm = callCtx.vm;
-        vm.setCallCtx(callCtx);
+        vm.setCurInstr(curInstr);
 
         assert (
             refIsLayout(closPtr, LAYOUT_CLOS),
@@ -3808,7 +3810,7 @@ void gen_get_asm_str(
         // Get a string object for the output
         auto strObj = getString(vm, to!wstring(str));
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
 
         return strObj;
     }
@@ -3826,8 +3828,9 @@ void gen_get_asm_str(
 
     as.pushJITRegs();
 
-    as.ptr(cargRegs[0], st.callCtx);
-    as.mov(cargRegs[1].opnd, opnd0);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_asm_str);
     as.call(scrRegs[0].opnd);
 
@@ -3846,12 +3849,10 @@ void gen_load_lib(
 )
 {
     extern (C) static CodePtr op_load_lib(
-        CallCtx callCtx,
+        VM vm,
         IRInstr instr
     )
     {
-        auto vm = callCtx.vm;
-
         // Library to load (JS string)
         auto strPtr = vm.getArgStr(instr, 0);
 
@@ -3875,7 +3876,6 @@ void gen_load_lib(
         {
             return throwError(
                 vm,
-                callCtx,
                 instr,
                 null,
                 "RuntimeError",
@@ -3901,7 +3901,7 @@ void gen_load_lib(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.pushJITRegs();
-    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_load_lib);
     as.call(scrRegs[0].opnd);
@@ -3929,11 +3929,10 @@ void gen_close_lib(
 )
 {
     extern (C) static CodePtr op_close_lib(
-        CallCtx callCtx,
+        VM vm,
         IRInstr instr
     )
     {
-        auto vm = callCtx.vm;
         auto libArg = vm.getArgVal(instr, 0);
 
         assert (
@@ -3945,7 +3944,6 @@ void gen_close_lib(
         {
             return throwError(
                 vm,
-                callCtx,
                 instr,
                 null,
                 "RuntimeError",
@@ -3966,7 +3964,7 @@ void gen_close_lib(
     );
 
     as.pushJITRegs();
-    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_close_lib);
     as.call(scrRegs[0].opnd);
@@ -3987,12 +3985,10 @@ void gen_get_sym(
 )
 {
     extern (C) static CodePtr op_get_sym(
-        CallCtx callCtx,
+        VM vm,
         IRInstr instr
     )
     {
-
-        auto vm = callCtx.vm;
         auto libArg = vm.getArgVal(instr, 0);
 
         assert (
@@ -4012,7 +4008,6 @@ void gen_get_sym(
         {
             return throwError(
                 vm,
-                callCtx,
                 instr,
                 null,
                 "RuntimeError",
@@ -4037,7 +4032,7 @@ void gen_get_sym(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.pushJITRegs();
-    as.ptr(cargRegs[0], st.callCtx);
+    as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_get_sym);
     as.call(scrRegs[0].opnd);

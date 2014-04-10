@@ -255,6 +255,11 @@ class CodeGenState
 
         foreach (ident, param; fun.paramMap)
             mapToStack(param);
+
+        // If this is a constructor call,
+        // set the "this" value type to object
+        if (ctorCall)
+            setType(fun.thisVal, Type.OBJECT);
     }
 
     /**
@@ -445,8 +450,15 @@ class CodeGenState
     {
         assert (value.outSlot !is NULL_STACK);
 
-        auto regIdx = value.outSlot % allocRegs.length;
+        // If this value has only one use, which is a phi node
+        if (value.hasOneUse)
+        {
+            auto use = value.getFirstUse.owner;
+            if (!cast(PhiNode)value && cast(PhiNode)use)
+                return getDefReg(use);
+        }
 
+        auto regIdx = value.outSlot % allocRegs.length;
         auto reg = allocRegs[regIdx];
 
         return reg;
@@ -473,9 +485,31 @@ class CodeGenState
     /**
     Find a free register or spill one
     */
-    X86Reg freeReg(CodeBlock as, IRInstr instr)
+    X86Reg freeReg(
+        CodeBlock as,
+        IRInstr instr,
+        X86Reg defReg = allocRegs[0]
+    )
     {
         auto liveInfo = callCtx.fun.liveInfo;
+
+
+        // Get the value mapped to the default register
+        auto defRegVal = gpRegMap[defReg.regNo];
+
+        // If the default register is free
+        if (defRegVal is null)
+            return defReg;
+
+        // If the value mapped to the default register is not live
+        if (liveInfo.liveBefore(defRegVal, instr) == false)
+        {
+            // Remove the mapped value from the value map
+            valMap.remove(defRegVal);
+            gpRegMap[defReg.regNo] = null;
+            return defReg;
+        }
+
 
         // For each allocatable general-purpose register
         foreach (reg; allocRegs)
@@ -494,9 +528,17 @@ class CodeGenState
                 // Remove the mapped value from the value map
                 valMap.remove(regVal);
                 gpRegMap[reg.regNo] = null;
-
                 return reg;
             }
+        }
+
+        // If the value mapped to the default register
+        // is not an argument of the instruction
+        if (!instr.hasArg(defRegVal))
+        {
+            // Spill the default register
+            spillReg(as, defReg);
+            return defReg;
         }
 
         // Chosen register to spill
@@ -517,7 +559,7 @@ class CodeGenState
 
         // Spill the chosen register
         assert (chosenReg !is null);
-        spillReg(as, chosenReg.regNo);
+        spillReg(as, *chosenReg);
 
         return *chosenReg;
     }
@@ -535,7 +577,7 @@ class CodeGenState
         assert (value !is null);
 
         // Find or free a register
-        auto reg = freeReg(as, instr);
+        auto reg = freeReg(as, instr, getDefReg(value));
 
         // Map the value to the chosen register
         return mapReg(reg, value, numBits);
@@ -581,10 +623,10 @@ class CodeGenState
     /**
     Spill a specific register to the stack
     */
-    void spillReg(CodeBlock as, size_t regNo)
+    void spillReg(CodeBlock as, X86Reg reg)
     {
         // Get the value mapped to this register
-        auto regVal = gpRegMap[regNo];
+        auto regVal = gpRegMap[reg.regNo];
 
         // If no value is mapped to this register, stop
         if (regVal is null)
@@ -603,7 +645,7 @@ class CodeGenState
         valMap[regVal] = state.toStack();
 
         // Mark the register as free
-        gpRegMap[regNo] = null;
+        gpRegMap[reg.regNo] = null;
 
         // If the value is a function parameter,
         // we don't actually need to spill it
@@ -613,7 +655,6 @@ class CodeGenState
         //writeln("spilling: ", regVal);
 
         auto mem = wordStackOpnd(regVal.outSlot);
-        auto reg = X86Reg(X86Reg.GP, regNo, 64);
 
         //as.printStr("spilling " ~ reg.toString);
         //writefln("spilling: %s (%s)", regVal.toString(), reg);
@@ -640,15 +681,17 @@ class CodeGenState
     void spillRegs(CodeBlock as, SpillTestFn spillTest)
     {
         // For each general-purpose register
-        foreach (regNo, value; gpRegMap)
+        foreach (reg; allocRegs)
         {
+            auto value = gpRegMap[reg.regNo];
+
             // If nothing is mapped to this register, skip it
             if (value is null)
                 continue;
 
             // If the value should be spilled, spill it
             if (spillTest(value) is true)
-                spillReg(as, regNo);
+                spillReg(as, reg);
         }
     }
 
@@ -909,13 +952,6 @@ class CodeGenState
 
         // Write the type to the type stack
         as.mov(typeStackOpnd(instr.outSlot), X86Opnd(typeReg));
-
-        // If the value is in a register
-        if (state.isReg)
-        {
-            // Write a zero to the word stack to avoid false pointers
-            as.mov(wordStackOpnd(instr.outSlot), X86Opnd(0));
-        }
     }
 
     /// Add type information for an arbitrary value
@@ -1669,38 +1705,6 @@ void genBranchMoves(
             !dstTypeOpnd.isImm &&
             !(succParam && dstTypeOpnd.isMem))
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
-
-        // If the successor value is a phi node
-        if (succPhi)
-        {
-            // Src to reg move with unknown dst type
-            if (srcTypeOpnd != dstTypeOpnd && dstWordOpnd.isReg && dstTypeOpnd.isMem)
-            {
-                moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
-            }
-
-            // Src to stack move with known dst type
-            if (srcWordOpnd != dstWordOpnd && dstWordOpnd.isMem && dstTypeOpnd.isImm)
-            {
-                moveList ~= Move(typeStackOpnd(succPhi.outSlot), srcTypeOpnd);
-            }
-        }
-
-        // Otherwise, if the successor is not a parameter
-        else if (!succParam)
-        {
-            // Src to reg move with unknown dst type
-            if (srcTypeOpnd.isImm && dstWordOpnd.isReg && dstTypeOpnd.isMem)
-            {
-                moveList ~= Move(wordStackOpnd(succVal.outSlot), X86Opnd(0));
-            }
-
-            // Register to stack move with known dst type
-            if (srcWordOpnd.isReg && dstWordOpnd.isMem && dstTypeOpnd.isImm)
-            {
-                moveList ~= Move(typeStackOpnd(succVal.outSlot), srcTypeOpnd);
-            }
-        }
     }
 
     //foreach (move; moveList)
@@ -1751,19 +1755,18 @@ void queue(VM vm, CodeFragment frag)
 }
 
 /**
-Set the current calling context when calling host code from JITted code.
-Must set the call context to null when returning from host code.
+Set the current instruction when calling host code from JITted code.
+Must set the current instruction to null when returning from host code.
 */
-void setCallCtx(VM vm, CallCtx callCtx)
+void setCurInstr(VM vm, IRInstr curInstr)
 {
     // Ensure proper usage
     assert (
-        !(vm.callCtx !is null && callCtx !is null),
-        "VM call ctx is not null: " ~
-        vm.callCtx.fun.getName
+        !(vm.curInstr !is null && curInstr !is null),
+        "current instr is not null"
     );
 
-    vm.callCtx = callCtx;
+    vm.curInstr = curInstr;
 }
 
 /**
@@ -1784,7 +1787,7 @@ void setRetEntry(
 /**
 Compile all blocks in the compile queue
 */
-void compile(VM vm, CallCtx callCtx)
+void compile(VM vm, IRInstr curInstr)
 {
     //writeln("entering compile");
 
@@ -1792,8 +1795,8 @@ void compile(VM vm, CallCtx callCtx)
     auto as = vm.execHeap;
     assert (as !is null);
 
-    // Set the call context
-    vm.setCallCtx(callCtx);
+    // Set the current instruction
+    vm.setCurInstr(curInstr);
 
     assert (vm.compQueue.length > 0);
 
@@ -1882,14 +1885,6 @@ void compile(VM vm, CallCtx callCtx)
             // Store the code start index
             branch.markStart(as, vm);
 
-            /*
-            if (opts.jit_trace_instrs)
-            {
-                as.printStr("branch code to " ~ branch.branch.target.getName);
-                as.printStr("  fun=" ~ branch.branch.target.fun.getName);
-            }
-            */
-
             //as.printStr("branch code to " ~ branch.branch.target.getName);
 
             // Generate the prelude code, if any
@@ -1901,17 +1896,6 @@ void compile(VM vm, CallCtx callCtx)
                 branch.predState,
                 branch.branch
             );
-
-            /*
-            if (opts.jit_trace_instrs)
-            {
-                if (succState.gpRegMap[RCX.regNo] is null ||
-                    succState.gpRegMap[RCX.regNo].outSlot !is 15)
-                    as.printStr("##### SUCC: NOT MAPPED TO 15 #####");
-                else
-                    as.printStr("##### SUCC: IS MAPPED TO 15!!! ##### " ~ branch.branch.target.getName);
-            }
-            */
 
             // Get a version of the successor matching the incoming state
             branch.target = getBlockVersion(
@@ -2061,8 +2045,8 @@ void compile(VM vm, CallCtx callCtx)
         writeln();
     }
 
-    // Unset the call context
-    vm.setCallCtx(null);
+    // Unset the current instruction
+    vm.setCurInstr(null);
 
     //writeln("leaving compile");
 }
@@ -2289,7 +2273,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     */
 
     // Compile the entry versions
-    vm.compile(fun.getCtx(ctorCall, vm));
+    vm.compile(fun.entryBlock.firstInstr);
 
     // Store the entry code pointer on the function
     fun.entryCode = entryInst.getCodePtr(vm.execHeap);
@@ -2392,7 +2376,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     srcBlock.regenBranch(vm.execHeap, blockIdx);
 
     // Compile fragments and patch references
-    vm.compile(srcBlock.state.callCtx);
+    vm.compile(branchCode.branch.target.firstInstr);
 
     // For each allocatable register
     foreach (regIdx, reg; allocRegs)
@@ -2457,7 +2441,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     stub.callVer.regenBranch(vm.execHeap, 0);
 
     // Compile fragments and patch references
-    vm.compile(callCtx);
+    vm.compile(contBranch.branch.target.firstInstr);
 
     // Patch the stub to jump to the continuation branch
     stub.patch(vm.execHeap, contBranch);

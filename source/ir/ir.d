@@ -56,6 +56,9 @@ import runtime.object;
 import jit.codeblock;
 import jit.jit;
 
+/// Runtime function name prefix
+const wstring RT_PREFIX = "$rt_";
+
 /// Stack variable index type
 alias int32 StackIdx;
 
@@ -153,6 +156,12 @@ class IRFunction : IdObject
     bool isUnit() const
     {
         return cast(ASTProgram)ast !is null;
+    }
+
+    /// Test if this is a runtime primitive function
+    bool isPrim() const
+    {
+        return name.startsWith(RT_PREFIX);
     }
 
     string getName() const
