@@ -160,6 +160,8 @@ Object.defineProperty = function (obj, prop, attribs)
 
     if (attribs.hasOwnProperty('value'))
         obj[prop] = attribs.value;
+
+    return obj;
 };
 
 /**
@@ -174,6 +176,8 @@ Object.defineProperties = function (O, Properties)
     {
         Object.defineProperty(O, name, Properties[name]);
     }
+
+    return O;
 };
 
 /**
