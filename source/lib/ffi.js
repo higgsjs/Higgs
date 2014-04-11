@@ -2028,6 +2028,11 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     }
 
     /**
+    OS name
+    */
+    var os = $os;
+
+    /**
     EXPORTS
     */
     exports = {
@@ -2038,7 +2043,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         jsstrcpy : jsstrcpy,
         isNullPtr : isNullPtr,
         nullPtr : nullPtr,
-        cbuffer : cbuffer
+        cbuffer : cbuffer,
+        os : os
     };
 
 })();
