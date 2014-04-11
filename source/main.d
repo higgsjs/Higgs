@@ -43,6 +43,7 @@ import std.string;
 import parser.parser;
 import runtime.vm;
 import util.string;
+import util.os;
 import repl;
 import options;
 

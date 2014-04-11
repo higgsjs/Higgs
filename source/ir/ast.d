@@ -2147,28 +2147,6 @@ IRValue refToIR(
         return new IRRawPtr(null);
     }
 
-    // If this is the os name constant
-    else if (identExpr.name == "$os")
-    {
-        wstring osName;
-
-        // NOTE: this just reports all BSDs as "BSD"
-        version (linux)
-            osName = "LINUX";
-        version (OSX)
-            osName = "OSX";
-        version (FreeBSD)
-            osName = "BSD";
-        version (NetBSD)
-            osName = "BSD";
-        version (DragonFlyBSD)
-            osName = "BSD";
-        version (BSD)
-            osName = "BSD";
-
-        return ctx.strVal(osName);
-    }
-
     // If the variable is global
     else if (identExpr.declNode is null)
     {

@@ -2030,7 +2030,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     /**
     OS name
     */
-    var os = $os;
+    var os = string($ir_load_rawptr($ir_get_sym(c.handle, "higgs_osName"), 0));
 
     /**
     EXPORTS
