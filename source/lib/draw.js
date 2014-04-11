@@ -329,8 +329,6 @@ NOTE: currently this provides just enough bindings for the drawing lib
     {
 
         var canvas = Object.create(CanvasProto);
-        // TODO: make default font more ocnfigurable
-        var font_name_c = ffi.cstr("-*-helvetica-*-r-*-*-40-*-*-*-*-*-*-*");
 
         // cleanup
         canvas.id = Xlib.XCreatePixmap(display, window,
@@ -345,10 +343,9 @@ NOTE: currently this provides just enough bindings for the drawing lib
         canvas.colormap = Xlib.XDefaultColormap(display, 0);
         canvas.colors = Object.create(null);
         canvas.gc = Xlib.XDefaultGC(display, screen);
-        canvas.font = Xlib.XFontStruct(Xlib.XLoadQueryFont(display, font_name_c));
-        Xlib.XSetFont(display, canvas.gc, canvas.font.get_fid());
 
-        c.free(font_name_c);
+        canvas.setFont();
+
         return canvas;
     }
 
@@ -486,9 +483,18 @@ NOTE: currently this provides just enough bindings for the drawing lib
     /**
     setFont - set the font to use
     */
-    CanvasProto.setFont = function()
+    CanvasProto.setFont = function(name, size)
     {
-        // TODO: this
+        var font_str;
+        var font_name_c;
+        size = (typeof size === "number") ? size : 40;
+        name = (typeof name === "string") ? name : "helvetica";
+        font_str = "-*-" + name + "-*-r-*-*-" + size + "-*-*-*-*-*-*-*";
+        font_name_c = ffi.cstr(font_str);
+        this.font = Xlib.XFontStruct(Xlib.XLoadQueryFont(this.display, font_name_c));
+        Xlib.XSetFont(this.display, this.gc, this.font.get_fid());
+        c.free(font_name_c);
+        // TODO: error checking
     };
 
     /**
@@ -496,25 +502,15 @@ NOTE: currently this provides just enough bindings for the drawing lib
     */
     CanvasProto.drawText = function(x, y, text)
     {
+        // TODO: wchars
         var text_c = ffi.cstr(text);
-        var text_l = text.length; // TODO: wchars
+        var text_l = text.length;
         var TextItem = Xlib.XTextItem();
         TextItem.set_chars(text_c);
         TextItem.set_nchars(text_l);
         TextItem.set_delta(0);
         TextItem.set_font(this.font.get_fid());
-
-
         Xlib.XDrawText(this.display, this.id, this.gc, x, y, TextItem.handle, 1);
-        /*
-        Display *display;
-        Drawable d;
-        GC gc;
-        int x, y;
-        XTextItem *items;
-        int nitems;
-        */
-        
         c.free(text_c);
     };
 

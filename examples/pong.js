@@ -21,7 +21,7 @@
     /**
     SETTINGS
     */
-    var COURT_WIDTH = 900;
+    var COURT_WIDTH = 950;
     var COURT_HEIGHT = 500;
     var NET_X = INT(COURT_WIDTH / 2 - 2);
     var SCORE1_X = INT(COURT_WIDTH / 4 - 20);
@@ -91,7 +91,6 @@
         player2.y = PADDLE_Y_START;
         player2.y_d = 0;
 
-        
         computer_move_d = (Math.floor( Math.random() * 2 ) == 1) ? 1 : -1;
 
     }
