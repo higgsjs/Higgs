@@ -142,6 +142,10 @@ function test_defineProperty()
     if (o.p !== 7)
         return 1;
 
+    var obj = Object.defineProperty({}, 'x', { value: true });
+    if (obj.x !== true)
+        return 2;
+
     return 0;
 }
 
@@ -153,7 +157,7 @@ function test_defineProperties()
 
     var o = {};
 
-    Object.defineProperties(
+    var o1 = Object.defineProperties(
         o, 
         {
             p1: { value: 1},
@@ -165,6 +169,9 @@ function test_defineProperties()
         return 2;
 
     if (o.p2 !== 2)
+        return 3;
+
+    if (o1.p1 !== 1)
         return 3;
 
     return 0;
