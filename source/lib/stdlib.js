@@ -46,6 +46,9 @@ C stdlib functions
     var c = ffi.c;
 
     c.cdef(`
+        typedef unsigned int uint32_t;
+        typedef unsigned long int uint64_t;
+        
         void exit (int status);
         int system (const char* command);
         char* getenv (const char* name);
@@ -55,6 +58,10 @@ C stdlib functions
         typedef int pid_t;
         pid_t fork(void);
         pid_t waitpid(pid_t pid, int *status, int options);
+
+        /* Type used for the number of file descriptors.  */
+        typedef unsigned long int nfds_t;
+        int poll (struct pollfd *__fds, nfds_t __nfds, int __timeout);
     `);
 
     /**

@@ -1,21 +1,42 @@
 TODO: all libs
       - cleaner API designs
-      - CommonJS is probably a good basis to build on - aim for compatibility where it makes sense
       - perf also needs to be a consideration; all apis/libs should be designed so that it's easy to do
         common tasks in a performant way. Try to achieve best balance possible.
 
 TODO: test lib
-      X more assert/testing functions
-      X basic assert functions; exit abnormally on failure
+      - more assertion/helper functions
 
 TODO: improve FFI
-      - better errors in cdef - just good enough to find problems
-      - add more wrapping capability
-      - performance improvements (more caching/sharing, etc internally)
-      - add caching for bindings created by cdef to avoid reparsing, eval(), etc each time?
+      - keep improving error messages/checking
+      - add toString() and toJS() functionality for structs/unions
+      - improved wrapping
+      - wrapAll() function?
+      - add some preprocessor functionality?
+      - track down perf problems
+      - generate type checking code for function calls?
 
 TODO: SDL bindings
-      - move to binding for SDL2? Not as much support currently, but more future proof
+      X move to binding for SDL2? Not as much support currently, but more future proof
+      - [STARTED] SDL2 bindings
+
+TODO: Xlib
+      - bindings for Xlib
+      - [STARTED] currently just covering enough to be useful to SDL, cairo, etc
+
+      TODO: cairo bindings
+      - [STARTED] currently just some tests
+
+TODO: drawing lib
+      - [STARTED]
+      - some of this should be factored out into more general purpose libs
+      - simple drawing api for drawing to windows/images/pdf
+      - need more error checking
+      - need more type checking - too easy to pass in wrong type and blow stuff up
+      - add more support for key events/querying keyboard state,
+        currently only a fairly rudimentary "keypress" event is supported.
+        Main concern is detecting when multiple keys are pressed down. Doing this
+        for each key press would be unwieldy, but perhaps a .getKeysPressed() method
+        you can use inside the Keypress handler when you really need it.
 
 TODO: stdlib
       - improve stdlib
@@ -25,7 +46,7 @@ TODO: docs
 
 TODO: dir lib
       - add functionality / settle api
-      - add more predicate functions - isFile etc (construct these at include time with eval? - saves lookup time)
+      - add more predicate functions - isFile etc
 
 TODO: higgs-mode
       - higgs (minor?) mode for emacs, prototype complete
@@ -37,6 +58,15 @@ TODO: higgs-mode
 
 
 ---------------------------------------------------------------------------------------------------
+[DONE]: improve FFI
+      - better errors in cdef - just good enough to find problems
+      - add more wrapping capability
+      - performance improvements (more caching/sharing, etc internally)
+      - add caching for bindings created by cdef to avoid reparsing, eval(), etc each time?
+
+[DONE]: test lib
+      X more assert/testing functions
+      X basic assert functions; exit abnormally on failure
 
 [DONE]: test harness
       - simple harness for running tests similar to what mozilla uses in their JIT tests
