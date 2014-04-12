@@ -100,22 +100,43 @@ TODO: optimize dynamic calls?
 - can we pass args through registers?
 TODO: compare perf of calls vs dynamic calls?
 
-TODO: optimize get_global spills?
+FIXME: remove alloc op reg spills before GC?
+
+TODO: tga image lib test? are we fast enough?
+
+TODO: optimize strcat?
+- hosted prim?
+- faster hash fn? extend current fn?
+
+TODO: profile compilation time, big eval loop?
+TODO: think about full eval support
+- otherwise implement $ir_make_ptr(int64_cst) and int64 to str
+TODO: look at Tom's dev branch
+
+TODO: read type refinement paper
+
+FIXME: GC bug, forwarding this ref
+
+TODO: spillTestFn should get liveInfo as argument?
+
+TODO: new test, gc/globalexc.js
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: optimize get_global spills?
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
 - exc can trigger GC
-- soft spills?
-
-FIXME: remove alloc op reg spills before GC?
-
-
-
-
-
-
-
-
-
+- soft spill possible
 
 [DONE] TODO: optimize code size for get_global
 ./higgs --stats --e "print(test.asmString())" --jit_genasm benchmarks/micro/10m_getglobal.js
@@ -151,7 +172,7 @@ after (laptop):
     comp time (ms): 269
     exec time (ms): 65
     total time (ms): 396
-    code size (bytes): 715096
+    3d-raytrace code size (bytes): 715096
 
 [DONE] TODO: remove redundant edge moves
 

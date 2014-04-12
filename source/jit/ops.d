@@ -557,13 +557,13 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.ptr(scrRegs[0], &cFPFun);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.movq(outOpnd, X86Opnd(XMM0));
@@ -612,7 +612,7 @@ void FPToStr(string fmt)(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0], vmReg);
@@ -621,7 +621,7 @@ void FPToStr(string fmt)(
     as.ptr(scrRegs[0], &toStrFn);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
@@ -1504,7 +1504,7 @@ void genCallBranch(
 
         as.label(Label.THROW);
 
-        as.pushJITRegs();
+        as.saveJITRegs();
 
         // Throw the call exception, unwind the stack,
         // find the topmost exception handler
@@ -1514,7 +1514,7 @@ void genCallBranch(
         as.ptr(scrRegs[0], &throwCallExc);
         as.call(scrRegs[0].opnd);
 
-        as.popJITRegs();
+        as.loadJITRegs();
 
         // Jump to the exception handler
         as.jmp(X86Opnd(RAX));
@@ -2029,7 +2029,7 @@ void gen_call_new(
     // "this" object allocation
     //
 
-    as.pushJITRegs();
+    as.saveJITRegs();
     as.push(scrRegs[1]);
     as.push(scrRegs[2]);
 
@@ -2042,7 +2042,7 @@ void gen_call_new(
 
     as.pop(scrRegs[2]);
     as.pop(scrRegs[1]);
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Write the "this" argument
     movArgWord(as, numArgs + 1, X86Opnd(RAX));
@@ -2238,7 +2238,7 @@ void gen_call_apply(
             BranchShape shape
         )
         {
-            as.pushJITRegs();
+            as.saveJITRegs();
 
             // Pass the call context and instruction as first two arguments
             as.mov(cargRegs[0], vmReg);
@@ -2251,7 +2251,7 @@ void gen_call_apply(
             as.ptr(scrRegs[0], &op_call_apply);
             as.call(scrRegs[0]);
 
-            as.popJITRegs();
+            as.loadJITRegs();
 
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
@@ -2357,7 +2357,7 @@ void gen_load_file(
             BranchShape shape
         )
         {
-            as.pushJITRegs();
+            as.saveJITRegs();
 
             // Pass the call context and instruction as first two arguments
             as.mov(cargRegs[0], vmReg);
@@ -2371,7 +2371,7 @@ void gen_load_file(
             as.ptr(scrRegs[0], &op_load_file);
             as.call(scrRegs[0]);
 
-            as.popJITRegs();
+            as.loadJITRegs();
 
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
@@ -2466,7 +2466,7 @@ void gen_eval_str(
             BranchShape shape
         )
         {
-            as.pushJITRegs();
+            as.saveJITRegs();
 
             // Pass the call context and instruction as first two arguments
             as.mov(cargRegs[0], vmReg);
@@ -2480,7 +2480,7 @@ void gen_eval_str(
             as.ptr(scrRegs[0], &op_eval_str);
             as.call(scrRegs[0]);
 
-            as.popJITRegs();
+            as.loadJITRegs();
 
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
@@ -2625,7 +2625,7 @@ void gen_throw(
         }
     );
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host throwExc function
     as.mov(cargRegs[0], vmReg);
@@ -2636,7 +2636,7 @@ void gen_throw(
     as.ptr(scrRegs[0], &throwExc);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Jump to the exception handler
     as.jmp(cretReg.opnd);
@@ -2763,7 +2763,7 @@ void HeapAllocOp(Type type)(
     foreach (reg; allocRegs)
         as.push(reg);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     //as.printStr("alloc bailout ***");
 
@@ -2776,7 +2776,7 @@ void HeapAllocOp(Type type)(
 
     //as.printStr("alloc bailout done ***");
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Restore the allocated registers
     foreach_reverse(reg; allocRegs)
@@ -2830,7 +2830,7 @@ void gen_gc_collect(
     // Get the string pointer
     auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0], vmReg);
@@ -2839,7 +2839,7 @@ void gen_gc_collect(
     as.ptr(scrRegs[0], &op_gc_collect);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 }
 
 void gen_get_global(
@@ -2871,8 +2871,10 @@ void gen_get_global(
         assert (propIdx !is uint32.max);
     }
 
-    extern (C) static CodePtr hostGetProp(VM vm, IRInstr instr)
+    extern (C) static CodePtr hostGetProp(CodeGenState st, IRInstr instr)
     {
+        auto vm = st.callCtx.vm;
+
         auto strArg = cast(IRString)instr.getArg(0);
         auto nameStr = strArg.str;
 
@@ -2884,15 +2886,27 @@ void gen_get_global(
 
         if (propVal == MISSING)
         {
-            writeln("prop is missing");
+            auto liveInfo = st.callCtx.fun.liveInfo;
+            auto spillTest = delegate bool(IRDstValue val)
+            {
+                return liveInfo.liveAfter(val, instr);
+            };
 
-            return throwError(
+            // Spill the saved registers
+            st.spillSavedRegs(spillTest);
+
+            auto excHandler = throwError(
                 vm,
                 instr,
                 null,
                 "TypeError",
                 "global property not defined \"" ~ to!string(nameStr) ~ "\""
             );
+
+            // Reload the saved registers
+            st.loadSavedRegs(spillTest);
+
+            return excHandler;
         }
 
         vm.push(propVal);
@@ -2908,22 +2922,23 @@ void gen_get_global(
         auto as = vm.subsHeap;
         vm.getGlobalSub = as.getAddress(as.getWritePos);
 
-        as.printStr("fallback routine");
-
-        // Save the scratch and JIT registers
+        // Save the scratch, JIT and alloc registers
         as.push(scrRegs[1]);
         as.push(scrRegs[2]);
         as.push(scrRegs[2]);
-        as.pushJITRegs();
+        as.saveJITRegs();
+        as.saveAllocRegs();
 
         // Call the host fallback code
-        // Note: the IRInstr pointer is already in cargRegs[1]
-        as.mov(cargRegs[0], vmReg);
+        // Note:
+        // CodeGenState pointer is in cargRegs[0]
+        // IRInstr pointer is in cargRegs[1]
         as.ptr(scrRegs[0], &hostGetProp);
         as.call(scrRegs[0].opnd);
 
-        // Restore the scratch and JIT registers
-        as.popJITRegs();
+        // Restore the scratch, JIT and alloc registers
+        as.loadAllocRegs();
+        as.loadJITRegs();
         as.pop(scrRegs[2]);
         as.pop(scrRegs[2]);
         as.pop(scrRegs[1]);
@@ -2950,15 +2965,6 @@ void gen_get_global(
         as.linkLabels();
         return vm.getGlobalSub;
     }
-
-    // Spill the values that are live after the instruction
-    st.spillRegs(
-        as,
-        delegate bool(IRDstValue value)
-        {
-            return instr.block.fun.liveInfo.liveAfter(value, instr);
-        }
-    );
 
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -2988,6 +2994,7 @@ void gen_get_global(
 
     // Call the fallback subroutine
     auto getGlobalSub = getFallbackSub(vm);
+    as.ptr(cargRegs[0], st);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], getGlobalSub);
     as.call(scrRegs[0]);
@@ -3001,7 +3008,6 @@ void gen_get_global(
     // Set the type value
     st.setOutType(as, instr, scrRegs[2].reg(8));
 }
-
 
 void gen_set_global(
     BlockVersion ver,
@@ -3091,7 +3097,7 @@ void gen_get_str(
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the fallback implementation
     as.mov(cargRegs[0], vmReg);
@@ -3100,7 +3106,7 @@ void gen_get_str(
     as.ptr(scrRegs[0], &getStr);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3243,14 +3249,14 @@ void gen_map_num_props(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), opnd0);
     as.ptr(scrRegs[0], &op_map_num_props);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3387,7 +3393,7 @@ void gen_map_prop_idx(
             as.je(Label.DONE);
         }
 
-        as.pushJITRegs();
+        as.saveJITRegs();
 
         // Call the cache update function
         as.mov(cargRegs[0].opnd(64), opnd0);
@@ -3397,7 +3403,7 @@ void gen_map_prop_idx(
         as.ptr(scrRegs[0], &updateCache);
         as.call(scrRegs[0]);
 
-        as.popJITRegs();
+        as.loadJITRegs();
 
         // Store the output value into the output operand
         as.mov(outOpnd, X86Opnd(cretReg));
@@ -3410,7 +3416,7 @@ void gen_map_prop_idx(
     }
     else
     {
-        as.pushJITRegs();
+        as.saveJITRegs();
 
         // Call the host function
         as.mov(cargRegs[0].opnd(64), opnd0);
@@ -3419,7 +3425,7 @@ void gen_map_prop_idx(
         as.ptr(scrRegs[0], &op_map_prop_idx);
         as.call(scrRegs[0]);
 
-        as.popJITRegs();
+        as.loadJITRegs();
 
         // Store the output value into the output operand
         as.mov(outOpnd, X86Opnd(cretReg));
@@ -3468,7 +3474,7 @@ void gen_map_prop_name(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0], vmReg);
@@ -3478,7 +3484,7 @@ void gen_map_prop_name(
     as.ptr(scrRegs[0], &op_map_prop_name);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.mov(outOpnd, cretReg.opnd);
@@ -3575,7 +3581,7 @@ void gen_new_clos(
     auto closMapOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
     auto protMapOpnd = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
@@ -3585,7 +3591,7 @@ void gen_new_clos(
     as.ptr(scrRegs[0], &op_new_clos);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(cretReg));
@@ -3644,12 +3650,12 @@ void gen_get_time_ms(
         }
     );
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.ptr(scrRegs[0], &op_get_time_ms);
     as.call(scrRegs[0].opnd(64));
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.movq(outOpnd, X86Opnd(XMM0));
@@ -3697,7 +3703,7 @@ void gen_get_ast_str(
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
@@ -3705,7 +3711,7 @@ void gen_get_ast_str(
     as.ptr(scrRegs[0], &op_get_ast_str);
     as.call(scrRegs[0].opnd);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3761,7 +3767,7 @@ void gen_get_ir_str(
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
@@ -3769,7 +3775,7 @@ void gen_get_ir_str(
     as.ptr(scrRegs[0], &op_get_ir_str);
     as.call(scrRegs[0].opnd);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3850,7 +3856,7 @@ void gen_get_asm_str(
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
@@ -3858,7 +3864,7 @@ void gen_get_asm_str(
     as.ptr(scrRegs[0], &op_get_asm_str);
     as.call(scrRegs[0].opnd);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3924,12 +3930,12 @@ void gen_load_lib(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_load_lib);
     as.call(scrRegs[0].opnd);
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // If an exception was thrown, jump to the exception handler
     as.cmp(cretReg.opnd, X86Opnd(0));
@@ -3987,12 +3993,12 @@ void gen_close_lib(
         }
     );
 
-    as.pushJITRegs();
+    as.saveJITRegs();
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_close_lib);
     as.call(scrRegs[0].opnd);
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // If an exception was thrown, jump to the exception handler
     as.cmp(cretReg.opnd, X86Opnd(0));
@@ -4055,12 +4061,12 @@ void gen_get_sym(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_get_sym);
     as.call(scrRegs[0].opnd);
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // If an exception was thrown, jump to the exception handler
     as.cmp(cretReg.opnd, X86Opnd(0));
@@ -4192,7 +4198,7 @@ void gen_call_ffi(
     }
 
     // Save the JIT registers
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Make sure there is an even number of pushes
     if (stackArgs.length % 2 != 0)
@@ -4238,7 +4244,7 @@ void gen_call_ffi(
         as.pop(scrRegs[1]);
 
     // Restore the JIT registers
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Send return value/type
     if (retType == "f64")

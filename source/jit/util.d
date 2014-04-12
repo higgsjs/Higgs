@@ -259,7 +259,7 @@ void setType(CodeBlock as, int32_t idx, Type type)
 }
 
 /// Store/save the JIT state register
-void pushJITRegs(CodeBlock as)
+void saveJITRegs(CodeBlock as)
 {
     // Save word and type stack pointers on the VM object
     as.setMember!("VM.wsp")(vmReg, wspReg);
@@ -271,7 +271,7 @@ void pushJITRegs(CodeBlock as)
 }
 
 // Load/restore the JIT state registers
-void popJITRegs(CodeBlock as)
+void loadJITRegs(CodeBlock as)
 {
     // Pop the VM register from the stack
     as.pop(vmReg);
@@ -280,6 +280,34 @@ void popJITRegs(CodeBlock as)
     // Load the word and type stack pointers from the VM object
     as.getMember!("VM.wsp")(wspReg, vmReg);
     as.getMember!("VM.tsp")(tspReg, vmReg);
+}
+
+/// Save the allocatable registers to the VM register save space
+void saveAllocRegs(CodeBlock as)
+{
+    as.getMember!("VM.regSave")(scrRegs[1], vmReg);
+    foreach (uint regIdx, reg; allocRegs)
+    {
+        //as.printStr("save " ~ reg.toString);
+        //as.printUint(reg.opnd);
+
+        auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
+        as.mov(memOpnd, reg.opnd);
+    }
+}
+
+/// Restore the allocatable registers from the VM register save space
+void loadAllocRegs(CodeBlock as)
+{
+    as.getMember!("VM.regSave")(scrRegs[1], vmReg);
+    foreach (uint regIdx, reg; allocRegs)
+    {
+        auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
+        as.mov(reg.opnd, memOpnd);
+
+        //as.printStr("restore " ~ reg.toString);
+        //as.printUint(reg.opnd);
+    }
 }
 
 /// Save caller-save registers on the stack before a C call
