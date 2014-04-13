@@ -53,6 +53,7 @@ import parser.parser;
 import ir.ir;
 import ir.ops;
 import ir.ast;
+import ir.livevars;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
@@ -540,9 +541,9 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -602,9 +603,9 @@ void FPToStr(string fmt)(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -1621,9 +1622,9 @@ void gen_call_prim(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveAfter(value, instr);
+            return liveInfo.liveAfter(value, instr);
         }
     );
 
@@ -1830,9 +1831,9 @@ void gen_call(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveAfter(value, instr);
+            return liveInfo.liveAfter(value, instr);
         }
     );
 
@@ -1941,9 +1942,9 @@ void gen_call_new(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2220,9 +2221,9 @@ void gen_call_apply(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2339,9 +2340,9 @@ void gen_load_file(
     // Spill the values that are live before the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2448,9 +2449,9 @@ void gen_eval_str(
     // Spill the values that are live before the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2614,14 +2615,12 @@ void gen_throw(
     auto excWordOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
     auto excTypeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
-    // TODO: optimize call spills
-    // TODO: move spills after arg copying?
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2711,9 +2710,9 @@ void HeapAllocOp(Type type)(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2821,9 +2820,9 @@ void gen_gc_collect(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2886,8 +2885,7 @@ void gen_get_global(
 
         if (propVal == MISSING)
         {
-            auto liveInfo = st.callCtx.fun.liveInfo;
-            auto spillTest = delegate bool(IRDstValue val)
+            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
             {
                 return liveInfo.liveAfter(val, instr);
             };
@@ -3085,9 +3083,9 @@ void gen_get_str(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3239,9 +3237,9 @@ void gen_map_num_props(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3333,9 +3331,9 @@ void gen_map_prop_idx(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3463,9 +3461,9 @@ void gen_map_prop_name(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3569,9 +3567,9 @@ void gen_new_clos(
     // Spill all values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3644,9 +3642,9 @@ void gen_get_time_ms(
     // Spill the values live after this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveAfter(value, instr);
+            return liveInfo.liveAfter(value, instr);
         }
     );
 
@@ -3695,9 +3693,9 @@ void gen_get_ast_str(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3759,9 +3757,9 @@ void gen_get_ir_str(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3848,9 +3846,9 @@ void gen_get_asm_str(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3922,9 +3920,9 @@ void gen_load_lib(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3987,9 +3985,9 @@ void gen_close_lib(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -4053,9 +4051,9 @@ void gen_get_sym(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -4146,9 +4144,9 @@ void gen_call_ffi(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 

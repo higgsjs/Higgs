@@ -675,13 +675,15 @@ class CodeGenState
     }
 
     /// Spill test function
-    alias bool delegate(IRDstValue value) SpillTestFn;
+    alias bool delegate(LiveInfo liveInfo, IRDstValue value) SpillTestFn;
 
     /**
     Spill a set of registers to the stack
     */
     void spillRegs(CodeBlock as, SpillTestFn spillTest)
     {
+        auto liveInfo = callCtx.fun.liveInfo;
+
         // For each general-purpose register
         foreach (reg; allocRegs)
         {
@@ -692,7 +694,7 @@ class CodeGenState
                 continue;
 
             // If the value should be spilled, spill it
-            if (spillTest(value) is true)
+            if (spillTest(liveInfo, value) is true)
                 spillReg(as, reg);
         }
     }
@@ -716,7 +718,7 @@ class CodeGenState
                 continue;
 
             // If the value is not live, skip it
-            if (spillTest(regVal) is false)
+            if (spillTest(liveInfo, regVal) is false)
                 continue;
 
             //writefln("spilling reg %s val %s", reg, regVal);
@@ -763,7 +765,7 @@ class CodeGenState
                 continue;
 
             // If the value is not live, skip it
-            if (spillTest(regVal) is false)
+            if (spillTest(liveInfo, regVal) is false)
                 continue;
 
             // Restore the register value from its stack location
@@ -1845,6 +1847,8 @@ Must set the current instruction to null when returning from host code.
 */
 void setCurInstr(VM vm, IRInstr curInstr)
 {
+    //writeln("curInstr=", curInstr);
+
     // Ensure proper usage
     assert (
         !(vm.curInstr !is null && curInstr !is null),
@@ -2403,6 +2407,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     auto branchCode = cast(BranchCode)srcBlock.targets[targetIdx];
     assert (branchCode !is null);
     assert (branchCode.started is false);
+    auto predState = branchCode.predState;
     auto targetBlock = branchCode.branch.target;
 
     if (opts.jit_dumpinfo)
@@ -2414,10 +2419,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
         );
     }
 
-    auto predState = branchCode.predState;
-    auto liveInfo = predState.callCtx.fun.liveInfo;
-
-    auto spillTest = delegate bool(IRDstValue val)
+    auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
     {
         return liveInfo.liveAtEntry(val, targetBlock);
     };

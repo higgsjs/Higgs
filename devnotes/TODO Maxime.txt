@@ -115,12 +115,10 @@ TODO: look at Tom's dev branch
 
 TODO: read type refinement paper
 
-FIXME: GC bug, forwarding this ref
+FIXME: GC bug, forwarding "this" ref
 
-TODO: spillTestFn should get liveInfo as argument?
-
-TODO: new test, gc/globalexc.js
-
+TODO: look at having getOutOpnd reuse input arg reg
+- look at code for loop_big_incr
 
 
 
@@ -131,6 +129,13 @@ TODO: new test, gc/globalexc.js
 
 
 
+
+[DONE] TODO: spillTestFn should get liveInfo as argument
+
+[DONE] FIXME: issue with GC and global exc allocation...
+- Do we unwind the stack before we allocate the exception?
+
+[DONE] TODO: new test, gc/globalexc.js
 
 [DONE] TODO: optimize get_global spills?
 - Should have way to spill live after instr or arg regs only

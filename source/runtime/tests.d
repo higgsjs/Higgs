@@ -1513,75 +1513,66 @@ unittest
     );
 
     writefln("gc/collect");
-
     vm = new VM();
     vm.load("tests/core/gc/collect.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/objects");
-
     vm = new VM();
     vm.load("tests/core/gc/objects.js");
 
     writefln("gc/arrays");
-
     vm = new VM();
     vm.load("tests/core/gc/arrays.js");
 
     writefln("gc/closures");
-
     vm = new VM();
     vm.load("tests/core/gc/closures.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/objext");
-
     vm = new VM();
     vm.load("tests/core/gc/objext.js");
 
     writefln("gc/deepstack");
-
     vm = new VM();
     vm.load("tests/core/gc/deepstack.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/bigloop");
-
     vm = new VM();
     vm.load("tests/core/gc/bigloop.js");
 
     writefln("gc/apply");
-
     vm = new VM();
     vm.load("tests/core/gc/apply.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/arguments");
-
     vm = new VM();
     vm.load("tests/core/gc/arguments.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/strcat");
-
     vm = new VM();
     vm.load("tests/core/gc/strcat.js");
     vm.assertInt("test();", 0);
 
-    writefln("gc/graph");
+    writefln("gc/globalexc");
+    vm = new VM();
+    vm.load("tests/core/gc/globalexc.js");
 
+    writefln("gc/graph");
     vm = new VM();
     vm.load("tests/core/gc/graph.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/stackvm");
-
     vm = new VM();
     vm.load("tests/core/gc/stackvm.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/load");
-
     vm = new VM();
     vm.load("tests/core/gc/load.js");
     vm.assertInt("theFlag;", 1337);

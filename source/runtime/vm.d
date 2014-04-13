@@ -1164,7 +1164,7 @@ class VM
             auto raSlot    = curFun.raVal.outSlot;
 
             assert (
-                wsp + numLocals <= this.wUpperLimit, 
+                wsp + numLocals <= this.wUpperLimit,
                 "no room for numLocals in stack frame"
             );
 
@@ -1383,8 +1383,10 @@ extern (C) CodePtr throwError(
     string errMsg
 )
 {
+    vm.setCurInstr(throwInstr);
+
     auto errStr = GCRoot(
-        vm, 
+        vm,
         getString(vm, to!wstring(errMsg)),
         Type.STRING
     );
@@ -1431,6 +1433,8 @@ extern (C) CodePtr throwError(
                 errStr.pair
             );
 
+            vm.setCurInstr(null);
+
             return throwExc(
                 vm,
                 throwInstr,
@@ -1440,6 +1444,8 @@ extern (C) CodePtr throwError(
             );
         }
     }
+
+    vm.setCurInstr(null);
 
     // Throw the error string directly
     return throwExc(
