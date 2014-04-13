@@ -111,14 +111,14 @@ TODO: look at Tom's dev branch
 
 TODO: read type refinement paper
 
-FIXME: GC bug, forwarding "this" ref
-
 TODO: look at having getOutOpnd reuse input arg reg
 - look at code for loop_big_incr
 
+FIXME: GC bug, forwarding "this" ref
+- test pong example
+
 TODO: look at tga ASM, optimize
 
-TODO: tga image lib test? are we fast enough?
 
 
 
@@ -128,6 +128,8 @@ TODO: tga image lib test? are we fast enough?
 
 
 
+
+[DONE] TODO: tga image lib test? are we fast enough?
 
 [DONE] FIXME: remove alloc op reg spills before GC?
 
