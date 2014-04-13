@@ -100,19 +100,121 @@ TODO: optimize dynamic calls?
 - can we pass args through registers?
 TODO: compare perf of calls vs dynamic calls?
 
-TODO: optimize code size for get_global
-- do fully "interpreted" if needed, call into code fragment
-  - maybe try this first, as an "extreme" test
-- see how execution time and code size change across benchmarks
-TODO: optimize get_global spills?
+TODO: calls, shouldn't need to tag RA, arg count?
+- $argc problematic if not tagged
+
+TODO: profile compilation time, big eval loop?
+TODO: think about full eval support
+- otherwise implement $ir_make_ptr(int64_cst) and int64 to str
+TODO: look at Tom's dev branch
+
+TODO: look at having getOutOpnd reuse input arg reg
+- look at code for loop_big_incr
+
+FIXME:
+; $2 = mul_i32 8, $1
+mov eax, 8;                             B808000000
+mov ebp, ecx;                           89CD
+imul ebp, eax;                          0FAFE8
+mov edx, ebp;                           89EA
+
+Meeting:
+- soft spills
+  - not as much gains as hoped, but some
+- optimized codegen for several instructions
+  - removed redundant instructions
+  - optimized branch ordering
+- bugfixes
+
+TODO: read type refinement paper
+
+TODO: lib/graph using image lib
+- look into terminology
+- look into how matplotlib does it
+- short blog post, bitcoin
+
+FIXME: GC bug, forwarding "this" ref
+- test pong example
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME:
+; $269 = map_prop_idx $0, $44, false
+...
+mov rbp, [qword rax + 16];              488B6810
+mov r12d, [dword rbx + 8];              448B6308
+mov r12, r12;                           4D89E4
+cmp [qword rbx], rbp;                   48392B
+code size (bytes): 462500
+
+[DONE] FIXME:
+; $47 = set_str "writeTGA24", <link:NULL>
+mov rax, [qword r15 + 168];             498B87A8000000
+mov rax, [qword rax + 53704];           488B80C8D10000
+mov rcx, rax;                           4889C1
+code size (bytes): 463719
+
+[DONE] FIXME: 
+; $0 = is_object $376
+mov al, [byte r13 + 376];               418A8578010000
+cmp al, 9;                              80F809
+code size (bytes): 465922
+
+[DONE] FIXME: 
+; $0 = ge_i32 $288, 0
+cmp edi, 0;                             83FF00
+mov eax, 14146;                         B842370000
+jge branch_and_sec(33B7C);              0F8D05000000
+jmp branch_if_join(33B7A);              E97EA0F2FF
+branch_and_sec(33B7C):
+
+./benchmark.py
+code size (bytes): 466599
+comp time (ms): 178
+exec time (ms): 41
+total time (ms): 263
+
+[DONE] TODO: tga image lib test? are we fast enough?
+
+[DONE] FIXME: remove alloc op reg spills before GC?
+
+[DONE] TODO: optimize load_u32, one superfluous move to out opnd
+
+[DONE] TODO: look at asm for strcat prim
+./higgs --jit_genasm --e "'a'+'b'; print(\$rt_strcat.asmString())"
+
+[DONE] TODO: spillTestFn should get liveInfo as argument
+
+[DONE] FIXME: issue with GC and global exc allocation...
+- Do we unwind the stack before we allocate the exception?
+
+[DONE] TODO: new test, gc/globalexc.js
+
+[DONE] TODO: optimize get_global spills?
 - Should have way to spill live after instr or arg regs only
   - move into cargReg can easily corrupt allocated reg
+- exc can trigger GC
+- soft spill possible
 
-FIXME: remove alloc reg spills before GC?
+[DONE] TODO: optimize code size for get_global
+./higgs --stats --e "print(test.asmString())" --jit_genasm benchmarks/micro/10m_getglobal.js
+- see how execution time and code size change across benchmarks
+- before: get_global takes from 165 to 213 bytes
+- after: 74 to 128 bytes (includes spills)
+- code size improved, exec time improved, compilation time much improved!
 
-TODO: improve move listing, only list executed moves
+[DONE] TODO: improve move listing, only list executed moves
 
-TODO: blog post about optimization, results
+[DONE] TODO: blog post about optimization, results
 - use meme image
 - 200 stars on github
 - reg alloc speed gains
@@ -123,18 +225,7 @@ TODO: blog post about optimization, results
 - need help wrt profiling compilation time
   - profiling, you don't actually know what's going on, complex codebase
 
-Idea: for debugging, can make stack validation pass
-- Look for invalid pointers
-- Slow, but will find problem when it happens
-- Can also look in current frame only
-
-Idea: for GC debugging, have debug block, zero out unvisited values
-- except argc
-
-TODO: try benchmark.py with maxvers=0
-
-
-
+[DONE] TODO: try benchmark.py with maxvers=0
 
 [DONE] TODO: remove redundant setOutType moves
 before (laptop):
@@ -143,12 +234,12 @@ before (laptop):
     exec time (ms): 65
     total time (ms): 386
     3d-raytrace code size (bytes): 733500
-
-
-
-
-
-
+after (laptop):
+    code size (bytes): 499986
+    comp time (ms): 269
+    exec time (ms): 65
+    total time (ms): 396
+    3d-raytrace code size (bytes): 715096
 
 [DONE] TODO: remove redundant edge moves
 

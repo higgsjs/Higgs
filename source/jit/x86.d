@@ -1589,7 +1589,10 @@ void movzx(CodeBlock cb, X86Opnd dst, X86Opnd src)
     else
         assert (false);
 
-    assert (srcSize < dstSize);
+    assert (
+        srcSize < dstSize,
+        "movzx: srcSize >= dstSize"
+    );
 
     if (srcSize is 8)
     {

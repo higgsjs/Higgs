@@ -53,6 +53,7 @@ import parser.parser;
 import ir.ir;
 import ir.ops;
 import ir.ast;
+import ir.livevars;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
@@ -132,11 +133,21 @@ void gen_set_str(
         vm.setLinkType(linkVal.linkIdx, Type.STRING);
     }
 
-    as.getMember!("VM.wLinkTable")(scrRegs[0], vmReg);
-    as.mov(scrRegs[0].opnd(64), X86Opnd(64, scrRegs[0], 8 * linkVal.linkIdx));
-
     auto outOpnd = st.getOutOpnd(as, instr, 64);
-    as.mov(outOpnd, scrRegs[0].opnd(64));
+
+    as.getMember!("VM.wLinkTable")(scrRegs[0], vmReg);
+
+    auto linkOpnd = X86Opnd(64, scrRegs[0], 8 * linkVal.linkIdx);
+
+    if (outOpnd.isMem)
+    {
+        as.mov(scrRegs[0].opnd(64), linkOpnd);
+        as.mov(outOpnd, scrRegs[0].opnd(64));
+    }
+    else
+    {
+        as.mov(outOpnd, linkOpnd);
+    }
 
     st.setOutType(as, instr, Type.STRING);
 }
@@ -540,9 +551,9 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -557,13 +568,13 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.ptr(scrRegs[0], &cFPFun);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.movq(outOpnd, X86Opnd(XMM0));
@@ -602,9 +613,9 @@ void FPToStr(string fmt)(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -612,7 +623,7 @@ void FPToStr(string fmt)(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0], vmReg);
@@ -621,7 +632,7 @@ void FPToStr(string fmt)(
     as.ptr(scrRegs[0], &toStrFn);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
@@ -646,7 +657,8 @@ void LoadOp(size_t memSize, bool signed, Type typeTag)(
     // The offset operand may be a register or an immediate
     auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    //auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = st.getOutOpnd(as, instr, (memSize < 64)? 32:64);
 
     // Create the memory operand
     X86Opnd memOpnd;
@@ -666,19 +678,17 @@ void LoadOp(size_t memSize, bool signed, Type typeTag)(
     }
 
     // If the output operand is a memory location
-    if (outOpnd.isMem || memSize == 32)
+    if (outOpnd.isMem)
     {
-        size_t scrSize = (memSize == 32)? 32:64;
-        auto scrReg64 = scrRegs[2].opnd(64);
-        auto scrReg = X86Opnd(X86Reg(X86Reg.GP, scrReg64.reg.regNo, scrSize));
+        auto scrReg = scrRegs[2].opnd((memSize < 64)? 32:64);
 
-        // Load to a scratch register
-        static if (memSize == 8 || memSize == 16)
+        // Load to a scratch register first
+        static if (memSize < 32)
         {
             static if (signed)
-                as.movsx(scrReg64, memOpnd);
+                as.movsx(scrReg, memOpnd);
             else
-                as.movzx(scrReg64, memOpnd);
+                as.movzx(scrReg, memOpnd);
         }
         else
         {
@@ -686,7 +696,7 @@ void LoadOp(size_t memSize, bool signed, Type typeTag)(
         }
 
         // Move the scratch register to the output
-        as.mov(outOpnd, scrReg64);
+        as.mov(outOpnd, scrReg);
     }
     else
     {
@@ -808,7 +818,7 @@ void IsTypeOp(Type type)(
     //as.printStr("    " ~ instr.block.fun.getName);
 
     // Get an operand for the value's type
-    auto typeOpnd = st.getTypeOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+    auto typeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     // If the type of the argument is known
     if (typeOpnd.isImm)
@@ -1228,18 +1238,54 @@ void CmpOp(string op, size_t numBits)(
                 }
                 else if (op == "le")
                 {
-                    jle32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        jg32Ref(as, vm, target1, 1);
+                        break;
+
+                        case BranchShape.NEXT1:
+                        jle32Ref(as, vm, target0, 0);
+                        break;
+
+                        case BranchShape.DEFAULT:
+                        jle32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, target1, 1);
+                    }
                 }
                 else if (op == "gt")
                 {
-                    jg32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        jle32Ref(as, vm, target1, 1);
+                        break;
+
+                        case BranchShape.NEXT1:
+                        jg32Ref(as, vm, target0, 0);
+                        break;
+
+                        case BranchShape.DEFAULT:
+                        jg32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, target1, 1);
+                    }
                 }
                 else if (op == "ge")
                 {
-                    jge32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        jl32Ref(as, vm, target1, 1);
+                        break;
+
+                        case BranchShape.NEXT1:
+                        jge32Ref(as, vm, target0, 0);
+                        break;
+
+                        case BranchShape.DEFAULT:
+                        jge32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, target1, 1);
+                    }
                 }
 
                 // Floating-point comparisons
@@ -1504,7 +1550,7 @@ void genCallBranch(
 
         as.label(Label.THROW);
 
-        as.pushJITRegs();
+        as.saveJITRegs();
 
         // Throw the call exception, unwind the stack,
         // find the topmost exception handler
@@ -1514,7 +1560,7 @@ void genCallBranch(
         as.ptr(scrRegs[0], &throwCallExc);
         as.call(scrRegs[0].opnd);
 
-        as.popJITRegs();
+        as.loadJITRegs();
 
         // Jump to the exception handler
         as.jmp(X86Opnd(RAX));
@@ -1621,9 +1667,9 @@ void gen_call_prim(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveAfter(value, instr);
+            return liveInfo.liveAfter(value, instr);
         }
     );
 
@@ -1830,9 +1876,9 @@ void gen_call(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveAfter(value, instr);
+            return liveInfo.liveAfter(value, instr);
         }
     );
 
@@ -1941,9 +1987,9 @@ void gen_call_new(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2029,7 +2075,7 @@ void gen_call_new(
     // "this" object allocation
     //
 
-    as.pushJITRegs();
+    as.saveJITRegs();
     as.push(scrRegs[1]);
     as.push(scrRegs[2]);
 
@@ -2042,7 +2088,7 @@ void gen_call_new(
 
     as.pop(scrRegs[2]);
     as.pop(scrRegs[1]);
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Write the "this" argument
     movArgWord(as, numArgs + 1, X86Opnd(RAX));
@@ -2220,9 +2266,9 @@ void gen_call_apply(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2238,7 +2284,7 @@ void gen_call_apply(
             BranchShape shape
         )
         {
-            as.pushJITRegs();
+            as.saveJITRegs();
 
             // Pass the call context and instruction as first two arguments
             as.mov(cargRegs[0], vmReg);
@@ -2251,7 +2297,7 @@ void gen_call_apply(
             as.ptr(scrRegs[0], &op_call_apply);
             as.call(scrRegs[0]);
 
-            as.popJITRegs();
+            as.loadJITRegs();
 
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
@@ -2339,9 +2385,9 @@ void gen_load_file(
     // Spill the values that are live before the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2357,7 +2403,7 @@ void gen_load_file(
             BranchShape shape
         )
         {
-            as.pushJITRegs();
+            as.saveJITRegs();
 
             // Pass the call context and instruction as first two arguments
             as.mov(cargRegs[0], vmReg);
@@ -2371,7 +2417,7 @@ void gen_load_file(
             as.ptr(scrRegs[0], &op_load_file);
             as.call(scrRegs[0]);
 
-            as.popJITRegs();
+            as.loadJITRegs();
 
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
@@ -2448,9 +2494,9 @@ void gen_eval_str(
     // Spill the values that are live before the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2466,7 +2512,7 @@ void gen_eval_str(
             BranchShape shape
         )
         {
-            as.pushJITRegs();
+            as.saveJITRegs();
 
             // Pass the call context and instruction as first two arguments
             as.mov(cargRegs[0], vmReg);
@@ -2480,7 +2526,7 @@ void gen_eval_str(
             as.ptr(scrRegs[0], &op_eval_str);
             as.call(scrRegs[0]);
 
-            as.popJITRegs();
+            as.loadJITRegs();
 
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
@@ -2614,18 +2660,16 @@ void gen_throw(
     auto excWordOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
     auto excTypeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
-    // TODO: optimize call spills
-    // TODO: move spills after arg copying?
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host throwExc function
     as.mov(cargRegs[0], vmReg);
@@ -2636,7 +2680,7 @@ void gen_throw(
     as.ptr(scrRegs[0], &throwExc);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Jump to the exception handler
     as.jmp(cretReg.opnd);
@@ -2711,9 +2755,9 @@ void HeapAllocOp(Type type)(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -2754,16 +2798,7 @@ void HeapAllocOp(Type type)(
     // Allocation fallback
     as.label(Label.FALLBACK);
 
-    // TODO: proper spilling logic
-    // need to spill delayed writes too
-
-    // Save our allocated registers before the C call
-    if (allocRegs.length % 2 != 0)
-        as.push(allocRegs[0]);
-    foreach (reg; allocRegs)
-        as.push(reg);
-
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     //as.printStr("alloc bailout ***");
 
@@ -2776,13 +2811,7 @@ void HeapAllocOp(Type type)(
 
     //as.printStr("alloc bailout done ***");
 
-    as.popJITRegs();
-
-    // Restore the allocated registers
-    foreach_reverse(reg; allocRegs)
-        as.pop(reg);
-    if (allocRegs.length % 2 != 0)
-        as.pop(allocRegs[0]);
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
@@ -2821,16 +2850,16 @@ void gen_gc_collect(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
     // Get the string pointer
     auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0], vmReg);
@@ -2839,7 +2868,7 @@ void gen_gc_collect(
     as.ptr(scrRegs[0], &op_gc_collect);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 }
 
 void gen_get_global(
@@ -2871,29 +2900,41 @@ void gen_get_global(
         assert (propIdx !is uint32.max);
     }
 
-    extern (C) static CodePtr hostGetProp(
-        VM vm,
-        IRInstr instr,
-        immutable(wchar)* nameChars,
-        size_t nameLen
-    )
+    extern (C) static CodePtr hostGetProp(CodeGenState st, IRInstr instr)
     {
-        auto propName = nameChars[0..nameLen];
+        auto vm = st.callCtx.vm;
+
+        auto strArg = cast(IRString)instr.getArg(0);
+        auto nameStr = strArg.str;
+
         auto propVal = getProp(
             vm,
             vm.globalObj,
-            propName
+            nameStr
         );
 
         if (propVal == MISSING)
         {
-            return throwError(
+            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
+            {
+                return liveInfo.liveAfter(val, instr);
+            };
+
+            // Spill the saved registers
+            st.spillSavedRegs(spillTest);
+
+            auto excHandler = throwError(
                 vm,
                 instr,
                 null,
                 "TypeError",
-                "global property not defined \"" ~ to!string(propName) ~ "\""
+                "global property not defined \"" ~ to!string(nameStr) ~ "\""
             );
+
+            // Reload the saved registers
+            st.loadSavedRegs(spillTest);
+
+            return excHandler;
         }
 
         vm.push(propVal);
@@ -2901,14 +2942,57 @@ void gen_get_global(
         return null;
     }
 
-    // Spill the values that are live after the instruction
-    st.spillRegs(
-        as,
-        delegate bool(IRDstValue value)
-        {
-            return instr.block.fun.liveInfo.liveAfter(value, instr);
-        }
-    );
+    static CodePtr getFallbackSub(VM vm)
+    {
+        if (vm.getGlobalSub)
+            return vm.getGlobalSub;
+
+        auto as = vm.subsHeap;
+        vm.getGlobalSub = as.getAddress(as.getWritePos);
+
+        // Save the scratch, JIT and alloc registers
+        as.push(scrRegs[1]);
+        as.push(scrRegs[2]);
+        as.push(scrRegs[2]);
+        as.saveJITRegs();
+        as.saveAllocRegs();
+
+        // Call the host fallback code
+        // Note:
+        // CodeGenState pointer is in cargRegs[0]
+        // IRInstr pointer is in cargRegs[1]
+        as.ptr(scrRegs[0], &hostGetProp);
+        as.call(scrRegs[0].opnd);
+
+        // Restore the scratch, JIT and alloc registers
+        as.loadAllocRegs();
+        as.loadJITRegs();
+        as.pop(scrRegs[2]);
+        as.pop(scrRegs[2]);
+        as.pop(scrRegs[1]);
+
+        // If an exception was thrown, jump to the exception handler
+        as.cmp(cretReg.opnd, X86Opnd(0));
+        as.je(Label.FALSE);
+        as.pop(scrRegs[1]);
+        as.jmp(cretReg.opnd);
+        as.label(Label.FALSE);
+
+        // Get the property value from the stack
+        // r2 = type
+        // r1 = word
+        as.getType(scrRegs[2].reg(8), 0);
+        as.getWord(scrRegs[1], 0);
+        as.add(wspReg, Word.sizeof);
+        as.add(tspReg, Type.sizeof);
+
+        // Return to the point of call
+        as.ret();
+
+        // Link the labels in this subroutine
+        as.linkLabels();
+        return vm.getGlobalSub;
+    }
 
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -2922,62 +3006,36 @@ void gen_get_global(
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(vm.globalObj.word.ptrVal, 0);
 
-    // Define memory operands for the word and type values
-    auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
+    // Load the word and type values
+    // r2 = type
+    // r1 = word
     auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + propIdx, 8, scrRegs[1]);
+    auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
+    as.mov(scrRegs[2].opnd(8), typeMem);
+    as.mov(scrRegs[1].opnd(64), wordMem);
 
     // If the value is not "missing", skip the fallback code
-    as.cmp(typeMem, X86Opnd(Type.CONST));
+    as.cmp(scrRegs[2].opnd(8), X86Opnd(Type.CONST));
     as.jne(Label.SKIP);
-    as.cmp(wordMem, X86Opnd(MISSING.word.int8Val));
+    as.cmp(scrRegs[1].opnd(64), X86Opnd(MISSING.word.int8Val));
     as.jne(Label.SKIP);
 
-    // If the value is missing, call the host fallback code
-    as.pushJITRegs();
-    as.mov(cargRegs[0], vmReg);
+    // Call the fallback subroutine
+    auto getGlobalSub = getFallbackSub(vm);
+    as.ptr(cargRegs[0], st);
     as.ptr(cargRegs[1], instr);
-    as.ptr(cargRegs[2], nameStr.ptr);
-    as.mov(cargRegs[3].opnd, X86Opnd(nameStr.length));
-    as.ptr(scrRegs[0], &hostGetProp);
-    as.call(scrRegs[0].opnd);
-    as.popJITRegs();
-
-    // If an exception was thrown, jump to the exception handler
-    as.cmp(cretReg.opnd, X86Opnd(0));
-    as.je(Label.FALSE);
-    as.jmp(cretReg.opnd);
-    as.label(Label.FALSE);
-
-    // Get the property value from the stack
-    as.getWord(scrRegs[0], 0);
-    as.getType(scrRegs[1].reg(8), 0);
-    as.add(wspReg, Word.sizeof);
-    as.add(tspReg, Type.sizeof);
-    as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutType(as, instr, scrRegs[1].reg(8));
-    as.jmp(Label.DONE);
+    as.ptr(scrRegs[0], getGlobalSub);
+    as.call(scrRegs[0]);
 
     // If skipping the fallback code
     as.label(Label.SKIP);
 
     // Set the output word
-    if (outOpnd.isReg)
-    {
-        as.mov(outOpnd, wordMem);
-    }
-    else
-    {
-        as.mov(X86Opnd(scrRegs[2]), wordMem);
-        as.mov(outOpnd, X86Opnd(scrRegs[2]));
-    }
+    as.mov(outOpnd, scrRegs[1].opnd(64));
 
     // Set the type value
-    as.mov(scrRegs[2].opnd(8), typeMem);
     st.setOutType(as, instr, scrRegs[2].reg(8));
-
-    as.label(Label.DONE);
 }
-
 
 void gen_set_global(
     BlockVersion ver,
@@ -3055,9 +3113,9 @@ void gen_get_str(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3067,7 +3125,7 @@ void gen_get_str(
     // Allocate the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the fallback implementation
     as.mov(cargRegs[0], vmReg);
@@ -3076,7 +3134,7 @@ void gen_get_str(
     as.ptr(scrRegs[0], &getStr);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3209,9 +3267,9 @@ void gen_map_num_props(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3219,14 +3277,14 @@ void gen_map_num_props(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), opnd0);
     as.ptr(scrRegs[0], &op_map_num_props);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3303,9 +3361,9 @@ void gen_map_prop_idx(
     // Spill the values live before the instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3316,16 +3374,15 @@ void gen_map_prop_idx(
     // Get the property name operand
     auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
     // If the property name is a known constant string
     auto nameArgInstr = cast(IRInstr)instr.getArg(1);
     if (nameArgInstr && nameArgInstr.opcode is &SET_STR)
     {
-        // TODO: just steal an allocatable reg to use as an extra temporary
-        // force its contents to be spilled if necessary
-        // maybe add State.freeReg method
-        auto scrReg3 = allocRegs[$-1];
+        // Allocate an extra temporary register
+        auto scrReg3 = st.freeReg(as, instr);
 
         // Get the property name
         auto propName = &(cast(IRString)nameArgInstr.getArg(0)).str;
@@ -3355,15 +3412,22 @@ void gen_map_prop_idx(
             auto propIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i + 8);
 
             // Move the prop idx for this entry into the output operand
-            as.mov(scrReg3.opnd(32), propIdxOpnd);
-            as.mov(outOpnd, scrReg3.opnd(64));
+            if (outOpnd.isMem)
+            {
+                as.mov(scrReg3.opnd(32), propIdxOpnd);
+                as.mov(outOpnd, scrReg3.opnd(32));
+            }
+            else
+            {
+                as.mov(outOpnd, propIdxOpnd);
+            }
 
             // If this is a cache hit, we are done, stop
             as.cmp(mapIdxOpnd, scrRegs[2].opnd(64));
             as.je(Label.DONE);
         }
 
-        as.pushJITRegs();
+        as.saveJITRegs();
 
         // Call the cache update function
         as.mov(cargRegs[0].opnd(64), opnd0);
@@ -3373,20 +3437,17 @@ void gen_map_prop_idx(
         as.ptr(scrRegs[0], &updateCache);
         as.call(scrRegs[0]);
 
-        as.popJITRegs();
+        as.loadJITRegs();
 
         // Store the output value into the output operand
-        as.mov(outOpnd, X86Opnd(cretReg));
+        as.mov(outOpnd, cretReg.opnd(32));
 
         // Cache entry found
         as.label(Label.DONE);
-
-        //as.printStr("propIdx=");
-        //as.printUint(outOpnd);
     }
     else
     {
-        as.pushJITRegs();
+        as.saveJITRegs();
 
         // Call the host function
         as.mov(cargRegs[0].opnd(64), opnd0);
@@ -3395,10 +3456,10 @@ void gen_map_prop_idx(
         as.ptr(scrRegs[0], &op_map_prop_idx);
         as.call(scrRegs[0]);
 
-        as.popJITRegs();
+        as.loadJITRegs();
 
         // Store the output value into the output operand
-        as.mov(outOpnd, X86Opnd(cretReg));
+        as.mov(outOpnd, cretReg.opnd(32));
     }
 
     // Set the output type
@@ -3433,9 +3494,9 @@ void gen_map_prop_name(
     // Spill the values that are live after the call
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3444,7 +3505,7 @@ void gen_map_prop_name(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0], vmReg);
@@ -3454,7 +3515,7 @@ void gen_map_prop_name(
     as.ptr(scrRegs[0], &op_map_prop_name);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.mov(outOpnd, cretReg.opnd);
@@ -3539,9 +3600,9 @@ void gen_new_clos(
     // Spill all values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -3551,7 +3612,7 @@ void gen_new_clos(
     auto closMapOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
     auto protMapOpnd = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
@@ -3561,7 +3622,7 @@ void gen_new_clos(
     as.ptr(scrRegs[0], &op_new_clos);
     as.call(scrRegs[0]);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(cretReg));
@@ -3614,18 +3675,18 @@ void gen_get_time_ms(
     // Spill the values live after this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveAfter(value, instr);
+            return liveInfo.liveAfter(value, instr);
         }
     );
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.ptr(scrRegs[0], &op_get_time_ms);
     as.call(scrRegs[0].opnd(64));
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.movq(outOpnd, X86Opnd(XMM0));
@@ -3665,15 +3726,15 @@ void gen_get_ast_str(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
@@ -3681,7 +3742,7 @@ void gen_get_ast_str(
     as.ptr(scrRegs[0], &op_get_ast_str);
     as.call(scrRegs[0].opnd);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3729,15 +3790,15 @@ void gen_get_ir_str(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
@@ -3745,7 +3806,7 @@ void gen_get_ir_str(
     as.ptr(scrRegs[0], &op_get_ir_str);
     as.call(scrRegs[0].opnd);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3818,15 +3879,15 @@ void gen_get_asm_str(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
@@ -3834,7 +3895,7 @@ void gen_get_asm_str(
     as.ptr(scrRegs[0], &op_get_asm_str);
     as.call(scrRegs[0].opnd);
 
-    as.popJITRegs();
+    as.loadJITRegs();
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
@@ -3892,20 +3953,20 @@ void gen_load_lib(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_load_lib);
     as.call(scrRegs[0].opnd);
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // If an exception was thrown, jump to the exception handler
     as.cmp(cretReg.opnd, X86Opnd(0));
@@ -3957,18 +4018,18 @@ void gen_close_lib(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
-    as.pushJITRegs();
+    as.saveJITRegs();
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_close_lib);
     as.call(scrRegs[0].opnd);
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // If an exception was thrown, jump to the exception handler
     as.cmp(cretReg.opnd, X86Opnd(0));
@@ -4023,20 +4084,20 @@ void gen_get_sym(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.pushJITRegs();
+    as.saveJITRegs();
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_get_sym);
     as.call(scrRegs[0].opnd);
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // If an exception was thrown, jump to the exception handler
     as.cmp(cretReg.opnd, X86Opnd(0));
@@ -4117,9 +4178,9 @@ void gen_call_ffi(
     // Spill the values live before this instruction
     st.spillRegs(
         as,
-        delegate bool(IRDstValue value)
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
-            return instr.block.fun.liveInfo.liveBefore(value, instr);
+            return liveInfo.liveBefore(value, instr);
         }
     );
 
@@ -4169,7 +4230,7 @@ void gen_call_ffi(
     }
 
     // Save the JIT registers
-    as.pushJITRegs();
+    as.saveJITRegs();
 
     // Make sure there is an even number of pushes
     if (stackArgs.length % 2 != 0)
@@ -4215,7 +4276,7 @@ void gen_call_ffi(
         as.pop(scrRegs[1]);
 
     // Restore the JIT registers
-    as.popJITRegs();
+    as.loadJITRegs();
 
     // Send return value/type
     if (retType == "f64")
