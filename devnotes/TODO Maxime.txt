@@ -100,10 +100,6 @@ TODO: optimize dynamic calls?
 - can we pass args through registers?
 TODO: compare perf of calls vs dynamic calls?
 
-FIXME: remove alloc op reg spills before GC?
-
-TODO: tga image lib test? are we fast enough?
-
 TODO: optimize strcat?
 - hosted prim?
 - faster hash fn? extend current fn?
@@ -120,6 +116,9 @@ FIXME: GC bug, forwarding "this" ref
 TODO: look at having getOutOpnd reuse input arg reg
 - look at code for loop_big_incr
 
+TODO: look at tga ASM, optimize
+
+TODO: tga image lib test? are we fast enough?
 
 
 
@@ -129,6 +128,13 @@ TODO: look at having getOutOpnd reuse input arg reg
 
 
 
+
+[DONE] FIXME: remove alloc op reg spills before GC?
+
+[DONE] TODO: optimize load_u32, one superfluous move to out opnd
+
+[DONE] TODO: look at asm for strcat prim
+./higgs --jit_genasm --e "'a'+'b'; print(\$rt_strcat.asmString())"
 
 [DONE] TODO: spillTestFn should get liveInfo as argument
 

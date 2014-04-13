@@ -647,7 +647,8 @@ void LoadOp(size_t memSize, bool signed, Type typeTag)(
     // The offset operand may be a register or an immediate
     auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    //auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = st.getOutOpnd(as, instr, (memSize < 64)? 32:64);
 
     // Create the memory operand
     X86Opnd memOpnd;
@@ -667,19 +668,17 @@ void LoadOp(size_t memSize, bool signed, Type typeTag)(
     }
 
     // If the output operand is a memory location
-    if (outOpnd.isMem || memSize == 32)
+    if (outOpnd.isMem)
     {
-        size_t scrSize = (memSize == 32)? 32:64;
-        auto scrReg64 = scrRegs[2].opnd(64);
-        auto scrReg = X86Opnd(X86Reg(X86Reg.GP, scrReg64.reg.regNo, scrSize));
+        auto scrReg = scrRegs[2].opnd((memSize < 64)? 32:64);
 
-        // Load to a scratch register
-        static if (memSize == 8 || memSize == 16)
+        // Load to a scratch register first
+        static if (memSize < 32)
         {
             static if (signed)
-                as.movsx(scrReg64, memOpnd);
+                as.movsx(scrReg, memOpnd);
             else
-                as.movzx(scrReg64, memOpnd);
+                as.movzx(scrReg, memOpnd);
         }
         else
         {
@@ -687,7 +686,7 @@ void LoadOp(size_t memSize, bool signed, Type typeTag)(
         }
 
         // Move the scratch register to the output
-        as.mov(outOpnd, scrReg64);
+        as.mov(outOpnd, scrReg);
     }
     else
     {
@@ -2753,15 +2752,6 @@ void HeapAllocOp(Type type)(
     // Allocation fallback
     as.label(Label.FALLBACK);
 
-    // TODO: proper spilling logic
-    // need to spill delayed writes too
-
-    // Save our allocated registers before the C call
-    if (allocRegs.length % 2 != 0)
-        as.push(allocRegs[0]);
-    foreach (reg; allocRegs)
-        as.push(reg);
-
     as.saveJITRegs();
 
     //as.printStr("alloc bailout ***");
@@ -2776,12 +2766,6 @@ void HeapAllocOp(Type type)(
     //as.printStr("alloc bailout done ***");
 
     as.loadJITRegs();
-
-    // Restore the allocated registers
-    foreach_reverse(reg; allocRegs)
-        as.pop(reg);
-    if (allocRegs.length % 2 != 0)
-        as.pop(allocRegs[0]);
 
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
