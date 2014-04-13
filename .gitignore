@@ -1,8 +1,10 @@
 old/
 source/higgs
-source/test-higgs
-source/dbg-higgs
+source/higgs-test
+source/higgs-dbg
+source/higgs-prof
 source/*.o
 bin/
 *.*~
+*.idea
 
