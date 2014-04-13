@@ -114,10 +114,37 @@ TODO: read type refinement paper
 TODO: look at having getOutOpnd reuse input arg reg
 - look at code for loop_big_incr
 
+TODO: calls, shouldn't need to tag RA, arg count?
+- $argc problematic if not tagged
+
 FIXME: GC bug, forwarding "this" ref
 - test pong example
 
-TODO: look at tga ASM, optimize
+FIXME:
+; $2 = mul_i32 8, $1
+mov eax, 8;                             B808000000
+mov ebp, ecx;                           89CD
+imul ebp, eax;                          0FAFE8
+mov edx, ebp;                           89EA
+
+FIXME:
+; $269 = map_prop_idx $0, $44, false
+...
+mov rbp, [qword rax + 16];              488B6810
+mov r12d, [dword rbx + 8];              448B6308
+mov r12, r12;                           4D89E4
+cmp [qword rbx], rbp;                   48392B
+
+FIXME:
+; $47 = set_str "writeTGA24", <link:NULL>
+mov rax, [qword r15 + 168];             498B87A8000000
+mov rax, [qword rax + 53704];           488B80C8D10000
+mov rcx, rax;                           4889C1
+
+FIXME: 
+; $0 = is_object $376
+mov al, [byte r13 + 376];               418A8578010000
+cmp al, 9;                              80F809
 
 
 
@@ -127,7 +154,19 @@ TODO: look at tga ASM, optimize
 
 
 
+[DONE] FIXME: 
+; $0 = ge_i32 $288, 0
+cmp edi, 0;                             83FF00
+mov eax, 14146;                         B842370000
+jge branch_and_sec(33B7C);              0F8D05000000
+jmp branch_if_join(33B7A);              E97EA0F2FF
+branch_and_sec(33B7C):
 
+./benchmark.py
+code size (bytes): 466599
+comp time (ms): 178
+exec time (ms): 41
+total time (ms): 263
 
 [DONE] TODO: tga image lib test? are we fast enough?
 

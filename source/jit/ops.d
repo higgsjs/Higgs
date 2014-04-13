@@ -1228,18 +1228,54 @@ void CmpOp(string op, size_t numBits)(
                 }
                 else if (op == "le")
                 {
-                    jle32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        jg32Ref(as, vm, target1, 1);
+                        break;
+
+                        case BranchShape.NEXT1:
+                        jle32Ref(as, vm, target0, 0);
+                        break;
+
+                        case BranchShape.DEFAULT:
+                        jle32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, target1, 1);
+                    }
                 }
                 else if (op == "gt")
                 {
-                    jg32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        jle32Ref(as, vm, target1, 1);
+                        break;
+
+                        case BranchShape.NEXT1:
+                        jg32Ref(as, vm, target0, 0);
+                        break;
+
+                        case BranchShape.DEFAULT:
+                        jg32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, target1, 1);
+                    }
                 }
                 else if (op == "ge")
                 {
-                    jge32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        jl32Ref(as, vm, target1, 1);
+                        break;
+
+                        case BranchShape.NEXT1:
+                        jge32Ref(as, vm, target0, 0);
+                        break;
+
+                        case BranchShape.DEFAULT:
+                        jge32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, target1, 1);
+                    }
                 }
 
                 // Floating-point comparisons

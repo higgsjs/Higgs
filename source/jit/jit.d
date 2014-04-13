@@ -895,9 +895,6 @@ class CodeGenState
         // If the operand is a memory location
         if (curOpnd.isMem)
         {
-            // TODO: only allocate a register if more than one use?
-            // should benchmark this idea
-
             // Try to allocate a register for the operand
             assert (argDst !is null);
             assert (getState(argDst).isStack);
