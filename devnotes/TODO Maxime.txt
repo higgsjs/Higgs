@@ -100,25 +100,16 @@ TODO: optimize dynamic calls?
 - can we pass args through registers?
 TODO: compare perf of calls vs dynamic calls?
 
-TODO: optimize strcat?
-- hosted prim?
-- faster hash fn? extend current fn?
+TODO: calls, shouldn't need to tag RA, arg count?
+- $argc problematic if not tagged
 
 TODO: profile compilation time, big eval loop?
 TODO: think about full eval support
 - otherwise implement $ir_make_ptr(int64_cst) and int64 to str
 TODO: look at Tom's dev branch
 
-TODO: read type refinement paper
-
 TODO: look at having getOutOpnd reuse input arg reg
 - look at code for loop_big_incr
-
-TODO: calls, shouldn't need to tag RA, arg count?
-- $argc problematic if not tagged
-
-FIXME: GC bug, forwarding "this" ref
-- test pong example
 
 FIXME:
 ; $2 = mul_i32 8, $1
@@ -127,32 +118,56 @@ mov ebp, ecx;                           89CD
 imul ebp, eax;                          0FAFE8
 mov edx, ebp;                           89EA
 
-FIXME:
+Meeting:
+- soft spills
+  - not as much gains as hoped, but some
+- optimized codegen for several instructions
+  - removed redundant instructions
+  - optimized branch ordering
+- bugfixes
+
+TODO: read type refinement paper
+
+TODO: lib/graph using image lib
+- look into terminology
+- look into how matplotlib does it
+- short blog post, bitcoin
+
+FIXME: GC bug, forwarding "this" ref
+- test pong example
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME:
 ; $269 = map_prop_idx $0, $44, false
 ...
 mov rbp, [qword rax + 16];              488B6810
 mov r12d, [dword rbx + 8];              448B6308
 mov r12, r12;                           4D89E4
 cmp [qword rbx], rbp;                   48392B
+code size (bytes): 462500
 
-FIXME:
+[DONE] FIXME:
 ; $47 = set_str "writeTGA24", <link:NULL>
 mov rax, [qword r15 + 168];             498B87A8000000
 mov rax, [qword rax + 53704];           488B80C8D10000
 mov rcx, rax;                           4889C1
+code size (bytes): 463719
 
-FIXME: 
+[DONE] FIXME: 
 ; $0 = is_object $376
 mov al, [byte r13 + 376];               418A8578010000
 cmp al, 9;                              80F809
-
-
-
-
-
-
-
-
+code size (bytes): 465922
 
 [DONE] FIXME: 
 ; $0 = ge_i32 $288, 0

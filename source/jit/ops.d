@@ -133,11 +133,21 @@ void gen_set_str(
         vm.setLinkType(linkVal.linkIdx, Type.STRING);
     }
 
-    as.getMember!("VM.wLinkTable")(scrRegs[0], vmReg);
-    as.mov(scrRegs[0].opnd(64), X86Opnd(64, scrRegs[0], 8 * linkVal.linkIdx));
-
     auto outOpnd = st.getOutOpnd(as, instr, 64);
-    as.mov(outOpnd, scrRegs[0].opnd(64));
+
+    as.getMember!("VM.wLinkTable")(scrRegs[0], vmReg);
+
+    auto linkOpnd = X86Opnd(64, scrRegs[0], 8 * linkVal.linkIdx);
+
+    if (outOpnd.isMem)
+    {
+        as.mov(scrRegs[0].opnd(64), linkOpnd);
+        as.mov(outOpnd, scrRegs[0].opnd(64));
+    }
+    else
+    {
+        as.mov(outOpnd, linkOpnd);
+    }
 
     st.setOutType(as, instr, Type.STRING);
 }
@@ -808,7 +818,7 @@ void IsTypeOp(Type type)(
     //as.printStr("    " ~ instr.block.fun.getName);
 
     // Get an operand for the value's type
-    auto typeOpnd = st.getTypeOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+    auto typeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     // If the type of the argument is known
     if (typeOpnd.isImm)
@@ -3364,16 +3374,15 @@ void gen_map_prop_idx(
     // Get the property name operand
     auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
     // If the property name is a known constant string
     auto nameArgInstr = cast(IRInstr)instr.getArg(1);
     if (nameArgInstr && nameArgInstr.opcode is &SET_STR)
     {
-        // TODO: just steal an allocatable reg to use as an extra temporary
-        // force its contents to be spilled if necessary
-        // maybe add State.freeReg method
-        auto scrReg3 = allocRegs[$-1];
+        // Allocate an extra temporary register
+        auto scrReg3 = st.freeReg(as, instr);
 
         // Get the property name
         auto propName = &(cast(IRString)nameArgInstr.getArg(0)).str;
@@ -3403,8 +3412,15 @@ void gen_map_prop_idx(
             auto propIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i + 8);
 
             // Move the prop idx for this entry into the output operand
-            as.mov(scrReg3.opnd(32), propIdxOpnd);
-            as.mov(outOpnd, scrReg3.opnd(64));
+            if (outOpnd.isMem)
+            {
+                as.mov(scrReg3.opnd(32), propIdxOpnd);
+                as.mov(outOpnd, scrReg3.opnd(32));
+            }
+            else
+            {
+                as.mov(outOpnd, propIdxOpnd);
+            }
 
             // If this is a cache hit, we are done, stop
             as.cmp(mapIdxOpnd, scrRegs[2].opnd(64));
@@ -3424,13 +3440,10 @@ void gen_map_prop_idx(
         as.loadJITRegs();
 
         // Store the output value into the output operand
-        as.mov(outOpnd, X86Opnd(cretReg));
+        as.mov(outOpnd, cretReg.opnd(32));
 
         // Cache entry found
         as.label(Label.DONE);
-
-        //as.printStr("propIdx=");
-        //as.printUint(outOpnd);
     }
     else
     {
@@ -3446,7 +3459,7 @@ void gen_map_prop_idx(
         as.loadJITRegs();
 
         // Store the output value into the output operand
-        as.mov(outOpnd, X86Opnd(cretReg));
+        as.mov(outOpnd, cretReg.opnd(32));
     }
 
     // Set the output type

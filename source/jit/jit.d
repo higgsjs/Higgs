@@ -493,7 +493,6 @@ class CodeGenState
     {
         auto liveInfo = callCtx.fun.liveInfo;
 
-
         // Get the value mapped to the default register
         auto defRegVal = gpRegMap[defReg.regNo];
 
@@ -502,14 +501,13 @@ class CodeGenState
             return defReg;
 
         // If the value mapped to the default register is not live
-        if (liveInfo.liveBefore(defRegVal, instr) == false)
+        if (!liveInfo.liveBefore(defRegVal, instr) && defRegVal !is instr)
         {
             // Remove the mapped value from the value map
             valMap.remove(defRegVal);
             gpRegMap[defReg.regNo] = null;
             return defReg;
         }
-
 
         // For each allocatable general-purpose register
         foreach (reg; allocRegs)
@@ -523,7 +521,7 @@ class CodeGenState
             }
 
             // If the value mapped is not live
-            if (liveInfo.liveBefore(regVal, instr) == false)
+            if (!liveInfo.liveBefore(regVal, instr) && regVal !is instr)
             {
                 // Remove the mapped value from the value map
                 valMap.remove(regVal);
@@ -534,7 +532,7 @@ class CodeGenState
 
         // If the value mapped to the default register
         // is not an argument of the instruction
-        if (!instr.hasArg(defRegVal))
+        if (!instr.hasArg(defRegVal) && defRegVal !is instr)
         {
             // Spill the default register
             spillReg(as, defReg);
@@ -550,7 +548,7 @@ class CodeGenState
             auto regVal = gpRegMap[reg.regNo];
 
             // If an argument of the instruction uses this register, skip it
-            if (instr.hasArg(regVal))
+            if (instr.hasArg(regVal) || regVal is instr)
                 continue;
 
             chosenReg = &reg;
@@ -594,8 +592,7 @@ class CodeGenState
     {
         // TODO: option to allow allocating to arg reg?
         // actually, for add, we *want to* allocate to arg reg when possible
-
-        // TODO: start with biasing towards dst phi reg
+        // free the arg reg before calling allocReg *** ?
 
         assert (instr !is null);
 
@@ -606,6 +603,8 @@ class CodeGenState
             instr,
             numBits
         );
+
+        assert (instr in valMap);
 
         //writeln("outOpnd=", reg);
 
@@ -995,7 +994,11 @@ class CodeGenState
         );
 
         // getOutOpnd should be called before setOutType
-        assert (instr in valMap);
+        assert (
+            instr in valMap,
+            "setOutType: instr not in valMap:\n" ~
+            instr.toString
+        );
 
         auto state = getState(instr);
 
