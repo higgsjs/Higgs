@@ -2,12 +2,12 @@
 {
     var draw = require('lib/draw');
 
-    var mycanvas = draw.CanvasWindow(50, 50, 500, 500, "Higgs Test");
+    var window = draw.Window(50, 50, 500, 500, "Higgs Test");
 
     var x = 170;
     var y = 170;
 
-    mycanvas.onKeypress(function(canvas, key)
+    window.onKeypress(function(canvas, key)
     {
         if (x < 450 && key === "Right")
             x += 10;
@@ -19,7 +19,7 @@
             y -= 10;
     });
 
-    mycanvas.onRender(function(canvas)
+    window.onRender(function(canvas)
     {
         canvas.clear("#FFFFFF");
 
@@ -36,6 +36,6 @@
         canvas.drawText(50, 300, "Hello World");
     });
 
-    mycanvas.show();
+    window.show();
 
 })();

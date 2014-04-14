@@ -1282,9 +1282,15 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var arg_str;
 
         var wrapper_fun = "\
-            (function(c)\
-            {\
-                var strProto = {};\
+            (function(c)\n\
+            {\n\
+                var strProto = {};\n\
+                strProto.wrap = function(handle)\n\
+                {\n\
+                    if (!ir_is_rawptr(handle) || handle === $nullptr)\n\
+                        throw 'CStruct cannot wrap nullptr.'\n\
+                    this.handle = handle;\n\
+                };\n\
         ";
 
         while (i < l)
@@ -1341,6 +1347,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     var s = Object.create(strProto);\n\
                     if ($ir_is_rawptr(handle))\n\
                     {\n\
+                       if (handle === $nullptr)\n\
+                           throw 'CStruct cannot wrap null ptr.';\n\
                        s.handle = handle;\n\
                        s.offset = offset || 0;\n\
                     }\
@@ -2022,7 +2030,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     /**
     OS name
     */
-    var os = string($ir_load_rawptr($ir_get_sym(c.handle, "higgs_osName"), 0));
+
+    var os_name = string($ir_load_rawptr($ir_get_sym(c.handle, "higgs_osName"), 0));
 
     /**
     EXPORTS
@@ -2036,7 +2045,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         isNullPtr : isNullPtr,
         nullPtr : nullPtr,
         cbuffer : cbuffer,
-        os : os
+        os : os_name
     };
 
 })();

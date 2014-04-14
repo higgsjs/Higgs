@@ -2928,4 +2928,5 @@ NOTE: currently this provides just enough bindings for the drawing lib
 
     /* EXPORT */
     exports = Xlib;
+
 })();

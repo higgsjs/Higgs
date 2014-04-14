@@ -47,9 +47,12 @@
     */
 
     // Canvas Window
-    var mycanvas = draw.CanvasWindow(50, 50, COURT_WIDTH, COURT_HEIGHT + 50, "Ping Pong");
+    var window = draw.Window(50, 50, COURT_WIDTH, COURT_HEIGHT + 50, "Ping Pong");
     // If the game is started
     var stopped = true;
+
+    // Canvas setup
+    window.canvas.setFont("helvetica");
 
     // Ball State
     var ball = {
@@ -82,7 +85,9 @@
         ball = {
             x : BALL_X_START,
             y : BALL_Y_START,
-            x_d : (Math.floor( Math.random() * 2 ) == 1) ? 1 : -1,
+            // TODO: when computer is better, make serve random
+            //x_d : (Math.floor( Math.random() * 2 ) == 1) ? 1 : -1,
+            x_d : 1,
             y_d : 0
         };
 
@@ -98,7 +103,7 @@
     /**
     RENDERING
     */
-    mycanvas.onRender(function(canvas)
+    window.onRender(function(canvas)
     {
         var i = 0;
         var y = 0;
@@ -169,17 +174,17 @@
         if (ball.x === player2.x - BALL_SIZE)
         {
             // TODO: overlap?
-            if (ball.y >= player2.y && (ball.y <= player2.y + PADDLE_HEIGHT - BALL_SIZE))
+            if (ball.y >= player2.y - 10 && (ball.y <= player2.y + PADDLE_HEIGHT - BALL_SIZE + 10))
             {
                 ball.x_d = -1;
                 ball.y_d = player2.y_d;
             }
         }
 
-        if (ball.x === player1.x + 10)
+        if (ball.x === player1.x)
         {
             // TODO: overlap?
-            if (ball.y >= player1.y && (ball.y <= player1.y + PADDLE_HEIGHT - BALL_SIZE))
+            if (ball.y >= player1.y - 10  && (ball.y <= player1.y + PADDLE_HEIGHT - BALL_SIZE + 10))
             {
                 ball.x_d = 1;
                 ball.y_d = player2.y_d;
@@ -193,10 +198,10 @@
 
         // computer player
         // TODO: replace with something better
-        player1.y += 10 * computer_move_d;
-        if (player1.y <= PADDLE_MIN_Y)
+        player1.y += 5 * computer_move_d;
+        if (player1.y <= PADDLE_MIN_Y + 30)
             computer_move_d = 1;
-        else if (player1.y >= PADDLE_MAX_Y)
+        else if (player1.y >= PADDLE_MAX_Y - 30)
             computer_move_d = -1;
 
     });
@@ -204,7 +209,7 @@
     /**
     INPUT
     */
-    mycanvas.onKeypress(function(canvas, key)
+    window.onKeypress(function(canvas, key)
     {
         // handle player movements
         if (player2.y < PADDLE_MAX_Y && key === "Down")
@@ -232,6 +237,6 @@
     START
     */
     gameInit();
-    mycanvas.show();
+    window.show();
 
 })();
