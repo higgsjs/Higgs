@@ -758,6 +758,12 @@ function $rt_addInt(x, y)
         {
             return r;
         }
+        else
+        {
+            // Reconstruct x from r and y
+            // Hence x is not live after the add
+            x = r - y;
+        }
     }
 
     return $rt_add(x, y);
@@ -775,6 +781,12 @@ function $rt_addIntFloat(x, y)
         if (r = $ir_add_i32_ovf(x, y))
         {
             return r;
+        }
+        else
+        {
+            // Reconstruct x from r and y
+            // Hence x is not live after the add
+            x = r - y;
         }
     }
 

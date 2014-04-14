@@ -122,6 +122,10 @@ TODO: lib/plot using image lib
   - but this will only draw one function
   - can be OK to start
 
+Meeting:
+- more code generaton tweaks
+- reconstructing input operand after add with overflow fixes issue
+
 ------------------------------------------------------------------------------
 
 April 15th, milestone: sufficient performance
@@ -132,9 +136,7 @@ TODO: look at ASM for array iteration with counter
 - create benchmarks/micro/loop_array_itr
 
 TODO: look at ASM for 3bit
-
-TODO: rebuild x value after overflow
-- look at loop_big_incr
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/sunspicer/bitops-3bit-bits-in-byte.js
 
 
 
@@ -142,6 +144,11 @@ TODO: rebuild x value after overflow
 
 
 
+[DONE] TODO: rebuild x value after overflow
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop_big_incr.js
+./higgs --nostdlib --stats benchmarks/micro/loop_big_incr.js
+exec time (ms): 2208
+exec time (ms): 1783
 
 [DONE] FIXME:
 ; $2 = mul_i32 8, $1
