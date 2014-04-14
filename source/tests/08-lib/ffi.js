@@ -88,5 +88,5 @@ c.cdef("\
 assertEq(ffi.string(c.getTestString()), "Hello World!");
 
 // Test os name
-var os = ffi.os;
+var os = ffi.getOSName();
 assertTrue(os === "LINUX" || os === "BSD" || os === "OSX");
