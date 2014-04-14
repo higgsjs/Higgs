@@ -2032,10 +2032,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     */
 
     var os_name = string($ir_load_rawptr($ir_get_sym(c.handle, "higgs_osName"), 0));
-    function getOSName()
-    {
-        return os_name;
-    }
 
     /**
     EXPORTS
@@ -2049,7 +2045,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         isNullPtr : isNullPtr,
         nullPtr : nullPtr,
         cbuffer : cbuffer,
-        getOSName : getOSName
+        os : os_name
     };
 
 })();
