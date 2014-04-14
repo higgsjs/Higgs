@@ -74,19 +74,23 @@ NOTE: currently this provides just enough bindings for the drawing lib
     DrawError.prototype = new Error();
     DrawError.prototype.constructor = DrawError;
 
+    /**
+    Default settings
+    */
+
 
     /**
     CanvasWindow
-    Construct a new CanvasWindow object.
+    Construct a new Window object.
     */
-    var CanvasWindowProto = {
+    var WindowProto = {
         handle: CNULL,
         frame_rate: 60,
         render_funs: null,
         key_funs: null
     };
 
-    function CanvasWindow(x, y, width, height, title)
+    function Window(x, y, width, height, title)
     {
         var display;
         var screen;
@@ -99,7 +103,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         width = width || 500;
         height = height || 500;
 
-        cw = Object.create(CanvasWindowProto);
+        cw = Object.create(WindowProto);
         cw.display = display = Xlib.XOpenDisplay(CNULL);
 
         if (ffi.isNullPtr(display))
@@ -138,7 +142,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     /**
     Create the X Window
     */
-    CanvasWindowProto.create = function()
+    WindowProto.create = function()
     {
         var win;
         var title;
@@ -181,7 +185,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     /**
     Close the X display
     */
-    CanvasWindowProto.close = function()
+    WindowProto.close = function()
     {
         Xlib.XCloseDisplay(this.display);
     };
@@ -189,7 +193,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     /**
     Register a listener for the render event
     */
-    CanvasWindowProto.onRender = function(cb)
+    WindowProto.onRender = function(cb)
     {
         if (typeof cb === "function")
             this.render_funs.push(cb);
@@ -200,7 +204,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     /**
     Register a listener for a keypress event
     */
-    CanvasWindowProto.onKeypress = function(cb)
+    WindowProto.onKeypress = function(cb)
     {
         if (typeof cb === "function")
             this.key_funs.push(cb);
@@ -211,7 +215,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     /**
     Show the window, and start the event loop
     */
-    CanvasWindowProto.show = function()
+    WindowProto.show = function()
     {
         // canvas/drawing
         var draw = true;
@@ -487,14 +491,41 @@ NOTE: currently this provides just enough bindings for the drawing lib
     {
         var font_str;
         var font_name_c;
+        var font_handle;
         size = (typeof size === "number") ? size : 40;
-        name = (typeof name === "string") ? name : "helvetica";
-        font_str = "-*-" + name + "-*-r-*-*-" + size + "-*-*-*-*-*-*-*";
+
+        // If a font name is not specified, just try to use any monospaced font
+        if (typeof name !== "string")
+            font_str = "-*-*-*-*-*-*-" + size + "-*-*-*-m-*-*-*";
+        else
+            font_str = "-*-" + name + "-*-*-*-*-" + size + "-*-*-*-*-*-*-*";
+
         font_name_c = ffi.cstr(font_str);
-        this.font = Xlib.XFontStruct(Xlib.XLoadQueryFont(this.display, font_name_c));
-        Xlib.XSetFont(this.display, this.gc, this.font.get_fid());
+        font_handle = Xlib.XLoadQueryFont(this.display, font_name_c);
+
+        // Check if the font failed to load
+        if (ffi.isNullPtr(font_handle))
+        {
+            // If they specified a name and it failed, try for a default
+            if (name)
+            {
+                this.setFont(null, size);
+            }
+            else
+            {
+                // cleanup and throw
+                c.free(font_name_c);
+                throw "Unable to load font: " + (name ? name : "default");
+            }
+        }
+        else
+        {
+            this.font = Xlib.XFontStruct(font_handle);
+            Xlib.XSetFont(this.display, this.gc, this.font.get_fid());
+        }
+
+        // cleanup
         c.free(font_name_c);
-        // TODO: error checking
     };
 
     /**
@@ -523,7 +554,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     */
 
     exports = {
-        CanvasWindow : CanvasWindow
+        Window : Window
     };
 
 })();

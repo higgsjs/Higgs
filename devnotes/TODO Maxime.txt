@@ -108,15 +108,19 @@ TODO: think about full eval support
 - otherwise implement $ir_make_ptr(int64_cst) and int64 to str
 TODO: look at Tom's dev branch
 
-TODO: look at having getOutOpnd reuse input arg reg
-- look at code for loop_big_incr
-
 FIXME:
 ; $2 = mul_i32 8, $1
 mov eax, 8;                             B808000000
 mov ebp, ecx;                           89CD
 imul ebp, eax;                          0FAFE8
 mov edx, ebp;                           89EA
+
+TODO: download Octane benchmarks
+
+TODO: lib/graph using image lib
+- look into terminology
+- look into how matplotlib does it
+- short blog post, bitcoin
 
 Meeting:
 - soft spills
@@ -125,16 +129,15 @@ Meeting:
   - removed redundant instructions
   - optimized branch ordering
 - bugfixes
+- read type refinement paper
+  - use type tests in conditionals to refine type information
+
+TODO: look at having getOutOpnd reuse input arg reg
+- look at code for loop_big_incr
+
 
 TODO: read type refinement paper
 
-TODO: lib/graph using image lib
-- look into terminology
-- look into how matplotlib does it
-- short blog post, bitcoin
-
-FIXME: GC bug, forwarding "this" ref
-- test pong example
 
 
 
@@ -144,8 +147,24 @@ FIXME: GC bug, forwarding "this" ref
 
 
 
-
-
+[DONE] FIXME: bug with pong example
+make; ./higgs ../examples/pong.js
+- GC does not occur
+$2 = load_u64 $13, $1
+140149759872824
+  strProto_get_fid(3EC3E)
+load done
+$2 = load_u64 $20, $1
+140149759872824
+  strProto_get_fid(3EC3E)
+load done
+$0 = load_u64 $10, $25
+0
+  strProto_get_fid(3EC3E)
+- this.font.get_fid()
+- Loading from a null pointer
+- font.handle is null
+- Font fails to load?
 
 [DONE] FIXME:
 ; $269 = map_prop_idx $0, $44, false
