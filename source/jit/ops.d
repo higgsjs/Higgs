@@ -159,10 +159,12 @@ void gen_make_value(
     CodeBlock as
 )
 {
-    // Move the word value into the output word
+    // Move the word value into the output word,
+    // allow reusing the input register
     auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-    as.mov(outOpnd, wordOpnd);
+    auto outOpnd = st.getOutOpnd(as, instr, 64, true);
+    if (outOpnd != wordOpnd)
+        as.mov(outOpnd, wordOpnd);
 
     // Get the type value from the second operand
     auto typeOpnd = st.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
@@ -286,10 +288,28 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
     if (op == "imul")
     {
         // imul does not support memory operands as output
-        auto scrReg = scrRegs[2].opnd(numBits);
-        as.mov(scrReg, opnd1);
-        mixin(format("as.%s(scrReg, opnd0);", op));
-        as.mov(opndOut, scrReg);
+        auto outReg = opndOut.isReg? opndOut:scrRegs[2].opnd(numBits);
+
+        if (opnd1.isImm)
+        {
+            as.imul(outReg, opnd0, opnd1);
+        }
+        else if (opnd0 == opndOut)
+        {
+            as.imul(outReg, opnd1);
+        }
+        else if (opnd1 == opndOut)
+        {
+            as.imul(outReg, opnd0);
+        }
+        else
+        {
+            as.mov(outReg, opnd0);
+            as.imul(outReg, opnd1);
+        }
+
+        if (outReg != opndOut)
+            as.mov(opndOut, outReg);
     }
     else
     {
@@ -2557,7 +2577,8 @@ void gen_ret(
         instr,
         0,
         64,
-        scrRegs[0].opnd(64),
+        //scrRegs[0].opnd(64),
+        retWordReg.opnd(64),
         true,
         false
     );
@@ -2567,16 +2588,17 @@ void gen_ret(
         as,
         instr,
         0,
-        scrRegs[1].opnd(8),
+        (retOpnd != retTypeReg.opnd(64))? retTypeReg.opnd(8):scrRegs[1].opnd(8),
         true
     );
 
     //as.printStr("ret from " ~ fun.getName);
 
-    // Move the return word and types to the return registers
+    // Move the return word and type to the return registers
     if (retWordReg.opnd != retOpnd)
         as.mov(retWordReg.opnd, retOpnd);
-    as.mov(retTypeReg.opnd(8), typeOpnd);
+    if (retTypeReg.opnd(8) != typeOpnd)
+        as.mov(retTypeReg.opnd(8), typeOpnd);
 
     // If we are in a constructor (new) call
     if (st.callCtx.ctorCall is true)
@@ -2609,7 +2631,6 @@ void gen_ret(
         // Pop all local stack slots
         as.add(tspReg.opnd(64), X86Opnd(Type.sizeof * numLocals));
         as.add(wspReg.opnd(64), X86Opnd(Word.sizeof * numLocals));
-
     }
     else
     {

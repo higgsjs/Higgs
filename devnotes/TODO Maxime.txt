@@ -74,6 +74,13 @@ TODO: profile awful slow compilation speed
 TODO: investigate why inlining getPropElem causes so much slowdown
 - do we have that many more blocks, versions?
 
+TODO: optimize dynamic calls?
+- adjust stack params in callee
+- can we pass args through registers?
+TODO: compare perf of calls vs dynamic calls?
+
+TODO: profile compilation time, big eval loop?
+
 ------------------------------------------------------------------------------
 
 May 31st, complete paper writing
@@ -90,39 +97,61 @@ Marc: start writing paper soon
 - Outline sections
 - Write ideas as they come
 
+TODO: cite type refinement paper
+
+TODO: run experiments, where are we at, performance-wise?
+
+TODO: make type analysis work
+
+TODO: look at Tom's dev branch
+TODO: think about full eval support
+- otherwise implement $ir_make_ptr(int64_cst) and int64 to str
+
+TODO: calls, shouldn't need to tag RA, closure, arg count?
+- $argc problematic if not tagged
+
+TODO: download Octane benchmarks
+
+TODO: lib/plot using image lib
+- look into terminology
+- look into how matplotlib does it
+- short blog post, bitcoin
+- demo plotting stock data
+  - bitcoin price CSV?
+- plot.graph(width, height, points, xFirst, xLast, yMin, yMax)
+  - but this will only draw one function
+  - can be OK to start
+
 ------------------------------------------------------------------------------
 
 April 15th, milestone: sufficient performance
 ---------------------------------------------
 
-TODO: optimize dynamic calls?
-- adjust stack params in callee
-- can we pass args through registers?
-TODO: compare perf of calls vs dynamic calls?
 
-TODO: calls, shouldn't need to tag RA, arg count?
-- $argc problematic if not tagged
+TODO: look at ASM for array iteration with counter
+- create benchmarks/micro/loop_array_itr
 
-TODO: profile compilation time, big eval loop?
-TODO: think about full eval support
-- otherwise implement $ir_make_ptr(int64_cst) and int64 to str
-TODO: look at Tom's dev branch
+TODO: look at ASM for 3bit
 
-FIXME:
+TODO: rebuild x value after overflow
+- look at loop_big_incr
+
+
+
+
+
+
+
+
+[DONE] FIXME:
 ; $2 = mul_i32 8, $1
 mov eax, 8;                             B808000000
 mov ebp, ecx;                           89CD
 imul ebp, eax;                          0FAFE8
 mov edx, ebp;                           89EA
+code size (bytes): 444717
 
-TODO: download Octane benchmarks
-
-TODO: lib/graph using image lib
-- look into terminology
-- look into how matplotlib does it
-- short blog post, bitcoin
-
-Meeting:
+[DONE] Meeting:
 - soft spills for get_global
   - not as much gains as hoped, but some
 - optimized codegen for several instructions
@@ -130,18 +159,29 @@ Meeting:
   - optimized branch ordering
 - made add reuse arg reg when possible
   - problem: overflow branch still uses input
+- reduced code size by 3.8%
+  - from 466599 to 448547
 - various bugfixes
 - read type refinement paper
   - use type tests in conditionals to refine type information
   - doesn't seem like it has cloning or duplication or extra context
 
-TODO: look at $rt_getPropObj ASM
+[DONE] FIXME:
+; ret $15
+mov rax, [qword r14 + 120];             498B4678
+mov bl, [byte r13 + 15];                418A5D0F
+mov rcx, rax;                           4889C1
+mov dl, bl;                             88DA
+code size (bytes): 448547
 
+[DONE] FIXME:
+; $14 = make_value $0, $4
+mov r9, rsi;                            4989F1
+mov [byte r13 + 14], r8l;               4588450E
+- allow reusing input reg
+code size (bytes): 448696
 
-
-
-
-
+[DONE] TODO: look at $rt_getPropObj ASM
 
 [DONE] FIXME: parseInt(-1) produces 1
 - sub is not commutative, cannot reuse right arg reg
@@ -150,6 +190,7 @@ TODO: look at $rt_getPropObj ASM
 - look at code for loop_big_incr
 - phi has a move
 - add has a move
+code size (bytes): 449623
 
 [DONE] TODO: read type refinement paper
 
