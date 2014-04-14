@@ -123,29 +123,35 @@ TODO: lib/graph using image lib
 - short blog post, bitcoin
 
 Meeting:
-- soft spills
+- soft spills for get_global
   - not as much gains as hoped, but some
 - optimized codegen for several instructions
   - removed redundant instructions
   - optimized branch ordering
-- bugfixes
+- made add reuse arg reg when possible
+  - problem: overflow branch still uses input
+- various bugfixes
 - read type refinement paper
   - use type tests in conditionals to refine type information
+  - doesn't seem like it has cloning or duplication or extra context
 
-TODO: look at having getOutOpnd reuse input arg reg
+TODO: look at $rt_getPropObj ASM
+
+
+
+
+
+
+
+[DONE] FIXME: parseInt(-1) produces 1
+- sub is not commutative, cannot reuse right arg reg
+
+[DONE] TODO: look at having getOutOpnd reuse input arg reg
 - look at code for loop_big_incr
+- phi has a move
+- add has a move
 
-
-TODO: read type refinement paper
-
-
-
-
-
-
-
-
-
+[DONE] TODO: read type refinement paper
 
 [DONE] FIXME: bug with pong example
 make; ./higgs ../examples/pong.js

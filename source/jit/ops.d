@@ -279,7 +279,9 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         true
     );
 
-    auto opndOut = st.getOutOpnd(as, instr, numBits);
+    // Allow reusing an input register for the output,
+    // except for subtraction which is not commutative
+    auto opndOut = st.getOutOpnd(as, instr, numBits, op != "sub");
 
     if (op == "imul")
     {

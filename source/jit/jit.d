@@ -569,13 +569,18 @@ class CodeGenState
         CodeBlock as,
         IRInstr instr,
         IRDstValue value,
-        size_t numBits
+        size_t numBits,
+        X86Opnd defReg = X86Opnd.NONE
     )
     {
         assert (value !is null);
 
+        // If no default register was specified, assign one
+        if (defReg == X86Opnd.NONE)
+            defReg = getDefReg(value).opnd;
+
         // Find or free a register
-        auto reg = freeReg(as, instr, getDefReg(value));
+        auto reg = freeReg(as, instr, defReg.reg);
 
         // Map the value to the chosen register
         return mapReg(reg, value, numBits);
@@ -587,21 +592,53 @@ class CodeGenState
     X86Opnd getOutOpnd(
         CodeBlock as,
         IRInstr instr,
-        size_t numBits
+        size_t numBits,
+        bool useArgReg = false
     )
     {
-        // TODO: option to allow allocating to arg reg?
-        // actually, for add, we *want to* allocate to arg reg when possible
-        // free the arg reg before calling allocReg *** ?
-
         assert (instr !is null);
+
+        X86Opnd defReg = X86Opnd.NONE;
+
+        // If we should try to reuse an argument register
+        if (useArgReg)
+        {
+            // For each argument of the instruction
+            for (size_t i = 0; i < instr.numArgs; ++i)
+            {
+                // If the argument is a constant, skip it
+                auto dstArg = cast(IRDstValue)instr.getArg(i);
+                if (dstArg is null)
+                    continue;
+
+                // If the argument is not mapped to a register, skip it
+                auto state = getState(dstArg);
+                if (state.isReg is false)
+                    continue;
+
+                // If the argument is live after the instruction, skip it
+                if (callCtx.fun.liveInfo.liveAfter(dstArg, instr) is true)
+                    continue;
+
+                auto argOpnd = state.getWordOpnd(64);
+
+                // Free the register
+                valMap.remove(dstArg);
+                gpRegMap[argOpnd.reg.regNo] = null;
+
+                // Bias the register allocation towards this register
+                defReg = argOpnd;
+                break;
+            }
+        }
 
         // Attempt to allocate a register for the output value
         auto reg = allocReg(
             as,
             instr,
             instr,
-            numBits
+            numBits,
+            defReg
         );
 
         assert (instr in valMap);
