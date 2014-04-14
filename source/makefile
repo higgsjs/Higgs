@@ -20,6 +20,7 @@ util/id.d           \
 util/string.d       \
 util/misc.d         \
 util/bitset.d       \
+util/os.d           \
 parser/lexer.d      \
 parser/ast.d        \
 parser/vars.d       \

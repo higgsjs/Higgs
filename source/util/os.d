@@ -35,58 +35,21 @@
 *
 *****************************************************************************/
 
-var ffi = require('lib/ffi');
-var c = ffi.c;
-var console = require('lib/console');
+module util.os;
 
-// Test array wrappers
-c.cdef("\
-       int TestIntArray[3];\
-");
-
-assertEq(c.TestIntArray.toString(), "[ 1, 2, 3 ]");
-assertEqArray(c.TestIntArray.toJS(), [1,2,3]);
-
-// Test struct wrappers
-c.cdef("\
-       struct CustomerStruct { int num; double balance; char name[10]; };\
-       typedef struct CustomerStruct Customer;\
-       Customer TestCustomer;\
-");
-
-var Bob = c.TestCustomer;
-assertEq(Bob.name.toString(), "Bob");
-assertEq(Bob.get_num(), 6);
-assertEq(Bob.get_balance(), 2.22);
-
-// Test union wrappers
-
-c.cdef("\
-       union NumberUnion { int i; double f; };\
-       union NumberUnion TestNumberUnionInt;\
-       union NumberUnion TestNumberUnionDouble;\
-");
-
-assertEq(c.TestNumberUnionInt.get_i(), 32);
-assertEq(c.TestNumberUnionDouble.get_f(), 5.50);
-
-// Test enum wrappers
-
-c.cdef("\
-       enum Charms { HEARTS, STARS, HORSESHOES };\
-");
-
-assertEq(c.Charms.HEARTS, 0);
-assertEq(c.Charms.STARS, 1);
-assertEq(c.Charms.HORSESHOES, 2);
-
-// Test string wrapping
-c.cdef("\
-       char *getTestString();\
-");
-
-assertEq(ffi.string(c.getTestString()), "Hello World!");
-
-// Test os name
-var os = ffi.os;
-assertTrue(os === "LINUX" || os === "BSD" || os === "OSX");
+extern (C)
+{
+    // NOTE: this just reports all BSDs as "BSD"
+    version (linux)
+        immutable (char*) higgs_osName = "LINUX";
+    version (OSX)
+         immutable (char*) higgs_osName = "OSX";
+    version (FreeBSD)
+         immutable (char*) higgs_osName = "BSD";
+    version (NetBSD)
+         immutable (char*) higgs_osName = "BSD";
+    version (DragonFlyBSD)
+         immutable (char*) higgs_osName = "BSD";
+    version (BSD)
+         immutable (char*) higgs_osName = "BSD";
+}
