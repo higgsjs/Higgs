@@ -1817,16 +1817,13 @@ function $rt_getProp(base, prop)
                 return $rt_getProp(base, intVal);
         }
 
-        // TODO: optimize eq comparison
-        // If this is the length property
-        if (prop === 'length')
-        {
-            return $rt_arr_get_len(base);
-        }
-
         // If the property is a string
         if ($ir_is_string(prop))
         {
+            // If this is the length property
+            if ($ir_eq_refptr(prop, 'length'))
+                return $rt_arr_get_len(base);
+
             var propNum = $rt_strToInt(prop);
             if (!isNaN(propNum))
                 return $rt_getProp(base, propNum);
@@ -1851,7 +1848,7 @@ function $rt_getProp(base, prop)
         }
 
         // If this is the length property
-        if (prop === 'length')
+        if ($ir_is_string(prop) && $ir_eq_refptr(prop, 'length'))
             return $rt_str_get_len(base);
 
         // Recurse on String.prototype
