@@ -84,7 +84,7 @@ Functions for dealing with the filesystem
     function dir(path)
     {
         this.path = path;
-        this.handle = this.open();
+        this.ptr = this.open();
     }
 
     dir.prototype.open = function()
@@ -102,7 +102,7 @@ Functions for dealing with the filesystem
         var ent;
         var dname;
 
-        while (!ffi.isNullPtr(ent = c.readdir(this.handle)))
+        while (!ffi.isNullPtr(ent = c.readdir(this.ptr)))
         {
             ent = c.dirent(ent);
             dname = ent.d_name.toString();
@@ -112,7 +112,7 @@ Functions for dealing with the filesystem
             cb.call(this, dname, ent);
         }
 
-        c.rewinddir(this.handle);
+        c.rewinddir(this.ptr);
     };
 
     dir.prototype.getDirs = function()
@@ -121,7 +121,7 @@ Functions for dealing with the filesystem
         var dname;
         var dirs = [];
 
-        while (!ffi.isNullPtr(ent = c.readdir(this.handle)))
+        while (!ffi.isNullPtr(ent = c.readdir(this.ptr)))
         {
             ent = c.dirent(ent);
             dname = ent.d_name.toString();
@@ -133,7 +133,7 @@ Functions for dealing with the filesystem
                 dirs.push(dname);
         }
 
-        c.rewinddir(this.handle);
+        c.rewinddir(this.ptr);
         return dirs;
     };
 
@@ -143,7 +143,7 @@ Functions for dealing with the filesystem
         var dname;
         var files = [];
 
-        while (!ffi.isNullPtr(ent = c.readdir(this.handle)))
+        while (!ffi.isNullPtr(ent = c.readdir(this.ptr)))
         {
             ent = c.dirent(ent);
             dname = ent.d_name.toString();
@@ -155,7 +155,7 @@ Functions for dealing with the filesystem
                 files.push(dname);
         }
 
-        c.rewinddir(this.handle);
+        c.rewinddir(this.ptr);
         return files;
     };
 
