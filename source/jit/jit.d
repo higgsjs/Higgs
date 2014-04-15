@@ -692,8 +692,9 @@ class CodeGenState
 
         auto mem = wordStackOpnd(regVal.outSlot);
 
+        //as.printStr("spilling " ~ regVal.toString);
         //as.printStr("spilling " ~ reg.toString);
-        //writefln("spilling: %s (%s)", regVal.toString(), reg);
+        //writefln("spilling: %s (%s)", regVal.toString, reg);
 
         // Spill the value currently in the register
         if (opts.jit_genasm)

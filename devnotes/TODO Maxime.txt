@@ -107,6 +107,13 @@ TODO: look at Tom's dev branch
 TODO: think about full eval support
 - otherwise implement $ir_make_ptr(int64_cst) and int64 to str
 
+Meeting:
+- looked at more machine code
+  - array iteration
+  - getProp
+- more code generaton tweaks
+- reconstructing input operand after add with overflow fixes issue
+
 TODO: calls, shouldn't need to tag RA, closure, arg count?
 - $argc problematic if not tagged
 
@@ -122,27 +129,64 @@ TODO: lib/plot using image lib
   - but this will only draw one function
   - can be OK to start
 
-Meeting:
-- more code generaton tweaks
-- reconstructing input operand after add with overflow fixes issue
-
 ------------------------------------------------------------------------------
 
 April 15th, milestone: sufficient performance
 ---------------------------------------------
 
+TODO: lhs constants, may want a static bool commOp, commutativity
+- if lhs is const, commOp, swap operands?
+- still need to handle 2 imm ops
+- may want to just bite the bullet, handle all cases
+- commOp flag still a good idea, pass it as input
+- improve codeGen for sub also, arg reusing
 
-TODO: look at ASM for array iteration with counter
-- create benchmarks/micro/loop_array_itr
+FIXME:
+; $60 = rsft_i32 59796, $54
+mov rbx, rcx;                           4889CB
+mov eax, 59796;                         B894E90000
+mov cl, dil;                            4088F9
+sar eax, cl;                            D3F8
+mov rcx, rbx;                           4889D9
+mov esi, eax;                           89C6
 
-TODO: look at ASM for 3bit
-./higgs --jit_genasm --e "print(test.asmString())" benchmarks/sunspicer/bitops-3bit-bits-in-byte.js
+FIXME: this can be simplified
+mov rax, [qword r14 + 640];             498B8680020000
+sub eax, 1;                             83E801
+cmp eax, 0;                             83F800
+cmovl eax, ebx;                         0F4CC3
+- only need the cmp with an imm
+- also, this is a 32-bit value, not 64-bit!
+
+FIXME: $rt_getProp === 'length', super inefficient
+
+TODO: gc/new test, repeated constructor call with one field set to a constant?
 
 
 
 
 
 
+
+[DONE] FIXME: gc/graph, gcForward: object not in from-space heap
+ptr   : 2AF975CDC040
+start : 2AF9793FB000
+limit : 2AF9794719C0
+header: 2
+make; ./higgs --e "print(test())" tests/core/gc/graph.js
+- multiple GCs happen before this problem occurs...
+- visiting frame for Node ctor, "this" value
+  - who triggers the GC?
+- Changing code for Node makes it disappear
+- The pointer is right after the heap limit...
+  - Already forwarded!
+
+[DONE] TODO: look at ASM for array iteration with counter
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop_array_itr.js
+- still have issues with lhs constants
+
+[DONE] TODO: look at ASM for 3bit
+./higgs --jit_genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
 
 [DONE] TODO: rebuild x value after overflow
 ./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop_big_incr.js

@@ -1938,7 +1938,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 return genRtCall(
                     ctx,
                     "getPropLength",
-                    [baseVal, idxVal],
+                    [baseVal],
                     expr.pos
                 );
             }

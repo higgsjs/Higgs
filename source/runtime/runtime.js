@@ -2031,7 +2031,7 @@ function $rt_getPropElem(base, prop)
 /**
 Specialized version of getProp for "length" property accesses
 */
-function $rt_getPropLength(base, prop)
+function $rt_getPropLength(base)
 {
     // If the base is an array
     if ($ir_is_array(base))
@@ -2039,7 +2039,7 @@ function $rt_getPropLength(base, prop)
         return $rt_arr_get_len(base);
     }
 
-    return $rt_getProp(base, prop);
+    return $rt_getProp(base, "length");
 }
 
 /**

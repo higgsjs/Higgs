@@ -12,7 +12,7 @@ Node.prototype.addEdge = addEdge;
 
 function remEdge(n)
 {
-    //iir.trace_print('remEdge');    
+    //iir.trace_print('remEdge');
 
     var idx = this.edges.indexOf(n);
 
