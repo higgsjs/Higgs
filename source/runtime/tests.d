@@ -1521,6 +1521,10 @@ unittest
     vm = new VM();
     vm.load("tests/core/gc/objects.js");
 
+    writefln("gc/new");
+    vm = new VM();
+    vm.load("tests/core/gc/new.js");
+
     writefln("gc/arrays");
     vm = new VM();
     vm.load("tests/core/gc/arrays.js");

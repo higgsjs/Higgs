@@ -92,6 +92,8 @@ TODO: May, approach Moz, Apple, FB wrt internship
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
 
+TODO: setup automated stat gathering for the paper
+- avg code size increase, max code size increase, etc.
 TODO: cite type refinement paper
 TODO: add note to mention inline caches?
 Marc: begin writing paper
@@ -161,7 +163,6 @@ cmovl eax, ebx;                         0F4CC3
 - only need the cmp with an imm
 - also, this is a 32-bit value, not 64-bit!
 
-TODO: gc/new test, repeated constructor call with one field set to a constant?
 
 
 
@@ -169,6 +170,7 @@ TODO: gc/new test, repeated constructor call with one field set to a constant?
 
 
 
+[DONE] TODO: gc/new test, constructor call with one field set to a constant
 
 [DONE] FIXME: $rt_getProp === 'length', super inefficient
 code size (bytes): 444003
