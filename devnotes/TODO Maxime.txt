@@ -58,9 +58,6 @@ TODO: transform jit.compileUnit into jit.execUnit
   - create some sort of closure call bridge with a C call conv
   - having a "C adapter" for a specific closure seems sensible
 
-FIXME: string-fasta is slower than before? fast compile time, profile quickly
-TODO: profile again, lots of interesting things to learn!
-
 FIXME: parseInt('32') takes about 20ms???
 
 TODO: val can be both in reg and stack
@@ -68,18 +65,17 @@ TODO: val can be both in reg and stack
 TODO: allow reusing input reg if value is dead?
 - special flag for getOutOpnd?
 
-TODO: bias toBool for property access expressions, isNaN, bitwise result
-
-TODO: profile awful slow compilation speed
-TODO: investigate why inlining getPropElem causes so much slowdown
-- do we have that many more blocks, versions?
-
 TODO: optimize dynamic calls?
 - adjust stack params in callee
 - can we pass args through registers?
 TODO: compare perf of calls vs dynamic calls?
 
+TODO: profile awful slow compilation speed
+TODO: investigate why inlining getPropElem causes so much slowdown
+- do we have that many more blocks, versions?
 TODO: profile compilation time, big eval loop?
+
+TODO: bias toBool for property access expressions, isNaN, bitwise result
 
 ------------------------------------------------------------------------------
 
@@ -115,11 +111,19 @@ Meeting:
   - getProp
 - more code generaton tweaks
 - reconstructing input operand after add with overflow fixes issue
+- obj alloc benchmark, tried with literal
+  - primary slowness comes from function calls
+  - setPropElem not inlined
+  - obj_alloc not inlined
 
 TODO: calls, shouldn't need to tag RA, closure, arg count?
 - $argc problematic if not tagged
 
 TODO: download Octane benchmarks
+
+TODO: types don't need to be spilled for map_prop_idx, C calls?
+- Only need to preserve the registers
+- Only specific registers need to be saved
 
 TODO: lib/plot using image lib
 - look into terminology
@@ -130,21 +134,8 @@ TODO: lib/plot using image lib
 - plot.graph(width, height, points, xFirst, xLast, yMin, yMax)
   - but this will only draw one function
   - can be OK to start
-
-TODO: test perf on obj alloc benchmark before meeting
-TODO: create repeated obj alloc microbenchmark, look at ASM
-
-------------------------------------------------------------------------------
-
-April 15th, milestone: sufficient performance
----------------------------------------------
-
-TODO: lhs constants, may want a static bool commOp, commutativity
-- if lhs is const, commOp, swap operands?
-- still need to handle 2 imm ops
-- may want to just bite the bullet, handle all cases
-- commOp flag still a good idea, pass it as input
-- improve codeGen for sub also, arg reusing
+- need to be able to update the plots over time
+  - plot functions should take a window object to draw into
 
 FIXME:
 ; $60 = rsft_i32 59796, $54
@@ -154,6 +145,26 @@ mov cl, dil;                            4088F9
 sar eax, cl;                            D3F8
 mov rcx, rbx;                           4889D9
 mov esi, eax;                           89C6
+
+TODO: add test for shifts by negative value
+d8> 1 << -1
+-2147483648
+d8> 1 << -2
+1073741824
+d8> 1 >> -1
+0
+d8> 1 >> -2
+0
+- Shift val is truncated, low bits are used
+
+TODO: test perf on obj alloc benchmark before meeting
+
+TODO: lhs constants, may want a static bool commOp, commutativity
+- if lhs is const, commOp, swap operands?
+- still need to handle 2 imm ops
+- may want to just bite the bullet, handle all cases
+- commOp flag still a good idea, pass it as input
+- improve codeGen for sub also, arg reusing
 
 FIXME: gen_ret, this can be simplified
 mov rax, [qword r14 + 640];             498B8680020000
@@ -169,6 +180,26 @@ cmovl eax, ebx;                         0F4CC3
 
 
 
+
+
+
+
+
+
+
+
+[DONE] FIXME: $rt_sub called 1M times in obj literal benchmark...
+
+[DONE] TODO: create repeated obj alloc microbenchmark, look at ASM
+http://js.datamu.com/index.html
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/create_obj_literal.js
+- quite slow
+- setPropElem is not inlined, more than 10x faster if inlined
+
+------------------------------------------------------------------------------
+
+April 15th, milestone: sufficient performance
+---------------------------------------------
 
 [DONE] TODO: gc/new test, constructor call with one field set to a constant
 

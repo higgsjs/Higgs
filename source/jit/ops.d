@@ -489,6 +489,9 @@ void ShiftOp(string op)(
     CodeBlock as
 )
 {
+    // CL is the shifting opnd... except when opnd is positive imm
+
+
     auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
     auto opnd1 = st.getWordOpnd(as, instr, 1, 8, X86Opnd.NONE, true);
     auto outOpnd = st.getOutOpnd(as, instr, 32);
