@@ -157,7 +157,9 @@ d8> 1 >> -2
 0
 - Shift val is truncated, low bits are used
 
-TODO: test perf on obj alloc benchmark before meeting
+TODO: eliminate alloc init loops
+- would make alloc faster, permit more inlining
+- may have to make it so that MISSING is the 0,0 value
 
 TODO: lhs constants, may want a static bool commOp, commutativity
 - if lhs is const, commOp, swap operands?
@@ -166,29 +168,26 @@ TODO: lhs constants, may want a static bool commOp, commutativity
 - commOp flag still a good idea, pass it as input
 - improve codeGen for sub also, arg reusing
 
-FIXME: gen_ret, this can be simplified
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: gen_ret, this can be simplified
 mov rax, [qword r14 + 640];             498B8680020000
 sub eax, 1;                             83E801
 cmp eax, 0;                             83F800
 cmovl eax, ebx;                         0F4CC3
-- only need the cmp with an imm
-- also, this is a 32-bit value, not 64-bit!
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+code size (bytes): 443550
 
 [DONE] FIXME: $rt_sub called 1M times in obj literal benchmark...
+code size (bytes): 443579
 
 [DONE] TODO: create repeated obj alloc microbenchmark, look at ASM
 http://js.datamu.com/index.html

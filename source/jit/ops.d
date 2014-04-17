@@ -2637,22 +2637,18 @@ void gen_ret(
     }
     else
     {
-        // Get the actual argument count into r0
-        as.getWord(scrRegs[0], argcSlot);
         //as.printStr("argc=");
         //as.printInt(scrRegs[0].opnd(64));
 
         // Compute the number of extra arguments into r0
-        as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
+        as.getWord(scrRegs[0].reg(32), argcSlot);
         if (numParams !is 0)
             as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
+        as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
         as.cmp(scrRegs[0].opnd(32), X86Opnd(0));
         as.cmovl(scrRegs[0].reg(32), scrRegs[1].opnd(32));
 
-        //as.printStr("numExtra=");
-        //as.printInt(scrRegs[0].opnd(32));
-
-        // Compute the number of stack slots to pop into r0
+        // Compute the total number of stack slots to pop into r0
         as.add(scrRegs[0].opnd(32), X86Opnd(numLocals));
 
         // Get the return address into r1
