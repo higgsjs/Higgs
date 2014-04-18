@@ -501,34 +501,77 @@ void ShiftOp(string op)(
     CodeBlock as
 )
 {
-    // CL is the shifting opnd... except when opnd is positive imm
+    //auto startPos = as.getWritePos;
 
+    // TODO: need way to allow reusing arg 0 reg only, but not arg1
     auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
     auto opnd1 = st.getWordOpnd(as, instr, 1, 8, X86Opnd.NONE, true);
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+    auto outOpnd = st.getOutOpnd(as, instr, 32, false);
 
-    // Save RCX
-    as.mov(scrRegs[1].opnd(64), X86Opnd(RCX));
+    /*
+    writeln(instr);
+    writeln(opnd0);
+    writeln(opnd1);
+    writeln(outOpnd);
+    writeln("---");
+    */
 
-    as.mov(scrRegs[0].opnd(32), opnd0);
-    as.mov(X86Opnd(CL), opnd1);
+    auto shiftOpnd = outOpnd;
+
+    // If the shift amount is a constant
+    if (opnd1.isImm)
+    {
+        // Truncate the shift amount bits
+        opnd1 = X86Opnd(opnd1.imm.imm & 31);
+
+        // If opnd0 is not shiftOpnd (or is a constant)
+        if (opnd0 != shiftOpnd)
+            as.mov(shiftOpnd, opnd0);
+    }
+    else
+    {
+        // Spill the CL register if needed
+        if (opnd1 != CL.opnd(8) && outOpnd != CL.opnd(32))
+            st.spillReg(as, CL);
+
+        // If outOpnd is CL, the shift amount register
+        if (outOpnd == CL.opnd(32))
+        {
+            // Use a different register for the shiftee
+            shiftOpnd = scrRegs[0].opnd(32);
+        }
+
+        // If opnd0 is not shiftOpnd (or is a constant)
+        if (opnd0 != shiftOpnd)
+            as.mov(shiftOpnd, opnd0);
+
+        // If the shift amount is not already in CL
+        if (opnd1 != CL.opnd(8))
+        {
+            as.mov(CL.opnd, opnd1);
+            opnd1 = CL.opnd;
+        }
+    }
 
     static if (op == "sal")
-        as.sal(scrRegs[0].opnd(32), X86Opnd(CL));
+        as.sal(shiftOpnd, opnd1);
     else if (op == "sar")
-        as.sar(scrRegs[0].opnd(32), X86Opnd(CL));
+        as.sar(shiftOpnd, opnd1);
     else if (op == "shr")
-        as.shr(scrRegs[0].opnd(32), X86Opnd(CL));
+        as.shr(shiftOpnd, opnd1);
     else
         assert (false);
 
-    // Restore RCX
-    as.mov(X86Opnd(RCX), scrRegs[1].opnd(64));
-
-    as.mov(outOpnd, scrRegs[0].opnd(32));
+    if (shiftOpnd != outOpnd)
+        as.mov(outOpnd, shiftOpnd);
 
     // Set the output type
     st.setOutType(as, instr, Type.INT32);
+
+    /*
+    writeln(as.toString(startPos, as.getWritePos));
+    writeln();
+    */
 }
 
 alias ShiftOp!("sal") gen_lsft_i32;
