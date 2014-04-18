@@ -118,8 +118,10 @@ Meeting:
 - reconstructing input operand after add with overflow fixes issue
 - obj alloc benchmark, tried with literal
   - primary slowness comes from function calls
-  - setPropElem not inlined
+  - setPropElem not inlined, 75% of exec time
   - obj_alloc not inlined
+- function calls probably bulk of overhead in many benchmarks
+  - benchmarks with no or few function calls run very fast
 
 TODO: calls, shouldn't need to tag RA, closure, arg count?
 - $argc problematic if not tagged, need $ir_get_argc()
@@ -146,7 +148,14 @@ TODO: types don't need to be spilled for map_prop_idx, C calls?
 - Only need to preserve the registers
 - Only specific registers need to be saved
 
-TODO: add test for shifts by negative value
+
+
+
+
+
+
+
+[DONE] TODO: add test for shifts by negative value
 d8> 1 << -1
 -2147483648
 d8> 1 << -2
@@ -157,10 +166,6 @@ d8> 1 >> -2
 0
 - Shift val is truncated, low bits are used
 - Check to see if already present
-
-
-
-
 
 [DONE] FIXME:
 ./higgs --jit_genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
