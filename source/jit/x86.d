@@ -1259,7 +1259,7 @@ void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 /// imul - Signed integer multiplication with three operands (one immediate)
 void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
 {
-    cb.writeASM("imul", opnd0, opnd1);
+    cb.writeASM("imul", opnd0, opnd1, opnd2);
 
     assert (opnd0.isReg, "invalid first operand");
     auto opndSize = opnd0.reg.size;

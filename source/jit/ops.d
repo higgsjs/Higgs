@@ -268,7 +268,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         0,
         numBits,
         scrRegs[0].opnd(numBits),
-        false
+        true
     );
 
     // May be reg or immediate
@@ -290,7 +290,18 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         // imul does not support memory operands as output
         auto outReg = opndOut.isReg? opndOut:scrRegs[2].opnd(numBits);
 
-        if (opnd1.isImm)
+        // TODO: handle this at the peephole level, assert not happening here
+        if (opnd0.isImm && opnd1.isImm)
+        {
+            as.mov(outReg, opnd0);
+            as.mov(scrRegs[0].opnd(numBits), opnd1);
+            as.imul(outReg, scrRegs[0].opnd(numBits));
+        }
+        else if (opnd0.isImm)
+        {
+            as.imul(outReg, opnd1, opnd0);
+        }
+        else if (opnd1.isImm)
         {
             as.imul(outReg, opnd0, opnd1);
         }
@@ -319,6 +330,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         }
         else if (opnd1 == opndOut)
         {
+            // Note: the operation has to be commutative for this to work
             mixin(format("as.%s(opndOut, opnd0);", op));
         }
         else
@@ -490,7 +502,6 @@ void ShiftOp(string op)(
 )
 {
     // CL is the shifting opnd... except when opnd is positive imm
-
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
     auto opnd1 = st.getWordOpnd(as, instr, 1, 8, X86Opnd.NONE, true);

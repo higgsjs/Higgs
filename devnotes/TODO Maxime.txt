@@ -105,6 +105,11 @@ TODO: look at Tom's dev branch
 TODO: think about full eval support
 - otherwise implement $ir_make_ptr(int64_cst) and int64 to str
 
+------------------------------------------------------------------------------
+
+April 30th, paper preliminaries
+-------------------------------
+
 Meeting:
 - looked at more machine code
   - array iteration
@@ -117,13 +122,9 @@ Meeting:
   - obj_alloc not inlined
 
 TODO: calls, shouldn't need to tag RA, closure, arg count?
-- $argc problematic if not tagged
+- $argc problematic if not tagged, need $ir_get_argc()
 
 TODO: download Octane benchmarks
-
-TODO: types don't need to be spilled for map_prop_idx, C calls?
-- Only need to preserve the registers
-- Only specific registers need to be saved
 
 TODO: lib/plot using image lib
 - look into terminology
@@ -136,6 +137,14 @@ TODO: lib/plot using image lib
   - can be OK to start
 - need to be able to update the plots over time
   - plot functions should take a window object to draw into
+
+TODO: eliminate alloc init loops
+- would make alloc faster, permit more inlining
+- may have to make it so that MISSING is the 0,0 value
+
+TODO: types don't need to be spilled for map_prop_idx, C calls?
+- Only need to preserve the registers
+- Only specific registers need to be saved
 
 FIXME:
 ; $60 = rsft_i32 59796, $54
@@ -157,16 +166,12 @@ d8> 1 >> -2
 0
 - Shift val is truncated, low bits are used
 
-TODO: eliminate alloc init loops
-- would make alloc faster, permit more inlining
-- may have to make it so that MISSING is the 0,0 value
-
-TODO: lhs constants, may want a static bool commOp, commutativity
-- if lhs is const, commOp, swap operands?
+[DONE] TODO: handle lhs constants in RMMOp
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop_array_itr.js
 - still need to handle 2 imm ops
 - may want to just bite the bullet, handle all cases
-- commOp flag still a good idea, pass it as input
-- improve codeGen for sub also, arg reusing
+code size (bytes): 434937
+
 
 
 
