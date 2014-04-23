@@ -45,7 +45,7 @@ import runtime.vm;
 void repl(VM vm)
 {
     writeln("Entering read-eval-print loop");
-    writeln("To exit, press ctrl+D (end-of-file) or type \"exit\" at the prompt");
+    writeln("To exit, press Ctrl+D (end-of-file) or type \"exit\" at the prompt");
 
     for (;;)
     {
@@ -59,7 +59,7 @@ void repl(VM vm)
             break;
         }
 
-        try 
+        try
         {
             // Evaluate the input
             auto output = vm.evalString(input, "repl");
@@ -71,12 +71,12 @@ void repl(VM vm)
 
         catch (ParseError e)
         {
-            writeln("parse error: " ~ e.toString());
+            writeln("parse error: " ~ e.toString);
         }
 
         catch (RunError e)
         {
-            writefln(e.toString());
+            writeln(e.toString);
         }
     }
 }

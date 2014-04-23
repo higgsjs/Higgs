@@ -54,6 +54,7 @@ import ir.ir;
 import ir.ops;
 import ir.ast;
 import ir.livevars;
+import ir.typeprop;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
@@ -899,18 +900,42 @@ void IsTypeOp(Type type)(
     // Get an operand for the value's type
     auto typeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
-    // If the type of the argument is known
+    auto testResult = TestResult.UNKNOWN;
+
+    // If the type is available through basic block versioning
     if (typeOpnd.isImm)
     {
-        // Mark the value as a known constant
-        // This will defer writing the value
+        // Get the known type
         auto knownType = cast(Type)typeOpnd.imm.imm;
+
+        // Get the test result
+        testResult = (type is knownType)? TestResult.TRUE:TestResult.FALSE;
+    }
+
+    // If the type analysis was run
+    if (auto typeInfo = st.callCtx.fun.typeInfo)
+    {
+        // Get the type analysis result for this value at this instruction
+        auto taResult = typeInfo.isTypeAt(instr.getArg(0), type, instr);
+
+        // If there is a contradiction between versioning and the analysis
+        if (testResult != TestResult.UNKNOWN && testResult != taResult)
+            throw new Error("type analysis contradiction");
+
+        testResult = taResult;
+    }
+
+    // If the type test result is known
+    if (testResult != TestResult.UNKNOWN)
+    {
+        // Get the boolean value of the test
+        auto boolResult = testResult is TestResult.TRUE;
 
         // If this instruction has many uses or is not followed by an if
         if (instr.hasManyUses || ifUseNext(instr) is false)
         {
             auto outOpnd = st.getOutOpnd(as, instr, 64);
-            auto outVal = (type is knownType)? TRUE:FALSE;
+            auto outVal = boolResult? TRUE:FALSE;
             as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
             st.setOutType(as, instr, Type.CONST);
         }
@@ -919,7 +944,7 @@ void IsTypeOp(Type type)(
         if (ifUseNext(instr) is true)
         {
             // Get the branch edge
-            auto targetIdx = (type is knownType)? 0:1;
+            auto targetIdx = boolResult? 0:1;
             auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
 
             // Generate the branch code

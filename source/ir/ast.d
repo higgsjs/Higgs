@@ -52,8 +52,10 @@ import ir.iir;
 import ir.inlining;
 import ir.peephole;
 import ir.livevars;
+import ir.typeprop;
 import ir.slotalloc;
 import runtime.vm;
+import options;
 
 /**
 IR generation context
@@ -613,6 +615,12 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
 
     // Compute liveness information for the function
     fun.liveInfo = new LiveInfo(fun);
+
+    // If the type analysis is enabled
+    if (opts.jit_typeprop)
+    {
+        fun.typeInfo = new TypeProp(fun);
+    }
 
     // Allocate stack slots for the IR instructions
     allocSlots(fun);

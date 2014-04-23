@@ -278,6 +278,7 @@ Number.prototype.toFixed = function(fractionDigits)
             m = $rt_strcat(a, $rt_strcat('.', b));
         }
     }
+
     // 9. Return the concatenation of the Strings s and m
     return $rt_strcat(s, m);
 };

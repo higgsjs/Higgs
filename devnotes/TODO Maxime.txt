@@ -88,45 +88,28 @@ TODO: May, approach Moz, Apple, FB wrt internship
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
 
+TODO: calls, shouldn't need to tag RA, closure, arg count?
+- $argc problematic if not tagged, need $ir_get_argc()
+
+TODO: eliminate alloc init loops?
+- would make alloc faster, permit more inlining
+- may have to make it so that MISSING is the 0,0 value
+
 TODO: setup automated stat gathering for the paper
 - avg code size increase, max code size increase, etc.
+
 TODO: cite type refinement paper
-TODO: add note to mention inline caches?
+TODO: add note to mention inline caches implemented?
+TODO: say we use "type refinement" to gain type info?
 Marc: begin writing paper
 - Setup repo
 - Outline sections
 - Write ideas as they come
 
-TODO: run experiments, where are we at, performance-wise?
-
-TODO: make type analysis work
-
-TODO: look at Tom's dev branch
-TODO: think about full eval support
-- otherwise implement $ir_make_ptr(int64_cst) and int64 to str
-
 ------------------------------------------------------------------------------
 
 April 30th, paper preliminaries
 -------------------------------
-
-Meeting:
-- looked at more machine code
-  - array iteration
-  - getProp
-- more code generaton tweaks
-- reconstructing input operand after add with overflow fixes issue
-- obj alloc benchmark, tried with literal
-  - primary slowness comes from function calls
-  - setPropElem not inlined, 75% of exec time
-  - obj_alloc not inlined
-- function calls probably bulk of overhead in many benchmarks
-  - benchmarks with no or few function calls run very fast
-
-TODO: calls, shouldn't need to tag RA, closure, arg count?
-- $argc problematic if not tagged, need $ir_get_argc()
-
-TODO: download Octane benchmarks
 
 TODO: lib/plot using image lib
 - look into terminology
@@ -140,13 +123,46 @@ TODO: lib/plot using image lib
 - need to be able to update the plots over time
   - plot functions should take a window object to draw into
 
-TODO: eliminate alloc init loops
-- would make alloc faster, permit more inlining
-- may have to make it so that MISSING is the 0,0 value
+Meeting:
+- looked at more machine code
+  - array iteration
+  - getProp
+- more code generaton tweaks
+- reconstructing input operand after add with overflow fixes issue
+- obj alloc benchmark, tried with literal
+  - primary slowness comes from function calls
+  - setPropElem not inlined, 75% of exec time
+  - obj_alloc not inlined
+- function calls probably bulk of overhead in many benchmarks
+  - benchmarks with no or few function calls run very fast
+- Octane: seems meant to run in a browser
+  - V8 benchs in the V8 and SpiderMonkey repos
+  - May be able to get some of it working with extra effort
+- type analysis
+  - can't do much wrt overflow... no recompilation, no ignoring of ovf blocks
+  - analysis will necessarily lose very badly in terms of eliminating int/float type tests
+    - right now, analysis made to work similarly to the way BBV propagates types
+    - should we modify it to use a more advanced type repr, type sets? best type analysis we can come up with?
+      - {int, float}, not int means float
+    - do we care much about analysis execution time?
+      - analysis is flow-sensitive, currently quite slow
+- DConf, book plane and hotel, extra days?
 
-TODO: types don't need to be spilled for map_prop_idx, C calls?
-- Only need to preserve the registers
-- Only specific registers need to be saved
+TODO: implement full eval support
+- eval can be called as global eval or local eval
+  - different "eval context"
+- if direct/local eval possible, function must behave as if all locals could be captured
+  - graft new IR sub-function into parent? don't add to sub list, but have parent link set
+- parse AST, optionally set parent link, run AST vars pass
+  - may want to pass a parent ptr to AST parsing function
+- eval_str function needs to find who the caller is, determine if direct call?
+  - call instr to get_global "eval"
+
+TODO: run experiments, where are we at, performance-wise, w/ type analysis?
+
+TODO: revise type analysis code
+
+TODO: import cc2014 paper into dls2014 repository
 
 
 
@@ -154,6 +170,40 @@ TODO: types don't need to be spilled for map_prop_idx, C calls?
 
 
 
+
+
+
+
+[DONE] TODO: modify IsTypeOp to use type analysis results
+- check for contradictions between type prop and BBV
+
+[DONE] TODO: explain type analysis issues to Marc
+- Focus on core concerns
+  - slowness
+  - should we change to type sets
+
+[DONE] TODO: add assert for unhandled instructions to type analysis
+
+[DONE] TODO: make type analysis run for Higgs init
+./higgs --jit_typeprop
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
+- store typeMap on IRFunction, like LiveInfo
+- for now, get it to work as it was
+- beware of unhandled instructions
+
+[DONE] TODO: add missing instructions for Higgs init to type analysis
+unhandled instruction: t_41BD = f64_to_str arg_4
+unhandled instruction: t_12940 = alloc_refptr 25
+unhandled instruction: t_129A4 = is_object t_128F8
+unhandled instruction: t_12835 = make_map <map:NULL>, 0
+unhandled instruction: t_12837 = new_clos <fun:encodeURIComponent(12831)>, t_12833, t_12835
+unhandled instruction: t_129EE = map_num_props t_12921
+unhandled instruction: t_129AF = map_prop_idx t_129AE, t_12900, false
+
+[PASS] TODO: download Octane benchmarks
+- V8 and SpiderMonkey clearly use v8 to test offline
+
+[DONE] TODO: look at Tom's dev branch, commit log
 
 [DONE] TODO: add test for shifts by negative value
 d8> 1 << -1

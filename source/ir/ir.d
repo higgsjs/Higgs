@@ -50,6 +50,7 @@ import parser.lexer;
 import parser.ast;
 import ir.ops;
 import ir.livevars;
+import ir.typeprop;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
@@ -115,6 +116,9 @@ class IRFunction : IdObject
 
     /// Liveness information
     LiveInfo liveInfo = null;
+
+    /// Type analysis results (may be null)
+    TypeProp typeInfo = null;
 
     /// Call context context for this function
     CallCtx ctx = null;
