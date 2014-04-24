@@ -48,12 +48,6 @@ TODO: think about type representation
 - typed arrays: int32 array, float array
 - use one whole word for cst value, encode map idx in there too?
 
-TODO: have map idx system, instead of map pointers?
-- smaller comparison instr
-- avoids issue of maps reallocated at same addr
-- smaller type representation
-- what else?
-
 TODO: accelerate getPropObj, make more hosted?
 - generate optimized machine code? inline cache?
 
@@ -76,7 +70,40 @@ TODO: blog post about draw lib
 - advice: crazy but true titles, skimmable blog posts, skimmable style, pretty pics
 - tutorials, should also list in wiki, or blog wiki tuts?
 
-TODO: pixel plotting, drawing window lib? lib/draw
+TODO: not missing global prop opt?
+- observation: if read once, we know its not missing
+
+TODO: val can be both in reg and stack
+
+TODO: lib/plot using image lib
+- look into terminology
+- look into how matplotlib does it
+- short blog post, bitcoin
+- demo plotting stock data
+  - bitcoin price CSV?
+- plot.graph(width, height, points, xFirst, xLast, yMin, yMax)
+  - but this will only draw one function
+  - can be OK to start
+- need to be able to update the plots over time
+  - plot functions should take a window object to draw into
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: pixel plotting, drawing window lib? lib/draw
 - Probably will want to use X11
   - implement a lib/x11
   - need an event loop

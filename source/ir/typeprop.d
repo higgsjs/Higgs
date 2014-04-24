@@ -71,7 +71,7 @@ class TypeProp
             TOP         // Value not yet known
         };
 
-        uint state;
+        uint state = TOP;
         Type type;
         bool val;
 
@@ -101,7 +101,7 @@ class TypeProp
         }
 
         /// Compute the merge (union) with another type value
-        TypeVal merge(TypeVal that)
+        TypeVal merge(const TypeVal that) const
         {
             // If one of the values is uninferred
             if (this.state is TOP)
@@ -130,37 +130,53 @@ class TypeProp
         }
     }
 
+    // TODO: rename to UNINF
     /// Uninferred type value
     static const TOP = TypeVal(TypeVal.TOP);
 
+    // TODO: rename to UNKNOWN
     /// Non-constant (any type) value
     static const BOT = TypeVal(TypeVal.BOT);
 
-    /// Map of IR values to types
+    /// Map of IR values to type values
     alias TypeVal[IRDstValue] TypeMap;
 
+    /// Array of type values
+    alias TypeVal[] TypeArr;
 
+    /// Argument type arrays, per instruction
+    private TypeArr[IRInstr] instrArgTypes;
 
-
-
-
-    // FIXME: query by location?
-    // TODO: query function
-    // TODO: probably need to be like liveness analysis, have query locations?
-    // - have a map of values to type maps?
-    public TestResult isTypeAt(IRValue val, Type type, IRInstr testInstr)
+    /// Perform an "is_type" type check for an argument of a given instruction
+    public TestResult argIsType(IRInstr instr, size_t argIdx, Type type)
     {
-        return TestResult.UNKNOWN;
+        writeln(instr);
+
+        auto argTypes = instrArgTypes[instr];
+        assert (argIdx < argTypes.length);
+        auto typeVal = argTypes[argIdx];
+
+        assert (
+            typeVal != TOP,
+            format(
+                "type uninf for:\n %s in:\n%s",
+                instr,
+                instr.block.fun
+            )
+        );
+
+        //writeln("BOT: ", typeVal == BOT);
+        //writeln("TOP: ", typeVal == TOP);
+
+        // Unknown type
+        if (typeVal == BOT)
+            return TestResult.UNKNOWN;
+
+        if (typeVal.type == type)
+            return TestResult.TRUE;
+
+        return TestResult.FALSE;
     }
-
-
-
-
-    // TODO: trim dead values
-
-
-
-
 
     /**
     Perform type propagation on an intraprocedural CFG using
@@ -334,13 +350,13 @@ class TypeProp
             // Set string
             if (op is &SET_STR)
             {
-                return TypeVal(Type.REFPTR);
+                return TypeVal(Type.STRING);
             }
 
             // Get string
             if (op is &GET_STR)
             {
-                return TypeVal(Type.REFPTR);
+                return TypeVal(Type.STRING);
             }
 
             // Make link
@@ -362,7 +378,7 @@ class TypeProp
                 op is &GET_ARR_PROTO ||
                 op is &GET_FUN_PROTO)
             {
-                return TypeVal(Type.REFPTR);
+                return TypeVal(Type.OBJECT);
             }
 
             // Read global variable
@@ -682,14 +698,31 @@ class TypeProp
                     propVal = instrArg.getArg(0);
                     propType = TypeVal(Type.REFPTR);
                 }
+                else if (instrArg && instrArg.opcode is &IS_STRING)
+                {
+                    propVal = instrArg.getArg(0);
+                    propType = TypeVal(Type.STRING);
+                }
+                else if (instrArg && instrArg.opcode is &IS_OBJECT)
+                {
+                    propVal = instrArg.getArg(0);
+                    propType = TypeVal(Type.OBJECT);
+                }
+                else if (instrArg && instrArg.opcode is &IS_ARRAY)
+                {
+                    propVal = instrArg.getArg(0);
+                    propType = TypeVal(Type.ARRAY);
+                }
+                else if (instrArg && instrArg.opcode is &IS_CLOSURE)
+                {
+                    propVal = instrArg.getArg(0);
+                    propType = TypeVal(Type.CLOSURE);
+                }
                 else if (instrArg && instrArg.opcode is &IS_RAWPTR)
                 {
                     propVal = instrArg.getArg(0);
                     propType = TypeVal(Type.RAWPTR);
                 }
-                // TODO
-                // TODO: missing types
-                // TODO
 
                 // If known true or unknown boolean or unknown type
                 if ((arg0Type.state == TypeVal.KNOWN_BOOL && arg0Type.val == true) ||
@@ -770,6 +803,10 @@ class TypeProp
                 auto predMap = edgeMaps[branch];
                 foreach (val, predType; predMap)
                 {
+                    // TODO
+                    // TODO: trim dead values?
+                    // TODO
+
                     typeMap[val] = predType.merge(typeMap.get(val, TOP));
                 }
             }
@@ -784,6 +821,17 @@ class TypeProp
             // For each instruction
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             {
+                // Store the argument types for later querying
+                if (instr !in instrArgTypes)
+                    instrArgTypes[instr] = new TypeVal[instr.numArgs];
+                auto argTypes = instrArgTypes[instr];
+                foreach (argIdx, argVal; argTypes)
+                {
+                    if (auto dstArg = cast(IRDstValue)instr.getArg(argIdx))
+                        argTypes[argIdx] = typeMap.get(dstArg, TOP);
+                }
+
+                // Re-evaluate the instruction's type
                 typeMap[instr] = evalInstr(instr, typeMap);
 
                 //writeln(instr, " => ", outTypes[instr]);
@@ -791,3 +839,4 @@ class TypeProp
         }
     }
 }
+

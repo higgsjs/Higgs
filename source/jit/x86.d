@@ -862,7 +862,7 @@ void writeRMMulti(
     else if (opnd0.isMem)
         opndSize = opnd0.mem.size;
     else
-        assert (false, "invalid first operand: " ~ opnd0.toString());
+        assert (false, "invalid first operand for " ~ mnem ~ ": " ~ opnd0.toString());
 
     // Check the size of opnd1
     if (opnd1.isReg)

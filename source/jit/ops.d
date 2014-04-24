@@ -916,13 +916,46 @@ void IsTypeOp(Type type)(
     if (auto typeInfo = st.callCtx.fun.typeInfo)
     {
         // Get the type analysis result for this value at this instruction
-        auto taResult = typeInfo.isTypeAt(instr.getArg(0), type, instr);
+        auto propResult = typeInfo.argIsType(instr, 0, type);
 
-        // If there is a contradiction between versioning and the analysis
-        if (testResult != TestResult.UNKNOWN && testResult != taResult)
-            throw new Error("type analysis contradiction");
+        //writeln("result: ", propResult);
 
-        testResult = taResult;
+        // If the analysis yields a known result
+        if (propResult != TestResult.UNKNOWN)
+        {
+            // Warn if the analysis knows more than BBV
+            if (testResult == TestResult.UNKNOWN)
+            {
+                writeln(
+                    "analysis yields more info than BBV for:\n",
+                    instr, "\n",
+                    "prop result:\n",
+                    propResult, "\n",
+                    "in:\n",
+                    instr.block.fun,
+                    "\n"
+                );
+            }
+
+            // If there is a contradiction between versioning and the analysis
+            if (testResult != TestResult.UNKNOWN && propResult != testResult)
+            {
+                writeln(
+                    "type analysis contradiction for:\n",
+                     instr, "\n",
+                    "prop result:\n",
+                    propResult, "\n",
+                    "vers result:\n",
+                    testResult, "\n",
+                    "in:\n",
+                    instr.block.fun,
+                    "\n"
+                );
+                assert (false);
+            }
+
+            testResult = propResult;
+        }
     }
 
     // If the type test result is known

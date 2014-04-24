@@ -33,9 +33,6 @@ TODO: think about shapes more
   - class ObjShape
 - no more "make_map"
 
-TODO: not missing global prop opt?
-- observation: if read once, we know its not missing
-
 FIXME: empty fun, ret undefined twice
 - see 200m_calls
 - second one is from ctor entry
@@ -43,11 +40,11 @@ FIXME: empty fun, ret undefined twice
   - needs to assume frame size is initial
 - should push locals in entry, pop in ret
 
-TODO: try to optimize inlineCall
+TODO: optimize inlineCall
 - inlinePass does not do liveness analysis, is slow on its own
 - what are the slowest parts of it?
 
-TODO: try to optimize liveness analysis
+TODO: optimize liveness analysis
 - record total time taken in stats
 
 TODO: transform jit.compileUnit into jit.execUnit
@@ -59,11 +56,6 @@ TODO: transform jit.compileUnit into jit.execUnit
   - having a "C adapter" for a specific closure seems sensible
 
 FIXME: parseInt('32') takes about 20ms???
-
-TODO: val can be both in reg and stack
-
-TODO: allow reusing input reg if value is dead?
-- special flag for getOutOpnd?
 
 TODO: optimize dynamic calls?
 - adjust stack params in callee
@@ -77,6 +69,10 @@ TODO: profile compilation time, big eval loop?
 
 TODO: bias toBool for property access expressions, isNaN, bitwise result
 
+TODO: eliminate alloc init loops?
+- would make alloc faster, permit more inlining
+- may have to make it so that MISSING is the 0,0 value
+
 ------------------------------------------------------------------------------
 
 May 31st, complete paper writing
@@ -88,42 +84,65 @@ TODO: May, approach Moz, Apple, FB wrt internship
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
 
-TODO: calls, shouldn't need to tag RA, closure, arg count?
-- $argc problematic if not tagged, need $ir_get_argc()
-
-TODO: eliminate alloc init loops?
-- would make alloc faster, permit more inlining
-- may have to make it so that MISSING is the 0,0 value
-
 TODO: setup automated stat gathering for the paper
 - avg code size increase, max code size increase, etc.
-
-TODO: cite type refinement paper
-TODO: add note to mention inline caches implemented?
-TODO: say we use "type refinement" to gain type info?
-Marc: begin writing paper
-- Setup repo
-- Outline sections
-- Write ideas as they come
 
 ------------------------------------------------------------------------------
 
 April 30th, paper preliminaries
 -------------------------------
 
-TODO: lib/plot using image lib
-- look into terminology
-- look into how matplotlib does it
-- short blog post, bitcoin
-- demo plotting stock data
-  - bitcoin price CSV?
-- plot.graph(width, height, points, xFirst, xLast, yMin, yMax)
-  - but this will only draw one function
-  - can be OK to start
-- need to be able to update the plots over time
-  - plot functions should take a window object to draw into
+TODO: implement full eval support
+- eval can be called as global eval or local eval
+  - different "eval context"
+- if direct/local eval possible, function must behave as if all locals could be captured
+  - graft new IR sub-function into parent? don't add to sub list, but have parent link set
+- parse AST, optionally set parent link, run AST vars pass
+  - may want to pass a parent ptr to AST parsing function
+- eval_str function needs to find who the caller is, determine if direct call?
+  - call instr to get_global "eval"
 
-Meeting:
+TODO: look into ECOOLPS workshop, OOPSLA, sweden, July 28
+- Compilation Optimization OO Lang Progs Systems
+- Submission, May 5th
+- BBV + reg alloc
+  - May not even need to implement
+- Marc says: whip out draft in an afternoon, spew out ideas
+  - goto workshop, say things, what we do, have something to say
+
+TODO: calls, shouldn't need to tag RA, closure, arg count?
+- $argc problematic if not tagged, need $ir_get_argc()
+
+TODO: book DConf trip, plane, hotel
+
+TODO: revise type analysis code, seems correct?
+TODO: implement type set for analysis?
+- see how it performs without first
+
+TODO: run experiments, where are we at, performance-wise, w/ type analysis?
+
+TODO: get type analysis working on ./benchmark.py
+
+TODO: get type analysis working on simple benchmarks
+
+FIXME: math-cordic, analysis assertion failed
+make; ./higgs --jit_typeprop --jit_maxvers=20 benchmarks/sunspider/math-cordic.js 
+- Problem is that constant value has no type inf
+  - should be able to eval its type on demand?
+
+
+
+
+
+
+
+[DONE] TODO: get type analysis working on higgs init
+
+[DONE] TODO: check that type analysis doesn't know more than BBV, warn
+
+[DONE] TODO: open issue for lib/plot, specify requirements
+
+[DONE] Meeting:
 - looked at more machine code
   - array iteration
   - getProp
@@ -135,6 +154,7 @@ Meeting:
   - obj_alloc not inlined
 - function calls probably bulk of overhead in many benchmarks
   - benchmarks with no or few function calls run very fast
+- Began setting up paper, adapting template
 - Octane: seems meant to run in a browser
   - V8 benchs in the V8 and SpiderMonkey repos
   - May be able to get some of it working with extra effort
@@ -148,31 +168,7 @@ Meeting:
       - analysis is flow-sensitive, currently quite slow
 - DConf, book plane and hotel, extra days?
 
-TODO: implement full eval support
-- eval can be called as global eval or local eval
-  - different "eval context"
-- if direct/local eval possible, function must behave as if all locals could be captured
-  - graft new IR sub-function into parent? don't add to sub list, but have parent link set
-- parse AST, optionally set parent link, run AST vars pass
-  - may want to pass a parent ptr to AST parsing function
-- eval_str function needs to find who the caller is, determine if direct call?
-  - call instr to get_global "eval"
-
-TODO: run experiments, where are we at, performance-wise, w/ type analysis?
-
-TODO: revise type analysis code
-
-TODO: import cc2014 paper into dls2014 repository
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: convert analysis to "query at given point" model
 
 [DONE] TODO: modify IsTypeOp to use type analysis results
 - check for contradictions between type prop and BBV
