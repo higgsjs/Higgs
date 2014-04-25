@@ -821,30 +821,19 @@ class TypeProp
                 if (branch !in edgeVisited)
                     continue;
 
-                // For each value/type pair in the predecessor map
+                // Merge live values of the predecessor map
                 auto predMap = edgeMaps[branch];
                 foreach (val, predType; predMap)
                 {
-                    // TODO
-                    // TODO: trim dead values?
-                    // TODO
-                    //if (liveInfo.liveAtEntry(val, block))
-
-
-                    typeMap[val] = predType.merge(typeMap.get(val, TOP));
+                    if (liveInfo.liveAtEntry(val, block))
+                        typeMap[val] = predType.merge(typeMap.get(val, TOP));
                 }
             }
-
 
             /*
             writeln("block: ", block.getName, "(", block.fun.getName, ",", block.fun.numBlocks, ")");
             writeln("  typeMap.length=", typeMap.length);
             */
-
-
-
-
-
 
             // For each phi node
             for (auto phi = block.firstPhi; phi !is null; phi = phi.next)

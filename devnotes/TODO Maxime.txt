@@ -135,21 +135,19 @@ header: ???
 
 TODO: try rescaling graphs in paper
 
-FIXME: core_md5 seems stuck in an infinite loop
+
+
+
+
+
+
+
+
+[DONE] FIXME: core_md5 seems stuck in an infinite loop
 - function has 1324 blocks
 - gets increasingly slow as typeMap grows past 2400+ values
   - typeMap size keeps slowly growing
   - no way so many values are live!
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: get type analysis working on simple benchmarks
 - runs really really slow on nbody's NBodySystem.prototype.advance
