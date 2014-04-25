@@ -122,19 +122,45 @@ TODO: implement type set for analysis?
 TODO: run experiments, where are we at, performance-wise, w/ type analysis?
 
 TODO: get type analysis working on ./benchmark.py
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=20"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
 
-TODO: get type analysis working on simple benchmarks
+FIXME: make; ./higgs --jit_typeprop --jit_maxvers=20 benchmarks/sunspider/string-fasta.js
+Assertion failed (runtime/gc.d@435): gcForward: object not in from-space heap
+ptr   : 3
+start : 7F689B14A000
+limit : 7F689C14A000
+header: ???
+- try with just maxvers=20
 
-FIXME: math-cordic, analysis assertion failed
+TODO: try rescaling graphs in paper
+
+FIXME: core_md5 seems stuck in an infinite loop
+- function has 1324 blocks
+- gets increasingly slow as typeMap grows past 2400+ values
+  - typeMap size keeps slowly growing
+  - no way so many values are live!
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: get type analysis working on simple benchmarks
+- runs really really slow on nbody's NBodySystem.prototype.advance
+- many temps and blocks to propagate along?
+  - each condition needs to be evaluated, opens a floodgate for values to propagate through
+
+[DONE] FIXME: math-cordic, analysis assertion failed
 make; ./higgs --jit_typeprop --jit_maxvers=20 benchmarks/sunspider/math-cordic.js 
 - Problem is that constant value has no type inf
-  - should be able to eval its type on demand?
-
-
-
-
-
-
+  - Should we be able to eval its type on demand?
+  - Just store all arg types, already using that space anyways! ***
 
 [DONE] TODO: get type analysis working on higgs init
 

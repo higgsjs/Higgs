@@ -619,7 +619,7 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     // If the type analysis is enabled
     if (opts.jit_typeprop)
     {
-        fun.typeInfo = new TypeProp(fun);
+        fun.typeInfo = new TypeProp(fun, fun.liveInfo);
     }
 
     // Allocate stack slots for the IR instructions

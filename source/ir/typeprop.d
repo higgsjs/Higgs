@@ -44,6 +44,7 @@ import std.stdint;
 import std.conv;
 import ir.ir;
 import ir.ops;
+import ir.livevars;
 import runtime.vm;
 import jit.ops;
 
@@ -150,7 +151,7 @@ class TypeProp
     /// Perform an "is_type" type check for an argument of a given instruction
     public TestResult argIsType(IRInstr instr, size_t argIdx, Type type)
     {
-        writeln(instr);
+        //writeln(instr);
 
         auto argTypes = instrArgTypes[instr];
         assert (argIdx < argTypes.length);
@@ -182,9 +183,9 @@ class TypeProp
     Perform type propagation on an intraprocedural CFG using
     the sparse conditional constant propagation technique
     */
-    public this(IRFunction fun)
+    public this(IRFunction fun, LiveInfo liveInfo)
     {
-        //writeln(fun);
+        writeln("running type prop on: ", fun.getName);
 
         // List of CFG edges to be processed
         BranchEdge[] cfgWorkList;
@@ -421,12 +422,21 @@ class TypeProp
                 return intType;
             }
 
-            // float64 arithmetic
+            // float64 arithmetic/trigonometric
             if (
                 op is &ADD_F64 ||
                 op is &SUB_F64 ||
                 op is &MUL_F64 ||
-                op is &DIV_F64)
+                op is &DIV_F64 ||
+                op is &MOD_F64 ||
+                op is &SQRT_F64 ||
+                op is &SIN_F64  ||
+                op is &COS_F64  ||
+                op is &LOG_F64  ||
+                op is &EXP_F64  ||
+                op is &POW_F64  ||
+                op is &FLOOR_F64 ||
+                op is &CEIL_F64)
             {
                 return TypeVal(Type.FLOAT64);
             }
@@ -542,10 +552,22 @@ class TypeProp
                 return TypeVal(Type.INT32);
             }
 
+            // Map property name
+            if (op is &MAP_PROP_NAME)
+            {
+                return TypeVal(Type.STRING);
+            }
+
             // New closure
             if (op is &NEW_CLOS)
             {
                 return TypeVal(Type.CLOSURE);
+            }
+
+            // Get time in milliseconds
+            if (op is &GET_TIME_MS)
+            {
+                return TypeVal(Type.FLOAT64);
             }
 
             // Comparison operations
@@ -806,10 +828,23 @@ class TypeProp
                     // TODO
                     // TODO: trim dead values?
                     // TODO
+                    //if (liveInfo.liveAtEntry(val, block))
+
 
                     typeMap[val] = predType.merge(typeMap.get(val, TOP));
                 }
             }
+
+
+            /*
+            writeln("block: ", block.getName, "(", block.fun.getName, ",", block.fun.numBlocks, ")");
+            writeln("  typeMap.length=", typeMap.length);
+            */
+
+
+
+
+
 
             // For each phi node
             for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
@@ -825,11 +860,8 @@ class TypeProp
                 if (instr !in instrArgTypes)
                     instrArgTypes[instr] = new TypeVal[instr.numArgs];
                 auto argTypes = instrArgTypes[instr];
-                foreach (argIdx, argVal; argTypes)
-                {
-                    if (auto dstArg = cast(IRDstValue)instr.getArg(argIdx))
-                        argTypes[argIdx] = typeMap.get(dstArg, TOP);
-                }
+                for (size_t i = 0; i < instr.numArgs; ++i)
+                    argTypes[i] = getType(typeMap, instr.getArg(i));
 
                 // Re-evaluate the instruction's type
                 typeMap[instr] = evalInstr(instr, typeMap);
@@ -837,6 +869,8 @@ class TypeProp
                 //writeln(instr, " => ", outTypes[instr]);
             }
         }
+
+        writeln("type prop done");
     }
 }
 
