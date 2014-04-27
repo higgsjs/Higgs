@@ -113,35 +113,90 @@ TODO: look into ECOOLPS workshop, OOPSLA, sweden, July 28
 TODO: calls, shouldn't need to tag RA, closure, arg count?
 - $argc problematic if not tagged, need $ir_get_argc()
 
+Meeting:
+- Fixed GC/regalloc bug, added typeWritten flag to reg alloc state
+  - Slightly smaller code size, less redundant type writes
+- Fixed analysis slowness using liveness info
+  - Very bad scaling with many SSA values
+- Type analysis working on all benchmarks
+
 TODO: book DConf trip, plane, hotel
 
-TODO: revise type analysis code, seems correct?
-TODO: implement type set for analysis?
-- see how it performs without first
+TODO: copy octane benchmarks into repo, as-is, except css
 
-TODO: run experiments, where are we at, performance-wise, w/ type analysis?
+FIXME: nextProp, redundant captvars
+- list contails many duplicates
 
-TODO: get type analysis working on ./benchmark.py
+
+
+
+
+
+
+
+[DONE] TODO: run experiments, where are we at, performance-wise, w/ type analysis?
+- No TA, no BBV
+    total type tests: 6481332
+    code size (bytes): 411186
+    exec time (ms): 50
+- TA
+    code size (bytes): 411518
+    exec time (ms): 62
+    total type tests: 6480090
+- BBV
+    code size (bytes): 430260
+    exec time (ms): 41
+    total type tests: 2923210
+
+[DONE] TODO: get type analysis working on ./benchmark.py
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=20"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
 
-FIXME: make; ./higgs --jit_typeprop --jit_maxvers=20 benchmarks/sunspider/string-fasta.js
+[DONE] TODO: succ state gen should decide if phi type is written
+- do as the predecessor, save moves
+- code size (bytes): 430232
+
+[DONE] TODO: check if toStack is missing writeType(s)
+
+[DONE] FIXME: typeWritten causing GC bug
+- typeWritten... setting it to true in writeType causes errors... why?
+  - type unwritten???
+- Problem might be with block transitions
+  - Don't need to take sync into account in diff, but must account for it
+  - clear sync flag when creating default version
+  - transition into sync should cause write
+
+[DONE] TODO: try rescaling graphs in paper
+- Take a break to work on the paper
+
+[DONE] TODO: try removing type write in setOutType
+- rename spillRegs to spillValues
+
+[DONE] FIXME: make; ./higgs --jit_typeprop --jit_maxvers=20 benchmarks/sunspider/string-fasta.js
 Assertion failed (runtime/gc.d@435): gcForward: object not in from-space heap
 ptr   : 3
 start : 7F689B14A000
 limit : 7F689C14A000
 header: ???
-- try with just maxvers=20
-
-TODO: try rescaling graphs in paper
-
-
-
-
-
-
-
-
+- Fails during first GC, visiting stack for nextProp
+- with just maxvers=20, works fine
+- with just typeprop, works fine
+- errors even if prop result not used...
+  - even if not queried, just running the analysis causes issues
+- type tag is wrong while visiting phi value
+  - type string, but value seems to be undef
+  - meant to be integer, string length?
+- quite possibly, we normally don't test the type tag
+  - type tag was probably not written
+- during phi moves, type tag is set as const, known type
+  - do we not spill it?
+Phi to phi moves... Won't spill value if it wasn't in a reg
+setOutType: if value is on stack, we write the type to the stack as well
+Could change this so spillReg takes care of it?
+- Maybe not? Type can become unknown? If it becomes unknown, it must be
+written, so long as the value is live
 
 [DONE] FIXME: core_md5 seems stuck in an infinite loop
 - function has 1324 blocks

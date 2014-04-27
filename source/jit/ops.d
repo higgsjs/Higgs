@@ -629,7 +629,7 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     assert (arity is 1 || arity is 2);
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -691,7 +691,7 @@ void FPToStr(string fmt)(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -912,6 +912,7 @@ void IsTypeOp(Type type)(
         testResult = (type is knownType)? TestResult.TRUE:TestResult.FALSE;
     }
 
+    /*
     // If the type analysis was run
     if (auto typeInfo = st.callCtx.fun.typeInfo)
     {
@@ -924,7 +925,7 @@ void IsTypeOp(Type type)(
         if (propResult != TestResult.UNKNOWN)
         {
             // Warn if the analysis knows more than BBV
-            if (testResult == TestResult.UNKNOWN)
+            if (testResult == TestResult.UNKNOWN && opts.jit_maxvers > 0)
             {
                 writeln(
                     "analysis yields more info than BBV for:\n",
@@ -957,6 +958,7 @@ void IsTypeOp(Type type)(
             testResult = propResult;
         }
     }
+    */
 
     // If the type test result is known
     if (testResult != TestResult.UNKNOWN)
@@ -1802,7 +1804,7 @@ void gen_call_prim(
     as.setType(-numArgs - 1, Type.INT32);
 
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2011,7 +2013,7 @@ void gen_call(
     as.label(Label.FALSE2);
 
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2122,7 +2124,7 @@ void gen_call_new(
     // TODO: optimize call spills
     // TODO: move spills after arg copying?
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2401,7 +2403,7 @@ void gen_call_apply(
     // TODO: optimize call spills
     // TODO: move spills after arg copying?
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2520,7 +2522,7 @@ void gen_load_file(
     }
 
     // Spill the values that are live before the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2629,7 +2631,7 @@ void gen_eval_str(
     }
 
     // Spill the values that are live before the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2795,7 +2797,7 @@ void gen_throw(
     auto excTypeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2887,7 +2889,7 @@ void HeapAllocOp(Type type)(
     }
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2982,7 +2984,7 @@ void gen_gc_collect(
     }
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3245,7 +3247,7 @@ void gen_get_str(
     }
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3399,7 +3401,7 @@ void gen_map_num_props(
     }
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3493,7 +3495,7 @@ void gen_map_prop_idx(
         assert (false);
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3626,7 +3628,7 @@ void gen_map_prop_name(
     }
 
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3732,7 +3734,7 @@ void gen_new_clos(
 
     // TODO: spill only values stored in C arg regs and C caller-save regs?
     // Spill all values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3807,7 +3809,7 @@ void gen_get_time_ms(
     }
 
     // Spill the values live after this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3858,7 +3860,7 @@ void gen_get_ast_str(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3922,7 +3924,7 @@ void gen_get_ir_str(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4011,7 +4013,7 @@ void gen_get_asm_str(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4085,7 +4087,7 @@ void gen_load_lib(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4150,7 +4152,7 @@ void gen_close_lib(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4216,7 +4218,7 @@ void gen_get_sym(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4310,7 +4312,7 @@ void gen_call_ffi(
     assert(argTypes.length == argCount, "Incorrect arg count in call_ffi.");
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {

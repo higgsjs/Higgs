@@ -673,6 +673,8 @@ void visitStackRoots(VM vm)
             Word word = wsp[idx];
             Type type = tsp[idx];
 
+            //writefln("type: %s", type);
+
             // If this is a pointer, forward it
             wsp[idx] = gcForward(vm, word, type);
 
@@ -696,6 +698,7 @@ void visitStackRoots(VM vm)
 
         //writeln("visiting frame for: ", fun.getName());
         //writeln("frame size: ", frameSize);
+        //writeln("\n", fun, "\n");
 
         // Visit the function this stack frame belongs to
         visitFun(vm, fun);

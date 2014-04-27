@@ -185,7 +185,7 @@ class TypeProp
     */
     public this(IRFunction fun, LiveInfo liveInfo)
     {
-        writeln("running type prop on: ", fun.getName);
+        //writeln("running type prop on: ", fun.getName);
 
         // List of CFG edges to be processed
         BranchEdge[] cfgWorkList;
@@ -859,7 +859,7 @@ class TypeProp
             }
         }
 
-        writeln("type prop done");
+        //writeln("type prop done");
     }
 }
 

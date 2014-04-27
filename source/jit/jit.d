@@ -115,14 +115,17 @@ struct ValState
         /// Value kind
         Kind, "kind", 2,
 
-        /// Known type flag
-        bool, "knownType", 1,
-
         /// Type, if known
         Type, "type", 4,
 
+        /// Known type flag
+        bool, "typeKnown", 1,
+
+        /// Type written to stack flag
+        bool, "typeWritten", 1,
+
         /// Local index, or register number, or constant value
-        int, "val", 25,
+        int, "val", 24,
 
         /// Padding bits
         uint, "", 0
@@ -133,7 +136,8 @@ struct ValState
     {
         ValState val;
         val.kind = Kind.STACK;
-        val.knownType = false;
+        val.typeKnown = false;
+        val.typeWritten = false;
         val.val = 0xFFFF;
         return val;
     }
@@ -143,7 +147,8 @@ struct ValState
     {
         ValState val;
         val.kind = Kind.REG;
-        val.knownType = false;
+        val.typeKnown = false;
+        val.typeWritten = false;
         val.val = reg.regNo;
         return val;
     }
@@ -173,7 +178,7 @@ struct ValState
     /// Get a type operand for this value
     X86Opnd getTypeOpnd(StackIdx stackIdx = StackIdx.max) const
     {
-        if (knownType)
+        if (typeKnown)
             return X86Opnd(type);
 
         assert (stackIdx !is StackIdx.max);
@@ -185,7 +190,7 @@ struct ValState
     {
         assert (!isConst);
         ValState val = this;
-        val.knownType = true;
+        val.typeKnown = true;
         val.type = type;
         return val;
     }
@@ -196,7 +201,7 @@ struct ValState
         assert (!isConst);
 
         ValState val = this;
-        val.knownType = false;
+        val.typeKnown = false;
         val.type = cast(Type)0x0F;
         return val;
     }
@@ -216,6 +221,14 @@ struct ValState
         ValState val = this;
         val.kind = Kind.REG;
         val.val = reg.regNo;
+        return val;
+    }
+
+    /// Write the type to the stack
+    ValState writeType() const
+    {
+        ValState val = this;
+        val.typeWritten = true;
         return val;
     }
 }
@@ -300,10 +313,10 @@ class CodeGenState
             );
 
             // Free the register currently used by the phi node (if any)
-            auto oldPhiState = getState(phi);
-            if (oldPhiState.isReg)
+            auto predPhiState = getState(phi);
+            if (predPhiState.isReg)
             {
-                auto regNo = oldPhiState.val;
+                auto regNo = predPhiState.val;
                 gpRegMap[regNo] = null;
             }
 
@@ -327,12 +340,20 @@ class CodeGenState
                 phiState = ValState.stack();
             }
 
+            // If the phi value is flowing into itself and the
+            // type was previously written to the stack
+            if (arg is phi && predPhiState.typeWritten)
+            {
+                // Mark the type as written to the stack
+                phiState = phiState.writeType();
+            }
+
             // If the phi argument is a dst value
             if (auto dstArg = cast(IRDstValue)arg)
             {
                 // Get the state for the phi argument value
                 auto argState = predState.getState(dstArg);
-                if (argState.knownType)
+                if (argState.typeKnown)
                     phiState = phiState.setType(argState.type);
             }
 
@@ -420,10 +441,10 @@ class CodeGenState
                 continue;
 
             // If the successor has a known type
-            if (succSt.knownType)
+            if (succSt.typeKnown)
             {
                 // If the predecessor has no known type, mismatch
-                if (!predSt.knownType)
+                if (!predSt.typeKnown)
                     return size_t.max;
 
                 // If the known types do not match, mismatch
@@ -434,7 +455,7 @@ class CodeGenState
             {
                 // If the predecessor has a known type, transitioning
                 // would lose us this known type
-                if (predSt.knownType)
+                if (predSt.typeKnown)
                     diff += 1;
             }
         }
@@ -653,7 +674,8 @@ class CodeGenState
     */
     void mapToStack(IRDstValue value)
     {
-        valMap[value] = ValState.stack();
+        // Map the value and its type to the stack
+        valMap[value] = ValState.stack().writeType();
     }
 
     /**
@@ -702,12 +724,13 @@ class CodeGenState
         as.mov(mem, reg.opnd(64));
 
         // If the type is known, spill it
-        if (state.knownType)
+        if (state.typeKnown && !state.typeWritten)
         {
             // Write the type tag to the type stack
             //if (opts.jit_genasm)
             //    as.comment("Spilling type for " ~ regVal.getName);
             as.mov(typeStackOpnd(regVal.outSlot), X86Opnd(state.type));
+            valMap[regVal] = valMap[regVal].writeType();
         }
     }
 
@@ -715,13 +738,13 @@ class CodeGenState
     alias bool delegate(LiveInfo liveInfo, IRDstValue value) SpillTestFn;
 
     /**
-    Spill a set of registers to the stack
+    Spill a set of values to the stack
     */
-    void spillRegs(CodeBlock as, SpillTestFn spillTest)
+    void spillValues(CodeBlock as, SpillTestFn spillTest)
     {
         auto liveInfo = callCtx.fun.liveInfo;
 
-        // For each general-purpose register
+        // For each allocatable general-purpose register
         foreach (reg; allocRegs)
         {
             auto value = gpRegMap[reg.regNo];
@@ -733,6 +756,25 @@ class CodeGenState
             // If the value should be spilled, spill it
             if (spillTest(liveInfo, value) is true)
                 spillReg(as, reg);
+        }
+
+        // For each value in the value map
+        foreach (value, state; valMap)
+        {
+            if (cast(FunParam)value)
+                continue;
+
+            // If the value has a known type and is not in a register
+            if (state.typeKnown && !state.typeWritten && !state.isReg)
+            {
+                // If the value should be spilled
+                if (spillTest(liveInfo, value) is true)
+                {
+                    // Spill the type for this value
+                    as.mov(typeStackOpnd(value.outSlot), X86Opnd(state.type));
+                    valMap[value] = state.writeType();
+                }
+            }
         }
     }
 
@@ -773,7 +815,7 @@ class CodeGenState
             vm.wsp[regVal.outSlot] = vm.regSave[regIdx];
 
             // If the type is known, store it
-            if (state.knownType)
+            if (state.typeKnown)
             {
                 //writeln("spilling known type");
 
@@ -1043,12 +1085,14 @@ class CodeGenState
         // Set a known type for this value
         valMap[instr] = state.setType(type);
 
+        /*
         // If the value is on the stack
         if (state.isStack)
         {
             // Write the type value to the type stack
             as.mov(typeStackOpnd(instr.outSlot), X86Opnd(type));
         }
+        */
     }
 
     /// Write the output type for an instruction's output to the type stack
@@ -1078,7 +1122,7 @@ class CodeGenState
         auto state = getState(value);
 
         // Assert that we aren't contradicting existing information
-        assert (!state.knownType || state.type is type);
+        assert (!state.typeKnown || state.type is type);
 
         // Set a known type for this value
         valMap[value] = state.setType(type);
@@ -1679,7 +1723,7 @@ BlockVersion getBlockVersion(
         // Strip the state of all known types and constants
         auto genState = new CodeGenState(state);
         foreach (val, valSt; genState.valMap)
-            if (valSt.knownType)
+            if (valSt.typeKnown)
                 genState.valMap[val] = valSt.clearType();
 
         // Ensure that the general version matches
@@ -1820,6 +1864,21 @@ void genBranchMoves(
             !(succParam && dstTypeOpnd.isMem))
         {
             moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
+            moveAdded = true;
+        }
+
+        // Get the successor value state
+        auto succState = succState.getState(succVal);
+
+        // Check if the predecessor is the same value and had its type written
+        auto predWritten = predVal is succVal && predState.getState(succVal).typeWritten;
+
+        // If the successor is not a function parameter and the successor
+        // state requires the type be written and the predecessor type was not
+        // written to the stack, then write the type
+        if (!succParam && !dstTypeOpnd.isMem && succState.typeWritten && !predWritten)
+        {
+            as.mov(typeStackOpnd(succVal.outSlot), X86Opnd(succState.type));
             moveAdded = true;
         }
 
