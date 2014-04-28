@@ -64,22 +64,12 @@ class TypeProp
     /// Type representation, propagated by the analysis
     private struct TypeSet
     {
-        enum : uint
-        {
-            ANY,        // Known to be non-constant
-            KNOWN_BOOL,
-            KNOWN_TYPE,
-            UNINF       // Value not yet known
-        };
+        uint32_t bits;
 
-        uint state = UNINF;
-        Type type;
-        bool val;
+        this(uint32_t bits) { this.bits = bits; }
+        this(Type t) { bits = 1 << cast(int)t; }
 
-        this(uint s) { state = s; }
-        this(Type t) { state = KNOWN_TYPE; type = t; }
-        this(bool v) { state = KNOWN_BOOL; type = Type.CONST; val = v; }
-
+        /*
         string toString() const
         {
             switch (state)
@@ -100,42 +90,55 @@ class TypeProp
                 assert (false);
             }
         }
+        */
+
+        /// Check that the type set contains only a given type
+        bool isType(Type t) const
+        {
+            auto bit = 1 << cast(int)t;
+            return (this.bits == bit);
+        }
+
+        /// Check that the type set does not contain a given type
+        bool isNotType(Type t) const
+        {
+            auto bit = 1 << cast(int)t;
+            return (this.bits & bit) == 0;
+        }
+
+        /// Check that the type set contains a given type (and maybe others)
+        bool maybeIsType(Type t) const
+        {
+            auto bit = 1 << cast(int)t;
+            return (this.bits & bit) != 0;
+        }
+
+        /// Check that the type set contains other types than a given type
+        bool maybeNotType(Type t) const
+        {
+            auto bit = 1 << cast(int)t;
+            return (this.bits & ~bit) != 0;
+        }
 
         /// Compute the merge (union) with another type value
         TypeSet merge(const TypeSet that) const
         {
-            // If one of the values is uninferred
-            if (this.state is UNINF)
-                return that;
-            if (that.state is UNINF)
-                return this;
+            return TypeSet(this.bits | that.bits);
+        }
 
-            // If one of the values is non-constant
-            if (this.state is ANY || that.state is ANY)
-                return TypeSet(ANY);
-
-            // If the types are equal
-            if (this == that)
-                return this;
-
-            // If this is a known boolean and so is the other value
-            if (this.state is KNOWN_BOOL && that.state is KNOWN_BOOL)
-            {
-                assert (this.val !is that.val);
-                return TypeSet(Type.CONST);
-            }
-
-            // The type is unknown, non-constant
-            assert (!(this.state is that.state && this.type is that.type));
-            return TypeSet(ANY);
+        /// Remove a type from this type set
+        TypeSet subtract(Type t) const
+        {
+            auto bit = 1 << cast(int)t;
+            return TypeSet(this.bits & ~bit);
         }
     }
 
     /// Uninferred type value (top)
-    private static const UNINF = TypeSet(TypeSet.UNINF);
+    private static const UNINF = TypeSet(0);
 
     /// Unknown (any type) value (bottom)
-    private static const ANY = TypeSet(TypeSet.ANY);
+    private static const ANY = TypeSet(0xFFFFFFFF);
 
     /// Map of IR values to type values
     private alias TypeSet[IRDstValue] TypeMap;
@@ -167,14 +170,13 @@ class TypeProp
         //writeln("ANY: ", typeVal == ANY);
         //writeln("UNINF: ", typeVal == UNINF);
 
-        // Unknown type
-        if (typeVal == ANY)
-            return TestResult.UNKNOWN;
-
-        if (typeVal.type == type)
+        if (typeVal.isType(type))
             return TestResult.TRUE;
 
-        return TestResult.FALSE;
+        if (typeVal.isNotType(type))
+            return TestResult.FALSE;
+
+        return TestResult.UNKNOWN;
     }
 
     /**
@@ -227,6 +229,8 @@ class TypeProp
         /// Queue a branch into the work list
         void queueSucc(BranchEdge edge, TypeMap typeMap, IRDstValue branch, TypeSet branchType)
         {
+            assert (edge !is null);
+
             //writeln(branch);
             //writeln("  ", branchType);
 
@@ -318,7 +322,35 @@ class TypeProp
             auto op = instr.opcode;
 
             // Get the type for argument 0
-            auto arg0Type = (instr.numArgs > 0)? getType(typeMap, instr.getArg(0)):UNINF;
+            auto arg0 = (instr.numArgs > 0)? instr.getArg(0):null;
+            auto arg0Type = arg0? getType(typeMap, arg0):UNINF;
+
+            /// Templated implementation of type check operations
+            TypeSet IsTypeOp(Type type)()
+            {
+                // If our only use is an immediately following if_true
+                // and the argument type has been inferred
+                if (ifUseNext(instr) is true && arg0Type != UNINF)
+                {
+                    auto ifInstr = instr.next;
+
+                    auto propVal = cast(IRDstValue)arg0;
+                    auto trueType = TypeSet(type);
+                    auto falseType = arg0Type.subtract(type);
+
+                    // If the argument could be the type we're testing
+                    // The true branch knows that the argument is the type tested
+                    if (arg0Type.maybeIsType(type))
+                        queueSucc(ifInstr.getTarget(0), typeMap, propVal, trueType);
+
+                    // If the argument could be something else than the type we're testing
+                    // The false branch knows that the argument is not the type tested
+                    if (arg0Type.maybeNotType(type))
+                        queueSucc(ifInstr.getTarget(1), typeMap, propVal, falseType);
+                }
+
+                return TypeSet(Type.CONST);
+            }
 
             // Get type
             if (op is &GET_TYPE)
@@ -592,6 +624,15 @@ class TypeProp
 
             )
             {
+                // If our only use is an immediately following if_true
+                if (ifUseNext(instr) is true)
+                {
+                    // Queue both branch edges
+                    auto ifInstr = instr.next;
+                    queueSucc(ifInstr.getTarget(0), typeMap, ifInstr, ANY);
+                    queueSucc(ifInstr.getTarget(1), typeMap, ifInstr, ANY);
+                }
+
                 // Constant, boolean type
                 return TypeSet(Type.CONST);
             }
@@ -599,162 +640,68 @@ class TypeProp
             // is_i32
             if (op is &IS_I32)
             {
-                if (arg0Type == UNINF)
-                    return UNINF;
-                if (arg0Type == ANY)
-                    return TypeSet(Type.CONST);
-                return TypeSet(arg0Type.type == Type.INT32);
+                return IsTypeOp!(Type.INT32)();
             }
 
             // is_f64
             if (op is &IS_F64)
             {
-                if (arg0Type == UNINF)
-                    return UNINF;
-                if (arg0Type == ANY)
-                    return TypeSet(Type.CONST);
-                return TypeSet(arg0Type.type == Type.FLOAT64);
+                return IsTypeOp!(Type.FLOAT64)();
             }
 
             // is_const
             if (op is &IS_CONST)
             {
-                if (arg0Type == UNINF)
-                    return UNINF;
-                if (arg0Type == ANY)
-                    return TypeSet(Type.CONST);
-                return TypeSet(arg0Type.type == Type.CONST);
+                return IsTypeOp!(Type.CONST)();
             }
 
             // is_refptr
             if (op is &IS_REFPTR)
             {
-                if (arg0Type == UNINF)
-                    return UNINF;
-                if (arg0Type == ANY)
-                    return TypeSet(Type.CONST);
-                return TypeSet(arg0Type.type == Type.REFPTR);
+                return IsTypeOp!(Type.REFPTR)();
             }
 
             // is_object
             if (op is &IS_OBJECT)
             {
-                if (arg0Type == UNINF)
-                    return UNINF;
-                if (arg0Type == ANY)
-                    return TypeSet(Type.CONST);
-                return TypeSet(arg0Type.type == Type.OBJECT);
+                return IsTypeOp!(Type.OBJECT)();
             }
 
             // is_array
             if (op is &IS_ARRAY)
             {
-                if (arg0Type == UNINF)
-                    return UNINF;
-                if (arg0Type == ANY)
-                    return TypeSet(Type.CONST);
-                return TypeSet(arg0Type.type == Type.ARRAY);
+                return IsTypeOp!(Type.ARRAY)();
             }
 
             // is_closure
             if (op is &IS_CLOSURE)
             {
-                if (arg0Type == UNINF)
-                    return UNINF;
-                if (arg0Type == ANY)
-                    return TypeSet(Type.CONST);
-                return TypeSet(arg0Type.type == Type.CLOSURE);
+                return IsTypeOp!(Type.CLOSURE)();
             }
 
             // is_string
             if (op is &IS_STRING)
             {
-                if (arg0Type == UNINF)
-                    return UNINF;
-                if (arg0Type == ANY)
-                    return TypeSet(Type.CONST);
-                return TypeSet(arg0Type.type == Type.STRING);
+                return IsTypeOp!(Type.STRING)();
             }
 
             // is_rawptr
             if (op is &IS_RAWPTR)
             {
-                if (arg0Type == UNINF)
-                    return UNINF;
-                if (arg0Type == ANY)
-                    return TypeSet(Type.CONST);
-                return TypeSet(arg0Type.type == Type.RAWPTR);
+                return IsTypeOp!(Type.RAWPTR)();
             }
 
             // Conditional branch
             if (op is &IF_TRUE)
             {
-                // If the argument is unevaluated, do nothing
-                if (arg0Type is UNINF)
-                    return UNINF;
+                // If a boolean argument immediately precedes, the
+                // conditional branch has already been handled
+                if (boolArgPrev(instr) is true)
+                    return ANY;
 
-                auto instrArg = cast(IRInstr)instr.getArg(0);
-
-                IRValue propVal;
-                TypeSet propType;
-
-                if (instrArg && instrArg.opcode is &IS_I32)
-                {
-                    propVal = instrArg.getArg(0);
-                    propType = TypeSet(Type.INT32);
-                }
-                else if (instrArg && instrArg.opcode is &IS_F64)
-                {
-                    propVal = instrArg.getArg(0);
-                    propType = TypeSet(Type.FLOAT64);
-                }
-                else if (instrArg && instrArg.opcode is &IS_CONST)
-                {
-                    propVal = instrArg.getArg(0);
-                    propType = TypeSet(Type.CONST);
-                }
-                else if (instrArg && instrArg.opcode is &IS_REFPTR)
-                {
-                    propVal = instrArg.getArg(0);
-                    propType = TypeSet(Type.REFPTR);
-                }
-                else if (instrArg && instrArg.opcode is &IS_STRING)
-                {
-                    propVal = instrArg.getArg(0);
-                    propType = TypeSet(Type.STRING);
-                }
-                else if (instrArg && instrArg.opcode is &IS_OBJECT)
-                {
-                    propVal = instrArg.getArg(0);
-                    propType = TypeSet(Type.OBJECT);
-                }
-                else if (instrArg && instrArg.opcode is &IS_ARRAY)
-                {
-                    propVal = instrArg.getArg(0);
-                    propType = TypeSet(Type.ARRAY);
-                }
-                else if (instrArg && instrArg.opcode is &IS_CLOSURE)
-                {
-                    propVal = instrArg.getArg(0);
-                    propType = TypeSet(Type.CLOSURE);
-                }
-                else if (instrArg && instrArg.opcode is &IS_RAWPTR)
-                {
-                    propVal = instrArg.getArg(0);
-                    propType = TypeSet(Type.RAWPTR);
-                }
-
-                // If known true or unknown boolean or unknown type
-                if ((arg0Type.state == TypeSet.KNOWN_BOOL && arg0Type.val == true) ||
-                    (arg0Type.state == TypeSet.KNOWN_TYPE) ||
-                    (arg0Type == ANY))
-                    queueSucc(instr.getTarget(0), typeMap, cast(IRDstValue)propVal, propType);
-
-                // If known false or unknown boolean or unknown type
-                if ((arg0Type.state == TypeSet.KNOWN_BOOL && arg0Type.val == false) ||
-                    (arg0Type.state == TypeSet.KNOWN_TYPE) ||
-                    (arg0Type == ANY))
-                    queueSucc(instr.getTarget(1), typeMap, null, ANY);
+                // Queue both branch edges
+                queueSucc(instr.getTarget(0), typeMap, instr, ANY);
+                queueSucc(instr.getTarget(1), typeMap, instr, ANY);
 
                 return ANY;
             }
@@ -828,14 +775,11 @@ class TypeProp
                 }
             }
 
-            /*
-            writeln("block: ", block.getName, "(", block.fun.getName, ",", block.fun.numBlocks, ")");
-            writeln("  typeMap.length=", typeMap.length);
-            */
-
             // For each phi node
             for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
             {
+                //writeln("  evaluating phi: ", phi);
+
                 // Re-evaluate the type of the phi node
                 typeMap[phi] = evalPhi(phi);
             }
@@ -843,6 +787,8 @@ class TypeProp
             // For each instruction
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             {
+                //writeln("  evaluating instr:", instr);
+
                 // Store the argument types for later querying
                 if (instr !in instrArgTypes)
                     instrArgTypes[instr] = new TypeSet[instr.numArgs];
@@ -853,7 +799,7 @@ class TypeProp
                 // Re-evaluate the instruction's type
                 typeMap[instr] = evalInstr(instr, typeMap);
 
-                //writeln(instr, " => ", outTypes[instr]);
+                //writeln("  instr eval done");
             }
         }
 
