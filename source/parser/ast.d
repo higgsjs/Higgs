@@ -651,10 +651,13 @@ class FunExpr : ASTExpr
     /// List of local variables declarations
     IdentExpr[] locals;
 
-    /// Set of escaping variables (captured by closures)
-    bool[IdentExpr] escpVars;    
+    /// Set of escaping variables (captured by nested closures)
+    bool[IdentExpr] escpVars;
 
-    /// Captured closure variables
+    /// Set of variables captured by this closure
+    bool[IdentExpr] captVarSet;
+
+    /// Ordered list of variables captured by this closure
     IdentExpr[] captVars;
 
     /// List of nested function declarations

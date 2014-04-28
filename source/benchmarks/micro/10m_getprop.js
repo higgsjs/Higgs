@@ -8,4 +8,6 @@ function test()
     }
 }
 
+//print(test.irString());
+
 test();

@@ -521,7 +521,7 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     foreach (idx, ident; ast.captVars)
     {
         auto getVal = genRtCall(
-            bodyCtx, 
+            bodyCtx,
             "clos_get_cell",
             [fun.closVal, cast(IRValue)IRConst.int32Cst(cast(int32_t)idx)],
             fun.ast.pos
@@ -1638,6 +1638,16 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 [exprVal],
                 expr.pos
             );
+        }
+
+        // Void operator
+        else if (op.str == "void")
+        {
+            // Evaluate the subexpression
+            exprToIR(ctx, unExpr.expr);
+
+            // Produce the undefined value
+            return IRConst.undefCst;
         }
 
         // Delete operator

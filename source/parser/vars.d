@@ -109,7 +109,7 @@ class Scope
     */
     IdentExpr resolve(IdentExpr ident)
     {
-        auto decl = resolve(ident.name, fun);
+        auto decl = resolve(ident.name, this.fun);
 
         //writefln("unresolved: %s", ident);
 
@@ -132,8 +132,12 @@ class Scope
             if (fun !is from)
             {
                 fun.escpVars[decl] = true;
-                if (from.captVars.canFind(decl) is false)
+
+                if (decl !in from.captVarSet)
+                {
                     from.captVars ~= decl;
+                    from.captVarSet[decl] = true;
+                }
             }
 
             return decl;
@@ -149,7 +153,12 @@ class Scope
             if (decl !is null && from !is fun && decl !in fun.escpVars)
             {
                 fun.escpVars[decl] = true;
-                fun.captVars ~= decl;
+
+                if (decl !in fun.captVarSet)
+                {
+                    fun.captVars ~= decl;
+                    fun.captVarSet[decl] = true;
+                }
             }
 
             return decl;
@@ -338,7 +347,7 @@ void resolveRefs(ASTStmt stmt, Scope s)
         resolveRefs(ifStmt.trueStmt, s);
         resolveRefs(ifStmt.falseStmt, s);
     }
-    
+
     else if (auto whileStmt = cast(WhileStmt)stmt)
     {
         resolveRefs(whileStmt.testExpr, s);

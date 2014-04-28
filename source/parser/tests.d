@@ -242,6 +242,10 @@ unittest
     testParse("new Foo;");
     testParse("new Foo + 2");
 
+    testParse("delete a");
+    testParse("typeof a");
+    testParse("void a");
+
     testParse("a.b");
     testParse("a.b()");
     testParse("a.delete + 2");

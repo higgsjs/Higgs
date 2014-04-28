@@ -113,40 +113,58 @@ TODO: look into ECOOLPS workshop, OOPSLA, sweden, July 28
 - Marc says: whip out draft in an afternoon, spew out ideas
   - goto workshop, say things, what we do, have something to say
 
+FIXME: type analysis can't handle getProp loop?
+- possibly because type is unknown at entry...
+- try tagging the output of some call_prims?
+
 Meeting:
+- Got invited to midwest.io, Kansas City, refused
 - Fixed GC/regalloc bug, added typeWritten flag to reg alloc state
   - Slightly smaller code size, less redundant type writes
 - Fixed analysis slowness using liveness info
   - Very bad scaling with many SSA values
 - Type analysis working on all benchmarks
+  - but performing very poorly
+  - getProp loop, new obj output not tagged
+  - overflow poorly handled
+  - tag result of some call_prims? BBV doesn't really need this
 - Resized graphs in paper
 - Added octane benchmarks to repo
   - May get some working
 
 TODO: book DConf trip, plane, hotel
 
-TODO: void expr, unary prefix operator, produces undefined
-- needed by zlib benchmark
-./higgs --e "runZlib()" benchmarks/octane/base.js benchmarks/octane/zlib-data.js benchmarks/octane/zlib.js 
-
-TODO: check type analysis code, very bad perf
-- are we eliminating much type tests?
-- conceive obj getProp microbenchmark on purpose
-
-TODO: add noted citations to paper
 
 
 
 
 
 
-
-
-
-[DONE] TODO: copy octane benchmarks into repo, as-is
 
 [DONE] FIXME: nextProp, redundant captvars
 - list contails many duplicates
+code size (bytes): 423263
+
+[DONE] TODO: void expr, unary prefix operator, produces undefined
+- needed by zlib benchmark
+./higgs --e "runZlib()" benchmarks/octane/base.js benchmarks/octane/zlib-data.js benchmarks/octane/zlib.js
+- add parser & core tests
+
+[DONE] TODO: check type analysis code, very bad perf
+- are we eliminating much type tests?
+./higgs --jit_maxvers=0 --stats benchmarks/micro/10m_getprop.js
+20M tests
+is_object: 10000782
+is_const: 10000275
+./higgs --jit_maxvers=0 --stats benchmarks/micro/10m_getprop.js
+10M tests
+is_const: 10000275
+./higgs --jit_typeprop --jit_maxvers=0 --stats benchmarks/micro/10m_getprop.js
+20M tests!
+
+[DONE] TODO: add noted citations to paper
+
+[DONE] TODO: copy octane benchmarks into repo, as-is
 
 [DONE] TODO: run experiments, where are we at, performance-wise, w/ type analysis?
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
