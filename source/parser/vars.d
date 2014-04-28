@@ -132,7 +132,8 @@ class Scope
             if (fun !is from)
             {
                 fun.escpVars[decl] = true;
-                from.captVars ~= decl;
+                if (from.captVars.canFind(decl) is false)
+                    from.captVars ~= decl;
             }
 
             return decl;

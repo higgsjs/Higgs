@@ -87,6 +87,9 @@ TODO: May, approach Moz, Apple, FB wrt internship
 TODO: setup automated stat gathering for the paper
 - avg code size increase, max code size increase, etc.
 
+TODO: calls, shouldn't need to tag RA, closure, arg count?
+- $argc problematic if not tagged, need $ir_get_argc()
+
 ------------------------------------------------------------------------------
 
 April 30th, paper preliminaries
@@ -110,31 +113,45 @@ TODO: look into ECOOLPS workshop, OOPSLA, sweden, July 28
 - Marc says: whip out draft in an afternoon, spew out ideas
   - goto workshop, say things, what we do, have something to say
 
-TODO: calls, shouldn't need to tag RA, closure, arg count?
-- $argc problematic if not tagged, need $ir_get_argc()
-
 Meeting:
 - Fixed GC/regalloc bug, added typeWritten flag to reg alloc state
   - Slightly smaller code size, less redundant type writes
 - Fixed analysis slowness using liveness info
   - Very bad scaling with many SSA values
 - Type analysis working on all benchmarks
+- Resized graphs in paper
+- Added octane benchmarks to repo
+  - May get some working
 
 TODO: book DConf trip, plane, hotel
 
-TODO: copy octane benchmarks into repo, as-is, except css
+TODO: void expr, unary prefix operator, produces undefined
+- needed by zlib benchmark
+./higgs --e "runZlib()" benchmarks/octane/base.js benchmarks/octane/zlib-data.js benchmarks/octane/zlib.js 
 
-FIXME: nextProp, redundant captvars
+TODO: check type analysis code, very bad perf
+- are we eliminating much type tests?
+- conceive obj getProp microbenchmark on purpose
+
+TODO: add noted citations to paper
+
+
+
+
+
+
+
+
+
+[DONE] TODO: copy octane benchmarks into repo, as-is
+
+[DONE] FIXME: nextProp, redundant captvars
 - list contails many duplicates
 
-
-
-
-
-
-
-
 [DONE] TODO: run experiments, where are we at, performance-wise, w/ type analysis?
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
 - No TA, no BBV
     total type tests: 6481332
     code size (bytes): 411186
