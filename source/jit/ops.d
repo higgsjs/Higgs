@@ -864,29 +864,6 @@ alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
 alias StoreOp!(64, Type.FUNPTR) gen_store_funptr;
 alias StoreOp!(64, Type.MAPPTR) gen_store_mapptr;
 
-/**
-Test if an instruction is followed by an if_true branching on its value
-*/
-bool ifUseNext(IRInstr instr)
-{
-    return (
-        instr.next &&
-        instr.next.opcode is &IF_TRUE &&
-        instr.next.getArg(0) is instr
-    );
-}
-
-/**
-Test if our argument precedes and generates a boolean value
-*/
-bool boolArgPrev(IRInstr instr)
-{
-    return (
-        instr.getArg(0) is instr.prev &&
-        instr.prev.opcode.boolVal
-    );
-}
-
 void IsTypeOp(Type type)(
     BlockVersion ver,
     CodeGenState st,
@@ -912,7 +889,6 @@ void IsTypeOp(Type type)(
         testResult = (type is knownType)? TestResult.TRUE:TestResult.FALSE;
     }
 
-    /*
     // If the type analysis was run
     if (auto typeInfo = st.callCtx.fun.typeInfo)
     {
@@ -958,7 +934,6 @@ void IsTypeOp(Type type)(
             testResult = propResult;
         }
     }
-    */
 
     // If the type test result is known
     if (testResult != TestResult.UNKNOWN)

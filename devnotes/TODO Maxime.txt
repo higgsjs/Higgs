@@ -84,9 +84,6 @@ TODO: May, approach Moz, Apple, FB wrt internship
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
 
-TODO: setup automated stat gathering for the paper
-- avg code size increase, max code size increase, etc.
-
 TODO: calls, shouldn't need to tag RA, closure, arg count?
 - $argc problematic if not tagged, need $ir_get_argc()
 
@@ -127,19 +124,50 @@ Meeting:
   - but performing very poorly
   - getProp loop, new obj output not tagged
   - overflow poorly handled
-  - tag result of some call_prims? BBV doesn't really need this
-- Resized graphs in paper
+  - tag result of some call_prims? BBV doesn't really need this, but could help
+- Paper
+  - Resized graphs
+  - Added type refinement citation
 - Added octane benchmarks to repo
   - May get some working
+  - void operator
 
 TODO: book DConf trip, plane, hotel
 
+TODO: setup automated stat gathering for the paper
+- avg code size increase, max code size increase, etc.
+
+TODO: refactor TypeVal into TypeSet, uint32_t
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=20"
+
+TODO: remove bool prop from TypeProp, for simplicity
+- Have IsTypeOp do queueSucc, as in BBV
 
 
 
 
 
 
+
+
+
+
+
+
+[DONE] TODO: run experiments, where are we at, performance-wise, w/ type analysis?
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
+- No TA, no BBV
+    code size (bytes): 404265
+    total type tests: 6479992
+- TA
+    code size (bytes): 402910
+    total type tests: 5560845
+- BBV
+    code size (bytes): 423263
+    total type tests: 2922633
 
 [DONE] FIXME: nextProp, redundant captvars
 - list contails many duplicates
@@ -165,23 +193,6 @@ is_const: 10000275
 [DONE] TODO: add noted citations to paper
 
 [DONE] TODO: copy octane benchmarks into repo, as-is
-
-[DONE] TODO: run experiments, where are we at, performance-wise, w/ type analysis?
-./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
-./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
-./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
-- No TA, no BBV
-    total type tests: 6481332
-    code size (bytes): 411186
-    exec time (ms): 50
-- TA
-    code size (bytes): 411518
-    exec time (ms): 62
-    total type tests: 6480090
-- BBV
-    code size (bytes): 430260
-    exec time (ms): 41
-    total type tests: 2923210
 
 [DONE] TODO: get type analysis working on ./benchmark.py
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=20"

@@ -1453,6 +1453,29 @@ class IRInstr : IRDstValue
 }
 
 /**
+Test if an instruction is followed by an if_true branching on its value
+*/
+bool ifUseNext(IRInstr instr)
+{
+    return (
+        instr.next &&
+        instr.next.opcode is &IF_TRUE &&
+        instr.next.getArg(0) is instr
+    );
+}
+
+/**
+Test if our argument precedes and generates a boolean value
+*/
+bool boolArgPrev(IRInstr instr)
+{
+    return (
+        instr.getArg(0) is instr.prev &&
+        instr.prev.opcode.boolVal
+    );
+}
+
+/**
 Recover the callee name for a call instruction, if possible.
 This function is used to help print sensible error messages.
 */
