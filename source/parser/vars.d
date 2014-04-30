@@ -133,7 +133,7 @@ class Scope
             {
                 fun.escpVars[decl] = true;
 
-                if (decl !in from.captVarSet)
+                if (from !is null && decl !in from.captVarSet)
                 {
                     from.captVars ~= decl;
                     from.captVarSet[decl] = true;
@@ -196,9 +196,20 @@ void resolveVars(FunExpr fun, Scope parentSc = null)
     // Resolve references in the function body
     resolveRefs(fun.bodyStmt, s);
 
-    // If the function has captured variables, it needs a closure argument
-    if (fun.captVars.length > 0)
-        fun.usesClos = true;
+    // If this function uses eval
+    if (fun.usesEval)
+    {
+        // Traverse the scope chain going through all parents
+        for (auto curScope = s; curScope !is null; curScope = curScope.parent)
+        {
+            // For each declaration
+            foreach (name, ident; curScope.decls)
+            {
+                // Capture this identifier in a virtual closure
+                s.resolve(name, null);
+            }
+        }
+    }
 }
 
 /**
@@ -229,7 +240,7 @@ void findDecls(ASTStmt stmt, Scope s)
         findDecls(ifStmt.trueStmt, s);
         findDecls(ifStmt.falseStmt, s);
     }
-    
+
     else if (auto whileStmt = cast(WhileStmt)stmt)
     {
         findDecls(whileStmt.bodyStmt, s);
@@ -509,16 +520,17 @@ void resolveRefs(ASTExpr expr, Scope s)
         // Resolve this variable reference
         s.resolve(identExpr);
 
-        // If this may be a reference to the "arguments object,
+        // If this may be a reference to the "arguments" object,
         // mark the function as possibly using arguments
-        if (identExpr.declNode is s.fun.argObjIdent && 
+        if (identExpr.declNode is s.fun.argObjIdent &&
             s.fun.argObjIdent !is null)
             s.fun.usesArguments = true;
 
-        // If this is the "this" argument, mark the function as
-        // using its this reference
-        if (identExpr.name == "this")
-            s.fun.usesThis = true;
+        // If this resolves to the global "eval" symbol,
+        // mark the function as possibly using eval
+        if (identExpr.name == "eval"w &&
+            identExpr.declNode is null)
+            s.fun.usesEval = true;
 
         //writefln("resolved ref: %s => %s", identExpr, identExpr.declNode);
     }
