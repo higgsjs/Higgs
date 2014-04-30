@@ -924,12 +924,6 @@ class CodeGenState
         // Get the current operand for the argument value
         auto curOpnd = getWordOpnd(argVal, numBits);
 
-        /*
-        as.printStr("getWordOpnd for " ~ argVal.toString);
-        as.printStr("curOpnd=" ~ curOpnd.toString);
-        as.printUint(curOpnd);
-        */
-
         // If the argument is already in a register
         if (curOpnd.isReg)
         {

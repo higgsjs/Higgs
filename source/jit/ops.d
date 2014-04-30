@@ -509,14 +509,6 @@ void ShiftOp(string op)(
     auto opnd1 = st.getWordOpnd(as, instr, 1, 8, X86Opnd.NONE, true);
     auto outOpnd = st.getOutOpnd(as, instr, 32, false);
 
-    /*
-    writeln(instr);
-    writeln(opnd0);
-    writeln(opnd1);
-    writeln(outOpnd);
-    writeln("---");
-    */
-
     auto shiftOpnd = outOpnd;
 
     // If the shift amount is a constant
@@ -568,11 +560,6 @@ void ShiftOp(string op)(
 
     // Set the output type
     st.setOutType(as, instr, Type.INT32);
-
-    /*
-    writeln(as.toString(startPos, as.getWritePos));
-    writeln();
-    */
 }
 
 alias ShiftOp!("sal") gen_lsft_i32;

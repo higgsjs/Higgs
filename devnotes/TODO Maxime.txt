@@ -139,11 +139,6 @@ TODO: setup automated stat gathering for the paper
 
 FIXME: ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js ???
 
-TODO: sunspider, missing benchmarks, look in Moz repo?
-https://www.webkit.org/perf/sunspider-1.0.2/sunspider-1.0.2/sunspider-test-contents.js
-- start at date-format-tofte
-- string-tagcloud, string-unpack-code, string-validate-input, regexp-dna
-
 TODO: eliminate alloc init loops?
 - would make alloc faster, permit more inlining
 - may have to make it so that MISSING is the 0,0 value
@@ -166,6 +161,9 @@ TODO: implement full eval support
 
 TODO: work on conf paper, add TODO notes
 
+FIXME: string-validate-input segfaults
+
+FIXME: string-unpack-code, SyntaxError???
 
 
 
@@ -175,6 +173,8 @@ TODO: work on conf paper, add TODO notes
 
 
 
+[DONE] TODO: fetch missing sunspider benchmarks
+- string-tagcloud, string-unpack-code, string-validate-input, regexp-dna
 
 [DONE] TODO: read/skim you a paper
 - Download DLS13 paper

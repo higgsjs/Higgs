@@ -27,6 +27,7 @@ BENCHMARKS = {
     '3d-morph':'benchmarks/sunspider/3d-morph.js',
     '3d-raytrace':'benchmarks/sunspider/3d-raytrace.js',
     'binary-trees':'benchmarks/sunspider/access-binary-trees.js',
+    'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
     'fannkuch':'benchmarks/sunspider/access-fannkuch.js',
     'nbody':'benchmarks/sunspider/access-nbody.js',
     'nsieve':'benchmarks/sunspider/access-nsieve.js',
@@ -35,7 +36,6 @@ BENCHMARKS = {
     'bitwise-and':'benchmarks/sunspider/bitops-bitwise-and.js',
     'nsieve-bits':'benchmarks/sunspider/bitops-nsieve-bits.js',
     'recursive':'benchmarks/sunspider/controlflow-recursive.js',
-
     'crypto-aes':'benchmarks/sunspider/crypto-aes.js',
     'crypto-md5':'benchmarks/sunspider/crypto-md5.js',
     'crypto-sha1':'benchmarks/sunspider/crypto-sha1.js',
