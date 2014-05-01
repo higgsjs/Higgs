@@ -729,43 +729,19 @@ void visitStackRoots(VM vm)
         // If this is not a primitive
         if (fun.isPrim is false)
         {
-            forward(fun.closVal.outSlot);
+            // Forward the closure pointer
+            // Note: the closure pointer is not type tagged
+            auto closIdx = fun.closVal.outSlot;
+            wsp[closIdx] = gcForward(vm, wsp[closIdx], Type.CLOSURE);
+
+            // Forward the "this" pointer
             forward(fun.thisVal.outSlot);
         }
 
         // Forward the return address
-        forward(fun.raVal.outSlot);
-
-        /*
-        // For each local in this frame
-        for (StackIdx idx = 0; idx < frameSize; ++idx)
-        {
-            //writefln("ref %s/%s", idx, frameSize);
-
-            Word word = wsp[idx];
-            Type type = tsp[idx];
-
-            // If this is a pointer, forward it
-            wsp[idx] = gcForward(vm, word, type);
-
-            auto fwdPtr = wsp[idx].ptrVal;
-
-            assert (
-                !isHeapPtr(type) ||
-                fwdPtr == null ||
-                vm.inToSpace(fwdPtr),
-                format(
-                    "invalid forwarded stack pointer\n" ~
-                    "ptr     : %s\n" ~
-                    "to-alloc: %s\n" ~
-                    "to-limit: %s",
-                    fwdPtr,
-                    vm.toStart,
-                    vm.toLimit
-                )
-            );
-        }
-        */
+        // Note: the return address is not type tagged
+        auto raIdx = fun.raVal.outSlot;
+        wsp[raIdx] = gcForward(vm, wsp[raIdx], Type.RETADDR);
 
         //writeln("done visiting frame");
     };

@@ -524,6 +524,7 @@ function string_replace(searchValue, replaceValue)
 
         return nsparts.join("");
     }
+
     return this.toString();
 }
 

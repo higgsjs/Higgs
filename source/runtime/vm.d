@@ -1187,10 +1187,6 @@ class VM
             */
 
             // Get the return address
-            assert (
-                tsp[raSlot] is Type.RETADDR,
-                "invalid type tag at return address slot"
-            );
             auto retAddr = cast(CodePtr)wsp[raSlot].ptrVal;
 
             // Find the return address entry

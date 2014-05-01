@@ -1804,7 +1804,6 @@ void gen_call_prim(
             // Write the return address on the stack
             as.movAbsRef(vm, scrRegs[0], target0, 0);
             as.setWord(raSlot, scrRegs[0].opnd(64));
-            as.setType(raSlot, Type.RETADDR);
 
             // Jump to the function entry block
             jmp32Ref(as, vm, entryVer, 0);
@@ -1955,7 +1954,6 @@ void gen_call(
 
     // Write the closure argument
     movArgWord(as, numArgs + 2, closReg);
-    movArgType(as, numArgs + 2, X86Opnd(Type.CLOSURE));
 
     // Compute the total number of locals and extra arguments
     // input : scr1, IRFunction
@@ -1998,7 +1996,6 @@ void gen_call(
             // Write the return address on the stack
             as.movAbsRef(vm, scrReg3, target0, 0);
             movArgWord(as, numArgs + 3, scrReg3.opnd);
-            movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
 
             // Adjust the stack pointers
             //as.printStr("pushing");
@@ -2215,7 +2212,6 @@ void gen_call_new(
         false
     );
     movArgWord(as, numArgs + 2, closReg);
-    movArgType(as, numArgs + 2, X86Opnd(Type.CLOSURE));
 
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
@@ -2281,7 +2277,6 @@ void gen_call_new(
             // Write the return address on the stack
             as.movAbsRef(vm, scrReg3, target0, 0);
             movArgWord(as, numArgs + 3, scrReg3.opnd);
-            movArgType(as, numArgs + 3, X86Opnd(Type.RETADDR));
 
             // Adjust the stack pointers
             //as.printStr("pushing");
