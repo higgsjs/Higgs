@@ -1,3 +1,8 @@
+TODO: check out failing sunspider tests
+      - string-validate-input segfaults
+      - string-unpack-code has some odd bug
+      - string-tagcloud has some error in its parseJSON     
+
 TODO: all libs
       - cleaner API designs
       - perf also needs to be a consideration; all apis/libs should be designed so that it's easy to do
