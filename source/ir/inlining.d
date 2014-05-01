@@ -118,38 +118,40 @@ void inlinePass(VM vm, IRFunction caller)
             astToIR(vm, callee.ast, callee);
         }
 
+        auto name = callee.getName();
+
         if (callee.numBlocks > 4
-            && !callee.getName.startsWith("$rt_valIsObj")
-            && !callee.getName.startsWith("$rt_minus")
-            && !callee.getName.startsWith("$rt_addInt")
-            && !callee.getName.startsWith("$rt_addIntFloat")
-            && !callee.getName.startsWith("$rt_subInt")
-            && !callee.getName.startsWith("$rt_subIntFloat")
-            && !callee.getName.startsWith("$rt_mulIntFloat")
-            && !callee.getName.startsWith("$rt_modInt")
-            && !callee.getName.startsWith("$rt_and")
-            && !callee.getName.startsWith("$rt_or")
-            && !callee.getName.startsWith("$rt_xor")
-            && !callee.getName.startsWith("$rt_lsft")
-            && !callee.getName.startsWith("$rt_rsft")
-            && !callee.getName.startsWith("$rt_ursft")
-            && !callee.getName.startsWith("$rt_ltIntFloat")
-            && !callee.getName.startsWith("$rt_gtIntFloat")
-            && !callee.getName.startsWith("$rt_geIntFloat")
-            && !callee.getName.startsWith("$rt_eqNull")
-            && !callee.getName.startsWith("$rt_getPropField")
-            && !callee.getName.startsWith("$rt_getPropMethod")
-            && !callee.getName.startsWith("$rt_getPropElem")
-            && !callee.getName.startsWith("$rt_getPropLength")
-            //&& !callee.getName.startsWith("$rt_setPropField")
-            && !callee.getName.startsWith("$rt_setPropElem")
+            && !name.startsWith("$rt_valIsObj")
+            && !name.startsWith("$rt_minus")
+            && !name.startsWith("$rt_addInt")
+            && !name.startsWith("$rt_addIntFloat")
+            && !name.startsWith("$rt_subInt")
+            && !name.startsWith("$rt_subIntFloat")
+            && !name.startsWith("$rt_mulIntFloat")
+            && !name.startsWith("$rt_modInt")
+            && !name.startsWith("$rt_and")
+            && !name.startsWith("$rt_or")
+            && !name.startsWith("$rt_xor")
+            && !name.startsWith("$rt_lsft")
+            && !name.startsWith("$rt_rsft")
+            && !name.startsWith("$rt_ursft")
+            && !name.startsWith("$rt_ltIntFloat")
+            && !name.startsWith("$rt_gtIntFloat")
+            && !name.startsWith("$rt_geIntFloat")
+            && !name.startsWith("$rt_eqNull")
+            && !name.startsWith("$rt_getPropField")
+            && !name.startsWith("$rt_getPropMethod")
+            && !name.startsWith("$rt_getPropElem")
+            && !name.startsWith("$rt_getPropLength")
+            //&& !name.startsWith("$rt_setPropField")
+            && !name.startsWith("$rt_setPropElem")
         )
             continue;
 
-        if (callee.getName.startsWith("$rt_throw"))
+        if (name.startsWith("$rt_throw"))
             continue;
 
-        //writefln("inlining %s in %s (%s blocks)", callee.getName, caller.getName, callee.numBlocks);
+        //writefln("inlining %s in %s (%s blocks)", name, caller.getName, callee.numBlocks);
 
         // Inline the callee
         inlineCall(callSite, callee);

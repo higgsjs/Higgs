@@ -862,7 +862,7 @@ void writeRMMulti(
     else if (opnd0.isMem)
         opndSize = opnd0.mem.size;
     else
-        assert (false, "invalid first operand: " ~ opnd0.toString());
+        assert (false, "invalid first operand for " ~ mnem ~ ": " ~ opnd0.toString());
 
     // Check the size of opnd1
     if (opnd1.isReg)
@@ -1259,7 +1259,7 @@ void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
 /// imul - Signed integer multiplication with three operands (one immediate)
 void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
 {
-    cb.writeASM("imul", opnd0, opnd1);
+    cb.writeASM("imul", opnd0, opnd1, opnd2);
 
     assert (opnd0.isReg, "invalid first operand");
     auto opndSize = opnd0.reg.size;

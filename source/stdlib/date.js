@@ -433,7 +433,6 @@ function parseDate (
     }
 
     this.__yr__ = (positive ? parseNumber() : -parseNumber());
-    print(this.__yr__);
 
     if (current() !== 45) // '-'
         return;

@@ -85,30 +85,38 @@ function test()
     if (lshift_test(2,3) !== 16)
         return 1;
     if (lshift_test(0xFFFFFFFF, 1) !== -2)
-        return 2; 
-    if (lshift_test2(2) !== 16)
+        return 2;
+    if (lshift_test(1, -1) !== -2147483648)
         return 3;
- 
-    if (rshift_test(8,2) !== 2)
+    if (lshift_test(1, -2) !== 1073741824)
         return 4;
-    if (rshift_test(0xFFFFFFFF, 1) !== -1)
+    if (lshift_test2(2) !== 16)
         return 5;
-    if (rshift_test2(8) !== 2)
-        return 5;
-    if (rshift_test(-2, 1) !== -1)
+
+    if (rshift_test(8,2) !== 2)
         return 6;
-    if (rshift_test3(-2) !== -1)
+    if (rshift_test(0xFFFFFFFF, 1) !== -1)
+        return 7;
+    if (rshift_test(-2, 1) !== -1)
         return 8;
+    if (rshift_test(1, -1) !== 0)
+        return 9;
+    if (rshift_test(1, -2) !== 0)
+        return 10;
+    if (rshift_test2(8) !== 2)
+        return 11;
+    if (rshift_test3(-2) !== -1)
+        return 12;
 
     if (urshift_test(-2, 30) !== 3)
-        return 9;
+        return 13;
     if (urshift_test(0xFFFFFFFF, 1) !== 0x7FFFFFFF)
-        return 11;
+        return 14;
     if (urshift_test2(-2) !== 3)
-        return 10;
+        return 15;
 
     if (shift_out_bits(15, 2) !== 12)
-        return 12;
+        return 16;
 
     return 0;
 }

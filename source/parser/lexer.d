@@ -107,6 +107,7 @@ OpInfo[] operators = [
     { "++"w, 1, 13, 'r' },
     { "--"w, 1, 13, 'r' },
     { "typeof"w, 1, 13, 'r' },
+    { "void"w, 1, 13, 'r' },
     { "delete"w, 1, 13, 'r' },
 
     // Multiplication/division/modulus

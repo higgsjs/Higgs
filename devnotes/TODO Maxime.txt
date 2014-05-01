@@ -33,9 +33,6 @@ TODO: think about shapes more
   - class ObjShape
 - no more "make_map"
 
-TODO: not missing global prop opt?
-- observation: if read once, we know its not missing
-
 FIXME: empty fun, ret undefined twice
 - see 200m_calls
 - second one is from ctor entry
@@ -43,11 +40,11 @@ FIXME: empty fun, ret undefined twice
   - needs to assume frame size is initial
 - should push locals in entry, pop in ret
 
-TODO: try to optimize inlineCall
+TODO: optimize inlineCall
 - inlinePass does not do liveness analysis, is slow on its own
 - what are the slowest parts of it?
 
-TODO: try to optimize liveness analysis
+TODO: optimize liveness analysis
 - record total time taken in stats
 
 TODO: transform jit.compileUnit into jit.execUnit
@@ -58,21 +55,19 @@ TODO: transform jit.compileUnit into jit.execUnit
   - create some sort of closure call bridge with a C call conv
   - having a "C adapter" for a specific closure seems sensible
 
-FIXME: string-fasta is slower than before? fast compile time, profile quickly
-TODO: profile again, lots of interesting things to learn!
-
 FIXME: parseInt('32') takes about 20ms???
 
-TODO: val can be both in reg and stack
-
-TODO: allow reusing input reg if value is dead?
-- special flag for getOutOpnd?
-
-TODO: bias toBool for property access expressions, isNaN, bitwise result
+TODO: optimize dynamic calls?
+- adjust stack params in callee
+- can we pass args through registers?
+TODO: compare perf of calls vs dynamic calls?
 
 TODO: profile awful slow compilation speed
 TODO: investigate why inlining getPropElem causes so much slowdown
 - do we have that many more blocks, versions?
+TODO: profile compilation time, big eval loop?
+
+TODO: bias toBool for property access expressions, isNaN, bitwise result
 
 ------------------------------------------------------------------------------
 
@@ -85,67 +80,421 @@ TODO: May, approach Moz, Apple, FB wrt internship
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
 
-Marc: start writing paper soon
-- Setup repo
-- Outline sections
-- Write ideas as they come
+TODO: calls, shouldn't need to tag RA, closure, arg count?
+- $argc problematic if not tagged, need $ir_get_argc()
+
+------------------------------------------------------------------------------
+
+April 30th, paper preliminaries
+-------------------------------
+
+TODO: look into ECOOLPS workshop, OOPSLA, Sweden, July 28
+http://soft-dev.org/events/icooolps14/
+- Submission, May 5th
+- Compilation Optimization OO Lang Progs Systems
+- BBV + reg alloc
+  - May not even need to implement
+- Marc says: whip out draft in an afternoon, spew out ideas
+  - goto workshop, say things, what we do, have something to say
+- good practice for DLS paper
+
+FIXME: type analysis can't handle getProp loop?
+- possibly because type is unknown at entry...
+- try tagging the output of some call_prims?
+
+Blog:
+- OSX support find/progress, Paul Fryzel
+- Graphics lib
+- pong, examples
+- optimizations, further reduced code size
+- paper, type analysis
+- full eval
+
+Meeting:
+- Got invited to midwest.io, Kansas City, refused
+- Fixed GC/regalloc bug, added typeWritten flag to reg alloc state
+  - Slightly smaller code size, less redundant type writes
+- Fixed analysis slowness using liveness info
+  - Very bad scaling with many SSA values
+- Type analysis working on all benchmarks
+  - implemented type set
+  - performing fairly poorly
+  - implemented type set, negative information prop
+  - getProp loop, new obj output not tagged
+  - tag result of some call_prims? BBV doesn't really need this, but could help
+- Paper
+  - Resized graphs
+  - Added type refinement citation
+- Added octane benchmarks to repo
+  - May get some working
+  - void operator
+- To Marc: can you edit BBV diagrams from paper
+  - need them for ECOOLPS paper
+  - mini paper may be good practice/brainstorming for DLS paper
+
+TODO: book DConf trip, plane, hotel
+
+TODO: setup automated stat gathering for the paper
+- avg code size increase, max code size increase, etc.
+
+FIXME: ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js ???
+
+TODO: eliminate alloc init loops?
+- would make alloc faster, permit more inlining
+- may have to make it so that MISSING is the 0,0 value
+
+TODO: add tests for nested eval support
+- accessing vars, changing vars
+TODO: implement full eval support
+- eval can be called as global eval or local eval
+  - different "eval context"
+- if direct/local eval possible, function must behave as if all locals could be captured
+  - graft new IR sub-function into parent? don't add to sub list, but have parent link set
+- parse AST, optionally set parent link, run AST vars pass
+  - may want to pass a parent ptr to AST parsing function
+- eval_str function needs to find who the caller is, determine if direct call?
+  - call instr to get_global "eval"
+  - VM.getCallInstr?
+- need to "ungraft" the AST after vars analysis?
+- PROBLEM: there's no parent pointer in AST nodes
+  - can't just run vars analysis on subfunction, need to rerun the whole thing...
+
+TODO: work on conf paper, add TODO notes
+
+FIXME: string-validate-input segfaults
+
+FIXME: string-unpack-code, SyntaxError???
+
+
+
+
+
+
+
+
+
+[DONE] TODO: fetch missing sunspider benchmarks
+- string-tagcloud, string-unpack-code, string-validate-input, regexp-dna
+
+[DONE] TODO: read/skim you a paper
+- Download DLS13 paper
+
+[DONE] TODO: modify resolveVars to capture all parent locals if usesEval is set
+
+[DONE] TODO: implement usesEval flag
+
+[DONE] TODO: analysis, remove type on false branch
+.subtract
+
+[DONE] TODO: refactor TypeVal into TypeSet, uint32_t
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=20"
+
+[DONE] TODO: remove bool prop from TypeProp, for simplicity
+- Have IsTypeOp do queueSucc, as in BBV
+
+[DONE] TODO: run experiments, where are we at, performance-wise, w/ type analysis?
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
+- No TA, no BBV
+    code size (bytes): 404265
+    total type tests: 6479992
+- TA
+    code size (bytes): 402910
+    total type tests: 5560845
+- BBV
+    code size (bytes): 423263
+    total type tests: 2922633
+
+[DONE] FIXME: nextProp, redundant captvars
+- list contails many duplicates
+code size (bytes): 423263
+
+[DONE] TODO: void expr, unary prefix operator, produces undefined
+- needed by zlib benchmark
+./higgs --e "runZlib()" benchmarks/octane/base.js benchmarks/octane/zlib-data.js benchmarks/octane/zlib.js
+- add parser & core tests
+
+[DONE] TODO: check type analysis code, very bad perf
+- are we eliminating much type tests?
+./higgs --jit_maxvers=0 --stats benchmarks/micro/10m_getprop.js
+20M tests
+is_object: 10000782
+is_const: 10000275
+./higgs --jit_maxvers=0 --stats benchmarks/micro/10m_getprop.js
+10M tests
+is_const: 10000275
+./higgs --jit_typeprop --jit_maxvers=0 --stats benchmarks/micro/10m_getprop.js
+20M tests!
+
+[DONE] TODO: add noted citations to paper
+
+[DONE] TODO: copy octane benchmarks into repo, as-is
+
+[DONE] TODO: get type analysis working on ./benchmark.py
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=20"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_typeprop --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
+
+[DONE] TODO: succ state gen should decide if phi type is written
+- do as the predecessor, save moves
+- code size (bytes): 430232
+
+[DONE] TODO: check if toStack is missing writeType(s)
+
+[DONE] FIXME: typeWritten causing GC bug
+- typeWritten... setting it to true in writeType causes errors... why?
+  - type unwritten???
+- Problem might be with block transitions
+  - Don't need to take sync into account in diff, but must account for it
+  - clear sync flag when creating default version
+  - transition into sync should cause write
+
+[DONE] TODO: try rescaling graphs in paper
+- Take a break to work on the paper
+
+[DONE] TODO: try removing type write in setOutType
+- rename spillRegs to spillValues
+
+[DONE] FIXME: make; ./higgs --jit_typeprop --jit_maxvers=20 benchmarks/sunspider/string-fasta.js
+Assertion failed (runtime/gc.d@435): gcForward: object not in from-space heap
+ptr   : 3
+start : 7F689B14A000
+limit : 7F689C14A000
+header: ???
+- Fails during first GC, visiting stack for nextProp
+- with just maxvers=20, works fine
+- with just typeprop, works fine
+- errors even if prop result not used...
+  - even if not queried, just running the analysis causes issues
+- type tag is wrong while visiting phi value
+  - type string, but value seems to be undef
+  - meant to be integer, string length?
+- quite possibly, we normally don't test the type tag
+  - type tag was probably not written
+- during phi moves, type tag is set as const, known type
+  - do we not spill it?
+Phi to phi moves... Won't spill value if it wasn't in a reg
+setOutType: if value is on stack, we write the type to the stack as well
+Could change this so spillReg takes care of it?
+- Maybe not? Type can become unknown? If it becomes unknown, it must be
+written, so long as the value is live
+
+[DONE] FIXME: core_md5 seems stuck in an infinite loop
+- function has 1324 blocks
+- gets increasingly slow as typeMap grows past 2400+ values
+  - typeMap size keeps slowly growing
+  - no way so many values are live!
+
+[DONE] TODO: get type analysis working on simple benchmarks
+- runs really really slow on nbody's NBodySystem.prototype.advance
+- many temps and blocks to propagate along?
+  - each condition needs to be evaluated, opens a floodgate for values to propagate through
+
+[DONE] FIXME: math-cordic, analysis assertion failed
+make; ./higgs --jit_typeprop --jit_maxvers=20 benchmarks/sunspider/math-cordic.js 
+- Problem is that constant value has no type inf
+  - Should we be able to eval its type on demand?
+  - Just store all arg types, already using that space anyways! ***
+
+[DONE] TODO: get type analysis working on higgs init
+
+[DONE] TODO: check that type analysis doesn't know more than BBV, warn
+
+[DONE] TODO: open issue for lib/plot, specify requirements
+
+[DONE] Meeting:
+- looked at more machine code
+  - array iteration
+  - getProp
+- more code generaton tweaks
+- reconstructing input operand after add with overflow fixes issue
+- obj alloc benchmark, tried with literal
+  - primary slowness comes from function calls
+  - setPropElem not inlined, 75% of exec time
+  - obj_alloc not inlined
+- function calls probably bulk of overhead in many benchmarks
+  - benchmarks with no or few function calls run very fast
+- Began setting up paper, adapting template
+- Octane: seems meant to run in a browser
+  - V8 benchs in the V8 and SpiderMonkey repos
+  - May be able to get some of it working with extra effort
+- type analysis
+  - can't do much wrt overflow... no recompilation, no ignoring of ovf blocks
+  - analysis will necessarily lose very badly in terms of eliminating int/float type tests
+    - right now, analysis made to work similarly to the way BBV propagates types
+    - should we modify it to use a more advanced type repr, type sets? best type analysis we can come up with?
+      - {int, float}, not int means float
+    - do we care much about analysis execution time?
+      - analysis is flow-sensitive, currently quite slow
+- DConf, book plane and hotel, extra days?
+
+[DONE] TODO: convert analysis to "query at given point" model
+
+[DONE] TODO: modify IsTypeOp to use type analysis results
+- check for contradictions between type prop and BBV
+
+[DONE] TODO: explain type analysis issues to Marc
+- Focus on core concerns
+  - slowness
+  - should we change to type sets
+
+[DONE] TODO: add assert for unhandled instructions to type analysis
+
+[DONE] TODO: make type analysis run for Higgs init
+./higgs --jit_typeprop
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
+- store typeMap on IRFunction, like LiveInfo
+- for now, get it to work as it was
+- beware of unhandled instructions
+
+[DONE] TODO: add missing instructions for Higgs init to type analysis
+unhandled instruction: t_41BD = f64_to_str arg_4
+unhandled instruction: t_12940 = alloc_refptr 25
+unhandled instruction: t_129A4 = is_object t_128F8
+unhandled instruction: t_12835 = make_map <map:NULL>, 0
+unhandled instruction: t_12837 = new_clos <fun:encodeURIComponent(12831)>, t_12833, t_12835
+unhandled instruction: t_129EE = map_num_props t_12921
+unhandled instruction: t_129AF = map_prop_idx t_129AE, t_12900, false
+
+[PASS] TODO: download Octane benchmarks
+- V8 and SpiderMonkey clearly use v8 to test offline
+
+[DONE] TODO: look at Tom's dev branch, commit log
+
+[DONE] TODO: add test for shifts by negative value
+d8> 1 << -1
+-2147483648
+d8> 1 << -2
+1073741824
+d8> 1 >> -1
+0
+d8> 1 >> -2
+0
+- Shift val is truncated, low bits are used
+- Check to see if already present
+
+[DONE] FIXME:
+./higgs --jit_genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+; $60 = rsft_i32 59796, $54
+mov rbx, rcx;                           4889CB
+mov eax, 59796;                         B894E90000
+mov cl, dil;                            4088F9
+sar eax, cl;                            D3F8
+mov rcx, rbx;                           4889D9
+mov esi, eax;                           89C6
+code size (bytes): 434887
+
+[DONE] TODO: handle lhs constants in RMMOp
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop_array_itr.js
+- still need to handle 2 imm ops
+- may want to just bite the bullet, handle all cases
+code size (bytes): 434937
+
+[DONE] FIXME: gen_ret, this can be simplified
+mov rax, [qword r14 + 640];             498B8680020000
+sub eax, 1;                             83E801
+cmp eax, 0;                             83F800
+cmovl eax, ebx;                         0F4CC3
+code size (bytes): 443550
+
+[DONE] FIXME: $rt_sub called 1M times in obj literal benchmark...
+code size (bytes): 443579
+
+[DONE] TODO: create repeated obj alloc microbenchmark, look at ASM
+http://js.datamu.com/index.html
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/create_obj_literal.js
+- quite slow
+- setPropElem is not inlined, more than 10x faster if inlined
 
 ------------------------------------------------------------------------------
 
 April 15th, milestone: sufficient performance
 ---------------------------------------------
 
-TODO: optimize dynamic calls?
-- adjust stack params in callee
-- can we pass args through registers?
-TODO: compare perf of calls vs dynamic calls?
+[DONE] TODO: gc/new test, constructor call with one field set to a constant
 
-TODO: calls, shouldn't need to tag RA, arg count?
-- $argc problematic if not tagged
+[DONE] FIXME: $rt_getProp === 'length', super inefficient
+code size (bytes): 444003
 
-TODO: profile compilation time, big eval loop?
-TODO: think about full eval support
-- otherwise implement $ir_make_ptr(int64_cst) and int64 to str
-TODO: look at Tom's dev branch
+[DONE] FIXME: gc/graph, gcForward: object not in from-space heap
+ptr   : 2AF975CDC040
+start : 2AF9793FB000
+limit : 2AF9794719C0
+header: 2
+make; ./higgs --e "print(test())" tests/core/gc/graph.js
+- multiple GCs happen before this problem occurs...
+- visiting frame for Node ctor, "this" value
+  - who triggers the GC?
+- Changing code for Node makes it disappear
+- The pointer is right after the heap limit...
+  - Already forwarded!
 
-FIXME:
+[DONE] TODO: look at ASM for array iteration with counter
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop_array_itr.js
+- still have issues with lhs constants
+
+[DONE] TODO: look at ASM for 3bit
+./higgs --jit_genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+
+[DONE] TODO: rebuild x value after overflow
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop_big_incr.js
+./higgs --nostdlib --stats benchmarks/micro/loop_big_incr.js
+exec time (ms): 2208
+exec time (ms): 1783
+
+[DONE] FIXME:
 ; $2 = mul_i32 8, $1
 mov eax, 8;                             B808000000
 mov ebp, ecx;                           89CD
 imul ebp, eax;                          0FAFE8
 mov edx, ebp;                           89EA
+code size (bytes): 444717
 
-TODO: download Octane benchmarks
-
-TODO: lib/graph using image lib
-- look into terminology
-- look into how matplotlib does it
-- short blog post, bitcoin
-
-Meeting:
-- soft spills
+[DONE] Meeting:
+- soft spills for get_global
   - not as much gains as hoped, but some
 - optimized codegen for several instructions
   - removed redundant instructions
   - optimized branch ordering
-- bugfixes
+- made add reuse arg reg when possible
+  - problem: overflow branch still uses input
+- reduced code size by 3.8%
+  - from 466599 to 448547
+- various bugfixes
 - read type refinement paper
   - use type tests in conditionals to refine type information
+  - doesn't seem like it has cloning or duplication or extra context
 
-TODO: look at having getOutOpnd reuse input arg reg
+[DONE] FIXME:
+; ret $15
+mov rax, [qword r14 + 120];             498B4678
+mov bl, [byte r13 + 15];                418A5D0F
+mov rcx, rax;                           4889C1
+mov dl, bl;                             88DA
+code size (bytes): 448547
+
+[DONE] FIXME:
+; $14 = make_value $0, $4
+mov r9, rsi;                            4989F1
+mov [byte r13 + 14], r8l;               4588450E
+- allow reusing input reg
+code size (bytes): 448696
+
+[DONE] TODO: look at $rt_getPropObj ASM
+
+[DONE] FIXME: parseInt(-1) produces 1
+- sub is not commutative, cannot reuse right arg reg
+
+[DONE] TODO: look at having getOutOpnd reuse input arg reg
 - look at code for loop_big_incr
+- phi has a move
+- add has a move
+code size (bytes): 449623
 
-
-TODO: read type refinement paper
-
-
-
-
-
-
-
-
-
+[DONE] TODO: read type refinement paper
 
 [DONE] FIXME: bug with pong example
 make; ./higgs ../examples/pong.js

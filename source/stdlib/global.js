@@ -51,7 +51,7 @@ function parseInt(string, radix)
     var positive = true;
 
     // Force string value representation.
-    string = new String(string).toString();
+    string = String(string);
 
     // Skip whitespaces.
     while (string_internal_isWhiteSpace(string.charCodeAt(i)))
@@ -110,7 +110,7 @@ function parseInt(string, radix)
 
     // Return numerical value if characters have been read.
     if (j > i)
-       return positive ? n : -n;
+       return positive? n : -n;
 
     return NaN;
 }

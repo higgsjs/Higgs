@@ -698,6 +698,7 @@ unittest
     vm.assertStr("return typeof null", "object");
     vm.assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
     vm.assertStr("x = 3; return typeof x;", "number");
+    vm.assertStr("x = 3; return typeof void x;", "undefined");
     vm.assertStr("delete x; return typeof x;", "undefined");
 }
 
@@ -1520,6 +1521,10 @@ unittest
     writefln("gc/objects");
     vm = new VM();
     vm.load("tests/core/gc/objects.js");
+
+    writefln("gc/new");
+    vm = new VM();
+    vm.load("tests/core/gc/new.js");
 
     writefln("gc/arrays");
     vm = new VM();

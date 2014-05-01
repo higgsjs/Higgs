@@ -651,10 +651,13 @@ class FunExpr : ASTExpr
     /// List of local variables declarations
     IdentExpr[] locals;
 
-    /// Set of escaping variables (captured by closures)
-    bool[IdentExpr] escpVars;    
+    /// Set of escaping variables (captured by nested closures)
+    bool[IdentExpr] escpVars;
 
-    /// Captured closure variables
+    /// Set of variables captured by this closure
+    bool[IdentExpr] captVarSet;
+
+    /// Ordered list of variables captured by this closure
     IdentExpr[] captVars;
 
     /// List of nested function declarations
@@ -666,11 +669,8 @@ class FunExpr : ASTExpr
     /// Flag indicating the arguments object is used
     bool usesArguments = false;
 
-    /// Flag indicating the closure argument is used
-    bool usesClos = false;
-
-    /// Flag indicating the "this" argument is used
-    bool usesThis = false;
+    /// Flag indicating that eval may be used
+    bool usesEval = false;
 
     this(IdentExpr name, IdentExpr[] params, ASTStmt bodyStmt, SrcPos pos = null)
     {

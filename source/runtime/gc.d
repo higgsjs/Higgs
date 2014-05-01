@@ -40,6 +40,7 @@ module runtime.gc;
 import core.memory;
 import std.stdio;
 import std.string;
+import std.conv;
 import ir.ir;
 import ir.ops;
 import runtime.vm;
@@ -183,6 +184,8 @@ refptr heapAlloc(VM vm, size_t size)
 
     // Update and align the allocation pointer
     vm.allocPtr = alignPtr(vm.allocPtr + size);
+
+    assert (inFromSpace(vm, ptr));
 
     // Return the object pointer
     return ptr;
@@ -440,7 +443,7 @@ refptr gcForward(VM vm, refptr ptr)
             ptr,
             vm.heapStart,
             vm.heapLimit,
-            (ptrValid(ptr)? obj_get_header(ptr):0xFFFF)
+            (ptrValid(ptr)? to!string(obj_get_header(ptr)):"???")
         )
     );
 
@@ -670,6 +673,8 @@ void visitStackRoots(VM vm)
             Word word = wsp[idx];
             Type type = tsp[idx];
 
+            //writefln("type: %s", type);
+
             // If this is a pointer, forward it
             wsp[idx] = gcForward(vm, word, type);
 
@@ -693,6 +698,7 @@ void visitStackRoots(VM vm)
 
         //writeln("visiting frame for: ", fun.getName());
         //writeln("frame size: ", frameSize);
+        //writeln("\n", fun, "\n");
 
         // Visit the function this stack frame belongs to
         visitFun(vm, fun);
@@ -711,13 +717,17 @@ void visitStackRoots(VM vm)
             if (val is curInstr)
                 continue;
 
+            // The closure and "this" values will be forwarded later
+            if (val is fun.closVal || val is fun.thisVal)
+                continue;
+
             // Forward the value
             //writeln(val);
             forward(val.outSlot);
         }
 
-        // If this is not a primitive or unit function
-        if (fun.isPrim is false && fun.isUnit is false)
+        // If this is not a primitive
+        if (fun.isPrim is false)
         {
             forward(fun.closVal.outSlot);
             forward(fun.thisVal.outSlot);

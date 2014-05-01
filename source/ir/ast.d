@@ -52,8 +52,10 @@ import ir.iir;
 import ir.inlining;
 import ir.peephole;
 import ir.livevars;
+import ir.typeprop;
 import ir.slotalloc;
 import runtime.vm;
+import options;
 
 /**
 IR generation context
@@ -519,7 +521,7 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     foreach (idx, ident; ast.captVars)
     {
         auto getVal = genRtCall(
-            bodyCtx, 
+            bodyCtx,
             "clos_get_cell",
             [fun.closVal, cast(IRValue)IRConst.int32Cst(cast(int32_t)idx)],
             fun.ast.pos
@@ -613,6 +615,12 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
 
     // Compute liveness information for the function
     fun.liveInfo = new LiveInfo(fun);
+
+    // If the type analysis is enabled
+    if (opts.jit_typeprop)
+    {
+        fun.typeInfo = new TypeProp(fun, fun.liveInfo);
+    }
 
     // Allocate stack slots for the IR instructions
     allocSlots(fun);
@@ -1632,6 +1640,16 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             );
         }
 
+        // Void operator
+        else if (op.str == "void")
+        {
+            // Evaluate the subexpression
+            exprToIR(ctx, unExpr.expr);
+
+            // Produce the undefined value
+            return IRConst.undefCst;
+        }
+
         // Delete operator
         else if (op.str == "delete")
         {
@@ -1735,7 +1753,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
                     return genRtCall(
                         ctx, 
-                        (op.str == "++")? "addInt":"sub",
+                        (op.str == "++")? "addInt":"subInt",
                         [lArg, rArg],
                         expr.pos
                     );
@@ -1938,7 +1956,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 return genRtCall(
                     ctx,
                     "getPropLength",
-                    [baseVal, idxVal],
+                    [baseVal],
                     expr.pos
                 );
             }

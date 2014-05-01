@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):

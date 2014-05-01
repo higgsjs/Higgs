@@ -54,6 +54,7 @@ import ir.ir;
 import ir.ops;
 import ir.ast;
 import ir.livevars;
+import ir.typeprop;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
@@ -159,10 +160,12 @@ void gen_make_value(
     CodeBlock as
 )
 {
-    // Move the word value into the output word
+    // Move the word value into the output word,
+    // allow reusing the input register
     auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-    as.mov(outOpnd, wordOpnd);
+    auto outOpnd = st.getOutOpnd(as, instr, 64, true);
+    if (outOpnd != wordOpnd)
+        as.mov(outOpnd, wordOpnd);
 
     // Get the type value from the second operand
     auto typeOpnd = st.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
@@ -266,7 +269,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         0,
         numBits,
         scrRegs[0].opnd(numBits),
-        false
+        true
     );
 
     // May be reg or immediate
@@ -279,15 +282,46 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         true
     );
 
-    auto opndOut = st.getOutOpnd(as, instr, numBits);
+    // Allow reusing an input register for the output,
+    // except for subtraction which is not commutative
+    auto opndOut = st.getOutOpnd(as, instr, numBits, op != "sub");
 
     if (op == "imul")
     {
         // imul does not support memory operands as output
-        auto scrReg = scrRegs[2].opnd(numBits);
-        as.mov(scrReg, opnd1);
-        mixin(format("as.%s(scrReg, opnd0);", op));
-        as.mov(opndOut, scrReg);
+        auto outReg = opndOut.isReg? opndOut:scrRegs[2].opnd(numBits);
+
+        // TODO: handle this at the peephole level, assert not happening here
+        if (opnd0.isImm && opnd1.isImm)
+        {
+            as.mov(outReg, opnd0);
+            as.mov(scrRegs[0].opnd(numBits), opnd1);
+            as.imul(outReg, scrRegs[0].opnd(numBits));
+        }
+        else if (opnd0.isImm)
+        {
+            as.imul(outReg, opnd1, opnd0);
+        }
+        else if (opnd1.isImm)
+        {
+            as.imul(outReg, opnd0, opnd1);
+        }
+        else if (opnd0 == opndOut)
+        {
+            as.imul(outReg, opnd1);
+        }
+        else if (opnd1 == opndOut)
+        {
+            as.imul(outReg, opnd0);
+        }
+        else
+        {
+            as.mov(outReg, opnd0);
+            as.imul(outReg, opnd1);
+        }
+
+        if (outReg != opndOut)
+            as.mov(opndOut, outReg);
     }
     else
     {
@@ -297,6 +331,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         }
         else if (opnd1 == opndOut)
         {
+            // Note: the operation has to be commutative for this to work
             mixin(format("as.%s(opndOut, opnd0);", op));
         }
         else
@@ -467,29 +502,61 @@ void ShiftOp(string op)(
     CodeBlock as
 )
 {
+    //auto startPos = as.getWritePos;
+
+    // TODO: need way to allow reusing arg 0 reg only, but not arg1
     auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
     auto opnd1 = st.getWordOpnd(as, instr, 1, 8, X86Opnd.NONE, true);
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+    auto outOpnd = st.getOutOpnd(as, instr, 32, false);
 
-    // Save RCX
-    as.mov(scrRegs[1].opnd(64), X86Opnd(RCX));
+    auto shiftOpnd = outOpnd;
 
-    as.mov(scrRegs[0].opnd(32), opnd0);
-    as.mov(X86Opnd(CL), opnd1);
+    // If the shift amount is a constant
+    if (opnd1.isImm)
+    {
+        // Truncate the shift amount bits
+        opnd1 = X86Opnd(opnd1.imm.imm & 31);
+
+        // If opnd0 is not shiftOpnd (or is a constant)
+        if (opnd0 != shiftOpnd)
+            as.mov(shiftOpnd, opnd0);
+    }
+    else
+    {
+        // Spill the CL register if needed
+        if (opnd1 != CL.opnd(8) && outOpnd != CL.opnd(32))
+            st.spillReg(as, CL);
+
+        // If outOpnd is CL, the shift amount register
+        if (outOpnd == CL.opnd(32))
+        {
+            // Use a different register for the shiftee
+            shiftOpnd = scrRegs[0].opnd(32);
+        }
+
+        // If opnd0 is not shiftOpnd (or is a constant)
+        if (opnd0 != shiftOpnd)
+            as.mov(shiftOpnd, opnd0);
+
+        // If the shift amount is not already in CL
+        if (opnd1 != CL.opnd(8))
+        {
+            as.mov(CL.opnd, opnd1);
+            opnd1 = CL.opnd;
+        }
+    }
 
     static if (op == "sal")
-        as.sal(scrRegs[0].opnd(32), X86Opnd(CL));
+        as.sal(shiftOpnd, opnd1);
     else if (op == "sar")
-        as.sar(scrRegs[0].opnd(32), X86Opnd(CL));
+        as.sar(shiftOpnd, opnd1);
     else if (op == "shr")
-        as.shr(scrRegs[0].opnd(32), X86Opnd(CL));
+        as.shr(shiftOpnd, opnd1);
     else
         assert (false);
 
-    // Restore RCX
-    as.mov(X86Opnd(RCX), scrRegs[1].opnd(64));
-
-    as.mov(outOpnd, scrRegs[0].opnd(32));
+    if (shiftOpnd != outOpnd)
+        as.mov(outOpnd, shiftOpnd);
 
     // Set the output type
     st.setOutType(as, instr, Type.INT32);
@@ -549,7 +616,7 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     assert (arity is 1 || arity is 2);
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -611,7 +678,7 @@ void FPToStr(string fmt)(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -784,29 +851,6 @@ alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
 alias StoreOp!(64, Type.FUNPTR) gen_store_funptr;
 alias StoreOp!(64, Type.MAPPTR) gen_store_mapptr;
 
-/**
-Test if an instruction is followed by an if_true branching on its value
-*/
-bool ifUseNext(IRInstr instr)
-{
-    return (
-        instr.next &&
-        instr.next.opcode is &IF_TRUE &&
-        instr.next.getArg(0) is instr
-    );
-}
-
-/**
-Test if our argument precedes and generates a boolean value
-*/
-bool boolArgPrev(IRInstr instr)
-{
-    return (
-        instr.getArg(0) is instr.prev &&
-        instr.prev.opcode.boolVal
-    );
-}
-
 void IsTypeOp(Type type)(
     BlockVersion ver,
     CodeGenState st,
@@ -820,18 +864,75 @@ void IsTypeOp(Type type)(
     // Get an operand for the value's type
     auto typeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
-    // If the type of the argument is known
+    auto testResult = TestResult.UNKNOWN;
+
+    // If the type is available through basic block versioning
     if (typeOpnd.isImm)
     {
-        // Mark the value as a known constant
-        // This will defer writing the value
+        // Get the known type
         auto knownType = cast(Type)typeOpnd.imm.imm;
+
+        // Get the test result
+        testResult = (type is knownType)? TestResult.TRUE:TestResult.FALSE;
+    }
+
+    // If the type analysis was run
+    if (auto typeInfo = st.callCtx.fun.typeInfo)
+    {
+        // Get the type analysis result for this value at this instruction
+        auto propResult = typeInfo.argIsType(instr, 0, type);
+
+        //writeln("result: ", propResult);
+
+        // If the analysis yields a known result
+        if (propResult != TestResult.UNKNOWN)
+        {
+            // Warn if the analysis knows more than BBV
+            if (testResult == TestResult.UNKNOWN && opts.jit_maxvers > 0)
+            {
+                writeln(
+                    "analysis yields more info than BBV for:\n",
+                    instr, "\n",
+                    "prop result:\n",
+                    propResult, "\n",
+                    "in:\n",
+                    instr.block.fun,
+                    "\n"
+                );
+            }
+
+            // If there is a contradiction between versioning and the analysis
+            if (testResult != TestResult.UNKNOWN && propResult != testResult)
+            {
+                writeln(
+                    "type analysis contradiction for:\n",
+                     instr, "\n",
+                    "prop result:\n",
+                    propResult, "\n",
+                    "vers result:\n",
+                    testResult, "\n",
+                    "in:\n",
+                    instr.block.fun,
+                    "\n"
+                );
+                assert (false);
+            }
+
+            testResult = propResult;
+        }
+    }
+
+    // If the type test result is known
+    if (testResult != TestResult.UNKNOWN)
+    {
+        // Get the boolean value of the test
+        auto boolResult = testResult is TestResult.TRUE;
 
         // If this instruction has many uses or is not followed by an if
         if (instr.hasManyUses || ifUseNext(instr) is false)
         {
             auto outOpnd = st.getOutOpnd(as, instr, 64);
-            auto outVal = (type is knownType)? TRUE:FALSE;
+            auto outVal = boolResult? TRUE:FALSE;
             as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
             st.setOutType(as, instr, Type.CONST);
         }
@@ -840,7 +941,7 @@ void IsTypeOp(Type type)(
         if (ifUseNext(instr) is true)
         {
             // Get the branch edge
-            auto targetIdx = (type is knownType)? 0:1;
+            auto targetIdx = boolResult? 0:1;
             auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
 
             // Generate the branch code
@@ -1665,7 +1766,7 @@ void gen_call_prim(
     as.setType(-numArgs - 1, Type.INT32);
 
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -1874,7 +1975,7 @@ void gen_call(
     as.label(Label.FALSE2);
 
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -1985,7 +2086,7 @@ void gen_call_new(
     // TODO: optimize call spills
     // TODO: move spills after arg copying?
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2264,7 +2365,7 @@ void gen_call_apply(
     // TODO: optimize call spills
     // TODO: move spills after arg copying?
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2383,7 +2484,7 @@ void gen_load_file(
     }
 
     // Spill the values that are live before the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2492,7 +2593,7 @@ void gen_eval_str(
     }
 
     // Spill the values that are live before the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2555,7 +2656,8 @@ void gen_ret(
         instr,
         0,
         64,
-        scrRegs[0].opnd(64),
+        //scrRegs[0].opnd(64),
+        retWordReg.opnd(64),
         true,
         false
     );
@@ -2565,16 +2667,17 @@ void gen_ret(
         as,
         instr,
         0,
-        scrRegs[1].opnd(8),
+        (retOpnd != retTypeReg.opnd(64))? retTypeReg.opnd(8):scrRegs[1].opnd(8),
         true
     );
 
     //as.printStr("ret from " ~ fun.getName);
 
-    // Move the return word and types to the return registers
+    // Move the return word and type to the return registers
     if (retWordReg.opnd != retOpnd)
         as.mov(retWordReg.opnd, retOpnd);
-    as.mov(retTypeReg.opnd(8), typeOpnd);
+    if (retTypeReg.opnd(8) != typeOpnd)
+        as.mov(retTypeReg.opnd(8), typeOpnd);
 
     // If we are in a constructor (new) call
     if (st.callCtx.ctorCall is true)
@@ -2607,26 +2710,21 @@ void gen_ret(
         // Pop all local stack slots
         as.add(tspReg.opnd(64), X86Opnd(Type.sizeof * numLocals));
         as.add(wspReg.opnd(64), X86Opnd(Word.sizeof * numLocals));
-
     }
     else
     {
-        // Get the actual argument count into r0
-        as.getWord(scrRegs[0], argcSlot);
         //as.printStr("argc=");
         //as.printInt(scrRegs[0].opnd(64));
 
         // Compute the number of extra arguments into r0
-        as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
+        as.getWord(scrRegs[0].reg(32), argcSlot);
         if (numParams !is 0)
             as.sub(scrRegs[0].opnd(32), X86Opnd(numParams));
+        as.xor(scrRegs[1].opnd(32), scrRegs[1].opnd(32));
         as.cmp(scrRegs[0].opnd(32), X86Opnd(0));
         as.cmovl(scrRegs[0].reg(32), scrRegs[1].opnd(32));
 
-        //as.printStr("numExtra=");
-        //as.printInt(scrRegs[0].opnd(32));
-
-        // Compute the number of stack slots to pop into r0
+        // Compute the total number of stack slots to pop into r0
         as.add(scrRegs[0].opnd(32), X86Opnd(numLocals));
 
         // Get the return address into r1
@@ -2661,7 +2759,7 @@ void gen_throw(
     auto excTypeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2753,7 +2851,7 @@ void HeapAllocOp(Type type)(
     }
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2848,7 +2946,7 @@ void gen_gc_collect(
     }
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3111,7 +3209,7 @@ void gen_get_str(
     }
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3265,7 +3363,7 @@ void gen_map_num_props(
     }
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3359,7 +3457,7 @@ void gen_map_prop_idx(
         assert (false);
 
     // Spill the values live before the instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3492,7 +3590,7 @@ void gen_map_prop_name(
     }
 
     // Spill the values that are live after the call
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3598,7 +3696,7 @@ void gen_new_clos(
 
     // TODO: spill only values stored in C arg regs and C caller-save regs?
     // Spill all values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3673,7 +3771,7 @@ void gen_get_time_ms(
     }
 
     // Spill the values live after this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3724,7 +3822,7 @@ void gen_get_ast_str(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3788,7 +3886,7 @@ void gen_get_ir_str(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3877,7 +3975,7 @@ void gen_get_asm_str(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -3951,7 +4049,7 @@ void gen_load_lib(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4016,7 +4114,7 @@ void gen_close_lib(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4082,7 +4180,7 @@ void gen_get_sym(
     }
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4176,7 +4274,7 @@ void gen_call_ffi(
     assert(argTypes.length == argCount, "Incorrect arg count in call_ffi.");
 
     // Spill the values live before this instruction
-    st.spillRegs(
+    st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {

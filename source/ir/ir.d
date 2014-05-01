@@ -50,6 +50,7 @@ import parser.lexer;
 import parser.ast;
 import ir.ops;
 import ir.livevars;
+import ir.typeprop;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
@@ -115,6 +116,9 @@ class IRFunction : IdObject
 
     /// Liveness information
     LiveInfo liveInfo = null;
+
+    /// Type analysis results (may be null)
+    TypeProp typeInfo = null;
 
     /// Call context context for this function
     CallCtx ctx = null;
@@ -1446,6 +1450,29 @@ class IRInstr : IRDstValue
 
         return output;
     }
+}
+
+/**
+Test if an instruction is followed by an if_true branching on its value
+*/
+bool ifUseNext(IRInstr instr)
+{
+    return (
+        instr.next &&
+        instr.next.opcode is &IF_TRUE &&
+        instr.next.getArg(0) is instr
+    );
+}
+
+/**
+Test if our argument precedes and generates a boolean value
+*/
+bool boolArgPrev(IRInstr instr)
+{
+    return (
+        instr.getArg(0) is instr.prev &&
+        instr.prev.opcode.boolVal
+    );
 }
 
 /**
