@@ -74,6 +74,7 @@ alias void function(
     CodeBlock as
 ) GenFn;
 
+/// Get an argument by index
 void gen_get_arg(
     BlockVersion ver,
     CodeGenState st,
@@ -1763,7 +1764,6 @@ void gen_call_prim(
 
     // Write the argument count
     as.setWord(-numArgs - 1, numArgs);
-    as.setType(-numArgs - 1, Type.INT32);
 
     // Spill the values that are live after the call
     st.spillValues(
@@ -1930,7 +1930,6 @@ void gen_call(
 
     // Write the argument count
     movArgWord(as, numArgs + 0, X86Opnd(numArgs));
-    movArgType(as, numArgs + 0, X86Opnd(Type.INT32));
 
     // Write the "this" argument
     auto thisReg = st.getWordOpnd(
@@ -2189,7 +2188,7 @@ void gen_call_new(
     as.loadJITRegs();
 
     // Write the "this" argument
-    movArgWord(as, numArgs + 1, X86Opnd(RAX));
+    movArgWord(as, numArgs + 1, cretReg.opnd);
     movArgType(as, numArgs + 1, X86Opnd(Type.OBJECT));
 
     //
@@ -2198,7 +2197,6 @@ void gen_call_new(
 
     // Write the argument count
     movArgWord(as, numArgs + 0, X86Opnd(numArgs));
-    movArgType(as, numArgs + 0, X86Opnd(Type.INT32));
 
     // Write the closure argument
     // Note: the closure may have been moved during GC

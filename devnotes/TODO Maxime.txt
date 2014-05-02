@@ -96,10 +96,6 @@ Blog:
 - paper, type analysis
 - full eval
 
-TODO: eliminate alloc init loops?
-- would make alloc faster, permit more inlining
-- may have to make it so that MISSING is the 0,0 value
-
 TODO: add tests for nested eval support
 - accessing vars, changing vars
 TODO: implement full eval support
@@ -152,9 +148,11 @@ FIXME: type analysis can't handle getProp loop?
 - try tagging the output of some call_prims?
 
 Meeting:
+- Booked DConf flight + hotel, total ~1200
 - Got invited to midwest.io, Kansas City, refused
 - Fixed GC/regalloc bug, added typeWritten flag to reg alloc state
   - Slightly smaller code size, less redundant type writes
+- Removed type tagging of hidden args during call (closure, argc, ra)
 - Fixed analysis slowness using liveness info
   - Very bad scaling with many SSA values
 - Type analysis working on all benchmarks
@@ -166,30 +164,42 @@ Meeting:
 - Paper
   - Resized graphs
   - Added type refinement citation
+  - Added highlighted notes
+  - Issue: perf stats, interfering with measurement
+  - What do we do with graph scales?
 - Added octane benchmarks to repo
   - May get some working
   - void operator
-- To Marc: can you edit BBV diagrams from paper
-  - need them for ECOOLPS paper
-  - mini paper may be good practice/brainstorming for DLS paper
+- Added missing SunSpider benchmarks to repo
 
-TODO: book DConf trip, plane, hotel
+TODO: eliminate alloc init loops?
+- would make alloc faster, permit more inlining
+- may have to make it so that MISSING is the 0,0 value
 
-TODO: calls shouldn't need to tag argc
-- $argc problematic if not tagged, need $ir_get_argc()
+TODO: why is "num blocks" not the same for diff vers counts, 0 vs 10
+- 3bits benchmark has this, find out which block is different
+  - log block + fn names into file, do sort, uniq?
+- start by seeing if accounting is correct
 
-TODO: setup automated stat gathering for the paper
-- avg code size increase, max code size increase, etc.
+TODO: --perf_stats, code size + time
+- test with ./benchmark.py
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: calls shouldn't need to tag argc
+code size (bytes): 421854
+
+[DONE] TODO: book DConf trip, plane, hotel
 
 [DONE] TODO: calls, shouldn't need to tag RA, closure
-
-
-
-
-
-
-
-
 
 [DONE] TODO: work on conf paper, add TODO notes
 
