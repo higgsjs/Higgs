@@ -269,6 +269,10 @@ class CodeGenState
         foreach (ident, param; fun.paramMap)
             mapToStack(param);
 
+        // Set the types for the closure and argument count values
+        setType(fun.closVal, Type.CLOSURE);
+        setType(fun.argcVal, Type.INT32);
+
         // If this is a constructor call,
         // set the "this" value type to object
         if (ctorCall)

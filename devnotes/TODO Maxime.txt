@@ -69,6 +69,9 @@ TODO: profile compilation time, big eval loop?
 
 TODO: bias toBool for property access expressions, isNaN, bitwise result
 
+FIXME: ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
+- benchmark moronically redefines RegExp name
+
 ------------------------------------------------------------------------------
 
 May 31st, complete paper writing
@@ -80,27 +83,10 @@ TODO: May, approach Moz, Apple, FB wrt internship
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
 
-TODO: calls, shouldn't need to tag RA, closure, arg count?
-- $argc problematic if not tagged, need $ir_get_argc()
-
 ------------------------------------------------------------------------------
 
 April 30th, paper preliminaries
 -------------------------------
-
-TODO: look into ECOOLPS workshop, OOPSLA, Sweden, July 28
-http://soft-dev.org/events/icooolps14/
-- Submission, May 5th
-- Compilation Optimization OO Lang Progs Systems
-- BBV + reg alloc
-  - May not even need to implement
-- Marc says: whip out draft in an afternoon, spew out ideas
-  - goto workshop, say things, what we do, have something to say
-- good practice for DLS paper
-
-FIXME: type analysis can't handle getProp loop?
-- possibly because type is unknown at entry...
-- try tagging the output of some call_prims?
 
 Blog:
 - OSX support find/progress, Paul Fryzel
@@ -109,39 +95,6 @@ Blog:
 - optimizations, further reduced code size
 - paper, type analysis
 - full eval
-
-Meeting:
-- Got invited to midwest.io, Kansas City, refused
-- Fixed GC/regalloc bug, added typeWritten flag to reg alloc state
-  - Slightly smaller code size, less redundant type writes
-- Fixed analysis slowness using liveness info
-  - Very bad scaling with many SSA values
-- Type analysis working on all benchmarks
-  - implemented type set
-  - performing fairly poorly
-  - implemented type set, negative information prop
-  - getProp loop, new obj output not tagged
-  - tag result of some call_prims? BBV doesn't really need this, but could help
-- Paper
-  - Resized graphs
-  - Added type refinement citation
-- Added octane benchmarks to repo
-  - May get some working
-  - void operator
-- To Marc: can you edit BBV diagrams from paper
-  - need them for ECOOLPS paper
-  - mini paper may be good practice/brainstorming for DLS paper
-
-TODO: book DConf trip, plane, hotel
-
-TODO: setup automated stat gathering for the paper
-- avg code size increase, max code size increase, etc.
-
-FIXME: ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js ???
-
-TODO: eliminate alloc init loops?
-- would make alloc faster, permit more inlining
-- may have to make it so that MISSING is the 0,0 value
 
 TODO: add tests for nested eval support
 - accessing vars, changing vars
@@ -159,11 +112,77 @@ TODO: implement full eval support
 - PROBLEM: there's no parent pointer in AST nodes
   - can't just run vars analysis on subfunction, need to rerun the whole thing...
 
-TODO: work on conf paper, add TODO notes
+FIXME: string-unpack-code
+./higgs benchmarks/sunspider/string-unpack-code.js 
+run-time error: TypeError: invalid base in property write
+$rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
+$rt_setProp(3038) ("runtime/runtime.js"@2301:6)
+$rt_setPropField(3041) ("runtime/runtime.js"@2349:12)
+String(87BB) ("stdlib/string.js"@69:9)
+Function_prototype_apply(7949) ("stdlib/function.js"@226:18)
+string_replace(8854) ("stdlib/string.js"@422:27)
+anon(121C8) ("benchmarks/sunspider/string-unpack-code.js"@20:14)
+benchmarks_sunspider_string_unpack_code_js(12188) ("benchmarks/sunspider/string-unpack-code.js"@16:32)
+
+FIXME: string-tagcloud
+./higgs benchmarks/sunspider/string-tagcloud.js 
+run-time error: SyntaxError: parseJSON
+$rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
+s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
+benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
 
 FIXME: string-validate-input segfaults
 
-FIXME: string-unpack-code, SyntaxError???
+TODO: look into ECOOLPS workshop, OOPSLA, Sweden, July 28
+http://soft-dev.org/events/icooolps14/
+- Submission, May 5th
+- Compilation Optimization OO Lang Progs Systems
+- BBV + reg alloc
+  - May not even need to implement
+- Marc says: whip out draft in an afternoon, spew out ideas
+  - goto workshop, say things, what we do, have something to say
+- good practice for DLS paper
+
+FIXME: type analysis can't handle getProp loop?
+- possibly because type is unknown at entry...
+- try tagging the output of some call_prims?
+
+Meeting:
+- Booked DConf flight + hotel, total ~1200
+- Got invited to midwest.io, Kansas City, refused
+- Fixed GC/regalloc bug, added typeWritten flag to reg alloc state
+  - Slightly smaller code size, less redundant type writes
+- Removed type tagging of hidden args during call (closure, argc, ra)
+- Fixed analysis slowness using liveness info
+  - Very bad scaling with many SSA values
+- Type analysis working on all benchmarks
+  - implemented type set
+  - performing fairly poorly
+  - implemented type set, negative information prop
+  - getProp loop, new obj output not tagged
+  - tag result of some call_prims? BBV doesn't really need this, but could help
+- Paper
+  - Resized graphs
+  - Added type refinement citation
+  - Added highlighted notes
+  - Issue: perf stats, interfering with measurement
+  - What do we do with graph scales?
+- Added octane benchmarks to repo
+  - May get some working
+  - void operator
+- Added missing SunSpider benchmarks to repo
+
+TODO: eliminate alloc init loops?
+- would make alloc faster, permit more inlining
+- may have to make it so that MISSING is the 0,0 value
+
+TODO: why is "num blocks" not the same for diff vers counts, 0 vs 10
+- 3bits benchmark has this, find out which block is different
+  - log block + fn names into file, do sort, uniq?
+- start by seeing if accounting is correct
+
+TODO: --perf_stats, code size + time
+- test with ./benchmark.py
 
 
 
@@ -172,9 +191,21 @@ FIXME: string-unpack-code, SyntaxError???
 
 
 
+
+
+
+[DONE] TODO: calls shouldn't need to tag argc
+code size (bytes): 421854
+
+[DONE] TODO: book DConf trip, plane, hotel
+
+[DONE] TODO: calls, shouldn't need to tag RA, closure
+
+[DONE] TODO: work on conf paper, add TODO notes
 
 [DONE] TODO: fetch missing sunspider benchmarks
 - string-tagcloud, string-unpack-code, string-validate-input, regexp-dna
+code size (bytes): 431337
 
 [DONE] TODO: read/skim you a paper
 - Download DLS13 paper
