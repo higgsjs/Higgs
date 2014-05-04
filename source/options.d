@@ -49,6 +49,9 @@ struct Options
     /// Gather and report various statistics about program execution
     bool stats = false;
 
+    /// Gather performance statistics
+    bool perf_stats = false;
+
     /// Set stdout to be unbuffered
     bool unbuffered = false;
 
@@ -104,6 +107,7 @@ void parseCmdArgs(ref string[] args)
         "unbuffered"        , &opts.unbuffered,
         "repl"              , &opts.repl,
         "stats"             , &opts.stats,
+        "perf_stats"        , &opts.perf_stats,
 
         "noruntime"         , &opts.noruntime,
         "nostdlib"          , &opts.nostdlib,

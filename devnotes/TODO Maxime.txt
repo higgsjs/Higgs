@@ -72,32 +72,12 @@ TODO: bias toBool for property access expressions, isNaN, bitwise result
 FIXME: ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
 - benchmark moronically redefines RegExp name
 
-------------------------------------------------------------------------------
-
-May 31st, complete paper writing
---------------------------------
-
-TODO: May, approach Moz, Apple, FB wrt internship
-- 4 months, [Jan, April] 2015, spend winter in Cali
-- Marc advises to remain near PhD work, best for CV
-- Marc thinks you can make ~40K pre-tax
-- Ask about salary, lodging options
-
-------------------------------------------------------------------------------
-
-April 30th, paper preliminaries
--------------------------------
-
-Blog:
-- OSX support find/progress, Paul Fryzel
-- Graphics lib
-- pong, examples
-- optimizations, further reduced code size
-- paper, type analysis
-- full eval
+Blog: coming soon to Higgs, Typed Hidden classes
+http://www.ustream.tv/recorded/43773608
+- Draw sketches? Look for quick sketching app
 
 TODO: add tests for nested eval support
-- accessing vars, changing vars
+- accessing local vars, changing vars
 TODO: implement full eval support
 - eval can be called as global eval or local eval
   - different "eval context"
@@ -133,15 +113,29 @@ benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tag
 
 FIXME: string-validate-input segfaults
 
-TODO: look into ECOOLPS workshop, OOPSLA, Sweden, July 28
-http://soft-dev.org/events/icooolps14/
-- Submission, May 5th
-- Compilation Optimization OO Lang Progs Systems
-- BBV + reg alloc
-  - May not even need to implement
-- Marc says: whip out draft in an afternoon, spew out ideas
-  - goto workshop, say things, what we do, have something to say
-- good practice for DLS paper
+TODO: eliminate alloc init loops?
+- would make alloc faster, permit more inlining
+- may have to make it so that MISSING is the 0,0 value
+
+TODO: May, approach Moz, Apple, FB wrt internship
+- 4 months, [Jan, April] 2015, spend winter in Cali
+- Marc advises to remain near PhD work, best for CV
+- Marc thinks you can make ~40K pre-tax
+- Ask about salary, lodging options
+
+------------------------------------------------------------------------------
+
+May 31st, complete paper writing
+--------------------------------
+
+Blog:
+- OSX support find/progress, Paul Fryzel
+- Graphics lib
+- pong, examples
+- optimizations, further reduced code size
+- paper, type analysis
+- full eval
+- typed hidden classes
 
 FIXME: type analysis can't handle getProp loop?
 - possibly because type is unknown at entry...
@@ -150,6 +144,7 @@ FIXME: type analysis can't handle getProp loop?
 Meeting:
 - Booked DConf flight + hotel, total ~1200
 - Got invited to midwest.io, Kansas City, refused
+- Got invited to Polyglot Conf, Vancouver, refused
 - Fixed GC/regalloc bug, added typeWritten flag to reg alloc state
   - Slightly smaller code size, less redundant type writes
 - Removed type tagging of hidden args during call (closure, argc, ra)
@@ -172,27 +167,30 @@ Meeting:
   - void operator
 - Added missing SunSpider benchmarks to repo
 
-TODO: eliminate alloc init loops?
-- would make alloc faster, permit more inlining
-- may have to make it so that MISSING is the 0,0 value
+TODO: figre out why 3d-raytrace has such a huge code size increase
 
 TODO: why is "num blocks" not the same for diff vers counts, 0 vs 10
 - 3bits benchmark has this, find out which block is different
   - log block + fn names into file, do sort, uniq?
 - start by seeing if accounting is correct
+- ctor blocks may not be properly counted?
+- even with everything using getBlockVersion, still get discrepancy
 
-TODO: --perf_stats, code size + time
+
+
+
+
+[DONE] TODO: --perf_stats, code size + time
 - test with ./benchmark.py
 
-
-
-
-
-
-
-
-
-
+[DONE] FIXME: issue with untagged clos/this?
+./higgs --jit_maxvers=0 --stats benchmarks/sunspider/3d-raytrace.js 
+run-time error: TypeError: unsupported types in strict equality comparison
+$rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
+$rt_se(2F96) ("runtime/runtime.js"@1538:6)
+Array(9654) ("stdlib/array.js"@62:36)
+benchmarks_sunspider_3d_raytrace_js(129E6) ("benchmarks/sunspider/3d-raytrace.js"@187:12)
+- $argc shows up there, type info probably cleared away
 
 [DONE] TODO: calls shouldn't need to tag argc
 code size (bytes): 421854

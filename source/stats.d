@@ -166,57 +166,59 @@ static this()
 /// Static module destructor, log the accumulated stats
 static ~this()
 {
-    // If stats not enabled, stop
-    if (opts.stats is false)
-        return;
-
-    writeln();
-    writefln("comp time (ms): %s", compTimeUsecs / 1000);
-    writefln("exec time (ms): %s", execTimeUsecs / 1000);
-    writefln("total time (ms): %s", (compTimeUsecs + execTimeUsecs) / 1000);
-    writefln("code size (bytes): %s", genCodeSize);
-
-    writefln("num blocks: %s", numBlocks);
-    writefln("num versions: %s", numVersions);
-    writefln("max versions: %s", maxVersions);
-
-    writefln("num map_prop_idx: %s", numMapPropIdx);
-    writefln("num prop cache misses: %s", numMapPropMisses);
-
-    writefln("num call: %s", numCall);
-
-    alias Tuple!(string, "name", ulong, "cnt") PrimCallCnt;
-    PrimCallCnt[] primCallCnts;
-    foreach (name, pCtr; numPrimCalls)
-        primCallCnts ~= PrimCallCnt(name, *pCtr);
-    primCallCnts.sort!"a.cnt > b.cnt";
-
-    ulong totalPrimCalls = 0;
-    foreach (pair; primCallCnts)
+    if (opts.stats || opts.perf_stats)
     {
-        writefln("%s: %s", pair.name, pair.cnt);
-        totalPrimCalls += pair.cnt;
+        writeln();
+        writefln("comp time (ms): %s", compTimeUsecs / 1000);
+        writefln("exec time (ms): %s", execTimeUsecs / 1000);
+        writefln("total time (ms): %s", (compTimeUsecs + execTimeUsecs) / 1000);
+        writefln("code size (bytes): %s", genCodeSize);
     }
-    writefln("total prim calls: %s", totalPrimCalls);
 
-    alias Tuple!(string, "test", ulong, "cnt") TypeTestCnt;
-    TypeTestCnt[] typeTestCnts;
-    foreach (test, pCtr; numTypeTests)
-        typeTestCnts ~= TypeTestCnt(test, *pCtr);
-    typeTestCnts.sort!"a.cnt > b.cnt";
-
-    ulong totalTypeTests = 0;
-    foreach (pair; typeTestCnts)
+    if (opts.stats)
     {
-        writefln("%s: %s", pair.test, pair.cnt);
-        totalTypeTests += pair.cnt;
-    }
-    writefln("total type tests: %s", totalTypeTests);
+        writefln("num blocks: %s", numBlocks);
+        writefln("num versions: %s", numVersions);
+        writefln("max versions: %s", maxVersions);
 
-    for (size_t numVers = 1; numVers <= min(opts.jit_maxvers, 10); numVers++)
-    {
-        auto blockCount = numVerBlocks.get(numVers, 0);
-        writefln("%s versions: %s", numVers, blockCount);
+        writefln("num map_prop_idx: %s", numMapPropIdx);
+        writefln("num prop cache misses: %s", numMapPropMisses);
+
+        writefln("num call: %s", numCall);
+
+        alias Tuple!(string, "name", ulong, "cnt") PrimCallCnt;
+        PrimCallCnt[] primCallCnts;
+        foreach (name, pCtr; numPrimCalls)
+            primCallCnts ~= PrimCallCnt(name, *pCtr);
+        primCallCnts.sort!"a.cnt > b.cnt";
+
+        ulong totalPrimCalls = 0;
+        foreach (pair; primCallCnts)
+        {
+            writefln("%s: %s", pair.name, pair.cnt);
+            totalPrimCalls += pair.cnt;
+        }
+        writefln("total prim calls: %s", totalPrimCalls);
+
+        alias Tuple!(string, "test", ulong, "cnt") TypeTestCnt;
+        TypeTestCnt[] typeTestCnts;
+        foreach (test, pCtr; numTypeTests)
+            typeTestCnts ~= TypeTestCnt(test, *pCtr);
+        typeTestCnts.sort!"a.cnt > b.cnt";
+
+        ulong totalTypeTests = 0;
+        foreach (pair; typeTestCnts)
+        {
+            writefln("%s: %s", pair.test, pair.cnt);
+            totalTypeTests += pair.cnt;
+        }
+        writefln("total type tests: %s", totalTypeTests);
+
+        for (size_t numVers = 1; numVers <= min(opts.jit_maxvers, 10); numVers++)
+        {
+            auto blockCount = numVerBlocks.get(numVers, 0);
+            writefln("%s versions: %s", numVers, blockCount);
+        }
     }
 }
 

@@ -1718,11 +1718,17 @@ BlockVersion getBlockVersion(
 
         //writeln("producing general version for: ", block.getName);
 
-        // Strip the state of all known types and constants
+        // Strip the state of known types and constants,
+        // except for hidden function arguments
         auto genState = new CodeGenState(state);
         foreach (val, valSt; genState.valMap)
-            if (valSt.typeKnown)
+        {
+            if (val !is callCtx.fun.closVal &&
+                val !is callCtx.fun.argcVal &&
+                val !is callCtx.fun.raVal &&
+                valSt.typeKnown)
                 genState.valMap[val] = valSt.clearType();
+        }
 
         // Ensure that the general version matches
         assert(state.diff(genState) !is size_t.max);
@@ -1855,7 +1861,7 @@ void genBranchMoves(
         // Get the source and destination operands for the phi type
         X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
         X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
-        assert (opts.jit_maxvers != 0 || !dstTypeOpnd.isImm);
+        assert (!(opts.jit_maxvers is 0 && !srcTypeOpnd.isImm && dstTypeOpnd.isImm));
 
         if (srcTypeOpnd != dstTypeOpnd &&
             !dstTypeOpnd.isImm &&
@@ -2296,9 +2302,10 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     //
 
     // Create a version instance object for the function entry
-    auto entryInst = new BlockVersion(
+    auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false)
+        new CodeGenState(vm, fun, false),
+        true
     );
 
     // Mark the code start index
@@ -2326,7 +2333,6 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     // Set the argument count (0)
     as.setWord(-1, X86Opnd(0));
-    as.setType(-1, Type.INT32);
 
     // Set the "this" argument (global object)
     as.getMember!("VM.globalObj.word")(scrRegs[0], vmReg);
@@ -2335,19 +2341,16 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     // Set the closure argument (null)
     as.setWord(-3, X86Opnd(0));
-    as.setType(-3, Type.CLOSURE);
 
     // Set the return address
     as.ptr(scrRegs[0], retAddr);
     as.setWord(-4, scrRegs[0].opnd);
-    as.setType(-4, Type.RETADDR);
 
     // Push space for the callee locals
     as.sub(tspReg.opnd, X86Opnd(1 * fun.numLocals));
     as.sub(wspReg.opnd, X86Opnd(8 * fun.numLocals));
 
     // Compile the unit entry version
-    vm.queue(entryInst);
     vm.compile(null);
 
     // Set the return address entry for this call

@@ -2427,13 +2427,13 @@ void gen_load_file(
             vm.funRefs[cast(void*)fun] = fun;
 
             // Create a version instance object for the unit function entry
-            auto entryInst = new BlockVersion(
+            auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false)
+                new CodeGenState(vm, fun, false),
+                true
             );
 
             // Compile the unit entry version
-            vm.queue(entryInst);
             vm.compile(fun.entryBlock.firstInstr);
 
             // Get the return address for the continuation target
@@ -2547,13 +2547,13 @@ void gen_eval_str(
             vm.funRefs[cast(void*)fun] = fun;
 
             // Create a version instance object for the unit function entry
-            auto entryInst = new BlockVersion(
+            auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false)
+                new CodeGenState(vm, fun, false),
+                true
             );
 
             // Compile the unit entry version
-            vm.queue(entryInst);
             vm.compile(fun.entryBlock.firstInstr);
 
             // Get the return address for the continuation target
