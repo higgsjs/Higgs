@@ -1,12 +1,19 @@
+TODO: check out failing sunspider tests
+      - string-validate-input segfaults
+      - string-unpack-code has some odd bug
+      - string-tagcloud has some error in its parseJSON
+
 TODO: all libs
       - cleaner API designs
       - perf also needs to be a consideration; all apis/libs should be designed so that it's easy to do
         common tasks in a performant way. Try to achieve best balance possible.
+      - come up with set of fundamental 'interfaces' and have libs follow them (iterators, streams, etc)
 
 TODO: test lib
       - more assertion/helper functions
 
 TODO: improve FFI
+      - improve perf
       - keep improving error messages/checking
       - add toString() and toJS() functionality for structs/unions
       - improved wrapping
@@ -14,16 +21,16 @@ TODO: improve FFI
       - add some preprocessor functionality?
       - track down perf problems
       - generate type checking code for function calls?
+      - finish ffi.new()
 
 TODO: SDL bindings
       X move to binding for SDL2? Not as much support currently, but more future proof
       - [STARTED] SDL2 bindings
 
 TODO: Xlib
-      - bindings for Xlib
-      - [STARTED] currently just covering enough to be useful to SDL, cairo, etc
+       - currently have bindings for almost all functions, just need bindings for structs etc
 
-      TODO: cairo bindings
+TODO: cairo binding
       - [STARTED] currently just some tests
 
 TODO: drawing lib

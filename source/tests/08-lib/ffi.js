@@ -90,3 +90,28 @@ assertEq(ffi.string(c.getTestString()), "Hello World!");
 // Test os name
 var os = ffi.os;
 assertTrue(os === "LINUX" || os === "BSD" || os === "OSX");
+
+// issue #102 regression
+c.cdef(`
+       typedef unsigned long long  __uint64_t;
+       typedef unsigned int        __uint32_t;
+       typedef unsigned short      __uint16_t;
+       typedef unsigned char       __uint8_t;
+       struct direntBSD {
+           __uint64_t d_fileno;
+           __uint16_t d_seekoff;
+           __uint16_t d_reclen;
+           __uint16_t d_namlen;
+           __uint8_t  d_type;
+           char       d_name[1024];
+       };
+       struct direntBSD TestDirEnt;
+`);
+
+var testdir = c.TestDirEnt;
+assertTrue($ir_eq_i64(1, testdir.get_d_fileno()));
+assertEq(testdir.get_d_seekoff(), 2);
+assertEq(testdir.get_d_reclen(), 3);
+assertEq(testdir.get_d_namlen(), 4);
+assertEq(testdir.get_d_type(), 5);
+assertEq(testdir.d_name.toString(), "foo");
