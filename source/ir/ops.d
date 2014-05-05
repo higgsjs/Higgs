@@ -176,6 +176,8 @@ Opcode LE_I32 = { "le_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_le_i32, OpInf
 Opcode GE_I32 = { "ge_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ge_i32, OpInfo.BOOL_VAL };
 Opcode EQ_I8 = { "eq_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i8, OpInfo.BOOL_VAL };
 
+Opcode EQ_I64 = { "eq_i64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i64, OpInfo.BOOL_VAL };
+
 // Pointer comparison instructions
 Opcode EQ_REFPTR = { "eq_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_refptr, OpInfo.BOOL_VAL };
 Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_refptr, OpInfo.BOOL_VAL };

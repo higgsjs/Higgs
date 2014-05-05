@@ -1,7 +1,7 @@
 TODO: check out failing sunspider tests
       - string-validate-input segfaults
       - string-unpack-code has some odd bug
-      - string-tagcloud has some error in its parseJSON     
+      - string-tagcloud has some error in its parseJSON
 
 TODO: all libs
       - cleaner API designs

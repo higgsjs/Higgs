@@ -128,6 +128,8 @@ static this()
     addOp(GE_I32);
     addOp(EQ_I8);
 
+    addOp(EQ_I64);
+
     addOp(EQ_REFPTR);
     addOp(NE_REFPTR);
 
