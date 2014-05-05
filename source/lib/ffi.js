@@ -448,17 +448,10 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 this.acceptEnumSpecifier();
             else if (type === TYPE_SPECIFIER)
                 if (dec.type)
-                    if (tok === "char" || tok === "int" || tok === "long")
-                    {
+                    if (tok === "char" || tok === "int" || tok === "long" || tok === "short")
                         dec.type = CType(dec.type.name + " " + tok);
-                    }
                     else
-                    {
-                        if (dec.storage_class === "typedef")
-                            dec.name = tok;
-                        else
-                            throw new CParseUnexpectedError("type specifier", tok, lex.loc());
-                    }
+                        throw new CParseUnexpectedError("type specifier", tok, lex.loc());
                 else
                     dec.type = CType(tok);
             else if (type === TYPE_QUALIFIER)
@@ -1453,6 +1446,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     CType("unsigned short int", "u16", 2, "$ir_load_u16", "$ir_store_u16");
 
     CType("int", "i32", 4, "$ir_load_i32", "$ir_store_i32");
+    CType("signed", "i32", 4, "$ir_load_i32", "$ir_store_i32");
     CType("signed int", "i32", 4, "$ir_load_i32", "$ir_store_i32");
     CType("unsigned", "u32", 4, "$ir_load_u32", "$ir_store_u32");
     CType("unsigned int", "u32", 4, "$ir_load_u32", "$ir_store_u32");
