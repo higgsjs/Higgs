@@ -120,14 +120,13 @@ static this()
     addOp(EXP_F64);
     addOp(POW_F64);
 
+    addOp(EQ_I8);
     addOp(EQ_I32);
     addOp(NE_I32);
     addOp(LT_I32);
     addOp(GT_I32);
     addOp(LE_I32);
     addOp(GE_I32);
-    addOp(EQ_I8);
-
     addOp(EQ_I64);
 
     addOp(EQ_REFPTR);

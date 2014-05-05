@@ -168,14 +168,13 @@ Opcode EXP_F64 = { "exp_f64", true, [OpArg.LOCAL], &gen_exp_f64 };
 Opcode POW_F64 = { "pow_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_pow_f64 };
 
 // Integer comparison instructions
+Opcode EQ_I8 = { "eq_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i8, OpInfo.BOOL_VAL };
 Opcode EQ_I32 = { "eq_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i32, OpInfo.BOOL_VAL };
 Opcode NE_I32 = { "ne_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_i32, OpInfo.BOOL_VAL };
 Opcode LT_I32 = { "lt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_lt_i32, OpInfo.BOOL_VAL };
 Opcode GT_I32 = { "gt_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_gt_i32, OpInfo.BOOL_VAL };
 Opcode LE_I32 = { "le_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_le_i32, OpInfo.BOOL_VAL };
 Opcode GE_I32 = { "ge_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ge_i32, OpInfo.BOOL_VAL };
-Opcode EQ_I8 = { "eq_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i8, OpInfo.BOOL_VAL };
-
 Opcode EQ_I64 = { "eq_i64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_i64, OpInfo.BOOL_VAL };
 
 // Pointer comparison instructions

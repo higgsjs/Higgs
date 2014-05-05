@@ -167,18 +167,28 @@ Meeting:
   - void operator
 - Added missing SunSpider benchmarks to repo
 
-TODO: figre out why 3d-raytrace has such a huge code size increase
+TODO: figure out why v8/raytrace has such a huge code size increase
+- up to 18 versions
+- blocks vs versions?
 
-TODO: why is "num blocks" not the same for diff vers counts, 0 vs 10
+
+
+
+
+
+
+
+
+
+[DONE] TODO: why is "num blocks" not the same for diff vers counts, 0 vs 10
 - 3bits benchmark has this, find out which block is different
-  - log block + fn names into file, do sort, uniq?
 - start by seeing if accounting is correct
 - ctor blocks may not be properly counted?
 - even with everything using getBlockVersion, still get discrepancy
-
-
-
-
+./higgs --nostdlib --jit_maxvers=5 benchmarks/sunspider/bitops-3bit-bits-in-byte.js | sort | uniq > 3bit-mv5.txt
+- Accounting appears correct
+- Versioning may be able to detect that some paths will be always executed?
+  - some of these paths may be in ctor call, actually irrelevant (not executed)
 
 [DONE] TODO: --perf_stats, code size + time
 - test with ./benchmark.py

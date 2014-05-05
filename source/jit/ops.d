@@ -1443,7 +1443,6 @@ alias CmpOp!("lt", 32) gen_lt_i32;
 alias CmpOp!("le", 32) gen_le_i32;
 alias CmpOp!("gt", 32) gen_gt_i32;
 alias CmpOp!("ge", 32) gen_ge_i32;
-
 alias CmpOp!("eq", 64) gen_eq_i64;
 
 alias CmpOp!("eq", 8) gen_eq_const;
