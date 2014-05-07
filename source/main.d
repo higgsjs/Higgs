@@ -35,6 +35,7 @@
 *
 *****************************************************************************/
 
+import core.memory;
 import std.c.stdlib;
 import std.stdio;
 import std.algorithm;
@@ -49,6 +50,8 @@ import options;
 
 void main(string[] args)
 {
+    GC.reserve(1024 * 1024 * 1024);
+
     // Arguments after "--" are passed to JS code
     auto argLimit = countUntil(args, "--");
     string[] hostArgs;

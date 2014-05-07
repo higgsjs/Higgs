@@ -136,36 +136,57 @@ Blog:
 - paper, type analysis
 - full eval
 - typed hidden classes
+- D GC performance
 
 FIXME: type analysis can't handle getProp loop?
 - possibly because type is unknown at entry...
 - try tagging the output of some call_prims?
 
 Meeting:
+- created dls2014 branch
 - slowdown seems to be because D allocator is much slower after many allocations,
   possibly needs to GC during execution
   - some allocations are sometimes needed during execution
   - fairest seems to be to run the analysis for all, even if not using the result
+- realized that D GC produces huge slowdown, dilutes our gains
+  - pre-reserved 1GB chunk, string-fasta is more than 2x faster
+  - implemented D string view on JS strings, less safe but often 2x faster
 
 Take a break, look into something small
+- work on this in dev-maxime branch
 - string-validate-input?
 - Basic TGA image input
 
-TODO: look into stack allocating strings, referencing Higgs heap data
-TODO: look into GC reserve
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: look into stack allocating strings, referencing Higgs heap data
+http://forum.dlang.org/thread/ustyltiooelhlijcjxma@forum.dlang.org
+./higgs --perf_stats --jit_maxvers=0 benchmarks/sunspider/access-nbody.js
+pre time: 114ms
+post time: 54ms
+
+[DONE] TODO: look into GC reserve
 static nothrow size_t reserve(size_t sz);
 - check how fasta performs with analysis enabled
+- Reserving a 1GB chunk makes fasta over 2x faster
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=20"
 
-TODO: create dls2014 repo branch
+[DONE] TODO: create dls2014 repo branch
 - disable analysis in release first, push to master, then create branch
 git checkout -b dls2014
 git push -u origin dls2014
-
-
-
-
-
-
 
 [DONE] FIXME: CodeGenState.setType should also mark the type as written, for IsTypeOp?
 - only if the type operand is mem?
