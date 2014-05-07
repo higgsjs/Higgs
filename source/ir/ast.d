@@ -623,8 +623,8 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     // unfair disadvantage to tests using the analysis
     //
     // If the type analysis is enabled
-    //if (opts.jit_typeprop)
-    version (release)
+    if (opts.jit_typeprop)
+    //version (release)
     {
         fun.typeInfo = new TypeProp(fun, fun.liveInfo);
     }

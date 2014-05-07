@@ -147,10 +147,19 @@ Meeting:
   - some allocations are sometimes needed during execution
   - fairest seems to be to run the analysis for all, even if not using the result
 
+Take a break, look into something small
+- string-validate-input?
+- Basic TGA image input
+
+TODO: look into stack allocating strings, referencing Higgs heap data
+TODO: look into GC reserve
+static nothrow size_t reserve(size_t sz);
+- check how fasta performs with analysis enabled
+
 TODO: create dls2014 repo branch
-
-
-
+- disable analysis in release first, push to master, then create branch
+git checkout -b dls2014
+git push -u origin dls2014
 
 
 
