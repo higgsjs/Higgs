@@ -128,9 +128,26 @@ class ObjMap : IdObject
     }
 
     /// Get a property index using a string object
-    uint32_t getPropIdx(refptr propStr, bool allocField = false)
+    uint32_t getPropIdx(refptr jsPropStr, bool allocField = false)
     {
-        return getPropIdx(extractWStr(propStr), allocField);
+        auto propStr = tempWStr(jsPropStr);
+
+        if (propStr in fields)
+            return fields[propStr].idx;
+
+        if (allocField is false)
+            return uint32_t.max;
+
+        // Here we copy the temporary string into storage
+        // controlled by D, as this string may be stored
+        // inside the fields map
+        propStr = propStr.dup;
+
+        auto propIdx = nextPropIdx++;
+        fields[propStr] = Field(propIdx);
+        fieldNames ~= propStr;
+
+        return propIdx;
     }
 
     /// Get the name string for a given property
