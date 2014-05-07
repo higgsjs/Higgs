@@ -149,23 +149,18 @@ Meeting:
 
 Take a break, look into something small
 - string-validate-input?
-- Basic TGA image input
-
-TODO: look into stack allocating strings, referencing Higgs heap data
-TODO: look into GC reserve
-static nothrow size_t reserve(size_t sz);
-- check how fasta performs with analysis enabled
-
-TODO: create dls2014 repo branch
-- disable analysis in release first, push to master, then create branch
-git checkout -b dls2014
-git push -u origin dls2014
 
 
 
 
 
 
+
+
+
+
+[DONE] TODO: basic TGA image input
+- update img lib test to read back and compare img
 
 [DONE] FIXME: CodeGenState.setType should also mark the type as written, for IsTypeOp?
 - only if the type operand is mem?
