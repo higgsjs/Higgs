@@ -130,14 +130,14 @@ void ptr(TPtr)(CodeBlock as, X86Reg dstReg, TPtr ptr)
 }
 
 /// Increment a global JIT stat counter variable
-void incStatCnt(CodeBlock as, ulong* pCntVar, X86Reg scrReg)
+void incStatCnt(CodeBlock as, ulong* pCntVar, X86Reg scrReg, ulong incVal = 1)
 {
     if (!opts.stats)
         return;
 
     as.ptr(scrReg, pCntVar);
 
-    as.inc(X86Opnd(8 * ulong.sizeof, scrReg));
+    as.add(X86Opnd(8 * ulong.sizeof, scrReg), X86Opnd(incVal));
 }
 
 void getField(CodeBlock as, X86Reg dstReg, X86Reg baseReg, size_t fOffset)

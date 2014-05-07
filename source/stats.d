@@ -37,6 +37,7 @@
 
 module stats;
 
+import core.sys.posix.sys.resource;
 import std.stdio;
 import std.datetime;
 import std.string;
@@ -62,11 +63,17 @@ ulong maxVersions = 0;
 /// Number of blocks with specific version counts
 ulong[ulong] numVerBlocks;
 
+/// Number of edge phi/value moves
+//ulong numMoves = 0;
+
 /// Number of property index requests
 ulong numMapPropIdx = 0;
 
 /// Number of property cache misses
 ulong numMapPropMisses = 0;
+
+/// Number of slow property lookups
+ulong numMapPropSlow = 0;
 
 /// Number of dynamic calls
 ulong numCall = 0;
@@ -111,21 +118,33 @@ private ulong compStartUsecs = 0;
 /// Execution timer start
 private ulong execStartUsecs = 0;
 
+/// Get the current process time in microseconds
+ulong getTimeUsecs()
+{
+    return Clock.currAppTick().usecs();
+
+    /*
+    rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    return (usage.ru_utime.tv_sec * 1000000) + usage.ru_utime.tv_usec;
+    */
+}
+
 /// Start recording compilation time
 void compTimeStart()
 {
     assert (compStartUsecs is 0, "comp timer already started");
     assert (execStartUsecs is 0, "exec timer ongoing");
 
-    compStartUsecs = Clock.currAppTick().usecs();
+    compStartUsecs = getTimeUsecs();
 }
 
-// Stop recording compilation time
+/// Stop recording compilation time
 void compTimeStop()
 {
     assert (compStartUsecs !is 0);
 
-    auto compEndUsecs = Clock.currAppTick().usecs();
+    auto compEndUsecs = getTimeUsecs();
     compTimeUsecs += compEndUsecs - compStartUsecs;
 
     compStartUsecs = 0;
@@ -137,18 +156,24 @@ void execTimeStart()
     assert (execStartUsecs is 0, "exec timer already started");
     assert (compStartUsecs is 0, "comp timer ongoing");
 
-    execStartUsecs = Clock.currAppTick().usecs();
+    execStartUsecs = getTimeUsecs();
 }
 
-// Stop recording execution time
+/// Stop recording execution time
 void execTimeStop()
 {
     assert (execStartUsecs !is 0);
 
-    auto execEndUsecs = Clock.currAppTick().usecs();
+    auto execEndUsecs = getTimeUsecs();
     execTimeUsecs += execEndUsecs - execStartUsecs;
 
     execStartUsecs = 0;
+}
+
+/// Check if the execution time is being recorded
+bool execTimeStarted()
+{
+    return execStartUsecs != 0;
 }
 
 /// Static module constructor
@@ -181,8 +206,11 @@ static ~this()
         writefln("num versions: %s", numVersions);
         writefln("max versions: %s", maxVersions);
 
+        //writefln("num moves: %s", numMoves);
+
         writefln("num map_prop_idx: %s", numMapPropIdx);
         writefln("num prop cache misses: %s", numMapPropMisses);
+        writefln("num prop slow lookups: %s", numMapPropSlow);
 
         writefln("num call: %s", numCall);
 
@@ -219,6 +247,16 @@ static ~this()
             auto blockCount = numVerBlocks.get(numVers, 0);
             writefln("%s versions: %s", numVers, blockCount);
         }
+    }
+
+    if (opts.stats || opts.perf_stats)
+    {
+        rusage usage;
+        getrusage(RUSAGE_SELF, &usage);
+        writefln("page reclaims: %s", usage.ru_minflt);
+        writefln("page faults: %s", usage.ru_majflt);
+        writefln("voluntary context sw: %s", usage.ru_nvcsw);
+        writefln("involuntary context sw: %s", usage.ru_nivcsw);
     }
 }
 

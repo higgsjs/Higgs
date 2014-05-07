@@ -2,7 +2,7 @@ DC = dmd
 COPTS = -m64 -O -L-ldl -J./
 TESTOPTS = -m64 -O -L-ldl -J./ -unittest -debug
 DBGOPTS = -m64 -O -L-ldl -J./ -gc -debug
-RELOPTS = -m64 -O -L-ldl -J./ -release -inline -noboundscheck
+RELOPTS = -m64 -O -L-ldl -J./ -release -inline -noboundscheck -version=release
 PROFOPTS = -m64 -O -L-ldl -J./ -release -inline -noboundscheck -profile
 
 BIN_NAME = higgs

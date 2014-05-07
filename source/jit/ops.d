@@ -878,10 +878,10 @@ void IsTypeOp(Type type)(
     }
 
     // If the type analysis was run
-    if (auto typeInfo = st.callCtx.fun.typeInfo)
+    if (opts.jit_typeprop)
     {
         // Get the type analysis result for this value at this instruction
-        auto propResult = typeInfo.argIsType(instr, 0, type);
+        auto propResult = st.callCtx.fun.typeInfo.argIsType(instr, 0, type);
 
         //writeln("result: ", propResult);
 
@@ -1006,10 +1006,13 @@ void IsTypeOp(Type type)(
         // If the argument is not a constant, add type information
         // about the argument's type along the true branch
         CodeGenState trueSt = st;
-        if (auto dstArg = cast(IRDstValue)instr.getArg(0))
+        if (opts.jit_maxvers > 0)
         {
-            trueSt = new CodeGenState(trueSt);
-            trueSt.setType(dstArg, type);
+            if (auto dstArg = cast(IRDstValue)instr.getArg(0))
+            {
+                trueSt = new CodeGenState(trueSt);
+                trueSt.setType(dstArg, type);
+            }
         }
 
         // Get branch edges for the true and false branches
@@ -2416,6 +2419,18 @@ void gen_load_file(
         CodeFragment excTarget
     )
     {
+        // Stop recording execution time, start recording compilation time
+        stats.execTimeStop();
+        stats.compTimeStart();
+
+        // When exiting this function
+        scope (exit)
+        {
+            // Stop recording compilation time, resume recording execution time
+            stats.compTimeStop();
+            stats.execTimeStart();
+        }
+
         auto strPtr = vm.getArgStr(instr, 0);
         auto fileName = vm.getLoadPath(extractStr(strPtr));
 
@@ -2536,6 +2551,18 @@ void gen_eval_str(
         CodeFragment excTarget
     )
     {
+        // Stop recording execution time, start recording compilation time
+        stats.execTimeStop();
+        stats.compTimeStart();
+
+        // When exiting this function
+        scope (exit)
+        {
+            // Stop recording compilation time, resume recording execution time
+            stats.compTimeStop();
+            stats.execTimeStart();
+        }
+
         auto strPtr = vm.getArgStr(instr, 0);
         auto codeStr = extractStr(strPtr);
 
@@ -3400,6 +3427,9 @@ void gen_map_prop_idx(
     extern (C) static uint32_t op_map_prop_idx(ObjMap map, refptr strPtr, bool allocField)
     {
         //writeln("slow lookup");
+
+        // Increment the count of slow property lookups
+        stats.numMapPropSlow++;
 
         // Lookup the property index
         assert (map !is null, "map is null");

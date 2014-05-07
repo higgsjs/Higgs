@@ -991,7 +991,7 @@ class IRConst : IRValue
         return cst;
     }
 
-    static IRConst trueCst() 
+    static IRConst trueCst()
     { 
         if (!trueVal) trueVal = new IRConst(TRUE);
         return trueVal;

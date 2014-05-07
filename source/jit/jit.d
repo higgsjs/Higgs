@@ -1769,6 +1769,14 @@ BlockVersion getBlockVersion(
         // Increment the total number of block versions generated
         stats.numVersions++;
 
+        /*
+        if (numVersions > stats.maxVersions)
+        {
+            writeln(block.fun.getName);
+            writeln(block.fun.numBlocks);
+        }
+        */
+
         // Update the maximum version count
         stats.maxVersions = max(stats.maxVersions, numVersions);
     }
@@ -1900,6 +1908,14 @@ void genBranchMoves(
 
     // Execute the moves
     execMoves(as, moveList, scrRegs[0], scrRegs[1]);
+
+    /*
+    // If statistics are enabled, count the moves executed
+    if (opts.stats)
+    {
+        as.incStatCnt(&stats.numMoves, scrRegs[0], moveList.length);
+    }
+    */
 }
 
 /// Return address entry

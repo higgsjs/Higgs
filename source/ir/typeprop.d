@@ -185,6 +185,12 @@ class TypeProp
     */
     public this(IRFunction fun, LiveInfo liveInfo)
     {
+        // Ensure that the analysis is not measured in the execution time
+        assert (
+            stats.execTimeStarted is false,
+            "analysis running while execution time measured"
+        );
+
         //writeln("running type prop on: ", fun.getName);
 
         // List of CFG edges to be processed
@@ -198,10 +204,6 @@ class TypeProp
 
         // Map of branch edges to type maps
         TypeMap[BranchEdge] edgeMaps;
-
-        // Add the entry block to the CFG work list
-        auto entryEdge = new BranchEdge(null, fun.entryBlock);
-        cfgWorkList ~= entryEdge;
 
         /// Get a type for a given IR value
         auto getType(TypeMap typeMap, IRValue val)
@@ -491,6 +493,7 @@ class TypeProp
 
             // Load integer
             if (
+                op is &LOAD_I8 ||
                 op is &LOAD_U8 ||
                 op is &LOAD_U16 ||
                 op is &LOAD_U32)
@@ -740,18 +743,10 @@ class TypeProp
             );
         }
 
-        // Until the work list is empty
-        while (cfgWorkList.length > 0)
+        /// Visit/process a given block
+        void visitBlock(IRBlock block)
         {
-            // Remove an edge from the work list
-            auto edge = cfgWorkList[$-1];
-            cfgWorkList.length--;
-            auto block = edge.target;
-
-            //writeln("iterating ", block.getName);
-
-            // Mark the edge and block as visited
-            edgeVisited[edge] = true;
+            // Mark the block as reachable
             reachable[block] = true;
 
             // Type map for the current program point
@@ -801,6 +796,26 @@ class TypeProp
 
                 //writeln("  instr eval done");
             }
+        }
+
+        // Visit the entry block
+        visitBlock(fun.entryBlock);
+
+        // Until the work list is empty
+        while (cfgWorkList.length > 0)
+        {
+            // Remove an edge from the work list
+            auto edge = cfgWorkList[$-1];
+            cfgWorkList.length--;
+            auto block = edge.target;
+
+            //writeln("iterating ", block.getName);
+
+            // Mark the edge as reachable
+            edgeVisited[edge] = true;
+
+            // Visit the block
+            visitBlock(block);
         }
 
         //writeln("type prop done");
