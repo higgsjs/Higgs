@@ -49,7 +49,8 @@ immutable uint32 STR_TBL_MAX_LOAD_NUM = 3;
 immutable uint32 STR_TBL_MAX_LOAD_DEN = 5;
 
 /**
-Extract a D wchar string from a string object
+Extract a D wchar string from a Higgs string object
+This copies the data into a newly allocated string.
 */
 wstring extractWStr(refptr ptr)
 {
@@ -65,6 +66,22 @@ wstring extractWStr(refptr ptr)
         wchars[i] = str_get_data(ptr, i);
 
     return to!wstring(wchars);
+}
+
+/**
+Create a temporary D wchar string view of a Higgs string object
+The D string becomes invalid when the Higgs GC is triggered.
+This is less safe, but much faster than extractWStr
+*/
+wstring tempWStr(refptr ptr)
+{
+    auto strData = ptr + str_ofs_data(ptr, 0);
+    auto strLen = str_get_len(ptr);
+
+    auto wcharPtr = cast(immutable wchar*)strData;
+    auto dStr = wcharPtr[0..strLen];
+
+    return dStr;
 }
 
 /**
