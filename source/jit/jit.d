@@ -1117,10 +1117,15 @@ class CodeGenState
     void setType(IRDstValue value, Type type)
     {
         assert (value in valMap);
-        auto state = getState(value);
+        ValState state = getState(value);
 
         // Assert that we aren't contradicting existing information
         assert (!state.typeKnown || state.type is type);
+
+        // If the type was previously unknown, it must have
+        // been written on the stack, mark it as such
+        if (!state.typeKnown)
+            state = state.writeType();
 
         // Set a known type for this value
         valMap[value] = state.setType(type);
