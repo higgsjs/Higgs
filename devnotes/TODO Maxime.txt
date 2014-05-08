@@ -128,16 +128,6 @@ TODO: May, approach Moz, Apple, FB wrt internship
 May 31st, complete paper writing
 --------------------------------
 
-Blog:
-- OSX support find/progress, Paul Fryzel
-- Graphics lib
-- pong, examples
-- optimizations, further reduced code size
-- paper, type analysis
-- full eval
-- typed hidden classes
-- D GC performance
-
 FIXME: type analysis can't handle getProp loop?
 - possibly because type is unknown at entry...
 - try tagging the output of some call_prims?
@@ -151,11 +141,27 @@ Meeting:
 - realized that D GC produces huge slowdown, dilutes our gains
   - pre-reserved 1GB chunk, string-fasta is more than 2x faster
   - implemented D string view on JS strings, less safe but often 2x faster
+- looked at reviewer comments, took notes
+  - impression: reviewers were extremely critical
+  - 2 related work suggestions
+  - all 3 complained about lack of running time testing
+  - one complained about too much code bloat
 
 Take a break, look into something small
 - work on this in dev-maxime branch
+- alsa sound output?
 - string-validate-input?
-- Basic TGA image input
+
+Blog: News of Higgs
+- Graphics lib
+- pong, examples
+- OSX support find/progress, Paul Fryzel
+- working on paper
+  - optimizations, further reduced code size
+  - type analysis
+  - Correcting anomalies, D GC performance
+- typed hidden classes
+
 
 
 
