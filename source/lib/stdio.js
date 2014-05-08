@@ -56,6 +56,7 @@ Bindings for common c I/O functions
         typedef struct _IO_FILE FILE;
 
         FILE *fopen( const char *filename, const char *mode );
+        FILE *fdopen( int fildes, const char *mode );
         int fflush( FILE *stream );
         int fclose( FILE *stream );
 
@@ -75,9 +76,6 @@ Bindings for common c I/O functions
         int rename( const char *old_filename, const char *new_filename );
         char *tmpnam( char *filename );
         FILE *tmpfile();
-        FILE *stdout;
-        FILE *stdin;
-        FILE *stderr;
     `);
 
 
@@ -446,14 +444,14 @@ Bindings for common c I/O functions
     **/
     io.stream = stream;
 
+    // File object for stdin
+    io.stdin = stream(c.fdopen(0, ffi.cstr("r")));
+
     // File object for stdout
-    io.stdout = stream(c.get_stdout(), "STDOUT");
+    io.stdout = stream(c.fdopen(1, ffi.cstr("w")));
 
     // File object for stderr
-    io.stderr = stream(c.get_stderr(), "STDERR");
-
-    // File object for stdin
-    io.stdin = stream(c.get_stdin(), "STDIN");
+    io.stderr = stream(c.fdopen(2, ffi.cstr("w")));
 
     /**
     Open a file
