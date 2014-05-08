@@ -45,17 +45,36 @@ Functions for dealing with the filesystem
 
     var c = ffi.c;
 
+    if (ffi.os === 'OSX') {
+        c.cdef(`
+            typedef unsigned int __ino_t;
+            typedef unsigned short __uint16_t;
+            typedef unsigned char __uint8_t;
+            struct dirent
+            {
+                __ino_t d_ino;
+                __uint16_t d_reclen;
+                __uint8_t d_type;
+                __uint8_t d_namlen;
+                char d_name[256];
+            };
+        `);
+    } else {
+        c.cdef(`
+            typedef unsigned long int __ino_t;
+            typedef long int __off_t;
+            struct dirent
+            {
+                __ino_t d_ino;
+                __off_t d_off;
+                unsigned short int d_reclen;
+                unsigned char d_type;
+                char d_name[256];
+            };
+        `);
+    }
+
     c.cdef(`
-        typedef unsigned long int __ino_t;
-        typedef long int __off_t;
-        struct dirent
-        {
-            __ino_t d_ino;
-            __off_t d_off;
-            unsigned short int d_reclen;
-            unsigned char d_type;
-            char d_name[256];
-        };
         typedef struct dirent dirent;
         typedef struct __dirstream DIR;
         DIR *opendir(const char *name);
