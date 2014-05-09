@@ -146,13 +146,27 @@ Meeting:
   - 2 related work suggestions
   - all 3 complained about lack of running time testing
   - one complained about too much code bloat
+- tentative new title
 
 Take a break, look into something small
-- work on this in dev-maxime branch
-- alsa sound output?
+- work on this in dev-maxime branch ***
 - string-validate-input?
+- simple diagram program, electronic schematics
+  - add components, junction points, linear wires
+  - grid-based placement
+  - KISS at first, just a few symbols
+- alsa sound output? look at existing code
+  - can write and wait for poll, no callback
 
-Blog: News of Higgs
+
+
+
+
+
+
+
+
+[DONE] Blog: News of Higgs
 - Graphics lib
 - pong, examples
 - OSX support find/progress, Paul Fryzel
@@ -162,19 +176,7 @@ Blog: News of Higgs
   - Correcting anomalies, D GC performance
 - typed hidden classes
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: host original BBV paper, link to it in blog post
 
 [DONE] TODO: look into stack allocating strings, referencing Higgs heap data
 http://forum.dlang.org/thread/ustyltiooelhlijcjxma@forum.dlang.org
