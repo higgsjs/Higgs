@@ -124,6 +124,7 @@ ulong getTimeUsecs()
     return Clock.currAppTick().usecs();
 
     /*
+    // User CPU time
     rusage usage;
     getrusage(RUSAGE_SELF, &usage);
     return (usage.ru_utime.tv_sec * 1000000) + usage.ru_utime.tv_usec;
@@ -249,9 +250,9 @@ static ~this()
         }
     }
 
-    version (linux)
+    if (opts.stats || opts.perf_stats)
     {
-        if (opts.stats || opts.perf_stats)
+        version (linux)
         {
             rusage usage;
             getrusage(RUSAGE_SELF, &usage);
