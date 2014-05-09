@@ -4053,8 +4053,11 @@ void gen_load_lib(
                 libname = "lib" ~ libname;
         }
 
-        // String must be null terminated
-        auto lib = dlopen(toStringz(libname), RTLD_LAZY | RTLD_LOCAL);
+        // Filename must be either a zero-terminated string or null
+        auto filename = libname ? toStringz(libname) : null;
+
+        // If filename is null the returned handle will be the main program
+        auto lib = dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
 
         if (lib is null)
         {
