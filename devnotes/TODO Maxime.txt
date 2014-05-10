@@ -132,7 +132,55 @@ FIXME: type analysis can't handle getProp loop?
 - possibly because type is unknown at entry...
 - try tagging the output of some call_prims?
 
-Meeting:
+TODO: take a break, look into alsa sound output
+- work on this in dev-maxime branch ***
+- look at existing code
+  - can write and wait for poll, no callback
+
+TODO: experiment, try running benchmark with all calls as primitive calls?
+- see if reduced code bloat means much more speed
+- richards?
+  - dynamic calls definitely not majority of calls
+  - 416 heap allocs
+  - 10.6K toBool
+- deltablue
+  - dyn calls also not majority
+  - 6671 heap allocs?
+  - 13.4K toBool
+  - 236K prim calls
+- earley-boyer?
+  - 56K+ allocs
+  - 865K rt_se ******
+  - 3.21M prim calls
+  - 67K toBool
+- v8-raytrace?
+  - 133K heap allocs
+  - 225K dynamic calls
+  - 1.7M prim calls
+  - 287K calls to toBool...
+
+TODO: look at uses of $rt_se in earley-boyer
+
+TODO: study uses of toBool in these benchmarks, log AST exprs
+- in richards, if (x.a)
+- deltablue, many prop usages as well
+- raytrace, also prop uses
+- earley-boyer, uses toBool on method calls
+- for prop, test consts first
+
+TODO: try benchmarks with setProp inlining?
+- Can we do better than 9% speedup?
+
+
+
+
+
+
+
+
+
+
+[DONE] Meeting:
 - created dls2014 branch
 - slowdown seems to be because D allocator is much slower after many allocations,
   possibly needs to GC during execution
@@ -147,24 +195,6 @@ Meeting:
   - all 3 complained about lack of running time testing
   - one complained about too much code bloat
 - tentative new title
-
-Take a break, look into something small
-- work on this in dev-maxime branch ***
-- string-validate-input?
-- simple diagram program, electronic schematics
-  - add components, junction points, linear wires
-  - grid-based placement
-  - KISS at first, just a few symbols
-- alsa sound output? look at existing code
-  - can write and wait for poll, no callback
-
-
-
-
-
-
-
-
 
 [DONE] Blog: News of Higgs
 - Graphics lib

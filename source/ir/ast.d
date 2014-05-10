@@ -2610,6 +2610,7 @@ IRValue genBoolEval(IRGenCtx ctx, ASTExpr testExpr, IRValue argVal)
     else
     {
         //writeln(testExpr);
+        //writeln("  ", testExpr.pos);
 
         // Convert the value to a boolean
         auto boolInstr = genRtCall(

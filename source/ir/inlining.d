@@ -143,7 +143,7 @@ void inlinePass(VM vm, IRFunction caller)
             && !name.startsWith("$rt_getPropMethod")
             && !name.startsWith("$rt_getPropElem")
             && !name.startsWith("$rt_getPropLength")
-            //&& !name.startsWith("$rt_setPropField")
+            && !name.startsWith("$rt_setPropField")
             && !name.startsWith("$rt_setPropElem")
         )
             continue;

@@ -287,7 +287,7 @@ function $rt_intToStr(intVal, radix)
     var strObj = $rt_str_alloc(strLen);
 
     // If the string is negative, write the minus sign
-    if (neg)
+    if ($ir_eq_const(neg, true))
     {
         $rt_str_set_data(strObj, 0, 45);
     }
@@ -399,7 +399,7 @@ function $rt_strToInt(strVal)
         }
     }
 
-    if (neg)
+    if ($ir_eq_const(neg, true))
         intVal *= -1;
 
     return intVal;
@@ -473,7 +473,8 @@ function $rt_numberToString(v, radix)
         return $rt_intToStr(v, radix);
     }
 
-    if (isNaN(v))
+    // NaN
+    if ($ir_ne_f64(v, v))
         return "NaN";
     if (v === Infinity)
         return "Infinity";
@@ -580,7 +581,8 @@ function $rt_toInt32(x)
     if ($ir_is_i32(x))
         return x;
 
-    if (isNaN(x) || x === Infinity || x === -Infinity)
+    // NaN or infinity
+    if ($ir_ne_f64(x, x) || x === Infinity || x === -Infinity)
         return 0;
 
     return $ir_f64_to_i32(x);
@@ -596,7 +598,8 @@ function $rt_toUint32(x)
     if ($ir_is_i32(x))
         return x;
 
-    if (isNaN(x) || x === Infinity || x === -Infinity)
+    // NaN or infinity
+    if ($ir_ne_f64(x, x) || x === Infinity || x === -Infinity)
         return 0;
 
     return $ir_f64_to_i32((x > 0)? x:-x);
@@ -1825,7 +1828,7 @@ function $rt_getProp(base, prop)
                 return $rt_arr_get_len(base);
 
             var propNum = $rt_strToInt(prop);
-            if (!isNaN(propNum))
+            if ($ir_is_i32(propNum))
                 return $rt_getProp(base, propNum);
 
             return $rt_objGetProp(base, prop);
@@ -2283,7 +2286,7 @@ function $rt_setProp(base, prop, val)
             }
 
             var propNum = $rt_strToInt(prop);
-            if (!isNaN(propNum))
+            if ($ir_is_i32(propNum))
                 return $rt_setProp(base, propNum, val);
 
             return $rt_objSetProp(base, prop, val);

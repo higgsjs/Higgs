@@ -2881,6 +2881,8 @@ void HeapAllocOp(Type type)(
         }
     );
 
+    as.incStatCnt(&stats.numHeapAllocs, scrRegs[0]);
+
     // Get the allocation size operand
     auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
 
