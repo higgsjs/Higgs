@@ -117,25 +117,14 @@ TODO: eliminate alloc init loops?
 - would make alloc faster, permit more inlining
 - may have to make it so that MISSING is the 0,0 value
 
-TODO: May, approach Moz, Apple, FB wrt internship
-- 4 months, [Jan, April] 2015, spend winter in Cali
-- Marc advises to remain near PhD work, best for CV
-- Marc thinks you can make ~40K pre-tax
-- Ask about salary, lodging options
+TODO: study uses of toBool in benchmarks, log AST exprs
+- in richards, if (x.a)
+- deltablue, many prop usages as well
+- raytrace, also prop uses
+- earley-boyer, uses toBool on method calls
+- for prop, test consts first
 
-------------------------------------------------------------------------------
-
-May 31st, complete paper writing
---------------------------------
-
-FIXME: type analysis can't handle getProp loop?
-- possibly because type is unknown at entry...
-- try tagging the output of some call_prims?
-
-TODO: take a break, look into alsa sound output
-- work on this in dev-maxime branch ***
-- look at existing code
-  - can write and wait for poll, no callback
+TODO: look at uses of $rt_se in earley-boyer
 
 TODO: experiment, try running benchmark with all calls as primitive calls?
 - see if reduced code bloat means much more speed
@@ -159,26 +148,75 @@ TODO: experiment, try running benchmark with all calls as primitive calls?
   - 1.7M prim calls
   - 287K calls to toBool...
 
-TODO: look at uses of $rt_se in earley-boyer
+TODO: May, approach Moz, Apple, FB wrt internship
+- 4 months, [Jan, April] 2015, spend winter in Cali
+- Marc advises to remain near PhD work, best for CV
+- Marc thinks you can make ~40K pre-tax
+- Ask about salary, lodging options
 
-TODO: study uses of toBool in these benchmarks, log AST exprs
-- in richards, if (x.a)
-- deltablue, many prop usages as well
-- raytrace, also prop uses
-- earley-boyer, uses toBool on method calls
-- for prop, test consts first
+TODO: take a break, look into alsa sound output
+- work on this in dev-maxime branch ***
+- look at existing code
+  - can write and wait for poll, no callback
 
-TODO: try benchmarks with setProp inlining?
+------------------------------------------------------------------------------
+
+May 31st, complete paper writing
+--------------------------------
+
+FIXME: type analysis can't handle getProp loop?
+- possibly because type is unknown at entry...
+- try tagging the output of some call_prims?
+
+
+
+
+
+
+
+
+[DONE] TODO: map_prop_idx, optimize fallback with soft spills, smaller code
+- may be able to gain much speed
+- before, benchmark.py:
+    code size (bytes): 542166
+- after:
+    code size (bytes): 503349
+    No noticeable time change...
+
+[DONE] TODO: v8-raytrace, many get props for "prototype"
+- Implement getPropProto
+- before:
+    comp time (ms): 2261
+    exec time (ms): 167
+    total time (ms): 2429
+    code size (bytes): 1362565
+    num blocks: 8782
+    num versions: 13915
+    max versions: 18
+    num map_prop_idx: 1523308
+    num prop cache misses: 1902
+    num prop slow lookups: 378047
+    total prim calls: 1408078
+    ---
+    code size (bytes): 542954
+    comp time (ms): 801
+    exec time (ms): 27
+    total prim calls: 326837
+- after:
+    reduces prim calls but increases code size further
+
+[DONE] TODO: time v8-raytrace with cache size 3
+./higgs --stats benchmarks/v8bench/base.js benchmarks/v8bench/raytrace.js benchmarks/v8bench/drv-raytrace.js
+- Almost 10x the misses
+- Bigger size doesn't improve
+
+[DONE] TODO: suppress set_str if only one use which is map_prop_idx
+before code size (bytes): 512680
+code size (bytes): 512644
+
+[DONE] TODO: try benchmarks with setProp inlining?
 - Can we do better than 9% speedup?
-
-
-
-
-
-
-
-
-
+  - Code size reduction, but only 8% speedup
 
 [DONE] Meeting:
 - created dls2014 branch

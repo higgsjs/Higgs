@@ -501,6 +501,9 @@ class VM
     /// Get global fallback subroutine
     CodePtr getGlobalSub;
 
+    /// Map property index fallback subroutine
+    CodePtr propIdxSub;
+
     /// Space to save registers when calling into hosted code
     Word* regSave;
 
