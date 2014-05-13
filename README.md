@@ -11,6 +11,7 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 - POSIX compliant OS (Linux, Unix, MacOS X)
 - Python 2.7 (if regenerating object layouts)
 - x86 64-bit CPU
+- GNU make
 
 **Quickstart:**
 
@@ -38,6 +39,7 @@ make install BIN_DIR=/my/bin/dir LIB_DIR=/my/lib/dir
 ```
 
 Note: you may need to run `make install` with `sudo`.
+Note: if you run a non-Linux OS like FreeBSD you may not have `GNU make` installed. It's generally in a package called something like "gmake".
 
 *Cleanup:*
  

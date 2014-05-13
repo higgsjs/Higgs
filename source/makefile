@@ -1,9 +1,23 @@
 DC = dmd
-COPTS = -m64 -O -L-ldl -J./
-TESTOPTS = -m64 -O -L-ldl -J./ -unittest -debug
-DBGOPTS = -m64 -O -L-ldl -J./ -gc -debug
-RELOPTS = -m64 -O -L-ldl -J./ -release -inline -noboundscheck -version=release
-PROFOPTS = -m64 -O -L-ldl -J./ -release -inline -noboundscheck -profile
+# compilter options
+UNAME := $(shell uname)
+ifneq (0, $(findstring "BSD", $(UNAME)))
+# BSD
+	COPTS := -m64 -O -J./
+	TESTOPTS := -m64 -O -J./ -unittest -debug
+	DBGOPTS := -m64 -O  -J./ -gc -debug
+	RELOPTS := -m64 -O -J./ -release -inline -noboundscheck -version=release
+	PROFOPTS := -m64 -O -J./ -release -inline -noboundscheck -profile
+else
+# Linux, Darwin, etc
+	COPTS := -m64 -O -L-ldl -J./
+	TESTOPTS := -m64 -O -L-ldl -J./ -unittest -debug
+	DBGOPTS := -m64 -O -L-ldl -J./ -gc -debug
+	RELOPTS := -m64 -O -L-ldl -J./ -release -inline -noboundscheck -version=release
+	PROFOPTS := -m64 -O -L-ldl -J./ -release -inline -noboundscheck -profile
+endif
+
+
 
 BIN_NAME = higgs
 BIN_NAME_TEST = higgs-test
@@ -12,6 +26,8 @@ BIN_NAME_DEBUG = higgs-dbg
 
 BIN_DIR = /usr/bin
 LIB_DIR = /etc/higgs
+
+UNAME_S = `uname`
 
 # Source files
 SRC =               \
