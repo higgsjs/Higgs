@@ -27,7 +27,6 @@ BIN_NAME_DEBUG = higgs-dbg
 BIN_DIR = /usr/bin
 LIB_DIR = /etc/higgs
 
-UNAME_S = `uname`
 
 # Source files
 SRC =               \
