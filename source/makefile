@@ -1,7 +1,7 @@
 DC = dmd
 # compilter options
 UNAME := $(shell uname)
-ifneq (0, $(findstring "BSD", $(UNAME)))
+ifneq (, $(findstring "BSD", $(UNAME)))
 # BSD
 	COPTS := -m64 -O -J./
 	TESTOPTS := -m64 -O -J./ -unittest -debug
