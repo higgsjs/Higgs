@@ -3,21 +3,17 @@ DC = dmd
 UNAME := $(shell uname)
 ifneq (, $(findstring BSD, $(UNAME)))
 # BSD
-	COPTS := -m64 -O -J./
-	TESTOPTS := -m64 -O -J./ -unittest -debug
-	DBGOPTS := -m64 -O  -J./ -gc -debug
-	RELOPTS := -m64 -O -J./ -release -inline -noboundscheck -version=release
-	PROFOPTS := -m64 -O -J./ -release -inline -noboundscheck -profile
+	LIBS :=
 else
 # Linux, Darwin, etc
-	COPTS := -m64 -O -L-ldl -J./
-	TESTOPTS := -m64 -O -L-ldl -J./ -unittest -debug
-	DBGOPTS := -m64 -O -L-ldl -J./ -gc -debug
-	RELOPTS := -m64 -O -L-ldl -J./ -release -inline -noboundscheck -version=release
-	PROFOPTS := -m64 -O -L-ldl -J./ -release -inline -noboundscheck -profile
+	LIBS := -L-ldl -J./
 endif
 
-
+COPTS := -m64 -O -J./
+TESTOPTS := -m64 -O -J./ -unittest -debug
+DBGOPTS := -m64 -O  -J./ -gc -debug
+RELOPTS := -m64 -O -J./ -release -inline -noboundscheck -version=release
+PROFOPTS := -m64 -O -J./ -release -inline -noboundscheck -profile
 
 BIN_NAME = higgs
 BIN_NAME_TEST = higgs-test
@@ -70,25 +66,25 @@ runtime/tests.d     \
 runtime/ffitests.d
 
 all: layout
-	$(DC) $(COPTS) -of$(BIN_NAME) $(SRC)
+	$(DC) $(LIBS) $(COPTS) -of$(BIN_NAME) $(SRC)
 
 ffidev:
-	$(DC) $(COPTS) -of$(BIN_NAME_TEST) $(SRC) -gc -version=FFIdev
+	$(DC) $(LIBS) $(COPTS) -of$(BIN_NAME_TEST) $(SRC) -gc -version=FFIdev
 
 test: layout
-	$(DC) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
+	$(DC) $(LIBS) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
 	time ./$(BIN_NAME_TEST) test-runner.js
 	rm $(BIN_NAME_TEST)
 
 prof: layout
-	$(DC) $(PROFOPTS) -of$(BIN_NAME_PROF) $(SRC)
+	$(DC) $(LIBS) $(PROFOPTS) -of$(BIN_NAME_PROF) $(SRC)
 
 debug: layout
-	$(DC) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)
+	$(DC) $(LIBS) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)
 
 release: layout
 	printf $(LIB_DIR) > ./libdir.txt;
-	$(DC) $(RELOPTS) -of$(BIN_NAME) $(SRC)
+	$(DC) $(LIBS) $(RELOPTS) -of$(BIN_NAME) $(SRC)
 
 layout:
 	python runtime/layout.py
