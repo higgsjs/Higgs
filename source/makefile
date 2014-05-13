@@ -6,7 +6,7 @@ ifneq (, $(findstring BSD, $(UNAME)))
 	LIBS :=
 else
 # Linux, Darwin, etc
-	LIBS := -L-ldl -J./
+	LIBS := -L-ldl
 endif
 
 COPTS := -m64 -O -J./
@@ -22,7 +22,6 @@ BIN_NAME_DEBUG = higgs-dbg
 
 BIN_DIR = /usr/bin
 LIB_DIR = /etc/higgs
-
 
 # Source files
 SRC =               \
