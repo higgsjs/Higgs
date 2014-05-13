@@ -20,6 +20,9 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 `git clone https://github.com/maximecb/Higgs.git && cd Higgs/source`
 
 *Compile a binary:*
+
+NOTE: if you run a non-Linux OS like FreeBSD you may not have `GNU make` installed. You may need to install the "gmake" package or otherwise aquire `GNU make`.
+
  
 `make all`
 generates a binary `higgs` in the source directory.
@@ -38,8 +41,8 @@ the binary and runtime files may be changed with `BIN_DIR` and `LIB_DIR` respect
 make install BIN_DIR=/my/bin/dir LIB_DIR=/my/lib/dir
 ```
 
-Note: you may need to run `make install` with `sudo`.
-Note: if you run a non-Linux OS like FreeBSD you may not have `GNU make` installed. It's generally in a package called something like "gmake".
+
+NOTE: you may need to run `make install` with `sudo`.
 
 *Cleanup:*
  
