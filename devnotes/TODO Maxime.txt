@@ -33,13 +33,6 @@ TODO: think about shapes more
   - class ObjShape
 - no more "make_map"
 
-FIXME: empty fun, ret undefined twice
-- see 200m_calls
-- second one is from ctor entry
-  - entry stub doesn't know which function we're in
-  - needs to assume frame size is initial
-- should push locals in entry, pop in ret
-
 TODO: optimize inlineCall
 - inlinePass does not do liveness analysis, is slow on its own
 - what are the slowest parts of it?
@@ -154,10 +147,13 @@ TODO: May, approach Moz, Apple, FB wrt internship
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
 
-TODO: take a break, look into alsa sound output
+TODO: take a break, look into sound output
 - work on this in dev-maxime branch ***
 - look at existing code
   - can write and wait for poll, no callback
+- Pulseaudio? Simple API
+  - Try writing it in C first!
+http://freedesktop.org/software/pulseaudio/doxygen/simple.html#conn_sec
 
 ------------------------------------------------------------------------------
 
@@ -174,6 +170,32 @@ FIXME: type analysis can't handle getProp loop?
 
 
 
+
+
+[DONE] TODO: implement AST->IR for new using runtime functions
+
+[DONE] TODO: gen_new_map
+
+./benchmark.py
+code size (bytes): 417413
+comp time (ms): 189
+exec time (ms): 28
+
+[DONE] TODO: test earley-boyer, v8-raytrace without arg count test
+- first see if arg count always matches
+- speedup?
+/higgs --perf_stats benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 
+comp time (ms): 579
+exec time (ms): 471
+total time (ms): 1051
+code size (bytes): 1696981
+./higgs --perf_stats benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 
+comp time (ms): 563
+exec time (ms): 449
+total time (ms): 1012
+code size (bytes): 1674514
+- Not a huge difference
+- May not have that many calls, more news?
 
 [DONE] TODO: map_prop_idx, optimize fallback with soft spills, smaller code
 - may be able to gain much speed

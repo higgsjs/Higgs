@@ -1632,6 +1632,37 @@ function $rt_ns(x, y)
 //=============================================================================
 
 /**
+Allocate the "this" object for a constructor call
+*/
+function $rt_ctorNewThis(clos)
+{
+    var proto = clos.prototype;
+
+    var ctorMap = $rt_clos_get_ctor_map(clos);
+
+    if ($ir_eq_rawptr(ctorMap, $nullptr))
+    {
+        ctorMap = $ir_new_map(0);
+        $rt_clos_set_ctor_map(clos, ctorMap);
+    }
+
+    var thisObj = $rt_newObj(ctorMap, proto);
+
+    return thisObj;
+}
+
+/**
+Select the return value after a new/constructor call
+*/
+function $rt_ctorSelectRet(retVal, thisVal)
+{
+    if ($ir_is_const(retVal) && $ir_eq_const(retVal, $undef))
+        return thisVal;
+
+    return retVal;
+}
+
+/**
 Allocate an empty object
 */
 function $rt_newObj(mapPtr, protoPtr)

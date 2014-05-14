@@ -102,6 +102,7 @@ alias static immutable(OpInfo) Opcode;
 // Access visible arguments by index
 Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
 
+// TODO: rename to STATIC_STR
 // Set a local slot to a constant value    
 Opcode SET_STR = { "set_str", true, [OpArg.STRING, OpArg.LINK], &gen_set_str };
 
@@ -298,6 +299,7 @@ Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set
 /// try to find the string in the string table
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &gen_get_str, OpInfo.MAY_GC };
 
+// TODO: rename to STATIC_LINK
 /// Create a link table entry associated with this instruction
 Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], &gen_make_link };
 
@@ -306,6 +308,9 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link
 
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
+
+/// Allocate a new map object
+Opcode NEW_MAP = { "new_map", true, [OpArg.LOCAL], &gen_new_map };
 
 /// Create a map object associated with this instruction
 Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP, OpArg.LOCAL], &gen_make_map };

@@ -3380,6 +3380,48 @@ void gen_make_map(
     st.setOutType(as, instr, Type.MAPPTR);
 }
 
+void gen_new_map(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static ObjMap op_new_map(VM vm, uint32_t minNumProps)
+    {
+        return new ObjMap(vm, minNumProps);
+    }
+
+    // Spill the values live before the instruction
+    st.spillValues(
+        as,
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
+        {
+            return liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    assert (outOpnd.isReg);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), vmReg.opnd);
+    as.mov(cargRegs[1].opnd(32), opnd0);
+    as.ptr(scrRegs[0], &op_new_map);
+    as.call(scrRegs[0]);
+
+    as.loadJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, cretReg.opnd);
+
+    // Set the output type
+    st.setOutType(as, instr, Type.MAPPTR);
+}
+
 void gen_map_num_props(
     BlockVersion ver,
     CodeGenState st,
@@ -3417,7 +3459,7 @@ void gen_map_num_props(
     as.loadJITRegs();
 
     // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, cretReg.opnd);
 
     st.setOutType(as, instr, Type.INT32);
 }
