@@ -127,6 +127,7 @@ ulong getTimeUsecs()
     return Clock.currAppTick().usecs();
 
     /*
+    // User CPU time
     rusage usage;
     getrusage(RUSAGE_SELF, &usage);
     return (usage.ru_utime.tv_sec * 1000000) + usage.ru_utime.tv_usec;
@@ -255,12 +256,15 @@ static ~this()
 
     if (opts.stats || opts.perf_stats)
     {
-        rusage usage;
-        getrusage(RUSAGE_SELF, &usage);
-        writefln("page reclaims: %s", usage.ru_minflt);
-        writefln("page faults: %s", usage.ru_majflt);
-        writefln("voluntary context sw: %s", usage.ru_nvcsw);
-        writefln("involuntary context sw: %s", usage.ru_nivcsw);
+        version (linux)
+        {
+            rusage usage;
+            getrusage(RUSAGE_SELF, &usage);
+            writefln("page reclaims: %d", usage.ru_minflt);
+            writefln("page faults: %s", usage.ru_majflt);
+            writefln("voluntary context sw: %s", usage.ru_nvcsw);
+            writefln("involuntary context sw: %s", usage.ru_nivcsw);
+        }
     }
 }
 

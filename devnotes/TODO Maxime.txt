@@ -172,6 +172,10 @@ FIXME: type analysis can't handle getProp loop?
 
 
 
+
+
+
+
 [DONE] TODO: implement AST->IR for new using runtime functions
 
 [DONE] TODO: gen_new_map
@@ -285,6 +289,9 @@ static nothrow size_t reserve(size_t sz);
 - disable analysis in release first, push to master, then create branch
 git checkout -b dls2014
 git push -u origin dls2014
+
+[DONE] TODO: basic TGA image input
+- update img lib test to read back and compare img
 
 [DONE] FIXME: CodeGenState.setType should also mark the type as written, for IsTypeOp?
 - only if the type operand is mem?

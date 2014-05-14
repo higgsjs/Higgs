@@ -451,7 +451,10 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     if (tok === "char" || tok === "int" || tok === "long" || tok === "short")
                         dec.type = CType(dec.type.name + " " + tok);
                     else
-                        throw new CParseUnexpectedError("type specifier", tok, lex.loc());
+                        if (dec.storage_class === "typedef")
+                            dec.name = tok;
+                        else
+                            throw new CParseUnexpectedError("type specifier", tok, lex.loc());
                 else
                     dec.type = CType(tok);
             else if (type === TYPE_QUALIFIER)
