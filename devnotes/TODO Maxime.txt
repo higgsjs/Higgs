@@ -147,8 +147,6 @@ Meeting:
   - some allocations are sometimes needed during execution
   - fairest seems to be to run the analysis for all, even if not using the result
 
-Take a break, look into something small
-- string-validate-input?
 
 
 
@@ -158,6 +156,8 @@ Take a break, look into something small
 
 
 
+[DONE] FIXME: invalid lhs in assignment
+true?email='foo':email='bar';
 
 [DONE] TODO: basic TGA image input
 - update img lib test to read back and compare img

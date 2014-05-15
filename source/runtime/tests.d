@@ -383,6 +383,9 @@ unittest
 
     vm.assertInt("return true? 1:0", 1);
     vm.assertInt("return false? 1:0", 0);
+    vm.assertInt("true? a=3:a=4", 3);
+    vm.assertInt("true? 1:0||0", 1);
+    vm.assertInt("true? 0:2,3", 3);
 
     vm.assertInt("return 0 || 2", 2);
     vm.assertInt("return 1 || 2", 1);
