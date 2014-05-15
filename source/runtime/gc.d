@@ -38,6 +38,7 @@
 module runtime.gc;
 
 import core.memory;
+import std.c.string;
 import std.stdio;
 import std.string;
 import std.conv;
@@ -237,6 +238,11 @@ void gcCollect(VM vm, size_t heapSize = 0)
         GC.BlkAttr.NO_INTERIOR
     );
 
+    // Zero-out the to-space
+    // Note: the runtime relies on this behavior to
+    // avoid initializing all object and array fields
+    memset(vm.toStart, 0, vm.heapSize);
+
     //writefln("allocated to-space block: %s", vm.toStart);
 
     assert (
@@ -328,9 +334,8 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Store a pointer to the from-space heap
     auto fromStart = vm.heapStart;
-    auto fromLimit = vm.heapLimit;
 
-    // Flip the from-space and to-space
+    // Make the to-space the new from-space
     vm.heapStart = vm.toStart;
     vm.heapLimit = vm.toLimit;
     vm.allocPtr = vm.toAlloc;
@@ -363,24 +368,8 @@ void gcCollect(VM vm, size_t heapSize = 0)
         getTableStr(vm, next);
     }
 
-    //writefln("old string count: %s", strtbl_get_num_strs(oldStrTbl));
-    //writefln("new string count: %s", strtbl_get_num_strs(vm.strTbl));
-
-    //writefln("clearing from-space heap");
-
-    // Zero out the from-space to prepare it for reuse in the next collection
-    for (int64* p = cast(int64*)fromStart; p < cast(int64*)fromLimit; p++)
-        *p = 0;
-
     // Free the from-space heap block
     GC.free(fromStart);
-
-    // Zero out the stack space below the stack pointers (free space)
-    // to eliminate any unprocessed references to the from space
-    for (int64* p = cast(int64*)vm.wStack; p < cast(int64*)vm.wsp; p++)
-        *p = 0;
-    for (int8* p = cast(int8*)vm.tStack; p < cast(int8*)vm.tsp; p++)
-        *p = 0;
 
     //writefln("old live funs count: %s", vm.funRefs.length);
 

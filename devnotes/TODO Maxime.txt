@@ -18,21 +18,6 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-TODO: check the Moz guy's shape slides, check notes
-TODO: read some of Mozilla's shape code, srysly
-TODO: think about shapes more
-- want a guaranteed minimum object size
-  - no need for a special ext table, can use objects as is with len, next ptr
-- how complicated would they be to implement in a basic form?
-  - switch to shape idx
-- how much simplification could you get on object property accesses?
-  - sketch it out
-- can use shape pointers directly
-  - shapes can keep list of referring blocks
-- start writing D code for shapes
-  - class ObjShape
-- no more "make_map"
-
 TODO: optimize inlineCall
 - inlinePass does not do liveness analysis, is slow on its own
 - what are the slowest parts of it?
@@ -106,10 +91,6 @@ benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tag
 
 FIXME: string-validate-input segfaults
 
-TODO: eliminate alloc init loops?
-- would make alloc faster, permit more inlining
-- may have to make it so that MISSING is the 0,0 value
-
 TODO: look at uses of $rt_se in earley-boyer
 
 TODO: May, approach Moz, Apple, FB wrt internship
@@ -122,9 +103,6 @@ TODO: take a break, look into sound output
 - work on this in dev-maxime branch ***
 - look at existing code
   - can write and wait for poll, no callback
-- Pulseaudio? Simple API
-  - Try writing it in C first!
-http://freedesktop.org/software/pulseaudio/doxygen/simple.html#conn_sec
 
 ------------------------------------------------------------------------------
 
@@ -145,8 +123,46 @@ TODO: study uses of toBool in benchmarks
 - earley-boyer, uses toBool on method calls
 - for prop, test consts first? log values tested
 
-TODO: fix parser bug in string-validate-input
+3bits-byte: 3.0
+3d-cube: 22.0
+3d-morph: 24.0
+3d-raytrace: 94.0
+binary-trees: 29.0
+bits-in-byte: 11.0
+bitwise-and: 5.0
+cordic: 26.0
+crypto-aes: 95.0
+crypto-md5: 39.0
+crypto-sha1: 17.0
+date-xparb: 98.0
+deltablue: 22.0
+earley-boyer: 375.0
+fannkuch: 23.0
+fasta: 1832.0
+navier-stokes: 60.0
+nbody: 47.0
+nsieve: 11.0
+nsieve-bits: 8.0
+partial-sums: 26.0
+recursive: 4.0
+richards: 12.0
+spectral-norm: 8.0
+v8-crypto: 71.0
+v8-raytrace: 141.0
 
+
+
+
+TODO: eliminate alloc init loops
+- would make alloc faster, permit more inlining
+- make it so that MISSING is the 0,0 value
+- null should be zero as well
+- can then remove init to missing, null
+
+TODO: make missing and null have zero value
+- missing/const type should be zero
+
+TODO: make GC zero out to-space after allocating it
 
 
 
