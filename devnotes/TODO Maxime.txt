@@ -18,28 +18,6 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-TODO: check the Moz guy's shape slides, check notes
-TODO: read some of Mozilla's shape code, srysly
-TODO: think about shapes more
-- want a guaranteed minimum object size
-  - no need for a special ext table, can use objects as is with len, next ptr
-- how complicated would they be to implement in a basic form?
-  - switch to shape idx
-- how much simplification could you get on object property accesses?
-  - sketch it out
-- can use shape pointers directly
-  - shapes can keep list of referring blocks
-- start writing D code for shapes
-  - class ObjShape
-- no more "make_map"
-
-FIXME: empty fun, ret undefined twice
-- see 200m_calls
-- second one is from ctor entry
-  - entry stub doesn't know which function we're in
-  - needs to assume frame size is initial
-- should push locals in entry, pop in ret
-
 TODO: optimize inlineCall
 - inlinePass does not do liveness analysis, is slow on its own
 - what are the slowest parts of it?
@@ -67,14 +45,8 @@ TODO: investigate why inlining getPropElem causes so much slowdown
 - do we have that many more blocks, versions?
 TODO: profile compilation time, big eval loop?
 
-TODO: bias toBool for property access expressions, isNaN, bitwise result
-
 FIXME: ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
 - benchmark moronically redefines RegExp name
-
-Blog: coming soon to Higgs, Typed Hidden classes
-http://www.ustream.tv/recorded/43773608
-- Draw sketches? Look for quick sketching app
 
 TODO: add tests for nested eval support
 - accessing local vars, changing vars
@@ -110,8 +82,6 @@ run-time error: SyntaxError: parseJSON
 $rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
 s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
 benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
-
-FIXME: string-validate-input segfaults
 
 TODO: eliminate alloc init loops?
 - would make alloc faster, permit more inlining
