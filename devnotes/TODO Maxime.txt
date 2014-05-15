@@ -110,36 +110,7 @@ TODO: eliminate alloc init loops?
 - would make alloc faster, permit more inlining
 - may have to make it so that MISSING is the 0,0 value
 
-TODO: study uses of toBool in benchmarks, log AST exprs
-- in richards, if (x.a)
-- deltablue, many prop usages as well
-- raytrace, also prop uses
-- earley-boyer, uses toBool on method calls
-- for prop, test consts first
-
 TODO: look at uses of $rt_se in earley-boyer
-
-TODO: experiment, try running benchmark with all calls as primitive calls?
-- see if reduced code bloat means much more speed
-- richards?
-  - dynamic calls definitely not majority of calls
-  - 416 heap allocs
-  - 10.6K toBool
-- deltablue
-  - dyn calls also not majority
-  - 6671 heap allocs?
-  - 13.4K toBool
-  - 236K prim calls
-- earley-boyer?
-  - 56K+ allocs
-  - 865K rt_se ******
-  - 3.21M prim calls
-  - 67K toBool
-- v8-raytrace?
-  - 133K heap allocs
-  - 225K dynamic calls
-  - 1.7M prim calls
-  - 287K calls to toBool...
 
 TODO: May, approach Moz, Apple, FB wrt internship
 - 4 months, [Jan, April] 2015, spend winter in Cali
@@ -164,9 +135,17 @@ FIXME: type analysis can't handle getProp loop?
 - possibly because type is unknown at entry...
 - try tagging the output of some call_prims?
 
+TODO: study inefficiencies in splay benchmark further
+- many many primitive calls
 
+TODO: study uses of toBool in benchmarks
+- in richards, if (x.a)
+- deltablue, many prop usages as well
+- raytrace, also prop uses
+- earley-boyer, uses toBool on method calls
+- for prop, test consts first? log values tested
 
-
+TODO: fix parser bug in string-validate-input
 
 
 
