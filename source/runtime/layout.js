@@ -93,8 +93,6 @@ function $rt_str_alloc(len)
 {    
     var o = $ir_alloc_string($rt_str_comp_size(len));
     $rt_str_set_len(o, len);
-    $rt_str_set_next(o, null);
-    $rt_str_set_header(o, 0);
     return o;
 }
 
@@ -194,13 +192,7 @@ function $rt_strtbl_alloc(cap)
 {    
     var o = $ir_alloc_refptr($rt_strtbl_comp_size(cap));
     $rt_strtbl_set_cap(o, cap);
-    $rt_strtbl_set_next(o, null);
     $rt_strtbl_set_header(o, 1);
-    $rt_strtbl_set_num_strs(o, 0);
-    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
-    {    
-        $rt_strtbl_set_str(o, i, null);
-    }
     return o;
 }
 
@@ -320,16 +312,7 @@ function $rt_obj_alloc(cap)
 {    
     var o = $ir_alloc_object($rt_obj_comp_size(cap));
     $rt_obj_set_cap(o, cap);
-    $rt_obj_set_next(o, null);
     $rt_obj_set_header(o, 2);
-    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
-    {    
-        $rt_obj_set_word(o, i, $ir_get_word($missing));
-    }
-    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
-    {    
-        $rt_obj_set_type(o, i, $ir_get_type($missing));
-    }
     return o;
 }
 
@@ -495,21 +478,7 @@ function $rt_clos_alloc(cap, num_cells)
     var o = $ir_alloc_closure($rt_clos_comp_size(cap, num_cells));
     $rt_clos_set_cap(o, cap);
     $rt_clos_set_num_cells(o, num_cells);
-    $rt_clos_set_next(o, null);
     $rt_clos_set_header(o, 3);
-    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
-    {    
-        $rt_clos_set_word(o, i, $ir_get_word($missing));
-    }
-    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
-    {    
-        $rt_clos_set_type(o, i, $ir_get_type($missing));
-    }
-    $rt_clos_set_ctor_map(o, null);
-    for (var i = 0; $ir_lt_i32(i, num_cells); i = $ir_add_i32(i, 1))
-    {    
-        $rt_clos_set_cell(o, i, null);
-    }
     return o;
 }
 
@@ -603,10 +572,8 @@ function $rt_cell_sizeof(o)
 function $rt_cell_alloc()
 {    
     var o = $ir_alloc_refptr($rt_cell_comp_size());
-    $rt_cell_set_next(o, null);
     $rt_cell_set_header(o, 4);
     $rt_cell_set_word(o, $ir_get_word($undef));
-    $rt_cell_set_type(o, $ir_get_type($undef));
     return o;
 }
 
@@ -752,16 +719,7 @@ function $rt_arr_alloc(cap)
 {    
     var o = $ir_alloc_array($rt_arr_comp_size(cap));
     $rt_arr_set_cap(o, cap);
-    $rt_arr_set_next(o, null);
     $rt_arr_set_header(o, 5);
-    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
-    {    
-        $rt_arr_set_word(o, i, $ir_get_word($missing));
-    }
-    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
-    {    
-        $rt_arr_set_type(o, i, $ir_get_type($missing));
-    }
     return o;
 }
 
@@ -867,15 +825,10 @@ function $rt_arrtbl_alloc(cap)
 {    
     var o = $ir_alloc_refptr($rt_arrtbl_comp_size(cap));
     $rt_arrtbl_set_cap(o, cap);
-    $rt_arrtbl_set_next(o, null);
     $rt_arrtbl_set_header(o, 6);
     for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
     {    
         $rt_arrtbl_set_word(o, i, $ir_get_word($undef));
-    }
-    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
-    {    
-        $rt_arrtbl_set_type(o, i, $ir_get_type($undef));
     }
     return o;
 }

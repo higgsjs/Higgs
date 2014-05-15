@@ -38,6 +38,7 @@
 module runtime.vm;
 
 import core.memory;
+import std.c.string;
 import std.stdio;
 import std.string;
 import std.array;
@@ -171,12 +172,12 @@ unittest
 /// Word type values
 enum Type : ubyte
 {
-    INT32 = 0,
+    CONST = 0,
+    INT32,
     INT64,
     FLOAT64,
     RAWPTR,
     RETADDR,
-    CONST,
     FUNPTR,
     MAPPTR,
 
@@ -352,10 +353,10 @@ struct ValuePair
 
 // Note: low byte is set to allow for one byte immediate comparison
 immutable NULL    = ValuePair(Word(0x00), Type.REFPTR);
+immutable MISSING = ValuePair(Word(0x00), Type.CONST);
 immutable TRUE    = ValuePair(Word(0x01), Type.CONST);
 immutable FALSE   = ValuePair(Word(0x02), Type.CONST);
 immutable UNDEF   = ValuePair(Word(0x03), Type.CONST);
-immutable MISSING = ValuePair(Word(0x04), Type.CONST);
 
 /// Stack size, 256K words (2MB)
 immutable size_t STACK_SIZE = 2^^18;
@@ -542,10 +543,11 @@ class VM
         // Allocate a block of immovable memory for the heap
         heapSize = HEAP_INIT_SIZE;
         heapStart = cast(ubyte*)GC.malloc(
-            heapSize, 
+            heapSize,
             GC.BlkAttr.NO_SCAN |
             GC.BlkAttr.NO_INTERIOR
         );
+        memset(heapStart, 0, heapSize);
 
         // Check that the allocation was successful
         if (heapStart is null)

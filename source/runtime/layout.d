@@ -112,8 +112,6 @@ extern (C) refptr str_alloc(VM vm, uint32 len)
 {    
     auto o = vm.heapAlloc(str_comp_size(len));
     str_set_len(o, len);
-    str_set_next(o, null);
-    str_set_header(o, 0);
     return o;
 }
 
@@ -213,13 +211,7 @@ extern (C) refptr strtbl_alloc(VM vm, uint32 cap)
 {    
     auto o = vm.heapAlloc(strtbl_comp_size(cap));
     strtbl_set_cap(o, cap);
-    strtbl_set_next(o, null);
     strtbl_set_header(o, 1);
-    strtbl_set_num_strs(o, 0);
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        strtbl_set_str(o, i, null);
-    }
     return o;
 }
 
@@ -339,16 +331,7 @@ extern (C) refptr obj_alloc(VM vm, uint32 cap)
 {    
     auto o = vm.heapAlloc(obj_comp_size(cap));
     obj_set_cap(o, cap);
-    obj_set_next(o, null);
     obj_set_header(o, 2);
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        obj_set_word(o, i, MISSING.word.uint8Val);
-    }
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        obj_set_type(o, i, Type.CONST);
-    }
     return o;
 }
 
@@ -514,21 +497,7 @@ extern (C) refptr clos_alloc(VM vm, uint32 cap, uint32 num_cells)
     auto o = vm.heapAlloc(clos_comp_size(cap, num_cells));
     clos_set_cap(o, cap);
     clos_set_num_cells(o, num_cells);
-    clos_set_next(o, null);
     clos_set_header(o, 3);
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        clos_set_word(o, i, MISSING.word.uint8Val);
-    }
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        clos_set_type(o, i, Type.CONST);
-    }
-    clos_set_ctor_map(o, null);
-    for (uint32 i = 0; i < num_cells; ++i)
-    {    
-        clos_set_cell(o, i, null);
-    }
     return o;
 }
 
@@ -622,10 +591,8 @@ extern (C) uint32 cell_sizeof(refptr o)
 extern (C) refptr cell_alloc(VM vm)
 {    
     auto o = vm.heapAlloc(cell_comp_size());
-    cell_set_next(o, null);
     cell_set_header(o, 4);
     cell_set_word(o, UNDEF.word.uint8Val);
-    cell_set_type(o, Type.CONST);
     return o;
 }
 
@@ -771,16 +738,7 @@ extern (C) refptr arr_alloc(VM vm, uint32 cap)
 {    
     auto o = vm.heapAlloc(arr_comp_size(cap));
     arr_set_cap(o, cap);
-    arr_set_next(o, null);
     arr_set_header(o, 5);
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        arr_set_word(o, i, MISSING.word.uint8Val);
-    }
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        arr_set_type(o, i, Type.CONST);
-    }
     return o;
 }
 
@@ -886,15 +844,10 @@ extern (C) refptr arrtbl_alloc(VM vm, uint32 cap)
 {    
     auto o = vm.heapAlloc(arrtbl_comp_size(cap));
     arrtbl_set_cap(o, cap);
-    arrtbl_set_next(o, null);
     arrtbl_set_header(o, 6);
     for (uint32 i = 0; i < cap; ++i)
     {    
         arrtbl_set_word(o, i, UNDEF.word.uint8Val);
-    }
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        arrtbl_set_type(o, i, Type.CONST);
     }
     return o;
 }

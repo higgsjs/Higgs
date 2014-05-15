@@ -123,53 +123,24 @@ TODO: study uses of toBool in benchmarks
 - earley-boyer, uses toBool on method calls
 - for prop, test consts first? log values tested
 
-3bits-byte: 3.0
-3d-cube: 22.0
-3d-morph: 24.0
-3d-raytrace: 94.0
-binary-trees: 29.0
-bits-in-byte: 11.0
-bitwise-and: 5.0
-cordic: 26.0
-crypto-aes: 95.0
-crypto-md5: 39.0
-crypto-sha1: 17.0
-date-xparb: 98.0
-deltablue: 22.0
-earley-boyer: 375.0
-fannkuch: 23.0
-fasta: 1832.0
-navier-stokes: 60.0
-nbody: 47.0
-nsieve: 11.0
-nsieve-bits: 8.0
-partial-sums: 26.0
-recursive: 4.0
-richards: 12.0
-spectral-norm: 8.0
-v8-crypto: 71.0
-v8-raytrace: 141.0
 
 
 
 
-TODO: eliminate alloc init loops
+
+[DONE] TODO: eliminate alloc init loops
 - would make alloc faster, permit more inlining
 - make it so that MISSING is the 0,0 value
 - null should be zero as well
 - can then remove init to missing, null
+code size (bytes): 414837
+comp time (ms): 195
+exec time (ms): 29
 
-TODO: make missing and null have zero value
+[DONE] TODO: make missing and null have zero value
 - missing/const type should be zero
 
-TODO: make GC zero out to-space after allocating it
-
-
-
-
-
-
-
+[DONE] TODO: make GC zero out to-space after allocating it
 
 [DONE] TODO: implement AST->IR for new using runtime functions
 
