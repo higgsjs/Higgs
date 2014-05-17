@@ -1,4 +1,4 @@
-TODO: study shape implementation in FF, look at slides, look at source
+ODO: study shape implementation in FF, look at slides, look at source
 
 TODO: think about shapes more
 - want a guaranteed minimum object size
@@ -20,4 +20,8 @@ TODO: eliminate CallCtx, use IRFunction
 
 TODO: eliminate double function entry point
 - makes for redundant code, poor design
+
+TODO: look into JSBenchmark
+Quicksort, Factorials, Conway, Ribosome, MD5, Primes, Genetic Salesman,
+Arrays, Dates, Exceptions
 
