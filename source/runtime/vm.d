@@ -373,8 +373,11 @@ immutable size_t BASE_OBJ_INIT_SIZE = 128;
 /// Initial global object size
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
 
-/// Initial executable heap size, 16M bytes
-immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
+/// Initial executable heap size, release 128M, debug 16M bytes
+version (release)
+    immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 27;
+else
+    immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
 
 /// Initial subroutine heap size, 64K bytes
 immutable size_t SUBS_HEAP_INIT_SIZE = 2 ^^ 16;

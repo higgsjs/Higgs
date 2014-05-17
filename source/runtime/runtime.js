@@ -543,6 +543,17 @@ function $rt_toBool(v)
 }
 
 /**
+Specialized version of toBool for constant types
+*/
+function $rt_toBoolConst(v)
+{
+    if ($ir_is_const(v))
+        return $ir_eq_const(v, true);
+
+    return $rt_toBool(v);
+}
+
+/**
 Attempt to convert a value to a number. If this fails, return NaN
 */
 function $rt_toNumber(v)
@@ -602,7 +613,10 @@ function $rt_toUint32(x)
     if ($ir_ne_f64(x, x) || x === Infinity || x === -Infinity)
         return 0;
 
-    return $ir_f64_to_i32((x > 0)? x:-x);
+    if ($ir_ge_i32(x, 0.0))
+        return $ir_f64_to_i32(x);
+    else
+        return $ir_f64_to_i32($ir_sub_f64(0.0, x));
 }
 
 /**
@@ -1702,7 +1716,7 @@ function $rt_newArr(mapPtr, protoPtr, numElems)
     $rt_obj_set_map(objPtr, mapPtr);
     $rt_setProto(objPtr, protoPtr);
     $rt_arr_set_tbl(objPtr, tblPtr);
-    $rt_arr_set_len(objPtr, 0);
+    $rt_arr_set_len(objPtr, numElems);
 
     //$ir_print_str("Allocated array\n");
 
@@ -2084,29 +2098,18 @@ function $rt_extArrTbl(
     newSize
 )
 {
-    //print("Extending array");
-
     // Allocate the new table without initializing it, for performance
     var newTbl = $rt_arrtbl_alloc(newSize);
 
     // Copy elements from the old table to the new
-    for (var i = 0; i < curLen; i++)
+    for (var i = 0; $ir_lt_i32(i, curLen); i = $ir_add_i32(i, 1))
     {
         $rt_arrtbl_set_word(newTbl, i, $rt_arrtbl_get_word(curTbl, i));
         $rt_arrtbl_set_type(newTbl, i, $rt_arrtbl_get_type(curTbl, i));
     }
 
-    // Initialize the remaining table entries to undefined
-    for (var i = curLen; i < newSize; i++)
-    {
-        $rt_arrtbl_set_word(newTbl, i, $ir_get_word(undefined));
-        $rt_arrtbl_set_type(newTbl, i, $ir_get_type(undefined));
-    }
-
     // Update the table reference in the array
     $rt_arr_set_tbl(arr, newTbl);
-
-    //print("Extended array");
 
     return newTbl;
 }
@@ -2123,20 +2126,20 @@ function $rt_setArrElem(arr, index, val)
     var tbl = $rt_arr_get_tbl(arr);
 
     // If the index is outside the current size of the array
-    if (index >= len)
+    if ($ir_ge_i32(index, len))
     {
         // Compute the new length
-        var newLen = index + 1;
+        var newLen = $ir_add_i32(index, 1);
 
         // Get the array capacity
         var cap = $rt_arrtbl_get_cap(tbl);
 
         // If the new length would exceed the capacity
-        if (newLen > cap)
+        if ($ir_gt_i32(newLen, cap))
         {
             // Compute the new size to resize to
-            var newSize = 2 * cap;
-            if (newLen > newSize)
+            var newSize = $ir_mul_i32(cap, 2);
+            if ($ir_gt_i32(newLen, newSize))
                 newSize = newLen;
 
             // Extend the internal table
@@ -2146,6 +2149,19 @@ function $rt_setArrElem(arr, index, val)
         // Update the array length
         $rt_arr_set_len(arr, newLen);
     }
+
+    // Set the element in the array
+    $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
+    $rt_arrtbl_set_type(tbl, index, $ir_get_type(val));
+}
+
+/**
+Set an element of an array without bounds checking
+*/
+function $rt_setArrElemNoCheck(arr, index, val)
+{
+    // Get the array table
+    var tbl = $rt_arr_get_tbl(arr);
 
     // Set the element in the array
     $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
@@ -2214,7 +2230,7 @@ function $rt_objSetProp(obj, propStr, val)
     var objCap = $rt_obj_get_cap(obj);
 
     // If the object needs to be extended
-    if (propIdx >= objCap)
+    if ($ir_ge_i32(propIdx, objCap))
     {
         //print("*** extending object ***");
 
@@ -2250,7 +2266,7 @@ function $rt_objSetProp(obj, propStr, val)
         $rt_obj_set_map(newObj, classPtr);
 
         // Copy over the property words and types
-        for (var i = 0; i < objCap; ++i)
+        for (var i = 0; $ir_lt_i32(i, objCap); i = $ir_add_i32(i, 1))
         {
             $rt_obj_set_word(newObj, i, $rt_obj_get_word(obj, i));
             $rt_obj_set_type(newObj, i, $rt_obj_get_type(obj, i));
@@ -2394,7 +2410,7 @@ function $rt_setPropElem(base, prop, val)
         // If the property is a non-negative integer
         // and is within the array bounds
         if ($ir_is_i32(prop) &&
-            $ir_ge_i32(prop, 0) && 
+            $ir_ge_i32(prop, 0) &&
             $ir_lt_i32(prop, $rt_arr_get_len(base)))
         {
             // Get a reference to the array table

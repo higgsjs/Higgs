@@ -22,9 +22,6 @@ TODO: optimize inlineCall
 - inlinePass does not do liveness analysis, is slow on its own
 - what are the slowest parts of it?
 
-TODO: optimize liveness analysis
-- record total time taken in stats
-
 TODO: transform jit.compileUnit into jit.execUnit
 - Do parsing, AST->IR and call in there, better time accounting?
 - Any real reason not to?
@@ -35,24 +32,13 @@ TODO: transform jit.compileUnit into jit.execUnit
 
 FIXME: parseInt('32') takes about 20ms???
 
-TODO: optimize dynamic calls?
-- adjust stack params in callee
-- can we pass args through registers?
-TODO: compare perf of calls vs dynamic calls?
-
 TODO: profile awful slow compilation speed
 TODO: investigate why inlining getPropElem causes so much slowdown
 - do we have that many more blocks, versions?
 TODO: profile compilation time, big eval loop?
 
-TODO: bias toBool for property access expressions, isNaN, bitwise result
-
 FIXME: ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
 - benchmark moronically redefines RegExp name
-
-Blog: coming soon to Higgs, Typed Hidden classes
-http://www.ustream.tv/recorded/43773608
-- Draw sketches? Look for quick sketching app
 
 TODO: add tests for nested eval support
 - accessing local vars, changing vars
@@ -89,10 +75,6 @@ $rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
 s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
 benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
 
-FIXME: string-validate-input segfaults
-
-TODO: look at uses of $rt_se in earley-boyer
-
 TODO: May, approach Moz, Apple, FB wrt internship
 - 4 months, [Jan, April] 2015, spend winter in Cali
 - Marc advises to remain near PhD work, best for CV
@@ -110,23 +92,48 @@ May 31st, complete paper writing
 --------------------------------
 
 FIXME: type analysis can't handle getProp loop?
-- possibly because type is unknown at entry...
+- because type is unknown at entry
 - try tagging the output of some call_prims?
 
 TODO: study inefficiencies in splay benchmark further
-- many many primitive calls
 
-TODO: study uses of toBool in benchmarks
+TODO: try inlining setProp only in functions with loops
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20 --jit_typeprop"
+
+TODO: test efficiency of loop test heuristic
+- effect on comp time in benchmark.py?
+
+
+
+
+
+
+
+
+
+[DONE] TODO: many calls to setArrElem in splay benchmark, why?
+- may be growing arrays, or using float indices... verify ***
+  - not float indices
+- seems array initialization is the culprit
+  - fix for arguments too
+code size (bytes): 410668
+
+[DONE] TODO: implement specialized toBool for method calls
+- toBoolConst
+
+[DONE] TODO: study uses of toBool in benchmarks
 - in richards, if (x.a)
 - deltablue, many prop usages as well
 - raytrace, also prop uses
 - earley-boyer, uses toBool on method calls
 - for prop, test consts first? log values tested
-
-
-
-
-
+- for properties, often:
+  - undefined, true, false
+  - null
+  - objects and functions
 
 [DONE] TODO: eliminate alloc init loops
 - would make alloc faster, permit more inlining
