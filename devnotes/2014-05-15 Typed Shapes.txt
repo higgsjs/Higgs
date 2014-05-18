@@ -1,4 +1,7 @@
-ODO: study shape implementation in FF, look at slides, look at source
+TODO: blog post about typed shapes, quick illustrations
+- quick sketching program, online?
+
+TODO: study shape implementation in FF, look at slides, look at source
 
 TODO: think about shapes more
 - want a guaranteed minimum object size
@@ -12,6 +15,9 @@ TODO: think about shapes more
 - start writing D code for shapes
   - class ObjShape
 - no more "make_map"
+- getters/setters
+- no more "missing" value?
+- array elem prop
 
 TODO: move stack resizing code to function entry
 
