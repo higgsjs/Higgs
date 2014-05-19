@@ -1,4 +1,5 @@
 TODO: blog post about typed shapes, quick illustrations
+- "Faster JS Objects with Typed Shapes"
 - quick sketching program, online?
 - post to 
     r/compilers
@@ -9,14 +10,10 @@ TODO: study shape implementation in FF, look at slides, look at source
 - ask about multiple successive transitions, constructors
 
 TODO: think about shapes more
-- want a guaranteed minimum object size
-  - no need for a special ext table, can use objects as is with len, next ptr
+- guaranteed minimum object size
+  - ext table for extra properties
 - how complicated would they be to implement in a basic form?
   - switch to shape idx
-- how much simplification could you get on object property accesses?
-  - sketch it out ***
-- can use shape pointers directly
-  - shapes can keep list of referring blocks
 - start writing D code for shapes
   - class ObjShape
 - no more "make_map"
