@@ -97,6 +97,9 @@ FIXME: type analysis can't handle getProp loop?
 
 TODO: study inefficiencies in splay benchmark further
 
+TODO: try optimizing hash comp, compute 8 bytes at a time
+
+TODO: look up how to efficiently copy memory, assembler, ask on reddit?
 
 
 
@@ -106,6 +109,10 @@ TODO: study inefficiencies in splay benchmark further
 
 
 
+[DONE] TODO: streq, use memcmp
+import std.c.string;
+- see perf difference on fasta bench
+- huge speedup on splay benchmark
 
 [DONE] TODO: try inlining setProp only in functions with loops
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
