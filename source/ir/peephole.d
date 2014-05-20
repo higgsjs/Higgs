@@ -42,6 +42,7 @@ import std.array;
 import std.string;
 import std.stdint;
 import std.conv;
+import util.misc;
 import ir.ir;
 import ir.livevars;
 import ir.ops;
@@ -357,7 +358,7 @@ void optIR(IRFunction fun)
                     }
                 }
 
-                // Constant folding on int32 mul instructions
+                // If this is an integer multiplication without overflow
                 if (op == &MUL_I32)
                 {
                     auto arg0 = instr.getArg(0);
@@ -392,6 +393,26 @@ void optIR(IRFunction fun)
                         delInstr(instr);
                         continue INSTR_LOOP;
                     }
+
+                    // Current implementation of shift in backend is inefficient
+                    /*
+                    // Lowering with shift for muls by powers of 2
+                    if (cst0 && cst0.isInt32 && 
+                        cst0.int32Val > 0 && isPow2(cst0.int32Val))
+                    {
+                        auto shiftVal = lowestBitIdx(cst0.int32Val);
+                        auto shiftInstr = block.addInstrAfter(
+                            new IRInstr(
+                                &LSFT_I32, 
+                                arg1,
+                                IRConst.int32Cst(shiftVal)),
+                            instr
+                        );
+                        instr.replUses(shiftInstr);
+                        delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
+                    */
                 }
 
                 // If this is a branch instruction

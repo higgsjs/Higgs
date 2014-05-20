@@ -2011,8 +2011,8 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 );
             }
 
-            // If the property is not "prototype"
-            if (strProp.val != "prototype")
+            // If the property is not "prototype" or "apply"
+            if (strProp.val != "prototype" && strProp.val != "apply")
             {
                 // Use a primitive specialized for object fields
                 return genRtCall(

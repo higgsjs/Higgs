@@ -55,8 +55,7 @@ Selectively inline callees into a function
 */
 void inlinePass(VM vm, IRFunction caller)
 {
-    /*
-    static bool hasLoop(IRFunction fun)
+    static bool funHasLoop(IRFunction fun)
     {
         for (auto block = fun.firstBlock; block !is null; block = block.next)
             if (block.name.startsWith("for") ||
@@ -67,14 +66,21 @@ void inlinePass(VM vm, IRFunction caller)
         return false;
     }
 
-    // If this is a unit function and it has no loops, do not inline
-    if (caller.isUnit && !hasLoop(caller))
-        return;
-    */
-
     // If inlining is disabled, do nothing
     if (opts.jit_noinline)
         return;
+
+    bool isUnit = caller.isUnit;
+    bool hasLoop = funHasLoop(caller);
+
+    /*
+    // If this is a unit function and it has no loops, do not inline
+    if (caller.isUnit && !hasLoop)
+    {
+        writeln("not inlining in ", caller.getName);
+        return;
+    }
+    */
 
     //writeln("inlinePass for ", caller.getName);
 
@@ -146,6 +152,7 @@ void inlinePass(VM vm, IRFunction caller)
             //&& !name.startsWith("$rt_setPropField")
             && !name.startsWith("$rt_setPropElem")
             && !name.startsWith("$rt_setArrElemNoCheck")
+            && !(hasLoop && name.startsWith("$rt_setPropField"))
         )
             continue;
 

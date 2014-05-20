@@ -97,22 +97,31 @@ FIXME: type analysis can't handle getProp loop?
 
 TODO: study inefficiencies in splay benchmark further
 
-TODO: try inlining setProp only in functions with loops
-./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: try inlining setProp only in functions with loops
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20 --jit_typeprop"
+- does seem to produce some speedup
 
-TODO: test efficiency of loop test heuristic
+[DONE] TODO: test efficiency of loop test heuristic
 - effect on comp time in benchmark.py?
+- not an issue
 
-
-
-
-
-
-
-
+[DONE] TODO: offset computations, muls by 2, 8?
+- Transform these into shifts?
+- Does it work for negative nos? yes
+- Codegen is inefficient...
 
 [DONE] TODO: many calls to setArrElem in splay benchmark, why?
 - may be growing arrays, or using float indices... verify ***
