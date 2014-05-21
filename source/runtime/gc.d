@@ -238,17 +238,15 @@ void gcCollect(VM vm, size_t heapSize = 0)
         GC.BlkAttr.NO_INTERIOR
     );
 
-    // Zero-out the to-space
-    // Note: the runtime relies on this behavior to
-    // avoid initializing all object and array fields
-    memset(vm.toStart, 0, vm.heapSize);
-
-    //writefln("allocated to-space block: %s", vm.toStart);
-
     assert (
         vm.toStart != null,
         "failed to allocate to-space heap"
     );
+
+    // Zero-out the to-space
+    // Note: the runtime relies on this behavior to
+    // avoid initializing all object and array fields
+    memset(vm.toStart, 0, vm.heapSize);
 
     // Compute the to-space heap limit
     vm.toLimit = vm.toStart + vm.heapSize;
