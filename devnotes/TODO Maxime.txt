@@ -75,6 +75,9 @@ $rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
 s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
 benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
 
+FIXME: string-base64 segfaults
+- create minimal test?
+
 TODO: May, approach Moz, Apple, FB wrt internship
 - 4 months, [Jan, April] 2015, spend winter in Cali
 - Marc advises to remain near PhD work, best for CV
@@ -97,19 +100,23 @@ FIXME: type analysis can't handle getProp loop?
 
 TODO: study inefficiencies in splay benchmark further
 
-TODO: try optimizing hash comp, compute 8 bytes at a time
-
 TODO: eliminate overflow checks
 - how many add_i32_ovf with 1 do we have?
 - if less than some other i32, can eliminate
 
-TODO: look up how to efficiently copy memory, assembler, ask on reddit?
 
 
 
 
 
 
+
+
+[DONE] TODO: look up how to efficiently copy memory, assembler, ask on reddit?
+- rep movsq to copy 8 bytes
+  src in ESI, dst in EDI
+  size in ECX
+- try just using load_u64 and store_u64 to test it out
 
 [DONE] TODO: streq, use memcmp
 import std.c.string;

@@ -183,34 +183,32 @@ function $rt_getCellVal(cell)
 /**
 Concatenate the strings from two string objects
 */
-function $rt_strcat(str1, str2)
+function $rt_strcat(strA, strB)
 {
     // Get the length of both strings
-    var len1 = $rt_str_get_len(str1);
-    var len2 = $rt_str_get_len(str2);
-
-    // Compute the length of the new string
-    var newLen = len1 + len2;
+    var lenA = $rt_str_get_len(strA);
+    var lenB = $rt_str_get_len(strB);
 
     // Allocate a string object
-    var newStr = $rt_str_alloc(newLen);
+    var lenO = $ir_add_i32(lenA, lenB);
+    var strO = $rt_str_alloc(lenO);
 
     // Copy the character data from the first string
-    for (var i = 0; i < len1; i++)
+    for (var i = 0; $ir_lt_i32(i, lenA); i = $ir_add_i32(i, 1))
     {
-        var ch = $rt_str_get_data(str1, i);
-        $rt_str_set_data(newStr, i, ch);
+        var ch = $rt_str_get_data(strA, i);
+        $rt_str_set_data(strO, i, ch);
     }
 
     // Copy the character data from the second string
-    for (var i = 0; i < len2; i++)
+    for (var i = 0; $ir_lt_i32(i, lenB); i = $ir_add_i32(i, 1))
     {
-        var ch = $rt_str_get_data(str2, i);
-        $rt_str_set_data(newStr, len1 + i, ch);
+        var ch = $rt_str_get_data(strB, i);
+        $rt_str_set_data(strO, $ir_add_i32(lenA, i), ch);
     }
 
     // Find/add the concatenated string in the string table
-    return $ir_get_str(newStr);
+    return $ir_get_str(strO);
 }
 
 /**
@@ -218,30 +216,30 @@ Compare two string objects lexicographically by iterating over UTF-16
 code units. This conforms to section 11.8.5 of the ECMAScript 262
 specification.
 */
-function $rt_strcmp(str1, str2)
+function $rt_strcmp(strA, strB)
 {
     // Get the length of both strings
-    var len1 = $rt_str_get_len(str1);
-    var len2 = $rt_str_get_len(str2);
+    var lenA = $rt_str_get_len(strA);
+    var lenB = $rt_str_get_len(strB);
 
     // Compute the minimum of both string lengths
-    var minLen = (len1 < len2)? len1:len2;
+    var minLen = $ir_lt_i32(lenA, lenB)? lenA:lenB;
 
     // For each character to be compared
-    for (var i = 0; i < minLen; i++)
+    for (var i = 0; $ir_lt_i32(i, minLen); i = $ir_add_i32(i, 1))
     {
-        var ch1 = $rt_str_get_data(str1, i);
-        var ch2 = $rt_str_get_data(str2, i);
+        var ch1 = $rt_str_get_data(strA, i);
+        var ch2 = $rt_str_get_data(strB, i);
 
-        if (ch1 < ch2)
+        if ($ir_lt_i32(ch1, ch2))
             return -1;
-        else if (ch1 > ch2)
+        if ($ir_gt_i32(ch1, ch2))
             return 1;
     }
 
-    if (len1 < len2)
+    if ($ir_lt_i32(lenA, lenB))
         return -1;
-    if (len2 > len1)
+    if ($ir_gt_i32(lenB, lenA))
         return 1;
     return 0;
 }
