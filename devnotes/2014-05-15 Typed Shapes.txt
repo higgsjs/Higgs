@@ -13,6 +13,13 @@ TODO: think about shapes more
   - class ObjShape
 - no more "make_map"
 
+TODO: Project Badger
+- Does PyPy run the shootout tests
+- Can we make them all run too?
+- Aggressive PR, attract attention, responses will too
+
+TODO: look into doc gen, linking up with GitHub
+
 TODO: move stack resizing code to function entry
 
 TODO: eliminate CallCtx, use IRFunction
