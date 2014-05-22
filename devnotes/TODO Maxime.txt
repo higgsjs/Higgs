@@ -84,19 +84,18 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
-TODO: test benchmark.py
+
+
+
+
+
+
+
+[DONE] TODO: test benchmark.py
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20 --jit_typeprop"
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: string-base64 segfaults, gc bug
 make; ./higgs benchmarks/sunspider/string-base64.js

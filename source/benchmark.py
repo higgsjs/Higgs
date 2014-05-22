@@ -44,7 +44,7 @@ BENCHMARKS = {
     #'regexp-dna':'benchmarks/sunspider/regexp-dna.js',
     'spectral-norm':'benchmarks/sunspider/math-spectral-norm.js',
     #'base64':'benchmarks/sunspider/string-base64.js',
-    #'fasta':'benchmarks/sunspider/string-fasta.js',
+    'fasta':'benchmarks/sunspider/string-fasta.js',
     # FIXME: string-tagcloud
     # FIXME: string-unpack-code
     #'valid-input':'benchmarks/sunspider/string-validate-input.js',
