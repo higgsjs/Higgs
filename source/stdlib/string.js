@@ -144,8 +144,15 @@ function string_internal_isWhiteSpace(c)
 /**
 15.5.3.2 String.fromCharCode([char0 [, char1 [, ... ]]])
 */
-function string_fromCharCode()
+function string_fromCharCode(c)
 {
+    if ($ir_eq_i32($argc, 1) && $ir_is_i32(c))
+    {
+        var str = $rt_str_alloc(1);
+        $rt_str_set_data(str, 0, c);
+        return $ir_get_str(str);
+    } 
+
     var args = Array.prototype.slice.call(arguments, 0);
     for(var i = 0; i < args.length; i++)
         args[i] = parseInt(args[i]);
