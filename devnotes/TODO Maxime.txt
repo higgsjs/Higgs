@@ -54,8 +54,6 @@ s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
 benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
 
 FIXME: string-unpack-code segfaults, gc bug
-FIXME: string-base64 segfaults, gc bug
-- create minimal test?
 
 TODO: May, approach Moz, Apple, FB wrt internship
 - 4 months, [Jan, April] 2015, spend winter in Cali
@@ -85,6 +83,23 @@ TODO: eliminate overflow checks
   - need to prove this is on the path to the current block
     - can't reach entry without going through the test
     - must arrive through "true" side
+
+FIXME: string-base64 segfaults, gc bug
+make; ./higgs benchmarks/sunspider/string-base64.js
+gcForward: object not in from-space heap
+ptr   : 2
+start : 7FEEE1D17000
+limit : 7FEEE2D17000
+header: ???
+Segmentation fault (core dumped)
+- Fails after many GCs
+- Fails during stack visit
+visiting frame for: Function_prototype_call(6A68)
+
+
+
+
+
 
 
 

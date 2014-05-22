@@ -704,8 +704,11 @@ void visitStackRoots(VM vm)
             if (val is curInstr)
                 continue;
 
-            // The closure and "this" values will be forwarded later
-            if (val is fun.closVal || val is fun.thisVal)
+            // Hidden argument values will be forwarded later
+            if (val is fun.closVal || 
+                val is fun.thisVal ||
+                val is fun.raVal   ||
+                val is fun.argcVal)
                 continue;
 
             // Forward the value
