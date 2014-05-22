@@ -216,6 +216,11 @@ Function.prototype.apply = function (thisArg, argArray)
     if (!$ir_is_array(argArray))
         throw new TypeError('invalid arguments array');
 
+    // If the this argument is null or undefined,
+    // make it the global object
+    if (thisArg === null || thisArg === undefined)
+        thisArg = $ir_get_global_obj();
+
     // Get the arguments table from the array
     var argTable = $rt_arr_get_tbl(argArray);
 
@@ -233,11 +238,6 @@ Function.prototype.apply = function (thisArg, argArray)
 */
 Function.prototype.call = function (thisArg)
 {
-    // If the this argument is null or undefined,
-    // make it the global object
-    if (thisArg === null || thisArg === undefined)
-        thisArg = $ir_get_global_obj();
-
     var argArray = [];
     for (var i = 1; i < $argc; ++i)
         argArray.push($ir_get_arg(i));

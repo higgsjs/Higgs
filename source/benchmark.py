@@ -45,8 +45,9 @@ BENCHMARKS = {
     'spectral-norm':'benchmarks/sunspider/math-spectral-norm.js',
     #'base64':'benchmarks/sunspider/string-base64.js',
     #'fasta':'benchmarks/sunspider/string-fasta.js',
-    # FIXME: string-validate-input
+    # FIXME: string-tagcloud
     # FIXME: string-unpack-code
+    #'valid-input':'benchmarks/sunspider/string-validate-input.js',
     #'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
 
     'v8-crypto':'benchmarks/v8bench/base.js benchmarks/v8bench/crypto.js benchmarks/v8bench/drv-crypto.js',

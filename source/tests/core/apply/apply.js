@@ -82,6 +82,11 @@ function foo7(i,x)
     this[i] = x;
 }
 
+function foo8()
+{
+    return this;
+}
+
 function test()
 {
     if (foo.apply(undefined, []) !== undefined)
@@ -124,6 +129,11 @@ function test()
     if (a[42] !== 1337)
     {
         return 8;
+    }
+
+    if (foo8.apply(null, []) !== $ir_get_global_obj())
+    {
+        return 9;
     }
 
     return 0;

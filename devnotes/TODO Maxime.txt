@@ -55,16 +55,16 @@ benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tag
 
 FIXME: string-unpack-code
 
+TODO: take a break, look into sound output
+- work on this in dev-maxime branch ***
+- look at existing code
+  - can write and wait for poll, no callback
+
 TODO: May, approach Moz, Apple, FB wrt internship
 - 4 months, [Jan, April] 2015, spend winter in Cali
 - Marc advises to remain near PhD work, best for CV
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
-
-TODO: take a break, look into sound output
-- work on this in dev-maxime branch ***
-- look at existing code
-  - can write and wait for poll, no callback
 
 ------------------------------------------------------------------------------
 
@@ -84,22 +84,12 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
-FIXME: string-validate-input segfaults
-make; ./higgs --jit_dumpinfo benchmarks/sunspider/string-validate-input.js
-set_global "colors", $41
-$0 = get_global "doTest"
-$1 = get_global_obj
-$42 = call $0, $1 => call_cont(114EB)
-Segmentation fault (core dumped)
-- not a call to non-function issue
-- got fptr fine
-- not a stack overflow
-- jumps to target, may be failing in entry stub
-entering compileEntry
-compiling entry for doTest(1144D)
-Segmentation fault (core dumped)
-expr to IR: k % 2? email = name + "@mac.com":email = name + "(at)mac.com"
-lhsExpr: k % 2? email = name + "@mac.com":email
+TODO: test benchmark.py
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20 --jit_typeprop"
+
 
 
 
@@ -298,6 +288,9 @@ static nothrow size_t reserve(size_t sz);
 - disable analysis in release first, push to master, then create branch
 git checkout -b dls2014
 git push -u origin dls2014
+
+[DONE] FIXME: invalid lhs in assignment
+true?email='foo':email='bar';
 
 [DONE] TODO: basic TGA image input
 - update img lib test to read back and compare img

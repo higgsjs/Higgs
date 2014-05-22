@@ -448,6 +448,22 @@ unittest
             )
         )
     );
+
+    testExprAST("a? b=1:b=2;",
+        new CondExpr(
+            new IdentExpr("a"),
+            new BinOpExpr(
+                "=",
+                new IdentExpr("b"),
+                new IntExpr(1),
+            ),
+            new BinOpExpr(
+                "=",
+                new IdentExpr("b"),
+                new IntExpr(2),
+            )
+        )
+    );
 }
 
 /// Test statement parsing
