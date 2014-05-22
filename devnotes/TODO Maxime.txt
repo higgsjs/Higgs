@@ -53,7 +53,7 @@ $rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
 s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
 benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
 
-FIXME: string-unpack-code segfaults, gc bug
+FIXME: string-unpack-code
 
 TODO: May, approach Moz, Apple, FB wrt internship
 - 4 months, [Jan, April] 2015, spend winter in Cali
@@ -84,7 +84,33 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
-FIXME: string-base64 segfaults, gc bug
+FIXME: string-validate-input segfaults
+make; ./higgs --jit_dumpinfo benchmarks/sunspider/string-validate-input.js
+set_global "colors", $41
+$0 = get_global "doTest"
+$1 = get_global_obj
+$42 = call $0, $1 => call_cont(114EB)
+Segmentation fault (core dumped)
+- not a call to non-function issue
+- got fptr fine
+- not a stack overflow
+- jumps to target, may be failing in entry stub
+entering compileEntry
+compiling entry for doTest(1144D)
+Segmentation fault (core dumped)
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: string-base64 segfaults, gc bug
 make; ./higgs benchmarks/sunspider/string-base64.js
 gcForward: object not in from-space heap
 ptr   : 2
@@ -95,16 +121,6 @@ Segmentation fault (core dumped)
 - Fails after many GCs
 - Fails during stack visit
 visiting frame for: Function_prototype_call(6A68)
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: v8bench/regexp
 - benchmark moronically redefines RegExp name

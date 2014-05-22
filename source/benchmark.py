@@ -41,15 +41,22 @@ BENCHMARKS = {
     'crypto-sha1':'benchmarks/sunspider/crypto-sha1.js',
     'cordic':'benchmarks/sunspider/math-cordic.js',
     'partial-sums':'benchmarks/sunspider/math-partial-sums.js',
+    #'regexp-dna':'benchmarks/sunspider/regexp-dna.js',
     'spectral-norm':'benchmarks/sunspider/math-spectral-norm.js',
-    'fasta':'benchmarks/sunspider/string-fasta.js',
+    #'base64':'benchmarks/sunspider/string-base64.js',
+    #'fasta':'benchmarks/sunspider/string-fasta.js',
+    # FIXME: string-validate-input
+    # FIXME: string-unpack-code
+    #'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
 
     'v8-crypto':'benchmarks/v8bench/base.js benchmarks/v8bench/crypto.js benchmarks/v8bench/drv-crypto.js',
     'deltablue':'benchmarks/v8bench/base.js benchmarks/v8bench/deltablue.js benchmarks/v8bench/drv-deltablue.js',
     'earley-boyer':'benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js',
     'navier-stokes':'benchmarks/v8bench/base.js benchmarks/v8bench/navier-stokes.js benchmarks/v8bench/drv-navier-stokes.js',
     'v8-raytrace':'benchmarks/v8bench/base.js benchmarks/v8bench/raytrace.js benchmarks/v8bench/drv-raytrace.js',
+    # FIXME: regexp
     'richards':'benchmarks/v8bench/base.js benchmarks/v8bench/richards.js benchmarks/v8bench/drv-richards.js',
+    #'splay':'benchmarks/v8bench/base.js benchmarks/v8bench/splay.js benchmarks/v8bench/drv-splay.js',
 }
 
 # Per-benchmark results
