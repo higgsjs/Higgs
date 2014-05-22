@@ -98,10 +98,8 @@ Segmentation fault (core dumped)
 entering compileEntry
 compiling entry for doTest(1144D)
 Segmentation fault (core dumped)
-
-
-
-
+expr to IR: k % 2? email = name + "@mac.com":email = name + "(at)mac.com"
+lhsExpr: k % 2? email = name + "@mac.com":email
 
 
 

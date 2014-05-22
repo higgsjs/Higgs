@@ -2433,8 +2433,15 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     auto origLocals = fun.numLocals;
 
     // Generate the IR for this function
-    fun.entryBlock = null;
-    astToIR(vm, fun.ast, fun);
+    try
+    {
+        fun.entryBlock = null;
+        astToIR(vm, fun.ast, fun);
+    }
+    catch (Error err)
+    {
+        assert (false, "failed to generate IR for: \"" ~ fun.getName ~ "\"");
+    }
 
     // Add space for the newly allocated locals
     vm.push(fun.numLocals - origLocals);
