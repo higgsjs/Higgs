@@ -2649,6 +2649,10 @@ RegExp.prototype.test = function (
     return null;
 }
 
+/// Private name for the RegExp class
+$rt_RegExp = RegExp;
+
 return RegExp;
 
 })();
+

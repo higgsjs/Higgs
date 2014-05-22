@@ -1730,7 +1730,7 @@ function $rt_getRegexp(link, pattern, flags)
 
     if (rePtr === null)
     {
-        rePtr = new RegExp(pattern, flags);
+        rePtr = new $rt_RegExp(pattern, flags);
 
         $ir_set_link(link, rePtr);
     }

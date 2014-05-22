@@ -18,10 +18,6 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-TODO: optimize inlineCall
-- inlinePass does not do liveness analysis, is slow on its own
-- what are the slowest parts of it?
-
 TODO: transform jit.compileUnit into jit.execUnit
 - Do parsing, AST->IR and call in there, better time accounting?
 - Any real reason not to?
@@ -31,14 +27,6 @@ TODO: transform jit.compileUnit into jit.execUnit
   - having a "C adapter" for a specific closure seems sensible
 
 FIXME: parseInt('32') takes about 20ms???
-
-TODO: profile awful slow compilation speed
-TODO: investigate why inlining getPropElem causes so much slowdown
-- do we have that many more blocks, versions?
-TODO: profile compilation time, big eval loop?
-
-FIXME: ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
-- benchmark moronically redefines RegExp name
 
 TODO: add tests for nested eval support
 - accessing local vars, changing vars
@@ -56,17 +44,7 @@ TODO: implement full eval support
 - PROBLEM: there's no parent pointer in AST nodes
   - can't just run vars analysis on subfunction, need to rerun the whole thing...
 
-FIXME: string-unpack-code
-./higgs benchmarks/sunspider/string-unpack-code.js 
-run-time error: TypeError: invalid base in property write
-$rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
-$rt_setProp(3038) ("runtime/runtime.js"@2301:6)
-$rt_setPropField(3041) ("runtime/runtime.js"@2349:12)
-String(87BB) ("stdlib/string.js"@69:9)
-Function_prototype_apply(7949) ("stdlib/function.js"@226:18)
-string_replace(8854) ("stdlib/string.js"@422:27)
-anon(121C8) ("benchmarks/sunspider/string-unpack-code.js"@20:14)
-benchmarks_sunspider_string_unpack_code_js(12188) ("benchmarks/sunspider/string-unpack-code.js"@16:32)
+FIXME: v8bench/regexp segfaults
 
 FIXME: string-tagcloud
 ./higgs benchmarks/sunspider/string-tagcloud.js 
@@ -75,7 +53,8 @@ $rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
 s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
 benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
 
-FIXME: string-base64 segfaults
+FIXME: string-unpack-code segfaults, gc bug
+FIXME: string-base64 segfaults, gc bug
 - create minimal test?
 
 TODO: May, approach Moz, Apple, FB wrt internship
@@ -103,14 +82,17 @@ TODO: study inefficiencies in splay benchmark further
 TODO: eliminate overflow checks
 - how many add_i32_ovf with 1 do we have?
 - if less than some other i32, can eliminate
+  - need to prove this is on the path to the current block
+    - can't reach entry without going through the test
+    - must arrive through "true" side
 
 
 
 
 
 
-
-
+[DONE] FIXME: v8bench/regexp
+- benchmark moronically redefines RegExp name
 
 [DONE] TODO: look up how to efficiently copy memory, assembler, ask on reddit?
 - rep movsq to copy 8 bytes

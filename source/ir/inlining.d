@@ -105,7 +105,11 @@ void inlinePass(VM vm, IRFunction caller)
         auto closVal = getProp(vm, vm.globalObj, nameStr);
         assert (
             closVal.type is Type.CLOSURE,
-            format("cannot inline non-closure \"%s\"", nameStr)
+            format(
+                "cannot inline non-closure \"%s\" in \"%s\"", 
+                nameStr, 
+                caller.getName
+            )
         );
         assert (
             closVal.word.ptrVal !is null

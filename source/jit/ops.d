@@ -1735,7 +1735,7 @@ void gen_call_prim(
         (!fun.closVal || fun.closVal.hasNoUses) &&
         (!fun.thisVal || fun.thisVal.hasNoUses) &&
         (!fun.argcVal || fun.argcVal.hasNoUses),
-        "hidden args used"
+        "call_prim: hidden args used"
     );
 
     // If the function is not yet compiled, compile it now
@@ -2867,7 +2867,11 @@ void HeapAllocOp(Type type)(
     CodeBlock as
 )
 {
-    extern (C) static refptr allocFallback(VM vm, IRInstr curInstr, uint32_t allocSize)
+    extern (C) static refptr allocFallback(
+        VM vm,
+        IRInstr curInstr,
+        uint32_t allocSize
+    )
     {
         vm.setCurInstr(curInstr);
 
