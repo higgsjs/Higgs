@@ -46,7 +46,7 @@ BENCHMARKS = {
     #'base64':'benchmarks/sunspider/string-base64.js',
     'fasta':'benchmarks/sunspider/string-fasta.js',
     # FIXME: string-tagcloud
-    # FIXME: string-unpack-code
+    #'unpack-code':'benchmarks/sunspider/string-unpack-code.js',
     #'valid-input':'benchmarks/sunspider/string-validate-input.js',
     #'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
 

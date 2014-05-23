@@ -53,8 +53,6 @@ $rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
 s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
 benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
 
-FIXME: string-unpack-code
-
 TODO: take a break, look into sound output
 - work on this in dev-maxime branch ***
 - look at existing code
@@ -90,6 +88,10 @@ TODO: eliminate overflow checks
 
 
 
+
+
+
+[DONE] FIXME: string-unpack-code
 
 [DONE] TODO: test benchmark.py
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
