@@ -660,9 +660,9 @@ function string_slice(start, end)
     var source = this.toString();
     var length = string_internal_getLength(source.toString());
 
-    if (start === 'undefined')
+    if (start === $undef)
         start = 0;
-    if (end === 'undefined')
+    if (end === $undef)
         end = length;
 
     if (start < 0)
@@ -678,7 +678,7 @@ String.prototype.substr(start, length)
 */
 function string_substr(start, length)
 {
-    var end = (length === undefined) ? undefined : (start + length);
+    var end = (length === undefined) ? undefined:(start + length);
 
     return string_substring.apply(this, [start, end]);
 }
