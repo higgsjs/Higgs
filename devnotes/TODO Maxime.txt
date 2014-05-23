@@ -82,15 +82,14 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
-TODO: check how many calls to String.toString, String.slice, String.charAt earley-boyer makes
+TODO: check how many calls to String slice & charAt earley-boyer makes
 - may be worth optimizing
 
 
 
 
 
-
-
+[DONE] TODO: optimize String.substring
 
 [DONE] FIXME: string-unpack-code
 

@@ -644,7 +644,10 @@ function string_substring(start, end)
 
     // Copy substring characters in the new allocated string.
     for (var i = start, j = 0; i < end; ++i, ++j)
-        $rt_str_set_data(s, j, source.charCodeAt(i));
+    {
+        var ch = $rt_str_get_data(source, i);
+        $rt_str_set_data(s, j, ch);
+    }
 
     return $ir_get_str(s);
 }
@@ -656,14 +659,14 @@ function string_slice(start, end)
 {
     var source = this.toString();
     var length = string_internal_getLength(source.toString());
-    if (typeof start === 'undefined')
+
+    if (start === 'undefined')
         start = 0;
-    if (typeof end === 'undefined')
+    if (end === 'undefined')
         end = length;
 
     if (start < 0)
         start += length;
-
     if (end < 0)
         end += length;
 
