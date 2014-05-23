@@ -58,8 +58,13 @@ String(value)
 */
 function String(value)
 {
-    // If this is a constructor call (new String)
-    if ($rt_isGlobalObj(this) === false)
+    // If this is not a constructor call (new String)
+    if ($rt_isGlobalObj(this))
+    {
+        // Convert the value to a string
+        return $rt_toString(value);
+    }
+    else
     {
         // Convert the value to a string
         var strVal = $rt_toString(value);
@@ -71,11 +76,6 @@ function String(value)
         // Set length property.
         this.length = strVal.length;
     }
-    else
-    {
-        // Convert the value to a string
-        return $rt_toString(value);
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -83,14 +83,6 @@ function String(value)
 /**
 Internal string functions
 */
-
-function string_internal_toString(s)
-{
-    if (s instanceof String)
-        return s.value;
-
-    return s;
-}
 
 function string_internal_charCodeAt(s, pos)
 {
@@ -164,7 +156,13 @@ function string_fromCharCode(c)
 */
 function string_toString()
 {
-    return string_internal_toString(this);
+    if ($ir_is_string(this))
+        return this;
+
+    if (this instanceof String)
+        return this.value;
+
+    return this;
 }
 
 /**
@@ -172,7 +170,13 @@ function string_toString()
 */
 function string_valueOf()
 {
-    return string_internal_toString(this);
+    if ($ir_is_string(this))
+        return this;
+
+    if (this instanceof String)
+        return this.value;
+
+    return this;
 }
 
 /**
@@ -194,6 +198,14 @@ function string_charAt(pos)
 */
 function string_charCodeAt(pos)
 {
+    if ($ir_is_string(this) &&
+        $ir_is_i32(pos) && 
+        $ir_ge_i32(pos, 0) && 
+        $ir_lt_i32(pos, $rt_str_get_len(this)))
+    {
+        return $rt_str_get_data(this, pos);
+    }
+
     var len = string_internal_getLength(this.toString());
 
     if (pos >= 0 && pos < len)
