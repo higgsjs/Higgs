@@ -752,7 +752,7 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
 
             auto trueExpr = parseExpr(input);
             input.readSep(":");
-            auto falseExpr = parseExpr(input, nextMinPrec);
+            auto falseExpr = parseExpr(input, op.prec-1);
 
             lhsExpr = new CondExpr(lhsExpr, trueExpr, falseExpr, lhsExpr.pos);
         }

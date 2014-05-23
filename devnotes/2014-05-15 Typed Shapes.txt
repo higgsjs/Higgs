@@ -1,0 +1,34 @@
+ODO: study shape implementation in FF, look at slides, look at source
+
+TODO: think about shapes more
+- want a guaranteed minimum object size
+  - no need for a special ext table, can use objects as is with len, next ptr
+- how complicated would they be to implement in a basic form?
+  - switch to shape idx
+- how much simplification could you get on object property accesses?
+  - sketch it out
+- can use shape pointers directly
+  - shapes can keep list of referring blocks
+- start writing D code for shapes
+  - class ObjShape
+- no more "make_map"
+
+TODO: Project Badger
+- Does PyPy run the shootout tests
+- Can we make them all run too?
+- Aggressive PR, attract attention, responses will too
+
+TODO: look into doc gen, linking up with GitHub
+
+TODO: move stack resizing code to function entry
+
+TODO: eliminate CallCtx, use IRFunction
+- simplify design
+
+TODO: eliminate double function entry point
+- makes for redundant code, poor design
+
+TODO: look into JSBenchmark
+Quicksort, Factorials, Conway, Ribosome, MD5, Primes, Genetic Salesman,
+Arrays, Dates, Exceptions
+
