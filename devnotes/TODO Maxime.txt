@@ -82,12 +82,15 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
-TODO: check how many calls to String slice & charAt earley-boyer makes
+
+
+
+
+
+
+
+[DONE] TODO: check how many calls to String slice & charAt earley-boyer makes
 - may be worth optimizing
-
-
-
-
 
 [DONE] TODO: optimize String.substring
 

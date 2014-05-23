@@ -84,16 +84,6 @@ function String(value)
 Internal string functions
 */
 
-function string_internal_charCodeAt(s, pos)
-{
-    return $rt_str_get_data(s, pos);
-}
-
-function string_internal_getLength(s)
-{
-    return $rt_str_get_len(s)
-}
-
 function string_internal_toCharCodeArray(x)
 {
     var s = x.toString();
@@ -184,12 +174,26 @@ function string_valueOf()
 */
 function string_charAt(pos)
 {
-    if (pos < 0 || pos >= string_internal_getLength(this))
+    if ($ir_is_string(this) &&
+        $ir_is_i32(pos) && 
+        $ir_ge_i32(pos, 0) && 
+        $ir_lt_i32(pos, $rt_str_get_len(this)))
+    {
+        var ch = $rt_str_get_data(this, pos);
+        var str = $rt_str_alloc(1);
+        $rt_str_set_data(str, 0, ch);
+        return $ir_get_str(str);
+    }
+
+    var source = this.toString();
+    var len = $rt_str_get_len(source);
+
+    if (pos < 0 || pos >= len)
     {
         return '';
     }
 
-    var ch = this.charCodeAt(pos);
+    var ch = source.charCodeAt(pos);
     return string_internal_fromCharCodeArray([ch]);
 }
 
@@ -206,14 +210,15 @@ function string_charCodeAt(pos)
         return $rt_str_get_data(this, pos);
     }
 
-    var len = string_internal_getLength(this.toString());
+    var source = this.toString();
+    var len = $rt_str_get_len(source);
 
     if (pos >= 0 && pos < len)
     {
         if ($ir_is_i32(pos) == false)
             pos = $rt_toUint32(pos);
 
-        return string_internal_charCodeAt(this.toString(), pos);
+        return $rt_str_get_data(source, pos);
     }
 
     return NaN;
@@ -393,13 +398,13 @@ function string_replace(searchValue, replaceValue)
 
             return this.substring(0, pos).concat(
                 new String(ret).toString(),
-                this.substring(pos + string_internal_getLength(searchValue)));
+                this.substring(pos + $rt_str_get_len(searchValue)));
         }
         else
         {
             return this.substring(0, pos).concat(
                 replaceValue.toString(),
-                this.substring(pos + string_internal_getLength(searchValue)));
+                this.substring(pos + $rt_str_get_len(searchValue)));
         }
     }
     else if (searchValue instanceof RegExp)
@@ -618,7 +623,7 @@ function string_split(separator, limit)
 function string_substring(start, end)
 {
     var source = this.toString();
-    var length = string_internal_getLength(source.toString());
+    var length = $rt_str_get_len(source);
 
     if (start < 0)
         start = 0;
@@ -658,7 +663,7 @@ function string_substring(start, end)
 function string_slice(start, end)
 {
     var source = this.toString();
-    var length = string_internal_getLength(source.toString());
+    var length = $rt_str_get_len(source);
 
     if (start === $undef)
         start = 0;

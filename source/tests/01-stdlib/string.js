@@ -120,16 +120,10 @@ function test_charAt()
 {
     var s = 'foo';
 
-    if (s.charAt(0) !== 'f')
-        return 1;
-    if (s.charAt(1) !== 'o')
-        return 2;
-    if (s.charAt(2) !== 'o')
-        return 3;
-    if (s.charAt(3) !== '')
-        return 4;
-
-    return 0;
+    assert (s.charAt(0) === 'f')
+    assert (s.charAt(1) === 'o')
+    assert (s.charAt(2) === 'o')
+    assert (s.charAt(3) === '')
 }
 
 function test_indexing()
@@ -387,9 +381,7 @@ function test()
     if (r != 0)
         return 500 + r;
 
-    var r = test_charAt();
-    if (r != 0)
-        return 600 + r;
+    test_charAt();
 
     var r = test_indexing();
     if (r != 0)
