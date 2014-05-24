@@ -48,6 +48,7 @@ BENCHMARKS = {
     # FIXME: string-tagcloud
     #'unpack-code':'benchmarks/sunspider/string-unpack-code.js',
     #'valid-input':'benchmarks/sunspider/string-validate-input.js',
+    # FIXME: date-format-tofte
     #'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
 
     'v8-crypto':'benchmarks/v8bench/base.js benchmarks/v8bench/crypto.js benchmarks/v8bench/drv-crypto.js',

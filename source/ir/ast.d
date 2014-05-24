@@ -1428,6 +1428,18 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
         IRValue genEq()
         {
+            if (cast(IntExpr)binExpr.lExpr || cast(IntExpr)binExpr.rExpr)
+            {
+                auto lVal = exprToIR(ctx, binExpr.lExpr);
+                auto rVal = exprToIR(ctx, binExpr.rExpr);
+                return genRtCall(
+                    ctx,
+                    "eqInt",
+                    [lVal, rVal],
+                    expr.pos
+                );
+            }
+
             if (cast(NullExpr)binExpr.rExpr)
             {
                 auto lVal = exprToIR(ctx, binExpr.lExpr);

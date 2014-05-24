@@ -89,6 +89,8 @@ TODO: eliminate overflow checks
 
 
 
+[DONE] TODO: eqInt
+
 [DONE] TODO: check how many calls to String slice & charAt earley-boyer makes
 - may be worth optimizing
 
