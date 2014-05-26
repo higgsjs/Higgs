@@ -41,15 +41,15 @@ BENCHMARKS = {
     'crypto-sha1':'benchmarks/sunspider/crypto-sha1.js',
     'cordic':'benchmarks/sunspider/math-cordic.js',
     'partial-sums':'benchmarks/sunspider/math-partial-sums.js',
-    #'regexp-dna':'benchmarks/sunspider/regexp-dna.js',
+    'regexp-dna':'benchmarks/sunspider/regexp-dna.js',
     'spectral-norm':'benchmarks/sunspider/math-spectral-norm.js',
-    #'base64':'benchmarks/sunspider/string-base64.js',
+    'base64':'benchmarks/sunspider/string-base64.js',
     'fasta':'benchmarks/sunspider/string-fasta.js',
     # FIXME: string-tagcloud
-    #'unpack-code':'benchmarks/sunspider/string-unpack-code.js',
-    #'valid-input':'benchmarks/sunspider/string-validate-input.js',
+    'unpack-code':'benchmarks/sunspider/string-unpack-code.js',
+    'valid-input':'benchmarks/sunspider/string-validate-input.js',
     # FIXME: date-format-tofte
-    #'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
+    'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
 
     'v8-crypto':'benchmarks/v8bench/base.js benchmarks/v8bench/crypto.js benchmarks/v8bench/drv-crypto.js',
     'deltablue':'benchmarks/v8bench/base.js benchmarks/v8bench/deltablue.js benchmarks/v8bench/drv-deltablue.js',
@@ -58,7 +58,7 @@ BENCHMARKS = {
     'v8-raytrace':'benchmarks/v8bench/base.js benchmarks/v8bench/raytrace.js benchmarks/v8bench/drv-raytrace.js',
     # FIXME: regexp
     'richards':'benchmarks/v8bench/base.js benchmarks/v8bench/richards.js benchmarks/v8bench/drv-richards.js',
-    #'splay':'benchmarks/v8bench/base.js benchmarks/v8bench/splay.js benchmarks/v8bench/drv-splay.js',
+    'splay':'benchmarks/v8bench/base.js benchmarks/v8bench/splay.js benchmarks/v8bench/drv-splay.js',
 }
 
 # Per-benchmark results

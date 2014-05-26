@@ -74,12 +74,6 @@ TODO: May, approach Moz, Apple, FB wrt internship
 May 31st, complete paper writing
 --------------------------------
 
-FIXME: type analysis can't handle getProp loop?
-- because type is unknown at entry
-- try tagging the output of some call_prims?
-
-TODO: study inefficiencies in splay benchmark further
-
 TODO: eliminate overflow checks
 - how many add_i32_ovf with 1 do we have?
 - if less than some other i32, can eliminate
@@ -87,9 +81,11 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
-TODO: push relevant dls2014 branch fixes to master
+FIXME: type analysis can't handle getProp loop?
+- because type is unknown at entry
+- try tagging the output of some call_prims?
 
-
+TODO: study inefficiencies in splay benchmark further
 
 
 
