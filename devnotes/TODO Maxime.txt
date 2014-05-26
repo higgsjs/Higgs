@@ -50,6 +50,11 @@ run-time error: SyntaxError: parseJSON
 $rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
 s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
 benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
+- benchmark throws this exception, its own parser fails
+- could it be some regexp behavior mismatch?
+
+FIXME: date-format-tofte
+- keeps using more and more memory
 
 FIXME: v8bench/regexp segfaults
 
@@ -82,12 +87,18 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
+TODO: push relevant dls2014 branch fixes to master
 
 
 
 
 
 
+
+
+
+[DONE] TODO: look at shootout benchmarks, anything more working?
+- Open issues for those not working
 
 [DONE] TODO: eqInt
 
