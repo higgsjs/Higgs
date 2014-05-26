@@ -93,6 +93,27 @@ TODO: study inefficiencies in splay benchmark further
 
 
 
+
+
+
+[DONE] TODO: try more complete ltIntFloat?
+before (simple):
+    code size (bytes): 428135
+    is_f64: 43019
+    is_i32: 1451946
+    max versions: 5
+    num blocks: 1893
+    num versions: 2318
+    total type tests: 4315730
+after:
+    code size (bytes): 428161
+    is_f64: 42998
+    is_i32: 1449662
+    max versions: 5
+    num blocks: 1893
+    num versions: 2317
+    total type tests: 4312026
+
 [DONE] TODO: look at shootout benchmarks, anything more working?
 - Open issues for those not working
 

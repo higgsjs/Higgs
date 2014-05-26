@@ -1152,7 +1152,7 @@ function $rt_lt(x, y)
     // If x is a string
     if ($ir_is_string(px) && $ir_is_string(py))
     {
-        return $rt_strcmp(px, py) === -1;
+        return $ir_eq_i32($rt_strcmp(px, py), -1);
     }
 
     return $rt_lt($rt_toNumber(x), $rt_toNumber(y));
@@ -1163,10 +1163,14 @@ Specialized less-than for the integer and float cases
 */
 function $rt_ltIntFloat(x, y)
 {
-    // If x,y are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    // If x is integer
+    if ($ir_is_i32(x))
     {
-        return $ir_lt_i32(x, y);
+        if ($ir_is_i32(y))
+            return $ir_lt_i32(x, y);
+
+        if ($ir_is_f64(y))
+            return $ir_lt_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
@@ -1213,7 +1217,7 @@ function $rt_le(x, y)
     // If x is a string
     if ($ir_is_string(px) && $ir_is_string(py))
     {
-        return $rt_strcmp(px, py) <= 0;
+        return $ir_le_i32($rt_strcmp(px, py), 0);
     }
 
     return $rt_le($rt_toNumber(x), $rt_toNumber(y));
@@ -1261,10 +1265,14 @@ Specialized greater-than for the integer and float cases
 */
 function $rt_gtIntFloat(x, y)
 {
-    // If x,y are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    // If x is integer
+    if ($ir_is_i32(x))
     {
-        return $ir_gt_i32(x, y);
+        if ($ir_is_i32(y))
+            return $ir_gt_i32(x, y);
+
+        if ($ir_is_f64(y))
+            return $ir_gt_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
@@ -1322,10 +1330,14 @@ Specialized greater-than-or-equal for the integer and float cases
 */
 function $rt_geIntFloat(x, y)
 {
-    // If x,y are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    // If x is integer
+    if ($ir_is_i32(x))
     {
-        return $ir_ge_i32(x, y);
+        if ($ir_is_i32(y))
+            return $ir_ge_i32(x, y);
+
+        if ($ir_is_f64(y))
+            return $ir_ge_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
