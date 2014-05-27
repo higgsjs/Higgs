@@ -1502,7 +1502,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "<")
             return genBinOp("ltIntFloat");
         else if (op.str == "<=")
-            return genBinOp("le");
+            return genBinOp("leIntFloat");
         else if (op.str == ">")
             return genBinOp("gtIntFloat");
         else if (op.str == ">=")

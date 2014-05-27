@@ -94,7 +94,9 @@ TODO: study inefficiencies in splay benchmark further
 
 
 
+[DONE] TODO: more complete addIntFloat, subIntFloat
 
+[DONE] TODO: add missing leIntFloat
 
 [DONE] TODO: try more complete ltIntFloat?
 before (simple):

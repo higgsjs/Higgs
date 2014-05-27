@@ -789,26 +789,37 @@ Specialized add for the (int,int) and (float,float) cases
 */
 function $rt_addIntFloat(x, y)
 {
-    // If x,y are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    // If x is integer
+    if ($ir_is_i32(x))
     {
-        var r;
-        if (r = $ir_add_i32_ovf(x, y))
+        if ($ir_is_i32(y))
         {
-            return r;
+            var r;
+            if (r = $ir_add_i32_ovf(x, y))
+            {
+                return r;
+            }
+            else
+            {
+                // Handle the overflow case
+                var fx = $ir_i32_to_f64(x);
+                var fy = $ir_i32_to_f64(y);
+                return $ir_add_f64(fx, fy);
+            }
         }
-        else
-        {
-            // Reconstruct x from r and y
-            // Hence x is not live after the add
-            x = r - y;
-        }
+
+        if ($ir_is_f64(y))
+            return $ir_add_f64($ir_i32_to_f64(x), y);
     }
 
-    // If x,y are floating-point
-    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    // If x is floating-point
+    else if ($ir_is_f64(x))
     {
-        return $ir_add_f64(x, y);
+        if ($ir_is_f64(y))
+            return $ir_add_f64(x, y);
+
+        if ($ir_is_i32(y))
+            return $ir_add_f64(x, $ir_i32_to_f64(y));
     }
 
     return $rt_add(x, y);
@@ -844,11 +855,11 @@ function $rt_sub(x, y)
     // If x is floating-point
     else if ($ir_is_f64(x))
     {
-        if ($ir_is_i32(y))
-            return $ir_sub_f64(x, $ir_i32_to_f64(y));
-
         if ($ir_is_f64(y))
             return $ir_sub_f64(x, y);
+
+        if ($ir_is_i32(y))
+            return $ir_sub_f64(x, $ir_i32_to_f64(y));
     }
 
     return $rt_sub($rt_toNumber(x), $rt_toNumber(y));
@@ -859,20 +870,36 @@ Specialized sub for the (int,int) and (float,float) cases
 */
 function $rt_subIntFloat(x, y)
 {
-    // If x,y are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    // If x is integer
+    if ($ir_is_i32(x))
     {
-        var r;
-        if (r = $ir_sub_i32_ovf(x, y))
+        if ($ir_is_i32(y))
         {
-            return r;
+            var r;
+            if (r = $ir_sub_i32_ovf(x, y))
+            {
+                return r;
+            }
+            else
+            {
+                var fx = $ir_i32_to_f64(x);
+                var fy = $ir_i32_to_f64(y);
+                return $ir_sub_f64(fx, fy);
+            }
         }
+
+        if ($ir_is_f64(y))
+            return $ir_sub_f64($ir_i32_to_f64(x), y);
     }
 
-    // If x,y are floating-point
-    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    // If x is floating-point
+    else if ($ir_is_f64(x))
     {
-        return $ir_sub_f64(x, y);
+        if ($ir_is_i32(y))
+            return $ir_sub_f64(x, $ir_i32_to_f64(y));
+
+        if ($ir_is_f64(y))
+            return $ir_sub_f64(x, y);
     }
 
     return $rt_sub(x, y);
@@ -950,21 +977,45 @@ Specialized add for the (int,int) and (float,float) cases
 */
 function $rt_mulIntFloat(x, y)
 {
-    // If x,y are integer and this can't produce negative zero
-    if ($ir_is_i32(x) && $ir_is_i32(y) &&
-        $ir_ne_i32(x, 0) && $ir_ne_i32(y, 0))
+    // If x is integer
+    if ($ir_is_i32(x))
     {
-        var r;
-        if (r = $ir_mul_i32_ovf(x, y))
+        if ($ir_is_i32(y))
         {
-            return r;
+            // If this could produce negative 0
+            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) || 
+                ($ir_eq_i32(x, 0) && $ir_lt_i32(y, 0)))
+            {
+                var fx = $ir_i32_to_f64(x);
+                var fy = $ir_i32_to_f64(y);
+                return $ir_mul_f64(fx, fy);
+            }
+
+            var r;
+            if (r = $ir_mul_i32_ovf(x, y))
+            {
+                return r;
+            }
+            else
+            {
+                var fx = $ir_i32_to_f64(x);
+                var fy = $ir_i32_to_f64(y);
+                return $ir_mul_f64(fx, fy);
+            }
         }
+
+        if ($ir_is_f64(y))
+            return $ir_mul_f64($ir_i32_to_f64(x), y);
     }
 
-    // If x,y are floating-point
-    else if ($ir_is_f64(x) && $ir_is_f64(y))
+    // If x is floating-point
+    else if ($ir_is_f64(x))
     {
-        return $ir_mul_f64(x, y);
+        if ($ir_is_f64(y))
+            return $ir_mul_f64(x, y);
+
+        if ($ir_is_i32(y))
+            return $ir_mul_f64(x, $ir_i32_to_f64(y));
     }
 
     return $rt_mul(x, y);
@@ -1221,6 +1272,34 @@ function $rt_le(x, y)
     }
 
     return $rt_le($rt_toNumber(x), $rt_toNumber(y));
+}
+
+/**
+Specialized less-than or equal for the integer and float cases
+*/
+function $rt_leIntFloat(x, y)
+{
+    // If x is integer
+    if ($ir_is_i32(x))
+    {
+        if ($ir_is_i32(y))
+            return $ir_le_i32(x, y);
+
+        if ($ir_is_f64(y))
+            return $ir_le_f64($ir_i32_to_f64(x), y);
+    }
+
+    // If x is float
+    else if ($ir_is_f64(x))
+    {
+        if ($ir_is_i32(y))
+            return $ir_le_f64(x, $ir_i32_to_f64(y));
+
+        if ($ir_is_f64(y))
+            return $ir_le_f64(x, y);
+    }
+
+    return $rt_le(x, y);
 }
 
 /**
