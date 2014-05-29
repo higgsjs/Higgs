@@ -1464,7 +1464,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "*")
             return genBinOp("mulIntFloat");
         else if (op.str == "/")
-            return genBinOp("div");
+            return genBinOp("divIntFloat");
         else if (op.str == "%")
             return genBinOp("modInt");
 
@@ -1518,7 +1518,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "*=")
             return genAssign("mulIntFloat");
         else if (op.str == "/=")
-            return genAssign("div");
+            return genAssign("divIntFloat");
         else if (op.str == "&=")
             return genAssign("modInt");
         else if (op.str == "&=")

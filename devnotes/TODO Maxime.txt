@@ -94,6 +94,13 @@ TODO: study inefficiencies in splay benchmark further
 
 
 
+
+
+
+
+[DONE] TODO: try inlining div? divIntFloat?
+- called 41K times in 3d-raytrace
+
 [DONE] TODO: more complete addIntFloat, subIntFloat
 
 [DONE] TODO: add missing leIntFloat

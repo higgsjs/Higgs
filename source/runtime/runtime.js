@@ -1040,6 +1040,24 @@ function $rt_div(x, y)
 }
 
 /**
+Specialized divide for integers and floats
+*/
+function $rt_divIntFloat(x, y)
+{
+    // If either value is floating-point or integer
+    if (($ir_is_f64(x) || $ir_is_i32(x)) &&
+        ($ir_is_f64(y) || $ir_is_i32(y)))
+    {
+        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
+
+        return $ir_div_f64(fx, fy);
+    }
+
+    return $rt_div(x, y);
+}
+
+/**
 JS modulo operator
 */
 function $rt_mod(x, y)
