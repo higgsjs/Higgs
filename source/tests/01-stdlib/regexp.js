@@ -236,6 +236,12 @@ function test_hyphen_character ()
     return 0;
 }
 
+function test_constructor ()
+{
+    assert(RegExp(/[a-z]/) instanceof RegExp);
+    assert(new RegExp(/[a-z]/) instanceof RegExp);
+}
+
 function test ()
 {
     var r;
@@ -275,6 +281,8 @@ function test ()
     r = test_hyphen_character();
     if (r !== 0)
         return 900 + r;
+    
+    test_constructor();
 
     return 0;
 }
