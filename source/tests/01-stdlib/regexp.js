@@ -242,6 +242,14 @@ function test_constructor ()
     assert(new RegExp(/[a-z]/) instanceof RegExp);
 }
 
+function test_char_class_in_char_class ()
+{
+    if (!(new RegExp("[\\s]+")).test("   \n\t"))
+        return 1;
+
+    return 0;
+}
+
 function test ()
 {
     var r;
@@ -283,6 +291,10 @@ function test ()
         return 900 + r;
     
     test_constructor();
+
+    r = test_char_class_in_char_class();
+    if (r !== 0)
+         return 1000 + r;
 
     return 0;
 }
