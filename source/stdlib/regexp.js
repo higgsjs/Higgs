@@ -2376,8 +2376,8 @@ function termToAutomata (
     return nextTransition;
 }
 
-
-function getRangeFromCharClass(atomAstNode, context) {
+function getRangeFromCharClass(atomAstNode, context)
+{
     var ranges = [];
 
     for (var i = 0; i < atomAstNode.classAtoms.length; ++i)
@@ -2411,9 +2411,12 @@ function getRangeFromCharClass(atomAstNode, context) {
         else
         {
             var ca = atomAstNode.classAtoms[i];
-            if (ca.min instanceof RegExpCharacterClass) {
+            if (ca.min instanceof RegExpCharacterClass) 
+            {
                 ranges = ranges.concat(getRangeFromCharClass(ca.min, context));
-            } else {
+            }
+            else
+            {
                 ranges.push(ca.max === undefined ? [ca.min.value, ca.min.value] : [ca.min.value, ca.max.value]);
             }
         }
@@ -2466,7 +2469,7 @@ function atomToAutomata (
           1.    _   3.
         -----> |_| ---->
                 2.
-        
+
         1. (RegExpCharSetMatchTransition|RegExpExCharSetMatchTransition)
         2. RegExpNode
         3. nextTransition
@@ -2624,7 +2627,8 @@ RegExp.prototype.test = function (
     var currentNode = this._automata.headNode;
     var nextNode = currentNode;
 
-    do {
+    do
+    {
         currentNode = this._automata.headNode;
         context.setIndex(this.lastIndex + padding);
         while (true)
@@ -2662,3 +2666,4 @@ RegExp.prototype.test = function (
 return RegExp;
 
 })();
+
