@@ -44,15 +44,6 @@ TODO: implement full eval support
 - PROBLEM: there's no parent pointer in AST nodes
   - can't just run vars analysis on subfunction, need to rerun the whole thing...
 
-FIXME: string-tagcloud
-./higgs benchmarks/sunspider/string-tagcloud.js
-run-time error: SyntaxError: parseJSON
-$rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
-s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
-benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
-- benchmark throws this exception, its own parser fails
-- could it be some regexp behavior mismatch?
-
 FIXME: date-format-tofte
 - keeps using more and more memory
 
@@ -74,6 +65,10 @@ TODO: May, approach Moz, Apple, FB wrt internship
 May 31st, complete paper writing
 --------------------------------
 
+FIXME: type analysis can't handle getProp loop?
+- because type is unknown at entry
+- try tagging the output of some call_prims?
+
 TODO: eliminate overflow checks
 - how many add_i32_ovf with 1 do we have?
 - if less than some other i32, can eliminate
@@ -81,11 +76,6 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
-FIXME: type analysis can't handle getProp loop?
-- because type is unknown at entry
-- try tagging the output of some call_prims?
-
-TODO: study inefficiencies in splay benchmark further
 
 
 
@@ -97,6 +87,14 @@ TODO: study inefficiencies in splay benchmark further
 
 
 
+[DONE] FIXME: string-tagcloud
+./higgs benchmarks/sunspider/string-tagcloud.js
+run-time error: SyntaxError: parseJSON
+$rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
+s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
+benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
+- benchmark throws this exception, its own parser fails
+- could it be some regexp behavior mismatch?
 
 [DONE] TODO: try inlining div? divIntFloat?
 - called 41K times in 3d-raytrace
