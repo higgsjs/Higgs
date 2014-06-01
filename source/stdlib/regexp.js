@@ -877,6 +877,8 @@ function RegExp (
     flags
 )
 {
+    if (!(this instanceof RegExp)) return new RegExp(pattern, flags);
+    
     this.source = (pattern === undefined ? "" : pattern);
     this.global = false;
     this.ignoreCase = false;
