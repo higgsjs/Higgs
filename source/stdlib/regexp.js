@@ -877,6 +877,8 @@ function RegExp (
     flags
 )
 {
+    if (!(this instanceof RegExp)) return new RegExp(pattern, flags);
+    
     this.source = (pattern === undefined ? "" : pattern);
     this.global = false;
     this.ignoreCase = false;
@@ -2374,6 +2376,54 @@ function termToAutomata (
     return nextTransition;
 }
 
+function getRangeFromCharClass(atomAstNode, context)
+{
+    var ranges = [];
+
+    for (var i = 0; i < atomAstNode.classAtoms.length; ++i)
+    {
+        if (context.ignoreCase)
+        {
+            var ca = atomAstNode.classAtoms[i];
+
+            if (ca.max === undefined)
+            {
+                if (ca.min.value >= 97 && ca.min.value <= 122)
+                {
+                    ranges.push([ca.min.value, ca.min.value]);
+                    ranges.push([ca.min.value - 32, ca.min.value - 32]);
+                }
+                else if (ca.min.value >= 65 && ca.min.value <= 90)
+                {
+                    ranges.push([ca.min.value, ca.min.value]);
+                    ranges.push([ca.min.value + 32, ca.min.value + 32]);
+                }
+                else
+                {
+                    ranges.push([ca.min.value, ca.min.value]);
+                }
+            }
+            else
+            {
+                ranges.push(ca.max === undefined ? [ca.min.value, ca.min.value] : [ca.min.value, ca.max.value]);
+            }
+        }
+        else
+        {
+            var ca = atomAstNode.classAtoms[i];
+            if (ca.min instanceof RegExpCharacterClass) 
+            {
+                ranges = ranges.concat(getRangeFromCharClass(ca.min, context));
+            }
+            else
+            {
+                ranges.push(ca.max === undefined ? [ca.min.value, ca.min.value] : [ca.min.value, ca.max.value]);
+            }
+        }
+    }
+    return ranges;
+}
+
 /**
     Compile a RegExpTerm ast node to a sub automata.
 */
@@ -2419,50 +2469,15 @@ function atomToAutomata (
           1.    _   3.
         -----> |_| ---->
                 2.
-        
+
         1. (RegExpCharSetMatchTransition|RegExpExCharSetMatchTransition)
         2. RegExpNode
         3. nextTransition
     */
     else if (atomAstNode instanceof RegExpCharacterClass)
     {
-        var ranges = [];
 
-        for (var i = 0; i < atomAstNode.classAtoms.length; ++i)
-        {
-            if (context.ignoreCase)
-            {
-                var ca = atomAstNode.classAtoms[i];
-
-                if (ca.max === undefined)
-                {
-                    if (ca.min.value >= 97 && ca.min.value <= 122)
-                    {
-                        ranges.push([ca.min.value, ca.min.value]);
-                        ranges.push([ca.min.value - 32, ca.min.value - 32]);
-                    }
-                    else if (ca.min.value >= 65 && ca.min.value <= 90)
-                    {
-                        ranges.push([ca.min.value, ca.min.value]);
-                        ranges.push([ca.min.value + 32, ca.min.value + 32]);
-                    }
-                    else
-                    {
-                        ranges.push([ca.min.value, ca.min.value]);
-                    }
-                }
-                else
-                {
-                    ranges.push(ca.max === undefined ? [ca.min.value, ca.min.value] : [ca.min.value, ca.max.value]);
-                }
-            }
-            else
-            {
-                var ca = atomAstNode.classAtoms[i];
-                ranges.push(ca.max === undefined ? [ca.min.value, ca.min.value] : [ca.min.value, ca.max.value]);
-            }
-        }
-
+        var ranges = getRangeFromCharClass(atomAstNode, context);
         if (atomAstNode.positive)
             nextTransition  = new RegExpCharSetMatchTransition(node, ranges);
         else
@@ -2612,14 +2627,13 @@ RegExp.prototype.test = function (
     var currentNode = this._automata.headNode;
     var nextNode = currentNode;
 
-    do {
+    do
+    {
         currentNode = this._automata.headNode;
         context.setIndex(this.lastIndex + padding);
-
         while (true)
         {
             nextNode = currentNode.step(context);
-
             if (nextNode === null)
             {
                 if (currentNode._final)
