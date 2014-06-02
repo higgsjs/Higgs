@@ -1620,13 +1620,29 @@ void genCallBranch(
     // Map the return value to its stack location
     st.mapToStack(instr);
 
+    BranchCode contBranch;
+    BranchCode excBranch = null;
+
     // Create a branch object for the continuation
-    auto contBranch = getBranchEdge(
+    contBranch = getBranchEdge(
         instr.getTarget(0),
         st,
         false,
         delegate void(CodeBlock as, VM vm)
         {
+            // If eager compilation is enabled
+            if (opts.jit_eager)
+            {
+                // Set the return address entry when compiling the
+                // continuation block
+                vm.setRetEntry(
+                    instr,
+                    st.callCtx,
+                    contBranch,
+                    excBranch
+                );
+            }
+
             // Move the return value into the instruction's output slot
             if (instr.hasUses)
             {
@@ -1637,7 +1653,6 @@ void genCallBranch(
     );
 
     // Create the continuation branch object
-    BranchCode excBranch = null;
     if (instr.getTarget(1))
     {
         excBranch = getBranchEdge(

@@ -72,16 +72,29 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
-FIXME: segfaults with jit_eager
+
+FIXME: jit_eager segfault on string-tagcloud benchmark
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: segfaults with jit_eager, gc bug
 unpack-code, fasta, splay, tagcloud, base64, earley-boyer, valid-input, regexp-dna
 - Start with base64, simpler
-
-
-
-
-
-
-
+./higgs --jit_eager benchmarks/sunspider/string-base64.js
+- Quick version of benchmarks doesn't segfault... GC?
+Assertion failed (runtime/vm.d@1201): no return entry for return address: 7F531C8DB903
+- Continuation stub previously set ret entry when compiled
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=20 --jit_eager"
 
 [DONE] TODO: implement eager codegen
 --jit_eager
