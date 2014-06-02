@@ -1683,17 +1683,31 @@ void genCallBranch(
         as.label(Label.SKIP);
     }
 
-    // Create a call continuation stub
-    auto contStub = new ContStub(ver, contBranch);
-    vm.queue(contStub);
+    // If eager compilation is enabled
+    if (opts.jit_eager)
+    {
+        // Generate the call branch code
+        ver.genBranch(
+            as,
+            contBranch,
+            excBranch,
+            genFn
+        );
+    }
+    else
+    {
+        // Create a call continuation stub
+        auto contStub = new ContStub(ver, contBranch);
+        vm.queue(contStub);
 
-    // Generate the call branch code
-    ver.genBranch(
-        as,
-        contStub,
-        excBranch,
-        genFn
-    );
+        // Generate the call branch code
+        ver.genBranch(
+            as,
+            contStub,
+            excBranch,
+            genFn
+        );
+    }
 
     //writeln("call block length: ", ver.length);
 }

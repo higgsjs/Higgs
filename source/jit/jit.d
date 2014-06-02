@@ -1803,6 +1803,11 @@ BranchCode getBranchEdge(
     PrelGenFn prelGenFn = null
 )
 {
+    // If eager codegen is enabled, force the version
+    // to be generated now
+    if (opts.jit_eager)
+        noStub = true;
+
     auto vm = predState.callCtx.vm;
 
     assert (

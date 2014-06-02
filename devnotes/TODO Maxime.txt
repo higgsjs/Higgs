@@ -72,28 +72,25 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
-TODO: implement eager codegen
+FIXME: segfaults with jit_eager
+unpack-code, fasta, splay, tagcloud, base64, earley-boyer, valid-input, regexp-dna
+- Start with base64, simpler
+
+
+
+
+
+
+
+
+[DONE] TODO: implement eager codegen
 --jit_eager
 - getBlockVersion should ignore noStub
-- What about continuation stubs?
-  - Not as relevant, call will eventually return
-
-
-    // If eager codegen is enabled, force the version
-    // to be generated now
-    if (opts.jit_eager)
-    {
-        writeln("eager lol");
-        noStub = true;
-    }
-
-
-
-
-
-
-
-
+- What about continuation stubs? Avoid generating
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=20 --jit_eager"
+  - Can try maxvers=5 if too slow?
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=5 --jit_eager"
+  - doesn't fix segfaults
 
 [DONE] TODO: eliminate noStub flag from getBlockVersion
 
