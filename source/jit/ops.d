@@ -1794,8 +1794,7 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false),
-        true
+        new CodeGenState(vm, fun, false)
     );
 
     ver.genCallBranch(
@@ -2454,8 +2453,7 @@ void gen_load_file(
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false),
-                true
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -2586,8 +2584,7 @@ void gen_eval_str(
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false),
-                true
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -4077,8 +4074,7 @@ void gen_get_asm_str(
             // Request an instance for the function entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false),
-                true
+                new CodeGenState(vm, fun, false)
             );
 
             // Generate a string representation of the code
@@ -4091,8 +4087,7 @@ void gen_get_asm_str(
             // Request an instance for the constructor entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, true),
-                true
+                new CodeGenState(vm, fun, true)
             );
 
             if (str != "")

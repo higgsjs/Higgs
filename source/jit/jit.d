@@ -1668,8 +1668,7 @@ Request a block version matching the incoming state
 */
 BlockVersion getBlockVersion(
     IRBlock block,
-    CodeGenState state,
-    bool noStub
+    CodeGenState state
 )
 {
     auto callCtx = state.callCtx;
@@ -1786,9 +1785,8 @@ BlockVersion getBlockVersion(
         stats.maxVersions = max(stats.maxVersions, numVersions);
     }
 
-    // If we know this version will be executed, queue it for compilation
-    if (noStub)
-        vm.queue(ver);
+    // Queue the block version for compilation
+    vm.queue(ver);
 
     // Return the newly created block version
     assert (ver.state.callCtx is callCtx);
@@ -2111,8 +2109,7 @@ void compile(VM vm, IRInstr curInstr)
             // Get a version of the successor matching the incoming state
             branch.target = getBlockVersion(
                 branch.branch.target,
-                succState,
-                true
+                succState
             );
 
             // Generate the moves to transition to the successor state
@@ -2325,8 +2322,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Create a version instance object for the function entry
     auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false),
-        true
+        new CodeGenState(vm, fun, false)
     );
 
     // Mark the code start index
@@ -2455,15 +2451,13 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false),
-        true
+        new CodeGenState(vm, fun, false)
     );
 
     // Request an instance for the function entry block
     auto ctorInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, true),
-        true
+        new CodeGenState(vm, fun, true)
     );
 
     /*

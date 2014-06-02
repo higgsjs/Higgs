@@ -65,10 +65,6 @@ TODO: May, approach Moz, Apple, FB wrt internship
 May 31st, complete paper writing
 --------------------------------
 
-FIXME: type analysis can't handle getProp loop?
-- because type is unknown at entry
-- try tagging the output of some call_prims?
-
 TODO: eliminate overflow checks
 - how many add_i32_ovf with 1 do we have?
 - if less than some other i32, can eliminate
@@ -76,6 +72,20 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
+TODO: implement eager codegen
+--jit_eager
+- getBlockVersion should ignore noStub
+- What about continuation stubs?
+  - Not as relevant, call will eventually return
+
+
+    // If eager codegen is enabled, force the version
+    // to be generated now
+    if (opts.jit_eager)
+    {
+        writeln("eager lol");
+        noStub = true;
+    }
 
 
 
@@ -85,7 +95,7 @@ TODO: eliminate overflow checks
 
 
 
-
+[DONE] TODO: eliminate noStub flag from getBlockVersion
 
 [DONE] FIXME: string-tagcloud
 ./higgs benchmarks/sunspider/string-tagcloud.js

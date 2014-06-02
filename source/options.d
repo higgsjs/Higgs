@@ -68,6 +68,9 @@ struct Options
     /// Enable IR-level type propagation analysis
     bool jit_typeprop = false;
 
+    /// Enable eager generation of block versions
+    bool jit_eager = false;
+
     /// Maximum number of specialized versions to compile per basic block
     uint jit_maxvers = 20;
 
@@ -113,6 +116,7 @@ void parseCmdArgs(ref string[] args)
         "nostdlib"          , &opts.nostdlib,
 
         "jit_typeprop"      , &opts.jit_typeprop,
+        "jit_eager"         , &opts.jit_eager,
         "jit_maxvers"       , &opts.jit_maxvers,
         "jit_noinline"      , &opts.jit_noinline,
         "jit_dumpinfo"      , &opts.jit_dumpinfo,
