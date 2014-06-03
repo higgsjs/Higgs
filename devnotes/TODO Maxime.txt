@@ -84,20 +84,28 @@ TODO: remove results files, run scripts/runbenchmarks.sh, ensure working
 
 TODO: test benchmark.py with maxvers=100. See if effect on type tests is
 still as pronounced.
+- check that no benchmark produces more than 100 vers
+./benchmark.py --csv_file="out.csv" --higgs_cmd="./higgs --perf_stats --jit_maxvers=20 --jit_eager"
 
-TODO: test the 4 benchmark.py configs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: test the 4 benchmark.py configs
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20 --jit_typeprop"
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: jit_eager segfault on string-tagcloud benchmark
 ./higgs --jit_eager benchmarks/sunspider/string-tagcloud.js
