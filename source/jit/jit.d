@@ -2037,7 +2037,10 @@ void compile(VM vm, IRInstr curInstr)
             );
 
             auto block = ver.block;
-            assert (ver.block !is null);
+            assert (
+                ver.block !is null,
+                ver.state.callCtx.fun.getName
+            );
 
             // Copy the instance's state object
             auto state = new CodeGenState(ver.state);

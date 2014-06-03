@@ -54,6 +54,13 @@ TODO: take a break, look into sound output
 - look at existing code
   - can write and wait for poll, no callback
 
+TODO: eliminate overflow checks
+- how many add_i32_ovf with 1 do we have?
+- if less than some other i32, can eliminate
+  - need to prove this is on the path to the current block
+    - can't reach entry without going through the test
+    - must arrive through "true" side
+
 TODO: May, approach Moz, Apple, FB wrt internship
 - 4 months, [Jan, April] 2015, spend winter in Cali
 - Marc advises to remain near PhD work, best for CV
@@ -65,15 +72,26 @@ TODO: May, approach Moz, Apple, FB wrt internship
 May 31st, complete paper writing
 --------------------------------
 
-TODO: eliminate overflow checks
-- how many add_i32_ovf with 1 do we have?
-- if less than some other i32, can eliminate
-  - need to prove this is on the path to the current block
-    - can't reach entry without going through the test
-    - must arrive through "true" side
+FIXME: assertion failed, jit/jit 2040????
+// If this is a version instance
+if (auto ver = cast(BlockVersion)frag)
+{
+    auto block = ver.block;
+    assert (ver.block !is null);
+- Intermittent bug...
+
+TODO: remove results files, run scripts/runbenchmarks.sh, ensure working
+
+TODO: test benchmark.py with maxvers=100. See if effect on type tests is
+still as pronounced.
+
+TODO: test the 4 benchmark.py configs
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20 --jit_typeprop"
 
 
-FIXME: jit_eager segfault on string-tagcloud benchmark
 
 
 
@@ -81,11 +99,11 @@ FIXME: jit_eager segfault on string-tagcloud benchmark
 
 
 
-
-
-
-
-
+[DONE] FIXME: jit_eager segfault on string-tagcloud benchmark
+./higgs --jit_eager benchmarks/sunspider/string-tagcloud.js
+Assertion failed (runtime/vm.d@822): no free link entries
+Assertion failed (jit/jit.d@1978): current instr is not null
+- Made link table larger
 
 [DONE] FIXME: segfaults with jit_eager, gc bug
 unpack-code, fasta, splay, tagcloud, base64, earley-boyer, valid-input, regexp-dna

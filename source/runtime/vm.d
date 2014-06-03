@@ -365,7 +365,7 @@ immutable size_t STACK_SIZE = 2^^18;
 immutable size_t HEAP_INIT_SIZE = 2^^24;
 
 /// Initial link table size
-immutable size_t LINK_TBL_INIT_SIZE = 8192;
+immutable size_t LINK_TBL_INIT_SIZE = 16384;
 
 /// Initial base object size
 immutable size_t BASE_OBJ_INIT_SIZE = 128;
