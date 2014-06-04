@@ -378,6 +378,22 @@ class CodeGenState
     }
 
     /**
+    Produce a string representation of the type information in
+    this code generation state
+    */
+    override string toString() const
+    {
+        string str;
+
+        foreach (val, st; valMap)
+        {
+            str ~= format("%s: %s\n", val.getName, st.typeKnown? to!string(st.type):"unknown");
+        }
+
+        return str;
+    }
+
+    /**
     Remove information about values dead at the beginning of
     a given block
     */
@@ -1777,7 +1793,9 @@ BlockVersion getBlockVersion(
         if (numVersions > stats.maxVersions)
         {
             writeln(block.fun.getName);
-            writeln(block.fun.numBlocks);
+            writeln("  ", block.getName);
+            writeln("  ", numVersions);
+            //writeln("  ", block.fun.numBlocks);
         }
         */
 

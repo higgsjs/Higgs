@@ -3,6 +3,7 @@
 from subprocess import *
 import os
 import sys
+import time
 import re
 import math
 import csv
@@ -74,6 +75,8 @@ print "higgs cmd:", options.higgs_cmd
 print "num runs :", options.num_runs
 print ''
 
+startTime = time.time()
+
 # For each benchmark
 benchNo = 1
 for benchmark in BENCHMARKS:
@@ -123,6 +126,8 @@ for benchmark in BENCHMARKS:
 
     # Store the values for this benchmark
     benchResults[benchmark] = valLists
+
+endTime = time.time()
 
 # Computes the geometric mean of a list of values
 def geoMean(numList):
@@ -193,4 +198,7 @@ if options.csv_file != '':
                 mean = int(mean)
             values += [mean]
         writer.writerow([benchmark] + values)
+
+print ''
+print 'total benchmarking time: %.1f s' % (endTime - startTime)
 

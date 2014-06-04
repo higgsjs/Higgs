@@ -72,34 +72,38 @@ TODO: May, approach Moz, Apple, FB wrt internship
 May 31st, complete paper writing
 --------------------------------
 
-FIXME: assertion failed, jit/jit 2040????
-// If this is a version instance
-if (auto ver = cast(BlockVersion)frag)
-{
-    auto block = ver.block;
-    assert (ver.block !is null);
-- Intermittent bug...
 
-TODO: remove results files, run scripts/runbenchmarks.sh, ensure working
 
-TODO: test benchmark.py with maxvers=100. See if effect on type tests is
+
+
+
+
+
+
+[DONE] TODO: log typing info for 3d-raytrace, see what's up
+- Why 1500+ versions?
+- Grows quickly with int32/float64/unknown
+- Every time we have a type test, is_t(x), must also create versions along the
+  branch where we gained no type information, even if it's never taken
+
+[DONE] TODO: toString for CodeGenCtx
+
+[DONE] TODO: add timing of run to benchmark.py
+
+[DONE] TODO: test benchmark.py with maxvers=200
+./benchmark.py --csv_file="eager.csv" --higgs_cmd="./higgs --stats --jit_maxvers=200 --jit_eager"
+- Problems:
+  - horrible pathological cases, particulartly due to overflow?
+  - compilation time is incredibly long... problematic for benchmarking time with multiple runs
+  - searching linearly through versions probably doesn't scale
+- Half the benchmarks generate more than 200 versions
+
+[DONE] TODO: test benchmark.py with maxvers=100. See if effect on type tests is
 still as pronounced.
+./benchmark.py --csv_file="eager.csv" --higgs_cmd="./higgs --stats --jit_maxvers=100 --jit_eager"
 - check that no benchmark produces more than 100 vers
-./benchmark.py --csv_file="out.csv" --higgs_cmd="./higgs --perf_stats --jit_maxvers=20 --jit_eager"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  - many reach 100!
+- type test effect less pronounced but still present.
 
 [DONE] TODO: test the 4 benchmark.py configs
 ./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
