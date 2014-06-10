@@ -18,17 +18,3 @@ TODO: Project Badger
 - Can we make them all run too?
 - Aggressive PR, attract attention, responses will too
 
-TODO: look into doc gen, linking up with GitHub
-
-TODO: move stack resizing code to function entry
-
-TODO: eliminate CallCtx, use IRFunction
-- simplify design
-
-TODO: eliminate double function entry point
-- makes for redundant code, poor design
-
-"I wonder if it might not be better in general to cap block generation on code size, rather than maximum number of blocks...?"
-- versions that compile down to nothing should probably not be counted?
-
-https://www.webkit.org/blog/3418/introducing-the-jetstream-benchmark-suite/

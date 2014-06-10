@@ -616,14 +616,13 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     // Compute liveness information for the function
     fun.liveInfo = new LiveInfo(fun);
 
-
-
-    // FIXME: for now, always run the analysis, as it may impact
-    // the memory allocation performance during execution, giving an
-    // unfair disadvantage to tests using the analysis
-    //
     // If the type analysis is enabled
-    //if (opts.jit_typeprop)
+    if (opts.jit_typeprop)
+    {
+        fun.typeInfo = new TypeProp(fun, fun.liveInfo);
+    }
+
+    /*
     version (release)
     {
         fun.typeInfo = new TypeProp(fun, fun.liveInfo);
@@ -633,8 +632,7 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
         if (opts.jit_typeprop)
             fun.typeInfo = new TypeProp(fun, fun.liveInfo);
     }
-
-
+    */
 
     // Allocate stack slots for the IR instructions
     allocSlots(fun);

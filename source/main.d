@@ -50,7 +50,8 @@ import options;
 
 void main(string[] args)
 {
-    GC.reserve(1024 * 1024 * 1024);
+    // Reserve 256MB for the D GC, improves allocation performance
+    GC.reserve(256 * 1024 * 1024);
 
     // Arguments after "--" are passed to JS code
     auto argLimit = countUntil(args, "--");
