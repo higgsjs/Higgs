@@ -1,20 +1,54 @@
-ODO: study shape implementation in FF, look at slides, look at source
+TODO: blog post about typed shapes, quick illustrations
+- "Faster JS Objects with Typed Shapes"
+- quick sketching program, online?
+- post to 
+    r/compilers
+    r/ProgrammingLanguages
+    r/pldesign
+
+TODO: study shape implementation in FF, look at slides, look at source
+- ask about multiple successive transitions, constructors
 
 TODO: think about shapes more
-- want a guaranteed minimum object size
-  - no need for a special ext table, can use objects as is with len, next ptr
+- guaranteed minimum object size
+  - ext table for extra properties
 - how complicated would they be to implement in a basic form?
   - switch to shape idx
-- how much simplification could you get on object property accesses?
-  - sketch it out
-- can use shape pointers directly
-  - shapes can keep list of referring blocks
 - start writing D code for shapes
   - class ObjShape
 - no more "make_map"
+- getters/setters
+- no more "missing" value?
+- array elem prop
 
 TODO: Project Badger
 - Does PyPy run the shootout tests
 - Can we make them all run too?
 - Aggressive PR, attract attention, responses will too
+
+------------------------------------------------------------------------------
+
+*** Need to skech out implementation, runtime code ***
+Think about shape representation and implementation in detail
+
+Moz people use a tree, with many special cases
+- Creation site not accounted for, properties added in order
+- Operations make us transition to new shapes in a tree structure of shapes
+- Operations
+  - Write value of some given type to property k
+  - set property attribs
+  - install getter/setter
+  - those could possibly all be special cases of write value?
+    - maybe not, can set attribs without setting value?
+
+Getters-setters:
+- Fast access speed not necessarily critical
+- Main goal is to eliminate overhead for normal property accesses
+- Get/set doesn't have an index/offset into objects?
+  - Probably still needs to be stored in there? Otherwise stored in the map
+
+Probably want to move the proto lookup logic into some readProp instruction?
+- Less logic in JS, generate more compact assembly
+- Need to bail out of there is the property is a getter/setter
+  - instr can return a closure ptr if this is the case?
 
