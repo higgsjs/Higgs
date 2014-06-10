@@ -28,7 +28,7 @@ TODO: eliminate CallCtx, use IRFunction
 TODO: eliminate double function entry point
 - makes for redundant code, poor design
 
-TODO: look into JSBenchmark
-Quicksort, Factorials, Conway, Ribosome, MD5, Primes, Genetic Salesman,
-Arrays, Dates, Exceptions
+"I wonder if it might not be better in general to cap block generation on code size, rather than maximum number of blocks...?"
+- versions that compile down to nothing should probably not be counted?
 
+https://www.webkit.org/blog/3418/introducing-the-jetstream-benchmark-suite/

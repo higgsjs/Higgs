@@ -18,41 +18,15 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-TODO: transform jit.compileUnit into jit.execUnit
-- Do parsing, AST->IR and call in there, better time accounting?
-- Any real reason not to?
-- alternative: try to treat unit functions more like other functions
-  - create closure objects for them
-  - create some sort of closure call bridge with a C call conv
-  - having a "C adapter" for a specific closure seems sensible
-
-FIXME: parseInt('32') takes about 20ms???
-
-TODO: add tests for nested eval support
-- accessing local vars, changing vars
-TODO: implement full eval support
-- eval can be called as global eval or local eval
-  - different "eval context"
-- if direct/local eval possible, function must behave as if all locals could be captured
-  - graft new IR sub-function into parent? don't add to sub list, but have parent link set
-- parse AST, optionally set parent link, run AST vars pass
-  - may want to pass a parent ptr to AST parsing function
-- eval_str function needs to find who the caller is, determine if direct call?
-  - call instr to get_global "eval"
-  - VM.getCallInstr?
-- need to "ungraft" the AST after vars analysis?
-- PROBLEM: there's no parent pointer in AST nodes
-  - can't just run vars analysis on subfunction, need to rerun the whole thing...
+TODO: take a break, look into sound output
+- work on this in dev-maxime branch ***
+- look at existing code
+  - can write and wait for poll, no callback
 
 FIXME: date-format-tofte
 - keeps using more and more memory
 
 FIXME: v8bench/regexp segfaults
-
-TODO: take a break, look into sound output
-- work on this in dev-maxime branch ***
-- look at existing code
-  - can write and wait for poll, no callback
 
 TODO: eliminate overflow checks
 - how many add_i32_ovf with 1 do we have?
@@ -61,24 +35,41 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
+TODO: C call conv wrapper for callbacks
+- after new calling conv
+
 TODO: May, approach Moz, Apple, FB wrt internship
 - 4 months, [Jan, April] 2015, spend winter in Cali
 - Marc advises to remain near PhD work, best for CV
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
 
+TODO: fix jit bug, see jit-bug.js
+
+June 10th meeting:
+- Interprocedural BBV
+  - Issue: who am I calling? If unknown, need to test, if polymorphic, this is an issue
+  - Typed shapes would make this less of an issue, make interp BBV more efficient
+- BBV, maybe should take code size into account, code size budget
+  - Blocks that compile to nothing maybe shouldn't count towards version limit
+  - Blocks that are very small should maybe count for less
+
+TODO: push to dev-maxime
+- disable analysis always on
+- prealloc in main, 256M
+
+
+
+
+
+
+
+
+
 ------------------------------------------------------------------------------
 
 May 31st, complete paper writing
 --------------------------------
-
-
-
-
-
-
-
-
 
 [DONE] TODO: log typing info for 3d-raytrace, see what's up
 - Why 1500+ versions?
