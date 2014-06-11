@@ -596,8 +596,25 @@ class CodeGenState
             break;
         }
 
+        // If no non-argument register could be found, spill a 
+        // register which isn't the mapped to the instruction
+        if (chosenReg is null)
+        {
+            foreach (reg; allocRegs)
+            {
+                auto regVal = gpRegMap[reg.regNo];
+                if (regVal is instr)
+                    continue;
+                chosenReg = &reg;
+                break;
+            }
+        }
+
         // Spill the chosen register
-        assert (chosenReg !is null);
+        assert (
+            chosenReg !is null,
+            "couldn't find register to spill"
+        );
         spillReg(as, *chosenReg);
 
         return *chosenReg;

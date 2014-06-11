@@ -1944,24 +1944,6 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         // Evaluate the base expression
         auto closVal = exprToIR(ctx, baseExpr);
 
-        // Evaluate the arguments
-        auto argVals = new IRValue[argExprs.length];
-        foreach (argIdx, argExpr; argExprs)
-            argVals[argIdx] = exprToIR(ctx, argExpr);
-
-        // Add the call instruction
-        // <dstLocal> = CALL <fnLocal> <thisArg> ...
-        auto callInstr = ctx.addInstr(new IRInstr(&CALL_NEW, 1 + argVals.length));
-        callInstr.setArg(0, closVal);
-        foreach (argIdx, argVal; argVals)
-            callInstr.setArg(1+argIdx, argVal);
-
-        // Generate the call targets
-        genCallTargets(ctx, callInstr, expr.pos);
-
-        return callInstr;
-
-        /*
         // Get the method property
         auto thisVal = genRtCall(
             ctx,
@@ -1995,7 +1977,6 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         );
 
         return retVal;
-        */
     }
 
     else if (auto indexExpr = cast(IndexExpr)expr)

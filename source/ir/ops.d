@@ -241,14 +241,6 @@ Opcode CALL_PRIM = { "call_prim", true, [OpArg.STRING, OpArg.FUN], &gen_call_pri
 // Pushes the return address word
 Opcode CALL = { "call", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_call, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
 
-// <dstLocal> = CALL_NEW <closLocal> ...
-// Implements the JavaScript new operator.
-// Creates the this object
-// Makes the execution go to the callee entry
-// Sets the frame pointer to the new frame's base
-// Pushes the return address word
-Opcode CALL_NEW = { "call_new", true, [OpArg.LOCAL], &gen_call_new, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL | OpInfo.MAY_GC };
-
 // <dstLocal> = CALL_APPLY <closArg> <thisArg> <argTable> <numArgs>
 // Call with an array of arguments
 Opcode CALL_APPLY = { "call_apply", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_call_apply, OpInfo.BRANCH | OpInfo.CALL };

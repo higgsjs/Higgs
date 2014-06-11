@@ -79,9 +79,13 @@ TODO: contact Dave Herman yourself wrt internship
 TODO: eliminate CallCtx, use IRFunction
 - simplify design
 
-TODO: eliminate double function entry point
+FIXME: earley-boyer using large amounts of memory without call_new...
+- also very slow
+- seems like exec time is unchanged, comp time massively slow
+
+TODO: eliminate double function entry point, isCtor
 - makes for redundant code, poor design
-- eliminate call_new
+code size before, benchmark.py: 457081
 
 
 
@@ -90,9 +94,12 @@ TODO: eliminate double function entry point
 
 
 
+[DONE] FIXME: tests/06-sunspider/18-string-validate-input.js...	
+Assertion failed (jit.jit@600)
+- Can't find register to spill
+- Call with massive number of arguments
 
-
-
+[DONE] TODO: eliminate call_new
 
 [DONE] TODO: contact Eddy Bruel wrt shapes, ask for slides
 EJPBRUEL@MOZILLA.COM
