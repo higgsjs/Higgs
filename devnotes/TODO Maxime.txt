@@ -23,9 +23,6 @@ TODO: take a break, look into sound output
 - look at existing code
   - can write and wait for poll, no callback
 
-FIXME: date-format-tofte
-- keeps using more and more memory
-
 FIXME: v8bench/regexp segfaults
 
 TODO: eliminate overflow checks
@@ -35,50 +32,91 @@ TODO: eliminate overflow checks
     - can't reach entry without going through the test
     - must arrive through "true" side
 
+TODO: look into doc gen, linking up with GitHub
+
+TODO: look into jetstream benchmarks
+https://www.webkit.org/blog/3418/introducing-the-jetstream-benchmark-suite/
+
 TODO: C call conv wrapper for callbacks
 - after new calling conv
 
-TODO: look into doc gen, linking up with GitHub
+TODO: approach Moz, Apple, FB wrt internship
+- 4 months, [Jan, April] 2015, spend winter in Cali
+- Marc advises to remain near PhD work, best for CV
+- Marc thinks you can make ~40K pre-tax
+- Ask about salary, lodging options
 
-TODO: move stack resizing code to function entry
+FIXME: date-format-tofte
+- keeps using more and more memory
+- some kind of memory leak issue?
+
+------------------------------------------------------------------------------
+
+Next meeting:
+- Eddy Bruel?
+
+TODO: internship, contact Luke Wagner?
+
+TODO: blog post about typed shapes, quick illustrations
+- "Faster JS Objects with Typed Shapes"
+- quick sketching program, online?
+- post to 
+    r/compilers
+    r/ProgrammingLanguages
+    r/pldesign
+
+TODO: establish shape milestone for June 30th
+- Should ideally have working shape system by Sept 1st
+
+TODO: think about typed shapes more, sketch out design
+- runtime.js implications
+- ObjShape class
+- Draw transitions, etc!
+
+TODO: contact Dave Herman yourself wrt internship
+- e-mail Marc first
 
 TODO: eliminate CallCtx, use IRFunction
 - simplify design
 
 TODO: eliminate double function entry point
 - makes for redundant code, poor design
+- eliminate call_new
 
-TODO: May, approach Moz, Apple, FB wrt internship
-- 4 months, [Jan, April] 2015, spend winter in Cali
-- Marc advises to remain near PhD work, best for CV
-- Marc thinks you can make ~40K pre-tax
-- Ask about salary, lodging options
 
-TODO: fix jit bug, see jit-bug.js
 
-TODO: look into jetstream benchmarks
-https://www.webkit.org/blog/3418/introducing-the-jetstream-benchmark-suite/
 
-June 10th meeting:
+
+
+
+
+
+
+
+
+[DONE] TODO: contact Eddy Bruel wrt shapes, ask for slides
+EJPBRUEL@MOZILLA.COM
+- ask about multiple successive transitions, constructors
+
+[DONE] TODO: at home, prepare spreadsheet for travel expenses
+
+[DONE] June 10th meeting:
+- *** Mozilla internship, contact Mozilla ***
 - Interprocedural BBV
   - Issue: who am I calling? If unknown, need to test, if polymorphic, this is an issue
   - Typed shapes would make this less of an issue, make interp BBV more efficient
+- Typed shapes: improvement upon inline caching, more powerful generalization
+  - Very small code to read/write properties
+  - For constants, no code at all
 - BBV, maybe should take code size into account, code size budget
   - Blocks that compile to nothing maybe shouldn't count towards version limit
   - Blocks that are very small should maybe count for less
-- *** Mozilla internship, contact Mozilla ***
-
-
-
-
-
-
-
-
-
-
-
-
+- Laundry list: better inlining
+- Reg alloc: one of the big gains is in boxing/unboxing
+  - We don't read types from the type stack
+- Marc: direct energy on typed shapes
+  - if you start now, may be publishable for CC or PLDI
+  - Major advance for BBV
 
 [DONE] TODO: push to dev-maxime, then master
 - disable analysis always on

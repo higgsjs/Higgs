@@ -1,10 +1,18 @@
-TODO: blog post about typed shapes, quick illustrations
-- "Faster JS Objects with Typed Shapes"
-- quick sketching program, online?
-- post to 
-    r/compilers
-    r/ProgrammingLanguages
-    r/pldesign
+At first, need no special changes to BBV. Typed shapes can exist without BBV
+exploiting it. Need to start by putting ObjShape, obj alloc system in place.
+Obj access can be completely unoptimized at first.
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+Notion of types: 
+- type tag
+- objects: which shape id
+- closures: which closure
 
 TODO: study shape implementation in FF, look at slides, look at source
 - ask about multiple successive transitions, constructors
@@ -20,11 +28,6 @@ TODO: think about shapes more
 - getters/setters
 - no more "missing" value?
 - array elem prop
-
-TODO: Project Badger
-- Does PyPy run the shootout tests
-- Can we make them all run too?
-- Aggressive PR, attract attention, responses will too
 
 ------------------------------------------------------------------------------
 

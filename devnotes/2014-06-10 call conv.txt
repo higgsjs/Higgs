@@ -1,0 +1,31 @@
+Marc says: calling convention, do stack resizing first
+- Callee should pop
+- Callee should remove extraneous arguments to optimize ret? ret not dynamic
+- Marc would push hidden args first, then push arguments in order
+  - easy to complete missing args
+- Could potentially pass ret addr and argc in registers
+- ISSUE: extra args need to be removed
+
+Marc says: could use frame pointer before args instead of argc
+- point would be to reverse argument order
+- ISSUE: would need two frame pointers
+- Useful for ret
+- Might not need to pop extra args?
+
+Currently: top of stack: hidden args, args in reverse order
+- Useful for variadic calls, extra args can be ignored
+- Does this matter for our benchmarks?
+
+TODO: ret reg, should avoid useless moves ***
+
+TODO: instrument, do some research, for call only
+- How often do we have missing args, extra args****
+- How often do we create the arguments object?
+- use benchmark.py, make graph in spreadsheet program
+- How often we miss args is very interesting, informs flipping of args or not
+
+TODO: will move stack resizing into callee
+- Special entry point?
+- Callee should pop args, as before
+- Could potentially pass ret addr and argc in registers
+
