@@ -1,0 +1,18 @@
+Multiple entry points per function. Type lookup system, inline caching.
+
+Return:
+- Probably not worth trying to pass the return type interprocedurally, because
+the return point lookup would be expensive
+- May be useful to have context attribute for "no shape changes in callee" on
+return point. This way, can use BBV to avoid losing shape information.
+
+Transitiveness of "no shapes changed"?
+- This is basically a dirty flag, set to false on function entry. If we change
+a chape during the call, we set the flag to true. If a callee sets its flag,
+we set our flag too.
+
+Implementation:
+- Have some system where RA goes to a "no shapes changed" version and RA+K goes
+to a "shapes changed version", or the reverse
+- A little dispatch code fragment can be generated that falls through to the
+default version, triggers the lazy generation of the appropriate block version

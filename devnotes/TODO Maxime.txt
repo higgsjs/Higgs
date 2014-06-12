@@ -52,10 +52,12 @@ FIXME: date-format-tofte
 
 ------------------------------------------------------------------------------
 
-Next meeting:
-- Eddy Bruel?
-
 TODO: internship, contact Luke Wagner?
+
+Next meeting:
+- Contacted Eddy Bruel wrt shapes
+- Removed call_new instr
+- Internship with Paul Khuong in NYC? Systems programming, micro opt, multithreading
 
 TODO: blog post about typed shapes, quick illustrations
 - "Faster JS Objects with Typed Shapes"
@@ -78,21 +80,39 @@ TODO: contact Dave Herman yourself wrt internship
 
 TODO: eliminate CallCtx, use IRFunction
 - simplify design
+- VM pointer is stored in there!
+  - CodeGenState should store both IRFunction and VM pointers?
+  - Could store VM ptr in IRFunction, simply!
 
-FIXME: earley-boyer using large amounts of memory without call_new...
-- also very slow
+FIXME: earley-boyer using large amounts of memory without call_new, very slow
 - seems like exec time is unchanged, comp time massively slow
+- Are the newThis and ret calls always inlined?
+- Profile, find out what's so slow
 
-TODO: eliminate double function entry point, isCtor
+
+
+
+
+
+
+
+
+[DONE] TODO: eliminate double function entry point, isCtor
 - makes for redundant code, poor design
-code size before, benchmark.py: 457081
+- before, benchmark.py:
+    code size (bytes): 457053
+    comp time (ms): 150
+    exec time (ms): 67
+    num blocks: 2091
+    num versions: 2467
+- after:
+    code size (bytes): 409130
+    comp time (ms): 148
+    exec time (ms): 67
+    num blocks: 2049
+    num versions: 2426
 
-
-
-
-
-
-
+[DONE] TODO: put gittip link on blog sidebar
 
 [DONE] FIXME: tests/06-sunspider/18-string-validate-input.js...	
 Assertion failed (jit.jit@600)

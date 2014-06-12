@@ -123,14 +123,8 @@ class IRFunction : IdObject
     /// Call context context for this function
     CallCtx ctx = null;
 
-    /// Constructor context for this function
-    CallCtx ctorCtx = null;
-
     /// Regular entry point code
     CodePtr entryCode = null;
-
-    /// Constructor entry point code
-    CodePtr ctorCode = null;
 
     /// Constructor
     this(FunExpr ast)
@@ -281,18 +275,9 @@ class IRFunction : IdObject
     */
     CallCtx getCtx(bool ctorCall, VM vm)
     {
-        if (ctorCall is false)
-        {
-            if (this.ctx is null)
-                this.ctx = new CallCtx(vm, this, false);
-            return this.ctx;
-        }
-        else
-        {
-            if (this.ctorCtx is null)
-                this.ctorCtx = new CallCtx(vm, this, true);
-            return this.ctorCtx;
-        }
+        if (this.ctx is null)
+            this.ctx = new CallCtx(vm, this, false);
+        return this.ctx;
     }
 }
 

@@ -496,9 +496,6 @@ class VM
     /// Function entry stub
     EntryStub entryStub;
 
-    /// Constructor entry stub
-    EntryStub ctorStub;
-
     /// Branch target stubs
     BranchStub[] branchStubs;
 

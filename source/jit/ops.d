@@ -2457,28 +2457,6 @@ void gen_ret(
     if (retTypeReg.opnd(8) != typeOpnd)
         as.mov(retTypeReg.opnd(8), typeOpnd);
 
-    // If we are in a constructor (new) call
-    if (st.callCtx.ctorCall is true)
-    {
-        // TODO: optimize for case where instr.getArg(0) is IRConst.undefCst
-
-        // If the return value is not undefined (test word and type),
-        // then skip over. If it is undefined, then fetch the "this"
-        // value and return that instead.
-        as.cmp(retTypeReg.opnd(8), X86Opnd(Type.CONST));
-        as.jne(Label.FALSE);
-        as.cmp(retWordReg.opnd(8), X86Opnd(UNDEF.word.int8Val));
-        as.jne(Label.FALSE);
-
-        // Use the "this" value as a return value
-        auto thisWord = st.getWordOpnd(fun.thisVal, 64);
-        as.mov(retWordReg.opnd(64), thisWord);
-        auto thisType = st.getTypeOpnd(fun.thisVal);
-        as.mov(retTypeReg.opnd(8), thisType);
-
-        as.label(Label.FALSE);
-    }
-
     // If this is a runtime primitive function
     if (fun.isPrim)
     {
@@ -3530,10 +3508,8 @@ void gen_new_clos(
         // If the function has no entry point code
         if (fun.entryCode is null)
         {
-            // Store the entry code pointers
+            // Store the entry code pointer
             fun.entryCode = getEntryStub(vm, false);
-            fun.ctorCode = getEntryStub(vm, true);
-            assert (fun.entryCode !is fun.ctorCode);
         }
 
         // Allocate the closure object
@@ -3827,22 +3803,6 @@ void gen_get_asm_str(
                 fun.entryBlock,
                 new CodeGenState(vm, fun, false)
             );
-
-            // Generate a string representation of the code
-            str ~= asmString(fun, entryVer, vm.execHeap);
-        }
-
-        // If this function has a constructor context
-        if (fun.ctorCtx)
-        {
-            // Request an instance for the constructor entry block
-            auto entryVer = getBlockVersion(
-                fun.entryBlock,
-                new CodeGenState(vm, fun, true)
-            );
-
-            if (str != "")
-                str ~= "\n\n";
 
             // Generate a string representation of the code
             str ~= asmString(fun, entryVer, vm.execHeap);

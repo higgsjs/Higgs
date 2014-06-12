@@ -272,11 +272,6 @@ class CodeGenState
         // Set the types for the closure and argument count values
         setType(fun.closVal, Type.CLOSURE);
         setType(fun.argcVal, Type.INT32);
-
-        // If this is a constructor call,
-        // set the "this" value type to object
-        if (ctorCall)
-            setType(fun.thisVal, Type.OBJECT);
     }
 
     /**
@@ -1204,10 +1199,6 @@ abstract class CodeFragment
 
         if (auto ver = cast(BlockVersion)this)
         {
-            if (ver.block is ver.block.fun.entryBlock && 
-                ver.state.callCtx.ctorCall)
-                return "ctor_" ~ ver.block.getName;
-
             return ver.block.getName;
         }
 
@@ -1218,7 +1209,7 @@ abstract class CodeFragment
 
         if (auto stub = cast(EntryStub)this)
         {
-            return "entry_stub_" ~ (stub.ctorCall? "ctor":"reg");
+            return "entry_stub";
         }
 
         if (auto stub = cast(BranchStub)this)
@@ -2441,7 +2432,6 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     }
 
     auto vm = stub.vm;
-    auto ctorCall = stub.ctorCall;
 
     // Get the closure and IRFunction pointers
     auto argCount = vm.getWord(3).uint32Val;
@@ -2497,12 +2487,6 @@ extern (C) CodePtr compileEntry(EntryStub stub)
         new CodeGenState(vm, fun, false)
     );
 
-    // Request an instance for the function entry block
-    auto ctorInst = getBlockVersion(
-        fun.entryBlock,
-        new CodeGenState(vm, fun, true)
-    );
-
     /*
     // warning, ctor is first on queue
     auto as = vm.execHeap;
@@ -2529,8 +2513,6 @@ extern (C) CodePtr compileEntry(EntryStub stub)
 
     // Store the entry code pointer on the function
     fun.entryCode = entryInst.getCodePtr(vm.execHeap);
-    fun.ctorCode = ctorInst.getCodePtr(vm.execHeap);
-    assert (fun.entryCode !is fun.ctorCode);
 
     if (opts.jit_dumpinfo)
     {
@@ -2541,7 +2523,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     stats.compTimeStop();
     stats.execTimeStart();
 
-    return ctorCall? fun.ctorCode:fun.entryCode;
+    return fun.entryCode;
 }
 
 /**
@@ -2679,9 +2661,7 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
 {
     auto as = vm.execHeap;
 
-    if (ctorCall is true && vm.ctorStub)
-        return vm.ctorStub.getCodePtr(as);
-    if (ctorCall is false && vm.entryStub)
+    if (vm.entryStub)
         return vm.entryStub.getCodePtr(as);
 
     auto stub = new EntryStub(vm, ctorCall);
@@ -2704,10 +2684,7 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
 
     stub.markEnd(as, vm);
 
-    if (ctorCall)
-        vm.ctorStub = stub;
-    else
-        vm.entryStub = stub;
+    vm.entryStub = stub;
 
     return stub.getCodePtr(as);
 }
