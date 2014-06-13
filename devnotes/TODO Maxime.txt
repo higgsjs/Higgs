@@ -56,7 +56,10 @@ TODO: internship, contact Luke Wagner?
 
 Next meeting:
 - Contacted Eddy Bruel wrt shapes
-- Removed call_new instr
+- Removed call_new instr, simplified code in a few places
+- Typed shapes + interp BBV
+  - BBV becomes complete alternative to interp type analysis
+  - More powerful, simpler, faster alternative to Brian Hackett's work
 - Internship with Paul Khuong in NYC? Systems programming, micro opt, multithreading
 
 TODO: blog post about typed shapes, quick illustrations
@@ -70,24 +73,22 @@ TODO: blog post about typed shapes, quick illustrations
 TODO: establish shape milestone for June 30th
 - Should ideally have working shape system by Sept 1st
 
-TODO: think about typed shapes more, sketch out design
-- runtime.js implications
-- ObjShape class
-- Draw transitions, etc!
-
 TODO: contact Dave Herman yourself wrt internship
 - e-mail Marc first
-
-TODO: eliminate CallCtx, use IRFunction
-- simplify design
-- VM pointer is stored in there!
-  - CodeGenState should store both IRFunction and VM pointers?
-  - Could store VM ptr in IRFunction, simply!
 
 FIXME: earley-boyer using large amounts of memory without call_new, very slow
 - seems like exec time is unchanged, comp time massively slow
 - Are the newThis and ret calls always inlined?
 - Profile, find out what's so slow
+- Quick fix: optimize ctor for 0,1,2 elements? see usage
+
+TODO: sketch ObjShape class
+- Draw transitions, etc!
+
+TODO: sketch runtime.js implications of typed shapes
+- getProp, setProp
+- BBV branching w/ shapes (added later?)
+- What happens when shapes change from setProp?
 
 
 
@@ -95,7 +96,10 @@ FIXME: earley-boyer using large amounts of memory without call_new, very slow
 
 
 
-
+[DONE] TODO: eliminate CallCtx, use IRFunction
+- simplify design
+- VM pointer is stored in there!
+  - Could store VM ptr in IRFunction, simply!
 
 [DONE] TODO: eliminate double function entry point, isCtor
 - makes for redundant code, poor design

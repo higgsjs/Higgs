@@ -550,8 +550,11 @@ Word gcForward(VM vm, Word word, Type type)
             format("ret addr not found: %s", word.ptrVal)
         );
         auto retEntry = vm.retAddrMap[word.ptrVal];
-        auto fun = retEntry.callCtx.fun;
-        visitFun(vm, fun);
+        if (retEntry.callInstr !is null)
+        {
+            auto fun = retEntry.callInstr.block.fun;
+            visitFun(vm, fun);
+        }
         return word;
 
         // Return the word unchanged

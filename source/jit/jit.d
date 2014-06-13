@@ -239,8 +239,8 @@ allocation state and known type information.
 */
 class CodeGenState
 {
-    /// Calling context object
-    CallCtx callCtx;
+    /// Associated IR function
+    IRFunction fun;
 
     /// Map of live values to current type/allocation states
     private ValState[IRDstValue] valMap;
@@ -252,9 +252,9 @@ class CodeGenState
     /**
     Constructor for a function entry code generation state
     */
-    this(VM vm, IRFunction fun, bool ctorCall)
+    this(IRFunction fun)
     {
-        this.callCtx = fun.getCtx(ctorCall, vm);
+        this.fun = fun;
 
         // All registers are initially free
         gpRegMap.length = 16;
@@ -279,7 +279,7 @@ class CodeGenState
     */
     this(CodeGenState that)
     {
-        this.callCtx = that.callCtx;
+        this.fun = that.fun;
         this.valMap = that.valMap.dup;
         this.gpRegMap = that.gpRegMap.dup;
     }
@@ -292,7 +292,7 @@ class CodeGenState
         // Call the copy constructor
         this(predState);
 
-        auto liveInfo = callCtx.fun.liveInfo;
+        auto liveInfo = fun.liveInfo;
 
         // Map each successor phi node on the stack or in its register
         // in a way that best matches the predecessor state
@@ -432,7 +432,7 @@ class CodeGenState
     */
     size_t diff(CodeGenState succ)
     {
-        assert (this.callCtx is succ.callCtx);
+        assert (this.fun is succ.fun);
 
         auto pred = this;
 
@@ -527,7 +527,7 @@ class CodeGenState
         X86Reg defReg = allocRegs[0]
     )
     {
-        auto liveInfo = callCtx.fun.liveInfo;
+        auto liveInfo = fun.liveInfo;
 
         // Get the value mapped to the default register
         auto defRegVal = gpRegMap[defReg.regNo];
@@ -670,7 +670,7 @@ class CodeGenState
                     continue;
 
                 // If the argument is live after the instruction, skip it
-                if (callCtx.fun.liveInfo.liveAfter(dstArg, instr) is true)
+                if (fun.liveInfo.liveAfter(dstArg, instr) is true)
                     continue;
 
                 auto argOpnd = state.getWordOpnd(64);
@@ -774,7 +774,7 @@ class CodeGenState
     */
     void spillValues(CodeBlock as, SpillTestFn spillTest)
     {
-        auto liveInfo = callCtx.fun.liveInfo;
+        auto liveInfo = fun.liveInfo;
 
         // For each allocatable general-purpose register
         foreach (reg; allocRegs)
@@ -815,8 +815,8 @@ class CodeGenState
     */
     void spillSavedRegs(SpillTestFn spillTest)
     {
-        auto vm = callCtx.vm;
-        auto liveInfo = callCtx.fun.liveInfo;
+        auto vm = fun.vm;
+        auto liveInfo = fun.liveInfo;
 
         // For each allocatable register
         foreach (regIdx, reg; allocRegs)
@@ -862,8 +862,8 @@ class CodeGenState
     */
     void loadSavedRegs(SpillTestFn spillTest)
     {
-        auto vm = callCtx.vm;
-        auto liveInfo = callCtx.fun.liveInfo;
+        auto vm = fun.vm;
+        auto liveInfo = fun.liveInfo;
 
         // For each allocatable register
         foreach (regIdx, reg; allocRegs)
@@ -1483,7 +1483,7 @@ class BlockVersion : CodeFragment
     {
         assert (started);
 
-        auto vm = state.callCtx.vm;
+        auto vm = state.fun.vm;
 
         // Store the branch generation function and targets
         this.branchGenFn = genFn;
@@ -1530,7 +1530,7 @@ class BlockVersion : CodeFragment
         // Ensure that this block has already been compiled
         assert (started && ended);
 
-        auto vm = state.callCtx.vm;
+        auto vm = state.fun.vm;
 
         // Move to the branch code position
         auto origPos = as.getWritePos();
@@ -1695,11 +1695,11 @@ BlockVersion getBlockVersion(
     CodeGenState state
 )
 {
-    auto callCtx = state.callCtx;
-    auto vm = callCtx.vm;
+    auto fun = state.fun;
+    auto vm = fun.vm;
 
     // Get the list of versions for this block
-    auto versions = callCtx.versionMap.get(block, []);
+    auto versions = fun.versionMap.get(block, []);
 
     // Best version found
     BlockVersion bestVer;
@@ -1740,7 +1740,7 @@ BlockVersion getBlockVersion(
         if (bestDiff < size_t.max)
         {
             // Return the best match found
-            assert (bestVer.state.callCtx is callCtx);
+            assert (bestVer.state.fun is fun);
             return bestVer;
         }
 
@@ -1751,9 +1751,9 @@ BlockVersion getBlockVersion(
         auto genState = new CodeGenState(state);
         foreach (val, valSt; genState.valMap)
         {
-            if (val !is callCtx.fun.closVal &&
-                val !is callCtx.fun.argcVal &&
-                val !is callCtx.fun.raVal &&
+            if (val !is fun.closVal &&
+                val !is fun.argcVal &&
+                val !is fun.raVal &&
                 valSt.typeKnown)
                 genState.valMap[val] = valSt.clearType();
         }
@@ -1761,7 +1761,7 @@ BlockVersion getBlockVersion(
         // Ensure that the general version matches
         assert(state.diff(genState) !is size_t.max);
 
-        assert (genState.callCtx is callCtx);
+        assert (genState.fun is fun);
         state = genState;
     }
 
@@ -1771,12 +1771,12 @@ BlockVersion getBlockVersion(
     auto ver = new BlockVersion(block, state);
 
     // Add the new version to the list for this block
-    callCtx.versionMap[block] ~= ver;
+    fun.versionMap[block] ~= ver;
 
     // If block version stats should be computed
     if (opts.stats)
     {
-        auto numVersions = callCtx.versionMap[block].length;
+        auto numVersions = fun.versionMap[block].length;
 
         // If this is the first version for this block
         if (numVersions is 1)
@@ -1815,7 +1815,7 @@ BlockVersion getBlockVersion(
     vm.queue(ver);
 
     // Return the newly created block version
-    assert (ver.state.callCtx is callCtx);
+    assert (ver.state.fun is fun);
     return ver;
 }
 
@@ -1834,7 +1834,7 @@ BranchCode getBranchEdge(
     if (opts.jit_eager)
         noStub = true;
 
-    auto vm = predState.callCtx.vm;
+    auto vm = predState.fun.vm;
 
     assert (
         branch !is null,
@@ -1955,7 +1955,6 @@ void genBranchMoves(
 /// Return address entry
 alias Tuple!(
     IRInstr, "callInstr",
-    CallCtx, "callCtx",
     CodeFragment, "retCode",
     CodeFragment, "excCode"
 ) RetEntry;
@@ -2015,13 +2014,12 @@ Set the return address entry for a call instruction
 void setRetEntry(
     VM vm,
     IRInstr callInstr,
-    CallCtx callCtx,
     CodeFragment retCode,
     CodeFragment excCode
 )
 {
     auto retAddr = retCode.getCodePtr(vm.execHeap);
-    vm.retAddrMap[retAddr] = RetEntry(callInstr, callCtx, retCode, excCode);
+    vm.retAddrMap[retAddr] = RetEntry(callInstr, retCode, excCode);
 }
 
 /**
@@ -2065,7 +2063,7 @@ void compile(VM vm, IRInstr curInstr)
             auto block = ver.block;
             assert (
                 ver.block !is null,
-                ver.state.callCtx.fun.getName
+                ver.state.fun.getName
             );
 
             // Copy the instance's state object
@@ -2213,7 +2211,6 @@ void compile(VM vm, IRInstr curInstr)
             // Set the return address entry for this stub
             vm.setRetEntry(
                 stub.callVer.block.lastInstr,
-                stub.callVer.state.callCtx,
                 stub,
                 stub.callVer.targets[1]
             );
@@ -2356,7 +2353,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Create a version instance object for the function entry
     auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false)
+        new CodeGenState(fun)
     );
 
     // Mark the code start index
@@ -2405,7 +2402,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     vm.compile(null);
 
     // Set the return address entry for this call
-    vm.setRetEntry(null, entryInst.state.callCtx, retEdge, null);
+    vm.setRetEntry(null, retEdge, null);
 
     // Get a pointer to the entry block version's code
     auto entryFn = cast(EntryFn)entryInst.getCodePtr(vm.execHeap);
@@ -2484,7 +2481,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false)
+        new CodeGenState(fun)
     );
 
     /*
@@ -2614,8 +2611,7 @@ extern (C) CodePtr compileCont(ContStub stub)
 
     auto callVer = stub.callVer;
     auto contBranch = stub.contBranch;
-    auto callCtx = callVer.state.callCtx;
-    auto vm = callCtx.vm;
+    auto vm = callVer.state.fun.vm;
 
     // Queue the continuation branch edge to be compiled
     assert (!contBranch.started);
@@ -2636,7 +2632,6 @@ extern (C) CodePtr compileCont(ContStub stub)
     // Set the return entry for the call continuation
     vm.setRetEntry(
         callVer.block.lastInstr,
-        callCtx,
         contBranch,
         callVer.targets[1]
     );

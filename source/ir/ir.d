@@ -80,11 +80,14 @@ IR function
 */
 class IRFunction : IdObject
 {
+    /// VM this function is associated with
+    VM vm;
+
+    /// Corresponding Abstract Syntax Tree (AST) node
+    FunExpr ast;
+
     /// Function name
     package string name = "";
-
-    /// Corresponding AST node
-    FunExpr ast;
 
     /// Entry block
     IRBlock entryBlock = null;
@@ -120,17 +123,18 @@ class IRFunction : IdObject
     /// Type analysis results (may be null)
     TypeProp typeInfo = null;
 
-    /// Call context context for this function
-    CallCtx ctx = null;
-
     /// Regular entry point code
     CodePtr entryCode = null;
 
+    /// Map of blocks to lists of existing versions
+    BlockVersion[][IRBlock] versionMap;
+
     /// Constructor
-    this(FunExpr ast)
+    this(VM vm, FunExpr ast)
     {
-        this.name = ast.getName();
+        this.vm = vm;
         this.ast = ast;
+        this.name = ast.getName();
         this.numParams = cast(uint32_t)ast.params.length;
         this.numLocals = this.numParams + NUM_HIDDEN_ARGS;
 
@@ -268,94 +272,6 @@ class IRFunction : IdObject
         block.fun = null;
 
         numBlocks--;
-    }
-
-    /**
-    Get a code generation context for a given function
-    */
-    CallCtx getCtx(bool ctorCall, VM vm)
-    {
-        if (this.ctx is null)
-            this.ctx = new CallCtx(vm, this, false);
-        return this.ctx;
-    }
-}
-
-/**
-Calling context of a piece of code
-*/
-class CallCtx
-{
-    /// Parent context (if inlined)
-    CallCtx parent = null;
-
-    /// Call site inlined at (if inlined)
-    IRInstr callSite = null;
-
-    /// Continuation state (if inlined)
-    CodeGenState contState = null;
-
-    /// Exception handler (if inlined, may be null)
-    CodeFragment excHandler = null;
-
-    /// Total number of inlined locals from all inlined contexts
-    uint32_t extraLocals = 0;
-
-    /// Associated VM object
-    VM vm;
-
-    /// Function this code belongs to
-    IRFunction fun;
-
-    /// Constructor call flag
-    bool ctorCall;
-
-    /// Map of blocks to lists of existing versions
-    BlockVersion[][IRBlock] versionMap;
-
-    /// Default constructor
-    this(VM vm, IRFunction fun, bool ctorCall)
-    {
-        this.vm = vm;
-        this.fun = fun;
-        this.ctorCall = ctorCall;
-    }
-
-    /// Inlined context constructor
-    this(
-        CallCtx parent,
-        IRInstr callSite,
-        CodeGenState contState,
-        CodeFragment excHandler,
-        IRFunction fun,
-        bool ctorCall
-    )
-    {
-        this.vm = parent.vm;
-
-        this.parent = parent;
-        this.callSite = callSite;
-        this.contState = contState;
-        this.excHandler = excHandler;
-        this.fun = fun;
-        this.ctorCall = ctorCall;
-
-        // Compute the total number of inlined locals
-        this.extraLocals = parent.extraLocals + fun.numLocals;
-    }
-
-    /**
-    Test if a function is in this context or one of its parents
-    */
-    bool contains(IRFunction fun)
-    {
-        if (fun is this.fun)
-            return true;
-
-        if (parent)
-            return parent.contains(fun);
-
-        return false;
     }
 }
 

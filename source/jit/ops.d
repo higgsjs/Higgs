@@ -129,7 +129,7 @@ void gen_set_str(
 
     if (linkVal.linkIdx is NULL_LINK)
     {
-        auto vm = st.callCtx.vm;
+        auto vm = st.fun.vm;
 
         // Find the string in the string table
         auto strArg = cast(IRString)instr.getArg(0);
@@ -889,7 +889,7 @@ void IsTypeOp(Type type)(
     if (opts.jit_typeprop)
     {
         // Get the type analysis result for this value at this instruction
-        auto propResult = st.callCtx.fun.typeInfo.argIsType(instr, 0, type);
+        auto propResult = st.fun.typeInfo.argIsType(instr, 0, type);
 
         //writeln("result: ", propResult);
 
@@ -1615,7 +1615,7 @@ void genCallBranch(
     bool mayThrow
 )
 {
-    auto vm = st.callCtx.vm;
+    auto vm = st.fun.vm;
 
     // Map the return value to its stack location
     st.mapToStack(instr);
@@ -1637,7 +1637,6 @@ void genCallBranch(
                 // continuation block
                 vm.setRetEntry(
                     instr,
-                    st.callCtx,
                     contBranch,
                     excBranch
                 );
@@ -1734,7 +1733,7 @@ void gen_call_prim(
     CodeBlock as
 )
 {
-    auto vm = st.callCtx.vm;
+    auto vm = st.fun.vm;
 
     // Function name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
@@ -1823,7 +1822,7 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false)
+        new CodeGenState(fun)
     );
 
     ver.genCallBranch(
@@ -2204,7 +2203,7 @@ void gen_load_file(
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false)
+                new CodeGenState(fun)
             );
 
             // Compile the unit entry version
@@ -2335,7 +2334,7 @@ void gen_eval_str(
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false)
+                new CodeGenState(fun)
             );
 
             // Compile the unit entry version
@@ -2500,7 +2499,7 @@ void gen_ret(
     as.jmp(scrRegs[1].opnd);
 
     // Mark the end of the fragment
-    ver.markEnd(as, st.callCtx.vm);
+    ver.markEnd(as, st.fun.vm);
 }
 
 void gen_throw(
@@ -2540,7 +2539,7 @@ void gen_throw(
     as.jmp(cretReg.opnd);
 
     // Mark the end of the fragment
-    ver.markEnd(as, st.callCtx.vm);
+    ver.markEnd(as, st.fun.vm);
 }
 
 void GetValOp(Type typeTag, string fName)(
@@ -2738,7 +2737,7 @@ void gen_get_global(
     CodeBlock as
 )
 {
-    auto vm = st.callCtx.vm;
+    auto vm = st.fun.vm;
 
     // Name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
@@ -2762,7 +2761,7 @@ void gen_get_global(
 
     extern (C) static CodePtr hostGetProp(CodeGenState st, IRInstr instr)
     {
-        auto vm = st.callCtx.vm;
+        auto vm = st.fun.vm;
 
         auto strArg = cast(IRString)instr.getArg(0);
         auto nameStr = strArg.str;
@@ -2904,7 +2903,7 @@ void gen_set_global(
     CodeBlock as
 )
 {
-    auto vm = st.callCtx.vm;
+    auto vm = st.fun.vm;
 
     // Name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
@@ -3010,7 +3009,7 @@ void gen_make_link(
     CodeBlock as
 )
 {
-    auto vm = st.callCtx.vm;
+    auto vm = st.fun.vm;
 
     auto linkArg = cast(IRLinkIdx)instr.getArg(0);
     assert (linkArg !is null);
@@ -3097,7 +3096,7 @@ void gen_make_map(
 
     // Allocate the map
     if (mapArg.map is null)
-        mapArg.map = new ObjMap(st.callCtx.vm, numPropArg.int32Val);
+        mapArg.map = new ObjMap(st.fun.vm, numPropArg.int32Val);
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     auto outReg = outOpnd.isReg? outOpnd.reg:scrRegs[0];
@@ -3373,7 +3372,7 @@ void gen_map_prop_idx(
         // r2 = instr
         if (opnd0 != scrRegs[0].opnd)
             as.mov(scrRegs[0].opnd, opnd0);
-        auto updateCacheSub = getFallbackSub(st.callCtx.vm);
+        auto updateCacheSub = getFallbackSub(st.fun.vm);
         as.ptr(scrRegs[2], instr);
         as.ptr(scrReg3, updateCacheSub);
         as.call(scrReg3);
@@ -3795,13 +3794,13 @@ void gen_get_asm_str(
 
         string str;
 
-        // If this function has a call context
-        if (fun.ctx)
+        // If this function has compiled code
+        if (fun.versionMap.length > 0)
         {
             // Request an instance for the function entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false)
+                new CodeGenState(fun)
             );
 
             // Generate a string representation of the code
@@ -4096,7 +4095,7 @@ void gen_call_ffi(
     CodeBlock as
 )
 {
-    auto vm = st.callCtx.vm;
+    auto vm = st.fun.vm;
 
     // Get the function signature
     auto sigStr = cast(IRString)instr.getArg(1);
