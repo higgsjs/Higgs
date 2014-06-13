@@ -161,9 +161,9 @@ class TypeProp
         assert (
             typeVal != UNINF,
             format(
-                "type uninf for:\n %s in:\n%s",
+                "type uninf for:\n%s in:\n%s",
                 instr,
-                instr.block.fun
+                instr.block.fun.getName
             )
         );
 

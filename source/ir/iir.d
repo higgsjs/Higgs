@@ -195,6 +195,7 @@ static this()
     addOp(SET_LINK);
     addOp(GET_LINK);
     addOp(MAKE_MAP);
+    addOp(NEW_MAP);
     addOp(MAP_NUM_PROPS);
     addOp(MAP_PROP_IDX);
     addOp(MAP_PROP_NAME);

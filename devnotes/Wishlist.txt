@@ -75,7 +75,51 @@ TODO: not missing global prop opt?
 
 TODO: val can be both in reg and stack
 
-TODO: lib/plot using image lib
+TODO: transform jit.compileUnit into jit.execUnit
+- Do parsing, AST->IR and call in there, better time accounting?
+- Any real reason not to?
+- alternative: try to treat unit functions more like other functions
+  - create closure objects for them
+  - create some sort of closure call bridge with a C call conv
+  - having a "C adapter" for a specific closure seems sensible
+
+TODO: add tests for nested eval support
+- accessing local vars, changing vars
+TODO: implement full eval support
+- eval can be called as global eval or local eval
+  - different "eval context"
+- if direct/local eval possible, function must behave as if all locals could be captured
+  - graft new IR sub-function into parent? don't add to sub list, but have parent link set
+- parse AST, optionally set parent link, run AST vars pass
+  - may want to pass a parent ptr to AST parsing function
+- eval_str function needs to find who the caller is, determine if direct call?
+  - call instr to get_global "eval"
+  - VM.getCallInstr?
+- need to "ungraft" the AST after vars analysis?
+- PROBLEM: there's no parent pointer in AST nodes
+  - can't just run vars analysis on subfunction, need to rerun the whole thing...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: lib/plot using image lib
 - look into terminology
 - look into how matplotlib does it
 - short blog post, bitcoin
@@ -86,22 +130,6 @@ TODO: lib/plot using image lib
   - can be OK to start
 - need to be able to update the plots over time
   - plot functions should take a window object to draw into
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: pixel plotting, drawing window lib? lib/draw
 - Probably will want to use X11

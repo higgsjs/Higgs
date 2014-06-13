@@ -116,6 +116,14 @@ void gen_set_str(
     CodeBlock as
 )
 {
+    // If the only use is map_prop_idx, don't generate any code
+    if (instr.hasOneUse)
+    {
+        if (auto instrUse = cast(IRInstr)instr.getFirstUse.owner)
+            if (instrUse.opcode is &MAP_PROP_IDX)
+                return;
+    }
+
     auto linkVal = cast(IRLinkIdx)instr.getArg(1);
     assert (linkVal !is null);
 
@@ -1612,13 +1620,29 @@ void genCallBranch(
     // Map the return value to its stack location
     st.mapToStack(instr);
 
+    BranchCode contBranch;
+    BranchCode excBranch = null;
+
     // Create a branch object for the continuation
-    auto contBranch = getBranchEdge(
+    contBranch = getBranchEdge(
         instr.getTarget(0),
         st,
         false,
         delegate void(CodeBlock as, VM vm)
         {
+            // If eager compilation is enabled
+            if (opts.jit_eager)
+            {
+                // Set the return address entry when compiling the
+                // continuation block
+                vm.setRetEntry(
+                    instr,
+                    st.callCtx,
+                    contBranch,
+                    excBranch
+                );
+            }
+
             // Move the return value into the instruction's output slot
             if (instr.hasUses)
             {
@@ -1629,7 +1653,6 @@ void genCallBranch(
     );
 
     // Create the continuation branch object
-    BranchCode excBranch = null;
     if (instr.getTarget(1))
     {
         excBranch = getBranchEdge(
@@ -1675,17 +1698,31 @@ void genCallBranch(
         as.label(Label.SKIP);
     }
 
-    // Create a call continuation stub
-    auto contStub = new ContStub(ver, contBranch);
-    vm.queue(contStub);
+    // If eager compilation is enabled
+    if (opts.jit_eager)
+    {
+        // Generate the call branch code
+        ver.genBranch(
+            as,
+            contBranch,
+            excBranch,
+            genFn
+        );
+    }
+    else
+    {
+        // Create a call continuation stub
+        auto contStub = new ContStub(ver, contBranch);
+        vm.queue(contStub);
 
-    // Generate the call branch code
-    ver.genBranch(
-        as,
-        contStub,
-        excBranch,
-        genFn
-    );
+        // Generate the call branch code
+        ver.genBranch(
+            as,
+            contStub,
+            excBranch,
+            genFn
+        );
+    }
 
     //writeln("call block length: ", ver.length);
 }
@@ -1727,7 +1764,7 @@ void gen_call_prim(
         (!fun.closVal || fun.closVal.hasNoUses) &&
         (!fun.thisVal || fun.thisVal.hasNoUses) &&
         (!fun.argcVal || fun.argcVal.hasNoUses),
-        "hidden args used"
+        "call_prim: hidden args used"
     );
 
     // If the function is not yet compiled, compile it now
@@ -1786,8 +1823,7 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false),
-        true
+        new CodeGenState(vm, fun, false)
     );
 
     ver.genCallBranch(
@@ -2446,8 +2482,7 @@ void gen_load_file(
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false),
-                true
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -2578,8 +2613,7 @@ void gen_eval_str(
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false),
-                true
+                new CodeGenState(vm, fun, false)
             );
 
             // Compile the unit entry version
@@ -2859,7 +2893,11 @@ void HeapAllocOp(Type type)(
     CodeBlock as
 )
 {
-    extern (C) static refptr allocFallback(VM vm, IRInstr curInstr, uint32_t allocSize)
+    extern (C) static refptr allocFallback(
+        VM vm,
+        IRInstr curInstr,
+        uint32_t allocSize
+    )
     {
         vm.setCurInstr(curInstr);
 
@@ -2880,6 +2918,8 @@ void HeapAllocOp(Type type)(
             return liveInfo.liveBefore(value, instr);
         }
     );
+
+    as.incStatCnt(&stats.numHeapAllocs, scrRegs[0]);
 
     // Get the allocation size operand
     auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
@@ -3370,6 +3410,48 @@ void gen_make_map(
     st.setOutType(as, instr, Type.MAPPTR);
 }
 
+void gen_new_map(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static ObjMap op_new_map(VM vm, uint32_t minNumProps)
+    {
+        return new ObjMap(vm, minNumProps);
+    }
+
+    // Spill the values live before the instruction
+    st.spillValues(
+        as,
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
+        {
+            return liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    assert (outOpnd.isReg);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), vmReg.opnd);
+    as.mov(cargRegs[1].opnd(32), opnd0);
+    as.ptr(scrRegs[0], &op_new_map);
+    as.call(scrRegs[0]);
+
+    as.loadJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, cretReg.opnd);
+
+    // Set the output type
+    st.setOutType(as, instr, Type.MAPPTR);
+}
+
 void gen_map_num_props(
     BlockVersion ver,
     CodeGenState st,
@@ -3407,7 +3489,7 @@ void gen_map_num_props(
     as.loadJITRegs();
 
     // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, cretReg.opnd);
 
     st.setOutType(as, instr, Type.INT32);
 }
@@ -3424,6 +3506,15 @@ void gen_map_prop_idx(
 
     as.incStatCnt(&stats.numMapPropIdx, scrRegs[0]);
 
+    static allocFieldFlag(IRInstr instr)
+    {
+        if (instr.getArg(2) is IRConst.trueCst)
+            return true; 
+        if (instr.getArg(2) is IRConst.falseCst)
+            return false;
+        assert (false);
+    }
+
     extern (C) static uint32_t op_map_prop_idx(ObjMap map, refptr strPtr, bool allocField)
     {
         //writeln("slow lookup");
@@ -3438,10 +3529,14 @@ void gen_map_prop_idx(
         return propIdx;
     }
 
-    extern (C) static uint32_t updateCache(ObjMap map, wstring* propName, bool allocField, ubyte* cachePtr)
+    extern (C) static uint32_t updateCache(IRInstr instr, ObjMap map, ubyte* cachePtr)
     {
+        // Get the property name
+        auto nameArgInstr = cast(IRInstr)instr.getArg(1);
+        auto propName = (cast(IRString)nameArgInstr.getArg(0)).str;
+
         //writeln("cache miss");
-        //writeln("propName=", *propName);
+        //writeln("propName=", propName);
         //writeln("cachePtr=", cast(uint64_t)cast(void*)cachePtr);
         //writeln("map ptr=" , cast(uint64_t)cast(void*)map);
         //writeln("map id=", map.id);
@@ -3451,7 +3546,7 @@ void gen_map_prop_idx(
 
         // Lookup the property index
         assert (map !is null, "map is null");
-        auto propIdx = map.getPropIdx(*propName, allocField);
+        auto propIdx = map.getPropIdx(propName, allocFieldFlag(instr));
 
         //writeln("shifting cache entries");
 
@@ -3469,46 +3564,64 @@ void gen_map_prop_idx(
         *(cast(uint64_t*)(cachePtr + 0)) = map.id;
         *(cast(uint32_t*)(cachePtr + 8)) = propIdx;
 
+        //writeln("returning");
+
         // Return the property index
         return propIdx;
     }
 
-    bool allocField;
-    if (instr.getArg(2) is IRConst.trueCst)
-        allocField = true;
-    else if (instr.getArg(2) is IRConst.falseCst)
-        allocField = false;
-    else
-        assert (false);
+    static CodePtr getFallbackSub(VM vm)
+    {
+        if (vm.propIdxSub)
+            return vm.propIdxSub;
 
-    // Spill the values live before the instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+        auto as = vm.subsHeap;
+        vm.propIdxSub = as.getAddress(as.getWritePos);
 
-    // Get the map operand
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false, false);
-    assert (opnd0.isReg);
+        // Save the JIT and alloc registers
+        as.saveJITRegs();
+        foreach (reg; allocRegs)
+            as.push(reg);
+        if (allocRegs.length % 2 != 0)
+            as.push(allocRegs[0]);
 
-    // Get the property name operand
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+        // Set the argument registers
+        as.mov(cargRegs[0], scrRegs[2]);
+        as.mov(cargRegs[1], scrRegs[0]);
+        as.mov(cargRegs[2], scrRegs[1]);
 
-    // Get the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+        // Call the host fallback code
+        as.ptr(scrRegs[0], &updateCache);
+        as.call(scrRegs[0].opnd);
+
+        // Restore the scratch, JIT and alloc registers
+        if (allocRegs.length % 2 != 0)
+            as.pop(allocRegs[0]);
+        foreach_reverse (reg; allocRegs)
+            as.pop(reg);
+        as.loadJITRegs();
+
+        // Return to the point of call
+        as.ret();
+
+        // Link the labels in this subroutine
+        as.linkLabels();
+        return vm.propIdxSub;
+    }
 
     // If the property name is a known constant string
     auto nameArgInstr = cast(IRInstr)instr.getArg(1);
     if (nameArgInstr && nameArgInstr.opcode is &SET_STR)
     {
-        // Allocate an extra temporary register
-        auto scrReg3 = st.freeReg(as, instr);
+        // Get the map operand
+        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false, false);
+        assert (opnd0.isReg);
 
-        // Get the property name
-        auto propName = &(cast(IRString)nameArgInstr.getArg(0)).str;
+        // Get the output operand
+        auto outOpnd = st.getOutOpnd(as, instr, 32);
+
+        // Free an extra temporary register
+        auto scrReg3 = st.freeReg(as, instr);
 
         // Inline cache entries
         // [mapIdx (uint64_t) | propIdx (uint32_t)]+
@@ -3525,6 +3638,10 @@ void gen_map_prop_idx(
         as.getMember!("ObjMap.id")(scrRegs[2].reg(64), opnd0.reg);
 
         //as.printStr("inline cache lookup");
+        //as.printStr("map ptr=");
+        //as.printUint(opnd0);
+        //as.printStr("cache ptr=");
+        //as.printUint(scrRegs[1].opnd(64));
         //as.printStr("map id=");
         //as.printUint(scrRegs[2].opnd(64));
 
@@ -3550,32 +3667,52 @@ void gen_map_prop_idx(
             as.je(Label.DONE);
         }
 
-        as.saveJITRegs();
-
-        // Call the cache update function
-        as.mov(cargRegs[0].opnd(64), opnd0);
-        as.ptr(cargRegs[1], propName);
-        as.mov(cargRegs[2].opnd(64), X86Opnd(allocField? 1:0));
-        as.mov(cargRegs[3].opnd(64), scrRegs[1].opnd(64));
-        as.ptr(scrRegs[0], &updateCache);
-        as.call(scrRegs[0]);
-
-        as.loadJITRegs();
+        // Call the fallback sub to update the inline cache
+        // r0 = map ptr
+        // r1 = cache ptr
+        // r2 = instr
+        if (opnd0 != scrRegs[0].opnd)
+            as.mov(scrRegs[0].opnd, opnd0);
+        auto updateCacheSub = getFallbackSub(st.callCtx.vm);
+        as.ptr(scrRegs[2], instr);
+        as.ptr(scrReg3, updateCacheSub);
+        as.call(scrReg3);
 
         // Store the output value into the output operand
         as.mov(outOpnd, cretReg.opnd(32));
+
+        //as.printUint(outOpnd);
 
         // Cache entry found
         as.label(Label.DONE);
     }
     else
     {
+        // Spill the values live before the instruction
+        st.spillValues(
+            as,
+            delegate bool(LiveInfo liveInfo, IRDstValue value)
+            {
+                return liveInfo.liveBefore(value, instr);
+            }
+        );
+
+        // Get the map operand
+        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false, false);
+        assert (opnd0.isReg);
+
+        // Get the property name operand
+        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+
+        // Get the output operand
+        auto outOpnd = st.getOutOpnd(as, instr, 32);
+
         as.saveJITRegs();
 
         // Call the host function
         as.mov(cargRegs[0].opnd(64), opnd0);
         as.mov(cargRegs[1].opnd(64), opnd1);
-        as.mov(cargRegs[2].opnd(64), X86Opnd(allocField? 1:0));
+        as.mov(cargRegs[2].opnd(64), X86Opnd(allocFieldFlag(instr)? 1:0));
         as.ptr(scrRegs[0], &op_map_prop_idx);
         as.call(scrRegs[0]);
 
@@ -3966,8 +4103,7 @@ void gen_get_asm_str(
             // Request an instance for the function entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, false),
-                true
+                new CodeGenState(vm, fun, false)
             );
 
             // Generate a string representation of the code
@@ -3980,8 +4116,7 @@ void gen_get_asm_str(
             // Request an instance for the constructor entry block
             auto entryVer = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(vm, fun, true),
-                true
+                new CodeGenState(vm, fun, true)
             );
 
             if (str != "")

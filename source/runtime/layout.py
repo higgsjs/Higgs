@@ -615,7 +615,7 @@ for layout in layouts:
         # If the previous field was dynamically sized and of smaller type size
         if fieldIdx > 0 and 'szField' in layout['fields'][fieldIdx-1] and \
            typeSize[layout['fields'][fieldIdx-1]['type']] < fSize:
-            
+
             # This field will be dynamically aligned
             field['dynAlign'] = True
             field['alignPad'] = 0
@@ -790,6 +790,20 @@ for layout in layouts:
     for field in layout['fields']:
 
         if 'init' not in field:
+            continue
+
+        initVal = field['init']
+
+        # Some init values map to zero and do not need to be written
+        if initVal == '0':
+            continue
+        if initVal == 'null':
+            continue
+        if initVal == 'missing_word':
+            continue
+        if initVal == 'missing_type':
+            continue
+        if initVal == 'undef_type':
             continue
 
         if 'szField' in field:

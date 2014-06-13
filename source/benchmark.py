@@ -3,6 +3,7 @@
 from subprocess import *
 import os
 import sys
+import time
 import re
 import math
 import csv
@@ -41,15 +42,24 @@ BENCHMARKS = {
     'crypto-sha1':'benchmarks/sunspider/crypto-sha1.js',
     'cordic':'benchmarks/sunspider/math-cordic.js',
     'partial-sums':'benchmarks/sunspider/math-partial-sums.js',
+    'regexp-dna':'benchmarks/sunspider/regexp-dna.js',
     'spectral-norm':'benchmarks/sunspider/math-spectral-norm.js',
+    'base64':'benchmarks/sunspider/string-base64.js',
     'fasta':'benchmarks/sunspider/string-fasta.js',
+    'tagcloud':'benchmarks/sunspider/string-tagcloud.js',
+    'unpack-code':'benchmarks/sunspider/string-unpack-code.js',
+    'valid-input':'benchmarks/sunspider/string-validate-input.js',
+    # FIXME: date-format-tofte
+    'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
 
     'v8-crypto':'benchmarks/v8bench/base.js benchmarks/v8bench/crypto.js benchmarks/v8bench/drv-crypto.js',
     'deltablue':'benchmarks/v8bench/base.js benchmarks/v8bench/deltablue.js benchmarks/v8bench/drv-deltablue.js',
     'earley-boyer':'benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js',
     'navier-stokes':'benchmarks/v8bench/base.js benchmarks/v8bench/navier-stokes.js benchmarks/v8bench/drv-navier-stokes.js',
     'v8-raytrace':'benchmarks/v8bench/base.js benchmarks/v8bench/raytrace.js benchmarks/v8bench/drv-raytrace.js',
+    # FIXME: regexp
     'richards':'benchmarks/v8bench/base.js benchmarks/v8bench/richards.js benchmarks/v8bench/drv-richards.js',
+    'splay':'benchmarks/v8bench/base.js benchmarks/v8bench/splay.js benchmarks/v8bench/drv-splay.js',
 }
 
 # Per-benchmark results
@@ -64,6 +74,8 @@ valPattern = re.compile('^([^:]+):([^:]+)$')
 print "higgs cmd:", options.higgs_cmd
 print "num runs :", options.num_runs
 print ''
+
+startTime = time.time()
 
 # For each benchmark
 benchNo = 1
@@ -114,6 +126,8 @@ for benchmark in BENCHMARKS:
 
     # Store the values for this benchmark
     benchResults[benchmark] = valLists
+
+endTime = time.time()
 
 # Computes the geometric mean of a list of values
 def geoMean(numList):
@@ -184,4 +198,7 @@ if options.csv_file != '':
                 mean = int(mean)
             values += [mean]
         writer.writerow([benchmark] + values)
+
+print ''
+print 'total benchmarking time: %.1f s' % (endTime - startTime)
 

@@ -58,8 +58,13 @@ String(value)
 */
 function String(value)
 {
-    // If this is a constructor call (new String)
-    if ($rt_isGlobalObj(this) === false)
+    // If this is not a constructor call (new String)
+    if ($rt_isGlobalObj(this))
+    {
+        // Convert the value to a string
+        return $rt_toString(value);
+    }
+    else
     {
         // Convert the value to a string
         var strVal = $rt_toString(value);
@@ -71,11 +76,6 @@ function String(value)
         // Set length property.
         this.length = strVal.length;
     }
-    else
-    {
-        // Convert the value to a string
-        return $rt_toString(value);
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -83,24 +83,6 @@ function String(value)
 /**
 Internal string functions
 */
-
-function string_internal_toString(s)
-{
-    if (s instanceof String)
-        return s.value;
-
-    return s;
-}
-
-function string_internal_charCodeAt(s, pos)
-{
-    return $rt_str_get_data(s, pos);
-}
-
-function string_internal_getLength(s)
-{
-    return $rt_str_get_len(s)
-}
 
 function string_internal_toCharCodeArray(x)
 {
@@ -144,8 +126,15 @@ function string_internal_isWhiteSpace(c)
 /**
 15.5.3.2 String.fromCharCode([char0 [, char1 [, ... ]]])
 */
-function string_fromCharCode()
+function string_fromCharCode(c)
 {
+    if ($ir_eq_i32($argc, 1) && $ir_is_i32(c))
+    {
+        var str = $rt_str_alloc(1);
+        $rt_str_set_data(str, 0, c);
+        return $ir_get_str(str);
+    } 
+
     var args = Array.prototype.slice.call(arguments, 0);
     for(var i = 0; i < args.length; i++)
         args[i] = parseInt(args[i]);
@@ -157,7 +146,13 @@ function string_fromCharCode()
 */
 function string_toString()
 {
-    return string_internal_toString(this);
+    if ($ir_is_string(this))
+        return this;
+
+    if (this instanceof String)
+        return this.value;
+
+    return this;
 }
 
 /**
@@ -165,7 +160,13 @@ function string_toString()
 */
 function string_valueOf()
 {
-    return string_internal_toString(this);
+    if ($ir_is_string(this))
+        return this;
+
+    if (this instanceof String)
+        return this.value;
+
+    return this;
 }
 
 /**
@@ -173,12 +174,26 @@ function string_valueOf()
 */
 function string_charAt(pos)
 {
-    if (pos < 0 || pos >= string_internal_getLength(this))
+    if ($ir_is_string(this) &&
+        $ir_is_i32(pos) && 
+        $ir_ge_i32(pos, 0) && 
+        $ir_lt_i32(pos, $rt_str_get_len(this)))
+    {
+        var ch = $rt_str_get_data(this, pos);
+        var str = $rt_str_alloc(1);
+        $rt_str_set_data(str, 0, ch);
+        return $ir_get_str(str);
+    }
+
+    var source = this.toString();
+    var len = $rt_str_get_len(source);
+
+    if (pos < 0 || pos >= len)
     {
         return '';
     }
 
-    var ch = this.charCodeAt(pos);
+    var ch = source.charCodeAt(pos);
     return string_internal_fromCharCodeArray([ch]);
 }
 
@@ -187,14 +202,23 @@ function string_charAt(pos)
 */
 function string_charCodeAt(pos)
 {
-    var len = string_internal_getLength(this.toString());
+    if ($ir_is_string(this) &&
+        $ir_is_i32(pos) && 
+        $ir_ge_i32(pos, 0) && 
+        $ir_lt_i32(pos, $rt_str_get_len(this)))
+    {
+        return $rt_str_get_data(this, pos);
+    }
+
+    var source = this.toString();
+    var len = $rt_str_get_len(source);
 
     if (pos >= 0 && pos < len)
     {
         if ($ir_is_i32(pos) == false)
             pos = $rt_toUint32(pos);
 
-        return string_internal_charCodeAt(this.toString(), pos);
+        return $rt_str_get_data(source, pos);
     }
 
     return NaN;
@@ -374,13 +398,13 @@ function string_replace(searchValue, replaceValue)
 
             return this.substring(0, pos).concat(
                 new String(ret).toString(),
-                this.substring(pos + string_internal_getLength(searchValue)));
+                this.substring(pos + $rt_str_get_len(searchValue)));
         }
         else
         {
             return this.substring(0, pos).concat(
                 replaceValue.toString(),
-                this.substring(pos + string_internal_getLength(searchValue)));
+                this.substring(pos + $rt_str_get_len(searchValue)));
         }
     }
     else if (searchValue instanceof RegExp)
@@ -599,7 +623,7 @@ function string_split(separator, limit)
 function string_substring(start, end)
 {
     var source = this.toString();
-    var length = string_internal_getLength(source.toString());
+    var length = $rt_str_get_len(source);
 
     if (start < 0)
         start = 0;
@@ -625,7 +649,10 @@ function string_substring(start, end)
 
     // Copy substring characters in the new allocated string.
     for (var i = start, j = 0; i < end; ++i, ++j)
-        $rt_str_set_data(s, j, source.charCodeAt(i));
+    {
+        var ch = $rt_str_get_data(source, i);
+        $rt_str_set_data(s, j, ch);
+    }
 
     return $ir_get_str(s);
 }
@@ -636,15 +663,15 @@ function string_substring(start, end)
 function string_slice(start, end)
 {
     var source = this.toString();
-    var length = string_internal_getLength(source.toString());
-    if (typeof start === 'undefined')
+    var length = $rt_str_get_len(source);
+
+    if (start === $undef)
         start = 0;
-    if (typeof end === 'undefined')
+    if (end === $undef)
         end = length;
 
     if (start < 0)
         start += length;
-
     if (end < 0)
         end += length;
 
@@ -656,7 +683,7 @@ String.prototype.substr(start, length)
 */
 function string_substr(start, length)
 {
-    var end = (length === undefined) ? undefined : (start + length);
+    var end = (length === undefined) ? undefined:(start + length);
 
     return string_substring.apply(this, [start, end]);
 }
