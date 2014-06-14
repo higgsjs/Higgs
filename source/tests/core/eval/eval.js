@@ -20,8 +20,13 @@ assert (
 );
 
 var testVal = 100;
-
 assert(
     eval("var i=0;testVal;") === testVal,
     "eval returning global variable"
 );
+
+assert (
+    eval(7) === 7,
+    "eval of number failed"
+);
+
