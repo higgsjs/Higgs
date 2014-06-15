@@ -73,9 +73,12 @@ function load(fileName)
 /**
 Evaluate a source string in the global scope
 */
-function eval(codeStr)
+function eval(input)
 {
-    return $ir_eval_str(codeStr);
+    if ($ir_is_string(input))
+        return $ir_eval_str(input);
+
+    return input;
 }
 
 /**
