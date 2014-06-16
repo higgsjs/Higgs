@@ -1,11 +1,150 @@
+runtime.js
+----------
+
+- BBV branching w/ shapes (added later?)
+- What happens when shapes change from setProp?
+
+Base shapes:
+- Should have a base shape with a proto property for objects
+  - All objects start from this shape
+  - Can have IR instr to get this shape id, or constant?
+    - Just use getPropIdx("__proto__");
+- Base shape for functions
+  __fptr__
+
+function $rt_newObj(mapPtr, protoPtr)
+{
+    // Allocate the object
+    var objPtr = $rt_obj_alloc($OBJ_NUM_SLOTS);
+
+    // Initialize the object
+    $rt_obj_set_shape(objPtr, $OBJ_NEW_SHAPE_IDX);
+    $rt_set_prop_word(objPtr, $OBJ_PROTO_SLOT_IDX, $ir_get_word(protoPtr));
+    $rt_set_prop_type(objPtr, $OBJ_PROTO_SLOT_IDX, $ir_get_type(protoPtr));
+
+    return objPtr;
+}
+
+getProp:
+- No more fetching the capacity
+- Compare prop idx with some constant object size
+- No more "is missing". If a prop gets deleted, property index is automatically -1
+
+$ir_shape_prop_idx(obj, propStr, create)
+- can be like a call, shifts us to a different version where we know the
+  shape associated with obj
+
+ISSUE: getters/setters
+- For getters/setters, return the property value as normal, and then test it...
+
+function $rt_objGetProp(obj, propStr)
+{
+    // Find the index for this property
+    // shifts us to a different version where we know the shape associated
+    // with obj. Implements "inline caching"
+    var propIdx = $ir_shape_prop_idx_get(obj, propStr);
+
+    var propVal;
+    if (propVal = $ir_shape_get_prop(obj, propIdx))
+    {
+        // Property was found, is not a getter
+        return propVal;
+    }
+
+    // There will be a getter/setter type tag for those objects
+    if (isGetSet(propVal))
+        return propVal();
+
+    // Get the object's prototype
+    var proto = $rt_getProto(obj);
+
+    // If the prototype is null, produce undefined
+    if ($ir_eq_refptr(proto, null))
+        return $undef;
+
+    // Do a recursive lookup on the prototype
+    return $rt_objGetProp(
+        proto,
+        propStr
+    );
+}
+
+TODO: object extension, extended table logic
+- Could conceivably be handled by the VM
+
+function $rt_objSetProp(obj, propStr, val)
+{
+    // Find the index for this property
+    // Handles inline caching and version dispatching
+    // May do a shape transition if the property doesn't exist? ***
+    // - probably shouldn't do shape transition in same IR instr, adds complexity
+    // Hence, this gets the current shape and a matching property index,
+    // may also transition the object to a new shape
+    var propIdx = $ir_shape_prop_idx_set(obj, propStr);
+
+    // Hidden inside set_prop, we handle the extended table
+    // We may also transition the object to another shape depending
+    // on the current type of the property and so on
+    $ir_set_prop(obj, propIdx, val);
+}
+
+------------------------------------------------------------------------------
+
+ObjShape implementation
+-----------------------
+
 At first, need no special changes to BBV. Typed shapes can exist without BBV
 exploiting it. Need to start by putting ObjShape, obj alloc system in place.
 Obj access can be completely unoptimized at first.
+- Outline V0 system, IR instructions and changes required
 
+Don't forget arrays...
+- Special array element type value in each shape level
+- Operation for writing to an array element, updating this type
 
+Objects are usually constructed. Actions should probably be:
+- Add a new property, with a name
+  - May want to combine with set type
+  - Otherwise, what is the initial type? un-init?
+- Delete a property
+- Set some attributes on a property (bit set)
+- For getter/setters, set the property value, then set the attrib bits
+- Set a property's type?
+  - Only needed if the current type doesn't match, is not a subtype
 
+Should this build a "shape tree"?
+- Deletion is a problem
+- A system with a global shape signature string and lookup might be best?
+  - Still take addition order into account
+- Want transitions to be fast
 
+Need to fit types into this ***
+- setProp(name, type)
+- Probably best to have a setType operation that is separate
+- Types go from specific to general, eventually any
 
+Idea of a shape tree is not bad... Could eventually have some "shapeless"
+dictionary objects for trees that are too deep. Not necessary for now.
+- Hence each action moves us down the tree
+- ISSUE: global object may have a long-ass tree?
+  - Can probably deal with it... Could orphan its tree since it's a singleton
+
+------------------------------------------------------------------------------
+
+Eddy: property attributes are stored as a set of bit flags
+(for the configurable, enumerable, and writable flags),
+and pointers (for getters and setters) for each shape.
+
+Eddy: Each shape also has a base shape, which is used to store information
+that is often the same for each shape. Among other things, the base shape is
+used to store the above fields. So, for instance, two properties with
+different names, but the same attributes, would have two shapes
+(storing the name), both of which point to the same base shape
+(storing the attributes).
+
+If you're interested in the details, here's a link to the source code.
+It's fairly well commented, so it might be useful to you:
+http://dxr.mozilla.org/mozilla-central/source/js/src/vm/Shape.h?from=Shape.h&case=true#1
 
 ------------------------------------------------------------------------------
 

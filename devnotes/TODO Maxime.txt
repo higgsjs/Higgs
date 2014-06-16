@@ -52,15 +52,36 @@ FIXME: date-format-tofte
 
 ------------------------------------------------------------------------------
 
+TODO: define $UNDEF, $NULLPTR in the VM
+TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
+TODO: eliminate $missing constant
+
 TODO: internship, contact Luke Wagner?
+TODO: contact Dave Herman yourself wrt internship
 
 Next meeting:
-- Contacted Eddy Bruel wrt shapes
+- Contacted Eddy Bruel wrt shapes, got slides & insights
 - Removed call_new instr, simplified code in a few places
-- Typed shapes + interp BBV
-  - BBV becomes complete alternative to interp type analysis
+- Basic block versioning as my thesis
+  - Intra BBV + typed shapes + interproc BBV
+  - BBV becomes complete alternative to interproc type analysis
   - More powerful, simpler, faster alternative to Brian Hackett's work
-- Internship with Paul Khuong in NYC? Systems programming, micro opt, multithreading
+  - No need for on-stack replacement, invalidation of code
+- Typed shape, came up with basic design, started to sketch out code
+  - ObjShape class
+  - Operations that cause shape transitions down a "shape tree"
+  - New IR instructions
+  - Shape-driven versioning
+  - Shape changes
+- New definition of BBV type, not integrating a shape pointer
+  - For closures, shape will indicate IRFunction
+- Typed shape milestones, shapes V0
+  - At first, BBV won't take advantage of it, just replacing current obj system
+  - June, July, August, (september if not CC but PLDI)
+- Internship with Paul Khuong in NYC? 
+  - Systems programming, micro opt, multithreading
+- Should I contact Dave Herman myself?
+  - Understand you are busy, and I'll have to deal with them eventually
 
 TODO: blog post about typed shapes, quick illustrations
 - "Faster JS Objects with Typed Shapes"
@@ -69,32 +90,66 @@ TODO: blog post about typed shapes, quick illustrations
     r/compilers
     r/ProgrammingLanguages
     r/pldesign
+- Use diagrams from Eddy's talk, link and give credit
+
+TODO: define type struct for BBV & shapes
+- Type tags, flag bits, unknown type flag, known shape flag
+- For functions, use shape, not IRFunction
+  - Function shape will store fptr
+- Integrate into BBV?
 
 TODO: establish shape milestone for June 30th
-- Should ideally have working shape system by Sept 1st
+- New obj arch with ext table (ext table is just another object)
+- Rudimentary shape class
+- IR primitives for using shapes
+- Not optimized to begin with, no inline caching yet
 
-TODO: contact Dave Herman yourself wrt internship
-- e-mail Marc first
+TODO: defObjConsts() in object.d
+- Define object layout constants needed by the runtime
 
-FIXME: earley-boyer using large amounts of memory without call_new, very slow
+TODO: vm method to define constants
+- Auto adds the $RT_PREFIX
+- Enforces allcaps naming
+- defRTConst(string name, ValuePair), defRTConst(string name, int32 intVal)
+
+TODO: rudimentary IR shape primitives
+
+TODO: add mention of examples on library page of wiki
+- add comment on how to run these inside the examples!
+
+TODO: begin coding simple ObjShape class
+- Each ObjShape has a map of wstring field names to property descriptors (idx, type, flags)
+
+TODO: investigate earley-boyer slowness further
+- Mostly slow when run in the test-runner
+- Copy Higgs repo, profile test-runner with earley-boyer only
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: eval of non-string type causes segfault
+
+[DONE] FIXME: earley-boyer using large amounts of memory without call_new, very slow
 - seems like exec time is unchanged, comp time massively slow
 - Are the newThis and ret calls always inlined?
 - Profile, find out what's so slow
-- Quick fix: optimize ctor for 0,1,2 elements? see usage
+- Hypothesis: not inlining newThis results in HUGE objects allocated
+  - Looks like not, just very long compilation time ***
+- Reserving more space for the D GC doesn't improve things
 
-TODO: sketch ObjShape class
-- Draw transitions, etc!
-
-TODO: sketch runtime.js implications of typed shapes
+[DONE] TODO: sketch runtime.js implications of typed shapes
 - getProp, setProp
 - BBV branching w/ shapes (added later?)
 - What happens when shapes change from setProp?
 
-
-
-
-
-
+[DONE] TODO: sketch ObjShape class functioning
 
 [DONE] TODO: eliminate CallCtx, use IRFunction
 - simplify design

@@ -253,6 +253,7 @@ class LiveInfo
 
         // Stack of blocks for DFS traversal
         IRBlock stack[];
+        stack.reserve(32768);
 
         /**
         Traverse a basic block as part of a liveness analysis
@@ -288,7 +289,7 @@ class LiveInfo
 
             // Queue the predecessor blocks
             for (size_t iIdx = 0; iIdx < block.numIncoming; ++iIdx)
-                stack ~= block.getIncoming(iIdx).branch.block;
+                stack.assumeSafeAppend() ~= block.getIncoming(iIdx).branch.block;
         }
 
         /**
@@ -320,7 +321,7 @@ class LiveInfo
                     auto branch = useBlock.getIncoming(iIdx);
                     auto phiArg = branch.getPhiArg(usePhi);
                     if (phiArg is defVal)
-                        stack ~= branch.branch.block;
+                        stack.assumeSafeAppend() ~= branch.branch.block;
                 }
             }
 
@@ -333,8 +334,8 @@ class LiveInfo
             while (stack.length > 0)
             {
                 // Pop the top of the stack
-                auto block = stack[$-1];
-                stack.length -= 1;
+                auto block = stack.back();
+                stack.length--;
 
                 assert (block.lastInstr !is null);
 

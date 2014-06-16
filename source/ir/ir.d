@@ -57,7 +57,7 @@ import runtime.object;
 import jit.codeblock;
 import jit.jit;
 
-/// Runtime function name prefix
+/// Runtime name prefix
 const wstring RT_PREFIX = "$rt_";
 
 /// Stack variable index type
@@ -70,7 +70,7 @@ alias uint32 LinkIdx;
 immutable StackIdx NULL_STACK = StackIdx.max;
 
 /// Null link constant
-immutable StackIdx NULL_LINK = LinkIdx.max;
+immutable LinkIdx NULL_LINK = LinkIdx.max;
 
 /// Number of hidden function arguments
 immutable uint32_t NUM_HIDDEN_ARGS = 4;
