@@ -60,6 +60,7 @@ void optIR(IRFunction fun)
     {
         //writeln("*** deleting block ", block.getName());
 
+        /*
         // Check that the block has no incoming branches
         debug
         {
@@ -77,6 +78,7 @@ void optIR(IRFunction fun)
                 }
             }
         }
+        */
 
         // Set the changed flag
         changed = true;
@@ -111,6 +113,7 @@ void optIR(IRFunction fun)
         // Remove and delete the phi node
         phi.block.delPhi(phi);
 
+        /*
         debug
         {
             for (auto block = fun.firstBlock; block !is null; block = block.next)
@@ -159,6 +162,7 @@ void optIR(IRFunction fun)
                 }
             }
         }
+        */
 
         //writeln("phi deleted");
     }
@@ -166,8 +170,6 @@ void optIR(IRFunction fun)
     // Remove and destroy an instruction
     void delInstr(IRInstr instr)
     {
-        //writeln("*** deleting instr ", instr);
-
         assert (
             instr.hasNoUses
         );

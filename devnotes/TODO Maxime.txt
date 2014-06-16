@@ -120,19 +120,22 @@ TODO: add mention of examples on library page of wiki
 TODO: begin coding simple ObjShape class
 - Each ObjShape has a map of wstring field names to property descriptors (idx, type, flags)
 
-TODO: investigate earley-boyer slowness further
+
+
+
+
+
+
+
+
+[DONE] TODO: investigate earley-boyer slowness further
 - Mostly slow when run in the test-runner
-- Copy Higgs repo, profile test-runner with earley-boyer only
-
-
-
-
-
-
-
-
-
-
+- benchmark.js file has 11K blocks
+- optIR of the benchmark JS file is the really slow component
+  - Just 4 passes executed!?
+  - deleting tons of "jump call_cont", "jump call_merge" instructions
+- Many many inlined functions?
+- delPhi, delBlock sanity checks iterate over whole function!
 
 [DONE] FIXME: eval of non-string type causes segfault
 

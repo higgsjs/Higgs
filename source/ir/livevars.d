@@ -224,6 +224,8 @@ class LiveInfo
             "function has no IR"
         );
 
+        //writeln("liveness analysis for: ", fun.getName, " (", fun.numBlocks, ")");
+
         for (auto block = fun.firstBlock; block !is null; block = block.next)
         {
             for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
