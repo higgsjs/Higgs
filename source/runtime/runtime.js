@@ -67,6 +67,9 @@ Load and execute a source file
 */
 function load(fileName)
 {
+    if (!$ir_is_string(fileName))
+        throw TypeError("expected filename string argument");
+
     return $ir_load_file(fileName);
 }
 
