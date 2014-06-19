@@ -51,7 +51,7 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
 
     var tests_dir = "./tests";
 
-    // Don'te run tests in tests_dir/core
+    // Don't run tests in tests_dir/core
     // and don't run any files/dirs the user provides as arguments
     var ignores  = Object.create(null)
     ignores["core"] = true;
