@@ -42,12 +42,12 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
 
 (function()
 {
+    var console = require("lib/console");
     var ffi = require("lib/ffi");
     var std = require("lib/stdlib");
     var fs = require("lib/dir");
-    var console = require("lib/console");
+
     var test = require("lib/test");
-    var io = require("lib/stdio");
 
     var tests_dir = "./tests";
 
@@ -59,12 +59,15 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
         function(n) { ignores[n] = true; }
     );
 
+    // Stats for the tests
     var tests_run = 0;
     var tests_passed = 0;
     var tests_failed = 0;
 
+    // Track which directory we're in
     var current = "";
 
+    // Space for the exit status of the forked vm
     var child_status = std.malloc(4);
 
     function runTest(file)
@@ -122,43 +125,34 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
     function runTests(dir_name)
     {
         var dir = fs.dir(dir_name);
-        var dirs = dir.getDirs().sort();
-        var files = dir.getFiles().sort().filter(
-            function(name)
+
+        // update where we are
+        current = dir_name;
+
+        // first run tests in this dir
+        dir.getFileNames().sort().forEach(
+            function(file)
             {
-                var ext = name.split('.').pop();
-                return ext === "js" && !ignores[name];
+                if (!ignores[file] && file.split('.').pop() === "js")
+                    runTest(file);
             }
         );
 
-        // first run tests in this dir
-        current = dir_name;
-        files.forEach(runTest);
-        dirs.forEach(function(next_dir)
-        {
-            runTests(dir_name + "/" + next_dir);
-        });
+        // run tests in any subdirectories
+        dir.getDirNames().sort().forEach(
+            function(next_dir)
+            {
+                if (!ignores[next_dir])
+                    runTests(dir_name + "/" + next_dir);
+            }
+        );
     }
 
     console.log("Starting test-runner.js...");
     console.log(" --- ");
 
-    // We need to ignore the dir which contains test files run in unittest {} blocks in D
-    var dir = fs.dir(tests_dir);
-    var dirs = dir.getDirs().sort().filter(
-        function(name)
-        {
-            return !(ignores[name]);
-        }
-    );
-
-    // first run tests in this dir
-    dirs.forEach(
-        function(next_dir)
-        {
-            runTests(tests_dir + "/" + next_dir);
-        }
-    );
+    // run tests
+    runTests(tests_dir);
 
     console.log("test-runner.js results:");
     console.log(" --- ");
