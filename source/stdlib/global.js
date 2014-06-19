@@ -40,6 +40,9 @@
  * _________________________________________________________________________
  */
 
+/// Global object binding
+var global = $ir_get_global_obj();
+
 function toString()
 {
     return 'global object';
