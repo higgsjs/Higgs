@@ -50,7 +50,14 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
     var io = require("lib/stdio");
 
     var tests_dir = "./tests";
-    var ignore_dir = "core";
+
+    // Don'te run tests in tests_dir/core
+    // and don't run any files/dirs the user provides as arguments
+    var ignores  = Object.create(null)
+    ignores["core"] = true;
+    global.arguments.forEach(
+        function(n) { ignores[n] = true; }
+    );
 
     var tests_run = 0;
     var tests_passed = 0;
@@ -120,7 +127,7 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
             function(name)
             {
                 var ext = name.split('.').pop();
-                return ext === "js";
+                return ext === "js" && !ignores[name];
             }
         );
 
@@ -141,7 +148,7 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
     var dirs = dir.getDirs().sort().filter(
         function(name)
         {
-            return name !== ignore_dir;
+            return !(ignores[name]);
         }
     );
 
