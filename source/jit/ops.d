@@ -1481,26 +1481,6 @@ void gen_if_true(
     if (boolArgPrev(instr) is true)
         return;
 
-    // TODO
-    /*
-    auto argVal = instr.getArg(0);
-
-    // If the argument is a known constant
-    if (st.wordKnown(argVal))
-    {
-        auto targetT = instr.getTarget(0);
-        auto targetF = instr.getTarget(1);
-
-        // TODO: use getWordOpnd
-        // TODO: get rid of wordKnown?
-        auto argWord = st.getWord(argVal);
-        auto target = (argWord == TRUE)? targetT:targetF;
-        ctx.genBranchEdge(ctx.as, null, target, st);
-
-        return;
-    }
-    */
-
     // Compare the argument to the true boolean value
     auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
     as.cmp(argOpnd, X86Opnd(TRUE.word.int8Val));
@@ -3450,7 +3430,7 @@ void gen_map_prop_name(
         return str;
     }
 
-    // Spill the values that are live after the call
+    // Spill the values that are live before the call
     st.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
@@ -3485,6 +3465,261 @@ void gen_map_prop_name(
     as.cmp(outOpnd, X86Opnd(NULL.word.int8Val));
     as.cmove(scrRegs[0].reg(8), scrRegs[1].opnd(8));
     st.setOutType(as, instr, scrRegs[0].reg(8));
+}
+
+/// Returns the empty shape
+alias GetValOp!(Type.SHAPEPTR, "emptyShape") gen_shape_empty;
+
+/// Returns the index of a property
+/// Inputs: obj, propName
+/// TODO: this will become branching instruction, switches us to a
+///       version where the object shape is now known
+void gen_shape_prop_idx(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static uint32_t op_shape_prop_idx(
+        refptr objPtr,
+        refptr strPtr
+    )
+    {
+        // Increment the count of slow property lookups
+        stats.numMapPropSlow++;
+
+        // TODO: get shape ptr from object
+
+        /*
+        // Lookup the property index
+        assert (shape !is null, "map is null");
+        auto propIdx = shape.getPropIdx(strPtr);
+        return propIdx;
+        */
+
+        // TODO
+        return 0;
+    }
+
+    // Spill the values that are live before the call
+    st.spillValues(
+        as,
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
+        {
+            return liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), opnd0);
+    as.mov(cargRegs[1].opnd(32), opnd1);
+    as.ptr(scrRegs[0], &op_shape_prop_idx);
+    as.call(scrRegs[0]);
+
+    as.loadJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, cretReg.opnd);
+
+    st.setOutType(as, instr, Type.INT32);
+}
+
+/// Sets the value of a property
+/// Inputs: obj, propIdx, val
+/// Branching: if the property is a setter, returns it
+///            else, sets the property, returns nothing
+void gen_shape_set_prop(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) struct RetVal
+    {
+        Word retWord;
+        int8_t isSetter;
+    }
+
+    static assert (RetVal.sizeof <= 2 * int64_t.sizeof);
+
+    extern (C) static RetVal op_shape_set_prop(
+        refptr objPtr,
+        uint32_t propIdx,
+        Word valWord,
+        Type valType
+    )
+    {
+        // TODO
+        // TODO
+        // TODO
+
+
+
+
+
+
+
+        return RetVal(Word.int32v(0), 0);
+    }
+
+    // Spill the values that are live before the call
+    st.spillValues(
+        as,
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
+        {
+            return liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    auto objPtr = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto propIdx = st.getWordOpnd(as, instr, 1, 32, X86Opnd.NONE, false, false);
+    auto valWord = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
+    auto valType = st.getTypeOpnd(as, instr, 2, X86Opnd.NONE);
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), objPtr);
+    as.mov(cargRegs[1].opnd(32), propIdx);
+    as.mov(cargRegs[2].opnd(64), valWord);
+    as.mov(cargRegs[2].opnd(64), valType);
+    as.ptr(scrRegs[0], &op_shape_set_prop);
+    as.call(scrRegs[0]);
+
+    as.loadJITRegs();
+
+    // Set the output value
+    as.mov(outOpnd, X86Opnd(64, RSP, -RetVal.retWord.offsetof));
+    st.setOutType(as, instr, Type.CLOSURE);
+
+    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+    auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branchT,
+        branchF,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            // If the property is a setter, go to the true branch, otherwise false
+            as.cmp(X86Opnd(8, RSP, cast(int32_t)-RetVal.isSetter.offsetof), X86Opnd(1));
+            je32Ref(as, vm, target0, 0);
+            jmp32Ref(as, vm, target1, 1);
+        }
+    );
+}
+
+/// Gets the value of a property
+/// Inputs: obj, propIdx
+/// Branching: if the property is not a getter, returns its value
+///            else, the property is a getter, returns the getter
+void gen_shape_get_prop(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) struct RetVal
+    {
+        Word retWord;
+        Type retType;
+        int8_t isGetter;
+    }
+
+    static assert (RetVal.sizeof <= 2 * int64_t.sizeof);
+
+    extern (C) static RetVal op_shape_get_prop(
+        refptr objPtr,
+        uint32_t propIdx,
+        Word valWord,
+        Type valType
+    )
+    {
+        // TODO
+        // TODO
+        // TODO
+
+
+
+
+
+
+
+
+
+
+        return RetVal(Word.int32v(0), Type.CLOSURE, 0);
+    }
+
+    // Spill the values that are live before the call
+    st.spillValues(
+        as,
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
+        {
+            return liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    auto objPtr = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto propIdx = st.getWordOpnd(as, instr, 1, 32, X86Opnd.NONE, false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), objPtr);
+    as.mov(cargRegs[1].opnd(32), propIdx);
+    as.ptr(scrRegs[0], &op_shape_get_prop);
+    as.call(scrRegs[0]);
+
+    as.loadJITRegs();
+
+    // Set the output value word and type
+    as.mov(outOpnd, X86Opnd(64, RSP, -RetVal.retWord.offsetof));
+    as.mov(scrRegs[0].opnd(8), X86Opnd(8, RSP, cast(int32_t)-RetVal.retType.offsetof));
+    st.setOutType(as, instr, scrRegs[0].reg(8));
+
+    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+    auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branchT,
+        branchF,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            // If the property is not a getter, go to the true branch, otherwise false
+            as.cmp(X86Opnd(8, RSP, cast(int32_t)-RetVal.isGetter.offsetof), X86Opnd(0));
+            je32Ref(as, vm, target0, 0);
+            jmp32Ref(as, vm, target1, 1);
+        }
+    );
 }
 
 void gen_new_clos(
@@ -4055,6 +4290,7 @@ void gen_get_sym(
     st.setOutType(as, instr, Type.RAWPTR);
 
 }
+
 // TODO: add support for new i types
 // Mappings for arguments/return values
 Type[string] typeMap;

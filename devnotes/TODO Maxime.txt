@@ -52,36 +52,16 @@ FIXME: date-format-tofte
 
 ------------------------------------------------------------------------------
 
+TODO: look at eval notes again
+
 TODO: define $UNDEF, $NULLPTR in the VM
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
 TODO: eliminate $missing constant
+TODO: const globals
 
 TODO: internship, contact Luke Wagner?
-TODO: contact Dave Herman yourself wrt internship
 
-Next meeting:
-- Contacted Eddy Bruel wrt shapes, got slides & insights
-- Removed call_new instr, simplified code in a few places
-- Basic block versioning as my thesis
-  - Intra BBV + typed shapes + interproc BBV
-  - BBV becomes complete alternative to interproc type analysis
-  - More powerful, simpler, faster alternative to Brian Hackett's work
-  - No need for on-stack replacement, invalidation of code
-- Typed shape, came up with basic design, started to sketch out code
-  - ObjShape class
-  - Operations that cause shape transitions down a "shape tree"
-  - New IR instructions
-  - Shape-driven versioning
-  - Shape changes
-- New definition of BBV type, not integrating a shape pointer
-  - For closures, shape will indicate IRFunction
-- Typed shape milestones, shapes V0
-  - At first, BBV won't take advantage of it, just replacing current obj system
-  - June, July, August, (september if not CC but PLDI)
-- Internship with Paul Khuong in NYC? 
-  - Systems programming, micro opt, multithreading
-- Should I contact Dave Herman myself?
-  - Understand you are busy, and I'll have to deal with them eventually
+TODO: integrate ValType into BBV
 
 TODO: blog post about typed shapes, quick illustrations
 - "Faster JS Objects with Typed Shapes"
@@ -92,17 +72,9 @@ TODO: blog post about typed shapes, quick illustrations
     r/pldesign
 - Use diagrams from Eddy's talk, link and give credit
 
-TODO: define type struct for BBV & shapes
-- Type tags, flag bits, unknown type flag, known shape flag
-- For functions, use shape, not IRFunction
-  - Function shape will store fptr
-- Integrate into BBV?
-
-TODO: establish shape milestone for June 30th
-- New obj arch with ext table (ext table is just another object)
-- Rudimentary shape class
-- IR primitives for using shapes
-- Not optimized to begin with, no inline caching yet
+Meeting:
+- e-mailed Dave Herman
+- Began implementing IR instrs for shapes
 
 TODO: defObjConsts() in object.d
 - Define object layout constants needed by the runtime
@@ -112,21 +84,75 @@ TODO: vm method to define constants
 - Enforces allcaps naming
 - defRTConst(string name, ValuePair), defRTConst(string name, int32 intVal)
 
-TODO: rudimentary IR shape primitives
+TODO: random lib
+- setRndGen
+- random.normal, random.choice
+- announce in chat
 
-TODO: add mention of examples on library page of wiki
-- add comment on how to run these inside the examples!
+TODO: basic tests, no runtime, try creating empty obj, setting a property
 
-TODO: begin coding simple ObjShape class
+TODO: functions in object.d to manipulate objects
+- comment out existing, code breaks here
+
+TODO: new object layout, is its own ext table
+- Is it much different? Still has num props
+- next is ext table?
+- arrays and closures, special hidden slots?
+  - __arrtbl__
+  - closures need that "prototype" property?
+  - for fns, useful to have a shape that includes the fptr!
+
+TODO: commit before changing object impl
+
+
+
+
+
+
+
+
+
+[DONE] TODO: contact Dave Herman, head of research group at Mozilla
+
+[DONE] TODO: begin sketching basic IR instrs for shapes
+- KISS for now, unoptimized
+- simplest implementation possible
+
+[DONE] TODO: type from value
+
+[DONE] TODO: begin coding simple ObjShape class
 - Each ObjShape has a map of wstring field names to property descriptors (idx, type, flags)
+- Method to define new property (& type?)
 
+[DONE] Next meeting:
+- Contacted Eddy Bruel wrt shapes, got slides & insights
+- Removed call_new instr, simplified code in a few places
+- Typed shape, came up with basic design, started to sketch out code
+  - ObjShape class
+  - Operations that cause shape transitions down a "shape tree"
+  - New IR instructions
+  - Shape-driven versioning
+  - Shape changes
+- Typed shape milestones, shapes V0
+  - At first, BBV won't take advantage of it, just replacing current obj system
+  - June, July, August, (september if not CC but PLDI)
+- Basic block versioning as my thesis
+  - Intra BBV + typed shapes + interproc BBV
+  - BBV becomes complete alternative to interproc type analysis
+  - More powerful, simpler, faster alternative to Brian Hackett's work
+  - No need for on-stack replacement, invalidation of code
+- Internship with Paul Khuong in NYC? 
+  - Systems programming, micro opt, multithreading
+- Should I contact Dave Herman myself?
+  - Understand you are busy, I'll have to deal with them eventually
 
+[DONE] FIXME: load(); used in the repl, or with --e "load()", or
+in --repl "file.js" - ( when no arg is provided ) === Segmentation Fault
 
-
-
-
-
-
+[DONE] TODO: define type struct for BBV & shapes
+- Type tags, flag bits, unknown type flag, known shape flag
+- For functions, use shape, not IRFunction
+  - Function shape will store fptr
 
 [DONE] TODO: investigate earley-boyer slowness further
 - Mostly slow when run in the test-runner

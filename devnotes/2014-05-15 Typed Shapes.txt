@@ -41,9 +41,10 @@ function $rt_objGetProp(obj, propStr)
 {
     // Find the index for this property
     // shifts us to a different version where we know the shape associated
-    // with obj. Implements "inline caching"
+    // with obj. Implements "inline caching". "version cache"
     var propIdx = $ir_shape_prop_idx_get(obj, propStr);
 
+    // FIXME: must return closure? alloc two slots?
     var propVal;
     if (propVal = $ir_shape_get_prop(obj, propIdx))
     {
@@ -85,7 +86,15 @@ function $rt_objSetProp(obj, propStr, val)
     // Hidden inside set_prop, we handle the extended table
     // We may also transition the object to another shape depending
     // on the current type of the property and so on
-    $ir_set_prop(obj, propIdx, val);
+    //
+    // If the current shape is unknown, complex logic will be handled in D
+    //
+    var setter;
+    if (setter = $ir_set_prop(obj, propIdx, val))
+    {
+        // Property is a setter
+        setter(val);
+    }
 }
 
 ------------------------------------------------------------------------------

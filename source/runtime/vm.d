@@ -180,6 +180,7 @@ enum Type : ubyte
     RETADDR,
     FUNPTR,
     MAPPTR,
+    SHAPEPTR,
 
     // GC heap pointer types
     REFPTR,
@@ -219,13 +220,14 @@ string typeToString(Type type)
         case Type.INT32:    return "int32";
         case Type.INT64:    return "int64";
         case Type.FLOAT64:  return "float64";
-        case Type.RAWPTR:   return "raw pointer";
-        case Type.RETADDR:  return "return address";
+        case Type.RAWPTR:   return "rawptr";
+        case Type.RETADDR:  return "retaddr";
         case Type.CONST:    return "const";
         case Type.FUNPTR:   return "funptr";
         case Type.MAPPTR:   return "mapptr";
+        case Type.SHAPEPTR: return "shapeptr";
 
-        case Type.REFPTR:   return "ref pointer";
+        case Type.REFPTR:   return "refptr";
         case Type.OBJECT:   return "object";
         case Type.ARRAY:    return "array";
         case Type.CLOSURE:  return "closure";
@@ -457,6 +459,9 @@ class VM
     /// String table reference
     refptr strTbl;
 
+    /// Empty object shape
+    const(ObjShape) emptyShape;
+
     /// Object prototype object
     ValuePair objProto;
 
@@ -588,6 +593,9 @@ class VM
 
         // Allocate and initialize the string table
         strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
+
+        // Allocate the empty object shape
+        emptyShape = new ObjShape();
 
         // Allocate the object prototype object
         objProto = newObj(

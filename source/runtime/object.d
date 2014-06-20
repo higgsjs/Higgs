@@ -42,12 +42,187 @@ import std.string;
 import std.algorithm;
 import std.stdint;
 import std.typecons;
+import std.bitmanip;
 import ir.ir;
 import runtime.vm;
 import runtime.layout;
 import runtime.string;
 import runtime.gc;
 import util.id;
+
+
+
+
+
+
+void defObjConsts()
+{
+    // TODO
+}
+
+/**
+Value type representation
+*/
+struct ValType
+{
+    union
+    {
+        /// Shape (null if unknown)
+        const(ObjShape) shape;
+
+        /// IR function, for function pointers
+        IRFunction fun;
+    }
+
+    /// Bit field for compact encoding
+    mixin(bitfields!(
+
+        /// Type, if known
+        Type, "type", 4,
+
+        /// Known type flag
+        bool, "knownType", 1,
+
+        /// Padding bits
+        uint, "", 3
+    ));
+
+    /// Constructor taking a value pair
+    this(ValuePair val)
+    {
+        this.type = val.type;
+        this.knownType = true;
+
+        if (this.type is Type.OBJECT ||
+            this.type is Type.CLOSURE ||
+            this.type is Type.ARRAY)
+        {
+            // TODO: get IRFunction if fptr
+            // TODO: get object shape
+            this.shape = null;
+        }
+    }
+
+    // TODO: union? wait and see if needed
+
+    bool knownShape() const { return shape !is null; }
+}
+
+/**
+Object shape tree representation.
+Each shape defines or redefines a property.
+Note: getters/setters allocate two closure slots in an object.
+*/
+class ObjShape
+{
+    /// Parent shape in the tree
+    const(ObjShape) parent;
+
+    /// Cache of property names to defining shapes, to accelerate lookups
+    const(ObjShape)[wstring] propCache;
+
+    /// Name of this property, null if array element property
+    wstring propName;
+
+    /// Shape of the getter closure (if getter)
+    const(ObjShape) getter;
+
+    /// Shape of the setter closure (if setter)
+    const(ObjShape) setter;
+
+    /// Value type, may be unknown
+    ValType type;
+
+    /// Property attribute flags
+    mixin(bitfields!(
+
+        /// Property writable (not read-only)
+        bool, "writable", 1,
+
+        /// Property enumerable
+        bool, "enumerable", 1,
+
+        // Property configurable
+        bool, "configurable", 1,
+
+        /// Property deleted
+        bool, "deleted", 1,
+
+        /// Padding bits
+        uint, "", 4
+    ));
+
+    /// Index at which this property is stored
+    uint32_t slotIdx;
+
+    /// Next slot index to allocate
+    uint32_t nextIdx;
+
+    /// Empty shape constructor
+    this()
+    {
+        this.parent = null;
+        this.propName = null;
+        this.setter = null;
+        this.getter = null;
+    }
+
+    // TODO: method to define/redefine a property, get a new shape object
+    // - want to set type too...
+    // - normally, we only call this if we know that a transition is necessary
+    // - early on, may call this on every set prop
+    //ObjShape setProp(wstring propName, ValType type)
+
+    /**
+    Get the shape defining a given property
+    */
+    const(ObjShape) getDefShape(wstring propName) const
+    {
+        if (propName == this.propName)
+            return this;
+
+        if (parent)
+            return parent.getDefShape(propName);
+
+        return null;
+    }
+}
+
+// TODO: hosted newObj, needed for global object, etc.
+/*
+ValuePair newObj(
+    VM vm,
+    ValuePair proto
+)
+{
+    assert (map !is null);
+
+    // Create a root for the prototype object
+    auto protoObj = GCRoot(vm, proto);
+
+    // Allocate the object
+    auto objPtr = obj_alloc(vm, map.numProps);
+
+    obj_set_map(objPtr, cast(rawptr)map);
+
+    setProto(objPtr, protoObj.pair);
+
+    return ValuePair(objPtr, Type.OBJECT);
+}
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /// Prototype property slot index
 const uint32_t PROTO_SLOT_IDX = 0;
