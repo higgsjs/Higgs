@@ -30,7 +30,6 @@ util/id.d           \
 util/string.d       \
 util/misc.d         \
 util/bitset.d       \
-util/os.d           \
 parser/lexer.d      \
 parser/ast.d        \
 parser/vars.d       \
@@ -62,7 +61,8 @@ main.d              \
 jit/tests.d         \
 parser/tests.d      \
 runtime/tests.d     \
-runtime/ffitests.d
+ffi/os.d            \
+ffi/tests.d         \
 
 all: layout
 	$(DC) $(LIBS) $(COPTS) -of$(BIN_NAME) $(SRC)
