@@ -75,7 +75,7 @@ Console functions
         {
                 return ob.toString();
         }
-        else if (ob.hasOwnProptery && ob.hasOwnProperty("toString") && typeof ob.toString === "function")
+        else if (ob.hasOwnProperty && ob.hasOwnProperty("toString") && typeof ob.toString === "function")
         {
                 return ob.toString();
         }
