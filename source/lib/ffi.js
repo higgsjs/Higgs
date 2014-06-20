@@ -345,7 +345,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         this.token_type = EOF;
         return;
     };
- 
+
     /*
     Initialize lexer instance
     */
@@ -922,7 +922,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             {
                 throw new CParseUnexpectedError("unknown type", lex.token, lex.loc());
             }
-            
+
             sig.push(t);
 
             if (lex.token_type === COMMA)
@@ -1049,15 +1049,17 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         }
 
         // Generate wrapper function
-        fun_str = "\
-            function(fun_sym)\n\
-            {\n\
-                return function(" + arg_str  + ")\n\
-                {\n\
-                    return $ir_call_ffi(fun_sym, " + ('"' + sig_str + '"') + (arg_str === "" ? arg_str : (", " + arg_str)) + ");\n\
-                };\n\
-            };\n\
-        ";
+        fun_str = `
+            function(fun_sym)
+            {
+                return function(` + arg_str  + `)
+                {
+                    return $ir_call_ffi(fun_sym, ` +
+                        ('"' + sig_str + '"') +
+                        (arg_str === "" ? arg_str : (", " + arg_str)) + `);
+                };
+            };
+        `;
 
         return eval(fun_str);
     }
@@ -1070,91 +1072,91 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var size = type.size;
         var load_fun = type.load_fun;
         var store_fun = type.store_fun;
-        var wrapper_fun = "\
-        (function(c, string)\n\
-        {\
-        ";
+        var wrapper_fun = `
+        (function(c, string)
+        {
+        `;
 
         if (type.name === "char")
         {
             // Special case toString for char[]
-            wrapper_fun = "\
-            (function(c, string)\n\
-            {\n\
-            var arrProto = {};\n\
-            arrProto.toString = function()\n\
-            {\n\
-                return string(this.ptr, 0, this.offset);\n\
-            };\n\
-            arrProto.toJS = arrProto.toString;\n\
-            ";
+            wrapper_fun = `
+            (function(c, string)
+            {
+            var arrProto = {};
+            arrProto.toString = function()
+            {
+                return string(this.ptr, 0, this.offset);
+            };
+            arrProto.toJS = arrProto.toString;
+            `;
         }
         else
         {
             // toString for other types
-            wrapper_fun = "\
-            (function(c)\n\
-            {\
-            var arrProto = {};\n\
-            \n\
-            arrProto.toString = function()\n\
-            {\n\
-                var arr_string = '[ ' + this.get(0).toString();\n\
-                var i = 1;\n\
-                var l = this.length;\n\
-                while (i < l)\n\
-                {\n\
-                    arr_string += ', ' + this.get(i).toString();\n\
-                    i += 1;\
-                }\n\
-                arr_string += ' ]';\n\
-                return arr_string;\n\
-            };\
-            \n\
-            arrProto.toJS = function()\n\
-            {\n\
-                var a = []\n\
-                var i = 0;\n\
-                var l = this.length;\n\
-                while (i < l)\n\
-                {\n\
-                    a.push(this.get(i));\n\
-                    i += 1;\
-                }\n\
-                return a;\n\
-            };\
-            ";
+            wrapper_fun = `
+            (function(c)
+            {
+            var arrProto = {};
+
+            arrProto.toString = function()
+            {
+                var arr_string = '[ ' + this.get(0).toString();
+                var i = 1;
+                var l = this.length;
+                while (i < l)
+                {
+                    arr_string += ', ' + this.get(i).toString();
+                    i += 1;
+                }
+                arr_string += ' ]';
+                return arr_string;
+            };
+
+            arrProto.toJS = function()
+            {
+                var a = [];
+                var i = 0;
+                var l = this.length;
+                while (i < l)
+                {
+                    a.push(this.get(i));
+                    i += 1;
+                }
+                return a;
+            };
+            `;
         }
 
         // get/set functions and constructor
-        wrapper_fun += "\
-            arrProto.get = function(index)\
-            {\n\
-                return " + load_fun + "(this.ptr, this.offset + (" + size + " * index));\n\
-            };\n\
-            arrProto.set = function(index, val)\n\
-            {\n\
-                return " + store_fun + "(this.ptr, this.offset + (" + size + " * index), val);\n\
-            };\
-            return (function(ptr, offset)\n\
-            {\n\
-                var arr = Object.create(arrProto);\n\
-                \
-                if ($ir_is_rawptr(ptr))\n\
-                {\n\
-                    arr.ptr = ptr;\n\
-                    arr.offset = offset || 0;\n\
-                    arr.length = " + length + ";\n\
-                }\n\
-                else\n\
-                {\n\
-                    arr.ptr = c.malloc(" + (length * size) + " )\n\
-                    arr.offset = 0;\n\
-                }\n\
-                return arr;\n\
-            });\n\
-        })\
-        ";
+        wrapper_fun += `
+            arrProto.get = function(index)
+            {
+                return ` + load_fun + `(this.ptr, this.offset + (` + size + ` * index));
+            };
+            arrProto.set = function(index, val)
+            {
+                return ` + store_fun + `(this.ptr, this.offset + (` + size + ` * index), val);
+            };
+            return (function(ptr, offset)
+            {
+                var arr = Object.create(arrProto);
+
+                if ($ir_is_rawptr(ptr))
+                {
+                    arr.ptr = ptr;
+                    arr.offset = offset || 0;
+                    arr.length = ` + length + `;
+                }
+                else
+                {
+                    arr.ptr = c.malloc(` + (length * size) + ` )
+                    arr.offset = 0;
+                }
+                return arr;
+            });
+        })
+        `;
 
         // The wrapper needs acces to the c object for c.malloc and string for toString
         return eval(wrapper_fun)(c, string);
@@ -1176,11 +1178,11 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var loader_n = 0;
         var arg_str;
 
-        var wrapper_fun = "\
-            (function(c)\
-            {\n\
-                var strProto = {};\
-        ";
+        var wrapper_fun = `
+            (function(c)
+            {
+                var strProto = {};
+        `;
 
         while (i < l)
         {
@@ -1204,21 +1206,23 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 loader_n += 1;
                 arg_str = (arg_str) ? (arg_str + ", ld" + loader_n) : ("ld1");
                 loaders.push(mem.wrapper_fun);
-                loader_dec = "\n\
-                s." + names[i] + " = ld" + loader_n + "(s.ptr, s.offset);\n\
-                ";
+                loader_dec = `
+                    s.` + names[i] + ` = ld` + loader_n + `(s.ptr, s.offset);
+                `;
             }
             else
             {
                 // This member uses simple getter/setter
-                wrapper_fun += "\n\
-                strProto.get_" + names[i] + " = function (){\n\
-                    return " + loader + "(this.ptr, this.offset);\n\
-                };\n\
-                strProto.set_" + names[i] + " = function (val){\n\
-                    return " + mem.store_fun + "(this.ptr, this.offset, val);\n\
-                };\
-                ";
+                wrapper_fun += `
+                    strProto.get_` + names[i] + ` = function ()
+                    {
+                        return ` + loader + `(this.ptr, this.offset);
+                    };
+                    strProto.set_` + names[i] + ` = function (val)
+                    {
+                        return ` + mem.store_fun + `(this.ptr, this.offset, val);
+                    };
+                `;
             }
 
             // setup for next member
@@ -1226,26 +1230,27 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         }
 
         // constructor function
-        wrapper_fun += "\n\
-                return (function(ptr, offset)\
-                {\
-                    var s = Object.create(strProto);\n\
-                    if ($ir_is_rawptr(ptr))\n\
-                    {\n\
-                       s.ptr = ptr;\n\
-                       s.offset = offset || 0;\n\
-                    }\
-                    else\
-                    {\
-                      s.ptr = c.malloc(" + size + ");\
-                      s.offset = offset || 0;\n\
-                   }\n" +
+        wrapper_fun += `
+                return (function(ptr, offset)
+                {
+                    var s = Object.create(strProto);
+                    if ($ir_is_rawptr(ptr))
+                    {
+                       s.ptr = ptr;
+                       s.offset = offset || 0;
+                    }
+                    else
+                    {
+                        s.ptr = c.malloc(" + size + ");
+                        s.offset = offset || 0;
+                    }
+                    ` +
                    loader_dec +
-                   "\
-                    return s;\
-                });\
-            })\
-        ";
+                   `
+                    return s;
+                });
+            })
+        `;
 
         if (loader_n > 0)
         {
@@ -1277,17 +1282,17 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var loader_n = 0;
         var arg_str;
 
-        var wrapper_fun = "\
-            (function(c)\n\
-            {\n\
-                var strProto = {};\n\
-                strProto.wrap = function(ptr)\n\
-                {\n\
-                    if (!ir_is_rawptr(ptr) || ptr === $nullptr)\n\
-                        throw 'CStruct cannot wrap nullptr.'\n\
-                    this.ptr = ptr;\n\
-                };\n\
-        ";
+        var wrapper_fun = `
+            (function(c)
+            {
+                var strProto = {};
+                strProto.wrap = function(ptr)
+                {
+                    if (!ir_is_rawptr(ptr) || ptr === $nullptr)
+                        throw 'CStruct cannot wrap nullptr.'
+                    this.ptr = ptr;
+                };
+        `;
 
         while (i < l)
         {
@@ -1314,21 +1319,25 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 loader_n += 1;
                 arg_str = (arg_str) ? (arg_str + ", ld" + loader_n) : ("ld1");
                 loaders.push(mem.wrapper_fun);
-                loader_dec = "\n\
-                s." + names[i] + " = ld" + loader_n + "(s.ptr, s.offset + " + mem_offset + ");\n\
-                ";
+                loader_dec = `
+                    s.` + names[i] + ` = ld` + loader_n +
+                        `(s.ptr, s.offset + ` + mem_offset + `);
+                `;
             }
             else
             {
                 // This member uses simple getter/setter
-                wrapper_fun += "\
-                strProto.get_" + names[i] + " = function (){\n\
-                    return " + loader + "(this.ptr, this.offset + " + mem_offset + ");\n\
-                };\n\
-                strProto.set_" + names[i] + "= function (val){\n\
-                    return " + mem.store_fun + "(this.ptr, this.offset + " + mem_offset + ", val);\n\
-                };\
-                ";
+                wrapper_fun += `
+                    strProto.get_` + names[i] + ` = function ()
+                    {
+                        return ` + loader + `(this.ptr, this.offset + ` + mem_offset + `);
+                    };
+                    strProto.set_` + names[i] + `= function (val)
+                    {
+                        return ` + mem.store_fun +
+                            `(this.ptr, this.offset + ` + mem_offset + `, val);
+                };
+                `;
             }
 
             // setup for next member
