@@ -1049,8 +1049,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         }
 
         // Generate wrapper function
-        fun_str = `
-            function(fun_sym)
+        fun_str =
+           `function(fun_sym)
             {
                 return function(` + arg_str  + `)
                 {
@@ -1058,8 +1058,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                         ('"' + sig_str + '"') +
                         (arg_str === "" ? arg_str : (", " + arg_str)) + `);
                 };
-            };
-        `;
+            };`;
 
         return eval(fun_str);
     }
@@ -1072,30 +1071,28 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var size = type.size;
         var load_fun = type.load_fun;
         var store_fun = type.store_fun;
-        var wrapper_fun = `
-            (function(c, string)
-            {
-        `;
+        var wrapper_fun =
+           `(function(c, string)
+            {`;
 
         if (type.name === "char")
         {
             // Special case toString for char[]
-            wrapper_fun = `
-                (function(c, string)
+            wrapper_fun =
+               `(function(c, string)
                  {
                      var arrProto = {};
                      arrProto.toString = function()
                      {
                       return string(this.ptr, 0, this.offset);
                      };
-                     arrProto.toJS = arrProto.toString;
-            `;
+                     arrProto.toJS = arrProto.toString;`;
         }
         else
         {
             // toString for other types
-            wrapper_fun = `
-                (function(c)
+            wrapper_fun =
+               `(function(c)
                  {
                      var arrProto = {};
 
@@ -1124,13 +1121,12 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                           i += 1;
                          }
                          return a;
-                     };
-            `;
+                     };`;
         }
 
         // get/set functions and constructor
-        wrapper_fun += `
-            arrProto.get = function(index)
+        wrapper_fun +=
+           `arrProto.get = function(index)
             {
                 return ` + load_fun + `(this.ptr, this.offset + (` + size + ` * index));
             };
@@ -1155,8 +1151,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 }
                 return arr;
             });
-        })
-        `;
+        })`;
 
         // The wrapper needs acces to the c object for c.malloc and string for toString
         return eval(wrapper_fun)(c, string);
@@ -1178,11 +1173,10 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var loader_n = 0;
         var arg_str;
 
-        var wrapper_fun = `
-            (function(c)
+        var wrapper_fun =
+           `(function(c)
             {
-                var strProto = {};
-        `;
+                var strProto = {};`;
 
         while (i < l)
         {
@@ -1206,23 +1200,21 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 loader_n += 1;
                 arg_str = (arg_str) ? (arg_str + ", ld" + loader_n) : ("ld1");
                 loaders.push(mem.wrapper_fun);
-                loader_dec = `
-                    s.` + names[i] + ` = ld` + loader_n + `(s.ptr, s.offset);
-                `;
+                loader_dec =
+                    `s.` + names[i] + ` = ld` + loader_n + `(s.ptr, s.offset);`;
             }
             else
             {
                 // This member uses simple getter/setter
-                wrapper_fun += `
-                    strProto.get_` + names[i] + ` = function ()
+                wrapper_fun +=
+                   `strProto.get_` + names[i] + ` = function ()
                     {
                         return ` + loader + `(this.ptr, this.offset);
                     };
                     strProto.set_` + names[i] + ` = function (val)
                     {
                         return ` + mem.store_fun + `(this.ptr, this.offset, val);
-                    };
-                `;
+                    };`;
             }
 
             // setup for next member
@@ -1230,8 +1222,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         }
 
         // constructor function
-        wrapper_fun += `
-                return (function(ptr, offset)
+        wrapper_fun +=
+               `return (function(ptr, offset)
                 {
                     var s = Object.create(strProto);
                     if ($ir_is_rawptr(ptr))
@@ -1254,12 +1246,12 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         if (loader_n > 0)
         {
             // If any of the members use wrappers, add access to the wrapping functions
-            wrapper_fun = `
-                (function(` + arg_str + `)
+            wrapper_fun =
+                `(function(` + arg_str + `)
                  {
                      return ` + wrapper_fun + `
                  })
-            `;
+                `;
             return eval(wrapper_fun).apply(this, loaders)(c);
         }
         else
@@ -1323,15 +1315,15 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 loader_n += 1;
                 arg_str = (arg_str) ? (arg_str + ", ld" + loader_n) : ("ld1");
                 loaders.push(mem.wrapper_fun);
-                loader_dec = `
-                    s.` + names[i] + ` = ld` + loader_n + `(s.ptr, s.offset + ` + mem_offset + `);
-                `;
+                loader_dec =
+                    `s.` + names[i] + ` = ld` +
+                        loader_n + `(s.ptr, s.offset + ` + mem_offset + `);`;
             }
             else
             {
                 // This member uses simple getter/setter
-                wrapper_fun += `
-                    strProto.get_` + names[i] + ` = function ()
+                wrapper_fun +=
+                   `strProto.get_` + names[i] + ` = function ()
                     {
                         return ` + loader + `(this.ptr, this.offset + ` + mem_offset + `);
                     };
@@ -1349,8 +1341,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         }
 
         // constructor function
-        wrapper_fun += `
-                return (function(ptr, offset)
+        wrapper_fun +=
+               `return (function(ptr, offset)
                 {
                     var s = Object.create(strProto);
                     if ($ir_is_rawptr(ptr))
@@ -1369,18 +1361,16 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     `
                     return s;
                 });
-            })
-        `;
+            })`;
 
         if (loader_n > 0)
         {
             // If any of the members use wrappers, add access to the wrapping functions
-            wrapper_fun = `
-                (function(` + arg_str + `)
+            wrapper_fun =
+                `(function(` + arg_str + `)
                  {
                      return ` + wrapper_fun + `;
-                 })
-            `;
+                 })`;
             return eval(wrapper_fun).apply(this, loaders)(c);
         }
         else
@@ -1869,8 +1859,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         {
             sig_arr = sig.split(",");
             arg_str = getArgString(sig_arr.length - 1);
-            fun_str = `
-                function(lib)
+            fun_str =
+               `function(lib)
                 {
                     var fun_sym = $ir_get_sym(lib, '` + fname + `');
                     return function(` + arg_str  + `)
@@ -1879,8 +1869,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                             ('"' + sig + '"') +
                            (arg_str === "" ? arg_str : (", " + arg_str)) + `);
                     };
-                };
-            `;
+                };`;
             fun = eval(fun_str)(this.ptr);
         }
         else

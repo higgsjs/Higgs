@@ -36,8 +36,7 @@
 *****************************************************************************/
 
 /**
-lib/x - provides bindings to Xlib
-NOTE: currently this provides just enough bindings for the drawing lib
+lib/draw - provides basic drawing API using xlib
 */
 
 (function()
@@ -58,7 +57,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     var poll = ffi.c.poll;
 
     // Xlib
-    var Xlib = require('lib/x');
+    var Xlib = require('lib/x11');
     var XEventMask = Xlib.XEventMask;
     var XEvents = Xlib.XEvents;
 

@@ -36,7 +36,7 @@
 *****************************************************************************/
 
 /**
-lib/x - provides bindings to Xlib
+lib/x11 - provides bindings to Xlib
 NOTE: currently this provides just enough bindings for the drawing lib
 */
 
