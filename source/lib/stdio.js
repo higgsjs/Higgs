@@ -110,7 +110,7 @@ Bindings for common c I/O functions
         this.mode = mode;
         // The size of the buffer used in various string operations
         this.buf_size = io.BUF_SIZE;
-        // Handle for buffer
+        // Ptr for buffer
         this.buffer = c.malloc(io.BUF_SIZE);
 
         // Pass null for dummy file object
@@ -127,18 +127,18 @@ Bindings for common c I/O functions
         if (ffi.isNullPtr(fh))
             throw "Unable to open file. Mode: '" + mode + "' File: '" + file + "'";
 
-        this.handle = fh;
+        this.ptr = fh;
     }
 
     /**
     Wrap a file-like stream
     */
-    function stream(handle, name)
+    function stream(ptr, name)
     {
         var s = new File(null);
         s.stream = true;
         s.name = name || "stream";
-        s.handle = handle;
+        s.ptr = ptr;
         return s;
     }
 
@@ -160,17 +160,17 @@ Bindings for common c I/O functions
     */
     File.prototype.close = function()
     {
-        if (ffi.isNullPtr(this.handle) || this.file === null)
+        if (ffi.isNullPtr(this.ptr) || this.file === null)
             throw "Cannot close file: " + this.name;
 
         // Close, return false if it fails
-        var r = c.fclose(this.handle);
+        var r = c.fclose(this.ptr);
         if (r !== 0)
             return false;
 
         // Free resources
         c.free(this.buffer);
-        this.handle = ffi.nullPtr;
+        this.ptr = ffi.nullPtr;
 
         return true;
     };
@@ -181,9 +181,9 @@ Bindings for common c I/O functions
     */
     File.prototype.flush = function()
     {
-        if (ffi.isNullPtr(this.handle))
+        if (ffi.isNullPtr(this.ptr))
             throw "Cannot flush file: " + this.name;
-        var r = c.fflush(this.handle);
+        var r = c.fflush(this.ptr);
         return (r === 0);
     };
 
@@ -193,8 +193,8 @@ Bindings for common c I/O functions
     */
     File.prototype.EOF = function()
     {
-        var chr = c.fgetc(this.handle);
-        c.ungetc(chr, this.handle);
+        var chr = c.fgetc(this.ptr);
+        c.ungetc(chr, this.ptr);
         return (chr < 0);
     };
 
@@ -203,7 +203,7 @@ Bindings for common c I/O functions
     */
     File.prototype.tell = function()
     {
-        return c.ftell(this.handle);
+        return c.ftell(this.ptr);
     };
 
     /**
@@ -212,7 +212,7 @@ Bindings for common c I/O functions
     File.prototype.seek= function(offset, origin)
     {
         origin = (origin > -1 && origin < 3) ? origin : 0;
-        var r = C.fseek(this.handle, offset, origin);
+        var r = C.fseek(this.ptr, offset, origin);
         return (r === 0);
     };
 
@@ -221,7 +221,7 @@ Bindings for common c I/O functions
     */
     File.prototype.rewind = function()
     {
-        c.rewind(this.handle);
+        c.rewind(this.ptr);
     };
 
     /**
@@ -230,7 +230,7 @@ Bindings for common c I/O functions
     File.prototype.getc = function()
     {
         // TODO: skip null chars?
-        var chr = c.fgetc(this.handle);
+        var chr = c.fgetc(this.ptr);
         return (chr > -1) ? String.fromCharCode(chr) : "";
     };
 
@@ -239,7 +239,7 @@ Bindings for common c I/O functions
     */
     File.prototype.readUint8 = function()
     {
-        var len = c.fread(this.buffer, 1, 1, this.handle);
+        var len = c.fread(this.buffer, 1, 1, this.ptr);
         if (len === 0)
             return NaN;
         return $ir_load_u8(this.buffer, 0);
@@ -250,7 +250,7 @@ Bindings for common c I/O functions
     */
     File.prototype.readUint16 = function()
     {
-        var len = c.fread(this.buffer, 2, 1, this.handle);
+        var len = c.fread(this.buffer, 2, 1, this.ptr);
         if (len === 0)
             return NaN;
         return $ir_load_u16(this.buffer, 0);
@@ -261,7 +261,7 @@ Bindings for common c I/O functions
     */
     File.prototype.readUint32 = function()
     {
-        var len = c.fread(this.buffer, 4, 1, this.handle);
+        var len = c.fread(this.buffer, 4, 1, this.ptr);
         if (len === 0)
             return NaN;
         return $ir_load_u32(this.buffer, 0);
@@ -272,7 +272,7 @@ Bindings for common c I/O functions
     */
     File.prototype.readFloat64 = function()
     {
-        var len = c.fread(this.buffer, 8, 1, this.handle);
+        var len = c.fread(this.buffer, 8, 1, this.ptr);
         if (len === 0)
             return NaN;
         return $ir_load_f64(this.buffer, 0);
@@ -293,7 +293,7 @@ Bindings for common c I/O functions
         else if (max > this.buf_size)
             this.resizeBuf(max);
 
-        var line = c.fgets(this.buffer, max, this.handle);
+        var line = c.fgets(this.buffer, max, this.ptr);
 
         // Handle cases where line fits within buf_size/max or could not be read
         if (ffi.isNullPtr(line))
@@ -308,7 +308,7 @@ Bindings for common c I/O functions
         str = ffi.string(line, len);
 
         do {
-            line = c.fgets(this.buffer, max, this.handle);
+            line = c.fgets(this.buffer, max, this.ptr);
             if (ffi.isNullPtr(line))
                 return str;
             len = c.strlen(line);
@@ -334,7 +334,7 @@ Bindings for common c I/O functions
         {
             if (max > this.buf_size)
                 this.resizeBuf(max);
-            len = c.fread(this.buffer, 1, max, this.handle);
+            len = c.fread(this.buffer, 1, max, this.ptr);
             return ffi.string(this.buffer, len);
         }
 
@@ -342,9 +342,9 @@ Bindings for common c I/O functions
         max = this.buf_size;
         str = "";
         do {
-            len = c.fread(this.buffer, 1, max, this.handle);
+            len = c.fread(this.buffer, 1, max, this.ptr);
             str += ffi.string(this.buffer, len);
-        } while (c.feof(this.handle) === 0);
+        } while (c.feof(this.ptr) === 0);
         return str;
     };
 
@@ -355,7 +355,7 @@ Bindings for common c I/O functions
     {
         var code = $rt_str_get_data(chr, 0);
         var r;
-        r = c.fputc(code, this.handle);
+        r = c.fputc(code, this.ptr);
         return (r === code);
     };
 
@@ -366,7 +366,7 @@ Bindings for common c I/O functions
     {
         var size = 1;
         $ir_store_u8(this.buffer, 0, data);
-        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        var r = c.fwrite(this.buffer, size, 1, this.ptr);
         return r === size;
     };
 
@@ -377,7 +377,7 @@ Bindings for common c I/O functions
     {
         var size = 1;
         $ir_store_i8(this.buffer, 0, data);
-        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        var r = c.fwrite(this.buffer, size, 1, this.ptr);
         return r === size;
     };
 
@@ -388,7 +388,7 @@ Bindings for common c I/O functions
     {
         var size = 2;
         $ir_store_u16(this.buffer, 0, data);
-        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        var r = c.fwrite(this.buffer, size, 1, this.ptr);
         return r === size;
     };
 
@@ -399,7 +399,7 @@ Bindings for common c I/O functions
     {
         var size = 2;
         $ir_store_i16(this.buffer, 0, data);
-        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        var r = c.fwrite(this.buffer, size, 1, this.ptr);
         return r === size;
     };
 
@@ -410,7 +410,7 @@ Bindings for common c I/O functions
     {
         var size = 4;
         $ir_store_u32(this.buffer, 0, data);
-        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        var r = c.fwrite(this.buffer, size, 1, this.ptr);
         return r === size;
     };
 
@@ -421,7 +421,7 @@ Bindings for common c I/O functions
     {
         var size = 8;
         $ir_store_f64(this.buffer, 0, data);
-        var r = c.fwrite(this.buffer, size, 1, this.handle);
+        var r = c.fwrite(this.buffer, size, 1, this.ptr);
         return r === 1;
     };
 
@@ -435,7 +435,7 @@ Bindings for common c I/O functions
         if (max > this.buf_size)
             this.resizeBuf(max + 1);
         ffi.jsstrcpy(this.buffer, data);
-        r = c.fwrite(this.buffer, 1, max, this.handle);
+        r = c.fwrite(this.buffer, 1, max, this.ptr);
         return r === max;
     };
 
@@ -507,7 +507,7 @@ Bindings for common c I/O functions
             throw "Unable to get tmp file.";
 
         r = new File(null);
-        r.handle = file;
+        r.ptr = file;
         r.mode = "wb+";
         r.name = "TMPFILE";
         r.file = "TMPFILE";
