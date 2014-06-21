@@ -279,14 +279,6 @@ Opcode ALLOC_STRING = { "alloc_string", true, [OpArg.LOCAL], &gen_alloc_string, 
 /// Trigger a garbage collection
 Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &gen_gc_collect, OpInfo.MAY_GC | OpInfo.IMPURE };
 
-/// GET_GLOBAL <propName>
-/// Note: hidden parameter is a cached global property index
-Opcode GET_GLOBAL = { "get_global", true, [OpArg.STRING], &gen_get_global, OpInfo.MAY_GC | OpInfo.IMPURE };
-
-/// SET_GLOBAL <propName> <value>
-/// Note: hidden parameter is a cached global property index
-Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
-
 /// Compute the hash code for a string and
 /// try to find the string in the string table
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &gen_get_str, OpInfo.MAY_GC };
@@ -302,23 +294,20 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 
 /// Allocate a new map object
-Opcode NEW_MAP = { "new_map", true, [OpArg.LOCAL], &gen_new_map };
-
-/// Create a map object associated with this instruction
-Opcode MAKE_MAP = { "make_map", true, [OpArg.MAP, OpArg.LOCAL], &gen_make_map };
-
-/// Get the number of properties to allocate for objects with a given map
-Opcode MAP_NUM_PROPS = { "map_num_props", true, [OpArg.LOCAL], &gen_map_num_props };
+Opcode SHAPE_EMPTY = { "shape_empty", true, [], &gen_shape_empty };
 
 /// Get the index for a given property name in a given map
-Opcode MAP_PROP_IDX = { "map_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_map_prop_idx };
+Opcode SHAPE_PROP_IDX = { "shape_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_prop_idx };
 
-/// Get the name for a given property index in a given map
-Opcode MAP_PROP_NAME = { "map_prop_name", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_map_prop_name, OpInfo.MAY_GC };
+/// Set the value of an object property based on its shape
+Opcode SHAPE_SET_PROP = { "shape_set_prop", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop };
+
+/// Get the value of an object property based on its shape
+Opcode SHAPE_GET_PROP = { "shape_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_prop };
 
 /// <dstLocal> = NEW_CLOS <funExpr>
 /// Create a new closure from a function's AST node
-Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN, OpArg.LOCAL, OpArg.LOCAL], &gen_new_clos, OpInfo.MAY_GC };
+Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN], &gen_new_clos, OpInfo.MAY_GC };
 
 /// Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &gen_print_str, OpInfo.IMPURE };

@@ -1006,24 +1006,6 @@ class IRFunPtr : IRValue
 }
 
 /**
-IR map pointer constant (stateful, non-constant, may be null)
-*/
-class IRMapPtr : IRValue
-{
-    ObjMap map;
-
-    this(ObjMap map = null)
-    {
-        this.map = map;
-    }
-
-    override string toString()
-    {
-        return "<map:" ~ (map? to!string(cast(void*)map):"NULL") ~ ">";
-    }
-}
-
-/**
 Link tanle index value (stateful, non-constant, initially null)
 */
 class IRLinkIdx : IRValue
@@ -1388,6 +1370,10 @@ string getCalleeName(IRInstr callInstr)
     if (closInstr is null)
         return null;
 
+    // FIXME
+    assert (false);
+
+    /*
     // If the callee is a global function
     if (closInstr.opcode == &GET_GLOBAL)
     {
@@ -1411,6 +1397,7 @@ string getCalleeName(IRInstr callInstr)
             return to!string(nameArg.str);
         }
     }
+    */
 
     // Callee name unrecoverable
     return null;

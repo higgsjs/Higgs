@@ -348,18 +348,6 @@ class IRGenCtx
     }
 
     /**
-    Create an object class map value
-    */
-    IRInstr makeMap(ulong minNumProps = 0)
-    {
-        return addInstr(new IRInstr(
-            &MAKE_MAP, 
-            new IRMapPtr(),
-            IRConst.int32Cst(cast(uint32_t)minNumProps)
-        ));
-    }
-
-    /**
     Obtain a constant string value
     */
     IRInstr strVal(wstring str)
@@ -437,11 +425,12 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     {
         foreach (ident; unit.globals)
         {
-            auto setInstr = bodyCtx.addInstr(new IRInstr(
-                &SET_GLOBAL, 
-                new IRString(ident.name),
-                IRConst.undefCst
-            ));
+            genRtCall(
+                bodyCtx,
+                "setGlobal",
+                [bodyCtx.strVal(ident.name), cast(IRValue)IRConst.undefCst],
+                ident.pos
+            );
         }
     }
 
@@ -449,12 +438,11 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     if (ast.usesArguments)
     {
         // Create the "arguments" array
-        auto mapVal = bodyCtx.makeMap(1);
         auto protoVal = bodyCtx.addInstr(new IRInstr(&GET_ARR_PROTO));
         auto argObjVal = genRtCall(
             bodyCtx,
             "newArr",
-            [mapVal, protoVal, fun.argcVal],
+            [protoVal, fun.argcVal],
             fun.ast.pos
         );
 
@@ -572,13 +560,9 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
             delegate IRValue(IRGenCtx ctx)
             {
                 // Create a closure of this function
-                auto closMap = ctx.makeMap(3);
-                auto protMap = ctx.makeMap();
                 auto newClos = ctx.addInstr(new IRInstr(
                     &NEW_CLOS,
-                    new IRFunPtr(subFun),
-                    closMap,
-                    protMap
+                    new IRFunPtr(subFun)
                 ));
 
                 // Set the closure cells for the captured variables
@@ -1352,13 +1336,9 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             auto fun = new IRFunction(ctx.fun.vm, funExpr);
 
             // Create a closure of this function
-            auto closMap = ctx.makeMap(3);
-            auto protMap = ctx.makeMap();
             auto newClos = ctx.addInstr(new IRInstr(
                 &NEW_CLOS,
-                new IRFunPtr(fun),
-                closMap,
-                protMap
+                new IRFunPtr(fun)
             ));
 
             // Set the closure cells for the captured variables
@@ -2039,13 +2019,12 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
-        auto mapVal = ctx.makeMap();
         auto protoVal = ctx.addInstr(new IRInstr(&GET_ARR_PROTO));
         auto numVal = cast(IRValue)IRConst.int32Cst(cast(int32_t)arrayExpr.exprs.length);
         auto arrVal = genRtCall(
             ctx,
             "newArr",
-            [mapVal, protoVal, numVal],
+            [protoVal, numVal],
             expr.pos
         );
 
@@ -2072,12 +2051,11 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
     else if (auto objExpr = cast(ObjectExpr)expr)
     {
         // Create the object
-        auto mapVal = ctx.makeMap(objExpr.names.length);
         auto protoVal = ctx.addInstr(new IRInstr(&GET_OBJ_PROTO));
         auto objVal = genRtCall(
             ctx,
             "newObj",
-            [mapVal, protoVal],
+            [protoVal],
             expr.pos
         );
 
@@ -2212,10 +2190,12 @@ IRValue refToIR(
         if (useGetGlobal)
         {
             // Get the global value
-            return ctx.addInstr(new IRInstr(
-                &GET_GLOBAL,
-                new IRString(identExpr.name)
-            ));
+            return genRtCall(
+                ctx,
+                "getGlobal",
+                [ctx.strVal(identExpr.name)],
+                identExpr.pos
+            );
         }
         else
         {
@@ -2328,11 +2308,12 @@ IRValue assgToIR(
             //writefln("assigning to global: %s", identExpr);
 
             // Set the global value
-            ctx.addInstr(new IRInstr(
-                &SET_GLOBAL,
-                new IRString(identExpr.name),
-                rhsVal
-            ));
+            genRtCall(
+                ctx,
+                "setGlobal",
+                [ctx.strVal(identExpr.name), rhsVal],
+                lhsExpr.pos
+            );
         }
 
         // If the variable is captured or escaping
@@ -2538,18 +2519,6 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
                 );
             }
             argVal = new IRLinkIdx();
-            break;
-
-            // Map pointer
-            case OpArg.MAP:
-            if (cast(NullExpr)argExpr is null)
-            {
-                throw new ParseError(
-                    "expected null argument", 
-                    argExpr.pos
-                );
-            }
-            argVal = new IRMapPtr();
             break;
 
             default:

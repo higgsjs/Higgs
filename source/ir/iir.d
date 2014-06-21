@@ -191,15 +191,14 @@ static this()
     addOp(ALLOC_STRING);
 
     addOp(GC_COLLECT);
+    addOp(GET_STR);
     addOp(MAKE_LINK);
     addOp(SET_LINK);
     addOp(GET_LINK);
-    addOp(MAKE_MAP);
-    addOp(NEW_MAP);
-    addOp(MAP_NUM_PROPS);
-    addOp(MAP_PROP_IDX);
-    addOp(MAP_PROP_NAME);
-    addOp(GET_STR);
+    addOp(SHAPE_EMPTY);
+    addOp(SHAPE_PROP_IDX);
+    addOp(SHAPE_SET_PROP);
+    addOp(SHAPE_GET_PROP);
 
     addOp(LOAD_FILE);
     addOp(EVAL_STR);

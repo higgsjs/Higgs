@@ -380,14 +380,14 @@ void gcCollect(VM vm, size_t heapSize = 0)
     vm.funRefs = vm.liveFuns;
     vm.liveFuns.clear();
 
-    // Collect the dead maps
-    foreach (ptr, map; vm.mapRefs)
-        if (ptr !in vm.liveMaps)
-            collectMap(vm, map);
+    // Collect the dead shapes
+    foreach (ptr, shape; vm.shapeRefs)
+        if (ptr !in vm.liveShapes)
+            collectShape(vm, shape);
 
-    // Swap the map reference sets
-    vm.mapRefs = vm.liveMaps;
-    vm.liveMaps.clear();
+    // Swap the shape reference sets
+    vm.shapeRefs = vm.liveShapes;
+    vm.liveShapes.clear();
 
     //writefln("new live funs count: %s", vm.funRefs.length);
 
@@ -441,18 +441,14 @@ refptr gcForward(VM vm, refptr ptr)
         auto fun = getFunPtr(ptr);
         assert (fun !is null);
         visitFun(vm, fun);
-
-        auto map = cast(ObjMap)clos_get_ctor_map(ptr);
-        if (map !is null)
-            visitMap(vm, map);
     }
 
     // If this is an object of some kind
     if (header == LAYOUT_OBJ || header == LAYOUT_ARR || header == LAYOUT_CLOS)
     {
-        auto map = cast(ObjMap)obj_get_map(ptr);
-        assert (map !is null);
-        visitMap(vm, map);
+        auto shape = cast(ObjShape)obj_get_shape(ptr);
+        assert (shape !is null);
+        visitShape(vm, shape);
     }
 
     // Follow the next pointer chain as long as it points in the from-space
@@ -535,12 +531,12 @@ Word gcForward(VM vm, Word word, Type type)
         visitFun(vm, fun);
         return word;
 
-        // Map pointer (ClassMap)
+        // Object shape pointer
         // Return the pointer unchanged
-        case Type.MAPPTR:
-        auto map = word.mapVal;
-        assert (map !is null);
-        visitMap(vm, map);
+        case Type.SHAPEPTR:
+        auto shape = word.shapeVal;
+        assert (shape !is null);
+        visitShape(vm, shape);
         return word;
 
         // Return address
@@ -770,12 +766,6 @@ void visitFun(VM vm, IRFunction fun)
                     if (funArg.fun !is null)
                         visitFun(vm, funArg.fun);
                 }
-
-                else if (auto mapArg = cast(IRMapPtr)arg)
-                {
-                    if (mapArg.map !is null)
-                        visitMap(vm, mapArg.map);
-                }
             }
         }
     }
@@ -822,19 +812,19 @@ void collectFun(VM vm, IRFunction fun)
 }
 
 /**
-Visit a map
+Visit an object shape
 */
-void visitMap(VM vm, ObjMap map)
+void visitShape(VM vm, ObjShape shape)
 {
     // Add the map to the live set
-    vm.liveMaps[cast(void*)map] = map;
+    vm.liveShapes[cast(void*)shape] = shape;
 }
 
 /**
-Collect resources held by a dead map
+Collect resources held by a dead shape
 */
-void collectMap(VM vm, ObjMap map)
+void collectShape(VM vm, ObjShape shape)
 {
-    destroy(map);
+    destroy(shape);
 }
 

@@ -51,10 +51,11 @@ function $rt_objGetProp(obj, propStr)
         // Property was found, is not a getter
         return propVal;
     }
-
-    // There will be a getter/setter type tag for those objects
-    if (isGetSet(propVal))
+    else if ($ir_is_closure(propVal))
+    {
+        // The property is a setter function
         return propVal();
+    }
 
     // Get the object's prototype
     var proto = $rt_getProto(obj);

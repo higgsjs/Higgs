@@ -2076,6 +2076,7 @@ the base is an object and the key is a constant string
 */
 function $rt_getPropField(base, prop)
 {
+    /*
     // If the base is an object
     if ($ir_is_object(base))
     {
@@ -2108,6 +2109,7 @@ function $rt_getPropField(base, prop)
                 return val;
         }
     }
+    */
 
     return $rt_getProp(base, prop);
 }
@@ -2118,6 +2120,7 @@ the base is an object and the key is a constant string
 */
 function $rt_getPropMethod(base, prop)
 {
+    /*
     // If the base is an object
     if ($ir_is_object(base))
     {
@@ -2184,6 +2187,7 @@ function $rt_getPropMethod(base, prop)
             }
         }
     }
+    */
 
     return $rt_getProp(base, prop);
 }
@@ -2193,6 +2197,7 @@ Specialized version of getProp for array elements
 */
 function $rt_getPropElem(base, prop)
 {
+    /*
     // If the base is an array and the property is a non-negative integer
     if ($ir_is_array(base) &&
         $ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
@@ -2203,6 +2208,7 @@ function $rt_getPropElem(base, prop)
         var type = $rt_arrtbl_get_type(tbl, prop);
         return $ir_make_value(word, type);
     }
+    */
 
     return $rt_getProp(base, prop);
 }
@@ -2212,13 +2218,24 @@ Specialized version of getProp for "length" property accesses
 */
 function $rt_getPropLength(base)
 {
+    /*
     // If the base is an array
     if ($ir_is_array(base))
     {
         return $rt_arr_get_len(base);
     }
+    */
 
     return $rt_getProp(base, "length");
+}
+
+/**
+Set a property on the global object
+*/
+function $rt_getGlobal(prop)
+{
+    // TODO: inline this manually
+    return $rt_getPropField($ir_get_global_obj(), prop);
 }
 
 /**
@@ -2496,6 +2513,7 @@ Specialized version of setProp for object properties
 */
 function $rt_setPropField(base, prop, val)
 {
+    /*
     // If the base is an object or closure and the property is a string
     if (($ir_is_object(base) || $ir_is_closure(base)) && $ir_is_string(prop))
     {
@@ -2529,6 +2547,7 @@ function $rt_setPropField(base, prop, val)
             return;
         }
     }
+    */
 
     return $rt_setProp(base, prop, val);
 }
@@ -2538,6 +2557,7 @@ Specialized version of setProp for array elements
 */
 function $rt_setPropElem(base, prop, val)
 {
+    /*
     // If the base is an array
     if ($ir_is_array(base))
     {
@@ -2557,8 +2577,18 @@ function $rt_setPropElem(base, prop, val)
             return;
         }
     }
+    */
 
     return $rt_setProp(base, prop, val);
+}
+
+/**
+Set a property on the global object
+*/
+function $rt_setGlobal(prop, val)
+{
+    // TODO: inline this manually
+    $rt_setPropField($ir_get_global_obj(), prop, val);
 }
 
 /**

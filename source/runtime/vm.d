@@ -158,7 +158,7 @@ union Word
 
     IRFunction  funVal;
     IRInstr     insVal;
-    ObjMap      mapVal;
+    ObjShape    shapeVal;
 }
 
 unittest
@@ -369,11 +369,8 @@ immutable size_t HEAP_INIT_SIZE = 2^^24;
 /// Initial link table size
 immutable size_t LINK_TBL_INIT_SIZE = 16384;
 
-/// Initial base object size
-immutable size_t BASE_OBJ_INIT_SIZE = 128;
-
 /// Initial global object size
-immutable size_t GLOBAL_OBJ_INIT_SIZE = 512;
+immutable size_t GLOBAL_OBJ_INIT_SIZE = 1024;
 
 /// Initial executable heap size, release 128M, debug 16M bytes
 version (release)
@@ -434,12 +431,12 @@ class VM
     /// Set of functions found live by the GC during collection
     IRFunction[void*] liveFuns;
 
-    /// Set of weak references to class maps referenced in the heap
+    /// Set of weak references to object shapes referenced in the heap
     /// To be cleaned up by the GC
-    ObjMap[void*] mapRefs;
+    ObjShape[void*] shapeRefs;
 
-    /// Set of maps found live by the GC during collection
-    ObjMap[void*] liveMaps;
+    /// Set of shapes found live by the GC during collection
+    ObjShape[void*] liveShapes;
 
     /// Garbage collection count
     size_t gcCount = 0;
@@ -600,29 +597,26 @@ class VM
         // Allocate the object prototype object
         objProto = newObj(
             this,
-            new ObjMap(this, BASE_OBJ_INIT_SIZE),
             NULL
         );
 
         // Allocate the array prototype object
         arrProto = newObj(
             this,
-            new ObjMap(this, BASE_OBJ_INIT_SIZE),
             objProto
         );
 
         // Allocate the function prototype object
         funProto = newObj(
             this,
-            new ObjMap(this, BASE_OBJ_INIT_SIZE),
             objProto
         );
 
         // Allocate the global object
         globalObj = newObj(
             this,
-            new ObjMap(this, GLOBAL_OBJ_INIT_SIZE),
-            objProto
+            objProto,
+            GLOBAL_OBJ_INIT_SIZE
         );
 
         // Allocate the executable heap
@@ -1429,7 +1423,6 @@ extern (C) CodePtr throwError(
                 vm,
                 newObj(
                     vm,
-                    new ObjMap(vm, 1),
                     errProto.pair
                 )
             );

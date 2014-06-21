@@ -116,6 +116,8 @@ void gen_set_str(
     CodeBlock as
 )
 {
+    // FIXME?
+    /*
     // If the only use is map_prop_idx, don't generate any code
     if (instr.hasOneUse)
     {
@@ -123,6 +125,7 @@ void gen_set_str(
             if (instrUse.opcode is &MAP_PROP_IDX)
                 return;
     }
+    */
 
     auto linkVal = cast(IRLinkIdx)instr.getArg(1);
     assert (linkVal !is null);
@@ -2710,222 +2713,6 @@ void gen_gc_collect(
     as.loadJITRegs();
 }
 
-void gen_get_global(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    auto vm = st.fun.vm;
-
-    // Name string (D string)
-    auto strArg = cast(IRString)instr.getArg(0);
-    assert (strArg !is null);
-    auto nameStr = strArg.str;
-
-    // Lookup the property index in the class
-    // if the property slot doesn't exist, it will be allocated
-    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj.word.ptrVal);
-    assert (globalMap !is null);
-    auto propIdx = globalMap.getPropIdx(nameStr, false);
-
-    // If the property was not found
-    if (propIdx is uint32.max)
-    {
-        // Initialize the property, this may extend the global object
-        setProp(vm, vm.globalObj, nameStr, MISSING);
-        propIdx = globalMap.getPropIdx(nameStr, false);
-        assert (propIdx !is uint32.max);
-    }
-
-    extern (C) static CodePtr hostGetProp(CodeGenState st, IRInstr instr)
-    {
-        auto vm = st.fun.vm;
-
-        auto strArg = cast(IRString)instr.getArg(0);
-        auto nameStr = strArg.str;
-
-        auto propVal = getProp(
-            vm,
-            vm.globalObj,
-            nameStr
-        );
-
-        if (propVal == MISSING)
-        {
-            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
-            {
-                return liveInfo.liveAfter(val, instr);
-            };
-
-            // Spill the saved registers
-            st.spillSavedRegs(spillTest);
-
-            auto excHandler = throwError(
-                vm,
-                instr,
-                null,
-                "TypeError",
-                "global property not defined \"" ~ to!string(nameStr) ~ "\""
-            );
-
-            // Reload the saved registers
-            st.loadSavedRegs(spillTest);
-
-            return excHandler;
-        }
-
-        vm.push(propVal);
-
-        return null;
-    }
-
-    static CodePtr getFallbackSub(VM vm)
-    {
-        if (vm.getGlobalSub)
-            return vm.getGlobalSub;
-
-        auto as = vm.subsHeap;
-        vm.getGlobalSub = as.getAddress(as.getWritePos);
-
-        // Save the scratch, JIT and alloc registers
-        as.push(scrRegs[1]);
-        as.push(scrRegs[2]);
-        as.push(scrRegs[2]);
-        as.saveJITRegs();
-        as.saveAllocRegs();
-
-        // Call the host fallback code
-        // Note:
-        // CodeGenState pointer is in cargRegs[0]
-        // IRInstr pointer is in cargRegs[1]
-        as.ptr(scrRegs[0], &hostGetProp);
-        as.call(scrRegs[0].opnd);
-
-        // Restore the scratch, JIT and alloc registers
-        as.loadAllocRegs();
-        as.loadJITRegs();
-        as.pop(scrRegs[2]);
-        as.pop(scrRegs[2]);
-        as.pop(scrRegs[1]);
-
-        // If an exception was thrown, jump to the exception handler
-        as.cmp(cretReg.opnd, X86Opnd(0));
-        as.je(Label.FALSE);
-        as.pop(scrRegs[1]);
-        as.jmp(cretReg.opnd);
-        as.label(Label.FALSE);
-
-        // Get the property value from the stack
-        // r2 = type
-        // r1 = word
-        as.getType(scrRegs[2].reg(8), 0);
-        as.getWord(scrRegs[1], 0);
-        as.add(wspReg, Word.sizeof);
-        as.add(tspReg, Type.sizeof);
-
-        // Return to the point of call
-        as.ret();
-
-        // Link the labels in this subroutine
-        as.linkLabels();
-        return vm.getGlobalSub;
-    }
-
-    // Allocate the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    // Get the global object pointer
-    as.getMember!("VM.globalObj.word")(scrRegs[0], vmReg);
-
-    // Get the global object size/capacity
-    as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
-
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(vm.globalObj.word.ptrVal, 0);
-
-    // Load the word and type values
-    // r2 = type
-    // r1 = word
-    auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + propIdx, 8, scrRegs[1]);
-    auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * propIdx);
-    as.mov(scrRegs[2].opnd(8), typeMem);
-    as.mov(scrRegs[1].opnd(64), wordMem);
-
-    // If the value is not "missing", skip the fallback code
-    as.cmp(scrRegs[2].opnd(8), X86Opnd(Type.CONST));
-    as.jne(Label.SKIP);
-    as.cmp(scrRegs[1].opnd(64), X86Opnd(MISSING.word.int8Val));
-    as.jne(Label.SKIP);
-
-    // Call the fallback subroutine
-    auto getGlobalSub = getFallbackSub(vm);
-    as.ptr(cargRegs[0], st);
-    as.ptr(cargRegs[1], instr);
-    as.ptr(scrRegs[0], getGlobalSub);
-    as.call(scrRegs[0]);
-
-    // If skipping the fallback code
-    as.label(Label.SKIP);
-
-    // Set the output word
-    as.mov(outOpnd, scrRegs[1].opnd(64));
-
-    // Set the type value
-    st.setOutType(as, instr, scrRegs[2].reg(8));
-}
-
-void gen_set_global(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    auto vm = st.fun.vm;
-
-    // Name string (D string)
-    auto strArg = cast(IRString)instr.getArg(0);
-    assert (strArg !is null);
-    auto nameStr = strArg.str;
-
-    // Lookup the property index in the class
-    auto globalMap = cast(ObjMap)obj_get_map(vm.globalObj.word.ptrVal);
-    assert (globalMap !is null);
-    auto propIdx = globalMap.getPropIdx(nameStr, false);
-
-    // If the property was not found
-    if (propIdx is uint32.max)
-    {
-        // Initialize the property, this may extend the global object
-        setProp(vm, vm.globalObj, nameStr, MISSING);
-        propIdx = globalMap.getPropIdx(nameStr, false);
-        assert (propIdx !is uint32.max);
-    }
-
-    // Allocate the input operand
-    auto argOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd(64), true);
-
-    // Get the global object pointer
-    as.getMember!("VM.globalObj.word")(scrRegs[1], vmReg);
-
-    // Get the global object size/capacity
-    as.getField(scrRegs[2].reg(32), scrRegs[1], obj_ofs_cap(null));
-
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(vm.globalObj.word.ptrVal, 0);
-
-    // Set the word value
-    auto wordMem = X86Opnd(64, scrRegs[1], wordOfs + 8 * propIdx);
-    as.mov(wordMem, argOpnd);
-
-    // Set the type value
-    auto typeOpnd = st.getTypeOpnd(as, instr, 1, scrRegs[0].opnd(8), true);
-    auto typeMem = X86Opnd(8, scrRegs[1], wordOfs + propIdx, 8, scrRegs[2]);
-    as.mov(typeMem, typeOpnd);
-}
-
 void gen_get_str(
     BlockVersion ver,
     CodeGenState st,
@@ -3061,118 +2848,7 @@ void gen_get_link(
     st.setOutType(as, instr, scrRegs[1].reg(8));
 }
 
-void gen_make_map(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    auto mapArg = cast(IRMapPtr)instr.getArg(0);
-    assert (mapArg !is null);
-
-    auto numPropArg = cast(IRConst)instr.getArg(1);
-    assert (numPropArg !is null);
-
-    // Allocate the map
-    if (mapArg.map is null)
-        mapArg.map = new ObjMap(st.fun.vm, numPropArg.int32Val);
-
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-    auto outReg = outOpnd.isReg? outOpnd.reg:scrRegs[0];
-
-    as.ptr(outReg, mapArg.map);
-    if (!outOpnd.isReg)
-        as.mov(outOpnd, X86Opnd(outReg));
-
-    // Set the output type
-    st.setOutType(as, instr, Type.MAPPTR);
-}
-
-void gen_new_map(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) static ObjMap op_new_map(VM vm, uint32_t minNumProps)
-    {
-        return new ObjMap(vm, minNumProps);
-    }
-
-    // Spill the values live before the instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
-
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-    assert (outOpnd.isReg);
-
-    as.saveJITRegs();
-
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), vmReg.opnd);
-    as.mov(cargRegs[1].opnd(32), opnd0);
-    as.ptr(scrRegs[0], &op_new_map);
-    as.call(scrRegs[0]);
-
-    as.loadJITRegs();
-
-    // Store the output value into the output operand
-    as.mov(outOpnd, cretReg.opnd);
-
-    // Set the output type
-    st.setOutType(as, instr, Type.MAPPTR);
-}
-
-void gen_map_num_props(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) static uint32_t op_map_num_props(ObjMap map)
-    {
-        // Get the number of properties to allocate
-        assert (map !is null, "map is null");
-        return map.numProps;
-    }
-
-    // Spill the values live before the instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
-
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    as.saveJITRegs();
-
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), opnd0);
-    as.ptr(scrRegs[0], &op_map_num_props);
-    as.call(scrRegs[0]);
-
-    as.loadJITRegs();
-
-    // Store the output value into the output operand
-    as.mov(outOpnd, cretReg.opnd);
-
-    st.setOutType(as, instr, Type.INT32);
-}
-
+/*
 void gen_map_prop_idx(
     BlockVersion ver,
     CodeGenState st,
@@ -3404,7 +3080,9 @@ void gen_map_prop_idx(
     // Set the output type
     st.setOutType(as, instr, Type.INT32);
 }
+*/
 
+/*
 void gen_map_prop_name(
     BlockVersion ver,
     CodeGenState st,
@@ -3466,6 +3144,7 @@ void gen_map_prop_name(
     as.cmove(scrRegs[0].reg(8), scrRegs[1].opnd(8));
     st.setOutType(as, instr, scrRegs[0].reg(8));
 }
+*/
 
 /// Returns the empty shape
 alias GetValOp!(Type.SHAPEPTR, "emptyShape") gen_shape_empty;
@@ -3732,9 +3411,7 @@ void gen_new_clos(
     extern (C) static refptr op_new_clos(
         VM vm,
         IRInstr curInstr,
-        IRFunction fun,
-        ObjMap closMap,
-        ObjMap protMap
+        IRFunction fun
     )
     {
         vm.setCurInstr(curInstr);
@@ -3751,7 +3428,6 @@ void gen_new_clos(
             vm,
             newClos(
                 vm,
-                closMap,
                 vm.funProto,
                 cast(uint32)fun.ast.captVars.length,
                 fun
@@ -3763,7 +3439,6 @@ void gen_new_clos(
             vm,
             newObj(
                 vm,
-                protMap,
                 vm.objProto
             )
         );
@@ -3801,16 +3476,11 @@ void gen_new_clos(
     auto funArg = cast(IRFunPtr)instr.getArg(0);
     assert (funArg !is null);
 
-    auto closMapOpnd = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-    auto protMapOpnd = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
-
     as.saveJITRegs();
 
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.ptr(cargRegs[2], funArg.fun);
-    as.mov(cargRegs[3].opnd(64), closMapOpnd);
-    as.mov(cargRegs[4].opnd(64), protMapOpnd);
     as.ptr(scrRegs[0], &op_new_clos);
     as.call(scrRegs[0]);
 

@@ -213,7 +213,6 @@ class TypeProp
 
             if (cast(IRString)val ||
                 cast(IRFunPtr)val ||
-                cast(IRMapPtr)val ||
                 cast(IRLinkIdx)val)
                 return ANY;
 
@@ -414,13 +413,6 @@ class TypeProp
                 return TypeSet(Type.OBJECT);
             }
 
-            // Read global variable
-            if (op is &GET_GLOBAL)
-            {
-                // Unknown type, non-constant
-                return ANY;
-            }
-
             // int32 arithmetic/logical
             if (
                 op is &ADD_I32 ||
@@ -565,30 +557,6 @@ class TypeProp
             if (op is &ALLOC_CLOSURE)
             {
                 return TypeSet(Type.CLOSURE);
-            }
-
-            // Make map
-            if (op is &MAKE_MAP)
-            {
-                return TypeSet(Type.MAPPTR);
-            }
-
-            // Map property count
-            if (op is &MAP_NUM_PROPS)
-            {
-                return TypeSet(Type.INT32);
-            }
-
-            // Map property index
-            if (op is &MAP_PROP_IDX)
-            {
-                return TypeSet(Type.INT32);
-            }
-
-            // Map property name
-            if (op is &MAP_PROP_NAME)
-            {
-                return TypeSet(Type.STRING);
             }
 
             // New closure

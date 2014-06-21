@@ -21,7 +21,7 @@ typeSize = {
     'rawptr':8,
     'refptr':8,
     'funptr':8,
-    'mapptr':8,
+    'shapeptr':8,
 }
 
 typeShortName = {
@@ -37,7 +37,7 @@ typeShortName = {
     'rawptr':'rawptr',
     'refptr':'refptr',
     'funptr':'funptr',
-    'mapptr':'mapptr',
+    'shapeptr':'shapeptr',
 }
 
 # Layout declarations
@@ -86,8 +86,8 @@ layouts = [
             # Capacity, number of property slots
             { 'name':"cap" , 'type':"uint32" },
 
-            # Map reference
-            { 'name':"map", 'type':"mapptr" },
+            # Shape pointer
+            { 'name':"shape", 'type':"shapeptr" },
 
             # Property words
             { 'name':"word", 'type':"uint64", 'init':'missing_word', 'szField':"cap", 'tpField':'type' },
@@ -105,9 +105,6 @@ layouts = [
         'fields':
         [
             # Note: the function pointer is stored in the first object slot
-
-            # Class for objects constructed using "new" with this closure
-            { 'name':"ctor_map", 'type':"mapptr", 'init':"null"  },
 
             # Number of closure cells
             { 'name':"num_cells" , 'type':"uint32" },
@@ -916,7 +913,7 @@ DFile.write('import runtime.gc;\n')
 DFile.write('\n');
 
 DFile.write('alias ubyte* funptr;\n');
-DFile.write('alias ubyte* mapptr;\n');
+DFile.write('alias ubyte* shapeptr;\n');
 DFile.write('alias ubyte* rawptr;\n');
 DFile.write('alias ubyte* refptr;\n');
 DFile.write('alias byte   int8;\n');

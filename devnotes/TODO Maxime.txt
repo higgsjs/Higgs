@@ -54,6 +54,13 @@ FIXME: date-format-tofte
 
 TODO: look at eval notes again
 
+TODO: convert arrays and closures to a shaperer model
+- __arrtbl__
+- __arrlen__
+- closures need that "prototype" property?
+- for fns, useful to have a shape that includes the fptr! __fptr__
+- need clos cell vals, __clos_cell_0__ ...
+
 TODO: define $UNDEF, $NULLPTR in the VM
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
 TODO: eliminate $missing constant
@@ -84,33 +91,39 @@ TODO: vm method to define constants
 - Enforces allcaps naming
 - defRTConst(string name, ValuePair), defRTConst(string name, int32 intVal)
 
-TODO: random lib
+TODO: basic tests, no runtime, try creating empty obj, setting a property
+
+TODO: take a break, work on random lib
 - setRndGen
 - random.normal, random.choice
 - announce in chat
 
-TODO: basic tests, no runtime, try creating empty obj, setting a property
-
 TODO: functions in object.d to manipulate objects
 - comment out existing, code breaks here
 
-TODO: new object layout, is its own ext table
+TODO: figure out setProp first
+- Need some fast way to lookup property additions with names and types
+
+
+
+
+
+
+
+
+[SKIP] TODO: clos_shape, arr_shape?
+- clos has __fptr__, array has __arrtbl__
+- but every closure fptr is unique!
+
+[DONE] TODO: get_global, set_global, reimplement these as runtime functions?
+- RT calls don't need get_global
+- setGlobal(propName, val)
+
+[DONE] TODO: new object layout, is its own ext table
 - Is it much different? Still has num props
 - next is ext table?
-- arrays and closures, special hidden slots?
-  - __arrtbl__
-  - closures need that "prototype" property?
-  - for fns, useful to have a shape that includes the fptr!
 
-TODO: commit before changing object impl
-
-
-
-
-
-
-
-
+[DONE] TODO: commit before changing object impl
 
 [DONE] TODO: contact Dave Herman, head of research group at Mozilla
 

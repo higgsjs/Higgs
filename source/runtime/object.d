@@ -50,10 +50,17 @@ import runtime.string;
 import runtime.gc;
 import util.id;
 
+/// Prototype property slot index
+const uint32_t PROTO_SLOT_IDX = 0;
 
+/// Function pointer property slot index (closures only)
+const uint32_t FPTR_SLOT_IDX = 1;
 
+/// Static offset for the function pointer in a closure object
+const size_t FPTR_SLOT_OFS = clos_ofs_word(null, FPTR_SLOT_IDX);
 
-
+/// Default initial object size
+const uint32_t OBJ_INIT_SIZE = 8;
 
 void defObjConsts()
 {
@@ -188,15 +195,14 @@ class ObjShape
     }
 }
 
-// TODO: hosted newObj, needed for global object, etc.
-/*
 ValuePair newObj(
     VM vm,
-    ValuePair proto
+    ValuePair proto,
+    uint32_t initSize = OBJ_INIT_SIZE
 )
 {
-    assert (map !is null);
-
+    // TODO: hosted newObj, needed for global object, etc.
+    /*
     // Create a root for the prototype object
     auto protoObj = GCRoot(vm, proto);
 
@@ -208,166 +214,22 @@ ValuePair newObj(
     setProto(objPtr, protoObj.pair);
 
     return ValuePair(objPtr, Type.OBJECT);
-}
-*/
+    */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-/// Prototype property slot index
-const uint32_t PROTO_SLOT_IDX = 0;
-
-/// Function pointer property slot index (closures only)
-const uint32_t FPTR_SLOT_IDX = 1;
-
-/// Static offset for the function pointer in a closure object
-const size_t FPTR_SLOT_OFS = clos_ofs_word(null, FPTR_SLOT_IDX);
-
-/**
-Object field/slot layout map
-*/
-class ObjMap : IdObject
-{
-    alias Tuple!(uint32_t, "idx") Field;
-
-    private uint32_t minNumProps;
-
-    private uint32_t nextPropIdx;
-
-    /// Map of field names to field entries
-    private Field[wstring] fields;
-
-    /// Map of property indices to field names
-    private wstring[] fieldNames;
-
-    this(VM vm, uint32_t minNumProps)
-    {
-        // Register this map reference in the live set
-        vm.mapRefs[cast(void*)this] = this;
-
-        this.nextPropIdx = 0;
-        this.minNumProps = minNumProps;
-
-        // FIXME: temporary until proper shape system
-        // Reserve hidden slots in all maps for the
-        // prototype and function pointer
-        reserveSlots(2);
-    }
-
-    /// Reserve property slots for private use (hidden)
-    private void reserveSlots(uint32_t numSlots)
-    {
-        if (nextPropIdx != 0)
-            return;
-
-        nextPropIdx += numSlots;
-
-        minNumProps += numSlots;
-
-        for (size_t i = 0; i < numSlots; ++i)
-            fieldNames ~= null;
-    }
-
-    /// Get the number of properties to allocate
-    uint32_t numProps() const
-    {
-        return max(cast(uint32_t)fieldNames.length, minNumProps);
-    }
-
-    /// Find or allocate the property index for a given property name string
-    uint32_t getPropIdx(wstring propStr, bool allocField = false)
-    {
-        //writeln("getPropIdx, propStr=", propStr);
-
-        if (propStr in fields)
-            return fields[propStr].idx;
-
-        if (allocField is false)
-            return uint32_t.max;
-
-        auto propIdx = nextPropIdx++;
-        fields[propStr] = Field(propIdx);
-        fieldNames ~= propStr;
-
-        return propIdx;
-    }
-
-    /// Get a property index using a string object
-    uint32_t getPropIdx(refptr jsPropStr, bool allocField = false)
-    {
-        auto propStr = tempWStr(jsPropStr);
-
-        if (propStr in fields)
-            return fields[propStr].idx;
-
-        if (allocField is false)
-            return uint32_t.max;
-
-        // Here we copy the temporary string into storage
-        // controlled by D, as this string may be stored
-        // inside the fields map
-        propStr = propStr.dup;
-
-        auto propIdx = nextPropIdx++;
-        fields[propStr] = Field(propIdx);
-        fieldNames ~= propStr;
-
-        return propIdx;
-    }
-
-    /// Get the name string for a given property
-    wstring getPropName(uint32_t idx)
-    {
-        assert (idx < numProps);
-
-        if (idx < fieldNames.length)
-            return fieldNames[idx];
-
-        return null;
-    }
-}
-
-ValuePair newObj(
-    VM vm,
-    ObjMap map,
-    ValuePair proto
-)
-{
-    assert (map !is null);
-
-    // Create a root for the prototype object
-    auto protoObj = GCRoot(vm, proto);
-
-    // Allocate the object
-    auto objPtr = obj_alloc(vm, map.numProps);
-
-    obj_set_map(objPtr, cast(rawptr)map);
-
-    setProto(objPtr, protoObj.pair);
-
-    return ValuePair(objPtr, Type.OBJECT);
+    assert (false);
 }
 
 ValuePair newClos(
     VM vm,
-    ObjMap closMap,
     ValuePair proto,
     uint32_t allocNumCells,
     IRFunction fun
 )
 {
-    assert (closMap !is null);
+    // TODO
+    assert (false);
 
+    /*
     // Create a root for the prototype object
     auto protoObj = GCRoot(vm, proto);
 
@@ -385,20 +247,24 @@ ValuePair newClos(
     setFunPtr(objPtr, fun);
 
     return ValuePair(objPtr, Type.CLOSURE);
+    */
 }
 
 /**
 Set the prototype value for an object
 */
+/*
 void setProto(refptr objPtr, ValuePair proto)
 {
     obj_set_word(objPtr, PROTO_SLOT_IDX, proto.word.uint64Val);
     obj_set_type(objPtr, PROTO_SLOT_IDX, proto.type);
 }
+*/
 
 /**
 Get the prototype value for an object
 */
+/*
 ValuePair getProto(refptr objPtr)
 {
     return ValuePair(
@@ -406,6 +272,7 @@ ValuePair getProto(refptr objPtr)
         cast(Type)obj_get_type(objPtr, PROTO_SLOT_IDX)
     );
 }
+*/
 
 /**
 Set the function pointer on a closure object
@@ -426,6 +293,12 @@ IRFunction getFunPtr(refptr closPtr)
 
 ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
 {
+    // TODO: how do we handle getters, want to indicate this?
+
+    // TODO
+    assert (false);
+
+    /*
     auto objPtr = obj.word.ptrVal;
 
     // Follow the next link chain
@@ -468,10 +341,17 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
         proto,
         propStr
     );
+    */
 }
 
 void setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
 {
+    // TODO: how do we handle setters, want to indicate this?
+
+    // TODO
+    assert (false);
+
+    /*
     // Follow the next link chain
     for (;;)
     {
@@ -551,5 +431,6 @@ void setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
     // Set the value and its type in the object
     obj_set_word(obj.ptr, propIdx, val.word.uint64Val);
     obj_set_type(obj.ptr, propIdx, val.type);
+    */
 }
 
