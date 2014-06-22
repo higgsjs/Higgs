@@ -187,6 +187,7 @@ enum Type : ubyte
     OBJECT,
     ARRAY,
     CLOSURE,
+    GETSET,
     STRING
 }
 
@@ -201,6 +202,7 @@ bool isHeapPtr(Type type)
         case Type.OBJECT:
         case Type.ARRAY:
         case Type.CLOSURE:
+        case Type.GETSET:
         case Type.STRING:
         return true;
 
@@ -231,6 +233,7 @@ string typeToString(Type type)
         case Type.OBJECT:   return "object";
         case Type.ARRAY:    return "array";
         case Type.CLOSURE:  return "closure";
+        case Type.GETSET:  return "getter-setter";
         case Type.STRING:   return "string";
 
         default:
@@ -263,6 +266,12 @@ struct ValuePair
     {
         this.word.ptrVal = ptr;
         this.type = type;
+    }
+
+    this(IRFunction fun)
+    {
+        this.word.funVal = fun;
+        this.type = Type.FUNPTR;
     }
 
     /**
@@ -343,6 +352,9 @@ struct ValuePair
 
             case Type.CLOSURE:
             return "closure";
+
+            case Type.GETSET:
+            return "getter-setter";
 
             case Type.STRING:
             return extractStr(word.ptrVal);

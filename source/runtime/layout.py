@@ -128,6 +128,17 @@ layouts = [
         ]
     },
 
+    # Getter-setter layout (extends object)
+    {
+        'name':'getset',
+        'tag':'getset',
+        'extends':'obj',
+        'fields':
+        [
+            # Fields are handled by shape logic
+        ]
+    },
+
     # Array layout (extends object)
     {
         'name':'arr',

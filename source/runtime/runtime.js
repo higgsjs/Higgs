@@ -1785,15 +1785,6 @@ Allocate the "this" object for a constructor call
 function $rt_ctorNewThis(clos)
 {
     var proto = clos.prototype;
-
-    var ctorMap = $rt_clos_get_ctor_map(clos);
-
-    if ($ir_eq_rawptr(ctorMap, $nullptr))
-    {
-        ctorMap = $ir_new_map(0);
-        $rt_clos_set_ctor_map(clos, ctorMap);
-    }
-
     var thisObj = $rt_newObj(ctorMap, proto);
 
     return thisObj;
@@ -1813,21 +1804,17 @@ function $rt_ctorSelectRet(retVal, thisVal)
 /**
 Allocate an empty object
 */
-function $rt_newObj(mapPtr, protoPtr)
+function $rt_newObj(protoPtr)
 {
-    //$ir_print_str("Allocating object\n");
-
-    // Get the number of properties to allocate from the map
-    var numProps = $ir_map_num_props(mapPtr);
+    // TODO
+    assert (false);
 
     // Allocate the object
     var objPtr = $rt_obj_alloc(numProps);
 
     // Initialize the object
-    $rt_obj_set_map(objPtr, mapPtr);
-    $rt_setProto(objPtr, protoPtr);
-
-    //$ir_print_str("Allocated object\n");
+    //$rt_obj_set_shape(objPtr, mapPtr);
+    //$rt_setProto(objPtr, protoPtr);
 
     return objPtr;
 }
@@ -1835,19 +1822,19 @@ function $rt_newObj(mapPtr, protoPtr)
 /**
 Allocate an array
 */
-function $rt_newArr(mapPtr, protoPtr, numElems)
+function $rt_newArr(protoPtr, numElems)
 {
+    // TODO
+    assert (false);
+
     // Allocate the array table
     var tblPtr = $rt_arrtbl_alloc(numElems);
-
-    // Get the number of properties to allocate from the map
-    var numProps = $ir_map_num_props(mapPtr);
 
     // Allocate the array
     var objPtr = $rt_arr_alloc(numProps);
 
     // Initialize the object
-    $rt_obj_set_map(objPtr, mapPtr);
+    $rt_obj_set_shape(objPtr, mapPtr);
     $rt_setProto(objPtr, protoPtr);
     $rt_arr_set_tbl(objPtr, tblPtr);
     $rt_arr_set_len(objPtr, numElems);
@@ -1897,60 +1884,37 @@ function $rt_shrinkHeap(freeSpace)
 // Objects and property access
 //=============================================================================
 
-function $rt_getProto(obj)
-{
-    var w = $rt_obj_get_word(obj, 0);
-    var t = $rt_obj_get_type(obj, 0);
-    return $ir_make_value(w, t);
-}
-
-function $rt_setProto(obj, proto)
-{
-    $rt_obj_set_word(obj, 0, $ir_get_word(proto));
-    $rt_obj_set_type(obj, 0, $ir_get_type(proto));
-}
-
 /**
 Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
 {
-    // Follow the next link chain
-    for (;;)
-    {
-        var next = $rt_obj_get_next(obj);
-        if ($ir_eq_refptr(next, null))
-            break;
-        obj = next;
-    }
-
     // Find the index for this property
-    var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), propStr, false);
+    // This shifts us to a different version where the obj shape is known
+    // Implements a "version cache" with dynamic dispatching
+    var propIdx = $ir_shape_prop_idx_get(obj, propStr);
 
-    //print('getProp: ' + propStr + ' => ' + propIdx);
-
-    // Get the capacity of the object
-    var objCap = $rt_obj_get_cap(obj);
-
-    // If the property was found and is present in the object
-    if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
+    // If the property is defined on the object
+    if ($ir_ne_rawptr(defShape, $nullptr))
     {
-        var word = $rt_obj_get_word(obj, propIdx);
-        var type = $rt_obj_get_type(obj, propIdx);
-        var val = $ir_make_value(word, type);
+        // Get the property value
+        var propVal = $ir_shape_get_prop(obj, propIdx);
 
-        // If the value is not missing, return it
-        if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
-            return val;
-
-        //print('missing');
+        // If the property is a getter-setter function
+        if ($ir_is_getset(propVal))
+        {
+            // TODO: use apply
+            //return propVal();
+        }
+        else
+        {
+            // Property was found, is not a getter
+            return propVal;
+        }
     }
 
     // Get the object's prototype
     var proto = $rt_getProto(obj);
-
-    //print('recurse');
-    //print($ir_get_type(proto));
 
     // If the prototype is null, produce undefined
     if ($ir_eq_refptr(proto, null))
@@ -2362,86 +2326,21 @@ Set a property on an object using a string as key
 */
 function $rt_objSetProp(obj, propStr, val)
 {
-    // Follow the next link chain
-    for (;;)
-    {
-        var next = $rt_obj_get_next(obj);
-        if ($ir_eq_refptr(next, null))
-            break;
-        obj = next;
-    }
-
-    // Get the class from the object
-    var classPtr = $rt_obj_get_map(obj);
-
     // Find the index for this property
-    var propIdx = $ir_map_prop_idx(classPtr, propStr, true);
+    // Handles dynamic version dispatching
+    // This will not transition the object to a new shape
+    var propIdx = $ir_shape_prop_idx(obj, propStr);
 
-    // Get the capacity of the object
-    var objCap = $rt_obj_get_cap(obj);
+    // Hidden inside set_prop, we handle the extended table
+    // May also transition the object to another shape if this
+    // is a new property or the type written doesn't match what was known
+    // If the current shape is unknown, complex logic will be handled in D
+    var setter = $ir_shape_set_prop(obj, propIdx, val);
 
-    // If the object needs to be extended
-    if ($ir_ge_i32(propIdx, objCap))
+    if ($ir_is_getset(setter))
     {
-        //print("*** extending object ***");
-
-        // Compute the new object capacity
-        var newObjCap = (propIdx < 32)? (propIdx + 1):(2 * propIdx);
-
-        var objType = $rt_obj_get_header(obj);
-
-        var newObj;
-
-        if ($ir_eq_i32(objType, $rt_LAYOUT_OBJ))
-        {
-            newObj = $rt_obj_alloc(newObjCap);
-        }
-        else if ($ir_eq_i32(objType, $rt_LAYOUT_CLOS))
-        {
-            var numCells = $rt_clos_get_num_cells(obj);
-            newObj = $rt_clos_alloc(newObjCap, numCells);
-            for (var i = 0; i < numCells; ++i)
-                $rt_clos_set_cell(newObj, i, $rt_clos_get_cell(obj, i));
-        }
-        else if ($ir_eq_i32(objType, $rt_LAYOUT_ARR))
-        {
-            newObj = $rt_arr_alloc(newObjCap);
-            $rt_arr_set_len(newObj, $rt_arr_get_len(obj));
-            $rt_arr_set_tbl(newObj, $rt_arr_get_tbl(obj));
-        }
-        else
-        {
-            throw TypeError("unhandled object type in objSetProp");
-        }
-
-        $rt_obj_set_map(newObj, classPtr);
-
-        // Copy over the property words and types
-        for (var i = 0; $ir_lt_i32(i, objCap); i = $ir_add_i32(i, 1))
-        {
-            $rt_obj_set_word(newObj, i, $rt_obj_get_word(obj, i));
-            $rt_obj_set_type(newObj, i, $rt_obj_get_type(obj, i));
-        }
-
-        // Set the next pointer in the old object
-        $rt_obj_set_next(obj, newObj);
-
-        // If we just extended the global object, trigger garbage collection
-        if ($ir_eq_refptr(obj, $ir_get_global_obj()))
-        {
-            //print('extended global object');
-            $ir_gc_collect(0);
-        }
-
-        // Update the object pointer
-        obj = newObj;
-
-        //print('extended');
+        // TODO: apply
     }
-
-    // Set the value and its type in the object
-    $rt_obj_set_word(obj, propIdx, $ir_get_word(val));
-    $rt_obj_set_type(obj, propIdx, $ir_get_type(val));
 }
 
 /**

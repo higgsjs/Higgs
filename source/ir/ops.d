@@ -296,8 +296,8 @@ Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 /// Allocate a new map object
 Opcode SHAPE_EMPTY = { "shape_empty", true, [], &gen_shape_empty };
 
-/// Get the index for a given property name in a given map
-Opcode SHAPE_PROP_IDX = { "shape_prop_idx", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_prop_idx };
+/// Get the shape defining a given property
+Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def };
 
 /// Set the value of an object property based on its shape
 Opcode SHAPE_SET_PROP = { "shape_set_prop", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop };

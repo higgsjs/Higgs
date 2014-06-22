@@ -61,9 +61,8 @@ TODO: convert arrays and closures to a shaperer model
 - for fns, useful to have a shape that includes the fptr! __fptr__
 - need clos cell vals, __clos_cell_0__ ...
 
-TODO: define $UNDEF, $NULLPTR in the VM
+TODO: define $UNDEF, $NULLPTR, $MISSING in the VM
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
-TODO: eliminate $missing constant
 TODO: const globals
 
 TODO: internship, contact Luke Wagner?
@@ -81,7 +80,10 @@ TODO: blog post about typed shapes, quick illustrations
 
 Meeting:
 - e-mailed Dave Herman
-- Began implementing IR instrs for shapes
+- Shapes: began implementing IR instrs, object layout, basic runtime functions
+- Refined shape design, simplified some things, conditional branching, getter-setter handling
+
+TODO: complete runtime.js functions
 
 TODO: defObjConsts() in object.d
 - Define object layout constants needed by the runtime
@@ -93,23 +95,44 @@ TODO: vm method to define constants
 
 TODO: basic tests, no runtime, try creating empty obj, setting a property
 
+TODO: try initializing bare VM
+./higgs --nostdlib --noruntime --e ""
+
 TODO: take a break, work on random lib
 - setRndGen
 - random.normal, random.choice
 - announce in chat
 
-TODO: functions in object.d to manipulate objects
+TODO: runtime.js obj code
+
+TODO: fill in ops.d shape code
+
+TODO: deleted flag should produce null in getDefShape ***
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: change shape_prop_idx
+- should really produce the shape defining a property, much more useful
+- avoid having to do a second lookup in get_prop
+- shape_get_def
+
+[DONE] TODO: subtype test function
+
+[DONE] TODO: functions in object.d to manipulate objects
 - comment out existing, code breaks here
 
-TODO: figure out setProp first
+[DONE] FIXME: don't want to create a new shape on every prop definition
+- Need a "defProp" method that does a lookup through sub-shapes
+
+[DONE] TODO: figure out setProp first
 - Need some fast way to lookup property additions with names and types
-
-
-
-
-
-
-
 
 [SKIP] TODO: clos_shape, arr_shape?
 - clos has __fptr__, array has __arrtbl__

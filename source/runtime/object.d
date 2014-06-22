@@ -59,8 +59,8 @@ const uint32_t FPTR_SLOT_IDX = 1;
 /// Static offset for the function pointer in a closure object
 const size_t FPTR_SLOT_OFS = clos_ofs_word(null, FPTR_SLOT_IDX);
 
-/// Default initial object size
-const uint32_t OBJ_INIT_SIZE = 8;
+/// Minimum object capacity (number of slots)
+const uint32_t OBJ_MIN_CAP = 8;
 
 void defObjConsts()
 {
@@ -110,32 +110,52 @@ struct ValType
         }
     }
 
-    // TODO: union? wait and see if needed
-
     bool knownShape() const { return shape !is null; }
+
+    /**
+    Test if this type fits within (is more specific than) another type
+    */
+    bool isSubType(ValType that)
+    {
+        if (that.knownType)
+        {
+            if (!this.knownType)
+                return false;
+
+            if (this.type !is that.type)
+                return false;
+
+            if (that.knownShape)
+            {
+                if (!this.knownShape)
+                    return false;
+
+                if (this.knownShape !is that.knownShape)
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    // TODO: union? wait and see if needed
 }
 
 /**
 Object shape tree representation.
 Each shape defines or redefines a property.
-Note: getters/setters allocate two closure slots in an object.
 */
 class ObjShape
 {
     /// Parent shape in the tree
     const(ObjShape) parent;
 
+    // TODO
     /// Cache of property names to defining shapes, to accelerate lookups
-    const(ObjShape)[wstring] propCache;
+    //const(ObjShape)[wstring] propCache;
 
     /// Name of this property, null if array element property
     wstring propName;
-
-    /// Shape of the getter closure (if getter)
-    const(ObjShape) getter;
-
-    /// Shape of the setter closure (if setter)
-    const(ObjShape) setter;
 
     /// Value type, may be unknown
     ValType type;
@@ -165,27 +185,80 @@ class ObjShape
     /// Next slot index to allocate
     uint32_t nextIdx;
 
+    /// Sub-shape transitions, mapped by prop name, then prop type
+    const(ObjShape)[][ValType][wstring] subShapes;
+
     /// Empty shape constructor
     this()
     {
         this.parent = null;
         this.propName = null;
-        this.setter = null;
-        this.getter = null;
+
+        this.slotIdx = uint32_t.max;
+        this.nextIdx = 0;
     }
 
-    // TODO: method to define/redefine a property, get a new shape object
-    // - want to set type too...
-    // - normally, we only call this if we know that a transition is necessary
-    // - early on, may call this on every set prop
-    //ObjShape setProp(wstring propName, ValType type)
+    /// Property definition constructor
+    private this(
+        const(ObjShape) parent,
+        wstring propName,
+        ValType type
+    )
+    {
+        this.parent = parent;
+        this.propName = propName;
+
+        this.type = type;
+
+        this.slotIdx = parent.nextIdx;
+        this.nextIdx = this.slotIdx + 1;
+    }
+
+    /// Test if this shape defines a getter-setter
+    bool isGetSet() const { return type.knownType && type.type is Type.GETSET; }
+
+    /**
+    Method to define or redefine a property.
+    Either finds an existing sub-shape or create one.
+    */
+    const(ObjShape) defProp(wstring propName, ValType type)
+    {
+        if (propName in subShapes)
+        {
+            if (type in subShapes[propName])
+            {
+                foreach (shape; subShapes[propName][type])
+                {
+                    // If this shape matches, return it
+                    if (shape.writable is true &&
+                        shape.enumerable is true &&
+                        shape.configurable is true &&
+                        shape.deleted is false)
+                        return shape;
+                }
+            }
+        }
+
+        // Create the new shape
+        auto newShape = new ObjShape(this, propName, type);
+
+        // Add it to the sub-shapes
+        subShapes[propName][type] ~= newShape;
+        assert (subShapes[propName][type].length > 0);
+
+        return newShape;
+    }
 
     /**
     Get the shape defining a given property
     */
     const(ObjShape) getDefShape(wstring propName) const
     {
-        if (propName == this.propName)
+        // TODO: propCache? should only store at lookup point
+        // need hidden lookup start shape arg?
+
+        // If the name matches, and this is not the root empty shape
+        if (propName == this.propName && this.parent !is null)
             return this;
 
         if (parent)
@@ -198,25 +271,23 @@ class ObjShape
 ValuePair newObj(
     VM vm,
     ValuePair proto,
-    uint32_t initSize = OBJ_INIT_SIZE
+    uint32_t initCap = OBJ_MIN_CAP
 )
 {
-    // TODO: hosted newObj, needed for global object, etc.
-    /*
+    assert (initCap >= OBJ_MIN_CAP);
+
     // Create a root for the prototype object
     auto protoObj = GCRoot(vm, proto);
 
     // Allocate the object
-    auto objPtr = obj_alloc(vm, map.numProps);
+    auto objPtr = obj_alloc(vm, initCap);
+    auto objPair = ValuePair(objPtr, Type.OBJECT);
 
-    obj_set_map(objPtr, cast(rawptr)map);
+    obj_set_shape(objPtr, cast(rawptr)vm.emptyShape);
 
-    setProto(objPtr, protoObj.pair);
+    setProp(vm, objPair, "__proto__"w, protoObj.pair);
 
-    return ValuePair(objPtr, Type.OBJECT);
-    */
-
-    assert (false);
+    return objPair;
 }
 
 ValuePair newClos(
@@ -226,10 +297,6 @@ ValuePair newClos(
     IRFunction fun
 )
 {
-    // TODO
-    assert (false);
-
-    /*
     // Create a root for the prototype object
     auto protoObj = GCRoot(vm, proto);
 
@@ -237,50 +304,16 @@ ValuePair newClos(
     vm.funRefs[cast(void*)fun] = fun;
 
     // Allocate the closure object
-    auto objPtr = clos_alloc(vm, closMap.numProps, allocNumCells);
+    auto objPtr = clos_alloc(vm, OBJ_MIN_CAP, allocNumCells);
+    auto objPair = ValuePair(objPtr, Type.CLOSURE);
 
-    obj_set_map(objPtr, cast(rawptr)closMap);
+    obj_set_shape(objPtr, cast(rawptr)vm.emptyShape);
 
-    setProto(objPtr, protoObj.pair);
+    setProp(vm, objPair, "__proto__"w, protoObj.pair);
 
-    // Set the function pointer
-    setFunPtr(objPtr, fun);
+    setProp(vm, objPair, "__fptr__"w, ValuePair(fun));
 
-    return ValuePair(objPtr, Type.CLOSURE);
-    */
-}
-
-/**
-Set the prototype value for an object
-*/
-/*
-void setProto(refptr objPtr, ValuePair proto)
-{
-    obj_set_word(objPtr, PROTO_SLOT_IDX, proto.word.uint64Val);
-    obj_set_type(objPtr, PROTO_SLOT_IDX, proto.type);
-}
-*/
-
-/**
-Get the prototype value for an object
-*/
-/*
-ValuePair getProto(refptr objPtr)
-{
-    return ValuePair(
-        Word.uint64v(obj_get_word(objPtr, PROTO_SLOT_IDX)),
-        cast(Type)obj_get_type(objPtr, PROTO_SLOT_IDX)
-    );
-}
-*/
-
-/**
-Set the function pointer on a closure object
-*/
-void setFunPtr(refptr closPtr, IRFunction fun)
-{
-    clos_set_word(closPtr, FPTR_SLOT_IDX, cast(uint64_t)cast(rawptr)fun);
-    clos_set_type(closPtr, FPTR_SLOT_IDX, cast(uint8)Type.FUNPTR);
+    return objPair;
 }
 
 /**
@@ -291,49 +324,41 @@ IRFunction getFunPtr(refptr closPtr)
     return cast(IRFunction)cast(refptr)clos_get_word(closPtr, FPTR_SLOT_IDX);
 }
 
+ValuePair getSlotPair(refptr objPtr, uint32_t slotIdx)
+{
+    auto pWord = Word.uint64v(obj_get_word(objPtr, slotIdx));
+    auto pType = cast(Type)obj_get_type(objPtr, slotIdx);
+    return ValuePair(pWord, pType);
+}
+
+void setSlotPair(refptr objPtr, uint32_t slotIdx, ValuePair val)
+{
+    obj_set_word(objPtr, slotIdx, val.word.uint64Val);
+    obj_set_type(objPtr, slotIdx, val.type);
+}
+
 ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
 {
-    // TODO: how do we handle getters, want to indicate this?
+    // Get the shape from the object
+    auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
+    assert (objShape !is null);
 
-    // TODO
-    assert (false);
+    // Find the shape defining this property (if it exists)
+    auto defShape = objShape.getDefShape(propStr);
 
-    /*
-    auto objPtr = obj.word.ptrVal;
-
-    // Follow the next link chain
-    for (;;)
+    // If the property is defined
+    if (defShape !is null)
     {
-        auto nextPtr = obj_get_next(objPtr);
-        if (nextPtr is null)
-            break;
-         objPtr = nextPtr;
-    }
-
-    // Get the map from the object
-    auto map = cast(ObjMap)obj_get_map(objPtr);
-    assert (map !is null);
-
-    // Lookup the property index in the class
-    auto propIdx = map.getPropIdx(propStr);
-
-    // If the property index was found
-    if (propIdx != uint32.max)
-    {
-        auto pWord = Word.uint64v(obj_get_word(objPtr, propIdx));
-        auto pType = cast(Type)obj_get_type(objPtr, propIdx);
-
-        // If the property is not the "missing" value, return it directly
-        if (pType != MISSING.type || pWord != MISSING.word)
-            return ValuePair(pWord, pType);
+        auto slotIdx = defShape.slotIdx;
+        return getSlotPair(obj.word.ptrVal, slotIdx);
     }
 
     // Get the prototype pointer
-    auto proto = getProto(objPtr);
+    auto proto = getProp(vm, obj, "__proto__"w);
 
-    // If the prototype is null, produce the missing constant
+    // If the prototype is null, produce the undefined constant
     if (proto is NULL)
-        return MISSING;
+        return UNDEF;
 
     // Do a recursive lookup on the prototype
     return getProp(
@@ -341,96 +366,102 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
         proto,
         propStr
     );
-    */
 }
 
-void setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
+ValuePair setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
 {
-    // TODO: how do we handle setters, want to indicate this?
-
-    // TODO
-    assert (false);
-
-    /*
-    // Follow the next link chain
-    for (;;)
-    {
-        auto nextPtr = obj_get_next(objPair.word.ptrVal);
-        if (nextPtr is null)
-            break;
-        objPair.word.ptrVal = nextPtr;
-    }
-
     auto obj = GCRoot(vm, objPair);
     auto val = GCRoot(vm, valPair);
 
-    // Get the map from the object
-    auto map = cast(ObjMap)obj_get_map(obj.word.ptrVal);
-    assert (map !is null);
+    // Get the shape from the object
+    auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
+    assert (objShape !is null);
 
-    // Find/allocate the property index in the class
-    auto propIdx = map.getPropIdx(propStr, true);
+    // Find the shape defining this property (if it exists)
+    auto defShape = objShape.getDefShape(propStr);
 
-    //writeln("propIdx: ", propIdx);
+    auto valType = ValType(valPair);
 
-    // Get the length of the object
-    auto objCap = obj_get_cap(obj.ptr);
-
-    // If the object needs to be extended
-    if (propIdx >= objCap)
+    // If the property is not defined
+    if (defShape is null)
     {
-        // Compute the new object capacity
-        uint32_t newObjCap = (propIdx < 32)? (propIdx + 1):(2 * propIdx);
+        const(ObjShape) newShape = objShape.defProp(
+            propStr,
+            valType
+        );
 
-        auto objType = obj_get_header(obj.ptr);
+        obj_set_shape(obj.ptr, cast(rawptr)newShape);
 
-        refptr newObj;
-
-        // Switch on the layout type
-        switch (objType)
-        {
-            case LAYOUT_OBJ:
-            newObj = obj_alloc(vm, newObjCap);
-            break;
-
-            case LAYOUT_CLOS:
-            auto numCells = clos_get_num_cells(obj.ptr);
-            newObj = clos_alloc(vm, newObjCap, numCells);
-            for (uint32_t i = 0; i < numCells; ++i)
-                clos_set_cell(newObj, i, clos_get_cell(obj.ptr, i));
-            break;
-
-            default:
-            assert (false, "unhandled object type");
-        }
-
-        obj_set_map(newObj, obj_get_map(obj.ptr));
-        setProto(newObj, getProto(obj.ptr));
-
-        // Copy over the property words and types
-        for (uint32_t i = 0; i < objCap; ++i)
-        {
-            obj_set_word(newObj, i, obj_get_word(obj.ptr, i));
-            obj_set_type(newObj, i, obj_get_type(obj.ptr, i));
-        }
-
-        // Set the next pointer in the old object
-        obj_set_next(obj.ptr, newObj);
-
-        // If this is the global object, update
-        // the global object pointer
-        if (obj.pair == vm.globalObj)
-            vm.globalObj = ValuePair(newObj, Type.OBJECT);
-
-        // Update the object pointer
-        obj = ValuePair(newObj, Type.OBJECT);
-
-        //writefln("done extending object");
+        return setProp(vm, obj.pair, propStr, valPair);
     }
 
-    // Set the value and its type in the object
-    obj_set_word(obj.ptr, propIdx, val.word.uint64Val);
-    obj_set_type(obj.ptr, propIdx, val.type);
-    */
+    // TODO: handle type mismatches with defShape
+
+    uint32_t slotIdx = defShape.slotIdx;
+
+    // Get the number of slots in the object
+    auto objCap = obj_get_cap(obj.ptr);
+
+    // If the slot is within the object
+    if (slotIdx < objCap)
+    {
+        // If the property is a getter-setter
+        if (defShape.isGetSet)
+        {
+            // Return the getter-setter object
+            return getSlotPair(obj.ptr, slotIdx);
+        }
+        else
+        {
+            // Set the value and its type in the object
+            setSlotPair(obj.ptr, slotIdx, val.pair);
+            return NULL;
+        }
+    }
+
+    // The property is past the object's capacity
+    else 
+    {
+        slotIdx -= objCap;
+
+        // Get the extension table pointer
+        auto extTbl = GCRoot(vm, obj_get_next(obj.ptr), Type.OBJECT);
+
+        // If the extension table isn't yet allocated
+        if (extTbl.ptr is null)
+        {
+            extTbl = ValuePair(obj_alloc(vm, objCap), Type.OBJECT);
+            obj_set_next(obj.ptr, extTbl.ptr);
+        }
+
+        auto extCap = obj_get_cap(extTbl.ptr);
+
+        // If the extension table isn't big enough
+        if (slotIdx >= extCap)
+        {
+            uint32_t newExtCap = 2 * extCap;
+            auto newExtTbl = obj_alloc(vm, newExtCap);
+
+            // Copy over the property words and types
+            for (uint32_t i = 0; i < extCap; ++i)
+                setSlotPair(newExtTbl, i, getSlotPair(extTbl.ptr, i));
+
+            extTbl = ValuePair(newExtTbl, Type.OBJECT);
+            obj_set_next(obj.ptr, extTbl.ptr);
+        }
+
+        // If the property is a getter-setter
+        if (defShape.isGetSet)
+        {
+            // Return the getter-setter object
+            return getSlotPair(extTbl.ptr, slotIdx);
+        }
+        else
+        {
+            // Set the value and its type in the extension table
+            setSlotPair(extTbl.ptr, slotIdx, val.pair);
+            return NULL;
+        }
+    }
 }
 

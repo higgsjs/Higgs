@@ -3149,18 +3149,16 @@ void gen_map_prop_name(
 /// Returns the empty shape
 alias GetValOp!(Type.SHAPEPTR, "emptyShape") gen_shape_empty;
 
-/// Returns the index of a property
+/// Returns the shape defining a property, null if undefined
 /// Inputs: obj, propName
-/// TODO: this will become branching instruction, switches us to a
-///       version where the object shape is now known
-void gen_shape_prop_idx(
+void gen_shape_get_def(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static uint32_t op_shape_prop_idx(
+    extern (C) const(ObjShape) op_shape_get_def(
         refptr objPtr,
         refptr strPtr
     )
@@ -3168,17 +3166,16 @@ void gen_shape_prop_idx(
         // Increment the count of slow property lookups
         stats.numMapPropSlow++;
 
-        // TODO: get shape ptr from object
+        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
+        assert (objShape !is null, "shape is null");
 
-        /*
-        // Lookup the property index
-        assert (shape !is null, "map is null");
-        auto propIdx = shape.getPropIdx(strPtr);
-        return propIdx;
-        */
+        // Get a temporary slice on the JS string characters
+        auto propStr = tempWStr(strPtr);
 
-        // TODO
-        return 0;
+        // Lookup the shape defining this property
+        auto defShape = objShape.getDefShape(propStr);
+
+        return defShape;
     }
 
     // Spill the values that are live before the call
@@ -3200,7 +3197,7 @@ void gen_shape_prop_idx(
     // Call the host function
     as.mov(cargRegs[0].opnd(64), opnd0);
     as.mov(cargRegs[1].opnd(32), opnd1);
-    as.ptr(scrRegs[0], &op_shape_prop_idx);
+    as.ptr(scrRegs[0], &op_shape_get_def);
     as.call(scrRegs[0]);
 
     as.loadJITRegs();
@@ -3208,7 +3205,7 @@ void gen_shape_prop_idx(
     // Store the output value into the output operand
     as.mov(outOpnd, cretReg.opnd);
 
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Type.SHAPEPTR);
 }
 
 /// Sets the value of a property
@@ -3222,32 +3219,37 @@ void gen_shape_set_prop(
     CodeBlock as
 )
 {
-    extern (C) struct RetVal
-    {
-        Word retWord;
-        int8_t isSetter;
-    }
+    static assert (ValuePair.sizeof <= 2 * int64_t.sizeof);
 
-    static assert (RetVal.sizeof <= 2 * int64_t.sizeof);
-
-    extern (C) static RetVal op_shape_set_prop(
+    extern (C) static ValuePair op_shape_set_prop(
+        VM vm,
         refptr objPtr,
         uint32_t propIdx,
         Word valWord,
         Type valType
     )
     {
+
+
+
+
+
+
         // TODO
-        // TODO
-        // TODO
+        assert (false);
 
+        /*
+        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
+        assert (objShape !is null, "shape is null");
 
+        // Get a temporary slice on the JS string characters
+        auto propStr = tempWStr(strPtr);
 
+        // Set the property, or get the setter function
+        auto setter = setProp(vm, objPtr, propStr, ValuePair(valWord, valType));
 
-
-
-
-        return RetVal(Word.int32v(0), 0);
+        return RetVal(setter.word, setter.type is Type.CLOSURE);
+        */
     }
 
     // Spill the values that are live before the call
@@ -3269,41 +3271,19 @@ void gen_shape_set_prop(
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), objPtr);
-    as.mov(cargRegs[1].opnd(32), propIdx);
-    as.mov(cargRegs[2].opnd(64), valWord);
-    as.mov(cargRegs[2].opnd(64), valType);
+    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
+    as.mov(cargRegs[1].opnd(64), objPtr);
+    as.mov(cargRegs[2].opnd(32), propIdx);
+    as.mov(cargRegs[3].opnd(64), valWord);
+    as.mov(cargRegs[4].opnd(64), valType);
     as.ptr(scrRegs[0], &op_shape_set_prop);
     as.call(scrRegs[0]);
 
     as.loadJITRegs();
 
     // Set the output value
-    as.mov(outOpnd, X86Opnd(64, RSP, -RetVal.retWord.offsetof));
+    as.mov(outOpnd, X86Opnd(64, RSP, -ValuePair.word.offsetof));
     st.setOutType(as, instr, Type.CLOSURE);
-
-    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
-    auto branchF = getBranchEdge(instr.getTarget(1), st, false);
-
-    // Generate the branch code
-    ver.genBranch(
-        as,
-        branchT,
-        branchF,
-        delegate void(
-            CodeBlock as,
-            VM vm,
-            CodeFragment target0,
-            CodeFragment target1,
-            BranchShape shape
-        )
-        {
-            // If the property is a setter, go to the true branch, otherwise false
-            as.cmp(X86Opnd(8, RSP, cast(int32_t)-RetVal.isSetter.offsetof), X86Opnd(1));
-            je32Ref(as, vm, target0, 0);
-            jmp32Ref(as, vm, target1, 1);
-        }
-    );
 }
 
 /// Gets the value of a property
@@ -3317,16 +3297,9 @@ void gen_shape_get_prop(
     CodeBlock as
 )
 {
-    extern (C) struct RetVal
-    {
-        Word retWord;
-        Type retType;
-        int8_t isGetter;
-    }
+    static assert (ValuePair.sizeof <= 2 * int64_t.sizeof);
 
-    static assert (RetVal.sizeof <= 2 * int64_t.sizeof);
-
-    extern (C) static RetVal op_shape_get_prop(
+    extern (C) static ValuePair op_shape_get_prop(
         refptr objPtr,
         uint32_t propIdx,
         Word valWord,
@@ -3346,7 +3319,8 @@ void gen_shape_get_prop(
 
 
 
-        return RetVal(Word.int32v(0), Type.CLOSURE, 0);
+        // TODO
+        assert (false);
     }
 
     // Spill the values that are live before the call
@@ -3373,32 +3347,9 @@ void gen_shape_get_prop(
     as.loadJITRegs();
 
     // Set the output value word and type
-    as.mov(outOpnd, X86Opnd(64, RSP, -RetVal.retWord.offsetof));
-    as.mov(scrRegs[0].opnd(8), X86Opnd(8, RSP, cast(int32_t)-RetVal.retType.offsetof));
+    as.mov(outOpnd, X86Opnd(64, RSP, -ValuePair.word.offsetof));
+    as.mov(scrRegs[0].opnd(8), X86Opnd(8, RSP, cast(int32_t)-ValuePair.type.offsetof));
     st.setOutType(as, instr, scrRegs[0].reg(8));
-
-    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
-    auto branchF = getBranchEdge(instr.getTarget(1), st, false);
-
-    // Generate the branch code
-    ver.genBranch(
-        as,
-        branchT,
-        branchF,
-        delegate void(
-            CodeBlock as,
-            VM vm,
-            CodeFragment target0,
-            CodeFragment target1,
-            BranchShape shape
-        )
-        {
-            // If the property is not a getter, go to the true branch, otherwise false
-            as.cmp(X86Opnd(8, RSP, cast(int32_t)-RetVal.isGetter.offsetof), X86Opnd(0));
-            je32Ref(as, vm, target0, 0);
-            jmp32Ref(as, vm, target1, 1);
-        }
-    );
 }
 
 void gen_new_clos(
@@ -3463,7 +3414,6 @@ void gen_new_clos(
         return closPtr.ptr;
     }
 
-    // TODO: spill only values stored in C arg regs and C caller-save regs?
     // Spill all values live before this instruction
     st.spillValues(
         as,
@@ -3529,7 +3479,7 @@ void gen_get_time_ms(
     extern (C) static double op_get_time_ms()
     {
         long currTime = Clock.currStdTime();
-        long epochTime = 621355968000000000; //unixTimeToStdTime(0);
+        long epochTime = 621355968000000000; // unixTimeToStdTime(0);
         double retVal = cast(double)((currTime - epochTime)/10000);
         return retVal;
     }

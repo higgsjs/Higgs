@@ -568,7 +568,127 @@ function $rt_cell_visit_gc(o)
     $rt_cell_set_word(o, $rt_gcForward(vm, $rt_cell_get_word(o), $rt_cell_get_type(o)));
 }
 
-var $rt_LAYOUT_ARR = 5;
+var $rt_LAYOUT_GETSET = 5;
+
+function $rt_getset_ofs_next(o)
+{    
+    return 0;
+}
+
+function $rt_getset_ofs_header(o)
+{    
+    return $ir_add_i32(0, 8);
+}
+
+function $rt_getset_ofs_cap(o)
+{    
+    return $ir_add_i32($ir_add_i32(0, 8), 4);
+}
+
+function $rt_getset_ofs_shape(o)
+{    
+    return $ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4);
+}
+
+function $rt_getset_ofs_word(o, i)
+{    
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8), $ir_mul_i32(8, i));
+}
+
+function $rt_getset_ofs_type(o, i)
+{    
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8), $ir_mul_i32(8, $rt_getset_get_cap(o))), $ir_mul_i32(1, i));
+}
+
+function $rt_getset_get_next(o)
+{    
+    return $ir_load_refptr(o, $rt_getset_ofs_next(o));
+}
+
+function $rt_getset_get_header(o)
+{    
+    return $ir_load_u32(o, $rt_getset_ofs_header(o));
+}
+
+function $rt_getset_get_cap(o)
+{    
+    return $ir_load_u32(o, $rt_getset_ofs_cap(o));
+}
+
+function $rt_getset_get_shape(o)
+{    
+    return $ir_load_shapeptr(o, $rt_getset_ofs_shape(o));
+}
+
+function $rt_getset_get_word(o, i)
+{    
+    return $ir_load_u64(o, $rt_getset_ofs_word(o, i));
+}
+
+function $rt_getset_get_type(o, i)
+{    
+    return $ir_load_u8(o, $rt_getset_ofs_type(o, i));
+}
+
+function $rt_getset_set_next(o, v)
+{    
+    $ir_store_refptr(o, $rt_getset_ofs_next(o), v);
+}
+
+function $rt_getset_set_header(o, v)
+{    
+    $ir_store_u32(o, $rt_getset_ofs_header(o), v);
+}
+
+function $rt_getset_set_cap(o, v)
+{    
+    $ir_store_u32(o, $rt_getset_ofs_cap(o), v);
+}
+
+function $rt_getset_set_shape(o, v)
+{    
+    $ir_store_shapeptr(o, $rt_getset_ofs_shape(o), v);
+}
+
+function $rt_getset_set_word(o, i, v)
+{    
+    $ir_store_u64(o, $rt_getset_ofs_word(o, i), v);
+}
+
+function $rt_getset_set_type(o, i, v)
+{    
+    $ir_store_u8(o, $rt_getset_ofs_type(o, i), v);
+}
+
+function $rt_getset_comp_size(cap)
+{    
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8), $ir_mul_i32(8, cap)), $ir_mul_i32(1, cap));
+}
+
+function $rt_getset_sizeof(o)
+{    
+    return $rt_getset_comp_size($rt_getset_get_cap(o));
+}
+
+function $rt_getset_alloc(cap)
+{    
+    var o = $ir_alloc_getset($rt_getset_comp_size(cap));
+    $rt_getset_set_cap(o, cap);
+    $rt_getset_set_header(o, 5);
+    return o;
+}
+
+function $rt_getset_visit_gc(o)
+{    
+    $rt_getset_set_next(o, $rt_gcForward(vm, $rt_getset_get_next(o)));
+    var cap = $rt_getset_get_cap(o);
+    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
+    {    
+        $rt_getset_set_word(o, i, $rt_gcForward(vm, $rt_getset_get_word(o, i), $rt_getset_get_type(o, i)));
+    }
+}
+
+var $rt_LAYOUT_ARR = 6;
 
 function $rt_arr_ofs_next(o)
 {    
@@ -704,7 +824,7 @@ function $rt_arr_alloc(cap)
 {    
     var o = $ir_alloc_array($rt_arr_comp_size(cap));
     $rt_arr_set_cap(o, cap);
-    $rt_arr_set_header(o, 5);
+    $rt_arr_set_header(o, 6);
     return o;
 }
 
@@ -719,7 +839,7 @@ function $rt_arr_visit_gc(o)
     $rt_arr_set_tbl(o, $rt_gcForward(vm, $rt_arr_get_tbl(o)));
 }
 
-var $rt_LAYOUT_ARRTBL = 6;
+var $rt_LAYOUT_ARRTBL = 7;
 
 function $rt_arrtbl_ofs_next(o)
 {    
@@ -810,7 +930,7 @@ function $rt_arrtbl_alloc(cap)
 {    
     var o = $ir_alloc_refptr($rt_arrtbl_comp_size(cap));
     $rt_arrtbl_set_cap(o, cap);
-    $rt_arrtbl_set_header(o, 6);
+    $rt_arrtbl_set_header(o, 7);
     for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
     {    
         $rt_arrtbl_set_word(o, i, $ir_get_word($undef));
@@ -851,6 +971,10 @@ function $rt_layout_sizeof(o)
     {    
         return $rt_cell_sizeof(o);
     }
+    if ($ir_eq_i32(t, LAYOUT_GETSET))
+    {    
+        return $rt_getset_sizeof(o);
+    }
     if ($ir_eq_i32(t, LAYOUT_ARR))
     {    
         return $rt_arr_sizeof(o);
@@ -888,6 +1012,11 @@ function $rt_layout_visit_gc(o)
     if ($ir_eq_i32(t, LAYOUT_CELL))
     {    
         $rt_cell_visit_gc(vm, o);
+        return;
+    }
+    if ($ir_eq_i32(t, LAYOUT_GETSET))
+    {    
+        $rt_getset_visit_gc(vm, o);
         return;
     }
     if ($ir_eq_i32(t, LAYOUT_ARR))

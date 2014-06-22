@@ -196,7 +196,7 @@ static this()
     addOp(SET_LINK);
     addOp(GET_LINK);
     addOp(SHAPE_EMPTY);
-    addOp(SHAPE_PROP_IDX);
+    addOp(SHAPE_GET_DEF);
     addOp(SHAPE_SET_PROP);
     addOp(SHAPE_GET_PROP);
 
