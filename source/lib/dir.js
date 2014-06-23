@@ -41,8 +41,8 @@ Functions for dealing with the filesystem
 
 (function ()
 {
+    var range = require("lib/range");
     var ffi = require("lib/ffi");
-
     var c = ffi.c;
 
     if (ffi.os === 'OSX')
@@ -115,101 +115,177 @@ Functions for dealing with the filesystem
         WHT : 14
     };
 
+    var d_types_map = [
+        "UNKNOWN", "FIFO", "CHR", undefined, "DIR", undefined, "BLK",
+        undefined, "REG", undefined,"LNG",undefined,"SOCK",undefined,"WHT"
+    ];
+
     /**
+    DirError
     @constructor
     */
-    function dir(path)
+    function DirError(message)
     {
-        this.path = path;
-        this.handle = this.open();
+        this.message = message;
     }
+    DirError.prototype = new Error();
+    DirError.prototype.constructor = DirError;
 
-    dir.prototype.open = function()
+    /**
+    HELPERS
+    */
+    // TODO: have lib/ffi reuse wrapper
+    function getName(ent)
     {
-        var c_path = ffi.cstr(this.path);
-        var dir = c.opendir(c_path);
-        c.free(c_path);
-        if (ffi.isNullPtr(dir))
-            throw "Unable to open directory: " + this.path;
-        return dir;
-    };
-
-    dir.prototype.forEach = function(cb)
-    {
-        var ent;
-        var dname;
-
-        while (!ffi.isNullPtr(ent = c.readdir(this.handle)))
-        {
-            ent = c.dirent(ent);
-            dname = ent.d_name.toString();
-
-            if (dname === '.' || dname === '..')
-                continue;
-            cb.call(this, dname, ent);
-        }
-
-        c.rewinddir(this.handle);
-    };
-
-    dir.prototype.getDirs = function()
-    {
-        var ent;
-        var dname;
-        var dirs = [];
-
-        while (!ffi.isNullPtr(ent = c.readdir(this.handle)))
-        {
-            ent = c.dirent(ent);
-            dname = ent.d_name.toString();
-
-            if (dname === '.' || dname === '..')
-                continue;
-
-            if (isDir(ent))
-                dirs.push(dname);
-        }
-
-        c.rewinddir(this.handle);
-        return dirs;
-    };
-
-    dir.prototype.getFiles = function()
-    {
-        var ent;
-        var dname;
-        var files = [];
-
-        while (!ffi.isNullPtr(ent = c.readdir(this.handle)))
-        {
-            ent = c.dirent(ent);
-            dname = ent.d_name.toString();
-
-            if (dname === '.' || dname === '..')
-                continue;
-
-            if (isFile(ent))
-                files.push(dname);
-        }
-
-        c.rewinddir(this.handle);
-        return files;
-    };
+        return c.dirent(ent).d_name.toString();
+    }
 
     function isFile(ent)
     {
-        return ent.get_d_type() === d_types.REG;
+        return c.dirent(ent).get_d_type() === d_types.REG;
     }
 
     function isDir(ent)
     {
-        return ent.get_d_type() === d_types.DIR;
+        return c.dirent(ent).get_d_type() === d_types.DIR;
     }
 
-    exports = {
-        dir : function(path) { return new dir(path); },
-        d_types: d_types,
-        isFile: isFile,
-        isDir: isDir
+    function notDots(n) {
+        return n !== "." && n !== "..";
+    }
+
+
+    /**
+    dirRange -
+        range for all entries in a dir
+    */
+    function dirRange(path)
+    {
+        if (!this instanceof dirRange)
+            return new dirRange(path);
+
+        this.path = path;
+        this.c_path = ffi.nullPtr;
+        this.ptr = ffi.nullPtr;
+        this._empty = true;
+        return this;
+    }
+
+    dirRange.prototype = range.Input();
+
+    /**
+       start -
+           open the dir
+    */
+    dirRange.prototype.start = function()
+    {
+        var dir;
+        var cpath;
+
+        // close if already open
+        if (this._empty === false)
+            this.end();
+
+        // setup c path
+        var c_path = this.c_path = ffi.cstr(this.path);
+
+        // open dir, error otherwise
+        var dir = this.ptr = c.opendir(c_path);
+        if (ffi.isNullPtr(dir))
+            throw new DirError("Unable to open directory: " + this.path);
+
+        this._empty = false;
+        return this;
     };
+
+    /**
+    end -
+        Close the directory and free resources
+    */
+    dirRange.prototype.end = function()
+    {
+        var c_path = this.c_path;
+        var dir = this.ptr;
+
+        if (!ffi.isNullPtr(c_path))
+            c.free(c_path)
+
+        if (!ffi.isNullPtr(dir))
+            c.closedir(dir);
+
+        this._empty = true;
+        this.ptr = ffi.nullPtr;
+        this.c_path = ffi.nullPtr;
+        return this;
+    }
+
+    /**
+    popFront -
+        override the default Input.popFront() to traverse
+        the directory.
+    */
+    dirRange.prototype.popFront = function()
+    {
+        // TODO: more error checking
+        var ent;
+        if (this._empty === true)
+            this.start();
+
+        ent = c.readdir(this.ptr);
+        if (ffi.isNullPtr(ent))
+        {
+            this.end();
+            return undefined;
+        }
+
+        this._empty = false;
+        this._front = ent;
+        return undefined;
+    }
+
+
+    /**
+    dir -
+        an object representing a directory with various helper methods.
+    */
+    function dir(path)
+    {
+        if (!(this instanceof dir))
+            return new dir(path);
+        this.path = path;
+        this.range = new dirRange(path);
+    }
+
+    /**
+    getFileNames -
+        get an array of file names in the directory.
+    */
+    dir.prototype.getFileNames = function()
+    {
+        return this.range.filter(isFile).map(getName).toArray();
+    };
+
+    /**
+    getDirNames -
+        get an array of all the (sub)directory names in the directory.
+    */
+    dir.prototype.getDirNames = function()
+    {
+        return this.range.filter(isDir).map(getName).filter(notDots).toArray();
+    };
+
+
+    /**
+    EXPORTS
+    */
+    exports = {
+        DirError : DirError,
+        dirRange : dirRange,
+        dir : dir,
+        d_types : d_types,
+        d_types_map : d_types_map,
+        isFile : isFile,
+        isDir : isDir
+    };
+
 })();

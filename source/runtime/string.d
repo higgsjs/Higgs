@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -37,7 +37,9 @@
 
 module runtime.string;
 
+import std.c.string;
 import std.stdio;
+import std.stdint;
 import std.string;
 import std.conv;
 import runtime.vm;
@@ -126,11 +128,9 @@ bool streq(refptr strA, refptr strB)
     if (lenA != lenB)
         return false;
 
-    for (uint32 i = 0; i < lenA; ++i)
-        if (str_get_data(strA, i) != str_get_data(strB, i))
-            return false;
-
-    return true;
+    auto ptrA = strA + str_ofs_data(strA, 0);
+    auto ptrB = strB + str_ofs_data(strB, 0);
+    return memcmp(ptrA, ptrB, uint16_t.sizeof * lenA) == 0;   
 }
 
 /**
@@ -162,8 +162,8 @@ refptr getTableStr(VM vm, refptr str)
             break;
         }
 
-        // Otherwise, if this is the string we want
-        else if (streq(strVal, str) == true)
+        // If this is the string we want
+        if (streq(strVal, str) == true)
         {
             // Return a reference to the string we found in the table
             return strVal;

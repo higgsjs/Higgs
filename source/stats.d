@@ -75,6 +75,9 @@ ulong numMapPropMisses = 0;
 /// Number of slow property lookups
 ulong numMapPropSlow = 0;
 
+/// Number of heap allocations
+ulong numHeapAllocs = 0;
+
 /// Number of dynamic calls
 ulong numCall = 0;
 
@@ -212,6 +215,7 @@ static ~this()
         writefln("num map_prop_idx: %s", numMapPropIdx);
         writefln("num prop cache misses: %s", numMapPropMisses);
         writefln("num prop slow lookups: %s", numMapPropSlow);
+        writefln("num heap allocs: %s", numHeapAllocs);
 
         writefln("num call: %s", numCall);
 

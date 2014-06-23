@@ -430,14 +430,13 @@ void printStr(CodeBlock as, string str)
     as.popRegs();
 }
 
-/*
-void printStack(CodeBlock as, CallCtx ctx)
+void printStack(CodeBlock as, VM vm, IRInstr curInstr)
 {
-    extern (C) static void printStackFn(CallCtx ctx)
+    extern (C) static void printStackFn(VM vm, IRInstr instr)
     {
-        auto vm = ctx.vm;
+        vm.setCurInstr(instr);
 
-        vm.setCallCtx(ctx);
+        //writeln(vm.stackSize);
 
         vm.visitStack(
             delegate void(
@@ -453,21 +452,21 @@ void printStack(CodeBlock as, CallCtx ctx)
             }
         );
 
-        vm.setCallCtx(null);
+        vm.setCurInstr(null);
     }
 
     as.comment("printStack()");
 
     as.pushRegs();
-    as.pushJITRegs();
+    as.saveJITRegs();
 
-    as.ptr(cargRegs[0], ctx);
+    as.mov(cargRegs[0].opnd, vmReg.opnd);
+    as.ptr(cargRegs[1], curInstr);
 
     as.ptr(scrRegs[0], &printStackFn);
     as.call(scrRegs[0].opnd(64));
 
-    as.popJITRegs();
+    as.loadJITRegs();
     as.popRegs();
 }
-*/
 

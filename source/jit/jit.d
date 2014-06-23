@@ -378,6 +378,22 @@ class CodeGenState
     }
 
     /**
+    Produce a string representation of the type information in
+    this code generation state
+    */
+    override string toString() const
+    {
+        string str;
+
+        foreach (val, st; valMap)
+        {
+            str ~= format("%s: %s\n", val.getName, st.typeKnown? to!string(st.type):"unknown");
+        }
+
+        return str;
+    }
+
+    /**
     Remove information about values dead at the beginning of
     a given block
     */
@@ -1668,8 +1684,7 @@ Request a block version matching the incoming state
 */
 BlockVersion getBlockVersion(
     IRBlock block,
-    CodeGenState state,
-    bool noStub
+    CodeGenState state
 )
 {
     auto callCtx = state.callCtx;
@@ -1778,7 +1793,9 @@ BlockVersion getBlockVersion(
         if (numVersions > stats.maxVersions)
         {
             writeln(block.fun.getName);
-            writeln(block.fun.numBlocks);
+            writeln("  ", block.getName);
+            writeln("  ", numVersions);
+            //writeln("  ", block.fun.numBlocks);
         }
         */
 
@@ -1786,9 +1803,8 @@ BlockVersion getBlockVersion(
         stats.maxVersions = max(stats.maxVersions, numVersions);
     }
 
-    // If we know this version will be executed, queue it for compilation
-    if (noStub)
-        vm.queue(ver);
+    // Queue the block version for compilation
+    vm.queue(ver);
 
     // Return the newly created block version
     assert (ver.state.callCtx is callCtx);
@@ -1805,6 +1821,11 @@ BranchCode getBranchEdge(
     PrelGenFn prelGenFn = null
 )
 {
+    // If eager codegen is enabled, force the version
+    // to be generated now
+    if (opts.jit_eager)
+        noStub = true;
+
     auto vm = predState.callCtx.vm;
 
     assert (
@@ -2034,7 +2055,10 @@ void compile(VM vm, IRInstr curInstr)
             );
 
             auto block = ver.block;
-            assert (ver.block !is null);
+            assert (
+                ver.block !is null,
+                ver.state.callCtx.fun.getName
+            );
 
             // Copy the instance's state object
             auto state = new CodeGenState(ver.state);
@@ -2111,8 +2135,7 @@ void compile(VM vm, IRInstr curInstr)
             // Get a version of the successor matching the incoming state
             branch.target = getBlockVersion(
                 branch.branch.target,
-                succState,
-                true
+                succState
             );
 
             // Generate the moves to transition to the successor state
@@ -2325,8 +2348,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Create a version instance object for the function entry
     auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false),
-        true
+        new CodeGenState(vm, fun, false)
     );
 
     // Mark the code start index
@@ -2433,8 +2455,15 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     auto origLocals = fun.numLocals;
 
     // Generate the IR for this function
-    fun.entryBlock = null;
-    astToIR(vm, fun.ast, fun);
+    try
+    {
+        fun.entryBlock = null;
+        astToIR(vm, fun.ast, fun);
+    }
+    catch (Error err)
+    {
+        assert (false, "failed to generate IR for: \"" ~ fun.getName ~ "\"");
+    }
 
     // Add space for the newly allocated locals
     vm.push(fun.numLocals - origLocals);
@@ -2448,15 +2477,13 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, false),
-        true
+        new CodeGenState(vm, fun, false)
     );
 
     // Request an instance for the function entry block
     auto ctorInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(vm, fun, true),
-        true
+        new CodeGenState(vm, fun, true)
     );
 
     /*

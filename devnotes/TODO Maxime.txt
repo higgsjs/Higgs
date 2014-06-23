@@ -18,74 +18,35 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-TODO: optimize inlineCall
-- inlinePass does not do liveness analysis, is slow on its own
-- what are the slowest parts of it?
+TODO: take a break, look into sound output
+- work on this in dev-maxime branch ***
+- look at existing code
+  - can write and wait for poll, no callback
 
-TODO: optimize liveness analysis
-- record total time taken in stats
+FIXME: date-format-tofte
+- keeps using more and more memory
 
-TODO: transform jit.compileUnit into jit.execUnit
-- Do parsing, AST->IR and call in there, better time accounting?
-- Any real reason not to?
-- alternative: try to treat unit functions more like other functions
-  - create closure objects for them
-  - create some sort of closure call bridge with a C call conv
-  - having a "C adapter" for a specific closure seems sensible
+FIXME: v8bench/regexp segfaults
 
-FIXME: parseInt('32') takes about 20ms???
+TODO: eliminate overflow checks
+- how many add_i32_ovf with 1 do we have?
+- if less than some other i32, can eliminate
+  - need to prove this is on the path to the current block
+    - can't reach entry without going through the test
+    - must arrive through "true" side
 
-TODO: optimize dynamic calls?
-- adjust stack params in callee
-- can we pass args through registers?
-TODO: compare perf of calls vs dynamic calls?
+TODO: C call conv wrapper for callbacks
+- after new calling conv
 
-TODO: profile awful slow compilation speed
-TODO: investigate why inlining getPropElem causes so much slowdown
-- do we have that many more blocks, versions?
-TODO: profile compilation time, big eval loop?
+TODO: look into doc gen, linking up with GitHub
 
-FIXME: ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
-- benchmark moronically redefines RegExp name
+TODO: move stack resizing code to function entry
 
-TODO: add tests for nested eval support
-- accessing local vars, changing vars
-TODO: implement full eval support
-- eval can be called as global eval or local eval
-  - different "eval context"
-- if direct/local eval possible, function must behave as if all locals could be captured
-  - graft new IR sub-function into parent? don't add to sub list, but have parent link set
-- parse AST, optionally set parent link, run AST vars pass
-  - may want to pass a parent ptr to AST parsing function
-- eval_str function needs to find who the caller is, determine if direct call?
-  - call instr to get_global "eval"
-  - VM.getCallInstr?
-- need to "ungraft" the AST after vars analysis?
-- PROBLEM: there's no parent pointer in AST nodes
-  - can't just run vars analysis on subfunction, need to rerun the whole thing...
+TODO: eliminate CallCtx, use IRFunction
+- simplify design
 
-FIXME: string-unpack-code
-./higgs benchmarks/sunspider/string-unpack-code.js 
-run-time error: TypeError: invalid base in property write
-$rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
-$rt_setProp(3038) ("runtime/runtime.js"@2301:6)
-$rt_setPropField(3041) ("runtime/runtime.js"@2349:12)
-String(87BB) ("stdlib/string.js"@69:9)
-Function_prototype_apply(7949) ("stdlib/function.js"@226:18)
-string_replace(8854) ("stdlib/string.js"@422:27)
-anon(121C8) ("benchmarks/sunspider/string-unpack-code.js"@20:14)
-benchmarks_sunspider_string_unpack_code_js(12188) ("benchmarks/sunspider/string-unpack-code.js"@16:32)
-
-FIXME: string-tagcloud
-./higgs benchmarks/sunspider/string-tagcloud.js 
-run-time error: SyntaxError: parseJSON
-$rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
-s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
-benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
-
-TODO: eliminate alloc init loops?
-- would make alloc faster, permit more inlining
-- may have to make it so that MISSING is the 0,0 value
+TODO: eliminate double function entry point
+- makes for redundant code, poor design
 
 TODO: May, approach Moz, Apple, FB wrt internship
 - 4 months, [Jan, April] 2015, spend winter in Cali
@@ -93,38 +54,340 @@ TODO: May, approach Moz, Apple, FB wrt internship
 - Marc thinks you can make ~40K pre-tax
 - Ask about salary, lodging options
 
+TODO: fix jit bug, see jit-bug.js
+
+TODO: look into jetstream benchmarks
+https://www.webkit.org/blog/3418/introducing-the-jetstream-benchmark-suite/
+
+June 10th meeting:
+- Interprocedural BBV
+  - Issue: who am I calling? If unknown, need to test, if polymorphic, this is an issue
+  - Typed shapes would make this less of an issue, make interp BBV more efficient
+- BBV, maybe should take code size into account, code size budget
+  - Blocks that compile to nothing maybe shouldn't count towards version limit
+  - Blocks that are very small should maybe count for less
+- *** Mozilla internship, contact Mozilla ***
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: push to dev-maxime, then master
+- disable analysis always on
+- prealloc in main, 256M
+
 ------------------------------------------------------------------------------
 
 May 31st, complete paper writing
 --------------------------------
 
-Blog:
-- OSX support find/progress, Paul Fryzel
-- Graphics lib
-- pong, examples
-- optimizations, further reduced code size
-- paper, type analysis
-- full eval
-- typed hidden classes
+[DONE] TODO: log typing info for 3d-raytrace, see what's up
+- Why 1500+ versions?
+- Grows quickly with int32/float64/unknown
+- Every time we have a type test, is_t(x), must also create versions along the
+  branch where we gained no type information, even if it's never taken
 
-FIXME: type analysis can't handle getProp loop?
-- possibly because type is unknown at entry...
-- try tagging the output of some call_prims?
+[DONE] TODO: toString for CodeGenCtx
 
-Meeting:
+[DONE] TODO: add timing of run to benchmark.py
+
+[DONE] TODO: test benchmark.py with maxvers=200
+./benchmark.py --csv_file="eager.csv" --higgs_cmd="./higgs --stats --jit_maxvers=200 --jit_eager"
+- Problems:
+  - horrible pathological cases, particulartly due to overflow?
+  - compilation time is incredibly long... problematic for benchmarking time with multiple runs
+  - searching linearly through versions probably doesn't scale
+- Half the benchmarks generate more than 200 versions
+
+[DONE] TODO: test benchmark.py with maxvers=100. See if effect on type tests is
+still as pronounced.
+./benchmark.py --csv_file="eager.csv" --higgs_cmd="./higgs --stats --jit_maxvers=100 --jit_eager"
+- check that no benchmark produces more than 100 vers
+  - many reach 100!
+- type test effect less pronounced but still present.
+
+[DONE] TODO: test the 4 benchmark.py configs
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20 --jit_typeprop"
+
+[DONE] FIXME: jit_eager segfault on string-tagcloud benchmark
+./higgs --jit_eager benchmarks/sunspider/string-tagcloud.js
+Assertion failed (runtime/vm.d@822): no free link entries
+Assertion failed (jit/jit.d@1978): current instr is not null
+- Made link table larger
+
+[DONE] FIXME: segfaults with jit_eager, gc bug
+unpack-code, fasta, splay, tagcloud, base64, earley-boyer, valid-input, regexp-dna
+- Start with base64, simpler
+./higgs --jit_eager benchmarks/sunspider/string-base64.js
+- Quick version of benchmarks doesn't segfault... GC?
+Assertion failed (runtime/vm.d@1201): no return entry for return address: 7F531C8DB903
+- Continuation stub previously set ret entry when compiled
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=20 --jit_eager"
+
+[DONE] TODO: implement eager codegen
+--jit_eager
+- getBlockVersion should ignore noStub
+- What about continuation stubs? Avoid generating
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=20 --jit_eager"
+  - Can try maxvers=5 if too slow?
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=5 --jit_eager"
+  - doesn't fix segfaults
+
+[DONE] TODO: eliminate noStub flag from getBlockVersion
+
+[DONE] FIXME: string-tagcloud
+./higgs benchmarks/sunspider/string-tagcloud.js
+run-time error: SyntaxError: parseJSON
+$rt_throwExc(2DE6) ("runtime/runtime.js"@128:1)
+s_parseJSON(12584) ("benchmarks/sunspider/string-tagcloud.js"@210:14)
+benchmarks_sunspider_string_tagcloud_js(122C4) ("benchmarks/sunspider/string-tagcloud.js"@237:15)
+- benchmark throws this exception, its own parser fails
+- could it be some regexp behavior mismatch?
+
+[DONE] TODO: try inlining div? divIntFloat?
+- called 41K times in 3d-raytrace
+
+[DONE] TODO: more complete addIntFloat, subIntFloat
+
+[DONE] TODO: add missing leIntFloat
+
+[DONE] TODO: try more complete ltIntFloat?
+before (simple):
+    code size (bytes): 428135
+    is_f64: 43019
+    is_i32: 1451946
+    max versions: 5
+    num blocks: 1893
+    num versions: 2318
+    total type tests: 4315730
+after:
+    code size (bytes): 428161
+    is_f64: 42998
+    is_i32: 1449662
+    max versions: 5
+    num blocks: 1893
+    num versions: 2317
+    total type tests: 4312026
+
+[DONE] TODO: look at shootout benchmarks, anything more working?
+- Open issues for those not working
+
+[DONE] TODO: eqInt
+
+[DONE] TODO: check how many calls to String slice & charAt earley-boyer makes
+- may be worth optimizing
+
+[DONE] TODO: optimize String.substring
+
+[DONE] FIXME: string-unpack-code
+
+[DONE] TODO: test benchmark.py
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20 --jit_typeprop"
+
+[DONE] FIXME: string-base64 segfaults, gc bug
+make; ./higgs benchmarks/sunspider/string-base64.js
+gcForward: object not in from-space heap
+ptr   : 2
+start : 7FEEE1D17000
+limit : 7FEEE2D17000
+header: ???
+Segmentation fault (core dumped)
+- Fails after many GCs
+- Fails during stack visit
+visiting frame for: Function_prototype_call(6A68)
+
+[DONE] FIXME: v8bench/regexp
+- benchmark moronically redefines RegExp name
+
+[DONE] TODO: look up how to efficiently copy memory, assembler, ask on reddit?
+- rep movsq to copy 8 bytes
+  src in ESI, dst in EDI
+  size in ECX
+- try just using load_u64 and store_u64 to test it out
+
+[DONE] TODO: streq, use memcmp
+import std.c.string;
+- see perf difference on fasta bench
+- huge speedup on splay benchmark
+
+[DONE] TODO: try inlining setProp only in functions with loops
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=0 --jit_typeprop"
+./benchmark.py --higgs_cmd="./higgs --stats --jit_maxvers=20 --jit_typeprop"
+- does seem to produce some speedup
+
+[DONE] TODO: test efficiency of loop test heuristic
+- effect on comp time in benchmark.py?
+- not an issue
+
+[DONE] TODO: offset computations, muls by 2, 8?
+- Transform these into shifts?
+- Does it work for negative nos? yes
+- Codegen is inefficient...
+
+[DONE] TODO: many calls to setArrElem in splay benchmark, why?
+- may be growing arrays, or using float indices... verify ***
+  - not float indices
+- seems array initialization is the culprit
+  - fix for arguments too
+code size (bytes): 410668
+
+[DONE] TODO: implement specialized toBool for method calls
+- toBoolConst
+
+[DONE] TODO: study uses of toBool in benchmarks
+- in richards, if (x.a)
+- deltablue, many prop usages as well
+- raytrace, also prop uses
+- earley-boyer, uses toBool on method calls
+- for prop, test consts first? log values tested
+- for properties, often:
+  - undefined, true, false
+  - null
+  - objects and functions
+
+[DONE] TODO: eliminate alloc init loops
+- would make alloc faster, permit more inlining
+- make it so that MISSING is the 0,0 value
+- null should be zero as well
+- can then remove init to missing, null
+code size (bytes): 414837
+comp time (ms): 195
+exec time (ms): 29
+
+[DONE] TODO: make missing and null have zero value
+- missing/const type should be zero
+
+[DONE] TODO: make GC zero out to-space after allocating it
+
+[DONE] TODO: implement AST->IR for new using runtime functions
+
+[DONE] TODO: gen_new_map
+
+./benchmark.py
+code size (bytes): 417413
+comp time (ms): 189
+exec time (ms): 28
+
+[DONE] TODO: test earley-boyer, v8-raytrace without arg count test
+- first see if arg count always matches
+- speedup?
+/higgs --perf_stats benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 
+comp time (ms): 579
+exec time (ms): 471
+total time (ms): 1051
+code size (bytes): 1696981
+./higgs --perf_stats benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 
+comp time (ms): 563
+exec time (ms): 449
+total time (ms): 1012
+code size (bytes): 1674514
+- Not a huge difference
+- May not have that many calls, more news?
+
+[DONE] TODO: map_prop_idx, optimize fallback with soft spills, smaller code
+- may be able to gain much speed
+- before, benchmark.py:
+    code size (bytes): 542166
+- after:
+    code size (bytes): 503349
+    No noticeable time change...
+
+[DONE] TODO: v8-raytrace, many get props for "prototype"
+- Implement getPropProto
+- before:
+    comp time (ms): 2261
+    exec time (ms): 167
+    total time (ms): 2429
+    code size (bytes): 1362565
+    num blocks: 8782
+    num versions: 13915
+    max versions: 18
+    num map_prop_idx: 1523308
+    num prop cache misses: 1902
+    num prop slow lookups: 378047
+    total prim calls: 1408078
+    ---
+    code size (bytes): 542954
+    comp time (ms): 801
+    exec time (ms): 27
+    total prim calls: 326837
+- after:
+    reduces prim calls but increases code size further
+
+[DONE] TODO: time v8-raytrace with cache size 3
+./higgs --stats benchmarks/v8bench/base.js benchmarks/v8bench/raytrace.js benchmarks/v8bench/drv-raytrace.js
+- Almost 10x the misses
+- Bigger size doesn't improve
+
+[DONE] TODO: suppress set_str if only one use which is map_prop_idx
+before code size (bytes): 512680
+code size (bytes): 512644
+
+[DONE] TODO: try benchmarks with setProp inlining?
+- Can we do better than 9% speedup?
+  - Code size reduction, but only 8% speedup
+
+[DONE] Meeting:
+- created dls2014 branch
 - slowdown seems to be because D allocator is much slower after many allocations,
   possibly needs to GC during execution
   - some allocations are sometimes needed during execution
   - fairest seems to be to run the analysis for all, even if not using the result
+- realized that D GC produces huge slowdown, dilutes our gains
+  - pre-reserved 1GB chunk, string-fasta is more than 2x faster
+  - implemented D string view on JS strings, less safe but often 2x faster
+- looked at reviewer comments, took notes
+  - impression: reviewers were extremely critical
+  - 2 related work suggestions
+  - all 3 complained about lack of running time testing
+  - one complained about too much code bloat
+- tentative new title
 
+[DONE] Blog: News of Higgs
+- Graphics lib
+- pong, examples
+- OSX support find/progress, Paul Fryzel
+- working on paper
+  - optimizations, further reduced code size
+  - type analysis
+  - Correcting anomalies, D GC performance
+- typed hidden classes
 
+[DONE] TODO: host original BBV paper, link to it in blog post
 
+[DONE] TODO: look into stack allocating strings, referencing Higgs heap data
+http://forum.dlang.org/thread/ustyltiooelhlijcjxma@forum.dlang.org
+./higgs --perf_stats --jit_maxvers=0 benchmarks/sunspider/access-nbody.js
+pre time: 114ms
+post time: 54ms
 
+[DONE] TODO: look into GC reserve
+static nothrow size_t reserve(size_t sz);
+- check how fasta performs with analysis enabled
+- Reserving a 1GB chunk makes fasta over 2x faster
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=0"
+./benchmark.py --higgs_cmd="./higgs --perf_stats --jit_maxvers=20"
 
-
-
-
-
+[DONE] TODO: create dls2014 repo branch
+- disable analysis in release first, push to master, then create branch
+git checkout -b dls2014
+git push -u origin dls2014
 
 [DONE] FIXME: invalid lhs in assignment
 true?email='foo':email='bar';

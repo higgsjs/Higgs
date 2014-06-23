@@ -36,8 +36,7 @@
 *****************************************************************************/
 
 /**
-lib/x - provides bindings to Xlib
-NOTE: currently this provides just enough bindings for the drawing lib
+lib/draw - provides basic drawing API using xlib
 */
 
 (function()
@@ -58,7 +57,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     var poll = ffi.c.poll;
 
     // Xlib
-    var Xlib = require('lib/x');
+    var Xlib = require('lib/x11');
     var XEventMask = Xlib.XEventMask;
     var XEvents = Xlib.XEvents;
 
@@ -84,7 +83,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     Construct a new Window object.
     */
     var WindowProto = {
-        handle: CNULL,
+        ptr: CNULL,
         frame_rate: 60,
         render_funs: null,
         key_funs: null
@@ -175,7 +174,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         ffi.c.free(atom_name);
         WDWAtom = Xlib.AtomContainer();
         WDWAtom.set_atom(WM_DELTE_WINDOW);
-        Xlib.XSetWMProtocols(display, win, WDWAtom.handle, 1);
+        Xlib.XSetWMProtocols(display, win, WDWAtom.ptr, 1);
 
         // set window to display
         Xlib.XMapWindow(display, win);
@@ -235,7 +234,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         var event_type;
         var key_sym;
         var key_name_c;
-        var e = event.handle;
+        var e = event.ptr;
         // handlers
         var key_funs = this.key_funs;
         var render_funs = this.render_funs;
@@ -408,8 +407,8 @@ NOTE: currently this provides just enough bindings for the drawing lib
         XColor = Xlib.XColor();
         colormap = this.colormap;
 
-        Xlib.XParseColor(display, colormap, color_string_c, XColor.handle);
-        Xlib.XAllocColor(display, colormap, XColor.handle);
+        Xlib.XParseColor(display, colormap, color_string_c, XColor.ptr);
+        Xlib.XAllocColor(display, colormap, XColor.ptr);
 
         Xlib.XSetForeground(display, gc, XColor.get_pixel());
 
@@ -491,7 +490,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     {
         var font_str;
         var font_name_c;
-        var font_handle;
+        var font_ptr;
         size = (typeof size === "number") ? size : 40;
 
         // If a font name is not specified, just try to use any monospaced font
@@ -501,10 +500,10 @@ NOTE: currently this provides just enough bindings for the drawing lib
             font_str = "-*-" + name + "-*-*-*-*-" + size + "-*-*-*-*-*-*-*";
 
         font_name_c = ffi.cstr(font_str);
-        font_handle = Xlib.XLoadQueryFont(this.display, font_name_c);
+        font_ptr = Xlib.XLoadQueryFont(this.display, font_name_c);
 
         // Check if the font failed to load
-        if (ffi.isNullPtr(font_handle))
+        if (ffi.isNullPtr(font_ptr))
         {
             // If they specified a name and it failed, try for a default
             if (name)
@@ -520,7 +519,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         }
         else
         {
-            this.font = Xlib.XFontStruct(font_handle);
+            this.font = Xlib.XFontStruct(font_ptr);
             Xlib.XSetFont(this.display, this.gc, this.font.get_fid());
         }
 
@@ -544,7 +543,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         TextItem.set_nchars(text_l);
         TextItem.set_delta(0);
         TextItem.set_font(this.font.get_fid());
-        Xlib.XDrawText(this.display, this.id, this.gc, x, y, TextItem.handle, 1);
+        Xlib.XDrawText(this.display, this.id, this.gc, x, y, TextItem.ptr, 1);
         c.free(text_c);
     };
 

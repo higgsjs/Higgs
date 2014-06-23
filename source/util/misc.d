@@ -60,3 +60,23 @@ auto alignPtr(ubyte* ptr, size_t alignBytes = PTR_SIZE)
     return ptr;
 }
 
+/**
+Test if a positive integer value is a power of 2
+*/
+bool isPow2(long x)
+{
+    return (x & (x-1)) == 0;
+}
+
+/**
+Return the index of the lowest bit set to 1
+*/
+int lowestBitIdx(long x)
+{
+    for (uint idx = 0; idx < 64; ++idx)
+        if (x & (1 << idx))
+            return idx;
+
+    return -1;
+}
+

@@ -55,8 +55,7 @@ Selectively inline callees into a function
 */
 void inlinePass(VM vm, IRFunction caller)
 {
-    /*
-    static bool hasLoop(IRFunction fun)
+    static bool funHasLoop(IRFunction fun)
     {
         for (auto block = fun.firstBlock; block !is null; block = block.next)
             if (block.name.startsWith("for") ||
@@ -67,14 +66,21 @@ void inlinePass(VM vm, IRFunction caller)
         return false;
     }
 
-    // If this is a unit function and it has no loops, do not inline
-    if (caller.isUnit && !hasLoop(caller))
-        return;
-    */
-
     // If inlining is disabled, do nothing
     if (opts.jit_noinline)
         return;
+
+    bool isUnit = caller.isUnit;
+    bool hasLoop = funHasLoop(caller);
+
+    /*
+    // If this is a unit function and it has no loops, do not inline
+    if (caller.isUnit && !hasLoop)
+    {
+        writeln("not inlining in ", caller.getName);
+        return;
+    }
+    */
 
     //writeln("inlinePass for ", caller.getName);
 
@@ -99,7 +105,11 @@ void inlinePass(VM vm, IRFunction caller)
         auto closVal = getProp(vm, vm.globalObj, nameStr);
         assert (
             closVal.type is Type.CLOSURE,
-            format("cannot inline non-closure \"%s\"", nameStr)
+            format(
+                "cannot inline non-closure \"%s\" in \"%s\"", 
+                nameStr, 
+                caller.getName
+            )
         );
         assert (
             closVal.word.ptrVal !is null
@@ -128,6 +138,7 @@ void inlinePass(VM vm, IRFunction caller)
             && !name.startsWith("$rt_subInt")
             && !name.startsWith("$rt_subIntFloat")
             && !name.startsWith("$rt_mulIntFloat")
+            && !name.startsWith("$rt_divIntFloat")
             && !name.startsWith("$rt_modInt")
             && !name.startsWith("$rt_and")
             && !name.startsWith("$rt_or")
@@ -136,8 +147,10 @@ void inlinePass(VM vm, IRFunction caller)
             && !name.startsWith("$rt_rsft")
             && !name.startsWith("$rt_ursft")
             && !name.startsWith("$rt_ltIntFloat")
+            && !name.startsWith("$rt_leIntFloat")
             && !name.startsWith("$rt_gtIntFloat")
             && !name.startsWith("$rt_geIntFloat")
+            && !name.startsWith("$rt_eqInt")
             && !name.startsWith("$rt_eqNull")
             && !name.startsWith("$rt_getPropField")
             && !name.startsWith("$rt_getPropMethod")
@@ -145,6 +158,8 @@ void inlinePass(VM vm, IRFunction caller)
             && !name.startsWith("$rt_getPropLength")
             //&& !name.startsWith("$rt_setPropField")
             && !name.startsWith("$rt_setPropElem")
+            && !name.startsWith("$rt_setArrElemNoCheck")
+            && !(hasLoop && name.startsWith("$rt_setPropField"))
         )
             continue;
 
