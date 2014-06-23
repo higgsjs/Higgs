@@ -300,10 +300,13 @@ Opcode SHAPE_EMPTY = { "shape_empty", true, [], &gen_shape_empty };
 Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def };
 
 /// Set the value of an object property based on its shape
-Opcode SHAPE_SET_PROP = { "shape_set_prop", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop };
+Opcode SHAPE_SET_PROP = { "shape_set_prop", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Get the value of an object property based on its shape
 Opcode SHAPE_GET_PROP = { "shape_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_prop };
+
+/// Set the value of a global property
+Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// <dstLocal> = NEW_CLOS <funExpr>
 /// Create a new closure from a function's AST node

@@ -258,11 +258,18 @@ class ObjShape
         // need hidden lookup start shape arg?
 
         // If the name matches, and this is not the root empty shape
-        if (propName == this.propName && this.parent !is null)
+        if (propName == this.propName)
+        {
+            if (this.deleted || this.parent is null)
+                return null;
+
             return this;
+        }
 
         if (parent)
+        {
             return parent.getDefShape(propName);
+        }
 
         return null;
     }
@@ -349,8 +356,19 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
     // If the property is defined
     if (defShape !is null)
     {
-        auto slotIdx = defShape.slotIdx;
-        return getSlotPair(obj.word.ptrVal, slotIdx);
+        uint32_t slotIdx = defShape.slotIdx;
+        auto objCap = obj_get_cap(obj.word.ptrVal);
+
+        if (slotIdx < objCap)
+        {
+            return getSlotPair(obj.word.ptrVal, slotIdx);
+        }
+        else
+        {
+            slotIdx -= objCap;
+            auto extTbl = obj_get_next(obj.word.ptrVal);
+            return getSlotPair(extTbl, slotIdx);
+        }
     }
 
     // Get the prototype pointer

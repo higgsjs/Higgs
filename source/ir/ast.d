@@ -425,12 +425,11 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     {
         foreach (ident; unit.globals)
         {
-            genRtCall(
-                bodyCtx,
-                "setGlobal",
-                [bodyCtx.strVal(ident.name), cast(IRValue)IRConst.undefCst],
-                ident.pos
-            );
+            bodyCtx.addInstr(new IRInstr(
+                &SET_GLOBAL, 
+                new IRString(ident.name),
+                IRConst.undefCst
+            ));
         }
     }
 
@@ -2308,12 +2307,21 @@ IRValue assgToIR(
             //writefln("assigning to global: %s", identExpr);
 
             // Set the global value
+            /*
             genRtCall(
                 ctx,
                 "setGlobal",
                 [ctx.strVal(identExpr.name), rhsVal],
                 lhsExpr.pos
             );
+            */
+
+            // Set the global value
+            ctx.addInstr(new IRInstr(
+                &SET_GLOBAL,
+                new IRString(identExpr.name),
+                rhsVal
+            ));
         }
 
         // If the variable is captured or escaping

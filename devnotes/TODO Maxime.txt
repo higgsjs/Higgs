@@ -54,20 +54,24 @@ FIXME: date-format-tofte
 
 TODO: look at eval notes again
 
-TODO: convert arrays and closures to a shaperer model
+TODO: convert arrays and closures to a shaperer model??
 - __arrtbl__
 - __arrlen__
 - closures need that "prototype" property?
 - for fns, useful to have a shape that includes the fptr! __fptr__
 - need clos cell vals, __clos_cell_0__ ...
 
+TODO: integrate ValType into BBV
+
+TODO: __proto__ should be non-enumerable, non-writable
+- could use a shorthand function to set it
+- need some way to set attribs on prop def
+
 TODO: define $UNDEF, $NULLPTR, $MISSING in the VM
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
 TODO: const globals
 
 TODO: internship, contact Luke Wagner?
-
-TODO: integrate ValType into BBV
 
 TODO: blog post about typed shapes, quick illustrations
 - "Faster JS Objects with Typed Shapes"
@@ -79,11 +83,17 @@ TODO: blog post about typed shapes, quick illustrations
 - Use diagrams from Eddy's talk, link and give credit
 
 Meeting:
-- e-mailed Dave Herman
+- e-mailed Dave Herman about internship
+  - May e-mail Luke Wagner if no response
 - Shapes: began implementing IR instrs, object layout, basic runtime functions
 - Refined shape design, simplified some things, conditional branching, getter-setter handling
+- Observation: global object is a singleton, latest shape is the only one that matters
+  - Can immediately discard old code paths
 
 TODO: complete runtime.js functions
+
+TODO: prop attrib bits?
+- Define as RT consts
 
 TODO: defObjConsts() in object.d
 - Define object layout constants needed by the runtime
@@ -93,21 +103,22 @@ TODO: vm method to define constants
 - Enforces allcaps naming
 - defRTConst(string name, ValuePair), defRTConst(string name, int32 intVal)
 
-TODO: basic tests, no runtime, try creating empty obj, setting a property
-
-TODO: try initializing bare VM
-./higgs --nostdlib --noruntime --e ""
-
 TODO: take a break, work on random lib
 - setRndGen
 - random.normal, random.choice
 - announce in chat
 
-TODO: runtime.js obj code
+TODO: try basic tests, no stdlib, try creating empty obj, setting a property
 
-TODO: fill in ops.d shape code
+TODO: shorthand for spillLiveBefore
 
-TODO: deleted flag should produce null in getDefShape ***
+FIXME: VM segfault before any compilation takes place
+make; ./higgs --jit_trace_instrs --jit_dumpinfo --nostdlib --e ""
+compiling instr: $2 = call_prim "$rt_setGlobal", <fun:NULL>, $0, undefined => call_cont(E02)
+
+[DONE] TODO: need a set_global instr to use for unit globals
+- re-get from github, place after shape instrs
+- set_global cannot throw exc
 
 
 
@@ -116,7 +127,24 @@ TODO: deleted flag should produce null in getDefShape ***
 
 
 
+[DONE] TODO: srand function, on master branch
 
+[DONE] TODO: try initializing bare VM
+./higgs --nostdlib --noruntime --e ""
+./higgs --nostdlib --e ""
+Assertion failed: cannot inline non-closure "$rt_setGlobal" in "runtime_layout_js(DF5)"
+
+[DONE] TODO: fix up core of runtime.js obj code
+
+[DONE] TODO: fill in ops.d shape code
+
+[DONE] FIXME: set_prop, seems like it might be better all-in-one?
+- can cause a shape transition
+- useful to know shapes during setProp, will make for a much faster system
+- don't want to implement dynamic shape dispatch in setProp
+- can't do real shape transition without prop type
+
+[DONE] TODO: deleted flag should produce null in getDefShape
 
 [DONE] FIXME: change shape_prop_idx
 - should really produce the shape defining a property, much more useful

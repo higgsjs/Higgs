@@ -1728,7 +1728,10 @@ void gen_call_prim(
 
     // Get the primitve function from the global object
     auto closVal = getProp(vm, vm.globalObj, nameStr);
-    assert (closVal.type is Type.CLOSURE);
+    assert (
+        closVal.type is Type.CLOSURE,
+        "failed to resolve closure in call_prim"
+    );
     assert (closVal.word.ptrVal !is null);
     auto fun = getFunPtr(closVal.word.ptrVal);
 
@@ -3209,9 +3212,7 @@ void gen_shape_get_def(
 }
 
 /// Sets the value of a property
-/// Inputs: obj, propIdx, val
-/// Branching: if the property is a setter, returns it
-///            else, sets the property, returns nothing
+/// Inputs: obj, propName, propShape, val
 void gen_shape_set_prop(
     BlockVersion ver,
     CodeGenState st,
@@ -3221,35 +3222,23 @@ void gen_shape_set_prop(
 {
     static assert (ValuePair.sizeof <= 2 * int64_t.sizeof);
 
-    extern (C) static ValuePair op_shape_set_prop(
-        VM vm,
-        refptr objPtr,
-        uint32_t propIdx,
-        Word valWord,
-        Type valType
-    )
+    extern (C) static ValuePair op_shape_set_prop(VM vm, IRInstr instr)
     {
+        auto objPair = vm.getArgVal(instr, 0);
+        auto strPtr = vm.getArgStr(instr, 1);
+        auto valPair = vm.getArgVal(instr, 3);
 
+        auto propStr = extractWStr(strPtr);
 
+        // Set the property, or get the getter-setter object
+        auto setter = setProp(
+            vm,
+            objPair,
+            propStr,
+            valPair
+        );
 
-
-
-
-        // TODO
-        assert (false);
-
-        /*
-        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
-        assert (objShape !is null, "shape is null");
-
-        // Get a temporary slice on the JS string characters
-        auto propStr = tempWStr(strPtr);
-
-        // Set the property, or get the setter function
-        auto setter = setProp(vm, objPtr, propStr, ValuePair(valWord, valType));
-
-        return RetVal(setter.word, setter.type is Type.CLOSURE);
-        */
+        return setter;
     }
 
     // Spill the values that are live before the call
@@ -3261,21 +3250,13 @@ void gen_shape_set_prop(
         }
     );
 
-    auto objPtr = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto propIdx = st.getWordOpnd(as, instr, 1, 32, X86Opnd.NONE, false, false);
-    auto valWord = st.getWordOpnd(as, instr, 2, 64, X86Opnd.NONE, false, false);
-    auto valType = st.getTypeOpnd(as, instr, 2, X86Opnd.NONE);
-
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-    as.mov(cargRegs[1].opnd(64), objPtr);
-    as.mov(cargRegs[2].opnd(32), propIdx);
-    as.mov(cargRegs[3].opnd(64), valWord);
-    as.mov(cargRegs[4].opnd(64), valType);
+    as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_shape_set_prop);
     as.call(scrRegs[0]);
 
@@ -3287,9 +3268,7 @@ void gen_shape_set_prop(
 }
 
 /// Gets the value of a property
-/// Inputs: obj, propIdx
-/// Branching: if the property is not a getter, returns its value
-///            else, the property is a getter, returns the getter
+/// Inputs: obj, propShape
 void gen_shape_get_prop(
     BlockVersion ver,
     CodeGenState st,
@@ -3301,26 +3280,26 @@ void gen_shape_get_prop(
 
     extern (C) static ValuePair op_shape_get_prop(
         refptr objPtr,
-        uint32_t propIdx,
+        const(ObjShape) defShape,
         Word valWord,
         Type valType
     )
     {
-        // TODO
-        // TODO
-        // TODO
+        assert (defShape !is null);
 
+        uint32_t slotIdx = defShape.slotIdx;
+        auto objCap = obj_get_cap(objPtr);
 
-
-
-
-
-
-
-
-
-        // TODO
-        assert (false);
+        if (slotIdx < objCap)
+        {
+            return getSlotPair(objPtr, slotIdx);
+        }
+        else
+        {
+            slotIdx -= objCap;
+            auto extTbl = obj_get_next(objPtr);
+            return getSlotPair(extTbl, slotIdx);
+        }
     }
 
     // Spill the values that are live before the call
@@ -3333,14 +3312,14 @@ void gen_shape_get_prop(
     );
 
     auto objPtr = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto propIdx = st.getWordOpnd(as, instr, 1, 32, X86Opnd.NONE, false, false);
+    auto defShape = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), objPtr);
-    as.mov(cargRegs[1].opnd(32), propIdx);
+    as.mov(cargRegs[1].opnd(32), defShape);
     as.ptr(scrRegs[0], &op_shape_get_prop);
     as.call(scrRegs[0]);
 
@@ -3350,6 +3329,51 @@ void gen_shape_get_prop(
     as.mov(outOpnd, X86Opnd(64, RSP, -ValuePair.word.offsetof));
     as.mov(scrRegs[0].opnd(8), X86Opnd(8, RSP, cast(int32_t)-ValuePair.type.offsetof));
     st.setOutType(as, instr, scrRegs[0].reg(8));
+}
+
+void gen_set_global(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static void op_set_global(VM vm, IRInstr instr)
+    {
+        // Property string (D string)
+        auto strArg = cast(IRString)instr.getArg(0);
+        assert (strArg !is null);
+        auto propStr = strArg.str;
+
+        auto valPair = vm.getArgVal(instr, 1);
+
+        // Set the property, or get the getter-setter object
+        setProp(
+            vm,
+            vm.globalObj,
+            propStr,
+            valPair
+        );
+    }
+
+    // Spill the values that are live before the call
+    st.spillValues(
+        as,
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
+        {
+            return liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
+    as.ptr(cargRegs[1], instr);
+    as.ptr(scrRegs[0], &op_set_global);
+    as.call(scrRegs[0]);
+
+    as.loadJITRegs();
 }
 
 void gen_new_clos(

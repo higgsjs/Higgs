@@ -1806,15 +1806,12 @@ Allocate an empty object
 */
 function $rt_newObj(protoPtr)
 {
-    // TODO
-    assert (false);
-
     // Allocate the object
-    var objPtr = $rt_obj_alloc(numProps);
+    var objPtr = $rt_obj_alloc(10 /*TODO: use VM-defined constant*/);
 
-    // Initialize the object
-    //$rt_obj_set_shape(objPtr, mapPtr);
-    //$rt_setProto(objPtr, protoPtr);
+    $rt_obj_set_shape(objPtr, $ir_shape_empty());
+
+    $rt_setProto(objPtr, protoPtr);
 
     return objPtr;
 }
@@ -1824,16 +1821,13 @@ Allocate an array
 */
 function $rt_newArr(protoPtr, numElems)
 {
-    // TODO
-    assert (false);
-
     // Allocate the array table
     var tblPtr = $rt_arrtbl_alloc(numElems);
 
     // Allocate the array
-    var objPtr = $rt_arr_alloc(numProps);
+    var objPtr = $rt_arr_alloc(10 /*TODO: use VM-defined constant*/);
 
-    // Initialize the object
+    // Initialize the array object
     $rt_obj_set_shape(objPtr, mapPtr);
     $rt_setProto(objPtr, protoPtr);
     $rt_arr_set_tbl(objPtr, tblPtr);
@@ -1883,6 +1877,16 @@ function $rt_shrinkHeap(freeSpace)
 //=============================================================================
 // Objects and property access
 //=============================================================================
+
+/**
+Set the prototype value for an object
+*/
+function $rt_setProto(obj, proto)
+{
+    // TODO: make non-writable, non-enumerable, non-configurable
+    // need support for setting attribs at prop-def time?
+    obj.__proto__ = proto;
+}
 
 /**
 Get a property from an object using a string as key
@@ -2199,7 +2203,7 @@ Set a property on the global object
 function $rt_getGlobal(prop)
 {
     // TODO: inline this manually
-    return $rt_getPropField($ir_get_global_obj(), prop);
+    return $rt_objGetProp($ir_get_global_obj(), prop);
 }
 
 /**
@@ -2329,13 +2333,13 @@ function $rt_objSetProp(obj, propStr, val)
     // Find the index for this property
     // Handles dynamic version dispatching
     // This will not transition the object to a new shape
-    var propIdx = $ir_shape_prop_idx(obj, propStr);
+    var propShape = $ir_shape_get_def(obj, propStr);
 
     // Hidden inside set_prop, we handle the extended table
     // May also transition the object to another shape if this
     // is a new property or the type written doesn't match what was known
     // If the current shape is unknown, complex logic will be handled in D
-    var setter = $ir_shape_set_prop(obj, propIdx, val);
+    var setter = $ir_shape_set_prop(obj, propStr, propShape, val);
 
     if ($ir_is_getset(setter))
     {
@@ -2486,8 +2490,8 @@ Set a property on the global object
 */
 function $rt_setGlobal(prop, val)
 {
-    // TODO: inline this manually
-    $rt_setPropField($ir_get_global_obj(), prop, val);
+    // TODO: inline this manually?
+    $rt_objSetProp($ir_get_global_obj(), prop, val);
 }
 
 /**

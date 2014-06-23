@@ -104,16 +104,20 @@ void inlinePass(VM vm, IRFunction caller)
         // Get the primitve function from the global object
         auto closVal = getProp(vm, vm.globalObj, nameStr);
         assert (
-            closVal.type is Type.CLOSURE,
+            closVal.type is Type.CLOSURE ||
+            (caller.isUnit() && caller.getName.canFind("runtime")),
             format(
                 "cannot inline non-closure \"%s\" in \"%s\"", 
                 nameStr, 
                 caller.getName
             )
         );
-        assert (
-            closVal.word.ptrVal !is null
-        );
+
+        // If the closure is not available, skip it
+        if (closVal.type !is Type.CLOSURE)
+            continue;
+
+        assert (closVal.word.ptrVal !is null);
         auto callee = getFunPtr(closVal.word.ptrVal);
 
         // If this combination is not inlinable, skip it

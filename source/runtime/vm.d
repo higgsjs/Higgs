@@ -233,7 +233,7 @@ string typeToString(Type type)
         case Type.OBJECT:   return "object";
         case Type.ARRAY:    return "array";
         case Type.CLOSURE:  return "closure";
-        case Type.GETSET:  return "getter-setter";
+        case Type.GETSET:   return "getter-setter";
         case Type.STRING:   return "string";
 
         default:
@@ -603,8 +603,12 @@ class VM
         // Allocate and initialize the string table
         strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
 
+        writeln("creating empty shape");
+
         // Allocate the empty object shape
         emptyShape = new ObjShape();
+
+        writeln("creating obj proto");
 
         // Allocate the object prototype object
         objProto = newObj(
@@ -612,11 +616,15 @@ class VM
             NULL
         );
 
+        writeln("created obj proto");
+
         // Allocate the array prototype object
         arrProto = newObj(
             this,
             objProto
         );
+
+        writeln("created arr proto");
 
         // Allocate the function prototype object
         funProto = newObj(
@@ -643,6 +651,8 @@ class VM
             GC.BlkAttr.NO_SCAN |
             GC.BlkAttr.NO_INTERIOR
         );
+
+        writeln("loading runtime");
 
         // If the runtime library should be loaded
         if (loadRuntime)
