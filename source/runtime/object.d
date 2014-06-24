@@ -257,9 +257,6 @@ class ObjShape
         // TODO: propCache? should only store at lookup point
         // need hidden lookup start shape arg?
 
-        writeln("propName: ", propName);
-        writeln("  this.propName: ", this.propName);
-
         // If the name matches, and this is not the root empty shape
         if (propName == this.propName)
         {
@@ -297,6 +294,13 @@ ValuePair newObj(
 
     setProp(vm, objPair, "__proto__"w, protoObj.pair);
 
+
+
+    setProp(vm, objPair, "__bah__"w, NULL);
+    assert (getProp(vm, objPair, "__proto__"w) == protoObj.pair);
+
+
+
     return objPair;
 }
 
@@ -317,7 +321,7 @@ ValuePair newClos(
     auto objPtr = clos_alloc(vm, OBJ_MIN_CAP, allocNumCells);
     auto objPair = ValuePair(objPtr, Type.CLOSURE);
 
-    obj_set_shape(objPtr, cast(rawptr)vm.emptyShape);
+    obj_set_shape(objPair.word.ptrVal, cast(rawptr)vm.emptyShape);
 
     setProp(vm, objPair, "__proto__"w, protoObj.pair);
 
@@ -349,9 +353,6 @@ void setSlotPair(refptr objPtr, uint32_t slotIdx, ValuePair val)
 
 ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
 {
-    writeln("is global: ", obj == vm.globalObj);
-    writeln("prop name: ", propStr);
-
     assert (obj_get_cap(obj.word.ptrVal) > 0);
 
     // Get the shape from the object
@@ -366,9 +367,6 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
     {
         uint32_t slotIdx = defShape.slotIdx;
         auto objCap = obj_get_cap(obj.word.ptrVal);
-
-        writeln("slotIdx: ", slotIdx);
-        writeln("objCap: ", objCap);
 
         if (slotIdx < objCap)
         {

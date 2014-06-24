@@ -3181,8 +3181,14 @@ void gen_shape_get_def(
         // Get a temporary slice on the JS string characters
         auto propStr = tempWStr(strPtr);
 
+        writeln("objPtr: ", objPtr);
+        writeln("objPtr cap: ", obj_get_cap(objPtr));
+
         writeln("objShape: ", cast(rawptr)objShape);
-        writeln("propStr: ", propStr);
+        writeln("objShape.propName null: ", objShape.propName == null);
+        writeln("slotIdx : ", objShape.slotIdx);
+        writeln("nextIdx : ", objShape.nextIdx);
+        writeln("propStr : ", propStr);
 
         // Lookup the shape defining this property
         auto defShape = objShape.getDefShape(propStr);
@@ -3231,12 +3237,8 @@ void gen_shape_set_prop(
     CodeBlock as
 )
 {
-    static assert (ValuePair.sizeof == 2 * int64_t.sizeof);
-
-    extern (C) static ValuePair op_shape_set_prop(VM vm, IRInstr instr)
+    extern (C) static rawptr op_shape_set_prop(VM vm, IRInstr instr)
     {
-        writeln("set_prop");
-
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
         auto valPair = vm.getArgVal(instr, 3);
@@ -3251,7 +3253,7 @@ void gen_shape_set_prop(
             valPair
         );
 
-        return setter;
+        return setter.word.ptrVal;
     }
 
     // Spill the values that are live before the call
@@ -3270,13 +3272,12 @@ void gen_shape_set_prop(
     // Call the host function
     as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
     as.ptr(cargRegs[1], instr);
-    as.sub(RSP, ValuePair.sizeof);
     as.ptr(scrRegs[0], &op_shape_set_prop);
     as.call(scrRegs[0]);
-    as.add(RSP, ValuePair.sizeof);
 
     // Set the output value
-    as.mov(outOpnd, X86Opnd(64, RSP, -ValuePair.word.offsetof));
+    assert (outOpnd.isReg);
+    as.mov(outOpnd, cretReg.opnd);
     st.setOutType(as, instr, Type.CLOSURE);
 
     as.loadJITRegs();
@@ -3293,9 +3294,10 @@ void gen_shape_get_prop(
 {
     static assert (ValuePair.sizeof == 2 * int64_t.sizeof);
 
-    extern (C) static ValuePair op_shape_get_prop(
+    extern (C) static void op_shape_get_prop(
         refptr objPtr,
-        const(ObjShape) defShape
+        const(ObjShape) defShape,
+        ValuePair* retVal
     )
     {
         assert (defShape !is null);
@@ -3305,13 +3307,13 @@ void gen_shape_get_prop(
 
         if (slotIdx < objCap)
         {
-            return getSlotPair(objPtr, slotIdx);
+            *retVal = getSlotPair(objPtr, slotIdx);
         }
         else
         {
             slotIdx -= objCap;
             auto extTbl = obj_get_next(objPtr);
-            return getSlotPair(extTbl, slotIdx);
+            *retVal = getSlotPair(extTbl, slotIdx);
         }
     }
 
@@ -3328,22 +3330,29 @@ void gen_shape_get_prop(
     auto defShape = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
+    as.sub(RSP, ValuePair.sizeof);
+    as.mov(cargRegs[2].opnd(64), RSP.opnd(64));
+
     as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), objPtr);
     as.mov(cargRegs[1].opnd(64), defShape);
-    as.sub(RSP, ValuePair.sizeof);
     as.ptr(scrRegs[0], &op_shape_get_prop);
     as.call(scrRegs[0]);
-    as.add(RSP, ValuePair.sizeof);
-
-    // Set the output value word and type
-    as.mov(outOpnd, X86Opnd(64, RSP, -ValuePair.word.offsetof));
-    as.mov(scrRegs[0].opnd(8), X86Opnd(8, RSP, cast(int32_t)-ValuePair.type.offsetof));
-    st.setOutType(as, instr, scrRegs[0].reg(8));
 
     as.loadJITRegs();
+
+    // Set the output value word and type
+    assert (outOpnd.isReg);
+    as.mov(outOpnd, X86Opnd(64, RSP, ValuePair.word.offsetof));
+    as.mov(scrRegs[0].opnd(8), X86Opnd(8, RSP, ValuePair.type.offsetof));
+    st.setOutType(as, instr, scrRegs[0].reg(8));
+
+    as.add(RSP, ValuePair.sizeof);
+
+    as.printStr("out opnd:");
+    as.printPtr(outOpnd);
 }
 
 void gen_set_global(

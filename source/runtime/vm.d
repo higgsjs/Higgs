@@ -631,6 +631,9 @@ class VM
             GLOBAL_OBJ_INIT_SIZE
         );
 
+        writeln("objProto ptr: ", objProto.word.ptrVal);
+        writeln("globalObj ptr: ", globalObj.word.ptrVal);
+
         // Allocate the executable heap
         execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_genasm);
 
@@ -643,8 +646,6 @@ class VM
             GC.BlkAttr.NO_SCAN |
             GC.BlkAttr.NO_INTERIOR
         );
-
-        writeln("loading runtime");
 
         // If the runtime library should be loaded
         if (loadRuntime)

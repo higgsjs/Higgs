@@ -333,7 +333,7 @@ struct X86Mem
     this(
         size_t size,
         X86Reg base,
-        int32_t disp    = 0,
+        int64_t disp    = 0,
         size_t scale    = 0,
         X86Reg index    = RAX,
     )
@@ -344,9 +344,14 @@ struct X86Mem
             "base and index must be 64-bit registers"
         );
 
+        assert (
+            disp >= int32_t.min && disp <= int32_t.max,
+            "disp value out of bounds"
+        );
+
         this.size       = cast(uint8_t)size;
         this.baseRegNo  = base.regNo;
-        this.disp       = disp;
+        this.disp       = cast(int32_t)disp;
         this.idxRegNo   = index.regNo;
         this.hasIdx     = scale !is 0;
         this.isIPRel    = base.type is X86Reg.IP;
@@ -547,7 +552,7 @@ struct X86Opnd
     this(
         size_t size,
         X86Reg base,
-        int32_t disp    = 0,
+        int64_t disp    = 0,
         size_t scale    = 0,
         X86Reg index    = RAX,
     )

@@ -79,7 +79,7 @@ void main(string[] args)
     auto vm = new VM(!opts.noruntime, !opts.nostdlib);
 
     // Construct the JS arguments array
-    if (!opts.noruntime)
+    /*if (!opts.noruntime)
     {
         wstring jsArgsStr = "arguments = [";
         foreach(string arg; jsArgs)
@@ -88,7 +88,7 @@ void main(string[] args)
 
         // Evaluate the arguments array string
         vm.evalString(to!string(jsArgsStr));
-    }
+    }*/
 
     // Check if we need to set stdout to unbuffered
     if (opts.unbuffered)

@@ -340,6 +340,24 @@ void popRegs(CodeBlock as)
     as.pop(RAX);
 }
 
+void printPtr(CodeBlock as, X86Opnd opnd)
+{
+    extern (C) void printPtrFn(uint64_t v)
+    {
+        writefln("%X", v);
+    }
+
+    as.pushRegs();
+
+    as.mov(cargRegs[0].opnd(64), opnd);
+
+    // Call the print function
+    as.ptr(scrRegs[0], &printPtrFn);
+    as.call(scrRegs[0]);
+
+    as.popRegs();
+}
+
 void printUint(CodeBlock as, X86Opnd opnd)
 {
     extern (C) void printUintFn(uint64_t v)

@@ -121,14 +121,26 @@ TODO: shorthand for spillLiveBefore
 TODO: IIR, use introspection to auto-define in iir.d, no addOp?
 
 TODO: alias const(ObjShape) ShapePtr
+- grep for const(ObjShape)
 
-FIXME: lookup of undef global segfaults
+
+
+
+
+
+
+
+[DONE] TODO: test make; ./higgs --jit_trace_instrs --jit_dumpinfo --nostdlib --e "x=3; x+4"
+
+[DONE] FIXME: set_prop call conv
+
+[DONE] FIXME: lookup of undef global segfaults
 make; ./higgs --jit_trace_instrs --jit_dumpinfo --nostdlib --e "z"
-
-
-
-
-
+- lookup on object prototype, has empty shape
+- but obj proto still shouldn't have size zero!
+- value we recurse on is not proto...
+- calling convention used by D is effed... 
+  - Dec RSP and pass a pointer instead
 
 [DONE] TODO: get VM init without stdlib to complete
 

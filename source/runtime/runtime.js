@@ -1926,8 +1926,12 @@ function $rt_objGetProp(obj, propStr)
         }
     }
 
+    $ir_print_str('*** proto lookup ***\n');
+
     // Get the object's prototype
     var proto = $rt_getProto(obj);
+
+    $ir_print_str('*** recursion! ***\n');
 
     // If the prototype is null, produce undefined
     if ($ir_eq_refptr(proto, null))
