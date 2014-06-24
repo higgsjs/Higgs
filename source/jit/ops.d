@@ -1813,8 +1813,6 @@ void gen_call_prim(
         new CodeGenState(fun)
     );
 
-    writeln("compiling final branch");
-
     ver.genCallBranch(
         st,
         instr,
@@ -1840,8 +1838,6 @@ void gen_call_prim(
         },
         false
     );
-
-    writeln("done compiling call_prim");
 }
 
 void gen_call(
@@ -3167,7 +3163,7 @@ void gen_shape_get_def(
     CodeBlock as
 )
 {
-    extern (C) const(ObjShape) op_shape_get_def(
+    extern (C) ShapePtr op_shape_get_def(
         refptr objPtr,
         refptr strPtr
     )
@@ -3181,19 +3177,8 @@ void gen_shape_get_def(
         // Get a temporary slice on the JS string characters
         auto propStr = tempWStr(strPtr);
 
-        writeln("objPtr: ", objPtr);
-        writeln("objPtr cap: ", obj_get_cap(objPtr));
-
-        writeln("objShape: ", cast(rawptr)objShape);
-        writeln("objShape.propName null: ", objShape.propName == null);
-        writeln("slotIdx : ", objShape.slotIdx);
-        writeln("nextIdx : ", objShape.nextIdx);
-        writeln("propStr : ", propStr);
-
         // Lookup the shape defining this property
         auto defShape = objShape.getDefShape(propStr);
-
-        writeln("defShape: ", cast(rawptr)defShape);
 
         return defShape;
     }
@@ -3296,7 +3281,7 @@ void gen_shape_get_prop(
 
     extern (C) static void op_shape_get_prop(
         refptr objPtr,
-        const(ObjShape) defShape,
+        ShapePtr defShape,
         ValuePair* retVal
     )
     {
@@ -3350,9 +3335,6 @@ void gen_shape_get_prop(
     st.setOutType(as, instr, scrRegs[0].reg(8));
 
     as.add(RSP, ValuePair.sizeof);
-
-    as.printStr("out opnd:");
-    as.printPtr(outOpnd);
 }
 
 void gen_set_global(

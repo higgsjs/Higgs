@@ -75,7 +75,7 @@ struct ValType
     union
     {
         /// Shape (null if unknown)
-        const(ObjShape) shape;
+        ShapePtr shape;
 
         /// IR function, for function pointers
         IRFunction fun;
@@ -141,6 +141,9 @@ struct ValType
     // TODO: union? wait and see if needed
 }
 
+/// Shape object pointer type
+alias const(ObjShape) ShapePtr;
+
 /**
 Object shape tree representation.
 Each shape defines or redefines a property.
@@ -148,11 +151,11 @@ Each shape defines or redefines a property.
 class ObjShape
 {
     /// Parent shape in the tree
-    const(ObjShape) parent;
+    ShapePtr parent;
 
     // TODO
     /// Cache of property names to defining shapes, to accelerate lookups
-    //const(ObjShape)[wstring] propCache;
+    //ShapePtr[wstring] propCache;
 
     /// Name of this property, null if array element property
     wstring propName;
@@ -186,7 +189,7 @@ class ObjShape
     uint32_t nextIdx;
 
     /// Sub-shape transitions, mapped by prop name, then prop type
-    const(ObjShape)[][ValType][wstring] subShapes;
+    ShapePtr[][ValType][wstring] subShapes;
 
     /// Empty shape constructor
     this()
@@ -200,7 +203,7 @@ class ObjShape
 
     /// Property definition constructor
     private this(
-        const(ObjShape) parent,
+        ShapePtr parent,
         wstring propName,
         ValType type
     )
@@ -221,7 +224,7 @@ class ObjShape
     Method to define or redefine a property.
     Either finds an existing sub-shape or create one.
     */
-    const(ObjShape) defProp(wstring propName, ValType type)
+    ShapePtr defProp(wstring propName, ValType type)
     {
         if (propName in subShapes)
         {
@@ -252,7 +255,7 @@ class ObjShape
     /**
     Get the shape defining a given property
     */
-    const(ObjShape) getDefShape(wstring propName) const
+    ShapePtr getDefShape(wstring propName) const
     {
         // TODO: propCache? should only store at lookup point
         // need hidden lookup start shape arg?
@@ -356,7 +359,7 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
     assert (obj_get_cap(obj.word.ptrVal) > 0);
 
     // Get the shape from the object
-    auto objShape = cast(const(ObjShape))obj_get_shape(obj.word.ptrVal);
+    auto objShape = cast(ShapePtr)obj_get_shape(obj.word.ptrVal);
     assert (objShape !is null);
 
     // Find the shape defining this property (if it exists)
@@ -414,7 +417,7 @@ ValuePair setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
     // If the property is not defined
     if (defShape is null)
     {
-        const(ObjShape) newShape = objShape.defProp(
+        auto newShape = objShape.defProp(
             propStr,
             valType
         );

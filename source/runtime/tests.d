@@ -205,22 +205,17 @@ unittest
     // 32-bit integer add
     vm.assertInt("$ir_add_i32(1, 2)", 3);
 
-    // Global property access (needed by runtime lib)
-    vm.evalString("x = 7");
-    vm.assertInt("x = 7; return x;", 7);
-
     // Integer arithmetic
-    vm.assertInt("x = 3; return $ir_add_i32(x, 2)", 5);
-    vm.assertInt("x = 3; return $ir_sub_i32(x, 1)", 2);
-    vm.assertInt("x = 3; return $ir_mul_i32(x, 2)", 6);
+    vm.assertInt("return $ir_sub_i32(3, 1)", 2);
+    vm.assertInt("return $ir_mul_i32(3, 2)", 6);
 
     // Comparison and conditional branching
-    vm.assertInt("x = 7; if ($ir_eq_i32(x, 7)) return 1; else return 0;", 1);
-    vm.assertInt("x = 3; if ($ir_eq_i32(x, 2)) x = 1; return x;", 3);
-    vm.assertInt("x = 5; if ($ir_is_i32(x)) x = 1; else x = 0; return x;", 1);
+    vm.assertInt("if ($ir_eq_i32(7, 7)) return 1; else return 0;", 1);
+    vm.assertInt("if ($ir_eq_i32(3, 2)) x = 1; return 3;", 3);
+    vm.assertInt("if ($ir_is_i32(5)) return 1; else return 2;", 1);
 
     // Add with overflow test
-    vm.assertInt("x = 3; if ($ir_add_i32_ovf(x, 1)) return x; else return -1;", 3);
+    vm.assertInt("if ($ir_add_i32_ovf(3, 1)) return 3; else return -1;", 3);
 }
 
 /// Global expression tests
@@ -229,6 +224,9 @@ unittest
     writefln("global expressions");
 
     auto vm = new VMNoStdLib();
+
+    vm.evalString("x = 7");
+    vm.assertInt("x = 7; return x;", 7);
 
     writeln("unary ops");
 

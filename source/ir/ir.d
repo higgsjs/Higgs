@@ -1364,40 +1364,41 @@ This function is used to help print sensible error messages.
 */
 string getCalleeName(IRInstr callInstr)
 {
+    static string getString(IRValue strArg)
+    {
+        auto propInstr = cast(IRInstr)strArg;
+        if (propInstr is null)
+            return null;
+
+        // Extract the method name
+        auto nameArg = cast(IRString)propInstr.getArg(0);
+        return to!string(nameArg.str);
+    }
+
     assert (callInstr.opcode.isCall);
 
+    // Get the instruction providing the closure being called
     auto closInstr = cast(IRInstr)callInstr.getArg(0);
     if (closInstr is null)
         return null;
-
-    // FIXME
-    assert (false);
-
-    /*
-    // If the callee is a global function
-    if (closInstr.opcode == &GET_GLOBAL)
-    {
-        auto nameArg = cast(IRString)closInstr.getArg(0);
-        return to!string(nameArg.str);
-    }
 
     // If the callee is a method we're getting from some object
     if (closInstr.opcode == &CALL_PRIM)
     {
         auto primName = cast(IRString)closInstr.getArg(0);
+
+        // Call to get a global function
+        if (primName.str == "$rt_getGlobal"w)
+        {
+            return getString(closInstr.getArg(0));
+        }
+
+        // Call to get a property (method)
         if (primName.str == "$rt_getProp"w)
         {
-            // Get the property name instruction
-            auto propInstr = cast(IRInstr)closInstr.getArg(3);
-            if (propInstr is null)
-                return null;
-
-            // Extract the method name
-            auto nameArg = cast(IRString)propInstr.getArg(0);
-            return to!string(nameArg.str);
+            return getString(closInstr.getArg(3));
         }
     }
-    */
 
     // Callee name unrecoverable
     return null;

@@ -469,7 +469,7 @@ class VM
     refptr strTbl;
 
     /// Empty object shape
-    const(ObjShape) emptyShape;
+    ShapePtr emptyShape;
 
     /// Object prototype object
     ValuePair objProto;
@@ -630,9 +630,6 @@ class VM
             objProto,
             GLOBAL_OBJ_INIT_SIZE
         );
-
-        writeln("objProto ptr: ", objProto.word.ptrVal);
-        writeln("globalObj ptr: ", globalObj.word.ptrVal);
 
         // Allocate the executable heap
         execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_genasm);

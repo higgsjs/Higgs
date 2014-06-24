@@ -120,15 +120,19 @@ TODO: shorthand for spillLiveBefore
 
 TODO: IIR, use introspection to auto-define in iir.d, no addOp?
 
-TODO: alias const(ObjShape) ShapePtr
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: alias const(ObjShape) ShapePtr
 - grep for const(ObjShape)
-
-
-
-
-
-
-
 
 [DONE] TODO: test make; ./higgs --jit_trace_instrs --jit_dumpinfo --nostdlib --e "x=3; x+4"
 
