@@ -809,7 +809,7 @@ alias LoadOp!(64, false, Type.FLOAT64) gen_load_f64;
 alias LoadOp!(64, false, Type.REFPTR) gen_load_refptr;
 alias LoadOp!(64, false, Type.RAWPTR) gen_load_rawptr;
 alias LoadOp!(64, false, Type.FUNPTR) gen_load_funptr;
-alias LoadOp!(64, false, Type.MAPPTR) gen_load_mapptr;
+alias LoadOp!(64, false, Type.SHAPEPTR) gen_load_shapeptr;
 
 void StoreOp(size_t memSize, Type typeTag)(
     BlockVersion ver,
@@ -861,7 +861,7 @@ alias StoreOp!(64, Type.FLOAT64) gen_store_f64;
 alias StoreOp!(64, Type.REFPTR) gen_store_refptr;
 alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
 alias StoreOp!(64, Type.FUNPTR) gen_store_funptr;
-alias StoreOp!(64, Type.MAPPTR) gen_store_mapptr;
+alias StoreOp!(64, Type.SHAPEPTR) gen_store_shapeptr;
 
 void IsTypeOp(Type type)(
     BlockVersion ver,
@@ -1071,6 +1071,7 @@ alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
 alias IsTypeOp!(Type.OBJECT) gen_is_object;
 alias IsTypeOp!(Type.ARRAY) gen_is_array;
 alias IsTypeOp!(Type.CLOSURE) gen_is_closure;
+alias IsTypeOp!(Type.GETSET) gen_is_getset;
 alias IsTypeOp!(Type.STRING) gen_is_string;
 
 void CmpOp(string op, size_t numBits)(
@@ -1755,9 +1756,10 @@ void gen_call_prim(
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
     {
-        //writeln("compiling");
+        writeln("compiling IR");
         //writeln(core.memory.GC.addrOf(cast(void*)fun.ast));
         astToIR(vm, fun.ast, fun);
+        writeln("compiled IR");
     }
 
     // Copy the function arguments in reverse order
@@ -1811,6 +1813,8 @@ void gen_call_prim(
         new CodeGenState(fun)
     );
 
+    writeln("compiling final branch");
+
     ver.genCallBranch(
         st,
         instr,
@@ -1836,6 +1840,8 @@ void gen_call_prim(
         },
         false
     );
+
+    writeln("done compiling call_prim");
 }
 
 void gen_call(
@@ -3175,8 +3181,13 @@ void gen_shape_get_def(
         // Get a temporary slice on the JS string characters
         auto propStr = tempWStr(strPtr);
 
+        writeln("objShape: ", cast(rawptr)objShape);
+        writeln("propStr: ", propStr);
+
         // Lookup the shape defining this property
         auto defShape = objShape.getDefShape(propStr);
+
+        writeln("defShape: ", cast(rawptr)defShape);
 
         return defShape;
     }
@@ -3199,7 +3210,7 @@ void gen_shape_get_def(
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), opnd0);
-    as.mov(cargRegs[1].opnd(32), opnd1);
+    as.mov(cargRegs[1].opnd(64), opnd1);
     as.ptr(scrRegs[0], &op_shape_get_def);
     as.call(scrRegs[0]);
 
@@ -3220,10 +3231,12 @@ void gen_shape_set_prop(
     CodeBlock as
 )
 {
-    static assert (ValuePair.sizeof <= 2 * int64_t.sizeof);
+    static assert (ValuePair.sizeof == 2 * int64_t.sizeof);
 
     extern (C) static ValuePair op_shape_set_prop(VM vm, IRInstr instr)
     {
+        writeln("set_prop");
+
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
         auto valPair = vm.getArgVal(instr, 3);
@@ -3257,14 +3270,16 @@ void gen_shape_set_prop(
     // Call the host function
     as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
     as.ptr(cargRegs[1], instr);
+    as.sub(RSP, ValuePair.sizeof);
     as.ptr(scrRegs[0], &op_shape_set_prop);
     as.call(scrRegs[0]);
-
-    as.loadJITRegs();
+    as.add(RSP, ValuePair.sizeof);
 
     // Set the output value
     as.mov(outOpnd, X86Opnd(64, RSP, -ValuePair.word.offsetof));
     st.setOutType(as, instr, Type.CLOSURE);
+
+    as.loadJITRegs();
 }
 
 /// Gets the value of a property
@@ -3276,13 +3291,11 @@ void gen_shape_get_prop(
     CodeBlock as
 )
 {
-    static assert (ValuePair.sizeof <= 2 * int64_t.sizeof);
+    static assert (ValuePair.sizeof == 2 * int64_t.sizeof);
 
     extern (C) static ValuePair op_shape_get_prop(
         refptr objPtr,
-        const(ObjShape) defShape,
-        Word valWord,
-        Type valType
+        const(ObjShape) defShape
     )
     {
         assert (defShape !is null);
@@ -3319,16 +3332,18 @@ void gen_shape_get_prop(
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), objPtr);
-    as.mov(cargRegs[1].opnd(32), defShape);
+    as.mov(cargRegs[1].opnd(64), defShape);
+    as.sub(RSP, ValuePair.sizeof);
     as.ptr(scrRegs[0], &op_shape_get_prop);
     as.call(scrRegs[0]);
-
-    as.loadJITRegs();
+    as.add(RSP, ValuePair.sizeof);
 
     // Set the output value word and type
     as.mov(outOpnd, X86Opnd(64, RSP, -ValuePair.word.offsetof));
     as.mov(scrRegs[0].opnd(8), X86Opnd(8, RSP, cast(int32_t)-ValuePair.type.offsetof));
     st.setOutType(as, instr, scrRegs[0].reg(8));
+
+    as.loadJITRegs();
 }
 
 void gen_set_global(
@@ -3354,6 +3369,8 @@ void gen_set_global(
             propStr,
             valPair
         );
+
+        assert (obj_get_cap(vm.globalObj.word.ptrVal) > 0);
     }
 
     // Spill the values that are live before the call

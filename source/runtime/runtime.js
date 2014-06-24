@@ -1785,7 +1785,7 @@ Allocate the "this" object for a constructor call
 function $rt_ctorNewThis(clos)
 {
     var proto = clos.prototype;
-    var thisObj = $rt_newObj(ctorMap, proto);
+    var thisObj = $rt_newObj(proto);
 
     return thisObj;
 }
@@ -1828,7 +1828,7 @@ function $rt_newArr(protoPtr, numElems)
     var objPtr = $rt_arr_alloc(10 /*TODO: use VM-defined constant*/);
 
     // Initialize the array object
-    $rt_obj_set_shape(objPtr, mapPtr);
+    $rt_obj_set_shape(objPtr, $ir_shape_empty());
     $rt_setProto(objPtr, protoPtr);
     $rt_arr_set_tbl(objPtr, tblPtr);
     $rt_arr_set_len(objPtr, numElems);
@@ -1889,6 +1889,14 @@ function $rt_setProto(obj, proto)
 }
 
 /**
+Get the prototype value for an object
+*/
+function $rt_getProto(obj)
+{
+    return obj.__proto__;
+}
+
+/**
 Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
@@ -1896,19 +1904,20 @@ function $rt_objGetProp(obj, propStr)
     // Find the index for this property
     // This shifts us to a different version where the obj shape is known
     // Implements a "version cache" with dynamic dispatching
-    var propIdx = $ir_shape_prop_idx_get(obj, propStr);
+    var defShape = $ir_shape_get_def(obj, propStr);
 
     // If the property is defined on the object
     if ($ir_ne_rawptr(defShape, $nullptr))
     {
         // Get the property value
-        var propVal = $ir_shape_get_prop(obj, propIdx);
+        var propVal = $ir_shape_get_prop(obj, defShape);
 
         // If the property is a getter-setter function
         if ($ir_is_getset(propVal))
         {
             // TODO: use apply
             //return propVal();
+            assert (false);
         }
         else
         {
@@ -2333,17 +2342,19 @@ function $rt_objSetProp(obj, propStr, val)
     // Find the index for this property
     // Handles dynamic version dispatching
     // This will not transition the object to a new shape
-    var propShape = $ir_shape_get_def(obj, propStr);
+    var defShape = $ir_shape_get_def(obj, propStr);
 
     // Hidden inside set_prop, we handle the extended table
     // May also transition the object to another shape if this
     // is a new property or the type written doesn't match what was known
     // If the current shape is unknown, complex logic will be handled in D
-    var setter = $ir_shape_set_prop(obj, propStr, propShape, val);
+    var setter = $ir_shape_set_prop(obj, propStr, defShape, val);
 
+    // If the property is a getter-setter function
     if ($ir_is_getset(setter))
     {
         // TODO: apply
+        assert (false);
     }
 }
 

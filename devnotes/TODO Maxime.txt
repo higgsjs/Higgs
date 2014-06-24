@@ -81,16 +81,22 @@ TODO: blog post about typed shapes, quick illustrations
     r/ProgrammingLanguages
     r/pldesign
 - Use diagrams from Eddy's talk, link and give credit
+- Typed shapes + BBV a bit of a gamble
+
+TODO: complete runtime.js functions
 
 Meeting:
-- e-mailed Dave Herman about internship
-  - May e-mail Luke Wagner if no response
+- e-mailed Dave Herman about internship, got response today
+  - Michael Bebenita CCd
+  - There may be constraints on when they allow internships
+  - Summer? Apple as fallback
 - Shapes: began implementing IR instrs, object layout, basic runtime functions
 - Refined shape design, simplified some things, conditional branching, getter-setter handling
 - Observation: global object is a singleton, latest shape is the only one that matters
   - Can immediately discard old code paths
-
-TODO: complete runtime.js functions
+TODO: reserve August 15-16-17, international Lisp conference
+- Cocktail premier soir
+- Pavillon Jean-Coutu
 
 TODO: prop attrib bits?
 - Define as RT consts
@@ -112,20 +118,31 @@ TODO: try basic tests, no stdlib, try creating empty obj, setting a property
 
 TODO: shorthand for spillLiveBefore
 
-FIXME: VM segfault before any compilation takes place
+TODO: IIR, use introspection to auto-define in iir.d, no addOp?
+
+TODO: alias const(ObjShape) ShapePtr
+
+FIXME: lookup of undef global segfaults
+make; ./higgs --jit_trace_instrs --jit_dumpinfo --nostdlib --e "z"
+
+
+
+
+
+
+[DONE] TODO: get VM init without stdlib to complete
+
+[DONE] FIXME: get_prop call conv
+
+[DONE] FIXME: global obj cap is 0???
+
+[DONE] FIXME: VM segfault before any compilation takes place
 make; ./higgs --jit_trace_instrs --jit_dumpinfo --nostdlib --e ""
 compiling instr: $2 = call_prim "$rt_setGlobal", <fun:NULL>, $0, undefined => call_cont(E02)
 
 [DONE] TODO: need a set_global instr to use for unit globals
 - re-get from github, place after shape instrs
 - set_global cannot throw exc
-
-
-
-
-
-
-
 
 [DONE] TODO: srand function, on master branch
 

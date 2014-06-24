@@ -517,10 +517,10 @@ class TypeProp
                 return TypeSet(Type.FUNPTR);
             }
 
-            // Load mapptr
-            if (op is &LOAD_MAPPTR)
+            // Load shapeptr
+            if (op is &LOAD_SHAPEPTR)
             {
-                return TypeSet(Type.MAPPTR);
+                return TypeSet(Type.SHAPEPTR);
             }
 
             // Load rawptr

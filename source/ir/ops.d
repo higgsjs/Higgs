@@ -102,7 +102,7 @@ alias static immutable(OpInfo) Opcode;
 // Access visible arguments by index
 Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
 
-// TODO: rename to STATIC_STR
+// TODO: rename to STATIC_STR?
 // Set a local slot to a constant value    
 Opcode SET_STR = { "set_str", true, [OpArg.STRING, OpArg.LINK], &gen_set_str };
 
@@ -121,6 +121,7 @@ Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BO
 Opcode IS_OBJECT = { "is_object", true, [OpArg.LOCAL], &gen_is_object, OpInfo.BOOL_VAL };
 Opcode IS_ARRAY = { "is_array", true, [OpArg.LOCAL], &gen_is_array, OpInfo.BOOL_VAL };
 Opcode IS_CLOSURE = { "is_closure", true, [OpArg.LOCAL], &gen_is_closure, OpInfo.BOOL_VAL };
+Opcode IS_GETSET = { "is_getset", true, [OpArg.LOCAL], &gen_is_getset, OpInfo.BOOL_VAL };
 Opcode IS_STRING = { "is_string", true, [OpArg.LOCAL], &gen_is_string, OpInfo.BOOL_VAL };
 
 // Type conversion
@@ -208,7 +209,7 @@ Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_f64 
 Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_refptr };
 Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_rawptr };
 Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_funptr };
-Opcode LOAD_MAPPTR = { "load_mapptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_mapptr };
+Opcode LOAD_SHAPEPTR = { "load_shapeptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_shapeptr };
 
 // Store instructions
 Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_u8, OpInfo.IMPURE };
@@ -222,7 +223,7 @@ Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL]
 Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_refptr, OpInfo.IMPURE };
 Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_rawptr, OpInfo.IMPURE };
 Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_funptr, OpInfo.IMPURE };
-Opcode STORE_MAPPTR = { "store_mapptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_mapptr, OpInfo.IMPURE };
+Opcode STORE_SHAPEPTR = { "store_shapeptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_shapeptr, OpInfo.IMPURE };
 
 // Unconditional jump
 Opcode JUMP = { "jump", false, [], &gen_jump, OpInfo.BRANCH };
@@ -300,7 +301,7 @@ Opcode SHAPE_EMPTY = { "shape_empty", true, [], &gen_shape_empty };
 Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def };
 
 /// Set the value of an object property based on its shape
-Opcode SHAPE_SET_PROP = { "shape_set_prop", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode SHAPE_SET_PROP = { "shape_set_prop", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Get the value of an object property based on its shape
 Opcode SHAPE_GET_PROP = { "shape_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_prop };

@@ -603,12 +603,8 @@ class VM
         // Allocate and initialize the string table
         strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
 
-        writeln("creating empty shape");
-
         // Allocate the empty object shape
         emptyShape = new ObjShape();
-
-        writeln("creating obj proto");
 
         // Allocate the object prototype object
         objProto = newObj(
@@ -616,15 +612,11 @@ class VM
             NULL
         );
 
-        writeln("created obj proto");
-
         // Allocate the array prototype object
         arrProto = newObj(
             this,
             objProto
         );
-
-        writeln("created arr proto");
 
         // Allocate the function prototype object
         funProto = newObj(

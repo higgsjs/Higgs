@@ -1873,6 +1873,15 @@ alias writeRMMulti!(
     0x05  // opExtImm
 ) sub;
 
+/// sub - Subtract with register and immediate operand
+void sub(CodeBlock as, X86Reg dst, int64_t imm)
+{
+    assert (imm >= int32_t.min && imm <= int32_t.max);
+
+    // TODO: optimize encoding
+    return sub(as, X86Opnd(dst), X86Opnd(imm));
+}
+
 // subsd - Subtract scalar double
 alias writeXMM64!(
     "subsd",

@@ -257,6 +257,9 @@ class ObjShape
         // TODO: propCache? should only store at lookup point
         // need hidden lookup start shape arg?
 
+        writeln("propName: ", propName);
+        writeln("  this.propName: ", this.propName);
+
         // If the name matches, and this is not the root empty shape
         if (propName == this.propName)
         {
@@ -266,7 +269,7 @@ class ObjShape
             return this;
         }
 
-        if (parent)
+        if (parent !is null)
         {
             return parent.getDefShape(propName);
         }
@@ -346,8 +349,13 @@ void setSlotPair(refptr objPtr, uint32_t slotIdx, ValuePair val)
 
 ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
 {
+    writeln("is global: ", obj == vm.globalObj);
+    writeln("prop name: ", propStr);
+
+    assert (obj_get_cap(obj.word.ptrVal) > 0);
+
     // Get the shape from the object
-    auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
+    auto objShape = cast(const(ObjShape))obj_get_shape(obj.word.ptrVal);
     assert (objShape !is null);
 
     // Find the shape defining this property (if it exists)
@@ -359,6 +367,9 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
         uint32_t slotIdx = defShape.slotIdx;
         auto objCap = obj_get_cap(obj.word.ptrVal);
 
+        writeln("slotIdx: ", slotIdx);
+        writeln("objCap: ", objCap);
+
         if (slotIdx < objCap)
         {
             return getSlotPair(obj.word.ptrVal, slotIdx);
@@ -367,6 +378,8 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
         {
             slotIdx -= objCap;
             auto extTbl = obj_get_next(obj.word.ptrVal);
+            writeln("extTbl: ", extTbl);
+            assert (slotIdx < obj_get_cap(extTbl));
             return getSlotPair(extTbl, slotIdx);
         }
     }
@@ -419,6 +432,7 @@ ValuePair setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
 
     // Get the number of slots in the object
     auto objCap = obj_get_cap(obj.ptr);
+    assert (objCap > 0);
 
     // If the slot is within the object
     if (slotIdx < objCap)
@@ -440,6 +454,8 @@ ValuePair setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
     // The property is past the object's capacity
     else 
     {
+        assert (false, "extending object");
+
         slotIdx -= objCap;
 
         // Get the extension table pointer

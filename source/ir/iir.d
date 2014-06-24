@@ -80,6 +80,7 @@ static this()
     addOp(IS_OBJECT);
     addOp(IS_ARRAY);
     addOp(IS_CLOSURE);
+    addOp(IS_GETSET);
     addOp(IS_STRING);
 
     addOp(I32_TO_F64);
@@ -156,7 +157,7 @@ static this()
     addOp(LOAD_REFPTR);
     addOp(LOAD_RAWPTR);
     addOp(LOAD_FUNPTR);
-    addOp(LOAD_MAPPTR);
+    addOp(LOAD_SHAPEPTR);
 
     addOp(STORE_U8);
     addOp(STORE_U16);
@@ -169,7 +170,7 @@ static this()
     addOp(STORE_REFPTR);
     addOp(STORE_RAWPTR);
     addOp(STORE_FUNPTR);
-    addOp(STORE_MAPPTR);
+    addOp(STORE_SHAPEPTR);
 
     addOp(THROW);
     addOp(CALL_APPLY);
