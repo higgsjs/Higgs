@@ -188,8 +188,42 @@ Console functions
         print(output);
     }
 
+    // Timers for .time() and .timeEnd()
+    var timers = Object.create(null);
+
+    /**
+    time -
+        start a timer.
+    */
+    function time(timer)
+    {
+        var timer_name = timer || "*unnamed timer*";
+        if (timers[timer_name] !== undefined)
+            throw "Invalid timer name for time: "  + timer_name;
+        else
+            timers[timer_name] = $ir_get_time_ms();
+    }
+
+    /**
+    timeEnd -
+        stop a timer and print the elapsed time to the console.
+    */
+    function timeEnd(timer)
+    {
+        var timer_name = timer || "*unnamed timer*";
+        var start_time = timers[timer_name];
+        if (start_time === undefined)
+            throw "Invalid timer name for timeEnd: " + timer_name;
+
+        print(timer_name + ":\t" + ($ir_get_time_ms() - start_time));
+        timers[timer_name] = undefined;
+    }
+
+
     exports = {
         log : log,
+        time : time,
+        timeEnd : timeEnd,
         stringify : stringify,
         stringers : stringers
     };
