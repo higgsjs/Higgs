@@ -2207,12 +2207,86 @@ function $rt_getPropLength(base)
 }
 
 /**
-Set a property on the global object
+Get a property from the global object
 */
-function $rt_getGlobal(prop)
+function $rt_getGlobal(obj, propStr)
 {
-    // TODO: inline this manually
-    return $rt_objGetProp($ir_get_global_obj(), prop);
+    // Find the index for this property
+    // This shifts us to a different version where the obj shape is known
+    // Implements a "version cache" with dynamic dispatching
+    var defShape = $ir_shape_get_def(obj, propStr);
+
+    // If the property is defined on the object
+    if ($ir_ne_rawptr(defShape, $nullptr))
+    {
+        // Get the property value
+        var propVal = $ir_shape_get_prop(obj, defShape);
+
+        // If the property is a getter-setter function
+        if ($ir_is_getset(propVal))
+        {
+            // TODO: use apply
+            //return propVal();
+            assert (false);
+        }
+        else
+        {
+            // Property was found, is not a getter
+            return propVal;
+        }
+    }
+
+    // Get the object's prototype
+    var proto = $rt_getProto(obj);
+
+    // If the prototype is null, the propert is not defined
+    if ($ir_eq_refptr(proto, null))
+    {
+        var errStr = 'global property not defined: "' + propStr + '"';
+
+        if ($ir_get_global_obj().ReferenceError)
+            throw ReferenceError(errStr);
+        else
+            throw errStr;
+    }
+
+    // Do a recursive lookup on the prototype
+    return $rt_getGlobal(
+        proto,
+        propStr
+    );
+}
+
+/**
+Inlined version of getGlobal
+*/
+function $rt_getGlobalInl(propStr)
+{
+    var obj = $ir_get_global_obj();
+
+    // Find the index for this property
+    // This shifts us to a different version where the obj shape is known
+    // Implements a "version cache" with dynamic dispatching
+    var defShape = $ir_shape_get_def(obj, propStr);
+
+    // If the property is defined on the object
+    if ($ir_ne_rawptr(defShape, $nullptr))
+    {
+        // Get the property value
+        var propVal = $ir_shape_get_prop(obj, defShape);
+
+        // If the property is a not getter-setter function, return its value
+        if (!$ir_is_getset(propVal))
+        {
+            return propVal;
+        }
+    }
+
+    // Do the full global lookup
+    return $rt_getGlobal(
+        obj,
+        propStr
+    );
 }
 
 /**
@@ -2497,15 +2571,6 @@ function $rt_setPropElem(base, prop, val)
 }
 
 /**
-Set a property on the global object
-*/
-function $rt_setGlobal(prop, val)
-{
-    // TODO: inline this manually?
-    $rt_objSetProp($ir_get_global_obj(), prop, val);
-}
-
-/**
 JS delete operator
 */
 function $rt_delProp(base, prop)
@@ -2518,29 +2583,21 @@ function $rt_delProp(base, prop)
     if (!$ir_is_string(prop))
         throw TypeError('non-string property name');
 
-    var obj = base;
-    var propStr = prop;
 
-    // Follow the next link chain
-    for (;;)
-    {
-        var next = $rt_obj_get_next(obj);
-        if ($ir_eq_refptr(next, null))
-            break;
-        obj = next;
-    }
 
-    // Get the class from the object
-    var classPtr = $rt_obj_get_map(obj);
+    assert (false);
 
-    // Find the index for this property
-    var propIdx = $ir_map_prop_idx(classPtr, propStr, false);
-    if ($ir_eq_i32(propIdx, -1))
-        return true;
 
-    // Set the property slot to missing in the object
-    $rt_obj_set_word(obj, propIdx, $ir_get_word($missing));
-    $rt_obj_set_type(obj, propIdx, $ir_get_type($missing));
+
+    // TODO: need to redefine the property with the deleted flag?
+
+
+
+
+
+
+
+
 
     return true;
 }
@@ -2583,15 +2640,9 @@ Check if an object has a given property
 */
 function $rt_objHasProp(obj, propStr)
 {
-    // Follow the next link chain
-    for (;;)
-    {
-        var next = $rt_obj_get_next(obj);
-        if ($ir_eq_refptr(next, null))
-            break;
-        obj = next;
-    }
+    assert (false);
 
+    /*
     var classPtr = $rt_obj_get_map(obj);
     var propIdx = $ir_map_prop_idx(classPtr, propStr, false);
 
@@ -2611,6 +2662,7 @@ function $rt_objHasProp(obj, propStr)
     var type = $rt_obj_get_type(obj, propIdx);
     var val = $ir_make_value(word, type);
     return (val !== $missing);
+    */
 }
 
 /**

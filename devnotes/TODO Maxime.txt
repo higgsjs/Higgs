@@ -98,8 +98,36 @@ TODO: reserve August 15-16-17, international Lisp conference
 - Cocktail premier soir
 - Pavillon Jean-Coutu
 
+TODO: shorthand for spillLiveBefore
+
+TODO: IIR, use introspection to auto-define in iir.d, no addOp?
+
+TODO: take a break, work on random lib
+- setRndGen
+- random.normal, random.choice
+- announce in chat
+
+FIXME: GC, shapes refer to other shapes? careful about deleting?
+
 TODO: prop attrib bits?
 - Define as RT consts
+- How would this work wrt deletion? redefine prop as deleted?
+- set_prop already takes many arguments
+  - but we do want to simultaneously set attrib bits?
+  - avoid two shape transitions?
+- alternative is shape_set_attrs
+  - can separate between prop sets and attrib sets... might be faster*
+  - for the global object, can merge shapes?
+  - might be able to merge immediately successive transitions
+  - problematic to have two transitions for setting proto and such
+- rewriting a property will not take away flags such as enumerable, etc.
+- GC could trigger merging of shapes?
+- probably should have a shape_set_attrs, seems like a better division
+  - can still have some sort of def_const instruction which does
+    two transitions into one, useful for the prototype and global consts
+- still seems very complicated... adding attr bits to set_prop is not so bad?
+  - but it doesn't work! would need to get existing attrib bits
+- have set_attribs and def_const.
 
 TODO: defObjConsts() in object.d
 - Define object layout constants needed by the runtime
@@ -109,16 +137,6 @@ TODO: vm method to define constants
 - Enforces allcaps naming
 - defRTConst(string name, ValuePair), defRTConst(string name, int32 intVal)
 
-TODO: take a break, work on random lib
-- setRndGen
-- random.normal, random.choice
-- announce in chat
-
-TODO: try basic tests, no stdlib, try creating empty obj, setting a property
-
-TODO: shorthand for spillLiveBefore
-
-TODO: IIR, use introspection to auto-define in iir.d, no addOp?
 
 
 
@@ -130,6 +148,7 @@ TODO: IIR, use introspection to auto-define in iir.d, no addOp?
 
 
 
+[DONE] FIXME: getGlobal, need to throw exception on failure
 
 [DONE] TODO: alias const(ObjShape) ShapePtr
 - grep for const(ObjShape)

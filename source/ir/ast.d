@@ -2191,7 +2191,7 @@ IRValue refToIR(
             // Get the global value
             return genRtCall(
                 ctx,
-                "getGlobal",
+                "getGlobalInl",
                 [ctx.strVal(identExpr.name)],
                 identExpr.pos
             );
@@ -2305,16 +2305,6 @@ IRValue assgToIR(
         if (identExpr.declNode is null)
         {
             //writefln("assigning to global: %s", identExpr);
-
-            // Set the global value
-            /*
-            genRtCall(
-                ctx,
-                "setGlobal",
-                [ctx.strVal(identExpr.name), rhsVal],
-                lhsExpr.pos
-            );
-            */
 
             // Set the global value
             ctx.addInstr(new IRInstr(
