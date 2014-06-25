@@ -268,6 +268,12 @@ struct ValuePair
         this.type = type;
     }
 
+    this(int32 int32Val)
+    {
+        this.word.int32Val = int32Val;
+        this.type = Type.INT32;
+    }
+
     this(IRFunction fun)
     {
         this.word.funVal = fun;
@@ -643,6 +649,9 @@ class VM
             GC.BlkAttr.NO_SCAN |
             GC.BlkAttr.NO_INTERIOR
         );
+
+        // Define the object-related constants
+        defObjConsts(this);
 
         // If the runtime library should be loaded
         if (loadRuntime)
@@ -1236,6 +1245,31 @@ class VM
             // Move to the caller frame's context
             curInstr = retEntry.callInstr;
         }
+    }
+
+    /**
+    Define a constant on the global object
+    */
+    void defConst(wstring name, ValuePair val, bool enumerable = false)
+    {
+        runtime.object.defConst(this, globalObj, name, val, enumerable);
+    }
+
+    /**
+    Define a run-time constant on the global object
+    */
+    void defRTConst(wstring name, ValuePair val)
+    {
+        assert (name.toUpper == name);
+        return defConst(RT_PREFIX ~ name, val, false);
+    }
+
+    /**
+    Define an integer run-time constant on the global object
+    */
+    void defRTConst(wstring name, int32 intVal)
+    {
+        return defRTConst(name, ValuePair(intVal));
     }
 }
 

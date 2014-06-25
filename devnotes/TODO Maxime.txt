@@ -63,13 +63,13 @@ TODO: convert arrays and closures to a shaperer model??
 
 TODO: integrate ValType into BBV
 
-TODO: __proto__ should be non-enumerable, non-writable
-- could use a shorthand function to set it
-- need some way to set attribs on prop def
-
 TODO: define $UNDEF, $NULLPTR, $MISSING in the VM
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
 TODO: const globals
+
+TODO: __proto__ should be non-enumerable, non-writable
+- could use a shorthand function to set it
+- need some way to set attribs on prop def
 
 TODO: internship, contact Luke Wagner?
 
@@ -109,42 +109,32 @@ TODO: take a break, work on random lib
 
 FIXME: GC, shapes refer to other shapes? careful about deleting?
 
-TODO: prop attrib bits?
-- Define as RT consts
-- How would this work wrt deletion? redefine prop as deleted?
-- set_prop already takes many arguments
-  - but we do want to simultaneously set attrib bits?
-  - avoid two shape transitions?
-- alternative is shape_set_attrs
-  - can separate between prop sets and attrib sets... might be faster*
-  - for the global object, can merge shapes?
-  - might be able to merge immediately successive transitions
-  - problematic to have two transitions for setting proto and such
-- rewriting a property will not take away flags such as enumerable, etc.
-- GC could trigger merging of shapes?
-- probably should have a shape_set_attrs, seems like a better division
-  - can still have some sort of def_const instruction which does
-    two transitions into one, useful for the prototype and global consts
-- still seems very complicated... adding attr bits to set_prop is not so bad?
-  - but it doesn't work! would need to get existing attrib bits
-- have set_attribs and def_const.
+TODO: shape_def_const <obj> <propName> <cstVal>
 
-TODO: defObjConsts() in object.d
+TODO: setProp should do nothing if shape specifies not writable
+
+TODO: shape_set_attrs <obj> <propName> <attrFlags>
+- Or take defShape as argument? doesn't really matter! use prop name
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: defObjConsts() in object.d
 - Define object layout constants needed by the runtime
 
-TODO: vm method to define constants
+[DONE] TODO: vm method to define constants
 - Auto adds the $RT_PREFIX
 - Enforces allcaps naming
-- defRTConst(string name, ValuePair), defRTConst(string name, int32 intVal)
+- defConst(wstring name, ValuePair, bool enumerable = false)
+- defConst(wstring name, int32 intVal, bool enumerable = false)
 
-
-
-
-
-
-
-
-
+[DONE] TODO: defConst method for objects
 
 [DONE] TODO: flag bits
 ATTR_ENUMERABLE, ATTR_WRITABLE, ATTR_DEFAULT

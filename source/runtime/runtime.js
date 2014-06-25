@@ -1807,7 +1807,7 @@ Allocate an empty object
 function $rt_newObj(protoPtr)
 {
     // Allocate the object
-    var objPtr = $rt_obj_alloc(10 /*TODO: use VM-defined constant*/);
+    var objPtr = $rt_obj_alloc($rt_OBJ_MIN_CAP);
 
     $rt_obj_set_shape(objPtr, $ir_shape_empty());
 
@@ -1825,7 +1825,7 @@ function $rt_newArr(protoPtr, numElems)
     var tblPtr = $rt_arrtbl_alloc(numElems);
 
     // Allocate the array
-    var objPtr = $rt_arr_alloc(10 /*TODO: use VM-defined constant*/);
+    var objPtr = $rt_arr_alloc($rt_OBJ_MIN_CAP);
 
     // Initialize the array object
     $rt_obj_set_shape(objPtr, $ir_shape_empty());

@@ -50,6 +50,9 @@ import runtime.string;
 import runtime.gc;
 import util.id;
 
+/// Minimum object capacity (number of slots)
+const uint32_t OBJ_MIN_CAP = 8;
+
 /// Prototype property slot index
 const uint32_t PROTO_SLOT_IDX = 0;
 
@@ -58,9 +61,6 @@ const uint32_t FPTR_SLOT_IDX = 1;
 
 /// Static offset for the function pointer in a closure object
 const size_t FPTR_SLOT_OFS = clos_ofs_word(null, FPTR_SLOT_IDX);
-
-/// Minimum object capacity (number of slots)
-const uint32_t OBJ_MIN_CAP = 8;
 
 /// Property attribute type
 alias uint8_t PropAttr;
@@ -83,14 +83,14 @@ Define object-related runtime constants in a VM instance
 */
 void defObjConsts(VM vm)
 {
-    // TODO
-    // TODO
-    // TODO
+    vm.defRTConst("OBJ_MIN_CAP"w, OBJ_MIN_CAP);
+    vm.defRTConst("PROTO_SLOT_IDX"w, PROTO_SLOT_IDX);
+    vm.defRTConst("FPTR_SLOT_IDX"w, FPTR_SLOT_IDX);
 
-
-
-
-
+    vm.defRTConst("ATTR_CONFIGURABLE"w  , ATTR_CONFIGURABLE);
+    vm.defRTConst("ATTR_WRITABLE"w      , ATTR_WRITABLE);
+    vm.defRTConst("ATTR_ENUMERABLE"w    , ATTR_ENUMERABLE);
+    vm.defRTConst("ATTR_DELETED"w       , ATTR_DELETED);
 }
 
 /**
@@ -499,5 +499,39 @@ ValuePair setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
             return NULL;
         }
     }
+}
+
+/**
+Define a constant on an object
+*/
+void defConst(
+    VM vm,
+    ValuePair objPair,
+    wstring propStr,
+    ValuePair valPair,
+    bool enumerable = false
+)
+{
+    // Get the shape from the object
+    auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
+    assert (objShape !is null);
+
+    // Find the shape defining this property (if it exists)
+    auto defShape = objShape.getDefShape(propStr);
+
+    assert (
+        defShape is null,
+        "property already defined"
+    );
+
+    auto newShape = objShape.defProp(
+        propStr,
+        ValType(valPair),
+        enumerable? ATTR_ENUMERABLE:0
+    );
+
+    obj_set_shape(objPair.word.ptrVal, cast(rawptr)newShape);
+
+    setProp(vm, objPair, propStr, valPair);
 }
 
