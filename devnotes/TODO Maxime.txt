@@ -146,7 +146,8 @@ TODO: vm method to define constants
 
 
 
-
+[DONE] TODO: flag bits
+ATTR_ENUMERABLE, ATTR_WRITABLE, ATTR_DEFAULT
 
 [DONE] FIXME: getGlobal, need to throw exception on failure
 

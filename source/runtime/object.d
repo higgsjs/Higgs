@@ -62,9 +62,35 @@ const size_t FPTR_SLOT_OFS = clos_ofs_word(null, FPTR_SLOT_IDX);
 /// Minimum object capacity (number of slots)
 const uint32_t OBJ_MIN_CAP = 8;
 
-void defObjConsts()
+/// Property attribute type
+alias uint8_t PropAttr;
+
+/// Property attribute flag bit definitions
+const PropAttr ATTR_CONFIGURABLE    = 1 << 0;
+const PropAttr ATTR_WRITABLE        = 1 << 1;
+const PropAttr ATTR_ENUMERABLE      = 1 << 2;
+const PropAttr ATTR_DELETED         = 1 << 3;
+
+/// Default property attributes
+const PropAttr ATTR_DEFAULT = (
+    ATTR_CONFIGURABLE |
+    ATTR_WRITABLE |
+    ATTR_ENUMERABLE
+);
+
+/**
+Define object-related runtime constants in a VM instance
+*/
+void defObjConsts(VM vm)
 {
     // TODO
+    // TODO
+    // TODO
+
+
+
+
+
 }
 
 /**
@@ -153,10 +179,6 @@ class ObjShape
     /// Parent shape in the tree
     ShapePtr parent;
 
-    // TODO
-    /// Cache of property names to defining shapes, to accelerate lookups
-    //ShapePtr[wstring] propCache;
-
     /// Name of this property, null if array element property
     wstring propName;
 
@@ -164,23 +186,7 @@ class ObjShape
     ValType type;
 
     /// Property attribute flags
-    mixin(bitfields!(
-
-        /// Property writable (not read-only)
-        bool, "writable", 1,
-
-        /// Property enumerable
-        bool, "enumerable", 1,
-
-        // Property configurable
-        bool, "configurable", 1,
-
-        /// Property deleted
-        bool, "deleted", 1,
-
-        /// Padding bits
-        uint, "", 4
-    ));
+    PropAttr attrs;
 
     /// Index at which this property is stored
     uint32_t slotIdx;
@@ -191,12 +197,15 @@ class ObjShape
     /// Sub-shape transitions, mapped by prop name, then prop type
     ShapePtr[][ValType][wstring] subShapes;
 
+    // TODO
+    /// Cache of property names to defining shapes, to accelerate lookups
+    //ShapePtr[wstring] propCache;
+
     /// Empty shape constructor
     this()
     {
         this.parent = null;
         this.propName = null;
-
         this.slotIdx = uint32_t.max;
         this.nextIdx = 0;
     }
@@ -205,13 +214,15 @@ class ObjShape
     private this(
         ShapePtr parent,
         wstring propName,
-        ValType type
+        ValType type,
+        PropAttr attrs
     )
     {
         this.parent = parent;
-        this.propName = propName;
 
+        this.propName = propName;
         this.type = type;
+        this.attrs = attrs;
 
         this.slotIdx = parent.nextIdx;
         this.nextIdx = this.slotIdx + 1;
@@ -224,7 +235,7 @@ class ObjShape
     Method to define or redefine a property.
     Either finds an existing sub-shape or create one.
     */
-    ShapePtr defProp(wstring propName, ValType type)
+    ShapePtr defProp(wstring propName, ValType type, PropAttr attrs)
     {
         if (propName in subShapes)
         {
@@ -233,17 +244,14 @@ class ObjShape
                 foreach (shape; subShapes[propName][type])
                 {
                     // If this shape matches, return it
-                    if (shape.writable is true &&
-                        shape.enumerable is true &&
-                        shape.configurable is true &&
-                        shape.deleted is false)
+                    if (shape.attrs == attrs)
                         return shape;
                 }
             }
         }
 
         // Create the new shape
-        auto newShape = new ObjShape(this, propName, type);
+        auto newShape = new ObjShape(this, propName, type, attrs);
 
         // Add it to the sub-shapes
         subShapes[propName][type] ~= newShape;
@@ -263,7 +271,7 @@ class ObjShape
         // If the name matches, and this is not the root empty shape
         if (propName == this.propName)
         {
-            if (this.deleted || this.parent is null)
+            if (this.attrs & ATTR_DELETED || this.parent is null)
                 return null;
 
             return this;
@@ -296,13 +304,6 @@ ValuePair newObj(
     obj_set_shape(objPtr, cast(rawptr)vm.emptyShape);
 
     setProp(vm, objPair, "__proto__"w, protoObj.pair);
-
-
-
-    setProp(vm, objPair, "__bah__"w, NULL);
-    assert (getProp(vm, objPair, "__proto__"w) == protoObj.pair);
-
-
 
     return objPair;
 }
@@ -379,7 +380,6 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
         {
             slotIdx -= objCap;
             auto extTbl = obj_get_next(obj.word.ptrVal);
-            writeln("extTbl: ", extTbl);
             assert (slotIdx < obj_get_cap(extTbl));
             return getSlotPair(extTbl, slotIdx);
         }
@@ -419,7 +419,8 @@ ValuePair setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
     {
         auto newShape = objShape.defProp(
             propStr,
-            valType
+            valType,
+            ATTR_DEFAULT
         );
 
         obj_set_shape(obj.ptr, cast(rawptr)newShape);
