@@ -475,7 +475,7 @@ class VM
     refptr strTbl;
 
     /// Empty object shape
-    ShapePtr emptyShape;
+    ObjShape emptyShape;
 
     /// Object prototype object
     ValuePair objProto;

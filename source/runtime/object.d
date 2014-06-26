@@ -101,7 +101,7 @@ struct ValType
     union
     {
         /// Shape (null if unknown)
-        ShapePtr shape;
+        ObjShape shape;
 
         /// IR function, for function pointers
         IRFunction fun;
@@ -167,9 +167,6 @@ struct ValType
     // TODO: union? wait and see if needed
 }
 
-/// Shape object pointer type
-alias const(ObjShape) ShapePtr;
-
 /**
 Object shape tree representation.
 Each shape defines or redefines a property.
@@ -177,42 +174,46 @@ Each shape defines or redefines a property.
 class ObjShape
 {
     /// Parent shape in the tree
-    ShapePtr parent;
+    ObjShape parent;
 
     /// Name of this property, null if array element property
-    wstring propName;
+    const wstring propName;
 
     /// Value type, may be unknown
-    ValType type;
+    const ValType type;
 
     /// Property attribute flags
-    PropAttr attrs;
+    const PropAttr attrs;
 
     /// Index at which this property is stored
-    uint32_t slotIdx;
+    const uint32_t slotIdx;
 
     /// Next slot index to allocate
-    uint32_t nextIdx;
+    const uint32_t nextIdx;
 
     /// Sub-shape transitions, mapped by prop name, then prop type
-    ShapePtr[][ValType][wstring] subShapes;
+    ObjShape[][ValType][wstring] subShapes;
 
     // TODO
     /// Cache of property names to defining shapes, to accelerate lookups
-    //ShapePtr[wstring] propCache;
+    //ObjShape[wstring] propCache;
 
     /// Empty shape constructor
     this()
     {
         this.parent = null;
+
         this.propName = null;
+        this.type = ValType();
+        this.attrs = 0;
+
         this.slotIdx = uint32_t.max;
         this.nextIdx = 0;
     }
 
     /// Property definition constructor
     private this(
-        ShapePtr parent,
+        ObjShape parent,
         wstring propName,
         ValType type,
         PropAttr attrs
@@ -235,7 +236,7 @@ class ObjShape
     Method to define or redefine a property.
     Either finds an existing sub-shape or create one.
     */
-    ShapePtr defProp(wstring propName, ValType type, PropAttr attrs)
+    ObjShape defProp(wstring propName, ValType type, PropAttr attrs)
     {
         if (propName in subShapes)
         {
@@ -263,7 +264,7 @@ class ObjShape
     /**
     Get the shape defining a given property
     */
-    ShapePtr getDefShape(wstring propName) const
+    ObjShape getDefShape(wstring propName)
     {
         // TODO: propCache? should only store at lookup point
         // need hidden lookup start shape arg?
@@ -360,7 +361,7 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
     assert (obj_get_cap(obj.word.ptrVal) > 0);
 
     // Get the shape from the object
-    auto objShape = cast(ShapePtr)obj_get_shape(obj.word.ptrVal);
+    auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
     assert (objShape !is null);
 
     // Find the shape defining this property (if it exists)
@@ -400,10 +401,18 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
     );
 }
 
-ValuePair setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
+ValuePair setProp(
+    VM vm,
+    ValuePair objPair,
+    wstring propStr,
+    ValuePair valPair,
+    PropAttr defAttrs = ATTR_DEFAULT
+)
 {
     auto obj = GCRoot(vm, objPair);
     auto val = GCRoot(vm, valPair);
+
+    auto valType = ValType(valPair);
 
     // Get the shape from the object
     auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
@@ -412,23 +421,29 @@ ValuePair setProp(VM vm, ValuePair objPair, wstring propStr, ValuePair valPair)
     // Find the shape defining this property (if it exists)
     auto defShape = objShape.getDefShape(propStr);
 
-    auto valType = ValType(valPair);
-
-    // If the property is not defined
+    // If the property is not already defined
     if (defShape is null)
     {
-        auto newShape = objShape.defProp(
+        // Create a new shape for the property
+        defShape = objShape.defProp(
             propStr,
             valType,
-            ATTR_DEFAULT
+            defAttrs
         );
 
-        obj_set_shape(obj.ptr, cast(rawptr)newShape);
-
-        return setProp(vm, obj.pair, propStr, valPair);
+        obj_set_shape(obj.ptr, cast(rawptr)defShape);
     }
+    else
+    {
+        // If the property is not writable, do nothing
+        if (!(defShape.attrs & ATTR_WRITABLE))
+        {
+            writeln("redefining constant: ", propStr);
+            return NULL;
+        }
 
-    // TODO: handle type mismatches with defShape
+        // TODO: handle type mismatches with defShape
+    }
 
     uint32_t slotIdx = defShape.slotIdx;
 
@@ -512,26 +527,22 @@ void defConst(
     bool enumerable = false
 )
 {
-    // Get the shape from the object
     auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
-    assert (objShape !is null);
-
-    // Find the shape defining this property (if it exists)
+    assert (
+        objShape !is null
+    );
     auto defShape = objShape.getDefShape(propStr);
-
     assert (
         defShape is null,
         "property already defined"
     );
 
-    auto newShape = objShape.defProp(
+    setProp(
+        vm,
+        objPair,
         propStr,
-        ValType(valPair),
+        valPair,
         enumerable? ATTR_ENUMERABLE:0
     );
-
-    obj_set_shape(objPair.word.ptrVal, cast(rawptr)newShape);
-
-    setProp(vm, objPair, propStr, valPair);
 }
 

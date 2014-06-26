@@ -3163,7 +3163,7 @@ void gen_shape_get_def(
     CodeBlock as
 )
 {
-    extern (C) ShapePtr op_shape_get_def(
+    extern (C) ObjShape op_shape_get_def(
         refptr objPtr,
         refptr strPtr
     )
@@ -3281,7 +3281,7 @@ void gen_shape_get_prop(
 
     extern (C) static void op_shape_get_prop(
         refptr objPtr,
-        ShapePtr defShape,
+        ObjShape defShape,
         ValuePair* retVal
     )
     {

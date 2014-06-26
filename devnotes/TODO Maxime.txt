@@ -67,9 +67,7 @@ TODO: define $UNDEF, $NULLPTR, $MISSING in the VM
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
 TODO: const globals
 
-TODO: __proto__ should be non-enumerable, non-writable
-- could use a shorthand function to set it
-- need some way to set attribs on prop def
+TODO: some global constants can be resolved at compile time
 
 TODO: internship, contact Luke Wagner?
 
@@ -109,9 +107,10 @@ TODO: take a break, work on random lib
 
 FIXME: GC, shapes refer to other shapes? careful about deleting?
 
-TODO: shape_def_const <obj> <propName> <cstVal>
+TODO: __proto__ should be non-enumerable, non-writable
+- use shape_def_const
 
-TODO: setProp should do nothing if shape specifies not writable
+TODO: shape_def_const <obj> <propName> <cstVal>
 
 TODO: shape_set_attrs <obj> <propName> <attrFlags>
 - Or take defShape as argument? doesn't really matter! use prop name
@@ -124,6 +123,11 @@ TODO: shape_set_attrs <obj> <propName> <attrFlags>
 
 
 
+[DONE] TODO: setProp should do nothing if shape specifies not writable
+
+[DONE] FIXME: defConst can't use setProp?
+- Alternative: provide some attrs to be set by setProp on property definition
+- Defaults to ATTR_DEFAULT
 
 [DONE] TODO: defObjConsts() in object.d
 - Define object layout constants needed by the runtime
