@@ -200,6 +200,8 @@ static this()
     addOp(SHAPE_GET_DEF);
     addOp(SHAPE_SET_PROP);
     addOp(SHAPE_GET_PROP);
+    addOp(SHAPE_DEF_CONST);
+    addOp(SHAPE_SET_ATTRS);
 
     addOp(LOAD_FILE);
     addOp(EVAL_STR);

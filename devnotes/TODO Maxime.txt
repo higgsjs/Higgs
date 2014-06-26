@@ -91,6 +91,7 @@ Meeting:
 - Shapes: began implementing IR instrs, object layout, basic runtime functions
 - Refined shape design, simplified some things, conditional branching, getter-setter handling
 - Observation: global object is a singleton, latest shape is the only one that matters
+  - Code paths recompiled when global object shape changes
   - Can immediately discard old code paths
 TODO: reserve August 15-16-17, international Lisp conference
 - Cocktail premier soir
@@ -107,21 +108,23 @@ TODO: take a break, work on random lib
 
 FIXME: GC, shapes refer to other shapes? careful about deleting?
 
-TODO: __proto__ should be non-enumerable, non-writable
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: __proto__ should be non-enumerable, non-writable
 - use shape_def_const
 
-TODO: shape_def_const <obj> <propName> <cstVal>
+[DONE] TODO: shape_def_const <obj> <propName> <cstVal>
 
-TODO: shape_set_attrs <obj> <propName> <attrFlags>
+[DONE] TODO: shape_set_attrs <obj> <propName> <attrFlags>
 - Or take defShape as argument? doesn't really matter! use prop name
-
-
-
-
-
-
-
-
 
 [DONE] TODO: setProp should do nothing if shape specifies not writable
 

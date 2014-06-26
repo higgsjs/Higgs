@@ -3261,7 +3261,6 @@ void gen_shape_set_prop(
     as.call(scrRegs[0]);
 
     // Set the output value
-    assert (outOpnd.isReg);
     as.mov(outOpnd, cretReg.opnd);
     st.setOutType(as, instr, Type.CLOSURE);
 
@@ -3335,6 +3334,116 @@ void gen_shape_get_prop(
     st.setOutType(as, instr, scrRegs[0].reg(8));
 
     as.add(RSP, ValuePair.sizeof);
+}
+
+/// Define a constant property
+/// Inputs: obj, propName, val, enumerable
+void gen_shape_def_const(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static Word op_shape_def_const(VM vm, IRInstr instr)
+    {
+        auto objPair = vm.getArgVal(instr, 0);
+        auto strPtr = vm.getArgStr(instr, 1);
+        auto valPair = vm.getArgVal(instr, 2);
+        auto isEnum = vm.getArgBool(instr, 3);
+
+        auto propStr = extractWStr(strPtr);
+
+        // Attempt to define the constant
+        auto boolVal = defConst(
+            vm,
+            objPair,
+            propStr,
+            valPair,
+            isEnum
+        );
+
+        return boolVal? TRUE.word:FALSE.word;
+    }
+
+    // Spill the values that are live before the call
+    st.spillValues(
+        as,
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
+        {
+            return liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
+    as.ptr(cargRegs[1], instr);
+    as.ptr(scrRegs[0], &op_shape_def_const);
+    as.call(scrRegs[0]);
+
+    // Set the output value
+    as.mov(outOpnd, cretReg.opnd);
+    st.setOutType(as, instr, Type.CONST);
+
+    as.loadJITRegs();
+}
+
+/// Sets the attributes for a property
+/// Inputs: obj, propName, attrBits
+void gen_shape_set_attrs(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static Word op_shape_set_attrs(VM vm, IRInstr instr)
+    {
+        auto objPair = vm.getArgVal(instr, 0);
+        auto strPtr = vm.getArgStr(instr, 1);
+        auto attrBits = vm.getArgUint32(instr, 2);
+
+        auto propStr = extractWStr(strPtr);
+
+        // Attempt to set the property attributes
+        auto boolVal = setPropAttrs(
+            vm,
+            objPair,
+            propStr,
+            cast(uint8_t)attrBits
+        );
+
+        return boolVal? TRUE.word:FALSE.word;
+    }
+
+    // Spill the values that are live before the call
+    st.spillValues(
+        as,
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
+        {
+            return liveInfo.liveBefore(value, instr);
+        }
+    );
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
+    as.ptr(cargRegs[1], instr);
+    as.ptr(scrRegs[0], &op_shape_set_attrs);
+    as.call(scrRegs[0]);
+
+    // Set the output value
+    as.mov(outOpnd, cretReg.opnd);
+    st.setOutType(as, instr, Type.CONST);
+
+    as.loadJITRegs();
 }
 
 void gen_set_global(

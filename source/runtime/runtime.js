@@ -1883,9 +1883,8 @@ Set the prototype value for an object
 */
 function $rt_setProto(obj, proto)
 {
-    // TODO: make non-writable, non-enumerable, non-configurable
-    // need support for setting attribs at prop-def time?
-    obj.__proto__ = proto;
+    // Define the prototype as a non-writable, non-enumerable constant
+    $ir_shape_def_const(obj, '__proto__', proto, false);
 }
 
 /**
@@ -2583,21 +2582,8 @@ function $rt_delProp(base, prop)
     if (!$ir_is_string(prop))
         throw TypeError('non-string property name');
 
-
-
-    assert (false);
-
-
-
-    // TODO: need to redefine the property with the deleted flag?
-
-
-
-
-
-
-
-
+    // Set the property attributes to deleted
+    $ir_shape_set_attrs(base, prop, $rt_ATTR_DELETED | $rt_ATTR_CONFIGURABLE);
 
     return true;
 }

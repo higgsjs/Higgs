@@ -431,6 +431,7 @@ ValuePair setProp(
             defAttrs
         );
 
+        // Set the new shape for the object
         obj_set_shape(obj.ptr, cast(rawptr)defShape);
     }
     else
@@ -519,7 +520,7 @@ ValuePair setProp(
 /**
 Define a constant on an object
 */
-void defConst(
+bool defConst(
     VM vm,
     ValuePair objPair,
     wstring propStr,
@@ -531,11 +532,14 @@ void defConst(
     assert (
         objShape !is null
     );
+
     auto defShape = objShape.getDefShape(propStr);
-    assert (
-        defShape is null,
-        "property already defined"
-    );
+
+    // If the property is already defined, stop
+    if (defShape !is null)
+    {
+        return false;
+    }
 
     setProp(
         vm,
@@ -544,5 +548,50 @@ void defConst(
         valPair,
         enumerable? ATTR_ENUMERABLE:0
     );
+
+    return true;
+}
+
+/**
+Set the attributes for a given property
+*/
+bool setPropAttrs(
+    VM vm,
+    ValuePair obj,
+    wstring propStr,
+    PropAttr attrs
+)
+{
+    // Get the shape from the object
+    auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
+    assert (objShape !is null);
+
+    // Find the shape defining this property (if it exists)
+    auto defShape = objShape.getDefShape(propStr);
+
+    // If the property doesn't exist, do nothing
+    if (defShape is null)
+    {
+        return false;
+    }
+
+    // If the property is not configurable, do nothing
+    if (!(defShape.attrs & ATTR_CONFIGURABLE))
+    {
+        return false;
+    }
+
+    // Create a new shape for the property
+    auto newShape = objShape.defProp(
+        propStr,
+        ValType(),
+        attrs
+    );
+
+    // Set the new object shape
+    obj_set_shape(obj.word.ptrVal, cast(rawptr)newShape);
+
+    // Operation successful
+    return true;
 }
 
