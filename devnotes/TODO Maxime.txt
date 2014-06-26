@@ -108,6 +108,10 @@ TODO: take a break, work on random lib
 
 FIXME: GC, shapes refer to other shapes? careful about deleting?
 
+TODO: for-in support
+- shape_prop_name <slotIdx>
+  - inefficient but simple
+  - ask Tommy about her usage
 
 
 
@@ -116,7 +120,9 @@ FIXME: GC, shapes refer to other shapes? careful about deleting?
 
 
 
+[DONE] TODO: objHasProp
 
+[DONE] TODO: object extension
 
 [DONE] TODO: __proto__ should be non-enumerable, non-writable
 - use shape_def_const

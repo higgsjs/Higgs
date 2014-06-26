@@ -1900,7 +1900,7 @@ Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
 {
-    // Find the index for this property
+    // Find the defining shape for this property
     // This shifts us to a different version where the obj shape is known
     // Implements a "version cache" with dynamic dispatching
     var defShape = $ir_shape_get_def(obj, propStr);
@@ -2210,7 +2210,7 @@ Get a property from the global object
 */
 function $rt_getGlobal(obj, propStr)
 {
-    // Find the index for this property
+    // Find the defining shape for this property
     // This shifts us to a different version where the obj shape is known
     // Implements a "version cache" with dynamic dispatching
     var defShape = $ir_shape_get_def(obj, propStr);
@@ -2626,29 +2626,11 @@ Check if an object has a given property
 */
 function $rt_objHasProp(obj, propStr)
 {
-    assert (false);
+    // Try to find the defining shape for the property
+    var defShape = $ir_shape_get_def(obj, propStr);
 
-    /*
-    var classPtr = $rt_obj_get_map(obj);
-    var propIdx = $ir_map_prop_idx(classPtr, propStr, false);
-
-    // If the class doesn't have an index for this property slot, return false
-    if ($ir_eq_i32(propIdx, -1))
-        return false;
-
-    // Get the capacity of the object
-    var objCap = $rt_obj_get_cap(obj);
-
-    // If the object doesn't have space for this property, return false
-    if ($ir_ge_i32(propIdx, objCap))
-        return false;
-
-    // Check that the property is not missing
-    var word = $rt_obj_get_word(obj, propIdx);
-    var type = $rt_obj_get_type(obj, propIdx);
-    var val = $ir_make_value(word, type);
-    return (val !== $missing);
-    */
+    // Check if a defining shape was found
+    return $ir_ne_rawptr(defShape, $nullptr);
 }
 
 /**

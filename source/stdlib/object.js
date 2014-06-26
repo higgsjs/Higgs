@@ -134,12 +134,12 @@ Object.getOwnPropertyNames = function (O)
 /**
 15.2.3.5 Object.create ( O [, Properties] )
 */
-Object.create = function (O, Properties)
+Object.create = function (proto, Properties)
 {
-    if ($rt_valIsObj(O) === false && O !== null)
+    if ($rt_valIsObj(proto) === false && proto !== null)
         throw TypeError('can only create object from object or null prototype');
 
-    var newObj = $rt_newObj($ir_make_map(null, 0), O);
+    var newObj = $rt_newObj(proto);
 
     if (Properties !== undefined)
         Object.defineProperties(newObj, Properties);

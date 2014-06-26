@@ -472,8 +472,6 @@ ValuePair setProp(
     // The property is past the object's capacity
     else 
     {
-        assert (false, "extending object");
-
         slotIdx -= objCap;
 
         // Get the extension table pointer
