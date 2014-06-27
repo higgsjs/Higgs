@@ -610,7 +610,7 @@ class VM
         strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
 
         // Allocate the empty object shape
-        emptyShape = new ObjShape();
+        emptyShape = new ObjShape(this);
 
         // Allocate the object prototype object
         objProto = newObj(
@@ -1065,9 +1065,6 @@ class VM
         );
 
         //writeln(fun.toString());
-
-        // Register this function in the function reference set
-        funRefs[cast(void*)fun] = fun;
 
         // Compile the entry block of the unit function
         auto entryFn = compileUnit(this, fun);

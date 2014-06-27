@@ -224,7 +224,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
             return addr
     */
 
-    //writeln("entering gcCollect");
+    writeln("entering gcCollect");
 
     if (heapSize != 0)
         vm.heapSize = heapSize;
@@ -394,7 +394,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Increment the garbage collection count
     vm.gcCount++;
 
-    //writeln("leaving gcCollect");
+    writeln("leaving gcCollect");
     //writefln("free space: %s", (vm.heapLimit - vm.allocPtr));
 }
 
@@ -444,7 +444,10 @@ refptr gcForward(VM vm, refptr ptr)
     }
 
     // If this is an object of some kind
-    if (header == LAYOUT_OBJ || header == LAYOUT_ARR || header == LAYOUT_CLOS)
+    if (header == LAYOUT_OBJ || 
+        header == LAYOUT_ARR || 
+        header == LAYOUT_CLOS ||
+        header == LAYOUT_GETSET)
     {
         auto shape = cast(ObjShape)obj_get_shape(ptr);
         assert (shape !is null);
@@ -816,8 +819,17 @@ Visit an object shape
 */
 void visitShape(VM vm, ObjShape shape)
 {
-    // Add the map to the live set
-    vm.liveShapes[cast(void*)shape] = shape;
+    // Add this shape and its parents to the live set
+    for (auto curShape = shape; curShape !is null; curShape = curShape.parent)
+    {
+        auto ptr = cast(void*)shape;
+
+        if (ptr in vm.liveShapes)
+            break;
+
+        // Add the shape to the live set
+        vm.liveShapes[ptr] = shape;
+    }
 }
 
 /**

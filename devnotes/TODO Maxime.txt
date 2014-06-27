@@ -87,12 +87,18 @@ Meeting:
 - e-mailed Dave Herman about internship, got response today
   - Michael Bebenita CCd
   - There may be constraints on when they allow internships
+  - Still no response from Bebenita...
   - Summer? Apple as fallback
 - Shapes: began implementing IR instrs, object layout, basic runtime functions
-- Refined shape design, simplified some things, conditional branching, getter-setter handling
+- Refined shape design, simplified things, getter-setter handling, prop attribs
+- Ext table mechanism, collapsed on GC
+- Most tests passing
+  - Next goal, all test passing, system unoptimized
+  - After: fit shapes into BBV, optimize prop reads
 - Observation: global object is a singleton, latest shape is the only one that matters
   - Code paths recompiled when global object shape changes
   - Can immediately discard old code paths
+  - Less problematic than I thought
 TODO: reserve August 15-16-17, international Lisp conference
 - Cocktail premier soir
 - Pavillon Jean-Coutu
@@ -106,19 +112,26 @@ TODO: take a break, work on random lib
 - random.normal, random.choice
 - announce in chat
 
-FIXME: GC, shapes refer to other shapes? careful about deleting?
-
 TODO: for-in support
 - shape_prop_name <slotIdx>
   - inefficient but simple
   - ask Tommy about her usage
+- re-enable tests
+
+FIXME: GC bug in regression test
+- fix object next mechanism
+- must copy original prop values, shape ptr to ext table
+- no need to follow long chain, only one degree, then forward ext table
+
+TODO: make is to ext table is large enough for all props, to be next obj
+- no slotIdx -= madness
 
 
 
 
 
 
-
+[DONE] FIXME: GC, shapes refer to other shapes? careful about deleting?
 
 [DONE] TODO: objHasProp
 

@@ -2185,9 +2185,6 @@ void gen_load_file(
             auto ast = parseFile(fileName);
             auto fun = astToIR(vm, ast);
 
-            // Register this function in the function reference set
-            vm.funRefs[cast(void*)fun] = fun;
-
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
@@ -2315,9 +2312,6 @@ void gen_eval_str(
             // Parse the source file and generate IR
             auto ast = parseString(codeStr, "eval_str");
             auto fun = astToIR(vm, ast);
-
-            // Register this function in the function reference set
-            vm.funRefs[cast(void*)fun] = fun;
 
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
@@ -3171,11 +3165,15 @@ void gen_shape_get_def(
         // Increment the count of slow property lookups
         stats.numMapPropSlow++;
 
-        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
-        assert (objShape !is null, "shape is null");
-
         // Get a temporary slice on the JS string characters
         auto propStr = tempWStr(strPtr);
+
+        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
+        assert (
+            objShape !is null, 
+            "shape_get_def: obj shape is null for lookup of \"" ~ 
+            to!string(propStr) ~ "\""
+        );
 
         // Lookup the shape defining this property
         auto defShape = objShape.getDefShape(propStr);

@@ -132,6 +132,9 @@ class IRFunction : IdObject
     /// Constructor
     this(VM vm, FunExpr ast)
     {
+        // Register this function in the live function reference set
+        vm.funRefs[cast(void*)this] = this;
+
         this.vm = vm;
         this.ast = ast;
         this.name = ast.getName();

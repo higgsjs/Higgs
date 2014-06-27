@@ -199,8 +199,11 @@ class ObjShape
     //ObjShape[wstring] propCache;
 
     /// Empty shape constructor
-    this()
+    this(VM vm)
     {
+        // Register this shape in the live shape reference set
+        vm.shapeRefs[cast(void*)this] = this;
+
         this.parent = null;
 
         this.propName = null;
@@ -213,12 +216,16 @@ class ObjShape
 
     /// Property definition constructor
     private this(
+        VM vm,
         ObjShape parent,
         wstring propName,
         ValType type,
         PropAttr attrs
     )
     {
+        // Register this shape in the live shape reference set
+        vm.shapeRefs[cast(void*)this] = this;
+
         this.parent = parent;
 
         this.propName = propName;
@@ -236,7 +243,12 @@ class ObjShape
     Method to define or redefine a property.
     Either finds an existing sub-shape or create one.
     */
-    ObjShape defProp(wstring propName, ValType type, PropAttr attrs)
+    ObjShape defProp(
+        VM vm,
+        wstring propName,
+        ValType type,
+        PropAttr attrs
+    )
     {
         if (propName in subShapes)
         {
@@ -252,7 +264,7 @@ class ObjShape
         }
 
         // Create the new shape
-        auto newShape = new ObjShape(this, propName, type, attrs);
+        auto newShape = new ObjShape(vm, this, propName, type, attrs);
 
         // Add it to the sub-shapes
         subShapes[propName][type] ~= newShape;
@@ -426,6 +438,7 @@ ValuePair setProp(
     {
         // Create a new shape for the property
         defShape = objShape.defProp(
+            vm,
             propStr,
             valType,
             defAttrs
@@ -581,6 +594,7 @@ bool setPropAttrs(
 
     // Create a new shape for the property
     auto newShape = objShape.defProp(
+        vm,
         propStr,
         ValType(),
         attrs
