@@ -181,7 +181,7 @@ Console functions
             else if (i === s)
                 output += stringify(thing);
             else
-                output += stringify(thing) + " "
+                output += stringify(thing) + " ";
 
             obs_l = obs.length;
             while (obs_l--)
