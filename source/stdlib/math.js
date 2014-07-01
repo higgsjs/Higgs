@@ -505,8 +505,25 @@ Math.randomUInt16 = function ()
 }
 
 /**
+Initialize random number generator with a new seed
+Note: this method is not part of ECMAScript
+*/
+Math.setRandSeed = function (seed)
+{
+    // If the seed is not an integer value
+    if (!$ir_is_i32(seed))
+    {
+        // Convert the seed to a string and get its hash value
+        seed = $rt_str_get_hash(String(seed));
+    }
+
+    assert ($ir_is_i32(seed));
+    randSeed = seed;
+}
+
+/**
 15.8.2.14 random ()
-Returns a Number value with positive sign, greater than or equal to 0 but
+Returns a Number value with positive sign, greater than or equal to 0 but 
 less than 1, chosen randomly or pseudo randomly with approximately
 uniform distribution over that range, using an implementation-dependent
 algorithm or strategy. This function takes no arguments.
