@@ -369,6 +369,11 @@ struct ValuePair
             assert (false, "unsupported value type");
         }
     }
+
+    refptr ptr()
+    {
+        return word.ptrVal;
+    }
 }
 
 // Note: low byte is set to allow for one byte immediate comparison

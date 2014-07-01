@@ -3293,7 +3293,6 @@ void gen_shape_get_prop(
         }
         else
         {
-            slotIdx -= objCap;
             auto extTbl = obj_get_next(objPtr);
             *retVal = getSlotPair(extTbl, slotIdx);
         }

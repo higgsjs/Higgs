@@ -86,9 +86,8 @@ TODO: complete runtime.js functions
 Meeting:
 - e-mailed Dave Herman about internship, got response today
   - Michael Bebenita CCd
-  - There may be constraints on when they allow internships
-  - Still no response from Bebenita...
-  - Summer? Apple as fallback
+  - Bebenita says not time to apply for 2015 yet, may be constraints on when
+  - Summer? Recontact Apple?
 - Shapes: began implementing IR instrs, object layout, basic runtime functions
 - Refined shape design, simplified things, getter-setter handling, prop attribs
 - Ext table mechanism, collapsed on GC
@@ -118,18 +117,34 @@ TODO: for-in support
   - ask Tommy about her usage
 - re-enable tests
 
-FIXME: GC bug in regression test
-- fix object next mechanism
+
+
+
+
+
+
+
+
+[DONE] FIXME: segfault after GC, in regression test
+./higgs tests/core/regress/jit_set_global.js tests/core/regress/jit_inlining.js 
+entering gcCollect
+leaving gcCollect
+Segmentation fault (core dumped)
+./higgs --nostdlib gc_bug.js
+set_global "test", $0
+gc_collect 0
+entering gcCollect
+leaving gcCollect
+set_global "i", 0
+Segmentation fault (core dumped)
+- Shapes mistakenly collected
+
+[DONE] FIXME: GC object next mechanism
 - must copy original prop values, shape ptr to ext table
 - no need to follow long chain, only one degree, then forward ext table
 
-TODO: make is to ext table is large enough for all props, to be next obj
+[DONE] TODO: make is to ext table is large enough for all props, to be next obj
 - no slotIdx -= madness
-
-
-
-
-
 
 [DONE] FIXME: GC, shapes refer to other shapes? careful about deleting?
 

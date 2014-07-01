@@ -421,6 +421,32 @@ ValuePair setProp(
     PropAttr defAttrs = ATTR_DEFAULT
 )
 {
+    static ValuePair allocExtTbl(VM vm, refptr obj, uint32_t extCap)
+    {
+        // Get the object layout type
+        auto header = obj_get_header(obj);
+
+        // Switch on the layout type
+        switch (header)
+        {
+            case LAYOUT_OBJ:
+            return ValuePair(obj_alloc(vm, extCap), Type.OBJECT);
+
+            case LAYOUT_ARR:
+            return ValuePair(arr_alloc(vm, extCap), Type.ARRAY);
+
+            case LAYOUT_CLOS:
+            auto numCells = clos_get_num_cells(obj);
+            return ValuePair(clos_alloc(vm, extCap, numCells), Type.CLOSURE);
+
+            case LAYOUT_GETSET:
+            return ValuePair(getset_alloc(vm, extCap), Type.GETSET);
+
+            default:
+            assert (false, "unhandled object type");
+        }
+    }
+
     auto obj = GCRoot(vm, objPair);
     auto val = GCRoot(vm, valPair);
 
@@ -485,15 +511,14 @@ ValuePair setProp(
     // The property is past the object's capacity
     else 
     {
-        slotIdx -= objCap;
-
         // Get the extension table pointer
         auto extTbl = GCRoot(vm, obj_get_next(obj.ptr), Type.OBJECT);
 
         // If the extension table isn't yet allocated
         if (extTbl.ptr is null)
         {
-            extTbl = ValuePair(obj_alloc(vm, objCap), Type.OBJECT);
+            auto extCap = 2 * objCap;
+            extTbl = allocExtTbl(vm, obj.ptr, extCap);
             obj_set_next(obj.ptr, extTbl.ptr);
         }
 
@@ -502,14 +527,14 @@ ValuePair setProp(
         // If the extension table isn't big enough
         if (slotIdx >= extCap)
         {
-            uint32_t newExtCap = 2 * extCap;
-            auto newExtTbl = obj_alloc(vm, newExtCap);
+            auto newExtCap = 2 * extCap;
+            auto newExtTbl = allocExtTbl(vm, obj.ptr, newExtCap);
 
             // Copy over the property words and types
-            for (uint32_t i = 0; i < extCap; ++i)
-                setSlotPair(newExtTbl, i, getSlotPair(extTbl.ptr, i));
+            for (uint32_t i = objCap; i < extCap; ++i)
+                setSlotPair(newExtTbl.ptr, i, getSlotPair(extTbl.ptr, i));
 
-            extTbl = ValuePair(newExtTbl, Type.OBJECT);
+            extTbl = newExtTbl;
             obj_set_next(obj.ptr, extTbl.ptr);
         }
 

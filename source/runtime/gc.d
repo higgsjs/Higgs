@@ -39,6 +39,7 @@ module runtime.gc;
 
 import core.memory;
 import std.c.string;
+import std.stdint;
 import std.stdio;
 import std.string;
 import std.conv;
@@ -434,8 +435,13 @@ refptr gcForward(VM vm, refptr ptr)
         )
     );
 
-    // If this is a closure
+    // Get the next pointer
+    auto nextPtr = obj_get_next(ptr);
+
+    // Get the layout type
     auto header = obj_get_header(ptr);
+
+    // If this is a closure
     if (header == LAYOUT_CLOS)
     {
         auto fun = getFunPtr(ptr);
@@ -444,35 +450,60 @@ refptr gcForward(VM vm, refptr ptr)
     }
 
     // If this is an object of some kind
-    if (header == LAYOUT_OBJ || 
-        header == LAYOUT_ARR || 
+    if (header == LAYOUT_OBJ  ||
+        header == LAYOUT_ARR  ||
         header == LAYOUT_CLOS ||
         header == LAYOUT_GETSET)
     {
         auto shape = cast(ObjShape)obj_get_shape(ptr);
         assert (shape !is null);
         visitShape(vm, shape);
+
+        // If the next pointer points to an extension table
+        if (vm.inFromSpace(nextPtr))
+        {
+            // Forward the extension table, but not the original object
+            auto oldObj = ptr;
+            ptr = nextPtr;
+            nextPtr = obj_get_next(ptr);
+
+            // If the extension table hasn't yet been forwarded
+            if (nextPtr is null)
+            {
+                // Switch on the layout type
+                switch (header)
+                {
+                    case LAYOUT_OBJ:
+                    break;
+
+                    case LAYOUT_ARR:
+                    arr_set_len(ptr, arr_get_len(oldObj));
+                    arr_set_tbl(ptr, arr_get_tbl(oldObj));
+                    break;
+
+                    case LAYOUT_CLOS:
+                    auto numCells = clos_get_num_cells(oldObj);
+                    for (uint32_t i = 0; i < numCells; ++i)
+                        clos_set_cell(ptr, i, clos_get_cell(oldObj, i));
+                    break;
+
+                    case LAYOUT_GETSET:
+                    break;
+
+                    default:
+                    assert (false, "unhandled object type");
+                }
+
+                // Copy over the original object's property words and types
+                auto objCap = obj_get_cap(oldObj);
+                for (uint32_t i = 0; i < objCap; ++i)
+                    setSlotPair(ptr, i, getSlotPair(oldObj, i));
+
+                // Set the object shape
+                obj_set_shape(ptr, obj_get_shape(oldObj));
+            }
+        }
     }
-
-    // Follow the next pointer chain as long as it points in the from-space
-    refptr nextPtr = ptr;
-    for (;;)
-    {
-        // Get the next pointer
-        nextPtr = obj_get_next(nextPtr);
-
-        // If the next pointer is outside of the from-space
-        if (vm.inFromSpace(nextPtr) is false)
-            break;
-
-        // Follow the next pointer chain
-        ptr = nextPtr;
-
-        assert (
-            ptr !is null, 
-            "object pointer is null"
-        );
-    } 
 
     // If the object is not already forwarded to the to-space
     if (nextPtr is null)
@@ -822,7 +853,7 @@ void visitShape(VM vm, ObjShape shape)
     // Add this shape and its parents to the live set
     for (auto curShape = shape; curShape !is null; curShape = curShape.parent)
     {
-        auto ptr = cast(void*)shape;
+        auto ptr = cast(void*)curShape;
 
         if (ptr in vm.liveShapes)
             break;
@@ -837,6 +868,8 @@ Collect resources held by a dead shape
 */
 void collectShape(VM vm, ObjShape shape)
 {
+    //writeln("collecting shape: ", cast(void*)shape, ", ", shape.propName);
+
     destroy(shape);
 }
 
