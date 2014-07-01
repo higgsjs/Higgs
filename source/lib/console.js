@@ -162,6 +162,7 @@ Console functions
     function log()
     {
         var l = arguments.length;
+        var s = l - 1;
         var thing;
         var obs_l;
         var ob;
@@ -172,10 +173,15 @@ Console functions
             obs = [];
 
             thing = arguments[i];
-            if (typeof thing == "string")
-                output += thing + "\t";
+            if (typeof thing === "string")
+                if (i === s)
+                    output += thing;
+                else
+                    output += thing + "\t";
+            else if (i === s)
+                output += stringify(thing);
             else
-                output += stringify(thing) + " ";
+                output += stringify(thing) + " "
 
             obs_l = obs.length;
             while (obs_l--)
