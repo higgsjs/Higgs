@@ -1,13 +1,18 @@
 TODO: check out failing sunspider tests
-      - string-validate-input segfaults
-      - string-unpack-code has some odd bug
-      - string-tagcloud has some error in its parseJSON
+      X string-validate-input segfaults
+      X string-unpack-code has some odd bug
+      X string-tagcloud has some error in its parseJSON
+      - date-format-tofte fails due to eval - issue #112
+
+TODO: spec-compliance
+      - open issue for String.prototype.split - not spec compliant wrt regexps etc
+      - search for other stdlib functions that fail spec
+      - open issue for parsing wrt reserved words in objects
 
 TODO: all libs
       - cleaner API designs
-      - perf also needs to be a consideration; all apis/libs should be designed so that it's easy to do
-        common tasks in a performant way. Try to achieve best balance possible.
-      - come up with set of fundamental 'interfaces' and have libs follow them (iterators, streams, etc)
+      - start with simple, clean, and safe - fast later
+      - [STARTED] come up with set of fundamental 'interfaces' and have libs follow them (iterators, streams, etc)
 
 TODO: test lib
       - more assertion/helper functions
@@ -56,10 +61,10 @@ TODO: dir lib
       - add more predicate functions - isFile etc
 
 TODO: higgs-mode
-      - higgs (minor?) mode for emacs, prototype complete
-      - get prototype up on github
+      - [STARTED] higgs (minor?) mode for emacs
+      X get prototype up on github
       - add REPL capability
-      - higgs-dev functionality - run make targets, etc
+      - higgs-dev functionality - run make targets, etc flymake?
       - addons for js-mode and js2-mode to get correct syntax coloring, autocomplete, etc behavior for
         Higgs globals (such as require()) and IR function names, etc.
 
