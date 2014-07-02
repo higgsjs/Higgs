@@ -2,7 +2,12 @@ TODO: check out failing sunspider tests
       X string-validate-input segfaults
       X string-unpack-code has some odd bug
       X string-tagcloud has some error in its parseJSON
-      - date-format-tofte  - problem with eval?
+      - date-format-tofte fails due to eval - issue #112
+
+TODO: spec-compliance
+      - open issue for String.prototype.split - not spec compliant wrt regexps etc
+      - search for other stdlib functions that fail spec
+      - open issue for parsing wrt reserved words in objects
 
 TODO: all libs
       - cleaner API designs

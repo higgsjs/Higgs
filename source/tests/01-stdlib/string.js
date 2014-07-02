@@ -313,6 +313,27 @@ function test_split()
     if (!array_eq('foo,bar,bif'.split(), ['foo,bar,bif']))
         return 6;
 
+    if (!array_eq('foo'.split(''), ['f', 'o', 'o']))
+        return 7;
+
+    if (!array_eq('foonull'.split(null), ['foo', '']))
+        return 8;
+
+    if (!array_eq(''.split('f'), ['']))
+        return 9;
+
+    if (!array_eq(''.split(''), []))
+        return 10;
+
+    if (!array_eq('181'.split(8), ['1','1']))
+        return 11;
+
+    if (!array_eq('181'.split({toString : function(){ return '8';}}), ['1','1']))
+        return 12;
+
+    if (!array_eq('181'.split([8]), ['1','1']))
+        return 12;
+
     return 0;
 }
 
