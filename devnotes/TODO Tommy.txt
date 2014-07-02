@@ -63,6 +63,8 @@ TODO: higgs-mode
       - addons for js-mode and js2-mode to get correct syntax coloring, autocomplete, etc behavior for
         Higgs globals (such as require()) and IR function names, etc.
 
+TODO: lib/console
+      - make more things configurable? i.e. how objects are formatted etc, separation ws, etc
 
 ---------------------------------------------------------------------------------------------------
 [DONE]: improve FFI
