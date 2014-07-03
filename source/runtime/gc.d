@@ -284,7 +284,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Visit the root objects
     for (GCRoot* pRoot = vm.firstRoot; pRoot !is null; pRoot = pRoot.next)
-        pRoot.pair.word = gcForward(vm, pRoot.pair.word, pRoot.pair.type);    
+        pRoot.pair.word = gcForward(vm, pRoot.word, pRoot.type);
 
     //writeln("scanning to-space");
 
@@ -738,7 +738,7 @@ void visitStackRoots(VM vm)
                 continue;
 
             // Hidden argument values will be forwarded later
-            if (val is fun.closVal || 
+            if (val is fun.closVal ||
                 val is fun.thisVal ||
                 val is fun.raVal   ||
                 val is fun.argcVal)

@@ -111,12 +111,12 @@ TODO: take a break, work on random lib
 - random.normal, random.choice
 - announce in chat
 
-TODO: for-in support
-- shape_prop_name <slotIdx>
-  - inefficient but simple
-  - ask Tommy about her usage
+TODO: for-in support, needed for several benchmarks
+- shape_get_parent, shape_get_attrs
 - re-enable tests
 
+TODO: e-mail Marc, inform about status
+- only missing feature to pass tests is for-in
 
 
 
@@ -124,6 +124,15 @@ TODO: for-in support
 
 
 
+[DONE] TODO: fix bug with gc/globalexc
+- curInstr is not set when getGlobal exc is thrown?
+  - but this is thrown by the throw instruction...
+- throwExc can allocate when setting trace info
+- GC collect's liveBefore vs liveAfter might be an issue
+  - call arguments are not to be forwarded by the GC, even if calls are at the top of the stack?
+  - could try to make the GC always scan from the top during throwExc
+- Try calling visitStack to build the stack trace beforehand?
+- Could also try to reimplement throwExc in terms of visitStack
 
 [DONE] FIXME: segfault after GC, in regression test
 ./higgs tests/core/regress/jit_set_global.js tests/core/regress/jit_inlining.js 

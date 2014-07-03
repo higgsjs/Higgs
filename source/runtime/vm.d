@@ -1162,7 +1162,7 @@ class VM
         Type* tsp,
         size_t depth,
         size_t frameSize,
-        IRInstr callInstr
+        IRInstr curInstr
     ) VisitFrameFn;
 
     /**
@@ -1296,32 +1296,32 @@ extern (C) CodePtr throwExc(
     auto curHandler = throwHandler;
 
     // Get a GC root for the exception object
-    auto excObj = GCRoot(
+    auto exc = GCRoot(
         vm,
-        (excType is Type.OBJECT)? excWord.ptrVal:null,
-        Type.OBJECT
+        excWord,
+        excType
     );
 
-    // Until we're done unwinding the stack
-    for (IRInstr curInstr = throwInstr;;)
+    // If the exception value is an object,
+    // add trace information to the object
+    if (exc.type is Type.OBJECT)
     {
-        assert (curInstr !is null);
+        assert (vm.curInstr is null);
+        vm.curInstr = throwInstr;
 
-        //writeln("unwinding: ", curInstr.toString, " in ", curInstr.block.fun.getName);
-        //writeln("stack size: ", vm.stackSize);
-
-        // Add the current instruction to the stack trace
-        trace ~= curInstr;
-
-        // If the exception value is an object,
-        // add trace information to the object
-        if (excObj.ptr)
+        auto visitFrame = delegate void(
+            IRFunction fun,
+            Word* wsp,
+            Type* tsp,
+            size_t depth,
+            size_t frameSize,
+            IRInstr curInstr
+        )
         {
-            auto propName = to!wstring(trace.length-1);
+            auto propName = to!wstring(depth);
 
-            auto fun = curInstr.block.fun;
             auto pos = curInstr.srcPos? curInstr.srcPos:fun.ast.pos;
-            auto strObj = GCRoot(
+            auto str = GCRoot(
                 vm,
                 getString(
                     vm,
@@ -1335,18 +1335,34 @@ extern (C) CodePtr throwExc(
 
             setProp(
                 vm,
-                excObj.pair,
+                exc.pair,
                 propName,
-                strObj.pair
+                str.pair
             );
 
             setProp(
                 vm,
-                excObj.pair,
+                exc.pair,
                 "length"w,
                 ValuePair(Word.int64v(trace.length), Type.INT32)
             );
-        }
+        };
+
+        vm.visitStack(visitFrame);
+
+        vm.curInstr = null;
+    }
+
+    // Until we're done unwinding the stack
+    for (IRInstr curInstr = throwInstr;;)
+    {
+        assert (curInstr !is null);
+
+        //writeln("unwinding: ", curInstr.toString, " in ", curInstr.block.fun.getName);
+        //writeln("stack size: ", vm.stackSize);
+
+        // Add the current instruction to the stack trace
+        trace ~= curInstr;
 
         // If the current instruction has an exception handler
         if (curHandler !is null)
@@ -1365,7 +1381,7 @@ extern (C) CodePtr throwExc(
             auto excCodeAddr = curHandler.getCodePtr(vm.execHeap);
 
             // Push the exception value on the stack
-            vm.push(excWord, excType);
+            vm.push(exc.word, exc.type);
 
             // Return the exception handler address
             return excCodeAddr;
@@ -1400,7 +1416,7 @@ extern (C) CodePtr throwExc(
             assert (retEntry.retCode !is null);
 
             // Set the runtime error value
-            vm.runError = new RunError(vm, ValuePair(excWord, excType), trace);
+            vm.runError = new RunError(vm, exc.pair, trace);
 
             // Return the return code branch
             return retEntry.retCode.getCodePtr(vm.execHeap);
@@ -1408,7 +1424,9 @@ extern (C) CodePtr throwExc(
 
         // Get the exception handler code for the calling instruction
         if (retEntry.excCode)
+        {
             curHandler = retEntry.excCode;
+        }
 
         // Get the argument count
         auto argCount = vm.wsp[argcSlot].int32Val;
