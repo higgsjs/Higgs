@@ -4,10 +4,11 @@ TODO TOMMY  -*- mode: org -*-
 # stuff I need to do
 ** documentation [0/1]
 *** TODO start organizing and outlining a plan for improvement
-** spec compliance [0/3]
+** spec compliance [1/3]
 *** TODO open issue for String.prototype.split - not spec compliant wrt regexps etc
 *** TODO search for other stdlib functions that fail spec
-*** TODO open issue for parsing wrt reserved words in objects
+*** DONE open issue for parsing wrt reserved words in objects [[https://github.com/maximecb/Higgs/issues/126][issue #126]]
+    CLOSED: [2014-07-03 Thu 00:55]
 ** sunspider benchmarks [3/4]
 *** DONE string-validate-input segfaults
     CLOSED: [2014-07-02 Wed 22:29]
