@@ -49,7 +49,6 @@ TODO TOMMY  -*- mode: org -*-
 ** lib/dir [0/2]
 *** TODO start organizing and outlining a plan for improvement
 *** TODO add more predicate functions - isFile etc
-
 * IDEAS
 # stuff I'm thinking about
 ** all libs
