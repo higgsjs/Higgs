@@ -811,6 +811,20 @@ class CodeGenState
     }
 
     /**
+    Spill the values live before a given instruction
+    */
+    void spillLiveBefore(CodeBlock as, IRInstr instr)
+    {
+        return spillValues(
+            as,
+            delegate bool(LiveInfo liveInfo, IRDstValue value)
+            {
+                return liveInfo.liveBefore(value, instr);
+            }
+        );
+    }
+
+    /**
     Spill live registers from the register save space
     */
     void spillSavedRegs(SpillTestFn spillTest)
@@ -2466,7 +2480,11 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     }
     catch (Error err)
     {
-        assert (false, "failed to generate IR for: \"" ~ fun.getName ~ "\"");
+        assert (
+            false, 
+            "failed to generate IR for: \"" ~ fun.getName ~ "\"\n" ~
+            err.toString
+        );
     }
 
     // Add space for the newly allocated locals

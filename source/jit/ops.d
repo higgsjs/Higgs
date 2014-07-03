@@ -3181,14 +3181,8 @@ void gen_shape_get_def(
         return defShape;
     }
 
-    // Spill the values that are live before the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
     auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
@@ -3239,14 +3233,8 @@ void gen_shape_set_prop(
         return setter.word.ptrVal;
     }
 
-    // Spill the values that are live before the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
@@ -3298,14 +3286,8 @@ void gen_shape_get_prop(
         }
     }
 
-    // Spill the values that are live before the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
     auto objPtr = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
     auto defShape = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
@@ -3363,14 +3345,8 @@ void gen_shape_def_const(
         return boolVal? TRUE.word:FALSE.word;
     }
 
-    // Spill the values that are live before the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
@@ -3417,14 +3393,8 @@ void gen_shape_set_attrs(
         return boolVal? TRUE.word:FALSE.word;
     }
 
-    // Spill the values that are live before the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
@@ -3439,6 +3409,122 @@ void gen_shape_set_attrs(
     // Set the output value
     as.mov(outOpnd, cretReg.opnd);
     st.setOutType(as, instr, Type.CONST);
+
+    as.loadJITRegs();
+}
+
+/// Get the parent shape for a given shape
+/// Inputs: shape
+void gen_shape_parent(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static ObjShape op_shape_parent(ObjShape shape)
+    {
+        assert (shape !is null);
+        return shape.parent;
+    }
+
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
+
+    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), shapeOpnd);
+    as.ptr(scrRegs[0], &op_shape_parent);
+    as.call(scrRegs[0]);
+
+    // Set the output value
+    as.mov(outOpnd, cretReg.opnd);
+    st.setOutType(as, instr, Type.SHAPEPTR);
+
+    as.loadJITRegs();
+}
+
+/// Get the property name associated with a given shape
+/// Inputs: shape
+void gen_shape_prop_name(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static refptr op_shape_prop_name(
+        VM vm,
+        IRInstr curInstr,
+        ObjShape shape
+    )
+    {
+        assert (shape !is null);
+
+        vm.setCurInstr(curInstr);
+        auto strObj = getString(vm, shape.propName);
+        vm.setCurInstr(null);
+
+        return strObj;
+    }
+
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
+
+    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd(64), shapeOpnd);
+    as.ptr(scrRegs[0], &op_shape_prop_name);
+    as.call(scrRegs[0]);
+
+    // Set the output value
+    as.mov(outOpnd, cretReg.opnd);
+    st.setOutType(as, instr, Type.STRING);
+
+    as.loadJITRegs();
+}
+
+/// Get the attributes associated with a given shape
+/// Inputs: shape
+void gen_shape_get_attrs(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static uint32 op_shape_get_attrs(ObjShape shape)
+    {
+        assert (shape !is null);
+        return shape.attrs;
+    }
+
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
+
+    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), shapeOpnd);
+    as.ptr(scrRegs[0], &op_shape_get_attrs);
+    as.call(scrRegs[0]);
+
+    // Set the output value
+    as.mov(outOpnd, cretReg.opnd(32));
+    st.setOutType(as, instr, Type.INT32);
 
     as.loadJITRegs();
 }

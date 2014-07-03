@@ -50,8 +50,6 @@ FIXME: date-format-tofte
 - keeps using more and more memory
 - some kind of memory leak issue?
 
-------------------------------------------------------------------------------
-
 TODO: look at eval notes again
 
 TODO: convert arrays and closures to a shaperer model??
@@ -61,15 +59,15 @@ TODO: convert arrays and closures to a shaperer model??
 - for fns, useful to have a shape that includes the fptr! __fptr__
 - need clos cell vals, __clos_cell_0__ ...
 
+------------------------------------------------------------------------------
+
 TODO: integrate ValType into BBV
 
-TODO: define $UNDEF, $NULLPTR, $MISSING in the VM
+TODO: const globals?
+TODO: define $UNDEF, $NULLPTR, $MISSING in the VM?
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
-TODO: const globals
 
 TODO: some global constants can be resolved at compile time
-
-TODO: internship, contact Luke Wagner?
 
 TODO: blog post about typed shapes, quick illustrations
 - "Faster JS Objects with Typed Shapes"
@@ -102,8 +100,6 @@ TODO: reserve August 15-16-17, international Lisp conference
 - Cocktail premier soir
 - Pavillon Jean-Coutu
 
-TODO: shorthand for spillLiveBefore
-
 TODO: IIR, use introspection to auto-define in iir.d, no addOp?
 
 TODO: take a break, work on random lib
@@ -111,18 +107,30 @@ TODO: take a break, work on random lib
 - random.normal, random.choice
 - announce in chat
 
-TODO: for-in support, needed for several benchmarks
-- shape_get_parent, shape_get_attrs
+TODO: getters & setters
+
+TODO: support for making object props non-writable, non-enumerable
+- matching stdlib/object tests
+- announce in chat
+
+FIXME: proto gets enumerated
+
+
+
+
+
+
+
+
+[DONE] TODO: for-in support, needed for several benchmarks
+- shape_parent, shape_get_attrs, shape_prop_name
+  - get_parent should skip already defined shapes? can't
 - re-enable tests
 
-TODO: e-mail Marc, inform about status
+[DONE] TODO: shorthand for spillLiveBefore
+
+[DONE] TODO: e-mail Marc, inform about status
 - only missing feature to pass tests is for-in
-
-
-
-
-
-
 
 [DONE] TODO: fix bug with gc/globalexc
 - curInstr is not set when getGlobal exc is thrown?

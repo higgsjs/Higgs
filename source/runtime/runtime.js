@@ -2751,6 +2751,7 @@ function $rt_getPropEnum(obj)
     }
 
     var curObj = obj;
+    var curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
     var curIdx = 0;
 
     // Check if a property is shadowed by a prototype's
@@ -2765,12 +2766,6 @@ function $rt_getPropEnum(obj)
             if ($ir_eq_refptr(curObj, null))
                 return false;
 
-            // FIXME: for now, no support for non-enumerable properties
-            // assume that properties on core objects at the bottom of
-            // the prototype chain are non-enumerable
-            if ($ir_eq_refptr($rt_getProto(curObj), null))
-                return false;
-
             // If the property exists on this object, it is shadowed
             if ($rt_hasOwnProp(curObj, propName))
                 return true;
@@ -2782,65 +2777,61 @@ function $rt_getPropEnum(obj)
     {
         while (true)
         {
-            // FIXME: for now, no support for non-enumerable properties
-            if (curObj === Object.prototype     ||
-                curObj === Array.prototype      ||
-                curObj === Function.prototype   ||
-                curObj === String.prototype)
-                return true;
-
             // If we are at the end of the prototype chain, stop
             if (curObj === null)
                 return true;
 
-            // If the current object is an object or extension
+            // If the current object is an object of some kind
             if ($rt_valIsObj(curObj))
             {
-                var classPtr = $rt_obj_get_map(curObj);
-                var numProps = $ir_map_num_props(classPtr);
+                var objShape = $rt_obj_get_shape(curObj);
 
-                // For each property slot
-                for (; curIdx < numProps; ++curIdx)
+                // For each property shape
+                while ($ir_ne_refptr(curShape, $nullptr))
                 {
-                    // Get the name for this property index
-                    var keyVal = $ir_map_prop_name(classPtr, curIdx);
+                    // Get the name for this property
+                    var propName = $ir_shape_prop_name(curShape);
 
-                    // FIXME: until we have support for non-enumerable properties
-                    if ((keyVal === 'length' || keyVal === 'callee' ) && !$ir_is_object(obj))
-                    {
-                        ++curIdx;
+                    // Get the attributes for the current shape
+                    var propAttrs = $ir_shape_get_attrs(curShape);
+
+                    // Move to the parent shape
+                    var propShape = curShape;
+                    curShape = $ir_shape_parent(curShape);
+
+                    // If this is not an enumerable property, skip it
+                    if ((propAttrs & $rt_ATTR_ENUMERABLE) == 0)
                         continue;
-                    }
 
-                    // If this is a valid key in this object
-                    if (keyVal !== null && $rt_hasOwnProp(curObj, keyVal))
-                    {
-                        ++curIdx;
+                    // If this is not a valid key in this object, skip it
+                    //if ($ir_eq_refptr(keyVal, null))
+                    //    continue;
 
-                        // If the property is shadowed, skip it
-                        if (isShadowed(curObj, keyVal))
-                            continue;
+                    // FIXME: not working
+                    // If this is not the defining shape for this property, skip it
+                    if ($ir_ne_rawptr($ir_shape_get_def(curObj, propName), propShape))
+                        continue;
 
-                        // Return the current key
-                        return keyVal;
-                    }
+                    // If the property is shadowed, skip it
+                    if (isShadowed(curObj, propName))
+                        continue;
+
+                    // Return the current key
+                    return propName;
                 }
 
                 // If the object is an array
                 if ($ir_is_array(curObj))
                 {
-                    var arrIdx = curIdx - numProps;
-                    var len = curObj.length;
-
-                    if (arrIdx < len)
+                    if (curIdx < curObj.length)
                     {
-                        ++curIdx;
-                        return arrIdx;
+                        return curIdx++;
                     }
                 }
 
                 // Move up the prototype chain
                 curObj = $rt_getProto(curObj);
+                curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
                 curIdx = 0;
                 continue;
             }
@@ -2848,9 +2839,7 @@ function $rt_getPropEnum(obj)
             // If the object is a string
             else if ($ir_is_string(curObj))
             {
-                var len = curObj.length;
-
-                if (curIdx < len)
+                if (curIdx < curObj.length)
                 {
                     return curIdx++;
                 }
@@ -2858,6 +2847,7 @@ function $rt_getPropEnum(obj)
                 {
                     // Move up the prototype chain
                     curObj = String.prototype;
+                    curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
                     curIdx = 0;
                     continue;
                 }

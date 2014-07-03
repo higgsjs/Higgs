@@ -312,6 +312,15 @@ Opcode SHAPE_DEF_CONST = { "shape_def_const", true, [OpArg.LOCAL, OpArg.LOCAL, O
 /// Set the attributes for a property
 Opcode SHAPE_SET_ATTRS = { "shape_set_attrs", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_attrs, OpInfo.IMPURE };
 
+/// Get the parent shape for a given shape
+Opcode SHAPE_PARENT = { "shape_parent", true, [OpArg.LOCAL], &gen_shape_parent };
+
+/// Get the property name associated with a given shape
+Opcode SHAPE_PROP_NAME = { "shape_prop_name", true, [OpArg.LOCAL], &gen_shape_prop_name, OpInfo.MAY_GC };
+
+/// Get the attributes associated with a given shape
+Opcode SHAPE_GET_ATTRS = { "shape_get_attrs", true, [OpArg.LOCAL], &gen_shape_get_attrs };
+
 /// Set the value of a global property
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 
