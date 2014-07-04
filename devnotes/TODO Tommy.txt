@@ -25,9 +25,12 @@ TODO TOMMY  -*- mode: org -*-
 *** TODO add REPL capability
 ** lib/test [0/1]
 *** TODO more assertion/helper functions
-** lib/ffi [0/2]
+** lib/ffi [0/3]
 *** TODO add toString() and toJS() functionality for structs/unions
 *** TODO finish ffi.new()
+*** TODO struct.wrap() [0/2]
+    - [ ] remove duplicate functionality wrt ffi.new from complex wrappers, just take a ptr
+    - [ ] rework the way complex wrappers work as members
 ** lib/SDL2 [0/1]
 *** TODO move to binding for SDL2
 ** lib/x11 [1/2]
@@ -49,7 +52,6 @@ TODO TOMMY  -*- mode: org -*-
 ** lib/dir [0/2]
 *** TODO start organizing and outlining a plan for improvement
 *** TODO add more predicate functions - isFile etc
-
 * IDEAS
 # stuff I'm thinking about
 ** all libs
