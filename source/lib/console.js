@@ -80,7 +80,7 @@ Console functions
             // TODO: better substitute string?
             return "{...}";
         }
-        if (Object.getPrototypeOf(ob) == null && typeof ob.toString === "function")
+        if (Object.getPrototypeOf(ob) === null && typeof ob.toString === "function")
         {
                 return ob.toString();
         }
@@ -229,7 +229,6 @@ Console functions
         print(timer_name + ":\t" + ($ir_get_time_ms() - start_time));
         timers[timer_name] = undefined;
     }
-
 
     exports = {
         log : log,
