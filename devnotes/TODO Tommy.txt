@@ -2,45 +2,26 @@ TODO TOMMY  -*- mode: org -*-
 
 * TASKS
 # stuff I need to do
-** documentation [0/1]
-*** TODO start organizing and outlining a plan for improvement
 ** spec compliance [1/3]
 *** TODO open issue for String.prototype.split - not spec compliant wrt regexps etc
 *** TODO search for other stdlib functions that fail spec
 *** DONE open issue for parsing wrt reserved words in objects [[https://github.com/maximecb/Higgs/issues/126][issue #126]]
     CLOSED: [2014-07-03 Thu 00:55]
-** sunspider benchmarks [3/4]
-*** DONE string-validate-input segfaults
-    CLOSED: [2014-07-02 Wed 22:29]
-*** DONE string-unpack-code has some odd bug
-    CLOSED: [2014-07-02 Wed 22:29]
-*** DONE string-tagcloud has some error in its parseJSON
-    CLOSED: [2014-07-02 Wed 22:29]
-*** TODO date-format-tofte fails due to eval - [[https://github.com/maximecb/Higgs/issues/112][issue #112]]
-** higgs-mode [2/3]
-*** DONE start this
-    CLOSED: [2014-07-02 Wed 22:56]
-*** DONE get repo on github
-    CLOSED: [2014-07-02 Wed 22:57]
-*** TODO add REPL capability
-** lib/test [0/1]
-*** TODO more assertion/helper functions
+** documentation [0/2]
+*** TODO start organizing and outlining a plan for improvement
+*** TODO add link to higgs license in wiki/codestyle
 ** lib/ffi [0/3]
 *** TODO add toString() and toJS() functionality for structs/unions
 *** TODO finish ffi.new()
 *** TODO struct.wrap() [0/2]
     - [ ] remove duplicate functionality wrt ffi.new from complex wrappers, just take a ptr
     - [ ] rework the way complex wrappers work as members
-** lib/SDL2 [0/1]
-*** TODO move to binding for SDL2
+** lib/test [0/1]
+*** TODO more assertion/helper functions
 ** lib/x11 [1/2]
 *** DONE start this
     CLOSED: [2014-07-02 Wed 23:16]
 *** TODO need bindings for structs etc
-** lib/cairo [1/2]
-*** DONE start this
-    CLOSED: [2014-07-02 Wed 22:53]
-*** TODO start organizing and outlining a plan for improvement
 ** lib/draw [1/4]
 *** DONE start this
     CLOSED: [2014-07-02 Wed 22:53]
@@ -52,6 +33,26 @@ TODO TOMMY  -*- mode: org -*-
 ** lib/dir [0/2]
 *** TODO start organizing and outlining a plan for improvement
 *** TODO add more predicate functions - isFile etc
+** lib/SDL2 [0/1]
+*** TODO move to binding for SDL2
+** higgs-mode [2/3]
+*** DONE start this
+    CLOSED: [2014-07-02 Wed 22:56]
+*** DONE get repo on github
+    CLOSED: [2014-07-02 Wed 22:57]
+*** TODO add REPL capability
+** lib/cairo [1/2]
+*** DONE start this
+    CLOSED: [2014-07-02 Wed 22:53]
+*** TODO start organizing and outlining a plan for improvement
+** sunspider benchmarks [3/4]
+*** DONE string-validate-input segfaults
+    CLOSED: [2014-07-02 Wed 22:29]
+*** DONE string-unpack-code has some odd bug
+    CLOSED: [2014-07-02 Wed 22:29]
+*** DONE string-tagcloud has some error in its parseJSON
+    CLOSED: [2014-07-02 Wed 22:29]
+*** TODO date-format-tofte fails due to eval - [[https://github.com/maximecb/Higgs/issues/112][issue #112]]
 * IDEAS
 # stuff I'm thinking about
 ** all libs
