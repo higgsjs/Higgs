@@ -42,6 +42,7 @@ import std.file;
 import std.utf;
 import std.array;
 import std.conv;
+import std.regex;
 import parser.lexer;
 import parser.ast;
 import parser.vars;
@@ -731,7 +732,7 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
             auto tok = input.read();
             if (!(tok.type is Token.IDENT) &&
                 !(tok.type is Token.KEYWORD) &&
-                !(tok.type is Token.OP && tok.stringVal == "delete"w))
+                !(tok.type is Token.OP && ident(tok.stringVal)))
             {
                 throw new ParseError(
                     "invalid member identifier \"" ~ tok.toString() ~ "\"", 
@@ -884,18 +885,19 @@ ASTExpr parseAtom(TokenStream input)
             if (values.length > 0 && input.matchSep(",") == false)
                 throw new ParseError("expected comma", input.getPos());
 
-            auto nameExpr = parseAtom(input);
-
+            auto tok = input.read();
             StringExpr stringExpr = null;
-            if (auto strExpr = cast(StringExpr)nameExpr)
-                stringExpr = strExpr;
-            else if (auto identExpr = cast(IdentExpr)nameExpr)
-                stringExpr = new StringExpr(identExpr.name, nameExpr.pos);
-            else if (auto intExpr = cast(IntExpr)nameExpr)
-                stringExpr = new StringExpr(to!wstring(intExpr.val), nameExpr.pos);
+            if (tok.type is Token.IDENT ||
+                tok.type is Token.KEYWORD ||
+                tok.type is Token.STRING)
+                stringExpr = new StringExpr(tok.stringVal, tok.pos);
+            if (tok.type is Token.OP && ident(tok.stringVal))
+                stringExpr = new StringExpr(tok.stringVal, tok.pos);
+            else if (tok.type is Token.INT)
+                stringExpr = new StringExpr(to!wstring(tok.intVal), tok.pos);
 
             if (!stringExpr)
-                throw new ParseError("invalid property name", nameExpr.pos);
+                throw new ParseError("invalid property name", tok.pos);
             names ~= [stringExpr];
 
             input.readSep(":");
