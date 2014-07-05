@@ -75,3 +75,18 @@ TODO TOMMY  -*- mode: org -*-
  - higgs-dev functionality - run make targets, etc flymake?
  - addons for js-mode and js2-mode to get correct syntax coloring, autocomplete, etc behavior for
    Higgs globals (such as require()) and IR function names, etc.
+** concurrency
+ - hard to fix in user space
+ - focus for now should just be getting libraries
+ - simple (mostly sync) libraries; designed to be target for compiler to add better async?
+ - multiprocess functionality
+ - more IPC functionality
+ 
+** modules
+ - module system needs to be a little more robust
+** package management
+ - core libs can be tied to Higgs version/distrubution
+ - 3rd party libs
+  - manifest file with packag info/deps
+  - tied to url
+  - version management?
