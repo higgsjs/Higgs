@@ -42,8 +42,6 @@ lib/draw - provides basic drawing API using xlib
 (function()
 {
 
-    var console = require('lib/console');
-
     /* DEPENDENCIES */
 
     // FFI
@@ -53,7 +51,7 @@ lib/draw - provides basic drawing API using xlib
     var c = ffi.c;
 
     // STDlib
-    var stdlib = require('lib/stdlib');
+    require('lib/stdlib');
     var poll = ffi.c.poll;
 
     // Xlib
@@ -105,9 +103,9 @@ lib/draw - provides basic drawing API using xlib
         cw = Object.create(WindowProto);
         cw.display = display = Xlib.XOpenDisplay(CNULL);
 
-        if (ffi.isNullPtr(display))
+        if (isNull(display))
         {
-            throw "Could not open X display";
+            throw 'Could not open X display';
         }
 
         // X Values
@@ -123,7 +121,7 @@ lib/draw - provides basic drawing API using xlib
         cw.y = y || 50;
         cw.width = width;
         cw.height = height;
-        cw.title = title || "Higgs Canvas";
+        cw.title = title || 'Higgs Canvas';
 
         // Create window
         cw.create();
@@ -169,7 +167,7 @@ lib/draw - provides basic drawing API using xlib
                       XEventMask.ExposureMask | XEventMask.KeyPressMask);
 
         // we need to watch for the window closing
-        atom_name = ffi.cstr("WM_DELETE_WINDOW");
+        atom_name = ffi.cstr('WM_DELETE_WINDOW');
         WM_DELTE_WINDOW = Xlib.XInternAtom(display, atom_name, 0);
         ffi.c.free(atom_name);
         WDWAtom = Xlib.AtomContainer();
@@ -194,10 +192,10 @@ lib/draw - provides basic drawing API using xlib
     */
     WindowProto.onRender = function(cb)
     {
-        if (typeof cb === "function")
+        if (typeof cb === 'function')
             this.render_funs.push(cb);
         else
-            throw "Argument not a function in onRender";
+            throw 'Argument not a function in onRender';
     };
 
     /**
@@ -205,10 +203,10 @@ lib/draw - provides basic drawing API using xlib
     */
     WindowProto.onKeypress = function(cb)
     {
-        if (typeof cb === "function")
+        if (typeof cb === 'function')
             this.key_funs.push(cb);
         else
-            throw "Argument not a function in onKeypress";
+            throw 'Argument not a function in onKeypress';
     };
 
     /**
@@ -220,7 +218,6 @@ lib/draw - provides basic drawing API using xlib
         var draw = true;
         var display = this.display;
         var canvas = this.canvas;
-        var pixmap = canvas.id;
         var window = this.id;
         var frame_rate = this.frame_rate;
         // TODO: may need to check these each loop in case of resize
@@ -234,6 +231,7 @@ lib/draw - provides basic drawing API using xlib
         var event_type;
         var key_sym;
         var key_name_c;
+        var key_name;
         var e = event.ptr;
         // handlers
         var key_funs = this.key_funs;
@@ -377,22 +375,22 @@ lib/draw - provides basic drawing API using xlib
         var color_string;
 
         // check whether r,g,b values were passed individually or as a string
-        if (typeof b === "number")
+        if (typeof b === 'number')
         {
-            color_string = "#"  + color.toString(16);
+            color_string = '#'  + color.toString(16);
             if (color_string.length === 2)
-                color_string += "0";
+                color_string += '0';
             color_string += g.toString(16);
             if (color_string.length === 4)
-                color_string += "0";
+                color_string += '0';
             color_string += b.toString(16);
             if (color_string.length === 6)
-                color_string += "0";
+                color_string += '0';
         }
-        else if (color && color[0] == "#")
+        else if (color && color[0] === '#')
             color_string = color;
         else
-            throw new DrawError("Invalid argument in setFG");
+            throw new DrawError('Invalid argument in setFG');
 
         // Check if we have a graphics context for this color
         XColor = this.colors[color_string];
@@ -491,19 +489,19 @@ lib/draw - provides basic drawing API using xlib
         var font_str;
         var font_name_c;
         var font_ptr;
-        size = (typeof size === "number") ? size : 40;
+        size = (typeof size === 'number') ? size : 40;
 
         // If a font name is not specified, just try to use any monospaced font
-        if (typeof name !== "string")
-            font_str = "-*-*-*-*-*-*-" + size + "-*-*-*-m-*-*-*";
+        if (typeof name !== 'string')
+            font_str = '-*-*-*-*-*-*-' + size + '-*-*-*-m-*-*-*';
         else
-            font_str = "-*-" + name + "-*-*-*-*-" + size + "-*-*-*-*-*-*-*";
+            font_str = '-*-' + name + '-*-*-*-*-' + size + '-*-*-*-*-*-*-*';
 
         font_name_c = ffi.cstr(font_str);
         font_ptr = Xlib.XLoadQueryFont(this.display, font_name_c);
 
         // Check if the font failed to load
-        if (ffi.isNullPtr(font_ptr))
+        if (isNull(font_ptr))
         {
             // If they specified a name and it failed, try for a default
             if (name)
@@ -514,7 +512,7 @@ lib/draw - provides basic drawing API using xlib
             {
                 // cleanup and throw
                 c.free(font_name_c);
-                throw "Unable to load font: " + (name ? name : "default");
+                throw 'Unable to load font: ' + (name ? name : 'default');
             }
         }
         else

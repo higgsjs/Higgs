@@ -28,6 +28,8 @@
         "$ir_load_rawptr" : true,
         "$ir_get_sym" : true,
         "$ir_is_rawptr" : true,
-        "$ir_get_time_ms" : true
+        "$ir_get_time_ms" : true,
+        "$ir_is_f64" : true,
+        "$ir_f64_to_i32" : true
     }
 }
