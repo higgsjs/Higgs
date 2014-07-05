@@ -61,7 +61,7 @@ Console functions
     */
     stringers.string = function(str)
     {
-        return "'" + str + "'";
+        return '\'' + str + '\'';
     };
 
     /**
@@ -71,20 +71,20 @@ Console functions
     {
         var keys = Object.keys(ob);
         var len = keys.length;
-        var str = "{ ";
+        var str = '{ ';
         var key;
         var i;
 
         if (ob.__CONSOLE_VISITED__)
         {
             // TODO: better substitute string?
-            return "{...}";
+            return '{...}';
         }
-        if (Object.getPrototypeOf(ob) === null && typeof ob.toString === "function")
+        if (Object.getPrototypeOf(ob) === null && typeof ob.toString === 'function')
         {
                 return ob.toString();
         }
-        else if (ob.hasOwnProperty && ob.hasOwnProperty("toString") && typeof ob.toString === "function")
+        else if (ob.hasOwnProperty && ob.hasOwnProperty('toString') && typeof ob.toString === 'function')
         {
                 return ob.toString();
         }
@@ -97,15 +97,15 @@ Console functions
         if (len > 0)
         {
             key = keys[0];
-            str += key + " : " + stringify(ob[key]);
+            str += key + ' : ' + stringify(ob[key]);
             for (i = 1; i < len; i++)
             {
                 key = keys[i];
-                str += ", " + key + " : " + stringify(ob[key]);
+                str += ', ' + key + ' : ' + stringify(ob[key]);
             }
         }
 
-        str += " }";
+        str += ' }';
         return str;
     };
 
@@ -116,19 +116,19 @@ Console functions
     {
         var len = ar.length;
         var max = settings.max_array_items;
-        var str = "[ ";
+        var str = '[ ';
         var i;
 
         if (len > 0)
             str += stringify(ar[0]);
 
         for (i = 1; (i < len) && (i < max); i++)
-            str += ", " + stringify(ar[i]);
+            str += ', ' + stringify(ar[i]);
 
         if (i === max && len > max)
-            str += ",...";
+            str += ',...';
 
-        str += " ]";
+        str += ' ]';
         return str;
     };
 
@@ -142,25 +142,25 @@ Console functions
 
         // special case raw pointers
         if ($ir_is_rawptr(thing))
-            return "<RAWPTR>";
+            return '<RAWPTR>';
 
         // special case null
         if (thing === null)
-            return "null";
+            return 'null';
 
         // special case undefined
         if (thing === undefined)
-            return "undefined";
+            return 'undefined';
 
         // special case arrays
-        type = (Array.isArray(thing)) ? "array" : typeof thing;
+        type = (Array.isArray(thing)) ? 'array' : typeof thing;
 
         // check for appropriate stringify function
         string_fun = stringers[type];
         if (string_fun)
             return string_fun(thing);
         else
-            return "" + thing;
+            return '' + thing;
     }
 
     /**
@@ -173,7 +173,7 @@ Console functions
         var thing;
         var obs_l;
         var ob;
-        var output = "";
+        var output = '';
         var i;
 
         for (i = 0; i < len; i++)
@@ -181,15 +181,15 @@ Console functions
             obs = [];
 
             thing = arguments[i];
-            if (typeof thing === "string")
+            if (typeof thing === 'string')
                 if (i === stop)
                     output += thing;
                 else
-                    output += thing + "\t";
+                    output += thing + '\t';
             else if (i === stop)
                 output += stringify(thing);
             else
-                output += stringify(thing) + " ";
+                output += stringify(thing) + ' ';
 
             obs_l = obs.length;
             while (obs_l--)
@@ -208,9 +208,9 @@ Console functions
     */
     function time(timer)
     {
-        var timer_name = timer || "*unnamed timer*";
+        var timer_name = timer || '*unnamed timer*';
         if (timers[timer_name] !== undefined)
-            throw "Invalid timer name for time: "  + timer_name;
+            throw 'Invalid timer name for time: '  + timer_name;
         else
             timers[timer_name] = $ir_get_time_ms();
     }
@@ -221,12 +221,12 @@ Console functions
     */
     function timeEnd(timer)
     {
-        var timer_name = timer || "*unnamed timer*";
+        var timer_name = timer || '*unnamed timer*';
         var start_time = timers[timer_name];
         if (start_time === undefined)
-            throw "Invalid timer name for timeEnd: " + timer_name;
+            throw 'Invalid timer name for timeEnd: ' + timer_name;
 
-        print(timer_name + ":\t" + ($ir_get_time_ms() - start_time));
+        print(timer_name + ':\t' + ($ir_get_time_ms() - start_time));
         timers[timer_name] = undefined;
     }
 

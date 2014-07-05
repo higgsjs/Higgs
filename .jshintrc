@@ -15,6 +15,7 @@
     "esnext" : true,
     "globals" : {
         "require" : true,
+        "print" : true,
         "$rt_str_alloc" : true,
         "$ir_load_lib" : true,
         "$rt_str_get_data" : true,
@@ -25,6 +26,8 @@
         "$ir_load_u8" : true,
         "exports" : true,
         "$ir_load_rawptr" : true,
-        "$ir_get_sym" : true
+        "$ir_get_sym" : true,
+        "$ir_is_rawptr" : true,
+        "$ir_get_time_ms" : true
     }
 }
