@@ -782,10 +782,7 @@ Setup String method.
 
 String.fromCharCode = string_fromCharCode;
 
-/**
-Setup String prototype.
-*/
-
+// Setup String prototype
 String.prototype.toString = string_toString;
 String.prototype.charCodeAt = string_charCodeAt;
 String.prototype.valueOf = string_valueOf;
@@ -813,6 +810,10 @@ String.prototype.lastIndexOf.length = 1;
 String.prototype.slice.length = 2;
 String.prototype.split.length = 2;
 String.prototype.substring.length = 2;
+
+// Make the String.prototype properties non-enumerable
+for (p in String.prototype)
+    Object.defineProperty(String.prototype, p, {enumerable:false})
 
 //-----------------------------------------------------------------------------
 

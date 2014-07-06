@@ -257,24 +257,29 @@ Function.prototype.bind = function(thisArg)
 
     var unbound = this;
     var bound;
-    if (arguments.length > 1) {
-
+    if (arguments.length > 1)
+    {
         var args = [].slice.call(arguments, 1);
-        bound = function() {
+        bound = function()
+        {
             var target = this instanceof bound ? this : thisArg;
             return unbound.apply(target, args.concat(arguments));
         };
-
-    } else {
-
-        bound = function() {
+    }
+    else
+    {
+        bound = function()
+        {
             var target = this instanceof bound ? this : thisArg;
             return unbound.apply(target, arguments);
         };
-
     }
 
     bound.prototype = unbound.prototype;
     return bound;
 };
+
+// Make the Function.prototype properties non-enumerable
+for (p in Function.prototype)
+    Object.defineProperty(Function.prototype, p, {enumerable:false})
 

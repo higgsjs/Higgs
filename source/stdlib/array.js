@@ -649,8 +649,7 @@ function array_reduceRight (callbackfn, initialValue)
     return array_reduce_generic.call(this, callbackfn, initialValue, this.length - 1, -1, -1 );
 }
 
-// Setup Array.prototype .
-
+// Setup Array.prototype
 Array.prototype.toString          = array_toString;
 Array.prototype.toLocaleString    = array_toString;
 Array.prototype.concat            = array_concat;
@@ -672,6 +671,10 @@ Array.prototype.map               = array_map;
 Array.prototype.filter            = array_filter;
 Array.prototype.reduce            = array_reduce;
 Array.prototype.reduceRight       = array_reduceRight;
+
+// Make the Array.prototype properties non-enumerable
+for (p in Array.prototype)
+    Object.defineProperty(Array.prototype, p, {enumerable:false})
 
 //-----------------------------------------------------------------------------
 

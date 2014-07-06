@@ -112,3 +112,7 @@ Boolean.prototype.valueOf = function ()
     return b? true:false;
 };
 
+// Make the Boolean.prototype properties non-enumerable
+for (p in Boolean.prototype)
+    Object.defineProperty(Boolean.prototype, p, {enumerable:false})
+

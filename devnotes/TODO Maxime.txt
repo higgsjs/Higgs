@@ -61,6 +61,8 @@ TODO: convert arrays and closures to a shaperer model??
 
 ------------------------------------------------------------------------------
 
+TODO: getters & setters
+
 TODO: integrate ValType into BBV
 
 TODO: const globals?
@@ -107,17 +109,15 @@ TODO: take a break, work on random lib
 - random.normal, random.choice
 - announce in chat
 
-TODO: getters & setters
+TODO: extra object tests
+- Add extra tests? specific enum of Object.prototype
+- Add a test for array enum, shouldn't enum push
 
-TODO: support for making object props non-writable, non-enumerable
-- matching stdlib/object tests
-- announce in chat
+FIXME: earley-boyer
 
-FIXME: Running: ./tests/06-sunspider/15-string-fasta.js...
-redefining constant: __proto__
-redefining constant: __proto__
-
-FIXME: Object.prototype, other proto props all non-enumerable?
+FIXME: ./tests/06-sunspider/16-string-tagcloud.js...
+Assertion failed (runtime/vm.d@742): invalid stack slot index (14/262188)
+***** FAILED! *****
 
 
 
@@ -126,6 +126,43 @@ FIXME: Object.prototype, other proto props all non-enumerable?
 
 
 
+
+
+
+
+
+
+
+
+
+[DONE] TODO: other prototype props non-enumerable
+- Function, String, Boolean, Number
+
+[DONE] FIXME: ./tests/06-sunspider/20-regexp-dna.js...
+call to non-function "charCodeAt"
+***** FAILED! *****
+./higgs tests/06-sunspider/20-regexp-dna.js 
+run-time error: run-time error: call to non-function "charCodeAt"
+RegExpParser_prototype_advance(EFDD) ("stdlib/regexp.js"@89:24)
+this.pattern.charCodeAt(this.index)
+- Enumerating array keys enumerates reduceRight, other array methods! ****
+
+[DONE] FIXME: Object.prototype props all non-enumerable
+for (p in Object.prototype)
+    Object.defineProperty(Object.prototype, p, {enumerable:false})
+
+[DONE] TODO: Object.defineProperty ( O, P, Attributes )
+- calling hasOwnProperty segfaults
+- hasOwnProperty has been redefined with new attribs...
+  - deleted? no
+- setPropAttrs is wrong... will assign a new index to the property ****!
+    auto newShape = objShape.defProp(
+        vm,
+        propStr,
+        ValType(),
+        attrs
+    );
+- maybe defProp should take an optional origShape argument?
 
 [DONE] FIXME: proto gets enumerated
 make; ./higgs --e "o = {x:3}; for (k in o) print(k);"

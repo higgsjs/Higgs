@@ -149,18 +149,52 @@ Object.create = function (proto, Properties)
 
 /**
 15.2.3.6 Object.defineProperty ( O, P, Attributes )
-FIXME: for now, we ignore most attributes
 */
 Object.defineProperty = function (obj, prop, attribs)
 {
-    assert (
-        $rt_valIsObj(obj),
-        'non-object value in defineProperty'
-    );
+    if (!$rt_valIsObj(obj))
+        throw TypeError('non-object value in defineProperty');
 
+    if (!$rt_valIsObj(attribs))
+        throw TypeError('property descriptor must be an object');
+
+    // Set the value, this will do nothing if writable is false
     if (attribs.hasOwnProperty('value'))
         obj[prop] = attribs.value;
 
+    // Extract the old property attributes
+    var oldAttrs = $ir_shape_get_attrs($rt_obj_get_shape(obj));
+    var oldWR = !!(oldAttrs & $rt_ATTR_WRITABLE);
+    var oldEN = !!(oldAttrs & $rt_ATTR_ENUMERABLE);
+    var oldCF = !!(oldAttrs & $rt_ATTR_CONFIGURABLE);
+
+    // Assemble the new property attributes
+    var newWR = attribs.hasOwnProperty('writable')? !!attribs.writable:true;
+    var newEN = attribs.hasOwnProperty('enumerable')? !!attribs.enumerable:true;
+    var newCF = attribs.hasOwnProperty('configurable')? !!attribs.configurable:true;
+    var newAttrs = (
+        (newWR? $rt_ATTR_WRITABLE:0) |
+        (newEN? $rt_ATTR_ENUMERABLE:0) |
+        (newCF? $rt_ATTR_CONFIGURABLE:0)
+    );
+
+    // If the property is not configurable
+    if (oldCF === false)
+    {
+        if (newEN != oldEN)
+            throw TypeError('cannot unset enumerable flag when configurable is false');
+        if (newWR != oldWR)
+            throw TypeError('cannot unset writable flag when configurable is false');
+        if (newCF != oldCF)
+            throw TypeError('cannot unset configurable flag');
+    }
+    else
+    {
+        // Set the new property attributes
+        $ir_shape_set_attrs(obj, prop, newAttrs);
+    }
+
+    // Return the object
     return obj;
 };
 
@@ -324,4 +358,8 @@ Object.prototype.propertyIsEnumerable = function (V)
 
     return true;
 };
+
+// Make the Object.prototype properties non-enumerable
+for (p in Object.prototype)
+    Object.defineProperty(Object.prototype, p, {enumerable:false})
 

@@ -283,3 +283,7 @@ Number.prototype.toFixed = function(fractionDigits)
     return $rt_strcat(s, m);
 };
 
+// Make the Number.prototype properties non-enumerable
+for (p in Number.prototype)
+    Object.defineProperty(Number.prototype, p, {enumerable:false})
+

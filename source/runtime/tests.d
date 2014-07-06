@@ -1429,13 +1429,10 @@ unittest
     vm.load("tests/core/arg_obj/arg_obj.js");
     vm.assertInt("test();", 0);
 
-    // FIXME
-    /*
     // For-in loop
     writeln("for-in");
     vm.load("tests/core/for_in/for_in.js");
     vm.assertInt("test();", 0);
-    */
 }
 
 /// Regression tests

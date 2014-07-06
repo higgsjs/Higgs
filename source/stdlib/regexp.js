@@ -94,8 +94,7 @@ RegExpParser.prototype.error = function (
     msg
 )
 {
-    // TODO: throw SyntaxError
-    print("RegExp parser error at " + this.index + " : " + msg);
+    throw SyntaxError("RegExp parser error at " + this.index + " : " + msg);
 }
 
 /**
@@ -878,7 +877,7 @@ function RegExp (
 )
 {
     if (!(this instanceof RegExp)) return new RegExp(pattern, flags);
-    
+
     this.source = (pattern === undefined ? "" : pattern);
     this.global = false;
     this.ignoreCase = false;

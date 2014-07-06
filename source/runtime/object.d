@@ -176,6 +176,13 @@ class ObjShape
     /// Parent shape in the tree
     ObjShape parent;
 
+    /// Sub-shape transitions, mapped by prop name, then prop type
+    ObjShape[][ValType][wstring] subShapes;
+
+    // TODO
+    /// Cache of property names to defining shapes, to accelerate lookups
+    //ObjShape[wstring] propCache;
+
     /// Name of this property, null if array element property
     const wstring propName;
 
@@ -187,16 +194,6 @@ class ObjShape
 
     /// Index at which this property is stored
     const uint32_t slotIdx;
-
-    /// Next slot index to allocate
-    const uint32_t nextIdx;
-
-    /// Sub-shape transitions, mapped by prop name, then prop type
-    ObjShape[][ValType][wstring] subShapes;
-
-    // TODO
-    /// Cache of property names to defining shapes, to accelerate lookups
-    //ObjShape[wstring] propCache;
 
     /// Empty shape constructor
     this(VM vm)
@@ -211,7 +208,6 @@ class ObjShape
         this.attrs = 0;
 
         this.slotIdx = uint32_t.max;
-        this.nextIdx = 0;
     }
 
     /// Property definition constructor
@@ -220,7 +216,8 @@ class ObjShape
         ObjShape parent,
         wstring propName,
         ValType type,
-        PropAttr attrs
+        PropAttr attrs,
+        uint32_t slotIdx
     )
     {
         // Register this shape in the live shape reference set
@@ -232,8 +229,7 @@ class ObjShape
         this.type = type;
         this.attrs = attrs;
 
-        this.slotIdx = parent.nextIdx;
-        this.nextIdx = this.slotIdx + 1;
+        this.slotIdx = slotIdx;
     }
 
     /// Test if this shape defines a getter-setter
@@ -247,7 +243,8 @@ class ObjShape
         VM vm,
         wstring propName,
         ValType type,
-        PropAttr attrs
+        PropAttr attrs,
+        ObjShape origShape
     )
     {
         if (propName in subShapes)
@@ -263,8 +260,18 @@ class ObjShape
             }
         }
 
+        // Compute the slot index for the new shape
+        auto slotIdx = origShape? origShape.slotIdx:(this.slotIdx+1);
+
         // Create the new shape
-        auto newShape = new ObjShape(vm, this, propName, type, attrs);
+        auto newShape = new ObjShape(
+            vm,
+            this,
+            propName,
+            type,
+            attrs,
+            slotIdx
+        );
 
         // Add it to the sub-shapes
         subShapes[propName][type] ~= newShape;
@@ -369,8 +376,6 @@ void setSlotPair(refptr objPtr, uint32_t slotIdx, ValuePair val)
 
 ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
 {
-    assert (obj_get_cap(obj.word.ptrVal) > 0);
-
     // Get the shape from the object
     auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
     assert (objShape !is null);
@@ -466,7 +471,8 @@ ValuePair setProp(
             vm,
             propStr,
             valType,
-            defAttrs
+            defAttrs,
+            null
         );
 
         // Set the new shape for the object
@@ -621,7 +627,8 @@ bool setPropAttrs(
         vm,
         propStr,
         ValType(),
-        attrs
+        attrs,
+        defShape
     );
 
     // Set the new object shape
