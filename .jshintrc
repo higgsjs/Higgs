@@ -30,6 +30,14 @@
         "$ir_is_rawptr" : true,
         "$ir_get_time_ms" : true,
         "$ir_is_f64" : true,
-        "$ir_f64_to_i32" : true
+        "$ir_f64_to_i32" : true,
+        "$ir_store_i8" : true,
+        "$ir_store_u16" : true,
+        "$ir_store_i16" : true,
+        "$ir_store_u32" : true,
+        "$ir_store_f64" : true,
+        "$ir_load_u16" : true,
+        "$ir_load_u32" : true,
+        "$ir_load_f64" : true
     }
 }

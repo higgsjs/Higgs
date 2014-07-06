@@ -46,7 +46,7 @@ Bindings for common c I/O functions
     DEPENDENCIES/SETUP
     */
 
-    var ffi = require("lib/ffi");
+    var ffi = require('lib/ffi');
     var c = ffi.c;
 
     // TODO: NOTE: size_t should be long int
@@ -80,7 +80,7 @@ Bindings for common c I/O functions
 
 
     // FFI can't handle printf yet
-    c.cfun("printf", "i32,*");
+    c.cfun('printf', 'i32,*');
 
     // The object for this module
     var io = {};
@@ -125,7 +125,7 @@ Bindings for common c I/O functions
         c.free(cmode);
 
         if (ffi.isNullPtr(fh))
-            throw "Unable to open file. Mode: '" + mode + "' File: '" + file + "'";
+            throw 'Unable to open file. Mode: \'' + mode + '\' File: \'' + file + '\'';
 
         this.ptr = fh;
     }
@@ -137,7 +137,7 @@ Bindings for common c I/O functions
     {
         var s = new File(null);
         s.stream = true;
-        s.name = name || "stream";
+        s.name = name || 'stream';
         s.ptr = ptr;
         return s;
     }
@@ -149,7 +149,7 @@ Bindings for common c I/O functions
     {
         var b = c.realloc(this.buffer, size);
         if (ffi.isNullPtr(b))
-            throw "Unable to resize buffer.";
+            throw 'Unable to resize buffer.';
         this.buffer = b;
         this.buf_size = size;
     };
@@ -161,7 +161,7 @@ Bindings for common c I/O functions
     File.prototype.close = function()
     {
         if (ffi.isNullPtr(this.ptr) || this.file === null)
-            throw "Cannot close file: " + this.name;
+            throw 'Cannot close file: ' + this.name;
 
         // Close, return false if it fails
         var r = c.fclose(this.ptr);
@@ -182,7 +182,7 @@ Bindings for common c I/O functions
     File.prototype.flush = function()
     {
         if (ffi.isNullPtr(this.ptr))
-            throw "Cannot flush file: " + this.name;
+            throw 'Cannot flush file: ' + this.name;
         var r = c.fflush(this.ptr);
         return (r === 0);
     };
@@ -212,7 +212,7 @@ Bindings for common c I/O functions
     File.prototype.seek= function(offset, origin)
     {
         origin = (origin > -1 && origin < 3) ? origin : 0;
-        var r = C.fseek(this.ptr, offset, origin);
+        var r = c.fseek(this.ptr, offset, origin);
         return (r === 0);
     };
 
@@ -231,7 +231,7 @@ Bindings for common c I/O functions
     {
         // TODO: skip null chars?
         var chr = c.fgetc(this.ptr);
-        return (chr > -1) ? String.fromCharCode(chr) : "";
+        return (chr > -1) ? String.fromCharCode(chr) : '';
     };
 
     /**
@@ -297,7 +297,7 @@ Bindings for common c I/O functions
 
         // Handle cases where line fits within buf_size/max or could not be read
         if (ffi.isNullPtr(line))
-            return "";
+            return '';
 
         len = c.strlen(line);
 
@@ -340,7 +340,7 @@ Bindings for common c I/O functions
 
         // Handle read() entire file
         max = this.buf_size;
-        str = "";
+        str = '';
         do {
             len = c.fread(this.buffer, 1, max, this.ptr);
             str += ffi.string(this.buffer, len);
@@ -445,13 +445,13 @@ Bindings for common c I/O functions
     io.stream = stream;
 
     // File object for stdin
-    io.stdin = stream(c.fdopen(0, ffi.cstr("r")));
+    io.stdin = stream(c.fdopen(0, ffi.cstr('r')));
 
     // File object for stdout
-    io.stdout = stream(c.fdopen(1, ffi.cstr("w")));
+    io.stdout = stream(c.fdopen(1, ffi.cstr('w')));
 
     // File object for stderr
-    io.stderr = stream(c.fdopen(2, ffi.cstr("w")));
+    io.stderr = stream(c.fdopen(2, ffi.cstr('w')));
 
     /**
     Open a file
@@ -466,7 +466,7 @@ Bindings for common c I/O functions
     */
     io.readFile = function(file)
     {
-        var f = new File(file, "r");
+        var f = new File(file, 'r');
         var str = f.read();
         f.close();
         return str;
@@ -504,13 +504,13 @@ Bindings for common c I/O functions
         var file = c.tmpfile();
         var r;
         if(ffi.isNullPtr(file))
-            throw "Unable to get tmp file.";
+            throw 'Unable to get tmp file.';
 
         r = new File(null);
         r.ptr = file;
-        r.mode = "wb+";
-        r.name = "TMPFILE";
-        r.file = "TMPFILE";
+        r.mode = 'wb+';
+        r.name = 'TMPFILE';
+        r.file = 'TMPFILE';
         return r;
     };
 
@@ -522,7 +522,7 @@ Bindings for common c I/O functions
         var buf = c.malloc(128);
         var name = c.tmpnam(buf);
         if(ffi.isNullPtr(name))
-            throw "Unable to get temp name.";
+            throw 'Unable to get temp name.';
         name = ffi.string(buf);
         c.free(buf);
         return name;
