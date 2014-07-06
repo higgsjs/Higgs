@@ -42,7 +42,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
 (function()
 {
-    var console = require('lib/console');
 
     /**
     ERRORS
@@ -65,8 +64,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     */
     function CParseError(message, at)
     {
-        this.name = "CParseError";
-        this.message = message || "error parsing c declaration";
+        this.name = 'CParseError';
+        this.message = message || 'error parsing c declaration';
         if (at)
             this.message += at;
     }
@@ -81,23 +80,23 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     function CParseExpectedError(expected, got, at)
     {
         var message;
-        this.name = "CParseExpectedError";
+        this.name = 'CParseExpectedError';
 
         if (expected)
         {
-            expected = (typeof expected === "number") ?
-                "'" + String.fromCharCode(expected) + "'" : expected;
-            message = "Expected: " + expected;
+            expected = (typeof expected === 'number') ?
+                '\'' + String.fromCharCode(expected) + '\'' : expected;
+            message = 'Expected: ' + expected;
 
             if (got === 0)
             {
-                message += " Got EOF";
+                message += ' Got EOF';
             }
             else if (got)
             {
-                got = (typeof got === "number") ?
+                got = (typeof got === 'number') ?
                     String.fromCharCode(got) : got;
-                message += " Got: '" + got + "'";
+                message += ' Got: \'' + got + '\'';
             }
 
             if (at)
@@ -117,16 +116,16 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     function CParseUnexpectedError(unexpected, got, at)
     {
         var message;
-        this.name = "CParseUnexpectedError";
+        this.name = 'CParseUnexpectedError';
         if (unexpected)
         {
-            message = "Unexpected: " + unexpected + " near ";
+            message = 'Unexpected: ' + unexpected + ' near ';
 
             if (got)
             {
-                got = (typeof got === "number") ?
-                    "'" + String.fromCharCode(got) + "'" : got;
-                message += " - '" + got + "'";
+                got = (typeof got === 'number') ?
+                    '\'' + String.fromCharCode(got) + '\'' : got;
+                message += ' - \'' + got + '\'';
             }
 
             if (at)
@@ -195,7 +194,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     */
     Lexer.loc = function()
     {
-        return " (CDeclaration@" + this.line + ":" + (this.line_index + 1)  + ")";
+        return ' (CDeclaration@' + this.line + ':' + (this.line_index + 1)  + ')';
     };
 
     /**
@@ -261,6 +260,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             case 9: case 32:
                 this.line_index += 1;
             // other whitespace
+            /* falls through */
             case 11: case 12: case 13: case 160:
                 cursor += 1;
                 index = cursor;
@@ -283,10 +283,10 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                         if (chr === 42 && $rt_str_get_data(input, cursor + 1) === 47)
                             break;
                         else if (cursor === end)
-                            throw CParseError("unterminated comment"); 
+                            throw CParseError('unterminated comment'); 
                     }
                 else
-                    throw new CParseUnexpectedError("char", '/', this.loc());
+                    throw new CParseUnexpectedError('char', '/', this.loc());
                 cursor += 2;
                 index = cursor;
                 break;
@@ -299,7 +299,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
                     if (((chr >= 65 && chr <= 90) || (chr >= 97 && chr <= 122) ||
                          (chr >= 48 && chr <= 57) || (chr === 95)))
-                        throw new CParseError("Identifiers cannot start with a number.");
+                        throw new CParseError('Identifiers cannot start with a number.');
 
                     this.token_type = NUMBER_LITERAL;
                 }
@@ -322,13 +322,13 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 t = $ir_get_str(t_string);
                 this.token = t;
 
-                if (t === "typedef" || t === "extern")
+                if (t === 'typedef' || t === 'extern')
                     this.token_type = STORAGE_CLASS_SPECIFIER;
-                else if (t === "struct" || t === "union")
+                else if (t === 'struct' || t === 'union')
                     this.token_type = STRUCT_OR_UNION;
-                else if (t === "enum")
+                else if (t === 'enum')
                     this.token_type = ENUM;
-                else if (t === "const")
+                else if (t === 'const')
                     this.token_type = TYPE_QUALIFIER;
                 else if (CTypes[t])
                     this.token_type = TYPE_SPECIFIER;
@@ -401,7 +401,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 }
                 else
                 {
-                    throw new CParseExpectedError("Number Literal", lex.token, lex.loc());
+                    throw new CParseExpectedError('Number Literal', lex.token, lex.loc());
                 }
             }
 
@@ -448,13 +448,13 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 this.acceptEnumSpecifier();
             else if (type === TYPE_SPECIFIER)
                 if (dec.type)
-                    if (tok === "char" || tok === "int" || tok === "long" || tok === "short")
-                        dec.type = CType(dec.type.name + " " + tok);
+                    if (tok === 'char' || tok === 'int' || tok === 'long' || tok === 'short')
+                        dec.type = CType(dec.type.name + ' ' + tok);
                     else
-                        if (dec.storage_class === "typedef")
+                        if (dec.storage_class === 'typedef')
                             dec.name = tok;
                         else
-                            throw new CParseUnexpectedError("type specifier", tok, lex.loc());
+                            throw new CParseUnexpectedError('type specifier', tok, lex.loc());
                 else
                     dec.type = CType(tok);
             else if (type === TYPE_QUALIFIER)
@@ -478,8 +478,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var ctype;
         var t;
 
-        if (tok !== "struct" && tok !== "union")
-            throw new CParseExpectedError("'struct' or 'union'", tok, lex.loc());
+        if (tok !== 'struct' && tok !== 'union')
+            throw new CParseExpectedError('\'struct\' or \'union\'', tok, lex.loc());
 
         lex.next();
 
@@ -504,7 +504,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             this.acceptStructDeclarationList(members, names);
 
             // Wrap the declaration appropriately
-            if (tok === "struct")
+            if (tok === 'struct')
                 ctype = this.dec.type = CStruct(members, names, name);
             else
                 ctype = this.dec.type = CUnion(members, names, name);
@@ -516,7 +516,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 t = this.lib[name];
                 if (!t)
                 {
-                    this.ctypes[tok + " " + name] = ctype;
+                    this.ctypes[tok + ' ' + name] = ctype;
                     this.lib[name] = type.wrapper_fun;
                 }
             }
@@ -527,14 +527,14 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         }
         else if (name)
         {
-            // In this case we just have "struct TagName"
+            // In this case we just have 'struct TagName'
             // check if this can be wrapped
-            t = this.ctypes[tok + " " + name];
+            t = this.ctypes[tok + ' ' + name];
 
             // otherwise, create a new wrapper
             if (!t)
             {
-                if (tok === "struct")
+                if (tok === 'struct')
                     t = CStruct(null);
                 else
                     t = CUnion(null);
@@ -544,7 +544,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         }
         else
         {
-            throw new CParseExpectedError("identifier or {", lex.token, lex.loc());
+            throw new CParseExpectedError('identifier or {', lex.token, lex.loc());
         }
 
         // NOTE: advance handled by caller
@@ -559,7 +559,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var lex = this.lex;
         var CType = this.CType;
         var type;
-        var tok;
         var of;
 
         // struct-declaration-list
@@ -575,7 +574,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 if (type === TYPE_SPECIFIER)
                 {
                     if (of.type)
-                        of.type = CType(of.type.name + " " + lex.token);
+                        of.type = CType(of.type.name + ' ' + lex.token);
                     else
                         of.type = CType(lex.token);
                     lex.next();
@@ -603,7 +602,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 // TODO: = constant expression
                 if (!of.type)
                 {
-                    throw new CParseExpectedError("type specifier", null, lex.loc());
+                    throw new CParseExpectedError('type specifier', null, lex.loc());
                 }
 
                 members.push(of.type);
@@ -645,7 +644,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     {
         var lex = this.lex;
         var tok = lex.token;
-        var type = lex.token_type;
         var members;
         var member;
         var name;
@@ -654,8 +652,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var i = 0;
         var count = 0;
 
-        if (tok !== "enum")
-            throw new CParseExpectedError("'struct' or 'union'", tok, lex.loc());
+        if (tok !== 'enum')
+            throw new CParseExpectedError('\'struct\' or \'union\'', tok, lex.loc());
 
         lex.next();
 
@@ -707,7 +705,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             }
             else
             {
-                throw new CParseExpectedError("identifier, ',', or '}'", lex.token, lex.loc());
+                throw new CParseExpectedError('identifier, \',\', or \'}\'', lex.token, lex.loc());
             }
         }
 
@@ -734,7 +732,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var lex = this.lex;
         var dec = this.dec;
         var type = lex.token_type;
-        var p;
 
         /**
         Accept a pointer
@@ -770,7 +767,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var lex = this.lex;
         var dec = this.dec;
         var type;
-        var tok;
         var num;
         var args;
         var depth;
@@ -827,18 +823,18 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     */
                     num = Number(lex.token);
                     if (isNaN(num))
-                        throw new CParseExpectedError("integer constant", lex.token, lex.loc());
+                        throw new CParseExpectedError('integer constant', lex.token, lex.loc());
                     lex.next();
                 }
                 else
                 {
-                    throw new CParseExpectedError("] or integer constant", lex.token, lex.loc());
+                    throw new CParseExpectedError('] or integer constant', lex.token, lex.loc());
                 }
 
                 // Don't wrap yet if we're in a nested declarator
                 if (nested > 0)
                     this.dec_stack.push(num, OPEN_SQUARE);
-                else if (dec.type.wrapper === "CFun")
+                else if (dec.type.wrapper === 'CFun')
                     dec.type = CFun( CArray(dec.type.ret, num), dec.type.args);
                 else
                     dec.type = CArray(dec.type, num);
@@ -915,12 +911,12 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
             // cover functions explicitly declared as (void)
             t = of.type;
-            if (t && t.name === "void")
+            if (t && t.name === 'void')
                 break;
 
             if (t === undefined)
             {
-                throw new CParseUnexpectedError("unknown type", lex.token, lex.loc());
+                throw new CParseUnexpectedError('unknown type', lex.token, lex.loc());
             }
 
             sig.push(t);
@@ -969,8 +965,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     */
 
     // Arg strings are used in the generation of function wrappers for the FFI
-    var arg_strings = ["", " a "];
-    var arg_names = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP";
+    var arg_strings = ['', ' a '];
+    var arg_names = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP';
 
     /**
     Generate/Get an arg string for the # of arguments
@@ -980,10 +976,10 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         if (arg_strings[len] !== undefined)
             return arg_strings[len];
 
-        var arg_string = "a";
+        var arg_string = 'a';
         for (var i = 1; i < len; i++)
-            arg_string += ", " + arg_names[i];
-        arg_string += " ";
+            arg_string += ', ' + arg_names[i];
+        arg_string += ' ';
         arg_strings[len] = arg_string;
         return arg_string;
     }
@@ -995,20 +991,20 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     {
         var i = 0;
         var l = args.length - 1;
-        var str = "(" + ret.name + ",";
+        var str = '(' + ret.name + ',';
 
         if (args.length === 0)
-            return str + "void)";
+            return str + 'void)';
         else
             while (i <= l)
             {
                 str += args[i].name;
                 if (i < l)
-                    str += ",";
+                    str += ',';
                 i += 1;
             }
 
-        return str + ")";
+        return str + ')';
     }
 
 
@@ -1031,7 +1027,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
         // Check if this is a return type that can be wrapped
         if (!base)
-            throw new TypeError("Invalid return type for CFun: " + ret.name);
+            throw new TypeError('Invalid return type for CFun: ' + ret.name);
 
         // Generate a sig string for $ir_call_ffi
         while (i < l)
@@ -1039,13 +1035,13 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             arg = args[i++];
 
             // CArrays are treated as pointers
-            if (arg.wrapper === "CArray")
-                base = "*";
+            if (arg.wrapper === 'CArray')
+                base = '*';
             else
                 base = arg.base_type;
             if (!base)
-                throw new TypeError("Invalid arg type for CFun:" + args[--i].name);
-            sig_str += "," + base;
+                throw new TypeError('Invalid arg type for CFun:' + args[--i].name);
+            sig_str += ',' + base;
         }
 
         // Generate wrapper function
@@ -1055,8 +1051,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 return function(` + arg_str  + `)
                 {
                     return $ir_call_ffi(fun_sym, ` +
-                        ('"' + sig_str + '"') +
-                        (arg_str === "" ? arg_str : (", " + arg_str)) + `);
+                        ('\'' + sig_str + '\'') +
+                        (arg_str === '' ? arg_str : (', ' + arg_str)) + `);
                 };
             };`;
 
@@ -1071,11 +1067,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var size = type.size;
         var load_fun = type.load_fun;
         var store_fun = type.store_fun;
-        var wrapper_fun =
-           `(function(c, string)
-            {`;
+        var wrapper_fun;
 
-        if (type.name === "char")
+        if (type.name === 'char')
         {
             // Special case toString for char[]
             wrapper_fun =
@@ -1166,10 +1160,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var l = members.length;
         var mem;
         var type_size;
-        var d;
         var loader;
         var loaders;
-        var loader_dec = "";
+        var loader_dec = '';
         var loader_n = 0;
         var arg_str;
 
@@ -1183,9 +1176,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             mem = members[i];
             type_size = mem.align_size || mem.size;
 
-            if (typeof type_size !== "number" || isNaN(type_size))
+            if (typeof type_size !== 'number' || isNaN(type_size))
             {
-                throw new FFIError("Invalid type size for: " + mem.name);
+                throw new FFIError('Invalid type size for: ' + mem.name);
             }
 
             // members with a simple type like int are handled differently than members
@@ -1198,7 +1191,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 // This member uses a wrapper
                 loaders = loaders || [];
                 loader_n += 1;
-                arg_str = (arg_str) ? (arg_str + ", ld" + loader_n) : ("ld1");
+                arg_str = (arg_str) ? (arg_str + ', ld' + loader_n) : ('ld1');
                 loaders.push(mem.wrapper_fun);
                 loader_dec =
                     `s.` + names[i] + ` = ld` + loader_n + `(s.ptr, s.offset);`;
@@ -1274,7 +1267,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var d;
         var loader;
         var loaders;
-        var loader_dec = "";
+        var loader_dec = '';
         var loader_n = 0;
         var arg_str;
 
@@ -1313,7 +1306,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                 // This member uses a wrapper
                 loaders = loaders || [];
                 loader_n += 1;
-                arg_str = (arg_str) ? (arg_str + ", ld" + loader_n) : ("ld1");
+                arg_str = (arg_str) ? (arg_str + ', ld' + loader_n) : ('ld1');
                 loaders.push(mem.wrapper_fun);
                 loader_dec =
                     `s.` + names[i] + ` = ld` +
@@ -1391,7 +1384,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     function CDec(base)
     {
         var dec = {
-            wrapper : "CDec"
+            wrapper : 'CDec'
         };
 
         if (base)
@@ -1403,7 +1396,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     /**
     Wrappers for C Types
 
-    NOTE: CTypes is a little different: it represnts the "type namespace" for a FFILib,
+    NOTE: CTypes is a little different: it represnts the 'type namespace' for a FFILib,
           so they each have their own copy. So this function actually returns a wrapper function.
           The other type wrappers are all shared between libs.
     */
@@ -1420,11 +1413,11 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             {
                 if (arguments.length < 3)
                 {
-                    throw new CParseError("Invalid or unspecified type: " + name);
+                    throw new CParseError('Invalid or unspecified type: ' + name);
                 }
 
                 t = {
-                    wrapper : "CType",
+                    wrapper : 'CType',
                     name : name,
                     base_type : base_type,
                     size : size,
@@ -1439,48 +1432,48 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         };
     }
 
-    // "Global" versions of types
+    // 'Global' versions of types
     var CTypes = Object.create(null);
     var CType = CTypeFun(CTypes);
 
     // Types
-    CType("char", "i8", 1, "$ir_load_i8", "$ir_store_i8");
-    CType("signed char", "i8", 1, "$ir_load_i8", "$ir_store_i8");
-    CType("unsigned char", "u8", 1, "$ir_load_u8", "$ir_store_u8");
+    CType('char', 'i8', 1, '$ir_load_i8', '$ir_store_i8');
+    CType('signed char', 'i8', 1, '$ir_load_i8', '$ir_store_i8');
+    CType('unsigned char', 'u8', 1, '$ir_load_u8', '$ir_store_u8');
 
-    CType("short", "i16", 2, "$ir_load_i16", "$ir_store_i16");
-    CType("short int", "i16", 2, "$ir_load_i16", "$ir_store_i16");
-    CType("signed short", "i16", 2, "$ir_load_i16", "$ir_store_i16");
-    CType("signed short int", "i16", 2, "$ir_load_i16", "$ir_store_i16");
-    CType("unsigned short", "u16", 2, "$ir_load_u16", "$ir_store_u16");
-    CType("unsigned short int", "u16", 2, "$ir_load_u16", "$ir_store_u16");
+    CType('short', 'i16', 2, '$ir_load_i16', '$ir_store_i16');
+    CType('short int', 'i16', 2, '$ir_load_i16', '$ir_store_i16');
+    CType('signed short', 'i16', 2, '$ir_load_i16', '$ir_store_i16');
+    CType('signed short int', 'i16', 2, '$ir_load_i16', '$ir_store_i16');
+    CType('unsigned short', 'u16', 2, '$ir_load_u16', '$ir_store_u16');
+    CType('unsigned short int', 'u16', 2, '$ir_load_u16', '$ir_store_u16');
 
-    CType("int", "i32", 4, "$ir_load_i32", "$ir_store_i32");
-    CType("signed", "i32", 4, "$ir_load_i32", "$ir_store_i32");
-    CType("signed int", "i32", 4, "$ir_load_i32", "$ir_store_i32");
-    CType("unsigned", "u32", 4, "$ir_load_u32", "$ir_store_u32");
-    CType("unsigned int", "u32", 4, "$ir_load_u32", "$ir_store_u32");
+    CType('int', 'i32', 4, '$ir_load_i32', '$ir_store_i32');
+    CType('signed', 'i32', 4, '$ir_load_i32', '$ir_store_i32');
+    CType('signed int', 'i32', 4, '$ir_load_i32', '$ir_store_i32');
+    CType('unsigned', 'u32', 4, '$ir_load_u32', '$ir_store_u32');
+    CType('unsigned int', 'u32', 4, '$ir_load_u32', '$ir_store_u32');
 
-    CType("long", "i64", 8, "$ir_load_i64", "$ir_store_i64");
-    CType("long int", "i64", 8, "$ir_load_i64", "$ir_store_i64");
-    CType("signed long", "i64", 8, "$ir_load_i64", "$ir_store_i64");
-    CType("signed long int", "i64", 8, "$ir_load_i64", "$ir_store_i64");
+    CType('long', 'i64', 8, '$ir_load_i64', '$ir_store_i64');
+    CType('long int', 'i64', 8, '$ir_load_i64', '$ir_store_i64');
+    CType('signed long', 'i64', 8, '$ir_load_i64', '$ir_store_i64');
+    CType('signed long int', 'i64', 8, '$ir_load_i64', '$ir_store_i64');
 
-    CType("unsigned long", "u64", 8, "$ir_load_u64", "$ir_store_u64");
-    CType("unsigned long int", "u64", 8, "$ir_load_u64", "$ir_store_u64");
+    CType('unsigned long', 'u64', 8, '$ir_load_u64', '$ir_store_u64');
+    CType('unsigned long int', 'u64', 8, '$ir_load_u64', '$ir_store_u64');
 
-    CType("long long", "i64", 8, "$ir_load_i64", "$ir_store_i64");
-    CType("long long int", "i64", 8, "$ir_load_i64", "$ir_store_i64");
-    CType("signed long long", "i64", 8, "$ir_load_i64", "$ir_store_i64");
-    CType("signed long long int", "i64", 8, "$ir_load_i64", "$ir_store_i64");
+    CType('long long', 'i64', 8, '$ir_load_i64', '$ir_store_i64');
+    CType('long long int', 'i64', 8, '$ir_load_i64', '$ir_store_i64');
+    CType('signed long long', 'i64', 8, '$ir_load_i64', '$ir_store_i64');
+    CType('signed long long int', 'i64', 8, '$ir_load_i64', '$ir_store_i64');
 
-    CType("unsigned long long", "u64", 8, "$ir_load_u64", "$ir_store_u64");
-    CType("unsigned long long int", "u64", 8, "$ir_load_u64", "$ir_store_u64");
+    CType('unsigned long long', 'u64', 8, '$ir_load_u64', '$ir_store_u64');
+    CType('unsigned long long int', 'u64', 8, '$ir_load_u64', '$ir_store_u64');
 
-    CType("double", "f64", 8, "$ir_load_f64", "$ir_store_f64");
+    CType('double', 'f64', 8, '$ir_load_f64', '$ir_store_f64');
 
     // Some Special handling for these types
-    CType("void", "void", NaN);
+    CType('void', 'void', NaN);
 
     /**
     Wrappers for C Pointers
@@ -1496,13 +1489,13 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         if (!p)
         {
             p = {
-                wrapper : "CPtr",
+                wrapper : 'CPtr',
                 to : to,
-                base_type : "*",
-                name : "*" + name,
+                base_type : '*',
+                name : '*' + name,
                 size : 8,
-                load_fun : "$ir_load_rawptr",
-                store_fun : "$ir_store_rawptr"
+                load_fun : '$ir_load_rawptr',
+                store_fun : '$ir_store_rawptr'
             };
 
             CPtrs[name] = p;
@@ -1522,7 +1515,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var name = of.name;
         var a = CArrays[name];
         var t;
-        var wrap;
 
         length = length || 0;
 
@@ -1537,9 +1529,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         {
             t = {
                 of : of,
-                name : "[" + name + "]",
+                name : '[' + name + ']',
                 length : length,
-                wrapper : "CArray",
+                wrapper : 'CArray',
                 size : of.size * length,
                 align_size : of.size,
                 wrapper_fun : CArrayGen(of, length)
@@ -1565,10 +1557,10 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var d;
 
         // Sometimes the FFI user doesn't care about the layout of the struct, in that case
-        // they can just specify the tag: such as "struct Foo". These cannot be fully wrapped,
+        // they can just specify the tag: such as 'struct Foo'. These cannot be fully wrapped,
         // but usually when you do this it's because you are just passing around an opaque pointer.
-        if (members == null)
-            return { wrapper: "CStruct", name: "s{}" };
+        if (members === null || members === undefined)
+            return { wrapper: 'CStruct', name: 's{}' };
 
         // Otherwise, get a full type wrapper
 
@@ -1579,11 +1571,11 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             mem = members[i];
             type_size = mem.size;
 
-            if (typeof type_size !== "number" || isNaN(type_size))
+            if (typeof type_size !== 'number' || isNaN(type_size))
             {
                 throw new FFIError(
-                    "Invalid type size for: " + mem.name + " in struct " +
-                    (struct_name ? struct_name : "")
+                    'Invalid type size for: ' + mem.name + ' in struct ' +
+                    (struct_name ? struct_name : '')
                 );
             }
 
@@ -1594,15 +1586,15 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             i += 1;
         }
 
-        if (typeof struct_size !== "number" || isNaN(struct_size))
+        if (typeof struct_size !== 'number' || isNaN(struct_size))
         {
-            throw new FFIError("Invalid type size for: struct " + (struct_name ? struct_name : ""));
+            throw new FFIError('Invalid type size for: struct ' + (struct_name ? struct_name : ''));
         }
 
         s = {
-            wrapper : "CStruct",
+            wrapper : 'CStruct',
             members : members,
-            name : (struct_name || "s{}"),
+            name : (struct_name || 's{}'),
             size : struct_size,
             wrapper_fun : CStructGen(members, names, struct_size)
         };
@@ -1623,10 +1615,10 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var u;
 
         // Sometimes the FFI user doesn't care about the layout of the union, in that case
-        // they can just specify the tag: such as "union Foo". These cannot be fully wrapped,
+        // they can just specify the tag: such as 'union Foo'. These cannot be fully wrapped,
         // but usually when you do this it's because you are just passing around an opaque pointer.
-        if (members == null)
-            return { wrapper: "CUnion", name: "u{}" };
+        if (members === null || members === undefined)
+            return { wrapper: 'CUnion', name: 'u{}' };
 
         // Otherwise, get a full type wrapper
 
@@ -1637,11 +1629,11 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             mem = members[i];
             type_size = mem.size;
 
-            if (typeof type_size !== "number" || isNaN(type_size))
+            if (typeof type_size !== 'number' || isNaN(type_size))
             {
                 throw new FFIError(
-                    "Invalid type size for: " + mem.name + " in union " +
-                    (union_name ? union_name : "")
+                    'Invalid type size for: ' + mem.name + ' in union ' +
+                    (union_name ? union_name : '')
                 );
             }
 
@@ -1651,9 +1643,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         }
 
         u = {
-            wrapper : "CUnion",
+            wrapper : 'CUnion',
             members : members,
-            name : (union_name || "u{}"),
+            name : (union_name || 'u{}'),
             size : union_size,
             wrapper_fun : CUnionGen(members, names, union_size)
         };
@@ -1669,12 +1661,12 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     */
 
     var CEnums = {
-        wrapper : "CEnum",
-        name : "int",
-        base_type : "i32",
+        wrapper : 'CEnum',
+        name : 'int',
+        base_type : 'i32',
         size : 4,
-        load_fun : "$ir_load_i32",
-        store_fun : "$ir_store_i32"
+        load_fun : '$ir_load_i32',
+        store_fun : '$ir_store_i32'
     };
 
     function CEnum()
@@ -1702,7 +1694,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         {
             last = CFuns[key_name] = Object.create(null);
             if (args.length === 0)
-                last = last["void"] = Object.create(null);
+                last = last['void'] = Object.create(null);
             else
                 while (key < l)
                     last = last[args[key++].name] = Object.create(null);
@@ -1720,20 +1712,20 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             }
         }
 
-        f = last["$"];
+        f = last.$;
 
         // Otherwise, create a new one
         if (!f)
         {
             f = {
-                wrapper : "CFun",
+                wrapper : 'CFun',
                 args : args,
                 ret : ret,
                 name : FunNameStr(ret, args),
                 wrapper_fun : CFunGen(ret, args)
             };
 
-            last["$"] = f;
+            last.$ = f;
         }
 
         return f;
@@ -1763,33 +1755,33 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var ptr;
         var dec_type;
         var dec_name;
-
+ 
         do
         {
             dec = dlist[i];
 
             if (!dec.type)
-                throw new FFIError("Missing type in declaration: " + (dec.name ? dec.name : ""));
+                throw new FFIError('Missing type in declaration: ' + (dec.name ? dec.name : ''));
 
             dec_type = dec.type.wrapper;
             dec_name = dec.name;
 
-            if (dec.storage_class === "typedef")
+            if (dec.storage_class === 'typedef')
             {
                 ctypes[dec_name] = dec.type;
                 lib[dec_name] = dec.type.wrapper_fun;
             }
-            else if (dec_name && dec_type === "CFun")
+            else if (dec_name && dec_type === 'CFun')
             {
                 ptr = getSym(lib, dec.name);
                 lib[dec_name] = dec.type.wrapper_fun(ptr);
             }
-            else if (dec_name && dec_type === "CArray")
+            else if (dec_name && dec_type === 'CArray')
             {
                 ptr = getSym(lib, dec_name);
                 lib[dec_name] = dec.type.wrapper_fun(ptr);
             }
-            else if (dec_name && (dec_type === "CStruct" || dec_type === "CUnion"))
+            else if (dec_name && (dec_type === 'CStruct' || dec_type === 'CUnion'))
             {
                 ptr = getSym(lib, dec.name);
                 lib[dec.name] = dec.type.wrapper_fun(ptr);
@@ -1797,7 +1789,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             else if (dec_name)
             {
                 ptr = getSym(lib, dec_name);
-                lib["get_" + dec_name] =
+                lib['get_' + dec_name] =
                     eval(`
                          function(ptr)
                          {
@@ -1808,7 +1800,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                          }
                     `)(ptr);
 
-                lib["set_" + dec_name] =
+                lib['set_' + dec_name] =
                     eval(`
                          function(ptr)
                          {
@@ -1834,7 +1826,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     FFILib Prototype Object
     */
 
-    var FFILibProto = Object.create(null);;
+    var FFILibProto = Object.create(null);
     FFILibProto.ctypes = null;
     FFILibProto.CType = null;
     FFILibProto.CPtr = CPtr;
@@ -1851,13 +1843,11 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var fun;
         var arg_str;
         var sig_arr;
-        var sig_str;
-        var i;
 
-        // handle sig strings like "i8,f64,*" etc
-        if (typeof sig === "string")
+        // handle sig strings like 'i8,f64,*' etc
+        if (typeof sig === 'string')
         {
-            sig_arr = sig.split(",");
+            sig_arr = sig.split(',');
             arg_str = getArgString(sig_arr.length - 1);
             fun_str =
                `function(lib)
@@ -1866,8 +1856,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     return function(` + arg_str  + `)
                     {
                         return $ir_call_ffi(fun_sym, ` +
-                            ('"' + sig + '"') +
-                           (arg_str === "" ? arg_str : (", " + arg_str)) + `);
+                            ('\'' + sig + '\'') +
+                           (arg_str === '' ? arg_str : (', ' + arg_str)) + `);
                     };
                 };`;
             fun = eval(fun_str)(this.ptr);
@@ -1875,7 +1865,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         else
         {
             // TODO: add support for passing type wrappers
-            throw new FFIError("Invalid arg in CFun");
+            throw new FFIError('Invalid arg in CFun');
         }
 
         this[fname] = fun;
@@ -1891,8 +1881,6 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var lexer = this.lexer;
         var ctypes = this.ctypes;
         var dlist;
-        var i;
-        var l;
 
         // initialize parser
         parser.dec_stack = null;
@@ -1917,7 +1905,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
             if (lexer.token_type === EOF)
                 break;
-        };
+        }
     };
 
     /**
@@ -1946,12 +1934,12 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
 
     // A wrapper for the global symbol object, used by some FFI wrappers and generally handy
     // to have
-    var c = FFILib("");
+    var c = FFILib('');
 
     // Functions used by the FFI library
-    c.cfun("malloc", "*,i32");
-    c.cfun("realloc", "*,*,i32");
-    c.cfun("free", "void,*");
+    c.cfun('malloc', '*,i32');
+    c.cfun('realloc', '*,*,i32');
+    c.cfun('free', 'void,*');
 
     /**
     TYPE UTILTIY FUNCTIONS
@@ -1966,15 +1954,15 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     */
     function cstr(str, len)
     {
-        var cstr, i;
+        var c_str, i;
         len = len || str.length;
-        cstr = c.malloc(len + 1);
+        c_str = c.malloc(len + 1);
 
         for (i = 0; i < len; i++)
-            $ir_store_u8(cstr, i, $rt_str_get_data(str, i));
+            $ir_store_u8(c_str, i, $rt_str_get_data(str, i));
 
-        $ir_store_u8(cstr, len, 0);
-        return cstr;
+        $ir_store_u8(c_str, len, 0);
+        return c_str;
     }
 
     /**
@@ -2047,7 +2035,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     OS name
     */
 
-    var os_name = string($ir_load_rawptr($ir_get_sym(c.ptr, "higgs_osName"), 0));
+    var os_name = string($ir_load_rawptr($ir_get_sym(c.ptr, 'higgs_osName'), 0));
 
     /**
     EXPORTS
