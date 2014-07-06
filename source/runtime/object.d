@@ -316,7 +316,7 @@ ValuePair newObj(
 
     obj_set_shape(objPtr, cast(rawptr)vm.emptyShape);
 
-    setProp(vm, objPair, "__proto__"w, protoObj.pair);
+    defConst(vm, objPair, "__proto__"w, protoObj.pair);
 
     return objPair;
 }
@@ -340,9 +340,8 @@ ValuePair newClos(
 
     obj_set_shape(objPair.word.ptrVal, cast(rawptr)vm.emptyShape);
 
-    setProp(vm, objPair, "__proto__"w, protoObj.pair);
-
-    setProp(vm, objPair, "__fptr__"w, ValuePair(fun));
+    defConst(vm, objPair, "__proto__"w, protoObj.pair);
+    defConst(vm, objPair, "__fptr__"w, ValuePair(fun));
 
     return objPair;
 }

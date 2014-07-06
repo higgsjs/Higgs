@@ -113,7 +113,11 @@ TODO: support for making object props non-writable, non-enumerable
 - matching stdlib/object tests
 - announce in chat
 
-FIXME: proto gets enumerated
+FIXME: Running: ./tests/06-sunspider/15-string-fasta.js...
+redefining constant: __proto__
+redefining constant: __proto__
+
+FIXME: Object.prototype, other proto props all non-enumerable?
 
 
 
@@ -121,6 +125,14 @@ FIXME: proto gets enumerated
 
 
 
+
+
+[DONE] FIXME: proto gets enumerated
+make; ./higgs --e "o = {x:3}; for (k in o) print(k);"
+- enumerable flag set?
+- defAttrs is 0
+- Proto listed is from Obj proto, created by runtime
+  - Doesn't use defConst
 
 [DONE] TODO: for-in support, needed for several benchmarks
 - shape_parent, shape_get_attrs, shape_prop_name

@@ -53,8 +53,8 @@ console.log(x);
 var f = { foo : x };
 x.baz = f;
 
-expectedOutput("{ bar : 5, baz : { foo : {...} } }");
-console.log(x);
-
+// FIXME: can't assume enumeration order for for-in!
+//expectedOutput("{ bar : 5, baz : { foo : {...} } }");
+//console.log(x);
 
 print = OLD_PRINT;
