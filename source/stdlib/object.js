@@ -349,14 +349,19 @@ Object.prototype.isPrototypeOf = function (O)
 
 /**
 15.2.4.7 Object.prototype.propertyIsEnumerable (V)
-FIXME: for now, all properties are enumerable
 */
 Object.prototype.propertyIsEnumerable = function (V)
 {
     if (this.hasOwnProperty(V) === false)
         return false;
 
-    return true;
+    var defShape = $ir_shape_get_def(this, V);
+
+    if ($ir_eq_rawptr(defShape, $nullptr))
+        return false;
+
+    var attrs = $ir_shape_get_attrs(defShape);
+    return !!(attrs & $rt_ATTR_ENUMERABLE);
 };
 
 // Make the Object.prototype properties non-enumerable

@@ -102,8 +102,6 @@ TODO: reserve August 15-16-17, international Lisp conference
 - Cocktail premier soir
 - Pavillon Jean-Coutu
 
-TODO: IIR, use introspection to auto-define in iir.d, no addOp?
-
 TODO: take a break, work on random lib
 - setRndGen
 - random.normal, random.choice
@@ -119,6 +117,11 @@ FIXME: ./tests/06-sunspider/16-string-tagcloud.js...
 Assertion failed (runtime/vm.d@742): invalid stack slot index (14/262188)
 ***** FAILED! *****
 
+TODO: shape forking implementation
+- No redefinition of properties by concatenation ***
+- No origShape in defProp? Might be needed for replay of prop additions
+- Redefining a property replays property additions
+  - Can allow caching transitions for this too
 
 
 
@@ -130,10 +133,7 @@ Assertion failed (runtime/vm.d@742): invalid stack slot index (14/262188)
 
 
 
-
-
-
-
+[DONE] TODO: IIR, use introspection to auto-define in iir.d, no addOp?
 
 [DONE] TODO: other prototype props non-enumerable
 - Function, String, Boolean, Number
