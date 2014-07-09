@@ -56,7 +56,7 @@ Opcode*[string] iir;
 static this()
 {
     void addOp(ref Opcode op)
-    { 
+    {
         assert (
             op.mnem !in iir, 
             "duplicate op name " ~ op.mnem
@@ -67,9 +67,12 @@ static this()
 
     foreach (memberName; __traits(allMembers, ir.ops))
     {
-        static if (__traits(compiles, addOp(__traits(getMember, ir.ops, memberName))))
+        alias Alias(alias Sym) = Sym;
+        alias member = Alias!(__traits(getMember, ir.ops, memberName));
+
+        static if (__traits(compiles, addOp(member)))
         {
-            addOp(__traits(getMember, ir.ops, memberName));
+            addOp(member);
         }
     }
 }
