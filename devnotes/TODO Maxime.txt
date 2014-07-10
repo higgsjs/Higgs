@@ -63,8 +63,6 @@ TODO: convert arrays and closures to a shaperer model??
 
 TODO: getters & setters
 
-TODO: integrate ValType into BBV
-
 TODO: const globals?
 TODO: define $UNDEF, $NULLPTR, $MISSING in the VM?
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
@@ -81,57 +79,53 @@ TODO: blog post about typed shapes, quick illustrations
 - Use diagrams from Eddy's talk, link and give credit
 - Typed shapes + BBV a bit of a gamble
 
-TODO: complete runtime.js functions
-
 Meeting:
 - e-mailed Dave Herman about internship, got response today
   - Michael Bebenita CCd
   - Bebenita says not time to apply for 2015 yet, may be constraints on when
   - Summer? Recontact Apple?
-- Shapes: began implementing IR instrs, object layout, basic runtime functions
-- Refined shape design, simplified things, getter-setter handling, prop attribs
-- Ext table mechanism, collapsed on GC
-- Most tests passing
-  - Next goal, all test passing, system unoptimized
-  - After: fit shapes into BBV, optimize prop reads
-- Observation: global object is a singleton, latest shape is the only one that matters
-  - Code paths recompiled when global object shape changes
-  - Can immediately discard old code paths
-  - Less problematic than I thought
 TODO: reserve August 15-16-17, international Lisp conference
 - Cocktail premier soir
 - Pavillon Jean-Coutu
 
+TODO: complete runtime.js getProp function
+- Needed to test typed shapes & BBV
+
+TODO: integrate ValType into BBV
+
 TODO: take a break, work on random lib
-- setRndGen
+- setRndGen, internal function/closure pointer
 - random.normal, random.choice
 - announce in chat
 
 TODO: extra object tests
-- Add extra tests? specific enum of Object.prototype
-- Add a test for array enum, shouldn't enum push
+- Specific enum of Object.prototype
+- Add a test for array enum, should only enum numerical keys
 
-FIXME: earley-boyer
 
-FIXME: ./tests/06-sunspider/16-string-tagcloud.js...
-Assertion failed (runtime/vm.d@742): invalid stack slot index (14/262188)
-***** FAILED! *****
 
-TODO: shape forking implementation
+
+
+
+
+
+[DONE] FIXME: GC & shapes, need to invalidate propDefs
+
+[DONE] TODO: rename subShapes to propDefs
+
+[DONE] TODO: shape forking implementation
 - No redefinition of properties by concatenation ***
 - No origShape in defProp? Might be needed for replay of prop additions
 - Redefining a property replays property additions
   - Can allow caching transitions for this too
-
-
-
-
-
-
-
-
-
-
+setProp
+- looks for defShape, 
+  doesn't find it, adds new property by concat
+  finds it, but incompatible
+  finds it, compatible, reads prop
+If found but incompatible, can look for cached transition
+- If not cached, need to build reversed list by iteration, push into an array
+  - Then pop, and re-add properties at new point
 
 [DONE] TODO: IIR, use introspection to auto-define in iir.d, no addOp?
 

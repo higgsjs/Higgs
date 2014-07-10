@@ -176,24 +176,24 @@ class ObjShape
     /// Parent shape in the tree
     ObjShape parent;
 
-    /// Sub-shape transitions, mapped by prop name, then prop type
-    ObjShape[][ValType][wstring] subShapes;
+    /// Property definition transitions, mapped by name, then type
+    ObjShape[][ValType][wstring] propDefs;
 
     // TODO
     /// Cache of property names to defining shapes, to accelerate lookups
     //ObjShape[wstring] propCache;
 
     /// Name of this property, null if array element property
-    const wstring propName;
+    wstring propName;
 
     /// Value type, may be unknown
-    const ValType type;
+    ValType type;
 
     /// Property attribute flags
-    const PropAttr attrs;
+    PropAttr attrs;
 
     /// Index at which this property is stored
-    const uint32_t slotIdx;
+    uint32_t slotIdx;
 
     /// Empty shape constructor
     this(VM vm)
@@ -216,8 +216,7 @@ class ObjShape
         ObjShape parent,
         wstring propName,
         ValType type,
-        PropAttr attrs,
-        uint32_t slotIdx
+        PropAttr attrs
     )
     {
         // Register this shape in the live shape reference set
@@ -229,7 +228,7 @@ class ObjShape
         this.type = type;
         this.attrs = attrs;
 
-        this.slotIdx = slotIdx;
+        this.slotIdx = parent.slotIdx+1;
     }
 
     /// Test if this shape defines a getter-setter
@@ -237,21 +236,22 @@ class ObjShape
 
     /**
     Method to define or redefine a property.
-    Either finds an existing sub-shape or create one.
+    This may fork the shape tree if redefining a property.
     */
     ObjShape defProp(
         VM vm,
         wstring propName,
         ValType type,
         PropAttr attrs,
-        ObjShape origShape
+        ObjShape defShape
     )
     {
-        if (propName in subShapes)
+        // Check if a shape object already exists for this definition
+        if (propName in propDefs)
         {
-            if (type in subShapes[propName])
+            if (type in propDefs[propName])
             {
-                foreach (shape; subShapes[propName][type])
+                foreach (shape; propDefs[propName][type])
                 {
                     // If this shape matches, return it
                     if (shape.attrs == attrs)
@@ -260,24 +260,62 @@ class ObjShape
             }
         }
 
-        // Compute the slot index for the new shape
-        auto slotIdx = origShape? origShape.slotIdx:(this.slotIdx+1);
+        // If this is a new property addition
+        if (defShape is null)
+        {
+            // Create the new shape
+            auto newShape = new ObjShape(
+                vm,
+                defShape? defShape:this,
+                propName,
+                type,
+                attrs
+            );
 
-        // Create the new shape
-        auto newShape = new ObjShape(
-            vm,
-            this,
-            propName,
-            type,
-            attrs,
-            slotIdx
-        );
+            // Add it to the property definitions
+            propDefs[propName][type] ~= newShape;
+            assert (propDefs[propName][type].length > 0);
 
-        // Add it to the sub-shapes
-        subShapes[propName][type] ~= newShape;
-        assert (subShapes[propName][type].length > 0);
+            return newShape;
+        }
 
-        return newShape;
+        // This is redefinition of an existing property
+        else
+        {
+            // Assemble the list of properties added
+            // after the original definition shape
+            ObjShape[] shapes;
+            for (auto shape = this; shape !is defShape; shape = shape.parent)
+                shapes ~= shape;
+
+            // Define the property with the same parent
+            // as the original shape
+            auto curParent = defShape.parent.defProp(
+                vm,
+                propName,
+                type,
+                attrs,
+                null
+            );
+
+            // Redefine all the intermediate properties
+            foreach_reverse (shape; shapes)
+            {
+                curParent = curParent.defProp(
+                    vm,
+                    shape.propName,
+                    shape.type,
+                    shape.attrs,
+                    null
+                );
+            }
+
+            // Add the last added shape to the property definitions
+            propDefs[propName][type] ~= curParent;
+            assert (propDefs[propName][type].length > 0);
+
+            return curParent;
+        }
     }
 
     /**
