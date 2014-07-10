@@ -1344,7 +1344,7 @@ extern (C) CodePtr throwExc(
                 vm,
                 exc.pair,
                 "length"w,
-                ValuePair(Word.int64v(trace.length), Type.INT32)
+                ValuePair(Word.int64v(depth), Type.INT32)
             );
         };
 

@@ -61,6 +61,10 @@ TODO: convert arrays and closures to a shaperer model??
 
 ------------------------------------------------------------------------------
 
+TODO: reserve August 15-16-17, international Lisp conference
+- Cocktail premier soir
+- Pavillon Jean-Coutu
+
 TODO: getters & setters
 
 TODO: const globals?
@@ -79,35 +83,32 @@ TODO: blog post about typed shapes, quick illustrations
 - Use diagrams from Eddy's talk, link and give credit
 - Typed shapes + BBV a bit of a gamble
 
-Meeting:
-- e-mailed Dave Herman about internship, got response today
-  - Michael Bebenita CCd
-  - Bebenita says not time to apply for 2015 yet, may be constraints on when
-  - Summer? Recontact Apple?
-TODO: reserve August 15-16-17, international Lisp conference
-- Cocktail premier soir
-- Pavillon Jean-Coutu
-
 TODO: complete runtime.js getProp function
 - Needed to test typed shapes & BBV
-
-TODO: integrate ValType into BBV
 
 TODO: take a break, work on random lib
 - setRndGen, internal function/closure pointer
 - random.normal, random.choice
 - announce in chat
 
-TODO: extra object tests
+TODO: integrate ValType into BBV
+
+
+
+
+
+
+[DONE] Meeting:
+- e-mailed Dave Herman about internship, got response today
+  - Michael Bebenita CCd
+  - Bebenita says not time to apply for 2015 yet, may be constraints on when
+  - Summer? Recontact Apple?
+- shape forking
+- typed shapes pass all the tests
+
+[DONE] TODO: extra object tests
 - Specific enum of Object.prototype
 - Add a test for array enum, should only enum numerical keys
-
-
-
-
-
-
-
 
 [DONE] FIXME: GC & shapes, need to invalidate propDefs
 

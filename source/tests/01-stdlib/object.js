@@ -138,15 +138,14 @@ function test_defineProperty()
     var o = {};
 
     Object.defineProperty(o, 'p', { value: 7 });
-
-    if (o.p !== 7)
-        return 1;
+    assert (o.p === 7);
 
     var obj = Object.defineProperty({}, 'x', { value: true });
-    if (obj.x !== true)
-        return 2;
+    assert (obj.x === true);
 
-    return 0;
+    Object.defineProperty(o, 'k', { value: 3, enumerable:false });
+    assert (o.k === 3);
+    assert (!o.propertyIsEnumerable('k'));
 }
 
 function test_defineProperties()
@@ -160,8 +159,8 @@ function test_defineProperties()
     var o1 = Object.defineProperties(
         o, 
         {
-            p1: { value: 1},
-            p2: { value: 2}
+            p1: { value: 1 },
+            p2: { value: 2 }
         }
     );
 
@@ -334,13 +333,16 @@ function test_isPrototypeOf()
 
 function test_propertyIsEnumerable()
 {
-    var o = {};
+    var o = { x:3 };
 
     // Test that the method exists
-    if (!o.propertyIsEnumerable)
-        return 1;
+    assert (typeof o.propertyIsEnumerable === 'function');
 
-    return 0;
+    assert (!o.propertyIsEnumerable(o.propertyIsEnumerable));
+
+    assert (o.propertyIsEnumerable('x'));
+
+    assert (!Object.prototype.propertyIsEnumerable('toString'));
 }
 
 function test()
@@ -365,9 +367,7 @@ function test()
     if (r != 0)
         return 500 + r;
 
-    var r = test_defineProperty();
-    if (r != 0)
-        return 600 + r;
+    test_defineProperty();
 
     var r = test_defineProperties();
     if (r != 0)
@@ -419,9 +419,7 @@ function test()
     if (r != 0)
         return 1900 + r;
 
-    var r = test_propertyIsEnumerable();
-    if (r != 0)
-        return 2000 + r;
+    test_propertyIsEnumerable();
 
     return 0;
 }
