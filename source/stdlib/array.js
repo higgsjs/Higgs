@@ -674,9 +674,13 @@ Array.prototype.reduceRight       = array_reduceRight;
 
 // Make the Array.prototype properties non-enumerable
 for (p in Array.prototype)
-    Object.defineProperty(Array.prototype, p, {enumerable:false})
-
-//-----------------------------------------------------------------------------
+{
+    Object.defineProperty(
+        Array.prototype,
+        p,
+        {enumerable:false, writable:true, configurable:true }
+    );
+}
 
 return Array;
 

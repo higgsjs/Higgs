@@ -285,5 +285,11 @@ Number.prototype.toFixed = function(fractionDigits)
 
 // Make the Number.prototype properties non-enumerable
 for (p in Number.prototype)
-    Object.defineProperty(Number.prototype, p, {enumerable:false})
+{
+    Object.defineProperty(
+        Number.prototype,
+        p,
+        {enumerable:false, writable:true, configurable:true }
+    );
+}
 

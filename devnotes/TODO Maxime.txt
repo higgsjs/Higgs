@@ -91,10 +91,9 @@ ISSUE: collecting sub-shapes...
 - JIT may reference sub-shapes, these may get destroyed because no objects are
   currently using them
 - Should probably disable GC handling of shapes for the moment
+- No need for shape refs
   - All are referenced through emptyShape anyways!
-
-TODO: fix defineProperty, see moz spec, writable, enumerable defaults
-
+- How is memory usage affected?
 
 
 
@@ -104,6 +103,15 @@ TODO: fix defineProperty, see moz spec, writable, enumerable defaults
 
 
 
+
+
+
+
+
+
+
+
+[DONE] TODO: fix defineProperty, see moz spec, writable, enumerable defaults
 
 [DONE] TODO: integrate ValType into ValState
 - How does this affect memory usage? Not much :)

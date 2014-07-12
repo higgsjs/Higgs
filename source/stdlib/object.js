@@ -169,9 +169,9 @@ Object.defineProperty = function (obj, prop, attribs)
     var oldCF = !!(oldAttrs & $rt_ATTR_CONFIGURABLE);
 
     // Assemble the new property attributes
-    var newWR = attribs.hasOwnProperty('writable')? !!attribs.writable:true;
-    var newEN = attribs.hasOwnProperty('enumerable')? !!attribs.enumerable:true;
-    var newCF = attribs.hasOwnProperty('configurable')? !!attribs.configurable:true;
+    var newWR = attribs.hasOwnProperty('writable')? !!attribs.writable:false;
+    var newEN = attribs.hasOwnProperty('enumerable')? !!attribs.enumerable:false;
+    var newCF = attribs.hasOwnProperty('configurable')? !!attribs.configurable:false;
     var newAttrs = (
         (newWR? $rt_ATTR_WRITABLE:0) |
         (newEN? $rt_ATTR_ENUMERABLE:0) |
@@ -366,5 +366,11 @@ Object.prototype.propertyIsEnumerable = function (V)
 
 // Make the Object.prototype properties non-enumerable
 for (p in Object.prototype)
-    Object.defineProperty(Object.prototype, p, {enumerable:false})
+{
+    Object.defineProperty(
+        Object.prototype,
+        p,
+        {enumerable:false, writable:true, configurable:true }
+    );
+}
 

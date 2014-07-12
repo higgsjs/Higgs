@@ -137,15 +137,34 @@ function test_defineProperty()
 
     var o = {};
 
+    // Properties are not enumerable by default
     Object.defineProperty(o, 'p', { value: 7 });
     assert (o.p === 7);
+    assert (!o.propertyIsEnumerable('p'));
 
-    var obj = Object.defineProperty({}, 'x', { value: true });
-    assert (obj.x === true);
+    // Properties are not writable by default
+    o.p = 8;
+    assert (o.p === 7);
+
+    // Properties are not configurable by default
+    try
+    {
+        Object.defineProperty(o, 'p', { value: 9, writable:true });
+        assert (false, 'exception should have been thrown');
+    }
+    catch (e)
+    {
+    }
+    o.p++;
+    assert (o.p === 7);
 
     Object.defineProperty(o, 'k', { value: 3, enumerable:false });
     assert (o.k === 3);
     assert (!o.propertyIsEnumerable('k'));
+
+    var obj = Object.defineProperty({}, 'x', { value: true, enumerable:true });
+    assert (obj.x === true);
+    assert (obj.propertyIsEnumerable('x'));
 }
 
 function test_defineProperties()

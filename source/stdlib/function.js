@@ -281,5 +281,11 @@ Function.prototype.bind = function(thisArg)
 
 // Make the Function.prototype properties non-enumerable
 for (p in Function.prototype)
-    Object.defineProperty(Function.prototype, p, {enumerable:false})
+{
+    Object.defineProperty(
+        Function.prototype,
+        p,
+        {enumerable:false, writable:true, configurable:true }
+    );
+}
 

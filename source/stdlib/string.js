@@ -813,7 +813,11 @@ String.prototype.substring.length = 2;
 
 // Make the String.prototype properties non-enumerable
 for (p in String.prototype)
-    Object.defineProperty(String.prototype, p, {enumerable:false})
-
-//-----------------------------------------------------------------------------
+{
+    Object.defineProperty(
+        String.prototype,
+        p,
+        {enumerable:false, writable:true, configurable:true }
+    );
+}
 
