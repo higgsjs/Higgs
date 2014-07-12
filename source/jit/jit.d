@@ -115,12 +115,6 @@ struct ValState
         /// Value kind
         Kind, "kind", 2,
 
-        /// Type, if known
-        Type, "type", 4,
-
-        /// Known type flag
-        bool, "typeKnown", 1,
-
         /// Type written to stack flag
         bool, "typeWritten", 1,
 
@@ -128,15 +122,17 @@ struct ValState
         int, "val", 24,
 
         /// Padding bits
-        uint, "", 0
+        uint, "", 5
     ));
+
+    /// Value type, may be unknown
+    ValType type;
 
     /// Stack value constructor
     static ValState stack()
     {
         ValState val;
         val.kind = Kind.STACK;
-        val.typeKnown = false;
         val.typeWritten = false;
         val.val = 0xFFFF;
         return val;
@@ -147,7 +143,6 @@ struct ValState
     {
         ValState val;
         val.kind = Kind.REG;
-        val.typeKnown = false;
         val.typeWritten = false;
         val.val = reg.regNo;
         return val;
@@ -156,6 +151,9 @@ struct ValState
     bool isStack() const { return kind is Kind.STACK; }
     bool isReg() const { return kind is Kind.REG; }
     bool isConst() const { return kind is Kind.CONST; }
+
+    bool typeKnown() const { return type.typeKnown; }
+    Type typeTag() const { return type.typeTag; }
 
     /// Get a word operand for this value
     X86Opnd getWordOpnd(size_t numBits, StackIdx stackIdx = StackIdx.max) const
@@ -178,20 +176,30 @@ struct ValState
     /// Get a type operand for this value
     X86Opnd getTypeOpnd(StackIdx stackIdx = StackIdx.max) const
     {
-        if (typeKnown)
-            return X86Opnd(type);
+        if (type.typeKnown)
+            return X86Opnd(type.typeTag);
 
         assert (stackIdx !is StackIdx.max);
         return typeStackOpnd(stackIdx);
     }
 
     /// Set the type for this value, creates a new value
-    ValState setType(Type type) const
+    ValState setType(Type typeTag) const
     {
         assert (!isConst);
-        ValState val = this;
-        val.typeKnown = true;
-        val.type = type;
+
+        ValState val = cast(ValState)this;
+        val.type = ValType(typeTag);
+        return val;
+    }
+
+    /// Set the type for this value, creates a new value
+    ValState setType(const ValType type) const
+    {
+        assert (!isConst);
+
+        ValState val = cast(ValState)this;
+        val.type = cast(ValType)type;
         return val;
     }
 
@@ -200,16 +208,15 @@ struct ValState
     {
         assert (!isConst);
 
-        ValState val = this;
-        val.typeKnown = false;
-        val.type = cast(Type)0x0F;
+        ValState val = cast(ValState)this;
+        val.type = ValType();
         return val;
     }
 
     /// Move this value to the stack
     ValState toStack() const
     {
-        ValState val = this;
+        ValState val = cast(ValState)this;
         val.kind = Kind.STACK;
         val.val = 0xFFFF;
         return val;
@@ -218,16 +225,16 @@ struct ValState
     /// Move this value to a register
     ValState toReg(X86Reg reg) const
     {
-        ValState val = this;
+        ValState val = cast(ValState)this;
         val.kind = Kind.REG;
         val.val = reg.regNo;
         return val;
     }
 
-    /// Write the type to the stack
+    /// Mark the type as written to the stack
     ValState writeType() const
     {
-        ValState val = this;
+        ValState val = cast(ValState)this;
         val.typeWritten = true;
         return val;
     }
@@ -761,7 +768,7 @@ class CodeGenState
             // Write the type tag to the type stack
             //if (opts.jit_genasm)
             //    as.comment("Spilling type for " ~ regVal.getName);
-            as.mov(typeStackOpnd(regVal.outSlot), X86Opnd(state.type));
+            as.mov(typeStackOpnd(regVal.outSlot), state.getTypeOpnd());
             valMap[regVal] = valMap[regVal].writeType();
         }
     }
@@ -803,7 +810,7 @@ class CodeGenState
                 if (spillTest(liveInfo, value) is true)
                 {
                     // Spill the type for this value
-                    as.mov(typeStackOpnd(value.outSlot), X86Opnd(state.type));
+                    as.mov(typeStackOpnd(value.outSlot), state.getTypeOpnd());
                     valMap[value] = state.writeType();
                 }
             }
@@ -866,7 +873,7 @@ class CodeGenState
                 //writeln("spilling known type");
 
                 // Write the type tag to the type stack
-                vm.tsp[regVal.outSlot] = state.type;
+                vm.tsp[regVal.outSlot] = state.typeTag;
             }
         }
     }
@@ -1162,7 +1169,7 @@ class CodeGenState
         ValState state = getState(value);
 
         // Assert that we aren't contradicting existing information
-        assert (!state.typeKnown || state.type is type);
+        assert (!state.typeKnown || state.typeTag is type);
 
         // If the type was previously unknown, it must have
         // been written on the stack, mark it as such
@@ -1174,11 +1181,11 @@ class CodeGenState
     }
 
     /// Get the state for a given value
-    auto getState(IRDstValue val) const
+    ValState getState(IRDstValue val) const
     {
         assert (val !is null);
 
-        return valMap.get(
+        return cast(ValState)valMap.get(
             val,
             ValState.stack()
         );
@@ -1938,7 +1945,7 @@ void genBranchMoves(
         // written to the stack, then write the type
         if (!succParam && !dstTypeOpnd.isMem && succState.typeWritten && !predWritten)
         {
-            as.mov(typeStackOpnd(succVal.outSlot), X86Opnd(succState.type));
+            as.mov(typeStackOpnd(succVal.outSlot), succState.getTypeOpnd());
             moveAdded = true;
         }
 

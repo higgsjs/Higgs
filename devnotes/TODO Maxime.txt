@@ -61,10 +61,6 @@ TODO: convert arrays and closures to a shaperer model??
 
 ------------------------------------------------------------------------------
 
-TODO: reserve August 15-16-17, international Lisp conference
-- Cocktail premier soir
-- Pavillon Jean-Coutu
-
 TODO: getters & setters
 
 TODO: const globals?
@@ -72,6 +68,11 @@ TODO: define $UNDEF, $NULLPTR, $MISSING in the VM?
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
 
 TODO: some global constants can be resolved at compile time
+
+TODO: take a break, work on random lib
+- setRndGen, internal function/closure pointer
+- random.normal, random.choice
+- announce in chat
 
 TODO: blog post about typed shapes, quick illustrations
 - "Faster JS Objects with Typed Shapes"
@@ -83,20 +84,29 @@ TODO: blog post about typed shapes, quick illustrations
 - Use diagrams from Eddy's talk, link and give credit
 - Typed shapes + BBV a bit of a gamble
 
-TODO: complete runtime.js getProp function
+TODO: complete runtime.js inlinable getProp function
 - Needed to test typed shapes & BBV
 
-TODO: take a break, work on random lib
-- setRndGen, internal function/closure pointer
-- random.normal, random.choice
-- announce in chat
+ISSUE: collecting sub-shapes...
+- JIT may reference sub-shapes, these may get destroyed because no objects are
+  currently using them
+- Should probably disable GC handling of shapes for the moment
+  - All are referenced through emptyShape anyways!
 
-TODO: integrate ValType into BBV
-
-
-
+TODO: fix defineProperty, see moz spec, writable, enumerable defaults
 
 
+
+
+
+
+
+
+
+
+
+[DONE] TODO: integrate ValType into ValState
+- How does this affect memory usage? Not much :)
 
 [DONE] Meeting:
 - e-mailed Dave Herman about internship, got response today

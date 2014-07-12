@@ -110,11 +110,11 @@ struct ValType
     /// Bit field for compact encoding
     mixin(bitfields!(
 
-        /// Type, if known
-        Type, "type", 4,
+        /// Type tag bits, if known
+        Type, "typeTag", 4,
 
         /// Known type flag
-        bool, "knownType", 1,
+        bool, "typeKnown", 1,
 
         /// Padding bits
         uint, "", 3
@@ -123,17 +123,25 @@ struct ValType
     /// Constructor taking a value pair
     this(ValuePair val)
     {
-        this.type = val.type;
-        this.knownType = true;
+        this.typeTag = val.type;
+        this.typeKnown = true;
 
-        if (this.type is Type.OBJECT ||
-            this.type is Type.CLOSURE ||
-            this.type is Type.ARRAY)
+        if (this.typeTag is Type.OBJECT ||
+            this.typeTag is Type.CLOSURE ||
+            this.typeTag is Type.ARRAY)
         {
             // TODO: get IRFunction if fptr
             // TODO: get object shape
             this.shape = null;
         }
+    }
+
+    /// Constructor taking a type tag only
+    this(Type typeTag)
+    {
+        this.typeTag = typeTag;
+        this.typeKnown = true;
+        this.shape = null;
     }
 
     bool knownShape() const { return shape !is null; }
@@ -143,12 +151,12 @@ struct ValType
     */
     bool isSubType(ValType that)
     {
-        if (that.knownType)
+        if (that.typeKnown)
         {
-            if (!this.knownType)
+            if (!this.typeKnown)
                 return false;
 
-            if (this.type !is that.type)
+            if (this.typeTag !is that.typeTag)
                 return false;
 
             if (that.knownShape)
@@ -232,7 +240,7 @@ class ObjShape
     }
 
     /// Test if this shape defines a getter-setter
-    bool isGetSet() const { return type.knownType && type.type is Type.GETSET; }
+    bool isGetSet() const { return type.typeKnown && type.typeTag is Type.GETSET; }
 
     /**
     Method to define or redefine a property.
