@@ -529,7 +529,7 @@ ValuePair setProp(
         // If the property is not writable, do nothing
         if (!(defShape.attrs & ATTR_WRITABLE))
         {
-            writeln("redefining constant: ", propStr);
+            //writeln("redefining constant: ", propStr);
             return NULL;
         }
 

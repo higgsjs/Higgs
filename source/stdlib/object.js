@@ -158,9 +158,29 @@ Object.defineProperty = function (obj, prop, attribs)
     if (!$rt_valIsObj(attribs))
         throw TypeError('property descriptor must be an object');
 
-    // Set the value, this will do nothing if writable is false
+    if ((attribs.hasOwnProperty('value')) &&
+        (attribs.hasOwnProperty('get') || attribs.hasOwnProperty('set')))
+        throw TypeError('property cannot have both a value and accessors');
+
+    // If a value is specified, try to set it,
+    // this will do nothing if writable is false
     if (attribs.hasOwnProperty('value'))
+    {
         obj[prop] = attribs.value;
+    }
+
+    // Otherwise, if accessors are specified
+    else if (attribs.hasOwnProperty('get') || attribs.hasOwnProperty('set'))
+    {
+        var get = attribs.hasOwnProperty('get')? attribs.get:null;
+        var set = attribs.hasOwnProperty('set')? attribs.set:null;
+
+        if (typeof get !== 'function' || typeof set !== 'function')
+            throw TypeError('accessors must be functions');
+
+        // Create a property descriptor pair
+        obj[prop] = $rt_newGetSet(get, set);
+    }
 
     // Extract the old property attributes
     var oldAttrs = $ir_shape_get_attrs($rt_obj_get_shape(obj));
@@ -178,7 +198,7 @@ Object.defineProperty = function (obj, prop, attribs)
         (newCF? $rt_ATTR_CONFIGURABLE:0)
     );
 
-    // If the property is not configurable
+    // If the property is not currently configurable
     if (oldCF === false)
     {
         if (newEN != oldEN)

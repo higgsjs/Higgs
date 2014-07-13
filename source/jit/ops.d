@@ -2668,6 +2668,7 @@ alias HeapAllocOp!(Type.REFPTR) gen_alloc_refptr;
 alias HeapAllocOp!(Type.OBJECT) gen_alloc_object;
 alias HeapAllocOp!(Type.ARRAY) gen_alloc_array;
 alias HeapAllocOp!(Type.CLOSURE) gen_alloc_closure;
+alias HeapAllocOp!(Type.GETSET) gen_alloc_getset;
 alias HeapAllocOp!(Type.STRING) gen_alloc_string;
 
 void gen_gc_collect(

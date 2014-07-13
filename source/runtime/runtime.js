@@ -1839,6 +1839,22 @@ function $rt_newArr(protoPtr, numElems)
 }
 
 /**
+Create a new getter-setter pair object
+*/
+function $rt_newGetSet(get, set)
+{
+    // Allocate the object
+    var objPtr = $rt_getset_alloc(2);
+
+    $rt_obj_set_shape(objPtr, $ir_shape_empty());
+
+    objPtr.get = get;
+    objPtr.set = set;
+
+    return objPtr
+}
+
+/**
 Get/allocate a regular expresson object
 */
 function $rt_getRegexp(link, pattern, flags)

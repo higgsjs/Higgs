@@ -61,8 +61,6 @@ TODO: convert arrays and closures to a shaperer model??
 
 ------------------------------------------------------------------------------
 
-TODO: getters & setters
-
 TODO: const globals?
 TODO: define $UNDEF, $NULLPTR, $MISSING in the VM?
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
@@ -84,6 +82,9 @@ TODO: blog post about typed shapes, quick illustrations
 - Use diagrams from Eddy's talk, link and give credit
 - Typed shapes + BBV a bit of a gamble
 
+TODO: need a $rt_setGlobal!
+- Use IR instr for basic bootstrap only
+
 TODO: complete runtime.js inlinable getProp function
 - Needed to test typed shapes & BBV
 
@@ -95,10 +96,14 @@ ISSUE: collecting sub-shapes...
   - All are referenced through emptyShape anyways!
 - How is memory usage affected?
 
+TODO: getters & setters
+- Objects tagged as GETSET...
+  - Should probably have their own layout if not already defined
+  - Have special alloc code? Simple, null proto
+  - newGetSet(get, set)?
+- descriptor .get and .set
 
-
-
-
+FIXME: redefining constant?
 
 
 

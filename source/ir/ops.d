@@ -275,6 +275,7 @@ Opcode ALLOC_REFPTR = { "alloc_refptr", true, [OpArg.LOCAL], &gen_alloc_refptr, 
 Opcode ALLOC_OBJECT = { "alloc_object", true, [OpArg.LOCAL], &gen_alloc_object, OpInfo.MAY_GC };
 Opcode ALLOC_ARRAY = { "alloc_array", true, [OpArg.LOCAL], &gen_alloc_array, OpInfo.MAY_GC };
 Opcode ALLOC_CLOSURE = { "alloc_closure", true, [OpArg.LOCAL], &gen_alloc_closure, OpInfo.MAY_GC };
+Opcode ALLOC_GETSET = { "alloc_getset", true, [OpArg.LOCAL], &gen_alloc_getset, OpInfo.MAY_GC };
 Opcode ALLOC_STRING = { "alloc_string", true, [OpArg.LOCAL], &gen_alloc_string, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection
