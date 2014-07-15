@@ -165,6 +165,20 @@ function test_defineProperty()
     var obj = Object.defineProperty({}, 'x', { value: true, enumerable:true });
     assert (obj.x === true);
     assert (obj.propertyIsEnumerable('x'));
+
+    // Getter accessor test
+    var obj = Object.defineProperty({}, 'p', { get: function() {return 5;} });
+    assert (obj.p === 5);
+    obj.p = 7;
+    assert (obj.p === 5);
+
+    // Setter accessor test
+    var obj = Object.defineProperty({}, 'p', { set: function(v) {this.k=v} });
+    obj.p = 5;
+    assert (obj.k === 5);
+    obj.p = 7;
+    assert (obj.k === 7);
+    assert (obj.p === undefined);
 }
 
 function test_defineProperties()

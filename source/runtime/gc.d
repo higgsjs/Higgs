@@ -381,6 +381,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     vm.funRefs = vm.liveFuns;
     vm.liveFuns.clear();
 
+    /*
     // Collect the dead shapes
     foreach (ptr, shape; vm.shapeRefs)
         if (ptr !in vm.liveShapes)
@@ -393,6 +394,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Process the live shapes
     foreach (shape; vm.shapeRefs)
         processShape(vm, shape);
+    */
 
     //writefln("new live funs count: %s", vm.funRefs.length);
 
@@ -459,9 +461,11 @@ refptr gcForward(VM vm, refptr ptr)
         header == LAYOUT_CLOS ||
         header == LAYOUT_GETSET)
     {
+        /*
         auto shape = cast(ObjShape)obj_get_shape(ptr);
         assert (shape !is null);
         visitShape(vm, shape);
+        */
 
         // If the next pointer points to an extension table
         if (vm.inFromSpace(nextPtr))
@@ -574,7 +578,7 @@ Word gcForward(VM vm, Word word, Type type)
         case Type.SHAPEPTR:
         auto shape = word.shapeVal;
         assert (shape !is null);
-        visitShape(vm, shape);
+        //visitShape(vm, shape);
         return word;
 
         // Return address
@@ -852,6 +856,7 @@ void collectFun(VM vm, IRFunction fun)
 /**
 Visit an object shape
 */
+/*
 void visitShape(VM vm, ObjShape shape)
 {
     // Add this shape and its parents to the live set
@@ -866,43 +871,5 @@ void visitShape(VM vm, ObjShape shape)
         vm.liveShapes[ptr] = shape;
     }
 }
-
-/**
-Collect resources held by a dead shape
 */
-void collectShape(VM vm, ObjShape shape)
-{
-    //writeln("collecting shape: ", cast(void*)shape, ", ", shape.propName);
-
-    destroy(shape);
-}
-
-/**
-Process live shapes to eliminate dead references
-*/
-void processShape(VM vm, ObjShape shape)
-{
-    foreach (name, ref typeMap; shape.propDefs)
-    {
-        foreach (type, ref shapeList; typeMap)
-        {
-            for (size_t idx; idx < shapeList.length;)
-            {
-                auto shape = shapeList[idx];
-                auto shapePtr = cast(void*)shape;
-
-                if (shapePtr !in vm.shapeRefs)
-                {
-                    auto origLen = shapeList.length;
-                    shapeList[idx] = shapeList[$-1];
-                    shapeList.length--;
-                }
-                else
-                {
-                    idx++;
-                }
-            }
-        }
-    }
-}
 

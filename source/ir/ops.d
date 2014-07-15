@@ -322,6 +322,9 @@ Opcode SHAPE_PROP_NAME = { "shape_prop_name", true, [OpArg.LOCAL], &gen_shape_pr
 /// Get the attributes associated with a given shape
 Opcode SHAPE_GET_ATTRS = { "shape_get_attrs", true, [OpArg.LOCAL], &gen_shape_get_attrs };
 
+/// Test if a given shape corresponds to a getter-setter
+Opcode SHAPE_IS_GETSET = { "shape_is_getset", true, [OpArg.LOCAL], &gen_shape_is_getset };
+
 /// Set the value of a global property
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
 

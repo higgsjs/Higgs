@@ -61,6 +61,25 @@ TODO: convert arrays and closures to a shaperer model??
 
 ------------------------------------------------------------------------------
 
+Paper TODO:
+- Explain and contrast with trace compilation
+  - Trace compilation issues
+  - What problems do we solve
+  - How is this different
+- Read tracing articles, C Wimmer
+- Background section? trace compilation, analysis
+- Resubmit at
+  - CGO => Aug 29, notify Nov 3
+  - Computing Frontier => Jan 2015, notify Feb 20
+http://cgo.org/cgo2015/
+https://software.intel.com/en-us/articles/compilerconf2013
+
+TODO: Google search for compiler workshop?
+http://students.engr.scu.edu/~sschaeck/acceptancerates/
+https://www.cs.cmu.edu/~mleone/language/conferences.html
+
+------------------------------------------------------------------------------
+
 TODO: const globals?
 TODO: define $UNDEF, $NULLPTR, $MISSING in the VM?
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
@@ -88,33 +107,60 @@ TODO: need a $rt_setGlobal!
 TODO: complete runtime.js inlinable getProp function
 - Needed to test typed shapes & BBV
 
-ISSUE: collecting sub-shapes...
+TODO: stdlib/set
+TODO: improvements to stdlib/map? make some constant props not writable?
+
+
+
+
+
+
+
+
+[DONE] TODO: add getter/setter tests
+
+[DONE] FIXME: string-unpack-code segfaults after gc
+make; ./higgs benchmarks/sunspider/string-unpack-code-quick.js
+- May be due to sub-shape collection? It is!
+
+[DONE] ISSUE: collecting sub-shapes...
 - JIT may reference sub-shapes, these may get destroyed because no objects are
   currently using them
 - Should probably disable GC handling of shapes for the moment
 - No need for shape refs
   - All are referenced through emptyShape anyways!
 - How is memory usage affected?
+  - Doesn't change much
+  - Future shape collect should use some LRU mechanism
 
-TODO: getters & setters
+[DONE] TODO: getters & setters
 - Objects tagged as GETSET...
   - Should probably have their own layout if not already defined
   - Have special alloc code? Simple, null proto
   - newGetSet(get, set)?
 - descriptor .get and .set
+o = {}; Object.defineProperty(o, 'p', { get: function() {return 5} });
+o = {}; Object.defineProperty(o, 'p', { set: function(v) {this.k = v} });
 
-FIXME: redefining constant?
+[DONE] TODO: $rt_shape_is_getset
+- Let getProp/setProp behave normally/simply, KISS
 
-
-
-
-
-
-
-
-
-
-
+[DONE] Meeting:
+- Frustrating: addressed code size explosion, demonstrated speedup, but
+  criticism just as harsh as before, if not more
+  - C.W.: Conflict of interest?
+- Comparing against tracing, means implementing tracing
+  - Which variant?
+  - Unclear if we can do better as-is
+- Resubmit
+  - No VMIL this year
+  - Intel, very soon => noes
+  - CGO => Aug 29, notify Nov 3
+  - Computing Frontier => Jan 2015, notify Feb 20
+  - CC, PLDI
+- Journals? How does this work?
+- Funding
+- Don't put article online, resubmitting soon
 
 [DONE] TODO: fix defineProperty, see moz spec, writable, enumerable defaults
 

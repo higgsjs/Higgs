@@ -3215,7 +3215,7 @@ void gen_shape_set_prop(
     CodeBlock as
 )
 {
-    extern (C) static rawptr op_shape_set_prop(VM vm, IRInstr instr)
+    extern (C) static void op_shape_set_prop(VM vm, IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
@@ -3224,14 +3224,12 @@ void gen_shape_set_prop(
         auto propStr = extractWStr(strPtr);
 
         // Set the property, or get the getter-setter object
-        auto setter = setProp(
+        setProp(
             vm,
             objPair,
             propStr,
             valPair
         );
-
-        return setter.word.ptrVal;
     }
 
     // Spill the values live before this instruction
@@ -3246,10 +3244,6 @@ void gen_shape_set_prop(
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_shape_set_prop);
     as.call(scrRegs[0]);
-
-    // Set the output value
-    as.mov(outOpnd, cretReg.opnd);
-    st.setOutType(as, instr, Type.CLOSURE);
 
     as.loadJITRegs();
 }
@@ -3526,6 +3520,40 @@ void gen_shape_get_attrs(
     // Set the output value
     as.mov(outOpnd, cretReg.opnd(32));
     st.setOutType(as, instr, Type.INT32);
+
+    as.loadJITRegs();
+}
+
+/// Test if a given shape corresponds to a getter-setter
+/// Inputs: shape, may be null
+void gen_shape_is_getset(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static Word op_shape_is_getset(ObjShape shape)
+    {
+        return (shape !is null && shape.isGetSet)? TRUE.word:FALSE.word;
+    }
+
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
+
+    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 8);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), shapeOpnd);
+    as.ptr(scrRegs[0], &op_shape_is_getset);
+    as.call(scrRegs[0]);
+
+    // Set the output value
+    as.mov(outOpnd, cretReg.opnd(8));
+    st.setOutType(as, instr, Type.CONST);
 
     as.loadJITRegs();
 }

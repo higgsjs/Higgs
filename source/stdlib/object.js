@@ -172,8 +172,9 @@ Object.defineProperty = function (obj, prop, attribs)
     // Otherwise, if accessors are specified
     else if (attribs.hasOwnProperty('get') || attribs.hasOwnProperty('set'))
     {
-        var get = attribs.hasOwnProperty('get')? attribs.get:null;
-        var set = attribs.hasOwnProperty('set')? attribs.set:null;
+        var defFn = function () {};
+        var get = attribs.hasOwnProperty('get')? attribs.get:defFn;
+        var set = attribs.hasOwnProperty('set')? attribs.set:defFn;
 
         if (typeof get !== 'function' || typeof set !== 'function')
             throw TypeError('accessors must be functions');

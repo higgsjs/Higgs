@@ -206,9 +206,6 @@ class ObjShape
     /// Empty shape constructor
     this(VM vm)
     {
-        // Register this shape in the live shape reference set
-        vm.shapeRefs[cast(void*)this] = this;
-
         this.parent = null;
 
         this.propName = null;
@@ -227,9 +224,6 @@ class ObjShape
         PropAttr attrs
     )
     {
-        // Register this shape in the live shape reference set
-        vm.shapeRefs[cast(void*)this] = this;
-
         this.parent = parent;
 
         this.propName = propName;
@@ -463,7 +457,7 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
     );
 }
 
-ValuePair setProp(
+void setProp(
     VM vm,
     ValuePair objPair,
     wstring propStr,
@@ -530,7 +524,7 @@ ValuePair setProp(
         if (!(defShape.attrs & ATTR_WRITABLE))
         {
             //writeln("redefining constant: ", propStr);
-            return NULL;
+            return;
         }
 
         // TODO: handle type mismatches with defShape
@@ -545,18 +539,8 @@ ValuePair setProp(
     // If the slot is within the object
     if (slotIdx < objCap)
     {
-        // If the property is a getter-setter
-        if (defShape.isGetSet)
-        {
-            // Return the getter-setter object
-            return getSlotPair(obj.ptr, slotIdx);
-        }
-        else
-        {
-            // Set the value and its type in the object
-            setSlotPair(obj.ptr, slotIdx, val.pair);
-            return NULL;
-        }
+        // Set the value and its type in the object
+        setSlotPair(obj.ptr, slotIdx, val.pair);
     }
 
     // The property is past the object's capacity
@@ -589,18 +573,8 @@ ValuePair setProp(
             obj_set_next(obj.ptr, extTbl.ptr);
         }
 
-        // If the property is a getter-setter
-        if (defShape.isGetSet)
-        {
-            // Return the getter-setter object
-            return getSlotPair(extTbl.ptr, slotIdx);
-        }
-        else
-        {
-            // Set the value and its type in the extension table
-            setSlotPair(extTbl.ptr, slotIdx, val.pair);
-            return NULL;
-        }
+        // Set the value and its type in the extension table
+        setSlotPair(extTbl.ptr, slotIdx, val.pair);
     }
 }
 
@@ -668,11 +642,11 @@ bool setPropAttrs(
         return false;
     }
 
-    // Create a new shape for the property
+    // Redefine the property
     auto newShape = objShape.defProp(
         vm,
         propStr,
-        ValType(),
+        defShape? defShape.type:ValType(),
         attrs,
         defShape
     );

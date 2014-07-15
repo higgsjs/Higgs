@@ -1930,9 +1930,8 @@ function $rt_objGetProp(obj, propStr)
         // If the property is a getter-setter function
         if ($ir_is_getset(propVal))
         {
-            // TODO: use apply
-            //return propVal();
-            assert (false);
+            // Call the getter function
+            return $ir_call(propVal.get, obj);
         }
         else
         {
@@ -1961,7 +1960,7 @@ Get a property from a value using a value as a key
 function $rt_getProp(base, prop)
 {
     // If the base is an object or closure
-    if ($ir_is_object(base) || $ir_is_closure(base))
+    if ($ir_is_object(base) || $ir_is_closure(base) || $ir_is_getset(base))
     {
         // If the property is a string
         if ($ir_is_string(prop))
@@ -2433,17 +2432,22 @@ function $rt_objSetProp(obj, propStr, val)
     // This will not transition the object to a new shape
     var defShape = $ir_shape_get_def(obj, propStr);
 
-    // Hidden inside set_prop, we handle the extended table
-    // May also transition the object to another shape if this
-    // is a new property or the type written doesn't match what was known
-    // If the current shape is unknown, complex logic will be handled in D
-    var setter = $ir_shape_set_prop(obj, propStr, defShape, val);
-
     // If the property is a getter-setter function
-    if ($ir_is_getset(setter))
+    if ($ir_shape_is_getset(defShape))
     {
-        // TODO: apply
-        assert (false);
+        // Get the accessor pair
+        var propVal = $ir_shape_get_prop(obj, defShape);
+
+        // Call the setter function
+        $ir_call(propVal.set, obj, val);
+    }
+    else
+    {
+        // Hidden inside set_prop, we handle the extended table
+        // May also transition the object to another shape if this
+        // is a new property or the type written doesn't match what was known
+        // If the current shape is unknown, complex logic will be handled in D
+        $ir_shape_set_prop(obj, propStr, defShape, val);
     }
 }
 
@@ -2456,7 +2460,7 @@ function $rt_setProp(base, prop, val)
     //print('\n');
 
     // If the base is an object or closure
-    if ($ir_is_object(base) || $ir_is_closure(base))
+    if ($ir_is_object(base) || $ir_is_closure(base) || $ir_is_getset(base))
     {
         // If the property is a string
         if ($ir_is_string(prop))

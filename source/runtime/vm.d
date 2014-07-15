@@ -454,13 +454,6 @@ class VM
     /// Set of functions found live by the GC during collection
     IRFunction[void*] liveFuns;
 
-    /// Set of weak references to object shapes referenced in the heap
-    /// To be cleaned up by the GC
-    ObjShape[void*] shapeRefs;
-
-    /// Set of shapes found live by the GC during collection
-    ObjShape[void*] liveShapes;
-
     /// Garbage collection count
     size_t gcCount = 0;
 
