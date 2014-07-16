@@ -40,84 +40,25 @@
  * _________________________________________________________________________
  */
 
-/**
-Default hash function implementation
-*/
-Map.defHashFn = function (val)
-{
-    if (typeof val === 'number')
-    {
-        return Math.floor(val);
-    }
-
-    else if (typeof val === 'string')  
-    {
-        var hashCode = 0;
-
-        for (var i = 0; i < val.length; ++i)
-        {
-            var ch = val.charCodeAt(i);
-            hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
-        }
-
-        return hashCode;
-    }
-
-    else if (typeof val === 'boolean')
-    {
-        return val? 1:0;
-    }
-
-    else if (val === null || val === undefined)
-    {
-        return 0;
-    }
-
-    else
-    {
-        if (val.__hashCode__ === undefined)
-        {
-            val.__hashCode__ = defHashFn.nextObjSerial++;
-        }
-
-        return val.__hashCode__;
-    }
-}
-Object.defineProperty(Map, 'defHashFn', { writable:false });
-
-/**
-Next object serial number to be assigned
-*/
-Map.defHashFn.nextObjSerial = 1;
-
-/**
-Default equality function
-*/
-Map.defEqualFn = function (key1, key2)
-{
-    return key1 === key2;
-}
-Object.defineProperty(Map, 'defEqualFn', { writable:false });
-
-// Default initial hash map size
-Object.defineProperty(Map, 'DEFAULT_INIT_SIZE', { value: 128 });
+// Default initial hash set size
+Object.defineProperty(Set, 'DEFAULT_INIT_SIZE', { value: 128 });
 
 // Hash map min and max load factors
-Object.defineProperty(Map, 'MIN_LOAD_NUM'  , { value: 1 });
-Object.defineProperty(Map, 'MIN_LOAD_DENOM', { value: 10 });
-Object.defineProperty(Map, 'MAX_LOAD_NUM'  , { value: 6 });
-Object.defineProperty(Map, 'MAX_LOAD_DENOM', { value: 10 });
+Object.defineProperty(Set, 'MIN_LOAD_NUM'  , { value: 1 });
+Object.defineProperty(Set, 'MIN_LOAD_DENOM', { value: 10 });
+Object.defineProperty(Set, 'MAX_LOAD_NUM'  , { value: 6 });
+Object.defineProperty(Set, 'MAX_LOAD_DENOM', { value: 10 });
 
 // Key value for free hash table slots
-Object.defineProperty(Map, 'FREE_KEY', { value: 'FREE_KEY' });
+Object.defineProperty(Set, 'FREE_KEY', { value: 'FREE_KEY' });
 
 // Value returned for not found items
-Object.defineProperty(Map, 'NOT_FOUND', { value: 'NOT_FOUND' });
+Object.defineProperty(Set, 'NOT_FOUND', { value: 'NOT_FOUND' });
 
 /**
 @class Hash map implementation
 */
-function Map(hashFn, equalFn, initSize)
+function Set(hashFn, equalFn, initSize)
 {
     // If no hash function was specified, use the default function
     if (hashFn === undefined || hashFn === null)
@@ -128,7 +69,7 @@ function Map(hashFn, equalFn, initSize)
         equalFn = Map.defEqualFn;
 
     if (initSize === undefined)
-        initSize = Map.DEFAULT_INIT_SIZE;
+        initSize = Set.DEFAULT_INIT_SIZE;
 
     /**
     Initial size of this hash map
@@ -137,23 +78,17 @@ function Map(hashFn, equalFn, initSize)
     this.initSize = initSize;
 
     /**
-    Number of internal array slots
-    @field
-    */
-    this.numSlots = initSize;
-
-    /**
     Internal storage array
     @field
     */
     this.array = [];
 
     // Set the initial array size
-    this.array.length = 2 * this.numSlots;
+    this.array.length = initSize;
 
     // Initialize each array element
-    for (var i = 0; i < this.numSlots; ++i)
-        this.array[2 * i] = Map.FREE_KEY;
+    for (var i = 0; i < this.array.length; ++i)
+        this.array[i] = Set.FREE_KEY;
 
     /**
     Number of items stored
@@ -175,31 +110,27 @@ function Map(hashFn, equalFn, initSize)
 }
 
 /**
-Add or change a key-value binding in the map
+Add a value to the set
 */
-Map.prototype.set = function (key, value)
+Set.prototype.add = function (key)
 {
-    var index = 2 * (this.hashFn(key) % this.numSlots);
+    var index = this.hashFn(key) % this.array.length;
 
     // Until a free cell is found
-    while (this.array[index] !== Map.FREE_KEY)
+    while (this.array[index] !== Set.FREE_KEY)
     {
         // If this slot has the item we want
         if (this.equalFn(this.array[index], key))
         {
-            // Set the item's value
-            this.array[index + 1] = value;
-
             // Exit the function
             return;
         }
 
-        index = (index + 2) % this.array.length;
+        index = (index + 1) % this.array.length;
     }
 
     // Insert the new item at the free slot
     this.array[index] = key;
-    this.array[index + 1] = value;
 
     // Increment the number of items stored
     this.length++;
@@ -208,10 +139,10 @@ Map.prototype.set = function (key, value)
     // length > ratio * numSlots
     // length > num/denom * numSlots 
     // length * denom > numSlots * num
-    if (this.length * Map.MAX_LOAD_DENOM >
-        this.numSlots * Map.MAX_LOAD_NUM)
+    if (this.length * Set.MAX_LOAD_DENOM >
+        this.array.length * Set.MAX_LOAD_NUM)
     {
-        this.resize(2 * this.numSlots);
+        this.resize(2 * this.array.length);
     }
 
     return this;
@@ -220,12 +151,12 @@ Map.prototype.set = function (key, value)
 /**
 Remove an item from the map
 */
-Map.prototype.delete = function (key)
+Set.prototype.delete = function (key)
 {    
-    var index = 2 * (this.hashFn(key) % this.numSlots);
+    var index = (this.hashFn(key) % this.array.length);
 
     // Until a free cell is found
-    while (this.array[index] !== Map.FREE_KEY)
+    while (this.array[index] !== Set.FREE_KEY)
     {
         // If this slot has the item we want
         if (this.equalFn(this.array[index], key))
@@ -234,12 +165,12 @@ Map.prototype.delete = function (key)
             var curFreeIndex = index;
 
             // For every subsequent item, until we encounter a free slot
-            for (var shiftIndex = (index + 2) % this.array.length;
-                this.array[shiftIndex] !== Map.FREE_KEY;
-                shiftIndex = (shiftIndex + 2) % this.array.length)
+            for (var shiftIndex = (index + 1) % this.array.length;
+                this.array[shiftIndex] !== Set.FREE_KEY;
+                shiftIndex = (shiftIndex + 1) % this.array.length)
             {
                 // Calculate the index at which this item's hash key maps
-                var origIndex = 2 * (this.hashFn(this.array[shiftIndex]) % this.numSlots);
+                var origIndex = (this.hashFn(this.array[shiftIndex]) % this.array.length);
 
                 // Compute the distance from the element to its origin mapping
                 var distToOrig =
@@ -258,7 +189,6 @@ Map.prototype.delete = function (key)
                 {
                     // Move the item into the free slot
                     this.array[curFreeIndex] = this.array[shiftIndex];
-                    this.array[curFreeIndex + 1] = this.array[shiftIndex + 1];
 
                     // Update the current free index
                     curFreeIndex = shiftIndex;
@@ -266,7 +196,7 @@ Map.prototype.delete = function (key)
             }
 
             // Clear the hash key at the current free position
-            this.array[curFreeIndex] = Map.FREE_KEY;
+            this.array[curFreeIndex] = Set.FREE_KEY;
 
             // Decrement the number of items stored
             this.length--;
@@ -275,84 +205,57 @@ Map.prototype.delete = function (key)
             // length < ratio * numSlots 
             // length < num/denom * numSlots 
             // length * denom < numSlots * num
-            if ((this.length * Map.MIN_LOAD_DENOM <
-                 this.numSlots * Map.MIN_LOAD_NUM)
+            if ((this.length * Set.MIN_LOAD_DENOM <
+                 this.array.length * Set.MIN_LOAD_NUM)
                 &&
-                this.numSlots > this.initSize)
+                this.array.length > this.initSize)
             {
-                this.resize(this.numSlots >> 1);
+                this.resize(this.array.length >> 1);
             }
 
             // Item removed
             return;
         }
 
-        index = (index + 2) % this.array.length;
+        index = (index + 1) % this.array.length;
     }
-};
-
-/**
-Get an item in the map
-*/
-Map.prototype.get = function (key)
-{
-    var index = 2 * (this.hashFn(key) % this.numSlots);
-
-    // Until a free cell is found
-    while (this.array[index] !== Map.FREE_KEY)
-    {
-        // If this slot has the item we want
-        if (this.equalFn(this.array[index], key))
-        {
-            // Return the item's value
-            return this.array[index + 1];
-        }
-
-        index = (index + 2) % this.array.length;
-    }
-
-    // Key not found
-    return undefined;
 };
 
 /**
 Test if an item is in the map
 */
-Map.prototype.has = function (key)
+Set.prototype.has = function (key)
 {
-    var index = 2 * (this.hashFn(key) % this.numSlots);
+    var index = (this.hashFn(key) % this.array.length);
 
     // Until a free cell is found
-    while (this.array[index] !== Map.FREE_KEY)
+    while (this.array[index] !== Set.FREE_KEY)
     {
         // If this slot has the item we want
         if (this.equalFn(this.array[index], key))
         {
-            // Key found
+            // Return the item's value
             return true;
         }
 
-        index = (index + 2) % this.array.length;
+        index = (index + 1) % this.array.length;
     }
 
-    // Key not found
+    // Return the special not found value
     return false;
 };
 
 /**
 Erase all contained items
 */
-Map.prototype.clear = function ()
+Set.prototype.clear = function ()
 {
-    // Set the initial number of slots
-    this.numSlots = this.initSize;
-
     // Set the initial array size
-    this.array.length = 2 * this.numSlots;
+    this.array.length = this.initSize;
 
     // Reset each array key element
-    for (var i = 0; i < this.numSlots; ++i)
-        this.array[2 * i] = Map.FREE_KEY;
+    for (var i = 0; i < this.array.length; ++i)
+        this.array[i] = Set.FREE_KEY;
 
     // Reset the number of items stored
     this.length = 0;
@@ -363,7 +266,7 @@ Map.prototype.clear = function ()
 /**
 Resize the hash map's internal storage
 */
-Map.prototype.resize = function (newSize)
+Set.prototype.resize = function (newSize)
 {
     // Ensure that the new size is valid
     assert (
@@ -371,23 +274,21 @@ Map.prototype.resize = function (newSize)
         'cannot resize, more items than new size allows'
     );
 
-    var oldNumSlots = this.numSlots;
     var oldArray = this.array;
 
     // Initialize a new internal array
     this.array = [];
-    this.numSlots = newSize;
-    this.array.length = 2 * this.numSlots;
-    for (var i = 0; i < this.numSlots; ++i)
-        this.array[2 * i] = Map.FREE_KEY;
+    this.array.length = newSize;
+    for (var i = 0; i < this.array.length; ++i)
+        this.array[i] = Set.FREE_KEY;
 
     // Reset the number of elements stored
     this.length = 0;
 
     // Re-insert the elements from the old array
     for (var i = 0; i < oldNumSlots; ++i)
-        if (oldArray[2 * i] !== Map.FREE_KEY)
-            this.set(oldArray[2 * i], oldArray[2 * i + 1]);     
+        if (oldArray[i] !== Set.FREE_KEY)
+            this.set(oldArray[i]);
 };
 
 // FIXME: not spec-conformant
@@ -395,16 +296,14 @@ Map.prototype.resize = function (newSize)
 Get the keys present in the hash map
 */
 /*
-Map.prototype.keys = function ()
+Set.prototype.keys = function ()
 {
     var keys = [];
 
-    for (var i = 0; i < this.numSlots; ++i)
+    for (var i = 0; i < this.array.length; ++i)
     {
-        var index = 2 * i;
-
-        if (this.array[index] !== Map.FREE_KEY)
-            keys.push(this.array[index]);
+        if (this.array[i] !== Set.FREE_KEY)
+            keys.push(this.array[i]);
     }
 
     return keys;
@@ -412,93 +311,4 @@ Map.prototype.keys = function ()
 */
 
 // TODO: forEach
-
-/**
-Get an iterator for this hash map
-*/
-/*
-Map.prototype.iterator = function ()
-{
-    return new Map.Iterator(this, 0);
-};
-*/
-
-/**
-@class Hash map iterator
-*/
-/*
-Map.Iterator = function (map, slotIndex)
-{
-    /// Associated hash map
-    this.map = map;
-
-    /// Current hash map slot
-    this.index = slotIndex;
-
-    // Move to the next non-free slot
-    this.nextFullSlot();
-};
-Map.Iterator.prototype = {};
-*/
-
-/**
-Move the current index to the next non-free slot
-*/
-/*
-Map.Iterator.prototype.nextFullSlot = function ()
-{
-    while (
-        this.index < this.map.array.length &&
-        this.map.array[this.index] === Map.FREE_KEY
-    )
-        this.index += 2;
-};
-*/
-
-/**
-Test if the iterator is at a valid position
-*/
-/*
-Map.Iterator.prototype.valid = function ()
-{
-    return (this.index < this.map.array.length);
-};
-*/
-
-/**
-Move to the next list item
-*/
-/*
-Map.Iterator.prototype.next = function ()
-{
-    assert (
-        this.valid(),
-        'cannot move to next list item, iterator not valid'
-    );
-
-    // Move to the next slot
-    this.index += 2;
-
-    // Move to the first non-free slot found
-    this.nextFullSlot();
-};
-*/
-
-/**
-Get the current list item
-*/
-/*
-Map.Iterator.prototype.get = function ()
-{
-    assert (
-        this.valid(),
-        'cannot get current list item, iterator not valid'
-    );
-
-    return { 
-        key: this.map.array[this.index],  
-        value: this.map.array[this.index + 1] 
-    };
-};
-*/
 

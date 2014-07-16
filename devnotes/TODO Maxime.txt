@@ -104,7 +104,7 @@ TODO: blog post about typed shapes, quick illustrations
 TODO: need a $rt_setGlobal!
 - Use IR instr for basic bootstrap only
 
-TODO: complete runtime.js inlinable getProp function
+TODO: complete inlinable getProp function
 - Needed to test typed shapes & BBV
 
 TODO: blog post, the future of compilation
@@ -112,16 +112,17 @@ TODO: blog post, the future of compilation
 - JIT compilers, continuous of compilation
 - Lazyness
 
-TODO: stdlib/set
+
+
+
+
+
+
+
+[DONE] TODO: stdlib/set
 - uncomment and fix tests
 
-
-
-
-
-
-
-
+[DONE] TODO: stdlib/set, get rid of numSlots, use array.length
 
 [DONE] TODO: stdlib/map, use power of two sizes
 
