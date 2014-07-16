@@ -100,16 +100,40 @@ Object.getPrototypeOf = function (obj)
 
 /**
 15.2.3.3 Get a descriptor for an object's property
-FIXME: for now, no property attributes
 */
-Object.getOwnPropertyDescriptor = function (O, P)
+Object.getOwnPropertyDescriptor = function (obj, prop)
 {
-    if ($rt_valIsObj(O) === false)
+    if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in getOwnPropertyDescriptor');
 
-    name = String(P);
+    prop = $rt_toString(prop);
 
-    return { writable:true, enumerable:true, configurable: true, value: O[name] };
+    // Get the defining shape for the property
+    var defShape = $ir_shape_get_def(obj, prop);
+
+    var desc = {};
+
+    // Extract the current property attributes
+    var attrs = $ir_ne_rawptr(defShape, $nullptr)? $ir_shape_get_attrs(defShape):$rt_ATTR_DEFAULT;
+    desc.writable = !!(attrs & $rt_ATTR_WRITABLE);
+    desc.enumerable = !!(attrs & $rt_ATTR_ENUMERABLE);
+    desc.configurable = !!(attrs & $rt_ATTR_CONFIGURABLE);
+
+    // Get the property value
+    var propVal = $ir_shape_get_prop(obj, defShape);
+
+    // If this property is a getter-setter
+    if ($ir_is_getset(propVal))
+    {
+        desc.get = propVal.get;
+        desc.set = propVal.set;
+    }
+    else
+    {
+        desc.value = propVal;
+    }
+
+    return desc;
 };
 
 /**
@@ -134,15 +158,15 @@ Object.getOwnPropertyNames = function (O)
 /**
 15.2.3.5 Object.create ( O [, Properties] )
 */
-Object.create = function (proto, Properties)
+Object.create = function (proto, properties)
 {
     if ($rt_valIsObj(proto) === false && proto !== null)
         throw TypeError('can only create object from object or null prototype');
 
     var newObj = $rt_newObj(proto);
 
-    if (Properties !== undefined)
-        Object.defineProperties(newObj, Properties);
+    if (properties !== undefined)
+        Object.defineProperties(newObj, properties);
 
     return newObj;
 };
@@ -161,6 +185,8 @@ Object.defineProperty = function (obj, prop, attribs)
     if ((attribs.hasOwnProperty('value')) &&
         (attribs.hasOwnProperty('get') || attribs.hasOwnProperty('set')))
         throw TypeError('property cannot have both a value and accessors');
+
+    prop = $rt_toString(prop);
 
     // If a value is specified, try to set it,
     // this will do nothing if writable is false
@@ -183,8 +209,9 @@ Object.defineProperty = function (obj, prop, attribs)
         obj[prop] = $rt_newGetSet(get, set);
     }
 
-    // Extract the old property attributes
-    var oldAttrs = $ir_shape_get_attrs($rt_obj_get_shape(obj));
+    // Extract the current property attributes
+    var defShape = $ir_shape_get_def(obj, prop);
+    var oldAttrs = $ir_ne_rawptr(defShape, $nullptr)? $ir_shape_get_attrs(defShape):$rt_ATTR_DEFAULT;
     var oldWR = !!(oldAttrs & $rt_ATTR_WRITABLE);
     var oldEN = !!(oldAttrs & $rt_ATTR_ENUMERABLE);
     var oldCF = !!(oldAttrs & $rt_ATTR_CONFIGURABLE);

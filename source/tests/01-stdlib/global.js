@@ -23,3 +23,12 @@ assert (isNaN("1234ghhh"));
 assert (!isNaN(1));
 assert (!isNaN(1.678));
 assert (!isNaN("1234"));
+
+// Global getter property
+Object.defineProperty(this, 'getter', {get : function() { return 5; }});
+assert (getter === 5);
+getter = 6;
+assert (getter === 5);
+
+// TODO: test Global setter property
+

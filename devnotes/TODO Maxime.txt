@@ -91,6 +91,11 @@ TODO: take a break, work on random lib
 - random.normal, random.choice
 - announce in chat
 
+TODO: blog post, the future of compilation
+- Logical reasoning, supercompilation
+- JIT compilers, continuous of compilation
+- Lazyness
+
 TODO: blog post about typed shapes, quick illustrations
 - "Faster JS Objects with Typed Shapes"
 - quick sketching program, online?
@@ -101,16 +106,37 @@ TODO: blog post about typed shapes, quick illustrations
 - Use diagrams from Eddy's talk, link and give credit
 - Typed shapes + BBV a bit of a gamble
 
-TODO: need a $rt_setGlobal!
-- Use IR instr for basic bootstrap only
-
 TODO: complete inlinable getProp function
 - Needed to test typed shapes & BBV
 
-TODO: blog post, the future of compilation
-- Logical reasoning, supercompilation
-- JIT compilers, continuous of compilation
-- Lazyness
+TODO: add test for global setter
+- in tests/01-stdlib/global.js
+
+TODO: need a $rt_setGlobal
+- Use IR instr for basic bootstrap only
+  - in IR/ast, define a setGlobal function
+    - IRFunction.isRuntime?
+- How does this affect test time?
+
+TODO: post dconf talk on r/coding
+
+TODO: short blog post, news of Higgs, date
+- dconf talk online, got positive reception on reddit, attracted more potential contributors
+  - embed talk video
+- paper unfortunately rejected, mixed feedback, 2 more confs
+  - quote some reviews
+- next paper to be about typed shapes
+- progress on typed shapes, all tests passing
+- now have getters-setters, property attributes on my dev branch
+- expect to have fast shapes in a month or two
+- perf advice wiki page
+- post to r/higgsjs
+
+TODO: performance advice wiki page
+- post to r/higgs
+- objects
+- string concat
+- minimize indirection, function calls
 
 
 
@@ -118,6 +144,15 @@ TODO: blog post, the future of compilation
 
 
 
+
+
+
+
+[DONE] TODO: getOwnPropertyDescriptor
+- add tests
+
+[DONE] TODO: fix rt_getGlobal wrt getters
+- add test for global getter
 
 [DONE] TODO: stdlib/set
 - uncomment and fix tests

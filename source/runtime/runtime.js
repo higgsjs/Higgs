@@ -2239,9 +2239,8 @@ function $rt_getGlobal(obj, propStr)
         // If the property is a getter-setter function
         if ($ir_is_getset(propVal))
         {
-            // TODO: use apply
-            //return propVal();
-            assert (false);
+            // Call the getter function
+            return $ir_call(propVal.get, obj);
         }
         else
         {
