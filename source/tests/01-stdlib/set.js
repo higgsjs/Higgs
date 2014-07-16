@@ -40,110 +40,64 @@
  * _________________________________________________________________________
  */
 
-function test()
-{
-    var map = new Map();
+/*
+var s1 = new Set();
 
-    var keyList = [];
-    var valList = [];
+assert(s1.length === 0);
 
-    for (var i = 0; i < 50; ++i)
-    {
-        keyList.push('k' + i);
-        valList.push(i);
-    }
+s1.add(1);
+assert(s1.has(1));
+assert(s1.length === 1);
 
-    for (var i = 0; i < 50; ++i)
-    {
-        keyList.push(i);
-        valList.push('v' + i);
-    }
+assert(!s1.has(2));
+s1.add(2);
+assert(s1.has(2));
+assert(s1.length === 2);
 
-    /*
-    print('num items: ' + map.length);
-    print('num slots: ' + map.numSlots);
-    print('array length: ' + map.array.length);
-    */
+s1.rem(1);
+assert(!s1.has(1));
+assert(s1.length === 1);
 
-    for (var i = 0; i < keyList.length; ++i)
-    {
-        /*
-        print('key: ' + keyList[i]);
-        print('val: ' + valList[i]);
-        print('hash: ' + defHashFunc(keyList[i]));
-        */
+var s2 = s1.copy();
+assert(s1.length === s2.length);
+assert(s2.diff(s1).length === 0);
 
-        map.set(keyList[i], valList[i]);
-    }
+var s3 = new Set().addArray([1,2,3]); 
+assert(s3.length === 3);
+assert(s3.has(1));
+assert(s3.has(2));
+assert(s3.has(3));
 
-    /*
-    print('getting items');
-    */
+var s4 = s3.copy().diff(s1);
+assert(s4.length === 2);
+assert(s4.has(1));
+assert(s4.has(3));
+assert(!s4.has(2));
 
-    for (var i = 0; i < keyList.length; ++i)
-    {
-        if (!map.has(keyList[i]))
-            return 1;
+var s5 = s3.copy().remArray([1,2,3]);
+assert(s5.length === 0);
+assert(!s5.has(1));
+assert(!s5.has(2));
+assert(!s5.has(3));
 
-        var val = map.get(keyList[i]);
+var s6 = s3.copy().union(new Set().addArray([4,5,6]));
+assert(s6.length === 6);
+assert(s6.has(1));
+assert(s6.has(2));
+assert(s6.has(3));
+assert(s6.has(4));
+assert(s6.has(5));
+assert(s6.has(6));
 
-        /*
-        print('key: ' + keyList[i]);
-        print('val: ' + valList[i]);
-        print('got: ' + val);
-        */
+var s7 = s3.copy().intr(new Set().addArray([2,3,4]));
+assert(s7.length === 2);
+assert(!s7.has(1));
+assert(s7.has(2));
+assert(s7.has(3));
+assert(!s7.has(4));
 
-        if (val !== valList[i])
-            return 2;
-    }
+assert(s3.equal(s3.copy()));
 
-    ITR_LOOP:
-    for (var itr = map.iterator(); itr.valid(); itr.next())
-    {
-        var cur = itr.get();
-
-        for (var i = 0; i < keyList.length; ++i)
-        {
-            if (keyList[i] === cur.key)
-            {
-                if (valList[i] !== cur.value)
-                    return 3;
-
-                continue ITR_LOOP;
-            }
-        }
-
-        return 4;
-    }
-
-    for (var i = 0, c = 0; i < keyList.length; ++i, ++c)
-    {
-        if (c % 3 === 0)
-        {
-            map.delete(keyList[i]);
-
-            keyList.splice(i, 1);
-            valList.splice(i, 1);
-
-            --i;
-        }
-    }
-
-    for (var i = 0; i < keyList.length; ++i)
-    {
-        if (!map.has(keyList[i]))
-            return 5;
-
-        var val = map.get(keyList[i]);
-
-        if (val !== valList[i])
-            return 6;
-    }
-
-    return 0;
-}
-
-// TODO: convert this test to use assertions &
-// exceptions instead of return codes 
-assert (test() === 0);
+assert(s3.copy().clear().length === 0);
+*/
 

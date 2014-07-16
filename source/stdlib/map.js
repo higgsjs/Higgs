@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2011-2014, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -40,12 +40,10 @@
  * _________________________________________________________________________
  */
 
-// TODO: use power of two sizes, avoid modulo
-
 /**
 Default hash function implementation
 */
-function defHashFunc(val)
+Map.defHashFn = function (val)
 {
     if (typeof val === 'number')
     {
@@ -79,53 +77,55 @@ function defHashFunc(val)
     {
         if (val.__hashCode__ === undefined)
         {
-            val.__hashCode__ = defHashFunc.nextObjectSerial++;
+            val.__hashCode__ = defHashFn.nextObjSerial++;
         }
 
         return val.__hashCode__;
     }
 }
+Object.defineProperty(Map, 'defHashFn', { writable:false });
 
 /**
 Next object serial number to be assigned
 */
-defHashFunc.nextObjectSerial = 1;
+Map.defHashFn.nextObjSerial = 1;
 
 /**
 Default equality function
 */
-function defEqualFunc(key1, key2)
+Map.defEqualFn = function (key1, key2)
 {
     return key1 === key2;
 }
+Object.defineProperty(Map, 'defEqualFn', { writable:false });
 
 // Default initial hash map size
-Map.DEFAULT_INIT_SIZE = 89;
+Object.defineProperty(Map, 'DEFAULT_INIT_SIZE', { value: 128 });
 
 // Hash map min and max load factors
-Map.MIN_LOAD_NUM = 1;
-Map.MIN_LOAD_DENOM = 10;
-Map.MAX_LOAD_NUM = 6;
-Map.MAX_LOAD_DENOM = 10;
+Object.defineProperty(Map, 'MIN_LOAD_NUM'  , { value: 1 });
+Object.defineProperty(Map, 'MIN_LOAD_DENOM', { value: 10 });
+Object.defineProperty(Map, 'MAX_LOAD_NUM'  , { value: 6 });
+Object.defineProperty(Map, 'MAX_LOAD_DENOM', { value: 10 });
 
 // Key value for free hash table slots
-Map.FREE_KEY = { toString: function() { return 'FREE_KEY'; } };
+Object.defineProperty(Map, 'FREE_KEY', { value: 'FREE_KEY' });
 
 // Value returned for not found items
-Map.NOT_FOUND = { toString: function() { return 'NOT_FOUND'; } };
+Object.defineProperty(Map, 'NOT_FOUND', { value: 'NOT_FOUND' });
 
 /**
 @class Hash map implementation
 */
-function Map(hashFunc, equalFunc, initSize)
+function Map(hashFn, equalFn, initSize)
 {
     // If no hash function was specified, use the default function
-    if (hashFunc === undefined || hashFunc === null)
-        hashFunc = defHashFunc;
+    if (hashFn === undefined || hashFn === null)
+        hashFn = Map.defHashFn;
 
     // If no hash function was specified, use the default function
-    if (equalFunc === undefined || equalFunc === null)
-        equalFunc = defEqualFunc;
+    if (equalFn === undefined || equalFn === null)
+        equalFn = Map.defEqualFn;
 
     if (initSize === undefined)
         initSize = Map.DEFAULT_INIT_SIZE;
@@ -165,13 +165,13 @@ function Map(hashFunc, equalFunc, initSize)
     Hash function
     @field
     */
-    this.hashFunc = hashFunc;
+    this.hashFn = hashFn;
 
     /**
     Key equality function
     @field
     */
-    this.equalFunc = equalFunc;
+    this.equalFn = equalFn;
 }
 
 /**
@@ -188,8 +188,8 @@ Map.prototype.copy = function ()
     newMap.array = this.array.slice(0);
     newMap.length = this.length;
 
-    newMap.hashFunc = this.hashFunc;
-    newMap.equalFunc = this.equalFunc;
+    newMap.hashFn = this.hashFn;
+    newMap.equalFn = this.equalFn;
 
     return newMap;
 };
@@ -199,13 +199,13 @@ Add or change a key-value binding in the map
 */
 Map.prototype.set = function (key, value)
 {
-    var index = 2 * (this.hashFunc(key) % this.numSlots);
+    var index = 2 * (this.hashFn(key) % this.numSlots);
 
     // Until a free cell is found
     while (this.array[index] !== Map.FREE_KEY)
     {
         // If this slot has the item we want
-        if (this.equalFunc(this.array[index], key))
+        if (this.equalFn(this.array[index], key))
         {
             // Set the item's value
             this.array[index + 1] = value;
@@ -231,22 +231,22 @@ Map.prototype.set = function (key, value)
     if (this.length * Map.MAX_LOAD_DENOM >
         this.numSlots * Map.MAX_LOAD_NUM)
     {
-        this.resize(2 * this.numSlots + 1);
+        this.resize(2 * this.numSlots);
     }
 };
 
 /**
 Remove an item from the map
 */
-Map.prototype['delete'] = function (key)
+Map.prototype.delete = function (key)
 {    
-    var index = 2 * (this.hashFunc(key) % this.numSlots);
+    var index = 2 * (this.hashFn(key) % this.numSlots);
 
     // Until a free cell is found
     while (this.array[index] !== Map.FREE_KEY)
     {
         // If this slot has the item we want
-        if (this.equalFunc(this.array[index], key))
+        if (this.equalFn(this.array[index], key))
         {
             // Initialize the current free index to the removed item index
             var curFreeIndex = index;
@@ -257,7 +257,7 @@ Map.prototype['delete'] = function (key)
                 shiftIndex = (shiftIndex + 2) % this.array.length)
             {
                 // Calculate the index at which this item's hash key maps
-                var origIndex = 2 * (this.hashFunc(this.array[shiftIndex]) % this.numSlots);
+                var origIndex = 2 * (this.hashFn(this.array[shiftIndex]) % this.numSlots);
 
                 // Compute the distance from the element to its origin mapping
                 var distToOrig =
@@ -298,7 +298,7 @@ Map.prototype['delete'] = function (key)
                 &&
                 this.numSlots > this.initSize)
             {
-                this.resize((this.numSlots - 1) >> 1);
+                this.resize(this.numSlots >> 1);
             }
 
             // Item removed
@@ -314,13 +314,13 @@ Get an item in the map
 */
 Map.prototype.get = function (key)
 {
-    var index = 2 * (this.hashFunc(key) % this.numSlots);
+    var index = 2 * (this.hashFn(key) % this.numSlots);
 
     // Until a free cell is found
     while (this.array[index] !== Map.FREE_KEY)
     {
         // If this slot has the item we want
-        if (this.equalFunc(this.array[index], key))
+        if (this.equalFn(this.array[index], key))
         {
             // Return the item's value
             return this.array[index + 1];
@@ -344,7 +344,7 @@ Map.prototype.has = function (key)
 /**
 Get the keys present in the hash map
 */
-Map.prototype.getKeys = function ()
+Map.prototype.keys = function ()
 {
     var keys = [];
 
@@ -362,7 +362,7 @@ Map.prototype.getKeys = function ()
 /**
 Get an iterator for this hash map
 */
-Map.prototype.getItr = function ()
+Map.prototype.iterator = function ()
 {
     return new Map.Iterator(this, 0);
 };

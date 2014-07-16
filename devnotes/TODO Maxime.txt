@@ -107,8 +107,13 @@ TODO: need a $rt_setGlobal!
 TODO: complete runtime.js inlinable getProp function
 - Needed to test typed shapes & BBV
 
+TODO: blog post, the future of compilation
+- Logical reasoning, supercompilation
+- JIT compilers, continuous of compilation
+- Lazyness
+
 TODO: stdlib/set
-TODO: improvements to stdlib/map? make some constant props not writable?
+- uncomment and fix tests
 
 
 
@@ -116,6 +121,11 @@ TODO: improvements to stdlib/map? make some constant props not writable?
 
 
 
+
+
+[DONE] TODO: stdlib/map, use power of two sizes
+
+[DONE] TODO: improvements to stdlib/map? make some constant props not writable?
 
 [DONE] TODO: add getter/setter tests
 
