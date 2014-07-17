@@ -132,9 +132,6 @@ TODO: need a $rt_setGlobal
 
 TODO: some global constants can be resolved at compile time
 
-TODO: complete inlinable getProp function
-- Needed to test typed shapes & BBV
-
 TODO: JIT, $ir_shape_empty, set shape ptr in setOutType
 
 
@@ -146,7 +143,10 @@ TODO: JIT, $ir_shape_empty, set shape ptr in setOutType
 
 
 
+[DONE] TODO: uncomment getPropElem, getPropLength
 
+[DONE] TODO: complete inlinable getPropField function
+- Needed to test typed shapes & BBV
 
 [DONE] TODO: short blog post about rejected paper
 - dconf talk online, got positive reception on reddit, attracted more potential contributors

@@ -2063,44 +2063,30 @@ function $rt_getProp(base, prop)
 
 /**
 Specialized version of getProp for field accesses where
-the base is an object and the key is a constant string
+the base is an object of some kind and the key is a constant string
 */
 function $rt_getPropField(base, prop)
 {
-    /*
-    // If the base is an object
+    // If the base is a simple object
     if ($ir_is_object(base))
     {
-        var obj = base;
+        // Find the defining shape for this property
+        var defShape = $ir_shape_get_def(base, prop);
 
-        // Follow the next link chain
-        for (;;)
+        // If the property is defined on the object
+        if ($ir_ne_rawptr(defShape, $nullptr))
         {
-            var next = $rt_obj_get_next(obj);
-            if ($ir_eq_refptr(next, null))
-                break;
-            obj = next;
-        }
+            // Get the property value
+            var propVal = $ir_shape_get_prop(base, defShape);
 
-        // Find the index for this property
-        var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), prop, false);
-
-        // Get the capacity of the object
-        var objCap = $rt_obj_get_cap(obj);
-
-        // If the property was found and is present in the object
-        if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
-        {
-            var word = $rt_obj_get_word(obj, propIdx);
-            var type = $rt_obj_get_type(obj, propIdx);
-            var val = $ir_make_value(word, type);
-
-            // If the value is not missing, return it
-            if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
-                return val;
+            // If the value is not a getter-setter function, return it
+            if (!$ir_is_getset(propVal))
+            {
+                // Property was found, is not a getter
+                return propVal;
+            }
         }
     }
-    */
 
     return $rt_getProp(base, prop);
 }
@@ -2188,7 +2174,6 @@ Specialized version of getProp for array elements
 */
 function $rt_getPropElem(base, prop)
 {
-    /*
     // If the base is an array and the property is a non-negative integer
     if ($ir_is_array(base) &&
         $ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
@@ -2199,7 +2184,6 @@ function $rt_getPropElem(base, prop)
         var type = $rt_arrtbl_get_type(tbl, prop);
         return $ir_make_value(word, type);
     }
-    */
 
     return $rt_getProp(base, prop);
 }
@@ -2209,13 +2193,11 @@ Specialized version of getProp for "length" property accesses
 */
 function $rt_getPropLength(base)
 {
-    /*
     // If the base is an array
     if ($ir_is_array(base))
     {
         return $rt_arr_get_len(base);
     }
-    */
 
     return $rt_getProp(base, "length");
 }
