@@ -38,17 +38,17 @@
 /***
 Undefined value
 */
-var undefined = $undef;
+$ir_shape_def_const(this, 'undefined', $undef, false);
 
 /**
 Not-a-number value
 */
-var NaN = $ir_div_f64(0.0, 0.0);
+$ir_shape_def_const(this, 'NaN', $ir_div_f64(0.0, 0.0), false);
 
 /**
 Infinity value
 */
-var Infinity = $ir_div_f64(1.0, 0.0);
+$ir_shape_def_const(this, 'Infinity', $ir_div_f64(1.0, 0.0), false);
 
 /**
 Test if a value is NaN

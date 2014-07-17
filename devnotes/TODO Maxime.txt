@@ -74,6 +74,14 @@ Paper TODO:
 http://cgo.org/cgo2015/
 https://software.intel.com/en-us/articles/compilerconf2013
 
+Differences with tracing:
+- No need for an interpreter or other compiler
+- No need to record traces (potentially very long)
+- Tracing needs to identify "hot" traces
+- No risk of trace explosion
+- No need to handle side-exits
+- No complex corner cases
+
 TODO: Google search for compiler workshop?
 http://students.engr.scu.edu/~sschaeck/acceptancerates/
 https://www.cs.cmu.edu/~mleone/language/conferences.html
@@ -83,8 +91,6 @@ https://www.cs.cmu.edu/~mleone/language/conferences.html
 TODO: const globals?
 TODO: define $UNDEF, $NULLPTR, $MISSING in the VM?
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
-
-TODO: some global constants can be resolved at compile time
 
 TODO: take a break, work on random lib
 - setRndGen, internal function/closure pointer
@@ -106,8 +112,14 @@ TODO: blog post about typed shapes, quick illustrations
 - Use diagrams from Eddy's talk, link and give credit
 - Typed shapes + BBV a bit of a gamble
 
-TODO: complete inlinable getProp function
-- Needed to test typed shapes & BBV
+TODO: look into bitcoin trading APIs, easiest?
+- Ask Jeremy => Look into CAVirtex API
+- Google around
+- DrBell
+TODO: quick spreadsheet or text edit app? highlighted squares
+- start with edit only
+
+TODO: post dconf talk on r/coding
 
 TODO: add test for global setter
 - in tests/01-stdlib/global.js
@@ -118,35 +130,36 @@ TODO: need a $rt_setGlobal
     - IRFunction.isRuntime?
 - How does this affect test time?
 
-TODO: post dconf talk on r/coding
+TODO: some global constants can be resolved at compile time
 
-TODO: short blog post, news of Higgs, date
+TODO: complete inlinable getProp function
+- Needed to test typed shapes & BBV
+
+TODO: JIT, $ir_shape_empty, set shape ptr in setOutType
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: short blog post about rejected paper
 - dconf talk online, got positive reception on reddit, attracted more potential contributors
   - embed talk video
 - paper unfortunately rejected, mixed feedback, 2 more confs
   - quote some reviews
 - next paper to be about typed shapes
-- progress on typed shapes, all tests passing
-- now have getters-setters, property attributes on my dev branch
-- expect to have fast shapes in a month or two
-- perf advice wiki page
-- post to r/higgsjs
 
-TODO: performance advice wiki page
+[DONE] TODO: performance advice wiki page
 - post to r/higgs
 - objects
 - string concat
 - minimize indirection, function calls
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: getOwnPropertyDescriptor
 - add tests
@@ -194,7 +207,6 @@ o = {}; Object.defineProperty(o, 'p', { set: function(v) {this.k = v} });
 [DONE] Meeting:
 - Frustrating: addressed code size explosion, demonstrated speedup, but
   criticism just as harsh as before, if not more
-  - C.W.: Conflict of interest?
 - Comparing against tracing, means implementing tracing
   - Which variant?
   - Unclear if we can do better as-is
