@@ -331,8 +331,16 @@ var image = require('lib/image');
 var CANVAS_WIDTH = 512;
 var CANVAS_HEIGHT = 512;
 
+// TODO: TEXT_HEIGHT, break line
+
 /// Current Turing machine
 var machine;
+
+// TODO: lastPosX, lastPosx
+// only draw if pos changed
+
+/// Number of updates per frame
+var speed = 16;
 
 function newMachine()
 {
@@ -353,22 +361,32 @@ var window = draw.Window(50, 50, CANVAS_WIDTH, CANVAS_HEIGHT, "Turing Turtle");
 window.onKeypress(function(canvas, key)
 {
     if (key === "Right")
+    {
         newMachine();
-
+        print('new machine');
+    }
     /*
     else if (x > 50 && key === "Left")
         x -= 10;
-    else if (y < 450 && key === "Down")
-        y += 10;
-    else if (y > 50 && key === "Up")
-        y -= 10;
     */
+    else if (key === "Up")
+    {
+        if (speed < 1024)
+            speed <<= 1;
+        print('speed=', speed);
+    }
+    else if (key === "Down")
+    {
+        if (speed > 1)
+            speed >>= 1;
+        print('speed=', speed);
+    }
 });
 
 window.onRender(function(canvas)
 {
-    // TODO: speed control
-    for (var i = 0; i < 50; ++i)
+    // For each update to perform
+    for (var i = 0; i < speed; ++i)
     {
         // Set the current color
         canvas.setColor(machine.rColor, machine.gColor, machine.bColor);
@@ -391,6 +409,8 @@ window.onRender(function(canvas)
     canvas.drawText(5, CANVAS_HEIGHT - 5, xPos + "," + yPos);
     canvas.drawText(CANVAS_WIDTH - 200, CANVAS_HEIGHT - 5, "itr count: " + machine.itrCount);
 });
+
+Math.setRandSeed((new Date()).getTime());
 
 // Generate a new random Turing machine
 newMachine();
