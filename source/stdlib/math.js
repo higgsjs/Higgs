@@ -513,6 +513,17 @@ Math.setRandSeed = function (seed)
     // If the seed is not an integer value
     if (!$ir_is_i32(seed))
     {
+        // If the seed is a floating-point value
+        if ($ir_is_f64(seed))
+        {
+            // Convert the value to a long-format string
+            seed = $ir_f64_to_str_lng(seed);
+
+            // Strip out trailing zeroes
+            while (seed[seed.length-1] === '0')
+                seed = seed.substr(0, seed.length-1);
+        }
+
         // Convert the seed to a string and get its hash value
         seed = $rt_str_get_hash(String(seed));
     }

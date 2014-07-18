@@ -418,8 +418,6 @@ lib/draw - provides basic drawing API using xlib
         return true;
     };
 
-
-
     /**
     drawPoint - draw a point
     */
