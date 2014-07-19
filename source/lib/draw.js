@@ -343,6 +343,7 @@ lib/draw - provides basic drawing API using xlib
         canvas.height = height;
         canvas.colormap = Xlib.XDefaultColormap(display, 0);
         canvas.colors = Object.create(null);
+        canvas.cached_colors = 0;
         canvas.gc = Xlib.XDefaultGC(display, screen);
 
         canvas.setFont();
@@ -388,9 +389,13 @@ lib/draw - provides basic drawing API using xlib
                 color_string += '0';
         }
         else if (color && color[0] === '#')
+        {
             color_string = color;
+        }
         else
+        {
             throw new DrawError('Invalid argument in setFG');
+        }
 
         // Check if we have a graphics context for this color
         XColor = this.colors[color_string];
@@ -414,7 +419,16 @@ lib/draw - provides basic drawing API using xlib
 
         // Cleanup
         c.free(color_string_c);
-        this.colors[color_string] = XColor;
+        if (this.cached_colors < 256)
+        {
+            this.colors[color_string] = XColor;
+            this.cached_colors += 1;
+        }
+        else
+        {
+            c.free(XColor.ptr);
+        }
+
         return true;
     };
 
