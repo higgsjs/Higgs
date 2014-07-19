@@ -344,7 +344,7 @@ var speed = 16;
 
 function newMachine()
 {
-    window.canvas.clear("#000000");
+    window.canvas.clear('#000000');
 
     machine = new Machine(
         8,              // Num states
@@ -356,26 +356,26 @@ function newMachine()
 }
 
 // Create the drawing window
-var window = draw.Window(50, 50, CANVAS_WIDTH, CANVAS_HEIGHT, "Turing Turtle");
+var window = draw.Window(50, 50, CANVAS_WIDTH, CANVAS_HEIGHT, 'Turing Turtle');
 
 window.onKeypress(function(canvas, key)
 {
-    if (key === "Right")
+    if (key === 'Right')
     {
         newMachine();
         print('new machine');
     }
     /*
-    else if (x > 50 && key === "Left")
+    else if (x > 50 && key === 'Left')
         x -= 10;
     */
-    else if (key === "Up")
+    else if (key === 'Up')
     {
         if (speed < 1024)
             speed <<= 1;
         print('speed=', speed);
     }
-    else if (key === "Down")
+    else if (key === 'Down')
     {
         if (speed > 1)
             speed >>= 1;
@@ -402,12 +402,12 @@ window.onRender(function(canvas)
     }
 
     // Clear a black rectangle at the bottom of the display
-    canvas.setColor("#000000");
+    canvas.setColor('#000000');
     canvas.fillRect(0, CANVAS_HEIGHT - 20, CANVAS_WIDTH, 20);
 
-    canvas.setColor("#FFFFFF");
-    canvas.drawText(5, CANVAS_HEIGHT - 5, xPos + "," + yPos);
-    canvas.drawText(CANVAS_WIDTH - 200, CANVAS_HEIGHT - 5, "itr count: " + machine.itrCount);
+    canvas.setColor('#FFFFFF');
+    canvas.drawText(5, CANVAS_HEIGHT - 5, xPos + ',' + yPos);
+    canvas.drawText(CANVAS_WIDTH - 200, CANVAS_HEIGHT - 5, 'itr count: ' + machine.itrCount);
 });
 
 Math.setRandSeed((new Date()).getTime());
@@ -416,7 +416,7 @@ Math.setRandSeed((new Date()).getTime());
 newMachine();
 
 // Clear the canvas
-window.canvas.clear("#000000");
+window.canvas.clear('#000000');
 
 // Set the font to use
 window.canvas.setFont(undefined, 18);

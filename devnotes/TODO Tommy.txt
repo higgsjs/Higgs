@@ -55,6 +55,10 @@ TODO TOMMY  -*- mode: org -*-
 *** DONE string-tagcloud has some error in its parseJSON
     CLOSED: [2014-07-02 Wed 22:29]
 *** TODO date-format-tofte fails due to eval - [[https://github.com/maximecb/Higgs/issues/112][issue #112]]
+** D compilers
+*** TODO figure out flags for gdc/add to docs
+** JSHint
+*** TODO Add more globals to jshintrc
 * IDEAS
 # stuff I'm thinking about
 ** all libs
