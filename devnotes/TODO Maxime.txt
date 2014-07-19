@@ -76,31 +76,41 @@ https://software.intel.com/en-us/articles/compilerconf2013
 
 Remove claim that it is suitable for integration in a commercial VM?
 
+What is our thesis, in one sentence? See Olin Shiver's advice
+http://www.ccs.neu.edu/home/shivers/diss-advice.html
+- Try to state it in once sentence at the beginning of the paper
+- Make it precise
+- BBV does precisely X, it is useful because Y
+
+"Basic block versioning is a code generation technique which specializes code by
+cloning basic blocks based on types encountered at run-time"
+
 Differences with tracing:
 - No need for an interpreter or other compiler
 - No need to record traces (potentially very long)
 - Tracing needs to identify "hot" traces
 - No risk of trace explosion
 - No need to handle side-exits
+  - Fallback to interpreter
+  - Record new sub-trace immediately or interpret?
 - No complex corner cases
   - Recursion, nested loops, non-loop-based code, how many itrs to record
+  - Recursion: "call" into sub-trace? then need to be able to return to previous
+- Loops, how many times to record with tracing? Not obvious
+  - With BBV: if type info doesn't match, specialize/unroll further until
+    match or limit is hit
+  - BBV solution more elegant
 - Simpler, no tracing infrastructure, one level of compilation
+  - No complex tracing policy
 - Ability to easily recompile individual blocks
 
-TODO: Google search for compiler workshop?
-http://students.engr.scu.edu/~sschaeck/acceptancerates/
-https://www.cs.cmu.edu/~mleone/language/conferences.html
+TODO: look at previous year CGO papers
+- Any papers similar in topic to ours?
 
 ------------------------------------------------------------------------------
 
-TODO: const globals?
 TODO: define $UNDEF, $NULLPTR, $MISSING in the VM?
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
-
-TODO: take a break, work on random lib
-- setRndGen, internal function/closure pointer
-- random.normal, random.choice
-- announce in chat
 
 TODO: blog post, the future of compilation
 - Logical reasoning, supercompilation
@@ -121,10 +131,9 @@ TODO: look into bitcoin trading APIs, easiest?
 - Ask Jeremy => Look into CAVirtex API
 - Google around
 - DrBell
-TODO: quick spreadsheet or text edit app? highlighted squares
+TODO: quick spreadsheet app? highlighted squares
 - start with edit only
-
-TODO: post dconf talk on r/coding
+- use monospace font
 
 TODO: add test for global setter
 - in tests/01-stdlib/global.js
@@ -144,37 +153,71 @@ TODO: shape_set_shape(obj, shape)?
 TODO: optimized shape_get_prop
 - no type info at first
 
+TODO: const globals
+const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
+- Same structure as var decl
+- In D8, these are enumerable
+- Use it for Turing Turtle
+- Look at current parser code, vars code, ast-to-ir code first ***
+
+Meeting:
+- Thought about paper further
+  - Motivation/thesis, Olin Shiver's advice
+  - Contrasting with tracing
+- Can you create a repo for CGO2014? ***
+- Started integrating typed shapes into BBV
+- Getters and setters working
+- Turing Turtle, for fun
+
+TODO: post dconf talk on r/coding
+- Do this when you have time to chat!
+- Wait until Monday
+
 TODO: shape dispatch in shape_get_def
 * think about how this will work *
 // Find the defining shape for this property
 // This shifts us to a different version where the obj shape is known
 // Implements a "version cache" with dynamic dispatching
-
 Issue: needs list of pointers to new versions
 - Probably also want an "unknown" version
 - Switch to a var len list of successors? More allocations...
 - Also need to know which shape these map to?
   - Should know this at generation time
   - Can possibly just store that in the entry context
-
+- Solved!
 Version cache is similar to inline cache
 - Looks for matching shape ptr, jumps to corresponding address
 - Must also produce def shape***
 
-TODO: have both a slice and preallocated space for successors! ***
+Go Max, makes Higgs fast, bring shapes to master!
 
-TODO: post Turing turtle to r/higgsjs
+TODO: take a break, work on random lib
+- setRndGen, internal function/closure pointer
+  - By default, Math object is rnd gen, use uint16 function
+- random.setSeed
+- random.int, random.float, random.index
+- random.normal
+- random.choice: takes array or arguments, $argc
+- announce in chat, r/higgsjs
+- use in Turing Turtle
 
-TODO: read this advice, take notes for paper
+
+
+
+
+
+
+
+
+[DONE] TODO: have both a slice and preallocated space for successors!
+- Make current code work with this setup
+
+[DONE] TODO: post Turing Turtle to r/higgsjs
+
+[DONE] TODO: read this advice, take notes for paper
 http://www.ccs.neu.edu/home/shivers/diss-advice.html
 
-TODO: pull from master
-
-
-
-
-
-
+[DONE] TODO: pull from master
 
 [DONE] TODO: expanding heap message, log expanding heap to... XXXMiB
 

@@ -1473,8 +1473,11 @@ class BlockVersion : CodeFragment
     /// Code generation state at block entry
     CodeGenState state;
 
-    /// Branch targets
-    CodeFragment targets[2];
+    /// Branch targets (array slice)
+    CodeFragment targets[];
+
+    // Branch targets (preallocated inline array)
+    CodeFragment targetArr[2];
 
     /// Inner code length, excluding final branches
     uint32_t codeLen;
@@ -1486,6 +1489,8 @@ class BlockVersion : CodeFragment
     {
         this.block = block;
         this.state = state;
+
+        this.targets = targetArr;
     }
 
     /**
