@@ -126,22 +126,33 @@ struct ValType
         this.typeTag = val.type;
         this.typeKnown = true;
 
-        if (this.typeTag is Type.OBJECT ||
-            this.typeTag is Type.CLOSURE ||
-            this.typeTag is Type.ARRAY)
+        if (isObject(this.typeTag))
         {
-            // TODO: get IRFunction if fptr
-            // TODO: get object shape
+            // Get the object shape
+            this.shape = cast(ObjShape)obj_get_shape(val.ptr);
+        }
+        else if (this.typeTag is Type.FUNPTR)
+        {
+            this.fun = val.word.funVal;
+        }
+        else
+        {
             this.shape = null;
         }
     }
 
     /// Constructor taking a type tag only
-    this(Type typeTag)
+    this(Type typeTag, ObjShape shape = null)
     {
+        assert (
+            shape is null ||
+            isObject(typeTag) ||
+            typeTag is Type.SHAPEPTR
+        );
+
         this.typeTag = typeTag;
         this.typeKnown = true;
-        this.shape = null;
+        this.shape = shape;
     }
 
     bool knownShape() const { return shape !is null; }

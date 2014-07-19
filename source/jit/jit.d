@@ -184,12 +184,12 @@ struct ValState
     }
 
     /// Set the type for this value, creates a new value
-    ValState setType(Type typeTag) const
+    ValState setType(Type typeTag, ObjShape shape = null) const
     {
         assert (!isConst);
 
         ValState val = cast(ValState)this;
-        val.type = ValType(typeTag);
+        val.type = ValType(typeTag, shape);
         return val;
     }
 
@@ -1113,7 +1113,12 @@ class CodeGenState
     }
 
     /// Set the output type value for an instruction's output
-    void setOutType(CodeBlock as, IRInstr instr, Type type)
+    void setOutType(
+        CodeBlock as,
+        IRInstr instr,
+        Type typeTag,
+        ObjShape shape = null
+    )
     {
         assert (
             instr !is null,
@@ -1130,16 +1135,7 @@ class CodeGenState
         auto state = getState(instr);
 
         // Set a known type for this value
-        valMap[instr] = state.setType(type);
-
-        /*
-        // If the value is on the stack
-        if (state.isStack)
-        {
-            // Write the type value to the type stack
-            as.mov(typeStackOpnd(instr.outSlot), X86Opnd(type));
-        }
-        */
+        valMap[instr] = state.setType(typeTag, shape);
     }
 
     /// Write the output type for an instruction's output to the type stack

@@ -74,6 +74,8 @@ Paper TODO:
 http://cgo.org/cgo2015/
 https://software.intel.com/en-us/articles/compilerconf2013
 
+Remove claim that it is suitable for integration in a commercial VM?
+
 Differences with tracing:
 - No need for an interpreter or other compiler
 - No need to record traces (potentially very long)
@@ -81,6 +83,9 @@ Differences with tracing:
 - No risk of trace explosion
 - No need to handle side-exits
 - No complex corner cases
+  - Recursion, nested loops, non-loop-based code, how many itrs to record
+- Simpler, no tracing infrastructure, one level of compilation
+- Ability to easily recompile individual blocks
 
 TODO: Google search for compiler workshop?
 http://students.engr.scu.edu/~sschaeck/acceptancerates/
@@ -132,7 +137,38 @@ TODO: need a $rt_setGlobal
 
 TODO: some global constants can be resolved at compile time
 
-TODO: JIT, $ir_shape_empty, set shape ptr in setOutType
+TODO: shape_set_shape(obj, shape)?
+- currently, setting shape through runtime call
+- lose empty shape of object
+
+TODO: optimized shape_get_prop
+- no type info at first
+
+TODO: shape dispatch in shape_get_def
+* think about how this will work *
+// Find the defining shape for this property
+// This shifts us to a different version where the obj shape is known
+// Implements a "version cache" with dynamic dispatching
+
+Issue: needs list of pointers to new versions
+- Probably also want an "unknown" version
+- Switch to a var len list of successors? More allocations...
+- Also need to know which shape these map to?
+  - Should know this at generation time
+  - Can possibly just store that in the entry context
+
+Version cache is similar to inline cache
+- Looks for matching shape ptr, jumps to corresponding address
+- Must also produce def shape***
+
+TODO: have both a slice and preallocated space for successors! ***
+
+TODO: post Turing turtle to r/higgsjs
+
+TODO: read this advice, take notes for paper
+http://www.ccs.neu.edu/home/shivers/diss-advice.html
+
+TODO: pull from master
 
 
 
@@ -140,8 +176,19 @@ TODO: JIT, $ir_shape_empty, set shape ptr in setOutType
 
 
 
+[DONE] TODO: expanding heap message, log expanding heap to... XXXMiB
 
+[DONE] FIXME: random seed from float
 
+[DONE]FIXME: getTime broken? test
+
+[DONE] TODO: turing turtle, make it in Higgs, dogfooding!
+- Make the draw lib easier to use, add support for pixel plotting
+- Previous, next, restart, save
+- Do this on the master branch, 3rd workspace ***
+
+[DONE] TODO: JIT, $ir_shape_empty, set shape ptr in setOutType
+- modify CodeGenState.setOutType to have an optional ObjShape argument
 
 [DONE] TODO: uncomment getPropElem, getPropLength
 

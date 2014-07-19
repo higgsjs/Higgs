@@ -212,6 +212,24 @@ bool isHeapPtr(Type type)
 }
 
 /**
+Test if a type is an object of some kind
+*/
+bool isObject(Type type)
+{
+    switch (type)
+    {
+        case Type.OBJECT:
+        case Type.ARRAY:
+        case Type.CLOSURE:
+        case Type.GETSET:
+        return true;
+
+        default:
+        return false;
+    }
+}
+
+/**
 Produce a string representation of a type tag
 */
 string typeToString(Type type)

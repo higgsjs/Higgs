@@ -3147,7 +3147,23 @@ void gen_map_prop_name(
 */
 
 /// Returns the empty shape
-alias GetValOp!(Type.SHAPEPTR, "emptyShape") gen_shape_empty;
+void gen_shape_empty(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto vm = st.fun.vm;
+
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    // TODO: optimize for reg out opnd
+    as.getMember!("VM.emptyShape")(scrRegs[0], vmReg);
+    as.mov(outOpnd, scrRegs[0].opnd);
+
+    st.setOutType(as, instr, Type.SHAPEPTR, vm.emptyShape);
+}
 
 /// Returns the shape defining a property, null if undefined
 /// Inputs: obj, propName
