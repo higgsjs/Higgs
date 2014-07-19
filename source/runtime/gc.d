@@ -174,10 +174,16 @@ refptr heapAlloc(VM vm, size_t size)
         // While this allocation exceeds the heap limit
         while (vm.allocPtr + size > vm.heapLimit)
         {
-            writefln("heap space exhausted, expanding heap");
+            auto newHeapSize = 2 * vm.heapSize;
+
+            writeln(
+                "heap space exhausted, expanding heap to ",
+                newHeapSize / (1024 * 1024),
+                "MiB"
+            );
 
             // Double the size of the heap
-            gcCollect(vm, 2 * vm.heapSize);
+            gcCollect(vm, newHeapSize);
         }
     }
 

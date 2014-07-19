@@ -41,6 +41,11 @@ Console functions
 
 (function()
 {
+    // Settings for console output
+    var settings = {
+        // maximum number of array items to display
+        max_array_items : 5
+    };
 
     // Track visited objects
     var obs = [];
@@ -48,12 +53,15 @@ Console functions
     // Mapping of special stringification functions
     var stringers = {};
 
+    // Timers for .time() and .timeEnd()
+    var timers = Object.create(null);
+
     /**
     Stringify a string (inside an object)
     */
     stringers.string = function(str)
     {
-        return "'" + str + "'";
+        return '\'' + str + '\'';
     };
 
     /**
@@ -62,20 +70,21 @@ Console functions
     stringers.object = function(ob)
     {
         var keys = Object.keys(ob);
-        var l = keys.length;
-        var str = "{ ";
-        var k;
+        var len = keys.length;
+        var str = '{ ';
+        var key;
+        var i;
 
         if (ob.__CONSOLE_VISITED__)
         {
             // TODO: better substitute string?
-            return "{...}";
+            return '{...}';
         }
-        if (Object.getPrototypeOf(ob) == null && typeof ob.toString === "function")
+        if (Object.getPrototypeOf(ob) === null && typeof ob.toString === 'function')
         {
                 return ob.toString();
         }
-        else if (ob.hasOwnProperty && ob.hasOwnProperty("toString") && typeof ob.toString === "function")
+        else if (ob.hasOwnProperty && ob.hasOwnProperty('toString') && typeof ob.toString === 'function')
         {
                 return ob.toString();
         }
@@ -85,18 +94,18 @@ Console functions
             obs.push(ob);
         }
 
-        if (l > 0)
+        if (len > 0)
         {
-            k = keys[0];
-            str += k + " : " + stringify(ob[k]);
-            for (var i = 1; i < l; i++)
+            key = keys[0];
+            str += key + ' : ' + stringify(ob[key]);
+            for (i = 1; i < len; i++)
             {
-                k = keys[i];
-                str += ", " + k + " : " + stringify(ob[k]);
+                key = keys[i];
+                str += ', ' + key + ' : ' + stringify(ob[key]);
             }
         }
 
-        str += " }";
+        str += ' }';
         return str;
     };
 
@@ -105,20 +114,21 @@ Console functions
     */
     stringers.array = function(ar)
     {
-        var l = ar.length;
-        var max = 5;
-        var str = "[ ";
+        var len = ar.length;
+        var max = settings.max_array_items;
+        var str = '[ ';
+        var i;
 
-        if (l > 0)
+        if (len > 0)
             str += stringify(ar[0]);
 
-        for (var i = 1; (i < l) && (i < max); i++)
-            str += ", " + stringify(ar[i]);
+        for (i = 1; (i < len) && (i < max); i++)
+            str += ', ' + stringify(ar[i]);
 
-        if (i === max && l > max)
-            str += ",...";
+        if (i === max && len > max)
+            str += ',...';
 
-        str += " ]";
+        str += ' ]';
         return str;
     };
 
@@ -132,28 +142,25 @@ Console functions
 
         // special case raw pointers
         if ($ir_is_rawptr(thing))
-            return "<RAWPTR>";
+            return '<RAWPTR>';
 
         // special case null
         if (thing === null)
-            return "null";
+            return 'null';
 
         // special case undefined
         if (thing === undefined)
-            return "undefined";
+            return 'undefined';
 
         // special case arrays
-        // TODO: fix this
-        type = (thing && typeof thing.push === "function" && "length" in thing) ?
-                    "array" : typeof thing;
+        type = (Array.isArray(thing)) ? 'array' : typeof thing;
 
-        // get appropriate stringify function
+        // check for appropriate stringify function
         string_fun = stringers[type];
-
         if (string_fun)
             return string_fun(thing);
         else
-            return "" + thing;
+            return '' + thing;
     }
 
     /**
@@ -161,27 +168,28 @@ Console functions
     */
     function log()
     {
-        var l = arguments.length;
-        var s = l - 1;
+        var len = arguments.length;
+        var stop = len - 1;
         var thing;
         var obs_l;
         var ob;
-        var output = "";
+        var output = '';
+        var i;
 
-        for (var i = 0; i < l; i++)
+        for (i = 0; i < len; i++)
         {
             obs = [];
 
             thing = arguments[i];
-            if (typeof thing === "string")
-                if (i === s)
+            if (typeof thing === 'string')
+                if (i === stop)
                     output += thing;
                 else
-                    output += thing + "\t";
-            else if (i === s)
+                    output += thing + '\t';
+            else if (i === stop)
                 output += stringify(thing);
             else
-                output += stringify(thing) + " ";
+                output += stringify(thing) + ' ';
 
             obs_l = obs.length;
             while (obs_l--)
@@ -194,18 +202,15 @@ Console functions
         print(output);
     }
 
-    // Timers for .time() and .timeEnd()
-    var timers = Object.create(null);
-
     /**
     time -
         start a timer.
     */
     function time(timer)
     {
-        var timer_name = timer || "*unnamed timer*";
+        var timer_name = timer || '*unnamed timer*';
         if (timers[timer_name] !== undefined)
-            throw "Invalid timer name for time: "  + timer_name;
+            throw 'Invalid timer name for time: '  + timer_name;
         else
             timers[timer_name] = $ir_get_time_ms();
     }
@@ -216,22 +221,22 @@ Console functions
     */
     function timeEnd(timer)
     {
-        var timer_name = timer || "*unnamed timer*";
+        var timer_name = timer || '*unnamed timer*';
         var start_time = timers[timer_name];
         if (start_time === undefined)
-            throw "Invalid timer name for timeEnd: " + timer_name;
+            throw 'Invalid timer name for timeEnd: ' + timer_name;
 
-        print(timer_name + ":\t" + ($ir_get_time_ms() - start_time));
+        print(timer_name + ':\t' + ($ir_get_time_ms() - start_time));
         timers[timer_name] = undefined;
     }
-
 
     exports = {
         log : log,
         time : time,
         timeEnd : timeEnd,
         stringify : stringify,
-        stringers : stringers
+        stringers : stringers,
+        settings : settings
     };
 
 })();

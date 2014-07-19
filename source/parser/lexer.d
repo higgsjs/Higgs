@@ -388,6 +388,18 @@ bool identPart(wchar ch)
     return identStart(ch) || digit(ch);
 }
 
+bool ident(wstring str)
+{
+    if (str.length is 0 || !identStart(str[0]))
+        return false;
+
+    foreach (ch; str[1..$])
+        if (!identPart(ch))
+            return false;
+
+    return true;
+}
+
 /**
 Source token value
 */

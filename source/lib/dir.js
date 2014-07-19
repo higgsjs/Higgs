@@ -41,8 +41,8 @@ Functions for dealing with the filesystem
 
 (function ()
 {
-    var range = require("lib/range");
-    var ffi = require("lib/ffi");
+    var range = require('lib/range');
+    var ffi = require('lib/ffi');
     var c = ffi.c;
 
     if (ffi.os === 'OSX')
@@ -61,7 +61,7 @@ Functions for dealing with the filesystem
             };
         `);
     }
-    else if (ffi.os === "BSD")
+    else if (ffi.os === 'BSD')
     {
         c.cdef(`
             typedef unsigned int __uint32_t;
@@ -116,8 +116,8 @@ Functions for dealing with the filesystem
     };
 
     var d_types_map = [
-        "UNKNOWN", "FIFO", "CHR", undefined, "DIR", undefined, "BLK",
-        undefined, "REG", undefined,"LNG",undefined,"SOCK",undefined,"WHT"
+        'UNKNOWN', 'FIFO', 'CHR', undefined, 'DIR', undefined, 'BLK',
+        undefined, 'REG', undefined,'LNG',undefined,'SOCK',undefined,'WHT'
     ];
 
     /**
@@ -151,7 +151,7 @@ Functions for dealing with the filesystem
     }
 
     function notDots(n) {
-        return n !== "." && n !== "..";
+        return n !== '.' && n !== '..';
     }
 
 
@@ -180,19 +180,19 @@ Functions for dealing with the filesystem
     dirRange.prototype.start = function()
     {
         var dir;
-        var cpath;
+        var c_path;
 
         // close if already open
         if (this._empty === false)
             this.end();
 
         // setup c path
-        var c_path = this.c_path = ffi.cstr(this.path);
+        c_path = this.c_path = ffi.cstr(this.path);
 
         // open dir, error otherwise
-        var dir = this.ptr = c.opendir(c_path);
+        dir = this.ptr = c.opendir(c_path);
         if (ffi.isNullPtr(dir))
-            throw new DirError("Unable to open directory: " + this.path);
+            throw new DirError('Unable to open directory: ' + this.path);
 
         this._empty = false;
         return this;
@@ -208,7 +208,7 @@ Functions for dealing with the filesystem
         var dir = this.ptr;
 
         if (!ffi.isNullPtr(c_path))
-            c.free(c_path)
+            c.free(c_path);
 
         if (!ffi.isNullPtr(dir))
             c.closedir(dir);
@@ -217,7 +217,7 @@ Functions for dealing with the filesystem
         this.ptr = ffi.nullPtr;
         this.c_path = ffi.nullPtr;
         return this;
-    }
+    };
 
     /**
     popFront -
@@ -241,7 +241,7 @@ Functions for dealing with the filesystem
         this._empty = false;
         this._front = ent;
         return undefined;
-    }
+    };
 
 
     /**
@@ -289,3 +289,4 @@ Functions for dealing with the filesystem
     };
 
 })();
+
