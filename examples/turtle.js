@@ -147,13 +147,13 @@ Machine.prototype.reset = function ()
     this.tapePos = 0;
 
     /// Current canvas position, initially top-left corner
-    this.xPos = this.canvasWidth / 2;
-    this.yPos = this.canvasHeight / 2;
+    this.posX = this.canvasWidth / 2;
+    this.posY = this.canvasHeight / 2;
 
     /// Current color, initially white
-    this.rColor = 255;
-    this.gColor = 255;
-    this.bColor = 255;
+    this.colorR = 255;
+    this.colorG = 255;
+    this.colorB = 255;
 
     /// Current direction, initially pointing right
     this.dir = 0;
@@ -208,16 +208,16 @@ Machine.prototype.update = function (numItrs)
         switch (outAc)
         {
             case OUT_FORWARD:
-            this.xPos += vecX[this.dir];
-            this.yPos += vecY[this.dir];
-            if (this.xPos < 0)
-                this.xPos += this.canvasWidth;
-            if (this.xPos >= this.canvasWidth)
-                this.xPos -= this.canvasWidth;
-            if (this.yPos < 0)
-                this.yPos += this.canvasHeight;
-            if (this.yPos >= this.canvasHeight)
-                this.yPos -= this.canvasHeight;
+            this.posX += vecX[this.dir];
+            this.posY += vecY[this.dir];
+            if (this.posX < 0)
+                this.posX += this.canvasWidth;
+            if (this.posX >= this.canvasWidth)
+                this.posX -= this.canvasWidth;
+            if (this.posY < 0)
+                this.posY += this.canvasHeight;
+            if (this.posY >= this.canvasHeight)
+                this.posY -= this.canvasHeight;
             break;
 
             case OUT_LEFT:
@@ -233,39 +233,39 @@ Machine.prototype.update = function (numItrs)
             break;
 
             case OUT_R_UP:
-            this.rColor += 1;
-            if (this.rColor > 255)
-                this.rColor = 255;
+            this.colorR += 1;
+            if (this.colorR > 255)
+                this.colorR = 255;
             break;
 
             case OUT_R_DN:
-            this.rColor -= 1;
-            if (this.rColor < 0)
-                this.rColor = 0;
+            this.colorR -= 1;
+            if (this.colorR < 0)
+                this.colorR = 0;
             break;
 
             case OUT_G_UP:
-            this.gColor += 1;
-            if (this.gColor > 255)
-                this.gColor = 255;
+            this.colorG += 1;
+            if (this.colorG > 255)
+                this.colorG = 255;
             break;
 
             case OUT_G_DN:
-            this.gColor -= 1;
-            if (this.gColor < 0)
-                this.gColor = 0;
+            this.colorG -= 1;
+            if (this.colorG < 0)
+                this.colorG = 0;
             break;
 
             case OUT_B_UP:
-            this.bColor += 1;
-            if (this.bColor > 255)
-                this.bColor = 255;
+            this.colorB += 1;
+            if (this.colorB > 255)
+                this.colorB = 255;
             break;
 
             case OUT_B_DN:
-            this.bColor -= 1;
-            if (this.bColor < 0)
-                this.bColor = 0;
+            this.colorB -= 1;
+            if (this.colorB < 0)
+                this.colorB = 0;
             break;
 
             default:
@@ -336,23 +336,30 @@ var CANVAS_HEIGHT = 512;
 /// Current Turing machine
 var machine;
 
-// TODO: lastPosX, lastPosx
-// only draw if pos changed
+// Last machine position
+var lastPosX;
+var lastPosY;
 
 /// Number of updates per frame
 var speed = 16;
+
+/// Paused flag
+var paused = false;
 
 function newMachine()
 {
     window.canvas.clear('#000000');
 
     machine = new Machine(
-        8,              // Num states
+        4,              // Num states
         8,              // Num symbols
-        128,            // Tape length
+        256,            // Tape length
         CANVAS_WIDTH,
         CANVAS_HEIGHT
     );
+
+    lastPosX = machine.posX | 0;
+    lastPosY = machine.posY | 0;
 }
 
 // Create the drawing window
@@ -365,13 +372,14 @@ window.onKeypress(function(canvas, key)
         newMachine();
         print('new machine');
     }
-    /*
-    else if (x > 50 && key === 'Left')
-        x -= 10;
-    */
+    else if (key === 'Left')
+    {
+        window.canvas.clear('#000000');
+        machine.reset();
+    }
     else if (key === 'Up')
     {
-        if (speed < 1024)
+        if (speed < 8192)
             speed <<= 1;
         print('speed=', speed);
     }
@@ -381,23 +389,35 @@ window.onKeypress(function(canvas, key)
             speed >>= 1;
         print('speed=', speed);
     }
+    else if (key === 'space')
+    {
+        paused = !paused;
+    }
 });
 
 window.onRender(function(canvas)
 {
     // For each update to perform
-    for (var i = 0; i < speed; ++i)
+    for (var i = 0; i < speed && !paused; ++i)
     {
-        // Set the current color
-        canvas.setColor(machine.rColor, machine.gColor, machine.bColor);
-
         // Convert the current position to an integer value
-        var xPos = machine.xPos | 0;
-        var yPos = machine.yPos | 0;
+        var posX = machine.posX | 0;
+        var posY = machine.posY | 0;
 
-        // Draw a point at the current coordinates
-        canvas.drawPoint(xPos, yPos);
+        if (posX !== lastPosX || posY !== lastPosY)
+        {
+            // Set the current color
+            canvas.setColor(machine.colorR, machine.colorG, machine.colorB);
 
+            // Draw a point at the current coordinates
+            canvas.drawPoint(posX, posY);
+
+            // Update the last position
+            lastPosX = posX;
+            lastPosY = posY;
+        }
+
+        // Run the machine for one iteration
         machine.update(1);
     }
 
@@ -406,10 +426,11 @@ window.onRender(function(canvas)
     canvas.fillRect(0, CANVAS_HEIGHT - 20, CANVAS_WIDTH, 20);
 
     canvas.setColor('#FFFFFF');
-    canvas.drawText(5, CANVAS_HEIGHT - 5, xPos + ',' + yPos);
-    canvas.drawText(CANVAS_WIDTH - 200, CANVAS_HEIGHT - 5, 'itr count: ' + machine.itrCount);
+    canvas.drawText(5, CANVAS_HEIGHT - 5, paused? "PAUSED":(posX + ',' + posY));
+    canvas.drawText(CANVAS_WIDTH - 240, CANVAS_HEIGHT - 5, 'itr count: ' + machine.itrCount);
 });
 
+// Set the random seed so we get a different machine on every startup
 Math.setRandSeed((new Date()).getTime());
 
 // Generate a new random Turing machine
