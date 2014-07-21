@@ -1481,8 +1481,8 @@ extern (C) CodePtr throwError(
         )
     );
 
-    // If the error constructor is an object
-    if (errCtor.type is Type.OBJECT)
+    // If the error constructor is a function
+    if (errCtor.type is Type.CLOSURE)
     {
         auto errProto = GCRoot(
             vm,
@@ -1494,7 +1494,7 @@ extern (C) CodePtr throwError(
         );
 
         // If the error prototype is an object
-        if (errCtor.type is Type.OBJECT)
+        if (errProto.type is Type.OBJECT)
         {
             // Create the error object
             auto excObj = GCRoot(

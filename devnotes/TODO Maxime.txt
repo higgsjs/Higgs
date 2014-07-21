@@ -160,6 +160,20 @@ const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = value
 - Use it for Turing Turtle
 - Look at current parser code, vars code, ast-to-ir code first ***
 
+TODO: take a break, work on random lib
+- setRndGen, internal function/closure pointer
+  - By default, Math object is rnd gen, use uint16 function
+- random.setSeed
+- random.int, random.float, random.index
+- random.normal
+- random.choice: takes array or arguments, $argc
+- announce in chat, r/higgsjs
+- use in Turing Turtle
+
+TODO: post dconf talk on r/coding
+- Do this when you have time to chat!
+- Wait until Monday
+
 Meeting:
 - Thought about paper further
   - Motivation/thesis, Olin Shiver's advice
@@ -168,10 +182,6 @@ Meeting:
 - Started integrating typed shapes into BBV
 - Getters and setters working
 - Turing Turtle, for fun
-
-TODO: post dconf talk on r/coding
-- Do this when you have time to chat!
-- Wait until Monday
 
 TODO: shape dispatch in shape_get_def
 * think about how this will work *
@@ -191,15 +201,6 @@ Version cache is similar to inline cache
 
 Go Max, makes Higgs fast, bring shapes to master!
 
-TODO: take a break, work on random lib
-- setRndGen, internal function/closure pointer
-  - By default, Math object is rnd gen, use uint16 function
-- random.setSeed
-- random.int, random.float, random.index
-- random.normal
-- random.choice: takes array or arguments, $argc
-- announce in chat, r/higgsjs
-- use in Turing Turtle
 
 
 
@@ -208,6 +209,14 @@ TODO: take a break, work on random lib
 
 
 
+
+
+
+
+
+[DONE] FIXME: call to non-function, missing fn name?
+- Add regression test for this
+  - Both fn and method
 
 [DONE] TODO: have both a slice and preallocated space for successors!
 - Make current code work with this setup

@@ -1391,13 +1391,13 @@ string getCalleeName(IRInstr callInstr)
         auto primName = cast(IRString)closInstr.getArg(0);
 
         // Call to get a global function
-        if (primName.str == "$rt_getGlobal"w)
+        if (primName.str == "$rt_getGlobalInl"w)
         {
-            return getString(closInstr.getArg(0));
+            return getString(closInstr.getArg(2));
         }
 
         // Call to get a property (method)
-        if (primName.str == "$rt_getProp"w)
+        if (primName.str == "$rt_getPropMethod"w)
         {
             return getString(closInstr.getArg(3));
         }
