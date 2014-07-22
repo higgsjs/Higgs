@@ -492,19 +492,6 @@ Math.log = function (x)
 var randSeed = 113378971;
 
 /**
-Generate a random unsigned 16-bit integer
-Note: this method is not part of ECMAScript
-*/
-Math.randomUInt16 = function ()
-{
-    // TODO: improve RNG
-
-    randSeed = $ir_and_i32($ir_mul_i32(1103515245, randSeed), 0x7FFFFFFF);
-
-    return $ir_and_i32($ir_rsft_i32(randSeed, 13), 0xFFFF);
-}
-
-/**
 Initialize random number generator with a new seed
 Note: this method is not part of ECMAScript
 */
@@ -533,6 +520,30 @@ Math.setRandSeed = function (seed)
 }
 
 /**
+Generate a random positive 16-bit integer
+Note: this method is not part of ECMAScript
+*/
+Math.randomUInt16 = function ()
+{
+    randSeed = $ir_and_i32($ir_mul_i32(1103515245, randSeed), 0x7FFFFFFF);
+
+    return $ir_and_i32($ir_rsft_i32(randSeed, 13), 0xFFFF);
+}
+
+/**
+Generate a random positive 31-bit integer
+Note: this method is not part of ECMAScript
+*/
+Math.randomUInt31 = function ()
+{
+    var rH = Math.randomUInt16();
+    var rL = Math.randomUInt16();
+    var randInt = ((rH & 0x7FFF) << 16) + rL;
+
+    return randInt;
+}
+
+/**
 15.8.2.14 random ()
 Returns a Number value with positive sign, greater than or equal to 0 but 
 less than 1, chosen randomly or pseudo randomly with approximately
@@ -541,9 +552,7 @@ algorithm or strategy. This function takes no arguments.
 */
 Math.random = function ()
 {
-    var rH = Math.randomUInt16();
-    var rL = Math.randomUInt16();
-    var randInt = ((rH & 0x7FFF) << 16) + rL;
+    var randInt = Math.randomUInt31();
 
     return randInt / 0x7FFFFFFF;
 };

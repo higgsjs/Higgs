@@ -9,26 +9,10 @@ usage: higgs turtle.js
 Maxime Chevalier-Boisvert
 */
 
-// ===========================================================================
-
-/**
-Generate a random integer within [a, b]
-*/
-function randomInt(a, b)
-{
-    /*
-    assert (
-        isInt(a) && isInt(b) && a <= b,
-        'invalid params to randomInt'
-    );
-    */
-
-    var range = b - a;
-
-    var rnd = a + Math.floor(Math.random() * (range + 1));
-
-    return rnd;
-}
+// Import required libraries
+var draw = require('lib/draw');
+var image = require('lib/image');
+var rnd = require('lib/random');
 
 // ===========================================================================
 
@@ -109,10 +93,10 @@ function Machine(
             this.setTrans(
                 st,
                 sym,
-                randomInt(0, numStates - 1),
-                randomInt(1, numSymbols - 1),
-                randomInt(0, NUM_TAPE_ACTIONS - 1),
-                randomInt(0, NUM_OUT_ACTIONS - 1)
+                rnd.index(numStates),
+                rnd.index(numSymbols),
+                rnd.index(NUM_TAPE_ACTIONS),
+                rnd.index(NUM_OUT_ACTIONS)
             );
         }
     }
@@ -323,9 +307,6 @@ Machine.fromString = function (str, mapWidth, mapHeight)
 */
 
 // ===========================================================================
-
-var draw = require('lib/draw');
-var image = require('lib/image');
 
 /// Canvas dimensions
 var CANVAS_WIDTH = 512;
