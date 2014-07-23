@@ -103,7 +103,7 @@ alias static immutable(OpInfo) Opcode;
 Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
 
 // TODO: rename to STATIC_STR?
-// Set a local slot to a constant value    
+// Set a local slot to a constant value
 Opcode SET_STR = { "set_str", true, [OpArg.STRING, OpArg.LINK], &gen_set_str };
 
 // Word/type manipulation primitives
@@ -299,7 +299,7 @@ Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 Opcode SHAPE_EMPTY = { "shape_empty", true, [], &gen_shape_empty };
 
 /// Get the shape defining a given property
-Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def };
+Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def, OpInfo.BRANCH };
 
 /// Set the value of an object property based on its shape
 Opcode SHAPE_SET_PROP = { "shape_set_prop", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };

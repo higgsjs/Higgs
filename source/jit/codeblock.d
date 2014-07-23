@@ -66,6 +66,7 @@ enum Label : size_t
     LOOP_TEST,
     LOOP_EXIT,
     DONE,
+    RETRY,
     TRUE,
     TRUE2,
     FALSE,

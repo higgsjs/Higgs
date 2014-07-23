@@ -2822,7 +2822,7 @@ void gen_set_link(
 }
 
 void gen_get_link(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
@@ -3082,70 +3082,6 @@ void gen_map_prop_idx(
 }
 */
 
-/*
-void gen_map_prop_name(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) static refptr op_map_prop_name(
-        VM vm,
-        IRInstr curInstr,
-        ObjMap map,
-        uint32_t propIdx
-    )
-    {
-        vm.setCurInstr(curInstr);
-
-        assert (map !is null, "map is null");
-        auto propName = map.getPropName(propIdx);
-        auto str = (propName !is null)? getString(vm, propName):null;
-
-        vm.setCurInstr(null);
-
-        return str;
-    }
-
-    // Spill the values that are live before the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
-
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, X86Opnd.NONE, false, false);
-
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    as.saveJITRegs();
-
-    // Call the host function
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd(64), opnd0);
-    as.mov(cargRegs[3].opnd(32), opnd1);
-    as.ptr(scrRegs[0], &op_map_prop_name);
-    as.call(scrRegs[0]);
-
-    as.loadJITRegs();
-
-    // Store the output value into the output operand
-    as.mov(outOpnd, cretReg.opnd);
-
-    // If the string is null, the type must be REFPTR
-    as.mov(scrRegs[0].opnd(8), X86Opnd(Type.STRING));
-    as.mov(scrRegs[1].opnd(8), X86Opnd(Type.REFPTR));
-    as.cmp(outOpnd, X86Opnd(NULL.word.int8Val));
-    as.cmove(scrRegs[0].reg(8), scrRegs[1].opnd(8));
-    st.setOutType(as, instr, scrRegs[0].reg(8));
-}
-*/
-
 /// Returns the empty shape
 void gen_shape_empty(
     BlockVersion ver,
@@ -3167,6 +3103,9 @@ void gen_shape_empty(
 
 /// Returns the shape defining a property, null if undefined
 /// Inputs: obj, propName
+/// Find the defining shape for this property
+/// This shifts us to a different version where the obj shape is known
+/// Implements a "version cache" with dynamic dispatching
 void gen_shape_get_def(
     BlockVersion ver,
     CodeGenState st,
@@ -3174,14 +3113,15 @@ void gen_shape_get_def(
     CodeBlock as
 )
 {
+    static const uint NUM_CACHE_ENTRIES = 4;
+    static const uint CACHE_ENTRY_SIZE = 8 + 8 + 8;
+
+    /// Default/slow path for when the property name is unknown
     extern (C) ObjShape op_shape_get_def(
         refptr objPtr,
         refptr strPtr
     )
     {
-        // Increment the count of slow property lookups
-        stats.numMapPropSlow++;
-
         // Get a temporary slice on the JS string characters
         auto propStr = tempWStr(strPtr);
 
@@ -3198,28 +3138,281 @@ void gen_shape_get_def(
         return defShape;
     }
 
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    extern (C) static void updateCache(
+        BlockVersion ver,
+        ObjShape objShape,
+        ubyte* cachePtr
+    )
+    {
+        writeln("entering updateCache");
 
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+        auto vm = ver.block.fun.vm;
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+        auto instr = ver.block.lastInstr;
+        assert (instr.opcode is &SHAPE_GET_DEF);
 
-    as.saveJITRegs();
+        // Get the property name
+        auto nameArgInstr = cast(IRInstr)instr.getArg(1);
+        auto propName = (cast(IRString)nameArgInstr.getArg(0)).str;
 
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), opnd0);
-    as.mov(cargRegs[1].opnd(64), opnd1);
-    as.ptr(scrRegs[0], &op_shape_get_def);
-    as.call(scrRegs[0]);
+        // Increment the count of property cache misses
+        //stats.numMapPropMisses++;
 
-    as.loadJITRegs();
+        // Lookup the defining shape
+        assert (objShape !is null, "objShape is null");
+        auto defShape = objShape.getDefShape(propName);
 
-    // Store the output value into the output operand
-    as.mov(outOpnd, cretReg.opnd);
+        // Ensure that the default target instance exists
+        assert (ver.targets[0] !is null);
+        auto defBranch = cast(BranchCode)ver.targets[0];
+        assert (defBranch !is null);
+        auto defSt = defBranch.predState;
 
-    st.setOutType(as, instr, Type.SHAPEPTR);
+        // TODO: set known SHAPEPTR value for the output of this instr too!
+
+        // Create a new state object where the object shape is known
+        auto targetSt = new CodeGenState(defSt);
+        auto objVal = cast(IRDstValue)instr.getArg(0);
+        assert (objVal !is null);
+        targetSt.setShape(objVal, objShape);
+
+        // Create a version instance object for the unit function entry
+        auto targetInst = getBlockVersion(
+            instr.getTarget(0).target,
+            targetSt
+        );
+
+        // Compile the unit entry version
+        vm.compile(instr);
+
+        // Add the target instance to the target list if not there
+        if (ver.targets.canFind(targetInst) is false)
+        {
+            if (ver.targets[1] is null)
+                ver.targets[1] = targetInst;
+            else
+                ver.targets ~= targetInst;
+
+            writeln(instr, " (", instr.block.fun.getName, ")");
+            writeln("  prop name: ", propName);
+            writeln("  num targets: ", ver.targets.length - 1);
+            //writeln("  def shape: ", defShape);
+        }
+
+        // Get the machine code address for the target instance
+        auto jumpAddr = targetInst.getCodePtr(vm.execHeap);
+
+        //writeln("shifting cache entries");
+
+        // Shift the current cache entries down
+        for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
+        {
+            memcpy(
+                cachePtr + CACHE_ENTRY_SIZE * i,
+                cachePtr + CACHE_ENTRY_SIZE * (i-1),
+                CACHE_ENTRY_SIZE
+            );
+        }
+
+        // Add a new cache entry
+        *(cast(ObjShape*)(cachePtr +  0)) = objShape;
+        *(cast(ObjShape*)(cachePtr +  8)) = defShape;
+         *(cast(CodePtr*)(cachePtr + 16)) = jumpAddr;
+
+        writeln("leaving updateCache");
+    }
+
+    static CodePtr getFallbackSub(VM vm)
+    {
+        if (vm.defShapeSub)
+            return vm.defShapeSub;
+
+        auto as = vm.subsHeap;
+        vm.defShapeSub = as.getAddress(as.getWritePos);
+
+        // Save the JIT and alloc registers
+        as.saveJITRegs();
+        foreach (reg; allocRegs)
+            as.push(reg);
+        if (allocRegs.length % 2 != 0)
+            as.push(allocRegs[0]);
+
+        // Set the argument registers
+        as.mov(cargRegs[0], scrRegs[0]);
+        as.mov(cargRegs[1], scrRegs[1]);
+        as.mov(cargRegs[2], scrRegs[2]);
+
+        // Call the host fallback code
+        as.ptr(scrRegs[0], &updateCache);
+        as.call(scrRegs[0].opnd);
+
+        // Restore the scratch, JIT and alloc registers
+        if (allocRegs.length % 2 != 0)
+            as.pop(allocRegs[0]);
+        foreach_reverse (reg; allocRegs)
+            as.pop(reg);
+        as.loadJITRegs();
+
+        // Return to the point of call
+        as.ret();
+
+        // Link the labels in this subroutine
+        as.linkLabels();
+        return vm.defShapeSub;
+    }
+
+    // If the property name is a known constant string
+    auto nameArgInstr = cast(IRInstr)instr.getArg(1);
+    if (nameArgInstr && nameArgInstr.opcode is &SET_STR)
+    {
+
+
+
+        // Free an extra temporary register
+        auto scrReg3 = st.freeReg(as, instr);
+
+        // Get the object operand
+        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+
+        // Get the output operand
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+        // Label for doing a new inline cache lookup
+        as.label(Label.RETRY);
+
+        // Load the object shape in r1
+        if (!opnd0.isReg)
+        {
+            as.mov(scrRegs[1].opnd, opnd0);
+            opnd0 = scrRegs[1].opnd;
+        }
+        as.getField(scrRegs[1], opnd0.reg, obj_ofs_shape(null));
+
+        // Inline cache entries
+        // [objShape (rawptr) | defShape(rawptr) | jumpAddr (rawptr)]+
+        as.lea(scrRegs[2], X86Mem(8, RIP, 5));
+        as.jmp(Label.AFTER_DATA);
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        {
+            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
+            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
+            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
+        }
+        as.label(Label.AFTER_DATA);
+
+        // For each cache entry
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        {
+            auto objShapeOpnd = X86Opnd(64, scrRegs[2], CACHE_ENTRY_SIZE * i + 0);
+            auto defShapeOpnd = X86Opnd(64, scrRegs[2], CACHE_ENTRY_SIZE * i + 8);
+            auto jumpAddrOpnd = X86Opnd(64, scrRegs[2], CACHE_ENTRY_SIZE * i + 16);
+
+            // Move the def shape for this entry into the output operand
+            if (outOpnd.isMem)
+            {
+                as.mov(scrRegs[0].opnd, defShapeOpnd);
+                as.mov(outOpnd, scrRegs[0].opnd);
+            }
+            else
+            {
+                as.mov(outOpnd, defShapeOpnd);
+            }
+
+            // Move the jump address into r0
+            as.mov(scrRegs[0].opnd, jumpAddrOpnd);
+
+            // If this is a cache hit, we are done, stop
+            as.cmp(objShapeOpnd, scrRegs[1].opnd);
+            as.je(Label.DONE);
+        }
+
+        // Call the fallback sub to update the inline cache
+        // r0 = block version
+        // r1 = shape ptr
+        // r2 = inline cache ptr
+        auto updateCacheSub = getFallbackSub(st.fun.vm);
+        as.ptr(scrRegs[0], ver);
+        as.ptr(scrReg3, updateCacheSub);
+        as.call(scrReg3);
+
+        // Do another inline cache lookup now that the cache is updated
+        as.jmp(Label.RETRY);
+
+        // Cache entry found
+        as.label(Label.DONE);
+
+        // Jump to the target
+        //as.printStr("jumping to");
+        //as.printUint(scrRegs[0].opnd);
+        as.jmp(scrRegs[0].opnd);
+
+        // Generate a branch for the default successor
+        // version, but don't compile it
+        auto branch = getBranchEdge(
+            instr.getTarget(0),
+            st,
+            false
+        );
+        ver.targets[0] = branch;
+
+        // Mark the end of this code fragment
+        ver.markEnd(as, st.fun.vm);
+
+
+
+
+    }
+
+    // The property name is unknown
+    else
+    {
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
+
+        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+        as.saveJITRegs();
+
+        // Call the host function
+        as.mov(cargRegs[0].opnd(64), opnd0);
+        as.mov(cargRegs[1].opnd(64), opnd1);
+        as.ptr(scrRegs[0], &op_shape_get_def);
+        as.call(scrRegs[0]);
+
+        as.loadJITRegs();
+
+        // Store the output value into the output operand
+        as.mov(outOpnd, cretReg.opnd);
+
+        st.setOutType(as, instr, Type.SHAPEPTR);
+
+        // Get the default version for the successor block
+        auto branch = getBranchEdge(
+            instr.getTarget(0),
+            st,
+            true
+        );
+
+        // Check that the successor follows us directly
+        ver.genBranch(
+            as,
+            branch,
+            null,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                assert (shape is BranchShape.NEXT0);
+            }
+        );
+    }
 }
 
 /// Sets the value of a property

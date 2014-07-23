@@ -72,18 +72,6 @@ Paper TODO:
   - CGO => Aug 29, notify Nov 3
   - Computing Frontier => Jan 2015, notify Feb 20
 http://cgo.org/cgo2015/
-https://software.intel.com/en-us/articles/compilerconf2013
-
-Remove claim that it is suitable for integration in a commercial VM?
-
-What is our thesis, in one sentence? See Olin Shiver's advice
-http://www.ccs.neu.edu/home/shivers/diss-advice.html
-- Try to state it in once sentence at the beginning of the paper
-- Make it precise
-- BBV does precisely X, it is useful because Y
-
-"Basic block versioning is a code generation technique which specializes code by
-cloning basic blocks based on types encountered at run-time"
 
 Differences with tracing:
 - No need for an interpreter or other compiler
@@ -103,6 +91,25 @@ Differences with tracing:
 - Simpler, no tracing infrastructure, one level of compilation
   - No complex tracing policy
 - Ability to easily recompile individual blocks
+- Easier to reason about?
+
+What is our thesis, in one sentence? See Olin Shiver's advice
+http://www.ccs.neu.edu/home/shivers/diss-advice.html
+- Try to state it in once sentence at the beginning of the paper
+- Make it precise
+- BBV does precisely X, it is useful because Y
+"Basic block versioning is a code generation technique which specializes code by
+cloning basic blocks based on types encountered at run-time"
+
+TODO: more motivating examples showing why BBV is GOOD, better than the rest
+- Why code duplication is better than just analysis
+
+TODO: be careful about claims, statements
+- Remove claim that it is suitable for integration in a commercial VM?
+- Remove claims reviewers might disagree with
+
+TODO: look at CGO committee, what is their research work?
+- Cite as appropriate
 
 TODO: look at previous year CGO papers
 - Any papers similar in topic to ours?
@@ -144,15 +151,6 @@ TODO: need a $rt_setGlobal
     - IRFunction.isRuntime?
 - How does this affect test time?
 
-TODO: some global constants can be resolved at compile time
-
-TODO: shape_set_shape(obj, shape)?
-- currently, setting shape through runtime call
-- lose empty shape of object
-
-TODO: optimized shape_get_prop
-- no type info at first
-
 TODO: const globals
 const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
 - Same structure as var decl
@@ -160,15 +158,17 @@ const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = value
 - Use it for Turing Turtle
 - Look at current parser code, vars code, ast-to-ir code first ***
 
-TODO: take a break, work on random lib
-- setRndGen, internal function/closure pointer
-  - By default, Math object is rnd gen, use uint16 function
-- random.setSeed
-- random.int, random.float, random.index
-- random.normal
-- random.choice: takes array or arguments, $argc
-- announce in chat, r/higgsjs
-- use in Turing Turtle
+TODO: some global constants can be resolved at compile time
+
+TODO: shape_get_def, optimize for when obj shape already known
+
+TODO: shape_init_empty(obj)
+- currently, setting shape through runtime call
+- lose empty shape of object
+- get rid of ir_shape_empty
+
+TODO: optimized shape_get_prop
+- no type info at first
 
 TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
@@ -183,8 +183,27 @@ Meeting:
 - Getters and setters working
 - Turing Turtle, for fun
 
-TODO: shape dispatch in shape_get_def
-* think about how this will work *
+FIXME: modulo zero dies, add test
+- should produce NaN
+
+TODO: e-mail lazy BBV paper to Erick, Vincent
+
+*** Go Max, makes Higgs fast, bring shapes to master! ***
+
+FIXME: segfault on return instruction in stdlib/array init
+- Multiple returns successfully executed. Last one goes to host.
+  - Why does return to host fail?
+- wsp and tsp not corrupted
+- RSP not corrupted either...
+- Array reserve fails
+- D code fails later
+- Subtle corruption happens somewhere?
+
+
+
+
+
+[DONE] TODO: shape dispatch in shape_get_def
 // Find the defining shape for this property
 // This shifts us to a different version where the obj shape is known
 // Implements a "version cache" with dynamic dispatching
@@ -194,25 +213,26 @@ Issue: needs list of pointers to new versions
 - Also need to know which shape these map to?
   - Should know this at generation time
   - Can possibly just store that in the entry context
-- Solved!
 Version cache is similar to inline cache
 - Looks for matching shape ptr, jumps to corresponding address
-- Must also produce def shape***
+- Must also produce defShape
 
-Go Max, makes Higgs fast, bring shapes to master!
+[DONE] TODO: take a break, work on random lib
+- setRndGen, internal function/closure pointer
+  - By default, Math object is rnd gen, use uint16 function
+- random.setSeed
+- random.int, random.float, random.index
+- random.normal
+- random.choice: takes array or arguments, $argc
+- announce in chat, r/higgsjs
+- use in Turing Turtle
+- add on wiki
 
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: shape_get_def needs to be a branching instr?
+- jumps to successor block, like an unconditional jump
+- make it branching for regular case first ***
+- special instr flag, is branch?
+  - OpInfo.BRANCH and instr has output, break block in genIIR? should work
 
 [DONE] FIXME: call to non-function, missing fn name?
 - Add regression test for this

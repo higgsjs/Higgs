@@ -538,8 +538,8 @@ class VM
     /// Get global fallback subroutine
     CodePtr getGlobalSub;
 
-    /// Map property index fallback subroutine
-    CodePtr propIdxSub;
+    /// Shape lookup fallback subroutine
+    CodePtr defShapeSub;
 
     /// Space to save registers when calling into hosted code
     Word* regSave;
@@ -688,6 +688,9 @@ class VM
             load("stdlib/math.js");
             load("stdlib/string.js");
             load("stdlib/array.js");
+
+            writeln("stdlib/array loaded!");
+
             load("stdlib/number.js");
             load("stdlib/boolean.js");
             load("stdlib/date.js");
@@ -1124,7 +1127,6 @@ class VM
     ValuePair exec(FunExpr fun)
     {
         auto ir = astToIR(this, fun);
-
         return exec(ir);
     }
 
@@ -1149,6 +1151,7 @@ class VM
     */
     ValuePair load(string fileName)
     {
+        //writeln("load(", fileName, ")");
         auto file = getLoadPath(fileName);
         auto ast = parseFile(file);
         return exec(ast);

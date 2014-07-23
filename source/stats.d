@@ -63,9 +63,7 @@ ulong maxVersions = 0;
 /// Number of blocks with specific version counts
 ulong[ulong] numVerBlocks;
 
-/// Number of edge phi/value moves
-//ulong numMoves = 0;
-
+/*
 /// Number of property index requests
 ulong numMapPropIdx = 0;
 
@@ -74,6 +72,7 @@ ulong numMapPropMisses = 0;
 
 /// Number of slow property lookups
 ulong numMapPropSlow = 0;
+*/
 
 /// Number of heap allocations
 ulong numHeapAllocs = 0;
@@ -212,9 +211,11 @@ static ~this()
 
         //writefln("num moves: %s", numMoves);
 
+        /*
         writefln("num map_prop_idx: %s", numMapPropIdx);
         writefln("num prop cache misses: %s", numMapPropMisses);
         writefln("num prop slow lookups: %s", numMapPropSlow);
+        */
         writefln("num heap allocs: %s", numHeapAllocs);
 
         writefln("num call: %s", numCall);

@@ -153,7 +153,8 @@ struct ValState
     bool isConst() const { return kind is Kind.CONST; }
 
     bool typeKnown() const { return type.typeKnown; }
-    Type typeTag() const { return type.typeTag; }
+    Type typeTag() const { assert (typeKnown); return type.typeTag; }
+    ObjShape shape() const { return cast(ObjShape)type.shape; }
 
     /// Get a word operand for this value
     X86Opnd getWordOpnd(size_t numBits, StackIdx stackIdx = StackIdx.max) const
@@ -200,6 +201,16 @@ struct ValState
 
         ValState val = cast(ValState)this;
         val.type = cast(ValType)type;
+        return val;
+    }
+
+    /// Set the shape for this value, creates a new value
+    ValState setShape(ObjShape shape) const
+    {
+        assert (!isConst);
+
+        ValState val = cast(ValState)this;
+        val.type.shape = shape;
         return val;
     }
 
@@ -1176,6 +1187,18 @@ class CodeGenState
         valMap[value] = state.setType(type);
     }
 
+    /// Add shape information for an arbitrary value
+    void setShape(IRDstValue value, ObjShape shape)
+    {
+        assert (shape !is null);
+
+        assert (value in valMap);
+        ValState state = getState(value);
+
+        // Set a known type for this value
+        valMap[value] = state.setShape(shape);
+    }
+
     /// Get the state for a given value
     ValState getState(IRDstValue val) const
     {
@@ -2058,8 +2081,6 @@ void compile(VM vm, IRInstr curInstr)
     // Set the current instruction
     vm.setCurInstr(curInstr);
 
-    assert (vm.compQueue.length > 0);
-
     // Until the compilation queue is empty
     while (vm.compQueue.length > 0)
     {
@@ -2337,6 +2358,9 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     auto retEdge = new ExitCode(fun);
     retEdge.markStart(as, vm);
 
+    if (opts.jit_trace_instrs)
+        as.printStr("Unit return branch for " ~ fun.getName);
+
     // Push one slot for the return value
     as.sub(tspReg.opnd, X86Opnd(1));
     as.sub(wspReg.opnd, X86Opnd(8));
@@ -2360,6 +2384,9 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Pop the stack alignment padding
     as.add(X86Opnd(RSP), X86Opnd(8));
 
+    as.printStr("returning to host");
+    as.printUint(RSP.opnd);
+
     // Return to the host
     as.ret();
 
@@ -2382,6 +2409,9 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     entryInst.markStart(as, vm);
 
     as.comment("unit " ~ fun.getName);
+
+    as.printStr("entering unit **************");
+    as.printUint(RSP.opnd);
 
     // Align SP to a multiple of 16 bytes
     as.sub(X86Opnd(RSP), X86Opnd(8));

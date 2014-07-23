@@ -493,7 +493,7 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
 
         // Increment the loop index and jump to the test block
         auto incVal = loopCtx.addInstr(new IRInstr(
-            &ADD_I32, 
+            &ADD_I32,
             idxPhi,
             IRConst.int32Cst(1)
         ));
@@ -536,8 +536,8 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
             if (ident in bodyCtx.localMap)
             {
                 genRtCall(
-                    bodyCtx, 
-                    "setCellVal", 
+                    bodyCtx,
+                    "setCellVal",
                     [allocInstr, bodyCtx.localMap[ident]],
                     fun.ast.pos
                 );
@@ -569,7 +569,7 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
                 {
                     auto idxCst = IRConst.int32Cst(cast(int32_t)idx);
                     genRtCall(
-                        ctx, 
+                        ctx,
                         "clos_set_cell",
                         [newClos, idxCst, fun.cellMap[ident]],
                         fun.ast.pos
@@ -593,11 +593,17 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     // Run the inlining pass
     inlinePass(vm, fun);
 
+    writeln("inlinePass done");
+
     // Perform peephole optimizations on the function
     optIR(fun);
 
+    writeln("optIR done");
+
     // Compute liveness information for the function
     fun.liveInfo = new LiveInfo(fun);
+
+    writeln("got liveInfo");
 
     // If the type analysis is enabled
     if (opts.jit_typeprop)
@@ -2418,7 +2424,7 @@ Generate an inline IR instruction
 IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
 {
     assert (
-        isIIR(expr), 
+        isIIR(expr),
         "invalid inline IR expr"
     );
 
@@ -2531,19 +2537,35 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
     // Add the instruction to the context
     ctx.addInstr(instr);
 
-    // If this is a call_instruction
+    // If this is a call instruction
     if (instr.opcode.isCall)
     {
         // Generate the call targets
         genCallTargets(ctx, instr, expr.pos);
     }
 
+    // If this is the shape_get_def instruction (shape dispatch)
+    if (instr.opcode is &SHAPE_GET_DEF)
+    {
+        auto contBlock = ctx.fun.newBlock("shape_cont");
+
+        // Set the branch target for the instruction
+        instr.setTarget(0, contBlock);
+
+        // Continue code generation in the new block
+        ctx.merge(contBlock);
+    }
+
     // If this instruction has no output, return the undefined value
     if (instr.opcode.output is false)
+    {
         return IRConst.undefCst;
-
-    // Return the instruction's value
-    return instr;
+    }
+    else
+    {
+        // Return the instruction's value
+        return instr;
+    }
 }
 
 /**

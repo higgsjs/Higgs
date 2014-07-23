@@ -224,7 +224,7 @@ class LiveInfo
             "function has no IR"
         );
 
-        //writeln("liveness analysis for: ", fun.getName, " (", fun.numBlocks, ")");
+        writeln("liveness analysis for: ", fun.getName, " (", fun.numBlocks, ")");
 
         for (auto block = fun.firstBlock; block !is null; block = block.next)
         {
@@ -252,10 +252,13 @@ class LiveInfo
 
         // Allocate the internal bit set to store liveness information
         bitSet = new int32_t[numInts];
+        assert (bitSet !is null || numInts is 0);
 
         // Stack of blocks for DFS traversal
         IRBlock stack[];
+        writeln("stack instantiated");
         stack.reserve(32768);
+        writeln("stack reserved");
 
         /**
         Traverse a basic block as part of a liveness analysis
