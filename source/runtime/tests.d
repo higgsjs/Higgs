@@ -1152,9 +1152,12 @@ unittest
     vm.assertBool("$rt_eq(3,5)", false);
     vm.assertBool("$rt_eq('foo','foo')", true);
 
-    vm.assertInt("isNaN(3)? 1:0", 0);
-    vm.assertInt("isNaN(3.5)? 1:0", 0);
-    vm.assertInt("isNaN(NaN)? 1:0", 1);
+    vm.assertBool("isNaN(3)", false);
+    vm.assertBool("isNaN(3.5)", false);
+    vm.assertBool("isNaN(NaN)", true);
+    vm.assertBool("isNaN(0 / 0)", true);
+    vm.assertBool("isNaN(0 % 0)", true);
+
     vm.assertStr("$rt_toString(NaN);", "NaN");
 
     vm.assertInt("$rt_getProp('foo', 'length')", 3);

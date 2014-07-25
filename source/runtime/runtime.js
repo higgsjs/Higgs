@@ -1072,7 +1072,12 @@ function $rt_mod(x, y)
     if ($ir_is_i32(x))
     {
         if ($ir_is_i32(y))
+        {
+            if ($ir_eq_i32(y, 0))
+                return NaN;
+
             return $ir_mod_i32(x, y);
+        }
 
         if ($ir_is_f64(y))
             return $ir_mod_f64($ir_i32_to_f64(x), y);
@@ -1097,7 +1102,7 @@ Specialized modulo for the (int,int) case
 function $rt_modInt(x, y)
 {
     // If x,y are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    if ($ir_is_i32(x) && $ir_is_i32(y) && $ir_ne_i32(y, 0))
     {
         return $ir_mod_i32(x, y);
     }
