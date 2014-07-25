@@ -1497,10 +1497,7 @@ class BlockVersion : CodeFragment
     CodeGenState state;
 
     /// Branch targets (array slice)
-    CodeFragment targets[];
-
-    // Branch targets (preallocated inline array)
-    CodeFragment targetArr[2];
+    CodeFragment[] targets;
 
     /// Inner code length, excluding final branches
     uint32_t codeLen;
@@ -1512,8 +1509,6 @@ class BlockVersion : CodeFragment
     {
         this.block = block;
         this.state = state;
-
-        this.targets = targetArr;
     }
 
     /**
@@ -1531,6 +1526,7 @@ class BlockVersion : CodeFragment
         auto vm = state.fun.vm;
 
         // Store the branch generation function and targets
+        assert (target0 !is null);
         this.branchGenFn = genFn;
         this.targets = [target0, target1];
 
@@ -1624,6 +1620,7 @@ class BlockVersion : CodeFragment
         }
 
         // Generate the final branch code
+        assert (branchGenFn !is null);
         branchGenFn(
             as,
             vm,
@@ -1778,7 +1775,7 @@ BlockVersion getBlockVersion(
         debug
         {
             if (opts.jit_maxvers > 0)
-                writeln("version limit hit: ", versions.length);
+                writefln("version limit hit (%s) in %s", versions.length, fun.getName);
         }
 
         // If a compatible match was found
@@ -2384,9 +2381,6 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Pop the stack alignment padding
     as.add(X86Opnd(RSP), X86Opnd(8));
 
-    as.printStr("returning to host");
-    as.printUint(RSP.opnd);
-
     // Return to the host
     as.ret();
 
@@ -2409,9 +2403,6 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     entryInst.markStart(as, vm);
 
     as.comment("unit " ~ fun.getName);
-
-    as.printStr("entering unit **************");
-    as.printUint(RSP.opnd);
 
     // Align SP to a multiple of 16 bytes
     as.sub(X86Opnd(RSP), X86Opnd(8));

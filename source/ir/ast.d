@@ -593,17 +593,11 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     // Run the inlining pass
     inlinePass(vm, fun);
 
-    writeln("inlinePass done");
-
     // Perform peephole optimizations on the function
     optIR(fun);
 
-    writeln("optIR done");
-
     // Compute liveness information for the function
     fun.liveInfo = new LiveInfo(fun);
-
-    writeln("got liveInfo");
 
     // If the type analysis is enabled
     if (opts.jit_typeprop)

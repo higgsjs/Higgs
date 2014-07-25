@@ -224,8 +224,6 @@ class LiveInfo
             "function has no IR"
         );
 
-        writeln("liveness analysis for: ", fun.getName, " (", fun.numBlocks, ")");
-
         for (auto block = fun.firstBlock; block !is null; block = block.next)
         {
             for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
@@ -256,9 +254,7 @@ class LiveInfo
 
         // Stack of blocks for DFS traversal
         IRBlock stack[];
-        writeln("stack instantiated");
         stack.reserve(32768);
-        writeln("stack reserved");
 
         /**
         Traverse a basic block as part of a liveness analysis

@@ -688,9 +688,6 @@ class VM
             load("stdlib/math.js");
             load("stdlib/string.js");
             load("stdlib/array.js");
-
-            writeln("stdlib/array loaded!");
-
             load("stdlib/number.js");
             load("stdlib/boolean.js");
             load("stdlib/date.js");

@@ -93,6 +93,9 @@ Differences with tracing:
 - Ability to easily recompile individual blocks
 - Easier to reason about?
 
+<francois__> BTW, they say your approach is like tracing.. But it's the execution of the program itself doing the tracing in your approach, in a way.. There's no
+<francois__> "recording" of traces
+
 What is our thesis, in one sentence? See Olin Shiver's advice
 http://www.ccs.neu.edu/home/shivers/diss-advice.html
 - Try to state it in once sentence at the beginning of the paper
@@ -174,23 +177,65 @@ TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
 
+TODO: e-mail lazy BBV paper to Erick, Vincent
+
 Meeting:
 - Thought about paper further
   - Motivation/thesis, Olin Shiver's advice
   - Contrasting with tracing
 - Can you create a repo for CGO2014? ***
-- Started integrating typed shapes into BBV
 - Getters and setters working
 - Turing Turtle, for fun
-
-FIXME: modulo zero dies, add test
-- should produce NaN
-
-TODO: e-mail lazy BBV paper to Erick, Vincent
+- Started integrating typed shapes into BBV
+- Implemented shape_get_def, version cache
+  - objGetProp and getProto have many many shapes passing through
+    - version limit gets hit often
+    - Disabled version cache for uninlined runtime functions
+- There are few functions where this is actually a problem
+  - A few functions are highly polymorphic, but relatively rare in practice
+  - earley-boyer is rather problematic... scheme implementation in
 
 *** Go Max, makes Higgs fast, bring shapes to master! ***
 
-FIXME: segfault on return instruction in stdlib/array init
+FIXME: v8bench/raytrace fails
+./higgs tests/07-v8bench/04-raytrace.js
+- call to non-function
+FIXME: v8bench/splay fails
+FIXME: image lib test failed
+- Could well be due to corrupted register, flaw in shape_get_def implementation
+- Refactor version cache first
+
+TODO: mechanism to limit version cache? probably want 1-4 versions at most
+- After K versions, should redirect to default impl without even calling updateCache
+- Cache entries should probably be compiled code?
+mov rax, addr; cmp rax, r; mov rax, addr; jmp addr;
+mov rax, addr; cmp rax, r; mov rax, addr; jmp addr;
+mov rax, addr; cmp rax, r; mov rax, addr; jmp addr;
+mov rax, addr; cmp rax, r; mov rax, addr; jmp addr;
+call updateCache
+mov ret into output
+jmp retry/default?
+- Cache as code avoids having to jump over data, avoids lookup loop
+- updateCache should return the property idx?
+- once K versions reached, overwrite jmp retry, change to jmp default (relative)
+  - don't need its address, we know it's the last thing at the end of the block
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: modulo zero dies, add test
+- should produce NaN
+- Do this on master branch, then pull
+
+[DONE] FIXME: segfault on return instruction in stdlib/array init
 - Multiple returns successfully executed. Last one goes to host.
   - Why does return to host fail?
 - wsp and tsp not corrupted
@@ -198,10 +243,12 @@ FIXME: segfault on return instruction in stdlib/array init
 - Array reserve fails
 - D code fails later
 - Subtle corruption happens somewhere?
+- Somehow, genBranch needs to be called, otherwise we get an odd bug
+  - But genBranch isn't called after gen_ret, for example
+  - Might have to do with the targets array storage, experiment with this...
+- Issue with targets array manipulation
 
-
-
-
+[DONE] TODO: assert that no phi nodes along shape_get_def edges
 
 [DONE] TODO: shape dispatch in shape_get_def
 // Find the defining shape for this property

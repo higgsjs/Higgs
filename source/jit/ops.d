@@ -3144,7 +3144,7 @@ void gen_shape_get_def(
         ubyte* cachePtr
     )
     {
-        writeln("entering updateCache");
+        //writeln("entering updateCache");
 
         auto vm = ver.block.fun.vm;
 
@@ -3162,13 +3162,16 @@ void gen_shape_get_def(
         assert (objShape !is null, "objShape is null");
         auto defShape = objShape.getDefShape(propName);
 
-        // Ensure that the default target instance exists
+        // Get the default version state
         assert (ver.targets[0] !is null);
         auto defBranch = cast(BranchCode)ver.targets[0];
         assert (defBranch !is null);
-        auto defSt = defBranch.predState;
-
-        // TODO: set known SHAPEPTR value for the output of this instr too!
+        CodeGenState defSt;
+        if (defBranch.predState)
+            defSt = defBranch.predState;
+        else
+            defSt = defBranch.target.state;
+        assert (defSt !is null);
 
         // Create a new state object where the object shape is known
         auto targetSt = new CodeGenState(defSt);
@@ -3188,15 +3191,11 @@ void gen_shape_get_def(
         // Add the target instance to the target list if not there
         if (ver.targets.canFind(targetInst) is false)
         {
-            if (ver.targets[1] is null)
-                ver.targets[1] = targetInst;
-            else
-                ver.targets ~= targetInst;
+            ver.targets ~= targetInst;
 
-            writeln(instr, " (", instr.block.fun.getName, ")");
-            writeln("  prop name: ", propName);
-            writeln("  num targets: ", ver.targets.length - 1);
-            //writeln("  def shape: ", defShape);
+            //writeln(instr, " (", instr.block.fun.getName, ")");
+            //writeln("  prop name: ", propName);
+            //writeln("  num targets: ", ver.targets.length - 1);
         }
 
         // Get the machine code address for the target instance
@@ -3219,7 +3218,7 @@ void gen_shape_get_def(
         *(cast(ObjShape*)(cachePtr +  8)) = defShape;
          *(cast(CodePtr*)(cachePtr + 16)) = jumpAddr;
 
-        writeln("leaving updateCache");
+        //writeln("leaving updateCache");
     }
 
     static CodePtr getFallbackSub(VM vm)
@@ -3263,11 +3262,9 @@ void gen_shape_get_def(
 
     // If the property name is a known constant string
     auto nameArgInstr = cast(IRInstr)instr.getArg(1);
-    if (nameArgInstr && nameArgInstr.opcode is &SET_STR)
+    if (nameArgInstr && nameArgInstr.opcode is &SET_STR &&
+        instr.block.fun.isPrim is false)
     {
-
-
-
         // Free an extra temporary register
         auto scrReg3 = st.freeReg(as, instr);
 
@@ -3341,6 +3338,9 @@ void gen_shape_get_def(
         // Cache entry found
         as.label(Label.DONE);
 
+        // Set the output type for this instruction
+        st.setOutType(as, instr, Type.SHAPEPTR);
+
         // Jump to the target
         //as.printStr("jumping to");
         //as.printUint(scrRegs[0].opnd);
@@ -3348,19 +3348,18 @@ void gen_shape_get_def(
 
         // Generate a branch for the default successor
         // version, but don't compile it
+        assert (instr.getTarget(0).args.length is 0);
         auto branch = getBranchEdge(
             instr.getTarget(0),
             st,
             false
         );
-        ver.targets[0] = branch;
+
+        // Store a reference to the default version branch
+        ver.targets = [branch];
 
         // Mark the end of this code fragment
         ver.markEnd(as, st.fun.vm);
-
-
-
-
     }
 
     // The property name is unknown
@@ -3387,6 +3386,7 @@ void gen_shape_get_def(
         // Store the output value into the output operand
         as.mov(outOpnd, cretReg.opnd);
 
+        // Set the output type for this instruction
         st.setOutType(as, instr, Type.SHAPEPTR);
 
         // Get the default version for the successor block
