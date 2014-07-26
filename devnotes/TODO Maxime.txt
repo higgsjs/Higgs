@@ -163,8 +163,6 @@ const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = value
 
 TODO: some global constants can be resolved at compile time
 
-TODO: shape_get_def, optimize for when obj shape already known
-
 TODO: shape_init_empty(obj)
 - currently, setting shape through runtime call
 - lose empty shape of object
@@ -188,24 +186,41 @@ Meeting:
 - Turing Turtle, for fun
 - Started integrating typed shapes into BBV
 - Implemented shape_get_def, version cache
-  - objGetProp and getProto have many many shapes passing through
-    - version limit gets hit often
-    - Disabled version cache for uninlined runtime functions
+  - Initially had lookup loop, now cache as code, code patching
+- objGetProp and getProto have many many shapes passing through
+  - version limit gets hit often
+  - Disabled version cache for uninlined runtime functions
 - There are few functions where this is actually a problem
   - A few functions are highly polymorphic, but relatively rare in practice
   - earley-boyer is rather problematic... scheme implementation in
+- May want to use a profiling phase, or regenerate the version cache periodically
+  - Useless to generate a specialized code path for something that occurs only once
 
 *** Go Max, makes Higgs fast, bring shapes to master! ***
 
-FIXME: v8bench/raytrace fails
-./higgs tests/07-v8bench/04-raytrace.js
-- call to non-function
-FIXME: v8bench/splay fails
-FIXME: image lib test failed
-- Could well be due to corrupted register, flaw in shape_get_def implementation
-- Refactor version cache first
+FIXME: add knownShape flag to ValType?
+- Right now, if defShape is null, can't count on that info. Is this a problem?
 
-TODO: mechanism to limit version cache? probably want 1-4 versions at most
+TODO: shape_get_def, optimize for when obj shape already known
+- log when this happens
+
+FIXME: v8bench/raytrace fails, segfault?
+./higgs tests/07-v8bench/04-raytrace.js
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: mechanism to limit version cache? probably want 1-4 versions at most
 - After K versions, should redirect to default impl without even calling updateCache
 - Cache entries should probably be compiled code?
 RETRY:
@@ -223,15 +238,6 @@ jmp retry/default?
   - don't need its address, we know it's the last thing at the end of the block
 - Use codeblock to rewrite the ASM!
   - could even use linking facilities
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: modulo zero dies, add test
 - should produce NaN

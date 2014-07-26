@@ -3114,7 +3114,6 @@ void gen_shape_get_def(
 )
 {
     static const uint NUM_CACHE_ENTRIES = 4;
-    static const uint CACHE_ENTRY_SIZE = 8 + 8 + 8;
 
     /// Default/slow path for when the property name is unknown
     extern (C) ObjShape op_shape_get_def(
@@ -3138,15 +3137,16 @@ void gen_shape_get_def(
         return defShape;
     }
 
-    extern (C) static void updateCache(
+    extern (C) static ObjShape updateCache(
         BlockVersion ver,
         ObjShape objShape,
-        ubyte* cachePtr
+        size_t cachePos
     )
     {
         //writeln("entering updateCache");
 
         auto vm = ver.block.fun.vm;
+        auto as = vm.execHeap;
 
         auto instr = ver.block.lastInstr;
         assert (instr.opcode is &SHAPE_GET_DEF);
@@ -3155,70 +3155,109 @@ void gen_shape_get_def(
         auto nameArgInstr = cast(IRInstr)instr.getArg(1);
         auto propName = (cast(IRString)nameArgInstr.getArg(0)).str;
 
-        // Increment the count of property cache misses
-        //stats.numMapPropMisses++;
-
         // Lookup the defining shape
         assert (objShape !is null, "objShape is null");
         auto defShape = objShape.getDefShape(propName);
 
-        // Get the default version state
-        assert (ver.targets[0] !is null);
-        auto defBranch = cast(BranchCode)ver.targets[0];
-        assert (defBranch !is null);
-        CodeGenState defSt;
-        if (defBranch.predState)
-            defSt = defBranch.predState;
-        else
-            defSt = defBranch.target.state;
-        assert (defSt !is null);
-
-        // Create a new state object where the object shape is known
-        auto targetSt = new CodeGenState(defSt);
-        auto objVal = cast(IRDstValue)instr.getArg(0);
-        assert (objVal !is null);
-        targetSt.setShape(objVal, objShape);
-
-        // Create a version instance object for the unit function entry
-        auto targetInst = getBlockVersion(
-            instr.getTarget(0).target,
-            targetSt
-        );
-
-        // Compile the unit entry version
-        vm.compile(instr);
-
-        // Add the target instance to the target list if not there
-        if (ver.targets.canFind(targetInst) is false)
+        // If the version cache is not yet full
+        if (ver.targets.length < NUM_CACHE_ENTRIES + 1)
         {
+            //writeln("compiling new version");
+
+            // Get the default version state
+            assert (ver.targets[0] !is null);
+            auto defBranch = cast(BranchCode)ver.targets[0];
+            assert (defBranch !is null);
+            CodeGenState defSt;
+            if (defBranch.predState)
+                defSt = defBranch.predState;
+            else
+                defSt = defBranch.target.state;
+            assert (defSt !is null);
+
+            // Create a new state object where the object shape is known
+            auto targetSt = new CodeGenState(defSt);
+            auto objVal = cast(IRDstValue)instr.getArg(0);
+            assert (objVal !is null);
+            targetSt.setShape(objVal, objShape);
+            targetSt.setShape(instr, defShape);
+
+            // Create a version instance object for the unit function entry
+            auto targetInst = getBlockVersion(
+                instr.getTarget(0).target,
+                targetSt
+            );
+
+            // Add the version instance to the target list
             ver.targets ~= targetInst;
 
-            //writeln(instr, " (", instr.block.fun.getName, ")");
-            //writeln("  prop name: ", propName);
-            //writeln("  num targets: ", ver.targets.length - 1);
+            // Get the output operand for the instruction
+            auto outOpnd = defSt.getWordOpnd(instr, 64);
+            assert (outOpnd.isReg);
+
+            auto curPos = as.getWritePos();
+            as.setWritePos(cachePos);
+
+            // Rewrite the version cache
+            // For each existing version
+            for (uint targetIdx = 1; targetIdx < ver.targets.length; ++targetIdx)
+            {
+                auto target = cast(BlockVersion)ver.targets[targetIdx];
+                assert (target !is null);
+
+                objShape = target.state.getShape(objVal);
+                defShape = target.state.getShape(instr);
+
+                // If we didn't get the version we want, disable this entry
+                if (defShape is null)
+                    objShape = null;
+
+                // Move the cached defining shape for this entry to the output operand
+                as.ptr(outOpnd.reg, defShape);
+
+                // Compare this entry's shape with the input object shape
+                as.ptr(scrRegs[0], objShape);
+                as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
+
+                // If equal, jump to the cached target
+                je32Ref(as, vm, target, targetIdx);
+            }
+
+            as.setWritePos(curPos);
+
+            // Compile the new version and link references
+            vm.compile(instr);
         }
 
-        // Get the machine code address for the target instance
-        auto jumpAddr = targetInst.getCodePtr(vm.execHeap);
-
-        //writeln("shifting cache entries");
-
-        // Shift the current cache entries down
-        for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
+        // If the version cache is exactly at capacity
+        // and the default version was not yet compiled
+        else if (
+            ver.targets.length == NUM_CACHE_ENTRIES + 1 &&
+            ver.targets[0].ended == false
+        )
         {
-            memcpy(
-                cachePtr + CACHE_ENTRY_SIZE * i,
-                cachePtr + CACHE_ENTRY_SIZE * (i-1),
-                CACHE_ENTRY_SIZE
-            );
-        }
+            //writeln("cache at capacity ***");
 
-        // Add a new cache entry
-        *(cast(ObjShape*)(cachePtr +  0)) = objShape;
-        *(cast(ObjShape*)(cachePtr +  8)) = defShape;
-         *(cast(CodePtr*)(cachePtr + 16)) = jumpAddr;
+            // Queue the default version for compilation
+            vm.queue(ver.targets[0]);
+
+            auto curPos = as.getWritePos();
+            as.setWritePos(ver.endIdx - 5);
+
+            // Overwrite the retry jump to jump to the default version
+            jmp32Ref(as, vm, ver.targets[0], 0);
+            assert (as.getWritePos == ver.endIdx);
+
+            as.setWritePos(curPos);
+
+            // Compile the default version and link references
+            vm.compile(instr);
+        }
 
         //writeln("leaving updateCache");
+
+        // Return the defining shape
+        return defShape;
     }
 
     static CodePtr getFallbackSub(VM vm)
@@ -3277,64 +3316,48 @@ void gen_shape_get_def(
         auto scrReg3 = st.freeReg(as, instr);
         assert (scrReg3.opnd != opnd0);
 
+        // Set the output type for this instruction
+        st.setOutType(as, instr, Type.SHAPEPTR);
+
         // Label for doing a new inline cache lookup
         as.label(Label.RETRY);
 
         // Load the object shape in r1
         as.getField(scrRegs[1], opnd0.reg, obj_ofs_shape(null));
 
-        // Inline cache entries
-        // [objShape (rawptr) | defShape(rawptr) | jumpAddr (rawptr)]+
-        as.lea(scrRegs[2], X86Mem(8, RIP, 5));
-        as.jmp(Label.AFTER_DATA);
+        // Inline cache entries, initially, none of these will match
+        size_t cachePos = as.getWritePos();
         for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
-            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
-            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
-            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
-        }
-        as.label(Label.AFTER_DATA);
+            // Move the cached defining shape for this entry to the output operand
+            as.ptr(outOpnd.reg, null);
 
-        // For each cache entry
-        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
-        {
-            auto objShapeOpnd = X86Opnd(64, scrRegs[2], CACHE_ENTRY_SIZE * i + 0);
-            auto defShapeOpnd = X86Opnd(64, scrRegs[2], CACHE_ENTRY_SIZE * i + 8);
-            auto jumpAddrOpnd = X86Opnd(64, scrRegs[2], CACHE_ENTRY_SIZE * i + 16);
+            // Compare this entry's shape with the input object shape
+            as.ptr(scrRegs[0], null);
+            as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
 
-            // Move the def shape for this entry into the output operand
-            as.mov(outOpnd, defShapeOpnd);
-
-            // Move the jump address into r0
-            as.mov(scrRegs[0].opnd, jumpAddrOpnd);
-
-            // If this is a cache hit, we are done, stop
-            as.cmp(objShapeOpnd, scrRegs[1].opnd);
-            as.je(Label.DONE);
+            // If equal, jump to the cached target
+            as.writeBytes(JE_REL32_OPCODE[0], JE_REL32_OPCODE[1]);
+            as.writeInt(0xFFFFFFFF, 32);
         }
 
         // Call the fallback sub to update the inline cache
         // r0 = block version
-        // r1 = shape ptr
-        // r2 = inline cache ptr
+        // r1 = shape pointer
+        // r2 = inline cache position
         auto updateCacheSub = getFallbackSub(st.fun.vm);
         as.ptr(scrRegs[0], ver);
+        as.mov(scrRegs[2], cachePos);
         as.ptr(scrReg3, updateCacheSub);
         as.call(scrReg3);
 
+        // Move the return value (defining shape) to the output operand
+        as.mov(outOpnd, cretReg.opnd);
+
         // Do another inline cache lookup now that the cache is updated
+        // Note: this jump will be overwritten to jump to the default
+        // version once the version cache is full
         as.jmp(Label.RETRY);
-
-        // Cache entry found
-        as.label(Label.DONE);
-
-        // Set the output type for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
-
-        // Jump to the target
-        //as.printStr("jumping to");
-        //as.printUint(scrRegs[0].opnd);
-        as.jmp(scrRegs[0].opnd);
 
         // Generate a branch for the default successor
         // version, but don't compile it

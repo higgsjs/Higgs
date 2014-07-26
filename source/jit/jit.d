@@ -1187,11 +1187,18 @@ class CodeGenState
         valMap[value] = state.setType(type);
     }
 
+    /// Get shape information for an arbitrary value
+    auto getShape(IRDstValue value)
+    {
+        assert (value in valMap);
+        ValState state = getState(value);
+
+        return state.type.shape;
+    }
+
     /// Add shape information for an arbitrary value
     void setShape(IRDstValue value, ObjShape shape)
     {
-        assert (shape !is null);
-
         assert (value in valMap);
         ValState state = getState(value);
 

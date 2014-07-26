@@ -1368,6 +1368,9 @@ const ubyte JMP_REL8_OPCODE = 0xEB;
 /// Opcode for direct jump with relative 32-bit offset
 const ubyte JMP_REL32_OPCODE = 0xE9;
 
+/// Opcode for jump on equal with relative 32-bit offset
+const ubyte[] JE_REL32_OPCODE = [0x0F, 0x84];
+
 /// jmp - Direct relative jump to label
 alias writeJcc!("jmp", JMP_REL32_OPCODE) jmp;
 
