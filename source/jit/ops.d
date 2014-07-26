@@ -3265,24 +3265,22 @@ void gen_shape_get_def(
     if (nameArgInstr && nameArgInstr.opcode is &SET_STR &&
         instr.block.fun.isPrim is false)
     {
-        // Free an extra temporary register
-        auto scrReg3 = st.freeReg(as, instr);
-
         // Get the object operand
-        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+        auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
+        assert (opnd0.isReg);
 
         // Get the output operand
         auto outOpnd = st.getOutOpnd(as, instr, 64);
+        assert (outOpnd.isReg);
+
+        // Free an extra temporary register
+        auto scrReg3 = st.freeReg(as, instr);
+        assert (scrReg3.opnd != opnd0);
 
         // Label for doing a new inline cache lookup
         as.label(Label.RETRY);
 
         // Load the object shape in r1
-        if (!opnd0.isReg)
-        {
-            as.mov(scrRegs[1].opnd, opnd0);
-            opnd0 = scrRegs[1].opnd;
-        }
         as.getField(scrRegs[1], opnd0.reg, obj_ofs_shape(null));
 
         // Inline cache entries
@@ -3305,15 +3303,7 @@ void gen_shape_get_def(
             auto jumpAddrOpnd = X86Opnd(64, scrRegs[2], CACHE_ENTRY_SIZE * i + 16);
 
             // Move the def shape for this entry into the output operand
-            if (outOpnd.isMem)
-            {
-                as.mov(scrRegs[0].opnd, defShapeOpnd);
-                as.mov(outOpnd, scrRegs[0].opnd);
-            }
-            else
-            {
-                as.mov(outOpnd, defShapeOpnd);
-            }
+            as.mov(outOpnd, defShapeOpnd);
 
             // Move the jump address into r0
             as.mov(scrRegs[0].opnd, jumpAddrOpnd);

@@ -208,10 +208,12 @@ FIXME: image lib test failed
 TODO: mechanism to limit version cache? probably want 1-4 versions at most
 - After K versions, should redirect to default impl without even calling updateCache
 - Cache entries should probably be compiled code?
-mov rax, addr; cmp rax, r; mov rax, addr; jmp addr;
-mov rax, addr; cmp rax, r; mov rax, addr; jmp addr;
-mov rax, addr; cmp rax, r; mov rax, addr; jmp addr;
-mov rax, addr; cmp rax, r; mov rax, addr; jmp addr;
+RETRY:
+mov rax, objShape; cmp rax, inShape; mov outReg, defShape; jmp relAddr;
+mov rax, objShape; cmp rax, inShape; mov outReg, defShape; jmp relAddr;
+mov rax, objShape; cmp rax, inShape; mov outReg, defShape; jmp relAddr;
+mov rax, objShape; cmp rax, inShape; mov outReg, defShape; jmp relAddr;
+lea cache rxx
 call updateCache
 mov ret into output
 jmp retry/default?
@@ -219,8 +221,8 @@ jmp retry/default?
 - updateCache should return the property idx?
 - once K versions reached, overwrite jmp retry, change to jmp default (relative)
   - don't need its address, we know it's the last thing at the end of the block
-
-
+- Use codeblock to rewrite the ASM!
+  - could even use linking facilities
 
 
 
