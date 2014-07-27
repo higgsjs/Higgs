@@ -3182,10 +3182,11 @@ void gen_shape_get_def(
             targetSt.setShape(objVal, objShape);
             targetSt.setShape(instr, defShape);
 
-            // Create a version instance object for the unit function entry
-            auto targetInst = getBlockVersion(
-                instr.getTarget(0).target,
-                targetSt
+            // Create a version instance object for the target
+            auto targetInst = getBranchEdge(
+                instr.getTarget(0),
+                targetSt,
+                true
             );
 
             // Add the version instance to the target list
@@ -3202,11 +3203,11 @@ void gen_shape_get_def(
             // For each existing version
             for (uint targetIdx = 1; targetIdx < ver.targets.length; ++targetIdx)
             {
-                auto target = cast(BlockVersion)ver.targets[targetIdx];
-                assert (target !is null);
+                auto branch = cast(BranchCode)ver.targets[targetIdx];
+                targetSt = branch.predState? branch.predState:branch.target.state;
 
-                objShape = target.state.getShape(objVal);
-                defShape = target.state.getShape(instr);
+                objShape = targetSt.getShape(objVal);
+                defShape = targetSt.getShape(instr);
 
                 // If we didn't get the version we want, disable this entry
                 if (defShape is null)
@@ -3220,7 +3221,7 @@ void gen_shape_get_def(
                 as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
 
                 // If equal, jump to the cached target
-                je32Ref(as, vm, target, targetIdx);
+                je32Ref(as, vm, branch, targetIdx);
             }
 
             as.setWritePos(curPos);
@@ -3255,6 +3256,9 @@ void gen_shape_get_def(
         }
 
         //writeln("leaving updateCache");
+
+        //writeln("  objShape: ", cast(void*)objShape);
+        //writeln("  defShape: ", cast(void*)defShape);
 
         // Return the defining shape
         return defShape;
@@ -3487,10 +3491,16 @@ void gen_shape_get_prop(
         ValuePair* retVal
     )
     {
+        //writeln("in op_shape_get_prop");
+
+        assert (objPtr !is null);
         assert (defShape !is null);
 
+        //writeln("  defShape: ", cast(void*)defShape);
         uint32_t slotIdx = defShape.slotIdx;
+        //writeln("  slotIdx: ", slotIdx);
         auto objCap = obj_get_cap(objPtr);
+        //writeln("  objCap: ", objCap);
 
         if (slotIdx < objCap)
         {

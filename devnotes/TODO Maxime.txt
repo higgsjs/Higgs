@@ -168,9 +168,6 @@ TODO: shape_init_empty(obj)
 - lose empty shape of object
 - get rid of ir_shape_empty
 
-TODO: optimized shape_get_prop
-- no type info at first
-
 TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
@@ -201,11 +198,13 @@ Meeting:
 FIXME: add knownShape flag to ValType?
 - Right now, if defShape is null, can't count on that info. Is this a problem?
 
+TODO: optimized shape_get_prop
+- no type info at first
+
 TODO: shape_get_def, optimize for when obj shape already known
 - log when this happens
 
-FIXME: v8bench/raytrace fails, segfault?
-./higgs tests/07-v8bench/04-raytrace.js
+TODO: clear known shapes on calls, set prop, set attr
 
 
 
@@ -216,9 +215,23 @@ FIXME: v8bench/raytrace fails, segfault?
 
 
 
-
-
-
+[DONE] FIXME: v8bench/raytrace fails, segfault?
+make; ./higgs raytrace-runner.js 
+make; ./higgs --jit_trace_instrs raytrace-runner.js 
+- Some register gets corrupted, problem with outOpnd?
+- Very much a heisenbug, changes behavior with subtle code changes
+- Not GC-related
+$117 = shape_get_def $133, $110 => shape_cont(3C8F2)
+shape_cont(3C8F2):
+$0 = ne_rawptr $117, <rawptr:NULL>
+if_true(3C8F5):
+$119 = shape_get_prop $133, $117
+Segmentation fault (core dumped)
+- slotIdx is corrupted, shape ptr probably invalid
+- shape ptr is some random pointer!
+We're missing branch moves if the version is not a perfect match. We can't
+just jump to the target block, we need a branch edge...
+- Use getBranchEdge yo
 
 [DONE] TODO: mechanism to limit version cache? probably want 1-4 versions at most
 - After K versions, should redirect to default impl without even calling updateCache
