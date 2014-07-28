@@ -154,6 +154,14 @@ TODO: need a $rt_setGlobal
     - IRFunction.isRuntime?
 - How does this affect test time?
 
+TODO: global obj shape tracking, get_global_obj is limiting
+- Separate IR value every time! Different value in valMap
+- Would ideally like some pseudo-function-argument?
+  - Then gets tracked in valMap
+- Could also be an entry phi node that isn't a function argument
+  - Pseudo-phi-node
+- Otherwise, optimize to share uses?
+
 TODO: const globals
 const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
 - Same structure as var decl
@@ -162,11 +170,7 @@ const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = value
 - Look at current parser code, vars code, ast-to-ir code first ***
 
 TODO: some global constants can be resolved at compile time
-
-TODO: shape_init_empty(obj)
-- currently, setting shape through runtime call
-- lose empty shape of object
-- get rid of ir_shape_empty
+- such as undefined
 
 TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
@@ -198,13 +202,16 @@ Meeting:
 FIXME: add knownShape flag to ValType?
 - Right now, if defShape is null, can't count on that info. Is this a problem?
 
-TODO: optimized shape_get_prop
-- no type info at first
+TODO: shape_init_empty(obj)
+- currently, setting shape through runtime call
+- lose empty shape of object
+- get rid of ir_shape_empty
 
 TODO: shape_get_def, optimize for when obj shape already known
 - log when this happens
 
-TODO: clear known shapes on calls, set prop, set attr
+TODO: optimized shape_get_prop
+- no type info at first
 
 
 
@@ -214,6 +221,12 @@ TODO: clear known shapes on calls, set prop, set attr
 
 
 
+
+[DONE] TODO: clear obj shape on set prop, set attr
+
+[DONE] TODO: CodeGenState.clearShapes
+- SpillRegs should clear shapes too? no, not always!
+- clear known shapes on calls
 
 [DONE] FIXME: v8bench/raytrace fails, segfault?
 make; ./higgs raytrace-runner.js 

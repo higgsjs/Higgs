@@ -1803,6 +1803,9 @@ void gen_call_prim(
         }
     );
 
+    // Clear the known shape information
+    st.clearShapes();
+
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
     as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
@@ -2008,6 +2011,9 @@ void gen_call(
         }
     );
 
+    // Clear the known shape information
+    st.clearShapes();
+
     ver.genCallBranch(
         st,
         instr,
@@ -2105,8 +2111,6 @@ void gen_call_apply(
         return fun.entryCode;
     }
 
-    // TODO: optimize call spills
-    // TODO: move spills after arg copying?
     // Spill the values that are live after the call
     st.spillValues(
         as,
@@ -2115,6 +2119,9 @@ void gen_call_apply(
             return liveInfo.liveBefore(value, instr);
         }
     );
+
+    // Clear the known shape information
+    st.clearShapes();
 
     ver.genCallBranch(
         st,
@@ -3472,6 +3479,9 @@ void gen_shape_set_prop(
     as.call(scrRegs[0]);
 
     as.loadJITRegs();
+
+    // Clear any known shape for this object
+    st.setShape(cast(IRDstValue)instr.getArg(0), null);
 }
 
 /// Gets the value of a property
@@ -3590,6 +3600,9 @@ void gen_shape_def_const(
     st.setOutType(as, instr, Type.CONST);
 
     as.loadJITRegs();
+
+    // Clear any known shape for this object
+    st.setShape(cast(IRDstValue)instr.getArg(0), null);
 }
 
 /// Sets the attributes for a property
@@ -3638,6 +3651,9 @@ void gen_shape_set_attrs(
     st.setOutType(as, instr, Type.CONST);
 
     as.loadJITRegs();
+
+    // Clear any known shape for this object
+    st.setShape(cast(IRDstValue)instr.getArg(0), null);
 }
 
 /// Get the parent shape for a given shape

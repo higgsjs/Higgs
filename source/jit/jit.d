@@ -918,6 +918,19 @@ class CodeGenState
     }
 
     /**
+    Clear known shape information. Used at function calls.
+    */
+    void clearShapes()
+    {
+        // For each value in the value map
+        foreach (value, state; valMap)
+        {
+            if (state.type.shape !is null)
+                valMap[value] = state.setShape(null);
+        }
+    }
+
+    /**
     Get an operand for any IR value without allocating a register
     */
     X86Opnd getWordOpnd(IRValue value, size_t numBits)
