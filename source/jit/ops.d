@@ -3493,63 +3493,101 @@ void gen_shape_get_prop(
     CodeBlock as
 )
 {
-    static assert (ValuePair.sizeof == 2 * int64_t.sizeof);
+    // Get the property shape, may be unknown
+    auto defShape = st.getShape(cast(IRDstValue)instr.getArg(1));
 
-    extern (C) static void op_shape_get_prop(
-        refptr objPtr,
-        ObjShape defShape,
-        ValuePair* retVal
-    )
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(null, 0);
+
+    // If the defining shape is known
+    if (defShape !is null)
     {
-        //writeln("in op_shape_get_prop");
+        // No need to get the shape operand
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        assert (objOpnd.isReg);
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        assert (outOpnd.isReg);
 
-        assert (objPtr !is null);
-        assert (defShape !is null);
+        // Move the object operand into r0
+        as.mov(scrRegs[0].opnd, objOpnd);
 
-        //writeln("  defShape: ", cast(void*)defShape);
-        uint32_t slotIdx = defShape.slotIdx;
-        //writeln("  slotIdx: ", slotIdx);
-        auto objCap = obj_get_cap(objPtr);
-        //writeln("  objCap: ", objCap);
+        // Get the object capacity into r1
+        as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
 
-        if (slotIdx < objCap)
+        auto slotIdx = defShape.slotIdx;
+
+        // If we can't guarantee that the slot index is within capacity,
+        // generate the extension table code
+        if (slotIdx >= OBJ_MIN_CAP)
         {
-            *retVal = getSlotPair(objPtr, slotIdx);
+            // If the slot index is below capacity, skip the ext table code
+            as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
+            as.jg(Label.SKIP);
+
+            //as.printStr("ext tbl");
+
+            // Get the ext table pointer into r0
+            as.getField(scrRegs[0], scrRegs[0], obj_ofs_next(null));
+
+            // Get the ext table capacity into r1
+            as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
+
+            as.label(Label.SKIP);
         }
-        else
-        {
-            auto extTbl = obj_get_next(objPtr);
-            *retVal = getSlotPair(extTbl, slotIdx);
-        }
+
+        //as.printStr("read, slotIdx=" ~ to!string(slotIdx));
+        //as.printUint(scrRegs[1].opnd);
+
+        // Load the word and type values
+        auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * slotIdx);
+        auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + slotIdx, 8, scrRegs[1]);
+        as.mov(outOpnd, wordMem);
+        as.mov(scrRegs[2].opnd(8), typeMem);
+
+        // Set the output type
+        st.setOutType(as, instr, scrRegs[2].reg(8));
     }
+    else
+    {
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        assert (objOpnd.isReg);
+        auto shapeOpnd = st.getWordOpnd(as, instr, 1, 64);
+        assert (shapeOpnd.isReg);
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        assert (outOpnd.isReg);
 
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+        // Move the object operand into r0
+        as.mov(scrRegs[0].opnd, objOpnd);
 
-    auto objPtr = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto defShape = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+        // Get the object capacity into r1
+        as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
 
-    as.sub(RSP, ValuePair.sizeof);
-    as.mov(cargRegs[2].opnd(64), RSP.opnd(64));
+        // Get the slot index into r2
+        as.getMember!("ObjShape.slotIdx")(scrRegs[2].reg(32), shapeOpnd.reg);
 
-    as.saveJITRegs();
+        // If the slot index is below capacity, skip the ext table code
+        as.cmp(scrRegs[1].opnd, scrRegs[2].opnd);
+        as.jg(Label.SKIP);
 
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), objPtr);
-    as.mov(cargRegs[1].opnd(64), defShape);
-    as.ptr(scrRegs[0], &op_shape_get_prop);
-    as.call(scrRegs[0]);
+        // Get the ext table pointer into r0
+        as.getField(scrRegs[0], scrRegs[0], obj_ofs_next(null));
 
-    as.loadJITRegs();
+        // Get the ext table capacity into r1
+        as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
 
-    // Set the output value word and type
-    assert (outOpnd.isReg);
-    as.mov(outOpnd, X86Opnd(64, RSP, ValuePair.word.offsetof));
-    as.mov(scrRegs[0].opnd(8), X86Opnd(8, RSP, ValuePair.type.offsetof));
-    st.setOutType(as, instr, scrRegs[0].reg(8));
+        as.label(Label.SKIP);
 
-    as.add(RSP, ValuePair.sizeof);
+        // Load the word value
+        auto wordMem = X86Opnd(64, scrRegs[0], wordOfs, 8, scrRegs[2]);
+        as.mov(outOpnd, wordMem);
+
+        // Load type value
+        as.shl(scrRegs[1].opnd, X86Opnd(3)); // r1 = cap * 8
+        as.add(scrRegs[1].opnd, scrRegs[2].opnd); // r2 = cap * 8 + slotIdx
+        auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs, 1, scrRegs[1]);
+        as.mov(scrRegs[1].opnd(8), typeMem);
+        st.setOutType(as, instr, scrRegs[1].reg(8));
+    }
 }
 
 /// Define a constant property

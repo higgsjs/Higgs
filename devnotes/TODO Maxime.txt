@@ -202,6 +202,9 @@ Meeting:
 FIXME: add knownShape flag to ValType?
 - Right now, if defShape is null, can't count on that info. Is this a problem?
 
+TODO: shape/obj microbenchmarks
+- create on master first, compare perf
+
 TODO: shape_init_empty(obj)
 - currently, setting shape through runtime call
 - lose empty shape of object
@@ -209,18 +212,17 @@ TODO: shape_init_empty(obj)
 
 TODO: shape_get_def, optimize for when obj shape already known
 - log when this happens
+// Get the shape for the object, may be unknown
+//auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));
 
-TODO: optimized shape_get_prop
+
+
+
+
+
+
+[DONE] TODO: optimized shape_get_prop
 - no type info at first
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: clear obj shape on set prop, set attr
 
