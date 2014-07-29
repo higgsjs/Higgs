@@ -110,8 +110,10 @@ TODO: more motivating examples showing why BBV is GOOD, better than the rest
 TODO: be careful about claims, statements
 - Remove claim that it is suitable for integration in a commercial VM?
 - Remove claims reviewers might disagree with
+- More modest claims ***
+  - exploring new approach to compilation, code generation
 
-TODO: look at CGO committee, what is their research work?
+TODO: look at CGO committee, what is their research work? (suggested by Erick)
 - Cite as appropriate
 
 TODO: look at previous year CGO papers
@@ -176,6 +178,12 @@ TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
 
+TODO: optimize ne_rawptr for shape
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+FIXME: add knownShape flag to ValType?
+- Right now, if defShape is null, can't count on that info. Is this a problem?
+- Could also use rawptr type tag for null values, make shapes never null?
+
 TODO: e-mail lazy BBV paper to Erick, Vincent
 
 Meeting:
@@ -196,24 +204,23 @@ Meeting:
   - earley-boyer is rather problematic... scheme implementation in
 - May want to use a profiling phase, or regenerate the version cache periodically
   - Useless to generate a specialized code path for something that occurs only once
+- Tried microbenchmark
+- Looked at machine code
 
 *** Go Max, makes Higgs fast, bring shapes to master! ***
-
-FIXME: add knownShape flag to ValType?
-- Right now, if defShape is null, can't count on that info. Is this a problem?
-
-TODO: shape/obj microbenchmarks
-- create on master first, compare perf
-- Do we already have some?
 
 TODO: shape_init_empty(obj)
 - currently, setting shape through runtime call
 - lose empty shape of object
 - get rid of ir_shape_empty
 
+TODO: don't generate set_str for shape_get_def with one use only
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+- Test speed
+
 TODO: optimize shape_set_prop
 
-TODO: reimplement inlined setPropField
+TODO: reimplement inlined setPropField and test it
 
 
 
@@ -221,6 +228,25 @@ TODO: reimplement inlined setPropField
 
 
 
+
+
+[DONE] TODO: shape/obj microbenchmarks
+- create on master first, compare perf
+- Do we already have some?
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+dev-maxime:
+    comp time (ms): 8
+    exec time (ms): 21
+    total time (ms): 29
+    code size (bytes): 37904
+master:
+    comp time (ms): 23
+    exec time (ms): 52
+    total time (ms): 76
+    code size (bytes): 39651
+- More than 2x faster!
+
+[DONE] FIXME: crash in asmString function
 
 [DONE] TODO: shape_get_def, optimize for when obj shape already known
 auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));

@@ -1710,8 +1710,8 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
 
         else if (auto inst = cast(BlockVersion)frag)
         {
-            queue(frag, inst.targets[0]);
-            queue(frag, inst.targets[1]);
+            foreach (target; inst.targets)
+                queue(frag, target);
         }
 
         else

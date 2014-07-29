@@ -8,6 +8,7 @@ function test()
     }
 }
 
-//print(test.irString());
-
 test();
+
+//print(test.irString());
+//print(test.asmString());

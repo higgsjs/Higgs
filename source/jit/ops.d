@@ -3395,6 +3395,8 @@ void gen_shape_get_def(
             as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
 
             // If equal, jump to the cached target
+            if (opts.jit_genasm)
+                as.writeASM("je", instr.getTarget(0).target.getName);
             as.writeBytes(JE_REL32_OPCODE[0], JE_REL32_OPCODE[1]);
             as.writeInt(0xFFFFFFFF, 32);
         }
