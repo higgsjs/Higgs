@@ -204,22 +204,28 @@ FIXME: add knownShape flag to ValType?
 
 TODO: shape/obj microbenchmarks
 - create on master first, compare perf
+- Do we already have some?
 
 TODO: shape_init_empty(obj)
 - currently, setting shape through runtime call
 - lose empty shape of object
 - get rid of ir_shape_empty
 
-TODO: shape_get_def, optimize for when obj shape already known
-- log when this happens
-// Get the shape for the object, may be unknown
-//auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));
+TODO: optimize shape_set_prop
+
+TODO: reimplement inlined setPropField
 
 
 
 
 
 
+
+
+[DONE] TODO: shape_get_def, optimize for when obj shape already known
+auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));
+- How often do we already know the obj shape?
+  - Not that often, but sometimes
 
 [DONE] TODO: optimized shape_get_prop
 - no type info at first

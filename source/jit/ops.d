@@ -3310,10 +3310,57 @@ void gen_shape_get_def(
         return vm.defShapeSub;
     }
 
-    // If the property name is a known constant string
+    // Get the object shape, may be unknown
+    auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));
+
+    // Extract the property name, if known
     auto nameArgInstr = cast(IRInstr)instr.getArg(1);
-    if (nameArgInstr && nameArgInstr.opcode is &SET_STR &&
-        instr.block.fun.isPrim is false)
+    wstring propName;
+    if (nameArgInstr && nameArgInstr.opcode is &SET_STR)
+        propName = (cast(IRString)nameArgInstr.getArg(0)).str;
+
+    // If the object shape and the property name are both known
+    if (objShape !is null && propName !is null)
+    {
+        // Get the output operand
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        assert (outOpnd.isReg);
+
+        // Get the defining shape for the property
+        auto defShape = objShape.getDefShape(propName);
+
+        as.ptr(outOpnd.reg, defShape);
+
+        // Set the output type and shape for this instruction
+        st.setOutType(as, instr, Type.SHAPEPTR, defShape);
+
+        // Get the default version for the successor block
+        auto branch = getBranchEdge(
+            instr.getTarget(0),
+            st,
+            true
+        );
+
+        // Check that the successor follows us directly
+        ver.genBranch(
+            as,
+            branch,
+            null,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                assert (shape is BranchShape.NEXT0);
+            }
+        );
+    }
+
+    // If the property name is a known constant string
+    else if (propName !is null && instr.block.fun.isPrim is false)
     {
         // Get the object operand
         auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
