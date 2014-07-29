@@ -3216,10 +3216,6 @@ void gen_shape_get_def(
                 objShape = targetSt.getShape(objVal);
                 defShape = targetSt.getShape(instr);
 
-                // If we didn't get the version we want, disable this entry
-                if (defShape is null)
-                    objShape = null;
-
                 // Move the cached defining shape for this entry to the output operand
                 as.ptr(outOpnd.reg, defShape);
 
@@ -3489,7 +3485,7 @@ void gen_shape_get_def(
 }
 
 /// Sets the value of a property
-/// Inputs: obj, propName, propShape, val
+/// Inputs: obj, propName, defShape, val
 void gen_shape_set_prop(
     BlockVersion ver,
     CodeGenState st,
@@ -3505,7 +3501,7 @@ void gen_shape_set_prop(
 
         auto propStr = extractWStr(strPtr);
 
-        // Set the property, or get the getter-setter object
+        // Set the property value
         setProp(
             vm,
             objPair,
@@ -3513,6 +3509,66 @@ void gen_shape_set_prop(
             valPair
         );
     }
+
+    // Get the object shape, may be unknown
+    auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));
+
+    // Get the property shape, may be unknown
+    auto defShape = st.getShape(cast(IRDstValue)instr.getArg(2));
+
+    // If the defining shape is known
+    // We are overwriting an existing property of this object
+    if (defShape !is null)
+    {
+        //as.printStr(to!string(defShape.slotIdx));
+
+
+
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
+
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+        as.saveJITRegs();
+
+        // Call the host function
+        as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
+        as.ptr(cargRegs[1], instr);
+        as.ptr(scrRegs[0], &op_shape_set_prop);
+        as.call(scrRegs[0]);
+
+        as.loadJITRegs();
+
+
+
+
+
+
+
+        return;
+    }
+
+    /*
+    // If the object shape is known but the defining shape is unknown
+    // We are adding a new property to this object
+    if (objShape !is null)
+    {
+        // TODO: if obj shape known, find if we can add a new property statically
+        // don't need to clear obj shape
+
+
+        // Check if slot idx within min slots, don't want to have to
+        // extend the ext table!
+
+
+
+        // TODO: update obj shape
+
+
+
+
+    }
+    */
 
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);

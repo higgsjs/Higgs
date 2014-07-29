@@ -71,7 +71,7 @@ void inlinePass(VM vm, IRFunction caller)
         return;
 
     bool isUnit = caller.isUnit;
-    bool hasLoop = funHasLoop(caller);
+    //bool hasLoop = funHasLoop(caller);
 
     /*
     // If this is a unit function and it has no loops, do not inline
@@ -160,10 +160,9 @@ void inlinePass(VM vm, IRFunction caller)
             && !name.startsWith("$rt_getPropMethod")
             && !name.startsWith("$rt_getPropElem")
             && !name.startsWith("$rt_getPropLength")
-            //&& !name.startsWith("$rt_setPropField")
+            && !name.startsWith("$rt_setPropField")
             && !name.startsWith("$rt_setPropElem")
             && !name.startsWith("$rt_setArrElemNoCheck")
-            && !(hasLoop && name.startsWith("$rt_setPropField"))
             && !name.startsWith("$rt_ctorNewThis")
             && !name.startsWith("$rt_getGlobalInl")
         )

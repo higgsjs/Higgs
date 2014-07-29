@@ -214,13 +214,18 @@ TODO: shape_init_empty(obj)
 - lose empty shape of object
 - get rid of ir_shape_empty
 
-TODO: don't generate set_str for shape_get_def with one use only
+TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
 ./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
 - Test speed
 
 TODO: optimize shape_set_prop
 
-TODO: reimplement inlined setPropField and test it
+FIXME: shapes often unknown in set_prop
+make; ./higgs --nostdlib setprop-test.js 
+- Strange situation, as if shape_get_def not working
+- Theory: we disable all entries for which the defShape is null...
+  - This is unwarranted, fix and test
+  - Still absolutely useful to know obj shape
 
 
 
@@ -229,6 +234,10 @@ TODO: reimplement inlined setPropField and test it
 
 
 
+
+[DONE] TODO: reimplement inlined setPropField and test it
+
+[DONE] TODO: re-enable setPropElem
 
 [DONE] TODO: shape/obj microbenchmarks
 - create on master first, compare perf
