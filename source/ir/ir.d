@@ -1362,6 +1362,23 @@ bool boolArgPrev(IRInstr instr)
 }
 
 /**
+Attempt to get the value of a constant string argument.
+Produces null if the argument is not a constant string.
+*/
+wstring getArgStrCst(IRInstr instr, size_t argIdx)
+{
+    auto setStr = cast(IRInstr)instr.getArg(argIdx);
+    if (!setStr || setStr.opcode !is &SET_STR)
+        return null;
+
+    auto irString = (cast(IRString)setStr.getArg(0));
+    if (!irString)
+        return null;
+
+    return irString.str;
+}
+
+/**
 Recover the callee name for a call instruction, if possible.
 This function is used to help print sensible error messages.
 */

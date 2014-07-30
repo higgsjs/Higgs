@@ -1209,7 +1209,7 @@ class CodeGenState
         return state.type.shape;
     }
 
-    /// Add shape information for an arbitrary value
+    /// Set shape information for an arbitrary value
     void setShape(IRDstValue value, ObjShape shape)
     {
         assert (value in valMap);

@@ -218,22 +218,28 @@ TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
 ./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
 - Test speed
 
-TODO: optimize shape_set_prop
+TODO: optimize shape_set_prop for prop rewrites
 
-FIXME: shapes often unknown in set_prop
+TODO: check how common def_shape fallback calls are
+TODO: check how common slow lookups are
+- Will be especially slow for large objects
+
+
+
+
+
+
+
+[DONE] TODO: optimize shape_set_prop for new props
+
+[DONE] TODO: utility fn for extracting IR string constants
+
+[DONE] FIXME: shapes often unknown in set_prop
 make; ./higgs --nostdlib setprop-test.js 
 - Strange situation, as if shape_get_def not working
 - Theory: we disable all entries for which the defShape is null...
   - This is unwarranted, fix and test
   - Still absolutely useful to know obj shape
-
-
-
-
-
-
-
-
 
 [DONE] TODO: reimplement inlined setPropField and test it
 

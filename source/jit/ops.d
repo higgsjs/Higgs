@@ -3159,8 +3159,7 @@ void gen_shape_get_def(
         assert (instr.opcode is &SHAPE_GET_DEF);
 
         // Get the property name
-        auto nameArgInstr = cast(IRInstr)instr.getArg(1);
-        auto propName = (cast(IRString)nameArgInstr.getArg(0)).str;
+        auto propName = instr.getArgStrCst(1);
 
         // Lookup the defining shape
         assert (objShape !is null, "objShape is null");
@@ -3310,10 +3309,7 @@ void gen_shape_get_def(
     auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));
 
     // Extract the property name, if known
-    auto nameArgInstr = cast(IRInstr)instr.getArg(1);
-    wstring propName;
-    if (nameArgInstr && nameArgInstr.opcode is &SET_STR)
-        propName = (cast(IRString)nameArgInstr.getArg(0)).str;
+    auto propName = instr.getArgStrCst(1);
 
     // If the object shape and the property name are both known
     if (objShape !is null && propName !is null)
@@ -3516,13 +3512,21 @@ void gen_shape_set_prop(
     // Get the property shape, may be unknown
     auto defShape = st.getShape(cast(IRDstValue)instr.getArg(2));
 
+    // Extract the property name, if known
+    auto propName = instr.getArgStrCst(1);
+
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(null, 0);
+
     // If the defining shape is known
     // We are overwriting an existing property of this object
     if (defShape !is null)
     {
-        //as.printStr(to!string(defShape.slotIdx));
+        // TODO
+        // TODO: handle type mismatches with defShape
+        // TODO
 
-
+        //writeln("prop redef");
 
         // Spill the values live before this instruction
         st.spillLiveBefore(as, instr);
@@ -3539,36 +3543,65 @@ void gen_shape_set_prop(
 
         as.loadJITRegs();
 
-
-
-
-
-
-
         return;
     }
 
-    /*
     // If the object shape is known but the defining shape is unknown
-    // We are adding a new property to this object
-    if (objShape !is null)
+    // We are probably adding a new property to this object
+    if (objShape !is null && propName !is null)
     {
-        // TODO: if obj shape known, find if we can add a new property statically
-        // don't need to clear obj shape
+        // Try a lookup for an existing property
+        defShape = objShape.getDefShape(propName);
 
+        // If the defining shape was not found
+        if (defShape is null)
+        {
+            // Create a new shape for the property
+            defShape = objShape.defProp(
+                st.fun.vm,
+                propName,
+                ValType(),
+                ATTR_DEFAULT,
+                null
+            );
+        }
 
-        // Check if slot idx within min slots, don't want to have to
-        // extend the ext table!
+        auto slotIdx = defShape.slotIdx;
 
+        // TODO
+        // TODO: handle type mismatches with defShape
+        // TODO
 
+        // If the property is writable and the slot index is
+        // within the guaranteed object capacity
+        if ((defShape.attrs & ATTR_WRITABLE) &&
+            (slotIdx < OBJ_MIN_CAP))
+        {
+            auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+            assert (objOpnd.isReg);
 
-        // TODO: update obj shape
+            auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[0].opnd(64), true);
+            auto typeOpnd = st.getTypeOpnd(as, instr, 3, scrRegs[1].opnd(8), true);
 
+            // Get the object capacity into r2
+            as.getField(scrRegs[2].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
+            // Set the word and type values
+            auto wordMem = X86Opnd(64, objOpnd.reg, wordOfs + 8 * slotIdx);
+            auto typeMem = X86Opnd(8 , objOpnd.reg, wordOfs + slotIdx, 8, scrRegs[2]);
+            as.mov(wordMem, valOpnd);
+            as.mov(typeMem, typeOpnd);
 
+            // Update the object shape
+            as.ptr(scrRegs[0].reg, defShape);
+            as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
 
+            // Set the new object shape
+            st.setShape(cast(IRDstValue)instr.getArg(0), defShape);
+
+            return;
+        }
     }
-    */
 
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);
