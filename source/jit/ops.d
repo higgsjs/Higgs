@@ -3491,6 +3491,9 @@ void gen_shape_set_prop(
 {
     extern (C) static void op_shape_set_prop(VM vm, IRInstr instr)
     {
+        // Increment the slow get prop stat
+        ++stats.numGetPropSlow;
+
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
         auto valPair = vm.getArgVal(instr, 3);

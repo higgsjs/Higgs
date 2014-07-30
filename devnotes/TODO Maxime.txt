@@ -221,14 +221,19 @@ TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
 TODO: optimize shape_set_prop for prop rewrites
 
 TODO: check how common def_shape fallback calls are
-TODO: check how common slow lookups are
+- numDefShapeSlow
+
+TODO: compare stats for 3d-raytrace with master
+
+
+
+
+
+[DONE] TODO: reimplement getPropMethod
+
+[DONE] TODO: check how common slow lookups are
 - Will be especially slow for large objects
-
-
-
-
-
-
+- not very common in 3d-raytrace
 
 [DONE] TODO: optimize shape_set_prop for new props
 

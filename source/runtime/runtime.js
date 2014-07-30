@@ -2102,74 +2102,50 @@ the base is an object and the key is a constant string
 */
 function $rt_getPropMethod(base, prop)
 {
-    /*
     // If the base is an object
     if ($ir_is_object(base))
     {
-        var obj = base;
+        // Find the defining shape for this property
+        var defShape = $ir_shape_get_def(base, prop);
 
-        // Follow the next link chain
-        for (;;)
+        // If the property is defined on the object
+        if ($ir_ne_rawptr(defShape, $nullptr))
         {
-            var next = $rt_obj_get_next(obj);
-            if ($ir_eq_refptr(next, null))
-                break;
-            obj = next;
-        }
+            // Get the property value
+            var propVal = $ir_shape_get_prop(base, defShape);
 
-        // Find the index for this property
-        var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), prop, false);
-
-        // Get the capacity of the object
-        var objCap = $rt_obj_get_cap(obj);
-
-        // If the property was found and is present in the object
-        if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
-        {
-            var word = $rt_obj_get_word(obj, propIdx);
-            var type = $rt_obj_get_type(obj, propIdx);
-            var val = $ir_make_value(word, type);
-
-            // If the value is not missing, return it
-            if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
-                return val;
+            // If the value is not a getter-setter function, return it
+            if (!$ir_is_getset(propVal))
+            {
+                // Property was found, is not a getter
+                return propVal;
+            }
         }
 
         // Get the prototype of the object
-        var obj = $rt_getProto(obj);
+        var base = $rt_getProto(base);
 
         // If the prototype is not null
-        if ($ir_is_object(obj))
+        if ($ir_is_object(base))
         {
-            // Follow the next link chain
-            for (;;)
+            // Find the defining shape for this property
+            var defShape = $ir_shape_get_def(base, prop);
+
+            // If the property is defined on the object
+            if ($ir_ne_rawptr(defShape, $nullptr))
             {
-                var next = $rt_obj_get_next(obj);
-                if ($ir_eq_refptr(next, null))
-                    break;
-                obj = next;
-            }
+                // Get the property value
+                var propVal = $ir_shape_get_prop(base, defShape);
 
-            // Find the index for this property
-            var propIdx = $ir_map_prop_idx($rt_obj_get_map(obj), prop, false);
-
-            // Get the capacity of the object
-            var objCap = $rt_obj_get_cap(obj);
-
-            // If the property was found and is present in the object
-            if ($ir_ne_i32(propIdx, -1) && $ir_lt_i32(propIdx, objCap))
-            {
-                var word = $rt_obj_get_word(obj, propIdx);
-                var type = $rt_obj_get_type(obj, propIdx);
-                var val = $ir_make_value(word, type);
-
-                // If the value is not missing, return it
-                if (!$ir_is_const(val) || $ir_ne_const(val, $missing))
-                    return val;
+                // If the value is not a getter-setter function, return it
+                if (!$ir_is_getset(propVal))
+                {
+                    // Property was found, is not a getter
+                    return propVal;
+                }
             }
         }
     }
-    */
 
     return $rt_getProp(base, prop);
 }
