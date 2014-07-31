@@ -3358,7 +3358,7 @@ void gen_shape_get_def(
     }
 
     // If the property name is a known constant string
-    else if (propName !is null && instr.block.fun.isPrim)
+    else if (propName !is null && instr.block.fun.isPrim is false)
     {
         // Get the object operand
         auto opnd0 = st.getWordOpnd(as, instr, 0, 64);

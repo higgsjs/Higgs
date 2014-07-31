@@ -199,11 +199,9 @@ TODO: add test for global setter
 TODO: e-mail lazy BBV paper to Erick, Vincent
 
 TODO: optimize shape_set_prop for prop rewrites
-./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
+make; ./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
 - seems to affect bitwise-and? verify
-num def shape host: 3600004
-num def shape update: 3
-num set prop host: 1200003
+
 
 
 
