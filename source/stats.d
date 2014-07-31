@@ -63,16 +63,14 @@ ulong maxVersions = 0;
 /// Number of blocks with specific version counts
 ulong[ulong] numVerBlocks;
 
-/*
-/// Number of property index requests
-ulong numMapPropIdx = 0;
+/// Number of host version cache lookups
+ulong numDefShapeHost = 0;
 
-/// Number of property cache misses
-ulong numMapPropMisses = 0;
-*/
+/// Number of version cache updates
+ulong numDefShapeUpd = 0;
 
-/// Number of slow property lookups
-ulong numGetPropSlow = 0;
+/// Number of host property lookups
+ulong numSetPropHost = 0;
 
 /// Number of heap allocations
 ulong numHeapAllocs = 0;
@@ -211,9 +209,9 @@ static ~this()
 
         //writefln("num moves: %s", numMoves);
 
-        //writefln("num map_prop_idx: %s", numMapPropIdx);
-        //writefln("num prop cache misses: %s", numMapPropMisses);
-        writefln("num get prop slow: %s", numGetPropSlow);
+        writefln("num def shape host: %s", numDefShapeHost);
+        writefln("num def shape update: %s", numDefShapeUpd);
+        writefln("num set prop host: %s", numSetPropHost);
         writefln("num heap allocs: %s", numHeapAllocs);
 
         writefln("num call: %s", numCall);

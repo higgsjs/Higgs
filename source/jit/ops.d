@@ -3128,6 +3128,9 @@ void gen_shape_get_def(
         refptr strPtr
     )
     {
+        // Increment the def shape host stat
+        ++stats.numDefShapeHost;
+
         // Get a temporary slice on the JS string characters
         auto propStr = tempWStr(strPtr);
 
@@ -3151,6 +3154,9 @@ void gen_shape_get_def(
     )
     {
         //writeln("entering updateCache");
+
+        // Increment the def shape update stat
+        ++stats.numDefShapeUpd;
 
         auto vm = ver.block.fun.vm;
         auto as = vm.execHeap;
@@ -3352,7 +3358,7 @@ void gen_shape_get_def(
     }
 
     // If the property name is a known constant string
-    else if (propName !is null && instr.block.fun.isPrim is false)
+    else if (propName !is null && instr.block.fun.isPrim)
     {
         // Get the object operand
         auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
@@ -3491,8 +3497,8 @@ void gen_shape_set_prop(
 {
     extern (C) static void op_shape_set_prop(VM vm, IRInstr instr)
     {
-        // Increment the slow get prop stat
-        ++stats.numGetPropSlow;
+        // Increment the host get prop stat
+        ++stats.numSetPropHost;
 
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
@@ -4001,7 +4007,7 @@ void gen_set_global(
 
         auto valPair = vm.getArgVal(instr, 1);
 
-        // Set the property, or get the getter-setter object
+        // Set the property value
         setProp(
             vm,
             vm.globalObj,

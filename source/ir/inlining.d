@@ -165,6 +165,7 @@ void inlinePass(VM vm, IRFunction caller)
             && !name.startsWith("$rt_setArrElemNoCheck")
             && !name.startsWith("$rt_ctorNewThis")
             && !name.startsWith("$rt_getGlobalInl")
+            && !name.startsWith("$rt_setGlobalInl")
         )
             continue;
 

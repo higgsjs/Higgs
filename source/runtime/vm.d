@@ -673,10 +673,10 @@ class VM
         if (loadRuntime)
         {
             // Load the layout code
-            load("runtime/layout.js");
+            load("runtime/layout.js", true);
 
             // Load the runtime library
-            load("runtime/runtime.js");
+            load("runtime/runtime.js", true);
         }
 
         // If the standard library should be loaded
@@ -1123,7 +1123,7 @@ class VM
     */
     ValuePair exec(FunExpr fun)
     {
-        auto ir = astToIR(this, fun);
+        auto ir = astToIR(this, fun, null);
         return exec(ir);
     }
 
@@ -1146,11 +1146,11 @@ class VM
     /**
     Parse and execute a source file
     */
-    ValuePair load(string fileName)
+    ValuePair load(string fileName, bool isRuntime = false)
     {
         //writeln("load(", fileName, ")");
         auto file = getLoadPath(fileName);
-        auto ast = parseFile(file);
+        auto ast = parseFile(file, isRuntime);
         return exec(ast);
     }
 

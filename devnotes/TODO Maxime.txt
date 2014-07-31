@@ -52,13 +52,6 @@ FIXME: date-format-tofte
 
 TODO: look at eval notes again
 
-TODO: convert arrays and closures to a shaperer model??
-- __arrtbl__
-- __arrlen__
-- closures need that "prototype" property?
-- for fns, useful to have a shape that includes the fptr! __fptr__
-- need clos cell vals, __clos_cell_0__ ...
-
 ------------------------------------------------------------------------------
 
 Paper TODO:
@@ -95,6 +88,7 @@ Differences with tracing:
 
 <francois__> BTW, they say your approach is like tracing.. But it's the execution of the program itself doing the tracing in your approach, in a way.. There's no
 <francois__> "recording" of traces
+Marc says: quantify/explain infrastructure to implement tracing as in other paper(s)
 
 What is our thesis, in one sentence? See Olin Shiver's advice
 http://www.ccs.neu.edu/home/shivers/diss-advice.html
@@ -147,23 +141,6 @@ TODO: quick spreadsheet app? highlighted squares
 - start with edit only
 - use monospace font
 
-TODO: add test for global setter
-- in tests/01-stdlib/global.js
-
-TODO: need a $rt_setGlobal
-- Use IR instr for basic bootstrap only
-  - in IR/ast, define a setGlobal function
-    - IRFunction.isRuntime?
-- How does this affect test time?
-
-TODO: global obj shape tracking, get_global_obj is limiting
-- Separate IR value every time! Different value in valMap
-- Would ideally like some pseudo-function-argument?
-  - Then gets tracked in valMap
-- Could also be an entry phi node that isn't a function argument
-  - Pseudo-phi-node
-- Otherwise, optimize to share uses?
-
 TODO: const globals
 const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
 - Same structure as var decl
@@ -178,24 +155,84 @@ TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
 
+TODO: global obj shape tracking, get_global_obj is limiting
+- Separate IR value every time! Different value in valMap
+- Would ideally like some pseudo-function-argument?
+  - Then gets tracked in valMap
+- Could also be an entry phi node that isn't a function argument
+  - Pseudo-phi-node
+- Otherwise, optimize to share uses?
+- Inlining has to be taken into account ***
+
 TODO: optimize ne_rawptr for shape
 ./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
 FIXME: add knownShape flag to ValType?
 - Right now, if defShape is null, can't count on that info. Is this a problem?
 - Could also use rawptr type tag for null values, make shapes never null?
 
+TODO: shape_init_empty(obj)
+- currently, setting shape through runtime call
+- lose empty shape of object
+- get rid of ir_shape_empty
+
+
+*** Go Max, makes Higgs fast, bring shapes to master! ***
+
+TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+- Test speed
+
+TODO: how many prop caches get generated vs propagated?
+
+NOTE: improving global obj analysis would probably reduce code size...
+- Gather metrics to verify idea
+- How many generated caches are from getGlobal?
+
+TODO: shape dispatch, missing soft spills
+
+TODO: investigate why 3d-raytrace has 81703 def shape host calls
+- log prop names
+
+TODO: add test for global setter
+- in tests/01-stdlib/global.js
+
 TODO: e-mail lazy BBV paper to Erick, Vincent
 
-Meeting:
+TODO: optimize shape_set_prop for prop rewrites
+./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
+- seems to affect bitwise-and? verify
+num def shape host: 3600004
+num def shape update: 3
+num set prop host: 1200003
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: need a $rt_setGlobal
+- Use IR instr for basic bootstrap only
+  - in IR/ast, define a setGlobal function
+    - IRFunction.isPrim && isUnit?
+- How does this affect test time?
+
+[DONE] Meeting:
 - Thought about paper further
   - Motivation/thesis, Olin Shiver's advice
   - Contrasting with tracing
-- Can you create a repo for CGO2014? ***
+- Can you create a repo for CGO2015
 - Getters and setters working
 - Turing Turtle, for fun
 - Started integrating typed shapes into BBV
 - Implemented shape_get_def, version cache
   - Initially had lookup loop, now cache as code, code patching
+- Tried microbenchmark
+  - More than 2x faster on prop read loop
+  - Not fully optimized yet
 - objGetProp and getProto have many many shapes passing through
   - version limit gets hit often
   - Disabled version cache for uninlined runtime functions
@@ -204,30 +241,61 @@ Meeting:
   - earley-boyer is rather problematic... scheme implementation in
 - May want to use a profiling phase, or regenerate the version cache periodically
   - Useless to generate a specialized code path for something that occurs only once
-- Tried microbenchmark
-- Looked at machine code
+  - May want to not generate any optimized versions until hit sufficiently often
+    - But this implies a default version must exist
+    - May not impact i-cache much, default may stop being used once specialized
+    - Eventually, code compaction
+    - Warrants further study
+- Global object, pseudo-argument?
 
-*** Go Max, makes Higgs fast, bring shapes to master! ***
+[DONE] FIXME: bitwise-and is way slower... analyze this! ***
+./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
+num def shape host: 3
+num def shape update: 4
+num set prop host: 0
+- Many prop rewrites that are slow/unoptimized??? no
+- SET_GLOBAL is quite effing slow....
 
-TODO: shape_init_empty(obj)
-- currently, setting shape through runtime call
-- lose empty shape of object
-- get rid of ir_shape_empty
+[DONE] TODO: check how common def_shape fallback calls are
+- numDefShapeHost
+    num def shape host: 81703 *****
+    look at bitwise-and, see what's up
+- Also add a stat for def shape update
+    num def shape update: 1517
 
-TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
-./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
-- Test speed
+[DONE] TODO: compare ./benchmark.py with master
+- Similar trail off of versions... but more blocks reported
+  - Due to setProp inlining? Could also be getGlobal!
+- Every benchmark slower, even bitwise-and, which is suspicious
 
-TODO: optimize shape_set_prop for prop rewrites
-
-TODO: check how common def_shape fallback calls are
-- numDefShapeSlow
-
-TODO: compare stats for 3d-raytrace with master
-
-
-
-
+[DONE] TODO: compare stats for 3d-raytrace with master
+dev-maxime:
+    comp time (ms): 594
+    exec time (ms): 257
+    code size (bytes): 727816
+    num blocks: 7277
+    num versions: 9041
+    max versions: 10
+    num get prop slow: 205
+    num heap allocs: 33733
+    num call: 79571
+    $rt_toPrim: 58194
+master:
+    comp time (ms): 347
+    exec time (ms): 118
+    code size (bytes): 566875
+    num blocks: 4525
+    num versions: 5536
+    max versions: 8
+    num map_prop_idx: 610727
+    num prop cache misses: 178
+    num prop slow lookups: 11863
+    num call: 76070
+    $rt_toPrim: 58194
+- Sams number of prim calls, good
+- Almost twice as many versions generated
+- Code size significantly larger
+- Comp time significantly longer
 
 [DONE] TODO: reimplement getPropMethod
 

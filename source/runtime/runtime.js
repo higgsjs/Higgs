@@ -2530,6 +2530,28 @@ function $rt_setPropElem(base, prop, val)
 }
 
 /**
+Inlined version of setGlobal
+*/
+function $rt_setGlobalInl(propStr, val)
+{
+    var obj = $ir_get_global_obj();
+
+    // Find the index for this property
+    var defShape = $ir_shape_get_def(obj, propStr);
+
+    // If the property is a getter-setter function
+    if (!$ir_shape_is_getset(defShape))
+    {
+        // Set the property value
+        $ir_shape_set_prop(obj, propStr, defShape, val);
+
+        return;
+    }
+
+    $rt_objSetProp(obj, propStr, val)
+}
+
+/**
 JS delete operator
 */
 function $rt_delProp(base, prop)

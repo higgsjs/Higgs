@@ -69,16 +69,20 @@ class ASTProgram : FunExpr
     /// List of global variable declarations
     IdentExpr[] globals;
 
-    this(ASTStmt[] stmts, SrcPos pos = null)
+    /// Runtime flag
+    const bool isRuntime;
+
+    this(ASTStmt[] stmts, SrcPos pos = null, bool isRuntime = false)
     {
         super(null, [], new BlockStmt(stmts), pos);
+        this.isRuntime = isRuntime;
     }
 
     override string toString()
     {
         auto blockStmt = cast(BlockStmt)bodyStmt;
         auto stmts = blockStmt.stmts;
-        
+
         if(stmts.length == 0)
             return "";
 

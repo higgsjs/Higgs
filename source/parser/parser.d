@@ -143,29 +143,29 @@ IdentExpr readIdent(TokenStream input)
 /**
 Parse a source file
 */
-ASTProgram parseFile(string fileName)
+ASTProgram parseFile(string fileName, bool isRuntime = false)
 {
     string src = readText!(string)(fileName);
-    return parseString(src, fileName);
+    return parseString(src, fileName, isRuntime);
 }
 
 /**
 Parse a source string
 */
-ASTProgram parseString(string src, string fileName = "")
+ASTProgram parseString(string src, string fileName = "", bool isRuntime = false)
 {
     // Convert the string to UTF-16
     wstring wSrc = toUTF16(src);
 
     auto input = new TokenStream(wSrc, fileName);
 
-    return parseProgram(input);
+    return parseProgram(input, isRuntime);
 }
 
 /**
 Parse a top-level program node
 */
-ASTProgram parseProgram(TokenStream input)
+ASTProgram parseProgram(TokenStream input, bool isRuntime)
 {
     SrcPos pos = input.getPos();
 
@@ -178,7 +178,7 @@ ASTProgram parseProgram(TokenStream input)
     }
 
     // Create the AST program node
-    auto ast = new ASTProgram(stmtApp.data, pos);
+    auto ast = new ASTProgram(stmtApp.data, pos, isRuntime);
 
     // Transform single expression statements into return statements
     void makeReturn(ASTStmt stmt)

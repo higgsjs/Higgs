@@ -363,7 +363,11 @@ class IRGenCtx
 /**
 Compile an AST program or function into an IR function
 */
-IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
+IRFunction astToIR(
+    VM vm,
+    FunExpr ast,
+    IRFunction fun = null
+)
 {
     assert (
         cast(FunExpr)ast || cast(ASTProgram)ast,
@@ -426,7 +430,7 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
         foreach (ident; unit.globals)
         {
             bodyCtx.addInstr(new IRInstr(
-                &SET_GLOBAL, 
+                &SET_GLOBAL,
                 new IRString(ident.name),
                 IRConst.undefCst
             ));
@@ -549,7 +553,10 @@ IRFunction astToIR(VM vm, FunExpr ast, IRFunction fun = null)
     foreach (funDecl; ast.funDecls)
     {
         // Create an IR function object for the function
-        auto subFun = new IRFunction(vm, funDecl);
+        auto subFun = new IRFunction(
+            vm,
+            funDecl
+        );
 
         // Store the binding for the function
         assgToIR(
@@ -1332,7 +1339,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         if (countUntil(ctx.fun.ast.funDecls, funExpr) == -1)
         {
             // Create an IR function object for the function
-            auto fun = new IRFunction(ctx.fun.vm, funExpr);
+            auto fun = new IRFunction(
+                ctx.fun.vm,
+                funExpr
+            );
 
             // Create a closure of this function
             auto newClos = ctx.addInstr(new IRInstr(
@@ -2306,12 +2316,31 @@ IRValue assgToIR(
         {
             //writefln("assigning to global: %s", identExpr);
 
-            // Set the global value
-            ctx.addInstr(new IRInstr(
-                &SET_GLOBAL,
-                new IRString(identExpr.name),
-                rhsVal
-            ));
+            // If we are in a runtime unit
+            if (auto unit = cast(ASTProgram)ctx.fun.ast)
+            {
+                if (unit.isRuntime)
+                {
+                    // Set the global value using the special set_global instruction
+                    // Note: this is necessary to bootstrap the system as the setGlobal
+                    // function is not yet defined while the runtime is being initialized
+                    ctx.addInstr(new IRInstr(
+                        &SET_GLOBAL,
+                        new IRString(identExpr.name),
+                        rhsVal
+                    ));
+
+                    return rhsVal;
+                }
+            }
+
+            // Use the setGlobal primitive function.
+            genRtCall(
+                ctx,
+                "setGlobalInl",
+                [ctx.strVal(identExpr.name), rhsVal],
+                lhsExpr.pos
+            );
         }
 
         // If the variable is captured or escaping
