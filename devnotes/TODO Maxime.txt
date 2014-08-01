@@ -175,7 +175,6 @@ TODO: shape_init_empty(obj)
 - lose empty shape of object
 - get rid of ir_shape_empty
 
-
 *** Go Max, makes Higgs fast, bring shapes to master! ***
 
 TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
@@ -190,17 +189,23 @@ NOTE: improving global obj analysis would probably reduce code size...
 
 TODO: shape dispatch, missing soft spills
 
-TODO: investigate why 3d-raytrace has 81703 def shape host calls
+TODO: investigate why 3d-raytrace has 119877 def shape host calls
 - log prop names
+- Many calls to getProto? all unoptimized, must be very slow
+- shape_get_def cannot produce a shape for getProto when not inlined...
+- could have specialized shape_get_proto
+  - would at least be fast when obj shape unknown
+- verify who makes all these getProto calls... 
+  - getProto currently not inlined, even in getPropMethod
 
 TODO: add test for global setter
 - in tests/01-stdlib/global.js
 
 TODO: e-mail lazy BBV paper to Erick, Vincent
 
-TODO: optimize shape_set_prop for prop rewrites
-make; ./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
-- seems to affect bitwise-and? verify
+FIXME: exec time for bitwise-and still 40ms, look at machine code
+- exec time for nothing is 1ms
+- test exec time for setting a few global props?
 
 
 
@@ -209,8 +214,10 @@ make; ./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
 
 
 
+[DONE] TODO: optimize shape_set_prop for prop rewrites, affects bitwise-and
+- Need to handle ext table for global vars
 
-
+[DONE] TODO: shape.isWritable
 
 [DONE] TODO: need a $rt_setGlobal
 - Use IR instr for basic bootstrap only

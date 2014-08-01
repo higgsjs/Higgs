@@ -3529,28 +3529,49 @@ void gen_shape_set_prop(
 
     // If the defining shape is known
     // We are overwriting an existing property of this object
-    if (defShape !is null)
+    if (defShape !is null && defShape.isWritable)
     {
         // TODO
         // TODO: handle type mismatches with defShape
         // TODO
 
-        //writeln("prop redef");
+        //writeln("prop redef, slotIdx=", defShape.slotIdx);
 
-        // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
 
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
+        auto typeOpnd = st.getTypeOpnd(as, instr, 3);
 
-        as.saveJITRegs();
+        // Move the object operand into r0
+        as.mov(scrRegs[0].opnd, objOpnd);
 
-        // Call the host function
-        as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-        as.ptr(cargRegs[1], instr);
-        as.ptr(scrRegs[0], &op_shape_set_prop);
-        as.call(scrRegs[0]);
+        // Get the object capacity into r1
+        as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
 
-        as.loadJITRegs();
+        auto slotIdx = defShape.slotIdx;
+
+        // If we can't guarantee that the slot index is within capacity,
+        // generate the extension table code
+        if (slotIdx >= OBJ_MIN_CAP)
+        {
+            // If the slot index is below capacity, skip the ext table code
+            as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
+            as.jg(Label.SKIP);
+
+            // Get the ext table pointer into r0
+            as.getField(scrRegs[0], scrRegs[0], obj_ofs_next(null));
+
+            // Get the ext table capacity into r1
+            as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
+
+            as.label(Label.SKIP);
+        }
+
+        // Set the word and type values
+        auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * slotIdx);
+        as.genMove(wordMem, valOpnd);
+        auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + slotIdx, 8, scrRegs[1]);
+        as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
 
         return;
     }
@@ -3583,8 +3604,7 @@ void gen_shape_set_prop(
 
         // If the property is writable and the slot index is
         // within the guaranteed object capacity
-        if ((defShape.attrs & ATTR_WRITABLE) &&
-            (slotIdx < OBJ_MIN_CAP))
+        if (defShape.isWritable && slotIdx < OBJ_MIN_CAP)
         {
             auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
             assert (objOpnd.isReg);

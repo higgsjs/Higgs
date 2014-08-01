@@ -140,6 +140,21 @@ void incStatCnt(CodeBlock as, ulong* pCntVar, X86Reg scrReg, ulong incVal = 1)
     as.add(X86Opnd(8 * ulong.sizeof, scrReg), X86Opnd(incVal));
 }
 
+void genMove(CodeBlock as, X86Opnd dst, X86Opnd src, X86Opnd tmpReg = X86Opnd.NONE)
+{
+    if (dst.isMem && src.isMem)
+    {
+        assert (tmpReg.isReg);
+        auto tmpOpnd = tmpReg.reg.opnd(src.mem.size);
+        as.mov(tmpOpnd, src);
+        as.mov(dst, tmpOpnd);
+    }
+    else
+    {
+        as.mov(dst, src);
+    }
+}
+
 void getField(CodeBlock as, X86Reg dstReg, X86Reg baseReg, size_t fOffset)
 {
     assert (dstReg.type is X86Reg.GP);
