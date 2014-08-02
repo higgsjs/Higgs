@@ -1923,7 +1923,7 @@ function $rt_objGetProp(obj, propStr)
 {
     // Find the defining shape for this property
     // This shifts us to a different version where the obj shape is known
-    // Implements a "version cache" with dynamic dispatching
+    // Implements a dynamic shape dispatch mechanism
     var defShape = $ir_shape_get_def(obj, propStr);
 
     // If the property is defined on the object
@@ -2190,7 +2190,7 @@ function $rt_getGlobal(obj, propStr)
 {
     // Find the defining shape for this property
     // This shifts us to a different version where the obj shape is known
-    // Implements a "version cache" with dynamic dispatching
+    // Implements a dynamic shape dispatch mechanism
     var defShape = $ir_shape_get_def(obj, propStr);
 
     // If the property is defined on the object
@@ -2242,7 +2242,7 @@ function $rt_getGlobalInl(propStr)
 
     // Find the index for this property
     // This shifts us to a different version where the obj shape is known
-    // Implements a "version cache" with dynamic dispatching
+    // Implements a dynamic shape dispatch mechanism
     var defShape = $ir_shape_get_def(obj, propStr);
 
     // If the property is defined on the object

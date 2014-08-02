@@ -300,29 +300,39 @@ void loadJITRegs(CodeBlock as)
 /// Save the allocatable registers to the VM register save space
 void saveAllocRegs(CodeBlock as)
 {
-    as.getMember!("VM.regSave")(scrRegs[1], vmReg);
+    as.push(scrRegs[0]);
+
+    as.getMember!("VM.regSave")(scrRegs[0], vmReg);
+
     foreach (uint regIdx, reg; allocRegs)
     {
         //as.printStr("save " ~ reg.toString);
         //as.printUint(reg.opnd);
 
-        auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
+        auto memOpnd = X86Opnd(64, scrRegs[0], 8 * regIdx);
         as.mov(memOpnd, reg.opnd);
     }
+
+    as.pop(scrRegs[0]);
 }
 
 /// Restore the allocatable registers from the VM register save space
 void loadAllocRegs(CodeBlock as)
 {
-    as.getMember!("VM.regSave")(scrRegs[1], vmReg);
+    as.push(scrRegs[0]);
+
+    as.getMember!("VM.regSave")(scrRegs[0], vmReg);
+
     foreach (uint regIdx, reg; allocRegs)
     {
-        auto memOpnd = X86Opnd(64, scrRegs[1], 8 * regIdx);
+        auto memOpnd = X86Opnd(64, scrRegs[0], 8 * regIdx);
         as.mov(reg.opnd, memOpnd);
 
         //as.printStr("restore " ~ reg.toString);
         //as.printUint(reg.opnd);
     }
+
+    as.pop(scrRegs[0]);
 }
 
 /// Save caller-save registers on the stack before a C call

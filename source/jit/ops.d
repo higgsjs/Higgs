@@ -3112,7 +3112,7 @@ void gen_shape_empty(
 /// Inputs: obj, propName
 /// Find the defining shape for this property
 /// This shifts us to a different version where the obj shape is known
-/// Implements a "version cache" with dynamic dispatching
+/// Implements a dynamic shape dispatch mechanism
 void gen_shape_get_def(
     BlockVersion ver,
     CodeGenState st,
@@ -3171,10 +3171,27 @@ void gen_shape_get_def(
         assert (objShape !is null, "objShape is null");
         auto defShape = objShape.getDefShape(propName);
 
-        // If the version cache is not yet full
+        // Get the state at the shape dispatch instruction
+        auto extInfo = cast(ShapeDispInfo)ver.extInfo;
+        assert (extInfo !is null);
+        auto instrSt = extInfo.instrSt;
+
+        // If the inline cache is not yet full
         if (ver.targets.length < NUM_CACHE_ENTRIES + 1)
         {
             //writeln("compiling new version");
+
+            // Stop recording execution time, start recording compilation time
+            stats.execTimeStop();
+            stats.compTimeStart();
+
+            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
+            {
+                return liveInfo.liveBefore(val, instr);
+            };
+
+            // Spill the saved registers
+            instrSt.spillSavedRegs(spillTest);
 
             // Get the default version state
             assert (ver.targets[0] !is null);
@@ -3211,7 +3228,7 @@ void gen_shape_get_def(
             auto curPos = as.getWritePos();
             as.setWritePos(cachePos);
 
-            // Rewrite the version cache
+            // Rewrite the inline cache
             // For each existing version
             for (uint targetIdx = 1; targetIdx < ver.targets.length; ++targetIdx)
             {
@@ -3236,9 +3253,16 @@ void gen_shape_get_def(
 
             // Compile the new version and link references
             vm.compile(instr);
+
+            // Reload the saved registers
+            instrSt.loadSavedRegs(spillTest);
+
+            // Stop recording compilation time, resume recording execution time
+            stats.compTimeStop();
+            stats.execTimeStart();
         }
 
-        // If the version cache is exactly at capacity
+        // If the inline cache is exactly at capacity
         // and the default version was not yet compiled
         else if (
             ver.targets.length == NUM_CACHE_ENTRIES + 1 &&
@@ -3246,6 +3270,18 @@ void gen_shape_get_def(
         )
         {
             //writeln("cache at capacity ***");
+
+            // Stop recording execution time, start recording compilation time
+            stats.execTimeStop();
+            stats.compTimeStart();
+
+            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
+            {
+                return liveInfo.liveBefore(val, instr);
+            };
+
+            // Spill the saved registers
+            instrSt.spillSavedRegs(spillTest);
 
             // Queue the default version for compilation
             vm.queue(ver.targets[0]);
@@ -3261,6 +3297,13 @@ void gen_shape_get_def(
 
             // Compile the default version and link references
             vm.compile(instr);
+
+            // Reload the saved registers
+            instrSt.loadSavedRegs(spillTest);
+
+            // Stop recording compilation time, resume recording execution time
+            stats.compTimeStop();
+            stats.execTimeStart();
         }
 
         //writeln("leaving updateCache");
@@ -3280,12 +3323,11 @@ void gen_shape_get_def(
         auto as = vm.subsHeap;
         vm.defShapeSub = as.getAddress(as.getWritePos);
 
-        // Save the JIT and alloc registers
+        // Save the allocatable registers
+        as.saveAllocRegs();
+
+        // Save the JIT registers
         as.saveJITRegs();
-        foreach (reg; allocRegs)
-            as.push(reg);
-        if (allocRegs.length % 2 != 0)
-            as.push(allocRegs[0]);
 
         // Set the argument registers
         as.mov(cargRegs[0], scrRegs[0]);
@@ -3296,12 +3338,11 @@ void gen_shape_get_def(
         as.ptr(scrRegs[0], &updateCache);
         as.call(scrRegs[0].opnd);
 
-        // Restore the scratch, JIT and alloc registers
-        if (allocRegs.length % 2 != 0)
-            as.pop(allocRegs[0]);
-        foreach_reverse (reg; allocRegs)
-            as.pop(reg);
+        // Restore the JIT registers
         as.loadJITRegs();
+
+        // Restore the allocatable registers
+        as.loadAllocRegs();
 
         // Return to the point of call
         as.ret();
@@ -3320,6 +3361,8 @@ void gen_shape_get_def(
     // If the object shape and the property name are both known
     if (objShape !is null && propName !is null)
     {
+        //as.printStr("shape known");
+
         // Get the output operand
         auto outOpnd = st.getOutOpnd(as, instr, 64);
         assert (outOpnd.isReg);
@@ -3360,6 +3403,11 @@ void gen_shape_get_def(
     // If the property name is a known constant string
     else if (propName !is null && instr.block.fun.isPrim is false)
     {
+        // Create an extended info object for the shape dispatch
+        auto extInfo = new ShapeDispInfo();
+        assert (ver.extInfo is null);
+        ver.extInfo = extInfo;
+
         // Get the object operand
         auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
         assert (opnd0.isReg);
@@ -3399,6 +3447,9 @@ void gen_shape_get_def(
             as.writeInt(0xFFFFFFFF, 32);
         }
 
+        // Store a copy of the state at the shape dispatch instruction
+        extInfo.instrSt = new CodeGenState(st);
+
         // Call the fallback sub to update the inline cache
         // r0 = block version
         // r1 = shape pointer
@@ -3414,7 +3465,7 @@ void gen_shape_get_def(
 
         // Do another inline cache lookup now that the cache is updated
         // Note: this jump will be overwritten to jump to the default
-        // version once the version cache is full
+        // version once the inline cache is full
         as.jmp(Label.RETRY);
 
         // Generate a branch for the default successor
@@ -3436,6 +3487,8 @@ void gen_shape_get_def(
     // The property name is unknown
     else
     {
+        //as.printStr("prop name unknown");
+
         // Spill the values live before this instruction
         st.spillLiveBefore(as, instr);
 

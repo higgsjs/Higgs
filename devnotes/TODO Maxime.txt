@@ -187,8 +187,6 @@ NOTE: improving global obj analysis would probably reduce code size...
 - Gather metrics to verify idea
 - How many generated caches are from getGlobal?
 
-TODO: shape dispatch, missing soft spills
-
 TODO: investigate why 3d-raytrace has 119877 def shape host calls
 - log prop names
 - Many calls to getProto? all unoptimized, must be very slow
@@ -198,14 +196,20 @@ TODO: investigate why 3d-raytrace has 119877 def shape host calls
 - verify who makes all these getProto calls... 
   - getProto currently not inlined, even in getPropMethod
 
-TODO: add test for global setter
-- in tests/01-stdlib/global.js
-
 TODO: e-mail lazy BBV paper to Erick, Vincent
+
+FIXME: tagcloud benchmark segfaults
+- Is this GC related?
+- Missing soft spills...
 
 FIXME: exec time for bitwise-and still 40ms, look at machine code
 - exec time for nothing is 1ms
-- test exec time for setting a few global props?
+- Compile-time accounting
+  - nope
+- test exec time for setting a few global props once?
+
+TODO: add test for global setter
+- in tests/01-stdlib/global.js
 
 
 
@@ -213,6 +217,18 @@ FIXME: exec time for bitwise-and still 40ms, look at machine code
 
 
 
+[DONE] TODO: shape dispatch, missing soft spills
+- causes bug, Higgs fails to init
+  - very confusing, values and CodeGenState should be unaffected
+  - missing saveAllocRegs/loadAllocRegs
+- regs saved/restored properly, but segfault...
+  - potentially spilling the wrong values?
+- opnd0 is not spilled...
+- in instr st, opnd0 not mapped to a reg, wtf
+
+[DONE] FIXME: passing the CodeGenState to the host fn is problematic
+- No live ref... It's a copy of the ver state
+- implement ext info pointer
 
 [DONE] TODO: optimize shape_set_prop for prop rewrites, affects bitwise-and
 - Need to handle ext table for global vars
