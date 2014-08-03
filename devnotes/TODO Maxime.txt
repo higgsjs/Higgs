@@ -203,19 +203,20 @@ FIXME: tagcloud benchmark segfaults
 - Missing soft spills...
 
 FIXME: exec time for bitwise-and still 40ms, look at machine code
+./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
 - exec time for nothing is 1ms
-- Compile-time accounting
-  - nope
 - test exec time for setting a few global props once?
 
-TODO: add test for global setter
+
+
+
+
+
+
+
+
+[DONE] TODO: add test for global setter
 - in tests/01-stdlib/global.js
-
-
-
-
-
-
 
 [DONE] TODO: shape dispatch, missing soft spills
 - causes bug, Higgs fails to init

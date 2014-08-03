@@ -30,5 +30,8 @@ assert (getter === 5);
 getter = 6;
 assert (getter === 5);
 
-// TODO: test Global setter property
+// Global setter property
+Object.defineProperty(this, 'setter', {set : function(v) { k = v; }});
+setter = 777;
+assert (k === 777);
 
