@@ -169,6 +169,7 @@ TODO: optimize ne_rawptr for shape
 FIXME: add knownShape flag to ValType?
 - Right now, if defShape is null, can't count on that info. Is this a problem?
 - Could also use rawptr type tag for null values, make shapes never null?
+- With a type tag, could optimize shape_is_getset better
 
 TODO: shape_init_empty(obj)
 - currently, setting shape through runtime call
@@ -177,15 +178,12 @@ TODO: shape_init_empty(obj)
 
 *** Go Max, makes Higgs fast, bring shapes to master! ***
 
-TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
-./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
-- Test speed
-
 TODO: how many prop caches get generated vs propagated?
 
 NOTE: improving global obj analysis would probably reduce code size...
+- Affects bitops bitwise-and
 - Gather metrics to verify idea
-- How many generated caches are from getGlobal?
+- How many generated caches are from getGlobal? ***
 
 TODO: investigate why 3d-raytrace has 119877 def shape host calls
 - log prop names
@@ -202,18 +200,30 @@ FIXME: tagcloud benchmark segfaults
 - Is this GC related?
 - Missing soft spills...
 
-FIXME: exec time for bitwise-and still 40ms, look at machine code
+TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
 ./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
-- exec time for nothing is 1ms
+- Test speed
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: exec time for bitwise-and still 40ms, look at machine code
+./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
+- exec time for nothing is 1ms, bitwise-and is 25ms
 - test exec time for setting a few global props once?
+- shape_is_getset is unoptimized! done
+- shape_set_prop and shape_get_prop are optimized, but we generate the full
+  shape_get_def inline cache every time!
+- Problem is it's a global variable!
+  - Distinct value with $ir_get_global_obj every time
 
-
-
-
-
-
-
-
+[DONE] TODO: optimize shape_is_getset for known shape
 
 [DONE] TODO: add test for global setter
 - in tests/01-stdlib/global.js

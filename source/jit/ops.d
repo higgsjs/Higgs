@@ -4039,29 +4039,46 @@ void gen_shape_is_getset(
     CodeBlock as
 )
 {
-    extern (C) static Word op_shape_is_getset(ObjShape shape)
+    // Get the shape, may be unknown
+    auto defShape = st.getShape(cast(IRDstValue)instr.getArg(0));
+
+    // If the shape is known
+    if (defShape !is null)
     {
-        return (shape !is null && shape.isGetSet)? TRUE.word:FALSE.word;
+        auto outOpnd = st.getOutOpnd(as, instr, 8);
+
+        auto intVal = (defShape.isGetSet? TRUE:FALSE).word.int8Val;
+        as.mov(outOpnd, X86Opnd(intVal));
+
+        st.setOutType(as, instr, Type.CONST);
     }
+    else
+    {
+        extern (C) static Word op_shape_is_getset(ObjShape shape)
+        {
+            return (shape !is null && shape.isGetSet)? TRUE.word:FALSE.word;
+        }
 
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
 
-    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 8);
+        auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+        auto outOpnd = st.getOutOpnd(as, instr, 8);
 
-    as.saveJITRegs();
+        as.saveJITRegs();
 
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), shapeOpnd);
-    as.ptr(scrRegs[0], &op_shape_is_getset);
-    as.call(scrRegs[0]);
+        // Call the host function
+        as.mov(cargRegs[0].opnd(64), shapeOpnd);
+        as.ptr(scrRegs[0], &op_shape_is_getset);
+        as.call(scrRegs[0]);
 
-    // Set the output value
-    as.mov(outOpnd, cretReg.opnd(8));
-    st.setOutType(as, instr, Type.CONST);
+        as.loadJITRegs();
 
-    as.loadJITRegs();
+        // Set the output value
+        as.mov(outOpnd, cretReg.opnd(8));
+
+        st.setOutType(as, instr, Type.CONST);
+    }
 }
 
 void gen_set_global(
