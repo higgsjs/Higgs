@@ -199,6 +199,7 @@ TODO: e-mail lazy BBV paper to Erick, Vincent
 
 Meeting:
 - Global setters working
+- Found and fixed latent GC bug
 - Optimized several shape ops
 - Exec time better, but still slower than before
   - Added stats to try and understand
@@ -207,7 +208,16 @@ Meeting:
   - Need to improve global obj tracking
 - May need to optimize proto access
 
-FIXME: tagcloud benchmark segfaults
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: tagcloud benchmark segfaults
 ./higgs benchmarks/sunspider/string-tagcloud.js
 - GC does execute
   (runtime/gc.d@435): gcForward: object not in from-space heap, ptr : 5
@@ -231,20 +241,7 @@ FIXME: tagcloud benchmark segfaults
 - Seems it's the return value that's not written !?
   - on our way returning from $rt_newObj
   - before compileCont, the return value is not written on the stack!
-  - should make a regression test for this *****
-
-
-if (instr.hasUses)
-{
-    as.setWord(instr.outSlot, retWordReg.opnd(64));
-    as.setType(instr.outSlot, retTypeReg.opnd(8));
-}
-
-
-
-
-
-
+  - should make a regression test for this
 
 [DONE] TODO: test shape_init_empty on obj alloc microbenchmark
 - create on master

@@ -2253,6 +2253,8 @@ void compile(VM vm, IRInstr curInstr)
         // If this is a call continuation stub
         else if (auto stub = cast(ContStub)frag)
         {
+            auto callInstr = stub.callVer.block.lastInstr;
+
             stub.markStart(as, vm);
 
             if (opts.jit_genasm)
@@ -2264,8 +2266,11 @@ void compile(VM vm, IRInstr curInstr)
             as.saveJITRegs();
 
             // Save the return value
-            as.push(retWordReg.reg(64));
-            as.push(retTypeReg.reg(64));
+            if (callInstr.hasUses)
+            {
+                as.setWord(callInstr.outSlot, retWordReg.opnd(64));
+                as.setType(callInstr.outSlot, retTypeReg.opnd(8));
+            }
 
             // The first argument is the stub object
             as.ptr(cargRegs[0], stub);
@@ -2275,11 +2280,14 @@ void compile(VM vm, IRInstr curInstr)
             as.ptr(scrRegs[0], compileFn);
             as.call(scrRegs[0]);
 
-            // Restore the return value
-            as.pop(retTypeReg.reg(64));
-            as.pop(retWordReg.reg(64));
-
             as.loadJITRegs();
+
+            // Restore the return value
+            if (callInstr.hasUses)
+            {
+                as.getWord(retWordReg.reg(64), callInstr.outSlot);
+                as.getType(retTypeReg.reg(8), callInstr.outSlot);
+            }
 
             // Jump to the compiled continuation
             as.jmp(X86Opnd(cretReg));
@@ -2288,7 +2296,7 @@ void compile(VM vm, IRInstr curInstr)
 
             // Set the return address entry for this stub
             vm.setRetEntry(
-                stub.callVer.block.lastInstr,
+                callInstr,
                 stub,
                 stub.callVer.targets[1]
             );
