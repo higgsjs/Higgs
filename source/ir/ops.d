@@ -295,8 +295,8 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 
-/// Allocate a new map object
-Opcode SHAPE_EMPTY = { "shape_empty", true, [], &gen_shape_empty };
+/// Initialize the shape of an object to the empty shape
+Opcode SHAPE_INIT_EMPTY = { "shape_init_empty", true, [OpArg.LOCAL], &gen_shape_init_empty, OpInfo.IMPURE };
 
 /// Get the shape defining a given property
 Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def, OpInfo.BRANCH };

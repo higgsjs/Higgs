@@ -232,6 +232,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     */
 
     writeln("entering gcCollect");
+    //writeln("curInstr: ", vm.curInstr);
 
     if (heapSize != 0)
         vm.heapSize = heapSize;
@@ -730,7 +731,8 @@ void visitStackRoots(VM vm)
             );
         }
 
-        //writeln("visiting frame for: ", fun.getName());
+        //writeln("visiting frame for: ", fun.getName(), " ", fun.ast.pos);
+        //writeln(fun);
         //writeln("frame size: ", frameSize);
         //writeln("\n", fun, "\n");
 
@@ -768,10 +770,12 @@ void visitStackRoots(VM vm)
         {
             // Forward the closure pointer
             // Note: the closure pointer is not type tagged
+            //writeln("forwarding clos val");
             auto closIdx = fun.closVal.outSlot;
             wsp[closIdx] = gcForward(vm, wsp[closIdx], Type.CLOSURE);
 
             // Forward the "this" pointer
+            //writeln("forwarding this val");
             forward(fun.thisVal.outSlot);
         }
 

@@ -63,10 +63,19 @@ ulong maxVersions = 0;
 /// Number of blocks with specific version counts
 ulong[ulong] numVerBlocks;
 
-/// Number of host version cache lookups
+/// Number of shape lookup instances
+ulong numDefShapeInsts = 0;
+
+/// Number of shape lookup instances on the global object
+ulong numDefShapeGlobal = 0;
+
+/// Number of shape lookup instances with a known shape
+ulong numDefShapeKnown = 0;
+
+/// Number of host version lookups
 ulong numDefShapeHost = 0;
 
-/// Number of version cache updates
+/// Number of version dispatch updates
 ulong numDefShapeUpd = 0;
 
 /// Number of host property lookups
@@ -122,13 +131,6 @@ private ulong execStartUsecs = 0;
 ulong getTimeUsecs()
 {
     return Clock.currAppTick().usecs();
-
-    /*
-    // User CPU time
-    rusage usage;
-    getrusage(RUSAGE_SELF, &usage);
-    return (usage.ru_utime.tv_sec * 1000000) + usage.ru_utime.tv_usec;
-    */
 }
 
 /// Start recording compilation time
@@ -208,6 +210,10 @@ static ~this()
         writefln("max versions: %s", maxVersions);
 
         //writefln("num moves: %s", numMoves);
+
+        writeln("num def shape insts: ", numDefShapeInsts);
+        writeln("num def shape global: ", numDefShapeGlobal);
+        writeln("num def shape known: ", numDefShapeKnown);
 
         writefln("num def shape host: %s", numDefShapeHost);
         writefln("num def shape update: %s", numDefShapeUpd);

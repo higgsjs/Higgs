@@ -1814,7 +1814,7 @@ function $rt_newObj(protoPtr)
     // Allocate the object
     var objPtr = $rt_obj_alloc($rt_OBJ_MIN_CAP);
 
-    $rt_obj_set_shape(objPtr, $ir_shape_empty());
+    $ir_shape_init_empty(objPtr);
 
     $rt_setProto(objPtr, protoPtr);
 
@@ -1833,7 +1833,7 @@ function $rt_newArr(protoPtr, numElems)
     var objPtr = $rt_arr_alloc($rt_OBJ_MIN_CAP);
 
     // Initialize the array object
-    $rt_obj_set_shape(objPtr, $ir_shape_empty());
+    $ir_shape_init_empty(objPtr);
     $rt_setProto(objPtr, protoPtr);
     $rt_arr_set_tbl(objPtr, tblPtr);
     $rt_arr_set_len(objPtr, numElems);
@@ -1851,7 +1851,7 @@ function $rt_newGetSet(get, set)
     // Allocate the object
     var objPtr = $rt_getset_alloc(2);
 
-    $rt_obj_set_shape(objPtr, $ir_shape_empty());
+    $ir_shape_init_empty(objPtr);
 
     objPtr.get = get;
     objPtr.set = set;

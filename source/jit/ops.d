@@ -3089,23 +3089,29 @@ void gen_map_prop_idx(
 }
 */
 
-/// Returns the empty shape
-void gen_shape_empty(
+/// Initializes an object to the empty shape
+/// Inputs: obj
+void gen_shape_init_empty(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto vm = st.fun.vm;
+    auto vm = ver.state.fun.vm;
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    // Get the object operand
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
+    assert (opnd0.isReg);
 
-    // TODO: optimize for reg out opnd
+    // Load the empty shape into r0
     as.getMember!("VM.emptyShape")(scrRegs[0], vmReg);
-    as.mov(outOpnd, scrRegs[0].opnd);
 
-    st.setOutType(as, instr, Type.SHAPEPTR, vm.emptyShape);
+    // Set the object shape
+    as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
+
+    // Propagate the object shape
+    st.setShape(cast(IRDstValue)instr.getArg(0), vm.emptyShape);
 }
 
 /// Returns the shape defining a property, null if undefined
@@ -3352,6 +3358,14 @@ void gen_shape_get_def(
         return vm.defShapeSub;
     }
 
+    // Increment the count of shape lookup instances
+    stats.numDefShapeInsts++;
+
+    // Increment the count of shape lookups for the global object
+    if (auto instr0Arg = cast(IRInstr)instr.getArg(0))
+        if (instr0Arg.opcode is &GET_GLOBAL_OBJ)
+            stats.numDefShapeGlobal++;
+
     // Get the object shape, may be unknown
     auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));
 
@@ -3361,6 +3375,9 @@ void gen_shape_get_def(
     // If the object shape and the property name are both known
     if (objShape !is null && propName !is null)
     {
+        // Increment the count of instances with a known shape
+        numDefShapeKnown++;
+
         //as.printStr("shape known");
 
         // Get the output operand

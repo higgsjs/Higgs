@@ -155,14 +155,7 @@ TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
 
-TODO: global obj shape tracking, get_global_obj is limiting
-- Separate IR value every time! Different value in valMap
-- Would ideally like some pseudo-function-argument?
-  - Then gets tracked in valMap
-- Could also be an entry phi node that isn't a function argument
-  - Pseudo-phi-node
-- Otherwise, optimize to share uses?
-- Inlining has to be taken into account ***
+*** Go Max, makes Higgs fast, bring shapes to master! ***
 
 TODO: optimize ne_rawptr for shape
 ./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
@@ -171,19 +164,11 @@ FIXME: add knownShape flag to ValType?
 - Could also use rawptr type tag for null values, make shapes never null?
 - With a type tag, could optimize shape_is_getset better
 
-TODO: shape_init_empty(obj)
-- currently, setting shape through runtime call
-- lose empty shape of object
-- get rid of ir_shape_empty
-
-*** Go Max, makes Higgs fast, bring shapes to master! ***
-
-TODO: how many prop caches get generated vs propagated?
-
-NOTE: improving global obj analysis would probably reduce code size...
-- Affects bitops bitwise-and
-- Gather metrics to verify idea
-- How many generated caches are from getGlobal? ***
+TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+    before: 21ms
+./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
+    before: 14ms
 
 TODO: investigate why 3d-raytrace has 119877 def shape host calls
 - log prop names
@@ -194,16 +179,66 @@ TODO: investigate why 3d-raytrace has 119877 def shape host calls
 - verify who makes all these getProto calls... 
   - getProto currently not inlined, even in getPropMethod
 
+TODO: global obj shape tracking, get_global_obj is limiting
+- Separate IR value every time! Different value in valMap
+- NOTE: improving global obj analysis would probably reduce code size...
+  - Affects bitops bitwise-and
+  - About 50% of shape lookups are on get_global_obj
+- Would ideally like some pseudo-function-argument?
+  - Then gets tracked in valMap
+- Could also be a phi node that isn't a function argument
+  - Pseudo-phi-node
+- Modify getWordOpnd?
+  - returns mem opnd on vmReg
+  - is loaded by getWordOpnd for arg
+
+TODO: initial commit in paper repo, change paper template
+- Check conf requirements, note
+
 TODO: e-mail lazy BBV paper to Erick, Vincent
 
+Meeting:
+- Global setters working
+- Optimized several shape ops
+- Exec time better, but still slower than before
+  - Added stats to try and understand
+- For now, global access slower than inline cache
+  - Some redundant ops unoptimized
+  - Need to improve global obj tracking
+- May need to optimize proto access
+
 FIXME: tagcloud benchmark segfaults
-- Is this GC related?
-- Missing soft spills...
+./higgs benchmarks/sunspider/string-tagcloud.js
+- GC does execute
+  (runtime/gc.d@435): gcForward: object not in from-space heap, ptr : 5
+- Find out what value this is
+  - in the stack roots
+  - trying to forward output of $rt_newObj
+  - crash in eval string
+- TODO: Try commenting out optimized shape paths
+  - not shape_get_def
+  - not shape_set_prop
+  - not shape_get_prop
+  - not shape_is_getset
+- TODO: log the failing eval function
+  - huge fn to parse JSON
+- TODO: what triggers the GC?
+  curInstr: $4834 = set_str "tag", <link:8457>
+  crashes during compilation of set_str *****
+  entered through compileCont...
+    normally, live values spilled before call...
+    but the pointer we have is wrong !?
+- Seems it's the return value that's not written !?
+  - on our way returning from $rt_newObj
+  - before compileCont, the return value is not written on the stack!
+  - should make a regression test for this *****
 
-TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
-./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
-./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
-- Test speed
+
+if (instr.hasUses)
+{
+    as.setWord(instr.outSlot, retWordReg.opnd(64));
+    as.setType(instr.outSlot, retTypeReg.opnd(8));
+}
 
 
 
@@ -211,7 +246,19 @@ TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
 
 
 
+[DONE] TODO: test shape_init_empty on obj alloc microbenchmark
+- create on master
+- shouldn't need to do dispatch in alloc loop
+- newObj is not inlined!
 
+[DONE] TODO: shape_init_empty(obj)
+- currently, setting shape through runtime call
+- lose empty shape of object
+- get rid of ir_shape_empty
+
+[DONE] TODO: check how many generated caches are from get_global_obj
+- About 50%
+- Most cache instances are not known
 
 [DONE] FIXME: exec time for bitwise-and still 40ms, look at machine code
 ./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
