@@ -178,6 +178,12 @@ TODO: investigate why 3d-raytrace has 119877 def shape host calls
 - verify who makes all these getProto calls... 
   - getProto currently not inlined, even in getPropMethod
 
+TODO: get rid of set_str? could have an IRStringVal?
+- Gets allocated during JIT comp
+- No more link idx for strings
+- Gets updated on GC
+  - Requires traversing fns to find refs, is this realistic?
+
 TODO: initial commit in paper repo, change paper template
 - Check conf requirements, note
 
@@ -196,6 +202,7 @@ TODO: e-mail lazy BBV paper to Erick, Vincent
 
 TODO: re-examine ASM for bitwise-and, probably still suboptimal
 ./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
+./higgs --jit_genasm --e "test.asmString()" bitwise-and.js
 
 
 
