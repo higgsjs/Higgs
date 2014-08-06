@@ -179,23 +179,8 @@ TODO: investigate why 3d-raytrace has 119877 def shape host calls
 - verify who makes all these getProto calls... 
   - getProto currently not inlined, even in getPropMethod
 
-TODO: global obj shape tracking, get_global_obj is limiting
-- Separate IR value every time! Different value in valMap
-- NOTE: improving global obj analysis would probably reduce code size...
-  - Affects bitops bitwise-and
-  - About 50% of shape lookups are on get_global_obj
-- Would ideally like some pseudo-function-argument?
-  - Then gets tracked in valMap
-- Could also be a phi node that isn't a function argument
-  - Pseudo-phi-node
-- Modify getWordOpnd?
-  - returns mem opnd on vmReg
-  - is loaded by getWordOpnd for arg
-
 TODO: initial commit in paper repo, change paper template
 - Check conf requirements, note
-
-TODO: e-mail lazy BBV paper to Erick, Vincent
 
 Meeting:
 - Global setters working
@@ -208,6 +193,32 @@ Meeting:
   - Need to improve global obj tracking
 - May need to optimize proto access
 
+TODO: e-mail lazy BBV paper to Erick, Vincent
+
+TODO: IRRawPtr, do we need that?
+
+TODO: global obj shape tracking, get_global_obj is limiting
+- Separate IR value every time! Different value in valMap
+- NOTE: improving global obj analysis would probably reduce code size...
+  - Affects bitops bitwise-and
+  - About 50% of shape lookups are on get_global_obj
+- Would ideally like some pseudo-function-argument?
+  - Then gets tracked in valMap
+- Could also be a phi node that isn't a function argument
+  - Pseudo-phi-node
+- Modify getWordOpnd?
+  - returns mem opnd on vmReg
+  - is loaded by getWordOpnd for arg
+- Inheriting from Param might prevent spilling
+  - But may require argidx?
+- need special IR value, $global?
+- Adding global_obj argument to fn entry breaks global querying...
+  - May be an issue with inlining?
+    - Can try logging the fn we are doing liveness analysis of?
+  - Problem is instr.block.fun, each fun needs its own global_obj ****
+  - IRFunction.globalVal
+
+TODO: replace all occurrences of $ir_get_global_obj() by $global
 
 
 
@@ -216,6 +227,13 @@ Meeting:
 
 
 
+
+[DONE] TODO: inspect IR for fn with global x + y
+- get_global_obj is duplicated!
+- Fixed issue with inlining duplicating get_global_obj
+- Performance on bitwise-and improved slightly
+
+[DONE] TODO: make test with $global used only in getGlobal
 
 [DONE] FIXME: tagcloud benchmark segfaults
 ./higgs benchmarks/sunspider/string-tagcloud.js

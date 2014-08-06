@@ -123,9 +123,15 @@ class LiveInfo
             val in valIdxs,
             "val not in liveness map: " ~ val.toString ~ " (" ~ val.idString ~ ")"
         );
+
         assert (
             afterInstr in locIdxs,
-            "cannot query for liveness at instr: " ~ afterInstr.toString()
+            "cannot query for liveness at instr:\n" ~
+            afterInstr.toString ~ "\n" ~
+            "in block:\n" ~
+            afterInstr.block.toString ~ "\n" ~
+            "in function:\n" ~
+            afterInstr.block.fun.getName
         );
 
         auto x = valIdxs[val];

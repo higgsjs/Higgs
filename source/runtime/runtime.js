@@ -2215,12 +2215,12 @@ function $rt_getGlobal(obj, propStr)
     // Get the object's prototype
     var proto = $rt_getProto(obj);
 
-    // If the prototype is null, the propert is not defined
+    // If the prototype is null, the property is not defined
     if ($ir_eq_refptr(proto, null))
     {
         var errStr = 'global property not defined: "' + propStr + '"';
 
-        if ($ir_get_global_obj().ReferenceError)
+        if (obj.ReferenceError)
             throw ReferenceError(errStr);
         else
             throw errStr;
@@ -2238,7 +2238,7 @@ Inlined version of getGlobal
 */
 function $rt_getGlobalInl(propStr)
 {
-    var obj = $ir_get_global_obj();
+    var obj = $global;
 
     // Find the index for this property
     // This shifts us to a different version where the obj shape is known
@@ -2534,7 +2534,7 @@ Inlined version of setGlobal
 */
 function $rt_setGlobalInl(propStr, val)
 {
-    var obj = $ir_get_global_obj();
+    var obj = $global;
 
     // Find the index for this property
     var defShape = $ir_shape_get_def(obj, propStr);

@@ -117,6 +117,9 @@ class IRFunction : IdObject
     /// Map of identifiers to SSA cell values (closure/shared variables)
     IRValue[IdentExpr] cellMap;
 
+    /// Global object value
+    IRInstr globalVal = null;
+
     /// Liveness information
     LiveInfo liveInfo = null;
 

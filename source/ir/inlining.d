@@ -298,11 +298,20 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
         // For each instruction
         for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
         {
-            // Create a new instruction (copy)
-            auto newInstr = newBlock.addInstr(
-                new IRInstr(instr.opcode, instr.numArgs)
-            );
-            valMap[instr] = newInstr;
+            // If this is the global value
+            if (instr is callee.globalVal)
+            {
+                // Map it to the caller global value
+                valMap[callee.globalVal] = caller.globalVal;
+            }
+            else
+            {
+                // Create a new instruction (copy)
+                auto newInstr = newBlock.addInstr(
+                    new IRInstr(instr.opcode, instr.numArgs)
+                );
+                valMap[instr] = newInstr;
+            }
         }
 
         // If this is the last block to inline, stop
@@ -319,7 +328,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
             // Get the corresponding copied instruction
             auto newInstr = cast(IRInstr)valMap.get(oldInstr, null);
             assert (newInstr !is null);
-            assert (newInstr.block is newBlock);
+            assert (newInstr.block is newBlock || newInstr is caller.globalVal);
 
             if (oldInstr.srcPos)
                 newInstr.srcPos = callSite.srcPos;

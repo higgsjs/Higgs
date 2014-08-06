@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -423,6 +423,9 @@ IRFunction astToIR(
             bodyCtx.localMap[ident] = IRConst.undefCst;
         }
     }
+
+    // Fetch the global object value
+    fun.globalVal = bodyCtx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
 
     // Initialize global variable declarations to undefined
     if (auto unit = cast(ASTProgram)ast)
@@ -2163,8 +2166,14 @@ IRValue refToIR(
     bool useGetGlobal = true
 )
 {
+    // If this is the closure argument
+    if (identExpr.name == "$clos")
+    {
+        return ctx.fun.argcVal;
+    }
+
     // If this is the "this" argument
-    if (identExpr.name == "this")
+    else if (identExpr.name == "this")
     {
         return ctx.fun.thisVal;
     }
@@ -2173,6 +2182,12 @@ IRValue refToIR(
     else if (identExpr.name == "$argc")
     {
         return ctx.fun.argcVal;
+    }
+
+    // If this is the global object value
+    else if (identExpr.name == "$global")
+    {
+        return ctx.fun.globalVal;
     }
 
     // If this is the undefined constant
