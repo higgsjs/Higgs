@@ -156,13 +156,6 @@ TODO: post dconf talk on r/coding
 
 *** Go Max, makes Higgs fast, bring shapes to master! ***
 
-TODO: optimize ne_rawptr for shape
-./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
-FIXME: add knownShape flag to ValType?
-- Right now, if defShape is null, can't count on that info. Is this a problem?
-- Could also use rawptr type tag for null values, make shapes never null?
-- With a type tag, could optimize shape_is_getset better
-
 TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
 ./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
     before: 21ms
@@ -191,18 +184,30 @@ Meeting:
 - Global setters working
 - Found and fixed latent GC bug
 - Optimized several shape ops
+- Looked at machine code
+- Optimized global object tracking
 - Exec time better, but still slower than before
   - Added stats to try and understand
-- For now, global access slower than inline cache
-  - Some redundant ops unoptimized
-  - Need to improve global obj tracking
 - May need to optimize proto access
+
+TODO: optimize shape_set_prop for new props on known obj shape
+- Don't know if table ext will be needed, but should know the obj shape after?
 
 TODO: e-mail lazy BBV paper to Erick, Vincent
 
-TODO: re-examine ASM for bitwise-and, probably still suboptimal
-./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
-./higgs --jit_genasm --e "test.asmString()" bitwise-and.js
+TODO: optimize shape_is_getset using knownShape flag
+- used before set prop, causes many spills
+
+TODO: optimize ne_rawptr for shape using knownShape flag
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+
+FIXME: add knownShape flag to ValType?
+- Right now, if defShape is null, can't count on that info. Is this a problem?
+- Could also use rawptr type tag for null values, make shapes never null?
+- With a type tag, could optimize shape_is_getset better
+- Alternatively, have a knownShape flag, and a clearShape function ***
+- Issue with type tag? Cannot set shape to null, must set type tag to rawptr
+  - Kind of retarded, it is a shape value after all?
 
 
 
@@ -211,12 +216,23 @@ TODO: re-examine ASM for bitwise-and, probably still suboptimal
 
 
 
+[DONE] TODO: optimize shape_is_getset branching
+comp time (ms): 6
+exec time (ms): 7
+total time (ms): 14
+code size (bytes): 38195
 
-
-
-
-
-
+[DONE] TODO: re-examine ASM for bitwise-and, probably still suboptimal
+./higgs --nostdlib --stats bitwise-and.js
+    comp time (ms): 6
+    exec time (ms): 8
+    total time (ms): 14
+    code size (bytes): 38216
+./higgs --jit_genasm --e "print(test.asmString())" bitwise-and.js
+- In the loop body
+  - 2x useless ne_rawptr
+  - 1x useless shape_is_getset
+  - 3x set_str
 
 [DONE] TODO: obj fields still init to missing, is this necessary? nope!
 

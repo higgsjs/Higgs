@@ -991,7 +991,7 @@ void IsTypeOp(Type type)(
     // Compare against the tested type
     as.cmp(typeOpnd, X86Opnd(type));
 
-    // If this instruction has many uses or is not followed by an if
+    // If this instruction has many uses or is not followed by an if_true
     if (instr.hasManyUses || ifUseNext(instr) is false)
     {
         // We must have a register for the output (so we can use cmov)
@@ -4062,12 +4062,50 @@ void gen_shape_is_getset(
     // If the shape is known
     if (defShape !is null)
     {
-        auto outOpnd = st.getOutOpnd(as, instr, 8);
+        // Get the boolean value of the test
+        auto boolResult = defShape.isGetSet;
 
-        auto intVal = (defShape.isGetSet? TRUE:FALSE).word.int8Val;
-        as.mov(outOpnd, X86Opnd(intVal));
+        // If this instruction has many uses or is not followed by an if
+        if (instr.hasManyUses || ifUseNext(instr) is false)
+        {
+            auto outOpnd = st.getOutOpnd(as, instr, 64);
+            auto outVal = boolResult? TRUE:FALSE;
+            as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
+            st.setOutType(as, instr, Type.CONST);
+        }
 
-        st.setOutType(as, instr, Type.CONST);
+        // If our only use is an immediately following if_true
+        if (ifUseNext(instr) is true)
+        {
+            // Get the branch edge
+            auto targetIdx = boolResult? 0:1;
+            auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
+
+            // Generate the branch code
+            ver.genBranch(
+                as,
+                branch,
+                null,
+                delegate void(
+                    CodeBlock as,
+                    VM vm,
+                    CodeFragment target0,
+                    CodeFragment target1,
+                    BranchShape shape
+                )
+                {
+                    final switch (shape)
+                    {
+                        case BranchShape.NEXT0:
+                        break;
+
+                        case BranchShape.NEXT1:
+                        case BranchShape.DEFAULT:
+                        jmp32Ref(as, vm, target0, 0);
+                    }
+                }
+            );
+        }
     }
     else
     {
