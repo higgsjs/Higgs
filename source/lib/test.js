@@ -40,7 +40,7 @@ Assert functions for basic unit/regression tests.
 */
 (function()
 {
-    var global = $ir_get_global_obj();
+    var global = this;
 
     /**
     Check that two values are the same

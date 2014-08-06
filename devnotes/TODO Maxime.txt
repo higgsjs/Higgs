@@ -115,7 +115,6 @@ TODO: look at previous year CGO papers
 
 ------------------------------------------------------------------------------
 
-TODO: define $UNDEF, $NULLPTR, $MISSING in the VM?
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
 
 TODO: blog post, the future of compilation
@@ -195,9 +194,26 @@ Meeting:
 
 TODO: e-mail lazy BBV paper to Erick, Vincent
 
-TODO: IRRawPtr, do we need that?
+TODO: re-examine ASM for bitwise-and, probably still suboptimal
+./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
 
-TODO: global obj shape tracking, get_global_obj is limiting
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: obj fields still init to missing, is this necessary? nope!
+
+[DONE] TODO: global obj shape tracking, get_global_obj is limiting
 - Separate IR value every time! Different value in valMap
 - NOTE: improving global obj analysis would probably reduce code size...
   - Affects bitops bitwise-and
@@ -218,15 +234,7 @@ TODO: global obj shape tracking, get_global_obj is limiting
   - Problem is instr.block.fun, each fun needs its own global_obj ****
   - IRFunction.globalVal
 
-TODO: replace all occurrences of $ir_get_global_obj() by $global
-
-
-
-
-
-
-
-
+[DONE] TODO: replace all occurrences of $ir_get_global_obj() by $global
 
 [DONE] TODO: inspect IR for fn with global x + y
 - get_global_obj is duplicated!

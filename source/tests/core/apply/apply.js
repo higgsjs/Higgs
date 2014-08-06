@@ -131,7 +131,7 @@ function test()
         return 8;
     }
 
-    if (foo8.apply(null, []) !== $ir_get_global_obj())
+    if (foo8.apply(null, []) !== $global)
     {
         return 9;
     }

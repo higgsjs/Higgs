@@ -2196,16 +2196,10 @@ IRValue refToIR(
         return IRConst.undefCst;
     }
 
-    // If this is the missing constant
-    else if (identExpr.name == "$missing")
-    {
-        return IRConst.missingCst;
-    }
-
     // If this is the null pointer constant
     else if (identExpr.name == "$nullptr")
     {
-        return new IRRawPtr(null);
+        return IRConst.nullPtrCst;
     }
 
     // If the variable is global
@@ -2530,7 +2524,7 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
             if (intExpr is null)
             {
                 throw new ParseError(
-                    "expected integer argument", 
+                    "expected integer argument",
                     argExpr.pos
                 );
             }

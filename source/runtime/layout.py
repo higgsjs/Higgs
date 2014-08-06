@@ -90,10 +90,10 @@ layouts = [
             { 'name':"shape", 'type':"shapeptr" },
 
             # Property words
-            { 'name':"word", 'type':"uint64", 'init':'missing_word', 'szField':"cap", 'tpField':'type' },
+            { 'name':"word", 'type':"uint64", 'szField':"cap", 'tpField':'type' },
 
             # Property types
-            { 'name':"type", 'type':"uint8", 'init':'missing_type', 'szField':"cap" }
+            { 'name':"type", 'type':"uint8", 'szField':"cap" }
         ]
     },
 
@@ -222,11 +222,6 @@ class Cst:
         if self.val == 'undef_type':
             return '$ir_get_type($undef)'
 
-        if self.val == 'missing_word':
-            return '$ir_get_word($missing)'
-        if self.val == 'missing_type':
-            return '$ir_get_type($missing)'
-
         return str(self.val)
 
     def genD(self):
@@ -234,11 +229,6 @@ class Cst:
         if self.val == 'undef_word':
             return 'UNDEF.word.uint8Val'
         if self.val == 'undef_type':
-            return 'Type.CONST'
-
-        if self.val == 'missing_word':
-            return 'MISSING.word.uint8Val'
-        if self.val == 'missing_type':
             return 'Type.CONST'
 
         return str(self.val)
@@ -806,10 +796,6 @@ for layout in layouts:
         if initVal == '0':
             continue
         if initVal == 'null':
-            continue
-        if initVal == 'missing_word':
-            continue
-        if initVal == 'missing_type':
             continue
         if initVal == 'undef_type':
             continue

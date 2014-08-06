@@ -219,7 +219,7 @@ Function.prototype.apply = function (thisArg, argArray)
     // If the this argument is null or undefined,
     // make it the global object
     if (thisArg === null || thisArg === undefined)
-        thisArg = $ir_get_global_obj();
+        thisArg = $global;
 
     // Get the arguments table from the array
     var argTable = $rt_arr_get_tbl(argArray);

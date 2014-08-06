@@ -342,10 +342,8 @@ struct ValuePair
                 return "false";
             if (this == UNDEF)
                 return "undefined";
-            if (this == MISSING)
-                return "missing";
             assert (
-                false, 
+                false,
                 "unsupported constant " ~ to!string(word.uint64Val)
             );
 
@@ -396,7 +394,6 @@ struct ValuePair
 
 // Note: low byte is set to allow for one byte immediate comparison
 immutable NULL    = ValuePair(Word(0x00), Type.REFPTR);
-immutable MISSING = ValuePair(Word(0x00), Type.CONST);
 immutable TRUE    = ValuePair(Word(0x01), Type.CONST);
 immutable FALSE   = ValuePair(Word(0x02), Type.CONST);
 immutable UNDEF   = ValuePair(Word(0x03), Type.CONST);

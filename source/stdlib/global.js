@@ -41,7 +41,7 @@
  */
 
 /// Global object binding
-var global = $ir_get_global_obj();
+var global = this;
 
 function toString()
 {

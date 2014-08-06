@@ -37,7 +37,7 @@
 
 (function ()
 {
-    var global = $ir_get_global_obj();
+    var global = this;
 
     global.exports = global.exports || undefined;
 

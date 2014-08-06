@@ -916,23 +916,23 @@ class IRConst : IRValue
         return undefVal;
     }
 
-    static IRConst missingCst()
-    {
-        if (!missingVal) missingVal = new IRConst(MISSING);
-        return missingVal;
-    }
-
     static IRConst nullCst()
-    { 
+    {
         if (!nullVal) nullVal = new IRConst(NULL);
         return nullVal;
+    }
+
+    static IRConst nullPtrCst()
+    { 
+        if (!nullPtrVal) nullPtrVal = new IRConst(Word.int64v(0), Type.RAWPTR);
+        return nullPtrVal;
     }
 
     private static IRConst trueVal = null;
     private static IRConst falseVal = null;
     private static IRConst undefVal = null;
-    private static IRConst missingVal = null;
     private static IRConst nullVal = null;
+    private static IRConst nullPtrVal = null;
 
     private static IRConst[int32] int32Vals;
     private static IRConst[int64] int64Vals;
