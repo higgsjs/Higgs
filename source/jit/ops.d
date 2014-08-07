@@ -3761,17 +3761,7 @@ void gen_shape_get_prop(
     {
         // Get the property shape
         auto defShape = st.getShape(defVal);
-
-        // If the shape is null, this property doesn't exist
-        if (defShape is null)
-        {
-            // Produce the undefined value
-            auto outOpnd = st.getOutOpnd(as, instr, 64);
-            as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
-            st.setOutType(as, instr, Type.CONST);
-
-            return;
-        }
+        assert (defShape !is null);
 
         // No need to get the shape operand
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);

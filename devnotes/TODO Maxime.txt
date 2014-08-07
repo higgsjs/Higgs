@@ -211,7 +211,7 @@ TODO: optimize ne_rawptr for shape using knownShape flag
 TODO: optimize shape_set_prop for new props on known obj shape
 - Don't know if table ext will be needed, but should know the obj shape after?
 
-
+FIXME: getprop with null shape, that should never happen?
 
 
 
