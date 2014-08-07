@@ -184,8 +184,18 @@ struct ValState
         return typeStackOpnd(stackIdx);
     }
 
-    /// Set the type for this value, creates a new value
-    ValState setType(Type typeTag, ObjShape shape = null) const
+    /// Set the type tag for this value
+    ValState setType(Type typeTag) const
+    {
+        assert (!isConst);
+
+        ValState val = cast(ValState)this;
+        val.type = ValType(typeTag);
+        return val;
+    }
+
+    /// Set the type tag and shape for this value
+    ValState setType(Type typeTag, ObjShape shape) const
     {
         assert (!isConst);
 
@@ -194,7 +204,7 @@ struct ValState
         return val;
     }
 
-    /// Set the type for this value, creates a new value
+    /// Set the type for this value
     ValState setType(const ValType type) const
     {
         assert (!isConst);
@@ -204,23 +214,35 @@ struct ValState
         return val;
     }
 
-    /// Set the shape for this value, creates a new value
+    /// Set the shape for this value
     ValState setShape(ObjShape shape) const
     {
         assert (!isConst);
 
         ValState val = cast(ValState)this;
         val.type.shape = shape;
+        val.type.shapeKnown = true;
         return val;
     }
 
-    /// Clear the type for this value if known, creates a new value
+    /// Clear the all type information for this value
     ValState clearType() const
     {
         assert (!isConst);
 
         ValState val = cast(ValState)this;
         val.type = ValType();
+        return val;
+    }
+
+    /// Clear the shape information for this value
+    ValState clearShape() const
+    {
+        assert (!isConst);
+
+        ValState val = cast(ValState)this;
+        val.type.shape = null;
+        val.type.shapeKnown = false;
         return val;
     }
 
@@ -926,7 +948,7 @@ class CodeGenState
         foreach (value, state; valMap)
         {
             if (state.type.shape !is null)
-                valMap[value] = state.setShape(null);
+                valMap[value] = state.clearShape();
         }
     }
 
@@ -1140,8 +1162,7 @@ class CodeGenState
     void setOutType(
         CodeBlock as,
         IRInstr instr,
-        Type typeTag,
-        ObjShape shape = null
+        Type typeTag
     )
     {
         assert (
@@ -1159,7 +1180,7 @@ class CodeGenState
         auto state = getState(instr);
 
         // Set a known type for this value
-        valMap[instr] = state.setType(typeTag, shape);
+        valMap[instr] = state.setType(typeTag);
     }
 
     /// Write the output type for an instruction's output to the type stack
@@ -1182,7 +1203,7 @@ class CodeGenState
         as.mov(typeStackOpnd(instr.outSlot), X86Opnd(typeReg));
     }
 
-    /// Add type information for an arbitrary value
+    /// Add type information for a given value
     void setType(IRDstValue value, Type type)
     {
         assert (value in valMap);
@@ -1200,16 +1221,29 @@ class CodeGenState
         valMap[value] = state.setType(type);
     }
 
-    /// Get shape information for an arbitrary value
+    /// Test if the shape is known for a given value
+    auto shapeKnown(IRDstValue value)
+    {
+        assert (value in valMap);
+        ValState state = getState(value);
+
+        return state.type.shapeKnown;
+    }
+
+    /// Get shape information for a given value
     auto getShape(IRDstValue value)
     {
         assert (value in valMap);
         ValState state = getState(value);
 
+        assert (
+            state.type.shapeKnown,
+            "shape is not known"
+        );
         return state.type.shape;
     }
 
-    /// Set shape information for an arbitrary value
+    /// Set shape information for a given value
     void setShape(IRDstValue value, ObjShape shape)
     {
         assert (value in valMap);
@@ -1217,6 +1251,16 @@ class CodeGenState
 
         // Set a known type for this value
         valMap[value] = state.setShape(shape);
+    }
+
+    /// Clear shape information for a given value
+    void clearShape(IRDstValue value)
+    {
+        assert (value in valMap);
+        ValState state = getState(value);
+
+        // Set a known type for this value
+        valMap[value] = state.clearShape();
     }
 
     /// Get the state for a given value

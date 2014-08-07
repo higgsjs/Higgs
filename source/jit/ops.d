@@ -3241,8 +3241,8 @@ void gen_shape_get_def(
                 auto branch = cast(BranchCode)ver.targets[targetIdx];
                 targetSt = branch.predState? branch.predState:branch.target.state;
 
-                objShape = targetSt.getShape(objVal);
-                defShape = targetSt.getShape(instr);
+                objShape = targetSt.shapeKnown(objVal)? targetSt.getShape(objVal):null;
+                defShape = targetSt.shapeKnown(instr)? targetSt.getShape(instr):null;
 
                 // Move the cached defining shape for this entry to the output operand
                 as.ptr(outOpnd.reg, defShape);
@@ -3366,17 +3366,21 @@ void gen_shape_get_def(
         if (instr0Arg.opcode is &GET_GLOBAL_OBJ)
             stats.numDefShapeGlobal++;
 
-    // Get the object shape, may be unknown
-    auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));
+    // Get the object argument value
+    auto objVal = cast(IRDstValue)instr.getArg(0);
 
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
     // If the object shape and the property name are both known
-    if (objShape !is null && propName !is null)
+    if (st.shapeKnown(objVal) && propName !is null)
     {
         // Increment the count of instances with a known shape
         numDefShapeKnown++;
+
+        // Get the object shape
+        auto objShape = st.getShape(objVal);
+        assert (objShape !is null);
 
         //as.printStr("shape known");
 
@@ -3390,7 +3394,8 @@ void gen_shape_get_def(
         as.ptr(outOpnd.reg, defShape);
 
         // Set the output type and shape for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR, defShape);
+        st.setOutType(as, instr, Type.SHAPEPTR);
+        st.setShape(instr, defShape);
 
         // Get the default version for the successor block
         auto branch = getBranchEdge(
@@ -3585,11 +3590,9 @@ void gen_shape_set_prop(
         );
     }
 
-    // Get the object shape, may be unknown
-    auto objShape = st.getShape(cast(IRDstValue)instr.getArg(0));
-
-    // Get the property shape, may be unknown
-    auto defShape = st.getShape(cast(IRDstValue)instr.getArg(2));
+    // Get the object and property shape values
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+    auto defVal = cast(IRDstValue)instr.getArg(2);
 
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
@@ -3599,59 +3602,70 @@ void gen_shape_set_prop(
 
     // If the defining shape is known
     // We are overwriting an existing property of this object
-    if (defShape !is null && defShape.isWritable)
+    if (st.shapeKnown(defVal))
     {
-        // TODO
-        // TODO: handle type mismatches with defShape
-        // TODO
+        // Get the property shape, may be unknown
+        auto defShape = st.getShape(defVal);
 
-        //writeln("prop redef, slotIdx=", defShape.slotIdx);
-
-        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-
-        auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
-        auto typeOpnd = st.getTypeOpnd(as, instr, 3);
-
-        // Move the object operand into r0
-        as.mov(scrRegs[0].opnd, objOpnd);
-
-        // Get the object capacity into r1
-        as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
-
-        auto slotIdx = defShape.slotIdx;
-
-        // If we can't guarantee that the slot index is within capacity,
-        // generate the extension table code
-        if (slotIdx >= OBJ_MIN_CAP)
+        // If the defining shape is writable
+        if (defShape !is null && defShape.isWritable)
         {
-            // If the slot index is below capacity, skip the ext table code
-            as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
-            as.jg(Label.SKIP);
+            // TODO
+            // TODO: handle type mismatches with defShape
+            // TODO
 
-            // Get the ext table pointer into r0
-            as.getField(scrRegs[0], scrRegs[0], obj_ofs_next(null));
+            //writeln("prop redef, slotIdx=", defShape.slotIdx);
 
-            // Get the ext table capacity into r1
+            auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+
+            auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
+            auto typeOpnd = st.getTypeOpnd(as, instr, 3);
+
+            // Move the object operand into r0
+            as.mov(scrRegs[0].opnd, objOpnd);
+
+            // Get the object capacity into r1
             as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
 
-            as.label(Label.SKIP);
+            auto slotIdx = defShape.slotIdx;
+
+            // If we can't guarantee that the slot index is within capacity,
+            // generate the extension table code
+            if (slotIdx >= OBJ_MIN_CAP)
+            {
+                // If the slot index is below capacity, skip the ext table code
+                as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
+                as.jg(Label.SKIP);
+
+                // Get the ext table pointer into r0
+                as.getField(scrRegs[0], scrRegs[0], obj_ofs_next(null));
+
+                // Get the ext table capacity into r1
+                as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
+
+                as.label(Label.SKIP);
+            }
+
+            // Set the word and type values
+            auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * slotIdx);
+            as.genMove(wordMem, valOpnd);
+            auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + slotIdx, 8, scrRegs[1]);
+            as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
+
+            return;
         }
-
-        // Set the word and type values
-        auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * slotIdx);
-        as.genMove(wordMem, valOpnd);
-        auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + slotIdx, 8, scrRegs[1]);
-        as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
-
-        return;
     }
 
     // If the object shape is known but the defining shape is unknown
     // We are probably adding a new property to this object
-    if (objShape !is null && propName !is null)
+    if (st.shapeKnown(objVal) && propName !is null)
     {
+        // Get the object shape, may be unknown
+        auto objShape = st.getShape(objVal);
+        assert (objShape !is null);
+
         // Try a lookup for an existing property
-        defShape = objShape.getDefShape(propName);
+        auto defShape = objShape.getDefShape(propName);
 
         // If the defining shape was not found
         if (defShape is null)
@@ -3718,7 +3732,7 @@ void gen_shape_set_prop(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.setShape(cast(IRDstValue)instr.getArg(0), null);
+    st.clearShape(cast(IRDstValue)instr.getArg(0));
 }
 
 /// Gets the value of a property
@@ -3730,15 +3744,29 @@ void gen_shape_get_prop(
     CodeBlock as
 )
 {
-    // Get the property shape, may be unknown
-    auto defShape = st.getShape(cast(IRDstValue)instr.getArg(1));
+    // Get the property shape value
+    auto defVal = cast(IRDstValue)instr.getArg(1);
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(null, 0);
 
     // If the defining shape is known
-    if (defShape !is null)
+    if (st.shapeKnown(defVal))
     {
+        // Get the property shape
+        auto defShape = st.getShape(defVal);
+
+        // If the shape is null, this property doesn't exist
+        if (defShape is null)
+        {
+            // Produce the undefined value
+            auto outOpnd = st.getOutOpnd(as, instr, 64);
+            as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
+            st.setOutType(as, instr, Type.CONST);
+
+            return;
+        }
+
         // No need to get the shape operand
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         assert (objOpnd.isReg);
@@ -3877,7 +3905,7 @@ void gen_shape_def_const(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.setShape(cast(IRDstValue)instr.getArg(0), null);
+    st.clearShape(cast(IRDstValue)instr.getArg(0));
 }
 
 /// Sets the attributes for a property
@@ -3928,7 +3956,7 @@ void gen_shape_set_attrs(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.setShape(cast(IRDstValue)instr.getArg(0), null);
+    st.clearShape(cast(IRDstValue)instr.getArg(0));
 }
 
 /// Get the parent shape for a given shape
@@ -4056,14 +4084,20 @@ void gen_shape_is_getset(
     CodeBlock as
 )
 {
-    // Get the shape, may be unknown
-    auto defShape = st.getShape(cast(IRDstValue)instr.getArg(0));
+    // Get the shape value
+    auto defVal = cast(IRDstValue)instr.getArg(0);
 
-    // If the shape is known
-    if (defShape !is null)
+    // If the defining shape is known
+    if (st.shapeKnown(defVal))
     {
+        // Get the property shape
+        auto defShape = st.getShape(defVal);
+
+        // TODO: should eventually optimize this with basic constant
+        // propagation instead of duplicating code from is_type(x) ops
+
         // Get the boolean value of the test
-        auto boolResult = defShape.isGetSet;
+        auto boolResult = (defShape !is null && defShape.isGetSet);
 
         // If this instruction has many uses or is not followed by an if
         if (instr.hasManyUses || ifUseNext(instr) is false)

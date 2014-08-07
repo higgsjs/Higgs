@@ -101,6 +101,12 @@ cloning basic blocks based on types encountered at run-time"
 TODO: more motivating examples showing why BBV is GOOD, better than the rest
 - Why code duplication is better than just analysis
 
+TODO: explain more of the code gen?
+- Does the conf care much about actual code gen? Probably
+- Code appending, contiguousness
+- Lightweight on-the-fly register allocator
+- Show some code, eg: for example given ***
+
 TODO: be careful about claims, statements
 - Remove claim that it is suitable for integration in a commercial VM?
 - Remove claims reviewers might disagree with
@@ -190,31 +196,50 @@ Meeting:
   - Added stats to try and understand
 - May need to optimize proto access
 
-TODO: optimize shape_set_prop for new props on known obj shape
-- Don't know if table ext will be needed, but should know the obj shape after?
+TODO: optimize ne_rawptr for shape using knownShape flag
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+- should make a shape_is_null instruction
+- fall back to ne_rawptr code gen if shape unknown
+- can we factor out boolean output and branching gen?
 
 TODO: e-mail lazy BBV paper to Erick, Vincent
 
-TODO: optimize shape_is_getset using knownShape flag
+TODO: optimize shape_set_prop for new props on known obj shape
+- Don't know if table ext will be needed, but should know the obj shape after?
+
+TODO: create microbenchmark on master, global-for-loop? 10M itrs
+
+
+
+FIXME: ./higgs --jit_genasm --e "print(test.asmString())" bitwise-and.js
+Segmentation fault (core dumped)
+
+
+
+
+
+
+
+[DONE] TODO: optimize shape_is_getset using knownShape flag
 - used before set prop, causes many spills
+- should reduce code size on ./benchmark.py, bitwise-and
+before:
+    benchmark.py code size (bytes): 620792
+    bitwise-and code size (bytes) : 38216
+after:
+    benchmark.py code size (bytes): 574649
+    bitwise-and code size (bytes): 38006
 
-TODO: optimize ne_rawptr for shape using knownShape flag
-./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+[DONE] FIXME: get_prop, if def shape is null, value should be undef
 
-FIXME: add knownShape flag to ValType?
+[DONE] TODO: look into setOutType with shape, do we use that?
+
+[DONE] FIXME: add knownShape flag to ValType
 - Right now, if defShape is null, can't count on that info. Is this a problem?
 - Could also use rawptr type tag for null values, make shapes never null?
-- With a type tag, could optimize shape_is_getset better
 - Alternatively, have a knownShape flag, and a clearShape function ***
 - Issue with type tag? Cannot set shape to null, must set type tag to rawptr
   - Kind of retarded, it is a shape value after all?
-
-
-
-
-
-
-
 
 [DONE] TODO: optimize shape_is_getset branching
 comp time (ms): 6

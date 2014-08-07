@@ -116,8 +116,11 @@ struct ValType
         /// Known type flag
         bool, "typeKnown", 1,
 
+        /// Known shape flag
+        bool, "shapeKnown", 1,
+
         /// Padding bits
-        uint, "", 3
+        uint, "", 2
     ));
 
     /// Constructor taking a value pair
@@ -125,6 +128,7 @@ struct ValType
     {
         this.typeTag = val.type;
         this.typeKnown = true;
+        this.shapeKnown = false;
 
         if (isObject(this.typeTag))
         {
@@ -142,20 +146,22 @@ struct ValType
     }
 
     /// Constructor taking a type tag only
-    this(Type typeTag, ObjShape shape = null)
+    this(Type typeTag)
     {
-        assert (
-            shape is null ||
-            isObject(typeTag) ||
-            typeTag is Type.SHAPEPTR
-        );
+        this.typeTag = typeTag;
+        this.typeKnown = true;
+        this.shape = null;
+        this.shapeKnown = false;
+    }
 
+    /// Constructor taking a type tag and shape
+    this(Type typeTag, ObjShape shape)
+    {
         this.typeTag = typeTag;
         this.typeKnown = true;
         this.shape = shape;
+        this.shapeKnown = true;
     }
-
-    bool knownShape() const { return shape !is null; }
 
     /**
     Test if this type fits within (is more specific than) another type
@@ -170,12 +176,12 @@ struct ValType
             if (this.typeTag !is that.typeTag)
                 return false;
 
-            if (that.knownShape)
+            if (that.shapeKnown)
             {
-                if (!this.knownShape)
+                if (!this.shapeKnown)
                     return false;
 
-                if (this.knownShape !is that.knownShape)
+                if (this.shape !is that.shape)
                     return false;
             }
         }
