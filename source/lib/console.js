@@ -41,6 +41,9 @@ Console functions
 
 (function()
 {
+    // prompt function uses stdio lib 
+    io = require('lib/stdio');
+    
     // Settings for console output
     var settings = {
         // maximum number of array items to display
@@ -201,7 +204,33 @@ Console functions
 
         print(output);
     }
+    
+    /**
+    Prompt for input: console.prompt('optional message');
+    */
+    function prompt(textOption)
+    {
+        var input = [];
+        
+        if (textOption === undefined || textOption === 'undefined')
+        {
+            textOption = "";
+        }
+        print(textOption);
 
+        for (var i = 0; i <= input.length; i++)
+        {
+            input[i] = io.stdin.getc();
+            
+            if (input[i] === "\n")
+            {
+                input.pop();
+            }
+        }
+        var response = input.join("");
+        return response;
+    }
+    
     /**
     time -
         start a timer.
@@ -236,7 +265,8 @@ Console functions
         timeEnd : timeEnd,
         stringify : stringify,
         stringers : stringers,
-        settings : settings
+        settings : settings,
+        prompt : prompt
     };
 
 })();
