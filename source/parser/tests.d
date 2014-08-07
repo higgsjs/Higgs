@@ -236,6 +236,7 @@ unittest
     testParse("a = { a:1, b:2 };");
     testParse("a = { a:1, \"b\":2 };");
     testParse("a = { a:1, b:2+3*4 };");
+    testParse("a = { new:3 };");
     testParse("a = /f+/ig;");
 
     testParse("new Foo();");
@@ -250,6 +251,7 @@ unittest
     testParse("a.b()");
     testParse("a.delete + 2");
     testParse("a.delete()");
+    testParse("a.new");
 
     // Comma operator
     testParse("1, 2");

@@ -492,19 +492,6 @@ Math.log = function (x)
 var randSeed = 113378971;
 
 /**
-Generate a random unsigned 16-bit integer
-Note: this method is not part of ECMAScript
-*/
-Math.randomUInt16 = function ()
-{
-    // TODO: improve RNG
-
-    randSeed = $ir_and_i32($ir_mul_i32(1103515245, randSeed), 0x7FFFFFFF);
-
-    return $ir_and_i32($ir_rsft_i32(randSeed, 13), 0xFFFF);
-}
-
-/**
 Initialize random number generator with a new seed
 Note: this method is not part of ECMAScript
 */
@@ -513,12 +500,47 @@ Math.setRandSeed = function (seed)
     // If the seed is not an integer value
     if (!$ir_is_i32(seed))
     {
+        // If the seed is a floating-point value
+        if ($ir_is_f64(seed))
+        {
+            // Convert the value to a long-format string
+            seed = $ir_f64_to_str_lng(seed);
+
+            // Strip out trailing zeroes
+            while (seed[seed.length-1] === '0')
+                seed = seed.substr(0, seed.length-1);
+        }
+
         // Convert the seed to a string and get its hash value
         seed = $rt_str_get_hash(String(seed));
     }
 
     assert ($ir_is_i32(seed));
     randSeed = seed;
+}
+
+/**
+Generate a random positive 16-bit integer
+Note: this method is not part of ECMAScript
+*/
+Math.randomUInt16 = function ()
+{
+    randSeed = $ir_and_i32($ir_mul_i32(1103515245, randSeed), 0x7FFFFFFF);
+
+    return $ir_and_i32($ir_rsft_i32(randSeed, 13), 0xFFFF);
+}
+
+/**
+Generate a random positive 31-bit integer
+Note: this method is not part of ECMAScript
+*/
+Math.randomUInt31 = function ()
+{
+    var rH = Math.randomUInt16();
+    var rL = Math.randomUInt16();
+    var randInt = ((rH & 0x7FFF) << 16) + rL;
+
+    return randInt;
 }
 
 /**
@@ -530,9 +552,7 @@ algorithm or strategy. This function takes no arguments.
 */
 Math.random = function ()
 {
-    var rH = Math.randomUInt16();
-    var rL = Math.randomUInt16();
-    var randInt = ((rH & 0x7FFF) << 16) + rL;
+    var randInt = Math.randomUInt31();
 
     return randInt / 0x7FFFFFFF;
 };

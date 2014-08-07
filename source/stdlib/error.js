@@ -108,7 +108,7 @@ Error.prototype.toString = function ()
 @class RangeError
 @description
 15.11.6.2 RangeError
-Indicates a numeric value has exceeded the allowable range. 
+Indicates a numeric value has exceeded the allowable range.
 */
 var RangeError = makeErrorCtor(
     'RangeError',

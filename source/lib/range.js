@@ -104,12 +104,12 @@ Provides different types of ranges.
     Input.prototype.filter = function(predicate)
     {
         return new FilteredInput(this, predicate);
-    }
+    };
 
     Input.prototype.map = function(mapper)
     {
         return new MappedInput(this, mapper);
-    }
+    };
 
     /**
     ProxiedInput -
@@ -129,17 +129,17 @@ Provides different types of ranges.
     ProxiedInput.prototype.empty = function()
     {
         return this._r.empty();
-    }
+    };
 
     ProxiedInput.prototype.front = function()
     {
         return this._r.front();
-    }
+    };
 
     ProxiedInput.prototype.popFront = function()
     {
         return this._r.popFront();
-    }
+    };
 
 
     /**
@@ -172,7 +172,7 @@ Provides different types of ranges.
             if (predicate(next_val))
                 return next_val;
         }
-    }
+    };
 
     /**
     MappedInput -
@@ -191,7 +191,7 @@ Provides different types of ranges.
     MappedInput.prototype.front = function()
     {
         return this._mapper(this._r.front());
-    }
+    };
 
     /**
     EXPORTS
@@ -200,5 +200,5 @@ Provides different types of ranges.
         EmptyValue : EmptyValue,
         Input : Input
     };
-})()
+})();
 

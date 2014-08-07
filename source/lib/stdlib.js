@@ -41,8 +41,8 @@ C stdlib functions
 
 (function()
 {
-    var ffi = require("lib/ffi");
-    var io = require("lib/stdio");
+    var ffi = require('lib/ffi');
+    var io = require('lib/stdio');
     var c = ffi.c;
 
     c.cdef(`
@@ -119,8 +119,8 @@ C stdlib functions
     }
 
 
-    var r_mode = ffi.cstr("r");
-    var w_mode = ffi.cstr("w");
+    var r_mode = ffi.cstr('r');
+    var w_mode = ffi.cstr('w');
 
     /**
     Execute a command and return a stream
@@ -131,21 +131,21 @@ C stdlib functions
         var c_cmd = ffi.cstr(command);
         mode = mode.toLowerCase();
 
-        if (mode === "r")
+        if (mode === 'r')
             c_mode = r_mode;
-        else if (mode === "w")
+        else if (mode === 'w')
             c_mode = w_mode;
         else
-            throw "Invalide popen mode: " + mode;
+            throw 'Invalide popen mode: ' + mode;
 
         var streamh = c.popen(c_cmd, c_mode);
         c.free(c_cmd);
         c.free(c_mode);
 
         if (ffi.isNull(streamh))
-            throw "Error calling popen with:" + command;
+            throw 'Error calling popen with:' + command;
 
-        return io.stream(streamh, "popen_sh");
+        return io.stream(streamh, 'popen_sh');
     }
 
     function perror(msg)
