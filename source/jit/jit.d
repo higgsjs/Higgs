@@ -2468,6 +2468,11 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     as.pop(RBP);
     as.pop(RBX);
 
+    debug
+    {
+        as.checkStackAlign("stack unaligned at unit exit for " ~ fun.getName);
+    }
+
     // Pop the stack alignment padding
     as.add(X86Opnd(RSP), X86Opnd(8));
 
@@ -2530,6 +2535,11 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Push space for the callee locals
     as.sub(tspReg.opnd, X86Opnd(1 * fun.numLocals));
     as.sub(wspReg.opnd, X86Opnd(8 * fun.numLocals));
+
+    debug
+    {
+        as.checkStackAlign("stack unaligned at unit entry");
+    }
 
     // Compile the unit entry version
     vm.compile(null);
@@ -2802,6 +2812,11 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
 
     as.saveJITRegs();
 
+    debug
+    {
+        as.checkStackAlign("stack unaligned before compileEntry");
+    }
+
     // Call the JIT compile function,
     // passing it a pointer to the stub
     auto compileFn = &compileEntry;
@@ -2858,6 +2873,11 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
 
     // The third argument is the branch target index
     as.mov(cargRegs[2].opnd(32), X86Opnd(targetIdx));
+
+    debug
+    {
+        as.checkStackAlign("stack unaligned before compileBranch");
+    }
 
     // Call the JIT compilation function,
     auto compileFn = &compileBranch;

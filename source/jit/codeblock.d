@@ -73,6 +73,7 @@ enum Label : size_t
     FALSE2,
     JOIN,
     SKIP,
+    VALID,
     THROW,
     FALLBACK,
     BAILOUT,

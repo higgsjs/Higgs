@@ -3329,6 +3329,9 @@ void gen_shape_get_def(
         auto as = vm.subsHeap;
         vm.defShapeSub = as.getAddress(as.getWritePos);
 
+        // Align SP to a multiple of 16 bytes
+        as.sub(X86Opnd(RSP), X86Opnd(8));
+
         // Save the allocatable registers
         as.saveAllocRegs();
 
@@ -3349,6 +3352,9 @@ void gen_shape_get_def(
 
         // Restore the allocatable registers
         as.loadAllocRegs();
+
+        // Pop the stack alignment padding
+        as.add(X86Opnd(RSP), X86Opnd(8));
 
         // Return to the point of call
         as.ret();

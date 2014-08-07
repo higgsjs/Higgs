@@ -196,29 +196,56 @@ Meeting:
   - Added stats to try and understand
 - May need to optimize proto access
 
+TODO: shape dispatch counts, should be dynamic!
+
+TODO: look at simple benchmarks with the worst slowdowns
+- binary-trees and cordic are 10x slower
+- cordic is pretty small, uses a few globals, could be simplified
+
 TODO: optimize ne_rawptr for shape using knownShape flag
 ./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
 - should make a shape_is_null instruction
 - fall back to ne_rawptr code gen if shape unknown
 - can we factor out boolean output and branching gen?
 
-TODO: e-mail lazy BBV paper to Erick, Vincent
-
 TODO: optimize shape_set_prop for new props on known obj shape
 - Don't know if table ext will be needed, but should know the obj shape after?
 
-TODO: create microbenchmark on master, global-for-loop? 10M itrs
 
 
 
-FIXME: ./higgs --jit_genasm --e "print(test.asmString())" bitwise-and.js
+
+
+
+
+
+
+
+
+[DONE] FIXME: segfault on ASM generation, FP output bug
+./higgs --jit_genasm --e ""
 Segmentation fault (core dumped)
+- Float to!string fails in ValuePair.toString
+- Maybe it has to do with the floating-point registers???
+- stack alignment is screwed somewhere
 
+[DONE] TODO: debug block, verify stack alignment in stubs
+- when entering the unit, we align the stack pointer
+- then we try to push an even number of things to maintain alignment
+- util.checkStackAlign
+  - add at unit entry and exit
+  - verify before entering host code in stubs
 
+[DONE] TODO: e-mail lazy BBV paper to Erick, Vincent
 
+[DONE] TODO: e-mail Brett
 
-
-
+[DONE] TODO: create microbenchmark on master, loop-global-incr
+./higgs --nostdlib --stats benchmarks/micro/loop-global-incr.js
+comp time (ms): 4
+exec time (ms): 16719
+total time (ms): 16723
+code size (bytes): 39361
 
 [DONE] TODO: optimize shape_is_getset using knownShape flag
 - used before set prop, causes many spills

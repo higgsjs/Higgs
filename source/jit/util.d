@@ -513,3 +513,39 @@ void printStack(CodeBlock as, VM vm, IRInstr curInstr)
     as.popRegs();
 }
 
+/// Verify that the stack pointer is 16-byte aligned
+void checkStackAlign(CodeBlock as, string errorStr)
+{
+    extern (C) static void checkAlignFn(uint64_t pStackPtr, char* pErrorStr)
+    {
+        auto rem = pStackPtr & 15;
+
+        if (rem != 0)
+        {
+            printf("%s\n", pErrorStr);
+            writeln("rem=", rem);
+            std.c.stdlib.exit(-1);
+        }
+    }
+
+    as.comment("checkStackAlign()");
+
+    as.pushRegs();
+
+    as.mov(cargRegs[0].opnd, cspReg.opnd);
+
+    // Load the string address and jump over the string data
+    as.lea(cargRegs[1], X86Mem(8, RIP, 5));
+    as.jmp32(cast(int32_t)errorStr.length + 1);
+
+    // Write the string chars and a null terminator
+    foreach (ch; errorStr)
+        as.writeInt(cast(uint)ch, 8);
+    as.writeInt(0, 8);
+
+    as.ptr(scrRegs[0], &checkAlignFn);
+    as.call(scrRegs[0].opnd(64));
+
+    as.popRegs();
+}
+

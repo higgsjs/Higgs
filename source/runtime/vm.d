@@ -1033,7 +1033,7 @@ class VM
         //writeln("clos ptr: ", closPtr);
 
         assert (
-            fun !is null, 
+            fun !is null,
             "null IRFunction pointer"
         );
 
