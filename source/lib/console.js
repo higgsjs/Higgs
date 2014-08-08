@@ -206,26 +206,23 @@ Console functions
     }
     
     /**
-    Prompt for input: console.prompt('optional message');
+    Prompt for input: console.prompt(string or value);
     */
-    function prompt(textOption)
+    function prompt(promptStr)
     {
         var input = [];
         
-        if (textOption === undefined || textOption === 'undefined')
-        {
-            textOption = "";
-        }
-        print(textOption);
+        if (promptStr === undefined)
+            promptStr = "";
+        
+        print(promptStr);
 
         for (var i = 0; i <= input.length; i++)
         {
             input[i] = io.stdin.getc();
             
             if (input[i] === "\n")
-            {
                 input.pop();
-            }
         }
         var response = input.join("");
         return response;
