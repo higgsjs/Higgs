@@ -42,7 +42,7 @@ Console functions
 (function()
 {
     // prompt function uses stdio lib 
-    io = require('lib/stdio');
+    var io = require('lib/stdio');
     
     // Settings for console output
     var settings = {
