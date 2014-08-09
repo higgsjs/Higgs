@@ -597,7 +597,9 @@ function $rt_toInt32(x)
         return x;
 
     // NaN or infinity
-    if ($ir_ne_f64(x, x) || x === Infinity || x === -Infinity)
+    if ($ir_ne_f64(x, x) ||
+        $ir_eq_f64(x, Infinity) ||
+        $ir_eq_f64(x, -Infinity))
         return 0;
 
     return $ir_f64_to_i32(x);
@@ -614,7 +616,9 @@ function $rt_toUint32(x)
         return x;
 
     // NaN or infinity
-    if ($ir_ne_f64(x, x) || x === Infinity || x === -Infinity)
+    if ($ir_ne_f64(x, x) ||
+        $ir_eq_f64(x, Infinity) ||
+        $ir_eq_f64(x, -Infinity))
         return 0;
 
     if ($ir_ge_i32(x, 0.0))
@@ -1909,14 +1913,6 @@ function $rt_setProto(obj, proto)
 }
 
 /**
-Get the prototype value for an object
-*/
-function $rt_getProto(obj)
-{
-    return obj.__proto__;
-}
-
-/**
 Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
@@ -1946,7 +1942,7 @@ function $rt_objGetProp(obj, propStr)
     }
 
     // Get the object's prototype
-    var proto = $rt_getProto(obj);
+    var proto = $ir_shape_get_proto(obj);
 
     // If the prototype is null, produce undefined
     if ($ir_eq_refptr(proto, null))
@@ -2123,7 +2119,7 @@ function $rt_getPropMethod(base, prop)
         }
 
         // Get the prototype of the object
-        var base = $rt_getProto(base);
+        var base = $ir_shape_get_proto(base);
 
         // If the prototype is not null
         if ($ir_is_object(base))
@@ -2213,7 +2209,7 @@ function $rt_getGlobal(obj, propStr)
     }
 
     // Get the object's prototype
-    var proto = $rt_getProto(obj);
+    var proto = $ir_shape_get_proto(obj);
 
     // If the prototype is null, the property is not defined
     if ($ir_eq_refptr(proto, null))
@@ -2591,7 +2587,7 @@ function $rt_instanceof(obj, ctor)
     // Until we went all the way through the prototype chain
     do
     {
-        var objProto = $rt_getProto(obj);
+        var objProto = $ir_shape_get_proto(obj);
 
         if ($ir_eq_refptr(objProto, ctorProto))
             return true;
@@ -2710,7 +2706,7 @@ function $rt_in(prop, obj)
         if ($rt_hasOwnProp(obj, prop))
             return true;
 
-        obj = $rt_getProto(obj);
+        obj = $ir_shape_get_proto(obj);
 
     } while ($ir_ne_refptr(obj, null));
 
@@ -2742,7 +2738,7 @@ function $rt_getPropEnum(obj)
         for (;;)
         {
             // Move one down the prototype chain
-            curObj = $rt_getProto(curObj);
+            curObj = $ir_shape_get_proto(curObj);
 
             // If we reached the bottom of the chain, stop
             if ($ir_eq_refptr(curObj, null))
@@ -2812,7 +2808,7 @@ function $rt_getPropEnum(obj)
                 }
 
                 // Move up the prototype chain
-                curObj = $rt_getProto(curObj);
+                curObj = $ir_shape_get_proto(curObj);
                 curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
                 curIdx = 0;
                 continue;

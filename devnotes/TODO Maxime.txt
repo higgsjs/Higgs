@@ -6,6 +6,7 @@ Conference deadlines:
 - CC 2014       Oct 4, Oct 11 2013
 - PLDI 2014     Nov 8, Nov 15 2013
 - VEE 2014      ~November 2013
+- Computing Frontier => Jan 2015, notify Feb 20
 
 List of possible contributions:
 - Type tagging scheme
@@ -50,83 +51,24 @@ FIXME: date-format-tofte
 - keeps using more and more memory
 - some kind of memory leak issue?
 
+TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
+
+TODO: const globals
+const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
+- Same structure as var decl
+- In D8, these are enumerable
+- Use it for Turing Turtle
+- Look at current parser code, vars code, ast-to-ir code first ***
+
 TODO: look at eval notes again
 
 ------------------------------------------------------------------------------
 
-Paper TODO:
-- Explain and contrast with trace compilation
-  - Trace compilation issues
-  - What problems do we solve
-  - How is this different
-- Read tracing articles, C Wimmer
-- Background section? trace compilation, analysis
-- Resubmit at
-  - CGO => Aug 29, notify Nov 3
-  - Computing Frontier => Jan 2015, notify Feb 20
-http://cgo.org/cgo2015/
-
-Differences with tracing:
-- No need for an interpreter or other compiler
-- No need to record traces (potentially very long)
-- Tracing needs to identify "hot" traces
-- No risk of trace explosion
-- No need to handle side-exits
-  - Fallback to interpreter
-  - Record new sub-trace immediately or interpret?
-- No complex corner cases
-  - Recursion, nested loops, non-loop-based code, how many itrs to record
-  - Recursion: "call" into sub-trace? then need to be able to return to previous
-- Loops, how many times to record with tracing? Not obvious
-  - With BBV: if type info doesn't match, specialize/unroll further until
-    match or limit is hit
-  - BBV solution more elegant
-- Simpler, no tracing infrastructure, one level of compilation
-  - No complex tracing policy
-- Ability to easily recompile individual blocks
-- Easier to reason about?
-
-<francois__> BTW, they say your approach is like tracing.. But it's the execution of the program itself doing the tracing in your approach, in a way.. There's no
-<francois__> "recording" of traces
-Marc says: quantify/explain infrastructure to implement tracing as in other paper(s)
-
-What is our thesis, in one sentence? See Olin Shiver's advice
-http://www.ccs.neu.edu/home/shivers/diss-advice.html
-- Try to state it in once sentence at the beginning of the paper
-- Make it precise
-- BBV does precisely X, it is useful because Y
-"Basic block versioning is a code generation technique which specializes code by
-cloning basic blocks based on types encountered at run-time"
-
-TODO: more motivating examples showing why BBV is GOOD, better than the rest
-- Why code duplication is better than just analysis
-
-TODO: explain more of the code gen?
-- Does the conf care much about actual code gen? Probably
-- Code appending, contiguousness
-- Lightweight on-the-fly register allocator
-- Show some code, eg: for example given ***
-
-TODO: be careful about claims, statements
-- Remove claim that it is suitable for integration in a commercial VM?
-- Remove claims reviewers might disagree with
-- More modest claims ***
-  - exploring new approach to compilation, code generation
-
-TODO: look at CGO committee, what is their research work? (suggested by Erick)
-- Cite as appropriate
-
-TODO: look at previous year CGO papers
-- Any papers similar in topic to ours?
-
-------------------------------------------------------------------------------
-
-TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
-
 TODO: blog post, the future of compilation
 - Logical reasoning, supercompilation
 - JIT compilers, continuous of compilation
-- Lazyness
+- Lazyness is crucial
+- Definite place for controlled code duplication
 
 TODO: blog post about typed shapes, quick illustrations
 - "Faster JS Objects with Typed Shapes"
@@ -137,21 +79,6 @@ TODO: blog post about typed shapes, quick illustrations
     r/pldesign
 - Use diagrams from Eddy's talk, link and give credit
 - Typed shapes + BBV a bit of a gamble
-
-TODO: look into bitcoin trading APIs, easiest?
-- Ask Jeremy => Look into CAVirtex API
-- Google around
-- DrBell
-TODO: quick spreadsheet app? highlighted squares
-- start with edit only
-- use monospace font
-
-TODO: const globals
-const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
-- Same structure as var decl
-- In D8, these are enumerable
-- Use it for Turing Turtle
-- Look at current parser code, vars code, ast-to-ir code first ***
 
 TODO: some global constants can be resolved at compile time
 - such as undefined
@@ -183,24 +110,9 @@ TODO: get rid of set_str? could have an IRStringVal?
 - Gets updated on GC
   - Requires traversing fns to find refs, is this realistic?
 
-TODO: initial commit in paper repo, change paper template
-- Check conf requirements, note
-
-Meeting:
-- Global setters working
-- Found and fixed latent GC bug
-- Optimized several shape ops
-- Looked at machine code
-- Optimized global object tracking
-- Exec time better, but still slower than before
-  - Added stats to try and understand
-- May need to optimize proto access
-
-TODO: shape dispatch counts, should be dynamic!
-
-TODO: look at simple benchmarks with the worst slowdowns
-- binary-trees and cordic are 10x slower
-- cordic is pretty small, uses a few globals, could be simplified
+TODO: profiling phase for shape_get_def?
+- first 50 calls could gather shapes and associated counts
+- if we can fit all in < 5 buckets, might be worth specializing
 
 TODO: optimize ne_rawptr for shape using knownShape flag
 ./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
@@ -211,7 +123,28 @@ TODO: optimize ne_rawptr for shape using knownShape flag
 TODO: optimize shape_set_prop for new props on known obj shape
 - Don't know if table ext will be needed, but should know the obj shape after?
 
-FIXME: getprop with null shape, that should never happen?
+TODO: look at machine code for math-cordic, what can we optimize?
+
+Meeting / Update Marc:
+- Global setters working
+- Found and fixed latent GC bug
+- Optimized several shape ops
+- Looked at machine code
+- Added stats
+- Optimized global object tracking
+- Benchmarks encore plus lent, mais sur le point de ratrapper la performance
+de l'ancien systeme. Confiante que je peux depasser ce niveau de performance.
+- Started work on paper
+  - Initial commit
+  - Page limit is 10, 1.25 page above limit
+  - Anonymity, no hints of identity, use placeholder name for Higgs?
+
+TODO: shape dispatch count stats, should be dynamic!
+
+TODO: binary-trees still has many def shape host calls, find out why
+- is it all f.prototype lookups? print names
+- look at 3d-raytrace also
+- .prototype lookup is on a function, goes through fallback path!
 
 
 
@@ -219,8 +152,36 @@ FIXME: getprop with null shape, that should never happen?
 
 
 
+[DONE] TODO: optimize getProto? FN called many times in binary-trees
+./higgs --stats benchmarks/sunspider/access-binary-trees.js
+    comp time (ms): 188
+    exec time (ms): 262
+    code size (bytes): 391152
+    num blocks: 3400
+    num versions: 4102
+    max versions: 11
+    num def shape host: 43100
+    num def shape update: 85970
+    $rt_getProto: 42658
+    $rt_objGetProp: 42437
+    $rt_getProp: 42436
+- not a recursive property lookup
+- not a getter-setter, we know shape is not null
+- already know the prop index, technically
+- probably don't want specialization based on many proto shapes
+  - don't want shape dispatch there
+  - if we already know the obj shape, should be easy to fetch the proto
+- shape_get_proto
+  - For now, just return the proto value and type
+  - Eventually, optimize with shape info
+- surprisingly, no perf gains!
+- less shape info loss, more versions generated, code size larger
 
+[DONE] TODO: whitelist wrt shape info loss in call_prim
+- toInt32, toUint32, getProp, newObj
+- should help cordic performance quite a bit
 
+[DONE] FIXME: getprop with null shape, that should never happen?
 
 [DONE] FIXME: segfault on ASM generation, FP output bug
 ./higgs --jit_genasm --e ""

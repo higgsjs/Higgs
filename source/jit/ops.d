@@ -1803,8 +1803,27 @@ void gen_call_prim(
         }
     );
 
-    // Clear the known shape information
-    st.clearShapes();
+    // TODO: analysis to detect possible shape changes
+    // If the callee might change some object shapes
+    auto funName = fun.getName;
+    if (
+        !funName.startsWith("$rt_se")       &&
+        !funName.startsWith("$rt_ns")       &&
+        !funName.startsWith("$rt_mod")      &&
+        !funName.startsWith("$rt_toBool")   &&
+        !funName.startsWith("$rt_toNumber") &&
+        !funName.startsWith("$rt_toInt32")  &&
+        !funName.startsWith("$rt_toUint32") &&
+        !funName.startsWith("$rt_newObj")   &&
+        !funName.startsWith("$rt_newArr")   &&
+        !funName.startsWith("$rt_getProp")  &&
+        !funName.startsWith("$rt_objGetProp"))
+    {
+        //writeln(funName, " <= ", st.fun.getName);
+
+        // Clear the known shape information
+        st.clearShapes();
+    }
 
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
@@ -3429,7 +3448,7 @@ void gen_shape_get_def(
     }
 
     // If the property name is a known constant string
-    else if (propName !is null && instr.block.fun.isPrim is false)
+    else if (propName !is null)
     {
         // Create an extended info object for the shape dispatch
         auto extInfo = new ShapeDispInfo();
@@ -3849,6 +3868,39 @@ void gen_shape_get_prop(
         as.mov(scrRegs[1].opnd(8), typeMem);
         st.setOutType(as, instr, scrRegs[1].reg(8));
     }
+}
+
+/// Get the prototype of an object
+/// Inputs: obj
+void gen_shape_get_proto(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(null, 0);
+
+    // No need to get the shape operand
+    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+    assert (objOpnd.isReg);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    assert (outOpnd.isReg);
+
+    // Get the object capacity into r1
+    as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+
+    auto slotIdx = PROTO_SLOT_IDX;
+
+    // Load the word and type values
+    auto wordMem = X86Opnd(64, objOpnd.reg, wordOfs + 8 * slotIdx);
+    auto typeMem = X86Opnd(8 , objOpnd.reg, wordOfs + slotIdx, 8, scrRegs[1]);
+    as.mov(outOpnd, wordMem);
+    as.mov(scrRegs[2].opnd(8), typeMem);
+
+    // Set the output type
+    st.setOutType(as, instr, scrRegs[2].reg(8));
 }
 
 /// Define a constant property
