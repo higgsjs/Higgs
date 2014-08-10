@@ -202,9 +202,8 @@ class ObjShape
     /// Property definition transitions, mapped by name, then type
     ObjShape[][ValType][wstring] propDefs;
 
-    // TODO
     /// Cache of property names to defining shapes, to accelerate lookups
-    //ObjShape[wstring] propCache;
+    ObjShape[wstring] propCache;
 
     /// Name of this property, null if array element property
     wstring propName;
@@ -343,23 +342,30 @@ class ObjShape
     */
     ObjShape getDefShape(wstring propName)
     {
-        // TODO: propCache? should only store at lookup point
-        // need hidden lookup start shape arg?
+        // If there is a cached shape for this property name, return it
+        auto cached = propCache.get(propName, null);
+        if (cached !is null)
+           return cached;
 
-        // If the name matches, and this is not the root empty shape
-        if (propName == this.propName)
+        // For each shape going down the tree, excluding the root
+        for (auto shape = this; shape.parent !is null; shape = shape.parent)
         {
-            if (this.attrs & ATTR_DELETED || this.parent is null)
-                return null;
+            // If the name matches
+            if (propName == shape.propName)
+            {
+                // If the property is deleted, property not found
+                if (shape.attrs & ATTR_DELETED)
+                    return null;
 
-            return this;
+                // Cache the shape found for this property name
+                this.propCache[propName] = shape;
+
+                // Return the shape
+                return shape;
+            }
         }
 
-        if (parent !is null)
-        {
-            return parent.getDefShape(propName);
-        }
-
+        // Root shape reached, property not found
         return null;
     }
 }

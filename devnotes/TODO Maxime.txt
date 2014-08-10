@@ -153,6 +153,7 @@ Meeting / Update Marc:
 - Benchmarks encore plus lent, mais sur le point de ratrapper la performance
 de l'ancien systeme. Confiante que je peux depasser ce niveau de performance.
 - Making sure that shape info propagates where it needs to and is used effectively
+- Implemented property lookup cache
 - Shape profiling, want to experiment
 - Started work on paper
   - Initial commit
@@ -162,19 +163,32 @@ de l'ancien systeme. Confiante que je peux depasser ce niveau de performance.
     - May resubmit with very light or no modifications
 - Typed Shapes paper, Computing Frontier, Jan 2015?
 
-TODO: e-mail Marc wrt meeting
+TODO: rt_OBJ_MIN_CAP... This is statically resolvable...
+- Could we speed binary trees much by implementing static resolution?
+- Test by replacing by constant value
 
-TODO: prop lookup cache
-- what does this do to memory usage? try and see ***
+
+
+
+
+
+
+
+
+
+[DONE] TODO: prop lookup cache
+- what does this do to memory usage? try and see
   - when extending a shape, should wipe the previous cache?
   - could also count lookups in some variable, implement after n > K
 - mostly useful for big depths?
+- Adding the cache field does not increase memory usage at all...
+- Barely makes a difference in memory usage with caching
+- Much speedups, several times faster
 
-
-
-
-
-
+./higgs --stats benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js
+comp time (ms): 2337
+exec time (ms): 3677
+peak mem usage (KB): 545116
 
 ./higgs --stats benchmarks/sunspider/access-binary-trees.js
 comp time (ms): 187
