@@ -103,6 +103,21 @@ TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
 
+TODO: optimize ne_rawptr for shape using knownShape flag
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+- should make a shape_is_null instruction
+- fall back to ne_rawptr code gen if shape unknown
+- can we factor out boolean output and branching gen?
+- Wait until basic const prop in BBV? More elegant ***
+
+TODO: look at machine code for math-cordic, what can we optimize?
+
+TODO: try to optimize shape_def_const?
+- shape should be known in binary-trees
+- don't know statically what the proto ptr is
+- can create a getVanillaObj or some such?
+- Object.prototype shape can change at run time!
+
 *** Go Max, makes Higgs fast, bring shapes to master! ***
 
 TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
@@ -113,19 +128,13 @@ TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
 TODO: get rid of set_str? could have an IRStringVal?
 - Gets allocated during JIT comp
 - No more link idx for strings
-- Gets updated on GC
-  - Requires traversing fns to find refs, is this realistic?
-
-TODO: optimize ne_rawptr for shape using knownShape flag
-./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
-- should make a shape_is_null instruction
-- fall back to ne_rawptr code gen if shape unknown
-- can we factor out boolean output and branching gen?
-
-TODO: optimize shape_set_prop for new props on known obj shape
-- Don't know if table ext will be needed, but should know the obj shape after?
-
-TODO: look at machine code for math-cordic, what can we optimize?
+- Could have a global string constant table in the VM
+  - all of the same str consts point to the same entry
+- Pool of IRString objects, mapped by name
+  - Don't even allocate in string table if not necessary!
+  - Use for set_str
+- Get rid of link table once and for all ***
+  - create a closure cell or something!? cache in regexp object?
 
 TODO: profiling phase for shape_get_def?
 - first K=50 or 100 calls could gather shapes
@@ -143,18 +152,22 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
-Meeting / Update Marc:
+Meeting:
 - Global setters working
 - Found and fixed latent GC bug
 - Optimized several shape ops
 - Looked at machine code
 - Added stats
 - Optimized global object tracking
-- Benchmarks encore plus lent, mais sur le point de ratrapper la performance
-de l'ancien systeme. Confiante que je peux depasser ce niveau de performance.
 - Making sure that shape info propagates where it needs to and is used effectively
-- Implemented property lookup cache
+- Implemented property lookup cache (Moz has this), much speedups
+- Implemented global property lookups
+- Some benchs now faster, most slightly slower
+  - Confiante que je peux depasser ce niveau de performance
 - Shape profiling, want to experiment
+- Calls often kill shape info
+  - May want more aggressive inlining
+  - Only inlining primitives right now
 - Started work on paper
   - Initial commit
   - Page limit is 10, 1.25 page above limit
@@ -162,19 +175,40 @@ de l'ancien systeme. Confiante que je peux depasser ce niveau de performance.
   - Notification on Nov 3, PLDI deadline is Nov 13
     - May resubmit with very light or no modifications
 - Typed Shapes paper, Computing Frontier, Jan 2015?
+- Side-note: future compilers, BBV should be done at IR-level, not in backend
+  - this is becoming more and more obvious as I work on Higgs
+  - generate transformed IR block versions
+  - no context object, info is embedded in transformed IR, better for mem usage
+  - simpler backend, compiles incrementally but doesn't transform code, handle ctx
+    - requests new IR be generated when needed
+  - better for incremental inlining
+  - not planning to refactor Higgs this way, too much work
 
-TODO: rt_OBJ_MIN_CAP... This is statically resolvable...
+FIXME: cordic exec time goes to shit after static FP const resolution...
+- Possibly because loading unaligned value?
+- Can also try loading as uint64 and then moving to XMM
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: rt_OBJ_MIN_CAP... This is statically resolvable...
 - Could we speed binary trees much by implementing static resolution?
+  - makes for > 10% speedup
+  - eliminates many host updates
+  - but shape profiling would fix this too
 - Test by replacing by constant value
-
-
-
-
-
-
-
-
-
+- Do this at IR level? ir/inlining?
+  - Doing it early is more logical, simpler
+- look for static calls to $rt_getGlobalInl
+  - assert that prop name is known
+- Log resolved constants, undefined should be in there too!
 
 [DONE] TODO: prop lookup cache
 - what does this do to memory usage? try and see

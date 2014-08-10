@@ -3190,6 +3190,8 @@ void gen_shape_get_def(
         // Get the property name
         auto propName = instr.getArgStrCst(1);
 
+        //writeln(propName);
+
         // Lookup the defining shape
         assert (objShape !is null, "objShape is null");
         auto defShape = objShape.getDefShape(propName);
@@ -3626,7 +3628,7 @@ void gen_shape_set_prop(
         auto defShape = st.getShape(defVal);
 
         // If the defining shape is writable
-        if (defShape !is null && defShape.isWritable)
+        if (defShape !is null && defShape.writable)
         {
             // TODO
             // TODO: handle type mismatches with defShape
@@ -3706,7 +3708,7 @@ void gen_shape_set_prop(
 
         // If the property is writable and the slot index is
         // within the guaranteed object capacity
-        if (defShape.isWritable && slotIdx < OBJ_MIN_CAP)
+        if (defShape.writable && slotIdx < OBJ_MIN_CAP)
         {
             auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
             assert (objOpnd.isReg);

@@ -250,8 +250,9 @@ class ObjShape
     /// Test if this shape defines a getter-setter
     bool isGetSet() const { return type.typeKnown && type.typeTag is Type.GETSET; }
 
-    /// Test if this shape has the writable attribute
-    bool isWritable() const { return (attrs & ATTR_WRITABLE) != 0; }
+    /// Test if this shape has a given attribute
+    bool writable() const { return (attrs & ATTR_WRITABLE) != 0; }
+    bool configurable() const { return (attrs & ATTR_CONFIGURABLE) != 0; }
 
     /**
     Method to define or redefine a property.
@@ -545,7 +546,7 @@ void setProp(
     else
     {
         // If the property is not writable, do nothing
-        if (!defShape.isWritable)
+        if (!defShape.writable)
         {
             //writeln("redefining constant: ", propStr);
             return;

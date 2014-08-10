@@ -172,6 +172,38 @@ void inlinePass(VM vm, IRFunction caller)
         if (name.startsWith("$rt_throw"))
             continue;
 
+        // If this is a global property read
+        if (name.startsWith("$rt_getGlobalInl"))
+        {
+            auto propName = callSite.getArgStrCst(2);
+            assert (propName !is null);
+
+            auto globalObj = vm.globalObj.word.ptrVal;
+            auto objShape = cast(ObjShape)obj_get_shape(globalObj);
+            auto defShape = objShape.getDefShape(propName);
+
+            // If the property is defined and is a constant
+            if (defShape && !defShape.writable && !defShape.configurable)
+            {
+                auto val = getProp(vm, vm.globalObj, propName);
+
+                IRConst newVal;
+                if (val.type is Type.INT32)
+                    newVal = IRConst.int32Cst(val.word.int32Val);
+                //else if (val.type is Type.FLOAT64)
+                //    newVal = IRConst.float64Cst(val.word.floatVal);
+                else if (val is UNDEF)
+                    newVal = IRConst.undefCst;
+
+                if (newVal)
+                {
+                    //writeln(propName);
+                    callSite.replUses(newVal);
+                    continue;
+                }
+            }
+        }
+
         //writefln("inlining %s in %s (%s blocks)", name, caller.getName, callee.numBlocks);
 
         // Inline the callee
