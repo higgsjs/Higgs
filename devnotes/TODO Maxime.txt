@@ -60,9 +60,28 @@ const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = value
 - Use it for Turing Turtle
 - Look at current parser code, vars code, ast-to-ir code first ***
 
+TODO: recompilation of functions (no OSR) with inlining
+- make an exception for units with loops?
+- should gather stats about the percentage of functions which are long-running
+  - bar graphs
+
 TODO: look at eval notes again
 
+TODO: constant prop in ValType?
+- Don't have to propagate all
+- Would be useful to prop shapes without using a register
+- Propagate booleans
+- Simplify shape_is_null and such
+
+TODO: optimize gen_call to remove type tag test, exc code when known closure?
+
+TODO: some global constants can be resolved at compile time
+- such as undefined, Infinity
+
 ------------------------------------------------------------------------------
+
+Milestone: Equalling Master Branch Performance
+----------------------------------------------
 
 TODO: blog post, the future of compilation
 - Logical reasoning, supercompilation
@@ -80,9 +99,6 @@ TODO: blog post about typed shapes, quick illustrations
 - Use diagrams from Eddy's talk, link and give credit
 - Typed shapes + BBV a bit of a gamble
 
-TODO: some global constants can be resolved at compile time
-- such as undefined
-
 TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
@@ -94,25 +110,11 @@ TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
     before: 21ms
 ./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
     before: 14ms
-
-TODO: investigate why 3d-raytrace has 119877 def shape host calls
-- log prop names
-- Many calls to getProto? all unoptimized, must be very slow
-- shape_get_def cannot produce a shape for getProto when not inlined...
-- could have specialized shape_get_proto
-  - would at least be fast when obj shape unknown
-- verify who makes all these getProto calls... 
-  - getProto currently not inlined, even in getPropMethod
-
 TODO: get rid of set_str? could have an IRStringVal?
 - Gets allocated during JIT comp
 - No more link idx for strings
 - Gets updated on GC
   - Requires traversing fns to find refs, is this realistic?
-
-TODO: profiling phase for shape_get_def?
-- first 50 calls could gather shapes and associated counts
-- if we can fit all in < 5 buckets, might be worth specializing
 
 TODO: optimize ne_rawptr for shape using knownShape flag
 ./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
@@ -125,6 +127,22 @@ TODO: optimize shape_set_prop for new props on known obj shape
 
 TODO: look at machine code for math-cordic, what can we optimize?
 
+TODO: profiling phase for shape_get_def?
+- first K=50 or 100 calls could gather shapes
+  - 8 bucket count + last seen
+- if we can fit all in <=4 buckets, might be worth specializing
+- Decide between shape dispatch and an LRU shape inline cache
+- Adapt the size of the dispatch/cache if you want
+- Can also have a hybrid approach, eg: 2 specializations, 2 LRU entries
+- Can have a different strategy for the global object
+  - We know its current shape, can evaluate if probably stable or not
+  - Are we currently executing a unit function?
+
+TODO: commit and experiment
+- how often do we see only one shape?
+- how do typical global getprops behave wrt shapes? do they stabilize?
+- how many getprops get 50+ execs in benchs?
+
 Meeting / Update Marc:
 - Global setters working
 - Found and fixed latent GC bug
@@ -134,23 +152,53 @@ Meeting / Update Marc:
 - Optimized global object tracking
 - Benchmarks encore plus lent, mais sur le point de ratrapper la performance
 de l'ancien systeme. Confiante que je peux depasser ce niveau de performance.
+- Making sure that shape info propagates where it needs to and is used effectively
+- Shape profiling, want to experiment
 - Started work on paper
   - Initial commit
   - Page limit is 10, 1.25 page above limit
   - Anonymity, no hints of identity, use placeholder name for Higgs?
+  - Notification on Nov 3, PLDI deadline is Nov 13
+    - May resubmit with very light or no modifications
+- Typed Shapes paper, Computing Frontier, Jan 2015?
 
-TODO: shape dispatch count stats, should be dynamic!
+TODO: e-mail Marc wrt meeting
 
-TODO: binary-trees still has many def shape host calls, find out why
+TODO: prop lookup cache
+- what does this do to memory usage? try and see ***
+  - when extending a shape, should wipe the previous cache?
+  - could also count lookups in some variable, implement after n > K
+- mostly useful for big depths?
+
+
+
+
+
+
+
+./higgs --stats benchmarks/sunspider/access-binary-trees.js
+comp time (ms): 187
+exec time (ms): 243
+peak mem usage (KB): 73036
+
+[DONE] TODO: investigate, are the updateCache lookups much slower than "host lookups"?
+- Design some microbenchmark to find out ***
+- 10M def shape host => 782ms
+- 10M def shape update => 1750ms
+- def shape host with 5 props => 1741ms
+- def shape update with 5 props => 2505ms
+- update adds constant overhead over host lookup, but...
+- lookup with many props must be cripplingly slow
+
+[DONE] TODO: binary-trees still has many def shape host calls, find out why
 - is it all f.prototype lookups? print names
-- look at 3d-raytrace also
+  - For binary-trees, overwhelmingly .prototype needing def shape host
+  - For 3d-raytrace, mixed, some .prototype but also others
 - .prototype lookup is on a function, goes through fallback path!
+- Implement getPrototype
+- Not useful, produces bigger code, no real wins
 
-
-
-
-
-
+[DONE] TODO: shape dispatch count stats, should be dynamic!
 
 [DONE] TODO: optimize getProto? FN called many times in binary-trees
 ./higgs --stats benchmarks/sunspider/access-binary-trees.js

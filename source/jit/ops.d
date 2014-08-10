@@ -1807,17 +1807,15 @@ void gen_call_prim(
     // If the callee might change some object shapes
     auto funName = fun.getName;
     if (
-        !funName.startsWith("$rt_se")       &&
-        !funName.startsWith("$rt_ns")       &&
-        !funName.startsWith("$rt_mod")      &&
-        !funName.startsWith("$rt_toBool")   &&
-        !funName.startsWith("$rt_toNumber") &&
-        !funName.startsWith("$rt_toInt32")  &&
-        !funName.startsWith("$rt_toUint32") &&
-        !funName.startsWith("$rt_newObj")   &&
-        !funName.startsWith("$rt_newArr")   &&
-        !funName.startsWith("$rt_getProp")  &&
-        !funName.startsWith("$rt_objGetProp"))
+        !funName.startsWith("$rt_se") &&
+        !funName.startsWith("$rt_ns") &&
+        !funName.startsWith("$rt_toBool") &&
+        !funName.startsWith("$rt_newObj") &&
+        !funName.startsWith("$rt_newArr") &&
+        !funName.startsWith("$rt_getProp") &&
+        !funName.startsWith("$rt_objGetProp") &&
+        !funName.startsWith("$rt_hasOwnProp") &&
+        !funName.startsWith("$rt_setArrLen"))
     {
         //writeln(funName, " <= ", st.fun.getName);
 
@@ -3161,7 +3159,7 @@ void gen_shape_get_def(
 
         auto objShape = cast(ObjShape)obj_get_shape(objPtr);
         assert (
-            objShape !is null, 
+            objShape !is null,
             "shape_get_def: obj shape is null for lookup of \"" ~ 
             to!string(propStr) ~ "\""
         );
@@ -3383,14 +3381,6 @@ void gen_shape_get_def(
         return vm.defShapeSub;
     }
 
-    // Increment the count of shape lookup instances
-    stats.numDefShapeInsts++;
-
-    // Increment the count of shape lookups for the global object
-    if (auto instr0Arg = cast(IRInstr)instr.getArg(0))
-        if (instr0Arg.opcode is &GET_GLOBAL_OBJ)
-            stats.numDefShapeGlobal++;
-
     // Get the object argument value
     auto objVal = cast(IRDstValue)instr.getArg(0);
 
@@ -3400,8 +3390,8 @@ void gen_shape_get_def(
     // If the object shape and the property name are both known
     if (st.shapeKnown(objVal) && propName !is null)
     {
-        // Increment the count of instances with a known shape
-        numDefShapeKnown++;
+        // Increment the count for known shapes
+        as.incStatCnt(&stats.numDefShapeKnown, scrRegs[0]);
 
         // Get the object shape
         auto objShape = st.getShape(objVal);
@@ -3450,6 +3440,9 @@ void gen_shape_get_def(
     // If the property name is a known constant string
     else if (propName !is null)
     {
+        // Increment the count of dispatches
+        as.incStatCnt(&stats.numDefShapeDisp, scrRegs[0]);
+
         // Create an extended info object for the shape dispatch
         auto extInfo = new ShapeDispInfo();
         assert (ver.extInfo is null);

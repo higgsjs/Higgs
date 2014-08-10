@@ -63,22 +63,19 @@ ulong maxVersions = 0;
 /// Number of blocks with specific version counts
 ulong[ulong] numVerBlocks;
 
-/// Number of shape lookup instances
-ulong numDefShapeInsts = 0;
-
-/// Number of shape lookup instances on the global object
-ulong numDefShapeGlobal = 0;
-
-/// Number of shape lookup instances with a known shape
+/// Number of shape lookups with a known shape
 ulong numDefShapeKnown = 0;
 
-/// Number of host version lookups
-ulong numDefShapeHost = 0;
+/// Number of shape lookups with dynamic dispatches
+ulong numDefShapeDisp = 0;
 
 /// Number of version dispatch updates
 ulong numDefShapeUpd = 0;
 
-/// Number of host property lookups
+/// Number of host version lookups
+ulong numDefShapeHost = 0;
+
+/// Number of host property writes
 ulong numSetPropHost = 0;
 
 /// Number of heap allocations
@@ -211,12 +208,10 @@ static ~this()
 
         //writefln("num moves: %s", numMoves);
 
-        writeln("num def shape insts: ", numDefShapeInsts);
-        writeln("num def shape global: ", numDefShapeGlobal);
-        writeln("num def shape known: ", numDefShapeKnown);
-
-        writefln("num def shape host: %s", numDefShapeHost);
+        writefln("num def shape known: %s", numDefShapeKnown);
+        writefln("num def shape dispatch: %s", numDefShapeDisp);
         writefln("num def shape update: %s", numDefShapeUpd);
+        writefln("num def shape host: %s", numDefShapeHost);
         writefln("num set prop host: %s", numSetPropHost);
         writefln("num heap allocs: %s", numHeapAllocs);
 
@@ -263,6 +258,7 @@ static ~this()
         {
             rusage usage;
             getrusage(RUSAGE_SELF, &usage);
+            writefln("peak mem usage (KB): %d", usage.ru_maxrss);
             writefln("page reclaims: %d", usage.ru_minflt);
             writefln("page faults: %s", usage.ru_majflt);
             writefln("voluntary context sw: %s", usage.ru_nvcsw);
