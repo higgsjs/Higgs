@@ -1075,12 +1075,82 @@ alias IsTypeOp!(Type.GETSET) gen_is_getset;
 alias IsTypeOp!(Type.STRING) gen_is_string;
 
 void CmpOp(string op, size_t numBits)(
-    BlockVersion ver, 
+    BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
+
+
+
+    // FIXME: Temporary hack to eliminate comparison against null when
+    // shape is known. To be eliminated once we have constant prop in BBV.
+    static if (op == "ne")
+    {
+        if (instr.getArg(1) is IRConst.nullPtrCst)
+        {
+            auto val = cast(IRDstValue)instr.getArg(0);
+            auto valSt = st.getState(val);
+
+            if (valSt.type.typeKnown &&
+                valSt.type.typeTag is Type.SHAPEPTR &&
+                valSt.type.shapeKnown)
+            {
+                // Evaluate the boolean condition
+                auto boolResult = st.getShape(val) !is null;
+
+                // If this instruction has many uses or is not followed by an if
+                if (instr.hasManyUses || ifUseNext(instr) is false)
+                {
+                    auto outOpnd = st.getOutOpnd(as, instr, 64);
+                    auto outVal = boolResult? TRUE:FALSE;
+                    as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
+                    st.setOutType(as, instr, Type.CONST);
+                }
+
+                // If our only use is an immediately following if_true
+                if (ifUseNext(instr) is true)
+                {
+                    // Get the branch edge
+                    auto targetIdx = boolResult? 0:1;
+                    auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
+
+                    // Generate the branch code
+                    ver.genBranch(
+                        as,
+                        branch,
+                        null,
+                        delegate void(
+                            CodeBlock as,
+                            VM vm,
+                            CodeFragment target0,
+                            CodeFragment target1,
+                            BranchShape shape
+                        )
+                        {
+                            final switch (shape)
+                            {
+                                case BranchShape.NEXT0:
+                                break;
+
+                                case BranchShape.NEXT1:
+                                case BranchShape.DEFAULT:
+                                jmp32Ref(as, vm, target0, 0);
+                            }
+                        }
+                    );
+                }
+
+                return;
+            }
+        }
+    }
+
+
+
+
+
     // Check if this is a floating-point comparison
     static bool isFP = op.startsWith("f");
 

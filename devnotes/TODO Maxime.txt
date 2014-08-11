@@ -64,19 +64,17 @@ TODO: recompilation of functions (no OSR) with inlining
 - make an exception for units with loops?
 - should gather stats about the percentage of functions which are long-running
   - bar graphs
+- do it intelligently, don't inline in runtime fns, or if too deep in stack?
 
 TODO: look at eval notes again
+
+TODO: optimize gen_call to remove type tag test, exc code when known closure?
 
 TODO: constant prop in ValType?
 - Don't have to propagate all
 - Would be useful to prop shapes without using a register
 - Propagate booleans
 - Simplify shape_is_null and such
-
-TODO: optimize gen_call to remove type tag test, exc code when known closure?
-
-TODO: some global constants can be resolved at compile time
-- such as undefined, Infinity
 
 ------------------------------------------------------------------------------
 
@@ -103,13 +101,6 @@ TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
 
-TODO: optimize ne_rawptr for shape using knownShape flag
-./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
-- should make a shape_is_null instruction
-- fall back to ne_rawptr code gen if shape unknown
-- can we factor out boolean output and branching gen?
-- Wait until basic const prop in BBV? More elegant ***
-
 TODO: look at machine code for math-cordic, what can we optimize?
 
 TODO: try to optimize shape_def_const?
@@ -125,16 +116,6 @@ TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
     before: 21ms
 ./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
     before: 14ms
-TODO: get rid of set_str? could have an IRStringVal?
-- Gets allocated during JIT comp
-- No more link idx for strings
-- Could have a global string constant table in the VM
-  - all of the same str consts point to the same entry
-- Pool of IRString objects, mapped by name
-  - Don't even allocate in string table if not necessary!
-  - Use for set_str
-- Get rid of link table once and for all ***
-  - create a closure cell or something!? cache in regexp object?
 
 TODO: profiling phase for shape_get_def?
 - first K=50 or 100 calls could gather shapes
@@ -171,6 +152,7 @@ Meeting:
 - Started work on paper
   - Initial commit
   - Page limit is 10, 1.25 page above limit
+    - Transform related work into background?
   - Anonymity, no hints of identity, use placeholder name for Higgs?
   - Notification on Nov 3, PLDI deadline is Nov 13
     - May resubmit with very light or no modifications
@@ -184,10 +166,36 @@ Meeting:
   - better for incremental inlining
   - not planning to refactor Higgs this way, too much work
 
+TODO: get rid of set_str? could have an IRStringVal?
+- Gets allocated during JIT comp
+- No more link idx for strings
+- Could have a global string constant table in the VM
+  - all of the same str consts point to the same entry
+- Pool of IRString objects, mapped by name
+  - Don't even allocate in string table if not necessary!
+  - Use for set_str
+- Get rid of link table once and for all ***
+  - create a closure cell or something!? cache in regexp object?
+
+TODO: genDirectBranch? genBoolOutput?
+
+TODO: replace is_getset by shape_is_getset in get prop?
+- Better specialization
+- Eliminates need for getset tag and object type :) ?
+- But need to have shape attrib for getset, not so bad
 
 
 
 
+
+
+
+
+
+[DONE] TODO: optimize ne_rawptr for shape using knownShape flag
+./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
+- Make a little hack for now in ne instruction, see perf impact
+- best time for bitwise-and is 7ms, often 8 or 10
 
 [DONE] TODO: implement pxor encoding
 66 0F EF /r     PXOR xmm1, xmm2/m128

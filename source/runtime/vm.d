@@ -330,6 +330,8 @@ struct ValuePair
             return to!string(word.floatVal);
 
             case Type.RAWPTR:
+            if (word.ptrVal is null)
+                return "nullptr";
             return to!string(word.ptrVal);
 
             case Type.RETADDR:
