@@ -1051,10 +1051,18 @@ class CodeGenState
 
             if (tmpReg.isXMM)
             {
-                // Write the FP constant in the code stream and load it
-                as.movq(tmpReg, X86Opnd(64, RIP, 2));
-                as.jmp8(8);
-                as.writeInt(curOpnd.imm.imm, 64);
+                if (curOpnd.imm.imm is 0)
+                {
+                    as.pxor(tmpReg, tmpReg);
+                }
+                else
+                {
+                    // Write the FP constant in the code stream and load it
+                    as.movq(tmpReg, X86Opnd(64, RIP, 2));
+                    as.jmp8(8);
+                    as.writeInt(curOpnd.imm.imm, 64);
+                }
+
                 return tmpReg;
             }
 

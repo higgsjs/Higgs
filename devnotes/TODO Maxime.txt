@@ -184,19 +184,13 @@ Meeting:
   - better for incremental inlining
   - not planning to refactor Higgs this way, too much work
 
-FIXME: cordic exec time goes to shit after static FP const resolution...
-- Possibly because loading unaligned value?
-- Can also try loading as uint64 and then moving to XMM
 
 
 
 
 
-
-
-
-
-
+[DONE] TODO: implement pxor encoding
+66 0F EF /r     PXOR xmm1, xmm2/m128
 
 [DONE] TODO: rt_OBJ_MIN_CAP... This is statically resolvable...
 - Could we speed binary trees much by implementing static resolution?

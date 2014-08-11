@@ -111,11 +111,11 @@ unittest
         }
     }
 
-    // add  
+    // add
     test(
         delegate void (CodeBlock cb) { cb.add(X86Opnd(CL), X86Opnd(3)); },
         "80C103"
-    );   
+    );
     test(
         delegate void (CodeBlock cb) { cb.add(X86Opnd(CL), X86Opnd(BL)); },
         "00D9"
@@ -737,12 +737,11 @@ unittest
         "4154"
     );
 
-    /*
+    // pxor
     test(
-        delegate void (CodeBlock cb) { cb.push(1); },
-        "6A01"
+        delegate void (CodeBlock cb) { cb.pxor(XMM0.opnd, XMM1.opnd); },
+        "660FEFC1"
     );
-    */
 
     // ret
     test(

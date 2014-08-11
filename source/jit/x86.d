@@ -1766,6 +1766,14 @@ void popfq(CodeBlock cb)
     cb.writeBytes(0x48, 0x9D);
 }
 
+// pxor - Logical Exclusive OR of XMM registers
+alias writeXMM64!(
+    "pxor",
+    0x66, // prefix
+    0x0F, // opRegMem0
+    0xEF  // opRegMem1
+) pxor;
+
 /// ret - Return from call, popping only the return address
 void ret(CodeBlock cb)
 {
@@ -1813,7 +1821,7 @@ void writeShift(
             cb.writeRMInstr!('l', opExt, opMemImmPref)(szPref, rexW, opnd0, X86Opnd.NONE);
             cb.writeByte(cast(ubyte)opnd1.imm.imm);
         }
-    }    
+    }
     else if (opnd1.isReg && opnd1.reg == CL)
     {
         cb.writeRMInstr!('l', opExt, opMemClPref)(szPref, rexW, opnd0, X86Opnd.NONE);
@@ -1826,7 +1834,7 @@ void writeShift(
 
 /// sal - Shift arithmetic left
 alias writeShift!(
-    "sal", 
+    "sal",
     0xD1, // opMemOnePref,
     0xD3, // opMemClPref,
     0xC1, // opMemImmPref,
@@ -1900,7 +1908,7 @@ alias writeXMM64!(
 
 // ucomisd - Unordered compare scalar double
 alias writeXMM64!(
-    "ucomisd", 
+    "ucomisd",
     0x66, // prefix
     0x0F, // opRegMem0
     0x2E  // opRegMem1
