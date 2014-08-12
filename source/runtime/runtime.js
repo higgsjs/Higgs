@@ -2533,6 +2533,13 @@ function $rt_delProp(base, prop)
     if (!$ir_is_string(prop))
         throw TypeError('non-string property name');
 
+    // If the property exists, set its value to undefined
+    var defShape = $ir_shape_get_def(base, prop);
+    if ($ir_ne_rawptr(defShape, $nullptr))
+    {
+        $ir_shape_set_prop(base, prop, defShape, $undef);
+    }
+
     // Set the property attributes to deleted
     $ir_shape_set_attrs(base, prop, $rt_ATTR_DELETED | $rt_ATTR_CONFIGURABLE);
 

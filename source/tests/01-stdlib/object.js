@@ -187,6 +187,13 @@ function test_defineProperty()
     assert ('x' in obj);
     assert (obj.x === undefined);
 
+    // Undeleting a property
+    var obj = { k:3 }
+    delete obj.k;
+    Object.defineProperty(obj, 'k', {});
+    assert ('k' in obj);
+    assert (obj.k === undefined);
+
     // Getter accessor test
     var obj = Object.defineProperty({}, 'p', { get: function() {return 5;} });
     assert (obj.p === 5);

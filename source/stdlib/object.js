@@ -213,11 +213,10 @@ Object.defineProperty = function (obj, prop, attribs)
         obj[prop] = { get:get, set:set };
     }
 
-    // Otherwise, no value was specified
-    else
+    // Otherwise, no value was specified, create the property if absent
+    else if (!$rt_hasOwnProp(obj, prop))
     {
-        // Create the property if it doesn't exist
-        obj[prop] = obj[prop];
+        obj[prop] = undefined;
     }
 
     // Extract the current property attributes
