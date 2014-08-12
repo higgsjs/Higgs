@@ -186,6 +186,7 @@ Object.defineProperty = function (obj, prop, attribs)
         (attribs.hasOwnProperty('get') || attribs.hasOwnProperty('set')))
         throw TypeError('property cannot have both a value and accessors');
 
+    // Convert the property name to a string if necessary
     prop = $rt_toString(prop);
 
     // Test if accessors were specified
@@ -210,6 +211,13 @@ Object.defineProperty = function (obj, prop, attribs)
 
         // Create a property descriptor pair
         obj[prop] = { get:get, set:set };
+    }
+
+    // Otherwise, no value was specified
+    else
+    {
+        // Create the property if it doesn't exist
+        obj[prop] = obj[prop];
     }
 
     // Extract the current property attributes

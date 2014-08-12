@@ -40,6 +40,8 @@
  * _________________________________________________________________________
  */
 
+require('lib/test');
+
 function test_ctor()
 {
     var o = {};
@@ -162,26 +164,28 @@ function test_defineProperty()
     // Properties are not writable by default
     o.p = 8;
     assert (o.p === 7);
-
-    // Properties are not configurable by default
-    try
-    {
-        Object.defineProperty(o, 'p', { value: 9, writable:true });
-        assert (false, 'exception should have been thrown');
-    }
-    catch (e)
-    {
-    }
     o.p++;
     assert (o.p === 7);
 
-    Object.defineProperty(o, 'k', { value: 3, enumerable:false });
-    assert (o.k === 3);
-    assert (!o.propertyIsEnumerable('k'));
+    // Properties are not configurable by default
+    // Changing the value of p should fail
+    assertThrows(function () {
+        Object.defineProperty(o, 'p', { value: 9, writable:true });
+    });
+
+    // Defining a non-enumerable property
+    var obj = Object.defineProperty({}, 'k', { value: 3, enumerable:false });
+    assert (obj.k === 3);
+    assert (!obj.propertyIsEnumerable('k'));
 
     var obj = Object.defineProperty({}, 'x', { value: true, enumerable:true });
     assert (obj.x === true);
     assert (obj.propertyIsEnumerable('x'));
+
+    // Empty property descriptor
+    var obj = Object.defineProperty({}, 'x', {});
+    assert ('x' in obj);
+    assert (obj.x === undefined);
 
     // Getter accessor test
     var obj = Object.defineProperty({}, 'p', { get: function() {return 5;} });
@@ -196,6 +200,14 @@ function test_defineProperty()
     obj.p = 7;
     assert (obj.k === 7);
     assert (obj.p === undefined);
+
+    // Can't have both a value and a getter/setter
+    assertThrows(function () {
+        Object.defineProperty({}, 'p', { value: 9, set:function() {} });
+    });
+    assertThrows(function () {
+        Object.defineProperty({}, 'p', { value: 9, get:function() {} });
+    });
 }
 
 function test_defineProperties()

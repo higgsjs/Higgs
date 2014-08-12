@@ -93,6 +93,7 @@ void defObjConsts(VM vm)
     vm.defRTConst("ATTR_ENUMERABLE"w    , ATTR_ENUMERABLE);
     vm.defRTConst("ATTR_DELETED"w       , ATTR_DELETED);
     vm.defRTConst("ATTR_GETSET"w        , ATTR_GETSET);
+    vm.defRTConst("ATTR_DEFAULT"w       , ATTR_DEFAULT);
 }
 
 /**

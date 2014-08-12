@@ -189,9 +189,25 @@ TODO: test, property undeletion with defineProperty?
 - set to undefined on delete
 - test this, also in V8
 
-TODO: test get + value in defineProperty in V8
+TODO: look at machine code for bitwise-and again
+./higgs --jit_genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+TODO: 3d-cube is pretty slow, why?
 
-TODO: try ./benchmark.py again
+TODO: noticeably more calls, more type tests in benchmark.py with shape system... wtf?
+- look at spreadsheets, identify differing benchmarks
+
+var o = { s: 'reoooowrrrrrrr' }
+
+print(o.s);
+
+delete o.s
+
+Object.defineProperty(o, 's', {});
+
+print(o.s + ' brains!');
+
+TODO: post on dlang.org, can we template based on identifier name? capture id name with a template?
+vm.defRTConst("ATTR_CONFIGURABLE"w, ATTR_CONFIGURABLE);
 
 
 
@@ -200,9 +216,13 @@ TODO: try ./benchmark.py again
 
 
 
+[DONE] TODO: test get + value in defineProperty in V8
+Object.defineProperty({}, 'p', { value:3, get:function(){} });
+- V8 doesn't allow it
 
-
-
+[DONE] TODO: try ./benchmark.py again
+- 25% slower on average, but several benchmarks now slightly faster
+- compile time much slower, twice as many versions, twice as many blocks
 
 [DONE] TODO: replace is_getset by shape_is_getset in get prop?
 - Better specialization
