@@ -1848,22 +1848,6 @@ function $rt_newArr(protoPtr, numElems)
 }
 
 /**
-Create a new getter-setter pair object
-*/
-function $rt_newGetSet(get, set)
-{
-    // Allocate the object
-    var objPtr = $rt_getset_alloc(2);
-
-    $ir_shape_init_empty(objPtr);
-
-    objPtr.get = get;
-    objPtr.set = set;
-
-    return objPtr
-}
-
-/**
 Get/allocate a regular expresson object
 */
 function $rt_getRegexp(link, pattern, flags)
@@ -1929,7 +1913,7 @@ function $rt_objGetProp(obj, propStr)
         var propVal = $ir_shape_get_prop(obj, defShape);
 
         // If the property is a getter-setter function
-        if ($ir_is_getset(propVal))
+        if ($ir_shape_is_getset(defShape))
         {
             // Call the getter function
             return $ir_call(propVal.get, obj);
@@ -1961,7 +1945,7 @@ Get a property from a value using a value as a key
 function $rt_getProp(base, prop)
 {
     // If the base is an object or closure
-    if ($ir_is_object(base) || $ir_is_closure(base) || $ir_is_getset(base))
+    if ($ir_is_object(base) || $ir_is_closure(base))
     {
         // If the property is a string
         if ($ir_is_string(prop))
@@ -2077,14 +2061,11 @@ function $rt_getPropField(base, prop)
         // If the property is defined on the object
         if ($ir_ne_rawptr(defShape, $nullptr))
         {
-            // Get the property value
-            var propVal = $ir_shape_get_prop(base, defShape);
-
             // If the value is not a getter-setter function, return it
-            if (!$ir_is_getset(propVal))
+            if (!$ir_shape_is_getset(defShape))
             {
-                // Property was found, is not a getter
-                return propVal;
+                // Get the property value
+                return $ir_shape_get_prop(base, defShape);
             }
         }
     }
@@ -2107,14 +2088,11 @@ function $rt_getPropMethod(base, prop)
         // If the property is defined on the object
         if ($ir_ne_rawptr(defShape, $nullptr))
         {
-            // Get the property value
-            var propVal = $ir_shape_get_prop(base, defShape);
-
             // If the value is not a getter-setter function, return it
-            if (!$ir_is_getset(propVal))
+            if (!$ir_shape_is_getset(defShape))
             {
-                // Property was found, is not a getter
-                return propVal;
+                // Get the property value
+                return $ir_shape_get_prop(base, defShape);
             }
         }
 
@@ -2130,14 +2108,11 @@ function $rt_getPropMethod(base, prop)
             // If the property is defined on the object
             if ($ir_ne_rawptr(defShape, $nullptr))
             {
-                // Get the property value
-                var propVal = $ir_shape_get_prop(base, defShape);
-
                 // If the value is not a getter-setter function, return it
-                if (!$ir_is_getset(propVal))
+                if (!$ir_shape_is_getset(defShape))
                 {
-                    // Property was found, is not a getter
-                    return propVal;
+                    // Get the property value
+                    return $ir_shape_get_prop(base, defShape);
                 }
             }
         }
@@ -2196,7 +2171,7 @@ function $rt_getGlobal(obj, propStr)
         var propVal = $ir_shape_get_prop(obj, defShape);
 
         // If the property is a getter-setter function
-        if ($ir_is_getset(propVal))
+        if ($ir_shape_is_getset(defShape))
         {
             // Call the getter function
             return $ir_call(propVal.get, obj);
@@ -2244,13 +2219,11 @@ function $rt_getGlobalInl(propStr)
     // If the property is defined on the object
     if ($ir_ne_rawptr(defShape, $nullptr))
     {
-        // Get the property value
-        var propVal = $ir_shape_get_prop(obj, defShape);
-
         // If the property is a not getter-setter function, return its value
-        if (!$ir_is_getset(propVal))
+        if (!$ir_shape_is_getset(defShape))
         {
-            return propVal;
+            // Get the property value
+            return $ir_shape_get_prop(obj, defShape);
         }
     }
 
@@ -2418,7 +2391,7 @@ function $rt_setProp(base, prop, val)
     //print('\n');
 
     // If the base is an object or closure
-    if ($ir_is_object(base) || $ir_is_closure(base) || $ir_is_getset(base))
+    if ($ir_is_object(base) || $ir_is_closure(base))
     {
         // If the property is a string
         if ($ir_is_string(prop))

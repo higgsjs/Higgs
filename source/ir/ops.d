@@ -121,7 +121,6 @@ Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BO
 Opcode IS_OBJECT = { "is_object", true, [OpArg.LOCAL], &gen_is_object, OpInfo.BOOL_VAL };
 Opcode IS_ARRAY = { "is_array", true, [OpArg.LOCAL], &gen_is_array, OpInfo.BOOL_VAL };
 Opcode IS_CLOSURE = { "is_closure", true, [OpArg.LOCAL], &gen_is_closure, OpInfo.BOOL_VAL };
-Opcode IS_GETSET = { "is_getset", true, [OpArg.LOCAL], &gen_is_getset, OpInfo.BOOL_VAL };
 Opcode IS_STRING = { "is_string", true, [OpArg.LOCAL], &gen_is_string, OpInfo.BOOL_VAL };
 
 // Type conversion
@@ -275,7 +274,6 @@ Opcode ALLOC_REFPTR = { "alloc_refptr", true, [OpArg.LOCAL], &gen_alloc_refptr, 
 Opcode ALLOC_OBJECT = { "alloc_object", true, [OpArg.LOCAL], &gen_alloc_object, OpInfo.MAY_GC };
 Opcode ALLOC_ARRAY = { "alloc_array", true, [OpArg.LOCAL], &gen_alloc_array, OpInfo.MAY_GC };
 Opcode ALLOC_CLOSURE = { "alloc_closure", true, [OpArg.LOCAL], &gen_alloc_closure, OpInfo.MAY_GC };
-Opcode ALLOC_GETSET = { "alloc_getset", true, [OpArg.LOCAL], &gen_alloc_getset, OpInfo.MAY_GC };
 Opcode ALLOC_STRING = { "alloc_string", true, [OpArg.LOCAL], &gen_alloc_string, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection

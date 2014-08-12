@@ -187,7 +187,6 @@ enum Type : ubyte
     OBJECT,
     ARRAY,
     CLOSURE,
-    GETSET,
     STRING
 }
 
@@ -202,7 +201,6 @@ bool isHeapPtr(Type type)
         case Type.OBJECT:
         case Type.ARRAY:
         case Type.CLOSURE:
-        case Type.GETSET:
         case Type.STRING:
         return true;
 
@@ -221,7 +219,6 @@ bool isObject(Type type)
         case Type.OBJECT:
         case Type.ARRAY:
         case Type.CLOSURE:
-        case Type.GETSET:
         return true;
 
         default:
@@ -251,7 +248,6 @@ string typeToString(Type type)
         case Type.OBJECT:   return "object";
         case Type.ARRAY:    return "array";
         case Type.CLOSURE:  return "closure";
-        case Type.GETSET:   return "getter-setter";
         case Type.STRING:   return "string";
 
         default:
@@ -376,9 +372,6 @@ struct ValuePair
 
             case Type.CLOSURE:
             return "closure";
-
-            case Type.GETSET:
-            return "getter-setter";
 
             case Type.STRING:
             return extractStr(word.ptrVal);

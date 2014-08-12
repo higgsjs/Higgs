@@ -1071,7 +1071,6 @@ alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
 alias IsTypeOp!(Type.OBJECT) gen_is_object;
 alias IsTypeOp!(Type.ARRAY) gen_is_array;
 alias IsTypeOp!(Type.CLOSURE) gen_is_closure;
-alias IsTypeOp!(Type.GETSET) gen_is_getset;
 alias IsTypeOp!(Type.STRING) gen_is_string;
 
 void CmpOp(string op, size_t numBits)(
@@ -2762,7 +2761,6 @@ alias HeapAllocOp!(Type.REFPTR) gen_alloc_refptr;
 alias HeapAllocOp!(Type.OBJECT) gen_alloc_object;
 alias HeapAllocOp!(Type.ARRAY) gen_alloc_array;
 alias HeapAllocOp!(Type.CLOSURE) gen_alloc_closure;
-alias HeapAllocOp!(Type.GETSET) gen_alloc_getset;
 alias HeapAllocOp!(Type.STRING) gen_alloc_string;
 
 void gen_gc_collect(

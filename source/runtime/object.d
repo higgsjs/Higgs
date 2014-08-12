@@ -70,6 +70,7 @@ const PropAttr ATTR_CONFIGURABLE    = 1 << 0;
 const PropAttr ATTR_WRITABLE        = 1 << 1;
 const PropAttr ATTR_ENUMERABLE      = 1 << 2;
 const PropAttr ATTR_DELETED         = 1 << 3;
+const PropAttr ATTR_GETSET          = 1 << 4;
 
 /// Default property attributes
 const PropAttr ATTR_DEFAULT = (
@@ -91,6 +92,7 @@ void defObjConsts(VM vm)
     vm.defRTConst("ATTR_WRITABLE"w      , ATTR_WRITABLE);
     vm.defRTConst("ATTR_ENUMERABLE"w    , ATTR_ENUMERABLE);
     vm.defRTConst("ATTR_DELETED"w       , ATTR_DELETED);
+    vm.defRTConst("ATTR_GETSET"w        , ATTR_GETSET);
 }
 
 /**
@@ -248,7 +250,7 @@ class ObjShape
     }
 
     /// Test if this shape defines a getter-setter
-    bool isGetSet() const { return type.typeKnown && type.typeTag is Type.GETSET; }
+    bool isGetSet() const { return (attrs & ATTR_GETSET) != 0; }
 
     /// Test if this shape has a given attribute
     bool writable() const { return (attrs & ATTR_WRITABLE) != 0; }
@@ -507,9 +509,6 @@ void setProp(
             case LAYOUT_CLOS:
             auto numCells = clos_get_num_cells(obj);
             return ValuePair(clos_alloc(vm, extCap, numCells), Type.CLOSURE);
-
-            case LAYOUT_GETSET:
-            return ValuePair(getset_alloc(vm, extCap), Type.GETSET);
 
             default:
             assert (false, "unhandled object type");

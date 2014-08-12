@@ -463,10 +463,9 @@ refptr gcForward(VM vm, refptr ptr)
     }
 
     // If this is an object of some kind
-    if (header == LAYOUT_OBJ  ||
-        header == LAYOUT_ARR  ||
-        header == LAYOUT_CLOS ||
-        header == LAYOUT_GETSET)
+    if (header == LAYOUT_OBJ ||
+        header == LAYOUT_ARR ||
+        header == LAYOUT_CLOS)
     {
         /*
         auto shape = cast(ObjShape)obj_get_shape(ptr);
@@ -500,9 +499,6 @@ refptr gcForward(VM vm, refptr ptr)
                     auto numCells = clos_get_num_cells(oldObj);
                     for (uint32_t i = 0; i < numCells; ++i)
                         clos_set_cell(ptr, i, clos_get_cell(oldObj, i));
-                    break;
-
-                    case LAYOUT_GETSET:
                     break;
 
                     default:

@@ -123,7 +123,7 @@ Object.getOwnPropertyDescriptor = function (obj, prop)
     var propVal = $ir_shape_get_prop(obj, defShape);
 
     // If this property is a getter-setter
-    if ($ir_is_getset(propVal))
+    if ($ir_shape_is_getset(defShape))
     {
         desc.get = propVal.get;
         desc.set = propVal.set;
@@ -188,6 +188,9 @@ Object.defineProperty = function (obj, prop, attribs)
 
     prop = $rt_toString(prop);
 
+    // Test if accessors were specified
+    var isGS = attribs.hasOwnProperty('get') || attribs.hasOwnProperty('set');
+
     // If a value is specified, try to set it,
     // this will do nothing if writable is false
     if (attribs.hasOwnProperty('value'))
@@ -196,7 +199,7 @@ Object.defineProperty = function (obj, prop, attribs)
     }
 
     // Otherwise, if accessors are specified
-    else if (attribs.hasOwnProperty('get') || attribs.hasOwnProperty('set'))
+    else if (isGS)
     {
         var defFn = function () {};
         var get = attribs.hasOwnProperty('get')? attribs.get:defFn;
@@ -206,7 +209,7 @@ Object.defineProperty = function (obj, prop, attribs)
             throw TypeError('accessors must be functions');
 
         // Create a property descriptor pair
-        obj[prop] = $rt_newGetSet(get, set);
+        obj[prop] = { get:get, set:set };
     }
 
     // Extract the current property attributes
@@ -223,7 +226,8 @@ Object.defineProperty = function (obj, prop, attribs)
     var newAttrs = (
         (newWR? $rt_ATTR_WRITABLE:0) |
         (newEN? $rt_ATTR_ENUMERABLE:0) |
-        (newCF? $rt_ATTR_CONFIGURABLE:0)
+        (newCF? $rt_ATTR_CONFIGURABLE:0) |
+        (isGS? $rt_ATTR_GETSET:0)
     );
 
     // If the property is not currently configurable

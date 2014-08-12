@@ -179,18 +179,36 @@ TODO: get rid of set_str? could have an IRStringVal?
 
 TODO: genDirectBranch? genBoolOutput?
 
-TODO: replace is_getset by shape_is_getset in get prop?
+TODO: profile comp time on worst benchmark
+
+TODO: shape_get_def... branch predict issue? branch hints? change code?
+- help bitwise-and?
+
+TODO: test, property undeletion with defineProperty?
+- value should be undefined
+- set to undefined on delete
+- test this, also in V8
+
+TODO: test get + value in defineProperty in V8
+
+TODO: try ./benchmark.py again
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: replace is_getset by shape_is_getset in get prop?
 - Better specialization
 - Eliminates need for getset tag and object type :) ?
 - But need to have shape attrib for getset, not so bad
-
-
-
-
-
-
-
-
+- works well for bitwise-and!
 
 [DONE] TODO: optimize ne_rawptr for shape using knownShape flag
 ./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js

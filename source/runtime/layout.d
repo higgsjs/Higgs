@@ -587,127 +587,7 @@ extern (C) void cell_visit_gc(VM vm, refptr o)
     cell_set_word(o, gcForward(vm, cell_get_word(o), cell_get_type(o)));
 }
 
-const uint32 LAYOUT_GETSET = 5;
-
-extern (C) uint32 getset_ofs_next(refptr o)
-{    
-    return 0;
-}
-
-extern (C) uint32 getset_ofs_header(refptr o)
-{    
-    return (0 + 8);
-}
-
-extern (C) uint32 getset_ofs_cap(refptr o)
-{    
-    return ((0 + 8) + 4);
-}
-
-extern (C) uint32 getset_ofs_shape(refptr o)
-{    
-    return (((0 + 8) + 4) + 4);
-}
-
-extern (C) uint32 getset_ofs_word(refptr o, uint32 i)
-{    
-    return (((((0 + 8) + 4) + 4) + 8) + (8 * i));
-}
-
-extern (C) uint32 getset_ofs_type(refptr o, uint32 i)
-{    
-    return ((((((0 + 8) + 4) + 4) + 8) + (8 * getset_get_cap(o))) + (1 * i));
-}
-
-extern (C) refptr getset_get_next(refptr o)
-{    
-    return *cast(refptr*)(o + getset_ofs_next(o));
-}
-
-extern (C) uint32 getset_get_header(refptr o)
-{    
-    return *cast(uint32*)(o + getset_ofs_header(o));
-}
-
-extern (C) uint32 getset_get_cap(refptr o)
-{    
-    return *cast(uint32*)(o + getset_ofs_cap(o));
-}
-
-extern (C) shapeptr getset_get_shape(refptr o)
-{    
-    return *cast(shapeptr*)(o + getset_ofs_shape(o));
-}
-
-extern (C) uint64 getset_get_word(refptr o, uint32 i)
-{    
-    return *cast(uint64*)(o + getset_ofs_word(o, i));
-}
-
-extern (C) uint8 getset_get_type(refptr o, uint32 i)
-{    
-    return *cast(uint8*)(o + getset_ofs_type(o, i));
-}
-
-extern (C) void getset_set_next(refptr o, refptr v)
-{    
-    *cast(refptr*)(o + getset_ofs_next(o)) = v;
-}
-
-extern (C) void getset_set_header(refptr o, uint32 v)
-{    
-    *cast(uint32*)(o + getset_ofs_header(o)) = v;
-}
-
-extern (C) void getset_set_cap(refptr o, uint32 v)
-{    
-    *cast(uint32*)(o + getset_ofs_cap(o)) = v;
-}
-
-extern (C) void getset_set_shape(refptr o, shapeptr v)
-{    
-    *cast(shapeptr*)(o + getset_ofs_shape(o)) = v;
-}
-
-extern (C) void getset_set_word(refptr o, uint32 i, uint64 v)
-{    
-    *cast(uint64*)(o + getset_ofs_word(o, i)) = v;
-}
-
-extern (C) void getset_set_type(refptr o, uint32 i, uint8 v)
-{    
-    *cast(uint8*)(o + getset_ofs_type(o, i)) = v;
-}
-
-extern (C) uint32 getset_comp_size(uint32 cap)
-{    
-    return ((((((0 + 8) + 4) + 4) + 8) + (8 * cap)) + (1 * cap));
-}
-
-extern (C) uint32 getset_sizeof(refptr o)
-{    
-    return getset_comp_size(getset_get_cap(o));
-}
-
-extern (C) refptr getset_alloc(VM vm, uint32 cap)
-{    
-    auto o = vm.heapAlloc(getset_comp_size(cap));
-    getset_set_cap(o, cap);
-    getset_set_header(o, 5);
-    return o;
-}
-
-extern (C) void getset_visit_gc(VM vm, refptr o)
-{    
-    getset_set_next(o, gcForward(vm, getset_get_next(o)));
-    auto cap = getset_get_cap(o);
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        getset_set_word(o, i, gcForward(vm, getset_get_word(o, i), getset_get_type(o, i)));
-    }
-}
-
-const uint32 LAYOUT_ARR = 6;
+const uint32 LAYOUT_ARR = 5;
 
 extern (C) uint32 arr_ofs_next(refptr o)
 {    
@@ -843,7 +723,7 @@ extern (C) refptr arr_alloc(VM vm, uint32 cap)
 {    
     auto o = vm.heapAlloc(arr_comp_size(cap));
     arr_set_cap(o, cap);
-    arr_set_header(o, 6);
+    arr_set_header(o, 5);
     return o;
 }
 
@@ -858,7 +738,7 @@ extern (C) void arr_visit_gc(VM vm, refptr o)
     arr_set_tbl(o, gcForward(vm, arr_get_tbl(o)));
 }
 
-const uint32 LAYOUT_ARRTBL = 7;
+const uint32 LAYOUT_ARRTBL = 6;
 
 extern (C) uint32 arrtbl_ofs_next(refptr o)
 {    
@@ -949,7 +829,7 @@ extern (C) refptr arrtbl_alloc(VM vm, uint32 cap)
 {    
     auto o = vm.heapAlloc(arrtbl_comp_size(cap));
     arrtbl_set_cap(o, cap);
-    arrtbl_set_header(o, 7);
+    arrtbl_set_header(o, 6);
     for (uint32 i = 0; i < cap; ++i)
     {    
         arrtbl_set_word(o, i, UNDEF.word.uint8Val);
@@ -990,10 +870,6 @@ extern (C) uint32 layout_sizeof(refptr o)
     {    
         return cell_sizeof(o);
     }
-    if ((t == LAYOUT_GETSET))
-    {    
-        return getset_sizeof(o);
-    }
     if ((t == LAYOUT_ARR))
     {    
         return arr_sizeof(o);
@@ -1031,11 +907,6 @@ extern (C) void layout_visit_gc(VM vm, refptr o)
     if ((t == LAYOUT_CELL))
     {    
         cell_visit_gc(vm, o);
-        return;
-    }
-    if ((t == LAYOUT_GETSET))
-    {    
-        getset_visit_gc(vm, o);
         return;
     }
     if ((t == LAYOUT_ARR))
