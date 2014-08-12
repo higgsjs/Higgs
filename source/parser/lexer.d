@@ -322,9 +322,9 @@ struct StrStream
     }
 
     /// Read a character without advancing the index
-    auto peekCh()
+    auto peekCh(size_t ofs = 0)
     {
-        wchar ch = (index < str.length)? str[index]:'\0';
+        wchar ch = (index + ofs < str.length)? str[index + ofs]:'\0';
         return ch;
     }
 
@@ -651,8 +651,8 @@ Token getToken(ref StrStream stream, LexFlags flags)
     // Get the position at the start of the token
     SrcPos pos = stream.getPos();
 
-    // Number
-    if (digit(ch))
+    // Number (starting with a digit or .nxx)
+    if (digit(ch) || (ch is '.' && digit(stream.peekCh(1))))
     {
         // Hexadecimal number
         if (stream.match("0x"))
