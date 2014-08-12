@@ -109,7 +109,7 @@ ASTProgram testParse(string input, bool valid = true)
         assert (
             false,
             "parse succeeded on invalid input:\n" ~
-            input         
+            input
         );
     }
 
@@ -266,6 +266,7 @@ unittest
     testExprAST("077;", new IntExpr(63));
     testExprAST("087;", new IntExpr(87));
     testExprAST("7.0;", new FloatExpr(7));
+    testExprAST(".05;", new FloatExpr(0.05));
     testExprAST("true;", new TrueExpr());
     testExprAST("false;", new FalseExpr());
     testExprAST("null;", new NullExpr());
