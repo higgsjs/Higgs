@@ -3682,6 +3682,13 @@ void gen_shape_set_prop(
     auto objVal = cast(IRDstValue)instr.getArg(0);
     auto defVal = cast(IRDstValue)instr.getArg(2);
 
+    // Compute the minimum object capacity we can guarantee
+    auto minObjCap = (
+        (instr.getArg(0) is st.fun.globalVal)?
+        obj_get_cap(st.fun.vm.globalObj.word.ptrVal):
+        OBJ_MIN_CAP
+    );
+
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
@@ -3719,7 +3726,7 @@ void gen_shape_set_prop(
 
             // If we can't guarantee that the slot index is within capacity,
             // generate the extension table code
-            if (slotIdx >= OBJ_MIN_CAP)
+            if (slotIdx >= minObjCap)
             {
                 // If the slot index is below capacity, skip the ext table code
                 as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
@@ -3776,7 +3783,7 @@ void gen_shape_set_prop(
 
         // If the property is writable and the slot index is
         // within the guaranteed object capacity
-        if (defShape.writable && slotIdx < OBJ_MIN_CAP)
+        if (defShape.writable && slotIdx < minObjCap)
         {
             auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
             assert (objOpnd.isReg);
@@ -3841,6 +3848,13 @@ void gen_shape_get_prop(
     // If the defining shape is known
     if (st.shapeKnown(defVal))
     {
+        // Compute the minimum object capacity we can guarantee
+        auto minObjCap = (
+            (instr.getArg(0) is st.fun.globalVal)?
+            obj_get_cap(st.fun.vm.globalObj.word.ptrVal):
+            OBJ_MIN_CAP
+        );
+
         // Get the property shape
         auto defShape = st.getShape(defVal);
         assert (defShape !is null);
@@ -3861,7 +3875,7 @@ void gen_shape_get_prop(
 
         // If we can't guarantee that the slot index is within capacity,
         // generate the extension table code
-        if (slotIdx >= OBJ_MIN_CAP)
+        if (slotIdx >= minObjCap)
         {
             // If the slot index is below capacity, skip the ext table code
             as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));

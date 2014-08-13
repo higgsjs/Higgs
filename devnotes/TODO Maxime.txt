@@ -133,27 +133,43 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
+TODO: get rid of set_str? could have an IRStringVal?
+- Gets allocated during JIT comp
+- No more link idx for strings
+- Could have a global string constant table in the VM
+  - all of the same str consts point to the same entry
+- Pool of IRString objects, mapped by name
+  - Don't even allocate in string table if not necessary!
+  - Use for set_str
+- Get rid of link table once and for all ***
+  - create a closure cell or something!? cache in regexp object?
+
+TODO: profile comp time on worst benchmark
+
 Meeting:
 - Global setters working
 - Found and fixed latent GC bug
+- Added stats to underdstand behavior
+- Optimized global object tracking
 - Optimized several shape ops
 - Looked at machine code
-- Added stats
-- Optimized global object tracking
 - Making sure that shape info propagates where it needs to and is used effectively
 - Implemented property lookup cache (Moz has this), much speedups
-- Implemented global property lookups
+- Optimized global property access, property reads/writes
 - Some benchs now faster, most slightly slower
   - Confiante que je peux depasser ce niveau de performance
 - Shape profiling, want to experiment
 - Calls often kill shape info
   - May want more aggressive inlining
   - Only inlining primitives right now
+  - about 1.5x known shape per dispatch on average
+  - adding type info will bring more benefits
 - Started work on paper
   - Initial commit
   - Page limit is 10, 1.25 page above limit
     - Transform related work into background?
   - Anonymity, no hints of identity, use placeholder name for Higgs?
+  - Good news: CGO really centered on compilation, more so than CC/DLS
   - Notification on Nov 3, PLDI deadline is Nov 13
     - May resubmit with very light or no modifications
 - Typed Shapes paper, Computing Frontier, Jan 2015?
@@ -166,30 +182,17 @@ Meeting:
   - better for incremental inlining
   - not planning to refactor Higgs this way, too much work
 
-TODO: get rid of set_str? could have an IRStringVal?
-- Gets allocated during JIT comp
-- No more link idx for strings
-- Could have a global string constant table in the VM
-  - all of the same str consts point to the same entry
-- Pool of IRString objects, mapped by name
-  - Don't even allocate in string table if not necessary!
-  - Use for set_str
-- Get rid of link table once and for all ***
-  - create a closure cell or something!? cache in regexp object?
-
-TODO: genDirectBranch? genBoolOutput?
-
-TODO: profile comp time on worst benchmark
-
-TODO: shape_get_def... branch predict issue? branch hints? change code?
-- help bitwise-and?
-
-TODO: look at machine code for bitwise-and again
-./higgs --jit_genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
 TODO: 3d-cube is pretty slow, why?
 
 TODO: noticeably more calls, more type tests in benchmark.py with shape system... wtf?
 - look at spreadsheets, identify differing benchmarks
+- is it because of the ctor code?
+
+TODO: shape_set_prop, simplify
+- put obj shape code first, only run if def shape unknown
+
+TODO: obj r/w, try to use cmov, see if perf impact
+- prototype on getprop first
 
 
 
@@ -198,9 +201,9 @@ TODO: noticeably more calls, more type tests in benchmark.py with shape system..
 
 
 
-
-
-
+[DONE] TODO: global obj r/w opt, can guarantee minimum global obj size
+./higgs --nostdlib --perf_stats benchmarks/sunspider/bitops-bitwise-and.js
+- Small but nice speedups :)
 
 [DONE] FIXME: floating-point parsing error, fix this *on master*
 h> .098
