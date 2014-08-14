@@ -2795,7 +2795,7 @@ IRGenCtx createLoopEntry(
 )
 {
     // Branch into the loop entry
-    auto entryDesc = curCtx.jump(entryBlock);  
+    auto entryDesc = curCtx.jump(entryBlock);
 
     // Create a local map for the loop entry
     IRValue[IdentExpr] localMap;

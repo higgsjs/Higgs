@@ -70,17 +70,8 @@ void inlinePass(VM vm, IRFunction caller)
     if (opts.jit_noinline)
         return;
 
-    bool isUnit = caller.isUnit;
+    //bool isUnit = caller.isUnit;
     //bool hasLoop = funHasLoop(caller);
-
-    /*
-    // If this is a unit function and it has no loops, do not inline
-    if (caller.isUnit && !hasLoop)
-    {
-        writeln("not inlining in ", caller.getName);
-        return;
-    }
-    */
 
     //writeln("inlinePass for ", caller.getName);
 
@@ -197,8 +188,17 @@ void inlinePass(VM vm, IRFunction caller)
 
                 if (newVal)
                 {
-                    //writeln(propName);
+                    // Replace uses of the call by the constant
                     callSite.replUses(newVal);
+
+                    // Replace the getGlobal call by a direct jump
+                    auto desc = callSite.getTarget(0);
+                    auto jump = block.addInstr(new IRInstr(&JUMP));
+                    auto newDesc = jump.setTarget(0, desc.target);
+                    foreach (arg; desc.args)
+                        newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+                    block.delInstr(callSite);
+
                     continue;
                 }
             }

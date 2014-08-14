@@ -140,11 +140,11 @@ TODO: get rid of set_str? could have an IRStringVal?
 - Get rid of link table once and for all ***
   - create a closure cell or something!? cache in regexp object?
 
-TODO: why are some benchmarks 20-30% slower, target simplest
-- 3d-cube is 2x slower
-- binary-trees also 2x slower
-- 3bits-byte, recursive 2x slower
-- do these allocate much objects?
+FIXME: obj/arr alloc is about 50x slower in dev-maxime
+./higgs --nostdlib --perf_stats --e "for (var i = 0; i < 50000; ++i) o = {};"
+- D string alloc, maybe?
+  - We do use extractWStr(strPtr);
+- Try tempStr just to see if speed difference
 
 
 
@@ -156,6 +156,17 @@ TODO: why are some benchmarks 20-30% slower, target simplest
 
 
 
+
+[DONE] FIXME: getGlobalInl not inlined in newObj
+./higgs --nostdlib --perf_stats --e "for (var i = 0; i < 50000; ++i) o = {};"
+$0 = set_str "$rt_OBJ_MIN_CAP", <link:16375>
+$8 = call_prim "$rt_getGlobalInl", <fun:NULL>, $0 => entry(4FF4)
+- Didn't remove the call after statically fetching the constant!
+
+[DONE] TODO: why is 3d-cube 2x slower
+./higgs --stats benchmarks/sunspider/3d-cube.js
+- previously, newArr was inlined
+- obj/arr alloc was previously much faster
 
 [DONE] TODO: obj r/w, try to use cmov, see if perf impact
 ./higgs --perf_stats --nostdlib benchmarks/micro/200m-getprop.js

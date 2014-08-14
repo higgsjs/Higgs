@@ -1819,7 +1819,6 @@ function $rt_newObj(protoPtr)
     var objPtr = $rt_obj_alloc($rt_OBJ_MIN_CAP);
 
     $ir_shape_init_empty(objPtr);
-
     $rt_setProto(objPtr, protoPtr);
 
     return objPtr;
