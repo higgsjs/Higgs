@@ -524,7 +524,10 @@ class CodeGenState
     */
     X86Reg getDefReg(IRDstValue value)
     {
-        assert (value.outSlot !is NULL_STACK);
+        assert (
+            value.outSlot !is NULL_STACK,
+            "no out slot for value: " ~ value.toString
+        );
 
         // If this value has only one use, which is a phi node
         if (value.hasOneUse)

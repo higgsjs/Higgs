@@ -294,13 +294,13 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 
 /// Initialize the shape of an object to the empty shape
-Opcode SHAPE_INIT_EMPTY = { "shape_init_empty", true, [OpArg.LOCAL], &gen_shape_init_empty, OpInfo.IMPURE };
+Opcode SHAPE_INIT_EMPTY = { "shape_init_empty", false, [OpArg.LOCAL], &gen_shape_init_empty, OpInfo.IMPURE };
 
 /// Get the shape defining a given property
 Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def, OpInfo.BRANCH };
 
 /// Set the value of an object property based on its shape
-Opcode SHAPE_SET_PROP = { "shape_set_prop", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode SHAPE_SET_PROP = { "shape_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Get the value of an object property based on its shape
 Opcode SHAPE_GET_PROP = { "shape_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_prop };
@@ -309,10 +309,10 @@ Opcode SHAPE_GET_PROP = { "shape_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &g
 Opcode SHAPE_GET_PROTO = { "shape_get_proto", true, [OpArg.LOCAL], &gen_shape_get_proto };
 
 /// Define a constant property on an object
-Opcode SHAPE_DEF_CONST = { "shape_def_const", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_def_const, OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode SHAPE_DEF_CONST = { "shape_def_const", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_def_const, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Set the attributes for a property
-Opcode SHAPE_SET_ATTRS = { "shape_set_attrs", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_attrs, OpInfo.IMPURE };
+Opcode SHAPE_SET_ATTRS = { "shape_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_attrs, OpInfo.IMPURE };
 
 /// Get the parent shape for a given shape
 Opcode SHAPE_PARENT = { "shape_parent", true, [OpArg.LOCAL], &gen_shape_parent };

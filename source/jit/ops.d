@@ -3814,8 +3814,6 @@ void gen_shape_set_prop(
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
     as.saveJITRegs();
 
     // Call the host function
@@ -3989,7 +3987,7 @@ void gen_shape_def_const(
     CodeBlock as
 )
 {
-    extern (C) static Word op_shape_def_const(VM vm, IRInstr instr)
+    extern (C) static void op_shape_def_const(VM vm, IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
@@ -3997,23 +3995,20 @@ void gen_shape_def_const(
         auto isEnum = vm.getArgBool(instr, 3);
 
         auto propStr = extractWStr(strPtr);
+        //auto propStr = tempWStr(strPtr);
 
         // Attempt to define the constant
-        auto boolVal = defConst(
+        defConst(
             vm,
             objPair,
             propStr,
             valPair,
             isEnum
         );
-
-        return boolVal? TRUE.word:FALSE.word;
     }
 
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);
-
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
 
@@ -4022,10 +4017,6 @@ void gen_shape_def_const(
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_shape_def_const);
     as.call(scrRegs[0]);
-
-    // Set the output value
-    as.mov(outOpnd, cretReg.opnd);
-    st.setOutType(as, instr, Type.CONST);
 
     as.loadJITRegs();
 
@@ -4042,7 +4033,7 @@ void gen_shape_set_attrs(
     CodeBlock as
 )
 {
-    extern (C) static Word op_shape_set_attrs(VM vm, IRInstr instr)
+    extern (C) static void op_shape_set_attrs(VM vm, IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
@@ -4051,20 +4042,16 @@ void gen_shape_set_attrs(
         auto propStr = extractWStr(strPtr);
 
         // Attempt to set the property attributes
-        auto boolVal = setPropAttrs(
+        setPropAttrs(
             vm,
             objPair,
             propStr,
             cast(uint8_t)attrBits
         );
-
-        return boolVal? TRUE.word:FALSE.word;
     }
 
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);
-
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
 
@@ -4073,10 +4060,6 @@ void gen_shape_set_attrs(
     as.ptr(cargRegs[1], instr);
     as.ptr(scrRegs[0], &op_shape_set_attrs);
     as.call(scrRegs[0]);
-
-    // Set the output value
-    as.mov(outOpnd, cretReg.opnd);
-    st.setOutType(as, instr, Type.CONST);
 
     as.loadJITRegs();
 

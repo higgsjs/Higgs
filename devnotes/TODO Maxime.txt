@@ -146,6 +146,17 @@ FIXME: obj/arr alloc is about 50x slower in dev-maxime
   - We do use extractWStr(strPtr);
 - Try tempStr just to see if speed difference
 
+FIXME: bug in gc-call-cont
+./higgs tests/02-regress/gc-call-cont.js 
+entering gcCollect
+leaving gcCollect
+entering gcCollect
+Assertion failed (runtime/vm.d@1227): no return entry for return address: 7F8F2B81CEB8
+Assertion failed (jit/jit.d@2135): current instr is not null
+Segmentation fault (core dumped)
+
+
+
 
 
 
