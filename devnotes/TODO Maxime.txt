@@ -1,12 +1,13 @@
 Conference deadlines:
-- ISMM          Feb 8?
-- DLS 2013      June 8, 2013
-- VMIL 2013     ~August 2013
-- CGO 2014      ~September 2013
-- CC 2014       Oct 4, Oct 11 2013
-- PLDI 2014     Nov 8, Nov 15 2013
-- VEE 2014      ~November 2013
-- Computing Frontier => Jan 2015, notify Feb 20
+- ISMM                  Feb
+- DLS 2013              June
+- Intel Compiler...     ~July
+- VMIL 2013             ~August
+- CGO 2014              ~September
+- CC 2014               October
+- PLDI 2014             November
+- VEE 2014              ~November
+- Computing Frontier    Jan 2015, notify Feb
 
 List of possible contributions:
 - Type tagging scheme
@@ -76,6 +77,8 @@ TODO: constant prop in ValType?
 - Propagate booleans
 - Simplify shape_is_null and such
 
+TODO: profile comp time on worst benchmark
+
 ------------------------------------------------------------------------------
 
 Milestone: Equalling Master Branch Performance
@@ -87,21 +90,9 @@ TODO: blog post, the future of compilation
 - Lazyness is crucial
 - Definite place for controlled code duplication
 
-TODO: blog post about typed shapes, quick illustrations
-- "Faster JS Objects with Typed Shapes"
-- quick sketching program, online?
-- post to 
-    r/compilers
-    r/ProgrammingLanguages
-    r/pldesign
-- Use diagrams from Eddy's talk, link and give credit
-- Typed shapes + BBV a bit of a gamble
-
 TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
-
-TODO: look at machine code for math-cordic, what can we optimize?
 
 TODO: try to optimize shape_def_const?
 - shape should be known in binary-trees
@@ -109,13 +100,15 @@ TODO: try to optimize shape_def_const?
 - can create a getVanillaObj or some such?
 - Object.prototype shape can change at run time!
 
-*** Go Max, makes Higgs fast, bring shapes to master! ***
+Meeting:
+- ~3x faster on getprop loop microbenchmark
 
-TODO: don't generate set_str for shape_get_def and shape_set_prop uses only
-./higgs --nostdlib --perf_stats benchmarks/micro/10m_getprop.js
-    before: 21ms
-./higgs --nostdlib --stats benchmarks/sunspider/bitops-bitwise-and.js
-    before: 14ms
+TODO: blog post, Higgs' Fancy New Object System
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+*** Go Max, makes Higgs fast, bring shapes to master! ***
 
 TODO: profiling phase for shape_get_def?
 - first K=50 or 100 calls could gather shapes
@@ -127,7 +120,10 @@ TODO: profiling phase for shape_get_def?
 - Can have a different strategy for the global object
   - We know its current shape, can evaluate if probably stable or not
   - Are we currently executing a unit function?
-
+- Global obj, could guarantee known prop idx, without cache
+  - Even though type is unknown
+  - Must guarantee prop deletion and readd doesn't change prop idx
+  - Make test for del + add
 TODO: commit and experiment
 - how often do we see only one shape?
 - how do typical global getprops behave wrt shapes? do they stabilize?
@@ -144,9 +140,28 @@ TODO: get rid of set_str? could have an IRStringVal?
 - Get rid of link table once and for all ***
   - create a closure cell or something!? cache in regexp object?
 
-TODO: profile comp time on worst benchmark
+TODO: why are some benchmarks 20-30% slower, target simplest
+- 3d-cube is 2x slower
+- binary-trees also 2x slower
+- 3bits-byte, recursive 2x slower
+- do these allocate much objects?
 
-Meeting:
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: obj r/w, try to use cmov, see if perf impact
+./higgs --perf_stats --nostdlib benchmarks/micro/200m-getprop.js
+- Results inconclusive, seems slightly slower!
+
+[DONE] Meeting:
 - Global setters working
 - Found and fixed latent GC bug
 - Added stats to underdstand behavior
@@ -181,25 +196,6 @@ Meeting:
     - requests new IR be generated when needed
   - better for incremental inlining
   - not planning to refactor Higgs this way, too much work
-
-TODO: 3d-cube is pretty slow, why?
-
-TODO: noticeably more calls, more type tests in benchmark.py with shape system... wtf?
-- look at spreadsheets, identify differing benchmarks
-- is it because of the ctor code?
-
-TODO: shape_set_prop, simplify
-- put obj shape code first, only run if def shape unknown
-
-TODO: obj r/w, try to use cmov, see if perf impact
-- prototype on getprop first
-
-
-
-
-
-
-
 
 [DONE] TODO: global obj r/w opt, can guarantee minimum global obj size
 ./higgs --nostdlib --perf_stats benchmarks/sunspider/bitops-bitwise-and.js

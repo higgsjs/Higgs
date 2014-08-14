@@ -3682,15 +3682,15 @@ void gen_shape_set_prop(
     auto objVal = cast(IRDstValue)instr.getArg(0);
     auto defVal = cast(IRDstValue)instr.getArg(2);
 
+    // Extract the property name, if known
+    auto propName = instr.getArgStrCst(1);
+
     // Compute the minimum object capacity we can guarantee
     auto minObjCap = (
-        (instr.getArg(0) is st.fun.globalVal)?
+        (objVal is st.fun.globalVal)?
         obj_get_cap(st.fun.vm.globalObj.word.ptrVal):
         OBJ_MIN_CAP
     );
-
-    // Extract the property name, if known
-    auto propName = instr.getArgStrCst(1);
 
     // Get the offset of the start of the word array
     auto wordOfs = obj_ofs_word(null, 0);
@@ -3709,12 +3709,9 @@ void gen_shape_set_prop(
             // TODO: handle type mismatches with defShape
             // TODO
 
-            //writeln("prop redef, slotIdx=", defShape.slotIdx);
-
             auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-
             auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
-            auto typeOpnd = st.getTypeOpnd(as, instr, 3);
+            auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
 
             // Move the object operand into r0
             as.mov(scrRegs[0].opnd, objOpnd);
@@ -3783,13 +3780,16 @@ void gen_shape_set_prop(
 
         // If the property is writable and the slot index is
         // within the guaranteed object capacity
+        //
+        // Note: we don't check if the property goes in the extended
+        // table because we cant guarantee the object size is sufficient
+        // or that the extended table even exists
         if (defShape.writable && slotIdx < minObjCap)
         {
             auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-            assert (objOpnd.isReg);
-
             auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[0].opnd(64), true);
             auto typeOpnd = st.getTypeOpnd(as, instr, 3, scrRegs[1].opnd(8), true);
+            assert (objOpnd.isReg);
 
             // Get the object capacity into r2
             as.getField(scrRegs[2].reg(32), objOpnd.reg, obj_ofs_cap(null));
@@ -3805,7 +3805,7 @@ void gen_shape_set_prop(
             as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
 
             // Set the new object shape
-            st.setShape(cast(IRDstValue)instr.getArg(0), defShape);
+            st.setShape(objVal, defShape);
 
             return;
         }
@@ -3827,7 +3827,7 @@ void gen_shape_set_prop(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.clearShape(cast(IRDstValue)instr.getArg(0));
+    st.clearShape(objVal);
 }
 
 /// Gets the value of a property
