@@ -63,6 +63,9 @@ ulong maxVersions = 0;
 /// Number of blocks with specific version counts
 ulong[ulong] numVerBlocks;
 
+/// Number of shape objects allocated
+ulong numShapes = 0;
+
 /// Number of shape lookups with a known shape
 ulong numDefShapeKnown = 0;
 
@@ -206,8 +209,7 @@ static ~this()
         writefln("num versions: %s", numVersions);
         writefln("max versions: %s", maxVersions);
 
-        //writefln("num moves: %s", numMoves);
-
+        writefln("num shapes: %s", numShapes);
         writefln("num def shape known: %s", numDefShapeKnown);
         writefln("num def shape dispatch: %s", numDefShapeDisp);
         writefln("num def shape update: %s", numDefShapeUpd);

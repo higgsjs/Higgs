@@ -3310,7 +3310,8 @@ void gen_shape_get_def(
             auto objVal = cast(IRDstValue)instr.getArg(0);
             assert (objVal !is null);
             targetSt.setShape(objVal, objShape);
-            targetSt.setShape(instr, defShape);
+            if (instr.hasUses)
+                targetSt.setShape(instr, defShape);
 
             // Create a version instance object for the target
             auto targetInst = getBranchEdge(
@@ -3337,7 +3338,7 @@ void gen_shape_get_def(
                 targetSt = branch.predState? branch.predState:branch.target.state;
 
                 objShape = targetSt.shapeKnown(objVal)? targetSt.getShape(objVal):null;
-                defShape = targetSt.shapeKnown(instr)? targetSt.getShape(instr):null;
+                defShape = (instr.hasUses && targetSt.shapeKnown(instr))? targetSt.getShape(instr):null;
 
                 // Move the cached defining shape for this entry to the output operand
                 as.ptr(outOpnd.reg, defShape);
@@ -3470,12 +3471,11 @@ void gen_shape_get_def(
     {
         // Increment the count for known shapes
         as.incStatCnt(&stats.numDefShapeKnown, scrRegs[0]);
+        //as.printStr("shape known");
 
         // Get the object shape
         auto objShape = st.getShape(objVal);
         assert (objShape !is null);
-
-        //as.printStr("shape known");
 
         // Get the output operand
         auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -4014,6 +4014,66 @@ void gen_shape_def_const(
         );
     }
 
+    auto vm = st.fun.vm;
+
+    // Get the object and value arguments
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+    auto valVal = cast(IRDstValue)instr.getArg(2);
+
+    // Extract the property name, if known
+    auto propName = instr.getArgStrCst(1);
+
+    // Get the offset of the start of the word array
+    auto wordOfs = obj_ofs_word(null, 0);
+
+    // If we know that the object has the empty shape
+    // and we are defining the prototype value
+    if (st.shapeKnown(objVal) && 
+        st.getShape(objVal) is st.fun.vm.emptyShape &&
+        propName == "__proto__" &&
+        st.shapeKnown(valVal))
+    {
+        // Get the object shape
+        auto objShape = st.getShape(objVal);
+
+        // Get the prototype value sha[pe
+        auto valShape = st.getShape(valVal);
+
+        // Ensure that the property doesn't already exist
+        assert (objShape.getDefShape(propName) is null);
+
+        // Create a new shape for the property
+        auto newShape = objShape.defProp(
+            vm,
+            propName,
+            ValType(),
+            0,
+            null
+        );
+
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        assert (objOpnd.isReg);
+        auto valOpnd = st.getWordOpnd(as, instr, 2, 64);
+        assert (valOpnd.isReg);
+        auto typeOpnd = st.getTypeOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
+
+        // Set the prototype value and type
+        as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
+        auto wordMem = X86Opnd(64, objOpnd.reg, wordOfs + 8 * PROTO_SLOT_IDX);
+        auto typeMem = X86Opnd(8 , objOpnd.reg, wordOfs + PROTO_SLOT_IDX, 8, scrRegs[0]);
+        as.mov(wordMem, valOpnd);
+        as.mov(typeMem, typeOpnd);
+
+        // Update the object shape
+        as.ptr(scrRegs[0].reg, newShape);
+        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
+
+        // Set the new object shape
+        st.setShape(objVal, newShape);
+
+        return;
+    }
+
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);
 
@@ -4028,7 +4088,7 @@ void gen_shape_def_const(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.clearShape(cast(IRDstValue)instr.getArg(0));
+    st.clearShape(objVal);
 }
 
 /// Sets the attributes for a property

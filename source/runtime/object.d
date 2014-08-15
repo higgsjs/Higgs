@@ -223,6 +223,9 @@ class ObjShape
     /// Empty shape constructor
     this(VM vm)
     {
+        // Increment the number of shapes allocated
+        stats.numShapes++;
+
         this.parent = null;
 
         this.propName = null;
@@ -241,6 +244,9 @@ class ObjShape
         PropAttr attrs
     )
     {
+        // Increment the number of shapes allocated
+        stats.numShapes++;
+
         this.parent = parent;
 
         this.propName = propName;

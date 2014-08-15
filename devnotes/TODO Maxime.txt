@@ -145,12 +145,30 @@ TODO: get rid of set_str? could have an IRStringVal?
 
 TODO: capture param name with alias in defRTConst
 
-TODO: num shapes stats, increment in ctor
-- print next to num blocks
-
 test perf with benchmark.py
 
-FIXME: obj/arr alloc is about 50x slower in dev-maxime
+
+
+
+
+
+
+
+
+
+
+[DONE] PROBLEM: new operator doesn't create objects from obj proto...
+- 3d-raytrace and access-binary-trees still suffer from slow shape_def_const
+- can still optimize for empty shape and __proto__
+- but need some kind of dynamic cache
+- in setProto, try calling shape_get_def obj, "" on proto val
+  - see how much slowdown there is
+  - then, can check if valVal has known shape
+
+[DONE] TODO: num shapes stats, increment in ctor
+- print next to num blocks
+
+[DONE] FIXME: obj/arr alloc is about 50x slower in dev-maxime
 ./higgs --nostdlib --perf_stats --e "for (var i = 0; i < 50000; ++i) o = {};"
 - D string alloc, maybe?
   - We do use extractWStr(strPtr);
@@ -159,18 +177,12 @@ FIXME: obj/arr alloc is about 50x slower in dev-maxime
   - Internal workings, not the call itself per-se
 - Could specialize just for proto (main purpose of this instr)
   - check that name is known __proto__
-  - Check that obj shape is known or is empty
+  - Check that obj shape is the empty shape
   - Check that obj is proto with correct shape
     - can check that it comes from get_obj_proto
     - dynamically verify that shape is same as at compilation time
   - If there is a mismatch, do regular call
-
-
-
-
-
-
-
+- Not that simple, doesn't work for new operator
 
 [DONE] FIXME: bug in gc-call-cont
 ./higgs --nostdlib tests/02-regress/gc-call-cont.js

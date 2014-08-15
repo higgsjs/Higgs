@@ -1891,6 +1891,10 @@ Set the prototype value for an object
 */
 function $rt_setProto(obj, proto)
 {
+    // Attempt to acquire the shape of the proto value
+    if ($ir_ne_refptr(proto, null))
+        $ir_shape_get_def(proto, '');
+
     // Define the prototype as a non-writable, non-enumerable constant
     $ir_shape_def_const(obj, '__proto__', proto, false);
 }

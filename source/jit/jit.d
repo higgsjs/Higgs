@@ -1237,7 +1237,7 @@ class CodeGenState
     {
         assert (
             value in valMap,
-            "shapeKnown: value not in val map"
+            "shapeKnown: value not in val map " ~ value.toString
         );
         ValState state = getState(value);
 
