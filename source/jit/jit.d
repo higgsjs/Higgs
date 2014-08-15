@@ -1235,7 +1235,10 @@ class CodeGenState
     /// Test if the shape is known for a given value
     auto shapeKnown(IRDstValue value)
     {
-        assert (value in valMap);
+        assert (
+            value in valMap,
+            "shapeKnown: value not in val map"
+        );
         ValState state = getState(value);
 
         return state.type.shapeKnown;
@@ -2205,6 +2208,9 @@ void compile(VM vm, IRInstr curInstr)
             // Store the code start index for this fragment
             if (ver.startIdx is ver.startIdx.max)
                 ver.markStart(as, vm);
+
+            if (opts.jit_dumpinfo)
+                writeln("compiling block: ", block.getName);
 
             if (opts.jit_trace_instrs)
                 as.printStr(block.getName ~ ":");

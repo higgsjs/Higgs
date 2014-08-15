@@ -102,6 +102,9 @@ TODO: try to optimize shape_def_const?
 
 Meeting:
 - ~3x faster on getprop loop microbenchmark
+- Fixed GC bug
+- Fixed static global const resolution bug
+- Identified perf issue with obj and array alloc
 
 TODO: blog post, Higgs' Fancy New Object System
 - quick sketching program, online?
@@ -140,33 +143,52 @@ TODO: get rid of set_str? could have an IRStringVal?
 - Get rid of link table once and for all ***
   - create a closure cell or something!? cache in regexp object?
 
+TODO: capture param name with alias in defRTConst
+
+TODO: num shapes stats, increment in ctor
+- print next to num blocks
+
+test perf with benchmark.py
+
 FIXME: obj/arr alloc is about 50x slower in dev-maxime
 ./higgs --nostdlib --perf_stats --e "for (var i = 0; i < 50000; ++i) o = {};"
 - D string alloc, maybe?
   - We do use extractWStr(strPtr);
 - Try tempStr just to see if speed difference
+- The whole of shape_def_const incurs a big slowdown
+  - Internal workings, not the call itself per-se
+- Could specialize just for proto (main purpose of this instr)
+  - check that name is known __proto__
+  - Check that obj shape is known or is empty
+  - Check that obj is proto with correct shape
+    - can check that it comes from get_obj_proto
+    - dynamically verify that shape is same as at compilation time
+  - If there is a mismatch, do regular call
 
-FIXME: bug in gc-call-cont
-./higgs tests/02-regress/gc-call-cont.js 
+
+
+
+
+
+
+
+[DONE] FIXME: bug in gc-call-cont
+./higgs --nostdlib tests/02-regress/gc-call-cont.js
+./higgs --nostdlib --jit_trace_instrs --jit_dumpinfo tests/02-regress/gc-call-cont.js
 entering gcCollect
 leaving gcCollect
 entering gcCollect
 Assertion failed (runtime/vm.d@1227): no return entry for return address: 7F8F2B81CEB8
 Assertion failed (jit/jit.d@2135): current instr is not null
 Segmentation fault (core dumped)
-
-
-
-
-
-
-
-
-
-
-
-
-
+- eval_str instruction causes compilation, compilation causes allocation, GC stack traversal fails
+- probably, some function that is currently executing got mistakenly collected
+- log traversed functions
+- log collected functions
+- GC gets triggered during compilation of eval_str...
+  - But we haven't really entered the fn yet...
+- Fixed curInstr param to compile
+- Added GCRoot for fun object to prevent collection
 
 [DONE] FIXME: getGlobalInl not inlined in newObj
 ./higgs --nostdlib --perf_stats --e "for (var i = 0; i < 50000; ++i) o = {};"

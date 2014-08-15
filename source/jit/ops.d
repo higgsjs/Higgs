@@ -2278,6 +2278,10 @@ void gen_load_file(
             auto ast = parseFile(fileName);
             auto fun = astToIR(vm, ast);
 
+            // Create a GC root for the function to prevent it from
+            // being collected if the GC runs during its own compilation
+            auto funPtr = GCRoot(vm, Word.funv(fun), Type.FUNPTR);
+
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
@@ -2285,7 +2289,7 @@ void gen_load_file(
             );
 
             // Compile the unit entry version
-            vm.compile(fun.entryBlock.firstInstr);
+            vm.compile(instr);
 
             // Get the return address for the continuation target
             auto retAddr = retTarget.getCodePtr(vm.execHeap);
@@ -2406,6 +2410,10 @@ void gen_eval_str(
             auto ast = parseString(codeStr, "eval_str");
             auto fun = astToIR(vm, ast);
 
+            // Create a GC root for the function to prevent it from
+            // being collected if the GC runs during its own compilation
+            auto funPtr = GCRoot(vm, Word.funv(fun), Type.FUNPTR);
+
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
@@ -2413,7 +2421,7 @@ void gen_eval_str(
             );
 
             // Compile the unit entry version
-            vm.compile(fun.entryBlock.firstInstr);
+            vm.compile(instr);
 
             // Get the return address for the continuation target
             auto retAddr = retTarget.getCodePtr(vm.execHeap);
@@ -3995,7 +4003,6 @@ void gen_shape_def_const(
         auto isEnum = vm.getArgBool(instr, 3);
 
         auto propStr = extractWStr(strPtr);
-        //auto propStr = tempWStr(strPtr);
 
         // Attempt to define the constant
         defConst(

@@ -824,7 +824,7 @@ Collect resources held by a dead function
 */
 void collectFun(VM vm, IRFunction fun)
 {
-    //writefln("freeing dead function: \"%s\"", fun.name);
+    //writefln("* freeing dead function: \"%s\"", fun.getName);
 
     // For each basic block
     for (IRBlock block = fun.firstBlock; block !is null; block = block.next)

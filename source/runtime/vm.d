@@ -143,6 +143,7 @@ union Word
     static Word float64v(float64 f) { Word w; w.floatVal = f; return w; }
     static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
     static Word ptrv(rawptr p) { Word w; w.ptrVal = p; return w; }
+    static Word funv(IRFunction f) { Word w; w.funVal = f; return w; }
 
     int8    int8Val;
     int16   int16Val;
@@ -1211,14 +1212,12 @@ class VM
             // Compute the number of locals in this frame
             auto frameSize = numLocals + extraArgs;
 
-            /*
-            writeln("curFun: ", curFun.getName);
-            writeln("numLocals=", numLocals);
-            writeln("argcSlot=", argcSlot);
-            writeln("raSlot=", raSlot);
-            writeln("argCount=", argCount);
-            writeln("frameSize=", frameSize);
-            */
+            //writeln("curFun: ", curFun.getName);
+            //writeln("numLocals=", numLocals);
+            //writeln("argcSlot=", argcSlot);
+            //writeln("raSlot=", raSlot);
+            //writeln("argCount=", argCount);
+            //writeln("frameSize=", frameSize);
 
             // Get the return address
             auto retAddr = cast(CodePtr)wsp[raSlot].ptrVal;
