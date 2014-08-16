@@ -3700,9 +3700,6 @@ void gen_shape_set_prop(
         OBJ_MIN_CAP
     );
 
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(null, 0);
-
     // If the defining shape is known
     // We are overwriting an existing property of this object
     if (st.shapeKnown(defVal))
@@ -3747,9 +3744,9 @@ void gen_shape_set_prop(
             }
 
             // Set the word and type values
-            auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * slotIdx);
+            auto wordMem = X86Opnd(64, scrRegs[0], OBJ_WORD_OFS + 8 * slotIdx);
             as.genMove(wordMem, valOpnd);
-            auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + slotIdx, 8, scrRegs[1]);
+            auto typeMem = X86Opnd(8 , scrRegs[0], OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
             as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
 
             return;
@@ -3803,8 +3800,8 @@ void gen_shape_set_prop(
             as.getField(scrRegs[2].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
             // Set the word and type values
-            auto wordMem = X86Opnd(64, objOpnd.reg, wordOfs + 8 * slotIdx);
-            auto typeMem = X86Opnd(8 , objOpnd.reg, wordOfs + slotIdx, 8, scrRegs[2]);
+            auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+            auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[2]);
             as.mov(wordMem, valOpnd);
             as.mov(typeMem, typeOpnd);
 
@@ -3847,9 +3844,6 @@ void gen_shape_get_prop(
 {
     // Get the property shape value
     auto defVal = cast(IRDstValue)instr.getArg(1);
-
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(null, 0);
 
     // If the defining shape is known
     if (st.shapeKnown(defVal))
@@ -3902,8 +3896,8 @@ void gen_shape_get_prop(
         //as.printUint(scrRegs[1].opnd);
 
         // Load the word and type values
-        auto wordMem = X86Opnd(64, scrRegs[0], wordOfs + 8 * slotIdx);
-        auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs + slotIdx, 8, scrRegs[1]);
+        auto wordMem = X86Opnd(64, scrRegs[0], OBJ_WORD_OFS + 8 * slotIdx);
+        auto typeMem = X86Opnd(8 , scrRegs[0], OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
         as.mov(outOpnd, wordMem);
         as.mov(scrRegs[2].opnd(8), typeMem);
 
@@ -3941,13 +3935,13 @@ void gen_shape_get_prop(
         as.label(Label.SKIP);
 
         // Load the word value
-        auto wordMem = X86Opnd(64, scrRegs[0], wordOfs, 8, scrRegs[2]);
+        auto wordMem = X86Opnd(64, scrRegs[0], OBJ_WORD_OFS, 8, scrRegs[2]);
         as.mov(outOpnd, wordMem);
 
         // Load type value
         as.shl(scrRegs[1].opnd, X86Opnd(3)); // r1 = cap * 8
         as.add(scrRegs[1].opnd, scrRegs[2].opnd); // r2 = cap * 8 + slotIdx
-        auto typeMem = X86Opnd(8 , scrRegs[0], wordOfs, 1, scrRegs[1]);
+        auto typeMem = X86Opnd(8 , scrRegs[0], OBJ_WORD_OFS, 1, scrRegs[1]);
         as.mov(scrRegs[1].opnd(8), typeMem);
         st.setOutType(as, instr, scrRegs[1].reg(8));
     }
@@ -3962,9 +3956,6 @@ void gen_shape_get_proto(
     CodeBlock as
 )
 {
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(null, 0);
-
     // No need to get the shape operand
     auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
     assert (objOpnd.isReg);
@@ -3977,8 +3968,8 @@ void gen_shape_get_proto(
     auto slotIdx = PROTO_SLOT_IDX;
 
     // Load the word and type values
-    auto wordMem = X86Opnd(64, objOpnd.reg, wordOfs + 8 * slotIdx);
-    auto typeMem = X86Opnd(8 , objOpnd.reg, wordOfs + slotIdx, 8, scrRegs[1]);
+    auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+    auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
     as.mov(outOpnd, wordMem);
     as.mov(scrRegs[2].opnd(8), typeMem);
 
@@ -4023,9 +4014,6 @@ void gen_shape_def_const(
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
-    // Get the offset of the start of the word array
-    auto wordOfs = obj_ofs_word(null, 0);
-
     // If we know that the object has the empty shape
     // and we are defining the prototype value
     if (st.shapeKnown(objVal) && 
@@ -4059,8 +4047,8 @@ void gen_shape_def_const(
 
         // Set the prototype value and type
         as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
-        auto wordMem = X86Opnd(64, objOpnd.reg, wordOfs + 8 * PROTO_SLOT_IDX);
-        auto typeMem = X86Opnd(8 , objOpnd.reg, wordOfs + PROTO_SLOT_IDX, 8, scrRegs[0]);
+        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * PROTO_SLOT_IDX);
+        auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + PROTO_SLOT_IDX, 8, scrRegs[0]);
         as.mov(wordMem, valOpnd);
         as.mov(typeMem, typeOpnd);
 

@@ -53,6 +53,9 @@ import util.id;
 /// Minimum object capacity (number of slots)
 const uint32_t OBJ_MIN_CAP = 8;
 
+// Static offset for the word array in an object
+const size_t OBJ_WORD_OFS = obj_ofs_word(null, 0);
+
 /// Prototype property slot index
 const uint32_t PROTO_SLOT_IDX = 0;
 
@@ -84,16 +87,17 @@ Define object-related runtime constants in a VM instance
 */
 void defObjConsts(VM vm)
 {
-    vm.defRTConst("OBJ_MIN_CAP"w, OBJ_MIN_CAP);
-    vm.defRTConst("PROTO_SLOT_IDX"w, PROTO_SLOT_IDX);
-    vm.defRTConst("FPTR_SLOT_IDX"w, FPTR_SLOT_IDX);
+    vm.defRTConst!(OBJ_MIN_CAP);
 
-    vm.defRTConst("ATTR_CONFIGURABLE"w  , ATTR_CONFIGURABLE);
-    vm.defRTConst("ATTR_WRITABLE"w      , ATTR_WRITABLE);
-    vm.defRTConst("ATTR_ENUMERABLE"w    , ATTR_ENUMERABLE);
-    vm.defRTConst("ATTR_DELETED"w       , ATTR_DELETED);
-    vm.defRTConst("ATTR_GETSET"w        , ATTR_GETSET);
-    vm.defRTConst("ATTR_DEFAULT"w       , ATTR_DEFAULT);
+    vm.defRTConst!(PROTO_SLOT_IDX);
+    vm.defRTConst!(FPTR_SLOT_IDX);
+
+    vm.defRTConst!(ATTR_CONFIGURABLE);
+    vm.defRTConst!(ATTR_WRITABLE);
+    vm.defRTConst!(ATTR_ENUMERABLE);
+    vm.defRTConst!(ATTR_DELETED);
+    vm.defRTConst!(ATTR_GETSET);
+    vm.defRTConst!(ATTR_DEFAULT);
 }
 
 /**

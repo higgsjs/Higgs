@@ -1263,18 +1263,19 @@ class VM
     /**
     Define a run-time constant on the global object
     */
-    void defRTConst(wstring name, ValuePair val)
+    void defRTConst(alias cstIdent)(wstring name = "")
     {
-        assert (name.toUpper == name);
-        return defConst(RT_PREFIX ~ name, val, false);
-    }
+        if (name == "")
+            name = to!wstring(__traits(identifier, cstIdent));
 
-    /**
-    Define an integer run-time constant on the global object
-    */
-    void defRTConst(wstring name, int32 intVal)
-    {
-        return defRTConst(name, ValuePair(intVal));
+        ValuePair valPair;
+        static if (__traits(isIntegral, cstIdent))
+            valPair = ValuePair(cstIdent);
+        else
+            valPair = cstIdent;
+
+        assert (name.toUpper == name);
+        return defConst(RT_PREFIX ~ name, valPair, false);
     }
 }
 

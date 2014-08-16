@@ -128,8 +128,6 @@ TODO: commit and experiment
 
 TODO: get rid of link table once and for all?
 
-TODO: capture param name with alias in defRTConst
-
 TODO: get rid of set_str? could have an IRStringVal?
 - Gets allocated during JIT comp
 - No more link idx for strings
@@ -147,7 +145,7 @@ TODO: get rid of set_str? could have an IRStringVal?
   - Then load from offset into itself
   - Will need to special case getWordOpnd for IRStringVal
 
-
+TODO: capture param name with alias in defRTConst
 
 
 
