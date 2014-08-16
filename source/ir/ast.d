@@ -1870,11 +1870,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             if (identExpr.name.startsWith(RT_PREFIX))
             {
                 // Make a direct static call to the primitive
-                auto callInstr = ctx.addInstr(new IRInstr(&CALL_PRIM, 2 + argVals.length));
+                auto callInstr = ctx.addInstr(new IRInstr(&CALL_PRIM, 1 + argVals.length));
                 callInstr.setArg(0, new IRString(identExpr.name));
-                callInstr.setArg(1, new IRFunPtr(null));
                 foreach (argIdx, argVal; argVals)
-                    callInstr.setArg(2 + argIdx, argVal);
+                    callInstr.setArg(1 + argIdx, argVal);
 
                 // Generate the call targets
                 genCallTargets(ctx, callInstr, expr.pos);
@@ -2680,13 +2679,12 @@ IRInstr genRtCall(IRGenCtx ctx, string fName, IRValue[] argVals, SrcPos pos)
     auto nameStr = new IRString(RT_PREFIX ~ to!wstring(fName));
 
     // <dstLocal> = CALL_PRIM <prim_name> <cachedFun> ...
-    auto callInstr = ctx.addInstr(new IRInstr(&CALL_PRIM, 2 + argVals.length));
+    auto callInstr = ctx.addInstr(new IRInstr(&CALL_PRIM, 1 + argVals.length));
     callInstr.setArg(0, nameStr);
-    callInstr.setArg(1, new IRFunPtr(null));
     foreach (argIdx, argVal; argVals)
     {
         assert (argVal !is null);
-        callInstr.setArg(2 + argIdx, argVal);
+        callInstr.setArg(1 + argIdx, argVal);
     }
 
     // Generate the call targets

@@ -1413,13 +1413,13 @@ string getCalleeName(IRInstr callInstr)
         // Call to get a global function
         if (primName.str == "$rt_getGlobalInl"w)
         {
-            return getString(closInstr.getArg(2));
+            return getString(closInstr.getArg(1));
         }
 
         // Call to get a property (method)
         if (primName.str == "$rt_getPropMethod"w)
         {
-            return getString(closInstr.getArg(3));
+            return getString(closInstr.getArg(2));
         }
     }
 

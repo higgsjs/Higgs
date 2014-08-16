@@ -79,37 +79,31 @@ TODO: constant prop in ValType?
 
 TODO: profile comp time on worst benchmark
 
-------------------------------------------------------------------------------
-
-Milestone: Equalling Master Branch Performance
-----------------------------------------------
-
 TODO: blog post, the future of compilation
 - Logical reasoning, supercompilation
 - JIT compilers, continuous of compilation
 - Lazyness is crucial
 - Definite place for controlled code duplication
 
+------------------------------------------------------------------------------
+
+Milestone: Equalling Master Branch Performance
+----------------------------------------------
+
 TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
 - Wait until Monday
 
-TODO: try to optimize shape_def_const?
-- shape should be known in binary-trees
-- don't know statically what the proto ptr is
-- can create a getVanillaObj or some such?
-- Object.prototype shape can change at run time!
+TODO: blog post, Higgs' Fancy New Object System
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
 
 Meeting:
 - ~3x faster on getprop loop microbenchmark
 - Fixed GC bug
 - Fixed static global const resolution bug
 - Identified perf issue with obj and array alloc
-
-TODO: blog post, Higgs' Fancy New Object System
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
 
 *** Go Max, makes Higgs fast, bring shapes to master! ***
 
@@ -132,30 +126,42 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
+TODO: get rid of link table once and for all?
+
+TODO: capture param name with alias in defRTConst
+
 TODO: get rid of set_str? could have an IRStringVal?
 - Gets allocated during JIT comp
 - No more link idx for strings
 - Could have a global string constant table in the VM
-  - all of the same str consts point to the same entry
+  - all of the same str consts point to the same IRStringVal
 - Pool of IRString objects, mapped by name
   - Don't even allocate in string table if not necessary!
   - Use for set_str
-- Get rid of link table once and for all ***
-  - create a closure cell or something!? cache in regexp object?
-
-TODO: capture param name with alias in defRTConst
-
-test perf with benchmark.py
-
-
-
-
+- Problem: getWordOpnd
+  - type is a constant, not a problem
+  - str ptr value is stored in IRStringVal object
+  - IRStringVal ptr needs to be loaded into reg
+- What we want is the loaded value, in some reg ***
+  - Use alloced reg or tmp reg to load imm IRStringVal
+  - Then load from offset into itself
+  - Will need to special case getWordOpnd for IRStringVal
 
 
 
 
 
 
+
+
+
+[DONE] TODO: get rid of IRFunPtr?
+- Already don't use it in call_prim
+- But we do use it in NEW_CLOS
+
+[DONE] TODO: re-test perf with benchmark.py
+- faster than master on several benchmarks
+- almost as fast on average, but not quite!
 
 [DONE] PROBLEM: new operator doesn't create objects from obj proto...
 - 3d-raytrace and access-binary-trees still suffer from slow shape_def_const

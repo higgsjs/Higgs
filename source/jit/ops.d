@@ -1808,7 +1808,7 @@ void gen_call_prim(
     //as.printStr(to!string(nameStr));
 
     // Check that the argument count matches
-    auto numArgs = cast(int32_t)instr.numArgs - 2;
+    auto numArgs = cast(int32_t)instr.numArgs - 1;
     assert (
         numArgs is fun.numParams,
         "incorrect argument count for primitive call"

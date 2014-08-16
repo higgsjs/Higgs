@@ -166,7 +166,7 @@ void inlinePass(VM vm, IRFunction caller)
         // If this is a global property read
         if (name.startsWith("$rt_getGlobalInl"))
         {
-            auto propName = callSite.getArgStrCst(2);
+            auto propName = callSite.getArgStrCst(1);
             assert (propName !is null);
 
             auto globalObj = vm.globalObj.word.ptrVal;
@@ -236,8 +236,9 @@ bool inlinable(IRInstr callSite, IRFunction callee)
         return false;
 
     // No support for argument count mismatch
-    auto numArgs = callSite.numArgs - 2;
-    if (numArgs != callee.numParams)
+    auto numArgs = callSite.numArgs;
+    if ((callSite.opcode is &CALL && numArgs - 2 != callee.numParams) ||
+        (callSite.opcode is &CALL_PRIM && numArgs - 1 != callee.numParams))
         return false;
 
     // Inlining is possible
@@ -256,8 +257,14 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     auto caller = callSite.block.fun;
     assert (caller !is null);
 
-    // Get the number of arguments passed at the call site
-    auto numArgs = callSite.numArgs - 2;
+    // Get the number of visible arguments passed at the call site
+    size_t numArgs;
+    if (callSite.opcode is &CALL_PRIM)
+        numArgs = callSite.numArgs - 1;
+    else if (callSite.opcode is &CALL)
+        numArgs = callSite.numArgs - 2;
+    else
+        assert (false);
 
     // Get the call continuation branch and successor block
     auto contBranch = callSite.getTarget(0);
@@ -290,15 +297,15 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     // Map the hidden argument values to call site parameters
     valMap[callee.raVal] = IRConst.nullCst;
     valMap[callee.closVal] = callSite.getArg(0);
-    valMap[callee.thisVal] = callSite.getArg(1);
-    valMap[callee.argcVal] = IRConst.int32Cst(cast(int32_t)(callSite.numArgs - 2));
+    valMap[callee.thisVal] = (callSite.opcode is &CALL)? callSite.getArg(1):IRConst.nullCst;
+    valMap[callee.argcVal] = IRConst.int32Cst(cast(int32_t)numArgs);
 
     // Map the visible parameters to call site parameters
     foreach (param; callee.paramMap)
     {
         auto argIdx = param.idx - NUM_HIDDEN_ARGS;
         if (argIdx < numArgs)
-            valMap[param] = callSite.getArg(2 + argIdx);
+            valMap[param] = callSite.getArg(callSite.numArgs - numArgs + argIdx);
         else
             valMap[param] = IRConst.undefCst;
     }

@@ -233,7 +233,7 @@ Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &gen_if_true, OpInfo.BRANCH 
 // <dstLocal> = CALL_PRIM <primName> <primFun> ...
 // Call a primitive function by name (compile-time lookup)
 // Note: the second argument is a cached function reference
-Opcode CALL_PRIM = { "call_prim", true, [OpArg.STRING, OpArg.FUN], &gen_call_prim, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
+Opcode CALL_PRIM = { "call_prim", true, [OpArg.STRING], &gen_call_prim, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
 
 // <dstLocal> = CALL <closLocal> <thisArg> ...
 // Makes the execution go to the callee entry
