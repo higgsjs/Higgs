@@ -401,6 +401,10 @@ function $rt_strToInt(strVal)
 
             i = $ir_add_i32(i, 1);
         }
+        else
+        {
+            throw "invalid state";
+        }
     }
 
     if ($ir_eq_const(neg, true))

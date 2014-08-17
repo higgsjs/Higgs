@@ -54,6 +54,7 @@ import ir.typeprop;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
+import runtime.string;
 import jit.codeblock;
 import jit.jit;
 
@@ -954,17 +955,32 @@ String constant value
 */
 class IRString : IRValue
 {
+    /// String value
     const wstring str;
+
+    /// String pointer in JS heap
+    refptr ptr;
 
     this(wstring str)
     {
         assert (str !is null);
         this.str = str;
+        this.ptr = null;
     }
 
     override string toString()
     {
         return "\"" ~ to!string(str) ~ "\"";
+    }
+
+    refptr getPtr(VM vm)
+    {
+        if (ptr is null)
+            ptr = getString(vm, str);
+
+        assert (runtime.gc.inFromSpace(vm, ptr));
+
+        return ptr;
     }
 }
 
@@ -1370,11 +1386,7 @@ Produces null if the argument is not a constant string.
 */
 wstring getArgStrCst(IRInstr instr, size_t argIdx)
 {
-    auto setStr = cast(IRInstr)instr.getArg(argIdx);
-    if (!setStr || setStr.opcode !is &SET_STR)
-        return null;
-
-    auto irString = (cast(IRString)setStr.getArg(0));
+    auto irString = cast(IRString)instr.getArg(argIdx);
     if (!irString)
         return null;
 
@@ -1387,17 +1399,6 @@ This function is used to help print sensible error messages.
 */
 string getCalleeName(IRInstr callInstr)
 {
-    static string getString(IRValue strArg)
-    {
-        auto propInstr = cast(IRInstr)strArg;
-        if (propInstr is null)
-            return null;
-
-        // Extract the method name
-        auto nameArg = cast(IRString)propInstr.getArg(0);
-        return to!string(nameArg.str);
-    }
-
     assert (callInstr.opcode.isCall);
 
     // Get the instruction providing the closure being called
@@ -1413,13 +1414,13 @@ string getCalleeName(IRInstr callInstr)
         // Call to get a global function
         if (primName.str == "$rt_getGlobalInl"w)
         {
-            return getString(closInstr.getArg(1));
+            return to!string(closInstr.getArgStrCst(1));
         }
 
         // Call to get a property (method)
         if (primName.str == "$rt_getPropMethod"w)
         {
-            return getString(closInstr.getArg(2));
+            return to!string(closInstr.getArgStrCst(2));
         }
     }
 

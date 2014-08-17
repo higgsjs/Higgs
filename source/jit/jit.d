@@ -1017,6 +1017,21 @@ class CodeGenState
         auto argVal = instr.getArg(argIdx);
         auto argDst = cast(IRDstValue)argVal;
 
+        // If the argument is a string
+        if (auto argStr = cast(IRString)argVal)
+        {
+            // Ensure that the string is allocated
+            argStr.getPtr(fun.vm);
+
+            // If no temporary register is supplied, free one
+            if (tmpReg == X86Opnd.NONE)
+                tmpReg = freeReg(as, instr).opnd;
+
+            as.ptr(tmpReg.reg, argStr);
+            as.getMember!("IRString.ptr")(tmpReg.reg, tmpReg.reg);
+            return tmpReg;
+        }
+
         // Ensure that the value was previously defined and is live
         assert (
             argDst is null || argDst in valMap,
@@ -1122,9 +1137,15 @@ class CodeGenState
 
         auto dstVal = cast(IRDstValue)value;
 
-        // If the value is an IR constant
+        // If the value is not a dst value
         if (dstVal is null)
         {
+            // If the value is a string
+            if (auto argStr = cast(IRString)value)
+            {
+                return X86Opnd(Type.STRING);
+            }
+
             return X86Opnd(value.cstValue.type);
         }
 
@@ -1644,8 +1665,6 @@ class BlockVersion : CodeFragment
     */
     void regenBranch(CodeBlock as, size_t blockIdx)
     {
-        //writeln("rewriting final branch for ", block.getName);
-
         // Ensure that this block has already been compiled
         assert (started && ended);
 
@@ -2006,6 +2025,10 @@ void genBranchMoves(
     // List of moves to transition to the successor state
     Move[] moveList;
 
+    // String values and phi nodes for string moves
+    IRString[] strVals;
+    X86Opnd[] strDsts;
+
     // For each value in the successor state
     foreach (succVal, succSt; succState.valMap)
     {
@@ -2026,16 +2049,28 @@ void genBranchMoves(
         // We don't need to move parameter values to the stack
         bool succParam = cast(FunParam)succVal !is null;
 
-        // Get the source and destination operands for the arg word
-        X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
-        X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
-
-        if (srcWordOpnd != dstWordOpnd &&
-            !dstWordOpnd.isImm &&
-            !(succParam && dstWordOpnd.isMem))
+        // If the pred value is a string
+        if (auto predStr = cast(IRString)predVal)
         {
-            moveList ~= Move(dstWordOpnd, srcWordOpnd);
-            moveAdded = true;
+            // Get the destionation operand for the phi word
+            X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
+
+            strVals ~= predStr;
+            strDsts ~= dstWordOpnd;
+        }
+        else
+        {
+            // Get the source and destination operands for the phi word
+            X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
+            X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
+
+            if (srcWordOpnd != dstWordOpnd &&
+                !dstWordOpnd.isImm &&
+                !(succParam && dstWordOpnd.isMem))
+            {
+                moveList ~= Move(dstWordOpnd, srcWordOpnd);
+                moveAdded = true;
+            }
         }
 
         // Get the source and destination operands for the phi type
@@ -2081,13 +2116,26 @@ void genBranchMoves(
     // Execute the moves
     execMoves(as, moveList, scrRegs[0], scrRegs[1]);
 
-    /*
-    // If statistics are enabled, count the moves executed
-    if (opts.stats)
+    // For each string value
+    foreach (idx, strVal; strVals)
     {
-        as.incStatCnt(&stats.numMoves, scrRegs[0], moveList.length);
+        auto dstOpnd = strDsts[idx];
+
+        // Ensure that the string is allocated
+        strVal.getPtr(predState.fun.vm);
+
+        as.ptr(scrRegs[0], strVal);
+
+        if (dstOpnd.isReg)
+        {
+            as.getMember!("IRString.ptr")(dstOpnd.reg, scrRegs[0]);
+        }
+        else
+        {
+            as.getMember!("IRString.ptr")(scrRegs[0], scrRegs[0]);
+            as.mov(dstOpnd, scrRegs[0].opnd);
+        }
     }
-    */
 }
 
 /// Return address entry

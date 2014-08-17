@@ -104,6 +104,14 @@ Meeting:
 - Fixed GC bug
 - Fixed static global const resolution bug
 - Identified perf issue with obj and array alloc
+  - Now fixed, beating old obj system on most benchmarks (but not all)
+- CGO: committee is very much involved in code gen, performance optimization,
+  vectorization, GPGPU
+  - One member worked on DynamoRIO, which does tracing
+- ACM Transactions on Architecture and Code Optimization: http://taco.acm.org/
+- Lack of collaboration with Baptiste... working separately, publishing separately?
+  - Working on very similar projects, but competing?
+  - Other professors make students collaborate on publications
 
 *** Go Max, makes Higgs fast, bring shapes to master! ***
 
@@ -126,9 +134,47 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
-TODO: get rid of link table once and for all?
+FIXME: array prop accesses, can we avoid costly strToInt?
+- integers must start with a digit or a + character
+- can probably quickly exclude any string starting with A and above
+- can also match array proto prop names, inline some getArrMethod ***
 
-TODO: get rid of set_str? could have an IRStringVal?
+FIXME: some phi word moves seem clearly unnecessary
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js 
+
+FIXME: redundancy in set_prop, get_prop
+./higgs --nostdlib --perf_stats benchmarks/sunspider/bitops-bitwise-and.js
+- need to define an objReg
+; shape_set_prop $2, "bitwiseAndValue", $23, $22
+mov rax, rcx;                           4889C8
+mov ebx, [dword rax + 12];              8B580C
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: look at performance, code for bitwise-and
+./higgs --nostdlib --perf_stats benchmarks/sunspider/bitops-bitwise-and.js
+./higgs --jit_dumpasm --nostdlib --perf_stats benchmarks/sunspider/bitops-bitwise-and.js
+- are there still string value moves? no
+- still 1-2 ms slower
+
+[DONE] FIXME: gc/graph test goes into infinite loop?
+./higgs --e "test()" tests/core/gc/graph.js
+$2 = eq_refptr $5, "PREWS"
+- No match for state variable
+- state name string is phi node
+- Presumably, some string value is not forwarded by the GC?
+  - It's a phi argument!
+
+[DONE] TODO: get rid of set_str? could have an IRStringVal?
 - Gets allocated during JIT comp
 - No more link idx for strings
 - Could have a global string constant table in the VM
@@ -144,14 +190,9 @@ TODO: get rid of set_str? could have an IRStringVal?
   - Use alloced reg or tmp reg to load imm IRStringVal
   - Then load from offset into itself
   - Will need to special case getWordOpnd for IRStringVal
+- May need special case for phi moves
 
-TODO: capture param name with alias in defRTConst
-
-
-
-
-
-
+[DONE] TODO: capture param name with alias in defRTConst
 
 [DONE] TODO: get rid of IRFunPtr?
 - Already don't use it in call_prim

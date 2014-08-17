@@ -947,6 +947,12 @@ class VM
             return getSlot(dstVal.outSlot);
         }
 
+        // If the value is a string
+        if (auto strVal = cast(IRString)val)
+        {
+            return ValuePair(strVal.getPtr(this), Type.STRING);
+        }
+
         // Get the constant value pair for this IR value
         return val.cstValue();
     }

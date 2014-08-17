@@ -109,62 +109,6 @@ void gen_get_arg(
     st.setOutType(as, instr, scrRegs[1].reg(8));
 }
 
-void gen_set_str(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    // FIXME?
-    /*
-    // If the only use is map_prop_idx, don't generate any code
-    if (instr.hasOneUse)
-    {
-        if (auto instrUse = cast(IRInstr)instr.getFirstUse.owner)
-            if (instrUse.opcode is &MAP_PROP_IDX)
-                return;
-    }
-    */
-
-    auto linkVal = cast(IRLinkIdx)instr.getArg(1);
-    assert (linkVal !is null);
-
-    if (linkVal.linkIdx is NULL_LINK)
-    {
-        auto vm = st.fun.vm;
-
-        // Find the string in the string table
-        auto strArg = cast(IRString)instr.getArg(0);
-        assert (strArg !is null);
-        auto strPtr = getString(vm, strArg.str);
-
-        // Allocate a link table entry
-        linkVal.linkIdx = vm.allocLink();
-
-        vm.setLinkWord(linkVal.linkIdx, Word.ptrv(strPtr));
-        vm.setLinkType(linkVal.linkIdx, Type.STRING);
-    }
-
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    as.getMember!("VM.wLinkTable")(scrRegs[0], vmReg);
-
-    auto linkOpnd = X86Opnd(64, scrRegs[0], 8 * linkVal.linkIdx);
-
-    if (outOpnd.isMem)
-    {
-        as.mov(scrRegs[0].opnd(64), linkOpnd);
-        as.mov(outOpnd, scrRegs[0].opnd(64));
-    }
-    else
-    {
-        as.mov(outOpnd, linkOpnd);
-    }
-
-    st.setOutType(as, instr, Type.STRING);
-}
-
 void gen_make_value(
     BlockVersion ver,
     CodeGenState st,

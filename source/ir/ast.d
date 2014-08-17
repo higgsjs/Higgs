@@ -350,13 +350,9 @@ class IRGenCtx
     /**
     Obtain a constant string value
     */
-    IRInstr strVal(wstring str)
+    IRValue strVal(wstring str)
     {
-        return addInstr(new IRInstr(
-            &SET_STR,
-            new IRString(str),
-            new IRLinkIdx()
-        ));
+        return new IRString(str);
     }
 }
 

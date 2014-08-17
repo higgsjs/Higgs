@@ -800,19 +800,45 @@ void visitFun(VM vm, IRFunction fun)
     // Add the function to the set of live functions
     vm.liveFuns[cast(void*)fun] = fun;
 
-    // Transitively find live function references inside the function
+    // For each block
     for (IRBlock block = fun.firstBlock; block !is null; block = block.next)
     {
+        // For each phi node
+        for (PhiNode phi = block.firstPhi; phi !is null; phi = phi.next)
+        {
+            for (size_t iIdx = 0; iIdx < phi.block.numIncoming; ++iIdx)
+            {
+                auto branch = phi.block.getIncoming(iIdx);
+                auto arg = branch.getPhiArg(phi);
+
+                // String argument
+                if (auto strArg = cast(IRString)arg)
+                {
+                    if (vm.inFromSpace(strArg.ptr))
+                        strArg.ptr = gcForward(vm, strArg.ptr);
+                }
+            }
+        }
+
+        // For each instruction
         for (IRInstr instr = block.firstInstr; instr !is null; instr = instr.next)
         {
             for (size_t argIdx = 0; argIdx < instr.numArgs; ++argIdx)
             {
                 auto arg = instr.getArg(argIdx);
 
+                // IR function pointer
                 if (auto funArg = cast(IRFunPtr)arg)
                 {
                     if (funArg.fun !is null)
                         visitFun(vm, funArg.fun);
+                }
+
+                // String argument
+                else if (auto strArg = cast(IRString)arg)
+                {
+                    if (vm.inFromSpace(strArg.ptr))
+                        strArg.ptr = gcForward(vm, strArg.ptr);
                 }
             }
         }

@@ -211,10 +211,12 @@ class TypeProp
             if (auto dstVal = cast(IRDstValue)val)
                 return typeMap.get(dstVal, UNINF);
 
-            if (cast(IRString)val ||
-                cast(IRFunPtr)val ||
+            if (cast(IRFunPtr)val ||
                 cast(IRLinkIdx)val)
                 return ANY;
+
+            if (cast(IRString)val)
+                return TypeSet(Type.STRING);
 
             // Get the constant value pair for this IR value
             auto cstVal = val.cstValue();
@@ -377,12 +379,6 @@ class TypeProp
             {
                 // Unknown type, non-constant
                 return ANY;
-            }
-
-            // Set string
-            if (op is &SET_STR)
-            {
-                return TypeSet(Type.STRING);
             }
 
             // Get string

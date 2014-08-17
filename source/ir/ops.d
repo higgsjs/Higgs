@@ -102,10 +102,6 @@ alias static immutable(OpInfo) Opcode;
 // Access visible arguments by index
 Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
 
-// TODO: rename to STATIC_STR?
-// Set a local slot to a constant value
-Opcode SET_STR = { "set_str", true, [OpArg.STRING, OpArg.LINK], &gen_set_str };
-
 // Word/type manipulation primitives
 Opcode MAKE_VALUE = { "make_value", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_make_value };
 Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &gen_get_word };
