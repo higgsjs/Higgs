@@ -455,7 +455,7 @@ IRFunction astToIR(
         auto calleeStr = bodyCtx.strVal("callee");
         auto setInstr = genRtCall(
             bodyCtx,
-            "setProp",
+            "setPropFieldNoCheck",
             [argObjVal, calleeStr, fun.closVal],
             fun.ast.pos
         );
@@ -2078,7 +2078,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             // Set the property on the object
             genRtCall(
                 ctx,
-                "setPropField",
+                "setPropFieldNoCheck",
                 [objVal, strVal, propVal],
                 expr.pos
             );

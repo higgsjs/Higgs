@@ -2242,6 +2242,35 @@ function $rt_getGlobalInl(propStr)
 }
 
 /**
+Set a property on an object using a string as key
+*/
+function $rt_objSetProp(obj, propStr, val)
+{
+    // Find the index for this property
+    // Handles dynamic version dispatching
+    // This will not transition the object to a new shape
+    var defShape = $ir_shape_get_def(obj, propStr);
+
+    // If the property is a getter-setter function
+    if ($ir_shape_is_getset(defShape))
+    {
+        // Get the accessor pair
+        var propVal = $ir_shape_get_prop(obj, defShape);
+
+        // Call the setter function
+        $ir_call(propVal.set, obj, val);
+    }
+    else
+    {
+        // Hidden inside set_prop, we handle the extended table
+        // May also transition the object to another shape if this
+        // is a new property or the type written doesn't match what was known
+        // If the current shape is unknown, complex logic will be handled in D
+        $ir_shape_set_prop(obj, propStr, defShape, val);
+    }
+}
+
+/**
 Extend the internal array table of an array
 */
 function $rt_extArrTbl(
@@ -2310,19 +2339,6 @@ function $rt_setArrElem(arr, index, val)
 }
 
 /**
-Set an element of an array without bounds checking
-*/
-function $rt_setArrElemNoCheck(arr, index, val)
-{
-    // Get the array table
-    var tbl = $rt_arr_get_tbl(arr);
-
-    // Set the element in the array
-    $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
-    $rt_arrtbl_set_type(tbl, index, $ir_get_type(val));
-}
-
-/**
 Set/change the length of an array
 */
 function $rt_setArrLen(arr, newLen)
@@ -2358,35 +2374,6 @@ function $rt_setArrLen(arr, newLen)
 
     // Update the array length
     $rt_arr_set_len(arr, newLen);
-}
-
-/**
-Set a property on an object using a string as key
-*/
-function $rt_objSetProp(obj, propStr, val)
-{
-    // Find the index for this property
-    // Handles dynamic version dispatching
-    // This will not transition the object to a new shape
-    var defShape = $ir_shape_get_def(obj, propStr);
-
-    // If the property is a getter-setter function
-    if ($ir_shape_is_getset(defShape))
-    {
-        // Get the accessor pair
-        var propVal = $ir_shape_get_prop(obj, defShape);
-
-        // Call the setter function
-        $ir_call(propVal.set, obj, val);
-    }
-    else
-    {
-        // Hidden inside set_prop, we handle the extended table
-        // May also transition the object to another shape if this
-        // is a new property or the type written doesn't match what was known
-        // If the current shape is unknown, complex logic will be handled in D
-        $ir_shape_set_prop(obj, propStr, defShape, val);
-    }
 }
 
 /**
@@ -2478,6 +2465,20 @@ function $rt_setPropField(base, prop, val)
 }
 
 /**
+Specialized version of setProp for object properties without type checks.
+The base is assumed to be an object, the property name is assumed to
+be a string, and the property itself is assumed not to be an accessor.
+*/
+function $rt_setPropFieldNoCheck(base, prop, val)
+{
+    // Find the index for this property
+    var defShape = $ir_shape_get_def(base, prop);
+
+    // Set the property value
+    $ir_shape_set_prop(base, prop, defShape, val);
+}
+
+/**
 Specialized version of setProp for array elements
 */
 function $rt_setPropElem(base, prop, val)
@@ -2503,6 +2504,19 @@ function $rt_setPropElem(base, prop, val)
     }
 
     return $rt_setProp(base, prop, val);
+}
+
+/**
+Set an element of an array without bounds checking
+*/
+function $rt_setArrElemNoCheck(arr, index, val)
+{
+    // Get the array table
+    var tbl = $rt_arr_get_tbl(arr);
+
+    // Set the element in the array
+    $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
+    $rt_arrtbl_set_type(tbl, index, $ir_get_type(val));
 }
 
 /**

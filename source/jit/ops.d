@@ -3556,7 +3556,6 @@ void gen_shape_get_def(
 
         auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
         auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-
         auto outOpnd = st.getOutOpnd(as, instr, 64);
 
         as.saveJITRegs();

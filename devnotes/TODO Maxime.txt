@@ -135,12 +135,19 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
-FIXME: array prop accesses, can we avoid costly strToInt?
-- integers must start with a digit or a + character
-- can probably quickly exclude any string starting with A and above
-- can also match array proto prop names, inline some getArrMethod ***
-
 TODO: investigate slowness in v8-raytrace, 2x as slow as master
+./higgs --stats benchmarks/v8bench/base.js benchmarks/v8bench/raytrace.js benchmarks/v8bench/drv-raytrace.js
+num def shape host: 345287
+
+TODO: try converting getPropMethod to a loop?
+- maybe second level only
+
+TODO: compare perf for 3-level lookup in microbenchmark vs host
+- add microbenchmark on master
+- will need to call into shape get def host
+
+TODO: optimize numberToString a bit, called many times
+- who's calling this, too?
 
 
 
@@ -150,12 +157,10 @@ TODO: investigate slowness in v8-raytrace, 2x as slow as master
 
 
 
-
-
-
-
-
-
+[DONE] TODO: fix host set props in v8-raytrace
+num set prop host: 66756
+- Calls to set prop come from arguments object allocation, "callee" property setting
+- May want an inlinable setArrPropNoCheck
 
 [DONE] FIXME: some phi word moves seem clearly unnecessary
 ./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
