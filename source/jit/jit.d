@@ -362,14 +362,29 @@ class CodeGenState
             // Get the default register for the phi node
             auto phiReg = getDefReg(phi);
 
+            // If the argument is a dst value
+            if (auto dstArg = cast(IRDstValue)arg)
+            {
+                // Get the word operand for the argument
+                X86Opnd argOpnd = dstArg? predState.getWordOpnd(dstArg, 64):X86Opnd.NONE;
+
+                // If the argument is in a register which is about to become free
+                if (argOpnd.isReg && liveInfo.liveAfterPhi(dstArg, phi.block) is false)
+                {
+                    // Try to use the phi register for the ph inode
+                    phiReg = argOpnd.reg;
+                }
+            }
+
             // Get the value currently mapped to this register
             auto regVal = gpRegMap[phiReg.regNo];
 
             ValState phiState;
 
-            // If the phi node's register is free
+            // If the register is free
             if (regVal is null || liveInfo.liveAfterPhi(regVal, phi.block) is false)
             {
+                // Map the phi node to the register
                 phiState = ValState.reg(phiReg);
                 gpRegMap[phiReg.regNo] = phi;
             }
@@ -387,20 +402,12 @@ class CodeGenState
                 phiState = phiState.writeType();
             }
 
-            // If the phi argument is a dst value
-            if (auto dstArg = cast(IRDstValue)arg)
+            // If the argument type is known
+            auto argTypeOpnd = predState.getTypeOpnd(arg);
+            if (argTypeOpnd.isImm)
             {
-                // Get the state for the phi argument value
-                auto argState = predState.getState(dstArg);
-                if (argState.typeKnown)
-                    phiState = phiState.setType(argState.type);
-            }
-
-            // Otherwise, if the phi argument is an IR constant
-            else if (auto cstArg = cast(IRConst)arg)
-            {
-                // Set the phi type to the constant's type
-                phiState = phiState.setType(cstArg.type);
+                // Set the phi type
+                phiState = phiState.setType(cast(Type)argTypeOpnd.imm.imm);
             }
 
             // Set the phi node's new state
@@ -529,12 +536,14 @@ class CodeGenState
             "no out slot for value: " ~ value.toString
         );
 
-        // If this value has only one use, which is a phi node
-        if (value.hasOneUse)
+        // If this value flows into a phi node other than itself
+        for (auto use = value.getFirstUse; use !is null; use = use.next)
         {
-            auto use = value.getFirstUse.owner;
-            if (!cast(PhiNode)value && cast(PhiNode)use)
-                return getDefReg(use);
+            auto owner = value.getFirstUse.owner;
+            if (!cast(PhiNode)value && cast(PhiNode)owner)
+            {
+                return getDefReg(owner);
+            }
         }
 
         auto regIdx = value.outSlot % allocRegs.length;

@@ -105,6 +105,7 @@ Meeting:
 - Fixed static global const resolution bug
 - Identified perf issue with obj and array alloc
   - Now fixed, beating old obj system on most benchmarks (but not all)
+- Improved register allocator, less phi moves, smaller code
 - CGO: committee is very much involved in code gen, performance optimization,
   vectorization, GPGPU
   - One member worked on DynamoRIO, which does tracing
@@ -139,12 +140,7 @@ FIXME: array prop accesses, can we avoid costly strToInt?
 - can probably quickly exclude any string starting with A and above
 - can also match array proto prop names, inline some getArrMethod ***
 
-FIXME: some phi word moves seem clearly unnecessary
-./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js 
-
-TODO: investigate slowness in v8-raytrace
-
-TODO: investigate slowness in 3bits-byte, 3x as slow as master branch
+TODO: investigate slowness in v8-raytrace, 2x as slow as master
 
 
 
@@ -155,6 +151,20 @@ TODO: investigate slowness in 3bits-byte, 3x as slow as master branch
 
 
 
+
+
+
+
+
+
+[DONE] FIXME: some phi word moves seem clearly unnecessary
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
+
+[DONE] TODO: investigate performance of 3bits-byte
+./higgs --jit_genasm --perf_stats --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+- multiple reg to reg phi moves
+- should compute number of phi word moves dynamically?
+- can try to modify getDefReg to minimize phi moves
 
 [DONE] FIXME: redundancy in set_prop, get_prop
 ./higgs --nostdlib --perf_stats benchmarks/sunspider/bitops-bitwise-and.js
