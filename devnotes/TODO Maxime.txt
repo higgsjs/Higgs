@@ -142,23 +142,26 @@ FIXME: array prop accesses, can we avoid costly strToInt?
 FIXME: some phi word moves seem clearly unnecessary
 ./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js 
 
-FIXME: redundancy in set_prop, get_prop
+TODO: investigate slowness in v8-raytrace
+
+TODO: investigate slowness in 3bits-byte, 3x as slow as master branch
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: redundancy in set_prop, get_prop
 ./higgs --nostdlib --perf_stats benchmarks/sunspider/bitops-bitwise-and.js
 - need to define an objReg
 ; shape_set_prop $2, "bitwiseAndValue", $23, $22
 mov rax, rcx;                           4889C8
 mov ebx, [dword rax + 12];              8B580C
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: look at performance, code for bitwise-and
 ./higgs --nostdlib --perf_stats benchmarks/sunspider/bitops-bitwise-and.js

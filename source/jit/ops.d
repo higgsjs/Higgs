@@ -3661,36 +3661,41 @@ void gen_shape_set_prop(
             auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
             auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
             auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
-
-            // Move the object operand into r0
-            as.mov(scrRegs[0].opnd, objOpnd);
+            assert (objOpnd.isReg);
 
             // Get the object capacity into r1
-            as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
+            as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
             auto slotIdx = defShape.slotIdx;
+
+            auto tblOpnd = objOpnd;
 
             // If we can't guarantee that the slot index is within capacity,
             // generate the extension table code
             if (slotIdx >= minObjCap)
             {
+                tblOpnd = scrRegs[0].opnd;
+
+                // Move the object operand into r0
+                as.mov(tblOpnd, objOpnd);
+
                 // If the slot index is below capacity, skip the ext table code
                 as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
                 as.jg(Label.SKIP);
 
                 // Get the ext table pointer into r0
-                as.getField(scrRegs[0], scrRegs[0], obj_ofs_next(null));
+                as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
 
                 // Get the ext table capacity into r1
-                as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
+                as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
 
                 as.label(Label.SKIP);
             }
 
             // Set the word and type values
-            auto wordMem = X86Opnd(64, scrRegs[0], OBJ_WORD_OFS + 8 * slotIdx);
+            auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
             as.genMove(wordMem, valOpnd);
-            auto typeMem = X86Opnd(8 , scrRegs[0], OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+            auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
             as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
 
             return;
@@ -3809,29 +3814,31 @@ void gen_shape_get_prop(
         auto outOpnd = st.getOutOpnd(as, instr, 64);
         assert (outOpnd.isReg);
 
-        // Move the object operand into r0
-        as.mov(scrRegs[0].opnd, objOpnd);
-
         // Get the object capacity into r1
-        as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
+        as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
         auto slotIdx = defShape.slotIdx;
+
+        auto tblOpnd = objOpnd;
 
         // If we can't guarantee that the slot index is within capacity,
         // generate the extension table code
         if (slotIdx >= minObjCap)
         {
+            tblOpnd = scrRegs[0].opnd;
+
+            // Move the object operand into r0
+            as.mov(tblOpnd, objOpnd);
+
             // If the slot index is below capacity, skip the ext table code
             as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
             as.jg(Label.SKIP);
 
-            //as.printStr("ext tbl");
-
             // Get the ext table pointer into r0
-            as.getField(scrRegs[0], scrRegs[0], obj_ofs_next(null));
+            as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
 
             // Get the ext table capacity into r1
-            as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
+            as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
 
             as.label(Label.SKIP);
         }
@@ -3840,8 +3847,8 @@ void gen_shape_get_prop(
         //as.printUint(scrRegs[1].opnd);
 
         // Load the word and type values
-        auto wordMem = X86Opnd(64, scrRegs[0], OBJ_WORD_OFS + 8 * slotIdx);
-        auto typeMem = X86Opnd(8 , scrRegs[0], OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+        auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+        auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
         as.mov(outOpnd, wordMem);
         as.mov(scrRegs[2].opnd(8), typeMem);
 
