@@ -3629,6 +3629,9 @@ void gen_shape_set_prop(
         );
     }
 
+    // Increment the number of set prop operations
+    as.incStatCnt(&stats.numSetProp, scrRegs[1]);
+
     // Get the object and property shape values
     auto objVal = cast(IRDstValue)instr.getArg(0);
     auto defVal = cast(IRDstValue)instr.getArg(2);
@@ -3653,14 +3656,22 @@ void gen_shape_set_prop(
         // If the defining shape is writable
         if (defShape !is null && defShape.writable)
         {
-            // TODO
-            // TODO: handle type mismatches with defShape
-            // TODO
-
             auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
             auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
             auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
             assert (objOpnd.isReg);
+
+
+
+            // TODO
+            // TODO: handle type mismatches with defShape
+            // TODO
+
+
+
+
+
+
 
             // Get the object capacity into r1
             as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
@@ -3790,6 +3801,9 @@ void gen_shape_get_prop(
     CodeBlock as
 )
 {
+    // Increment the number of get prop operations
+    as.incStatCnt(&stats.numGetProp, scrRegs[1]);
+
     // Get the property shape value
     auto defVal = cast(IRDstValue)instr.getArg(1);
 

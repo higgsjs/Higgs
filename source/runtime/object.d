@@ -260,12 +260,11 @@ class ObjShape
         this.slotIdx = parent.slotIdx+1;
     }
 
-    /// Test if this shape defines a getter-setter
-    bool isGetSet() const { return (attrs & ATTR_GETSET) != 0; }
-
     /// Test if this shape has a given attribute
     bool writable() const { return (attrs & ATTR_WRITABLE) != 0; }
     bool configurable() const { return (attrs & ATTR_CONFIGURABLE) != 0; }
+    bool deleted() const { return (attrs & ATTR_DELETED) != 0; }
+    bool isGetSet() const { return (attrs & ATTR_GETSET) != 0; }
 
     /**
     Method to define or redefine a property.
@@ -357,27 +356,26 @@ class ObjShape
     ObjShape getDefShape(wstring propName)
     {
         // If there is a cached shape for this property name, return it
-        auto cached = propCache.get(propName, null);
-        if (cached !is null)
+        auto cached = propCache.get(propName, this);
+        if (cached !is this)
            return cached;
 
         // For each shape going down the tree, excluding the root
         for (auto shape = this; shape.parent !is null; shape = shape.parent)
         {
             // If the name matches
-            if (propName == shape.propName)
+            if (propName == shape.propName && !shape.deleted)
             {
-                // If the property is deleted, property not found
-                if (shape.attrs & ATTR_DELETED)
-                    return null;
-
                 // Cache the shape found for this property name
-                this.propCache[propName] = shape;
+                propCache[propName] = shape;
 
                 // Return the shape
                 return shape;
             }
         }
+
+        // Cache that the property was not found
+        propCache[propName] = null;
 
         // Root shape reached, property not found
         return null;
@@ -681,7 +679,7 @@ bool setPropAttrs(
     auto newShape = objShape.defProp(
         vm,
         propStr,
-        defShape? defShape.type:ValType(),
+        defShape.type,
         attrs,
         defShape
     );

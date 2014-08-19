@@ -85,14 +85,14 @@ TODO: blog post, the future of compilation
 - Lazyness is crucial
 - Definite place for controlled code duplication
 
+TODO: post dconf talk on r/coding
+- Do this when you have time to chat!
+- Wait until Monday
+
 ------------------------------------------------------------------------------
 
 Milestone: Equalling Master Branch Performance
 ----------------------------------------------
-
-TODO: post dconf talk on r/coding
-- Do this when you have time to chat!
-- Wait until Monday
 
 TODO: blog post, Higgs' Fancy New Object System
 - quick sketching program, online?
@@ -114,8 +114,6 @@ Meeting:
   - Working on very similar projects, but competing?
   - Other professors make students collaborate on publications
 
-*** Go Max, makes Higgs fast, bring shapes to master! ***
-
 TODO: profiling phase for shape_get_def?
 - first K=50 or 100 calls could gather shapes
   - 8 bucket count + last seen
@@ -135,27 +133,25 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
-TODO: investigate slowness in v8-raytrace, 2x as slow as master
-./higgs --stats benchmarks/v8bench/base.js benchmarks/v8bench/raytrace.js benchmarks/v8bench/drv-raytrace.js
-num def shape host: 345287
+Shape type spec, try int32 vs not int32 or type tag only first?
+- Huge potential benefit for bitwise-and and such
 
-TODO: try converting getPropMethod to a loop?
-- maybe second level only
+TODO: make setProp host function change shape based on type
 
-TODO: compare perf for 3-level lookup in microbenchmark vs host
-- add microbenchmark on master
-- will need to call into shape get def host
 
-TODO: optimize numberToString a bit, called many times
+
+
+
+
+
+
+
+
+[DONE] TODO: add num set prop vs num get prop stats
+- On average, benchmarks do 15x more getprop than setprop
+
+[DONE] TODO: optimize numberToString a bit, called many times
 - who's calling this, too?
-
-
-
-
-
-
-
-
 
 [DONE] TODO: fix host set props in v8-raytrace
 num set prop host: 66756

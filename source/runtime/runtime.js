@@ -471,7 +471,7 @@ function $rt_numberToString(v, radix)
         radix = 10;
     }
 
-    if (radix < 2 || radix > 36)
+    if ($ir_lt_i32(radix, 2) || $ir_gt_i32(radix, 36))
     {
         throw RangeError("radix is not between 2 and 36");
     }
@@ -484,16 +484,16 @@ function $rt_numberToString(v, radix)
     // NaN
     if ($ir_ne_f64(v, v))
         return "NaN";
-    if (v === Infinity)
+    if ($ir_eq_f64(v, Infinity))
         return "Infinity";
-    if (v === -Infinity)
+    if ($ir_eq_f64(v, -Infinity))
         return "-Infinity";
 
     return $ir_f64_to_str(v);
 }
 
 /**
-Convert a boxed value to a primitive value.
+Convert any value to a primitive value
 */
 function $rt_toPrim(v)
 {
@@ -2445,8 +2445,8 @@ Specialized version of setProp for object properties
 */
 function $rt_setPropField(base, prop, val)
 {
-    // If the base is an object or closure and the property is a string
-    if (($ir_is_object(base) || $ir_is_closure(base)) && $ir_is_string(prop))
+    // If the base is an object or closure
+    if ($ir_is_object(base) || $ir_is_closure(base))
     {
         // Find the index for this property
         var defShape = $ir_shape_get_def(base, prop);
