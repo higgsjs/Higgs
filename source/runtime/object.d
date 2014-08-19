@@ -560,7 +560,32 @@ void setProp(
             return;
         }
 
-        // TODO: handle type mismatches with defShape
+        // If the value type doesn't match the shape type
+        if (!valType.isSubType(defShape.type))
+        {
+            /*
+            writeln("redefining shape");
+            writeln("  propName=", defShape.propName);
+            writeln("  oldType=", defShape.type.typeTag);
+            writeln("  slotIdx=", defShape.slotIdx);
+            */
+
+            // Change the defining shape to match the value type
+            objShape = objShape.defProp(
+                vm,
+                propStr,
+                valType,
+                defAttrs,
+                defShape
+            );
+
+            // Set the new shape for the object
+            obj_set_shape(obj.ptr, cast(rawptr)objShape);
+
+            // Find the shape defining this property
+            defShape = objShape.getDefShape(propStr);
+            assert (defShape !is null);
+        }
     }
 
     uint32_t slotIdx = defShape.slotIdx;
@@ -670,7 +695,7 @@ bool setPropAttrs(
     }
 
     // If the property is not configurable, do nothing
-    if (!(defShape.attrs & ATTR_CONFIGURABLE))
+    if (!defShape.configurable)
     {
         return false;
     }

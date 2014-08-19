@@ -181,8 +181,8 @@ void inlinePass(VM vm, IRFunction caller)
                 IRConst newVal;
                 if (val.type is Type.INT32)
                     newVal = IRConst.int32Cst(val.word.int32Val);
-                //else if (val.type is Type.FLOAT64)
-                //    newVal = IRConst.float64Cst(val.word.floatVal);
+                else if (val.type is Type.FLOAT64)
+                    newVal = IRConst.float64Cst(val.word.floatVal);
                 else if (val is UNDEF)
                     newVal = IRConst.undefCst;
 

@@ -136,6 +136,8 @@ TODO: commit and experiment
 Shape type spec, try int32 vs not int32 or type tag only first?
 - Huge potential benefit for bitwise-and and such
 
+TODO: use xorps to zero out XMM
+
 TODO: make setProp host function change shape based on type
 
 

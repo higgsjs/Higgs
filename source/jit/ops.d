@@ -3667,9 +3667,15 @@ void gen_shape_set_prop(
             // TODO: handle type mismatches with defShape
             // TODO
 
-
-
-
+            /*
+            if (!typeOpnd.isImm)
+            {
+                as.cmp(typeOpnd, X86Opnd(defShape.type.typeTag));
+                as.je(Label.JOIN);
+                as.printStr(format("mismatch, propName=%s prev=%s", defShape.propName, defShape.type.typeTag));
+                as.label(Label.JOIN);
+            }
+            */
 
 
 
@@ -3738,9 +3744,16 @@ void gen_shape_set_prop(
 
         auto slotIdx = defShape.slotIdx;
 
+
+
+
         // TODO
         // TODO: handle type mismatches with defShape
         // TODO
+
+
+
+
 
         // If the property is writable and the slot index is
         // within the guaranteed object capacity

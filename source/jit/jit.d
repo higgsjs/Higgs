@@ -1085,7 +1085,7 @@ class CodeGenState
                 else
                 {
                     // Write the FP constant in the code stream and load it
-                    as.movq(tmpReg, X86Opnd(64, RIP, 2));
+                    as.movsd(tmpReg, X86Opnd(64, RIP, 2));
                     as.jmp8(8);
                     as.writeInt(curOpnd.imm.imm, 64);
                 }
