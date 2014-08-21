@@ -1080,7 +1080,7 @@ class CodeGenState
             {
                 if (curOpnd.imm.imm is 0)
                 {
-                    as.pxor(tmpReg, tmpReg);
+                    as.xorps(tmpReg, tmpReg);
                 }
                 else
                 {

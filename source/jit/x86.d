@@ -947,9 +947,9 @@ void writeRMMulti(
 Encode an XMM instruction on 64-bit XMM/M operands
 */
 void writeXMM64(
-    wstring mnem, 
-    ubyte prefix, 
-    ubyte opRegMem0, 
+    wstring mnem,
+    ubyte prefix,
+    ubyte opRegMem0,
     ubyte opRegMem1
 )
 (CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
@@ -967,7 +967,9 @@ void writeXMM64(
         "invalid second operand"
     );
 
-    cb.writeByte(prefix);
+    static if (prefix != 0xFF)
+        cb.writeByte(prefix);
+
     cb.writeRMInstr!('r', 0xFF, opRegMem0, opRegMem1)(false, false, opnd0, opnd1);
 }
 
@@ -1028,7 +1030,7 @@ void add(CodeBlock as, X86Reg dst, int64_t imm)
 
 /// addsd - Add scalar double
 alias writeXMM64!(
-    "addsd", 
+    "addsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x58  // opRegMem1
@@ -1226,7 +1228,7 @@ alias writeRMUnary!(
 
 /// divsd - Divide scalar double
 alias writeXMM64!(
-    "divsd", 
+    "divsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x5E  // opRegMem1
@@ -1626,7 +1628,7 @@ alias writeRMUnary!(
 
 // mulsd - Multiply scalar double
 alias writeXMM64!(
-    "mulsd", 
+    "mulsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x59  // opRegMem1
@@ -1843,7 +1845,7 @@ alias writeShift!(
 
 /// shl - Shift logical left
 alias writeShift!(
-    "shl", 
+    "shl",
     0xD1, // opMemOnePref,
     0xD3, // opMemClPref,
     0xC1, // opMemImmPref,
@@ -1852,7 +1854,7 @@ alias writeShift!(
 
 /// sar - Shift arithmetic right (signed)
 alias writeShift!(
-    "sar", 
+    "sar",
     0xD1, // opMemOnePref,
     0xD3, // opMemClPref,
     0xC1, // opMemImmPref,
@@ -1926,4 +1928,12 @@ alias writeRMMulti!(
     0x81, // opMemImmLrg
     0x06  // opExtImm
 ) xor;
+
+// xorps - Exclusive bitwise OR for single-precision floats
+alias writeXMM64!(
+    "xorps",
+    0xFF, // prefix
+    0x0F, // opRegMem0
+    0x57  // opRegMem1
+) xorps;
 
