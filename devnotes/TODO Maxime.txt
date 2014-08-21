@@ -1,12 +1,13 @@
 Conference deadlines:
-- ISMM                  Feb
-- DLS 2013              June
-- Intel Compiler...     ~July
-- VMIL 2013             ~August
-- CGO 2014              ~September
 - CC 2014               October
 - PLDI 2014             November
 - VEE 2014              ~November
+- CGO 2014              ~September
+- VMIL 2013             ~August
+- Intel Compiler...     ~July
+- DLS 2013              June
+- DYLA workshop         March
+- ISMM                  Feb
 - Computing Frontier    Jan 2015, notify Feb
 
 List of possible contributions:
@@ -141,10 +142,16 @@ TODO: think about inlining system further
 - do it intelligently, don't inline in runtime fns, or if too deep in stack?
 
 TODO: gather stats about the percentage of functions which are long-running
+- init is almost 2x as fast compile time with noinline
+  - compile time for 3d-raytrace less than half, same for turtle
 - disable inlining first
 - dump text and sort
   - fn, num calls, num itrs
 
+TODO: profile run of earley-boyer
+- even without inlining, compilation still very slow
+  - how much of this is the shape dispatch?
+- try increasing GC prealloc?
 
 
 
@@ -154,6 +161,10 @@ TODO: gather stats about the percentage of functions which are long-running
 
 
 
+
+[DONE] TODO: try earley-boyer with noinline, nopeephole
+- with noinline, compile time is halved, exec time goes up 8x
+- disabling peepholes increase compilation time
 
 [DONE] TODO: use xorps to zero out XMM
 

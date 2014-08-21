@@ -74,6 +74,9 @@ struct Options
     /// Maximum number of specialized versions to compile per basic block
     uint jit_maxvers = 20;
 
+    /// Disable peephole optimizations
+    bool jit_nopeephole = false;
+
     /// Disable inlining in the JIT
     bool jit_noinline = false;
 
@@ -118,6 +121,7 @@ void parseCmdArgs(ref string[] args)
         "jit_typeprop"      , &opts.jit_typeprop,
         "jit_eager"         , &opts.jit_eager,
         "jit_maxvers"       , &opts.jit_maxvers,
+        "jit_nopeephole"    , &opts.jit_nopeephole,
         "jit_noinline"      , &opts.jit_noinline,
         "jit_dumpinfo"      , &opts.jit_dumpinfo,
         "jit_dumpir"        , &opts.jit_dumpir,

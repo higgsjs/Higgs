@@ -1499,7 +1499,7 @@ void gen_if_true(
         return;
 
     // Compare the argument to the true boolean value
-    auto argOpnd = st.getWordOpnd(as, instr, 0, 8);
+    auto argOpnd = st.getWordOpnd(as, instr, 0, 8, scrRegs[0].opnd(8));
     as.cmp(argOpnd, X86Opnd(TRUE.word.int8Val));
 
     auto branchT = getBranchEdge(instr.getTarget(0), st, false);
@@ -1769,10 +1769,8 @@ void gen_call_prim(
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
     {
-        writeln("compiling IR");
         //writeln(core.memory.GC.addrOf(cast(void*)fun.ast));
         astToIR(vm, fun.ast, fun);
-        writeln("compiled IR");
     }
 
     // Copy the function arguments in reverse order

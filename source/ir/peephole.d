@@ -47,9 +47,14 @@ import ir.ir;
 import ir.livevars;
 import ir.ops;
 import runtime.vm;
+import options;
 
 void optIR(IRFunction fun)
 {
+    // If peephole optimizations are disabled, do nothing
+    if (opts.jit_nopeephole)
+        return;
+
     //writeln("peephole pass for ", fun.getName);
 
     // CFG changed flag
