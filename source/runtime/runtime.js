@@ -948,7 +948,7 @@ function $rt_mul(x, y)
         if ($ir_is_i32(y))
         {
             // If this could produce negative 0
-            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) || 
+            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) ||
                 ($ir_eq_i32(x, 0) && $ir_lt_i32(y, 0)))
             {
                 var fx = $ir_i32_to_f64(x);
@@ -997,7 +997,7 @@ function $rt_mulIntFloat(x, y)
         if ($ir_is_i32(y))
         {
             // If this could produce negative 0
-            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) || 
+            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) ||
                 ($ir_eq_i32(x, 0) && $ir_lt_i32(y, 0)))
             {
                 var fx = $ir_i32_to_f64(x);
