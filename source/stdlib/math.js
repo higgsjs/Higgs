@@ -411,13 +411,33 @@ argument is expressed in radians.
 */
 Math.sin = function (x)
 {
-    if ($ir_is_i32(x) === true)
+    if ($ir_is_i32(x))
         x = $ir_i32_to_f64(x);
-    else if ($ir_is_f64(x) === false)
+    else if (!$ir_is_f64(x))
         return NaN;
 
     return $ir_sin_f64(x);
 };
+
+/*
+15.8.2.18 tan (x)
+Returns an implementation-dependent approximation to the tangent of x.
+The argument is expressed in radians.
+
+• If x is NaN, the result is NaN.
+• If x is +0, the result is +0.
+• If x is −0, the result is −0.
+• If x is +∞ or −∞, the result is NaN.
+*/
+Math.tan = function (x)
+{
+    if ($ir_is_i32(x))
+        x = $ir_i32_to_f64(x);
+    else if (!$ir_is_f64(x))
+        return NaN;
+
+    return $ir_sin_f64(x) / $ir_cos_f64(x);
+}
 
 /**
 15.8.2.17 sqrt (x)
