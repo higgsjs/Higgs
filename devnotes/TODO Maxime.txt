@@ -89,6 +89,18 @@ TODO: post dconf talk on r/coding
 Milestone: Equalling Master Branch Performance
 ----------------------------------------------
 
+TODO: think about inlining system further
+- Necessary for acceptable compile times
+- Can fully optimize primitives, avoid needing code-patching
+- Make an exception for units with loops also
+- do it intelligently, don't inline in runtime fns, or if too deep in stack?
+TODO: gather stats about the percentage of functions which are long-running
+- init is almost 2x as fast compile time with noinline
+  - compile time for 3d-raytrace less than half, same for turtle
+- disable inlining first
+- dump text and sort
+  - fn, num calls, num itrs
+
 TODO: profiling phase for shape_get_def?
 - first K=50 or 100 calls could gather shapes
   - 8 bucket count + last seen
@@ -108,13 +120,64 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
+TODO: blog post, Higgs' Fancy New Object System
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+TODO: stub branches, pre-reserve space, put block idx in there
+- should ideally jump ahead and not backwards
+- don't alloc objects for each stub
+
+TODO: port CSG lib
+http://evanw.github.io/csg.js/
+
+TODO: profile run of earley-boyer
+- Almost linear scaling of code size to compile time between earley and 3d-rt
+- even without inlining, compilation still very slow
+  - how much of this is the shape dispatch?
+
 Meeting:
+- Shape type prop working
+
+TODO: getProp, don't even need capacity in some cases
+- Capacity known sufficient and type known
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js 
+
+TODO: eliminate type array in objects?
+- If the type is always known, this is unnecessary
+
+FIXME: binary-trees performs terribly, why is this?
+- must be set_prop
+
+FIXME: gc bug exposed by cube example
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: further optimize setProp
+
+[DONE] TODO: specialize getProp for shape type spec
+- Type tag only first
+- Huge potential benefit for bitwise-and and such
+
+[DONE] TODO: change setProp for shape type specialization
+- start with simple case, known type, no host call needed
+
+[DONE] Meeting:
 - ~3x faster on getprop loop microbenchmark
 - Fixed GC bug
 - Fixed static global const resolution bug
 - Identified perf issue with obj and array alloc
   - Now fixed, beating old obj system on most benchmarks (but not all)
 - Improved register allocator, less phi moves, smaller code
+- Ready to attempt shape type spec
 - CGO: committee is very much involved in code gen, performance optimization,
   vectorization, GPGPU
   - One member worked on DynamoRIO, which does tracing
@@ -127,40 +190,9 @@ Meeting:
   - Working on very similar projects, but competing?
   - Other professors make students collaborate on publications
 
-Shape type spec, try int32 vs not int32 or type tag only first?
-- Huge potential benefit for bitwise-and and such
-
-TODO: blog post, Higgs' Fancy New Object System
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
-
-TODO: think about inlining system further
-- Necessary for acceptable compile times
-- Can fully optimize primitives, avoid needing code-patching
-- Make an exception for units with loops also
-- do it intelligently, don't inline in runtime fns, or if too deep in stack?
-
-TODO: gather stats about the percentage of functions which are long-running
-- init is almost 2x as fast compile time with noinline
-  - compile time for 3d-raytrace less than half, same for turtle
-- disable inlining first
-- dump text and sort
-  - fn, num calls, num itrs
-
-TODO: profile run of earley-boyer
-- even without inlining, compilation still very slow
-  - how much of this is the shape dispatch?
-- try increasing GC prealloc?
-
-
-
-
-
-
-
-
-
+[DONE] TODO: try porting 3D OpenGL math lib to Higgs
+- tojiro agrees :)
+https://github.com/toji/gl-matrix
 
 [DONE] TODO: try earley-boyer with noinline, nopeephole
 - with noinline, compile time is halved, exec time goes up 8x
