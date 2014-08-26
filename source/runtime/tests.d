@@ -1558,6 +1558,10 @@ unittest
     vm.load("tests/core/gc/apply.js");
     vm.assertInt("test();", 0);
 
+    writefln("gc/extraargs");
+    vm = new VM();
+    vm.load("tests/core/gc/extraargs.js");
+
     writefln("gc/arguments");
     vm = new VM();
     vm.load("tests/core/gc/arguments.js");

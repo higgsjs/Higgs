@@ -138,21 +138,28 @@ TODO: profile run of earley-boyer
   - how much of this is the shape dispatch?
 
 Meeting:
-- Shape type prop working
+- Basic shape type prop working
 
 TODO: getProp, don't even need capacity in some cases
 - Capacity known sufficient and type known
-./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js 
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
 
-TODO: eliminate type array in objects?
+TODO: shape spec on prop addition, could possibly capture value type from stack, speculate
+- can use benchmark.py to look at avg host set prop
+
+TODO: bug with set_prop specialization when adding prop
+- could be due to values loaded then spilled?
+
+TODO: eliminate type array in objects? ***
 - If the type is always known, this is unnecessary
 
-FIXME: binary-trees performs terribly, why is this?
-- must be set_prop
-
 FIXME: gc bug exposed by cube example
+- Issue with Array.prototype.map
+  - simplify further, extract map code?
+- Save regression test
 
-
+Seems like supernumerary arguments might not be getting forwarded???
+- Test this hypothesis separately
 
 
 
