@@ -711,7 +711,7 @@ void visitStackRoots(VM vm)
                 continue;
 
             // Hidden argument values will be forwarded later
-            if (val is fun.closVal || 
+            if (val is fun.closVal ||
                 val is fun.thisVal ||
                 val is fun.raVal   ||
                 val is fun.argcVal)
@@ -738,6 +738,14 @@ void visitStackRoots(VM vm)
         // Note: the return address is not type tagged
         auto raIdx = fun.raVal.outSlot;
         wsp[raIdx] = gcForward(vm, wsp[raIdx], Type.RETADDR);
+
+        // Forward supernumerary arguments, if any
+        size_t extraArgs = frameSize - fun.numLocals;
+        auto argSlot = fun.argcVal.outSlot + 1;
+        for (StackIdx i = 0; i < extraArgs; ++i)
+        {
+            forward(fun.argcVal.outSlot + 1 + fun.numParams + i);
+        }
 
         //writeln("done visiting frame");
     };
