@@ -92,14 +92,14 @@ clean:
 	rm -f $(BIN_NAME) $(BIN_NAME_TEST) $(BIN_NAME_DEBUG) *.o
 
 install: release
-@if [ ! -d $(LIB_DIR) ] ; then echo "mkdir $(LIB_DIR)" ; mkdir $(LIB_DIR) ; fi
-@if [ ! -d $(LIB_DIR)/runtime ] ; then echo "mkdir $(LIB_DIR)/runtime" ; mkdir $(LIB_DIR)/runtime ; fi
-@if [ ! -d $(LIB_DIR)/stdlib ] ; then echo "mkdir $(LIB_DIR)/stdlib" ; mkdir $(LIB_DIR)/stdlib ; fi
-@if [ ! -d $(LIB_DIR)/lib ] ; then echo "mkdir $(LIB_DIR)/lib" ; mkdir $(LIB_DIR)/lib ; fi
-@if [ ! -d $(LIB_DIR)/lib/gl-matrix ] ; then echo "mkdir $(LIB_DIR)/lib/gl-matrix" ; mkdir $(LIB_DIR)/lib/gl-matrix ; fi
-cp ./runtime/*.js $(LIB_DIR)/runtime
-cp ./stdlib/*.js $(LIB_DIR)/stdlib
-cp ./lib/*.js $(LIB_DIR)/lib
-cp ./lib/gl-matrix/*.js $(LIB_DIR)/lib/gl-matrix 
-cp $(BIN_NAME) $(BIN_DIR)
+	@if [ ! -d $(LIB_DIR) ] ; then echo "mkdir $(LIB_DIR)" ; mkdir $(LIB_DIR) ; fi
+	@if [ ! -d $(LIB_DIR)/runtime ] ; then echo "mkdir $(LIB_DIR)/runtime" ; mkdir $(LIB_DIR)/runtime ; fi
+	@if [ ! -d $(LIB_DIR)/stdlib ] ; then echo "mkdir $(LIB_DIR)/stdlib" ; mkdir $(LIB_DIR)/stdlib ; fi
+	@if [ ! -d $(LIB_DIR)/lib ] ; then echo "mkdir $(LIB_DIR)/lib" ; mkdir $(LIB_DIR)/lib ; fi
+	@if [ ! -d $(LIB_DIR)/lib/gl-matrix ] ; then echo "mkdir $(LIB_DIR)/lib/gl-matrix" ; mkdir $(LIB_DIR)/lib/gl-matrix ; fi
+	cp ./runtime/*.js $(LIB_DIR)/runtime
+	cp ./stdlib/*.js $(LIB_DIR)/stdlib
+	cp ./lib/*.js $(LIB_DIR)/lib
+	cp ./lib/gl-matrix/*.js $(LIB_DIR)/lib/gl-matrix 
+	cp $(BIN_NAME) $(BIN_DIR)
 
