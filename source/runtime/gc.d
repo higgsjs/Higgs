@@ -384,7 +384,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Swap the function reference sets
     vm.funRefs = vm.liveFuns;
-    vm.liveFuns.clear();
+    destroy(vm.liveFuns);
 
     // Collect the dead maps
     foreach (ptr, map; vm.mapRefs)
@@ -393,7 +393,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Swap the map reference sets
     vm.mapRefs = vm.liveMaps;
-    vm.liveMaps.clear();
+    destroy(vm.liveMaps);
 
     //writefln("new live funs count: %s", vm.funRefs.length);
 

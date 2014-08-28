@@ -476,7 +476,7 @@ class CodeBlock
         // Clear the label positions and references
         for (auto label = Label.min; label <= Label.max; ++label)
             labelAddrs[label] = size_t.max;
-        labelRefs.clear();
+        labelRefs.length = 0;
     }
 }
 
