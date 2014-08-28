@@ -137,36 +137,71 @@ TODO: profile run of earley-boyer
 - even without inlining, compilation still very slow
   - how much of this is the shape dispatch?
 
-Meeting:
-- Basic shape type prop working
-
 TODO: getProp, don't even need capacity in some cases
 - Capacity known sufficient and type known
 ./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
-
-TODO: shape spec on prop addition, could possibly capture value type from stack, speculate
-- can use benchmark.py to look at avg host set prop
-
-TODO: bug with set_prop specialization when adding prop
-- could be due to values loaded then spilled?
-
-TODO: eliminate type array in objects? ***
+TODO: eliminate type array in objects?
 - If the type is always known, this is unnecessary
+- Evaluate if there is much shape flip-flopping first
+- GC would need alterations
 
-FIXME: gc bug exposed by cube example
+Meeting:
+- set_prop instruction, many cases to handle, complex code
+  - but all the complexity is in that instruction
+- Got very basic shape type prop working
+  - set_prop only optimized if type tag known, otherwise host call
+  - on simplest benchmark, bitwise-and, produced significant speedup
+  - on other benchmarks, marked slowdown, but not completely terrible
+    - 4x as many getprops as setprops
+- Attempted speculative property writes with fallback
+  - surprisingly few fallbacks, few shape changes needed
+- Global prop reads can be super optimized, no type read, no capacity check
+  - Just one word read
+  - Soon, optimized function calls
+- Could possibly get rid of type array in objects
+  - But GC needs additional complexity when visiting objects
+
+TODO: submit abstract for CGO
+
+TODO: set_prop, sketch/hack complete specialization for prop addition
+- could possibly capture value type from stack, speculate
+- see if that works well on binary-trees
+
+TODO: refactorings
+- change ValType.typeKnown to ValType.tagKnown
+- shorten ValType.typeTag to ValType.tag
+- rename Type to Tag?
+
+TODO: set_prop, try basic spec with speculation only, and benchmark
+- want to have a fallback stub for the host code, but too many args to
+pass through regs, probably want to push the args, pop into cargs
+
+FIXME: bug with set prop fallback...
+./higgs --nostdlib --e "o = {x:7, m:function() {return this.x;}}; return o.m()"
+- global object shape appears corrupted upon call to o.m
+- possibly, previous prop writes changed the shape
+- The context we use for soft spills is inaccurate... *****
+
+What the fuck do we do about that?
+- We definitely need to spill values before setPropHost
+- Ideally don't want a spill on all paths
+
+
+
+
+
+
+
+
+[DONE] TODO: use benchmark.py to measure avg host set prop
+num set prop: 28566
+num set prop host: 28566
+
+[DONE] FIXME: gc bug exposed by cube example
 - Issue with Array.prototype.map
   - simplify further, extract map code?
 - Save regression test
-
-Seems like supernumerary arguments might not be getting forwarded???
-- Test this hypothesis separately
-
-
-
-
-
-
-
+- Seems like supernumerary arguments might not be getting forwarded
 
 [DONE] TODO: further optimize setProp
 

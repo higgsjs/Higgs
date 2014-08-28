@@ -3208,7 +3208,9 @@ void gen_shape_get_def(
         // Get the property name
         auto propName = instr.getArgStrCst(1);
 
-        //writeln(propName);
+        //writeln("  propName=", propName);
+        //writeln("  objShape=", cast(void*)objShape);
+        //writeln("  objShape.slotIdx=", objShape.slotIdx);
 
         // Lookup the defining shape
         assert (objShape !is null, "objShape is null");
@@ -3411,9 +3413,10 @@ void gen_shape_get_def(
     // If the object shape and the property name are both known
     if (st.shapeKnown(objVal) && propName !is null)
     {
+        //as.printStr("shape known");
+
         // Increment the count for known shapes
         as.incStatCnt(&stats.numDefShapeKnown, scrRegs[0]);
-        //as.printStr("shape known");
 
         // Get the object shape
         auto objShape = st.getShape(objVal);
@@ -3460,6 +3463,8 @@ void gen_shape_get_def(
     // If the property name is a known constant string
     else if (propName !is null)
     {
+        //as.printStr("shape dispatch");
+
         // Increment the count of dispatches
         as.incStatCnt(&stats.numDefShapeDisp, scrRegs[0]);
 
@@ -3607,10 +3612,12 @@ void gen_shape_set_prop(
     CodeBlock as
 )
 {
-    extern (C) static void op_shape_set_prop(VM vm, IRInstr instr)
+    extern (C) static void op_shape_set_prop(IRInstr instr)
     {
         // Increment the host get prop stat
         ++stats.numSetPropHost;
+
+        auto vm = instr.block.fun.vm;
 
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
@@ -3633,7 +3640,7 @@ void gen_shape_set_prop(
     // Get the argument values
     auto objVal = cast(IRDstValue)instr.getArg(0);
     auto defVal = cast(IRDstValue)instr.getArg(2);
-    auto propVal = cast(IRDstValue)instr.getArg(3);
+    auto propVal = instr.getArg(3);
 
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
@@ -3652,6 +3659,10 @@ void gen_shape_set_prop(
 
 
 
+
+
+
+    /*
     // If the defining shape is known
     // We are overwriting an existing property of this object
     if (st.shapeKnown(defVal))
@@ -3662,21 +3673,33 @@ void gen_shape_set_prop(
         // If the defining shape is writable
         if (defShape !is null && defShape.writable)
         {
-            auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-            auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
-            auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
-            assert (objOpnd.isReg);
+            auto propType = st.getType(propVal);
 
+            assert (defShape.type.typeKnown);
+            bool sameType = propType.typeKnown && propType.typeTag == defShape.type.typeTag;
 
-
-            if (typeOpnd.isImm && defShape.type.typeTag == cast(Type)typeOpnd.imm.imm)
+            // FIXME: speculative part sometimes fails? why?
+            // host op loads the values from the stack... but they might never have been written!!!
+            if (sameType || !propType.typeKnown)
             {
+                auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+                auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
+                auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
+                assert (objOpnd.isReg);
+
+                // If we don't know that the types match
+                if (!sameType)
+                {
+                    as.cmp(typeOpnd, X86Opnd(defShape.type.typeTag));
+                    as.jne(Label.FALLBACK);
+                }
+
                 // Get the object capacity into r1
                 as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
-                auto slotIdx = defShape.slotIdx;
-
                 auto tblOpnd = objOpnd;
+
+                auto slotIdx = defShape.slotIdx;
 
                 // If we can't guarantee that the slot index is within capacity,
                 // generate the extension table code
@@ -3706,14 +3729,32 @@ void gen_shape_set_prop(
                 auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
                 as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
 
+                // If we don't know that the types match
+                if (!sameType)
+                {
+                    as.jmp(Label.DONE);
+                    as.label(Label.FALLBACK);
+
+                    as.printStr("fallback");
+
+                    // Call the host function
+                    auto fallbackSub = getFallbackSub(st.fun.vm);
+                    as.ptr(scrRegs[0], st);
+                    as.ptr(scrRegs[1], instr);
+                    as.ptr(scrRegs[2], fallbackSub);
+                    as.call(scrRegs[2]);
+
+                    // Clear any known shape for this object
+                    st.clearShape(objVal);
+
+                    as.label(Label.DONE);
+                }
+
                 return;
             }
-
-
-
-
         }
     }
+    */
 
 
 
@@ -3721,8 +3762,10 @@ void gen_shape_set_prop(
 
 
 
-
-
+    // Issue: prop is not always dst value
+    // Get the type of the property value at compilation time
+    //assert (propVal.block !is instr.block);
+    //auto propType = st.fun.vm.getType(propVal.outSlot);
 
 
 
@@ -3742,6 +3785,8 @@ void gen_shape_set_prop(
         // If the defining shape was not found
         if (defShape is null)
         {
+            // FIXME: missing type here
+
             // Create a new shape for the property
             defShape = objShape.defProp(
                 st.fun.vm,
@@ -3780,6 +3825,7 @@ void gen_shape_set_prop(
 
 
 
+            /*
             if (typeOpnd.isImm && defShape.type.typeTag == cast(Type)typeOpnd.imm.imm)
             {
                 // Get the object capacity into r2
@@ -3814,14 +3860,17 @@ void gen_shape_set_prop(
 
 
 
+
+
+
+
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);
 
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_shape_set_prop);
     as.call(scrRegs[0]);
 

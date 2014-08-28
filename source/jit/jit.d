@@ -1262,31 +1262,27 @@ class CodeGenState
         valMap[value] = state.setType(type);
     }
 
-    /// Test if the type tag is known for a given value
-    auto typeKnown(IRDstValue value)
+    /// Get the type for a given value
+    auto getType(IRValue value)
     {
-        assert (
-            value in valMap,
-            "typeKnown: value not in val map " ~ value.toString
-        );
-        ValState state = getState(value);
+        // If this is a dst value
+        if (auto dstVal = cast(IRDstValue)value)
+        {
+            assert (dstVal in valMap);
+            ValState state = getState(dstVal);
+            return state.type;
+        }
 
-        return state.type.typeKnown;
+        // If the value is a string
+        if (auto argStr = cast(IRString)value)
+        {
+            return ValType(Type.STRING);
+        }
+
+        return ValType(value.cstValue.type);
     }
 
-    /// Get the type tag for a given value
-    auto getType(IRDstValue value)
-    {
-        assert (value in valMap);
-        ValState state = getState(value);
-
-        assert (
-            state.type.typeKnown,
-            "type tag is not known"
-        );
-        return state.type.typeTag;
-    }
-
+    // TODO: eliminate in favor of getType?
     /// Test if the shape is known for a given value
     auto shapeKnown(IRDstValue value)
     {
@@ -1299,6 +1295,7 @@ class CodeGenState
         return state.type.shapeKnown;
     }
 
+    // TODO: eliminate in favor of getType?
     /// Get shape information for a given value
     auto getShape(IRDstValue value)
     {

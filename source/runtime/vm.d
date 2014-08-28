@@ -528,9 +528,6 @@ class VM
     /// Branch target stubs
     BranchStub[] branchStubs;
 
-    /// Get global fallback subroutine
-    CodePtr getGlobalSub;
-
     /// Shape lookup fallback subroutine
     CodePtr defShapeSub;
 
