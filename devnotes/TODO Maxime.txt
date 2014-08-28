@@ -154,16 +154,42 @@ TODO: refactorings
 - shorten ValType.typeTag to ValType.tag
 - rename Type to Tag?
 
-TODO: set_prop, try basic spec with speculation only, and benchmark
-- want to have a fallback stub for the host code, but too many args to
-pass through regs, probably want to push the args, pop into cargs
-- Just spill everything if type isn't known to match
+Meet Marc Friday afternoon *** ~ 2PM
+- Can we claim fast compilation times? Not measured
+  - Higgs currently has slow compilation times
 
-TODO: install DMD
+TODO: set_prop_fast, optimized prop write
+- verify that the shape is writable
 
-TODO: submit abstract for CGO
+TODO: insert new shape_type_match, verify that tests pass
+- commit once passing
 
-Meeting:
+TODO: set_prop with host fallback
+
+TODO: shape instruction to check if value type matches, shape_type_match
+- problem is property addition? need to speculate
+- could also create prop shape???
+  - requires changing object shape (doable)
+  - obj shape known, prop shape known to be null
+- if the prop shape is unknown (not known null), shape_type_match returns false
+  - slow set prop is taken
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] Meeting:
 - set_prop instruction, many cases to handle, complex code
   - but all the complexity is in that instruction
 - Got very basic shape type prop working
@@ -179,19 +205,7 @@ Meeting:
 - Could possibly get rid of type array in objects
   - But GC needs additional complexity when visiting objects
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: install DMD
 
 [DONE] TODO: use benchmark.py to measure avg host set prop
 num set prop: 28566
