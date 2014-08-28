@@ -158,36 +158,32 @@ Meet Marc Friday afternoon *** ~ 2PM
 - Can we claim fast compilation times? Not measured
   - Higgs currently has slow compilation times
 
+TODO: test ./benchmark.py
+
 TODO: set_prop_fast, optimized prop write
 - verify that the shape is writable
 
 TODO: insert new shape_type_match, verify that tests pass
 - commit once passing
 
-TODO: set_prop with host fallback
 
-TODO: shape instruction to check if value type matches, shape_type_match
+
+
+
+
+
+
+
+
+[DONE] TODO: set_prop with host fallback
+
+[DONE] TODO: shape instruction to check if value type matches, shape_type_match
 - problem is property addition? need to speculate
 - could also create prop shape???
   - requires changing object shape (doable)
   - obj shape known, prop shape known to be null
 - if the prop shape is unknown (not known null), shape_type_match returns false
   - slow set prop is taken
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] Meeting:
 - set_prop instruction, many cases to handle, complex code
