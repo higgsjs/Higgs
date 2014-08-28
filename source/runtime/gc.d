@@ -386,22 +386,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Swap the function reference sets
     vm.funRefs = vm.liveFuns;
-    vm.liveFuns.clear();
-
-    /*
-    // Collect the dead shapes
-    foreach (ptr, shape; vm.shapeRefs)
-        if (ptr !in vm.liveShapes)
-            collectShape(vm, shape);
-
-    // Swap the shape reference sets
-    vm.shapeRefs = vm.liveShapes;
-    vm.liveShapes.clear();
-
-    // Process the live shapes
-    foreach (shape; vm.shapeRefs)
-        processShape(vm, shape);
-    */
+    destroy(vm.liveFuns);
 
     //writefln("new live funs count: %s", vm.funRefs.length);
 

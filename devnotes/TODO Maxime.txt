@@ -145,6 +145,24 @@ TODO: eliminate type array in objects?
 - Evaluate if there is much shape flip-flopping first
 - GC would need alterations
 
+TODO: set_prop, sketch/hack complete specialization for prop addition
+- could possibly capture value type from stack, speculate
+- see if that works well on binary-trees
+
+TODO: refactorings
+- change ValType.typeKnown to ValType.tagKnown
+- shorten ValType.typeTag to ValType.tag
+- rename Type to Tag?
+
+TODO: set_prop, try basic spec with speculation only, and benchmark
+- want to have a fallback stub for the host code, but too many args to
+pass through regs, probably want to push the args, pop into cargs
+- Just spill everything if type isn't known to match
+
+TODO: install DMD
+
+TODO: submit abstract for CGO
+
 Meeting:
 - set_prop instruction, many cases to handle, complex code
   - but all the complexity is in that instruction
@@ -161,30 +179,12 @@ Meeting:
 - Could possibly get rid of type array in objects
   - But GC needs additional complexity when visiting objects
 
-TODO: submit abstract for CGO
 
-TODO: set_prop, sketch/hack complete specialization for prop addition
-- could possibly capture value type from stack, speculate
-- see if that works well on binary-trees
 
-TODO: refactorings
-- change ValType.typeKnown to ValType.tagKnown
-- shorten ValType.typeTag to ValType.tag
-- rename Type to Tag?
 
-TODO: set_prop, try basic spec with speculation only, and benchmark
-- want to have a fallback stub for the host code, but too many args to
-pass through regs, probably want to push the args, pop into cargs
 
-FIXME: bug with set prop fallback...
-./higgs --nostdlib --e "o = {x:7, m:function() {return this.x;}}; return o.m()"
-- global object shape appears corrupted upon call to o.m
-- possibly, previous prop writes changed the shape
-- The context we use for soft spills is inaccurate... *****
 
-What the fuck do we do about that?
-- We definitely need to spill values before setPropHost
-- Ideally don't want a spill on all paths
+
 
 
 

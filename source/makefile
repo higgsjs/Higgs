@@ -98,6 +98,6 @@ install: release
 	@if [ ! -d $(LIB_DIR)/lib ] ; then echo "mkdir $(LIB_DIR)/lib" ; mkdir $(LIB_DIR)/lib ; fi
 	cp ./runtime/*.js $(LIB_DIR)/runtime
 	cp ./stdlib/*.js $(LIB_DIR)/stdlib
-	cp ./lib/*.js $(LIB_DIR)/lib
+	cp -R ./lib/* $(LIB_DIR)/lib
 	cp $(BIN_NAME) $(BIN_DIR)
 
