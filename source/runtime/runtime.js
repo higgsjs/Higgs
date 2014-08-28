@@ -2266,7 +2266,7 @@ function $rt_objSetProp(obj, propStr, val)
         if ($ir_shape_type_match(obj, propStr, defShape, val))
         {
             // Use the fast property write path
-            $ir_shape_set_prop(obj, propStr, defShape, val);
+            $ir_shape_set_prop_fast(obj, propStr, defShape, val);
         }
         else
         {
@@ -2464,7 +2464,7 @@ function $rt_setPropField(base, prop, val)
             if ($ir_shape_type_match(base, prop, defShape, val))
             {
                 // Use the fast property write path
-                $ir_shape_set_prop(base, prop, defShape, val);
+                $ir_shape_set_prop_fast(base, prop, defShape, val);
             }
             else
             {
@@ -2493,7 +2493,7 @@ function $rt_setPropFieldNoCheck(base, prop, val)
     if ($ir_shape_type_match(base, prop, defShape, val))
     {
         // Use the fast property write path
-        $ir_shape_set_prop(base, prop, defShape, val);
+        $ir_shape_set_prop_fast(base, prop, defShape, val);
     }
     else
     {
@@ -2560,7 +2560,7 @@ function $rt_setGlobalInl(propStr, val)
         if ($ir_shape_type_match(obj, propStr, defShape, val))
         {
             // Use the fast property write path
-            $ir_shape_set_prop(obj, propStr, defShape, val);
+            $ir_shape_set_prop_fast(obj, propStr, defShape, val);
         }
         else
         {

@@ -132,14 +132,6 @@ TODO: stub branches, pre-reserve space, put block idx in there
 TODO: port CSG lib
 http://evanw.github.io/csg.js/
 
-TODO: profile run of earley-boyer
-- Almost linear scaling of code size to compile time between earley and 3d-rt
-- even without inlining, compilation still very slow
-  - how much of this is the shape dispatch?
-
-TODO: getProp, don't even need capacity in some cases
-- Capacity known sufficient and type known
-./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
 TODO: eliminate type array in objects?
 - If the type is always known, this is unnecessary
 - Evaluate if there is much shape flip-flopping first
@@ -154,26 +146,38 @@ TODO: refactorings
 - shorten ValType.typeTag to ValType.tag
 - rename Type to Tag?
 
+Hypothesis: live var analysis, or something else, scales nonlinearly
+- Adding a few instrs to set prop causes large slowdown
+- Log the biggest bit set size... May be huge ****
+
 Meet Marc Friday afternoon *** ~ 2PM
 - Can we claim fast compilation times? Not measured
   - Higgs currently has slow compilation times
 
+TODO: getProp, don't even need capacity in some ext table cases
+- If type known, don't reextract capacity
+./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
+
 TODO: test ./benchmark.py
 
-TODO: set_prop_fast, optimized prop write
+
+
+FIXME: Assertion failed (runtime/object.d-mixin-118@119): Value is greater than the maximum value of bitfield 'typeTag'
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: set_prop_fast, optimized prop write
 - verify that the shape is writable
 
-TODO: insert new shape_type_match, verify that tests pass
+[DONE] TODO: insert new shape_type_match, verify that tests pass
 - commit once passing
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: set_prop with host fallback
 

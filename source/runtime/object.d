@@ -133,6 +133,11 @@ struct ValType
     /// Constructor taking a value pair
     this(ValuePair val)
     {
+        assert (
+            val.type < 16,
+            "ValuePair ctor, invalid type tag: " ~ cast(int)val.type
+        );
+
         this.typeTag = val.type;
         this.typeKnown = true;
         this.shapeKnown = false;
@@ -153,18 +158,28 @@ struct ValType
     }
 
     /// Constructor taking a type tag only
-    this(Type typeTag)
+    this(Type tag)
     {
-        this.typeTag = typeTag;
+        assert (
+            tag < 16,
+            "tag ctor, invalid type tag: " ~ cast(int)tag
+        );
+
+        this.typeTag = tag;
         this.typeKnown = true;
         this.shape = null;
         this.shapeKnown = false;
     }
 
     /// Constructor taking a type tag and shape
-    this(Type typeTag, ObjShape shape)
+    this(Type tag, ObjShape shape)
     {
-        this.typeTag = typeTag;
+        assert (
+            tag < 16,
+            "tag+shape ctor, invalid type tag: " ~ cast(int)tag
+        );
+
+        this.typeTag = tag;
         this.typeKnown = true;
         this.shape = shape;
         this.shapeKnown = true;

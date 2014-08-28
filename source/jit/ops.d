@@ -3734,9 +3734,8 @@ void gen_shape_type_match(
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
-    // If the object shape is known but the defining shape is unknown
-    // We are probably adding a new property to this object
-    if (st.shapeKnown(objVal) && !st.shapeKnown(defVal) && propName !is null)
+    // If the object shape is known and the property name too
+    if (st.shapeKnown(objVal) && propName !is null)
     {
         // Get the object shape, may be unknown
         auto objShape = st.getShape(objVal);
@@ -3770,25 +3769,18 @@ void gen_shape_type_match(
                 null
             );
 
-            // Update the object shape
-            auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-            assert (objOpnd.isReg);
-            as.ptr(scrRegs[0].reg, defShape);
-            as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
-
-            // Set the new object shape on the state
-            st.setShape(objVal, defShape);
+            // Set the defining shape on the state
+            st.setShape(defVal, defShape);
         }
     }
 
     // If the defining shape is known
-    // We are overwriting an existing property of this object
     if (st.shapeKnown(defVal))
     {
         // Get the property shape
         auto defShape = st.getShape(defVal);
 
-        // If the defining shape is writable
+        // If the defining shape exists and is writable
         if (defShape !is null && defShape.writable)
         {
             auto propType = st.getType(propVal);
@@ -3828,6 +3820,19 @@ void gen_shape_set_prop_fast(
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
+    // If the object or defining shape is unknown, use the slow path
+    if (!st.shapeKnown(objVal) || !st.shapeKnown(defVal))
+        return gen_shape_set_prop(ver, st, instr, as);
+
+    // Get the object and defining shapes
+    auto objShape = st.getShape(objVal);
+    auto defShape = st.getShape(defVal);
+    assert (objShape !is null);
+    assert (defShape !is null);
+
+    // Get the property slot index
+    auto slotIdx = defShape.slotIdx;
+
     // Compute the minimum object capacity we can guarantee
     auto minObjCap = (
         (objVal is st.fun.globalVal)?
@@ -3835,57 +3840,84 @@ void gen_shape_set_prop_fast(
         OBJ_MIN_CAP
     );
 
-    // If the defining shape is unknown, use the slow path
-    if (!st.shapeKnown(defVal))
-        return gen_shape_set_prop(ver, st, instr, as);
-
-    // Get the property shape
-    auto defShape = st.getShape(defVal);
-    assert (defShape !is null);
-
-    // If the defining shape is not writable, use the slow path
-    if (!defShape.writable)
-        return gen_shape_set_prop(ver, st, instr, as);
-
-    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-    auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
-    auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
-    assert (objOpnd.isReg);
-
-    // Get the object capacity into r1
-    as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
-
-    auto tblOpnd = objOpnd;
-
-    auto slotIdx = defShape.slotIdx;
-
-    // If we can't guarantee that the slot index is within capacity,
-    // generate the extension table code
-    if (slotIdx >= minObjCap)
+    // If the property exists on the object and is writable
+    if (slotIdx <= objShape.slotIdx && defShape.writable)
     {
-        tblOpnd = scrRegs[0].opnd;
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
+        auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
+        assert (objOpnd.isReg);
 
-        // Move the object operand into r0
-        as.mov(tblOpnd, objOpnd);
+        // Get the object capacity into r1
+        as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
-        // If the slot index is below capacity, skip the ext table code
-        as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
-        as.jg(Label.SKIP);
+        auto tblOpnd = objOpnd;
 
-        // Get the ext table pointer into r0
-        as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
+        // If we can't guarantee that the slot index is within capacity,
+        // generate the extension table code
+        if (slotIdx >= minObjCap)
+        {
+            tblOpnd = scrRegs[0].opnd;
 
-        // Get the ext table capacity into r1
-        as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
+            // Move the object operand into r0
+            as.mov(tblOpnd, objOpnd);
 
-        as.label(Label.SKIP);
+            // If the slot index is below capacity, skip the ext table code
+            as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
+            as.jg(Label.SKIP);
+
+            // Get the ext table pointer into r0
+            as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
+
+            // Get the ext table capacity into r1
+            as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
+
+            as.label(Label.SKIP);
+        }
+
+        // Set the word and type values
+        auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+        as.genMove(wordMem, valOpnd);
+        auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+        as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
+
+        return;
     }
 
-    // Set the word and type values
-    auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
-    as.genMove(wordMem, valOpnd);
-    auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
-    as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
+    // If the property is writable and the slot index is
+    // within the guaranteed object capacity
+    //
+    // Note: we don't check if the property goes in the extended
+    // table because we cant guarantee the object size is sufficient
+    // or that the extended table even exists
+    if (defShape.writable && slotIdx < minObjCap)
+    {
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[0].opnd(64), true);
+        auto typeOpnd = st.getTypeOpnd(as, instr, 3, scrRegs[1].opnd(8), true);
+        assert (objOpnd.isReg);
+
+        // Get the object capacity into r2
+        as.getField(scrRegs[2].reg(32), objOpnd.reg, obj_ofs_cap(null));
+
+        // Set the word and type values
+        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+        auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[2]);
+        as.mov(wordMem, valOpnd);
+        as.mov(typeMem, typeOpnd);
+
+        // Update the object shape
+        as.ptr(scrRegs[0].reg, defShape);
+        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
+
+        // Set the new object shape
+        st.setShape(objVal, defShape);
+
+        return;
+    }
+
+    // Use the slow path
+    return gen_shape_set_prop(ver, st, instr, as);
 }
 
 /// Sets the value of a property

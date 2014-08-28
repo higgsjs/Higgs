@@ -298,6 +298,9 @@ Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen
 /// Get the shape defining a given property
 Opcode SHAPE_TYPE_MATCH = { "shape_type_match", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_type_match, OpInfo.IMPURE };
 
+/// Set the value of an object property based on its shape (fast path)
+Opcode SHAPE_SET_PROP_FAST = { "shape_set_prop_fast", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop_fast, OpInfo.MAY_GC | OpInfo.IMPURE };
+
 /// Set the value of an object property based on its shape
 Opcode SHAPE_SET_PROP = { "shape_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
 
