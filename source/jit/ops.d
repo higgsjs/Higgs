@@ -3757,16 +3757,15 @@ void gen_shape_type_match(
         if (defShape is null)
         {
             // Get the type of the property value at compilation time
-            ValType propType;
-            if (auto propDst = cast(IRDstValue)propVal)
+            ValType propType = st.getType(propVal);
+            if (propType.typeKnown is false)
             {
-                assert (propDst.block !is instr.block);
-                auto propTag = st.fun.vm.getType(propDst.outSlot);
-                propType = ValType(propTag);
-            }
-            else
-            {
-                propType = st.getType(propVal);
+                if (auto propDst = cast(IRDstValue)propVal)
+                {
+                    assert (propDst.block !is instr.block);
+                    auto propTag = st.fun.vm.getType(propDst.outSlot);
+                    propType = ValType(propTag);
+                }
             }
 
             // Create a new shape for the property
@@ -3798,12 +3797,31 @@ void gen_shape_type_match(
 
             // If we can statically determine whether the type matches
             if (propType.typeKnown)
+            {
+                /*
+                if (propType.typeTag != defShape.type.typeTag)
+                {
+                    writeln("disagree at ", instr.block.fun.getName);
+                    writeln("  propName: ", propName);
+                    writeln("  propType: ", propType.typeTag);
+                    writeln("  shapeType: ", defShape.type.typeTag);
+                }
+                */
+
                 return genStaticBool(propType.typeTag == defShape.type.typeTag);
+            }
+
 
             // We must dynamically test if the type matches
             return genTypeCmp(defShape);
         }
     }
+
+    /*
+    writeln("fail at ", instr.block.fun.getName);
+    writeln("  propName: ", propName);
+    writeln("  obj shape known: ", st.shapeKnown(objVal));
+    */
 
     // Can't guarantee that the shape type matches
     return genStaticBool(false);

@@ -150,12 +150,27 @@ Hypothesis: live var analysis, or something else, scales nonlinearly
 - Adding a few instrs to set prop causes large slowdown
 - Log the biggest bit set size... May be huge ****
 
+TODO: count how many type changes actually occur in benchmarks
+- add stat for this, shape type change
+
 Meet Marc Friday afternoon *** ~ 2PM
 - Typed shapes
   - Implemented separate type check instruction
-  - Code now cleaner
-  - 3d-raytrace, 50% less type tests
+    - Code now cleaner
+    - 3d-raytrace, 50% less type tests
+    - issue with initialization to null or undef (e.g.: tree nodes)
   - optimized property read further
+  - simplest solution: if ctor init to null or undef, can set shape type to unknown
+  - in the case of global write, can predict against undef, in favor of new type
+    - change global obj shape to match new type
+  - alternatively: type dispatcher instruction, similar to shape dispatch ***
+    - use this instead of type check instruction
+    - captures type of value before write, uses small inline cache, generates code paths
+    - basic idea: we *need* the type of the value written at property writes
+    - if the type is already known, compiles to nothing
+    - probably flexible enough, avoids the issue of speculation errors
+    - can optimize shape transitions as well
+  - TODO: count how many type changes actually occur in benchmarks
 - Submitted abstract
 - Can we claim fast compilation times? Not measured
   - Higgs currently has slow compilation times
@@ -163,9 +178,6 @@ Meet Marc Friday afternoon *** ~ 2PM
 FIXME: Assertion failed (runtime/object.d-mixin-118@119): Value is greater than the maximum value of bitfield 'typeTag'
 - Type tag constructor seems responsible
 
-TODO: test ./benchmark.py
-
-TODO: look at binary-trees, currently slow
 
 
 
@@ -176,6 +188,20 @@ TODO: look at binary-trees, currently slow
 
 
 
+
+
+
+[DONE] FIXME: shape disagreements for functions in stdlib/string
+- types seemingly random
+- other global functions have types seemingly initialized to random values
+- if type is known in state, then it isn't necessarily on the stack!
+
+[DONE] TODO: look at binary-trees, currently slow
+- more set prop host than not
+- seems first TreeNode is constructed with null children, speculation fails
+- also have one unpredicted type in TreeNode, why?
+  property is "right"
+  presumably, prediction fail causes obj type loss
 
 [DONE] TODO: count type tests in shape_test, gen_call
 
