@@ -161,12 +161,11 @@ Meet Marc Friday afternoon *** ~ 2PM
   - Higgs currently has slow compilation times
 
 FIXME: Assertion failed (runtime/object.d-mixin-118@119): Value is greater than the maximum value of bitfield 'typeTag'
-
-TODO: look at binary-trees, currently slow
+- Type tag constructor seems responsible
 
 TODO: test ./benchmark.py
 
-TODO: count type tests in shape_test, gen_call
+TODO: look at binary-trees, currently slow
 
 
 
@@ -177,6 +176,8 @@ TODO: count type tests in shape_test, gen_call
 
 
 
+
+[DONE] TODO: count type tests in shape_test, gen_call
 
 [DONE] TODO: getProp, don't even need capacity in some ext table cases
 - If type known, don't reextract capacity

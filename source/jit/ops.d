@@ -1897,6 +1897,7 @@ void gen_call(
     );
 
     // If the value is not a closure, bailout
+    as.incStatCnt(stats.getTypeTestCtr("is_closure"), scrRegs[1]);
     as.cmp(closType, X86Opnd(Type.CLOSURE));
     as.jne(Label.THROW);
 
@@ -3662,6 +3663,14 @@ void gen_shape_type_match(
 
     void genTypeCmp(ObjShape defShape)
     {
+        // Increase the type test stat
+        auto typeName = toLower(to!string(defShape.type.typeTag));
+        if (typeName == "int32")
+            typeName = "i32";
+        else if (typeName == "float64")
+            typeName = "f64";
+        as.incStatCnt(stats.getTypeTestCtr("is_" ~ typeName), scrRegs[0]);
+
         // Get the value type tag operand
         auto tagOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
 
