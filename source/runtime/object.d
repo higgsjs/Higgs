@@ -43,6 +43,7 @@ import std.algorithm;
 import std.stdint;
 import std.typecons;
 import std.bitmanip;
+import std.conv;
 import ir.ir;
 import runtime.vm;
 import runtime.layout;
@@ -162,7 +163,7 @@ struct ValType
     {
         assert (
             tag < 16,
-            "tag ctor, invalid type tag: " ~ cast(int)tag
+            "tag ctor, invalid type tag: " ~ to!string(cast(int)tag) ~ " (" ~ to!string(tag) ~ ")"
         );
 
         this.typeTag = tag;

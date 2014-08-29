@@ -3999,17 +3999,15 @@ void gen_shape_get_prop(
         // Get the property shape
         auto defShape = st.getShape(defVal);
         assert (defShape !is null);
+        assert (defShape.type.typeKnown);
+
+        auto slotIdx = defShape.slotIdx;
 
         // No need to get the shape operand
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         assert (objOpnd.isReg);
         auto outOpnd = st.getOutOpnd(as, instr, 64);
         assert (outOpnd.isReg);
-
-        // Get the object capacity into r1
-        as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
-
-        auto slotIdx = defShape.slotIdx;
 
         auto tblOpnd = objOpnd;
 
@@ -4022,6 +4020,9 @@ void gen_shape_get_prop(
             // Move the object operand into r0
             as.mov(tblOpnd, objOpnd);
 
+            // Get the object capacity into r1
+            as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+
             // If the slot index is below capacity, skip the ext table code
             as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
             as.jg(Label.SKIP);
@@ -4029,33 +4030,18 @@ void gen_shape_get_prop(
             // Get the ext table pointer into r0
             as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
 
-            // Get the ext table capacity into r1
-            as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
-
             as.label(Label.SKIP);
         }
 
         //as.printStr("read, slotIdx=" ~ to!string(slotIdx));
         //as.printUint(scrRegs[1].opnd);
 
-        auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
-        auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
-
         // Load the word value
+        auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
         as.mov(outOpnd, wordMem);
 
-        // If the property type is known
-        if (defShape.type.typeKnown)
-        {
-            // Propagate the known type
-            st.setOutType(as, instr, defShape.type.typeTag);
-        }
-        else
-        {
-            // Load the type value
-            as.mov(scrRegs[2].opnd(8), typeMem);
-            st.setOutType(as, instr, scrRegs[2].reg(8));
-        }
+        // Propagate the shape type
+        st.setOutType(as, instr, defShape.type.typeTag);
     }
     else
     {

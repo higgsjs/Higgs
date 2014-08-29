@@ -151,19 +151,22 @@ Hypothesis: live var analysis, or something else, scales nonlinearly
 - Log the biggest bit set size... May be huge ****
 
 Meet Marc Friday afternoon *** ~ 2PM
+- Typed shapes
+  - Implemented separate type check instruction
+  - Code now cleaner
+  - 3d-raytrace, 50% less type tests
+  - optimized property read further
+- Submitted abstract
 - Can we claim fast compilation times? Not measured
   - Higgs currently has slow compilation times
 
-TODO: getProp, don't even need capacity in some ext table cases
-- If type known, don't reextract capacity
-./higgs --jit_genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
+FIXME: Assertion failed (runtime/object.d-mixin-118@119): Value is greater than the maximum value of bitfield 'typeTag'
+
+TODO: look at binary-trees, currently slow
 
 TODO: test ./benchmark.py
 
-
-
-FIXME: Assertion failed (runtime/object.d-mixin-118@119): Value is greater than the maximum value of bitfield 'typeTag'
-
+TODO: count type tests in shape_test, gen_call
 
 
 
@@ -172,6 +175,11 @@ FIXME: Assertion failed (runtime/object.d-mixin-118@119): Value is greater than 
 
 
 
+
+
+
+[DONE] TODO: getProp, don't even need capacity in some ext table cases
+- If type known, don't reextract capacity
 
 [DONE] TODO: set_prop_fast, optimized prop write
 - verify that the shape is writable
