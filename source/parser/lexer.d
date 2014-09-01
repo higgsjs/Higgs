@@ -682,7 +682,7 @@ Token getToken(ref StrStream stream, LexFlags flags)
             enum octRegex = ctRegex!(`^0([0-7]+)`w);
 
             auto m = stream.match(octRegex);
-            if (!m.empty) 
+            if (!m.empty)
             {
                 auto octStr = m.captures[1];
                 long val;
