@@ -386,7 +386,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Swap the function reference sets
     vm.funRefs = vm.liveFuns;
-    vm.liveFuns.clear();
+    destroy(vm.liveFuns);
 
     /*
     // Collect the dead shapes
@@ -779,6 +779,14 @@ void visitStackRoots(VM vm)
         // Note: the return address is not type tagged
         auto raIdx = fun.raVal.outSlot;
         wsp[raIdx] = gcForward(vm, wsp[raIdx], Type.RETADDR);
+
+        // Forward supernumerary arguments, if any
+        size_t extraArgs = frameSize - fun.numLocals;
+        auto argSlot = fun.argcVal.outSlot + 1;
+        for (StackIdx i = 0; i < extraArgs; ++i)
+        {
+            forward(fun.argcVal.outSlot + 1 + fun.numParams + i);
+        }
 
         //writeln("done visiting frame");
     };
