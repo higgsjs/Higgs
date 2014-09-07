@@ -38,6 +38,7 @@
 module jit.ops;
 
 import core.memory;
+import core.stdc.string;
 import std.c.math;
 import std.stdio;
 import std.string;
