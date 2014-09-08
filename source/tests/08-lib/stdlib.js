@@ -9,4 +9,7 @@ stdlib.free(mem);
 var output = stdlib.popen("ls", "r");
 var str = output.read();
 assert (typeof str === 'string');
+var output = stdlib.popen("ls", "r");
+var str = output.read();
+assert (typeof str === 'string');
 
