@@ -579,12 +579,10 @@ void setProp(
         // If the value type doesn't match the shape type
         if (!valType.isSubType(defShape.type))
         {
-            /*
-            writeln("redefining shape");
-            writeln("  propName=", defShape.propName);
-            writeln("  oldType=", defShape.type.typeTag);
-            writeln("  slotIdx=", defShape.slotIdx);
-            */
+            // Number of shape changes due to type
+            ++stats.numShapeFlips;
+
+            //writeln(defShape.type.typeTag, " ==> ", valType.typeTag);
 
             // Change the defining shape to match the value type
             objShape = objShape.defProp(

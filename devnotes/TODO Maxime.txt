@@ -137,10 +137,6 @@ TODO: eliminate type array in objects?
 - Evaluate if there is much shape flip-flopping first
 - GC would need alterations
 
-TODO: set_prop, sketch/hack complete specialization for prop addition
-- could possibly capture value type from stack, speculate
-- see if that works well on binary-trees
-
 TODO: refactorings
 - change ValType.typeKnown to ValType.tagKnown
 - shorten ValType.typeTag to ValType.tag
@@ -149,11 +145,74 @@ TODO: refactorings
 Hypothesis: live var analysis, or something else, scales nonlinearly
 - Adding a few instrs to set prop causes large slowdown
 - Log the biggest bit set size... May be huge ****
+- Possibly, doesn't fit in cache at all
 
-TODO: count how many type changes actually occur in benchmarks
-- add stat for this, shape type change
+FIXME: Assertion failed (runtime/object.d-mixin-118@119): Value is greater than the maximum value of bitfield 'typeTag'
+- Type tag constructor seems responsible
+
+TODO: extend capture_type(x) to replace shape_get_def
+- probably want obj mode vs type tag mode to start
+
+TODO: implement basic capture_type(x), for type tags only
+
+TODO: capture_type(x)
+- Type dispatch
+- If type is known, compiles to nothing
+- Capture type tag and possibly shape as well
+  - Var len encoding??
+  - If simple types, probably need only 2 cmps
+  - If values are known obj, put shape extraction code
+  - Could examine types at compile time
+  - If currently obj/closure, guarded shape extraction
+    - if not expected extobj tag, jump to generic version
+    - then extract shape, test cascade
+    - Will work for current shape_get_def usage
+    - must support null vs obj?
+- Could possibly replace shape_get_def by this
+  - Makes dispatch instrs shorter, no def shape move
+  - Eliminates superfluous moves
+  - set and get can implement their own inline cache
+
+TODO: push getters/setters to master? is compile time acceptable?
+
+TODO: perf study with dummy benchmark, blog post
+- get global a, does comp time scale linearly?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: look at popen bug signaled by Brett
+- Add test
+- popen is pretty much broken
+var stdlib = require('lib/stdlib');
+var output = stdlib.popen("ls -a", "r");
+
+Recursive type issue
+- Don't want to have an infinite cycle of shapes
+- If too many children with shape ptrs, limit
+  - only allow 1 exact shape ptr, none if null/undef already there
+
+Marc proposes having union types
+- Union on type tags?
+- When adding properties, new shapes are created?
+- Marc would like to have recursive shapes, if possible
+- Building recursive types doesn't seem to work...
+  - Shapes built incrementally, can't refer to self
 
 Meet Marc Friday afternoon *** ~ 2PM
+- Hidden type tests
 - Typed shapes
   - Implemented separate type check instruction
     - Code now cleaner
@@ -170,26 +229,21 @@ Meet Marc Friday afternoon *** ~ 2PM
     - if the type is already known, compiles to nothing
     - probably flexible enough, avoids the issue of speculation errors
     - can optimize shape transitions as well
-  - TODO: count how many type changes actually occur in benchmarks
+- Gathered some numbers about shape changes
+- Linked list paradox
 - Submitted abstract
-- Can we claim fast compilation times? Not measured
+- Paper: can we claim fast compilation times? Not measured
   - Higgs currently has slow compilation times
 
-FIXME: Assertion failed (runtime/object.d-mixin-118@119): Value is greater than the maximum value of bitfield 'typeTag'
-- Type tag constructor seems responsible
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: count how many type changes actually occur in benchmarks
+- add stat for this, shape type change
+- earley boyer has about 53K, out of over 1M set props
+- v8 raytrace and others have very few
+- worst offenders
+    splay       45K shapes  109K shape flips    1.5M setprop    2M getprop
+    boyer       41K shapes  53K shape flips     755K setprop    3.9M getprop
+    richards    4K shapes   8K shape flips      51K setprop     244K getprop
+- earley-boyer, splay and richards flip between null and object
 
 [DONE] FIXME: shape disagreements for functions in stdlib/string
 - types seemingly random

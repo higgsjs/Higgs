@@ -87,6 +87,9 @@ ulong numSetPropHost = 0;
 /// Number of property reads
 ulong numGetProp = 0;
 
+/// Number of shape changes due to type
+ulong numShapeFlips = 0;
+
 /// Number of heap allocations
 ulong numHeapAllocs = 0;
 
@@ -223,6 +226,7 @@ static ~this()
         writefln("num set prop: %s", numSetProp);
         writefln("num set prop host: %s", numSetPropHost);
         writefln("num get prop: %s", numGetProp);
+        writefln("num shape flips: %s", numShapeFlips);
         writefln("num heap allocs: %s", numHeapAllocs);
 
         writefln("num call: %s", numCall);
