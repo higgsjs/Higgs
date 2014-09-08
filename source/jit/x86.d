@@ -46,6 +46,9 @@ import std.bitmanip;
 import std.algorithm;
 import jit.codeblock;
 
+// Number of x86 registers
+const NUM_REGS = 16;
+
 /**
 Representation of an x86 register
 */
@@ -72,7 +75,7 @@ struct X86Reg
     this(Type type, size_t regNo, size_t size)
     {
         assert (
-            regNo < 16,
+            regNo < NUM_REGS,
             "invalid register number"
         );
 
@@ -203,7 +206,7 @@ string genRegCsts()
         );
     }
 
-    for (ubyte regNo = 0; regNo < 16; ++regNo)
+    for (ubyte regNo = 0; regNo < NUM_REGS; ++regNo)
     {
         genCst(X86Reg.GP, "X86Reg.GP", regNo, 8);
         genCst(X86Reg.GP, "X86Reg.GP", regNo, 16);

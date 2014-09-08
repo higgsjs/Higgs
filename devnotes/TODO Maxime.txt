@@ -177,13 +177,15 @@ TODO: push getters/setters to master? is compile time acceptable?
 
 TODO: perf study with dummy benchmark, blog post
 - get global a, does comp time scale linearly?
-
-
-
-
-
-
-
+./higgs gentest.js -- 2 > test.js; ./higgs --perf_stats --nostdlib test.js
+5K          100ms
+50K         2828ms
+60K         5848ms              8GB peak mem usage
+100K        mem alloc failed
+ 360041  4021724324  4020121867       11165     pure nothrow ir.ir.IRDstValue[] object._dup!(ir.ir.IRDstValue, ir.ir.IRDstValue)._dup(ir.ir.IRDstValue[])
+     69  3692005953  3244254480    47018180     ir.livevars.LiveInfo ir.livevars.LiveInfo.__ctor(ir.ir.IRFunction)
+- IRDstValue[], where is this used? is this also in LiveInfo?
+  - reg map init, save 25% of time by making it a fixed-size array
 
 
 

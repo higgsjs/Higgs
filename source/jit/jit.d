@@ -287,7 +287,7 @@ class CodeGenState
 
     /// Map of general-purpose registers to values
     /// If a register is free, its value is null
-    private IRDstValue[] gpRegMap;
+    private IRDstValue[NUM_REGS] gpRegMap;
 
     /**
     Constructor for a function entry code generation state
@@ -295,11 +295,6 @@ class CodeGenState
     this(IRFunction fun)
     {
         this.fun = fun;
-
-        // All registers are initially free
-        gpRegMap.length = 16;
-        for (size_t i = 0; i < gpRegMap.length; ++i)
-            gpRegMap[i] = null;
 
         mapToStack(fun.raVal);
         mapToStack(fun.closVal);
@@ -321,7 +316,7 @@ class CodeGenState
     {
         this.fun = that.fun;
         this.valMap = that.valMap.dup;
-        this.gpRegMap = that.gpRegMap.dup;
+        this.gpRegMap = that.gpRegMap;
     }
 
     /**
