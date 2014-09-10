@@ -147,15 +147,15 @@ Hypothesis: live var analysis, or something else, scales nonlinearly
 - Log the biggest bit set size... May be huge ****
 - Possibly, doesn't fit in cache at all
 
-FIXME: Assertion failed (runtime/object.d-mixin-118@119): Value is greater than the maximum value of bitfield 'typeTag'
-- Type tag constructor seems responsible
-
+TODO: push getters/setters to master? is compile time acceptable?
 TODO: extend capture_type(x) to replace shape_get_def
 - probably want obj mode vs type tag mode to start
 
+TODO: valsLiveBefore, valsLiveAfter, can we get rid of this?
+
 TODO: implement basic capture_type(x), for type tags only
 
-TODO: capture_type(x)
+TODO: think about capture_type(x)
 - Type dispatch
 - If type is known, compiles to nothing
 - Capture type tag and possibly shape as well
@@ -173,11 +173,31 @@ TODO: capture_type(x)
   - Eliminates superfluous moves
   - set and get can implement their own inline cache
 
-TODO: push getters/setters to master? is compile time acceptable?
 
-TODO: perf study with dummy benchmark, blog post
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: valsLiveBefore, valsLiveAfter misbehaving, breaking GC
+- could we have duplicates?
+
+[DONE] Liveness analysis is much faster, but code gen is slower.
+- May be D GC slowdown
+- Try live set reserve? no effect
+- Try reserve again? 3x faster at 1024MB, but slow again at 2048
+- Try malloc'ing
+
+[DONE] TODO: reimplement faster liveness analysis with list sets
+- Performs more poorly
+
+[DONE] TODO: perf study with dummy benchmark, blog post
 - get global a, does comp time scale linearly?
-./higgs gentest.js -- 2 > test.js; ./higgs --perf_stats --nostdlib test.js
+./higgs gentest.js -- 6000 > test.js; ./higgs --perf_stats --nostdlib test.js
 5K          100ms
 50K         2828ms
 60K         5848ms              8GB peak mem usage
@@ -186,14 +206,16 @@ TODO: perf study with dummy benchmark, blog post
      69  3692005953  3244254480    47018180     ir.livevars.LiveInfo ir.livevars.LiveInfo.__ctor(ir.ir.IRFunction)
 - IRDstValue[], where is this used? is this also in LiveInfo?
   - reg map init, save 25% of time by making it a fixed-size array
+  - two lines of code changed
+    ./higgs gentest.js -- 60000 > test.js; ./higgs --perf_stats --nostdlib test.js
+    comp time (ms): 4538
+    peak mem usage (KB): 8409440
+- Just allocating the big array is super slow...
+  - Maybe try using malloc or something?
+  - array is 8GB in size!
 
-
-
-
-
-
-
-
+[DONE] TODO: test on earley-boyer, max number of live values at any point
+- max 64, avg around 1-4
 
 [DONE] TODO: look at popen bug signaled by Brett
 - Add test
