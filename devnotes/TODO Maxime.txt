@@ -82,7 +82,11 @@ TODO: blog post, the future of compilation
 
 TODO: post dconf talk on r/coding
 - Do this when you have time to chat!
-- Wait until Monday
+
+When fine-tuning the S9 garbage collector (which also is a constant-space mark-and-sweep collector),
+maintaining 50% of free space turned out to be the sweet spot. Whenever less than
+50% of free space are available after a collection, the heap grows.
+=> grow on next GC
 
 ------------------------------------------------------------------------------
 
@@ -142,20 +146,51 @@ TODO: refactorings
 - shorten ValType.typeTag to ValType.tag
 - rename Type to Tag?
 
-Hypothesis: live var analysis, or something else, scales nonlinearly
-- Adding a few instrs to set prop causes large slowdown
-- Log the biggest bit set size... May be huge ****
-- Possibly, doesn't fit in cache at all
-
 TODO: push getters/setters to master? is compile time acceptable?
-TODO: extend capture_type(x) to replace shape_get_def
-- probably want obj mode vs type tag mode to start
 
-TODO: valsLiveBefore, valsLiveAfter, can we get rid of this?
+TODO: allocs, can we alloc some memory as pointer-free?
+- Try embedded arg list for IR instrs? What is the object we allocate most of? stats?
+At EA, in C++, we have exactly this type in our standard template library as
+eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
+extremely useful once you have it for exactly this kind of use case.
 
-TODO: implement basic capture_type(x), for type tags only
+Meeting:
+- CGO deadline extended, minor proofreading changes on paper
+- Tried to optimize live vars analysis
+  - Huge memory footprint, up to 8GB
+  - Significant amount of execution time
+- Blog post, over 17000 views
+  - D co-creator has decided to rewrite the GC
 
-TODO: think about capture_type(x)
+TODO: get rid of set_prop_fast vs set_prop
+
+TODO: implement capture_type(x)
+- Probably want to leave good enough alone, don't try to replace shape_get_def
+- Replacing it would make eventual comparison against inline caches harder
+- Two modes, closure vs type tag capture
+- To begin, implement type tag capture only
+  - Proof of concept
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: better live set implementation for liveness analysis?
+- union of small arr with associative array
+- what is the worst case ever found?
+
+[DONE] TODO: think about capture_type(x)
 - Type dispatch
 - If type is known, compiles to nothing
 - Capture type tag and possibly shape as well
@@ -172,16 +207,19 @@ TODO: think about capture_type(x)
   - Makes dispatch instrs shorter, no def shape move
   - Eliminates superfluous moves
   - set and get can implement their own inline cache
-
-
-
-
-
-
-
-
-
-
+- 3 code gen modes
+  - found closure, guard then get one shape, otherwise unknown
+    - must check that the value is a closure, then get its shape
+    - set both type tag and shape
+    - only one line of dispatch needed
+  - obj/arr type tag known
+    - shape dispatch with multiple entries, as before
+  - other type tag known
+     - pass through
+  - unknown type
+    - dispatch with up to 3 type tags
+    cmp mem, tag; jmp target
+- No longer care about prop names
 
 [DONE] FIXME: valsLiveBefore, valsLiveAfter misbehaving, breaking GC
 - could we have duplicates?

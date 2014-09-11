@@ -366,8 +366,7 @@ ASTStmt parseStmt(TokenStream input)
                 if (curStmts is null)
                     throw new ParseError("statement before label", input.getPos());
 
-                curStmts.length += 1;
-                (*curStmts)[curStmts.length-1] = parseStmt(input);
+                (*curStmts).assumeSafeAppend() ~= parseStmt(input);
             }
         }
 

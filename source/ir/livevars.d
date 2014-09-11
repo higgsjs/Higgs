@@ -37,6 +37,7 @@
 
 module ir.livevars;
 
+import core.memory;
 import std.stdio;
 import std.array;
 import std.string;
@@ -50,8 +51,72 @@ Liveness information for a given function
 */
 class LiveInfo
 {
-    /// List (set) of live values
-    alias IRDstValue[] LiveSet;
+    /**
+    Live variable set implementation
+    */
+    struct LiveSet
+    {
+        IRDstValue* arr;
+        uint32_t arrLen;
+        uint32_t numElems;
+
+        void add(IRDstValue val)
+        {
+            // If the element is already present, stop
+            for (size_t i = 0; i < numElems; ++i)
+                if (arr[i] is val)
+                    return;
+
+            if (numElems + 1 > arrLen)
+            {
+                if (arrLen is 0)
+                {
+                    arrLen = 16;
+
+                    arr = cast(IRDstValue*)GC.malloc(
+                        (IRDstValue*).sizeof * arrLen,
+                        GC.BlkAttr.NO_SCAN |
+                        GC.BlkAttr.NO_INTERIOR
+                    );
+                }
+                else
+                {
+                    auto newLen = 2 * arrLen;
+
+                    auto newArr = cast(IRDstValue*)GC.malloc(
+                        (IRDstValue*).sizeof * newLen,
+                        GC.BlkAttr.NO_SCAN |
+                        GC.BlkAttr.NO_INTERIOR
+                    );
+
+                    for (size_t i = 0; i < numElems; ++i)
+                        newArr[i] = arr[i];
+
+                    GC.free(arr);
+
+                    arr = newArr;
+                    arrLen = newLen;
+                }
+            }
+
+            arr[numElems] = val;
+            numElems += 1;
+        }
+
+        bool has(IRDstValue val)
+        {
+            for (size_t i = 0; i < numElems; ++i)
+                if (arr[i] is val)
+                    return true;
+
+            return false;
+        }
+
+        IRDstValue[] elems()
+        {
+            return arr[0..numElems];
+        }
+    }
 
     /// Live sets indexed by instruction (values live after the instruction)
     private LiveSet[IRInstr] liveSets;
@@ -59,7 +124,7 @@ class LiveInfo
     /**
     Compile a list of all values live before a given instruction
     */
-    public LiveSet valsLiveBefore(IRInstr beforeInstr)
+    public IRDstValue[] valsLiveBefore(IRInstr beforeInstr)
     {
         // Get the values live after this instruction
         auto liveSet = valsLiveAfter(beforeInstr);
@@ -82,11 +147,11 @@ class LiveInfo
     /**
     Compile a list of all values live after a given instruction
     */
-    public LiveSet valsLiveAfter(IRInstr afterInstr)
+    public IRDstValue[] valsLiveAfter(IRInstr afterInstr)
     {
         assert (afterInstr in liveSets);
 
-        return liveSets[afterInstr].dup;
+        return liveSets[afterInstr].elems;
     }
 
     /**
@@ -183,11 +248,7 @@ class LiveInfo
         if (val.hasNoUses)
             return false;
 
-        for (size_t i = 0; i < (*liveSet).length; ++i)
-            if ((*liveSet)[i] is val)
-                return true;
-
-        return false;
+        return (*liveSet).has(val);
     }
 
     /**
@@ -202,12 +263,8 @@ class LiveInfo
             "no live set for instr: " ~ afterInstr.toString
         );
 
-        // If the value is already marked live, stop
-        if ((*liveSet).canFind(val))
-            return;
-
         // Add the value to the live set
-        (*liveSet).assumeSafeAppend() ~= val;
+        (*liveSet).add(val);
     }
 
     /**
