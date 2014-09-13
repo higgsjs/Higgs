@@ -3896,259 +3896,110 @@ void gen_capture_tag(
     }
 }
 
-// TODO: eliminate this
-/// Verify that a value type matches a shape type before a property write
-/// Inputs: obj, propName, defShape, val
-void gen_shape_type_match(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    void genStaticBool(bool boolResult)
-    {
-        // TODO: should eventually optimize this with basic constant
-        // propagation instead of duplicating code from is_type(x) ops
-
-        // If this instruction has many uses or is not followed by an if
-        if (instr.hasManyUses || ifUseNext(instr) is false)
-        {
-            auto outOpnd = st.getOutOpnd(as, instr, 64);
-            auto outVal = boolResult? TRUE:FALSE;
-            as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            st.setOutType(as, instr, Type.CONST);
-        }
-
-        // If our only use is an immediately following if_true
-        if (ifUseNext(instr) is true)
-        {
-            // Get the branch edge
-            auto targetIdx = boolResult? 0:1;
-            auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
-
-            // Generate the branch code
-            ver.genBranch(
-                as,
-                branch,
-                null,
-                delegate void(
-                    CodeBlock as,
-                    VM vm,
-                    CodeFragment target0,
-                    CodeFragment target1,
-                    BranchShape shape
-                )
-                {
-                    final switch (shape)
-                    {
-                        case BranchShape.NEXT0:
-                        break;
-
-                        case BranchShape.NEXT1:
-                        case BranchShape.DEFAULT:
-                        jmp32Ref(as, vm, target0, 0);
-                    }
-                }
-            );
-        }
-    }
-
-    void genTypeCmp(ObjShape defShape)
-    {
-        // Increase the type test stat
-        auto typeName = toLower(to!string(defShape.type.typeTag));
-        if (typeName == "int32")
-            typeName = "i32";
-        else if (typeName == "float64")
-            typeName = "f64";
-        as.incStatCnt(stats.getTypeTestCtr("is_" ~ typeName), scrRegs[0]);
-
-        // Get the value type tag operand
-        auto tagOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
-
-        as.cmp(tagOpnd, X86Opnd(defShape.type.typeTag));
-
-        // If this instruction has many uses or is not followed by an if_true
-        if (instr.hasManyUses || ifUseNext(instr) is false)
-        {
-            // We must have a register for the output (so we can use cmov)
-            auto outOpnd = st.getOutOpnd(as, instr, 64);
-            X86Opnd outReg = outOpnd.isReg? outOpnd.reg.opnd(32):scrRegs[0].opnd(32);
-
-            // Generate a boolean output value
-            as.mov(outReg, X86Opnd(FALSE.word.int8Val));
-            as.mov(scrRegs[1].opnd(32), X86Opnd(TRUE.word.int8Val));
-            as.cmove(outReg.reg, scrRegs[1].opnd(32));
-
-            // If the output register is not the output operand
-            if (outReg != outOpnd)
-                as.mov(outOpnd, outReg.reg.opnd(64));
-
-            // Set the output type
-            st.setOutType(as, instr, Type.CONST);
-        }
-
-        // If our only use is an immediately following if_true
-        if (ifUseNext(instr) is true)
-        {
-            // Get branch edges for the true and false branches
-            auto branchT = getBranchEdge(instr.next.getTarget(0), st, false);
-            auto branchF = getBranchEdge(instr.next.getTarget(1), st, false);
-
-            // Generate the branch code
-            ver.genBranch(
-                as,
-                branchT,
-                branchF,
-                delegate void(
-                    CodeBlock as,
-                    VM vm,
-                    CodeFragment target0,
-                    CodeFragment target1,
-                    BranchShape shape
-                )
-                {
-                    final switch (shape)
-                    {
-                        case BranchShape.NEXT0:
-                        jne32Ref(as, vm, target1, 1);
-                        break;
-
-                        case BranchShape.NEXT1:
-                        je32Ref(as, vm, target0, 0);
-                        break;
-
-                        case BranchShape.DEFAULT:
-                        jne32Ref(as, vm, target1, 1);
-                        jmp32Ref(as, vm, target0, 0);
-                    }
-                }
-            );
-        }
-    }
-
-    // Get the argument values
-    auto objVal = cast(IRDstValue)instr.getArg(0);
-    auto defVal = cast(IRDstValue)instr.getArg(2);
-    auto propVal = instr.getArg(3);
-
-    // Extract the property name, if known
-    auto propName = instr.getArgStrCst(1);
-
-    // If the object shape is known and the property name too
-    if (st.shapeKnown(objVal) && propName !is null)
-    {
-        // Get the object shape, may be unknown
-        auto objShape = st.getShape(objVal);
-        assert (objShape !is null);
-
-        // Try a lookup for an existing property
-        auto defShape = objShape.getDefShape(propName);
-
-        // If the defining shape was not found
-        if (defShape is null)
-        {
-            // Get the type of the property value at compilation time
-            ValType propType = st.getType(propVal);
-            if (propType.typeKnown is false)
-            {
-                if (auto propDst = cast(IRDstValue)propVal)
-                {
-                    assert (propDst.block !is instr.block);
-                    auto propTag = st.fun.vm.getType(propDst.outSlot);
-                    propType = ValType(propTag);
-                }
-            }
-
-            // Create a new shape for the property
-            defShape = objShape.defProp(
-                st.fun.vm,
-                propName,
-                propType,
-                ATTR_DEFAULT,
-                null
-            );
-
-            // Set the defining shape on the state
-            st.setShape(defVal, defShape);
-        }
-    }
-
-    // If the defining shape is known
-    if (st.shapeKnown(defVal))
-    {
-        // Get the property shape
-        auto defShape = st.getShape(defVal);
-
-        // If the defining shape exists and is writable
-        if (defShape !is null && defShape.writable)
-        {
-            auto propType = st.getType(propVal);
-
-            assert (defShape.type.typeKnown);
-
-            // If we can statically determine whether the type matches
-            if (propType.typeKnown)
-            {
-                /*
-                if (propType.typeTag != defShape.type.typeTag)
-                {
-                    writeln("disagree at ", instr.block.fun.getName);
-                    writeln("  propName: ", propName);
-                    writeln("  propType: ", propType.typeTag);
-                    writeln("  shapeType: ", defShape.type.typeTag);
-                }
-                */
-
-                return genStaticBool(propType.typeTag == defShape.type.typeTag);
-            }
-
-
-            // We must dynamically test if the type matches
-            return genTypeCmp(defShape);
-        }
-    }
-
-    /*
-    writeln("fail at ", instr.block.fun.getName);
-    writeln("  propName: ", propName);
-    writeln("  obj shape known: ", st.shapeKnown(objVal));
-    */
-
-    // Can't guarantee that the shape type matches
-    return genStaticBool(false);
-}
-
 /// Sets the value of a property
 /// Inputs: obj, propName, defShape, val
-void gen_shape_set_prop_fast(
+void gen_shape_set_prop(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
+    extern (C) static void op_shape_set_prop(IRInstr instr)
+    {
+        // Increment the host set prop stat
+        ++stats.numSetPropHost;
+
+        auto vm = instr.block.fun.vm;
+
+        auto objPair = vm.getArgVal(instr, 0);
+        auto strPtr = vm.getArgStr(instr, 1);
+        auto valPair = vm.getArgVal(instr, 3);
+
+        auto propStr = extractWStr(strPtr);
+
+        // Set the property value
+        setProp(
+            vm,
+            objPair,
+            propStr,
+            valPair
+        );
+    }
+
+    static void gen_slow_path(
+        BlockVersion ver,
+        CodeGenState st,
+        IRInstr instr,
+        CodeBlock as
+    )
+    {
+        // Get the object value
+        auto objVal = cast(IRDstValue)instr.getArg(0);
+
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
+
+        as.saveJITRegs();
+
+        // Call the host function
+        as.ptr(cargRegs[0], instr);
+        as.ptr(scrRegs[0], &op_shape_set_prop);
+        as.call(scrRegs[0]);
+
+        as.loadJITRegs();
+
+        // Clear any known shape for this object
+        st.clearShape(objVal);
+    }
+
     // Increment the number of set prop operations
     as.incStatCnt(&stats.numSetProp, scrRegs[1]);
 
     // Get the argument values
     auto objVal = cast(IRDstValue)instr.getArg(0);
-    auto defVal = cast(IRDstValue)instr.getArg(2);
     auto propVal = instr.getArg(3);
 
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
-    // If the object or defining shape is unknown, use the slow path
-    if (!st.shapeKnown(objVal) || !st.shapeKnown(defVal))
-        return gen_shape_set_prop(ver, st, instr, as);
+    // If the object shape is unknown, use the slow path
+    if (!st.shapeKnown(objVal))
+        return gen_slow_path(ver, st, instr, as);
+
+    // If the property name is unknown, use the slow path
+    if (propName is null)
+        return gen_slow_path(ver, st, instr, as);
+
+    // Get the type for the property value
+    auto valType = st.getType(propVal);
+
+    // If we type of the property value is unknown, use the slow path
+    if (!valType.typeKnown)
+        return gen_slow_path(ver, st, instr, as);
 
     // Get the object and defining shapes
     auto objShape = st.getShape(objVal);
-    auto defShape = st.getShape(defVal);
     assert (objShape !is null);
+
+    // Try a lookup for an existing property
+    auto defShape = objShape.getDefShape(propName);
+
+    // If the defining shape was not found
+    if (defShape is null)
+    {
+        // Create a new shape for the property
+        defShape = objShape.defProp(
+            st.fun.vm,
+            propName,
+            ValType(valType.typeTag),
+            ATTR_DEFAULT,
+            null
+        );
+    }
+
     assert (defShape !is null);
+    assert (defShape.type.typeKnown);
 
     // Get the property slot index
     auto slotIdx = defShape.slotIdx;
@@ -4163,6 +4014,9 @@ void gen_shape_set_prop_fast(
     // If the property exists on the object and is writable
     if (slotIdx <= objShape.slotIdx && defShape.writable)
     {
+        // Check if the value type doesn't match the shape type
+        bool typeMismatch = (defShape.type.typeTag != valType.typeTag);
+
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
         auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
@@ -4189,21 +4043,59 @@ void gen_shape_set_prop_fast(
             // Get the ext table pointer into r0
             as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
 
-            // Get the ext table capacity into r1
-            as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
+            // If we need to set/update the type tag
+            if (typeMismatch)
+            {
+                // Get the ext table capacity into r1
+                as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
+            }
 
             as.label(Label.SKIP);
         }
 
-        // Set the word and type values
+        // Set the word value
         auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
         as.genMove(wordMem, valOpnd);
-        auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
-        as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
+
+        // If the value type doesn't match
+        if (typeMismatch)
+        {
+            // Set/update the type tag
+            auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+            as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
+
+            // Create a new shape for the property
+            objShape = objShape.defProp(
+                st.fun.vm,
+                propName,
+                ValType(valType.typeTag),
+                ATTR_DEFAULT,
+                defShape
+            );
+
+            // Update the object shape
+            as.ptr(scrRegs[0].reg, objShape);
+            as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
+
+            // Set the new object shape
+            st.setShape(objVal, objShape);
+
+
+
+            // FIXME: temporary
+            auto defVal = cast(IRInstr)instr.getArg(2);
+            defShape = objShape.getDefShape(propName);
+            st.setShape(defVal, defShape);
+
+
+
+
+        }
 
         return;
     }
 
+    // This is a new property
     // If the property is writable and the slot index is
     // within the guaranteed object capacity
     //
@@ -4237,58 +4129,7 @@ void gen_shape_set_prop_fast(
     }
 
     // Use the slow path
-    return gen_shape_set_prop(ver, st, instr, as);
-}
-
-/// Sets the value of a property
-/// Inputs: obj, propName, defShape, val
-void gen_shape_set_prop(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) static void op_shape_set_prop(IRInstr instr)
-    {
-        // Increment the host get prop stat
-        ++stats.numSetProp;
-        ++stats.numSetPropHost;
-
-        auto vm = instr.block.fun.vm;
-
-        auto objPair = vm.getArgVal(instr, 0);
-        auto strPtr = vm.getArgStr(instr, 1);
-        auto valPair = vm.getArgVal(instr, 3);
-
-        auto propStr = extractWStr(strPtr);
-
-        // Set the property value
-        setProp(
-            vm,
-            objPair,
-            propStr,
-            valPair
-        );
-    }
-
-    // Get the object value
-    auto objVal = cast(IRDstValue)instr.getArg(0);
-
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
-
-    as.saveJITRegs();
-
-    // Call the host function
-    as.ptr(cargRegs[0], instr);
-    as.ptr(scrRegs[0], &op_shape_set_prop);
-    as.call(scrRegs[0]);
-
-    as.loadJITRegs();
-
-    // Clear any known shape for this object
-    st.clearShape(objVal);
+    return gen_slow_path(ver, st, instr, as);
 }
 
 /// Gets the value of a property

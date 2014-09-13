@@ -172,25 +172,55 @@ TODO: refactorings
 - get_type => get_tag
 - Type => Tag
 
-Focus on getting early typed shape results
+Meeting:
+- Implemented capture_tag
+- Rewrote optimized set_prop
+- Now even more optimized, doesn't write type tag if not needed
+- Fixed bug, forgot to take shape into account into ctx diff, generic version
 
-TODO: get rid of set_prop_fast vs set_prop, shape_type_match
+*** Focus on getting early typed shape results ***
+
+NOTE: now, if prop name unknown (e.g.: runtime), we always take the slow path
+- Need to implement some inline cache in set_prop?
+- This is as it was before...
+- With capture_shape, avoid useless host call in shape_get_def, do it in set_prop instead
+- Can eventually have inline cache in get_prop and set_prop if desired
+- Inline cache in getProp could be a big win
+
+TODO: run ./benchmark.py, compare to master
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: capture_tag with setGlobal produces errors
+./higgs es5.js
+run-time error: Error: unhandled type in toString
+$rt_toString(293B) ("runtime/runtime.js"@461:5)
+$rt_add(2972) ("runtime/runtime.js"@764:31)
+testOp(16E6F) ("./tests/00-runtime/es5-cmp.js"@115:13)
+A setProp updates the global obj shape...
+According to getProp, the obj shape is unchanged, why?
+Shape dispatch problem?
+getProp relies on shape dispatch to get the object shape...
+Do we even check for compatible shapes in versioning????
+- Forgot to take shapes into account in ctx diff, generic version
+
+[DONE] TODO: add capture_tag to runtime
+
+[DONE] TODO: get rid of set_prop_fast vs set_prop, shape_type_match
 - set_prop should implement whole logic
 - know ahead of time if type matches or not
 - if mismatch, use slow path
 
-TODO: implement capture_tag(x)
+[DONE] TODO: implement capture_tag(x)
 - KISS
-
-
-
-
-
-
-
-
-
-
 
 [DONE] Meeting:
 - CGO deadline extended

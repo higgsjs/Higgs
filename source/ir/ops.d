@@ -296,17 +296,9 @@ Opcode SHAPE_INIT_EMPTY = { "shape_init_empty", false, [OpArg.LOCAL], &gen_shape
 Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def, OpInfo.BRANCH };
 
 /// Capture the type tag for a given value
-Opcode CAPTURE_TAG = { "CAPTURE_TAG", false, [OpArg.LOCAL], &gen_capture_tag, OpInfo.BRANCH };
+Opcode CAPTURE_TAG = { "capture_tag", false, [OpArg.LOCAL], &gen_capture_tag, OpInfo.BRANCH };
 
 // TODO: CAPTURE_SHAPE
-
-// TODO: eliminate this
-/// Get the shape defining a given property
-Opcode SHAPE_TYPE_MATCH = { "shape_type_match", true, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_type_match, OpInfo.IMPURE };
-
-// TODO: eliminate this
-/// Set the value of an object property based on its shape (fast path)
-Opcode SHAPE_SET_PROP_FAST = { "shape_set_prop_fast", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop_fast, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Set the value of an object property based on its shape
 Opcode SHAPE_SET_PROP = { "shape_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };

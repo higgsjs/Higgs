@@ -2571,10 +2571,11 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
         genCallTargets(ctx, instr, expr.pos);
     }
 
-    // If this is the shape_get_def instruction (shape dispatch)
-    if (instr.opcode is &SHAPE_GET_DEF)
+    // If this is a type capture operation
+    if (instr.opcode is &SHAPE_GET_DEF ||
+        instr.opcode is &CAPTURE_TAG)
     {
-        auto contBlock = ctx.fun.newBlock("shape_cont");
+        auto contBlock = ctx.fun.newBlock("capture_cont");
 
         // Set the branch target for the instruction
         instr.setTarget(0, contBlock);

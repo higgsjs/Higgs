@@ -2262,17 +2262,11 @@ function $rt_objSetProp(obj, propStr, val)
     }
     else
     {
-        // If the value type matches the shape type
-        if ($ir_shape_type_match(obj, propStr, defShape, val))
-        {
-            // Use the fast property write path
-            $ir_shape_set_prop_fast(obj, propStr, defShape, val);
-        }
-        else
-        {
-            // Use the unoptimized property write implementation
-            $ir_shape_set_prop(obj, propStr, defShape, val);
-        }
+        // Capture the type tag of the value
+        $ir_capture_tag(val);
+
+        // Set the property value
+        $ir_shape_set_prop(obj, propStr, defShape, val);
     }
 }
 
@@ -2460,17 +2454,11 @@ function $rt_setPropField(base, prop, val)
         // If the property is a getter-setter function
         if (!$ir_shape_is_getset(defShape))
         {
-            // If the value type matches the shape type
-            if ($ir_shape_type_match(base, prop, defShape, val))
-            {
-                // Use the fast property write path
-                $ir_shape_set_prop_fast(base, prop, defShape, val);
-            }
-            else
-            {
-                // Use the unoptimized property write implementation
-                $ir_shape_set_prop(base, prop, defShape, val);
-            }
+            // Capture the type tag of the value
+            $ir_capture_tag(val);
+
+            // Set the property value
+            $ir_shape_set_prop(base, prop, defShape, val);
 
             return;
         }
@@ -2489,17 +2477,11 @@ function $rt_setPropFieldNoCheck(base, prop, val)
     // Find the index for this property
     var defShape = $ir_shape_get_def(base, prop);
 
-    // If the value type matches the shape type
-    if ($ir_shape_type_match(base, prop, defShape, val))
-    {
-        // Use the fast property write path
-        $ir_shape_set_prop_fast(base, prop, defShape, val);
-    }
-    else
-    {
-        // Use the unoptimized property write implementation
-        $ir_shape_set_prop(base, prop, defShape, val);
-    }
+    // Capture the type tag of the value
+    $ir_capture_tag(val);
+
+    // Set the property value
+    $ir_shape_set_prop(base, prop, defShape, val);
 }
 
 /**
@@ -2556,17 +2538,11 @@ function $rt_setGlobalInl(propStr, val)
     // If the property is a getter-setter function
     if (!$ir_shape_is_getset(defShape))
     {
-        // If the value type matches the shape type
-        if ($ir_shape_type_match(obj, propStr, defShape, val))
-        {
-            // Use the fast property write path
-            $ir_shape_set_prop_fast(obj, propStr, defShape, val);
-        }
-        else
-        {
-            // Use the unoptimized property write implementation
-            $ir_shape_set_prop(obj, propStr, defShape, val);
-        }
+        // Capture the type tag of the value
+        $ir_capture_tag(val);
+
+        // Set the property value
+        $ir_shape_set_prop(obj, propStr, defShape, val);
 
         return;
     }

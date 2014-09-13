@@ -154,6 +154,7 @@ struct ValState
 
     bool typeKnown() const { return type.typeKnown; }
     Type typeTag() const { assert (typeKnown); return type.typeTag; }
+    bool shapeKnown() const { return type.shapeKnown; }
     ObjShape shape() const { return cast(ObjShape)type.shape; }
 
     /// Get a word operand for this value
@@ -225,8 +226,8 @@ struct ValState
         return val;
     }
 
-    /// Clear the all type information for this value
-    ValState clearType() const
+    /// Clear the type tag information for this value
+    ValState clearTag() const
     {
         assert (!isConst);
 
@@ -497,7 +498,7 @@ class CodeGenState
             if (predSt == succSt)
                 continue;
 
-            // If the successor has a known type
+            // If the successor has a known type tag
             if (succSt.typeKnown)
             {
                 // If the predecessor has no known type, mismatch
@@ -513,6 +514,25 @@ class CodeGenState
                 // If the predecessor has a known type, transitioning
                 // would lose us this known type
                 if (predSt.typeKnown)
+                    diff += 1;
+            }
+
+            // If the successor has a known shape
+            if (succSt.shapeKnown)
+            {
+                // If the predecessor has no known shape, mismatch
+                if (!predSt.shapeKnown)
+                    return size_t.max;
+
+                // If the known shapes do not match, mismatch
+                if (predSt.shape != succSt.shape)
+                    return size_t.max;
+            }
+            else 
+            {
+                // If the predecessor has a known shape, transitioning
+                // would lose us this known shape
+                if (predSt.shapeKnown)
                     diff += 1;
             }
         }
@@ -1233,7 +1253,7 @@ class CodeGenState
         auto state = getState(instr);
 
         // Clear the type information for the value
-        valMap[instr] = state.clearType();
+        valMap[instr] = state.clearTag();
 
         // Write the type to the type stack
         as.mov(typeStackOpnd(instr.outSlot), X86Opnd(typeReg));
@@ -1937,8 +1957,10 @@ BlockVersion getBlockVersion(
             if (val !is fun.closVal &&
                 val !is fun.argcVal &&
                 val !is fun.raVal &&
-                valSt.typeKnown)
-                genState.valMap[val] = valSt.clearType();
+                (valSt.typeKnown || valSt.shapeKnown))
+            {
+                genState.valMap[val] = valSt.clearTag().clearShape();
+            }
         }
 
         // Ensure that the general version matches
@@ -2021,7 +2043,7 @@ BranchCode getBranchEdge(
 
     assert (
         branch !is null,
-        "branch edge is null"
+        "getBranchEdge: branch edge is null"
     );
 
     // Return a branch edge code object for the successor

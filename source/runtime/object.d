@@ -136,7 +136,7 @@ struct ValType
     {
         assert (
             val.type < 16,
-            "ValuePair ctor, invalid type tag: " ~ cast(int)val.type
+            "ValuePair ctor, invalid type tag: " ~ to!string(cast(int)val.type)
         );
 
         this.typeTag = val.type;
@@ -542,6 +542,12 @@ void setProp(
 
     auto obj = GCRoot(vm, objPair);
     auto val = GCRoot(vm, valPair);
+
+    assert (
+        valPair.type < 16,
+        "setProp, invalid tag=" ~ to!string(cast(int)val.type) ~
+        ", propName=" ~ to!string(propStr)
+    );
 
     auto valType = ValType(valPair);
 
