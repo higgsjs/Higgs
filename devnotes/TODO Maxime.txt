@@ -72,8 +72,6 @@ TODO: constant prop in ValType?
 - Propagate booleans
 - Simplify shape_is_null and such
 
-TODO: profile comp time on worst benchmark
-
 TODO: blog post, the future of compilation
 - Logical reasoning, supercompilation
 - JIT compilers, continuous of compilation
@@ -88,11 +86,6 @@ maintaining 50% of free space turned out to be the sweet spot. Whenever less tha
 50% of free space are available after a collection, the heap grows.
 => grow on next GC
 
-------------------------------------------------------------------------------
-
-Milestone: Equalling Master Branch Performance
-----------------------------------------------
-
 TODO: think about inlining system further
 - Necessary for acceptable compile times
 - Can fully optimize primitives, avoid needing code-patching
@@ -104,6 +97,11 @@ TODO: gather stats about the percentage of functions which are long-running
 - disable inlining first
 - dump text and sort
   - fn, num calls, num itrs
+
+------------------------------------------------------------------------------
+
+Milestone: Equalling Master Branch Performance
+----------------------------------------------
 
 TODO: profiling phase for shape_get_def?
 - first K=50 or 100 calls could gather shapes
@@ -141,50 +139,79 @@ TODO: eliminate type array in objects?
 - Evaluate if there is much shape flip-flopping first
 - GC would need alterations
 
-TODO: refactorings
-- change ValType.typeKnown to ValType.tagKnown
-- shorten ValType.typeTag to ValType.tag
-- rename Type to Tag?
-
 TODO: push getters/setters to master? is compile time acceptable?
 
-TODO: allocs, can we alloc some memory as pointer-free?
-- Try embedded arg list for IR instrs? What is the object we allocate most of? stats?
+TODO: liveness analysis flipped...?
+- TODO: start by implementing system to measure total liveness analysis time
+  - test on 3d-raytrace, other big benchmarks which don't GC, find slowest
+- Current pathological cases, live sets grow very big everywhere
+  - Many many large sets, independently allocated
+- Idea:
+  - For some values, big live intervals
+  - Most values, vast majority, tiny live intervals
+  - For a given value, store the places where it's live in a set
+- Use custom set data structure to store live interval
+  - small embedded list
+  - associative array, initially empty
+  - For most values, small embedded list will work
+- Values that are never live don't even have a live set
+
+TODO: try embedded arg list for IR instrs?
+- What is the object we allocate most of? stats?
 At EA, in C++, we have exactly this type in our standard template library as
 eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
 extremely useful once you have it for exactly this kind of use case.
 
-Meeting:
-- CGO deadline extended, minor proofreading changes on paper
+TODO: capture_shape(x) !
+- if the type tag is closure, we capture the shape. Magic!
+
+TODO: refactorings
+- ValType => Type
+- ValType.typeKnown => ValType.tagKnown
+- ValType.typeTag => ValType.tag
+- get_type => get_tag
+- Type => Tag
+
+Focus on getting early typed shape results
+
+TODO: get rid of set_prop_fast vs set_prop, shape_type_match
+- set_prop should implement whole logic
+- know ahead of time if type matches or not
+- if mismatch, use slow path
+
+TODO: implement capture_tag(x)
+- KISS
+
+
+
+
+
+
+
+
+
+
+
+[DONE] Meeting:
+- CGO deadline extended
+  - Proofread by 3 people, minor proofreading changes
+  - Changed title and abstract on submission website
+- Found issue: making IR for get/set prop "bigger" leads to poor scaling
 - Tried to optimize live vars analysis
   - Huge memory footprint, up to 8GB
   - Significant amount of execution time
-- Blog post, over 17000 views
+  - memory footprint reduced quite a bit
+  - mixed success wrt execution time
+- Blog post, over 18000 views
   - D co-creator has decided to rewrite the GC
-
-TODO: get rid of set_prop_fast vs set_prop
-
-TODO: implement capture_type(x)
-- Probably want to leave good enough alone, don't try to replace shape_get_def
-- Replacing it would make eventual comparison against inline caches harder
-- Two modes, closure vs type tag capture
-- To begin, implement type tag capture only
-  - Proof of concept
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- Eureka: capture_type(x) vs capture_shape(x)
+  - once again, struggled about how to implement efficient machine code
+  - self-hosted implementation is slow, but makes the logic much simpler
+- Next paper, typed shapes, what will we say?
+  - Need to think about what will be compared against what
+  - Typed shapes w/ dispatch vs inline cache?
+  - Typed shapes w/ dispatch vs no type info propagated? simplest ***
+  - Or do we just want to present the idea?
 
 [DONE] TODO: better live set implementation for liveness analysis?
 - union of small arr with associative array

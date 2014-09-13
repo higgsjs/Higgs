@@ -531,6 +531,9 @@ class VM
     /// Shape lookup fallback subroutine
     CodePtr defShapeSub;
 
+    /// Type tag capture fallback subroutine
+    CodePtr captTagSub;
+
     /// Space to save registers when calling into hosted code
     Word* regSave;
 

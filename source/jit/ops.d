@@ -3605,109 +3605,49 @@ void gen_shape_get_def(
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/// Returns the shape defining a property, null if undefined
-/// Inputs: obj, propName
-/// Find the defining shape for this property
-/// This shifts us to a different version where the obj shape is known
+/// Inputs: any value x
+/// Shifts us to version where the tag of the value is known
 /// Implements a dynamic shape dispatch mechanism
-void gen_capture_type(
+void gen_capture_tag(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    static const uint NUM_CACHE_ENTRIES = 4;
+    static const uint NUM_ENTRIES = 2;
 
-    /// Default/slow path for when the property name is unknown
-    extern (C) ObjShape op_shape_get_def(
-        refptr objPtr,
-        refptr strPtr
-    )
-    {
-        // Increment the def shape host stat
-        ++stats.numDefShapeHost;
-
-        // Get a temporary slice on the JS string characters
-        auto propStr = tempWStr(strPtr);
-
-        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
-        assert (
-            objShape !is null,
-            "shape_get_def: obj shape is null for lookup of \"" ~ 
-            to!string(propStr) ~ "\""
-        );
-
-        // Lookup the shape defining this property
-        auto defShape = objShape.getDefShape(propStr);
-
-        return defShape;
-    }
-
-    extern (C) static ObjShape updateCache(
+    extern (C) static void updateCache(
         BlockVersion ver,
-        ObjShape objShape,
         size_t cachePos
     )
     {
         //writeln("entering updateCache");
 
-        // Increment the def shape update stat
-        ++stats.numDefShapeUpd;
-
         auto vm = ver.block.fun.vm;
         auto as = vm.execHeap;
 
         auto instr = ver.block.lastInstr;
-        assert (instr.opcode is &SHAPE_GET_DEF);
-
-        // Get the property name
-        auto propName = instr.getArgStrCst(1);
-
-        //writeln("  propName=", propName);
-        //writeln("  objShape=", cast(void*)objShape);
-        //writeln("  objShape.slotIdx=", objShape.slotIdx);
-
-        // Lookup the defining shape
-        assert (objShape !is null, "objShape is null");
-        auto defShape = objShape.getDefShape(propName);
+        assert (instr.opcode is &CAPTURE_TAG);
 
         // Get the state at the shape dispatch instruction
         auto extInfo = cast(ShapeDispInfo)ver.extInfo;
         assert (extInfo !is null);
         auto instrSt = extInfo.instrSt;
 
+        auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
+        {
+            return liveInfo.liveBefore(val, instr);
+        };
+
         // If the inline cache is not yet full
-        if (ver.targets.length < NUM_CACHE_ENTRIES + 1)
+        if (ver.targets.length < NUM_ENTRIES + 1)
         {
             //writeln("compiling new version");
 
             // Stop recording execution time, start recording compilation time
             stats.execTimeStop();
             stats.compTimeStart();
-
-            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
-            {
-                return liveInfo.liveBefore(val, instr);
-            };
 
             // Spill the saved registers
             instrSt.spillSavedRegs(spillTest);
@@ -3723,13 +3663,16 @@ void gen_capture_type(
                 defSt = defBranch.target.state;
             assert (defSt !is null);
 
-            // Create a new state object where the object shape is known
+            // Get the argument value
+            auto argVal = cast(IRDstValue)instr.getArg(0);
+            assert (argVal !is null);
+
+            // Get the current argument value type tag
+            auto argTag = vm.getType(argVal.outSlot);
+
+            // Create a new state object where the value's type tag is known
             auto targetSt = new CodeGenState(defSt);
-            auto objVal = cast(IRDstValue)instr.getArg(0);
-            assert (objVal !is null);
-            targetSt.setShape(objVal, objShape);
-            if (instr.hasUses)
-                targetSt.setShape(instr, defShape);
+            targetSt.setType(argVal, argTag);
 
             // Create a version instance object for the target
             auto targetInst = getBranchEdge(
@@ -3741,9 +3684,8 @@ void gen_capture_type(
             // Add the version instance to the target list
             ver.targets ~= targetInst;
 
-            // Get the output operand for the instruction
-            auto outOpnd = defSt.getWordOpnd(instr, 64);
-            assert (outOpnd.isReg);
+            // Get the type operand for the value
+            auto typeOpnd = defSt.getTypeOpnd(argVal);
 
             auto curPos = as.getWritePos();
             as.setWritePos(cachePos);
@@ -3755,15 +3697,11 @@ void gen_capture_type(
                 auto branch = cast(BranchCode)ver.targets[targetIdx];
                 targetSt = branch.predState? branch.predState:branch.target.state;
 
-                objShape = targetSt.shapeKnown(objVal)? targetSt.getShape(objVal):null;
-                defShape = (instr.hasUses && targetSt.shapeKnown(instr))? targetSt.getShape(instr):null;
+                auto valType = targetSt.getType(argVal);
+                auto valTag = valType.typeKnown? cast(uint8_t)valType.typeTag:0x7F;
 
-                // Move the cached defining shape for this entry to the output operand
-                as.ptr(outOpnd.reg, defShape);
-
-                // Compare this entry's shape with the input object shape
-                as.ptr(scrRegs[0], objShape);
-                as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
+                // Compare this entry's type tag with the value's tag
+                as.cmp(typeOpnd, X86Opnd(valTag));
 
                 // If equal, jump to the cached target
                 je32Ref(as, vm, branch, targetIdx);
@@ -3785,20 +3723,13 @@ void gen_capture_type(
         // If the inline cache is exactly at capacity
         // and the default version was not yet compiled
         else if (
-            ver.targets.length == NUM_CACHE_ENTRIES + 1 &&
+            ver.targets.length == NUM_ENTRIES + 1 &&
             ver.targets[0].ended == false
         )
         {
-            //writeln("cache at capacity ***");
-
             // Stop recording execution time, start recording compilation time
             stats.execTimeStop();
             stats.compTimeStart();
-
-            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
-            {
-                return liveInfo.liveBefore(val, instr);
-            };
 
             // Spill the saved registers
             instrSt.spillSavedRegs(spillTest);
@@ -3827,21 +3758,15 @@ void gen_capture_type(
         }
 
         //writeln("leaving updateCache");
-
-        //writeln("  objShape: ", cast(void*)objShape);
-        //writeln("  defShape: ", cast(void*)defShape);
-
-        // Return the defining shape
-        return defShape;
     }
 
     static CodePtr getFallbackSub(VM vm)
     {
-        if (vm.defShapeSub)
-            return vm.defShapeSub;
+        if (vm.captTagSub)
+            return vm.captTagSub;
 
         auto as = vm.subsHeap;
-        vm.defShapeSub = as.getAddress(as.getWritePos);
+        vm.captTagSub = as.getAddress(as.getWritePos);
 
         // Align SP to a multiple of 16 bytes
         as.sub(X86Opnd(RSP), X86Opnd(8));
@@ -3855,7 +3780,6 @@ void gen_capture_type(
         // Set the argument registers
         as.mov(cargRegs[0], scrRegs[0]);
         as.mov(cargRegs[1], scrRegs[1]);
-        as.mov(cargRegs[2], scrRegs[2]);
 
         // Call the host fallback code
         as.ptr(scrRegs[0], &updateCache);
@@ -3875,40 +3799,15 @@ void gen_capture_type(
 
         // Link the labels in this subroutine
         as.linkLabels();
-        return vm.defShapeSub;
+        return vm.captTagSub;
     }
 
-    // Get the object argument value
-    auto objVal = cast(IRDstValue)instr.getArg(0);
+    // Get the value type
+    ValType valType = st.getType(instr.getArg(0));
 
-    // Extract the property name, if known
-    auto propName = instr.getArgStrCst(1);
-
-    // If the object shape and the property name are both known
-    if (st.shapeKnown(objVal) && propName !is null)
+    // If the type tag is known
+    if (valType.typeKnown)
     {
-        //as.printStr("shape known");
-
-        // Increment the count for known shapes
-        as.incStatCnt(&stats.numDefShapeKnown, scrRegs[0]);
-
-        // Get the object shape
-        auto objShape = st.getShape(objVal);
-        assert (objShape !is null);
-
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-        assert (outOpnd.isReg);
-
-        // Get the defining shape for the property
-        auto defShape = objShape.getDefShape(propName);
-
-        as.ptr(outOpnd.reg, defShape);
-
-        // Set the output type and shape for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
-        st.setShape(instr, defShape);
-
         // Get the default version for the successor block
         auto branch = getBranchEdge(
             instr.getTarget(0),
@@ -3934,50 +3833,26 @@ void gen_capture_type(
         );
     }
 
-    // If the property name is a known constant string
-    else if (propName !is null)
+    // The type tag is unknown
+    else
     {
-        //as.printStr("shape dispatch");
-
-        // Increment the count of dispatches
-        as.incStatCnt(&stats.numDefShapeDisp, scrRegs[0]);
-
-        // Create an extended info object for the shape dispatch
+        // Create an extended info object for this instruction
         auto extInfo = new ShapeDispInfo();
         assert (ver.extInfo is null);
         ver.extInfo = extInfo;
 
-        // Get the object operand
-        auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
-        assert (opnd0.isReg);
-
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-        assert (outOpnd.isReg);
-
-        // Free an extra temporary register
-        auto scrReg3 = st.freeReg(as, instr);
-        assert (scrReg3.opnd != opnd0);
-
-        // Set the output type for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
+        // Get the type operand
+        auto typeOpnd = st.getTypeOpnd(as, instr, 0);
 
         // Label for doing a new inline cache lookup
         as.label(Label.RETRY);
 
-        // Load the object shape in r1
-        as.getField(scrRegs[1], opnd0.reg, obj_ofs_shape(null));
-
         // Inline cache entries, initially, none of these will match
         size_t cachePos = as.getWritePos();
-        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        for (uint i = 0; i < NUM_ENTRIES; ++i)
         {
-            // Move the cached defining shape for this entry to the output operand
-            as.ptr(outOpnd.reg, null);
-
-            // Compare this entry's shape with the input object shape
-            as.ptr(scrRegs[0], null);
-            as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
+            // Compare this entry's type tag with the value's tag
+            as.cmp(typeOpnd, X86Opnd(0x7F));
 
             // If equal, jump to the cached target
             if (opts.jit_genasm)
@@ -3995,12 +3870,9 @@ void gen_capture_type(
         // r2 = inline cache position
         auto updateCacheSub = getFallbackSub(st.fun.vm);
         as.ptr(scrRegs[0], ver);
-        as.mov(scrRegs[2], cachePos);
-        as.ptr(scrReg3, updateCacheSub);
-        as.call(scrReg3);
-
-        // Move the return value (defining shape) to the output operand
-        as.mov(outOpnd, cretReg.opnd);
+        as.mov(scrRegs[1], cachePos);
+        as.ptr(scrRegs[2], updateCacheSub);
+        as.call(scrRegs[2]);
 
         // Do another inline cache lookup now that the cache is updated
         // Note: this jump will be overwritten to jump to the default
@@ -4022,83 +3894,9 @@ void gen_capture_type(
         // Mark the end of this code fragment
         ver.markEnd(as, st.fun.vm);
     }
-
-    // The property name is unknown
-    else
-    {
-        //as.printStr("prop name unknown");
-
-        // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
-
-        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-        as.saveJITRegs();
-
-        // Call the host function
-        as.mov(cargRegs[0].opnd(64), opnd0);
-        as.mov(cargRegs[1].opnd(64), opnd1);
-        as.ptr(scrRegs[0], &op_shape_get_def);
-        as.call(scrRegs[0]);
-
-        as.loadJITRegs();
-
-        // Store the output value into the output operand
-        as.mov(outOpnd, cretReg.opnd);
-
-        // Set the output type for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
-
-        // Get the default version for the successor block
-        auto branch = getBranchEdge(
-            instr.getTarget(0),
-            st,
-            true
-        );
-
-        // Check that the successor follows us directly
-        ver.genBranch(
-            as,
-            branch,
-            null,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
-            {
-                assert (shape is BranchShape.NEXT0);
-            }
-        );
-    }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// TODO: eliminate this
 /// Verify that a value type matches a shape type before a property write
 /// Inputs: obj, propName, defShape, val
 void gen_shape_type_match(
