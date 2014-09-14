@@ -212,7 +212,7 @@ void gen_f64_to_i32(
     st.setOutType(as, instr, Type.INT32);
 }
 
-void RMMOp(string op, size_t numBits, Type typeTag)(
+void RMMOp(string op, size_t numBits, Type tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -300,7 +300,7 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
     }
 
     // Set the output type
-    st.setOutType(as, instr, typeTag);
+    st.setOutType(as, instr, tag);
 
     // If the instruction has an exception/overflow target
     if (instr.getTarget(0))
@@ -667,7 +667,7 @@ void FPToStr(string fmt)(
 alias FPToStr!("%G") gen_f64_to_str;
 alias FPToStr!(format("%%.%sf", float64.dig)) gen_f64_to_str_lng;
 
-void LoadOp(size_t memSize, bool signed, Type typeTag)(
+void LoadOp(size_t memSize, bool signed, Type tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -739,7 +739,7 @@ void LoadOp(size_t memSize, bool signed, Type typeTag)(
     }
 
     // Set the output type tag
-    st.setOutType(as, instr, typeTag);
+    st.setOutType(as, instr, tag);
 }
 
 alias LoadOp!(8 , false, Type.INT32) gen_load_u8;
@@ -756,7 +756,7 @@ alias LoadOp!(64, false, Type.RAWPTR) gen_load_rawptr;
 alias LoadOp!(64, false, Type.FUNPTR) gen_load_funptr;
 alias LoadOp!(64, false, Type.SHAPEPTR) gen_load_shapeptr;
 
-void StoreOp(size_t memSize, Type typeTag)(
+void StoreOp(size_t memSize, Type tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -1037,8 +1037,8 @@ void CmpOp(string op, size_t numBits)(
             auto val = cast(IRDstValue)instr.getArg(0);
             auto valSt = st.getState(val);
 
-            if (valSt.type.typeKnown &&
-                valSt.type.typeTag is Type.SHAPEPTR &&
+            if (valSt.type.tagKnown &&
+                valSt.type.tag is Type.SHAPEPTR &&
                 valSt.type.shapeKnown)
             {
                 // Evaluate the boolean condition
@@ -2569,7 +2569,7 @@ void gen_throw(
     ver.markEnd(as, st.fun.vm);
 }
 
-void GetValOp(Type typeTag, string fName)(
+void GetValOp(Type tag, string fName)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -2583,7 +2583,7 @@ void GetValOp(Type typeTag, string fName)(
     as.getMember!("VM." ~ fName)(scrRegs[0].reg(fSize), vmReg);
     as.mov(outOpnd, scrRegs[0].opnd(fSize));
 
-    st.setOutType(as, instr, typeTag);
+    st.setOutType(as, instr, tag);
 }
 
 alias GetValOp!(Type.OBJECT, "objProto.word") gen_get_obj_proto;
@@ -3698,15 +3698,15 @@ void gen_capture_tag(
                 targetSt = branch.predState? branch.predState:branch.target.state;
 
                 auto valType = targetSt.getType(argVal);
-                if (!valType.typeKnown)
+                if (!valType.tagKnown)
                     continue;
 
                 // Increment the counter for this type test
-                auto testName = "is_" ~ toLower(to!string(valType.typeTag));
+                auto testName = "is_" ~ toLower(to!string(valType.tag));
                 as.incStatCnt(stats.getTypeTestCtr(testName), scrRegs[0]);
 
                 // Compare this entry's type tag with the value's tag
-                as.cmp(typeOpnd, X86Opnd(valType.typeTag));
+                as.cmp(typeOpnd, X86Opnd(valType.tag));
 
                 // If equal, jump to the cached target
                 je32Ref(as, vm, branch, targetIdx);
@@ -3811,7 +3811,7 @@ void gen_capture_tag(
     ValType valType = st.getType(instr.getArg(0));
 
     // If the type tag is known
-    if (valType.typeKnown)
+    if (valType.tagKnown)
     {
         // Get the default version for the successor block
         auto branch = getBranchEdge(
@@ -3985,7 +3985,7 @@ void gen_shape_set_prop(
     auto valType = st.getType(propVal);
 
     // If we type of the property value is unknown, use the slow path
-    if (!valType.typeKnown)
+    if (!valType.tagKnown)
     {
         //as.printStr("val type unknown!");
         return gen_slow_path(ver, st, instr, as);
@@ -4005,14 +4005,14 @@ void gen_shape_set_prop(
         defShape = objShape.defProp(
             st.fun.vm,
             propName,
-            ValType(valType.typeTag),
+            ValType(valType.tag),
             ATTR_DEFAULT,
             null
         );
     }
 
     assert (defShape !is null);
-    assert (defShape.type.typeKnown);
+    assert (defShape.type.tagKnown);
 
     // Get the property slot index
     auto slotIdx = defShape.slotIdx;
@@ -4028,7 +4028,7 @@ void gen_shape_set_prop(
     if (slotIdx <= objShape.slotIdx && defShape.writable)
     {
         // Check if the value type doesn't match the shape type
-        bool typeMismatch = (defShape.type.typeTag != valType.typeTag);
+        bool typeMismatch = (defShape.type.tag != valType.tag);
 
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
@@ -4085,7 +4085,7 @@ void gen_shape_set_prop(
             objShape = objShape.defProp(
                 st.fun.vm,
                 propName,
-                ValType(valType.typeTag),
+                ValType(valType.tag),
                 ATTR_DEFAULT,
                 defShape
             );
@@ -4174,7 +4174,7 @@ void gen_shape_get_prop(
         // Get the property shape
         auto defShape = st.getShape(defVal);
         assert (defShape !is null);
-        assert (defShape.type.typeKnown);
+        assert (defShape.type.tagKnown);
 
         auto slotIdx = defShape.slotIdx;
 
@@ -4216,7 +4216,7 @@ void gen_shape_get_prop(
         as.mov(outOpnd, wordMem);
 
         // Propagate the shape type
-        st.setOutType(as, instr, defShape.type.typeTag);
+        st.setOutType(as, instr, defShape.type.tag);
     }
     else
     {

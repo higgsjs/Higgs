@@ -189,18 +189,16 @@ Meeting:
     - can produce enough shape dispatch to eliminate set prop host calls
   - code size is currently double
     - could be reduced with call optimization, known callee
+- Seemingly no explosion of versions (which I was afraid of)
 
 *** Focus on getting early typed shape results ***
 
-TODO: capture_shape(x) !
-- if the type tag is closure, we capture the shape. Magic!
+TODO: capture_shape(x)
+TODO: rewrite getProp to not use defShape info
 FIXME: bitwise-and is slow
 - 6 times writing the shape pointer to a register!
 
 TODO: refactorings
-- ValType => Type
-- ValType.typeKnown => ValType.tagKnown
-- ValType.typeTag => ValType.tag
 - get_type => get_tag
 - Type => Tag
 
@@ -214,11 +212,11 @@ TODO: refactorings
 
 
 
-
-
-
-
-
+[DONE] TODO: refactorings
+typeWritten => tagWritten
+writeType => writeTag
+- ValType.typeKnown => ValType.tagKnown
+- ValType.typeTag => ValType.tag
 
 [DONE] FIXME: set_prop loads capacity but doesn't use it
 

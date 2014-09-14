@@ -119,10 +119,10 @@ struct ValType
     mixin(bitfields!(
 
         /// Type tag bits, if known
-        Type, "typeTag", 4,
+        Type, "tag", 4,
 
-        /// Known type flag
-        bool, "typeKnown", 1,
+        /// Known tag flag
+        bool, "tagKnown", 1,
 
         /// Known shape flag
         bool, "shapeKnown", 1,
@@ -139,16 +139,16 @@ struct ValType
             "ValuePair ctor, invalid type tag: " ~ to!string(cast(int)val.type)
         );
 
-        this.typeTag = val.type;
-        this.typeKnown = true;
+        this.tag = val.type;
+        this.tagKnown = true;
         this.shapeKnown = false;
 
-        if (isObject(this.typeTag))
+        if (isObject(this.tag))
         {
             // Get the object shape
             this.shape = cast(ObjShape)obj_get_shape(val.ptr);
         }
-        else if (this.typeTag is Type.FUNPTR)
+        else if (this.tag is Type.FUNPTR)
         {
             this.fun = val.word.funVal;
         }
@@ -166,8 +166,8 @@ struct ValType
             "tag ctor, invalid type tag: " ~ to!string(cast(int)tag) ~ " (" ~ to!string(tag) ~ ")"
         );
 
-        this.typeTag = tag;
-        this.typeKnown = true;
+        this.tag = tag;
+        this.tagKnown = true;
         this.shape = null;
         this.shapeKnown = false;
     }
@@ -180,8 +180,8 @@ struct ValType
             "tag+shape ctor, invalid type tag: " ~ cast(int)tag
         );
 
-        this.typeTag = tag;
-        this.typeKnown = true;
+        this.tag = tag;
+        this.tagKnown = true;
         this.shape = shape;
         this.shapeKnown = true;
     }
@@ -191,12 +191,12 @@ struct ValType
     */
     bool isSubType(ValType that)
     {
-        if (that.typeKnown)
+        if (that.tagKnown)
         {
-            if (!this.typeKnown)
+            if (!this.tagKnown)
                 return false;
 
-            if (this.typeTag !is that.typeTag)
+            if (this.tag !is that.tag)
                 return false;
 
             if (that.shapeKnown)
@@ -588,7 +588,7 @@ void setProp(
             // Number of shape changes due to type
             ++stats.numShapeFlips;
 
-            //writeln(defShape.type.typeTag, " ==> ", valType.typeTag);
+            //writeln(defShape.type.tag, " ==> ", valType.tag);
 
             // Change the defining shape to match the value type
             objShape = objShape.defProp(

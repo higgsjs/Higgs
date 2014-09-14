@@ -116,7 +116,7 @@ struct ValState
         Kind, "kind", 2,
 
         /// Type written to stack flag
-        bool, "typeWritten", 1,
+        bool, "tagWritten", 1,
 
         /// Local index, or register number, or constant value
         int, "val", 24,
@@ -133,7 +133,7 @@ struct ValState
     {
         ValState val;
         val.kind = Kind.STACK;
-        val.typeWritten = false;
+        val.tagWritten = false;
         val.val = 0xFFFF;
         return val;
     }
@@ -143,7 +143,7 @@ struct ValState
     {
         ValState val;
         val.kind = Kind.REG;
-        val.typeWritten = false;
+        val.tagWritten = false;
         val.val = reg.regNo;
         return val;
     }
@@ -152,8 +152,8 @@ struct ValState
     bool isReg() const { return kind is Kind.REG; }
     bool isConst() const { return kind is Kind.CONST; }
 
-    bool typeKnown() const { return type.typeKnown; }
-    Type typeTag() const { assert (typeKnown); return type.typeTag; }
+    bool tagKnown() const { return type.tagKnown; }
+    Type tag() const { assert (tagKnown); return type.tag; }
     bool shapeKnown() const { return type.shapeKnown; }
     ObjShape shape() const { return cast(ObjShape)type.shape; }
 
@@ -178,30 +178,30 @@ struct ValState
     /// Get a type operand for this value
     X86Opnd getTypeOpnd(StackIdx stackIdx = StackIdx.max) const
     {
-        if (type.typeKnown)
-            return X86Opnd(type.typeTag);
+        if (type.tagKnown)
+            return X86Opnd(type.tag);
 
         assert (stackIdx !is StackIdx.max);
         return typeStackOpnd(stackIdx);
     }
 
     /// Set the type tag for this value
-    ValState setType(Type typeTag) const
+    ValState setType(Type tag) const
     {
         assert (!isConst);
 
         ValState val = cast(ValState)this;
-        val.type = ValType(typeTag);
+        val.type = ValType(tag);
         return val;
     }
 
     /// Set the type tag and shape for this value
-    ValState setType(Type typeTag, ObjShape shape) const
+    ValState setType(Type tag, ObjShape shape) const
     {
         assert (!isConst);
 
         ValState val = cast(ValState)this;
-        val.type = ValType(typeTag, shape);
+        val.type = ValType(tag, shape);
         return val;
     }
 
@@ -266,10 +266,10 @@ struct ValState
     }
 
     /// Mark the type as written to the stack
-    ValState writeType() const
+    ValState writeTag() const
     {
         ValState val = cast(ValState)this;
-        val.typeWritten = true;
+        val.tagWritten = true;
         return val;
     }
 }
@@ -392,10 +392,10 @@ class CodeGenState
 
             // If the phi value is flowing into itself and the
             // type was previously written to the stack
-            if (arg is phi && predPhiState.typeWritten)
+            if (arg is phi && predPhiState.tagWritten)
             {
                 // Mark the type as written to the stack
-                phiState = phiState.writeType();
+                phiState = phiState.writeTag();
             }
 
             // If the argument type is known
@@ -425,7 +425,7 @@ class CodeGenState
 
         foreach (val, st; valMap)
         {
-            str ~= format("%s: %s\n", val.getName, st.typeKnown? to!string(st.type):"unknown");
+            str ~= format("%s: %s\n", val.getName, st.tagKnown? to!string(st.type):"unknown");
         }
 
         return str;
@@ -499,10 +499,10 @@ class CodeGenState
                 continue;
 
             // If the successor has a known type tag
-            if (succSt.typeKnown)
+            if (succSt.tagKnown)
             {
                 // If the predecessor has no known type, mismatch
-                if (!predSt.typeKnown)
+                if (!predSt.tagKnown)
                     return size_t.max;
 
                 // If the known types do not match, mismatch
@@ -513,7 +513,7 @@ class CodeGenState
             {
                 // If the predecessor has a known type, transitioning
                 // would lose us this known type
-                if (predSt.typeKnown)
+                if (predSt.tagKnown)
                     diff += 1;
             }
 
@@ -774,7 +774,7 @@ class CodeGenState
     void mapToStack(IRDstValue value)
     {
         // Map the value and its type to the stack
-        valMap[value] = ValState.stack().writeType();
+        valMap[value] = ValState.stack().writeTag();
     }
 
     /**
@@ -823,13 +823,13 @@ class CodeGenState
         as.mov(mem, reg.opnd(64));
 
         // If the type is known, spill it
-        if (state.typeKnown && !state.typeWritten)
+        if (state.tagKnown && !state.tagWritten)
         {
             // Write the type tag to the type stack
             //if (opts.jit_genasm)
             //    as.comment("Spilling type for " ~ regVal.getName);
             as.mov(typeStackOpnd(regVal.outSlot), state.getTypeOpnd());
-            valMap[regVal] = valMap[regVal].writeType();
+            valMap[regVal] = valMap[regVal].writeTag();
         }
     }
 
@@ -864,14 +864,14 @@ class CodeGenState
                 continue;
 
             // If the value has a known type and is not in a register
-            if (state.typeKnown && !state.typeWritten && !state.isReg)
+            if (state.tagKnown && !state.tagWritten && !state.isReg)
             {
                 // If the value should be spilled
                 if (spillTest(liveInfo, value) is true)
                 {
                     // Spill the type for this value
                     as.mov(typeStackOpnd(value.outSlot), state.getTypeOpnd());
-                    valMap[value] = state.writeType();
+                    valMap[value] = state.writeTag();
                 }
             }
         }
@@ -928,12 +928,12 @@ class CodeGenState
             vm.wsp[regVal.outSlot] = vm.regSave[regIdx];
 
             // If the type is known, store it
-            if (state.typeKnown)
+            if (state.tagKnown)
             {
                 //writeln("spilling known type");
 
                 // Write the type tag to the type stack
-                vm.tsp[regVal.outSlot] = state.typeTag;
+                vm.tsp[regVal.outSlot] = state.tag;
             }
         }
     }
@@ -1218,7 +1218,7 @@ class CodeGenState
     void setOutType(
         CodeBlock as,
         IRInstr instr,
-        Type typeTag
+        Type tag
     )
     {
         assert (
@@ -1236,7 +1236,7 @@ class CodeGenState
         auto state = getState(instr);
 
         // Set a known type for this value
-        valMap[instr] = state.setType(typeTag);
+        valMap[instr] = state.setType(tag);
     }
 
     /// Write the output type for an instruction's output to the type stack
@@ -1266,12 +1266,12 @@ class CodeGenState
         ValState state = getState(value);
 
         // Assert that we aren't contradicting existing information
-        assert (!state.typeKnown || state.typeTag is type);
+        assert (!state.tagKnown || state.tag is type);
 
         // If the type was previously unknown, it must have
         // been written on the stack, mark it as such
-        if (!state.typeKnown)
-            state = state.writeType();
+        if (!state.tagKnown)
+            state = state.writeTag();
 
         // Set a known type for this value
         valMap[value] = state.setType(type);
@@ -1957,7 +1957,7 @@ BlockVersion getBlockVersion(
             if (val !is fun.closVal &&
                 val !is fun.argcVal &&
                 val !is fun.raVal &&
-                (valSt.typeKnown || valSt.shapeKnown))
+                (valSt.tagKnown || valSt.shapeKnown))
             {
                 genState.valMap[val] = valSt.clearTag().clearShape();
             }
@@ -2138,12 +2138,12 @@ void genBranchMoves(
         auto succState = succState.getState(succVal);
 
         // Check if the predecessor is the same value and had its type written
-        auto predWritten = predVal is succVal && predState.getState(succVal).typeWritten;
+        auto predWritten = predVal is succVal && predState.getState(succVal).tagWritten;
 
         // If the successor is not a function parameter and the successor
         // state requires the type be written and the predecessor type was not
         // written to the stack, then write the type
-        if (!succParam && !dstTypeOpnd.isMem && succState.typeWritten && !predWritten)
+        if (!succParam && !dstTypeOpnd.isMem && succState.tagWritten && !predWritten)
         {
             as.mov(typeStackOpnd(succVal.outSlot), succState.getTypeOpnd());
             moveAdded = true;
