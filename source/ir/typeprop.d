@@ -67,54 +67,31 @@ class TypeProp
         uint32_t bits;
 
         this(uint32_t bits) { this.bits = bits; }
-        this(Type t) { bits = 1 << cast(int)t; }
-
-        /*
-        string toString() const
-        {
-            switch (state)
-            {
-                case ANY:
-                return "bot/unknown";
-
-                case UNINF:
-                return "top/uninf";
-
-                case KNOWN_TYPE:
-                return to!string(type);
-
-                case KNOWN_BOOL:
-                return to!string(val);
-
-                default:
-                assert (false);
-            }
-        }
-        */
+        this(Tag t) { bits = 1 << cast(int)t; }
 
         /// Check that the type set contains only a given type
-        bool isType(Type t) const
+        bool isType(Tag t) const
         {
             auto bit = 1 << cast(int)t;
             return (this.bits == bit);
         }
 
         /// Check that the type set does not contain a given type
-        bool isNotType(Type t) const
+        bool isNotType(Tag t) const
         {
             auto bit = 1 << cast(int)t;
             return (this.bits & bit) == 0;
         }
 
         /// Check that the type set contains a given type (and maybe others)
-        bool maybeIsType(Type t) const
+        bool maybeIsType(Tag t) const
         {
             auto bit = 1 << cast(int)t;
             return (this.bits & bit) != 0;
         }
 
         /// Check that the type set contains other types than a given type
-        bool maybeNotType(Type t) const
+        bool maybeNotType(Tag t) const
         {
             auto bit = 1 << cast(int)t;
             return (this.bits & ~bit) != 0;
@@ -127,7 +104,7 @@ class TypeProp
         }
 
         /// Remove a type from this type set
-        TypeSet subtract(Type t) const
+        TypeSet subtract(Tag t) const
         {
             auto bit = 1 << cast(int)t;
             return TypeSet(this.bits & ~bit);
@@ -150,7 +127,7 @@ class TypeProp
     private TypeArr[IRInstr] instrArgTypes;
 
     /// Perform an "is_type" type check for an argument of a given instruction
-    public TestResult argIsType(IRInstr instr, size_t argIdx, Type type)
+    public TestResult argIsType(IRInstr instr, size_t argIdx, Tag tag)
     {
         //writeln(instr);
 
@@ -170,10 +147,10 @@ class TypeProp
         //writeln("ANY: ", typeVal == ANY);
         //writeln("UNINF: ", typeVal == UNINF);
 
-        if (typeVal.isType(type))
+        if (typeVal.isType(tag))
             return TestResult.TRUE;
 
-        if (typeVal.isNotType(type))
+        if (typeVal.isNotType(tag))
             return TestResult.FALSE;
 
         return TestResult.UNKNOWN;
@@ -216,7 +193,7 @@ class TypeProp
                 return ANY;
 
             if (cast(IRString)val)
-                return TypeSet(Type.STRING);
+                return TypeSet(Tag.STRING);
 
             // Get the constant value pair for this IR value
             auto cstVal = val.cstValue();
@@ -226,7 +203,7 @@ class TypeProp
             if (cstVal == FALSE)
                 return TypeSet(false);
 
-            return TypeSet(cstVal.type);
+            return TypeSet(cstVal.tag);
         }
 
         /// Queue a branch into the work list
@@ -329,7 +306,7 @@ class TypeProp
             auto arg0Type = arg0? getType(typeMap, arg0):UNINF;
 
             /// Templated implementation of type check operations
-            TypeSet IsTypeOp(Type type)()
+            TypeSet IsTypeOp(Tag tag)()
             {
                 // If our only use is an immediately following if_true
                 // and the argument type has been inferred
@@ -338,21 +315,21 @@ class TypeProp
                     auto ifInstr = instr.next;
 
                     auto propVal = cast(IRDstValue)arg0;
-                    auto trueType = TypeSet(type);
-                    auto falseType = arg0Type.subtract(type);
+                    auto trueType = TypeSet(tag);
+                    auto falseType = arg0Type.subtract(tag);
 
                     // If the argument could be the type we're testing
                     // The true branch knows that the argument is the type tested
-                    if (arg0Type.maybeIsType(type))
+                    if (arg0Type.maybeIsType(tag))
                         queueSucc(ifInstr.getTarget(0), typeMap, propVal, trueType);
 
                     // If the argument could be something else than the type we're testing
                     // The false branch knows that the argument is not the type tested
-                    if (arg0Type.maybeNotType(type))
+                    if (arg0Type.maybeNotType(tag))
                         queueSucc(ifInstr.getTarget(1), typeMap, propVal, falseType);
                 }
 
-                return TypeSet(Type.CONST);
+                return TypeSet(Tag.CONST);
             }
 
             // Get type
@@ -364,7 +341,7 @@ class TypeProp
             // Get word
             if (op is &GET_WORD)
             {
-                return TypeSet(Type.INT64);
+                return TypeSet(Tag.INT64);
             }
 
             // Make value
@@ -384,13 +361,13 @@ class TypeProp
             // Get string
             if (op is &GET_STR)
             {
-                return TypeSet(Type.STRING);
+                return TypeSet(Tag.STRING);
             }
 
             // Make link
             if (op is &MAKE_LINK)
             {
-                return TypeSet(Type.INT32);
+                return TypeSet(Tag.INT32);
             }
 
             // Get link value
@@ -406,7 +383,7 @@ class TypeProp
                 op is &GET_ARR_PROTO ||
                 op is &GET_FUN_PROTO)
             {
-                return TypeSet(Type.OBJECT);
+                return TypeSet(Tag.OBJECT);
             }
 
             // int32 arithmetic/logical
@@ -424,7 +401,7 @@ class TypeProp
                 op is &RSFT_I32 ||
                 op is &URSFT_I32)
             {
-                return TypeSet(Type.INT32);
+                return TypeSet(Tag.INT32);
             }
 
             // int32 arithmetic with overflow
@@ -433,7 +410,7 @@ class TypeProp
                 op is &SUB_I32_OVF ||
                 op is &MUL_I32_OVF)
             {
-                auto intType = TypeSet(Type.INT32);
+                auto intType = TypeSet(Tag.INT32);
 
                 // Queue both branch targets
                 queueSucc(instr.getTarget(0), typeMap, instr, intType);
@@ -458,25 +435,25 @@ class TypeProp
                 op is &FLOOR_F64 ||
                 op is &CEIL_F64)
             {
-                return TypeSet(Type.FLOAT64);
+                return TypeSet(Tag.FLOAT64);
             }
 
             // int to float
             if (op is &I32_TO_F64)
             {
-                return TypeSet(Type.FLOAT64);
+                return TypeSet(Tag.FLOAT64);
             }
 
             // float to int
             if (op is &F64_TO_I32)
             {
-                return TypeSet(Type.INT32);
+                return TypeSet(Tag.INT32);
             }
 
             // float to string
             if (op is &F64_TO_STR)
             {
-                return TypeSet(Type.STRING);
+                return TypeSet(Tag.STRING);
             }
 
             // Load integer
@@ -486,85 +463,85 @@ class TypeProp
                 op is &LOAD_U16 ||
                 op is &LOAD_U32)
             {
-                return TypeSet(Type.INT32);
+                return TypeSet(Tag.INT32);
             }
 
             // Load 64-bit integer
             if (op is &LOAD_U64)
             {
-                return TypeSet(Type.INT64);
+                return TypeSet(Tag.INT64);
             }
 
             // Load f64
             if (op is &LOAD_F64)
             {
-                return TypeSet(Type.FLOAT64);
+                return TypeSet(Tag.FLOAT64);
             }
 
             // Load refptr
             if (op is &LOAD_REFPTR)
             {
-                return TypeSet(Type.REFPTR);
+                return TypeSet(Tag.REFPTR);
             }
 
             // Load funptr
             if (op is &LOAD_FUNPTR)
             {
-                return TypeSet(Type.FUNPTR);
+                return TypeSet(Tag.FUNPTR);
             }
 
             // Load shapeptr
             if (op is &LOAD_SHAPEPTR)
             {
-                return TypeSet(Type.SHAPEPTR);
+                return TypeSet(Tag.SHAPEPTR);
             }
 
             // Load rawptr
             if (op is &LOAD_RAWPTR)
             {
-                return TypeSet(Type.RAWPTR);
+                return TypeSet(Tag.RAWPTR);
             }
 
             // Heap alloc untyped
             if (op is &ALLOC_REFPTR)
             {
-                return TypeSet(Type.REFPTR);
+                return TypeSet(Tag.REFPTR);
             }
 
             // Heap alloc string
             if (op is &ALLOC_STRING)
             {
-                return TypeSet(Type.STRING);
+                return TypeSet(Tag.STRING);
             }
 
             // Heap alloc object
             if (op is &ALLOC_OBJECT)
             {
-                return TypeSet(Type.OBJECT);
+                return TypeSet(Tag.OBJECT);
             }
 
             // Heap alloc array
             if (op is &ALLOC_ARRAY)
             {
-                return TypeSet(Type.ARRAY);
+                return TypeSet(Tag.ARRAY);
             }
 
             // Heap alloc closure
             if (op is &ALLOC_CLOSURE)
             {
-                return TypeSet(Type.CLOSURE);
+                return TypeSet(Tag.CLOSURE);
             }
 
             // New closure
             if (op is &NEW_CLOS)
             {
-                return TypeSet(Type.CLOSURE);
+                return TypeSet(Tag.CLOSURE);
             }
 
             // Get time in milliseconds
             if (op is &GET_TIME_MS)
             {
-                return TypeSet(Type.FLOAT64);
+                return TypeSet(Tag.FLOAT64);
             }
 
             // Comparison operations
@@ -601,61 +578,61 @@ class TypeProp
                 }
 
                 // Constant, boolean type
-                return TypeSet(Type.CONST);
+                return TypeSet(Tag.CONST);
             }
 
             // is_int32
             if (op is &IS_INT32)
             {
-                return IsTypeOp!(Type.INT32)();
+                return IsTypeOp!(Tag.INT32)();
             }
 
             // is_float64
             if (op is &IS_FLOAT64)
             {
-                return IsTypeOp!(Type.FLOAT64)();
+                return IsTypeOp!(Tag.FLOAT64)();
             }
 
             // is_const
             if (op is &IS_CONST)
             {
-                return IsTypeOp!(Type.CONST)();
+                return IsTypeOp!(Tag.CONST)();
             }
 
             // is_refptr
             if (op is &IS_REFPTR)
             {
-                return IsTypeOp!(Type.REFPTR)();
+                return IsTypeOp!(Tag.REFPTR)();
             }
 
             // is_object
             if (op is &IS_OBJECT)
             {
-                return IsTypeOp!(Type.OBJECT)();
+                return IsTypeOp!(Tag.OBJECT)();
             }
 
             // is_array
             if (op is &IS_ARRAY)
             {
-                return IsTypeOp!(Type.ARRAY)();
+                return IsTypeOp!(Tag.ARRAY)();
             }
 
             // is_closure
             if (op is &IS_CLOSURE)
             {
-                return IsTypeOp!(Type.CLOSURE)();
+                return IsTypeOp!(Tag.CLOSURE)();
             }
 
             // is_string
             if (op is &IS_STRING)
             {
-                return IsTypeOp!(Type.STRING)();
+                return IsTypeOp!(Tag.STRING)();
             }
 
             // is_rawptr
             if (op is &IS_RAWPTR)
             {
-                return IsTypeOp!(Type.RAWPTR)();
+                return IsTypeOp!(Tag.RAWPTR)();
             }
 
             // Conditional branch

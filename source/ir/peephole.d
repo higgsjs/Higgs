@@ -319,7 +319,7 @@ void optIR(IRFunction fun)
                     if (cst0)
                     {
                         instr.replUses(
-                            (cst0.type is Type.INT32)? 
+                            (cst0.tag is Tag.INT32)? 
                             IRConst.trueCst:IRConst.falseCst
                         );
 

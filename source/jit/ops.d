@@ -142,7 +142,7 @@ void gen_get_word(
 
     as.mov(outOpnd, wordOpnd);
 
-    st.setOutType(as, instr, Type.INT64);
+    st.setOutType(as, instr, Tag.INT64);
 }
 
 void gen_get_type(
@@ -169,7 +169,7 @@ void gen_get_type(
         as.mov(outOpnd, scrRegs[0].opnd(32));
     }
 
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Tag.INT32);
 }
 
 void gen_i32_to_f64(
@@ -189,7 +189,7 @@ void gen_i32_to_f64(
     as.cvtsi2sd(X86Opnd(XMM0), opnd0);
 
     as.movq(outOpnd, X86Opnd(XMM0));
-    st.setOutType(as, instr, Type.FLOAT64);
+    st.setOutType(as, instr, Tag.FLOAT64);
 }
 
 void gen_f64_to_i32(
@@ -209,10 +209,10 @@ void gen_f64_to_i32(
     as.cvttsd2si(scrRegs[0].opnd(64), X86Opnd(XMM0));
     as.mov(outOpnd, scrRegs[0].opnd(32));
 
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Tag.INT32);
 }
 
-void RMMOp(string op, size_t numBits, Type tag)(
+void RMMOp(string op, size_t numBits, Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -340,16 +340,16 @@ void RMMOp(string op, size_t numBits, Type tag)(
     }
 }
 
-alias RMMOp!("add" , 32, Type.INT32) gen_add_i32;
-alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32;
-alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
-alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
-alias RMMOp!("or"  , 32, Type.INT32) gen_or_i32;
-alias RMMOp!("xor" , 32, Type.INT32) gen_xor_i32;
+alias RMMOp!("add" , 32, Tag.INT32) gen_add_i32;
+alias RMMOp!("sub" , 32, Tag.INT32) gen_sub_i32;
+alias RMMOp!("imul", 32, Tag.INT32) gen_mul_i32;
+alias RMMOp!("and" , 32, Tag.INT32) gen_and_i32;
+alias RMMOp!("or"  , 32, Tag.INT32) gen_or_i32;
+alias RMMOp!("xor" , 32, Tag.INT32) gen_xor_i32;
 
-alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
-alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
-alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
+alias RMMOp!("add" , 32, Tag.INT32) gen_add_i32_ovf;
+alias RMMOp!("sub" , 32, Tag.INT32) gen_sub_i32_ovf;
+alias RMMOp!("imul", 32, Tag.INT32) gen_mul_i32_ovf;
 
 void gen_add_ptr_i32(
     BlockVersion ver,
@@ -387,7 +387,7 @@ void gen_add_ptr_i32(
     as.add(opndOut, scrRegs[1].opnd);
 
     // Set the output type
-    st.setOutType(as, instr, Type.RAWPTR);
+    st.setOutType(as, instr, Tag.RAWPTR);
 }
 
 void divOp(string op)(
@@ -429,7 +429,7 @@ void divOp(string op)(
         assert (false);
 
     // Set the output type
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Tag.INT32);
 }
 
 alias divOp!("div") gen_div_i32;
@@ -449,7 +449,7 @@ void gen_not_i32(
     as.not(outOpnd);
 
     // Set the output type
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Tag.INT32);
 }
 
 void ShiftOp(string op)(
@@ -516,7 +516,7 @@ void ShiftOp(string op)(
         as.mov(outOpnd, shiftOpnd);
 
     // Set the output type
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Tag.INT32);
 }
 
 alias ShiftOp!("sal") gen_lsft_i32;
@@ -555,7 +555,7 @@ void FPOp(string op)(
     as.movq(outOpnd, X86Opnd(XMM0));
 
     // Set the output type
-    st.setOutType(as, instr, Type.FLOAT64);
+    st.setOutType(as, instr, Tag.FLOAT64);
 }
 
 alias FPOp!("add") gen_add_f64;
@@ -603,7 +603,7 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     // Store the output value into the output operand
     as.movq(outOpnd, X86Opnd(XMM0));
 
-    st.setOutType(as, instr, Type.FLOAT64);
+    st.setOutType(as, instr, Tag.FLOAT64);
 }
 
 alias HostFPOp!(std.c.math.sin) gen_sin_f64;
@@ -661,13 +661,13 @@ void FPToStr(string fmt)(
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
 
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutType(as, instr, Tag.STRING);
 }
 
 alias FPToStr!("%G") gen_f64_to_str;
 alias FPToStr!(format("%%.%sf", float64.dig)) gen_f64_to_str_lng;
 
-void LoadOp(size_t memSize, bool signed, Type tag)(
+void LoadOp(size_t memSize, bool signed, Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -742,21 +742,21 @@ void LoadOp(size_t memSize, bool signed, Type tag)(
     st.setOutType(as, instr, tag);
 }
 
-alias LoadOp!(8 , false, Type.INT32) gen_load_u8;
-alias LoadOp!(16, false, Type.INT32) gen_load_u16;
-alias LoadOp!(32, false, Type.INT32) gen_load_u32;
-alias LoadOp!(64, false, Type.INT64) gen_load_u64;
-alias LoadOp!(8 , true , Type.INT32) gen_load_i8;
-alias LoadOp!(16, true , Type.INT32) gen_load_i16;
-alias LoadOp!(32, true , Type.INT32) gen_load_i32;
-alias LoadOp!(64, true, Type.INT64) gen_load_i64;
-alias LoadOp!(64, false, Type.FLOAT64) gen_load_f64;
-alias LoadOp!(64, false, Type.REFPTR) gen_load_refptr;
-alias LoadOp!(64, false, Type.RAWPTR) gen_load_rawptr;
-alias LoadOp!(64, false, Type.FUNPTR) gen_load_funptr;
-alias LoadOp!(64, false, Type.SHAPEPTR) gen_load_shapeptr;
+alias LoadOp!(8 , false, Tag.INT32) gen_load_u8;
+alias LoadOp!(16, false, Tag.INT32) gen_load_u16;
+alias LoadOp!(32, false, Tag.INT32) gen_load_u32;
+alias LoadOp!(64, false, Tag.INT64) gen_load_u64;
+alias LoadOp!(8 , true , Tag.INT32) gen_load_i8;
+alias LoadOp!(16, true , Tag.INT32) gen_load_i16;
+alias LoadOp!(32, true , Tag.INT32) gen_load_i32;
+alias LoadOp!(64, true, Tag.INT64) gen_load_i64;
+alias LoadOp!(64, false, Tag.FLOAT64) gen_load_f64;
+alias LoadOp!(64, false, Tag.REFPTR) gen_load_refptr;
+alias LoadOp!(64, false, Tag.RAWPTR) gen_load_rawptr;
+alias LoadOp!(64, false, Tag.FUNPTR) gen_load_funptr;
+alias LoadOp!(64, false, Tag.SHAPEPTR) gen_load_shapeptr;
 
-void StoreOp(size_t memSize, Type tag)(
+void StoreOp(size_t memSize, Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -794,21 +794,21 @@ void StoreOp(size_t memSize, Type tag)(
     as.mov(memOpnd, opnd2);
 }
 
-alias StoreOp!(8 , Type.INT32) gen_store_u8;
-alias StoreOp!(16, Type.INT32) gen_store_u16;
-alias StoreOp!(32, Type.INT32) gen_store_u32;
-alias StoreOp!(64, Type.INT64) gen_store_u64;
-alias StoreOp!(8 , Type.INT32) gen_store_i8;
-alias StoreOp!(16, Type.INT32) gen_store_i16;
-alias StoreOp!(32, Type.INT32) gen_store_i32;
-alias StoreOp!(64, Type.INT64) gen_store_u64;
-alias StoreOp!(64, Type.FLOAT64) gen_store_f64;
-alias StoreOp!(64, Type.REFPTR) gen_store_refptr;
-alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
-alias StoreOp!(64, Type.FUNPTR) gen_store_funptr;
-alias StoreOp!(64, Type.SHAPEPTR) gen_store_shapeptr;
+alias StoreOp!(8 , Tag.INT32) gen_store_u8;
+alias StoreOp!(16, Tag.INT32) gen_store_u16;
+alias StoreOp!(32, Tag.INT32) gen_store_u32;
+alias StoreOp!(64, Tag.INT64) gen_store_u64;
+alias StoreOp!(8 , Tag.INT32) gen_store_i8;
+alias StoreOp!(16, Tag.INT32) gen_store_i16;
+alias StoreOp!(32, Tag.INT32) gen_store_i32;
+alias StoreOp!(64, Tag.INT64) gen_store_u64;
+alias StoreOp!(64, Tag.FLOAT64) gen_store_f64;
+alias StoreOp!(64, Tag.REFPTR) gen_store_refptr;
+alias StoreOp!(64, Tag.RAWPTR) gen_store_rawptr;
+alias StoreOp!(64, Tag.FUNPTR) gen_store_funptr;
+alias StoreOp!(64, Tag.SHAPEPTR) gen_store_shapeptr;
 
-void IsTypeOp(Type type)(
+void IsTypeOp(Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -827,17 +827,17 @@ void IsTypeOp(Type type)(
     if (typeOpnd.isImm)
     {
         // Get the known type
-        auto knownType = cast(Type)typeOpnd.imm.imm;
+        auto knownTag = cast(Tag)typeOpnd.imm.imm;
 
         // Get the test result
-        testResult = (type is knownType)? TestResult.TRUE:TestResult.FALSE;
+        testResult = (tag is knownTag)? TestResult.TRUE:TestResult.FALSE;
     }
 
     // If the type analysis was run
     if (opts.jit_typeprop)
     {
         // Get the type analysis result for this value at this instruction
-        auto propResult = st.fun.typeInfo.argIsType(instr, 0, type);
+        auto propResult = st.fun.typeInfo.argIsType(instr, 0, tag);
 
         //writeln("result: ", propResult);
 
@@ -891,7 +891,7 @@ void IsTypeOp(Type type)(
             auto outOpnd = st.getOutOpnd(as, instr, 64);
             auto outVal = boolResult? TRUE:FALSE;
             as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            st.setOutType(as, instr, Type.CONST);
+            st.setOutType(as, instr, Tag.CONST);
         }
 
         // If our only use is an immediately following if_true
@@ -934,7 +934,7 @@ void IsTypeOp(Type type)(
     as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs[1]);
 
     // Compare against the tested type
-    as.cmp(typeOpnd, X86Opnd(type));
+    as.cmp(typeOpnd, X86Opnd(tag));
 
     // If this instruction has many uses or is not followed by an if_true
     if (instr.hasManyUses || ifUseNext(instr) is false)
@@ -953,7 +953,7 @@ void IsTypeOp(Type type)(
             as.mov(outOpnd, outReg.reg.opnd(64));
 
         // Set the output type
-        st.setOutType(as, instr, Type.CONST);
+        st.setOutType(as, instr, Tag.CONST);
     }
 
     // If our only use is an immediately following if_true
@@ -967,7 +967,7 @@ void IsTypeOp(Type type)(
             if (auto dstArg = cast(IRDstValue)instr.getArg(0))
             {
                 trueSt = new CodeGenState(trueSt);
-                trueSt.setType(dstArg, type);
+                trueSt.setType(dstArg, tag);
             }
         }
 
@@ -1007,16 +1007,16 @@ void IsTypeOp(Type type)(
     }
 }
 
-alias IsTypeOp!(Type.CONST) gen_is_const;
-alias IsTypeOp!(Type.INT32) gen_is_int32;
-alias IsTypeOp!(Type.INT64) gen_is_int64;
-alias IsTypeOp!(Type.FLOAT64) gen_is_float64;
-alias IsTypeOp!(Type.RAWPTR) gen_is_rawptr;
-alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
-alias IsTypeOp!(Type.OBJECT) gen_is_object;
-alias IsTypeOp!(Type.ARRAY) gen_is_array;
-alias IsTypeOp!(Type.CLOSURE) gen_is_closure;
-alias IsTypeOp!(Type.STRING) gen_is_string;
+alias IsTypeOp!(Tag.CONST) gen_is_const;
+alias IsTypeOp!(Tag.INT32) gen_is_int32;
+alias IsTypeOp!(Tag.INT64) gen_is_int64;
+alias IsTypeOp!(Tag.FLOAT64) gen_is_float64;
+alias IsTypeOp!(Tag.RAWPTR) gen_is_rawptr;
+alias IsTypeOp!(Tag.REFPTR) gen_is_refptr;
+alias IsTypeOp!(Tag.OBJECT) gen_is_object;
+alias IsTypeOp!(Tag.ARRAY) gen_is_array;
+alias IsTypeOp!(Tag.CLOSURE) gen_is_closure;
+alias IsTypeOp!(Tag.STRING) gen_is_string;
 
 void CmpOp(string op, size_t numBits)(
     BlockVersion ver,
@@ -1038,7 +1038,7 @@ void CmpOp(string op, size_t numBits)(
             auto valSt = st.getState(val);
 
             if (valSt.type.tagKnown &&
-                valSt.type.tag is Type.SHAPEPTR &&
+                valSt.type.tag is Tag.SHAPEPTR &&
                 valSt.type.shapeKnown)
             {
                 // Evaluate the boolean condition
@@ -1050,7 +1050,7 @@ void CmpOp(string op, size_t numBits)(
                     auto outOpnd = st.getOutOpnd(as, instr, 64);
                     auto outVal = boolResult? TRUE:FALSE;
                     as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-                    st.setOutType(as, instr, Type.CONST);
+                    st.setOutType(as, instr, Tag.CONST);
                 }
 
                 // If our only use is an immediately following if_true
@@ -1292,7 +1292,7 @@ void CmpOp(string op, size_t numBits)(
             as.mov(outOpnd, outReg.reg.opnd(64));
 
         // Set the output type
-        st.setOutType(as, instr, Type.CONST);
+        st.setOutType(as, instr, Tag.CONST);
     }
 
     // If there is an immediately following if_true using this value
@@ -1660,7 +1660,7 @@ void genCallBranch(
             {
                 // Pop the exception value off the stack and
                 // move it into the instruction's output slot
-                as.add(tspReg, Type.sizeof);
+                as.add(tspReg, Tag.sizeof);
                 as.add(wspReg, Word.sizeof);
                 as.getWord(scrRegs[0], -1);
                 as.setWord(instr.outSlot, scrRegs[0].opnd(64));
@@ -1744,7 +1744,7 @@ void gen_call_prim(
     // Get the primitve function from the global object
     auto closVal = getProp(vm, vm.globalObj, nameStr);
     assert (
-        closVal.type is Type.CLOSURE,
+        closVal.tag is Tag.CLOSURE,
         "failed to resolve closure in call_prim"
     );
     assert (closVal.word.ptrVal !is null);
@@ -1899,7 +1899,7 @@ void gen_call(
 
     // If the value is not a closure, bailout
     as.incStatCnt(stats.getTypeTestCtr("is_closure"), scrRegs[1]);
-    as.cmp(closType, X86Opnd(Type.CLOSURE));
+    as.cmp(closType, X86Opnd(Tag.CLOSURE));
     as.jne(Label.THROW);
 
     // Get the word for the closure value
@@ -1946,7 +1946,7 @@ void gen_call(
     as.cmp(scrReg3.opnd(64), X86Opnd(0));
     as.jge(Label.LOOP_EXIT);
     as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.word.int8Val));
-    as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
+    as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Tag.CONST));
     as.add(scrReg3.opnd(64), X86Opnd(1));
     as.jmp(Label.LOOP);
     as.label(Label.LOOP_EXIT);
@@ -2098,12 +2098,12 @@ void gen_call_apply(
         auto argcVal = vm.getArgUint32(instr, 3);
 
         assert (
-            tblVal.type !is Type.ARRAY,
+            tblVal.tag !is Tag.ARRAY,
             "invalid argument table"
         );
 
         assert (
-            closVal.type is Type.CLOSURE,
+            closVal.tag is Tag.CLOSURE,
             "apply call on to non-function"
         );
 
@@ -2120,7 +2120,7 @@ void gen_call_apply(
         for (uint32_t i = 0; i < argcVal; ++i)
         {
             argVals[i].word.uint64Val = arrtbl_get_word(tblPtr, i);
-            argVals[i].type = cast(Type)arrtbl_get_type(tblPtr, i);
+            argVals[i].tag = cast(Tag)arrtbl_get_type(tblPtr, i);
         }
 
         // Prepare the callee stack frame
@@ -2224,7 +2224,7 @@ void gen_load_file(
 
             // Create a GC root for the function to prevent it from
             // being collected if the GC runs during its own compilation
-            auto funPtr = GCRoot(vm, Word.funv(fun), Type.FUNPTR);
+            auto funPtr = GCRoot(vm, Word.funv(fun), Tag.FUNPTR);
 
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
@@ -2356,7 +2356,7 @@ void gen_eval_str(
 
             // Create a GC root for the function to prevent it from
             // being collected if the GC runs during its own compilation
-            auto funPtr = GCRoot(vm, Word.funv(fun), Type.FUNPTR);
+            auto funPtr = GCRoot(vm, Word.funv(fun), Tag.FUNPTR);
 
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
@@ -2490,7 +2490,7 @@ void gen_ret(
         as.getWord(scrRegs[1], raSlot);
 
         // Pop all local stack slots
-        as.add(tspReg.opnd(64), X86Opnd(Type.sizeof * numLocals));
+        as.add(tspReg.opnd(64), X86Opnd(Tag.sizeof * numLocals));
         as.add(wspReg.opnd(64), X86Opnd(Word.sizeof * numLocals));
     }
     else
@@ -2569,7 +2569,7 @@ void gen_throw(
     ver.markEnd(as, st.fun.vm);
 }
 
-void GetValOp(Type tag, string fName)(
+void GetValOp(Tag tag, string fName)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -2586,12 +2586,12 @@ void GetValOp(Type tag, string fName)(
     st.setOutType(as, instr, tag);
 }
 
-alias GetValOp!(Type.OBJECT, "objProto.word") gen_get_obj_proto;
-alias GetValOp!(Type.OBJECT, "arrProto.word") gen_get_arr_proto;
-alias GetValOp!(Type.OBJECT, "funProto.word") gen_get_fun_proto;
-alias GetValOp!(Type.OBJECT, "globalObj.word") gen_get_global_obj;
-alias GetValOp!(Type.INT32, "heapSize") gen_get_heap_size;
-alias GetValOp!(Type.INT32, "gcCount") gen_get_gc_count;
+alias GetValOp!(Tag.OBJECT, "objProto.word") gen_get_obj_proto;
+alias GetValOp!(Tag.OBJECT, "arrProto.word") gen_get_arr_proto;
+alias GetValOp!(Tag.OBJECT, "funProto.word") gen_get_fun_proto;
+alias GetValOp!(Tag.OBJECT, "globalObj.word") gen_get_global_obj;
+alias GetValOp!(Tag.INT32, "heapSize") gen_get_heap_size;
+alias GetValOp!(Tag.INT32, "gcCount") gen_get_gc_count;
 
 void gen_get_heap_free(
     BlockVersion ver,
@@ -2609,10 +2609,10 @@ void gen_get_heap_free(
 
     as.mov(outOpnd, scrRegs[1].opnd(32));
 
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Tag.INT32);
 }
 
-void HeapAllocOp(Type type)(
+void HeapAllocOp(Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -2706,14 +2706,14 @@ void HeapAllocOp(Type type)(
     as.label(Label.DONE);
 
     // Set the output type tag
-    st.setOutType(as, instr, type);
+    st.setOutType(as, instr, tag);
 }
 
-alias HeapAllocOp!(Type.REFPTR) gen_alloc_refptr;
-alias HeapAllocOp!(Type.OBJECT) gen_alloc_object;
-alias HeapAllocOp!(Type.ARRAY) gen_alloc_array;
-alias HeapAllocOp!(Type.CLOSURE) gen_alloc_closure;
-alias HeapAllocOp!(Type.STRING) gen_alloc_string;
+alias HeapAllocOp!(Tag.REFPTR) gen_alloc_refptr;
+alias HeapAllocOp!(Tag.OBJECT) gen_alloc_object;
+alias HeapAllocOp!(Tag.ARRAY) gen_alloc_array;
+alias HeapAllocOp!(Tag.CLOSURE) gen_alloc_closure;
+alias HeapAllocOp!(Tag.STRING) gen_alloc_string;
 
 void gen_gc_collect(
     BlockVersion ver,
@@ -2810,7 +2810,7 @@ void gen_get_str(
     as.mov(outOpnd, X86Opnd(RAX));
 
     // The output is a reference pointer
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutType(as, instr, Tag.STRING);
 }
 
 void gen_make_link(
@@ -2830,7 +2830,7 @@ void gen_make_link(
         linkArg.linkIdx = vm.allocLink();
 
         vm.setLinkWord(linkArg.linkIdx, NULL.word);
-        vm.setLinkType(linkArg.linkIdx, NULL.type);
+        vm.setLinkType(linkArg.linkIdx, NULL.tag);
     }
 
     // Set the output value
@@ -2838,7 +2838,7 @@ void gen_make_link(
     as.mov(outOpnd, X86Opnd(linkArg.linkIdx));
 
     // Set the output type
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Tag.INT32);
 }
 
 void gen_set_link(
@@ -2861,7 +2861,7 @@ void gen_set_link(
     // Set the link type
     auto valType = st.getTypeOpnd(as, instr, 1, scrRegs[1].opnd(8));
     as.getMember!("VM.tLinkTable")(scrRegs[2], vmReg);
-    auto typeMem = X86Opnd(8, scrRegs[2], 0, Type.sizeof, idxReg.reg);
+    auto typeMem = X86Opnd(8, scrRegs[2], 0, Tag.sizeof, idxReg.reg);
     as.mov(typeMem, valType);
 }
 
@@ -2887,7 +2887,7 @@ void gen_get_link(
 
     // Read the link type
     as.getMember!("VM.tLinkTable")(scrRegs[1], vmReg);
-    auto typeMem = X86Opnd(8, scrRegs[1], 0, Type.sizeof, idxReg.reg);
+    auto typeMem = X86Opnd(8, scrRegs[1], 0, Tag.sizeof, idxReg.reg);
     as.mov(scrRegs[1].opnd(8), typeMem);
     st.setOutType(as, instr, scrRegs[1].reg(8));
 }
@@ -3122,7 +3122,7 @@ void gen_map_prop_idx(
     }
 
     // Set the output type
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Tag.INT32);
 }
 */
 
@@ -3434,7 +3434,7 @@ void gen_shape_get_def(
         as.ptr(outOpnd.reg, defShape);
 
         // Set the output type and shape for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
+        st.setOutType(as, instr, Tag.SHAPEPTR);
         st.setShape(instr, defShape);
 
         // Get the default version for the successor block
@@ -3488,7 +3488,7 @@ void gen_shape_get_def(
         assert (scrReg3.opnd != opnd0);
 
         // Set the output type for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
+        st.setOutType(as, instr, Tag.SHAPEPTR);
 
         // Label for doing a new inline cache lookup
         as.label(Label.RETRY);
@@ -3577,7 +3577,7 @@ void gen_shape_get_def(
         as.mov(outOpnd, cretReg.opnd);
 
         // Set the output type for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
+        st.setOutType(as, instr, Tag.SHAPEPTR);
 
         // Get the default version for the successor block
         auto branch = getBranchEdge(
@@ -3668,7 +3668,7 @@ void gen_capture_tag(
             assert (argVal !is null);
 
             // Get the current argument value type tag
-            auto argTag = vm.getType(argVal.outSlot);
+            auto argTag = vm.getTag(argVal.outSlot);
 
             // Create a new state object where the value's type tag is known
             auto targetSt = new CodeGenState(defSt);
@@ -4466,7 +4466,7 @@ void gen_shape_parent(
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd);
-    st.setOutType(as, instr, Type.SHAPEPTR);
+    st.setOutType(as, instr, Tag.SHAPEPTR);
 
     as.loadJITRegs();
 }
@@ -4512,7 +4512,7 @@ void gen_shape_prop_name(
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd);
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutType(as, instr, Tag.STRING);
 
     as.loadJITRegs();
 }
@@ -4547,7 +4547,7 @@ void gen_shape_get_attrs(
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd(32));
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutType(as, instr, Tag.INT32);
 
     as.loadJITRegs();
 }
@@ -4582,7 +4582,7 @@ void gen_shape_is_getset(
             auto outOpnd = st.getOutOpnd(as, instr, 64);
             auto outVal = boolResult? TRUE:FALSE;
             as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            st.setOutType(as, instr, Type.CONST);
+            st.setOutType(as, instr, Tag.CONST);
         }
 
         // If our only use is an immediately following if_true
@@ -4643,7 +4643,7 @@ void gen_shape_is_getset(
         // Set the output value
         as.mov(outOpnd, cretReg.opnd(8));
 
-        st.setOutType(as, instr, Type.CONST);
+        st.setOutType(as, instr, Tag.CONST);
     }
 }
 
@@ -4781,7 +4781,7 @@ void gen_new_clos(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(cretReg));
 
-    st.setOutType(as, instr, Type.CLOSURE);
+    st.setOutType(as, instr, Tag.CLOSURE);
 }
 
 void gen_print_str(
@@ -4844,7 +4844,7 @@ void gen_get_time_ms(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.movq(outOpnd, X86Opnd(XMM0));
-    st.setOutType(as, instr, Type.FLOAT64);
+    st.setOutType(as, instr, Tag.FLOAT64);
 }
 
 void gen_get_ast_str(
@@ -4900,7 +4900,7 @@ void gen_get_ast_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutType(as, instr, Tag.STRING);
 }
 
 void gen_get_ir_str(
@@ -4964,7 +4964,7 @@ void gen_get_ir_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutType(as, instr, Tag.STRING);
 }
 
 void gen_get_asm_str(
@@ -5035,7 +5035,7 @@ void gen_get_asm_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutType(as, instr, Tag.STRING);
 }
 
 void gen_load_lib(
@@ -5083,7 +5083,7 @@ void gen_load_lib(
             );
         }
 
-        vm.push(Word.ptrv(cast(rawptr)lib), Type.RAWPTR);
+        vm.push(Word.ptrv(cast(rawptr)lib), Tag.RAWPTR);
 
         return null;
 
@@ -5116,9 +5116,9 @@ void gen_load_lib(
     // Get the lib handle from the stack
     as.getWord(scrRegs[0], 0);
     as.add(wspReg, Word.sizeof);
-    as.add(tspReg, Type.sizeof);
+    as.add(tspReg, Tag.sizeof);
     as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutType(as, instr, Type.RAWPTR);
+    st.setOutType(as, instr, Tag.RAWPTR);
 }
 
 void gen_close_lib(
@@ -5136,7 +5136,7 @@ void gen_close_lib(
         auto libArg = vm.getArgVal(instr, 0);
 
         assert (
-            libArg.type == Type.RAWPTR,
+            libArg.tag == Tag.RAWPTR,
             "invalid rawptr value"
         );
 
@@ -5192,7 +5192,7 @@ void gen_get_sym(
         auto libArg = vm.getArgVal(instr, 0);
 
         assert (
-            libArg.type == Type.RAWPTR,
+            libArg.tag == Tag.RAWPTR,
             "invalid rawptr value"
         );
 
@@ -5215,7 +5215,7 @@ void gen_get_sym(
             );
         }
 
-        vm.push(Word.ptrv(cast(rawptr)sym), Type.RAWPTR);
+        vm.push(Word.ptrv(cast(rawptr)sym), Tag.RAWPTR);
 
         return null;
     }
@@ -5247,29 +5247,29 @@ void gen_get_sym(
     // Get the sym handle from the stack
     as.getWord(scrRegs[0], 0);
     as.add(wspReg, Word.sizeof);
-    as.add(tspReg, Type.sizeof);
+    as.add(tspReg, Tag.sizeof);
     as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutType(as, instr, Type.RAWPTR);
+    st.setOutType(as, instr, Tag.RAWPTR);
 
 }
 
 // TODO: add support for new i types
 // Mappings for arguments/return values
-Type[string] typeMap;
+Tag[string] typeMap;
 size_t[string] sizeMap;
 static this()
 {
     typeMap = [
-        "i8" : Type.INT32,
-        "i16" : Type.INT32,
-        "i32" : Type.INT32,
-        "i64" : Type.INT64,
-        "u8" : Type.INT32,
-        "u16" : Type.INT32,
-        "u32" : Type.INT32,
-        "u64" : Type.INT64,
-        "f64" : Type.FLOAT64,
-        "*" : Type.RAWPTR
+        "i8"  : Tag.INT32,
+        "i16" : Tag.INT32,
+        "i32" : Tag.INT32,
+        "i64" : Tag.INT64,
+        "u8"  : Tag.INT32,
+        "u16" : Tag.INT32,
+        "u32" : Tag.INT32,
+        "u64" : Tag.INT64,
+        "f64" : Tag.FLOAT64,
+        "*"   : Tag.RAWPTR
     ];
 
     sizeMap = [
@@ -5427,7 +5427,7 @@ void gen_call_ffi(
     else if (retType == "void")
     {
         as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
-        st.setOutType(as, instr, Type.CONST);
+        st.setOutType(as, instr, Tag.CONST);
     }
     else
     {

@@ -862,11 +862,11 @@ class IRConst : IRValue
         return value;
     }
 
-    auto isInt32 () { return value.type == Type.INT32; }
+    auto isInt32 () { return value.tag == Tag.INT32; }
 
     auto pair() { return value; }
     auto word() { return value.word; }
-    auto type() { return value.type; }
+    auto tag() { return value.tag; }
     auto int32Val() { return value.word.int32Val; }
 
     static IRConst int32Cst(int32_t val)
@@ -874,7 +874,7 @@ class IRConst : IRValue
         if (val in int32Vals)
             return int32Vals[val];
 
-        auto cst = new IRConst(Word.int32v(val), Type.INT32);
+        auto cst = new IRConst(Word.int32v(val), Tag.INT32);
         int32Vals[val] = cst;
         return cst;
     }
@@ -884,7 +884,7 @@ class IRConst : IRValue
         if (val in int64Vals)
             return int64Vals[val];
 
-        auto cst = new IRConst(Word.int64v(val), Type.INT64);
+        auto cst = new IRConst(Word.int64v(val), Tag.INT64);
         int64Vals[val] = cst;
         return cst;
     }
@@ -894,7 +894,7 @@ class IRConst : IRValue
         if (val in float64Vals)
             return float64Vals[val];
 
-        auto cst = new IRConst(Word.float64v(val), Type.FLOAT64);
+        auto cst = new IRConst(Word.float64v(val), Tag.FLOAT64);
         float64Vals[val] = cst;
         return cst;
     }
@@ -925,7 +925,7 @@ class IRConst : IRValue
 
     static IRConst nullPtrCst()
     { 
-        if (!nullPtrVal) nullPtrVal = new IRConst(Word.int64v(0), Type.RAWPTR);
+        if (!nullPtrVal) nullPtrVal = new IRConst(Word.int64v(0), Tag.RAWPTR);
         return nullPtrVal;
     }
 
@@ -939,9 +939,9 @@ class IRConst : IRValue
     private static IRConst[int64] int64Vals;
     private static IRConst[float64] float64Vals;
 
-    private this(Word word, Type type)
+    private this(Word word, Tag tag)
     {
-        this.value = ValuePair(word, type);
+        this.value = ValuePair(word, tag);
     }
 
     private this(ValuePair value)
@@ -993,7 +993,7 @@ class IRRawPtr : IRValue
 
     this(rawptr ptr)
     {
-        this.ptr = ValuePair(Word.ptrv(ptr), Type.RAWPTR);
+        this.ptr = ValuePair(Word.ptrv(ptr), Tag.RAWPTR);
     }
 
     override string toString()

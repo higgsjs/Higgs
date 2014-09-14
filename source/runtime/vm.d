@@ -89,7 +89,7 @@ class RunError : Error
 
         this.name = "run-time error";
 
-        if (excVal.type is Type.OBJECT)
+        if (excVal.tag is Tag.OBJECT)
         {
             auto errName = getProp(
                 vm,
@@ -97,7 +97,7 @@ class RunError : Error
                 "name"w
             );
 
-            if (errName.type is Type.STRING)
+            if (errName.tag is Tag.STRING)
                 this.name = errName.toString();
 
             auto msgStr = getProp(
@@ -170,8 +170,8 @@ unittest
     );
 }
 
-/// Word type values
-enum Type : ubyte
+/// Type tag values
+enum Tag : ubyte
 {
     CONST = 0,
     INT32,
@@ -183,7 +183,7 @@ enum Type : ubyte
     MAPPTR,
     SHAPEPTR,
 
-    // GC heap pointer types
+    // GC heap pointer tags
     REFPTR,
     OBJECT,
     ARRAY,
@@ -192,17 +192,17 @@ enum Type : ubyte
 }
 
 /**
-Test if a given type is a heap pointer
+Test if a given tag is a heap pointer
 */
-bool isHeapPtr(Type type)
+bool isHeapPtr(Tag tag)
 {
-    switch (type)
+    switch (tag)
     {
-        case Type.REFPTR:
-        case Type.OBJECT:
-        case Type.ARRAY:
-        case Type.CLOSURE:
-        case Type.STRING:
+        case Tag.REFPTR:
+        case Tag.OBJECT:
+        case Tag.ARRAY:
+        case Tag.CLOSURE:
+        case Tag.STRING:
         return true;
 
         default:
@@ -211,15 +211,15 @@ bool isHeapPtr(Type type)
 }
 
 /**
-Test if a type is an object of some kind
+Test if a tag is an object of some kind
 */
-bool isObject(Type type)
+bool isObject(Tag tag)
 {
-    switch (type)
+    switch (tag)
     {
-        case Type.OBJECT:
-        case Type.ARRAY:
-        case Type.CLOSURE:
+        case Tag.OBJECT:
+        case Tag.ARRAY:
+        case Tag.CLOSURE:
         return true;
 
         default:
@@ -230,29 +230,29 @@ bool isObject(Type type)
 /**
 Produce a string representation of a type tag
 */
-string typeToString(Type type)
+string tagToString(Tag tag)
 {
     // Switch on the type tag
-    switch (type)
+    switch (tag)
     {
-        case Type.INT32:    return "int32";
-        case Type.INT64:    return "int64";
-        case Type.FLOAT64:  return "float64";
-        case Type.RAWPTR:   return "rawptr";
-        case Type.RETADDR:  return "retaddr";
-        case Type.CONST:    return "const";
-        case Type.FUNPTR:   return "funptr";
-        case Type.MAPPTR:   return "mapptr";
-        case Type.SHAPEPTR: return "shapeptr";
+        case Tag.INT32:    return "int32";
+        case Tag.INT64:    return "int64";
+        case Tag.FLOAT64:  return "float64";
+        case Tag.RAWPTR:   return "rawptr";
+        case Tag.RETADDR:  return "retaddr";
+        case Tag.CONST:    return "const";
+        case Tag.FUNPTR:   return "funptr";
+        case Tag.MAPPTR:   return "mapptr";
+        case Tag.SHAPEPTR: return "shapeptr";
 
-        case Type.REFPTR:   return "refptr";
-        case Type.OBJECT:   return "object";
-        case Type.ARRAY:    return "array";
-        case Type.CLOSURE:  return "closure";
-        case Type.STRING:   return "string";
+        case Tag.REFPTR:   return "refptr";
+        case Tag.OBJECT:   return "object";
+        case Tag.ARRAY:    return "array";
+        case Tag.CLOSURE:  return "closure";
+        case Tag.STRING:   return "string";
 
         default:
-        assert (false, "unsupported type");
+        assert (false, "unsupported type tag");
     }
 }
 
@@ -264,35 +264,35 @@ bool refIsLayout(refptr ptr, uint32 layoutId)
     return (ptr !is null && obj_get_header(ptr) == layoutId);
 }
 
-/// Word and type pair
+/// Word and tag pair
 struct ValuePair
 {
     Word word;
 
-    Type type;
+    Tag tag;
 
-    this(Word word, Type type)
+    this(Word word, Tag tag)
     {
         this.word = word;
-        this.type = type;
+        this.tag = tag;
     }
 
-    this(refptr ptr, Type type)
+    this(refptr ptr, Tag tag)
     {
         this.word.ptrVal = ptr;
-        this.type = type;
+        this.tag = tag;
     }
 
     this(int32 int32Val)
     {
         this.word.int32Val = int32Val;
-        this.type = Type.INT32;
+        this.tag = Tag.INT32;
     }
 
     this(IRFunction fun)
     {
         this.word.funVal = fun;
-        this.type = Type.FUNPTR;
+        this.tag = Tag.FUNPTR;
     }
 
     /**
@@ -301,7 +301,7 @@ struct ValuePair
     bool isLayout(uint32 layoutId)
     {
         return (
-            type is Type.REFPTR && 
+            tag is Tag.REFPTR && 
             refIsLayout(word.ptrVal, layoutId)
         );
     }
@@ -312,12 +312,12 @@ struct ValuePair
     string toString()
     {
         // Switch on the type tag
-        switch (type)
+        switch (tag)
         {
-            case Type.INT32:
+            case Tag.INT32:
             return to!string(word.int32Val);
 
-            case Type.FLOAT64:
+            case Tag.FLOAT64:
             if (word.floatVal != word.floatVal)
                 return "NaN";
             if (word.floatVal == 1.0/0)
@@ -326,15 +326,15 @@ struct ValuePair
                 return "-Infinity";
             return to!string(word.floatVal);
 
-            case Type.RAWPTR:
+            case Tag.RAWPTR:
             if (word.ptrVal is null)
                 return "nullptr";
             return to!string(word.ptrVal);
 
-            case Type.RETADDR:
+            case Tag.RETADDR:
             return to!string(word.ptrVal);
 
-            case Type.CONST:
+            case Tag.CONST:
             if (this == TRUE)
                 return "true";
             if (this == FALSE)
@@ -346,13 +346,13 @@ struct ValuePair
                 "unsupported constant " ~ to!string(word.uint64Val)
             );
 
-            case Type.FUNPTR:
+            case Tag.FUNPTR:
             return "funptr";
 
-            case Type.MAPPTR:
+            case Tag.MAPPTR:
             return "mapptr";
 
-            case Type.REFPTR:
+            case Tag.REFPTR:
             if (this == NULL)
                 return "null";
             if (ptrValid(word.ptrVal) is false)
@@ -365,16 +365,16 @@ struct ValuePair
                 return "array";
             return "refptr";
 
-            case Type.OBJECT:
+            case Tag.OBJECT:
             return "object";
 
-            case Type.ARRAY:
+            case Tag.ARRAY:
             return "array";
 
-            case Type.CLOSURE:
+            case Tag.CLOSURE:
             return "closure";
 
-            case Type.STRING:
+            case Tag.STRING:
             return extractStr(word.ptrVal);
 
             default:
@@ -389,10 +389,10 @@ struct ValuePair
 }
 
 // Note: low byte is set to allow for one byte immediate comparison
-immutable NULL    = ValuePair(Word(0x00), Type.REFPTR);
-immutable TRUE    = ValuePair(Word(0x01), Type.CONST);
-immutable FALSE   = ValuePair(Word(0x02), Type.CONST);
-immutable UNDEF   = ValuePair(Word(0x03), Type.CONST);
+immutable NULL    = ValuePair(Word(0x00), Tag.REFPTR);
+immutable TRUE    = ValuePair(Word(0x01), Tag.CONST);
+immutable FALSE   = ValuePair(Word(0x02), Tag.CONST);
+immutable UNDEF   = ValuePair(Word(0x03), Tag.CONST);
 
 /// Stack size, 256K words (2MB)
 immutable size_t STACK_SIZE = 2^^18;
@@ -424,19 +424,19 @@ class VM
     Word* wStack;
 
     /// Type stack
-    Type* tStack;
+    Tag* tStack;
 
     /// Word stack upper limit
     Word* wUpperLimit;
 
     /// Type stack upper limit
-    Type* tUpperLimit;
+    Tag* tUpperLimit;
 
-    /// Word and type stack pointers (stack top)
+    /// Word stack pointer (stack top)
     Word* wsp;
 
-    /// Type stack pointer (stack top)
-    Type* tsp;
+    /// Tag stack pointer (stack top)
+    Tag* tsp;
 
     /// Heap start pointer
     ubyte* heapStart;
@@ -471,8 +471,8 @@ class VM
     /// Link table words
     Word* wLinkTable;
 
-    /// Link table types
-    Type* tLinkTable;
+    /// Link table tags
+    Tag* tLinkTable;
 
     /// Link table size
     uint32 linkTblSize;
@@ -554,9 +554,9 @@ class VM
             GC.BlkAttr.NO_INTERIOR
         );
 
-        // Allocate the type stack
-        tStack = cast(Type*)GC.malloc(
-            Type.sizeof * STACK_SIZE,
+        // Allocate the tag stack
+        tStack = cast(Tag*)GC.malloc(
+            Tag.sizeof * STACK_SIZE,
             GC.BlkAttr.NO_SCAN |
             GC.BlkAttr.NO_INTERIOR
         );
@@ -602,8 +602,8 @@ class VM
         );
 
         /// Link table types
-        tLinkTable = cast(Type*)GC.malloc(
-            Type.sizeof * linkTblSize,
+        tLinkTable = cast(Tag*)GC.malloc(
+            Tag.sizeof * linkTblSize,
             GC.BlkAttr.NO_SCAN |
             GC.BlkAttr.NO_INTERIOR
         );
@@ -612,7 +612,7 @@ class VM
         for (size_t i = 0; i < linkTblSize; ++i)
         {
             wLinkTable[i].int32Val = 0;
-            tLinkTable[i] = Type.INT32;
+            tLinkTable[i] = Tag.INT32;
         }
 
         // Allocate and initialize the string table
@@ -696,7 +696,7 @@ class VM
     /**
     Set the value and type of a stack slot
     */
-    void setSlot(StackIdx idx, Word w, Type t)
+    void setSlot(StackIdx idx, Word w, Tag t)
     {
         assert (
             &wsp[idx] >= wStack && &wsp[idx] < wUpperLimit,
@@ -720,7 +720,7 @@ class VM
     */
     void setSlot(StackIdx idx, ValuePair val)
     {
-        setSlot(idx, val.word, val.type);
+        setSlot(idx, val.word, val.tag);
     }
 
     /**
@@ -728,7 +728,7 @@ class VM
     */
     void setSlot(StackIdx idx, uint32 val)
     {
-        setSlot(idx, Word.int32v(val), Type.INT32);
+        setSlot(idx, Word.int32v(val), Tag.INT32);
     }
 
     /**
@@ -736,7 +736,7 @@ class VM
     */
     void setSlot(StackIdx idx, float64 val)
     {
-        setSlot(idx, Word.float64v(val), Type.FLOAT64);
+        setSlot(idx, Word.float64v(val), Tag.FLOAT64);
     }
 
     /**
@@ -753,9 +753,9 @@ class VM
     }
 
     /**
-    Get a type from the type stack
+    Get a type tag from the tag stack
     */
-    Type getType(StackIdx idx)
+    Tag getTag(StackIdx idx)
     {
         assert (
             &tsp[idx] >= tStack && &tsp[idx] < tUpperLimit,
@@ -770,7 +770,7 @@ class VM
     */
     ValuePair getSlot(StackIdx idx)
     {
-        return ValuePair(getWord(idx), getType(idx));
+        return ValuePair(getWord(idx), getTag(idx));
     }
 
     /**
@@ -793,9 +793,9 @@ class VM
     }
 
     /**
-    Push a word and type on the stack
+    Push a word and tag on the stack
     */
-    void push(Word w, Type t)
+    void push(Word w, Tag t)
     {
         push(1);
         setSlot(0, w, t);
@@ -807,7 +807,7 @@ class VM
     void push(ValuePair val)
     {
         push(1);
-        setSlot(0, val.word, val.type);
+        setSlot(0, val.word, val.tag);
     }
 
     /**
@@ -870,7 +870,7 @@ class VM
 
         // Remove any heap reference
         wLinkTable[idx].uint32Val = 0;
-        tLinkTable[idx] = Type.INT32;
+        tLinkTable[idx] = Tag.INT32;
 
         linkTblFree ~= idx;
     }
@@ -891,7 +891,7 @@ class VM
     /**
     Get the type associated with a link value
     */
-    Type getLinkType(LinkIdx idx)
+    Tag getLinkType(LinkIdx idx)
     {
         assert (
             idx <= linkTblSize,
@@ -917,14 +917,14 @@ class VM
     /**
     Set the type associated with a link value
     */
-    void setLinkType(LinkIdx idx, Type type)
+    void setLinkType(LinkIdx idx, Tag tag)
     {
         assert (
             idx <= linkTblSize,
             "invalid link index"
         );
 
-        tLinkTable[idx] = type;
+        tLinkTable[idx] = tag;
     }
 
     /**
@@ -950,7 +950,7 @@ class VM
         // If the value is a string
         if (auto strVal = cast(IRString)val)
         {
-            return ValuePair(strVal.getPtr(this), Type.STRING);
+            return ValuePair(strVal.getPtr(this), Tag.STRING);
         }
 
         // Get the constant value pair for this IR value
@@ -976,7 +976,7 @@ class VM
         auto argVal = getArgVal(instr, argIdx);
 
         assert (
-            argVal.type == Type.CONST,
+            argVal.tag == Tag.CONST,
             "expected constant value for arg " ~ to!string(argIdx)
         );
 
@@ -991,7 +991,7 @@ class VM
         auto argVal = getArgVal(instr, argIdx);
 
         assert (
-            argVal.type == Type.INT32,
+            argVal.tag == Tag.INT32,
             "expected uint32 value for arg " ~ to!string(argIdx)
         );
 
@@ -1011,7 +1011,7 @@ class VM
         auto strVal = getArgVal(instr, argIdx);
 
         assert (
-            strVal.type is Type.STRING,
+            strVal.tag is Tag.STRING,
             format("expected string value for arg %s of:\n%s", argIdx, instr)
         );
 
@@ -1054,16 +1054,16 @@ class VM
         }
 
         // Push the argument count
-        push(Word.int32v(argCount), Type.INT32);
+        push(Word.int32v(argCount), Tag.INT32);
 
         // Push the "this" argument
         push(thisVal);
 
         // Push the closure argument
-        push(Word.ptrv(closPtr), Type.CLOSURE);
+        push(Word.ptrv(closPtr), Tag.CLOSURE);
 
         // Push the return address
-        push(Word.ptrv(cast(rawptr)retAddr), Type.RETADDR);
+        push(Word.ptrv(cast(rawptr)retAddr), Tag.RETADDR);
 
         // Push space for the callee locals
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
@@ -1170,7 +1170,7 @@ class VM
     alias void delegate(
         IRFunction fun,
         Word* wsp,
-        Type* tsp,
+        Tag* tsp,
         size_t depth,
         size_t frameSize,
         IRInstr curInstr
@@ -1294,7 +1294,7 @@ extern (C) CodePtr throwExc(
     IRInstr throwInstr,
     CodeFragment throwHandler,
     Word excWord,
-    Type excType
+    Tag excTag
 )
 {
     //writefln("entering throwExc");
@@ -1309,12 +1309,12 @@ extern (C) CodePtr throwExc(
     auto exc = GCRoot(
         vm,
         excWord,
-        excType
+        excTag
     );
 
     // If the exception value is an object,
     // add trace information to the object
-    if (exc.type is Type.OBJECT)
+    if (exc.tag is Tag.OBJECT)
     {
         assert (vm.curInstr is null);
         vm.curInstr = throwInstr;
@@ -1322,7 +1322,7 @@ extern (C) CodePtr throwExc(
         auto visitFrame = delegate void(
             IRFunction fun,
             Word* wsp,
-            Type* tsp,
+            Tag* tsp,
             size_t depth,
             size_t frameSize,
             IRInstr curInstr
@@ -1340,7 +1340,7 @@ extern (C) CodePtr throwExc(
                         " (" ~ pos.toString ~ ")"
                     )
                 ),
-                Type.STRING
+                Tag.STRING
             );
 
             setProp(
@@ -1354,7 +1354,7 @@ extern (C) CodePtr throwExc(
                 vm,
                 exc.pair,
                 "length"w,
-                ValuePair(Word.int64v(depth), Type.INT32)
+                ValuePair(Word.int64v(depth), Tag.INT32)
             );
         };
 
@@ -1391,7 +1391,7 @@ extern (C) CodePtr throwExc(
             auto excCodeAddr = curHandler.getCodePtr(vm.execHeap);
 
             // Push the exception value on the stack
-            vm.push(exc.word, exc.type);
+            vm.push(exc.word, exc.tag);
 
             // Return the exception handler address
             return excCodeAddr;
@@ -1467,7 +1467,7 @@ extern (C) CodePtr throwError(
     auto errStr = GCRoot(
         vm,
         getString(vm, to!wstring(errMsg)),
-        Type.STRING
+        Tag.STRING
     );
 
     auto errCtor = GCRoot(
@@ -1480,7 +1480,7 @@ extern (C) CodePtr throwError(
     );
 
     // If the error constructor is a function
-    if (errCtor.type is Type.CLOSURE)
+    if (errCtor.tag is Tag.CLOSURE)
     {
         auto errProto = GCRoot(
             vm,
@@ -1492,7 +1492,7 @@ extern (C) CodePtr throwError(
         );
 
         // If the error prototype is an object
-        if (errProto.type is Type.OBJECT)
+        if (errProto.tag is Tag.OBJECT)
         {
             // Create the error object
             auto excObj = GCRoot(
@@ -1518,7 +1518,7 @@ extern (C) CodePtr throwError(
                 throwInstr,
                 throwHandler,
                 excObj.word,
-                excObj.type
+                excObj.tag
             );
         }
     }
@@ -1531,7 +1531,7 @@ extern (C) CodePtr throwError(
         throwInstr,
         throwHandler,
         errStr.word,
-        errStr.type,
+        errStr.tag,
     );
 }
 

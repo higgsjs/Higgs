@@ -67,12 +67,12 @@ struct GCRoot
         this.pair = pair;
     }
 
-    this(VM vm, Word w, Type t)
+    this(VM vm, Word w, Tag t)
     {
         this(vm, ValuePair(w, t));
     }
 
-    this(VM vm, refptr p, Type t)
+    this(VM vm, refptr p, Tag t)
     {
         assert (isHeapPtr(t));
         this(vm, Word.ptrv(p), t);
@@ -113,9 +113,9 @@ struct GCRoot
         return pair.word;
     }
 
-    Type type()
+    Tag tag()
     {
-        return pair.type;
+        return pair.tag;
     }
 
     refptr ptr()
@@ -291,7 +291,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     // Visit the root objects
     for (GCRoot* pRoot = vm.firstRoot; pRoot !is null; pRoot = pRoot.next)
-        pRoot.pair.word = gcForward(vm, pRoot.word, pRoot.type);
+        pRoot.pair.word = gcForward(vm, pRoot.word, pRoot.tag);
 
     //writeln("scanning to-space");
 
@@ -539,23 +539,23 @@ refptr gcForward(VM vm, refptr ptr)
 /**
 Forward a word/value pair
 */
-Word gcForward(VM vm, Word word, Type type)
+Word gcForward(VM vm, Word word, Tag tag)
 {
     // Switch on the type tag
-    switch (type)
+    switch (tag)
     {
         // Heap reference pointer
         // Forward the pointer
-        case Type.REFPTR:
-        case Type.OBJECT:
-        case Type.ARRAY:
-        case Type.CLOSURE:
-        case Type.STRING:
+        case Tag.REFPTR:
+        case Tag.OBJECT:
+        case Tag.ARRAY:
+        case Tag.CLOSURE:
+        case Tag.STRING:
         return Word.ptrv(gcForward(vm, word.ptrVal));
 
         // Function pointer (IRFunction)
         // Return the pointer unchanged
-        case Type.FUNPTR:
+        case Tag.FUNPTR:
         auto fun = word.funVal;
         assert (fun !is null, "null IRFunction pointer");
         visitFun(vm, fun);
@@ -563,14 +563,14 @@ Word gcForward(VM vm, Word word, Type type)
 
         // Object shape pointer
         // Return the pointer unchanged
-        case Type.SHAPEPTR:
+        case Tag.SHAPEPTR:
         auto shape = word.shapeVal;
         assert (shape !is null);
         //visitShape(vm, shape);
         return word;
 
         // Return address
-        case Type.RETADDR:
+        case Tag.RETADDR:
         assert (
             word.ptrVal in vm.retAddrMap,
             format("ret addr not found: %s", word.ptrVal)
@@ -592,10 +592,10 @@ Word gcForward(VM vm, Word word, Type type)
 /**
 Forward a word/value pair
 */
-uint64 gcForward(VM vm, uint64 word, uint8 type)
+uint64 gcForward(VM vm, uint64 word, uint8 tag)
 {
     // Forward the pointer
-    return gcForward(vm, Word.uint64v(word), cast(Type)type).uint64Val;
+    return gcForward(vm, Word.uint64v(word), cast(Tag)tag).uint64Val;
 }
 
 /**
@@ -673,7 +673,7 @@ void visitStackRoots(VM vm)
     auto visitFrame = delegate void(
         IRFunction fun,
         Word* wsp,
-        Type* tsp,
+        Tag* tsp,
         size_t depth,
         size_t frameSize,
         IRInstr curInstr
@@ -687,17 +687,17 @@ void visitStackRoots(VM vm)
             //writefln("ref %s/%s", idx, frameSize);
 
             Word word = wsp[idx];
-            Type type = tsp[idx];
+            Tag tag = tsp[idx];
 
-            //writefln("type: %s", type);
+            //writefln("tag: %s", tag);
 
             // If this is a pointer, forward it
-            wsp[idx] = gcForward(vm, word, type);
+            wsp[idx] = gcForward(vm, word, tag);
 
             auto fwdPtr = wsp[idx].ptrVal;
 
             assert (
-                !isHeapPtr(type) ||
+                !isHeapPtr(tag) ||
                 fwdPtr == null ||
                 vm.inToSpace(fwdPtr),
                 format(
@@ -753,7 +753,7 @@ void visitStackRoots(VM vm)
             // Note: the closure pointer is not type tagged
             //writeln("forwarding clos val");
             auto closIdx = fun.closVal.outSlot;
-            wsp[closIdx] = gcForward(vm, wsp[closIdx], Type.CLOSURE);
+            wsp[closIdx] = gcForward(vm, wsp[closIdx], Tag.CLOSURE);
 
             // Forward the "this" pointer
             //writeln("forwarding this val");
@@ -763,7 +763,7 @@ void visitStackRoots(VM vm)
         // Forward the return address
         // Note: the return address is not type tagged
         auto raIdx = fun.raVal.outSlot;
-        wsp[raIdx] = gcForward(vm, wsp[raIdx], Type.RETADDR);
+        wsp[raIdx] = gcForward(vm, wsp[raIdx], Tag.RETADDR);
 
         // Forward supernumerary arguments, if any
         size_t extraArgs = frameSize - fun.numLocals;

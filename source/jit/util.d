@@ -220,7 +220,7 @@ auto wordStackOpnd(int32_t idx, size_t numBits = 64)
 // Get a type stack operand
 auto typeStackOpnd(int32_t idx)
 {
-    return X86Opnd(8, tspReg, cast(int32_t)Type.sizeof * idx);
+    return X86Opnd(8, tspReg, cast(int32_t)Tag.sizeof * idx);
 }
 
 /// Read from the word stack
@@ -268,9 +268,9 @@ void setType(CodeBlock as, int32_t idx, X86Opnd srcOpnd)
 }
 
 /// Write a constant to the type stack
-void setType(CodeBlock as, int32_t idx, Type type)
+void setType(CodeBlock as, int32_t idx, Tag tag)
 {
-    as.mov(typeStackOpnd(idx), X86Opnd(type));
+    as.mov(typeStackOpnd(idx), X86Opnd(tag));
 }
 
 /// Store/save the JIT state register
@@ -485,7 +485,7 @@ void printStack(CodeBlock as, VM vm, IRInstr curInstr)
             delegate void(
                 IRFunction fun,
                 Word* wsp,
-                Type* tsp,
+                Tag* tsp,
                 size_t depth,
                 size_t frameSize,
                 IRInstr callInstr

@@ -119,7 +119,7 @@ struct ValType
     mixin(bitfields!(
 
         /// Type tag bits, if known
-        Type, "tag", 4,
+        Tag, "tag", 4,
 
         /// Known tag flag
         bool, "tagKnown", 1,
@@ -135,11 +135,11 @@ struct ValType
     this(ValuePair val)
     {
         assert (
-            val.type < 16,
-            "ValuePair ctor, invalid type tag: " ~ to!string(cast(int)val.type)
+            val.tag < 16,
+            "ValuePair ctor, invalid type tag: " ~ to!string(cast(int)val.tag)
         );
 
-        this.tag = val.type;
+        this.tag = val.tag;
         this.tagKnown = true;
         this.shapeKnown = false;
 
@@ -148,7 +148,7 @@ struct ValType
             // Get the object shape
             this.shape = cast(ObjShape)obj_get_shape(val.ptr);
         }
-        else if (this.tag is Type.FUNPTR)
+        else if (this.tag is Tag.FUNPTR)
         {
             this.fun = val.word.funVal;
         }
@@ -159,7 +159,7 @@ struct ValType
     }
 
     /// Constructor taking a type tag only
-    this(Type tag)
+    this(Tag tag)
     {
         assert (
             tag < 16,
@@ -173,7 +173,7 @@ struct ValType
     }
 
     /// Constructor taking a type tag and shape
-    this(Type tag, ObjShape shape)
+    this(Tag tag, ObjShape shape)
     {
         assert (
             tag < 16,
@@ -411,7 +411,7 @@ ValuePair newObj(
 
     // Allocate the object
     auto objPtr = obj_alloc(vm, initCap);
-    auto objPair = ValuePair(objPtr, Type.OBJECT);
+    auto objPair = ValuePair(objPtr, Tag.OBJECT);
 
     obj_set_shape(objPtr, cast(rawptr)vm.emptyShape);
 
@@ -435,7 +435,7 @@ ValuePair newClos(
 
     // Allocate the closure object
     auto objPtr = clos_alloc(vm, OBJ_MIN_CAP, allocNumCells);
-    auto objPair = ValuePair(objPtr, Type.CLOSURE);
+    auto objPair = ValuePair(objPtr, Tag.CLOSURE);
 
     obj_set_shape(objPair.word.ptrVal, cast(rawptr)vm.emptyShape);
 
@@ -456,14 +456,14 @@ IRFunction getFunPtr(refptr closPtr)
 ValuePair getSlotPair(refptr objPtr, uint32_t slotIdx)
 {
     auto pWord = Word.uint64v(obj_get_word(objPtr, slotIdx));
-    auto pType = cast(Type)obj_get_type(objPtr, slotIdx);
+    auto pType = cast(Tag)obj_get_type(objPtr, slotIdx);
     return ValuePair(pWord, pType);
 }
 
 void setSlotPair(refptr objPtr, uint32_t slotIdx, ValuePair val)
 {
     obj_set_word(objPtr, slotIdx, val.word.uint64Val);
-    obj_set_type(objPtr, slotIdx, val.type);
+    obj_set_type(objPtr, slotIdx, val.tag);
 }
 
 ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
@@ -526,14 +526,14 @@ void setProp(
         switch (header)
         {
             case LAYOUT_OBJ:
-            return ValuePair(obj_alloc(vm, extCap), Type.OBJECT);
+            return ValuePair(obj_alloc(vm, extCap), Tag.OBJECT);
 
             case LAYOUT_ARR:
-            return ValuePair(arr_alloc(vm, extCap), Type.ARRAY);
+            return ValuePair(arr_alloc(vm, extCap), Tag.ARRAY);
 
             case LAYOUT_CLOS:
             auto numCells = clos_get_num_cells(obj);
-            return ValuePair(clos_alloc(vm, extCap, numCells), Type.CLOSURE);
+            return ValuePair(clos_alloc(vm, extCap, numCells), Tag.CLOSURE);
 
             default:
             assert (false, "unhandled object type");
@@ -544,8 +544,8 @@ void setProp(
     auto val = GCRoot(vm, valPair);
 
     assert (
-        valPair.type < 16,
-        "setProp, invalid tag=" ~ to!string(cast(int)val.type) ~
+        valPair.tag < 16,
+        "setProp, invalid tag=" ~ to!string(cast(int)val.tag) ~
         ", propName=" ~ to!string(propStr)
     );
 
@@ -625,7 +625,7 @@ void setProp(
     else 
     {
         // Get the extension table pointer
-        auto extTbl = GCRoot(vm, obj_get_next(obj.ptr), Type.OBJECT);
+        auto extTbl = GCRoot(vm, obj_get_next(obj.ptr), Tag.OBJECT);
 
         // If the extension table isn't yet allocated
         if (extTbl.ptr is null)

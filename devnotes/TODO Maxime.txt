@@ -170,6 +170,7 @@ NOTE: now, if prop name unknown (e.g.: runtime), we always take the slow path
 - Inline cache in getProp could be a big win
 
 Meeting:
+- Refactored code to distinguish Type and Tag
 - Implemented capture_tag
   - added code to take into account the implicit type tests
 - Rewrote optimized set_prop
@@ -198,19 +199,33 @@ TODO: rewrite getProp to not use defShape info
 FIXME: bitwise-and is slow
 - 6 times writing the shape pointer to a register!
 
+TODO: st.setType(type, shape), is that ever used?
+- If not, eliminate convert setType(tag) to setTag
+
+TODO: grep for Type
+
 TODO: refactorings
 - get_type => get_tag
+
+TODO:
+retTypeReg => retTagReg
+state.setType => state.setTag
+as.getType in jit/utils, as.setType
+getTypeOpnd => getTagOpnd
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: refactorings
 - Type => Tag
-
-
-
-
-
-
-
-
-
-
+- type => tag
+- Type type => Tag tag
 
 [DONE] TODO: refactorings
 typeWritten => tagWritten

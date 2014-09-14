@@ -70,7 +70,7 @@ void assertInt(VM vm, string input, int32 intVal)
     auto ret = vm.evalString(input);
 
     assert (
-        ret.type == Type.INT32,
+        ret.tag == Tag.INT32,
         "non-integer value: " ~ ret.toString ~ "\n" ~
         "for input:\n" ~
         input
@@ -94,12 +94,12 @@ void assertFloat(VM vm, string input, double floatVal, double eps = 1E-4)
     auto ret = vm.evalString(input);
 
     assert (
-        ret.type == Type.INT32 ||
-        ret.type == Type.FLOAT64,
+        ret.tag == Tag.INT32 ||
+        ret.tag == Tag.FLOAT64,
         "non-numeric value: " ~ ret.toString
     );
 
-    auto fRet = (ret.type == Type.FLOAT64)? ret.word.floatVal:ret.word.int32Val;
+    auto fRet = (ret.tag == Tag.FLOAT64)? ret.word.floatVal:ret.word.int32Val;
 
     assert (
         abs(fRet - floatVal) <= eps,
@@ -119,7 +119,7 @@ void assertBool(VM vm, string input, bool boolVal)
     auto ret = vm.evalString(input);
 
     assert (
-        ret.type == Type.CONST,
+        ret.tag == Tag.CONST,
         "non-const value: " ~ ret.toString
     );
 
@@ -141,7 +141,7 @@ void assertStr(VM vm, string input, string strVal)
     auto ret = vm.evalString(input);
 
     assert (
-        ret.type is Type.STRING,
+        ret.tag is Tag.STRING,
         "non-string value: " ~ ret.toString ~ "\n" ~
         "for eval string \"" ~ input ~ "\""
     );
@@ -200,7 +200,7 @@ unittest
     // Constant integer 1
     auto v = vm.evalString("1");
     assert (v.word.int32Val == 1);
-    assert (v.type is Type.INT32);
+    assert (v.tag is Tag.INT32);
 
     // 32-bit integer add
     vm.assertInt("$ir_add_i32(1, 2)", 3);

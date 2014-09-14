@@ -153,7 +153,7 @@ struct ValState
     bool isConst() const { return kind is Kind.CONST; }
 
     bool tagKnown() const { return type.tagKnown; }
-    Type tag() const { assert (tagKnown); return type.tag; }
+    Tag tag() const { assert (tagKnown); return type.tag; }
     bool shapeKnown() const { return type.shapeKnown; }
     ObjShape shape() const { return cast(ObjShape)type.shape; }
 
@@ -186,7 +186,7 @@ struct ValState
     }
 
     /// Set the type tag for this value
-    ValState setType(Type tag) const
+    ValState setType(Tag tag) const
     {
         assert (!isConst);
 
@@ -196,7 +196,7 @@ struct ValState
     }
 
     /// Set the type tag and shape for this value
-    ValState setType(Type tag, ObjShape shape) const
+    ValState setType(Tag tag, ObjShape shape) const
     {
         assert (!isConst);
 
@@ -306,8 +306,8 @@ class CodeGenState
             mapToStack(param);
 
         // Set the types for the closure and argument count values
-        setType(fun.closVal, Type.CLOSURE);
-        setType(fun.argcVal, Type.INT32);
+        setType(fun.closVal, Tag.CLOSURE);
+        setType(fun.argcVal, Tag.INT32);
     }
 
     /**
@@ -403,7 +403,7 @@ class CodeGenState
             if (argTypeOpnd.isImm)
             {
                 // Set the phi type
-                phiState = phiState.setType(cast(Type)argTypeOpnd.imm.imm);
+                phiState = phiState.setType(cast(Tag)argTypeOpnd.imm.imm);
             }
 
             // Set the phi node's new state
@@ -506,7 +506,7 @@ class CodeGenState
                     return size_t.max;
 
                 // If the known types do not match, mismatch
-                if (predSt.type != succSt.type)
+                if (predSt.tag != succSt.tag)
                     return size_t.max;
             }
             else 
@@ -1167,10 +1167,10 @@ class CodeGenState
             // If the value is a string
             if (auto argStr = cast(IRString)value)
             {
-                return X86Opnd(Type.STRING);
+                return X86Opnd(Tag.STRING);
             }
 
-            return X86Opnd(value.cstValue.type);
+            return X86Opnd(value.cstValue.tag);
         }
 
         // Get the type operand for this value
@@ -1218,7 +1218,7 @@ class CodeGenState
     void setOutType(
         CodeBlock as,
         IRInstr instr,
-        Type tag
+        Tag tag
     )
     {
         assert (
@@ -1260,13 +1260,13 @@ class CodeGenState
     }
 
     /// Add type information for a given value
-    void setType(IRDstValue value, Type type)
+    void setType(IRDstValue value, Tag tag)
     {
         assert (value in valMap);
         ValState state = getState(value);
 
         // Assert that we aren't contradicting existing information
-        assert (!state.tagKnown || state.tag is type);
+        assert (!state.tagKnown || state.tag is tag);
 
         // If the type was previously unknown, it must have
         // been written on the stack, mark it as such
@@ -1274,7 +1274,7 @@ class CodeGenState
             state = state.writeTag();
 
         // Set a known type for this value
-        valMap[value] = state.setType(type);
+        valMap[value] = state.setType(tag);
     }
 
     /// Get the type for a given value
@@ -1291,10 +1291,10 @@ class CodeGenState
         // If the value is a string
         if (auto argStr = cast(IRString)value)
         {
-            return ValType(Type.STRING);
+            return ValType(Tag.STRING);
         }
 
-        return ValType(value.cstValue.type);
+        return ValType(value.cstValue.tag);
     }
 
     // TODO: eliminate in favor of getType?
@@ -2636,7 +2636,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Set the "this" argument (global object)
     as.getMember!("VM.globalObj.word")(scrRegs[0], vmReg);
     as.setWord(-2, scrRegs[0].opnd);
-    as.setType(-2, Type.OBJECT);
+    as.setType(-2, Tag.OBJECT);
 
     // Set the closure argument (null)
     as.setWord(-3, X86Opnd(0));

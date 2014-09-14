@@ -95,7 +95,7 @@ void inlinePass(VM vm, IRFunction caller)
         // Get the primitve function from the global object
         auto closVal = getProp(vm, vm.globalObj, nameStr);
         assert (
-            closVal.type is Type.CLOSURE ||
+            closVal.tag is Tag.CLOSURE ||
             (caller.isUnit() && caller.getName.canFind("runtime")),
             format(
                 "cannot inline non-closure \"%s\" in \"%s\"", 
@@ -105,7 +105,7 @@ void inlinePass(VM vm, IRFunction caller)
         );
 
         // If the closure is not available, skip it
-        if (closVal.type !is Type.CLOSURE)
+        if (closVal.tag !is Tag.CLOSURE)
             continue;
 
         assert (closVal.word.ptrVal !is null);
@@ -179,9 +179,9 @@ void inlinePass(VM vm, IRFunction caller)
                 auto val = getProp(vm, vm.globalObj, propName);
 
                 IRConst newVal;
-                if (val.type is Type.INT32)
+                if (val.tag is Tag.INT32)
                     newVal = IRConst.int32Cst(val.word.int32Val);
-                else if (val.type is Type.FLOAT64)
+                else if (val.tag is Tag.FLOAT64)
                     newVal = IRConst.float64Cst(val.word.floatVal);
                 else if (val is UNDEF)
                     newVal = IRConst.undefCst;
