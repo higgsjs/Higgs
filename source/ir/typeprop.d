@@ -333,7 +333,7 @@ class TypeProp
             }
 
             // Get type
-            if (op is &GET_TYPE)
+            if (op is &GET_TAG)
             {
                 return arg0Type;
             }

@@ -107,7 +107,7 @@ void gen_get_arg(
     // Copy the type value
     auto typeSlot = X86Opnd(8, tspReg, 1 * argSlot, 1, idxReg64.reg);
     as.mov(scrRegs[1].opnd(8), typeSlot);
-    st.setOutType(as, instr, scrRegs[1].reg(8));
+    st.setOutTag(as, instr, scrRegs[1].reg(8));
 }
 
 void gen_make_value(
@@ -125,9 +125,9 @@ void gen_make_value(
         as.mov(outOpnd, wordOpnd);
 
     // Get the type value from the second operand
-    auto typeOpnd = st.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
-    assert (typeOpnd.isGPR);
-    st.setOutType(as, instr, typeOpnd.reg);
+    auto tagOpnd = st.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
+    assert (tagOpnd.isGPR);
+    st.setOutTag(as, instr, tagOpnd.reg);
 }
 
 void gen_get_word(
@@ -142,34 +142,34 @@ void gen_get_word(
 
     as.mov(outOpnd, wordOpnd);
 
-    st.setOutType(as, instr, Tag.INT64);
+    st.setOutTag(as, instr, Tag.INT64);
 }
 
-void gen_get_type(
+void gen_get_tag(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto typeOpnd = st.getTypeOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+    auto tagOpnd = st.getTagOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
     auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    if (typeOpnd.isImm)
+    if (tagOpnd.isImm)
     {
-        as.mov(outOpnd, typeOpnd);
+        as.mov(outOpnd, tagOpnd);
     }
     else if (outOpnd.isGPR)
     {
-        as.movzx(outOpnd, typeOpnd);
+        as.movzx(outOpnd, tagOpnd);
     }
     else
     {
-        as.movzx(scrRegs[0].opnd(32), typeOpnd);
+        as.movzx(scrRegs[0].opnd(32), tagOpnd);
         as.mov(outOpnd, scrRegs[0].opnd(32));
     }
 
-    st.setOutType(as, instr, Tag.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 void gen_i32_to_f64(
@@ -189,7 +189,7 @@ void gen_i32_to_f64(
     as.cvtsi2sd(X86Opnd(XMM0), opnd0);
 
     as.movq(outOpnd, X86Opnd(XMM0));
-    st.setOutType(as, instr, Tag.FLOAT64);
+    st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 void gen_f64_to_i32(
@@ -209,7 +209,7 @@ void gen_f64_to_i32(
     as.cvttsd2si(scrRegs[0].opnd(64), X86Opnd(XMM0));
     as.mov(outOpnd, scrRegs[0].opnd(32));
 
-    st.setOutType(as, instr, Tag.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 void RMMOp(string op, size_t numBits, Tag tag)(
@@ -299,8 +299,8 @@ void RMMOp(string op, size_t numBits, Tag tag)(
         }
     }
 
-    // Set the output type
-    st.setOutType(as, instr, tag);
+    // Set the output type tag
+    st.setOutTag(as, instr, tag);
 
     // If the instruction has an exception/overflow target
     if (instr.getTarget(0))
@@ -386,8 +386,8 @@ void gen_add_ptr_i32(
     as.mov(opndOut, opnd0);
     as.add(opndOut, scrRegs[1].opnd);
 
-    // Set the output type
-    st.setOutType(as, instr, Tag.RAWPTR);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.RAWPTR);
 }
 
 void divOp(string op)(
@@ -428,8 +428,8 @@ void divOp(string op)(
     else
         assert (false);
 
-    // Set the output type
-    st.setOutType(as, instr, Tag.INT32);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 alias divOp!("div") gen_div_i32;
@@ -448,8 +448,8 @@ void gen_not_i32(
     as.mov(outOpnd, opnd0);
     as.not(outOpnd);
 
-    // Set the output type
-    st.setOutType(as, instr, Tag.INT32);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 void ShiftOp(string op)(
@@ -515,8 +515,8 @@ void ShiftOp(string op)(
     if (shiftOpnd != outOpnd)
         as.mov(outOpnd, shiftOpnd);
 
-    // Set the output type
-    st.setOutType(as, instr, Tag.INT32);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 alias ShiftOp!("sal") gen_lsft_i32;
@@ -554,8 +554,8 @@ void FPOp(string op)(
 
     as.movq(outOpnd, X86Opnd(XMM0));
 
-    // Set the output type
-    st.setOutType(as, instr, Tag.FLOAT64);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 alias FPOp!("add") gen_add_f64;
@@ -603,7 +603,7 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     // Store the output value into the output operand
     as.movq(outOpnd, X86Opnd(XMM0));
 
-    st.setOutType(as, instr, Tag.FLOAT64);
+    st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 alias HostFPOp!(std.c.math.sin) gen_sin_f64;
@@ -661,7 +661,7 @@ void FPToStr(string fmt)(
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
 
-    st.setOutType(as, instr, Tag.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
 alias FPToStr!("%G") gen_f64_to_str;
@@ -739,7 +739,7 @@ void LoadOp(size_t memSize, bool signed, Tag tag)(
     }
 
     // Set the output type tag
-    st.setOutType(as, instr, tag);
+    st.setOutTag(as, instr, tag);
 }
 
 alias LoadOp!(8 , false, Tag.INT32) gen_load_u8;
@@ -749,7 +749,7 @@ alias LoadOp!(64, false, Tag.INT64) gen_load_u64;
 alias LoadOp!(8 , true , Tag.INT32) gen_load_i8;
 alias LoadOp!(16, true , Tag.INT32) gen_load_i16;
 alias LoadOp!(32, true , Tag.INT32) gen_load_i32;
-alias LoadOp!(64, true, Tag.INT64) gen_load_i64;
+alias LoadOp!(64, true , Tag.INT64) gen_load_i64;
 alias LoadOp!(64, false, Tag.FLOAT64) gen_load_f64;
 alias LoadOp!(64, false, Tag.REFPTR) gen_load_refptr;
 alias LoadOp!(64, false, Tag.RAWPTR) gen_load_rawptr;
@@ -819,15 +819,15 @@ void IsTypeOp(Tag tag)(
     //as.printStr("    " ~ instr.block.fun.getName);
 
     // Get an operand for the value's type
-    auto typeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
+    auto tagOpnd = st.getTagOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     auto testResult = TestResult.UNKNOWN;
 
     // If the type is available through basic block versioning
-    if (typeOpnd.isImm)
+    if (tagOpnd.isImm)
     {
         // Get the known type
-        auto knownTag = cast(Tag)typeOpnd.imm.imm;
+        auto knownTag = cast(Tag)tagOpnd.imm.imm;
 
         // Get the test result
         testResult = (tag is knownTag)? TestResult.TRUE:TestResult.FALSE;
@@ -891,7 +891,7 @@ void IsTypeOp(Tag tag)(
             auto outOpnd = st.getOutOpnd(as, instr, 64);
             auto outVal = boolResult? TRUE:FALSE;
             as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            st.setOutType(as, instr, Tag.CONST);
+            st.setOutTag(as, instr, Tag.CONST);
         }
 
         // If our only use is an immediately following if_true
@@ -934,7 +934,7 @@ void IsTypeOp(Tag tag)(
     as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs[1]);
 
     // Compare against the tested type
-    as.cmp(typeOpnd, X86Opnd(tag));
+    as.cmp(tagOpnd, X86Opnd(tag));
 
     // If this instruction has many uses or is not followed by an if_true
     if (instr.hasManyUses || ifUseNext(instr) is false)
@@ -952,8 +952,8 @@ void IsTypeOp(Tag tag)(
         if (outReg != outOpnd)
             as.mov(outOpnd, outReg.reg.opnd(64));
 
-        // Set the output type
-        st.setOutType(as, instr, Tag.CONST);
+        // Set the output type tag
+        st.setOutTag(as, instr, Tag.CONST);
     }
 
     // If our only use is an immediately following if_true
@@ -967,7 +967,7 @@ void IsTypeOp(Tag tag)(
             if (auto dstArg = cast(IRDstValue)instr.getArg(0))
             {
                 trueSt = new CodeGenState(trueSt);
-                trueSt.setType(dstArg, tag);
+                trueSt.setTag(dstArg, tag);
             }
         }
 
@@ -1050,7 +1050,7 @@ void CmpOp(string op, size_t numBits)(
                     auto outOpnd = st.getOutOpnd(as, instr, 64);
                     auto outVal = boolResult? TRUE:FALSE;
                     as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-                    st.setOutType(as, instr, Tag.CONST);
+                    st.setOutTag(as, instr, Tag.CONST);
                 }
 
                 // If our only use is an immediately following if_true
@@ -1291,8 +1291,8 @@ void CmpOp(string op, size_t numBits)(
         if (outReg != outOpnd)
             as.mov(outOpnd, outReg.reg.opnd(64));
 
-        // Set the output type
-        st.setOutType(as, instr, Tag.CONST);
+        // Set the output type tag
+        st.setOutTag(as, instr, Tag.CONST);
     }
 
     // If there is an immediately following if_true using this value
@@ -1644,7 +1644,7 @@ void genCallBranch(
             if (instr.hasUses)
             {
                 as.setWord(instr.outSlot, retWordReg.opnd(64));
-                as.setType(instr.outSlot, retTypeReg.opnd(8));
+                as.setTag(instr.outSlot, retTagReg.opnd(8));
             }
         }
     );
@@ -1664,8 +1664,8 @@ void genCallBranch(
                 as.add(wspReg, Word.sizeof);
                 as.getWord(scrRegs[0], -1);
                 as.setWord(instr.outSlot, scrRegs[0].opnd(64));
-                as.getType(scrRegs[0].reg(8), -1);
-                as.setType(instr.outSlot, scrRegs[0].opnd(8));
+                as.getTag(scrRegs[0].reg(8), -1);
+                as.setTag(instr.outSlot, scrRegs[0].opnd(8));
             }
         );
     }
@@ -1793,14 +1793,14 @@ void gen_call_prim(
         as.setWord(dstIdx, argOpnd);
 
         // Copy the argument type
-        auto typeOpnd = st.getTypeOpnd(
+        auto tagOpnd = st.getTagOpnd(
             as,
             instr,
             instrArgIdx,
             scrRegs[1].opnd(8),
             true
         );
-        as.setType(dstIdx, typeOpnd);
+        as.setTag(dstIdx, tagOpnd);
     }
 
     // Write the argument count
@@ -1889,7 +1889,7 @@ void gen_call(
     //
 
     // Get the type tag for the closure value
-    auto closType = st.getTypeOpnd(
+    auto closType = st.getTagOpnd(
         as,
         instr,
         0,
@@ -1979,14 +1979,14 @@ void gen_call(
         movArgWord(as, i, argOpnd);
 
         // Copy the argument type
-        auto typeOpnd = st.getTypeOpnd(
+        auto tagOpnd = st.getTagOpnd(
             as,
             instr,
             instrArgIdx,
             scrReg3.opnd(8),
             true
         );
-        movArgType(as, i, typeOpnd);
+        movArgType(as, i, tagOpnd);
     }
 
     // Write the argument count
@@ -2003,14 +2003,14 @@ void gen_call(
         false
     );
     movArgWord(as, numArgs + 1, thisReg);
-    auto typeOpnd = st.getTypeOpnd(
+    auto tagOpnd = st.getTagOpnd(
         as,
         instr,
         1,
         scrReg3.opnd(8),
         true
     );
-    movArgType(as, numArgs + 1, typeOpnd);
+    movArgType(as, numArgs + 1, tagOpnd);
 
     // Write the closure argument
     movArgWord(as, numArgs + 2, closReg);
@@ -2120,7 +2120,7 @@ void gen_call_apply(
         for (uint32_t i = 0; i < argcVal; ++i)
         {
             argVals[i].word.uint64Val = arrtbl_get_word(tblPtr, i);
-            argVals[i].tag = cast(Tag)arrtbl_get_type(tblPtr, i);
+            argVals[i].tag = cast(Tag)arrtbl_get_tag(tblPtr, i);
         }
 
         // Prepare the callee stack frame
@@ -2467,11 +2467,11 @@ void gen_ret(
     );
 
     // Get the return value type operand
-    auto typeOpnd = st.getTypeOpnd(
+    auto tagOpnd = st.getTagOpnd(
         as,
         instr,
         0,
-        (retOpnd != retTypeReg.opnd(64))? retTypeReg.opnd(8):scrRegs[1].opnd(8),
+        (retOpnd != retTagReg.opnd(64))? retTagReg.opnd(8):scrRegs[1].opnd(8),
         true
     );
 
@@ -2480,8 +2480,8 @@ void gen_ret(
     // Move the return word and type to the return registers
     if (retWordReg.opnd != retOpnd)
         as.mov(retWordReg.opnd, retOpnd);
-    if (retTypeReg.opnd(8) != typeOpnd)
-        as.mov(retTypeReg.opnd(8), typeOpnd);
+    if (retTagReg.opnd(8) != tagOpnd)
+        as.mov(retTagReg.opnd(8), tagOpnd);
 
     // If this is a runtime primitive function
     if (fun.isPrim)
@@ -2538,7 +2538,7 @@ void gen_throw(
 {
     // Get the string pointer
     auto excWordOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
-    auto excTypeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
+    auto excTypeOpnd = st.getTagOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     // Spill the values live before the instruction
     st.spillValues(
@@ -2583,7 +2583,7 @@ void GetValOp(Tag tag, string fName)(
     as.getMember!("VM." ~ fName)(scrRegs[0].reg(fSize), vmReg);
     as.mov(outOpnd, scrRegs[0].opnd(fSize));
 
-    st.setOutType(as, instr, tag);
+    st.setOutTag(as, instr, tag);
 }
 
 alias GetValOp!(Tag.OBJECT, "objProto.word") gen_get_obj_proto;
@@ -2609,7 +2609,7 @@ void gen_get_heap_free(
 
     as.mov(outOpnd, scrRegs[1].opnd(32));
 
-    st.setOutType(as, instr, Tag.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 void HeapAllocOp(Tag tag)(
@@ -2706,7 +2706,7 @@ void HeapAllocOp(Tag tag)(
     as.label(Label.DONE);
 
     // Set the output type tag
-    st.setOutType(as, instr, tag);
+    st.setOutTag(as, instr, tag);
 }
 
 alias HeapAllocOp!(Tag.REFPTR) gen_alloc_refptr;
@@ -2810,7 +2810,7 @@ void gen_get_str(
     as.mov(outOpnd, X86Opnd(RAX));
 
     // The output is a reference pointer
-    st.setOutType(as, instr, Tag.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_make_link(
@@ -2838,7 +2838,7 @@ void gen_make_link(
     as.mov(outOpnd, X86Opnd(linkArg.linkIdx));
 
     // Set the output type
-    st.setOutType(as, instr, Tag.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 void gen_set_link(
@@ -2859,7 +2859,7 @@ void gen_set_link(
     as.mov(wordMem, valWord);
 
     // Set the link type
-    auto valType = st.getTypeOpnd(as, instr, 1, scrRegs[1].opnd(8));
+    auto valType = st.getTagOpnd(as, instr, 1, scrRegs[1].opnd(8));
     as.getMember!("VM.tLinkTable")(scrRegs[2], vmReg);
     auto typeMem = X86Opnd(8, scrRegs[2], 0, Tag.sizeof, idxReg.reg);
     as.mov(typeMem, valType);
@@ -2889,7 +2889,7 @@ void gen_get_link(
     as.getMember!("VM.tLinkTable")(scrRegs[1], vmReg);
     auto typeMem = X86Opnd(8, scrRegs[1], 0, Tag.sizeof, idxReg.reg);
     as.mov(scrRegs[1].opnd(8), typeMem);
-    st.setOutType(as, instr, scrRegs[1].reg(8));
+    st.setOutTag(as, instr, scrRegs[1].reg(8));
 }
 
 /*
@@ -3122,7 +3122,7 @@ void gen_map_prop_idx(
     }
 
     // Set the output type
-    st.setOutType(as, instr, Tag.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 }
 */
 
@@ -3434,7 +3434,7 @@ void gen_shape_get_def(
         as.ptr(outOpnd.reg, defShape);
 
         // Set the output type and shape for this instruction
-        st.setOutType(as, instr, Tag.SHAPEPTR);
+        st.setOutTag(as, instr, Tag.SHAPEPTR);
         st.setShape(instr, defShape);
 
         // Get the default version for the successor block
@@ -3488,7 +3488,7 @@ void gen_shape_get_def(
         assert (scrReg3.opnd != opnd0);
 
         // Set the output type for this instruction
-        st.setOutType(as, instr, Tag.SHAPEPTR);
+        st.setOutTag(as, instr, Tag.SHAPEPTR);
 
         // Label for doing a new inline cache lookup
         as.label(Label.RETRY);
@@ -3577,7 +3577,7 @@ void gen_shape_get_def(
         as.mov(outOpnd, cretReg.opnd);
 
         // Set the output type for this instruction
-        st.setOutType(as, instr, Tag.SHAPEPTR);
+        st.setOutTag(as, instr, Tag.SHAPEPTR);
 
         // Get the default version for the successor block
         auto branch = getBranchEdge(
@@ -3672,7 +3672,7 @@ void gen_capture_tag(
 
             // Create a new state object where the value's type tag is known
             auto targetSt = new CodeGenState(defSt);
-            targetSt.setType(argVal, argTag);
+            targetSt.setTag(argVal, argTag);
 
             // Create a version instance object for the target
             auto targetInst = getBranchEdge(
@@ -3685,7 +3685,7 @@ void gen_capture_tag(
             ver.targets ~= targetInst;
 
             // Get the type operand for the value
-            auto typeOpnd = defSt.getTypeOpnd(argVal);
+            auto tagOpnd = defSt.getTagOpnd(argVal);
 
             auto curPos = as.getWritePos();
             as.setWritePos(cachePos);
@@ -3706,7 +3706,7 @@ void gen_capture_tag(
                 as.incStatCnt(stats.getTypeTestCtr(testName), scrRegs[0]);
 
                 // Compare this entry's type tag with the value's tag
-                as.cmp(typeOpnd, X86Opnd(valType.tag));
+                as.cmp(tagOpnd, X86Opnd(valType.tag));
 
                 // If equal, jump to the cached target
                 je32Ref(as, vm, branch, targetIdx);
@@ -3847,7 +3847,7 @@ void gen_capture_tag(
         ver.extInfo = extInfo;
 
         // Get the type operand
-        auto typeOpnd = st.getTypeOpnd(as, instr, 0);
+        auto tagOpnd = st.getTagOpnd(as, instr, 0);
 
         // Label for doing a new inline cache lookup
         as.label(Label.RETRY);
@@ -3860,7 +3860,7 @@ void gen_capture_tag(
             as.incStatCnt(stats.getTypeTestCtr("is_int32"), scrRegs[0], 0);
 
             // Compare this entry's type tag with the value's tag
-            as.cmp(typeOpnd, X86Opnd(0x7F));
+            as.cmp(tagOpnd, X86Opnd(0x7F));
 
             // If equal, jump to the cached target
             if (opts.jit_genasm)
@@ -4032,7 +4032,7 @@ void gen_shape_set_prop(
 
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
-        auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
+        auto tagOpnd = st.getTagOpnd(as, instr, 3, X86Opnd.NONE, true);
         assert (objOpnd.isReg);
 
         // If we need to update the type tag or we need to check the object capacity
@@ -4079,7 +4079,7 @@ void gen_shape_set_prop(
         {
             // Update the type tag
             auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
-            as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
+            as.genMove(typeMem, tagOpnd, scrRegs[2].opnd);
 
             // Create a new shape for the property
             objShape = objShape.defProp(
@@ -4120,7 +4120,7 @@ void gen_shape_set_prop(
     {
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[0].opnd(64), true);
-        auto typeOpnd = st.getTypeOpnd(as, instr, 3, scrRegs[1].opnd(8), true);
+        auto tagOpnd = st.getTagOpnd(as, instr, 3, scrRegs[1].opnd(8), true);
         assert (objOpnd.isReg);
 
         // Get the object capacity into r2
@@ -4130,7 +4130,7 @@ void gen_shape_set_prop(
         auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
         auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[2]);
         as.mov(wordMem, valOpnd);
-        as.mov(typeMem, typeOpnd);
+        as.mov(typeMem, tagOpnd);
 
         // Update the object shape
         as.ptr(scrRegs[0].reg, defShape);
@@ -4216,7 +4216,7 @@ void gen_shape_get_prop(
         as.mov(outOpnd, wordMem);
 
         // Propagate the shape type
-        st.setOutType(as, instr, defShape.type.tag);
+        st.setOutTag(as, instr, defShape.type.tag);
     }
     else
     {
@@ -4257,7 +4257,7 @@ void gen_shape_get_prop(
         as.add(scrRegs[1].opnd, scrRegs[2].opnd); // r2 = cap * 8 + slotIdx
         auto typeMem = X86Opnd(8 , scrRegs[0], OBJ_WORD_OFS, 1, scrRegs[1]);
         as.mov(scrRegs[1].opnd(8), typeMem);
-        st.setOutType(as, instr, scrRegs[1].reg(8));
+        st.setOutTag(as, instr, scrRegs[1].reg(8));
     }
 }
 
@@ -4288,7 +4288,7 @@ void gen_shape_get_proto(
     as.mov(scrRegs[2].opnd(8), typeMem);
 
     // Set the output type
-    st.setOutType(as, instr, scrRegs[2].reg(8));
+    st.setOutTag(as, instr, scrRegs[2].reg(8));
 }
 
 /// Define a constant property
@@ -4357,14 +4357,14 @@ void gen_shape_def_const(
         assert (objOpnd.isReg);
         auto valOpnd = st.getWordOpnd(as, instr, 2, 64);
         assert (valOpnd.isReg);
-        auto typeOpnd = st.getTypeOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
+        auto tagOpnd = st.getTagOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
 
         // Set the prototype value and type
         as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
         auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * PROTO_SLOT_IDX);
         auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + PROTO_SLOT_IDX, 8, scrRegs[0]);
         as.mov(wordMem, valOpnd);
-        as.mov(typeMem, typeOpnd);
+        as.mov(typeMem, tagOpnd);
 
         // Update the object shape
         as.ptr(scrRegs[0].reg, newShape);
@@ -4466,7 +4466,7 @@ void gen_shape_parent(
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd);
-    st.setOutType(as, instr, Tag.SHAPEPTR);
+    st.setOutTag(as, instr, Tag.SHAPEPTR);
 
     as.loadJITRegs();
 }
@@ -4512,7 +4512,7 @@ void gen_shape_prop_name(
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd);
-    st.setOutType(as, instr, Tag.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 
     as.loadJITRegs();
 }
@@ -4547,7 +4547,7 @@ void gen_shape_get_attrs(
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd(32));
-    st.setOutType(as, instr, Tag.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 
     as.loadJITRegs();
 }
@@ -4582,7 +4582,7 @@ void gen_shape_is_getset(
             auto outOpnd = st.getOutOpnd(as, instr, 64);
             auto outVal = boolResult? TRUE:FALSE;
             as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            st.setOutType(as, instr, Tag.CONST);
+            st.setOutTag(as, instr, Tag.CONST);
         }
 
         // If our only use is an immediately following if_true
@@ -4643,7 +4643,7 @@ void gen_shape_is_getset(
         // Set the output value
         as.mov(outOpnd, cretReg.opnd(8));
 
-        st.setOutType(as, instr, Tag.CONST);
+        st.setOutTag(as, instr, Tag.CONST);
     }
 }
 
@@ -4781,7 +4781,7 @@ void gen_new_clos(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(cretReg));
 
-    st.setOutType(as, instr, Tag.CLOSURE);
+    st.setOutTag(as, instr, Tag.CLOSURE);
 }
 
 void gen_print_str(
@@ -4844,7 +4844,7 @@ void gen_get_time_ms(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.movq(outOpnd, X86Opnd(XMM0));
-    st.setOutType(as, instr, Tag.FLOAT64);
+    st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 void gen_get_ast_str(
@@ -4900,7 +4900,7 @@ void gen_get_ast_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Tag.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_get_ir_str(
@@ -4964,7 +4964,7 @@ void gen_get_ir_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Tag.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_get_asm_str(
@@ -5035,7 +5035,7 @@ void gen_get_asm_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Tag.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_load_lib(
@@ -5118,7 +5118,7 @@ void gen_load_lib(
     as.add(wspReg, Word.sizeof);
     as.add(tspReg, Tag.sizeof);
     as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutType(as, instr, Tag.RAWPTR);
+    st.setOutTag(as, instr, Tag.RAWPTR);
 }
 
 void gen_close_lib(
@@ -5249,7 +5249,7 @@ void gen_get_sym(
     as.add(wspReg, Word.sizeof);
     as.add(tspReg, Tag.sizeof);
     as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutType(as, instr, Tag.RAWPTR);
+    st.setOutTag(as, instr, Tag.RAWPTR);
 
 }
 
@@ -5422,17 +5422,17 @@ void gen_call_ffi(
     if (retType == "f64")
     {
         as.movq(outOpnd, X86Opnd(XMM0));
-        st.setOutType(as, instr, typeMap[retType]);
+        st.setOutTag(as, instr, typeMap[retType]);
     }
     else if (retType == "void")
     {
         as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
-        st.setOutType(as, instr, Tag.CONST);
+        st.setOutTag(as, instr, Tag.CONST);
     }
     else
     {
         as.mov(outOpnd, X86Opnd(RAX));
-        st.setOutType(as, instr, typeMap[retType]);
+        st.setOutTag(as, instr, typeMap[retType]);
     }
 
     auto branch = getBranchEdge(

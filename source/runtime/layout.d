@@ -252,7 +252,7 @@ extern (C) uint32 obj_ofs_word(refptr o, uint32 i)
     return (((((0 + 8) + 4) + 4) + 8) + (8 * i));
 }
 
-extern (C) uint32 obj_ofs_type(refptr o, uint32 i)
+extern (C) uint32 obj_ofs_tag(refptr o, uint32 i)
 {    
     return ((((((0 + 8) + 4) + 4) + 8) + (8 * obj_get_cap(o))) + (1 * i));
 }
@@ -282,9 +282,9 @@ extern (C) uint64 obj_get_word(refptr o, uint32 i)
     return *cast(uint64*)(o + obj_ofs_word(o, i));
 }
 
-extern (C) uint8 obj_get_type(refptr o, uint32 i)
+extern (C) uint8 obj_get_tag(refptr o, uint32 i)
 {    
-    return *cast(uint8*)(o + obj_ofs_type(o, i));
+    return *cast(uint8*)(o + obj_ofs_tag(o, i));
 }
 
 extern (C) void obj_set_next(refptr o, refptr v)
@@ -312,9 +312,9 @@ extern (C) void obj_set_word(refptr o, uint32 i, uint64 v)
     *cast(uint64*)(o + obj_ofs_word(o, i)) = v;
 }
 
-extern (C) void obj_set_type(refptr o, uint32 i, uint8 v)
+extern (C) void obj_set_tag(refptr o, uint32 i, uint8 v)
 {    
-    *cast(uint8*)(o + obj_ofs_type(o, i)) = v;
+    *cast(uint8*)(o + obj_ofs_tag(o, i)) = v;
 }
 
 extern (C) uint32 obj_comp_size(uint32 cap)
@@ -341,7 +341,7 @@ extern (C) void obj_visit_gc(VM vm, refptr o)
     auto cap = obj_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        obj_set_word(o, i, gcForward(vm, obj_get_word(o, i), obj_get_type(o, i)));
+        obj_set_word(o, i, gcForward(vm, obj_get_word(o, i), obj_get_tag(o, i)));
     }
 }
 
@@ -372,7 +372,7 @@ extern (C) uint32 clos_ofs_word(refptr o, uint32 i)
     return (((((0 + 8) + 4) + 4) + 8) + (8 * i));
 }
 
-extern (C) uint32 clos_ofs_type(refptr o, uint32 i)
+extern (C) uint32 clos_ofs_tag(refptr o, uint32 i)
 {    
     return ((((((0 + 8) + 4) + 4) + 8) + (8 * clos_get_cap(o))) + (1 * i));
 }
@@ -412,9 +412,9 @@ extern (C) uint64 clos_get_word(refptr o, uint32 i)
     return *cast(uint64*)(o + clos_ofs_word(o, i));
 }
 
-extern (C) uint8 clos_get_type(refptr o, uint32 i)
+extern (C) uint8 clos_get_tag(refptr o, uint32 i)
 {    
-    return *cast(uint8*)(o + clos_ofs_type(o, i));
+    return *cast(uint8*)(o + clos_ofs_tag(o, i));
 }
 
 extern (C) uint32 clos_get_num_cells(refptr o)
@@ -452,9 +452,9 @@ extern (C) void clos_set_word(refptr o, uint32 i, uint64 v)
     *cast(uint64*)(o + clos_ofs_word(o, i)) = v;
 }
 
-extern (C) void clos_set_type(refptr o, uint32 i, uint8 v)
+extern (C) void clos_set_tag(refptr o, uint32 i, uint8 v)
 {    
-    *cast(uint8*)(o + clos_ofs_type(o, i)) = v;
+    *cast(uint8*)(o + clos_ofs_tag(o, i)) = v;
 }
 
 extern (C) void clos_set_num_cells(refptr o, uint32 v)
@@ -492,7 +492,7 @@ extern (C) void clos_visit_gc(VM vm, refptr o)
     auto cap = clos_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        clos_set_word(o, i, gcForward(vm, clos_get_word(o, i), clos_get_type(o, i)));
+        clos_set_word(o, i, gcForward(vm, clos_get_word(o, i), clos_get_tag(o, i)));
     }
     auto num_cells = clos_get_num_cells(o);
     for (uint32 i = 0; i < num_cells; ++i)
@@ -518,7 +518,7 @@ extern (C) uint32 cell_ofs_word(refptr o)
     return (((0 + 8) + 4) + 4);
 }
 
-extern (C) uint32 cell_ofs_type(refptr o)
+extern (C) uint32 cell_ofs_tag(refptr o)
 {    
     return ((((0 + 8) + 4) + 4) + 8);
 }
@@ -538,9 +538,9 @@ extern (C) uint64 cell_get_word(refptr o)
     return *cast(uint64*)(o + cell_ofs_word(o));
 }
 
-extern (C) uint8 cell_get_type(refptr o)
+extern (C) uint8 cell_get_tag(refptr o)
 {    
-    return *cast(uint8*)(o + cell_ofs_type(o));
+    return *cast(uint8*)(o + cell_ofs_tag(o));
 }
 
 extern (C) void cell_set_next(refptr o, refptr v)
@@ -558,9 +558,9 @@ extern (C) void cell_set_word(refptr o, uint64 v)
     *cast(uint64*)(o + cell_ofs_word(o)) = v;
 }
 
-extern (C) void cell_set_type(refptr o, uint8 v)
+extern (C) void cell_set_tag(refptr o, uint8 v)
 {    
-    *cast(uint8*)(o + cell_ofs_type(o)) = v;
+    *cast(uint8*)(o + cell_ofs_tag(o)) = v;
 }
 
 extern (C) uint32 cell_comp_size()
@@ -584,7 +584,7 @@ extern (C) refptr cell_alloc(VM vm)
 extern (C) void cell_visit_gc(VM vm, refptr o)
 {    
     cell_set_next(o, gcForward(vm, cell_get_next(o)));
-    cell_set_word(o, gcForward(vm, cell_get_word(o), cell_get_type(o)));
+    cell_set_word(o, gcForward(vm, cell_get_word(o), cell_get_tag(o)));
 }
 
 const uint32 LAYOUT_ARR = 5;
@@ -614,7 +614,7 @@ extern (C) uint32 arr_ofs_word(refptr o, uint32 i)
     return (((((0 + 8) + 4) + 4) + 8) + (8 * i));
 }
 
-extern (C) uint32 arr_ofs_type(refptr o, uint32 i)
+extern (C) uint32 arr_ofs_tag(refptr o, uint32 i)
 {    
     return ((((((0 + 8) + 4) + 4) + 8) + (8 * arr_get_cap(o))) + (1 * i));
 }
@@ -654,9 +654,9 @@ extern (C) uint64 arr_get_word(refptr o, uint32 i)
     return *cast(uint64*)(o + arr_ofs_word(o, i));
 }
 
-extern (C) uint8 arr_get_type(refptr o, uint32 i)
+extern (C) uint8 arr_get_tag(refptr o, uint32 i)
 {    
-    return *cast(uint8*)(o + arr_ofs_type(o, i));
+    return *cast(uint8*)(o + arr_ofs_tag(o, i));
 }
 
 extern (C) refptr arr_get_tbl(refptr o)
@@ -694,9 +694,9 @@ extern (C) void arr_set_word(refptr o, uint32 i, uint64 v)
     *cast(uint64*)(o + arr_ofs_word(o, i)) = v;
 }
 
-extern (C) void arr_set_type(refptr o, uint32 i, uint8 v)
+extern (C) void arr_set_tag(refptr o, uint32 i, uint8 v)
 {    
-    *cast(uint8*)(o + arr_ofs_type(o, i)) = v;
+    *cast(uint8*)(o + arr_ofs_tag(o, i)) = v;
 }
 
 extern (C) void arr_set_tbl(refptr o, refptr v)
@@ -733,7 +733,7 @@ extern (C) void arr_visit_gc(VM vm, refptr o)
     auto cap = arr_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        arr_set_word(o, i, gcForward(vm, arr_get_word(o, i), arr_get_type(o, i)));
+        arr_set_word(o, i, gcForward(vm, arr_get_word(o, i), arr_get_tag(o, i)));
     }
     arr_set_tbl(o, gcForward(vm, arr_get_tbl(o)));
 }
@@ -760,7 +760,7 @@ extern (C) uint32 arrtbl_ofs_word(refptr o, uint32 i)
     return ((((0 + 8) + 4) + 4) + (8 * i));
 }
 
-extern (C) uint32 arrtbl_ofs_type(refptr o, uint32 i)
+extern (C) uint32 arrtbl_ofs_tag(refptr o, uint32 i)
 {    
     return (((((0 + 8) + 4) + 4) + (8 * arrtbl_get_cap(o))) + (1 * i));
 }
@@ -785,9 +785,9 @@ extern (C) uint64 arrtbl_get_word(refptr o, uint32 i)
     return *cast(uint64*)(o + arrtbl_ofs_word(o, i));
 }
 
-extern (C) uint8 arrtbl_get_type(refptr o, uint32 i)
+extern (C) uint8 arrtbl_get_tag(refptr o, uint32 i)
 {    
-    return *cast(uint8*)(o + arrtbl_ofs_type(o, i));
+    return *cast(uint8*)(o + arrtbl_ofs_tag(o, i));
 }
 
 extern (C) void arrtbl_set_next(refptr o, refptr v)
@@ -810,9 +810,9 @@ extern (C) void arrtbl_set_word(refptr o, uint32 i, uint64 v)
     *cast(uint64*)(o + arrtbl_ofs_word(o, i)) = v;
 }
 
-extern (C) void arrtbl_set_type(refptr o, uint32 i, uint8 v)
+extern (C) void arrtbl_set_tag(refptr o, uint32 i, uint8 v)
 {    
-    *cast(uint8*)(o + arrtbl_ofs_type(o, i)) = v;
+    *cast(uint8*)(o + arrtbl_ofs_tag(o, i)) = v;
 }
 
 extern (C) uint32 arrtbl_comp_size(uint32 cap)
@@ -843,7 +843,7 @@ extern (C) void arrtbl_visit_gc(VM vm, refptr o)
     auto cap = arrtbl_get_cap(o);
     for (uint32 i = 0; i < cap; ++i)
     {    
-        arrtbl_set_word(o, i, gcForward(vm, arrtbl_get_word(o, i), arrtbl_get_type(o, i)));
+        arrtbl_set_word(o, i, gcForward(vm, arrtbl_get_word(o, i), arrtbl_get_tag(o, i)));
     }
 }
 

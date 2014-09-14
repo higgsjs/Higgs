@@ -217,8 +217,8 @@ auto wordStackOpnd(int32_t idx, size_t numBits = 64)
     return X86Opnd(numBits, wspReg, cast(int32_t)Word.sizeof * idx);
 }
 
-// Get a type stack operand
-auto typeStackOpnd(int32_t idx)
+// Get a type tag stack operand
+auto tagStackOpnd(int32_t idx)
 {
     return X86Opnd(8, tspReg, cast(int32_t)Tag.sizeof * idx);
 }
@@ -232,12 +232,6 @@ void getWord(CodeBlock as, X86Reg dstReg, int32_t idx)
         as.movsd(X86Opnd(dstReg), wordStackOpnd(idx, 64));
     else
         assert (false, "unsupported register type");
-}
-
-/// Read from the type stack
-void getType(CodeBlock as, X86Reg dstReg, int32_t idx)
-{
-    as.mov(X86Opnd(dstReg), typeStackOpnd(idx));
 }
 
 /// Write to the word stack
@@ -255,22 +249,28 @@ void setWord(CodeBlock as, int32_t idx, X86Opnd src)
         assert (false, "unsupported src operand type");
 }
 
-// Write a constant to the word type
+// Write a constant to the word stack
 void setWord(CodeBlock as, int32_t idx, int32_t imm)
 {
     as.mov(wordStackOpnd(idx), X86Opnd(imm));
 }
 
-/// Write to the type stack
-void setType(CodeBlock as, int32_t idx, X86Opnd srcOpnd)
+/// Read from the type tag stack
+void getTag(CodeBlock as, X86Reg dstReg, int32_t idx)
 {
-    as.mov(typeStackOpnd(idx), srcOpnd);
+    as.mov(X86Opnd(dstReg), tagStackOpnd(idx));
 }
 
-/// Write a constant to the type stack
-void setType(CodeBlock as, int32_t idx, Tag tag)
+/// Write to the type tag stack
+void setTag(CodeBlock as, int32_t idx, X86Opnd srcOpnd)
 {
-    as.mov(typeStackOpnd(idx), X86Opnd(tag));
+    as.mov(tagStackOpnd(idx), srcOpnd);
+}
+
+/// Write a constant to the type tag stack
+void setTag(CodeBlock as, int32_t idx, Tag tag)
+{
+    as.mov(tagStackOpnd(idx), X86Opnd(tag));
 }
 
 /// Store/save the JIT state register

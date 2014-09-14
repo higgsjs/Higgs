@@ -122,10 +122,10 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
-TODO: blog post, Higgs' Fancy New Object System
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
+TODO: eliminate type array in objects?
+- If the type is always known, this is unnecessary
+- Evaluate if there is much shape flip-flopping first
+- GC would need alterations
 
 TODO: stub branches, pre-reserve space, put block idx in there
 - should ideally jump ahead and not backwards
@@ -134,10 +134,10 @@ TODO: stub branches, pre-reserve space, put block idx in there
 TODO: port CSG lib
 http://evanw.github.io/csg.js/
 
-TODO: eliminate type array in objects?
-- If the type is always known, this is unnecessary
-- Evaluate if there is much shape flip-flopping first
-- GC would need alterations
+TODO: blog post, Higgs' Fancy New Object System
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
 
 TODO: push getters/setters to master? is compile time acceptable?
 
@@ -195,32 +195,33 @@ Meeting:
 *** Focus on getting early typed shape results ***
 
 TODO: capture_shape(x)
+- bitwise-and writing the shape pointer to a register 6 times in loop core!
+
 TODO: rewrite getProp to not use defShape info
-FIXME: bitwise-and is slow
-- 6 times writing the shape pointer to a register!
 
-TODO: st.setType(type, shape), is that ever used?
-- If not, eliminate convert setType(tag) to setTag
+TODO: eliminate knownShape, getShape
+- use getType instead, should make for simpler code
 
-TODO: grep for Type
 
-TODO: refactorings
-- get_type => get_tag
 
-TODO:
+
+
+
+[DONE] TODO: refactorings
+st.setType(type) => st.setTag
+ValState.setType(tag) => setTag
+
+[DONE] TODO: refactorings
+as.setType, as.getType in jit/utils
+
+[DONE] TODO: refactorings
 retTypeReg => retTagReg
-state.setType => state.setTag
-as.getType in jit/utils, as.setType
 getTypeOpnd => getTagOpnd
+auto typeOpnd = st.getTypeOpnd
 
-
-
-
-
-
-
-
-
+[DONE] TODO: refactorings
+- get_type => get_tag
+- type => tag in layouts
 
 [DONE] TODO: refactorings
 - Type => Tag

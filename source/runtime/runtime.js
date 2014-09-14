@@ -167,10 +167,10 @@ Set the value stored in a closure cell
 function $rt_setCellVal(cell, val)
 {
     var word = $ir_get_word(val);
-    var type = $ir_get_type(val);
+    var type = $ir_get_tag(val);
 
     $rt_cell_set_word(cell, word);
-    $rt_cell_set_type(cell, type);
+    $rt_cell_set_tag(cell, type);
 }
 
 /**
@@ -179,7 +179,7 @@ Get the value stored in a closure cell
 function $rt_getCellVal(cell)
 {
     var word = $rt_cell_get_word(cell);
-    var type = $rt_cell_get_type(cell);
+    var type = $rt_cell_get_tag(cell);
 
     //print('getCellVal: ' + $ir_make_value(word, 0));
 
@@ -1970,7 +1970,7 @@ function $rt_getProp(base, prop)
         {
             var tbl = $rt_arr_get_tbl(base);
             var word = $rt_arrtbl_get_word(tbl, prop);
-            var type = $rt_arrtbl_get_type(tbl, prop);
+            var type = $rt_arrtbl_get_tag(tbl, prop);
             return $ir_make_value(word, type);
         }
 
@@ -2140,7 +2140,7 @@ function $rt_getPropElem(base, prop)
     {
         var tbl = $rt_arr_get_tbl(base);
         var word = $rt_arrtbl_get_word(tbl, prop);
-        var type = $rt_arrtbl_get_type(tbl, prop);
+        var type = $rt_arrtbl_get_tag(tbl, prop);
         return $ir_make_value(word, type);
     }
 
@@ -2288,7 +2288,7 @@ function $rt_extArrTbl(
     for (var i = 0; $ir_lt_i32(i, curLen); i = $ir_add_i32(i, 1))
     {
         $rt_arrtbl_set_word(newTbl, i, $rt_arrtbl_get_word(curTbl, i));
-        $rt_arrtbl_set_type(newTbl, i, $rt_arrtbl_get_type(curTbl, i));
+        $rt_arrtbl_set_tag(newTbl, i, $rt_arrtbl_get_tag(curTbl, i));
     }
 
     // Update the table reference in the array
@@ -2335,7 +2335,7 @@ function $rt_setArrElem(arr, index, val)
 
     // Set the element in the array
     $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
-    $rt_arrtbl_set_type(tbl, index, $ir_get_type(val));
+    $rt_arrtbl_set_tag(tbl, index, $ir_get_tag(val));
 }
 
 /**
@@ -2368,7 +2368,7 @@ function $rt_setArrLen(arr, newLen)
         for (var i = newLen; i < len; i++)
         {
             $rt_arrtbl_set_word(tbl, i, $ir_get_word(undefined));
-            $rt_arrtbl_set_type(tbl, i, $ir_get_type(undefined));
+            $rt_arrtbl_set_tag(tbl, i, $ir_get_tag(undefined));
         }
     }
 
@@ -2503,7 +2503,7 @@ function $rt_setPropElem(base, prop, val)
 
             // Set the element in the array
             $rt_arrtbl_set_word(tbl, prop, $ir_get_word(val));
-            $rt_arrtbl_set_type(tbl, prop, $ir_get_type(val));
+            $rt_arrtbl_set_tag(tbl, prop, $ir_get_tag(val));
 
             return;
         }
@@ -2522,7 +2522,7 @@ function $rt_setArrElemNoCheck(arr, index, val)
 
     // Set the element in the array
     $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
-    $rt_arrtbl_set_type(tbl, index, $ir_get_type(val));
+    $rt_arrtbl_set_tag(tbl, index, $ir_get_tag(val));
 }
 
 /**

@@ -50,13 +50,13 @@ layouts = [
         'fields':
         [
             # String length
-            { 'name': "len" , 'type':'uint32' },
+            { 'name': "len" , 'tag':'uint32' },
 
             # Hash code
-            { 'name': 'hash', 'type':'uint32' },
+            { 'name': 'hash', 'tag':'uint32' },
 
             # UTF-16 character data
-            { 'name': 'data', 'type':'uint16', 'szField':'len' }
+            { 'name': 'data', 'tag':'uint16', 'szField':'len' }
         ]
     },
 
@@ -67,13 +67,13 @@ layouts = [
         'fields': 
         [
             # Capacity, total number of slots
-            { 'name':'cap', 'type':'uint32' },
+            { 'name':'cap', 'tag':'uint32' },
 
             # Number of strings
-            { 'name':'num_strs', 'type':'uint32', 'init':"0" },
+            { 'name':'num_strs', 'tag':'uint32', 'init':"0" },
 
             # Array of strings
-            { 'name':'str', 'type':'refptr', 'szField':'cap', 'init':'null' },
+            { 'name':'str', 'tag':'refptr', 'szField':'cap', 'init':'null' },
         ]
     },
 
@@ -84,16 +84,16 @@ layouts = [
         'fields':
         [
             # Capacity, number of property slots
-            { 'name':"cap" , 'type':"uint32" },
+            { 'name':"cap" , 'tag':"uint32" },
 
             # Shape pointer
-            { 'name':"shape", 'type':"shapeptr" },
+            { 'name':"shape", 'tag':"shapeptr" },
 
             # Property words
-            { 'name':"word", 'type':"uint64", 'szField':"cap", 'tpField':'type' },
+            { 'name':"word", 'tag':"uint64", 'szField':"cap", 'tpField':'tag' },
 
             # Property types
-            { 'name':"type", 'type':"uint8", 'szField':"cap" }
+            { 'name':"tag", 'tag':"uint8", 'szField':"cap" }
         ]
     },
 
@@ -107,10 +107,10 @@ layouts = [
             # Note: the function pointer is stored in the first object slot
 
             # Number of closure cells
-            { 'name':"num_cells" , 'type':"uint32" },
+            { 'name':"num_cells" , 'tag':"uint32" },
 
             # Closure cell pointers
-            { 'name':"cell", 'type':"refptr", 'szField':"num_cells", 'init':"null"  },
+            { 'name':"cell", 'tag':"refptr", 'szField':"num_cells", 'init':"null"  },
         ]
     },
 
@@ -121,10 +121,10 @@ layouts = [
         'fields':
         [
             # Value word
-            { 'name':"word", 'type':"uint64", 'init':'undef_word', 'tpField':'type' },
+            { 'name':"word", 'tag':"uint64", 'init':'undef_word', 'tpField':'tag' },
 
             # Value type
-            { 'name':"type", 'type':"uint8", 'init':'undef_type' },
+            { 'name':"tag", 'tag':"uint8", 'init':'undef_type' },
         ]
     },
 
@@ -136,10 +136,10 @@ layouts = [
         'fields':
         [
             # Array table reference
-            { 'name':"tbl", 'type':"refptr" },
+            { 'name':"tbl", 'tag':"refptr" },
 
             # Number of elements contained
-            { 'name':"len", 'type':"uint32" },
+            { 'name':"len", 'tag':"uint32" },
         ]
     },
 
@@ -150,13 +150,13 @@ layouts = [
         'fields':
         [
             # Array capacity
-            { 'name':"cap" , 'type':"uint32" },
+            { 'name':"cap" , 'tag':"uint32" },
 
             # Element words
-            { 'name':"word", 'type':"uint64", 'init':'undef_word', 'szField':"cap", 'tpField':'type' },
+            { 'name':"word", 'tag':"uint64", 'init':'undef_word', 'szField':"cap", 'tpField':'tag' },
 
             # Element types
-            { 'name':"type", 'type':"uint8", 'init':'undef_type', 'szField':"cap" },
+            { 'name':"tag", 'tag':"uint8", 'init':'undef_type', 'szField':"cap" },
         ]
     },
 ]
@@ -209,7 +209,7 @@ class Cst:
         if self.val == 'undef_word':
             return '$ir_get_word($undef)'
         if self.val == 'undef_type':
-            return '$ir_get_type($undef)'
+            return '$ir_get_tag($undef)'
 
         return str(self.val)
 
@@ -533,8 +533,8 @@ for layout in layouts:
     layout['typeId'] = layoutId
     nextLayoutId += 1
 
-    nextField = [{ 'name':'next', 'type':'refptr', 'init':"null" }]
-    typeField = [{ 'name':'header', 'type':'uint32', 'init':str(layoutId) }]
+    nextField = [{ 'name':'next', 'tag':'refptr', 'init':"null" }]
+    typeField = [{ 'name':'header', 'tag':'uint32', 'init':str(layoutId) }]
     layout['fields'] = nextField + typeField + layout['fields']
 
 # Find/resolve size fields
@@ -597,11 +597,11 @@ for layout in layouts:
     for fieldIdx, field in enumerate(layout['fields']):
 
         # Field type size
-        fSize = typeSize[field['type']]
+        fSize = typeSize[field['tag']]
 
         # If the previous field was dynamically sized and of smaller type size
         if fieldIdx > 0 and 'szField' in layout['fields'][fieldIdx-1] and \
-           typeSize[layout['fields'][fieldIdx-1]['type']] < fSize:
+           typeSize[layout['fields'][fieldIdx-1]['tag']] < fSize:
 
             # This field will be dynamically aligned
             field['dynAlign'] = True
@@ -665,7 +665,7 @@ for layout in layouts:
                 sumExpr = AddExpr(sumExpr, Cst(prev['alignPad']))
 
             # Compute the previous field size
-            termExpr = Cst(typeSize[prev['type']])
+            termExpr = Cst(typeSize[prev['tag']])
             if 'szField' in prev:
                 szCall = CallExpr(getPref + prev['szField']['name'], [fun.params[0]])
                 termExpr = MulExpr(termExpr, szCall)
@@ -680,7 +680,7 @@ for layout in layouts:
 
         # Compute the index into the last field
         if 'szField' in field:
-            fieldSize = Cst(typeSize[field['type']])
+            fieldSize = Cst(typeSize[field['tag']])
             sumExpr = AddExpr(sumExpr, MulExpr(fieldSize , fun.params[1]))
 
         fun.stmts += [RetStmt(sumExpr)]
@@ -690,7 +690,7 @@ for layout in layouts:
     # Generate getter methods
     for fieldIdx, field in enumerate(layout['fields']):
 
-        fun = Function(field['type'], getPref + field['name'], [Var('refptr', 'o')])
+        fun = Function(field['tag'], getPref + field['name'], [Var('refptr', 'o')])
         if 'szField' in field:
             fun.params += [Var('uint32', 'i')]
 
@@ -698,7 +698,7 @@ for layout in layouts:
         if 'szField' in field:
             ofsCall.args += [fun.params[1]]
 
-        fun.stmts += [RetStmt(LoadExpr(field['type'], fun.params[0], ofsCall))]
+        fun.stmts += [RetStmt(LoadExpr(field['tag'], fun.params[0], ofsCall))]
 
         decls += [fun]
 
@@ -708,13 +708,13 @@ for layout in layouts:
         fun = Function('void', setPref + field['name'], [Var('refptr', 'o')])
         if 'szField' in field:
             fun.params += [Var('uint32', 'i')]
-        fun.params += [Var(field['type'], 'v')]
+        fun.params += [Var(field['tag'], 'v')]
 
         ofsCall = CallExpr(ofsPref + field['name'], [fun.params[0]])
         if 'szField' in field:
             ofsCall.args += [fun.params[1]]
 
-        fun.stmts += [ExprStmt(StoreExpr(field['type'], fun.params[0], ofsCall, fun.params[-1]))]
+        fun.stmts += [ExprStmt(StoreExpr(field['tag'], fun.params[0], ofsCall, fun.params[-1]))]
 
         decls += [fun]
 
@@ -722,7 +722,7 @@ for layout in layouts:
     fun = Function('uint32', layout['name'] + '_comp_size', [])
     szVars = {}
     for szField in layout['szFields']:
-        szVar = Var(szField['type'], szField['name'])
+        szVar = Var(szField['tag'], szField['name'])
         szVars[szVar.name] = szVar
         fun.params += [szVar]
 
@@ -737,7 +737,7 @@ for layout in layouts:
         elif field['alignPad'] > 0:
             szSum = AddExpr(szSum, Cst(field['alignPad']))
 
-        szTerm = Cst(typeSize[field['type']])
+        szTerm = Cst(typeSize[field['tag']])
         if 'szField' in field:
             szTerm = MulExpr(szTerm, szVars[field['szField']['name']])
         szSum = AddExpr(szSum, szTerm)
@@ -760,7 +760,7 @@ for layout in layouts:
     fun = Function('refptr', layout['name'] + '_alloc', [Var('VM', 'vm')])
     szVars = {}
     for szField in layout['szFields']:
-        szVar = Var(szField['type'], szField['name'])
+        szVar = Var(szField['tag'], szField['name'])
         szVars[szVar.name] = szVar
         fun.params += [szVar]
 
@@ -809,7 +809,7 @@ for layout in layouts:
     for field in layout['fields']:
 
         # If this is not a heap reference field, skip it
-        if field['type'] != 'refptr' and (not 'tpField' in field):
+        if field['tag'] != 'refptr' and (not 'tpField' in field):
             continue
 
         # If this is a variable-size field

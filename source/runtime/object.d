@@ -456,14 +456,14 @@ IRFunction getFunPtr(refptr closPtr)
 ValuePair getSlotPair(refptr objPtr, uint32_t slotIdx)
 {
     auto pWord = Word.uint64v(obj_get_word(objPtr, slotIdx));
-    auto pType = cast(Tag)obj_get_type(objPtr, slotIdx);
+    auto pType = cast(Tag)obj_get_tag(objPtr, slotIdx);
     return ValuePair(pWord, pType);
 }
 
 void setSlotPair(refptr objPtr, uint32_t slotIdx, ValuePair val)
 {
     obj_set_word(objPtr, slotIdx, val.word.uint64Val);
-    obj_set_type(objPtr, slotIdx, val.tag);
+    obj_set_tag(objPtr, slotIdx, val.tag);
 }
 
 ValuePair getProp(VM vm, ValuePair obj, wstring propStr)

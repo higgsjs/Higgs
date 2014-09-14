@@ -105,7 +105,7 @@ Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
 // Word/type manipulation primitives
 Opcode MAKE_VALUE = { "make_value", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_make_value };
 Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &gen_get_word };
-Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &gen_get_type };
+Opcode GET_TAG = { "get_tag", true, [OpArg.LOCAL], &gen_get_tag };
 
 // Type tag test
 Opcode IS_INT32 = { "is_int32", true, [OpArg.LOCAL], &gen_is_int32, OpInfo.BOOL_VAL };

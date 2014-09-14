@@ -90,8 +90,8 @@ immutable X86Reg[] allocRegs = [RDI, RSI, RCX, RDX, R8, R9, R10, R11, R12];
 /// Return word register
 alias RCX retWordReg;
 
-/// Return type register
-alias DL retTypeReg;
+/// Return type tag register
+alias DL retTagReg;
 
 /// Minimum heap space required to compile a block (256KB)
 const size_t JIT_MIN_BLOCK_SPACE = 1 << 18; 
@@ -175,43 +175,23 @@ struct ValState
         }
     }
 
-    /// Get a type operand for this value
-    X86Opnd getTypeOpnd(StackIdx stackIdx = StackIdx.max) const
+    /// Get a type tag operand for this value
+    X86Opnd getTagOpnd(StackIdx stackIdx = StackIdx.max) const
     {
         if (type.tagKnown)
             return X86Opnd(type.tag);
 
         assert (stackIdx !is StackIdx.max);
-        return typeStackOpnd(stackIdx);
+        return tagStackOpnd(stackIdx);
     }
 
     /// Set the type tag for this value
-    ValState setType(Tag tag) const
+    ValState setTag(Tag tag) const
     {
         assert (!isConst);
 
         ValState val = cast(ValState)this;
         val.type = ValType(tag);
-        return val;
-    }
-
-    /// Set the type tag and shape for this value
-    ValState setType(Tag tag, ObjShape shape) const
-    {
-        assert (!isConst);
-
-        ValState val = cast(ValState)this;
-        val.type = ValType(tag, shape);
-        return val;
-    }
-
-    /// Set the type for this value
-    ValState setType(const ValType type) const
-    {
-        assert (!isConst);
-
-        ValState val = cast(ValState)this;
-        val.type = cast(ValType)type;
         return val;
     }
 
@@ -226,13 +206,23 @@ struct ValState
         return val;
     }
 
+    /// Set the type for this value
+    ValState setType(const ValType type) const
+    {
+        assert (!isConst);
+
+        ValState val = cast(ValState)this;
+        val.type = cast(ValType)type;
+        return val;
+    }
+
     /// Clear the type tag information for this value
     ValState clearTag() const
     {
         assert (!isConst);
 
         ValState val = cast(ValState)this;
-        val.type = ValType();
+        val.type.tagKnown = false;
         return val;
     }
 
@@ -305,9 +295,9 @@ class CodeGenState
         foreach (ident, param; fun.paramMap)
             mapToStack(param);
 
-        // Set the types for the closure and argument count values
-        setType(fun.closVal, Tag.CLOSURE);
-        setType(fun.argcVal, Tag.INT32);
+        // Set the tags for the closure and argument count values
+        setTag(fun.closVal, Tag.CLOSURE);
+        setTag(fun.argcVal, Tag.INT32);
     }
 
     /**
@@ -399,11 +389,11 @@ class CodeGenState
             }
 
             // If the argument type is known
-            auto argTypeOpnd = predState.getTypeOpnd(arg);
+            auto argTypeOpnd = predState.getTagOpnd(arg);
             if (argTypeOpnd.isImm)
             {
                 // Set the phi type
-                phiState = phiState.setType(cast(Tag)argTypeOpnd.imm.imm);
+                phiState = phiState.setTag(cast(Tag)argTypeOpnd.imm.imm);
             }
 
             // Set the phi node's new state
@@ -828,7 +818,7 @@ class CodeGenState
             // Write the type tag to the type stack
             //if (opts.jit_genasm)
             //    as.comment("Spilling type for " ~ regVal.getName);
-            as.mov(typeStackOpnd(regVal.outSlot), state.getTypeOpnd());
+            as.mov(tagStackOpnd(regVal.outSlot), state.getTagOpnd());
             valMap[regVal] = valMap[regVal].writeTag();
         }
     }
@@ -870,7 +860,7 @@ class CodeGenState
                 if (spillTest(liveInfo, value) is true)
                 {
                     // Spill the type for this value
-                    as.mov(typeStackOpnd(value.outSlot), state.getTypeOpnd());
+                    as.mov(tagStackOpnd(value.outSlot), state.getTagOpnd());
                     valMap[value] = state.writeTag();
                 }
             }
@@ -1153,9 +1143,9 @@ class CodeGenState
     }
 
     /**
-    Get an x86 operand for the type of any IR value
+    Get an x86 operand for the type tag of any IR value
     */
-    X86Opnd getTypeOpnd(IRValue value) const
+    X86Opnd getTagOpnd(IRValue value) const
     {
         assert (value !is null);
 
@@ -1174,13 +1164,13 @@ class CodeGenState
         }
 
         // Get the type operand for this value
-        return getState(dstVal).getTypeOpnd(dstVal.outSlot);
+        return getState(dstVal).getTagOpnd(dstVal.outSlot);
     }
 
     /**
     Get an x86 operand for the type of an instruction argument
     */
-    X86Opnd getTypeOpnd(
+    X86Opnd getTagOpnd(
         CodeBlock as,
         IRInstr instr,
         size_t argIdx,
@@ -1197,7 +1187,7 @@ class CodeGenState
 
         // Get an operand for the argument value
         auto argVal = instr.getArg(argIdx);
-        auto curOpnd = getTypeOpnd(argVal);
+        auto curOpnd = getTagOpnd(argVal);
 
         if (acceptImm is true && curOpnd.isImm)
         {
@@ -1214,8 +1204,8 @@ class CodeGenState
         return curOpnd;
     }
 
-    /// Set the output type value for an instruction's output
-    void setOutType(
+    /// Set the type tag value for an instruction's output
+    void setOutTag(
         CodeBlock as,
         IRInstr instr,
         Tag tag
@@ -1226,41 +1216,41 @@ class CodeGenState
             "null instruction"
         );
 
-        // getOutOpnd should be called before setOutType
+        // getOutOpnd should be called before setOutTag
         assert (
             instr in valMap,
-            "setOutType: instr not in valMap:\n" ~
+            "setOutTag: instr not in valMap:\n" ~
             instr.toString
         );
 
         auto state = getState(instr);
 
         // Set a known type for this value
-        valMap[instr] = state.setType(tag);
+        valMap[instr] = state.setTag(tag);
     }
 
-    /// Write the output type for an instruction's output to the type stack
-    void setOutType(CodeBlock as, IRInstr instr, X86Reg typeReg)
+    /// Write the type tag for an instruction's output to the type stack
+    void setOutTag(CodeBlock as, IRInstr instr, X86Reg tagReg)
     {
         assert (
             instr !is null,
             "null instruction"
         );
 
-        // getOutOpnd should be called before setOutType
+        // getOutOpnd should be called before setOutTag
         assert (instr in valMap);
 
         auto state = getState(instr);
 
-        // Clear the type information for the value
+        // Clear the type tag information for the value
         valMap[instr] = state.clearTag();
 
         // Write the type to the type stack
-        as.mov(typeStackOpnd(instr.outSlot), X86Opnd(typeReg));
+        as.mov(tagStackOpnd(instr.outSlot), X86Opnd(tagReg));
     }
 
-    /// Add type information for a given value
-    void setType(IRDstValue value, Tag tag)
+    /// Set the type tag for a given value
+    void setTag(IRDstValue value, Tag tag)
     {
         assert (value in valMap);
         ValState state = getState(value);
@@ -1274,7 +1264,27 @@ class CodeGenState
             state = state.writeTag();
 
         // Set a known type for this value
-        valMap[value] = state.setType(tag);
+        valMap[value] = state.setTag(tag);
+    }
+
+    /// Set shape information for a given value
+    void setShape(IRDstValue value, ObjShape shape)
+    {
+        assert (value in valMap);
+        ValState state = getState(value);
+
+        // Set a known type for this value
+        valMap[value] = state.setShape(shape);
+    }
+
+    /// Clear shape information for a given value
+    void clearShape(IRDstValue value)
+    {
+        assert (value in valMap);
+        ValState state = getState(value);
+
+        // Set a known type for this value
+        valMap[value] = state.clearShape();
     }
 
     /// Get the type for a given value
@@ -1296,6 +1306,10 @@ class CodeGenState
 
         return ValType(value.cstValue.tag);
     }
+
+
+
+
 
     // TODO: eliminate in favor of getType?
     /// Test if the shape is known for a given value
@@ -1324,25 +1338,9 @@ class CodeGenState
         return state.type.shape;
     }
 
-    /// Set shape information for a given value
-    void setShape(IRDstValue value, ObjShape shape)
-    {
-        assert (value in valMap);
-        ValState state = getState(value);
 
-        // Set a known type for this value
-        valMap[value] = state.setShape(shape);
-    }
 
-    /// Clear shape information for a given value
-    void clearShape(IRDstValue value)
-    {
-        assert (value in valMap);
-        ValState state = getState(value);
 
-        // Set a known type for this value
-        valMap[value] = state.clearShape();
-    }
 
     /// Get the state for a given value
     ValState getState(IRDstValue val) const
@@ -2122,8 +2120,8 @@ void genBranchMoves(
         }
 
         // Get the source and destination operands for the phi type
-        X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
-        X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
+        X86Opnd srcTypeOpnd = predState.getTagOpnd(predVal);
+        X86Opnd dstTypeOpnd = succState.getTagOpnd(succVal);
         assert (!(opts.jit_maxvers is 0 && !srcTypeOpnd.isImm && dstTypeOpnd.isImm));
 
         if (srcTypeOpnd != dstTypeOpnd &&
@@ -2145,7 +2143,7 @@ void genBranchMoves(
         // written to the stack, then write the type
         if (!succParam && !dstTypeOpnd.isMem && succState.tagWritten && !predWritten)
         {
-            as.mov(typeStackOpnd(succVal.outSlot), succState.getTypeOpnd());
+            as.mov(tagStackOpnd(succVal.outSlot), succState.getTagOpnd());
             moveAdded = true;
         }
 
@@ -2426,7 +2424,7 @@ void compile(VM vm, IRInstr curInstr)
             if (callInstr.hasUses)
             {
                 as.setWord(callInstr.outSlot, retWordReg.opnd(64));
-                as.setType(callInstr.outSlot, retTypeReg.opnd(8));
+                as.setTag(callInstr.outSlot, retTagReg.opnd(8));
             }
 
             // The first argument is the stub object
@@ -2443,7 +2441,7 @@ void compile(VM vm, IRInstr curInstr)
             if (callInstr.hasUses)
             {
                 as.getWord(retWordReg.reg(64), callInstr.outSlot);
-                as.getType(retTypeReg.reg(8), callInstr.outSlot);
+                as.getTag(retTagReg.reg(8), callInstr.outSlot);
             }
 
             // Jump to the compiled continuation
@@ -2567,7 +2565,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     // Place the return value on top of the stack
     as.setWord(0, retWordReg.opnd);
-    as.setType(0, retTypeReg.opnd);
+    as.setTag(0, retTagReg.opnd);
 
     // Store the stack pointers back in the VM
     as.setMember!("VM.wsp")(vmReg, wspReg);
@@ -2636,7 +2634,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Set the "this" argument (global object)
     as.getMember!("VM.globalObj.word")(scrRegs[0], vmReg);
     as.setWord(-2, scrRegs[0].opnd);
-    as.setType(-2, Tag.OBJECT);
+    as.setTag(-2, Tag.OBJECT);
 
     // Set the closure argument (null)
     as.setWord(-3, X86Opnd(0));
