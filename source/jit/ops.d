@@ -1008,9 +1008,9 @@ void IsTypeOp(Type type)(
 }
 
 alias IsTypeOp!(Type.CONST) gen_is_const;
-alias IsTypeOp!(Type.INT32) gen_is_i32;
-alias IsTypeOp!(Type.INT64) gen_is_i64;
-alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
+alias IsTypeOp!(Type.INT32) gen_is_int32;
+alias IsTypeOp!(Type.INT64) gen_is_int64;
+alias IsTypeOp!(Type.FLOAT64) gen_is_float64;
 alias IsTypeOp!(Type.RAWPTR) gen_is_rawptr;
 alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
 alias IsTypeOp!(Type.OBJECT) gen_is_object;
@@ -3615,7 +3615,7 @@ void gen_capture_tag(
     CodeBlock as
 )
 {
-    static const uint NUM_ENTRIES = 2;
+    static const uint NUM_ENTRIES = 5;
 
     extern (C) static void updateCache(
         BlockVersion ver,
@@ -3698,10 +3698,15 @@ void gen_capture_tag(
                 targetSt = branch.predState? branch.predState:branch.target.state;
 
                 auto valType = targetSt.getType(argVal);
-                auto valTag = valType.typeKnown? cast(uint8_t)valType.typeTag:0x7F;
+                if (!valType.typeKnown)
+                    continue;
+
+                // Increment the counter for this type test
+                auto testName = "is_" ~ toLower(to!string(valType.typeTag));
+                as.incStatCnt(stats.getTypeTestCtr(testName), scrRegs[0]);
 
                 // Compare this entry's type tag with the value's tag
-                as.cmp(typeOpnd, X86Opnd(valTag));
+                as.cmp(typeOpnd, X86Opnd(valType.typeTag));
 
                 // If equal, jump to the cached target
                 je32Ref(as, vm, branch, targetIdx);
@@ -3851,6 +3856,9 @@ void gen_capture_tag(
         size_t cachePos = as.getWritePos();
         for (uint i = 0; i < NUM_ENTRIES; ++i)
         {
+            // Increment the counter for this type test
+            as.incStatCnt(stats.getTypeTestCtr("is_int32"), scrRegs[0], 0);
+
             // Compare this entry's type tag with the value's tag
             as.cmp(typeOpnd, X86Opnd(0x7F));
 
@@ -3918,6 +3926,8 @@ void gen_shape_set_prop(
 
         auto propStr = extractWStr(strPtr);
 
+        //writeln(propStr);
+
         // Set the property value
         setProp(
             vm,
@@ -3976,7 +3986,10 @@ void gen_shape_set_prop(
 
     // If we type of the property value is unknown, use the slow path
     if (!valType.typeKnown)
+    {
+        //as.printStr("val type unknown!");
         return gen_slow_path(ver, st, instr, as);
+    }
 
     // Get the object and defining shapes
     auto objShape = st.getShape(objVal);
@@ -4022,8 +4035,12 @@ void gen_shape_set_prop(
         auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
         assert (objOpnd.isReg);
 
-        // Get the object capacity into r1
-        as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+        // If we need to update the type tag or we need to check the object capacity
+        if (typeMismatch || slotIdx >= minObjCap)
+        {
+            // Get the object capacity into r1
+            as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+        }
 
         auto tblOpnd = objOpnd;
 
@@ -4043,7 +4060,7 @@ void gen_shape_set_prop(
             // Get the ext table pointer into r0
             as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
 
-            // If we need to set/update the type tag
+            // If we need to update the type tag
             if (typeMismatch)
             {
                 // Get the ext table capacity into r1
@@ -4060,7 +4077,7 @@ void gen_shape_set_prop(
         // If the value type doesn't match
         if (typeMismatch)
         {
-            // Set/update the type tag
+            // Update the type tag
             auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
             as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
 
@@ -4080,16 +4097,13 @@ void gen_shape_set_prop(
             // Set the new object shape
             st.setShape(objVal, objShape);
 
+            // Increment the number of shape changes due to type
+            as.incStatCnt(&stats.numShapeFlips, scrRegs[0]);
 
-
-            // FIXME: temporary
+            // FIXME: temporary until capture_shape
             auto defVal = cast(IRInstr)instr.getArg(2);
             defShape = objShape.getDefShape(propName);
             st.setShape(defVal, defShape);
-
-
-
-
         }
 
         return;

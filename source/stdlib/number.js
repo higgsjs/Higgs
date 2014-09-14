@@ -140,7 +140,7 @@ Number.prototype.toFixed = function(fractionDigits)
     var f = $rt_toNumber(fractionDigits);
     if (isNaN(f))
         f = 0;
-    else if ($ir_is_f64(f))
+    else if ($ir_is_float64(f))
         f = (f > 0 ? 1 : - 1) * $ir_floor_f64((f > 0 ? f : -f));
 
     // 2. If f < 0 or f > 20, throw a RangeError exception.
@@ -171,10 +171,10 @@ Number.prototype.toFixed = function(fractionDigits)
     {
         m = $rt_toString(x);
     }
-    else if ($ir_is_i32(x) || ($ir_is_f64(x) && $ir_floor_f64(x) === x))
+    else if ($ir_is_int32(x) || ($ir_is_float64(x) && $ir_floor_f64(x) === x))
     {
         // In this case we just need to add padding 0s after decimal point and can skip the rest
-        if ($ir_is_i32(x))
+        if ($ir_is_int32(x))
         {
             m = $rt_toString(x);
         }
@@ -206,7 +206,7 @@ Number.prototype.toFixed = function(fractionDigits)
             tenf *= 10;
 
         var n = x * tenf;
-        if ($ir_is_f64(n))
+        if ($ir_is_float64(n))
             n = $ir_floor_f64(n);
 
         var delta = 0 - (n / tenf - x);
@@ -233,7 +233,7 @@ Number.prototype.toFixed = function(fractionDigits)
         }
         else
         {
-            if ($ir_is_i32(n))
+            if ($ir_is_int32(n))
             {
                 m = $rt_toString(n);
             }

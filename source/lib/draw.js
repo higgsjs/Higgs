@@ -302,7 +302,7 @@ lib/draw - provides basic drawing API using xlib
             timeout = 1000 / frame_rate - work_time;
             if (timeout < 0)
                 timeout = 0;
-            else if ($ir_is_f64(timeout))
+            else if ($ir_is_float64(timeout))
                 timeout = $ir_f64_to_i32(timeout);
 
             // Just sleep for a bit to not grind the CPU

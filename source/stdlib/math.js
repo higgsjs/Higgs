@@ -99,7 +99,7 @@ but has positive sign.
 */
 Math.abs = function (x)
 {
-    if ($ir_is_f64(x))
+    if ($ir_is_float64(x))
     {
         if ($ir_lt_f64(x, 0.0))
             return $ir_sub_f64(0.0, x);
@@ -107,7 +107,7 @@ Math.abs = function (x)
             return x;
     }
 
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
         if ($ir_lt_i32(x, 0))
             return $ir_sub_i32(0, x);
@@ -194,11 +194,11 @@ The value of Math.ceil(x) is the same as the value of -Math.floor(-x).
 Math.ceil = function (x)
 {
     // For integers, the value is unchanged
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         return x;
 
     // If x is floating-point
-    if ($ir_is_f64(x))
+    if ($ir_is_float64(x))
         return $ir_ceil_f64(x);
 
     return NaN;
@@ -222,11 +222,11 @@ NOTE: The value of Math.floor(x) is the same as the value of -Math.ceil(-x).
 Math.floor = function (x)
 {
     // For integers, the value is unchanged
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         return x;
 
     // If x is floating-point
-    if ($ir_is_f64(x))
+    if ($ir_is_float64(x))
         return $ir_floor_f64(x);
 
     return NaN;
@@ -255,10 +255,10 @@ Math.floor(x+0.5) returns +0.
 */
 Math.round = function (x)
 {
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         return x;
 
-    if ($ir_is_f64(x))
+    if ($ir_is_float64(x))
     {
         if (isNaN(x))
             return NaN;
@@ -304,7 +304,7 @@ x to the power y.
 Math.pow = function (x, y)
 {
     // If both values are non-negative integers
-    if ($ir_is_i32(x) && $ir_is_i32(y) && $ir_ge_i32(x, 0) && $ir_ge_i32(y, 0))
+    if ($ir_is_int32(x) && $ir_is_int32(y) && $ir_ge_i32(x, 0) && $ir_ge_i32(y, 0))
     {
         // If the power is 0, the result is 1
         if ($ir_eq_i32(y, 0))
@@ -360,17 +360,17 @@ Math.pow = function (x, y)
     }
 
     var fx;
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         fx = $ir_i32_to_f64(x);
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
         fx = x;
     else
         return NaN;
 
     var fy;
-    if ($ir_is_i32(y))
+    if ($ir_is_int32(y))
         fy = $ir_i32_to_f64(y);
-    else if ($ir_is_f64(y))
+    else if ($ir_is_float64(y))
         fy = y;
     else
         return NaN;
@@ -391,9 +391,9 @@ argument is expressed in radians.
 */
 Math.cos = function (x)
 {
-    if ($ir_is_i32(x) === true)
+    if ($ir_is_int32(x) === true)
         x = $ir_i32_to_f64(x);
-    else if ($ir_is_f64(x) === false)
+    else if ($ir_is_float64(x) === false)
         return NaN;
 
     return $ir_cos_f64(x);
@@ -411,9 +411,9 @@ argument is expressed in radians.
 */
 Math.sin = function (x)
 {
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         x = $ir_i32_to_f64(x);
-    else if (!$ir_is_f64(x))
+    else if (!$ir_is_float64(x))
         return NaN;
 
     return $ir_sin_f64(x);
@@ -431,9 +431,9 @@ The argument is expressed in radians.
 */
 Math.tan = function (x)
 {
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         x = $ir_i32_to_f64(x);
-    else if (!$ir_is_f64(x))
+    else if (!$ir_is_float64(x))
         return NaN;
 
     return $ir_sin_f64(x) / $ir_cos_f64(x);
@@ -451,9 +451,9 @@ Returns an implementation-dependent approximation to the square root of x.
 */
 Math.sqrt = function (x)
 {
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         return $ir_sqrt_f64($ir_i32_to_f64(x));
-    if ($ir_is_f64(x))
+    if ($ir_is_float64(x))
         return $ir_sqrt_f64(x);
 
     return NaN;
@@ -474,11 +474,11 @@ natural logarithms).
 Math.exp = function (x)
 {
     // If x is integer, convert it to a float
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         return $ir_exp_f64($ir_i32_to_f64(x));
 
     // If x is floating-point
-    if ($ir_is_f64(x))
+    if ($ir_is_float64(x))
         return $ir_exp_f64(x);
 
     return NaN;
@@ -498,11 +498,11 @@ logarithm of x.
 Math.log = function (x)
 {
     // If x is integer, convert it to a float
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         return $ir_log_f64($ir_i32_to_f64(x));
 
     // If x is floating-point
-    if ($ir_is_f64(x))
+    if ($ir_is_float64(x))
         return $ir_log_f64(x);
 
     return NaN;
@@ -518,10 +518,10 @@ Note: this method is not part of ECMAScript
 Math.setRandSeed = function (seed)
 {
     // If the seed is not an integer value
-    if (!$ir_is_i32(seed))
+    if (!$ir_is_int32(seed))
     {
         // If the seed is a floating-point value
-        if ($ir_is_f64(seed))
+        if ($ir_is_float64(seed))
         {
             // Convert the value to a long-format string
             seed = $ir_f64_to_str_lng(seed);
@@ -535,7 +535,7 @@ Math.setRandSeed = function (seed)
         seed = $rt_str_get_hash(String(seed));
     }
 
-    assert ($ir_is_i32(seed));
+    assert ($ir_is_int32(seed));
     randSeed = seed;
 }
 

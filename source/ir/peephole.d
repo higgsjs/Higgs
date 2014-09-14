@@ -310,8 +310,8 @@ void optIR(IRFunction fun)
                     continue INSTR_LOOP;
                 }
 
-                // Constant folding on is_i32
-                if (op == &IS_I32)
+                // Constant folding on is_int32
+                if (op == &IS_INT32)
                 {
                     auto arg0 = instr.getArg(0);
                     auto cst0 = cast(IRConst)arg0;

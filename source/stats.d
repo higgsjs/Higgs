@@ -192,9 +192,9 @@ bool execTimeStarted()
 static this()
 {
     // Pre-register type test counters
-    getTypeTestCtr("is_i32");
-    getTypeTestCtr("is_i64");
-    getTypeTestCtr("is_f64");
+    getTypeTestCtr("is_int32");
+    getTypeTestCtr("is_int64");
+    getTypeTestCtr("is_float64");
     getTypeTestCtr("is_const");
     getTypeTestCtr("is_refptr");
     getTypeTestCtr("is_rawptr");

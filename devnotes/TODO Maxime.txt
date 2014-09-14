@@ -162,8 +162,40 @@ At EA, in C++, we have exactly this type in our standard template library as
 eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
 extremely useful once you have it for exactly this kind of use case.
 
+NOTE: now, if prop name unknown (e.g.: runtime), we always take the slow path
+- Need to implement some inline cache in set_prop?
+- This is as it was before...
+- With capture_shape, avoid useless host call in shape_get_def, do it in set_prop instead
+- Can eventually have inline cache in get_prop and set_prop if desired
+- Inline cache in getProp could be a big win
+
+Meeting:
+- Implemented capture_tag
+  - added code to take into account the implicit type tests
+- Rewrote optimized set_prop
+  - Fast shape switching
+  - Now even more optimized, doesn't write type tag if not needed
+  - global reads and writes in one single instruction
+- Fixed bug, forgot to take shape into account into ctx diff, generic version
+- Most benchmarks faster, but there are exceptions
+- binary-trees, null vs object, is solved, now much faster
+  - ~20% less type tests
+- 3d-raytrace, 33% less type tests
+  - type tests from capture_tag are negligible
+- earley-boyer
+  - ~6% less type tests
+  - uninlined cons cell constructor
+    - sees very many types
+    - can produce enough shape dispatch to eliminate set prop host calls
+  - code size is currently double
+    - could be reduced with call optimization, known callee
+
+*** Focus on getting early typed shape results ***
+
 TODO: capture_shape(x) !
 - if the type tag is closure, we capture the shape. Magic!
+FIXME: bitwise-and is slow
+- 6 times writing the shape pointer to a register!
 
 TODO: refactorings
 - ValType => Type
@@ -172,22 +204,6 @@ TODO: refactorings
 - get_type => get_tag
 - Type => Tag
 
-Meeting:
-- Implemented capture_tag
-- Rewrote optimized set_prop
-- Now even more optimized, doesn't write type tag if not needed
-- Fixed bug, forgot to take shape into account into ctx diff, generic version
-
-*** Focus on getting early typed shape results ***
-
-NOTE: now, if prop name unknown (e.g.: runtime), we always take the slow path
-- Need to implement some inline cache in set_prop?
-- This is as it was before...
-- With capture_shape, avoid useless host call in shape_get_def, do it in set_prop instead
-- Can eventually have inline cache in get_prop and set_prop if desired
-- Inline cache in getProp could be a big win
-
-TODO: run ./benchmark.py, compare to master
 
 
 
@@ -198,6 +214,38 @@ TODO: run ./benchmark.py, compare to master
 
 
 
+
+
+
+
+
+
+[DONE] FIXME: set_prop loads capacity but doesn't use it
+
+[DONE] FIXME: in earley-boyer, 660K host dispatch because of "prototype" prop get in new
+- Try inlining specialized getprop code directly in new
+- Otherwise, could h4xx special get_prototype for closure
+  - Doesn't produce type tag
+- in v8/raytrace, also issue with apply ***
+- Fixing this doesn't change much...
+
+[DONE] TODO: add missing type tests from capture_type
+
+[DONE] TODO: look into earley-boyer slowness
+$rt_se: 866002
+$rt_objGetProp: 659438
+- also an issue with v8-raytrace
+num set prop host: 109956
+- car & cdr, val type unknown
+num heap allocs: 324053
+- this is because new now is self-hosted
+
+[DONE] TODO: run ./benchmark.py, compare to master
+./benchmark.py --higgs_cmd="./higgs --perf_stats"
+- earley-boyer 2x slower, should examine why
+- v8-raytrace also slower
+- nothing outrageously bad
+- code size somewhat bigger, 15%
 
 [DONE] FIXME: capture_tag with setGlobal produces errors
 ./higgs es5.js

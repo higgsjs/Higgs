@@ -128,7 +128,7 @@ function string_internal_isWhiteSpace(c)
 */
 function string_fromCharCode(c)
 {
-    if ($ir_eq_i32($argc, 1) && $ir_is_i32(c))
+    if ($ir_eq_i32($argc, 1) && $ir_is_int32(c))
     {
         var str = $rt_str_alloc(1);
         $rt_str_set_data(str, 0, c);
@@ -175,7 +175,7 @@ function string_valueOf()
 function string_charAt(pos)
 {
     if ($ir_is_string(this) &&
-        $ir_is_i32(pos) && 
+        $ir_is_int32(pos) && 
         $ir_ge_i32(pos, 0) && 
         $ir_lt_i32(pos, $rt_str_get_len(this)))
     {
@@ -203,7 +203,7 @@ function string_charAt(pos)
 function string_charCodeAt(pos)
 {
     if ($ir_is_string(this) &&
-        $ir_is_i32(pos) && 
+        $ir_is_int32(pos) && 
         $ir_ge_i32(pos, 0) && 
         $ir_lt_i32(pos, $rt_str_get_len(this)))
     {
@@ -215,7 +215,7 @@ function string_charCodeAt(pos)
 
     if (pos >= 0 && pos < len)
     {
-        if ($ir_is_i32(pos) == false)
+        if ($ir_is_int32(pos) == false)
             pos = $rt_toUint32(pos);
 
         return $rt_str_get_data(source, pos);

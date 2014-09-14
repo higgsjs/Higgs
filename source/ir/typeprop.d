@@ -604,14 +604,14 @@ class TypeProp
                 return TypeSet(Type.CONST);
             }
 
-            // is_i32
-            if (op is &IS_I32)
+            // is_int32
+            if (op is &IS_INT32)
             {
                 return IsTypeOp!(Type.INT32)();
             }
 
-            // is_f64
-            if (op is &IS_F64)
+            // is_float64
+            if (op is &IS_FLOAT64)
             {
                 return IsTypeOp!(Type.FLOAT64)();
             }

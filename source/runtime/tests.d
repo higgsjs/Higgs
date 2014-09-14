@@ -212,7 +212,7 @@ unittest
     // Comparison and conditional branching
     vm.assertInt("if ($ir_eq_i32(7, 7)) return 1; else return 0;", 1);
     vm.assertInt("if ($ir_eq_i32(3, 2)) false; return 3;", 3);
-    vm.assertInt("if ($ir_is_i32(5)) return 1; else return 2;", 1);
+    vm.assertInt("if ($ir_is_int32(5)) return 1; else return 2;", 1);
 
     // Add with overflow test
     vm.assertInt("if ($ir_add_i32_ovf(3, 1)) return 3; else return -1;", 3);

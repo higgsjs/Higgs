@@ -108,9 +108,9 @@ Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &gen_get_word };
 Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &gen_get_type };
 
 // Type tag test
-Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &gen_is_i32, OpInfo.BOOL_VAL };
-Opcode IS_I64 = { "is_i64", true, [OpArg.LOCAL], &gen_is_i64, OpInfo.BOOL_VAL };
-Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], &gen_is_f64, OpInfo.BOOL_VAL };
+Opcode IS_INT32 = { "is_int32", true, [OpArg.LOCAL], &gen_is_int32, OpInfo.BOOL_VAL };
+Opcode IS_INT64 = { "is_int64", true, [OpArg.LOCAL], &gen_is_int64, OpInfo.BOOL_VAL };
+Opcode IS_FLOAT64 = { "is_float64", true, [OpArg.LOCAL], &gen_is_float64, OpInfo.BOOL_VAL };
 Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &gen_is_const, OpInfo.BOOL_VAL };
 Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &gen_is_rawptr, OpInfo.BOOL_VAL };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BOOL_VAL };
