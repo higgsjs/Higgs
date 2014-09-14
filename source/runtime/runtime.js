@@ -2266,7 +2266,7 @@ function $rt_objSetProp(obj, propStr, val)
         $ir_capture_tag(val);
 
         // Set the property value
-        $ir_shape_set_prop(obj, propStr, defShape, val);
+        $ir_shape_set_prop(obj, propStr, val);
     }
 }
 
@@ -2458,7 +2458,7 @@ function $rt_setPropField(base, prop, val)
             $ir_capture_tag(val);
 
             // Set the property value
-            $ir_shape_set_prop(base, prop, defShape, val);
+            $ir_shape_set_prop(base, prop, val);
 
             return;
         }
@@ -2481,7 +2481,7 @@ function $rt_setPropFieldNoCheck(base, prop, val)
     $ir_capture_tag(val);
 
     // Set the property value
-    $ir_shape_set_prop(base, prop, defShape, val);
+    $ir_shape_set_prop(base, prop, val);
 }
 
 /**
@@ -2542,7 +2542,7 @@ function $rt_setGlobalInl(propStr, val)
         $ir_capture_tag(val);
 
         // Set the property value
-        $ir_shape_set_prop(obj, propStr, defShape, val);
+        $ir_shape_set_prop(obj, propStr, val);
 
         return;
     }
@@ -2567,7 +2567,7 @@ function $rt_delProp(base, prop)
     var defShape = $ir_shape_get_def(base, prop);
     if ($ir_ne_rawptr(defShape, $nullptr))
     {
-        $ir_shape_set_prop(base, prop, defShape, $undef);
+        $ir_shape_set_prop(base, prop, $undef);
     }
 
     // Set the property attributes to deleted

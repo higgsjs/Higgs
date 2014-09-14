@@ -194,18 +194,33 @@ Meeting:
 
 *** Focus on getting early typed shape results ***
 
+TODO: inline caches for get_prop, is_getset, has_prop?
+- how often do we know the prop name but not the obj shape???
+
 TODO: capture_shape(x)
 - bitwise-and writing the shape pointer to a register 6 times in loop core!
 
+TODO: shape_has_prop(obj, propName)
+- no more ne_rawptr hack
+
+TODO: shape_is_getset needs to take obj and prop name, not defShape
+
 TODO: rewrite getProp to not use defShape info
-
-TODO: eliminate knownShape, getShape
-- use getType instead, should make for simpler code
+- make getProp take prop name
 
 
 
 
 
+
+
+
+
+
+
+
+
+[DONE] TODO: setProp, don't pass defShape
 
 [DONE] TODO: refactorings
 st.setType(type) => st.setTag

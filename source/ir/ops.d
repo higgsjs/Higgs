@@ -289,9 +289,6 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 
-/// Initialize the shape of an object to the empty shape
-Opcode SHAPE_INIT_EMPTY = { "shape_init_empty", false, [OpArg.LOCAL], &gen_shape_init_empty, OpInfo.IMPURE };
-
 /// Get the shape defining a given property
 Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def, OpInfo.BRANCH };
 
@@ -300,8 +297,11 @@ Opcode CAPTURE_TAG = { "capture_tag", false, [OpArg.LOCAL], &gen_capture_tag, Op
 
 // TODO: CAPTURE_SHAPE
 
+/// Initialize the shape of an object to the empty shape
+Opcode SHAPE_INIT_EMPTY = { "shape_init_empty", false, [OpArg.LOCAL], &gen_shape_init_empty, OpInfo.IMPURE };
+
 /// Set the value of an object property based on its shape
-Opcode SHAPE_SET_PROP = { "shape_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode SHAPE_SET_PROP = { "shape_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Get the value of an object property based on its shape
 Opcode SHAPE_GET_PROP = { "shape_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_prop };

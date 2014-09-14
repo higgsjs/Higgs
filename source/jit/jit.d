@@ -1270,7 +1270,10 @@ class CodeGenState
     /// Set shape information for a given value
     void setShape(IRDstValue value, ObjShape shape)
     {
-        assert (value in valMap);
+        assert (
+            value in valMap,
+            "setShape: value not in value map"
+        );
         ValState state = getState(value);
 
         // Set a known type for this value
@@ -1307,11 +1310,6 @@ class CodeGenState
         return ValType(value.cstValue.tag);
     }
 
-
-
-
-
-    // TODO: eliminate in favor of getType?
     /// Test if the shape is known for a given value
     auto shapeKnown(IRDstValue value)
     {
@@ -1324,7 +1322,6 @@ class CodeGenState
         return state.type.shapeKnown;
     }
 
-    // TODO: eliminate in favor of getType?
     /// Get shape information for a given value
     auto getShape(IRDstValue value)
     {
@@ -1337,10 +1334,6 @@ class CodeGenState
         );
         return state.type.shape;
     }
-
-
-
-
 
     /// Get the state for a given value
     ValState getState(IRDstValue val) const

@@ -2477,7 +2477,7 @@ void gen_ret(
 
     //as.printStr("ret from " ~ fun.getName);
 
-    // Move the return word and type to the return registers
+    // Move the return word and tag to the return registers
     if (retWordReg.opnd != retOpnd)
         as.mov(retWordReg.opnd, retOpnd);
     if (retTagReg.opnd(8) != tagOpnd)
@@ -3125,31 +3125,6 @@ void gen_map_prop_idx(
     st.setOutTag(as, instr, Tag.INT32);
 }
 */
-
-/// Initializes an object to the empty shape
-/// Inputs: obj
-void gen_shape_init_empty(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    auto vm = ver.state.fun.vm;
-
-    // Get the object operand
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
-    assert (opnd0.isReg);
-
-    // Load the empty shape into r0
-    as.getMember!("VM.emptyShape")(scrRegs[0], vmReg);
-
-    // Set the object shape
-    as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
-
-    // Propagate the object shape
-    st.setShape(cast(IRDstValue)instr.getArg(0), vm.emptyShape);
-}
 
 /// Returns the shape defining a property, null if undefined
 /// Inputs: obj, propName
@@ -3904,8 +3879,33 @@ void gen_capture_tag(
     }
 }
 
+/// Initializes an object to the empty shape
+/// Inputs: obj
+void gen_shape_init_empty(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto vm = ver.state.fun.vm;
+
+    // Get the object operand
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
+    assert (opnd0.isReg);
+
+    // Load the empty shape into r0
+    as.getMember!("VM.emptyShape")(scrRegs[0], vmReg);
+
+    // Set the object shape
+    as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
+
+    // Propagate the object shape
+    st.setShape(cast(IRDstValue)instr.getArg(0), vm.emptyShape);
+}
+
 /// Sets the value of a property
-/// Inputs: obj, propName, defShape, val
+/// Inputs: obj, propName, val
 void gen_shape_set_prop(
     BlockVersion ver,
     CodeGenState st,
@@ -3922,7 +3922,7 @@ void gen_shape_set_prop(
 
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
-        auto valPair = vm.getArgVal(instr, 3);
+        auto valPair = vm.getArgVal(instr, 2);
 
         auto propStr = extractWStr(strPtr);
 
@@ -3968,7 +3968,7 @@ void gen_shape_set_prop(
 
     // Get the argument values
     auto objVal = cast(IRDstValue)instr.getArg(0);
-    auto propVal = instr.getArg(3);
+    auto propVal = instr.getArg(2);
 
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
@@ -4031,8 +4031,8 @@ void gen_shape_set_prop(
         bool typeMismatch = (defShape.type.tag != valType.tag);
 
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-        auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
-        auto tagOpnd = st.getTagOpnd(as, instr, 3, X86Opnd.NONE, true);
+        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrRegs[2].opnd(64), true);
+        auto tagOpnd = st.getTagOpnd(as, instr, 2, X86Opnd.NONE, true);
         assert (objOpnd.isReg);
 
         // If we need to update the type tag or we need to check the object capacity
@@ -4099,11 +4099,6 @@ void gen_shape_set_prop(
 
             // Increment the number of shape changes due to type
             as.incStatCnt(&stats.numShapeFlips, scrRegs[0]);
-
-            // FIXME: temporary until capture_shape
-            auto defVal = cast(IRInstr)instr.getArg(2);
-            defShape = objShape.getDefShape(propName);
-            st.setShape(defVal, defShape);
         }
 
         return;
@@ -4119,14 +4114,14 @@ void gen_shape_set_prop(
     if (defShape.writable && slotIdx < minObjCap)
     {
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-        auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[0].opnd(64), true);
-        auto tagOpnd = st.getTagOpnd(as, instr, 3, scrRegs[1].opnd(8), true);
+        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrRegs[0].opnd(64), true);
+        auto tagOpnd = st.getTagOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
         assert (objOpnd.isReg);
 
         // Get the object capacity into r2
         as.getField(scrRegs[2].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
-        // Set the word and type values
+        // Set the word and tag values
         auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
         auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[2]);
         as.mov(wordMem, valOpnd);
@@ -4281,7 +4276,7 @@ void gen_shape_get_proto(
 
     auto slotIdx = PROTO_SLOT_IDX;
 
-    // Load the word and type values
+    // Load the word and tag values
     auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
     auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
     as.mov(outOpnd, wordMem);
@@ -4330,7 +4325,7 @@ void gen_shape_def_const(
 
     // If we know that the object has the empty shape
     // and we are defining the prototype value
-    if (st.shapeKnown(objVal) && 
+    if (st.shapeKnown(objVal) &&
         st.getShape(objVal) is st.fun.vm.emptyShape &&
         propName == "__proto__" &&
         st.shapeKnown(valVal))
@@ -4359,7 +4354,7 @@ void gen_shape_def_const(
         assert (valOpnd.isReg);
         auto tagOpnd = st.getTagOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
 
-        // Set the prototype value and type
+        // Set the prototype value and tag
         as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
         auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * PROTO_SLOT_IDX);
         auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + PROTO_SLOT_IDX, 8, scrRegs[0]);
