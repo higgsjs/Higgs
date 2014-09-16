@@ -211,15 +211,19 @@ Meeting:
   - Fast shape switching
   - Now even more optimized, doesn't write type tag if not needed
   - global reads and writes in one single instruction
+- Implemented elimination of is_closure test for dynamic calls
+  - Quite effective
 - Fixed bug, forgot to take shape into account into ctx diff, generic version
 - Most benchmarks faster, but there are exceptions
 - binary-trees, null vs object, is solved, now much faster
-  - ~20% less type tests
-  - almost 3x faster than with previous obj system
-- 3d-raytrace, 33% less type tests
-  - type tests from capture_tag are negligible
+  - ~50% less type tests than with old obj system
+  - 4x faster than with previous obj system
+- 3d-raytrace
+  - 33% less type tests
+  - type tests from capture_tag are negligible, definitely pays for itself
 - earley-boyer
   - ~6% less type tests
+    - 25% less than with old object system
   - uninlined cons cell constructor
     - sees very many types
     - can produce enough shape dispatch to eliminate set prop host calls
@@ -234,9 +238,13 @@ Meeting:
   - Still possible to have function pointer, specialize method calls
   - Fptr spec is very useful for interprocedural basic block versioning
   - Typed shapes help interp BBV, which helps typed shapes
-- Optimization idea: for global shape capture, can optimize based on compile
-  time info. Only need one slot.
-  - Size of shape dispatches likely have big performance impact
+- Optimization ideas:
+  - for global shape capture, can optimize based on compile
+    time info. Only need one slot
+    - Size of shape dispatches likely have big performance impact
+  - can optimize size of heap alloc ops
+  - could write code to get code size usage by instr kind
+  - also frequency of each instr kind
 
 
 
@@ -246,10 +254,15 @@ Meeting:
 
 
 
-
-
-
-
+[DONE] TODO: is_closure opt
+./higgs --perf_stats benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 
+./higgs --perf_stats benchmarks/sunspider/access-binary-trees.js
+before:
+    binary-trees code size: 305356
+    earley-boyer code size: 2730222
+after:
+    binary-trees code size: 300043
+    earley-boyer code size: 2559128
 
 [DONE] TODO: modify shape_get_proto to extract type tag info when known
 

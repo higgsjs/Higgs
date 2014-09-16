@@ -1888,21 +1888,31 @@ void gen_call(
     // Function pointer extraction
     //
 
-    // Get the type tag for the closure value
-    auto closType = st.getTagOpnd(
-        as,
-        instr,
-        0,
-        scrRegs[0].opnd(8),
-        false
-    );
+    // Get the type information for the closure value
+    auto closType = st.getType(instr.getArg(0));
 
-    // If the value is not a closure, bailout
-    as.incStatCnt(stats.getTypeTestCtr("is_closure"), scrRegs[1]);
-    as.cmp(closType, X86Opnd(Tag.CLOSURE));
-    as.jne(Label.THROW);
+    // This may throw an exception if the callee is not a closure
+    auto mayThrow = !closType.tagKnown || closType.tag !is Tag.CLOSURE;
 
-    // Get the word for the closure value
+    // If an exception may be thrown
+    if (mayThrow)
+    {
+        // Get the type tag for the closure value
+        auto closTag = st.getTagOpnd(
+            as,
+            instr,
+            0,
+            scrRegs[0].opnd(8),
+            false
+        );
+
+        // If the value is not a closure, bailout
+        as.incStatCnt(stats.getTypeTestCtr("is_closure"), scrRegs[1]);
+        as.cmp(closTag, X86Opnd(Tag.CLOSURE));
+        as.jne(Label.THROW);
+    }
+
+    // Get the closure pointer
     auto closReg = st.getWordOpnd(
         as,
         instr,
@@ -2069,7 +2079,7 @@ void gen_call(
             as.getMember!("IRFunction.entryCode")(scrRegs[0], scrRegs[1]);
             as.jmp(scrRegs[0].opnd(64));
         },
-        true
+        mayThrow
     );
 }
 
