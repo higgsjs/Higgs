@@ -98,6 +98,14 @@ TODO: gather stats about the percentage of functions which are long-running
 - dump text and sort
   - fn, num calls, num itrs
 
+TODO: eliminate type array in objects?
+- If the type is always known, this is unnecessary
+- Evaluate if there is much shape flip-flopping first
+- GC would need alterations
+
+TODO: port CSG lib
+http://evanw.github.io/csg.js/
+
 ------------------------------------------------------------------------------
 
 Milestone: Equalling Master Branch Performance
@@ -122,24 +130,17 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
-TODO: eliminate type array in objects?
-- If the type is always known, this is unnecessary
-- Evaluate if there is much shape flip-flopping first
-- GC would need alterations
-
 TODO: stub branches, pre-reserve space, put block idx in there
 - should ideally jump ahead and not backwards
 - don't alloc objects for each stub
 
-TODO: port CSG lib
-http://evanw.github.io/csg.js/
+TODO: push getters/setters to master? is compile time acceptable?
 
 TODO: blog post, Higgs' Fancy New Object System
+- use knightmare image for featured image
 - quick sketching program, online?
 - post to r/compilers, r/higgsjs
 - Typed shapes + BBV a bit of a gamble
-
-TODO: push getters/setters to master? is compile time acceptable?
 
 TODO: liveness analysis flipped...?
 - TODO: start by implementing system to measure total liveness analysis time
@@ -162,12 +163,45 @@ At EA, in C++, we have exactly this type in our standard template library as
 eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
 extremely useful once you have it for exactly this kind of use case.
 
-NOTE: now, if prop name unknown (e.g.: runtime), we always take the slow path
-- Need to implement some inline cache in set_prop?
-- This is as it was before...
-- With capture_shape, avoid useless host call in shape_get_def, do it in set_prop instead
-- Can eventually have inline cache in get_prop and set_prop if desired
-- Inline cache in getProp could be a big win
+TODO: inline caches for get_prop, is_getset, has_prop?
+- how often do we know the prop name but not the obj shape???
+- might be better to go back to having set_prop and get_prop branching?
+  - may be annoying to implement wrt inline cache?
+  - jump to one target or the other
+
+TODO: capture_shape(x)
+- bitwise-and writing the shape pointer to a register 6 times in loop core!
+
+TODO: shape_has_prop(obj, propName)
+- no more ne_rawptr hack
+
+TODO: shape_is_getset needs to take obj and prop name, not defShape
+
+TODO: check how often getProp doesn't know the obj shape but knows the prop name
+
+TODO: rewrite getProp to not use defShape info
+- make getProp take prop name
+
+TODO: look at hot spots in earley-boyer more in detail
+- Find where most of the time is spent, optimize that
+- could hack some code to count instruction execs per function with source pos
+- Quite possibly, something with the alloc in boyer is slow, works poorly?
+
+TODO: new cmd args
+--shape_notagspec, --shape_noclosspec
+
+TODO: need to take fptrKnown into account in ctxDiff...
+- Should use isSubType function and inequality, KISS
+- Also need to modify handling of type info clearing in generic ctx
+  - need clearType, but not clearTag
+
+TODO: valType, fptrKnown flag
+- for closure types, capture IRFunction
+- do we always want to capture the IRFunction?
+- if we know the shape, we know the fptr
+- but don't want to store closure shape in objects
+- noShape should do the conversion to fptr ***
+- assert that we never have both fptrKnown and shapeKnown
 
 Meeting:
 - Refactored code to distinguish Type and Tag
@@ -181,6 +215,7 @@ Meeting:
 - Most benchmarks faster, but there are exceptions
 - binary-trees, null vs object, is solved, now much faster
   - ~20% less type tests
+  - almost 3x faster than with previous obj system
 - 3d-raytrace, 33% less type tests
   - type tests from capture_tag are negligible
 - earley-boyer
@@ -190,23 +225,18 @@ Meeting:
     - can produce enough shape dispatch to eliminate set prop host calls
   - code size is currently double
     - could be reduced with call optimization, known callee
+  - probably cache effects causing slowdown
 - Seemingly no explosion of versions (which I was afraid of)
-
-*** Focus on getting early typed shape results ***
-
-TODO: inline caches for get_prop, is_getset, has_prop?
-- how often do we know the prop name but not the obj shape???
-
-TODO: capture_shape(x)
-- bitwise-and writing the shape pointer to a register 6 times in loop core!
-
-TODO: shape_has_prop(obj, propName)
-- no more ne_rawptr hack
-
-TODO: shape_is_getset needs to take obj and prop name, not defShape
-
-TODO: rewrite getProp to not use defShape info
-- make getProp take prop name
+- preliminary: exec time for some small benchmarks close to v8 time
+  - but old v8 version
+  - includes v8 init time
+- PROBLEM: object tagged property, another reason we can't have shape...
+  - Still possible to have function pointer, specialize method calls
+  - Fptr spec is very useful for interprocedural basic block versioning
+  - Typed shapes help interp BBV, which helps typed shapes
+- Optimization idea: for global shape capture, can optimize based on compile
+  time info. Only need one slot.
+  - Size of shape dispatches likely have big performance impact
 
 
 
@@ -219,6 +249,20 @@ TODO: rewrite getProp to not use defShape info
 
 
 
+
+
+[DONE] TODO: modify shape_get_proto to extract type tag info when known
+
+[DONE] TODO: modify def_const, setProp to not save shape info
+
+[DONE] TODO: time 1M calls, 1M prim calls
+1M calls ~ 10ms
+prim calls about 20x faster
+- size of calls may still matter
+  - adds conditional branches
+  - multiplied by shapes
+- boyer has 2200 call sites
+  - 700K of call site bytes out of 3MB
 
 [DONE] TODO: setProp, don't pass defShape
 

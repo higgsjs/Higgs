@@ -2060,7 +2060,7 @@ the base is an object of some kind and the key is a constant string
 function $rt_getPropField(base, prop)
 {
     // If the base is a simple object
-    if ($ir_is_object(base))
+    if ($ir_is_object(base) || $ir_is_closure(base))
     {
         // Find the defining shape for this property
         var defShape = $ir_shape_get_def(base, prop);

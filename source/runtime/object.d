@@ -211,6 +211,17 @@ struct ValType
 
         return true;
     }
+
+    /**
+    Filter out the shape information from this type
+    */
+    ValType noShape()
+    {
+        ValType that = this;
+        that.shape = null;
+        that.shapeKnown = false;
+        return that;
+    }
 }
 
 /**
@@ -549,7 +560,8 @@ void setProp(
         ", propName=" ~ to!string(propStr)
     );
 
-    auto valType = ValType(valPair);
+    // Create a type object for the value, but ignore its shape
+    auto valType = ValType(valPair).noShape;
 
     // Get the shape from the object
     auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);

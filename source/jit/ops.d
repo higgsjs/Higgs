@@ -1936,10 +1936,6 @@ void gen_call(
     as.label(Label.FALSE);
     as.movsx(scrRegs[2].opnd(64), scrRegs[2].opnd(32));
 
-    //as.printStr("missing args");
-    //as.printInt(scrRegs[2].opnd(64));
-    //as.printInt(scrRegs[2].opnd(32));
-
     // Initialize the missing arguments, if any
     as.mov(scrReg3.opnd(64), scrRegs[2].opnd(64));
     as.label(Label.LOOP);
@@ -2700,7 +2696,7 @@ void HeapAllocOp(Tag tag)(
     as.loadJITRegs();
 
     // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, cretReg.opnd);
 
     // Allocation done
     as.label(Label.DONE);
@@ -4271,19 +4267,37 @@ void gen_shape_get_proto(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     assert (outOpnd.isReg);
 
-    // Get the object capacity into r1
-    as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+    // Get the object type
+    auto objType = st.getType(instr.getArg(0));
 
     auto slotIdx = PROTO_SLOT_IDX;
 
-    // Load the word and tag values
-    auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
-    auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
-    as.mov(outOpnd, wordMem);
-    as.mov(scrRegs[2].opnd(8), typeMem);
+    // If the object shape is known
+    if (objType.shapeKnown)
+    {
+        auto defShape = objType.shape.getDefShape("__proto__");
 
-    // Set the output type
-    st.setOutTag(as, instr, scrRegs[2].reg(8));
+        // Load the word value
+        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+        as.mov(outOpnd, wordMem);
+
+        // Set the output type tag
+        st.setOutTag(as, instr, defShape.type.tag);
+    }
+    else
+    {
+        // Get the object capacity into r1
+        as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+
+        // Load the word and tag values
+        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+        auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+        as.mov(outOpnd, wordMem);
+        as.mov(scrRegs[2].opnd(8), typeMem);
+
+        // Set the output type tag
+        st.setOutTag(as, instr, scrRegs[2].reg(8));
+    }
 }
 
 /// Define a constant property
@@ -4317,24 +4331,28 @@ void gen_shape_def_const(
     auto vm = st.fun.vm;
 
     // Get the object and value arguments
-    auto objVal = cast(IRDstValue)instr.getArg(0);
-    auto valVal = cast(IRDstValue)instr.getArg(2);
+    auto objDst = cast(IRDstValue)instr.getArg(0);
+    auto cstVal = instr.getArg(2);
+    assert (objDst !is null);
+
+    // Get the type information for the arguments
+    auto objType = st.getType(objDst);
+    auto valType = st.getType(cstVal);
 
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
     // If we know that the object has the empty shape
     // and we are defining the prototype value
-    if (st.shapeKnown(objVal) &&
-        st.getShape(objVal) is st.fun.vm.emptyShape &&
+    if (objType.shapeKnown && objType.shape is st.fun.vm.emptyShape &&
         propName == "__proto__" &&
-        st.shapeKnown(valVal))
+        valType.shapeKnown)
     {
-        // Get the object shape
-        auto objShape = st.getShape(objVal);
-
-        // Get the prototype value sha[pe
-        auto valShape = st.getShape(valVal);
+        // Get the object shape and prototype value shapes
+        auto objShape = objType.shape;
+        auto valShape = valType.shape;
+        assert (objShape !is null);
+        assert (valShape !is null);
 
         // Ensure that the property doesn't already exist
         assert (objShape.getDefShape(propName) is null);
@@ -4343,7 +4361,7 @@ void gen_shape_def_const(
         auto newShape = objShape.defProp(
             vm,
             propName,
-            ValType(),
+            valType.noShape,
             0,
             null
         );
@@ -4366,7 +4384,7 @@ void gen_shape_def_const(
         as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
 
         // Set the new object shape
-        st.setShape(objVal, newShape);
+        st.setShape(objDst, newShape);
 
         return;
     }
@@ -4385,7 +4403,7 @@ void gen_shape_def_const(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.clearShape(objVal);
+    st.clearShape(objDst);
 }
 
 /// Sets the attributes for a property
