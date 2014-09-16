@@ -422,6 +422,19 @@ void optIR(IRFunction fun)
                     */
                 }
 
+                // Constant folding on i32_to_f64
+                if (op == &I32_TO_F64)
+                {
+                    auto cst0 = cast(IRConst)instr.getArg(0);
+
+                    if (cst0 && cst0.isInt32)
+                    {
+                        instr.replUses(IRConst.float64Cst(cst0.int32Val));
+                        delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
+                }
+
                 // If this is a branch instruction
                 if (op.isBranch)
                 {

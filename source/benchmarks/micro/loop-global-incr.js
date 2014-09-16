@@ -9,8 +9,9 @@ function test()
 
 test();
 
+/*
 assert (
     i === 2000000000,
     'final loop increment value incorrect'
 );
-
+*/

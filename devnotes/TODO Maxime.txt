@@ -203,6 +203,13 @@ TODO: valType, fptrKnown flag
 - noShape should do the conversion to fptr ***
 - assert that we never have both fptrKnown and shapeKnown
 
+TODO: blog post: Faster than V8 *
+time ~/Dropbox/Linux/bin/d8_dbg --print_opt_code --print_code_verbose loop-global-incr.js 
+- dev-maxime branch, link
+- Moving target
+- Slow compile times and inlining
+- Higgs values unboxed, separate tags
+
 Meeting:
 - Refactored code to distinguish Type and Tag
 - Implemented capture_tag
@@ -231,13 +238,14 @@ Meeting:
     - could be reduced with call optimization, known callee
   - probably cache effects causing slowdown
 - Seemingly no explosion of versions (which I was afraid of)
-- preliminary: exec time for some small benchmarks close to v8 time
-  - but old v8 version
-  - includes v8 init time
 - PROBLEM: object tagged property, another reason we can't have shape...
   - Still possible to have function pointer, specialize method calls
   - Fptr spec is very useful for interprocedural basic block versioning
   - Typed shapes help interp BBV, which helps typed shapes
+- Beat V8 on microbenchark, loop to 2 billions
+  - Includes compile time, stdlib init
+  - Not nearly fully-optimized
+  - CGO has rebuttal period... If asked for results, bring this up!
 - Optimization ideas:
   - for global shape capture, can optimize based on compile
     time info. Only need one slot
@@ -245,6 +253,8 @@ Meeting:
   - can optimize size of heap alloc ops
   - could write code to get code size usage by instr kind
   - also frequency of each instr kind
+  - could also put together a profiler, visualize hot asm
+    - look into gprof support
 
 
 
@@ -253,6 +263,12 @@ Meeting:
 
 
 
+
+
+
+[DONE] TODO: peephole for i32 to f64 conversion
+
+[DONE] TODO: upgrade V8
 
 [DONE] TODO: is_closure opt
 ./higgs --perf_stats benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 
