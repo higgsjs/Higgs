@@ -167,16 +167,22 @@ extremely useful once you have it for exactly this kind of use case.
 
 TODO: global shape dispatch, numEntries=1
 
-TODO: ovf check elimination, for fun?
-- subMax flag
-- clear this flag in propType
-- Need a CodeGenState.setType function, not setTag, do we have this?
-
 TODO: inform Marc of current typed shape results
 
 TODO: Friday e-mail, inform Marc of progress:
-- Tag specialization in shapes seems to reduce code size overall?
-  - Look at average measures
+- Tested --shape_notags, no type tag spec in shapes
+  - Reduces code size on average, in most cases
+  - Avg reduction in type tests about 33%
+  - Execution time not affected much, no difference on average
+  - A bit more with 2+ versions, but not many, still a small minority
+  - max versions 8 instead of 7
+  - num def shape update is 2x higher
+  - Intuition: about pays for itself, but more branches, more def shape host
+- Overflow check elimination
+  - Not perfect, doesn't do globals
+  - Still used several times in most benchmarks
+  - Tiny reduction in code size, comp time
+  - Tiny reduction in exec time
 
 TODO: new cmd arg --shape_noclosspec
 - implement in propType method
@@ -193,18 +199,32 @@ FIXME: ctxDiff, should use isSubType function and inequality, KISS
 
 FIXME: need clearType, but not clearTag
 
-TODO: try BBV with and without shape_notags
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: ovf check elimination, for fun?
+- subMax flag
+  - clear this flag in propType
+- Get code size with and without
+
+[DONE] TODO: CodeGenState.setType
+
+[DONE] TODO: try BBV with and without shape_notags
+./benchmark.py --csv_file="notags.csv" --num_runs=5 --higgs_cmd="./higgs --shape_notags --perf_stats"; ./benchmark.py --csv_file="spec.csv" --num_runs=5 --higgs_cmd="./higgs --perf_stats"
+./benchmark.py --csv_file="notags.csv" --higgs_cmd="./higgs --shape_notags --stats"; ./benchmark.py --csv_file="spec.csv" --higgs_cmd="./higgs --stats"
 - Make sure that shape flips is always zero!
 - Try benchmark.py, 10 runs
 - Output two CSV files
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: getProp with no type tag fucks up...
 - Probably because type tag is never written...? Doesn't fix it

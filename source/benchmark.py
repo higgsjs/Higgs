@@ -12,7 +12,7 @@ from optparse import OptionParser
 # Configuration
 MAKE_CMD = 'make release'
 DEF_NUM_RUNS = 1
-DEF_HIGGS_CMD = './higgs --stats --jit_maxvers=20'
+DEF_HIGGS_CMD = './higgs --stats --maxvers=20'
 DEF_CSV_FILE = ''
 
 # Parse the command-line options

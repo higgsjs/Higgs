@@ -239,6 +239,9 @@ void RMMOp(string op, size_t numBits, Tag tag)(
         true
     );
 
+    // Get type information about the first argument
+    auto arg0Type = st.getType(instr.getArg(0));
+
     // Allow reusing an input register for the output,
     // except for subtraction which is not commutative
     auto opndOut = st.getOutOpnd(as, instr, numBits, op != "sub");
@@ -302,42 +305,58 @@ void RMMOp(string op, size_t numBits, Tag tag)(
     // Set the output type tag
     st.setOutTag(as, instr, tag);
 
-    // If the instruction has an exception/overflow target
-    if (instr.getTarget(0))
+    // If the instruction has no exception/overflow target, stop
+    if (instr.getTarget(0) is null)
+        return;
+
+    // If this is an add operation
+    static if (op == "add")
     {
-        auto branchNO = getBranchEdge(instr.getTarget(0), st, false);
-        auto branchOV = getBranchEdge(instr.getTarget(1), st, false);
+        // If we are adding 1 to a submaximal argument,
+        // there can be no overflow
+        auto arg1Cst = cast(IRConst)instr.getArg(1);
+        if (arg0Type.subMax && arg1Cst &&
+            arg1Cst.isInt32 && arg1Cst.int32Val == 1)
+        {
+            //writeln(instr.block.fun.getName);
 
-        // Generate the branch code
-        ver.genBranch(
-            as,
-            branchNO,
-            branchOV,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
-            {
-                final switch (shape)
-                {
-                    case BranchShape.NEXT0:
-                    jo32Ref(as, vm, target1, 1);
-                    break;
-
-                    case BranchShape.NEXT1:
-                    jno32Ref(as, vm, target0, 0);
-                    break;
-
-                    case BranchShape.DEFAULT:
-                    jo32Ref(as, vm, target1, 1);
-                    jmp32Ref(as, vm, target0, 0);
-                }
-            }
-        );
+            // Jump directly to the successor block
+            return gen_jump(ver, st, instr, as);
+        }
     }
+
+    auto branchNO = getBranchEdge(instr.getTarget(0), st, false);
+    auto branchOV = getBranchEdge(instr.getTarget(1), st, false);
+
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branchNO,
+        branchOV,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            final switch (shape)
+            {
+                case BranchShape.NEXT0:
+                jo32Ref(as, vm, target1, 1);
+                break;
+
+                case BranchShape.NEXT1:
+                jno32Ref(as, vm, target0, 0);
+                break;
+
+                case BranchShape.DEFAULT:
+                jo32Ref(as, vm, target1, 1);
+                jmp32Ref(as, vm, target0, 0);
+            }
+        }
+    );
 }
 
 alias RMMOp!("add" , 32, Tag.INT32) gen_add_i32;
@@ -962,13 +981,10 @@ void IsTypeOp(Tag tag)(
         // If the argument is not a constant, add type information
         // about the argument's type along the true branch
         CodeGenState trueSt = st;
-        if (opts.maxvers > 0)
+        if (auto dstArg = cast(IRDstValue)instr.getArg(0))
         {
-            if (auto dstArg = cast(IRDstValue)instr.getArg(0))
-            {
-                trueSt = new CodeGenState(trueSt);
-                trueSt.setTag(dstArg, tag);
-            }
+            trueSt = new CodeGenState(trueSt);
+            trueSt.setTag(dstArg, tag);
         }
 
         // Get branch edges for the true and false branches
@@ -1298,8 +1314,23 @@ void CmpOp(string op, size_t numBits)(
     // If there is an immediately following if_true using this value
     if (ifUseNext(instr) is true)
     {
+        // If this is a less-than comparison and the argument
+        // is not a constant, mark the argument as being
+        // submaximal along the true branch
+        CodeGenState trueSt = st;
+        static if (op == "lt")
+        {
+            if (auto dstArg = cast(IRDstValue)instr.getArg(0))
+            {
+                trueSt = new CodeGenState(trueSt);
+                ValType argType = trueSt.getType(dstArg);
+                argType.subMax = true;
+                trueSt.setType(dstArg, argType);
+            }
+        }
+
         // Get branch edges for the true and false branches
-        auto branchT = getBranchEdge(instr.next.getTarget(0), st, false);
+        auto branchT = getBranchEdge(instr.next.getTarget(0), trueSt, false);
         auto branchF = getBranchEdge(instr.next.getTarget(1), st, false);
 
         // Generate the branch code
@@ -3418,29 +3449,8 @@ void gen_shape_get_def(
         st.setOutTag(as, instr, Tag.SHAPEPTR);
         st.setShape(instr, defShape);
 
-        // Get the default version for the successor block
-        auto branch = getBranchEdge(
-            instr.getTarget(0),
-            st,
-            true
-        );
-
-        // Check that the successor follows us directly
-        ver.genBranch(
-            as,
-            branch,
-            null,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
-            {
-                assert (shape is BranchShape.NEXT0);
-            }
-        );
+        // Jump directly to the successor block
+        return gen_jump(ver, st, instr, as);
     }
 
     // If the property name is a known constant string
@@ -3560,29 +3570,8 @@ void gen_shape_get_def(
         // Set the output type for this instruction
         st.setOutTag(as, instr, Tag.SHAPEPTR);
 
-        // Get the default version for the successor block
-        auto branch = getBranchEdge(
-            instr.getTarget(0),
-            st,
-            true
-        );
-
-        // Check that the successor follows us directly
-        ver.genBranch(
-            as,
-            branch,
-            null,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
-            {
-                assert (shape is BranchShape.NEXT0);
-            }
-        );
+        // Jump directly to the successor block
+        return gen_jump(ver, st, instr, as);
     }
 }
 
@@ -3794,29 +3783,8 @@ void gen_capture_tag(
     // If the type tag is known
     if (valType.tagKnown)
     {
-        // Get the default version for the successor block
-        auto branch = getBranchEdge(
-            instr.getTarget(0),
-            st,
-            true
-        );
-
-        // Check that the successor follows us directly
-        ver.genBranch(
-            as,
-            branch,
-            null,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
-            {
-                assert (shape is BranchShape.NEXT0);
-            }
-        );
+        // Jump directly to the successor block
+        return gen_jump(ver, st, instr, as);
     }
 
     // The type tag is unknown
@@ -5485,27 +5453,7 @@ void gen_call_ffi(
         st.setOutTag(as, instr, typeMap[retType]);
     }
 
-    auto branch = getBranchEdge(
-        instr.getTarget(0),
-        st,
-        true
-    );
-
-    // Jump to the target block directly
-    ver.genBranch(
-        as,
-        branch,
-        null,
-        delegate void(
-            CodeBlock as,
-            VM vm,
-            CodeFragment target0,
-            CodeFragment target1,
-            BranchShape shape
-        )
-        {
-            jmp32Ref(as, vm, target0, 0);
-        }
-    );
+    // Jump directly to the successor block
+    return gen_jump(ver, st, instr, as);
 }
 

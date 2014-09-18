@@ -128,8 +128,12 @@ struct ValType
         /// Known shape flag
         bool, "shapeKnown", 1,
 
+        /// Submaximal flag
+        /// Note: this is for overflow check elimination
+        bool, "subMax", 1,
+
         /// Padding bits
-        uint, "", 2
+        uint, "", 1
     ));
 
     /// Constructor taking a value pair
@@ -208,6 +212,18 @@ struct ValType
                 if (this.shape !is that.shape)
                     return false;
             }
+
+            if (that.tag is Tag.INT32)
+            {
+                if (that.subMax is false)
+                {
+                    if (this.subMax is true)
+                    {
+                        assert (false);
+                        return false;
+                    }
+                }
+            }
         }
 
         return true;
@@ -231,6 +247,9 @@ struct ValType
             that.tag = cast(Tag)0;
             that.tagKnown = false;
         }
+
+        // Clear the subMax flag
+        that.subMax = false;
 
         return that;
     }

@@ -1256,7 +1256,7 @@ class CodeGenState
         ValState state = getState(value);
 
         // Assert that we aren't contradicting existing information
-        assert (!state.tagKnown || state.tag is tag);
+        assert (!state.tagKnown || tag is state.tag);
 
         // If the type was previously unknown, it must have
         // been written on the stack, mark it as such
@@ -1278,6 +1278,19 @@ class CodeGenState
 
         // Set a known type for this value
         valMap[value] = state.setShape(shape);
+    }
+
+    /// Set the type for a given value
+    void setType(IRDstValue value, ValType type)
+    {
+        assert (value in valMap);
+        ValState state = getState(value);
+
+        // Assert that we aren't contradicting existing information
+        assert (!type.tagKnown || !state.tagKnown || type.tag is state.tag);
+
+        // Set a known type for this value
+        valMap[value] = state.setType(type);
     }
 
     /// Clear shape information for a given value
@@ -2341,7 +2354,11 @@ void compile(VM vm, IRInstr curInstr)
             }
 
             // Ensure that the end of the fragment was marked
-            assert (frag.ended, ver.block.toString);
+            assert (
+                frag.ended,
+                "unterminated code fragment: " ~
+                ver.block.toString
+            );
         }
 
         // If this is a branch code fragment
