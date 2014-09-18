@@ -21,24 +21,9 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-TODO: take a break, look into sound output
-- work on this in dev-maxime branch ***
-- look at existing code
-  - can write and wait for poll, no callback
-
 FIXME: v8bench/regexp segfaults
 
-TODO: eliminate overflow checks
-- how many add_i32_ovf with 1 do we have?
-- if less than some other i32, can eliminate
-  - need to prove this is on the path to the current block
-    - can't reach entry without going through the test
-    - must arrive through "true" side
-
 TODO: look into doc gen, linking up with GitHub
-
-TODO: look into jetstream benchmarks
-https://www.webkit.org/blog/3418/introducing-the-jetstream-benchmark-suite/
 
 TODO: C call conv wrapper for callbacks
 - after new calling conv
@@ -63,8 +48,6 @@ const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = value
 - Look at current parser code, vars code, ast-to-ir code first ***
 
 TODO: look at eval notes again
-
-TODO: optimize gen_call to remove type tag test, exc code when known closure?
 
 TODO: constant prop in ValType?
 - Don't have to propagate all
@@ -103,14 +86,6 @@ TODO: eliminate type array in objects?
 - Evaluate if there is much shape flip-flopping first
 - GC would need alterations
 
-TODO: port CSG lib
-http://evanw.github.io/csg.js/
-
-------------------------------------------------------------------------------
-
-Milestone: Equalling Master Branch Performance
-----------------------------------------------
-
 TODO: profiling phase for shape_get_def?
 - first K=50 or 100 calls could gather shapes
   - 8 bucket count + last seen
@@ -130,18 +105,6 @@ TODO: commit and experiment
 - how do typical global getprops behave wrt shapes? do they stabilize?
 - how many getprops get 50+ execs in benchs?
 
-TODO: stub branches, pre-reserve space, put block idx in there
-- should ideally jump ahead and not backwards
-- don't alloc objects for each stub
-
-TODO: push getters/setters to master? is compile time acceptable?
-
-TODO: blog post, Higgs' Fancy New Object System
-- use knightmare image for featured image
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
-
 TODO: liveness analysis flipped...?
 - TODO: start by implementing system to measure total liveness analysis time
   - test on 3d-raytrace, other big benchmarks which don't GC, find slowest
@@ -157,43 +120,66 @@ TODO: liveness analysis flipped...?
   - For most values, small embedded list will work
 - Values that are never live don't even have a live set
 
-TODO: try embedded arg list for IR instrs?
-- What is the object we allocate most of? stats?
-At EA, in C++, we have exactly this type in our standard template library as
-eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
-extremely useful once you have it for exactly this kind of use case.
-
-TODO: inline caches for get_prop, is_getset, has_prop?
-- how often do we know the prop name but not the obj shape???
-- might be better to go back to having set_prop and get_prop branching?
-  - may be annoying to implement wrt inline cache?
-  - jump to one target or the other
-
-TODO: capture_shape(x)
-- bitwise-and writing the shape pointer to a register 6 times in loop core!
-
-TODO: shape_has_prop(obj, propName)
-- no more ne_rawptr hack
-
-TODO: shape_is_getset needs to take obj and prop name, not defShape
-
-TODO: check how often getProp doesn't know the obj shape but knows the prop name
-
-TODO: rewrite getProp to not use defShape info
-- make getProp take prop name
+TODO: stub branches, pre-reserve space, put block idx in there
+- should ideally jump ahead and not backwards
+- don't alloc objects for each stub
 
 TODO: look at hot spots in earley-boyer more in detail
 - Find where most of the time is spent, optimize that
 - could hack some code to count instruction execs per function with source pos
 - Quite possibly, something with the alloc in boyer is slow, works poorly?
 
-TODO: new cmd args
---shape_notagspec, --shape_noclosspec
+TODO: inline caches for get_prop, is_getset, has_prop?
+- how often do we know the prop name but not the obj shape???
+- might be better to go back to having set_prop and get_prop branching?
+  - may be annoying to implement wrt inline cache?
+  - jump to one target or the other
+TODO: capture_shape(x)
+- bitwise-and writing the shape pointer to a register 6 times in loop core!
+TODO: shape_has_prop(obj, propName)
+- no more ne_rawptr hack
+TODO: shape_is_getset needs to take obj and prop name, not defShape
+TODO: rewrite getProp to not use defShape info
+- make getProp take prop name
+TODO: check how often getProp doesn't know the obj shape but knows the prop name
 
-TODO: need to take fptrKnown into account in ctxDiff...
-- Should use isSubType function and inequality, KISS
-- Also need to modify handling of type info clearing in generic ctx
-  - need clearType, but not clearTag
+------------------------------------------------------------------------------
+
+CC Paper Deadline - October 17th
+- 20 pages
+- More illustrations: typed shapes, shape capture, code paths
+
+CC Abstract Deadline - October 10th
+
+TODO: push getters/setters to master? is compile time acceptable?
+
+TODO: blog post, Higgs' Fancy New Object System
+- use knightmare image for featured image
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+TODO: try embedded arg list for IR instrs?
+- What is the object we allocate most of? stats?
+At EA, in C++, we have exactly this type in our standard template library as
+eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
+extremely useful once you have it for exactly this kind of use case.
+
+TODO: global shape dispatch, numEntries=1
+
+TODO: ovf check elimination, for fun?
+- subMax flag
+- clear this flag in propType
+- Need a CodeGenState.setType function, not setTag, do we have this?
+
+TODO: inform Marc of current typed shape results
+
+TODO: Friday e-mail, inform Marc of progress:
+- Tag specialization in shapes seems to reduce code size overall?
+  - Look at average measures
+
+TODO: new cmd arg --shape_noclosspec
+- implement in propType method
 
 TODO: valType, fptrKnown flag
 - for closure types, capture IRFunction
@@ -203,15 +189,42 @@ TODO: valType, fptrKnown flag
 - noShape should do the conversion to fptr ***
 - assert that we never have both fptrKnown and shapeKnown
 
-TODO: blog post: Faster than V8 *
-time ~/Dropbox/Linux/bin/d8_dbg --print_opt_code --print_code_verbose loop-global-incr.js 
-- dev-maxime branch, link
-- Moving target
-- Slow compile times and inlining
-- Higgs values unboxed, separate tags
+FIXME: ctxDiff, should use isSubType function and inequality, KISS
 
-Meeting:
-- Refactored code to distinguish Type and Tag
+FIXME: need clearType, but not clearTag
+
+TODO: try BBV with and without shape_notags
+- Make sure that shape flips is always zero!
+- Try benchmark.py, 10 runs
+- Output two CSV files
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: getProp with no type tag fucks up...
+- Probably because type tag is never written...? Doesn't fix it
+- Get proto also had this issue
+
+[DONE] FIXME: use propType and isSubType in set_prop
+
+[DONE] TODO: new cmd arg --shape_notags
+- implement use in propType
+
+[DONE] TODO: rename noShape to propType
+
+Marc says: improve system for one week, wrt typed shapes
+
+------------------------------------------------------------------------------
+
+Milestone: Equalling Master Branch Performance
+----------------------------------------------
+
+[DONE] Meeting:
 - Implemented capture_tag
   - added code to take into account the implicit type tests
 - Rewrote optimized set_prop
@@ -250,21 +263,19 @@ Meeting:
   - for global shape capture, can optimize based on compile
     time info. Only need one slot
     - Size of shape dispatches likely have big performance impact
+  - overflow check elimination
   - can optimize size of heap alloc ops
   - could write code to get code size usage by instr kind
-  - also frequency of each instr kind
-  - could also put together a profiler, visualize hot asm
-    - look into gprof support
+    - also frequency of each instr kind
+    - could also put together a profiler, visualize hot asm
+      - look into gprof support
 
-
-
-
-
-
-
-
-
-
+[DONE] TODO: blog post: Faster than V8 *
+time ~/Dropbox/Linux/bin/d8_dbg --print_opt_code --print_code_verbose loop-global-incr.js 
+- dev-maxime branch, link
+- Moving target
+- Slow compile times and inlining
+- Higgs values unboxed, separate tags
 
 [DONE] TODO: peephole for i32 to f64 conversion
 

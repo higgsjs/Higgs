@@ -647,10 +647,10 @@ class VM
         );
 
         // Allocate the executable heap
-        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_genasm);
+        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.genasm);
 
         // Allocate the subroutine heap
-        subsHeap = new CodeBlock(SUBS_HEAP_INIT_SIZE, opts.jit_genasm);
+        subsHeap = new CodeBlock(SUBS_HEAP_INIT_SIZE, opts.genasm);
 
         // Allocate the register save space
         regSave = cast(Word*)GC.malloc(

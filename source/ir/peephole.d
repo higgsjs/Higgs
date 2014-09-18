@@ -52,7 +52,7 @@ import options;
 void optIR(IRFunction fun)
 {
     // If peephole optimizations are disabled, do nothing
-    if (opts.jit_nopeephole)
+    if (opts.nopeephole)
         return;
 
     //writeln("peephole pass for ", fun.getName);

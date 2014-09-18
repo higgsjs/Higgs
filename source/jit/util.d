@@ -62,7 +62,7 @@ void writeJcc32Ref(string mnem, opcode...)(
 )
 {
     // Write an ASM comment
-    if (opts.jit_genasm)
+    if (opts.genasm)
         as.writeASM(mnem, frag.getName);
 
     as.writeBytes(opcode);
@@ -116,7 +116,7 @@ void movAbsRef(
     size_t targetIdx = size_t.max
 )
 {
-    if (opts.jit_genasm)
+    if (opts.genasm)
         as.writeASM("mov", dstReg, frag.getName);
 
     as.mov(dstReg.opnd(64), X86Opnd(uint64_t.max));

@@ -834,7 +834,7 @@ void IsTypeOp(Tag tag)(
     }
 
     // If the type analysis was run
-    if (opts.jit_typeprop)
+    if (opts.typeprop)
     {
         // Get the type analysis result for this value at this instruction
         auto propResult = st.fun.typeInfo.argIsType(instr, 0, tag);
@@ -845,7 +845,7 @@ void IsTypeOp(Tag tag)(
         if (propResult != TestResult.UNKNOWN)
         {
             // Warn if the analysis knows more than BBV
-            if (testResult == TestResult.UNKNOWN && opts.jit_maxvers > 0)
+            if (testResult == TestResult.UNKNOWN && opts.maxvers > 0)
             {
                 writeln(
                     "analysis yields more info than BBV for:\n",
@@ -962,7 +962,7 @@ void IsTypeOp(Tag tag)(
         // If the argument is not a constant, add type information
         // about the argument's type along the true branch
         CodeGenState trueSt = st;
-        if (opts.jit_maxvers > 0)
+        if (opts.maxvers > 0)
         {
             if (auto dstArg = cast(IRDstValue)instr.getArg(0))
             {
@@ -1629,7 +1629,7 @@ void genCallBranch(
         delegate void(CodeBlock as, VM vm)
         {
             // If eager compilation is enabled
-            if (opts.jit_eager)
+            if (opts.bbv_eager)
             {
                 // Set the return address entry when compiling the
                 // continuation block
@@ -1696,7 +1696,7 @@ void genCallBranch(
     }
 
     // If eager compilation is enabled
-    if (opts.jit_eager)
+    if (opts.bbv_eager)
     {
         // Generate the call branch code
         ver.genBranch(
@@ -3489,7 +3489,7 @@ void gen_shape_get_def(
             as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
 
             // If equal, jump to the cached target
-            if (opts.jit_genasm)
+            if (opts.genasm)
                 as.writeASM("je", instr.getTarget(0).target.getName);
             as.writeBytes(JE_REL32_OPCODE[0], JE_REL32_OPCODE[1]);
             as.writeInt(0xFFFFFFFF, 32);
@@ -3844,7 +3844,7 @@ void gen_capture_tag(
             as.cmp(tagOpnd, X86Opnd(0x7F));
 
             // If equal, jump to the cached target
-            if (opts.jit_genasm)
+            if (opts.genasm)
                 as.writeASM("je", instr.getTarget(0).target.getName);
             as.writeBytes(JE_REL32_OPCODE[0], JE_REL32_OPCODE[1]);
             as.writeInt(0xFFFFFFFF, 32);
@@ -3988,10 +3988,10 @@ void gen_shape_set_prop(
         return gen_slow_path(ver, st, instr, as);
 
     // Get the type for the property value
-    auto valType = st.getType(propVal);
+    auto valType = st.getType(propVal).propType;
 
     // If we type of the property value is unknown, use the slow path
-    if (!valType.tagKnown)
+    if (!valType.tagKnown && !opts.shape_notags)
     {
         //as.printStr("val type unknown!");
         return gen_slow_path(ver, st, instr, as);
@@ -4011,14 +4011,11 @@ void gen_shape_set_prop(
         defShape = objShape.defProp(
             st.fun.vm,
             propName,
-            ValType(valType.tag),
+            valType,
             ATTR_DEFAULT,
             null
         );
     }
-
-    assert (defShape !is null);
-    assert (defShape.type.tagKnown);
 
     // Get the property slot index
     auto slotIdx = defShape.slotIdx;
@@ -4033,16 +4030,16 @@ void gen_shape_set_prop(
     // If the property exists on the object and is writable
     if (slotIdx <= objShape.slotIdx && defShape.writable)
     {
-        // Check if the value type doesn't match the shape type
-        bool typeMismatch = (defShape.type.tag != valType.tag);
-
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrRegs[2].opnd(64), true);
         auto tagOpnd = st.getTagOpnd(as, instr, 2, X86Opnd.NONE, true);
         assert (objOpnd.isReg);
 
-        // If we need to update the type tag or we need to check the object capacity
-        if (typeMismatch || slotIdx >= minObjCap)
+        // Check if we need to write the type tag
+        bool writeTag = (valType.tag != defShape.type.tag) || !defShape.type.tagKnown;
+
+        // If we need to write the type tag or check the object capacity
+        if (writeTag || slotIdx >= minObjCap)
         {
             // Get the object capacity into r1
             as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
@@ -4066,8 +4063,8 @@ void gen_shape_set_prop(
             // Get the ext table pointer into r0
             as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
 
-            // If we need to update the type tag
-            if (typeMismatch)
+            // If we need to write the type tag
+            if (writeTag)
             {
                 // Get the ext table capacity into r1
                 as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
@@ -4076,22 +4073,26 @@ void gen_shape_set_prop(
             as.label(Label.SKIP);
         }
 
-        // Set the word value
+        // Store the word value
         auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
         as.genMove(wordMem, valOpnd);
 
-        // If the value type doesn't match
-        if (typeMismatch)
+        // If we need to write the type tag
+        if (writeTag)
         {
-            // Update the type tag
+            // Store the type tag
             auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
             as.genMove(typeMem, tagOpnd, scrRegs[2].opnd);
+        }
 
+        // If the value type doesn't match the shape type
+        if (!valType.isSubType(defShape.type))
+        {
             // Create a new shape for the property
             objShape = objShape.defProp(
                 st.fun.vm,
                 propName,
-                ValType(valType.tag),
+                valType,
                 ATTR_DEFAULT,
                 defShape
             );
@@ -4175,7 +4176,6 @@ void gen_shape_get_prop(
         // Get the property shape
         auto defShape = st.getShape(defVal);
         assert (defShape !is null);
-        assert (defShape.type.tagKnown);
 
         auto slotIdx = defShape.slotIdx;
 
@@ -4184,6 +4184,13 @@ void gen_shape_get_prop(
         assert (objOpnd.isReg);
         auto outOpnd = st.getOutOpnd(as, instr, 64);
         assert (outOpnd.isReg);
+
+        // If we need to read the type tag or check the object capacity
+        if (!defShape.type.tagKnown || slotIdx >= minObjCap)
+        {
+            // Get the object capacity into r1
+            as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+        }
 
         auto tblOpnd = objOpnd;
 
@@ -4196,15 +4203,19 @@ void gen_shape_get_prop(
             // Move the object operand into r0
             as.mov(tblOpnd, objOpnd);
 
-            // Get the object capacity into r1
-            as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
-
             // If the slot index is below capacity, skip the ext table code
             as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
             as.jg(Label.SKIP);
 
             // Get the ext table pointer into r0
             as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
+
+            // If we need to read the type tag
+            if (!defShape.type.tagKnown)
+            {
+                // Get the ext table capacity into r1
+                as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
+            }
 
             as.label(Label.SKIP);
         }
@@ -4216,8 +4227,20 @@ void gen_shape_get_prop(
         auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
         as.mov(outOpnd, wordMem);
 
-        // Propagate the shape type
-        st.setOutTag(as, instr, defShape.type.tag);
+        // If the property's type tag is known
+        if (defShape.type.tagKnown)
+        {
+            // Propagate the shape type
+            assert (!opts.shape_notags);
+            st.setOutTag(as, instr, defShape.type.tag);
+        }
+        else
+        {
+            // Load the type value
+            auto typeMem = X86Opnd(8, tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+            as.mov(scrRegs[1].opnd(8), typeMem);
+            st.setOutTag(as, instr, scrRegs[1].reg(8));
+        }
     }
     else
     {
@@ -4287,27 +4310,31 @@ void gen_shape_get_proto(
     {
         auto defShape = objType.shape.getDefShape("__proto__");
 
-        // Load the word value
-        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
-        as.mov(outOpnd, wordMem);
+        // If the shape's type tag is known
+        if (defShape.type.tagKnown)
+        {
+            // Load the word value
+            auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+            as.mov(outOpnd, wordMem);
 
-        // Set the output type tag
-        st.setOutTag(as, instr, defShape.type.tag);
+            // Set the output type tag
+            st.setOutTag(as, instr, defShape.type.tag);
+
+            return;
+        }
     }
-    else
-    {
-        // Get the object capacity into r1
-        as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
-        // Load the word and tag values
-        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
-        auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
-        as.mov(outOpnd, wordMem);
-        as.mov(scrRegs[2].opnd(8), typeMem);
+    // Get the object capacity into r1
+    as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
-        // Set the output type tag
-        st.setOutTag(as, instr, scrRegs[2].reg(8));
-    }
+    // Load the word and tag values
+    auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+    auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+    as.mov(outOpnd, wordMem);
+    as.mov(scrRegs[2].opnd(8), typeMem);
+
+    // Set the output type tag
+    st.setOutTag(as, instr, scrRegs[2].reg(8));
 }
 
 /// Define a constant property
@@ -4371,7 +4398,7 @@ void gen_shape_def_const(
         auto newShape = objShape.defProp(
             vm,
             propName,
-            valType.noShape,
+            valType.propType,
             0,
             null
         );

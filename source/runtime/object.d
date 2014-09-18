@@ -50,6 +50,7 @@ import runtime.layout;
 import runtime.string;
 import runtime.gc;
 import util.id;
+import options;
 
 /// Minimum object capacity (number of slots)
 const uint32_t OBJ_MIN_CAP = 8;
@@ -213,13 +214,24 @@ struct ValType
     }
 
     /**
-    Filter out the shape information from this type
+    Extract information representable in a property type
     */
-    ValType noShape()
+    ValType propType()
     {
         ValType that = this;
+
+        // Remove shape information
         that.shape = null;
         that.shapeKnown = false;
+
+        // If shapes should not be specialized based on type tags
+        if (opts.shape_notags)
+        {
+            // Remove type tag information
+            that.tag = cast(Tag)0;
+            that.tagKnown = false;
+        }
+
         return that;
     }
 }
@@ -560,8 +572,8 @@ void setProp(
         ", propName=" ~ to!string(propStr)
     );
 
-    // Create a type object for the value, but ignore its shape
-    auto valType = ValType(valPair).noShape;
+    // Create a type object for the value
+    auto valType = ValType(valPair).propType;
 
     // Get the shape from the object
     auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);

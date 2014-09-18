@@ -67,7 +67,7 @@ void inlinePass(VM vm, IRFunction caller)
     }
 
     // If inlining is disabled, do nothing
-    if (opts.jit_noinline)
+    if (opts.noinline)
         return;
 
     //bool isUnit = caller.isUnit;

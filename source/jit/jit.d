@@ -808,7 +808,7 @@ class CodeGenState
         //writefln("spilling: %s (%s)", regVal.toString, reg);
 
         // Spill the value currently in the register
-        if (opts.jit_genasm)
+        if (opts.genasm)
             as.comment("Spilling " ~ regVal.getName);
         as.mov(mem, reg.opnd(64));
 
@@ -816,7 +816,7 @@ class CodeGenState
         if (state.tagKnown && !state.tagWritten)
         {
             // Write the type tag to the type stack
-            //if (opts.jit_genasm)
+            //if (opts.genasm)
             //    as.comment("Spilling type for " ~ regVal.getName);
             as.mov(tagStackOpnd(regVal.outSlot), state.getTagOpnd());
             valMap[regVal] = valMap[regVal].writeTag();
@@ -1368,9 +1368,9 @@ abstract class CodeFragment
     final string getName()
     {
         assert (
-            opts.jit_genasm ||
-            opts.jit_dumpinfo ||
-            opts.jit_trace_instrs
+            opts.genasm ||
+            opts.dumpinfo ||
+            opts.trace_instrs
         );
 
         if (auto ver = cast(BlockVersion)this)
@@ -1433,7 +1433,7 @@ abstract class CodeFragment
         startIdx = cast(uint32_t)as.getWritePos();
 
         // Add a label string comment
-        if (opts.jit_genasm)
+        if (opts.genasm)
             as.writeString(this.getName ~ ":");
     }
 
@@ -1485,7 +1485,7 @@ abstract class CodeFragment
         // Write a relative 32-bit jump to the instance over the stub code
         auto startPos = as.getWritePos();
         as.setWritePos(this.startIdx);
-        if (opts.jit_genasm)
+        if (opts.genasm)
             as.writeASM("jmp", next.getName);
         as.writeByte(JMP_REL32_OPCODE);
         auto offset = next.startIdx - (as.getWritePos + 4);
@@ -1922,11 +1922,11 @@ BlockVersion getBlockVersion(
     }
 
     // If the block version cap is hit
-    if (versions.length >= opts.jit_maxvers)
+    if (versions.length >= opts.maxvers)
     {
         debug
         {
-            if (opts.jit_maxvers > 0)
+            if (opts.maxvers > 0)
                 writefln("version limit hit (%s) in %s", versions.length, fun.getName);
         }
 
@@ -2027,7 +2027,7 @@ BranchCode getBranchEdge(
 {
     // If eager codegen is enabled, force the version
     // to be generated now
-    if (opts.jit_eager)
+    if (opts.bbv_eager)
         noStub = true;
 
     auto vm = predState.fun.vm;
@@ -2115,7 +2115,7 @@ void genBranchMoves(
         // Get the source and destination operands for the phi type
         X86Opnd srcTypeOpnd = predState.getTagOpnd(predVal);
         X86Opnd dstTypeOpnd = succState.getTagOpnd(succVal);
-        assert (!(opts.jit_maxvers is 0 && !srcTypeOpnd.isImm && dstTypeOpnd.isImm));
+        assert (!(opts.maxvers is 0 && !srcTypeOpnd.isImm && dstTypeOpnd.isImm));
 
         if (srcTypeOpnd != dstTypeOpnd &&
             !dstTypeOpnd.isImm &&
@@ -2140,7 +2140,7 @@ void genBranchMoves(
             moveAdded = true;
         }
 
-        if (opts.jit_genasm && moveAdded)
+        if (opts.genasm && moveAdded)
         {
             if (succPhi)
                 as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
@@ -2296,23 +2296,23 @@ void compile(VM vm, IRInstr curInstr)
             if (ver.startIdx is ver.startIdx.max)
                 ver.markStart(as, vm);
 
-            if (opts.jit_dumpinfo)
+            if (opts.dumpinfo)
                 writeln("compiling block: ", block.getName);
 
-            if (opts.jit_trace_instrs)
+            if (opts.trace_instrs)
                 as.printStr(block.getName ~ ":");
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             {
-                if (opts.jit_dumpinfo)
+                if (opts.dumpinfo)
                     writeln("compiling instr: ", instr.toString());
 
                 // If we should generate disassembly strings
-                if (opts.jit_genasm)
+                if (opts.genasm)
                     as.comment(instr.toString());
 
-                if (opts.jit_trace_instrs)
+                if (opts.trace_instrs)
                     as.printStr(instr.toString());
 
                 auto opcode = instr.opcode;
@@ -2391,7 +2391,7 @@ void compile(VM vm, IRInstr curInstr)
             // Store the code end index
             branch.markEnd(as, vm);
 
-            if (opts.jit_dumpinfo)
+            if (opts.dumpinfo)
             {
                 writeln("branch code length: ", branch.length);
                 writeln();
@@ -2405,10 +2405,10 @@ void compile(VM vm, IRInstr curInstr)
 
             stub.markStart(as, vm);
 
-            if (opts.jit_genasm)
+            if (opts.genasm)
                 as.comment("Cont stub for " ~ stub.contBranch.getName);
 
-            if (opts.jit_trace_instrs)
+            if (opts.trace_instrs)
                 as.printStr("Cont stub for " ~ stub.contBranch.getName);
 
             as.saveJITRegs();
@@ -2455,7 +2455,7 @@ void compile(VM vm, IRInstr curInstr)
             assert (false, "invalid code fragment");
         }
 
-        if (opts.jit_dumpasm && frag.length > 0)
+        if (opts.dumpasm && frag.length > 0)
         {
             writeln(frag.genString(as));
             writeln();
@@ -2489,13 +2489,13 @@ void compile(VM vm, IRInstr curInstr)
             case 32:
             auto offset = cast(int32_t)target.startIdx - (cast(int32_t)refr.pos + 4);
             as.writeInt(offset, 32);
-            if (opts.jit_dumpinfo)
+            if (opts.dumpinfo)
                 writefln("linking ref to %s, offset=%s", target.getName, offset);
             break;
 
             case 64:
             as.writeInt(cast(int64_t)target.getCodePtr(as), 64);
-            if (opts.jit_dumpinfo)
+            if (opts.dumpinfo)
                 writefln("linking absolute ref to %s", target.getName);
             break;
 
@@ -2510,7 +2510,7 @@ void compile(VM vm, IRInstr curInstr)
     // Clear the reference list
     vm.refList.length = 0;
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("write pos: ", as.getWritePos, " / ", as.getRemSpace);
         writeln("num blocks: ", stats.numBlocks);
@@ -2537,7 +2537,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     assert (fun.isUnit, "compileUnit on non-unit function");
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
         writeln("compiling unit ", fun.getName);
 
     auto as = vm.execHeap;
@@ -2549,7 +2549,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     auto retEdge = new ExitCode(fun);
     retEdge.markStart(as, vm);
 
-    if (opts.jit_trace_instrs)
+    if (opts.trace_instrs)
         as.printStr("Unit return branch for " ~ fun.getName);
 
     // Push one slot for the return value
@@ -2670,7 +2670,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("entering compileEntry");
     }
@@ -2690,7 +2690,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
         "closure IRFunction is null"
     );
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
         writeln("compiling entry for " ~ fun.getName);
 
     /*
@@ -2762,7 +2762,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     // Store the entry code pointer on the function
     fun.entryCode = entryInst.getCodePtr(vm.execHeap);
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("leaving compileEntry");
     }
@@ -2783,7 +2783,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("entering compileBranch");
         writeln("blockIdx=", blockIdx);
@@ -2803,7 +2803,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     auto predState = branchCode.predState;
     auto targetBlock = branchCode.branch.target;
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writefln(
             "branch from %s to %s", 
@@ -2836,7 +2836,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     stats.compTimeStop();
     stats.execTimeStart();
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("leaving compileBranch");
         writeln();
@@ -2855,7 +2855,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("entering compileCont");
     }
@@ -2891,7 +2891,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     stats.compTimeStop();
     stats.execTimeStart();
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("leaving compileCont");
     }

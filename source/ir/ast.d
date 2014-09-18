@@ -606,7 +606,7 @@ IRFunction astToIR(
     fun.liveInfo = new LiveInfo(fun);
 
     // If the type analysis is enabled
-    if (opts.jit_typeprop)
+    if (opts.typeprop)
     {
         fun.typeInfo = new TypeProp(fun, fun.liveInfo);
     }
@@ -618,7 +618,7 @@ IRFunction astToIR(
     }
     else
     {
-        if (opts.jit_typeprop)
+        if (opts.typeprop)
             fun.typeInfo = new TypeProp(fun, fun.liveInfo);
     }
     */
