@@ -232,6 +232,9 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     //writeln("entering gcCollect");
 
+    // Start recording garbage collection time
+    stats.gcTimeStart();
+
     if (heapSize != 0)
         vm.heapSize = heapSize;
 
@@ -402,6 +405,9 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     //writeln("leaving gcCollect");
     //writefln("free space: %s", (vm.heapLimit - vm.allocPtr));
+
+    // Sop recording garbage collection time
+    stats.gcTimeStop();
 }
 
 /**

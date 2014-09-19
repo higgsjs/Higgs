@@ -115,11 +115,17 @@ private ulong compTimeUsecs = 0;
 /// Total execution time in microseconds
 private ulong execTimeUsecs = 0;
 
+/// Total garbage collection time in microseconds
+private ulong gcTimeUsecs = 0;
+
 /// Compilation timer start
 private ulong compStartUsecs = 0;
 
 /// Execution timer start
 private ulong execStartUsecs = 0;
+
+/// Garbage collection timer start
+private ulong gcStartUsecs = 0;
 
 /// Get the current process time in microseconds
 ulong getTimeUsecs()
@@ -180,6 +186,25 @@ bool execTimeStarted()
     return execStartUsecs != 0;
 }
 
+/// Start recording garbage collection time
+void gcTimeStart()
+{
+    assert (gcStartUsecs is 0, "gc timer already started");
+
+    gcStartUsecs = getTimeUsecs();
+}
+
+/// Stop recording garbage collection time
+void gcTimeStop()
+{
+    assert (gcStartUsecs !is 0);
+
+    auto gcEndUsecs = getTimeUsecs();
+    gcTimeUsecs += gcEndUsecs - gcStartUsecs;
+
+    gcStartUsecs = 0;
+}
+
 /// Static module constructor
 static this()
 {
@@ -200,6 +225,7 @@ static ~this()
         writeln();
         writefln("comp time (ms): %s", compTimeUsecs / 1000);
         writefln("exec time (ms): %s", execTimeUsecs / 1000);
+        writefln("gc time (ms): %s", gcTimeUsecs / 1000);
         writefln("total time (ms): %s", (compTimeUsecs + execTimeUsecs) / 1000);
         writefln("code size (bytes): %s", genCodeSize);
     }
