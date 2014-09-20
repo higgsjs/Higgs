@@ -1,5 +1,7 @@
 DC = dmd
-PYTHON = python
+ifndef PYTHON
+	PYTHON = python
+endif
 # compilter options
 UNAME := $(shell uname)
 ifneq (, $(findstring BSD, $(UNAME)))
