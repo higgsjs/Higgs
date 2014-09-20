@@ -718,6 +718,14 @@ void visitStackRoots(VM vm)
             );
         }
 
+        bool valLive(IRDstValue val)
+        {
+            if (depth is 0)
+                return fun.liveInfo.liveBefore(val, curInstr);
+            else
+                return fun.liveInfo.liveAfter(val, curInstr);
+        }
+
         //writeln("visiting frame for: ", fun.getName(), " ", fun.ast.pos);
         //writeln(fun);
         //writeln("frame size: ", frameSize);
@@ -752,16 +760,18 @@ void visitStackRoots(VM vm)
             forward(val.outSlot);
         }
 
-        // If this is not a primitive
-        if (fun.isPrim is false)
+        // Forward the closure pointer
+        // Note: the closure pointer is not type tagged
+        if (valLive(fun.closVal))
         {
-            // Forward the closure pointer
-            // Note: the closure pointer is not type tagged
             //writeln("forwarding clos val");
             auto closIdx = fun.closVal.outSlot;
             wsp[closIdx] = gcForward(vm, wsp[closIdx], Tag.CLOSURE);
+        }
 
-            // Forward the "this" pointer
+        // Forward the "this" pointer
+        if (valLive(fun.thisVal))
+        {
             //writeln("forwarding this val");
             forward(fun.thisVal.outSlot);
         }

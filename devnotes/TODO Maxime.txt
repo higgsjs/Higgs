@@ -220,6 +220,8 @@ TODO: implement fptr specialization in gen_call
 
 
 
+[DONE] TODO: modify GC to forward closure and this based on liveness
+
 [DONE] TODO: add regression test for setting global clos, then setting different clos
 
 [DONE] FIXME: new_clos should set fptr

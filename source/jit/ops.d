@@ -1912,9 +1912,6 @@ void gen_call(
 {
     as.incStatCnt(&stats.numCall, scrRegs[0]);
 
-    // Free an extra register to use as scratch
-    auto scrReg3 = st.freeReg(as, instr);
-
     //
     // Function pointer extraction
     //
@@ -1925,25 +1922,8 @@ void gen_call(
     // This may throw an exception if the callee is not a closure
     auto mayThrow = !closType.tagKnown || closType.tag !is Tag.CLOSURE;
 
-    // If an exception may be thrown
-    if (mayThrow)
-    {
-        // Get the type tag for the closure value
-        auto closTag = st.getTagOpnd(
-            as,
-            instr,
-            0,
-            scrRegs[0].opnd(8),
-            false
-        );
-
-        // If the value is not a closure, bailout
-        as.incStatCnt(stats.getTypeTestCtr("is_closure"), scrRegs[1]);
-        as.cmp(closTag, X86Opnd(Tag.CLOSURE));
-        as.jne(Label.THROW);
-    }
-
-    //writeln(closType.tagKnown, " ", closType.fptrKnown);
+    // Get the function pointer if known
+    IRFunction fun = closType.fptrKnown? closType.fptr:null;
 
     // Get the closure pointer
     auto closReg = st.getWordOpnd(
@@ -1957,13 +1937,54 @@ void gen_call(
     );
     assert (closReg.isGPR);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // If an exception may be thrown
+    if (mayThrow)
+    {
+        // Get the type tag for the closure value
+        auto closTag = st.getTagOpnd(
+            as,
+            instr,
+            0,
+            scrRegs[1].opnd(8),
+            false
+        );
+
+        // If the value is not a closure, bailout
+        as.incStatCnt(stats.getTypeTestCtr("is_closure"), scrRegs[2]);
+        as.cmp(closTag, X86Opnd(Tag.CLOSURE));
+        as.jne(Label.THROW);
+    }
+
+    // Free an extra register to use as scratch
+    auto scrReg3 = st.freeReg(as, instr);
+
     // Get the IRFunction pointer from the closure object
     auto fptrMem = X86Opnd(64, closReg.reg, FPTR_SLOT_OFS);
     as.mov(scrRegs[1].opnd(64), fptrMem);
-
-    //
-    // Function call logic
-    //
 
     auto numArgs = cast(uint32_t)instr.numArgs - 2;
 
@@ -1995,7 +2016,7 @@ void gen_call(
         as.mov(X86Opnd(64, wspReg, -8 * cast(int32_t)(argIdx+1), 8, scrRegs[2]), val);
     }
 
-    static void movArgType(CodeBlock as, size_t argIdx, X86Opnd val)
+    static void movArgTag(CodeBlock as, size_t argIdx, X86Opnd val)
     {
         as.mov(X86Opnd(8, tspReg, -1 * cast(int32_t)(argIdx+1), 1, scrRegs[2]), val);
     }
@@ -2025,7 +2046,7 @@ void gen_call(
             scrReg3.opnd(8),
             true
         );
-        movArgType(as, i, tagOpnd);
+        movArgTag(as, i, tagOpnd);
     }
 
     // Write the argument count
@@ -2049,7 +2070,7 @@ void gen_call(
         scrReg3.opnd(8),
         true
     );
-    movArgType(as, numArgs + 1, tagOpnd);
+    movArgTag(as, numArgs + 1, tagOpnd);
 
     // Write the closure argument
     movArgWord(as, numArgs + 2, closReg);
