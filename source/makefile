@@ -1,4 +1,5 @@
 DC = dmd
+PYTHON = python
 # compilter options
 UNAME := $(shell uname)
 ifneq (, $(findstring BSD, $(UNAME)))
@@ -86,7 +87,7 @@ release: layout
 	$(DC) $(LIBS) $(RELOPTS) -of$(BIN_NAME) $(SRC)
 
 layout:
-	python runtime/layout.py
+	$(PYTHON) runtime/layout.py
 
 clean:
 	rm -f $(BIN_NAME) $(BIN_NAME_TEST) $(BIN_NAME_DEBUG) *.o
