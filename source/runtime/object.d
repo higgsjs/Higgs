@@ -213,15 +213,11 @@ struct ValType
                     return false;
             }
 
-            if (that.tag is Tag.INT32)
+            if (that.subMax is true)
             {
-                if (that.subMax is false)
+                if (this.subMax is false)
                 {
-                    if (this.subMax is true)
-                    {
-                        assert (false);
-                        return false;
-                    }
+                    return false;
                 }
             }
         }

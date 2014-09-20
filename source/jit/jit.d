@@ -237,6 +237,16 @@ struct ValState
         return val;
     }
 
+    /// Clear all type information for this value
+    ValState clearType() const
+    {
+        assert (!isConst);
+
+        ValState val = cast(ValState)this;
+        val.type = ValType();
+        return val;
+    }
+
     /// Move this value to the stack
     ValState toStack() const
     {
@@ -488,42 +498,21 @@ class CodeGenState
             if (predSt == succSt)
                 continue;
 
-            // If the successor has a known type tag
-            if (succSt.tagKnown)
+            // If the types do not match perfectly
+            if (predSt.type != succSt.type)
             {
-                // If the predecessor has no known type, mismatch
-                if (!predSt.tagKnown)
-                    return size_t.max;
-
-                // If the known types do not match, mismatch
-                if (predSt.tag != succSt.tag)
-                    return size_t.max;
-            }
-            else 
-            {
-                // If the predecessor has a known type, transitioning
-                // would lose us this known type
-                if (predSt.tagKnown)
+                // If the predecessor type is a subtype of the successor
+                if (predSt.type.isSubType(succSt.type))
+                {
+                    // Add a penalty for the inexact type match,
+                    // since information would be lost
                     diff += 1;
-            }
-
-            // If the successor has a known shape
-            if (succSt.shapeKnown)
-            {
-                // If the predecessor has no known shape, mismatch
-                if (!predSt.shapeKnown)
+                }
+                else
+                {
+                    // The types are incompatible
                     return size_t.max;
-
-                // If the known shapes do not match, mismatch
-                if (predSt.shape != succSt.shape)
-                    return size_t.max;
-            }
-            else 
-            {
-                // If the predecessor has a known shape, transitioning
-                // would lose us this known shape
-                if (predSt.shapeKnown)
-                    diff += 1;
+                }
             }
         }
 
@@ -1963,7 +1952,7 @@ BlockVersion getBlockVersion(
                 val !is fun.raVal &&
                 (valSt.tagKnown || valSt.shapeKnown))
             {
-                genState.valMap[val] = valSt.clearTag().clearShape();
+                genState.valMap[val] = valSt.clearType();
             }
         }
 

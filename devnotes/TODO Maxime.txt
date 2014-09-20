@@ -1,4 +1,5 @@
 Conference deadlines:
+- ECOOP                 December
 - CC 2014               October
 - PLDI 2014             November
 - VEE 2014              ~November
@@ -9,6 +10,7 @@ Conference deadlines:
 - DYLA workshop         March
 - ISMM                  Feb
 - Computing Frontier    Jan 2015, notify Feb
+- SLASH 2015
 
 List of possible contributions:
 - Type tagging scheme
@@ -145,6 +147,8 @@ TODO: check how often getProp doesn't know the obj shape but knows the prop name
 
 ------------------------------------------------------------------------------
 
+ECOOP - Dec 21st
+
 CC Paper Deadline - October 17th
 - 20 pages
 - More illustrations: typed shapes, shape capture, code paths
@@ -167,7 +171,13 @@ extremely useful once you have it for exactly this kind of use case.
 
 TODO: global shape dispatch, numEntries=1
 
-TODO: inform Marc of current typed shape results
+FIXME: array access performance sucks
+- probably want hidden _arrtbl__ property
+
+TODO: investigate GC slowness in earley-boyer
+- Try not visiting and not collecting IRFunctions
+- Allocation of new heap might be quite slow
+  - Could also be other allocations, D GC
 
 TODO: Friday e-mail, inform Marc of progress:
 - Tested --shape_notags, no type tag spec in shapes
@@ -183,6 +193,14 @@ TODO: Friday e-mail, inform Marc of progress:
   - Still used several times in most benchmarks
   - Tiny reduction in code size, comp time
   - Tiny reduction in exec time
+- Investigated earley-boyer, slower than master branch (old object system)
+  - Made 1m ctor call microbenchmark, ctor now much faster than old system
+  - Added GC time stat, GC is now much slower
+  - earley-boyer is now very fast, but GC takes 80% of the execution time
+  - difference in v8/raytrace also accounted for by GC
+- ECOOP, December 21st, 2 days after CC notification
+- SPLASH
+- Meet Wednesday
 
 TODO: new cmd arg --shape_noclosspec
 - implement in propType method
@@ -192,12 +210,9 @@ TODO: valType, fptrKnown flag
 - do we always want to capture the IRFunction?
 - if we know the shape, we know the fptr
 - but don't want to store closure shape in objects
-- noShape should do the conversion to fptr ***
+- propType should do the conversion to fptr ***
 - assert that we never have both fptrKnown and shapeKnown
 
-FIXME: ctxDiff, should use isSubType function and inequality, KISS
-
-FIXME: need clearType, but not clearTag
 
 
 
@@ -209,8 +224,24 @@ FIXME: need clearType, but not clearTag
 
 
 
+[DONE] FIXME: ctxDiff, should use isSubType function and inequality, KISS
 
+[DONE] TODO: try array sum bench with int and fp, compare with V8
+- array performance sucks... probably too many instructions to compute offset
 
+[DONE] TODO: look into oopsla, OOP confs
+- Look at Clark's message
+
+[DONE] TODO: gc time, add to master
+- try with splay
+- earley-boyer, EGMAGHERD! GC TIME 500MS!!!!1
+
+[DONE] TODO: new ctor benchmark, 1M objects
+./higgs --nostdlib --stats benchmarks/micro/1m-ctor-call.js
+- Add on master
+- Only ~30ms, but multiple GCs
+
+[DONE] FIXME: need clearType, but not clearTag
 
 [DONE] TODO: ovf check elimination, for fun?
 - subMax flag
