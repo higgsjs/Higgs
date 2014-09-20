@@ -16,14 +16,14 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 **Quickstart:**
 
 *Get the source:*
- 
+
 `git clone https://github.com/maximecb/Higgs.git && cd Higgs/source`
 
 *Compile a binary:*
 
 NOTE: if you run a non-Linux OS like FreeBSD you may not have `GNU make` installed. You may need to install the "gmake" package or otherwise aquire `GNU make`.
+NOTE: if your default python version is 3.x, just append `PYTHON=$PATH_TO_PYTHON2` to the `make` commands
 
- 
 `make all`
 generates a binary `higgs` in the source directory.
 
@@ -33,7 +33,7 @@ generates a binary `higgs` in the source directory.
 generates a binary `higgs` in the source directoy.
 
 *Install (optional):*
- 
+
 `make install`
 generates a release binary using the `release` target, then copies the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`. The installation directories for
 the binary and runtime files may be changed with `BIN_DIR` and `LIB_DIR` respectively:
@@ -45,7 +45,7 @@ make install BIN_DIR=/my/bin/dir LIB_DIR=/my/lib/dir
 NOTE: you may need to run `make install` with `sudo`.
 
 *Cleanup:*
- 
+
 `make clean`
 will remove any binaries in the source directory.
 
