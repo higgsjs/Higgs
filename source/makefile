@@ -2,7 +2,7 @@ DC = dmd
 ifndef PYTHON
 	PYTHON = python
 endif
-# compilter options
+# compiler options
 UNAME := $(shell uname)
 ifneq (, $(findstring BSD, $(UNAME)))
 # BSD
