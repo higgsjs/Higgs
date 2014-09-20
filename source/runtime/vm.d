@@ -337,13 +337,26 @@ struct ValuePair
             return "object";
 
             case Type.ARRAY:
-            return "array";
+            if (ptrValid(word.ptrVal) is false)
+                return "invalid array ptr";
+            auto len = arr_get_len(word.ptrVal);
+            auto tbl = arr_get_tbl(word.ptrVal);
+            auto output = "[";
+            for (uint32_t i = 0; i < len; ++i)
+            {
+                auto elWord = Word.uint64v(arrtbl_get_word(tbl, i));
+                auto elTag = cast(Type)arrtbl_get_type(tbl, i);
+                output ~= ValuePair(elWord, elTag).toString;
+                if (i < len - 1)
+                    output ~= ",";
+            }
+            return output ~ "]";
 
             case Type.CLOSURE:
             return "closure";
 
             case Type.STRING:
-            return extractStr(word.ptrVal);
+            return "\"" ~ extractStr(word.ptrVal) ~ "\"";
 
             default:
             assert (false, "unsupported value type");
