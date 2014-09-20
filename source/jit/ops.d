@@ -3959,7 +3959,7 @@ void gen_shape_set_prop(
     auto valType = st.getType(propVal).propType;
 
     // If we type of the property value is unknown, use the slow path
-    if (!valType.tagKnown && !opts.shape_notags)
+    if (!valType.tagKnown && !opts.shape_notagspec)
     {
         //as.printStr("val type unknown!");
         return gen_slow_path(ver, st, instr, as);
@@ -4199,7 +4199,7 @@ void gen_shape_get_prop(
         if (defShape.type.tagKnown)
         {
             // Propagate the shape type
-            assert (!opts.shape_notags);
+            assert (!opts.shape_notagspec);
             st.setOutTag(as, instr, defShape.type.tag);
         }
         else

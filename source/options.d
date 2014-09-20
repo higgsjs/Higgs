@@ -75,10 +75,10 @@ struct Options
     uint maxvers = 20;
 
     /// Disable type tag specialization in shapes
-    bool shape_notags = false;
+    bool shape_notagspec = false;
 
     /// Disable function pointer specialization in shapes
-    bool shape_nofptr = false;
+    bool shape_nofptrspec = false;
 
     /// Disable peephole optimizations
     bool nopeephole = false;
@@ -127,8 +127,8 @@ void parseCmdArgs(ref string[] args)
         "typeprop"          , &opts.typeprop,
         "eager_bbv"         , &opts.bbv_eager,
         "maxvers"           , &opts.maxvers,
-        "shape_notags"      , &opts.shape_notags,
-        "shape_nofptr"      , &opts.shape_nofptr,
+        "shape_notagspec"   , &opts.shape_notagspec,
+        "shape_nofptrspec"  , &opts.shape_nofptrspec,
         "nopeephole"        , &opts.nopeephole,
         "noinline"          , &opts.noinline,
         "dumpinfo"          , &opts.dumpinfo,

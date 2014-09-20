@@ -202,27 +202,28 @@ TODO: Friday e-mail, inform Marc of progress:
 - SPLASH
 - Meet Wednesday
 
-TODO: new cmd arg --shape_noclosspec
+TODO: implement fptr specialization in gen_call
+- start by checking that the information gets there
+- look at call_prim code
+
+
+
+
+
+
+
+
+
+[DONE] TODO: new cmd arg --shape_nofptrspec
 - implement in propType method
 
-TODO: valType, fptrKnown flag
+[DONE] TODO: valType, fptrKnown flag
 - for closure types, capture IRFunction
 - do we always want to capture the IRFunction?
 - if we know the shape, we know the fptr
 - but don't want to store closure shape in objects
 - propType should do the conversion to fptr ***
 - assert that we never have both fptrKnown and shapeKnown
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: ctxDiff, should use isSubType function and inequality, KISS
 

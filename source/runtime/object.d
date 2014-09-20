@@ -112,8 +112,8 @@ struct ValType
         /// Shape (null if unknown)
         ObjShape shape;
 
-        /// IR function, for function pointers
-        IRFunction fun;
+        /// IR function pointer
+        IRFunction fptr;
     }
 
     /// Bit field for compact encoding
@@ -128,12 +128,11 @@ struct ValType
         /// Known shape flag
         bool, "shapeKnown", 1,
 
-        /// Submaximal flag
-        /// Note: this is for overflow check elimination
-        bool, "subMax", 1,
+        /// Function pointer known (closures only)
+        bool, "fptrKnown", 1,
 
-        /// Padding bits
-        uint, "", 1
+        /// Submaximal flag (overflow check elimination)
+        bool, "subMax", 1
     ));
 
     /// Constructor taking a value pair
@@ -146,20 +145,17 @@ struct ValType
 
         this.tag = val.tag;
         this.tagKnown = true;
-        this.shapeKnown = false;
 
         if (isObject(this.tag))
         {
             // Get the object shape
             this.shape = cast(ObjShape)obj_get_shape(val.ptr);
+            this.shapeKnown = true;
         }
         else if (this.tag is Tag.FUNPTR)
         {
-            this.fun = val.word.funVal;
-        }
-        else
-        {
-            this.shape = null;
+            this.fptr = val.word.funVal;
+            this.fptrKnown = true;
         }
     }
 
@@ -196,6 +192,8 @@ struct ValType
     */
     bool isSubType(ValType that)
     {
+        assert (!that.shapeKnown || !that.fptrKnown);
+
         if (that.tagKnown)
         {
             if (!this.tagKnown)
@@ -204,15 +202,6 @@ struct ValType
             if (this.tag !is that.tag)
                 return false;
 
-            if (that.shapeKnown)
-            {
-                if (!this.shapeKnown)
-                    return false;
-
-                if (this.shape !is that.shape)
-                    return false;
-            }
-
             if (that.subMax is true)
             {
                 if (this.subMax is false)
@@ -220,6 +209,23 @@ struct ValType
                     return false;
                 }
             }
+        }
+
+        if (that.shapeKnown)
+        {
+            if (!this.shapeKnown)
+                return false;
+
+            if (this.shape !is that.shape)
+                return false;
+        }
+        else if (that.fptrKnown)
+        {
+            if (!this.fptrKnown)
+                return false;
+
+            if (this.fptr !is that.fptr)
+                return false;
         }
 
         return true;
@@ -232,12 +238,8 @@ struct ValType
     {
         ValType that = this;
 
-        // Remove shape information
-        that.shape = null;
-        that.shapeKnown = false;
-
-        // If shapes should not be specialized based on type tags
-        if (opts.shape_notags)
+        // If type tag specialization of shapes is disabled
+        if (opts.shape_notagspec)
         {
             // Remove type tag information
             that.tag = cast(Tag)0;
@@ -246,6 +248,30 @@ struct ValType
 
         // Clear the subMax flag
         that.subMax = false;
+
+        // Remove shape information
+        that.shape = null;
+        that.shapeKnown = false;
+
+        // If function identity specialization of shapes is disabled
+        if (opts.shape_nofptrspec)
+        {
+            // Remove function pointer information
+            that.fptr = null;
+            that.fptrKnown = false;
+        }
+        else
+        {
+            // If this is a closure with a known shape
+            if (this.tagKnown && this.tag is Tag.CLOSURE && this.shapeKnown)
+            {
+                // Get the function pointer from the closure
+                auto fptrShape = this.shape.getDefShape("__fptr__");
+                assert (fptrShape.type.fptrKnown);
+                that.fptr = fptrShape.type.fptr;
+                that.fptrKnown = true;
+            }
+        }
 
         return that;
     }
