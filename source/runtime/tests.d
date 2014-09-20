@@ -45,6 +45,7 @@ import parser.parser;
 import ir.ast;
 import runtime.layout;
 import runtime.vm;
+import runtime.string;
 import repl;
 
 /**
@@ -147,7 +148,7 @@ void assertStr(VM vm, string input, string strVal)
     );
 
     assert (
-        ret.toString == strVal,
+        extractStr(ret.word.ptrVal) == strVal,
         format(
             "Test failed:\n" ~
             input ~ "\n" ~

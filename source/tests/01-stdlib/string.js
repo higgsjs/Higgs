@@ -273,7 +273,7 @@ function test_replace()
 
     if ('foobar foobar'.replace(/\bf/g, "$`") !== 'oobar foobar oobar')
         return 4;
-    
+
     if ('foobar foobar'.replace(/\bf/g, "$'") !== 'oobar foobaroobar oobaroobar')
         return 5;
     if ('f'.replace(/a/g, "b") !== 'f')

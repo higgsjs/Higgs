@@ -1943,6 +1943,8 @@ void gen_call(
         as.jne(Label.THROW);
     }
 
+    //writeln(closType.tagKnown, " ", closType.fptrKnown);
+
     // Get the closure pointer
     auto closReg = st.getWordOpnd(
         as,
@@ -4200,7 +4202,11 @@ void gen_shape_get_prop(
         {
             // Propagate the shape type
             assert (!opts.shape_notagspec);
-            st.setOutTag(as, instr, defShape.type.tag);
+
+            //if (defShape.type.tagKnown && defShape.type.tag is Tag.CLOSURE)
+            //    writeln("fptr known in get_prop");
+
+            st.setType(instr, defShape.type);
         }
         else
         {
@@ -4799,7 +4805,11 @@ void gen_new_clos(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(cretReg));
 
-    st.setOutTag(as, instr, Tag.CLOSURE);
+    // Set the output type and mark the function pointer as known
+    ValType outType = ValType(Tag.CLOSURE);
+    outType.fptrKnown = true;
+    outType.fptr = funArg.fun;
+    st.setType(instr, outType);
 }
 
 void gen_print_str(

@@ -192,6 +192,7 @@ struct ValType
     */
     bool isSubType(ValType that)
     {
+        assert (!this.shapeKnown || !this.fptrKnown);
         assert (!that.shapeKnown || !that.fptrKnown);
 
         if (that.tagKnown)
@@ -262,14 +263,27 @@ struct ValType
         }
         else
         {
+            //if (this.tagKnown && this.tag is Tag.CLOSURE)
+            //   writeln("closure in propType");
+
             // If this is a closure with a known shape
             if (this.tagKnown && this.tag is Tag.CLOSURE && this.shapeKnown)
             {
+                //writeln("extracting yo");
+
                 // Get the function pointer from the closure
                 auto fptrShape = this.shape.getDefShape("__fptr__");
+                assert (fptrShape !is null);
                 assert (fptrShape.type.fptrKnown);
                 that.fptr = fptrShape.type.fptr;
                 that.fptrKnown = true;
+
+                //writeln(cast(void*)that.fptr);
+            }
+            else if (this.tagKnown && this.tag is Tag.FUNPTR)
+            {
+                that.fptr = this.fptr;
+                that.fptrKnown = this.fptrKnown;
             }
         }
 

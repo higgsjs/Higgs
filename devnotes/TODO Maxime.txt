@@ -198,6 +198,8 @@ TODO: Friday e-mail, inform Marc of progress:
   - Added GC time stat, GC is now much slower
   - earley-boyer is now very fast, but GC takes 80% of the execution time
   - difference in v8/raytrace also accounted for by GC
+- Started work on fptr specialization in shapes
+  - Fixed big bug: shapes and fptr not propagating through phi nodes
 - ECOOP, December 21st, 2 days after CC notification
 - SPLASH
 - Meet Wednesday
@@ -213,6 +215,27 @@ TODO: implement fptr specialization in gen_call
 
 
 
+
+
+
+
+
+[DONE] TODO: add regression test for setting global clos, then setting different clos
+
+[DONE] FIXME: new_clos should set fptr
+
+[DONE] FIXME: phi nodes don't propagate shapes, fptr? oshi
+
+[DONE] TODO: propagate known fptr in get_prop
+- use setType
+
+[DONE] FIXME: fptrKnown doesn't make it to gen_call
+- Most of the time we do extract the fptr... but it is null!
+  - Probably def const of fptr didn't work?
+- Does increase the count of shapes significantly!
+
+[DONE] TODO: more pretty-printing on host side
+arrays, global object
 
 [DONE] TODO: new cmd arg --shape_nofptrspec
 - implement in propType method

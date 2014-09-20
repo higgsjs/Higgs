@@ -203,6 +203,7 @@ struct ValState
         ValState val = cast(ValState)this;
         val.type.shape = shape;
         val.type.shapeKnown = true;
+        val.type.fptrKnown = false;
         return val;
     }
 
@@ -398,13 +399,9 @@ class CodeGenState
                 phiState = phiState.writeTag();
             }
 
-            // If the argument type is known
-            auto argTypeOpnd = predState.getTagOpnd(arg);
-            if (argTypeOpnd.isImm)
-            {
-                // Set the phi type
-                phiState = phiState.setTag(cast(Tag)argTypeOpnd.imm.imm);
-            }
+            // Set the phi type to the argument type
+            auto argType = predState.getType(arg);
+            phiState = phiState.setType(argType);
 
             // Set the phi node's new state
             valMap[phi] = phiState;
