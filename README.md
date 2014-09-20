@@ -23,7 +23,7 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 *Compile a binary:*
 
 NOTE: if you run a non-Linux OS like FreeBSD you may not have `GNU make` installed. You may need to install the "gmake" package or otherwise aquire `GNU make`.
-
+NOTE: if your default python version is 3.x, just append `PYTHON=$PATH_TO_PYTHON2` to the `make` commands
 
 `make all`
 generates a binary `higgs` in the source directory.
