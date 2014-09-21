@@ -71,7 +71,7 @@ class ParseError : Error
 
 /**
 Read and consume a separator token. A parse error
-is thrown is the separator is missing.
+is thrown if the separator is missing.
 */
 void readSep(TokenStream input, wstring sep)
 {
@@ -86,7 +86,7 @@ void readSep(TokenStream input, wstring sep)
 
 /**
 Read and consume a keyword token. A parse error
-is thrown is the keyword is missing.
+is thrown if the keyword is missing.
 */
 void readKw(TokenStream input, wstring keyword)
 {

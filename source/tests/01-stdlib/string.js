@@ -334,14 +334,9 @@ function test_split()
     if (!array_eq('181'.split([8]), ['1','1']))
         return 13;
 
-    if (!array_eq('181 181'.split(/\s/), ['181', '181']))
-        return 14;
-
-    if (!array_eq('181 181'.split(new RegExp('\\s')), ['181', '181']))
-        return 15;
-
-    if (!array_eq('181 181'.split(new RegExp(/\s/)), ['181', '181']))
-        return 16;
+    assert (array_eq('181 181'.split(/\s/), ['181', '181']))
+    assert (array_eq('181 181'.split(new RegExp('\\s')), ['181', '181']))
+    assert (array_eq('181 181'.split(new RegExp(/\s/)), ['181', '181']))
 
     return 0;
 }

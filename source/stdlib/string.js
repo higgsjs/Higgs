@@ -596,7 +596,8 @@ function string_split(separator, limit)
     {
         return res;
     }
-    else if (separator === undefined)
+
+    if (separator === undefined)
     {
         res[0] = this;
         return res;
@@ -604,7 +605,6 @@ function string_split(separator, limit)
 
     if (separator instanceof RegExp)
     {
-
         var start  = 0,
             string = this;
 
@@ -620,6 +620,7 @@ function string_split(separator, limit)
             res.push(string.substring(start, pos));
             string = string.substring(pos + 1, len);
         }
+
         return res;
     }
 
