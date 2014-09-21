@@ -2346,6 +2346,13 @@ void compile(VM vm, IRInstr curInstr)
                 "unterminated code fragment: " ~
                 ver.block.toString
             );
+
+            // If this is a function entry block
+            if (block is block.fun.entryBlock)
+            {
+                // Set the function entry code pointer
+                block.fun.entryCode = frag.getCodePtr(vm.execHeap);
+            }
         }
 
         // If this is a branch code fragment
@@ -2761,10 +2768,11 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     */
 
     // Compile the entry versions
+    // Note: the entry code pointer is set in the compile function
     vm.compile(fun.entryBlock.firstInstr);
 
     // Store the entry code pointer on the function
-    fun.entryCode = entryInst.getCodePtr(vm.execHeap);
+    //fun.entryCode = entryInst.getCodePtr(vm.execHeap);
 
     if (opts.dumpinfo)
     {

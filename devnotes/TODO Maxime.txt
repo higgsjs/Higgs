@@ -204,17 +204,28 @@ TODO: Friday e-mail, inform Marc of progress:
 - SPLASH
 - Meet Wednesday
 
-TODO: implement fptr specialization in gen_call
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: implement fptr specialization in gen_call
 - start by checking that the information gets there
 - look at call_prim code
 
-
-
-
-
-
-
-
+[DONE] FIXME: seems we might be hitting a call stub when the function is already
+compiled. Call stub goes fubar
+- Need to compile the function to be able to properly optimize the call
+- Must set the entryVer pointer appropriately, no longer point to the stub
+- Could potentially do this in the compile function
 
 [DONE] FIXME: often have fptrKnown but null fptr...
 - Probably calling clearShape on everything? No

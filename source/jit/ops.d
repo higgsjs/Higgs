@@ -1925,33 +1925,26 @@ void gen_call(
     // Get the function pointer if known
     IRFunction fun = closType.fptrKnown? closType.fptr:null;
 
-    // Get the closure pointer
-    auto closReg = st.getWordOpnd(
-        as,
-        instr,
-        0,
-        64,
-        scrRegs[0].opnd(64),
-        false,
-        false
-    );
-    assert (closReg.isGPR);
-
     // Get the number of arguments passed
     auto numArgs = cast(uint32_t)instr.numArgs - 2;
 
     // If the callee function is known and the argument count matches
     if (fun !is null && numArgs is fun.numParams)
     {
+        //writeln("compiling");
 
-
-
-        /*
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
         {
-            astToIR(vm, fun.ast, fun);
+            astToIR(fun.vm, fun.ast, fun);
         }
+
+        /*
+        as.printStr("*******************************************");
+        as.printStr("call to: " ~ fun.getName);
+        as.printStr("  caller: " ~ instr.block.fun.getName);
+        as.printStr("  numArgs=" ~ to!string(numArgs));
+        */
 
         // Copy the function arguments in reverse order
         for (size_t i = 0; i < numArgs; ++i)
@@ -1985,38 +1978,43 @@ void gen_call(
         // Write the argument count
         as.setWord(-numArgs - 1, numArgs);
 
-
-
-        // TODO
-        // TODO: only set if used
-        // TODO
-
         // Write the "this" argument
-        auto thisReg = st.getWordOpnd(
-            as,
-            instr,
-            1,
-            64,
-            scrReg3.opnd(64),
-            true,
-            false
-        );
-        movArgWord(as, numArgs + 1, thisReg);
-        auto tagOpnd = st.getTagOpnd(
-            as,
-            instr,
-            1,
-            scrReg3.opnd(8),
-            true
-        );
-        movArgTag(as, numArgs + 1, tagOpnd);
+        if (fun.thisVal.hasUses)
+        {
+            auto thisReg = st.getWordOpnd(
+                as,
+                instr,
+                1,
+                64,
+                scrRegs[1].opnd(64),
+                true,
+                false
+            );
+            as.setWord(-numArgs - 2, thisReg);
+            auto tagOpnd = st.getTagOpnd(
+                as,
+                instr,
+                1,
+                scrRegs[1].opnd(8),
+                true
+            );
+            as.setTag(-numArgs - 2, tagOpnd);
+        }
 
         // Write the closure argument
-        movArgWord(as, numArgs + 2, closReg);
-
-
-
-
+        if (fun.closVal.hasUses)
+        {
+            auto closReg = st.getWordOpnd(
+                as,
+                instr,
+                0,
+                64,
+                scrRegs[0].opnd(64),
+                false,
+                false
+            );
+            as.setWord(-numArgs - 3, closReg);
+        }
 
         // Spill the values that are live after the call
         st.spillValues(
@@ -2027,25 +2025,8 @@ void gen_call(
             }
         );
 
-        // TODO: analysis to detect possible shape changes
-        // If the callee might change some object shapes
-        auto funName = fun.getName;
-        if (
-            !funName.startsWith("$rt_se") &&
-            !funName.startsWith("$rt_ns") &&
-            !funName.startsWith("$rt_toBool") &&
-            !funName.startsWith("$rt_newObj") &&
-            !funName.startsWith("$rt_newArr") &&
-            !funName.startsWith("$rt_getProp") &&
-            !funName.startsWith("$rt_objGetProp") &&
-            !funName.startsWith("$rt_hasOwnProp") &&
-            !funName.startsWith("$rt_setArrLen"))
-        {
-            //writeln(funName, " <= ", st.fun.getName);
-
-            // Clear the known shape information
-            st.clearShapes();
-        }
+        // Clear the known shape information
+        st.clearShapes();
 
         // Push space for the callee arguments and locals
         as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
@@ -2077,19 +2058,20 @@ void gen_call(
                 as.movAbsRef(vm, scrRegs[0], target0, 0);
                 as.setWord(raSlot, scrRegs[0].opnd(64));
 
+                //as.printStr("jumping ****************");
+
                 // Jump to the function entry block
                 jmp32Ref(as, vm, entryVer, 0);
             },
             false
         );
-        */
 
+        //writeln("compiled");
 
-
-
-
-        //return;
+        return;
     }
+
+    //as.printStr("regular call!");
 
     // If an exception may be thrown
     if (mayThrow)
@@ -2111,6 +2093,18 @@ void gen_call(
 
     // Free an extra register to use as scratch
     auto scrReg3 = st.freeReg(as, instr);
+
+    // Get the closure pointer in a register
+    auto closReg = st.getWordOpnd(
+        as,
+        instr,
+        0,
+        64,
+        scrRegs[0].opnd(64),
+        false,
+        false
+    );
+    assert (closReg.isGPR);
 
     // Get the IRFunction pointer from the closure object
     auto fptrMem = X86Opnd(64, closReg.reg, FPTR_SLOT_OFS);
