@@ -273,7 +273,7 @@ function test_replace()
 
     if ('foobar foobar'.replace(/\bf/g, "$`") !== 'oobar foobar oobar')
         return 4;
-    
+
     if ('foobar foobar'.replace(/\bf/g, "$'") !== 'oobar foobaroobar oobaroobar')
         return 5;
     if ('f'.replace(/a/g, "b") !== 'f')
@@ -332,7 +332,16 @@ function test_split()
         return 12;
 
     if (!array_eq('181'.split([8]), ['1','1']))
-        return 12;
+        return 13;
+
+    if (!array_eq('181 181'.split(/\s/), ['181', '181']))
+        return 14;
+
+    if (!array_eq('181 181'.split(new RegExp('\\s')), ['181', '181']))
+        return 15;
+
+    if (!array_eq('181 181'.split(new RegExp(/\s/)), ['181', '181']))
+        return 16;
 
     return 0;
 }
@@ -460,7 +469,7 @@ function test()
 }
 
 // TODO: convert this test to use assertions &
-// exceptions instead of return codes 
+// exceptions instead of return codes
 var r = test();
 assert (r === 0, r);
 
