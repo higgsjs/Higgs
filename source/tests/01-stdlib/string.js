@@ -337,6 +337,12 @@ function test_split()
     if (!array_eq('181 181'.split(/\s/), ['181', '181']))
         return 14;
 
+    if (!array_eq('181 181'.split(new RegExp('\\s')), ['181', '181']))
+        return 15;
+
+    if (!array_eq('181 181'.split(new RegExp(/\s/)), ['181', '181']))
+        return 16;
+
     return 0;
 }
 
