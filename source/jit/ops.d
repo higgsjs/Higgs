@@ -1937,29 +1937,159 @@ void gen_call(
     );
     assert (closReg.isGPR);
 
+    // Get the number of arguments passed
+    auto numArgs = cast(uint32_t)instr.numArgs - 2;
+
+    // If the callee function is known and the argument count matches
+    if (fun !is null && numArgs is fun.numParams)
+    {
+
+
+
+        /*
+        // If the function is not yet compiled, compile it now
+        if (fun.entryBlock is null)
+        {
+            astToIR(vm, fun.ast, fun);
+        }
+
+        // Copy the function arguments in reverse order
+        for (size_t i = 0; i < numArgs; ++i)
+        {
+            auto instrArgIdx = instr.numArgs - (1+i);
+            auto dstIdx = -(cast(int32_t)i + 1);
+
+            // Copy the argument word
+            auto argOpnd = st.getWordOpnd(
+                as,
+                instr,
+                instrArgIdx,
+                64,
+                scrRegs[1].opnd(64),
+                true,
+                false
+            );
+            as.setWord(dstIdx, argOpnd);
+
+            // Copy the argument type
+            auto tagOpnd = st.getTagOpnd(
+                as,
+                instr,
+                instrArgIdx,
+                scrRegs[1].opnd(8),
+                true
+            );
+            as.setTag(dstIdx, tagOpnd);
+        }
+
+        // Write the argument count
+        as.setWord(-numArgs - 1, numArgs);
+
+
+
+        // TODO
+        // TODO: only set if used
+        // TODO
+
+        // Write the "this" argument
+        auto thisReg = st.getWordOpnd(
+            as,
+            instr,
+            1,
+            64,
+            scrReg3.opnd(64),
+            true,
+            false
+        );
+        movArgWord(as, numArgs + 1, thisReg);
+        auto tagOpnd = st.getTagOpnd(
+            as,
+            instr,
+            1,
+            scrReg3.opnd(8),
+            true
+        );
+        movArgTag(as, numArgs + 1, tagOpnd);
+
+        // Write the closure argument
+        movArgWord(as, numArgs + 2, closReg);
 
 
 
 
 
+        // Spill the values that are live after the call
+        st.spillValues(
+            as,
+            delegate bool(LiveInfo liveInfo, IRDstValue value)
+            {
+                return liveInfo.liveAfter(value, instr);
+            }
+        );
+
+        // TODO: analysis to detect possible shape changes
+        // If the callee might change some object shapes
+        auto funName = fun.getName;
+        if (
+            !funName.startsWith("$rt_se") &&
+            !funName.startsWith("$rt_ns") &&
+            !funName.startsWith("$rt_toBool") &&
+            !funName.startsWith("$rt_newObj") &&
+            !funName.startsWith("$rt_newArr") &&
+            !funName.startsWith("$rt_getProp") &&
+            !funName.startsWith("$rt_objGetProp") &&
+            !funName.startsWith("$rt_hasOwnProp") &&
+            !funName.startsWith("$rt_setArrLen"))
+        {
+            //writeln(funName, " <= ", st.fun.getName);
+
+            // Clear the known shape information
+            st.clearShapes();
+        }
+
+        // Push space for the callee arguments and locals
+        as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
+        as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
+
+        // Request an instance for the function entry block
+        auto entryVer = getBlockVersion(
+            fun.entryBlock,
+            new CodeGenState(fun)
+        );
+
+        ver.genCallBranch(
+            st,
+            instr,
+            as,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                // Get the return address slot of the callee
+                auto raSlot = entryVer.block.fun.raVal.outSlot;
+                assert (raSlot !is NULL_STACK);
+
+                // Write the return address on the stack
+                as.movAbsRef(vm, scrRegs[0], target0, 0);
+                as.setWord(raSlot, scrRegs[0].opnd(64));
+
+                // Jump to the function entry block
+                jmp32Ref(as, vm, entryVer, 0);
+            },
+            false
+        );
+        */
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+        //return;
+    }
 
     // If an exception may be thrown
     if (mayThrow)
@@ -1985,8 +2115,6 @@ void gen_call(
     // Get the IRFunction pointer from the closure object
     auto fptrMem = X86Opnd(64, closReg.reg, FPTR_SLOT_OFS);
     as.mov(scrRegs[1].opnd(64), fptrMem);
-
-    auto numArgs = cast(uint32_t)instr.numArgs - 2;
 
     // Compute -missingArgs = numArgs - numParams
     // This is the negation of the number of missing arguments
@@ -4812,6 +4940,7 @@ void gen_new_clos(
 
     auto funArg = cast(IRFunPtr)instr.getArg(0);
     assert (funArg !is null);
+    assert (funArg.fun !is null);
 
     as.saveJITRegs();
 

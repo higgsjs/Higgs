@@ -231,6 +231,7 @@ struct ValState
     ValState clearShape() const
     {
         assert (!isConst);
+        assert (!type.fptrKnown);
 
         ValState val = cast(ValState)this;
         val.type.shape = null;
@@ -950,7 +951,7 @@ class CodeGenState
         // For each value in the value map
         foreach (value, state; valMap)
         {
-            if (state.type.shape !is null)
+            if (state.type.shapeKnown)
                 valMap[value] = state.clearShape();
         }
     }

@@ -216,9 +216,8 @@ TODO: implement fptr specialization in gen_call
 
 
 
-
-
-
+[DONE] FIXME: often have fptrKnown but null fptr...
+- Probably calling clearShape on everything? No
 
 [DONE] TODO: modify GC to forward closure and this based on liveness
 

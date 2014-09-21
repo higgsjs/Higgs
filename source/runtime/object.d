@@ -194,6 +194,8 @@ struct ValType
     {
         assert (!this.shapeKnown || !this.fptrKnown);
         assert (!that.shapeKnown || !that.fptrKnown);
+        assert (!this.fptrKnown || this.fptr);
+        assert (!that.fptrKnown || that.fptr);
 
         if (that.tagKnown)
         {
@@ -251,8 +253,11 @@ struct ValType
         that.subMax = false;
 
         // Remove shape information
-        that.shape = null;
-        that.shapeKnown = false;
+        if (that.shapeKnown)
+        {
+            that.shape = null;
+            that.shapeKnown = false;
+        }
 
         // If function identity specialization of shapes is disabled
         if (opts.shape_nofptrspec)
@@ -280,12 +285,10 @@ struct ValType
 
                 //writeln(cast(void*)that.fptr);
             }
-            else if (this.tagKnown && this.tag is Tag.FUNPTR)
-            {
-                that.fptr = this.fptr;
-                that.fptrKnown = this.fptrKnown;
-            }
         }
+
+        assert (!that.shapeKnown || !that.fptrKnown);
+        assert (!that.fptrKnown || that.fptr);
 
         return that;
     }
