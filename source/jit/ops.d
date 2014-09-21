@@ -1910,8 +1910,6 @@ void gen_call(
     CodeBlock as
 )
 {
-    as.incStatCnt(&stats.numCall, scrRegs[0]);
-
     //
     // Function pointer extraction
     //
@@ -1931,6 +1929,8 @@ void gen_call(
     // If the callee function is known and the argument count matches
     if (fun !is null && numArgs is fun.numParams)
     {
+        as.incStatCnt(&stats.numCallFast, scrRegs[0]);
+
         //writeln("compiling");
 
         // If the function is not yet compiled, compile it now
@@ -1938,13 +1938,6 @@ void gen_call(
         {
             astToIR(fun.vm, fun.ast, fun);
         }
-
-        /*
-        as.printStr("*******************************************");
-        as.printStr("call to: " ~ fun.getName);
-        as.printStr("  caller: " ~ instr.block.fun.getName);
-        as.printStr("  numArgs=" ~ to!string(numArgs));
-        */
 
         // Copy the function arguments in reverse order
         for (size_t i = 0; i < numArgs; ++i)
@@ -2070,6 +2063,8 @@ void gen_call(
 
         return;
     }
+
+    as.incStatCnt(&stats.numCallSlow, scrRegs[0]);
 
     //as.printStr("regular call!");
 
@@ -5100,9 +5095,14 @@ void gen_get_ir_str(
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
         {
+            // FIXME: function entry stubs are currently a hack
+            // Need to be specialized to the IRFunction, not assume
+            // that numLocals is the minimum value
+            // Can't have unspecialized stubs for interprocedural BBV anyway!
             auto numLocals = fun.numLocals;
             astToIR(vm, fun.ast, fun);
             fun.numLocals = numLocals;
+            fun.entryBlock = null;
         }
 
         auto str = fun.toString();

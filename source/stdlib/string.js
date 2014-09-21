@@ -133,7 +133,7 @@ function string_fromCharCode(c)
         var str = $rt_str_alloc(1);
         $rt_str_set_data(str, 0, c);
         return $ir_get_str(str);
-    } 
+    }
 
     var args = Array.prototype.slice.call(arguments, 0);
     for(var i = 0; i < args.length; i++)
@@ -175,8 +175,8 @@ function string_valueOf()
 function string_charAt(pos)
 {
     if ($ir_is_string(this) &&
-        $ir_is_int32(pos) && 
-        $ir_ge_i32(pos, 0) && 
+        $ir_is_int32(pos) &&
+        $ir_ge_i32(pos, 0) &&
         $ir_lt_i32(pos, $rt_str_get_len(this)))
     {
         var ch = $rt_str_get_data(this, pos);
@@ -203,8 +203,8 @@ function string_charAt(pos)
 function string_charCodeAt(pos)
 {
     if ($ir_is_string(this) &&
-        $ir_is_int32(pos) && 
-        $ir_ge_i32(pos, 0) && 
+        $ir_is_int32(pos) &&
+        $ir_ge_i32(pos, 0) &&
         $ir_lt_i32(pos, $rt_str_get_len(this)))
     {
         return $rt_str_get_data(this, pos);
@@ -293,7 +293,7 @@ function string_lastIndexOf(searchString, pos)
 
     if (pos + searchString.length > this.length)
         pos = this.length - searchString.length;
-    
+
     var firstChar = searchString.charCodeAt(0);
     for (var i = pos; i >= 0; i--)
     {
@@ -596,15 +596,37 @@ function string_split(separator, limit)
     {
         return res;
     }
-    else if (separator === undefined)
+
+    if (separator === undefined)
     {
         res[0] = this;
         return res;
     }
 
+    if (separator instanceof RegExp)
+    {
+        var start  = 0,
+            string = this;
+
+        while (true)
+        {
+            var pos = string.search(separator);
+            if (pos === -1)
+            {
+                res.push(string);
+                break;
+            }
+
+            res.push(string.substring(start, pos));
+            string = string.substring(pos + 1, len);
+        }
+
+        return res;
+    }
+
     var sep = separator + "";
     var this_blank = (len === 0);
-    var sep_blank = (sep.length === 0);    
+    var sep_blank = (sep.length === 0);
 
     // special cases
     if (this_blank)
@@ -669,7 +691,7 @@ function string_substring(start, end)
         start = end;
         end = tmp;
     }
-    
+
     // Allocate new string.
     var s = $rt_str_alloc(end - start);
 
@@ -724,7 +746,7 @@ function string_toLowerCase()
     // This code assumes the array is a copy of the internal char array.
     // It may be more efficient to expose the internal data directly and
     // make a copy only when necessary.
-    
+
     for (var i = 0; i < a.length; i++)
     {
         var c = a[i];
@@ -765,8 +787,8 @@ function string_toUpperCase()
         if (c > 255)
             error("Only ASCII characters are currently supported");
 
-        if ((c >= 97 && c <= 122)  || 
-            (c >= 224 && c <= 246) || 
+        if ((c >= 97 && c <= 122)  ||
+            (c >= 224 && c <= 246) ||
             (c >= 248 && c <= 254))
             a[i] = c - 32;
     }

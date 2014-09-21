@@ -83,29 +83,24 @@ TODO: gather stats about the percentage of functions which are long-running
 - dump text and sort
   - fn, num calls, num itrs
 
-TODO: eliminate type array in objects?
-- If the type is always known, this is unnecessary
-- Evaluate if there is much shape flip-flopping first
-- GC would need alterations
+TODO: inline caches for get_prop, is_getset, has_prop?
+- how often do we know the prop name but not the obj shape???
+- might be better to go back to having set_prop and get_prop branching?
+  - may be annoying to implement wrt inline cache?
+  - jump to one target or the other
+TODO: capture_shape(x)
+- bitwise-and writing the shape pointer to a register 6 times in loop core!
+TODO: shape_has_prop(obj, propName)
+- no more ne_rawptr hack
+TODO: shape_is_getset needs to take obj and prop name, not defShape
+TODO: rewrite getProp to not use defShape info
+- make getProp take prop name
 
-TODO: profiling phase for shape_get_def?
-- first K=50 or 100 calls could gather shapes
-  - 8 bucket count + last seen
-- if we can fit all in <=4 buckets, might be worth specializing
-- Decide between shape dispatch and an LRU shape inline cache
-- Adapt the size of the dispatch/cache if you want
-- Can also have a hybrid approach, eg: 2 specializations, 2 LRU entries
-- Can have a different strategy for the global object
-  - We know its current shape, can evaluate if probably stable or not
-  - Are we currently executing a unit function?
-- Global obj, could guarantee known prop idx, without cache
-  - Even though type is unknown
-  - Must guarantee prop deletion and readd doesn't change prop idx
-  - Make test for del + add
-TODO: commit and experiment
-- how often do we see only one shape?
-- how do typical global getprops behave wrt shapes? do they stabilize?
-- how many getprops get 50+ execs in benchs?
+TODO: try embedded arg list for IR instrs?
+- What is the object we allocate most of? stats?
+At EA, in C++, we have exactly this type in our standard template library as
+eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
+extremely useful once you have it for exactly this kind of use case.
 
 TODO: liveness analysis flipped...?
 - TODO: start by implementing system to measure total liveness analysis time
@@ -125,25 +120,9 @@ TODO: liveness analysis flipped...?
 TODO: stub branches, pre-reserve space, put block idx in there
 - should ideally jump ahead and not backwards
 - don't alloc objects for each stub
-
-TODO: look at hot spots in earley-boyer more in detail
-- Find where most of the time is spent, optimize that
-- could hack some code to count instruction execs per function with source pos
-- Quite possibly, something with the alloc in boyer is slow, works poorly?
-
-TODO: inline caches for get_prop, is_getset, has_prop?
-- how often do we know the prop name but not the obj shape???
-- might be better to go back to having set_prop and get_prop branching?
-  - may be annoying to implement wrt inline cache?
-  - jump to one target or the other
-TODO: capture_shape(x)
-- bitwise-and writing the shape pointer to a register 6 times in loop core!
-TODO: shape_has_prop(obj, propName)
-- no more ne_rawptr hack
-TODO: shape_is_getset needs to take obj and prop name, not defShape
-TODO: rewrite getProp to not use defShape info
-- make getProp take prop name
-TODO: check how often getProp doesn't know the obj shape but knows the prop name
+  - or maybe have an array of stubs, flat
+- could use this for function entry stubs too
+  - need to become specialized for interprocedural BBV
 
 ------------------------------------------------------------------------------
 
@@ -163,23 +142,12 @@ TODO: blog post, Higgs' Fancy New Object System
 - post to r/compilers, r/higgsjs
 - Typed shapes + BBV a bit of a gamble
 
-TODO: try embedded arg list for IR instrs?
-- What is the object we allocate most of? stats?
-At EA, in C++, we have exactly this type in our standard template library as
-eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
-extremely useful once you have it for exactly this kind of use case.
-
 TODO: global shape dispatch, numEntries=1
 
 FIXME: array access performance sucks
 - probably want hidden _arrtbl__ property
 
-TODO: investigate GC slowness in earley-boyer
-- Try not visiting and not collecting IRFunctions
-- Allocation of new heap might be quite slow
-  - Could also be other allocations, D GC
-
-TODO: Friday e-mail, inform Marc of progress:
+TODO: Meet Marc
 - Tested --shape_notags, no type tag spec in shapes
   - Reduces code size on average, in most cases
   - Avg reduction in type tests about 33%
@@ -200,9 +168,33 @@ TODO: Friday e-mail, inform Marc of progress:
   - difference in v8/raytrace also accounted for by GC
 - Started work on fptr specialization in shapes
   - Fixed big bug: shapes and fptr not propagating through phi nodes
+- Fptr spec
+  - Not necessary to capture closure types
+    - Already know in most cases of a.m = function () {}
+  - Big speedup on call microbenchmark
+  - Not enough calls to make a big difference in general
+  - Seems more shape spec leads to more branch misprediction
 - ECOOP, December 21st, 2 days after CC notification
+  - Redirect our typed shapes paper there
 - SPLASH
-- Meet Wednesday
+
+TODO: investigate GC slowness in earley-boyer
+- Try not visiting and not collecting IRFunctions
+- Allocation of new heap might be quite slow
+  - Could also be other allocations, D GC
+
+Idea: branch mispredict ****
+- Could reimplement capture_shape as a sort of loop into itself?
+- Generates a branch back into a different version of itself if shape mispredicted
+- Avoid elaborate codegen, multiple slots
+- Can fall through in many cases
+- Issue: global obj
+  - Probably want to write a jump over the old shape dispatch, go back up the chain
+- Try this for capture_tag first
+while (capture_tag(x));
+- "Loops" until it captures the tag
+
+TODO: check how often getProp doesn't know the obj shape but knows the prop name
 
 
 
@@ -214,8 +206,19 @@ TODO: Friday e-mail, inform Marc of progress:
 
 
 
+[DONE] FIXME: segfault
+./higgs tests/02-regress/ir-string.js
+- irString works, but the call fails. Why?
 
+[DONE] TODO: num call fast stat
+- could be that only a minority of calls are optimized
+- most calls are optimized
 
+[DONE] TODO: benchmark shape spec vs no spec
+./benchmark.py --csv_file="notags.csv" --num_runs=10 --higgs_cmd="./higgs --shape_notagspec --shape_nofptrspec --perf_stats"; ./benchmark.py --csv_file="spec.csv" --num_runs=10 --higgs_cmd="./higgs --perf_stats"
+- Code size smaller, but exec time slightly slower on everything?
+- Total type tests reduced by more than 33%
+- Could be artifact
 
 [DONE] TODO: implement fptr specialization in gen_call
 - start by checking that the information gets there

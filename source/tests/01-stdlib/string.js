@@ -332,7 +332,11 @@ function test_split()
         return 12;
 
     if (!array_eq('181'.split([8]), ['1','1']))
-        return 12;
+        return 13;
+
+    assert (array_eq('181 181'.split(/\s/), ['181', '181']))
+    assert (array_eq('181 181'.split(new RegExp('\\s')), ['181', '181']))
+    assert (array_eq('181 181'.split(new RegExp(/\s/)), ['181', '181']))
 
     return 0;
 }
@@ -460,7 +464,7 @@ function test()
 }
 
 // TODO: convert this test to use assertions &
-// exceptions instead of return codes 
+// exceptions instead of return codes
 var r = test();
 assert (r === 0, r);
 
