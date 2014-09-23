@@ -83,19 +83,6 @@ TODO: gather stats about the percentage of functions which are long-running
 - dump text and sort
   - fn, num calls, num itrs
 
-TODO: inline caches for get_prop, is_getset, has_prop?
-- how often do we know the prop name but not the obj shape???
-- might be better to go back to having set_prop and get_prop branching?
-  - may be annoying to implement wrt inline cache?
-  - jump to one target or the other
-TODO: capture_shape(x)
-- bitwise-and writing the shape pointer to a register 6 times in loop core!
-TODO: shape_has_prop(obj, propName)
-- no more ne_rawptr hack
-TODO: shape_is_getset needs to take obj and prop name, not defShape
-TODO: rewrite getProp to not use defShape info
-- make getProp take prop name
-
 TODO: try embedded arg list for IR instrs?
 - What is the object we allocate most of? stats?
 At EA, in C++, we have exactly this type in our standard template library as
@@ -142,12 +129,77 @@ TODO: blog post, Higgs' Fancy New Object System
 - post to r/compilers, r/higgsjs
 - Typed shapes + BBV a bit of a gamble
 
-TODO: global shape dispatch, numEntries=1
+TODO: heap alloc, could break out fallback code!
+- Have separate host_alloc instr
+- #winning
+- Make a blog post: lazy code generation rocks
+- Very common in dynamic languages that some fallback is needed
+- Don't want to always generate fallback code
 
 FIXME: array access performance sucks
 - probably want hidden _arrtbl__ property
 
-TODO: Meet Marc
+TODO: can we get rid of ExtInfo?
+- Wait until new capture_shape is implemented
+
+Idea: branch mispredict
+- reimplement capture_shape as a sort of loop into itself?
+- Generates a branch back into a different version of itself if shape mispredicted
+- Avoid elaborate codegen, multiple slots
+- Can fall through in many cases
+- need to pass both obj and objShape
+- Issue: global obj
+  - Probably want to write a jump over the old shape dispatch, go back up the chain
+  - KISS for now, only see one shape most often
+
+TODO: rewrite getProp to not use defShape info
+- make getProp take prop name
+
+TODO: Meet Marc Thursday
+- Shape profiling confirmed intuition, first shape in most cases, no exceptions
+- Fixed GC performance bug
+
+TODO: remove captTagSub
+
+TODO: new capture_tag, while (capture_tag(x));
+- "Loops" until it captures the tag
+- Assert that no phi nodes to succs, only instr in block
+- No need for version limit with capture_tag, yo
+For fail succ (self), can set tag to value tested. We do this because we need
+a new context. When capture_tag is compiled, it checks if the actual tag value
+is the one from the context. If so, do nothing, go straight to false succ.
+Otherwise, compile a test for the observed tag. If the tag value is actually
+known, the context value can never contradict the obsserved one.
+
+TODO: save code size stats, time pre refactoring ***
+
+TODO: investigate bug found by yawnt on dev-maxime branch
+- Fix on master
+- Add test
+- Make it so exports is globally avail, current modules still work
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: investigate GC slowness in earley-boyer
+- Try not visiting and not collecting IRFunctions
+- Allocation of new heap might be quite slow
+
+[DONE] TODO: profile shape entries
+- Which of 1st, 2nd, ... gets more hits
+  - Do this based on frequency
+- First vs not first?
+- Separate with global obj or not
+- Use codegen on the branch edge
+
+[DONE] TODO: Meet Marc
 - Tested --shape_notags, no type tag spec in shapes
   - Reduces code size on average, in most cases
   - Avg reduction in type tests about 33%
@@ -166,9 +218,8 @@ TODO: Meet Marc
   - Added GC time stat, GC is now much slower
   - earley-boyer is now very fast, but GC takes 80% of the execution time
   - difference in v8/raytrace also accounted for by GC
-- Started work on fptr specialization in shapes
-  - Fixed big bug: shapes and fptr not propagating through phi nodes
 - Fptr spec
+  - Fixed big bug: shapes and fptr not propagating through phi nodes
   - Not necessary to capture closure types
     - Already know in most cases of a.m = function () {}
   - Big speedup on call microbenchmark
@@ -178,33 +229,8 @@ TODO: Meet Marc
   - Redirect our typed shapes paper there
 - SPLASH
 
-TODO: investigate GC slowness in earley-boyer
-- Try not visiting and not collecting IRFunctions
-- Allocation of new heap might be quite slow
-  - Could also be other allocations, D GC
-
-Idea: branch mispredict ****
-- Could reimplement capture_shape as a sort of loop into itself?
-- Generates a branch back into a different version of itself if shape mispredicted
-- Avoid elaborate codegen, multiple slots
-- Can fall through in many cases
-- Issue: global obj
-  - Probably want to write a jump over the old shape dispatch, go back up the chain
-- Try this for capture_tag first
-while (capture_tag(x));
-- "Loops" until it captures the tag
-
-TODO: check how often getProp doesn't know the obj shape but knows the prop name
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: check how often getProp doesn't know the obj shape but knows the prop name
+- Not very much!
 
 [DONE] FIXME: segfault
 ./higgs tests/02-regress/ir-string.js

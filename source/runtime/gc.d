@@ -38,11 +38,13 @@
 module runtime.gc;
 
 import core.memory;
+import std.c.stdlib;
 import std.c.string;
 import std.stdint;
 import std.stdio;
 import std.string;
 import std.conv;
+import std.algorithm;
 import ir.ir;
 import ir.ops;
 import runtime.vm;
@@ -157,6 +159,28 @@ bool ptrValid(refptr ptr)
 }
 
 /**
+Allocate a memory block to serve as a VM heap
+*/
+rawptr allocHeapBlock(VM vm, size_t heapSize)
+{
+    // Allocate a memory block for the to-space
+    auto memBlock = cast(ubyte*)GC.malloc(
+        heapSize,
+        GC.BlkAttr.NO_SCAN |
+        GC.BlkAttr.NO_INTERIOR |
+        GC.BlkAttr.NO_MOVE
+    );
+
+    if (memBlock is null)
+    {
+        writeln("failed to allocate heap memory block");
+        exit(-1);
+    }
+
+    return memBlock;
+}
+
+/**
 Allocate an object in the heap
 */
 refptr heapAlloc(VM vm, size_t size)
@@ -237,30 +261,30 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Start recording garbage collection time
     stats.gcTimeStart();
 
+    // If a VM heap resizing is requested
     if (heapSize != 0)
+    {
+        // Update the VM heap size
         vm.heapSize = heapSize;
+    }
 
-    //writefln("allocating to-space heap of size: %s", vm.heapSize);
+    // If the to-space heap size doesn't match the VM heap size
+    if (vm.toLimit - vm.toStart != vm.heapSize)
+    {
+        //writeln("resizing to-space");
 
-    // Allocate a memory block for the to-space
-    vm.toStart = cast(ubyte*)GC.malloc(
-        vm.heapSize,
-        GC.BlkAttr.NO_SCAN |
-        GC.BlkAttr.NO_INTERIOR
-    );
+        // Free the old to-space heap block
+        GC.free(vm.toStart);
 
-    assert (
-        vm.toStart != null,
-        "failed to allocate to-space heap"
-    );
+        // Reallocate a memory block for the to-space
+        vm.toStart = allocHeapBlock(vm, vm.heapSize);
+        vm.toLimit = vm.toStart + vm.heapSize;
+    }
 
     // Zero-out the to-space
     // Note: the runtime relies on this behavior to
     // avoid initializing all object and array fields
     memset(vm.toStart, 0, vm.heapSize);
-
-    // Compute the to-space heap limit
-    vm.toLimit = vm.toStart + vm.heapSize;
 
     // Initialize the to-space allocation pointer
     vm.toAlloc = vm.toStart;
@@ -341,18 +365,10 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
     //writefln("objects copied/scanned: %s", numObjs);
 
-    // Store a pointer to the from-space heap
-    auto fromStart = vm.heapStart;
-
-    // Make the to-space the new from-space
-    vm.heapStart = vm.toStart;
-    vm.heapLimit = vm.toLimit;
+    // Swap the from and to-space heaps
+    swap(vm.heapStart, vm.toStart);
+    swap(vm.heapLimit, vm.toLimit);
     vm.allocPtr = vm.toAlloc;
-
-    // Clear the to-space information
-    vm.toStart = null;
-    vm.toLimit = null;
-    vm.toAlloc = null;
 
     //writefln("rebuilding string table");
 
@@ -376,9 +392,6 @@ void gcCollect(VM vm, size_t heapSize = 0)
 
         getTableStr(vm, next);
     }
-
-    // Free the from-space heap block
-    GC.free(fromStart);
 
     //writefln("old live funs count: %s", vm.funRefs.length);
 

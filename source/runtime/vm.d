@@ -455,7 +455,7 @@ class VM
     ubyte* heapStart;
 
     /// Heap size
-    size_t heapSize;
+    size_t heapSize = HEAP_INIT_SIZE;
 
     /// Heap upper limit
     ubyte* heapLimit;
@@ -582,22 +582,19 @@ class VM
         wsp = wUpperLimit;
         tsp = tUpperLimit;
 
-        // Allocate a block of immovable memory for the heap
-        heapSize = HEAP_INIT_SIZE;
-        heapStart = cast(ubyte*)GC.malloc(
-            heapSize,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
-        );
-        memset(heapStart, 0, heapSize);
+        // Allocate two blocks of immovable memory
+        // for the from-space and to-space heaps
+        heapStart = allocHeapBlock(this, heapSize);
+        toStart = allocHeapBlock(this, heapSize);
 
-        // Check that the allocation was successful
-        if (heapStart is null)
-            throw new Error("heap allocation failed");
+        // Initialize the from-space heap to zero
+        memset(heapStart, 0, heapSize);
 
         // Initialize the allocation and limit pointers
         allocPtr = heapStart;
         heapLimit = heapStart + heapSize;
+        toAlloc = toStart;
+        toLimit = toStart + heapSize;
 
         /// Link table size
         linkTblSize = LINK_TBL_INIT_SIZE;
