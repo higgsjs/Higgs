@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -38,11 +38,8 @@
 /**
 FFI - provides functionality for writing bindings to/wrappers for C code.
 */
-
-
-(function()
+(function(exports)
 {
-
     /**
     ERRORS
     */
@@ -2040,16 +2037,15 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     /**
     EXPORTS
     */
-    exports = {
-        c : c,
-        FFILib : FFILib,
-        string : string,
-        cstr : cstr,
-        jsstrcpy : jsstrcpy,
-        isNullPtr : isNullPtr,
-        nullPtr : nullPtr,
-        cbuffer : cbuffer,
-        os : os_name
-    };
+    exports.c = c;
+    exports.FFILib = FFILib;
+    exports.string = string;
+    exports.cstr = cstr;
+    exports.jsstrcpy = jsstrcpy;
+    exports.isNullPtr = isNullPtr;
+    exports.nullPtr = nullPtr;
+    exports.cbuffer = cbuffer;
+    exports.os = os_name;
 
-})();
+})(exports);
+

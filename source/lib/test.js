@@ -38,7 +38,7 @@
 /**
 Assert functions for basic unit/regression tests.
 */
-(function()
+(function(exports)
 {
     var global = $ir_get_global_obj();
 
@@ -137,8 +137,7 @@ Assert functions for basic unit/regression tests.
                                 (msg ? " : " + msg : ""));
     };
 
-    exports = {
-        isSameVal: isSameVal
-    };
+    exports.isSameVal = isSameVal;
 
-})();
+})(exports);
+

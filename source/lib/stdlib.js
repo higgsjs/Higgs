@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -39,7 +39,7 @@
 C stdlib functions
 */
 
-(function()
+(function(exports)
 {
     var ffi = require('lib/ffi');
     var io = require('lib/stdio');
@@ -163,16 +163,15 @@ C stdlib functions
         return success;
     }
 
-    exports = {
-        malloc : malloc,
-        realloc : realloc,
-        free : free,
-        exit : exit,
-        system : system,
-        getenv : getenv,
-        popen : popen,
-        chdir : chdir,
-        perror : perror
-    };
+    exports.malloc = malloc;
+    exports.realloc = realloc;
+    exports.free = free;
+    exports.exit = exit;
+    exports.system = system;
+    exports.getenv = getenv;
+    exports.popen = popen;
+    exports.chdir = chdir;
+    exports.perror = perror;
 
-})();
+})(exports);
+

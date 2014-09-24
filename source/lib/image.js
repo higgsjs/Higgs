@@ -35,7 +35,7 @@
 *
 *****************************************************************************/
 
-(function()
+(function(exports)
 {
     var io = require('lib/stdio');
 
@@ -201,12 +201,9 @@
         return img;
     }
 
-    // Exported namespace
-    exports = {
-        Image: Image,
-        writeTGA24: writeTGA24,
-        readTGA24: readTGA24
-    };
+    exports.Image = Image;
+    exports.writeTGA24 = writeTGA24;
+    exports.readTGA24 = readTGA24;
 
-})()
+})(exports)
 

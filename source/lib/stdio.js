@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -39,9 +39,8 @@
 Bindings for common c I/O functions
 */
 
-(function()
+(function(exports)
 {
-
     /**
     DEPENDENCIES/SETUP
     */
@@ -538,8 +537,9 @@ Bindings for common c I/O functions
         c.free(str);
     };
 
+    // Export all definitions in io
+    for (name in io)
+        exports[name] = io[name];
 
-    // Export
-    exports = io;
-})();
+})(exports);
 
