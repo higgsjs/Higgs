@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -39,8 +39,7 @@
 lib/x11 - provides bindings to Xlib
 NOTE: currently this provides just enough bindings for the drawing lib
 */
-
-(function()
+(function(exports)
 {
     var ffi = require('lib/ffi');
     var c = ffi.c;
@@ -2927,6 +2926,8 @@ NOTE: currently this provides just enough bindings for the drawing lib
     };
 
     /* EXPORT */
-    exports = Xlib;
+    foreach (name in Xlib)
+        exports[name] = Xlib[name];
 
-})();
+})(exports);
+

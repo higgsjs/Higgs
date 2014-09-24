@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2013-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -35,7 +35,7 @@
 *
 *****************************************************************************/
 
-(function()
+(function(exports)
 {
     var io = require('lib/stdio');
 
@@ -292,11 +292,8 @@
         return csv;
     }
 
-    // Exported namespace
-    exports = {
-        CSV: CSV,
-        readFile: readFile
-    };
+    exports.CSV = CSV;
+    exports.readFile = readFile;
 
-})();
+})(exports);
 
