@@ -698,7 +698,6 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
             lastInstr.setTarget(0, trueBlock);
             lastInstr.setTarget(1, falseBlock);
         }
-
         else
         {
             // Convert the expression value to a boolean
@@ -761,15 +760,33 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         // Compile the loop test in the entry context
         auto testVal = exprToIR(testCtx, whileStmt.testExpr);
 
-        // Convert the expression value to a boolean
-        auto boolVal = genBoolEval(
-            testCtx,
-            whileStmt.testExpr,
-            testVal
-        );
+        // Get the last instruction of the current block
+        auto lastInstr = testCtx.curBlock.lastInstr;
 
-        // If the expresson is true, jump to the loop body
-        testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
+        // If this is a branch inline IR expression
+        if (isBranchIIR(whileStmt.testExpr) && lastInstr && lastInstr.opcode.isBranch)
+        {
+            assert (
+                lastInstr.getTarget(0) is null,
+                "iir target already set"
+            );
+
+            // Set branch targets for the instruction
+            lastInstr.setTarget(0, bodyBlock);
+            lastInstr.setTarget(1, exitBlock);
+        }
+        else
+        {
+            // Convert the expression value to a boolean
+            auto boolVal = genBoolEval(
+                testCtx,
+                whileStmt.testExpr,
+                testVal
+            );
+
+            // Branch based on the boolean value
+            testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
+        }
 
         // Compile the loop body statement
         auto bodyCtx = testCtx.subCtx(bodyBlock);
@@ -2560,8 +2577,7 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
     }
 
     // If this is a type capture operation
-    if (instr.opcode is &SHAPE_GET_DEF ||
-        instr.opcode is &CAPTURE_TAG)
+    if (instr.opcode is &SHAPE_GET_DEF)
     {
         auto contBlock = ctx.fun.newBlock("capture_cont");
 

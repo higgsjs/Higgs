@@ -2263,7 +2263,11 @@ function $rt_objSetProp(obj, propStr, val)
     else
     {
         // Capture the type tag of the value
-        $ir_capture_tag(val);
+        if ($ir_capture_tag(val))
+            if ($ir_capture_tag(val))
+                if ($ir_capture_tag(val))
+                    if ($ir_capture_tag(val))
+                        if ($ir_capture_tag(val));
 
         // Set the property value
         $ir_shape_set_prop(obj, propStr, val);
@@ -2455,7 +2459,11 @@ function $rt_setPropField(base, prop, val)
         if (!$ir_shape_is_getset(defShape))
         {
             // Capture the type tag of the value
-            $ir_capture_tag(val);
+            if ($ir_capture_tag(val))
+                if ($ir_capture_tag(val))
+                    if ($ir_capture_tag(val))
+                        if ($ir_capture_tag(val))
+                            if ($ir_capture_tag(val));
 
             // Set the property value
             $ir_shape_set_prop(base, prop, val);
@@ -2478,7 +2486,7 @@ function $rt_setPropFieldNoCheck(base, prop, val)
     var defShape = $ir_shape_get_def(base, prop);
 
     // Capture the type tag of the value
-    $ir_capture_tag(val);
+    if ($ir_capture_tag(val));
 
     // Set the property value
     $ir_shape_set_prop(base, prop, val);
@@ -2539,7 +2547,8 @@ function $rt_setGlobalInl(propStr, val)
     if (!$ir_shape_is_getset(defShape))
     {
         // Capture the type tag of the value
-        $ir_capture_tag(val);
+        if ($ir_capture_tag(val))
+            if ($ir_capture_tag(val));
 
         // Set the property value
         $ir_shape_set_prop(obj, propStr, val);

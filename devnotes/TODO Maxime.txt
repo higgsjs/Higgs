@@ -142,8 +142,18 @@ FIXME: array access performance sucks
 TODO: can we get rid of ExtInfo?
 - Wait until new capture_shape is implemented
 
-Idea: branch mispredict
-- reimplement capture_shape as a sort of loop into itself?
+TODO: look at why string-fasta is slow
+- Over 1M def shape host
+- Most calls unoptimized, why?
+
+TODO: check if 3bits-byte faster than old object system now? If not, why
+- Run with --perf_stats
+
+TODO: complete basic wav encoding, on master
+- rename lib to PCM
+
+TODO: remove special handling of capture_shape in ir/ast.d
+TODO: new capture_shape, while (capture_shape(obj, objShape)); 
 - Generates a branch back into a different version of itself if shape mispredicted
 - Avoid elaborate codegen, multiple slots
 - Can fall through in many cases
@@ -159,9 +169,22 @@ TODO: Meet Marc Thursday
 - Shape profiling confirmed intuition, first shape in most cases, no exceptions
 - Fixed GC performance bug
 
+TODO: look at code size and performance with new capture_tag
+
 TODO: remove captTagSub
 
-TODO: new capture_tag, while (capture_tag(x));
+TODO: IsTypeOp => IsTagOp, getTypeTestCtr => getTagTestCtr
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: new capture_tag, while (capture_tag(x));
 - "Loops" until it captures the tag
 - Assert that no phi nodes to succs, only instr in block
 - No need for version limit with capture_tag, yo
@@ -171,22 +194,17 @@ is the one from the context. If so, do nothing, go straight to false succ.
 Otherwise, compile a test for the observed tag. If the tag value is actually
 known, the context value can never contradict the obsserved one.
 
-TODO: save code size stats, time pre refactoring ***
+[DONE] TODO: save code size stats pre refactoring
+./benchmark.py --higgs_cmd="./higgs --perf_stats" --csv_file="pre_new_capt.csv"
+code size (bytes): 428353
+comp time (ms): 324
+exec time (ms): 61
+- Code size only slightly bigger than with old object system
 
-TODO: investigate bug found by yawnt on dev-maxime branch
+[DONE] TODO: investigate bug found by yawnt on dev-maxime branch
 - Fix on master
 - Add test
 - Make it so exports is globally avail, current modules still work
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: investigate GC slowness in earley-boyer
 - Try not visiting and not collecting IRFunctions

@@ -307,7 +307,8 @@ class CodeGenState
         foreach (ident, param; fun.paramMap)
             mapToStack(param);
 
-        // Set the tags for the closure and argument count values
+        // Set the tags for the untagged hidden argument values
+        setTag(fun.raVal, Tag.RETADDR);
         setTag(fun.closVal, Tag.CLOSURE);
         setTag(fun.argcVal, Tag.INT32);
     }
@@ -1239,7 +1240,7 @@ class CodeGenState
     /// Set the type tag for a given value
     void setTag(IRDstValue value, Tag tag)
     {
-        assert (value in valMap);
+        assert (value in valMap, "value not in val map: " ~ value.toString);
         ValState state = getState(value);
 
         // Assert that we aren't contradicting existing information
