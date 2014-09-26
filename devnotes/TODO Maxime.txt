@@ -121,8 +121,6 @@ CC Paper Deadline - October 17th
 
 CC Abstract Deadline - October 10th
 
-TODO: push getters/setters to master? is compile time acceptable?
-
 TODO: blog post, Higgs' Fancy New Object System
 - use knightmare image for featured image
 - quick sketching program, online?
@@ -142,6 +140,14 @@ FIXME: array access performance sucks
 TODO: can we get rid of ExtInfo?
 - Wait until new capture_shape is implemented
 
+TODO: complete basic wav encoding, on master
+- rename lib to PCM
+
+TODO: implement get_prop and set_prop branching for "abnormal" cases?
+- for get_prop, can check if const tag to know if prop not found
+- what is the performance situation?
+- previously, host calls generally happen when prop name unknown
+
 TODO: look at why string-fasta is slow
 - Over 1M def shape host
 - Most calls unoptimized, why?
@@ -149,8 +155,9 @@ TODO: look at why string-fasta is slow
 TODO: check if 3bits-byte faster than old object system now? If not, why
 - Run with --perf_stats
 
-TODO: complete basic wav encoding, on master
-- rename lib to PCM
+TODO: Meet Marc Thursday
+- Shape profiling confirmed intuition, first shape in most cases, no exceptions
+- Fixed GC performance bug
 
 TODO: remove special handling of capture_shape in ir/ast.d
 TODO: new capture_shape, while (capture_shape(obj, objShape)); 
@@ -158,22 +165,17 @@ TODO: new capture_shape, while (capture_shape(obj, objShape));
 - Avoid elaborate codegen, multiple slots
 - Can fall through in many cases
 - need to pass both obj and objShape
-- Issue: global obj
-  - Probably want to write a jump over the old shape dispatch, go back up the chain
-  - KISS for now, only see one shape most often
 
-TODO: rewrite getProp to not use defShape info
-- make getProp take prop name
+TODO: num capture shape unknown
 
-TODO: Meet Marc Thursday
-- Shape profiling confirmed intuition, first shape in most cases, no exceptions
-- Fixed GC performance bug
+FIXME: other shape ops require defShape
+- obj_get_attrs
+- obj_is_getset
 
-TODO: look at code size and performance with new capture_tag
+TODO: obj_has_prop(obj, propName)
 
-TODO: remove captTagSub
-
-TODO: IsTypeOp => IsTagOp, getTypeTestCtr => getTagTestCtr
+TODO: rename shape_ ops to obj_ when appropriate
+obj_init_shape
 
 
 
@@ -183,6 +185,28 @@ TODO: IsTypeOp => IsTagOp, getTypeTestCtr => getTagTestCtr
 
 
 
+
+
+[DONE] TODO: don't pass defShape to get_prop
+
+[DONE] FIXME: stdlib init fails
+- defineProperty not defined, call to non-function
+- Problem: shouldn't ever be asked to read a property which doesn't exist
+TODO: construct small scale test, replicate problem with --nostdlib
+- Seems there's an error when fetching the property in the call
+  - uses optimized get_prop
+
+[DONE] TODO: rewrite getProp to not use defShape info
+
+[DONE] TODO: make getProp take prop name
+
+[DONE] TODO: remove captTagSub
+
+[DONE] TODO: IsTypeOp => IsTagOp, getTypeTestCtr => getTagTestCtr
+
+[DONE] TODO: look at code size and performance with new capture_tag
+- slight code size reduction
+- performance difference unnoticeable
 
 [DONE] TODO: new capture_tag, while (capture_tag(x));
 - "Loops" until it captures the tag

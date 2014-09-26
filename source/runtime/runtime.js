@@ -1917,7 +1917,7 @@ function $rt_objGetProp(obj, propStr)
     if ($ir_ne_rawptr(defShape, $nullptr))
     {
         // Get the property value
-        var propVal = $ir_shape_get_prop(obj, defShape);
+        var propVal = $ir_shape_get_prop(obj, propStr);
 
         // If the property is a getter-setter function
         if ($ir_shape_is_getset(defShape))
@@ -2057,13 +2057,13 @@ function $rt_getProp(base, prop)
 Specialized version of getProp for field accesses where
 the base is an object of some kind and the key is a constant string
 */
-function $rt_getPropField(base, prop)
+function $rt_getPropField(base, propStr)
 {
     // If the base is a simple object
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
         // Find the defining shape for this property
-        var defShape = $ir_shape_get_def(base, prop);
+        var defShape = $ir_shape_get_def(base, propStr);
 
         // If the property is defined on the object
         if ($ir_ne_rawptr(defShape, $nullptr))
@@ -2072,25 +2072,25 @@ function $rt_getPropField(base, prop)
             if (!$ir_shape_is_getset(defShape))
             {
                 // Get the property value
-                return $ir_shape_get_prop(base, defShape);
+                return $ir_shape_get_prop(base, propStr);
             }
         }
     }
 
-    return $rt_getProp(base, prop);
+    return $rt_getProp(base, propStr);
 }
 
 /**
 Specialized version of getProp for method accesses where
 the base is an object and the key is a constant string
 */
-function $rt_getPropMethod(base, prop)
+function $rt_getPropMethod(base, propStr)
 {
     // If the base is an object
     if ($ir_is_object(base))
     {
         // Find the defining shape for this property
-        var defShape = $ir_shape_get_def(base, prop);
+        var defShape = $ir_shape_get_def(base, propStr);
 
         // If the property is defined on the object
         if ($ir_ne_rawptr(defShape, $nullptr))
@@ -2099,7 +2099,7 @@ function $rt_getPropMethod(base, prop)
             if (!$ir_shape_is_getset(defShape))
             {
                 // Get the property value
-                return $ir_shape_get_prop(base, defShape);
+                return $ir_shape_get_prop(base, propStr);
             }
         }
 
@@ -2110,7 +2110,7 @@ function $rt_getPropMethod(base, prop)
         if ($ir_is_object(base))
         {
             // Find the defining shape for this property
-            var defShape = $ir_shape_get_def(base, prop);
+            var defShape = $ir_shape_get_def(base, propStr);
 
             // If the property is defined on the object
             if ($ir_ne_rawptr(defShape, $nullptr))
@@ -2119,13 +2119,13 @@ function $rt_getPropMethod(base, prop)
                 if (!$ir_shape_is_getset(defShape))
                 {
                     // Get the property value
-                    return $ir_shape_get_prop(base, defShape);
+                    return $ir_shape_get_prop(base, propStr);
                 }
             }
         }
     }
 
-    return $rt_getProp(base, prop);
+    return $rt_getProp(base, propStr);
 }
 
 /**
@@ -2175,7 +2175,7 @@ function $rt_getGlobal(obj, propStr)
     if ($ir_ne_rawptr(defShape, $nullptr))
     {
         // Get the property value
-        var propVal = $ir_shape_get_prop(obj, defShape);
+        var propVal = $ir_shape_get_prop(obj, propStr);
 
         // If the property is a getter-setter function
         if ($ir_shape_is_getset(defShape))
@@ -2230,7 +2230,7 @@ function $rt_getGlobalInl(propStr)
         if (!$ir_shape_is_getset(defShape))
         {
             // Get the property value
-            return $ir_shape_get_prop(obj, defShape);
+            return $ir_shape_get_prop(obj, propStr);
         }
     }
 
@@ -2255,7 +2255,7 @@ function $rt_objSetProp(obj, propStr, val)
     if ($ir_shape_is_getset(defShape))
     {
         // Get the accessor pair
-        var propVal = $ir_shape_get_prop(obj, defShape);
+        var propVal = $ir_shape_get_prop(obj, propStr);
 
         // Call the setter function
         $ir_call(propVal.set, obj, val);

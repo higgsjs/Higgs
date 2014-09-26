@@ -1037,7 +1037,7 @@ class CodeGenState
         // Ensure that the value was previously defined and is live
         assert (
             argDst is null || argDst in valMap,
-            argDst.toString
+            "argument not in val map: " ~ argDst.toString
         );
 
         // Get the current operand for the argument value

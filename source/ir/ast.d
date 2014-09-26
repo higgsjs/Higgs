@@ -760,33 +760,15 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         // Compile the loop test in the entry context
         auto testVal = exprToIR(testCtx, whileStmt.testExpr);
 
-        // Get the last instruction of the current block
-        auto lastInstr = testCtx.curBlock.lastInstr;
+        // Convert the expression value to a boolean
+        auto boolVal = genBoolEval(
+            testCtx,
+            whileStmt.testExpr,
+            testVal
+        );
 
-        // If this is a branch inline IR expression
-        if (isBranchIIR(whileStmt.testExpr) && lastInstr && lastInstr.opcode.isBranch)
-        {
-            assert (
-                lastInstr.getTarget(0) is null,
-                "iir target already set"
-            );
-
-            // Set branch targets for the instruction
-            lastInstr.setTarget(0, bodyBlock);
-            lastInstr.setTarget(1, exitBlock);
-        }
-        else
-        {
-            // Convert the expression value to a boolean
-            auto boolVal = genBoolEval(
-                testCtx,
-                whileStmt.testExpr,
-                testVal
-            );
-
-            // Branch based on the boolean value
-            testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
-        }
+        // Branch based on the boolean value
+        testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
 
         // Compile the loop body statement
         auto bodyCtx = testCtx.subCtx(bodyBlock);

@@ -72,12 +72,6 @@ ulong numDefShapeKnown = 0;
 /// Number of shape lookups with dynamic dispatches
 ulong numDefShapeDisp = 0;
 
-/// Number of version dispatch updates
-ulong numDefShapeUpd = 0;
-
-/// Number of host version lookups
-ulong numDefShapeHost = 0;
-
 /// Number of property writes
 ulong numSetProp = 0;
 
@@ -86,6 +80,9 @@ ulong numSetPropHost = 0;
 
 /// Number of property reads
 ulong numGetProp = 0;
+
+/// Number of host property reads
+ulong numGetPropHost = 0;
 
 /// Number of shape changes due to type
 ulong numShapeFlips = 0;
@@ -117,7 +114,7 @@ ulong* getPrimCallCtr(string primName)
 }
 
 /// Get a pointer to the counter variable associated with a type test
-ulong* getTypeTestCtr(string testOp)
+ulong* getTagTestCtr(string testOp)
 {
     // If there is no counter for this op, allocate one
     if (testOp !in numTypeTests)
@@ -220,12 +217,12 @@ void gcTimeStop()
 static this()
 {
     // Pre-register type test counters
-    getTypeTestCtr("is_int32");
-    getTypeTestCtr("is_int64");
-    getTypeTestCtr("is_float64");
-    getTypeTestCtr("is_const");
-    getTypeTestCtr("is_refptr");
-    getTypeTestCtr("is_rawptr");
+    getTagTestCtr("is_int32");
+    getTagTestCtr("is_int64");
+    getTagTestCtr("is_float64");
+    getTagTestCtr("is_const");
+    getTagTestCtr("is_refptr");
+    getTagTestCtr("is_rawptr");
 }
 
 /// Static module destructor, log the accumulated stats
@@ -250,11 +247,10 @@ static ~this()
     {
         writefln("num def shape known: %s", numDefShapeKnown);
         writefln("num def shape dispatch: %s", numDefShapeDisp);
-        writefln("num def shape update: %s", numDefShapeUpd);
-        writefln("num def shape host: %s", numDefShapeHost);
         writefln("num set prop: %s", numSetProp);
         writefln("num set prop host: %s", numSetPropHost);
         writefln("num get prop: %s", numGetProp);
+        writefln("num get prop host: %s", numGetPropHost);
         writefln("num shape flips: %s", numShapeFlips);
         writefln("num heap allocs: %s", numHeapAllocs);
 

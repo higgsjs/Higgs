@@ -289,13 +289,12 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 
-/// Get the shape defining a given property
-Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def, OpInfo.BRANCH };
-
 /// Capture the type tag for a given value
 Opcode CAPTURE_TAG = { "capture_tag", false, [OpArg.LOCAL], &gen_capture_tag, OpInfo.BRANCH };
 
 // TODO: CAPTURE_SHAPE
+/// Get the shape defining a given property
+Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def, OpInfo.BRANCH };
 
 /// Initialize the shape of an object to the empty shape
 Opcode SHAPE_INIT_EMPTY = { "shape_init_empty", false, [OpArg.LOCAL], &gen_shape_init_empty, OpInfo.IMPURE };

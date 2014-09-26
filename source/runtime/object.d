@@ -568,7 +568,6 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
         }
         else
         {
-            slotIdx -= objCap;
             auto extTbl = obj_get_next(obj.word.ptrVal);
             assert (slotIdx < obj_get_cap(extTbl));
             return getSlotPair(extTbl, slotIdx);

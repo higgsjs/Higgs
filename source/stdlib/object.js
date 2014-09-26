@@ -120,7 +120,7 @@ Object.getOwnPropertyDescriptor = function (obj, prop)
     desc.configurable = !!(attrs & $rt_ATTR_CONFIGURABLE);
 
     // Get the property value
-    var propVal = $ir_shape_get_prop(obj, defShape);
+    var propVal = $ir_shape_get_prop(obj, prop);
 
     // If this property is a getter-setter
     if ($ir_shape_is_getset(defShape))
