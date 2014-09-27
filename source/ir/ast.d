@@ -2558,18 +2558,6 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
         genCallTargets(ctx, instr, expr.pos);
     }
 
-    // If this is a type capture operation
-    if (instr.opcode is &SHAPE_GET_DEF)
-    {
-        auto contBlock = ctx.fun.newBlock("capture_cont");
-
-        // Set the branch target for the instruction
-        instr.setTarget(0, contBlock);
-
-        // Continue code generation in the new block
-        ctx.merge(contBlock);
-    }
-
     // If this instruction has no output, return the undefined value
     if (instr.opcode.output is false)
     {

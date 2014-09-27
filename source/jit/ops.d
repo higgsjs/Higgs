@@ -3155,12 +3155,11 @@ void gen_capture_tag(
     );
 }
 
-/// Returns the shape defining a property, null if undefined
 /// Inputs: obj, propName
-/// Find the defining shape for this property
+/// Capture the shape of the object
 /// This shifts us to a different version where the obj shape is known
 /// Implements a dynamic shape dispatch mechanism
-void gen_shape_get_def(
+void gen_capture_shape(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -3210,7 +3209,6 @@ void gen_shape_get_def(
         auto as = vm.execHeap;
 
         auto instr = ver.block.lastInstr;
-        assert (instr.opcode is &SHAPE_GET_DEF);
 
         // Get the property name
         auto propName = instr.getArgStrCst(1);
@@ -3570,7 +3568,7 @@ void gen_shape_get_def(
 
 /// Initializes an object to the empty shape
 /// Inputs: obj
-void gen_shape_init_empty(
+void gen_obj_init_shape(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -3595,7 +3593,7 @@ void gen_shape_init_empty(
 
 /// Sets the value of a property
 /// Inputs: obj, propName, val
-void gen_shape_set_prop(
+void gen_obj_set_prop(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -3833,7 +3831,7 @@ void gen_shape_set_prop(
 
 /// Gets the value of a property
 /// Inputs: obj, propName
-void gen_shape_get_prop(
+void gen_obj_get_prop(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -3996,7 +3994,7 @@ void gen_shape_get_prop(
 
 /// Get the prototype of an object
 /// Inputs: obj
-void gen_shape_get_proto(
+void gen_obj_get_proto(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -4048,7 +4046,7 @@ void gen_shape_get_proto(
 
 /// Define a constant property
 /// Inputs: obj, propName, val, enumerable
-void gen_shape_def_const(
+void gen_obj_def_const(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -4154,7 +4152,7 @@ void gen_shape_def_const(
 
 /// Sets the attributes for a property
 /// Inputs: obj, propName, attrBits
-void gen_shape_set_attrs(
+void gen_obj_set_attrs(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -4195,16 +4193,96 @@ void gen_shape_set_attrs(
     st.clearShape(cast(IRDstValue)instr.getArg(0));
 }
 
-/// Get the parent shape for a given shape
-/// Inputs: shape
-void gen_shape_parent(
+/// Inputs: obj, propName
+/// Get the shape associated with the property name (if any)
+void gen_obj_prop_shape(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static ObjShape op_shape_parent(ObjShape shape)
+    extern (C) ObjShape op_obj_prop_shape(
+        refptr objPtr,
+        refptr strPtr
+    )
+    {
+        // Get a temporary slice on the JS string characters
+        auto propStr = tempWStr(strPtr);
+
+        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
+
+        // Lookup the shape defining this property
+        auto defShape = objShape.getDefShape(propStr);
+
+        return defShape;
+    }
+
+    // Get the object argument value
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+
+    // Extract the property name, if known
+    auto propName = instr.getArgStrCst(1);
+
+    // If the object shape and the property name are both known
+    if (st.shapeKnown(objVal) && propName !is null)
+    {
+        //as.printStr("shape known");
+
+        // Get the object shape
+        auto objShape = st.getShape(objVal);
+        assert (objShape !is null);
+
+        // Get the output operand
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        assert (outOpnd.isReg);
+
+        // Get the defining shape for the property
+        auto defShape = objShape.getDefShape(propName);
+
+        as.ptr(outOpnd.reg, defShape);
+
+        // Set the output type and shape for this instruction
+        st.setOutTag(as, instr, Tag.SHAPEPTR);
+        st.setShape(instr, defShape);
+
+        return;
+    }
+
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
+
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), opnd0);
+    as.mov(cargRegs[1].opnd(64), opnd1);
+    as.ptr(scrRegs[0], &op_obj_prop_shape);
+    as.call(scrRegs[0]);
+
+    as.loadJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, cretReg.opnd);
+
+    // Set the output type for this instruction
+    st.setOutTag(as, instr, Tag.SHAPEPTR);
+}
+
+/// Get the parent shape for a given shape
+/// Inputs: shape
+void gen_shape_get_parent(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static ObjShape op_shape_get_parent(ObjShape shape)
     {
         assert (shape !is null);
         return shape.parent;
@@ -4220,7 +4298,7 @@ void gen_shape_parent(
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), shapeOpnd);
-    as.ptr(scrRegs[0], &op_shape_parent);
+    as.ptr(scrRegs[0], &op_shape_get_parent);
     as.call(scrRegs[0]);
 
     // Set the output value
@@ -4309,101 +4387,6 @@ void gen_shape_get_attrs(
     st.setOutTag(as, instr, Tag.INT32);
 
     as.loadJITRegs();
-}
-
-/// Test if a given shape corresponds to a getter-setter
-/// Inputs: shape, may be null
-void gen_shape_is_getset(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    // Get the shape value
-    auto defVal = cast(IRDstValue)instr.getArg(0);
-
-    // If the defining shape is known
-    if (st.shapeKnown(defVal))
-    {
-        // Get the property shape
-        auto defShape = st.getShape(defVal);
-
-        // TODO: should eventually optimize this with basic constant
-        // propagation instead of duplicating code from is_type(x) ops
-
-        // Get the boolean value of the test
-        auto boolResult = (defShape !is null && defShape.isGetSet);
-
-        // If this instruction has many uses or is not followed by an if
-        if (instr.hasManyUses || ifUseNext(instr) is false)
-        {
-            auto outOpnd = st.getOutOpnd(as, instr, 64);
-            auto outVal = boolResult? TRUE:FALSE;
-            as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            st.setOutTag(as, instr, Tag.CONST);
-        }
-
-        // If our only use is an immediately following if_true
-        if (ifUseNext(instr) is true)
-        {
-            // Get the branch edge
-            auto targetIdx = boolResult? 0:1;
-            auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
-
-            // Generate the branch code
-            ver.genBranch(
-                as,
-                branch,
-                null,
-                delegate void(
-                    CodeBlock as,
-                    VM vm,
-                    CodeFragment target0,
-                    CodeFragment target1,
-                    BranchShape shape
-                )
-                {
-                    final switch (shape)
-                    {
-                        case BranchShape.NEXT0:
-                        break;
-
-                        case BranchShape.NEXT1:
-                        case BranchShape.DEFAULT:
-                        jmp32Ref(as, vm, target0, 0);
-                    }
-                }
-            );
-        }
-    }
-    else
-    {
-        extern (C) static Word op_shape_is_getset(ObjShape shape)
-        {
-            return (shape !is null && shape.isGetSet)? TRUE.word:FALSE.word;
-        }
-
-        // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
-
-        auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-        auto outOpnd = st.getOutOpnd(as, instr, 8);
-
-        as.saveJITRegs();
-
-        // Call the host function
-        as.mov(cargRegs[0].opnd(64), shapeOpnd);
-        as.ptr(scrRegs[0], &op_shape_is_getset);
-        as.call(scrRegs[0]);
-
-        as.loadJITRegs();
-
-        // Set the output value
-        as.mov(outOpnd, cretReg.opnd(8));
-
-        st.setOutTag(as, instr, Tag.CONST);
-    }
 }
 
 void gen_set_global(

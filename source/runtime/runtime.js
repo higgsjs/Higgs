@@ -38,17 +38,17 @@
 /***
 Undefined value
 */
-$ir_shape_def_const(this, 'undefined', $undef, false);
+$ir_obj_def_const(this, 'undefined', $undef, false);
 
 /**
 Not-a-number value
 */
-$ir_shape_def_const(this, 'NaN', $ir_div_f64(0.0, 0.0), false);
+$ir_obj_def_const(this, 'NaN', $ir_div_f64(0.0, 0.0), false);
 
 /**
 Infinity value
 */
-$ir_shape_def_const(this, 'Infinity', $ir_div_f64(1.0, 0.0), false);
+$ir_obj_def_const(this, 'Infinity', $ir_div_f64(1.0, 0.0), false);
 
 /**
 Test if a value is NaN
@@ -1822,7 +1822,7 @@ function $rt_newObj(protoPtr)
     // Allocate the object
     var objPtr = $rt_obj_alloc($rt_OBJ_MIN_CAP);
 
-    $ir_shape_init_empty(objPtr);
+    $ir_obj_init_shape(objPtr);
     $rt_setProto(objPtr, protoPtr);
 
     return objPtr;
@@ -1840,7 +1840,7 @@ function $rt_newArr(protoPtr, numElems)
     var objPtr = $rt_arr_alloc($rt_OBJ_MIN_CAP);
 
     // Initialize the array object
-    $ir_shape_init_empty(objPtr);
+    $ir_obj_init_shape(objPtr);
     $rt_setProto(objPtr, protoPtr);
     $rt_arr_set_tbl(objPtr, tblPtr);
     $rt_arr_set_len(objPtr, numElems);
@@ -1895,12 +1895,13 @@ Set the prototype value for an object
 */
 function $rt_setProto(obj, proto)
 {
-    // Attempt to acquire the shape of the proto value
-    if ($ir_ne_refptr(proto, null))
-        $ir_shape_get_def(proto, '');
+    // Attempt to capture the shape of the proto value
+    var protoShape = $rt_obj_get_shape(proto);
+    if ($ir_capture_shape(proto, protoShape))
+        if ($ir_capture_shape(proto, protoShape));
 
     // Define the prototype as a non-writable, non-enumerable constant
-    $ir_shape_def_const(obj, '__proto__', proto, false);
+    $ir_obj_def_const(obj, '__proto__', proto, false);
 }
 
 /**
@@ -1908,32 +1909,30 @@ Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
 {
-    // Find the defining shape for this property
-    // This shifts us to a different version where the obj shape is known
-    // Implements a dynamic shape dispatch mechanism
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $rt_obj_get_shape(obj);
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is defined on the object
-    if ($ir_ne_rawptr(defShape, $nullptr))
+    // If the property value can be read directly
+    var propVal;
+    if (propVal = $ir_obj_get_prop(obj, propStr))
     {
-        // Get the property value
-        var propVal = $ir_shape_get_prop(obj, propStr);
+        // Return the property value
+        return propVal;
+    }
 
-        // If the property is a getter-setter function
-        if ($ir_shape_is_getset(defShape))
-        {
-            // Call the getter function
-            return $ir_call(propVal.get, obj);
-        }
-        else
-        {
-            // Property was found, is not a getter
-            return propVal;
-        }
+    // Otherwise, if the property is a getter-setter function
+    if ($ir_is_object(propVal))
+    {
+        // Call the getter function
+        return $ir_call(propVal.get, obj);
     }
 
     // Get the object's prototype
-    var proto = $ir_shape_get_proto(obj);
+    var proto = $ir_obj_get_proto(obj);
 
     // If the prototype is null, produce undefined
     if ($ir_eq_refptr(proto, null))
@@ -2062,18 +2061,19 @@ function $rt_getPropField(base, propStr)
     // If the base is a simple object
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
-        // Find the defining shape for this property
-        var defShape = $ir_shape_get_def(base, propStr);
+        // Capture the object shape
+        var objShape = $rt_obj_get_shape(obj);
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape))
+                    if ($ir_capture_shape(obj, objShape));
 
-        // If the property is defined on the object
-        if ($ir_ne_rawptr(defShape, $nullptr))
+        // If the property value can be read directly
+        var propVal;
+        if (propVal = $ir_obj_get_prop(obj, propStr))
         {
-            // If the value is not a getter-setter function, return it
-            if (!$ir_shape_is_getset(defShape))
-            {
-                // Get the property value
-                return $ir_shape_get_prop(base, propStr);
-            }
+            // Return the property value
+            return propVal;
         }
     }
 
@@ -2089,37 +2089,43 @@ function $rt_getPropMethod(base, propStr)
     // If the base is an object
     if ($ir_is_object(base))
     {
-        // Find the defining shape for this property
-        var defShape = $ir_shape_get_def(base, propStr);
+        // Capture the object shape
+        var objShape = $rt_obj_get_shape(base);
+        if ($ir_capture_shape(base, objShape))
+            if ($ir_capture_shape(base, objShape))
+                if ($ir_capture_shape(base, objShape))
+                    if ($ir_capture_shape(base, objShape));
 
-        // If the property is defined on the object
-        if ($ir_ne_rawptr(defShape, $nullptr))
+        // If the property value can be read directly
+        var propVal;
+        if (propVal = $ir_obj_get_prop(base, propStr))
         {
-            // If the value is not a getter-setter function, return it
-            if (!$ir_shape_is_getset(defShape))
-            {
-                // Get the property value
-                return $ir_shape_get_prop(base, propStr);
-            }
+            // Return the property value
+            return propVal;
         }
 
-        // Get the prototype of the object
-        var base = $ir_shape_get_proto(base);
-
-        // If the prototype is not null
-        if ($ir_is_object(base))
+        // Otherwise, if the property is missing
+        if (!$ir_is_object(propVal))
         {
-            // Find the defining shape for this property
-            var defShape = $ir_shape_get_def(base, propStr);
+            // Get the prototype of the object
+            var base = $ir_obj_get_proto(base);
 
-            // If the property is defined on the object
-            if ($ir_ne_rawptr(defShape, $nullptr))
+            // If the prototype is not null
+            if ($ir_is_object(base))
             {
-                // If the value is not a getter-setter function, return it
-                if (!$ir_shape_is_getset(defShape))
+                // Capture the object shape
+                var objShape = $rt_obj_get_shape(base);
+                if ($ir_capture_shape(base, objShape))
+                    if ($ir_capture_shape(base, objShape))
+                        if ($ir_capture_shape(base, objShape))
+                            if ($ir_capture_shape(base, objShape));
+
+                // If the property value can be read directly
+                var propVal;
+                if (propVal = $ir_obj_get_prop(base, propStr))
                 {
-                    // Get the property value
-                    return $ir_shape_get_prop(base, propStr);
+                    // Return the property value
+                    return propVal;
                 }
             }
         }
@@ -2166,32 +2172,30 @@ Get a property from the global object
 */
 function $rt_getGlobal(obj, propStr)
 {
-    // Find the defining shape for this property
-    // This shifts us to a different version where the obj shape is known
-    // Implements a dynamic shape dispatch mechanism
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $rt_obj_get_shape(obj);
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is defined on the object
-    if ($ir_ne_rawptr(defShape, $nullptr))
+    // If the property value can be read directly
+    var propVal;
+    if (propVal = $ir_obj_get_prop(obj, propStr))
     {
-        // Get the property value
-        var propVal = $ir_shape_get_prop(obj, propStr);
+        // Return the property value
+        return propVal;
+    }
 
-        // If the property is a getter-setter function
-        if ($ir_shape_is_getset(defShape))
-        {
-            // Call the getter function
-            return $ir_call(propVal.get, obj);
-        }
-        else
-        {
-            // Property was found, is not a getter
-            return propVal;
-        }
+    // Otherwise, if the property is a getter-setter function
+    if ($ir_is_object(propVal))
+    {
+        // Call the getter function
+        return $ir_call(propVal.get, obj);
     }
 
     // Get the object's prototype
-    var proto = $ir_shape_get_proto(obj);
+    var proto = $ir_obj_get_proto(obj);
 
     // If the prototype is null, the property is not defined
     if ($ir_eq_refptr(proto, null))
@@ -2218,20 +2222,19 @@ function $rt_getGlobalInl(propStr)
 {
     var obj = $global;
 
-    // Find the index for this property
-    // This shifts us to a different version where the obj shape is known
-    // Implements a dynamic shape dispatch mechanism
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $rt_obj_get_shape(obj);
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is defined on the object
-    if ($ir_ne_rawptr(defShape, $nullptr))
+    // If the property value can be read directly
+    var propVal;
+    if (propVal = $ir_obj_get_prop(obj, propStr))
     {
-        // If the property is a not getter-setter function, return its value
-        if (!$ir_shape_is_getset(defShape))
-        {
-            // Get the property value
-            return $ir_shape_get_prop(obj, propStr);
-        }
+        // Return the property value
+        return propVal;
     }
 
     // Do the full global lookup
@@ -2246,32 +2249,31 @@ Set a property on an object using a string as key
 */
 function $rt_objSetProp(obj, propStr, val)
 {
-    // Find the index for this property
-    // Handles dynamic version dispatching
-    // This will not transition the object to a new shape
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $rt_obj_get_shape(obj);
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is a getter-setter function
-    if ($ir_shape_is_getset(defShape))
-    {
-        // Get the accessor pair
-        var propVal = $ir_shape_get_prop(obj, propStr);
-
-        // Call the setter function
-        $ir_call(propVal.set, obj, val);
-    }
-    else
-    {
-        // Capture the type tag of the value
+    // Capture the type tag of the value
+    if ($ir_capture_tag(val))
         if ($ir_capture_tag(val))
             if ($ir_capture_tag(val))
                 if ($ir_capture_tag(val))
-                    if ($ir_capture_tag(val))
-                        if ($ir_capture_tag(val));
+                    if ($ir_capture_tag(val));
 
-        // Set the property value
-        $ir_shape_set_prop(obj, propStr, val);
+    // If the property value can be set directly
+    if ($ir_obj_set_prop(obj, propStr, val))
+    {
+        // We are done
+        return;
     }
+
+    // The property must have a getter-setter method
+    // Get the accessor pair and call the setter function
+    var propVal = $ir_obj_get_prop(obj, propStr);
+    $ir_call(propVal.set, obj, val);
 }
 
 /**
@@ -2447,32 +2449,34 @@ function $rt_setProp(base, prop, val)
 /**
 Specialized version of setProp for object properties
 */
-function $rt_setPropField(base, prop, val)
+function $rt_setPropField(base, propStr, val)
 {
     // If the base is an object or closure
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
-        // Find the index for this property
-        var defShape = $ir_shape_get_def(base, prop);
+        // Capture the object shape
+        var objShape = $rt_obj_get_shape(obj);
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape))
+                    if ($ir_capture_shape(obj, objShape));
 
-        // If the property is a getter-setter function
-        if (!$ir_shape_is_getset(defShape))
-        {
-            // Capture the type tag of the value
+        // Capture the type tag of the value
+        if ($ir_capture_tag(val))
             if ($ir_capture_tag(val))
                 if ($ir_capture_tag(val))
                     if ($ir_capture_tag(val))
-                        if ($ir_capture_tag(val))
-                            if ($ir_capture_tag(val));
+                        if ($ir_capture_tag(val));
 
-            // Set the property value
-            $ir_shape_set_prop(base, prop, val);
-
+        // If the property value can be set directly
+        if ($ir_obj_set_prop(obj, propStr, val))
+        {
+            // We are done
             return;
         }
     }
 
-    return $rt_setProp(base, prop, val);
+    return $rt_setProp(base, propStr, val);
 }
 
 /**
@@ -2480,16 +2484,17 @@ Specialized version of setProp for object properties without type checks.
 The base is assumed to be an object, the property name is assumed to
 be a string, and the property itself is assumed not to be an accessor.
 */
-function $rt_setPropFieldNoCheck(base, prop, val)
+function $rt_setPropFieldNoCheck(obj, propStr, val)
 {
-    // Find the index for this property
-    var defShape = $ir_shape_get_def(base, prop);
+    // Capture the object shape
+    var objShape = $rt_obj_get_shape(obj);
+    if ($ir_capture_shape(obj, objShape));
 
     // Capture the type tag of the value
     if ($ir_capture_tag(val));
 
     // Set the property value
-    $ir_shape_set_prop(base, prop, val);
+    $ir_obj_set_prop(obj, propStr, val);
 }
 
 /**
@@ -2540,19 +2545,21 @@ function $rt_setGlobalInl(propStr, val)
 {
     var obj = $global;
 
-    // Find the index for this property
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $rt_obj_get_shape(obj);
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is a getter-setter function
-    if (!$ir_shape_is_getset(defShape))
+    // Capture the type tag of the value
+    if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val));
+
+    // If the property value can be set directly
+    if ($ir_obj_set_prop(obj, propStr, val))
     {
-        // Capture the type tag of the value
-        if ($ir_capture_tag(val))
-            if ($ir_capture_tag(val));
-
-        // Set the property value
-        $ir_shape_set_prop(obj, propStr, val);
-
+        // We are done
         return;
     }
 
@@ -2576,11 +2583,11 @@ function $rt_delProp(base, prop)
     var defShape = $ir_shape_get_def(base, prop);
     if ($ir_ne_rawptr(defShape, $nullptr))
     {
-        $ir_shape_set_prop(base, prop, $undef);
+        $ir_obj_set_prop(base, prop, $undef);
     }
 
     // Set the property attributes to deleted
-    $ir_shape_set_attrs(base, prop, $rt_ATTR_DELETED | $rt_ATTR_CONFIGURABLE);
+    $ir_obj_set_attrs(base, prop, $rt_ATTR_DELETED | $rt_ATTR_CONFIGURABLE);
 
     return true;
 }
@@ -2606,7 +2613,7 @@ function $rt_instanceof(obj, ctor)
     // Until we went all the way through the prototype chain
     do
     {
-        var objProto = $ir_shape_get_proto(obj);
+        var objProto = $ir_obj_get_proto(obj);
 
         if ($ir_eq_refptr(objProto, ctorProto))
             return true;
@@ -2624,7 +2631,7 @@ Check if an object has a given property
 function $rt_objHasProp(obj, propStr)
 {
     // Try to find the defining shape for the property
-    var defShape = $ir_shape_get_def(obj, propStr);
+    var defShape = $ir_shape_get_def(base, prop);
 
     // Check if a defining shape was found
     return $ir_ne_rawptr(defShape, $nullptr);
@@ -2725,7 +2732,7 @@ function $rt_in(prop, obj)
         if ($rt_hasOwnProp(obj, prop))
             return true;
 
-        obj = $ir_shape_get_proto(obj);
+        obj = $ir_obj_get_proto(obj);
 
     } while ($ir_ne_refptr(obj, null));
 
@@ -2757,7 +2764,7 @@ function $rt_getPropEnum(obj)
         for (;;)
         {
             // Move one down the prototype chain
-            curObj = $ir_shape_get_proto(curObj);
+            curObj = $ir_obj_get_proto(curObj);
 
             // If we reached the bottom of the chain, stop
             if ($ir_eq_refptr(curObj, null))
@@ -2794,7 +2801,7 @@ function $rt_getPropEnum(obj)
 
                     // Move to the parent shape
                     var propShape = curShape;
-                    curShape = $ir_shape_parent(curShape);
+                    curShape = $ir_shape_get_parent(curShape);
 
                     // If this is not an enumerable property, skip it
                     if ((propAttrs & $rt_ATTR_ENUMERABLE) == 0)
@@ -2804,9 +2811,9 @@ function $rt_getPropEnum(obj)
                     //if ($ir_eq_refptr(keyVal, null))
                     //    continue;
 
-                    // FIXME: not working
                     // If this is not the defining shape for this property, skip it
-                    if ($ir_ne_rawptr($ir_shape_get_def(curObj, propName), propShape))
+                    var defShape = $ir_obj_prop_shape(curObj, propName);
+                    if ($ir_ne_rawptr(defShape, propShape))
                         continue;
 
                     // If the property is shadowed, skip it
@@ -2827,7 +2834,7 @@ function $rt_getPropEnum(obj)
                 }
 
                 // Move up the prototype chain
-                curObj = $ir_shape_get_proto(curObj);
+                curObj = $ir_obj_get_proto(curObj);
                 curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
                 curIdx = 0;
                 continue;

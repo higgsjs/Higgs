@@ -289,42 +289,41 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 
-/// Capture the type tag for a given value
+/// Capture the type tag of a given value
 Opcode CAPTURE_TAG = { "capture_tag", false, [OpArg.LOCAL], &gen_capture_tag, OpInfo.BRANCH };
 
-// TODO: CAPTURE_SHAPE
-/// Get the shape defining a given property
-Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def, OpInfo.BRANCH };
+/// Capture the shape of a given object
+Opcode CAPTURE_SHAPE = { "capture_shape", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_capture_shape, OpInfo.BRANCH };
 
 /// Initialize the shape of an object to the empty shape
-Opcode SHAPE_INIT_EMPTY = { "shape_init_empty", false, [OpArg.LOCAL], &gen_shape_init_empty, OpInfo.IMPURE };
+Opcode OBJ_INIT_SHAPE = { "obj_init_shape", false, [OpArg.LOCAL], &gen_obj_init_shape, OpInfo.IMPURE };
 
 /// Set the value of an object property based on its shape
-Opcode SHAPE_SET_PROP = { "shape_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode OBJ_SET_PROP = { "obj_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Get the value of an object property based on its shape
-Opcode SHAPE_GET_PROP = { "shape_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_prop };
+Opcode OBJ_GET_PROP = { "obj_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_get_prop };
 
 /// Get the prototype of an object
-Opcode SHAPE_GET_PROTO = { "shape_get_proto", true, [OpArg.LOCAL], &gen_shape_get_proto };
+Opcode OBJ_GET_PROTO = { "obj_get_proto", true, [OpArg.LOCAL], &gen_obj_get_proto };
 
 /// Define a constant property on an object
-Opcode SHAPE_DEF_CONST = { "shape_def_const", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_def_const, OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode OBJ_DEF_CONST = { "obj_def_const", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_def_const, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Set the attributes for a property
-Opcode SHAPE_SET_ATTRS = { "shape_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_attrs, OpInfo.IMPURE };
+Opcode OBJ_SET_ATTRS = { "obj_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_attrs, OpInfo.IMPURE };
+
+/// Get the shape associated with a given property name
+Opcode OBJ_PROP_SHAPE = { "obj_prop_shape", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_prop_shape };
 
 /// Get the parent shape for a given shape
-Opcode SHAPE_PARENT = { "shape_parent", true, [OpArg.LOCAL], &gen_shape_parent };
-
-/// Get the property name associated with a given shape
-Opcode SHAPE_PROP_NAME = { "shape_prop_name", true, [OpArg.LOCAL], &gen_shape_prop_name, OpInfo.MAY_GC };
+Opcode SHAPE_GET_PARENT = { "shape_get_parent", true, [OpArg.LOCAL], &gen_shape_get_parent };
 
 /// Get the attributes associated with a given shape
 Opcode SHAPE_GET_ATTRS = { "shape_get_attrs", true, [OpArg.LOCAL], &gen_shape_get_attrs };
 
-/// Test if a given shape corresponds to a getter-setter
-Opcode SHAPE_IS_GETSET = { "shape_is_getset", true, [OpArg.LOCAL], &gen_shape_is_getset };
+/// Get the property name associated with a given shape
+Opcode SHAPE_PROP_NAME = { "shape_prop_name", true, [OpArg.LOCAL], &gen_shape_prop_name, OpInfo.MAY_GC };
 
 /// Set the value of a global property
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };

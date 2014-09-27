@@ -141,51 +141,58 @@ TODO: can we get rid of ExtInfo?
 - Wait until new capture_shape is implemented
 
 TODO: complete basic wav encoding, on master
-- rename lib to PCM
-
-TODO: implement get_prop and set_prop branching for "abnormal" cases?
-- for get_prop, can check if const tag to know if prop not found
-- what is the performance situation?
-- previously, host calls generally happen when prop name unknown
 
 TODO: look at why string-fasta is slow
 - Over 1M def shape host
 - Most calls unoptimized, why?
 
-TODO: check if 3bits-byte faster than old object system now? If not, why
-- Run with --perf_stats
-
-TODO: Meet Marc Thursday
+TODO: Meet Marc
 - Shape profiling confirmed intuition, first shape in most cases, no exceptions
 - Fixed GC performance bug
+- Inline caches in set_prop and get_prop
+  - Could disable shape dispatch, compare against more conventional system
 
-TODO: remove special handling of capture_shape in ir/ast.d
-TODO: new capture_shape, while (capture_shape(obj, objShape)); 
+PROBLEM: object shape is always read
+var objShape = $rt_obj_get_shape(obj);
+if ($ir_capture_shape(obj, objShape))
+- Need a special $ir_obj_get_shape
+  - Doesn't write anything if obj shape known
+
+TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
+- Run with --perf_stats
+
+TODO: implement get_prop and set_prop branching for "abnormal" cases?
+- for get_prop, can check if const tag to know if prop not found
+- what is the performance situation?
+- previously, host calls generally happen when prop name unknown
+- much smaller IR for inlined cases
+
+TODO: new capture_shape, if (capture_shape(obj, objShape)); 
 - Generates a branch back into a different version of itself if shape mispredicted
 - Avoid elaborate codegen, multiple slots
 - Can fall through in many cases
 - need to pass both obj and objShape
 
-TODO: num capture shape unknown
 
-FIXME: other shape ops require defShape
-- obj_get_attrs
-- obj_is_getset
 
-TODO: obj_has_prop(obj, propName)
 
-TODO: rename shape_ ops to obj_ when appropriate
+
+
+
+
+
+
+[DONE] TODO: remove special handling of capture_shape in ir/ast.d
+
+[DONE] TODO: implement obj_get_shape
+
+[DONE] TODO: rename shape_ ops to obj_ when appropriate
 obj_init_shape
-
-
-
-
-
-
-
-
-
-
+obj_set_prop
+obj_get_prop
+obj_get_proto
+obj_def_const
+obj_set_attrs
 
 [DONE] TODO: don't pass defShape to get_prop
 
