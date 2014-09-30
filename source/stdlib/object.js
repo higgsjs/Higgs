@@ -251,7 +251,7 @@ Object.defineProperty = function (obj, prop, attribs)
     else
     {
         // Set the new property attributes
-        $ir_shape_set_attrs(obj, prop, newAttrs);
+        $ir_obj_set_attrs(obj, prop, newAttrs);
     }
 
     // Return the object

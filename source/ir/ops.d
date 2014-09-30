@@ -289,20 +289,26 @@ Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link
 /// Get the value of a link table entry
 Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
 
+/// Dummy branch instruction to stop compilation and resumes execution
+Opcode BREAK = { "break", false, [], &gen_break, OpInfo.BRANCH };
+
 /// Capture the type tag of a given value
 Opcode CAPTURE_TAG = { "capture_tag", false, [OpArg.LOCAL], &gen_capture_tag, OpInfo.BRANCH };
 
 /// Capture the shape of a given object
-Opcode CAPTURE_SHAPE = { "capture_shape", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_capture_shape, OpInfo.BRANCH };
+Opcode CAPTURE_SHAPE = { "capture_shape", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_capture_shape, OpInfo.BRANCH };
+
+/// Get the shape of an object
+Opcode OBJ_READ_SHAPE = { "obj_read_shape", true, [OpArg.LOCAL], &gen_obj_read_shape };
 
 /// Initialize the shape of an object to the empty shape
 Opcode OBJ_INIT_SHAPE = { "obj_init_shape", false, [OpArg.LOCAL], &gen_obj_init_shape, OpInfo.IMPURE };
 
 /// Set the value of an object property based on its shape
-Opcode OBJ_SET_PROP = { "obj_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode OBJ_SET_PROP = { "obj_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE | OpInfo.BRANCH };
 
 /// Get the value of an object property based on its shape
-Opcode OBJ_GET_PROP = { "obj_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_get_prop };
+Opcode OBJ_GET_PROP = { "obj_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_get_prop, OpInfo.BRANCH };
 
 /// Get the prototype of an object
 Opcode OBJ_GET_PROTO = { "obj_get_proto", true, [OpArg.LOCAL], &gen_obj_get_proto };

@@ -948,8 +948,6 @@ class VM
                 dstVal.toString()
             );
 
-            //writefln("getting value from slot of %s", val);
-
             // Get the value at the output slot
             return getSlot(dstVal.outSlot);
         }

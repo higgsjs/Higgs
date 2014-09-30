@@ -50,7 +50,7 @@ Map.defHashFn = function (val)
         return Math.floor(val);
     }
 
-    else if (typeof val === 'string')  
+    else if (typeof val === 'string')
     {
         var hashCode = 0;
 

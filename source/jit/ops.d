@@ -1568,7 +1568,7 @@ void gen_if_true(
     );
 }
 
-void JumpOp(size_t succIdx)(
+void JumpOp(size_t succIdx, bool noStub)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -1578,7 +1578,7 @@ void JumpOp(size_t succIdx)(
     auto branch = getBranchEdge(
         instr.getTarget(succIdx),
         st,
-        true
+        noStub
     );
 
     // Jump to the target block directly
@@ -1609,8 +1609,8 @@ void JumpOp(size_t succIdx)(
     );
 }
 
-alias JumpOp!0 gen_jump;
-alias JumpOp!1 gen_jump_false;
+alias JumpOp!(0, true) gen_jump;
+alias JumpOp!(1, true) gen_jump_false;
 
 /**
 Throw an exception and unwind the stack when one calls a non-function.
@@ -3072,6 +3072,47 @@ void gen_get_link(
     st.setOutTag(as, instr, scrRegs[1].reg(8));
 }
 
+void gen_break(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+
+    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+    //auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branchT,
+        branchT,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            final switch (shape)
+            {
+                case BranchShape.NEXT0:
+                jmp32Ref(as, vm, target0, 1);
+                break;
+
+                case BranchShape.NEXT1:
+                jmp32Ref(as, vm, target0, 0);
+                break;
+
+                case BranchShape.DEFAULT:
+                jmp32Ref(as, vm, target0, 1);
+            }
+        }
+    );
+}
+
 /// Inputs: any value x
 /// Shifts us to version where the tag of the value is known
 /// Implements a dynamic type tag dispatch mechanism
@@ -3166,404 +3207,105 @@ void gen_capture_shape(
     CodeBlock as
 )
 {
-    static const uint NUM_CACHE_ENTRIES = 4;
+    assert (instr.getTarget(0).args.length is 0);
 
-    /// Default/slow path for when the property name is unknown
-    extern (C) ObjShape op_shape_get_def(
-        refptr objPtr,
-        refptr strPtr
-    )
+    auto vm = ver.block.fun.vm;
+
+    // Get the object and shape argument values
+    auto objVal = cast(IRDstValue)instr.getArg(1);
+    auto shapeVal = cast(IRDstValue)instr.getArg(1);
+    assert (objVal !is null);
+    assert (shapeVal !is null);
+
+    // Get type information about the object argument
+    ValType objType = st.getType(objVal);
+
+    // If the shape is marked as known
+    if (objType.shapeKnown)
     {
-        // Get a temporary slice on the JS string characters
-        auto propStr = tempWStr(strPtr);
-
-        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
-        assert (
-            objShape !is null,
-            "shape_get_def: obj shape is null for lookup of \"" ~ 
-            to!string(propStr) ~ "\""
-        );
-
-        // Lookup the shape defining this property
-        auto defShape = objShape.getDefShape(propStr);
-
-        /*
-        writeln("shape_get_def host");
-        writeln("  propStr=", propStr);
-        if (defShape !is null)
-            writeln("  defShape.slotIdx=", defShape.slotIdx);
-        */
-
-        return defShape;
+        // Jump directly to the false successor block
+        return gen_jump_false(ver, st, instr, as);
     }
 
-    extern (C) static ObjShape updateCache(
-        BlockVersion ver,
-        ObjShape objShape,
-        size_t cachePos
-    )
-    {
-        //writeln("entering updateCache");
+    // Get the current shape argument word
+    assert (shapeVal.block !is instr.block);
+    auto shapeWord = vm.getWord(shapeVal.outSlot);
 
-        auto vm = ver.block.fun.vm;
-        auto as = vm.execHeap;
+    // Get the shape argument operand
+    auto shapeOpnd = st.getWordOpnd(as, instr, 1, 64);
 
-        auto instr = ver.block.lastInstr;
+    // Compare the shape operand with the observed shape
+    as.ptr(scrRegs[0], shapeWord.ptrVal);
+    as.cmp(shapeOpnd, scrRegs[0].opnd);
 
-        // Get the property name
-        auto propName = instr.getArgStrCst(1);
+    // On the recursive branch, no information is gained
+    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
 
-        //writeln("  propName=", propName);
-        //writeln("  objShape=", cast(void*)objShape);
-        //writeln("  objShape.slotIdx=", objShape.slotIdx);
+    // Mark the object shape as known on the false branch,
+    // and queue this branch for immediate compilation (fall through)
+    auto falseSt = new CodeGenState(st);
+    falseSt.setShape(objVal, cast(ObjShape)shapeWord.shapeVal);
+    auto branchF = getBranchEdge(instr.getTarget(1), falseSt, true);
 
-        // Lookup the defining shape
-        assert (objShape !is null, "objShape is null");
-        auto defShape = objShape.getDefShape(propName);
-
-        // Get the state at the shape dispatch instruction
-        auto extInfo = cast(ShapeDispInfo)ver.extInfo;
-        assert (extInfo !is null);
-        auto instrSt = extInfo.instrSt;
-
-        // If the inline cache is not yet full
-        if (ver.targets.length < NUM_CACHE_ENTRIES + 1)
-        {
-            //writeln("compiling new version");
-
-            // Stop recording execution time, start recording compilation time
-            stats.execTimeStop();
-            stats.compTimeStart();
-
-            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
-            {
-                return liveInfo.liveBefore(val, instr);
-            };
-
-            // Spill the saved registers
-            instrSt.spillSavedRegs(spillTest);
-
-            // Get the default version state
-            assert (ver.targets[0] !is null);
-            auto defBranch = cast(BranchCode)ver.targets[0];
-            assert (defBranch !is null);
-            CodeGenState defSt;
-            if (defBranch.predState)
-                defSt = defBranch.predState;
-            else
-                defSt = defBranch.target.state;
-            assert (defSt !is null);
-
-            // Create a new state object where the object shape is known
-            auto targetSt = new CodeGenState(defSt);
-            auto objVal = cast(IRDstValue)instr.getArg(0);
-            assert (objVal !is null);
-            targetSt.setShape(objVal, objShape);
-            if (instr.hasUses)
-                targetSt.setShape(instr, defShape);
-
-            // Create a version instance object for the target
-            auto targetInst = getBranchEdge(
-                instr.getTarget(0),
-                targetSt,
-                true
-            );
-
-            // Add the version instance to the target list
-            ver.targets ~= targetInst;
-
-            // Get the output operand for the instruction
-            auto outOpnd = defSt.getWordOpnd(instr, 64);
-            assert (outOpnd.isReg);
-
-            auto curPos = as.getWritePos();
-            as.setWritePos(cachePos);
-
-            // Rewrite the inline cache
-            // For each existing version
-            for (uint targetIdx = 1; targetIdx < ver.targets.length; ++targetIdx)
-            {
-                auto branch = cast(BranchCode)ver.targets[targetIdx];
-                targetSt = branch.predState? branch.predState:branch.target.state;
-
-                objShape = targetSt.shapeKnown(objVal)? targetSt.getShape(objVal):null;
-                defShape = (instr.hasUses && targetSt.shapeKnown(instr))? targetSt.getShape(instr):null;
-
-                // Move the cached defining shape for this entry to the output operand
-                as.ptr(outOpnd.reg, defShape);
-
-                // Compare this entry's shape with the input object shape
-                as.ptr(scrRegs[0], objShape);
-                as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
-
-                // If equal, jump to the cached target
-                je32Ref(as, vm, branch, targetIdx);
-            }
-
-            as.setWritePos(curPos);
-
-            // Compile the new version and link references
-            vm.compile(instr);
-
-            // Reload the saved registers
-            instrSt.loadSavedRegs(spillTest);
-
-            // Stop recording compilation time, resume recording execution time
-            stats.compTimeStop();
-            stats.execTimeStart();
-        }
-
-        // If the inline cache is exactly at capacity
-        // and the default version was not yet compiled
-        else if (
-            ver.targets.length == NUM_CACHE_ENTRIES + 1 &&
-            ver.targets[0].ended == false
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branchT,
+        branchF,
+        delegate void(
+            CodeBlock as,
+            VM vm,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
         )
         {
-            //writeln("cache at capacity ***");
-
-            // Stop recording execution time, start recording compilation time
-            stats.execTimeStop();
-            stats.compTimeStart();
-
-            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
+            final switch (shape)
             {
-                return liveInfo.liveBefore(val, instr);
-            };
+                case BranchShape.NEXT0:
+                je32Ref(as, vm, target1, 1);
+                break;
 
-            // Spill the saved registers
-            instrSt.spillSavedRegs(spillTest);
+                case BranchShape.NEXT1:
+                jne32Ref(as, vm, target0, 0);
+                break;
 
-            // Queue the default version for compilation
-            vm.queue(ver.targets[0]);
-
-            auto curPos = as.getWritePos();
-            as.setWritePos(ver.endIdx - 5);
-
-            // Overwrite the retry jump to jump to the default version
-            jmp32Ref(as, vm, ver.targets[0], 0);
-            assert (as.getWritePos == ver.endIdx);
-
-            as.setWritePos(curPos);
-
-            // Compile the default version and link references
-            vm.compile(instr);
-
-            // Reload the saved registers
-            instrSt.loadSavedRegs(spillTest);
-
-            // Stop recording compilation time, resume recording execution time
-            stats.compTimeStop();
-            stats.execTimeStart();
+                case BranchShape.DEFAULT:
+                jne32Ref(as, vm, target0, 0);
+                jmp32Ref(as, vm, target1, 1);
+            }
         }
+    );
+}
 
-        //writeln("leaving updateCache");
-
-        //writeln("  objShape: ", cast(void*)objShape);
-        //writeln("  defShape: ", cast(void*)defShape);
-
-        // Return the defining shape
-        return defShape;
-    }
-
-    static CodePtr getFallbackSub(VM vm)
-    {
-        if (vm.defShapeSub)
-            return vm.defShapeSub;
-
-        auto as = vm.subsHeap;
-        vm.defShapeSub = as.getAddress(as.getWritePos);
-
-        // Align SP to a multiple of 16 bytes
-        as.sub(X86Opnd(RSP), X86Opnd(8));
-
-        // Save the allocatable registers
-        as.saveAllocRegs();
-
-        // Save the JIT registers
-        as.saveJITRegs();
-
-        // Set the argument registers
-        as.mov(cargRegs[0], scrRegs[0]);
-        as.mov(cargRegs[1], scrRegs[1]);
-        as.mov(cargRegs[2], scrRegs[2]);
-
-        // Call the host fallback code
-        as.ptr(scrRegs[0], &updateCache);
-        as.call(scrRegs[0].opnd);
-
-        // Restore the JIT registers
-        as.loadJITRegs();
-
-        // Restore the allocatable registers
-        as.loadAllocRegs();
-
-        // Pop the stack alignment padding
-        as.add(X86Opnd(RSP), X86Opnd(8));
-
-        // Return to the point of call
-        as.ret();
-
-        // Link the labels in this subroutine
-        as.linkLabels();
-        return vm.defShapeSub;
-    }
-
-    // Get the object argument value
+/// Reads the shape of an object, does nothing if the shape is known
+/// Inputs: obj
+void gen_obj_read_shape(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
     auto objVal = cast(IRDstValue)instr.getArg(0);
+    assert (objVal !is null);
 
-    // Extract the property name, if known
-    auto propName = instr.getArgStrCst(1);
+    // If the shape is known, do nothing
+    if (st.shapeKnown(objVal))
+        return;
 
-    // If the object shape and the property name are both known
-    if (st.shapeKnown(objVal) && propName !is null)
-    {
-        //as.printStr("shape known");
+    // Get the object operand
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
+    assert (opnd0.isReg);
 
-        // Increment the count for known shapes
-        as.incStatCnt(&stats.numDefShapeKnown, scrRegs[0]);
+    // Get the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    assert (outOpnd.isReg);
 
-        // Get the object shape
-        auto objShape = st.getShape(objVal);
-        assert (objShape !is null);
+    // Get the object shape
+    as.getField(outOpnd.reg, opnd0.reg, obj_ofs_shape(null));
 
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-        assert (outOpnd.isReg);
-
-        // Get the defining shape for the property
-        auto defShape = objShape.getDefShape(propName);
-
-        as.ptr(outOpnd.reg, defShape);
-
-        // Set the output type and shape for this instruction
-        st.setOutTag(as, instr, Tag.SHAPEPTR);
-        st.setShape(instr, defShape);
-
-        // Jump directly to the successor block
-        return gen_jump(ver, st, instr, as);
-    }
-
-    // If the property name is a known constant string
-    else if (propName !is null)
-    {
-        //as.printStr("shape dispatch");
-
-        // Increment the count of dispatches
-        as.incStatCnt(&stats.numDefShapeDisp, scrRegs[0]);
-
-        // Create an extended info object for the shape dispatch
-        auto extInfo = new ShapeDispInfo();
-        assert (ver.extInfo is null);
-        ver.extInfo = extInfo;
-
-        // Get the object operand
-        auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
-        assert (opnd0.isReg);
-
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-        assert (outOpnd.isReg);
-
-        // Free an extra temporary register
-        auto scrReg3 = st.freeReg(as, instr);
-        assert (scrReg3.opnd != opnd0);
-
-        // Set the output type for this instruction
-        st.setOutTag(as, instr, Tag.SHAPEPTR);
-
-        // Label for doing a new inline cache lookup
-        as.label(Label.RETRY);
-
-        // Load the object shape in r1
-        as.getField(scrRegs[1], opnd0.reg, obj_ofs_shape(null));
-
-        // Inline cache entries, initially, none of these will match
-        size_t cachePos = as.getWritePos();
-        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
-        {
-            // Move the cached defining shape for this entry to the output operand
-            as.ptr(outOpnd.reg, null);
-
-            // Compare this entry's shape with the input object shape
-            as.ptr(scrRegs[0], null);
-            as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
-
-            // If equal, jump to the cached target
-            if (opts.genasm)
-                as.writeASM("je", instr.getTarget(0).target.getName);
-            as.writeBytes(JE_REL32_OPCODE[0], JE_REL32_OPCODE[1]);
-            as.writeInt(0xFFFFFFFF, 32);
-        }
-
-        // Store a copy of the state at the shape dispatch instruction
-        extInfo.instrSt = new CodeGenState(st);
-
-        // Call the fallback sub to update the inline cache
-        // r0 = block version
-        // r1 = shape pointer
-        // r2 = inline cache position
-        auto updateCacheSub = getFallbackSub(st.fun.vm);
-        as.ptr(scrRegs[0], ver);
-        as.mov(scrRegs[2], cachePos);
-        as.ptr(scrReg3, updateCacheSub);
-        as.call(scrReg3);
-
-        // Move the return value (defining shape) to the output operand
-        as.mov(outOpnd, cretReg.opnd);
-
-        // Do another inline cache lookup now that the cache is updated
-        // Note: this jump will be overwritten to jump to the default
-        // version once the inline cache is full
-        as.jmp(Label.RETRY);
-
-        // Generate a branch for the default successor
-        // version, but don't compile it
-        assert (instr.getTarget(0).args.length is 0);
-        auto branch = getBranchEdge(
-            instr.getTarget(0),
-            st,
-            false
-        );
-
-        // Store a reference to the default version branch
-        ver.targets = [branch];
-
-        // Mark the end of this code fragment
-        ver.markEnd(as, st.fun.vm);
-    }
-
-    // The property name is unknown
-    else
-    {
-        //as.printStr("prop name unknown");
-
-        // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
-
-        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-        as.saveJITRegs();
-
-        // Call the host function
-        as.mov(cargRegs[0].opnd(64), opnd0);
-        as.mov(cargRegs[1].opnd(64), opnd1);
-        as.ptr(scrRegs[0], &op_shape_get_def);
-        as.call(scrRegs[0]);
-
-        as.loadJITRegs();
-
-        // Store the output value into the output operand
-        as.mov(outOpnd, cretReg.opnd);
-
-        // Set the output type for this instruction
-        st.setOutTag(as, instr, Tag.SHAPEPTR);
-
-        // Jump directly to the successor block
-        return gen_jump(ver, st, instr, as);
-    }
+    st.setOutTag(as, instr, Tag.SHAPEPTR);
 }
 
 /// Initializes an object to the empty shape
@@ -3600,7 +3342,7 @@ void gen_obj_set_prop(
     CodeBlock as
 )
 {
-    extern (C) static void op_shape_set_prop(IRInstr instr)
+    extern (C) static uint8_t op_shape_set_prop(IRInstr instr)
     {
         // Increment the host set prop stat
         ++stats.numSetPropHost;
@@ -3613,7 +3355,12 @@ void gen_obj_set_prop(
 
         auto propStr = extractWStr(strPtr);
 
-        //writeln(propStr);
+        // Get the shape of the object
+        auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
+        assert (objShape !is null);
+
+        // Find the shape defining this property (if it exists)
+        auto defShape = objShape.getDefShape(propStr);
 
         // Set the property value
         setProp(
@@ -3622,6 +3369,8 @@ void gen_obj_set_prop(
             propStr,
             valPair
         );
+
+        return (!defShape || defShape.isGetSet is false)? 1:0;
     }
 
     static void gen_slow_path(
@@ -3648,6 +3397,42 @@ void gen_obj_set_prop(
 
         // Clear any known shape for this object
         st.clearShape(objVal);
+
+        // Check the success flag
+        as.cmp(cretReg.opnd(8), X86Opnd(1));
+
+        auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+        auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                final switch (shape)
+                {
+                    case BranchShape.NEXT0:
+                    jne32Ref(as, vm, target1, 1);
+                    break;
+
+                    case BranchShape.NEXT1:
+                    je32Ref(as, vm, target0, 0);
+                    break;
+
+                    case BranchShape.DEFAULT:
+                    je32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
+                }
+            }
+        );
     }
 
     // Increment the number of set prop operations
@@ -3698,6 +3483,14 @@ void gen_obj_set_prop(
         );
     }
 
+    // If the shape is not writable, do nothing, jump to the true branch
+    if (!defShape.writable)
+        return gen_jump(ver, st, instr, as);
+
+    // If the property has accessors, jump to the false branch
+    if (defShape.isGetSet)
+        return gen_jump_false(ver, st, instr, as);
+
     // Get the property slot index
     auto slotIdx = defShape.slotIdx;
 
@@ -3709,7 +3502,7 @@ void gen_obj_set_prop(
     );
 
     // If the property exists on the object and is writable
-    if (slotIdx <= objShape.slotIdx && defShape.writable)
+    if (slotIdx <= objShape.slotIdx)
     {
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrRegs[2].opnd(64), true);
@@ -3789,17 +3582,17 @@ void gen_obj_set_prop(
             as.incStatCnt(&stats.numShapeFlips, scrRegs[0]);
         }
 
-        return;
+        // Property successfully set, jump to the true branch
+        return gen_jump(ver, st, instr, as);
     }
 
     // This is a new property
-    // If the property is writable and the slot index is
-    // within the guaranteed object capacity
+    // If the slot index is within the guaranteed object capacity
     //
     // Note: we don't check if the property goes in the extended
     // table because we cant guarantee the object size is sufficient
     // or that the extended table even exists
-    if (defShape.writable && slotIdx < minObjCap)
+    if (slotIdx < minObjCap)
     {
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrRegs[0].opnd(64), true);
@@ -3822,7 +3615,8 @@ void gen_obj_set_prop(
         // Set the new object shape
         st.setShape(objVal, defShape);
 
-        return;
+        // Property successfully set, jump to the true branch
+        return gen_jump(ver, st, instr, as);
     }
 
     // Use the slow path
@@ -3838,7 +3632,16 @@ void gen_obj_get_prop(
     CodeBlock as
 )
 {
-   extern (C) static void op_shape_get_prop(ValuePair* outVal, IRInstr instr)
+    struct OutVal
+    {
+        Word word;
+        Tag tag;
+        uint8_t success;
+    }
+
+    static assert (OutVal.sizeof == 2 * Word.sizeof);
+
+    extern (C) static void op_shape_get_prop(OutVal* outVal, IRInstr instr)
     {
         // Increment the host get prop stat
         ++stats.numGetPropHost;
@@ -3850,12 +3653,31 @@ void gen_obj_get_prop(
 
         auto propStr = tempWStr(strPtr);
 
+        // Get the shape of the object
+        auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
+        assert (objShape !is null);
+
+        // Find the shape defining this property (if it exists)
+        auto defShape = objShape.getDefShape(propStr);
+
+        // If the property doesn't exist
+        if (defShape is null)
+        {
+            outVal.success = 0;
+            return;
+        }
+
         // Get the property value
-        *outVal = getProp(
+        auto propVal = getProp(
             vm,
             objPair,
             propStr
         );
+
+        outVal.word = propVal.word;
+        outVal.tag = propVal.tag;
+
+        outVal.success = (defShape.isGetSet is false)? 1:0;
     }
 
     // TODO: optimize this to pre-extract args?
@@ -3877,7 +3699,7 @@ void gen_obj_get_prop(
         as.saveJITRegs();
 
         // Stack allocate space for the value pair output
-        as.sub(RSP, 2 * Word.sizeof);
+        as.sub(RSP, OutVal.sizeof);
         as.mov(cargRegs[0].opnd, RSP.opnd);
 
         // Call the host function
@@ -3887,13 +3709,54 @@ void gen_obj_get_prop(
 
         // Free the extra stack space
         as.mov(scrRegs[0].opnd, RSP.opnd);
-        as.add(RSP, 2 * Word.sizeof);
+        as.add(RSP, OutVal.sizeof);
 
         as.loadJITRegs();
 
-        as.mov(outOpnd, X86Opnd(64, scrRegs[0], ValuePair.word.offsetof));
-        as.mov(scrRegs[1].opnd(8), X86Opnd(8, scrRegs[0], ValuePair.tag.offsetof));
+        auto wordMem = X86Opnd(64, scrRegs[0], OutVal.word.offsetof);
+        auto tagMem = X86Opnd(8, scrRegs[0], OutVal.tag.offsetof);
+        auto flagMem = X86Opnd(8, scrRegs[0], OutVal.success.offsetof);
+
+        // Set the output word and tag
+        as.mov(outOpnd, wordMem);
+        as.mov(scrRegs[1].opnd(8), tagMem);
         st.setOutTag(as, instr, scrRegs[1].reg(8));
+
+        // Check the success flag
+        as.cmp(flagMem, X86Opnd(1));
+
+        auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+        auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                final switch (shape)
+                {
+                    case BranchShape.NEXT0:
+                    jne32Ref(as, vm, target1, 1);
+                    break;
+
+                    case BranchShape.NEXT1:
+                    je32Ref(as, vm, target0, 0);
+                    break;
+
+                    case BranchShape.DEFAULT:
+                    je32Ref(as, vm, target0, 0);
+                    jmp32Ref(as, vm, target1, 1);
+                }
+            }
+        );
     }
 
     // Increment the number of get prop operations
@@ -3920,6 +3783,10 @@ void gen_obj_get_prop(
     // Try a lookup for an existing property
     auto defShape = objShape.getDefShape(propName);
     assert (defShape !is null);
+
+    // If the property has accessors, jump to the false branch
+    if (defShape.isGetSet)
+        return gen_jump_false(ver, st, instr, as);
 
     // Get the property slot index
     auto slotIdx = defShape.slotIdx;
@@ -3990,6 +3857,9 @@ void gen_obj_get_prop(
         as.mov(scrRegs[1].opnd(8), typeMem);
         st.setOutTag(as, instr, scrRegs[1].reg(8));
     }
+
+    // Property successfully read, jump to the true branch
+    return gen_jump(ver, st, instr, as);
 }
 
 /// Get the prototype of an object
@@ -4253,7 +4123,7 @@ void gen_obj_prop_shape(
     st.spillLiveBefore(as, instr);
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd, false, false);
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();

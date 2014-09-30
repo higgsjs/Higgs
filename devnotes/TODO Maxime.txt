@@ -152,35 +152,52 @@ TODO: Meet Marc
 - Inline caches in set_prop and get_prop
   - Could disable shape dispatch, compare against more conventional system
 
-PROBLEM: object shape is always read
-var objShape = $rt_obj_get_shape(obj);
-if ($ir_capture_shape(obj, objShape))
-- Need a special $ir_obj_get_shape
-  - Doesn't write anything if obj shape known
-
 TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
 - Run with --perf_stats
 
-TODO: implement get_prop and set_prop branching for "abnormal" cases?
+TODO: ensure no code is generated for ir_break()
+- Should only need to generate code for default ordering
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: defineProperty seems to make a property undefined
+Object.defineProperty(Map, 'defHashFn', { writable:false });
+- Maybe reassigns to it, maybe objHasProp fails
+- Not assigning new value, must be obj_set_attrs?
+
+[DONE] FIXME: infinite loop in getGlobal?
+
+[DONE] FIXME: capture_shape needs to be in a different block from get_shape
+- capture_shape, when shape is unknown (dynamic), need to observe it at compile time
+- possibly, can't observe it at compile time because the code hasn't been
+executed yet (still in the compilation queue)
+- Could try to implement a simple ir_break
+  - Try if ($ir_break()); two branches
+  - Execution resumes, jumps to true stub immediately
+  - Seems both targets being the same should work
+
+[DONE] TODO: slow path branching for getProp and setProp
+
+[DONE] TODO: implement get_prop and set_prop branching for "abnormal" cases
 - for get_prop, can check if const tag to know if prop not found
 - what is the performance situation?
 - previously, host calls generally happen when prop name unknown
 - much smaller IR for inlined cases
 
-TODO: new capture_shape, if (capture_shape(obj, objShape)); 
+[DONE] TODO: new capture_shape, if (capture_shape(obj, objShape)); 
 - Generates a branch back into a different version of itself if shape mispredicted
 - Avoid elaborate codegen, multiple slots
 - Can fall through in many cases
 - need to pass both obj and objShape
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: remove special handling of capture_shape in ir/ast.d
 
