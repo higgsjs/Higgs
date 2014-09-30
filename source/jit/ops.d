@@ -3663,6 +3663,8 @@ void gen_obj_get_prop(
         // If the property doesn't exist
         if (defShape is null)
         {
+            outVal.word = UNDEF.word;
+            outVal.tag = Tag.CONST;
             outVal.success = 0;
             return;
         }
@@ -3782,11 +3784,16 @@ void gen_obj_get_prop(
 
     // Try a lookup for an existing property
     auto defShape = objShape.getDefShape(propName);
-    assert (defShape !is null);
 
-    // If the property has accessors, jump to the false branch
-    if (defShape.isGetSet)
+    // If the property doesn't exist
+    if (defShape is null)
+    {
+        // Set the output type tag to const (undefined)
+        st.setOutTag(as, instr, Tag.CONST);
+
+        // Jump to the false branch
         return gen_jump_false(ver, st, instr, as);
+    }
 
     // Get the property slot index
     auto slotIdx = defShape.slotIdx;
@@ -3858,7 +3865,11 @@ void gen_obj_get_prop(
         st.setOutTag(as, instr, scrRegs[1].reg(8));
     }
 
-    // Property successfully read, jump to the true branch
+    // If the property has accessors, jump to the false branch
+    if (defShape.isGetSet)
+        return gen_jump_false(ver, st, instr, as);
+
+    // Normal property successfully read, jump to the true branch
     return gen_jump(ver, st, instr, as);
 }
 

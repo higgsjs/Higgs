@@ -149,8 +149,9 @@ TODO: look at why string-fasta is slow
 TODO: Meet Marc
 - Shape profiling confirmed intuition, first shape in most cases, no exceptions
 - Fixed GC performance bug
-- Inline caches in set_prop and get_prop
-  - Could disable shape dispatch, compare against more conventional system
+- New capture_shape, capture_tag
+  - More compact code
+  - No redundant object shape pointer written
 
 TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
 - Run with --perf_stats
@@ -161,9 +162,12 @@ TODO: ensure no code is generated for ir_break()
 - Should only need to generate code for default ordering
 
 FIXME: property deletion, defineProperty, no way to remove a setter?
+- may be able to change the property attributes, then change the value?
 - look at how V8 behaves
 - add a test for setter deletion and removal with defineProperty
 
+FIXME: segfault during FFI init...
+- Try dumpinfo first
 
 
 
@@ -172,6 +176,11 @@ FIXME: property deletion, defineProperty, no way to remove a setter?
 
 
 
+
+
+
+[DONE] TODO: what happens in get_prop when the properties don't exist?
+- Do we take the slow path?
 
 [DONE] FIXME: defineProperty seems to make a property undefined
 Object.defineProperty(Map, 'defHashFn', { writable:false });
