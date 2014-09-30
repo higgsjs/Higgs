@@ -155,10 +155,14 @@ TODO: Meet Marc
 TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
 - Run with --perf_stats
 
+TODO: add ir_break() before capture_tag as well
+
 TODO: ensure no code is generated for ir_break()
 - Should only need to generate code for default ordering
 
-
+FIXME: property deletion, defineProperty, no way to remove a setter?
+- look at how V8 behaves
+- add a test for setter deletion and removal with defineProperty
 
 
 

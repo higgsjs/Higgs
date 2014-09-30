@@ -231,11 +231,16 @@ struct ValState
     ValState clearShape() const
     {
         assert (!isConst);
-        assert (!type.fptrKnown);
 
         ValState val = cast(ValState)this;
-        val.type.shape = null;
-        val.type.shapeKnown = false;
+
+        if (val.type.shapeKnown)
+        {
+            assert (!type.fptrKnown);
+            val.type.shape = null;
+            val.type.shapeKnown = false;
+        }
+
         return val;
     }
 

@@ -2600,7 +2600,14 @@ function $rt_delProp(base, prop)
     var defShape = $ir_obj_prop_shape(base, prop);
     if ($ir_ne_rawptr(defShape, $nullptr))
     {
-        $ir_obj_set_prop(base, prop, $undef);
+        if ($ir_obj_set_prop(base, prop, $undef))
+        {
+
+        }
+        else
+        {
+            // FIXME: what do we do if this isn't a normal property?
+        }
     }
 
     // Set the property attributes to deleted
