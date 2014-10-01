@@ -109,29 +109,31 @@ Object.getOwnPropertyDescriptor = function (obj, prop)
     prop = $rt_toString(prop);
 
     // Get the defining shape for the property
-    var defShape = $ir_capture_shape(obj, prop);
+    var defShape = $ir_obj_prop_shape(obj, prop);
+
+    // If the property doesn't exist
+    if ($ir_eq_rawptr(defShape, $nullptr))
+        return undefined;
 
     var desc = {};
 
     // Extract the current property attributes
-    var defShape = $ir_obj_prop_shape(obj, prop);
-    var attrs = $ir_ne_rawptr(defShape, $nullptr)? $ir_shape_get_attrs(defShape):$rt_ATTR_DEFAULT;
+    var attrs = $ir_shape_get_attrs(defShape);
     desc.writable = !!(attrs & $rt_ATTR_WRITABLE);
     desc.enumerable = !!(attrs & $rt_ATTR_ENUMERABLE);
     desc.configurable = !!(attrs & $rt_ATTR_CONFIGURABLE);
 
     // Get the property value
-    var propVal = $ir_obj_get_prop(obj, prop);
-
-    // If this property is a getter-setter
-    if ($ir_shape_is_getset(defShape))
+    var propVal;
+    if (propVal = $ir_obj_get_prop(obj, prop))
     {
-        desc.get = propVal.get;
-        desc.set = propVal.set;
+        desc.value = propVal;
     }
     else
     {
-        desc.value = propVal;
+        // This property is a getter-setter
+        desc.get = propVal.get;
+        desc.set = propVal.set;
     }
 
     return desc;
@@ -415,7 +417,7 @@ Object.prototype.propertyIsEnumerable = function (V)
     if (this.hasOwnProperty(V) === false)
         return false;
 
-    var defShape = $ir_capture_shape(this, V);
+    var defShape = $ir_obj_prop_shape(this, V);
 
     if ($ir_eq_rawptr(defShape, $nullptr))
         return false;

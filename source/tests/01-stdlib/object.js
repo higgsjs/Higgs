@@ -87,9 +87,12 @@ function test_getOwnPropertyDescriptor()
     // Test that the method exists
     assert (typeof Object.getOwnPropertyDescriptor === 'function');
 
+    var desc = Object.getOwnPropertyDescriptor({}, 'p');
+    assert (desc === undefined);
+
     var o = { p1: 1 };
     var desc = Object.getOwnPropertyDescriptor(o, 'p1');
-    assert (desc.value === 1);
+    assert (desc.value === 1, 'prop desc missing value');
     assert (desc.writable === true);
     assert (desc.enumerable === true);
     assert (desc.configurable === true);

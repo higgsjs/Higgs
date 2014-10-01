@@ -176,7 +176,6 @@ FIXME: property deletion, defineProperty, no way to remove a setter?
 
 FIXME: Running: ./tests/01-stdlib/global.js... global property not defined: "k"
 
-
 FIXME: Running: ./tests/01-stdlib/object.js... ***** FAILED! *****
 
 
