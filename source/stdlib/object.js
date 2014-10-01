@@ -93,7 +93,7 @@ Object.getPrototypeOf = function (obj)
         'non-object value in getPrototypeOf'
     );
 
-    var proto = $ir_shape_get_proto(obj);
+    var proto = $ir_obj_get_proto(obj);
 
     return proto;
 };

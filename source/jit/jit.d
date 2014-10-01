@@ -489,7 +489,12 @@ class CodeGenState
         debug
         {
             foreach (value, state; pred.valMap)
-                assert (value in succ.valMap);
+            {
+                assert (
+                    value in succ.valMap,
+                    "value not in succ valMap: " ~ value.toString
+                );
+            }
         }
 
         // For each value in the successor type state map

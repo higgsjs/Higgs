@@ -3276,18 +3276,6 @@ void gen_obj_read_shape(
     auto objVal = cast(IRDstValue)instr.getArg(0);
     assert (objVal !is null);
 
-
-    if (st.shapeKnown(objVal) && st.getShape(objVal) is st.fun.vm.emptyShape)
-    {
-        as.printStr("obj has empty shape");
-        as.printStr(instr.block.fun.getName);
-    }
-
-
-    // If the shape is known, do nothing
-    if (st.shapeKnown(objVal))
-        return;
-
     // Get the object operand
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
     assert (opnd0.isReg);
@@ -3295,6 +3283,12 @@ void gen_obj_read_shape(
     // Get the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     assert (outOpnd.isReg);
+
+    // TODO: find way to have instr in valMap without getting outOpnd?
+
+    // If the shape is known, do nothing
+    if (st.shapeKnown(objVal))
+        return;
 
     // Get the object shape
     as.getField(outOpnd.reg, opnd0.reg, obj_ofs_shape(null));
