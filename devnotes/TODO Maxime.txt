@@ -169,15 +169,15 @@ TODO: add ir_break() before capture_tag as well
 TODO: ensure no code is generated for ir_break()
 - Should only need to generate code for default ordering
 
+TODO: undo modification to JumpOp, noStub flag
+
 FIXME: property deletion, defineProperty, no way to remove a setter?
 - may be able to change the property attributes, then change the value?
 - look at how V8 behaves
 - add a test for setter deletion and removal with defineProperty
+- write it in a small JS file first, for testing
 
-FIXME: Running: ./tests/01-stdlib/global.js... global property not defined: "k"
-
-FIXME: Running: ./tests/01-stdlib/object.js... ***** FAILED! *****
-
+FIXME: Running: ./tests/01-stdlib/global.js... global not defined: "k"
 
 
 
@@ -186,6 +186,13 @@ FIXME: Running: ./tests/01-stdlib/object.js... ***** FAILED! *****
 
 
 
+
+
+
+[DONE] FIXME: further object test bugs, setter methods
+./higgs ./tests/01-stdlib/object.js
+
+[DONE] FIXME: Running: ./tests/01-stdlib/object.js... ***** FAILED! *****
 
 [DONE] FIXME: assertion failed, value not in val map in ctx diff
 - Must be error with obj_read_shape?

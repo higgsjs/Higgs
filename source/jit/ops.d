@@ -3471,13 +3471,13 @@ void gen_obj_set_prop(
         );
     }
 
-    // If the shape is not writable, do nothing, jump to the true branch
-    if (!defShape.writable)
-        return gen_jump(ver, st, instr, as);
-
     // If the property has accessors, jump to the false branch
     if (defShape.isGetSet)
         return gen_jump_false(ver, st, instr, as);
+
+    // If the shape is not writable, do nothing, jump to the true branch
+    if (!defShape.writable)
+        return gen_jump(ver, st, instr, as);
 
     // Get the property slot index
     auto slotIdx = defShape.slotIdx;

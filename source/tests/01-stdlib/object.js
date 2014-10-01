@@ -206,7 +206,7 @@ function test_defineProperty()
     // Setter accessor test
     var obj = Object.defineProperty({}, 'p', { set: function(v) {this.k=v} });
     obj.p = 5;
-    assert (obj.k === 5);
+    assert (obj.k === 5, 'setter failed');
     obj.p = 7;
     assert (obj.k === 7);
     assert (obj.p === undefined);
