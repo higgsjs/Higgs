@@ -149,12 +149,20 @@ TODO: look at why string-fasta is slow
 TODO: Meet Marc
 - Shape profiling confirmed intuition, first shape in most cases, no exceptions
 - Fixed GC performance bug
+- Worked on new object access primitives
+  - Big refactoring
+  - Bug after bug after bug
 - New capture_shape, capture_tag
   - More compact code
   - No redundant object shape pointer written
 
+TODO: templated as.print?
+- multi arg? string, wstring, supported
+
 TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
 - Run with --perf_stats
+
+FIXME: setProto not inlined?
 
 TODO: add ir_break() before capture_tag as well
 
@@ -166,8 +174,6 @@ FIXME: property deletion, defineProperty, no way to remove a setter?
 - look at how V8 behaves
 - add a test for setter deletion and removal with defineProperty
 
-FIXME: segfault during FFI init...
-- Try dumpinfo first
 
 
 
@@ -178,6 +184,24 @@ FIXME: segfault during FFI init...
 
 
 
+
+
+
+[DONE] FIXME: higgs init fails
+- seemingly, a property descriptor object has an invalid proto
+- should check that setProto works properly
+  - seems to?
+$74 = obj_get_proto $254
+$0 = is_object $74
+if_true(808C):
+$75 = obj_read_shape $74
+- Proto ptr read from get_proto is wrong
+- Proto set in def_const is right...
+- Must get corrupted by set_prop somewhere
+- object is marked as having emptyShape in state
+  - but doesn't actually have empty shape
+- object "known" to have empty shape after call_prim to setProto... nonsense
+- Idiotic bug with call_prim not clearing shapes
 
 [DONE] TODO: what happens in get_prop when the properties don't exist?
 - Do we take the slow path?

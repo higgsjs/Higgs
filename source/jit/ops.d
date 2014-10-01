@@ -1849,25 +1849,11 @@ void gen_call_prim(
         }
     );
 
+    // TODO
     // TODO: analysis to detect possible shape changes
-    // If the callee might change some object shapes
-    auto funName = fun.getName;
-    if (
-        !funName.startsWith("$rt_se") &&
-        !funName.startsWith("$rt_ns") &&
-        !funName.startsWith("$rt_toBool") &&
-        !funName.startsWith("$rt_newObj") &&
-        !funName.startsWith("$rt_newArr") &&
-        !funName.startsWith("$rt_getProp") &&
-        !funName.startsWith("$rt_objGetProp") &&
-        !funName.startsWith("$rt_hasOwnProp") &&
-        !funName.startsWith("$rt_setArrLen"))
-    {
-        //writeln(funName, " <= ", st.fun.getName);
-
-        // Clear the known shape information
-        st.clearShapes();
-    }
+    // TODO
+    // Clear the known shape information
+    st.clearShapes();
 
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
@@ -3212,7 +3198,7 @@ void gen_capture_shape(
     auto vm = ver.block.fun.vm;
 
     // Get the object and shape argument values
-    auto objVal = cast(IRDstValue)instr.getArg(1);
+    auto objVal = cast(IRDstValue)instr.getArg(0);
     auto shapeVal = cast(IRDstValue)instr.getArg(1);
     assert (objVal !is null);
     assert (shapeVal !is null);
@@ -3289,6 +3275,14 @@ void gen_obj_read_shape(
 {
     auto objVal = cast(IRDstValue)instr.getArg(0);
     assert (objVal !is null);
+
+
+    if (st.shapeKnown(objVal) && st.getShape(objVal) is st.fun.vm.emptyShape)
+    {
+        as.printStr("obj has empty shape");
+        as.printStr(instr.block.fun.getName);
+    }
+
 
     // If the shape is known, do nothing
     if (st.shapeKnown(objVal))
@@ -3493,6 +3487,7 @@ void gen_obj_set_prop(
 
     // Get the property slot index
     auto slotIdx = defShape.slotIdx;
+    assert (slotIdx !is PROTO_SLOT_IDX);
 
     // Compute the minimum object capacity we can guarantee
     auto minObjCap = (
@@ -3788,6 +3783,8 @@ void gen_obj_get_prop(
     // If the property doesn't exist
     if (defShape is null)
     {
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+
         // Set the output type tag to const (undefined)
         st.setOutTag(as, instr, Tag.CONST);
 
@@ -3897,6 +3894,8 @@ void gen_obj_get_proto(
     if (objType.shapeKnown)
     {
         auto defShape = objType.shape.getDefShape("__proto__");
+        assert (defShape !is null);
+        assert (defShape.slotIdx is slotIdx);
 
         // If the shape's type tag is known
         if (defShape.type.tagKnown)

@@ -1895,11 +1895,15 @@ Set the prototype value for an object
 */
 function $rt_setProto(obj, proto)
 {
-    // Attempt to capture the shape of the proto value
-    var protoShape = $ir_obj_read_shape(proto);
-    if ($ir_break());
-    if ($ir_capture_shape(proto, protoShape))
-        if ($ir_capture_shape(proto, protoShape));
+    // If the prototype is not null
+    if ($ir_ne_refptr(proto, null))
+    {
+        // Attempt to capture the shape of the proto value
+        var protoShape = $ir_obj_read_shape(proto);
+        if ($ir_break());
+        if ($ir_capture_shape(proto, protoShape))
+            if ($ir_capture_shape(proto, protoShape));
+    }
 
     // Define the prototype as a non-writable, non-enumerable constant
     $ir_obj_def_const(obj, '__proto__', proto, false);

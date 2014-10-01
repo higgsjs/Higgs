@@ -234,7 +234,7 @@ struct ValState
 
         ValState val = cast(ValState)this;
 
-        if (val.type.shapeKnown)
+        if (type.shapeKnown)
         {
             assert (!type.fptrKnown);
             val.type.shape = null;
@@ -1302,7 +1302,10 @@ class CodeGenState
         // If this is a dst value
         if (auto dstVal = cast(IRDstValue)value)
         {
-            assert (dstVal in valMap);
+            assert (
+                dstVal in valMap,
+                "getType: value not in val map " ~ value.toString
+            );
             ValState state = getState(dstVal);
             return state.type;
         }
@@ -2817,15 +2820,15 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     assert (targetIdx < srcBlock.targets.length);
     auto branchCode = cast(BranchCode)srcBlock.targets[targetIdx];
     assert (branchCode !is null);
-    assert (branchCode.started is false);
+    assert (branchCode.started is false, "branchCode already compiled");
     auto predState = branchCode.predState;
     auto targetBlock = branchCode.branch.target;
 
     if (opts.dumpinfo)
     {
         writefln(
-            "branch from %s to %s", 
-            srcBlock.block.getName, 
+            "branch from %s to %s",
+            srcBlock.block.getName,
             branchCode.branch.target.getName
         );
     }

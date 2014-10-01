@@ -157,6 +157,8 @@ struct ValType
             this.fptr = val.word.funVal;
             this.fptrKnown = true;
         }
+
+        assert (!this.shapeKnown || !this.fptrKnown);
     }
 
     /// Constructor taking a type tag only
