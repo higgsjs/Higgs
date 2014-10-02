@@ -256,7 +256,8 @@ void gcCollect(VM vm, size_t heapSize = 0)
     */
 
     writeln("entering gcCollect");
-    //writeln("curInstr: ", vm.curInstr);
+    writeln("curInstr: ", vm.curInstr);
+    writeln("cur fun: ", vm.curInstr.block.fun.getName);
 
     // Start recording garbage collection time
     stats.gcTimeStart();
@@ -375,6 +376,8 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Store a pointer to the old string table
     auto oldStrTbl = vm.strTbl;
     auto strTblCap = strtbl_get_cap(oldStrTbl);
+
+    writeln("strTblCap=", strTblCap);
 
     // Allocate a new string table
     vm.strTbl = strtbl_alloc(vm, strTblCap);

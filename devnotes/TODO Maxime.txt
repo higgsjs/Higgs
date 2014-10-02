@@ -159,20 +159,75 @@ TODO: Meet Marc
 TODO: templated as.print?
 - multi arg? string, wstring, supported
 
-TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
-- Run with --nostdlib --perf_stats
-
 FIXME: setProto not inlined?
 
-TODO: add ir_break() before capture_tag as well
+Can try a hack tomorrow to know where the segfault occurs...
+
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+void segfault_sigaction(int signal, siginfo_t *si, void *arg)
+{
+    printf("Caught segfault at address %p\n", si->si_addr);
+    exit(0);
+}
+
+// si->si_addr is the PC
+
+int main(void)
+{
+    int *foo = NULL;
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof(sigaction));
+    sigemptyset(&sa.sa_mask);
+    sa.sa_sigaction = segfault_sigaction;
+    sa.sa_flags   = SA_SIGINFO;
+
+    sigaction(SIGSEGV, &sa, NULL);
+
+    /* Cause a seg fault */
+    *foo = 1;
+
+    return 0;
+}
+
+FIXME: splay benchmark segfaults
+- can we make a regression test?
+./higgs splay.js
+- crashes in the setup phase
+- seems it may be a GC bug
+- GC possibly corrupting something during run
+- crashes at a stage where multiple GCs occur in sequence...
+- this may be a flaw in new_clos or something
+  - or a problem in setProp
+
+Can happen in strcat, with a double GC
+- A second GC happens on the same instruction to expand the heap
+- Work keeps happening for a bit, and then there is a segfault
+
+Also happens with alloc_object, again with a double GC
+
+Third occurrence again with heap expansion...
+- What's different on the second GC?
+- Why doesn't it happen on the first heap expansion?
+- Normally, all the junk is gone, result should be exactly the same
+- Flipping the heap twice... Back to the same from space
+
+TODO: traceEnabled flag in VM? $ir_trace_enable
+- if disabled, skips over printing
+- means we need a different trace print function
+
+TODO: verify that second GC leaves alloc ptr at same offset
+
+TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
+- Run with --nostdlib --perf_stats
 
 TODO: ensure no code is generated for ir_break()
 - Should only need to generate code for default ordering
 
-TODO: undo modification to JumpOp, noStub flag
-
-FIXME: splay benchmark segfaults
-- can we make a regression test?
 
 
 
@@ -181,7 +236,9 @@ FIXME: splay benchmark segfaults
 
 
 
+[DONE] TODO: add ir_break() before capture_tag as well
 
+[DONE] TODO: undo modification to JumpOp, noStub flag
 
 [DONE] FIXME: property deletion, defineProperty, no way to remove a setter?
 - may be able to change the property attributes, then change the value?

@@ -1568,7 +1568,7 @@ void gen_if_true(
     );
 }
 
-void JumpOp(size_t succIdx, bool noStub)(
+void JumpOp(size_t succIdx)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -1578,7 +1578,7 @@ void JumpOp(size_t succIdx, bool noStub)(
     auto branch = getBranchEdge(
         instr.getTarget(succIdx),
         st,
-        noStub
+        true
     );
 
     // Jump to the target block directly
@@ -1609,8 +1609,8 @@ void JumpOp(size_t succIdx, bool noStub)(
     );
 }
 
-alias JumpOp!(0, true) gen_jump;
-alias JumpOp!(1, true) gen_jump_false;
+alias JumpOp!(0) gen_jump;
+alias JumpOp!(1) gen_jump_false;
 
 /**
 Throw an exception and unwind the stack when one calls a non-function.
@@ -2909,14 +2909,14 @@ void gen_gc_collect(
     );
 
     // Get the string pointer
-    auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+    auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
 
     as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, heapSizeOpnd);
+    as.mov(cargRegs[2].opnd(32), heapSizeOpnd);
     as.ptr(scrRegs[0], &op_gc_collect);
     as.call(scrRegs[0]);
 
@@ -3065,15 +3065,16 @@ void gen_break(
     CodeBlock as
 )
 {
+    assert (instr.getTarget(0) && instr.getTarget(1));
+    assert (instr.getTarget(0).target is instr.getTarget(1).target);
 
-    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
-    //auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+    auto branch = getBranchEdge(instr.getTarget(0), st, false);
 
     // Generate the branch code
     ver.genBranch(
         as,
-        branchT,
-        branchT,
+        branch,
+        branch,
         delegate void(
             CodeBlock as,
             VM vm,
@@ -3085,11 +3086,9 @@ void gen_break(
             final switch (shape)
             {
                 case BranchShape.NEXT0:
-                jmp32Ref(as, vm, target0, 1);
                 break;
 
                 case BranchShape.NEXT1:
-                jmp32Ref(as, vm, target0, 0);
                 break;
 
                 case BranchShape.DEFAULT:
@@ -3288,7 +3287,11 @@ void gen_obj_read_shape(
 
     // If the shape is known, do nothing
     if (st.shapeKnown(objVal))
+    {
+        //as.mov(outOpnd, X86Opnd(0));
+        st.setOutTag(as, instr, Tag.CONST);
         return;
+    }
 
     // Get the object shape
     as.getField(outOpnd.reg, opnd0.reg, obj_ofs_shape(null));
@@ -3780,6 +3783,7 @@ void gen_obj_get_prop(
         auto outOpnd = st.getOutOpnd(as, instr, 64);
 
         // Set the output type tag to const (undefined)
+        //as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
         st.setOutTag(as, instr, Tag.CONST);
 
         // Jump to the false branch
