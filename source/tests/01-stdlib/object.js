@@ -190,6 +190,11 @@ function test_defineProperty()
     assert ('x' in obj);
     assert (obj.x === undefined);
 
+    // Cannot delete unconfigurable properties
+    var obj = Object.defineProperty({}, 'p', { value:5 });
+    delete obj.p;
+    assert (obj.p === 5);
+
     // Undeleting a property
     var obj = { k:3 }
     delete obj.k;

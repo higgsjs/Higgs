@@ -2601,22 +2601,25 @@ function $rt_delProp(base, prop)
     if (!$ir_is_string(prop))
         throw TypeError('non-string property name');
 
-    // If the property exists, set its value to undefined
+    // Find the defining shape for the property
     var defShape = $ir_obj_prop_shape(base, prop);
+
+    // If the property exists
     if ($ir_ne_rawptr(defShape, $nullptr))
     {
+        // Set its value to undefined
         if ($ir_obj_set_prop(base, prop, $undef))
         {
 
         }
         else
         {
-            // FIXME: what do we do if this isn't a normal property?
+            // For accessors, do nothing
         }
-    }
 
-    // Set the property attributes to deleted
-    $ir_obj_set_attrs(base, prop, $rt_ATTR_DELETED | $rt_ATTR_CONFIGURABLE);
+        // Set the property attributes to deleted
+        $ir_obj_set_attrs(base, prop, $rt_ATTR_DELETED | $rt_ATTR_CONFIGURABLE);
+    }
 
     return true;
 }
