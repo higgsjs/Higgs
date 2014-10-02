@@ -1831,11 +1831,16 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
         if (target.startIdx < frag.startIdx || target is frag)
             return;
 
+        // Don't queue multiple identical targets
+        if (workList.length > 0 && workList[$-1] is target)
+            return;
+
         workList ~= target;
     }
 
     CodeFragment[] fragList;
 
+    // Until the work list is empty
     while (workList.empty is false)
     {
         // Get a fragment from the work list
@@ -1871,6 +1876,7 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
 
     auto str = appender!string;
 
+    // For each fragment queued
     foreach (fIdx, frag; fragList)
     {
         if (frag.length is 0)

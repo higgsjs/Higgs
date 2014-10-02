@@ -2745,9 +2745,9 @@ void GetValOp(Tag tag, string fName)(
     auto fSize = 8 * mixin("VM." ~ fName ~ ".sizeof");
 
     auto outOpnd = st.getOutOpnd(as, instr, fSize);
+    assert (outOpnd.isReg);
 
-    as.getMember!("VM." ~ fName)(scrRegs[0].reg(fSize), vmReg);
-    as.mov(outOpnd, scrRegs[0].opnd(fSize));
+    as.getMember!("VM." ~ fName)(outOpnd.reg, vmReg);
 
     st.setOutTag(as, instr, tag);
 }

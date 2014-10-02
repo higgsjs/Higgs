@@ -146,36 +146,16 @@ TODO: look at why string-fasta is slow
 - Over 1M def shape host
 - Most calls unoptimized, why?
 
-TODO: Meet Marc
-- Shape profiling confirmed intuition, first shape in most cases, no exceptions
-- Fixed GC performance bug
-- Worked on new object access primitives
-  - Big refactoring
-  - Bug after bug after bug
-- New capture_shape, capture_tag
-  - More compact code
-  - No redundant object shape pointer written
-
-TODO: templated as.print?
-- multi arg? string, wstring, supported
-
-FIXME: setProto not inlined?
-
-Can try a hack tomorrow to know where the segfault occurs...
-
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 void segfault_sigaction(int signal, siginfo_t *si, void *arg)
 {
     printf("Caught segfault at address %p\n", si->si_addr);
     exit(0);
 }
-
 // si->si_addr is the PC
-
 int main(void)
 {
     int *foo = NULL;
@@ -194,6 +174,24 @@ int main(void)
     return 0;
 }
 
+FIXME: setProto not inlined?
+
+TODO: Meet Marc
+- Shape profiling confirmed intuition, first shape in most cases, no exceptions
+- Fixed GC performance bug
+- Worked on new object access primitives
+  - Big refactoring
+  - Bug after bug after bug
+- New capture_shape, capture_tag
+  - More compact code
+  - No redundant object shape pointer written
+- loop_global_incr 2x faster
+- bitwise-and now as fast
+- other very short benchmarks not as fast
+  - suspect runtime init is an issue
+  - global obj shape changes, shape alloc
+- new strange GC bug...
+
 FIXME: splay benchmark segfaults
 - can we make a regression test?
 ./higgs splay.js
@@ -203,13 +201,10 @@ FIXME: splay benchmark segfaults
 - crashes at a stage where multiple GCs occur in sequence...
 - this may be a flaw in new_clos or something
   - or a problem in setProp
-
 Can happen in strcat, with a double GC
 - A second GC happens on the same instruction to expand the heap
 - Work keeps happening for a bit, and then there is a segfault
-
 Also happens with alloc_object, again with a double GC
-
 Third occurrence again with heap expansion...
 - What's different on the second GC?
 - Why doesn't it happen on the first heap expansion?
@@ -225,22 +220,34 @@ TODO: check if 3bits-byte, recursive faster than old object system now? If not, 
 - bitwise-and as fast or faster, but not 3bits-byte, not controlflow-recursive
 - do we win on controlflow-recursive with bigger iteration count? ***
   - would suggest compilation interruptions make us lose
+  - global obj shape changes may also contribute!
 
-TODO: ensure no code is generated for ir_break()
+FIXME: what's going on here?
+; capture_shape $1, $2 => if_true(1E38E), if_join(1E390)
+mov rax, 139762024056576;               48B80007CCE11C7F0000
+cmp rcx, rax;                           4839C1
+mov eax, 9706;                          B8EA250000
+jne branch_if_true(1E38E);              0F85FC8FFDFF
+jmp branch_if_join(1E390);              E900000000
+branch_if_join(1E396):
+- unclear, if_join is the following block...
+
+
+
+
+
+
+[DONE] FIXME:
+; $1 = get_global_obj
+mov rax, [qword r15 + 256];             498B8700010000
+mov rsi, rax;                           4889C6
+
+[DONE] TODO: ensure no code is generated for ir_break()
 - Should only need to generate code for default ordering
 
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] FIXME: breakage in asmString, probably due to ir_break
+./higgs --genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js 
+- Instructions with both branches going to same target
 
 [DONE] TODO: verify that second GC leaves alloc ptr at same offset
 
