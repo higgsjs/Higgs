@@ -222,7 +222,17 @@ TODO: check if 3bits-byte, recursive faster than old object system now? If not, 
   - would suggest compilation interruptions make us lose
   - global obj shape changes may also contribute!
 
-FIXME: what's going on here?
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: what's going on here?
 ; capture_shape $1, $2 => if_true(1E38E), if_join(1E390)
 mov rax, 139762024056576;               48B80007CCE11C7F0000
 cmp rcx, rax;                           4839C1
@@ -231,11 +241,11 @@ jne branch_if_true(1E38E);              0F85FC8FFDFF
 jmp branch_if_join(1E390);              E900000000
 branch_if_join(1E396):
 - unclear, if_join is the following block...
-
-
-
-
-
+- branch code only generated once with DEFAULT ordering?
+but normally, branch code goes to stubs...
+behaving as it targets already generated?
+- Queued target 1 directly, preventing branch code rewrite
+- Optimized branch writing function
 
 [DONE] FIXME:
 ; $1 = get_global_obj

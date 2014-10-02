@@ -1692,11 +1692,20 @@ class BlockVersion : CodeFragment
         }
 
         // Determine the branch shape
-        auto shape = (target1 is null)? BranchShape.NEXT0:BranchShape.DEFAULT;
+        /*auto shape = (target1 is null)? BranchShape.NEXT0:BranchShape.DEFAULT;
         assert (
             (shape !is BranchShape.NEXT0) ||
             (vm.compQueue.length > 0 && vm.compQueue.back is targets[0])
-        );
+        );*/
+
+        BranchShape shape = BranchShape.DEFAULT;
+        if (vm.compQueue.length > 0)
+        {
+            if (vm.compQueue.back is targets[0])
+                shape = BranchShape.NEXT0;
+            else if (vm.compQueue.back is targets[1])
+                shape = BranchShape.NEXT1;
+        }
 
         // Generate the final branch code
         branchGenFn(
