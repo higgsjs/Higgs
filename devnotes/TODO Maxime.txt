@@ -220,10 +220,11 @@ TODO: traceEnabled flag in VM? $ir_trace_enable
 - if disabled, skips over printing
 - means we need a different trace print function
 
-TODO: verify that second GC leaves alloc ptr at same offset
-
 TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
 - Run with --nostdlib --perf_stats
+- bitwise-and as fast or faster, but not 3bits-byte, not controlflow-recursive
+- do we win on controlflow-recursive with bigger iteration count? ***
+  - would suggest compilation interruptions make us lose
 
 TODO: ensure no code is generated for ir_break()
 - Should only need to generate code for default ordering
@@ -235,6 +236,13 @@ TODO: ensure no code is generated for ir_break()
 
 
 
+
+
+
+
+
+
+[DONE] TODO: verify that second GC leaves alloc ptr at same offset
 
 [DONE] TODO: add ir_break() before capture_tag as well
 
