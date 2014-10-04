@@ -2022,16 +2022,6 @@ BlockVersion getBlockVersion(
         // Increment the total number of block versions generated
         stats.numVersions++;
 
-        /*
-        if (numVersions > stats.maxVersions)
-        {
-            writeln(block.fun.getName);
-            writeln("  ", block.getName);
-            writeln("  ", numVersions);
-            //writeln("  ", block.fun.numBlocks);
-        }
-        */
-
         // Update the maximum version count
         stats.maxVersions = max(stats.maxVersions, numVersions);
     }

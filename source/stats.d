@@ -90,11 +90,11 @@ ulong numShapeFlips = 0;
 /// Number of heap allocations
 ulong numHeapAllocs = 0;
 
-/// Number of unoptimized dynamic calls
-ulong numCallSlow = 0;
-
 /// Number of optimized dynamic calls
 ulong numCallFast = 0;
+
+/// Number of unoptimized dynamic calls
+ulong numCallSlow = 0;
 
 /// Number of primitive calls by primitive name
 private ulong* numPrimCalls[string];
@@ -236,15 +236,15 @@ static ~this()
         writefln("gc time (ms): %s", gcTimeUsecs / 1000);
         writefln("total time (ms): %s", (compTimeUsecs + execTimeUsecs) / 1000);
         writefln("code size (bytes): %s", genCodeSize);
-
-        writefln("num blocks: %s", numBlocks);
-        writefln("num versions: %s", numVersions);
-        writefln("max versions: %s", maxVersions);
-        writefln("num shapes: %s", numShapes);
     }
 
     if (opts.stats)
     {
+        writefln("num blocks: %s", numBlocks);
+        writefln("num versions: %s", numVersions);
+        writefln("max versions: %s", maxVersions);
+        writefln("num shapes: %s", numShapes);
+
         writefln("num def shape known: %s", numDefShapeKnown);
         writefln("num def shape dispatch: %s", numDefShapeDisp);
         writefln("num set prop: %s", numSetProp);
@@ -254,8 +254,8 @@ static ~this()
         writefln("num shape flips: %s", numShapeFlips);
         writefln("num heap allocs: %s", numHeapAllocs);
 
-        writefln("num call slow: %s", numCallSlow);
         writefln("num call fast: %s", numCallFast);
+        writefln("num call slow: %s", numCallSlow);
 
         alias Tuple!(string, "name", ulong, "cnt") PrimCallCnt;
         PrimCallCnt[] primCallCnts;

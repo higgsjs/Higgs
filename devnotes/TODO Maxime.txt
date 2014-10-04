@@ -1,6 +1,7 @@
 Conference deadlines:
 - ECOOP                 December
 - CC 2014               October
+- ESOP                  October (early Oct)
 - PLDI 2014             November
 - VEE 2014              ~November
 - CGO 2014              ~September
@@ -114,12 +115,7 @@ TODO: stub branches, pre-reserve space, put block idx in there
 ------------------------------------------------------------------------------
 
 ECOOP - Dec 21st
-
-CC Paper Deadline - October 17th
-- 20 pages
-- More illustrations: typed shapes, shape capture, code paths
-
-CC Abstract Deadline - October 10th
+- Jan Vitek is on organizing committee
 
 TODO: blog post, Higgs' Fancy New Object System
 - use knightmare image for featured image
@@ -140,11 +136,76 @@ FIXME: array access performance sucks
 TODO: can we get rid of ExtInfo?
 - Wait until new capture_shape is implemented
 
+TODO: higgs shebang mode?
+- first js file arg has shebang line
+
 TODO: complete basic wav encoding, on master
 
 TODO: look at why string-fasta is slow
 - Over 1M def shape host
 - Most calls unoptimized, why?
+
+FIXME: 3bits-in-byte, ecx seems to be dead after this
+./higgs --genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+; $44 = add_i32_ovf $17, $37 => call_merge(1E894), if_false(1E8AA)
+mov r10d, edx;                          4189D2
+add r10d, r9d;                          4501CA
+
+TODO: should $rt_newArr be inlined?
+
+TODO: Meet Marc
+- Shape profiling confirmed intuition, first shape in most cases, no exceptions
+- Fixed GC performance bug
+- Worked on new object access primitives
+  - Big refactoring
+  - Bug after bug after bug
+- Odd GC bug!?
+- New capture_shape, capture_tag
+  - More compact code
+  - No redundant object shape pointer written
+- Fixed various inefficiencies in machine code
+- Results on microbenchmarks:
+  - loop_global_incr 2x faster than old obj system
+  - 200m-getprop 9x faster than old obj system
+  - 10m-getglobal 2x faster than old obj system
+  - bitwise-and now faster, wasn't before refactoring
+  - recursive benchmark 1ms slower, but faster with longer exec time
+- Jan Vitek encourages us to submit to ECOOP in December
+
+FIXME: splay benchmark segfaults
+- can we make a regression test?
+./higgs splay.js
+- crashes in the setup phase
+- seems it may be a GC bug
+- GC possibly corrupting something during run
+- crashes at a stage where multiple GCs occur in sequence...
+- this may be a flaw in new_clos or something
+  - or a problem in setProp
+Can happen in strcat, with a double GC
+- A second GC happens on the same instruction to expand the heap
+- Work keeps happening for a bit, and then there is a segfault
+Also happens with alloc_object, again with a double GC
+Third occurrence again with heap expansion...
+- What's different on the second GC?
+- Why doesn't it happen on the first heap expansion?
+- Normally, all the junk is gone, result should be exactly the same
+- Flipping the heap twice... Back to the same from space
+
+TODO: traceEnabled flag in VM? $ir_trace_enable
+- if disabled, skips over printing
+- means we need a different trace print function
+
+TODO: optimize host setprop, getprop
+- doing shape lookup twice
+
+TODO: dust off CPU heatsink and fan
+- turn off machine, remove fan
+
+TODO: alloc global VM in 32-bit ptr space?
+- Ask how on D forums, maybe tweet link
+- Look into addressing modes required, mov encodings
+
+TODO: try segfault catch hack, global VM ptr
 
 #include <signal.h>
 #include <stdio.h>
@@ -174,63 +235,41 @@ int main(void)
     return 0;
 }
 
-FIXME: setProto not inlined?
+FIXME: 3bits-in-byte, why load into r12 and then move into ecx?
+./higgs --genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+- could hint at register to alloc?
+and_sec(1E774):
+; $4 = lsft_i32 $80, 1
+mov r12, [qword r14 + 640];             4D8BA680020000
+mov ecx, r12d;                          4489E1
+sal ecx, 1;                             D1E1
 
-TODO: Meet Marc
-- Shape profiling confirmed intuition, first shape in most cases, no exceptions
-- Fixed GC performance bug
-- Worked on new object access primitives
-  - Big refactoring
-  - Bug after bug after bug
-- New capture_shape, capture_tag
-  - More compact code
-  - No redundant object shape pointer written
-- loop_global_incr 2x faster
-- bitwise-and now as fast
-- other very short benchmarks not as fast
-  - suspect runtime init is an issue
-  - global obj shape changes, shape alloc
-- new strange GC bug...
 
-FIXME: splay benchmark segfaults
-- can we make a regression test?
-./higgs splay.js
-- crashes in the setup phase
-- seems it may be a GC bug
-- GC possibly corrupting something during run
-- crashes at a stage where multiple GCs occur in sequence...
-- this may be a flaw in new_clos or something
-  - or a problem in setProp
-Can happen in strcat, with a double GC
-- A second GC happens on the same instruction to expand the heap
-- Work keeps happening for a bit, and then there is a segfault
-Also happens with alloc_object, again with a double GC
-Third occurrence again with heap expansion...
-- What's different on the second GC?
-- Why doesn't it happen on the first heap expansion?
-- Normally, all the junk is gone, result should be exactly the same
-- Flipping the heap twice... Back to the same from space
 
-TODO: traceEnabled flag in VM? $ir_trace_enable
-- if disabled, skips over printing
-- means we need a different trace print function
 
-TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: look at code for 3bit benchmark, obvious inefficiencies?
+./higgs --genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+
+[DONE] FIXME: setProto not inlined
+
+[DONE] TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
 - Run with --nostdlib --perf_stats
 - bitwise-and as fast or faster, but not 3bits-byte, not controlflow-recursive
-- do we win on controlflow-recursive with bigger iteration count? ***
+- do we win on controlflow-recursive with bigger iteration count? yes
   - would suggest compilation interruptions make us lose
-  - global obj shape changes may also contribute!
-
-
-
-
-
-
-
-
-
-
+  - global obj shape changes may also contribute
 
 [DONE] FIXME: what's going on here?
 ; capture_shape $1, $2 => if_true(1E38E), if_join(1E390)
