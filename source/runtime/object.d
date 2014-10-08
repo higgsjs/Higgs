@@ -342,6 +342,10 @@ class ObjShape
         PropAttr attrs
     )
     {
+        // Ensure that this is not a temporary string
+        auto strData = cast(rawptr)propName.ptr;
+        assert (!inFromSpace(vm, strData) || !inToSpace(vm, strData));
+
         // Increment the number of shapes allocated
         stats.numShapes++;
 
@@ -372,6 +376,10 @@ class ObjShape
         ObjShape defShape
     )
     {
+        // Ensure that this is not a temporary string
+        auto strData = cast(rawptr)propName.ptr;
+        assert (!inFromSpace(vm, strData) || !inToSpace(vm, strData));
+
         // Check if a shape object already exists for this definition
         if (propName in propDefs)
         {
@@ -443,6 +451,7 @@ class ObjShape
 
     /**
     Get the shape defining a given property
+    Warning: the input string may be a temporary slice into the JS heap
     */
     ObjShape getDefShape(wstring propName)
     {
@@ -450,6 +459,9 @@ class ObjShape
         auto cached = propCache.get(propName, this);
         if (cached !is this)
            return cached;
+
+        // Copy the string to avoid storing references to the JS heap
+        propName = propName.dup;
 
         // For each shape going down the tree, excluding the root
         for (auto shape = this; shape.parent !is null; shape = shape.parent)

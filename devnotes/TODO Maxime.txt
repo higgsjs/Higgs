@@ -158,22 +158,42 @@ TODO: optimize host setprop, getprop
 - doing shape lookup twice
 
 Meeting:
-- benchmark times with and without shape spec, V8 times
+- TODO: benchmark times with and without shape spec, V8 times
 
 TODO: dust off CPU heatsink and fan
 - turn off machine, remove fan
 
-TODO: benchmarks, V8 times, add support in benchmark.py
-- Error/fail detection?
-  - remove bench from list, report fail at the end
+TODO: benchmark with and without shape spec
+
+TODO: add support in benchmark.py for V8 times
+- Also, add some kind of error detection, error code?
 - V8 won't output any stats
   - need to collect wall clock time
   - verify if V8 has exec time option
 - --v8_cmd, or --vm_cmd?
 
-FIXME: splay benchmark segfaults
-- can we make a regression test?
-./higgs splay.js
+TODO: numberToString gets called a lot, why?
+- Also, rename to numToStr?
+- Called by toString, seems inefficient, could be optimized?
+  - See if this reduces the count in benchmark.py
+- Also called in Number.toString
+  - Only this needs the full implementation
+
+FIXME: function x() { } ['x', 'y'];
+- Fix on master, 3rd workspace, take a break
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: splay benchmark segfaults
 - crashes in the setup phase
 - seems it may be a GC bug
 - GC possibly corrupting something during run
@@ -189,8 +209,9 @@ Third occurrence again with heap expansion...
 - Why doesn't it happen on the first heap expansion?
 - Normally, all the junk is gone, result should be exactly the same
 - Flipping the heap twice... Back to the same from space
+- Leaking JS strings into propCache. Strings get corrupted.
 
-TODO: try storing curInstr pointer in main
+[DONE] TODO: to debug splay, try storing curInstr pointer in main
 ./higgs --nostdlib splay-fail.js
 instrPtr: $48 = obj_get_prop $7, "key" => call_merge(21425), if_join(2142F)
 curFun: SplayTree_prototype_splay_(1E7FA)
@@ -218,21 +239,9 @@ Commenting out fast setProp path seems to prevent this issue...
 propCache is corrupted before the last double GC...
 There seems to be a corrupted propCache right after shrinkHeap
 
-TODO:Should write a verifyShapes function... run it before and after the GC
-  - Traverse shapes recursively from the empty shape
-- Can also run it at various stages during GC
-
-FIXME: function x() { } ['x', 'y'];
-- Fix on master, 3rd workspace, take a break
-
-
-
-
-
-
-
-
-
+[DONE] TODO: add assert(s) in prop code to look for temp strings
+- Never create a shape from a temp string
+- Strings with zeroes in prop cache
 
 [DONE] TODO: try segfault catch hack, global VM ptr
 https://github.com/D-Programming-Language/druntime/blob/master/src/core/sys/posix/signal.d

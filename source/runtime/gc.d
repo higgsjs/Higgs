@@ -260,8 +260,8 @@ void gcCollect(VM vm, size_t heapSize = 0)
     */
 
     writeln("entering gcCollect");
-    writeln("curInstr: ", vm.curInstr);
-    writeln("cur fun: ", vm.curInstr.block.fun.getName);
+    //writeln("curInstr: ", vm.curInstr);
+    //writeln("cur fun: ", vm.curInstr.block.fun.getName);
 
     // Start recording garbage collection time
     stats.gcTimeStart();
@@ -276,7 +276,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // If the to-space heap size doesn't match the VM heap size
     if (vm.toLimit - vm.toStart != vm.heapSize)
     {
-        writeln("resizing to-space");
+        writeln("resizing to-space heap");
 
         // Free the old to-space heap block
         GC.free(vm.toStart);
@@ -289,6 +289,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Zero-out the to-space
     // Note: the runtime relies on this behavior to
     // avoid initializing all object and array fields
+    assert (vm.toLimit - vm.toStart is vm.heapSize);
     memset(vm.toStart, 0, vm.heapSize);
 
     // Initialize the to-space allocation pointer
@@ -380,8 +381,6 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Store a pointer to the old string table
     auto oldStrTbl = vm.strTbl;
     auto strTblCap = strtbl_get_cap(oldStrTbl);
-
-    writeln("strTblCap=", strTblCap);
 
     // Allocate a new string table
     vm.strTbl = strtbl_alloc(vm, strTblCap);

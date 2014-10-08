@@ -3324,37 +3324,6 @@ void gen_obj_init_shape(
     st.setShape(cast(IRDstValue)instr.getArg(0), vm.emptyShape);
 }
 
-extern (C) void verifyObj(IRInstr instr)
-{
-    auto vm = instr.block.fun.vm;
-
-    auto objPair = vm.getArgVal(instr, 0);
-    //auto strPtr = vm.getArgStr(instr, 1);
-    //auto valPair = vm.getArgVal(instr, 2);
-    //auto propStr = extractWStr(strPtr);
-
-    //writeln("objPtr=", objPair.word.ptrVal);
-
-    auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
-    assert (objShape !is null);
-
-    foreach (key, value; objShape.propCache)
-    {
-        //writeln("\"", key, "\"", key.length);
-
-        if (key.length is 0 || key[0] is '\0')
-        {
-            writeln("CORRUPT KEY IN PROPCACHE");
-            writeln("key=", key);
-            writeln("key.length=", key.length);
-            writeln("propCache.length=", objShape.propCache.length);
-            writeln("objShape.propName=", objShape.propName);
-            writeln("objShape.slotIdx=", objShape.slotIdx);
-            std.c.stdlib.exit(-1);
-        }
-    }
-}
-
 /// Sets the value of a property
 /// Inputs: obj, propName, val
 void gen_obj_set_prop(
@@ -3674,6 +3643,7 @@ void gen_obj_get_prop(
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
 
+        // Get a temporary D string for the property name
         auto propStr = tempWStr(strPtr);
 
         // Get the shape of the object
@@ -3783,23 +3753,6 @@ void gen_obj_get_prop(
             }
         );
     }
-
-    // FIXME
-    as.printStr("get_prop pre-verify");
-    st.spillLiveBefore(as, instr);
-    as.saveJITRegs();
-    as.ptr(cargRegs[0], instr);
-    as.ptr(scrRegs[0], &verifyObj);
-    as.call(scrRegs[0]);
-    as.loadJITRegs();
-
-
-
-    return gen_slow_path(ver, st, instr, as);
-
-
-
-
 
     // Increment the number of get prop operations
     as.incStatCnt(&stats.numGetProp, scrRegs[1]);
@@ -4133,10 +4086,10 @@ void gen_obj_prop_shape(
         refptr strPtr
     )
     {
-        // Get a temporary slice on the JS string characters
-        auto propStr = tempWStr(strPtr);
-
         auto objShape = cast(ObjShape)obj_get_shape(objPtr);
+
+        // Get a temporary D string for the property name
+        auto propStr = tempWStr(strPtr);
 
         // Lookup the shape defining this property
         auto defShape = objShape.getDefShape(propStr);
