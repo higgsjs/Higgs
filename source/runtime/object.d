@@ -270,9 +270,6 @@ struct ValType
         }
         else
         {
-            //if (this.tagKnown && this.tag is Tag.CLOSURE)
-            //   writeln("closure in propType");
-
             // If this is a closure with a known shape
             if (this.tagKnown && this.tag is Tag.CLOSURE && this.shapeKnown)
             {
@@ -284,8 +281,6 @@ struct ValType
                 assert (fptrShape.type.fptrKnown);
                 that.fptr = fptrShape.type.fptr;
                 that.fptrKnown = true;
-
-                //writeln(cast(void*)that.fptr);
             }
         }
 
@@ -411,42 +406,39 @@ class ObjShape
         }
 
         // This is redefinition of an existing property
-        else
-        {
-            // Assemble the list of properties added
-            // after the original definition shape
-            ObjShape[] shapes;
-            for (auto shape = this; shape !is defShape; shape = shape.parent)
-                shapes ~= shape;
+        // Assemble the list of properties added
+        // after the original definition shape
+        ObjShape[] shapes;
+        for (auto shape = this; shape !is defShape; shape = shape.parent)
+            shapes ~= shape;
 
-            // Define the property with the same parent
-            // as the original shape
-            auto curParent = defShape.parent.defProp(
+        // Define the property with the same parent
+        // as the original shape
+        auto curParent = defShape.parent.defProp(
+            vm,
+            propName,
+            type,
+            attrs,
+            null
+        );
+
+        // Redefine all the intermediate properties
+        foreach_reverse (shape; shapes)
+        {
+            curParent = curParent.defProp(
                 vm,
-                propName,
-                type,
-                attrs,
+                shape.propName,
+                shape.type,
+                shape.attrs,
                 null
             );
-
-            // Redefine all the intermediate properties
-            foreach_reverse (shape; shapes)
-            {
-                curParent = curParent.defProp(
-                    vm,
-                    shape.propName,
-                    shape.type,
-                    shape.attrs,
-                    null
-                );
-            }
-
-            // Add the last added shape to the property definitions
-            propDefs[propName][type] ~= curParent;
-            assert (propDefs[propName][type].length > 0);
-
-            return curParent;
         }
+
+        // Add the last added shape to the property definitions
+        propDefs[propName][type] ~= curParent;
+        assert (propDefs[propName][type].length > 0);
+
+        return curParent;
     }
 
     /**

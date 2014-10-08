@@ -35,7 +35,10 @@
 *
 *****************************************************************************/
 
+import core.sys.posix.signal;
+import core.stdc.signal;
 import core.memory;
+import std.c.string;
 import std.c.stdlib;
 import std.stdio;
 import std.algorithm;
@@ -48,6 +51,12 @@ import util.os;
 import repl;
 import options;
 
+/// Global VM instance
+VM vm;
+
+/**
+Program entry point
+*/
 void main(string[] args)
 {
     // Reserve memory for the D GC, improves allocation performance
@@ -75,8 +84,16 @@ void main(string[] args)
     // Get the names of files to execute
     auto fileNames = hostArgs[1..$];
 
+    // Register the segmentation fault handler
+    sigaction_t sa;
+    memset(&sa, 0, sa.sizeof);
+    sigemptyset(&sa.sa_mask);
+    sa.sa_sigaction = &segfaultHandler;
+    sa.sa_flags = SA_SIGINFO;
+    sigaction(SIGSEGV, &sa, null);
+
     // Create VM instance
-    auto vm = new VM(!opts.noruntime, !opts.nostdlib);
+    vm = new VM(!opts.noruntime, !opts.nostdlib);
 
     // Construct the JS arguments array
     if (!opts.noruntime)
@@ -132,5 +149,47 @@ void main(string[] args)
         // Start the REPL
         repl.repl(vm);
     }
+}
+
+import ir.ir;
+IRInstr instrPtr = null;
+
+/**
+Segmentation fault signal handler (SIGSEGV)
+*/
+extern (C) void segfaultHandler(int signal, siginfo_t* si, void* arg)
+{
+    import jit.codeblock;
+
+    // si->si_addr is the instruction pointer
+    auto ip = cast(CodePtr)si.si_addr;
+
+    writeln();
+    writeln("Caught segmentation fault");
+    writeln("IP=", ip);
+
+    auto cb = vm.execHeap;
+    auto startAddr = cb.getAddress(0);
+    auto endAddr = startAddr + cb.getWritePos();
+
+    if (ip >= startAddr && ip < endAddr)
+    {
+        auto offset = ip - startAddr;
+        writeln("IP in jitted code, offset=", offset);
+    }
+
+    if (vm.curInstr !is null)
+    {
+        writeln("vm.curInstr: ", vm.curInstr);
+    }
+
+    if (instrPtr !is null)
+    {
+        writeln("instrPtr: ", instrPtr);
+        writeln("curFun: ", instrPtr.block.fun.getName);
+    }
+
+    writeln("exiting");
+    exit(139);
 }
 

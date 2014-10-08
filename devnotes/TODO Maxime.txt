@@ -130,47 +130,46 @@ TODO: heap alloc, could break out fallback code!
 - Very common in dynamic languages that some fallback is needed
 - Don't want to always generate fallback code
 
-FIXME: array access performance sucks
-- probably want hidden _arrtbl__ property
-
-TODO: can we get rid of ExtInfo?
-- Wait until new capture_shape is implemented
-
 TODO: higgs shebang mode?
 - first js file arg has shebang line
 
 TODO: complete basic wav encoding, on master
 
+TODO: alloc global VM in 32-bit ptr space?
+- Ask how on D forums, maybe tweet link
+- Look into addressing modes required, mov encodings
+
+TODO: alloc code heap in 32-bit space?
+- Would this benefit us? where are 64-bit code ptrs?
+
+TODO: can we get rid of ExtInfo?
+- Wait until new capture_shape is implemented
+
 TODO: look at why string-fasta is slow
 - Over 1M def shape host
 - Most calls unoptimized, why?
 
-FIXME: 3bits-in-byte, ecx seems to be dead after this
-./higgs --genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
-; $44 = add_i32_ovf $17, $37 => call_merge(1E894), if_false(1E8AA)
-mov r10d, edx;                          4189D2
-add r10d, r9d;                          4501CA
+FIXME: array access performance sucks
+- probably want hidden _arrtbl__ property
 
 TODO: should $rt_newArr be inlined?
 
-TODO: Meet Marc
-- Shape profiling confirmed intuition, first shape in most cases, no exceptions
-- Fixed GC performance bug
-- Worked on new object access primitives
-  - Big refactoring
-  - Bug after bug after bug
-- Odd GC bug!?
-- New capture_shape, capture_tag
-  - More compact code
-  - No redundant object shape pointer written
-- Fixed various inefficiencies in machine code
-- Results on microbenchmarks:
-  - loop_global_incr 2x faster than old obj system
-  - 200m-getprop 9x faster than old obj system
-  - 10m-getglobal 2x faster than old obj system
-  - bitwise-and now faster, wasn't before refactoring
-  - recursive benchmark 1ms slower, but faster with longer exec time
-- Jan Vitek encourages us to submit to ECOOP in December
+TODO: optimize host setprop, getprop
+- doing shape lookup twice
+
+Meeting:
+- benchmark times with and without shape spec, V8 times
+
+TODO: dust off CPU heatsink and fan
+- turn off machine, remove fan
+
+TODO: benchmarks, V8 times, add support in benchmark.py
+- Error/fail detection?
+  - remove bench from list, report fail at the end
+- V8 won't output any stats
+  - need to collect wall clock time
+  - verify if V8 has exec time option
+- --v8_cmd, or --vm_cmd?
 
 FIXME: splay benchmark segfaults
 - can we make a regression test?
@@ -191,58 +190,40 @@ Third occurrence again with heap expansion...
 - Normally, all the junk is gone, result should be exactly the same
 - Flipping the heap twice... Back to the same from space
 
-TODO: traceEnabled flag in VM? $ir_trace_enable
-- if disabled, skips over printing
-- means we need a different trace print function
+TODO: try storing curInstr pointer in main
+./higgs --nostdlib splay-fail.js
+instrPtr: $48 = obj_get_prop $7, "key" => call_merge(21425), if_join(2142F)
+curFun: SplayTree_prototype_splay_(1E7FA)
+- This is a host getProp
+- Segfault before leaving host getProp
+- Segfault in getDefShape, but shape appears valid
+- Cache lookup in getDefShape fails
+- TODO: verify that obj shape is referenced
+  - obj shape pointers valid
+  - all obj shapes are referenced all the way to the root
+- At GC expansion, the D GC probably runs...
+  - Either the shape is collected or something writes over it, corrupts it
+- No shape destructor called, pointers valid according to D GC, only propCache corrupted
+  - Seemingly, the shape got corrupted, written over somehow
+We could scan the heap pre and post GC, query the shapes for the "key" property
+- Assume something in the GC heap expansion breaks a shape
+- The shape is not inside the new heap range
+Many shape flips in this program
+- Could verify object shapes after flip ***
+Commenting out fast setProp path seems to prevent this issue...
+- Try enabling all of setProp except for when a shape flip is needed?
+  - Seems to eliminate the problem...
+- Somehow precompiled shape flips are to blame?
+- TODO: try verifying obj shape after fast getProp, do host call
+propCache is corrupted before the last double GC...
+There seems to be a corrupted propCache right after shrinkHeap
 
-TODO: optimize host setprop, getprop
-- doing shape lookup twice
+TODO:Should write a verifyShapes function... run it before and after the GC
+  - Traverse shapes recursively from the empty shape
+- Can also run it at various stages during GC
 
-TODO: dust off CPU heatsink and fan
-- turn off machine, remove fan
-
-TODO: alloc global VM in 32-bit ptr space?
-- Ask how on D forums, maybe tweet link
-- Look into addressing modes required, mov encodings
-
-TODO: try segfault catch hack, global VM ptr
-
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-void segfault_sigaction(int signal, siginfo_t *si, void *arg)
-{
-    printf("Caught segfault at address %p\n", si->si_addr);
-    exit(0);
-}
-// si->si_addr is the PC
-int main(void)
-{
-    int *foo = NULL;
-    struct sigaction sa;
-
-    memset(&sa, 0, sizeof(sigaction));
-    sigemptyset(&sa.sa_mask);
-    sa.sa_sigaction = segfault_sigaction;
-    sa.sa_flags   = SA_SIGINFO;
-
-    sigaction(SIGSEGV, &sa, NULL);
-
-    /* Cause a seg fault */
-    *foo = 1;
-
-    return 0;
-}
-
-FIXME: 3bits-in-byte, why load into r12 and then move into ecx?
-./higgs --genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
-- could hint at register to alloc?
-and_sec(1E774):
-; $4 = lsft_i32 $80, 1
-mov r12, [qword r14 + 640];             4D8BA680020000
-mov ecx, r12d;                          4489E1
-sal ecx, 1;                             D1E1
+FIXME: function x() { } ['x', 'y'];
+- Fix on master, 3rd workspace, take a break
 
 
 
@@ -253,14 +234,36 @@ sal ecx, 1;                             D1E1
 
 
 
+[DONE] TODO: try segfault catch hack, global VM ptr
+https://github.com/D-Programming-Language/druntime/blob/master/src/core/sys/posix/signal.d
+- The IP is not within the exec heap
 
-
-
-
-
+[DONE] TODO: Meet Marc
+- Shape profiling confirmed intuition, first shape in most cases, no exceptions
+- Fixed GC performance bug
+- Worked on new object access primitives
+  - Big refactoring
+  - Bug after bug after bug
+- ir_break
+  compiler makes an observation
+  communication between executed code and compiler
+- New capture_shape, capture_tag
+  - More compact code
+  - No redundant object shape pointer written
+- Fixed a few inefficiencies in machine code
+- One odd GC bug remains
+- Results on microbenchmarks:
+  - loop_global_incr 2x faster than old obj system
+  - 200m-getprop 9x faster than old obj system
+  - 10m-getglobal 2x faster than old obj system
+  - bitwise-and now faster, wasn't before refactoring
+  - recursive benchmark 1ms slower, but faster with longer exec time
+- Jan Vitek encourages us to submit to ECOOP in December
+  - Also invites us to come present at his university in Boston
 
 [DONE] TODO: look at code for 3bit benchmark, obvious inefficiencies?
 ./higgs --genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+- not much
 
 [DONE] FIXME: setProto not inlined
 

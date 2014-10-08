@@ -276,7 +276,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // If the to-space heap size doesn't match the VM heap size
     if (vm.toLimit - vm.toStart != vm.heapSize)
     {
-        //writeln("resizing to-space");
+        writeln("resizing to-space");
 
         // Free the old to-space heap block
         GC.free(vm.toStart);
@@ -478,12 +478,6 @@ refptr gcForward(VM vm, refptr ptr)
         header == LAYOUT_ARR ||
         header == LAYOUT_CLOS)
     {
-        /*
-        auto shape = cast(ObjShape)obj_get_shape(ptr);
-        assert (shape !is null);
-        visitShape(vm, shape);
-        */
-
         // If the next pointer points to an extension table
         if (vm.inFromSpace(nextPtr))
         {
@@ -913,24 +907,4 @@ void collectFun(VM vm, IRFunction fun)
     // Destroy the function
     destroy(fun);
 }
-
-/**
-Visit an object shape
-*/
-/*
-void visitShape(VM vm, ObjShape shape)
-{
-    // Add this shape and its parents to the live set
-    for (auto curShape = shape; curShape !is null; curShape = curShape.parent)
-    {
-        auto ptr = cast(void*)curShape;
-
-        if (ptr in vm.liveShapes)
-            break;
-
-        // Add the shape to the live set
-        vm.liveShapes[ptr] = shape;
-    }
-}
-*/
 

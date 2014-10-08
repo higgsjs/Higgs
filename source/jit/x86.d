@@ -1790,7 +1790,7 @@ void ret(CodeBlock cb)
 Encode a single-operand shift instruction
 */
 void writeShift(
-    wstring mnem, 
+    wstring mnem,
     ubyte opMemOnePref,
     ubyte opMemClPref,
     ubyte opMemImmPref,
@@ -1808,7 +1808,7 @@ void writeShift(
     else if (opnd0.isMem)
         opndSize = opnd0.mem.size;
     else
-        assert (false, "invalid first operand");   
+        assert (false, "shift: invalid first operand: " ~ opnd0.toString);
 
     assert (opndSize is 16 || opndSize is 32 || opndSize is 64);
     auto szPref = opndSize is 16;

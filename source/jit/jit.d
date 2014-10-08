@@ -2334,6 +2334,13 @@ void compile(VM vm, IRInstr curInstr)
                 if (opts.trace_instrs)
                     as.printStr(instr.toString());
 
+                /*
+                import main;
+                as.ptr(scrRegs[0], &instrPtr);
+                as.ptr(scrRegs[1], instr);
+                as.mov(X86Opnd(64, scrRegs[0]), scrRegs[1].opnd);
+                */
+
                 auto opcode = instr.opcode;
                 assert (opcode !is null);
 
