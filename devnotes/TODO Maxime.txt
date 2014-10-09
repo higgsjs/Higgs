@@ -179,19 +179,25 @@ TODO: numberToString gets called a lot, why?
 - Also called in Number.toString
   - Only this needs the full implementation
 
-FIXME: function x() { } ['x', 'y'];
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: parsing error, on two lines
+function x() {} [0, 1]
 - Fix on master, 3rd workspace, take a break
-
-
-
-
-
-
-
-
-
-
-
+- The global function x() is not defined
+- It does parse as if an indexing expression, with a comma expression inside!
+- This is not a newline problem. It should work even on one line
+- When parsing an expr stmt, we should behave differently if we have a function declaration.
+- Peek for function.
+- V8 rejects global functions with no name
 
 [DONE] FIXME: splay benchmark segfaults
 - crashes in the setup phase

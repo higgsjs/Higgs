@@ -760,15 +760,16 @@ class BinOpExpr : ASTExpr
 
         string output;
 
-        if ((lExpr.getPrec() <  op.prec) ||
-            (lExpr.getPrec() == op.prec && op.nonAssoc && op.assoc == 'r'))
+        if ((lExpr.getPrec() < op.prec) ||
+            (lExpr.getPrec() == op.prec && op.nonAssoc && op.assoc == 'r') ||
+            (cast(FunExpr)lExpr))
             output ~= "(" ~ lStr ~ ")";
         else
             output ~= lStr;
 
         output ~= opStr;
 
-        if ((rExpr.getPrec() <  op.prec) ||
+        if ((rExpr.getPrec() < op.prec) ||
             (rExpr.getPrec() == op.prec && op.nonAssoc && op.assoc == 'l'))
             output ~= "(" ~ rStr ~ ")";
         else
@@ -863,7 +864,10 @@ class CallExpr : ASTExpr
 
     override string toString()
     {
-        return format("%s(%(%s, %))", base, args);
+        if (cast(FunExpr)base)
+            return format("(%s)(%(%s, %))", base, args);
+        else
+            return format("%s(%(%s, %))", base, args);
     }
 }
 

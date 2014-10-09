@@ -482,7 +482,7 @@ ASTStmt parseStmt(TokenStream input)
                 input.read(); 
                 initExpr = parseExpr(input, COMMA_PREC+1);
             }
-    
+
             // If this is an assignment of an unnamed function to 
             // a variable, assign the function a name
             if (auto funExpr = cast(FunExpr)initExpr)
@@ -501,13 +501,13 @@ ASTStmt parseStmt(TokenStream input)
     // Function declaration statement
     else if (input.peekKw("function"))
     {
-        auto funStmt = new ExprStmt(parseExpr(input), pos);
+        auto funExpr = parseAtom(input);
 
         // Weed out trailing semicolons
         if (input.peekSep(";"))
             input.read();
 
-        return funStmt;
+        return new ExprStmt(funExpr, pos);
     }
 
     // If this is a labelled statement
@@ -776,7 +776,7 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
                 op = eqOp;
             }
 
-            // If this is an assignment of a function to something, 
+            // If this is an assignment of a function to something,
             // try to assign the function a name
             if (auto funExpr = cast(FunExpr)rhsExpr)
             {
