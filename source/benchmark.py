@@ -12,13 +12,13 @@ from optparse import OptionParser
 # Configuration
 MAKE_CMD = 'make release'
 DEF_NUM_RUNS = 1
-DEF_HIGGS_CMD = './higgs --stats --maxvers=20'
+DEF_VM_CMD = './higgs --stats --maxvers=20'
 DEF_CSV_FILE = ''
 
 # Parse the command-line options
 parser = OptionParser()
 parser.add_option("--csv_file", default=DEF_CSV_FILE)
-parser.add_option("--higgs_cmd", default=DEF_HIGGS_CMD)
+parser.add_option("--vm_cmd", default=DEF_VM_CMD)
 parser.add_option("--num_runs", type="int", default=DEF_NUM_RUNS)
 (options, args) = parser.parse_args()
 
@@ -65,17 +65,18 @@ BENCHMARKS = {
 # Per-benchmark results
 benchResults = {}
 
-# Compile Higgs in release mode
-call(MAKE_CMD, shell=True)
+# If benchmarking Higgs, compile Higgs in release mode
+if "higgs" in options.vm_cmd:
+    call(MAKE_CMD, shell=True)
 
 # Captured value pattern
 valPattern = re.compile('^([^:]+):([^:]+)$')
 
-print "higgs cmd:", options.higgs_cmd
-print "num runs :", options.num_runs
+print "vm cmd:", options.vm_cmd
+print "num runs:", options.num_runs
 print ''
 
-startTime = time.time()
+totalTimeStart = time.time()
 
 # For each benchmark
 benchNo = 1
@@ -88,16 +89,35 @@ for benchmark in BENCHMARKS:
     # Dictionary of string keys to lists of gathered values
     valLists = {}
 
+    # Add an entry for the wall clock time
+    valLists['wall time (ms)'] = []
+
     # For each run
     for runNo in range(1, options.num_runs + 1):
 
         print 'Run #%d / %d' % (runNo, options.num_runs)
 
-        # Run the benchmark and capture its output
-        pipe = Popen(options.higgs_cmd + ' ' + benchFiles, shell=True, stdout=PIPE).stdout
-        output = pipe.readlines()
+        wallTimeStart = time.time()
 
-        #print output
+        # Run the benchmark and capture its output
+        pipe = Popen(options.vm_cmd + ' ' + benchFiles, shell=True, stdout=PIPE)
+
+        # Wait until the benchmark terminates
+        pipe.wait()
+
+        wallTimeEnd = time.time()
+
+        # Verify the return code
+        ret = pipe.returncode
+        if ret != 0:
+            raise Exception('invalid return code: ' + str(ret))
+
+        # Add an value for the wall clock time
+        wallTime = int(round(1000 * (wallTimeEnd - wallTimeStart)))
+        valLists['wall time (ms)'] = valLists['wall time (ms)'] + [wallTime]
+
+        # Read the output
+        output = pipe.stdout.readlines()
 
         # For each line of output
         for line in output:
@@ -106,9 +126,8 @@ for benchmark in BENCHMARKS:
             if line.lower().find("error") != -1 or line.lower().find("exception") != -1:
                 raise Exception(line)
 
-            match = valPattern.match(line)
-
             # If the line doesn't match, continue
+            match = valPattern.match(line)
             if match == None:
                 continue
 
@@ -119,6 +138,8 @@ for benchmark in BENCHMARKS:
             except:
                 continue
 
+            assert (key != 'wall time (ms)')
+
             # Add the value to the list for this key
             if not (key in valLists):
                 valLists[key] = []
@@ -127,7 +148,7 @@ for benchmark in BENCHMARKS:
     # Store the values for this benchmark
     benchResults[benchmark] = valLists
 
-endTime = time.time()
+totalTimeEnd = time.time()
 
 # Computes the geometric mean of a list of values
 def geoMean(numList):
@@ -158,7 +179,10 @@ print 'exec times'
 print '----------'
 for benchmark in sorted(benchMeans.keys()):
     valMeans = benchMeans[benchmark]
-    print benchmark + ":", valMeans['exec time (ms)']
+    if 'exec time (ms)' in valMeans:
+        print benchmark + ":", valMeans['exec time (ms)']
+    else:
+        print benchmark + " (wtc):", valMeans['wall time (ms)']
 
 # Output the mean of all stats gathered
 print ''
@@ -200,5 +224,5 @@ if options.csv_file != '':
         writer.writerow([benchmark] + values)
 
 print ''
-print 'total benchmarking time: %.1f s' % (endTime - startTime)
+print 'total benchmarking time: %.1f s' % (totalTimeEnd - totalTimeStart)
 

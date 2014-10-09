@@ -158,20 +158,44 @@ TODO: optimize host setprop, getprop
 - doing shape lookup twice
 
 Meeting:
-- TODO: benchmark times with and without shape spec, V8 times
+- Fixed hard GC bug
+  - JS strings leaking, getting corrupted
+- Fixed parser bug signaled by new contributor
+- With new shape system, code size about 25% smaller than old object system
+  - Even though more versions
+- Added wall clock time to benchmarking script, to support V8
+- Higgs vs V8 (***caveat, including V8 compile time***)
+  - Higgs faster on several benchmarks, smaller/faster ones especially (11/32)
+  - Many benchmarks in similar order of magnitude
+  - Higgs has pathological cases on several string benchmarks
+  - Faster on recursive benchmark, this has short compile time
+    - If exec time is made longer, then 2x slower
+  - faster on binary trees, but again short benchmark
+  - In general: faring not too bad, comparable, except on string benchmarks
+    - But only comparable if we exclude Higgs compile time
+- With optimizing JIT, V8 has inlining of user functions, Higgs doesn't
+- Low hanging fruits: probably many inefficiencies in runtime, generated code
+  - I like to examine specific benchmarks in case studies
+  - Focus on the ones where we do poorly, or where I think we could do better
 
+TODO: total code size per instr mnem
+- can hack this quickly
+
+TODO: try forcing method shape capture in setPropField?
+- still 1/4 of calls slow
+- who are the worst offenders? ***
+
+TODO: benchmark with and without shape spec
+- use --perf_stats
 TODO: dust off CPU heatsink and fan
 - turn off machine, remove fan
 
-TODO: benchmark with and without shape spec
-
-TODO: add support in benchmark.py for V8 times
-- Also, add some kind of error detection, error code?
-- V8 won't output any stats
-  - need to collect wall clock time
-- --v8_cmd, or --vm_cmd?
-
-TODO: verify if V8 has exec time option
+TODO: V8 slightly faster on deltablue
+TODO: V8 slightly faster on cordic
+TODO: about 3x slower than V8 on V8-raytrace
+TODO: about 3x faster than V8 on 3d-raytrace
+- What's our biggest bottleneck on this benchmark?
+- Similarities between the two raytrace benchmarks, arrays?
 
 
 
@@ -180,8 +204,20 @@ TODO: verify if V8 has exec time option
 
 
 
+[DONE] TODO: test if we're faster than V8 on good ole fibonacci
+- not with a large count
 
+[DONE] TODO: test V8 benchmarking
+./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8" --num_runs=5
+./benchmark.py --vm_cmd="./higgs --perf_stats" --num_runs=5
+- runs very very fast, even with 5 runs!
 
+[DONE] TODO: benchmark.py, measure wall clock time
+
+[DONE] TODO: return code error detection in benchmark.py
+
+[DONE] TODO: verify if V8 has exec time option
+- doesn't seem like it
 
 [DONE] TODO: numberToString gets called a lot, why?
 - Also, rename to numToStr?
