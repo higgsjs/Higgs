@@ -169,25 +169,26 @@ TODO: add support in benchmark.py for V8 times
 - Also, add some kind of error detection, error code?
 - V8 won't output any stats
   - need to collect wall clock time
-  - verify if V8 has exec time option
 - --v8_cmd, or --vm_cmd?
 
-TODO: numberToString gets called a lot, why?
+TODO: verify if V8 has exec time option
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: numberToString gets called a lot, why?
 - Also, rename to numToStr?
 - Called by toString, seems inefficient, could be optimized?
   - See if this reduces the count in benchmark.py
 - Also called in Number.toString
   - Only this needs the full implementation
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: parsing error, on two lines
 function x() {} [0, 1]

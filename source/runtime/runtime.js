@@ -431,9 +431,14 @@ function $rt_toString(v)
         return $rt_toString(str);
     }
 
-    if ($ir_is_int32(v) || $ir_is_float64(v))
+    if ($ir_is_int32(v))
     {
-        return $rt_numberToString(v, 10);
+        return $rt_intToStr(v, 10);
+    }
+
+    if ($ir_is_float64(v))
+    {
+        return $rt_numToStr(v, 10);
     }
 
     if ($ir_is_string(v))
@@ -464,7 +469,7 @@ function $rt_toString(v)
 /**
 Convert number to string
 */
-function $rt_numberToString(v, radix)
+function $rt_numToStr(v, radix)
 {
     if (!$ir_is_int32(radix))
     {
