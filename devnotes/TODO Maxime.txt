@@ -149,13 +149,7 @@ TODO: look at why string-fasta is slow
 - Over 1M def shape host
 - Most calls unoptimized, why?
 
-FIXME: array access performance sucks
-- probably want hidden _arrtbl__ property
-
 TODO: should $rt_newArr be inlined?
-
-TODO: optimize host setprop, getprop
-- doing shape lookup twice
 
 Meeting:
 - Fixed hard GC bug
@@ -177,6 +171,17 @@ Meeting:
 - Low hanging fruits: probably many inefficiencies in runtime, generated code
   - I like to examine specific benchmarks in case studies
   - Focus on the ones where we do poorly, or where I think we could do better
+- Found many small inefficiencies in Fibonacci machine code
+
+TODO: benchmark with and without shape spec
+./benchmark.py --vm_cmd="./higgs --shape_notagspec --shape_nofptrspec --perf_stats" --num_runs=10
+./benchmark.py --vm_cmd="./higgs --perf_stats" --num_runs=10
+- use --perf_stats
+- must dust off CPU
+- use 10 runs overnight
+
+TODO: take a break, dust off CPU heatsink and fan
+- turn off machine, remove fan
 
 TODO: total code size per instr mnem
 - can hack this quickly
@@ -184,11 +189,7 @@ TODO: total code size per instr mnem
 TODO: try forcing method shape capture in setPropField?
 - still 1/4 of calls slow
 - who are the worst offenders? ***
-
-TODO: benchmark with and without shape spec
-- use --perf_stats
-TODO: dust off CPU heatsink and fan
-- turn off machine, remove fan
+- impact on code size, exec time?
 
 TODO: V8 slightly faster on deltablue
 TODO: V8 slightly faster on cordic
@@ -197,12 +198,49 @@ TODO: about 3x faster than V8 on 3d-raytrace
 - What's our biggest bottleneck on this benchmark?
 - Similarities between the two raytrace benchmarks, arrays?
 
+TODO: optimize host setprop, getprop
+- doing shape lookup twice
+- setProp, could avoid string copy if prop exists?
+
+FIXME: array access performance sucks
+- probably want hidden _arrtbl__ property
+- look at code size before and after, nsieve benchmark
+
+TODO: avoid reading function pointer in getProp when possible
+- if fun doesn't use closVal, only one use which is a call
+
+FIXME: fib, two useless moves in return?
+; ret $24
+mov rcx, r10;                           4C89D1
+mov dl, 1;                              B201
+mov eax, [dword r14 + 272];             418B8610010000
+sub eax, 1;                             83E801
+xor ebx, ebx;                           31DB
+cmp eax, 0;                             83F800
+cmovl eax, ebx;                         0F4CC3
+add eax, 36;                            83C024
+mov rbx, [qword r14 + 248];             498B9EF8000000
+add r13, rax;                           4901C5
+shl rax, 3;                             48C1E003
+add r14, rax;                           4901C6
+jmp rbx;                                FFE3
+- it's the return value!
+- could try to bias ret values towards retWordReg
+- before, avg code size (bytes): 354334
 
 
 
 
 
 
+
+
+
+[DONE] FIXME: call, use the global value instead of get_global_obj before call
+- look at fib code size
+./higgs --nostdlib --perf_stats benchmarks/micro/fib42.js
+code size (bytes): 33513
+after: 33490, slightly smaller, tiny bit faster
 
 [DONE] TODO: test if we're faster than V8 on good ole fibonacci
 - not with a large count

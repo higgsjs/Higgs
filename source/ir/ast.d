@@ -1675,7 +1675,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             }
             else
             {
-                objVal = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
+                objVal = ctx.fun.globalVal;
 
                 if (auto identExpr = cast(IdentExpr)unExpr.expr)
                     propVal = ctx.strVal(identExpr.name);
@@ -1904,7 +1904,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             closVal = exprToIR(ctx, baseExpr);
 
             // The this value is the global object
-            thisVal = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
+            thisVal = ctx.fun.globalVal;
         }
 
         // Add the call instruction
@@ -2201,12 +2201,11 @@ IRValue refToIR(
         {
             // Use getProp to get the global value
             // This won't throw an exception if the global doesn't exist
-            auto globInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
             auto propStr = ctx.strVal(identExpr.name);
-            return  genRtCall(
+            return genRtCall(
                 ctx,
                 "getProp",
-                [globInstr, propStr],
+                [ctx.fun.globalVal, propStr],
                 identExpr.pos
             );
         }
