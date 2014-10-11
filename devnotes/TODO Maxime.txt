@@ -172,6 +172,7 @@ Meeting:
   - I like to examine specific benchmarks in case studies
   - Focus on the ones where we do poorly, or where I think we could do better
 - Found many small inefficiencies in Fibonacci machine code
+  - Fixed a few
 
 TODO: benchmark with and without shape spec
 ./benchmark.py --vm_cmd="./higgs --shape_notagspec --shape_nofptrspec --perf_stats" --num_runs=10
@@ -208,8 +209,18 @@ FIXME: array access performance sucks
 
 TODO: avoid reading function pointer in getProp when possible
 - if fun doesn't use closVal, only one use which is a call
+- before: code size (bytes): 354046
 
-FIXME: no reg reusing for add?
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: no reg reusing for add in fib
 - x operand isn't live after?
 branch_if_true(1E667):
 if_true(1E667):
@@ -220,19 +231,13 @@ mov edi, ecx;                           89CF
 add edi, edx;                           01D7
 mov eax, 9818;                          B85A260000
 jo branch_if_false(1E66E);              0F80D7A4FDFF
-
 branch_call_merge(1E658):
 call_merge(1E658):
 ; ret $24
-
-
-
-
-
-
-
-
-
+- Claiming that $11 is live after the add...
+- addIntFloat is not optimized
+- before: code size (bytes): 354206
+- after: code size (bytes): 354046
 
 [DONE] FIXME: fib, two useless moves in return?
 ; ret $24

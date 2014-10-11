@@ -820,6 +820,10 @@ function $rt_addIntFloat(x, y)
             }
             else
             {
+                // Reconstruct x from r and y
+                // Hence x is not live after the add
+                x = $ir_sub_i32(r, y);
+
                 // Handle the overflow case
                 var fx = $ir_i32_to_f64(x);
                 var fy = $ir_i32_to_f64(y);
