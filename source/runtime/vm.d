@@ -371,8 +371,8 @@ struct ValuePair
             case Tag.ARRAY:
             if (ptrValid(word.ptrVal) is false)
                 return "invalid array ptr";
-            auto len = arr_get_len(word.ptrVal);
-            auto tbl = arr_get_tbl(word.ptrVal);
+            auto len = getArrLen(word.ptrVal);
+            auto tbl = getArrTbl(word.ptrVal);
             auto output = "[";
             for (uint32_t i = 0; i < len; ++i)
             {
@@ -498,6 +498,9 @@ class VM
 
     /// Empty object shape
     ObjShape emptyShape;
+
+    /// Initial array shape
+    ObjShape arrayShape;
 
     /// Object prototype object
     ValuePair objProto;
@@ -651,6 +654,27 @@ class VM
             this,
             objProto,
             GLOBAL_OBJ_INIT_SIZE
+        );
+
+        // Initialize the initial array shape
+        arrayShape = emptyShape.defProp(
+            this,
+            "__proto__",
+            ValType(Tag.OBJECT),
+            0,
+            null
+        ).defProp(
+            this,
+            "__arrTbl__",
+            ValType(Tag.REFPTR),
+            0,
+            null
+        ).defProp(
+            this,
+            "__arrLen__",
+            ValType(Tag.INT32),
+            0,
+            null
         );
 
         // Allocate the executable heap

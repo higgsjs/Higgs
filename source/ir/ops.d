@@ -304,6 +304,9 @@ Opcode OBJ_READ_SHAPE = { "obj_read_shape", true, [OpArg.LOCAL], &gen_obj_read_s
 /// Initialize the shape of an object to the empty shape
 Opcode OBJ_INIT_SHAPE = { "obj_init_shape", false, [OpArg.LOCAL], &gen_obj_init_shape, OpInfo.IMPURE };
 
+/// Initialize the shape of an array
+Opcode ARR_INIT_SHAPE = { "arr_init_shape", false, [OpArg.LOCAL], &gen_arr_init_shape, OpInfo.IMPURE };
+
 /// Set the value of an object property based on its shape
 Opcode OBJ_SET_PROP = { "obj_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE | OpInfo.BRANCH };
 

@@ -100,7 +100,7 @@ function string_internal_toCharCodeArray(x)
 function string_internal_fromCharCodeArray(a)
 {
     // Get the array length
-    var len = $rt_arr_get_len(a);
+    var len = $rt_getArrLen(a);
 
     // Allocate a string object
     var strObj = $rt_str_alloc(len);

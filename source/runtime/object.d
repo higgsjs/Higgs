@@ -67,6 +67,18 @@ const uint32_t FPTR_SLOT_IDX = 1;
 /// Static offset for the function pointer in a closure object
 const size_t FPTR_SLOT_OFS = clos_ofs_word(null, FPTR_SLOT_IDX);
 
+/// Array table slot index (arrays only)
+const uint32_t ARRTBL_SLOT_IDX = 1;
+
+/// Static offset for the array table (arrays only)
+const size_t ARRTBL_SLOT_OFS = clos_ofs_word(null, ARRTBL_SLOT_IDX);
+
+/// Array length slot index (arrays only)
+const uint32_t ARRLEN_SLOT_IDX = 2;
+
+/// Static offset for the array length (arrays only)
+const size_t ARRLEN_SLOT_OFS = clos_ofs_word(null, ARRLEN_SLOT_IDX);
+
 /// Property attribute type
 alias uint8_t PropAttr;
 
@@ -93,6 +105,10 @@ void defObjConsts(VM vm)
 
     vm.defRTConst!(PROTO_SLOT_IDX);
     vm.defRTConst!(FPTR_SLOT_IDX);
+    vm.defRTConst!(ARRTBL_SLOT_IDX)("ARRTBL_SLOT_IDX");
+    vm.defRTConst!(ARRLEN_SLOT_IDX);
+    vm.defRTConst!(ARRTBL_SLOT_OFS);
+    vm.defRTConst!(ARRLEN_SLOT_OFS);
 
     vm.defRTConst!(ATTR_CONFIGURABLE);
     vm.defRTConst!(ATTR_WRITABLE);
@@ -538,6 +554,26 @@ Get the function pointer from a closure object
 IRFunction getFunPtr(refptr closPtr)
 {
     return cast(IRFunction)cast(refptr)clos_get_word(closPtr, FPTR_SLOT_IDX);
+}
+
+refptr getArrTbl(refptr arrPtr)
+{
+    return cast(refptr)clos_get_word(arrPtr, ARRTBL_SLOT_IDX);
+}
+
+void setArrTbl(refptr arrPtr, refptr tblPtr)
+{
+    clos_set_word(arrPtr, ARRTBL_SLOT_IDX, cast(uint64_t)tblPtr);
+}
+
+uint32_t getArrLen(refptr arrPtr)
+{
+    return cast(uint32_t)clos_get_word(arrPtr, ARRLEN_SLOT_IDX);
+}
+
+void setArrLen(refptr arrPtr, uint32_t len)
+{
+    clos_set_word(arrPtr, ARRLEN_SLOT_IDX, len);
 }
 
 ValuePair getSlotPair(refptr objPtr, uint32_t slotIdx)

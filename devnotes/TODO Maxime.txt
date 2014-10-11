@@ -173,6 +173,7 @@ Meeting:
   - Focus on the ones where we do poorly, or where I think we could do better
 - Found many small inefficiencies in Fibonacci machine code
   - Fixed a few
+- Optimized array property access
 
 TODO: benchmark with and without shape spec
 ./benchmark.py --vm_cmd="./higgs --shape_notagspec --shape_nofptrspec --perf_stats" --num_runs=10
@@ -203,22 +204,45 @@ TODO: optimize host setprop, getprop
 - doing shape lookup twice
 - setProp, could avoid string copy if prop exists?
 
-FIXME: array access performance sucks
-- probably want hidden _arrtbl__ property
+TODO: get rid of special defConst treatment of proto
+- Could have an initial object shape with the proto slot
+- Write the proto value directly
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: array access performance sucks
+- want hidden __arrTbl__ __arrLen__
+  - start with just __arrTbl__
 - look at code size before and after, nsieve benchmark
-
-TODO: avoid reading function pointer in getProp when possible
-- if fun doesn't use closVal, only one use which is a call
 - before: code size (bytes): 354046
+./higgs --perf_stats benchmarks/sunspider/access-nsieve.js
+    comp time (ms): 311
+    exec time (ms): 14
+    code size (bytes): 205236
+code size (bytes): 351522
+./higgs --perf_stats benchmarks/sunspider/access-nsieve.js
+    comp time (ms): 241
+    exec time (ms): 13
+    code size (bytes): 204534
+- start simple
+  - write $rt_getArrTbl, $rt_getArrLen
+  - use defConst in constructor for testing
 
-
-
-
-
-
-
-
-
+[DONE] TODO: avoid reading function pointer in getProp when possible
+- if fun doesn't use closVal, only one use which is a call
+- need constant propagation to implement this properly (GC-safe)
 
 [DONE] FIXME: no reg reusing for add in fib
 - x operand isn't live after?

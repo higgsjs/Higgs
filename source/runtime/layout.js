@@ -600,16 +600,6 @@ function $rt_arr_ofs_tag(o, i)
     return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8), $ir_mul_i32(8, $rt_arr_get_cap(o))), $ir_mul_i32(1, i));
 }
 
-function $rt_arr_ofs_tbl(o)
-{    
-    return $ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8), $ir_mul_i32(8, $rt_arr_get_cap(o))), $ir_mul_i32(1, $rt_arr_get_cap(o))), 7), -8);
-}
-
-function $rt_arr_ofs_len(o)
-{    
-    return $ir_add_i32($ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8), $ir_mul_i32(8, $rt_arr_get_cap(o))), $ir_mul_i32(1, $rt_arr_get_cap(o))), 7), -8), 8);
-}
-
 function $rt_arr_get_next(o)
 {    
     return $ir_load_refptr(o, $rt_arr_ofs_next(o));
@@ -638,16 +628,6 @@ function $rt_arr_get_word(o, i)
 function $rt_arr_get_tag(o, i)
 {    
     return $ir_load_u8(o, $rt_arr_ofs_tag(o, i));
-}
-
-function $rt_arr_get_tbl(o)
-{    
-    return $ir_load_refptr(o, $rt_arr_ofs_tbl(o));
-}
-
-function $rt_arr_get_len(o)
-{    
-    return $ir_load_u32(o, $rt_arr_ofs_len(o));
 }
 
 function $rt_arr_set_next(o, v)
@@ -680,19 +660,9 @@ function $rt_arr_set_tag(o, i, v)
     $ir_store_u8(o, $rt_arr_ofs_tag(o, i), v);
 }
 
-function $rt_arr_set_tbl(o, v)
-{    
-    $ir_store_refptr(o, $rt_arr_ofs_tbl(o), v);
-}
-
-function $rt_arr_set_len(o, v)
-{    
-    $ir_store_u32(o, $rt_arr_ofs_len(o), v);
-}
-
 function $rt_arr_comp_size(cap)
 {    
-    return $ir_add_i32($ir_add_i32($ir_and_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8), $ir_mul_i32(8, cap)), $ir_mul_i32(1, cap)), 7), -8), 8), 4);
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8), $ir_mul_i32(8, cap)), $ir_mul_i32(1, cap));
 }
 
 function $rt_arr_sizeof(o)
@@ -716,7 +686,6 @@ function $rt_arr_visit_gc(o)
     {    
         $rt_arr_set_word(o, i, $rt_gcForward(vm, $rt_arr_get_word(o, i), $rt_arr_get_tag(o, i)));
     }
-    $rt_arr_set_tbl(o, $rt_gcForward(vm, $rt_arr_get_tbl(o)));
 }
 
 var $rt_LAYOUT_ARRTBL = 6;

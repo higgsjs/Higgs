@@ -619,16 +619,6 @@ extern (C) uint32 arr_ofs_tag(refptr o, uint32 i)
     return ((((((0 + 8) + 4) + 4) + 8) + (8 * arr_get_cap(o))) + (1 * i));
 }
 
-extern (C) uint32 arr_ofs_tbl(refptr o)
-{    
-    return ((((((((0 + 8) + 4) + 4) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 7) & -8);
-}
-
-extern (C) uint32 arr_ofs_len(refptr o)
-{    
-    return (((((((((0 + 8) + 4) + 4) + 8) + (8 * arr_get_cap(o))) + (1 * arr_get_cap(o))) + 7) & -8) + 8);
-}
-
 extern (C) refptr arr_get_next(refptr o)
 {    
     return *cast(refptr*)(o + arr_ofs_next(o));
@@ -657,16 +647,6 @@ extern (C) uint64 arr_get_word(refptr o, uint32 i)
 extern (C) uint8 arr_get_tag(refptr o, uint32 i)
 {    
     return *cast(uint8*)(o + arr_ofs_tag(o, i));
-}
-
-extern (C) refptr arr_get_tbl(refptr o)
-{    
-    return *cast(refptr*)(o + arr_ofs_tbl(o));
-}
-
-extern (C) uint32 arr_get_len(refptr o)
-{    
-    return *cast(uint32*)(o + arr_ofs_len(o));
 }
 
 extern (C) void arr_set_next(refptr o, refptr v)
@@ -699,19 +679,9 @@ extern (C) void arr_set_tag(refptr o, uint32 i, uint8 v)
     *cast(uint8*)(o + arr_ofs_tag(o, i)) = v;
 }
 
-extern (C) void arr_set_tbl(refptr o, refptr v)
-{    
-    *cast(refptr*)(o + arr_ofs_tbl(o)) = v;
-}
-
-extern (C) void arr_set_len(refptr o, uint32 v)
-{    
-    *cast(uint32*)(o + arr_ofs_len(o)) = v;
-}
-
 extern (C) uint32 arr_comp_size(uint32 cap)
 {    
-    return ((((((((((0 + 8) + 4) + 4) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 8) + 4);
+    return ((((((0 + 8) + 4) + 4) + 8) + (8 * cap)) + (1 * cap));
 }
 
 extern (C) uint32 arr_sizeof(refptr o)
@@ -735,7 +705,6 @@ extern (C) void arr_visit_gc(VM vm, refptr o)
     {    
         arr_set_word(o, i, gcForward(vm, arr_get_word(o, i), arr_get_tag(o, i)));
     }
-    arr_set_tbl(o, gcForward(vm, arr_get_tbl(o)));
 }
 
 const uint32 LAYOUT_ARRTBL = 6;

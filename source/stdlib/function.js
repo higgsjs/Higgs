@@ -222,7 +222,7 @@ Function.prototype.apply = function (thisArg, argArray)
         thisArg = $global;
 
     // Get the arguments table from the array
-    var argTable = $rt_arr_get_tbl(argArray);
+    var argTable = $rt_getArrTbl(argArray);
 
     // Get the number of arguments
     var numArgs = argArray.length;

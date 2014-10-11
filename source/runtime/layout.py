@@ -135,11 +135,6 @@ layouts = [
         'extends':'obj',
         'fields':
         [
-            # Array table reference
-            { 'name':"tbl", 'tag':"refptr" },
-
-            # Number of elements contained
-            { 'name':"len", 'tag':"uint32" },
         ]
     },
 

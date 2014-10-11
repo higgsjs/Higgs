@@ -3324,6 +3324,31 @@ void gen_obj_init_shape(
     st.setShape(cast(IRDstValue)instr.getArg(0), vm.emptyShape);
 }
 
+/// Initializes an array to the initial shape
+/// Inputs: arr
+void gen_arr_init_shape(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto vm = ver.state.fun.vm;
+
+    // Get the object operand
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
+    assert (opnd0.isReg);
+
+    // Load the array shape into r0
+    as.getMember!("VM.arrayShape")(scrRegs[0], vmReg);
+
+    // Set the object shape
+    as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
+
+    // Propagate the array shape
+    st.setShape(cast(IRDstValue)instr.getArg(0), vm.arrayShape);
+}
+
 /// Sets the value of a property
 /// Inputs: obj, propName, val
 void gen_obj_set_prop(

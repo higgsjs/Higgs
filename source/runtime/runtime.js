@@ -1849,10 +1849,12 @@ function $rt_newArr(protoPtr, numElems)
     var objPtr = $rt_arr_alloc($rt_OBJ_MIN_CAP);
 
     // Initialize the array object
-    $ir_obj_init_shape(objPtr);
-    $rt_setProto(objPtr, protoPtr);
-    $rt_arr_set_tbl(objPtr, tblPtr);
-    $rt_arr_set_len(objPtr, numElems);
+    $rt_obj_set_word(objPtr, $rt_PROTO_SLOT_IDX, protoPtr);
+    $rt_obj_set_tag(objPtr, $rt_PROTO_SLOT_IDX, $ir_get_tag(protoPtr));
+    $rt_setArrTbl(objPtr, tblPtr);
+    $rt_obj_set_tag(objPtr, $rt_ARRTBL_SLOT_IDX, $ir_get_tag(null));
+    $rt_setArrLen(objPtr, numElems);
+    $ir_arr_init_shape(objPtr);
 
     //$ir_print_str("Allocated array\n");
 
@@ -1918,6 +1920,26 @@ function $rt_setProto(obj, proto)
     $ir_obj_def_const(obj, '__proto__', proto, false);
 }
 
+function $rt_setArrTbl(arr, tbl)
+{
+    return $ir_store_refptr(arr, $rt_ARRTBL_SLOT_OFS, tbl);
+}
+
+function $rt_getArrTbl(arr)
+{
+    return $ir_load_refptr(arr, $rt_ARRTBL_SLOT_OFS);
+}
+
+function $rt_setArrLen(arr, len)
+{
+    return $ir_store_u32(arr, $rt_ARRLEN_SLOT_OFS, len);
+}
+
+function $rt_getArrLen(arr)
+{
+    return $ir_load_u32(arr, $rt_ARRLEN_SLOT_OFS);
+}
+
 /**
 Get a property from an object using a string as key
 */
@@ -1980,9 +2002,9 @@ function $rt_getProp(base, prop)
     {
         // If the property is a non-negative integer
         if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) &&
-            $ir_lt_i32(prop, $rt_arr_get_len(base)))
+            $ir_lt_i32(prop, $rt_getArrLen(base)))
         {
-            var tbl = $rt_arr_get_tbl(base);
+            var tbl = $rt_getArrTbl(base);
             var word = $rt_arrtbl_get_word(tbl, prop);
             var type = $rt_arrtbl_get_tag(tbl, prop);
             return $ir_make_value(word, type);
@@ -2001,7 +2023,7 @@ function $rt_getProp(base, prop)
         {
             // If this is the length property
             if ($ir_eq_refptr(prop, 'length'))
-                return $rt_arr_get_len(base);
+                return $rt_getArrLen(base);
 
             var propNum = $rt_strToInt(prop);
             if ($ir_is_int32(propNum))
@@ -2164,9 +2186,9 @@ function $rt_getPropElem(base, prop)
     // If the base is an array and the property is a non-negative integer
     if ($ir_is_array(base) &&
         $ir_is_int32(prop) && $ir_ge_i32(prop, 0) &&
-        $ir_lt_i32(prop, $rt_arr_get_len(base)))
+        $ir_lt_i32(prop, $rt_getArrLen(base)))
     {
-        var tbl = $rt_arr_get_tbl(base);
+        var tbl = $rt_getArrTbl(base);
         var word = $rt_arrtbl_get_word(tbl, prop);
         var type = $rt_arrtbl_get_tag(tbl, prop);
         return $ir_make_value(word, type);
@@ -2183,7 +2205,7 @@ function $rt_getPropLength(base)
     // If the base is an array
     if ($ir_is_array(base))
     {
-        return $rt_arr_get_len(base);
+        return $rt_getArrLen(base);
     }
 
     return $rt_getProp(base, "length");
@@ -2325,7 +2347,7 @@ function $rt_extArrTbl(
     }
 
     // Update the table reference in the array
-    $rt_arr_set_tbl(arr, newTbl);
+    $rt_setArrTbl(arr, newTbl);
 
     return newTbl;
 }
@@ -2336,10 +2358,10 @@ Set an element of an array
 function $rt_setArrElem(arr, index, val)
 {
     // Get the array length
-    var len = $rt_arr_get_len(arr);
+    var len = $rt_getArrLen(arr);
 
     // Get the array table
-    var tbl = $rt_arr_get_tbl(arr);
+    var tbl = $rt_getArrTbl(arr);
 
     // If the index is outside the current size of the array
     if ($ir_ge_i32(index, len))
@@ -2363,7 +2385,7 @@ function $rt_setArrElem(arr, index, val)
         }
 
         // Update the array length
-        $rt_arr_set_len(arr, newLen);
+        $rt_setArrLen(arr, newLen);
     }
 
     // Set the element in the array
@@ -2374,13 +2396,13 @@ function $rt_setArrElem(arr, index, val)
 /**
 Set/change the length of an array
 */
-function $rt_setArrLen(arr, newLen)
+function $rt_setArrLength(arr, newLen)
 {
     // Get the current array length
-    var len = $rt_arr_get_len(arr);
+    var len = $rt_getArrLen(arr);
 
     // Get a reference to the array table
-    var tbl = $rt_arr_get_tbl(arr);
+    var tbl = $rt_getArrTbl(arr);
 
     // If the array length is increasing
     if (newLen > len)
@@ -2406,7 +2428,7 @@ function $rt_setArrLen(arr, newLen)
     }
 
     // Update the array length
-    $rt_arr_set_len(arr, newLen);
+    $rt_setArrLen(arr, newLen);
 }
 
 /**
@@ -2443,7 +2465,7 @@ function $rt_setProp(base, prop, val)
             if ($ir_eq_refptr(prop, 'length'))
             {
                 if ($ir_is_int32(val) && $ir_ge_i32(val, 0))
-                    return $rt_setArrLen(base, val);
+                    return $rt_setArrLength(base, val);
 
                 assert (false, 'invalid array length');
             }
@@ -2542,10 +2564,10 @@ function $rt_setPropElem(base, prop, val)
         // and is within the array bounds
         if ($ir_is_int32(prop) &&
             $ir_ge_i32(prop, 0) &&
-            $ir_lt_i32(prop, $rt_arr_get_len(base)))
+            $ir_lt_i32(prop, $rt_getArrLen(base)))
         {
             // Get a reference to the array table
-            var tbl = $rt_arr_get_tbl(base);
+            var tbl = $rt_getArrTbl(base);
 
             // Set the element in the array
             $rt_arrtbl_set_word(tbl, prop, $ir_get_word(val));
@@ -2564,7 +2586,7 @@ Set an element of an array without bounds checking
 function $rt_setArrElemNoCheck(arr, index, val)
 {
     // Get the array table
-    var tbl = $rt_arr_get_tbl(arr);
+    var tbl = $rt_getArrTbl(arr);
 
     // Set the element in the array
     $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
@@ -2702,7 +2724,7 @@ function $rt_hasOwnProp(base, prop)
     {
         // If the property is a non-negative integer
         if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) &&
-            $ir_lt_i32(prop, $rt_arr_get_len(base)))
+            $ir_lt_i32(prop, $rt_getArrLen(base)))
             return true;
 
         // If the property is not a string, get one
@@ -2717,7 +2739,7 @@ function $rt_hasOwnProp(base, prop)
         var n = $rt_strToInt(prop);
         if ($ir_is_int32(n) &&
             $ir_ge_i32(n, 0) &&
-            $ir_lt_i32(n, $rt_arr_get_len(base)))
+            $ir_lt_i32(n, $rt_getArrLen(base)))
             return true;
 
         return $rt_objHasProp(base, prop);

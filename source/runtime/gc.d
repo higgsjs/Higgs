@@ -495,8 +495,8 @@ refptr gcForward(VM vm, refptr ptr)
                     break;
 
                     case LAYOUT_ARR:
-                    arr_set_len(ptr, arr_get_len(oldObj));
-                    arr_set_tbl(ptr, arr_get_tbl(oldObj));
+                    setArrLen(ptr, getArrLen(oldObj));
+                    setArrTbl(ptr, getArrTbl(oldObj));
                     break;
 
                     case LAYOUT_CLOS:
