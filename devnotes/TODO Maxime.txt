@@ -209,7 +209,32 @@ FIXME: array access performance sucks
 TODO: avoid reading function pointer in getProp when possible
 - if fun doesn't use closVal, only one use which is a call
 
-FIXME: fib, two useless moves in return?
+FIXME: no reg reusing for add?
+- x operand isn't live after?
+branch_if_true(1E667):
+if_true(1E667):
+; $26 = add_i32_ovf $11, $21 => call_merge(1E658), if_false(1E66E)
+mov rcx, [qword r14 + 88];              498B4E58
+mov rdx, [qword r14 + 168];             498B96A8000000
+mov edi, ecx;                           89CF
+add edi, edx;                           01D7
+mov eax, 9818;                          B85A260000
+jo branch_if_false(1E66E);              0F80D7A4FDFF
+
+branch_call_merge(1E658):
+call_merge(1E658):
+; ret $24
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: fib, two useless moves in return?
 ; ret $24
 mov rcx, r10;                           4C89D1
 mov dl, 1;                              B201
@@ -227,14 +252,7 @@ jmp rbx;                                FFE3
 - it's the return value!
 - could try to bias ret values towards retWordReg
 - before, avg code size (bytes): 354334
-
-
-
-
-
-
-
-
+- after: code size (bytes): 354206
 
 [DONE] FIXME: call, use the global value instead of get_global_obj before call
 - look at fib code size

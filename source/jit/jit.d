@@ -539,16 +539,29 @@ class CodeGenState
             "no out slot for value: " ~ value.toString
         );
 
-        // If this value flows into a phi node other than itself
+        // For each use of the value
         for (auto use = value.getFirstUse; use !is null; use = use.next)
         {
-            auto owner = value.getFirstUse.owner;
-            if (!cast(PhiNode)value && cast(PhiNode)owner)
+            // Get the owner of the first use
+            auto owner = use.owner;
+
+            // If the value flows into a phi node other than itself
+            if (cast(PhiNode)owner && !cast(PhiNode)value)
             {
+                // Prefer the register of the destination phi node
                 return getDefReg(owner);
+            }
+
+            // If the value flows into a return instruction
+            auto ownerInstr = cast(IRInstr)owner;
+            if (ownerInstr && ownerInstr.opcode is &ir.ops.RET)
+            {
+                // Prefer the return value register
+                return retWordReg;
             }
         }
 
+        // Choose a register based on the output slot
         auto regIdx = value.outSlot % allocRegs.length;
         auto reg = allocRegs[regIdx];
 
