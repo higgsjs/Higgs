@@ -1241,6 +1241,9 @@ function $rt_lt(x, y)
 
         if ($ir_is_float64(y))
             return $ir_lt_f64(x, y);
+
+        if ($ir_is_const(y) && $ir_eq_const(y, $undef))
+            return false;
     }
 
     var px = $rt_toPrim(x);
@@ -1371,6 +1374,9 @@ function $rt_gt(x, y)
 
         if ($ir_is_float64(y))
             return $ir_gt_f64(x, y);
+
+        if ($ir_is_const(y) && $ir_eq_const(y, $undef))
+            return false;
     }
 
     var px = $rt_toPrim(x);
@@ -1987,6 +1993,8 @@ Get a property from a value using a value as a key
 */
 function $rt_getProp(base, prop)
 {
+    //$ir_print_str(prop); $ir_print_str('\n');
+
     // If the base is an object or closure
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
@@ -2127,7 +2135,7 @@ the base is an object and the key is a constant string
 function $rt_getPropMethod(base, propStr)
 {
     // If the base is an object
-    if ($ir_is_object(base))
+    if ($ir_is_object(base) || $ir_is_closure(base))
     {
         var obj = base;
 
@@ -2206,6 +2214,12 @@ function $rt_getPropLength(base)
     if ($ir_is_array(base))
     {
         return $rt_getArrLen(base);
+    }
+
+    // If the base is a string
+    if ($ir_is_string(base))
+    {
+        return $rt_str_get_len(base);
     }
 
     return $rt_getProp(base, "length");

@@ -130,26 +130,13 @@ TODO: heap alloc, could break out fallback code!
 - Very common in dynamic languages that some fallback is needed
 - Don't want to always generate fallback code
 
-TODO: higgs shebang mode?
-- first js file arg has shebang line
-
 TODO: complete basic wav encoding, on master
 
 TODO: alloc global VM in 32-bit ptr space?
 - Ask how on D forums, maybe tweet link
 - Look into addressing modes required, mov encodings
-
 TODO: alloc code heap in 32-bit space?
 - Would this benefit us? where are 64-bit code ptrs?
-
-TODO: can we get rid of ExtInfo?
-- Wait until new capture_shape is implemented
-
-TODO: look at why string-fasta is slow
-- Over 1M def shape host
-- Most calls unoptimized, why?
-
-TODO: should $rt_newArr be inlined?
 
 Meeting:
 - Fixed hard GC bug
@@ -192,22 +179,34 @@ TODO: try forcing method shape capture in setPropField?
 - still 1/4 of calls slow
 - who are the worst offenders? ***
 - impact on code size, exec time?
-
-TODO: V8 slightly faster on deltablue
-TODO: V8 slightly faster on cordic
-TODO: about 3x slower than V8 on V8-raytrace
-TODO: about 3x faster than V8 on 3d-raytrace
-- What's our biggest bottleneck on this benchmark?
-- Similarities between the two raytrace benchmarks, arrays?
-
-TODO: optimize host setprop, getprop
-- doing shape lookup twice
-- setProp, could avoid string copy if prop exists?
+- may not be able to help? method lookups with depth > 2
+  - but 3d-raytrace has many slow calls
 
 TODO: get rid of special defConst treatment of proto
 - Could have an initial object shape with the proto slot
 - Write the proto value directly
 
+TODO: can we get rid of ExtInfo?
+- Wait until new capture_shape is implemented
+
+TODO: look at why string-fasta is slow
+- Over 1M def shape host
+- Most calls unoptimized, why?
+TODO: V8 slightly faster on deltablue
+TODO: V8 slightly faster on cordic
+TODO: about 3x slower than V8 on v8-raytrace
+TODO: about 3x faster than V8 on 3d-raytrace
+- What's our biggest bottleneck on this benchmark?
+- Similarities between the two raytrace benchmarks, arrays?
+
+TODO: optimize host get_prop
+- doing shape lookup twice
+
+Try to implement getPropMethod as loop?
+- Could try and see how it performs
+- Affects v8/raytrace, 280K get prop host
+
+TODO: what calls getProp in 3d-raytrace? v8bench/raytrace?
 
 
 
@@ -218,9 +217,9 @@ TODO: get rid of special defConst treatment of proto
 
 
 
-
-
-
+[DONE] TODO: toPrim, toNumber called 58K+ times in 3d-raytrace, why?
+- rt_lt, rt_gt call toNumber of some fp number?
+  - probably compared to undefined or something like that
 
 [DONE] FIXME: array access performance sucks
 - want hidden __arrTbl__ __arrLen__

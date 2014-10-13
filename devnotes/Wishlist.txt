@@ -69,6 +69,9 @@ TODO: take a break, look into sound output
 - look at existing code
   - can write and wait for poll, no callback
 
+TODO: higgs shebang mode?
+- first js file arg has shebang line
+
 TODO: port CSG lib
 http://evanw.github.io/csg.js/
 
