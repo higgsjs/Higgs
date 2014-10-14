@@ -764,8 +764,6 @@ class CodeGenState
 
         assert (instr in valMap);
 
-        //writeln("outOpnd=", reg);
-
         return reg.opnd;
     }
 

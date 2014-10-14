@@ -208,6 +208,8 @@ Try to implement getPropMethod as loop?
 
 TODO: what calls getProp in 3d-raytrace? v8bench/raytrace?
 
+Could strcat be taking a big chunk of the time in 3d-raytrace?
+- Modify the benchmark and print the times
 
 
 
@@ -216,6 +218,11 @@ TODO: what calls getProp in 3d-raytrace? v8bench/raytrace?
 
 
 
+
+[DONE] FIXME: move of 0 has upper bits set?
+
+[DONE] TODO: array benchmark, how do we fare against V8 now?
+- pretty close now
 
 [DONE] TODO: toPrim, toNumber called 58K+ times in 3d-raytrace, why?
 - rt_lt, rt_gt call toNumber of some fp number?

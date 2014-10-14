@@ -7,10 +7,10 @@ function test(arr)
 }
 
 arr = [];
-arr.length = 10000;
+arr.length = 40000;
 for (var i = 0; i < arr.length; ++i)
     arr[i] = i;
 
-for (var i = 0; i < 10000; ++i)
+for (var i = 0; i < 40000; ++i)
     test(arr);
 

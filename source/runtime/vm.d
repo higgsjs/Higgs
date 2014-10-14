@@ -136,9 +136,9 @@ Memory word union
 */
 union Word
 {
-    static Word int32v(int32 i) { Word w; w.int32Val = i; return w; }
+    static Word int32v(int32 i) { Word w; w.int64Val = 0; w.int32Val = i; return w; }
     static Word int64v(int64 i) { Word w; w.int64Val = i; return w; }
-    static Word uint32v(uint32 i) { Word w; w.uint32Val = i; return w; }
+    static Word uint32v(uint32 i) { Word w; w.int64Val = 0; w.uint32Val = i; return w; }
     static Word uint64v(uint64 i) { Word w; w.uint64Val = i; return w; }
     static Word float64v(float64 f) { Word w; w.floatVal = f; return w; }
     static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
@@ -285,7 +285,7 @@ struct ValuePair
 
     this(int32 int32Val)
     {
-        this.word.int32Val = int32Val;
+        this.word = Word.int32v(int32Val);
         this.tag = Tag.INT32;
     }
 
@@ -324,7 +324,7 @@ struct ValuePair
                 return "Infinity";
             if (word.floatVal == -1.0/0)
                 return "-Infinity";
-            return to!string(word.floatVal);
+            return format("%f", word.floatVal);
 
             case Tag.RAWPTR:
             if (word.ptrVal is null)
