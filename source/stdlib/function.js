@@ -210,7 +210,8 @@ Function.prototype.apply = function (thisArg, argArray)
     if (!$ir_is_closure(this))
         throw new TypeError('apply on non-function');
 
-    if (argArray === null || argArray === undefined)
+    if (($ir_is_refptr(argArray) && $ir_eq_refptr(argArray, null)) ||
+        ($ir_is_const(argArray) && $ir_eq_const(argArray, $undef)))
         argArray = [];
 
     if (!$ir_is_array(argArray))
@@ -218,7 +219,9 @@ Function.prototype.apply = function (thisArg, argArray)
 
     // If the this argument is null or undefined,
     // make it the global object
-    if (thisArg === null || thisArg === undefined)
+
+    if (($ir_is_refptr(thisArg) && $ir_eq_refptr(thisArg, null)) ||
+        ($ir_is_const(thisArg) && $ir_eq_const(thisArg, $undef)))
         thisArg = $global;
 
     // Get the arguments table from the array
@@ -238,9 +241,15 @@ Function.prototype.apply = function (thisArg, argArray)
 */
 Function.prototype.call = function (thisArg)
 {
-    var argArray = [];
-    for (var i = 1; i < $argc; ++i)
-        argArray.push($ir_get_arg(i));
+    var numArgs = $argc - 1;
+
+    // Create an array for the 
+    var argArray = $rt_newArr($ir_get_arr_proto(), numArgs);
+    argArray.length = numArgs;
+
+    // Copy the arguments into the array
+    for (var i = 0; i < numArgs; ++i)
+        argArray[i] = $ir_get_arg(i+1);
 
     var retVal = this.apply(thisArg, argArray);
 

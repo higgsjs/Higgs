@@ -161,6 +161,7 @@ Meeting:
 - Found many small inefficiencies in Fibonacci machine code
   - Fixed a few
 - Optimized array property access
+- Made various small optimizations to improve benchmark performance
 
 TODO: benchmark with and without shape spec
 ./benchmark.py --vm_cmd="./higgs --shape_notagspec --shape_nofptrspec --perf_stats" --num_runs=10
@@ -202,22 +203,34 @@ TODO: about 3x faster than V8 on 3d-raytrace
 TODO: optimize host get_prop
 - doing shape lookup twice
 
-Try to implement getPropMethod as loop?
+TODO: look into optimizing string concat?
+- could create a microbenchmark based on 3d-raytrace (5000 cats)
+- bad scaling with the string length
+
+TODO: try to implement getPropMethod as loop?
 - Could try and see how it performs
 - Affects v8/raytrace, 280K get prop host
 
-TODO: what calls getProp in 3d-raytrace? v8bench/raytrace?
+TODO: what calls getProp in v8bench/raytrace?
 
-Could strcat be taking a big chunk of the time in 3d-raytrace?
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: v8bench/raytrace has many comparisons of objects vs null
+- most of these coming from se, called in the apply function
+
+[DONE] TODO: could strcat be taking a big chunk of the time in 3d-raytrace?
 - Modify the benchmark and print the times
-
-
-
-
-
-
-
-
+- Seems about 2x more time is taken by string concat
+- It's really the concatenation that's slow
 
 [DONE] FIXME: move of 0 has upper bits set?
 
