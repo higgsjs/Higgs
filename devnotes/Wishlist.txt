@@ -75,6 +75,25 @@ TODO: higgs shebang mode?
 TODO: port CSG lib
 http://evanw.github.io/csg.js/
 
+TODO: alloc global VM in 32-bit ptr space?
+- Ask how on D forums, maybe tweet link
+- Look into addressing modes required, mov encodings
+TODO: alloc code heap in 32-bit space?
+- Would this benefit us? where are 64-bit code ptrs?
+
+TODO: think about inlining system further
+- Necessary for acceptable compile times
+- Can fully optimize primitives, avoid needing code-patching
+- Make an exception for units with loops also
+- do it intelligently, don't inline in runtime fns, or if too deep in stack?
+TODO: gather stats about the percentage of functions which are long-running
+- init is almost 2x as fast compile time with noinline
+  - compile time for 3d-raytrace less than half, same for turtle
+- disable inlining first
+- dump text and sort
+  - fn, num calls, num itrs
+
+
 
 
 

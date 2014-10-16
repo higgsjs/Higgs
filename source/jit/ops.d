@@ -3314,14 +3314,14 @@ void gen_obj_init_shape(
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
     assert (opnd0.isReg);
 
-    // Load the empty shape into r0
-    as.getMember!("VM.emptyShape")(scrRegs[0], vmReg);
+    // Load the object shape into r0
+    as.getMember!("VM.objectShape")(scrRegs[0], vmReg);
 
     // Set the object shape
     as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
 
     // Propagate the object shape
-    st.setShape(cast(IRDstValue)instr.getArg(0), vm.emptyShape);
+    st.setShape(cast(IRDstValue)instr.getArg(0), vm.objectShape);
 }
 
 /// Initializes an array to the initial shape
@@ -3978,65 +3978,9 @@ void gen_obj_def_const(
 
     auto vm = st.fun.vm;
 
-    // Get the object and value arguments
+    // Get the object argument
     auto objDst = cast(IRDstValue)instr.getArg(0);
-    auto cstVal = instr.getArg(2);
-    assert (objDst !is null);
-
-    // Get the type information for the arguments
-    auto objType = st.getType(objDst);
-    auto valType = st.getType(cstVal);
-
-    // Extract the property name, if known
-    auto propName = instr.getArgStrCst(1);
-
-    // If we know that the object has the empty shape
-    // and we are defining the prototype value
-    if (objType.shapeKnown && objType.shape is st.fun.vm.emptyShape &&
-        propName == "__proto__" &&
-        valType.shapeKnown)
-    {
-        // Get the object shape and prototype value shapes
-        auto objShape = objType.shape;
-        auto valShape = valType.shape;
-        assert (objShape !is null);
-        assert (valShape !is null);
-
-        // Ensure that the property doesn't already exist
-        assert (objShape.getDefShape(propName) is null);
-
-        // Create a new shape for the property
-        auto newShape = objShape.defProp(
-            vm,
-            propName,
-            valType.propType,
-            0,
-            null
-        );
-
-        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-        assert (objOpnd.isReg);
-        auto valOpnd = st.getWordOpnd(as, instr, 2, 64);
-        assert (valOpnd.isReg);
-        auto tagOpnd = st.getTagOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
-
-        // Set the prototype value and tag
-        as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
-        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * PROTO_SLOT_IDX);
-        auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + PROTO_SLOT_IDX, 8, scrRegs[0]);
-        as.mov(wordMem, valOpnd);
-        as.mov(typeMem, tagOpnd);
-
-        // Update the object shape
-        as.ptr(scrRegs[0].reg, newShape);
-        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
-
-        // Set the new object shape
-        st.setShape(objDst, newShape);
-
-        return;
-    }
-
+ 
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);
 

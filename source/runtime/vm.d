@@ -499,6 +499,9 @@ class VM
     /// Empty object shape
     ObjShape emptyShape;
 
+    /// Initial object shape
+    ObjShape objectShape;
+
     /// Initial array shape
     ObjShape arrayShape;
 
@@ -631,6 +634,36 @@ class VM
         // Allocate the empty object shape
         emptyShape = new ObjShape(this);
 
+        // Initialize the initial object shape
+        objectShape = emptyShape.defProp(
+            this,
+            "__proto__",
+            ValType(Tag.OBJECT),
+            0,
+            null
+        );
+
+        // Initialize the initial array shape
+        arrayShape = emptyShape.defProp(
+            this,
+            "__proto__",
+            ValType(Tag.OBJECT),
+            0,
+            null
+        ).defProp(
+            this,
+            "__arrTbl__",
+            ValType(Tag.REFPTR),
+            0,
+            null
+        ).defProp(
+            this,
+            "__arrLen__",
+            ValType(Tag.INT32),
+            0,
+            null
+        );
+
         // Allocate the object prototype object
         objProto = newObj(
             this,
@@ -654,27 +687,6 @@ class VM
             this,
             objProto,
             GLOBAL_OBJ_INIT_SIZE
-        );
-
-        // Initialize the initial array shape
-        arrayShape = emptyShape.defProp(
-            this,
-            "__proto__",
-            ValType(Tag.OBJECT),
-            0,
-            null
-        ).defProp(
-            this,
-            "__arrTbl__",
-            ValType(Tag.REFPTR),
-            0,
-            null
-        ).defProp(
-            this,
-            "__arrLen__",
-            ValType(Tag.INT32),
-            0,
-            null
         );
 
         // Allocate the executable heap

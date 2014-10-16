@@ -26,17 +26,6 @@ List of possible contributions:
 
 FIXME: v8bench/regexp segfaults
 
-TODO: look into doc gen, linking up with GitHub
-
-TODO: C call conv wrapper for callbacks
-- after new calling conv
-
-TODO: approach Moz, Apple, FB wrt internship
-- 4 months, [Jan, April] 2015, spend winter in Cali
-- Marc advises to remain near PhD work, best for CV
-- Marc thinks you can make ~40K pre-tax
-- Ask about salary, lodging options
-
 FIXME: date-format-tofte
 - keeps using more and more memory
 - some kind of memory leak issue?
@@ -72,18 +61,6 @@ maintaining 50% of free space turned out to be the sweet spot. Whenever less tha
 50% of free space are available after a collection, the heap grows.
 => grow on next GC
 
-TODO: think about inlining system further
-- Necessary for acceptable compile times
-- Can fully optimize primitives, avoid needing code-patching
-- Make an exception for units with loops also
-- do it intelligently, don't inline in runtime fns, or if too deep in stack?
-TODO: gather stats about the percentage of functions which are long-running
-- init is almost 2x as fast compile time with noinline
-  - compile time for 3d-raytrace less than half, same for turtle
-- disable inlining first
-- dump text and sort
-  - fn, num calls, num itrs
-
 TODO: try embedded arg list for IR instrs?
 - What is the object we allocate most of? stats?
 At EA, in C++, we have exactly this type in our standard template library as
@@ -105,13 +82,6 @@ TODO: liveness analysis flipped...?
   - For most values, small embedded list will work
 - Values that are never live don't even have a live set
 
-TODO: stub branches, pre-reserve space, put block idx in there
-- should ideally jump ahead and not backwards
-- don't alloc objects for each stub
-  - or maybe have an array of stubs, flat
-- could use this for function entry stubs too
-  - need to become specialized for interprocedural BBV
-
 ------------------------------------------------------------------------------
 
 ECOOP - Dec 21st
@@ -123,28 +93,75 @@ TODO: blog post, Higgs' Fancy New Object System
 - post to r/compilers, r/higgsjs
 - Typed shapes + BBV a bit of a gamble
 
-TODO: heap alloc, could break out fallback code!
-- Have separate host_alloc instr
-- #winning
-- Make a blog post: lazy code generation rocks
-- Very common in dynamic languages that some fallback is needed
-- Don't want to always generate fallback code
-
 TODO: complete basic wav encoding, on master
 
-TODO: alloc global VM in 32-bit ptr space?
-- Ask how on D forums, maybe tweet link
-- Look into addressing modes required, mov encodings
-TODO: alloc code heap in 32-bit space?
-- Would this benefit us? where are 64-bit code ptrs?
+TODO: take a break, dust off CPU heatsink and fan
+- turn off machine, remove fan
 
-Meeting:
+TODO: V8 slightly faster on deltablue
+TODO: V8 slightly faster on cordic
+
+TODO: optimize host get_prop
+- doing shape lookup twice
+
+TODO: try to implement getPropField & getPropMethod as loop
+- Could try and see how it performs
+- Affects v8/raytrace, 280K get prop host
+- Appears beneficial for performance
+
+FIXME: getPropField with look causes error in 3d-raytrace
+- Build regression test to find problem
+
+TODO: make harness to exec benchmark a first time with timing, and then a second time
+- print time in output
+
+Marc says: do interprocedural BBV
+- Return info: try to predict what the function will return
+  - speculative/predicted info return vs generic return?
+- Shape changed flag in context
+
+TODO: stub branches, pre-reserve space, put block idx in there
+- should ideally jump ahead and not backwards
+- don't alloc objects for each stub
+  - or maybe have an array of stubs, flat
+- could use this for function entry stubs too
+  - need to become specialized for interprocedural BBV
+TODO: stub space, no more generic stubs
+- Do we need entry stubs? compile immediately?
+- Do we need stub objects?
+  - Entry stubs would need a pointer to the entry state
+
+TODO: profile return types
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: get rid of special defConst treatment of proto
+- Could have an initial object shape with the proto slot
+- Write the proto value directly
+
+[DONE] TODO: get rid of ExtInfo
+- Wait until new capture_shape is implemented
+
+[DONE] 2014-10-16 Meeting:
 - Fixed hard GC bug
   - JS strings leaking, getting corrupted
 - Fixed parser bug signaled by new contributor
 - With new shape system, code size about 25% smaller than old object system
   - Even though more versions
-- Added wall clock time to benchmarking script, to support V8
+- Added wall clock time measurement to benchmarking script to support V8
 - Higgs vs V8 (***caveat, including V8 compile time***)
   - Higgs faster on several benchmarks, smaller/faster ones especially (11/32)
   - Many benchmarks in similar order of magnitude
@@ -156,73 +173,39 @@ Meeting:
     - But only comparable if we exclude Higgs compile time
 - With optimizing JIT, V8 has inlining of user functions, Higgs doesn't
 - Low hanging fruits: probably many inefficiencies in runtime, generated code
-  - I like to examine specific benchmarks in case studies
+  - Examined specific benchmarks in case studies
   - Focus on the ones where we do poorly, or where I think we could do better
 - Found many small inefficiencies in Fibonacci machine code
   - Fixed a few
-- Optimized array property access
-- Made various small optimizations to improve benchmark performance
+- Optimized array property access, now much faster
+- Made various small optimizations in runtime to improve benchmark performance
+- Shape spec, seems we unfortunately still don't win
+  - Smaller code size, less type tests, but not better performance
+- Next step:
+  - Move on to interprocedural BBV or...?
+  - Benchmark-specific micro-optimizations?
+  - Could implement statistical profiler
+  - Could implement code size profiler
+- Example small opt: array and string method access
+  - Can lookup on array proto and string proto at compile time
+  - Right now we do a slow lookup for these
+- Example: bad string concat performance
+  - 3d-raytrace, two third of time taken by string concat
+  - need ropes to perform competitively on this
+- Example: stubs without register write, stub space ***
+- Interprocedural BBV
+  - Implement in steps
+  - Step 1: multiple function entry points
+    - entry contexts track function argument types
+  - Step 2: threading global object as hidden argument to track global shape
+  - Step 3: passing information back through returns
+  - May also want to implement const prop in BBV for specialized purposes
+    - pass argc as constant, for example
 
-TODO: benchmark with and without shape spec
-./benchmark.py --vm_cmd="./higgs --shape_notagspec --shape_nofptrspec --perf_stats" --num_runs=10
-./benchmark.py --vm_cmd="./higgs --perf_stats" --num_runs=10
-- use --perf_stats
-- must dust off CPU
-- use 10 runs overnight
-
-TODO: take a break, dust off CPU heatsink and fan
-- turn off machine, remove fan
-
-TODO: total code size per instr mnem
-- can hack this quickly
-
-TODO: try forcing method shape capture in setPropField?
-- still 1/4 of calls slow
-- who are the worst offenders? ***
-- impact on code size, exec time?
-- may not be able to help? method lookups with depth > 2
-  - but 3d-raytrace has many slow calls
-
-TODO: get rid of special defConst treatment of proto
-- Could have an initial object shape with the proto slot
-- Write the proto value directly
-
-TODO: can we get rid of ExtInfo?
-- Wait until new capture_shape is implemented
-
-TODO: look at why string-fasta is slow
-- Over 1M def shape host
-- Most calls unoptimized, why?
-TODO: V8 slightly faster on deltablue
-TODO: V8 slightly faster on cordic
-TODO: about 3x slower than V8 on v8-raytrace
-TODO: about 3x faster than V8 on 3d-raytrace
-- What's our biggest bottleneck on this benchmark?
-- Similarities between the two raytrace benchmarks, arrays?
-
-TODO: optimize host get_prop
-- doing shape lookup twice
-
-TODO: look into optimizing string concat?
-- could create a microbenchmark based on 3d-raytrace (5000 cats)
-- bad scaling with the string length
-
-TODO: try to implement getPropMethod as loop?
-- Could try and see how it performs
-- Affects v8/raytrace, 280K get prop host
-
-TODO: what calls getProp in v8bench/raytrace?
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: what calls getProp in v8bench/raytrace?
+- "initialize" and "isHit", called on a regular object
+- 187K get prop host
+- Also get calls to push and charCodeAt
 
 [DONE] FIXME: v8bench/raytrace has many comparisons of objects vs null
 - most of these coming from se, called in the apply function

@@ -1837,6 +1837,7 @@ function $rt_newObj(protoPtr)
     // Allocate the object
     var objPtr = $rt_obj_alloc($rt_OBJ_MIN_CAP);
 
+    // Initialize the object
     $ir_obj_init_shape(objPtr);
     $rt_setProto(objPtr, protoPtr);
 
@@ -1855,12 +1856,11 @@ function $rt_newArr(protoPtr, numElems)
     var objPtr = $rt_arr_alloc($rt_OBJ_MIN_CAP);
 
     // Initialize the array object
-    $rt_obj_set_word(objPtr, $rt_PROTO_SLOT_IDX, protoPtr);
-    $rt_obj_set_tag(objPtr, $rt_PROTO_SLOT_IDX, $ir_get_tag(protoPtr));
+    $ir_arr_init_shape(objPtr);
+    $rt_setProto(objPtr, protoPtr);
     $rt_setArrTbl(objPtr, tblPtr);
     $rt_obj_set_tag(objPtr, $rt_ARRTBL_SLOT_IDX, $ir_get_tag(null));
     $rt_setArrLen(objPtr, numElems);
-    $ir_arr_init_shape(objPtr);
 
     //$ir_print_str("Allocated array\n");
 
@@ -1912,18 +1912,11 @@ Set the prototype value for an object
 */
 function $rt_setProto(obj, proto)
 {
-    // If the prototype is not null
-    if ($ir_ne_refptr(proto, null))
-    {
-        // Attempt to capture the shape of the proto value
-        var protoShape = $ir_obj_read_shape(proto);
-        if ($ir_break());
-        if ($ir_capture_shape(proto, protoShape))
-            if ($ir_capture_shape(proto, protoShape));
-    }
+    // Write the prototype pointer
+    $rt_obj_set_word(obj, $rt_PROTO_SLOT_IDX, proto);
 
-    // Define the prototype as a non-writable, non-enumerable constant
-    $ir_obj_def_const(obj, '__proto__', proto, false);
+    // Write the prototype tag
+    $rt_obj_set_tag(obj, $rt_PROTO_SLOT_IDX, $ir_get_tag(proto));
 }
 
 function $rt_setArrTbl(arr, tbl)
@@ -1951,6 +1944,12 @@ Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
 {
+    /*
+    $ir_print_str(propStr); $ir_print_str('\n');
+    if ($ir_is_object(obj))
+        $ir_print_str("is obj\n");
+    */
+
     // Capture the object shape
     var objShape = $ir_obj_read_shape(obj);
     if ($ir_break());
@@ -2103,6 +2102,7 @@ the base is an object of some kind and the key is a constant string
 */
 function $rt_getPropField(base, propStr)
 {
+
     // If the base is a simple object
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
@@ -2124,6 +2124,44 @@ function $rt_getPropField(base, propStr)
             return propVal;
         }
     }
+
+
+
+
+    // FIXME: the following code causes an error in 3d-raytrace
+
+    /*
+    var obj = base;
+
+    // If the base is a simple object
+    while ($ir_is_object(obj) || $ir_is_closure(obj))
+    {
+        // Capture the object shape
+        var objShape = $ir_obj_read_shape(obj);
+        if ($ir_break());
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape))
+                    if ($ir_capture_shape(obj, objShape));
+
+        // If the property value can be read directly
+        var propVal;
+        if (propVal = $ir_obj_get_prop(obj, propStr))
+        {
+            // Return the property value
+            return propVal;
+        }
+
+        if ($ir_is_object(propVal))
+            break;
+
+        // Get the prototype of the object
+        var obj = $ir_obj_get_proto(obj);
+    }
+    */
+
+
+
 
     return $rt_getProp(base, propStr);
 }

@@ -1663,9 +1663,6 @@ class BlockVersion : CodeFragment
     /// Inner code length, excluding final branches
     uint32_t codeLen;
 
-    /// Extended version info
-    ExtVerInfo extInfo = null;
-
     this(IRBlock block, CodeGenState state)
     {
         this.block = block;
@@ -1815,24 +1812,6 @@ class BlockVersion : CodeFragment
             as.setWritePos(origPos);
         }
     }
-}
-
-/**
-Base class for extended version information
-*/
-class ExtVerInfo
-{
-}
-
-/**
-Shape dispatch information
-*/
-class ShapeDispInfo : ExtVerInfo
-{
-    /// State at the shape dispatch instruction
-    CodeGenState instrSt;
-
-    // TODO: exec counter?
 }
 
 /**
