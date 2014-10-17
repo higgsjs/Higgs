@@ -1319,8 +1319,12 @@ class CodeGenState
         if (auto dstVal = cast(IRDstValue)value)
         {
             assert (
+                dstVal.hasUses,
+                "getType: value has no uses: " ~ value.toString
+            );
+            assert (
                 dstVal in valMap,
-                "getType: value not in val map " ~ value.toString
+                "getType: value not in val map: " ~ value.toString
             );
             ValState state = getState(dstVal);
             return state.type;

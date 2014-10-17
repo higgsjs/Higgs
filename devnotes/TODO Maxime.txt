@@ -87,33 +87,18 @@ TODO: liveness analysis flipped...?
 ECOOP - Dec 21st
 - Jan Vitek is on organizing committee
 
-TODO: blog post, Higgs' Fancy New Object System
-- use knightmare image for featured image
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
-
 TODO: complete basic wav encoding, on master
 
 TODO: take a break, dust off CPU heatsink and fan
 - turn off machine, remove fan
 
-TODO: V8 slightly faster on deltablue
-TODO: V8 slightly faster on cordic
-
 TODO: optimize host get_prop
 - doing shape lookup twice
 
-TODO: try to implement getPropField & getPropMethod as loop
-- Could try and see how it performs
-- Affects v8/raytrace, 280K get prop host
-- Appears beneficial for performance
-
-FIXME: getPropField with look causes error in 3d-raytrace
-- Build regression test to find problem
-
-TODO: make harness to exec benchmark a first time with timing, and then a second time
-- print time in output
+2014-10-XX Meeting:
+- Return type profiling
+  - Booleans dominate: gt, lt, eq, toBool
+  - closure returns are because of unoptimized method lookups
 
 Marc says: do interprocedural BBV
 - Return info: try to predict what the function will return
@@ -131,7 +116,40 @@ TODO: stub space, no more generic stubs
 - Do we need stub objects?
   - Entry stubs would need a pointer to the entry state
 
-TODO: profile return types
+TODO: make harness to exec benchmark a first time with timing, and then a second time
+- print time in output
+- run the timing function for the first run too
+- benchmarks/timing? benchmarks/nocomptime
+- should allow for some iteration count constant
+  - have some harness.js functions we use
+  - test on one benchmark first, refine
+- try with d8 --nocrankshaft
+
+TODO: blog post, Higgs' Fancy New Object System => get started
+- use knightmare image for featured image
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+TODO: push to master, branches have diverged far enough already!
+
+TODO: try to implement getPropField & getPropMethod as loop
+- Could try and see how it performs
+- Affects v8/raytrace, 280K get prop host
+- Appears beneficial for performance
+
+FIXME: getPropField with look causes error in 3d-raytrace
+- Build regression test to find problem
+./higgs bitops-nsieve-bits.js
+getType: value not in val map $10 = call_prim "$rt_getGlobal", $5, "Array" => while_test(1F46E)
+- Seems to be some kind of issue with the generated IR
+  - the value has uses but is not in the val map
+
+- makes no sense that the call to getGlobal would get compiled for a regular property...
+
+Weirdly doesn't fail if stdlib isn't loaded, suggesting it isn't an IR problem?
+
+TODO: print where lookup fails
 
 
 
@@ -141,12 +159,15 @@ TODO: profile return types
 
 
 
+[DONE] TODO: read blog post about V8 baseline JIT
 
+[DONE] TODO: what function returns closure so much in deltablue?
+- objGetProp and getProp often return a closure
 
-
-
-
-
+[DONE] TODO: profile return types
+- Add code in stats
+- Have an unknown entry for when the ret value type is unknown?
+- Boolean types dominate. gt, lt, se comparisons.
 
 [DONE] TODO: get rid of special defConst treatment of proto
 - Could have an initial object shape with the proto slot

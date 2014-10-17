@@ -2606,6 +2606,56 @@ void gen_eval_str(
     );
 }
 
+/*
+size_t[Tag] retCounts;
+size_t undefCount;
+size_t boolCount;
+
+extern (C) void countRet(Word word, Tag tag, IRInstr instr)
+{
+    if (word == UNDEF.word && tag == UNDEF.tag)
+        undefCount++;
+
+    if ((word == TRUE.word && tag == TRUE.tag) || (word == FALSE.word && tag == FALSE.tag))
+    {
+        //writeln(instr.block.fun.getName);
+        boolCount++;
+    }
+
+
+    if (tag == Tag.CLOSURE)
+        writeln(instr.block.fun.getName);
+
+
+    retCounts[tag]++;
+}
+
+static ~this()
+{
+    alias Tuple!(Tag, "tag", ulong, "cnt") Cnt;
+    Cnt[] cnts;
+    foreach (tag, count; retCounts)
+        cnts ~= Cnt(tag, count);
+    cnts.sort!"a.cnt > b.cnt";
+
+    foreach (pair; cnts)
+    {
+        writeln(pair.tag, ": ", pair.cnt);
+    }
+
+    writeln("undef: ", undefCount);
+    writeln("bool: ", boolCount);
+}
+
+as.pushRegs();
+as.mov(cargRegs[0].opnd(64), retOpnd);
+as.mov(cargRegs[1].opnd(8), tagOpnd);
+as.ptr(cargRegs[2], instr);
+as.ptr(cargRegs[3], &countRet);
+as.call(cargRegs[3]);
+as.popRegs();
+*/
+
 void gen_ret(
     BlockVersion ver,
     CodeGenState st,
@@ -2626,7 +2676,6 @@ void gen_ret(
         instr,
         0,
         64,
-        //scrRegs[0].opnd(64),
         retWordReg.opnd(64),
         true,
         false
@@ -4678,7 +4727,7 @@ void gen_load_lib(
                 vm,
                 instr,
                 null,
-                "RuntimeError",
+                "ReferenceError",
                 to!string(dlerror())
             );
         }

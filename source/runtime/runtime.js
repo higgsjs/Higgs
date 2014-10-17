@@ -2102,7 +2102,7 @@ the base is an object of some kind and the key is a constant string
 */
 function $rt_getPropField(base, propStr)
 {
-
+    
     // If the base is a simple object
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
@@ -2124,13 +2124,13 @@ function $rt_getPropField(base, propStr)
             return propVal;
         }
     }
-
+    
 
 
 
     // FIXME: the following code causes an error in 3d-raytrace
 
-    /*
+/*
     var obj = base;
 
     // If the base is a simple object
@@ -2158,7 +2158,7 @@ function $rt_getPropField(base, propStr)
         // Get the prototype of the object
         var obj = $ir_obj_get_proto(obj);
     }
-    */
+*/
 
 
 
