@@ -2926,7 +2926,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
     };
 
     /* EXPORT */
-    foreach (name in Xlib)
+    for (name in Xlib)
         exports[name] = Xlib[name];
 
 })(exports);
