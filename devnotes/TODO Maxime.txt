@@ -109,6 +109,7 @@ Marc says: do interprocedural BBV
   - Fixed IR translation bugs
   - Smaller code size
   - deltablue 50% faster, v8/raytrace 33% faster
+- Optimized array method lookups
 - Lack of collaboration, missed opportunity
   - Lunches with Baptiste or group lunches, fixed day
 
@@ -132,6 +133,10 @@ TODO: blog post, Higgs' Fancy New Object System => get started
 TODO: blog post, the lazy compiler
 - log current ideas in writing
 
+TODO: push to master
+TODO: attempt inline array for IRInstr args
+- measure compilation time before
+
 TODO: blog post about benchmark comparison against V8?
 - are we faster than V8 on deltablue, a V8 benchmark?
   - if so, add to meeeting notes
@@ -143,24 +148,8 @@ TODO: make harness to exec benchmark a first time with timing, and then a second
 - should allow for some iteration count constant
 - have some harness.js functions we use
 - have v8-base.js
-- test on one benchmark first, refine
 - try with d8 --nocrankshaft
-
-TODO: push to master
-
-TODO: attempt inline array for IRInstr args
-- measure compilation time before
-
-TODO: 11k objGetProp in 3d-raytrace, why?
-- toString and join!
-- For arrays, don't even need a special method, if we know those are
-  string array properties, just call getPropField
-
-TODO: could we possibly have an $ir_is_extobj primitive?
-while ($ir_is_object(obj) || $ir_is_closure(obj) || $ir_is_array(obj))
-- Would need an object bit in the tag
-
-TODO: push to master, branches have diverged far enough already!
+- test on one benchmark first, refine
 
 
 
@@ -170,9 +159,10 @@ TODO: push to master, branches have diverged far enough already!
 
 
 
+[DONE] TODO: do we still need the ne_rawptr hack for shapes? no
+- print use
 
-
-
+[DONE] TODO: push to master, branches have diverged far enough already!
 
 [DONE] TODO: fix obj_init_shape to account for null prototypes
 - foregoing known prototype tag is annoying
