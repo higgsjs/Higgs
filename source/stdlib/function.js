@@ -243,8 +243,8 @@ Function.prototype.call = function (thisArg)
 {
     var numArgs = $argc - 1;
 
-    // Create an array for the 
-    var argArray = $rt_newArr($ir_get_arr_proto(), numArgs);
+    // Create an array for the arguments
+    var argArray = $rt_newArr(numArgs);
     argArray.length = numArgs;
 
     // Copy the arguments into the array

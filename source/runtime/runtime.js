@@ -1847,7 +1847,7 @@ function $rt_newObj(protoPtr)
 /**
 Allocate an array
 */
-function $rt_newArr(protoPtr, numElems)
+function $rt_newArr(numElems)
 {
     // Allocate the array table
     var tblPtr = $rt_arrtbl_alloc(numElems);
@@ -1857,7 +1857,7 @@ function $rt_newArr(protoPtr, numElems)
 
     // Initialize the array object
     $ir_arr_init_shape(objPtr);
-    $rt_setProto(objPtr, protoPtr);
+    $rt_setProto(objPtr, $ir_get_arr_proto());
     $rt_setArrTbl(objPtr, tblPtr);
     $rt_obj_set_tag(objPtr, $rt_ARRTBL_SLOT_IDX, $ir_get_tag(null));
     $rt_setArrLen(objPtr, numElems);
@@ -2102,40 +2102,13 @@ the base is an object of some kind and the key is a constant string
 */
 function $rt_getPropField(base, propStr)
 {
-    
-    // If the base is a simple object
-    if ($ir_is_object(base) || $ir_is_closure(base))
-    {
-        var obj = base;
-
-        // Capture the object shape
-        var objShape = $ir_obj_read_shape(obj);
-        if ($ir_break());
-        if ($ir_capture_shape(obj, objShape))
-            if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape))
-                    if ($ir_capture_shape(obj, objShape));
-
-        // If the property value can be read directly
-        var propVal;
-        if (propVal = $ir_obj_get_prop(obj, propStr))
-        {
-            // Return the property value
-            return propVal;
-        }
-    }
-    
-
-
-
-    // FIXME: the following code causes an error in 3d-raytrace
-
-/*
     var obj = base;
 
     // If the base is a simple object
     while ($ir_is_object(obj) || $ir_is_closure(obj))
     {
+        //$ir_print_str('itr\n');
+
         // Capture the object shape
         var objShape = $ir_obj_read_shape(obj);
         if ($ir_break());
@@ -2157,68 +2130,6 @@ function $rt_getPropField(base, propStr)
 
         // Get the prototype of the object
         var obj = $ir_obj_get_proto(obj);
-    }
-*/
-
-
-
-
-    return $rt_getProp(base, propStr);
-}
-
-/**
-Specialized version of getProp for method accesses where
-the base is an object and the key is a constant string
-*/
-function $rt_getPropMethod(base, propStr)
-{
-    // If the base is an object
-    if ($ir_is_object(base) || $ir_is_closure(base))
-    {
-        var obj = base;
-
-        // Capture the object shape
-        var objShape = $ir_obj_read_shape(obj);
-        if ($ir_break());
-        if ($ir_capture_shape(obj, objShape))
-            if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape))
-                    if ($ir_capture_shape(obj, objShape));
-
-        // If the property value can be read directly
-        var propVal;
-        if (propVal = $ir_obj_get_prop(obj, propStr))
-        {
-            // Return the property value
-            return propVal;
-        }
-
-        // Otherwise, if the property is missing
-        if (!$ir_is_object(propVal))
-        {
-            // Get the prototype of the object
-            var obj = $ir_obj_get_proto(obj);
-
-            // If the prototype is not null
-            if ($ir_is_object(obj))
-            {
-                // Capture the object shape
-                var objShape = $ir_obj_read_shape(obj);
-                if ($ir_break());
-                if ($ir_capture_shape(obj, objShape))
-                    if ($ir_capture_shape(obj, objShape))
-                        if ($ir_capture_shape(obj, objShape))
-                            if ($ir_capture_shape(obj, objShape));
-
-                // If the property value can be read directly
-                var propVal;
-                if (propVal = $ir_obj_get_prop(obj, propStr))
-                {
-                    // Return the property value
-                    return propVal;
-                }
-            }
-        }
     }
 
     return $rt_getProp(base, propStr);

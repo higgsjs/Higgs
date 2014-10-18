@@ -17,7 +17,7 @@ assert (
 );
 assert (
     exc.toString().indexOf('foo') !== -1,
-    'error string does not specify function name'
+    'error string does not specify function name for function call'
 );
 
 try
@@ -39,6 +39,6 @@ assert (
 );
 assert (
     exc.toString().indexOf('bar') !== -1,
-    'error string does not specify function name'
+    'error string does not specify function name for method call'
 );
 

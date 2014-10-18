@@ -1418,7 +1418,7 @@ string getCalleeName(IRInstr callInstr)
         }
 
         // Call to get a property (method)
-        if (primName.str == "$rt_getPropMethod"w)
+        if (primName.str == "$rt_getPropField"w)
         {
             return to!string(closInstr.getArgStrCst(2));
         }

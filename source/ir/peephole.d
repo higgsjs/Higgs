@@ -278,11 +278,8 @@ void optIR(IRFunction fun)
                 // 0 or more Vi and 1 or more Vj
                 // and the phi node is not a function of
                 // one single value from its own block
-                if ((numVi + numVj == phi.block.numIncoming && numVj > 0) &&
-                    (phi.block.numIncoming !is 1 || phi.block.getIncoming(0).branch.block !is block))
+                if (numVi + numVj == phi.block.numIncoming && numVj > 0)
                 {
-                    //print('Renaming phi: ' + instr);
-
                     // Rename all occurences of Vi to Vj
                     assert (!Vj.hasNoUses);
                     phi.replUses(Vj);
@@ -489,12 +486,15 @@ void optIR(IRFunction fun)
                         }
 
                         // Phi of phi optimization:
-                        // If the predecessor has a phi and a jump, and the 
-                        // successor has one phi which uses the predecessor phi
-                        if (block.firstInstr is instr && 
+                        // If this block has only a jump and one phi
+                        // and the successor has one phi
+                        // and the arg to the successor phi is this phi
+                        // and this phi is only used by the successor phi
+                        if (block.firstInstr is instr &&
                             block.firstPhi !is null && block.firstPhi.next is null &&
                             succ.firstPhi !is null && succ.firstPhi.next is null &&
-                            branch.getPhiArg(succ.firstPhi) is block.firstPhi)
+                            branch.getPhiArg(succ.firstPhi) is block.firstPhi &&
+                            block.firstPhi.hasOneUse)
                         {
                             // For each predecessor
                             for (size_t pIdx = 0; pIdx < block.numIncoming; ++pIdx)
@@ -646,13 +646,49 @@ void optIR(IRFunction fun)
                             continue INSTR_LOOP;
                         }
                     }
-                }
+
+                } // branch instructions
 
             } // foreach instr
 
         } // foreach block
 
     } // while changed
+
+    // Map of visited/reachable blocks
+    bool[IRBlock] visited;
+
+    // Stack of blocks for recursive traversal
+    IRBlock[] stack = [fun.entryBlock];
+
+    // Until the traversal is done
+    while (!stack.empty)
+    {
+        auto block = stack.back();
+        stack.length--;
+
+        // If this block was already visited, skip it
+        if (block in visited)
+            continue;
+
+        // Mark the block as visited
+        visited[block] = true;
+
+        auto branch = block.lastInstr;
+        for (size_t i = 0; i < IRInstr.MAX_TARGETS; ++i)
+        {
+            auto target = branch.getTarget(i);
+            if (target !is null)
+                stack.assumeSafeAppend() ~= target.target;
+        }
+    }
+
+    // Remove all unreachable blocks
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        if (block !in visited)
+            delBlock(block);
+    }
 
     //writeln("peephole opts completed (", passNo, " passes)");
     //writeln(fun);

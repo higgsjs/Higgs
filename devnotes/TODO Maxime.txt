@@ -95,15 +95,20 @@ TODO: take a break, dust off CPU heatsink and fan
 TODO: optimize host get_prop
 - doing shape lookup twice
 
-2014-10-XX Meeting:
-- Return type profiling
-  - Booleans dominate: gt, lt, eq, toBool
-  - closure returns are because of unoptimized method lookups
-
 Marc says: do interprocedural BBV
 - Return info: try to predict what the function will return
   - speculative/predicted info return vs generic return?
 - Shape changed flag in context
+
+2014-10-XX Meeting:
+- Return type profiling
+  - Booleans dominate: gt, lt, eq, toBool
+  - closure returns are because of unoptimized method lookups
+  - Other most common types are int, float & string, fairly universal
+- Implemented more optimized property lookup as loop
+  - Fixed IR translation bugs
+  - Smaller code size
+  - deltablue 50% faster, v8/raytrace 33% faster
 
 TODO: stub branches, pre-reserve space, put block idx in there
 - should ideally jump ahead and not backwards
@@ -116,6 +121,19 @@ TODO: stub space, no more generic stubs
 - Do we need stub objects?
   - Entry stubs would need a pointer to the entry state
 
+TODO: attempt inline array for IRInstr args
+- measure compilation time before
+
+TODO: blog post, Higgs' Fancy New Object System => get started
+- use knightmare image for featured image
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+TODO: blog post about benchmark comparison against V8?
+- are we faster than V8 on deltablue, a V8 benchmark?
+  - if so, add to meeeting notes
+
 TODO: make harness to exec benchmark a first time with timing, and then a second time
 - print time in output
 - run the timing function for the first run too
@@ -125,39 +143,56 @@ TODO: make harness to exec benchmark a first time with timing, and then a second
   - test on one benchmark first, refine
 - try with d8 --nocrankshaft
 
-TODO: blog post, Higgs' Fancy New Object System => get started
-- use knightmare image for featured image
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
+TODO: push to master, branches have diverged far enough already! ***
 
-TODO: push to master, branches have diverged far enough already!
+TODO: known prototype tag for objects?
+- foregoing known prototype tag is annoying
+- could also have two shapes for objects
+- obj_init_shape could take a boolean argument for proto null or not
 
-TODO: try to implement getPropField & getPropMethod as loop
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: Running: ./tests/02-regress/call-non-function.js
+Error: error string does not specify function name
+./higgs tests/02-regress/call-non-function.js
+
+[DONE] TODO: implement getPropMethod as loop
 - Could try and see how it performs
 - Affects v8/raytrace, 280K get prop host
 - Appears beneficial for performance
 
-FIXME: getPropField with look causes error in 3d-raytrace
-- Build regression test to find problem
-./higgs bitops-nsieve-bits.js
-getType: value not in val map $10 = call_prim "$rt_getGlobal", $5, "Array" => while_test(1F46E)
-- Seems to be some kind of issue with the generated IR
-  - the value has uses but is not in the val map
+[DONE] TODO: can there be arrays with other prototypes besides the array prototype?
+- If not, simplify things, make array tag proto known
+- Seems like not
 
-- makes no sense that the call to getGlobal would get compiled for a regular property...
+[DONE] FIXME: initial object shape is wrong
+- Proto is marked as Tag.OBJECT
+- This is inaccurate when the prototype is null
 
+[DONE] FIXME: regression bug wrt getPropField loop
+- Unreachable code remains in the CFG, breaks liveness analysis
+
+[DONE] FIXME: phi of phi opt problem
+- makes no sense that the call to getGlobal would get compiled
 Weirdly doesn't fail if stdlib isn't loaded, suggesting it isn't an IR problem?
-
-TODO: print where lookup fails
-
-
-
-
-
-
-
-
+- Modifying the IR removes the failure....
+Fail when compiling the call to new.
+Seemingly trying to use the result of call_prim getGlobal
+As if we'd wrongly removed the inlining phi node?
+We replaced the phi node by the value of getGlobal
+Removing the phi of phi opt eliminates this issue
+- Issue with phi of phi opt, not valid when first phi has more uses
 
 [DONE] TODO: read blog post about V8 baseline JIT
 

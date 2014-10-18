@@ -440,11 +440,10 @@ IRFunction astToIR(
     if (ast.usesArguments)
     {
         // Create the "arguments" array
-        auto protoVal = bodyCtx.addInstr(new IRInstr(&GET_ARR_PROTO));
         auto argObjVal = genRtCall(
             bodyCtx,
             "newArr",
-            [protoVal, fun.argcVal],
+            [fun.argcVal],
             fun.ast.pos
         );
 
@@ -1893,7 +1892,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             // Get the method property
             closVal = genRtCall(
                 ctx,
-                "getPropMethod",
+                "getPropField",
                 [thisVal, keyVal],
                 expr.pos
             );
@@ -2013,12 +2012,11 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
-        auto protoVal = ctx.addInstr(new IRInstr(&GET_ARR_PROTO));
         auto numVal = cast(IRValue)IRConst.int32Cst(cast(int32_t)arrayExpr.exprs.length);
         auto arrVal = genRtCall(
             ctx,
             "newArr",
-            [protoVal, numVal],
+            [numVal],
             expr.pos
         );
 

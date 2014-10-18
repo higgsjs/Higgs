@@ -98,7 +98,7 @@ class RunError : Error
             );
 
             if (errName.tag is Tag.STRING)
-                this.name = errName.toString();
+                this.name = to!string(extractWStr(errName.ptr));
 
             auto msgStr = getProp(
                 vm,
@@ -638,7 +638,8 @@ class VM
         objectShape = emptyShape.defProp(
             this,
             "__proto__",
-            ValType(Tag.OBJECT),
+            //ValType(Tag.OBJECT),
+            ValType(),
             0,
             null
         );
