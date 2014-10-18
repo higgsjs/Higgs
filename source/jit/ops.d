@@ -3713,15 +3713,22 @@ void gen_obj_get_prop(
             return;
         }
 
-        // Get the property value
-        auto propVal = getProp(
-            vm,
-            objPair,
-            propStr
-        );
+        // Get the slot index and the object capacity
+        uint32_t slotIdx = defShape.slotIdx;
+        auto objCap = obj_get_cap(objPair.word.ptrVal);
 
-        outVal.word = propVal.word;
-        outVal.tag = propVal.tag;
+        if (slotIdx < objCap)
+        {
+            outVal.word = Word.int64v(obj_get_word(objPair.word.ptrVal, slotIdx));
+            outVal.tag = cast(Tag)obj_get_tag(objPair.word.ptrVal, slotIdx);
+        }
+        else
+        {
+            auto extTbl = obj_get_next(objPair.word.ptrVal);
+            assert (slotIdx < obj_get_cap(extTbl));
+            outVal.word = Word.int64v(obj_get_word(extTbl, slotIdx));
+            outVal.tag = cast(Tag)obj_get_tag(extTbl, slotIdx);
+        }
 
         outVal.success = (defShape.isGetSet is false)? 1:0;
     }

@@ -168,11 +168,9 @@ TODO: attempt inline array for IRInstr args
 - measure compilation time before
 
 TODO: richards way faster on V8
+- objGetProp called over 5K times
 
-TODO: optimize host get prop
-- Avoid double shape lookup
-- Pass args through fun params
-  - Do we need the object tag? no
+TODO: host get prop, try passing args through fun params
 
 
 
@@ -182,6 +180,8 @@ TODO: optimize host get prop
 
 
 
+
+[DONE] TODO: optimize host get prop to avoid double shape lookup
 
 [DONE] FIXME: nocomptime/3d-cube gets many setprop calls, why?
 
