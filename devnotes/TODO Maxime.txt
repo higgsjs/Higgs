@@ -109,6 +109,8 @@ Marc says: do interprocedural BBV
   - Fixed IR translation bugs
   - Smaller code size
   - deltablue 50% faster, v8/raytrace 33% faster
+- Lack of collaboration, missed opportunity
+  - Lunches with Baptiste or group lunches, fixed day
 
 TODO: stub branches, pre-reserve space, put block idx in there
 - should ideally jump ahead and not backwards
@@ -121,14 +123,14 @@ TODO: stub space, no more generic stubs
 - Do we need stub objects?
   - Entry stubs would need a pointer to the entry state
 
-TODO: attempt inline array for IRInstr args
-- measure compilation time before
-
 TODO: blog post, Higgs' Fancy New Object System => get started
 - use knightmare image for featured image
 - quick sketching program, online?
 - post to r/compilers, r/higgsjs
 - Typed shapes + BBV a bit of a gamble
+
+TODO: blog post, the lazy compiler
+- log current ideas in writing
 
 TODO: blog post about benchmark comparison against V8?
 - are we faster than V8 on deltablue, a V8 benchmark?
@@ -139,29 +141,44 @@ TODO: make harness to exec benchmark a first time with timing, and then a second
 - run the timing function for the first run too
 - benchmarks/timing? benchmarks/nocomptime
 - should allow for some iteration count constant
-  - have some harness.js functions we use
-  - test on one benchmark first, refine
+- have some harness.js functions we use
+- have v8-base.js
+- test on one benchmark first, refine
 - try with d8 --nocrankshaft
 
-TODO: push to master, branches have diverged far enough already! ***
+TODO: push to master
 
-TODO: known prototype tag for objects?
+TODO: attempt inline array for IRInstr args
+- measure compilation time before
+
+TODO: 11k objGetProp in 3d-raytrace, why?
+- toString and join!
+- For arrays, don't even need a special method, if we know those are
+  string array properties, just call getPropField
+
+TODO: could we possibly have an $ir_is_extobj primitive?
+while ($ir_is_object(obj) || $ir_is_closure(obj) || $ir_is_array(obj))
+- Would need an object bit in the tag
+
+TODO: push to master, branches have diverged far enough already!
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: fix obj_init_shape to account for null prototypes
 - foregoing known prototype tag is annoying
 - could also have two shapes for objects
 - obj_init_shape could take a boolean argument for proto null or not
-
-
-
-
-
-
-
-
-
-
-
-
-
+- Prototype could be many different things, not just object or null!
 
 [DONE] FIXME: Running: ./tests/02-regress/call-non-function.js
 Error: error string does not specify function name

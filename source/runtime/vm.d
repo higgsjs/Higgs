@@ -499,9 +499,6 @@ class VM
     /// Empty object shape
     ObjShape emptyShape;
 
-    /// Initial object shape
-    ObjShape objectShape;
-
     /// Initial array shape
     ObjShape arrayShape;
 
@@ -633,16 +630,6 @@ class VM
 
         // Allocate the empty object shape
         emptyShape = new ObjShape(this);
-
-        // Initialize the initial object shape
-        objectShape = emptyShape.defProp(
-            this,
-            "__proto__",
-            //ValType(Tag.OBJECT),
-            ValType(),
-            0,
-            null
-        );
 
         // Initialize the initial array shape
         arrayShape = emptyShape.defProp(

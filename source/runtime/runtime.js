@@ -1838,7 +1838,7 @@ function $rt_newObj(protoPtr)
     var objPtr = $rt_obj_alloc($rt_OBJ_MIN_CAP);
 
     // Initialize the object
-    $ir_obj_init_shape(objPtr);
+    $ir_obj_init_shape(objPtr, protoPtr);
     $rt_setProto(objPtr, protoPtr);
 
     return objPtr;
@@ -2105,7 +2105,7 @@ function $rt_getPropField(base, propStr)
     var obj = base;
 
     // If the base is a simple object
-    while ($ir_is_object(obj) || $ir_is_closure(obj))
+    while ($ir_is_object(obj) || $ir_is_closure(obj) || $ir_is_array(obj))
     {
         //$ir_print_str('itr\n');
 

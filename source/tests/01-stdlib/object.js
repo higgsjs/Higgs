@@ -331,6 +331,8 @@ function test_keys()
     var a = Object.create(null);
     a.x = 'foo';
     a.y = 'bar';
+    assert (a.x === 'foo');
+    assert (a.z === undefined);
     var keys = Object.keys(a);
     assert (keys.length === 2)
 }

@@ -3357,20 +3357,67 @@ void gen_obj_init_shape(
     CodeBlock as
 )
 {
+    extern (C) void op_obj_init_shape(VM vm, refptr objPtr, Tag protoTag)
+    {
+        // Get the initial object shape
+        auto shape = vm.emptyShape.defProp(
+            vm,
+            "__proto__",
+            ValType(protoTag),
+            0,
+            null
+        );
+
+        obj_set_shape(objPtr, cast(rawptr)shape);
+    }
+
     auto vm = ver.state.fun.vm;
 
     // Get the object operand
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
-    assert (opnd0.isReg);
+    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+    assert (objOpnd.isReg);
 
-    // Load the object shape into r0
-    as.getMember!("VM.objectShape")(scrRegs[0], vmReg);
+    // Get the type operand for the prototype argument
+    auto tagOpnd = st.getTagOpnd(as, instr, 1);
 
-    // Set the object shape
-    as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
+    // If the prototype tag is a constant
+    if (tagOpnd.isImm)
+    {
+        // Get the initial object shape
+        auto shape = vm.emptyShape.defProp(
+            vm,
+            "__proto__",
+            ValType(cast(Tag)tagOpnd.imm.imm),
+            0,
+            null
+        );
 
-    // Propagate the object shape
-    st.setShape(cast(IRDstValue)instr.getArg(0), vm.objectShape);
+        // Set the object shape
+        as.ptr(scrRegs[0], shape);
+        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0]);
+
+        // Propagate the object shape
+        st.setShape(cast(IRDstValue)instr.getArg(0), shape);
+    }
+    else
+    {
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
+
+        as.saveJITRegs();
+
+        // Call the host function
+        as.mov(cargRegs[0].opnd(64), vmReg.opnd);
+        as.mov(cargRegs[1].opnd(64), objOpnd);
+        as.mov(cargRegs[2].opnd(8), tagOpnd);
+        as.ptr(scrRegs[0], &op_obj_init_shape);
+        as.call(scrRegs[0]);
+
+        as.loadJITRegs();
+
+        // Clear any known shape for this object
+        st.clearShape(cast(IRDstValue)instr.getArg(0));
+    }
 }
 
 /// Initializes an array to the initial shape

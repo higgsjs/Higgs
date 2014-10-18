@@ -302,7 +302,7 @@ Opcode CAPTURE_SHAPE = { "capture_shape", false, [OpArg.LOCAL, OpArg.LOCAL], &ge
 Opcode OBJ_READ_SHAPE = { "obj_read_shape", true, [OpArg.LOCAL], &gen_obj_read_shape };
 
 /// Initialize the shape of an object to the empty shape
-Opcode OBJ_INIT_SHAPE = { "obj_init_shape", false, [OpArg.LOCAL], &gen_obj_init_shape, OpInfo.IMPURE };
+Opcode OBJ_INIT_SHAPE = { "obj_init_shape", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_init_shape, OpInfo.IMPURE };
 
 /// Initialize the shape of an array
 Opcode ARR_INIT_SHAPE = { "arr_init_shape", false, [OpArg.LOCAL], &gen_arr_init_shape, OpInfo.IMPURE };
