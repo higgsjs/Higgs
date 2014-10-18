@@ -2115,7 +2115,9 @@ function $rt_getPropField(base, propStr)
         if ($ir_capture_shape(obj, objShape))
             if ($ir_capture_shape(obj, objShape))
                 if ($ir_capture_shape(obj, objShape))
-                    if ($ir_capture_shape(obj, objShape));
+                    if ($ir_capture_shape(obj, objShape))
+                        if ($ir_capture_shape(obj, objShape))
+                            if ($ir_capture_shape(obj, objShape));
 
         // If the property value can be read directly
         var propVal;

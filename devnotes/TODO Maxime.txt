@@ -133,6 +133,7 @@ TODO: blog post, Higgs' Fancy New Object System => get started
   - deltablue 50% faster, v8/raytrace 33% faster
 - Optimized array method lookups
 - Benchmark harness
+  - Mostly works, gives us comparable times
   - Often competitive with V8 baseline, but crankshaft often beats us by a lot
     - Probably due to inlining
   - Should we modify short benchmarks to run longer?
@@ -170,7 +171,10 @@ FIXME: nocomptime/3d-cube gets many setprop calls, why?
 
 TODO: richards way faster on V8
 
-TODO: deltablue has many get prop host calls
+TODO: optimize host get prop
+- Avoid double shape lookup
+- Pass args through fun params
+  - Do we need the object tag? no
 
 
 
@@ -179,8 +183,10 @@ TODO: deltablue has many get prop host calls
 
 
 
-
-
+[DONE] TODO: deltablue has 13.2K get_prop host calls, why?
+- Does not occur through getProp or objGetProp
+- Prop name is known
+- Shape is unknown, failed to capture
 
 [DONE] TODO: remove *quick benchmarks from nocomptime
 
