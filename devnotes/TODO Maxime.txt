@@ -150,6 +150,18 @@ TODO: make harness to exec benchmark a first time with timing, and then a second
 - have v8-base.js
 - try with d8 --nocrankshaft
 - test on one benchmark first, refine
+- Goals:
+  - comparison with and without crankshaft
+  - csv output
+  - 3 warmup runs and then average of 10
+  - can use our regular benchmark.py script so long as we use multiple CSV files!
+
+FIXME: nocomptime/3d-cube gets many setprop calls, why?
+
+TODO: deltablue has many get prop host calls
+
+
+
 
 
 

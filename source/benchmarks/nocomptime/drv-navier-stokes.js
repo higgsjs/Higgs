@@ -1,0 +1,5 @@
+setupNavierStokes();
+
+runNavierStokes();
+
+tearDownNavierStokes();
