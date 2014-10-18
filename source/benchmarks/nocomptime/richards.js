@@ -34,12 +34,6 @@
 // The benchmark was originally implemented in BCPL by
 // Martin Richards.
 
-
-var Richards = new BenchmarkSuite('Richards', 35302, [
-  new Benchmark("Richards", runRichards)
-]);
-
-
 /**
  * The Richards benchmark simulates the task dispatcher of an
  * operating system.
@@ -537,3 +531,7 @@ Packet.prototype.addTo = function (queue) {
 Packet.prototype.toString = function () {
   return "Packet";
 };
+
+benchmarkFun = runRichards;
+load('benchmarks/nocomptime/timebenchmark.js');
+

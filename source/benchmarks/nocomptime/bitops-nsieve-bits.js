@@ -31,5 +31,6 @@ function sieve() {
     }
 }
 
-sieve();
+benchmarkFun = sieve;
+load('benchmarks/nocomptime/timebenchmark.js');
 

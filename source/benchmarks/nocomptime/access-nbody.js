@@ -185,20 +185,23 @@ NBodySystem.prototype.energy = function(){
    return e;
 }
 
-var ret;
+function benchmarkFun()
+{
+    for ( var n = 3; n <= 24; n *= 2 ) {
+        (function(){
+            var bodies = new NBodySystem( Array(
+               Sun(),Jupiter(),Saturn(),Uranus(),Neptune()
+            ));
+            var max = n * 100;
 
-for ( var n = 3; n <= 24; n *= 2 ) {
-    (function(){
-        var bodies = new NBodySystem( Array(
-           Sun(),Jupiter(),Saturn(),Uranus(),Neptune()
-        ));
-        var max = n * 100;
-        
-        ret = bodies.energy();
-        for (var i=0; i<max; i++){
-            bodies.advance(0.01);
-        }
-        ret = bodies.energy();
-    })();
+            ret = bodies.energy();
+            for (var i=0; i<max; i++){
+                bodies.advance(0.01);
+            }
+            ret = bodies.energy();
+        })();
+    }
 }
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

@@ -1,3 +1,8 @@
+// By performing warmup runs, we abstract out compilation time, standard
+// library and runtime initialization time, as well as part of the benchmark
+// initialization time (global function definitions). We cannot remove garbage
+// collection time from the final timing run, however.
+
 function timeFun(fun)
 {
     var startTime = (new Date()).getTime();
