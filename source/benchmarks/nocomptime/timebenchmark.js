@@ -17,14 +17,18 @@ function timeFun(fun)
 if (typeof benchmarkFun != 'function')
     throw Error('benchmarkFun not defined!');
 
+var w0 = 0.0;
+var w1 = 0.0;
+var t0 = 0.0;
+
 // Warmup runs
 var w0 = timeFun(benchmarkFun);
 var w1 = timeFun(benchmarkFun);
 
 // Timing run
-var t = timeFun(benchmarkFun);
+var t0 = timeFun(benchmarkFun);
 
 print('warmup 0: ', w0);
 print('warmup 1: ', w1);
-print('time: ', t);
+print('time: ', t0);
 

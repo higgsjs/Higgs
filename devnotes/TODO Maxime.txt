@@ -167,8 +167,6 @@ TODO: push to master
 TODO: attempt inline array for IRInstr args
 - measure compilation time before
 
-FIXME: nocomptime/3d-cube gets many setprop calls, why?
-
 TODO: richards way faster on V8
 
 TODO: optimize host get prop
@@ -182,6 +180,10 @@ TODO: optimize host get prop
 
 
 
+
+
+
+[DONE] FIXME: nocomptime/3d-cube gets many setprop calls, why?
 
 [DONE] TODO: deltablue has 13.2K get_prop host calls, why?
 - Does not occur through getProp or objGetProp
