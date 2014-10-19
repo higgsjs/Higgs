@@ -23,7 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-bitwiseAndValue = 4294967296;
-for (var i = 0; i < 600000; i++)
-    bitwiseAndValue = bitwiseAndValue & i;
+var i = 0;
+
+function benchmarkFun()
+{
+    bitwiseAndValue = 4294967296;
+    for (i = 0; i < 600000; i++)
+        bitwiseAndValue = bitwiseAndValue & i;
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

@@ -3,11 +3,12 @@
 // initialization time (global function definitions). We cannot remove garbage
 // collection time from the final timing run, however.
 
-function timeFun(fun)
+function timeFun(fun, numItrs)
 {
     var startTime = (new Date()).getTime();
 
-    fun();
+    for (var i = 0; i < numItrs; ++i)
+        fun();
 
     var endTime = (new Date()).getTime();
 
@@ -17,18 +18,29 @@ function timeFun(fun)
 if (typeof benchmarkFun != 'function')
     throw Error('benchmarkFun not defined!');
 
-var w0 = 0.0;
-var w1 = 0.0;
-var t0 = 0.0;
+var sampleTime = 0.0;
+var benchTime = 0.0;
+var numItrs = 0;
 
-// Warmup runs
-var w0 = timeFun(benchmarkFun);
-var w1 = timeFun(benchmarkFun);
+// First warmup run
+timeFun(benchmarkFun, 1);
+
+// Sample timing run
+sampleTime = timeFun(benchmarkFun, 1);
+
+// Compute the number of iterations needed to get at least
+// 1000ms of execution time
+numItrs = Math.ceil(1000 / (sampleTime + 1));
+
+// If the sample time was less than 1000ms, perform additional warmup
+// iterations to make sure advanced JIT optimizations are run
+if (sampleTime < 1000)
+    timeFun(benchmarkFun, numItrs);
 
 // Timing run
-var t0 = timeFun(benchmarkFun);
+benchTime = timeFun(benchmarkFun, numItrs) / numItrs;
 
-print('warmup 0: ', w0);
-print('warmup 1: ', w1);
-print('time: ', t0);
+print('sample time: ', sampleTime);
+print('num itrs: ', numItrs);
+print('benchmark time: ', benchTime);
 

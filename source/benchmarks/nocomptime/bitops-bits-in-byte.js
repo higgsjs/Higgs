@@ -18,5 +18,9 @@ for(var x=0; x<350; x++)
 for(var y=0; y<256; y++) func(y);
 }
 
-TimeFunc(bitsinbyte);
+function benchmarkFun()
+{
+    TimeFunc(bitsinbyte);
+}
 
+load('benchmarks/nocomptime/timebenchmark.js');
