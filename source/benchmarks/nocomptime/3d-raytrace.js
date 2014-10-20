@@ -438,4 +438,10 @@ for (var y = 0; y < size; y++) {\n\
     return s;
 }
 
-testOutput = arrayToCanvasCommands(raytraceScene());
+function benchmarkFun()
+{
+    testOutput = arrayToCanvasCommands(raytraceScene());
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
+

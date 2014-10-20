@@ -98,6 +98,24 @@ Marc says: do interprocedural BBV
   - speculative/predicted info return vs generic return?
 - Shape changed flag in context
 
+TODO: blog post, Higgs' Fancy New Object System => get started
+- use knightmare image for featured image
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+TODO: stub branches, pre-reserve space, put block idx in there
+- should ideally jump ahead and not backwards
+- don't alloc objects for each stub
+  - or maybe have an array of stubs, flat
+- could use this for function entry stubs too
+  - need to become specialized for interprocedural BBV
+TODO: stub space, no more generic stubs
+- Do we need entry stubs? compile immediately?
+- Do we need stub objects?
+  - Entry stubs would need a pointer to the entry state
+- This should yield interesting performance improvements
+
 TODO: blog post about benchmark comparison against V8?
 - are we faster than V8 on deltablue, a V8 benchmark?
   - if so, add to meeeting notes
@@ -116,11 +134,7 @@ TODO: make harness to exec benchmark a first time with timing, and then a second
   - 3 warmup runs and then average of 10
   - can use our regular benchmark.py script so long as we use multiple CSV files!
 
-TODO: blog post, Higgs' Fancy New Object System => get started
-- use knightmare image for featured image
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
+TODO: Higgs, increase heap size in release mode to 256M
 
 2014-10-XX Meeting:
 - Return type profiling
@@ -130,31 +144,21 @@ TODO: blog post, Higgs' Fancy New Object System => get started
 - Optimized property lookup as loop
   - Fixed IR translation bugs
   - Smaller code size
-  - deltablue 50% faster, v8/raytrace 33% faster
+  - deltablue 50% faster, v8-raytrace 33% faster
 - Optimized array method lookups
 - Optimized slow get prop path
 - Benchmark harness
   - Mostly works, gives us comparable times
   - Often competitive with V8 baseline, but crankshaft often beats us by a lot
     - Probably due to inlining
-  - Seems realistic to beat V8 baseline on most benchmarks
+    - but sometimes less than 2x slower
+  - Seems realistic to beat baseline on most benchmarks
   - With interp BBV, we may approach crankshaft, but probably won't beat it
-  - Should we modify short benchmarks to run longer?
-  - Also increases likelyhood of crankshaft kicking in during warmup
+  - Benchmark setup & teardown, run multiple times or exclude? ***
+    - Currently not fully consistent
+  - Higgs, increase heap size in release mode to minimize GC?
 - Lack of collaboration, missed opportunity
   - Lunches with Baptiste or group lunches, fixed day
-
-TODO: stub branches, pre-reserve space, put block idx in there
-- should ideally jump ahead and not backwards
-- don't alloc objects for each stub
-  - or maybe have an array of stubs, flat
-- could use this for function entry stubs too
-  - need to become specialized for interprocedural BBV
-TODO: stub space, no more generic stubs
-- Do we need entry stubs? compile immediately?
-- Do we need stub objects?
-  - Entry stubs would need a pointer to the entry state
-- This should yield interesting performance improvements
 
 TODO: complete basic wav encoding
 
@@ -164,16 +168,23 @@ TODO: blog post, the lazy compiler
 TODO: push to master
 TODO: phi nodes, store in inline array?
 - Issue: no more pointers to phi nodes?
-- Look at V8 src
 
 TODO: push to master
 TODO: attempt inline array for IRInstr args
 - measure compilation time before
 
+TODO: look at V8 src wrt IR, phi nodes
+- How do they represent/alloc this efficiently?
+- No pointers?
+
 TODO: richards way faster on V8
 - objGetProp called over 5K times, why?
 
 TODO: host get prop, try passing args through fun params
+
+FIXME: ./higgs benchmarks/nocomptime/regexp.js 
+run-time error: run-time error: "global property not defined: "g""
+- Did this benchmark ever work?
 
 FIXME: turtle segfaults
 ./higgs ../examples/turtle.js 
@@ -188,20 +199,30 @@ canvas.fillRect(10,10, 100, 100); });
 h>window.show();
 - Add regression
 
-TODO: numItrs in timeFun
+TODO: benchmark.py, optional benchmark list file
+- csv?
+- --bench_list=
+- default should be source/benchmark-list.csv
+
+
+
+
+
+
+
+
+
+[DONE] TODO: complete nocomptime benchmark hooks
+load('benchmarks/nocomptime/timebenchmark.js');
+
+[DONE] TODO: timebenchmark.js, adaptive timing
+
+[DONE] TODO: numItrs in timeFun
 - do warmup 0, warmup 1
 - if warmup 1 < 100ms, do more warmup rounds
   - log supplemental warmup, warmup time
 - compute num itrs to get total time ~ 1s, log it
 - report time divided by num itrs
-
-
-
-
-
-
-
-
 
 [DONE] TODO: optimize host get prop to avoid double shape lookup
 

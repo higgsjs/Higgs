@@ -24,3 +24,4 @@ function benchmarkFun()
 }
 
 load('benchmarks/nocomptime/timebenchmark.js');
+

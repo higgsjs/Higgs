@@ -1,2 +1,0 @@
-encrypt();
-decrypt();

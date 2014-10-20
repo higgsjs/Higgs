@@ -116,20 +116,25 @@ function base64ToString(data) {
     return result;
 }
 
-var str = "";
+function benchmarkFun()
+{
+    var str = "";
 
-for ( var i = 0; i < 8192; i++ )
-        str += String.fromCharCode( (25 * Math.random()) + 97 );
+    for ( var i = 0; i < 8192; i++ )
+            str += String.fromCharCode( (25 * Math.random()) + 97 );
 
-for ( var i = 8192; i <= 16384; i *= 2 ) {
+    for ( var i = 8192; i <= 16384; i *= 2 ) {
 
-    var base64;
+        var base64;
 
-    base64 = toBase64(str);
-    base64ToString(base64);
+        base64 = toBase64(str);
+        base64ToString(base64);
 
-    // Double the string
-    str += str;
+        // Double the string
+        str += str;
+    }
 }
 
-toBinaryTable = null;
+load('benchmarks/nocomptime/timebenchmark.js');
+
+

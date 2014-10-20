@@ -283,8 +283,13 @@ for (var i = 0; i <4; i++) {
     plainText += plainText;
 }
 
-var md5Output = hex_md5(plainText);
+function benchmarkFun()
+{
+    var md5Output = hex_md5(plainText);
 
-if (md5Output !== 'ef877ddabf940c7c501ce860a92f4076')
-    error('crypto-md5 produced incorrect output');
+    if (md5Output !== 'ef877ddabf940c7c501ce860a92f4076')
+        error('crypto-md5 produced incorrect output');
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

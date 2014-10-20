@@ -295,11 +295,17 @@ Date.prototype.formatDate = function (input,time) {
 
 var date = new Date("1/1/2007 1:11:11");
 
-  /* BEGIN LOOP */
-for (i = 0; i < 500; ++i) {
-    var shortFormat = date.formatDate("Y-m-d");
-    var longFormat = date.formatDate("l, F d, Y g:i:s A");
-    date.setTime(date.getTime() + 84266956);
+function benchmarkFun()
+{
+
+    /* BEGIN LOOP */
+    for (i = 0; i < 500; ++i) {
+        var shortFormat = date.formatDate("Y-m-d");
+        var longFormat = date.formatDate("l, F d, Y g:i:s A");
+        date.setTime(date.getTime() + 84266956);
+    }
+      /* END LOOP */
 }
-  /* END LOOP */
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

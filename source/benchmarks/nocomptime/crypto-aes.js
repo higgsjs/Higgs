@@ -416,6 +416,11 @@ And sails upon the bosom of the air.";
 
 var password = "O Romeo, Romeo! wherefore art thou Romeo?";
 
-var cipherText = AESEncryptCtr(plainText, password, 256);
-var decryptedText = AESDecryptCtr(cipherText, password, 256);
+function benchmarkFun()
+{
+    var cipherText = AESEncryptCtr(plainText, password, 256);
+    var decryptedText = AESDecryptCtr(cipherText, password, 256);
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

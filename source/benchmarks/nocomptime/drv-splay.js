@@ -1,6 +1,0 @@
-SplaySetup();
-
-SplayRun();
-
-SplayTearDown();
-

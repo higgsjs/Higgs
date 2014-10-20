@@ -36,11 +36,6 @@
 // affect how the regexps match their input.  Finally the strings are 
 // scrambled to exercise the regexp engine on different input strings.
 
-
-var RegExp = new BenchmarkSuite('RegExp', 910985, [
-  new Benchmark("RegExp", RegExpRun, RegExpSetup, RegExpTearDown)
-]);
-
 var regExpBenchmark = null;
 
 function RegExpSetup() {
@@ -1762,3 +1757,13 @@ function RegExpBenchmark() {
   
   this.run = run;
 }
+
+function benchmarkFun()
+{
+    RegExpSetup();
+    RegExpRun();
+    RegExpTearDown();
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
+

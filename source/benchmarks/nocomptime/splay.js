@@ -33,11 +33,6 @@
 // also has to deal with a lot of changes to the large tree object
 // graph.
 
-var Splay = new BenchmarkSuite('Splay', 81491, [
-  new Benchmark("Splay", SplayRun, SplaySetup, SplayTearDown)
-]);
-
-
 // Configuration.
 var kSplayTreeSize = 8000;
 var kSplayTreeModifications = 80;
@@ -392,3 +387,15 @@ SplayTree.Node.prototype.traverse_ = function(f) {
     current = current.right;
   }
 };
+
+function benchmarkFun()
+{
+    SplaySetup();
+
+    SplayRun();
+
+    SplayTearDown();
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
+

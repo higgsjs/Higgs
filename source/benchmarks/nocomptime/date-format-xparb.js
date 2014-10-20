@@ -418,10 +418,16 @@ Date.patterns = {
 
 var date = new Date("1/1/2007 1:11:11");
 
-  /* BEGIN LOOP */
-for (i = 0; i < 4000; ++i) {
-    var shortFormat = date.dateFormat("Y-m-d");
-    var longFormat = date.dateFormat("l, F d, Y g:i:s A");
-    date.setTime(date.getTime() + 84266956);
+function benchmarkFun()
+{
+      /* BEGIN LOOP */
+    for (i = 0; i < 4000; ++i) {
+        var shortFormat = date.dateFormat("Y-m-d");
+        var longFormat = date.dateFormat("l, F d, Y g:i:s A");
+        date.setTime(date.getTime() + 84266956);
+    }
+      /* END LOOP */
 }
-  /* END LOOP */
+
+load('benchmarks/nocomptime/timebenchmark.js');
+

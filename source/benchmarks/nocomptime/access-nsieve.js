@@ -37,6 +37,6 @@ function sieve() {
     //return ret;
 }
 
-sieve();
-//var ret = sieve();
+benchmarkFun = sieve;
+load('benchmarks/nocomptime/timebenchmark.js');
 

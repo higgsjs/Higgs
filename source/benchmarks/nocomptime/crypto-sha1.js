@@ -221,8 +221,13 @@ for (var i = 0; i <4; i++) {
     plainText += plainText;
 }
 
-var sha1Output = hex_sha1(plainText);
+function benchmarkFun()
+{
+    var sha1Output = hex_sha1(plainText);
 
-if (sha1Output !== '6fe25a3b7811cc553bc1e3494e36a7072500f454')
-    error('crypto-sha1 produced incorrect output');
+    if (sha1Output !== '6fe25a3b7811cc553bc1e3494e36a7072500f454')
+        error('crypto-sha1 produced incorrect output');
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

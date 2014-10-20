@@ -27,7 +27,12 @@ function partial(n){
     }
 }
 
-for (var i = 1024; i <= 16384; i *= 2) {
-    partial(i);
+function benchmarkFun()
+{
+    for (var i = 1024; i <= 16384; i *= 2) {
+        partial(i);
+    }
 }
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

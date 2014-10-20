@@ -28,5 +28,10 @@ for(var x=0; x<500; x++)
 for(var y=0; y<256; y++) func(y);
 }
 
-TimeFunc(fast3bitlookup);
+function benchmarkFun()
+{
+    TimeFunc(fast3bitlookup);
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

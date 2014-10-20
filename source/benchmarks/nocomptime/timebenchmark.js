@@ -18,29 +18,20 @@ function timeFun(fun, numItrs)
 if (typeof benchmarkFun != 'function')
     throw Error('benchmarkFun not defined!');
 
-var sampleTime = 0.0;
 var benchTime = 0.0;
-var numItrs = 0;
+var numItrs = 1;
 
-// First warmup run
+// Warmup run
 timeFun(benchmarkFun, 1);
 
-// Sample timing run
-sampleTime = timeFun(benchmarkFun, 1);
-
-// Compute the number of iterations needed to get at least
-// 1000ms of execution time
-numItrs = Math.ceil(1000 / (sampleTime + 1));
-
-// If the sample time was less than 1000ms, perform additional warmup
-// iterations to make sure advanced JIT optimizations are run
-if (sampleTime < 1000)
-    timeFun(benchmarkFun, numItrs);
+// Compute the number of iterations needed to get
+// at least 1000ms of execution time
+while (timeFun(benchmarkFun, numItrs) < 1000)
+    numItrs *= 2;
 
 // Timing run
 benchTime = timeFun(benchmarkFun, numItrs) / numItrs;
 
-print('sample time: ', sampleTime);
 print('num itrs: ', numItrs);
-print('benchmark time: ', benchTime);
+print('time: ', benchTime);
 

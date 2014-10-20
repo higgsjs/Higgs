@@ -24,12 +24,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
-                                      [new Benchmark('NavierStokes',
-                                                     runNavierStokes,
-                                                     setupNavierStokes,
-                                                     tearDownNavierStokes)]);
-
 var solver = null;
 
 function runNavierStokes()
@@ -385,3 +379,15 @@ function FluidField(canvas) {
     }
     this.setResolution(64, 64);
 }
+
+function benchmarkFun()
+{
+    setupNavierStokes();
+
+    runNavierStokes();
+
+    tearDownNavierStokes();
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
+

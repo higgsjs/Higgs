@@ -1695,22 +1695,28 @@ var ilen, clen,
   M: '(a|c)', N: '(a|c|g|t)', R: '(a|g)', S: '(c|t)',
   V: '(a|c|g)', W: '(a|t)', Y: '(c|t)' }
 
-ilen = dnaInput.length;
+function benchmarkFun()
+{
+    ilen = dnaInput.length;
 
-// There is no in-place substitution
-dnaInput = dnaInput.replace(/>.*\n|\n/g,"")
-clen = dnaInput.length
+    // There is no in-place substitution
+    dnaInput = dnaInput.replace(/>.*\n|\n/g,"")
+    clen = dnaInput.length
 
-var dnaOutputString;
+    var dnaOutputString;
 
-  /* BEGIN LOOP */
-for(i in seqs)
-    dnaOutputString += seqs[i].source + " " + (dnaInput.match(seqs[i]) || []).length + "\n";
-  /* END LOOP */
- // match returns null if no matches, so replace with empty
+      /* BEGIN LOOP */
+    for(i in seqs)
+        dnaOutputString += seqs[i].source + " " + (dnaInput.match(seqs[i]) || []).length + "\n";
+      /* END LOOP */
+     // match returns null if no matches, so replace with empty
 
-  /* BEGIN LOOP */
-for(k in subs)
- dnaInput = dnaInput.replace(k, subs[k], "g")
-  /* END LOOP */
- // search string, replacement string, flags
+      /* BEGIN LOOP */
+    for(k in subs)
+     dnaInput = dnaInput.replace(k, subs[k], "g")
+      /* END LOOP */
+     // search string, replacement string, flags
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
+

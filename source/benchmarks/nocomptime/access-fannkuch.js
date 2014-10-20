@@ -61,6 +61,11 @@ function fannkuch(n) {
    }
 }
 
-var n = 8;
-var ret = fannkuch(n);
+function benchmarkFun()
+{
+    var n = 8;
+    var ret = fannkuch(n);
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

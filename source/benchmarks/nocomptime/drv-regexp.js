@@ -1,3 +1,0 @@
-RegExpSetup();
-RegExpRun();
-RegExpTearDown();

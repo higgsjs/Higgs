@@ -273,5 +273,9 @@ function makeTagCloud(tagInfo)
     return output;
 }
 
-var tagcloud = makeTagCloud(tagInfo);
-tagInfo = null;
+function benchmarkFun()
+{
+	tagcloud = makeTagCloud(tagInfo);
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');

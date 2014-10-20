@@ -96,4 +96,6 @@ function addResult(r)
    endResult += "\n" + r;
 }
 
-doTest();
+benchmarkFun = doTest;
+load('benchmarks/nocomptime/timebenchmark.js');
+

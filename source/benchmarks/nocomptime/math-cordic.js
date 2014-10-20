@@ -92,5 +92,10 @@ function cordic( runs ) {
   return end.getTime() - start.getTime();
 }
 
-cordic(25000);
+function benchmarkFun()
+{
+    cordic(25000);
+}
+
+load('benchmarks/nocomptime/timebenchmark.js');
 

@@ -46,7 +46,12 @@ function spectralnorm(n) {
   return Math.sqrt(vBv/vv);
 }
 
-for (var i = 6; i <= 48; i *= 2) {
-    spectralnorm(i);
+function benchmarkFun()
+{
+    for (var i = 6; i <= 48; i *= 2) {
+        spectralnorm(i);
+    }
 }
+
+load('benchmarks/nocomptime/timebenchmark.js');
 
