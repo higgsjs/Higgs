@@ -100,6 +100,10 @@ function print()
 
         // Print the string
         $ir_print_str(arg);
+
+        // If this is not the last argument, print a space
+        if ($ir_lt_i32($ir_add_i32(i, 1), $argc))
+            $ir_print_str(' ');
     }
 
     // Print a final newline

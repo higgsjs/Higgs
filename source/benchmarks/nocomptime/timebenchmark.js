@@ -32,6 +32,6 @@ while (timeFun(benchmarkFun, numItrs) < 1000)
 // Timing run
 benchTime = timeFun(benchmarkFun, numItrs) / numItrs;
 
-print('num itrs: ', numItrs);
-print('time: ', benchTime);
+print('num itrs:', numItrs);
+print('exec time (ms):', benchTime);
 

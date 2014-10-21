@@ -13,54 +13,27 @@ from optparse import OptionParser
 MAKE_CMD = 'make release'
 DEF_NUM_RUNS = 1
 DEF_VM_CMD = './higgs --stats --maxvers=20'
+DEF_BENCH_LIST = 'benchmark-list.csv'
 DEF_CSV_FILE = ''
 
 # Parse the command-line options
 parser = OptionParser()
 parser.add_option("--csv_file", default=DEF_CSV_FILE)
 parser.add_option("--vm_cmd", default=DEF_VM_CMD)
+parser.add_option("--bench_list", default=DEF_BENCH_LIST)
 parser.add_option("--num_runs", type="int", default=DEF_NUM_RUNS)
 (options, args) = parser.parse_args()
 
-# Benchmark programs
-BENCHMARKS = {
-    '3d-cube':'benchmarks/sunspider/3d-cube.js',
-    '3d-morph':'benchmarks/sunspider/3d-morph.js',
-    '3d-raytrace':'benchmarks/sunspider/3d-raytrace.js',
-    'binary-trees':'benchmarks/sunspider/access-binary-trees.js',
-    'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
-    'fannkuch':'benchmarks/sunspider/access-fannkuch.js',
-    'nbody':'benchmarks/sunspider/access-nbody.js',
-    'nsieve':'benchmarks/sunspider/access-nsieve.js',
-    '3bits-byte':'benchmarks/sunspider/bitops-3bit-bits-in-byte.js',
-    'bits-in-byte':'benchmarks/sunspider/bitops-bits-in-byte.js',
-    'bitwise-and':'benchmarks/sunspider/bitops-bitwise-and.js',
-    'nsieve-bits':'benchmarks/sunspider/bitops-nsieve-bits.js',
-    'recursive':'benchmarks/sunspider/controlflow-recursive.js',
-    'crypto-aes':'benchmarks/sunspider/crypto-aes.js',
-    'crypto-md5':'benchmarks/sunspider/crypto-md5.js',
-    'crypto-sha1':'benchmarks/sunspider/crypto-sha1.js',
-    'cordic':'benchmarks/sunspider/math-cordic.js',
-    'partial-sums':'benchmarks/sunspider/math-partial-sums.js',
-    'regexp-dna':'benchmarks/sunspider/regexp-dna.js',
-    'spectral-norm':'benchmarks/sunspider/math-spectral-norm.js',
-    'base64':'benchmarks/sunspider/string-base64.js',
-    'fasta':'benchmarks/sunspider/string-fasta.js',
-    'tagcloud':'benchmarks/sunspider/string-tagcloud.js',
-    'unpack-code':'benchmarks/sunspider/string-unpack-code.js',
-    'valid-input':'benchmarks/sunspider/string-validate-input.js',
-    # FIXME: date-format-tofte
-    'date-xparb':'benchmarks/sunspider/date-format-xparb.js',
-
-    'v8-crypto':'benchmarks/v8bench/base.js benchmarks/v8bench/crypto.js benchmarks/v8bench/drv-crypto.js',
-    'deltablue':'benchmarks/v8bench/base.js benchmarks/v8bench/deltablue.js benchmarks/v8bench/drv-deltablue.js',
-    'earley-boyer':'benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js',
-    'navier-stokes':'benchmarks/v8bench/base.js benchmarks/v8bench/navier-stokes.js benchmarks/v8bench/drv-navier-stokes.js',
-    'v8-raytrace':'benchmarks/v8bench/base.js benchmarks/v8bench/raytrace.js benchmarks/v8bench/drv-raytrace.js',
-    # FIXME: regexp
-    'richards':'benchmarks/v8bench/base.js benchmarks/v8bench/richards.js benchmarks/v8bench/drv-richards.js',
-    'splay':'benchmarks/v8bench/base.js benchmarks/v8bench/splay.js benchmarks/v8bench/drv-splay.js',
-}
+# Load the benchmark file list
+benchmarks = {}
+csvFile = open(options.bench_list, 'rb')
+csvReader = csv.reader(csvFile, delimiter=',', quotechar='"')
+for row in csvReader:
+    if len(row) == 0:
+        continue
+    benchName = row[0]
+    benchFiles = row[1:]
+    benchmarks[benchName] = benchFiles
 
 # Per-benchmark results
 benchResults = {}
@@ -73,6 +46,8 @@ if "higgs" in options.vm_cmd:
 valPattern = re.compile('^([^:]+):([^:]+)$')
 
 print "vm cmd:", options.vm_cmd
+print "benchmark list:", options.bench_list
+print "num benchmarks:", len(benchmarks)
 print "num runs:", options.num_runs
 print ''
 
@@ -80,10 +55,9 @@ totalTimeStart = time.time()
 
 # For each benchmark
 benchNo = 1
-for benchmark in BENCHMARKS:
+for benchmark in benchmarks:
 
-    benchFiles = BENCHMARKS[benchmark]
-    print '%s (%d / %d)' % (benchmark, benchNo, len(BENCHMARKS))
+    print '%s (%d / %d)' % (benchmark, benchNo, len(benchmarks))
     benchNo += 1
 
     # Dictionary of string keys to lists of gathered values
@@ -91,6 +65,9 @@ for benchmark in BENCHMARKS:
 
     # Add an entry for the wall clock time
     valLists['wall time (ms)'] = []
+
+    benchFiles = ' '.join(benchmarks[benchmark])
+    benchCmd = options.vm_cmd + ' ' + benchFiles
 
     # For each run
     for runNo in range(1, options.num_runs + 1):
@@ -100,7 +77,7 @@ for benchmark in BENCHMARKS:
         wallTimeStart = time.time()
 
         # Run the benchmark and capture its output
-        pipe = Popen(options.vm_cmd + ' ' + benchFiles, shell=True, stdout=PIPE)
+        pipe = Popen(benchCmd, shell=True, stdout=PIPE)
 
         # Wait until the benchmark terminates
         pipe.wait()

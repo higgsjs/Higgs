@@ -116,25 +116,50 @@ TODO: stub space, no more generic stubs
   - Entry stubs would need a pointer to the entry state
 - This should yield interesting performance improvements
 
+TODO: blog post, the lazy compiler
+- log current ideas in writing
+
+TODO: push to master
+TODO: phi nodes, store in inline array?
+- Issue: no more pointers to phi nodes?
+
+TODO: push to master
+TODO: attempt inline array for IRInstr args
+- measure compilation time before
+
+TODO: look at V8 src wrt IR, phi nodes
+- How do they represent/alloc this efficiently?
+- No pointers?
+
+TODO: complete basic wav encoding
+
+FIXME: v8/crypto benchmark no longer segfaulting, can we get it working?
+- If so, add quick test to `make test`
+- Close GitHub issue
+FIXME: regexp parsing bug
+/\\/g;
+
 TODO: blog post about benchmark comparison against V8?
 - are we faster than V8 on deltablue, a V8 benchmark?
   - if so, add to meeeting notes
-TODO: make harness to exec benchmark a first time with timing, and then a second time
-- print time in output
-- run the timing function for the first run too
-- benchmarks/timing? benchmarks/nocomptime
-- should allow for some iteration count constant
-- have some harness.js functions we use
-- have v8-base.js
-- try with d8 --nocrankshaft
-- test on one benchmark first, refine
-- Goals:
-  - comparison with and without crankshaft
-  - csv output
-  - 3 warmup runs and then average of 10
-  - can use our regular benchmark.py script so long as we use multiple CSV files!
+
+TODO: try benchmarking against V8
+./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="higgs.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8 --nocrankshaft" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8-baseline.csv"
 
 TODO: Higgs, increase heap size in release mode to 256M
+
+FIXME: turtle segfaults
+./higgs ../examples/turtle.js 
+Assertion failed (runtime/vm.d@1042): expected string value for arg 1 of:
+$174 = obj_get_prop $171, $161 => call_merge(77614), if_join(77639)
+h> var draw = require('lib/draw');
+var window = draw.Window(100,100,200,200, "test");
+h> window.onRender(function(canvas) {
+canvas.setColor("#008FCC");
+canvas.fillRect(10,10, 100, 100); });
+// ALL GOOD HERE, UNTIL:
+h>window.show();
+- Add regression
 
 2014-10-XX Meeting:
 - Return type profiling
@@ -157,60 +182,32 @@ TODO: Higgs, increase heap size in release mode to 256M
   - Benchmark setup & teardown, run multiple times or exclude? ***
     - Currently not fully consistent
   - Higgs, increase heap size in release mode to minimize GC?
+- Doing fairly bad on all benchmarks involving strings
+  - Will probably need ropes to be competitive
 - Lack of collaboration, missed opportunity
   - Lunches with Baptiste or group lunches, fixed day
 
-TODO: complete basic wav encoding
-
-TODO: blog post, the lazy compiler
-- log current ideas in writing
-
-TODO: push to master
-TODO: phi nodes, store in inline array?
-- Issue: no more pointers to phi nodes?
-
-TODO: push to master
-TODO: attempt inline array for IRInstr args
-- measure compilation time before
-
-TODO: look at V8 src wrt IR, phi nodes
-- How do they represent/alloc this efficiently?
-- No pointers?
+TODO: host get prop, try passing args through fun params
 
 TODO: richards way faster on V8
 - objGetProp called over 5K times, why?
 
-TODO: host get prop, try passing args through fun params
 
-FIXME: ./higgs benchmarks/nocomptime/regexp.js 
-run-time error: run-time error: "global property not defined: "g""
-- Did this benchmark ever work?
 
-FIXME: turtle segfaults
-./higgs ../examples/turtle.js 
-Assertion failed (runtime/vm.d@1042): expected string value for arg 1 of:
-$174 = obj_get_prop $171, $161 => call_merge(77614), if_join(77639)
-h> var draw = require('lib/draw');
-var window = draw.Window(100,100,200,200, "test");
-h> window.onRender(function(canvas) {
-canvas.setColor("#008FCC");
-canvas.fillRect(10,10, 100, 100); });
-// ALL GOOD HERE, UNTIL:
-h>window.show();
-- Add regression
 
-TODO: benchmark.py, optional benchmark list file
+
+
+
+
+
+
+
+[DONE] TODO: make benchmark-list.csv for nocomptime suite, try it out
+
+[DONE] TODO: benchmark.py, optional benchmark list file
 - csv?
 - --bench_list=
 - default should be source/benchmark-list.csv
-
-
-
-
-
-
-
-
 
 [DONE] TODO: complete nocomptime benchmark hooks
 load('benchmarks/nocomptime/timebenchmark.js');
