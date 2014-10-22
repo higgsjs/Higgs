@@ -2106,36 +2106,47 @@ the base is an object of some kind and the key is a constant string
 */
 function $rt_getPropField(base, propStr)
 {
-    var obj = base;
-
     // If the base is a simple object
-    while ($ir_is_object(obj) || $ir_is_closure(obj) || $ir_is_array(obj))
+    if ($ir_is_object(base) || $ir_is_closure(base) || $ir_is_array(base))
     {
-        //$ir_print_str('itr\n');
+        var obj = base;
 
-        // Capture the object shape
-        var objShape = $ir_obj_read_shape(obj);
-        if ($ir_break());
-        if ($ir_capture_shape(obj, objShape))
+        // Until we reach the end of the prototype chain
+        for (;;)
+        {
+            // Capture the object shape
+            var objShape = $ir_obj_read_shape(obj);
+            if ($ir_break());
             if ($ir_capture_shape(obj, objShape))
                 if ($ir_capture_shape(obj, objShape))
                     if ($ir_capture_shape(obj, objShape))
                         if ($ir_capture_shape(obj, objShape))
-                            if ($ir_capture_shape(obj, objShape));
+                            if ($ir_capture_shape(obj, objShape))
+                                if ($ir_capture_shape(obj, objShape));
 
-        // If the property value can be read directly
-        var propVal;
-        if (propVal = $ir_obj_get_prop(obj, propStr))
-        {
-            // Return the property value
-            return propVal;
+            // If the property value can be read directly
+            var propVal;
+            if (propVal = $ir_obj_get_prop(obj, propStr))
+            {
+                // Return the property value
+                return propVal;
+            }
+
+            // If the property is a getter-setter, stop
+            if ($ir_is_object(propVal))
+            {
+                break;
+            }
+
+            // Get the prototype of the object
+            var obj = $ir_obj_get_proto(obj);
+
+            // If we have reached the end of the prototype chain
+            if ($ir_is_refptr(obj))
+            {
+                return $undef;
+            }
         }
-
-        if ($ir_is_object(propVal))
-            break;
-
-        // Get the prototype of the object
-        var obj = $ir_obj_get_proto(obj);
     }
 
     return $rt_getProp(base, propStr);

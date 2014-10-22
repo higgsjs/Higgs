@@ -164,7 +164,7 @@ Object.getOwnPropertyNames = function (O)
 Object.create = function (proto, properties)
 {
     if ($rt_valIsObj(proto) === false && proto !== null)
-        throw TypeError('can only create object from object or null prototype');
+        throw TypeError('can only create object with object or null prototype');
 
     var newObj = $rt_newObj(proto);
 

@@ -37,6 +37,7 @@
 
 module ir.ast;
 
+import std.ascii;
 import std.stdint;
 import std.stdio;
 import std.array;
@@ -1975,8 +1976,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         // If the property is a constant string
         if (auto strProp = cast(StringExpr)indexExpr.index)
         {
+            auto str = strProp.val;
+
             // If the property is "length"
-            if (strProp.val == "length")
+            if (str == "length")
             {
                 // Use a primitive specialized for array length
                 return genRtCall(
@@ -1987,10 +1990,22 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 );
             }
 
-            // Use a primitive specialized for object fields
+            // If the property does not start with a digit
+            if (str.length > 0 && !str[0].isDigit)
+            {
+                // Use a primitive specialized for object fields
+                return genRtCall(
+                    ctx,
+                    "getPropField",
+                    [baseVal, idxVal],
+                    expr.pos
+                );
+            }
+
+            // Use the generic property read primitive
             return genRtCall(
                 ctx,
-                "getPropField",
+                "getProp",
                 [baseVal, idxVal],
                 expr.pos
             );

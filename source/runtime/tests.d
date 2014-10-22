@@ -1330,6 +1330,7 @@ unittest
     vm.assertInt("a = Array(10); return a.length;", 10);
     vm.assertInt("a = Array(1,2,3); return a.length;", 3);
     vm.assertStr("([0,1,2]).toString()", "0,1,2");
+    vm.assertInt("Array.prototype['0'] = 7; a = [3]; a['0'];", 3);
 }
 
 /// Stdlib String library

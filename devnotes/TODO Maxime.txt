@@ -131,6 +131,10 @@ TODO: look at V8 src wrt IR, phi nodes
 - How do they represent/alloc this efficiently?
 - No pointers?
 
+TODO: ropes
+- left, right, length
+- when concat'ed, set right to null
+
 TODO: complete basic wav encoding
 
 FIXME: v8/crypto benchmark no longer segfaulting, can we get it working?
@@ -146,7 +150,18 @@ TODO: blog post about benchmark comparison against V8?
 TODO: try benchmarking against V8
 ./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="higgs.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8 --nocrankshaft" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8-baseline.csv"
 
+2014-10-2X Meeting:
+- Submitted rebuttal
+- benchmark-vs-v8 script
+
+TODO: host get prop, try passing args through fun params
+
 TODO: Higgs, increase heap size in release mode to 256M
+
+TODO: benchmark-vs-v8.py script
+- Hack first version
+- Work from CSV files
+- Use geo mean, compute baseline ratio and crankshaft ratio
 
 FIXME: turtle segfaults
 ./higgs ../examples/turtle.js 
@@ -161,7 +176,32 @@ canvas.fillRect(10,10, 100, 100); });
 h>window.show();
 - Add regression
 
-2014-10-XX Meeting:
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: Can we refactor getPropField?
+- If we make it to null proto, then prop val is undef, don't call getProp
+- If proto is not an object, then not found
+
+[DONE] TODO: getPropField, don't call if the property is a number string
+- explain why in comment
+
+[DONE] TODO: add regression test with Array.prototype having property '0'
+d8> Array.prototype['0'] = 7; a = [3]; a['0'];
+- Add under core/Array tests
+
+[DONE] TODO: Rebuttal, complete today, send to Marc
+- to the point, don't argue fine points. Honest and straightforward, simple ***
+
+[DONE] 2014-10-XX Meeting:
 - Return type profiling
   - Booleans dominate: gt, lt, eq, toBool
   - closure returns are because of unoptimized method lookups
@@ -173,7 +213,6 @@ h>window.show();
 - Optimized array method lookups
 - Optimized slow get prop path
 - Benchmark harness
-  - Mostly works, gives us comparable times
   - Often competitive with V8 baseline, but crankshaft often beats us by a lot
     - Probably due to inlining
     - but sometimes less than 2x slower
@@ -186,21 +225,6 @@ h>window.show();
   - Will probably need ropes to be competitive
 - Lack of collaboration, missed opportunity
   - Lunches with Baptiste or group lunches, fixed day
-
-TODO: host get prop, try passing args through fun params
-
-TODO: richards way faster on V8
-- objGetProp called over 5K times, why?
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: make benchmark-list.csv for nocomptime suite, try it out
 
