@@ -3684,22 +3684,33 @@ void gen_obj_get_prop(
 
     static assert (OutVal.sizeof == 2 * Word.sizeof);
 
-    extern (C) static void op_shape_get_prop(OutVal* outVal, IRInstr instr)
+    extern (C) static void op_obj_get_prop(
+        OutVal* outVal,
+        refptr objPtr,
+        refptr strPtr
+    )
     {
+        /*
+        writeln("host get prop");
+        writeln(objPtr);
+        writeln(strPtr);
+        */
+
         // Increment the host get prop stat
         ++stats.numGetPropHost;
-
-        auto vm = instr.block.fun.vm;
-
-        auto objPair = vm.getArgVal(instr, 0);
-        auto strPtr = vm.getArgStr(instr, 1);
 
         // Get a temporary D string for the property name
         auto propStr = tempWStr(strPtr);
 
         // Get the shape of the object
-        auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
+        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
         assert (objShape !is null);
+
+        /*
+        writeln("got obj shape");
+        writeln("obj cap = ", obj_get_cap(objPtr));
+        writeln("objShape.slotIdx=", objShape.slotIdx);
+        */
 
         // Find the shape defining this property (if it exists)
         auto defShape = objShape.getDefShape(propStr);
@@ -3715,16 +3726,16 @@ void gen_obj_get_prop(
 
         // Get the slot index and the object capacity
         uint32_t slotIdx = defShape.slotIdx;
-        auto objCap = obj_get_cap(objPair.word.ptrVal);
+        auto objCap = obj_get_cap(objPtr);
 
         if (slotIdx < objCap)
         {
-            outVal.word = Word.int64v(obj_get_word(objPair.word.ptrVal, slotIdx));
-            outVal.tag = cast(Tag)obj_get_tag(objPair.word.ptrVal, slotIdx);
+            outVal.word = Word.int64v(obj_get_word(objPtr, slotIdx));
+            outVal.tag = cast(Tag)obj_get_tag(objPtr, slotIdx);
         }
         else
         {
-            auto extTbl = obj_get_next(objPair.word.ptrVal);
+            auto extTbl = obj_get_next(objPtr);
             assert (slotIdx < obj_get_cap(extTbl));
             outVal.word = Word.int64v(obj_get_word(extTbl, slotIdx));
             outVal.tag = cast(Tag)obj_get_tag(extTbl, slotIdx);
@@ -3733,7 +3744,6 @@ void gen_obj_get_prop(
         outVal.success = (defShape.isGetSet is false)? 1:0;
     }
 
-    // TODO: optimize this to pre-extract args?
     static void gen_slow_path(
         BlockVersion ver,
         CodeGenState st,
@@ -3741,23 +3751,39 @@ void gen_obj_get_prop(
         CodeBlock as
     )
     {
-        // Get the object value
-        auto objVal = cast(IRDstValue)instr.getArg(0);
-
         // Spill the values live before this instruction
         st.spillLiveBefore(as, instr);
 
+        // Get the object and string operands
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+        auto strOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd, false, false);
+
+
+        /*
+        as.printStr(instr.toString);
+        as.printStr("strPtr=");
+        as.printUint(strOpnd);
+        */
+
         auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+
+        //as.printStr(objOpnd.toString);
+        //as.printStr(strOpnd.toString);
+        //as.printStr(outOpnd.toString);
+
+
 
         as.saveJITRegs();
 
         // Stack allocate space for the value pair output
         as.sub(RSP, OutVal.sizeof);
-        as.mov(cargRegs[0].opnd, RSP.opnd);
 
         // Call the host function
-        as.ptr(cargRegs[1], instr);
-        as.ptr(scrRegs[0], &op_shape_get_prop);
+        as.mov(cargRegs[0].opnd, RSP.opnd);
+        as.mov(cargRegs[1].opnd, objOpnd);
+        as.mov(cargRegs[2].opnd, strOpnd);
+        as.ptr(scrRegs[0], &op_obj_get_prop);
         as.call(scrRegs[0]);
 
         // Free the extra stack space

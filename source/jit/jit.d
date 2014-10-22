@@ -1050,8 +1050,10 @@ class CodeGenState
             if (tmpReg == X86Opnd.NONE)
                 tmpReg = freeReg(as, instr).opnd;
 
+            // Load the string pointer into the tmp reg
             as.ptr(tmpReg.reg, argStr);
             as.getMember!("IRString.ptr")(tmpReg.reg, tmpReg.reg);
+
             return tmpReg;
         }
 

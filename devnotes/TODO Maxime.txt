@@ -121,6 +121,10 @@ TODO: stub space, no more generic stubs
 TODO: blog post, the lazy compiler
 - log current ideas in writing
 
+TODO: ropes
+- left, right, length
+- when concat'ed, set right to null
+
 TODO: push to master
 TODO: phi nodes, store in inline array?
 - Issue: no more pointers to phi nodes?
@@ -133,47 +137,35 @@ TODO: look at V8 src wrt IR, phi nodes
 - How do they represent/alloc this efficiently?
 - No pointers?
 
-TODO: ropes
-- left, right, length
-- when concat'ed, set right to null
-
-TODO: complete basic wav encoding
-
 FIXME: v8/crypto benchmark no longer segfaulting, can we get it working?
 - If so, add quick test to `make test`
 - Close GitHub issue
 FIXME: regexp parsing bug
 /\\/g;
 
-TODO: blog post about benchmark comparison against V8?
-- are we faster than V8 on deltablue, a V8 benchmark?
-  - if so, add to meeeting notes
-
 2014-10-2X Meeting:
 - Submitted rebuttal
 - Fixed indexed array element called as method bug
 - benchmark-vs-v8 script
 
-TODO: host get prop, try passing args through fun params
+TODO: complete basic wav encoding, for fun
 
-TODO: benchmark-vs-v8.py script
-- Hack first version
-- Work from CSV files
+TODO: try forcing fn capture in set global?
+- how often do we not know the fn? check
+
+
+
+
+
+
+
+
+
+[DONE] TODO: host get prop, try passing args through fun params
+
+[DONE] TODO: benchmark-vs-v8.py script
+- Work from CSV files, copy CSV column extraction code
 - Use geo mean, compute baseline ratio and crankshaft ratio
-./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="higgs.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8 --nocrankshaft" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8-baseline.csv"
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: Higgs, increase heap size in release mode to 256M
 
