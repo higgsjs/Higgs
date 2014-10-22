@@ -410,8 +410,11 @@ immutable UNDEF   = ValuePair(Word(0x03), Tag.CONST);
 /// Stack size, 256K words (2MB)
 immutable size_t STACK_SIZE = 2^^18;
 
-/// Initial heap size, 16M bytes
-immutable size_t HEAP_INIT_SIZE = 2^^24;
+/// Initial object heap size, release 128M, debug 16M bytes
+version (release)
+    immutable size_t HEAP_INIT_SIZE = 2 ^^ 27;
+else
+    immutable size_t HEAP_INIT_SIZE = 2 ^^ 24;
 
 /// Initial link table size
 immutable size_t LINK_TBL_INIT_SIZE = 16384;
@@ -419,11 +422,8 @@ immutable size_t LINK_TBL_INIT_SIZE = 16384;
 /// Initial global object size
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 1024;
 
-/// Initial executable heap size, release 128M, debug 16M bytes
-version (release)
-    immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 27;
-else
-    immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
+/// Initial executable heap size 16M bytes
+immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
 
 /// Initial subroutine heap size, 64K bytes
 immutable size_t SUBS_HEAP_INIT_SIZE = 2 ^^ 16;

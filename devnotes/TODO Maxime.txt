@@ -93,9 +93,11 @@ ECOOP - Dec 21st
 TODO: take a break, dust off CPU heatsink and fan
 - turn off machine, remove fan
 
-Marc says: do interprocedural BBV
+TODO: think about interprocedural BBV
 - Return info: try to predict what the function will return
   - speculative/predicted info return vs generic return?
+  - remark: for many runtime functions, we should know the return type,
+    but it may also not be very relevant
 - Shape changed flag in context
 
 TODO: blog post, Higgs' Fancy New Object System => get started
@@ -147,21 +149,18 @@ TODO: blog post about benchmark comparison against V8?
 - are we faster than V8 on deltablue, a V8 benchmark?
   - if so, add to meeeting notes
 
-TODO: try benchmarking against V8
-./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="higgs.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8 --nocrankshaft" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8-baseline.csv"
-
 2014-10-2X Meeting:
 - Submitted rebuttal
+- Fixed indexed array element called as method bug
 - benchmark-vs-v8 script
 
 TODO: host get prop, try passing args through fun params
-
-TODO: Higgs, increase heap size in release mode to 256M
 
 TODO: benchmark-vs-v8.py script
 - Hack first version
 - Work from CSV files
 - Use geo mean, compute baseline ratio and crankshaft ratio
+./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="higgs.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8.csv"; ./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8 --nocrankshaft" --bench_list=benchmarks/nocomptime/benchmark-list.csv --csv_file="v8-baseline.csv"
 
 
 
@@ -172,6 +171,11 @@ TODO: benchmark-vs-v8.py script
 
 
 
+
+
+
+
+[DONE] TODO: Higgs, increase heap size in release mode to 256M
 
 [DONE] TODO: regression test for function call to array element
 
