@@ -163,8 +163,20 @@ TODO: benchmark-vs-v8.py script
 - Work from CSV files
 - Use geo mean, compute baseline ratio and crankshaft ratio
 
-FIXME: turtle segfaults
-./higgs ../examples/turtle.js 
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: regression test for function call to array element
+
+[DONE] FIXME: turtle segfaults
+./higgs ../examples/turtle.js
 Assertion failed (runtime/vm.d@1042): expected string value for arg 1 of:
 $174 = obj_get_prop $171, $161 => call_merge(77614), if_join(77639)
 h> var draw = require('lib/draw');
@@ -175,17 +187,7 @@ canvas.fillRect(10,10, 100, 100); });
 // ALL GOOD HERE, UNTIL:
 h>window.show();
 - Add regression
-
-
-
-
-
-
-
-
-
-
-
+- Calling an indexed array element as a method
 
 [DONE] TODO: Can we refactor getPropField?
 - If we make it to null proto, then prop val is undef, don't call getProp

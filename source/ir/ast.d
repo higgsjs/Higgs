@@ -1890,13 +1890,31 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             // Evaluate the index expression
             auto keyVal = exprToIR(ctx, indexExpr.index);
 
-            // Get the method property
-            closVal = genRtCall(
-                ctx,
-                "getPropField",
-                [thisVal, keyVal],
-                expr.pos
-            );
+            // If the property is a constant string
+            if (auto strProp = cast(StringExpr)indexExpr.index)
+            {
+                // If the property does not start with a digit
+                if (strProp.val.length > 0 && !strProp.val[0].isDigit)
+                {
+                    // Use a primitive specialized for object fields
+                    closVal = genRtCall(
+                        ctx,
+                        "getPropField",
+                        [thisVal, keyVal],
+                        expr.pos
+                    );
+                }
+            }
+            else
+            {
+                // Get the method property using a generic primitive
+                closVal = genRtCall(
+                    ctx,
+                    "getProp",
+                    [thisVal, keyVal],
+                    expr.pos
+                );
+            }
         }
         else
         {
