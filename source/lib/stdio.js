@@ -381,6 +381,17 @@ Bindings for common c I/O functions
     };
 
     /**
+    Write a int16
+    */
+    File.prototype.writeInt16 = function(data)
+    {
+        var size = 2;
+        $ir_store_i16(this.buffer, 0, data);
+        var r = c.fwrite(this.buffer, size, 1, this.ptr);
+        return r === size;
+    };
+
+    /**
     Write a uint16
     */
     File.prototype.writeUint16 = function(data)
@@ -392,12 +403,12 @@ Bindings for common c I/O functions
     };
 
     /**
-    Write a int16
+    Write a int32
     */
-    File.prototype.writeInt16 = function(data)
+    File.prototype.writeInt32 = function(data)
     {
-        var size = 2;
-        $ir_store_i16(this.buffer, 0, data);
+        var size = 4;
+        $ir_store_i32(this.buffer, 0, data);
         var r = c.fwrite(this.buffer, size, 1, this.ptr);
         return r === size;
     };

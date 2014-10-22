@@ -1,7 +1,6 @@
 var csv = require('lib/csv');
 
 var stdio = require('lib/stdio');
-tmpName = stdio.tmpname();
 
 // Create a new CSV spreadsheet object
 sheet = new csv.CSV();
@@ -21,6 +20,7 @@ sheet.setCell(1, 0, 'Anna');
 sheet.setRow(3, ['John', '35', 'M']);
 
 // Write the data to a CSV file
+tmpName = stdio.tmpname();
 sheet.writeFile(tmpName);
 
 // Read a spreadsheet from a CSV file

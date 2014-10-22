@@ -148,7 +148,7 @@ FIXME: regexp parsing bug
 - Fixed indexed array element called as method bug
 - benchmark-vs-v8 script
 
-TODO: complete basic wav encoding, for fun
+TODO: hack simple kick synth, snare, see synth cookbook
 
 TODO: try forcing fn capture in set global?
 - how often do we not know the fn? check
@@ -160,6 +160,13 @@ TODO: try forcing fn capture in set global?
 
 
 
+
+
+
+
+[DONE] TODO: write simple wav encoding test
+
+[DONE] TODO: complete basic wav encoding, for fun
 
 [DONE] TODO: host get prop, try passing args through fun params
 
