@@ -262,23 +262,17 @@ function test_concat()
 
 function test_replace()
 {
-    if ('foobif'.replace('oo', 'oobar') !== 'foobarbif')
-        return 1;
+    assert ('foobif'.replace('oo', 'oobar') === 'foobarbif')
 
-    if ('foobar'.replace(/(.)\1/, '$1') !== 'fobar')
-        return 2;
+    assert ('foobar'.replace(/(.)\1/, '$1') === 'fobar')
 
-    if ('foobar'.replace(/(.)/g, '$1$1') !== 'ffoooobbaarr')
-        return 3;
+    assert ('foobar'.replace(/(.)/g, '$1$1') === 'ffoooobbaarr')
 
-    if ('foobar foobar'.replace(/\bf/g, "$`") !== 'oobar foobar oobar')
-        return 4;
+    assert ('foobar foobar'.replace(/\bf/g, "$`") === 'oobar foobar oobar')
 
-    if ('foobar foobar'.replace(/\bf/g, "$'") !== 'oobar foobaroobar oobaroobar')
-        return 5;
-    if ('f'.replace(/a/g, "b") !== 'f')
-        return 6;
-    return 0;
+    assert ('foobar foobar'.replace(/\bf/g, "$'") === 'oobar foobaroobar oobaroobar')
+
+    assert ('f'.replace(/a/g, "b") === 'f')
 }
 
 function test_split()
@@ -444,9 +438,7 @@ function test()
     if (r != 0)
         return 1500 + r;
 
-    var r = test_replace();
-    if (r != 0)
-        return 1600 + r;
+    test_replace();
 
     var r = test_split();
     if (r != 0)

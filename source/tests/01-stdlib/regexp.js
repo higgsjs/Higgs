@@ -71,13 +71,15 @@ function check_equal_matches (
 
 function test_char_match ()
 {
-    if (!check_equal_matches(new RegExp("a").exec("a"), ["a"]))
-        return 1;
-    if (!check_equal_matches(new RegExp("a").exec("b"), null))
-        return 2;
-    if (!check_equal_matches(new RegExp("\\t\\n\\v\\f\\r").exec("\t\n\v\f\r"), ["\t\n\v\f\r"]))
-        return 3;
-    return 0;
+    assert (check_equal_matches(new RegExp("a").exec("a"), ["a"]))
+
+    assert (check_equal_matches(new RegExp("a").exec("b"), null))
+
+    assert (check_equal_matches(new RegExp("\\t\\n\\v\\f\\r").exec("\t\n\v\f\r"), ["\t\n\v\f\r"]))
+
+    assert (check_equal_matches((/\\/g).exec("\\"), ["\\"]))
+
+    assert (check_equal_matches((/\x41/g).exec("A"), ["A"]))
 }
 
 function test_char_class_match ()
@@ -254,9 +256,7 @@ function test ()
 {
     var r;
 
-    r = test_char_match();
-    if (r !== 0)
-        return 100 + r;
+    test_char_match();
 
     r = test_char_class_match();
     if (r !== 0)

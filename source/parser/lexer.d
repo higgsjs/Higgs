@@ -863,19 +863,37 @@ Token getToken(ref StrStream stream, LexFlags flags)
         {
             ch = stream.readCh();
 
-            if (ch == '\\' && stream.peekCh() == '/')
+            // Escape sequence
+            // Note: other escape sequences are
+            // handled by the regexp parser
+            if (ch == '\\')
             {
-                stream.readCh();
-                reStr ~= "\\/"w;
-                continue;
+                if (stream.peekCh() == '/')
+                {
+                    stream.readCh();
+                    reStr ~= "\\/"w;
+                    continue;
+                }
+
+                if (stream.peekCh() == '\\')
+                {
+                    stream.readCh();
+                    reStr ~= "\\\\"w;
+                    continue;
+                }
             }
 
+            // End of regexp literal
             if (ch == '/')
+            {
                 break;
+            }
 
             // End of file
             if (ch == '\0')
+            {
                 return Token(Token.ERROR, "EOF in literal", stream.getPos());
+            }
 
             reStr ~= ch;
         }
@@ -890,7 +908,6 @@ Token getToken(ref StrStream stream, LexFlags flags)
                 break;
 
             stream.readCh();
-
             reFlags ~= ch;
         }
 

@@ -90,6 +90,8 @@ TODO: optimize host get_prop
 ECOOP - Dec 21st
 - Jan Vitek is on organizing committee
 
+VEE - Nov 25th?
+
 TODO: think about interprocedural BBV
 - Return info: try to predict what the function will return
   - speculative/predicted info return vs generic return?
@@ -139,6 +141,9 @@ TODO: look at V8 src wrt IR, phi nodes
 - optimized host property reads (uncaptured shapes)
 - benchmark-vs-v8 script
 
+FIXME: gc bug in v8/regexp
+- next pointer invalid during GC
+
 TODO: Sound.append(), appends in-place
 TODO: hack simple kick synth, snare, see synth cookbook
 - produce a new Sound object for now
@@ -146,20 +151,16 @@ TODO: hack simple kick synth, snare, see synth cookbook
 TODO: take a break, dust off CPU heatsink and fan
 - turn off machine, remove fan
 
-FIXME: v8/crypto benchmark no longer segfaulting, can we get it working?
-- If so, add quick test to `make test`
-- Close GitHub issue
-FIXME: regexp parsing bug
+
+
+
+
+
+
+
+
+[DONE] FIXME: regexp parsing bug
 /\\/g;
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: try forcing fn capture in set global?
 - how often do we not know the fn? check
