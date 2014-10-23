@@ -97,10 +97,10 @@ ulong numCallFast = 0;
 ulong numCallSlow = 0;
 
 /// Number of primitive calls by primitive name
-private ulong* numPrimCalls[string];
+private ulong*[string] numPrimCalls;
 
 /// Number of type tests executed by test kind
-private ulong* numTypeTests[string];
+private ulong*[string] numTypeTests;
 
 /// Get a pointer to the counter variable associated with a primitive
 ulong* getPrimCallCtr(string primName)
@@ -257,7 +257,7 @@ static ~this()
         writefln("num call fast: %s", numCallFast);
         writefln("num call slow: %s", numCallSlow);
 
-        alias Tuple!(string, "name", ulong, "cnt") PrimCallCnt;
+        alias PrimCallCnt = Tuple!(string, "name", ulong, "cnt");
         PrimCallCnt[] primCallCnts;
         foreach (name, pCtr; numPrimCalls)
             primCallCnts ~= PrimCallCnt(name, *pCtr);
@@ -271,7 +271,7 @@ static ~this()
         }
         writefln("total prim calls: %s", totalPrimCalls);
 
-        alias Tuple!(string, "test", ulong, "cnt") TypeTestCnt;
+        alias TypeTestCnt = Tuple!(string, "test", ulong, "cnt");
         TypeTestCnt[] typeTestCnts;
         foreach (test, pCtr; numTypeTests)
             typeTestCnts ~= TypeTestCnt(test, *pCtr);

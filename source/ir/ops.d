@@ -61,7 +61,7 @@ Opcode information
 */
 struct OpInfo
 {
-    alias uint OpFlag;
+    alias OpFlag = uint;
     enum : OpFlag
     {
         VAR_ARG     = 1 << 0,

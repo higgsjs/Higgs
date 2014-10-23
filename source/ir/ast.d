@@ -75,13 +75,13 @@ class IRGenCtx
     /// Map of identifiers to values (local variables)
     IRValue[IdentExpr] localMap;
 
-    alias Tuple!(
+    alias LabelTargets = Tuple!(
         wstring, "name",
         IRBlock, "breakTarget",
         IRGenCtx[]*, "breakCtxs",
         IRBlock, "contTarget", 
         IRGenCtx[]*, "contCtxs"
-    ) LabelTargets;
+    );
 
     /// Target blocks for named statement labels
     LabelTargets[] labelTargets;
@@ -99,10 +99,10 @@ class IRGenCtx
     IRGenCtx[]* throwCtxs;
 
     /// Finally statement and context pair
-    alias Tuple!(
+    alias FnlInfo = Tuple!(
         ASTStmt, "stmt",
         IRGenCtx, "ctx"
-    ) FnlInfo;
+    );
 
     /**
     Code generation context constructor
@@ -2271,10 +2271,10 @@ IRValue refToIR(
 }
 
 /// In-place operation delegate function
-alias IRValue delegate(IRGenCtx ctx, IRValue lArg, IRValue rArg) InPlaceOpFn;
+alias InPlaceOpFn = IRValue delegate(IRGenCtx ctx, IRValue lArg, IRValue rArg);
 
 /// Expression evaluation delegate function
-alias IRValue delegate(IRGenCtx ctx) ExprEvalFn;
+alias ExprEvalFn = IRValue delegate(IRGenCtx ctx);
 
 /**
 Generate IR for an assignment expression

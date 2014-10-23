@@ -45,7 +45,7 @@ import jit.x86;
 import jit.codeblock;
 
 /// Code generation function for testing
-alias void delegate(CodeBlock) CodeGenFn;
+alias CodeGenFn = void delegate(CodeBlock);
 
 /**
 Test x86 instruction encodings
@@ -868,7 +868,7 @@ unittest
 }
 
 /// Test function pointer type
-alias int64_t function() TestFn;
+alias TestFn = int64_t function();
 
 /**
 Test the execution of x86 code snippets
