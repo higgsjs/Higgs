@@ -90,9 +90,6 @@ TODO: optimize host get_prop
 ECOOP - Dec 21st
 - Jan Vitek is on organizing committee
 
-TODO: take a break, dust off CPU heatsink and fan
-- turn off machine, remove fan
-
 TODO: think about interprocedural BBV
 - Return info: try to predict what the function will return
   - speculative/predicted info return vs generic return?
@@ -122,20 +119,32 @@ TODO: blog post, the lazy compiler
 - log current ideas in writing
 
 TODO: ropes
+- do some online reading first ***
 - left, right, length
 - when concat'ed, set right to null
 
 TODO: push to master
 TODO: phi nodes, store in inline array?
 - Issue: no more pointers to phi nodes?
-
 TODO: push to master
 TODO: attempt inline array for IRInstr args
 - measure compilation time before
-
 TODO: look at V8 src wrt IR, phi nodes
 - How do they represent/alloc this efficiently?
 - No pointers?
+
+2014-10-2X Meeting:
+- Submitted rebuttal
+- Fixed indexed array element called as method bug
+- optimized host property reads (uncaptured shapes)
+- benchmark-vs-v8 script
+
+TODO: Sound.append(), appends in-place
+TODO: hack simple kick synth, snare, see synth cookbook
+- produce a new Sound object for now
+
+TODO: take a break, dust off CPU heatsink and fan
+- turn off machine, remove fan
 
 FIXME: v8/crypto benchmark no longer segfaulting, can we get it working?
 - If so, add quick test to `make test`
@@ -143,26 +152,20 @@ FIXME: v8/crypto benchmark no longer segfaulting, can we get it working?
 FIXME: regexp parsing bug
 /\\/g;
 
-2014-10-2X Meeting:
-- Submitted rebuttal
-- Fixed indexed array element called as method bug
-- benchmark-vs-v8 script
 
-TODO: hack simple kick synth, snare, see synth cookbook
 
-TODO: try forcing fn capture in set global?
+
+
+
+
+
+
+
+[DONE] TODO: try forcing fn capture in set global?
 - how often do we not know the fn? check
-
-
-
-
-
-
-
-
-
-
-
+  - Array ctor is unknown 
+  - v8-raytrace uses weird object system, has many slow calls
+- Does eliminate unknown fptrs, but doesn't make net difference in slow calls!
 
 [DONE] TODO: write simple wav encoding test
 

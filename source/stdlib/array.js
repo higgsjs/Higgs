@@ -48,8 +48,6 @@ Implementation of ECMAScript 5 array library routines.
 Marc Feeley, Maxime Chevalier-Boisvert
 */
 
-Array = (function () {
-
 /**
 15.4.2 Array constructor function.
 new Array (len)
@@ -93,9 +91,12 @@ Array.isArray = function (arg)
     return $ir_is_array(arg);
 };
 
+
 //-----------------------------------------------------------------------------
 
 // Operations on Array objects.
+
+(function () {
 
 function array_toObject(x)
 {
@@ -541,7 +542,7 @@ function array_lastIndexOf(searchElement, fromIndex)
     return -1;
 }
 
-function array_every (
+function array_every(
     callbackfn,
     thisArg
 )
@@ -555,7 +556,7 @@ function array_every (
     return true;
 }
 
-function array_some (
+function array_some(
     callbackfn,
     thisArg
 )
@@ -608,7 +609,7 @@ function array_filter(callbackfn, thisArg)
     return a;
 }
 
-function array_reduce_generic (callbackfn, initialValue, start, end, step)
+function array_reduce_generic(callbackfn, initialValue, start, end, step)
 {
     var o = array_toObject(this);
     var len = o.length;
@@ -639,14 +640,14 @@ function array_reduce_generic (callbackfn, initialValue, start, end, step)
     return reducedValue;
 }
 
-function array_reduce (callbackfn, initialValue)
+function array_reduce(callbackfn, initialValue)
 {
     return array_reduce_generic.call(this, callbackfn, initialValue, 0, this.length, 1);
 }
 
-function array_reduceRight (callbackfn, initialValue)
+function array_reduceRight(callbackfn, initialValue)
 {
-    return array_reduce_generic.call(this, callbackfn, initialValue, this.length - 1, -1, -1 );
+    return array_reduce_generic.call(this, callbackfn, initialValue, this.length - 1, -1, -1);
 }
 
 // Setup Array.prototype
@@ -682,6 +683,5 @@ for (p in Array.prototype)
     );
 }
 
-return Array;
-
 })();
+

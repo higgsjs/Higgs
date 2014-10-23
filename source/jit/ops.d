@@ -3690,12 +3690,6 @@ void gen_obj_get_prop(
         refptr strPtr
     )
     {
-        /*
-        writeln("host get prop");
-        writeln(objPtr);
-        writeln(strPtr);
-        */
-
         // Increment the host get prop stat
         ++stats.numGetPropHost;
 
@@ -3705,12 +3699,6 @@ void gen_obj_get_prop(
         // Get the shape of the object
         auto objShape = cast(ObjShape)obj_get_shape(objPtr);
         assert (objShape !is null);
-
-        /*
-        writeln("got obj shape");
-        writeln("obj cap = ", obj_get_cap(objPtr));
-        writeln("objShape.slotIdx=", objShape.slotIdx);
-        */
 
         // Find the shape defining this property (if it exists)
         auto defShape = objShape.getDefShape(propStr);
@@ -3758,21 +3746,7 @@ void gen_obj_get_prop(
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
         auto strOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd, false, false);
 
-
-        /*
-        as.printStr(instr.toString);
-        as.printStr("strPtr=");
-        as.printUint(strOpnd);
-        */
-
         auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-
-        //as.printStr(objOpnd.toString);
-        //as.printStr(strOpnd.toString);
-        //as.printStr(outOpnd.toString);
-
-
 
         as.saveJITRegs();
 
