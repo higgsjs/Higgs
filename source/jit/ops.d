@@ -2186,6 +2186,9 @@ void gen_call_apply(
         CodePtr retAddr
     )
     {
+        // Increment the number of calls performed using apply
+        stats.numCallApply++;
+
         vm.setCurInstr(instr);
 
         auto closVal = vm.getArgVal(instr, 0);
@@ -3187,9 +3190,15 @@ void gen_capture_shape(
     // If the shape is marked as known
     if (objType.shapeKnown)
     {
+        // Increment the count of known shape instances
+        as.incStatCnt(&stats.numShapeKnown, scrRegs[0]);
+
         // Jump directly to the false successor block
         return gen_jump_false(ver, st, instr, as);
     }
+
+    // Increment the count of shape tests
+    as.incStatCnt(&stats.numShapeTests, scrRegs[0]);
 
     // Get the current shape argument word
     assert (shapeVal.block !is instr.block);

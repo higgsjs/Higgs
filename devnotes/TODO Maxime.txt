@@ -120,11 +120,6 @@ TODO: stub space, no more generic stubs
 TODO: blog post, the lazy compiler
 - log current ideas in writing
 
-TODO: ropes
-- do some online reading first ***
-- left, right, length
-- when concat'ed, set right to null
-
 TODO: push to master
 TODO: phi nodes, store in inline array?
 - Issue: no more pointers to phi nodes?
@@ -138,19 +133,36 @@ TODO: look at V8 src wrt IR, phi nodes
 2014-10-2X Meeting:
 - Submitted rebuttal
 - Fixed indexed array element called as method bug
+- Fixed regexp parsing bug
 - optimized host property reads (uncaptured shapes)
 - benchmark-vs-v8 script
+- Tried forcing capture of more functions to reduce "slow calls"
+  - Not much difference
+  - Slow calls result from unorthodox calls or argument count mismatches
+- Added shape test stat
+  - Many more shape tests than known shapes, ~10:1
+  - Interp BBV should help tremendously there
+- Type tests for 3d-raytrace, previously 3.5M (optimized), now 1.4M
+- Idea for interp BBV returns
+  - Only try to predict return type when fairly sure to avoid mispredicts
+  - Otherwise only predict that no shapes will be changed
+
+TODO: look into ropes
+- do some online reading first ***
+- left, right, length
+- when concat'ed, set right to null
 
 FIXME: gc bug in v8/regexp
 - next pointer invalid during GC
 
-TODO: Sound.append(), appends in-place
-TODO: hack simple kick synth, snare, see synth cookbook
-- produce a new Sound object for now
-
 TODO: take a break, dust off CPU heatsink and fan
 - turn off machine, remove fan
 
+FIXME: maxvers=0 causes segfault on 3d-raytrace
+
+TODO: hack simple kick synth, snare, see synth cookbook
+- for now, source/synth.js
+- produce a new Sound object for now
 
 
 
@@ -158,6 +170,14 @@ TODO: take a break, dust off CPU heatsink and fan
 
 
 
+
+
+
+
+
+[DONE] TODO: add shape test stats
+
+[DONE] TODO: num call apply stat
 
 [DONE] FIXME: regexp parsing bug
 /\\/g;
